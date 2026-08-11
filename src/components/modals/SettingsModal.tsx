@@ -11,6 +11,7 @@ import { settingsUseAdvancedValues } from '@/lib/settingsAdvancedData';
 import { TutorialPopover } from '@/components/TutorialPopover';
 import { useDevRoute } from '@/lib/devRouter';
 import { Row, CheckRow, Section, SubGroup, HintInfo } from '@/components/SettingsRows';
+import { SETTINGS_COPY, SETTINGS_BUTTONS, SETTINGS_CONFIRMS, type SettingCopy, type SettingCopyKey } from '@/components/modals/settingsCopy';
 import TagField from '@/components/prompt/TagField';
 import { reasoningTabs, reasoningPromptTabs, defaultPromptReasoning, defaultReasoningBudgetPct, REASONING_CONTROL_KINDS, type PromptReasoning } from '@/lib/reasoningEffort';
 import { ExportPresetDialog, ImportPresetDialog } from '@/components/modals/PresetShareDialogs';
@@ -62,11 +63,23 @@ import ComfyWorkflowGuide from './ComfyWorkflowGuide';
 import { DEFAULT_TAG_PROMPT, SUBJECT_GUIDANCE } from '@/lib/imagePrompt';
 import { resetTutorials, useSeenTutorialCount, useTutorial } from '@/lib/tutorials';
 
+/** Spreads one setting's copy onto a `Row` or `CheckRow`, so a call site names the setting and nothing
+ *  else — the label, description, badge and `ⓘ` all come from `settingsCopy`, where they are guarded. */
+function copy(key: SettingCopyKey) {
+  const c: SettingCopy = SETTINGS_COPY[key];
+  return {
+    label: c.label,
+    hint: c.description,
+    experimental: c.experimental,
+    info: c.info ? <HintInfo>{c.info}</HintInfo> : undefined,
+  };
+}
+
 // Segmented-control options: a short tab label plus the helper text shown below the selected one.
 const THEME_OPTIONS: { value: 'light' | 'dark' | 'system'; label: string; help: string }[] = [
-  { value: 'light', label: 'Light', help: 'Always use the light color scheme.' },
-  { value: 'dark', label: 'Dark', help: 'Always use the dark color scheme.' },
-  { value: 'system', label: 'System', help: 'Recommended. Follow your OS light/dark setting.' },
+  { value: 'light', label: 'Light', help: 'Always uses the light color scheme.' },
+  { value: 'dark', label: 'Dark', help: 'Always uses the dark color scheme.' },
+  { value: 'system', label: 'System', help: 'Recommended. Follows your OS light/dark setting.' },
 ];
 
 const PARAGRAPH_LIMIT_OPTIONS: { value: ParagraphLimit; label: string; help: string }[] = [
@@ -123,24 +136,26 @@ const numInput = (raw: string, min: number): number => {
   return Number.isFinite(n) && n >= min ? n : min;
 };
 
-const REASONING_CAVEAT = 'Only applies to models with native reasoning.';
 // Per-value help; the tabs themselves are built from the endpoint's detected support via `reasoningTabs`.
+// The "only applies to reasoning models" caveat is a property of the control, not of any one level, so it
+// lives once in the row's ⓘ rather than closing all eight of these.
 const REASONING_EFFORT_HELP: Record<ReasoningEffort, string> = {
-  auto: `No hint sent — the endpoint decides. ${REASONING_CAVEAT}`,
-  none: `Disables native reasoning. ${REASONING_CAVEAT}`,
-  minimal: `Minimal effort. ${REASONING_CAVEAT}`,
-  low: `Low effort. ${REASONING_CAVEAT}`,
-  medium: `Medium effort. ${REASONING_CAVEAT}`,
-  high: `High effort. ${REASONING_CAVEAT}`,
-  xhigh: `Extra-high effort. ${REASONING_CAVEAT}`,
-  max: `Maximum effort. ${REASONING_CAVEAT}`,
+  auto: 'No hint sent — the endpoint decides.',
+  none: 'Disables native reasoning.',
+  minimal: 'Minimal effort.',
+  low: 'Low effort.',
+  medium: 'Medium effort.',
+  high: 'High effort.',
+  xhigh: 'Extra-high effort.',
+  max: 'Maximum effort.',
 };
 
-/** Per-prompt control: how many recent turns this prompt receives verbatim (the rest are digested). */
+/** Per-prompt control: how many recent turns this prompt receives verbatim (the rest are summarized). */
 function VerbatimTurnsField({ id, value, onChange, disabled }: { id: string; value: number; onChange: (n: number) => void; disabled?: boolean }) {
+  const c = SETTINGS_COPY.verbatimTurns;
   return (
     <div className="flex items-center gap-2 flex-shrink-0">
-      <label htmlFor={id} className="text-label">Verbatim turns</label>
+      <label htmlFor={id} className="text-label">{c.label}</label>
       <Input
         id={id}
         type="number"
@@ -150,7 +165,8 @@ function VerbatimTurnsField({ id, value, onChange, disabled }: { id: string; val
         onChange={(e) => onChange(Math.max(0, Math.floor(Number(e.target.value)) || 0))}
         className="w-20"
       />
-      <span className="hidden sm:inline text-helper text-muted-foreground">recent turns kept in full before older ones are summarized</span>
+      <span className="hidden sm:inline text-helper text-muted-foreground">{c.description}</span>
+      <HintInfo>{c.info}</HintInfo>
     </div>
   );
 }
@@ -169,6 +185,8 @@ interface SamplerControlProps {
   id: string;
   label: string;
   hint: string;
+  /** Markdown for the row's `ⓘ`, when the setting has a cost or mechanism worth stating. */
+  info?: string;
   custom: boolean;
   value: number;
   /** The value shown when off, or undefined when the prompt omits the sampler (endpoint decides). */
@@ -181,7 +199,7 @@ interface SamplerControlProps {
   onCustomChange: (custom: boolean) => void;
   onValueChange: (value: number) => void;
 }
-function SamplerControl({ id, label, hint, custom, value, defaultValue, min, max, step, disabled, onCustomChange, onValueChange }: SamplerControlProps) {
+function SamplerControl({ id, label, hint, info, custom, value, defaultValue, min, max, step, disabled, onCustomChange, onValueChange }: SamplerControlProps) {
   const omitsWhenOff = defaultValue === undefined;
   const shown = custom ? value : (defaultValue ?? value);
   return (
@@ -190,6 +208,7 @@ function SamplerControl({ id, label, hint, custom, value, defaultValue, min, max
         <Checkbox id={id} checked={custom} disabled={disabled} onCheckedChange={(c) => onCustomChange(c === true)} />
         <label htmlFor={id} className="text-label">{label}</label>
         <span className="hidden sm:inline text-helper text-muted-foreground">{hint}</span>
+        {info && <HintInfo>{info}</HintInfo>}
       </div>
       {/* pl-2.5 is the thumb's own overhang: it centers on the value, so at `min` it reaches 10px left of
           the track and would be clipped by the scroll frame. Only the left needs it — the readout and its
@@ -269,7 +288,14 @@ function PromptEndpointField({ value, activeName, presets, onChange, target, dis
 }) {
   return (
     <div className="flex flex-col gap-1">
-      <label className="text-label">Endpoint</label>
+      <div className="flex items-center gap-1.5">
+        <label className="text-label">{SETTINGS_COPY.promptEndpoint.label}</label>
+        {/* Which endpoint this prompt is actually pinned to varies; the description above it does not. */}
+        <HintInfo>{value === null
+          ? 'Goes wherever AI Endpoints is pointed. Switch endpoints there and this prompt follows.'
+          : `Always goes to ${presets.find((p) => p.id === value)?.name ?? 'this endpoint'}, even when you switch endpoints elsewhere.`}</HintInfo>
+      </div>
+      <span className="text-helper text-muted-foreground">{SETTINGS_COPY.promptEndpoint.description}</span>
       <Select
         value={value ?? FOLLOW_ACTIVE}
         onValueChange={(v) => onChange(v === FOLLOW_ACTIVE ? null : v)}
@@ -287,13 +313,6 @@ function PromptEndpointField({ value, activeName, presets, onChange, target, dis
         </SelectContent>
       </Select>
       <EndpointReachabilityBadge target={target} />
-      {/* Name the target rather than saying "the active preset": this panel sits under a *prompt* preset,
-          so "active preset" reads as that one, not the endpoint. */}
-      <span className="text-helper text-muted-foreground">
-        {value === null
-          ? 'Goes wherever AI Endpoints is pointed. Switch endpoints there and this prompt follows.'
-          : `Always goes to ${presets.find((p) => p.id === value)?.name ?? 'this endpoint'}, even when you switch endpoints elsewhere.`}
-      </span>
     </div>
   );
 }
@@ -308,7 +327,11 @@ function PromptReasoningField({ value, options, onChange, disabled }: {
 }) {
   return (
     <div className="flex flex-col gap-1">
-      <label className="text-label">Native Reasoning</label>
+      <div className="flex items-center gap-1.5">
+        <label className="text-label">{SETTINGS_COPY.promptNativeReasoning.label}</label>
+        <HintInfo>{SETTINGS_COPY.promptNativeReasoning.info}</HintInfo>
+      </div>
+      <span className="text-helper text-muted-foreground">{SETTINGS_COPY.promptNativeReasoning.description}</span>
       <ToggleGroup
         type="single"
         value={value}
@@ -322,9 +345,6 @@ function PromptReasoningField({ value, options, onChange, disabled }: {
           <ToggleGroupItem key={t.value} value={t.value} disabled={disabled}>{t.label}</ToggleGroupItem>
         ))}
       </ToggleGroup>
-      <span className="text-helper text-muted-foreground">
-        Global follows Settings → Generation → Native Reasoning. Only applies to models with native reasoning.
-      </span>
     </div>
   );
 }
@@ -340,8 +360,9 @@ function PromptReasoningBudgetField({ value, onChange, disabled }: {
   return (
     <div className="space-y-2">
       <div className="flex items-center gap-2">
-        <label className="text-label">Reasoning Budget</label>
-        <span className="hidden sm:inline text-helper text-muted-foreground">share of Max Output Tokens the model may think for; 0% = no reasoning</span>
+        <label className="text-label">{SETTINGS_COPY.reasoningBudget.label}</label>
+        <span className="hidden sm:inline text-helper text-muted-foreground">{SETTINGS_COPY.reasoningBudget.description}</span>
+        <HintInfo>{SETTINGS_COPY.reasoningBudget.info}</HintInfo>
       </div>
       {/* pl-2.5 for the thumb's overhang at 0 — see SamplerControl. */}
       <div className="flex items-center gap-3 pl-2.5">
@@ -986,25 +1007,24 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, initialTab,
   // The stacked fields the Messages view renders — one per live line, each with its own reset.
   const messageFields = [
     ...(recapAvailable ? [{
-      key: 'recap', label: 'Recap Message',
-      hint: 'The question the story recap answers — older turns ride the narration history as this one exchange. Only used while Memory Summaries is on.',
+      key: 'recap', ...SETTINGS_COPY.recapMessage,
       value: recapUserPrompt, set: setRecapUserPrompt, def: defaultRecapUserPrompt,
+      variables: undefined,
     }] : []),
     ...(nowAvailable ? [{
-      key: 'now', label: 'Now Message',
-      hint: 'Closes the recap with where things stand right now. Each chip carries its own clause and disappears when it has nothing to say, so any combination still reads as a sentence.',
+      key: 'now', ...SETTINGS_COPY.nowMessage,
       value: nowLinePrompt, set: setNowLinePrompt, def: defaultNowLinePrompt,
       variables: NOW_LINE_VARIABLES,
     }] : []),
     ...(recallAvailable ? [{
-      key: 'recall', label: 'Recall Message',
-      hint: 'Frames a remembered scene as the past when Scene Recall brings an old turn back word-for-word.',
+      key: 'recall', ...SETTINGS_COPY.recallMessage,
       value: rehydrateUserPrompt, set: setRehydrateUserPrompt, def: defaultRehydrateUserPrompt,
+      variables: undefined,
     }] : []),
     ...(directionAvailable ? [{
-      key: 'direction', label: 'Direction Message',
-      hint: 'Rides with your action whenever it contains [square brackets] — tells the AI the bracketed text is you directing the scene as the author, not something your character says.',
+      key: 'direction', ...SETTINGS_COPY.directionMessage,
       value: oocDirectivePrompt, set: setOocDirectivePrompt, def: defaultOocDirectivePrompt,
+      variables: undefined,
     }] : []),
   ];
   // Which parts the open prompt actually has — the rail lists exactly these under it.
@@ -1064,7 +1084,9 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, initialTab,
   };
   const samplerControls: SamplerControlProps[] = [
     {
-      id: 'customTemp', label: 'Custom Temperature', hint: "override this prompt's sampling temperature",
+      id: 'customTemp',
+      label: SETTINGS_COPY.customTemperature.label,
+      hint: SETTINGS_COPY.customTemperature.description,
       min: 0, max: 2, step: 0.05,
       custom: activeSamplers?.temperature?.custom ?? false,
       value: activeSamplers?.temperature?.value ?? defaultPromptSampler(activeKind, 'temperature', genTemperature, promptLocalEngine) ?? genTemperature,
@@ -1073,7 +1095,9 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, initialTab,
       onValueChange: (v) => setPromptSamplerValue(activeKind, 'temperature', v),
     },
     {
-      id: 'customRepPen', label: 'Custom Repetition Penalty', hint: "override this prompt's repetition penalty",
+      id: 'customRepPen',
+      label: SETTINGS_COPY.customRepetitionPenalty.label,
+      hint: SETTINGS_COPY.customRepetitionPenalty.description,
       min: 1, max: 1.5, step: 0.02,
       custom: activeSamplers?.repetitionPenalty?.custom ?? false,
       value: activeSamplers?.repetitionPenalty?.value ?? defaultPromptSampler(activeKind, 'repetitionPenalty', genRepetitionPenalty, promptLocalEngine) ?? genRepetitionPenalty,
@@ -1195,7 +1219,7 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, initialTab,
             <ScrollArea className="flex-1 min-h-0">
             <div className="grid gap-6 py-4">
               <Section title="Appearance">
-              <Row top label="Theme">
+              <Row top {...copy('theme')}>
                 <div>
                   <ToggleGroup
                     type="single"
@@ -1222,7 +1246,7 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, initialTab,
                   </div>
                 </div>
               </Row>
-              <Row center label="Theme Color" htmlFor="themeColor">
+              <Row center htmlFor="themeColor" {...copy('themeColor')}>
                 <div className="flex items-center gap-3">
                   <Select value={themeColor} onValueChange={(v) => setThemeColor(v as ThemeColor)}>
                     <SelectTrigger id="themeColor" className="w-48">
@@ -1235,10 +1259,9 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, initialTab,
                     </SelectContent>
                   </Select>
                   <ThemePreviewButton />
-                  <span className="text-helper text-muted-foreground">Recolors the whole app; applies to both light and dark.</span>
                 </div>
               </Row>
-              <Row center label="Font" htmlFor="fontFamily">
+              <Row center htmlFor="fontFamily" {...copy('font')}>
                 <div className="flex items-center gap-3">
                   <Select value={fontFamily} onValueChange={(v) => setFontFamily(v as FontChoice)}>
                     <SelectTrigger id="fontFamily" className="w-48">
@@ -1252,33 +1275,26 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, initialTab,
                       ))}
                     </SelectContent>
                   </Select>
-                  <span className="text-helper text-muted-foreground">The typeface for the whole app.</span>
                 </div>
               </Row>
               </Section>
 
               <Section title="Scene">
               <CheckRow
-                label="Background Music"
                 htmlFor="bgmEnabled"
                 checked={bgmEnabled}
                 onChange={setBgmEnabled}
-                hint=""
+                {...copy('backgroundMusic')}
               />
               <CheckRow
-                label="Location Background"
                 htmlFor="locationBackground"
                 checked={locationBackground}
                 onChange={setLocationBackground}
-                hint="Show the location image behind the game. Off uses a blank themed background."
+                {...copy('locationBackground')}
               />
               {locationBackground && (
                 <SubGroup>
-                <Row
-                  center
-                  label="Background Fade"
-                  hint="Fades the location image toward the background color for readability. 0% shows the full image."
-                >
+                <Row center {...copy('backgroundFade')}>
                   <div className="flex items-center gap-3">
                     <Slider
                       value={[backgroundOverlay]}
@@ -1298,17 +1314,10 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, initialTab,
               </Section>
 
               <Section title="Narration">
-              <Row center label="Narration Reveal">
-                <div className="flex items-center gap-2">
-                  <RevealAnimationDemoButton />
-                  <span className="text-helper text-muted-foreground">How each sentence appears as it streams.</span>
-                </div>
+              <Row center {...copy('narrationReveal')}>
+                <RevealAnimationDemoButton />
               </Row>
-              <Row top label="AI Language" info={
-                <HintInfo>{`The language the AI writes narration and choices in.
-
-Pick a suggestion, type your own, or even a **style** — like *formal English* or *pirate speak*.`}</HintInfo>
-              }>
+              <Row top {...copy('aiLanguage')}>
                 <TokenAutocomplete
                   single
                   openOnFocus
@@ -1319,7 +1328,7 @@ Pick a suggestion, type your own, or even a **style** — like *formal English* 
                 />
               </Row>
               {advanced && (
-              <Row top label="Paragraph Limit">
+              <Row top {...copy('paragraphLimit')}>
                 <div>
                   <ToggleGroup
                     type="single"
@@ -1350,14 +1359,10 @@ Pick a suggestion, type your own, or even a **style** — like *formal English* 
               )}
               {advanced && (
               <CheckRow
-                label="Markdown Formatting"
                 htmlFor="markdownOutput"
                 checked={markdownOutput}
                 onChange={setMarkdownOutput}
-                hint="Let the AI use bold, lists, and tables."
-                info={<HintInfo>{`Let the AI format narration with **bold/italics**, lists, and tables.
-
-Works best when **Paragraph Limit** isn't set to *Single*.`}</HintInfo>}
+                {...copy('markdownFormatting')}
               />
               )}
               </Section>
@@ -1371,7 +1376,7 @@ Works best when **Paragraph Limit** isn't set to *Single*.`}</HintInfo>}
               <Section title="Turn Extras" hint="Optional passes that run alongside each turn's narration.">
               {/* Enable/disable the optional per-turn requests. Synced with the System Prompts tab, which
                   shows a prompt's editor tab only while it's enabled here. */}
-              <Row label="System Prompts">
+              <Row {...copy('systemPrompts')}>
                 <div className="flex flex-wrap gap-x-4 gap-y-2">
                   <label htmlFor="choicesEnabled" className="flex items-center gap-2 text-label cursor-pointer">
                     <Checkbox
@@ -1406,21 +1411,17 @@ Works best when **Paragraph Limit** isn't set to *Single*.`}</HintInfo>}
               {locationChangeEnabled && (
                 <SubGroup>
                 <CheckRow
-                  label="Move Automatically"
                   htmlFor="locationAutoApply"
                   checked={locationAutoApply}
                   onChange={setLocationAutoApply}
-                  hint="Resolve the move before the scene is written."
-                  info={<HintInfo>{`Resolves the move from your action **before** the scene is written, so it's narrated in the new location.
-
-Skips the "Move to…?" confirmation.`}</HintInfo>}
+                  {...copy('moveAutomatically')}
                 />
                 </SubGroup>
               )}
               </Section>
 
-              <Section title="Reasoning" hint="How the AI plans a turn before writing it.">
-              <Row top label="Thinking">
+              <Section title="Reasoning">
+              <Row top {...copy('thinking')}>
                 <div>
                   <OptionSwitcher value={thinkingMode} onChange={(v) => setThinkingMode(v as ThinkingMode)} options={THINKING_OPTIONS} />
                   {/* Stacked like Paragraph Limit so switching thinking modes doesn't reflow the layout. */}
@@ -1440,17 +1441,7 @@ Skips the "Move to…?" confirmation.`}</HintInfo>}
                   unbounded. Feeds both the hard cap and the <ACTIVE CHARACTER GUIDANCE> chip in the director prompt. */}
               {advanced && thinkingMode === 'staged' && (
                 <SubGroup>
-                <Row
-                  top
-                  label="Limit Active Characters"
-                  hint="Cap characters the director stages per turn."
-                  info={
-                    <HintInfo>{`Caps how many characters the director stages each turn.
-
-- Each staged character adds its **own request**
-- Off lets the scene use as many as it calls for`}</HintInfo>
-                  }
-                >
+                <Row top {...copy('limitActiveCharacters')}>
                   <div className="flex items-center gap-3">
                     <Checkbox
                       checked={limitActiveCharacters}
@@ -1472,7 +1463,7 @@ Skips the "Move to…?" confirmation.`}</HintInfo>}
                   their own thinking. The levels are whichever the active endpoint accepts (detected on connect). */}
               {advanced && thinkingMode === 'off' && reasoningUnsupported && (
                 <SubGroup>
-                <Row top muted label="Native Reasoning">
+                <Row top muted label={SETTINGS_COPY.nativeReasoning.label}>
                   <p className="pt-2 text-helper text-muted-foreground">This model doesn&apos;t support reasoning, so there&apos;s nothing to configure.</p>
                 </Row>
                 </SubGroup>
@@ -1481,7 +1472,7 @@ Skips the "Move to…?" confirmation.`}</HintInfo>}
                 const reasoningOptions = reasoningTabs(supportedReasoningEfforts);
                 return (
                   <SubGroup>
-                  <Row top label="Native Reasoning">
+                  <Row top {...copy('nativeReasoning')}>
                     <div>
                       <OptionSwitcher value={reasoningEffort} onChange={(v) => setReasoningEffort(v as ReasoningEffort)} options={reasoningOptions} />
                       <div className="grid mt-2">
@@ -1504,44 +1495,23 @@ Skips the "Move to…?" confirmation.`}</HintInfo>}
               {advanced && (<>
               <Section title="Memory" hint="What the AI carries forward from earlier turns.">
               <CheckRow
-                label="Memory Summaries"
                 htmlFor="memoryDigests"
                 checked={memoryDigests}
                 onChange={setMemoryDigests}
-                hint="Condense older turns so long stories stay coherent."
-                info={<HintInfo>{`Condenses older turns while keeping recent ones **word-for-word**, so long stories stay coherent without bloating each request.
-
-Runs an extra request per turn; edit its prompt under **Prompts → Summary**.`}</HintInfo>}
+                {...copy('memorySummaries')}
               />
               {memoryDigests && (
                 <SubGroup>
                 <CheckRow
-                  label="Semantic Memory"
                   htmlFor="semanticMemory"
                   checked={semanticMemory}
                   onChange={handleSemanticMemoryToggle}
-                  hint="Experimental. Keep the memories most relevant to your action, not just the newest."
-                  info={<HintInfo>{`When memories no longer all fit, keeps the ones most **relevant to your current action** instead of just dropping the oldest.
-
-- Runs a small model **on your device**
-- One-time **~23 MB** download when enabled
-- Nothing about your story leaves your machine`}</HintInfo>}
+                  {...copy('semanticMemory')}
                 />
                 {semanticMemory && (
                   <SubGroup>
                   {/* Always-on top-K cap: derived checkbox (cap > 0), enabling seeds a sensible default. */}
-                  <Row
-                    top
-                    label="Memory Cap"
-                    hint="Cap how many memories ride along each turn."
-                    info={
-                      <HintInfo>{`Keeps only this many memories in view each turn — the ones most relevant to your action — even when more would fit.
-
-- Smaller, sharper prompts on long stories
-- The story opening and newest memories always stay
-- Off carries everything that fits`}</HintInfo>
-                    }
-                  >
+                  <Row top {...copy('memoryCap')}>
                     <div className="flex items-center gap-3">
                       <Checkbox
                         checked={semanticBandCap > 0}
@@ -1558,55 +1528,32 @@ Runs an extra request per turn; edit its prompt under **Prompts → Summary**.`}
                     </div>
                   </Row>
                   <CheckRow
-                    label="Scene Recall"
                     htmlFor="semanticRehydration"
                     checked={semanticRehydration}
                     onChange={setSemanticRehydration}
-                    hint="Experimental. Recall a full past scene when your action returns to it."
-                    info={<HintInfo>{`When your action returns to an old moment — going back to someone you made a promise to — the full original scene is recalled for the AI, word for word, clearly marked as the past.
-
-- At most **two scenes** per turn
-- Never near-duplicates of each other or of recent turns
-- Uses Semantic Memory's model and memories`}</HintInfo>}
+                    {...copy('sceneRecall')}
                   />
                   </SubGroup>
                 )}
                 <CheckRow
-                  label="Time in Memory"
                   htmlFor="timeContext"
                   checked={timeContext}
                   onChange={setTimeContext}
-                  hint="Experimental. Tell the AI when each memory happened."
-                  info={<HintInfo>{`Each memory carries **when** it happened — *"Day 3, evening — two days ago"* — and the recap states the present moment.
-
-- Without it the AI sees the story as an undated list and guesses at how long ago things were
-- Time of day is coarse (*morning*, *evening*), never a clock reading
-- Uses the game clock shown in the Log`}</HintInfo>}
+                  {...copy('timeInMemory')}
                 />
                 <CheckRow
-                  label="Measured Clock"
                   htmlFor="aiClock"
                   checked={aiClock}
                   onChange={setAiClock}
-                  hint="Experimental. Measure how long each turn takes instead of assuming an hour."
-                  info={<HintInfo>{`How long each turn takes is measured from what actually happened, instead of the flat **one hour per action** the game charges otherwise.
-
-- A few words spoken cost minutes; a night's rest costs hours; *"three weeks later"* costs three weeks
-- Adds one small request per turn, alongside choices and stat updates
-- Feeds the Log's clock, stat regeneration, and Time in Memory`}</HintInfo>}
+                  {...copy('measuredClock')}
                 />
                 </SubGroup>
               )}
               <CheckRow
-                label="Semantic Lore"
                 htmlFor="semanticLore"
                 checked={semanticLore}
                 onChange={handleSemanticLoreToggle}
-                hint="Experimental. Activate dictionary entries by meaning, not just keywords."
-                info={<HintInfo>{`Dictionary entries also activate when your action's **meaning** matches them, even with none of their keywords — "the ruined tower" can wake an *Old Beacon* entry.
-
-- Keyword activation is unchanged; this only **adds** entries
-- Uses the same on-device model as Semantic Memory (~23 MB on first enable)`}</HintInfo>}
+                {...copy('semanticLore')}
               />
               {embedLoading && (
                 <Row center>
@@ -1633,40 +1580,27 @@ Runs an extra request per turn; edit its prompt under **Prompts → Summary**.`}
               )}
               {/* Descriptions work from the narration alone, so unlike diaries this is offered in every mode. */}
               <CheckRow
-                label="Describe New Characters"
                 htmlFor="describeCharacters"
                 checked={describeCharacters}
                 onChange={setDescribeCharacters}
-                hint="Write a description for each character the story invents."
-                info={<HintInfo>{`Characters the story invents already appear in the **Characters** panel on their own. Turn this on and each one also gets a written description, so you can open them like any authored character.
-
-Runs one extra request the first time each new character is named. Remove any you don't want from the **Characters** panel during play.`}</HintInfo>}
+                {...copy('describeNewCharacters')}
               />
               {/* Diaries are only read by the staged character pass, so the option only appears in that mode. */}
               {thinkingMode === 'staged' && (
                 <>
                 <CheckRow
-                  label="Character Diaries"
                   htmlFor="characterDiaries"
                   checked={characterDiaries}
                   onChange={setCharacterDiaries}
-                  hint="Characters keep diaries that shape their motivation."
-                  info={<HintInfo>{`Each character present in a turn records a **first-person diary entry** as turns age out, and its recent entries feed back into that character's motivation.
-
-Runs an extra request per participant; edit its prompt under **Prompts → Diary**.`}</HintInfo>}
+                  {...copy('characterDiaries')}
                 />
                 {characterDiaries && semanticMemory && (
                   <SubGroup>
                   <CheckRow
-                    label="Diary Recall"
                     htmlFor="semanticDiaries"
                     checked={semanticDiaries}
                     onChange={setSemanticDiaries}
-                    hint="Experimental. Characters also recall older, relevant diary entries."
-                    info={<HintInfo>{`Instead of only their newest diary entries, characters also recall the older ones most relevant to what you're doing — she remembers the last time you drew a blade.
-
-- Same total entry count, so it costs **nothing extra**
-- Uses Semantic Memory's model`}</HintInfo>}
+                    {...copy('diaryRecall')}
                   />
                   </SubGroup>
                 )}
@@ -1676,38 +1610,25 @@ Runs an extra request per participant; edit its prompt under **Prompts → Diary
 
               <Section title="Performance">
               <CheckRow
-                label="Concurrent Requests"
                 htmlFor="concurrentTurnRequests"
                 checked={concurrentTurnRequests}
                 onChange={setConcurrentTurnRequests}
-                hint="Fetch post-narration requests in parallel."
-                info={<HintInfo>{`Fetches choices, stat updates, and location changes **at the same time** instead of one after another.
-
-- Faster turns on endpoints that handle parallel requests (e.g. LM Studio's **Parallel** setting)
-- Turn off if a memory-tight local model slows down under the load`}</HintInfo>}
+                {...copy('concurrentRequests')}
               />
               </Section>
 
               <Section title="Inspection" hint="Surfaces work that normally happens out of sight.">
               <CheckRow
-                label="Show Reasoning"
                 htmlFor="showReasoning"
                 checked={showReasoning}
                 onChange={setShowReasoning}
-                hint="Show the model&apos;s private reasoning above each turn."
-                info={<HintInfo>{`Shows a reasoning model's (or the Inline mode's) private scratchpad as a collapsible **"Thinking…"** note above each turn's narration.
-
-Captured and saved either way, so turning it on reveals it on past turns too.`}</HintInfo>}
+                {...copy('showReasoning')}
               />
               <CheckRow
-                label="Show Silent Requests"
                 htmlFor="showSilentRequests"
                 checked={showSilentRequests}
                 onChange={setShowSilentRequests}
-                hint="Surface background requests for inspection."
-                info={<HintInfo>{`Surfaces requests that normally run quietly — **memory summaries**, **character diaries**, and new-character notes — in the status bar and the AI context viewer.
-
-An inspection aid for authoring and debugging; off by default.`}</HintInfo>}
+                {...copy('showSilentRequests')}
               />
               </Section>
               </>)}
@@ -1728,7 +1649,7 @@ An inspection aid for authoring and debugging; off by default.`}</HintInfo>}
                   mode precisely so a single prompt can be routed to it while the rest go elsewhere. The
                   selector stays visible for every preset, including the engine, or there'd be no way back. */}
               <div className="flex items-center gap-2 flex-shrink-0 pt-4">
-                <span className="text-helper text-muted-foreground">Preset</span>
+                <span className="text-helper text-muted-foreground">{SETTINGS_COPY.textPreset.label}</span>
                 {!activeTextEndpointPresetIsBuiltIn && (
                   <ConfirmDialog
                     title="Delete Preset"
@@ -1766,12 +1687,13 @@ An inspection aid for authoring and debugging; off by default.`}</HintInfo>}
                   <Button variant="outline" size="sm" onClick={() => setTextPresetDialog({ mode: 'rename' })}>Rename</Button>
                 )}
               </div>
+              <p className="flex-shrink-0 pt-1 text-helper text-muted-foreground">{SETTINGS_COPY.textPreset.description}</p>
               {/* The engine has no URL or token to edit — its runtime panel stands in for the field set. */}
               {localModelActive ? <LocalModelPanel /> : (
               <>
               <ScrollArea className="flex-1 min-h-0">
                 <div className="grid gap-4 py-4">
-              <Row center label="Endpoint URL" htmlFor="endpointUrl">
+              <Row center htmlFor="endpointUrl" {...copy('endpointUrl')}>
                 <div className="grid gap-1">
                   <Input
                     id="endpointUrl"
@@ -1793,10 +1715,10 @@ An inspection aid for authoring and debugging; off by default.`}</HintInfo>}
                   className="justify-self-start text-helper text-muted-foreground underline hover:text-foreground"
                   onClick={() => setConnectionGuideOpen(true)}
                 >
-                  Trouble connecting?
+                  {SETTINGS_BUTTONS.troubleConnecting}
                 </button>
               </Row>
-              <Row center label="API Token" htmlFor="apiToken">
+              <Row center htmlFor="apiToken" {...copy('apiToken')}>
                 <Input
                   id="apiToken"
                   type="password"
@@ -1806,7 +1728,7 @@ An inspection aid for authoring and debugging; off by default.`}</HintInfo>}
                   className={activeTextEndpointPresetIsBuiltIn ? 'opacity-60 cursor-not-allowed' : undefined}
                 />
               </Row>
-              <Row center label="Model Name" htmlFor="modelName">
+              <Row center htmlFor="modelName" {...copy('modelName')}>
                 <Input
                   id="modelName"
                   value={modelName}
@@ -1816,7 +1738,7 @@ An inspection aid for authoring and debugging; off by default.`}</HintInfo>}
                 />
               </Row>
               {advanced && (<>
-              <Row center label="Context Window (tokens)" htmlFor="contextWindow">
+              <Row center htmlFor="contextWindow" {...copy('contextWindow')}>
                 <div className="flex items-start gap-2">
                   <Input
                     id="contextWindow"
@@ -1840,7 +1762,7 @@ An inspection aid for authoring and debugging; off by default.`}</HintInfo>}
                   {contextStatus.text}
                 </div>
               </Row>
-              <Row center label="Max Output Tokens" htmlFor="maxTokens">
+              <Row center htmlFor="maxTokens" {...copy('maxOutputTokens')}>
                 <Input
                   id="maxTokens"
                   type="number"
@@ -1853,12 +1775,11 @@ An inspection aid for authoring and debugging; off by default.`}</HintInfo>}
               </>)}
               <div className="flex justify-start">
                 <ConfirmDialog
-                  title="Reset AI Endpoint"
-                  description="Are you sure you want to reset the endpoint URL, model name, API token, and limits to their default values?"
+                  {...SETTINGS_CONFIRMS.resetAiEndpoint}
                   onConfirm={handleResetEndpointSettings}
                 >
                   <Button variant="outline" className="flex items-center gap-2" disabled={activeTextEndpointPresetIsBuiltIn}>
-                    Reset AI Endpoint
+                    {SETTINGS_BUTTONS.resetAiEndpoint}
                   </Button>
                 </ConfirmDialog>
               </div>
@@ -1912,32 +1833,25 @@ An inspection aid for authoring and debugging; off by default.`}</HintInfo>}
                 On the same row grid as Face Fix further down, so all three checkboxes share a label column. */}
             <div className="flex-shrink-0">
               <CheckRow
-                label="Enable Image Generation"
                 htmlFor="imageGenEnabled"
                 checked={!imageGenDisabled}
                 onChange={(v) => setImageGenDisabled(!v)}
-                hint="Shows the “Generate with AI” buttons."
+                {...copy('enableImageGeneration')}
               />
             </div>
             {!imageGenDisabled && (<>
             <div className="flex-shrink-0">
               <CheckRow
-                label="Scene Images"
                 htmlFor="sceneImageAuto"
                 checked={sceneImageAuto}
                 onChange={setSceneImageAuto}
-                hint="Draw every turn automatically (slower turns)."
-                info={<HintInfo>{`Draws a picture of every turn without being asked.
-
-The image renders **after** the turn's text is done and holds your next action until it finishes — one graphics card can't run the artist and the writer at once. Expect each turn to take as long as your image server needs.
-
-You can always draw a single scene by hand from the button above the story instead.`}</HintInfo>}
+                {...copy('sceneImages')}
               />
             </div>
             <ScrollArea className="flex-1 min-h-0">
             <div className="grid gap-6">
               <Section title="Connection">
-              <Row center label="Provider" htmlFor="imageProvider">
+              <Row center htmlFor="imageProvider" {...copy('imageProvider')}>
                 <Select value={imageProvider} onValueChange={(v) => setImageProvider(v as typeof imageProvider)}>
                   <SelectTrigger id="imageProvider">
                     <SelectValue />
@@ -1954,10 +1868,10 @@ You can always draw a single scene by hand from the button above the story inste
               </Row>
               <Row>
                 <div>
-                  <Button variant="outline" size="sm" onClick={() => setShowImageSetup(true)}>How to Set Up</Button>
+                  <Button variant="outline" size="sm" onClick={() => setShowImageSetup(true)}>{SETTINGS_BUTTONS.howToSetUp}</Button>
                 </div>
               </Row>
-              <Row center label="Endpoint URL" htmlFor="imageEndpoint">
+              <Row center htmlFor="imageEndpoint" {...copy('imageEndpointUrl')}>
                 <Input
                   id="imageEndpoint"
                   value={imageEndpoint}
@@ -1965,10 +1879,10 @@ You can always draw a single scene by hand from the button above the story inste
                   placeholder={DEFAULT_ENDPOINT_BY_PROVIDER[imageProvider] || 'https://api.openai.com'}
                 />
               </Row>
-              <Row center label="API Token" htmlFor="imageApiToken">
+              <Row center htmlFor="imageApiToken" {...copy('imageApiToken')}>
                 <Input id="imageApiToken" type="password" value={imageApiToken} onChange={(e) => setImageApiToken(e.target.value)} />
               </Row>
-              <Row center label="Model" htmlFor="imageModel">
+              <Row center htmlFor="imageModel" {...copy('imageModel')}>
                 {imageProvider === 'comfyui' ? (
                   <TokenAutocomplete
                     single
@@ -1999,7 +1913,7 @@ You can always draw a single scene by hand from the button above the story inste
               </Section>
 
               <Section title="Image">
-              <Row label="Prompt Prefix" hint="Prepended to every generated prompt (quality/style tags). Leave blank for none.">
+              <Row {...copy('promptPrefix')}>
                 <TagField
                   value={imagePositivePrompt}
                   onChange={setImagePositivePrompt}
@@ -2007,7 +1921,7 @@ You can always draw a single scene by hand from the button above the story inste
                   placeholder="e.g. masterpiece, best quality"
                 />
               </Row>
-              <Row label="Negative Prompt">
+              <Row {...copy('negativePrompt')}>
                 <TagField
                   value={imageNegativePrompt}
                   onChange={setImageNegativePrompt}
@@ -2016,30 +1930,28 @@ You can always draw a single scene by hand from the button above the story inste
                 />
               </Row>
               {advanced && (<>
-              <Row center label="Portrait (W × H)">
+              <Row center {...copy('portraitSize')}>
                 <div className="flex items-center gap-2">
                   <Input aria-label="Portrait width" type="number" min={64} step={64} value={imagePortraitWidth} onChange={(e) => setImagePortraitWidth(numInput(e.target.value, 64))} className="w-28" />
                   <span className="text-muted-foreground">×</span>
                   <Input aria-label="Portrait height" type="number" min={64} step={64} value={imagePortraitHeight} onChange={(e) => setImagePortraitHeight(numInput(e.target.value, 64))} className="w-28" />
-                  <span className="text-helper text-muted-foreground">entity portraits</span>
                 </div>
               </Row>
-              <Row center label="Landscape (W × H)">
+              <Row center {...copy('landscapeSize')}>
                 <div className="flex items-center gap-2">
                   <Input aria-label="Landscape width" type="number" min={64} step={64} value={imageLandscapeWidth} onChange={(e) => setImageLandscapeWidth(numInput(e.target.value, 64))} className="w-28" />
                   <span className="text-muted-foreground">×</span>
                   <Input aria-label="Landscape height" type="number" min={64} step={64} value={imageLandscapeHeight} onChange={(e) => setImageLandscapeHeight(numInput(e.target.value, 64))} className="w-28" />
-                  <span className="text-helper text-muted-foreground">locations &amp; thumbnail</span>
                 </div>
               </Row>
               </>)}
-              <Row center label="Steps / CFG">
+              <Row center {...copy('stepsCfg')}>
                 <div className="flex items-center gap-2">
                   <Input aria-label="Steps" type="number" min={1} value={imageSteps} onChange={(e) => setImageSteps(numInput(e.target.value, 1))} className="w-28" />
                   <Input aria-label="CFG scale" type="number" min={0} step={0.5} value={imageCfg} onChange={(e) => setImageCfg(numInput(e.target.value, 0))} className="w-28" />
                 </div>
               </Row>
-              <Row center label="Sampler" htmlFor="imageSampler">
+              <Row center htmlFor="imageSampler" {...copy('imageSampler')}>
                 {imageProvider === 'comfyui' ? (
                   <TokenAutocomplete
                     single
@@ -2055,17 +1967,24 @@ You can always draw a single scene by hand from the button above the story inste
               </Row>
               {(imageProvider === 'a1111' || imageProvider === 'invokeai') && (
                 <CheckRow
-                  label="Face Fix"
                   htmlFor="imageAdetailer"
                   checked={imageAdetailer}
                   onChange={setImageAdetailer}
-                  hint={imageProvider === 'a1111'
-                    ? 'Run a second pass to auto-fix faces/hands. Requires the ADetailer extension installed on your A1111/Forge server.'
-                    : 'Re-render the face at full resolution in a second pass. Roughly doubles generation time; SDXL and SD1.5 only.'}
+                  {...copy('faceFix')}
+                  // The description holds still across providers; only what it costs you differs.
+                  info={<HintInfo>{imageProvider === 'a1111'
+                    ? 'Fixes faces and hands. Requires the **ADetailer** extension installed on your A1111/Forge server.'
+                    : 'Re-renders the face at full resolution. Roughly **doubles** generation time; SDXL and SD1.5 only.'}</HintInfo>}
                 />
               )}
               {advanced && imageProvider === 'comfyui' && (
-                <Row label="Workflow (API format)" htmlFor="imageWorkflow">
+                <Row
+                  htmlFor="imageWorkflow"
+                  {...copy('imageWorkflow')}
+                  info={<HintInfo>{`Tokens Formamorph fills in:
+
+\`%prompt%\` \`%negative%\` \`%ckpt%\` \`%width%\` \`%height%\` \`%steps%\` \`%cfg%\` \`%seed%\` \`%sampler%\``}</HintInfo>}
+                >
                   <div className="grid gap-1.5">
                     <Textarea
                       id="imageWorkflow"
@@ -2076,26 +1995,20 @@ You can always draw a single scene by hand from the button above the story inste
                     />
                     <div className="flex gap-2 justify-between">
                       <ConfirmDialog
-                        title="Reset Workflow"
-                        description="Reset the ComfyUI workflow to the default graph? Your custom workflow will be lost."
+                        {...SETTINGS_CONFIRMS.resetWorkflow}
                         onConfirm={() => setImageWorkflow(DEFAULT_COMFY_WORKFLOW)}
                       >
                         <Button variant="outline" size="sm" disabled={imageWorkflow === DEFAULT_COMFY_WORKFLOW}>
-                          Reset to default
+                          {SETTINGS_BUTTONS.resetToDefaults}
                         </Button>
                       </ConfirmDialog>
-                      <Button variant="outline" size="sm" onClick={() => setShowComfyWorkflow(true)}>How to get this</Button>
+                      <Button variant="outline" size="sm" onClick={() => setShowComfyWorkflow(true)}>{SETTINGS_BUTTONS.howToGetThis}</Button>
                     </div>
-                    <p className="text-helper text-muted-foreground">
-                      Tokens Formamorph fills in:
-                      {' '}<code>%prompt%</code> <code>%negative%</code> <code>%ckpt%</code> <code>%width%</code>{' '}
-                      <code>%height%</code> <code>%steps%</code> <code>%cfg%</code> <code>%seed%</code> <code>%sampler%</code>.
-                    </p>
                   </div>
                 </Row>
               )}
               {advanced && imageProvider === 'invokeai' && (
-                <Row label="Board" htmlFor="imageInvokeBoard" hint="Which InvokeAI gallery board generated images are filed under. Uncategorized is InvokeAI's default.">
+                <Row htmlFor="imageInvokeBoard" {...copy('invokeBoard')}>
                   <Select
                     value={imageInvokeBoard || UNCATEGORIZED_BOARD}
                     onValueChange={(v) => setImageInvokeBoard(v === UNCATEGORIZED_BOARD ? '' : v)}
@@ -2123,11 +2036,12 @@ You can always draw a single scene by hand from the button above the story inste
               {advanced && imageProvider === 'invokeai' && invokeSubmodelBase && (
                 <>
                   <Row
-                    label="Qwen3 Encoder"
                     htmlFor="imageInvokeEncoder"
-                    hint={invokeSubmodelBase === 'anima'
-                      ? 'Anima needs a Qwen3 0.6B text encoder. Leave blank to auto-pick.'
-                      : 'Z-Image needs a Qwen3 4B text encoder. Leave blank to auto-pick.'}
+                    {...copy('invokeEncoder')}
+                    // Which encoder the base needs varies; that it needs one does not.
+                    info={<HintInfo>{invokeSubmodelBase === 'anima'
+                      ? 'Anima needs a **Qwen3 0.6B** text encoder. Leave blank to auto-pick.'
+                      : 'Z-Image needs a **Qwen3 4B** text encoder. Leave blank to auto-pick.'}</HintInfo>}
                   >
                     <TokenAutocomplete
                       single
@@ -2139,11 +2053,12 @@ You can always draw a single scene by hand from the button above the story inste
                     />
                   </Row>
                   <Row
-                    label={invokeSubmodelBase === 'anima' ? 'Anima VAE' : 'Z-Image VAE'}
                     htmlFor="imageInvokeVae"
-                    hint={invokeSubmodelBase === 'anima'
-                      ? 'Anima needs a QwenImage/Wan 2.1 VAE (a FLUX VAE also works). Leave blank to auto-pick.'
-                      : 'Z-Image needs a FLUX-type VAE (e.g. FLUX.1-schnell VAE). Leave blank to auto-pick.'}
+                    {...copy('invokeVae')}
+                    label={invokeSubmodelBase === 'anima' ? 'Anima VAE' : 'Z-Image VAE'}
+                    info={<HintInfo>{invokeSubmodelBase === 'anima'
+                      ? 'Anima needs a **QwenImage/Wan 2.1** VAE — a FLUX VAE also works. Leave blank to auto-pick.'
+                      : 'Z-Image needs a **FLUX-type** VAE, such as the FLUX.1-schnell VAE. Leave blank to auto-pick.'}</HintInfo>}
                   >
                     <TokenAutocomplete
                       single
@@ -2170,12 +2085,11 @@ You can always draw a single scene by hand from the button above the story inste
                 <PromptField value={imageTagPrompt} onChange={setImageTagPrompt} variables={[SUBJECT]} />
                 <div className="flex justify-start flex-shrink-0">
                   <ConfirmDialog
-                    title="Reset Tag Prompt"
-                    description="Reset the image tag prompt to its default? Your edits will be lost."
+                    {...SETTINGS_CONFIRMS.resetTagPrompt}
                     onConfirm={() => setImageTagPrompt(DEFAULT_TAG_PROMPT)}
                   >
                     <Button variant="outline" size="sm" disabled={imageTagPrompt === DEFAULT_TAG_PROMPT}>
-                      Reset to default
+                      {SETTINGS_BUTTONS.resetToDefaults}
                     </Button>
                   </ConfirmDialog>
                 </div>
@@ -2370,7 +2284,10 @@ You can always draw a single scene by hand from the button above the story inste
                       {messageFields.map((f) => (
                         <div key={f.key} className="flex flex-col gap-1">
                           <div className="flex items-center justify-between">
-                            <span className="text-label font-medium">{f.label}</span>
+                            <span className="flex items-center gap-1.5 text-label font-medium">
+                              {f.label}
+                              <HintInfo>{f.info}</HintInfo>
+                            </span>
                             {!activePresetIsBuiltIn && (
                               <ConfirmDialog
                                 title={`Reset ${f.label}`}
@@ -2393,7 +2310,7 @@ You can always draw a single scene by hand from the button above the story inste
                     onRequestFullscreen={() => setPromptsFullscreen((f) => !f)}
                             readOnly={activePresetIsBuiltIn}
                           />
-                          <p className="text-helper text-muted-foreground">{f.hint}</p>
+                          <p className="text-helper text-muted-foreground">{f.description}</p>
                         </div>
                       ))}
                     </div>
@@ -2664,11 +2581,7 @@ You can always draw a single scene by hand from the button above the story inste
             <ScrollArea className="flex-1 min-h-0">
             <div className="grid gap-6 py-4">
               <Section title="Reading" hint="Applies to the story text only, not the rest of the app.">
-              <Row top label="Narration Font" htmlFor="narrationFont" info={
-                <HintInfo>{`A separate font for the story text, defaulting to the app font.
-
-Includes faces tuned for **dyslexia**, **low vision**, and reading.`}</HintInfo>
-              }>
+              <Row top htmlFor="narrationFont" {...copy('narrationFont')}>
                 <Select value={narrationFont} onValueChange={(v) => setNarrationFont(v as NarrationFont)}>
                   <SelectTrigger id="narrationFont" className="w-56">
                     <SelectValue />
@@ -2682,7 +2595,7 @@ Includes faces tuned for **dyslexia**, **low vision**, and reading.`}</HintInfo>
                   </SelectContent>
                 </Select>
               </Row>
-              <Row center label="Narration Text Size">
+              <Row center {...copy('narrationTextSize')}>
                 <div className="flex items-center gap-3">
                   <Slider
                     value={[narrationScale]}
@@ -2697,7 +2610,7 @@ Includes faces tuned for **dyslexia**, **low vision**, and reading.`}</HintInfo>
                   </span>
                 </div>
               </Row>
-              <Row center label="Line Spacing">
+              <Row center {...copy('lineSpacing')}>
                 <div className="flex items-center gap-3">
                   <Slider
                     value={[narrationLineHeight]}
@@ -2715,8 +2628,7 @@ Includes faces tuned for **dyslexia**, **low vision**, and reading.`}</HintInfo>
               <Row>
                 <div>
                   <ConfirmDialog
-                    title="Reset size & spacing"
-                    description="Reset the narration text size and line spacing to their defaults?"
+                    {...SETTINGS_CONFIRMS.resetSizeSpacing}
                     onConfirm={() => { setNarrationScale(DEFAULT_NARRATION_SCALE); setNarrationLineHeight(DEFAULT_NARRATION_LINE_HEIGHT); }}
                   >
                     <Button
@@ -2724,7 +2636,7 @@ Includes faces tuned for **dyslexia**, **low vision**, and reading.`}</HintInfo>
                       size="sm"
                       disabled={narrationScale === DEFAULT_NARRATION_SCALE && narrationLineHeight === DEFAULT_NARRATION_LINE_HEIGHT}
                     >
-                      Reset size &amp; spacing
+                      {SETTINGS_BUTTONS.resetSizeSpacing}
                     </Button>
                   </ConfirmDialog>
                 </div>
@@ -2732,11 +2644,7 @@ Includes faces tuned for **dyslexia**, **low vision**, and reading.`}</HintInfo>
               </Section>
 
               <Section title="Choices">
-              <Row center label="Continue the Story" info={
-                <HintInfo>{`Adds a **[Continue the Story]** button under the choices. It fills the action box with that text, so you can take a turn without writing anything — the story reads it as a nudge to keep going rather than something your character does.
-
-**Always** keeps the button even with the Choices request switched off.`}</HintInfo>
-              }>
+              <Row center {...copy('continueTheStory')}>
                 <OptionSwitcher
                   value={continueChoiceMode}
                   onChange={(v) => setContinueChoiceMode(v as ContinueChoiceMode)}
@@ -2747,22 +2655,20 @@ Includes faces tuned for **dyslexia**, **low vision**, and reading.`}</HintInfo>
 
               <Section title="Saves & Worlds">
               <CheckRow
-                label="Autosave"
                 htmlFor="autosaveEnabled"
                 checked={autosaveEnabled}
                 onChange={setAutosaveEnabled}
-                hint="Automatically saves your game after every turn to a per-world “Autosave” slot, starting once the opening scene finishes. It never touches your manual saves and shows in Load with an “Auto” tag. Turn off to save only manually."
+                {...copy('autosave')}
               />
               {advanced && (<>
               <Row>
                 <div>
                   <ConfirmDialog
-                    title="Restore default worlds"
-                    description="Bring back the bundled worlds you've deleted (City Rampage, Valentines Survival, Reincarnated Drone)? Worlds you still have are left untouched, and nothing you made or imported is affected."
+                    {...SETTINGS_CONFIRMS.restoreDefaultWorlds}
                     onConfirm={restoreDefaultWorlds}
                   >
                     <Button variant="outline" size="sm" disabled={deletedDefaultCount === 0}>
-                      Restore default worlds
+                      {SETTINGS_BUTTONS.restoreDefaultWorlds}
                     </Button>
                   </ConfirmDialog>
                   <p className="text-helper text-muted-foreground mt-1">
@@ -2775,12 +2681,11 @@ Includes faces tuned for **dyslexia**, **low vision**, and reading.`}</HintInfo>
               <Row>
                 <div>
                   <ConfirmDialog
-                    title="Clear cached images"
-                    description="Delete the downloaded copies of images that worlds link to rather than store? They'll be downloaded again next time you're online. Nothing in your worlds or saves is affected."
+                    {...SETTINGS_CONFIRMS.clearCachedImages}
                     onConfirm={clearImageCache}
                   >
                     <Button variant="outline" size="sm" disabled={cachedBytes === 0}>
-                      Clear cached images
+                      {SETTINGS_BUTTONS.clearCachedImages}
                     </Button>
                   </ConfirmDialog>
                   <p className="text-helper text-muted-foreground mt-1">
@@ -2800,12 +2705,11 @@ Includes faces tuned for **dyslexia**, **low vision**, and reading.`}</HintInfo>
               <Row>
                 <div>
                   <ConfirmDialog
-                    title="Reset tutorials"
-                    description="Show the one-time tutorial popovers again? They explain a screen's controls the first time you meet them. Nothing in your worlds or saves is affected."
+                    {...SETTINGS_CONFIRMS.resetTutorials}
                     onConfirm={resetTutorials}
                   >
                     <Button variant="outline" size="sm" disabled={seenTutorialCount === 0}>
-                      Reset tutorials
+                      {SETTINGS_BUTTONS.resetTutorials}
                     </Button>
                   </ConfirmDialog>
                   <p className="text-helper text-muted-foreground mt-1">

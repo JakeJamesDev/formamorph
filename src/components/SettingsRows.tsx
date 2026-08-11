@@ -72,22 +72,43 @@ export function SubGroup({ children }: { children: ReactNode }) {
  *  `muted` dims it. `info` renders an affordance (e.g. `HintInfo`) right after the label text, so a row's
  *  detail control sits in a consistent column at the label boundary rather than trailing lead text.
  *  Renders a `<label>` when `htmlFor` is given, else a `<span>` (for non-interactive controls). */
-export function RowLabel({ htmlFor, top, pad, center, muted, info, children }: {
-  htmlFor?: string; top?: boolean; pad?: boolean; center?: boolean; muted?: boolean; info?: ReactNode; children: ReactNode;
+export function RowLabel({ htmlFor, top, pad, center, muted, info, experimental, children }: {
+  htmlFor?: string; top?: boolean; pad?: boolean; center?: boolean; muted?: boolean; info?: ReactNode;
+  experimental?: boolean; children: ReactNode;
 }) {
   const align = top ? 'pt-2' : pad ? 'pt-1' : center ? '' : 'leading-4';
   const cls = `text-left sm:text-right ${align}${muted ? ' text-muted-foreground' : ''}`;
+  const adornment = (experimental || info) && (
+    <>
+      {experimental && <ExperimentalBadge />}
+      {info}
+    </>
+  );
   const label = htmlFor
-    ? <label htmlFor={htmlFor} className={info ? 'text-left sm:text-right' : cls}>{children}</label>
-    : <span className={info ? 'text-left sm:text-right' : cls}>{children}</span>;
-  if (!info) return label;
+    ? <label htmlFor={htmlFor} className={adornment ? 'text-left sm:text-right' : cls}>{children}</label>
+    : <span className={adornment ? 'text-left sm:text-right' : cls}>{children}</span>;
+  if (!adornment) return label;
   // The label keeps its text alignment; the flex cell owns the vertical align + muting and right-anchors
   // the [label · info] pair, so the info icon lands in the same column on every row.
   return (
     <div className={`flex items-center justify-start sm:justify-end gap-1.5 ${align}${muted ? ' text-muted-foreground' : ''}`}>
       {label}
-      {info}
+      {adornment}
     </div>
+  );
+}
+
+/** Marks a setting that may change or go away. A badge rather than a word in the description, so the
+ *  caveat is said once per row instead of eating a third of a twelve-word line. */
+function ExperimentalBadge() {
+  return (
+    <span
+      title="Experimental — this setting may change or be removed."
+      aria-label="Experimental"
+      className="shrink-0 rounded-sm border border-border px-1 text-[10px] leading-4 text-muted-foreground"
+    >
+      ⚗
+    </span>
   );
 }
 
@@ -99,9 +120,9 @@ export function RowLabel({ htmlFor, top, pad, center, muted, info, children }: {
  * field), the default for a field or slider. Omitting `label` leaves the label cell empty, which is how a
  * row that is only a button or a status line still lands in the control column.
  */
-export function Row({ label, htmlFor, children, hint, center, top, info, muted }: {
+export function Row({ label, htmlFor, children, hint, center, top, info, muted, experimental }: {
   label?: string; htmlFor?: string; children: ReactNode; hint?: string;
-  center?: boolean; top?: boolean; info?: ReactNode; muted?: boolean;
+  center?: boolean; top?: boolean; info?: ReactNode; muted?: boolean; experimental?: boolean;
 }) {
   return (
     <div className={`grid grid-cols-1 sm:grid-cols-[minmax(0,1fr)_minmax(0,3fr)] ${center ? 'sm:items-center' : 'items-start'} gap-4`}>
@@ -109,7 +130,7 @@ export function Row({ label, htmlFor, children, hint, center, top, info, muted }
         // Holds the column open on wide screens only: on mobile the grid is one column, where an empty
         // cell would just be a gap above the control.
         ? <span className="hidden sm:block" />
-        : <RowLabel htmlFor={htmlFor} top={top} center={center} pad={!center && !top} muted={muted} info={info}>{label}</RowLabel>}
+        : <RowLabel htmlFor={htmlFor} top={top} center={center} pad={!center && !top} muted={muted} info={info} experimental={experimental}>{label}</RowLabel>}
       <div className="space-y-1">
         {children}
         {hint && <Hint>{hint}</Hint>}
@@ -133,13 +154,13 @@ export function ValueSlider({ id, value, onChange, min, max, step, format }: {
 /** A checkbox row matching the settings tabs: right-anchored label + checkbox + secondary text beside it.
  *  `info` takes an affordance (e.g. `HintInfo`) rendered at the label boundary, so a row wanting the long
  *  explanation on demand doesn't have to be hand-built to get it. */
-export function CheckRow({ label, htmlFor, checked, onChange, hint, info }: {
+export function CheckRow({ label, htmlFor, checked, onChange, hint, info, experimental }: {
   label: string; htmlFor: string; checked: boolean; onChange: (v: boolean) => void; hint: string;
-  info?: ReactNode;
+  info?: ReactNode; experimental?: boolean;
 }) {
   return (
     <div className="grid grid-cols-1 sm:grid-cols-[minmax(0,1fr)_minmax(0,3fr)] items-start gap-4">
-      <RowLabel htmlFor={htmlFor} info={info}>{label}</RowLabel>
+      <RowLabel htmlFor={htmlFor} info={info} experimental={experimental}>{label}</RowLabel>
       <div className="flex items-start gap-2">
         <Checkbox id={htmlFor} checked={checked} onCheckedChange={(c) => onChange(c === true)} className="shrink-0" />
         <Hint as="span">{hint}</Hint>

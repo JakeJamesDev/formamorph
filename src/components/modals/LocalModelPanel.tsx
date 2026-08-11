@@ -2,7 +2,8 @@ import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Row, ValueSlider, CheckRow } from '@/components/SettingsRows';
+import { Row, ValueSlider, CheckRow, Section, HintInfo } from '@/components/SettingsRows';
+import { SETTINGS_COPY, SETTINGS_BUTTONS, type SettingCopy, type SettingCopyKey } from './settingsCopy';
 import { useSettings } from '@/contexts/SettingsContext';
 import { useLocalLlmStatus } from '@/lib/useLocalLlmStatus';
 import { useVramStats, resolveOwnVram } from '@/lib/useVramStats';
@@ -14,6 +15,16 @@ import {
   DEFAULT_GEN_TEMPERATURE, DEFAULT_GEN_TOP_P, DEFAULT_GEN_REPETITION_PENALTY, DEFAULT_GEN_TOP_K, DEFAULT_GEN_MIN_P,
 } from '@/contexts/settingsDefaults';
 import { LocalModelModal } from './LocalModelModal';
+
+/** Spreads one setting's copy onto a row — same helper the Settings modal uses. */
+function copy(key: SettingCopyKey) {
+  const c: SettingCopy = SETTINGS_COPY[key];
+  return {
+    label: c.label,
+    hint: c.description,
+    info: c.info ? <HintInfo>{c.info}</HintInfo> : undefined,
+  };
+}
 
 /**
  * The desktop Endpoint tab's local-model view (shown when a custom endpoint is off). Model management sits
@@ -114,22 +125,25 @@ export function LocalModelPanel() {
       {/* GPU memory + engine status, shared with the model-manager popup. */}
       <GpuMemoryBox stats={vram} {...resolveOwnVram(vram, engine.engineVramMB)} />
 
-      <Row center label="Local Model">
+      <Row center {...copy('localModel')}>
         <div className="flex items-center gap-3">
           <Button type="button" variant="outline" onClick={() => setShowManager(true)}>Manage models…</Button>
           <EngineStatusLine engine={engine} />
         </div>
       </Row>
 
+      {/* When a change takes effect is a property of the whole group, not of any one row — said once here
+          rather than closing all twelve descriptions with it. */}
+      <Section title="Engine" hint="Sampling changes apply to the next turn; the rest need a reload.">
       {/* Simple rows — always visible */}
-      <Row label="Context Size" htmlFor="localContextSize" hint="How much the model keeps in context — also its VRAM cost. Capped at the loaded model's trained maximum. Applies on reload.">
+      <Row htmlFor="localContextSize" {...copy('localContextSize')}>
         <ValueSlider id="localContextSize" value={Math.min(localContextSize, contextMax)} min={2048} max={contextMax} step={1024} onChange={setLocalContextSize} format={(v) => `${v.toLocaleString()} tok`} />
       </Row>
 
       {/* GPU: a simple on/off checkbox (on = Auto), or (in Advanced) an Auto/Max/Custom mode with a count slider. */}
       {advancedMode ? (
         <>
-          <Row label="GPU Layers" htmlFor="localGpuMode" hint="How much of the model runs on the GPU. Auto fits as many layers as your VRAM allows; Max offloads the whole model (needed for large models / multi-GPU, can run out of VRAM); Custom pins an exact count. Applies on reload.">
+          <Row htmlFor="localGpuMode" {...copy('localGpuLayers')}>
             <ToggleGroup
               type="single"
               value={gpuMode}
@@ -143,35 +157,33 @@ export function LocalModelPanel() {
             </ToggleGroup>
           </Row>
           {gpuMode === 'custom' && (
-            <Row label="Layers" htmlFor="localGpuLayers" hint="Number of model layers to offload. 0 = CPU-only. Applies on reload.">
+            <Row htmlFor="localGpuLayers" {...copy('localLayers')}>
               <ValueSlider id="localGpuLayers" value={localGpuLayers >= 0 ? localGpuLayers : LOCAL_GPU_LAYERS_MAX} min={0} max={LOCAL_GPU_LAYERS_MAX} step={1} onChange={setLocalGpuLayers} format={() => gpuLabel} />
             </Row>
           )}
         </>
       ) : (
         <CheckRow
-          label="GPU"
           htmlFor="localGpuOn"
           checked={localGpuLayers !== 0}
           onChange={(v) => setLocalGpuLayers(v ? GPU_LAYERS_AUTO : 0)}
-          hint="Run on the GPU (recommended). Off falls back to CPU-only — slower, works without a capable GPU. Applies on reload."
+          {...copy('localGpu')}
         />
       )}
 
       {/* Flash Attention groups with the reload settings above (all "apply on reload"). */}
       {advancedMode && (
         <CheckRow
-          label="Flash Attention"
           htmlFor="localFlashAttention"
           checked={localFlashAttention}
           onChange={setLocalFlashAttention}
-          hint="Less KV-cache VRAM and often faster. On by default; turn it off only if an older GPU/backend won't run it. Applies on reload."
+          {...copy('localFlashAttention')}
         />
       )}
 
       {/* Parallel slots split the context (each gets ~context / slots), so the per-slot window is worth showing. */}
       {advancedMode && (
-        <Row label="Parallel Requests" htmlFor="localParallelRequests" hint="How many requests the model answers at once. Higher speeds up each turn (choices, stats, and more fetch together) but splits the context between slots and uses more VRAM. Applies on reload.">
+        <Row htmlFor="localParallelRequests" {...copy('localParallelRequests')}>
           <ValueSlider
             id="localParallelRequests"
             value={localParallelRequests}
@@ -185,33 +197,34 @@ export function LocalModelPanel() {
       )}
 
       {/* Sampling settings, grouped together (all "apply to the next turn"). */}
-      <Row label="Temperature" htmlFor="genTemperature" hint="Higher = more random/creative, lower = more focused. Applies to the next turn.">
+      <Row htmlFor="genTemperature" {...copy('localTemperature')}>
         <ValueSlider id="genTemperature" value={genTemperature} min={0} max={2} step={0.05} onChange={setGenTemperature} format={(v) => v.toFixed(2)} />
       </Row>
 
-      <Row label="Max Output Tokens" htmlFor="maxTokens" hint="Cap on the model's reply length. Applies to the next turn.">
+      <Row htmlFor="maxTokens" {...copy('localMaxTokens')}>
         <ValueSlider id="maxTokens" value={localMaxTokens} min={128} max={8192} step={128} onChange={setLocalMaxTokens} format={(v) => `${v.toLocaleString()} tok`} />
       </Row>
 
       {advancedMode && (
         <>
-          <Row label="Top-p" htmlFor="genTopP" hint="Nucleus sampling cutoff — lower trims unlikely words. Applies to the next turn.">
+          <Row htmlFor="genTopP" {...copy('localTopP')}>
             <ValueSlider id="genTopP" value={genTopP} min={0} max={1} step={0.05} onChange={setGenTopP} format={(v) => v.toFixed(2)} />
           </Row>
 
-          <Row label="Top-k" htmlFor="genTopK" hint="Limits sampling to the K most likely tokens. 0 = off. Applies to the next turn.">
+          <Row htmlFor="genTopK" {...copy('localTopK')}>
             <ValueSlider id="genTopK" value={genTopK} min={0} max={100} step={1} onChange={setGenTopK} format={(v) => (v === 0 ? 'Off' : String(v))} />
           </Row>
 
-          <Row label="Min-p" htmlFor="genMinP" hint="Drops tokens below this fraction of the top token's probability. 0 = off. Applies to the next turn.">
+          <Row htmlFor="genMinP" {...copy('localMinP')}>
             <ValueSlider id="genMinP" value={genMinP} min={0} max={0.5} step={0.01} onChange={setGenMinP} format={(v) => (v === 0 ? 'Off' : v.toFixed(2))} />
           </Row>
 
-          <Row label="Repetition Penalty" htmlFor="genRepetitionPenalty" hint="Above 1 discourages repeating text. Applies to the next turn.">
+          <Row htmlFor="genRepetitionPenalty" {...copy('localRepetitionPenalty')}>
             <ValueSlider id="genRepetitionPenalty" value={genRepetitionPenalty} min={1} max={1.5} step={0.02} onChange={setGenRepetitionPenalty} format={(v) => v.toFixed(2)} />
           </Row>
         </>
       )}
+      </Section>
 
       </div>
       </ScrollArea>
@@ -228,7 +241,7 @@ export function LocalModelPanel() {
           </p>
         )}
         <div className="flex items-center justify-between gap-2">
-          <Button type="button" variant="ghost" onClick={resetDefaults}>Reset to defaults</Button>
+          <Button type="button" variant="ghost" onClick={resetDefaults}>{SETTINGS_BUTTONS.resetToDefaults}</Button>
           <Button type="button" onClick={saveReload} disabled={!canReload}>
             {reloading || engine.status === 'loading' ? 'Reloading…' : loadFailed ? 'Retry with these settings' : 'Save & Reload Model'}
           </Button>
