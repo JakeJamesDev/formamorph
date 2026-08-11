@@ -17,6 +17,7 @@ import { useResetOnOpen } from '@/lib/useResetOnOpen';
 import { useIsMobile } from '@/lib/useIsMobile';
 import { cn } from '@/lib/utils';
 import { CodeArea } from '@/components/prompt/CodeArea';
+import { HighlightedCode } from '@/components/prompt/HighlightedCode';
 import { ConfirmDialog } from '@/components/ConfirmDialog';
 import {
   BUILT_IN_TEMPLATES,
@@ -119,9 +120,10 @@ function TemplateForm({ code, stats, values, onChange }: {
 
       <div className="flex flex-col gap-1 min-h-0">
         <Label className="text-label">Code</Label>
-        <pre className="overflow-auto rounded-md border bg-muted/40 p-2 font-mono text-meta whitespace-pre-wrap">
-          {fillTemplate(code, values)}
-        </pre>
+        <HighlightedCode
+          code={fillTemplate(code, values)}
+          className="rounded-md border bg-muted/40 p-2 text-meta"
+        />
       </div>
     </div>
   );

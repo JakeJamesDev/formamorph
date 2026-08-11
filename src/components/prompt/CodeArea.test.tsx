@@ -1,152 +1,209 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import { useState } from 'react';
-import { render, screen, within } from '@testing-library/react';
+import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { CodeArea } from './CodeArea';
 
 /** The field is controlled by its parent everywhere it's used, so the harness owns the value too —
  *  testing it uncontrolled would exercise a wiring nothing ships. */
-function Harness({ slots = false, preview = false, onValue }: {
-  slots?: boolean; preview?: boolean; onValue?: (v: string) => void;
+function Harness({ slots = false, preview = false, initial = '' }: {
+  slots?: boolean; preview?: boolean; initial?: string;
 }) {
-  const [value, setValue] = useState('');
+  const [value, setValue] = useState(initial);
   return (
-    <CodeArea
-      value={value}
-      onChange={(next) => { setValue(next); onValue?.(next); }}
-      ariaLabel="Stat code"
-      slots={slots}
-      preview={preview ? <p>what this makes</p> : undefined}
-    />
+    <>
+      <CodeArea
+        value={value}
+        onChange={setValue}
+        ariaLabel="Stat code"
+        slots={slots}
+        preview={preview ? <p>what this makes</p> : undefined}
+      />
+      {/* What the parent was told, which is the only thing the rest of the app ever sees. */}
+      <output data-testid="owned">{value}</output>
+    </>
   );
 }
 
-const area = () => screen.getByLabelText('Stat code') as HTMLTextAreaElement;
+/** Every field carrying the label — the editor, its plain stand-in while the chunk loads, and (in full
+ *  screen) the window named after it. */
+const labeled = () => screen.getAllByLabelText('Stat code') as HTMLElement[];
+const fields = () => labeled().filter(element => element.getAttribute('role') === 'textbox');
+
+/** The editor arrives on its own chunk, so every test starts by waiting for it to land. */
+async function editor(): Promise<HTMLElement> {
+  await waitFor(() => expect(fields()[0]?.closest('.cm-editor')).toBeTruthy());
+  return fields()[0];
+}
+
+const owned = () => screen.getByTestId('owned').textContent;
 
 describe('CodeArea', () => {
   // The split preference is shared and persisted, so one test's toggle would otherwise decide the next.
   beforeEach(() => localStorage.clear());
 
-  it('undoes a word at a time rather than the whole line', async () => {
+  it('hands typing straight to the parent that owns the text', async () => {
     const user = userEvent.setup();
     render(<Harness />);
-    await user.click(area());
-    await user.keyboard('return one two');
+    await user.click(await editor());
+    await user.keyboard('return 1;');
 
-    expect(area().value).toBe('return one two');
-    // A step opens at each space, so one undo takes back the whole word just typed — and the space
-    // that preceded it — rather than a single letter or the entire line.
-    await user.click(screen.getByLabelText('Undo'));
-    expect(area().value).toBe('return one');
-    await user.click(screen.getByLabelText('Undo'));
-    expect(area().value).toBe('return');
+    expect(owned()).toBe('return 1;');
   });
 
-  it('redoes what it undid, and stops offering redo once typing resumes', async () => {
+  it('steps back and forward through the edit history from the toolbar', async () => {
     const user = userEvent.setup();
     render(<Harness />);
-    await user.click(area());
-    await user.keyboard('alpha beta');
+    await user.click(await editor());
+    await user.keyboard('alpha');
+    expect(owned()).toBe('alpha');
 
     await user.click(screen.getByLabelText('Undo'));
-    expect(area().value).toBe('alpha');
+    expect(owned()).toBe('');
     await user.click(screen.getByLabelText('Redo'));
-    expect(area().value).toBe('alpha beta');
+    expect(owned()).toBe('alpha');
+  });
 
-    await user.click(screen.getByLabelText('Undo'));
-    await user.click(area());
-    await user.keyboard('x');
+  it('disables undo and redo when there is nothing to step back to', async () => {
+    render(<Harness />);
+    await editor();
+    expect(screen.getByLabelText('Undo')).toBeDisabled();
     expect(screen.getByLabelText('Redo')).toBeDisabled();
   });
 
-  it('disables undo and redo when there is nothing to step back to', () => {
+  it('stops offering redo once typing resumes', async () => {
+    const user = userEvent.setup();
     render(<Harness />);
-    expect(screen.getByLabelText('Undo')).toBeDisabled();
+    await user.click(await editor());
+    await user.keyboard('alpha');
+    await user.click(screen.getByLabelText('Undo'));
+    expect(screen.getByLabelText('Redo')).toBeEnabled();
+
+    await user.click(await editor());
+    await user.keyboard('x');
     expect(screen.getByLabelText('Redo')).toBeDisabled();
   });
 
   it('inserts a variable at the caret, not at the end', async () => {
     const user = userEvent.setup();
     render(<Harness />);
-    await user.click(area());
+    await user.click(await editor());
     await user.keyboard('return  + 1;');
-    // Put the caret in the gap the snippet belongs in.
-    area().setSelectionRange(7, 7);
+    // Put the caret back in the gap the snippet belongs in.
+    await user.keyboard('{ArrowLeft>5/}');
 
     await user.click(screen.getByLabelText('Variable'));
     await user.click(screen.getByText('elapsedHours — hours so far'));
 
-    expect(area().value).toBe('return elapsedHours + 1;');
+    expect(owned()).toBe('return elapsedHours + 1;');
   });
 
-  it('selects the part of a slot the author should rename', async () => {
+  it('leaves the part of a slot the author should rename selected, ready to type over', async () => {
     const user = userEvent.setup();
     render(<Harness slots />);
+    await editor();
     await user.click(screen.getByLabelText('Slot'));
     await user.click(screen.getByText('Number'));
+    expect(owned()).toBe('{{name:number=0}}');
 
-    expect(area().value).toBe('{{name:number=0}}');
-    // `name` is what varies, so it is left selected to be typed over.
-    expect(area().value.slice(area().selectionStart, area().selectionEnd)).toBe('name');
+    // `name` is what varies, so typing replaces it rather than adding to it.
+    await user.keyboard('hunger');
+    expect(owned()).toBe('{{hunger:number=0}}');
   });
 
   it('makes an insert one undo step, separate from the typing around it', async () => {
     const user = userEvent.setup();
     render(<Harness />);
-    await user.click(area());
+    await user.click(await editor());
     await user.keyboard('return ');
     await user.click(screen.getByLabelText('Variable'));
     await user.click(screen.getByText('day — day at end of turn'));
-    expect(area().value).toBe('return day');
+    expect(owned()).toBe('return day');
 
     await user.click(screen.getByLabelText('Undo'));
-    expect(area().value).toBe('return ');
+    expect(owned()).toBe('return ');
   });
 
-  it('offers slot inserts only where slots mean something', () => {
+  it('offers slot inserts only where slots mean something', async () => {
     const { unmount } = render(<Harness />);
+    await editor();
     expect(screen.queryByLabelText('Slot')).toBeNull();
     unmount();
 
     render(<Harness slots />);
+    await editor();
     expect(screen.getByLabelText('Slot')).toBeInTheDocument();
+  });
+
+  it('colours JavaScript rather than showing it flat', async () => {
+    render(<Harness initial='const x = "hi";' />);
+    const field = await editor();
+    await waitFor(() => expect(field.querySelector('.tok-keyword')).toBeTruthy());
+    expect(field.querySelector('.tok-string')?.textContent).toBe('"hi"');
+  });
+
+  it('marks template slots apart from the code around them', async () => {
+    render(<Harness slots initial="return {{amount:number=1}};" />);
+    const field = await editor();
+    await waitFor(() => expect(field.querySelector('.tok-slot')).toBeTruthy());
+    expect(field.querySelector('.tok-slot')?.textContent).toBe('{{amount:number=1}}');
   });
 
   // The field is a flex child of a height-pinned dialog. With the on-screen keyboard eating most of
   // `--app-h` there is almost no height to share out, and a zero minimum collapses the field to nothing.
-  it('keeps a height floor so the keyboard cannot crush it to nothing', () => {
+  it('keeps a height floor so the keyboard cannot crush it to nothing', async () => {
     render(<Harness />);
-    const classes = area().className;
-    expect(classes).not.toMatch(/\bmin-h-0\b/);
-    expect(classes).toMatch(/\bmin-h-\[/);
+    const host = (await editor()).closest('.cm-editor')?.parentElement as HTMLElement;
+    expect(host.className).not.toMatch(/\bmin-h-0\b/);
+    expect(host.className).toMatch(/\bmin-h-\[/);
   });
 
-  it('lifts only the editor into an overlay, carrying the text with it', async () => {
+  it('hands the one editor to the overlay, history and all, and takes it back', async () => {
     const user = userEvent.setup();
     render(<Harness />);
-    await user.click(area());
+    await user.click(await editor());
     await user.keyboard('return 1;');
     expect(screen.queryByRole('dialog')).toBeNull();
 
     await user.click(screen.getByLabelText('Edit full screen'));
     const overlay = screen.getByRole('dialog');
-    // The overlay holds a code field of its own, on the same text — not the panel that hosted it.
-    const fields = (screen.getAllByLabelText('Stat code') as HTMLElement[])
-      .filter((element): element is HTMLTextAreaElement => element.tagName === 'TEXTAREA');
-    expect(fields).toHaveLength(2);
-    expect(fields.every(field => field.value === 'return 1;')).toBe(true);
-    expect(overlay).toContainElement(fields[1]);
+    // One editor, moved — not a second copy left sharing the value with the first.
+    expect(fields()).toHaveLength(1);
+    expect(overlay).toContainElement(fields()[0]);
 
-    await user.click(screen.getByLabelText('Exit full screen'));
-    expect(screen.queryByRole('dialog')).toBeNull();
+    // The history came with it: undo inside full screen steps back the typing done outside it.
+    await user.click(within(overlay).getByLabelText('Undo'));
+    expect(owned()).toBe('');
+    await user.click(within(overlay).getByLabelText('Redo'));
+    expect(owned()).toBe('return 1;');
+
+    await user.click(within(overlay).getByLabelText('Exit full screen'));
+    await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
+    // And back again, still able to step back what was typed before the trip.
+    await user.click(screen.getByLabelText('Undo'));
+    expect(owned()).toBe('');
   });
 
-  it('grows the Edit | Preview pair only when there is something to preview', () => {
+  it('spends a gutter only where there is width for it', async () => {
+    const user = userEvent.setup();
+    render(<Harness />);
+    const field = await editor();
+    expect(field.closest('.cm-editor')?.querySelector('.cm-lineNumbers')).toBeNull();
+
+    await user.click(screen.getByLabelText('Edit full screen'));
+    await waitFor(() => expect(
+      fields()[0].closest('.cm-editor')?.querySelector('.cm-lineNumbers'),
+    ).toBeTruthy());
+  });
+
+  it('grows the Edit | Preview pair only when there is something to preview', async () => {
     const { unmount } = render(<Harness />);
+    await editor();
     expect(screen.queryByRole('tab', { name: 'Preview' })).toBeNull();
     unmount();
 
     render(<Harness preview />);
+    await editor();
     expect(screen.getByRole('tab', { name: 'Edit' })).toBeInTheDocument();
     expect(screen.getByRole('tab', { name: 'Preview' })).toBeInTheDocument();
     expect(screen.queryByText('what this makes')).toBeNull();
@@ -155,13 +212,48 @@ describe('CodeArea', () => {
   it('shows the preview on its tab', async () => {
     const user = userEvent.setup();
     render(<Harness preview />);
+    await editor();
     await user.click(screen.getByRole('tab', { name: 'Preview' }));
     expect(screen.getByText('what this makes')).toBeInTheDocument();
+  });
+
+  // The tab primitive unmounts the pane it isn't showing, taking the box the editor lives in with it.
+  it('still holds the editor after a trip to the preview and back', async () => {
+    const user = userEvent.setup();
+    render(<Harness preview />);
+    await user.click(await editor());
+    await user.keyboard('return 1;');
+
+    await user.click(screen.getByRole('tab', { name: 'Preview' }));
+    await user.click(screen.getByRole('tab', { name: 'Edit' }));
+
+    const back = await editor();
+    expect(back.textContent).toContain('return 1;');
+    // Still a live editor, not a leftover rendering of the text.
+    await user.click(back);
+    await user.keyboard('2');
+    expect(owned()).toContain('return 1;');
+    expect(owned()).toHaveLength('return 1;2'.length);
+  });
+
+  it('indents with Tab, and lets Escape hand the next Tab back for moving on', async () => {
+    const user = userEvent.setup();
+    render(<Harness />);
+    await user.click(await editor());
+    await user.keyboard('return 1;');
+    await user.tab();
+    expect(owned()).toBe('  return 1;');
+
+    // Escape spends the next Tab on leaving the field rather than on another indent.
+    await user.keyboard('{Escape}');
+    await user.tab();
+    expect(owned()).toBe('  return 1;');
   });
 
   it('carries the pair into full screen as a split, and back to one pane on request', async () => {
     const user = userEvent.setup();
     render(<Harness preview />);
+    await editor();
     await user.click(screen.getByLabelText('Edit full screen'));
 
     // Wide enough to halve, so the split is what opens — both panes readable without a tab click.
@@ -174,8 +266,9 @@ describe('CodeArea', () => {
     expect(within(overlay).queryByText('what this makes')).toBeNull();
   });
 
-  it('puts history and the view control together on the right, after what gets inserted', () => {
+  it('puts history and the view control together on the right, after what gets inserted', async () => {
     render(<Harness slots />);
+    await editor();
     const labels = [...document.querySelectorAll('button[aria-label]')]
       .map(button => button.getAttribute('aria-label'));
     // Matches PromptField's chrome: inserts lead, then undo/redo, then full screen last.

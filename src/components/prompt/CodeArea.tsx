@@ -1,4 +1,4 @@
-import { useCallback, useLayoutEffect, useRef, useState, type ReactNode } from 'react';
+import { useCallback, useEffect, useLayoutEffect, useRef, useState, type ReactNode } from 'react';
 import { Columns2, Maximize2, Minimize2, Redo2, Square, Undo2, Braces, Variable } from 'lucide-react';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -9,19 +9,8 @@ import { resolveLayout, usePromptSplitMode, useContainerWidth, MIN_PANE_WIDTH } 
 import { useMorphFullscreen } from '@/lib/useMorphFullscreen';
 import { FullscreenShell } from '@/components/FullscreenShell';
 import { cn } from '@/lib/utils';
-import {
-  canRedo, canUndo, commitHistory, initHistory, redoHistory, undoHistory, type HistoryState,
-} from '@/lib/textHistory';
 import { SLOT_SNIPPETS, STAT_CODE_SNIPPETS, type InsertSnippet } from '@/lib/codeSnippets';
-
-/** A step ends at whitespace, so undo walks back a word at a time rather than the whole line at once. */
-function isTypingRun(before: string, after: string): boolean {
-  if (Math.abs(before.length - after.length) !== 1) return false;
-  const [longer, shorter] = before.length > after.length ? [before, after] : [after, before];
-  let i = 0;
-  while (i < shorter.length && longer[i] === shorter[i]) i += 1;
-  return !/\s/.test(longer[i] ?? '');
-}
+import type { CodeSession } from '@/components/prompt/codeSession';
 
 function InsertMenu({ items, label, Icon, onPick }: {
   items: InsertSnippet[]; label: string; Icon: typeof Braces; onPick: (snippet: InsertSnippet) => void;
@@ -73,90 +62,78 @@ interface CodeAreaProps {
   rows?: number;
 }
 
-/** Toolbar + textarea. Split out so the fullscreen overlay can mount a second copy against the same
+/** Toolbar + editor. Split out so the fullscreen overlay can mount a second copy against the same
  *  value without the outer component recursing into itself. */
 function CodeAreaBody({
   value, onChange, ariaLabel, placeholder, label, slots, preview, className, rows = 8, fullscreen,
-  onToggleFullscreen, expose,
+  onToggleFullscreen, session, active, expose,
 }: CodeAreaProps & {
   fullscreen: boolean;
   onToggleFullscreen: () => void;
+  /** The one editor both copies take turns hosting. Null until its chunk has loaded. */
+  session: CodeSession | null;
+  /** Whether this copy is the one holding the editor right now. */
+  active: boolean;
   /** The inline copy reports its own field up, so full screen knows which box to grow out of. */
-  expose?: (element: HTMLTextAreaElement | null) => void;
+  expose?: (element: HTMLElement | null) => void;
 }) {
-  const areaRef = useRef<HTMLTextAreaElement | null>(null);
+  const hostRef = useRef<HTMLDivElement | null>(null);
   const [measureRef, containerWidth] = useContainerWidth();
   const [splitMode, setSplitMode] = usePromptSplitMode();
   // Full screen measures the window it just took over, not the slot the field was opened from.
   const effectiveWidth = fullscreen ? (typeof window !== 'undefined' ? window.innerWidth - 48 : 0) : containerWidth;
   const showTabs = !!preview;
   const split = resolveLayout(splitMode, effectiveWidth, showTabs, fullscreen) === 'split';
-  const snap = (v: string, start = 0, end = 0) => ({ value: v, selectionStart: start, selectionEnd: end });
-  const historyRef = useRef<HistoryState>(initHistory(snap(value)));
-  const ownRef = useRef(value);
-  // Selection to restore once React has painted the new value — an insert or an undo has to put the caret
-  // back itself, since a controlled textarea re-renders with the caret at the end.
-  const pendingSelection = useRef<{ start: number; end: number } | null>(null);
-  const [, forceUpdate] = useState(0);
 
-  // Edits arriving through `value` (typing, or a parent writing to it) fold into the history here, which
-  // keeps the parent the single owner of the text.
-  if (value !== ownRef.current) {
-    historyRef.current = commitHistory(
-      historyRef.current,
-      snap(value, areaRef.current?.selectionStart ?? 0, areaRef.current?.selectionEnd ?? 0),
-      isTypingRun(historyRef.current.present.value, value),
-    );
-    ownRef.current = value;
-  }
+  // The editor is moved rather than copied: two views would mean two histories, and the toggle would throw
+  // one of them away every trip. Done from the ref callback as well as an effect, because the box it lives
+  // in is remounted by things the effect can't see — switching to the Preview tab and back unmounts it.
+  const attach = useCallback((element: HTMLElement | null) => {
+    hostRef.current = element as HTMLDivElement | null;
+    expose?.(element);
+    if (element && session && active && session.dom.parentElement !== element) element.appendChild(session.dom);
+  }, [session, active, expose]);
 
   useLayoutEffect(() => {
-    const pending = pendingSelection.current;
-    const area = areaRef.current;
-    if (!pending || !area) return;
-    pendingSelection.current = null;
-    area.focus();
-    area.setSelectionRange(pending.start, pending.end);
-  });
-
-  const move = useCallback((next: HistoryState) => {
-    if (next === historyRef.current) return;
-    historyRef.current = next;
-    ownRef.current = next.present.value;
-    pendingSelection.current = { start: next.present.selectionStart, end: next.present.selectionEnd };
-    onChange(next.present.value);
-    forceUpdate((n) => n + 1);
-  }, [onChange]);
+    if (!session || !active) return;
+    const host = hostRef.current;
+    if (host && session.dom.parentElement !== host) host.appendChild(session.dom);
+    if (fullscreen) session.focus();
+  }, [session, active, fullscreen]);
 
   const insert = (snippet: InsertSnippet) => {
-    const area = areaRef.current;
+    if (session) { session.insert(snippet); return; }
+    // Fallback path: the chunk is still loading, so the plain textarea takes the insert itself.
+    const area = hostRef.current?.querySelector('textarea');
     const start = area?.selectionStart ?? value.length;
     const end = area?.selectionEnd ?? value.length;
-    const next = value.slice(0, start) + snippet.text + value.slice(end);
-    // A snippet is one undo step, never folded into the typing around it.
-    historyRef.current = commitHistory(historyRef.current, snap(next, start, start + snippet.text.length), false);
-    ownRef.current = next;
-    const offset = snippet.select ? snippet.text.indexOf(snippet.select) : -1;
-    pendingSelection.current = offset >= 0
-      ? { start: start + offset, end: start + offset + (snippet.select as string).length }
-      : { start: start + snippet.text.length, end: start + snippet.text.length };
-    onChange(next);
-    forceUpdate((n) => n + 1);
+    onChange(value.slice(0, start) + snippet.text + value.slice(end));
   };
 
   const editSurface = (
-    <Textarea
-      ref={(element) => { areaRef.current = element; expose?.(element); }}
-      value={value}
-      onChange={(event) => onChange(event.target.value)}
-      placeholder={placeholder}
-      aria-label={ariaLabel}
-      rows={rows}
+    <div
+      ref={attach}
       // A floor, not `min-h-0`: in a height-pinned pane the field is a flex child, and with the
       // on-screen keyboard eating most of `--app-h` a zero minimum lets it collapse to nothing.
       // Keeping a usable minimum makes the pane around it scroll instead.
-      className="font-mono text-label flex-1 min-h-[6rem] resize-none"
-    />
+      className={cn(
+        'font-mono text-label flex flex-col flex-1 min-h-[6rem] overflow-hidden rounded-md border border-input bg-transparent',
+        'focus-within:ring-1 focus-within:ring-ring',
+      )}
+      // The row count the field was asked for, as a floor rather than a height: a flex column would
+      // otherwise squeeze the box below the size its caller sized it for.
+      style={fullscreen ? undefined : { minHeight: `${rows * 1.5 + 1}rem` }}
+    >
+      {!session && active && (
+        <Textarea
+          value={value}
+          onChange={(event) => onChange(event.target.value)}
+          placeholder={placeholder}
+          aria-label={ariaLabel}
+          className="h-full w-full resize-none border-0 font-mono text-label focus-visible:ring-0"
+        />
+      )}
+    </div>
   );
   const previewSurface = (
     <div className="h-full min-h-[6rem] overflow-auto rounded-md border border-input bg-muted/40 px-3 py-2">
@@ -177,15 +154,15 @@ function CodeAreaBody({
         <div className="flex flex-shrink-0 items-center gap-1">
           <button
             type="button" title="Undo" aria-label="Undo" className={TOOLBAR_BTN}
-            disabled={!canUndo(historyRef.current)}
-            onMouseDown={(event) => { event.preventDefault(); move(undoHistory(historyRef.current)); }}
+            disabled={!session?.canUndo()}
+            onMouseDown={(event) => { event.preventDefault(); session?.undo(); }}
           >
             <Undo2 className="h-4 w-4" />
           </button>
           <button
             type="button" title="Redo" aria-label="Redo" className={TOOLBAR_BTN}
-            disabled={!canRedo(historyRef.current)}
-            onMouseDown={(event) => { event.preventDefault(); move(redoHistory(historyRef.current)); }}
+            disabled={!session?.canRedo()}
+            onMouseDown={(event) => { event.preventDefault(); session?.redo(); }}
           >
             <Redo2 className="h-4 w-4" />
           </button>
@@ -236,17 +213,59 @@ function CodeAreaBody({
 }
 
 /**
- * A plain-text code editor with the affordances a bare textarea has none of: undo and redo that survive
- * the programmatic writes a template insert makes, a full-screen toggle, and menus that name the
- * variables and slot forms the sandbox understands — none of which the field itself could hint at.
+ * A JavaScript editor with the affordances a bare textarea has none of: syntax colouring, bracket
+ * matching, undo and redo that survive the programmatic writes a template insert makes, a full-screen
+ * toggle, and menus that name the variables and slot forms the sandbox understands — none of which the
+ * field itself could hint at.
+ *
+ * CodeMirror arrives on demand, so a session that never opens the world editor never fetches it; until it
+ * lands the field is a plain textarea on the same value, which is editable rather than merely visible.
  *
  * Full screen raises an overlay holding only the editor, so it works the same whether the field sits on
  * a panel or inside a dialog — and a dialog's own buttons stay where they were rather than being grown
  * away from underneath the author.
  */
 export function CodeArea(props: CodeAreaProps) {
-  const sourceRef = useRef<HTMLTextAreaElement | null>(null);
+  const sourceRef = useRef<HTMLElement | null>(null);
   const morph = useMorphFullscreen(sourceRef);
+  const [session, setSession] = useState<CodeSession | null>(null);
+  // The editor is created once and outlives every render, so what it calls back into has to be read at
+  // call time rather than captured.
+  const latest = useRef(props);
+  latest.current = props;
+  const [, bump] = useState(0);
+  const onUpdate = useCallback(() => bump((n) => n + 1), []);
+  // Stable, so the field's ref callback isn't torn down and re-run on every render — which would detach and
+  // re-append the editor underneath the caret.
+  const holdSource = useCallback((element: HTMLElement | null) => {
+    // A remount of the box behind the Preview tab reports null on the way out; the rect the morph grows from
+    // is the inline field, so a transient null must not replace it.
+    if (element) sourceRef.current = element;
+  }, []);
+
+  const { ariaLabel, placeholder, slots } = props;
+  useEffect(() => {
+    let live = true;
+    let created: CodeSession | null = null;
+    void import('@/components/prompt/codeSession').then(({ createCodeSession }) => {
+      if (!live) return;
+      created = createCodeSession({
+        doc: latest.current.value,
+        ariaLabel,
+        placeholder,
+        slots,
+        onChange: (next) => latest.current.onChange(next),
+        onUpdate,
+      });
+      setSession(created);
+    });
+    return () => { live = false; created?.destroy(); setSession(null); };
+  }, [ariaLabel, placeholder, slots, onUpdate]);
+
+  // The parent stays the single owner of the text: anything it writes lands in the editor here.
+  useEffect(() => { session?.setValue(props.value); }, [session, props.value]);
+  // A gutter is worth its width only where there is width to spare.
+  useEffect(() => { session?.setLineNumbers(morph.mounted); }, [session, morph.mounted]);
 
   return (
     <>
@@ -254,12 +273,21 @@ export function CodeArea(props: CodeAreaProps) {
         {...props}
         fullscreen={false}
         onToggleFullscreen={morph.toggle}
-        expose={(element) => { sourceRef.current = element; }}
+        session={session}
+        active={!morph.mounted}
+        expose={holdSource}
       />
       {/* No heading: the field's own caption rides in the toolbar and comes with it, so a header row
           would name the box twice and spend a row doing it. */}
       <FullscreenShell morph={morph} title={props.ariaLabel}>
-        <CodeAreaBody {...props} className="flex-1 min-h-0" fullscreen onToggleFullscreen={morph.close} />
+        <CodeAreaBody
+          {...props}
+          className="flex-1 min-h-0"
+          fullscreen
+          onToggleFullscreen={morph.close}
+          session={session}
+          active
+        />
       </FullscreenShell>
     </>
   );
