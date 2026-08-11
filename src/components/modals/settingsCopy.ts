@@ -106,7 +106,7 @@ Captured and saved either way, so turning it on reveals it on past turns too.`,
   },
   showSilentRequests: {
     label: 'Show Silent Requests',
-    description: 'Shows background requests in the status bar.',
+    description: 'Shows background requests in the status bar and context viewer.',
     info: `Surfaces requests that normally run quietly — **memory summaries**, **character diaries**, and new-character notes — in the status bar and the AI context viewer.
 
 An inspection aid for authoring and debugging; off by default.`,
@@ -151,7 +151,7 @@ Skips the "Move to…?" confirmation.`,
     description: 'Condenses older turns so long stories stay coherent.',
     info: `Condenses older turns while keeping recent ones **word-for-word**, so long stories stay coherent without bloating each request.
 
-Runs an extra request per turn; edit its prompt under **Prompts → Summary**.`,
+Runs an extra request per turn; edit its prompt under **Prompts → Summaries**.`,
   },
   semanticMemory: {
     label: 'Semantic Memory',
@@ -353,8 +353,14 @@ You can always draw a single scene by hand from the button above the story inste
     label: 'Qwen3 Encoder',
     description: 'Selects the text encoder this base requires.',
   },
-  invokeVae: {
-    label: 'VAE',
+  // One row, but the label names the base it belongs to — so both spellings are guarded rather than one
+  // of them being a literal at the call site.
+  invokeVaeZImage: {
+    label: 'Z-Image VAE',
+    description: 'Selects the VAE this base requires.',
+  },
+  invokeVaeAnima: {
+    label: 'Anima VAE',
     description: 'Selects the VAE this base requires.',
   },
 
@@ -496,6 +502,9 @@ export const SETTINGS_BUTTONS = {
   howToSetUp: 'How to Set Up',
   howToGetThis: 'How to Get This',
   resetToDefaults: 'Reset to Defaults',
+  manageModels: 'Manage Models…',
+  saveReloadModel: 'Save & Reload Model',
+  retryWithSettings: 'Retry With These Settings',
 } as const;
 
 /** Every confirmation the modal raises. Bodies are sentences and carry their own punctuation. */

@@ -281,7 +281,7 @@ function SearchLocations({ locations, onChange, onChangeDownloadDir }: {
     <div className="grid gap-6 py-4 pr-2">
       <Section title="Download Folder" hint="Where models you download are saved.">
         <div className="grid grid-cols-1 sm:grid-cols-[minmax(0,1fr)_minmax(0,3fr)] items-start gap-4">
-          <RowLabel top>Folder</RowLabel>
+          <RowLabel align="top">Folder</RowLabel>
           <div className="space-y-2">
             {/* The path gets its own line above the buttons: these run long, and truncating one to make
                 room for controls hides the part that identifies the folder. */}
@@ -329,7 +329,7 @@ function SearchLocations({ locations, onChange, onChangeDownloadDir }: {
       <Section title="Additional Search Folder" hint="Already have models for another app? Point us at them and they'll show up in your list.">
         <div className="grid grid-cols-1 sm:grid-cols-[minmax(0,1fr)_minmax(0,3fr)] items-start gap-4">
           <RowLabel
-            top
+            align="top"
             info={<HintInfo>{'Models found in this folder are **read-only**.\n\n- They can be loaded like any other model\n- They are never deleted from here — they belong to whichever app downloaded them\n- Downloads always land in your download folder, not this one'}</HintInfo>}
           >
             Folder

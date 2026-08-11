@@ -66,18 +66,24 @@ export function SubGroup({ children }: { children: ReactNode }) {
 
 /** The label cell every settings row draws through — `Row` and `CheckRow` both delegate here, so the
  *  `text-left sm:text-right` alignment can't be forgotten per-row and drift out of line.
- *  Vertical alignment against the control: `top` for a tall control (a ToggleGroup, a stacked field),
- *  `pad` for a field or slider, `center` when the grid already centers the row, and none of the three for
- *  a checkbox (whose small box the label centers on).
+ *  `align` sets how the label sits against its control: `top` for a tall one (a ToggleGroup, a stacked
+ *  field), `pad` for a field or slider, `center` when the grid already centers the row, and the default
+ *  `check` for a checkbox, whose small box the label lines up on.
  *  `muted` dims it. `info` renders an affordance (e.g. `HintInfo`) right after the label text, so a row's
  *  detail control sits in a consistent column at the label boundary rather than trailing lead text.
  *  Renders a `<label>` when `htmlFor` is given, else a `<span>` (for non-interactive controls). */
-export function RowLabel({ htmlFor, top, pad, center, muted, info, experimental, children }: {
-  htmlFor?: string; top?: boolean; pad?: boolean; center?: boolean; muted?: boolean; info?: ReactNode;
+export type RowAlign = 'top' | 'pad' | 'center' | 'check';
+
+const ROW_ALIGN_CLASS: Record<RowAlign, string> = {
+  top: 'pt-2', pad: 'pt-1', center: '', check: 'leading-4',
+};
+
+export function RowLabel({ htmlFor, align = 'check', muted, info, experimental, children }: {
+  htmlFor?: string; align?: RowAlign; muted?: boolean; info?: ReactNode;
   experimental?: boolean; children: ReactNode;
 }) {
-  const align = top ? 'pt-2' : pad ? 'pt-1' : center ? '' : 'leading-4';
-  const cls = `text-left sm:text-right ${align}${muted ? ' text-muted-foreground' : ''}`;
+  const alignClass = ROW_ALIGN_CLASS[align];
+  const cls = `text-left sm:text-right ${alignClass}${muted ? ' text-muted-foreground' : ''}`;
   const adornment = (experimental || info) && (
     <>
       {experimental && <ExperimentalBadge />}
@@ -91,7 +97,7 @@ export function RowLabel({ htmlFor, top, pad, center, muted, info, experimental,
   // The label keeps its text alignment; the flex cell owns the vertical align + muting and right-anchors
   // the [label · info] pair, so the info icon lands in the same column on every row.
   return (
-    <div className={`flex items-center justify-start sm:justify-end gap-1.5 ${align}${muted ? ' text-muted-foreground' : ''}`}>
+    <div className={`flex items-center justify-start sm:justify-end gap-1.5 ${alignClass}${muted ? ' text-muted-foreground' : ''}`}>
       {label}
       {adornment}
     </div>
@@ -130,7 +136,13 @@ export function Row({ label, htmlFor, children, hint, center, top, info, muted, 
         // Holds the column open on wide screens only: on mobile the grid is one column, where an empty
         // cell would just be a gap above the control.
         ? <span className="hidden sm:block" />
-        : <RowLabel htmlFor={htmlFor} top={top} center={center} pad={!center && !top} muted={muted} info={info} experimental={experimental}>{label}</RowLabel>}
+        : <RowLabel
+            htmlFor={htmlFor}
+            align={top ? 'top' : center ? 'center' : 'pad'}
+            muted={muted}
+            info={info}
+            experimental={experimental}
+          >{label}</RowLabel>}
       <div className="space-y-1">
         {children}
         {hint && <Hint>{hint}</Hint>}
