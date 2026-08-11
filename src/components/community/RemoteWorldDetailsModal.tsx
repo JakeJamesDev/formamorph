@@ -6,6 +6,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Progress } from "@/components/ui/progress";
 import IndeterminateProgress from "@/components/ui/indeterminate-progress";
 import { Globe, Columns2, RectangleVertical } from "lucide-react";
+import { ActionIcon } from "@/lib/actionIcons";
 import { cn } from "@/lib/utils";
 import { useCachedThumbnail } from "@/lib/useCachedThumbnail";
 import { WorldDetailsColumn, DateTimeText, splitColumnClasses, type WorldRecord } from "@/components/WorldDetails";
@@ -171,7 +172,7 @@ export function RemoteWorldDetailsModal({
                   </div>
                 }
                 actions={(() => {
-                  // Mirror the contextual card button (none/refresh/update) as a text label.
+                  // Mirror the contextual card button (none/refresh/update), icon and all.
                   const dlState = downloadStateForWorld(world);
                   const progress = downloadProgress[world._id || world.id];
                   // While downloading, swap the button for a status bar (-1 ⇒ size unknown).
@@ -181,15 +182,17 @@ export function RemoteWorldDetailsModal({
                       : <Progress value={progress * 100} className="h-2" />;
                   }
                   const noun = KIND_LABELS[kindOf(world)].one;
-                  const label = dlState === 'update' ? 'Update Available'
-                    : dlState === 'refresh' ? `Re-download ${noun}`
-                    : `Download ${noun}`;
+                  const [Icon, label] = dlState === 'update'
+                    ? [ActionIcon.cloudUpdate, 'Update Available'] as const
+                    : dlState === 'refresh'
+                      ? [ActionIcon.cloudRefresh, `Re-download ${noun}`] as const
+                      : [ActionIcon.cloudDownload, `Download ${noun}`] as const;
                   return (
                     <WorldActionButton
                       tone="sky"
                       onClick={() => onContextualDownload(world, dlState)}
                     >
-                      {label}
+                      <Icon className="mr-2 h-4 w-4" /> {label}
                     </WorldActionButton>
                   );
                 })()}

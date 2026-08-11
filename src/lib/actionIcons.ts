@@ -1,5 +1,5 @@
 import {
-  Download, Upload, CloudUpload, CloudDownload, ImageDown, CloudSync, Copy,
+  Download, Upload, CloudUpload, CloudDownload, ImageDown, CloudSync, CloudBackup, Copy,
   type LucideIcon,
 } from "lucide-react";
 
@@ -13,9 +13,11 @@ export const ActionIcon = {
   export: Upload,
   publish: CloudUpload,
   availableOffline: ImageDown,
-  /** Community: fetch a copy you don't have yet (or re-fetch the same version). */
+  /** Community: fetch a copy you don't have yet. */
   cloudDownload: CloudDownload,
   /** Community: a newer version exists — pull it over your copy. */
   cloudUpdate: CloudSync,
+  /** Community: you already have the current version — fetch it again. */
+  cloudRefresh: CloudBackup,
   copy: Copy,
 } satisfies Record<string, LucideIcon>;
