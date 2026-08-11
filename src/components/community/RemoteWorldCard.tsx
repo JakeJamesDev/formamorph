@@ -128,8 +128,10 @@ export function RemoteWorldCard({
           title={dlState === 'update' ? "Update available — download the newer version" : dlState === 'refresh' ? `Re-download this ${noun}` : `Download this ${noun}`}
           aria-label={dlState === 'update' ? "Update available" : dlState === 'refresh' ? `Re-download this ${noun}` : `Download this ${noun}`}
         >
-          {dlState === 'update' || dlState === 'refresh' ? (
+          {dlState === 'update' ? (
             <ActionIcon.cloudUpdate className="h-8 w-8" />
+          ) : dlState === 'refresh' ? (
+            <ActionIcon.cloudRefresh className="h-8 w-8" />
           ) : (
             <ActionIcon.cloudDownload className="h-8 w-8" />
           )}
