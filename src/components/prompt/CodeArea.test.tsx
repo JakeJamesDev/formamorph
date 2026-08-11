@@ -202,6 +202,20 @@ describe('CodeArea', () => {
     expect(fields()[0].closest('.cm-editor')?.querySelector('.cm-lineNumbers')).toBeTruthy();
   });
 
+  it('puts the lint marks outside the line numbers, where a digit more cannot shift them', async () => {
+    const user = userEvent.setup();
+    render(<Harness />);
+    await editor();
+    await user.click(screen.getByLabelText('Edit full screen'));
+
+    await waitFor(() => expect(
+      fields()[0].closest('.cm-editor')?.querySelector('.cm-gutter-lint'),
+    ).toBeTruthy());
+    const columns = [...fields()[0].closest('.cm-editor')!.querySelectorAll('.cm-gutters > .cm-gutter')]
+      .map(column => (column.classList.contains('cm-gutter-lint') ? 'lint' : 'numbers'));
+    expect(columns).toEqual(['lint', 'numbers']);
+  });
+
   // Whether the rule actually reaches the bottom is a layout fact, and jsdom has no layout — that part
   // is browser-verified. What can be guarded here is which element draws it: the gutter is only ever as
   // tall as the code it holds, so a rule on its right border stops mid-box.

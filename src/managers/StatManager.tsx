@@ -417,10 +417,10 @@ const StatManager = ({ stat }: { stat: Stat }) => {
             // Its caption is the section heading, which full screen leaves behind — so the field names
             // itself in the toolbar and stays labeled in both states.
             label="Code"
-            placeholder="// Example: Return the average of Health and Strength stats
-const health = stats.find(s => s.name === 'Health')?.value || 0;
-const strength = stats.find(s => s.name === 'Strength')?.value || 0;
-return (health + strength) / 2;"
+            // One line rather than a worked example: the completions, the ? and Templates each teach
+            // more of the sandbox than a sample could, and four lines filled the box they sat in.
+            // Short enough not to wrap in the panel — Templates is a labeled button right above this.
+            placeholder="// Return a number. Start typing to see what you can use."
             rows={6}
           />
 

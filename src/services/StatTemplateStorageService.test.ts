@@ -10,6 +10,7 @@ import {
   TEMPLATE_PACK_VERSION,
 } from './StatTemplateStorageService';
 import { BUILT_IN_TEMPLATES } from '@/lib/statCodeTemplates';
+import { APP_VERSION } from '@/lib/version';
 
 const template = (over: Partial<{ id: string; name: string; description: string; code: string }> = {}) => ({
   id: '',
@@ -43,6 +44,9 @@ describe('StatTemplateStorageService', () => {
   it('round-trips a pack through build and parse', () => {
     const pack = buildTemplatePack([template({ id: 'abc' })]);
     expect(pack.formamorphTemplates).toBe(TEMPLATE_PACK_VERSION);
+    // The build that wrote the file, beside the shape number import checks — the two answer different
+    // questions, and a bare `1` in the file reads as the app's version to anyone opening it.
+    expect(pack.appVersion).toBe(APP_VERSION);
     const parsed = parseTemplatePack(JSON.stringify(pack));
     expect(parsed).toEqual([{ id: 'abc', name: 'Mine', description: 'A local template', code: 'return {{n:number=1}};' }]);
   });

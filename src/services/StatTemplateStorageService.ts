@@ -10,14 +10,20 @@
 import { openDatabase, promisifyRequest } from '@/lib/idb';
 import { randomUUID } from '@/lib/uuid';
 import { isBuiltInTemplate, type StatCodeTemplate } from '@/lib/statCodeTemplates';
+import { APP_VERSION } from '@/lib/version';
 
 const DB_NAME = 'statTemplatesDB';
 const DB_VERSION = 1;
 const STORE_NAME = 'templates';
 
-/** The shared-pack file: a version marker so a future shape change is detectable, and the templates. */
+/**
+ * The shared-pack file. Two version fields, answering different questions: `formamorphTemplates` is the
+ * file's own shape, which is what import validates and what only moves when the shape does, and
+ * `appVersion` is the build that wrote it, for a human reading the file or a bug report quoting it.
+ */
 export interface StatTemplatePack {
   formamorphTemplates: number;
+  appVersion: string;
   templates: StatCodeTemplate[];
 }
 
@@ -54,7 +60,7 @@ export async function deleteUserTemplate(id: string): Promise<void> {
 
 /** Wrap templates in the shareable pack shape. */
 export function buildTemplatePack(templates: StatCodeTemplate[]): StatTemplatePack {
-  return { formamorphTemplates: TEMPLATE_PACK_VERSION, templates };
+  return { formamorphTemplates: TEMPLATE_PACK_VERSION, appVersion: APP_VERSION, templates };
 }
 
 /** Read a pack file's contents into templates, rejecting anything that isn't one. Entries are re-checked

@@ -27,6 +27,7 @@ import {
   humanizeSlotName,
   isBuiltInTemplate,
   parseTemplateSlots,
+  resolveSlotValue,
   validateSlotValues,
   type StatCodeTemplate,
   type TemplateSlot,
@@ -57,6 +58,8 @@ function SlotField({ slot, value, problem, stats, onChange }: {
   stats: Stat[];
   onChange: (value: string) => void;
 }) {
+  /** What the author is part-way through typing, or null when the field is showing its resolved value. */
+  const [typing, setTyping] = useState<string | null>(null);
   const options = slot.type === 'stat'
     ? stats.map(stat => stat.name).filter(Boolean)
     : slot.type === 'daypart'
@@ -68,9 +71,13 @@ function SlotField({ slot, value, problem, stats, onChange }: {
       <span className="text-label">{humanizeSlotName(slot.name)}</span>
       {slot.type === 'number' || slot.type === 'text' ? (
         <Input
-          value={value}
+          // While the field is being typed in it shows exactly what was typed, empty included. Resolving
+          // on every keystroke would refill a backspaced field before the next character landed, so a
+          // defaulted number could only be replaced by typing over the selection.
+          value={typing ?? value}
           inputMode={slot.type === 'number' ? 'decimal' : undefined}
-          onChange={(e) => onChange(e.target.value)}
+          onChange={(e) => { setTyping(e.target.value); onChange(e.target.value); }}
+          onBlur={() => setTyping(null)}
         />
       ) : (
         <Select value={value || undefined} onValueChange={onChange}>
@@ -108,7 +115,10 @@ function TemplateForm({ code, stats, values, onChange }: {
               key={slot.name}
               slot={slot}
               stats={stats}
-              value={values[slot.name] ?? ''}
+              // Read through the resolver rather than straight out of `values`: a slot the author has
+              // only just typed into the code has no answer yet, and its declared default is what the
+              // generated code below already shows for it.
+              value={resolveSlotValue(slot, values)}
               problem={problems[slot.name]}
               onChange={(value) => onChange({ ...values, [slot.name]: value })}
             />
