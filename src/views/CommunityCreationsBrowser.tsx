@@ -54,6 +54,8 @@ import { type WorldRecord } from "@/components/WorldDetails";
 import { RemoteWorldDetailsModal } from "@/components/community/RemoteWorldDetailsModal";
 import { RemoteWorldCard } from "@/components/community/RemoteWorldCard";
 import { CommunityFilterBar } from "@/components/community/CommunityFilterBar";
+import { TutorialPopover } from "@/components/TutorialPopover";
+import { useTutorial } from "@/lib/tutorials";
 
 // Persisted preference to force the single-column (portrait) layout of the details modal at any width.
 // Key string kept as-is so an existing user's saved preference survives the rename.
@@ -226,6 +228,30 @@ const CommunityCreationsBrowser = ({
   const isMobile = useIsMobile();
   const [filtersOpen, setFiltersOpen] = useState(false);
 
+  // The card that anchors the like tutorial: the first one on the page whose heart is a control rather
+  // than a count. Your own listings can't be liked, and a signed-out reader can't like anything.
+  const likeAnchor = isAuthenticated
+    ? pagedRemoteWorlds.find((w) => !(
+      w.author && currentUser && (w.author.id === currentUser.id || w.author.username === currentUser.username)
+    ))
+    : undefined;
+  const likeAnchorId = likeAnchor ? likeAnchor._id || likeAnchor.id : undefined;
+
+  // Explanations wait for the thing they explain: the like heart until a likeable card is on screen.
+  const { active: tutorial, nav: tutorialNav, dismiss } = useTutorial('community', {
+    active: open,
+    held: likeAnchorId ? undefined : ['community-like'],
+  });
+  /** Using a control counts as reading its explanation, exactly as the button does. */
+  const dismissIfShowing = (id: string) => { if (tutorial?.id === id) dismiss(id); };
+
+  // On mobile the filter bar and the Hidden panel both live behind the Filters toggle, so that button
+  // anchors both of their explanations.
+  const filtersToggleTutorial = isMobile
+    && (tutorial?.id === 'community-filters' || tutorial?.id === 'community-hidden') ? tutorial : null;
+  const filterBarTutorial = !isMobile && tutorial?.id === 'community-filters' ? tutorial : null;
+  const hiddenTutorial = !isMobile && tutorial?.id === 'community-hidden' ? tutorial : null;
+
   // Numbered page links with first/last anchors + ellipsis (matches the in-game transcript pager).
 
   const handleRemoteWorldDelete = async (worldId: string) => {
@@ -294,6 +320,7 @@ const CommunityCreationsBrowser = ({
    * reader is sorting by likes.
    */
   const handleLike = async (world: WorldRecord, liked: boolean) => {
+    dismissIfShowing('community-like');
     const worldId = String(world._id || world.id);
     const state = await WorldStorageService.setRemoteWorldLiked(worldId, liked);
 
@@ -352,7 +379,12 @@ const CommunityCreationsBrowser = ({
   // Mirrors the local library's tabs (MainMenu's `cardType`) so the same three kinds read the same way
   // in both places — icons below the label breakpoint, matching that header.
   const kindTabs = (
-    <TabsList>
+    <TutorialPopover
+      entry={tutorial?.id === 'community-kind-tabs' ? tutorial : null}
+      nav={tutorialNav}
+      align="start"
+    >
+    <TabsList onPointerDownCapture={() => dismissIfShowing('community-kind-tabs')}>
       <TabsTrigger value="world" aria-label="Worlds" title="Worlds">
         <Earth className="h-5 w-5 min-[1040px]:hidden" />
         <span className="hidden min-[1040px]:inline">Worlds</span>
@@ -366,9 +398,15 @@ const CommunityCreationsBrowser = ({
         <span className="hidden min-[1040px]:inline">Dictionaries</span>
       </TabsTrigger>
     </TabsList>
+    </TutorialPopover>
   );
 
   const searchControl = (
+    <TutorialPopover
+      entry={tutorial?.id === 'community-search-prefixes' ? tutorial : null}
+      nav={tutorialNav}
+      align="start"
+    >
     <div className="relative flex-grow min-w-[200px]">
       <Search className="absolute left-2 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
       {/* `author:`/`tag:`/`status:` typed here become filter chips — see the hook's applySearchInput.
@@ -380,7 +418,7 @@ const CommunityCreationsBrowser = ({
           : `Search ${KIND_LABELS[browseKind].many.toLowerCase()}… or type author:, tag:, status:`}
         className="pl-8"
         value={searchQuery}
-        onChange={(e) => applySearchInput(e.target.value)}
+        onChange={(e) => { dismissIfShowing('community-search-prefixes'); applySearchInput(e.target.value); }}
         onKeyDown={(e) => {
           if (e.key === 'Enter' && !e.nativeEvent.isComposing) {
             e.preventDefault();
@@ -389,6 +427,7 @@ const CommunityCreationsBrowser = ({
         }}
       />
     </div>
+    </TutorialPopover>
   );
 
   const refreshControl = (
@@ -429,9 +468,18 @@ const CommunityCreationsBrowser = ({
   );
 
   const hiddenControl = (
+    // The tutorial wraps the Hidden popover rather than sitting inside it: its own Popover would otherwise
+    // become the context the trigger below binds to.
+    <TutorialPopover entry={hiddenTutorial} nav={tutorialNav} align="start">
+    <span className="inline-flex shrink-0">
     <Popover>
       <PopoverTrigger asChild>
-        <Button variant="outline" size="sm" className="shrink-0">
+        <Button
+          variant="outline"
+          size="sm"
+          className="shrink-0"
+          onPointerDownCapture={() => dismissIfShowing('community-hidden')}
+        >
           Hidden{hiddenWorldIds.length + hiddenTags.length + hiddenAuthors.length > 0 ? ` (${hiddenWorldIds.length + hiddenTags.length + hiddenAuthors.length})` : ''}
         </Button>
       </PopoverTrigger>
@@ -474,6 +522,8 @@ const CommunityCreationsBrowser = ({
         )}
       </PopoverContent>
     </Popover>
+    </span>
+    </TutorialPopover>
   );
 
   const updatesControl = (
@@ -489,6 +539,8 @@ const CommunityCreationsBrowser = ({
   // Hidden and updates-first ride along inside the bar: they narrow or reorder the same grid, and a second
   // row for two controls reads as a second, unrelated set of filters.
   const filterBar = (
+    <TutorialPopover entry={filterBarTutorial} nav={tutorialNav} align="start">
+    <div onPointerDownCapture={() => dismissIfShowing('community-filters')}>
     <CommunityFilterBar
       authorFilter={authorFilter}
       setAuthorFilter={setAuthorFilter}
@@ -506,6 +558,8 @@ const CommunityCreationsBrowser = ({
       {hiddenControl}
       {updatesControl}
     </CommunityFilterBar>
+    </div>
+    </TutorialPopover>
   );
 
   return (
@@ -559,13 +613,23 @@ const CommunityCreationsBrowser = ({
                   <div className="flex items-center gap-2">
                     {kindTabs}
                     {quarantineControl}
+                    <TutorialPopover entry={filtersToggleTutorial} nav={tutorialNav} align="end">
                     <CollapsibleTrigger asChild>
-                      <Button variant="outline" size="sm" className="ml-auto shrink-0 gap-1">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="ml-auto shrink-0 gap-1"
+                        onPointerDownCapture={() => {
+                          dismissIfShowing('community-filters');
+                          dismissIfShowing('community-hidden');
+                        }}
+                      >
                         <SlidersHorizontal className="h-4 w-4" />
                         Filters{activeFilterCount > 0 ? ` (${activeFilterCount})` : ''}
                         <ChevronDown className={`h-4 w-4 transition-transform ${filtersOpen ? 'rotate-180' : ''}`} />
                       </Button>
                     </CollapsibleTrigger>
+                    </TutorialPopover>
                   </div>
                 </>
               ) : (
@@ -643,6 +707,10 @@ const CommunityCreationsBrowser = ({
                       onLike={handleLike}
                       onQuarantine={setQuarantining}
                       onRelease={handleRelease}
+                      likeTutorial={
+                        tutorial?.id === 'community-like' && worldId === likeAnchorId ? tutorial : null
+                      }
+                      likeTutorialNav={tutorialNav}
                     />
                   );
                 })

@@ -13,6 +13,8 @@ import WorldStorageService from "@/services/WorldStorageService";
 import { UserAvatar } from "@/components/UserAvatar";
 import { RoleBadge } from "@/components/RoleBadge";
 import { canModerate, isStaff } from "@/lib/roles";
+import { TutorialPopover } from "@/components/TutorialPopover";
+import type { TutorialEntry, TutorialNav } from "@/lib/tutorials";
 
 interface RemoteWorldCardProps {
   world: WorldRecord;
@@ -34,6 +36,9 @@ interface RemoteWorldCardProps {
   onQuarantine?: (world: WorldRecord) => void;
   /** Lifts a quarantine. Admin surfaces only. */
   onRelease?: (world: WorldRecord) => void;
+  /** The like tutorial, when this is the card chosen to anchor it. */
+  likeTutorial?: TutorialEntry | null;
+  likeTutorialNav?: TutorialNav;
 }
 
 /** A single card in the community browser grid: thumbnail with a contextual download/hide overlay, plus title,
@@ -41,6 +46,7 @@ interface RemoteWorldCardProps {
 export function RemoteWorldCard({
   world, downloadState: dlState, downloadProgress, isAuthenticated, currentUser,
   onView, onHideWorld, onHideAuthor, onHideTag, onContextualDownload, onDelete, onLike, onQuarantine, onRelease,
+  likeTutorial, likeTutorialNav,
 }: RemoteWorldCardProps) {
   // Get the world ID (server uses _id)
   const worldId = world._id || world.id;
@@ -68,6 +74,16 @@ export function RemoteWorldCard({
     currentUser &&
     (world.author.id === currentUser.id ||
      world.author.username === currentUser.username);
+
+  const likeControl = (
+    <LikeButton
+      likes={world.likes || 0}
+      liked={world.liked}
+      // Static on your own listing, which the server refuses: liking it would make the count say how much
+      // somebody has published rather than how many people liked it.
+      onToggle={onLike && isAuthenticated && !isOwnedByUser ? (next) => onLike(world, next) : undefined}
+    />
+  );
 
   return (
     <WorldCardShell
@@ -152,14 +168,14 @@ export function RemoteWorldCard({
       {/* Three counts across the row: likes take the left where downloads used to sit, and downloads move
           to the middle rather than shrinking — three evenly spread numbers read as one set. */}
       <div className="grid grid-cols-3 items-center text-meta text-muted-foreground mb-2">
-        <LikeButton
-          likes={world.likes || 0}
-          liked={world.liked}
-          // Static on your own listing, which the server refuses: liking it would make the count say how
-          // much somebody has published rather than how many people liked it.
-          onToggle={onLike && isAuthenticated && !isOwnedByUser ? (next) => onLike(world, next) : undefined}
-          className="justify-self-start"
-        />
+        {likeTutorial && likeTutorialNav ? (
+          // A span carries the anchor ref: LikeButton renders a bare element and forwards none.
+          <TutorialPopover entry={likeTutorial} nav={likeTutorialNav} side="bottom" align="start">
+            <span className="justify-self-start">{likeControl}</span>
+          </TutorialPopover>
+        ) : (
+          <span className="justify-self-start">{likeControl}</span>
+        )}
         <span className="flex items-center gap-1 justify-self-center" title="Downloads">
           <Download className="h-3 w-3" /> {world.downloads || 0}
         </span>

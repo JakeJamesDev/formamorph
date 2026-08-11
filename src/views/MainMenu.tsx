@@ -94,6 +94,8 @@ import EntityEditorModal from "@/components/modals/EntityEditorModal";
 import { ModelDetailsModal } from "@/components/modals/ModelDetailsModal";
 import { AdminPanelDialog } from "@/components/menu/AdminPanelDialog";
 import { type ProfileTab } from "@/components/menu/profileTabs";
+import { TutorialPopover } from "@/components/TutorialPopover";
+import { useTutorial } from "@/lib/tutorials";
 import { UserAvatar } from "@/components/UserAvatar";
 import { UserName } from "@/components/UserName";
 import { badgeKind, UNREAD_MARK_STYLES } from "@/lib/unreadSeverity";
@@ -410,6 +412,16 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
   const [currentUser, setCurrentUser] = useState<WorldRecord | null>(null);
   const [showAuthDialog, setShowAuthDialog] = useState(false);
   const [showProfileDialog, setShowProfileDialog] = useState(false);
+
+  // The two footer circles explain themselves, and only ever one of them is on screen: the profile circle
+  // offers an account while signed out, the feedback circle appears once there is one.
+  const heldMenuTutorials = [
+    ...(!COMMUNITY_ENABLED || isAuthenticated ? ['main-menu-sign-in'] : []),
+    ...(!COMMUNITY_ENABLED || !isAuthenticated ? ['main-menu-feedback'] : []),
+  ];
+  const { active: menuTutorial, nav: menuTutorialNav, dismiss: dismissMenuTutorial } = useTutorial('mainMenu', {
+    held: heldMenuTutorials,
+  });
 
   // Publish modal open state; the publish form/handlers live in the PublishModal component.
   const [showPublishModal, setShowPublishModal] = useState(false);
@@ -1676,6 +1688,12 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
         {/* Left: user profile circle + app version (the version moves into the ⋯ menu on mobile). */}
         <div className="flex-1 flex items-center justify-start gap-2">
           {COMMUNITY_ENABLED && (
+            <TutorialPopover
+              entry={menuTutorial?.id === 'main-menu-sign-in' ? menuTutorial : null}
+              nav={menuTutorialNav}
+              side="top"
+              align="start"
+            >
             <button
               // A picture fills the circle edge to edge; an icon needs the padding around it. Both come
               // out 48px, so the footer doesn't shift when somebody signs in.
@@ -1683,7 +1701,10 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
                 'relative bg-secondary text-secondary-foreground rounded-full shadow-lg hover:bg-secondary/80 transition-colors',
                 isAuthenticated ? 'p-0' : 'p-3'
               )}
-              onClick={() => isAuthenticated ? setShowProfileDialog(true) : setShowAuthDialog(true)}
+              onClick={() => {
+                dismissMenuTutorial('main-menu-sign-in');
+                if (isAuthenticated) setShowProfileDialog(true); else setShowAuthDialog(true);
+              }}
               aria-label={
                 isAuthenticated
                   ? unreadWaiting > 0 ? `User Profile (${unreadWaiting} unread)` : "User Profile"
@@ -1712,13 +1733,20 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
                 </span>
               )}
             </button>
+            </TutorialPopover>
           )}
           {/* Reading the queue needs an account as much as filing does, so this only appears once signed
               in — the server refuses either way. */}
           {COMMUNITY_ENABLED && isAuthenticated && (
+            <TutorialPopover
+              entry={menuTutorial?.id === 'main-menu-feedback' ? menuTutorial : null}
+              nav={menuTutorialNav}
+              side="top"
+              align="start"
+            >
             <button
               className="relative p-3 bg-secondary text-secondary-foreground rounded-full shadow-lg hover:bg-secondary/80 transition-colors"
-              onClick={() => setShowFeedback(true)}
+              onClick={() => { dismissMenuTutorial('main-menu-feedback'); setShowFeedback(true); }}
               title={unreadBugs > 0 ? `Feedback (${unreadBugs} unread)` : "Feedback"}
               aria-label={unreadBugs > 0 ? `Feedback (${unreadBugs} unread)` : "Feedback"}
             >
@@ -1732,6 +1760,7 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
                 </span>
               )}
             </button>
+            </TutorialPopover>
           )}
           {!isMobile && (isDesktop() ? <UpdateVersionControl /> : <WebVersionChangelog />)}
         </div>

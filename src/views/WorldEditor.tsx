@@ -150,7 +150,7 @@ const WorldEditorInner = ({ onClose, embedded = false, backButton }: {
   };
 
   const { mode, advanced, setMode } = useEditorMode();
-  const { active: tutorial, dismiss } = useTutorial('worldEditor');
+  const { active: tutorial, nav: tutorialNav, dismiss } = useTutorial('worldEditor');
   const dismissTutorial = useCallback(() => { if (tutorial) dismiss(tutorial.id); }, [tutorial, dismiss]);
   const visibleTabs = useMemo(() => editorTabsFor(advanced), [advanced]);
   const [activeTab, setActiveTab] = useState("overview");
@@ -651,7 +651,7 @@ const WorldEditorInner = ({ onClose, embedded = false, backButton }: {
       >
         <Search className="h-4 w-4" />
       </Button>
-      <TutorialPopover entry={tutorial} onDismiss={dismissTutorial}>
+      <TutorialPopover entry={tutorial} nav={tutorialNav}>
         <ToggleGroup
           type="single"
           value={mode}
