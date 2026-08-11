@@ -11,7 +11,8 @@
 import { Compartment, EditorState, RangeSetBuilder, type Extension } from '@codemirror/state';
 import {
   EditorView, keymap, lineNumbers, placeholder as placeholderExt, highlightSpecialChars, drawSelection,
-  rectangularSelection, crosshairCursor, Decoration, ViewPlugin, type DecorationSet, type ViewUpdate,
+  rectangularSelection, crosshairCursor, tooltips, Decoration, ViewPlugin,
+  type DecorationSet, type ViewUpdate,
 } from '@codemirror/view';
 import {
   defaultKeymap, history, historyKeymap, indentLess, indentMore, isolateHistory, redo, redoDepth,
@@ -58,8 +59,25 @@ const editorTheme = EditorView.theme({
   // percentage height against that resolves to the content's own height and leaves dead space below it.
   '&': { flex: '1 1 auto', minHeight: 0, fontSize: 'inherit', backgroundColor: 'transparent' },
   '&.cm-focused': { outline: 'none' },
-  '.cm-scroller': { flex: '1 1 auto', fontFamily: 'inherit', lineHeight: '1.5', overflow: 'auto' },
-  '.cm-content': { padding: '0.5rem 0', caretColor: 'hsl(var(--foreground))' },
+  '.cm-scroller': {
+    flex: '1 1 auto',
+    fontFamily: 'inherit',
+    lineHeight: '1.5',
+    overflow: 'auto',
+    // `!important` because CodeMirror's base theme marks its own `flex-start` that way. Stretching the
+    // row is what makes the code area fill a field taller than what has been typed into it.
+    alignItems: 'stretch !important',
+  },
+  '.cm-content': {
+    padding: '0.5rem 0',
+    caretColor: 'hsl(var(--foreground))',
+    // The rule between gutter and code is drawn here rather than as the gutter's right border: the
+    // gutter is only ever as tall as the code it holds and won't stretch, so its border stopped
+    // mid-box. This edge sits at exactly the same place and runs the height of the field.
+    borderLeftWidth: '1px',
+    borderLeftStyle: 'solid',
+    borderLeftColor: 'hsl(var(--border))',
+  },
   '.cm-line': { padding: '0 0.75rem' },
   '.cm-cursor, .cm-dropCursor': { borderLeftColor: 'hsl(var(--foreground))' },
   '&.cm-focused .cm-selectionBackground, .cm-selectionBackground, ::selection':
@@ -67,7 +85,8 @@ const editorTheme = EditorView.theme({
   '.cm-gutters': {
     backgroundColor: 'transparent',
     color: 'hsl(var(--muted-foreground))',
-    borderRight: '1px solid hsl(var(--border))',
+    // CodeMirror draws its own rule here; the one that runs the full height is `.cm-content`'s left edge.
+    borderRight: 'none',
   },
   '.cm-activeLineGutter': { backgroundColor: 'transparent' },
   '.cm-matchingBracket, &.cm-focused .cm-matchingBracket': {
@@ -130,7 +149,8 @@ export interface CodeSession {
   redo: () => void;
   canUndo: () => boolean;
   canRedo: () => boolean;
-  setLineNumbers: (show: boolean) => void;
+  /** Show the margin of lint marks beside the line numbers. Full screen only — it costs a column. */
+  setLintGutter: (show: boolean) => void;
   /** The world's stat names, offered as string-literal completions. Re-read on every keystroke. */
   setStatNames: (names: readonly string[]) => void;
   focus: () => void;
@@ -216,7 +236,11 @@ export function createCodeSession(options: CodeSessionOptions): CodeSession {
           icons: false,
         }),
         statCodeLinter,
-        lintGutter(),
+        // A completion list or a diagnostic is taller than the field it belongs to, so it is positioned
+        // against the window instead — otherwise the box, the panel it scrolls in, or the dialog around
+        // it cuts the popup off wherever the caret happens to be low.
+        tooltips({ position: 'fixed', parent: typeof document === 'undefined' ? undefined : document.body }),
+        lineNumbers(),
         gutter.of([]),
         tabKeys,
         // `autocompletion()` installs `completionKeymap` at the top precedence itself, which is what puts
@@ -266,8 +290,8 @@ export function createCodeSession(options: CodeSessionOptions): CodeSession {
     canUndo: () => undoDepth(view.state) > 0,
     canRedo: () => redoDepth(view.state) > 0,
     setStatNames(names) { statNames = names; },
-    setLineNumbers(show) {
-      view.dispatch({ effects: gutter.reconfigure(show ? lineNumbers() : []) });
+    setLintGutter(show) {
+      view.dispatch({ effects: gutter.reconfigure(show ? lintGutter() : []) });
     },
     focus() { view.focus(); },
     destroy() { view.destroy(); },

@@ -119,7 +119,7 @@ function CodeAreaBody({
       // on-screen keyboard eating most of `--app-h` a zero minimum lets it collapse to nothing.
       // Keeping a usable minimum makes the pane around it scroll instead.
       className={cn(
-        'font-mono text-label flex flex-col flex-1 min-h-[6rem] overflow-hidden rounded-md border border-input bg-transparent',
+        'font-mono text-label flex flex-col flex-1 min-h-[6rem] overflow-hidden rounded-md border border-input bg-background',
         'focus-within:ring-1 focus-within:ring-ring',
       )}
       // The row count the field was asked for, as a floor rather than a height: a flex column would
@@ -267,8 +267,9 @@ export function CodeArea(props: CodeAreaProps) {
 
   // The parent stays the single owner of the text: anything it writes lands in the editor here.
   useEffect(() => { session?.setValue(props.value); }, [session, props.value]);
-  // A gutter is worth its width only where there is width to spare.
-  useEffect(() => { session?.setLineNumbers(morph.mounted); }, [session, morph.mounted]);
+  // A second gutter column is worth its width only where there is width to spare; inline, a problem is
+  // read by hovering its squiggle.
+  useEffect(() => { session?.setLintGutter(morph.mounted); }, [session, morph.mounted]);
   // Stats are renamed and added while a code field is open, so the completions follow the list.
   useEffect(() => { session?.setStatNames(props.statNames ?? []); }, [session, props.statNames]);
 

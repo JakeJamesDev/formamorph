@@ -10,17 +10,12 @@ export interface InsertSnippet {
   select?: string;
 }
 
-/** The six story-clock consts stat code may read, plus the two lookups every template needs. Offered as
- *  a menu because they can't be discovered from the field itself — nothing there hints they exist. */
+/** The two lookups every template needs. Whole expressions rather than names, which is what keeps them
+ *  here: the completion popup offers the sandbox's variables as you type, but it can't write a `find`
+ *  call around one. */
 export const STAT_CODE_SNIPPETS: InsertSnippet[] = [
   { label: 'Another stat’s value', text: 'stats.find(s => s.name === "Health")?.value ?? 0', select: 'Health' },
   { label: 'This stat’s value', text: 'stats.find(s => s.id === currentStatId)?.value ?? 0' },
-  { label: 'deltaHours — hours this turn took', text: 'deltaHours' },
-  { label: 'elapsedHours — hours so far', text: 'elapsedHours' },
-  { label: 'day — day at end of turn', text: 'day' },
-  { label: 'daypart — daypart at end of turn', text: 'daypart' },
-  { label: 'startDay — day at start of turn', text: 'startDay' },
-  { label: 'startDaypart — daypart at start of turn', text: 'startDaypart' },
 ];
 
 /** The slot forms a template may declare. Only offered in the template editor — a stat's own code has no

@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { statCodeCompletions, statCodeDiagnostics } from './statCodeAnalysis';
+import { statCodeCompletions, statCodeDiagnostics, summarizeProblems } from './statCodeAnalysis';
 import { BUILT_IN_TEMPLATES } from './statCodeTemplates';
 
 /** Completions for a caret written as `|` in the doc, so each case reads as the thing being typed. */
@@ -85,6 +85,29 @@ return scale(total) + min + max;`)).toEqual([]);
 
   it('treats the same slot syntax as real code where slots do not exist', () => {
     expect(messages('return {{a:number=1}};')).not.toEqual([]);
+  });
+});
+
+describe('summarizeProblems', () => {
+  const at = (severity: 'error' | 'warning') => ({ from: 0, to: 1, severity, message: '' });
+
+  it('says nothing when the reader found nothing, so a clean run stays clean', () => {
+    expect(summarizeProblems([])).toBeNull();
+  });
+
+  it('counts the two severities apart', () => {
+    expect(summarizeProblems([at('error'), at('warning')])).toBe('1 error, 1 warning in this code');
+  });
+
+  it('names only the severity that occurred', () => {
+    expect(summarizeProblems([at('warning')])).toBe('1 warning in this code');
+    expect(summarizeProblems([at('error'), at('error')])).toBe('2 errors in this code');
+  });
+
+  // The line rides beside "Result: 42", where a successful run is exactly what makes it worth saying.
+  it('reports on code that runs perfectly well but never returns', () => {
+    expect(summarizeProblems(statCodeDiagnostics('const doubled = stats[0].value * 2;')))
+      .toBe('1 warning in this code');
   });
 });
 

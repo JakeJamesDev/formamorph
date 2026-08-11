@@ -94,9 +94,9 @@ describe('CodeArea', () => {
     await user.keyboard('{ArrowLeft>5/}');
 
     await user.click(screen.getByLabelText('Variable'));
-    await user.click(screen.getByText('elapsedHours — hours so far'));
+    await user.click(screen.getByText('This stat’s value'));
 
-    expect(owned()).toBe('return elapsedHours + 1;');
+    expect(owned()).toBe('return stats.find(s => s.id === currentStatId)?.value ?? 0 + 1;');
   });
 
   it('leaves the part of a slot the author should rename selected, ready to type over', async () => {
@@ -118,8 +118,8 @@ describe('CodeArea', () => {
     await user.click(await editor());
     await user.keyboard('return ');
     await user.click(screen.getByLabelText('Variable'));
-    await user.click(screen.getByText('day — day at end of turn'));
-    expect(owned()).toBe('return day');
+    await user.click(screen.getByText('This stat’s value'));
+    expect(owned()).toBe('return stats.find(s => s.id === currentStatId)?.value ?? 0');
 
     await user.click(screen.getByLabelText('Undo'));
     expect(owned()).toBe('return ');
@@ -185,16 +185,43 @@ describe('CodeArea', () => {
     expect(owned()).toBe('');
   });
 
-  it('spends a gutter only where there is width for it', async () => {
+  it('numbers the lines in both views, and spends the second gutter column only in full screen', async () => {
     const user = userEvent.setup();
     render(<Harness />);
     const field = await editor();
-    expect(field.closest('.cm-editor')?.querySelector('.cm-lineNumbers')).toBeNull();
+    const inline = field.closest('.cm-editor')!;
+    // A line number is worth its width anywhere — an error's line number has to mean something. The
+    // margin of lint marks is not: inline, a problem is read by hovering its squiggle.
+    expect(inline.querySelector('.cm-lineNumbers')).toBeTruthy();
+    expect(inline.querySelector('.cm-gutter-lint')).toBeNull();
 
     await user.click(screen.getByLabelText('Edit full screen'));
     await waitFor(() => expect(
-      fields()[0].closest('.cm-editor')?.querySelector('.cm-lineNumbers'),
+      fields()[0].closest('.cm-editor')?.querySelector('.cm-gutter-lint'),
     ).toBeTruthy());
+    expect(fields()[0].closest('.cm-editor')?.querySelector('.cm-lineNumbers')).toBeTruthy();
+  });
+
+  // Whether the rule actually reaches the bottom is a layout fact, and jsdom has no layout — that part
+  // is browser-verified. What can be guarded here is which element draws it: the gutter is only ever as
+  // tall as the code it holds, so a rule on its right border stops mid-box.
+  it('draws the rule beside the gutter on the code area, which fills the box', async () => {
+    render(<Harness initial="return 1;" />);
+    const field = await editor();
+    expect(getComputedStyle(field).borderLeftStyle).toBe('solid');
+  });
+
+  it('positions the completion popup against the window, so no box it sits in can clip it', async () => {
+    const user = userEvent.setup();
+    render(<Harness />);
+    await user.click(await editor());
+    await user.keyboard('return elap');
+
+    await waitFor(() => expect(document.querySelector('.cm-tooltip-autocomplete')).toBeTruthy());
+    const tooltip = document.querySelector('.cm-tooltip-autocomplete') as HTMLElement;
+    expect(tooltip.style.position).toBe('fixed');
+    // Parented outside the field, so the field's own `overflow-hidden` never reaches it.
+    expect(tooltip.closest('.cm-editor')).toBeNull();
   });
 
   it('grows the Edit | Preview pair only when there is something to preview', async () => {
@@ -323,12 +350,29 @@ describe('CodeArea', () => {
     );
   });
 
-  it('leaves valid code unmarked', async () => {
-    render(<Harness initial="return elapsedHours;" />);
+  it('marks a warning as a warning, leaving the names it recognizes unflagged', async () => {
+    render(<Harness initial="const total = elapsedHours * 2;" />);
     const field = await editor();
-    // Long enough for the linter's own delay to have run and found nothing.
-    await waitFor(() => expect(field.closest('.cm-editor')?.querySelector('.cm-gutter-lint')).toBeTruthy());
-    await waitFor(() => expect(field.querySelector('.cm-lintRange-error')).toBeNull(), { timeout: 3000 });
+    await waitFor(
+      () => expect(field.querySelector('.cm-lintRange-warning')).toBeTruthy(),
+      { timeout: 3000 },
+    );
+    expect(field.querySelector('.cm-lintRange-error')).toBeNull();
+  });
+
+  // Two fields, so "nothing is underlined" is a finding rather than the linter not having run yet: the
+  // flawed one going red is the proof that the pass happened, and the sound one is still clean after it.
+  it('leaves code the sandbox can run entirely unmarked', async () => {
+    render(
+      <>
+        <Harness initial="return elapsedHours;" />
+        <Harness initial="return nope;" />
+      </>,
+    );
+    await waitFor(() => expect(fields()).toHaveLength(2));
+    const [sound, flawed] = fields();
+    await waitFor(() => expect(flawed.querySelector('.cm-lintRange-error')).toBeTruthy(), { timeout: 3000 });
+    expect(sound.querySelectorAll('[class*="cm-lintRange"]')).toHaveLength(0);
   });
 
   it('puts history and the view control together on the right, after what gets inserted', async () => {

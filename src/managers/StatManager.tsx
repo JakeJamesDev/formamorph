@@ -1,5 +1,5 @@
 import { randomUUID } from "@/lib/uuid";
-import { useState, useEffect, useMemo, useCallback } from "react";
+import { useState, useMemo, useCallback } from "react";
 import { useGameData } from "@/contexts/GameDataContext";
 import { useEditingDraft } from "@/lib/useEditingDraft";
 import { Input } from "@/components/ui/input";
@@ -14,7 +14,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { CollapsibleSection } from "@/components/ui/collapsible-section";
+import { HelpButton } from "@/components/HelpButton";
 import { executeStatCode } from "@/lib/statCodeExecutor";
 import { StatCodeTemplateDialog } from "@/components/modals/StatCodeTemplateDialog";
 import { CodeArea } from "@/components/prompt/CodeArea";
@@ -42,9 +42,10 @@ const StatManager = ({ stat }: { stat: Stat }) => {
     threshold: "",
     description: "",
   });
-  const [codeOpen, setCodeOpen] = useState(stat?.code ? true : false);
   const [codeResult, setCodeResult] = useState<number | null>(null);
   const [codeError, setCodeError] = useState<string | null>(null);
+  /** What the editor's own reader found, phrased for the test row. Null when it found nothing. */
+  const [codeProblems, setCodeProblems] = useState<string | null>(null);
   const [isTestingCode, setIsTestingCode] = useState(false);
   const [templatesOpen, setTemplatesOpen] = useState(false);
 
@@ -66,11 +67,12 @@ const StatManager = ({ stat }: { stat: Stat }) => {
     [stats],
   );
 
-  // Open the code section by default when the selected stat carries code (the draft sync itself is
-  // handled by useEditingDraft).
-  useEffect(() => {
-    if (stat?.code && stat.code.trim() !== "") setCodeOpen(true);
-  }, [stat]);
+  /** Drop what the last test said. Editing the code makes every part of that report stale together. */
+  const clearTestReport = useCallback(() => {
+    setCodeResult(null);
+    setCodeError(null);
+    setCodeProblems(null);
+  }, []);
 
   const handleChange = (field: string, value: unknown) => {
     apply({ [field]: value } as EditingStat);
@@ -381,110 +383,91 @@ const StatManager = ({ stat }: { stat: Stat }) => {
       </div>
       )}
 
-      {/* Code Section */}
+      {/* Code Section — a plain section like its siblings; the `?` carries what it needs explaining. */}
       {isNumeric && advanced && (
-        <CollapsibleSection
-          open={codeOpen}
-          onOpenChange={setCodeOpen}
-          icon={<Code className="h-4 w-4" />}
-          title="Dynamic Value Calculation (Optional)"
-        >
-            <p className="text-helper text-muted-foreground">
-              Write JavaScript code to dynamically calculate this stat&apos;s value
-              based on other stats and the story clock. The code should return a number. You have
-              access to the &apos;stats&apos; array containing all stats, plus:
-            </p>
+        <div className="space-y-2">
+          <div className="flex items-center gap-2">
+            <Code className="h-4 w-4 flex-shrink-0 text-muted-foreground" />
+            <Label>Dynamic Value Calculation (Optional)</Label>
+            <HelpButton topicId="worldEditor.statCode" className="h-6 w-6" />
+            <Button variant="outline" size="sm" className="ml-auto" onClick={() => setTemplatesOpen(true)}>
+              <LayoutTemplate className="h-4 w-4 mr-1" />
+              Templates
+            </Button>
+          </div>
 
-            <ul className="text-meta text-muted-foreground space-y-1 pl-4">
-              <li><code>deltaHours</code> — story hours this turn took (1 with the in-world clock off)</li>
-              <li><code>elapsedHours</code> — total story hours so far, counting this turn</li>
-              <li><code>day</code> / <code>daypart</code> — where the story stands at the <em>end</em> of the turn</li>
-              <li><code>startDay</code> / <code>startDaypart</code> — where it stood at the <em>start</em></li>
-            </ul>
+          <p className="text-helper text-muted-foreground">
+            Code that returns a number replaces this stat&apos;s value each turn.
+          </p>
 
-            <p className="text-meta text-muted-foreground">
-              Dayparts are <code>night</code>, <code>dawn</code>, <code>morning</code>, <code>midday</code>,{" "}
-              <code>afternoon</code>, <code>evening</code>. Code that mentions any of these variables re-runs
-              every turn; other code only re-runs when a stat changes.
-            </p>
+          <StatCodeTemplateDialog
+            open={templatesOpen}
+            onOpenChange={setTemplatesOpen}
+            stats={stats}
+            currentStatId={stat.id}
+            hasExistingCode={!!editingStat.code?.trim()}
+            onInsert={(code) => handleChange("code", code)}
+          />
 
-            <div className="flex justify-end">
-              <Button variant="outline" size="sm" onClick={() => setTemplatesOpen(true)}>
-                <LayoutTemplate className="h-4 w-4 mr-1" />
-                Templates
-              </Button>
-            </div>
-
-            <StatCodeTemplateDialog
-              open={templatesOpen}
-              onOpenChange={setTemplatesOpen}
-              stats={stats}
-              currentStatId={stat.id}
-              hasExistingCode={!!editingStat.code?.trim()}
-              onInsert={(code) => handleChange("code", code)}
-            />
-
-            <CodeArea
-              value={editingStat.code || ""}
-              onChange={(code) => handleChange("code", code)}
-              ariaLabel="Stat code"
-              statNames={statNames}
-              // Its caption is the section heading, which full screen leaves behind — so the field names
-              // itself in the toolbar and stays labeled in both states.
-              label="Code"
-              placeholder="// Example: Return the average of Health and Strength stats
+          <CodeArea
+            value={editingStat.code || ""}
+            onChange={(code) => { clearTestReport(); handleChange("code", code); }}
+            ariaLabel="Stat code"
+            statNames={statNames}
+            // Its caption is the section heading, which full screen leaves behind — so the field names
+            // itself in the toolbar and stays labeled in both states.
+            label="Code"
+            placeholder="// Example: Return the average of Health and Strength stats
 const health = stats.find(s => s.name === 'Health')?.value || 0;
 const strength = stats.find(s => s.name === 'Strength')?.value || 0;
 return (health + strength) / 2;"
-              rows={6}
-            />
+            rows={6}
+          />
 
-            <div className="flex justify-between items-center">
-              <Button
-                onClick={async () => {
-                  setIsTestingCode(true);
-                  setCodeResult(null);
-                  setCodeError(null);
+          <div className="flex justify-between items-center gap-2">
+            <Button
+              onClick={async () => {
+                setIsTestingCode(true);
+                clearTestReport();
 
-                  try {
-                    const result = await executeStatCode(
-                      editingStat.code ?? '',
-                      stats,
-                      editingStat as Stat,
-                    );
-                    if (result.error) {
-                      setCodeError(result.error);
-                    } else if (result.value !== null) {
-                      setCodeResult(result.value);
-                    }
-                  } catch (error) {
-                    setCodeError((error as Error).message);
-                  } finally {
-                    setIsTestingCode(false);
+                const code = editingStat.code ?? '';
+                try {
+                  // Only the editor's chunk holds the reader, and CodeArea fetches that chunk on
+                  // demand — so this stays off the world editor's own bundle.
+                  const { statCodeDiagnostics, summarizeProblems } = await import('@/lib/statCodeAnalysis');
+                  setCodeProblems(summarizeProblems(statCodeDiagnostics(code)));
+                } catch {
+                  // What the run itself found is the point; the count is what the editor adds to it.
+                }
+
+                try {
+                  const result = await executeStatCode(code, stats, editingStat as Stat);
+                  if (result.error) {
+                    setCodeError(result.error);
+                  } else if (result.value !== null) {
+                    setCodeResult(result.value);
                   }
-                }}
-                disabled={isTestingCode || !editingStat.code}
-                variant="outline"
-              >
-                {isTestingCode ? "Testing..." : "Test Code"}
-              </Button>
+                } catch (error) {
+                  setCodeError((error as Error).message);
+                } finally {
+                  setIsTestingCode(false);
+                }
+              }}
+              disabled={isTestingCode || !editingStat.code}
+              variant="outline"
+            >
+              {isTestingCode ? "Testing..." : "Test Code"}
+            </Button>
 
-              {codeResult !== null && (
-                <div className="text-success">Result: {codeResult}</div>
-              )}
-
-              {codeError && (
-                <div className="text-destructive text-label">Error: {codeError}</div>
-              )}
+            <div className="min-w-0 text-right">
+              {codeResult !== null && <div className="text-success">Result: {codeResult}</div>}
+              {codeError && <div className="text-destructive text-label">Error: {codeError}</div>}
+              {/* Always beside what the run reported, never instead of it: a run says what the code did
+                  this once, which is silent about a typo on a branch it didn't take. */}
+              {codeProblems && <div className="text-warning text-label">{codeProblems}</div>}
             </div>
-
-            <p className="text-meta text-muted-foreground">
-              Note: When code is provided, it will override the manual value
-              setting. Leave empty to use the manual value. AI can&apos;t modify
-              stats with code (but it can see the stat value and desc). Test Code runs as a
-              one-hour turn on day one.
-            </p>
-        </CollapsibleSection>
+          </div>
+        </div>
       )}
     </div>
   );
