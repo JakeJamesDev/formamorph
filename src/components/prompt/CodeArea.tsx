@@ -7,6 +7,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { TOOLBAR_BTN } from '@/components/prompt/toolbarStyles';
 import { resolveLayout, usePromptSplitMode, useContainerWidth, MIN_PANE_WIDTH } from '@/lib/promptLayout';
+import { useMorphFullscreen } from '@/lib/useMorphFullscreen';
 import { cn } from '@/lib/utils';
 import {
   canRedo, canUndo, commitHistory, initHistory, redoHistory, undoHistory, type HistoryState,
@@ -75,8 +76,14 @@ interface CodeAreaProps {
 /** Toolbar + textarea. Split out so the fullscreen overlay can mount a second copy against the same
  *  value without the outer component recursing into itself. */
 function CodeAreaBody({
-  value, onChange, ariaLabel, placeholder, label, slots, preview, className, rows = 8, fullscreen, onToggleFullscreen,
-}: CodeAreaProps & { fullscreen: boolean; onToggleFullscreen: () => void }) {
+  value, onChange, ariaLabel, placeholder, label, slots, preview, className, rows = 8, fullscreen,
+  onToggleFullscreen, expose,
+}: CodeAreaProps & {
+  fullscreen: boolean;
+  onToggleFullscreen: () => void;
+  /** The inline copy reports its own field up, so full screen knows which box to grow out of. */
+  expose?: (element: HTMLTextAreaElement | null) => void;
+}) {
   const areaRef = useRef<HTMLTextAreaElement | null>(null);
   const [measureRef, containerWidth] = useContainerWidth();
   const [splitMode, setSplitMode] = usePromptSplitMode();
@@ -139,7 +146,7 @@ function CodeAreaBody({
 
   const editSurface = (
     <Textarea
-      ref={areaRef}
+      ref={(element) => { areaRef.current = element; expose?.(element); }}
       value={value}
       onChange={(event) => onChange(event.target.value)}
       placeholder={placeholder}
@@ -238,19 +245,39 @@ function CodeAreaBody({
  * away from underneath the author.
  */
 export function CodeArea(props: CodeAreaProps) {
-  const [fullscreen, setFullscreen] = useState(false);
-  const toggle = () => setFullscreen((f) => !f);
+  const sourceRef = useRef<HTMLTextAreaElement | null>(null);
+  const morph = useMorphFullscreen(sourceRef);
 
   return (
     <>
-      <CodeAreaBody {...props} fullscreen={false} onToggleFullscreen={toggle} />
-      <Dialog open={fullscreen} onOpenChange={setFullscreen}>
+      <CodeAreaBody
+        {...props}
+        fullscreen={false}
+        onToggleFullscreen={morph.toggle}
+        expose={(element) => { sourceRef.current = element; }}
+      />
+      <Dialog open={morph.mounted} onOpenChange={(next) => { if (!next) morph.close(); }}>
         <DialogContent
+          ref={morph.boxRef}
+          unanimated
           aria-describedby={undefined}
-          className={cn('flex flex-col', dialogFullHeight, 'max-w-none w-screen left-0 translate-x-0 rounded-none')}
+          className={cn(
+            'flex flex-col overflow-hidden',
+            dialogFullHeight,
+            'max-w-none w-screen left-0 translate-x-0 rounded-none',
+          )}
         >
-          <DialogHeader><DialogTitle>{props.ariaLabel}</DialogTitle></DialogHeader>
-          <CodeAreaBody {...props} className="flex-1 min-h-0" fullscreen onToggleFullscreen={toggle} />
+          {/* Fades in over the growing box rather than being scaled with it, which would read as the text
+              stretching back to size. */}
+          <div className={cn('flex flex-col flex-1 min-h-0 gap-4', morph.contentClassName)}>
+            <DialogHeader><DialogTitle>{props.ariaLabel}</DialogTitle></DialogHeader>
+            <CodeAreaBody
+              {...props}
+              className="flex-1 min-h-0"
+              fullscreen
+              onToggleFullscreen={morph.close}
+            />
+          </div>
         </DialogContent>
       </Dialog>
     </>

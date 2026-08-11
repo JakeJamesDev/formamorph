@@ -16,6 +16,37 @@ const classesFor = (shell: string) => {
   return screen.getByLabelText('shell').className.split(/\s+/);
 };
 
+describe('the stock open animation', () => {
+  const contentClasses = (unanimated?: boolean) => {
+    render(
+      <Dialog open>
+        <DialogContent hideClose unanimated={unanimated} aria-label="box" aria-describedby={undefined}>
+          <DialogTitle className="sr-only">box</DialogTitle>
+          body
+        </DialogContent>
+      </Dialog>,
+    );
+    return screen.getByLabelText('box').className.split(/\s+/);
+  };
+
+  it('is what every dialog gets by default', () => {
+    const classes = contentClasses();
+    expect(classes).toContain('data-[state=open]:zoom-in-95');
+    expect(classes).toContain('data-[state=open]:animate-in');
+  });
+
+  it('is dropped entirely when the caller animates the box itself', () => {
+    // A zoom left in place rewrites `transform` every frame, so a caller's own FLIP would be erased as
+    // fast as it was written and the box would jump rather than travel.
+    const classes = contentClasses(true);
+    expect(classes.some(c => c.includes('zoom-in-95'))).toBe(false);
+    expect(classes.some(c => c.includes('animate-in'))).toBe(false);
+    expect(classes.some(c => c.includes('slide-in'))).toBe(false);
+    // The frame itself is untouched — only the animation goes.
+    expect(classes).toContain('bg-background');
+  });
+});
+
 describe('full-height dialog shells anchor to the top', () => {
   it('drops the centering a normal dialog uses', () => {
     const classes = classesFor(dialogFullHeight);
