@@ -193,9 +193,9 @@ describe('settings mode', () => {
     const { unmount } = openSettings('simple');
     await user.click(screen.getByRole('tab', { name: 'Accessibility' }));
     const simpleRows = screen.getAllByRole('checkbox').length + screen.getAllByRole('combobox').length;
-    expect(screen.queryByRole('button', { name: 'Restore default worlds' })).toBeNull();
-    expect(screen.queryByRole('button', { name: 'Clear cached images' })).toBeNull();
-    expect(screen.queryByRole('button', { name: 'Reset tutorials' })).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Restore Default Worlds' })).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Clear Cached Images' })).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Reset Tutorials' })).toBeNull();
     // Autosave is a setting, not a put-it-back, so it stays.
     expect(screen.getByText('Autosave')).toBeTruthy();
     unmount();
@@ -204,8 +204,8 @@ describe('settings mode', () => {
     await user.click(screen.getByRole('tab', { name: 'Accessibility' }));
     // Every reading and choice option Advanced has, Simple has too.
     expect(screen.getAllByRole('checkbox').length + screen.getAllByRole('combobox').length).toBe(simpleRows);
-    expect(screen.getByRole('button', { name: 'Restore default worlds' })).toBeTruthy();
-    expect(screen.getByRole('button', { name: 'Clear cached images' })).toBeTruthy();
-    expect(screen.getByRole('button', { name: 'Reset tutorials' })).toBeTruthy();
+    expect(screen.getByRole('button', { name: 'Restore Default Worlds' })).toBeTruthy();
+    expect(screen.getByRole('button', { name: 'Clear Cached Images' })).toBeTruthy();
+    expect(screen.getByRole('button', { name: 'Reset Tutorials' })).toBeTruthy();
   });
 });
