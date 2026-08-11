@@ -7,7 +7,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Trash2, Code } from "lucide-react";
+import { Trash2, Code, LayoutTemplate } from "lucide-react";
 import {
   Select,
   SelectContent,
@@ -17,6 +17,7 @@ import {
 } from "@/components/ui/select";
 import { CollapsibleSection } from "@/components/ui/collapsible-section";
 import { executeStatCode } from "@/lib/statCodeExecutor";
+import { StatCodeTemplateDialog } from "@/components/modals/StatCodeTemplateDialog";
 import { MultiSelect } from "@/components/ui/multi-select";
 import { PlaceholderNameField } from "@/components/prompt/PlaceholderField";
 import { useBodyMorphSources } from "@/lib/useBodyMorphNames";
@@ -45,6 +46,7 @@ const StatManager = ({ stat }: { stat: Stat }) => {
   const [codeResult, setCodeResult] = useState<number | null>(null);
   const [codeError, setCodeError] = useState<string | null>(null);
   const [isTestingCode, setIsTestingCode] = useState(false);
+  const [templatesOpen, setTemplatesOpen] = useState(false);
 
   const writeStat = useCallback((next: EditingStat) => updateStat(next as Stat), [updateStat]);
   const { draft: editingStat, apply } = useEditingDraft<EditingStat>(stat, writeStat, normalizeStat);
@@ -398,6 +400,21 @@ const StatManager = ({ stat }: { stat: Stat }) => {
               <code>afternoon</code>, <code>evening</code>. Code that mentions any of these variables re-runs
               every turn; other code only re-runs when a stat changes.
             </p>
+
+            <div className="flex justify-end">
+              <Button variant="outline" size="sm" onClick={() => setTemplatesOpen(true)}>
+                <LayoutTemplate className="h-4 w-4 mr-1" />
+                Templates
+              </Button>
+            </div>
+
+            <StatCodeTemplateDialog
+              open={templatesOpen}
+              onOpenChange={setTemplatesOpen}
+              stats={stats}
+              hasExistingCode={!!editingStat.code?.trim()}
+              onInsert={(code) => handleChange("code", code)}
+            />
 
             <Textarea
               value={editingStat.code || ""}
