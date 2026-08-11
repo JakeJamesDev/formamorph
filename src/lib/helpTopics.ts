@@ -294,11 +294,27 @@ They exist to give the story a memory with consequences. Prose alone drifts; a s
 - **Stat Descriptors** turn a number into a word. **Threshold % is a percentage of the way from Min to Max, not a raw value**, and the *first* descriptor whose threshold the stat is at or below wins — so list them low to high, or the wrong one matches.
 - **Prevent AI Changes** locks a stat against the AI in one direction. Useful for anything only your world's rules should move.
 - **Body Sliders** bind a body morph to the stat, so its value drives the slider from Min to Max.
-- **Dynamic Value Calculation** replaces the value with the result of a small script — see below.
+- **Dynamic Value Calculation** replaces the value with the result of a small script that runs each turn. It has a **?** of its own beside it.
 
-**Calculated stats.** A stat can compute itself from the others: write JavaScript that returns a number, and it recalculates each turn instead of using Initial Value. **Test Code** runs it right there, as a one-hour turn on day one. Your script sees a read-only copy of every stat (name, description, min, max, value, regen) and nothing else — it can't reach the page or the network. A calculated stat ignores the AI entirely: whatever it writes gets recomputed away, though it still *reads* the value.
+**Simple mode hides** Stat Descriptors, Prevent AI Changes and Dynamic Value Calculation. Switch the editor to Advanced to use them.
 
-**Scripts can read the clock.** Alongside the stats, your script gets six values describing where the story stands in time:
+Start with two or three stats that the story would genuinely turn on. Every stat you add spends context on every turn, whether it matters to the scene or not.`,
+  },
+  'worldEditor.statCode': {
+    title: 'Dynamic Value Calculation',
+    wikiPage: 'StatCodeGuide',
+    body: `A stat can compute itself from the others. Write JavaScript that **returns a number**, and the stat recalculates each turn instead of using its Initial Value. Leave the box empty and the manual value stands.
+
+**Test Code** runs your script right there and shows the number it produced, as a one-hour turn on day one. It's the ground truth — the underlines in the editor are advice given without running anything.
+
+**What your script can reach.** A read-only copy of every stat and nothing else: no page, no network, no other stat's code. Each one carries \`id\`, \`name\`, \`type\`, \`description\`, \`min\`, \`max\`, \`value\` and \`regen\`. \`stats\` is the list; \`currentStatId\` is the id of the stat you're editing.
+
+\`\`\`js
+const health = stats.find(s => s.name === 'Health')?.value ?? 0;
+return health / 2;
+\`\`\`
+
+**It can also read the clock.** Six values describe where the story stands in time:
 
 | | |
 |---|---|
@@ -309,13 +325,13 @@ They exist to give the story a memory with consequences. Prose alone drifts; a s
 | \`startDay\` | Day number at the **start** of the turn |
 | \`startDaypart\` | Time of day at the **start** of the turn |
 
-Both ends are given because a turn spans time: an eight-hour sleep begins in the afternoon and ends at night. Dayparts are \`night\`, \`dawn\`, \`morning\`, \`midday\`, \`afternoon\`, \`evening\`.
+Both ends are given because a turn spans time: an eight-hour sleep begins in the afternoon and ends at night. Dayparts are \`night\`, \`dawn\`, \`morning\`, \`midday\`, \`afternoon\`, \`evening\`. With **Measured Clock** off, \`deltaHours\` is simply \`1\`.
 
-That's what makes a per-hour drain (\`current + 2 * deltaHours\`) or a stat that only climbs after dark possible. With **Measured Clock** off, \`deltaHours\` is simply \`1\`. One catch: a script mentioning any of these re-runs **every** turn, since time passes every turn — a script that mentions none of them still runs only when a stat changes.
+That's what makes a per-hour drain (\`current + 2 * deltaHours\`) or a stat that only climbs after dark possible. One catch: a script mentioning any of these re-runs **every** turn, since time passes every turn — a script that mentions none of them runs only when a stat changes.
 
-**Simple mode hides** Stat Descriptors, Prevent AI Changes and Dynamic Value Calculation. Switch the editor to Advanced to use them.
+**A calculated stat ignores the AI.** Whatever the AI writes gets recomputed away, though it still *reads* the value and description normally.
 
-Start with two or three stats that the story would genuinely turn on. Every stat you add spends context on every turn, whether it matters to the scene or not.`,
+**Templates** beside the button writes the common shapes for you — a drain, a timer, a blend of two stats — and asks only for what each one needs. What it inserts is ordinary code you can then edit.`,
   },
   'worldEditor.dictionary': {
     title: 'Dictionary',

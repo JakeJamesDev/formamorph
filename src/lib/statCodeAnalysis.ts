@@ -201,6 +201,21 @@ export function statCodeCompletions(
 }
 
 /**
+ * What the reader found, as one line. Running the code reports what it returned, which says nothing
+ * about a typo on a branch the run never took — so a successful test carries this rather than reading
+ * as a clean bill of health. Null when there is nothing to report.
+ */
+export function summarizeProblems(diagnostics: readonly CodeDiagnostic[]): string | null {
+  const errors = diagnostics.filter((diagnostic) => diagnostic.severity === 'error').length;
+  const warnings = diagnostics.filter((diagnostic) => diagnostic.severity === 'warning').length;
+  if (errors === 0 && warnings === 0) return null;
+  const parts: string[] = [];
+  if (errors > 0) parts.push(`${errors} error${errors === 1 ? '' : 's'}`);
+  if (warnings > 0) parts.push(`${warnings} warning${warnings === 1 ? '' : 's'}`);
+  return `${parts.join(', ')} in this code`;
+}
+
+/**
  * What looks wrong with a piece of stat code: syntax the grammar can't read, references to names the
  * sandbox never provides, and code that can never hand a number back. Advisory — the Test button remains
  * the ground truth, and nothing here blocks saving.
