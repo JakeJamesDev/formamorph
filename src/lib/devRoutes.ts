@@ -26,8 +26,10 @@ export type DevView = (typeof DEV_VIEWS)[number];
  *  in-game (GameViewer) and opens on an empty ledger before any turn has been summarized. `profile` opens
  *  the account dialog (Messages/Manage), `feedbackHub` the reader's side of bugs and suggestions, and
  *  `adminPanel` the admin tools (Users/Broadcasts). All three need a signed-in session, and `adminPanel`
- *  an admin one, so they open empty otherwise rather than failing. */
-export const DEV_MODALS = ['settings', 'entity', 'export', 'menu', 'worldEditor', 'intro', 'avatar', 'backup', 'aiSetup', 'entityEditor', 'dictionaryEditor', 'modelDetails', 'community', 'memoryManager', 'profile', 'feedbackHub', 'adminPanel'] as const;
+ *  an admin one, so they open empty otherwise rather than failing. `editText` is in-game (GameViewer) and
+ *  opens the narration editor on the current page's text — empty before any turn, which is enough to reach
+ *  its full-screen toggle, the one editor that grows in place instead of raising a window. */
+export const DEV_MODALS = ['settings', 'entity', 'export', 'menu', 'worldEditor', 'intro', 'avatar', 'backup', 'aiSetup', 'entityEditor', 'dictionaryEditor', 'modelDetails', 'community', 'memoryManager', 'profile', 'feedbackHub', 'adminPanel', 'editText'] as const;
 export type DevModal = (typeof DEV_MODALS)[number];
 
 /** Coverage ledger: tabbed surface → the sub-tabs the router can target (via `tab=…`). Kept in lockstep

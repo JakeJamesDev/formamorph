@@ -10,6 +10,7 @@ on:
     branches: [main]
     paths:
       - 'docs/**'
+      - '!docs/agents/**' # agent config, not wiki content — the sync is top-level only anyway
       - '.github/workflows/publish-wiki.yml'
   workflow_dispatch: # allow a manual re-sync from the Actions tab
 

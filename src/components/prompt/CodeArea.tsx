@@ -1,13 +1,13 @@
 import { useCallback, useLayoutEffect, useRef, useState, type ReactNode } from 'react';
 import { Columns2, Maximize2, Minimize2, Redo2, Square, Undo2, Braces, Variable } from 'lucide-react';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, dialogFullHeight } from '@/components/ui/dialog';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { TOOLBAR_BTN } from '@/components/prompt/toolbarStyles';
 import { resolveLayout, usePromptSplitMode, useContainerWidth, MIN_PANE_WIDTH } from '@/lib/promptLayout';
 import { useMorphFullscreen } from '@/lib/useMorphFullscreen';
+import { FullscreenShell } from '@/components/FullscreenShell';
 import { cn } from '@/lib/utils';
 import {
   canRedo, canUndo, commitHistory, initHistory, redoHistory, undoHistory, type HistoryState,
@@ -256,30 +256,11 @@ export function CodeArea(props: CodeAreaProps) {
         onToggleFullscreen={morph.toggle}
         expose={(element) => { sourceRef.current = element; }}
       />
-      <Dialog open={morph.mounted} onOpenChange={(next) => { if (!next) morph.close(); }}>
-        <DialogContent
-          ref={morph.boxRef}
-          unanimated
-          aria-describedby={undefined}
-          className={cn(
-            'flex flex-col overflow-hidden',
-            dialogFullHeight,
-            'max-w-none w-screen left-0 translate-x-0 rounded-none',
-          )}
-        >
-          {/* Fades in over the growing box rather than being scaled with it, which would read as the text
-              stretching back to size. */}
-          <div className={cn('flex flex-col flex-1 min-h-0 gap-4', morph.contentClassName)}>
-            <DialogHeader><DialogTitle>{props.ariaLabel}</DialogTitle></DialogHeader>
-            <CodeAreaBody
-              {...props}
-              className="flex-1 min-h-0"
-              fullscreen
-              onToggleFullscreen={morph.close}
-            />
-          </div>
-        </DialogContent>
-      </Dialog>
+      {/* No heading: the field's own caption rides in the toolbar and comes with it, so a header row
+          would name the box twice and spend a row doing it. */}
+      <FullscreenShell morph={morph} title={props.ariaLabel}>
+        <CodeAreaBody {...props} className="flex-1 min-h-0" fullscreen onToggleFullscreen={morph.close} />
+      </FullscreenShell>
     </>
   );
 }
