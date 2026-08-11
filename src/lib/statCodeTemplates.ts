@@ -42,6 +42,15 @@ export interface ParsedTemplate {
 // anything but `}` — enough for operators and numbers, and slots needing more belong in the code body.
 const SLOT_PATTERN = /\{\{\s*([A-Za-z_][A-Za-z0-9_]*)\s*(?::\s*([A-Za-z]+)\s*(?:\(([^)]*)\))?\s*)?(?:=\s*([^}]*?)\s*)?\}\}/g;
 
+/** Where each slot sits in the source, for surfaces that colour the syntax rather than fill it in. Shares
+ *  the one pattern, so a slot the parser accepts is a slot the editor marks. */
+export function findSlotRanges(code: string): { from: number; to: number }[] {
+  return [...(code || '').matchAll(SLOT_PATTERN)].map(match => ({
+    from: match.index,
+    to: match.index + match[0].length,
+  }));
+}
+
 const isSlotType = (value: string): value is SlotType => (SLOT_TYPES as readonly string[]).includes(value);
 
 /**

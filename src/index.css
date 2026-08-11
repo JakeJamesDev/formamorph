@@ -651,3 +651,48 @@
   background-color: hsl(var(--warning) / 0.4);
   border-radius: 2px;
 }
+
+/* Code colouring for stat code, shared by the CodeMirror editor and the read-only previews. Defined once
+   per mode rather than per theme: the palette is tuned for the light and dark backgrounds, which is what
+   legibility depends on, and every tinted theme inherits its mode's set. */
+:root {
+  --code-keyword: 262 60% 45%;
+  --code-string: 142 55% 32%;
+  --code-number: 25 85% 40%;
+  --code-comment: 215 16% 47%;
+  --code-function: 217 75% 45%;
+  --code-property: 190 70% 30%;
+  --code-variable: 222 45% 25%;
+  --code-punctuation: 215 16% 40%;
+  --code-slot: 330 70% 42%;
+}
+
+.dark {
+  --code-keyword: 265 75% 78%;
+  --code-string: 142 55% 65%;
+  --code-number: 30 85% 68%;
+  --code-comment: 215 18% 58%;
+  --code-function: 210 85% 72%;
+  --code-property: 187 65% 65%;
+  --code-variable: 210 30% 88%;
+  --code-punctuation: 215 18% 65%;
+  --code-slot: 330 80% 72%;
+}
+
+.tok-keyword { color: hsl(var(--code-keyword)); }
+.tok-string { color: hsl(var(--code-string)); }
+.tok-number { color: hsl(var(--code-number)); }
+.tok-comment { color: hsl(var(--code-comment)); font-style: italic; }
+.tok-function { color: hsl(var(--code-function)); }
+.tok-property { color: hsl(var(--code-property)); }
+.tok-definition { color: hsl(var(--code-variable)); font-weight: 600; }
+.tok-variable { color: hsl(var(--code-variable)); }
+.tok-punctuation { color: hsl(var(--code-punctuation)); }
+.tok-invalid { color: hsl(var(--destructive)); text-decoration: underline wavy; }
+/* A slot is a fill-in point, not code — it reads as a chip so it can't be mistaken for a literal. */
+.tok-slot {
+  color: hsl(var(--code-slot));
+  background-color: hsl(var(--code-slot) / 0.12);
+  border-radius: 3px;
+  font-weight: 600;
+}
