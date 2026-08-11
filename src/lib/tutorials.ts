@@ -8,7 +8,7 @@
 import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from 'react';
 
 /** Screens that host tutorials. One popover shows at a time, per screen. */
-export type TutorialScreen = 'worldEditor' | 'community' | 'mainMenu';
+export type TutorialScreen = 'worldEditor' | 'community' | 'mainMenu' | 'settings';
 
 export interface TutorialEntry {
   id: string;
@@ -29,6 +29,15 @@ export const TUTORIALS: readonly TutorialEntry[] = [
     points: [
       { term: 'Simple', text: 'Just the Essentials' },
       { term: 'Advanced', text: 'Powerful but Complex' },
+    ],
+  },
+  {
+    id: 'settings-mode-toggle',
+    screen: 'settings',
+    title: 'Simple vs. Advanced',
+    points: [
+      { term: 'Simple', text: 'Just the Essentials' },
+      { term: 'Advanced', text: 'Every Knob and Prompt' },
     ],
   },
   {

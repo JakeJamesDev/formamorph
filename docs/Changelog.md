@@ -12,6 +12,13 @@ Each release groups changes as **Major** / **Minor**, then **Added** / **Removed
 
 _Unreleased — new work accumulates here until it earns a version bump. The next batch will pin its own version; `package.json` reads **2.12.0** (just released below)._
 
+### Minor Changes
+
+#### ➕ Added
+
+- **👤 User-facing**
+  - **Settings opens in a Simple mode that shows the settings you'd actually change.** Sixty-odd controls over five tabs meant a player wanting the theme, a bigger font, or a model connected had to walk past reasoning strategies, memory tuning and raw prompt editors to find them. A **Simple / Advanced** switch now sits in the Settings header, the same one the World Editor has, and it starts on Simple. Simple keeps appearance, the scene, how narration feels, the checkboxes that shape a turn, the Thinking picker, everything needed to connect a model, the everyday image controls, and the whole of **Accessibility** — nothing there is ever harder to reach. It puts away the **Prompts** tab, the image **Tag Prompt** editor, the Memory, Performance and Inspection sections, the reasoning details, and the provider plumbing behind image generation. **Everything hidden keeps working exactly as it was** — the switch changes what you see and nothing else — and a small dot on **Advanced** appears when something out of sight isn't on its default, so you always know there's more through there. Your choice is remembered on that device, so setting Advanced once is the end of it.
+
 ---
 
 <details>

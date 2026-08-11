@@ -4,7 +4,12 @@
 export const SETTINGS_TABS = [
   { value: 'presentation', label: 'Presentation' },
   { value: 'generation', label: 'Generation' },
-  { value: 'prompts', label: 'Prompts' },
+  { value: 'prompts', label: 'Prompts', advancedOnly: true },
   { value: 'endpoints', label: 'AI Endpoints' },
   { value: 'accessibility', label: 'Accessibility' },
 ] as const;
+
+/** The tabs one settings mode shows. Simple drops the `advancedOnly` ones. */
+export function settingsTabsFor(advanced: boolean) {
+  return SETTINGS_TABS.filter((t) => advanced || !('advancedOnly' in t && t.advancedOnly));
+}

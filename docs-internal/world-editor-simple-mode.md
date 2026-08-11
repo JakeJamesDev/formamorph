@@ -1,7 +1,7 @@
 # World Editor — Simple / Advanced Mode
 
 **Goal:** cut choice paralysis for new authors by thinning the World Editor's surface, without
-removing anything an existing world already uses. Spec only — nothing built yet.
+removing anything an existing world already uses. Shipped; this file is the record of what it hides.
 
 ## The switch
 
