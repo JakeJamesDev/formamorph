@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { SETTINGS_COPY, SETTINGS_BUTTONS, SETTINGS_CONFIRMS, type SettingCopy } from './settingsCopy';
+import { SETTINGS_COPY, SETTINGS_BUTTONS, SETTINGS_CONFIRMS, SETTINGS_OPTIONS, type SettingCopy, type SettingOptionCopy } from './settingsCopy';
 
 /**
  * The Settings modal's copy rules, asserted rather than reviewed. Their point is that consistency
@@ -37,6 +37,10 @@ function titleCaseViolations(text: string): string[] {
 }
 
 const entries = Object.entries(SETTINGS_COPY) as [string, SettingCopy][];
+
+/** Every segmented option, keyed `row.value` so a failure names the option rather than just the row. */
+const options: [string, SettingOptionCopy][] = Object.entries(SETTINGS_OPTIONS)
+  .flatMap(([key, list]) => (list as readonly SettingOptionCopy[]).map((o) => [`${key}.${o.value}`, o] as [string, SettingOptionCopy]));
 
 describe('settings copy', () => {
   it('covers every setting with a description', () => {
@@ -81,6 +85,37 @@ describe('settings copy', () => {
   it('carries experimental as a flag rather than a word in the copy', () => {
     // R6 — the badge carries this, so the description spends all twelve words on what the setting does.
     const bad = entries.filter(([, c]) => /experimental/i.test(c.description));
+    expect(bad.map(([k]) => k)).toEqual([]);
+  });
+
+  it('holds every option help to the description rules', () => {
+    // R2 again — an option's help replaces the row description on these rows, so it is read in the same
+    // slot and must survive the same one-sentence, one-line ceiling.
+    const bad = options.filter(([, o]) =>
+      !o.help.endsWith('.')
+      || o.help.slice(0, -1).includes('. ')
+      || o.help.trim().split(/\s+/).length > MAX_DESCRIPTION_WORDS);
+    expect(bad.map(([k, o]) => `${k}: ${o.help}`)).toEqual([]);
+  });
+
+  it('titles every option label', () => {
+    // R4 — the option labels sit in one row, where a casing split is unmissable.
+    const bad = options.flatMap(([k, o]) => {
+      const v = titleCaseViolations(o.label);
+      return v.length ? [`${k}: ${o.label} → ${v.join(', ')}`] : [];
+    });
+    expect(bad).toEqual([]);
+  });
+
+  it('carries recommended as a flag rather than a word in the option help', () => {
+    // R6's shape applied to option copy — the marker on the item says it, and says it before you select.
+    const bad = options.filter(([, o]) => /recommended/i.test(o.help));
+    expect(bad.map(([k]) => k)).toEqual([]);
+  });
+
+  it('recommends at most one option per row', () => {
+    const bad = Object.entries(SETTINGS_OPTIONS)
+      .filter(([, list]) => list.filter((o: SettingOptionCopy) => o.recommended).length > 1);
     expect(bad.map(([k]) => k)).toEqual([]);
   });
 

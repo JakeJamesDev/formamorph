@@ -10,9 +10,9 @@ import { readSettingsMode, writeSettingsMode, type SettingsMode } from '@/lib/se
 import { settingsUseAdvancedValues } from '@/lib/settingsAdvancedData';
 import { TutorialPopover } from '@/components/TutorialPopover';
 import { useDevRoute } from '@/lib/devRouter';
-import { Row, CheckRow, Section, SubGroup, HintInfo } from '@/components/SettingsRows';
-import { SETTINGS_COPY, SETTINGS_BUTTONS, SETTINGS_CONFIRMS } from '@/components/modals/settingsCopy';
-import { rowCopy } from '@/components/modals/settingsRowCopy';
+import { Row, CheckRow, Section, SubGroup, HintInfo, RecommendedMark } from '@/components/SettingsRows';
+import { SETTINGS_COPY, SETTINGS_BUTTONS, SETTINGS_CONFIRMS, SETTINGS_OPTIONS, type SettingOptionCopy } from '@/components/modals/settingsCopy';
+import { rowCopy, optionRowCopy } from '@/components/modals/settingsRowCopy';
 import TagField from '@/components/prompt/TagField';
 import { reasoningTabs, reasoningPromptTabs, defaultPromptReasoning, defaultReasoningBudgetPct, REASONING_CONTROL_KINDS, type PromptReasoning } from '@/lib/reasoningEffort';
 import { ExportPresetDialog, ImportPresetDialog } from '@/components/modals/PresetShareDialogs';
@@ -64,24 +64,11 @@ import ComfyWorkflowGuide from './ComfyWorkflowGuide';
 import { DEFAULT_TAG_PROMPT, SUBJECT_GUIDANCE } from '@/lib/imagePrompt';
 import { resetTutorials, useSeenTutorialCount, useTutorial } from '@/lib/tutorials';
 
-// Segmented-control options: a short tab label plus the helper text shown below the selected one.
-const THEME_OPTIONS: { value: 'light' | 'dark' | 'system'; label: string; help: string }[] = [
-  { value: 'light', label: 'Light', help: 'Always uses the light color scheme.' },
-  { value: 'dark', label: 'Dark', help: 'Always uses the dark color scheme.' },
-  { value: 'system', label: 'System', help: 'Recommended. Follows your OS light/dark setting.' },
-];
-
-const PARAGRAPH_LIMIT_OPTIONS: { value: ParagraphLimit; label: string; help: string }[] = [
-  { value: 'none', label: 'None', help: 'No paragraph limit. The model writes until it finishes or hits the token cap.' },
-  { value: 'single', label: 'Single', help: 'One paragraph per turn (stops at the first line break).' },
-  { value: 'auto', label: 'Auto', help: 'Recommended. Scales the paragraph count to your Max Output Tokens so responses fit the budget and end cleanly.' },
-];
-const THINKING_OPTIONS: { value: ThinkingMode; label: string; help: string }[] = [
-  { value: 'off', label: 'Native', help: 'Nothing is added to the prompt. Reasoning models think as they normally would; other models respond immediately.' },
-  { value: 'inline', label: 'Inline', help: 'The model reasons privately before narrating, in the same request. One fewer round-trip.' },
-  { value: 'precall', label: 'Planning', help: 'Recommended. A separate request is sent to plan narration before writing it. Most reliable for small models.' },
-  { value: 'staged', label: 'Staged', help: 'Highest quality, slowest. A director picks the cast, each character plans its motivation, and a storyboarder writes the plan — several extra requests per turn.' },
-];
+// The segmented rows' options. Copy lives in `settingsCopy`; these bindings only narrow `value` to the
+// setting's own union, so an option that drifts from the setting fails to compile.
+const THEME_OPTIONS: readonly SettingOptionCopy<'light' | 'dark' | 'system'>[] = SETTINGS_OPTIONS.theme;
+const PARAGRAPH_LIMIT_OPTIONS: readonly SettingOptionCopy<ParagraphLimit>[] = SETTINGS_OPTIONS.paragraphLimit;
+const THINKING_OPTIONS: readonly SettingOptionCopy<ThinkingMode>[] = SETTINGS_OPTIONS.thinking;
 /** Sentinel for the InvokeAI "no board" choice — Radix Select rejects an empty-string item value, and the
  *  stored setting is '' (Uncategorized). */
 const UNCATEGORIZED_BOARD = '__uncategorized__';
@@ -91,7 +78,8 @@ const UNCATEGORIZED_BOARD = '__uncategorized__';
 function OptionSwitcher({ value, onChange, options }: {
   value: string;
   onChange: (v: string) => void;
-  options: readonly { value: string; label: string }[];
+  // Help text is the caller's to render, so a plain `{value,label}` list is enough here.
+  options: readonly { value: string; label: string; recommended?: true }[];
 }) {
   return (
     <>
@@ -111,7 +99,9 @@ function OptionSwitcher({ value, onChange, options }: {
           className="grid w-full"
           style={{ gridTemplateColumns: `repeat(${options.length}, minmax(0, 1fr))` }}
         >
-          {options.map((o) => <ToggleGroupItem key={o.value} value={o.value}>{o.label}</ToggleGroupItem>)}
+          {options.map((o) => (
+            <ToggleGroupItem key={o.value} value={o.value}>{o.label}{o.recommended && <RecommendedMark />}</ToggleGroupItem>
+          ))}
         </ToggleGroup>
       </div>
     </>
@@ -1208,7 +1198,7 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, initialTab,
             <ScrollArea className="flex-1 min-h-0">
             <div className="grid gap-6 py-4">
               <Section title="Appearance">
-              <Row top {...rowCopy('theme')}>
+              <Row top {...optionRowCopy('theme')}>
                 <div>
                   <ToggleGroup
                     type="single"
@@ -1219,7 +1209,7 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, initialTab,
                     className="grid w-full grid-cols-3"
                   >
                     {THEME_OPTIONS.map((o) => (
-                      <ToggleGroupItem key={o.value} value={o.value}>{o.label}</ToggleGroupItem>
+                      <ToggleGroupItem key={o.value} value={o.value}>{o.label}{o.recommended && <RecommendedMark />}</ToggleGroupItem>
                     ))}
                   </ToggleGroup>
                   {/* Help texts stacked in one cell so switching options doesn't reflow the layout. */}
@@ -1317,7 +1307,7 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, initialTab,
                 />
               </Row>
               {advanced && (
-              <Row top {...rowCopy('paragraphLimit')}>
+              <Row top {...optionRowCopy('paragraphLimit')}>
                 <div>
                   <ToggleGroup
                     type="single"
@@ -1328,7 +1318,7 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, initialTab,
                     className="grid w-full grid-cols-3"
                   >
                     {PARAGRAPH_LIMIT_OPTIONS.map((o) => (
-                      <ToggleGroupItem key={o.value} value={o.value}>{o.label}</ToggleGroupItem>
+                      <ToggleGroupItem key={o.value} value={o.value}>{o.label}{o.recommended && <RecommendedMark />}</ToggleGroupItem>
                     ))}
                   </ToggleGroup>
                   {/* All option texts stacked in one grid cell so the block is always as tall as the
@@ -1494,7 +1484,7 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, initialTab,
               </Section>
 
               <Section title="Reasoning">
-              <Row top {...rowCopy('thinking')}>
+              <Row top {...optionRowCopy('thinking')}>
                 <div>
                   <OptionSwitcher value={thinkingMode} onChange={(v) => setThinkingMode(v as ThinkingMode)} options={THINKING_OPTIONS} />
                   {/* Stacked like Paragraph Limit so switching thinking modes doesn't reflow the layout. */}

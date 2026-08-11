@@ -15,3 +15,16 @@ export function rowCopy(key: SettingCopyKey) {
     info: c.info ? <HintInfo>{c.info}</HintInfo> : undefined,
   };
 }
+
+/**
+ * The same copy for a segmented row, whose control already prints the picked option's help in the hint's
+ * slot. The description moves to the label's `ⓘ` so the row says each thing once.
+ */
+export function optionRowCopy(key: SettingCopyKey) {
+  const c: SettingCopy = SETTINGS_COPY[key];
+  return {
+    label: c.label,
+    experimental: c.experimental,
+    info: <HintInfo>{c.info ? `${c.description}\n\n${c.info}` : c.description}</HintInfo>,
+  };
+}

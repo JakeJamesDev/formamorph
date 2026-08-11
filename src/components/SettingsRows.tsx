@@ -3,7 +3,7 @@
 // floor so a wide control can't squeeze the label column; stacked to one column below `sm`) with a
 // right-aligned label on wider screens.
 import type { ReactNode } from 'react';
-import { Info } from 'lucide-react';
+import { FlaskConical, Info, Sparkles } from 'lucide-react';
 import { Streamdown } from 'streamdown';
 import remarkGfm from 'remark-gfm';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -104,18 +104,22 @@ export function RowLabel({ htmlFor, align = 'check', muted, info, experimental, 
   );
 }
 
-/** Marks a setting that may change or go away. A badge rather than a word in the description, so the
- *  caveat is said once per row instead of eating a third of a twelve-word line. */
+/** Marks a setting that may change or go away. An icon rather than a word in the description, so the
+ *  caveat is said once per row instead of eating a third of a twelve-word line — and matched to the `ⓘ`
+ *  beside it, since a bordered chip reads as louder than the caveat is. The `title` is the only carrier
+ *  of the wording; it's a caveat, not something you need in order to operate the setting. */
 function ExperimentalBadge() {
   return (
-    <span
-      title="Experimental — this setting may change or be removed."
-      aria-label="Experimental"
-      className="shrink-0 rounded-sm border border-border px-1 text-[10px] leading-4 text-muted-foreground"
-    >
-      ⚗
+    <span title="Experimental — this setting may change or be removed." aria-label="Experimental" className="shrink-0 text-muted-foreground">
+      <FlaskConical className="h-4 w-4" />
     </span>
   );
+}
+
+/** Marks the option a row recommends, on the item itself so the recommendation is visible before you
+ *  pick it. Matched to the experimental flask so the two markers read as one family. */
+export function RecommendedMark() {
+  return <Sparkles aria-label="Recommended" className="ml-1.5 inline h-3.5 w-3.5 shrink-0 text-muted-foreground" />;
 }
 
 /**

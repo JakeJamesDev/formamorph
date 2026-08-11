@@ -25,6 +25,16 @@ export type SettingCopy = {
 /** A confirmation dialog's copy. The body is a real sentence, so only the title is length-ruled. */
 export type ConfirmCopy = { title: string; description: string };
 
+/** One option inside a segmented row. `help` follows the same rules as a row `description`. */
+export type SettingOptionCopy<V extends string = string> = {
+  value: V;
+  label: string;
+  /** The line shown beneath the control while this option is picked. One sentence, ≤ 12 words. */
+  help: string;
+  /** Renders the marker on the item itself. The word never appears in `help`. */
+  recommended?: true;
+};
+
 export const SETTINGS_COPY = {
   // ── Display · Appearance ────────────────────────────────────────────────────
   theme: {
@@ -540,3 +550,26 @@ export const SETTINGS_CONFIRMS = {
 } as const satisfies Record<string, ConfirmCopy>;
 
 export type SettingCopyKey = keyof typeof SETTINGS_COPY;
+
+/**
+ * The options of the segmented rows. These rows show the picked option's `help` in place of the row
+ * description, which moves to the label's `ⓘ` — two lines in the same column read as one confused block.
+ */
+export const SETTINGS_OPTIONS = {
+  theme: [
+    { value: 'light', label: 'Light', help: 'Always uses the light color scheme.' },
+    { value: 'dark', label: 'Dark', help: 'Always uses the dark color scheme.' },
+    { value: 'system', label: 'System', recommended: true, help: 'Follows your operating system’s light or dark setting.' },
+  ],
+  paragraphLimit: [
+    { value: 'none', label: 'None', help: 'The model writes until it finishes or hits the token cap.' },
+    { value: 'single', label: 'Single', help: 'One paragraph per turn, stopping at the first line break.' },
+    { value: 'auto', label: 'Auto', recommended: true, help: 'Scales the paragraph count to your Max Output Tokens.' },
+  ],
+  thinking: [
+    { value: 'off', label: 'Native', help: 'Nothing is added; reasoning models think as they normally would.' },
+    { value: 'inline', label: 'Inline', help: 'The model reasons privately before narrating, in the same request.' },
+    { value: 'precall', label: 'Planning', recommended: true, help: 'A separate request plans the narration before it is written.' },
+    { value: 'staged', label: 'Staged', help: 'Highest quality, slowest.' },
+  ],
+} as const satisfies Record<string, readonly SettingOptionCopy[]>;
