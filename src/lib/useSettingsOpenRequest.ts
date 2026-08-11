@@ -1,12 +1,13 @@
 import { useEffect } from 'react';
 import { useSettings } from '@/contexts/SettingsContext';
+import type { SettingsTabId } from '@/components/modals/settingsTabs';
 
 /**
  * Acts on a parked `requestSettings(...)` call and clears it, so a surface too deep to reach the Settings
  * modal can still deep-link into one of its tabs. Used by the two views that own the modal (MainMenu,
- * GameViewer); `open` receives the requested tab and, for AI Endpoints, its sub-tab.
+ * GameViewer); `open` receives the requested tab and, for Endpoints, its sub-tab.
  */
-export function useSettingsOpenRequest(open: (tab: string, endpointTab?: string) => void) {
+export function useSettingsOpenRequest(open: (tab: SettingsTabId, endpointTab?: string) => void) {
   const { settingsRequest, clearSettingsRequest } = useSettings();
   useEffect(() => {
     if (!settingsRequest) return;

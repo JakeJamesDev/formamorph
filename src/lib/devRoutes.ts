@@ -35,7 +35,7 @@ export type DevModal = (typeof DEV_MODALS)[number];
 /** Coverage ledger: tabbed surface → the sub-tabs the router can target (via `tab=…`). Kept in lockstep
  *  with each surface's own exported tab list by `devRouter.test.ts`. Add a surface's tabs here when wired. */
 export const DEV_MODAL_TABS = {
-  settings: ['presentation', 'generation', 'prompts', 'endpoints', 'accessibility'],
+  settings: ['display', 'output', 'endpoints', 'prompts', 'data'],
   worldEditor: ['overview', 'stats', 'entities', 'locations', 'traits', 'dictionary', 'placeholders'],
   // Community Creations browses one kind per tab; these are the server's kinds (see lib/catalogKinds).
   community: ['world', 'entity', 'dictionary'],

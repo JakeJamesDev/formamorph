@@ -6,7 +6,7 @@ import userEvent from '@testing-library/user-event';
 import { SettingsProvider } from '@/contexts/SettingsContext';
 import { ThemeProvider } from '@/components/theme-provider';
 import { SettingsModal } from './SettingsModal';
-import { settingsTabsFor } from './settingsTabs';
+import { settingsTabsFor, type SettingsTabId } from './settingsTabs';
 import { readSettingsMode } from '@/lib/settingsMode';
 import type { SettingsMode } from '@/lib/settingsMode';
 
@@ -27,7 +27,7 @@ const openSettings = (mode: SettingsMode) => render(
 );
 
 /** Opens on a named tab with no mode forced, as the dev-router does. */
-const openSettingsOnTab = (initialTab: string) => render(
+const openSettingsOnTab = (initialTab: SettingsTabId) => render(
   <ThemeProvider>
     <SettingsProvider>
       <SettingsModal isOpen onOpenChange={() => {}} initialTab={initialTab} />
@@ -55,14 +55,15 @@ describe('settings mode', () => {
 
   it('drops Prompts from the tab list in Simple only', () => {
     expect(settingsTabsFor(false).map((t) => t.value))
-      .toEqual(['presentation', 'generation', 'endpoints', 'accessibility']);
-    expect(settingsTabsFor(true).map((t) => t.value)).toContain('prompts');
+      .toEqual(['display', 'output', 'endpoints', 'data']);
+    expect(settingsTabsFor(true).map((t) => t.value))
+      .toEqual(['display', 'output', 'endpoints', 'prompts', 'data']);
   });
 
   it('hides the Prompts tab in Simple and shows it in Advanced', () => {
     const { unmount } = openSettings('simple');
     expect(tabNames()).not.toContain('Prompts');
-    expect(tabNames()).toContain('Accessibility');
+    expect(tabNames()).toContain('Data');
     unmount();
     openSettings('advanced');
     expect(tabNames()).toContain('Prompts');
@@ -75,7 +76,7 @@ describe('settings mode', () => {
     const { unmount } = openSettings('simple');
     openTabDropdown();
     expect(screen.queryByRole('option', { name: 'Prompts' })).toBeNull();
-    expect(screen.getByRole('option', { name: 'Accessibility' })).toBeTruthy();
+    expect(screen.getByRole('option', { name: 'Data' })).toBeTruthy();
     unmount();
 
     openSettings('advanced');
@@ -90,7 +91,7 @@ describe('settings mode', () => {
     expect(screen.getByRole('tab', { name: 'Prompts', selected: true })).toBeTruthy();
   });
 
-  it('hides Paragraph Limit and Markdown Formatting on Presentation in Simple only', () => {
+  it('hides Paragraph Limit and Markdown Formatting on Display in Simple only', () => {
     const { unmount } = openSettings('simple');
     expect(screen.queryByText('Paragraph Limit')).toBeNull();
     expect(screen.queryByText('Markdown Formatting')).toBeNull();
@@ -103,29 +104,44 @@ describe('settings mode', () => {
     expect(screen.getByText('Markdown Formatting')).toBeTruthy();
   });
 
-  it('hides the Memory, Performance and Inspection sections on Generation in Simple only', async () => {
+  it('hides the Memory, Characters and Performance sections on Output in Simple only', async () => {
     const user = userEvent.setup();
     const { unmount } = openSettings('simple');
-    await user.click(screen.getByRole('tab', { name: 'Generation' }));
+    await user.click(screen.getByRole('tab', { name: 'Output' }));
     expect(screen.queryByText('Memory Summaries')).toBeNull();
+    expect(screen.queryByText('Describe New Characters')).toBeNull();
     expect(screen.queryByText('Concurrent Requests')).toBeNull();
-    expect(screen.queryByText('Show Reasoning')).toBeNull();
     // The core shape of a turn stays reachable.
     expect(screen.getByText('Thinking')).toBeTruthy();
-    expect(screen.getByText('Choices')).toBeTruthy();
+    expect(screen.getByText('Continue the Story')).toBeTruthy();
     unmount();
 
     openSettings('advanced');
-    await user.click(screen.getByRole('tab', { name: 'Generation' }));
+    await user.click(screen.getByRole('tab', { name: 'Output' }));
     expect(screen.getByText('Memory Summaries')).toBeTruthy();
+    expect(screen.getByText('Describe New Characters')).toBeTruthy();
     expect(screen.getByText('Concurrent Requests')).toBeTruthy();
+  });
+
+  // Moving these two off Output is what makes that tab honest: every row left on it changes what the AI
+  // produces, and neither of these does.
+  it('puts the Inspection rows on Display, in Advanced only', async () => {
+    const user = userEvent.setup();
+    const { unmount } = openSettings('simple');
+    expect(screen.queryByText('Show Reasoning')).toBeNull();
+    await user.click(screen.getByRole('tab', { name: 'Output' }));
+    expect(screen.queryByText('Show Reasoning')).toBeNull();
+    unmount();
+
+    openSettings('advanced');
     expect(screen.getByText('Show Reasoning')).toBeTruthy();
+    expect(screen.getByText('Show Silent Requests')).toBeTruthy();
   });
 
   it('hides Context Window and Max Output Tokens on the text endpoint in Simple only', async () => {
     const user = userEvent.setup();
     const { unmount } = openSettings('simple');
-    await user.click(screen.getByRole('tab', { name: 'AI Endpoints' }));
+    await user.click(screen.getByRole('tab', { name: 'Endpoints' }));
     expect(screen.queryByText('Context Window (tokens)')).toBeNull();
     expect(screen.queryByText('Max Output Tokens')).toBeNull();
     // Connecting a model is everyday work, so the fields that do it stay.
@@ -135,7 +151,7 @@ describe('settings mode', () => {
     unmount();
 
     openSettings('advanced');
-    await user.click(screen.getByRole('tab', { name: 'AI Endpoints' }));
+    await user.click(screen.getByRole('tab', { name: 'Endpoints' }));
     expect(screen.getByText('Context Window (tokens)')).toBeTruthy();
     expect(screen.getByText('Max Output Tokens')).toBeTruthy();
   });
@@ -143,20 +159,20 @@ describe('settings mode', () => {
   it('hides the Tag Prompt sub-tab in Simple only', async () => {
     const user = userEvent.setup();
     const { unmount } = openSettings('simple');
-    await user.click(screen.getByRole('tab', { name: 'AI Endpoints' }));
+    await user.click(screen.getByRole('tab', { name: 'Endpoints' }));
     expect(tabNames()).not.toContain('Tag Prompt');
     expect(tabNames()).toContain('Image');
     unmount();
 
     openSettings('advanced');
-    await user.click(screen.getByRole('tab', { name: 'AI Endpoints' }));
+    await user.click(screen.getByRole('tab', { name: 'Endpoints' }));
     expect(tabNames()).toContain('Tag Prompt');
   });
 
   it('hides the image sizes on the image endpoint in Simple only', async () => {
     const user = userEvent.setup();
     const { unmount } = openSettings('simple');
-    await user.click(screen.getByRole('tab', { name: 'AI Endpoints' }));
+    await user.click(screen.getByRole('tab', { name: 'Endpoints' }));
     await user.click(screen.getByRole('tab', { name: 'Image' }));
     expect(screen.queryByText('Portrait (W × H)')).toBeNull();
     expect(screen.queryByText('Landscape (W × H)')).toBeNull();
@@ -166,7 +182,7 @@ describe('settings mode', () => {
     unmount();
 
     openSettings('advanced');
-    await user.click(screen.getByRole('tab', { name: 'AI Endpoints' }));
+    await user.click(screen.getByRole('tab', { name: 'Endpoints' }));
     await user.click(screen.getByRole('tab', { name: 'Image' }));
     expect(screen.getByText('Portrait (W × H)')).toBeTruthy();
     expect(screen.getByText('Landscape (W × H)')).toBeTruthy();
@@ -188,11 +204,10 @@ describe('settings mode', () => {
     expect(screen.queryByLabelText('Hidden settings are off their defaults')).toBeNull();
   });
 
-  it('keeps every reading option on Accessibility in Simple, and hides only its housekeeping buttons', async () => {
+  it('keeps Autosave on Data in Simple, and hides only its Storage housekeeping', async () => {
     const user = userEvent.setup();
     const { unmount } = openSettings('simple');
-    await user.click(screen.getByRole('tab', { name: 'Accessibility' }));
-    const simpleRows = screen.getAllByRole('checkbox').length + screen.getAllByRole('combobox').length;
+    await user.click(screen.getByRole('tab', { name: 'Data' }));
     expect(screen.queryByRole('button', { name: 'Restore Default Worlds' })).toBeNull();
     expect(screen.queryByRole('button', { name: 'Clear Cached Images' })).toBeNull();
     expect(screen.queryByRole('button', { name: 'Reset Tutorials' })).toBeNull();
@@ -201,11 +216,21 @@ describe('settings mode', () => {
     unmount();
 
     openSettings('advanced');
-    await user.click(screen.getByRole('tab', { name: 'Accessibility' }));
-    // Every reading and choice option Advanced has, Simple has too.
-    expect(screen.getAllByRole('checkbox').length + screen.getAllByRole('combobox').length).toBe(simpleRows);
+    await user.click(screen.getByRole('tab', { name: 'Data' }));
     expect(screen.getByRole('button', { name: 'Restore Default Worlds' })).toBeTruthy();
     expect(screen.getByRole('button', { name: 'Clear Cached Images' })).toBeTruthy();
     expect(screen.getByRole('button', { name: 'Reset Tutorials' })).toBeTruthy();
+  });
+
+  // The reading controls moved off their own tab; Simple must still reach every one of them.
+  it('keeps every reading option on Display in both modes', () => {
+    const readingRows = () => ['Narration Font', 'Narration Text Size', 'Line Spacing']
+      .filter((label) => screen.queryByText(label));
+    const { unmount } = openSettings('simple');
+    expect(readingRows()).toHaveLength(3);
+    unmount();
+
+    openSettings('advanced');
+    expect(readingRows()).toHaveLength(3);
   });
 });

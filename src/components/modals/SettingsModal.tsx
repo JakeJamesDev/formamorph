@@ -5,7 +5,7 @@ import { useTheme } from '../theme-provider';
 import { ThemePreviewButton } from '@/components/ThemePreviewDialog';
 import { LocalModelPanel } from '@/components/modals/LocalModelPanel';
 import LlmSetupGuide from '@/components/modals/LlmSetupGuide';
-import { settingsTabsFor } from '@/components/modals/settingsTabs';
+import { settingsTabsFor, type SettingsTabId } from '@/components/modals/settingsTabs';
 import { readSettingsMode, writeSettingsMode, type SettingsMode } from '@/lib/settingsMode';
 import { settingsUseAdvancedValues } from '@/lib/settingsAdvancedData';
 import { TutorialPopover } from '@/components/TutorialPopover';
@@ -460,7 +460,7 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, initialTab,
   /** Live variable values for the prompt-editor Preview tab. Supplied only in-game; absent → no Preview. */
   previewValues?: Record<string, string>;
   /** DEV dev-router: open on this top-level tab instead of the default (see `devRouter.ts`). */
-  initialTab?: string;
+  initialTab?: SettingsTabId;
   /** Which AI Endpoints sub-tab to open ('text-endpoint' | 'img-endpoint' | 'img-tagprompt'). Used by the
    *  "Open Settings" shortcut in the image generation dialog to land straight on Image. */
   initialEndpointTab?: string;
@@ -1215,7 +1215,7 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, initialTab,
             ))}
           </TabsList>
 
-          <TabsContent value="presentation" className="px-2 flex-1 min-h-0 data-[state=active]:flex flex-col">
+          <TabsContent value="display" className="px-2 flex-1 min-h-0 data-[state=active]:flex flex-col">
             <ScrollArea className="flex-1 min-h-0">
             <div className="grid gap-6 py-4">
               <Section title="Appearance">
@@ -1366,11 +1366,95 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, initialTab,
               />
               )}
               </Section>
+
+              {/* Keeps the word "Accessibility" as a section so the term stays findable, now that these
+                  rows sit with the rest of what the story looks like rather than on a tab of their own. */}
+              <Section title="Accessibility" hint="Applies to the story text only, not the rest of the app.">
+              <Row top htmlFor="narrationFont" {...copy('narrationFont')}>
+                <Select value={narrationFont} onValueChange={(v) => setNarrationFont(v as NarrationFont)}>
+                  <SelectTrigger id="narrationFont" className="w-56">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {NARRATION_FONT_OPTIONS.map((o) => (
+                      <SelectItem key={o.value} value={o.value} style={{ fontFamily: o.stack || undefined }}>
+                        {o.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </Row>
+              <Row center {...copy('narrationTextSize')}>
+                <div className="flex items-center gap-3">
+                  <Slider
+                    value={[narrationScale]}
+                    min={0.85}
+                    max={1.6}
+                    step={0.05}
+                    onValueChange={(v) => setNarrationScale(v[0])}
+                    className="max-w-[220px]"
+                  />
+                  <span className="text-meta text-muted-foreground tabular-nums w-10 shrink-0">
+                    {Math.round(narrationScale * 100)}%
+                  </span>
+                </div>
+              </Row>
+              <Row center {...copy('lineSpacing')}>
+                <div className="flex items-center gap-3">
+                  <Slider
+                    value={[narrationLineHeight]}
+                    min={1.2}
+                    max={2.2}
+                    step={0.05}
+                    onValueChange={(v) => setNarrationLineHeight(v[0])}
+                    className="max-w-[220px]"
+                  />
+                  <span className="text-meta text-muted-foreground tabular-nums w-10 shrink-0">
+                    {narrationLineHeight.toFixed(2)}
+                  </span>
+                </div>
+              </Row>
+              <Row>
+                <div>
+                  <ConfirmDialog
+                    {...SETTINGS_CONFIRMS.resetSizeSpacing}
+                    onConfirm={() => { setNarrationScale(DEFAULT_NARRATION_SCALE); setNarrationLineHeight(DEFAULT_NARRATION_LINE_HEIGHT); }}
+                  >
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      disabled={narrationScale === DEFAULT_NARRATION_SCALE && narrationLineHeight === DEFAULT_NARRATION_LINE_HEIGHT}
+                    >
+                      {SETTINGS_BUTTONS.resetSizeSpacing}
+                    </Button>
+                  </ConfirmDialog>
+                </div>
+              </Row>
+              </Section>
+
+              {/* Both rows only decide whether a panel appears on screen — nothing about them changes what
+                  the AI produces, which is what keeps the Output tab honest. */}
+              {advanced && (
+              <Section title="Inspection" hint="Surfaces work that normally happens out of sight.">
+              <CheckRow
+                htmlFor="showReasoning"
+                checked={showReasoning}
+                onChange={setShowReasoning}
+                {...copy('showReasoning')}
+              />
+              <CheckRow
+                htmlFor="showSilentRequests"
+                checked={showSilentRequests}
+                onChange={setShowSilentRequests}
+                {...copy('showSilentRequests')}
+              />
+              </Section>
+              )}
             </div>
             </ScrollArea>
           </TabsContent>
 
-          <TabsContent value="generation" className="px-2 flex-1 min-h-0 data-[state=active]:flex flex-col">
+          <TabsContent value="output" className="px-2 flex-1 min-h-0 data-[state=active]:flex flex-col">
             <ScrollArea className="flex-1 min-h-0">
             <div className="grid gap-6 py-4">
               <Section title="Turn Extras" hint="Optional passes that run alongside each turn's narration.">
@@ -1578,6 +1662,11 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, initialTab,
                   </div>
                 </Row>
               )}
+              </Section>
+
+              {/* Split out of Memory: these three are about the cast, and only sat under Memory because
+                  that is where the code for them happens to live. */}
+              <Section title="Characters">
               {/* Descriptions work from the narration alone, so unlike diaries this is offered in every mode. */}
               <CheckRow
                 htmlFor="describeCharacters"
@@ -1607,7 +1696,19 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, initialTab,
                 </>
               )}
               </Section>
+              </>)}
 
+              <Section title="Choices">
+              <Row center {...copy('continueTheStory')}>
+                <OptionSwitcher
+                  value={continueChoiceMode}
+                  onChange={(v) => setContinueChoiceMode(v as ContinueChoiceMode)}
+                  options={CONTINUE_CHOICE_MODES}
+                />
+              </Row>
+              </Section>
+
+              {advanced && (
               <Section title="Performance">
               <CheckRow
                 htmlFor="concurrentTurnRequests"
@@ -1616,22 +1717,7 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, initialTab,
                 {...copy('concurrentRequests')}
               />
               </Section>
-
-              <Section title="Inspection" hint="Surfaces work that normally happens out of sight.">
-              <CheckRow
-                htmlFor="showReasoning"
-                checked={showReasoning}
-                onChange={setShowReasoning}
-                {...copy('showReasoning')}
-              />
-              <CheckRow
-                htmlFor="showSilentRequests"
-                checked={showSilentRequests}
-                onChange={setShowSilentRequests}
-                {...copy('showSilentRequests')}
-              />
-              </Section>
-              </>)}
+              )}
             </div>
             </ScrollArea>
           </TabsContent>
@@ -2577,90 +2663,22 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, initialTab,
           </TabsContent>
           )}
 
-          <TabsContent value="accessibility" className="px-2 flex-1 min-h-0 data-[state=active]:flex flex-col">
+          <TabsContent value="data" className="px-2 flex-1 min-h-0 data-[state=active]:flex flex-col">
             <ScrollArea className="flex-1 min-h-0">
             <div className="grid gap-6 py-4">
-              <Section title="Reading" hint="Applies to the story text only, not the rest of the app.">
-              <Row top htmlFor="narrationFont" {...copy('narrationFont')}>
-                <Select value={narrationFont} onValueChange={(v) => setNarrationFont(v as NarrationFont)}>
-                  <SelectTrigger id="narrationFont" className="w-56">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {NARRATION_FONT_OPTIONS.map((o) => (
-                      <SelectItem key={o.value} value={o.value} style={{ fontFamily: o.stack || undefined }}>
-                        {o.label}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </Row>
-              <Row center {...copy('narrationTextSize')}>
-                <div className="flex items-center gap-3">
-                  <Slider
-                    value={[narrationScale]}
-                    min={0.85}
-                    max={1.6}
-                    step={0.05}
-                    onValueChange={(v) => setNarrationScale(v[0])}
-                    className="max-w-[220px]"
-                  />
-                  <span className="text-meta text-muted-foreground tabular-nums w-10 shrink-0">
-                    {Math.round(narrationScale * 100)}%
-                  </span>
-                </div>
-              </Row>
-              <Row center {...copy('lineSpacing')}>
-                <div className="flex items-center gap-3">
-                  <Slider
-                    value={[narrationLineHeight]}
-                    min={1.2}
-                    max={2.2}
-                    step={0.05}
-                    onValueChange={(v) => setNarrationLineHeight(v[0])}
-                    className="max-w-[220px]"
-                  />
-                  <span className="text-meta text-muted-foreground tabular-nums w-10 shrink-0">
-                    {narrationLineHeight.toFixed(2)}
-                  </span>
-                </div>
-              </Row>
-              <Row>
-                <div>
-                  <ConfirmDialog
-                    {...SETTINGS_CONFIRMS.resetSizeSpacing}
-                    onConfirm={() => { setNarrationScale(DEFAULT_NARRATION_SCALE); setNarrationLineHeight(DEFAULT_NARRATION_LINE_HEIGHT); }}
-                  >
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      disabled={narrationScale === DEFAULT_NARRATION_SCALE && narrationLineHeight === DEFAULT_NARRATION_LINE_HEIGHT}
-                    >
-                      {SETTINGS_BUTTONS.resetSizeSpacing}
-                    </Button>
-                  </ConfirmDialog>
-                </div>
-              </Row>
-              </Section>
-
-              <Section title="Choices">
-              <Row center {...copy('continueTheStory')}>
-                <OptionSwitcher
-                  value={continueChoiceMode}
-                  onChange={(v) => setContinueChoiceMode(v as ContinueChoiceMode)}
-                  options={CONTINUE_CHOICE_MODES}
-                />
-              </Row>
-              </Section>
-
-              <Section title="Saves & Worlds">
+              <Section title="Saves">
               <CheckRow
                 htmlFor="autosaveEnabled"
                 checked={autosaveEnabled}
                 onChange={setAutosaveEnabled}
                 {...copy('autosave')}
               />
-              {advanced && (<>
+              </Section>
+
+              {/* Housekeeping rather than settings — every one is a "put it back" a normal player never
+                  needs, so Simple keeps the whole section out of the way. */}
+              {advanced && (
+              <Section title="Storage">
               <Row>
                 <div>
                   <ConfirmDialog
@@ -2695,13 +2713,6 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, initialTab,
                   </p>
                 </div>
               </Row>
-              </>)}
-              </Section>
-
-              {/* Housekeeping actions rather than settings, and every one of them is a "put it back" a
-                  normal player never needs — so Simple keeps the whole section out of the way. */}
-              {advanced && (
-              <Section title="Help">
               <Row>
                 <div>
                   <ConfirmDialog

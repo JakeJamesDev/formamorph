@@ -33,6 +33,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import CharacterCustomization, { defaultCharacterData } from './CharacterCustomization';
 import { SettingsModal } from '../components/modals/SettingsModal';
+import { asSettingsTab, type SettingsTabId } from '../components/modals/settingsTabs';
 import { useSettingsOpenRequest } from '@/lib/useSettingsOpenRequest';
 import { useSettings } from "@/contexts/SettingsContext";
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/components/ui/select";
@@ -302,7 +303,7 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
   const [showSettings, setShowSettings] = useState(false);
   // Forces Settings to a specific tab when something deep-links into it (the AI setup gate → Endpoint).
   // Cleared on close so the next deep-link re-triggers the modal's initialTab effect.
-  const [settingsTab, setSettingsTab] = useState<string | undefined>(undefined);
+  const [settingsTab, setSettingsTab] = useState<SettingsTabId | undefined>(undefined);
   const [settingsEndpointTab, setSettingsEndpointTab] = useState<string | undefined>(undefined);
   const [showLoadDialog, setShowLoadDialog] = useState(false);
   useSettingsOpenRequest((tab, endpointTab) => {
@@ -1456,7 +1457,7 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
       <SettingsModal
         isOpen={showSettings}
         onOpenChange={(v) => { setShowSettings(v); if (!v) { setSettingsTab(undefined); setSettingsEndpointTab(undefined); } }}
-        initialTab={settingsTab ?? devRoute?.tab}
+        initialTab={settingsTab ?? asSettingsTab(devRoute?.tab)}
         initialEndpointTab={settingsEndpointTab}
         initialPromptTab={devRoute?.subtab}
         onWorldsRestored={refreshWorlds}
