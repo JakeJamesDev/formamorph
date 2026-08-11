@@ -144,6 +144,17 @@ Replace the "Fields this template will ask for:" sentence with the familiar tab 
   the form-level error exactly as an author would hit it. This is free: `SlotField` + the
   preview pane already exist; the tab just mounts them on the draft.
 
+### Edit | Preview belongs to the field, not the dialog
+
+`CodeArea` takes an optional `preview` node and, given one, grows the same Edit | Preview pair a markdown
+`PromptField` has — tabs sit above the field, and full screen opens **side by side** whenever the window
+can give each pane `MIN_PANE_WIDTH`, with a `Columns2`/`Square` toggle back to one pane at a time. It
+reuses `resolveLayout` + `usePromptSplitMode`, so the split preference is one setting shared with the
+prompt fields rather than a second one to learn.
+
+The template editor therefore has no tabs of its own: name and description stay put, and the code field
+carries the pair, with the creation form as its preview.
+
 ### Code editing affordances (undo / redo / fullscreen / toolbar)
 
 **Toolbar layout follows `PromptField`'s chrome exactly** (verified against it, not invented): a left

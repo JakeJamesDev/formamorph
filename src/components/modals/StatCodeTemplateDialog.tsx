@@ -7,7 +7,6 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Copy, Download, Pencil, Plus, Trash2, Upload } from 'lucide-react';
 import { toast } from 'react-toastify';
@@ -277,43 +276,34 @@ export function StatCodeTemplateDialog({ open, onOpenChange, stats, currentStatI
 
         {draft ? (
           <>
-            <Tabs defaultValue="edit" className="flex-1 min-h-0 flex flex-col">
-              <TabsList className="self-start">
-                <TabsTrigger value="edit">Edit</TabsTrigger>
-                <TabsTrigger value="preview">Preview</TabsTrigger>
-              </TabsList>
-
-              <TabsContent value="edit" className="flex-1 min-h-0 flex flex-col gap-3 overflow-y-auto mt-3">
-                <label className="flex flex-col gap-1">
-                  <span className="text-label">Name</span>
-                  <Input value={draft.name} onChange={(e) => setDraft({ ...draft, name: e.target.value })} />
-                </label>
-                <label className="flex flex-col gap-1">
-                  <span className="text-label">Description</span>
-                  <Input value={draft.description} onChange={(e) => setDraft({ ...draft, description: e.target.value })} />
-                </label>
-                <CodeArea
-                  value={draft.code}
-                  onChange={(code) => setDraft({ ...draft, code })}
-                  label="Code"
-                  ariaLabel="Template code"
-                  slots
-                  className="flex-1"
-                />
-                <p className="text-meta text-muted-foreground">
-                  A slot is <code>{'{{name:type=default}}'}</code>. Stat and daypart slots become quoted
-                  strings; number, choice and text are pasted as written, so quote them yourself when you
-                  need a string.
-                </p>
-              </TabsContent>
-
-              <TabsContent value="preview" className="flex-1 min-h-0 overflow-y-auto mt-3">
-                <p className="text-helper text-muted-foreground mb-3">
-                  What this template will ask for when someone picks it.
-                </p>
-                <TemplateForm code={draft.code} stats={pickableStats} values={draftValues} onChange={setDraftValues} />
-              </TabsContent>
-            </Tabs>
+            <div className="flex-1 min-h-0 flex flex-col gap-3">
+              <label className="flex flex-col gap-1">
+                <span className="text-label">Name</span>
+                <Input value={draft.name} onChange={(e) => setDraft({ ...draft, name: e.target.value })} />
+              </label>
+              <label className="flex flex-col gap-1">
+                <span className="text-label">Description</span>
+                <Input value={draft.description} onChange={(e) => setDraft({ ...draft, description: e.target.value })} />
+              </label>
+              {/* Preview is the creation interface the template will present, so the author edits the code
+                  and reads what it asks for in the same place — side by side once full screen allows. */}
+              <CodeArea
+                value={draft.code}
+                onChange={(code) => setDraft({ ...draft, code })}
+                label="Code"
+                ariaLabel="Template code"
+                slots
+                className="flex-1"
+                preview={(
+                  <TemplateForm code={draft.code} stats={pickableStats} values={draftValues} onChange={setDraftValues} />
+                )}
+              />
+              <p className="text-meta text-muted-foreground">
+                A slot is <code>{'{{name:type=default}}'}</code>. Stat and daypart slots become quoted
+                strings; number, choice and text are pasted as written, so quote them yourself when you
+                need a string.
+              </p>
+            </div>
 
             <DialogFooter className="flex-row justify-end">
               <Button variant="outline" onClick={() => setDraft(null)}>Cancel</Button>
