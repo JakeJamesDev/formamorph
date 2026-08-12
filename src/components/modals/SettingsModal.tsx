@@ -1294,7 +1294,7 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, initialTab,
               <Row {...rowCopy('narrationReveal')}>
                 <RevealAnimationDemoButton />
               </Row>
-              <Row top {...rowCopy('aiLanguage')}>
+              <Row {...rowCopy('aiLanguage')}>
                 <TokenAutocomplete
                   single
                   openOnFocus
@@ -1347,7 +1347,7 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, initialTab,
               {/* These rows sit with the rest of what the story looks like; the section keeps the word
                   "Accessibility" so the term stays findable. */}
               <Section title="Accessibility" hint="Applies to the story text only, not the rest of the app.">
-              <Row top htmlFor="narrationFont" {...rowCopy('narrationFont')}>
+              <Row htmlFor="narrationFont" {...rowCopy('narrationFont')}>
                 <Select value={narrationFont} onValueChange={(v) => setNarrationFont(v as NarrationFont)}>
                   <SelectTrigger id="narrationFont" className="w-56">
                     <SelectValue />
@@ -1502,7 +1502,7 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, initialTab,
                   unbounded. Feeds both the hard cap and the <ACTIVE CHARACTER GUIDANCE> chip in the director prompt. */}
               {advanced && thinkingMode === 'staged' && (
                 <SubGroup>
-                <Row top {...rowCopy('limitActiveCharacters')}>
+                <Row {...rowCopy('limitActiveCharacters')}>
                   <div className="flex items-center gap-3">
                     <Checkbox
                       checked={limitActiveCharacters}
@@ -1524,7 +1524,7 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, initialTab,
                   their own thinking. The levels are whichever the active endpoint accepts (detected on connect). */}
               {advanced && thinkingMode === 'off' && reasoningUnsupported && (
                 <SubGroup>
-                <Row top muted label={SETTINGS_COPY.nativeReasoning.label}>
+                <Row muted label={SETTINGS_COPY.nativeReasoning.label}>
                   <p className="pt-2 text-helper text-muted-foreground">This model doesn&apos;t support reasoning, so there&apos;s nothing to configure.</p>
                 </Row>
                 </SubGroup>
@@ -1572,7 +1572,7 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, initialTab,
                 {semanticMemory && (
                   <SubGroup>
                   {/* Always-on top-K cap: derived checkbox (cap > 0), enabling seeds a sensible default. */}
-                  <Row top {...rowCopy('memoryCap')}>
+                  <Row {...rowCopy('memoryCap')}>
                     <div className="flex items-center gap-3">
                       <Checkbox
                         checked={semanticBandCap > 0}
@@ -1688,9 +1688,7 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, initialTab,
               </>)}
 
               <Section title="Choices">
-              {/* `top`, like every other segmented row: `center` would center the label against the control
-                  plus the hint beneath it, dropping it below the control's own midline. */}
-              <Row top {...rowCopy('continueTheStory')}>
+              <Row {...rowCopy('continueTheStory')}>
                 <OptionSwitcher
                   value={continueChoiceMode}
                   onChange={(v) => setContinueChoiceMode(v as ContinueChoiceMode)}
@@ -1770,8 +1768,8 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, initialTab,
               <>
               <ScrollArea className="flex-1 min-h-0">
                 <div className="grid gap-4 py-4">
-              <Row htmlFor="endpointUrl" {...rowCopy('endpointUrl')}>
-                <div className="grid gap-1">
+              <Row top htmlFor="endpointUrl" {...rowCopy('endpointUrl')}>
+                <div className="grid gap-1" data-row-stacked>
                   <Input
                     id="endpointUrl"
                     value={endpointUrl}
@@ -1982,7 +1980,7 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, initialTab,
               </Section>
 
               <Section title="Image">
-              <Row {...rowCopy('promptPrefix')}>
+              <Row top {...rowCopy('promptPrefix')}>
                 <TagField
                   value={imagePositivePrompt}
                   onChange={setImagePositivePrompt}
@@ -1990,7 +1988,7 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, initialTab,
                   placeholder="e.g. masterpiece, best quality"
                 />
               </Row>
-              <Row {...rowCopy('negativePrompt')}>
+              <Row top {...rowCopy('negativePrompt')}>
                 <TagField
                   value={imageNegativePrompt}
                   onChange={setImageNegativePrompt}
@@ -2048,6 +2046,7 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, initialTab,
               )}
               {advanced && imageProvider === 'comfyui' && (
                 <Row
+                  top
                   htmlFor="imageWorkflow"
                   {...rowCopy('imageWorkflow')}
                   info={<HintInfo>{`Tokens Formamorph fills in:
