@@ -31,6 +31,7 @@ describe('buildA1111Body', () => {
       seed: -1,
       batch_size: 1,
       n_iter: 1,
+      save_images: true,
     });
   });
 
