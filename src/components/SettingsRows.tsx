@@ -33,9 +33,13 @@ export function HintInfo({ children }: { children: string }) {
       <PopoverContent
         align="center"
         collisionPadding={12}
-        className="w-80 max-w-[calc(100vw-2rem)] text-helper leading-relaxed text-muted-foreground [&_p]:my-0 [&_*+p]:mt-2 [&_ul]:my-0 [&_*+ul]:mt-1.5 [&_ul]:list-disc [&_ul]:list-outside [&_ul]:pl-5 [&_li]:mt-0.5 [&_li]:pl-0.5 [&_strong]:font-medium [&_strong]:text-foreground [&_code]:text-[0.9em]"
+        // `h4` is reserved for the "this part is about your current selection" header a segmented row's
+        // ⓘ puts above the option detail — styled like a Section title so it reads as a divider, not prose.
+        className="w-80 max-w-[calc(100vw-2rem)] text-helper leading-relaxed text-muted-foreground [&_p]:my-0 [&_*+p]:mt-2 [&_ul]:my-0 [&_*+ul]:mt-1.5 [&_ul]:list-disc [&_ul]:list-outside [&_ul]:pl-5 [&_li]:mt-0.5 [&_li]:pl-0.5 [&_strong]:font-medium [&_strong]:text-foreground [&_code]:text-[0.9em] [&_h4]:mt-3 [&_h4]:mb-1 [&_h4]:border-t [&_h4]:border-border [&_h4]:pt-3 [&_h4]:text-meta [&_h4]:font-semibold [&_h4]:uppercase [&_h4]:tracking-wider [&_h4]:text-foreground"
       >
-        <Streamdown remarkPlugins={[remarkGfm]} controls={false}>{children}</Streamdown>
+        {/* Keyed by content: Streamdown memoizes blocks by their position in the source, so a hint whose
+            text swaps with the selected option keeps the old block at that position otherwise. */}
+        <Streamdown key={children} remarkPlugins={[remarkGfm]} controls={false}>{children}</Streamdown>
       </PopoverContent>
     </Popover>
   );
@@ -119,7 +123,11 @@ function ExperimentalBadge() {
 /** Marks the option a row recommends, on the item itself so the recommendation is visible before you
  *  pick it. Matched to the experimental flask so the two markers read as one family. */
 export function RecommendedMark() {
-  return <Sparkles aria-label="Recommended" className="ml-1.5 inline h-3.5 w-3.5 shrink-0 text-muted-foreground" />;
+  return (
+    <span title="Recommended" aria-label="Recommended" className="ml-1.5 inline-flex shrink-0 text-muted-foreground">
+      <Sparkles className="h-3.5 w-3.5" />
+    </span>
+  );
 }
 
 /**

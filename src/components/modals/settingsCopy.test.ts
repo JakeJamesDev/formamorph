@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { SETTINGS_COPY, SETTINGS_BUTTONS, SETTINGS_CONFIRMS, SETTINGS_OPTIONS, type SettingCopy, type SettingOptionCopy } from './settingsCopy';
+import { SETTINGS_COPY, SETTINGS_BUTTONS, SETTINGS_CONFIRMS, SETTINGS_OPTIONS, REASONING_EFFORT_HELP, type SettingCopy, type SettingOptionCopy } from './settingsCopy';
 
 /**
  * The Settings modal's copy rules, asserted rather than reviewed. Their point is that consistency
@@ -41,6 +41,13 @@ const entries = Object.entries(SETTINGS_COPY) as [string, SettingCopy][];
 /** Every segmented option, keyed `row.value` so a failure names the option rather than just the row. */
 const options: [string, SettingOptionCopy][] = Object.entries(SETTINGS_OPTIONS)
   .flatMap(([key, list]) => (list as readonly SettingOptionCopy[]).map((o) => [`${key}.${o.value}`, o] as [string, SettingOptionCopy]));
+
+/** Every line that renders in the help slot beneath a segmented control. The reasoning levels join here
+ *  and not in `options` because their labels live with the endpoint detection that decides which appear. */
+const helps: [string, string][] = [
+  ...options.map(([k, o]) => [k, o.help] as [string, string]),
+  ...Object.entries(REASONING_EFFORT_HELP).map(([v, help]) => [`nativeReasoning.${v}`, help] as [string, string]),
+];
 
 describe('settings copy', () => {
   it('covers every setting with a description', () => {
@@ -91,11 +98,11 @@ describe('settings copy', () => {
   it('holds every option help to the description rules', () => {
     // R2 again — an option's help replaces the row description on these rows, so it is read in the same
     // slot and must survive the same one-sentence, one-line ceiling.
-    const bad = options.filter(([, o]) =>
-      !o.help.endsWith('.')
-      || o.help.slice(0, -1).includes('. ')
-      || o.help.trim().split(/\s+/).length > MAX_DESCRIPTION_WORDS);
-    expect(bad.map(([k, o]) => `${k}: ${o.help}`)).toEqual([]);
+    const bad = helps.filter(([, help]) =>
+      !help.endsWith('.')
+      || help.slice(0, -1).includes('. ')
+      || help.trim().split(/\s+/).length > MAX_DESCRIPTION_WORDS);
+    expect(bad.map(([k, help]) => `${k}: ${help}`)).toEqual([]);
   });
 
   it('titles every option label', () => {
@@ -109,7 +116,14 @@ describe('settings copy', () => {
 
   it('carries recommended as a flag rather than a word in the option help', () => {
     // R6's shape applied to option copy — the marker on the item says it, and says it before you select.
-    const bad = options.filter(([, o]) => /recommended/i.test(o.help));
+    const bad = helps.filter(([, help]) => /recommended/i.test(help));
+    expect(bad.map(([k]) => k)).toEqual([]);
+  });
+
+  it('keeps every option detail beyond a restatement of its help', () => {
+    // The `ⓘ` is worth opening only if it says something the line under the control didn't — a detail that
+    // opens with its own help is the padding this table exists to keep out.
+    const bad = options.filter(([, o]) => o.detail && o.detail.startsWith(o.help));
     expect(bad.map(([k]) => k)).toEqual([]);
   });
 
