@@ -10,6 +10,7 @@
 import { readFile } from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { parseEntry, inProgressBounds } from './changelogFormat.mjs';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const args = process.argv.slice(2);
@@ -38,11 +39,7 @@ function sectionBounds() {
     for (let i = start + 1; i < lines.length; i++) { if (/^<\/details>/.test(lines[i])) { end = i; break; } }
     return [start, end];
   }
-  const start = lines.findIndex((l) => /^##\s+.*In Progress/i.test(l));
-  if (start === -1) return null;
-  let end = lines.length;
-  for (let i = start + 1; i < lines.length; i++) { if (/^---\s*$/.test(lines[i]) || /^<details>/.test(lines[i])) { end = i; break; } }
-  return [start, end];
+  return inProgressBounds(lines);
 }
 
 const bounds = sectionBounds();
@@ -69,24 +66,20 @@ for (let i = start + 1; i < end; i++) {
     continue;
   }
   // Indented bullet under a 👤 group with a known change type = an entry; take its bold lead, dropping any
-  // trailing period so the one-line notes read uniformly (bullets aren't full sentences). A deeper indent
-  // is a sub-item of the entry above it and stays nested in the notes, so a long entry can be broken into
-  // parts instead of reading as a wall of text. One level only — deeper reads as noise in release notes.
+  // trailing period so the one-line notes read uniformly (bullets aren't full sentences). A bold lead ending
+  // in a colon is a feature group header rather than a change — it emits bold, and the deeper-indented
+  // entries beneath it stay nested under it. One level only — deeper reads as noise in release notes.
   if (audienceIsUser && currentType) {
-    const m = /^(\s{2,})-\s+\*\*(.+?)\*\*/.exec(line);
-    if (m) {
-      buckets[currentType].push({
-        depth: m[1].length >= 4 ? 1 : 0,
-        text: m[2].replace(/\*\*/g, '').trim().replace(/\.$/, ''),
-      });
-    }
+    const entry = parseEntry(line);
+    if (entry) buckets[currentType].push(entry);
   }
 }
 
 const out = [];
 for (const { key } of TYPES) {
   if (buckets[key].length) {
-    out.push(`### ${key}`, '', ...buckets[key].map((e) => `${'  '.repeat(e.depth)}- ${e.text}`), '');
+    const rows = buckets[key].map((e) => `${'  '.repeat(e.depth)}- ${e.header ? `**${e.text}**` : e.text}`);
+    out.push(`### ${key}`, '', ...rows, '');
   }
 }
 process.stdout.write(out.length ? out.join('\n').trimEnd() + '\n' : '- Maintenance and internal improvements.\n');
