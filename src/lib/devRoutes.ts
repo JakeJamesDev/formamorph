@@ -28,8 +28,10 @@ export type DevView = (typeof DEV_VIEWS)[number];
  *  `adminPanel` the admin tools (Users/Broadcasts). All three need a signed-in session, and `adminPanel`
  *  an admin one, so they open empty otherwise rather than failing. `editText` is in-game (GameViewer) and
  *  opens the narration editor on the current page's text — empty before any turn, which is enough to reach
- *  its full-screen toggle, the one editor that grows in place instead of raising a window. */
-export const DEV_MODALS = ['settings', 'entity', 'export', 'menu', 'worldEditor', 'intro', 'avatar', 'backup', 'aiSetup', 'entityEditor', 'dictionaryEditor', 'modelDetails', 'community', 'memoryManager', 'profile', 'feedbackHub', 'adminPanel', 'editText'] as const;
+ *  its full-screen toggle, the one editor that grows in place instead of raising a window. `changelog` opens
+ *  MainMenu's What's New popout on a canned sample (`devChangelogSample.ts`) rather than the live GitHub
+ *  fetch, so its typography is checkable offline and always shows every shape the notes can take. */
+export const DEV_MODALS = ['settings', 'entity', 'export', 'menu', 'worldEditor', 'intro', 'avatar', 'backup', 'aiSetup', 'entityEditor', 'dictionaryEditor', 'modelDetails', 'community', 'memoryManager', 'profile', 'feedbackHub', 'adminPanel', 'editText', 'changelog'] as const;
 export type DevModal = (typeof DEV_MODALS)[number];
 
 /** Coverage ledger: tabbed surface → the sub-tabs the router can target (via `tab=…`). Kept in lockstep

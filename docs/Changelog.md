@@ -18,10 +18,12 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
 
 - **🛠️ Developer tooling**
   - **Changelog entries that touch the same feature are grouped under a header, and the release notes ship that grouping.** Two or more entries on one feature sit under a `- **Feature:**` bullet, which `extractReleaseNotes.mjs` emits in bold with its entries nested beneath — so a release that reworked one surface reads as one thing on the GitHub release page and in the update popout, rather than as a flat run of unrelated lines. `scripts/changelogFormat.mjs` holds the parse rules the generator and the guard share, and `changelogFormat.test.mjs` lints the unreleased section and the newest closed release for one-child groups, bullets with no bold lead, and nesting past one level. The retired sub-item convention still renders exactly as before, so regenerating an older release reproduces its published notes.
+  - **The What's New popout has a dev-router entry that opens it on a canned set of release notes.** `#dev?view=mainMenu&modal=changelog` opens MainMenu's changelog dialog against `devChangelogSample.ts` rather than the live GitHub fetch, so the panel's typography can be checked offline and always against every shape the notes take — a minor group header, tinted current and newest captions, a category label, a feature group with nested entries, and a loose entry. The sample is behind a DEV-gated dynamic import.
 
 #### 🔧 Fixed
 
 - **👤 User-facing**
+  - **Version headings in the What's New popout are sized to match the notes around them.** The minor-version heading rendered at nearly double the surrounding text, because the markdown renderer sizes headings off its own scale rather than the app's. It now steps down to the patch version and the notes beneath it, so a popout listing several versions reads as one list.
   - **Images generated through Automatic1111 or Forge are now kept on disk like any other generation.** The API leaves saving off unless asked, so pictures made from the game existed only inside the save file. They now land in the WebUI's usual output folder, named and stamped the way its own generations are.
 
 ---

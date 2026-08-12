@@ -581,23 +581,38 @@
   /* Outline indent: the `## <minor>` header stays flush; patch/category labels sit one level in. */
   margin-left: 1rem;
 }
-/* ...and their bullet lists sit a second level in. */
+/* ...and their bullet lists sit a second level in. The margin is the outline indent from the panel edge, so
+   only the outermost list takes it — a nested list (a feature group's entries) steps in by its own padding
+   alone, the way one nesting level should read. */
 .changelog-body ul {
   margin-left: 2rem;
 }
+.changelog-body ul ul {
+  margin-left: 0;
+}
 .changelog-body p:has(> [data-streamdown="strong"]:only-child) > [data-streamdown="strong"] {
-  font-size: 0.75rem;
+  @apply text-meta;
   font-weight: 600;
   letter-spacing: 0.01em;
   color: hsl(var(--muted-foreground));
 }
 /* The patch version (`### <tag>`) is a flush-left caption styled like the category labels, not a big heading. */
 .changelog-body h3 {
+  @apply text-meta;
   margin: 0.75rem 0 0.25rem;
-  font-size: 0.75rem;
   font-weight: 600;
   letter-spacing: 0.01em;
   color: hsl(var(--muted-foreground));
+}
+/* Streamdown sizes markdown off the raw Tailwind scale, which is outside the app's semantic roles: the
+   minor version (`## <minor>`) lands at text-2xl, near double the panel's body text. Pin the elements it
+   sizes to roles instead — the version stays findable while scrolling without shouting, and inline code
+   matches the copy around it. */
+.changelog-body h2 {
+  @apply text-title;
+}
+.changelog-body code {
+  @apply text-label;
 }
 /* Tint the current (installed) and newest-uninstalled version captions toward info/success, keeping the
    muted base so they stay captions — not full-saturation labels. Tagged by ChangelogBody. */
