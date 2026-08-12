@@ -2,7 +2,7 @@
 
 All notable changes to Formamorph. This fork's first line is **2.0.0** — a full TypeScript rebuild of the upstream JavaScript app ([FieryLionite's Formamorph](https://fierylion.itch.io/formamorph), ~v1.2) — with feature parity as the baseline plus new features on top.
 
-> ✅ **2.0.0 – 2.12.0 are released** (collapsed below). New work lands under **🚧 In Progress** — an unnumbered section, so changes accumulate without pinning a version. When a batch earns a release its section is marked **Released** and collapsed, and a fresh In Progress opens. `package.json` reads **2.12.0** — the latest released version.
+> ✅ **2.0.0 – 2.12.1 are released** (collapsed below). New work lands under **🚧 In Progress** — an unnumbered section, so changes accumulate without pinning a version. When a batch earns a release its section is marked **Released** and collapsed, and a fresh In Progress opens. `package.json` reads **2.12.1** — the latest released version.
 
 Each release groups changes as **Major** / **Minor**, then **Added** / **Removed** / **Fixed**, and within those by audience: 👤 user-facing · 🛠️ developer tooling · ⚙️ backend.
 
@@ -10,7 +10,12 @@ Each release groups changes as **Major** / **Minor**, then **Added** / **Removed
 
 ## 🚧 In Progress
 
-_Unreleased — new work accumulates here until it earns a version bump. The next batch will pin its own version; `package.json` reads **2.12.0** (just released below)._
+_Unreleased — new work accumulates here until it earns a version bump. The next batch will pin its own version; `package.json` reads **2.12.1** (just released below)._
+
+---
+
+<details>
+<summary><strong>✅ 2.12.1 — Released 2026-08-12</strong> — Settings opens in a Simple mode that hides the sixty-odd advanced controls until you ask for them; any trait an author marked as yours to switch can now be taken mid-game; and trait stat changes stop drifting at their bounds, so toggling one can no longer be farmed for points (click to expand)</summary>
 
 ### Minor Changes
 
@@ -40,6 +45,8 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
   - **A trait that writes two changes to the same stat now lands the same result whichever order the author wrote them in.** The two used to be clamped one at a time, so a −80 followed by a +60 could stop at a floor the pair should have cleared. They are added together first and clamped once.
   - **A stat's minimum, maximum and regeneration are now recomputed from the world's numbers rather than nudged up and down.** Traits that raised and lowered the same bound could leave it slightly off after enough switching, and a maximum a trait had moved could never be returned to what the author wrote. Each bound is now the authored value plus whatever the active traits and the AI have contributed, so it cannot drift however many times a trait goes on and off. Loading an existing save reads every stat at exactly the number it read when you saved.
   - **Clicking a suggestion in the stat code editor now inserts it.** The completion list appeared and the arrow keys picked from it, but a click landed on nothing — the popup is drawn outside the World Editor window so that a long list isn't cut off by the panel it sits in, and everything outside that window ignores the mouse while it's open. Picking with the mouse, on a stat name or a snippet, now works the same as picking with Enter, and the error tooltips beside the line numbers are clickable for the same reason.
+
+</details>
 
 ---
 
