@@ -1,10 +1,11 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { ChangelogBody, FullChangelogLink } from '@/components/ChangelogUi';
 import { APP_VERSION } from '@/lib/version';
 import { BUILD_TAG } from '@/lib/buildInfo';
 import { checkForUpdate } from '@/services/UpdateService';
+import { useDevRoute } from '@/lib/devRouter';
 
 /** Web footer version: there's no self-update, but clicking still shows the latest release's notes. Fetches
  *  lazily on first open (never on load / on a timer, unlike the desktop checker) and links to the full wiki
@@ -14,6 +15,18 @@ export function WebVersionChangelog() {
   const [changelog, setChangelog] = useState<string | null>(null); // null until first fetch resolves
   const [updateVersion, setUpdateVersion] = useState<string | undefined>(); // newest version, if an update exists
   const [loading, setLoading] = useState(false);
+  const devRoute = useDevRoute();
+
+  // DEV: `#dev?view=mainMenu&modal=changelog` opens on a canned sample instead of the GitHub fetch, so the
+  // popout's typography is checkable offline. The import is DEV-gated, so the sample never ships.
+  useEffect(() => {
+    if (!import.meta.env.DEV || devRoute?.modal !== 'changelog') return;
+    void import('@/lib/devChangelogSample').then(({ DEV_CHANGELOG_SAMPLE }) => {
+      setChangelog(DEV_CHANGELOG_SAMPLE);
+      setUpdateVersion('2.13.0');
+      setOpen(true);
+    });
+  }, [devRoute?.modal]);
 
   const openDialog = () => {
     setOpen(true);
