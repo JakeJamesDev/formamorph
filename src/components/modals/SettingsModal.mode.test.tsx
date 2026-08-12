@@ -57,7 +57,7 @@ describe('settings mode', () => {
     expect(settingsTabsFor(false).map((t) => t.value))
       .toEqual(['display', 'output', 'endpoints', 'data']);
     expect(settingsTabsFor(true).map((t) => t.value))
-      .toEqual(['display', 'output', 'endpoints', 'prompts', 'data']);
+      .toEqual(['display', 'output', 'prompts', 'endpoints', 'data']);
   });
 
   it('hides the Prompts tab in Simple and shows it in Advanced', () => {

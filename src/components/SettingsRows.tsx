@@ -70,23 +70,23 @@ export function SubGroup({ children }: { children: ReactNode }) {
 
 /** The label cell every settings row draws through — `Row` and `CheckRow` both delegate here, so the
  *  `text-left sm:text-right` alignment can't be forgotten per-row and drift out of line.
- *  `align` sets how the label sits against its control: `top` for a tall one (a ToggleGroup, a stacked
- *  field), `pad` for a field or slider, `center` when the grid already centers the row, and the default
- *  `check` for a checkbox, whose small box the label lines up on.
+ *  `align` sets how the label sits against its control: the default `center` rides the grid's own
+ *  centering, `top` pins it to the first line of a tall control (a stacked field, a textarea), and `check`
+ *  lines it up on a checkbox's small box.
  *  `muted` dims it. `info` renders an affordance (e.g. `HintInfo`) right after the label text, so a row's
  *  detail control sits in a consistent column at the label boundary rather than trailing lead text.
  *  Renders a `<label>` when `htmlFor` is given, else a `<span>` (for non-interactive controls). */
-export type RowAlign = 'top' | 'pad' | 'center' | 'check';
+export type RowAlign = 'top' | 'center' | 'check';
 
 const ROW_ALIGN_CLASS: Record<RowAlign, string> = {
-  top: 'pt-2', pad: 'pt-1', center: '', check: 'leading-4',
+  top: 'self-start pt-2', center: '', check: 'leading-4',
 };
 
-export function RowLabel({ htmlFor, align = 'check', muted, info, experimental, children }: {
+export function RowLabel({ htmlFor, align = 'center', muted, info, experimental, className = '', children }: {
   htmlFor?: string; align?: RowAlign; muted?: boolean; info?: ReactNode;
-  experimental?: boolean; children: ReactNode;
+  experimental?: boolean; className?: string; children: ReactNode;
 }) {
-  const alignClass = ROW_ALIGN_CLASS[align];
+  const alignClass = `${ROW_ALIGN_CLASS[align]}${className ? ` ${className}` : ''}`;
   const cls = `text-left sm:text-right ${alignClass}${muted ? ' text-muted-foreground' : ''}`;
   const adornment = (experimental || info) && (
     <>
@@ -134,31 +134,36 @@ export function RecommendedMark() {
  * A label + control row on the settings tabs' two-column grid — the one shape every non-checkbox setting
  * uses, so a tab reads as a single column of controls rather than a pile of bespoke grids.
  *
- * Vertical alignment: `center` for a single-line control, `top` for a tall one (a ToggleGroup, a stacked
- * field), the default for a field or slider. Omitting `label` leaves the label cell empty, which is how a
+ * The hint sits on its own grid row rather than beneath the control inside one cell, which is what lets the
+ * label center on the **control** instead of on the control-plus-hint stack. Centering by the stack drops
+ * the label below the control's midline by half the hint's height, and by a different amount on every row.
+ *
+ * `top` opts out for a control taller than a line or two — a stacked field, a textarea — where centering
+ * would strand the label in the middle of it. Omitting `label` leaves the label cell empty, which is how a
  * row that is only a button or a status line still lands in the control column.
  */
-export function Row({ label, htmlFor, children, hint, center, top, info, muted, experimental }: {
+export function Row({ label, htmlFor, children, hint, top, info, muted, experimental }: {
   label?: string; htmlFor?: string; children: ReactNode; hint?: string;
-  center?: boolean; top?: boolean; info?: ReactNode; muted?: boolean; experimental?: boolean;
+  top?: boolean; info?: ReactNode; muted?: boolean; experimental?: boolean;
 }) {
   return (
-    <div className={`grid grid-cols-1 sm:grid-cols-[minmax(0,1fr)_minmax(0,3fr)] ${center ? 'sm:items-center' : 'items-start'} gap-4`}>
+    // Row gaps are margins rather than `gap-y`: the label needs a full gap under it when the grid stacks
+    // on mobile, and the hint needs a tight one, which a single gap value can't give both.
+    <div className="grid grid-cols-1 sm:grid-cols-[minmax(0,1fr)_minmax(0,3fr)] items-center gap-x-4">
       {label === undefined
         // Holds the column open on wide screens only: on mobile the grid is one column, where an empty
         // cell would just be a gap above the control.
         ? <span className="hidden sm:block" />
         : <RowLabel
             htmlFor={htmlFor}
-            align={top ? 'top' : center ? 'center' : 'pad'}
+            className="mb-4 sm:mb-0"
+            align={top ? 'top' : 'center'}
             muted={muted}
             info={info}
             experimental={experimental}
           >{label}</RowLabel>}
-      <div className="space-y-1">
-        {children}
-        {hint && <Hint>{hint}</Hint>}
-      </div>
+      <div className="min-w-0">{children}</div>
+      {hint && <Hint className="mt-1 sm:col-start-2">{hint}</Hint>}
     </div>
   );
 }
