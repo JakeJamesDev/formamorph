@@ -101,7 +101,7 @@
     "clsx": "^2.1.1",
     "cmdk": "^1.0.0",
     "electron": "^42.5.0",
-    "electron-builder": "^26.15.3",
+    "electron-builder": "^26.15.7",
     "eslint": "^9.8.0",
     "eslint-plugin-react": "^7.35.0",
     "eslint-plugin-react-hooks": "^5.1.0-rc.0",
