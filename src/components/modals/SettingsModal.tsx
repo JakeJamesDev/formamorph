@@ -11,7 +11,7 @@ import { settingsUseAdvancedValues } from '@/lib/settingsAdvancedData';
 import { TutorialPopover } from '@/components/TutorialPopover';
 import { useDevRoute } from '@/lib/devRouter';
 import { Row, CheckRow, Section, SubGroup, HintInfo, RecommendedMark } from '@/components/SettingsRows';
-import { SETTINGS_COPY, SETTINGS_BUTTONS, SETTINGS_CONFIRMS, SETTINGS_OPTIONS, type SettingOptionCopy } from '@/components/modals/settingsCopy';
+import { SETTINGS_COPY, SETTINGS_BUTTONS, SETTINGS_CONFIRMS, SETTINGS_OPTIONS, REASONING_EFFORT_HELP, type SettingOptionCopy } from '@/components/modals/settingsCopy';
 import { rowCopy, optionRowCopy } from '@/components/modals/settingsRowCopy';
 import TagField from '@/components/prompt/TagField';
 import { reasoningTabs, reasoningPromptTabs, defaultPromptReasoning, defaultReasoningBudgetPct, REASONING_CONTROL_KINDS, type PromptReasoning } from '@/lib/reasoningEffort';
@@ -113,20 +113,6 @@ function OptionSwitcher({ value, onChange, options }: {
 const numInput = (raw: string, min: number): number => {
   const n = Number(raw);
   return Number.isFinite(n) && n >= min ? n : min;
-};
-
-// Per-value help; the tabs themselves are built from the endpoint's detected support via `reasoningTabs`.
-// The "only applies to reasoning models" caveat is a property of the control, not of any one level, so it
-// lives once in the row's ⓘ rather than closing all eight of these.
-const REASONING_EFFORT_HELP: Record<ReasoningEffort, string> = {
-  auto: 'No hint sent — the endpoint decides.',
-  none: 'Disables native reasoning.',
-  minimal: 'Minimal effort.',
-  low: 'Low effort.',
-  medium: 'Medium effort.',
-  high: 'High effort.',
-  xhigh: 'Extra-high effort.',
-  max: 'Maximum effort.',
 };
 
 /** Per-prompt control: how many recent turns this prompt receives verbatim (the rest are summarized). */
@@ -1198,7 +1184,7 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, initialTab,
             <ScrollArea className="flex-1 min-h-0">
             <div className="grid gap-6 py-4">
               <Section title="Appearance">
-              <Row top {...optionRowCopy('theme')}>
+              <Row top {...optionRowCopy('theme', THEME_OPTIONS.find((o) => o.value === theme))}>
                 <div>
                   <ToggleGroup
                     type="single"
@@ -1307,7 +1293,7 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, initialTab,
                 />
               </Row>
               {advanced && (
-              <Row top {...optionRowCopy('paragraphLimit')}>
+              <Row top {...optionRowCopy('paragraphLimit', PARAGRAPH_LIMIT_OPTIONS.find((o) => o.value === paragraphLimit))}>
                 <div>
                   <ToggleGroup
                     type="single"
@@ -1484,7 +1470,7 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, initialTab,
               </Section>
 
               <Section title="Reasoning">
-              <Row top {...optionRowCopy('thinking')}>
+              <Row top {...optionRowCopy('thinking', THINKING_OPTIONS.find((o) => o.value === thinkingMode))}>
                 <div>
                   <OptionSwitcher value={thinkingMode} onChange={(v) => setThinkingMode(v as ThinkingMode)} options={THINKING_OPTIONS} />
                   {/* Stacked like Paragraph Limit so switching thinking modes doesn't reflow the layout. */}
@@ -1535,7 +1521,7 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, initialTab,
                 const reasoningOptions = reasoningTabs(supportedReasoningEfforts);
                 return (
                   <SubGroup>
-                  <Row top {...rowCopy('nativeReasoning')}>
+                  <Row top {...optionRowCopy('nativeReasoning')}>
                     <div>
                       <OptionSwitcher value={reasoningEffort} onChange={(v) => setReasoningEffort(v as ReasoningEffort)} options={reasoningOptions} />
                       <div className="grid mt-2">
@@ -1598,26 +1584,8 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, initialTab,
                   />
                   </SubGroup>
                 )}
-                <CheckRow
-                  htmlFor="timeContext"
-                  checked={timeContext}
-                  onChange={setTimeContext}
-                  {...rowCopy('timeInMemory')}
-                />
-                <CheckRow
-                  htmlFor="aiClock"
-                  checked={aiClock}
-                  onChange={setAiClock}
-                  {...rowCopy('measuredClock')}
-                />
                 </SubGroup>
               )}
-              <CheckRow
-                htmlFor="semanticLore"
-                checked={semanticLore}
-                onChange={handleSemanticLoreToggle}
-                {...rowCopy('semanticLore')}
-              />
               {embedLoading && (
                 <Row center>
                   <div className="flex items-center gap-2">
@@ -1641,6 +1609,36 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, initialTab,
                   </div>
                 </Row>
               )}
+              </Section>
+
+              {/* Both rows are about the story's clock rather than what the AI remembers, so they get their
+                  own section — gated on Memory Summaries, which is what they already depended on as rows. */}
+              {memoryDigests && (
+              <Section title="Time" hint="How long each turn takes, and when things happened.">
+              <CheckRow
+                htmlFor="timeContext"
+                checked={timeContext}
+                onChange={setTimeContext}
+                {...rowCopy('timeInMemory')}
+              />
+              <CheckRow
+                htmlFor="aiClock"
+                checked={aiClock}
+                onChange={setAiClock}
+                {...rowCopy('measuredClock')}
+              />
+              </Section>
+              )}
+
+              {/* Semantic Lore acts on the dictionary, not on memories — it sat under Memory only because it
+                  shares Semantic Memory's on-device model, whose download progress stays up there. */}
+              <Section title="Lore" hint="How dictionary entries reach the AI.">
+              <CheckRow
+                htmlFor="semanticLore"
+                checked={semanticLore}
+                onChange={handleSemanticLoreToggle}
+                {...rowCopy('semanticLore')}
+              />
               </Section>
 
               {/* Split out of Memory: these three are about the cast, and only sat under Memory because
