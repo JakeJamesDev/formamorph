@@ -11,7 +11,7 @@ import { PlaceholderSessionProvider } from '@/contexts/PlaceholderSessionContext
 import { setGameplayText } from '@/lib/gameplayTextStore';
 import { pageAssistantIndex } from '@/lib/turnHistory';
 import { LeftPanel, MiddlePanel, RightPanel } from '@/components/game/GamePanels';
-import type { AITurnResult, ChatMessage, GameState, PlayerStat, Stat, World } from '@/types';
+import type { AITurnResult, ChatMessage, GameState, PlayerStat, Stat, Trait, World } from '@/types';
 
 /**
  * Render helper for the three gameplay panels (`GamePanels.tsx`).
@@ -62,6 +62,8 @@ export interface TurnFixture {
   summary?: string;
   /** Per-character diary entries for this turn. */
   diaries?: Record<string, string>;
+  /** The traits the player held on this turn, for the history view's trait list. */
+  traits?: Trait[];
 }
 
 export interface PanelHarnessOptions {
@@ -139,7 +141,7 @@ export function turnHistory(turns: TurnFixture[]): ChatMessage[] {
 function snapshotFixture(turn: TurnFixture, stats: PlayerStat[]): GameState {
   return {
     playerStats: stats,
-    playerTraits: [],
+    playerTraits: turn.traits ?? [],
     visibleEntities: [],
     logEntries: [],
     gameplayText: turn.narration,

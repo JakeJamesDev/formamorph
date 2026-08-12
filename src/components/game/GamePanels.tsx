@@ -13,6 +13,7 @@ import { useIsMobile } from '@/lib/useIsMobile';
 import { usePrefersReducedMotion } from '@/lib/usePrefersReducedMotion';
 import { statBarFrame, bandOrigin, formatStatDelta } from '@/lib/statBar';
 import { traitOrderIndex, inAuthoredOrder, activeStatEnabled, refreshChosenTraits } from '@/lib/traitEffects';
+import { listablePlayerTraits } from '@/lib/traitRuntime';
 import { MarkdownRenderer } from './MarkdownRenderer';
 import { ReasoningBlock } from './ReasoningBlock';
 import { useLiveReasoning } from '@/lib/reasoningStreamStore';
@@ -1198,9 +1199,18 @@ export const RightPanel = ({ onLocationClick, onToggleTrait, language, setLangua
   // The save froze each chosen trait as the world stood on turn 1, so its authoring is re-read from the
   // world — otherwise a trait made switchable after this playthrough began would never get its control.
   const playerTraits = React.useMemo(() => refreshChosenTraits(savedTraits, traits), [savedTraits, traits]);
+  const traitOrder = React.useMemo(() => traitOrderIndex(traits, traitGroups), [traits, traitGroups]);
+  const heldTraitIds = React.useMemo(() => new Set(playerTraits.map((t) => t.id)), [playerTraits]);
   const activeTraits = React.useMemo(
-    () => inAuthoredOrder(playerTraits.filter((t) => !disabledTraits.has(t.id)), traitOrderIndex(traits, traitGroups)),
-    [playerTraits, disabledTraits, traits, traitGroups],
+    () => inAuthoredOrder(playerTraits.filter((t) => !disabledTraits.has(t.id)), traitOrder),
+    [playerTraits, disabledTraits, traitOrder],
+  );
+  // Every toggleable trait is available at any time, so the list holds the player's traits and the ones they
+  // could take, together in authored order — owned and unowned differ only by the checkbox. A past turn shows
+  // only what was held then: acquirables can't be acted on there.
+  const listedTraits = React.useMemo(
+    () => (isViewingPast ? playerTraits : listablePlayerTraits(playerTraits, traits, traitOrder)),
+    [isViewingPast, playerTraits, traits, traitOrder],
   );
   const statEnabled = React.useMemo(
     () => activeStatEnabled(playerStats, activeTraits),
@@ -1320,11 +1330,13 @@ export const RightPanel = ({ onLocationClick, onToggleTrait, language, setLangua
         </TabsContent>
         <TabsContent value="traits" className="flex-grow overflow-hidden">
           <ScrollArea className="h-[calc(100%-1rem)]">
-            {playerTraits.length > 0 ? (
-              playerTraits.map((trait) => {
-                const off = disabledTraits.has(trait.id);
-                // Only traits the author marked switchable get a control; the rest read as before. A
-                // switched-off trait stays listed, dimmed, so it can be switched back on.
+            {listedTraits.length > 0 ? (
+              listedTraits.map((trait) => {
+                // Unticked whether it was switched off or never taken — the panel draws no line between the
+                // two, because a trait that can be taken at will makes "owned" a distinction without a
+                // difference. Both read dimmed and both switch on the same way.
+                const off = disabledTraits.has(trait.id) || !heldTraitIds.has(trait.id);
+                // Only traits the author marked switchable get a control; the rest read as before.
                 const switchable = !!trait.playerToggle && !isViewingPast;
                 return (
                   <div key={trait.id} className={`mb-1 flex items-start gap-2 ${off ? 'opacity-50' : ''}`}>

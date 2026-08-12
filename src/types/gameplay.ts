@@ -11,8 +11,22 @@ export interface DiscoveredEntity {
   sourceTurnId: string;
 }
 
-/** A stat during gameplay — a definition Stat whose live `value` is always a number. */
-export type PlayerStat = Omit<Stat, 'value'> & { value: number };
+/** A stat during gameplay — a definition Stat whose live `value` is always a number.
+ *
+ *  `min`, `max` and `regen` are *effective* bounds, derived from the `base*` fields plus the active traits'
+ *  contributions plus `aiMaxDelta`. Everything outside the trait runtime — the panel, stat code, morph
+ *  bindings — reads only the effective numbers; the bases are bookkeeping. All four are optional so a save
+ *  written before bounds were derived still loads, its bases reconstructed at load time. */
+export type PlayerStat = Omit<Stat, 'value'> & {
+  value: number;
+  /** The author's own floor, which no trait may dig below. */
+  baseMin?: number;
+  baseMax?: number;
+  baseRegen?: number;
+  /** How far the AI has moved this stat's maximum over the playthrough, kept apart from the trait
+   *  contributions so the maximum stays fully derived. */
+  aiMaxDelta?: number;
+};
 
 /** One row of the live scene list (the Entities tab): who is physically present this turn. `name` is the
  *  real entity name (resolves the portrait) or an ad-hoc/invented name. `alias` is how the player currently
@@ -123,6 +137,11 @@ export interface GameState {
   /** Ids of chosen traits the player has switched off during play. They stay in `playerTraits` so the
    *  switch can go back on; everything trait-driven reads the difference. Absent ⇒ all active. */
   disabledTraitIds?: string[];
+  /** What each trait's last switch actually moved, trait id → stat id → delta. The next switch of that trait
+   *  reverses this rather than the authored change, so a change a bound refused gives nothing back and a
+   *  clamp is undone as fully as it was applied. Absent on saves written before it, which reverse by negating
+   *  the authored change as they always did. */
+  appliedTraitValues?: Record<string, Record<string, number>>;
   /** The live scene list — who is physically present this turn, with alias/reveal state for the tab. Legacy
    *  saves stored a bare `string[]` of names; those are normalized to `{ name, revealed: true }` on load. */
   visibleEntities: SceneEntity[];

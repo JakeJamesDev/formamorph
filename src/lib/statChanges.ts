@@ -1,4 +1,4 @@
-import type { PlayerStat, StatChange } from '@/types';
+import type { PlayerStat } from '@/types';
 import { clamp } from './utils';
 
 /**
@@ -81,6 +81,9 @@ export function parseStatUpdates(text: string): {
  * Apply normalized max-cap deltas to stats. Percentage stats are skipped (their cap is pinned at 100).
  * Honors the noIncreaseMax/noDecreaseMax flags, floors the new max at the stat's min, and re-clamps the
  * current value into the new [min, max] range so lowering a cap can't leave the value stranded above it. Pure.
+ *
+ * The movement is also accumulated into `aiMaxDelta`, which is what keeps the maximum derivable: a later
+ * trait toggle recomputes the cap from base + traits + this, so the AI's work survives the recompute.
  */
 export function applyAiMaxChanges(
   stats: PlayerStat[],
@@ -95,83 +98,11 @@ export function applyAiMaxChanges(
     if (!allowed) return stat;
     const newMax = Math.max(stat.min, stat.max + delta);
     const newValue = clamp(stat.value, stat.min, newMax);
-    return { ...stat, max: newMax, value: newValue };
+    // Record what the cap actually moved, not what was asked for, so a delta the floor refused isn't
+    // resurrected the next time bounds are re-derived.
+    const aiMaxDelta = (stat.aiMaxDelta ?? 0) + (newMax - stat.max);
+    return { ...stat, max: newMax, value: newValue, aiMaxDelta };
   });
-}
-
-/**
- * Apply trait-driven changes (min/max/regen/starting) to stats. Two passes: the
- * first adjusts bounds/regen and collects value adjustments (e.g. raising a floor
- * pulls the value up to it); the second applies 'starting' deltas plus those
- * adjustments, clamping to [min, max]. Returns new stat objects (input is not
- * mutated) and the set of ids that were touched, so the caller can persist them.
- *
- * Min is bounded below by the stat's authored floor: traits can raise it and undo each other's raises, but
- * none can take a stat below the range its author designed. Max has no such limit and moves either way.
- *
- * Pass `authoredMins` (statId → the world's own Min) whenever changes are applied across several calls —
- * one per trait, or a switch-off reversing an earlier one. Without it the floor is read from the incoming
- * stats, which by then already carry the raise being undone, so the min would never come back down.
- */
-export function applyTraitStatChanges(
-  stats: PlayerStat[],
-  changes: StatChange[],
-  authoredMins?: Record<string, number>,
-): { stats: PlayerStat[]; changedIds: Set<string> } {
-  const updated = stats.map((s) => ({ ...s }));
-  const changedIds = new Set<string>();
-  const valueAdjustments = new Map<string, number>();
-  const authoredMin = new Map(stats.map((s) => [s.id, authoredMins?.[s.id] ?? s.min]));
-
-  // First pass: bounds + regen, collecting value adjustments.
-  changes.forEach((change) => {
-    const stat = updated.find((s) => s.id === change.statId);
-    if (!stat) return;
-
-    if (change.type === 'min') {
-      // A trait may raise a floor, and lower one back toward where it started — but never past the stat's
-      // authored Min, so traits can cancel each other without moving the stat outside its designed range.
-      const floor = authoredMin.get(stat.id) ?? stat.min;
-      const newMin = Math.max(floor, stat.min + change.value);
-      stat.min = newMin;
-      if (newMin > stat.value) {
-        valueAdjustments.set(stat.id, (valueAdjustments.get(stat.id) || 0) + (newMin - stat.value));
-      }
-    } else if (change.type === 'max') {
-      const oldMax = stat.max;
-      const newMax = stat.max + change.value;
-      stat.max = newMax;
-      if (newMax > oldMax && stat.value === oldMax) {
-        valueAdjustments.set(stat.id, (valueAdjustments.get(stat.id) || 0) + (newMax - oldMax));
-      } else if (newMax < stat.value) {
-        valueAdjustments.set(stat.id, (valueAdjustments.get(stat.id) || 0) + (newMax - stat.value));
-      }
-    } else if (change.type === 'regen') {
-      stat.regen = (stat.regen || 0) + change.value;
-    }
-  });
-
-  // Second pass: 'starting' deltas, applied per change entry (a stat may carry several), clamped each time.
-  changes.forEach((change) => {
-    const stat = updated.find((s) => s.id === change.statId);
-    if (!stat) return;
-    if (change.type === 'starting') {
-      stat.value = clamp(stat.value + change.value, stat.min, stat.max);
-    }
-    changedIds.add(stat.id);
-  });
-
-  // Then apply each stat's accumulated bounds adjustment exactly once — iterating `changes` here would
-  // re-apply it once per change entry, over-adjusting any stat that carries two or more changes.
-  for (const [statId, adjustment] of valueAdjustments) {
-    if (adjustment === 0) continue;
-    const stat = updated.find((s) => s.id === statId);
-    if (!stat) continue;
-    stat.value = clamp(stat.value + adjustment, stat.min, stat.max);
-    changedIds.add(statId);
-  }
-
-  return { stats: updated, changedIds };
 }
 
 /**

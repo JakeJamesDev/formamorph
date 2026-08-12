@@ -2,7 +2,6 @@ import { describe, it, expect } from 'vitest';
 import {
   normalizeStatChanges,
   applyAiStatChanges,
-  applyTraitStatChanges,
   parseStatUpdates,
   applyAiMaxChanges,
   pageStatDeltas,
@@ -121,103 +120,6 @@ describe('applyAiStatChanges', () => {
   it('returns the same object reference for unchanged stats (no needless re-renders)', () => {
     const s = stat({ value: 50 });
     expect(applyAiStatChanges([s], { other: 5 })[0]).toBe(s);
-  });
-});
-
-describe('applyTraitStatChanges', () => {
-  it('applies a starting delta, clamped, and reports the change', () => {
-    const { stats, changedIds } = applyTraitStatChanges(
-      [stat({ id: 'h', value: 50 })],
-      [{ statId: 'h', value: 20, type: 'starting' }],
-    );
-    expect(stats[0].value).toBe(70);
-    expect(changedIds.has('h')).toBe(true);
-  });
-
-  it('lets one trait lower a floor another raised, back to the authored min but no further', () => {
-    const { stats } = applyTraitStatChanges(
-      [stat({ id: 'h', value: 50, min: 10 })],
-      [
-        { statId: 'h', value: 20, type: 'min' },
-        { statId: 'h', value: -999, type: 'min' },
-      ],
-    );
-    expect(stats[0].min).toBe(10); // the authored floor is the hard limit, however far the trait digs
-  });
-
-  it('ignores a lone negative min — traits never loosen a floor past the authored one', () => {
-    const { stats } = applyTraitStatChanges(
-      [stat({ id: 'h', value: 50, min: 10 })],
-      [{ statId: 'h', value: -5, type: 'min' }],
-    );
-    expect(stats[0].min).toBe(10);
-  });
-
-  it('applies a stat\'s bounds adjustment once even with multiple changes (no per-change over-adjust)', () => {
-    // min +30 pulls value 20 up to the floor (a +10 adjustment); the second change (max +50) must not
-    // re-apply that +10. Pre-fix this landed at 40; correct is 30.
-    const { stats } = applyTraitStatChanges(
-      [stat({ id: 'h', value: 20, min: 0, max: 100 })],
-      [
-        { statId: 'h', value: 30, type: 'min' },
-        { statId: 'h', value: 50, type: 'max' },
-      ],
-    );
-    expect(stats[0].min).toBe(30);
-    expect(stats[0].max).toBe(150);
-    expect(stats[0].value).toBe(30);
-  });
-
-  it('raising min pulls the value up to the new floor', () => {
-    const { stats } = applyTraitStatChanges(
-      [stat({ id: 'h', value: 50, min: 0 })],
-      [{ statId: 'h', value: 60, type: 'min' }],
-    );
-    expect(stats[0].min).toBe(60);
-    expect(stats[0].value).toBe(60);
-  });
-
-  it('lowering max below the value pulls the value down', () => {
-    const { stats } = applyTraitStatChanges(
-      [stat({ id: 'h', value: 90, max: 100 })],
-      [{ statId: 'h', value: -20, type: 'max' }],
-    );
-    expect(stats[0].max).toBe(80);
-    expect(stats[0].value).toBe(80);
-  });
-
-  it('raising max pulls the value up when it was sitting at the old max', () => {
-    const { stats } = applyTraitStatChanges(
-      [stat({ id: 'h', value: 100, max: 100 })],
-      [{ statId: 'h', value: 50, type: 'max' }],
-    );
-    expect(stats[0].max).toBe(150);
-    expect(stats[0].value).toBe(150);
-  });
-
-  it('regen adds to the regen rate without touching value', () => {
-    const { stats } = applyTraitStatChanges(
-      [stat({ id: 'h', value: 50, regen: 1 })],
-      [{ statId: 'h', value: 2, type: 'regen' }],
-    );
-    expect(stats[0].regen).toBe(3);
-    expect(stats[0].value).toBe(50);
-  });
-
-  it('does not mutate the input stats', () => {
-    const s = stat({ id: 'h', value: 50, min: 0 });
-    applyTraitStatChanges([s], [{ statId: 'h', value: 60, type: 'min' }]);
-    expect(s.value).toBe(50);
-    expect(s.min).toBe(0);
-  });
-
-  it('ignores changes for unknown stat ids', () => {
-    const { stats, changedIds } = applyTraitStatChanges(
-      [stat({ id: 'h', value: 50 })],
-      [{ statId: 'x', value: 10, type: 'starting' }],
-    );
-    expect(stats[0].value).toBe(50);
-    expect(changedIds.size).toBe(0);
   });
 });
 
