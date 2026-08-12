@@ -139,6 +139,22 @@ const editorTheme = EditorView.theme({
   '.cm-gutter-lint .cm-gutterElement': { padding: '0 0.2rem' },
 });
 
+/** Tooltips hang off `<body>` so nothing clips them, which puts them under the `pointer-events: none` a
+ *  Radix dialog pins to the body — the completion list draws fine and swallows every click. `auto` on the
+ *  host buys hit-testing back. Stopping propagation on the way out keeps a dismiss-on-outside-click layer
+ *  from reading a pick as a click elsewhere; bubble phase, so the option is applied before the event dies. */
+let tooltipHost: HTMLElement | null = null;
+function getTooltipHost(): HTMLElement | undefined {
+  if (typeof document === 'undefined') return undefined;
+  if (!tooltipHost) {
+    tooltipHost = document.createElement('div');
+    tooltipHost.style.pointerEvents = 'auto';
+    tooltipHost.addEventListener('pointerdown', (event) => event.stopPropagation());
+    document.body.appendChild(tooltipHost);
+  }
+  return tooltipHost;
+}
+
 export interface CodeSession {
   /** The editor's root element, moved between the inline field and the overlay. */
   dom: HTMLElement;
@@ -239,7 +255,7 @@ export function createCodeSession(options: CodeSessionOptions): CodeSession {
         // A completion list or a diagnostic is taller than the field it belongs to, so it is positioned
         // against the window instead — otherwise the box, the panel it scrolls in, or the dialog around
         // it cuts the popup off wherever the caret happens to be low.
-        tooltips({ position: 'fixed', parent: typeof document === 'undefined' ? undefined : document.body }),
+        tooltips({ position: 'fixed', parent: getTooltipHost() }),
         // Marks first, then numbers: gutters sit in the order they are registered, and the marks belong
         // on the outside edge where nothing shifts them as the line count grows a digit.
         gutter.of([]),
