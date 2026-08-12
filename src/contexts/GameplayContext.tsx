@@ -13,6 +13,7 @@ import { parseTurnContent, serializeTurnContent } from '../lib/turnDigest';
 import type { SceneImageMap } from '../lib/sceneImages';
 import { matchChoicesToAction, CONTINUE_CHOICE } from '../lib/choices';
 import { pageStatDeltas } from '../lib/statChanges';
+import { activeTraits, recoverStatBases, type AppliedTraitValues } from '../lib/traitRuntime';
 import { pageAssistantIndex, pageNextActionIndex, placeSnapshot } from '../lib/turnHistory';
 import { backfillGameStateStats } from '../lib/statBackfill';
 import { appendLogEntry, type LogKind } from '../lib/playLog';
@@ -81,6 +82,9 @@ function useProvideGameplay() {
   // Chosen traits the player has switched off mid-play. Kept as ids so `playerTraits` stays the full chosen
   // set and a trait can go back on; snapshotted per turn, so a rewind restores the switch positions too.
   const [disabledTraitIds, setDisabledTraitIds] = useState<string[]>([]);
+  // What each active trait's stat changes actually moved, so switching one off gives back what it took
+  // rather than what it asked for. Snapshotted per turn alongside the switch positions.
+  const [appliedTraitValues, setAppliedTraitValues] = useState<AppliedTraitValues>({});
   // Per-playthrough dictionary set chosen at world entry (or restored from a save). Runtime-only: the
   // authored world's books live in GameDataContext and are never mutated by gameplay.
   const [runtimeDictionaries, setRuntimeDictionaries] = useState<Dictionary[]>([]);
@@ -185,6 +189,7 @@ function useProvideGameplay() {
       playerStats,
       playerTraits,
       ...(disabledTraitIds.length ? { disabledTraitIds } : {}),
+      ...(Object.keys(appliedTraitValues).length ? { appliedTraitValues } : {}),
       visibleEntities,
       discoveredEntities,
       suppressedCharacterNames,
@@ -205,18 +210,28 @@ function useProvideGameplay() {
       // Add a version flag for backward compatibility
       stateVersion: 2
     };
-  }, [playerStats, playerTraits, disabledTraitIds, visibleEntities, discoveredEntities, suppressedCharacterNames, logEntries, currentLocation,
+  }, [playerStats, playerTraits, disabledTraitIds, appliedTraitValues, visibleEntities, discoveredEntities, suppressedCharacterNames, logEntries, currentLocation,
       gameTime, startHour, fullMessageHistory, characterData, choices, isGameStarted, playerNotes, currentPage]);
 
   /** Restore a `GameState` into the live gameplay state, resolving `locationId` against `locations` and
    *  recovering `playerNotes` from the newest nested state when the top-level field is absent (legacy saves).
    *  Returns false and toasts on failure. */
-  const loadGameState = useCallback((gameState: GameState, locations: GameLocation[], opts?: { keepLiveHistory?: boolean }) => {
+  const loadGameState = useCallback((gameState: GameState, locations: GameLocation[], opts?: { keepLiveHistory?: boolean; worldStats?: Stat[] }) => {
     try {
       // Restore all state
-      setPlayerStats(gameState.playerStats);
+      // A save written before bounds were derived carries no bases; recover them from the world's authored
+      // maxes and the traits that were active when it was written, so re-deriving reproduces its own numbers
+      // rather than rebalancing them.
+      setPlayerStats(
+        recoverStatBases(
+          gameState.playerStats,
+          activeTraits(gameState.playerTraits, gameState.disabledTraitIds ?? []),
+          opts?.worldStats,
+        ),
+      );
       setPlayerTraits(gameState.playerTraits);
       setDisabledTraitIds(gameState.disabledTraitIds ?? []);
+      setAppliedTraitValues(gameState.appliedTraitValues ?? {});
       setVisibleEntities(normalizeVisibleEntities(gameState.visibleEntities));
       setDiscoveredEntities(gameState.discoveredEntities ?? []);
       setSuppressedCharacterNames(gameState.suppressedCharacterNames ?? []);
@@ -371,6 +386,7 @@ function useProvideGameplay() {
         const success = loadGameState(
           backfillGameStateStats({ ...migrated.currentState, fullMessageHistory: migrated.messageHistory ?? [] }, worldStats),
           locations,
+          { worldStats },
         );
         if (success) {
           setGameStates(migrated.stateHistory.map((s) => backfillGameStateStats(s, worldStats)));
@@ -434,7 +450,7 @@ function useProvideGameplay() {
             addSystemLogEntry('Old save format converted to new format successfully');
           }
 
-          const success = loadGameState(backfillGameStateStats(migrateLegacySaveState(convertedData), worldStats), locations);
+          const success = loadGameState(backfillGameStateStats(migrateLegacySaveState(convertedData), worldStats), locations, { worldStats });
           if (success) {
             addSystemLogEntry(`Game loaded from "${saveName}"`);
           }
@@ -454,7 +470,7 @@ function useProvideGameplay() {
 
           // Try to load the save anyway (legacy shape, best-effort)
           try {
-            const success = loadGameState(savedData as unknown as GameState, locations);
+            const success = loadGameState(savedData as unknown as GameState, locations, { worldStats });
             if (success) {
               addSystemLogEntry(`Game loaded from "${saveName}" (with conversion errors)`);
             }
@@ -609,6 +625,8 @@ function useProvideGameplay() {
     setPlayerTraits,
     disabledTraitIds,
     setDisabledTraitIds,
+    appliedTraitValues,
+    setAppliedTraitValues,
     runtimeDictionaries,
     setRuntimeDictionaries,
     placeholderRolls,

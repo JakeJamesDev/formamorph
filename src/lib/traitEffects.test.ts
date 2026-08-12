@@ -1,9 +1,8 @@
 import { describe, it, expect } from 'vitest';
-import type { PlayerStat, Stat, Trait, TraitGroup } from '@/types';
+import type { Stat, Trait, TraitGroup } from '@/types';
 import {
   traitOrderIndex,
   inAuthoredOrder,
-  invertStatChanges,
   activeStatEnabled,
   enabledStats,
   activePlaceholderPins,
@@ -12,7 +11,6 @@ import {
   collapseExclusiveDefaults,
   refreshChosenTraits,
 } from './traitEffects';
-import { applyTraitStatChanges } from './statChanges';
 
 const T = (id: string, extra: Partial<Trait> = {}): Trait => ({
   id, name: id, statChanges: [], ...extra,
@@ -22,9 +20,6 @@ const G = (id: string, extra: Partial<TraitGroup> = {}): TraitGroup => ({
 });
 const S = (id: string, extra: Partial<Stat> = {}): Stat => ({
   id, name: id, type: 'number', description: '', min: 0, max: 100, regen: 0, descriptors: [], ...extra,
-});
-const PS = (id: string, extra: Partial<PlayerStat> = {}): PlayerStat => ({
-  ...(S(id) as Omit<Stat, 'value'>), value: 50, ...extra,
 });
 
 describe('authored order', () => {
@@ -83,43 +78,6 @@ describe('re-reading chosen traits from the world', () => {
     // dropping it would strip it, and its effects, from every existing save.
     const saved = [T('gone', { name: 'Gone', aiDescription: 'still here' })];
     expect(refreshChosenTraits(saved, [])).toEqual(saved);
-  });
-});
-
-describe('stat-change reversal', () => {
-  it('negates every change', () => {
-    expect(invertStatChanges([
-      { statId: 's', value: 5, type: 'max' },
-      { statId: 's', value: -3, type: 'regen' },
-    ])).toEqual([
-      { statId: 's', value: -5, type: 'max' },
-      { statId: 's', value: 3, type: 'regen' },
-    ]);
-  });
-
-  it('restores min/max/regen/starting when applied on top of the original', () => {
-    const before = [PS('s', { value: 40, min: 0, max: 100, regen: 1 })];
-    const changes = [
-      { statId: 's', value: 10, type: 'min' as const },
-      { statId: 's', value: 20, type: 'max' as const },
-      { statId: 's', value: 2, type: 'regen' as const },
-      { statId: 's', value: 5, type: 'starting' as const },
-    ];
-    const floors = { s: 0 };
-    const on = applyTraitStatChanges(before, changes, floors).stats;
-    expect(on[0]).toMatchObject({ min: 10, max: 120, regen: 3, value: 45 });
-    const off = applyTraitStatChanges(on, invertStatChanges(changes), floors).stats;
-    expect(off[0]).toMatchObject({ min: 0, max: 100, regen: 1, value: 40 });
-  });
-
-  it('survives a switch off and back on without drift', () => {
-    const changes = [{ statId: 's', value: 15, type: 'starting' as const }];
-    let stats = [PS('s', { value: 30 })];
-    for (let i = 0; i < 3; i++) {
-      stats = applyTraitStatChanges(stats, changes).stats;
-      stats = applyTraitStatChanges(stats, invertStatChanges(changes)).stats;
-    }
-    expect(stats[0].value).toBe(30);
   });
 });
 

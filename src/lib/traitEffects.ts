@@ -6,7 +6,7 @@
 // author sets precedence by dragging rows in the editor rather than by learning a rule.
 
 import { buildTraitTree, flattenTraitTree } from './traitTree';
-import type { Stat, StatChange, Trait, TraitGroup } from '@/types';
+import type { Stat, Trait, TraitGroup } from '@/types';
 
 /** Trait id → its position in the authored tree, depth-first. Ids missing from the world sort last. */
 export function traitOrderIndex(traits: Trait[], groups: TraitGroup[]): Map<string, number> {
@@ -29,8 +29,8 @@ export function inAuthoredOrder(active: Trait[], order: Map<string, number>): Tr
  * edit still gets them — a trait made switchable, renamed, re-described, or given stat toggles and pins.
  * A save stores whole trait objects, which makes its copy a snapshot of the world as it stood on turn 1.
  *
- * `statChanges` deliberately stay the saved copy: they are the record of what was actually applied to the
- * player's numbers, and switching the trait off has to negate that rather than whatever the author now says.
+ * `statChanges` deliberately stay the saved copy: they are the authoring the player's numbers were settled
+ * against, so re-deriving bounds from a later edit would rebalance a character mid-playthrough.
  * A trait the world no longer has keeps its saved copy and stays active — deleting and re-creating a trait
  * mints a new id, so dropping unmatched traits would strip them from every existing save.
  */
@@ -40,15 +40,6 @@ export function refreshChosenTraits(chosen: Trait[], authored: Trait[]): Trait[]
     const current = byId.get(t.id);
     return current ? { ...current, statChanges: t.statChanges } : t;
   });
-}
-
-/**
- * The stat changes that undo `changes`. Reversal is negation, not a recompute: `applyTraitStatChanges` is
- * already built to let traits cancel each other's bound raises (and floors a min at the stat's authored
- * value), so feeding it the negated deltas restores the stat to where it stood.
- */
-export function invertStatChanges(changes: StatChange[]): StatChange[] {
-  return changes.map((c) => ({ ...c, value: -c.value }));
 }
 
 /**

@@ -328,6 +328,62 @@ describe('RightPanel — the traits tab against an edited world', () => {
   });
 });
 
+describe('RightPanel — acquirable traits in the traits tab', () => {
+  // Authored order is what puts related traits together, so an acquirable trait has to land in its authored
+  // slot rather than after everything the player already holds.
+  const AUTHORED = [
+    { id: 't-first', name: 'Feral', statChanges: [], playerToggle: true },
+    { id: 't-fixed', name: 'Cursed', statChanges: [] },
+    { id: 't-last', name: 'Brave', statChanges: [], playerToggle: true },
+  ];
+
+  const HELD = [{ id: 't-last', name: 'Brave', statChanges: [], playerToggle: true }];
+  const PAGED_TURNS = [
+    { action: 'walk the dock', narration: 'The dock creaks.', turnId: 't1', choices: ['Keep walking'], traits: HELD },
+    { action: 'walk on', narration: 'The dock holds.', turnId: 't2', choices: ['Keep walking'], traits: HELD },
+  ];
+
+  const renderPanel = (turns = TURNS) =>
+    renderRightPanel({}, {
+      turns,
+      world: { traits: AUTHORED },
+      seed: (gameplay) => {
+        gameplay.setPlayerTraits([{ id: 't-last', name: 'Brave', statChanges: [], playerToggle: true }]);
+        gameplay.setActiveTab('traits');
+      },
+    });
+
+  const listedNames = () =>
+    screen.getAllByRole('checkbox').map((box) => box.getAttribute('aria-label') ?? '');
+
+  it('lists a trait the player never chose beside the one they hold, in authored order', () => {
+    renderPanel();
+    expect(listedNames()).toEqual(['Switch on Feral', 'Switch off Brave']);
+  });
+
+  it('switches on a trait the player does not hold', () => {
+    const view = renderPanel();
+    fireEvent.click(screen.getByRole('checkbox', { name: 'Switch on Feral' }));
+    expect(view.props.onToggleTrait).toHaveBeenCalledWith('t-first', true);
+  });
+
+  it('leaves a trait the author never marked switchable out of the panel entirely', () => {
+    renderPanel();
+    expect(screen.queryByText(/Cursed/)).toBeNull();
+  });
+
+  it('shows only the traits held on a past turn, with the switches disabled', () => {
+    const view = renderPanel(PAGED_TURNS);
+    act(() => {
+      const gameplay = view.gameplay();
+      gameplay.setUserPage(1);
+      gameplay.setDisplayedMessages(gameplay.fullMessageHistory.slice(0, 2));
+    });
+    expect(listedNames()).toEqual(['Switch off Brave']);
+    expect(screen.getByRole('checkbox', { name: 'Switch off Brave' })).toBeDisabled();
+  });
+});
+
 describe('MiddlePanel — paging repaints the narration', () => {
   // Both turns are the SAME markdown shape and length, so every mdast node lands at an identical source
   // position. Streamdown memoizes its element components on that position rather than on the text, so a

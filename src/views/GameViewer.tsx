@@ -50,7 +50,7 @@ import { MenuModal } from "../components/modals/MenuModal";
 import LlmSetupGuide from "../components/modals/LlmSetupGuide";
 import { isLikelyConnectionError } from "../lib/connectionError";
 import WorldEditor from "./WorldEditor";
-import type { CharacterData, ChatMessage, ChatRole, AIRequestType, AITurnResult, StatChange, Trait, GameLocation, MediaAsset, Dictionary, Entity, SaveRecord, World, PlayerStat } from "@/types";
+import type { CharacterData, ChatMessage, ChatRole, AIRequestType, AITurnResult, GameLocation, MediaAsset, Dictionary, Entity, SaveRecord, World, PlayerStat } from "@/types";
 import { UnsavedChangesDialog } from "../components/UnsavedChangesDialog";
 import { estimateHistoryChars, estimateTokens } from "../lib/memoryUtils";
 import { parseNarration, stripReasoning, stripReasoningLive, extractReasoning, extractReasoningLive } from "../lib/aiResponse";
@@ -109,7 +109,7 @@ import { revealActive } from "../lib/narrationRevealConfig";
 import { REVEAL_TEST_NARRATION, REVEAL_TEST_PROFILES } from "../lib/revealTestScripts";
 import { MARKDOWN_SAMPLE } from "../lib/markdownSample";
 import { parseSlashCommand } from "../lib/slashCommands";
-import { normalizeStatChanges, applyAiStatChanges, applyTraitStatChanges, parseStatUpdates, applyAiMaxChanges, appliedStatDeltas } from "../lib/statChanges";
+import { normalizeStatChanges, applyAiStatChanges, parseStatUpdates, applyAiMaxChanges, appliedStatDeltas } from "../lib/statChanges";
 import { resolvePromptSampler } from "../lib/promptSamplers";
 import { toDebugEndpoint, type DebugEndpointInfo } from "../lib/promptEndpoints";
 import { composeSceneTags, stripPlaces, splitTags, MAX_SCENE_CHARACTERS, type SceneCharacter } from "../lib/sceneTags";
@@ -124,8 +124,11 @@ import { useDeferredSnapshot } from "../lib/useDeferredSnapshot";
 import { statMorphMap } from "../lib/bodyMorphs";
 import {
   inAuthoredOrder, refreshChosenTraits, activeStatEnabled, enabledStats,
-  invertStatChanges, exclusiveSiblings, activePlaceholderPins,
+  activePlaceholderPins,
 } from "../lib/traitEffects";
+import {
+  acquireTrait, seedStatBases, setTraitEnabled, type TraitRuntimeState,
+} from "../lib/traitRuntime";
 import { extractCharacterCandidates, collectCandidateEvidence } from "../lib/characterCandidates";
 import { explainActivation, buildDictionaryContext, parseKeywords, locateMatches, type EntryActivation, type ScanSource, type MatchHit, type MatchRule } from "../lib/dictionaryUtils";
 import { buildScanCorpus } from "../lib/dictionaryScan";
@@ -394,6 +397,8 @@ const GameViewer = ({
     setPlayerTraits,
     disabledTraitIds,
     setDisabledTraitIds,
+    appliedTraitValues,
+    setAppliedTraitValues,
     recentStatChanges,
     setRecentStatChanges,
     setRecentStatFading,
@@ -3599,63 +3604,50 @@ ${playerNotes || NONE_PLACEHOLDER}
     }
   };
 
-  // Each stat's authored Min — the floor no trait may dig below. Traits apply one call at a time, so the
-  // live stats already carry earlier raises and can't serve as the reference.
-  const authoredMins = useMemo(
-    () => Object.fromEntries(stats.map((s) => [s.id, s.min])),
-    [stats],
+  /** The gameplay slice the trait runtime reads and rewrites, and the setters that put a result back. */
+  const traitState = useMemo<TraitRuntimeState>(
+    () => ({ stats: playerStats, traits: chosenTraits, disabledTraitIds, appliedValues: appliedTraitValues }),
+    [playerStats, chosenTraits, disabledTraitIds, appliedTraitValues],
   );
-
-  const handleStatChanges = useCallback(
-    (statChanges: StatChange[]) => {
-      // Runtime-only: apply to playerStats. The authored world (GameData.stats) is never mutated by play.
-      setPlayerStats((prevStats) => applyTraitStatChanges(prevStats, statChanges, authoredMins).stats);
+  const commitTraitState = useCallback(
+    (next: TraitRuntimeState) => {
+      // Runtime-only: the authored world (GameData.stats) is never mutated by play.
+      setPlayerStats(next.stats);
+      setPlayerTraits(next.traits);
+      setDisabledTraitIds(next.disabledTraitIds);
+      setAppliedTraitValues(next.appliedValues);
     },
-    [setPlayerStats, authoredMins],
-  );
-
-  const applyTrait = useCallback(
-    (trait: Trait) => {
-      handleStatChanges(trait.statChanges);
-      setPlayerTraits((prevTraits) => [...prevTraits, trait]);
-      // Logs are write-time strings shown raw, and `trait` here is authored (chips intact) — resolve now,
-      // with the trait's own pins so the entry names what the player picked.
-      addLogEntry(`Applied trait: ${resolveTraitText(trait, trait.name)}`);
-    },
-    [handleStatChanges, addLogEntry, setPlayerTraits, resolveTraitText],
+    [setPlayerStats, setPlayerTraits, setDisabledTraitIds, setAppliedTraitValues],
   );
 
   /**
-   * Switch a chosen trait on or off mid-play. Stat changes reverse symmetrically — switching off applies the
-   * negated changes, switching on re-applies the originals — so a trait can go back and forth without drift.
-   * Everything else it does (AI text, stat availability, placeholder pins) is derived from the active set and
-   * simply follows. Turning on a trait in an exclusive group retires its siblings first.
+   * Switch a trait on or off mid-play, acquiring it first if the player doesn't hold it yet. Every trait the
+   * author marked switchable is available at any time; everything the trait does beyond its stat changes (AI
+   * text, stat availability, placeholder pins) is derived from the active set and simply follows.
    */
   const toggleTrait = useCallback(
     (traitId: string, enabled: boolean) => {
-      const trait = chosenTraits.find((t) => t.id === traitId);
-      if (!trait) return;
-      const retire = enabled
-        ? exclusiveSiblings(trait, traits, traitGroups).filter((id) => !disabledTraitIds.includes(id))
-        : [];
-      for (const id of retire) {
-        const sibling = chosenTraits.find((t) => t.id === id);
-        if (sibling) {
-          handleStatChanges(invertStatChanges(sibling.statChanges));
-          addLogEntry(`Trait switched off: ${sibling.name}`);
-        }
+      const world = { traits: authoredTraits, groups: traitGroups };
+      const held = chosenTraits.find((t) => t.id === traitId);
+      if (held) {
+        const { state: next, retired } = setTraitEnabled(traitState, traitId, enabled, world);
+        commitTraitState(next);
+        for (const sibling of retired) addLogEntry(`Trait switched off: ${sibling.name}`);
+        addLogEntry(`Trait switched ${enabled ? 'on' : 'off'}: ${held.name}`);
+        return;
       }
-      handleStatChanges(enabled ? trait.statChanges : invertStatChanges(trait.statChanges));
-      setDisabledTraitIds((prev) => {
-        const off = new Set(prev);
-        for (const id of retire) off.add(id);
-        if (enabled) off.delete(traitId);
-        else off.add(traitId);
-        return [...off];
-      });
-      addLogEntry(`Trait switched ${enabled ? 'on' : 'off'}: ${trait.name}`);
+      // Not held: only a switch-on of a trait the author marked switchable acquires one. It freezes the
+      // world's stat changes as they stand right now, exactly as a trait chosen at creation freezes them at
+      // game start. Authored, chips intact, for the same reason seeding uses them: a resolved name written
+      // into state stops being resolvable.
+      const authored = authoredTraits.find((t) => t.id === traitId);
+      if (!enabled || !authored?.playerToggle) return;
+      const { state: next, retired } = acquireTrait(traitState, authored, world);
+      commitTraitState(next);
+      for (const sibling of retired) addLogEntry(`Trait switched off: ${sibling.name}`);
+      addLogEntry(`Acquired trait: ${resolveTraitText(authored, authored.name)}`);
     },
-    [chosenTraits, traits, traitGroups, disabledTraitIds, handleStatChanges, addLogEntry, setDisabledTraitIds],
+    [chosenTraits, authoredTraits, traitGroups, traitState, commitTraitState, addLogEntry, resolveTraitText],
   );
 
   const changeLocation = useCallback(
@@ -3695,7 +3687,7 @@ ${playerNotes || NONE_PLACEHOLDER}
       // Seeded from the AUTHORED stats, chips and all: names resolve on the way out of state, never in, so
       // a resolved name written in here would freeze whatever pins happened to be active at game start and
       // no later pin could ever move it.
-      setPlayerStats(
+      const seeded = seedStatBases(
         authoredStats.map((stat) => {
           const value = stat.value || stat.min || 0;
           return { ...stat, value, starting: stat.starting ?? value };
@@ -3707,7 +3699,21 @@ ${playerNotes || NONE_PLACEHOLDER}
       // same reason as the stats above.
       const chosen = new Set(initialTraits);
       const chosenList = inAuthoredOrder(authoredTraits.filter((t) => chosen.has(t.id)), traitOrder);
-      chosenList.forEach(applyTrait);
+      // Folded rather than set one trait at a time: each acquisition reads the whole slice, so the batch has
+      // to thread through in one pass instead of racing several queued state updates.
+      let seedState: TraitRuntimeState = {
+        stats: seeded,
+        traits: [],
+        disabledTraitIds: [],
+        appliedValues: {},
+      };
+      for (const trait of chosenList) {
+        seedState = acquireTrait(seedState, trait, { traits: authoredTraits, groups: traitGroups }).state;
+        // Logs are write-time strings shown raw, and `trait` here is authored (chips intact) — resolve now,
+        // with the trait's own pins so the entry names what the player picked.
+        addLogEntry(`Applied trait: ${resolveTraitText(trait, trait.name)}`);
+      }
+      commitTraitState(seedState);
 
       // Use the player's chosen starting location, else a random starting point (fallback: any location).
       const location = resolveStartingLocation(locations, initialLocationId);
@@ -3759,8 +3765,8 @@ ${playerNotes || NONE_PLACEHOLDER}
     worldId,
     authoredStats,
     resolveWith,
-    setPlayerStats,
-    applyTrait,
+    commitTraitState,
+    resolveTraitText,
     changeLocation,
     addLogEntry,
     setRuntimeDictionaries,
