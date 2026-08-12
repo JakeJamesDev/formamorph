@@ -15,6 +15,7 @@ interface A1111Body {
   batch_size: number;
   n_iter: number;
   send_images: boolean;
+  save_images: boolean;
   override_settings?: { sd_model_checkpoint: string };
   alwayson_scripts?: { ADetailer: { args: [boolean, boolean, { ad_model: string }] } };
 }
@@ -37,6 +38,8 @@ export function buildA1111Body(params: ImageGenParams): A1111Body {
     batch_size: 1,
     n_iter: 1,
     send_images: true,
+    // The API defaults to not saving; opt in so runs land in the WebUI's normal outputs folder.
+    save_images: true,
   };
   if (params.model) body.override_settings = { sd_model_checkpoint: params.model };
   // ADetailer runs a second face/hand inpainting pass. Requires the extension on the server.

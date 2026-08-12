@@ -12,6 +12,13 @@ Each release groups changes as **Major** / **Minor**, then **Added** / **Removed
 
 _Unreleased — new work accumulates here until it earns a version bump. The next batch will pin its own version; `package.json` reads **2.12.1** (just released below)._
 
+### Minor Changes
+
+#### 🔧 Fixed
+
+- **👤 User-facing**
+  - **Images generated through Automatic1111 or Forge are now kept on disk like any other generation.** The API leaves saving off unless asked, so pictures made from the game existed only inside the save file. They now land in the WebUI's usual output folder, named and stamped the way its own generations are.
+
 ---
 
 <details>
