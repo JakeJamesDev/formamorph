@@ -139,8 +139,10 @@ export function RecommendedMark() {
  * the label below the control's midline by half the hint's height, and by a different amount on every row.
  *
  * `top` opts out for a control taller than a line or two — a stacked field, a textarea — where centering
- * would strand the label in the middle of it. Omitting `label` leaves the label cell empty, which is how a
- * row that is only a button or a status line still lands in the control column.
+ * would strand the label in the middle of it. A row that stacks its own extra content under the control
+ * (a status line that comes and goes) takes `top` too, and marks that wrapper `data-row-stacked` so the
+ * alignment guard can tell it apart from a plain one-line control. Omitting `label` leaves the label cell
+ * empty, which is how a row that is only a button or a status line still lands in the control column.
  */
 export function Row({ label, htmlFor, children, hint, top, info, muted, experimental }: {
   label?: string; htmlFor?: string; children: ReactNode; hint?: string;
@@ -191,7 +193,11 @@ export function CheckRow({ label, htmlFor, checked, onChange, hint, info, experi
     <div className="grid grid-cols-1 sm:grid-cols-[minmax(0,1fr)_minmax(0,3fr)] items-start gap-4">
       <RowLabel htmlFor={htmlFor} info={info} experimental={experimental}>{label}</RowLabel>
       <div className="flex items-start gap-2">
-        <Checkbox id={htmlFor} checked={checked} onCheckedChange={(c) => onChange(c === true)} className="shrink-0" />
+        {/* The box is shorter than the line of text beside it, so a `1lh` sleeve centers it on that line —
+            top-aligning it instead leaves its center above the label's and reads as a row out of true. */}
+        <span className="flex h-[1lh] shrink-0 items-center">
+          <Checkbox id={htmlFor} checked={checked} onCheckedChange={(c) => onChange(c === true)} className="shrink-0" />
+        </span>
         <Hint as="span">{hint}</Hint>
       </div>
     </div>
