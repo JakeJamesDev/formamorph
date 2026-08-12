@@ -31,6 +31,9 @@ export type SettingOptionCopy<V extends string = string> = {
   label: string;
   /** The line shown beneath the control while this option is picked. One sentence, ≤ 12 words. */
   help: string;
+  /** Markdown appended to the row's `ⓘ` while this option is picked, so the cost or mechanism that
+   *  doesn't fit `help` is a click away. Authored only where the option has more to say. */
+  detail?: string;
   /** Renders the marker on the item itself. The word never appears in `help`. */
   recommended?: true;
 };
@@ -562,14 +565,55 @@ export const SETTINGS_OPTIONS = {
     { value: 'system', label: 'System', recommended: true, help: 'Follows your operating system’s light or dark setting.' },
   ],
   paragraphLimit: [
-    { value: 'none', label: 'None', help: 'The model writes until it finishes or hits the token cap.' },
+    {
+      value: 'none', label: 'None',
+      help: 'The model writes until it finishes or hits the token cap.',
+      detail: 'No limit is sent. The model writes until it finishes or reaches **Max Output Tokens**, which can cut a reply off mid-sentence.',
+    },
     { value: 'single', label: 'Single', help: 'One paragraph per turn, stopping at the first line break.' },
-    { value: 'auto', label: 'Auto', recommended: true, help: 'Scales the paragraph count to your Max Output Tokens.' },
+    {
+      value: 'auto', label: 'Auto', recommended: true,
+      help: 'Scales the paragraph count to your Max Output Tokens.',
+      detail: 'The paragraph count is scaled to your **Max Output Tokens**, so a reply fits the budget and ends cleanly instead of being cut off.',
+    },
   ],
   thinking: [
-    { value: 'off', label: 'Native', help: 'Nothing is added; reasoning models think as they normally would.' },
-    { value: 'inline', label: 'Inline', help: 'The model reasons privately before narrating, in the same request.' },
-    { value: 'precall', label: 'Planning', recommended: true, help: 'A separate request plans the narration before it is written.' },
-    { value: 'staged', label: 'Staged', help: 'Highest quality, slowest.' },
+    {
+      value: 'off', label: 'Native',
+      help: 'Nothing is added; reasoning models think as they normally would.',
+      detail: 'Nothing is added to the prompt. A reasoning model thinks the way it normally would; every other model answers immediately. One request per turn.',
+    },
+    {
+      value: 'inline', label: 'Inline',
+      help: 'The model reasons privately before narrating, in the same request.',
+      detail: 'The model reasons privately, then narrates, in the same request — one fewer round-trip than Planning.\n\nThe reasoning is saved either way; turn on **Show Reasoning** to read it.',
+    },
+    {
+      value: 'precall', label: 'Planning', recommended: true,
+      help: 'A separate request plans the narration before it is written.',
+      detail: 'A separate request plans the turn before the narration is written. The most reliable option for small models, which lose the thread when asked to plan and write at once.\n\nCosts one extra request per turn.',
+    },
+    {
+      value: 'staged', label: 'Staged',
+      help: 'Highest quality, slowest.',
+      detail: 'Three kinds of pass run before the narration: a director picks who is in the scene, each staged character plans its own motivation, and a storyboarder turns that into a plan.\n\n- Several extra requests per turn, so it is the slowest option\n- The best at holding a cast together\n- **Limit Active Characters** caps how many character passes run',
+    },
   ],
 } as const satisfies Record<string, readonly SettingOptionCopy[]>;
+
+/**
+ * Help for the native-reasoning levels, keyed by value rather than listed as options: which levels appear
+ * is decided per endpoint by `reasoningTabs`, which owns their short tab labels. Held to the same rules as
+ * an option's `help`. The caveat that any of this needs a reasoning model is a property of the control, so
+ * it lives once in the row's `ⓘ` rather than closing all eight of these.
+ */
+export const REASONING_EFFORT_HELP = {
+  auto: 'No hint sent — the endpoint decides.',
+  none: 'Disables native reasoning.',
+  minimal: 'Minimal effort.',
+  low: 'Low effort.',
+  medium: 'Medium effort.',
+  high: 'High effort.',
+  xhigh: 'Extra-high effort.',
+  max: 'Maximum effort.',
+} as const satisfies Record<string, string>;
