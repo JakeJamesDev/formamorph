@@ -116,7 +116,7 @@ export function LocalModelPanel() {
       {/* GPU memory + engine status, shared with the model-manager popup. */}
       <GpuMemoryBox stats={vram} {...resolveOwnVram(vram, engine.engineVramMB)} />
 
-      <Row center {...rowCopy('localModel')}>
+      <Row {...rowCopy('localModel')}>
         <div className="flex items-center gap-3">
           <Button type="button" variant="outline" onClick={() => setShowManager(true)}>{SETTINGS_BUTTONS.manageModels}</Button>
           <EngineStatusLine engine={engine} />

@@ -1213,7 +1213,7 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, initialTab,
                   </div>
                 </div>
               </Row>
-              <Row center htmlFor="themeColor" {...rowCopy('themeColor')}>
+              <Row htmlFor="themeColor" {...rowCopy('themeColor')}>
                 <div className="flex items-center gap-3">
                   <Select value={themeColor} onValueChange={(v) => setThemeColor(v as ThemeColor)}>
                     <SelectTrigger id="themeColor" className="w-48">
@@ -1228,7 +1228,7 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, initialTab,
                   <ThemePreviewButton />
                 </div>
               </Row>
-              <Row center htmlFor="fontFamily" {...rowCopy('font')}>
+              <Row htmlFor="fontFamily" {...rowCopy('font')}>
                 <div className="flex items-center gap-3">
                   <Select value={fontFamily} onValueChange={(v) => setFontFamily(v as FontChoice)}>
                     <SelectTrigger id="fontFamily" className="w-48">
@@ -1261,7 +1261,7 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, initialTab,
               />
               {locationBackground && (
                 <SubGroup>
-                <Row center {...rowCopy('backgroundFade')}>
+                <Row {...rowCopy('backgroundFade')}>
                   <div className="flex items-center gap-3">
                     <Slider
                       value={[backgroundOverlay]}
@@ -1278,10 +1278,20 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, initialTab,
                 </Row>
                 </SubGroup>
               )}
+              {/* Whether every turn gets a picture is a scene setting; the server that draws it stays on
+                  Endpoints. Hidden with image generation itself, which is the switch it depends on. */}
+              {!imageGenDisabled && (
+                <CheckRow
+                  htmlFor="sceneImageAuto"
+                  checked={sceneImageAuto}
+                  onChange={setSceneImageAuto}
+                  {...rowCopy('sceneImages')}
+                />
+              )}
               </Section>
 
               <Section title="Narration">
-              <Row center {...rowCopy('narrationReveal')}>
+              <Row {...rowCopy('narrationReveal')}>
                 <RevealAnimationDemoButton />
               </Row>
               <Row top {...rowCopy('aiLanguage')}>
@@ -1351,7 +1361,7 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, initialTab,
                   </SelectContent>
                 </Select>
               </Row>
-              <Row center {...rowCopy('narrationTextSize')}>
+              <Row {...rowCopy('narrationTextSize')}>
                 <div className="flex items-center gap-3">
                   <Slider
                     value={[narrationScale]}
@@ -1366,7 +1376,7 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, initialTab,
                   </span>
                 </div>
               </Row>
-              <Row center {...rowCopy('lineSpacing')}>
+              <Row {...rowCopy('lineSpacing')}>
                 <div className="flex items-center gap-3">
                   <Slider
                     value={[narrationLineHeight]}
@@ -1589,7 +1599,7 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, initialTab,
                 </SubGroup>
               )}
               {embedLoading && (
-                <Row center>
+                <Row>
                   <div className="flex items-center gap-2">
                     <Progress
                       className="h-2 flex-1"
@@ -1604,7 +1614,7 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, initialTab,
                 </Row>
               )}
               {embedError && !embedLoading && (semanticMemory || semanticLore) && (
-                <Row center>
+                <Row>
                   <div className="flex items-center gap-2">
                     <span className="text-helper text-destructive">Model download failed: {embedError}</span>
                     <Button variant="outline" size="sm" onClick={startEmbeddingDownload}>Retry</Button>
@@ -1760,7 +1770,7 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, initialTab,
               <>
               <ScrollArea className="flex-1 min-h-0">
                 <div className="grid gap-4 py-4">
-              <Row center htmlFor="endpointUrl" {...rowCopy('endpointUrl')}>
+              <Row htmlFor="endpointUrl" {...rowCopy('endpointUrl')}>
                 <div className="grid gap-1">
                   <Input
                     id="endpointUrl"
@@ -1785,7 +1795,7 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, initialTab,
                   {SETTINGS_BUTTONS.troubleConnecting}
                 </button>
               </Row>
-              <Row center htmlFor="apiToken" {...rowCopy('apiToken')}>
+              <Row htmlFor="apiToken" {...rowCopy('apiToken')}>
                 <Input
                   id="apiToken"
                   type="password"
@@ -1795,7 +1805,7 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, initialTab,
                   className={activeTextEndpointPresetIsBuiltIn ? 'opacity-60 cursor-not-allowed' : undefined}
                 />
               </Row>
-              <Row center htmlFor="modelName" {...rowCopy('modelName')}>
+              <Row htmlFor="modelName" {...rowCopy('modelName')}>
                 <Input
                   id="modelName"
                   value={modelName}
@@ -1805,7 +1815,7 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, initialTab,
                 />
               </Row>
               {advanced && (<>
-              <Row center htmlFor="contextWindow" {...rowCopy('contextWindow')}>
+              <Row htmlFor="contextWindow" {...rowCopy('contextWindow')}>
                 <div className="flex items-start gap-2">
                   <Input
                     id="contextWindow"
@@ -1829,7 +1839,7 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, initialTab,
                   {contextStatus.text}
                 </div>
               </Row>
-              <Row center htmlFor="maxTokens" {...rowCopy('maxOutputTokens')}>
+              <Row htmlFor="maxTokens" {...rowCopy('maxOutputTokens')}>
                 <Input
                   id="maxTokens"
                   type="number"
@@ -1907,18 +1917,10 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, initialTab,
               />
             </div>
             {!imageGenDisabled && (<>
-            <div className="flex-shrink-0">
-              <CheckRow
-                htmlFor="sceneImageAuto"
-                checked={sceneImageAuto}
-                onChange={setSceneImageAuto}
-                {...rowCopy('sceneImages')}
-              />
-            </div>
             <ScrollArea className="flex-1 min-h-0">
             <div className="grid gap-6">
               <Section title="Connection">
-              <Row center htmlFor="imageProvider" {...rowCopy('imageProvider')}>
+              <Row htmlFor="imageProvider" {...rowCopy('imageProvider')}>
                 <Select value={imageProvider} onValueChange={(v) => setImageProvider(v as typeof imageProvider)}>
                   <SelectTrigger id="imageProvider">
                     <SelectValue />
@@ -1938,7 +1940,7 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, initialTab,
                   <Button variant="outline" size="sm" onClick={() => setShowImageSetup(true)}>{SETTINGS_BUTTONS.howToSetUp}</Button>
                 </div>
               </Row>
-              <Row center htmlFor="imageEndpoint" {...rowCopy('imageEndpointUrl')}>
+              <Row htmlFor="imageEndpoint" {...rowCopy('imageEndpointUrl')}>
                 <Input
                   id="imageEndpoint"
                   value={imageEndpoint}
@@ -1946,10 +1948,10 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, initialTab,
                   placeholder={DEFAULT_ENDPOINT_BY_PROVIDER[imageProvider] || 'https://api.openai.com'}
                 />
               </Row>
-              <Row center htmlFor="imageApiToken" {...rowCopy('imageApiToken')}>
+              <Row htmlFor="imageApiToken" {...rowCopy('imageApiToken')}>
                 <Input id="imageApiToken" type="password" value={imageApiToken} onChange={(e) => setImageApiToken(e.target.value)} />
               </Row>
-              <Row center htmlFor="imageModel" {...rowCopy('imageModel')}>
+              <Row htmlFor="imageModel" {...rowCopy('imageModel')}>
                 {imageProvider === 'comfyui' ? (
                   <TokenAutocomplete
                     single
@@ -1997,14 +1999,14 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, initialTab,
                 />
               </Row>
               {advanced && (<>
-              <Row center {...rowCopy('portraitSize')}>
+              <Row {...rowCopy('portraitSize')}>
                 <div className="flex items-center gap-2">
                   <Input aria-label="Portrait width" type="number" min={64} step={64} value={imagePortraitWidth} onChange={(e) => setImagePortraitWidth(numInput(e.target.value, 64))} className="w-28" />
                   <span className="text-muted-foreground">×</span>
                   <Input aria-label="Portrait height" type="number" min={64} step={64} value={imagePortraitHeight} onChange={(e) => setImagePortraitHeight(numInput(e.target.value, 64))} className="w-28" />
                 </div>
               </Row>
-              <Row center {...rowCopy('landscapeSize')}>
+              <Row {...rowCopy('landscapeSize')}>
                 <div className="flex items-center gap-2">
                   <Input aria-label="Landscape width" type="number" min={64} step={64} value={imageLandscapeWidth} onChange={(e) => setImageLandscapeWidth(numInput(e.target.value, 64))} className="w-28" />
                   <span className="text-muted-foreground">×</span>
@@ -2012,13 +2014,13 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, initialTab,
                 </div>
               </Row>
               </>)}
-              <Row center {...rowCopy('stepsCfg')}>
+              <Row {...rowCopy('stepsCfg')}>
                 <div className="flex items-center gap-2">
                   <Input aria-label="Steps" type="number" min={1} value={imageSteps} onChange={(e) => setImageSteps(numInput(e.target.value, 1))} className="w-28" />
                   <Input aria-label="CFG scale" type="number" min={0} step={0.5} value={imageCfg} onChange={(e) => setImageCfg(numInput(e.target.value, 0))} className="w-28" />
                 </div>
               </Row>
-              <Row center htmlFor="imageSampler" {...rowCopy('imageSampler')}>
+              <Row htmlFor="imageSampler" {...rowCopy('imageSampler')}>
                 {imageProvider === 'comfyui' ? (
                   <TokenAutocomplete
                     single

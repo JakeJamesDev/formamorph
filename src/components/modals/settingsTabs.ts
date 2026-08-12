@@ -8,8 +8,10 @@
 export const SETTINGS_TABS = [
   { value: 'display', label: 'Display' },
   { value: 'output', label: 'Output' },
-  { value: 'endpoints', label: 'Endpoints' },
+  // Prompts sits next to Output because it is the same subject at a lower level: Output decides which
+  // passes run, Prompts is the text each one sends.
   { value: 'prompts', label: 'Prompts', advancedOnly: true },
+  { value: 'endpoints', label: 'Endpoints' },
   { value: 'data', label: 'Data' },
 ] as const;
 
