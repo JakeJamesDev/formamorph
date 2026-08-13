@@ -29,6 +29,7 @@ import { useMorphFullscreen } from "@/lib/useMorphFullscreen";
 import { composePreviewValues } from "@/lib/previewValuePool";
 import { Button } from "@/components/ui/button";
 import { RevealAnimationDemoButton } from "@/components/RevealAnimationDemo";
+import { FontTuneButton } from "@/components/FontTuneDialog";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -1242,6 +1243,7 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, initialTab,
                       ))}
                     </SelectContent>
                   </Select>
+                  <FontTuneButton font={fontFamily} />
                 </div>
               </Row>
               </Section>
@@ -1348,18 +1350,22 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, initialTab,
                   "Accessibility" so the term stays findable. */}
               <Section title="Accessibility" hint="Applies to the story text only, not the rest of the app.">
               <Row htmlFor="narrationFont" {...rowCopy('narrationFont')}>
-                <Select value={narrationFont} onValueChange={(v) => setNarrationFont(v as NarrationFont)}>
-                  <SelectTrigger id="narrationFont" className="w-56">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {NARRATION_FONT_OPTIONS.map((o) => (
-                      <SelectItem key={o.value} value={o.value} style={{ fontFamily: o.stack || undefined }}>
-                        {o.label}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                <div className="flex items-center gap-3">
+                  <Select value={narrationFont} onValueChange={(v) => setNarrationFont(v as NarrationFont)}>
+                    <SelectTrigger id="narrationFont" className="w-56">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {NARRATION_FONT_OPTIONS.map((o) => (
+                        <SelectItem key={o.value} value={o.value} style={{ fontFamily: o.stack || undefined }}>
+                          {o.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  {/* `global` ⇒ this pane runs on the app font, so Customize tunes that same font. */}
+                  <FontTuneButton font={narrationFont === 'global' ? fontFamily : narrationFont} />
+                </div>
               </Row>
               <Row {...rowCopy('narrationTextSize')}>
                 <div className="flex items-center gap-3">

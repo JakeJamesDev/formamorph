@@ -12,6 +12,13 @@ Each release groups changes as **Major** / **Minor**, then **Added** / **Removed
 
 _Unreleased — new work accumulates here until it earns a version bump. The next batch will pin its own version; `package.json` reads **2.12.2** (just released below)._
 
+### Minor Changes
+
+#### ➕ Added
+
+- **👤 User-facing**
+  - **Every font can be tuned to taste, and JetBrains Mono arrives already fixed.** A **Customize…** button now sits beside both font pickers — the app-wide **Font** and the story's **Narration Font** — and opens sliders for size, bold weight, italic slant, line height and letter spacing, with regular, bold and italic sample lines that update as you drag. Nothing outside the dialog moves until you press **Save**, so a game in progress never reflows while you experiment, and **Cancel** throws the whole draft away. Each font remembers its own settings and carries its own **Reset to Defaults**, so switching fonts switches to that font's look and resetting returns to how the font shipped rather than to nothing. JetBrains Mono ships with its bold raised, because its stock bold was barely heavier than its regular text — nobody has to open the dialog for markdown bold to read as bold. The story pane's Reading Scale and Line Height still apply on top of whatever a font is tuned to.
+
 ---
 
 <details>

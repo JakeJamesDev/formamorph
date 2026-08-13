@@ -1,3 +1,6 @@
+// Type-only: the font tuning shape lives with its clamping and CSS mapping in lib/fontTuning.
+import type { FontTuning, FontTuningMap } from '@/lib/fontTuning';
+
 // Built-in endpoint defaults, behind the read-only "Default" preset. Each honors its VITE_DEFAULT_* override.
 // Kept out of SettingsContext so that file only exports components/hooks (react-refresh).
 // The hosted endpoint behind the "Default" preset, on both platforms. Desktop used to point this at the
@@ -117,18 +120,31 @@ export type FontValue =
   | 'opendyslexic' | 'atkinson' | 'lexend' | 'andika'; // accessibility
 // `fsa` overrides the app-wide font-size-adjust target for a font whose apparent size differs at the
 // shared x-height (e.g. monospace reads oversized, so it gets a lower target). Omitted = the default.
-export const FONT_LIST: { value: FontValue; label: string; stack: string; a11y?: boolean; fsa?: number }[] = [
-  { value: 'inter', label: 'Inter', stack: "'Inter Variable', 'Inter'" },
+// `wmax` is the heaviest weight the shipped face can render — the variable axis maximum, or 700 for a
+// static face (see src/fonts.ts) — and caps the Customize dialog's bold-weight slider.
+// `tuning` is the font's shipped Customize tuning, the baseline its Reset returns to.
+export interface FontEntry {
+  value: FontValue;
+  label: string;
+  stack: string;
+  a11y?: boolean;
+  fsa?: number;
+  wmax?: number;
+  tuning?: Partial<FontTuning>;
+}
+export const FONT_LIST: FontEntry[] = [
+  { value: 'inter', label: 'Inter', stack: "'Inter Variable', 'Inter'", wmax: 900 },
   { value: 'roboto', label: 'Roboto', stack: "'Roboto'" },
-  { value: 'opensans', label: 'Open Sans', stack: "'Open Sans Variable', 'Open Sans'" },
+  { value: 'opensans', label: 'Open Sans', stack: "'Open Sans Variable', 'Open Sans'", wmax: 800 },
   { value: 'lato', label: 'Lato', stack: "'Lato'" },
-  { value: 'montserrat', label: 'Montserrat', stack: "'Montserrat Variable', 'Montserrat'" },
-  { value: 'sourcesans', label: 'Source Sans 3', stack: "'Source Sans 3 Variable', 'Source Sans 3'" },
+  { value: 'montserrat', label: 'Montserrat', stack: "'Montserrat Variable', 'Montserrat'", wmax: 900 },
+  { value: 'sourcesans', label: 'Source Sans 3', stack: "'Source Sans 3 Variable', 'Source Sans 3'", wmax: 900 },
   { value: 'poppins', label: 'Poppins', stack: "'Poppins'" },
-  { value: 'jetbrainsmono', label: 'JetBrains Mono', stack: "'JetBrains Mono Variable', 'JetBrains Mono', monospace", fsa: 0.48 },
+  // Its 600 reads too light for markdown bold (ink coverage +24% at 800), so it ships pre-tuned.
+  { value: 'jetbrainsmono', label: 'JetBrains Mono', stack: "'JetBrains Mono Variable', 'JetBrains Mono', monospace", fsa: 0.48, wmax: 800, tuning: { boldWeight: 800 } },
   { value: 'opendyslexic', label: 'OpenDyslexic (dyslexia)', stack: "'OpenDyslexic'", a11y: true },
   { value: 'atkinson', label: 'Atkinson Hyperlegible (low vision)', stack: "'Atkinson Hyperlegible'", a11y: true },
-  { value: 'lexend', label: 'Lexend (reading)', stack: "'Lexend Variable', 'Lexend'", a11y: true },
+  { value: 'lexend', label: 'Lexend (reading)', stack: "'Lexend Variable', 'Lexend'", a11y: true, wmax: 900 },
   { value: 'andika', label: 'Andika (literacy)', stack: "'Andika'", a11y: true },
 ];
 /** CSS family stack for a font value, or '' if unknown/sentinel. */
@@ -138,6 +154,18 @@ export const fontStack = (value: string): string => FONT_LIST.find((f) => f.valu
 export const DEFAULT_FONT_SIZE_ADJUST = 0.52;
 /** The font-size-adjust target for a font value — its `fsa` override, else the default. */
 export const fontSizeAdjust = (value: string): number => FONT_LIST.find((f) => f.value === value)?.fsa ?? DEFAULT_FONT_SIZE_ADJUST;
+
+// Static faces ship regular through bold only; a variable face declares its own axis maximum.
+export const DEFAULT_FONT_WEIGHT_MAX = 700;
+// The OS stack has no shipped face to cap, and the browser synthesizes what it lacks.
+export const SYSTEM_FONT_WEIGHT_MAX = 900;
+/** The heaviest weight a font value can render — its `wmax`, the OS ceiling for `system`, else 700. */
+export const fontWeightMax = (value: string): number =>
+  value === 'system' ? SYSTEM_FONT_WEIGHT_MAX : (FONT_LIST.find((f) => f.value === value)?.wmax ?? DEFAULT_FONT_WEIGHT_MAX);
+// Saved per-font tunings start empty: every font runs on its registry `tuning` until one is customized.
+export const DEFAULT_FONT_TUNINGS: FontTuningMap = {};
+/** The font's shipped Customize tuning, as authored (unclamped) — see `fontTuningDefaults`. */
+export const fontShippedTuning = (value: string): Partial<FontTuning> => FONT_LIST.find((f) => f.value === value)?.tuning ?? {};
 
 // The OS sans stack: both the `system` default (in index.css `:root`) and the fallback appended to a webfont.
 export const SYSTEM_FONT_STACK = "ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif";
