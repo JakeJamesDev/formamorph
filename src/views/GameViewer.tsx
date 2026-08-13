@@ -79,7 +79,8 @@ import {
 import { selectDueDiscovery, materializeDiscoveredEntity, mergeDiscoveredIntoLocation, cleanDiscoveredDescription, selectReachableVisitors, DISCOVER_NAME_LABEL, DISCOVER_PASSAGE_LABEL } from "../lib/runtimeCharacters";
 import { selectRegenSource, buildRegenContext, buildRegenUserMessage, REGEN_LABELS } from "../lib/discoveredRegen";
 import { lengthGuidance, trimToLastSentence } from "../lib/outputLength";
-import { reasoningEffortBody, resolvePromptReasoning, reasoningBudgetBody } from "../lib/reasoningEffort";
+import { buildAiRequestSpec, type AiSettingsSnapshot } from "../lib/aiRequest/aiRequestSpec";
+import { streamAiRequest } from "../lib/aiRequest/aiStream";
 import { splitSentenceSegments } from "../lib/ttsChunks";
 import { selectDueDigests, applyDigest, applyImportance, parseTurnContent, recentParticipants, selectDueDiaries, pendingDiaryNames, applyDiary, collectCharacterDiary } from "../lib/turnDigest";
 import { buildTraitContext } from "../lib/traitTree";
@@ -110,7 +111,6 @@ import { REVEAL_TEST_NARRATION, REVEAL_TEST_PROFILES } from "../lib/revealTestSc
 import { MARKDOWN_SAMPLE } from "../lib/markdownSample";
 import { parseSlashCommand } from "../lib/slashCommands";
 import { normalizeStatChanges, applyAiStatChanges, parseStatUpdates, applyAiMaxChanges, appliedStatDeltas } from "../lib/statChanges";
-import { resolvePromptSampler } from "../lib/promptSamplers";
 import { toDebugEndpoint, type DebugEndpointInfo } from "../lib/promptEndpoints";
 import { composeSceneTags, stripPlaces, splitTags, MAX_SCENE_CHARACTERS, type SceneCharacter } from "../lib/sceneTags";
 import { loadDanbooruTags } from "../lib/danbooruTags";
@@ -2541,16 +2541,31 @@ ${playerNotes || NONE_PLACEHOLDER}
     // once; each would otherwise stomp the shared label, so the batch sets one stable label itself instead.
     quietLabel = false,
   ) => {
-    // Disable a reasoning model's scratchpad when requested — the `/no_think` soft switch (Qwen-style),
-    // appended to the system prompt so it applies to every request type (and shows in the AI-context viewer).
-    if (disableThinking) systemPrompt = `${systemPrompt}\n\n/no_think`;
-
     // Where this prompt sends: its pinned preset, or the active endpoint when it follows the selection.
-    // Every engine-shaped decision below reads the resolved target rather than the global one, so a
-    // prompt routed off the built-in engine stops being sent that engine's body fields. Resolved up here
-    // because the capture below records it too.
+    // Resolved once here and handed to the spec layer, so the capture below and the request body can never
+    // disagree about which target answered.
     const target = resolveEndpointForKind(requestType);
-    const targetIsLocalEngine = target.localEngine;
+
+    // The per-call settings snapshot the AI Request Spec layer reads. Plain values only — every
+    // engine-shaped decision (sampler resolution, the reasoning budget/effort split, the `/no_think`
+    // switch, penalty spellings) now lives behind that seam rather than in this component.
+    const snapshot: AiSettingsSnapshot = {
+      resolveTarget: () => target,
+      thinkingMode,
+      reasoningEffort,
+      reasoningEngaged,
+      promptReasoning,
+      promptReasoningBudget,
+      promptSamplers,
+      genTemperature,
+      genRepetitionPenalty,
+      genTopP,
+      genTopK,
+      genMinP,
+      paragraphLimit,
+      disableThinking,
+    };
+    const spec = buildAiRequestSpec(snapshot, { systemPrompt, messages, requestType, maxTokensOverride });
 
     // Silent requests are only captured into the AI-context viewer when the inspection toggle is on.
     const captureSilent = silent && showSilentRequests && attachTurnId !== undefined;
@@ -2572,7 +2587,8 @@ ${playerNotes || NONE_PLACEHOLDER}
           ...next[idx].requests,
           {
             type: requestType,
-            messages: [{ role: "system", content: systemPrompt }, ...messages],
+            // The wire messages, so the viewer shows exactly what was sent (the `/no_think` switch included).
+            messages: spec.body.messages,
             id: captureId,
             dictionary,
             endpoint: toDebugEndpoint(target),
@@ -2589,220 +2605,168 @@ ${playerNotes || NONE_PLACEHOLDER}
       // Capture the exact payload into the AI-context viewer.
       if (!silent || captureSilent) captureRequest();
 
-      const resolvedTemperature = resolvePromptSampler(requestType, "temperature", promptSamplers, genTemperature, targetIsLocalEngine);
-      const resolvedRepPenalty = resolvePromptSampler(requestType, "repetitionPenalty", promptSamplers, genRepetitionPenalty, targetIsLocalEngine);
-      const targetMaxTokens = maxTokensOverride ?? target.maxTokens;
-
-      const response = await fetch(target.url, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${target.apiToken}`,
-        },
-        body: JSON.stringify({
-          model: target.model,
-          messages: [{ role: "system", content: systemPrompt }, ...messages],
-          max_tokens: targetMaxTokens,
-          stream: true,
-          // top_p/top_k/min_p apply to the built-in engine only (a custom endpoint keeps its own).
-          ...(targetIsLocalEngine && {
-            top_p: genTopP,
-            top_k: genTopK,
-            min_p: genMinP,
-          }),
-          // Temperature and repetition penalty are resolved per prompt: a pinned/custom value goes to every
-          // endpoint; an unpinned prompt sends the global value on the built-in engine but omits on a custom
-          // endpoint (undefined → no field, so the endpoint's own value applies).
-          // The penalty ships under both spellings: `repetition_penalty` for vLLM-family servers and the
-          // built-in engine, `repeat_penalty` for LM Studio (which silently ignores the other). Both targets
-          // accept unknown body fields — measured, including a param nobody defines. A strict server would 400.
-          ...(resolvedTemperature !== undefined && { temperature: resolvedTemperature }),
-          ...(resolvedRepPenalty !== undefined && { repetition_penalty: resolvedRepPenalty, repeat_penalty: resolvedRepPenalty }),
-          // Reasoning is engine-split: the local engine caps the thought segment by a token budget
-          // (thinking_budget_tokens, from the per-prompt %); external endpoints take the coarse reasoning_effort
-          // hint. Guided modes / uncontrolled prompts resolve to 0 / none on each path.
-          ...(targetIsLocalEngine
-            ? reasoningBudgetBody(thinkingMode, requestType, promptReasoningBudget, targetMaxTokens)
-            // Only send `reasoning_effort` to an external endpoint when reasoning is actually engaged; otherwise
-            // omit it entirely so a plain endpoint (e.g. LM Studio) isn't sent fields it rejects. The support
-            // list is the routed target's, so a level the pinned endpoint rejects is never sent to it.
-            : reasoningEngaged
-              ? reasoningEffortBody(thinkingMode, resolvePromptReasoning(requestType, promptReasoning, reasoningEffort), target.supportedReasoningEfforts)
-              : {}),
-          // Single-paragraph stop, but not in inline-thinking mode — the <think> block needs newlines.
-          ...(requestType === "narration" && paragraphLimit === "single" && thinkingMode !== "inline" && { stop: ["\n"] }),
-        }),
-        signal, // Add the abort signal to the fetch request
-      });
-
-      if (!response.ok) {
-        const error = new Error("HTTP error") as Error & { response?: Response };
-        error.response = response;
-        throw error;
-      }
-
-      if (!response.body) throw new Error("Response has no body to stream");
-      const reader = response.body.getReader();
-      // Unblock a pending read the instant the turn is aborted, so we stop consuming immediately even if
-      // the server keeps streaming after we disconnect. `once` lets it clean itself up.
-      signal?.addEventListener("abort", () => { reader.cancel().catch(() => {}); }, { once: true });
-      const decoder = new TextDecoder();
-      let buffer = "";
       let content = "";
-      let finishReason = null;
+      let finishReason: string | null = null;
       // Reasoning capture (narration only): native `reasoning`/`reasoning_content` stream field, plus timing so
       // the block can show "Thought for Ns" — `firstTokenAt` is the first token of any kind, `narrationAt` the
       // first visible narration token, so their gap is the think time for both native and inline-<think> paths.
+      // The stream's own `firstContentAt` can't stand in for `narrationAt`: inline reasoning arrives as
+      // content, so it would stamp the think time at zero on that path.
       let reasoningText = "";
       let firstTokenAt = 0;
       let narrationAt = 0;
       let lastLiveReasoningTick = 0;
-      // Clear the narration for this turn's fresh reveal (reset re-seeds the reveal's base timing) and
-      // mark the reveal live — from here the reveal view shows the streaming gameplayText, not committed.
-      if (requestType === "narration") { fadeReveal.reset(); smoothReveal.reset(); setIsRevealingNarration(true); entitySentenceCursorRef.current = 0; assistantAddedRef.current = false; turnReasoningRef.current = { text: "", ms: 0 }; setLiveReasoning({ text: "", ms: 0, active: false }); }
       // Opt-in streaming TTS: synthesize narration sentence-by-sentence as it arrives (needs a model).
       const ttsStreaming = streamNarrationAudio && ttsLoaded && requestType === "narration";
-      if (ttsStreaming) { ttsModalRef.current?.streamStart(); ttsSentenceCursorRef.current = 0; }
 
-      // Handle one complete SSE line. Lines are buffered across reads (below) so a `data:` payload
-      // split across network chunks is never JSON.parsed half-formed.
-      const processLine = (sseLine: string) => {
-        if (!sseLine.startsWith("data: ")) return;
-        const data = sseLine.slice(6);
-        if (data === "[DONE]") return;
-        try {
-          const parsed = JSON.parse(data);
-          const delta = parsed.choices[0]?.delta?.content || "";
-          content += delta;
-          // A native reasoning model streams its scratchpad in a separate `reasoning` field (some backends
-          // name it `reasoning_content`); accumulate it for the block. Inline <think> stays in `content`.
-          const reasoningDelta = parsed.choices[0]?.delta?.reasoning ?? parsed.choices[0]?.delta?.reasoning_content ?? "";
-          if (requestType === "narration") {
-            if (reasoningDelta) reasoningText += reasoningDelta;
-            if (!firstTokenAt && (delta || reasoningDelta)) firstTokenAt = performance.now();
-            // Stream the scratchpad into the live block while still thinking (before narration), throttled so a
-            // token-rate reasoning stream doesn't re-render the block per token.
-            if (!narrationAt) {
-              const nowTick = performance.now();
-              if (nowTick - lastLiveReasoningTick > 80) {
-                lastLiveReasoningTick = nowTick;
-                const liveText = [reasoningText.trim(), extractReasoningLive(content)].filter(Boolean).join("\n\n").trim();
-                if (liveText) setLiveReasoning({ text: liveText, ms: 0, active: true });
-              }
-            }
+      // Clear the narration for this turn's fresh reveal (reset re-seeds the reveal's base timing) and
+      // mark the reveal live — from here the reveal view shows the streaming gameplayText, not committed.
+      // Deferred to the first event past the request debug, i.e. once the endpoint has actually answered:
+      // a dead endpoint throws instead, and must leave the previous turn's narration on screen.
+      let streamOpened = false;
+      const openStream = () => {
+        streamOpened = true;
+        if (requestType === "narration") { fadeReveal.reset(); smoothReveal.reset(); setIsRevealingNarration(true); entitySentenceCursorRef.current = 0; assistantAddedRef.current = false; turnReasoningRef.current = { text: "", ms: 0 }; setLiveReasoning({ text: "", ms: 0, active: false }); }
+        if (ttsStreaming) { ttsModalRef.current?.streamStart(); ttsSentenceCursorRef.current = 0; }
+      };
+
+      // Stream the scratchpad into the live block while still thinking (before narration). Two sources feed
+      // it: the native `reasoning` field the stream accumulates, and an inline <think> body still open
+      // inside `content`.
+      const renderLiveReasoning = () => {
+        lastLiveReasoningTick = performance.now();
+        const liveText = [reasoningText.trim(), extractReasoningLive(content)].filter(Boolean).join("\n\n").trim();
+        if (liveText) setLiveReasoning({ text: liveText, ms: 0, active: true });
+      };
+      // The content path needs its own cadence: reasoning events arrive already throttled by the stream,
+      // but inline <think> rides content, which is unthrottled and would re-render the block per token.
+      const pushLiveReasoningThrottled = () => {
+        if (performance.now() - lastLiveReasoningTick <= 80) return;
+        renderLiveReasoning();
+      };
+
+      // One narration content delta. Everything downstream reads the accumulated `content`.
+      const onNarrationDelta = () => {
+        if (!narrationAt) pushLiveReasoningThrottled();
+        // Trim leading whitespace so the streamed text matches the final `.trim()`'d commit — after a
+        // reasoning model's <think> block is stripped it leaves leading blank lines, and that shift
+        // otherwise makes the reveal re-animate every paragraph at the end.
+        const display = stripReasoningLive(content).replace(/^\s+/, '');
+        if (!narrationAt && display.length > 0) narrationAt = performance.now();
+        // Narration has begun: collapse the reasoning block, stamping the think duration.
+        if (narrationAt && getLiveReasoning().active) {
+          const lr = getLiveReasoning();
+          setLiveReasoning({ text: lr.text, ms: Math.max(0, Math.round(narrationAt - firstTokenAt)), active: false });
+        }
+        // Split once per token; streaming TTS, the entity tab, and the reveal all read these.
+        const segments = splitSentenceSegments(display);
+        if (fadeRevealActive) {
+          // Fade path: reveal only complete sentences (hold the in-progress trailing one). The pacer
+          // times each sentence's arrival and paces the cascade from that measured rate — no
+          // tokens/sec estimate needed here; a burst of sentences just fills its backlog buffer.
+          fadeReveal.push(
+            segments.length > 1
+              ? display.slice(0, display.length - segments[segments.length - 1].length).replace(/\s+$/, '')
+              : '',
+          );
+        } else {
+          // Classic path: trail the full stream, smoothing it out character-by-character.
+          smoothReveal.push(display);
+        }
+
+        // Feed newly-completed sentences to streaming TTS, holding back the last (in-progress) one.
+        if (ttsStreaming) {
+          const completeCount = segments.length - 1;
+          for (let i = ttsSentenceCursorRef.current; i < completeCount; i++) {
+            ttsModalRef.current?.streamSentence(segments[i]);
           }
-          if (parsed.choices[0]?.finish_reason) {
-            finishReason = parsed.choices[0].finish_reason;
-          }
+          if (completeCount > ttsSentenceCursorRef.current) ttsSentenceCursorRef.current = completeCount;
+        }
 
-          // Handle different request types
-          if (requestType === "narration") {
-            // Trim leading whitespace so the streamed text matches the final `.trim()`'d commit — after a
-            // reasoning model's <think> block is stripped it leaves leading blank lines, and that shift
-            // otherwise makes the reveal re-animate every paragraph at the end.
-            const display = stripReasoningLive(content).replace(/^\s+/, '');
-            if (!narrationAt && display.length > 0) narrationAt = performance.now();
-            // Narration has begun: collapse the reasoning block, stamping the think duration.
-            if (narrationAt && getLiveReasoning().active) {
-              const lr = getLiveReasoning();
-              setLiveReasoning({ text: lr.text, ms: Math.max(0, Math.round(narrationAt - firstTokenAt)), active: false });
-            }
-            // Split once per token; streaming TTS, the entity tab, and the reveal all read these.
-            const segments = splitSentenceSegments(display);
-            if (fadeRevealActive) {
-              // Fade path: reveal only complete sentences (hold the in-progress trailing one). The pacer
-              // times each sentence's arrival and paces the cascade from that measured rate — no
-              // tokens/sec estimate needed here; a burst of sentences just fills its backlog buffer.
-              fadeReveal.push(
-                segments.length > 1
-                  ? display.slice(0, display.length - segments[segments.length - 1].length).replace(/\s+$/, '')
-                  : '',
-              );
-            } else {
-              // Classic path: trail the full stream, smoothing it out character-by-character.
-              smoothReveal.push(display);
-            }
+        // Keep the scene list live as each sentence completes: the planner cast is present from the
+        // start, and a name flips from its alias to the real name the moment the narration says it
+        // (with no planner, this falls back to the narration parse). Reapplied authoritatively at the end.
+        const completeSentences = segments.length - 1;
+        const newSentence = completeSentences > entitySentenceCursorRef.current;
+        if (newSentence) {
+          entitySentenceCursorRef.current = completeSentences;
+          const { cast: turnCast, prior } = sceneListCtxRef.current;
+          setVisibleEntities(buildSceneList({ cast: turnCast, entities: allEntities, narrationSoFar: display, priorNarration: prior }));
+        }
 
-            // Feed newly-completed sentences to streaming TTS, holding back the last (in-progress) one.
-            if (ttsStreaming) {
-              const completeCount = segments.length - 1;
-              for (let i = ttsSentenceCursorRef.current; i < completeCount; i++) {
-                ttsModalRef.current?.streamSentence(segments[i]);
-              }
-              if (completeCount > ttsSentenceCursorRef.current) ttsSentenceCursorRef.current = completeCount;
+        // Persist the in-progress assistant message: add it once (as soon as narration content
+        // arrives — so an abort before any text still drops the lone user turn), then refresh it only
+        // on sentence boundaries. Writing it every token re-renders the whole app and copies the
+        // history array per token, which compounds as history grows and starves the streaming reveal.
+        // The visible narration comes from the sentence-buffered reveal (gameplayText), not this
+        // message, and the final text is committed once the turn finishes.
+        const shouldPersist = assistantAddedRef.current ? newSentence : display.length > 0;
+        if (shouldPersist) {
+          assistantAddedRef.current = true;
+          const message = {
+            role: "assistant" as const,
+            content: JSON.stringify({
+              narration: display,
+              choices: [],
+              stat_changes: [],
+              turnId: currentTurnIdRef.current,
+            }),
+          };
+          setFullMessageHistory((prev) => {
+            if (prev.length > 0 && prev[prev.length - 1].role === "assistant") {
+              const updatedHistory = [...prev];
+              updatedHistory[updatedHistory.length - 1] = message;
+              return updatedHistory;
             }
-
-            // Keep the scene list live as each sentence completes: the planner cast is present from the
-            // start, and a name flips from its alias to the real name the moment the narration says it
-            // (with no planner, this falls back to the narration parse). Reapplied authoritatively at the end.
-            const completeSentences = segments.length - 1;
-            const newSentence = completeSentences > entitySentenceCursorRef.current;
-            if (newSentence) {
-              entitySentenceCursorRef.current = completeSentences;
-              const { cast: turnCast, prior } = sceneListCtxRef.current;
-              setVisibleEntities(buildSceneList({ cast: turnCast, entities: allEntities, narrationSoFar: display, priorNarration: prior }));
-            }
-
-            // Persist the in-progress assistant message: add it once (as soon as narration content
-            // arrives — so an abort before any text still drops the lone user turn), then refresh it only
-            // on sentence boundaries. Writing it every token re-renders the whole app and copies the
-            // history array per token, which compounds as history grows and starves the streaming reveal.
-            // The visible narration comes from the sentence-buffered reveal (gameplayText), not this
-            // message, and the final text is committed once the turn finishes.
-            const shouldPersist = assistantAddedRef.current ? newSentence : display.length > 0;
-            if (shouldPersist) {
-              assistantAddedRef.current = true;
-              const message = {
-                role: "assistant" as const,
-                content: JSON.stringify({
-                  narration: display,
-                  choices: [],
-                  stat_changes: [],
-                  turnId: currentTurnIdRef.current,
-                }),
-              };
-              setFullMessageHistory((prev) => {
-                if (prev.length > 0 && prev[prev.length - 1].role === "assistant") {
-                  const updatedHistory = [...prev];
-                  updatedHistory[updatedHistory.length - 1] = message;
-                  return updatedHistory;
-                }
-                return [...prev, message];
-              });
-            }
-          } else if (requestType === "choices") {
-            // Update choices in real-time, ensuring we handle partial content correctly
-            const choicesList = parseChoices(stripReasoningLive(content));
-            if (choicesList.length > 0) {
-              setChoices(choicesList);
-            }
-          }
-          // For statUpdates type, we do nothing during streaming
-        } catch (e) {
-          console.error("Error parsing streaming response:", e);
+            return [...prev, message];
+          });
         }
       };
 
-      while (true) {
-        if (signal?.aborted) break; // user pressed Stop — quit consuming, even with chunks still buffered
-        const { done, value } = await reader.read();
-        if (done) break;
-        // Accumulate decoded text and dispatch only complete lines; the trailing partial line (and
-        // any partial multi-byte char, via { stream: true }) is carried into the next read.
-        buffer += decoder.decode(value, { stream: true });
-        const lines = buffer.split(/\r?\n/);
-        buffer = lines.pop() ?? "";
-        for (const line of lines) processLine(line);
+      for await (const event of streamAiRequest(spec, { signal })) {
+        if (event.type === "debug") {
+          // The stream skips a malformed frame rather than failing the turn; log it so a backend sending
+          // junk frames is still visible. The `request` debug is already captured above.
+          if (event.debug.kind === "parse") console.error("Error parsing streaming response:", event.debug.error);
+          continue;
+        }
+        if (event.type === "done") {
+          // The done event carries the authoritative totals, so nothing is accumulated on this side.
+          // A stop that lands before any token still opened no reveal — leave the screen as it was.
+          if (!streamOpened && event.result.finishReason !== "aborted") openStream();
+          content = event.result.content;
+          reasoningText = event.result.reasoningText;
+          finishReason = event.result.finishReason;
+          break;
+        }
+        if (!streamOpened) openStream();
+        if (!firstTokenAt) firstTokenAt = performance.now();
+        if (event.type === "reasoning") {
+          reasoningText = event.text;
+          if (requestType === "narration" && !narrationAt) renderLiveReasoning();
+          continue;
+        }
+        content = event.content;
+        if (requestType === "narration") {
+          onNarrationDelta();
+        } else if (requestType === "choices") {
+          // Update choices in real-time, ensuring we handle partial content correctly
+          const choicesList = parseChoices(stripReasoningLive(content));
+          if (choicesList.length > 0) setChoices(choicesList);
+        }
+        // For statUpdates type, we do nothing during streaming
       }
-      // Aborted mid-stream: drop everything received this turn and don't commit it.
-      if (signal?.aborted) {
-        if (requestType === "narration") { fadeReveal.reset(); smoothReveal.reset(); }
-        if (ttsStreaming) ttsModalRef.current?.streamCancel();
+
+      // Aborted mid-stream: the stream ends gracefully carrying its partial content, but this turn still
+      // drops everything and commits nothing — the narration the player keeps is the assistant message
+      // already persisted during streaming, which the abort handler snapshots.
+      if (signal?.aborted || finishReason === "aborted") {
+        if (streamOpened) {
+          if (requestType === "narration") { fadeReveal.reset(); smoothReveal.reset(); }
+          if (ttsStreaming) ttsModalRef.current?.streamCancel();
+        }
         return "";
       }
-      // Flush the decoder and process a final line that arrived without a trailing newline.
-      buffer += decoder.decode();
-      if (buffer.trim()) processLine(buffer.trim());
 
       // Show the raw output (including any <think> block) in the AI-context viewer, but return the
       // cleaned text so reasoning never reaches the narration, TTS, choices/stats/location, or history.
