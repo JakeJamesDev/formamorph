@@ -47,9 +47,10 @@ export function selectDueDiscovery(history: ChatMessage[], knownNames: string[])
   return null;
 }
 
-/** Build a minimal valid runtime `Entity` from a coined name and a generated AI-facing description. */
-export function materializeDiscoveredEntity(name: string, aiDescription: string): Entity {
-  return { id: randomUUID(), name: name.trim(), aiDescription: aiDescription.trim() };
+/** Build a minimal valid runtime `Entity` from a coined name and a generated AI-facing description. `id`
+ *  lets a pure caller supply its own, so the result is reproducible. */
+export function materializeDiscoveredEntity(name: string, aiDescription: string, id = randomUUID()): Entity {
+  return { id, name: name.trim(), aiDescription: aiDescription.trim() };
 }
 
 /**
