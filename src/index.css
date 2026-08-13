@@ -10,6 +10,16 @@
     /* Normalize apparent size across fonts by pinning x-height to a target (≈ the system UI font), so
        switching fonts doesn't resize text. Inherited, so it applies app-wide. Ignored on old browsers. */
     font-size-adjust: 0.52;
+    /* Per-font tuning (Settings → Font → Customize). The settings context overwrites these from the
+       chosen font's tunings; these are the untuned baseline, so an unset font changes nothing.
+       Weight feeds Tailwind's font-semibold/font-bold, line height feeds the type roles, and letter
+       spacing is inherited from here app-wide. */
+    --fm-weight-semibold: 600;
+    --fm-weight-bold: 700;
+    --fm-italic-skew: 0deg;
+    --fm-line-height: 1;
+    --fm-letter-spacing: 0em;
+    letter-spacing: var(--fm-letter-spacing);
     --background: 0 0% 100%;
     --foreground: 222.2 84% 4.9%;
     /* Card sits a step off --background so panels read as raised surfaces (lighter in dark, faintly
@@ -469,9 +479,36 @@
 .narration-text {
   font-family: var(--narration-font, var(--app-font));
   font-size: calc(1em * var(--narration-scale, 1));
-  line-height: var(--narration-line-height, 1.5);
+  /* The reading Line Height slider composes multiplicatively with the narration font's own tuning. */
+  line-height: calc(var(--narration-line-height, 1.5) * var(--narration-fm-line-height, 1));
   /* Unset var ⇒ invalid ⇒ inherits the app-wide font-size-adjust; a specific narration font sets its own. */
   font-size-adjust: var(--narration-fsa);
+  /* The narration font may differ from the app font, so the pane re-points the tuning variables at its
+     own font's set. Descendants inherit these, so markdown bold and emphasis inside follow suit. */
+  --fm-weight-semibold: var(--narration-fm-weight-semibold, 600);
+  --fm-weight-bold: var(--narration-fm-weight-bold, 700);
+  --fm-italic-skew: var(--narration-fm-italic-skew, 0deg);
+  /* Also re-pointed, so a type role used inside the pane takes the narration font's rhythm — the pane's
+     own line-height above composes the reading slider with the same value. */
+  --fm-line-height: var(--narration-fm-line-height, 1);
+  letter-spacing: var(--narration-fm-letter-spacing, 0em);
+}
+
+/* Italic skew exaggerates a font whose true italic reads too subtle, on top of the real italic face.
+   A transform needs a block-ish box, and inline-block would stop long italic runs wrapping across lines —
+   so the root only carries `data-italic-skew` while the slider is above 0, and at the default 0 the
+   rule never applies and italics wrap normally. */
+:root[data-italic-skew] em,
+:root[data-italic-skew] i,
+:root[data-italic-skew] [data-streamdown="italic"] {
+  display: inline-block;
+  transform: skewX(calc(-1 * var(--fm-italic-skew, 0deg)));
+}
+
+/* Raw <strong>/<b> follow the tuned bold too; the UA's `bolder` otherwise ignores the setting. */
+strong,
+b {
+  font-weight: var(--fm-weight-bold, 700);
 }
 
 /* Composed per-word entrance animation for the reveal (built in RevealAnimationDemo). Fade, Move,

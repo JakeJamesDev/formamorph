@@ -32,14 +32,22 @@ module.exports = {
       // (density lives on the control's `size` variant instead — see button/input). Values match the
       // stock Tailwind sizes already in use, so naming a role never moves a pixel.
       // tailwind-merge must be taught these keys too, or it files them under text-color (see lib/utils).
+      // Each role's line height rides --fm-line-height (the Customize dialog's per-font line-height
+      // slider, 1 = the stock value), so tuning a font's rhythm reaches every role at once.
       fontSize: {
-        display: ["1.5rem", { lineHeight: "2rem" }],      // card titles, page headers
-        heading: ["1.25rem", { lineHeight: "1.75rem" }],  // section headers
-        title: ["1.125rem", { lineHeight: "1.75rem" }],   // dialog/modal titles
-        body: ["1rem", { lineHeight: "1.5rem" }],         // reading copy
-        label: ["0.875rem", { lineHeight: "1.25rem" }],   // form controls and their labels
-        helper: ["0.875rem", { lineHeight: "1.25rem" }],  // descriptions, hints, inline errors
-        meta: ["0.75rem", { lineHeight: "1rem" }],        // counts, timestamps, badges
+        display: ["1.5rem", { lineHeight: "calc(2rem * var(--fm-line-height, 1))" }],      // card titles, page headers
+        heading: ["1.25rem", { lineHeight: "calc(1.75rem * var(--fm-line-height, 1))" }],  // section headers
+        title: ["1.125rem", { lineHeight: "calc(1.75rem * var(--fm-line-height, 1))" }],   // dialog/modal titles
+        body: ["1rem", { lineHeight: "calc(1.5rem * var(--fm-line-height, 1))" }],         // reading copy
+        label: ["0.875rem", { lineHeight: "calc(1.25rem * var(--fm-line-height, 1))" }],   // form controls and their labels
+        helper: ["0.875rem", { lineHeight: "calc(1.25rem * var(--fm-line-height, 1))" }],  // descriptions, hints, inline errors
+        meta: ["0.75rem", { lineHeight: "calc(1rem * var(--fm-line-height, 1))" }],        // counts, timestamps, badges
+      },
+      // Semibold and bold follow the Customize dialog's bold-weight slider (a font whose 600 reads
+      // quiet can be raised); bold stays a step above semibold, capped by the font's axis.
+      fontWeight: {
+        semibold: "var(--fm-weight-semibold, 600)",
+        bold: "var(--fm-weight-bold, 700)",
       },
       colors: {
         border: "hsl(var(--border))",

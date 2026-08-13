@@ -1,7 +1,7 @@
 import { randomUUID } from "@/lib/uuid";
 import { createContext, useContext, useState, useEffect, useRef, useCallback, useMemo, type ReactNode } from 'react';
 import { defaultSystemPrompt, defaultNarrationUserPrompt, defaultRecapUserPrompt, defaultRehydrateUserPrompt, defaultOocDirectivePrompt, defaultChoicesPrompt, defaultStatUpdatesPrompt, defaultLocationChangePrompt, defaultThinkingPrompt, defaultSummaryPrompt, defaultChoicesUserPrompt, defaultStatUpdatesUserPrompt, defaultLocationChangeUserPrompt, defaultSummaryUserPrompt, defaultDiaryPrompt, defaultDirectorPrompt, defaultDirectorUserPrompt, defaultCharacterPrompt, defaultStoryboardPrompt, defaultNowLinePrompt, defaultTimePassedPrompt, defaultTimePassedUserPrompt, defaultOpeningTimePrompt, defaultOpeningTimeUserPrompt, defaultSceneTagsPrompt, defaultSceneTagsUserPrompt } from '../components/game/GamePrompts';
-import { DEFAULT_ENDPOINT, DEFAULT_API_TOKEN, DEFAULT_MODEL_NAME, DEFAULT_MAX_TOKENS, DEFAULT_CONTEXT_WINDOW, DEFAULT_LOCAL_CONTEXT_SIZE, DEFAULT_LOCAL_GPU_LAYERS, DEFAULT_LOCAL_FLASH_ATTENTION, DEFAULT_LOCAL_PARALLEL_REQUESTS, DEFAULT_LOCAL_AUTO_LOAD, DEFAULT_GEN_TEMPERATURE, DEFAULT_GEN_TOP_P, DEFAULT_GEN_REPETITION_PENALTY, DEFAULT_GEN_TOP_K, DEFAULT_GEN_MIN_P, DEFAULT_THEME_COLOR, BASE_THEME_COLOR, THEME_COLORS, DEFAULT_FONT, FONT_OPTIONS, SYSTEM_FONT_STACK, DEFAULT_NARRATION_FONT, DEFAULT_NARRATION_SCALE, DEFAULT_NARRATION_LINE_HEIGHT, NARRATION_FONT_OPTIONS, fontStack, fontSizeAdjust, DEFAULT_UPDATE_CHANNEL, DEFAULT_SCENE_IMAGE_AUTO, DEFAULT_CONTINUE_CHOICE, CONTINUE_CHOICE_MODES, type ContinueChoiceMode, type ThemeColor, type FontChoice, type NarrationFont, type UpdateChannel } from './settingsDefaults';
+import { DEFAULT_ENDPOINT, DEFAULT_API_TOKEN, DEFAULT_MODEL_NAME, DEFAULT_MAX_TOKENS, DEFAULT_CONTEXT_WINDOW, DEFAULT_LOCAL_CONTEXT_SIZE, DEFAULT_LOCAL_GPU_LAYERS, DEFAULT_LOCAL_FLASH_ATTENTION, DEFAULT_LOCAL_PARALLEL_REQUESTS, DEFAULT_LOCAL_AUTO_LOAD, DEFAULT_GEN_TEMPERATURE, DEFAULT_GEN_TOP_P, DEFAULT_GEN_REPETITION_PENALTY, DEFAULT_GEN_TOP_K, DEFAULT_GEN_MIN_P, DEFAULT_THEME_COLOR, BASE_THEME_COLOR, THEME_COLORS, DEFAULT_FONT, DEFAULT_FONT_TUNINGS, FONT_OPTIONS, SYSTEM_FONT_STACK, DEFAULT_NARRATION_FONT, DEFAULT_NARRATION_SCALE, DEFAULT_NARRATION_LINE_HEIGHT, NARRATION_FONT_OPTIONS, fontStack, fontSizeAdjust, DEFAULT_UPDATE_CHANNEL, DEFAULT_SCENE_IMAGE_AUTO, DEFAULT_CONTINUE_CHOICE, CONTINUE_CHOICE_MODES, type ContinueChoiceMode, type ThemeColor, type FontChoice, type NarrationFont, type UpdateChannel } from './settingsDefaults';
 import { isDesktop } from '../lib/imageGen/desktop';
 import { useLocalLlmStatus } from '../lib/useLocalLlmStatus';
 import { DEFAULT_TAG_PROMPT } from '../lib/imagePrompt';
@@ -26,6 +26,10 @@ import { normalizeEndpointUrl } from '../lib/endpointUrl';
 import { registerDevHook } from '../lib/devRouter';
 import { usePersistentState, stringCodec, boolCodec, intCodec, floatCodec, nullableIntCodec } from '../lib/usePersistentState';
 import { usePrefersReducedMotion } from '../lib/usePrefersReducedMotion';
+import {
+  resolveFontTuning, fontTuningVars, fontTuningMapCodec, withFontTuning,
+  APP_TUNING_PREFIX, NARRATION_TUNING_PREFIX, type FontTuning, type FontTuningMap,
+} from '../lib/fontTuning';
 import {
   REVEAL_DIRECTIONS, REVEAL_SCALE_MODES, DEFAULT_REVEAL_EASING,
   DEFAULT_REVEAL_FADE, DEFAULT_REVEAL_MOVE, DEFAULT_REVEAL_MOVE_DIRECTION, DEFAULT_REVEAL_MOVE_DISTANCE,
@@ -1044,6 +1048,15 @@ function useProvideSettings() {
     parse: (r) => (FONT_OPTIONS.some((f) => f.value === r) ? (r as FontChoice) : DEFAULT_FONT),
     serialize: (v) => v,
   });
+  // Per-font tunings (the Customize dialog), keyed by font value. A font with no entry runs on its
+  // shipped registry defaults, so this is empty until someone tunes something.
+  const [fontTunings, setFontTunings] = usePersistentState<FontTuningMap>(`${APP_ID}_fontTunings`, DEFAULT_FONT_TUNINGS, fontTuningMapCodec);
+  const appTuning = useMemo(() => resolveFontTuning(fontFamily, fontTunings), [fontFamily, fontTunings]);
+  /** Commit one font's tunings (what the Customize dialog's Save does). */
+  const setFontTuning = useCallback((font: FontChoice, tuning: FontTuning) => {
+    setFontTunings((prev) => withFontTuning(prev, font, tuning));
+  }, [setFontTunings]);
+
   useEffect(() => {
     const root = document.documentElement;
     const stack = FONT_OPTIONS.find((f) => f.value === fontFamily)?.stack;
@@ -1052,14 +1065,15 @@ function useProvideSettings() {
       if (cancelled) return;
       if (!stack) root.style.removeProperty('--app-font');
       else root.style.setProperty('--app-font', `${stack}, ${SYSTEM_FONT_STACK}`);
-      // Per-font x-height target (e.g. monospace reads oversized at the shared default).
-      root.style.setProperty('font-size-adjust', String(fontSizeAdjust(fontFamily)));
+      // Per-font x-height target (e.g. monospace reads oversized at the shared default), scaled by the
+      // font's own tuning — riding the normalization leaves layout spacing untouched.
+      root.style.setProperty('font-size-adjust', String(fontSizeAdjust(fontFamily) * appTuning.scale));
     };
     // Preload the webfont first so it applies already-adjusted (avoids the natural-size flash on first pick).
     if (stack) preloadFont(stack).then(apply);
     else apply();
     return () => { cancelled = true; };
-  }, [fontFamily]);
+  }, [fontFamily, appTuning.scale]);
 
   // Narration (Accessibility): a separate font for the story reading pane (`global` = inherit the app
   // font) plus reading scale + line-height. Applied to `.narration-text` via CSS variables in index.css.
@@ -1067,6 +1081,9 @@ function useProvideSettings() {
     parse: (r) => (NARRATION_FONT_OPTIONS.some((f) => f.value === r) ? (r as NarrationFont) : DEFAULT_NARRATION_FONT),
     serialize: (v) => v,
   });
+  // `global` ⇒ the narration pane runs on the app font's tunings, so one tuning job covers both selectors.
+  const narrationTuningFont = narrationFont === 'global' ? fontFamily : narrationFont;
+  const narrationTuning = useMemo(() => resolveFontTuning(narrationTuningFont, fontTunings), [narrationTuningFont, fontTunings]);
   const [narrationScale, setNarrationScale] = usePersistentState<number>(`${APP_ID}_narrationScale`, DEFAULT_NARRATION_SCALE, floatCodec);
   const [narrationLineHeight, setNarrationLineHeight] = usePersistentState<number>(`${APP_ID}_narrationLineHeight`, DEFAULT_NARRATION_LINE_HEIGHT, floatCodec);
   useEffect(() => {
@@ -1082,12 +1099,26 @@ function useProvideSettings() {
       else root.style.setProperty('--narration-font', `${stack}, ${SYSTEM_FONT_STACK}`);
       // `global` ⇒ inherit the app-wide target; a specific narration font uses its own (e.g. mono).
       if (narrationFont === 'global') root.style.removeProperty('--narration-fsa');
-      else root.style.setProperty('--narration-fsa', String(fontSizeAdjust(narrationFont)));
+      else root.style.setProperty('--narration-fsa', String(fontSizeAdjust(narrationFont) * narrationTuning.scale));
     };
     if (stack) preloadFont(stack).then(apply);
     else apply();
     return () => { cancelled = true; };
-  }, [narrationFont, narrationScale, narrationLineHeight]);
+  }, [narrationFont, narrationScale, narrationLineHeight, narrationTuning.scale]);
+
+  // Font tunings → CSS variables. The app-wide set comes from the global font; the narration pane carries
+  // its own set (its font's, or the global font's when it inherits). The skew attribute gates a rule that
+  // would otherwise make every italic run inline-block — see index.css.
+  useEffect(() => {
+    const root = document.documentElement;
+    const vars = {
+      ...fontTuningVars(fontFamily, appTuning, APP_TUNING_PREFIX),
+      ...fontTuningVars(narrationTuningFont, narrationTuning, NARRATION_TUNING_PREFIX),
+    };
+    for (const [name, value] of Object.entries(vars)) root.style.setProperty(name, value);
+    if (appTuning.italicSkew > 0 || narrationTuning.italicSkew > 0) root.setAttribute('data-italic-skew', '');
+    else root.removeAttribute('data-italic-skew');
+  }, [fontFamily, narrationTuningFont, appTuning, narrationTuning]);
   const [ttsVolume, setTtsVolume] = usePersistentState<number>(`${APP_ID}_ttsVolume`, 1, floatCodec);
   const [ttsSpeed, setTtsSpeed] = usePersistentState<number>(`${APP_ID}_ttsSpeed`, 1, floatCodec);
   const [ttsHighlight, setTtsHighlight] = usePersistentState<boolean>(`${APP_ID}_ttsHighlight`, true, boolCodec);
@@ -1111,6 +1142,8 @@ function useProvideSettings() {
     setThemeColor,
     fontFamily,
     setFontFamily,
+    fontTunings,
+    setFontTuning,
     narrationFont,
     setNarrationFont,
     narrationScale,
