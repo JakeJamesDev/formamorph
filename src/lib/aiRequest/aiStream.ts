@@ -171,7 +171,16 @@ export async function* streamAiRequest(spec: AiRequestSpec, options: AiStreamOpt
   try {
     while (true) {
       if (signal?.aborted) break;
-      const { done, value } = await reader.read();
+      let chunk: ReadableStreamReadResult<Uint8Array>;
+      try {
+        chunk = await reader.read();
+      } catch (error) {
+        // A stop press errors the body under an in-flight read, so the rejection is the abort arriving —
+        // not a failure. Anything else is a real transport error and belongs to the caller.
+        if (signal?.aborted || (error as Error).name === 'AbortError') break;
+        throw error;
+      }
+      const { done, value } = chunk;
       if (done) break;
       // Dispatch only complete lines; the trailing partial line (and any partial multi-byte char, via
       // `{ stream: true }`) carries into the next read.

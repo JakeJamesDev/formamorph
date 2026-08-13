@@ -141,16 +141,31 @@ describe('streamAiRequest', () => {
       .rejects.toMatchObject({ kind: 'no-body' });
   });
 
-  it('ends gracefully with the partial content when aborted mid-stream', async () => {
-    const controller = new AbortController();
+  /** A body that behaves like a real aborted fetch: the in-flight read rejects with AbortError rather
+   *  than resolving done, and nothing arrives after the first frame until the abort lands. */
+  function abortableBody(signal: AbortSignal, first: string): ReadableStream<Uint8Array> {
     const encoder = new TextEncoder();
-    const body = new ReadableStream<Uint8Array>({
-      start(streamController) {
-        streamController.enqueue(encoder.encode(frame({ content: 'kept' })));
-        // Nothing more arrives, and the stream never closes — only the abort ends the read.
+    let sent = false;
+    return new ReadableStream<Uint8Array>({
+      start(controller) {
+        // Registered at construction, before the module gets its reader — the same ordering as a real
+        // fetch, whose own abort listener errors the body before any consumer-side cancel can run.
+        signal.addEventListener('abort', () => {
+          const error = new Error('The user aborted a request.');
+          error.name = 'AbortError';
+          controller.error(error);
+        }, { once: true });
+      },
+      pull(controller) {
+        if (!sent) { sent = true; controller.enqueue(encoder.encode(first)); return; }
+        return new Promise(() => {}); // nothing more arrives; only the abort ends this read
       },
     });
-    const response = { ok: true, status: 200, body } as unknown as Response;
+  }
+
+  it('ends gracefully with the partial content when aborted mid-stream', async () => {
+    const controller = new AbortController();
+    const response = { ok: true, status: 200, body: abortableBody(controller.signal, frame({ content: 'kept' })) } as unknown as Response;
 
     const events: AiStreamEvent[] = [];
     for await (const event of streamAiRequest(spec, { fetchImpl: fetchOf(response), signal: controller.signal })) {
@@ -161,6 +176,52 @@ describe('streamAiRequest', () => {
     const done = doneOf(events);
     expect(done.result.finishReason).toBe('aborted');
     expect(done.result.content).toBe('kept');
+  });
+
+  it('ends gracefully when the abort lands while a read is in flight', async () => {
+    const controller = new AbortController();
+    // The consumer is awaiting the next event, so the generator is parked inside `reader.read()` — the
+    // ordering a real Stop press hits, where the read rejects instead of resolving done.
+    const response = { ok: true, status: 200, body: abortableBody(controller.signal, frame({ content: 'kept' })) } as unknown as Response;
+
+    const events: AiStreamEvent[] = [];
+    const pump = (async () => {
+      for await (const event of streamAiRequest(spec, { fetchImpl: fetchOf(response), signal: controller.signal })) events.push(event);
+    })();
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    controller.abort();
+    await pump;
+
+    const done = doneOf(events);
+    expect(done.result.finishReason).toBe('aborted');
+    expect(done.result.content).toBe('kept');
+  });
+
+  it('ends gracefully when the fetch itself rejects on abort', async () => {
+    const controller = new AbortController();
+    controller.abort();
+    const rejectingFetch = (() => {
+      const error = new Error('The user aborted a request.');
+      error.name = 'AbortError';
+      return Promise.reject(error);
+    }) as unknown as typeof fetch;
+
+    const events = await collect(streamAiRequest(spec, { fetchImpl: rejectingFetch, signal: controller.signal }));
+
+    expect(doneOf(events).result.finishReason).toBe('aborted');
+  });
+
+  it('rethrows a network failure so a dead endpoint surfaces instead of hanging', async () => {
+    const failingFetch = (() => Promise.reject(new TypeError('Failed to fetch'))) as unknown as typeof fetch;
+
+    await expect(collect(streamAiRequest(spec, { fetchImpl: failingFetch }))).rejects.toThrow('Failed to fetch');
+  });
+
+  it('still throws a non-abort read failure', async () => {
+    const body = new ReadableStream<Uint8Array>({ pull() { throw new Error('connection reset'); } });
+
+    await expect(collect(streamAiRequest(spec, { fetchImpl: fetchOf({ ok: true, status: 200, body } as unknown as Response) })))
+      .rejects.toThrow('connection reset');
   });
 
   it('throttles reasoning events to one per throttle window', async () => {
