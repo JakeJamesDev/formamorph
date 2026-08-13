@@ -80,7 +80,7 @@ import { selectDueDiscovery, materializeDiscoveredEntity, mergeDiscoveredIntoLoc
 import { selectRegenSource, buildRegenContext, buildRegenUserMessage, REGEN_LABELS } from "../lib/discoveredRegen";
 import { lengthGuidance, trimToLastSentence } from "../lib/outputLength";
 import { buildAiRequestSpec, type AiSettingsSnapshot } from "../lib/aiRequest/aiRequestSpec";
-import { streamAiRequest } from "../lib/aiRequest/aiStream";
+import { streamAiRequest, ABORTED_FINISH_REASON, DEFAULT_REASONING_THROTTLE_MS } from "../lib/aiRequest/aiStream";
 import { splitSentenceSegments } from "../lib/ttsChunks";
 import { selectDueDigests, applyDigest, applyImportance, parseTurnContent, recentParticipants, selectDueDiaries, pendingDiaryNames, applyDiary, collectCharacterDiary } from "../lib/turnDigest";
 import { buildTraitContext } from "../lib/traitTree";
@@ -2546,10 +2546,11 @@ ${playerNotes || NONE_PLACEHOLDER}
     // disagree about which target answered.
     const target = resolveEndpointForKind(requestType);
 
-    // The per-call settings snapshot the AI Request Spec layer reads. Plain values only — every
-    // engine-shaped decision (sampler resolution, the reasoning budget/effort split, the `/no_think`
-    // switch, penalty spellings) now lives behind that seam rather than in this component.
+    // The per-call settings snapshot the AI Request Spec layer reads. Every engine-shaped decision
+    // (sampler resolution, the reasoning budget/effort split, the `/no_think` switch, penalty spellings)
+    // lives behind that seam; this component only states the values.
     const snapshot: AiSettingsSnapshot = {
+      // Already resolved above, so the spec layer and the capture can't disagree about the target.
       resolveTarget: () => target,
       thinkingMode,
       reasoningEffort,
@@ -2621,8 +2622,8 @@ ${playerNotes || NONE_PLACEHOLDER}
 
       // Clear the narration for this turn's fresh reveal (reset re-seeds the reveal's base timing) and
       // mark the reveal live — from here the reveal view shows the streaming gameplayText, not committed.
-      // Deferred to the first event past the request debug, i.e. once the endpoint has actually answered:
-      // a dead endpoint throws instead, and must leave the previous turn's narration on screen.
+      // Runs on the stream's `response` debug, i.e. once the endpoint has accepted the request and has a
+      // body: a dead endpoint throws before that and must leave the previous turn's narration on screen.
       let streamOpened = false;
       const openStream = () => {
         streamOpened = true;
@@ -2641,7 +2642,7 @@ ${playerNotes || NONE_PLACEHOLDER}
       // The content path needs its own cadence: reasoning events arrive already throttled by the stream,
       // but inline <think> rides content, which is unthrottled and would re-render the block per token.
       const pushLiveReasoningThrottled = () => {
-        if (performance.now() - lastLiveReasoningTick <= 80) return;
+        if (performance.now() - lastLiveReasoningTick <= DEFAULT_REASONING_THROTTLE_MS) return;
         renderLiveReasoning();
       };
 
@@ -2725,42 +2726,44 @@ ${playerNotes || NONE_PLACEHOLDER}
 
       for await (const event of streamAiRequest(spec, { signal })) {
         if (event.type === "debug") {
-          // The stream skips a malformed frame rather than failing the turn; log it so a backend sending
-          // junk frames is still visible. The `request` debug is already captured above.
+          // The endpoint answered: commit to this turn's reveal. The `request` debug is already captured
+          // above, and a malformed frame is logged rather than failing the turn.
+          if (event.debug.kind === "response") openStream();
           if (event.debug.kind === "parse") console.error("Error parsing streaming response:", event.debug.error);
           continue;
         }
         if (event.type === "done") {
-          // The done event carries the authoritative totals, so nothing is accumulated on this side.
-          // A stop that lands before any token still opened no reveal — leave the screen as it was.
-          if (!streamOpened && event.result.finishReason !== "aborted") openStream();
+          // `done` replaces the running values with the stream's own finals.
           content = event.result.content;
           reasoningText = event.result.reasoningText;
           finishReason = event.result.finishReason;
           break;
         }
-        if (!streamOpened) openStream();
         if (!firstTokenAt) firstTokenAt = performance.now();
-        if (event.type === "reasoning") {
-          reasoningText = event.text;
-          if (requestType === "narration" && !narrationAt) renderLiveReasoning();
-          continue;
+        if (event.type === "reasoning") reasoningText = event.text;
+        else content = event.content;
+        // Per-token rendering must not take the turn down with it: one bad sentence split or scene-list
+        // build logs and the stream carries on, the way the SSE loop's own catch does.
+        try {
+          if (event.type === "reasoning") {
+            if (requestType === "narration" && !narrationAt) renderLiveReasoning();
+          } else if (requestType === "narration") {
+            onNarrationDelta();
+          } else if (requestType === "choices") {
+            // Update choices in real-time, ensuring we handle partial content correctly
+            const choicesList = parseChoices(stripReasoningLive(content));
+            if (choicesList.length > 0) setChoices(choicesList);
+          }
+          // For statUpdates type, we do nothing during streaming
+        } catch (e) {
+          console.error("Error parsing streaming response:", e);
         }
-        content = event.content;
-        if (requestType === "narration") {
-          onNarrationDelta();
-        } else if (requestType === "choices") {
-          // Update choices in real-time, ensuring we handle partial content correctly
-          const choicesList = parseChoices(stripReasoningLive(content));
-          if (choicesList.length > 0) setChoices(choicesList);
-        }
-        // For statUpdates type, we do nothing during streaming
       }
 
       // Aborted mid-stream: the stream ends gracefully carrying its partial content, but this turn still
       // drops everything and commits nothing — the narration the player keeps is the assistant message
       // already persisted during streaming, which the abort handler snapshots.
-      if (signal?.aborted || finishReason === "aborted") {
+      if (signal?.aborted || finishReason === ABORTED_FINISH_REASON) {
         if (streamOpened) {
           if (requestType === "narration") { fadeReveal.reset(); smoothReveal.reset(); }
           if (ttsStreaming) ttsModalRef.current?.streamCancel();

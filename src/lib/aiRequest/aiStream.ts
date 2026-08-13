@@ -37,6 +37,9 @@ export interface AiStreamResult {
 
 export type AiStreamDebug =
   | { kind: 'request'; url: string; body: AiRequestBody; startedAt: number }
+  /** The endpoint accepted the request and has a body to stream — the first point a consumer can commit
+   *  to this turn, since everything before it can still throw. */
+  | { kind: 'response'; status: number; openedAt: number }
   | { kind: 'parse'; line: string; error: AiStreamError };
 
 export type AiStreamEvent =
@@ -60,7 +63,13 @@ interface FrameDelta {
   finishReason: string | null;
 }
 
-const DEFAULT_REASONING_THROTTLE_MS = 80;
+/** Live-reasoning cadence. Exported because a consumer driving its own reasoning source (an inline
+ *  `<think>` body, which rides `content` and so arrives unthrottled) must match this beat. */
+export const DEFAULT_REASONING_THROTTLE_MS = 80;
+
+/** The finish reason a caller-stopped turn ends with. Compared against by consumers, so it is a constant
+ *  rather than a literal they can mistype. */
+export const ABORTED_FINISH_REASON = 'aborted';
 
 /** Reads one `data:` line. Returns null for a non-data line, the `[DONE]` sentinel, or a frame with nothing in it. */
 function parseFrame(line: string): FrameDelta | null {
@@ -119,7 +128,7 @@ export async function* streamAiRequest(spec: AiRequestSpec, options: AiStreamOpt
     });
   } catch (error) {
     if (signal?.aborted || (error as Error).name === 'AbortError') {
-      finishReason = 'aborted';
+      finishReason = ABORTED_FINISH_REASON;
       yield { type: 'done', result: result() };
       return;
     }
@@ -128,6 +137,8 @@ export async function* streamAiRequest(spec: AiRequestSpec, options: AiStreamOpt
 
   if (!response.ok) throw new AiStreamError('http', `HTTP ${response.status}`, { status: response.status, response });
   if (!response.body) throw new AiStreamError('no-body', 'Response has no body to stream');
+
+  yield { type: 'debug', debug: { kind: 'response', status: response.status, openedAt: now() } };
 
   const reader = response.body.getReader();
   // Unblock a pending read the instant the turn is aborted, so we stop consuming even if the server
@@ -156,7 +167,9 @@ export async function* streamAiRequest(spec: AiRequestSpec, options: AiStreamOpt
     if (frame.content) content += frame.content;
     const tick = now();
     if (firstTokenAt === null && (frame.content || frame.reasoning)) firstTokenAt = tick;
-    if (firstContentAt === null && frame.content) firstContentAt = tick;
+    // Visible content, not merely a content frame: models routinely lead with a newline or a space, and
+    // treating that as the start would both mis-time the think duration and cut live reasoning off early.
+    if (firstContentAt === null && content.trim()) firstContentAt = tick;
     if (frame.finishReason) finishReason = frame.finishReason;
 
     if (frame.content) pending.push({ type: 'delta', delta: frame.content, content });
@@ -192,7 +205,7 @@ export async function* streamAiRequest(spec: AiRequestSpec, options: AiStreamOpt
     }
 
     if (signal?.aborted) {
-      finishReason = 'aborted';
+      finishReason = ABORTED_FINISH_REASON;
       yield { type: 'done', result: result() };
       return;
     }

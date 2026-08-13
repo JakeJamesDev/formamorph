@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, afterEach } from 'vitest';
-import { streamAiRequest, AiStreamError, type AiStreamEvent } from './aiStream';
+import { streamAiRequest, AiStreamError, ABORTED_FINISH_REASON, type AiStreamEvent } from './aiStream';
 import type { AiRequestSpec } from './aiRequestSpec';
 
 const spec: AiRequestSpec = {
@@ -253,6 +253,67 @@ describe('streamAiRequest', () => {
 
     expect(events.filter((e) => e.type === 'reasoning').map((e) => (e as { text: string }).text)).toEqual(['pre']);
     expect(doneOf(events).result.reasoningText).toBe('prepost');
+  });
+
+  it('keeps emitting live reasoning through a whitespace-only content frame', async () => {
+    // Models routinely lead with a newline before the real output. Treating that as the start of content
+    // would cut the scratchpad off mid-thought and stamp the think time at the wrong moment.
+    const events = await collect(streamAiRequest(spec, {
+      reasoningThrottleMs: 0,
+      fetchImpl: fetchOf(streamingResponse([
+        frame({ reasoning: 'pre' }),
+        frame({ content: '\n' }),
+        frame({ reasoning: 'still thinking' }),
+        frame({ content: 'go' }),
+        frame({ reasoning: 'post' }),
+      ])),
+    }));
+
+    expect(events.filter((e) => e.type === 'reasoning').map((e) => (e as { text: string }).text))
+      .toEqual(['pre', 'prestill thinking']);
+  });
+
+  it('stamps the first content time at the first visible character, not at leading whitespace', async () => {
+    let clock = 1000;
+    const events = await collect(streamAiRequest(spec, {
+      now: () => (clock += 10),
+      fetchImpl: fetchOf(streamingResponse([frame({ content: '  ' }), frame({ content: 'x' })])),
+    }));
+
+    const { timings, content } = doneOf(events).result;
+    expect(content).toBe('  x');
+    // The blank frame is skipped, so the mark lands on the second frame's tick, not the first's.
+    expect(timings.firstContentAt as number).toBeGreaterThan(timings.firstTokenAt as number);
+  });
+
+  it('reports a response debug once the endpoint has accepted the request', async () => {
+    const events = await collect(streamAiRequest(spec, {
+      fetchImpl: fetchOf(streamingResponse([frame({ content: 'hi' })])),
+    }));
+
+    const debugKinds = events.filter((e) => e.type === 'debug').map((e) => (e as { debug: { kind: string } }).debug.kind);
+    expect(debugKinds).toEqual(['request', 'response']);
+    // It must precede every token, so a consumer can use it to commit to the turn.
+    expect(events.findIndex((e) => e.type === 'debug' && e.debug.kind === 'response'))
+      .toBeLessThan(events.findIndex((e) => e.type === 'delta'));
+  });
+
+  it('reports no response debug when the endpoint rejects the request', async () => {
+    await expect(collect(streamAiRequest(spec, {
+      fetchImpl: fetchOf(streamingResponse([], { ok: false, status: 500 })),
+    }))).rejects.toThrow(AiStreamError);
+  });
+
+  it('reports no response debug when the fetch is aborted before it resolves', async () => {
+    const controller = new AbortController();
+    controller.abort();
+    const events = await collect(streamAiRequest(spec, {
+      signal: controller.signal,
+      fetchImpl: (() => Promise.reject(Object.assign(new Error('aborted'), { name: 'AbortError' }))) as unknown as typeof fetch,
+    }));
+
+    expect(events.some((e) => e.type === 'debug' && e.debug.kind === 'response')).toBe(false);
+    expect(doneOf(events).result.finishReason).toBe(ABORTED_FINISH_REASON);
   });
 
   it('times the first token and the first content token separately', async () => {
