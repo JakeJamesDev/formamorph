@@ -92,6 +92,8 @@ export function AiSetupGate({ open, reason, mode, blocker, reachable, recheck, o
     setError(null);
     setProgress({ fileName: m.fileName, received: 0, total: m.sizeBytes, done: false });
     try {
+      // Always loads on finish, whatever the auto-load setting says: the gate resolves on the engine
+      // reaching ready, so a download that didn't load would leave it waiting forever.
       await downloadLocalModel({ url: m.url, fileName: m.fileName });
     } catch (e) {
       // A pause is a choice, not a failure.

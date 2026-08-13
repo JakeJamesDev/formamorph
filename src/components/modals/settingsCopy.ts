@@ -416,6 +416,11 @@ Lower it first when a model won't fit.`,
     description: 'Sets how many requests the model answers at once.',
     info: 'Higher speeds up a turn, but splits the context between slots and uses more VRAM.',
   },
+  localAutoLoad: {
+    label: 'Auto-Load',
+    description: 'Loads a model without waiting to be asked.',
+    info: '**On** — the first model in your download folder loads whenever the bundled engine is the one in use, and a finished download loads itself.\n\n**Off** — nothing loads until you press **Load**, so no VRAM is spent until you ask for it.',
+  },
   localTemperature: {
     label: 'Temperature',
     description: 'Raises randomness; lower values stay focused.',
