@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest';
 import { planTurn, passesInStage, planHasPass } from './planTurn';
 import { TURN_PASSES } from './turnPasses';
 import type { TurnPassId, TurnPlanInput, TurnSettings } from './turnPlan';
-import { TEST_PROMPTS, testInput } from './turnPlanTestInputs';
+import { TEST_PROMPTS, testInput } from './turnTestInputs';
 
 // The planner decides which passes a turn dispatches. These tests pin each pass's eligibility rule to the
 // behavior the turn had before the Turn Pipeline extraction; the request contents those rules produce are
