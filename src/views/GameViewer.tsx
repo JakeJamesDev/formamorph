@@ -2815,14 +2815,8 @@ ${playerNotes || NONE_PLACEHOLDER}
       });
       return finalContent;
     } catch (error) {
-      // Check if this is an abort error (user canceled the request)
-      if ((error as Error).name === "AbortError") {
-        if (requestType === "narration") { fadeReveal.reset(); smoothReveal.reset(); }
-        if (streamNarrationAudio && ttsLoaded && requestType === "narration") ttsModalRef.current?.streamCancel();
-        // Return empty content for aborted requests instead of throwing
-        return "";
-      }
-
+      // No AbortError case: the stream turns both the fetch rejection and the read rejection into a
+      // graceful `done`, so a user stop lands on the aborted branch above and never reaches here.
       console.error("Error in makeAIRequest:", error);
       // A failed silent request (the digest) is non-fatal — let the drainer swallow it without a toast.
       if (silent) throw error;
