@@ -1,7 +1,7 @@
 import type { TurnPlanInput, TurnPrompts, TurnSettings } from './turnPlan';
 
 /**
- * Shared inputs for the Turn Plan's tests. The prompt templates carry recognizable literal text around
+ * Shared inputs for the Turn Pipeline's tests. The prompt templates carry recognizable literal text around
  * real chips, so a value rendered from the wrong context — or a template swapped for another pass's — is
  * visible in the assertion rather than hidden behind a realistic-looking wall of prose.
  */

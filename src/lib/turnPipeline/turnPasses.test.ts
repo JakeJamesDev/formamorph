@@ -3,7 +3,7 @@ import { TURN_PASSES, TURN_PASS_CAPS } from './turnPasses';
 import { planTurn } from './planTurn';
 import type { Entity } from '@/types';
 import type { TurnMaterial, TurnPassId, TurnPassRecord, TurnPlanInput, TurnSettings } from './turnPlan';
-import { TEST_PROMPTS, testInput } from './turnPlanTestInputs';
+import { TEST_PROMPTS, testInput } from './turnTestInputs';
 import { INLINE_THINKING_DIRECTIVE, OPENING_SCENE_CUE, planDirective } from '@/components/game/GamePrompts';
 
 // Each pass assembles its own request. These tests call the records directly, with templates whose tokens

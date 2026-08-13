@@ -1,24 +1,13 @@
 import { describe, it, expect } from 'vitest';
-import { readFileSync } from 'node:fs';
-import { fileURLToPath } from 'node:url';
-import path from 'node:path';
-import { validateParityFixture, type ParityRequestRecord, type ParityTurnRecord } from './parityRecorder';
 import { planTurn } from './planTurn';
 import { TURN_PASSES } from './turnPasses';
-import type { TurnMaterial, TurnPassId, TurnPassRecord, TurnPlanInput, TurnPrompts, TurnSettings } from './turnPlan';
-import type { AIRequestType, ChatMessage } from '@/types';
+import type { TurnMaterial, TurnPassId, TurnPassRecord } from './turnPlan';
+import type { ChatMessage } from '@/types';
+import { planDirective } from '@/components/game/GamePrompts';
 import {
-  defaultChoicesPrompt, defaultChoicesUserPrompt,
-  defaultDiaryPrompt, defaultDirectorPrompt, defaultDirectorUserPrompt,
-  defaultCharacterPrompt, defaultStoryboardPrompt, defaultDiscoverEntityPrompt,
-  defaultLocationChangePrompt, defaultLocationChangeUserPrompt,
-  defaultNarrationUserPrompt, defaultOocDirectivePrompt,
-  defaultOpeningTimePrompt, defaultOpeningTimeUserPrompt,
-  defaultStatUpdatesPrompt, defaultStatUpdatesUserPrompt,
-  defaultSummaryPrompt, defaultSummaryUserPrompt,
-  defaultThinkingPrompt, defaultTimePassedPrompt, defaultTimePassedUserPrompt,
-  planDirective,
-} from '@/components/game/GamePrompts';
+  fixture, PARITY_PROMPTS as PROMPTS, PASS_ID_BY_TYPE, DRAINER_TYPES,
+  recordedPasses, inputFor, narrationOf,
+} from './parityTestInputs';
 
 /**
  * Parity: the Turn Plan against the run recorded from the code it replaces
@@ -40,97 +29,9 @@ import {
  * - Drainer requests (milestone selection) are not turn passes and are excluded; see the fixture README.
  */
 
-const FIXTURE_PATH = path.resolve(
-  path.dirname(fileURLToPath(import.meta.url)),
-  '../../../testing/parity/turn-pipeline-parity.json',
-);
-const fixture = validateParityFixture(JSON.parse(readFileSync(FIXTURE_PATH, 'utf8')) as unknown);
-
-// The settings the `parity` harness profile ran with (testing/baseline/harness/profiles.example.json).
-const SETTINGS: TurnSettings = {
-  thinkingMode: 'staged',
-  concurrentTurnRequests: true,
-  choicesEnabled: true,
-  statUpdatesEnabled: true,
-  statCount: 3,
-  locationChangeEnabled: true,
-  locationAutoApply: true,
-  aiClock: true,
-  memoryDigests: true,
-  characterDiaries: true,
-  // The recorded narration never invented a character, so no discovery request was dispatched; the
-  // setting's own effect on the plan is covered in planTurn.test.ts.
-  describeCharacters: false,
-  language: 'English',
-};
-
-// The run used the shipped default prompts.
-const PROMPTS: TurnPrompts = {
-  locationChange: defaultLocationChangePrompt,
-  locationChangeUser: defaultLocationChangeUserPrompt,
-  thinking: defaultThinkingPrompt,
-  director: defaultDirectorPrompt,
-  directorUser: defaultDirectorUserPrompt,
-  character: defaultCharacterPrompt,
-  storyboard: defaultStoryboardPrompt,
-  narrationUser: defaultNarrationUserPrompt,
-  oocDirective: defaultOocDirectivePrompt,
-  choices: defaultChoicesPrompt,
-  choicesUser: defaultChoicesUserPrompt,
-  statUpdates: defaultStatUpdatesPrompt,
-  statUpdatesUser: defaultStatUpdatesUserPrompt,
-  summary: defaultSummaryPrompt,
-  summaryUser: defaultSummaryUserPrompt,
-  timePassed: defaultTimePassedPrompt,
-  timePassedUser: defaultTimePassedUserPrompt,
-  openingTime: defaultOpeningTimePrompt,
-  openingTimeUser: defaultOpeningTimeUserPrompt,
-  diary: defaultDiaryPrompt,
-  discoverEntity: defaultDiscoverEntityPrompt,
-};
-
-/** Request types the turn itself dispatches. Anything else in the recording is an idle drainer. */
-const PASS_ID_BY_TYPE: Partial<Record<AIRequestType, TurnPassId>> = {
-  locationChange: 'locationAuto', // auto-apply was on, so the router ran up front
-  director: 'director',
-  character: 'character',
-  storyboard: 'storyboard',
-  narration: 'narration',
-  choices: 'choices',
-  statUpdates: 'statUpdates',
-  summary: 'summary',
-  timePassed: 'timePassed',
-  openingTime: 'openingTime',
-  diary: 'diary',
-};
-/** Recorded types this comparison deliberately leaves out. */
-const DRAINER_TYPES: AIRequestType[] = ['milestoneSelect'];
-
 const record = (id: TurnPassId): TurnPassRecord => {
   const found = TURN_PASSES.find((p) => p.id === id);
   if (!found) throw new Error(`no pass record for ${id}`);
-  return found;
-};
-
-const turnPasses = (turn: ParityTurnRecord): { id: TurnPassId; request: ParityRequestRecord }[] =>
-  turn.requests
-    .filter((r) => PASS_ID_BY_TYPE[r.type])
-    .map((r) => ({ id: PASS_ID_BY_TYPE[r.type] as TurnPassId, request: r }));
-
-const inputFor = (index: number): TurnPlanInput => ({
-  action: fixture.turns[index].action,
-  isGameStarted: index > 0,
-  // Sedge Landing: the dock has somewhere to go, and the world has more than one place.
-  destinationCount: 2,
-  locationCount: 3,
-  hasCurrentLocation: true,
-  settings: SETTINGS,
-  prompts: PROMPTS,
-});
-
-const narrationOf = (turn: ParityTurnRecord): ParityRequestRecord => {
-  const found = turn.requests.find((r) => r.type === 'narration');
-  if (!found) throw new Error(`turn ${turn.index} recorded no narration`);
   return found;
 };
 
@@ -214,7 +115,7 @@ describe('turn plan parity with the recorded run', () => {
     'turn %i (%s) plans the passes the run dispatched, in order',
     (index) => {
       const plan = planTurn(inputFor(index as number));
-      const recorded = turnPasses(fixture.turns[index as number]).map((p) => p.id);
+      const recorded = recordedPasses(fixture.turns[index as number]).map((p) => p.id);
       // Collapse repeats of a fan-out pass: how many characters the director named is the model's answer.
       const collapsed = recorded.filter((id, i) => id !== recorded[i - 1] || !record(id).fanOut);
       // A due fan-out pass with no subjects sends nothing, so it may be absent from the recording.
@@ -229,7 +130,7 @@ describe('turn plan parity with the recorded run', () => {
     const i = index as number;
     const input = inputFor(i);
     const compared: TurnPassId[] = [];
-    for (const { id, request } of turnPasses(fixture.turns[i])) {
+    for (const { id, request } of recordedPasses(fixture.turns[i])) {
       const pass = record(id);
       // Fan-out passes are replayed with the subject the recording names; only their envelope is compared.
       const built = pass.buildRequest(
@@ -254,7 +155,7 @@ describe('turn plan parity with the recorded run', () => {
     }
     // Exactly which passes had their messages compared, so the comparison cannot quietly shrink.
     const expected: TurnPassId[] = ['locationAuto', 'director', 'narration', 'choices', 'statUpdates', 'summary', 'timePassed', 'openingTime'];
-    expect(compared).toEqual(expected.filter((id) => turnPasses(fixture.turns[i]).some((p) => p.id === id)));
+    expect(compared).toEqual(expected.filter((id) => recordedPasses(fixture.turns[i]).some((p) => p.id === id)));
   });
 
   it('carries the staged plan into the narration exactly as the run did', () => {

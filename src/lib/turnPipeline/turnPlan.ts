@@ -147,6 +147,8 @@ export interface TurnMaterial {
   intents: { name: string; text: string }[];
   /** Cast members beyond the active-character cap, named to the storyboarder but not asked. */
   overflow: string[];
+  /** Who each fan-out pass runs for. A pass with no entry, or an empty one, sends nothing. */
+  subjects?: Partial<Record<TurnPassId, TurnPassSubject[]>>;
   /** The being this request is about, for a fan-out pass. */
   subject?: TurnPassSubject;
 }
