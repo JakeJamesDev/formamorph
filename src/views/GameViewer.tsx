@@ -93,6 +93,7 @@ import { variableForToken, variableVariantIds, decodeVariant, tokenVariant, with
 import { renderPromptTemplate } from "../lib/promptTemplate";
 import { useBaselineTestHook } from "../lib/baselineTestHook";
 import { recordParityRequest, recordParityResponse, recordParityTurn } from "../lib/turnPipeline/parityRecorder";
+import { TURN_PASS_CAPS } from "../lib/turnPipeline/turnPasses";
 import { parseTurns, buildVerbatimHistory, buildBandedHistory, extractKeywords, type BandCounts } from "../lib/turnBanding";
 import { buildStamper, formatAbsolute, hoursByPosition, parseTimeDelta, parseOpeningDaypart, FLAT_HOURS_PER_TURN } from "../lib/gameClock";
 import { milestoneCandidates, agedMilestoneCandidates, resolveMilestoneDrop, resolveMilestoneKeep, buildIncrementalMilestoneUserMessage, parseIncrementalMilestoneReply, applyIncrementalVerdict } from "../lib/milestoneMemory";
@@ -191,12 +192,10 @@ interface DebugTurn {
 }
 
 // Each completed turn is digested as soon as it commits (same-turn), so a summary is always ready for
-// the next turn's context assembly. Small cap on each digest request — a condensed retelling is short.
-const DIGEST_MAX_TOKENS = 200;
-// The clock pass answers with one value like "2h"; anything longer is stray prose the parser ignores.
-const TIME_PASSED_MAX_TOKENS = 12;
-// One daypart word; the contract is "nothing before or after it".
-const OPENING_TIME_MAX_TOKENS = 8;
+// the next turn's context assembly. Per-pass caps and their sizing live with the pass records.
+const DIGEST_MAX_TOKENS = TURN_PASS_CAPS.summary;
+const TIME_PASSED_MAX_TOKENS = TURN_PASS_CAPS.timePassed;
+const OPENING_TIME_MAX_TOKENS = TURN_PASS_CAPS.openingTime;
 // The milestone selector replies with a comma-separated index list; sized for long histories.
 const MILESTONE_SELECT_MAX_TOKENS = 300;
 
@@ -205,12 +204,8 @@ const MILESTONE_SELECT_MAX_TOKENS = 300;
 const STATS_VARIABLE = variableForToken('<STATS DESCRIPTION>')!;
 const STATS_TOKENS = ['<STATS DESCRIPTION>', ...variableVariantIds(STATS_VARIABLE).map((id) => withVariant('<STATS DESCRIPTION>', id))];
 
-// Per-character diary entries are short, first-person, 1-2 sentences — a small cap keeps them terse.
-const DIARY_MAX_TOKENS = 80;
-
-// A discovered character's reference description runs ~2 short paragraphs; the response is trimmed to
-// the last full sentence, so this cap just needs headroom to avoid a mid-word cut.
-const DISCOVER_MAX_TOKENS = 200;
+const DIARY_MAX_TOKENS = TURN_PASS_CAPS.diary;
+const DISCOVER_MAX_TOKENS = TURN_PASS_CAPS.discoverEntity;
 
 // A stable empty array for turns with no scene image, so the panel's prop identity doesn't churn.
 const EMPTY_IMAGES: string[] = [];
@@ -221,11 +216,9 @@ const SCENE_TAGS_MAX_TOKENS = 120;
 // How many of a character's own recent diary entries to feed into its motivation pass (its memory).
 const DIARY_MEMORY_ENTRIES = 5;
 
-// Output caps for the staged planning passes. Sized for the verbose small tier (Rocinante 12B) so cast
-// lists and intents complete rather than truncate mid-word — a cut cast member is lost from the whole turn.
-const DIRECTOR_MAX_TOKENS = 320;
-const CHARACTER_MAX_TOKENS = 256;
-const STORYBOARD_MAX_TOKENS = 300;
+const DIRECTOR_MAX_TOKENS = TURN_PASS_CAPS.director;
+const CHARACTER_MAX_TOKENS = TURN_PASS_CAPS.character;
+const STORYBOARD_MAX_TOKENS = TURN_PASS_CAPS.storyboard;
 // Cap on older turns rehydrated to full text per turn — rehydration is a targeted aid, not bulk restore.
 const DIGEST_MAX_REHYDRATIONS = 3;
 // How many recent turns count as "currently in the scene" for the choices entity filter (this turn plus
@@ -1678,7 +1671,7 @@ ${playerNotes || NONE_PLACEHOLDER}
             // The planner's own endpoint: routing it to a smaller model must shrink its band, not narration's.
             contextWindow: resolveEndpointForKind('thinking').contextWindow,
             promptTokens: estimateTokens(thinkPrompt.length),
-            maxTokens: 256,
+            maxTokens: TURN_PASS_CAPS.thinking,
             verbatimFloor: thinkingVerbatimTurns,
             keywords: [],
             actionEntities: [],
@@ -1705,7 +1698,7 @@ ${playerNotes || NONE_PLACEHOLDER}
             content: `${digestBand ? `${digestBand}\n\n` : ""}${lastStory ? `What just happened:\n${lastStory}\n\n` : ""}The player's next action: ${effectiveAction}\n\nList the cast and lay out the beats now. Do not narrate.`,
           },
         ];
-        const plan = await makeAIRequest(thinkPrompt, thinkMessages, "thinking", 256, signal);
+        const plan = await makeAIRequest(thinkPrompt, thinkMessages, "thinking", TURN_PASS_CAPS.thinking, signal);
         if (plan) {
           // Parse the planner's cast so it drives participation exactly like the staged director does:
           // defined entities confirm loosely, invented names strictly, both gated by the narration below.
