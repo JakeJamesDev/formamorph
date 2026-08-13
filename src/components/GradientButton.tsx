@@ -32,8 +32,8 @@ export interface GradientButtonProps extends ButtonProps {
 }
 
 /**
- * A pastel action button: black bold label at reading size over one of the shared gradients.
- * These are the menu's primary actions, so they read a step above Button's own label size.
+ * A pastel action button: black bold label at control size over one of the shared gradients.
+ * These are the menu's primary actions, so weight carries the emphasis rather than size.
  *
  * Forwards its ref so it can stand as a Radix `asChild` trigger — the hamburger menu is one.
  */
@@ -41,7 +41,7 @@ export const GradientButton = forwardRef<HTMLButtonElement, GradientButtonProps>
   ({ tone, className, ...props }, ref) => (
     <Button
       ref={ref}
-      className={cn('bg-gradient-to-r text-body text-black font-bold', GRADIENT_TONES[tone], className)}
+      className={cn('bg-gradient-to-r text-label text-black font-bold', GRADIENT_TONES[tone], className)}
       {...props}
     />
   ),
