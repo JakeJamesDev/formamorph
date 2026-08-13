@@ -15,3 +15,15 @@ _Avoid_: request options, config
 **Entity**:
 Any world inhabitant the narrator can reference — person, creature, plant, or object.
 _Avoid_: character (too narrow)
+
+**Turn Pipeline**:
+The module that runs one full turn — plan, AI requests, commit computation — behind one seam; React state stays outside it.
+_Avoid_: turn handler, game loop
+
+**Turn Plan**:
+The pure, plain-value output of planning a turn: which passes run, with what prompts and token caps.
+_Avoid_: turn config
+
+**Turn Commit**:
+The computed state delta a finished turn applies — history, clock, stats, discoveries.
+_Avoid_: turn state, commit object
