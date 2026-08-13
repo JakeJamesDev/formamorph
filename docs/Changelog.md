@@ -2,7 +2,7 @@
 
 All notable changes to Formamorph. This fork's first line is **2.0.0** — a full TypeScript rebuild of the upstream JavaScript app ([FieryLionite's Formamorph](https://fierylion.itch.io/formamorph), ~v1.2) — with feature parity as the baseline plus new features on top.
 
-> ✅ **2.0.0 – 2.12.1 are released** (collapsed below). New work lands under **🚧 In Progress** — an unnumbered section, so changes accumulate without pinning a version. When a batch earns a release its section is marked **Released** and collapsed, and a fresh In Progress opens. `package.json` reads **2.12.1** — the latest released version.
+> ✅ **2.0.0 – 2.12.2 are released** (collapsed below). New work lands under **🚧 In Progress** — an unnumbered section, so changes accumulate without pinning a version. When a batch earns a release its section is marked **Released** and collapsed, and a fresh In Progress opens. `package.json` reads **2.12.2** — the latest released version.
 
 Each release groups changes as **Major** / **Minor**, then **Added** / **Removed** / **Fixed**, and within those by audience: 👤 user-facing · 🛠️ developer tooling · ⚙️ backend. Where two or more changes touch the same feature, they sit together under that feature's name.
 
@@ -10,7 +10,12 @@ Each release groups changes as **Major** / **Minor**, then **Added** / **Removed
 
 ## 🚧 In Progress
 
-_Unreleased — new work accumulates here until it earns a version bump. The next batch will pin its own version; `package.json` reads **2.12.1** (just released below)._
+_Unreleased — new work accumulates here until it earns a version bump. The next batch will pin its own version; `package.json` reads **2.12.2** (just released below)._
+
+---
+
+<details>
+<summary><strong>✅ 2.12.2 — Released 2026-08-12</strong> — The desktop app can be told to stop loading models on its own; images made through Automatic1111 or Forge are kept on disk like any other generation; and the main menu's buttons, the What's New popout and the Manage Models labels all sit at the size and alignment everything around them uses (click to expand)</summary>
 
 ### Minor Changes
 
@@ -28,8 +33,10 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
 - **👤 User-facing**
   - **The two folder names in Manage Models sit on the middle of the path they name.** Both labels in **Manage Models → Options** were pinned to the top of their column, which lined them up with the first line of a stack that also held buttons and the occasional warning rather than with the folder path itself — so each label sat a little higher than the text it named, by a different amount depending on whether a warning was showing. They now center on the path line, matching how every other setting in the app lines up with its control.
   - **Version headings in the What's New popout are sized to match the notes around them.** The minor-version heading rendered at nearly double the surrounding text, because the markdown renderer sizes headings off its own scale rather than the app's. It now steps down to the patch version and the notes beneath it, so a popout listing several versions reads as one list.
-  - **The main menu's action buttons carry their labels at the size every other button uses.** Community Creations, New World, Import World and Admin Panel printed at reading size, a step above every other control on the screen, which made a row of four read as oversized rather than as important. They now sit at the app's standard control size and keep their bold weight, so they still lead the toolbar without shouting. The pastel buttons in a world's action column match, since they share the same style.
+  - **The main menu's action buttons carry their labels at the same size as every other button.** Community Creations, New World, Import World and Admin Panel had been set a step larger to make up for a size change elsewhere — buttons had just started following the app-wide rule that keeps every font looking the same size, and on JetBrains Mono that rule shrinks text slightly. Sizing these four up was the wrong place to fix it: it left them oversized on every other font. They go back to the standard control size and keep their bold weight, so they still lead the toolbar without shouting. The pastel buttons in a world's action column match, since they share the same style.
   - **Images generated through Automatic1111 or Forge are now kept on disk like any other generation.** The API leaves saving off unless asked, so pictures made from the game existed only inside the save file. They now land in the WebUI's usual output folder, named and stamped the way its own generations are.
+
+</details>
 
 ---
 
