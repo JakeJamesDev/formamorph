@@ -56,26 +56,25 @@ import { estimateHistoryChars, estimateTokens } from "../lib/memoryUtils";
 import { parseNarration, stripReasoning, stripReasoningLive, extractReasoning, extractReasoningLive } from "../lib/aiResponse";
 import { setLiveReasoning, getLiveReasoning } from "../lib/reasoningStreamStore";
 import {
-  INLINE_THINKING_DIRECTIVE,
   markdownGuidance,
   activeCharacterGuidance,
-  planDirective,
   defaultDiscoverEntityPrompt,
   defaultRegenEntityPrompt,
   OPENING_SCENE_CUE,
-  hasOocDirective,
   stripOocDirectives,
   defaultMilestoneIncrementalPrompt,
 } from "../components/game/GamePrompts";
 import {
   buildDiaryUserMessage,
-  runStagedPlanning,
-  parseDirectorCast,
+  buildStagedPlan,
+  matchCastToEntities,
   classifyCast,
   sanitizePlanForReveal,
   buildSceneList,
   type DirectorCastMember,
+  type ParsedDirector,
 } from "../lib/stagedPlanning";
+import { selectRelevantDiary } from "../lib/semanticDiary";
 import { selectDueDiscovery, materializeDiscoveredEntity, mergeDiscoveredIntoLocation, cleanDiscoveredDescription, selectReachableVisitors, DISCOVER_NAME_LABEL, DISCOVER_PASSAGE_LABEL } from "../lib/runtimeCharacters";
 import { selectRegenSource, buildRegenContext, buildRegenUserMessage, REGEN_LABELS } from "../lib/discoveredRegen";
 import { lengthGuidance, trimToLastSentence } from "../lib/outputLength";
@@ -94,8 +93,13 @@ import { renderPromptTemplate } from "../lib/promptTemplate";
 import { useBaselineTestHook } from "../lib/baselineTestHook";
 import { recordParityRequest, recordParityResponse, recordParityTurn } from "../lib/turnPipeline/parityRecorder";
 import { TURN_PASS_CAPS } from "../lib/turnPipeline/turnPasses";
+import { planTurn, planHasPass } from "../lib/turnPipeline/planTurn";
+import { runTurn, type TurnAdvance, type TurnRequestAdapter } from "../lib/turnPipeline/turnRunner";
+import { computeTurnCommit } from "../lib/turnPipeline/computeTurnCommit";
+import { classifyTurnError, type TurnErrorKind } from "../lib/turnPipeline/turnErrors";
+import type { TurnMaterial, TurnPassSubject, TurnPrompts, TurnSettings } from "../lib/turnPipeline/turnPlan";
 import { parseTurns, buildVerbatimHistory, buildBandedHistory, extractKeywords, type BandCounts } from "../lib/turnBanding";
-import { buildStamper, formatAbsolute, hoursByPosition, parseTimeDelta, parseOpeningDaypart, FLAT_HOURS_PER_TURN } from "../lib/gameClock";
+import { buildStamper, formatAbsolute, hoursByPosition, FLAT_HOURS_PER_TURN } from "../lib/gameClock";
 import { milestoneCandidates, agedMilestoneCandidates, resolveMilestoneDrop, resolveMilestoneKeep, buildIncrementalMilestoneUserMessage, parseIncrementalMilestoneReply, applyIncrementalVerdict } from "../lib/milestoneMemory";
 import { applyMemoryOverrides, activeNotes } from "../lib/memoryOverrides";
 import { buildRelevanceScores, vectorKey } from "../lib/memoryRelevance";
@@ -120,7 +124,6 @@ import { addSceneImage, removeSceneImage, pruneSceneImages, setSceneTags as patc
 import { generateImage, buildImageRequest } from "../lib/imageGen";
 import { buildImagePrompt } from "../lib/imagePrompt";
 import { downloadBlob } from "../lib/downloadBlob";
-import { matchLocationResponse } from "../lib/locationMatch";
 import { rollbackState, regenerateState, canRegenerate, lastTurnAction, markRegeneratedTurn, markPrunedTurns, snapshotPageIndex, placeSnapshot, sliceHistoryToPage, pageAssistantIndex } from "../lib/turnHistory";
 import { useDeferredSnapshot } from "../lib/useDeferredSnapshot";
 import { statMorphMap } from "../lib/bodyMorphs";
@@ -194,8 +197,6 @@ interface DebugTurn {
 // Each completed turn is digested as soon as it commits (same-turn), so a summary is always ready for
 // the next turn's context assembly. Per-pass caps and their sizing live with the pass records.
 const DIGEST_MAX_TOKENS = TURN_PASS_CAPS.summary;
-const TIME_PASSED_MAX_TOKENS = TURN_PASS_CAPS.timePassed;
-const OPENING_TIME_MAX_TOKENS = TURN_PASS_CAPS.openingTime;
 // The milestone selector replies with a comma-separated index list; sized for long histories.
 const MILESTONE_SELECT_MAX_TOKENS = 300;
 
@@ -216,9 +217,16 @@ const SCENE_TAGS_MAX_TOKENS = 120;
 // How many of a character's own recent diary entries to feed into its motivation pass (its memory).
 const DIARY_MEMORY_ENTRIES = 5;
 
-const DIRECTOR_MAX_TOKENS = TURN_PASS_CAPS.director;
-const CHARACTER_MAX_TOKENS = TURN_PASS_CAPS.character;
-const STORYBOARD_MAX_TOKENS = TURN_PASS_CAPS.storyboard;
+// What each named turn failure tells the player. `connection` and `emptyNarration` speak for themselves at
+// the call site, so they get their own text there rather than a row here.
+const TURN_ERROR_MESSAGES: Partial<Record<TurnErrorKind, string>> = {
+  notFound: "Request failed (404) Invalid endpoint URL or model name. Please check your settings.",
+  badRequest: "Request failed (400). Either model name is wrong or memory limit exceeded model limit.",
+  parse: "The AI model was unable to produce the correct JSON format. Try a different model.",
+};
+const turnErrorMessage = (kind: TurnErrorKind): string =>
+  TURN_ERROR_MESSAGES[kind] ?? "Failed to complete action. Please try again.";
+
 // Cap on older turns rehydrated to full text per turn — rehydration is a targeted aid, not bulk restore.
 const DIGEST_MAX_REHYDRATIONS = 3;
 // How many recent turns count as "currently in the scene" for the choices entity filter (this turn plus
@@ -1435,30 +1443,144 @@ const GameViewer = ({
   // placeholder strings kept here, which is how the two copies used to drift.
   const promptPreviewValues = useMemo<Record<string, string>>(() => buildContextValues(), [buildContextValues]);
 
+  /** The prompt texts this turn's passes render from — the active preset's fields, as authored. */
+  const turnPrompts = (): TurnPrompts => ({
+    locationChange: locationChangePromptText || "",
+    locationChangeUser: locationChangeUserPrompt,
+    thinking: thinkingPrompt,
+    director: directorPrompt,
+    directorUser: directorUserPrompt,
+    character: characterPrompt,
+    storyboard: storyboardPrompt,
+    narrationUser: narrationUserPrompt,
+    oocDirective: oocDirectivePrompt,
+    choices: choicesPrompt,
+    choicesUser: choicesUserPrompt,
+    statUpdates: statUpdatesPrompt,
+    statUpdatesUser: statUpdatesUserPrompt,
+    summary: summaryPrompt,
+    summaryUser: summaryUserPrompt,
+    timePassed: timePassedPrompt,
+    timePassedUser: timePassedUserPrompt,
+    openingTime: openingTimePrompt,
+    openingTimeUser: openingTimeUserPrompt,
+    diary: diaryPrompt,
+    // Not a preset surface, so the pass sends it as authored.
+    discoverEntity: defaultDiscoverEntityPrompt,
+  });
+
+  /** The settings-derived booleans this turn's shape depends on. */
+  const turnSettings = (): TurnSettings => ({
+    thinkingMode,
+    concurrentTurnRequests,
+    choicesEnabled,
+    statUpdatesEnabled,
+    statCount: activeStats.length,
+    locationChangeEnabled,
+    locationAutoApply,
+    aiClock,
+    memoryDigests,
+    characterDiaries,
+    describeCharacters,
+    language,
+  });
+
+  /**
+   * Run one turn: plan it, execute the plan through the Turn Pipeline, and apply what it produced. The
+   * pipeline owns the turn's control flow — which passes run, in what order, and how failures are named;
+   * everything here is React state either feeding it (the `advance` derivations below) or receiving it
+   * (the Turn Commit at the end).
+   */
   const sendGameAction = async (action: string) => {
-    // The opening turn is simply any action taken before the game has started (the player submits the
-    // pre-filled, editable opening cue). It sends its text verbatim and flips isGameStarted on success.
-    const isOpeningTurn = !isGameStarted;
-    // Only narration sees the real opening text; every other consumer (stats, planner, choices, dictionary
-    // triggers, stored history) sees the terse "START GAME" proxy, exactly as before the opening became
-    // editable — the full cue is a narrator directive that derails those prompts. Zero behavior change vs.
-    // the old flow when the box is left at its default; edits flow to narration only.
-    const effectiveAction = isOpeningTurn ? "START GAME" : action;
-    if (isOpeningTurn) openingActionRef.current = action;
     setUserPage(null); // taking an action resumes following, so the player sees their new turn land
     stopCommandPreview(); // a real turn supersedes any command preview
     // On the opening turn, snapshot the pre-game state so page 1 can be re-generated later.
     if (fullMessageHistory.length === 0) initialStateRef.current = saveCurrentGameState();
+
+    // Places navigable from here. Nowhere to go means nothing to route: the router's reply is matched
+    // against this exact list, so with it empty the call cannot produce a move however the model answers.
+    const destinations = currentLocation ? navigableDestinations(currentLocation, locations) : [];
+    const plan = planTurn({
+      action,
+      isGameStarted,
+      destinationCount: destinations.length,
+      locationCount: locations.length,
+      hasCurrentLocation: !!currentLocation,
+      settings: turnSettings(),
+      prompts: turnPrompts(),
+    });
+    // Only narration sees the real opening text; every other consumer (stats, planner, choices, dictionary
+    // triggers, stored history) sees the terse "START GAME" proxy — the full cue is a narrator directive
+    // that derails those prompts. The player's own text lives on in openingActionRef.
+    const { isOpeningTurn, effectiveAction } = plan;
+    if (isOpeningTurn) openingActionRef.current = action;
 
     // One AbortController for the whole turn, so Stop aborts every sub-request — not just the active one.
     const controller = new AbortController();
     abortControllerRef.current = controller;
     const { signal } = controller;
     setIsWaitingForAI(true);
-    // Not revealing yet — the narration stream (below) flips this on. Until then the reveal view shows
-    // the committed narration, never the stale last-turn text (which would otherwise animate all at once
+    // Not revealing yet — the narration stream flips this on. Until then the reveal view shows the
+    // committed narration, never the stale last-turn text (which would otherwise animate all at once
     // during setup, most visibly on re-generate).
     setIsRevealingNarration(false);
+
+    // What the turn's own derivations carry between passes. The pipeline's material holds everything the
+    // requests render from; these are the view-side reads that outlive a single pass.
+    let turnLocation = currentLocation;
+    let actionVec: Float32Array | null = null;
+    let priorNarration = "";
+    // Staged/precall candidates the narration confirms afterward: ad-hoc = planner-invented (no entity
+    // record, strict match); director = defined entities the planner cast (loose match, since it already
+    // vouched they're present — "the tank" can confirm a "Battle Tank").
+    let directorCandidates: string[] = [];
+    let adHocCandidates: string[] = [];
+    // The turn's planner cast, which the live scene list is sourced from — so a merely-mentioned character
+    // never appears. Null when no planner ran (Off/Inline), where the list falls back to the narration parse.
+    let sceneCast: DirectorCastMember[] | null = null;
+    // The same cast with the player flagged: the staged plan's grounding block lists everyone, not just NPCs.
+    let flaggedCast: DirectorCastMember[] = [];
+    let turnParticipants: string[] = [];
+    // Whether the request that ended the turn was a silent one. Only a foreground request offers the
+    // connection guide from inside makeAIRequest, so a silent pass that can't reach the server still needs
+    // the generic toast — nothing has spoken for it.
+    let failedSilently = false;
+
+    /** What one failure kind tells the player. Recovery guidance is the toast's own text. */
+    const reportFailure = (kind: TurnErrorKind) => {
+      // An empty narration is its own exit: nothing was thrown, so the opening turn's started flag was
+      // never set and is left alone. Silence here would be indistinguishable from a dead submit button.
+      if (kind === "emptyNarration") {
+        discardUnpairedUserTurn();
+        addSystemLogEntry("The AI returned an empty narration — the turn was not advanced.");
+        toast.error("The AI returned an empty response. Try again, or switch models if it keeps happening.", {
+          position: "top-right",
+          autoClose: 5000,
+        });
+        return;
+      }
+      // Drop this turn's dangling user message, unless narration had already streamed a partial assistant
+      // reply — the guard inside leaves a valid [user, assistant] pair intact.
+      discardUnpairedUserTurn();
+      // Reset game started state if the opening turn fails
+      if (isOpeningTurn) setIsGameStarted(false);
+      // A foreground request's connection failure already surfaced its own guide toast — don't stack a
+      // second on top of it.
+      if (kind === "connection" && !failedSilently) {
+        addSystemLogEntry("Couldn't reach the AI server — see the connection guide.");
+        return;
+      }
+      const errorMessage = turnErrorMessage(kind);
+      toast.error(errorMessage, {
+        position: "top-right",
+        autoClose: 3000,
+        hideProgressBar: false,
+        closeOnClick: true,
+        pauseOnHover: true,
+        draggable: true,
+      });
+      addSystemLogEntry(errorMessage);
+    };
 
     try {
       // Drain last turn's stat-bar colors and fade any lingering delta text now (they clear during the AI
@@ -1481,196 +1603,137 @@ const GameViewer = ({
       // Open this turn in the Turn Pipeline parity recording (inert unless the harness armed it).
       recordParityTurn(effectiveAction, currentTurnIdRef.current);
 
-      // With auto-apply on, resolve the location change up front — from the action alone, before any
-      // context is built — so the whole turn (narration, lore, staged planning) runs in the new location.
-      // Fed only the action here (no narration exists yet); the trailing suggest request is skipped, and
-      // the move itself is applied once the narration commits (below), so an abort leaves it unchanged.
-      let turnLocation = currentLocation;
-      // Nowhere to go means nothing to route: the reply is matched against this exact list, so with it
-      // empty the call cannot produce a move however the model answers. The old guard asked whether the
-      // WORLD had more than one location, which is a different question — a world of unconnected
-      // top-level locations passed it and then burned a request every turn that could only ever be
-      // discarded (measured: 50/50 turns of a real session, destinations rendered "N/A" throughout).
-      const destinations = currentLocation ? navigableDestinations(currentLocation, locations) : [];
-      if (!isOpeningTurn && locationAutoApply && locationChangeEnabled && destinations.length > 0 && locationChangePromptText && currentLocation) {
-        const preMoveCtx = buildContextValues();
-        const locationResponse = await makeAIRequest(
-          renderPromptTemplate(locationChangePromptText, preMoveCtx),
-          [{ role: "user", content: renderPromptTemplate(locationChangeUserPrompt, { "<PLAYER ACTION>": action }) }],
-          "locationChange",
-          null,
-          signal,
+      /**
+       * Everything the narration rides on, assembled once the up-front router has settled where the turn
+       * takes place: the context values, the dictionary scan, the system prompt, and the trimmed history
+       * this turn's user message is appended to.
+       */
+      const assembleNarration = async (): Promise<Partial<TurnMaterial>> => {
+        // The shared context base (incl. all three Stats-chip variants), scoped to this turn's location;
+        // every system-prompt render below spreads it and adds its own tokens.
+        const ctx = buildContextValues(turnLocation);
+
+        // Dictionary/lorebook entries active this turn. The scan corpus is exactly the context the AI is given —
+        // whichever location/entity blocks this prompt renders, in their rendered form — so anything the model
+        // can read can fire a trigger, and nothing it can't. Always-present scaffolding (world description,
+        // stats/traits, guidance) is excluded; see `buildScanCorpus`. History honors each entry's `scanDepth`.
+        const dictCorpus = buildScanCorpus({
+          template: systemPrompt,
+          ctx,
+          action: effectiveAction,
+          // The prompt shows the resolved <NOTES> chip, or the raw fallback section when it has no chip.
+          notes: systemPrompt.includes("<NOTES>") ? ctx["<NOTES>"] : playerNotes,
+          history: fullMessageHistory,
+        });
+        // One action embedding for every semantic consumer this turn (lore activation here, band
+        // relevance below). Null = all semantic features quietly off for this turn.
+        actionVec = await embedActionVec(effectiveAction);
+        const activationReport = explainActivation(dictionary, dictCorpus.scene, { history: dictCorpus.history });
+        if (semanticLore && actionVec) {
+          // Additive meaning-based activations; a keyword reason always wins (see lib/semanticDictionary).
+          applySemanticLore(activationReport, selectSemanticLore(dictionary, actionVec, embedVectorsRef.current));
+        }
+        const activatedEntries = dictionary.filter(
+          (e) => e.enabled !== false && activationReport.byId.get(e.id)?.activated,
         );
-        if (signal.aborted) return;
-        const matchedName = matchLocationResponse(locationResponse, destinations.map((loc) => loc.name));
-        const target = matchedName ? destinations.find((loc) => loc.name === matchedName) : undefined;
-        if (target && target.id !== currentLocation.id) turnLocation = target;
-      }
+        // Split by position into the two lorebook blocks. When the active prompt has no "before" chip, those entries
+        // fall back into the single "after" block so no lore is lost; a prompt with no dictionary chip at all gets a
+        // code append below (as before the chips existed).
+        const hasBeforeChip = systemPrompt.includes("<DICTIONARY|before>");
+        const hasAfterChip = systemPrompt.includes("<DICTIONARY>");
+        const beforeEntries = hasBeforeChip ? activatedEntries.filter((e) => e.position === "before") : [];
+        const afterEntries = activatedEntries.filter((e) => !beforeEntries.includes(e));
 
-      // The shared context base (incl. all three Stats-chip variants), scoped to this turn's location;
-      // every system-prompt render below spreads it and adds its own tokens.
-      const ctx = buildContextValues(turnLocation);
+        // Code-generated blocks (markdown guidance, notes fallback, dictionary) are authored in markdown, so
+        // restyle them to the active preset's section style to match the authored prompt's headers.
+        let updatedPrompt = renderPromptTemplate(systemPrompt, {
+          ...ctx,
+          "<LENGTH GUIDANCE>": lengthGuidance(paragraphLimit, maxTokens),
+          "<MARKDOWN GUIDANCE>": restyle(markdownGuidance(markdownOutput), activeSectionStyle),
+          "<DICTIONARY>": resolvePH(buildDictionaryContext(afterEntries, false)) || NONE_PLACEHOLDER,
+          "<DICTIONARY|before>": resolvePH(buildDictionaryContext(beforeEntries, false)) || NONE_PLACEHOLDER,
+        });
 
-      // Dictionary/lorebook entries active this turn. The scan corpus is exactly the context the AI is given —
-      // whichever location/entity blocks this prompt renders, in their rendered form — so anything the model
-      // can read can fire a trigger, and nothing it can't. Always-present scaffolding (world description,
-      // stats/traits, guidance) is excluded; see `buildScanCorpus`. History honors each entry's `scanDepth`.
-      const dictCorpus = buildScanCorpus({
-        template: systemPrompt,
-        ctx,
-        action: effectiveAction,
-        // The prompt shows the resolved <NOTES> chip, or the raw fallback section when it has no chip.
-        notes: systemPrompt.includes("<NOTES>") ? ctx["<NOTES>"] : playerNotes,
-        history: fullMessageHistory,
-      });
-      // One action embedding for every semantic consumer this turn (lore activation here, band
-      // relevance below). Null = all semantic features quietly off for this turn.
-      const actionVec = await embedActionVec(effectiveAction);
-      const activationReport = explainActivation(dictionary, dictCorpus.scene, { history: dictCorpus.history });
-      if (semanticLore && actionVec) {
-        // Additive meaning-based activations; a keyword reason always wins (see lib/semanticDictionary).
-        applySemanticLore(activationReport, selectSemanticLore(dictionary, actionVec, embedVectorsRef.current));
-      }
-      const activatedEntries = dictionary.filter(
-        (e) => e.enabled !== false && activationReport.byId.get(e.id)?.activated,
-      );
-      // Split by position into the two lorebook blocks. When the active prompt has no "before" chip, those entries
-      // fall back into the single "after" block so no lore is lost; a prompt with no dictionary chip at all gets a
-      // code append below (as before the chips existed).
-      const hasBeforeChip = systemPrompt.includes("<DICTIONARY|before>");
-      const hasAfterChip = systemPrompt.includes("<DICTIONARY>");
-      const beforeEntries = hasBeforeChip ? activatedEntries.filter((e) => e.position === "before") : [];
-      const afterEntries = activatedEntries.filter((e) => !beforeEntries.includes(e));
-
-      // Code-generated blocks (markdown guidance, notes fallback, dictionary) are authored in markdown, so
-      // restyle them to the active preset's section style to match the authored prompt's headers.
-      let updatedPrompt = renderPromptTemplate(systemPrompt, {
-        ...ctx,
-        "<LENGTH GUIDANCE>": lengthGuidance(paragraphLimit, maxTokens),
-        "<MARKDOWN GUIDANCE>": restyle(markdownGuidance(markdownOutput), activeSectionStyle),
-        "<DICTIONARY>": resolvePH(buildDictionaryContext(afterEntries, false)) || NONE_PLACEHOLDER,
-        "<DICTIONARY|before>": resolvePH(buildDictionaryContext(beforeEntries, false)) || NONE_PLACEHOLDER,
-      });
-
-      // If the prompt has no <NOTES> chip, fall back to a notes section before the location data.
-      if (!systemPrompt.includes("<NOTES>")) {
-        const notesSection = restyle(`
+        // If the prompt has no <NOTES> chip, fall back to a notes section before the location data.
+        if (!systemPrompt.includes("<NOTES>")) {
+          const notesSection = restyle(`
 ## Player Notes
 ${playerNotes || NONE_PLACEHOLDER}
 
 `, activeSectionStyle);
-        // Locate the location header in whichever style the active prompt uses.
-        const locationIndex = updatedPrompt.search(/^#{0,6}[ \t]*Current Location:?/mi);
-        if (locationIndex !== -1) {
-          updatedPrompt =
-            updatedPrompt.slice(0, locationIndex) +
-            notesSection +
-            updatedPrompt.slice(locationIndex);
+          // Locate the location header in whichever style the active prompt uses.
+          const locationIndex = updatedPrompt.search(/^#{0,6}[ \t]*Current Location:?/mi);
+          if (locationIndex !== -1) {
+            updatedPrompt =
+              updatedPrompt.slice(0, locationIndex) +
+              notesSection +
+              updatedPrompt.slice(locationIndex);
+          }
         }
-      }
 
-      if (language.toLowerCase() != "english")
-        updatedPrompt += `\n Narration language: ` + language;
+        if (language.toLowerCase() != "english")
+          updatedPrompt += `\n Narration language: ` + language;
 
-      // Backward-compat: a prompt with no "after" dictionary chip still gets its lore appended (with heading), as
-      // it was before the chip existed. (A missing "before" chip already routed those entries into `afterEntries`.)
-      if (!hasAfterChip) {
-        const dictionaryContext = resolvePH(buildDictionaryContext(afterEntries));
-        if (dictionaryContext) {
-          updatedPrompt += `\n\n${restyle(dictionaryContext, activeSectionStyle)}`;
+        // Backward-compat: a prompt with no "after" dictionary chip still gets its lore appended (with heading), as
+        // it was before the chip existed. (A missing "before" chip already routed those entries into `afterEntries`.)
+        if (!hasAfterChip) {
+          const dictionaryContext = resolvePH(buildDictionaryContext(afterEntries));
+          if (dictionaryContext) {
+            updatedPrompt += `\n\n${restyle(dictionaryContext, activeSectionStyle)}`;
+          }
         }
-      }
 
-      // Get trimmed history before adding new action (history fills the window left by the prompt).
-      // Pass the action so banding can rehydrate older turns it references. Relevance scores are
-      // computed once here and shared with the planner rebuild below so both stages trim identically.
-      const relevanceScores = computeRelevanceScores(actionVec);
-      // The context meter re-trims with the same scores + action vector so its counts mirror this turn.
-      lastRelevanceScoresRef.current = relevanceScores;
-      lastActionVecRef.current = actionVec;
-      const trimmedHistory = getTrimmedMessageHistory(estimateTokens(updatedPrompt.length), effectiveAction, relevanceScores, actionVec, true);
+        // Get trimmed history before adding new action (history fills the window left by the prompt).
+        // Pass the action so banding can rehydrate older turns it references. Relevance scores are
+        // computed once here and shared with the planner rebuild below so both stages trim identically.
+        const relevanceScores = computeRelevanceScores(actionVec);
+        // The context meter re-trims with the same scores + action vector so its counts mirror this turn.
+        lastRelevanceScoresRef.current = relevanceScores;
+        lastActionVecRef.current = actionVec;
+        const trimmedHistory = getTrimmedMessageHistory(estimateTokens(updatedPrompt.length), effectiveAction, relevanceScores, actionVec, true);
 
-      // Create message array for game text request
-      const narrationMessages: ChatMessage[] = [
-        ...trimmedHistory,
-        // Opening turn sends the player's (editable) cue text verbatim; the legacy "START GAME" sentinel
-        // (baseline harness / fixtures) still maps to the default cue. Later turns send the bare action —
-        // no "Player action:" wrapper — matching the stored history shape (format-arms probe: bare beats
-        // wrapped on quoted-dialogue rate with no guardrail cost). The user template defaults to exactly
-        // <PLAYER ACTION> (byte-identical to bare) and applies ONLY with thinking off — the template is
-        // a non-thinking experimentation surface; plan/inline modes always send the bare action so their
-        // appended directives (plan notes, <think>) never sandwich against custom text. History stays bare.
+        // AI-context capture. Every scanned source is a string the prompt genuinely contains, so the viewer can
+        // locate each match directly — no re-derivation, and the highlights cannot drift from what activated.
+        // Recursion hits point at an active entry's value, which the injected lore block shows verbatim.
         {
-          role: "user",
-          content: (() => {
-            const actionText = isOpeningTurn ? (action === "START GAME" ? OPENING_SCENE_CUE : action) : action;
-            // OOC channel: bracket turns get the rider appended in the high-recency slot (thinking-off
-            // lane only — plan/inline modes append their own directives and send the bare action).
-            const oocRider = hasOocDirective(actionText) && oocDirectivePrompt.trim() ? `\n\n${oocDirectivePrompt}` : "";
-            return thinkingMode === "off"
-              ? renderPromptTemplate(narrationUserPrompt, { "<PLAYER ACTION>": actionText }) + oocRider
-              : actionText;
-          })(),
-        },
-      ];
+          const report = activationReport.entries;
+          const recursionSources: ScanSource[] = activatedEntries
+            .filter((e) => e.value)
+            .map((e) => ({ region: `recursion:${e.id}`, text: e.value }));
+          // Keep only the scanned strings a hit actually landed in, so the debug/export JSON stays lean.
+          const hitRegions = new Set(report.flatMap((e) => e.hits.map((h) => h.region)));
+          const sources = [...dictCorpus.scene, ...dictCorpus.history, ...recursionSources]
+            .filter((s) => hitRegions.has(s.region));
+          pendingDictionaryDebugRef.current = { report, sources };
+        }
 
-      // AI-context capture. Every scanned source is a string the prompt genuinely contains, so the viewer can
-      // locate each match directly — no re-derivation, and the highlights cannot drift from what activated.
-      // Recursion hits point at an active entry's value, which the injected lore block shows verbatim.
-      {
-        const report = activationReport.entries;
-        const recursionSources: ScanSource[] = activatedEntries
-          .filter((e) => e.value)
-          .map((e) => ({ region: `recursion:${e.id}`, text: e.value }));
-        // Keep only the scanned strings a hit actually landed in, so the debug/export JSON stays lean.
-        const hitRegions = new Set(report.flatMap((e) => e.hits.map((h) => h.region)));
-        const sources = [...dictCorpus.scene, ...dictCorpus.history, ...recursionSources]
-          .filter((s) => hitRegions.has(s.region));
-        pendingDictionaryDebugRef.current = { report, sources };
-      }
+        // Add user message to history after getting trimmed history. Stores the proxy on the opening turn so
+        // later turns' context is byte-identical to the old flow (the real opening text lives in openingActionRef).
+        addMessageToHistory("user", effectiveAction);
+        userTurnAddedRef.current = true;
 
-      // Add user message to history after getting trimmed history. Stores the proxy on the opening turn so
-      // later turns' context is byte-identical to the old flow (the real opening text lives in openingActionRef).
-      addMessageToHistory("user", effectiveAction);
-      userTurnAddedRef.current = true;
+        // All past narration the player has read — the corpus for "has this name been revealed yet?" (drives
+        // both the plan sanitizer and each scene-list row's reveal state).
+        priorNarration = fullMessageHistory
+          .filter((m) => m.role === "assistant")
+          .map((m) => parseNarration(m.content))
+          .join("\n");
 
-      // Optional thinking step (runs exactly once). 'precall' and 'staged' produce a hidden plan
-      // (captured in turnPlan and attached to the final user turn below); 'inline' appends a <think>
-      // directive to the game-text request (the reasoning is stripped before the player sees it).
-      let turnPlan = "";
-      // Staged-only candidates the narration confirms later: ad-hoc = director-invented (no entity
-      // record, strict match); director = defined entities the director cast (loose match, since the
-      // director already vouched they're present — "the tank" can confirm a "Battle Tank").
-      const adHocCandidates: string[] = [];
-      const directorCandidates: string[] = [];
-      // The turn's planner cast (present beings, with aliases) — the live scene list is sourced from this,
-      // not from narration name-matching, so a merely-mentioned character never appears. Null when no
-      // planner ran (Off/Inline), where the scene list falls back to the narration parse.
-      let sceneCast: DirectorCastMember[] | null = null;
-      // All past narration the player has read — the corpus for "has this name been revealed yet?" (drives
-      // both the plan sanitizer and each scene-list row's reveal state).
-      const priorNarration = fullMessageHistory
-        .filter((m) => m.role === "assistant")
-        .map((m) => parseNarration(m.content))
-        .join("\n");
-      if (thinkingMode === "precall") {
-        const thinkPrompt = renderPromptTemplate(thinkingPrompt, ctx);
-        // Frame the planning task as a single instruction. Reusing the narration message history
-        // (turns of action -> story) primes the model to just continue the story instead of planning.
-        // The last assistant message is the recent floor turn's real narration, so pull it straight
-        // from history.
-        let lastStory =
-          [...trimmedHistory].reverse().find((m) => m.role === "assistant")?.content || "";
-        // Planning needs the least context: the immediate turn verbatim, everything older summarized.
-        // When banding is on, rebuild with a floor of 1 (no rehydration) so prior turns are all digests.
-        let digestBand = "";
-        if (memoryDigests) {
+        // Track the assembled system-prompt size for the memory-usage breakdown
+        setLastPromptChars(updatedPrompt.length);
+
+        // Banded turns ride as condensed pairs, so the last assistant message is the real last narration.
+        let lastStory = [...trimmedHistory].reverse().find((m) => m.role === "assistant")?.content || "";
+        let plannerRecap = "";
+        // Planning needs the least context: the immediate turn verbatim, everything older summarized. When
+        // banding is on, rebuild with a floor of 1 (no rehydration) so prior turns are all digests.
+        if (thinkingMode === "precall" && memoryDigests) {
           const plannerTurns = parseEffectiveTurns(fullMessageHistory);
           const planner = buildBandedHistory({
             turns: plannerTurns,
             // The planner's own endpoint: routing it to a smaller model must shrink its band, not narration's.
             contextWindow: resolveEndpointForKind('thinking').contextWindow,
-            promptTokens: estimateTokens(thinkPrompt.length),
+            promptTokens: estimateTokens(renderPromptTemplate(thinkingPrompt, ctx).length),
             maxTokens: TURN_PASS_CAPS.thinking,
             verbatimFloor: thinkingVerbatimTurns,
             keywords: [],
@@ -1688,458 +1751,342 @@ ${playerNotes || NONE_PLACEHOLDER}
             stickyIds: lastBandIdsRef.current,
             notes: effectiveNotes,
           });
-          digestBand = planner.recap;
+          plannerRecap = planner.recap;
           lastStory =
             [...planner.messages].reverse().find((m) => m.role === "assistant")?.content || lastStory;
         }
-        const thinkMessages: ChatMessage[] = [
-          {
-            role: "user",
-            content: `${digestBand ? `${digestBand}\n\n` : ""}${lastStory ? `What just happened:\n${lastStory}\n\n` : ""}The player's next action: ${effectiveAction}\n\nList the cast and lay out the beats now. Do not narrate.`,
-          },
-        ];
-        const plan = await makeAIRequest(thinkPrompt, thinkMessages, "thinking", TURN_PASS_CAPS.thinking, signal);
-        if (plan) {
-          // Parse the planner's cast so it drives participation exactly like the staged director does:
-          // defined entities confirm loosely, invented names strictly, both gated by the narration below.
-          const { cast } = parseDirectorCast(plan);
-          const classified = classifyCast(cast, allEntities, activeTraits.map((t) => t.name));
-          directorCandidates.push(...classified.directorCandidates);
-          adHocCandidates.push(...classified.adHocCandidates);
-          sceneCast = classified.npcCast;
-          // Keep a name the player has not yet heard out of the plan the narrator reads (code backstop for
-          // the prompt's alias rule). A name is "revealed" once it appears in any past narration.
-          turnPlan = sanitizePlanForReveal(plan, (name) => matchNames(priorNarration, [name]).length > 0);
-        }
-      } else if (thinkingMode === "inline") {
-        // Ride the <think> directive on the final user turn (adjacent to where the model writes), like the
-        // plan below — recency is what makes small models actually open the block. Buried in the system
-        // prompt it was mostly ignored (probe: Silver-Siren 2/18 & MeroMero 5/18 -> both 18/18 here).
-        narrationMessages[narrationMessages.length - 1].content += INLINE_THINKING_DIRECTIVE;
-      } else if (thinkingMode === "staged") {
-        // Staged planning: director (cast + continuation) -> one motivation pass per character
-        // (capped by the Limit Active Characters setting) -> storyboarder. Storyboard is injected like precall.
-        const stageValues = {
-          ...ctx,
-          "<ACTIVE CHARACTER GUIDANCE>": activeCharacterGuidance(limitActiveCharacters, activeCharacterLimit),
-        };
-        // Banded turns ride as condensed pairs, so the last assistant message is the real last narration.
-        const lastStory =
-          [...trimmedHistory].reverse().find((m) => m.role === "assistant")?.content || "";
-        const staged = await runStagedPlanning({
-          action: effectiveAction,
-          stageValues,
+
+        return {
+          ctx,
+          narrationSystemPrompt: updatedPrompt,
+          trimmedHistory,
           lastStory,
-          entities: allEntities,
-          presentEntityIds: withDiscovered(turnLocation)?.entities || [],
-          playerNames: activeTraits.map((t) => t.name),
-          characterDiaries,
-          concurrentCharacters: concurrentTurnRequests,
-          fullMessageHistory,
-          diaryMemoryEntries: DIARY_MEMORY_ENTRIES,
-          // Diary retrieval: relevant older entries join the recent tail (lib/semanticDiary). Null =
-          // pure recency, the pre-feature path.
-          diaryRetrieval: semanticDiaries && characterDiaries && actionVec
-            ? { queryVec: actionVec, vectorsByKey: embedVectorsRef.current }
-            : null,
-          caps: { director: DIRECTOR_MAX_TOKENS, character: CHARACTER_MAX_TOKENS, storyboard: STORYBOARD_MAX_TOKENS },
-          activeCharacterCap: limitActiveCharacters ? activeCharacterLimit : Infinity,
-          directorPrompt,
-          directorUserPrompt,
-          characterPrompt,
-          storyboardPrompt,
-          request: makeAIRequest,
-          signal,
-        });
-        if (signal.aborted) return;
-        turnPlan = staged.turnPlan;
-        directorCandidates.push(...staged.directorCandidates);
-        adHocCandidates.push(...staged.adHocCandidates);
-        sceneCast = staged.cast;
-      }
+          plannerRecap,
+          activeCharacterGuidance: activeCharacterGuidance(limitActiveCharacters, activeCharacterLimit),
+        };
+      };
 
-      // Attach the plan to the final user turn (adjacent to where the model writes) instead of the
-      // system prompt — keeps it salient and leaves the authored system prompt untouched. It rides as
-      // narrator stage-directions (see planDirective), kept distinct from the player's action above it.
-      if (turnPlan) {
-        narrationMessages[narrationMessages.length - 1].content += planDirective(turnPlan);
-      }
+      /** One character's own diary, as their motivation pass is fed it. */
+      const diaryFor = (name: string): string[] => {
+        // With retrieval, the whole diary is collected and lib/semanticDiary keeps the recent tail plus the
+        // relevant older entries (chronological either way, so the block's "oldest first" stays true).
+        const retrieval = semanticDiaries && characterDiaries && actionVec
+          ? { queryVec: actionVec, vectorsByKey: embedVectorsRef.current }
+          : null;
+        const all = characterDiaries
+          ? collectCharacterDiary(fullMessageHistory, name, retrieval ? Number.MAX_SAFE_INTEGER : DIARY_MEMORY_ENTRIES)
+          : [];
+        return retrieval ? selectRelevantDiary(all, retrieval.queryVec, retrieval.vectorsByKey) : all;
+      };
 
-      // Track the assembled system-prompt size for the memory-usage breakdown
-      setLastPromptChars(updatedPrompt.length);
+      /** Fold one planner answer's cast into the turn's candidate sets and live scene cast. */
+      const classifyPlannerCast = (cast: DirectorCastMember[]) => {
+        const classified = classifyCast(cast, allEntities, activeTraits.map((t) => t.name));
+        flaggedCast = classified.flaggedCast;
+        directorCandidates = classified.directorCandidates;
+        adHocCandidates = classified.adHocCandidates;
+        sceneCast = classified.npcCast;
+        return classified;
+      };
 
-      // Hand the streaming narration (inside makeAIRequest) this turn's scene-list inputs so it can keep the
-      // Entities tab live per sentence.
-      sceneListCtxRef.current = { cast: sceneCast, prior: priorNarration };
+      /** What the narration confirms: who took part, who is on screen, and who just walked in. */
+      const readNarration = (narration: string): Partial<TurnMaterial> => {
+        // Commit the auto-resolved move now that the narration — already written for the new location —
+        // succeeded, so an aborted/empty turn leaves the location unchanged.
+        if (turnLocation && currentLocation && turnLocation.id !== currentLocation.id) {
+          changeLocation(turnLocation);
+          addLogEntry(`Moved to location: ${turnLocation.name}`);
+        }
 
-      // Get game text first since choices and stat updates depend on it
-      const narrationResponse = await makeAIRequest(
-        updatedPrompt,
-        narrationMessages,
-        "narration",
-        null,
+        // Who took part this turn: defined entities named in the narration, plus any staged ad-hoc
+        // characters the narration confirms (planning only suggests; the narration is the gate). Drives the
+        // entity tab, the choices filter, and stored participation.
+        // The fourth source is the narration-only extractor: on pure narration the three above are all
+        // blind to a character the narrator has just invented (the first matches known entities only,
+        // the other two are populated by staged planning), so without it discovery required already
+        // having been discovered. Always on and never gated: it costs no request, and presence, the
+        // choices filter and participation recall shouldn't depend on a toggle. Only the DESCRIPTION
+        // that turns a name into a full entity costs anything, and that is what the setting governs.
+        // Presence comes from what the narration shows happening, not from who the dialogue talks about —
+        // a character named only inside quotes ("for Professor Serana's review") was mentioned, not present.
+        // The planner-confirmation sources below read the full text: a cast is an authoritative presence
+        // signal, not an inference from the page.
+        const narrationProse = stripQuotedSpeech(narration);
+        const narratedNames = extractCharacterCandidates(
+          narrationProse,
+          { ...characterExclusions, suppressed: suppressedCharacterNames },
+          collectCandidateEvidence(priorNarration),
+        );
+        turnParticipants = [
+          ...new Set([
+            ...findEntityNames(narrationProse, allEntities),
+            ...matchNamesLoose(narration, directorCandidates),
+            ...matchNames(narration, adHocCandidates),
+            ...narratedNames,
+          ]),
+        ];
+        // Apply the authoritative scene list now (narration is done). Presence is the planner's cast (so a
+        // merely-mentioned character never shows); a name reveals once it has appeared in the narration. With
+        // no planner (Off/Inline) it falls back to the narration parse. Independent of turnParticipants above,
+        // which still feeds stored participation and choices from the narration.
+        // Narration-only names join the scene list too. buildSceneList resolves against KNOWN entities, so
+        // a character being discovered this very turn would otherwise be missing from the panel until the
+        // next turn — the describe request lands moments later and the row goes live in place.
+        const sceneList = buildSceneList({ cast: sceneCast, entities: allEntities, narrationSoFar: narration, priorNarration });
+        const sceneNames = new Set(sceneList.map((se) => se.name.toLowerCase()));
+        setVisibleEntities([
+          ...sceneList,
+          ...narratedNames
+            .filter((name) => !sceneNames.has(name.toLowerCase()))
+            .map((name) => ({ name, revealed: true })),
+        ]);
+        // Bring-them-over: an authored character living in a reachable sibling that the narration named joins
+        // the current location as a visitor — anchored via the discovered-entity path, so it persists and
+        // rolls back with the turn. Affects the next turn's context (this turn's ctx already ran).
+        // Fed by a stricter parse than `turnParticipants`: this path physically relocates an authored NPC, so
+        // it takes full-name hits only — a loose single-word match must not teleport someone into the scene.
+        // Prose-only for the same reason presence is: `partial: false` bounds how loosely a name may match,
+        // not whether it was merely spoken about, and a full name inside dialogue still hits. Once someone is
+        // anchored here they count as present, so a dialogue-only mention would otherwise walk them into the
+        // scene permanently and past the now-line's location filter.
+        if (turnLocation) {
+          const visitorParticipants = findEntityNames(narrationProse, allEntities, { partial: false });
+          const visitors = selectReachableVisitors(
+            visitorParticipants, turnLocation, locations, entities,
+            withDiscovered(turnLocation)?.entities ?? [],
+          );
+          if (visitors.length) {
+            const locId = turnLocation.id;
+            const turnId = currentTurnIdRef.current;
+            setDiscoveredEntities((prev) => {
+              const additions = visitors.filter(
+                (v) => !prev.some((d) => d.locationId === locId && sameCharacterName(d.entity.name, v.name)),
+              );
+              return additions.length
+                ? [...prev, ...additions.map((entity) => ({ entity, locationId: locId, sourceTurnId: turnId }))]
+                : prev;
+            });
+          }
+        }
+        // Choices should only see who's in the scene now — this turn's participants plus those from the
+        // prior turns in the rolling window — scoped to entities that exist at the location. Empty → the
+        // choices request gets no entity section (can't spoil/act for anyone not present).
+        const presentNames = new Set([
+          ...turnParticipants,
+          ...recentParticipants(fullMessageHistory, CHOICES_PRESENCE_TURNS - 1),
+        ]);
+        const sceneEntities = allEntities.filter((e) => presentNames.has(e.name));
+        return { sceneEntityTokens: sceneEntityOverride(withDiscovered(turnLocation), sceneEntities) };
+      };
+
+      /**
+       * The turn's derivation step: where this view's knowledge (the world, the history, the context
+       * values) enters the pipeline's material. Never where a request enters — the adapter below is the
+       * only seam for those.
+       */
+      const advance: TurnAdvance = async (event, material) => {
+        if (event.at === "stage") {
+          // Assembled once the up-front router has settled the location, and before the planner reads it.
+          if (event.stage === "planning") return assembleNarration();
+          if (event.stage === "narration") {
+            // Hand the streaming narration (inside makeAIRequest) this turn's scene-list inputs so it can
+            // keep the Entities tab live per sentence.
+            sceneListCtxRef.current = { cast: sceneCast, prior: priorNarration };
+            return;
+          }
+          if (event.stage === "postNarration") {
+            const isKnownEntity = (name: string) => allEntities.some((e) => sameCharacterName(e.name, name));
+            // A participant the narration introduced but no entity matches yet is discovered first; its
+            // diary needs that generated description, so it's left to the drainer to write post-discovery.
+            const diary: TurnPassSubject[] = turnParticipants.filter(isKnownEntity).map((name) => ({
+              name,
+              entity: allEntities.find((e) => sameCharacterName(e.name, name)),
+            }));
+            const discoverEntity: TurnPassSubject[] = turnParticipants
+              .filter((name) => !isKnownEntity(name) && !suppressedCharacterNames.some((blocked) => sameCharacterName(name, blocked)))
+              .map((name) => ({ name }));
+            // The batch shows one stable label instead of a race between its own requests; "Choices" since
+            // that's what the player waits on.
+            if (plan.concurrency === "parallel") setAiRequestType("choices");
+            // With no choices pass there is nothing to wait on, so the input unblocks right away.
+            if (!planHasPass(plan, "choices")) setChoicesReady(true);
+            return { subjects: { ...material.subjects, diary, discoverEntity } };
+          }
+          return;
+        }
+
+        const [first] = event.outcomes;
+        switch (first.id) {
+          case "locationAuto": {
+            const matchedName = first.parsed as string | null;
+            const target = matchedName ? destinations.find((loc) => loc.name === matchedName) : undefined;
+            if (target && currentLocation && target.id !== currentLocation.id) turnLocation = target;
+            return;
+          }
+          case "thinking": {
+            if (!first.raw) return;
+            classifyPlannerCast((first.parsed as ParsedDirector).cast);
+            // Keep a name the player has not yet heard out of the plan the narrator reads (code backstop for
+            // the prompt's alias rule). A name is "revealed" once it appears in any past narration.
+            return { turnPlan: sanitizePlanForReveal(first.raw, (name) => matchNames(priorNarration, [name]).length > 0) };
+          }
+          case "director": {
+            const { scene, cast } = first.parsed as ParsedDirector;
+            const { npcCast } = classifyPlannerCast(cast);
+            // With nobody in the cast there is nothing to reconcile: the storyboard skips itself, and the
+            // plan is the director's staging alone.
+            if (npcCast.length === 0) {
+              return { directorScene: scene, npcCastSize: 0, turnPlan: buildStagedPlan({ scene, stances: flaggedCast, beats: "" }) };
+            }
+            const presentIds = withDiscovered(turnLocation)?.entities || [];
+            const { chosen, overflow } = matchCastToEntities(
+              npcCast,
+              allEntities.filter((e) => presentIds.includes(e.id)),
+              limitActiveCharacters ? activeCharacterLimit : Infinity,
+            );
+            return {
+              directorScene: scene,
+              npcCastSize: npcCast.length,
+              overflow,
+              subjects: {
+                ...material.subjects,
+                character: chosen.map((member) => ({
+                  name: member.name,
+                  stance: member.stance,
+                  entity: member.entity,
+                  diary: diaryFor(member.name),
+                })),
+              },
+            };
+          }
+          case "character":
+            // Intents keep cast order, which the storyboard message relies on.
+            return {
+              intents: event.outcomes.flatMap((outcome) =>
+                outcome.subject && outcome.raw ? [{ name: outcome.subject.name, text: outcome.raw }] : [],
+              ),
+            };
+          case "storyboard":
+            // Ground the narration in the director's scene + cast stances alongside the storyboard beats.
+            return { turnPlan: buildStagedPlan({ scene: material.directorScene, stances: flaggedCast, beats: first.raw }) };
+          case "narration": {
+            const patch = readNarration(first.raw);
+            // Auto-narrate the new game text if a TTS model is loaded. When streaming is off, hold the
+            // post-narration passes until the audio has finished generating (avoids GPU contention). When
+            // streaming is on, narration was already synthesized sentence-by-sentence during the request.
+            if (ttsLoaded && !streamNarrationAudio) await generateTTS(first.raw);
+            return patch;
+          }
+          default:
+            return;
+        }
+      };
+
+      /** The pipeline's one seam. Production sends the real AI call; nothing else is injected. */
+      const request: TurnRequestAdapter = (spec, context) => {
+        const answer = makeAIRequest(
+          spec.systemPrompt,
+          spec.messages,
+          spec.type,
+          spec.maxTokens,
+          context.signal,
+          spec.silent,
+          spec.attachTurnId,
+          spec.quiet,
+        );
+        // Choices are the interactive part: unblock the input the moment they land rather than when the
+        // rest of the batch settles. The no-op rejection handler keeps this side-chain from raising on its
+        // own — the real error surfaces through the turn result.
+        if (spec.type === "choices") {
+          answer.then(() => { if (!signal.aborted) setChoicesReady(true); }, () => {});
+        }
+        // Remember whether the request that failed spoke for itself (see `failedSilently`). A batched
+        // failure never ends the turn, so only the one the turn stops on is ever read.
+        answer.catch(() => { failedSilently = spec.silent; });
+        return answer;
+      };
+
+      const result = await runTurn({
+        plan,
+        material: {
+          action,
+          effectiveAction,
+          turnId: currentTurnIdRef.current,
+          ctx: {},
+          // The location the turn began in: what the up-front router routes from, and what the digest and
+          // diary passes record against.
+          baseCtx: buildContextValues(),
+          sceneEntityTokens: {},
+          destinations: destinations.map((loc) => loc.name),
+          narrationSystemPrompt: "",
+          trimmedHistory: [],
+          narration: "",
+          lastStory: "",
+          plannerRecap: "",
+          turnPlan: "",
+          activeCharacterGuidance: "",
+          directorScene: "",
+          npcCastSize: 0,
+          intents: [],
+          overflow: [],
+        },
+        request,
         signal,
-      );
+        advance,
+      });
 
       // The user stopping is an expected, silent exit (the `finally` resets waiting state).
-      if (signal.aborted) return;
-      // An empty narration is not. The model either returned nothing or spent the whole response on
-      // reasoning, so there's no story text to play and the turn can't advance. Say so — silence here is
-      // indistinguishable from a dead submit button. Downstream calls (choices/stats) are skipped either
-      // way: they take the narration as input.
-      if (!narrationResponse) {
-        // No assistant message was persisted (streaming only appends one once text arrives), so drop this
-        // turn's dangling user message before returning — otherwise history pairing is corrupted.
-        discardUnpairedUserTurn();
-        addSystemLogEntry("The AI returned an empty narration — the turn was not advanced.");
-        toast.error("The AI returned an empty response. Try again, or switch models if it keeps happening.", {
-          position: "top-right",
-          autoClose: 5000,
-        });
+      if (result.status === "aborted") return;
+      if (result.status === "failed") {
+        reportFailure(result.kind);
         return;
       }
 
-      // Commit the auto-resolved move now that the narration — already written for the new location —
-      // succeeded, so an aborted/empty turn leaves the location unchanged.
-      if (turnLocation && currentLocation && turnLocation.id !== currentLocation.id) {
-        changeLocation(turnLocation);
-        addLogEntry(`Moved to location: ${turnLocation.name}`);
-      }
+      const commit = computeTurnCommit({
+        result,
+        plan,
+        context: {
+          participants: turnParticipants,
+          locationId: turnLocation?.id,
+          currentLocationName: currentLocation?.name,
+          discoveryLocationId: turnLocation?.id ?? currentLocation?.id,
+          knownDiscoveredNames: discoveredEntities.map((d) => d.entity.name),
+          // Freeze this turn's player notes and reasoning (both additive save-shape fields).
+          notes: playerNotes,
+          reasoning: turnReasoningRef.current,
+          gameTime,
+          calendar,
+        },
+      });
+      if (!commit) return;
 
-      // Who took part this turn: defined entities named in the narration, plus any staged ad-hoc
-      // characters the narration confirms (planning only suggests; the narration is the gate). Drives the
-      // entity tab, the choices filter, and stored participation.
-      // The fourth source is the narration-only extractor: on pure narration the three above are all
-      // blind to a character the narrator has just invented (the first matches known entities only,
-      // the other two are populated by staged planning), so without it discovery required already
-      // having been discovered. Always on and never gated: it costs no request, and presence, the
-      // choices filter and participation recall shouldn't depend on a toggle. Only the DESCRIPTION
-      // that turns a name into a full entity costs anything, and that is what the setting governs.
-      // Presence comes from what the narration shows happening, not from who the dialogue talks about —
-      // a character named only inside quotes ("for Professor Serana's review") was mentioned, not present.
-      // The planner-confirmation sources below read the full text: a cast is an authoritative presence
-      // signal, not an inference from the page.
-      const narrationProse = stripQuotedSpeech(narrationResponse);
-      const narratedNames = extractCharacterCandidates(
-        narrationProse,
-        { ...characterExclusions, suppressed: suppressedCharacterNames },
-        collectCandidateEvidence(priorNarration),
-      );
-      const turnParticipants = [
-        ...new Set([
-          ...findEntityNames(narrationProse, allEntities),
-          ...matchNamesLoose(narrationResponse, directorCandidates),
-          ...matchNames(narrationResponse, adHocCandidates),
-          ...narratedNames,
-        ]),
-      ];
-      // Apply the authoritative scene list now (narration is done). Presence is the planner's cast (so a
-      // merely-mentioned character never shows); a name reveals once it has appeared in the narration. With
-      // no planner (Off/Inline) it falls back to the narration parse. Independent of turnParticipants above,
-      // which still feeds stored participation and choices from the narration.
-      // Narration-only names join the scene list too. buildSceneList resolves against KNOWN entities, so
-      // a character being discovered this very turn would otherwise be missing from the panel until the
-      // next turn — the describe request lands moments later and the row goes live in place.
-      const sceneList = buildSceneList({ cast: sceneCast, entities: allEntities, narrationSoFar: narrationResponse, priorNarration });
-      const sceneNames = new Set(sceneList.map((se) => se.name.toLowerCase()));
-      setVisibleEntities([
-        ...sceneList,
-        ...narratedNames
-          .filter((name) => !sceneNames.has(name.toLowerCase()))
-          .map((name) => ({ name, revealed: true })),
-      ]);
-      // Bring-them-over: an authored character living in a reachable sibling that the narration named joins
-      // the current location as a visitor — anchored via the discovered-entity path, so it persists and
-      // rolls back with the turn. Affects the next turn's context (this turn's ctx already ran).
-      // Fed by a stricter parse than `turnParticipants`: this path physically relocates an authored NPC, so
-      // it takes full-name hits only — a loose single-word match must not teleport someone into the scene.
-      // Prose-only for the same reason presence is: `partial: false` bounds how loosely a name may match,
-      // not whether it was merely spoken about, and a full name inside dialogue still hits. Once someone is
-      // anchored here they count as present, so a dialogue-only mention would otherwise walk them into the
-      // scene permanently and past the now-line's location filter.
-      if (turnLocation) {
-        const visitorParticipants = findEntityNames(narrationProse, allEntities, { partial: false });
-        const visitors = selectReachableVisitors(
-          visitorParticipants, turnLocation, locations, entities,
-          withDiscovered(turnLocation)?.entities ?? [],
-        );
-        if (visitors.length) {
-          const locId = turnLocation.id;
-          const turnId = currentTurnIdRef.current;
-          setDiscoveredEntities((prev) => {
-            const additions = visitors.filter(
-              (v) => !prev.some((d) => d.locationId === locId && sameCharacterName(d.entity.name, v.name)),
-            );
-            return additions.length
-              ? [...prev, ...additions.map((entity) => ({ entity, locationId: locId, sourceTurnId: turnId }))]
-              : prev;
-          });
-        }
-      }
-      // Choices should only see who's in the scene now — this turn's participants plus those from the
-      // prior turns in the rolling window — scoped to entities that exist at the location. Empty → the
-      // choices request gets no entity section (can't spoil/act for anyone not present).
-      const presentNames = new Set([
-        ...turnParticipants,
-        ...recentParticipants(fullMessageHistory, CHOICES_PRESENCE_TURNS - 1),
-      ]);
-      const sceneEntities = allEntities.filter((e) => presentNames.has(e.name));
-      const sceneLoc = withDiscovered(turnLocation);
-      const sceneEntityTokens = sceneEntityOverride(sceneLoc, sceneEntities);
-
-      // Auto-narrate the new game text if a TTS model is loaded. When streaming is off, block the trailing
-      // choices/stat/location requests until the audio has finished generating (avoids GPU contention). When
-      // streaming is on, narration was already synthesized sentence-by-sentence during the request above.
-      if (ttsLoaded && !streamNarrationAudio) {
-        await generateTTS(narrationResponse);
-        if (signal.aborted) return; // player stopped during TTS generation
-      }
-
-      // Choices, stat updates, and location-change all depend only on the narration text, not on each other.
-      // Each is a thunk so the mode below decides whether they run concurrently or one at a time (the thunk
-      // isn't invoked — and the request isn't sent — until called). The `quiet` flag suppresses each request's
-      // own status label so the concurrent batch can set one stable label instead of three racing writes.
-      // Choices see only who is actually in the scene (sceneEntityTokens), not the whole location roster.
-      const runChoices = (quiet: boolean): Promise<string> =>
-        choicesEnabled
-          ? requestChoices(ctx, sceneEntityTokens, effectiveAction, narrationResponse, signal, quiet)
-          : Promise.resolve("");
-
-      // Only make stat updates request if enabled and the world actually defines stats (otherwise the model
-      // hallucinates stat names that match nothing).
-      const statsActive = statUpdatesEnabled && activeStats.length > 0;
-      const runStats = (quiet: boolean): Promise<string> =>
-        statsActive
-          ? requestStats(ctx, effectiveAction, narrationResponse, signal, quiet)
-          : Promise.resolve("");
-
-      // Suggest mode only — with auto-apply the move was resolved up front (before the narration). After the
-      // narration, ask whether the player should move (fed the action + narration) and offer it.
-      // locations.length > 1: a single-location world has nowhere to move, so don't run it even when enabled.
-      const locationActive = !isOpeningTurn && !locationAutoApply && locationChangeEnabled && locations.length > 1 && !!locationChangePromptText;
-      const runLocation = (quiet: boolean): Promise<string> => {
-        if (!locationActive) return Promise.resolve("");
-        return makeAIRequest(
-          renderPromptTemplate(locationChangePromptText, ctx),
-          [{ role: "user", content: renderPromptTemplate(locationChangeUserPrompt, { "<PLAYER ACTION>": action, "<NARRATION>": narrationResponse }) }],
-          "locationChange",
-          null,
-          signal,
-          false,
-          undefined,
-          quiet,
-        );
-      };
-
-      // The clock pass: how much in-world time this turn consumed. Depends only on action + narration, so it
-      // joins the post-narration batch. Silent and attached to this turn for the AI-context viewer.
-      const runTimePassed = (): Promise<string> =>
-        aiClock
-          ? makeAIRequest(
-              renderPromptTemplate(timePassedPrompt, ctx),
-              [{ role: "user", content: renderPromptTemplate(timePassedUserPrompt, { "<PLAYER ACTION>": stripOocDirectives(effectiveAction), "<NARRATION>": narrationResponse }) }],
-              "timePassed",
-              TIME_PASSED_MAX_TOKENS,
-              signal,
-              true,
-              currentTurnIdRef.current,
-            )
-          : Promise.resolve("");
-
-      // The opening-time pass: what time of day does the story START at? Runs once, on the opening turn
-      // only, because it reads the scene the world was written to open on. Deliberately NOT run when the
-      // clock is switched on mid-story: a retroactive answer would re-date every memory stamp already
-      // written, and the opening narration it would need is long gone. A turn-1 re-generate does re-run it
-      // (isOpeningTurn is true again once the history rewinds), so a rerolled opening can't contradict its
-      // own clock — the same rule the delta pass follows.
-      const runOpeningTime = (): Promise<string> =>
-        aiClock && isOpeningTurn
-          ? makeAIRequest(
-              renderPromptTemplate(openingTimePrompt, ctx),
-              [{ role: "user", content: renderPromptTemplate(openingTimeUserPrompt, { "<NARRATION>": narrationResponse }) }],
-              "openingTime",
-              OPENING_TIME_MAX_TOKENS,
-              signal,
-              true,
-              currentTurnIdRef.current,
-            )
-          : Promise.resolve("");
-
-      // Memory digest + character diaries for THIS turn also depend only on the narration (+ participants),
-      // so in concurrent mode they join the batch and their results are folded into the turn at commit
-      // (below) instead of being patched in afterward by the idle drainers. The drainers stay for backfill
-      // (turns that come due when a feature is enabled mid-game). In sequential mode these are left to the
-      // drainers as before. Both are silent + attached to this turn for the AI-context viewer.
-      const runSummary = (): Promise<string> =>
-        memoryDigests
-          ? makeAIRequest(
-              renderPromptTemplate(summaryPrompt, buildContextValues()),
-              [{ role: "user", content: renderPromptTemplate(summaryUserPrompt, { "<PLAYER ACTION>": stripOocDirectives(effectiveAction), "<NARRATION>": narrationResponse }) }],
-              "summary",
-              DIGEST_MAX_TOKENS,
-              signal,
-              true,
-              currentTurnIdRef.current,
-            )
-          : Promise.resolve("");
-      const isKnownEntity = (name: string) => allEntities.some((e) => sameCharacterName(e.name, name));
-      // Diaries are read only by the staged character pass, so only write them in that mode. A participant the
-      // narration introduced but no entity matches yet gets discovered first (below); its diary needs that
-      // generated description, so it's left to the drainer to write post-discovery — only KNOWN participants
-      // run their diary in this batch.
-      const diaryNames = characterDiaries && thinkingMode === "staged" ? turnParticipants.filter(isKnownEntity) : [];
-      const runDiary = (name: string): Promise<string> => {
-        const entity = allEntities.find((e) => sameCharacterName(e.name, name));
-        return makeAIRequest(
-          renderPromptTemplate(diaryPrompt, buildContextValues()),
-          [{ role: "user", content: buildDiaryUserMessage({ name, entity, narration: narrationResponse }) }],
-          "diary",
-          DIARY_MAX_TOKENS,
-          signal,
-          true,
-          currentTurnIdRef.current,
-        );
-      };
-      // Runtime characters: a narration-confirmed participant matching no known entity is described (3rd-person,
-      // from this turn's narration) and materialized into `discoveredEntities`, mirroring the idle drainer but
-      // folded into the turn's batch. Gated on Character Diaries (same as the drainer); only staged planning
-      // produces ad-hoc candidates, so this is empty otherwise.
-      const discoverNames = describeCharacters
-        ? turnParticipants.filter((name) => !isKnownEntity(name) && !suppressedCharacterNames.some((blocked) => sameCharacterName(name, blocked)))
-        : [];
-      const runDiscover = (name: string): Promise<string> =>
-        makeAIRequest(
-          defaultDiscoverEntityPrompt,
-          [{ role: "user", content: `${DISCOVER_NAME_LABEL} ${name}\n\n${DISCOVER_PASSAGE_LABEL}\n${narrationResponse}` }],
-          "discoverEntity",
-          DISCOVER_MAX_TOKENS,
-          signal,
-          true,
-          currentTurnIdRef.current,
-        );
-
-      let choicesResponse = "";
-      let statUpdatesResponse = "";
-      let locationResponse = "";
-      let turnSummary = "";
-      let turnTimeResponse = "";
-      let openingTimeResponse = "";
-      const turnDiaries: Record<string, string> = {};
-      const discoveredThisTurn: { name: string; description: string }[] = [];
-
-      if (concurrentTurnRequests) {
-        // Fire all three at once. On a parallel-capable endpoint (LM Studio "Parallel" ≥2, Ollama) they overlap
-        // and cut the post-narration wait ~30%; serial endpoints just queue the HTTP requests, so this is safe
-        // everywhere. makeAIRequest is concurrency-safe for these non-narration types: its shared writes are
-        // narration-gated (reveal/TTS/reasoning) or keyed by distinct requestType (debug capture). One stable
-        // label for the batch (the three requests run quiet); "Choices" since that's what the player waits on.
-        setAiRequestType("choices");
-        const choicesP = runChoices(true);
-        const statsP = runStats(true);
-        const locationP = runLocation(true);
-        const summaryP = runSummary();
-        const timeP = runTimePassed();
-        const openP = runOpeningTime();
-        const diaryPs = diaryNames.map((name) => runDiary(name));
-        const discoverPs = discoverNames.map((name) => runDiscover(name));
-        // Choices (the interactive part) unblock the input as soon as *choices* resolves — don't wait on the
-        // others. No-op catch so this side-chain never raises an unhandled rejection (the real error surfaces
-        // via allSettled below).
-        choicesP.then(
-          () => { if (!signal.aborted) setChoicesReady(true); },
-          () => {},
-        );
-        // allSettled so one aux failure doesn't discard the others' results or abort the turn — each rejection
-        // just falls back to "" / no entry (the drainers backfill a failed digest/diary/discovery on a later tick).
-        const [cR, sR, lR, sumR, timeR, openR, ...rest] = await Promise.allSettled([choicesP, statsP, locationP, summaryP, timeP, openP, ...diaryPs, ...discoverPs]);
-        const diaryRs = rest.slice(0, diaryNames.length);
-        const discoverRs = rest.slice(diaryNames.length);
-        choicesResponse = cR.status === "fulfilled" ? cR.value : "";
-        statUpdatesResponse = sR.status === "fulfilled" ? sR.value : "";
-        locationResponse = lR.status === "fulfilled" ? lR.value : "";
-        if (memoryDigests && sumR.status === "fulfilled") turnSummary = (sumR.value ?? "").trim();
-        if (timeR.status === "fulfilled") turnTimeResponse = (timeR.value ?? "").trim();
-        if (openR.status === "fulfilled") openingTimeResponse = (openR.value ?? "").trim();
-        diaryNames.forEach((name, i) => {
-          const r = diaryRs[i];
-          // Store even an empty reply (as "") so the participant isn't retried forever; a rejected request is
-          // left unset so the drainer backfills it later.
-          if (r && r.status === "fulfilled") turnDiaries[name] = (r.value ?? "").trim();
-        });
-        // Materialize each discovered character (skipping unusable/blank descriptions — those stay due for the
-        // drainer). Added to discoveredEntities below at commit, so it rolls back with the turn.
-        discoverNames.forEach((name, i) => {
-          const r = discoverRs[i];
-          if (!r || r.status !== "fulfilled") return;
-          const cleaned = cleanDiscoveredDescription(r.value ?? "", name);
-          if (cleaned) discoveredThisTurn.push({ name, description: cleaned });
-        });
-      } else {
-        // Sequential: one request at a time, each showing its own status label. Choices first so the player can
-        // start composing while stats/location finish.
-        choicesResponse = await runChoices(false);
-        if (signal.aborted) return;
-        setChoicesReady(true);
-        statUpdatesResponse = await runStats(false);
-        if (signal.aborted) return;
-        locationResponse = await runLocation(false);
-        if (signal.aborted) return;
-        turnTimeResponse = await runTimePassed();
-        if (signal.aborted) return;
-        openingTimeResponse = await runOpeningTime();
-      }
-
-      if (signal.aborted) return; // stopped during one of the aux requests
-
-      if (locationActive && locationResponse) {
-        // Scope the router to the local navigable graph: match only against places reachable from here.
-        const destinations = navigableDestinations(currentLocation, locations);
-        const matchedName = matchLocationResponse(
-          locationResponse,
-          destinations.map((loc) => loc.name),
-        );
-        if (matchedName) {
-          const target = destinations.find((loc) => loc.name === matchedName);
-          if (target && target.id !== currentLocation?.id) setSuggestedLocation(target);
-        }
+      // The move offer lands before the reveal is held below — it is the one result that has always
+      // appeared while the narration was still fading. Scoped to the local navigable graph: the router's
+      // reply named one of these or nothing.
+      if (commit.suggestedLocation) {
+        const target = destinations.find((loc) => loc.name === commit.suggestedLocation);
+        if (target) setSuggestedLocation(target);
       }
 
       // Fade path: let the paced reveal finish playing out before the turn's results appear, so choices
       // and stat changes don't pop in over a still-fading narration. The smooth crawl self-catches-up,
-      // so it needs no hold. (The reveal has been running in parallel with the aux requests above.)
+      // so it needs no hold. (The reveal has been running in parallel with the post-narration passes.)
       if (fadeRevealActive) await fadeReveal.drained();
-      // Stop pressed while the reveal was still draining — bail before committing choices/stats/snapshot,
-      // exactly as the aux-request abort checks above do. abortGeneration already kept the narration.
+      // Stop pressed while the reveal was still draining — bail before committing choices/stats/snapshot.
+      // abortGeneration already kept the narration.
       if (signal.aborted) return;
 
-      // Parse choices (line-separated), hard-capped to 6 to stop the AI over-producing
-      const choicesList = !choicesEnabled ? [] : parseChoices(choicesResponse);
-      setChoices(choicesList);
+      setChoices(commit.turn.choices);
 
-      // Parse stat updates into current-value deltas and max-cap deltas (see lib/statChanges).
-      let statChanges: Record<string, number>[] = [];
-      if (statUpdatesEnabled && statUpdatesResponse) {
-        const { values, maxes } = parseStatUpdates(statUpdatesResponse);
-        statChanges = Object.entries(values).map(([k, v]) => ({ [k]: v }));
-        if (Object.keys(maxes).length > 0) {
-          // Max changes re-clamp the current value into the new range (lib handles the guards). Restricted
-          // to live stats like the value deltas — a disabled stat's cap must not move off a name collision.
-          setPlayerStats((prevStats) => applyAiMaxChanges(prevStats, liveStatChanges(prevStats, maxes)));
-        }
+      // Max changes re-clamp the current value into the new range (lib handles the guards). Restricted
+      // to live stats like the value deltas — a disabled stat's cap must not move off a name collision.
+      if (Object.keys(commit.statMaxChanges).length > 0) {
+        setPlayerStats((prevStats) => applyAiMaxChanges(prevStats, liveStatChanges(prevStats, commit.statMaxChanges)));
       }
 
-      // This turn's measured duration. An unparseable, out-of-range, or absent reply resolves to the flat
-      // hour the game has always charged — never to zero, so a bad reply cannot freeze the clock.
-      const turnHours = (aiClock ? parseTimeDelta(turnTimeResponse) : null) ?? FLAT_HOURS_PER_TURN;
-
-      // Seed the story's opening hour. Only ever written on the opening turn, and only when the reply names
-      // a daypart in the closed set — an unreadable answer leaves it null, which reads downstream as the
-      // shipped DEFAULT_START_HOUR and so plays exactly like the game did before this pass existed.
-      let openingHour: number | null = null;
-      if (isOpeningTurn) {
-        openingHour = openingTimeResponse ? parseOpeningDaypart(openingTimeResponse) : null;
-        setStartHour(openingHour);
-      }
+      // Seed the story's opening hour. Only ever written on the opening turn; null reads downstream as the
+      // shipped DEFAULT_START_HOUR, so an unreadable answer plays exactly as before this pass existed.
+      if (commit.isOpeningTurn) setStartHour(commit.openingHour);
 
       // Update final assistant message with complete data
       setFullMessageHistory((prev) => {
@@ -2150,44 +2097,19 @@ ${playerNotes || NONE_PLACEHOLDER}
         ) {
           updatedHistory[updatedHistory.length - 1] = {
             role: "assistant",
-            content: JSON.stringify({
-              narration: narrationResponse,
-              choices: choicesList,
-              stat_changes: statChanges,
-              turnId: currentTurnIdRef.current,
-              entities: turnParticipants,
-              locationId: turnLocation?.id,
-              // Freeze this turn's player notes (additive save-shape). Omitted when empty — the view falls
-              // back to the snapshot's global notes, so a blank turn doesn't bloat the JSON.
-              ...(playerNotes ? { notes: playerNotes } : {}),
-              // Per-turn reasoning (additive save-shape). Absent when the model didn't reason.
-              ...(turnReasoningRef.current.text ? { reasoning: turnReasoningRef.current } : {}),
-              // Digest + diaries computed in this turn's concurrent batch (see above), written here so the
-              // idle drainers skip the current turn and only backfill older ones. Omitted when not produced
-              // (feature off, sequential mode, or the request failed) — the drainer fills those in later.
-              ...(turnSummary ? { summary: turnSummary } : {}),
-              // Measured turn duration (additive save-shape). Written only when the clock pass actually
-              // measured something; absent reads as the flat hour, so old saves are unchanged.
-              ...(aiClock && parseTimeDelta(turnTimeResponse) !== null ? { timeDelta: turnHours } : {}),
-              ...(Object.keys(turnDiaries).length ? { diaries: turnDiaries } : {}),
-            }),
+            content: JSON.stringify(commit.turn),
           };
         }
         return updatedHistory;
       });
 
-      //setGameplayText(aiResponse.narration);
-      //setChoices(aiResponse.choices || []);
-
-      // Persist any characters discovered in this turn's batch (see runDiscover above), anchored to this
-      // location + turn so they roll back with it. Guarded against a double-add (variant-aware name match).
-      if (discoveredThisTurn.length > 0) {
-        const locationId = turnLocation?.id ?? currentLocation?.id;
-        const turnId = currentTurnIdRef.current;
+      // Persist any characters this turn discovered, anchored to its location + turn so they roll back with
+      // it. Guarded against a double-add (variant-aware name match) by a visitor added moments ago.
+      if (commit.discoveries.length > 0) {
         setDiscoveredEntities((prev) => {
-          const additions = discoveredThisTurn
-            .filter((d) => !prev.some((p) => sameCharacterName(p.entity.name, d.name)))
-            .map((d) => ({ entity: materializeDiscoveredEntity(d.name, d.description), locationId, sourceTurnId: turnId }));
+          const additions = commit.discoveries.filter(
+            (d) => !prev.some((p) => sameCharacterName(p.entity.name, d.entity.name)),
+          );
           return additions.length ? [...prev, ...additions] : prev;
         });
       }
@@ -2195,36 +2117,24 @@ ${playerNotes || NONE_PLACEHOLDER}
       // Reset the persistent bar deltas for this turn, then let stat changes + regen below re-fill them.
       setHeldStatChanges({});
 
-      // Where the story clock stands for this turn's stat code. `elapsedHours` is the END of the turn, so a
-      // long sleep that began in daylight reports `daypart: 'night'` — what the player just read. Computed
-      // rather than read back from state: setGameTime below is async and wouldn't land in time.
-      const turnClock: StatClock = {
-        deltaHours: turnHours,
-        elapsedHours: gameTime + turnHours,
-        // `setStartHour` above hasn't committed, so the closure's `calendar` still predates this turn —
-        // build the opening turn's own from the hour just measured. Without this the opening turn's stat
-        // code reads the default start hour, and an accumulating stat banks that wrong value for good.
-        calendar: openingHour !== null ? { startHour: openingHour } : calendar,
-      };
-
       // Apply stat changes
-      if (statChanges.length > 0) {
-        applyStatChanges(statChanges, null, null, turnClock);
+      if (commit.statChanges.length > 0) {
+        applyStatChanges(commit.statChanges, null, null, commit.clock);
       } else if (anyStatUsesClock) {
         // Nothing moved, but time still passed — clock-reading code runs on its own so a time-based stat
         // ticks every turn instead of only on turns the AI happened to report a stat change.
-        void runStatCode(playerStatsRef.current, turnClock);
+        void runStatCode(playerStatsRef.current, commit.clock);
       }
 
       // Advance the clock by what this turn actually took (the flat hour when unmeasured).
-      handleTimePassed(turnHours);
+      handleTimePassed(commit.turnHours);
 
       // Snapshot this turn once the updates above commit (deferred so the snapshot captures the finalized
       // message, applied stat changes, and advanced time rather than a stale mid-batch read).
       armTurnSnapshot();
 
       // Only set game as started after a successful opening turn
-      if (isOpeningTurn) {
+      if (commit.isOpeningTurn) {
         setIsGameStarted(true);
       }
 
@@ -2234,66 +2144,26 @@ ${playerNotes || NONE_PLACEHOLDER}
       if (sceneImageAuto && !imageGenDisabled) {
         // Own controller, chained to the turn's signal: the panel's Stop aborts through
         // `sceneImageAbortRef` while the main turn Stop still reaches the render via the chain.
-        const controller = new AbortController();
-        const onAbort = () => controller.abort();
+        const imageController = new AbortController();
+        const onAbort = () => imageController.abort();
         if (signal.aborted) onAbort(); else signal.addEventListener('abort', onAbort, { once: true });
-        sceneImageAbortRef.current = controller;
+        sceneImageAbortRef.current = imageController;
         try {
           await runSceneImageRef.current({
             turnId: currentTurnIdRef.current,
-            narration: narrationResponse,
+            narration: commit.turn.narration,
             participants: turnParticipants,
             locationId: turnLocation?.id,
-            signal: controller.signal,
+            signal: imageController.signal,
           });
         } finally {
           signal.removeEventListener('abort', onAbort);
         }
       }
     } catch (error) {
-      const err = error as { response?: { status?: number }; message?: string; connectionHandled?: boolean };
-      // Drop this turn's dangling user message on any error exit (both the early connection-failure return
-      // and the fall-through below), unless narration had already streamed a partial assistant reply — the
-      // guard inside leaves a valid [user, assistant] pair intact.
-      discardUnpairedUserTurn();
-      // Reset game started state if the opening turn fails
-      if (isOpeningTurn) {
-        setIsGameStarted(false);
-      }
-
-      // A connection failure already surfaced its own guide toast in makeAIRequest — don't stack a second.
-      if (err.connectionHandled) {
-        addSystemLogEntry("Couldn't reach the AI server — see the connection guide.");
-        return;
-      }
-
-      let errorMessage = "Failed to complete action. Please try again.";
-
-      // Handle specific error codes
-      if (err.response) {
-        if (err.response.status === 404) {
-          errorMessage =
-            "Request failed (404) Invalid endpoint URL or model name. Please check your settings.";
-        } else if (err.response.status === 400) {
-          errorMessage =
-            "Request failed (400). Either model name is wrong or memory limit exceeded model limit.";
-        }
-      }
-      // Handle JSON parse errors
-      else if (err.message === "Unable to parse input") {
-        errorMessage =
-          "The AI model was unable to produce the correct JSON format. Try a different model.";
-      }
-
-      toast.error(errorMessage, {
-        position: "top-right",
-        autoClose: 3000,
-        hideProgressBar: false,
-        closeOnClick: true,
-        pauseOnHover: true,
-        draggable: true,
-      });
-      addSystemLogEntry(errorMessage);
+      // The pipeline's own failures come back as a typed result above; what lands here is a derivation
+      // throwing — context assembly, the read-aloud pass, or applying the commit.
+      reportFailure(classifyTurnError(error));
     } finally {
       setIsWaitingForAI(false);
       setIsRevealingNarration(false);
@@ -2825,10 +2695,9 @@ ${playerNotes || NONE_PLACEHOLDER}
       // A failed silent request (the digest) is non-fatal — let the drainer swallow it without a toast.
       if (silent) throw error;
       // A network failure (server off / wrong URL / CORS disabled) is opaque and unactionable from the
-      // generic toast — offer the connection guide instead, and tag the error so the outer handler
-      // in sendGameAction doesn't stack its own toast on top.
+      // generic toast — offer the connection guide instead. The turn knows this already showed, because it
+      // knows the failed request wasn't silent.
       if (isLikelyConnectionError(error)) {
-        (error as { connectionHandled?: boolean }).connectionHandled = true;
         toast.error(
           <div className="flex flex-col items-start gap-1">
             <span>Couldn&apos;t reach your AI server.</span>
@@ -3110,10 +2979,10 @@ ${playerNotes || NONE_PLACEHOLDER}
   const makeAIRequestRef = useRef(makeAIRequest);
   makeAIRequestRef.current = makeAIRequest;
 
-  // Build + issue the choices/stats aux requests. Shared verbatim by the live turn (the concurrent/sequential
-  // batch in sendGameAction) and the standalone re-rolls (handleRegenerateChoices/Stats), so the prompt
-  // assembly and request shape can't drift between them. Callers own the enable-guard and result handling;
-  // `quiet` suppresses the status label (the concurrent batch sets one stable label for all three).
+  // Build + issue the choices/stats requests for the standalone re-rolls (handleRegenerateChoices/Stats),
+  // which ask outside a turn and so have no Turn Plan to run — a live turn's copies are the pass records'
+  // (lib/turnPipeline/turnPasses). Callers own the enable-guard and result handling; `quiet` suppresses the
+  // status label.
   const requestChoices = (
     ctx: Record<string, string>,
     sceneEntityTokens: Record<string, string>,
