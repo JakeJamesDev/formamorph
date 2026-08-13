@@ -323,8 +323,9 @@ ipcMain.handle('llm-move-cancel', () => { modelMove.cancel(); return true; });
 // Free bytes on the volume holding a folder, for the "won't fit" warning. null when it can't be read.
 ipcMain.handle('llm-free-space', (_event, dir) => modelMove.freeSpace(dir || modelsDir()));
 
-// Download a catalog model from Hugging Face, then load it. Progress streams to the renderer.
-ipcMain.handle('llm-download', async (_event, { url, fileName }) => {
+// Download a catalog model from Hugging Face, then load it unless the renderer opts out. Progress streams
+// to the renderer. autoLoad defaults to true so an older renderer keeps the load-on-finish behavior.
+ipcMain.handle('llm-download', async (_event, { url, fileName, autoLoad = true }) => {
   // Refuse rather than silently redirecting to the default folder: a model landing somewhere the user
   // didn't choose can quietly fill the drive they moved downloads off in the first place.
   const dest = modelsDir();
@@ -334,8 +335,10 @@ ipcMain.handle('llm-download', async (_event, { url, fileName }) => {
   const finalPath = await modelDownload.download({ url, fileName, destDir: dest }, (p) => {
     if (mainWindow && !mainWindow.isDestroyed()) mainWindow.webContents.send('llm-download-progress', p);
   });
-  await llmEngine.stop();
-  await llmEngine.start({ modelPath: finalPath, ...engineOptions });
+  if (autoLoad !== false) {
+    await llmEngine.stop();
+    await llmEngine.start({ modelPath: finalPath, ...engineOptions });
+  }
   return { path: finalPath };
 });
 ipcMain.handle('llm-download-cancel', () => { modelDownload.cancel(); return true; });

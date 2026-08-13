@@ -151,8 +151,9 @@ declare global {
         onMoveProgress: (cb: (p: LocalMoveProgress) => void) => () => void;
         /** Set engine load options (context size / GPU layers / flash attention); reloads if changed. */
         setOptions: (opts: { contextSize: number; gpuLayers: number; flashAttention: boolean; parallelRequests: number }) => Promise<LocalLlmState>;
-        /** Download a GGUF from Hugging Face, then load it; resolves with the saved path. */
-        download: (opts: { url: string; fileName: string }) => Promise<{ path: string }>;
+        /** Download a GGUF from Hugging Face, loading it on finish unless autoLoad is false; resolves with
+         *  the saved path. */
+        download: (opts: { url: string; fileName: string; autoLoad?: boolean }) => Promise<{ path: string }>;
         /** Cancel (pause) the in-flight download; its partial is kept for a later resume. */
         cancelDownload: () => Promise<boolean>;
         /** Partial downloads waiting to be resumed. */
@@ -275,8 +276,9 @@ export function subscribeLocalMove(cb: (p: LocalMoveProgress) => void): () => vo
 export const setLocalLlmOptions = (opts: { contextSize: number; gpuLayers: number; flashAttention: boolean; parallelRequests: number }): Promise<LocalLlmState> =>
   requireLlm().setOptions(opts);
 
-/** Download a GGUF from Hugging Face and load it; resolves with the saved path. */
-export const downloadLocalModel = (opts: { url: string; fileName: string }): Promise<{ path: string }> =>
+/** Download a GGUF from Hugging Face, loading it on finish unless autoLoad is false; resolves with the
+ *  saved path. */
+export const downloadLocalModel = (opts: { url: string; fileName: string; autoLoad?: boolean }): Promise<{ path: string }> =>
   requireLlm().download(opts);
 
 /** Cancel (pause) the in-flight model download; the partial is kept for a later resume. */

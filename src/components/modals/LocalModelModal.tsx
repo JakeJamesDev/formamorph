@@ -17,10 +17,12 @@ import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import { Section, RowLabel, CheckRow, HintInfo } from '@/components/SettingsRows';
+import { rowCopy } from './settingsRowCopy';
 import { ConfirmDialog } from '@/components/ConfirmDialog';
 import { LOCAL_MODELS, VRAM_TIERS, formatModelSize, formatReleased, formatDownloads, repoOf, tierForVram, type LocalModelInfo, type VramTier } from '@/lib/localModels';
 import { useCatalogDownloads } from '@/lib/useCatalogDownloads';
 import { useLocalLlmStatus } from '@/lib/useLocalLlmStatus';
+import { useSettings } from '@/contexts/SettingsContext';
 import { useVramStats, resolveOwnVram } from '@/lib/useVramStats';
 import type { LocalLlmState } from '@/lib/imageGen/desktop';
 import { EngineStatusLine, GpuMemoryBox } from '@/components/LocalModelStatus';
@@ -262,14 +264,20 @@ function MoveModelsDialog({ flow, onMove, onSkip, onCancel, onDone }: {
 }
 
 /**
- * The Options tab: where models are downloaded to, and one optional extra folder to search so a library
- * downloaded for another app shows up without copying it. Subfolder search is on by default because LM
- * Studio nests models as publisher/repo/file.
+ * The Options tab: whether a model loads itself, where models are downloaded to, and one optional extra
+ * folder to search so a library downloaded for another app shows up without copying it. Subfolder search is
+ * on by default because LM Studio nests models as publisher/repo/file.
+ *
+ * The folder rows put the path on its own grid row beside the label and drop their buttons and warnings onto
+ * later rows in the control column, which is what lets the label center on the path instead of on the whole
+ * stack — the same shape `Row` uses to keep its hint out of the centering.
  */
-function SearchLocations({ locations, onChange, onChangeDownloadDir }: {
+function SearchLocations({ locations, onChange, onChangeDownloadDir, autoLoad, onChangeAutoLoad }: {
   locations: LocalModelLocations | null;
   onChange: (opts: { externalDir: string | null; searchSubfolders: boolean }) => void;
   onChangeDownloadDir: (dir: string | null) => void;
+  autoLoad: boolean;
+  onChangeAutoLoad: (v: boolean) => void;
 }) {
   if (!locations) return null;
   const {
@@ -279,106 +287,111 @@ function SearchLocations({ locations, onChange, onChangeDownloadDir }: {
 
   return (
     <div className="grid gap-6 py-4 pr-2">
+      <Section title="Loading" hint="When a model gets loaded into memory.">
+        <CheckRow
+          {...rowCopy('localAutoLoad')}
+          htmlFor="modelAutoLoad"
+          checked={autoLoad}
+          onChange={onChangeAutoLoad}
+        />
+      </Section>
+
       <Section title="Download Folder" hint="Where models you download are saved.">
-        <div className="grid grid-cols-1 sm:grid-cols-[minmax(0,1fr)_minmax(0,3fr)] items-start gap-4">
-          <RowLabel align="top">Folder</RowLabel>
-          <div className="space-y-2">
-            {/* The path gets its own line above the buttons: these run long, and truncating one to make
-                room for controls hides the part that identifies the folder. */}
-            <div className="flex items-baseline gap-2">
-              <span className="min-w-0 flex-grow truncate font-mono text-meta" title={rootDir}>{rootDir}</span>
-              {freeBytes !== null && (
-                <span className="shrink-0 text-meta tabular-nums text-muted-foreground">
-                  {formatModelSize(freeBytes)} free
-                </span>
-              )}
-            </div>
-            <div className="flex items-center gap-2">
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                onClick={async () => {
-                  const dir = await pickLocalModelFolder('Choose where to download models');
-                  if (dir && dir !== rootDir) onChangeDownloadDir(dir);
-                }}
-              >
-                Change…
-              </Button>
-              {!isDefaultDir && (
-                <Button type="button" variant="ghost" size="sm" onClick={() => onChangeDownloadDir(null)}>
-                  Use Default
-                </Button>
-              )}
-            </div>
-            {downloadDirMissing && (
-              <p className="text-helper text-destructive">
-                That folder isn&apos;t available right now — downloads are paused until it&apos;s back or you choose another.
-              </p>
-            )}
-            {!isDefaultDir && (
-              <p className="text-helper text-muted-foreground">
-                Models live outside the app folder now, so copying the app folder won&apos;t bring them along.
-                The default is <span className="font-mono">{defaultDir}</span>.
-              </p>
+        <div className="grid grid-cols-1 sm:grid-cols-[minmax(0,1fr)_minmax(0,3fr)] items-center gap-x-4 gap-y-2">
+          <RowLabel className="mb-2 sm:mb-0">Folder</RowLabel>
+          {/* The path gets its own row above the buttons: these run long, and truncating one to make
+              room for controls hides the part that identifies the folder. */}
+          <div className="flex min-w-0 items-baseline gap-2">
+            <span className="min-w-0 flex-grow truncate font-mono text-meta" title={rootDir}>{rootDir}</span>
+            {freeBytes !== null && (
+              <span className="shrink-0 text-meta tabular-nums text-muted-foreground">
+                {formatModelSize(freeBytes)} free
+              </span>
             )}
           </div>
+          <div className="flex items-center gap-2 sm:col-start-2">
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={async () => {
+                const dir = await pickLocalModelFolder('Choose where to download models');
+                if (dir && dir !== rootDir) onChangeDownloadDir(dir);
+              }}
+            >
+              Change…
+            </Button>
+            {!isDefaultDir && (
+              <Button type="button" variant="ghost" size="sm" onClick={() => onChangeDownloadDir(null)}>
+                Use Default
+              </Button>
+            )}
+          </div>
+          {downloadDirMissing && (
+            <p className="text-helper text-destructive sm:col-start-2">
+              That folder isn&apos;t available right now — downloads are paused until it&apos;s back or you choose another.
+            </p>
+          )}
+          {!isDefaultDir && (
+            <p className="text-helper text-muted-foreground sm:col-start-2">
+              Models live outside the app folder now, so copying the app folder won&apos;t bring them along.
+              The default is <span className="font-mono">{defaultDir}</span>.
+            </p>
+          )}
         </div>
       </Section>
 
       <Section title="Additional Search Folder" hint="Already have models for another app? Point us at them and they'll show up in your list.">
-        <div className="grid grid-cols-1 sm:grid-cols-[minmax(0,1fr)_minmax(0,3fr)] items-start gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-[minmax(0,1fr)_minmax(0,3fr)] items-center gap-x-4 gap-y-2">
           <RowLabel
-            align="top"
+            className="mb-2 sm:mb-0"
             info={<HintInfo>{'Models found in this folder are **read-only**.\n\n- They can be loaded like any other model\n- They are never deleted from here — they belong to whichever app downloaded them\n- Downloads always land in your download folder, not this one'}</HintInfo>}
           >
             Folder
           </RowLabel>
-          <div className="space-y-2">
-            <div className="min-w-0 truncate text-meta" title={externalDir ?? undefined}>
-              {externalDir
-                ? <span className="font-mono">{externalDir}</span>
-                : <span className="text-muted-foreground">Not set</span>}
-            </div>
-            <div className="flex items-center gap-2">
-              {!externalDir && lmStudioDir && (
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  onClick={() => onChange({ externalDir: lmStudioDir, searchSubfolders: true })}
-                >
-                  Use LM Studio
-                </Button>
-              )}
+          <div className="min-w-0 truncate text-meta" title={externalDir ?? undefined}>
+            {externalDir
+              ? <span className="font-mono">{externalDir}</span>
+              : <span className="text-muted-foreground">Not set</span>}
+          </div>
+          <div className="flex items-center gap-2 sm:col-start-2">
+            {!externalDir && lmStudioDir && (
               <Button
                 type="button"
                 variant="outline"
                 size="sm"
-                onClick={async () => {
-                  const dir = await pickLocalModelFolder('Choose a folder to search for models');
-                  if (dir) onChange({ externalDir: dir, searchSubfolders });
-                }}
+                onClick={() => onChange({ externalDir: lmStudioDir, searchSubfolders: true })}
               >
-                Browse…
+                Use LM Studio
               </Button>
-              {externalDir && (
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => onChange({ externalDir: null, searchSubfolders })}
-                >
-                  <X className="mr-1 h-3.5 w-3.5" />Clear
-                </Button>
-              )}
-            </div>
-            {externalMissing && (
-              <p className="text-helper text-warning">
-                That folder isn&apos;t available right now — its models are hidden until it&apos;s back.
-              </p>
+            )}
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={async () => {
+                const dir = await pickLocalModelFolder('Choose a folder to search for models');
+                if (dir) onChange({ externalDir: dir, searchSubfolders });
+              }}
+            >
+              Browse…
+            </Button>
+            {externalDir && (
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                onClick={() => onChange({ externalDir: null, searchSubfolders })}
+              >
+                <X className="mr-1 h-3.5 w-3.5" />Clear
+              </Button>
             )}
           </div>
+          {externalMissing && (
+            <p className="text-helper text-warning sm:col-start-2">
+              That folder isn&apos;t available right now — its models are hidden until it&apos;s back.
+            </p>
+          )}
         </div>
 
         {externalDir && (
@@ -398,11 +411,12 @@ function SearchLocations({ locations, onChange, onChangeDownloadDir }: {
 /**
  * Desktop-only local model manager. Three tabs: Installed (every GGUF in the searched folders —
  * reorderable, loadable, deletable), Recommended (a curated catalog grouped by VRAM tier, with resumable
- * downloads), and Options (which folders are downloaded to and searched).
- * A freshly downloaded model auto-loads, and the default endpoint points at it.
+ * downloads), and Options (auto-load, plus which folders are downloaded to and searched).
+ * A freshly downloaded model auto-loads unless auto-load is off, and the default endpoint points at it.
  */
 export function LocalModelModal({ open, onOpenChange }: { open: boolean; onOpenChange: (v: boolean) => void }) {
   const engine = useLocalLlmStatus();
+  const { localAutoLoad, setLocalAutoLoad } = useSettings();
   // Desktop reads VRAM over the IPC bridge (no helper URL). Only poll while the popup is open.
   const vram = useVramStats('', { enabled: open });
   const [view, setView] = useState<ModelView>('installed');
@@ -484,7 +498,7 @@ export function LocalModelModal({ open, onOpenChange }: { open: boolean; onOpenC
     // Seed the bar at the resume point so a resumed download doesn't flash back to 0%.
     setProgress({ fileName: m.fileName, received: partials[m.fileName] ?? 0, total: m.sizeBytes, done: false });
     try {
-      await downloadLocalModel({ url: m.url, fileName: m.fileName });
+      await downloadLocalModel({ url: m.url, fileName: m.fileName, autoLoad: localAutoLoad });
       refresh();
     } catch (e) {
       // A pause isn't an error — just refresh so the row shows its resumable partial.
@@ -600,7 +614,13 @@ export function LocalModelModal({ open, onOpenChange }: { open: boolean; onOpenC
 
         {view === 'options' ? (
           <ScrollArea className="min-h-0 flex-1">
-            <SearchLocations locations={locations} onChange={changeLocations} onChangeDownloadDir={changeDownloadDir} />
+            <SearchLocations
+              locations={locations}
+              onChange={changeLocations}
+              onChangeDownloadDir={changeDownloadDir}
+              autoLoad={localAutoLoad}
+              onChangeAutoLoad={setLocalAutoLoad}
+            />
           </ScrollArea>
         ) : view === 'installed' ? (
           <>
