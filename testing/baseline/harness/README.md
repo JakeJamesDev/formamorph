@@ -39,10 +39,14 @@ Start your local model server (the harness does **not** launch it).
 npm run baseline                       # every model × every profile
 npm run baseline -- --profile A        # just Profile A, all models
 npm run baseline -- --model meromero    # just the model whose label contains "meromero"
+
+# also record the Turn Pipeline parity fixture (one profile × one model):
+npm run baseline -- --profile parity --model gemma4-e4b-cloud --parity testing/parity/turn-pipeline-parity.json
 ```
 
 Output lands in `testing/baseline/runs/` (gitignored). Each line reports `<turns>/<expected>` so an empty/short
-run is obvious.
+run is obvious. `--parity <file>` additionally writes the ordered AI request sequence to `<file>` (relative to
+the repo root) — see [../../parity/README.md](../../parity/README.md) before re-recording the tracked fixture.
 
 ## Notes
 

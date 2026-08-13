@@ -60,6 +60,10 @@ const argVal = (flag) => {
 };
 const profileFilter = argVal("--profile");
 const modelFilter = argVal("--model");
+// `--parity <file>` also captures the Turn Pipeline parity fixture (the ordered request sequence at the
+// request seam) and writes it to <file>, relative to the repo root. Single profile x model only — the
+// fixture names one run. Format: testing/parity/README.md.
+const parityOut = argVal("--parity");
 const repeat = Math.max(1, parseInt(argVal("--repeat") ?? "1", 10) || 1);
 
 // localStorage serialization: strings stored raw (stringCodec), everything else JSON (bool/int codecs).
@@ -306,6 +310,14 @@ async function runOne(browser, cfg, model, profile) {
     throw new Error(`${label}: window.__baseline never registered (did the game screen mount?)`);
   }
 
+  // Arm the parity recording before any turn runs, so the fixture holds the whole scripted run.
+  if (parityOut) {
+    await page.evaluate((info) => window.__baseline.startParityRecording(info), {
+      label,
+      world: profile.world ?? DEFAULT_WORLD,
+    });
+  }
+
   // Warm up (load) this model before the real turns — critical on a single GPU where switching models evicts
   // the previous one and the load-triggering request comes back truncated.
   console.log(`  warming up ${model.modelName}…`);
@@ -335,7 +347,16 @@ async function runOne(browser, cfg, model, profile) {
   await page.waitForTimeout(profile.settleMs ?? cfg.settleMs ?? 4000);
 
   const dump = await page.evaluate(() => window.__baseline.getDebugTurns());
+  const parity = parityOut ? await page.evaluate(() => window.__baseline.finishParityRecording()) : null;
   await context.close();
+
+  if (parity) {
+    const parityFile = path.resolve(REPO_ROOT, parityOut);
+    await mkdir(path.dirname(parityFile), { recursive: true });
+    await writeFile(parityFile, JSON.stringify(parity, null, 2), "utf8");
+    const requests = parity.turns.reduce((n, t) => n + t.requests.length, 0) + parity.orphans.length;
+    console.log(`  ✔ parity fixture: ${parity.turns.length} turns, ${requests} requests → ${path.relative(REPO_ROOT, parityFile)}`);
+  }
 
   const stamp = new Date().toISOString().replace(/[:.]/g, "-");
   const file = path.join(RUNS_DIR, `${profile.name}-${model.label}-${stamp}.json`);

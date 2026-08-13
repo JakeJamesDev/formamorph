@@ -1,5 +1,6 @@
 import { useEffect } from "react";
 import type { MutableRefObject } from "react";
+import { getParityFixture, startParityRecording, stopParityRecording } from "./turnPipeline/parityRecorder";
 
 type SendAction = (action: string) => Promise<void>;
 
@@ -9,6 +10,8 @@ type SendAction = (action: string) => Promise<void>;
  * without fragile DOM waits:
  *   - `runScript(actions)` runs each action through `sendGameAction`, awaiting turn completion between them.
  *   - `getDebugTurns()` returns the current AI-context turns (the same array the Export button downloads).
+ *   - `startParityRecording(info)` / `finishParityRecording()` capture the Turn Pipeline parity fixture —
+ *     the ordered request sequence the turn emits, recorded at the request seam.
  *
  * `import.meta.env.DEV` guards the body, so production builds dead-code-eliminate it (no `__baseline` ships).
  */
@@ -21,6 +24,11 @@ export function useBaselineTestHook(
     const w = window as unknown as { __baseline?: unknown };
     w.__baseline = {
       getDebugTurns: () => debugTurnsRef.current,
+      startParityRecording: (info: { label?: string; world?: string }) => startParityRecording(info),
+      finishParityRecording: () => {
+        stopParityRecording();
+        return getParityFixture(new Date().toISOString());
+      },
       runScript: async (actions: string[]) => {
         for (const a of actions) {
           await sendGameActionRef.current(a);
@@ -32,6 +40,7 @@ export function useBaselineTestHook(
       },
     };
     return () => {
+      stopParityRecording();
       delete (w as { __baseline?: unknown }).__baseline;
     };
   }, [debugTurnsRef, sendGameActionRef]);

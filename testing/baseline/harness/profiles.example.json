@@ -140,6 +140,37 @@
       ]
     },
     {
+      "_comment": "Turn Pipeline parity capture: Sedge Landing with every settings-gated AI pass turned on (staged planning, choices, stats, location auto-apply, memory digests + milestone selection, character diaries, the measured clock). Paced so the between-turn drainers run. Record with: npm run baseline -- --profile parity --model gemma4-e4b-cloud --parity testing/parity/turn-pipeline-parity.json",
+      "name": "parity",
+      "turnPauseMs": 6000,
+      "settleMs": 12000,
+      "settings": {
+        "thinkingMode": "staged",
+        "markdownOutput": true,
+        "choicesEnabled": true,
+        "statUpdatesEnabled": true,
+        "locationChangeEnabled": true,
+        "locationAutoApply": true,
+        "memoryDigests": true,
+        "characterDiaries": true,
+        "timeContext": true,
+        "aiClock": true,
+        "concurrentTurnRequests": true,
+        "showSilentRequests": true,
+        "paragraphLimit": "auto",
+        "language": "English"
+      },
+      "script": [
+        "START GAME",
+        "I read the notices nailed to the leaning post.",
+        "I ask the ferryman to take me across before dark.",
+        "I tie my usual tollow-knot in the mooring rope while I wait.",
+        "I heave my pack onto the ferry and grip the tar-black rope.",
+        "I glance at the eel-smoker and ask if she is crossing too.",
+        "I tell them both my name is Wren."
+      ]
+    },
+    {
       "_comment": "Model screen: one 10-turn pass on the gate world with shipped default prompts (what the app really uses). `npm run screen -- --model X` runs this profile then scores the dump into a card + leaderboard.md. See GATE-PROBE.md / the screen section.",
       "name": "screen",
       "world": "blackrue-waystation.json",
