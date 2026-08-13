@@ -92,6 +92,7 @@ import { buildStatContext } from "../lib/statContext";
 import { variableForToken, variableVariantIds, decodeVariant, tokenVariant, withVariant } from "../lib/promptVariables";
 import { renderPromptTemplate } from "../lib/promptTemplate";
 import { useBaselineTestHook } from "../lib/baselineTestHook";
+import { recordParityRequest, recordParityResponse, recordParityTurn } from "../lib/turnPipeline/parityRecorder";
 import { parseTurns, buildVerbatimHistory, buildBandedHistory, extractKeywords, type BandCounts } from "../lib/turnBanding";
 import { buildStamper, formatAbsolute, hoursByPosition, parseTimeDelta, parseOpeningDaypart, FLAT_HOURS_PER_TURN } from "../lib/gameClock";
 import { milestoneCandidates, agedMilestoneCandidates, resolveMilestoneDrop, resolveMilestoneKeep, buildIncrementalMilestoneUserMessage, parseIncrementalMilestoneReply, applyIncrementalVerdict } from "../lib/milestoneMemory";
@@ -1484,6 +1485,8 @@ const GameViewer = ({
       // Start a new turn in the AI-context history (cap to the last 50 turns).
       pendingDictionaryDebugRef.current = null;
       setDebugTurns((prev) => [...prev, { action: effectiveAction, requests: [], turnId: currentTurnIdRef.current }].slice(-50));
+      // Open this turn in the Turn Pipeline parity recording (inert unless the harness armed it).
+      recordParityTurn(effectiveAction, currentTurnIdRef.current);
 
       // With auto-apply on, resolve the location change up front — from the action alone, before any
       // context is built — so the whole turn (narration, lore, staged planning) runs in the new location.
@@ -2541,6 +2544,10 @@ ${playerNotes || NONE_PLACEHOLDER}
     // once; each would otherwise stomp the shared label, so the batch sets one stable label itself instead.
     quietLabel = false,
   ) => {
+    // The parity recording observes the seam itself: exactly the arguments this call received, in
+    // dispatch order, before anything downstream shapes them. Inert unless the harness armed it.
+    const paritySeq = recordParityRequest({ systemPrompt, messages, type: requestType, maxTokens: maxTokensOverride, silent, attachTurnId });
+
     // Where this prompt sends: its pinned preset, or the active endpoint when it follows the selection.
     // Resolved once here and handed to the spec layer, so the capture below and the request body can never
     // disagree about which target answered.
@@ -2799,6 +2806,10 @@ ${playerNotes || NONE_PLACEHOLDER}
           ttsModalRef.current?.streamEnd();
         }
       }
+      // Pair the answer with its request in the parity recording, so a replay can feed the same material
+      // back and reach the same next-turn prompts.
+      recordParityResponse(paritySeq, rawContent);
+
       // Record the raw output on this turn's matching request so the AI-context viewer can show it
       // (silent digests record onto the turn they summarize, mirroring captureRequest above).
       if (!silent || captureSilent) setDebugTurns((prev) => {
