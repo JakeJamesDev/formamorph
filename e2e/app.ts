@@ -1,4 +1,5 @@
 import type { Page } from '@playwright/test';
+import { TUTORIALS } from '../src/lib/tutorials';
 
 /** Dev-router surface installed by `src/lib/devRouter.ts` (DEV builds only). */
 interface DevRouter {
@@ -19,6 +20,12 @@ const BASE_SEED: Record<string, string> = {
   FORMAMORPH_endpointUrl: 'http://127.0.0.1:9/v1/chat/completions',
   FORMAMORPH_apiToken: 'e2e',
   FORMAMORPH_modelName: 'e2e-model',
+  // Every tutorial pre-dismissed, read from the registry so a new one can't start covering a control.
+  // A spec that wants one back clears it through `openApp`'s `extra`.
+  'formamorph.tutorialsSeen': JSON.stringify(TUTORIALS.map((t) => t.id)),
+  // Advanced, not the first-run Simple: Simple hides whole tabs and fields, and no spec here is
+  // measuring what Simple hides. One that is should set it back.
+  'formamorph.worldEditorMode': 'advanced',
 };
 
 /**
