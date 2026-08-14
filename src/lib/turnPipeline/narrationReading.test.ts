@@ -6,7 +6,7 @@ const ent = (id: string, name: string): Entity => ({ id, name });
 const loc = (id: string, name: string, over: Partial<GameLocation> = {}): GameLocation =>
   ({ id, name, entities: [], ...over }) as GameLocation;
 
-const MAREN = ent('e1', 'Maren Vosk');
+const MAREN = { ...ent('e1', 'Maren Vosk'), locations: ['l2'] };
 const SERANA = ent('e2', 'Professor Serana');
 
 const read = (narration: string, over: Parameters<typeof readNarration>[0] extends infer T ? Partial<T> : never = {}) =>
@@ -74,7 +74,7 @@ describe('readNarration', () => {
 
 describe('selectVisitorAdditions', () => {
   const here = loc('l1', 'The Jetty', { parentId: 'l0' });
-  const sibling = loc('l2', 'The Net Shed', { parentId: 'l0', entities: ['e1'] });
+  const sibling = loc('l2', 'The Net Shed', { parentId: 'l0' }); // Maren belongs here (see MAREN.locations)
   const locations = [loc('l0', 'Sedge Landing'), here, sibling];
 
   const visitors = (prose: string, discovered: Parameters<typeof selectVisitorAdditions>[0]['discovered'] = []) =>

@@ -141,6 +141,9 @@ export interface Entity {
   imageTags?: string;
   sound?: MediaAsset;
   model?: MediaAsset;
+  /** Ids of the locations this entity belongs to. The entity is present at every one of them
+   *  simultaneously. Read it through `lib/entityPresence`, which inverts it into per-location rosters. */
+  locations?: string[];
   /** Editor-only folder this entity lives in; null/absent = ungrouped. Purely organizational — never sent
    *  to the AI (grouping does not change the entity context). Reset to ungrouped on character-card import. */
   groupId?: string | null;
@@ -179,8 +182,6 @@ export interface GameLocation {
   /** Booru tags used for AI image generation; editor-only, not sent to the narrative AI. */
   imageTags?: string;
   ambientSound?: MediaAsset;
-  /** Entity ids present at this location. */
-  entities?: string[];
   /** Optional names of connected locations (shown in the gameplay location panel). */
   connections?: string[];
   /** v1.2.0: a candidate starting location (one chosen at random on new game). */

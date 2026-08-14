@@ -21,52 +21,58 @@ const world = (id: string, overview: Record<string, unknown>): World => ({
 
 const wrapper = ({ children }: { children: ReactNode }) => <GameDataProvider>{children}</GameDataProvider>;
 
-describe('removeEntity', () => {
+describe('entity ↔ location membership', () => {
+  // Membership is entity-owned (ADR-0003), so these worlds are stated the way the editor writes them.
   const worldWith = (entityIds: string[]) => ({
     ...world('w', {}),
-    entities: entityIds.map((id) => ({ id, name: id })),
+    entities: entityIds.map((id) => ({ id, name: id, locations: ['l1', 'l2'] })),
     locations: [
-      { id: 'l1', name: 'Dock', entities: [...entityIds] },
-      { id: 'l2', name: 'Green', entities: ['keep'] },
+      { id: 'l1', name: 'Dock' },
+      { id: 'l2', name: 'Green' },
     ],
   } as unknown as World);
 
-  it("drops the entity's id from every location that listed it", () => {
+  it('deleting an entity takes its location links with it, leaving no residue on the world', () => {
     const { result } = renderHook(() => useGameData(), { wrapper });
     act(() => { result.current.loadWorldData(worldWith(['gone', 'keep'])); });
 
     act(() => { result.current.removeEntity('gone'); });
 
     expect(result.current.entities.map((e) => e.id)).toEqual(['keep']);
-    // The link lives on the location, so a stale id here would ride into the exported world.
-    expect(result.current.locations.find((l) => l.id === 'l1')?.entities).toEqual(['keep']);
+    expect(JSON.stringify(result.current.locations)).not.toContain('gone');
   });
 
-  it("drops the id from a location's legacy `entity` alias too", () => {
-    // Pre-audience-split worlds keep the link on `entity`, which migration never folds; a stale id there
-    // would still ride into the export.
+  it('deleting a location strips it from every membership that listed it', () => {
+    const { result } = renderHook(() => useGameData(), { wrapper });
+    act(() => { result.current.loadWorldData(worldWith(['keep'])); });
+
+    act(() => { result.current.removeLocation('l1'); });
+
+    // A stale id is invisible in every roster but rides into the exported world forever.
+    expect(result.current.entities[0].locations).toEqual(['l2']);
+  });
+
+  it('leaves the entities untouched when nobody belonged to the deleted location', () => {
+    const { result } = renderHook(() => useGameData(), { wrapper });
+    act(() => { result.current.loadWorldData(worldWith(['keep'])); });
+    const before = result.current.entities;
+
+    act(() => { result.current.removeLocation('l9'); });
+
+    expect(result.current.entities).toBe(before); // same reference — no needless re-render
+  });
+
+  it('flips a location-owned world on load, so an old save file needs no separate import step', () => {
     const legacyWorld = {
       ...world('w', {}),
-      entities: [{ id: 'gone', name: 'gone' }, { id: 'keep', name: 'keep' }],
-      locations: [{ id: 'l1', name: 'Dock', entity: ['gone', 'keep'] }],
+      entities: [{ id: 'e1', name: 'Hermit' }],
+      locations: [{ id: 'l1', name: 'Dock', entities: ['e1'] }],
     } as unknown as World;
     const { result } = renderHook(() => useGameData(), { wrapper });
     act(() => { result.current.loadWorldData(legacyWorld); });
 
-    act(() => { result.current.removeEntity('gone'); });
-
-    const loc = result.current.locations.find((l) => l.id === 'l1') as { entity?: string[] };
-    expect(loc.entity).toEqual(['keep']);
-  });
-
-  it('leaves locations untouched when none referenced the entity', () => {
-    const { result } = renderHook(() => useGameData(), { wrapper });
-    act(() => { result.current.loadWorldData(worldWith(['keep'])); });
-    const before = result.current.locations;
-
-    act(() => { result.current.removeEntity('never-listed'); });
-
-    expect(result.current.locations).toBe(before); // same reference — no needless re-render
+    expect(result.current.entities[0].locations).toEqual(['l1']);
+    expect('entities' in result.current.locations[0]).toBe(false);
   });
 });
 

@@ -1,6 +1,7 @@
 import { useEditingDraft } from '@/lib/useEditingDraft';
 import { useGameData } from '@/contexts/GameDataContext';
 import { entitiesInTreeOrder } from '@/lib/entityGroupTree';
+import { entityIdsAt, setLocationRoster } from '@/lib/entityPresence';
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import { MultiSelect } from "@/components/ui/multi-select";
@@ -14,9 +15,20 @@ import { useEditorMode } from '@/lib/editorMode';
 import type { GameLocation } from '@/types';
 
 const LocationManager = ({ location }: { location: GameLocation }) => {
-  const { updateLocation, entities, entityGroups, placeholders } = useGameData();
+  const { updateLocation, entities, updateEntity, entityGroups, placeholders } = useGameData();
   const { draft: editingLocation, setField: handleChange } = useEditingDraft(location, updateLocation);
   const { advanced } = useEditorMode();
+
+  // Membership is entity-owned, so location-first authoring reads the inversion and writes each changed
+  // entity's own list — the same edit, expressed from the other side.
+  const presentIds = entityIdsAt(location.id, entities);
+  const handleEntitiesChange = (ids: string[]) => {
+    const before = new Map(entities.map((e) => [e.id, e]));
+    // Only the entities whose membership actually moved are written through.
+    setLocationRoster(location.id, ids, entities).forEach((entity) => {
+      if (before.get(entity.id) !== entity) updateEntity(entity);
+    });
+  };
 
   if (!editingLocation) return null;
 
@@ -97,8 +109,8 @@ const LocationManager = ({ location }: { location: GameLocation }) => {
         <MultiSelect
           key={editingLocation.id}
           options={entitiesInTreeOrder(entityGroups, entities).map((e) => ({ label: describePlaceholders(e.name, placeholders), value: e.id }))}
-          defaultValue={editingLocation.entities ?? []}
-          onValueChange={(v) => handleChange('entities', v)}
+          defaultValue={presentIds}
+          onValueChange={handleEntitiesChange}
           placeholder="Select entities"
           hideSelectAll
         />

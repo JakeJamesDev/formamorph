@@ -3,6 +3,7 @@ import {
   buildReachableLocationsContext, buildReachableEntitiesContext, buildDestinationsContext,
   buildParentLocationContext, sublocationEntityIds, expandScopedTokens, type ContextOpts,
 } from './locationContext';
+import { entityIdsAt } from './entityPresence';
 import { buildStatContext } from './statContext';
 import { buildDictionaryContext, flattenEnabledBookEntries } from './dictionaryUtils';
 import { buildTraitContext } from './traitTree';
@@ -50,8 +51,8 @@ export function authoredPreviewValues(world: AuthoredWorld): Record<string, stri
   // be reused. A Wildcard therefore shows one of its values rather than its raw token.
   const resolve = (text: string) => resolvePlaceholders(text, { placeholders, rolls: {} });
 
-  const presentIds = loc?.entities ?? [];
-  const subEntityIds = loc ? sublocationEntityIds(loc, locations) : [];
+  const presentIds = entityIdsAt(loc?.id, entities);
+  const subEntityIds = sublocationEntityIds(loc, locations, entities);
   const reachableExclude = [...presentIds, ...subEntityIds];
 
   const locationScopes: Record<string, (opts: ContextOpts) => string> = {

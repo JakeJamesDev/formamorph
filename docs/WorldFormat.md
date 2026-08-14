@@ -166,7 +166,6 @@ Optional folders that organize traits in the editor and the trait-selection scre
 | `backgroundImage` | String | Data-URL background image |
 | `imageTags` | String | Booru tags for AI image generation (editor-only; not sent to the narrative AI) |
 | `ambientSound` | [MediaAsset](#-media-fields) | Looping ambient audio |
-| `entities` | String[] | `id`s of entities present here |
 | `connections` | String[] | Names of connected locations (shown in the location panel) |
 | `isStarting` | Boolean | A candidate start location. One flagged = every game starts there; several = the player picks between them; none = a random location of any kind |
 | `parentId` | String \| null | Parent location `id` for sub-location nesting; null/absent = top-level (editor-only, not sent to the AI) |
@@ -186,6 +185,7 @@ Characters or objects in the world.
 | `aiSummary` | String | Short description sent to the AI where the full one is too long |
 | `images` | String[] | Data-URL portraits. A legacy singular `image` is still read as a one-item fallback |
 | `imageTags` | String | Booru tags for AI image generation (editor-only; not sent to the narrative AI) |
+| `locations` | String[] | `id`s of the locations this entity belongs to. It is present at **all** of them at once |
 | `sound` | [MediaAsset](#-media-fields) | Associated sound |
 | `model` | [MediaAsset](#-media-fields) | Associated 3D model |
 | `groupId` | String \| null | Parent entity-group `id`; null/absent = ungrouped (editor-only, not sent to the AI) |
@@ -318,7 +318,6 @@ A trimmed example showing the shape (media payloads abbreviated):
       "name": "Town Square",
       "playerDescription": "The central gathering place",
       "backgroundImage": "data:image/png;base64,...",
-      "entities": ["shopkeeper"],
       "connections": ["Market", "Tavern"],
       "isStarting": true
     },
@@ -334,7 +333,8 @@ A trimmed example showing the shape (media payloads abbreviated):
       "id": "shopkeeper",
       "name": "Friendly Shopkeeper",
       "type": "npc",
-      "playerDescription": "Sells various goods"
+      "playerDescription": "Sells various goods",
+      "locations": ["town"]
     }
   ],
   "statUpdates": [

@@ -1,6 +1,8 @@
 import { describe, it, expect } from 'vitest';
 import { APP_VERSION, migrateWorld, migrateSave, isSaveEnvelope } from './version';
-import type { SaveObject } from '@/types';
+import { entityIdsAt } from './entityPresence';
+import { buildEntityContext } from './locationContext';
+import type { Entity, GameLocation, SaveObject } from '@/types';
 
 // Loose view of a migrated world for assertions (avoids `any`).
 type DescItem = {
@@ -46,6 +48,108 @@ describe('migrateWorld — entity galleries', () => {
   it('leaves an authored gallery alone', () => {
     const out = migrateWorld({ worldOverview: {}, entities: [{ id: 'e', name: 'Wren', images: ['a', 'b'] }] });
     expect(out.entities[0].images).toEqual(['a', 'b']);
+  });
+});
+
+describe('migrateWorld — entity-owned location membership (ADR-0003)', () => {
+  // A world as 1.x–2.0 stored it: presence listed on each location. `entity` is the pre-audience-split
+  // alias, which the description rename never folded, so worlds in the wild still carry it.
+  const legacyWorld = () => ({
+    worldOverview: {},
+    locations: [
+      { id: 'bar', name: 'The Bar', entities: ['alice', 'bar-keep'] },
+      { id: 'docks', name: 'The Docks', entities: ['bar-keep', 'gull'] },
+      { id: 'attic', name: 'The Attic' },
+      { id: 'cellar', name: 'The Cellar', entity: ['gull'] },
+    ],
+    entities: [
+      { id: 'alice', name: 'Alice' },
+      { id: 'bar-keep', name: 'Bartender' },
+      { id: 'gull', name: 'Gull' },
+      { id: 'ghost', name: 'Ghost' },
+    ],
+  });
+
+  /** Every location's roster as the legacy world stated it — read off the fixture, not recomputed. */
+  const legacyRosters = (world: ReturnType<typeof legacyWorld>) =>
+    Object.fromEntries(world.locations.map((l) => [
+      l.id,
+      [...((l as { entities?: string[] }).entities ?? []), ...((l as { entity?: string[] }).entity ?? [])].sort(),
+    ]));
+
+  const locationsOf = (w: unknown) => (w as { entities: { id: string; locations?: string[] }[] }).entities;
+
+  it('inverts every roster onto the entities and strips the location-side lists', () => {
+    const out = migrateWorld(legacyWorld()) as unknown as MigratedWorld & {
+      locations: Record<string, unknown>[];
+      entities: { id: string; locations?: string[] }[];
+    };
+    expect(locationsOf(out).find((e) => e.id === 'alice')!.locations).toEqual(['bar']);
+    expect(locationsOf(out).find((e) => e.id === 'bar-keep')!.locations).toEqual(['bar', 'docks']);
+    expect(locationsOf(out).find((e) => e.id === 'gull')!.locations).toEqual(['docks', 'cellar']);
+    // Nobody listed the Ghost, so it gains no field at all.
+    expect('locations' in locationsOf(out).find((e) => e.id === 'ghost')!).toBe(false);
+    for (const loc of out.locations) {
+      expect('entities' in loc).toBe(false);
+      expect('entity' in loc).toBe(false);
+    }
+  });
+
+  it('equivalence: every location rosters exactly who it listed before the flip', () => {
+    const before = legacyWorld();
+    const after = migrateWorld(before);
+    const rosters = legacyRosters(legacyWorld());
+    for (const id of Object.keys(rosters)) {
+      expect(entityIdsAt(id, (after as unknown as { entities: Entity[] }).entities).sort()).toEqual(rosters[id]);
+    }
+  });
+
+  it('renders the same roster text the location-owned world fed the AI', () => {
+    const after = migrateWorld({
+      worldOverview: {},
+      locations: [{ id: 'bar', name: 'The Bar', entities: ['alice'] }],
+      entities: [{ id: 'alice', name: 'Alice', aiDescription: 'The tenant.' }],
+    }) as unknown as { locations: GameLocation[]; entities: Entity[] };
+    expect(buildEntityContext(after.locations[0], after.entities)).toBe('Alice\n  description: The tenant.\n');
+  });
+
+  it('migrating twice is identical to migrating once', () => {
+    const once = migrateWorld(legacyWorld());
+    const twice = migrateWorld(structuredClone(once));
+    expect(twice).toEqual(once);
+  });
+
+  it('runs on a world already stamped at APP_VERSION (shipped 2.x worlds predate the flip)', () => {
+    const out = migrateWorld({ ...legacyWorld(), version: APP_VERSION }) as unknown as { entities: Entity[] };
+    expect(entityIdsAt('bar', out.entities)).toEqual(['alice', 'bar-keep']);
+  });
+
+  it('drops an id naming no entity rather than carrying the dangle onto the entities', () => {
+    const out = migrateWorld({
+      worldOverview: {},
+      locations: [{ id: 'bar', name: 'The Bar', entities: ['deleted-long-ago', 'alice'] }],
+      entities: [{ id: 'alice', name: 'Alice' }],
+    }) as unknown as { entities: Entity[] };
+    expect(out.entities).toHaveLength(1);
+    expect(entityIdsAt('bar', out.entities)).toEqual(['alice']);
+  });
+
+  it('leaves the rosters alone when the world has no entities array to move them to', () => {
+    const out = migrateWorld({
+      worldOverview: {},
+      locations: [{ id: 'bar', name: 'The Bar', entities: ['alice'] }],
+    }) as unknown as { locations: { entities?: string[] }[] };
+    // Stripping first would destroy the only copy of the membership.
+    expect(out.locations[0].entities).toEqual(['alice']);
+  });
+
+  it('merges into a membership an author already wrote, without duplicating it', () => {
+    const out = migrateWorld({
+      worldOverview: {},
+      locations: [{ id: 'bar', name: 'The Bar', entities: ['alice'] }],
+      entities: [{ id: 'alice', name: 'Alice', locations: ['bar', 'docks'] }],
+    }) as unknown as { entities: Entity[] };
+    expect(out.entities[0].locations).toEqual(['bar', 'docks']);
   });
 });
 

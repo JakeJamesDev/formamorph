@@ -91,6 +91,46 @@ function migrateEntityGalleries(world: Record<string, unknown>): void {
   );
 }
 
+/**
+ * Flip location-owned presence to entity-owned membership (ADR-0003): every id a location listed becomes a
+ * location id on that entity, and the location-side list is dropped. Reads both the current `entities` key
+ * and the pre-audience-split `entity` alias, which migration never folded. Ids naming no entity are dropped
+ * rather than carried — the AI feed already skipped them, and an entity-side list has nowhere to put them.
+ *
+ * Idempotent: a world whose locations no longer carry a roster contributes nothing, so a second run leaves
+ * the memberships exactly as the first left them. Deliberately NOT version-gated, for the same reason as
+ * `foldDictionaryIntoBooks`: shipped 2.x worlds carry `version === APP_VERSION` yet predate the flip.
+ */
+function flipEntityLocationMembership(world: Record<string, unknown>): void {
+  // Both arrays are required before anything is stripped: a world with rosters but no entities array has
+  // nowhere to move them to, and stripping first would delete the only copy.
+  if (!Array.isArray(world.locations) || !Array.isArray(world.entities)) return;
+  const membership = new Map<string, string[]>();
+  world.locations = world.locations.map((raw) => {
+    if (!raw || typeof raw !== 'object') return raw;
+    const { entities, entity, ...rest } = raw as Record<string, unknown> & { id?: string };
+    const listed = [...(Array.isArray(entities) ? entities : []), ...(Array.isArray(entity) ? entity : [])];
+    if (rest.id) {
+      for (const id of listed) {
+        if (typeof id !== 'string') continue;
+        const at = membership.get(id) ?? [];
+        at.push(rest.id);
+        membership.set(id, at);
+      }
+    }
+    return rest;
+  });
+  if (membership.size === 0) return;
+  world.entities = world.entities.map((raw) => {
+    if (!raw || typeof raw !== 'object') return raw;
+    const e = raw as Record<string, unknown> & { id?: string; locations?: unknown };
+    const added = e.id ? membership.get(e.id) ?? [] : [];
+    if (added.length === 0) return raw;
+    const existing = Array.isArray(e.locations) ? (e.locations as string[]) : [];
+    return { ...e, locations: [...new Set([...existing, ...added])] };
+  });
+}
+
 /** Split a legacy comma-joined keyword string into the array shape. */
 function splitLegacyKeys(raw: unknown): string[] {
   if (Array.isArray(raw)) return raw.map((k) => String(k)).filter(Boolean);
@@ -143,7 +183,8 @@ function coerceLegacyListStats(stats: readonly Stat[]): Stat[] {
 
 /**
  * Bring an imported world up to the current format and stamp it with `APP_VERSION`. The dictionary→books
- * fold, the keyword-array migration and the entity-gallery fold run unconditionally (they aren't
+ * fold, the keyword-array migration, the entity-gallery fold and the entity-location flip run
+ * unconditionally (they aren't
  * version-gated — see `foldDictionaryIntoBooks`); the rest is skipped for a world already at `APP_VERSION`. Moves the legacy root `customPlayerVRM` bare data-URL into
  * `worldOverview.customPlayerVRM` as a `MediaAsset`, auto-binds legacy body stats to body morphs, and
  * renames v1.2 description keys on entities/locations/traits to the audience-based keys. Remaining field
@@ -156,6 +197,7 @@ export function migrateWorld(raw: unknown): World {
   foldDictionaryIntoBooks(world);
   migrateDictionaryKeys(world);
   migrateEntityGalleries(world);
+  flipEntityLocationMembership(world);
   if (world.version === APP_VERSION) return world as unknown as World;
 
   const overview = { ...((world.worldOverview as Record<string, unknown>) ?? {}) };

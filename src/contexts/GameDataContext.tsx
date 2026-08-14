@@ -3,6 +3,7 @@ import { createContext, useContext, useState, useCallback, useMemo, useEffect, u
 import WorldStorageService from '../services/WorldStorageService';
 import { canonicalStringify } from '@/lib/canonicalStringify';
 import { migrateWorld, APP_VERSION } from '@/lib/version';
+import { dropLocationFromEntities } from '@/lib/entityPresence';
 import { useDictionaryStoreState, DictionaryStoreProvider } from '@/contexts/DictionaryStoreContext';
 import { placeholderStore, PlaceholderStoreProvider } from '@/contexts/PlaceholderStoreContext';
 import type {
@@ -105,6 +106,9 @@ function useProvideGameData() {
 
   const removeLocation = useCallback((locationId: string) => {
     setLocations(prevLocations => prevLocations.filter(location => location.id !== locationId));
+    // Membership is entity-owned, so a deleted location would otherwise stay listed on everyone who
+    // belonged to it — invisible in every roster, but riding along into the exported world forever.
+    setEntities(prevEntities => dropLocationFromEntities(locationId, prevEntities));
   }, []);
 
   const addEntity = useCallback((newEntity: Entity) => {
@@ -117,28 +121,10 @@ function useProvideGameData() {
     ));
   }, []);
 
+  // Membership rides on the entity itself, so deleting it takes every location link with it — no
+  // location-side cleanup to do.
   const removeEntity = useCallback((entityId: string) => {
     setEntities(prevEntities => prevEntities.filter(entity => entity.id !== entityId));
-    // The entity↔location link is stored on the location, so dropping the entity alone strands its id in
-    // every location that listed it. The AI feed skips ids it can't resolve, but they'd ride along into the
-    // exported world and accumulate. The link sits on `entities` (current) or the legacy `entity` alias
-    // (pre-audience-split worlds, which migration never folds) — clean whichever holds it. Returns the
-    // original array when nothing referenced the entity.
-    setLocations(prevLocations => {
-      let changed = false;
-      const next = prevLocations.map((location) => {
-        const legacy = (location as GameLocation & { entity?: string[] }).entity;
-        const inEntities = location.entities?.includes(entityId) ?? false;
-        const inLegacy = legacy?.includes(entityId) ?? false;
-        if (!inEntities && !inLegacy) return location;
-        changed = true;
-        const cleaned: GameLocation & { entity?: string[] } = { ...location };
-        if (inEntities) cleaned.entities = location.entities!.filter((id) => id !== entityId);
-        if (inLegacy) cleaned.entity = legacy!.filter((id) => id !== entityId);
-        return cleaned;
-      });
-      return changed ? next : prevLocations;
-    });
   }, []);
 
   const addEntityGroup = useCallback((newGroup: EntityGroup) => {

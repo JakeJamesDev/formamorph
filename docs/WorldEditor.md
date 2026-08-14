@@ -138,11 +138,9 @@ Two more worth knowing:
 
 ### Locations
 
-The link lives on the **location**, not the entity. The Locations picker here is a convenience — it writes the entity into each of those locations' own entity lists. You can set the same relationship from either end.
+The link lives on the **entity**: one character's whereabouts is one field, however many places it turns up in. The location's own Entities picker is the same relationship seen from the other end — set it wherever you prefer.
 
-That storage detail has one consequence worth knowing:
-
-> ⚠️ **Deleting a location drops its entities from it, silently.** The assignments live on the location, so they go when it does. The entities themselves survive — but one that was only in that location is now in no location, which means it never reaches the AI again. Nothing warns you, and the entity still looks fine in its own tab.
+> ⚠️ **Deleting a location removes it from everyone who was there, silently.** The entities themselves survive — but one that was only in that location is now in no location, which means it never reaches the AI again. Nothing warns you, and the entity still looks fine in its own tab.
 
 The default prompt feeds entities from three places, as separate blocks: the player's **current location**, its **sub-locations**, and **reachable** locations.
 
@@ -233,7 +231,7 @@ The **✨ toolbar** beside AI-Facing Summary can draft it from your AI-Facing De
 
 ### Entities
 
-The **Entities** picker lists who's at this location. It's the same link an entity's own **Locations** picker writes, seen from the other end — set it wherever you prefer.
+The **Entities** picker lists who's at this location. Membership is stored on each entity, so editing here writes to their **Locations** — the same link, set from whichever end suits you.
 
 ### Starting location
 
