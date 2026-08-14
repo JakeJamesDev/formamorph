@@ -2,14 +2,19 @@ import {
   createContext, useCallback, useContext, useEffect, useMemo, useRef, useState,
 } from 'react';
 import {
-  Background, BaseEdge, Controls, EdgeLabelRenderer, Handle, MarkerType, Panel, Position, ReactFlow,
-  ReactFlowProvider, useConnection, useInternalNode, useNodesState, useStoreApi,
+  Background, BaseEdge, ControlButton, Controls, EdgeLabelRenderer, Handle, MarkerType, Panel, Position,
+  ReactFlow, ReactFlowProvider, useConnection, useInternalNode, useNodesState, useStoreApi,
   type Edge, type EdgeProps, type Node, type NodeProps,
 } from '@xyflow/react';
 import '@xyflow/react/dist/base.css';
-import { AlertTriangle, ArrowLeft, ArrowLeftRight, ArrowRight, Check, Star, Trash2, X } from 'lucide-react';
+import {
+  AlertTriangle, ArrowLeft, ArrowLeftRight, ArrowRight, Check, Maximize2, Minimize2, Star, Trash2, X,
+} from 'lucide-react';
 import { useGameData } from '@/contexts/GameDataContext';
+import FullscreenShell from '@/components/FullscreenShell';
 import { useCanvasGridVisible, useCanvasSnap } from '@/lib/canvasPrefs';
+import { useDevRoute } from '@/lib/devRouter';
+import { useMorphFullscreen } from '@/lib/useMorphFullscreen';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
@@ -354,11 +359,40 @@ const CanvasMenu = ({ at, items, onClose }: {
   </div>
 );
 
-const CanvasInner = ({ selectedId, onSelect }: { selectedId: string | null; onSelect: (id: string) => void }) => {
+/**
+ * Everything the canvas is *doing* rather than everything it knows: what the author has picked, and which
+ * arrow's record is open. Held by the wrapper, because entering full screen re-mounts the surface into a
+ * different parent — held here, both would be dropped on the way through, and the author would arrive at the
+ * big canvas having lost the selection they went there to work on.
+ */
+interface CanvasSession {
+  /** The nodes picked, read during a redraw — a ref so composing a selection never redraws the map. */
+  selectedIdsRef: React.MutableRefObject<string[]>;
+  /** The single selection last announced to the editor, so its prop coming back can't collapse a marquee. */
+  lastSyncedRef: React.MutableRefObject<string | null>;
+  /** What xyflow reports the selection to be. Not a plain write to the ref: a canvas being torn down reports
+   *  an empty one on its way out, and taken at face value that is the trip to full screen deselecting
+   *  everything the author went there to work on. */
+  reportSelection: (ids: string[]) => void;
+  /** The author has their hand on this canvas: whatever it reports from here is theirs, not teardown's. */
+  wake: () => void;
+  selectedConnectionId: string | null;
+  setSelectedConnectionId: (id: string | null) => void;
+}
+
+const CanvasInner = ({ selectedId, onSelect, session, fullscreen, onToggleFullscreen }: {
+  selectedId: string | null;
+  onSelect: (id: string) => void;
+  session: CanvasSession;
+  fullscreen: boolean;
+  onToggleFullscreen: () => void;
+}) => {
   const {
     locations, setLocations, connections, addConnection, updateConnection, removeConnection, placeholders,
   } = useGameData();
-  const [selectedConnectionId, setSelectedConnectionId] = useState<string | null>(null);
+  const {
+    selectedIdsRef, lastSyncedRef, reportSelection, wake, selectedConnectionId, setSelectedConnectionId,
+  } = session;
   const store = useStoreApi();
   const [snap, setSnap] = useCanvasSnap();
   const [gridVisible, setGridVisible] = useCanvasGridVisible();
@@ -412,7 +446,7 @@ const CanvasInner = ({ selectedId, onSelect }: { selectedId: string | null; onSe
       removeConnection(intent.connectionId);
       setSelectedConnectionId(null);
     }
-  }, [addConnection, updateConnection, removeConnection]);
+  }, [addConnection, updateConnection, removeConnection, setSelectedConnectionId]);
 
   // A dashed arrow is a click away from being authored; a solid one opens the record it came from.
   const handleEdgeClick = useCallback((_: unknown, edge: Edge) => {
@@ -420,34 +454,23 @@ const CanvasInner = ({ selectedId, onSelect }: { selectedId: string | null; onSe
     if (!clicked) return;
     if (clicked.connectionId) setSelectedConnectionId(clicked.connectionId);
     else applyIntent(connectIntent(clicked.source, clicked.target, connections));
-  }, [map, connections, applyIntent]);
+  }, [map, connections, applyIntent, setSelectedConnectionId]);
 
   const [nodes, setNodes, onNodesChange] = useNodesState<LocationNodeType>([]);
-
-  /**
-   * Multi-selection is the canvas's own, and xyflow is where it lives: marquee and Shift-click write it, and
-   * this is the reading of it that survives a redraw. A ref rather than state on purpose — the redraw below
-   * consults it, so holding it as state would make every selection redraw the map and every redraw report a
-   * selection.
-   */
-  const selectedIdsRef = useRef<string[]>(selectedId ? [selectedId] : []);
-  // The single selection last handed to the editor. What comes back as the `selectedId` prop is usually our
-  // own last click returning, and collapsing the selection to it would undo the marquee that just ran.
-  const lastSyncedRef = useRef<string | null>(selectedId);
 
   const setSelection = useCallback((wanted: (id: string) => boolean) => {
     setNodes((current) => {
       selectedIdsRef.current = current.filter((n) => wanted(n.id)).map((n) => n.id);
       return current.map((n) => ({ ...n, selected: wanted(n.id) }));
     });
-  }, [setNodes]);
+  }, [setNodes, selectedIdsRef]);
 
   // A selection made in the list view is the canvas's whole selection; one made here is already on the nodes.
   useEffect(() => {
     if (selectedId === lastSyncedRef.current) return;
     lastSyncedRef.current = selectedId;
     setSelection((id) => id === selectedId);
-  }, [selectedId, setSelection]);
+  }, [selectedId, setSelection, lastSyncedRef]);
 
   // The mapper owns what is on the map; xyflow owns only the in-flight drag, so a world edit anywhere
   // (a rename, a new Connection, a deletion) redraws from the world rather than from stale canvas state.
@@ -466,7 +489,7 @@ const CanvasInner = ({ selectedId, onSelect }: { selectedId: string | null; onSe
       // A redraw is not a deselection: every node the author had picked comes back picked.
       selected: selectedIdsRef.current.includes(node.id),
     })));
-  }, [map, setNodes]);
+  }, [map, setNodes, selectedIdsRef]);
 
   const edges = useMemo(
     () => map.edges.map((edge) => toFlowEdge(edge, edge.connectionId === selectedConnectionId)),
@@ -502,8 +525,8 @@ const CanvasInner = ({ selectedId, onSelect }: { selectedId: string | null; onSe
   // Reported by xyflow rather than tracked by us: the marquee and Shift-click both land here, so one reading
   // covers every way a selection can be composed.
   const handleSelectionChange = useCallback(({ nodes: picked }: { nodes: Node[] }) => {
-    selectedIdsRef.current = picked.map((n) => n.id);
-  }, []);
+    reportSelection(picked.map((n) => n.id));
+  }, [reportSelection]);
 
   /**
    * The canvas's keys, live while it is the surface being worked on — the last pointer press decides that,
@@ -520,7 +543,9 @@ const CanvasInner = ({ selectedId, onSelect }: { selectedId: string | null; onSe
     const onKeyDown = (event: KeyboardEvent) => {
       if (event.key === 'Escape') setMenu(null);
       if (!activeRef.current || focusing(event.target)) return;
-      if (event.key === 'Escape') setSelection(() => false);
+      // In full screen, Escape is the way out of the window — a keypress meaning "leave" must not also empty
+      // the selection the author is taking back to the pane with them.
+      if (event.key === 'Escape') { if (!fullscreen) setSelection(() => false); }
       else if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'a') {
         event.preventDefault();
         setSelection(() => true);
@@ -532,7 +557,7 @@ const CanvasInner = ({ selectedId, onSelect }: { selectedId: string | null; onSe
       document.removeEventListener('pointerdown', trackPointer, true);
       document.removeEventListener('keydown', onKeyDown);
     };
-  }, [setSelection]);
+  }, [setSelection, fullscreen]);
 
   /**
    * A pan that began over a location. xyflow listens for one on the pane, which sits *behind* the boxes, so
@@ -541,6 +566,7 @@ const CanvasInner = ({ selectedId, onSelect }: { selectedId: string | null; onSe
    */
   const handlePointerDown = (event: React.PointerEvent) => {
     pointerDownRef.current = { x: event.clientX, y: event.clientY };
+    wake();
     const overNode = (event.target as HTMLElement).closest?.('.react-flow__node');
     if (!overNode || (event.button !== 1 && event.button !== 2)) return;
     event.preventDefault();
@@ -635,7 +661,17 @@ const CanvasInner = ({ selectedId, onSelect }: { selectedId: string | null; onSe
       >
         {/* The dots mark the grid's own intersections; hiding it keeps the pane's color and drops the pattern. */}
         <Background className="!bg-background" color={gridVisible ? 'hsl(var(--border))' : 'transparent'} gap={CANVAS_GRID} />
-        <Controls showInteractive={false} />
+        {/* The embedded canvas's whole chrome: the zoom controls, and the way to the big one. Everything
+            heavier belongs to full screen, so the quick view stays a view. */}
+        <Controls showInteractive={false}>
+          <ControlButton
+            onClick={onToggleFullscreen}
+            title={fullscreen ? 'Exit full screen' : 'Edit full screen'}
+            aria-label={fullscreen ? 'Exit full screen' : 'Edit full screen'}
+          >
+            {fullscreen ? <Minimize2 /> : <Maximize2 />}
+          </ControlButton>
+        </Controls>
         <TopLevelDrop />
         {selectedConnection && (
           <ConnectionInspector
@@ -662,11 +698,81 @@ const CanvasInner = ({ selectedId, onSelect }: { selectedId: string | null; onSe
   );
 };
 
-/** The Locations tab's canvas view — the list's spatial twin, editing the same authored world. */
-const LocationCanvas = (props: { selectedId: string | null; onSelect: (id: string) => void }) => (
-  <ReactFlowProvider>
-    <CanvasInner {...props} />
-  </ReactFlowProvider>
-);
+/**
+ * The Locations tab's canvas view — the list's spatial twin, editing the same authored world.
+ *
+ * Embedded and full screen are one canvas wearing different chrome, not two surfaces: the same component is
+ * mounted in the pane or in the shared full-screen window, and what the author was in the middle of — the
+ * picked nodes, the open Connection — is held here so the trip between them carries it. World edits need no
+ * carrying: both are writing to the same authored world through GameDataContext.
+ */
+const LocationCanvas = (props: { selectedId: string | null; onSelect: (id: string) => void }) => {
+  const hostRef = useRef<HTMLDivElement | null>(null);
+  const morph = useMorphFullscreen(hostRef);
+  const selectedIdsRef = useRef<string[]>(props.selectedId ? [props.selectedId] : []);
+  const lastSyncedRef = useRef<string | null>(props.selectedId);
+  const [selectedConnectionId, setSelectedConnectionId] = useState<string | null>(null);
+
+  // Set while the canvas is moving between the pane and the window. The old one reports an empty selection as
+  // it goes and the new one before it has drawn, and neither is the author letting go of anything.
+  const inTransitRef = useRef(false);
+  const wake = useCallback(() => { inTransitRef.current = false; }, []);
+  const reportSelection = useCallback((ids: string[]) => {
+    if (inTransitRef.current && !ids.length) return;
+    inTransitRef.current = false;
+    selectedIdsRef.current = ids;
+  }, []);
+  // Every way in and out of the window goes through the same pair, so Escape and the dialog's own close carry
+  // the selection exactly as the toggle does.
+  const toggleFullscreen = useCallback(() => {
+    inTransitRef.current = true;
+    morph.toggle();
+  }, [morph]);
+  const windowMorph = useMemo(
+    () => ({ ...morph, close: () => { inTransitRef.current = true; morph.close(); } }),
+    [morph],
+  );
+
+  const session: CanvasSession = {
+    selectedIdsRef, lastSyncedRef, reportSelection, wake, selectedConnectionId, setSelectedConnectionId,
+  };
+
+  // DEV dev-router: `#dev?…&subtab=canvas&fullscreen=1` lands on the big canvas in one call. Tree-shaken in prod.
+  const devFullscreen = useDevRoute()?.fullscreen;
+  useEffect(() => {
+    if (import.meta.env.DEV && devFullscreen) morph.open();
+    // Only the route says so — re-running on `morph` identity would re-open a window the author just closed.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [devFullscreen]);
+
+  const canvas = (
+    <ReactFlowProvider>
+      <CanvasInner
+        {...props}
+        session={session}
+        fullscreen={morph.mounted}
+        onToggleFullscreen={toggleFullscreen}
+      />
+    </ReactFlowProvider>
+  );
+
+  return (
+    // The pane's own box stays laid out at its real size while the window is up: it is what the window grows
+    // out of and shrinks back into, and a collapsed source has nothing to travel between.
+    <div ref={hostRef} className="relative h-full w-full">
+      {!morph.mounted && canvas}
+      {morph.mounted && (
+        <FullscreenShell
+          morph={windowMorph}
+          title="Locations Canvas"
+          // The control that opened the window went with the canvas, so closing has to be told where to land.
+          returnFocus={() => hostRef.current?.querySelector<HTMLElement>('.react-flow__controls button:last-child')}
+        >
+          <div className="min-h-0 flex-1">{canvas}</div>
+        </FullscreenShell>
+      )}
+    </div>
+  );
+};
 
 export default LocationCanvas;
