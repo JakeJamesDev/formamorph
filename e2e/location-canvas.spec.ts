@@ -28,8 +28,7 @@ const WORLD = {
  */
 test.describe('Locations canvas', () => {
   test('the connection inspector answers clicks', async ({ page }) => {
-    // The mode-toggle tutorial pops over the editor's top-right corner, where the inspector lands.
-    await openApp(page, { 'formamorph.tutorialsSeen': ['world-editor-mode-toggle'] });
+    await openApp(page);
     await page.evaluate(async (world) => {
       const dev = (window as unknown as { __fmDev: DevRouter }).__fmDev;
       const id = await dev.putWorld(world);

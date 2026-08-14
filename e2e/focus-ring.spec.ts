@@ -113,21 +113,27 @@ test.describe('focus ring', () => {
     // An inset ring is painted within the border box, so a zero gap to the clip edge is harmless —
     // assert both halves: something really is flush, and its ring is still inset.
     const result = await page.evaluate(() => {
-      const out: { flush: number; allInset: boolean } = { flush: 0, allInset: true };
+      const out: { flush: number; allInset: boolean; offenders: string[] } = { flush: 0, allInset: true, offenders: [] };
       for (const vp of document.querySelectorAll('[data-radix-scroll-area-viewport]')) {
         const v = vp.getBoundingClientRect();
         for (const el of vp.querySelectorAll<HTMLElement>('button, input, textarea, [role="combobox"]')) {
           const r = el.getBoundingClientRect();
           if (!r.width) continue;
           if (r.left - v.left < 4 || r.top - v.top < 4) {
-            out.flush++;
             el.focus();
-            if (getComputedStyle(el).getPropertyValue('--tw-ring-inset').trim() !== 'inset') out.allInset = false;
+            // A control that takes no focus (disabled) draws no focus ring, so it has none to clip.
+            if (document.activeElement !== el) continue;
+            out.flush++;
+            if (getComputedStyle(el).getPropertyValue('--tw-ring-inset').trim() !== 'inset') {
+              out.allInset = false;
+              // Named, so a failure points at the control rather than only saying one exists.
+              out.offenders.push(`${el.tagName.toLowerCase()}[${el.getAttribute('aria-label') ?? el.textContent?.trim().slice(0, 30)}]`);
+            }
           }
         }
       }
       return out;
     });
-    expect(result.allInset).toBe(true);
+    expect(result.allInset, result.offenders.join('\n')).toBe(true);
   });
 });
