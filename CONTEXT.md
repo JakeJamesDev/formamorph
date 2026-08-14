@@ -16,13 +16,25 @@ _Avoid_: request options, config
 An authored travel link between two locations — one-way or two-way. Where a Connection exists between a pair, it replaces that pair's implicit navigation.
 _Avoid_: edge (internal only), path, route
 
+**Auto Arrange**:
+The explicit command that computes a fresh layout for a Group's direct children, optimized for Connection readability. The only automatic layout — nothing on the Locations Canvas moves without it or the author.
+_Avoid_: auto layout (as a live behavior), nudge
+
 **Entity**:
 Any world inhabitant the narrator can reference — person, creature, plant, or object.
 _Avoid_: character (too narrow)
 
+**Group**:
+The rendered frame of a location that contains child locations on the Locations Canvas. Containment is shown by the frame itself, never by lines.
+_Avoid_: box, container
+
 **Implicit Navigation**:
 The travel a location gets for free from containment — its parent, children, and siblings — without any authored Connection.
 _Avoid_: tree edges, default connections
+
+**Locations Canvas**:
+The visual node-graph surface for authoring locations — containment as nested Groups, travel as arrows. The list view's spatial twin inside the same Locations panel.
+_Avoid_: node graph, map view
 
 **Turn Pipeline**:
 The module that runs one full turn — plan, AI requests, commit computation — behind one seam; React state stays outside it.
