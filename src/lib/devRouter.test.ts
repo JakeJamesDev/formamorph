@@ -4,6 +4,7 @@ import { CATALOG_KINDS } from './catalogKinds';
 import { DEV_FIXTURES } from './devFixtures';
 import { SETTINGS_TABS } from '@/components/modals/settingsTabs';
 import { WORLD_EDITOR_TABS } from '@/views/worldEditorTabs';
+import { LOCATION_VIEWS } from '@/views/locationViews';
 import { MAIN_MENU_CARD_TABS } from '@/views/mainMenuTabs';
 import { GAME_LEFT_PANEL_TABS } from '@/components/game/leftPanelTabs';
 import { PROFILE_TABS } from '@/components/menu/profileTabs';
@@ -69,6 +70,10 @@ describe('dev-router coverage guard', () => {
 
   it('ledger lists exactly the World Editor tabs the surface renders', () => {
     expect([...DEV_MODAL_TABS.worldEditor]).toEqual(WORLD_EDITOR_TABS.map((t) => t.value));
+  });
+
+  it('ledger lists exactly the views the Locations tab switches between', () => {
+    expect([...DEV_MODAL_TABS.worldEditorLocations]).toEqual(LOCATION_VIEWS.map((v) => v.value));
   });
 
   it('ledger lists exactly the kinds the Community browser tabs between', () => {
