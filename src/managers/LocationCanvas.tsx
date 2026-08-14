@@ -22,7 +22,7 @@ import { describePlaceholders } from '@/lib/placeholders';
 import type { ConnectionDirection } from '@/lib/connectionEditing';
 import {
   applyCanvasDrops, buildLocationCanvas, CANVAS_GRID, connectIntent, connectionEnds, deleteIntent,
-  directionIntent, directionOf, hintIntent, isStationaryClick, multiDropIntents,
+  directionIntent, directionOf, hintIntent, isStationaryClick, LONG_PRESS_MS, multiDropIntents, TOUCH_SLOP,
   type CanvasEdge, type CanvasIntent, type CanvasNodeData,
 } from '@/lib/locationCanvas';
 import { cn } from '@/lib/utils';
@@ -404,6 +404,9 @@ const CanvasInner = ({ selectedId, onSelect, session, fullscreen, onToggleFullsc
   const frameRef = useRef<HTMLDivElement | null>(null);
   // Where the pointer last went down, which is what says whether the press that opened a menu had traveled.
   const pointerDownRef = useRef<{ x: number; y: number } | null>(null);
+  // Set while a hold's own release is still to come: the click it raises belongs to the hold, not to the
+  // location under it. Held as the listener itself so a hold that ends in a drag can take it back down.
+  const swallowClickRef = useRef<((event: Event) => void) | null>(null);
   // Whether the canvas is the surface the author is working on, which is what its keys answer to.
   const activeRef = useRef(false);
 
@@ -564,6 +567,40 @@ const CanvasInner = ({ selectedId, onSelect, session, fullscreen, onToggleFullsc
   }, [setSelection, fullscreen]);
 
   /**
+   * Composing a selection on a touch screen. Shift and Ctrl are what a mouse adds a location to a selection
+   * with, and a small screen has neither — so a finger held still on a box does the same job, and the tap
+   * that would otherwise open the location's editor is swallowed on the way out. Moving the finger is a drag
+   * or a pan and cancels the hold, so nothing is toggled by a gesture that was going somewhere.
+   */
+  const holdToToggle = (overNode: Element, event: React.PointerEvent) => {
+    const id = overNode.getAttribute('data-id');
+    const from = { x: event.clientX, y: event.clientY };
+    const done = () => {
+      window.clearTimeout(timer);
+      window.removeEventListener('pointermove', moved);
+      window.removeEventListener('pointerup', done);
+      window.removeEventListener('pointercancel', done);
+    };
+    const moved = (at: PointerEvent) => {
+      if (!isStationaryClick(from, { x: at.clientX, y: at.clientY }, TOUCH_SLOP)) done();
+    };
+    const timer = window.setTimeout(() => {
+      done();
+      if (!id) return;
+      const picked = new Set(selectedIdsRef.current);
+      if (!picked.delete(id)) picked.add(id);
+      setSelection((candidate) => picked.has(candidate));
+      // Stopped on the way in, before React hands it to anything: the canvas and xyflow both read a tap on a
+      // box as "this location alone", which is exactly the selection the hold just composed.
+      swallowClickRef.current = (click: Event) => { click.stopPropagation(); click.preventDefault(); };
+      frameRef.current?.addEventListener('click', swallowClickRef.current, { capture: true, once: true });
+    }, LONG_PRESS_MS);
+    window.addEventListener('pointermove', moved);
+    window.addEventListener('pointerup', done);
+    window.addEventListener('pointercancel', done);
+  };
+
+  /**
    * A pan that began over a location. xyflow listens for one on the pane, which sits *behind* the boxes, so
    * a press that started on a box never reaches it — and the map would refuse to move under exactly the
    * places an author is looking at. The gesture is the same one, driven from here.
@@ -571,7 +608,13 @@ const CanvasInner = ({ selectedId, onSelect, session, fullscreen, onToggleFullsc
   const handlePointerDown = (event: React.PointerEvent) => {
     pointerDownRef.current = { x: event.clientX, y: event.clientY };
     wake();
+    // A hold whose release never raised a click leaves one of these behind; the next press is where it goes.
+    if (swallowClickRef.current) {
+      frameRef.current?.removeEventListener('click', swallowClickRef.current, { capture: true });
+      swallowClickRef.current = null;
+    }
     const overNode = (event.target as HTMLElement).closest?.('.react-flow__node');
+    if (overNode && event.pointerType === 'touch') holdToToggle(overNode, event);
     if (!overNode || (event.button !== 1 && event.button !== 2)) return;
     event.preventDefault();
     let last = { x: event.clientX, y: event.clientY };
