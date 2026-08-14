@@ -12,6 +12,7 @@ import {
   connectionsAt,
   createConnection,
   withDirection,
+  withHint,
   type ConnectionDirection,
 } from '@/lib/connectionEditing';
 import type { GameLocation } from '@/types';
@@ -100,9 +101,7 @@ const LocationConnections = ({ location }: { location: GameLocation }) => {
             </ToggleGroup>
             <Input
               value={connection.aiHint || ''}
-              // Cleared back to nothing drops the field rather than storing '', so the exported world has
-              // one shape for "no hint" instead of two.
-              onChange={(e) => updateConnection({ ...connection, aiHint: e.target.value || undefined })}
+              onChange={(e) => updateConnection(withHint(connection, e.target.value))}
               placeholder="Travel Hint, e.g. through the shimmering portal"
               aria-label={`Travel Hint for the Connection to ${partnerName}`}
             />
