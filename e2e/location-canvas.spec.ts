@@ -41,6 +41,14 @@ const STACKED_WORLD = {
   ],
 };
 
+/** A Group with an authored Connection down to one of the locations it holds — the pair the border-anchor
+ *  fix is about, and the one arrow whose shape the style picker is watched on. */
+const PARENT_CHILD_CONNECTION_WORLD = {
+  ...WORLD,
+  id: 'e2e-canvas-parent-child',
+  connections: [{ id: 'conn-parent-child', from: 'loc-parent', to: 'loc-child-a', twoWay: false }],
+};
+
 /**
  * The canvas draws its Connection inspector as a floating panel over the map. Anything the layout wraps the
  * canvas in can swallow the panel's clicks without changing a single rendered attribute — only real
@@ -562,6 +570,82 @@ test.describe('Locations canvas', () => {
     await node('loc-child-a').waitFor();
     expect((await node('loc-child-a').boundingBox())!.x).toBeCloseTo(laidOut.x, 0);
     expect(await overlapping()).toBe(false);
+  });
+
+  /**
+   * The three shapes, and the anchoring underneath them. The geometry is asserted as numbers in the unit
+   * tests; what only the real canvas shows is that the arrow xyflow draws is built from those numbers — that
+   * the picked shape reaches the path, that it outlives leaving the canvas, and that an authored Group↔child
+   * Connection touches the two boxes' borders on screen rather than diving to either center.
+   */
+  test('the connection style picker redraws the arrows and is remembered', async ({ page }) => {
+    await openApp(page);
+    await page.evaluate(async (world) => {
+      const dev = (window as unknown as { __fmDev: DevRouter }).__fmDev;
+      const id = await dev.putWorld(world);
+      await dev.editWorld(id);
+    }, PARENT_CHILD_CONNECTION_WORLD);
+    await gotoDev(page, 'mainMenu', { modal: 'worldEditor', tab: 'locations', subtab: 'canvas' });
+
+    const authored = page.locator('.react-flow__edge[data-id="connection:conn-parent-child:forward"] path.react-flow__edge-path');
+    await authored.waitFor();
+    const shape = async () => (await authored.getAttribute('d'))!;
+    const pick = async (label: string) => {
+      await page.locator('.react-flow__pane').click({ button: 'right', position: { x: 30, y: 30 } });
+      await page.getByRole('menuitemradio', { name: label }).click();
+    };
+
+    // Straight is the default: one segment, end to end.
+    expect(await shape()).toMatch(/^M [-\d.]+,[-\d.]+ L [-\d.]+,[-\d.]+$/);
+
+    /** The path's ends in screen coordinates, which is where the boxes are measured. */
+    const ends = async () => {
+      const d = await shape();
+      const points = [...d.matchAll(/(-?[\d.]+),(-?[\d.]+)/g)].map((m) => ({ x: +m[1], y: +m[2] }));
+      const view = (await page.locator('.react-flow__viewport').getAttribute('style'))!;
+      const [tx, ty, scale] = /translate\((-?[\d.]+)px,\s*(-?[\d.]+)px\)\s*scale\(([\d.]+)\)/.exec(view)!
+        .slice(1).map(Number);
+      const frame = (await page.locator('.react-flow').boundingBox())!;
+      const toScreen = (p: { x: number; y: number }) =>
+        ({ x: frame.x + tx + p.x * scale, y: frame.y + ty + p.y * scale });
+      return [toScreen(points[0]), toScreen(points[points.length - 1])];
+    };
+    /** How far a point sits from the nearest side of a box, negative when it is outside one. */
+    const insetFrom = (box: { x: number; y: number; width: number; height: number }, p: { x: number; y: number }) =>
+      Math.min(p.x - box.x, box.x + box.width - p.x, p.y - box.y, box.y + box.height - p.y);
+
+    const parent = (await page.locator('.react-flow__node[data-id="loc-parent"]').boundingBox())!;
+    const child = (await page.locator('.react-flow__node[data-id="loc-child-a"]').boundingBox())!;
+    const [from, to] = await ends();
+    // Each end is on its own box's frame — a couple of pixels of the side-by-side arrow offset, not the
+    // tens of pixels a dive to a center would be.
+    expect(Math.abs(insetFrom(parent, from))).toBeLessThan(8);
+    expect(Math.abs(insetFrom(child, to))).toBeLessThan(8);
+    // And it spans the gap between the two frames rather than the Group: aimed at a center instead, the arrow
+    // would set off from the far side of the Group and cross the whole box to get here.
+    expect(Math.hypot(to.x - from.x, to.y - from.y)).toBeLessThan(Math.min(parent.width, parent.height) / 2);
+
+    // Curved and elbow move the shape between those ends, and nothing else about the arrow.
+    await pick('Curved Connections');
+    await expect.poll(shape).toContain(' C ');
+    await pick('Elbow Connections');
+    const elbow = await shape();
+    expect(elbow.match(/ L /g)!.length).toBe(3);
+
+    // What every arrow says is unchanged by the shape it is drawn in: an authored Connection stays solid and
+    // an implicit one dashed, and both keep the arrowhead that gives the direction.
+    const implicit = page.locator('.react-flow__edge[data-id^="implicit:"] path.react-flow__edge-path').first();
+    for (const edge of [authored, implicit]) {
+      await expect(edge).toHaveAttribute('marker-end', /url\(/);
+    }
+    expect(await authored.evaluate((p) => getComputedStyle(p).strokeDasharray)).toBe('none');
+    expect(await implicit.evaluate((p) => getComputedStyle(p).strokeDasharray)).not.toBe('none');
+
+    // Leaving the canvas and coming back draws the shape the author picked, not the default.
+    await gotoDev(page, 'mainMenu', { modal: 'worldEditor', tab: 'locations', subtab: 'list' });
+    await gotoDev(page, 'mainMenu', { modal: 'worldEditor', tab: 'locations', subtab: 'canvas' });
+    await authored.waitFor();
+    expect((await shape()).match(/ L /g)!.length).toBe(3);
   });
 
   /** The dev-route lands on the full-screen canvas in one call, which is what the later tickets verify from. */

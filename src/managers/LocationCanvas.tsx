@@ -12,7 +12,11 @@ import {
 } from 'lucide-react';
 import { useGameData } from '@/contexts/GameDataContext';
 import FullscreenShell from '@/components/FullscreenShell';
-import { useCanvasGridVisible, useCanvasSnap } from '@/lib/canvasPrefs';
+import { useCanvasConnectionStyle, useCanvasGridVisible, useCanvasSnap } from '@/lib/canvasPrefs';
+import {
+  CONNECTION_STYLES, edgeGeometry, isConnectionStyle, type ConnectionStyle,
+} from '@/lib/canvasEdgePath';
+import { DEFAULT_CANVAS_CONNECTION_STYLE } from '@/contexts/settingsDefaults';
 import { useDevRoute } from '@/lib/devRouter';
 import { useMorphFullscreen } from '@/lib/useMorphFullscreen';
 import { Button } from '@/components/ui/button';
@@ -174,28 +178,17 @@ const TopLevelDrop = () => {
 
 const nodeTypes = { location: LocationNode, locationGroup: LocationGroupNode };
 
-/** Where the straight line between two centers crosses a box's border — so an arrow stops at the box it
- *  points at, whichever side that turns out to be. */
-function borderPoint(rect: { x: number; y: number; width: number; height: number }, toward: { x: number; y: number }) {
-  const cx = rect.x + rect.width / 2;
-  const cy = rect.y + rect.height / 2;
-  const dx = toward.x - cx;
-  const dy = toward.y - cy;
-  const scale = Math.min(
-    dx !== 0 ? rect.width / 2 / Math.abs(dx) : Infinity,
-    dy !== 0 ? rect.height / 2 / Math.abs(dy) : Infinity,
-  );
-  return { x: cx + dx * scale, y: cy + dy * scale };
-}
-
 /** Half the gap between a pair's two arrows — each rides to the left of its own direction of travel. */
 const ARROW_OFFSET = 5;
 
 /**
  * A border-to-border arrow, drawn one step to the left of the direction it travels: a pair's two directions
  * therefore sit side by side instead of on top of each other, and the map is read by counting arrows.
+ *
+ * Where it runs and what shape it takes are `lib/canvasEdgePath`'s answers; all this holds is the boxes xyflow
+ * measured, so the author's chosen shape and the Group border-anchoring are one testable set of numbers.
  */
-const FloatingEdge = ({ id, source, target, markerEnd, style, label }: EdgeProps) => {
+const FloatingEdge = ({ id, source, target, markerEnd, style, label, data }: EdgeProps) => {
   const sourceNode = useInternalNode(source);
   const targetNode = useInternalNode(target);
   if (!sourceNode || !targetNode) return null;
@@ -205,16 +198,12 @@ const FloatingEdge = ({ id, source, target, markerEnd, style, label }: EdgeProps
     width: node.measured.width ?? 0,
     height: node.measured.height ?? 0,
   });
-  const from = rectOf(sourceNode);
-  const to = rectOf(targetNode);
-  const fromCenter = { x: from.x + from.width / 2, y: from.y + from.height / 2 };
-  const toCenter = { x: to.x + to.width / 2, y: to.y + to.height / 2 };
-  const start = borderPoint(from, toCenter);
-  const end = borderPoint(to, fromCenter);
-  const length = Math.hypot(end.x - start.x, end.y - start.y) || 1;
-  const ox = (-(end.y - start.y) / length) * ARROW_OFFSET;
-  const oy = ((end.x - start.x) / length) * ARROW_OFFSET;
-  const path = `M ${start.x + ox},${start.y + oy} L ${end.x + ox},${end.y + oy}`;
+  // xyflow hands edge data back as unknown values; the shape it is holding is `toFlowEdge`'s own.
+  const wanted = String(data?.connectionStyle);
+  const { path, labelAt } = edgeGeometry(rectOf(sourceNode), rectOf(targetNode), {
+    style: isConnectionStyle(wanted) ? wanted : DEFAULT_CANVAS_CONNECTION_STYLE,
+    offset: ARROW_OFFSET,
+  });
   return (
     <>
       <BaseEdge id={id} path={path} markerEnd={markerEnd} style={style} />
@@ -222,7 +211,7 @@ const FloatingEdge = ({ id, source, target, markerEnd, style, label }: EdgeProps
         <EdgeLabelRenderer>
           <div
             className="pointer-events-none absolute rounded bg-background/80 px-1 text-meta text-primary"
-            style={{ transform: `translate(-50%, -50%) translate(${(start.x + end.x) / 2}px, ${(start.y + end.y) / 2 - 10}px)` }}
+            style={{ transform: `translate(-50%, -50%) translate(${labelAt.x}px, ${labelAt.y - 10}px)` }}
           >
             {label}
           </div>
@@ -235,8 +224,9 @@ const FloatingEdge = ({ id, source, target, markerEnd, style, label }: EdgeProps
 const edgeTypes = { floating: FloatingEdge };
 
 /** Dashed and muted for free implicit travel, solid and primary-colored for an authored Connection. Both
- *  answer a click, so the cursor says so — one selects its record, the other becomes one. */
-function toFlowEdge(edge: CanvasEdge, selected: boolean): Edge {
+ *  answer a click, so the cursor says so — one selects its record, the other becomes one. The chosen shape
+ *  rides on the edge itself, so changing it redraws the map through the same path every other edit takes. */
+function toFlowEdge(edge: CanvasEdge, selected: boolean, connectionStyle: ConnectionStyle): Edge {
   const implicit = edge.kind === 'implicit';
   const color = implicit ? 'hsl(var(--muted-foreground))' : 'hsl(var(--primary))';
   return {
@@ -245,6 +235,7 @@ function toFlowEdge(edge: CanvasEdge, selected: boolean): Edge {
     target: edge.target,
     type: 'floating',
     label: edge.label,
+    data: { connectionStyle },
     style: {
       stroke: color,
       strokeWidth: implicit ? 1.3 : selected ? 3.5 : 2,
@@ -325,12 +316,20 @@ type MenuTarget =
   | { kind: 'selection' }
   | { kind: 'pane' };
 
-/** One row of the menu. `checked` is what makes a row a setting rather than an action. */
+/** One row of the menu. `checked` is what makes a row a setting rather than an action; `exclusive` marks the
+ *  settings that are one choice between each other rather than a switch of their own. */
 interface MenuItem {
   label: string;
   checked?: boolean;
+  exclusive?: boolean;
   onSelect: () => void;
 }
+
+/** What a row is, as a screen reader is told it: an action, a switch, or one option among several. */
+const roleOf = (item: MenuItem) => {
+  if (item.checked === undefined) return 'menuitem';
+  return item.exclusive ? 'menuitemradio' : 'menuitemcheckbox';
+};
 
 /**
  * The canvas's own right-click menu, standing in for the browser's. It carries what is being done to the map
@@ -352,7 +351,7 @@ const CanvasMenu = ({ at, items, onClose }: {
       <button
         key={item.label}
         type="button"
-        role={item.checked === undefined ? 'menuitem' : 'menuitemcheckbox'}
+        role={roleOf(item)}
         aria-checked={item.checked}
         className="flex w-full items-center gap-2 rounded px-2 py-1.5 text-left text-label hover:bg-accent hover:text-accent-foreground"
         onClick={() => { item.onSelect(); onClose(); }}
@@ -402,6 +401,7 @@ const CanvasInner = ({ selectedId, onSelect, session, fullscreen, onToggleFullsc
   const store = useStoreApi();
   const [snap, setSnap] = useCanvasSnap();
   const [gridVisible, setGridVisible] = useCanvasGridVisible();
+  const [connectionStyle, setConnectionStyle] = useCanvasConnectionStyle();
   const [menu, setMenu] = useState<{ at: { x: number; y: number }; target: MenuTarget } | null>(null);
   const frameRef = useRef<HTMLDivElement | null>(null);
   // Where the pointer last went down, which is what says whether the press that opened a menu had traveled.
@@ -501,8 +501,10 @@ const CanvasInner = ({ selectedId, onSelect, session, fullscreen, onToggleFullsc
   }, [map, setNodes, selectedIdsRef]);
 
   const edges = useMemo(
-    () => map.edges.map((edge) => toFlowEdge(edge, edge.connectionId === selectedConnectionId)),
-    [map, selectedConnectionId],
+    () => map.edges.map(
+      (edge) => toFlowEdge(edge, edge.connectionId === selectedConnectionId, connectionStyle),
+    ),
+    [map, selectedConnectionId, connectionStyle],
   );
 
   const [dropInto, setDropInto] = useState<DropTarget>(IDLE);
@@ -754,6 +756,13 @@ const CanvasInner = ({ selectedId, onSelect, session, fullscreen, onToggleFullsc
             ...menuActions(menu.target),
             { label: 'Snap To Grid', checked: snap, onSelect: () => setSnap(!snap) },
             { label: 'Show Grid', checked: gridVisible, onSelect: () => setGridVisible(!gridVisible) },
+            // The three shapes are one choice, so they sit together at the foot of the menu.
+            ...CONNECTION_STYLES.map(({ value, label }) => ({
+              label,
+              checked: connectionStyle === value,
+              exclusive: true,
+              onSelect: () => setConnectionStyle(value),
+            })),
           ]}
         />
       )}
