@@ -6,6 +6,8 @@ import type { TurnMaterial, TurnPassId, TurnPassSubject, TurnPlanInput, TurnSett
 import type { AiStreamEvent } from '@/lib/aiRequest/aiStream';
 import type { ParsedDirector } from '@/lib/stagedPlanning';
 import { UNPARSEABLE_MESSAGE } from './turnErrors';
+import { navigableDestinations } from '@/lib/locationContext';
+import type { Connection, GameLocation } from '@/types';
 
 /**
  * The runner through its own interface: a fake request adapter stands in for the model, and the real pass
@@ -303,6 +305,53 @@ describe('the material each pass renders against', () => {
     const finished = ok(result);
     expect(outcome(finished, 'choices').parsed).toEqual(['Wave at Maela', 'Walk on']);
     expect(outcome(finished, 'locationAuto').parsed).toBe('The Long Pier');
+  });
+});
+
+describe('the effective navigation rule reaching the router', () => {
+  // Hamlet > { Green, Cottage }, plus a one-way drop from the Green down to the Landing. The candidates
+  // are derived exactly as GameViewer derives them, so this covers the whole path from the graph to a move.
+  const hamlet: GameLocation = { id: 'hamlet', name: 'Hamlet' };
+  const green: GameLocation = { id: 'green', name: 'The Green', parentId: 'hamlet' };
+  const cottage: GameLocation = { id: 'cottage', name: 'The Cottage', parentId: 'hamlet' };
+  const landing: GameLocation = { id: 'landing', name: 'The Landing' };
+  const locations = [hamlet, green, cottage, landing];
+  const drop: Connection = { id: 'c1', from: 'green', to: 'landing', twoWay: false };
+
+  const routeFrom = async (from: GameLocation, reply: string, connections = [drop]) => {
+    const destinations = navigableDestinations(from, locations, connections).map((l) => l.name);
+    const { result, types } = await run({
+      material: { destinations },
+      input: { destinationCount: destinations.length },
+      answers: { locationChange: reply },
+    });
+    return { destinations, types, run: ok(result) };
+  };
+
+  it('moves the player through the one-way drop from the end that has it', async () => {
+    const { destinations, run: finished } = await routeFrom(green, 'The Landing');
+    expect(destinations).toContain('The Landing');
+    expect(outcome(finished, 'locationAuto').parsed).toBe('The Landing');
+  });
+
+  it('never even asks from the far end of a one-way Connection', async () => {
+    // The drop left the Landing with nowhere to go, so the router has no candidate list to match against
+    // and the pass is not sent at all — no prompt ever had to say the trip back was forbidden.
+    const { destinations, types } = await routeFrom(landing, 'The Green');
+    expect(destinations).toEqual([]);
+    expect(types).not.toContain('locationChange');
+  });
+
+  it('discards a reply naming a sibling whose free travel a one-way Connection replaced', async () => {
+    const oneWay: Connection = { id: 'c2', from: 'green', to: 'cottage', twoWay: false };
+    const destinations = navigableDestinations(cottage, locations, [oneWay]).map((l) => l.name);
+    expect(destinations).toEqual(['Hamlet']);
+    const { result } = await run({
+      material: { destinations },
+      input: { destinationCount: destinations.length },
+      answers: { locationChange: 'The Green' },
+    });
+    expect(outcome(ok(result), 'locationAuto').parsed).toBeNull();
   });
 });
 

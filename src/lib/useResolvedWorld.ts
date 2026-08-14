@@ -9,7 +9,7 @@ import {
   resolveDictionaryEntryNames,
 } from '@/lib/resolveWorldNames';
 import type {
-  DictionaryEntry, Entity, GameLocation, PlayerStat, Stat, Trait, TraitGroup,
+  Connection, DictionaryEntry, Entity, GameLocation, PlayerStat, Stat, Trait, TraitGroup,
 } from '@/types';
 
 /**
@@ -31,6 +31,8 @@ import type {
 export interface ResolvedWorld {
   entities: Entity[];
   locations: GameLocation[];
+  /** The authored travel links, forwarded as-is: endpoints are ids and carry no name to resolve. */
+  connections: Connection[];
   stats: Stat[];
   traits: Trait[];
   traitGroups: TraitGroup[];
@@ -68,7 +70,7 @@ export interface ResolvedWorld {
  */
 export function useResolvedAuthoredWorld(pins: Record<string, string> = NO_PINS) {
   const {
-    stats: rawStats, locations: rawLocations, entities: rawEntities,
+    stats: rawStats, locations: rawLocations, connections, entities: rawEntities,
     traits: rawTraits, traitGroups: rawTraitGroups, placeholders,
   } = useGameData();
   const { rolls } = usePlaceholderSession();
@@ -102,7 +104,7 @@ export function useResolvedAuthoredWorld(pins: Record<string, string> = NO_PINS)
   );
   const traitGroups = useMemo(() => resolveTraitGroupNames(rawTraitGroups, resolvePH), [rawTraitGroups, resolvePH]);
 
-  return { entities, locations, stats, traits, traitGroups, resolvePH, resolveWith, resolveTraitText };
+  return { entities, locations, connections, stats, traits, traitGroups, resolvePH, resolveWith, resolveTraitText };
 }
 
 const NO_PINS: Record<string, string> = {};
@@ -122,7 +124,7 @@ export function useResolvedWorld(): ResolvedWorld {
   }, [playerTraits, disabledTraitIds, rawTraits, traitOrder]);
 
   const {
-    entities, locations, stats, traits, traitGroups, resolvePH, resolveWith, resolveTraitText,
+    entities, locations, connections, stats, traits, traitGroups, resolvePH, resolveWith, resolveTraitText,
   } = useResolvedAuthoredWorld(traitPins);
 
   // Every write to gameplay's `currentLocation` is a member of `locations`, so its id is the durable part —
@@ -141,7 +143,7 @@ export function useResolvedWorld(): ResolvedWorld {
   const viewStats = useMemo(() => resolveStatNames(rawViewStats, resolvePH), [rawViewStats, resolvePH]);
 
   return {
-    entities, locations, stats, traits, traitGroups, dictionary, currentLocation,
+    entities, locations, connections, stats, traits, traitGroups, dictionary, currentLocation,
     playerStats, viewStats, traitOrder, traitPins, resolvePH, resolveWith, resolveTraitText,
   };
 }

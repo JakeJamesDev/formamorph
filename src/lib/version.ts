@@ -1,5 +1,6 @@
 import { randomUUID } from "@/lib/uuid";
-import type { World, SaveObject, Stat, GameState, Trait, PlayerStat } from '@/types';
+import type { World, SaveObject, Stat, GameState, Trait, PlayerStat, Connection, GameLocation } from '@/types';
+import { implicitPairs, pairKey } from './locationGraph';
 import { normalizeCustomVRM } from './worldImport';
 import { autoBindLegacyBodyStats } from './bodyMorphs';
 import { appendCurrentToHistory } from './turnHistory';
@@ -131,6 +132,66 @@ function flipEntityLocationMembership(world: Record<string, unknown>): void {
   });
 }
 
+/**
+ * Convert the legacy per-location `connections` name lists into world-level Connection records (ADR-0002),
+ * pair-merged: a pair each side declared becomes one two-way record, a pair only one side declared becomes a
+ * one-way record from the declaring end, and a name matching no location is dropped (it reached nowhere
+ * before, and a record needs two real endpoints). Names match case-insensitively on the trimmed name, the
+ * same way the old destinations builder resolved them, so effective navigation is unchanged by the move —
+ * which is also why a one-sided declaration between tree-adjacent locations is recorded two-way (see below).
+ *
+ * Idempotent: a world whose locations no longer carry name lists produces no records and leaves the existing
+ * `connections` array alone. Deliberately NOT version-gated, for the same reason as `foldDictionaryIntoBooks`:
+ * shipped 2.x worlds carry `version === APP_VERSION` yet predate the records.
+ */
+function migrateLocationConnections(world: Record<string, unknown>): void {
+  if (!Array.isArray(world.locations)) return;
+  const byLowerName = new Map<string, string>();
+  for (const raw of world.locations) {
+    const loc = raw as { id?: unknown; name?: unknown } | null;
+    if (loc && typeof loc.id === 'string' && typeof loc.name === 'string') {
+      byLowerName.set(loc.name.trim().toLowerCase(), loc.id);
+    }
+  }
+  // Declared direction pairs, keyed by ordered `from|to`, so the reciprocal lookup is one probe per name.
+  const declared = new Set<string>();
+  world.locations = world.locations.map((raw) => {
+    if (!raw || typeof raw !== 'object') return raw;
+    const { connections, ...rest } = raw as Record<string, unknown> & { id?: string };
+    if (!Array.isArray(connections)) return raw; // nothing to move — keep the reference
+    if (typeof rest.id === 'string') {
+      for (const name of connections) {
+        if (typeof name !== 'string') continue;
+        const to = byLowerName.get(name.trim().toLowerCase());
+        if (to && to !== rest.id) declared.add(`${rest.id}|${to}`);
+      }
+    }
+    return rest;
+  });
+  if (declared.size === 0) return;
+  // Pairs the containment tree already linked. A record replaces that link (ADR-0002), so a one-sided
+  // declaration between two such locations has to be recorded two-way or the *other* end silently loses a
+  // trip it used to have for free — the migration would narrow navigation the author never narrowed.
+  const implicit = new Set(implicitPairs(world.locations as GameLocation[]).map(([a, b]) => pairKey(a, b)));
+  const records: Connection[] = [];
+  const done = new Set<string>();
+  for (const key of declared) {
+    if (done.has(key)) continue;
+    const [from, to] = key.split('|');
+    const reciprocal = `${to}|${from}`;
+    done.add(key);
+    done.add(reciprocal);
+    records.push({
+      id: randomUUID(),
+      from,
+      to,
+      twoWay: declared.has(reciprocal) || implicit.has(pairKey(from, to)),
+    });
+  }
+  const existing = Array.isArray(world.connections) ? (world.connections as Connection[]) : [];
+  world.connections = [...existing, ...records];
+}
+
 /** Split a legacy comma-joined keyword string into the array shape. */
 function splitLegacyKeys(raw: unknown): string[] {
   if (Array.isArray(raw)) return raw.map((k) => String(k)).filter(Boolean);
@@ -183,8 +244,8 @@ function coerceLegacyListStats(stats: readonly Stat[]): Stat[] {
 
 /**
  * Bring an imported world up to the current format and stamp it with `APP_VERSION`. The dictionary→books
- * fold, the keyword-array migration, the entity-gallery fold and the entity-location flip run
- * unconditionally (they aren't
+ * fold, the keyword-array migration, the entity-gallery fold, the entity-location flip and the
+ * connection-record pair-merge run unconditionally (they aren't
  * version-gated — see `foldDictionaryIntoBooks`); the rest is skipped for a world already at `APP_VERSION`. Moves the legacy root `customPlayerVRM` bare data-URL into
  * `worldOverview.customPlayerVRM` as a `MediaAsset`, auto-binds legacy body stats to body morphs, and
  * renames v1.2 description keys on entities/locations/traits to the audience-based keys. Remaining field
@@ -198,6 +259,7 @@ export function migrateWorld(raw: unknown): World {
   migrateDictionaryKeys(world);
   migrateEntityGalleries(world);
   flipEntityLocationMembership(world);
+  migrateLocationConnections(world);
   if (world.version === APP_VERSION) return world as unknown as World;
 
   const overview = { ...((world.worldOverview as Record<string, unknown>) ?? {}) };

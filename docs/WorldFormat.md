@@ -39,6 +39,7 @@ Every world saved or exported by Formamorph 2.0+ carries a top-level `version` s
 | `worldOverview` | Object | General world info & presentation |
 | `stats` | Array | Game mechanics tracked during play |
 | `locations` | Array | Places the player can visit (nestable into sub-locations) |
+| `connections` | Array | Authored travel links between locations (optional) |
 | `entities` | Array | Characters/objects the player can interact with |
 | `traits` | Array | Selectable characteristics that modify stats |
 | `traitGroups` | Array | Optional folders that organize traits in the editor and selection screen |
@@ -166,9 +167,22 @@ Optional folders that organize traits in the editor and the trait-selection scre
 | `backgroundImage` | String | Data-URL background image |
 | `imageTags` | String | Booru tags for AI image generation (editor-only; not sent to the narrative AI) |
 | `ambientSound` | [MediaAsset](#-media-fields) | Looping ambient audio |
-| `connections` | String[] | Names of connected locations (shown in the location panel) |
 | `isStarting` | Boolean | A candidate start location. One flagged = every game starts there; several = the player picks between them; none = a random location of any kind |
 | `parentId` | String \| null | Parent location `id` for sub-location nesting; null/absent = top-level (editor-only, not sent to the AI) |
+
+### 🔗 `connections`
+
+Travel links the author draws between two locations, by `id` — so renaming a location never breaks one.
+
+| Field | Type | Description |
+|---|---|---|
+| `id` | String | Unique identifier |
+| `from` | String | Location `id` travel departs from |
+| `to` | String | Location `id` travel arrives at |
+| `twoWay` | Boolean | Travelable both ways. `false` = one-way, `from` → `to` only |
+| `aiHint` | String | Optional note on *how* the trip is made ("through the shimmering portal"), shown to the AI as a `— via …` suffix on the destination |
+
+> ⚠️ A Connection between two locations **replaces** the free travel nesting gave that pair. Without one, a location always reaches its parent, its children and its siblings; with one, the Connection's own directions are all the travel there is between them. That's what makes a one-way link between two sub-locations of the same place actually one-way.
 
 ### 👥 `entities`
 
@@ -318,7 +332,6 @@ A trimmed example showing the shape (media payloads abbreviated):
       "name": "Town Square",
       "playerDescription": "The central gathering place",
       "backgroundImage": "data:image/png;base64,...",
-      "connections": ["Market", "Tavern"],
       "isStarting": true
     },
     {

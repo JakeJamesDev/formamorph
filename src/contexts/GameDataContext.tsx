@@ -4,6 +4,7 @@ import WorldStorageService from '../services/WorldStorageService';
 import { canonicalStringify } from '@/lib/canonicalStringify';
 import { migrateWorld, APP_VERSION } from '@/lib/version';
 import { dropLocationFromEntities } from '@/lib/entityPresence';
+import { dropLocationFromConnections } from '@/lib/locationGraph';
 import { useDictionaryStoreState, DictionaryStoreProvider } from '@/contexts/DictionaryStoreContext';
 import { placeholderStore, PlaceholderStoreProvider } from '@/contexts/PlaceholderStoreContext';
 import type {
@@ -16,6 +17,7 @@ import type {
   Trait,
   TraitGroup,
   StatUpdate,
+  Connection,
   Dictionary,
   Placeholder,
   World,
@@ -30,6 +32,7 @@ function buildWorldData(
   overview: WorldOverview,
   stats: Stat[],
   locations: GameLocation[],
+  connections: Connection[],
   entities: Entity[],
   entityGroups: EntityGroup[],
   traits: Trait[],
@@ -38,7 +41,7 @@ function buildWorldData(
   dictionaries: Dictionary[],
   placeholders: Placeholder[],
 ): Omit<World, 'id' | 'version'> {
-  return { worldOverview: overview, stats, locations, entities, entityGroups, traits, traitGroups, statUpdates, dictionaries, placeholders };
+  return { worldOverview: overview, stats, locations, connections, entities, entityGroups, traits, traitGroups, statUpdates, dictionaries, placeholders };
 }
 
 function useProvideGameData() {
@@ -56,6 +59,7 @@ function useProvideGameData() {
   });
   const [stats, setStats] = useState<Stat[]>([]);
   const [locations, setLocations] = useState<GameLocation[]>([]);
+  const [connections, setConnections] = useState<Connection[]>([]);
   const [entities, setEntities] = useState<Entity[]>([]);
   const [entityGroups, setEntityGroups] = useState<EntityGroup[]>([]);
   const [traits, setTraits] = useState<Trait[]>([]);
@@ -109,6 +113,23 @@ function useProvideGameData() {
     // Membership is entity-owned, so a deleted location would otherwise stay listed on everyone who
     // belonged to it — invisible in every roster, but riding along into the exported world forever.
     setEntities(prevEntities => dropLocationFromEntities(locationId, prevEntities));
+    // Same for its Connections: a record with one dead endpoint links nothing and can never be edited away,
+    // since neither the list nor the canvas has an end to select it by.
+    setConnections(prevConnections => dropLocationFromConnections(locationId, prevConnections));
+  }, []);
+
+  const addConnection = useCallback((newConnection: Connection) => {
+    setConnections(prevConnections => [...prevConnections, newConnection]);
+  }, []);
+
+  const updateConnection = useCallback((updatedConnection: Connection) => {
+    setConnections(prevConnections => prevConnections.map(connection =>
+      connection.id === updatedConnection.id ? updatedConnection : connection
+    ));
+  }, []);
+
+  const removeConnection = useCallback((connectionId: string) => {
+    setConnections(prevConnections => prevConnections.filter(connection => connection.id !== connectionId));
   }, []);
 
   const addEntity = useCallback((newEntity: Entity) => {
@@ -283,6 +304,7 @@ function useProvideGameData() {
     // Load other data with array validation
     const nextStats = Array.isArray(worldData.stats) ? worldData.stats : [];
     const nextLocations = Array.isArray(worldData.locations) ? worldData.locations : [];
+    const nextConnections = Array.isArray(worldData.connections) ? worldData.connections : [];
     const nextEntities = Array.isArray(worldData.entities) ? worldData.entities : [];
     const nextEntityGroups = Array.isArray(worldData.entityGroups) ? worldData.entityGroups : [];
     const nextTraits = Array.isArray(worldData.traits) ? worldData.traits : [];
@@ -295,6 +317,7 @@ function useProvideGameData() {
     setWorldId(worldData.id);
     setStats(nextStats);
     setLocations(nextLocations);
+    setConnections(nextConnections);
     setEntities(nextEntities);
     setEntityGroups(nextEntityGroups);
     setTraits(nextTraits);
@@ -305,7 +328,7 @@ function useProvideGameData() {
 
     // Baseline for dirty detection: a freshly loaded world has no pending changes.
     setSavedSnapshot(JSON.stringify(buildWorldData(
-      normalizedOverview, nextStats, nextLocations, nextEntities, nextEntityGroups, nextTraits, nextTraitGroups, nextStatUpdates, nextDictionaries, nextPlaceholders,
+      normalizedOverview, nextStats, nextLocations, nextConnections, nextEntities, nextEntityGroups, nextTraits, nextTraitGroups, nextStatUpdates, nextDictionaries, nextPlaceholders,
     )));
 
     return { world: worldData, isDefault };
@@ -313,8 +336,8 @@ function useProvideGameData() {
 
   // The current editor state as a canonical world payload; the one source consumers serialize/save/export from.
   const getWorldData = useCallback(
-    () => buildWorldData(worldOverview, stats, locations, entities, entityGroups, traits, traitGroups, statUpdates, dictionaries, placeholders),
-    [worldOverview, stats, locations, entities, entityGroups, traits, traitGroups, statUpdates, dictionaries, placeholders],
+    () => buildWorldData(worldOverview, stats, locations, connections, entities, entityGroups, traits, traitGroups, statUpdates, dictionaries, placeholders),
+    [worldOverview, stats, locations, connections, entities, entityGroups, traits, traitGroups, statUpdates, dictionaries, placeholders],
   );
 
   // Per-keystroke dirty check over image-heavy world data: canonicalStringify caches by identity, so an
@@ -384,6 +407,7 @@ function useProvideGameData() {
     loadWorldMetadata,
     stats,
     locations,
+    connections,
     entities,
     entityGroups,
     traits,
@@ -398,6 +422,9 @@ function useProvideGameData() {
     addLocation,
     updateLocation,
     removeLocation,
+    addConnection,
+    updateConnection,
+    removeConnection,
     addEntity,
     updateEntity,
     removeEntity,
@@ -424,6 +451,7 @@ function useProvideGameData() {
     removePlaceholder,
     setStats,
     setLocations,
+    setConnections,
     setEntities,
     setEntityGroups,
     setTraits,

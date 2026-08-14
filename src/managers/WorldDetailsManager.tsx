@@ -21,7 +21,7 @@ import { useEditorMode } from "@/lib/editorMode";
  */
 const NarrationPromptField = () => {
   const {
-    worldOverview, updateWorldOverview, stats, locations, entities, traits, traitGroups, dictionaries,
+    worldOverview, updateWorldOverview, stats, locations, connections, entities, traits, traitGroups, dictionaries,
     placeholders,
   } = useGameData();
   const {
@@ -37,12 +37,12 @@ const NarrationPromptField = () => {
         limitActiveCharacters, activeCharacterLimit,
       },
       authoredPreviewValues({
-        worldOverview, stats, locations, entities, traits, traitGroups, dictionaries, placeholders,
+        worldOverview, stats, locations, connections, entities, traits, traitGroups, dictionaries, placeholders,
       }),
     ),
     [
       paragraphLimit, maxTokens, markdownOutput, activeSectionStyle, limitActiveCharacters, activeCharacterLimit,
-      worldOverview, stats, locations, entities, traits, traitGroups, dictionaries, placeholders,
+      worldOverview, stats, locations, connections, entities, traits, traitGroups, dictionaries, placeholders,
     ],
   );
   const stored = storedNarrationPrompt(worldOverview);

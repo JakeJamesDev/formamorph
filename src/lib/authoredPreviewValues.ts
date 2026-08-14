@@ -11,7 +11,7 @@ import { resolveStartingLocation } from './startingLocation';
 import { resolvePlaceholders } from './placeholders';
 import { variableForToken, variableVariantIds, withVariant, decodeVariant, tokenVariant } from './promptVariables';
 import { NONE_PLACEHOLDER } from './promptFallbacks';
-import type { Dictionary, Entity, GameLocation, Placeholder, Stat, Trait, TraitGroup, WorldOverview } from '@/types';
+import type { Connection, Dictionary, Entity, GameLocation, Placeholder, Stat, Trait, TraitGroup, WorldOverview } from '@/types';
 
 const STATS_VARIABLE = variableForToken('<STATS DESCRIPTION>')!;
 const STATS_TOKENS = [
@@ -24,6 +24,7 @@ export interface AuthoredWorld {
   worldOverview: WorldOverview;
   stats: Stat[];
   locations: GameLocation[];
+  connections?: Connection[];
   entities: Entity[];
   traits: Trait[];
   traitGroups?: TraitGroup[];
@@ -43,7 +44,7 @@ export interface AuthoredWorld {
  */
 export function authoredPreviewValues(world: AuthoredWorld): Record<string, string> {
   const {
-    worldOverview, stats, locations, entities, traits, traitGroups = [], dictionaries = [], placeholders = [],
+    worldOverview, stats, locations, connections = [], entities, traits, traitGroups = [], dictionaries = [], placeholders = [],
   } = world;
   // A world with no locations yet previews as "nowhere" rather than failing — the builders all take null.
   const loc = resolveStartingLocation(locations, null) ?? null;
@@ -60,7 +61,7 @@ export function authoredPreviewValues(world: AuthoredWorld): Record<string, stri
     sublocations: (opts) => buildSublocationsContext(loc, locations, opts),
     parent: (opts) => buildParentLocationContext(loc, locations, opts),
     reachable: (opts) => buildReachableLocationsContext(loc, locations, opts),
-    destinations: (opts) => buildDestinationsContext(loc, locations, opts),
+    destinations: (opts) => buildDestinationsContext(loc, locations, connections, opts),
   };
   const entityScopes: Record<string, (opts: ContextOpts) => string> = {
     '': (opts) => buildEntityContext(loc, entities, opts),

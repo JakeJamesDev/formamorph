@@ -1,5 +1,6 @@
-import type { Entity, GameLocation } from "@/types";
+import type { Connection, Entity, GameLocation } from "@/types";
 import { entityIdsAt, entityIdsAtAny } from "./entityPresence";
+import { effectiveDestinations } from "./locationGraph";
 import { NONE_PLACEHOLDER } from "./promptFallbacks";
 import { xmlEscape } from "./utils";
 
@@ -16,7 +17,7 @@ const pickDescription = (preferSummary: boolean, summary?: string, description?:
 // AI. An ALLOWLIST, not a denylist: everything else on a location/entity (media, ids, editor-only flags,
 // image tags, placeholder defs) is excluded by default, so a newly added world field can never silently leak
 // into the prompt. To surface a new field to the AI, add it here.
-const AI_LOCATION_FIELDS: readonly (keyof GameLocation)[] = ['connections'];
+const AI_LOCATION_FIELDS: readonly (keyof GameLocation)[] = [];
 const AI_ENTITY_FIELDS: readonly (keyof Entity)[] = ['type'];
 
 /** Append an item's allow-listed fields as `key: value` lines, skipping blanks so empty fields don't pad the
@@ -40,9 +41,9 @@ function appendAllowedFields<T>(
  *  sublocations / destinations / reachable builders, which differ only in which locations they pass. */
 function buildLocationList(
   items: GameLocation[],
-  opts: { preferSummary?: boolean; format?: ContextFormat; nameOnly?: boolean } = {},
+  opts: { preferSummary?: boolean; format?: ContextFormat; nameOnly?: boolean; hints?: Map<string, string> } = {},
 ): string {
-  const { preferSummary = false, format = "simple", nameOnly = false } = opts;
+  const { preferSummary = false, format = "simple", nameOnly = false, hints } = opts;
   // Names alone, for a chip used mid-sentence. Format is deliberately ignored: a bare list has no
   // headings or fields to decorate, so all three styles would render identically anyway.
   if (nameOnly) return items.map((i) => i.name).join(", ");
@@ -50,12 +51,17 @@ function buildLocationList(
   for (const item of items) {
     const desc = pickDescription(preferSummary, item.aiSummary, item.aiDescription);
     const hasDesc = !!desc && desc.trim() !== "";
+    const hint = hints?.get(item.id)?.trim();
     if (format === "xml") {
       let inner = `  <name>${xmlEscape(item.name)}</name>\n`;
       if (hasDesc) inner += `  <description>${xmlEscape(desc!)}</description>\n`;
+      if (hint) inner += `  <via>${xmlEscape(hint)}</via>\n`;
       output += `<location>\n${inner}</location>\n`;
-    } else if (format === "markdown") output += hasDesc ? `- **${item.name}:** ${desc}\n` : `- **${item.name}**\n`;
-    else output += hasDesc ? `${item.name}: ${desc}\n` : `${item.name}\n`;
+      continue;
+    }
+    const suffix = hint ? ` — via ${hint}` : "";
+    if (format === "markdown") output += hasDesc ? `- **${item.name}:** ${desc}${suffix}\n` : `- **${item.name}**${suffix}\n`;
+    else output += hasDesc ? `${item.name}: ${desc}${suffix}\n` : `${item.name}${suffix}\n`;
   }
   return output;
 }
@@ -217,43 +223,57 @@ export function buildSublocationEntitiesContext(
   return renderEntityRoster(ids, entities, opts);
 }
 
+/** The current location's effective destinations paired with the travel hint each one is reached by (absent
+ *  for implicit travel and for hintless Connections), in `lib/locationGraph` order. */
+function destinationEntries(
+  current: GameLocation,
+  locations: GameLocation[],
+  connections: Connection[],
+): { location: GameLocation; hint?: string }[] {
+  const byId = new Map(locations.map((l) => [l.id, l]));
+  const entries: { location: GameLocation; hint?: string }[] = [];
+  for (const [id, via] of effectiveDestinations(current.id, locations, connections)) {
+    const location = byId.get(id);
+    if (!location) continue; // a Connection pointing at a deleted location reaches nowhere
+    entries.push({ location, hint: via.via === "connection" ? via.connection.aiHint : undefined });
+  }
+  return entries;
+}
+
 /**
- * The places the player can move to from the current location — the **local navigable graph**: the union of
- * its authored `connections` (resolved by name), its direct sub-locations, and its reachable locations (the
- * containing location + siblings). Deduped by id, current excluded, dangling connection names skipped. This is
- * the location router's whole world: the only candidates fed to the model and the only names its reply is
- * matched against.
+ * The places the player can move to from the current location — the **local navigable graph** under the
+ * effective-navigation rule (ADR-0002): its implicit neighbors (containing location, sub-locations,
+ * siblings) for every pair no Connection covers, plus the Connections leaving it. Deduped by id, current
+ * excluded. This is the location router's whole world: the only candidates fed to the model and the only
+ * names its reply is matched against, which is what makes a one-way link structural — the return trip is
+ * never offered rather than verbally forbidden.
  */
 export function navigableDestinations(
   current: MaybeLocation,
   locations: GameLocation[],
+  connections: Connection[],
 ): GameLocation[] {
   if (!current) return [];
-  const byLowerName = new Map(locations.map((l) => [l.name.toLowerCase(), l]));
-  const out = new Map<string, GameLocation>();
-  const add = (loc?: GameLocation) => {
-    if (loc && loc.id !== current.id) out.set(loc.id, loc);
-  };
-  for (const name of current.connections ?? []) add(byLowerName.get(name.toLowerCase().trim()));
-  for (const child of locations.filter((l) => (l.parentId ?? null) === current.id)) add(child);
-  for (const loc of reachableLocations(current, locations)) add(loc);
-  return [...out.values()];
+  return destinationEntries(current, locations, connections).map((e) => e.location);
 }
 
 /**
  * Serialize the current location's navigable destinations for the `<LOCATION|destinations>` chip — one line per
- * place (`name: <summary>` / `- **name:** <summary>`), the summary chosen like the other builders.
+ * place (`name: <summary>` / `- **name:** <summary>`), the summary chosen like the other builders. A
+ * Connection's travel hint trails its line as `— via <hint>`, so the model knows how the trip is made.
  * Returns `N/A` when the location is null or nothing is reachable.
  */
 export function buildDestinationsContext(
   current: MaybeLocation,
   locations: GameLocation[],
+  connections: Connection[],
   opts: { preferSummary?: boolean; format?: ContextFormat; nameOnly?: boolean } = {},
 ): string {
   if (!current) return NONE_PLACEHOLDER;
-  const dests = navigableDestinations(current, locations);
-  if (dests.length === 0) return NONE_PLACEHOLDER;
-  return buildLocationList(dests, opts);
+  const entries = destinationEntries(current, locations, connections);
+  if (entries.length === 0) return NONE_PLACEHOLDER;
+  const hints = new Map(entries.filter((e) => e.hint).map((e) => [e.location.id, e.hint!]));
+  return buildLocationList(entries.map((e) => e.location), { ...opts, hints });
 }
 
 /**
