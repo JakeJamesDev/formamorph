@@ -3,7 +3,7 @@ import {
 } from 'react';
 import {
   Background, BaseEdge, Controls, EdgeLabelRenderer, Handle, MarkerType, Panel, Position, ReactFlow,
-  ReactFlowProvider, useConnection, useInternalNode, useNodesState,
+  ReactFlowProvider, useConnection, useInternalNode, useNodesState, useStoreApi,
   type Edge, type EdgeProps, type Node, type NodeProps,
 } from '@xyflow/react';
 import '@xyflow/react/dist/base.css';
@@ -17,7 +17,7 @@ import { describePlaceholders } from '@/lib/placeholders';
 import type { ConnectionDirection } from '@/lib/connectionEditing';
 import {
   applyCanvasDrops, buildLocationCanvas, CANVAS_GRID, connectIntent, connectionEnds, deleteIntent,
-  directionIntent, directionOf, dropIntent, hintIntent, isStationaryClick, multiDropIntents,
+  directionIntent, directionOf, hintIntent, isStationaryClick, multiDropIntents,
   type CanvasEdge, type CanvasIntent, type CanvasNodeData,
 } from '@/lib/locationCanvas';
 import { cn } from '@/lib/utils';
@@ -36,16 +36,18 @@ import type { Connection } from '@/types';
 type LocationNodeType = Node<CanvasNodeData & Record<string, unknown>>;
 
 /**
- * Where a drag in flight would land, as the boxes on the map need to read it: the box that would take it, and
- * whether landing there is a change. `active` is what tells a drag clear of every box apart from no drag.
+ * Where a drag in flight would land, as the boxes on the map need to read it. A whole selection is dragged as
+ * one gesture but lands a location at a time, so this is every box that would take one of them, and whether
+ * any of them is on its way back out to the top level. `active` tells a drag clear of every box apart from
+ * no drag at all.
  */
 interface DropTarget {
   active: boolean;
-  into: string | null;
-  changesHolder: boolean;
+  into: string[];
+  toTopLevel: boolean;
 }
 
-const IDLE: DropTarget = { active: false, into: null, changesHolder: false };
+const IDLE: DropTarget = { active: false, into: [], toTopLevel: false };
 const DropTargetContext = createContext<DropTarget>(IDLE);
 
 const UNREACHABLE_TITLE = 'No starting location can reach here';
@@ -116,7 +118,7 @@ const LocationNode = ({ data, selected }: NodeProps<LocationNodeType>) => (
  *  free travel to and from it, which is why no line joins a parent to its children. */
 const LocationGroupNode = ({ id, data, selected }: NodeProps<LocationNodeType>) => {
   // Named while the drag is still in the air: this is the box that would come to hold what is being moved.
-  const willTakeTheDrop = useContext(DropTargetContext).into === id;
+  const willTakeTheDrop = useContext(DropTargetContext).into.includes(id);
   return (
     <div
       title={data.unreachable ? UNREACHABLE_TITLE : undefined}
@@ -143,8 +145,8 @@ const LocationGroupNode = ({ id, data, selected }: NodeProps<LocationNodeType>) 
  * is dragged around the map constantly, and framing the pane for every one of those says nothing.
  */
 const TopLevelDrop = () => {
-  const { active, into, changesHolder } = useContext(DropTargetContext);
-  if (!active || into !== null || !changesHolder) return null;
+  const { active, toTopLevel } = useContext(DropTargetContext);
+  if (!active || !toTopLevel) return null;
   return (
     <Panel position="top-center" className="!pointer-events-none !inset-0 !m-0">
       <div
@@ -357,6 +359,7 @@ const CanvasInner = ({ selectedId, onSelect }: { selectedId: string | null; onSe
     locations, setLocations, connections, addConnection, updateConnection, removeConnection, placeholders,
   } = useGameData();
   const [selectedConnectionId, setSelectedConnectionId] = useState<string | null>(null);
+  const store = useStoreApi();
   const [snap, setSnap] = useCanvasSnap();
   const [gridVisible, setGridVisible] = useCanvasGridVisible();
   const [menu, setMenu] = useState<{ at: { x: number; y: number }; target: MenuTarget } | null>(null);
@@ -472,11 +475,18 @@ const CanvasInner = ({ selectedId, onSelect }: { selectedId: string | null; onSe
 
   const [dropInto, setDropInto] = useState<DropTarget>(IDLE);
 
-  // The drag asks for the drop it would make, on every frame — so the box an author watched light up is the
-  // box the drop then commits to, from the one answer rather than from two that agree by inspection.
-  const handleDrag = useCallback((_: unknown, node: Node) => {
-    const drop = dropIntent(locations, node.id, node.position);
-    if (drop) setDropInto({ active: true, into: drop.parentId, changesHolder: drop.kind === 'reparent' });
+  // The drag asks for the drops it would make, on every frame — so the boxes an author watched light up are
+  // the boxes the drop then commits to, from the one answer rather than from two that agree by inspection.
+  // A selection is judged a location at a time here exactly as it is on release, so a gesture carrying one
+  // location into a box and another out of one says both things at once.
+  const handleDrag = useCallback((_: unknown, node: Node, dragged: Node[]) => {
+    const moved = dragged.length ? dragged : [node];
+    const drops = multiDropIntents(locations, moved.map((n) => ({ id: n.id, position: n.position })));
+    setDropInto({
+      active: true,
+      into: drops.map((drop) => drop.parentId).filter((id): id is string => id !== null),
+      toTopLevel: drops.some((drop) => drop.kind === 'reparent' && drop.parentId === null),
+    });
   }, [locations]);
 
   // A drag either moves a location or changes what holds it, and where it came to rest decides which — so
@@ -524,6 +534,29 @@ const CanvasInner = ({ selectedId, onSelect }: { selectedId: string | null; onSe
     };
   }, [setSelection]);
 
+  /**
+   * A pan that began over a location. xyflow listens for one on the pane, which sits *behind* the boxes, so
+   * a press that started on a box never reaches it — and the map would refuse to move under exactly the
+   * places an author is looking at. The gesture is the same one, driven from here.
+   */
+  const handlePointerDown = (event: React.PointerEvent) => {
+    pointerDownRef.current = { x: event.clientX, y: event.clientY };
+    const overNode = (event.target as HTMLElement).closest?.('.react-flow__node');
+    if (!overNode || (event.button !== 1 && event.button !== 2)) return;
+    event.preventDefault();
+    let last = { x: event.clientX, y: event.clientY };
+    const pan = (moved: PointerEvent) => {
+      store.getState().panBy({ x: moved.clientX - last.x, y: moved.clientY - last.y });
+      last = { x: moved.clientX, y: moved.clientY };
+    };
+    const release = () => {
+      window.removeEventListener('pointermove', pan);
+      window.removeEventListener('pointerup', release);
+    };
+    window.addEventListener('pointermove', pan);
+    window.addEventListener('pointerup', release);
+  };
+
   const menuTargetFor = (id: string): MenuTarget => {
     const picked = selectedIdsRef.current;
     return picked.length > 1 && picked.includes(id) ? { kind: 'selection' } : { kind: 'node', id };
@@ -554,7 +587,7 @@ const CanvasInner = ({ selectedId, onSelect }: { selectedId: string | null; onSe
     <div
       ref={frameRef}
       className="relative h-full w-full"
-      onPointerDown={(e) => { pointerDownRef.current = { x: e.clientX, y: e.clientY }; }}
+      onPointerDownCapture={handlePointerDown}
       // The browser's menu never opens over the canvas — not over a node, not over the pane, and not at the
       // end of a right-drag pan, which is a gesture the browser would otherwise answer with a menu.
       onContextMenu={(e) => e.preventDefault()}
