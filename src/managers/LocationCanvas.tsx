@@ -22,9 +22,11 @@ import { describePlaceholders } from '@/lib/placeholders';
 import type { ConnectionDirection } from '@/lib/connectionEditing';
 import {
   applyCanvasDrops, buildLocationCanvas, CANVAS_GRID, connectIntent, connectionEnds, deleteIntent,
-  directionIntent, directionOf, hintIntent, isStationaryClick, LONG_PRESS_MS, multiDropIntents, TOUCH_SLOP,
+  directionIntent, directionOf, hintIntent, holderOf, isStationaryClick, LONG_PRESS_MS, multiDropIntents,
+  TOUCH_SLOP,
   type CanvasEdge, type CanvasIntent, type CanvasNodeData,
 } from '@/lib/locationCanvas';
+import { autoArrange, autoArrangeAll } from '@/lib/locationArrange';
 import { cn } from '@/lib/utils';
 import type { Connection } from '@/types';
 
@@ -636,12 +638,13 @@ const CanvasInner = ({ selectedId, onSelect, session, fullscreen, onToggleFullsc
   };
 
   /**
-   * What the menu offers for what it was opened on. Starter actions only — later tickets hang Auto Arrange
-   * and the alignment commands off these same three targets.
+   * What the menu offers for what it was opened on. Auto Arrange is offered on a box that holds something —
+   * a leaf has nothing to lay out — and its recursive form on open canvas, which is the top level's own row.
+   * Each writes the world once, so the arrangement is one edit rather than one per location moved.
    */
   const menuActions = (target: MenuTarget): MenuItem[] => {
     if (target.kind === 'node') {
-      return [{
+      const items: MenuItem[] = [{
         label: 'Edit Location',
         onSelect: () => {
           setSelection((id) => id === target.id);
@@ -649,11 +652,21 @@ const CanvasInner = ({ selectedId, onSelect, session, fullscreen, onToggleFullsc
           onSelect(target.id);
         },
       }];
+      if (locations.some((l) => holderOf(locations, l) === target.id)) {
+        items.push({
+          label: 'Auto Arrange',
+          onSelect: () => setLocations(autoArrange(locations, connections, target.id)),
+        });
+      }
+      return items;
     }
     if (target.kind === 'selection') {
       return [{ label: 'Clear Selection', onSelect: () => setSelection(() => false) }];
     }
-    return [{ label: 'Select All Locations', onSelect: () => setSelection(() => true) }];
+    return [
+      { label: 'Select All Locations', onSelect: () => setSelection(() => true) },
+      { label: 'Auto Arrange All', onSelect: () => setLocations(autoArrangeAll(locations, connections)) },
+    ];
   };
 
   return (
