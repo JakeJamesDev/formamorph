@@ -2,7 +2,7 @@ import { describe, it, expect } from "vitest";
 import {
   buildLocationContext, buildEntityContext, buildSublocationsContext, buildSublocationEntitiesContext,
   buildReachableLocationsContext, buildReachableEntitiesContext,
-  navigableDestinations, buildDestinationsContext, sublocationEntityIds, reachableEntityIds,
+  navigableDestinations, buildDestinationsContext, sublocationEntityIds, reachableEntityIds, renderEntityRoster,
   buildParentLocationContext, buildSceneEntitiesContext, scenePresentHere,
 } from "./locationContext";
 import { NONE_PLACEHOLDER } from "./promptFallbacks";
@@ -14,14 +14,14 @@ const guard: Entity = {
   type: "npc",
   aiDescription: "A burly guard in full plate, scarred from old wars.",
   aiSummary: "A burly scarred guard.",
+  locations: ["loc1"],
 };
 
-const location: GameLocation & { entity?: string[] } = {
+const location: GameLocation = {
   id: "loc1",
   name: "North Gate",
   aiDescription: "A towering stone gate, portcullis raised, banners snapping in the wind.",
   aiSummary: "A towering stone gate.",
-  entities: ["e1"],
 };
 
 describe("buildLocationContext", () => {
@@ -113,11 +113,11 @@ describe("buildLocationContext", () => {
 
 describe("buildSublocationsContext / buildSublocationEntitiesContext", () => {
   const keep: GameLocation = { id: "p", name: "Keep" };
-  const cellar: GameLocation = { id: "a", name: "Cellar", parentId: "p", aiDescription: "A damp stone cellar.", aiSummary: "A damp cellar.", entities: ["g1"] };
+  const cellar: GameLocation = { id: "a", name: "Cellar", parentId: "p", aiDescription: "A damp stone cellar.", aiSummary: "A damp cellar." };
   const tower: GameLocation = { id: "b", name: "Tower", parentId: "p", aiDescription: "A tall watchtower." };
   const subCellar: GameLocation = { id: "gc", name: "Sub-cellar", parentId: "a" }; // grandchild of Keep
   const locs = [keep, cellar, tower, subCellar];
-  const rat: Entity = { id: "g1", name: "Rat", aiDescription: "A big rat." };
+  const rat: Entity = { id: "g1", name: "Rat", aiDescription: "A big rat.", locations: ["a"] };
 
   it("sublocations: N/A for null or a childless location", () => {
     expect(buildSublocationsContext(null, locs)).toBe(NONE_PLACEHOLDER);
@@ -150,23 +150,28 @@ describe("buildSublocationsContext / buildSublocationEntitiesContext", () => {
   });
 
   it("sublocationEntityIds: deduped union across direct children only", () => {
-    expect(sublocationEntityIds(keep, locs)).toEqual(["g1"]);
-    expect(sublocationEntityIds(tower, locs)).toEqual([]);
-    expect(sublocationEntityIds(null, locs)).toEqual([]);
+    expect(sublocationEntityIds(keep, locs, [rat])).toEqual(["g1"]);
+    expect(sublocationEntityIds(tower, locs, [rat])).toEqual([]);
+    expect(sublocationEntityIds(null, locs, [rat])).toEqual([]);
+  });
+
+  it("sublocation entities: someone who belongs to two children is rostered once", () => {
+    const bat: Entity = { id: "g2", name: "Bat", aiDescription: "A bat.", locations: ["a", "b"] };
+    expect(sublocationEntityIds(keep, locs, [rat, bat])).toEqual(["g1", "g2"]);
   });
 });
 
 describe("buildReachableLocationsContext / buildReachableEntitiesContext", () => {
   // town (Mayor) > { houseA (Alice), Sarah's House (Sarah), Mall } ; houseA > roomA ; plus a top-level location.
-  const town: GameLocation = { id: "town", name: "Town", aiDescription: "A small town.", entities: ["mayor"] };
-  const houseA: GameLocation = { id: "a", name: "House A", parentId: "town", entities: ["alice"] };
-  const sarahs: GameLocation = { id: "b", name: "Sarah's House", parentId: "town", aiDescription: "Where Sarah lives.", entities: ["sarah"] };
+  const town: GameLocation = { id: "town", name: "Town", aiDescription: "A small town." };
+  const houseA: GameLocation = { id: "a", name: "House A", parentId: "town" };
+  const sarahs: GameLocation = { id: "b", name: "Sarah's House", parentId: "town", aiDescription: "Where Sarah lives." };
   const mall: GameLocation = { id: "m", name: "Mall", parentId: "town", aiDescription: "A big mall." };
   const roomA: GameLocation = { id: "ra", name: "Room A", parentId: "a" }; // child of houseA, not a sibling
   const top: GameLocation = { id: "top", name: "Overworld" }; // top-level, no parent
   const locs = [town, houseA, sarahs, mall, roomA, top];
-  const sarah: Entity = { id: "sarah", name: "Sarah", aiDescription: "A friendly neighbor." };
-  const mayor: Entity = { id: "mayor", name: "Mayor", aiDescription: "Runs the town." };
+  const sarah: Entity = { id: "sarah", name: "Sarah", aiDescription: "A friendly neighbor.", locations: ["b"] };
+  const mayor: Entity = { id: "mayor", name: "Mayor", aiDescription: "Runs the town.", locations: ["town"] };
 
   it("reachable locations: the containing location and its neighbors — not self, not children", () => {
     const out = buildReachableLocationsContext(houseA, locs);
@@ -212,9 +217,10 @@ describe("buildReachableLocationsContext / buildReachableEntitiesContext", () =>
   });
 
   it("reachableEntityIds: dedupes someone standing in two reachable places", () => {
-    const alsoMayor: GameLocation = { ...mall, entities: ["mayor"] }; // Mayor is in Town and at the Mall
-    expect(reachableEntityIds(houseA, [town, houseA, sarahs, alsoMayor]).sort()).toEqual(["mayor", "sarah"]);
-    expect(reachableEntityIds(top, locs)).toEqual([]); // top-level → nothing reachable
+    const twoPlaceMayor: Entity = { ...mayor, locations: ["town", "m"] }; // Mayor is in Town and at the Mall
+    expect(reachableEntityIds(houseA, [town, houseA, sarahs, mall], [sarah, twoPlaceMayor]).sort())
+      .toEqual(["mayor", "sarah"]);
+    expect(reachableEntityIds(top, locs, [sarah, mayor])).toEqual([]); // top-level → nothing reachable
   });
 });
 
@@ -285,6 +291,13 @@ describe("buildEntityContext", () => {
     expect(buildEntityContext({ id: "loc2", name: "Empty Field" }, [guard])).toBe(NONE_PLACEHOLDER);
   });
 
+  it("rosters a multi-location entity at every place it lists, simultaneously", () => {
+    const roamer: Entity = { ...guard, locations: ["loc1", "docks"] };
+    const docks: GameLocation = { id: "docks", name: "The Docks" };
+    expect(buildEntityContext(location, [roamer], { nameOnly: true })).toBe("Guard");
+    expect(buildEntityContext(docks, [roamer], { nameOnly: true })).toBe("Guard");
+  });
+
   it("emits only allow-listed fields — an unknown field never leaks to the AI by default", () => {
     const out = buildEntityContext(
       location,
@@ -334,15 +347,20 @@ describe("buildEntityContext", () => {
   });
 
   it("falls back to aiDescription when aiSummary is empty or whitespace", () => {
-    const loc: GameLocation & { entity?: string[] } = { ...location, entities: ["e2"] };
-    const ent: Entity = { id: "e2", name: "Merchant", aiDescription: "A shrewd traveling merchant.", aiSummary: "" };
-    const out = buildEntityContext(loc, [ent], { preferSummary: true });
+    const ent: Entity = { id: "e2", name: "Merchant", aiDescription: "A shrewd traveling merchant.", aiSummary: "", locations: ["loc1"] };
+    const out = buildEntityContext(location, [ent], { preferSummary: true });
     expect(out).toContain("  description: A shrewd traveling merchant.");
   });
 
-  it("returns the placeholder when no ids resolve to a known entity", () => {
-    const loc: GameLocation & { entity?: string[] } = { ...location, entities: ["missing"] };
-    expect(buildEntityContext(loc, [guard])).toBe(NONE_PLACEHOLDER);
+  it("returns the placeholder when nobody belongs to the location", () => {
+    const elsewhere: GameLocation = { ...location, id: "loc-empty" };
+    expect(buildEntityContext(elsewhere, [guard])).toBe(NONE_PLACEHOLDER);
+  });
+
+  it("skips a rostered id that resolves to no entity, and is N/A when none of them do", () => {
+    expect(renderEntityRoster(["missing", "e1"], [guard])).toContain("Guard");
+    expect(renderEntityRoster(["missing"], [guard])).toBe(NONE_PLACEHOLDER);
+    expect(renderEntityRoster(["missing"], [guard], { nameOnly: true })).toBe(NONE_PLACEHOLDER);
   });
 
   it("surfaces aliases as an 'also known as' line, joined, right after the name", () => {
@@ -363,8 +381,8 @@ describe("buildEntityContext", () => {
 
   it("never emits editor-only grouping fields (groupId/order) to the AI", () => {
     // Grouping is purely organizational; the entity context is identical whether grouped or not.
-    const grouped: Entity = { id: "g9", name: "Synthia", aiDescription: "The matron.", groupId: "elf", order: 2 };
-    const loc = { id: "l", name: "Hall", entities: ["g9"] };
+    const grouped: Entity = { id: "g9", name: "Synthia", aiDescription: "The matron.", groupId: "elf", order: 2, locations: ["l"] };
+    const loc: GameLocation = { id: "l", name: "Hall" };
     const out = buildEntityContext(loc, [grouped]);
     expect(out).toContain("Synthia\n");
     expect(out).toContain("description: The matron.");
@@ -376,11 +394,11 @@ describe("buildEntityContext", () => {
 describe('name-only content variant', () => {
   const here: GameLocation = {
     id: 'l1', name: "Sarah's Place", description: '', aiDescription: 'A cramped flat above the laundromat.',
-    aiSummary: 'A cramped flat.', entities: ['e1', 'e2'],
+    aiSummary: 'A cramped flat.',
   } as GameLocation;
   const cast: Entity[] = [
-    { id: 'e1', name: 'Sarah Jones', description: '', aiDescription: 'The tenant.' } as Entity,
-    { id: 'e2', name: 'Mira', description: '', aiDescription: 'A visitor.' } as Entity,
+    { id: 'e1', name: 'Sarah Jones', description: '', aiDescription: 'The tenant.', locations: ['l1'] } as Entity,
+    { id: 'e2', name: 'Mira', description: '', aiDescription: 'A visitor.', locations: ['l1'] } as Entity,
   ];
 
   it('returns the bare location name, with none of the description or field labels', () => {
@@ -402,7 +420,7 @@ describe('name-only content variant', () => {
   });
 
   it('still returns the N/A placeholder when there is nothing to name', () => {
-    expect(buildEntityContext({ ...here, entities: [] }, cast, { nameOnly: true })).toBe(NONE_PLACEHOLDER);
+    expect(buildEntityContext({ ...here, id: 'empty' }, cast, { nameOnly: true })).toBe(NONE_PLACEHOLDER);
   });
 
   it('leaves the full and summary variants untouched', () => {

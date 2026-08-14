@@ -1,8 +1,10 @@
 import type { Entity, GameLocation } from "@/types";
+import { entityIdsAt, entityIdsAtAny } from "./entityPresence";
 import { NONE_PLACEHOLDER } from "./promptFallbacks";
 import { xmlEscape } from "./utils";
 
-type LocationWithEntities = (GameLocation & { entity?: string[] }) | null;
+/** The location a builder is scoped to, or none at all (no world, or nowhere resolved yet). */
+type MaybeLocation = GameLocation | null;
 
 /** Section-style shape a context builder renders in (mirrors the chip format axis). */
 type ContextFormat = "simple" | "markdown" | "xml";
@@ -71,7 +73,7 @@ function buildLocationList(
  * child tag per field (the wrapping section tag stands in for a `<location>` element).
  */
 export function buildLocationContext(
-  location: LocationWithEntities,
+  location: MaybeLocation,
   opts: { preferSummary?: boolean; format?: ContextFormat; nameOnly?: boolean } = {},
 ): string {
   if (!location) return NONE_PLACEHOLDER;
@@ -96,27 +98,25 @@ export function buildLocationContext(
 }
 
 /**
- * Serialize the entities present at the current location into the roster the AI prompts inject for
- * `<ENTITIES>` — a top-level list, separate from the location so the model reads the cast as
- * "characters/things that could appear here" rather than all-present-and-involved. Returns "" when the
- * location is null or has no entities. `preferSummary` mirrors `buildLocationContext`.
+ * Serialize a roster of entity ids into the block the AI prompts inject for `<ENTITIES>` — a top-level
+ * list, separate from the location so the model reads the cast as "characters/things that could appear
+ * here" rather than all-present-and-involved. Shared by every entity scope, which differ only in which ids
+ * they gather. Returns the `N/A` placeholder when the roster is empty or nothing in it resolves.
  *
  * `format` mirrors the Default/Simple presets: `'simple'` leads each entity with its bare name and plain
  * `key: value` fields indented under it; `'markdown'` makes the name a bold subject bullet with nested
  * bold-key field bullets (`- **Name**` / `  - **key:** value`); `'xml'` wraps each entity in `<entity>` with
  * a `<name>` and one `<key>` child per field.
  */
-export function buildEntityContext(
-  location: LocationWithEntities,
+export function renderEntityRoster(
+  entityIds: string[],
   entities: Entity[],
   opts: { preferSummary?: boolean; format?: ContextFormat; nameOnly?: boolean } = {},
 ): string {
-  if (!location) return NONE_PLACEHOLDER;
-
   const { preferSummary = false, format = "simple", nameOnly = false } = opts;
   if (nameOnly) {
-    const names = (location.entities || location.entity || [])
-      .map((id: string) => entities.find((e) => e.id === id)?.name)
+    const names = entityIds
+      .map((id) => entities.find((e) => e.id === id)?.name)
       .filter(Boolean);
     return names.length ? names.join(", ") : NONE_PLACEHOLDER;
   }
@@ -127,11 +127,10 @@ export function buildEntityContext(
     xml ? `  <${key}>${xmlEscape(String(value))}</${key}>\n`
     : md ? `  - **${key}:** ${value}\n`
     : `  ${key}: ${value}\n`;
-  const entityList = location.entities || location.entity || [];
-  if (entityList.length === 0) return NONE_PLACEHOLDER;
+  if (entityIds.length === 0) return NONE_PLACEHOLDER;
 
   let output = "";
-  entityList.forEach((entityId: string) => {
+  entityIds.forEach((entityId: string) => {
     const entityItem = entities.find((f) => f.id === entityId);
     if (!entityItem) return;
     const entityDescription = pickDescription(preferSummary, entityItem.aiSummary, entityItem.aiDescription);
@@ -161,13 +160,28 @@ export function buildEntityContext(
 }
 
 /**
+ * Serialize the cast belonging to the current location — the `<ENTITIES>` roster. Membership is
+ * entity-owned (ADR-0003), so the roster is the inversion of `entities`, in their authored order.
+ * Returns the `N/A` placeholder when the location is null or nobody belongs to it. `preferSummary` and
+ * `format` mirror `renderEntityRoster`.
+ */
+export function buildEntityContext(
+  location: MaybeLocation,
+  entities: Entity[],
+  opts: { preferSummary?: boolean; format?: ContextFormat; nameOnly?: boolean } = {},
+): string {
+  if (!location) return NONE_PLACEHOLDER;
+  return renderEntityRoster(entityIdsAt(location.id, entities), entities, opts);
+}
+
+/**
  * Serialize the current location's **direct** sub-locations for the `<LOCATION|sublocations>` chip — one line per
  * child (`name: <summary>` / `- **name:** <summary>`), the summary chosen like the other builders. Returns
  * the `N/A` placeholder when the location is null or has no children. Nesting is revealed a level at a time:
  * only immediate children, not the whole descendant subtree.
  */
 export function buildSublocationsContext(
-  current: LocationWithEntities,
+  current: MaybeLocation,
   locations: GameLocation[],
   opts: { preferSummary?: boolean; format?: ContextFormat; nameOnly?: boolean } = {},
 ): string {
@@ -178,10 +192,10 @@ export function buildSublocationsContext(
 }
 
 /** The deduped entity ids across the current location's direct sub-locations. */
-export function sublocationEntityIds(current: LocationWithEntities, locations: GameLocation[]): string[] {
+export function sublocationEntityIds(current: MaybeLocation, locations: GameLocation[], entities: Entity[]): string[] {
   if (!current) return [];
   const kids = locations.filter((l) => (l.parentId ?? null) === current.id);
-  return [...new Set(kids.flatMap((k) => k.entities ?? []))];
+  return entityIdsAtAny(kids.map((k) => k.id), entities);
 }
 
 /**
@@ -192,16 +206,15 @@ export function sublocationEntityIds(current: LocationWithEntities, locations: G
  * character never double-lists across scopes. Returns the `N/A` placeholder when nothing remains.
  */
 export function buildSublocationEntitiesContext(
-  current: LocationWithEntities,
+  current: MaybeLocation,
   locations: GameLocation[],
   entities: Entity[],
   opts: { preferSummary?: boolean; format?: ContextFormat; nameOnly?: boolean; excludeIds?: string[] } = {},
 ): string {
   if (!current) return NONE_PLACEHOLDER;
   const exclude = new Set(opts.excludeIds ?? []);
-  const ids = sublocationEntityIds(current, locations).filter((id) => !exclude.has(id));
-  if (ids.length === 0) return NONE_PLACEHOLDER;
-  return buildEntityContext({ id: current.id, name: current.name, entities: ids }, entities, opts);
+  const ids = sublocationEntityIds(current, locations, entities).filter((id) => !exclude.has(id));
+  return renderEntityRoster(ids, entities, opts);
 }
 
 /**
@@ -212,7 +225,7 @@ export function buildSublocationEntitiesContext(
  * matched against.
  */
 export function navigableDestinations(
-  current: LocationWithEntities,
+  current: MaybeLocation,
   locations: GameLocation[],
 ): GameLocation[] {
   if (!current) return [];
@@ -223,7 +236,7 @@ export function navigableDestinations(
   };
   for (const name of current.connections ?? []) add(byLowerName.get(name.toLowerCase().trim()));
   for (const child of locations.filter((l) => (l.parentId ?? null) === current.id)) add(child);
-  for (const loc of reachableLocations(current as GameLocation, locations)) add(loc);
+  for (const loc of reachableLocations(current, locations)) add(loc);
   return [...out.values()];
 }
 
@@ -233,7 +246,7 @@ export function navigableDestinations(
  * Returns `N/A` when the location is null or nothing is reachable.
  */
 export function buildDestinationsContext(
-  current: LocationWithEntities,
+  current: MaybeLocation,
   locations: GameLocation[],
   opts: { preferSummary?: boolean; format?: ContextFormat; nameOnly?: boolean } = {},
 ): string {
@@ -263,7 +276,7 @@ function reachableLocations(current: GameLocation, locations: GameLocation[]): G
  * level, so an affixed placement disappears rather than trailing a dangling preposition.
  */
 export function buildParentLocationContext(
-  current: LocationWithEntities,
+  current: MaybeLocation,
   locations: GameLocation[],
   opts: { preferSummary?: boolean; format?: ContextFormat; nameOnly?: boolean } = {},
 ): string {
@@ -289,8 +302,7 @@ export function buildSceneEntitiesContext(
   const ids = names
     .map((n) => entities.find((e) => e.name.trim().toLowerCase() === n.trim().toLowerCase())?.id)
     .filter((id): id is string => !!id);
-  if (ids.length === 0) return NONE_PLACEHOLDER;
-  return buildEntityContext({ id: 'scene', name: 'scene', entities: ids }, entities, opts);
+  return renderEntityRoster(ids, entities, opts);
 }
 
 /**
@@ -309,9 +321,9 @@ export function scenePresentHere(names: string[], entities: Entity[], hereIds: s
 }
 
 /** The deduped entity ids across the current location's reachable locations (parent + siblings). */
-export function reachableEntityIds(current: LocationWithEntities, locations: GameLocation[]): string[] {
+export function reachableEntityIds(current: MaybeLocation, locations: GameLocation[], entities: Entity[]): string[] {
   if (!current) return [];
-  return [...new Set(reachableLocations(current as GameLocation, locations).flatMap((l) => l.entities ?? []))];
+  return entityIdsAtAny(reachableLocations(current, locations).map((l) => l.id), entities);
 }
 
 /**
@@ -320,7 +332,7 @@ export function reachableEntityIds(current: LocationWithEntities, locations: Gam
  * top-level (no parent).
  */
 export function buildReachableLocationsContext(
-  current: LocationWithEntities,
+  current: MaybeLocation,
   locations: GameLocation[],
   opts: { preferSummary?: boolean; format?: ContextFormat; nameOnly?: boolean } = {},
 ): string {
@@ -337,16 +349,15 @@ export function buildReachableLocationsContext(
  * Returns `N/A` when nothing is reachable or no entities remain.
  */
 export function buildReachableEntitiesContext(
-  current: LocationWithEntities,
+  current: MaybeLocation,
   locations: GameLocation[],
   entities: Entity[],
   opts: { preferSummary?: boolean; format?: ContextFormat; nameOnly?: boolean; excludeIds?: string[] } = {},
 ): string {
   if (!current) return NONE_PLACEHOLDER;
   const exclude = new Set(opts.excludeIds ?? []);
-  const ids = reachableEntityIds(current, locations).filter((id) => !exclude.has(id));
-  if (ids.length === 0) return NONE_PLACEHOLDER;
-  return buildEntityContext({ id: current.id, name: current.name, entities: ids }, entities, opts);
+  const ids = reachableEntityIds(current, locations, entities).filter((id) => !exclude.has(id));
+  return renderEntityRoster(ids, entities, opts);
 }
 
 /** The axes a scoped context chip carries, as the builders take them. */

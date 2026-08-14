@@ -73,7 +73,8 @@ import {
   type ParsedDirector,
 } from "../lib/stagedPlanning";
 import { selectRelevantDiary } from "../lib/semanticDiary";
-import { selectDueDiscovery, materializeDiscoveredEntity, mergeDiscoveredIntoLocation, cleanDiscoveredDescription } from "../lib/runtimeCharacters";
+import { selectDueDiscovery, materializeDiscoveredEntity, discoveredAsEntities, cleanDiscoveredDescription } from "../lib/runtimeCharacters";
+import { entityIdsAt } from "../lib/entityPresence";
 import { selectRegenSource, buildRegenContext, buildRegenUserMessage, REGEN_LABELS } from "../lib/discoveredRegen";
 import { trimToLastSentence } from "../lib/outputLength";
 import { buildAiRequestSpec, type AiSettingsSnapshot } from "../lib/aiRequest/aiRequestSpec";
@@ -515,11 +516,11 @@ const GameViewer = ({
   }, [chosenTraits, disabledTraitIds, traitOrder]);
 
   // Runtime characters (Slice 2): director-invented characters promoted to persisted entities this
-  // playthrough behave like authored ones — union them into the AI-pipeline roster, and inject those
-  // anchored to a location into that location's roster so the location-scoped context includes them.
+  // playthrough behave like authored ones — union them into the AI-pipeline roster, each carrying the
+  // location it was invented at, so the location-scoped context rosters it like anyone else.
   // Discovered entities are minted at runtime from AI prose, so their names never carry chips.
   const allEntities = useMemo(
-    () => [...entities, ...discoveredEntities.map((d) => d.entity)],
+    () => [...entities, ...discoveredAsEntities(discoveredEntities)],
     [entities, discoveredEntities],
   );
   // Everything a capitalized word in the narration might be OTHER than a new character. Feeds the
@@ -546,10 +547,10 @@ const GameViewer = ({
     };
   }, [allEntities, locations, stats, traits, dictionary, placeholders, playerNotes]);
 
-  const withDiscovered = useCallback(
-    (loc: GameLocation | null | undefined): GameLocation | null =>
-      mergeDiscoveredIntoLocation(loc ?? undefined, discoveredEntities) ?? null,
-    [discoveredEntities],
+  /** Who belongs at `loc` — authored cast plus any discovered/visiting character anchored there. */
+  const presentIdsAt = useCallback(
+    (loc: GameLocation | null | undefined): string[] => entityIdsAt(loc?.id, allEntities),
+    [allEntities],
   );
 
   // Two narration reveal styles, chosen by the Fade-in Narration setting: `fadeReveal` releases whole
@@ -1004,10 +1005,9 @@ const GameViewer = ({
         ...recentParticipants(fullMessageHistory, CHOICES_PRESENCE_TURNS - 1),
       ]);
       const sceneEntities = allEntities.filter((e) => presentNames.has(e.name));
-      const sceneLoc = withDiscovered(currentLocation);
       const response = await requestChoices(
         buildContextValues(),
-        sceneEntityOverride(sceneLoc, sceneEntities),
+        sceneEntityOverride(currentLocation, sceneEntities),
         action,
         prev.narration ?? "",
         signal,
@@ -1390,13 +1390,14 @@ const GameViewer = ({
     const loc = locationOverride ?? currentLocation;
     // Who's present at the location (authored + any discovered/visiting), used to keep the
     // reachable-entities roster from re-listing someone who has already come over.
-    const presentIds = withDiscovered(loc)?.entities ?? [];
-    const here = withDiscovered(loc);
+    const presentIds = presentIdsAt(loc);
     type CtxOpts = { preferSummary?: boolean; nameOnly?: boolean; format?: "simple" | "markdown" | "xml" };
 
     // Entity roster precedence: here > sub-location > reachable. A character shows only in the highest scope
     // it belongs to — sub-location drops anyone present here; reachable drops present + sub-location ids.
-    const subEntityIds = sublocationEntityIds(loc, locations);
+    // Gathered from the authored cast only: a discovered or visiting character belongs to the location it
+    // was invented at, and the scopes beyond here have never listed them.
+    const subEntityIds = sublocationEntityIds(loc, locations, entities);
     const reachableExclude = [...presentIds, ...subEntityIds];
 
     // The <LOCATION> and <ENTITIES> chips each carry a `scope` axis; each scope maps to its builder.
@@ -1408,9 +1409,9 @@ const GameViewer = ({
       destinations: (opts) => buildDestinationsContext(loc, locations, opts),
     };
     const entityScopes: Record<string, (opts: CtxOpts) => string> = {
-      "": (opts) => buildEntityContext(here, allEntities, opts),
-      sublocations: (opts) => buildSublocationEntitiesContext(loc, locations, allEntities, { ...opts, excludeIds: presentIds }),
-      reachable: (opts) => buildReachableEntitiesContext(loc, locations, allEntities, { ...opts, excludeIds: reachableExclude }),
+      "": (opts) => buildEntityContext(loc, allEntities, opts),
+      sublocations: (opts) => buildSublocationEntitiesContext(loc, locations, entities, { ...opts, excludeIds: presentIds }),
+      reachable: (opts) => buildReachableEntitiesContext(loc, locations, entities, { ...opts, excludeIds: reachableExclude }),
       // Who has actually taken part lately, minus anyone the dialogue merely kept naming: an authored
       // entity who lives elsewhere is dropped, while ad-hoc and just-arrived characters stay (visitors
       // reach `presentIds` through the discovered-entity path).
@@ -1457,7 +1458,7 @@ const GameViewer = ({
     return values;
   }, [
     worldOverview, activeStats, generateTraitDescriptions,
-    currentLocation, locations, withDiscovered, allEntities, playerNotes, resolvePH,
+    currentLocation, locations, presentIdsAt, entities, allEntities, playerNotes, resolvePH,
     fullMessageHistory, timeContext, gameTime, calendar, openingHourPending,
   ]);
   buildContextValuesRef.current = buildContextValues;
@@ -1886,7 +1887,7 @@ const GameViewer = ({
               allEntities,
               location: visitorLocation,
               locations,
-              presentIds: withDiscovered(visitorLocation)?.entities ?? [],
+              presentIds: presentIdsAt(visitorLocation),
               discovered: prev,
               turnId,
             });
@@ -1898,7 +1899,7 @@ const GameViewer = ({
           turnParticipants,
           recentParticipants(fullMessageHistory, CHOICES_PRESENCE_TURNS - 1),
         );
-        return { sceneEntityTokens: sceneEntityOverride(withDiscovered(turnLocation), sceneEntities) };
+        return { sceneEntityTokens: sceneEntityOverride(turnLocation, sceneEntities) };
       };
 
       /**
@@ -1951,7 +1952,7 @@ const GameViewer = ({
             if (npcCast.length === 0) {
               return { directorScene: scene, npcCastSize: 0, turnPlan: buildStagedPlan({ scene, stances: flaggedCast, beats: "" }) };
             }
-            const presentIds = withDiscovered(turnLocation)?.entities || [];
+            const presentIds = presentIdsAt(turnLocation);
             const { chosen, overflow } = matchCastToEntities(
               npcCast,
               allEntities.filter((e) => presentIds.includes(e.id)),

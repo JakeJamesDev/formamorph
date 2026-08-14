@@ -14,10 +14,10 @@ const worldOverview = {
 // A small but real authored world: the preview is supposed to read THIS, so the fixture has to be a world
 // an author could plausibly have open, not an empty shell.
 const locations = [
-  { id: 'loc1', name: 'The Jetty', aiDescription: 'Rotting boards over black water.', entities: ['ent1'] },
+  { id: 'loc1', name: 'The Jetty', aiDescription: 'Rotting boards over black water.' },
 ] as unknown as GameLocation[];
 const entities = [
-  { id: 'ent1', name: 'Wren', aiDescription: 'A lamp-keeper who does not sleep.' },
+  { id: 'ent1', name: 'Wren', aiDescription: 'A lamp-keeper who does not sleep.', locations: ['loc1'] },
 ] as unknown as Entity[];
 const stats = [{
   id: 's1', name: 'Warmth', type: 'number', value: 7, min: 0, max: 10,

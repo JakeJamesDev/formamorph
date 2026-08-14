@@ -8,6 +8,7 @@ import { EditorModeProvider } from '@/components/EditorModeProvider';
 import { TutorialPopover } from '@/components/TutorialPopover';
 import { useTutorial } from '@/lib/tutorials';
 import { worldUsesAdvancedFeatures } from '@/lib/editorAdvancedData';
+import { withEntityLocations } from '@/lib/entityPresence';
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { EmptyListHint } from '@/components/EmptyListHint';
 import { HelpButton } from '@/components/HelpButton';
@@ -342,7 +343,6 @@ const WorldEditorInner = ({ onClose, embedded = false, backButton }: {
         playerDescription: '',
         aiDescription: '',
         aiSummary: '',
-        entities: []
       });
     } else if (activeTab === "statUpdates") {
       addStatUpdate({
@@ -896,10 +896,14 @@ const WorldEditorInner = ({ onClose, embedded = false, backButton }: {
       <AddEntityModal
         open={showAddEntity}
         onOpenChange={setShowAddEntity}
-        // Imported/card entities land ungrouped at the root (a card carries no group; a stale groupId would
-        // otherwise hide the entity under a folder that doesn't exist here).
+        // Imported/card entities land ungrouped at the root and in no location — ids carried over from the
+        // world they were exported from name a folder and places that don't exist here.
         onAdd={(entity) => {
-          const placed = { ...absorbEntityPlaceholders(entity), groupId: null, order: entityRootSiblingCount() };
+          const placed = {
+            ...withEntityLocations(absorbEntityPlaceholders(entity), []),
+            groupId: null,
+            order: entityRootSiblingCount(),
+          };
           addEntity(placed);
           setSelectedItemId(placed.id);
         }}

@@ -1,32 +1,25 @@
-import { useMemo } from 'react';
 import { useGameData } from '../contexts/GameDataContext';
 import EntityFields from './EntityFields';
 import { useEditingDraft } from '@/lib/useEditingDraft';
+import { withEntityLocations } from '@/lib/entityPresence';
 import type { Entity } from '@/types';
 import { describePlaceholders } from '@/lib/placeholders';
 
 const EntityManager = ({ entity }: { entity: Entity }) => {
-  const { updateEntity, locations, updateLocation, placeholders } = useGameData();
-  const { draft: editingEntity, setField: handleChange } = useEditingDraft<Entity>(entity, updateEntity);
+  const { updateEntity, locations, placeholders } = useGameData();
+  const { draft: editingEntity, setDraft, setField: handleChange } = useEditingDraft<Entity>(entity, updateEntity);
 
-  // Entity↔location link lives only on each location's `entities` array; derive the entity's
-  // memberships and write changes back into the relevant locations.
-  const selectedLocationIds = useMemo(
-    () => locations.filter((l) => (l.entities ?? []).includes(entity.id)).map((l) => l.id),
-    [locations, entity.id],
-  );
+  // Membership is the entity's own field, so the picker reads and writes it directly. Locations the world
+  // no longer has are filtered out of the selection rather than shown as blank rows.
+  const selectedLocationIds = (editingEntity?.locations ?? []).filter((id) => locations.some((l) => l.id === id));
 
   const handleLocationsChange = (ids: string[]) => {
-    const next = new Set(ids);
-    locations.forEach((loc) => {
-      const has = (loc.entities ?? []).includes(entity.id);
-      const should = next.has(loc.id);
-      if (has === should) return;
-      const nextEntities = should
-        ? [...(loc.entities ?? []), entity.id]
-        : (loc.entities ?? []).filter((id) => id !== entity.id);
-      updateLocation({ ...loc, entities: nextEntities });
-    });
+    if (!editingEntity) return;
+    // Written whole rather than through `setField`, so clearing the list drops the field instead of
+    // persisting an empty array.
+    const next = withEntityLocations(editingEntity, ids);
+    setDraft(next);
+    updateEntity(next);
   };
 
   if (!editingEntity) return null;

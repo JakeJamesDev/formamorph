@@ -2,10 +2,12 @@ import { describe, it, expect } from 'vitest';
 import {
   selectDueDiscovery,
   materializeDiscoveredEntity,
-  mergeDiscoveredIntoLocation,
+  discoveredAsEntities,
   cleanDiscoveredDescription,
   selectReachableVisitors,
 } from './runtimeCharacters';
+import { entityIdsAt } from './entityPresence';
+import { buildEntityContext } from './locationContext';
 import type { ChatMessage, DiscoveredEntity, Entity, GameLocation } from '@/types';
 
 /** Build an assistant turn message with the given fields. */
@@ -15,11 +17,11 @@ function turn(fields: { turnId?: string; narration?: string; entities?: string[]
 
 describe('selectReachableVisitors', () => {
   // town > { houseA (current), Sarah's House (Sarah) } ; a top-level location has no reachable siblings.
-  const houseA: GameLocation = { id: 'a', name: 'House A', parentId: 'town', entities: ['alice'] };
-  const sarahs: GameLocation = { id: 'b', name: "Sarah's House", parentId: 'town', entities: ['sarah'] };
+  const houseA: GameLocation = { id: 'a', name: 'House A', parentId: 'town' };
+  const sarahs: GameLocation = { id: 'b', name: "Sarah's House", parentId: 'town' };
   const locs = [houseA, sarahs];
-  const alice: Entity = { id: 'alice', name: 'Alice' };
-  const sarah: Entity = { id: 'sarah', name: 'Sarah' };
+  const alice: Entity = { id: 'alice', name: 'Alice', locations: ['a'] };
+  const sarah: Entity = { id: 'sarah', name: 'Sarah', locations: ['b'] };
   const authored = [alice, sarah];
 
   it('pulls in a reachable-sibling authored entity named this turn and not present', () => {
@@ -34,7 +36,7 @@ describe('selectReachableVisitors', () => {
   });
 
   it('returns nothing for a top-level location (no reachable siblings)', () => {
-    const top: GameLocation = { id: 'top', name: 'Overworld', entities: [] };
+    const top: GameLocation = { id: 'top', name: 'Overworld' };
     expect(selectReachableVisitors(['Sarah'], top, [...locs, top], authored, [])).toEqual([]);
   });
 });
@@ -141,24 +143,34 @@ describe('cleanDiscoveredDescription', () => {
   });
 });
 
-describe('mergeDiscoveredIntoLocation', () => {
-  const loc: GameLocation = { id: 'loc-1', name: 'Cave', entities: ['world-a'] };
+describe('discoveredAsEntities', () => {
+  const worldEntity: Entity = { id: 'world-a', name: 'Hermit', locations: ['loc-1'] };
   const discovered: DiscoveredEntity[] = [
     { entity: { id: 'disc-1', name: 'Mouse' }, locationId: 'loc-1', sourceTurnId: 't2' },
     { entity: { id: 'disc-2', name: 'Bat' }, locationId: 'loc-9', sourceTurnId: 't3' },
   ];
 
-  it('injects only ids of discovered entities anchored to this location', () => {
-    const merged = mergeDiscoveredIntoLocation(loc, discovered);
-    expect(merged?.entities).toEqual(['world-a', 'disc-1']);
+  it('anchors each discovered character to the location it was invented in', () => {
+    const cast = [worldEntity, ...discoveredAsEntities(discovered)];
+    // Rostering the cave lists the authored hermit and only the mouse — the bat is somewhere else.
+    expect(entityIdsAt('loc-1', cast)).toEqual(['world-a', 'disc-1']);
+    expect(entityIdsAt('loc-9', cast)).toEqual(['disc-2']);
   });
 
-  it('returns the location unchanged when none are anchored here', () => {
-    const merged = mergeDiscoveredIntoLocation(loc, [discovered[1]]);
-    expect(merged).toBe(loc);
+  it('leaves an unanchored discovery belonging nowhere rather than everywhere', () => {
+    const floating: DiscoveredEntity = { entity: { id: 'disc-3', name: 'Voice' }, sourceTurnId: 't4' };
+    expect(discoveredAsEntities([floating])[0].locations).toBeUndefined();
+    expect(entityIdsAt('loc-1', discoveredAsEntities([floating]))).toEqual([]);
   });
 
-  it('passes undefined location through', () => {
-    expect(mergeDiscoveredIntoLocation(undefined, discovered)).toBeUndefined();
+  it('rosters at the location it was invented at, alongside the authored cast', () => {
+    const cave: GameLocation = { id: 'loc-1', name: 'Cave' };
+    const all = [worldEntity, ...discoveredAsEntities(discovered)];
+    expect(buildEntityContext(cave, all, { nameOnly: true })).toBe('Hermit, Mouse');
+  });
+
+  it('never mutates the stored discovery record', () => {
+    discoveredAsEntities(discovered);
+    expect('locations' in discovered[0].entity).toBe(false);
   });
 });

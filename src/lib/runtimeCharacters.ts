@@ -5,6 +5,7 @@ import { stripReasoning } from '@/lib/aiResponse';
 import { trimToLastSentence } from '@/lib/outputLength';
 import { escapeRegExp } from '@/lib/utils';
 import { sameCharacterName } from '@/lib/entityMatch';
+import { entityIdsAtAny } from '@/lib/entityPresence';
 
 /** Labels in the discover-entity user message. Exported so the request builder and the response
  *  cleaner share one source of truth — a small model often parrots these back into its output. */
@@ -77,18 +78,12 @@ export function cleanDiscoveredDescription(raw: string, name: string, extraLabel
 }
 
 /**
- * A copy of `location` whose entity-id roster also includes the discovered entities anchored to it, so
- * the existing location-scoped pipeline (buildEntityContext, present-entity filters) treats them as
- * present. Returns the location unchanged when there are none. Undefined location passes through.
+ * The discovered entities as ordinary `Entity` records carrying the location they were anchored to, so the
+ * whole location-scoped pipeline (rosters, present-entity filters) treats them exactly like authored ones.
+ * The anchor is the record's whole membership — a discovered character is somewhere it was invented.
  */
-export function mergeDiscoveredIntoLocation<T extends GameLocation>(
-  location: T | undefined,
-  discovered: DiscoveredEntity[],
-): T | undefined {
-  if (!location) return location;
-  const here = discovered.filter((d) => d.locationId === location.id).map((d) => d.entity.id);
-  if (here.length === 0) return location;
-  return { ...location, entities: [...(location.entities ?? []), ...here] };
+export function discoveredAsEntities(discovered: DiscoveredEntity[]): Entity[] {
+  return discovered.map((d) => (d.locationId ? { ...d.entity, locations: [d.locationId] } : d.entity));
 }
 
 /**
@@ -107,11 +102,8 @@ export function selectReachableVisitors(
 ): Entity[] {
   const parent = current?.parentId ?? null;
   if (!current || parent === null) return [];
-  const reachableIds = new Set(
-    locations
-      .filter((l) => l.id !== current.id && (l.parentId ?? null) === parent)
-      .flatMap((l) => l.entities ?? []),
-  );
+  const siblings = locations.filter((l) => l.id !== current.id && (l.parentId ?? null) === parent);
+  const reachableIds = new Set(entityIdsAtAny(siblings.map((l) => l.id), authoredEntities));
   const present = new Set(presentIds);
   return authoredEntities.filter(
     (e) => reachableIds.has(e.id) && !present.has(e.id) && participants.some((p) => sameCharacterName(p, e.name)),
