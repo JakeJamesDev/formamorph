@@ -864,6 +864,7 @@ const WorldEditorInner = ({ onClose, embedded = false, backButton }: {
                       showDetail={!!selectedItemId}
                       onBack={() => setSelectedItemId(null)}
                       backLabel="Back"
+                      scrollList={!canvasView}
                       list={<div className="h-full" onClick={deselectOnListClick}>{listContent}</div>}
                       detail={detailContent}
                     />
