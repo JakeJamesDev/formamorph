@@ -22,6 +22,13 @@ const WORLD = {
   statUpdates: [],
 };
 
+/** The same shape, with one child holding a location of its own: a box nested inside a box. */
+const NESTED_WORLD = {
+  ...WORLD,
+  id: 'e2e-canvas-nested',
+  locations: [...WORLD.locations, { id: 'loc-grandchild', name: 'Locker', parentId: 'loc-child-a' }],
+};
+
 /**
  * The canvas draws its Connection inspector as a floating panel over the map. Anything the layout wraps the
  * canvas in can swallow the panel's clicks without changing a single rendered attribute — only real
@@ -95,6 +102,101 @@ test.describe('Locations canvas', () => {
     const rowLeft = async (name: string) => (await page.getByText(name, { exact: true }).first().boundingBox())!.x;
     expect(await rowLeft('Beach')).toBeCloseTo(await rowLeft('Dock'), 0);
     expect(await rowLeft('Beach')).toBeGreaterThan(await rowLeft('Harbor'));
+  });
+
+  /**
+   * The highlight only exists while a drag is in the air, so no rendered state after the drop can prove it
+   * was ever there. Held mid-drag, with the button still down, it is a static frame like any other.
+   */
+  test('the box that will take the drop lights up before the drop lands', async ({ page }) => {
+    await openApp(page);
+    await page.evaluate(async (world) => {
+      const dev = (window as unknown as { __fmDev: DevRouter }).__fmDev;
+      const id = await dev.putWorld(world);
+      await dev.editWorld(id);
+    }, WORLD);
+    await gotoDev(page, 'mainMenu', { modal: 'worldEditor', tab: 'locations', subtab: 'canvas' });
+
+    const node = (id: string) => page.locator(`.react-flow__node[data-id="${id}"]`);
+    const harborBox = node('loc-parent').locator('[data-drop-target]');
+    const topLevel = page.getByTestId('canvas-top-level-drop');
+    await node('loc-outside').waitFor();
+    await expect(harborBox).toHaveCount(0); // nothing is lit while nothing is being dragged
+    await expect(topLevel).toHaveCount(0);
+
+    const beach = (await node('loc-outside').boundingBox())!;
+    const harbor = (await node('loc-parent').boundingBox())!;
+    await page.mouse.move(beach.x + beach.width / 2, beach.y + beach.height / 2);
+    await page.mouse.down();
+
+    // Out on open canvas first. The Beach already stands on its own, so this changes nothing about what holds
+    // it — nothing is named, because there is nothing to say.
+    await page.mouse.move(beach.x + beach.width / 2, beach.y + beach.height + 80, { steps: 6 });
+    await expect(topLevel).toHaveCount(0);
+    await expect(harborBox).toHaveCount(0);
+
+    // Over the middle of the Harbor, still mid-drag: the box it would join is named. Well inside the box
+    // rather than on its rim, where snapping can carry the node's center back out.
+    await page.mouse.move(harbor.x + harbor.width / 2, harbor.y + harbor.height / 2, { steps: 12 });
+    await expect(harborBox).toHaveCount(1);
+    await expect(topLevel).toHaveCount(0);
+
+    // And what lit up is what took it — the Beach lands inside the box that was highlighted.
+    await page.mouse.up();
+    await expect(page.locator('.react-flow__edge')).toHaveCount(6);
+    await expect(harborBox).toHaveCount(0);
+    const nested = (await node('loc-outside').boundingBox())!;
+    const grown = (await node('loc-parent').boundingBox())!;
+    expect(nested.x).toBeGreaterThanOrEqual(grown.x);
+
+    // Now the same drag in reverse, from inside the box: leaving it *is* a change, so the pane is framed.
+    await page.mouse.move(nested.x + nested.width / 2, nested.y + nested.height / 2);
+    await page.mouse.down();
+    await page.mouse.move(grown.x + grown.width + 140, grown.y + grown.height / 2, { steps: 12 });
+    await expect(topLevel).toBeVisible();
+    await expect(harborBox).toHaveCount(0);
+
+    // And it lands where the frame said: back out on its own, with the free travel it had inside now gone.
+    await page.mouse.up();
+    await expect(topLevel).toHaveCount(0);
+    await expect(page.locator('.react-flow__edge')).toHaveCount(2);
+  });
+
+  /**
+   * A box cannot be given to something it already holds. The rule is asserted against geometry in the unit
+   * tests; what a drag proves is that the box under the cursor is judged by that rule and not by whichever
+   * node the pointer happens to be over.
+   */
+  test('a box dragged over what it already holds lights up nothing', async ({ page }) => {
+    await openApp(page);
+    await page.evaluate(async (world) => {
+      const dev = (window as unknown as { __fmDev: DevRouter }).__fmDev;
+      const id = await dev.putWorld(world);
+      await dev.editWorld(id);
+    }, NESTED_WORLD);
+    await gotoDev(page, 'mainMenu', { modal: 'worldEditor', tab: 'locations', subtab: 'canvas' });
+
+    const node = (id: string) => page.locator(`.react-flow__node[data-id="${id}"]`);
+    await node('loc-parent').waitFor();
+    const harbor = (await node('loc-parent').boundingBox())!;
+    const dock = (await node('loc-child-a').boundingBox())!;
+
+    // The Harbor, dragged onto the Dock — a box it holds, and one that holds a location of its own, so it is
+    // a real group rather than a leaf the rule would refuse anyway.
+    await page.mouse.move(harbor.x + harbor.width / 2, harbor.y + 12);
+    await page.mouse.down();
+    await page.mouse.move(dock.x + dock.width / 2, dock.y + dock.height / 2, { steps: 12 });
+
+    // Nothing is named: not the Dock it is over, and not the pane either — the Harbor already stands on its
+    // own, so there is no change for either to announce.
+    await expect(page.locator('[data-drop-target]')).toHaveCount(0);
+    await expect(page.getByTestId('canvas-top-level-drop')).toHaveCount(0);
+    await page.mouse.up();
+
+    // And nothing nested: the Harbor still holds the Dock, rather than the other way about.
+    await gotoDev(page, 'mainMenu', { modal: 'worldEditor', tab: 'locations', subtab: 'list' });
+    const rowLeft = async (name: string) => (await page.getByText(name, { exact: true }).first().boundingBox())!.x;
+    expect(await rowLeft('Dock')).toBeGreaterThan(await rowLeft('Harbor'));
   });
 
   /**

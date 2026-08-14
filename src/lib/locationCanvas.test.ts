@@ -336,11 +336,12 @@ describe("dropIntent", () => {
 
   it("moves rather than reparents when the drop lands in the box it started in", () => {
     // Inside its own parent: Tavern's center lands at (250, 136), still within Village.
+    // A move names the box it stays in, so a drag can tell "lands here" from "changes what holds it".
     const inside = dropIntent(placed, "tavern", { x: 60, y: 60 });
-    expect(inside).toEqual({ kind: "move", id: "tavern", position: { x: 60, y: 60 } });
+    expect(inside).toEqual({ kind: "move", id: "tavern", parentId: "village", position: { x: 60, y: 60 } });
     // And out on open canvas, where a top-level location stays top-level.
     expect(dropIntent(placed, "shore", { x: 420, y: 20 }))
-      .toEqual({ kind: "move", id: "shore", position: { x: 420, y: 20 } });
+      .toEqual({ kind: "move", id: "shore", parentId: null, position: { x: 420, y: 20 } });
     expect(applyCanvasDrop(placed, inside!).find((l) => l.id === "tavern")?.parentId).toBe("village");
   });
 
@@ -367,7 +368,7 @@ describe("dropIntent", () => {
   it("never hands a location to itself or to what it already holds", () => {
     // Village's own center sits inside Tavern's box, which is nested in Village.
     expect(dropIntent(nested, "village", { x: 0, y: 0 })).toEqual({
-      kind: "move", id: "village", position: { x: 0, y: 0 },
+      kind: "move", id: "village", parentId: null, position: { x: 0, y: 0 },
     });
   });
 

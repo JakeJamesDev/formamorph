@@ -293,9 +293,12 @@ function absoluteRects(map: LocationCanvasMap): Map<string, CanvasRect> {
  * The position is the raw resting place, measured against whichever box now holds the location. Rounding it
  * and holding it clear of that box's frame is `applyCanvasDrop`'s job, so a drop's *meaning* stays separate
  * from where the location is finally allowed to come to rest.
+ *
+ * Both kinds name the box the location lands in, because both land in one — the kinds differ over whether
+ * that is a *change*. A drag in flight reads the first to light the box up and the second to say so.
  */
 export type CanvasDrop =
-  | { kind: "move"; id: string; position: { x: number; y: number } }
+  | { kind: "move"; id: string; parentId: string | null; position: { x: number; y: number } }
   | { kind: "reparent"; id: string; parentId: string | null; position: { x: number; y: number } };
 
 /**
@@ -312,6 +315,29 @@ export function dropTarget(
   id: string,
   position: { x: number; y: number },
 ): string | null {
+  const drag = measureDrag(locations, id, position);
+  return drag && landsIn(drag);
+}
+
+/**
+ * A drag read as geometry: every box on the map, where the dragged location's center currently is, and which
+ * box it started in. Measuring the map is the expensive half of judging a drop, so the two questions asked of
+ * one drag — where it would land, and what that makes of the world — measure it once between them.
+ */
+interface DragGeometry {
+  locations: GameLocation[];
+  id: string;
+  rects: Map<string, CanvasRect>;
+  center: { x: number; y: number };
+  held: string | null;
+  heldOrigin: { x: number; y: number };
+}
+
+function measureDrag(
+  locations: GameLocation[],
+  id: string,
+  position: { x: number; y: number },
+): DragGeometry | null {
   const target = locations.find((l) => l.id === id);
   if (!target) return null;
   const rects = absoluteRects(buildLocationCanvas(locations, []));
@@ -320,11 +346,21 @@ export function dropTarget(
 
   const held = heldBy(locations, target);
   const heldOrigin = (held && rects.get(held)) || { x: 0, y: 0 };
-  const center = {
-    x: heldOrigin.x + position.x + self.width / 2,
-    y: heldOrigin.y + position.y + self.height / 2,
+  return {
+    locations,
+    id,
+    rects,
+    held,
+    heldOrigin,
+    center: {
+      x: heldOrigin.x + position.x + self.width / 2,
+      y: heldOrigin.y + position.y + self.height / 2,
+    },
   };
+}
 
+/** The box a measured drag would come to rest in. */
+function landsIn({ locations, id, rects, center }: DragGeometry): string | null {
   const byId = new Map(locations.map((l) => [l.id, l]));
   const depthOf = (loc: GameLocation) => {
     let depth = 0;
@@ -356,17 +392,12 @@ export function dropIntent(
   id: string,
   position: { x: number; y: number },
 ): CanvasDrop | null {
-  const target = locations.find((l) => l.id === id);
-  if (!target) return null;
-  const rects = absoluteRects(buildLocationCanvas(locations, []));
-  const self = rects.get(id);
-  if (!self) return null;
+  const drag = measureDrag(locations, id, position);
+  if (!drag) return null;
+  const { rects, held, heldOrigin } = drag;
 
-  const held = heldBy(locations, target);
-  const heldOrigin = (held && rects.get(held)) || { x: 0, y: 0 };
-
-  const parentId = dropTarget(locations, id, position);
-  if (parentId === held) return { kind: "move", id, position };
+  const parentId = landsIn(drag);
+  if (parentId === held) return { kind: "move", id, parentId, position };
   const origin = (parentId && rects.get(parentId)) || { x: 0, y: 0 };
   return {
     kind: "reparent",

@@ -1,4 +1,6 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import {
+  createContext, useCallback, useContext, useEffect, useMemo, useRef, useState,
+} from 'react';
 import {
   Background, BaseEdge, Controls, EdgeLabelRenderer, Handle, MarkerType, Panel, Position, ReactFlow,
   ReactFlowProvider, useConnection, useInternalNode, useNodesState,
@@ -32,6 +34,19 @@ import type { Connection } from '@/types';
 
 // xyflow requires a node's data to be indexable; the mapper's shape is the useful half of it.
 type LocationNodeType = Node<CanvasNodeData & Record<string, unknown>>;
+
+/**
+ * Where a drag in flight would land, as the boxes on the map need to read it: the box that would take it, and
+ * whether landing there is a change. `active` is what tells a drag clear of every box apart from no drag.
+ */
+interface DropTarget {
+  active: boolean;
+  into: string | null;
+  changesHolder: boolean;
+}
+
+const IDLE: DropTarget = { active: false, into: null, changesHolder: false };
+const DropTargetContext = createContext<DropTarget>(IDLE);
 
 const UNREACHABLE_TITLE = 'No starting location can reach here';
 
@@ -99,22 +114,50 @@ const LocationNode = ({ data, selected }: NodeProps<LocationNodeType>) => (
 
 /** A location holding sub-locations: a box around them, named along its top. Being inside the box *is* the
  *  free travel to and from it, which is why no line joins a parent to its children. */
-const LocationGroupNode = ({ data, selected }: NodeProps<LocationNodeType>) => (
-  <div
-    title={data.unreachable ? UNREACHABLE_TITLE : undefined}
-    className={cn(
-      'group/node h-full w-full rounded-md border bg-muted/40',
-      data.unreachable && 'border-destructive',
-      selected && 'ring-2 ring-ring',
-    )}
-  >
-    <EdgeAnchors dropHeight="!h-9" />
-    <div className="flex items-center gap-1.5 rounded-t-md border-b bg-card px-3 py-1.5 text-label text-card-foreground">
-      <NodeBadges data={data} />
-      <span className="truncate">{data.label}</span>
+const LocationGroupNode = ({ id, data, selected }: NodeProps<LocationNodeType>) => {
+  // Named while the drag is still in the air: this is the box that would come to hold what is being moved.
+  const willTakeTheDrop = useContext(DropTargetContext).into === id;
+  return (
+    <div
+      title={data.unreachable ? UNREACHABLE_TITLE : undefined}
+      data-drop-target={willTakeTheDrop || undefined}
+      className={cn(
+        'group/node h-full w-full rounded-md border bg-muted/40',
+        data.unreachable && 'border-destructive',
+        selected && 'ring-2 ring-ring',
+        willTakeTheDrop && 'bg-primary/10 ring-2 ring-primary',
+      )}
+    >
+      <EdgeAnchors dropHeight="!h-9" />
+      <div className="flex items-center gap-1.5 rounded-t-md border-b bg-card px-3 py-1.5 text-label text-card-foreground">
+        <NodeBadges data={data} />
+        <span className="truncate">{data.label}</span>
+      </div>
     </div>
-  </div>
-);
+  );
+};
+
+/**
+ * Leaving every box is a real outcome, so it gets a real target: the whole pane, framed and named, standing
+ * in for the box there isn't one of. Only when it would be a change — a location already standing on its own
+ * is dragged around the map constantly, and framing the pane for every one of those says nothing.
+ */
+const TopLevelDrop = () => {
+  const { active, into, changesHolder } = useContext(DropTargetContext);
+  if (!active || into !== null || !changesHolder) return null;
+  return (
+    <Panel position="top-center" className="!pointer-events-none !inset-0 !m-0">
+      <div
+        data-testid="canvas-top-level-drop"
+        className="h-full w-full rounded-md border-2 border-dashed border-primary bg-primary/5"
+      >
+        <span className="m-2 inline-block rounded bg-primary px-2 py-0.5 text-meta text-primary-foreground">
+          Top Level
+        </span>
+      </div>
+    </Panel>
+  );
+};
 
 const nodeTypes = { location: LocationNode, locationGroup: LocationGroupNode };
 
@@ -372,9 +415,19 @@ const CanvasInner = ({ selectedId, onSelect }: { selectedId: string | null; onSe
     [map, selectedConnectionId],
   );
 
+  const [dropInto, setDropInto] = useState<DropTarget>(IDLE);
+
+  // The drag asks for the drop it would make, on every frame — so the box an author watched light up is the
+  // box the drop then commits to, from the one answer rather than from two that agree by inspection.
+  const handleDrag = useCallback((_: unknown, node: Node) => {
+    const drop = dropIntent(locations, node.id, node.position);
+    if (drop) setDropInto({ active: true, into: drop.parentId, changesHolder: drop.kind === 'reparent' });
+  }, [locations]);
+
   // A drag either moves a location or changes what holds it, and where it came to rest decides which — so
   // there is one gesture to learn, and the map edits the world's shape rather than only its arrangement.
   const handleDragStop = useCallback((_: unknown, node: Node) => {
+    setDropInto(IDLE);
     const drop = dropIntent(locations, node.id, node.position);
     if (drop) setLocations(applyCanvasDrop(locations, drop));
   }, [locations, setLocations]);
@@ -388,12 +441,14 @@ const CanvasInner = ({ selectedId, onSelect }: { selectedId: string | null; onSe
 
   return (
     <div ref={frameRef} className="relative h-full w-full">
+      <DropTargetContext.Provider value={dropInto}>
       <ReactFlow<LocationNodeType, Edge>
         nodes={nodes}
         edges={edges}
         nodeTypes={nodeTypes}
         edgeTypes={edgeTypes}
         onNodesChange={onNodesChange}
+        onNodeDrag={handleDrag}
         onNodeDragStop={handleDragStop}
         onNodeClick={(_, node) => { setSelectedConnectionId(null); onSelect(node.id); }}
         onEdgeClick={handleEdgeClick}
@@ -416,6 +471,7 @@ const CanvasInner = ({ selectedId, onSelect }: { selectedId: string | null; onSe
         {/* The dots mark the grid's own intersections; hiding it keeps the pane's color and drops the pattern. */}
         <Background className="!bg-background" color={gridVisible ? 'hsl(var(--border))' : 'transparent'} gap={CANVAS_GRID} />
         <Controls showInteractive={false} />
+        <TopLevelDrop />
         {selectedConnection && (
           <ConnectionInspector
             connection={selectedConnection}
@@ -425,6 +481,7 @@ const CanvasInner = ({ selectedId, onSelect }: { selectedId: string | null; onSe
           />
         )}
       </ReactFlow>
+      </DropTargetContext.Provider>
       {menuAt && (
         <CanvasMenu
           at={menuAt}
