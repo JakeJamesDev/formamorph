@@ -202,6 +202,8 @@ What nesting decides is where **the story** can take the player. When the AI rea
 | A **top-level** location | Down into its own sub-locations |
 | A **sub-location** | Down into its children, **up** to its parent, and **sideways** to its siblings |
 
+…unless you've drawn a **Connection** between two places, which takes over that pair entirely — see [Connections](#connections) below.
+
 By default the story *offers* the move — a small **Move to _X_?** prompt with **Go** and **Dismiss** — rather than making it for you.
 
 Two consequences worth knowing:
@@ -233,6 +235,26 @@ The **✨ toolbar** beside AI-Facing Summary can draft it from your AI-Facing De
 
 The **Entities** picker lists who's at this location. Membership is stored on each entity, so editing here writes to their **Locations** — the same link, set from whichever end suits you.
 
+### Connections
+
+Nesting hands out travel for free, and it's always mutual. **Connections** are the deliberate version: a link between *any* two locations, wherever they sit in the tree.
+
+The **Connections** section on a location lists every link it's part of, seen from where you're standing:
+
+| Direction | Means |
+|---|---|
+| **Two-Way** | The story can move the player either way. This is what a new Connection starts as. |
+| **Outgoing** | The story can leave here for the other place — and can never bring them back. |
+| **Incoming** | The story can arrive here from the other place, but not go the other way. |
+
+Pick a place from the **Connect to…** dropdown and press **Add Connection**. The **Travel Hint** box is optional and goes to the AI — *through the shimmering portal*, *down the rope ladder* — so the story knows *how* the trip is made.
+
+> ⚠️ **A Connection replaces whatever free travel those two places had.** That's what makes a one-way link genuinely one-way, even between two sub-locations of the same place. The story is never offered the trip back — it isn't told not to take it, it simply never sees it.
+
+One Connection is one link, so it appears on **both** locations' panels — flipping it from either end moves the same record, and deleting it from either end deletes it once. Deleting a location deletes its Connections with it.
+
+> 💡 The player's own location list is still unfiltered — Connections steer the *story*, exactly like nesting does.
+
 ### Starting location
 
 The checkbox marks a place a new game can begin. It does more than it looks:
@@ -245,9 +267,7 @@ The checkbox marks a place a new game can begin. It does more than it looks:
 
 ### Getting started
 
-Write the AI-Facing Description first — it's the one doing the work. Reach for nesting when you want the story to move the player on its own, and tick at least one starting location so new games don't begin somewhere arbitrary.
-
-> 📎 The world file also supports **Connections** — travel links between any two locations, one-way or two-way, with an optional travel hint. There's no editor field for them yet, so they can only be set by hand-editing the world JSON. A Connection between two locations **replaces** whatever free travel nesting gave that pair, which is what makes a one-way link actually one-way.
+Write the AI-Facing Description first — it's the one doing the work. Reach for nesting when you want the story to move the player on its own, add Connections where you want a link nesting can't express, and tick at least one starting location so new games don't begin somewhere arbitrary.
 
 ---
 
