@@ -12,9 +12,17 @@ _Avoid_: fetch helper, completion client
 The complete, plain-value description of one AI call — prompt, messages, resolved endpoint, sampler, reasoning preferences — built from a settings snapshot; everything the AI Stream needs, nothing live.
 _Avoid_: request options, config
 
+**Connection**:
+An authored travel link between two locations — one-way or two-way. Where a Connection exists between a pair, it replaces that pair's implicit navigation.
+_Avoid_: edge (internal only), path, route
+
 **Entity**:
 Any world inhabitant the narrator can reference — person, creature, plant, or object.
 _Avoid_: character (too narrow)
+
+**Implicit Navigation**:
+The travel a location gets for free from containment — its parent, children, and siblings — without any authored Connection.
+_Avoid_: tree edges, default connections
 
 **Turn Pipeline**:
 The module that runs one full turn — plan, AI requests, commit computation — behind one seam; React state stays outside it.
