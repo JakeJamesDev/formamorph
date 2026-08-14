@@ -1,10 +1,11 @@
 import { describe, it, expect } from "vitest";
 import {
   CANVAS_NODE_HEIGHT, CANVAS_NODE_WIDTH, GROUP_HEADER, GROUP_PADDING,
-  buildLocationCanvas, connectIntent, connectionEnds, deleteIntent, directionIntent, directionOf,
-  hintIntent, withCanvasPosition, type CanvasIntent,
+  applyCanvasDrop, buildLocationCanvas, connectIntent, connectionEnds, deleteIntent, directionIntent,
+  directionOf, dropIntent, hintIntent, withCanvasPosition, type CanvasIntent,
 } from "./locationCanvas";
 import { connectionsAt } from "./connectionEditing";
+import { buildLocationTree, flattenLocationTree } from "./locationTree";
 import type { Connection, GameLocation } from "@/types";
 
 // village > { tavern > cellar, house } ; landing and shore are top-level.
@@ -196,6 +197,126 @@ describe("withCanvasPosition", () => {
 
   it("returns the same array when the location is unknown", () => {
     expect(withCanvasPosition(world, "nowhere", { x: 1, y: 2 })).toBe(world);
+  });
+});
+
+describe("dropIntent", () => {
+  // Every position authored, so a drop is judged against fixed geometry rather than against the layout.
+  // Village sits at (100, 50) holding Tavern, and measures 220 x 108 around it; Shore stands apart.
+  const placed: GameLocation[] = [
+    { id: "village", name: "Village", isStarting: true, canvasPosition: { x: 100, y: 50 } },
+    { id: "tavern", name: "Tavern", parentId: "village", canvasPosition: { x: GROUP_PADDING, y: GROUP_HEADER } },
+    { id: "shore", name: "Shore", canvasPosition: { x: 400, y: 0 } },
+  ];
+
+  it("reads a drop inside a group box as that box coming to hold the location", () => {
+    // Shore's center comes to rest at (240, 136) — inside Village's box, which spans (100, 50)–(320, 158).
+    const drop = dropIntent(placed, "shore", { x: 150, y: 110 });
+    // The resting place is re-read against its new box, not left in canvas coordinates.
+    expect(drop).toEqual({ kind: "reparent", id: "shore", parentId: "village", position: { x: 50, y: 60 } });
+    const after = applyCanvasDrop(placed, drop!);
+    expect(after.find((l) => l.id === "shore")).toMatchObject({
+      parentId: "village", canvasPosition: { x: 50, y: 60 },
+    });
+  });
+
+  it("reads a drop clear of every box as the location returning to the top level", () => {
+    const drop = dropIntent(placed, "tavern", { x: 500, y: 300 });
+    expect(drop).toEqual({ kind: "reparent", id: "tavern", parentId: null, position: { x: 600, y: 350 } });
+    const after = applyCanvasDrop(placed, drop!);
+    expect(after.find((l) => l.id === "tavern")?.parentId).toBeNull();
+    expect(after.find((l) => l.id === "tavern")?.canvasPosition).toEqual({ x: 600, y: 350 });
+  });
+
+  it("moves rather than reparents when the drop lands in the box it started in", () => {
+    // Inside its own parent: Tavern's center lands at (250, 136), still within Village.
+    const inside = dropIntent(placed, "tavern", { x: 60, y: 60 });
+    expect(inside).toEqual({ kind: "move", id: "tavern", position: { x: 60, y: 60 } });
+    // And out on open canvas, where a top-level location stays top-level.
+    expect(dropIntent(placed, "shore", { x: 420, y: 20 }))
+      .toEqual({ kind: "move", id: "shore", position: { x: 420, y: 20 } });
+    expect(applyCanvasDrop(placed, inside!).find((l) => l.id === "tavern")?.parentId).toBe("village");
+  });
+
+  it("holds a moved sub-location clear of its parent's frame, as a plain move does", () => {
+    const drop = dropIntent(placed, "tavern", { x: 4, y: 4 });
+    expect(drop?.kind).toBe("move");
+    expect(applyCanvasDrop(placed, drop!).find((l) => l.id === "tavern")?.canvasPosition)
+      .toEqual({ x: GROUP_PADDING, y: GROUP_HEADER });
+  });
+
+  // village > tavern > cellar, all authored flush against their parent's frame.
+  const nested: GameLocation[] = [
+    { id: "village", name: "Village", isStarting: true, canvasPosition: { x: 0, y: 0 } },
+    { id: "tavern", name: "Tavern", parentId: "village", canvasPosition: { x: GROUP_PADDING, y: GROUP_HEADER } },
+    { id: "cellar", name: "Cellar", parentId: "tavern", canvasPosition: { x: GROUP_PADDING, y: GROUP_HEADER } },
+    { id: "shore", name: "Shore", canvasPosition: { x: 400, y: 0 } },
+  ];
+
+  it("gives the location to the innermost box it landed in, not the outermost", () => {
+    // (130, 86) sits inside Village (0, 0)–(260, 164) and inside Tavern (20, 36)–(240, 144).
+    expect(dropIntent(nested, "shore", { x: 40, y: 60 })).toMatchObject({ parentId: "tavern" });
+  });
+
+  it("never hands a location to itself or to what it already holds", () => {
+    // Village's own center sits inside Tavern's box, which is nested in Village.
+    expect(dropIntent(nested, "village", { x: 0, y: 0 })).toEqual({
+      kind: "move", id: "village", position: { x: 0, y: 0 },
+    });
+  });
+
+  it("ignores a childless location, so two nodes brushing past each other never nest", () => {
+    const flat: GameLocation[] = [
+      { id: "landing", name: "Landing", canvasPosition: { x: 0, y: 0 } },
+      { id: "shore", name: "Shore", canvasPosition: { x: 400, y: 0 } },
+    ];
+    expect(dropIntent(flat, "shore", { x: 10, y: 0 })).toMatchObject({ kind: "move" });
+  });
+
+  it("asks for nothing on behalf of a location that is not there", () => {
+    expect(dropIntent(placed, "nowhere", { x: 0, y: 0 })).toBeNull();
+  });
+
+  it("recomputes free travel and the unreachable badge from the new nesting", () => {
+    const stranded = [...nested.slice(0, 3), { ...nested[3], isStarting: false }];
+    const before = buildLocationCanvas(stranded, []);
+    expect(before.nodes.find((n) => n.id === "shore")!.data.unreachable).toBe(true);
+    expect(before.edges.filter((e) => e.id.includes("shore"))).toEqual([]);
+
+    const after = applyCanvasDrop(stranded, dropIntent(stranded, "shore", { x: 40, y: 60 })!);
+    const map = buildLocationCanvas(after, []);
+    // Held by the Tavern, Shore is now a sibling of the Cellar: free travel both ways, and reachable.
+    expect(map.nodes.find((n) => n.id === "shore")!.data.unreachable).toBe(false);
+    expect(map.edges.filter((e) => e.kind === "implicit").map((e) => e.id).sort())
+      .toEqual(["implicit:cellar>shore", "implicit:shore>cellar"]);
+  });
+
+  it("leaves authored Connections untouched — they are id-based, not containment-based", () => {
+    // Shore is dropped into the Tavern, which puts it inside the Village it is linked to: containment would
+    // otherwise be its own travel rule for the pair, and the one-way link would quietly become a walk back.
+    const conns: Connection[] = [{ id: "c12", from: "shore", to: "village", twoWay: false, aiHint: "up the path" }];
+    const before = buildLocationCanvas(nested, conns).edges.filter((e) => e.connectionId === "c12");
+    const after = applyCanvasDrop(nested, dropIntent(nested, "shore", { x: 40, y: 60 })!);
+    expect(buildLocationCanvas(after, conns).edges.filter((e) => e.connectionId === "c12")).toEqual(before);
+    expect(before.map((e) => e.id)).toEqual(["connection:c12:forward"]);
+  });
+
+  it("holds a location dropped on a group's title strip clear of the frame it now sits in", () => {
+    // Aimed at the Tavern's top-left corner, where the title strip is: it lands under the strip, not over it.
+    const drop = dropIntent(nested, "shore", { x: 25, y: 40 });
+    expect(drop).toMatchObject({ kind: "reparent", parentId: "tavern", position: { x: 5, y: 4 } });
+    expect(applyCanvasDrop(nested, drop!).find((l) => l.id === "shore")?.canvasPosition)
+      .toEqual({ x: GROUP_PADDING, y: GROUP_HEADER });
+  });
+
+  it("nests the same way in the list view as on the canvas", () => {
+    const after = applyCanvasDrop(nested, dropIntent(nested, "shore", { x: 40, y: 60 })!);
+    const rows = flattenLocationTree(buildLocationTree(after));
+    expect(rows.find((r) => r.id === "shore")).toMatchObject({ parentId: "tavern", depth: 2 });
+    // And back out again: the row returns to the top of the list.
+    const out = applyCanvasDrop(after, dropIntent(after, "shore", { x: 900, y: 700 })!);
+    expect(flattenLocationTree(buildLocationTree(out)).find((r) => r.id === "shore"))
+      .toMatchObject({ parentId: null, depth: 0 });
   });
 });
 
