@@ -335,6 +335,53 @@ test.describe('Locations canvas', () => {
   });
 
   /**
+   * The touch half of composing a selection. A hold and a tap are the same press told apart by time, and a
+   * hold that fires has to leave no tap behind it — none of which any rendered state afterwards can show.
+   */
+  test('a finger held on a location adds it to the selection, and holding it again removes it', async ({ page }, testInfo) => {
+    test.skip(testInfo.project.name !== 'mobile', 'the gesture only exists on a touch screen');
+    await openApp(page);
+    await page.evaluate(async (world) => {
+      const dev = (window as unknown as { __fmDev: DevRouter }).__fmDev;
+      const id = await dev.putWorld(world);
+      await dev.editWorld(id);
+    }, WORLD);
+    await gotoDev(page, 'mainMenu', { modal: 'worldEditor', tab: 'locations', subtab: 'canvas' });
+
+    const node = (id: string) => page.locator(`.react-flow__node[data-id="${id}"]`);
+    await node('loc-outside').waitFor();
+    const selected = page.locator('.react-flow__node.selected');
+
+    // Playwright's touchscreen taps and lets go, so the press is driven directly — held, then released.
+    const touch = async (id: string, hold: number) => {
+      const box = (await node(id).boundingBox())!;
+      const at = { x: box.x + box.width / 2, y: box.y + box.height / 2 };
+      const send = (type: string) => page.locator(`.react-flow__node[data-id="${id}"]`).dispatchEvent(type, {
+        pointerType: 'touch', pointerId: 1, isPrimary: true, bubbles: true, clientX: at.x, clientY: at.y,
+      });
+      await send('pointerdown');
+      await page.waitForTimeout(hold);
+      await send('pointerup');
+      await send('click');
+    };
+
+    // A quick tap is the tap it always was: one location selected, its editor opened over the map.
+    await touch('loc-outside', 50);
+    await expect(selected).toHaveCount(1);
+
+    // Held, the Warehouse joins the selection — and the tap that ended the hold did not take its place.
+    await touch('loc-child-b', 700);
+    await expect(selected).toHaveCount(2);
+    await expect(node('loc-child-b')).toHaveClass(/selected/);
+    await expect(node('loc-outside')).toHaveClass(/selected/);
+
+    // Held again, it leaves: the same gesture toggles rather than only adding.
+    await touch('loc-child-b', 700);
+    await expect(selected).toHaveCount(1);
+    await expect(node('loc-outside')).toHaveClass(/selected/);
+  });
+
+  /**
    * Right-click and right-drag are the same button, told apart only by whether the pointer traveled — which
    * is a distinction nothing but a real pointer can make.
    */

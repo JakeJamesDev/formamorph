@@ -443,20 +443,25 @@ export function multiDropIntents(
     .filter((drop): drop is CanvasDrop => drop !== null);
 }
 
-/** How far the pointer may travel between press and release and still have been a click. */
+/** How far the pointer may travel and still have stayed put: a mouse is held on a surface, a finger is not. */
 const CLICK_SLOP = 4;
+export const TOUCH_SLOP = 12;
+/** How long a finger rests on a location before the press is a hold rather than a tap on its way to being. */
+export const LONG_PRESS_MS = 500;
 
 /**
- * Whether a press that came up here was a click rather than a drag. The canvas's right button does both jobs
- * — panning the map, and asking for the menu — and the only thing telling them apart is whether the pointer
- * went anywhere, since the menu is asked for on release either way.
+ * Whether a press that came up here stayed put rather than going somewhere. Both of the canvas's press-and-
+ * hold gestures turn on this: the right button pans *and* asks for the menu, and a finger both drags a
+ * location and composes a selection, so in each pair the only thing telling the two apart is whether the
+ * pointer traveled.
  */
 export function isStationaryClick(
   down: { x: number; y: number } | null,
   up: { x: number; y: number },
+  slop: number = CLICK_SLOP,
 ): boolean {
   if (!down) return true;
-  return Math.hypot(up.x - down.x, up.y - down.y) <= CLICK_SLOP;
+  return Math.hypot(up.x - down.x, up.y - down.y) <= slop;
 }
 
 /** A selection's drops, written onto the world in one pass. */

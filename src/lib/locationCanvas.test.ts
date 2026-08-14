@@ -3,6 +3,7 @@ import {
   CANVAS_NODE_HEIGHT, CANVAS_NODE_WIDTH, GROUP_HEADER, GROUP_PADDING,
   applyCanvasDrop, buildLocationCanvas, connectIntent, connectionEnds, deleteIntent, directionIntent,
   applyCanvasDrops, directionOf, dropIntent, dropTarget, hintIntent, isStationaryClick, multiDropIntents,
+  TOUCH_SLOP,
   newLocationPosition, withCanvasPosition,
   type CanvasIntent,
 } from "./locationCanvas";
@@ -505,6 +506,14 @@ describe("isStationaryClick", () => {
     expect(isStationaryClick({ x: 100, y: 100 }, { x: 102, y: 101 })).toBe(true); // a hand is never still
     expect(isStationaryClick({ x: 100, y: 100 }, { x: 140, y: 100 })).toBe(false);
     expect(isStationaryClick({ x: 100, y: 100 }, { x: 100, y: 60 })).toBe(false);
+  });
+
+  it("gives a finger more room to wobble than a mouse on a desk", () => {
+    // The same 8px of travel: a mouse went somewhere, a finger resting on a location did not.
+    expect(isStationaryClick({ x: 100, y: 100 }, { x: 108, y: 100 })).toBe(false);
+    expect(isStationaryClick({ x: 100, y: 100 }, { x: 108, y: 100 }, TOUCH_SLOP)).toBe(true);
+    // A finger that traveled is still a drag, whatever it is being asked to hold still for.
+    expect(isStationaryClick({ x: 100, y: 100 }, { x: 140, y: 100 }, TOUCH_SLOP)).toBe(false);
   });
 
   it("reads a menu asked for without any press at all as a click", () => {
