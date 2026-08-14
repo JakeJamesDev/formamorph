@@ -655,6 +655,9 @@ const CanvasInner = ({ selectedId, onSelect, session, fullscreen, onToggleFullsc
         isValidConnection={({ source, target }) => !!connectIntent(source, target, connections)}
         connectionLineStyle={{ stroke: 'hsl(var(--primary))', strokeWidth: 2 }}
         deleteKeyCode={null}
+        // Under the zoom controls rather than alone in the far corner, where a lone bit of text on open canvas
+        // reads as something to press.
+        attributionPosition="bottom-left"
         minZoom={0.2}
         fitView
         className="h-full w-full"
