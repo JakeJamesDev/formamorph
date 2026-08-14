@@ -29,6 +29,18 @@ const NESTED_WORLD = {
   locations: [...WORLD.locations, { id: 'loc-grandchild', name: 'Locker', parentId: 'loc-child-a' }],
 };
 
+/** The same shape with the Harbor's two children hand-stacked on one spot, which is what an arrangement undoes. */
+const STACKED_WORLD = {
+  ...WORLD,
+  id: 'e2e-canvas-stacked',
+  locations: [
+    { id: 'loc-parent', name: 'Harbor', canvasPosition: { x: 40, y: 40 } },
+    { id: 'loc-child-a', name: 'Dock', parentId: 'loc-parent', canvasPosition: { x: 30, y: 50 } },
+    { id: 'loc-child-b', name: 'Warehouse', parentId: 'loc-parent', canvasPosition: { x: 34, y: 54 } },
+    { id: 'loc-outside', name: 'Beach', canvasPosition: { x: 600, y: 40 } },
+  ],
+};
+
 /**
  * The canvas draws its Connection inspector as a floating panel over the map. Anything the layout wraps the
  * canvas in can swallow the panel's clicks without changing a single rendered attribute — only real
@@ -504,6 +516,52 @@ test.describe('Locations canvas', () => {
     await expect(window_).toBeHidden();
     await expect(fullscreenButton).toBeVisible();
     await expect(page.locator('.react-flow__node.selected')).toHaveCount(4);
+  });
+
+  /**
+   * Auto Arrange is asserted as geometry in the unit tests; what a real canvas proves is that the menu entry
+   * appears on a box that holds something, that pressing it redraws the map, and that the arrangement is what
+   * the world kept — the boxes on screen are the stored positions read back.
+   */
+  test('auto arrange lays out a group from its own menu', async ({ page }) => {
+    await openApp(page);
+    await page.evaluate(async (world) => {
+      const dev = (window as unknown as { __fmDev: DevRouter }).__fmDev;
+      const id = await dev.putWorld(world);
+      await dev.editWorld(id);
+    }, STACKED_WORLD);
+    await gotoDev(page, 'mainMenu', { modal: 'worldEditor', tab: 'locations', subtab: 'canvas' });
+
+    const node = (id: string) => page.locator(`.react-flow__node[data-id="${id}"]`);
+    await node('loc-parent').waitFor();
+    const overlapping = async () => {
+      const dock = (await node('loc-child-a').boundingBox())!;
+      const store = (await node('loc-child-b').boundingBox())!;
+      return dock.x < store.x + store.width && store.x < dock.x + dock.width
+        && dock.y < store.y + store.height && store.y < dock.y + dock.height;
+    };
+    expect(await overlapping()).toBe(true); // stacked by hand, as the world was seeded
+
+    // A leaf holds nothing to lay out, so it is not offered the command.
+    await node('loc-outside').click({ button: 'right' });
+    const menu = page.getByRole('menu', { name: 'Canvas Options' });
+    await expect(menu.getByRole('menuitem', { name: 'Auto Arrange', exact: true })).toHaveCount(0);
+    await page.keyboard.press('Escape');
+
+    // The Harbor's own title strip, which is the group rather than either child's box.
+    const harbor = (await node('loc-parent').boundingBox())!;
+    await page.mouse.click(harbor.x + harbor.width / 2, harbor.y + 12, { button: 'right' });
+    await menu.getByRole('menuitem', { name: 'Auto Arrange', exact: true }).click();
+
+    // The two boxes are off each other, and the arrangement is what the world now holds: leaving the canvas
+    // and coming back redraws it from the stored positions.
+    await expect.poll(overlapping).toBe(false);
+    const laidOut = (await node('loc-child-a').boundingBox())!;
+    await gotoDev(page, 'mainMenu', { modal: 'worldEditor', tab: 'locations', subtab: 'list' });
+    await gotoDev(page, 'mainMenu', { modal: 'worldEditor', tab: 'locations', subtab: 'canvas' });
+    await node('loc-child-a').waitFor();
+    expect((await node('loc-child-a').boundingBox())!.x).toBeCloseTo(laidOut.x, 0);
+    expect(await overlapping()).toBe(false);
   });
 
   /** The dev-route lands on the full-screen canvas in one call, which is what the later tickets verify from. */

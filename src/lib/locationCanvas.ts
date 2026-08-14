@@ -30,7 +30,7 @@ const LAYOUT_ROW_WIDTH = 660;
 
 /** The box a location actually sits in. A parent id pointing at a location that isn't here would strand its
  *  children off the map, so an unknown one reads as top-level. */
-function heldBy(locations: GameLocation[], loc: GameLocation): string | null {
+export function holderOf(locations: GameLocation[], loc: GameLocation): string | null {
   return loc.parentId && locations.some((l) => l.id === loc.parentId) ? loc.parentId : null;
 }
 
@@ -83,7 +83,7 @@ export function buildLocationCanvas(
 ): LocationCanvasMap {
   const resolveName = opts.resolveName ?? ((location: GameLocation) => location.name);
   const known = new Set(locations.map((l) => l.id));
-  const parentOf = (loc: GameLocation) => heldBy(locations, loc);
+  const parentOf = (loc: GameLocation) => holderOf(locations, loc);
   const childrenOf = new Map<string | null, GameLocation[]>();
   for (const loc of locations) {
     const parent = parentOf(loc);
@@ -218,7 +218,7 @@ export function withCanvasPosition(
 ): GameLocation[] {
   const target = locations.find((l) => l.id === id);
   if (!target) return locations;
-  const parentId = heldBy(locations, target);
+  const parentId = holderOf(locations, target);
   const at = { x: Math.round(position.x), y: Math.round(position.y) };
   const write = (list: GameLocation[], canvasPosition: { x: number; y: number }) =>
     list.map((l) => (l.id === id ? { ...l, canvasPosition } : l));
@@ -232,7 +232,7 @@ export function withCanvasPosition(
   const rendered = renderedPositions(locations);
   const grown = locations.map((l) => {
     if (l.id === id) return { ...l, canvasPosition: inside };
-    if (heldBy(locations, l) !== parentId) return l;
+    if (holderOf(locations, l) !== parentId) return l;
     const from = rendered.get(l.id) ?? { x: GROUP_PADDING, y: GROUP_HEADER };
     return { ...l, canvasPosition: { x: from.x + dx, y: from.y + dy } };
   });
@@ -256,7 +256,7 @@ export function newLocationPosition(
   const nodes = buildLocationCanvas(locations, []).nodes;
   let bottom: number | null = null;
   for (const loc of locations) {
-    if (heldBy(locations, loc) !== holder) continue;
+    if (holderOf(locations, loc) !== holder) continue;
     const node = nodes.find((n) => n.id === loc.id);
     if (node) bottom = Math.max(bottom ?? originY, node.position.y + node.height);
   }
@@ -344,7 +344,7 @@ function measureDrag(
   const self = rects.get(id);
   if (!self) return null;
 
-  const held = heldBy(locations, target);
+  const held = holderOf(locations, target);
   const heldOrigin = (held && rects.get(held)) || { x: 0, y: 0 };
   return {
     locations,
