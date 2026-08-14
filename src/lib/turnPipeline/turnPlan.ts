@@ -153,6 +153,29 @@ export interface TurnMaterial {
   subject?: TurnPassSubject;
 }
 
+/** The four values a turn knows before any pass has answered. Everything else is derived mid-run. */
+export type TurnMaterialSeed = Pick<TurnMaterial, 'action' | 'effectiveAction' | 'turnId' | 'baseCtx' | 'destinations'>;
+
+/** A turn's starting material: what the caller knows up front, with every derived field at its empty value. */
+export function emptyTurnMaterial(seed: TurnMaterialSeed): TurnMaterial {
+  return {
+    ...seed,
+    ctx: {},
+    sceneEntityTokens: {},
+    narrationSystemPrompt: "",
+    trimmedHistory: [],
+    narration: "",
+    lastStory: "",
+    plannerRecap: "",
+    turnPlan: "",
+    activeCharacterGuidance: "",
+    directorScene: "",
+    npcCastSize: 0,
+    intents: [],
+    overflow: [],
+  };
+}
+
 /** One request, exactly as the request adapter receives it. */
 export interface TurnPassRequest {
   type: AIRequestType;
