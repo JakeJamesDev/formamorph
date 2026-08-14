@@ -11,6 +11,7 @@ import { describePlaceholders } from '@/lib/placeholders';
 import { SoundUpload } from '../lib/UtilityComponents';
 import { IMAGE_CAPS } from '../lib/imageOptim';
 import ImageTagsField from './ImageTagsField';
+import LocationConnections from './LocationConnections';
 import { useEditorMode } from '@/lib/editorMode';
 import type { GameLocation } from '@/types';
 
@@ -115,6 +116,7 @@ const LocationManager = ({ location }: { location: GameLocation }) => {
           hideSelectAll
         />
       </div>
+      <LocationConnections location={editingLocation} />
       <ImageTagsField
         label="Background Image"
         images={editingLocation.backgroundImage ? [editingLocation.backgroundImage] : []}
