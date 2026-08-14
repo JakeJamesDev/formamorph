@@ -43,12 +43,13 @@ export interface TurnRun {
 
 /**
  * How a turn ended. `aborted` is the player stopping — an expected, silent exit. `failed` names why in a
- * kind the view maps to guidance; the partial run comes back either way.
+ * kind the view maps to guidance, and carries the request that ended it, so the view can tell a foreground
+ * failure (which has already spoken for itself) from a silent one. The partial run comes back either way.
  */
 export type TurnResult =
   | { status: 'ok'; run: TurnRun }
   | { status: 'aborted'; run: TurnRun }
-  | { status: 'failed'; kind: TurnErrorKind; error: unknown; run: TurnRun };
+  | { status: 'failed'; kind: TurnErrorKind; error: unknown; request?: TurnPassRequest; run: TurnRun };
 
 /** What the adapter is told beyond the request itself. */
 export interface TurnRequestContext {
@@ -88,6 +89,11 @@ export interface TurnRunnerInput {
   advance?: TurnAdvance;
   /** The narration stream's events, forwarded in the order the stream emitted them. */
   onNarrationEvent?: (event: AiStreamEvent) => void;
+  /**
+   * One request has answered — called the moment it settles, not when its stage does, so a caller waiting on
+   * a single pass inside a batch is released by that pass rather than by the slowest of its siblings.
+   */
+  onPassSettled?: (id: TurnPassRecord['id'], outcome: { ok: boolean }) => void;
 }
 
 /** Stage order. Every turn walks all four; a stage with no due passes simply dispatches nothing. */
@@ -109,9 +115,12 @@ const isBatched = (stage: TurnStage, plan: TurnPlan): boolean =>
   stage === 'postNarration' && plan.concurrency === 'parallel';
 
 export async function runTurn(input: TurnRunnerInput): Promise<TurnResult> {
-  const { plan, request, signal, advance, onNarrationEvent } = input;
+  const { plan, request, signal, advance, onNarrationEvent, onPassSettled } = input;
   let material: TurnMaterial = { ...input.material };
   const passes: TurnPassOutcome[] = [];
+  // The request that ended the turn, recorded where it fails — so nothing downstream has to read anything
+  // off the error object to know what it was.
+  let failedRequest: TurnPassRequest | undefined;
   const run = (): TurnRun => ({ material, passes });
 
   const applyAdvance = async (event: TurnAdvanceEvent): Promise<void> => {
@@ -133,11 +142,33 @@ export async function runTurn(input: TurnRunnerInput): Promise<TurnResult> {
     });
   };
 
-  const send = (planned: PlannedRequest): Promise<string> =>
-    request(planned.request, {
+  const send = (planned: PlannedRequest): Promise<string> => {
+    const answer = request(planned.request, {
       signal,
       ...(planned.pass.stage === 'narration' && onNarrationEvent ? { onEvent: onNarrationEvent } : {}),
     });
+    return answer.then(
+      (raw) => {
+        onPassSettled?.(planned.pass.id, { ok: true });
+        return raw;
+      },
+      (error) => {
+        onPassSettled?.(planned.pass.id, { ok: false });
+        throw error;
+      },
+    );
+  };
+
+  /** A send whose failure ends the turn, so the request that did it is worth remembering. The batch's are
+   *  not: it absorbs them and the turn carries on. First rejection wins — it is the one the caller sees. */
+  const sendOrEndTurn = async (planned: PlannedRequest): Promise<string> => {
+    try {
+      return await send(planned);
+    } catch (error) {
+      failedRequest ??= planned.request;
+      throw error;
+    }
+  };
 
   const envelope = (planned: PlannedRequest) => ({
     id: planned.pass.id,
@@ -193,12 +224,12 @@ export async function runTurn(input: TurnRunnerInput): Promise<TurnResult> {
         if (planned.length === 0) continue;
         const outcomes: TurnPassOutcome[] = [];
         if (plan.concurrency === 'parallel') {
-          const answers = await Promise.all(planned.map(send));
+          const answers = await Promise.all(planned.map(sendOrEndTurn));
           if (signal.aborted) return { status: 'aborted', run: run() };
           outcomes.push(...planned.map((entry, i) => outcomeOf(entry, answers[i])));
         } else {
           for (const entry of planned) {
-            const raw = await send(entry);
+            const raw = await sendOrEndTurn(entry);
             if (signal.aborted) return { status: 'aborted', run: run() };
             outcomes.push(outcomeOf(entry, raw));
           }
@@ -220,7 +251,7 @@ export async function runTurn(input: TurnRunnerInput): Promise<TurnResult> {
     // A stopped turn is stopped however the adapter left — an abort that surfaces as a rejection is still
     // the player's silent exit, not a failure to explain.
     if (signal.aborted) return { status: 'aborted', run: run() };
-    return { status: 'failed', kind: classifyTurnError(error), error, run: run() };
+    return { status: 'failed', kind: classifyTurnError(error), error, request: failedRequest, run: run() };
   }
 
   // No tail abort check: every await above is followed by one, and nothing between the last of them and

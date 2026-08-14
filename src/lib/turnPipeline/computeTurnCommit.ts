@@ -11,9 +11,9 @@ import type { TurnPassOutcome, TurnResult } from './turnRunner';
 
 /**
  * The Turn Commit: everything one finished turn changes, computed as one value before any of it is applied.
- * Pure — the view's apply step is thin setters over what this returns, so the merge logic that used to live
- * between them (which fields the stored turn carries, what the clock reads, who was discovered) is answerable
- * by calling this function.
+ * Pure — the view's apply step is thin setters over what this returns, so the merge logic between them
+ * (which fields the stored turn carries, what the clock reads, who was discovered) is answerable by calling
+ * this function.
  */
 
 /** A character the turn discovered, anchored so it rolls back with the turn that found them. */
