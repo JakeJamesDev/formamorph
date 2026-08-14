@@ -243,4 +243,94 @@ test.describe('Locations canvas', () => {
     const free = await restingPlace();
     expect(free.x % 20 !== 0 || free.y % 20 !== 0).toBe(true);
   });
+
+  /**
+   * The marquee and the unit drag are one gesture's two halves, and neither exists outside a real pointer:
+   * which button pans, what a left-drag over the pane draws, and whether a selection travels together are all
+   * decided by hit-testing rather than by any state the DOM shows afterwards.
+   */
+  test('a marquee selects several locations and drags them as one', async ({ page }) => {
+    await openApp(page);
+    await page.evaluate(async (world) => {
+      const dev = (window as unknown as { __fmDev: DevRouter }).__fmDev;
+      const id = await dev.putWorld(world);
+      await dev.editWorld(id);
+    }, WORLD);
+    await gotoDev(page, 'mainMenu', { modal: 'worldEditor', tab: 'locations', subtab: 'canvas' });
+
+    const node = (id: string) => page.locator(`.react-flow__node[data-id="${id}"]`);
+    await node('loc-outside').waitFor();
+
+    // From an empty corner of the pane across everything on it: left-drag over the pane is the marquee.
+    const pane = (await page.locator('.react-flow__pane').boundingBox())!;
+    await page.mouse.move(pane.x + 2, pane.y + 2);
+    await page.mouse.down();
+    await page.mouse.move(pane.x + pane.width - 2, pane.y + pane.height - 2, { steps: 12 });
+    await page.mouse.up();
+    await expect(page.locator('.react-flow__node.selected')).toHaveCount(4);
+
+    // Dragging one member carries the rest: both boxes travel the same distance, not just the one grabbed.
+    const beachWas = (await node('loc-outside').boundingBox())!;
+    const harborWas = (await node('loc-parent').boundingBox())!;
+    await page.mouse.move(beachWas.x + beachWas.width / 2, beachWas.y + beachWas.height / 2);
+    await page.mouse.down();
+    await page.mouse.move(beachWas.x + beachWas.width / 2, beachWas.y + beachWas.height / 2 + 120, { steps: 12 });
+    await page.mouse.up();
+
+    const beachNow = (await node('loc-outside').boundingBox())!;
+    const harborNow = (await node('loc-parent').boundingBox())!;
+    expect(beachNow.y - beachWas.y).toBeGreaterThan(40);
+    expect(harborNow.y - harborWas.y).toBeCloseTo(beachNow.y - beachWas.y, 0);
+    expect(harborNow.x - harborWas.x).toBeCloseTo(beachNow.x - beachWas.x, 0);
+    // A move, not a reparent: the Beach still stands on its own, so the world's travel is what it was.
+    await expect(page.locator('.react-flow__edge')).toHaveCount(2);
+
+    await page.keyboard.press('Escape');
+    await expect(page.locator('.react-flow__node.selected')).toHaveCount(0);
+  });
+
+  /**
+   * Right-click and right-drag are the same button, told apart only by whether the pointer traveled — which
+   * is a distinction nothing but a real pointer can make.
+   */
+  test('right-click opens the canvas menu and a right-drag pans instead', async ({ page }) => {
+    await openApp(page);
+    await page.evaluate(async (world) => {
+      const dev = (window as unknown as { __fmDev: DevRouter }).__fmDev;
+      const id = await dev.putWorld(world);
+      await dev.editWorld(id);
+    }, WORLD);
+    await gotoDev(page, 'mainMenu', { modal: 'worldEditor', tab: 'locations', subtab: 'canvas' });
+
+    await page.locator('.react-flow__node[data-id="loc-outside"]').waitFor();
+    const menu = page.getByRole('menu', { name: 'Canvas Options' });
+    const pane = (await page.locator('.react-flow__pane').boundingBox())!;
+    const from = { x: pane.x + pane.width / 2, y: pane.y + pane.height - 20 };
+    const viewport = () => page.locator('.react-flow__viewport').getAttribute('style');
+
+    // A right-drag is a pan: the map moves under the pointer and nothing opens. What a driven browser cannot
+    // show is the menu the platform asks for on that release — Playwright's right-button release raises no
+    // such request — so telling that release apart from a click is covered in `isStationaryClick`'s tests.
+    const before = await viewport();
+    await page.mouse.move(from.x, from.y);
+    await page.mouse.down({ button: 'right' });
+    await page.mouse.move(from.x - 140, from.y, { steps: 12 });
+    await page.mouse.up({ button: 'right' });
+    await expect(menu).toBeHidden();
+    expect(await viewport()).not.toBe(before);
+
+    // And the browser's own menu is refused wherever it is asked for, which is what ours stands in for.
+    const prevented = await page.evaluate(() => {
+      const event = new MouseEvent('contextmenu', { bubbles: true, cancelable: true });
+      document.querySelector('.react-flow__pane')!.dispatchEvent(event);
+      return event.defaultPrevented;
+    });
+    expect(prevented).toBe(true);
+
+    // A right-click that stayed put opens ours, and its actions reach the selection.
+    await page.mouse.click(from.x, from.y, { button: 'right' });
+    await expect(menu).toBeVisible();
+    await menu.getByRole('menuitem', { name: 'Select All Locations' }).click();
+    await expect(page.locator('.react-flow__node.selected')).toHaveCount(4);
+  });
 });

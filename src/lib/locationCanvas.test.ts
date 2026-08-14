@@ -2,7 +2,8 @@ import { describe, it, expect } from "vitest";
 import {
   CANVAS_NODE_HEIGHT, CANVAS_NODE_WIDTH, GROUP_HEADER, GROUP_PADDING,
   applyCanvasDrop, buildLocationCanvas, connectIntent, connectionEnds, deleteIntent, directionIntent,
-  directionOf, dropIntent, dropTarget, hintIntent, newLocationPosition, withCanvasPosition,
+  applyCanvasDrops, directionOf, dropIntent, dropTarget, hintIntent, isStationaryClick, multiDropIntents,
+  newLocationPosition, withCanvasPosition,
   type CanvasIntent,
 } from "./locationCanvas";
 import { connectionsAt } from "./connectionEditing";
@@ -443,6 +444,49 @@ describe("dropIntent", () => {
     }
   });
 
+  it("judges a whole selection's drops against the map the drag began on", () => {
+    // The Village is as wide as the Attic standing at its right edge. Both children are dragged in one
+    // gesture: the Attic out to open canvas, the Cellar to a spot near that right edge. Judged one after the
+    // other, the Attic leaving would shrink the Village out from under the Cellar and read it as leaving too.
+    const both: GameLocation[] = [
+      { id: "village", name: "Village", isStarting: true, canvasPosition: { x: 0, y: 0 } },
+      { id: "attic", name: "Attic", parentId: "village", canvasPosition: { x: 400, y: GROUP_HEADER } },
+      { id: "cellar", name: "Cellar", parentId: "village", canvasPosition: { x: GROUP_PADDING, y: GROUP_HEADER } },
+    ];
+    const drops = multiDropIntents(both, [
+      { id: "attic", position: { x: 900, y: 700 } },
+      { id: "cellar", position: { x: 400, y: GROUP_HEADER } },
+    ]);
+    expect(drops).toEqual([
+      { kind: "reparent", id: "attic", parentId: null, position: { x: 900, y: 700 } },
+      { kind: "move", id: "cellar", parentId: "village", position: { x: 400, y: GROUP_HEADER } },
+    ]);
+    const after = applyCanvasDrops(both, drops);
+    expect(after.find((l) => l.id === "attic")).toMatchObject({ parentId: null, canvasPosition: { x: 900, y: 700 } });
+    expect(after.find((l) => l.id === "cellar")).toMatchObject({ parentId: "village" });
+  });
+
+  it("moves a selection as a unit, each node judged where it personally landed", () => {
+    // Both are dragged in one gesture; only the Shore's own resting place is over the Tavern.
+    const drops = multiDropIntents(nested, [
+      { id: "shore", position: { x: 40, y: 60 } },
+      { id: "village", position: { x: 900, y: 700 } },
+    ]);
+    expect(drops.map((d) => (d.kind === "reparent" ? d.parentId : "move"))).toEqual(["tavern", "move"]);
+  });
+
+  it("leaves a location riding inside a selected group where its group put it", () => {
+    // The Tavern and its Cellar are both in the selection. The Cellar's position is measured against the
+    // Tavern, which carried it — reading it as a drop of its own would land it wherever the Tavern was.
+    const drops = multiDropIntents(nested, [
+      { id: "tavern", position: { x: 300, y: 200 } },
+      { id: "cellar", position: { x: GROUP_PADDING, y: GROUP_HEADER } },
+    ]);
+    expect(drops.map((d) => d.id)).toEqual(["tavern"]);
+    const after = applyCanvasDrops(nested, drops);
+    expect(after.find((l) => l.id === "cellar")).toEqual(nested.find((l) => l.id === "cellar"));
+  });
+
   it("nests the same way in the list view as on the canvas", () => {
     const after = applyCanvasDrop(nested, dropIntent(nested, "shore", { x: 40, y: 60 })!);
     const rows = flattenLocationTree(buildLocationTree(after));
@@ -451,6 +495,21 @@ describe("dropIntent", () => {
     const out = applyCanvasDrop(after, dropIntent(after, "shore", { x: 900, y: 700 })!);
     expect(flattenLocationTree(buildLocationTree(out)).find((r) => r.id === "shore"))
       .toMatchObject({ parentId: null, depth: 0 });
+  });
+});
+
+describe("isStationaryClick", () => {
+  // The right button pans and opens the menu, and the platform asks for the menu on the release of both.
+  it("tells a right-click apart from the pan that ends under the same button", () => {
+    expect(isStationaryClick({ x: 100, y: 100 }, { x: 100, y: 100 })).toBe(true);
+    expect(isStationaryClick({ x: 100, y: 100 }, { x: 102, y: 101 })).toBe(true); // a hand is never still
+    expect(isStationaryClick({ x: 100, y: 100 }, { x: 140, y: 100 })).toBe(false);
+    expect(isStationaryClick({ x: 100, y: 100 }, { x: 100, y: 60 })).toBe(false);
+  });
+
+  it("reads a menu asked for without any press at all as a click", () => {
+    // The keyboard's menu key, and anything else that raises the request on its own.
+    expect(isStationaryClick(null, { x: 100, y: 100 })).toBe(true);
   });
 });
 
