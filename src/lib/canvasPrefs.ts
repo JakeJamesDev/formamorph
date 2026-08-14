@@ -1,5 +1,8 @@
-import { usePersistentState, boolCodec } from './usePersistentState';
-import { DEFAULT_CANVAS_GRID_VISIBLE, DEFAULT_CANVAS_SNAP } from '@/contexts/settingsDefaults';
+import { usePersistentState, boolCodec, type Codec } from './usePersistentState';
+import { isConnectionStyle, type ConnectionStyle } from './canvasEdgePath';
+import {
+  DEFAULT_CANVAS_CONNECTION_STYLE, DEFAULT_CANVAS_GRID_VISIBLE, DEFAULT_CANVAS_SNAP,
+} from '@/contexts/settingsDefaults';
 
 /**
  * How one author likes the Locations Canvas to draw and behave. These are the author's own working
@@ -19,3 +22,19 @@ export const useCanvasSnap = () =>
 /** Draw the grid the nodes snap to. Independent of snapping: either can be had without the other. */
 export const useCanvasGridVisible = () =>
   usePersistentState<boolean>(`${PREFIX}GridVisible`, DEFAULT_CANVAS_GRID_VISIBLE, boolCodec);
+
+/** A shape retired from the picker leaves stored choices naming it, and a name nobody draws would be a canvas
+ *  with no arrows at all — so an unrecognized one is refused and the default stands. */
+const connectionStyleCodec: Codec<ConnectionStyle> = {
+  parse: (raw) => {
+    if (!isConnectionStyle(raw)) throw new Error('not a connection style');
+    return raw;
+  },
+  serialize: (value) => value,
+};
+
+/** How arrows are drawn between boxes. Presentation only: the world reads the same in all three. */
+export const useCanvasConnectionStyle = () =>
+  usePersistentState<ConnectionStyle>(
+    `${PREFIX}ConnectionStyle`, DEFAULT_CANVAS_CONNECTION_STYLE, connectionStyleCodec,
+  );
