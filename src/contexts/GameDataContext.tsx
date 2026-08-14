@@ -5,6 +5,7 @@ import { canonicalStringify } from '@/lib/canonicalStringify';
 import { migrateWorld, APP_VERSION } from '@/lib/version';
 import { dropLocationFromEntities } from '@/lib/entityPresence';
 import { dropLocationFromConnections } from '@/lib/locationGraph';
+import { newLocationPosition } from '@/lib/locationCanvas';
 import { useDictionaryStoreState, DictionaryStoreProvider } from '@/contexts/DictionaryStoreContext';
 import { placeholderStore, PlaceholderStoreProvider } from '@/contexts/PlaceholderStoreContext';
 import type {
@@ -98,8 +99,14 @@ function useProvideGameData() {
     setStats(prevStats => prevStats.filter(stat => stat.id !== statId));
   }, []);
 
+  // A new location is given a place on the canvas as it is created, wherever it was created from: the map is
+  // manual-first, so one arriving without a position of its own would sit wherever the fallback left it.
   const addLocation = useCallback((newLocation: GameLocation) => {
-    setLocations(prevLocations => [...prevLocations, newLocation]);
+    setLocations(prevLocations => [...prevLocations, {
+      ...newLocation,
+      canvasPosition: newLocation.canvasPosition
+        ?? newLocationPosition(prevLocations, newLocation.parentId ?? null),
+    }]);
   }, []);
 
   const updateLocation = useCallback((updatedLocation: GameLocation) => {

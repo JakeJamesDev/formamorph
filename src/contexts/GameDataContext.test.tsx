@@ -76,6 +76,49 @@ describe('entity ↔ location membership', () => {
   });
 });
 
+describe('adding a location', () => {
+  const mapped = () => ({
+    ...world('w', {}),
+    locations: [
+      { id: 'l1', name: 'Harbor', canvasPosition: { x: 0, y: 0 } },
+      { id: 'l2', name: 'Dock', parentId: 'l1', canvasPosition: { x: 20, y: 36 } },
+    ],
+  } as unknown as World);
+
+  it('places a new location on the canvas as it is created', () => {
+    const { result } = renderHook(() => useGameData(), { wrapper });
+    act(() => { result.current.loadWorldData(mapped()); });
+    const before = result.current.locations.map((l) => l.canvasPosition);
+
+    act(() => { result.current.addLocation({ id: 'l3', name: 'Beach' } as never); });
+
+    const fresh = result.current.locations.find((l) => l.id === 'l3')!;
+    expect(fresh.canvasPosition).toBeDefined();
+    // Clear of the Harbor rather than on top of it, and nothing already on the map was moved to fit it.
+    expect(fresh.canvasPosition!.y).toBeGreaterThan(0);
+    expect(result.current.locations.slice(0, 2).map((l) => l.canvasPosition)).toEqual(before);
+  });
+
+  it('places a new sub-location inside the group that will hold it', () => {
+    const { result } = renderHook(() => useGameData(), { wrapper });
+    act(() => { result.current.loadWorldData(mapped()); });
+
+    act(() => { result.current.addLocation({ id: 'l3', name: 'Cellar', parentId: 'l1' } as never); });
+
+    const fresh = result.current.locations.find((l) => l.id === 'l3')!;
+    expect(fresh.canvasPosition).toEqual({ x: 20, y: 128 });
+  });
+
+  it('keeps a position the caller already decided on', () => {
+    const { result } = renderHook(() => useGameData(), { wrapper });
+    act(() => { result.current.loadWorldData(mapped()); });
+
+    act(() => { result.current.addLocation({ id: 'l3', name: 'Beach', canvasPosition: { x: 7, y: 9 } } as never); });
+
+    expect(result.current.locations.find((l) => l.id === 'l3')?.canvasPosition).toEqual({ x: 7, y: 9 });
+  });
+});
+
 describe('connections', () => {
   const linkedWorld = () => ({
     ...world('w', {}),

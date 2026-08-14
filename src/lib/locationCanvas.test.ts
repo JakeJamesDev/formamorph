@@ -2,7 +2,8 @@ import { describe, it, expect } from "vitest";
 import {
   CANVAS_NODE_HEIGHT, CANVAS_NODE_WIDTH, GROUP_HEADER, GROUP_PADDING,
   applyCanvasDrop, buildLocationCanvas, connectIntent, connectionEnds, deleteIntent, directionIntent,
-  directionOf, dropIntent, hintIntent, withCanvasPosition, type CanvasIntent,
+  directionOf, dropIntent, dropTarget, hintIntent, newLocationPosition, withCanvasPosition,
+  type CanvasIntent,
 } from "./locationCanvas";
 import { connectionsAt } from "./connectionEditing";
 import { buildLocationTree, flattenLocationTree } from "./locationTree";
@@ -67,11 +68,22 @@ describe("buildLocationCanvas nodes", () => {
     expect(overlaps("village", "shore")).toBe(false);
   });
 
-  it("flows an unplaced location clear of the siblings the author placed by hand", () => {
-    // A location added long after the map was arranged must not land on top of the arrangement.
-    const placed = { ...landing, canvasPosition: { x: 0, y: 0 } };
-    const fresh = nodeOf([placed, shore], "shore");
-    expect(fresh.position.y).toBeGreaterThanOrEqual(CANVAS_NODE_HEIGHT);
+  it("places an unplaced location without reading a single position the author wrote", () => {
+    // The fallback is a fixed answer to "this location has no position", not a layout that reacts to the
+    // arrangement around it — so nothing on the map shifts because a sibling was moved.
+    const alone = nodeOf([landing, shore], "shore").position;
+    for (const at of [{ x: 0, y: 0 }, { x: -900, y: 2000 }, { x: 40, y: 40 }]) {
+      expect(nodeOf([{ ...landing, canvasPosition: at }, shore], "shore").position).toEqual(alone);
+    }
+  });
+
+  it("draws the same world the same way every time it is opened, and writes nothing back", () => {
+    const arranged: GameLocation[] = [
+      { ...village, canvasPosition: { x: 300, y: 120 } }, tavern, cellar, house, landing, shore,
+    ];
+    const before = structuredClone(arranged);
+    expect(canvas(arranged).nodes).toEqual(canvas(arranged).nodes);
+    expect(arranged).toEqual(before); // opening the canvas is a read: nothing here becomes dirty
   });
 
   it("wraps a row of unplaced locations instead of running off to the right forever", () => {
@@ -176,7 +188,7 @@ describe("withCanvasPosition", () => {
     expect(next.find((l) => l.id === "shore")?.canvasPosition).toEqual({ x: 120, y: 41 });
   });
 
-  it("holds a sub-location clear of its parent's frame and title strip", () => {
+  it("rests a sub-location against its parent's frame and title strip, never over them", () => {
     // Dragged up and left, the Cellar would otherwise come to rest outside the Tavern box it lives in.
     const next = withCanvasPosition(world, "cellar", { x: -80, y: 4 });
     expect(next.find((l) => l.id === "cellar")?.canvasPosition).toEqual({ x: GROUP_PADDING, y: GROUP_HEADER });
@@ -188,6 +200,64 @@ describe("withCanvasPosition", () => {
     expect(loose.find((l) => l.id === "shore")?.canvasPosition).toEqual({ x: -80, y: -40 });
   });
 
+  describe("group growth", () => {
+    // Village holds the Tavern and the Inn, every position authored, so growth is measured against fixed
+    // geometry rather than against wherever a fallback happened to put something.
+    const yard: GameLocation[] = [
+      { id: "village", name: "Village", canvasPosition: { x: 100, y: 50 } },
+      { id: "tavern", name: "Tavern", parentId: "village", canvasPosition: { x: 200, y: 100 } },
+      { id: "inn", name: "Inn", parentId: "village", canvasPosition: { x: 400, y: 100 } },
+    ];
+    /** Where a node lands on the canvas itself, which is the only thing an author sees move. */
+    const absolute = (locations: GameLocation[], id: string) => {
+      const nodes = buildLocationCanvas(locations, []).nodes;
+      const at = { x: 0, y: 0 };
+      let node = nodes.find((n) => n.id === id);
+      while (node) {
+        at.x += node.position.x;
+        at.y += node.position.y;
+        node = nodes.find((n) => n.id === node?.parentId);
+      }
+      return at;
+    };
+
+    it("grows the group left and up instead of pushing the child back inside", () => {
+      // 50px left of the frame and 64px above the title strip.
+      const grown = withCanvasPosition(yard, "tavern", { x: -30, y: -28 });
+      expect(grown.find((l) => l.id === "tavern")?.canvasPosition).toEqual({ x: GROUP_PADDING, y: GROUP_HEADER });
+      const box = buildLocationCanvas(grown, []).nodes.find((n) => n.id === "village")!;
+      expect(box.position).toEqual({ x: 50, y: -14 }); // the frame's own origin moved out by the overshoot
+      expect(box.width).toBeGreaterThan(buildLocationCanvas(yard, []).nodes.find((n) => n.id === "village")!.width);
+    });
+
+    it("leaves every sibling exactly where it was drawn", () => {
+      const grown = withCanvasPosition(yard, "tavern", { x: -30, y: -28 });
+      expect(absolute(grown, "inn")).toEqual(absolute(yard, "inn"));
+      // And the dragged node lands where the author let go of it, not where it started.
+      expect(absolute(grown, "tavern")).toEqual({ x: 70, y: 22 });
+    });
+
+    it("carries the growth up through every group above it", () => {
+      const deep: GameLocation[] = [
+        { id: "region", name: "Region", canvasPosition: { x: 0, y: 0 } },
+        { id: "village", name: "Village", parentId: "region", canvasPosition: { x: GROUP_PADDING, y: GROUP_HEADER } },
+        { id: "tavern", name: "Tavern", parentId: "village", canvasPosition: { x: 200, y: 100 } },
+        { id: "hall", name: "Hall", parentId: "region", canvasPosition: { x: 400, y: 200 } },
+      ];
+      const grown = withCanvasPosition(deep, "tavern", { x: -30, y: -28 });
+      // The Village would now sit outside the Region's frame, so the Region grows in turn.
+      expect(grown.find((l) => l.id === "village")?.canvasPosition).toEqual({ x: GROUP_PADDING, y: GROUP_HEADER });
+      expect(absolute(grown, "hall")).toEqual(absolute(deep, "hall"));
+      expect(absolute(grown, "tavern")).toEqual({ x: -10, y: 8 });
+    });
+
+    it("moves nothing but the dragged node when the drag stays inside the frame", () => {
+      const moved = withCanvasPosition(yard, "tavern", { x: 300, y: 100 });
+      expect(moved.find((l) => l.id === "inn")).toBe(yard[2]); // untouched, identity and all
+      expect(absolute(moved, "inn")).toEqual(absolute(yard, "inn"));
+    });
+  });
+
   it("grows the parent box around a sub-location dragged past its edge", () => {
     const moved = withCanvasPosition(world, "cellar", { x: 600, y: 400 });
     const tavernBox = buildLocationCanvas(moved, []).nodes.find((n) => n.id === "tavern")!;
@@ -197,6 +267,42 @@ describe("withCanvasPosition", () => {
 
   it("returns the same array when the location is unknown", () => {
     expect(withCanvasPosition(world, "nowhere", { x: 1, y: 2 })).toBe(world);
+  });
+});
+
+describe("newLocationPosition", () => {
+  const yard: GameLocation[] = [
+    { id: "village", name: "Village", canvasPosition: { x: 0, y: 0 } },
+    { id: "tavern", name: "Tavern", parentId: "village", canvasPosition: { x: GROUP_PADDING, y: GROUP_HEADER } },
+  ];
+
+  it("starts a world's first location at the canvas origin", () => {
+    expect(newLocationPosition([])).toEqual({ x: 0, y: 0 });
+  });
+
+  it("puts a new location below everything the canvas already holds", () => {
+    const village = buildLocationCanvas(yard, []).nodes.find((n) => n.id === "village")!;
+    expect(newLocationPosition(yard)).toEqual({ x: 0, y: village.height + 40 });
+  });
+
+  it("puts a new sub-location inside its group's frame, below its siblings", () => {
+    const at = newLocationPosition(yard, "village");
+    expect(at.x).toBe(GROUP_PADDING);
+    expect(at.y).toBeGreaterThan(GROUP_HEADER + CANVAS_NODE_HEIGHT);
+    // An unknown parent is nobody's box, so the location is placed at the top level instead of vanishing.
+    expect(newLocationPosition(yard, "nowhere")).toEqual(newLocationPosition(yard));
+  });
+
+  it("disturbs nothing that is already on the map, and never lands on it", () => {
+    const before = buildLocationCanvas(yard, []).nodes;
+    const added: GameLocation[] = [...yard, { id: "shore", name: "Shore", canvasPosition: newLocationPosition(yard) }];
+    const after = buildLocationCanvas(added, []).nodes;
+    for (const node of before) {
+      expect(after.find((n) => n.id === node.id)?.position).toEqual(node.position);
+    }
+    const fresh = after.find((n) => n.id === "shore")!;
+    const village = after.find((n) => n.id === "village")!;
+    expect(fresh.position.y).toBeGreaterThanOrEqual(village.position.y + village.height);
   });
 });
 
@@ -307,6 +413,33 @@ describe("dropIntent", () => {
     expect(drop).toMatchObject({ kind: "reparent", parentId: "tavern", position: { x: 5, y: 4 } });
     expect(applyCanvasDrop(nested, drop!).find((l) => l.id === "shore")?.canvasPosition)
       .toEqual({ x: GROUP_PADDING, y: GROUP_HEADER });
+  });
+
+  it("names the box a drag is over, so the highlight is the drop's own answer", () => {
+    // Every case the drop obeys, asked of the highlight: the innermost box wins...
+    expect(dropTarget(nested, "shore", { x: 40, y: 60 })).toBe("tavern");
+    // ...a leaf is never a target, and neither is open canvas...
+    expect(dropTarget(nested, "shore", { x: 900, y: 700 })).toBeNull();
+    expect(dropTarget([
+      { id: "landing", name: "Landing", canvasPosition: { x: 0, y: 0 } },
+      { id: "shore", name: "Shore", canvasPosition: { x: 400, y: 0 } },
+    ], "shore", { x: 10, y: 0 })).toBeNull();
+    // ...and a location can never be handed to a box nested inside itself.
+    expect(dropTarget(nested, "village", { x: 0, y: 0 })).toBeNull();
+    // The box a location already sits in still lights up: the drag says where it lands, not what changes.
+    expect(dropTarget(nested, "cellar", { x: GROUP_PADDING, y: GROUP_HEADER })).toBe("tavern");
+  });
+
+  it("lights up exactly the box the drop then commits to", () => {
+    // One code path, proven by the answers matching over the whole grid the drag crosses.
+    for (let x = -40; x <= 460; x += 20) {
+      for (let y = -40; y <= 220; y += 20) {
+        const highlighted = dropTarget(nested, "shore", { x, y });
+        const drop = dropIntent(nested, "shore", { x, y })!;
+        const committed = drop.kind === "reparent" ? drop.parentId : null; // Shore starts at the top level
+        expect(committed).toBe(highlighted);
+      }
+    }
   });
 
   it("nests the same way in the list view as on the canvas", () => {

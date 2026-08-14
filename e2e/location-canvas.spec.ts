@@ -96,4 +96,49 @@ test.describe('Locations canvas', () => {
     expect(await rowLeft('Beach')).toBeCloseTo(await rowLeft('Dock'), 0);
     expect(await rowLeft('Beach')).toBeGreaterThan(await rowLeft('Harbor'));
   });
+
+  /**
+   * Snapping is a property of the drag itself, so only a real drag shows whether a node came to rest on the
+   * grid — and only the stored world proves the snapped place is the place that was kept.
+   */
+  test('a drag lands on the grid, and off it once snapping is turned off', async ({ page }) => {
+    await openApp(page);
+    await page.evaluate(async (world) => {
+      const dev = (window as unknown as { __fmDev: DevRouter }).__fmDev;
+      const id = await dev.putWorld(world);
+      await dev.editWorld(id);
+    }, WORLD);
+    await gotoDev(page, 'mainMenu', { modal: 'worldEditor', tab: 'locations', subtab: 'canvas' });
+
+    const beach = page.locator('.react-flow__node[data-id="loc-outside"]');
+    await beach.waitFor();
+
+    // Odd offsets, so a resting place on the grid can only be the snap's doing, and leftward so the node
+    // stays well inside the pane — a grab point outside it is no drag at all.
+    const dragBy = async (dx: number, dy: number) => {
+      const box = (await beach.boundingBox())!;
+      await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
+      await page.mouse.down();
+      await page.mouse.move(box.x + box.width / 2 + dx, box.y + box.height / 2 + dy, { steps: 8 });
+      await page.mouse.up();
+    };
+    const restingPlace = async () => {
+      const style = await beach.getAttribute('style');
+      const [x, y] = /translate\((-?[\d.]+)px,\s*(-?[\d.]+)px\)/.exec(style ?? '')!.slice(1).map(Number);
+      return { x, y };
+    };
+
+    await dragBy(-103, 67);
+    const snapped = await restingPlace();
+    expect(snapped.x % 20).toBe(0);
+    expect(snapped.y % 20).toBe(0);
+
+    // The canvas's own menu — the browser's never appears — carries the toggle.
+    await page.locator('.react-flow__pane').click({ button: 'right', position: { x: 30, y: 30 } });
+    await page.getByRole('menuitemcheckbox', { name: 'Snap To Grid' }).click();
+
+    await dragBy(-103, 67);
+    const free = await restingPlace();
+    expect(free.x % 20 !== 0 || free.y % 20 !== 0).toBe(true);
+  });
 });
