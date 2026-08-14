@@ -16,8 +16,8 @@ import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import { describePlaceholders } from '@/lib/placeholders';
 import type { ConnectionDirection } from '@/lib/connectionEditing';
 import {
-  applyCanvasDrop, buildLocationCanvas, CANVAS_GRID, connectIntent, connectionEnds, deleteIntent,
-  directionIntent, directionOf, dropIntent, hintIntent,
+  applyCanvasDrops, buildLocationCanvas, CANVAS_GRID, connectIntent, connectionEnds, deleteIntent,
+  directionIntent, directionOf, dropIntent, hintIntent, isStationaryClick, multiDropIntents,
   type CanvasEdge, type CanvasIntent, type CanvasNodeData,
 } from '@/lib/locationCanvas';
 import { cn } from '@/lib/utils';
@@ -303,12 +303,29 @@ const ConnectionInspector = ({ connection, nameOf, onIntent, onClose }: {
 };
 
 /**
- * The canvas's own right-click menu, standing in for the browser's. It carries the choices that describe how
- * the map is drawn rather than what it says, so the surface itself stays free of chrome.
+ * What a right-click was aimed at, which is what the menu is a menu *of*: one location, the whole selection,
+ * or the open pane. A right-click on a node that is part of a multi-selection is aimed at the selection —
+ * the author is pointing at the group they just composed, not at whichever member fell under the cursor.
+ */
+type MenuTarget =
+  | { kind: 'node'; id: string }
+  | { kind: 'selection' }
+  | { kind: 'pane' };
+
+/** One row of the menu. `checked` is what makes a row a setting rather than an action. */
+interface MenuItem {
+  label: string;
+  checked?: boolean;
+  onSelect: () => void;
+}
+
+/**
+ * The canvas's own right-click menu, standing in for the browser's. It carries what is being done to the map
+ * and the choices that describe how it is drawn, so the surface itself stays free of chrome.
  */
 const CanvasMenu = ({ at, items, onClose }: {
   at: { x: number; y: number };
-  items: { label: string; checked: boolean; onSelect: () => void }[];
+  items: MenuItem[];
   onClose: () => void;
 }) => (
   <div
@@ -322,11 +339,12 @@ const CanvasMenu = ({ at, items, onClose }: {
       <button
         key={item.label}
         type="button"
-        role="menuitemcheckbox"
+        role={item.checked === undefined ? 'menuitem' : 'menuitemcheckbox'}
         aria-checked={item.checked}
         className="flex w-full items-center gap-2 rounded px-2 py-1.5 text-left text-label hover:bg-accent hover:text-accent-foreground"
         onClick={() => { item.onSelect(); onClose(); }}
       >
+        {/* The tick's column is held even by an action, so every label in the menu starts on one line. */}
         <Check className={cn('h-4 w-4 shrink-0', item.checked ? 'opacity-100' : 'opacity-0')} />
         {item.label}
       </button>
@@ -341,14 +359,24 @@ const CanvasInner = ({ selectedId, onSelect }: { selectedId: string | null; onSe
   const [selectedConnectionId, setSelectedConnectionId] = useState<string | null>(null);
   const [snap, setSnap] = useCanvasSnap();
   const [gridVisible, setGridVisible] = useCanvasGridVisible();
-  const [menuAt, setMenuAt] = useState<{ x: number; y: number } | null>(null);
+  const [menu, setMenu] = useState<{ at: { x: number; y: number }; target: MenuTarget } | null>(null);
   const frameRef = useRef<HTMLDivElement | null>(null);
+  // Where the pointer last went down, which is what says whether the press that opened a menu had traveled.
+  const pointerDownRef = useRef<{ x: number; y: number } | null>(null);
+  // Whether the canvas is the surface the author is working on, which is what its keys answer to.
+  const activeRef = useRef(false);
 
   // The menu is drawn in the canvas's own frame, so where it was asked for is a point in that frame.
-  const openMenu = useCallback((event: React.MouseEvent | MouseEvent) => {
+  const openMenu = useCallback((event: React.MouseEvent | MouseEvent, target: MenuTarget) => {
     event.preventDefault();
+    // The menu belongs to a right-click that stayed put; a right-drag was a pan, and the platform asks for a
+    // menu on its release too.
+    if (!isStationaryClick(pointerDownRef.current, { x: event.clientX, y: event.clientY })) return;
     const frame = frameRef.current?.getBoundingClientRect();
-    setMenuAt({ x: event.clientX - (frame?.left ?? 0), y: event.clientY - (frame?.top ?? 0) });
+    setMenu({
+      at: { x: event.clientX - (frame?.left ?? 0), y: event.clientY - (frame?.top ?? 0) },
+      target,
+    });
   }, []);
 
   const nameOf = useCallback(
@@ -392,6 +420,32 @@ const CanvasInner = ({ selectedId, onSelect }: { selectedId: string | null; onSe
   }, [map, connections, applyIntent]);
 
   const [nodes, setNodes, onNodesChange] = useNodesState<LocationNodeType>([]);
+
+  /**
+   * Multi-selection is the canvas's own, and xyflow is where it lives: marquee and Shift-click write it, and
+   * this is the reading of it that survives a redraw. A ref rather than state on purpose — the redraw below
+   * consults it, so holding it as state would make every selection redraw the map and every redraw report a
+   * selection.
+   */
+  const selectedIdsRef = useRef<string[]>(selectedId ? [selectedId] : []);
+  // The single selection last handed to the editor. What comes back as the `selectedId` prop is usually our
+  // own last click returning, and collapsing the selection to it would undo the marquee that just ran.
+  const lastSyncedRef = useRef<string | null>(selectedId);
+
+  const setSelection = useCallback((wanted: (id: string) => boolean) => {
+    setNodes((current) => {
+      selectedIdsRef.current = current.filter((n) => wanted(n.id)).map((n) => n.id);
+      return current.map((n) => ({ ...n, selected: wanted(n.id) }));
+    });
+  }, [setNodes]);
+
+  // A selection made in the list view is the canvas's whole selection; one made here is already on the nodes.
+  useEffect(() => {
+    if (selectedId === lastSyncedRef.current) return;
+    lastSyncedRef.current = selectedId;
+    setSelection((id) => id === selectedId);
+  }, [selectedId, setSelection]);
+
   // The mapper owns what is on the map; xyflow owns only the in-flight drag, so a world edit anywhere
   // (a rename, a new Connection, a deletion) redraws from the world rather than from stale canvas state.
   useEffect(() => {
@@ -406,9 +460,10 @@ const CanvasInner = ({ selectedId, onSelect }: { selectedId: string | null; onSe
       height: node.height,
       // Spelled out rather than passed through: a fresh literal is what satisfies xyflow's indexable data.
       data: { label: node.data.label, isStarting: node.data.isStarting, unreachable: node.data.unreachable },
-      selected: node.id === selectedId,
+      // A redraw is not a deselection: every node the author had picked comes back picked.
+      selected: selectedIdsRef.current.includes(node.id),
     })));
-  }, [map, selectedId, setNodes]);
+  }, [map, setNodes]);
 
   const edges = useMemo(
     () => map.edges.map((edge) => toFlowEdge(edge, edge.connectionId === selectedConnectionId)),
@@ -426,21 +481,84 @@ const CanvasInner = ({ selectedId, onSelect }: { selectedId: string | null; onSe
 
   // A drag either moves a location or changes what holds it, and where it came to rest decides which — so
   // there is one gesture to learn, and the map edits the world's shape rather than only its arrangement.
-  const handleDragStop = useCallback((_: unknown, node: Node) => {
+  // A whole selection dragged at once is that one gesture, made of every node it carried.
+  const handleDragStop = useCallback((_: unknown, node: Node, dragged: Node[]) => {
     setDropInto(IDLE);
-    const drop = dropIntent(locations, node.id, node.position);
-    if (drop) setLocations(applyCanvasDrop(locations, drop));
+    const moved = dragged.length ? dragged : [node];
+    const drops = multiDropIntents(locations, moved.map((n) => ({ id: n.id, position: n.position })));
+    if (drops.length) setLocations(applyCanvasDrops(locations, drops));
   }, [locations, setLocations]);
 
+  // Reported by xyflow rather than tracked by us: the marquee and Shift-click both land here, so one reading
+  // covers every way a selection can be composed.
+  const handleSelectionChange = useCallback(({ nodes: picked }: { nodes: Node[] }) => {
+    selectedIdsRef.current = picked.map((n) => n.id);
+  }, []);
+
+  /**
+   * The canvas's keys, live while it is the surface being worked on — the last pointer press decides that,
+   * since the pane itself takes no focus. Typing into the Connection inspector is not the canvas's keyboard.
+   */
   useEffect(() => {
-    if (!menuAt) return;
-    const close = (e: KeyboardEvent) => { if (e.key === 'Escape') setMenuAt(null); };
-    window.addEventListener('keydown', close);
-    return () => window.removeEventListener('keydown', close);
-  }, [menuAt]);
+    const focusing = (target: EventTarget | null) => {
+      const el = target as HTMLElement | null;
+      return !!el && (el.isContentEditable || ['INPUT', 'TEXTAREA', 'SELECT'].includes(el.tagName));
+    };
+    const trackPointer = (event: PointerEvent) => {
+      activeRef.current = !!frameRef.current?.contains(event.target as globalThis.Node);
+    };
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') setMenu(null);
+      if (!activeRef.current || focusing(event.target)) return;
+      if (event.key === 'Escape') setSelection(() => false);
+      else if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'a') {
+        event.preventDefault();
+        setSelection(() => true);
+      }
+    };
+    document.addEventListener('pointerdown', trackPointer, true);
+    document.addEventListener('keydown', onKeyDown);
+    return () => {
+      document.removeEventListener('pointerdown', trackPointer, true);
+      document.removeEventListener('keydown', onKeyDown);
+    };
+  }, [setSelection]);
+
+  const menuTargetFor = (id: string): MenuTarget => {
+    const picked = selectedIdsRef.current;
+    return picked.length > 1 && picked.includes(id) ? { kind: 'selection' } : { kind: 'node', id };
+  };
+
+  /**
+   * What the menu offers for what it was opened on. Starter actions only — later tickets hang Auto Arrange
+   * and the alignment commands off these same three targets.
+   */
+  const menuActions = (target: MenuTarget): MenuItem[] => {
+    if (target.kind === 'node') {
+      return [{
+        label: 'Edit Location',
+        onSelect: () => {
+          setSelection((id) => id === target.id);
+          lastSyncedRef.current = target.id;
+          onSelect(target.id);
+        },
+      }];
+    }
+    if (target.kind === 'selection') {
+      return [{ label: 'Clear Selection', onSelect: () => setSelection(() => false) }];
+    }
+    return [{ label: 'Select All Locations', onSelect: () => setSelection(() => true) }];
+  };
 
   return (
-    <div ref={frameRef} className="relative h-full w-full">
+    <div
+      ref={frameRef}
+      className="relative h-full w-full"
+      onPointerDown={(e) => { pointerDownRef.current = { x: e.clientX, y: e.clientY }; }}
+      // The browser's menu never opens over the canvas — not over a node, not over the pane, and not at the
+      // end of a right-drag pan, which is a gesture the browser would otherwise answer with a menu.
+      onContextMenu={(e) => e.preventDefault()}
+    >
       <DropTargetContext.Provider value={dropInto}>
       <ReactFlow<LocationNodeType, Edge>
         nodes={nodes}
@@ -450,11 +568,25 @@ const CanvasInner = ({ selectedId, onSelect }: { selectedId: string | null; onSe
         onNodesChange={onNodesChange}
         onNodeDrag={handleDrag}
         onNodeDragStop={handleDragStop}
-        onNodeClick={(_, node) => { setSelectedConnectionId(null); onSelect(node.id); }}
+        onNodeClick={(_, node) => {
+          setSelectedConnectionId(null);
+          // The editor tracks the last node clicked; announcing it here is what keeps the prop coming back
+          // from collapsing a multi-selection this click may have just added to.
+          lastSyncedRef.current = node.id;
+          onSelect(node.id);
+        }}
+        onSelectionChange={handleSelectionChange}
         onEdgeClick={handleEdgeClick}
-        onPaneClick={() => { setSelectedConnectionId(null); setMenuAt(null); }}
-        onPaneContextMenu={openMenu}
-        onNodeContextMenu={openMenu}
+        onPaneClick={() => { setSelectedConnectionId(null); setMenu(null); }}
+        onPaneContextMenu={(e) => openMenu(e, { kind: 'pane' })}
+        onNodeContextMenu={(e, node) => openMenu(e, menuTargetFor(node.id))}
+        onSelectionContextMenu={(e) => openMenu(e, { kind: 'selection' })}
+        // Node-editor controls: left-drag draws a marquee over the pane and moves a node on a node, the other
+        // two buttons pan, and Shift or Ctrl composes a selection a node at a time.
+        panOnDrag={[1, 2]}
+        selectionOnDrag
+        selectionKeyCode={null}
+        multiSelectionKeyCode={['Shift', 'Control', 'Meta']}
         // Snapping applies to the drag itself, so what the author sees land is exactly what is stored.
         snapToGrid={snap}
         snapGrid={[CANVAS_GRID, CANVAS_GRID]}
@@ -482,11 +614,12 @@ const CanvasInner = ({ selectedId, onSelect }: { selectedId: string | null; onSe
         )}
       </ReactFlow>
       </DropTargetContext.Provider>
-      {menuAt && (
+      {menu && (
         <CanvasMenu
-          at={menuAt}
-          onClose={() => setMenuAt(null)}
+          at={menu.at}
+          onClose={() => setMenu(null)}
           items={[
+            ...menuActions(menu.target),
             { label: 'Snap To Grid', checked: snap, onSelect: () => setSnap(!snap) },
             { label: 'Show Grid', checked: gridVisible, onSelect: () => setGridVisible(!gridVisible) },
           ]}

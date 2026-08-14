@@ -443,6 +443,22 @@ export function multiDropIntents(
     .filter((drop): drop is CanvasDrop => drop !== null);
 }
 
+/** How far the pointer may travel between press and release and still have been a click. */
+const CLICK_SLOP = 4;
+
+/**
+ * Whether a press that came up here was a click rather than a drag. The canvas's right button does both jobs
+ * — panning the map, and asking for the menu — and the only thing telling them apart is whether the pointer
+ * went anywhere, since the menu is asked for on release either way.
+ */
+export function isStationaryClick(
+  down: { x: number; y: number } | null,
+  up: { x: number; y: number },
+): boolean {
+  if (!down) return true;
+  return Math.hypot(up.x - down.x, up.y - down.y) <= CLICK_SLOP;
+}
+
 /** A selection's drops, written onto the world in one pass. */
 export function applyCanvasDrops(locations: GameLocation[], drops: CanvasDrop[]): GameLocation[] {
   return drops.reduce(applyCanvasDrop, locations);
