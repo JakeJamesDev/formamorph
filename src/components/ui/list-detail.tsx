@@ -11,7 +11,7 @@ import { cn } from '@/lib/utils';
  * over it with a back header, native push-navigation style. The caller owns selection; this only takes the
  * `showDetail` flag and an `onBack` to pop. Slide is skipped under `prefers-reduced-motion`.
  */
-export function ListDetail({ list, detail, showDetail, onBack, backLabel = 'Back', className }: {
+export function ListDetail({ list, detail, showDetail, onBack, backLabel = 'Back', className, scrollList = true }: {
   list: ReactNode;
   detail: ReactNode;
   /** Whether the detail is active (drives the mobile push; ignored on desktop, which shows both). */
@@ -20,13 +20,20 @@ export function ListDetail({ list, detail, showDetail, onBack, backLabel = 'Back
   onBack: () => void;
   backLabel?: string;
   className?: string;
+  /**
+   * Set false when the list slot scrolls itself or owns its own pointer handling — a canvas, for
+   * instance, whose floating panels are otherwise swallowed by the scroll viewport.
+   */
+  scrollList?: boolean;
 }) {
   const isMobile = useIsMobile();
 
   if (!isMobile) {
     return (
       <div className={cn('flex-1 min-h-0 flex', className)}>
-        <ScrollArea className="w-1/2 min-w-0 border-r">{list}</ScrollArea>
+        {scrollList
+          ? <ScrollArea className="w-1/2 min-w-0 border-r">{list}</ScrollArea>
+          : <div className="w-1/2 min-w-0 border-r overflow-hidden">{list}</div>}
         <ScrollArea className="w-1/2 min-w-0">{detail}</ScrollArea>
       </div>
     );
@@ -44,7 +51,9 @@ export function ListDetail({ list, detail, showDetail, onBack, backLabel = 'Back
           showDetail && '-translate-x-1/4',
         )}
       >
-        <ScrollArea className="h-full w-full">{list}</ScrollArea>
+        {scrollList
+          ? <ScrollArea className="h-full w-full">{list}</ScrollArea>
+          : <div className="h-full w-full overflow-hidden">{list}</div>}
       </div>
       {/* Detail slides in from the right over the list. Opaque, so it fully covers the list when open. */}
       <div
