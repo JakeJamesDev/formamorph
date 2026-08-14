@@ -23,6 +23,9 @@ export const GROUP_HEADER = 36;
 export const GROUP_PADDING = 20;
 /** Gap between two auto-placed neighbors, and the row width they wrap at (about three plain nodes wide). */
 const LAYOUT_GAP = 40;
+/** The grid nodes snap to, and the rhythm every placement shares: half a layout gap, so an auto-placed
+ *  neighbor and a hand-dragged one land on the same lines. */
+export const CANVAS_GRID = LAYOUT_GAP / 2;
 const LAYOUT_ROW_WIDTH = 660;
 
 /** The box a location actually sits in. A parent id pointing at a location that isn't here would strand its
@@ -89,48 +92,36 @@ export function buildLocationCanvas(
 
   const reachable = reachableFromStarts(locations, connections);
 
-  // Sizes and default placements are one bottom-up pass: a location is as large as the children it holds,
-  // and an unplaced child is flowed past its siblings' real sizes — a fixed grid would leave a wide group
-  // sitting on top of whatever came next.
+  // Sizes and fallback placements are one bottom-up pass: a location is as large as the children it holds,
+  // and a location with no stored position falls back to a row-wrapping slot among the other unplaced
+  // children of the same box. The fallback reads nothing an author wrote, so the same world always draws the
+  // same map and nobody's arrangement is reshuffled by a location that never had a position of its own.
   const positionById = new Map<string, { x: number; y: number }>();
   const sizeById = new Map<string, { width: number; height: number }>();
 
-  const flow = (children: GameLocation[], nested: boolean) => {
+  const place = (children: GameLocation[], nested: boolean) => {
     const originX = nested ? GROUP_PADDING : 0;
     const originY = nested ? GROUP_HEADER : 0;
     let right = originX + CANVAS_NODE_WIDTH;
     let bottom = originY + CANVAS_NODE_HEIGHT;
-    const stretch = (at: { x: number; y: number }, size: { width: number; height: number }) => {
-      right = Math.max(right, at.x + size.width);
-      bottom = Math.max(bottom, at.y + size.height);
-    };
-    // Author-placed siblings are laid down first and hold their ground; the rest flow in beneath them, so a
-    // location added years later can't land on top of an arrangement someone made by hand.
-    const unplaced: GameLocation[] = [];
+    let cursorX = originX;
+    let cursorY = originY;
+    let rowHeight = 0;
     for (const child of children) {
       const size = measure(child);
-      if (!child.canvasPosition) {
-        unplaced.push(child);
-        continue;
-      }
-      positionById.set(child.id, child.canvasPosition);
-      stretch(child.canvasPosition, size);
-    }
-    let cursorX = originX;
-    let cursorY = unplaced.length < children.length ? bottom + LAYOUT_GAP : originY;
-    let rowHeight = 0;
-    for (const child of unplaced) {
-      const size = measure(child);
+      // Every child takes a slot in the fallback row, placed or not: a slot a location has no need of is
+      // still not given away, so writing a position onto one location can never move another one.
       if (cursorX > originX && cursorX + size.width > originX + LAYOUT_ROW_WIDTH) {
         cursorX = originX;
         cursorY += rowHeight + LAYOUT_GAP;
         rowHeight = 0;
       }
-      const at = { x: cursorX, y: cursorY };
+      const at = child.canvasPosition ?? { x: cursorX, y: cursorY };
       cursorX += size.width + LAYOUT_GAP;
       rowHeight = Math.max(rowHeight, size.height);
       positionById.set(child.id, at);
-      stretch(at, size);
+      right = Math.max(right, at.x + size.width);
+      bottom = Math.max(bottom, at.y + size.height);
     }
     return { right, bottom };
   };
@@ -141,14 +132,14 @@ export function buildLocationCanvas(
     const children = childrenOf.get(loc.id) ?? [];
     let size = { width: CANVAS_NODE_WIDTH, height: CANVAS_NODE_HEIGHT };
     if (children.length) {
-      const bounds = flow(children, true);
+      const bounds = place(children, true);
       size = { width: bounds.right + GROUP_PADDING, height: bounds.bottom + GROUP_PADDING };
     }
     sizeById.set(loc.id, size);
     return size;
   }
 
-  flow(childrenOf.get(null) ?? [], false);
+  place(childrenOf.get(null) ?? [], false);
 
   const nodes: CanvasNode[] = [];
   const emit = (parent: string | null) => {
@@ -206,12 +197,19 @@ export function buildLocationCanvas(
   return { nodes, edges };
 }
 
+/** Where every node currently renders, against whatever box holds it — the stored position where there is
+ *  one, and the fallback slot where there is not. */
+function renderedPositions(locations: GameLocation[]): Map<string, { x: number; y: number }> {
+  return new Map(buildLocationCanvas(locations, []).nodes.map((n) => [n.id, n.position]));
+}
+
 /**
  * A dragged node's resting place, written onto its location. Whole pixels — a drag is not sub-pixel work.
  *
- * A sub-location's position is measured inside its parent's box, so it is held clear of the frame and the
- * title strip: dragged past either, it would render outside the box that says it is in there. Nothing holds
- * it back on the other sides — the box grows to whatever it now has to hold.
+ * A sub-location dragged past its group's frame or title strip grows the group rather than being pushed back:
+ * the frame's own origin moves out by as much as the drag overshot, and every sibling's position is rebased by
+ * the same amount, so the group gets bigger and nothing inside it appears to move. A group that overshoots its
+ * own parent's frame in turn grows that one, so the growth carries all the way up the tree.
  */
 export function withCanvasPosition(
   locations: GameLocation[],
@@ -220,12 +218,49 @@ export function withCanvasPosition(
 ): GameLocation[] {
   const target = locations.find((l) => l.id === id);
   if (!target) return locations;
-  const nested = heldBy(locations, target) !== null;
-  const canvasPosition = {
-    x: Math.round(nested ? Math.max(position.x, GROUP_PADDING) : position.x),
-    y: Math.round(nested ? Math.max(position.y, GROUP_HEADER) : position.y),
-  };
-  return locations.map((l) => (l.id === id ? { ...l, canvasPosition } : l));
+  const parentId = heldBy(locations, target);
+  const at = { x: Math.round(position.x), y: Math.round(position.y) };
+  const write = (list: GameLocation[], canvasPosition: { x: number; y: number }) =>
+    list.map((l) => (l.id === id ? { ...l, canvasPosition } : l));
+  if (parentId === null) return write(locations, at);
+
+  const dx = Math.max(0, GROUP_PADDING - at.x);
+  const dy = Math.max(0, GROUP_HEADER - at.y);
+  const inside = { x: at.x + dx, y: at.y + dy };
+  if (!dx && !dy) return write(locations, inside);
+
+  const rendered = renderedPositions(locations);
+  const grown = locations.map((l) => {
+    if (l.id === id) return { ...l, canvasPosition: inside };
+    if (heldBy(locations, l) !== parentId) return l;
+    const from = rendered.get(l.id) ?? { x: GROUP_PADDING, y: GROUP_HEADER };
+    return { ...l, canvasPosition: { x: from.x + dx, y: from.y + dy } };
+  });
+  const frame = rendered.get(parentId) ?? { x: 0, y: 0 };
+  return withCanvasPosition(grown, parentId, { x: frame.x - dx, y: frame.y - dy });
+}
+
+/**
+ * Where a location created in the editor is written: at the near corner of the box that will hold it, below
+ * everything that box already holds. A creation reads the arrangement once and joins it — unlike the drawing
+ * pass, which never rearranges anything on the author's behalf.
+ */
+export function newLocationPosition(
+  locations: GameLocation[],
+  parentId: string | null = null,
+): { x: number; y: number } {
+  const nested = parentId !== null && locations.some((l) => l.id === parentId);
+  const originX = nested ? GROUP_PADDING : 0;
+  const originY = nested ? GROUP_HEADER : 0;
+  const holder = nested ? parentId : null;
+  const nodes = buildLocationCanvas(locations, []).nodes;
+  let bottom: number | null = null;
+  for (const loc of locations) {
+    if (heldBy(locations, loc) !== holder) continue;
+    const node = nodes.find((n) => n.id === loc.id);
+    if (node) bottom = Math.max(bottom ?? originY, node.position.y + node.height);
+  }
+  return { x: originX, y: bottom === null ? originY : bottom + LAYOUT_GAP };
 }
 
 /** A box in flow coordinates, measured from the canvas origin rather than from whatever holds it. */
@@ -264,19 +299,19 @@ export type CanvasDrop =
   | { kind: "reparent"; id: string; parentId: string | null; position: { x: number; y: number } };
 
 /**
- * Drop geometry → what the world becomes. `position` is the resting place as the canvas reports it, measured
- * against the box that held the location when the drag *began*.
+ * Which box a location at this position belongs to — the innermost group box its center sits in, or `null` for
+ * the top level. Only a group box counts: a childless location is drawn as a box the size of its own name, so
+ * treating it as a container would turn two nodes brushing past each other into nesting nobody asked for. Its
+ * own box, and those of everything nested beneath it, are not places it can go.
  *
- * A location is held by the innermost group box its center came to rest in — dropped clear of every box, it
- * goes back to the top level. Only a group box counts: a childless location is drawn as a box the size of its
- * own name, so treating it as a container would turn two nodes brushing past each other into nesting nobody
- * asked for. Its own box, and those of everything nested beneath it, are not places it can be dropped into.
+ * The canvas asks this on every frame of a drag to light up where the location would land, and `dropIntent`
+ * asks it once when the drag comes to rest — one answer, so the highlight and the drop can never disagree.
  */
-export function dropIntent(
+export function dropTarget(
   locations: GameLocation[],
   id: string,
   position: { x: number; y: number },
-): CanvasDrop | null {
+): string | null {
   const target = locations.find((l) => l.id === id);
   if (!target) return null;
   const rects = absoluteRects(buildLocationCanvas(locations, []));
@@ -308,8 +343,29 @@ export function dropIntent(
     const depth = depthOf(loc);
     if (inside && (!into || depth > into.depth)) into = { id: loc.id, depth };
   }
+  return into?.id ?? null;
+}
 
-  const parentId = into?.id ?? null;
+/**
+ * Drop geometry → what the world becomes. `position` is the resting place as the canvas reports it, measured
+ * against the box that held the location when the drag *began*. Where it lands is `dropTarget`'s answer — the
+ * same one the drag was lighting up all the way in.
+ */
+export function dropIntent(
+  locations: GameLocation[],
+  id: string,
+  position: { x: number; y: number },
+): CanvasDrop | null {
+  const target = locations.find((l) => l.id === id);
+  if (!target) return null;
+  const rects = absoluteRects(buildLocationCanvas(locations, []));
+  const self = rects.get(id);
+  if (!self) return null;
+
+  const held = heldBy(locations, target);
+  const heldOrigin = (held && rects.get(held)) || { x: 0, y: 0 };
+
+  const parentId = dropTarget(locations, id, position);
   if (parentId === held) return { kind: "move", id, position };
   const origin = (parentId && rects.get(parentId)) || { x: 0, y: 0 };
   return {
@@ -334,6 +390,31 @@ export function applyCanvasDrop(locations: GameLocation[], drop: CanvasDrop): Ga
     ? locations
     : locations.map((l) => (l.id === drop.id ? { ...l, parentId: drop.parentId } : l));
   return withCanvasPosition(placed, drop.id, drop.position);
+}
+
+/**
+ * A whole selection's resting places → what each one asks the world to become. Every drop is judged against
+ * the map as it stood when the drag began, so a selection moving together is read as one gesture: the first
+ * location leaving a group cannot shrink the box the next one is still being measured against.
+ *
+ * A location dragged inside a selected ancestor is left out. It never moved relative to the box holding it —
+ * the ancestor carried it — so judging it again would read its old resting place as a fresh drop.
+ */
+export function multiDropIntents(
+  locations: GameLocation[],
+  moves: { id: string; position: { x: number; y: number } }[],
+): CanvasDrop[] {
+  const carried = (id: string) =>
+    moves.some((other) => other.id !== id && isDescendantLocation(locations, other.id, id));
+  return moves
+    .filter((move) => !carried(move.id))
+    .map((move) => dropIntent(locations, move.id, move.position))
+    .filter((drop): drop is CanvasDrop => drop !== null);
+}
+
+/** A selection's drops, written onto the world in one pass. */
+export function applyCanvasDrops(locations: GameLocation[], drops: CanvasDrop[]): GameLocation[] {
+  return drops.reduce(applyCanvasDrop, locations);
 }
 
 /**

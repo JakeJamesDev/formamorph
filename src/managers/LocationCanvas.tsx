@@ -1,20 +1,21 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   Background, BaseEdge, Controls, EdgeLabelRenderer, Handle, MarkerType, Panel, Position, ReactFlow,
   ReactFlowProvider, useConnection, useInternalNode, useNodesState,
   type Edge, type EdgeProps, type Node, type NodeProps,
 } from '@xyflow/react';
 import '@xyflow/react/dist/base.css';
-import { AlertTriangle, ArrowLeft, ArrowLeftRight, ArrowRight, Star, Trash2, X } from 'lucide-react';
+import { AlertTriangle, ArrowLeft, ArrowLeftRight, ArrowRight, Check, Star, Trash2, X } from 'lucide-react';
 import { useGameData } from '@/contexts/GameDataContext';
+import { useCanvasGridVisible, useCanvasSnap } from '@/lib/canvasPrefs';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import { describePlaceholders } from '@/lib/placeholders';
 import type { ConnectionDirection } from '@/lib/connectionEditing';
 import {
-  applyCanvasDrop, buildLocationCanvas, connectIntent, connectionEnds, deleteIntent, directionIntent,
-  directionOf, dropIntent, hintIntent,
+  applyCanvasDrop, buildLocationCanvas, CANVAS_GRID, connectIntent, connectionEnds, deleteIntent,
+  directionIntent, directionOf, dropIntent, hintIntent,
   type CanvasEdge, type CanvasIntent, type CanvasNodeData,
 } from '@/lib/locationCanvas';
 import { cn } from '@/lib/utils';
@@ -258,11 +259,54 @@ const ConnectionInspector = ({ connection, nameOf, onIntent, onClose }: {
   );
 };
 
+/**
+ * The canvas's own right-click menu, standing in for the browser's. It carries the choices that describe how
+ * the map is drawn rather than what it says, so the surface itself stays free of chrome.
+ */
+const CanvasMenu = ({ at, items, onClose }: {
+  at: { x: number; y: number };
+  items: { label: string; checked: boolean; onSelect: () => void }[];
+  onClose: () => void;
+}) => (
+  <div
+    className="absolute z-10 min-w-44 rounded-md border bg-popover p-1 text-popover-foreground shadow-md"
+    style={{ left: at.x, top: at.y }}
+    role="menu"
+    aria-label="Canvas Options"
+    onContextMenu={(e) => e.preventDefault()}
+  >
+    {items.map((item) => (
+      <button
+        key={item.label}
+        type="button"
+        role="menuitemcheckbox"
+        aria-checked={item.checked}
+        className="flex w-full items-center gap-2 rounded px-2 py-1.5 text-left text-label hover:bg-accent hover:text-accent-foreground"
+        onClick={() => { item.onSelect(); onClose(); }}
+      >
+        <Check className={cn('h-4 w-4 shrink-0', item.checked ? 'opacity-100' : 'opacity-0')} />
+        {item.label}
+      </button>
+    ))}
+  </div>
+);
+
 const CanvasInner = ({ selectedId, onSelect }: { selectedId: string | null; onSelect: (id: string) => void }) => {
   const {
     locations, setLocations, connections, addConnection, updateConnection, removeConnection, placeholders,
   } = useGameData();
   const [selectedConnectionId, setSelectedConnectionId] = useState<string | null>(null);
+  const [snap, setSnap] = useCanvasSnap();
+  const [gridVisible, setGridVisible] = useCanvasGridVisible();
+  const [menuAt, setMenuAt] = useState<{ x: number; y: number } | null>(null);
+  const frameRef = useRef<HTMLDivElement | null>(null);
+
+  // The menu is drawn in the canvas's own frame, so where it was asked for is a point in that frame.
+  const openMenu = useCallback((event: React.MouseEvent | MouseEvent) => {
+    event.preventDefault();
+    const frame = frameRef.current?.getBoundingClientRect();
+    setMenuAt({ x: event.clientX - (frame?.left ?? 0), y: event.clientY - (frame?.top ?? 0) });
+  }, []);
 
   const nameOf = useCallback(
     (id: string) => {
@@ -335,38 +379,63 @@ const CanvasInner = ({ selectedId, onSelect }: { selectedId: string | null; onSe
     if (drop) setLocations(applyCanvasDrop(locations, drop));
   }, [locations, setLocations]);
 
+  useEffect(() => {
+    if (!menuAt) return;
+    const close = (e: KeyboardEvent) => { if (e.key === 'Escape') setMenuAt(null); };
+    window.addEventListener('keydown', close);
+    return () => window.removeEventListener('keydown', close);
+  }, [menuAt]);
+
   return (
-    <ReactFlow<LocationNodeType, Edge>
-      nodes={nodes}
-      edges={edges}
-      nodeTypes={nodeTypes}
-      edgeTypes={edgeTypes}
-      onNodesChange={onNodesChange}
-      onNodeDragStop={handleDragStop}
-      onNodeClick={(_, node) => { setSelectedConnectionId(null); onSelect(node.id); }}
-      onEdgeClick={handleEdgeClick}
-      onPaneClick={() => setSelectedConnectionId(null)}
-      onConnect={({ source, target }) => applyIntent(connectIntent(source, target, connections))}
-      // The same rule the gesture obeys, so a drag onto a pair that already has a record reads as
-      // refused while it is being drawn rather than landing and doing nothing.
-      isValidConnection={({ source, target }) => !!connectIntent(source, target, connections)}
-      connectionLineStyle={{ stroke: 'hsl(var(--primary))', strokeWidth: 2 }}
-      deleteKeyCode={null}
-      minZoom={0.2}
-      fitView
-      className="h-full w-full"
-    >
-      <Background className="!bg-background" color="hsl(var(--border))" />
-      <Controls showInteractive={false} />
-      {selectedConnection && (
-        <ConnectionInspector
-          connection={selectedConnection}
-          nameOf={nameOf}
-          onIntent={applyIntent}
-          onClose={() => setSelectedConnectionId(null)}
+    <div ref={frameRef} className="relative h-full w-full">
+      <ReactFlow<LocationNodeType, Edge>
+        nodes={nodes}
+        edges={edges}
+        nodeTypes={nodeTypes}
+        edgeTypes={edgeTypes}
+        onNodesChange={onNodesChange}
+        onNodeDragStop={handleDragStop}
+        onNodeClick={(_, node) => { setSelectedConnectionId(null); onSelect(node.id); }}
+        onEdgeClick={handleEdgeClick}
+        onPaneClick={() => { setSelectedConnectionId(null); setMenuAt(null); }}
+        onPaneContextMenu={openMenu}
+        onNodeContextMenu={openMenu}
+        // Snapping applies to the drag itself, so what the author sees land is exactly what is stored.
+        snapToGrid={snap}
+        snapGrid={[CANVAS_GRID, CANVAS_GRID]}
+        onConnect={({ source, target }) => applyIntent(connectIntent(source, target, connections))}
+        // The same rule the gesture obeys, so a drag onto a pair that already has a record reads as
+        // refused while it is being drawn rather than landing and doing nothing.
+        isValidConnection={({ source, target }) => !!connectIntent(source, target, connections)}
+        connectionLineStyle={{ stroke: 'hsl(var(--primary))', strokeWidth: 2 }}
+        deleteKeyCode={null}
+        minZoom={0.2}
+        fitView
+        className="h-full w-full"
+      >
+        {/* The dots mark the grid's own intersections; hiding it keeps the pane's color and drops the pattern. */}
+        <Background className="!bg-background" color={gridVisible ? 'hsl(var(--border))' : 'transparent'} gap={CANVAS_GRID} />
+        <Controls showInteractive={false} />
+        {selectedConnection && (
+          <ConnectionInspector
+            connection={selectedConnection}
+            nameOf={nameOf}
+            onIntent={applyIntent}
+            onClose={() => setSelectedConnectionId(null)}
+          />
+        )}
+      </ReactFlow>
+      {menuAt && (
+        <CanvasMenu
+          at={menuAt}
+          onClose={() => setMenuAt(null)}
+          items={[
+            { label: 'Snap To Grid', checked: snap, onSelect: () => setSnap(!snap) },
+            { label: 'Show Grid', checked: gridVisible, onSelect: () => setGridVisible(!gridVisible) },
+          ]}
         />
       )}
-    </ReactFlow>
+    </div>
   );
 };
 
