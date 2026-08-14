@@ -769,3 +769,31 @@ b {
   font-weight: inherit;
   font-style: inherit;
 }
+
+/* Locations canvas: a Connection's travel hint sits on the arrow it labels, which runs between the boxes it
+   joins — so its layer has to paint over them rather than under, as xyflow's DOM order would have it. */
+.react-flow__edgelabel-renderer {
+  z-index: 100; /* above the node layer, whose nesting hands each node its own z-index */
+}
+
+/* The zoom controls: xyflow's base stylesheet leaves them unpainted, so they take the app's own button look
+   and follow the theme with everything else. */
+.react-flow__controls-button {
+  background: hsl(var(--card));
+  border: 1px solid hsl(var(--border));
+  border-radius: 0.375rem;
+  color: hsl(var(--card-foreground));
+  width: 1.75rem;
+  height: 1.75rem;
+  padding: 0.3rem;
+  margin-bottom: 0.25rem;
+}
+.react-flow__controls-button:hover {
+  background: hsl(var(--accent));
+  color: hsl(var(--accent-foreground));
+}
+.react-flow__controls-button svg {
+  fill: currentColor;
+  max-width: 100%;
+  max-height: 100%;
+}

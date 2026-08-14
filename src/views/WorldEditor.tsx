@@ -39,6 +39,8 @@ import GroupManager from '../managers/GroupManager';
 import EntityGroupManager from '../managers/EntityGroupManager';
 import TraitTree from '../managers/TraitTree';
 import LocationTree from '../managers/LocationTree';
+import LocationCanvas from '../managers/LocationCanvas';
+import { LOCATION_VIEWS, type LocationView } from './locationViews';
 import EntityTree from '../managers/EntityTree';
 import { removeLocationPromotingChildren } from '@/lib/locationTree';
 import { duplicateTraitNode } from '@/lib/traitTree';
@@ -160,11 +162,19 @@ const WorldEditorInner = ({ onClose, embedded = false, backButton }: {
   useEffect(() => {
     if (!visibleTabs.some((t) => t.value === activeTab)) setActiveTab('overview');
   }, [visibleTabs, activeTab]);
+  // Which of the Locations tab's two views is showing — the tree, or the canvas of the same locations.
+  const [locationView, setLocationView] = useState<LocationView>('list');
   // DEV dev-router: jump to a specific editor tab via `#dev?modal=worldEditor&tab=…`. Tree-shaken in prod.
   const devRoute = useDevRoute();
   useEffect(() => {
     if (import.meta.env.DEV && devRoute?.tab) setActiveTab(devRoute.tab);
   }, [devRoute?.tab]);
+  const devSubtab = devRoute?.subtab;
+  useEffect(() => {
+    if (import.meta.env.DEV && LOCATION_VIEWS.some((v) => v.value === devSubtab)) {
+      setLocationView(devSubtab as LocationView);
+    }
+  }, [devSubtab]);
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedItemId, setSelectedItemId] = useState<string | null>(null);
 
@@ -568,6 +578,11 @@ const WorldEditorInner = ({ onClose, embedded = false, backButton }: {
     );
   };
 
+  // The canvas fills its pane and owns its own clicks, so it opts out of the list pane's scroller and of
+  // the click-to-deselect that empties the detail panel.
+  const canvasView = activeTab === "locations" && locationView === "canvas";
+  const deselectOnListClick = canvasView ? undefined : () => setSelectedItemId(null);
+
   // The per-tab list (master) and detail, extracted so both the desktop resizable split and the mobile
   // single-panel push render from one source. `overview` isn't master-detail — it shows a form in each slot.
   const listContent = (
@@ -575,7 +590,9 @@ const WorldEditorInner = ({ onClose, embedded = false, backButton }: {
       {activeTab === "overview" && <WorldOverviewManager />}
       {activeTab === "stats" && renderItemList(filteredItems)}
       {activeTab === "entities" && (searchTerm.trim() ? renderItemList(filteredItems) : <EntityTree selectedId={selectedItemId} onSelect={setSelectedItemId} />)}
-      {activeTab === "locations" && (searchTerm.trim() ? renderItemList(filteredItems) : <LocationTree selectedId={selectedItemId} onSelect={setSelectedItemId} />)}
+      {activeTab === "locations" && (canvasView
+        ? <LocationCanvas selectedId={selectedItemId} onSelect={setSelectedItemId} />
+        : searchTerm.trim() ? renderItemList(filteredItems) : <LocationTree selectedId={selectedItemId} onSelect={setSelectedItemId} />)}
       {activeTab === "traits" && (searchTerm.trim() ? renderItemList(filteredItems) : <TraitTree selectedId={selectedItemId} onSelect={setSelectedItemId} />)}
       {activeTab === "dictionary" && <DictionaryTree selectedId={selectedItemId} onSelect={setSelectedItemId} />}
       {activeTab === "statUpdates" && renderItemList(filteredItems)}
@@ -729,6 +746,19 @@ const WorldEditorInner = ({ onClose, embedded = false, backButton }: {
           <Plus className="h-4 w-4" />
         </Button>
       )}
+      {activeTab === "locations" ? (
+        <ToggleGroup
+          type="single"
+          value={locationView}
+          onValueChange={(v) => { if (v) setLocationView(v as LocationView); }}
+          aria-label="Locations view"
+          className="flex-shrink-0"
+        >
+          {LOCATION_VIEWS.map((v) => (
+            <ToggleGroupItem key={v.value} value={v.value}>{v.label}</ToggleGroupItem>
+          ))}
+        </ToggleGroup>
+      ) : null}
       <Input
         data-editor-find-skip
         placeholder={activeTab === "dictionary" ? "Name a new dictionary" : `Search or add new ${activeTab}`}
@@ -834,7 +864,7 @@ const WorldEditorInner = ({ onClose, embedded = false, backButton }: {
                       showDetail={!!selectedItemId}
                       onBack={() => setSelectedItemId(null)}
                       backLabel="Back"
-                      list={<div className="h-full" onClick={() => setSelectedItemId(null)}>{listContent}</div>}
+                      list={<div className="h-full" onClick={deselectOnListClick}>{listContent}</div>}
                       detail={detailContent}
                     />
                   ))}
@@ -856,8 +886,8 @@ const WorldEditorInner = ({ onClose, embedded = false, backButton }: {
                       {/* The detail pane is the other half of a master-detail split, in its own resizable
                           panel outside the tab root — the tab's own content is this list. */}
                       {tabPanels(
-                        <div className="flex-grow min-h-0 mt-4" onClick={() => setSelectedItemId(null)}>
-                          <ScrollArea className="h-full">{listContent}</ScrollArea>
+                        <div className="flex-grow min-h-0 mt-4" onClick={deselectOnListClick}>
+                          {canvasView ? listContent : <ScrollArea className="h-full">{listContent}</ScrollArea>}
                         </div>
                       )}
                     </Tabs>

@@ -48,6 +48,9 @@ export const DEV_MODAL_TABS = {
   feedbackHub: ['bugs', 'suggestions'],
   // The admin tools: accounts, broadcasts, the publish policies, the feedback queues, and the log.
   adminPanel: ['users', 'broadcasts', 'policies', 'feedback', 'log'],
+  // The World Editor's Locations tab shows one of two views of the same locations, switched with `subtab=…`
+  // (`#dev?modal=worldEditor&tab=locations&subtab=canvas`).
+  worldEditorLocations: ['list', 'canvas'],
   // Admin Panel → Policies has a second level, one sub-tab per authored popup, reached with `subtab=…`.
   adminPanelPolicies: ['uploadGate', 'tagNotice'],
   // Admin Panel → Feedback uses the same `subtab=…` slot, one per branch.
