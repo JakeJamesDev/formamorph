@@ -8,8 +8,6 @@ import { hasPlaceholders } from './placeholders';
  * different characters. Handing the whole world through here once means every consumer downstream sees one
  * name, and none of them has to know placeholders exist.
  *
- * A location's `connections` are names pointing at other locations, so they resolve with the same function
- * that resolves the names they point at; otherwise a tokenized destination stops being reachable.
  *
  * Every mapper returns the **original array and item references** when nothing contained a chip. That keeps
  * these safe to call unconditionally: a world with no placeholders costs one regex test per field and
@@ -50,8 +48,7 @@ export function resolveEntityNames(entities: Entity[], resolve: ResolveText): En
 export function resolveLocationNames(locations: GameLocation[], resolve: ResolveText): GameLocation[] {
   return mapPreservingIdentity(locations, (l) => {
     const name = one(l.name, resolve);
-    const connections = list(l.connections, resolve);
-    return name === l.name && connections === l.connections ? l : { ...l, name: name ?? '', connections };
+    return name === l.name ? l : { ...l, name: name ?? '' };
   });
 }
 

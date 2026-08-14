@@ -182,13 +182,29 @@ export interface GameLocation {
   /** Booru tags used for AI image generation; editor-only, not sent to the narrative AI. */
   imageTags?: string;
   ambientSound?: MediaAsset;
-  /** Optional names of connected locations (shown in the gameplay location panel). */
-  connections?: string[];
   /** v1.2.0: a candidate starting location (one chosen at random on new game). */
   isStarting?: boolean;
   /** Parent location id for sub-location nesting; null/absent = top-level. Editor-only for now — not
    *  sent to the AI (excluded in buildLocationContext). Sibling order is the `locations` array order. */
   parentId?: string | null;
+}
+
+/**
+ * An authored travel link between two locations (ADR-0002). Endpoints are location ids, so renaming a
+ * location never breaks a link. A Connection between a pair **replaces** that pair's implicit navigation
+ * (parent/children/siblings): its own directions are all the travel that remains for the pair, which is what
+ * makes a one-way link between tree-adjacent locations mean one-way.
+ */
+export interface Connection {
+  id: string;
+  /** The location travel departs from — the only direction offered unless `twoWay`. */
+  from: string;
+  to: string;
+  /** Travelable in both directions. A newly authored Connection defaults to true. */
+  twoWay: boolean;
+  /** Optional note on *how* the trip is made ("through the shimmering portal"), rendered as a `— via …`
+   *  suffix on the destination line. Direction-neutral: one hint serves both directions. */
+  aiHint?: string;
 }
 
 /** A world-defined rule that periodically asks the AI to adjust a set of stats via its own prompt. */
@@ -312,6 +328,9 @@ export interface World {
   worldOverview: WorldOverview;
   stats: Stat[];
   locations: GameLocation[];
+  /** Authored travel links between locations (see `Connection`). Absent/empty ⇒ navigation is entirely
+   *  implicit, exactly as before the graph existed. */
+  connections?: Connection[];
   entities: Entity[];
   /** Editor-only folders organizing entities (name only; not reflected to the AI). */
   entityGroups?: EntityGroup[];

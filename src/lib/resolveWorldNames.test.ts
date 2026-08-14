@@ -31,13 +31,13 @@ describe('resolveWorldNames', () => {
     expect(e.aliases).toEqual(['barkeep', 'the Sedge keeper']);
   });
 
-  it('resolves a location name and its connections, so a tokenized destination stays reachable', () => {
-    const here = { id: 'l1', name: 'Road', connections: [`${tok(TOWN.id, 'p3')} Square`] } as GameLocation;
+  it('resolves a location name, leaving the rest of the record alone', () => {
+    const here = { id: 'l1', name: 'Road', aiSummary: `by the ${tok(TOWN.id, 'p3')} gate` } as GameLocation;
     const there = { id: 'l2', name: `${tok(TOWN.id, 'p4')} Square` } as GameLocation;
     const [a, b] = resolveLocationNames([here, there], resolve);
     expect(b.name).toBe('Sedge Square');
-    // The whole point: the connection still names a location that exists after resolution.
-    expect(a.connections).toEqual([b.name]);
+    // Only names resolve here; a summary is resolved where it is rendered, not on the way through.
+    expect(a.aiSummary).toBe(`by the ${tok(TOWN.id, 'p3')} gate`);
   });
 
   it('resolves stat names for both the authored and the save-side shape', () => {
@@ -110,7 +110,7 @@ describe('resolveWorldNames', () => {
     });
 
     it('keeps identity for locations, stats, traits and dictionaries with no chips', () => {
-      const locations = [{ id: 'l1', name: 'Road', connections: ['Square'] }] as GameLocation[];
+      const locations = [{ id: 'l1', name: 'Road' }] as GameLocation[];
       const stats = [{ id: 's1', name: 'Health' }] as Stat[];
       const traits = [{ id: 't1', name: 'Brave' }] as Trait[];
       const entries = [{ id: 'd1', name: 'Guard', key: ['guard'], value: '' }] as DictionaryEntry[];

@@ -51,6 +51,7 @@ import { formatAbsolute, formatClock } from '@/lib/gameClock';
 import { logKind } from '@/lib/playLog';
 import { cn } from "@/lib/utils";
 import { useResolvedWorld } from '@/lib/useResolvedWorld';
+import { effectiveDestinations } from '@/lib/locationGraph';
 
 /** A committed turn's saved reasoning (from its assistant-message JSON), or null. */
 function parseSavedReasoning(content: string): { text: string; ms: number } | null {
@@ -1190,7 +1191,7 @@ export const RightPanel = ({ onLocationClick, onToggleTrait, language, setLangua
     heldStatChanges,
     drainingStatChanges
   } = useGameplay();
-  const { locations, traits, traitGroups, viewStats: playerStats, currentLocation, resolveTraitText } = useResolvedWorld();
+  const { locations, connections, traits, traitGroups, viewStats: playerStats, currentLocation, resolveTraitText } = useResolvedWorld();
   const resolvePH = usePlaceholderResolver();
   const [isEditMode, setIsEditMode] = React.useState(false);
   // The traits actually in force on the viewed turn, and the stats they leave live. A switched-off trait
@@ -1224,6 +1225,18 @@ export const RightPanel = ({ onLocationClick, onToggleTrait, language, setLangua
   const displayLocation = isViewingPast
     ? (locations.find((l) => l.id === viewLocationId) ?? currentLocation)
     : currentLocation;
+  // The authored links leading out of here, named. Implicit travel is deliberately absent: this panel has
+  // always listed what the author drew, so a world with no Connections shows no section at all.
+  const connectedNames = React.useMemo(() => {
+    if (!displayLocation) return [];
+    const names: string[] = [];
+    for (const [id, via] of effectiveDestinations(displayLocation.id, locations, connections)) {
+      if (via.via !== 'connection') continue;
+      const name = locations.find((l) => l.id === id)?.name;
+      if (name) names.push(name);
+    }
+    return names;
+  }, [connections, locations, displayLocation]);
 
   return (
     <Card className="w-full md:w-1/4 md:ml-1 grow md:grow-0 min-h-0 flex flex-col md:h-full bg-background/60 border-border overflow-hidden">
@@ -1370,12 +1383,12 @@ export const RightPanel = ({ onLocationClick, onToggleTrait, language, setLangua
                 <div className="space-y-2">
                   <p className="font-semibold">Description:</p>
                   <p className="text-label">{resolvePH(displayLocation.playerDescription || displayLocation.description || '')}</p>
-                  {displayLocation.connections && displayLocation.connections.length > 0 && (
+                  {connectedNames.length > 0 && (
                     <>
                       <p className="font-semibold mt-4">Connected Locations:</p>
                       <ul className="list-disc list-inside text-label">
-                        {displayLocation.connections.map((connection, index) => (
-                          <li key={index}>{connection}</li>
+                        {connectedNames.map((name, index) => (
+                          <li key={index}>{name}</li>
                         ))}
                       </ul>
                     </>

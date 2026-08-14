@@ -291,6 +291,7 @@ const GameViewer = ({
     stats: authoredStats,
     traits: authoredTraits,
     locations: authoredLocations,
+    connections,
     dictionaries,
     placeholders,
     worldOverview,
@@ -1406,7 +1407,7 @@ const GameViewer = ({
       sublocations: (opts) => buildSublocationsContext(loc, locations, opts),
       parent: (opts) => buildParentLocationContext(loc, locations, opts),
       reachable: (opts) => buildReachableLocationsContext(loc, locations, opts),
-      destinations: (opts) => buildDestinationsContext(loc, locations, opts),
+      destinations: (opts) => buildDestinationsContext(loc, locations, connections, opts),
     };
     const entityScopes: Record<string, (opts: CtxOpts) => string> = {
       "": (opts) => buildEntityContext(loc, allEntities, opts),
@@ -1458,7 +1459,7 @@ const GameViewer = ({
     return values;
   }, [
     worldOverview, activeStats, generateTraitDescriptions,
-    currentLocation, locations, presentIdsAt, entities, allEntities, playerNotes, resolvePH,
+    currentLocation, locations, connections, presentIdsAt, entities, allEntities, playerNotes, resolvePH,
     fullMessageHistory, timeContext, gameTime, calendar, openingHourPending,
   ]);
   buildContextValuesRef.current = buildContextValues;
@@ -1678,7 +1679,7 @@ const GameViewer = ({
 
     // Places navigable from here. Nowhere to go means nothing to route: the router's reply is matched
     // against this exact list, so with it empty the call cannot produce a move however the model answers.
-    const destinations = currentLocation ? navigableDestinations(currentLocation, locations) : [];
+    const destinations = currentLocation ? navigableDestinations(currentLocation, locations, connections) : [];
     const plan = planTurn({
       action,
       isGameStarted,

@@ -76,6 +76,39 @@ describe('entity ↔ location membership', () => {
   });
 });
 
+describe('connections', () => {
+  const linkedWorld = () => ({
+    ...world('w', {}),
+    locations: [
+      { id: 'l1', name: 'Dock' },
+      { id: 'l2', name: 'Green' },
+      { id: 'l3', name: 'Landing' },
+    ],
+    connections: [
+      { id: 'c1', from: 'l1', to: 'l2', twoWay: true },
+      { id: 'c2', from: 'l3', to: 'l1', twoWay: false },
+      { id: 'c3', from: 'l2', to: 'l3', twoWay: true },
+    ],
+  } as unknown as World);
+
+  it('deleting a location deletes every Connection touching it, from either end', () => {
+    const { result } = renderHook(() => useGameData(), { wrapper });
+    act(() => { result.current.loadWorldData(linkedWorld()); });
+
+    act(() => { result.current.removeLocation('l1'); });
+
+    // A record with a dead endpoint links nothing and can never be selected to delete by hand.
+    expect(result.current.connections.map((c) => c.id)).toEqual(['c3']);
+  });
+
+  it('carries the Connections into the payload every save and export reads', () => {
+    const { result } = renderHook(() => useGameData(), { wrapper });
+    act(() => { result.current.loadWorldData(linkedWorld()); });
+
+    expect(result.current.getWorldData().connections).toHaveLength(3);
+  });
+});
+
 describe('discardChanges', () => {
   const worldWithEntity = () => ({
     ...world('w', {}),

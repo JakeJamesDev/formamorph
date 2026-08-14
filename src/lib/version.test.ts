@@ -2,7 +2,8 @@ import { describe, it, expect } from 'vitest';
 import { APP_VERSION, migrateWorld, migrateSave, isSaveEnvelope } from './version';
 import { entityIdsAt } from './entityPresence';
 import { buildEntityContext } from './locationContext';
-import type { Entity, GameLocation, SaveObject } from '@/types';
+import { effectiveDestinations } from './locationGraph';
+import type { Connection, Entity, GameLocation, SaveObject } from '@/types';
 
 // Loose view of a migrated world for assertions (avoids `any`).
 type DescItem = {
@@ -150,6 +151,133 @@ describe('migrateWorld — entity-owned location membership (ADR-0003)', () => {
       entities: [{ id: 'alice', name: 'Alice', locations: ['bar', 'docks'] }],
     }) as unknown as { entities: Entity[] };
     expect(out.entities[0].locations).toEqual(['bar', 'docks']);
+  });
+});
+
+describe('migrateWorld — connection records (ADR-0002)', () => {
+  // A world as 1.x–2.0 stored it: each location naming the places it connected to. Green and Cottage
+  // declare each other; Green→Landing is one-sided; "Nowhere" names no location at all.
+  const legacyWorld = () => ({
+    worldOverview: {},
+    locations: [
+      { id: 'green', name: 'Green', parentId: 'hamlet', connections: ['Cottage', 'Eelhouse', 'Landing', 'Nowhere'] },
+      { id: 'cottage', name: 'Cottage', parentId: 'hamlet', connections: ['green'] }, // matched case-insensitively
+      { id: 'eel', name: 'Eelhouse', parentId: 'hamlet' }, // named by the Green, names nobody back
+      { id: 'hamlet', name: 'Hamlet' },
+      { id: 'landing', name: 'Landing' },
+    ],
+    entities: [],
+  });
+
+  type WithConnections = { locations: (GameLocation & { connections?: string[] })[]; connections?: Connection[] };
+  const migrated = (raw: unknown) => migrateWorld(raw) as unknown as WithConnections;
+  const record = (world: WithConnections, from: string, to: string) =>
+    world.connections!.find((c) => (c.from === from && c.to === to) || (c.twoWay && c.from === to && c.to === from));
+
+  /**
+   * Effective destinations as the pre-migration union rule computed them: authored names resolved
+   * case-insensitively, plus children, plus the containing location and its other children. This is the
+   * contract the migration has to preserve, written out rather than borrowed from the code that replaced it.
+   */
+  const legacyDestinations = (id: string, locations: (GameLocation & { connections?: string[] })[]) => {
+    const current = locations.find((l) => l.id === id)!;
+    const byLowerName = new Map(locations.map((l) => [l.name.toLowerCase(), l]));
+    const out = new Set<string>();
+    const add = (loc?: GameLocation) => { if (loc && loc.id !== id) out.add(loc.id); };
+    for (const name of current.connections ?? []) add(byLowerName.get(name.toLowerCase().trim()));
+    for (const child of locations.filter((l) => (l.parentId ?? null) === id)) add(child);
+    const parentId = current.parentId ?? null;
+    if (parentId !== null) {
+      add(locations.find((l) => l.id === parentId));
+      for (const sib of locations.filter((l) => l.id !== id && (l.parentId ?? null) === parentId)) add(sib);
+    }
+    return [...out].sort();
+  };
+
+  it('pair-merges reciprocal declarations into one two-way record', () => {
+    const out = migrated(legacyWorld());
+    const pair = out.connections!.filter((c) =>
+      [c.from, c.to].sort().join('|') === ['green', 'cottage'].sort().join('|'));
+    expect(pair).toHaveLength(1);
+    expect(pair[0].twoWay).toBe(true);
+  });
+
+  it('makes an unmatched declaration a one-way record from the declaring end', () => {
+    const out = migrated(legacyWorld());
+    const link = record(out, 'green', 'landing')!;
+    expect(link).toMatchObject({ from: 'green', to: 'landing', twoWay: false });
+  });
+
+  it('drops a name matching no location and strips every list from the locations', () => {
+    const out = migrated(legacyWorld());
+    // Green↔Cottage, Green↔Eelhouse and Green→Landing; "Nowhere" contributes none.
+    expect(out.connections).toHaveLength(3);
+    for (const loc of out.locations) expect('connections' in loc).toBe(false);
+  });
+
+  it('records a one-sided declaration between tree-adjacent locations two-way, so neither end loses a trip', () => {
+    // Green names its sibling the Cottage; the Cottage names nobody. The record replaces their implicit
+    // link, so recording it one-way would strand the Cottage — it could no longer walk back to the Green.
+    const out = migrated({
+      worldOverview: {},
+      locations: [
+        { id: 'green', name: 'Green', parentId: 'hamlet', connections: ['Cottage'] },
+        { id: 'cottage', name: 'Cottage', parentId: 'hamlet' },
+        { id: 'hamlet', name: 'Hamlet' },
+      ],
+      entities: [],
+    });
+    expect(out.connections![0].twoWay).toBe(true);
+    expect([...effectiveDestinations('cottage', out.locations, out.connections!).keys()].sort())
+      .toEqual(['green', 'hamlet']);
+  });
+
+  it('equivalence: every location reaches exactly where it reached before the migration', () => {
+    const before = legacyWorld();
+    const expected = Object.fromEntries(
+      before.locations.map((l) => [l.id, legacyDestinations(l.id, before.locations)]),
+    );
+    const after = migrated(legacyWorld());
+    for (const loc of after.locations) {
+      expect([...effectiveDestinations(loc.id, after.locations, after.connections ?? []).keys()].sort())
+        .toEqual(expected[loc.id]);
+    }
+  });
+
+  it('migrating twice is identical to migrating once', () => {
+    const once = migrateWorld(legacyWorld());
+    const twice = migrateWorld(structuredClone(once));
+    expect(twice).toEqual(once);
+  });
+
+  it('runs on a world already stamped at APP_VERSION (shipped 2.x worlds predate the records)', () => {
+    const out = migrated({ ...legacyWorld(), version: APP_VERSION });
+    expect(out.connections).toHaveLength(3);
+  });
+
+  it('leaves a world with no name lists without a connections array of its own making', () => {
+    const out = migrated({
+      worldOverview: {},
+      locations: [{ id: 'green', name: 'Green' }],
+      entities: [],
+    });
+    expect(out.connections).toBeUndefined();
+  });
+
+  it('keeps records an author already authored, appending the migrated ones', () => {
+    const authored: Connection = { id: 'existing', from: 'hamlet', to: 'landing', twoWay: true };
+    const out = migrated({ ...legacyWorld(), connections: [authored] });
+    expect(out.connections![0]).toEqual(authored);
+    expect(out.connections).toHaveLength(4);
+  });
+
+  it('ignores a location naming itself, which reached nowhere new', () => {
+    const out = migrated({
+      worldOverview: {},
+      locations: [{ id: 'green', name: 'Green', connections: ['Green'] }],
+      entities: [],
+    });
+    expect(out.connections).toBeUndefined();
   });
 });
 

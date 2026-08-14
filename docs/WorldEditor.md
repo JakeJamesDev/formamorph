@@ -247,7 +247,7 @@ The checkbox marks a place a new game can begin. It does more than it looks:
 
 Write the AI-Facing Description first — it's the one doing the work. Reach for nesting when you want the story to move the player on its own, and tick at least one starting location so new games don't begin somewhere arbitrary.
 
-> 📎 The world file also supports a `connections` list for wiring locations together by name, but there's no editor field for it — it can only be set by hand-editing the world JSON.
+> 📎 The world file also supports **Connections** — travel links between any two locations, one-way or two-way, with an optional travel hint. There's no editor field for them yet, so they can only be set by hand-editing the world JSON. A Connection between two locations **replaces** whatever free travel nesting gave that pair, which is what makes a one-way link actually one-way.
 
 ---
 

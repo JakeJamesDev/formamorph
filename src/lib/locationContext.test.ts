@@ -6,7 +6,7 @@ import {
   buildParentLocationContext, buildSceneEntitiesContext, scenePresentHere,
 } from "./locationContext";
 import { NONE_PLACEHOLDER } from "./promptFallbacks";
-import type { Entity, GameLocation } from "@/types";
+import type { Connection, Entity, GameLocation } from "@/types";
 
 const guard: Entity = {
   id: "e1",
@@ -225,12 +225,14 @@ describe("buildReachableLocationsContext / buildReachableEntitiesContext", () =>
 });
 
 describe("navigableDestinations / buildDestinationsContext", () => {
-  // hamlet > { green, cottage, eelhouse } ; green connects to a top-level Landing + its siblings.
-  const green: GameLocation = { id: "green", name: "Green", parentId: "hamlet", connections: ["Landing", "Cottage"] };
+  // hamlet > { green, cottage, eelhouse } ; a two-way Connection joins Green to a top-level Landing.
+  const green: GameLocation = { id: "green", name: "Green", parentId: "hamlet" };
   const cottage: GameLocation = { id: "cottage", name: "Cottage", parentId: "hamlet", aiSummary: "A blue-doored cottage." };
   const eelhouse: GameLocation = { id: "eel", name: "Eelhouse", parentId: "hamlet" };
-  const landing: GameLocation = { id: "landing", name: "Landing", connections: ["Green"] }; // top-level
+  const landing: GameLocation = { id: "landing", name: "Landing" }; // top-level
   const locs = [green, cottage, eelhouse, landing];
+  const greenLanding: Connection = { id: "c1", from: "green", to: "landing", twoWay: true };
+  const conns = [greenLanding];
 
   // The same hamlet, with the containing location actually present in the world.
   const hamlet: GameLocation = { id: "hamlet", name: "Hamlet", aiSummary: "A reed-thatched hamlet." };
@@ -243,45 +245,89 @@ describe("navigableDestinations / buildDestinationsContext", () => {
     const a: GameLocation = { id: "a", name: "Office" };
     const b: GameLocation = { id: "b", name: "Dorms" };
     const c: GameLocation = { id: "c", name: "Academy" };
-    expect(navigableDestinations(a, [a, b, c])).toEqual([]);
-    expect(buildDestinationsContext(a, [a, b, c])).toBe(NONE_PLACEHOLDER);
+    expect(navigableDestinations(a, [a, b, c], [])).toEqual([]);
+    expect(buildDestinationsContext(a, [a, b, c], [])).toBe(NONE_PLACEHOLDER);
   });
 
-  it("unions connections + sub-locations + reachable siblings, deduped, excluding self", () => {
-    const names = navigableDestinations(green, locs).map((l) => l.name).sort();
-    // Cottage is both a connection AND a reachable sibling → appears once; Eelhouse is a sibling; Landing is a connection.
+  it("unions Connections + sub-locations + reachable siblings, deduped, excluding self", () => {
+    const names = navigableDestinations(green, locs, conns).map((l) => l.name).sort();
+    // Landing comes from the Connection; Cottage and Eelhouse are siblings the tree links for free.
     expect(names).toEqual(["Cottage", "Eelhouse", "Landing"]);
   });
 
   it("includes the containing location, so nesting is two-way", () => {
-    expect(navigableDestinations(green, nested).map((l) => l.name).sort())
+    expect(navigableDestinations(green, nested, conns).map((l) => l.name).sort())
       .toEqual(["Cottage", "Eelhouse", "Hamlet", "Landing"]);
   });
 
   it("lets a leaf sub-location back out instead of stranding the player", () => {
-    // No children, no siblings, no connections: the containing location is the only way out. Without it this
+    // No children, no siblings, no Connections: the containing location is the only way out. Without it this
     // is empty, the router has zero candidates, and the player is stuck for the rest of the playthrough.
     const cellar: GameLocation = { id: "cellar", name: "Cellar", parentId: "cottage" };
-    expect(navigableDestinations(cellar, [hamlet, cottage, cellar]).map((l) => l.name)).toEqual(["Cottage"]);
+    expect(navigableDestinations(cellar, [hamlet, cottage, cellar], []).map((l) => l.name)).toEqual(["Cottage"]);
   });
 
-  it("skips dangling connection names and never includes the current location", () => {
-    const withDangling: GameLocation = { ...green, connections: ["Nowhere", "Green"] };
-    const names = navigableDestinations(withDangling, [withDangling, cottage, eelhouse]).map((l) => l.name).sort();
-    expect(names).toEqual(["Cottage", "Eelhouse"]); // "Nowhere" unresolved, "Green" is self
+  it("skips a Connection pointing at a location the world no longer has", () => {
+    const dangling: Connection = { id: "c9", from: "green", to: "gone", twoWay: true };
+    const names = navigableDestinations(green, [green, cottage, eelhouse], [dangling]).map((l) => l.name).sort();
+    expect(names).toEqual(["Cottage", "Eelhouse"]);
   });
 
-  it("a top-level location still surfaces its connections as destinations", () => {
-    expect(navigableDestinations(landing, locs).map((l) => l.name)).toEqual(["Green"]);
+  it("a top-level location reaches only what a Connection gives it", () => {
+    expect(navigableDestinations(landing, locs, conns).map((l) => l.name)).toEqual(["Green"]);
+    expect(navigableDestinations(landing, locs, [])).toEqual([]); // no Connection → top-level dead end
+  });
+
+  it("a one-way Connection is offered at its start and absent at its end", () => {
+    const drop: Connection = { id: "c2", from: "green", to: "landing", twoWay: false };
+    expect(navigableDestinations(green, locs, [drop]).map((l) => l.name)).toContain("Landing");
+    expect(navigableDestinations(landing, locs, [drop])).toEqual([]);
+  });
+
+  it("a one-way Connection between siblings replaces their free travel, both ways", () => {
+    // ADR-0002: the pair's implicit link is gone, so Cottage cannot walk back to Green even though the
+    // containment tree would otherwise hand it that trip for nothing.
+    const oneWay: Connection = { id: "c3", from: "green", to: "cottage", twoWay: false };
+    expect(navigableDestinations(green, nested, [oneWay]).map((l) => l.name).sort())
+      .toEqual(["Cottage", "Eelhouse", "Hamlet"]);
+    expect(navigableDestinations(cottage, nested, [oneWay]).map((l) => l.name).sort())
+      .toEqual(["Eelhouse", "Hamlet"]);
+  });
+
+  it("a one-way Connection to a child replaces the way back up", () => {
+    const chute: Connection = { id: "c4", from: "hamlet", to: "green", twoWay: false };
+    expect(navigableDestinations(hamlet, nested, [chute]).map((l) => l.name).sort())
+      .toEqual(["Cottage", "Eelhouse", "Green"]);
+    // Green keeps its siblings but loses the parent it no longer has an implicit link to.
+    expect(navigableDestinations(green, nested, [chute]).map((l) => l.name).sort())
+      .toEqual(["Cottage", "Eelhouse"]);
+  });
+
+  it("navigates a world with no Connections exactly as it did before they existed", () => {
+    expect(navigableDestinations(green, nested, []).map((l) => l.name).sort())
+      .toEqual(["Cottage", "Eelhouse", "Hamlet"]);
   });
 
   it("buildDestinationsContext renders name: summary lines and N/A when nothing is reachable", () => {
-    const out = buildDestinationsContext(green, locs, { preferSummary: true });
+    const out = buildDestinationsContext(green, locs, conns, { preferSummary: true });
     expect(out).toContain("Cottage: A blue-doored cottage.");
     expect(out).toContain("Eelhouse");
     const isolated: GameLocation = { id: "iso", name: "Void" };
-    expect(buildDestinationsContext(isolated, [isolated])).toBe(NONE_PLACEHOLDER);
-    expect(buildDestinationsContext(null, locs)).toBe(NONE_PLACEHOLDER);
+    expect(buildDestinationsContext(isolated, [isolated], [])).toBe(NONE_PLACEHOLDER);
+    expect(buildDestinationsContext(null, locs, conns)).toBe(NONE_PLACEHOLDER);
+  });
+
+  it("trails a Connection's travel hint on its destination line, and only its own", () => {
+    const portal: Connection = { id: "c5", from: "green", to: "landing", twoWay: true, aiHint: "the shimmering portal" };
+    const out = buildDestinationsContext(green, locs, [portal], { preferSummary: true });
+    expect(out).toContain("Landing — via the shimmering portal");
+    expect(out).toContain("Cottage: A blue-doored cottage.\n"); // an implicit neighbor carries no suffix
+    // The hint says how, never which way: no direction language reaches the prompt.
+    expect(out).not.toMatch(/one-way|cannot|return|do not/i);
+    const md = buildDestinationsContext(green, locs, [portal], { format: "markdown" });
+    expect(md).toContain("- **Landing** — via the shimmering portal");
+    const xml = buildDestinationsContext(green, locs, [portal], { format: "xml" });
+    expect(xml).toContain("<via>the shimmering portal</via>");
   });
 });
 
