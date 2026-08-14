@@ -13,8 +13,8 @@ import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import { describePlaceholders } from '@/lib/placeholders';
 import type { ConnectionDirection } from '@/lib/connectionEditing';
 import {
-  buildLocationCanvas, connectIntent, connectionEnds, deleteIntent, directionIntent, directionOf, hintIntent,
-  withCanvasPosition,
+  applyCanvasDrop, buildLocationCanvas, connectIntent, connectionEnds, deleteIntent, directionIntent,
+  directionOf, dropIntent, hintIntent,
   type CanvasEdge, type CanvasIntent, type CanvasNodeData,
 } from '@/lib/locationCanvas';
 import { cn } from '@/lib/utils';
@@ -25,9 +25,8 @@ import type { Connection } from '@/types';
  * gesture *means* comes from `lib/locationCanvas` — which boxes nest, which arrows exist, and what dragging
  * between two of them asks the world to become — so the graph's rules are testable without mounting a canvas.
  * What is left here is drawing, and handing each gesture's intent to the editor's own write path, which is
- * why an edit made here and one made in the list panel are the same edit to the same record.
- *
- * Dragging a location between boxes to reparent it arrives with the next ticket.
+ * why an edit made here and one made in the list panel are the same edit to the same record — and why
+ * dragging a location into a box nests it there, in the same world the list view is reading.
  */
 
 // xyflow requires a node's data to be indexable; the mapper's shape is the useful half of it.
@@ -329,10 +328,12 @@ const CanvasInner = ({ selectedId, onSelect }: { selectedId: string | null; onSe
     [map, selectedConnectionId],
   );
 
-  const handleDragStop = useCallback(
-    (_: unknown, node: Node) => setLocations(withCanvasPosition(locations, node.id, node.position)),
-    [locations, setLocations],
-  );
+  // A drag either moves a location or changes what holds it, and where it came to rest decides which — so
+  // there is one gesture to learn, and the map edits the world's shape rather than only its arrangement.
+  const handleDragStop = useCallback((_: unknown, node: Node) => {
+    const drop = dropIntent(locations, node.id, node.position);
+    if (drop) setLocations(applyCanvasDrop(locations, drop));
+  }, [locations, setLocations]);
 
   return (
     <ReactFlow<LocationNodeType, Edge>
