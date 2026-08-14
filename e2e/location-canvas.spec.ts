@@ -290,6 +290,51 @@ test.describe('Locations canvas', () => {
   });
 
   /**
+   * A selection is dragged as one gesture but lands a location at a time, and the highlight has to say so
+   * while the drag is still in the air — which is only visible with the button held down.
+   */
+  test('every member of a dragged selection names where it is going', async ({ page }, testInfo) => {
+    // Composing this selection needs Shift with a click, and a tap on a small screen opens the location's
+    // editor over the map instead — there is no two-location selection to drag there to begin with.
+    test.skip(testInfo.project.name === 'mobile', 'Shift-click has no mobile equivalent');
+    await openApp(page);
+    await page.evaluate(async (world) => {
+      const dev = (window as unknown as { __fmDev: DevRouter }).__fmDev;
+      const id = await dev.putWorld(world);
+      await dev.editWorld(id);
+    }, WORLD);
+    await gotoDev(page, 'mainMenu', { modal: 'worldEditor', tab: 'locations', subtab: 'canvas' });
+
+    const node = (id: string) => page.locator(`.react-flow__node[data-id="${id}"]`);
+    await node('loc-outside').waitFor();
+
+    // The Beach, standing on its own, and the Warehouse, held by the Harbor.
+    await node('loc-outside').click();
+    await node('loc-child-b').click({ modifiers: ['Shift'] });
+    await expect(page.locator('.react-flow__node.selected')).toHaveCount(2);
+
+    const beach = (await node('loc-outside').boundingBox())!;
+    const harbor = (await node('loc-parent').boundingBox())!;
+    await page.mouse.move(beach.x + beach.width / 2, beach.y + beach.height / 2);
+    await page.mouse.down();
+    // Onto the near end of the Harbor's title strip, so the same travel carries the Warehouse clear of the
+    // frame's other side rather than only shuffling it about inside.
+    await page.mouse.move(harbor.x + 30, harbor.y + 12, { steps: 12 });
+
+    // One gesture saying two things: the Harbor is about to take the Beach, and the Warehouse it carried the
+    // same distance is on its way out of the Harbor to the top level.
+    await expect(node('loc-parent').locator('[data-drop-target]')).toHaveCount(1);
+    await expect(page.getByTestId('canvas-top-level-drop')).toBeVisible();
+
+    // And that is what lands: the two locations swap which side of the Harbor's frame they are on.
+    await page.mouse.up();
+    await gotoDev(page, 'mainMenu', { modal: 'worldEditor', tab: 'locations', subtab: 'list' });
+    const rowLeft = async (name: string) => (await page.getByText(name, { exact: true }).first().boundingBox())!.x;
+    expect(await rowLeft('Beach')).toBeGreaterThan(await rowLeft('Harbor'));
+    expect(await rowLeft('Warehouse')).toBeCloseTo(await rowLeft('Harbor'), 0);
+  });
+
+  /**
    * Right-click and right-drag are the same button, told apart only by whether the pointer traveled — which
    * is a distinction nothing but a real pointer can make.
    */
@@ -332,5 +377,40 @@ test.describe('Locations canvas', () => {
     await expect(menu).toBeVisible();
     await menu.getByRole('menuitem', { name: 'Select All Locations' }).click();
     await expect(page.locator('.react-flow__node.selected')).toHaveCount(4);
+  });
+
+  /**
+   * The pane xyflow listens for a pan on sits behind the boxes, so a press that starts on one never reaches
+   * it — a gap only a real press over a real node can find.
+   */
+  test('a right-drag pans the map even when it starts on a location', async ({ page }) => {
+    await openApp(page);
+    await page.evaluate(async (world) => {
+      const dev = (window as unknown as { __fmDev: DevRouter }).__fmDev;
+      const id = await dev.putWorld(world);
+      await dev.editWorld(id);
+    }, WORLD);
+    await gotoDev(page, 'mainMenu', { modal: 'worldEditor', tab: 'locations', subtab: 'canvas' });
+
+    const beach = page.locator('.react-flow__node[data-id="loc-outside"]');
+    await beach.waitFor();
+    const viewport = () => page.locator('.react-flow__viewport').getAttribute('style');
+    const box = (await beach.boundingBox())!;
+    const grab = { x: box.x + box.width / 2, y: box.y + box.height / 2 };
+
+    const before = await viewport();
+    await page.mouse.move(grab.x, grab.y);
+    await page.mouse.down({ button: 'right' });
+    await page.mouse.move(grab.x - 120, grab.y - 60, { steps: 12 });
+    await page.mouse.up({ button: 'right' });
+
+    // The map moved under the pointer, and the location stayed where it was on it — a pan, not a drag.
+    expect(await viewport()).not.toBe(before);
+    const after = (await beach.boundingBox())!;
+    expect(after.x - box.x).toBeCloseTo(-120, 0);
+    expect(after.y - box.y).toBeCloseTo(-60, 0);
+    await gotoDev(page, 'mainMenu', { modal: 'worldEditor', tab: 'locations', subtab: 'list' });
+    const rowLeft = async (name: string) => (await page.getByText(name, { exact: true }).first().boundingBox())!.x;
+    expect(await rowLeft('Beach')).toBeCloseTo(await rowLeft('Harbor'), 0); // still top-level, still unmoved
   });
 });
