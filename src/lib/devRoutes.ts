@@ -49,7 +49,8 @@ export const DEV_MODAL_TABS = {
   // The admin tools: accounts, broadcasts, the publish policies, the feedback queues, and the log.
   adminPanel: ['users', 'broadcasts', 'policies', 'feedback', 'log'],
   // The World Editor's Locations tab shows one of two views of the same locations, switched with `subtab=…`
-  // (`#dev?modal=worldEditor&tab=locations&subtab=canvas`).
+  // (`#dev?modal=worldEditor&tab=locations&subtab=canvas`). Adding `fullscreen=1` opens the canvas in its
+  // full-screen window on arrival — the same canvas, so it is not a third view and not listed as one.
   worldEditorLocations: ['list', 'canvas'],
   // Admin Panel → Policies has a second level, one sub-tab per authored popup, reached with `subtab=…`.
   adminPanelPolicies: ['uploadGate', 'tagNotice'],

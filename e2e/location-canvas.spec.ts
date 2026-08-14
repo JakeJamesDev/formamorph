@@ -413,4 +413,66 @@ test.describe('Locations canvas', () => {
     const rowLeft = async (name: string) => (await page.getByText(name, { exact: true }).first().boundingBox())!.x;
     expect(await rowLeft('Beach')).toBeCloseTo(await rowLeft('Harbor'), 0); // still top-level, still unmoved
   });
+
+  /**
+   * Full screen is the same canvas in a different frame, and what proves it is the world arriving with it:
+   * the boxes are the same boxes, drawn by the same mapper, and the selection the author left the pane with
+   * is still theirs. The embedded view's minimal chrome is asserted from the same run — a toolbar or a minimap
+   * appearing there is exactly the drift this guards.
+   */
+  test('the canvas opens full screen and the embedded view stays minimal', async ({ page }) => {
+    await openApp(page);
+    await page.evaluate(async (world) => {
+      const dev = (window as unknown as { __fmDev: DevRouter }).__fmDev;
+      const id = await dev.putWorld(world);
+      await dev.editWorld(id);
+    }, WORLD);
+    await gotoDev(page, 'mainMenu', { modal: 'worldEditor', tab: 'locations', subtab: 'canvas' });
+
+    await page.locator('.react-flow__node[data-id="loc-outside"]').waitFor();
+    // The embedded chrome is the zoom controls plus the way to full screen, and nothing else yet.
+    await expect(page.locator('.react-flow__minimap')).toHaveCount(0);
+    await expect(page.getByRole('toolbar')).toHaveCount(0);
+    const fullscreenButton = page.locator('.react-flow__controls').getByRole('button', { name: 'Edit full screen' });
+    await expect(fullscreenButton).toBeVisible();
+
+    // Something to lose on the way through: every location picked in the pane. Composed with Ctrl+A rather
+    // than by clicking a node, which on the narrow layout pushes the editor to the detail panel and takes the
+    // canvas off screen — the selection is the subject here, not how it was made.
+    const pane = (await page.locator('.react-flow__pane').boundingBox())!;
+    await page.mouse.click(pane.x + 8, pane.y + 8);
+    await page.keyboard.press('Control+a');
+    await expect(page.locator('.react-flow__node.selected')).toHaveCount(4);
+
+    await fullscreenButton.click();
+    const window_ = page.getByRole('dialog', { name: 'Locations Canvas' });
+    await expect(window_).toBeVisible();
+    // The same four boxes, in the window rather than the pane — and the pick came with them.
+    await expect(window_.locator('.react-flow__node')).toHaveCount(4);
+    await expect(window_.locator('.react-flow__node.selected')).toHaveCount(4);
+    // One canvas, not two: the pane's copy is gone rather than sitting live behind the window.
+    await expect(page.locator('.react-flow__node')).toHaveCount(4);
+
+    await page.keyboard.press('Escape');
+    await expect(window_).toBeHidden();
+    await expect(fullscreenButton).toBeVisible();
+    await expect(page.locator('.react-flow__node.selected')).toHaveCount(4);
+  });
+
+  /** The dev-route lands on the full-screen canvas in one call, which is what the later tickets verify from. */
+  test('the dev-router opens the canvas full screen directly', async ({ page }) => {
+    await openApp(page);
+    await page.evaluate(async (world) => {
+      const dev = (window as unknown as { __fmDev: DevRouter }).__fmDev;
+      const id = await dev.putWorld(world);
+      await dev.editWorld(id);
+    }, WORLD);
+    await gotoDev(page, 'mainMenu', {
+      modal: 'worldEditor', tab: 'locations', subtab: 'canvas', fullscreen: true,
+    });
+
+    const window_ = page.getByRole('dialog', { name: 'Locations Canvas' });
+    await expect(window_).toBeVisible();
+    await expect(window_.locator('.react-flow__node')).toHaveCount(4);
+  });
 });
