@@ -61,6 +61,37 @@ const user = (content: string): ChatMessage[] => [{ role: 'user', content }];
 const isEnglish = (language: string): boolean => language.toLowerCase() === 'english';
 
 /**
+ * The four assemblies a pass shares with a caller that asks the same thing outside a turn — the idle
+ * drainers, which work on a turn that has already been stored, and the standalone re-rolls. Those callers
+ * have no Turn Plan to run, so they call these directly rather than fabricating one; what matters is that
+ * the wording, and the conditions on it, exist once.
+ */
+
+/** The choices system prompt, rendered against the scene's own entity roster. */
+export const choicesSystemPrompt = (
+  template: string,
+  language: string,
+  values: Record<string, string>,
+): string =>
+  renderPromptTemplate(template, values) +
+  (isEnglish(language) ? '' : `\n Choice language: ` + language);
+
+/** The stat system prompt. The stat names have to come back in English however the story is narrated. */
+export const statUpdatesSystemPrompt = (
+  template: string,
+  language: string,
+  ctx: Record<string, string>,
+): string => renderPromptTemplate(template, ctx) + (isEnglish(language) ? '' : '\n Please write in english');
+
+/** The digest's user message. A bracketed authorial direction never reaches it — it records story content. */
+export const summaryUserMessage = (template: string, action: string, narration: string): string =>
+  renderPromptTemplate(template, { '<PLAYER ACTION>': stripOocDirectives(action), '<NARRATION>': narration });
+
+/** The discovery pass's user message: who to describe, and the passage they appeared in. */
+export const discoverUserMessage = (name: string, narration: string): string =>
+  `${DISCOVER_NAME_LABEL} ${name}\n\n${DISCOVER_PASSAGE_LABEL}\n${narration}`;
+
+/**
  * A foreground post-narration request's label behavior. Dispatched together, the batch shows one steady
  * label instead of three racing writes; dispatched one at a time, each pass names itself.
  */
@@ -296,14 +327,12 @@ const choicesPass: TurnPassRecord<string[]> = {
   fanOut: false,
   isDue: (input) => input.settings.choicesEnabled,
   buildRequest: (input, material) => {
-    let systemPrompt = renderPromptTemplate(input.prompts.choices, {
-      ...material.ctx,
-      ...material.sceneEntityTokens,
-    });
-    if (!isEnglish(input.settings.language)) systemPrompt += `\n Choice language: ` + input.settings.language;
     return {
       type: 'choices',
-      systemPrompt,
+      systemPrompt: choicesSystemPrompt(input.prompts.choices, input.settings.language, {
+        ...material.ctx,
+        ...material.sceneEntityTokens,
+      }),
       messages: user(
         renderPromptTemplate(input.prompts.choicesUser, {
           '<PLAYER ACTION>': material.effectiveAction,
@@ -327,11 +356,9 @@ const statUpdatesPass: TurnPassRecord<ReturnType<typeof parseStatUpdates>> = {
   // A world with no live stats would only get hallucinated stat names that match nothing.
   isDue: (input) => input.settings.statUpdatesEnabled && input.settings.statCount > 0,
   buildRequest: (input, material) => {
-    let systemPrompt = renderPromptTemplate(input.prompts.statUpdates, material.ctx);
-    if (!isEnglish(input.settings.language)) systemPrompt += '\n Please write in english';
     return {
       type: 'statUpdates',
-      systemPrompt,
+      systemPrompt: statUpdatesSystemPrompt(input.prompts.statUpdates, input.settings.language, material.ctx),
       messages: user(
         renderPromptTemplate(input.prompts.statUpdatesUser, {
           '<PLAYER ACTION>': material.effectiveAction,
@@ -347,8 +374,7 @@ const statUpdatesPass: TurnPassRecord<ReturnType<typeof parseStatUpdates>> = {
 };
 
 /**
- * This turn's memory digest. Only runs in the batch — dispatched one at a time, the digest is left to the
- * idle drainer exactly as it was before the batch existed.
+ * This turn's memory digest. Only runs in the batch — dispatched one at a time, it is the idle drainer's job.
  */
 const summaryPass: TurnPassRecord<string> = {
   id: 'summary',
@@ -359,13 +385,7 @@ const summaryPass: TurnPassRecord<string> = {
   buildRequest: (input, material) => ({
     type: 'summary',
     systemPrompt: renderPromptTemplate(input.prompts.summary, material.baseCtx),
-    messages: user(
-      renderPromptTemplate(input.prompts.summaryUser, {
-        // The digest records story content, so a bracketed authorial direction never reaches it.
-        '<PLAYER ACTION>': stripOocDirectives(material.effectiveAction),
-        '<NARRATION>': material.narration,
-      }),
-    ),
+    messages: user(summaryUserMessage(input.prompts.summaryUser, material.effectiveAction, material.narration)),
     maxTokens: TURN_PASS_CAPS.summary,
     ...silentOn(material),
   }),
@@ -457,9 +477,7 @@ const discoverEntityPass: TurnPassRecord<string> = {
     return {
       type: 'discoverEntity',
       systemPrompt: input.prompts.discoverEntity,
-      messages: user(
-        `${DISCOVER_NAME_LABEL} ${subject.name}\n\n${DISCOVER_PASSAGE_LABEL}\n${material.narration}`,
-      ),
+      messages: user(discoverUserMessage(subject.name, material.narration)),
       maxTokens: TURN_PASS_CAPS.discoverEntity,
       ...silentOn(material),
     };

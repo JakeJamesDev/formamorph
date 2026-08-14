@@ -143,6 +143,9 @@ interface RunOptions extends FakeOptions {
 const run = async (options: RunOptions = {}) => {
   const fake = makeFake(options);
   const plan = planTurn(testInput(options.input, options.settings));
+  // Each pass id in the order it settled, marked with whether it answered — how a caller waiting on one
+  // pass inside a batch learns it can stop waiting.
+  const settled: string[] = [];
   const result = await runTurn({
     plan,
     material: material(options.material),
@@ -150,8 +153,9 @@ const run = async (options: RunOptions = {}) => {
     signal: options.signal ?? new AbortController().signal,
     advance: advanceLikeTheView(options.subjects),
     onNarrationEvent: options.onNarrationEvent,
+    onPassSettled: (id, outcome) => settled.push(`${id}:${outcome.ok ? 'ok' : 'failed'}`),
   });
-  return { result, types: fake.seen.map((s) => s.type), peakInFlight: fake.peakInFlight(), seen: fake.seen };
+  return { result, types: fake.seen.map((s) => s.type), peakInFlight: fake.peakInFlight(), seen: fake.seen, settled };
 };
 
 const ok = (result: TurnResult) => {
@@ -515,6 +519,117 @@ describe('what a failing post-narration pass costs', () => {
     expect(result.status).toBe('failed');
     if (result.status !== 'failed') return;
     expect(result.kind).toBe('connection');
+  });
+});
+
+describe('onPassSettled', () => {
+  it('reports a batched pass the moment it answers, not when its stage finishes', async () => {
+    // The choices pass unblocks the player's input. Batched, it must not wait on the diaries and the digest
+    // beside it — so it has to be reported before the stage's own advance runs.
+    const { result, settled } = await run({
+      answers: {
+        // Every sibling answers a tick later than choices, so a report tied to the stage would land after
+        // all of them rather than first.
+        summary: () => 'late',
+        timePassed: () => 'late',
+        diary: () => 'late',
+        discoverEntity: () => 'late',
+      },
+    });
+    ok(result);
+    const batch = settled.slice(settled.indexOf('narration:ok') + 1);
+    expect(batch[0]).toBe('choices:ok');
+    expect(batch).toContain('summary:ok');
+  });
+
+  it('reports a pass that failed as failed', async () => {
+    const { settled } = await run({
+      answers: {
+        diary: () => {
+          throw new Error('nope');
+        },
+      },
+    });
+    expect(settled).toContain('diary:failed');
+    expect(settled).toContain('choices:ok');
+  });
+
+  it('reports every dispatched request, fan-outs included', async () => {
+    const { result, types, settled } = await run();
+    ok(result);
+    expect(settled).toHaveLength(types.length);
+  });
+});
+
+describe('the request that ended the turn', () => {
+  it('comes back with the failure, so nothing has to be read off the error', async () => {
+    // The digest is silent — it shows nothing of its own when it fails, which is the difference the view
+    // needs to know about and used to learn from a flag written onto the error object.
+    const { result } = await run({
+      settings: { concurrentTurnRequests: false, aiClock: true },
+      answers: {
+        timePassed: () => {
+          throw new Error('nope');
+        },
+      },
+    });
+    expect(result.status).toBe('failed');
+    if (result.status !== 'failed') return;
+    expect(result.request?.type).toBe('timePassed');
+    expect(result.request?.silent).toBe(true);
+  });
+
+  it('is the foreground request when a foreground pass is what failed', async () => {
+    const { result } = await run({
+      settings: { concurrentTurnRequests: false },
+      answers: {
+        choices: () => {
+          throw new TypeError('Failed to fetch');
+        },
+      },
+    });
+    expect(result.status).toBe('failed');
+    if (result.status !== 'failed') return;
+    expect(result.request?.type).toBe('choices');
+    expect(result.request?.silent).toBe(false);
+  });
+
+  it('is left unset when a batch absorbed the only failure', async () => {
+    // A batched failure is backfilled by an idle drainer; the turn finished, so nothing ended it.
+    const { result } = await run({
+      answers: {
+        diary: () => {
+          throw new Error('nope');
+        },
+      },
+    });
+    expect(result.status).toBe('ok');
+  });
+
+  it('is not a request the batch absorbed, when something after the batch is what threw', async () => {
+    // The batch swallowed a diary failure and carried on; what actually ended the turn was the caller's own
+    // derivation afterward. Naming the diary here would tell the view a silent pass failed when none did.
+    const fake = makeFake({
+      answers: {
+        diary: () => {
+          throw new Error('absorbed');
+        },
+      },
+    });
+    const inner = advanceLikeTheView();
+    const result = await runTurn({
+      plan: planTurn(testInput()),
+      material: material(),
+      request: fake.adapter,
+      signal: new AbortController().signal,
+      advance: (event) => {
+        if (event.at === 'pass' && event.outcomes[0]?.id === 'choices') throw new Error('the view blew up');
+        return inner(event);
+      },
+    });
+    expect(result.status).toBe('failed');
+    if (result.status !== 'failed') return;
+    expect(result.request).toBeUndefined();
   });
 });
 

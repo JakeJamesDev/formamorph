@@ -61,7 +61,6 @@ import {
   defaultDiscoverEntityPrompt,
   defaultRegenEntityPrompt,
   OPENING_SCENE_CUE,
-  stripOocDirectives,
   defaultMilestoneIncrementalPrompt,
 } from "../components/game/GamePrompts";
 import {
@@ -75,7 +74,7 @@ import {
   type ParsedDirector,
 } from "../lib/stagedPlanning";
 import { selectRelevantDiary } from "../lib/semanticDiary";
-import { selectDueDiscovery, materializeDiscoveredEntity, mergeDiscoveredIntoLocation, cleanDiscoveredDescription, selectReachableVisitors, DISCOVER_NAME_LABEL, DISCOVER_PASSAGE_LABEL } from "../lib/runtimeCharacters";
+import { selectDueDiscovery, materializeDiscoveredEntity, mergeDiscoveredIntoLocation, cleanDiscoveredDescription, selectReachableVisitors } from "../lib/runtimeCharacters";
 import { selectRegenSource, buildRegenContext, buildRegenUserMessage, REGEN_LABELS } from "../lib/discoveredRegen";
 import { lengthGuidance, trimToLastSentence } from "../lib/outputLength";
 import { buildAiRequestSpec, type AiSettingsSnapshot } from "../lib/aiRequest/aiRequestSpec";
@@ -92,7 +91,13 @@ import { variableForToken, variableVariantIds, decodeVariant, tokenVariant, with
 import { renderPromptTemplate } from "../lib/promptTemplate";
 import { useBaselineTestHook } from "../lib/baselineTestHook";
 import { recordParityRequest, recordParityResponse, recordParityTurn } from "../lib/turnPipeline/parityRecorder";
-import { TURN_PASS_CAPS } from "../lib/turnPipeline/turnPasses";
+import {
+  TURN_PASS_CAPS,
+  choicesSystemPrompt,
+  statUpdatesSystemPrompt,
+  summaryUserMessage,
+  discoverUserMessage,
+} from "../lib/turnPipeline/turnPasses";
 import { planTurn, planHasPass } from "../lib/turnPipeline/planTurn";
 import { runTurn, type TurnAdvance, type TurnRequestAdapter } from "../lib/turnPipeline/turnRunner";
 import { computeTurnCommit } from "../lib/turnPipeline/computeTurnCommit";
@@ -207,6 +212,33 @@ const STATS_TOKENS = ['<STATS DESCRIPTION>', ...variableVariantIds(STATS_VARIABL
 
 const DIARY_MAX_TOKENS = TURN_PASS_CAPS.diary;
 const DISCOVER_MAX_TOKENS = TURN_PASS_CAPS.discoverEntity;
+
+/**
+ * One AI call's arguments. A turn pass's own `TurnPassRequest` already has this shape, so the pipeline's
+ * request adapter hands its request straight through with only the turn's signal added.
+ */
+interface AiCallArgs {
+  systemPrompt: string;
+  messages: ChatMessage[];
+  type: AIRequestType;
+  /** Absent (or null) leaves the request type's own default cap to apply downstream. */
+  maxTokens?: number | null;
+  signal?: AbortSignal;
+  /**
+   * Silent requests (the memory digest) run without UI noise: no "Generating…" label, and they surface in
+   * the status bar / AI-context viewer only when the "Show Silent Requests" setting is on. When captured,
+   * they attach to the turn named by `attachTurnId` (the turn the digest summarizes — usually the one just
+   * committed, or an older turn when backfilling), so the viewer shows the request under the right turn
+   * rather than whatever turn happens to be current.
+   */
+  silent?: boolean;
+  attachTurnId?: string;
+  /**
+   * Skip setting the "Generating…" status label. The concurrent batch fires its passes at once; each would
+   * otherwise stomp the shared label, so the batch sets one stable label itself instead.
+   */
+  quiet?: boolean;
+}
 
 // A stable empty array for turns with no scene image, so the panel's prop identity doesn't churn.
 const EMPTY_IMAGES: string[] = [];
@@ -1541,13 +1573,13 @@ const GameViewer = ({
     // The same cast with the player flagged: the staged plan's grounding block lists everyone, not just NPCs.
     let flaggedCast: DirectorCastMember[] = [];
     let turnParticipants: string[] = [];
-    // Whether the request that ended the turn was a silent one. Only a foreground request offers the
-    // connection guide from inside makeAIRequest, so a silent pass that can't reach the server still needs
-    // the generic toast — nothing has spoken for it.
-    let failedSilently = false;
 
-    /** What one failure kind tells the player. Recovery guidance is the toast's own text. */
-    const reportFailure = (kind: TurnErrorKind) => {
+    /**
+     * What one failure tells the player. Recovery guidance is the toast's own text. `spokeForItself` is the
+     * failed request when makeAIRequest already surfaced its own toast — it does that for foreground
+     * requests only, so a silent pass that can't reach the server still needs the generic one.
+     */
+    const reportFailure = (kind: TurnErrorKind, spokeForItself = false) => {
       // An empty narration is its own exit: nothing was thrown, so the opening turn's started flag was
       // never set and is left alone. Silence here would be indistinguishable from a dead submit button.
       if (kind === "emptyNarration") {
@@ -1566,7 +1598,7 @@ const GameViewer = ({
       if (isOpeningTurn) setIsGameStarted(false);
       // A foreground request's connection failure already surfaced its own guide toast — don't stack a
       // second on top of it.
-      if (kind === "connection" && !failedSilently) {
+      if (kind === "connection" && spokeForItself) {
         addSystemLogEntry("Couldn't reach the AI server — see the connection guide.");
         return;
       }
@@ -1983,28 +2015,7 @@ ${playerNotes || NONE_PLACEHOLDER}
       };
 
       /** The pipeline's one seam. Production sends the real AI call; nothing else is injected. */
-      const request: TurnRequestAdapter = (spec, context) => {
-        const answer = makeAIRequest(
-          spec.systemPrompt,
-          spec.messages,
-          spec.type,
-          spec.maxTokens,
-          context.signal,
-          spec.silent,
-          spec.attachTurnId,
-          spec.quiet,
-        );
-        // Choices are the interactive part: unblock the input the moment they land rather than when the
-        // rest of the batch settles. The no-op rejection handler keeps this side-chain from raising on its
-        // own — the real error surfaces through the turn result.
-        if (spec.type === "choices") {
-          answer.then(() => { if (!signal.aborted) setChoicesReady(true); }, () => {});
-        }
-        // Remember whether the request that failed spoke for itself (see `failedSilently`). A batched
-        // failure never ends the turn, so only the one the turn stops on is ever read.
-        answer.catch(() => { failedSilently = spec.silent; });
-        return answer;
-      };
+      const request: TurnRequestAdapter = (spec, context) => makeAIRequest({ ...spec, signal: context.signal });
 
       const result = await runTurn({
         plan,
@@ -2033,12 +2044,17 @@ ${playerNotes || NONE_PLACEHOLDER}
         request,
         signal,
         advance,
+        // Choices are the interactive part: unblock the input the moment they land rather than when the
+        // rest of their batch settles.
+        onPassSettled: (id, outcome) => {
+          if (id === "choices" && outcome.ok && !signal.aborted) setChoicesReady(true);
+        },
       });
 
       // The user stopping is an expected, silent exit (the `finally` resets waiting state).
       if (result.status === "aborted") return;
       if (result.status === "failed") {
-        reportFailure(result.kind);
+        reportFailure(result.kind, result.request ? !result.request.silent : false);
         return;
       }
 
@@ -2390,23 +2406,16 @@ ${playerNotes || NONE_PLACEHOLDER}
   // its own controller, so it gets the same treatment — otherwise it keeps the image server busy after exit.
   useEffect(() => () => { abortControllerRef.current?.abort(); sceneImageAbortRef.current?.abort(); }, []);
 
-  const makeAIRequest = async (
-    systemPrompt: string,
-    messages: ChatMessage[],
-    requestType: AIRequestType = "narration",
-    maxTokensOverride: number | null = null,
-    signal?: AbortSignal,
-    // Silent requests (the memory digest) run without UI noise: no "Generating…" label, and they
-    // surface in the status bar / AI-context viewer only when the "Show Silent Requests" setting is on.
-    // When captured, they attach to the turn named by `attachTurnId` (the turn the digest summarizes —
-    // usually the one just committed, or an older turn when backfilling), so the viewer shows the
-    // request under the right turn rather than whatever turn happens to be current.
+  const makeAIRequest = async ({
+    systemPrompt,
+    messages,
+    type: requestType,
+    maxTokens: maxTokensOverride = null,
+    signal,
     silent = false,
-    attachTurnId?: string,
-    // Skip setting the "Generating…" status label. The concurrent aux batch fires choices/stats/location at
-    // once; each would otherwise stomp the shared label, so the batch sets one stable label itself instead.
-    quietLabel = false,
-  ) => {
+    attachTurnId,
+    quiet: quietLabel = false,
+  }: AiCallArgs) => {
     // The parity recording observes the seam itself: exactly the arguments this call received, in
     // dispatch order, before anything downstream shapes them. Inert unless the harness armed it.
     const paritySeq = recordParityRequest({ systemPrompt, messages, type: requestType, maxTokens: maxTokensOverride, silent, attachTurnId });
@@ -2825,21 +2834,21 @@ ${playerNotes || NONE_PLACEHOLDER}
     if (signal.aborted) return "";
     // The tag pass is silent and attached to this turn, so it shows in the AI-context viewer under the
     // scene it describes (with Show Silent Requests on) rather than under whatever turn is current.
-    const actionTags = await makeAIRequest(
-      renderPromptTemplate(sceneTagsPrompt, buildContextValues()),
-      [{
+    const actionTags = await makeAIRequest({
+      systemPrompt: renderPromptTemplate(sceneTagsPrompt, buildContextValues()),
+      messages: [{
         role: "user",
         content: renderPromptTemplate(sceneTagsUserPrompt, {
           "<NARRATION>": narration,
           "<IN FRAME>": cast.length ? cast.map((c) => c.name).join(", ") : "nobody - an empty scene",
         }),
       }],
-      "sceneTags",
-      SCENE_TAGS_MAX_TOKENS,
+      type: "sceneTags",
+      maxTokens: SCENE_TAGS_MAX_TOKENS,
       signal,
-      true,
-      turnId,
-    );
+      silent: true,
+      attachTurnId: turnId,
+    });
     if (signal.aborted) return "";
     const line = composeSceneTags({ characters: cast, locationTags, actionTags, places, knownTags });
     // Stored whether or not an image follows, so the player can read and edit what would be sent.
@@ -2990,40 +2999,28 @@ ${playerNotes || NONE_PLACEHOLDER}
     narration: string,
     signal: AbortSignal,
     quiet = false,
-  ): Promise<string> => {
-    let prompt = renderPromptTemplate(choicesPrompt, { ...ctx, ...sceneEntityTokens });
-    if (language.toLowerCase() != "english") prompt += `\n Choice language: ` + language;
-    return makeAIRequest(
-      prompt,
-      [{ role: "user", content: renderPromptTemplate(choicesUserPrompt, { "<PLAYER ACTION>": action, "<NARRATION>": narration }) }],
-      "choices",
-      null,
+  ): Promise<string> =>
+    makeAIRequest({
+      systemPrompt: choicesSystemPrompt(choicesPrompt, language, { ...ctx, ...sceneEntityTokens }),
+      messages: [{ role: "user", content: renderPromptTemplate(choicesUserPrompt, { "<PLAYER ACTION>": action, "<NARRATION>": narration }) }],
+      type: "choices",
       signal,
-      false,
-      undefined,
       quiet,
-    );
-  };
+    });
   const requestStats = (
     ctx: Record<string, string>,
     action: string,
     narration: string,
     signal: AbortSignal,
     quiet = false,
-  ): Promise<string> => {
-    let prompt = renderPromptTemplate(statUpdatesPrompt, ctx);
-    if (language.toLowerCase() != "english") prompt += "\n Please write in english";
-    return makeAIRequest(
-      prompt,
-      [{ role: "user", content: renderPromptTemplate(statUpdatesUserPrompt, { "<PLAYER ACTION>": action, "<NARRATION>": narration }) }],
-      "statUpdates",
-      null,
+  ): Promise<string> =>
+    makeAIRequest({
+      systemPrompt: statUpdatesSystemPrompt(statUpdatesPrompt, language, ctx),
+      messages: [{ role: "user", content: renderPromptTemplate(statUpdatesUserPrompt, { "<PLAYER ACTION>": action, "<NARRATION>": narration }) }],
+      type: "statUpdates",
       signal,
-      false,
-      undefined,
       quiet,
-    );
-  };
+    });
 
   // DEV-only: expose window.__baseline for the fork-local test harness (no-op in production builds).
   const debugTurnsRef = useRef(debugTurns);
@@ -3054,15 +3051,14 @@ ${playerNotes || NONE_PLACEHOLDER}
     setDigestActive(true);
     (async () => {
       try {
-        const digest = await makeAIRequestRef.current(
-          renderPromptTemplate(summaryPrompt, buildContextValues()),
-          [{ role: "user", content: renderPromptTemplate(summaryUserPrompt, { "<PLAYER ACTION>": stripOocDirectives(playerAction), "<NARRATION>": narrationText }) }],
-          "summary",
-          DIGEST_MAX_TOKENS,
-          undefined,
-          true, // silent: no "Generating…" label; surfaces only when "Show Silent Requests" is on
-          turnId, // attach the request to the turn it summarizes in the AI-context viewer
-        );
+        const digest = await makeAIRequestRef.current({
+          systemPrompt: renderPromptTemplate(summaryPrompt, buildContextValues()),
+          messages: [{ role: "user", content: summaryUserMessage(summaryUserPrompt, playerAction, narrationText) }],
+          type: "summary",
+          maxTokens: DIGEST_MAX_TOKENS,
+          silent: true,
+          attachTurnId: turnId, // so the viewer shows it under the turn it summarizes
+        });
         const trimmed = (digest ?? "").trim();
         if (trimmed) setFullMessageHistory((prev) => applyDigest(prev, turnId, trimmed) ?? prev);
       } catch {
@@ -3117,21 +3113,20 @@ ${playerNotes || NONE_PLACEHOLDER}
     setMilestoneActive(true);
     (async () => {
       try {
-        const reply = await makeAIRequestRef.current(
-          defaultMilestoneIncrementalPrompt,
-          [{
+        const reply = await makeAIRequestRef.current({
+          systemPrompt: defaultMilestoneIncrementalPrompt,
+          messages: [{
             role: "user",
             content: buildIncrementalMilestoneUserMessage(
               shownOld.map((t) => (t.summary ?? "").trim()),
               freshCands.map((t) => (t.summary ?? "").trim()),
             ),
           }],
-          "milestoneSelect",
-          MILESTONE_SELECT_MAX_TOKENS,
-          undefined,
-          true, // silent: surfaces only when "Show Silent Requests" is on
+          type: "milestoneSelect",
+          maxTokens: MILESTONE_SELECT_MAX_TOKENS,
+          silent: true,
           attachTurnId,
-        );
+        });
         const verdict = parseIncrementalMilestoneReply((reply ?? "").trim(), shownOld.length, freshCands.length);
         // Write-time importance: the selector rates a moment once, as it ages in, and the rating rides
         // the turn from then on. Unrated keeps stay unrated (neutral), never zero.
@@ -3172,15 +3167,14 @@ ${playerNotes || NONE_PLACEHOLDER}
     if (!narrationText.trim()) return false;
     const playerAction = idx > 0 && fullMessageHistory[idx - 1].role === "user" ? fullMessageHistory[idx - 1].content : "";
     try {
-      const digest = await makeAIRequestRef.current(
-        renderPromptTemplate(summaryPrompt, buildContextValues()),
-        [{ role: "user", content: renderPromptTemplate(summaryUserPrompt, { "<PLAYER ACTION>": stripOocDirectives(playerAction), "<NARRATION>": narrationText }) }],
-        "summary",
-        DIGEST_MAX_TOKENS,
-        undefined,
-        true, // silent: surfaces only when "Show Silent Requests" is on
-        turnId,
-      );
+      const digest = await makeAIRequestRef.current({
+        systemPrompt: renderPromptTemplate(summaryPrompt, buildContextValues()),
+        messages: [{ role: "user", content: summaryUserMessage(summaryUserPrompt, playerAction, narrationText) }],
+        type: "summary",
+        maxTokens: DIGEST_MAX_TOKENS,
+        silent: true,
+        attachTurnId: turnId,
+      });
       const trimmed = (digest ?? "").trim();
       if (!trimmed) return false;
       setMemoryEdits((prev) => ({ ...prev, [turnId]: { text: trimmed, source: 'ai' } }));
@@ -3282,15 +3276,14 @@ ${playerNotes || NONE_PLACEHOLDER}
     setDiaryActive(true);
     (async () => {
       try {
-        const entry = await makeAIRequestRef.current(
-          renderPromptTemplate(diaryPrompt, buildContextValues()),
-          [{ role: "user", content: buildDiaryUserMessage({ name, entity, narration: narrationText }) }],
-          "diary",
-          DIARY_MAX_TOKENS,
-          undefined,
-          true, // silent: surfaces only when "Show Silent Requests" is on
-          turnId, // attach the request to the turn it records in the AI-context viewer
-        );
+        const entry = await makeAIRequestRef.current({
+          systemPrompt: renderPromptTemplate(diaryPrompt, buildContextValues()),
+          messages: [{ role: "user", content: buildDiaryUserMessage({ name, entity, narration: narrationText }) }],
+          type: "diary",
+          maxTokens: DIARY_MAX_TOKENS,
+          silent: true,
+          attachTurnId: turnId, // so the viewer shows it under the turn it records
+        });
         const trimmed = (entry ?? "").trim();
         // Store even an empty result (as "") so the participant isn't retried forever on a blank reply.
         setFullMessageHistory((prev) => applyDiary(prev, turnId, name, trimmed) ?? prev);
@@ -3322,15 +3315,14 @@ ${playerNotes || NONE_PLACEHOLDER}
     setDiscoverActive(true);
     (async () => {
       try {
-        const description = await makeAIRequestRef.current(
-          defaultDiscoverEntityPrompt,
-          [{ role: "user", content: `${DISCOVER_NAME_LABEL} ${due.name}\n\n${DISCOVER_PASSAGE_LABEL}\n${due.narration}` }],
-          "discoverEntity",
-          DISCOVER_MAX_TOKENS,
-          undefined,
-          true, // silent: surfaces only when "Show Silent Requests" is on
-          due.turnId, // attach the request to the turn that introduced the character
-        );
+        const description = await makeAIRequestRef.current({
+          systemPrompt: defaultDiscoverEntityPrompt,
+          messages: [{ role: "user", content: discoverUserMessage(due.name, due.narration) }],
+          type: "discoverEntity",
+          maxTokens: DISCOVER_MAX_TOKENS,
+          silent: true,
+          attachTurnId: due.turnId, // so the viewer shows it under the turn that introduced the character
+        });
         // Small models parrot the prompt labels and get token-capped mid-word — sanitize before storing.
         const cleaned = cleanDiscoveredDescription(description ?? "", due.name);
         if (!cleaned) return; // no usable description — leave it due, retry on a later idle tick
@@ -3405,15 +3397,15 @@ ${playerNotes || NONE_PLACEHOLDER}
       semantic,
     });
 
-    const response = await makeAIRequestRef.current(
-      defaultRegenEntityPrompt,
-      [{ role: "user", content: buildRegenUserMessage(name, context) }],
-      "discoverEntity",
-      DISCOVER_MAX_TOKENS,
+    const response = await makeAIRequestRef.current({
+      systemPrompt: defaultRegenEntityPrompt,
+      messages: [{ role: "user", content: buildRegenUserMessage(name, context) }],
+      type: "discoverEntity",
+      maxTokens: DISCOVER_MAX_TOKENS,
       signal,
-      true, // silent: surfaces only when "Show Silent Requests" is on
-      record?.sourceTurnId,
-    );
+      silent: true,
+      attachTurnId: record?.sourceTurnId,
+    });
     if (signal.aborted) return null;
     return cleanDiscoveredDescription(response ?? "", name, REGEN_LABELS) || null;
   }, [discoveredEntities, semanticMemory, characterDiaries, memoryDigests, fullMessageHistory]);
