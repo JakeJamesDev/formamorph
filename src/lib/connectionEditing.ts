@@ -46,6 +46,12 @@ export function withDirection(
   return { ...connection, from, to, twoWay: false };
 }
 
+/** The record with a new travel hint. A hint that is blank or only spaces drops the field rather than
+ *  storing it, so an exported world has one shape for "no hint" instead of three. */
+export function withHint(connection: Connection, hint: string): Connection {
+  return { ...connection, aiHint: hint.trim() ? hint : undefined };
+}
+
 /** Every Connection touching `locationId`, each turned into the view that location sees. A self-link is
  *  left out: it has no partner to name and reaches nowhere. */
 export function connectionsAt(locationId: string, connections: Connection[]): ConnectionView[] {

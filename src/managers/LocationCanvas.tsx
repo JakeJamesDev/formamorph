@@ -1,24 +1,33 @@
-import { useCallback, useEffect, useMemo } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
-  Background, BaseEdge, Controls, EdgeLabelRenderer, Handle, MarkerType, Position, ReactFlow,
-  ReactFlowProvider, useInternalNode, useNodesState,
+  Background, BaseEdge, Controls, EdgeLabelRenderer, Handle, MarkerType, Panel, Position, ReactFlow,
+  ReactFlowProvider, useConnection, useInternalNode, useNodesState,
   type Edge, type EdgeProps, type Node, type NodeProps,
 } from '@xyflow/react';
 import '@xyflow/react/dist/base.css';
-import { AlertTriangle, Star } from 'lucide-react';
+import { AlertTriangle, ArrowLeft, ArrowLeftRight, ArrowRight, Star, Trash2, X } from 'lucide-react';
 import { useGameData } from '@/contexts/GameDataContext';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import { describePlaceholders } from '@/lib/placeholders';
-import { buildLocationCanvas, withCanvasPosition, type CanvasEdge, type CanvasNodeData } from '@/lib/locationCanvas';
+import type { ConnectionDirection } from '@/lib/connectionEditing';
+import {
+  buildLocationCanvas, connectIntent, connectionEnds, deleteIntent, directionIntent, directionOf, hintIntent,
+  withCanvasPosition,
+  type CanvasEdge, type CanvasIntent, type CanvasNodeData,
+} from '@/lib/locationCanvas';
 import { cn } from '@/lib/utils';
+import type { Connection } from '@/types';
 
 /**
- * The Locations canvas: the world's navigable shape as a map. What the map *means* comes from
- * `lib/locationCanvas` — which boxes nest, which arrows exist, where each one points — and a drag goes back
- * to it, so the graph's rules are testable without mounting a canvas. What is left here is drawing: the
- * boxes, and the geometry of where an arrow meets the box it points at.
+ * The Locations canvas: the world's navigable shape as a map, and the primary place to draw on it. What a
+ * gesture *means* comes from `lib/locationCanvas` — which boxes nest, which arrows exist, and what dragging
+ * between two of them asks the world to become — so the graph's rules are testable without mounting a canvas.
+ * What is left here is drawing, and handing each gesture's intent to the editor's own write path, which is
+ * why an edit made here and one made in the list panel are the same edit to the same record.
  *
- * Drawing Connections and dragging a location between boxes arrive with the next tickets; today a node is
- * arrangeable and opens its full editor when clicked.
+ * Dragging a location between boxes to reparent it arrives with the next ticket.
  */
 
 // xyflow requires a node's data to be indexable; the mapper's shape is the useful half of it.
@@ -36,26 +45,53 @@ const NodeBadges = ({ data }: { data: CanvasNodeData }) => (
   </>
 );
 
-/** Edges attach to a node's center and are clipped to its border by `FloatingEdge`, so the handles are
- *  anchors rather than visible ports. */
-const EdgeAnchors = () => (
-  <>
-    <Handle type="target" position={Position.Top} className="!pointer-events-none !opacity-0" isConnectable={false} />
-    <Handle type="source" position={Position.Top} className="!pointer-events-none !opacity-0" isConnectable={false} />
-  </>
-);
+/**
+ * Where a Connection is drawn from and dropped onto. Edges attach to a node's center and are clipped to its
+ * border by `FloatingEdge`, so neither handle is where an arrow visibly lands.
+ *
+ * The source is a small grip on the node's edge, so dragging the box still moves the box. The drop target
+ * only exists while a Connection is being drawn, and covers the whole box — the author aims at a location
+ * rather than at a dot. A group's cover is its title strip, so the sub-locations inside it stay their own
+ * targets.
+ */
+const EdgeAnchors = ({ dropHeight }: { dropHeight: string }) => {
+  const drawing = useConnection((c) => c.inProgress);
+  return (
+    <>
+      <Handle
+        type="source"
+        position={Position.Right}
+        title="Drag To Connect"
+        className="!h-3 !w-3 !border-2 !border-background !bg-primary opacity-0 transition-opacity group-hover/node:opacity-100"
+      />
+      <Handle
+        type="target"
+        position={Position.Left}
+        // xyflow marks the handle under the cursor `connectingto`, and `valid` only when the drop would be
+        // accepted — so a pair that already has a Connection lights up as refused instead of silently
+        // swallowing the drag.
+        className={cn(
+          '!left-0 !top-0 !w-full !transform-none !rounded-md !border-0 !opacity-0',
+          '!bg-destructive/15 [&.valid]:!bg-primary/15 [&.connectingto]:!opacity-100',
+          dropHeight,
+          drawing ? '' : '!pointer-events-none',
+        )}
+      />
+    </>
+  );
+};
 
 /** A location with no sub-locations: one box carrying its name. */
 const LocationNode = ({ data, selected }: NodeProps<LocationNodeType>) => (
   <div
     title={data.unreachable ? UNREACHABLE_TITLE : undefined}
     className={cn(
-      'flex h-full w-full items-center justify-center gap-1.5 rounded-md border bg-card px-3 text-label text-card-foreground',
+      'group/node flex h-full w-full items-center justify-center gap-1.5 rounded-md border bg-card px-3 text-label text-card-foreground',
       data.unreachable && 'border-destructive',
       selected && 'ring-2 ring-ring',
     )}
   >
-    <EdgeAnchors />
+    <EdgeAnchors dropHeight="!h-full" />
     <NodeBadges data={data} />
     <span className="truncate">{data.label}</span>
   </div>
@@ -67,12 +103,12 @@ const LocationGroupNode = ({ data, selected }: NodeProps<LocationNodeType>) => (
   <div
     title={data.unreachable ? UNREACHABLE_TITLE : undefined}
     className={cn(
-      'h-full w-full rounded-md border bg-muted/40',
+      'group/node h-full w-full rounded-md border bg-muted/40',
       data.unreachable && 'border-destructive',
       selected && 'ring-2 ring-ring',
     )}
   >
-    <EdgeAnchors />
+    <EdgeAnchors dropHeight="!h-9" />
     <div className="flex items-center gap-1.5 rounded-t-md border-b bg-card px-3 py-1.5 text-label text-card-foreground">
       <NodeBadges data={data} />
       <span className="truncate">{data.label}</span>
@@ -142,8 +178,9 @@ const FloatingEdge = ({ id, source, target, markerEnd, style, label }: EdgeProps
 
 const edgeTypes = { floating: FloatingEdge };
 
-/** Dashed and muted for free implicit travel, solid and primary-colored for an authored Connection. */
-function toFlowEdge(edge: CanvasEdge): Edge {
+/** Dashed and muted for free implicit travel, solid and primary-colored for an authored Connection. Both
+ *  answer a click, so the cursor says so — one selects its record, the other becomes one. */
+function toFlowEdge(edge: CanvasEdge, selected: boolean): Edge {
   const implicit = edge.kind === 'implicit';
   const color = implicit ? 'hsl(var(--muted-foreground))' : 'hsl(var(--primary))';
   return {
@@ -154,15 +191,87 @@ function toFlowEdge(edge: CanvasEdge): Edge {
     label: edge.label,
     style: {
       stroke: color,
-      strokeWidth: implicit ? 1.3 : 2,
+      strokeWidth: implicit ? 1.3 : selected ? 3.5 : 2,
+      cursor: 'pointer',
       ...(implicit ? { strokeDasharray: '5 5', opacity: 0.8 } : {}),
     },
     markerEnd: { type: MarkerType.ArrowClosed, color, width: implicit ? 14 : 16, height: implicit ? 14 : 16 },
   };
 }
 
+/** The three ways a pair's travel can run, worded from the pair's first end so the option an author just
+ *  clicked stays where it was. Full names live in the labels; the arrows read against the header. */
+const DIRECTIONS: { value: ConnectionDirection; Icon: typeof ArrowRight; label: (a: string, b: string) => string }[] = [
+  { value: 'two-way', Icon: ArrowLeftRight, label: (a, b) => `Travel both ways between ${a} and ${b}` },
+  { value: 'outgoing', Icon: ArrowRight, label: (a, b) => `Travel one way, ${a} to ${b}` },
+  { value: 'incoming', Icon: ArrowLeft, label: (a, b) => `Travel one way, ${b} to ${a}` },
+];
+
+/**
+ * The selected arrow's record, edited in place on the map: which way travel runs, how the narration should
+ * describe making the trip, and whether the link exists at all. Every control hands its intent back, so the
+ * panel decides nothing about what an edit means.
+ */
+const ConnectionInspector = ({ connection, nameOf, onIntent, onClose }: {
+  connection: Connection;
+  nameOf: (id: string) => string;
+  onIntent: (intent: CanvasIntent) => void;
+  onClose: () => void;
+}) => {
+  const [a, b] = connectionEnds(connection);
+  const names = [nameOf(a), nameOf(b)] as const;
+  return (
+    <Panel position="top-right" className="!m-2 w-72 space-y-2 rounded-md border bg-card p-3 shadow-md">
+      <div className="flex items-center gap-1">
+        <span className="min-w-0 flex-grow truncate text-label" title={`${names[0]} — ${names[1]}`}>
+          {names[0]} — {names[1]}
+        </span>
+        <Button variant="ghost" size="icon" className="h-7 w-7 shrink-0" title="Delete Connection"
+          onClick={() => onIntent(deleteIntent(connection))}>
+          <Trash2 className="h-4 w-4" />
+        </Button>
+        <Button variant="ghost" size="icon" className="h-7 w-7 shrink-0" title="Close" onClick={onClose}>
+          <X className="h-4 w-4" />
+        </Button>
+      </div>
+      <ToggleGroup
+        type="single"
+        className="w-full"
+        value={directionOf(connection)}
+        aria-label="Direction of Travel"
+        // A single ToggleGroup clears its value when the active item is clicked again; a Connection always
+        // runs some direction, so an empty result is ignored rather than stored.
+        onValueChange={(v) => { if (v) onIntent(directionIntent(connection, v as ConnectionDirection)); }}
+      >
+        {DIRECTIONS.map(({ value, Icon, label }) => (
+          <ToggleGroupItem key={value} value={value} className="flex-1" aria-label={label(...names)} title={label(...names)}>
+            <Icon className="h-4 w-4" />
+          </ToggleGroupItem>
+        ))}
+      </ToggleGroup>
+      <Input
+        value={connection.aiHint || ''}
+        onChange={(e) => onIntent(hintIntent(connection, e.target.value))}
+        placeholder="Travel Hint, e.g. through the shimmering portal"
+        aria-label="Travel Hint"
+      />
+    </Panel>
+  );
+};
+
 const CanvasInner = ({ selectedId, onSelect }: { selectedId: string | null; onSelect: (id: string) => void }) => {
-  const { locations, setLocations, connections, placeholders } = useGameData();
+  const {
+    locations, setLocations, connections, addConnection, updateConnection, removeConnection, placeholders,
+  } = useGameData();
+  const [selectedConnectionId, setSelectedConnectionId] = useState<string | null>(null);
+
+  const nameOf = useCallback(
+    (id: string) => {
+      const found = locations.find((l) => l.id === id);
+      return (found && describePlaceholders(found.name, placeholders)) || 'Unnamed Location';
+    },
+    [locations, placeholders],
+  );
 
   const map = useMemo(
     () => buildLocationCanvas(locations, connections, {
@@ -170,6 +279,31 @@ const CanvasInner = ({ selectedId, onSelect }: { selectedId: string | null; onSe
     }),
     [locations, connections, placeholders],
   );
+
+  // Selection follows the record, not the arrow: a flip rewrites the record's ends and swaps which arrows
+  // exist, so the panel would close under the author's hand if it were pinned to an arrow's id.
+  const selectedConnection = connections.find((c) => c.id === selectedConnectionId) ?? null;
+
+  const applyIntent = useCallback((intent: CanvasIntent | null) => {
+    if (!intent) return;
+    if (intent.kind === 'add') {
+      addConnection(intent.connection);
+      setSelectedConnectionId(intent.connection.id); // a fresh Connection opens for annotation
+    } else if (intent.kind === 'update') {
+      updateConnection(intent.connection);
+    } else {
+      removeConnection(intent.connectionId);
+      setSelectedConnectionId(null);
+    }
+  }, [addConnection, updateConnection, removeConnection]);
+
+  // A dashed arrow is a click away from being authored; a solid one opens the record it came from.
+  const handleEdgeClick = useCallback((_: unknown, edge: Edge) => {
+    const clicked = map.edges.find((e) => e.id === edge.id);
+    if (!clicked) return;
+    if (clicked.connectionId) setSelectedConnectionId(clicked.connectionId);
+    else applyIntent(connectIntent(clicked.source, clicked.target, connections));
+  }, [map, connections, applyIntent]);
 
   const [nodes, setNodes, onNodesChange] = useNodesState<LocationNodeType>([]);
   // The mapper owns what is on the map; xyflow owns only the in-flight drag, so a world edit anywhere
@@ -190,7 +324,10 @@ const CanvasInner = ({ selectedId, onSelect }: { selectedId: string | null; onSe
     })));
   }, [map, selectedId, setNodes]);
 
-  const edges = useMemo(() => map.edges.map(toFlowEdge), [map]);
+  const edges = useMemo(
+    () => map.edges.map((edge) => toFlowEdge(edge, edge.connectionId === selectedConnectionId)),
+    [map, selectedConnectionId],
+  );
 
   const handleDragStop = useCallback(
     (_: unknown, node: Node) => setLocations(withCanvasPosition(locations, node.id, node.position)),
@@ -205,8 +342,14 @@ const CanvasInner = ({ selectedId, onSelect }: { selectedId: string | null; onSe
       edgeTypes={edgeTypes}
       onNodesChange={onNodesChange}
       onNodeDragStop={handleDragStop}
-      onNodeClick={(_, node) => onSelect(node.id)}
-      nodesConnectable={false}
+      onNodeClick={(_, node) => { setSelectedConnectionId(null); onSelect(node.id); }}
+      onEdgeClick={handleEdgeClick}
+      onPaneClick={() => setSelectedConnectionId(null)}
+      onConnect={({ source, target }) => applyIntent(connectIntent(source, target, connections))}
+      // The same rule the gesture obeys, so a drag onto a pair that already has a record reads as
+      // refused while it is being drawn rather than landing and doing nothing.
+      isValidConnection={({ source, target }) => !!connectIntent(source, target, connections)}
+      connectionLineStyle={{ stroke: 'hsl(var(--primary))', strokeWidth: 2 }}
       deleteKeyCode={null}
       minZoom={0.2}
       fitView
@@ -214,6 +357,14 @@ const CanvasInner = ({ selectedId, onSelect }: { selectedId: string | null; onSe
     >
       <Background className="!bg-background" color="hsl(var(--border))" />
       <Controls showInteractive={false} />
+      {selectedConnection && (
+        <ConnectionInspector
+          connection={selectedConnection}
+          nameOf={nameOf}
+          onIntent={applyIntent}
+          onClose={() => setSelectedConnectionId(null)}
+        />
+      )}
     </ReactFlow>
   );
 };

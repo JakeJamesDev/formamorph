@@ -1,4 +1,7 @@
 import type { Connection, GameLocation } from "@/types";
+import {
+  createConnection, directionFrom, withDirection, withHint, type ConnectionDirection,
+} from "./connectionEditing";
 import { implicitPairs, overriddenPairs, pairKey, reachableFromStarts } from "./locationGraph";
 
 /**
@@ -217,4 +220,59 @@ export function withCanvasPosition(
     y: Math.round(nested ? Math.max(position.y, GROUP_HEADER) : position.y),
   };
   return locations.map((l) => (l.id === id ? { ...l, canvasPosition } : l));
+}
+
+/**
+ * What a canvas gesture asks the world to become. The canvas never writes a Connection itself: a gesture
+ * produces one of these and the shell hands it to the editor's own add/update/remove path, so what every
+ * gesture *means* is testable without mounting a canvas — and both surfaces edit the one set of records.
+ */
+export type CanvasIntent =
+  | { kind: "add"; connection: Connection }
+  | { kind: "update"; connection: Connection }
+  | { kind: "remove"; connectionId: string };
+
+/**
+ * A pair's two ends in a fixed order. A one-way direction is stored by rewriting `from` and `to`, so the
+ * record's own ends swap under a flip — reading them in a stable order is what keeps the direction control's
+ * three options in the same places while the author clicks between them. The first end is the one the
+ * canvas words a direction from, standing in for the location a list panel would be open on.
+ */
+export function connectionEnds(connection: Connection): [string, string] {
+  return [connection.from, connection.to].sort() as [string, string];
+}
+
+/** Which of the direction control's options a record currently sits on. */
+export function directionOf(connection: Connection): ConnectionDirection {
+  return directionFrom(connection, connectionEnds(connection)[0]);
+}
+
+/**
+ * Dragging between two locations and clicking a dashed implicit arrow ask for the same thing: this pair gets
+ * a two-way Connection, the common case needing no follow-up click. Nothing comes of a self-drag, or of a
+ * pair that already has a record — a Connection is its pair's whole travel rule, so a second would contradict
+ * the first rather than add to it.
+ */
+export function connectIntent(fromId: string, toId: string, connections: Connection[]): CanvasIntent | null {
+  if (fromId === toId) return null;
+  const key = pairKey(fromId, toId);
+  if (connections.some((c) => pairKey(c.from, c.to) === key)) return null;
+  return { kind: "add", connection: createConnection(fromId, toId) };
+}
+
+/** The direction control on a selected arrow — the list panel's own edit, anchored to the pair's first end
+ *  instead of to the location whose panel is open. */
+export function directionIntent(connection: Connection, direction: ConnectionDirection): CanvasIntent {
+  return { kind: "update", connection: withDirection(connection, connectionEnds(connection)[0], direction) };
+}
+
+/** The travel hint on a selected arrow. */
+export function hintIntent(connection: Connection, hint: string): CanvasIntent {
+  return { kind: "update", connection: withHint(connection, hint) };
+}
+
+/** Deleting a selected arrow deletes the record both of the pair's directions came from, which hands the
+ *  pair back to whatever implicit travel it had before. */
+export function deleteIntent(connection: Connection): CanvasIntent {
+  return { kind: "remove", connectionId: connection.id };
 }

@@ -1,8 +1,10 @@
 import { describe, it, expect } from "vitest";
 import {
   CANVAS_NODE_HEIGHT, CANVAS_NODE_WIDTH, GROUP_HEADER, GROUP_PADDING,
-  buildLocationCanvas, withCanvasPosition,
+  buildLocationCanvas, connectIntent, connectionEnds, deleteIntent, directionIntent, directionOf,
+  hintIntent, withCanvasPosition, type CanvasIntent,
 } from "./locationCanvas";
+import { connectionsAt } from "./connectionEditing";
 import type { Connection, GameLocation } from "@/types";
 
 // village > { tavern > cellar, house } ; landing and shore are top-level.
@@ -194,5 +196,119 @@ describe("withCanvasPosition", () => {
 
   it("returns the same array when the location is unknown", () => {
     expect(withCanvasPosition(world, "nowhere", { x: 1, y: 2 })).toBe(world);
+  });
+});
+
+/** The world an intent asks for, so a gesture is judged by what the map becomes, not by its own shape. */
+const applied = (connections: Connection[], intent: CanvasIntent | null): Connection[] => {
+  if (!intent) return connections;
+  if (intent.kind === "add") return [...connections, intent.connection];
+  if (intent.kind === "remove") return connections.filter((c) => c.id !== intent.connectionId);
+  return connections.map((c) => (c.id === intent.connection.id ? intent.connection : c));
+};
+
+describe("connectIntent", () => {
+  it("gives a dragged pair a two-way Connection", () => {
+    const intent = connectIntent("landing", "shore", []);
+    expect(intent).toMatchObject({ kind: "add", connection: { from: "landing", to: "shore", twoWay: true } });
+    expect(edgeIds([landing, shore], applied([], intent)).length).toBe(2);
+  });
+
+  it("materializes a dashed implicit arrow into the pair's whole travel rule", () => {
+    // Clicking Tavern↔House's dashed arrow is the same gesture as dragging between them.
+    const before = canvas([village, tavern, house]).edges;
+    expect(before.every((e) => e.kind === "implicit")).toBe(true);
+    const after = canvas([village, tavern, house], applied([], connectIntent("tavern", "house", []))).edges;
+    expect(after.map((e) => e.kind)).toEqual(["connection", "connection"]);
+  });
+
+  it("asks for nothing from a self-drag", () => {
+    expect(connectIntent("shore", "shore", [])).toBeNull();
+  });
+
+  it("asks for nothing where a record already runs, whichever end the drag started from", () => {
+    const existing: Connection = { id: "c7", from: "shore", to: "landing", twoWay: false };
+    expect(connectIntent("shore", "landing", [existing])).toBeNull();
+    expect(connectIntent("landing", "shore", [existing])).toBeNull();
+  });
+});
+
+describe("directionIntent", () => {
+  const conn: Connection = { id: "c8", from: "shore", to: "landing", twoWay: true, aiHint: "along the jetty" };
+  // Ends read in a stable order, so a flip doesn't shuffle the control the author just clicked.
+  const [a, b] = connectionEnds(conn);
+
+  it("reads a record's current direction from its stable ends", () => {
+    expect(directionOf(conn)).toBe("two-way");
+    expect(directionOf({ ...conn, twoWay: false, from: a, to: b })).toBe("outgoing");
+    expect(directionOf({ ...conn, twoWay: false, from: b, to: a })).toBe("incoming");
+  });
+
+  it("names the same two ends whichever way the record currently runs", () => {
+    expect(connectionEnds({ ...conn, from: "landing", to: "shore" })).toEqual([a, b]);
+  });
+
+  it("narrows travel to one way, and flips which way, by rewriting the record's ends", () => {
+    const oneWay = directionIntent(conn, "outgoing");
+    expect(oneWay.kind).toBe("update");
+    const forward = applied([conn], oneWay);
+    expect(forward[0]).toMatchObject({ id: "c8", from: a, to: b, twoWay: false, aiHint: "along the jetty" });
+    // One arrow, pointing the way travel now runs.
+    const drawn = canvas([landing, shore], forward).edges;
+    expect(drawn.map((e) => [e.source, e.target])).toEqual([[a, b]]);
+    const flipped = applied(forward, directionIntent(forward[0], "incoming"));
+    expect(canvas([landing, shore], flipped).edges.map((e) => [e.source, e.target])).toEqual([[b, a]]);
+  });
+
+  it("widens a one-way record back to two-way without moving its ends", () => {
+    const oneWay: Connection = { ...conn, twoWay: false, from: b, to: a };
+    const both = applied([oneWay], directionIntent(oneWay, "two-way"));
+    expect(both[0]).toMatchObject({ from: b, to: a, twoWay: true });
+    expect(canvas([landing, shore], both).edges.length).toBe(2);
+  });
+
+  it("shows the same edit from both ends in the list editor", () => {
+    const oneWay = applied([conn], directionIntent(conn, "outgoing"));
+    expect(connectionsAt(a, oneWay)[0].direction).toBe("outgoing");
+    expect(connectionsAt(b, oneWay)[0].direction).toBe("incoming");
+  });
+
+  it("recomputes the unreachable badge as travel narrows", () => {
+    // Shore is an island until Landing links it; a one-way link out again strands it.
+    expect(nodeOf([landing, shore], "shore").data.unreachable).toBe(true);
+    const linked = applied([], connectIntent("landing", "shore", []));
+    expect(nodeOf([landing, shore], "shore", linked).data.unreachable).toBe(false);
+    const leavingShore = connectionEnds(linked[0])[0] === "shore" ? "outgoing" : "incoming";
+    const away = applied(linked, directionIntent(linked[0], leavingShore));
+    expect(away[0]).toMatchObject({ from: "shore", to: "landing", twoWay: false });
+    expect(nodeOf([landing, shore], "shore", away).data.unreachable).toBe(true);
+  });
+});
+
+describe("hintIntent", () => {
+  const conn: Connection = { id: "c9", from: "shore", to: "landing", twoWay: true };
+
+  it("labels the arrow with what the author typed", () => {
+    const hinted = applied([conn], hintIntent(conn, "along the jetty"));
+    expect(canvas([landing, shore], hinted).edges.find((e) => e.label)?.label).toBe("along the jetty");
+  });
+
+  it("drops the field when the hint is cleared, so an empty hint has one shape", () => {
+    const hinted = { ...conn, aiHint: "along the jetty" };
+    const cleared = applied([hinted], hintIntent(hinted, ""));
+    expect(cleared[0].aiHint).toBeUndefined();
+    expect(canvas([landing, shore], cleared).edges.every((e) => e.label === undefined)).toBe(true);
+    // Spaces are not a hint either, and a hint being typed keeps the space the author just pressed.
+    expect(applied([hinted], hintIntent(hinted, "   "))[0].aiHint).toBeUndefined();
+    expect(applied([conn], hintIntent(conn, "along the "))[0].aiHint).toBe("along the ");
+  });
+});
+
+describe("deleteIntent", () => {
+  it("removes the record both of a pair's arrows came from, and hands the pair back to implicit travel", () => {
+    const conn: Connection = { id: "c10", from: "tavern", to: "house", twoWay: false };
+    const gone = applied([conn], deleteIntent(conn));
+    expect(gone).toEqual([]);
+    expect(edgeIds([village, tavern, house], gone)).toEqual(["implicit:house>tavern", "implicit:tavern>house"]);
   });
 });
