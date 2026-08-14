@@ -148,21 +148,25 @@ const LocationGroupNode = ({ id, data, selected }: NodeProps<LocationNodeType>) 
  * Leaving every box is a real outcome, so it gets a real target: the whole pane, framed and named, standing
  * in for the box there isn't one of. Only when it would be a change — a location already standing on its own
  * is dragged around the map constantly, and framing the pane for every one of those says nothing.
+ *
+ * Drawn on the canvas surface itself: xyflow's own full-pane container, stacked above the grid but beneath
+ * the pane and every box on it, so it reads as the ground the location is being set down on. A Panel is the
+ * wrong tool here twice over — it is anchored to one edge, and it floats over the map like a piece of chrome
+ * the location is being filed into.
  */
 const TopLevelDrop = () => {
   const { active, toTopLevel } = useContext(DropTargetContext);
   if (!active || !toTopLevel) return null;
   return (
-    <Panel position="top-center" className="!pointer-events-none !inset-0 !m-0">
-      <div
-        data-testid="canvas-top-level-drop"
-        className="h-full w-full rounded-md border-2 border-dashed border-primary bg-primary/5"
-      >
-        <span className="m-2 inline-block rounded bg-primary px-2 py-0.5 text-meta text-primary-foreground">
-          Top Level
-        </span>
-      </div>
-    </Panel>
+    <div
+      data-testid="canvas-top-level-drop"
+      style={{ zIndex: 0 }}
+      className="react-flow__container pointer-events-none border-2 border-dashed border-primary bg-primary/5"
+    >
+      <span className="m-2 inline-block rounded bg-primary px-2 py-0.5 text-meta text-primary-foreground">
+        Top Level
+      </span>
+    </div>
   );
 };
 
