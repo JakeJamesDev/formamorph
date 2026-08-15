@@ -1,4 +1,4 @@
-import { test, expect } from '@playwright/test';
+import { test, expect, type Locator } from '@playwright/test';
 import { openApp, gotoDev } from './app';
 
 interface DevRouter {
@@ -70,6 +70,17 @@ const PARENT_CHILD_CONNECTION_WORLD = {
  * canvas in can swallow the panel's clicks without changing a single rendered attribute — only real
  * hit-testing sees it, so this lives here rather than in the Vitest suite.
  */
+/**
+ * A node's x in canvas coordinates, which xyflow writes as the wrapper's own translate. Unlike a bounding box
+ * this is free of the viewport, so it survives a pan, a zoom, or the fit the canvas runs when it opens.
+ */
+async function flowX(node: Locator): Promise<number> {
+  const transform = await node.evaluate((el) => (el as HTMLElement).style.transform);
+  const x = /translate\((-?[\d.]+)px/.exec(transform)?.[1];
+  expect(x, `no translate on the node: ${transform}`).toBeDefined();
+  return Number(x);
+}
+
 test.describe('Locations canvas', () => {
   test('the connection inspector answers clicks', async ({ page }) => {
     await openApp(page);
@@ -578,14 +589,19 @@ test.describe('Locations canvas', () => {
     await page.mouse.click(harbor.x + harbor.width / 2, harbor.y + 12, { button: 'right' });
     await menu.getByRole('menuitem', { name: 'Auto Arrange', exact: true }).click();
 
-    // The two boxes are off each other, and the arrangement is what the world now holds: leaving the canvas
-    // and coming back redraws it from the stored positions.
+    // The two boxes come off each other, and the Dock lands somewhere other than the 30 it was stacked at.
     await expect.poll(overlapping).toBe(false);
-    const laidOut = (await node('loc-child-a').boundingBox())!;
+    const laidOut = await flowX(node('loc-child-a'));
+    expect(Math.abs(laidOut - 30)).toBeGreaterThan(1);
+
+    // The arrangement is what the world now holds rather than something the live canvas is carrying: leaving
+    // the subtab and coming back rebuilds the map from the world, and the box is redrawn where it landed.
+    // Both readings are canvas coordinates — the pane re-fits when it opens, so a screen position would also
+    // carry whatever viewport that fit chose.
     await gotoDev(page, 'mainMenu', { modal: 'worldEditor', tab: 'locations', subtab: 'list' });
     await gotoDev(page, 'mainMenu', { modal: 'worldEditor', tab: 'locations', subtab: 'canvas' });
     await node('loc-child-a').waitFor();
-    expect((await node('loc-child-a').boundingBox())!.x).toBeCloseTo(laidOut.x, 0);
+    expect(await flowX(node('loc-child-a'))).toBeCloseTo(laidOut, 1);
     expect(await overlapping()).toBe(false);
   });
 
