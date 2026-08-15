@@ -2,13 +2,14 @@ import {
   createContext, useCallback, useContext, useEffect, useMemo, useRef, useState,
 } from 'react';
 import {
-  Background, BaseEdge, ControlButton, Controls, EdgeLabelRenderer, Handle, MarkerType, Panel, Position,
-  ReactFlow, ReactFlowProvider, useConnection, useInternalNode, useNodesState, useStoreApi,
+  Background, BaseEdge, ControlButton, Controls, EdgeLabelRenderer, Handle, MarkerType, MiniMap, Panel,
+  Position, ReactFlow, ReactFlowProvider, useConnection, useInternalNode, useNodesState, useReactFlow,
+  useStoreApi,
   type Edge, type EdgeProps, type Node, type NodeProps,
 } from '@xyflow/react';
 import '@xyflow/react/dist/base.css';
 import {
-  AlertTriangle, ArrowLeft, ArrowLeftRight, ArrowRight, Check, Maximize2, Minimize2, Star, Trash2, X,
+  AlertTriangle, ArrowLeft, ArrowLeftRight, ArrowRight, Check, Maximize2, Minimize2, Search, Star, Trash2, X,
 } from 'lucide-react';
 import { useGameData } from '@/contexts/GameDataContext';
 import FullscreenShell from '@/components/FullscreenShell';
@@ -27,7 +28,7 @@ import type { ConnectionDirection } from '@/lib/connectionEditing';
 import {
   applyCanvasDrops, applyCanvasIntent, buildLocationCanvas, CANVAS_GRID, connectIntent, connectionEnds,
   deleteIntent, directionIntent, directionOf, hintIntent, holderOf, isStationaryClick, LONG_PRESS_MS,
-  multiDropIntents, TOUCH_SLOP,
+  multiDropIntents, TOUCH_SLOP, UNNAMED_LOCATION,
   type CanvasEdge, type CanvasIntent, type CanvasNodeData,
 } from '@/lib/locationCanvas';
 import {
@@ -35,6 +36,8 @@ import {
   type CanvasHistory,
 } from '@/lib/canvasHistory';
 import { autoArrange, autoArrangeAll } from '@/lib/locationArrange';
+import { searchLocations, type LocationMatch } from '@/lib/locationSearch';
+import { usePrefersReducedMotion } from '@/lib/usePrefersReducedMotion';
 import { cn } from '@/lib/utils';
 import type { Connection, GameLocation } from '@/types';
 
@@ -64,6 +67,20 @@ interface DropTarget {
 
 const IDLE: DropTarget = { active: false, into: [], toTopLevel: false };
 const DropTargetContext = createContext<DropTarget>(IDLE);
+
+/**
+ * The location the canvas has just traveled to, marked until the author has had time to see where they
+ * landed. Carried as context rather than on the node itself: a flash is a moment, and writing one onto the
+ * node data would redraw every box on the map to say something about one of them.
+ */
+const FlashContext = createContext<string | null>(null);
+
+/** How long a box stays marked after the map travels to it. */
+const FLASH_MS = 1400;
+
+/** Marked as arrived-at: the ring a selected box wears, in the accent color and pulsing where motion is
+ *  welcome. Stands in place of the selection ring rather than beside it — two rings on one box is one ring. */
+const flashRing = 'ring-2 ring-primary motion-safe:animate-pulse';
 
 const UNREACHABLE_TITLE = 'No starting location can reach here';
 
@@ -114,34 +131,40 @@ const EdgeAnchors = ({ dropHeight }: { dropHeight: string }) => {
 };
 
 /** A location with no sub-locations: one box carrying its name. */
-const LocationNode = ({ data, selected }: NodeProps<LocationNodeType>) => (
-  <div
-    title={data.unreachable ? UNREACHABLE_TITLE : undefined}
-    className={cn(
-      'group/node flex h-full w-full items-center justify-center gap-1.5 rounded-md border bg-card px-3 text-label text-card-foreground',
-      data.unreachable && 'border-destructive',
-      selected && 'ring-2 ring-ring',
-    )}
-  >
-    <EdgeAnchors dropHeight="!h-full" />
-    <NodeBadges data={data} />
-    <span className="truncate">{data.label}</span>
-  </div>
-);
+const LocationNode = ({ id, data, selected }: NodeProps<LocationNodeType>) => {
+  const flashing = useContext(FlashContext) === id;
+  return (
+    <div
+      title={data.unreachable ? UNREACHABLE_TITLE : undefined}
+      data-flash={flashing || undefined}
+      className={cn(
+        'group/node flex h-full w-full items-center justify-center gap-1.5 rounded-md border bg-card px-3 text-label text-card-foreground',
+        data.unreachable && 'border-destructive',
+        flashing ? flashRing : selected && 'ring-2 ring-ring',
+      )}
+    >
+      <EdgeAnchors dropHeight="!h-full" />
+      <NodeBadges data={data} />
+      <span className="truncate">{data.label}</span>
+    </div>
+  );
+};
 
 /** A location holding sub-locations: a box around them, named along its top. Being inside the box *is* the
  *  free travel to and from it, which is why no line joins a parent to its children. */
 const LocationGroupNode = ({ id, data, selected }: NodeProps<LocationNodeType>) => {
   // Named while the drag is still in the air: this is the box that would come to hold what is being moved.
   const willTakeTheDrop = useContext(DropTargetContext).into.includes(id);
+  const flashing = useContext(FlashContext) === id;
   return (
     <div
       title={data.unreachable ? UNREACHABLE_TITLE : undefined}
       data-drop-target={willTakeTheDrop || undefined}
+      data-flash={flashing || undefined}
       className={cn(
         'group/node h-full w-full rounded-md border bg-muted/40',
         data.unreachable && 'border-destructive',
-        selected && 'ring-2 ring-ring',
+        flashing ? flashRing : selected && 'ring-2 ring-ring',
         willTakeTheDrop && 'bg-primary/10 ring-2 ring-primary',
       )}
     >
@@ -370,6 +393,130 @@ const CanvasMenu = ({ at, items, onClose }: {
 );
 
 /**
+ * Finding a location on a map too big to read. Full screen only: the pane shows a handful of boxes an author
+ * can already see, and the window is where a world large enough to get lost in is worked on.
+ *
+ * Which locations a query names is `lib/locationSearch`'s answer, path and ordering included, so what counts
+ * as a match is settled without a canvas. All this does is take the typing and hand back the chosen id.
+ */
+const LocationSearch = ({ find, onPick }: {
+  find: (query: string) => LocationMatch[];
+  onPick: (id: string) => void;
+}) => {
+  const [query, setQuery] = useState('');
+  const [active, setActive] = useState(0);
+  const matches = useMemo(() => find(query), [find, query]);
+  // A shrinking result list must not leave the highlight past its end — the next Enter would find nothing.
+  const at = Math.min(active, Math.max(matches.length - 1, 0));
+
+  const pick = (match: LocationMatch | undefined) => {
+    if (!match) return;
+    onPick(match.id);
+    // The query stays: an author reading a name off the list is often on their way to the next one.
+    setActive(0);
+  };
+
+  const onKeyDown = (event: React.KeyboardEvent) => {
+    if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
+      event.preventDefault();
+      const step = event.key === 'ArrowDown' ? 1 : -1;
+      setActive((current) => (current + step + matches.length) % Math.max(matches.length, 1));
+    } else if (event.key === 'Enter') {
+      event.preventDefault();
+      pick(matches[at]);
+    }
+    // Escape is deliberately not taken: it is the way out of the full-screen window everywhere else in the
+    // app, and the dialog answers it before this box ever could.
+  };
+
+  const listId = 'canvas-search-results';
+  return (
+    <Panel position="top-left" className="!m-2 w-64">
+      <div className="relative">
+        <Search className="pointer-events-none absolute left-2 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+        <Input
+          value={query}
+          onChange={(e) => { setQuery(e.target.value); setActive(0); }}
+          onKeyDown={onKeyDown}
+          placeholder="Find a Location"
+          aria-label="Find a Location"
+          role="combobox"
+          aria-expanded={matches.length > 0}
+          aria-controls={listId}
+          aria-activedescendant={matches.length ? `${listId}-${at}` : undefined}
+          autoComplete="off"
+          className="bg-card pl-8"
+        />
+      </div>
+      {!!query.trim() && (
+        <ul
+          id={listId}
+          role="listbox"
+          aria-label="Matching Locations"
+          className="mt-1 max-h-64 overflow-y-auto rounded-md border bg-popover p-1 text-popover-foreground shadow-md"
+        >
+          {matches.map((match, index) => (
+            <li
+              key={match.id}
+              id={`${listId}-${index}`}
+              role="option"
+              aria-selected={index === at}
+              // Pressed rather than clicked: a click would land after the box had lost focus to it, and the
+              // author's next keystroke would go nowhere.
+              onMouseDown={(e) => { e.preventDefault(); pick(match); }}
+              className={cn(
+                'cursor-pointer rounded px-2 py-1.5 text-label',
+                index === at ? 'bg-accent text-accent-foreground' : 'hover:bg-accent hover:text-accent-foreground',
+              )}
+            >
+              <div className="truncate">{match.label}</div>
+              {/* Where it sits, for the two rooms sharing a name that the map tells apart by their boxes. */}
+              {!!match.path.length && (
+                <div className="truncate text-meta text-muted-foreground">{match.path.join(' › ')}</div>
+              )}
+            </li>
+          ))}
+          {!matches.length && (
+            <li className="px-2 py-1.5 text-meta text-muted-foreground">No locations match that name.</li>
+          )}
+        </ul>
+      )}
+    </Panel>
+  );
+};
+
+/**
+ * The whole map at a glance, with the pane's own view drawn on it — full screen only, where there is room for
+ * it and a map big enough to need it. Colored from the app's own tokens rather than the library's defaults,
+ * so it is the same map in either theme.
+ */
+const CanvasMiniMap = ({ onNavigate }: { onNavigate: (at: { x: number; y: number }) => void }) => {
+  // A drag across the minimap ends in a click, and the library hands that click on with no idea a pan just
+  // happened — taken at face value it would throw the view to wherever the finger came off. Where the press
+  // began is what tells the two apart, exactly as it does for the canvas's own right button.
+  const pressedAt = useRef<{ x: number; y: number } | null>(null);
+  return (
+    <div onPointerDownCapture={(e) => { pressedAt.current = { x: e.clientX, y: e.clientY }; }}>
+      <MiniMap
+        pannable
+        zoomable
+        ariaLabel="Locations Minimap"
+        onClick={(event, position) => {
+          if (isStationaryClick(pressedAt.current, { x: event.clientX, y: event.clientY })) onNavigate(position);
+        }}
+        bgColor="hsl(var(--muted))"
+        maskColor="hsl(var(--background) / 0.6)"
+        maskStrokeColor="hsl(var(--primary))"
+        maskStrokeWidth={2}
+        nodeColor="hsl(var(--muted-foreground))"
+        nodeStrokeColor="hsl(var(--border))"
+        className="!bottom-2 !right-2 rounded-md border shadow-md"
+      />
+    </div>
+  );
+};
+
+/**
  * Everything the canvas is *doing* rather than everything it knows: what the author has picked, and which
  * arrow's record is open. Held by the wrapper, because entering full screen re-mounts the surface into a
  * different parent — held here, both would be dropped on the way through, and the author would arrive at the
@@ -406,10 +553,15 @@ const CanvasInner = ({ selectedId, onSelect, session, fullscreen, onToggleFullsc
     setSelectedConnectionId,
   } = session;
   const store = useStoreApi();
+  const { setCenter, getInternalNode, getZoom } = useReactFlow();
+  const reduceMotion = usePrefersReducedMotion();
   const [snap, setSnap] = useCanvasSnap();
   const [gridVisible, setGridVisible] = useCanvasGridVisible();
   const [connectionStyle, setConnectionStyle] = useCanvasConnectionStyle();
   const [menu, setMenu] = useState<{ at: { x: number; y: number }; target: MenuTarget } | null>(null);
+  // The box the map has just traveled to, and the wait before it stops being marked.
+  const [flashId, setFlashId] = useState<string | null>(null);
+  const flashTimer = useRef<number | null>(null);
   const frameRef = useRef<HTMLDivElement | null>(null);
   // Where the pointer last went down, which is what says whether the press that opened a menu had traveled.
   const pointerDownRef = useRef<{ x: number; y: number } | null>(null);
@@ -432,20 +584,50 @@ const CanvasInner = ({ selectedId, onSelect, session, fullscreen, onToggleFullsc
     });
   }, []);
 
+  // One reading of a location's name, for the map, the inspector's header and the search box alike: what the
+  // author sees written on a box is what they search for and what an arrow's panel calls it.
+  const resolveName = useCallback(
+    (location: GameLocation) => describePlaceholders(location.name, placeholders) || UNNAMED_LOCATION,
+    [placeholders],
+  );
+
   const nameOf = useCallback(
     (id: string) => {
       const found = locations.find((l) => l.id === id);
-      return (found && describePlaceholders(found.name, placeholders)) || 'Unnamed Location';
+      return found ? resolveName(found) : UNNAMED_LOCATION;
     },
-    [locations, placeholders],
+    [locations, resolveName],
   );
 
   const map = useMemo(
-    () => buildLocationCanvas(locations, connections, {
-      resolveName: (location) => describePlaceholders(location.name, placeholders) || 'Unnamed Location',
-    }),
-    [locations, connections, placeholders],
+    () => buildLocationCanvas(locations, connections, { resolveName }),
+    [locations, connections, resolveName],
   );
+
+  const findLocations = useCallback(
+    (query: string) => searchLocations(locations, query, { resolveName }),
+    [locations, resolveName],
+  );
+
+  /**
+   * Traveling to a location: the map centers on its box and the box is marked, because a map that simply
+   * moved would leave the author reading every name in the middle of the pane to find the one they asked for.
+   * The zoom is the author's own, only opened up far enough that the name they landed on can be read.
+   */
+  const revealLocation = useCallback((id: string) => {
+    const node = getInternalNode(id);
+    if (!node) return;
+    const { x, y } = node.internals.positionAbsolute;
+    setCenter(x + (node.measured.width ?? 0) / 2, y + (node.measured.height ?? 0) / 2, {
+      zoom: Math.max(getZoom(), 0.8),
+      duration: reduceMotion ? 0 : 400,
+    });
+    setFlashId(id);
+    if (flashTimer.current) window.clearTimeout(flashTimer.current);
+    flashTimer.current = window.setTimeout(() => setFlashId(null), FLASH_MS);
+  }, [getInternalNode, setCenter, getZoom, reduceMotion]);
+
+  useEffect(() => () => { if (flashTimer.current) window.clearTimeout(flashTimer.current); }, []);
 
   // Selection follows the record, not the arrow: a flip rewrites the record's ends and swaps which arrows
   // exist, so the panel would close under the author's hand if it were pinned to an arrow's id.
@@ -715,6 +897,7 @@ const CanvasInner = ({ selectedId, onSelect, session, fullscreen, onToggleFullsc
       onContextMenu={(e) => e.preventDefault()}
     >
       <DropTargetContext.Provider value={dropInto}>
+      <FlashContext.Provider value={flashId}>
       <ReactFlow<LocationNodeType, Edge>
         nodes={nodes}
         edges={edges}
@@ -772,6 +955,14 @@ const CanvasInner = ({ selectedId, onSelect, session, fullscreen, onToggleFullsc
           </ControlButton>
         </Controls>
         <TopLevelDrop />
+        {/* The window's own orientation aids. The pane is a view of a map the author can already take in;
+            these are for the map that has grown past it. */}
+        {fullscreen && <LocationSearch find={findLocations} onPick={revealLocation} />}
+        {fullscreen && (
+          <CanvasMiniMap
+            onNavigate={(at) => setCenter(at.x, at.y, { duration: reduceMotion ? 0 : 200 })}
+          />
+        )}
         {selectedConnection && (
           <ConnectionInspector
             connection={selectedConnection}
@@ -781,6 +972,7 @@ const CanvasInner = ({ selectedId, onSelect, session, fullscreen, onToggleFullsc
           />
         )}
       </ReactFlow>
+      </FlashContext.Provider>
       </DropTargetContext.Provider>
       {menu && (
         <CanvasMenu
