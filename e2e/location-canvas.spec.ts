@@ -41,6 +41,22 @@ const STACKED_WORLD = {
   ],
 };
 
+/**
+ * A world spread far enough apart that no one view holds all of it — the map the minimap and the search box
+ * exist for. The Locker sits two boxes deep, so finding it is finding something nested.
+ */
+const SPREAD_WORLD = {
+  ...WORLD,
+  id: 'e2e-canvas-spread',
+  locations: [
+    { id: 'loc-parent', name: 'Harbor', canvasPosition: { x: 0, y: 0 } },
+    { id: 'loc-child-a', name: 'Dock', parentId: 'loc-parent', canvasPosition: { x: 20, y: 40 } },
+    { id: 'loc-grandchild', name: 'Locker', parentId: 'loc-child-a', canvasPosition: { x: 20, y: 40 } },
+    { id: 'loc-child-b', name: 'Warehouse', parentId: 'loc-parent', canvasPosition: { x: 320, y: 40 } },
+    { id: 'loc-outside', name: 'Beach', canvasPosition: { x: 2600, y: 1600 } },
+  ],
+};
+
 /** A Group with an authored Connection down to one of the locations it holds — the pair the border-anchor
  *  fix is about, and the one arrow whose shape the style picker is watched on. */
 const PARENT_CHILD_CONNECTION_WORLD = {
@@ -499,6 +515,7 @@ test.describe('Locations canvas', () => {
     await page.locator('.react-flow__node[data-id="loc-outside"]').waitFor();
     // The embedded chrome is the zoom controls plus the way to full screen, and nothing else yet.
     await expect(page.locator('.react-flow__minimap')).toHaveCount(0);
+    await expect(page.getByRole('combobox', { name: 'Find a Location' })).toHaveCount(0);
     await expect(page.getByRole('toolbar')).toHaveCount(0);
     const fullscreenButton = page.locator('.react-flow__controls').getByRole('button', { name: 'Edit full screen' });
     await expect(fullscreenButton).toBeVisible();
@@ -710,6 +727,87 @@ test.describe('Locations canvas', () => {
     await page.keyboard.press('Control+Shift+z'); // the other redo chord is a no-op with nothing ahead
     await page.keyboard.press('Control+z');
     await expect.poll(overlapping).toBe(true);
+  });
+
+  /**
+   * The orientation aids only the window carries. What no rendered attribute can show is whether the map
+   * actually traveled: the node's box is measured against the window's own frame before and after, so a
+   * search that filled a list but moved nothing fails here.
+   */
+  test('the full-screen search jumps to a nested location, and the minimap navigates', async ({ page }) => {
+    await openApp(page);
+    await page.evaluate(async (world) => {
+      const dev = (window as unknown as { __fmDev: DevRouter }).__fmDev;
+      const id = await dev.putWorld(world);
+      await dev.editWorld(id);
+    }, SPREAD_WORLD);
+    await gotoDev(page, 'mainMenu', {
+      modal: 'worldEditor', tab: 'locations', subtab: 'canvas', fullscreen: true,
+    });
+
+    const window_ = page.getByRole('dialog', { name: 'Locations Canvas' });
+    const locker = window_.locator('.react-flow__node[data-id="loc-grandchild"]');
+    await locker.waitFor();
+    const minimap = window_.locator('.react-flow__minimap');
+    await expect(minimap).toBeVisible();
+
+    /** Whether the box's middle is inside the canvas's own frame — what "in view" means on a clipped map. */
+    const frame = (await window_.locator('.react-flow').boundingBox())!;
+    const inView = async () => {
+      const box = (await locker.boundingBox())!;
+      const at = { x: box.x + box.width / 2, y: box.y + box.height / 2 };
+      return at.x >= frame.x && at.x <= frame.x + frame.width
+        && at.y >= frame.y && at.y <= frame.y + frame.height;
+    };
+
+    // Zoomed in on the middle of a map far wider than the window, the Locker is off screen — so arriving at
+    // it is the search's doing rather than the opening fit's.
+    const zoomIn = window_.locator('.react-flow__controls').getByRole('button', { name: /zoom in/i });
+    for (let i = 0; i < 5; i += 1) await zoomIn.click();
+    await expect.poll(inView).toBe(false);
+
+    const search = window_.getByRole('combobox', { name: 'Find a Location' });
+    await search.fill('lock');
+    // Two boxes deep, and the list says which ones hold it — a top-level-only search would find nothing here.
+    const option = window_.getByRole('option', { name: /Locker/ });
+    await expect(option).toContainText('Harbor › Dock');
+    await option.click();
+
+    // The map traveled to it, and the box says so until the mark times out.
+    await expect.poll(inView).toBe(true);
+    await expect(locker.locator('[data-flash]')).toHaveCount(1);
+    await expect(locker.locator('[data-flash]')).toHaveCount(0, { timeout: 4000 });
+
+    // A name nothing answers to says so rather than silently offering the last list.
+    await search.fill('nowhere');
+    await expect(window_.getByRole('option')).toHaveCount(0);
+    await expect(window_.getByRole('listbox', { name: 'Matching Locations' })).toContainText('No locations match');
+
+    // And the minimap moves the map on its own: clicking a corner of it is a different view than before.
+    const viewport = () => window_.locator('.react-flow__viewport').getAttribute('style');
+    const before = await viewport();
+    const map = (await minimap.boundingBox())!;
+    await page.mouse.click(map.x + 12, map.y + 12);
+    await expect.poll(viewport).not.toBe(before);
+
+    // A drag slides the view and ends there. The library raises a click on the release too, and taken as a
+    // click that would throw the view to wherever the finger came off — so where the drag ended is asserted
+    // against where a click on that same spot lands.
+    const jumped = await viewport();
+    await page.mouse.move(map.x + map.width / 2, map.y + map.height / 2);
+    await page.mouse.down();
+    await page.mouse.move(map.x + map.width / 2 + 24, map.y + map.height / 2 + 16, { steps: 10 });
+    await page.mouse.up();
+    const dragged = await viewport();
+    expect(dragged).not.toBe(jumped);
+    await page.mouse.click(map.x + map.width / 2 + 24, map.y + map.height / 2 + 16);
+    expect(await viewport()).not.toBe(dragged); // the same point, clicked, does move it — so the drag was left alone
+
+    // Escape from the search box is the way out of the window, exactly as it is from the map: a box holding
+    // focus is not where leaving full screen stops working.
+    await search.fill('lock');
+    await search.press('Escape');
+    await expect(window_).toBeHidden();
   });
 
   /** The dev-route lands on the full-screen canvas in one call, which is what the later tickets verify from. */

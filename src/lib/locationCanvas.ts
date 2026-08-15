@@ -28,6 +28,9 @@ const LAYOUT_GAP = 40;
 export const CANVAS_GRID = LAYOUT_GAP / 2;
 const LAYOUT_ROW_WIDTH = 660;
 
+/** What a location with no name of its own is called, wherever one is read for the author to see. */
+export const UNNAMED_LOCATION = "Unnamed Location";
+
 /** The box a location actually sits in. A parent id pointing at a location that isn't here would strand its
  *  children off the map, so an unknown one reads as top-level. */
 export function holderOf(locations: GameLocation[], loc: GameLocation): string | null {
