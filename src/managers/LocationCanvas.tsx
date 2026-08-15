@@ -25,14 +25,18 @@ import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import { describePlaceholders } from '@/lib/placeholders';
 import type { ConnectionDirection } from '@/lib/connectionEditing';
 import {
-  applyCanvasDrops, buildLocationCanvas, CANVAS_GRID, connectIntent, connectionEnds, deleteIntent,
-  directionIntent, directionOf, hintIntent, holderOf, isStationaryClick, LONG_PRESS_MS, multiDropIntents,
-  TOUCH_SLOP,
+  applyCanvasDrops, applyCanvasIntent, buildLocationCanvas, CANVAS_GRID, connectIntent, connectionEnds,
+  deleteIntent, directionIntent, directionOf, hintIntent, holderOf, isStationaryClick, LONG_PRESS_MS,
+  multiDropIntents, TOUCH_SLOP,
   type CanvasEdge, type CanvasIntent, type CanvasNodeData,
 } from '@/lib/locationCanvas';
+import {
+  canvasHistoryFor, historyShortcut, recordCanvasEdit, redoCanvasEdit, undoCanvasEdit,
+  type CanvasHistory,
+} from '@/lib/canvasHistory';
 import { autoArrange, autoArrangeAll } from '@/lib/locationArrange';
 import { cn } from '@/lib/utils';
-import type { Connection } from '@/types';
+import type { Connection, GameLocation } from '@/types';
 
 /**
  * The Locations canvas: the world's navigable shape as a map, and the primary place to draw on it. What a
@@ -262,7 +266,7 @@ const DIRECTIONS: { value: ConnectionDirection; Icon: typeof ArrowRight; label: 
 const ConnectionInspector = ({ connection, nameOf, onIntent, onClose }: {
   connection: Connection;
   nameOf: (id: string) => string;
-  onIntent: (intent: CanvasIntent) => void;
+  onIntent: (intent: CanvasIntent, mergeKey?: string) => void;
   onClose: () => void;
 }) => {
   const [a, b] = connectionEnds(connection);
@@ -298,7 +302,8 @@ const ConnectionInspector = ({ connection, nameOf, onIntent, onClose }: {
       </ToggleGroup>
       <Input
         value={connection.aiHint || ''}
-        onChange={(e) => onIntent(hintIntent(connection, e.target.value))}
+        // A run of keystrokes on one record is one edit to undo, not one per letter.
+        onChange={(e) => onIntent(hintIntent(connection, e.target.value), `hint:${connection.id}`)}
         placeholder="Travel Hint, e.g. through the shimmering portal"
         aria-label="Travel Hint"
       />
@@ -381,6 +386,9 @@ interface CanvasSession {
   reportSelection: (ids: string[]) => void;
   /** The author has their hand on this canvas: whatever it reports from here is theirs, not teardown's. */
   wake: () => void;
+  /** What Ctrl+Z walks back. A ref rather than state — nothing on the map is drawn from the stack, and the
+   *  trip to full screen has to carry it as it carries the selection. */
+  historyRef: React.MutableRefObject<CanvasHistory>;
   selectedConnectionId: string | null;
   setSelectedConnectionId: (id: string | null) => void;
 }
@@ -392,11 +400,10 @@ const CanvasInner = ({ selectedId, onSelect, session, fullscreen, onToggleFullsc
   fullscreen: boolean;
   onToggleFullscreen: () => void;
 }) => {
+  const { locations, setLocations, connections, setConnections, placeholders } = useGameData();
   const {
-    locations, setLocations, connections, addConnection, updateConnection, removeConnection, placeholders,
-  } = useGameData();
-  const {
-    selectedIdsRef, lastSyncedRef, reportSelection, wake, selectedConnectionId, setSelectedConnectionId,
+    selectedIdsRef, lastSyncedRef, reportSelection, wake, historyRef, selectedConnectionId,
+    setSelectedConnectionId,
   } = session;
   const store = useStoreApi();
   const [snap, setSnap] = useCanvasSnap();
@@ -444,18 +451,28 @@ const CanvasInner = ({ selectedId, onSelect, session, fullscreen, onToggleFullsc
   // exist, so the panel would close under the author's hand if it were pinned to an arrow's id.
   const selectedConnection = connections.find((c) => c.id === selectedConnectionId) ?? null;
 
-  const applyIntent = useCallback((intent: CanvasIntent | null) => {
+  // Every write the canvas makes goes through one of these two, which is what leaves the stack holding the map's
+  // whole edit history rather than the part of it someone remembered to record.
+  const commitLocations = useCallback((next: GameLocation[]) => {
+    historyRef.current = recordCanvasEdit(historyRef.current, {
+      slice: 'locations', before: locations, after: next,
+    });
+    setLocations(next);
+  }, [locations, setLocations, historyRef]);
+
+  const commitConnections = useCallback((next: Connection[], mergeKey?: string) => {
+    historyRef.current = recordCanvasEdit(historyRef.current, {
+      slice: 'connections', before: connections, after: next, mergeKey,
+    });
+    setConnections(next);
+  }, [connections, setConnections, historyRef]);
+
+  const applyIntent = useCallback((intent: CanvasIntent | null, mergeKey?: string) => {
     if (!intent) return;
-    if (intent.kind === 'add') {
-      addConnection(intent.connection);
-      setSelectedConnectionId(intent.connection.id); // a fresh Connection opens for annotation
-    } else if (intent.kind === 'update') {
-      updateConnection(intent.connection);
-    } else {
-      removeConnection(intent.connectionId);
-      setSelectedConnectionId(null);
-    }
-  }, [addConnection, updateConnection, removeConnection, setSelectedConnectionId]);
+    commitConnections(applyCanvasIntent(connections, intent), mergeKey);
+    if (intent.kind === 'add') setSelectedConnectionId(intent.connection.id); // a fresh one opens for annotation
+    else if (intent.kind === 'remove') setSelectedConnectionId(null);
+  }, [connections, commitConnections, setSelectedConnectionId]);
 
   // A dashed arrow is a click away from being authored; a solid one opens the record it came from.
   const handleEdgeClick = useCallback((_: unknown, edge: Edge) => {
@@ -530,14 +547,27 @@ const CanvasInner = ({ selectedId, onSelect, session, fullscreen, onToggleFullsc
     setDropInto(IDLE);
     const moved = dragged.length ? dragged : [node];
     const drops = multiDropIntents(locations, moved.map((n) => ({ id: n.id, position: n.position })));
-    if (drops.length) setLocations(applyCanvasDrops(locations, drops));
-  }, [locations, setLocations]);
+    if (drops.length) commitLocations(applyCanvasDrops(locations, drops));
+  }, [locations, commitLocations]);
 
   // Reported by xyflow rather than tracked by us: the marquee and Shift-click both land here, so one reading
   // covers every way a selection can be composed.
   const handleSelectionChange = useCallback(({ nodes: picked }: { nodes: Node[] }) => {
     reportSelection(picked.map((n) => n.id));
   }, [reportSelection]);
+
+  /** Walking the map's own edits back and forward, against the world as it stands — which is what leaves an
+   *  edit made in the list panel in the meantime alone. Both surfaces read what is written here at once. */
+  const travelHistory = useCallback((direction: 'undo' | 'redo') => {
+    const world = { locations, connections };
+    const step = direction === 'undo'
+      ? undoCanvasEdit(historyRef.current, world)
+      : redoCanvasEdit(historyRef.current, world);
+    if (!step) return;
+    historyRef.current = step.history;
+    if (step.restore.slice === 'locations') setLocations(step.restore.locations);
+    else setConnections(step.restore.connections);
+  }, [historyRef, locations, connections, setLocations, setConnections]);
 
   /**
    * The canvas's keys, live while it is the surface being worked on — the last pointer press decides that,
@@ -556,10 +586,14 @@ const CanvasInner = ({ selectedId, onSelect, session, fullscreen, onToggleFullsc
       if (!activeRef.current || focusing(event.target)) return;
       // In full screen, Escape is the way out of the window — a keypress meaning "leave" must not also empty
       // the selection the author is taking back to the pane with them.
+      const travel = historyShortcut(event);
       if (event.key === 'Escape') { if (!fullscreen) setSelection(() => false); }
       else if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'a') {
         event.preventDefault();
         setSelection(() => true);
+      } else if (travel) {
+        event.preventDefault();
+        travelHistory(travel);
       }
     };
     document.addEventListener('pointerdown', trackPointer, true);
@@ -568,7 +602,7 @@ const CanvasInner = ({ selectedId, onSelect, session, fullscreen, onToggleFullsc
       document.removeEventListener('pointerdown', trackPointer, true);
       document.removeEventListener('keydown', onKeyDown);
     };
-  }, [setSelection, fullscreen]);
+  }, [setSelection, fullscreen, travelHistory]);
 
   /**
    * Composing a selection on a touch screen. Shift and Ctrl are what a mouse adds a location to a selection
@@ -657,7 +691,7 @@ const CanvasInner = ({ selectedId, onSelect, session, fullscreen, onToggleFullsc
       if (locations.some((l) => holderOf(locations, l) === target.id)) {
         items.push({
           label: 'Auto Arrange',
-          onSelect: () => setLocations(autoArrange(locations, connections, target.id)),
+          onSelect: () => commitLocations(autoArrange(locations, connections, target.id)),
         });
       }
       return items;
@@ -667,7 +701,7 @@ const CanvasInner = ({ selectedId, onSelect, session, fullscreen, onToggleFullsc
     }
     return [
       { label: 'Select All Locations', onSelect: () => setSelection(() => true) },
-      { label: 'Auto Arrange All', onSelect: () => setLocations(autoArrangeAll(locations, connections)) },
+      { label: 'Auto Arrange All', onSelect: () => commitLocations(autoArrangeAll(locations, connections)) },
     ];
   };
 
@@ -779,10 +813,15 @@ const CanvasInner = ({ selectedId, onSelect, session, fullscreen, onToggleFullsc
  * carrying: both are writing to the same authored world through GameDataContext.
  */
 const LocationCanvas = (props: { selectedId: string | null; onSelect: (id: string) => void }) => {
+  const { worldId } = useGameData();
   const hostRef = useRef<HTMLDivElement | null>(null);
   const morph = useMorphFullscreen(hostRef);
   const selectedIdsRef = useRef<string[]>(props.selectedId ? [props.selectedId] : []);
   const lastSyncedRef = useRef<string | null>(props.selectedId);
+  // Session-only, and nothing clears it: a save is not the end of what the author may still take back, so
+  // undoing past one simply makes the world dirty again. Held for the open world rather than by this
+  // component, which the trip to the list panel unmounts.
+  const historyRef = canvasHistoryFor(worldId);
   const [selectedConnectionId, setSelectedConnectionId] = useState<string | null>(null);
 
   // Set while the canvas is moving between the pane and the window. The old one reports an empty selection as
@@ -806,7 +845,8 @@ const LocationCanvas = (props: { selectedId: string | null; onSelect: (id: strin
   );
 
   const session: CanvasSession = {
-    selectedIdsRef, lastSyncedRef, reportSelection, wake, selectedConnectionId, setSelectedConnectionId,
+    selectedIdsRef, lastSyncedRef, reportSelection, wake, historyRef, selectedConnectionId,
+    setSelectedConnectionId,
   };
 
   // DEV dev-router: `#dev?…&subtab=canvas&fullscreen=1` lands on the big canvas in one call. Tree-shaken in prod.

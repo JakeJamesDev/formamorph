@@ -479,6 +479,16 @@ export type CanvasIntent =
   | { kind: "update"; connection: Connection }
   | { kind: "remove"; connectionId: string };
 
+/** What an intent leaves the world's Connections as. Kept beside the intents themselves so the canvas's own
+ *  undo records the same array the editor writes, rather than one built to look like it. */
+export function applyCanvasIntent(connections: Connection[], intent: CanvasIntent): Connection[] {
+  if (intent.kind === "add") return [...connections, intent.connection];
+  if (intent.kind === "update") {
+    return connections.map((c) => (c.id === intent.connection.id ? intent.connection : c));
+  }
+  return connections.filter((c) => c.id !== intent.connectionId);
+}
+
 /**
  * A pair's two ends in a fixed order. A one-way direction is stored by rewriting `from` and `to`, so the
  * record's own ends swap under a flip — reading them in a stable order is what keeps the direction control's

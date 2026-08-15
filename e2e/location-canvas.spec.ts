@@ -648,6 +648,70 @@ test.describe('Locations canvas', () => {
     expect((await shape()).match(/ L /g)!.length).toBe(3);
   });
 
+  /**
+   * Undo is asserted as a stack in the unit tests; what only a real canvas proves is that the gesture and the
+   * keypress meet — that a drag actually reached the stack, that one press takes back the whole of it, and that
+   * an arrangement of several boxes is one step rather than one per box.
+   */
+  test('Ctrl+Z takes back a drag and an Auto Arrange, and Ctrl+Y puts them back', async ({ page }) => {
+    await openApp(page);
+    await page.evaluate(async (world) => {
+      const dev = (window as unknown as { __fmDev: DevRouter }).__fmDev;
+      const id = await dev.putWorld(world);
+      await dev.editWorld(id);
+    }, STACKED_WORLD);
+    await gotoDev(page, 'mainMenu', { modal: 'worldEditor', tab: 'locations', subtab: 'canvas' });
+
+    const node = (id: string) => page.locator(`.react-flow__node[data-id="${id}"]`);
+    const edges = page.locator('.react-flow__edge');
+    await node('loc-outside').waitFor();
+    await expect(edges).toHaveCount(2); // Dock↔Warehouse only, while the Beach stands on its own
+
+    // A real drag, onto the Harbor's title strip: the Beach is nested, so every sibling pair travels freely.
+    const beach = (await node('loc-outside').boundingBox())!;
+    const harbor = (await node('loc-parent').boundingBox())!;
+    await page.mouse.move(beach.x + beach.width / 2, beach.y + beach.height / 2);
+    await page.mouse.down();
+    await page.mouse.move(harbor.x + harbor.width / 2, harbor.y + 12, { steps: 12 });
+    await page.mouse.up();
+    await expect(edges).toHaveCount(6);
+
+    // One press takes the reparent back — and the list view is reading the same undone world.
+    await page.keyboard.press('Control+z');
+    await expect(edges).toHaveCount(2);
+    await gotoDev(page, 'mainMenu', { modal: 'worldEditor', tab: 'locations', subtab: 'list' });
+    const rowLeft = async (name: string) => (await page.getByText(name, { exact: true }).first().boundingBox())!.x;
+    expect(await rowLeft('Beach')).toBeCloseTo(await rowLeft('Harbor'), 0);
+
+    // And redo puts it back where the drag had left it.
+    await gotoDev(page, 'mainMenu', { modal: 'worldEditor', tab: 'locations', subtab: 'canvas' });
+    await node('loc-outside').waitFor();
+    // The canvas takes no focus of its own — the last press is what says whose keyboard this is.
+    await page.locator('.react-flow__pane').click({ position: { x: 20, y: 20 } });
+    await page.keyboard.press('Control+y');
+    await expect(edges).toHaveCount(6);
+    await page.keyboard.press('Control+z');
+    await expect(edges).toHaveCount(2);
+
+    // An arrangement moves both of the Harbor's children off each other; one press puts both back stacked.
+    const overlapping = async () => {
+      const dock = (await node('loc-child-a').boundingBox())!;
+      const store = (await node('loc-child-b').boundingBox())!;
+      return dock.x < store.x + store.width && store.x < dock.x + dock.width
+        && dock.y < store.y + store.height && store.y < dock.y + dock.height;
+    };
+    expect(await overlapping()).toBe(true);
+    const grown = (await node('loc-parent').boundingBox())!;
+    await page.mouse.click(grown.x + grown.width / 2, grown.y + 12, { button: 'right' });
+    await page.getByRole('menu', { name: 'Canvas Options' })
+      .getByRole('menuitem', { name: 'Auto Arrange', exact: true }).click();
+    await expect.poll(overlapping).toBe(false);
+
+    await page.keyboard.press('Control+Shift+z'); // the other redo chord is a no-op with nothing ahead
+    await page.keyboard.press('Control+z');
+    await expect.poll(overlapping).toBe(true);
+  });
+
   /** The dev-route lands on the full-screen canvas in one call, which is what the later tickets verify from. */
   test('the dev-router opens the canvas full screen directly', async ({ page }) => {
     await openApp(page);
