@@ -65,22 +65,52 @@ const PARENT_CHILD_CONNECTION_WORLD = {
   connections: [{ id: 'conn-parent-child', from: 'loc-parent', to: 'loc-child-a', twoWay: false }],
 };
 
+/** A translate in pixels, read off a node's or the viewport's own transform. */
+interface At { x: number; y: number }
+
+/** The pixel translate xyflow wrote onto an element, which is where the thing actually sits. */
+async function translateOf(el: Locator): Promise<At> {
+  const transform = await el.evaluate((node) => (node as HTMLElement).style.transform);
+  const found = /translate\((-?[\d.]+)px,\s*(-?[\d.]+)px\)/.exec(transform);
+  expect(found, `no translate on the element: ${transform}`).not.toBeNull();
+  return { x: Number(found![1]), y: Number(found![2]) };
+}
+
+/**
+ * A node's x in canvas coordinates. Unlike a bounding box this is free of the viewport, so it survives a pan,
+ * a zoom, or the fit the canvas runs when it opens.
+ */
+async function flowX(node: Locator): Promise<number> {
+  return (await translateOf(node)).x;
+}
+
+/** Far enough apart to be a move rather than a frame of one. */
+const apart = (a: At, b: At) => Math.hypot(a.x - b.x, a.y - b.y) > 1;
+
+/**
+ * Where the map comes to rest after something navigates it. Travel is animated, so a reading taken straight
+ * after a click is a frame of the pan — one that has often moved a thousandth of a pixel and is otherwise
+ * indistinguishable from not having moved at all. Waits for the view to leave `from` and then stop, and fails
+ * if it never does either.
+ */
+async function restAfter(viewport: Locator, from: At): Promise<At> {
+  let last = from;
+  let held = false;
+  await expect.poll(async () => {
+    const now = await translateOf(viewport);
+    const settled = held && !apart(now, last) && apart(now, from);
+    held = apart(now, from);
+    last = now;
+    return settled;
+  }, { timeout: 5000 }).toBe(true);
+  return last;
+}
+
 /**
  * The canvas draws its Connection inspector as a floating panel over the map. Anything the layout wraps the
  * canvas in can swallow the panel's clicks without changing a single rendered attribute — only real
  * hit-testing sees it, so this lives here rather than in the Vitest suite.
  */
-/**
- * A node's x in canvas coordinates, which xyflow writes as the wrapper's own translate. Unlike a bounding box
- * this is free of the viewport, so it survives a pan, a zoom, or the fit the canvas runs when it opens.
- */
-async function flowX(node: Locator): Promise<number> {
-  const transform = await node.evaluate((el) => (el as HTMLElement).style.transform);
-  const x = /translate\((-?[\d.]+)px/.exec(transform)?.[1];
-  expect(x, `no translate on the node: ${transform}`).toBeDefined();
-  return Number(x);
-}
-
 test.describe('Locations canvas', () => {
   test('the connection inspector answers clicks', async ({ page }) => {
     await openApp(page);
@@ -800,24 +830,31 @@ test.describe('Locations canvas', () => {
     await expect(window_.getByRole('listbox', { name: 'Matching Locations' })).toContainText('No locations match');
 
     // And the minimap moves the map on its own: clicking a corner of it is a different view than before.
-    const viewport = () => window_.locator('.react-flow__viewport').getAttribute('style');
-    const before = await viewport();
+    // Every reading here is taken once the travel has finished, because the pan is animated and a view caught
+    // one frame in has moved by a thousandth of a pixel — a difference that is real but proves nothing.
+    const viewport = window_.locator('.react-flow__viewport');
+    const before = await translateOf(viewport);
     const map = (await minimap.boundingBox())!;
     await page.mouse.click(map.x + 12, map.y + 12);
-    await expect.poll(viewport).not.toBe(before);
+    const jumped = await restAfter(viewport, before);
 
-    // A drag slides the view and ends there. The library raises a click on the release too, and taken as a
-    // click that would throw the view to wherever the finger came off — so where the drag ended is asserted
-    // against where a click on that same spot lands.
-    const jumped = await viewport();
+    // A drag slides the view and ends where it was let go, rather than traveling on somewhere afterwards.
+    // (The release-click a drag can raise is what `isStationaryClick` stands against, and its own rules are
+    // unit-tested — Chromium swallows that click after a minimap pan, so this cannot be the place that
+    // guards it. What is asserted here is only what a real drag shows: the map moved, and then stayed.)
     await page.mouse.move(map.x + map.width / 2, map.y + map.height / 2);
     await page.mouse.down();
     await page.mouse.move(map.x + map.width / 2 + 24, map.y + map.height / 2 + 16, { steps: 10 });
     await page.mouse.up();
-    const dragged = await viewport();
-    expect(dragged).not.toBe(jumped);
-    await page.mouse.click(map.x + map.width / 2 + 24, map.y + map.height / 2 + 16);
-    expect(await viewport()).not.toBe(dragged); // the same point, clicked, does move it — so the drag was left alone
+    const dragged = await translateOf(viewport);
+    expect(apart(dragged, jumped)).toBe(true);
+    // Travel that never begins raises no event to wait on, so this is the one place a plain wait is the test.
+    await page.waitForTimeout(500);
+    expect(await translateOf(viewport)).toEqual(dragged);
+
+    // And the minimap is still live afterwards rather than stuck holding the drag.
+    await page.mouse.click(map.x + 12, map.y + map.height - 12);
+    await restAfter(viewport, dragged);
 
     // Escape from the search box is the way out of the window, exactly as it is from the map: a box holding
     // focus is not where leaving full screen stops working.
