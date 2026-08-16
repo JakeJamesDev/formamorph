@@ -1,8 +1,9 @@
-import { useMemo } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useGameData } from '@/contexts/GameDataContext';
 import { useSettings } from '@/contexts/SettingsContext';
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import PromptField from "@/components/prompt/PromptField";
 import PlaceholderField from "@/components/prompt/PlaceholderField";
 import { plainVocabulary } from "@/lib/chipVocabulary";
@@ -95,9 +96,64 @@ const NarrationPromptField = () => {
   );
 };
 
-/** The AI-facing world content fields (description, system prompt, readme), shown in the editor's right
+/**
+ * The world's two readmes, one tab each. The player never sees them together: the Introduction opens over
+ * the first enter-world setup screen and the Gameplay one on entering the game, so writing for a player
+ * who has already built their character stays out of the pre-trait window.
+ *
+ * `focusField` is the search target the find bar just navigated to, which is the only way it can reach
+ * whichever readme isn't currently showing. It arrives as a fresh object per navigation so that stepping
+ * onto a second hit in the same readme re-opens that tab after the author has flipped away from it.
+ */
+const ReadmeSection = ({ focusField }: { focusField?: { fieldKey: string } | null }) => {
+  const { worldOverview, updateWorldOverview, placeholders } = useGameData();
+  // Opens on the Introduction, except for a world that only has the older Gameplay readme — an author
+  // whose readme is on the other tab would otherwise be met by an empty field where their text used to be.
+  const [tab, setTab] = useState(() =>
+    !worldOverview.introReadme?.trim() && worldOverview.readme?.trim() ? 'gameplay' : 'introduction');
+
+  useEffect(() => {
+    if (focusField?.fieldKey === 'introReadme') setTab('introduction');
+    else if (focusField?.fieldKey === 'readme') setTab('gameplay');
+  }, [focusField]);
+
+  return (
+    <Tabs value={tab} onValueChange={setTab} className="space-y-2">
+      <div className="flex items-center justify-between gap-2">
+        <Label className="leading-none">Readme</Label>
+        <TabsList>
+          <TabsTrigger value="introduction">Introduction</TabsTrigger>
+          <TabsTrigger value="gameplay">Gameplay</TabsTrigger>
+        </TabsList>
+      </div>
+      {/* Both are shown once a playthrough's rolls exist, so placeholders resolve in either. */}
+      <TabsContent value="introduction">
+        <PlaceholderField
+          value={worldOverview.introReadme ?? ''}
+          onChange={(introReadme) => updateWorldOverview({ introReadme })}
+          placeholders={placeholders}
+          markdown
+          placeholder="Shown to the player before they make any setup choices. Supports markdown."
+          resizable
+        />
+      </TabsContent>
+      <TabsContent value="gameplay">
+        <PlaceholderField
+          value={worldOverview.readme ?? ''}
+          onChange={(readme) => updateWorldOverview({ readme })}
+          placeholders={placeholders}
+          markdown
+          placeholder="Shown to the player when they enter the world. Supports markdown."
+          resizable
+        />
+      </TabsContent>
+    </Tabs>
+  );
+};
+
+/** The AI-facing world content fields (description, system prompt, readmes), shown in the editor's right
  *  column on the Overview tab. Identity/listing fields live in WorldOverviewManager (left column). */
-const WorldDetailsManager = () => {
+const WorldDetailsManager = ({ focusField }: { focusField?: { fieldKey: string } | null }) => {
   const { worldOverview, updateWorldOverview, placeholders } = useGameData();
   // The description shows in the library, before a playthrough exists — so placeholders can never be rolled
   // for it. No chip family here: any `{{ph…}}` an old world carries stays inert text, exactly as it'd read.
@@ -129,18 +185,7 @@ const WorldDetailsManager = () => {
 
       <NarrationPromptField />
 
-      <div className="space-y-2">
-        {/* Shown on entry, so a playthrough's rolls exist by then — placeholders resolve here. */}
-        <PlaceholderField
-          label="Readme"
-          value={worldOverview.readme ?? ''}
-          onChange={(readme) => updateWorldOverview({ readme })}
-          placeholders={placeholders}
-          markdown
-          placeholder="Shown to the player when they enter the world. Supports markdown."
-          resizable
-        />
-      </div>
+      <ReadmeSection focusField={focusField} />
     </div>
   );
 };

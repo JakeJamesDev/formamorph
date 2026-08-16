@@ -300,6 +300,7 @@ function useProvideGameData() {
       tags: Array.isArray(overview.tags) ? overview.tags : defaultOverview.tags,
       customPlayerVRM: overview.customPlayerVRM || defaultOverview.customPlayerVRM,
       readme: overview.readme || defaultOverview.readme,
+      introReadme: overview.introReadme || defaultOverview.introReadme,
       // Allowlisted like everything above — omitting it here would silently drop a world's authored
       // narration prompt on load, and the next saveWorld would write the loss back to disk.
       ...(overview.promptOverrides ? { promptOverrides: overview.promptOverrides } : {})

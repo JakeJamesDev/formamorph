@@ -118,6 +118,8 @@ import { COMMUNITY_ENABLED } from "@/lib/featureFlags";
 import { isStaff } from "@/lib/roles";
 import { Checkbox } from "@/components/ui/checkbox";
 import { useReadmeVisibility } from "@/lib/useReadmeVisibility";
+import ReadmeModal from "@/components/game/ReadmeModal";
+import { buildEnterFlow, navigableSteps, type EnterMode, type EnterStep, type NavigableStep } from "@/lib/enterFlow";
 import { hasWorldNarrationPrompt, worldNarrationPrompt, useWorldPromptOptOut } from "@/lib/worldPrompt";
 import { useWorldPromptPresets, GLOBAL_PRESET_VALUE } from "@/lib/worldPromptPreset";
 import PatreonIcon from "@/components/PatreonIcon";
@@ -281,6 +283,10 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
   const [showLocationSelection, setShowLocationSelection] = useState(false);
   const [showDictionarySelection, setShowDictionarySelection] = useState(false);
   const [showCharacterSelection, setShowCharacterSelection] = useState(false);
+  const [showIntroReadme, setShowIntroReadme] = useState(false);
+  // Set only when the Introduction has no setup screen to sit over: the traits to start with once the
+  // player closes it. A world with nothing to choose would otherwise flash the overlay and enter anyway.
+  const [enterAfterIntro, setEnterAfterIntro] = useState<string[] | null>(null);
   const [selectedTraits, setSelectedTraits] = useState<string[]>([]);
   const [selectedLocationId, setSelectedLocationId] = useState<string | null>(null);
   // The dictionary set chosen at the entry step; null = step skipped (GameViewer falls back to authored books).
@@ -1017,21 +1023,22 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
     setSelectedLocationId(null);
     setSelectedCharacters(null);
     setSelectedDictionaries(null);
+    setShowIntroReadme(false);
+    setEnterAfterIntro(null);
     endSession();
   };
 
-  // The enter-world steps actually shown for this world + library, in flow order — drives the Back button.
-  type EnterStep = 'traits' | 'location' | 'characters' | 'dictionaries' | 'avatar';
-  const enterFlowSteps = (): EnterStep[] => {
-    const steps: EnterStep[] = [];
-    if (traits.length > 0) steps.push('traits');
-    if (startingLocations(locations).length > 1) steps.push('location');
-    if (charStepVisible) steps.push('characters');
-    if (dictStepVisible) steps.push('dictionaries');
-    if (selectedWorld?.data.worldOverview?.use3DModel) steps.push('avatar');
-    return steps;
-  };
-  const showEnterStep = (step: EnterStep) => {
+  // The enter-world steps actually shown for this world + library, in flow order — drives the Back button
+  // and the Introduction overlay (see `lib/enterFlow`).
+  const enterFlowSteps = (mode: EnterMode = 'newGame'): EnterStep[] => buildEnterFlow({
+    introReadme: selectedWorld?.data.worldOverview?.introReadme,
+    traitCount: traits.length,
+    startingLocationCount: startingLocations(locations).length,
+    hasCharacterStep: charStepVisible,
+    hasDictionaryStep: dictStepVisible,
+    use3DModel: !!selectedWorld?.data.worldOverview?.use3DModel,
+  }, mode);
+  const showEnterStep = (step: NavigableStep) => {
     setShowTraitSelection(step === 'traits');
     setShowLocationSelection(step === 'location');
     setShowCharacterSelection(step === 'characters');
@@ -1039,10 +1046,27 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
     setShowCharacterCustomization(step === 'avatar');
   };
   // Back handler for a given step: goes to the previous shown step, or undefined on the first (button fades).
-  const backFrom = (step: EnterStep): (() => void) | undefined => {
-    const steps = enterFlowSteps();
+  const backFrom = (step: NavigableStep): (() => void) | undefined => {
+    const steps = navigableSteps(enterFlowSteps());
     const idx = steps.indexOf(step);
     return idx > 0 ? () => showEnterStep(steps[idx - 1]) : undefined;
+  };
+
+  // Open the flow's first setup screen, read off the step list rather than re-deriving which steps exist.
+  // `defaults` are the author's pre-ticked traits, which a world with no trait step still carries in.
+  const openFirstEnterStep = (steps: NavigableStep[], defaults: string[]) => {
+    if (steps[0] === 'traits') setShowTraitSelection(true);
+    else proceedFromTraits(defaults);
+  };
+
+  // Leave the Introduction. It overlays the first setup screen, so closing it usually just reveals what is
+  // already there; a world whose only step *was* the Introduction starts the game instead.
+  const closeIntroReadme = () => {
+    setShowIntroReadme(false);
+    if (!enterAfterIntro) return;
+    const defaults = enterAfterIntro;
+    setEnterAfterIntro(null);
+    proceedFromTraits(defaults);
   };
 
   /**
@@ -1949,12 +1973,19 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
                         // Roll this playthrough's placeholders now, so the picker screens show the names the
                         // game will actually use instead of every option they could have taken.
                         beginSession();
-                        // No traits to choose — skip the selection menu entirely.
-                        if (traits.length === 0) {
-                          proceedFromTraits(defaults);
-                        } else {
-                          setShowTraitSelection(true);
+                        const steps = enterFlowSteps();
+                        const rest = navigableSteps(steps);
+                        // The Introduction rides on top of the first setup screen, under the same per-world
+                        // flag as the Gameplay readme.
+                        if (steps[0] === 'intro' && showReadme(selectedWorld!.id)) {
+                          setShowIntroReadme(true);
+                          // Nothing to overlay: hold the entry until the player closes it.
+                          if (rest.length === 0) {
+                            setEnterAfterIntro(defaults);
+                            return;
+                          }
                         }
+                        openFirstEnterStep(rest, defaults);
                       }}
                     >
                       <DoorOpen className="mr-2 h-4 w-4" /> Enter World
@@ -2091,8 +2122,10 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
                 </div>
               )}
 
-              {/* Same flag the in-game "Don't Show This Again" writes (inverse). */}
-              {selectedWorld?.data?.worldOverview?.readme?.trim() && (
+              {/* One flag over both readmes — the same one either modal's "Don't Show This Again" writes
+                  (inverse) — so it shows for a world carrying either. */}
+              {(selectedWorld?.data?.worldOverview?.readme?.trim()
+                || selectedWorld?.data?.worldOverview?.introReadme?.trim()) && (
                 <div className="flex items-center gap-2">
                   <Checkbox
                     id="show-readme"
@@ -2253,6 +2286,19 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
           they don't bring their own overlay). z-40 sits under the cards' z-50. */}
       {(showTraitSelection || showLocationSelection || showCharacterSelection || showDictionarySelection) && (
         <div className="fixed inset-0 z-40 bg-black/80" aria-hidden />
+      )}
+
+      {/* The world's Introduction, over whichever setup screen is behind it. Placeholders resolve because
+          `beginSession` rolls them on the Enter World click, before this opens. */}
+      {selectedWorld && (
+        <ReadmeModal
+          title="Introduction"
+          readme={resolvePH(selectedWorld.data.worldOverview?.introReadme ?? '')}
+          open={showIntroReadme}
+          onOpenChange={(open) => { if (!open) closeIntroReadme(); }}
+          show={showReadme(selectedWorld.id)}
+          onShowChange={(s) => setShowReadme(selectedWorld.id, s)}
+        />
       )}
 
       {showTraitSelection && (

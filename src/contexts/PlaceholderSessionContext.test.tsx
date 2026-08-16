@@ -80,6 +80,17 @@ describe('PlaceholderSessionProvider', () => {
     expect(HAIR.values).toContain(h.rolls().world?.[HAIR.id]);
   });
 
+  it('rolls a Wildcard that appears only in the Introduction readme', () => {
+    // The Introduction is shown at the top of the enter-world flow, so a placement it alone carries has to
+    // be primed with the rest — resolving from an unprimed roll draws a new value on every render.
+    const w = world();
+    (w.worldOverview as { introReadme?: string }).introReadme = `Welcome to ${encodePlaceholderToken({ id: TOWN.id, mode: 'unique', placementId: 'intro-1' })}.`;
+    const h = mount();
+    h.loadWorld(w);
+    h.begin();
+    expect(TOWN.values).toContain(h.rolls().unique?.['intro-1']);
+  });
+
   it('keeps its rolls when the session is reopened on the way into the game view', () => {
     const h = mount();
     h.loadWorld();

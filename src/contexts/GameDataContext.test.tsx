@@ -329,6 +329,28 @@ describe('loadWorldData', () => {
     expect(result.current.isWorldDirty).toBe(false);
   });
 
+  it("carries an exported world's Introduction readme back through import, and not into the next world", () => {
+    // Exported as JSON and imported through the same load path, so the round trip covers what a shared
+    // world actually goes through. The normalizer is an allowlist: a field it forgets is dropped on load
+    // and the loss is written back by the next saveWorld, and one it merges instead of replacing carries
+    // into the world loaded after.
+    const { result } = renderHook(() => useGameData(), { wrapper });
+    const exported = JSON.parse(JSON.stringify(world('a', { introReadme: '# Before you choose' })));
+
+    act(() => { result.current.loadWorldData(exported); });
+    expect(result.current.worldOverview.introReadme).toBe('# Before you choose');
+
+    act(() => { result.current.loadWorldData(world('b', {})); });
+    expect(result.current.worldOverview.introReadme).toBeFalsy();
+  });
+
+  it('loads a world exported before Introductions existed with no Introduction and no error', () => {
+    const { result } = renderHook(() => useGameData(), { wrapper });
+    act(() => { result.current.loadWorldData(world('old', { readme: '# Gameplay only' })); });
+    expect(result.current.worldOverview.readme).toBe('# Gameplay only');
+    expect(result.current.worldOverview.introReadme).toBeUndefined();
+  });
+
   it("carries the world's narration prompt override through the load", () => {
     // The normalizer is an allowlist, so a field it forgets is dropped here and the loss is written back
     // by the next saveWorld — the author's prompt would vanish from their own world on reopening it.
