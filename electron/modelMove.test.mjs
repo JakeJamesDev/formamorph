@@ -2,6 +2,7 @@ import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
+import { Writable } from 'node:stream';
 import modelMove from './modelMove.cjs';
 
 const { moveModels, cancel, countMovable, listMovable, isMovable, TEMP_SUFFIX } = modelMove;
@@ -141,6 +142,42 @@ describe('moveModels: the source file survives anything going wrong', () => {
     // Neither the final name nor the temp is left lying around.
     expect(fs.readdirSync(to())).toEqual([]);
     expect(fs.readdirSync(to()).some((f) => f.endsWith(TEMP_SUFFIX))).toBe(false);
+  });
+
+  it('leaves no temp behind when the destination file appears only after the copy has failed', async () => {
+    // `createWriteStream` opens its descriptor asynchronously, so a failure can reach the cleanup before
+    // the temp exists — the unlink finds nothing, the open lands afterwards, and the orphan is left for
+    // good. The case above times its failure with setTimeout, which usually loses that race and only
+    // strands a file under load; this stand-in makes the late open explicit, so the ordering is fixed
+    // rather than a matter of machine speed. It writes the same real file to the same real path.
+    class LateOpenWrite extends Writable {
+      constructor(file) { super(); this.file = file; }
+      _write(_chunk, _enc, cb) { cb(); }
+      _destroy(err, cb) {
+        // A pending open still creates the file after the stream is torn down; 'close' follows it.
+        setImmediate(() => { fs.writeFileSync(this.file, ''); cb(err); });
+      }
+    }
+
+    write(path.join(from(), 'a.gguf'), 500);
+    vi.spyOn(fs, 'renameSync').mockImplementation(() => {
+      const e = new Error('EXDEV');
+      e.code = 'EXDEV';
+      throw e;
+    });
+    vi.spyOn(fs, 'createWriteStream').mockImplementation((p) => {
+      const s = new LateOpenWrite(p);
+      process.nextTick(() => s.emit('error', new Error('boom')));
+      return s;
+    });
+
+    await moveModels({ from: from(), to: to() });
+    // Let the late open land: an orphan created after the move returns is still an orphan.
+    await new Promise((r) => setImmediate(r));
+
+    expect(fs.readdirSync(to())).toEqual([]);
+    // And the source is still whole — cleanup timing must never cost the original.
+    expect(fs.existsSync(path.join(from(), 'a.gguf'))).toBe(true);
   });
 
   it('cleans up the temp when the copy lands but the final rename fails', async () => {
