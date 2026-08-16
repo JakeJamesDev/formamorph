@@ -4,9 +4,13 @@ import type { Entity, WorldOverview } from '@/types';
 import { useDebouncedFindings } from './useFindings';
 import type { RuleWorld } from './rules';
 
+// Structurally sound (a starting location, the entity placed there), so only the authored alias defect fires.
 const world = (entities: Entity[]): RuleWorld => ({
   worldOverview: { name: 'Sedge Landing', description: '', systemPrompt: '' } as WorldOverview,
-  stats: [], locations: [], entities, traits: [], statUpdates: [], dictionaries: [], placeholders: [],
+  stats: [],
+  locations: [{ id: 'harbor', name: 'Harbor Steps', isStarting: true }],
+  entities: entities.map((e) => ({ locations: ['harbor'], ...e })),
+  traits: [], statUpdates: [], dictionaries: [], placeholders: [],
 });
 
 const clean = world([{ id: 'e1', name: 'Maren' }]);

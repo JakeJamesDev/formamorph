@@ -6,10 +6,14 @@ import type { Entity, WorldOverview } from '@/types';
 import { TestBench, TestBenchButton } from './TestBench';
 
 // The panel renders whatever the rule pass produced, so the fixture goes through the real engine rather
-// than hand-built groups — a row shape the rules can't actually emit would prove nothing.
+// than hand-built groups — a row shape the rules can't actually emit would prove nothing. The base world
+// is structurally sound (a starting location, every entity placed) so only the authored defects fire.
 const world = (entities: Entity[]): RuleWorld => ({
   worldOverview: { name: 'Sedge Landing', description: '', systemPrompt: '' } as WorldOverview,
-  stats: [], locations: [], entities, traits: [], statUpdates: [], dictionaries: [], placeholders: [],
+  stats: [],
+  locations: [{ id: 'harbor', name: 'Harbor Steps', isStarting: true }],
+  entities: entities.map((e) => ({ locations: ['harbor'], ...e })),
+  traits: [], statUpdates: [], dictionaries: [], placeholders: [],
 });
 
 const defective = world([
@@ -67,22 +71,18 @@ describe('TestBench panel', () => {
   });
 
   it('renders an error group ahead of the rest', () => {
-    // No rule raises an error yet, so the severity's own row is exercised with a hand-built group — the
-    // engine's shape, one severity ahead of what the alias pack can produce.
-    render(
-      <TestBench
-        groups={[{
-          ruleId: 'location-missing-start', severity: 'error', section: 'locations',
-          headline: 'No location is marked as the starting location',
-          items: [{ id: 'loc1', name: 'The Long Pier' }],
-          findings: [],
-        }]}
-        ruleCount={RULES.length} tab="issues"
-        onTabChange={vi.fn()} onClose={vi.fn()} onOpenItem={vi.fn()}
-      />,
-    );
+    renderBench({ ...world([]), locations: [{ id: 'l1', name: 'The Long Pier' }] });
     expect(screen.getByText('Errors')).toBeInTheDocument();
-    expect(screen.getByText('No location is marked as the starting location')).toBeInTheDocument();
+    expect(screen.getByText(/No location is flagged as a starting location/)).toBeInTheDocument();
+  });
+
+  it('opens a finding item on its own tab when it overrides the rule’s section', async () => {
+    // A broken chip's rule lives on the Placeholders tab, but the item carrying it is an entity.
+    const { onOpenItem } = renderBench(
+      world([{ id: 'e1', name: 'Maren', aiDescription: 'A {{ph:gone:world:pl1}} of the fen.' }]),
+    );
+    await userEvent.click(screen.getByRole('button', { name: 'Maren' }));
+    expect(onOpenItem).toHaveBeenCalledWith('entities', 'e1');
   });
 
   it('closes from the bench header', async () => {
