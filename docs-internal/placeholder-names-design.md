@@ -19,7 +19,7 @@ Extension of the Placeholders feature (`docs-internal/placeholders-design.md`): 
 ## Decisions
 
 - **Wildcard modes: both allowed.** World = one shared roll (same identity everywhere it's placed); Unique = per-placement roll — the motivating case is one "Tavernkeeper Names" wildcard naming two different tavern keepers in different towns. Chip popout behaves exactly as in text fields.
-- **Missing/empty placeholder resolves to `""`**, same as text fields — even if that leaves a nameless entity. No fallback, no delete-blocking. A future **world linter** (natural home: the world-doctor effort, `docs-internal/world-doctor-spec.md`) warns about it; not built here.
+- **Missing/empty placeholder resolves to `""`**, same as text fields — even if that leaves a nameless entity. No fallback, no delete-blocking. A future **world linter** (natural home: the Test Bench's Issues instrument, `.scratch/test-bench/spec.md`) warns about it; not built here.
 - **Resolved-name collisions** (two entities rolling the same name in a save): no prevention, no reroll. Runtime matching picks deterministically (first match in iteration order). Warning is also the future linter's job. *(User expressed no preference; this is the recommendation consistent with the linter decision.)*
 - **Author-time matching tools use preview rolls.** The activation tester and AI-context dictionary highlighting have no save; they resolve via the existing preview machinery (`buildPlaceholderPreview` / `primeRolls` in `src/lib/placeholders.ts`) — one consistent roll per open, clearly a simulation.
 
@@ -107,8 +107,9 @@ everywhere else.
   the placeholder typeahead off the same flat token-string.
 - **Placeholder values** themselves stay literal — resolution is single-pass, so a chip inside one would
   never expand.
-- The author-time activation tester in the spec **does not exist** to fix; `activation-tester-spec.md` is
-  unbuilt, and `explainActivation` runs only in `GameViewer`, which is resolved.
+- The author-time activation tester in the spec **does not exist** to fix; the Test Bench's Triggers
+  instrument (`.scratch/test-bench/spec.md`) is unbuilt, and `explainActivation` runs only in
+  `GameViewer`, which is resolved.
 
 **Still open:** the linter that warns about a deleted placeholder leaving a nameless entity, and about two
 entities that can resolve to the same name. Both deferred by decision, not overlooked.

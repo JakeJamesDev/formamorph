@@ -36,6 +36,22 @@ _Avoid_: tree edges, default connections
 The visual node-graph surface for authoring locations — containment as nested Groups, travel as arrows. The list view's spatial twin inside the same Locations panel.
 _Avoid_: node graph, map view
 
+**Test Bench**:
+The World Editor's testing surface — one dock (mobile: Sheet) hosting every authoring instrument, available in both editor modes. Shows what the harness computes from the authored world, never what the AI will do with it.
+_Avoid_: World Lab, dock (that's the chrome, not the feature)
+
+**Instrument**:
+One tool inside the Test Bench — the World Doctor, the Activation Tester, an inspector. Each answers one author question.
+_Avoid_: tool (overloaded), panel
+
+**World Doctor**:
+The Test Bench instrument that lints the authored world's structure — findings grouped by severity, some one-click fixable, surfaced by a count badge. Never judges prose.
+_Avoid_: linter (internal only), validator
+
+**Activation Tester**:
+The Test Bench instrument where an author pastes prose and sees what would fire — entity presence and dictionary activation — including non-activations with their near-miss reason.
+_Avoid_: matcher preview, dry run
+
 **Turn Pipeline**:
 The module that runs one full turn — plan, AI requests, commit computation — behind one seam; React state stays outside it.
 _Avoid_: turn handler, game loop
