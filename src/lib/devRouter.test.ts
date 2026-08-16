@@ -4,6 +4,7 @@ import { CATALOG_KINDS } from './catalogKinds';
 import { DEV_FIXTURES } from './devFixtures';
 import { SETTINGS_TABS } from '@/components/modals/settingsTabs';
 import { WORLD_EDITOR_TABS } from '@/views/worldEditorTabs';
+import { BUILT_BENCH_TABS } from '@/components/editor/benchTabs';
 import { LOCATION_VIEWS } from '@/views/locationViews';
 import { MAIN_MENU_CARD_TABS } from '@/views/mainMenuTabs';
 import { GAME_LEFT_PANEL_TABS } from '@/components/game/leftPanelTabs';
@@ -18,18 +19,21 @@ import whiteRoomSave from './devFixtures/whiteRoomSave.json';
 
 // The parser is module-private; re-derive it here against the documented hash grammar so the encode
 // (window.__fmDev.goto) and decode stay pinned to the same shape.
-function parseHash(hash: string): { view?: string; modal?: string; tab?: string; subtab?: string } | null {
+interface ParsedRoute { view?: string; modal?: string; tab?: string; subtab?: string; bench?: string }
+function parseHash(hash: string): ParsedRoute | null {
   if (!hash.startsWith('#dev')) return null;
   const params = new URLSearchParams(hash.slice('#dev'.length).replace(/^\?/, ''));
-  const route: { view?: string; modal?: string; tab?: string; subtab?: string } = {};
+  const route: ParsedRoute = {};
   const view = params.get('view');
   const modal = params.get('modal');
   const tab = params.get('tab');
   const subtab = params.get('subtab');
+  const bench = params.get('bench');
   if (view) route.view = view;
   if (modal) route.modal = modal;
   if (tab) route.tab = tab;
   if (subtab) route.subtab = subtab;
+  if (bench) route.bench = bench;
   return route;
 }
 
@@ -52,6 +56,14 @@ describe('dev-router hash parsing', () => {
     expect(parseHash('#dev?modal=settings')).toEqual({ modal: 'settings' });
   });
 
+  it('decodes the Test Bench instrument (bench), alongside an editor tab', () => {
+    expect(parseHash('#dev?modal=worldEditor&tab=entities&bench=issues')).toEqual({
+      modal: 'worldEditor',
+      tab: 'entities',
+      bench: 'issues',
+    });
+  });
+
   it('decodes a prompt sub-tab (subtab)', () => {
     expect(parseHash('#dev?modal=settings&tab=prompts&subtab=thinking')).toEqual({
       modal: 'settings',
@@ -70,6 +82,11 @@ describe('dev-router coverage guard', () => {
 
   it('ledger lists exactly the World Editor tabs the surface renders', () => {
     expect([...DEV_MODAL_TABS.worldEditor]).toEqual(WORLD_EDITOR_TABS.map((t) => t.value));
+  });
+
+  it('ledger lists exactly the Test Bench instruments an author can stand on', () => {
+    // Unbuilt instruments render disabled, so landing one means making it routable here too.
+    expect([...DEV_MODAL_TABS.worldEditorBench]).toEqual(BUILT_BENCH_TABS);
   });
 
   it('ledger lists exactly the views the Locations tab switches between', () => {
