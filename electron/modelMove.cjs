@@ -56,7 +56,15 @@ async function copyAcrossVolumes(src, dest, onChunk) {
     await new Promise((resolve, reject) => {
       const read = fs.createReadStream(src);
       const write = fs.createWriteStream(tmp);
-      const fail = (e) => { read.destroy(); write.destroy(); reject(e); };
+      // Rejecting runs the temp's cleanup, and `createWriteStream` opens its descriptor asynchronously —
+      // failing before that open settles unlinks a file that does not exist yet, and the open then strands
+      // it. Waiting for 'close' leaves the temp either really present or never created.
+      const fail = (e) => {
+        read.destroy();
+        if (write.closed) { reject(e); return; }
+        write.once('close', () => reject(e));
+        write.destroy();
+      };
       read.on('error', fail);
       write.on('error', fail);
       read.on('data', (chunk) => {

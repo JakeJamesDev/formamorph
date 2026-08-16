@@ -55,6 +55,7 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
 #### 🐛 Fixed
 
 - **👤 User-facing**
+  - **Moving your models to another folder no longer strands a stray `.moving` file when a move fails or is canceled.** In the desktop app, a model copied between drives is written under a temporary `.moving` name and only takes its real name once it has landed. If the copy failed or was canceled in its first moments, the cleanup could run before the file it was cleaning had finished being created, so the leftover appeared afterwards and stayed — the move screen ignores `.moving` files, so nothing ever collected it again. Cleanup now waits for the file to be closed before removing it.
   - **Two entities whose names share a word are told apart in the Entities list.** When one entity's name sat inside another's — "Wolf" and "Direwolf", "Rose" and "Primrose" — the list matched them as the same entity and showed whichever was written first, so a scene holding both listed one name twice, and a scene holding only the longer name listed the shorter one instead. Clicking such a row opened the wrong entity's details, and the picture panel could show the wrong portrait for the same reason. A name now has to match a whole word to count, so the two stay separate, while a scene naming a character in part ("Emily" for Emily Foster) still finds them.
 
 ---
