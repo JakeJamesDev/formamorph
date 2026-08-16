@@ -267,7 +267,13 @@ export function newLocationPosition(
 }
 
 /** A box in flow coordinates, measured from the canvas origin rather than from whatever holds it. */
-interface CanvasRect { x: number; y: number; width: number; height: number }
+export interface CanvasRect { x: number; y: number; width: number; height: number }
+
+/** Every node's box in flow coordinates, read straight off the world. What a drop is judged against, and the
+ *  one coordinate system two locations held by different frames can be compared in. */
+export function canvasRects(locations: GameLocation[]): Map<string, CanvasRect> {
+  return absoluteRects(buildLocationCanvas(locations, []));
+}
 
 /**
  * Every node's box in flow coordinates. The map stores a nested position against its parent's frame; a drop

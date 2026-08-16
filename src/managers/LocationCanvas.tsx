@@ -9,7 +9,9 @@ import {
 } from '@xyflow/react';
 import '@xyflow/react/dist/base.css';
 import {
-  AlertTriangle, ArrowLeft, ArrowLeftRight, ArrowRight, Check, Maximize2, Minimize2, Search, Star, Trash2, X,
+  AlertTriangle, AlignHorizontalDistributeCenter, AlignStartHorizontal, AlignStartVertical,
+  AlignVerticalDistributeCenter, ArrowLeft, ArrowLeftRight, ArrowRight, Check, CornerDownRight, Grid2x2,
+  LayoutGrid, Magnet, Maximize2, Minimize2, Minus, Search, Spline, Star, Trash2, X,
 } from 'lucide-react';
 import { useGameData } from '@/contexts/GameDataContext';
 import FullscreenShell from '@/components/FullscreenShell';
@@ -22,6 +24,7 @@ import { useDevRoute } from '@/lib/devRouter';
 import { useMorphFullscreen } from '@/lib/useMorphFullscreen';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Separator } from '@/components/ui/separator';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import { describePlaceholders } from '@/lib/placeholders';
 import type { ConnectionDirection } from '@/lib/connectionEditing';
@@ -36,6 +39,9 @@ import {
   type CanvasHistory,
 } from '@/lib/canvasHistory';
 import { autoArrange, autoArrangeAll } from '@/lib/locationArrange';
+import {
+  alignLocations, distributeLocations, nudgeLocations, type AlignEdge, type DistributeAxis,
+} from '@/lib/locationAlign';
 import { searchLocations, type LocationMatch } from '@/lib/locationSearch';
 import { usePrefersReducedMotion } from '@/lib/usePrefersReducedMotion';
 import { cn } from '@/lib/utils';
@@ -431,7 +437,9 @@ const LocationSearch = ({ find, onPick }: {
 
   const listId = 'canvas-search-results';
   return (
-    <Panel position="top-left" className="!m-2 w-64">
+    // Below the toolbar on a window too narrow to hold both across: the tools span the top edge there, and a
+    // box sitting under them is a box that cannot be typed into.
+    <Panel position="top-left" className="!m-2 w-64 max-sm:!mt-16">
       <div className="relative">
         <Search className="pointer-events-none absolute left-2 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
         <Input
@@ -516,6 +524,123 @@ const CanvasMiniMap = ({ onNavigate }: { onNavigate: (at: { x: number; y: number
   );
 };
 
+/** The two edges a selection can be brought onto, and the two axes it can be spread along. Each carries how
+ *  many boxes the command needs to mean anything: an edge takes two, an even spacing takes three. */
+const ALIGN_TOOLS: { label: string; Icon: typeof AlignStartVertical; edge: AlignEdge }[] = [
+  { label: 'Align Left', Icon: AlignStartVertical, edge: 'left' },
+  { label: 'Align Top', Icon: AlignStartHorizontal, edge: 'top' },
+];
+const DISTRIBUTE_TOOLS: { label: string; Icon: typeof AlignStartVertical; axis: DistributeAxis }[] = [
+  { label: 'Distribute Horizontally', Icon: AlignHorizontalDistributeCenter, axis: 'horizontal' },
+  { label: 'Distribute Vertically', Icon: AlignVerticalDistributeCenter, axis: 'vertical' },
+];
+
+/** Which way an arrow key steps the selection: one grid cell, so the keyboard places a box exactly where a
+ *  snapped drag would have. */
+const NUDGES: Record<string, { x: number; y: number }> = {
+  ArrowLeft: { x: -CANVAS_GRID, y: 0 },
+  ArrowRight: { x: CANVAS_GRID, y: 0 },
+  ArrowUp: { x: 0, y: -CANVAS_GRID },
+  ArrowDown: { x: 0, y: CANVAS_GRID },
+};
+
+/** The picker's shapes, drawn as what each one does to a line. */
+const STYLE_ICONS: Record<ConnectionStyle, typeof Minus> = {
+  straight: Minus,
+  bezier: Spline,
+  elbow: CornerDownRight,
+};
+
+/**
+ * The window's power tools, gathered along its top: the layout commands, the finishing moves for a selection,
+ * and the two switches and the picker the right-click menu also carries.
+ *
+ * Full screen only. Every control here reads and writes the same preference or the same world path the menu
+ * does — the toolbar is a second place to reach them, never a second answer.
+ */
+const CanvasToolbar = ({
+  arrangeLabel, onArrange, alignable, distributable, onAlign, onDistribute,
+  snap, setSnap, gridVisible, setGridVisible, connectionStyle, setConnectionStyle,
+}: {
+  arrangeLabel: string;
+  onArrange: () => void;
+  alignable: boolean;
+  distributable: boolean;
+  onAlign: (edge: AlignEdge) => void;
+  onDistribute: (axis: DistributeAxis) => void;
+  snap: boolean;
+  setSnap: (next: boolean) => void;
+  gridVisible: boolean;
+  setGridVisible: (next: boolean) => void;
+  connectionStyle: ConnectionStyle;
+  setConnectionStyle: (next: ConnectionStyle) => void;
+}) => (
+  // Scrolls sideways rather than spilling off a narrow window: every tool stays reachable at any width, and
+  // the row keeps its own height so the search box beneath it has a fixed place to sit.
+  <Panel position="top-center" className="!m-2 max-w-[calc(100%-1rem)] overflow-x-auto">
+    <div
+      role="toolbar"
+      aria-label="Canvas Tools"
+      className="flex w-max items-center gap-1 rounded-md border bg-card p-1 shadow-md"
+    >
+      <Button variant="ghost" size="sm" onClick={onArrange} title={arrangeLabel} aria-label={arrangeLabel}>
+        <LayoutGrid className="mr-1.5 h-4 w-4" />
+        {arrangeLabel}
+      </Button>
+      <Separator orientation="vertical" className="mx-0.5 h-6" />
+      {ALIGN_TOOLS.map(({ label, Icon, edge }) => (
+        <Button
+          key={edge} variant="ghost" size="icon" className="h-8 w-8" title={label} aria-label={label}
+          disabled={!alignable} onClick={() => onAlign(edge)}
+        >
+          <Icon className="h-4 w-4" />
+        </Button>
+      ))}
+      {DISTRIBUTE_TOOLS.map(({ label, Icon, axis }) => (
+        <Button
+          key={axis} variant="ghost" size="icon" className="h-8 w-8" title={label} aria-label={label}
+          disabled={!distributable} onClick={() => onDistribute(axis)}
+        >
+          <Icon className="h-4 w-4" />
+        </Button>
+      ))}
+      <Separator orientation="vertical" className="mx-0.5 h-6" />
+      {/* Two switches rather than a choice between them: either can be had without the other. Plain pressed
+          buttons rather than a multiple ToggleGroup, which is itself a toolbar and would nest one in this. */}
+      {([
+        { label: 'Snap To Grid', Icon: Magnet, on: snap, set: setSnap },
+        { label: 'Show Grid', Icon: Grid2x2, on: gridVisible, set: setGridVisible },
+      ] as const).map(({ label, Icon, on, set }) => (
+        <Button
+          key={label} variant={on ? 'secondary' : 'ghost'} size="icon" className="h-8 w-8"
+          aria-pressed={on} title={label} aria-label={label} onClick={() => set(!on)}
+        >
+          <Icon className="h-4 w-4" />
+        </Button>
+      ))}
+      <Separator orientation="vertical" className="mx-0.5 h-6" />
+      <ToggleGroup
+        type="single"
+        className="h-8 gap-0.5 p-0.5"
+        value={connectionStyle}
+        aria-label="Connection Style"
+        // A single group clears its value when the active item is clicked again; the arrows always have some
+        // shape, so an empty result is ignored rather than stored.
+        onValueChange={(value) => { if (isConnectionStyle(value)) setConnectionStyle(value); }}
+      >
+        {CONNECTION_STYLES.map(({ value, label }) => {
+          const Icon = STYLE_ICONS[value];
+          return (
+            <ToggleGroupItem key={value} value={value} className="h-7 px-2" title={label} aria-label={label}>
+              <Icon className="h-4 w-4" />
+            </ToggleGroupItem>
+          );
+        })}
+      </ToggleGroup>
+    </div>
+  </Panel>
+);
+
 /**
  * Everything the canvas is *doing* rather than everything it knows: what the author has picked, and which
  * arrow's record is open. Held by the wrapper, because entering full screen re-mounts the surface into a
@@ -553,7 +678,7 @@ const CanvasInner = ({ selectedId, onSelect, session, fullscreen, onToggleFullsc
     setSelectedConnectionId,
   } = session;
   const store = useStoreApi();
-  const { setCenter, getInternalNode, getZoom } = useReactFlow();
+  const { fitView, setCenter, getInternalNode, getZoom } = useReactFlow();
   const reduceMotion = usePrefersReducedMotion();
   const [snap, setSnap] = useCanvasSnap();
   const [gridVisible, setGridVisible] = useCanvasGridVisible();
@@ -635,9 +760,9 @@ const CanvasInner = ({ selectedId, onSelect, session, fullscreen, onToggleFullsc
 
   // Every write the canvas makes goes through one of these two, which is what leaves the stack holding the map's
   // whole edit history rather than the part of it someone remembered to record.
-  const commitLocations = useCallback((next: GameLocation[]) => {
+  const commitLocations = useCallback((next: GameLocation[], mergeKey?: string) => {
     historyRef.current = recordCanvasEdit(historyRef.current, {
-      slice: 'locations', before: locations, after: next,
+      slice: 'locations', before: locations, after: next, mergeKey,
     });
     setLocations(next);
   }, [locations, setLocations, historyRef]);
@@ -665,6 +790,10 @@ const CanvasInner = ({ selectedId, onSelect, session, fullscreen, onToggleFullsc
   }, [map, connections, applyIntent, setSelectedConnectionId]);
 
   const [nodes, setNodes, onNodesChange] = useNodesState<LocationNodeType>([]);
+
+  // What the toolbar and the keyboard act on. Read off the nodes rather than tracked beside them: every way a
+  // selection can be composed — the marquee, a Shift-click, a hold, Ctrl+A — already lands there.
+  const selectedIds = useMemo(() => nodes.filter((node) => node.selected).map((node) => node.id), [nodes]);
 
   const setSelection = useCallback((wanted: (id: string) => boolean) => {
     setNodes((current) => {
@@ -752,6 +881,57 @@ const CanvasInner = ({ selectedId, onSelect, session, fullscreen, onToggleFullsc
   }, [historyRef, locations, connections, setLocations, setConnections]);
 
   /**
+   * Which box the toolbar's Auto Arrange lays out: the selected group itself where the author picked one, the
+   * group holding whatever they picked otherwise, and every group at once when nothing is picked at all — the
+   * canvas background's own command, reached without having to clear the selection to find it.
+   */
+  const arrangeScope = (): string | null | undefined => {
+    const picked = selectedIds[0];
+    if (!picked) return undefined;
+    if (locations.some((l) => holderOf(locations, l) === picked)) return picked;
+    const location = locations.find((l) => l.id === picked);
+    return location ? holderOf(locations, location) : undefined;
+  };
+
+  const arrangeFromToolbar = () => {
+    const scope = arrangeScope();
+    commitLocations(scope === undefined
+      ? autoArrangeAll(locations, connections)
+      : autoArrange(locations, connections, scope));
+  };
+
+  // Each of these is asked for on a selection that may turn out to have nothing to do — two boxes one of which
+  // carries the other is one box to line up. A command that moved nothing is not a step to take back, so the
+  // world it hands back untouched is left alone rather than pushed onto the stack as a press that does nothing.
+  const commitIfMoved = useCallback((next: GameLocation[], mergeKey?: string) => {
+    if (next !== locations) commitLocations(next, mergeKey);
+  }, [commitLocations, locations]);
+
+  const alignSelection = useCallback((edge: AlignEdge) => {
+    commitIfMoved(alignLocations(locations, selectedIds, edge));
+  }, [commitIfMoved, locations, selectedIds]);
+
+  const distributeSelection = useCallback((axis: DistributeAxis) => {
+    commitIfMoved(distributeLocations(locations, selectedIds, axis));
+  }, [commitIfMoved, locations, selectedIds]);
+
+  /**
+   * The keyboard's own drag: the selection stepped one grid cell. A run of presses is one edit to take back
+   * rather than one per press — keyed by what is being moved, so picking something else starts a fresh step.
+   */
+  const nudgeSelection = useCallback((delta: { x: number; y: number }) => {
+    commitIfMoved(nudgeLocations(locations, selectedIds, delta), `nudge:${selectedIds.join(',')}`);
+  }, [commitIfMoved, locations, selectedIds]);
+
+  /** The map framed on what the author is working on, or on the whole world when they are working on none of
+   *  it. Zoom is capped: three boxes filling the window tell an author less than three boxes in their place. */
+  const zoomToSelection = useCallback(() => {
+    const duration = reduceMotion ? 0 : 300;
+    if (!selectedIds.length) return void fitView({ duration });
+    fitView({ nodes: selectedIds.map((id) => ({ id })), padding: 0.3, maxZoom: 1.5, duration });
+  }, [fitView, selectedIds, reduceMotion]);
+
+  /**
    * The canvas's keys, live while it is the surface being worked on — the last pointer press decides that,
    * since the pane itself takes no focus. Typing into the Connection inspector is not the canvas's keyboard.
    */
@@ -760,6 +940,11 @@ const CanvasInner = ({ selectedId, onSelect, session, fullscreen, onToggleFullsc
       const el = target as HTMLElement | null;
       return !!el && (el.isContentEditable || ['INPUT', 'TEXTAREA', 'SELECT'].includes(el.tagName));
     };
+    // The toolbar's own picker walks its options with the arrows, so a press that lands there is the toolbar's
+    // rather than the map's — stepping the selection under the author at the same time is two things per press.
+    // Undo and the rest still answer: only the keys the chrome itself uses are handed over.
+    const inChrome = (target: EventTarget | null) =>
+      !!(target as HTMLElement | null)?.closest?.('[role="toolbar"]');
     const trackPointer = (event: PointerEvent) => {
       activeRef.current = !!frameRef.current?.contains(event.target as globalThis.Node);
     };
@@ -769,6 +954,7 @@ const CanvasInner = ({ selectedId, onSelect, session, fullscreen, onToggleFullsc
       // In full screen, Escape is the way out of the window — a keypress meaning "leave" must not also empty
       // the selection the author is taking back to the pane with them.
       const travel = historyShortcut(event);
+      const nudge = NUDGES[event.key];
       if (event.key === 'Escape') { if (!fullscreen) setSelection(() => false); }
       else if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'a') {
         event.preventDefault();
@@ -776,6 +962,14 @@ const CanvasInner = ({ selectedId, onSelect, session, fullscreen, onToggleFullsc
       } else if (travel) {
         event.preventDefault();
         travelHistory(travel);
+      } else if (event.ctrlKey || event.metaKey || event.altKey) {
+        // Every other chord belongs to the browser or the app around the map, not to the map.
+      } else if (nudge && !inChrome(event.target)) {
+        event.preventDefault(); // the arrows would otherwise scroll whatever the canvas is sitting in
+        nudgeSelection(nudge);
+      } else if (event.key.toLowerCase() === 'f') {
+        event.preventDefault();
+        zoomToSelection();
       }
     };
     document.addEventListener('pointerdown', trackPointer, true);
@@ -784,7 +978,7 @@ const CanvasInner = ({ selectedId, onSelect, session, fullscreen, onToggleFullsc
       document.removeEventListener('pointerdown', trackPointer, true);
       document.removeEventListener('keydown', onKeyDown);
     };
-  }, [setSelection, fullscreen, travelHistory]);
+  }, [setSelection, fullscreen, travelHistory, nudgeSelection, zoomToSelection]);
 
   /**
    * Composing a selection on a touch screen. Shift and Ctrl are what a mouse adds a location to a selection
@@ -879,7 +1073,15 @@ const CanvasInner = ({ selectedId, onSelect, session, fullscreen, onToggleFullsc
       return items;
     }
     if (target.kind === 'selection') {
-      return [{ label: 'Clear Selection', onSelect: () => setSelection(() => false) }];
+      // The same finishing moves the toolbar carries, offered where the selection itself was right-clicked.
+      // An even spacing needs three boxes to mean anything, so below that it is not offered at all.
+      return [
+        ...ALIGN_TOOLS.map(({ label, edge }) => ({ label, onSelect: () => alignSelection(edge) })),
+        ...(selectedIds.length > 2
+          ? DISTRIBUTE_TOOLS.map(({ label, axis }) => ({ label, onSelect: () => distributeSelection(axis) }))
+          : []),
+        { label: 'Clear Selection', onSelect: () => setSelection(() => false) },
+      ];
     }
     return [
       { label: 'Select All Locations', onSelect: () => setSelection(() => true) },
@@ -955,8 +1157,24 @@ const CanvasInner = ({ selectedId, onSelect, session, fullscreen, onToggleFullsc
           </ControlButton>
         </Controls>
         <TopLevelDrop />
-        {/* The window's own orientation aids. The pane is a view of a map the author can already take in;
-            these are for the map that has grown past it. */}
+        {/* The window's own orientation aids and power tools. The pane is a view of a map the author can
+            already take in; these are for the map that has grown past it. */}
+        {fullscreen && (
+          <CanvasToolbar
+            arrangeLabel={arrangeScope() === undefined ? 'Auto Arrange All' : 'Auto Arrange'}
+            onArrange={arrangeFromToolbar}
+            alignable={selectedIds.length > 1}
+            distributable={selectedIds.length > 2}
+            onAlign={alignSelection}
+            onDistribute={distributeSelection}
+            snap={snap}
+            setSnap={setSnap}
+            gridVisible={gridVisible}
+            setGridVisible={setGridVisible}
+            connectionStyle={connectionStyle}
+            setConnectionStyle={setConnectionStyle}
+          />
+        )}
         {fullscreen && <LocationSearch find={findLocations} onPick={revealLocation} />}
         {fullscreen && (
           <CanvasMiniMap

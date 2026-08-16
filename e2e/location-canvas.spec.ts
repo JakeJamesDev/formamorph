@@ -57,6 +57,20 @@ const SPREAD_WORLD = {
   ],
 };
 
+/**
+ * Three top-level locations, no two sharing an edge and no two evenly spaced — a world whose whole arrangement
+ * is what the toolbar's finishing moves are read against, with no frame in the way to complicate the reading.
+ */
+const UNTIDY_WORLD = {
+  ...WORLD,
+  id: 'e2e-canvas-untidy',
+  locations: [
+    { id: 'loc-a', name: 'Alpha', canvasPosition: { x: 40, y: 40 } },
+    { id: 'loc-b', name: 'Bravo', canvasPosition: { x: 300, y: 200 } },
+    { id: 'loc-c', name: 'Charlie', canvasPosition: { x: 620, y: 460 } },
+  ],
+};
+
 /** A Group with an authored Connection down to one of the locations it holds — the pair the border-anchor
  *  fix is about, and the one arrow whose shape the style picker is watched on. */
 const PARENT_CHILD_CONNECTION_WORLD = {
@@ -861,6 +875,144 @@ test.describe('Locations canvas', () => {
     await search.fill('lock');
     await search.press('Escape');
     await expect(window_).toBeHidden();
+  });
+
+  /**
+   * The window's toolbar. Align and distribute are asserted as geometry in the unit tests; what only the real
+   * canvas proves is that the buttons reach them with the selection the author composed — and that the boxes
+   * on screen are the world the commands wrote, read back as canvas coordinates rather than as a viewport the
+   * opening fit chose.
+   */
+  test('the full-screen toolbar lines a selection up and spaces it out', async ({ page }) => {
+    await openApp(page);
+    await page.evaluate(async (world) => {
+      const dev = (window as unknown as { __fmDev: DevRouter }).__fmDev;
+      const id = await dev.putWorld(world);
+      await dev.editWorld(id);
+    }, UNTIDY_WORLD);
+    await gotoDev(page, 'mainMenu', {
+      modal: 'worldEditor', tab: 'locations', subtab: 'canvas', fullscreen: true,
+    });
+
+    const window_ = page.getByRole('dialog', { name: 'Locations Canvas' });
+    const node = (id: string) => window_.locator(`.react-flow__node[data-id="${id}"]`);
+    await node('loc-a').waitFor();
+    const toolbar = window_.getByRole('toolbar', { name: 'Canvas Tools' });
+    await expect(toolbar).toBeVisible();
+
+    // Nothing picked: there is no selection to line up, and the toolbar says so rather than doing nothing.
+    const alignLeft = toolbar.getByRole('button', { name: 'Align Left' });
+    const spaceDown = toolbar.getByRole('button', { name: 'Distribute Vertically' });
+    await expect(alignLeft).toBeDisabled();
+    await expect(spaceDown).toBeDisabled();
+
+    const pane = (await window_.locator('.react-flow__pane').boundingBox())!;
+    await page.mouse.click(pane.x + 8, pane.y + 8);
+    await page.keyboard.press('Control+a');
+    await expect(window_.locator('.react-flow__node.selected')).toHaveCount(3);
+    await expect(alignLeft).toBeEnabled();
+
+    // Every left edge onto the leftmost of them, which is the Alpha's own.
+    await alignLeft.click();
+    for (const id of ['loc-a', 'loc-b', 'loc-c']) {
+      await expect.poll(() => flowX(node(id))).toBe(40);
+    }
+
+    // Asking again changes nothing, and a command that moved nothing is not a step to take back: the one
+    // press below still reaches the line-up rather than being spent on a press that did nothing.
+    await alignLeft.click();
+
+    // One press takes the whole line-up back, however many boxes it moved.
+    await page.keyboard.press('Control+z');
+    await expect.poll(() => flowX(node('loc-b'))).toBe(300);
+    await page.keyboard.press('Control+y');
+    await expect.poll(() => flowX(node('loc-b'))).toBe(40);
+
+    // And an even spacing deals the middle one out between the two ends, which stay where they are.
+    await spaceDown.click();
+    const ys = async () => Promise.all(['loc-a', 'loc-b', 'loc-c'].map(async (id) => (await translateOf(node(id))).y));
+    await expect.poll(async () => (await ys())[1]).not.toBe(200);
+    const [top, middle, bottom] = await ys();
+    expect(top).toBe(40);
+    expect(bottom).toBe(460);
+    expect(middle - top).toBeCloseTo(bottom - middle, 0);
+
+    // The arrows belong to whatever holds focus: pressed with a toolbar control focused they walk the toolbar,
+    // and the selection standing behind it does not move as well.
+    await toolbar.getByRole('radio', { name: 'Straight Connections' }).click();
+    const held = await translateOf(node('loc-b'));
+    await page.keyboard.press('ArrowRight');
+    await page.keyboard.press('ArrowRight');
+    expect(await translateOf(node('loc-b'))).toEqual(held);
+  });
+
+  /**
+   * The keys the window finishes with. Framing is a view change and nudging is a world change, so each is read
+   * off what it actually moved: the viewport's own transform once the travel has stopped, and the box's stored
+   * canvas position — which is also what says a run of presses is one edit rather than one per press.
+   */
+  test('F frames the selection and the arrow keys nudge it one cell at a time', async ({ page }) => {
+    await openApp(page);
+    await page.evaluate(async (world) => {
+      const dev = (window as unknown as { __fmDev: DevRouter }).__fmDev;
+      const id = await dev.putWorld(world);
+      await dev.editWorld(id);
+    }, UNTIDY_WORLD);
+    await gotoDev(page, 'mainMenu', {
+      modal: 'worldEditor', tab: 'locations', subtab: 'canvas', fullscreen: true,
+    });
+
+    const window_ = page.getByRole('dialog', { name: 'Locations Canvas' });
+    const node = (id: string) => window_.locator(`.react-flow__node[data-id="${id}"]`);
+    const viewport = window_.locator('.react-flow__viewport');
+    await node('loc-b').waitFor();
+
+    /** Whether the box's middle is inside the canvas's own frame — what "in view" means on a clipped map. */
+    const frame = (await window_.locator('.react-flow').boundingBox())!;
+    const inView = async (id: string) => {
+      const box = (await node(id).boundingBox())!;
+      const at = { x: box.x + box.width / 2, y: box.y + box.height / 2 };
+      return at.x >= frame.x && at.x <= frame.x + frame.width
+        && at.y >= frame.y && at.y <= frame.y + frame.height;
+    };
+
+    // Picked first, then panned right off the map: the box is off screen when F is pressed, so arriving back
+    // at it is the key's doing rather than the opening fit's.
+    await node('loc-b').click();
+    await expect(node('loc-b')).toHaveClass(/selected/);
+    const middle = { x: frame.x + frame.width / 2, y: frame.y + frame.height / 2 };
+    await page.mouse.move(middle.x, middle.y);
+    await page.mouse.down({ button: 'right' });
+    await page.mouse.move(middle.x - frame.width, middle.y - frame.height, { steps: 12 });
+    await page.mouse.up({ button: 'right' });
+    await expect.poll(() => inView('loc-b')).toBe(false);
+    const before = await translateOf(viewport);
+    await page.keyboard.press('f');
+    await restAfter(viewport, before);
+    await expect.poll(() => inView('loc-b')).toBe(true);
+
+    // Three presses, three cells — a nudge is the snapped drag the keyboard makes.
+    const was = await translateOf(node('loc-b'));
+    for (let i = 0; i < 3; i += 1) await page.keyboard.press('ArrowRight');
+    await expect.poll(async () => (await translateOf(node('loc-b'))).x).toBe(was.x + 60);
+    await page.keyboard.press('ArrowDown');
+    await expect.poll(async () => (await translateOf(node('loc-b'))).y).toBe(was.y + 20);
+
+    // The whole run comes back in one press rather than one per keystroke, and nothing else moved with it.
+    await page.keyboard.press('Control+z');
+    await expect.poll(async () => translateOf(node('loc-b'))).toEqual(was);
+    expect(await flowX(node('loc-a'))).toBe(40);
+
+    // And the world kept the nudge rather than the live canvas carrying it: redo, then read it back off a
+    // map rebuilt from the world.
+    await page.keyboard.press('Control+y');
+    await expect.poll(async () => (await translateOf(node('loc-b'))).x).toBe(was.x + 60);
+    await page.keyboard.press('Escape');
+    await gotoDev(page, 'mainMenu', { modal: 'worldEditor', tab: 'locations', subtab: 'list' });
+    await gotoDev(page, 'mainMenu', { modal: 'worldEditor', tab: 'locations', subtab: 'canvas' });
+    const rebuilt = page.locator('.react-flow__node[data-id="loc-b"]');
+    await rebuilt.waitFor();
+    expect((await translateOf(rebuilt)).x).toBe(was.x + 60);
   });
 
   /** The dev-route lands on the full-screen canvas in one call, which is what the later tickets verify from. */
