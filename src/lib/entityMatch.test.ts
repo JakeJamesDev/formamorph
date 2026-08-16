@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { matchNames, findEntityNames, matchNamesLoose, sameCharacterName, stripQuotedSpeech } from './entityMatch';
+import { matchNames, findEntityNames, matchNamesLoose, sameCharacterName, stripQuotedSpeech, resolveEntityByName } from './entityMatch';
 import type { Entity } from '@/types';
 
 const ent = (name: string): Entity => ({ id: name, name });
@@ -255,5 +255,42 @@ describe('stripQuotedSpeech + partial:false (the visitor-pull parse)', () => {
     // the full name still hits the in-order pass, which would walk her into the scene as a visitor.
     expect(findEntityNames(narration, entities, { partial: false })).toContain('Professor Serana');
     expect(findEntityNames(stripQuotedSpeech(narration), entities, { partial: false })).toEqual(['Wolfram']);
+  });
+});
+
+describe('resolveEntityByName — scene name to defined entity', () => {
+  const cast = [ent('Wolf'), ent('Direwolf'), ent('Emily Foster')];
+
+  it('resolves each of two entities sharing a word fragment to itself', () => {
+    // The bug this guards: a bidirectional substring lookup made "Wolf" and "Direwolf" equivalent, so
+    // both scene rows resolved to whichever was authored first — the tab listed one name twice.
+    expect(resolveEntityByName('Wolf', cast)?.name).toBe('Wolf');
+    expect(resolveEntityByName('Direwolf', cast)?.name).toBe('Direwolf');
+  });
+
+  it('resolves the fragment-sharing name even when the shorter entity is authored first', () => {
+    expect(resolveEntityByName('Direwolf', [ent('Wolf'), ent('Direwolf')])?.name).toBe('Direwolf');
+    expect(resolveEntityByName('Direwolf', [ent('Direwolf'), ent('Wolf')])?.name).toBe('Direwolf');
+  });
+
+  it('still resolves a partial reference to its full-named entity', () => {
+    expect(resolveEntityByName('Emily', cast)?.name).toBe('Emily Foster');
+    expect(resolveEntityByName('Emily Foster', cast)?.name).toBe('Emily Foster');
+  });
+
+  it('prefers an exact match over a whole-word containment', () => {
+    const packs = [ent('Wolf Pack'), ent('Wolf')];
+    expect(resolveEntityByName('Wolf', packs)?.name).toBe('Wolf');
+    expect(resolveEntityByName('Wolf Pack', packs)?.name).toBe('Wolf Pack');
+  });
+
+  it('matches case-insensitively and tolerates plurals', () => {
+    expect(resolveEntityByName('wolf', cast)?.name).toBe('Wolf');
+    expect(resolveEntityByName('Wolves', cast)?.name).toBe('Wolf');
+  });
+
+  it('returns undefined for an ad-hoc participant and for a blank name', () => {
+    expect(resolveEntityByName('Nameless Drifter', cast)).toBeUndefined();
+    expect(resolveEntityByName('  ', cast)).toBeUndefined();
   });
 });

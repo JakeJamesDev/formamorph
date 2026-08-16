@@ -188,6 +188,35 @@ describe('LeftPanel', () => {
     fireEvent.click(entities);
     expect(entities).toHaveAttribute('data-state', 'on');
   });
+
+  // The bug this guards: the list resolved a scene name to an entity by bare substring, either way round,
+  // so "Wolf" and "Direwolf" were interchangeable — the row label came from whichever was authored first.
+  it('labels two present entities whose names share a word with their own names', () => {
+    const cast = [{ id: 'e1', name: 'Wolf' }, { id: 'e2', name: 'Direwolf' }];
+    renderLeftPanel({ entities: cast as never }, {
+      world: { entities: cast } as never,
+      seed: (gameplay) => gameplay.setVisibleEntities([
+        { name: 'Wolf', revealed: true },
+        { name: 'Direwolf', revealed: true },
+      ]),
+    });
+
+    fireEvent.mouseDown(screen.getByRole('tab', { name: /Entities/i }));
+    expect(screen.getByText('Wolf')).toBeInTheDocument();
+    expect(screen.getByText('Direwolf')).toBeInTheDocument();
+  });
+
+  it('labels a lone longer-named entity as itself, not as the shorter name it contains', () => {
+    const cast = [{ id: 'e1', name: 'Wolf' }, { id: 'e2', name: 'Direwolf' }];
+    renderLeftPanel({ entities: cast as never }, {
+      world: { entities: cast } as never,
+      seed: (gameplay) => gameplay.setVisibleEntities([{ name: 'Direwolf', revealed: true }]),
+    });
+
+    fireEvent.mouseDown(screen.getByRole('tab', { name: /Entities/i }));
+    expect(screen.getByText('Direwolf')).toBeInTheDocument();
+    expect(screen.queryByText('Wolf')).not.toBeInTheDocument();
+  });
 });
 
 describe('MiddlePanel — editing a turn\'s narration', () => {

@@ -136,6 +136,26 @@ export function findEntityNames(
   return found;
 }
 
+/**
+ * The defined entity a scene participant's name refers to. An exact (case-insensitive) name match wins;
+ * failing that, a **whole-word** containment either way, so a partial reference still resolves ("Emily" →
+ * "Emily Foster") while two names merely sharing a fragment stay distinct ("Wolf" is not "Direwolf").
+ * Plural forms match as elsewhere here. Returns undefined for an ad-hoc participant with no entity behind it.
+ */
+export function resolveEntityByName<T extends { name: string }>(name: string, entities: T[]): T | undefined {
+  const trimmed = name?.trim();
+  if (!trimmed) return undefined;
+  const lower = trimmed.toLowerCase();
+  const exact = entities.find((e) => e.name?.trim().toLowerCase() === lower);
+  if (exact) return exact;
+  const nameRe = makeWordRegex(trimmed);
+  return entities.find((e) => {
+    const other = e.name?.trim();
+    if (!other) return false;
+    return nameRe.test(other) || makeWordRegex(other).test(trimmed);
+  });
+}
+
 // Short/function words dropped before loose matching so a name like "The Wolf" can't match on "the".
 const LOOSE_STOPWORDS = new Set(['the', 'a', 'an', 'of', 'and', 'or', 'with']);
 
