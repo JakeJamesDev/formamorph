@@ -22,6 +22,11 @@ import { Plus, ArrowLeft, Save, FolderPlus, FilePlus, ImageDown, BookPlus, UserP
 import { ActionIcon } from '@/lib/actionIcons';
 import { cn } from "@/lib/utils";
 import EditorFindBar from '@/components/editor/EditorFindBar';
+import { TestBench, TestBenchButton } from '@/components/editor/TestBench';
+import { asBenchTab, type BenchTab } from '@/components/editor/benchTabs';
+import { Drawer, DrawerContent, DrawerTitle } from '@/components/ui/drawer';
+import { groupFindings, RULES, type FindingSection } from '@/lib/testBench/rules';
+import { useDebouncedFindings } from '@/lib/testBench/useFindings';
 import { collectSearchTargets, type SearchMatch } from '@/lib/worldSearch';
 import { revealEditorMatch, clearEditorMatch, revealSelectedRow } from '@/lib/editorFieldFocus';
 import { Panel, PanelGroup, PanelResizeHandle } from 'react-resizable-panels';
@@ -223,6 +228,8 @@ const WorldEditorInner = ({ onClose, embedded = false, backButton }: {
   const navigateToMatch = useCallback((match: SearchMatch | null) => {
     if (!match) { setFindField(null); clearEditorMatch(); return; }
     setActiveTab(match.target.tab);
+    // Same reason as a Bench finding's Open: the list filter would hide the row the hit lives on.
+    setSearchTerm('');
     setSelectedItemId(match.target.itemId);
     // A panel that hides some of its fields behind its own tabs (the Readme pair) needs telling which one
     // was asked for; text alone can't reach a field that isn't rendered.
@@ -247,6 +254,45 @@ const WorldEditorInner = ({ onClose, embedded = false, backButton }: {
   const [addMenuOpen, setAddMenuOpen] = useState(false);
   const [showAddDictionary, setShowAddDictionary] = useState(false);
   const [showAddEntity, setShowAddEntity] = useState(false);
+
+  // ── Test Bench ────────────────────────────────────────────────────────────
+  const [benchOpen, setBenchOpen] = useState(false);
+  const [benchTab, setBenchTab] = useState<BenchTab>('issues');
+  // `getWorldData` is memoized on the world arrays, so this payload's identity is the "world changed"
+  // signal the rule pass debounces on.
+  const benchWorld = useMemo(getWorldData, [getWorldData]);
+  const findings = useDebouncedFindings(benchWorld);
+  const benchGroups = useMemo(() => groupFindings(findings), [findings]);
+  // A finding's item is a place in the editor: land on its tab with it selected, and scroll the list to it
+  // the same way a search hit does. The mobile sheet covers the editor, so it closes on the way; the
+  // desktop panel sits beside it and stays open for the next finding.
+  const openFindingItem = useCallback((section: FindingSection, itemId: string) => {
+    setActiveTab(section);
+    // A filter left in the list box would hide the very row being navigated to.
+    setSearchTerm('');
+    setSelectedItemId(itemId);
+    if (isMobile) setBenchOpen(false);
+    setTimeout(() => revealSelectedRow(editorRootRef.current), 0);
+  }, [isMobile]);
+  const benchPanel = (
+    <TestBench
+      groups={benchGroups}
+      ruleCount={RULES.length}
+      tab={benchTab}
+      onTabChange={setBenchTab}
+      onClose={() => setBenchOpen(false)}
+      onOpenItem={openFindingItem}
+    />
+  );
+  // DEV dev-router: `#dev?modal=worldEditor&bench=issues` opens the Bench on an instrument.
+  const devBench = devRoute?.bench;
+  useEffect(() => {
+    if (!import.meta.env.DEV) return;
+    const tab = asBenchTab(devBench);
+    if (!tab) return;
+    setBenchTab(tab);
+    setBenchOpen(true);
+  }, [devBench]);
 
   const exportCurrentWorld = () => exportWorld(buildCurrentWorld());
 
@@ -675,6 +721,7 @@ const WorldEditorInner = ({ onClose, embedded = false, backButton }: {
       >
         <Search className="h-4 w-4" />
       </Button>
+      <TestBenchButton count={benchGroups.length} open={benchOpen} onClick={() => setBenchOpen((v) => !v)} />
       <TutorialPopover entry={tutorial} nav={tutorialNav}>
         <ToggleGroup
           type="single"
@@ -882,7 +929,8 @@ const WorldEditorInner = ({ onClose, embedded = false, backButton }: {
           </div>
         ) : (
           <PanelGroup direction="horizontal">
-            <Panel defaultSize={50} minSize={30}>
+            {/* The Bench comes and goes, so every panel carries an id+order for the group to track it. */}
+            <Panel id="editor-list" order={1} defaultSize={50} minSize={30}>
               <div className="h-full p-4">
                 <Card className="h-full flex flex-col">
                   <CardHeader className="space-y-0 pb-2">{headerBar}</CardHeader>
@@ -904,7 +952,7 @@ const WorldEditorInner = ({ onClose, embedded = false, backButton }: {
               </div>
             </Panel>
             <PanelResizeHandle className="w-1 bg-secondary cursor-col-resize" />
-            <Panel minSize={30}>
+            <Panel id="editor-detail" order={2} minSize={30}>
               <div className="h-full p-4">
                 <Card className="h-full">
                   <CardContent className="h-full p-0">
@@ -913,9 +961,28 @@ const WorldEditorInner = ({ onClose, embedded = false, backButton }: {
                 </Card>
               </div>
             </Panel>
+            {benchOpen && (
+              <>
+                <PanelResizeHandle className="w-1 bg-secondary cursor-col-resize" />
+                <Panel id="editor-bench" order={3} defaultSize={28} minSize={20}>
+                  <div className="h-full p-4 pl-0">
+                    <Card className="h-full overflow-hidden">{benchPanel}</Card>
+                  </div>
+                </Panel>
+              </>
+            )}
           </PanelGroup>
         )}
       </div>
+      {/* Mobile has no room for a third pane, so the Bench arrives as a full-height sheet over the editor. */}
+      {isMobile && (
+        <Drawer open={benchOpen} onOpenChange={setBenchOpen}>
+          <DrawerContent className="h-[92dvh]">
+            <DrawerTitle className="sr-only">Test Bench</DrawerTitle>
+            <div className="min-h-0 flex-grow">{benchPanel}</div>
+          </DrawerContent>
+        </Drawer>
+      )}
       <UnsavedChangesDialog
         open={showExitPrompt}
         onOpenChange={setShowExitPrompt}

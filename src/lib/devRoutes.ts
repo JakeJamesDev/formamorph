@@ -52,6 +52,10 @@ export const DEV_MODAL_TABS = {
   // (`#dev?modal=worldEditor&tab=locations&subtab=canvas`). Adding `fullscreen=1` opens the canvas in its
   // full-screen window on arrival — the same canvas, so it is not a third view and not listed as one.
   worldEditorLocations: ['list', 'canvas'],
+  // The World Editor's Test Bench, opened beside the editor with `bench=…` naming the instrument
+  // (`#dev?modal=worldEditor&bench=issues`). Only built instruments are listed — an unbuilt tab renders
+  // disabled and has nothing to land on, so adding one here is part of building it.
+  worldEditorBench: ['issues'],
   // Admin Panel → Policies has a second level, one sub-tab per authored popup, reached with `subtab=…`.
   adminPanelPolicies: ['uploadGate', 'tagNotice'],
   // Admin Panel → Feedback uses the same `subtab=…` slot, one per branch.

@@ -27,6 +27,13 @@ import { escapeRegExp } from './utils';
 const wordForms = (word: string): string[] =>
   [...new Set([word, pluralize.singular(word), pluralize.plural(word)])].filter(Boolean);
 
+/**
+ * The key two written forms share when this module would treat them as the same text — case-folded and
+ * singularized, so "Wolves", "wolf" and " Wolf " collapse to one. Authoring checks compare names and
+ * aliases through this so their idea of "the same text" is the matcher's, not a second one.
+ */
+export const matchKey = (text: string): string => pluralize.singular(text.trim().toLowerCase());
+
 // A word-boundary match for `word` OR its singular/plural forms. Default case-insensitive; pass 'gi' for
 // iteration via exec().
 const makeWordRegex = (word: string, flags = 'i'): RegExp =>
