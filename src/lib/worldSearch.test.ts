@@ -112,6 +112,43 @@ describe('collectSearchTargets', () => {
     })]]);
   });
 
+  it('reaches every stored custom prompt, and only the stored ones', () => {
+    const { src, writes } = sources({
+      worldOverview: overview({
+        promptOverrides: {
+          systemPrompt: 'You narrate the tide.',
+          choicesPrompt: 'You offer choices.',
+          // Switched off but still authored — the author can still search their own text.
+          statUpdatesPrompt: 'You count the cost.', statUpdatesPromptEnabled: false,
+        },
+      }),
+    });
+    const targets = collectSearchTargets(src);
+    expect(targetFor(targets, 'promptOverrides.systemPrompt').value).toBe('You narrate the tide.');
+    expect(targetFor(targets, 'promptOverrides.choicesPrompt').fieldLabel).toBe('Custom Prompt (Choices)');
+    expect(targetFor(targets, 'promptOverrides.statUpdatesPrompt').value).toBe('You count the cost.');
+
+    targetFor(targets, 'promptOverrides.choicesPrompt').write('You offer colder choices.');
+    // A write must land on its own key and leave the sibling prompts alone.
+    expect(writes).toEqual([['overview', expect.objectContaining({
+      promptOverrides: expect.objectContaining({
+        systemPrompt: 'You narrate the tide.',
+        choicesPrompt: 'You offer colder choices.',
+        statUpdatesPrompt: 'You count the cost.',
+        statUpdatesPromptEnabled: false,
+      }),
+    })]]);
+  });
+
+  it('offers no target for a prompt tab still tracking the preset', () => {
+    // Nothing is stored, so there is no world text to find — and a replace would freeze a prompt the
+    // author never wrote.
+    const keys = collectSearchTargets(sources().src).map((t) => t.fieldKey);
+    expect(keys).not.toContain('promptOverrides.systemPrompt');
+    expect(keys).not.toContain('promptOverrides.choicesPrompt');
+    expect(keys).not.toContain('promptOverrides.statUpdatesPrompt');
+  });
+
   it('carries a placeholder value weight across an edit to that value', () => {
     const ph: Placeholder = { id: 'p1', name: 'Season', values: ['spring', 'winter'], weights: { spring: 3, winter: 1 } };
     const { src, writes } = sources({ placeholders: [ph] });

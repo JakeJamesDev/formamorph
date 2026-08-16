@@ -1,15 +1,28 @@
-import { describe, it, expect, vi } from 'vitest';
-import { render, screen } from '@testing-library/react';
+import { useState } from 'react';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { render, screen, act } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import type { Dictionary, Entity, GameLocation, Stat, Trait, WorldOverview } from '@/types';
+import { EditorModeContext } from '@/lib/editorMode';
 import WorldDetailsManager from './WorldDetailsManager';
 
-const worldOverview = {
+const PRESET_NARRATION = 'PRESET narration prompt';
+const PRESET_CHOICES = 'PRESET choices prompt';
+const PRESET_STATS = 'PRESET stat prompt';
+
+const baseOverview = {
   name: 'Sedge Landing',
   description: '',
   systemPrompt: 'A drowned coast where the tide keeps what it takes.',
   tags: [],
   promptOverrides: { systemPrompt: 'You are the narrator. <LENGTH GUIDANCE>', systemPromptEnabled: true },
 } as unknown as WorldOverview;
+
+// The world under edit, mutated by the manager's own writes so a test can assert what ends up stored.
+const world: { overview: WorldOverview; rerender: () => void } = {
+  overview: baseOverview,
+  rerender: () => {},
+};
 
 // A small but real authored world: the preview is supposed to read THIS, so the fixture has to be a world
 // an author could plausibly have open, not an empty shell.
@@ -39,7 +52,11 @@ const dictionaries = [{
 
 vi.mock('@/contexts/GameDataContext', () => ({
   useGameData: () => ({
-    worldOverview, updateWorldOverview: vi.fn(),
+    worldOverview: world.overview,
+    updateWorldOverview: (patch: Partial<WorldOverview>) => {
+      world.overview = { ...world.overview, ...patch };
+      world.rerender();
+    },
     stats, locations, entities, traits, traitGroups: [], dictionaries, placeholders: [],
   }),
 }));
@@ -47,10 +64,12 @@ vi.mock('@/contexts/SettingsContext', () => ({
   useSettings: () => ({
     paragraphLimit: 'single', maxTokens: 800, markdownOutput: true,
     activeSectionStyle: 'default', limitActiveCharacters: true, activeCharacterLimit: 5,
+    systemPrompt: PRESET_NARRATION, choicesPrompt: PRESET_CHOICES, statUpdatesPrompt: PRESET_STATS,
   }),
 }));
 vi.mock('@/lib/useDanbooruTags', () => ({ useDanbooruTags: () => [] }));
-// The Lexical editor itself isn't under test — what matters is which props the manager hands it.
+// The Lexical editor itself isn't under test — what matters is which props the manager hands it, and that
+// a test can drive an edit through the same `onChange` the real field fires.
 const fieldProps = vi.hoisted(() => ({ byLabel: {} as Record<string, Record<string, unknown>> }));
 vi.mock('@/components/prompt/PromptField', () => ({
   default: (props: { ariaLabel?: string; previewValues?: Record<string, string> }) => {
@@ -60,15 +79,173 @@ vi.mock('@/components/prompt/PromptField', () => ({
 }));
 vi.mock('@/components/prompt/PlaceholderField', () => ({ default: () => <div /> }));
 
-const narrationProps = () => {
-  render(<WorldDetailsManager />);
-  return fieldProps.byLabel['World narration prompt'];
+/** Renders the manager against the live `world`, re-rendering whenever the manager writes to it. */
+const Harness = () => {
+  const [, setTick] = useState(0);
+  world.rerender = () => setTick((n) => n + 1);
+  return <WorldDetailsManager />;
 };
-const previewValues = () => narrationProps().previewValues as Record<string, string>;
+
+const renderManager = (advanced = true) => render(
+  <EditorModeContext.Provider value={{ mode: advanced ? 'advanced' : 'simple', advanced, setMode: () => {} }}>
+    <Harness />
+  </EditorModeContext.Provider>,
+);
+
+/** The props the field on the showing tab was last given. Radix mounts only the active tab's content. */
+const field = (label: string) => fieldProps.byLabel[label];
+const edit = (label: string, text: string) =>
+  act(() => (field(label).onChange as (v: string) => void)(text));
+const checkbox = (kind: string) => screen.getByRole('checkbox', { name: `Use this world's ${kind} prompt` });
+
+beforeEach(() => {
+  world.overview = { ...baseOverview, promptOverrides: { ...baseOverview.promptOverrides } };
+  fieldProps.byLabel = {};
+});
+
+describe('the custom prompts section', () => {
+  it('is hidden in Simple mode, prompts or not', () => {
+    renderManager(false);
+    expect(screen.queryByText('Custom Prompts')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('World narration prompt')).not.toBeInTheDocument();
+  });
+
+  it('shows every kind’s enabled state without visiting its tab', () => {
+    world.overview.promptOverrides = {
+      systemPrompt: 'authored', systemPromptEnabled: true,
+      choicesPrompt: 'authored but off', choicesPromptEnabled: false,
+    };
+    renderManager();
+
+    // Narration is the showing tab; the other two report their state from the tab chrome alone.
+    expect(checkbox('narration')).toBeChecked();
+    expect(checkbox('choices')).not.toBeChecked();
+    expect(checkbox('stats')).not.toBeChecked();
+  });
+
+  it('switches to a tab whose checkbox is clicked, and switches that kind on', async () => {
+    const user = userEvent.setup();
+    renderManager();
+    await user.click(checkbox('choices'));
+
+    expect(world.overview.promptOverrides?.choicesPromptEnabled).toBe(true);
+    expect(screen.getByTestId('World choices prompt')).toBeInTheDocument();
+  });
+
+  it('only selects when the tab itself is clicked', async () => {
+    const user = userEvent.setup();
+    renderManager();
+    await user.click(screen.getByRole('tab', { name: 'Stats' }));
+
+    expect(screen.getByTestId('World stats prompt')).toBeInTheDocument();
+    // Browsing must never enable anything, and must not write to the world at all.
+    expect(checkbox('stats')).not.toBeChecked();
+    expect(world.overview.promptOverrides?.statUpdatesPromptEnabled).toBeUndefined();
+  });
+
+  it('keeps a switched-off kind editable, and says it is not applied', async () => {
+    const user = userEvent.setup();
+    world.overview.promptOverrides = { choicesPrompt: 'drafted', choicesPromptEnabled: false };
+    renderManager();
+    await user.click(screen.getByRole('tab', { name: 'Choices' }));
+
+    expect(field('World choices prompt').value).toBe('drafted');
+    expect(screen.getByText(/Not applied until you switch this tab on/)).toBeInTheDocument();
+  });
+
+  it('switching a kind off keeps the text it holds', async () => {
+    const user = userEvent.setup();
+    renderManager();
+    await user.click(checkbox('narration'));
+
+    expect(world.overview.promptOverrides?.systemPromptEnabled).toBe(false);
+    expect(world.overview.promptOverrides?.systemPrompt).toBe('You are the narrator. <LENGTH GUIDANCE>');
+  });
+});
+
+describe('the live template and the freeze', () => {
+  it('opens an unwritten kind on the prompt the game runs right now, storing nothing', async () => {
+    const user = userEvent.setup();
+    renderManager();
+    await user.click(screen.getByRole('tab', { name: 'Choices' }));
+
+    expect(field('World choices prompt').value).toBe(PRESET_CHOICES);
+    expect(screen.getByText(/This is your current choices prompt/)).toBeInTheDocument();
+    expect(world.overview.promptOverrides?.choicesPrompt).toBeUndefined();
+  });
+
+  it('stores the text on the first edit that diverges from the template', async () => {
+    const user = userEvent.setup();
+    renderManager();
+    await user.click(screen.getByRole('tab', { name: 'Choices' }));
+    edit('World choices prompt', `${PRESET_CHOICES} — but colder`);
+
+    expect(world.overview.promptOverrides?.choicesPrompt).toBe(`${PRESET_CHOICES} — but colder`);
+    // Not switched on by writing it: enabling is the checkbox's job, and drafting is allowed.
+    expect(world.overview.promptOverrides?.choicesPromptEnabled).toBe(false);
+  });
+
+  it('does not freeze a template that came back unchanged', async () => {
+    const user = userEvent.setup();
+    renderManager();
+    await user.click(screen.getByRole('tab', { name: 'Stats' }));
+    edit('World stats prompt', PRESET_STATS);
+
+    // The field echoes its value on mount and on any no-op edit; that must not become an authored prompt.
+    expect(world.overview.promptOverrides?.statUpdatesPrompt).toBeUndefined();
+  });
+
+  it('keeps an edited kind on its own text as the preset moves on', async () => {
+    const user = userEvent.setup();
+    renderManager();
+    await user.click(screen.getByRole('tab', { name: 'Choices' }));
+    edit('World choices prompt', 'my own choices prompt');
+
+    expect(field('World choices prompt').value).toBe('my own choices prompt');
+  });
+});
+
+describe('resetting a kind', () => {
+  it('offers Reset only for a kind the author actually wrote', async () => {
+    const user = userEvent.setup();
+    renderManager();
+    expect(screen.getByRole('button', { name: 'Reset' })).toBeInTheDocument(); // narration is stored
+
+    await user.click(screen.getByRole('tab', { name: 'Choices' }));
+    expect(screen.queryByRole('button', { name: 'Reset' })).not.toBeInTheDocument();
+  });
+
+  it('asks first, and a cancel keeps the authored text', async () => {
+    const user = userEvent.setup();
+    renderManager();
+    await user.click(screen.getByRole('button', { name: 'Reset' }));
+    await user.click(screen.getByRole('button', { name: 'Cancel' }));
+
+    expect(world.overview.promptOverrides?.systemPrompt).toBe('You are the narrator. <LENGTH GUIDANCE>');
+  });
+
+  it('drops the stored text and returns the tab to the live prompt', async () => {
+    const user = userEvent.setup();
+    renderManager();
+    await user.click(screen.getByRole('button', { name: 'Reset' }));
+    await user.click(screen.getByRole('button', { name: 'Confirm' }));
+
+    expect(world.overview.promptOverrides?.systemPrompt).toBeUndefined();
+    expect(field('World narration prompt').value).toBe(PRESET_NARRATION);
+    // The switch itself is untouched — reset discards authored text, it does not decline the feature.
+    expect(world.overview.promptOverrides?.systemPromptEnabled).toBe(true);
+  });
+});
+
+const previewValues = () => {
+  renderManager();
+  return field('World narration prompt').previewValues as Record<string, string>;
+};
 
 describe('the world narration prompt field', () => {
   it('gives the editor something to preview, so it offers Preview and the split view', () => {
-    const props = narrationProps();
+    renderManager();
+    const props = field('World narration prompt');
 
     // PromptField gates its Edit/Preview tabs — and the split view built on them — on having values to
     // resolve chips against. Without these the field is a bare textarea.
@@ -133,12 +310,15 @@ describe('the world narration prompt field', () => {
     expect(values['<LENGTH GUIDANCE>']).toBe('Write a single paragraph.');
   });
 
-  it('does not render the editor at all when the override is switched off', () => {
-    worldOverview.promptOverrides = { systemPrompt: 'kept', systemPromptEnabled: false };
-    render(<WorldDetailsManager />);
+  it('gives each kind its own chip palette', async () => {
+    const user = userEvent.setup();
+    renderManager();
+    const narrationVars = field('World narration prompt').variables as Array<{ token: string }>;
+    await user.click(screen.getByRole('tab', { name: 'Choices' }));
+    const choicesVars = field('World choices prompt').variables as Array<{ token: string }>;
 
-    expect(screen.queryByTestId('World narration prompt')).not.toBeInTheDocument();
-    expect(screen.getByText(/Your prompt is kept/)).toBeInTheDocument();
-    worldOverview.promptOverrides = { systemPrompt: 'You are the narrator.', systemPromptEnabled: true };
+    // Length and markdown guidance are narration-only: the choices pass has nowhere to put them.
+    expect(narrationVars.map((v) => v.token)).toContain('<LENGTH GUIDANCE>');
+    expect(choicesVars.map((v) => v.token)).not.toContain('<LENGTH GUIDANCE>');
   });
 });

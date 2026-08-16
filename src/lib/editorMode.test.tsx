@@ -74,6 +74,9 @@ describe('worldUsesAdvancedFeatures', () => {
     ['a location summary', { locations: [{ ...emptyWorld.locations[0], aiSummary: 'Rotting boards.' }] }],
     ['a trait stat toggle', { traits: [{ ...emptyWorld.traits[0], statToggles: [{ statId: 's1', enabled: false }] }] }],
     ['a narration override', { worldOverview: { ...emptyWorld.worldOverview, promptOverrides: { systemPrompt: 'You narrate.' } } as unknown as WorldOverview }],
+    ['a choices override', { worldOverview: { ...emptyWorld.worldOverview, promptOverrides: { choicesPrompt: 'You offer.' } } as unknown as WorldOverview }],
+    // Switched off, but still authored: the section that holds it is Advanced-only either way.
+    ['a stats override', { worldOverview: { ...emptyWorld.worldOverview, promptOverrides: { statUpdatesPrompt: 'You count.', statUpdatesPromptEnabled: false } } as unknown as WorldOverview }],
   ])('is true for %s', (_label, patch) => {
     expect(worldUsesAdvancedFeatures({ ...emptyWorld, ...patch })).toBe(true);
   });

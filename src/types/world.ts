@@ -290,12 +290,13 @@ export interface Dictionary {
 }
 
 /**
- * Prompt text a world supplies in place of the player's own. Only the narration system prompt is honored;
- * the other AI passes (choices, planning, stats, memory, the clock) always come from the player's preset,
- * so a world can restyle the storytelling without being able to break the machinery around it.
+ * Prompt text a world supplies in place of the player's own. Only the narration, choices, and stat-update
+ * system prompts are honored; every other AI pass (planning, memory, the clock) and every user-message
+ * template comes from the player's preset, so a world can restyle the storytelling and the mechanics around
+ * it without being able to break the machinery itself.
  *
  * An object rather than a bare string so later keys need no further export-shape change. The player can
- * decline it per world — see `lib/useWorldPromptOptOut`.
+ * decline the lot per world — see `lib/useWorldPromptOptOut`.
  */
 export interface WorldPromptOverrides {
   /** Replaces the active preset's narration system prompt, chips and all, while playing this world. */
@@ -304,6 +305,14 @@ export interface WorldPromptOverrides {
    *  toggle off is not what destroys the text. Absent/`true` = applied, so a world authored before this
    *  flag existed still uses its prompt. */
   systemPromptEnabled?: boolean;
+  /** Replaces the active preset's choices system prompt. */
+  choicesPrompt?: string;
+  /** `false` keeps `choicesPrompt` on the world without applying it. */
+  choicesPromptEnabled?: boolean;
+  /** Replaces the active preset's stat-updates system prompt. */
+  statUpdatesPrompt?: string;
+  /** `false` keeps `statUpdatesPrompt` on the world without applying it. */
+  statUpdatesPromptEnabled?: boolean;
 }
 
 /** World-level metadata and global settings (system prompt, media, 3D toggle) shared across all saves. */
