@@ -120,7 +120,11 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { useReadmeVisibility } from "@/lib/useReadmeVisibility";
 import ReadmeModal from "@/components/game/ReadmeModal";
 import { buildEnterFlow, navigableSteps, type EnterMode, type EnterStep, type NavigableStep } from "@/lib/enterFlow";
-import { hasWorldNarrationPrompt, worldNarrationPrompt, useWorldPromptOptOut } from "@/lib/worldPrompt";
+import {
+  customizedPromptKinds, promptKindsPhrase, worldPrompt, useWorldPromptOptOut, WORLD_PROMPT_KIND_LABELS,
+  type WorldPromptKind,
+} from "@/lib/worldPrompt";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useWorldPromptPresets, GLOBAL_PRESET_VALUE } from "@/lib/worldPromptPreset";
 import PatreonIcon from "@/components/PatreonIcon";
 import GithubIcon from "@/components/GithubIcon";
@@ -247,6 +251,15 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
   const { promptWorld, promptWorldsBatch, promptImagesBatch, promptEntity, dialog: downscaleDialog } = useDownscalePrompt();
   const { exportWorld, dialog: worldExportDialog } = useWorldExport(promptWorld);
   const [selectedWorld, setSelectedWorld] = useState<WorldRecord | null>(null);
+  // Which passes the selected world rewrites — what the details notice names, what the viewer tabs, and
+  // what the single opt-out declines. A world that stores a prompt but switched it off customizes nothing.
+  const customPromptKinds = useMemo(
+    () => customizedPromptKinds(selectedWorld?.data?.worldOverview), [selectedWorld]);
+  // Falls back to whichever kind the world does customize, so the viewer never opens on an empty tab.
+  const [promptTab, setPromptTab] = useState<string>('narration');
+  const shownPromptTab = customPromptKinds.includes(promptTab as WorldPromptKind)
+    ? promptTab
+    : customPromptKinds[0] ?? 'narration';
   // Library grid layout: "grid" (compact cards) or "detailed" (community-browser-style card + info
   // beneath). Kept per tab and persisted: the four libraries hold different-shaped things, and wanting
   // worlds as big cards says nothing about wanting the same of a hundred characters. Worlds keep the
@@ -305,7 +318,7 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
   const { traits, traitGroups, stats, locations, resolvePH, resolveTraitText } = useResolvedAuthoredWorld(draftPins);
 
   const [showCodeModal, setShowCodeModal] = useState(false);
-  const [showNarrationPrompt, setShowNarrationPrompt] = useState(false);
+  const [showWorldPrompts, setShowWorldPrompts] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
   // Forces Settings to a specific tab when something deep-links into it (the AI setup gate → Endpoint).
   // Cleared on close so the next deep-link re-triggers the modal's initialTab effect.
@@ -2072,16 +2085,17 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
             )}
 
             {/* A downloaded world rewriting how the story is told should say so rather than only showing
-                up as different prose, so the text is readable here and the player can decline it. */}
-            {hasWorldNarrationPrompt(selectedWorld?.data?.worldOverview) && (
+                up as different prose, so which passes it rewrites is named here, the text is readable, and
+                the player can decline the lot. */}
+            {customPromptKinds.length > 0 && (
               <WorldNotice
                 tone="info"
                 icon={ScrollText}
                 actionLabel="View"
                 actionIcon={BookOpen}
-                onAction={() => setShowNarrationPrompt(true)}
+                onAction={() => setShowWorldPrompts(true)}
               >
-                This world uses a custom narration prompt.
+                This world uses {promptKindsPhrase(customPromptKinds)}.
               </WorldNotice>
             )}
           </div>
@@ -2109,15 +2123,15 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
 
             {/* Entry options sit opposite the pin so the two kinds of control stay visually separate. */}
             <div className="ml-auto flex flex-wrap items-center gap-x-6 gap-y-2">
-              {hasWorldNarrationPrompt(selectedWorld?.data?.worldOverview) && selectedWorld && (
+              {customPromptKinds.length > 0 && selectedWorld && (
                 <div className="flex items-center gap-2">
                   <Checkbox
-                    id="use-world-narration-prompt"
+                    id="use-world-prompts"
                     checked={applyWorldPrompt(selectedWorld.id)}
                     onCheckedChange={(c) => setApplyWorldPrompt(selectedWorld.id, c === true)}
                   />
-                  <label htmlFor="use-world-narration-prompt" className="text-label cursor-pointer">
-                    Use this world&apos;s narration prompt
+                  <label htmlFor="use-world-prompts" className="text-label cursor-pointer">
+                    Use this world&apos;s {customPromptKinds.length > 1 ? 'prompts' : 'prompt'}
                   </label>
                 </div>
               )}
@@ -2257,27 +2271,49 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
         </DialogContent>
       </Dialog>
 
-      {/* Read-only view of the world's narration prompt. Chips are shown as their raw tokens: this is the
-          text as authored, not a per-turn render, and the AI-context viewer already shows the filled one. */}
-      <Dialog open={showNarrationPrompt} onOpenChange={setShowNarrationPrompt}>
+      {/* Read-only view of the world's authored prompts, one tab per pass it rewrites. Chips are shown as
+          their raw tokens: this is the text as authored, not a per-turn render, and the AI-context viewer
+          already shows the filled one. */}
+      <Dialog open={showWorldPrompts} onOpenChange={setShowWorldPrompts}>
         <DialogContent className="sm:max-w-[700px] h-[85dvh] flex flex-col">
           <DialogHeader className="shrink-0">
-            <DialogTitle className="leading-normal">Custom Narration Prompt</DialogTitle>
+            <DialogTitle className="leading-normal">Custom Prompts</DialogTitle>
           </DialogHeader>
 
           <DialogDescription className="shrink-0">
-            This world tells its story with the prompt below in place of yours. Uncheck &ldquo;Use this
-            world&apos;s narration prompt&rdquo; in the world&apos;s window to use your own instead.
+            This world runs the {customPromptKinds.length > 1 ? 'passes' : 'pass'} below on its own text in
+            place of yours. Uncheck &ldquo;Use this world&apos;s
+            {customPromptKinds.length > 1 ? ' prompts' : ' prompt'}&rdquo; in the world&apos;s window to use
+            your own instead.
           </DialogDescription>
 
-          <div className="flex-1 min-h-0 overflow-auto rounded-md bg-muted p-4">
-            <pre className="text-label font-mono whitespace-pre-wrap">
-              {worldNarrationPrompt(selectedWorld?.data?.worldOverview) ?? ''}
-            </pre>
-          </div>
+          <Tabs
+            value={shownPromptTab}
+            onValueChange={setPromptTab}
+            className="flex-1 min-h-0 flex flex-col gap-2"
+          >
+            {customPromptKinds.length > 1 && (
+              <TabsList className="self-start shrink-0">
+                {customPromptKinds.map((kind) => (
+                  <TabsTrigger key={kind} value={kind}>{WORLD_PROMPT_KIND_LABELS[kind]}</TabsTrigger>
+                ))}
+              </TabsList>
+            )}
+            {customPromptKinds.map((kind) => (
+              <TabsContent
+                key={kind}
+                value={kind}
+                className="flex-1 min-h-0 mt-0 overflow-auto rounded-md bg-muted p-4"
+              >
+                <pre className="text-label font-mono whitespace-pre-wrap">
+                  {worldPrompt(selectedWorld?.data?.worldOverview, kind) ?? ''}
+                </pre>
+              </TabsContent>
+            ))}
+          </Tabs>
 
           <div className="shrink-0 flex justify-end">
-            <Button onClick={() => setShowNarrationPrompt(false)}>Close</Button>
+            <Button onClick={() => setShowWorldPrompts(false)}>Close</Button>
           </div>
         </DialogContent>
       </Dialog>

@@ -33,7 +33,7 @@ import "react-toastify/dist/ReactToastify.css";
 import TTSModal, { type TTSModalHandle, type TTSProgress } from "../components/game/TTSModal";
 import ReadmeModal from "../components/game/ReadmeModal";
 import { useReadmeVisibility } from "@/lib/useReadmeVisibility";
-import { resolveNarrationPrompt, useWorldPromptOptOut } from "@/lib/worldPrompt";
+import { resolveWorldPrompt, useWorldPromptOptOut } from "@/lib/worldPrompt";
 import { useWorldPromptPresets } from "@/lib/worldPromptPreset";
 import { EntityModal } from "../components/modals/EntityModal";
 import { LocationModal } from "../components/modals/LocationModal";
@@ -415,9 +415,14 @@ const GameViewer = ({
     backgroundOverlay,
   } = settings;
 
-  // The narration prompt this world actually runs on. Every reference below is the resolved value, so the
-  // opening scene and every later turn agree; the other passes keep reading their preset fields directly.
-  const systemPrompt = resolveNarrationPrompt(worldOverview, presetSystemPrompt, !applyWorldPrompt(worldId));
+  // The prompts this world actually runs on. Every reference below is a resolved value, so the opening
+  // scene, the turn pipeline, and the standalone re-rolls all agree; passes the world can't override keep
+  // reading their preset fields directly. One opt-out declines all three at once.
+  const declinedWorldPrompts = !applyWorldPrompt(worldId);
+  const systemPrompt = resolveWorldPrompt(worldOverview, 'narration', presetSystemPrompt, declinedWorldPrompts);
+  const resolvedChoicesPrompt = resolveWorldPrompt(worldOverview, 'choices', choicesPrompt, declinedWorldPrompts);
+  const resolvedStatUpdatesPrompt =
+    resolveWorldPrompt(worldOverview, 'statUpdates', statUpdatesPrompt, declinedWorldPrompts);
 
   const {
     setCharacterData,
@@ -1483,9 +1488,9 @@ const GameViewer = ({
     storyboard: storyboardPrompt,
     narrationUser: narrationUserPrompt,
     oocDirective: oocDirectivePrompt,
-    choices: choicesPrompt,
+    choices: resolvedChoicesPrompt,
     choicesUser: choicesUserPrompt,
-    statUpdates: statUpdatesPrompt,
+    statUpdates: resolvedStatUpdatesPrompt,
     statUpdatesUser: statUpdatesUserPrompt,
     summary: summaryPrompt,
     summaryUser: summaryUserPrompt,
@@ -2876,7 +2881,7 @@ const GameViewer = ({
     quiet = false,
   ): Promise<string> =>
     makeAIRequest({
-      systemPrompt: choicesSystemPrompt(choicesPrompt, language, { ...ctx, ...sceneEntityTokens }),
+      systemPrompt: choicesSystemPrompt(resolvedChoicesPrompt, language, { ...ctx, ...sceneEntityTokens }),
       messages: [{ role: "user", content: renderPromptTemplate(choicesUserPrompt, { "<PLAYER ACTION>": action, "<NARRATION>": narration }) }],
       type: "choices",
       signal,
@@ -2890,7 +2895,7 @@ const GameViewer = ({
     quiet = false,
   ): Promise<string> =>
     makeAIRequest({
-      systemPrompt: statUpdatesSystemPrompt(statUpdatesPrompt, language, ctx),
+      systemPrompt: statUpdatesSystemPrompt(resolvedStatUpdatesPrompt, language, ctx),
       messages: [{ role: "user", content: renderPromptTemplate(statUpdatesUserPrompt, { "<PLAYER ACTION>": action, "<NARRATION>": narration }) }],
       type: "statUpdates",
       signal,

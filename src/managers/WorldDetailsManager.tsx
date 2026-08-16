@@ -10,23 +10,36 @@ import { plainVocabulary } from "@/lib/chipVocabulary";
 import { PROMPT_KIND_VARIABLES } from "@/lib/promptVariables";
 import { authoredPreviewValues } from "@/lib/authoredPreviewValues";
 import { composePreviewValues } from "@/lib/previewValuePool";
-import { storedNarrationPrompt } from "@/lib/worldPrompt";
-import { defaultSystemPrompt } from "@/components/game/GamePrompts";
+import { cn } from "@/lib/utils";
+import { Button } from "@/components/ui/button";
+import { ConfirmDialog } from "@/components/ConfirmDialog";
+import {
+  clearWorldPromptOverride, setWorldPromptOverride, storedWorldPrompt, worldPromptEnabled, worldPromptFieldKey,
+  WORLD_PROMPT_KINDS, WORLD_PROMPT_KIND_LABELS, type WorldPromptKind,
+} from "@/lib/worldPrompt";
 import { useEditorMode } from "@/lib/editorMode";
 
+/** Which preset field each kind replaces, and which chip palette that prompt is written against. */
+const PROMPT_KIND_VARIABLE_KEY = {
+  narration: 'narration', choices: 'choices', statUpdates: 'statupdates',
+} as const;
+
 /**
- * Optional per-world replacement for the player's narration system prompt. Off by default: turning it on
- * seeds the shipped default so an author edits a working prompt rather than facing a blank field, and
- * turning it off drops the override entirely. Only narration is replaceable — every other AI pass keeps
- * running on the player's own preset.
+ * Optional per-world replacements for the player's narration, choices, and stat-update system prompts, one
+ * tab each with its enable checkbox in the tab's own chrome. A tab opens on the prompt the game would run
+ * right now — the active preset's — as an unstored template, so an author edits something that works; the
+ * first edit is what stores it on the world, and Reset drops it back to tracking the preset. Only these
+ * three system prompts are replaceable; every other AI pass keeps running on the player's own preset.
  */
-const NarrationPromptField = () => {
+const CustomPromptsSection = ({ focusField }: { focusField?: { fieldKey: string } | null }) => {
   const {
     worldOverview, updateWorldOverview, stats, locations, connections, entities, traits, traitGroups, dictionaries,
     placeholders,
   } = useGameData();
   const {
     paragraphLimit, maxTokens, markdownOutput, activeSectionStyle, limitActiveCharacters, activeCharacterLimit,
+    systemPrompt: presetNarrationPrompt, choicesPrompt: presetChoicesPrompt,
+    statUpdatesPrompt: presetStatUpdatesPrompt,
   } = useSettings();
   // The world being edited, previewed as its own opening scene — the author reads their entities and their
   // location, not a stand-in's. Tokens only a turn can fill (the action, the narration, who is speaking)
@@ -46,52 +59,118 @@ const NarrationPromptField = () => {
       worldOverview, stats, locations, connections, entities, traits, traitGroups, dictionaries, placeholders,
     ],
   );
-  const stored = storedNarrationPrompt(worldOverview);
   const { advanced } = useEditorMode();
-  const enabled = typeof stored === 'string' && worldOverview.promptOverrides?.systemPromptEnabled !== false;
-  const value = stored ?? '';
+  const [tab, setTab] = useState<WorldPromptKind>('narration');
+  const [resetKind, setResetKind] = useState<WorldPromptKind | null>(null);
 
-  // Switching off keeps the text and only clears the flag, so a stray click costs nothing — the editor
-  // writes straight through to world state, where the only undo is discarding every unsaved edit at once.
-  const toggle = (on: boolean) =>
-    updateWorldOverview({
-      promptOverrides: {
-        ...worldOverview.promptOverrides,
-        systemPrompt: stored ?? defaultSystemPrompt,
-        systemPromptEnabled: on,
-      },
-    });
+  // The prompt each tab tracks: what the game would send right now, preset pins and all — not the shipped
+  // default, which an author with an edited preset would not recognize as theirs.
+  const presetPrompts: Record<WorldPromptKind, string> = {
+    narration: presetNarrationPrompt,
+    choices: presetChoicesPrompt,
+    statUpdates: presetStatUpdatesPrompt,
+  };
+
+  // Only the find bar can reach a tab that isn't showing, and it arrives as a fresh object per navigation.
+  useEffect(() => {
+    const hit = WORLD_PROMPT_KINDS.find((kind) => focusField?.fieldKey === worldPromptFieldKey(kind));
+    if (hit) setTab(hit);
+  }, [focusField]);
 
   if (!advanced) return null;
 
+  const write = (kind: WorldPromptKind, update: { text?: string; enabled?: boolean }) =>
+    updateWorldOverview({ promptOverrides: setWorldPromptOverride(worldOverview.promptOverrides, kind, update) });
+
+  // Switching off keeps the text and only clears the flag, so a stray click costs nothing — the editor
+  // writes straight through to world state, where the only undo is discarding every unsaved edit at once.
+  const toggle = (kind: WorldPromptKind, on: boolean) => {
+    setTab(kind);
+    write(kind, { enabled: on });
+  };
+
+  const reset = () => {
+    if (resetKind) {
+      updateWorldOverview({ promptOverrides: clearWorldPromptOverride(worldOverview.promptOverrides, resetKind) });
+    }
+    setResetKind(null);
+  };
+
   return (
     <div className="space-y-2">
-      <div className="flex items-center gap-2">
-        <Checkbox id="worldNarrationPrompt" checked={enabled} onCheckedChange={(c) => toggle(c === true)} />
-        <Label htmlFor="worldNarrationPrompt" className="cursor-pointer">Custom Narration Prompt</Label>
-      </div>
-      {enabled ? (
-        <>
-          <PromptField
-            value={value}
-            onChange={(systemPrompt) => updateWorldOverview({ promptOverrides: { ...worldOverview.promptOverrides, systemPrompt } })}
-            variables={PROMPT_KIND_VARIABLES.narration}
-            previewValues={previewValues}
-            sampleData="Your world, sample turn"
-            ariaLabel="World narration prompt"
-            resizable
-          />
-          <p className="text-meta text-muted-foreground">
-            Replaces the player&apos;s narration prompt while they play this world. They can decline it from the
-            world&apos;s details window. Choices, planning, stats, and memory always use the player&apos;s own prompts.
-          </p>
-        </>
-      ) : (
-        <p className="text-meta text-muted-foreground">
-          This world uses whichever narration prompt the player has set. Turn this on to write your own.
-          {stored !== undefined && ' Your prompt is kept and comes back when you switch this on again.'}
-        </p>
-      )}
+      <Tabs value={tab} onValueChange={(v) => setTab(v as WorldPromptKind)} className="space-y-2">
+        <div className="flex items-center justify-between gap-2">
+          <Label className="leading-none">Custom Prompts</Label>
+          {/* The checkbox sits beside its trigger rather than inside it — a button inside a button is
+              invalid — so the wrapper carries the selected-tab chrome for the pair. */}
+          <TabsList>
+            {WORLD_PROMPT_KINDS.map((kind) => (
+              <div
+                key={kind}
+                className={cn('inline-flex items-center gap-2 rounded-sm pl-2 transition-all',
+                  tab === kind && 'bg-background shadow-sm')}
+              >
+                <Checkbox
+                  checked={worldPromptEnabled(worldOverview, kind)}
+                  onCheckedChange={(c) => toggle(kind, c === true)}
+                  aria-label={`Use this world's ${WORLD_PROMPT_KIND_LABELS[kind].toLowerCase()} prompt`}
+                />
+                <TabsTrigger
+                  value={kind}
+                  className="px-2 data-[state=active]:bg-transparent data-[state=active]:shadow-none"
+                >
+                  {WORLD_PROMPT_KIND_LABELS[kind]}
+                </TabsTrigger>
+              </div>
+            ))}
+          </TabsList>
+        </div>
+
+        {WORLD_PROMPT_KINDS.map((kind) => {
+          const label = WORLD_PROMPT_KIND_LABELS[kind].toLowerCase();
+          const stored = storedWorldPrompt(worldOverview, kind);
+          const enabled = worldPromptEnabled(worldOverview, kind);
+          return (
+            <TabsContent key={kind} value={kind} className="space-y-2">
+              <PromptField
+                value={stored ?? presetPrompts[kind]}
+                // Storing on the first divergence is what keeps an untouched tab tracking the preset: a
+                // world only carries a prompt its author actually wrote.
+                onChange={(text) => {
+                  if (stored === undefined && text === presetPrompts[kind]) return;
+                  write(kind, { text, enabled });
+                }}
+                variables={PROMPT_KIND_VARIABLES[PROMPT_KIND_VARIABLE_KEY[kind]]}
+                previewValues={previewValues}
+                sampleData="Your world, sample turn"
+                ariaLabel={`World ${label} prompt`}
+                resizable
+              />
+              <div className="flex items-start justify-between gap-2">
+                <p className="text-meta text-muted-foreground">
+                  {enabled
+                    ? `Replaces the player's ${label} prompt while they play this world. They can decline it from the world's details window.`
+                    : `Not applied until you switch this tab on — players use their own ${label} prompt.`}
+                  {stored === undefined && ` This is your current ${label} prompt, and follows it until you edit it here.`}
+                </p>
+                {stored !== undefined && (
+                  <Button variant="ghost" size="sm" className="shrink-0" onClick={() => setResetKind(kind)}>
+                    Reset
+                  </Button>
+                )}
+              </div>
+            </TabsContent>
+          );
+        })}
+      </Tabs>
+
+      <ConfirmDialog
+        open={resetKind !== null}
+        onOpenChange={(open) => { if (!open) setResetKind(null); }}
+        title={`Discard this world's ${WORLD_PROMPT_KIND_LABELS[resetKind ?? 'narration'].toLowerCase()} prompt?`}
+        description="The tab goes back to following your own prompt. The text you wrote here is not kept."
+        onConfirm={reset}
+      />
     </div>
   );
 };
@@ -183,7 +262,7 @@ const WorldDetailsManager = ({ focusField }: { focusField?: { fieldKey: string }
         />
       </div>
 
-      <NarrationPromptField />
+      <CustomPromptsSection focusField={focusField} />
 
       <ReadmeSection focusField={focusField} />
     </div>

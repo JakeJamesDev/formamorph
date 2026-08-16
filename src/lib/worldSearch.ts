@@ -1,4 +1,7 @@
 import { parsePlaceholderText } from '@/lib/placeholders';
+import {
+  setWorldPromptOverride, storedWorldPrompt, worldPromptFieldKey, WORLD_PROMPT_KINDS, WORLD_PROMPT_KIND_LABELS,
+} from '@/lib/worldPrompt';
 import type {
   Dictionary, Entity, EntityGroup, GameLocation, Placeholder, Stat, Trait, TraitGroup, WorldOverview,
 } from '@/types';
@@ -159,6 +162,13 @@ export function collectSearchTargets(src: SearchSources): SearchTarget[] {
     // which one — the breadcrumb is all the author has to go on once both hold the same phrase.
     add({ ...ovWhere, chipCapable: true }, 'introReadme', 'Readme (Introduction)', ov.introReadme, (r, v) => ({ ...r, introReadme: v }));
     add({ ...ovWhere, chipCapable: true }, 'readme', 'Readme (Gameplay)', ov.readme, (r, v) => ({ ...r, readme: v }));
+    // One target per custom prompt the author has actually stored — a tab still tracking the preset holds
+    // no world text to find, and replacing into it would silently freeze a prompt nobody wrote.
+    WORLD_PROMPT_KINDS.forEach((kind) => {
+      add({ ...ovWhere, chipCapable: false }, worldPromptFieldKey(kind),
+        `Custom Prompt (${WORLD_PROMPT_KIND_LABELS[kind]})`, storedWorldPrompt(ov, kind),
+        (r, v) => ({ ...r, promptOverrides: setWorldPromptOverride(r.promptOverrides, kind, { text: v }) }));
+    });
   }
 
   // ── Stats ─────────────────────────────────────────────────────────────────
