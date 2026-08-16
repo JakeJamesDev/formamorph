@@ -4,6 +4,7 @@ import { useSettings } from '@/contexts/SettingsContext';
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import PromptField from "@/components/prompt/PromptField";
 import PlaceholderField from "@/components/prompt/PlaceholderField";
 import { plainVocabulary } from "@/lib/chipVocabulary";
@@ -60,7 +61,9 @@ const CustomPromptsSection = ({ focusField }: { focusField?: { fieldKey: string 
     ],
   );
   const { advanced } = useEditorMode();
-  const [tab, setTab] = useState<WorldPromptKind>('narration');
+  // No kind open by default, and picking the open one again closes it: three large prompt fields is more
+  // of the panel than an author who isn't writing prompts should have to scroll past.
+  const [tab, setTab] = useState<WorldPromptKind | null>(null);
   const [resetKind, setResetKind] = useState<WorldPromptKind | null>(null);
 
   // The prompt each tab tracks: what the game would send right now, preset pins and all — not the shipped
@@ -84,8 +87,10 @@ const CustomPromptsSection = ({ focusField }: { focusField?: { fieldKey: string 
 
   // Switching off keeps the text and only clears the flag, so a stray click costs nothing — the editor
   // writes straight through to world state, where the only undo is discarding every unsaved edit at once.
+  // Switching on opens the kind, since the author is about to want it; switching off leaves the panel as
+  // it stands rather than yanking a field open around the click.
   const toggle = (kind: WorldPromptKind, on: boolean) => {
-    setTab(kind);
+    if (on) setTab(kind);
     write(kind, { enabled: on });
   };
 
@@ -98,77 +103,81 @@ const CustomPromptsSection = ({ focusField }: { focusField?: { fieldKey: string 
 
   return (
     <div className="space-y-2">
-      <Tabs value={tab} onValueChange={(v) => setTab(v as WorldPromptKind)} className="space-y-2">
-        <div className="flex items-center justify-between gap-2">
-          <Label className="leading-none">Custom Prompts</Label>
-          {/* The checkbox sits beside its trigger rather than inside it — a button inside a button is
-              invalid — so the wrapper carries the selected-tab chrome for the pair. */}
-          <TabsList>
-            {WORLD_PROMPT_KINDS.map((kind) => (
-              <div
-                key={kind}
-                className={cn('inline-flex items-center gap-2 rounded-sm pl-2 transition-all',
-                  tab === kind && 'bg-background shadow-sm')}
-              >
-                <Checkbox
-                  checked={worldPromptEnabled(worldOverview, kind)}
-                  onCheckedChange={(c) => toggle(kind, c === true)}
-                  aria-label={`Use this world's ${WORLD_PROMPT_KIND_LABELS[kind].toLowerCase()} prompt`}
-                />
-                <TabsTrigger
-                  value={kind}
-                  className="px-2 data-[state=active]:bg-transparent data-[state=active]:shadow-none"
-                >
-                  {WORLD_PROMPT_KIND_LABELS[kind]}
-                </TabsTrigger>
-              </div>
-            ))}
-          </TabsList>
-        </div>
-
-        {WORLD_PROMPT_KINDS.map((kind) => {
-          const label = WORLD_PROMPT_KIND_LABELS[kind].toLowerCase();
-          const stored = storedWorldPrompt(worldOverview, kind);
-          const enabled = worldPromptEnabled(worldOverview, kind);
-          return (
-            <TabsContent key={kind} value={kind} className="space-y-2">
-              <PromptField
-                value={stored ?? presetPrompts[kind]}
-                // Storing on the first divergence is what keeps an untouched tab tracking the preset: a
-                // world only carries a prompt its author actually wrote.
-                onChange={(text) => {
-                  if (stored === undefined && text === presetPrompts[kind]) return;
-                  write(kind, { text, enabled });
-                }}
-                variables={PROMPT_KIND_VARIABLES[PROMPT_KIND_VARIABLE_KEY[kind]]}
-                previewValues={previewValues}
-                sampleData="Your world, sample turn"
-                ariaLabel={`World ${label} prompt`}
-                resizable
+      <div className="flex items-center justify-between gap-2">
+        <Label className="leading-none">Custom Prompts</Label>
+        {/* A segmented control rather than tabs: picking the open kind again clears the selection, which
+            Tabs cannot express. The checkbox sits beside its item rather than inside it — a button inside
+            a button is invalid — so the wrapper carries the selected chrome for the pair. */}
+        <ToggleGroup
+          type="single"
+          value={tab ?? ''}
+          onValueChange={(v) => setTab((v || null) as WorldPromptKind | null)}
+        >
+          {WORLD_PROMPT_KINDS.map((kind) => (
+            <div
+              key={kind}
+              className={cn('inline-flex items-center gap-2 rounded-sm pl-2 transition-all',
+                tab === kind && 'bg-background shadow-sm')}
+            >
+              <Checkbox
+                checked={worldPromptEnabled(worldOverview, kind)}
+                onCheckedChange={(c) => toggle(kind, c === true)}
+                aria-label={`Use this world's ${WORLD_PROMPT_KIND_LABELS[kind].toLowerCase()} prompt`}
               />
-              <div className="flex items-start justify-between gap-2">
-                <p className="text-meta text-muted-foreground">
-                  {enabled
-                    ? `Replaces the player's ${label} prompt while they play this world. They can decline it from the world's details window.`
-                    : `Not applied until you switch this tab on — players use their own ${label} prompt.`}
-                  {stored === undefined && ` This is your current ${label} prompt, and follows it until you edit it here.`}
-                </p>
-                {stored !== undefined && (
-                  <Button variant="ghost" size="sm" className="shrink-0" onClick={() => setResetKind(kind)}>
-                    Reset
-                  </Button>
-                )}
-              </div>
-            </TabsContent>
-          );
-        })}
-      </Tabs>
+              <ToggleGroupItem
+                value={kind}
+                className="px-2 data-[state=on]:bg-transparent data-[state=on]:shadow-none"
+              >
+                {WORLD_PROMPT_KIND_LABELS[kind]}
+              </ToggleGroupItem>
+            </div>
+          ))}
+        </ToggleGroup>
+      </div>
+
+      {tab && (() => {
+        const kind = tab;
+        const label = WORLD_PROMPT_KIND_LABELS[kind].toLowerCase();
+        const stored = storedWorldPrompt(worldOverview, kind);
+        const enabled = worldPromptEnabled(worldOverview, kind);
+        return (
+          <div className="space-y-2">
+            <PromptField
+              value={stored ?? presetPrompts[kind]}
+              // Storing on the first divergence is what keeps an untouched kind tracking the preset: a
+              // world only carries a prompt its author actually wrote.
+              onChange={(text) => {
+                if (stored === undefined && text === presetPrompts[kind]) return;
+                write(kind, { text, enabled });
+              }}
+              variables={PROMPT_KIND_VARIABLES[PROMPT_KIND_VARIABLE_KEY[kind]]}
+              previewValues={previewValues}
+              sampleData="Your world, sample turn"
+              ariaLabel={`World ${label} prompt`}
+              resizable
+            />
+            <div className="flex items-start justify-between gap-2">
+              <p className="text-meta text-muted-foreground">
+                {enabled
+                  ? `Replaces the player's ${label} prompt while they play this world. They can decline it from the world's details window.`
+                  : `Not applied until you switch this one on — players use their own ${label} prompt.`}
+                {stored === undefined && ` This is your current ${label} prompt, and follows it until you edit it here.`}
+              </p>
+              {stored !== undefined && (
+                <Button variant="ghost" size="sm" className="shrink-0" onClick={() => setResetKind(kind)}>
+                  Reset
+                </Button>
+              )}
+            </div>
+          </div>
+        );
+      })()}
 
       <ConfirmDialog
         open={resetKind !== null}
         onOpenChange={(open) => { if (!open) setResetKind(null); }}
         title={`Discard this world's ${WORLD_PROMPT_KIND_LABELS[resetKind ?? 'narration'].toLowerCase()} prompt?`}
-        description="The tab goes back to following your own prompt. The text you wrote here is not kept."
+        description="It goes back to following your own prompt. The text you wrote here is not kept."
         onConfirm={reset}
       />
     </div>
