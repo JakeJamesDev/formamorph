@@ -36,8 +36,13 @@ const SEVERITY_HEADING_COLOR: Record<Severity, string> = {
   info: 'text-muted-foreground',
 };
 
-/** One collapsed row: the problem in a line, then every item it names as its own way in. */
-const FindingRow = ({ group, onOpen }: { group: FindingGroup; onOpen: OpenFindingItem }) => (
+/** One collapsed row: the problem in a line, then every item it names as its own way in. A row whose rule
+ *  knows the repair also carries it — one button for the row, never a fix-everything across rows. */
+const FindingRow = ({ group, onOpen, onFix }: {
+  group: FindingGroup;
+  onOpen: OpenFindingItem;
+  onFix: (ruleId: string) => void;
+}) => (
   <div className="flex items-start gap-2 rounded-md border p-2">
     <SeverityIcon severity={group.severity} />
     <div className="min-w-0 flex-grow">
@@ -55,14 +60,20 @@ const FindingRow = ({ group, onOpen }: { group: FindingGroup; onOpen: OpenFindin
         ))}
       </div>
     </div>
+    {group.fixable && (
+      <Button variant="outline" size="sm" className="h-6 shrink-0 px-2 text-meta" onClick={() => onFix(group.ruleId)}>
+        {group.findings.length > 1 ? 'Fix All' : 'Fix'}
+      </Button>
+    )}
   </div>
 );
 
 /** World Doctor: everything the rule pass raised, worst first, one row per rule. */
-const IssuesInstrument = ({ groups, ruleCount, onOpen }: {
+const IssuesInstrument = ({ groups, ruleCount, onOpen, onFix }: {
   groups: FindingGroup[];
   ruleCount: number;
   onOpen: OpenFindingItem;
+  onFix: (ruleId: string) => void;
 }) => {
   if (groups.length === 0) {
     return (
@@ -84,7 +95,7 @@ const IssuesInstrument = ({ groups, ruleCount, onOpen }: {
                 {SEVERITY_HEADING[severity]}
               </p>
               {inSeverity.map((group) => (
-                <FindingRow key={group.ruleId} group={group} onOpen={onOpen} />
+                <FindingRow key={group.ruleId} group={group} onOpen={onOpen} onFix={onFix} />
               ))}
             </div>
           );
@@ -102,9 +113,11 @@ export interface TestBenchProps {
   onTabChange: (tab: BenchTab) => void;
   onClose: () => void;
   onOpenItem: OpenFindingItem;
+  /** Apply one rule's fix to the world — the editor's write-through, so it lands as a hand edit would. */
+  onFixRule: (ruleId: string) => void;
 }
 
-export function TestBench({ groups, ruleCount, tab, onTabChange, onClose, onOpenItem }: TestBenchProps) {
+export function TestBench({ groups, ruleCount, tab, onTabChange, onClose, onOpenItem, onFixRule }: TestBenchProps) {
   return (
     <div className="flex h-full flex-col gap-2 p-3">
       <div className="flex items-center gap-2">
@@ -140,7 +153,7 @@ export function TestBench({ groups, ruleCount, tab, onTabChange, onClose, onOpen
         {BENCH_TABS.map((t) => (
           <TabsContent key={t.value} value={t.value} className="mt-0 min-h-0 flex-grow">
             {t.value === 'issues' && (
-              <IssuesInstrument groups={groups} ruleCount={ruleCount} onOpen={onOpenItem} />
+              <IssuesInstrument groups={groups} ruleCount={ruleCount} onOpen={onOpenItem} onFix={onFixRule} />
             )}
           </TabsContent>
         ))}
