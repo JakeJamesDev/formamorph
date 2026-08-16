@@ -5,7 +5,7 @@ import { revealActive, revealAnimName, revealVars } from '@/lib/narrationRevealC
 import { usePlaceholderResolver } from '@/lib/usePlaceholderResolver';
 import { useSettings } from '@/contexts/SettingsContext';
 import { useSentenceHighlight } from '@/lib/useSentenceHighlight';
-import { findEntityNames } from '@/lib/entityMatch';
+import { findEntityNames, resolveEntityByName } from '@/lib/entityMatch';
 import { clearTurnDerived } from '@/lib/turnDigest';
 import { usePlayerModelUrl } from '@/lib/usePlayerModelUrl';
 import { mergeBodyMorphs } from '@/lib/bodyMorphs';
@@ -113,10 +113,7 @@ export const LeftPanel = ({ entities, onEntityClick, onRegenerateMemory }: {
   // First present entity with something to show — an image, or failing that a 3D model — displayed in the
   // model section's Entities view (the portrait shows whether or not the name is revealed yet).
   const firstShowableEntity = visibleEntities
-    .map((se) => entities.find((f) =>
-      f.name.toLowerCase().includes(se.name.toLowerCase()) ||
-      se.name.toLowerCase().includes(f.name.toLowerCase()),
-    ))
+    .map((se) => resolveEntityByName(se.name, entities))
     .find((e) => hasEntityVisual(e));
   const isMobile = useIsMobile();
   const [showModel, setShowModel] = React.useState(true);
@@ -136,10 +133,7 @@ export const LeftPanel = ({ entities, onEntityClick, onRegenerateMemory }: {
   // not-yet-revealed character can show its portrait but never opens the detail popup — that would spoil
   // the name the scene is deliberately withholding.
   const handleEntityListClick = (se: SceneEntity) => {
-    const match = entities.find((f) =>
-      f.name.toLowerCase().includes(se.name.toLowerCase()) ||
-      se.name.toLowerCase().includes(f.name.toLowerCase()),
-    );
+    const match = resolveEntityByName(se.name, entities);
     if (!match) return; // un-named (ad-hoc) participant — nothing to show
 
     const entitiesViewActive = !characterData || modelTab === "entities";
@@ -280,10 +274,7 @@ export const LeftPanel = ({ entities, onEntityClick, onRegenerateMemory }: {
             <div className="p-2">
               {visibleEntities.length > 0 ? (
                 visibleEntities.map((se, index) => {
-                  const entityItem = entities.find(f =>
-                    f.name.toLowerCase().includes(se.name.toLowerCase()) ||
-                    se.name.toLowerCase().includes(f.name.toLowerCase())
-                  );
+                  const entityItem = resolveEntityByName(se.name, entities);
                   // Show the real name only once revealed; before that, how the player currently knows them.
                   const label = se.revealed ? (entityItem?.name ?? se.name) : (se.alias ?? 'Unknown');
                   // A name the story invented has no entity behind it until (and unless) a description is
