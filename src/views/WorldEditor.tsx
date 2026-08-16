@@ -217,10 +217,16 @@ const WorldEditorInner = ({ onClose, embedded = false, backButton }: {
   }, [findOpen, visibleTabs, worldOverview, stats, entities, entityGroups, locations, traits, traitGroups,
       dictionaries, placeholders, updateWorldOverview, updateStat, updateEntity, updateEntityGroup,
       updateLocation, updateTrait, updateTraitGroup, updateDictionary, updateDictionaryEntry, updatePlaceholder]);
+  // A fresh object per navigation, not the bare key: a panel with its own tabs has to re-open the right one
+  // even when two consecutive hits sit in the same field and the author flipped tabs between them.
+  const [findField, setFindField] = useState<{ fieldKey: string } | null>(null);
   const navigateToMatch = useCallback((match: SearchMatch | null) => {
-    if (!match) { clearEditorMatch(); return; }
+    if (!match) { setFindField(null); clearEditorMatch(); return; }
     setActiveTab(match.target.tab);
     setSelectedItemId(match.target.itemId);
+    // A panel that hides some of its fields behind its own tabs (the Readme pair) needs telling which one
+    // was asked for; text alone can't reach a field that isn't rendered.
+    setFindField({ fieldKey: match.target.fieldKey });
     const hit = {
       value: match.target.value,
       matchText: match.target.value.slice(match.start, match.end),
@@ -608,7 +614,7 @@ const WorldEditorInner = ({ onClose, embedded = false, backButton }: {
         <PlaceholderPaletteBar placeholders={placeholders} className="-mx-6 -mt-6 mb-4 px-6" />
       )}
       {activeTab === "overview" && (
-        <WorldDetailsManager />
+        <WorldDetailsManager focusField={findField} />
       )}
       {activeTab === "stats" && selectedItem && (
         <StatManager key={selectedItem.id} stat={selectedItem as Stat} />

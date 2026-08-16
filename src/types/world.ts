@@ -318,8 +318,11 @@ export interface WorldOverview {
   tags: string[];
   /** v1.2.0: optional per-world custom player VRM model. */
   customPlayerVRM?: MediaAsset | null;
-  /** Optional markdown shown to the player on entering the world (per-world "Show Readme" toggle). */
+  /** Optional markdown shown to the player on entering gameplay (per-world "Show Readme" toggle). */
   readme?: string;
+  /** Optional markdown shown over the first enter-world setup screen, before any choice is made. Shares
+   *  `readme`'s per-world toggle. Absent ⇒ setup opens straight onto its first step. */
+  introReadme?: string;
   /** Prompt text this world supplies in place of the player's preset. Absent = the player's preset alone. */
   promptOverrides?: WorldPromptOverrides;
 }

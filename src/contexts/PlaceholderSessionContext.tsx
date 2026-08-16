@@ -80,6 +80,7 @@ export function PlaceholderSessionProvider({ children }: { children: ReactNode }
     const texts = [
       worldOverview.systemPrompt || '',
       worldOverview.readme || '',
+      worldOverview.introReadme || '',
       ...entities.flatMap((e) => [e.name, ...(e.aliases ?? []), e.playerDescription, e.aiDescription, e.aiSummary, e.imageTags]),
       ...locations.flatMap((l) => [l.name, l.playerDescription, l.aiDescription, l.aiSummary, l.description, l.imageTags]),
       ...dictionaries.flatMap((b) => b.entries.flatMap((en) => [en.name, ...(en.key ?? []), ...(en.secondaryKeys ?? []), en.value])),

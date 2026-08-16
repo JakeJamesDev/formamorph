@@ -98,6 +98,20 @@ describe('collectSearchTargets', () => {
     expect(chipOf(true)).toBe(false);
   });
 
+  it('reaches both readmes, each writing back to its own field', () => {
+    const { src, writes } = sources({
+      worldOverview: overview({ introReadme: 'Before you choose', readme: 'Now you play' }),
+    });
+    const targets = collectSearchTargets(src);
+    expect(targetFor(targets, 'introReadme')).toMatchObject({ value: 'Before you choose', chipCapable: true });
+    expect(targetFor(targets, 'readme')).toMatchObject({ value: 'Now you play', chipCapable: true });
+
+    targetFor(targets, 'introReadme').write('Before you pick');
+    expect(writes).toEqual([['overview', expect.objectContaining({
+      introReadme: 'Before you pick', readme: 'Now you play',
+    })]]);
+  });
+
   it('carries a placeholder value weight across an edit to that value', () => {
     const ph: Placeholder = { id: 'p1', name: 'Season', values: ['spring', 'winter'], weights: { spring: 3, winter: 1 } };
     const { src, writes } = sources({ placeholders: [ph] });
