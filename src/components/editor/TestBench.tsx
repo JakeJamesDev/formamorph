@@ -47,7 +47,7 @@ const FindingRow = ({ group, onOpen }: { group: FindingGroup; onOpen: OpenFindin
           <button
             key={item.id}
             type="button"
-            onClick={() => onOpen(group.section, item.id)}
+            onClick={() => onOpen(item.section ?? group.section, item.id)}
             className="max-w-full truncate rounded border px-1.5 text-meta text-muted-foreground hover:bg-accent hover:text-foreground"
           >
             {item.name}
