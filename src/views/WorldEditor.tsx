@@ -25,7 +25,8 @@ import EditorFindBar from '@/components/editor/EditorFindBar';
 import { TestBench, TestBenchButton } from '@/components/editor/TestBench';
 import { asBenchTab, type BenchTab } from '@/components/editor/benchTabs';
 import { Drawer, DrawerContent, DrawerTitle } from '@/components/ui/drawer';
-import { groupFindings, RULES, type FindingSection } from '@/lib/testBench/rules';
+import { applyRuleFix, groupFindings, RULES, type FindingSection } from '@/lib/testBench/rules';
+import { hasSeenDownloadNote, markDownloadNoteSeen } from '@/lib/testBench/downloadNote';
 import { useDebouncedFindings } from '@/lib/testBench/useFindings';
 import { collectSearchTargets, type SearchMatch } from '@/lib/worldSearch';
 import { revealEditorMatch, clearEditorMatch, revealSelectedRow } from '@/lib/editorFieldFocus';
@@ -115,8 +116,9 @@ const WorldEditorInner = ({ onClose, embedded = false, backButton }: {
     updateStat, updateEntity, updateEntityGroup, updateLocation, updateTrait, updateTraitGroup,
     updateDictionary, updateDictionaryEntry, updatePlaceholder,
     removeStat, removeEntity, removeTrait, removeStatUpdate,
-    setStats, setLocations, setEntities, setTraits, setTraitGroups, setStatUpdates,
-    isWorldDirty, saveWorld: saveWorldCtx, discardChanges
+    setStats, setLocations, setConnections, setEntities, setEntityGroups, setTraits, setTraitGroups,
+    setStatUpdates, setDictionaries, setPlaceholders,
+    worldMetadata, isWorldDirty, saveWorld: saveWorldCtx, discardChanges
   } = useGameData();
   const { promptWorld, dialog: downscaleDialog } = useDownscalePrompt();
 
@@ -274,6 +276,39 @@ const WorldEditorInner = ({ onClose, embedded = false, backButton }: {
     if (isMobile) setBenchOpen(false);
     setTimeout(() => revealSelectedRow(editorRootRef.current), 0);
   }, [isMobile]);
+  // A downloaded copy nobody has edited yet: the first quick fix is what diverges it from its source, and
+  // that is worth saying once. After the note (or after any save) the copy is already edited and it'd be noise.
+  const benchWorldMeta = worldMetadata.find((m) => m.id === worldId);
+  const noteFirstDownloadEdit = useCallback(() => {
+    if (!worldId || !benchWorldMeta?.sourceId || benchWorldMeta.dirty) return;
+    if (hasSeenDownloadNote(worldId)) return;
+    markDownloadNoteSeen(worldId);
+    toast.info('This world was downloaded — saving this fix marks your copy as edited.');
+  }, [worldId, benchWorldMeta?.sourceId, benchWorldMeta?.dirty]);
+  // A quick fix is a hand edit made all at once: the rule returns the repaired world and each slice it
+  // rebuilt is written back through the same setter the panels use, so the world goes dirty and Exit
+  // Without Saving is still the whole undo.
+  const applyBenchFix = useCallback((ruleId: string) => {
+    const before = getWorldData();
+    const after = applyRuleFix(before, ruleId);
+    if (after === before) return;
+    // `updateWorldOverview` merges, so a fix that ever needs to *remove* an overview field will need more
+    // than this line; none does today, and the rest of the payload is replaced wholesale.
+    if (after.worldOverview !== before.worldOverview) updateWorldOverview(after.worldOverview);
+    if (after.stats !== before.stats) setStats(after.stats);
+    if (after.locations !== before.locations) setLocations(after.locations);
+    if (after.connections !== before.connections) setConnections(after.connections ?? []);
+    if (after.entities !== before.entities) setEntities(after.entities);
+    if (after.entityGroups !== before.entityGroups) setEntityGroups(after.entityGroups ?? []);
+    if (after.traits !== before.traits) setTraits(after.traits);
+    if (after.traitGroups !== before.traitGroups) setTraitGroups(after.traitGroups ?? []);
+    if (after.statUpdates !== before.statUpdates) setStatUpdates(after.statUpdates);
+    if (after.dictionaries !== before.dictionaries) setDictionaries(after.dictionaries);
+    if (after.placeholders !== before.placeholders) setPlaceholders(after.placeholders ?? []);
+    noteFirstDownloadEdit();
+  }, [getWorldData, updateWorldOverview, setStats, setLocations, setConnections, setEntities,
+      setEntityGroups, setTraits, setTraitGroups, setStatUpdates, setDictionaries, setPlaceholders,
+      noteFirstDownloadEdit]);
   const benchPanel = (
     <TestBench
       groups={benchGroups}
@@ -282,6 +317,7 @@ const WorldEditorInner = ({ onClose, embedded = false, backButton }: {
       onTabChange={setBenchTab}
       onClose={() => setBenchOpen(false)}
       onOpenItem={openFindingItem}
+      onFixRule={applyBenchFix}
     />
   );
   // DEV dev-router: `#dev?modal=worldEditor&bench=issues` opens the Bench on an instrument.

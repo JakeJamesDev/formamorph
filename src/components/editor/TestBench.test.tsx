@@ -21,7 +21,7 @@ const defective = world([
   { id: 'e2', name: 'Old Tobb', aliases: ['the fishmonger'] },
 ]);
 
-const renderBench = (from: RuleWorld, onOpenItem = vi.fn()) => {
+const renderBench = (from: RuleWorld, onOpenItem = vi.fn(), onFixRule = vi.fn()) => {
   const groups = groupFindings(runRules(from));
   render(
     <TestBench
@@ -31,9 +31,10 @@ const renderBench = (from: RuleWorld, onOpenItem = vi.fn()) => {
       onTabChange={vi.fn()}
       onClose={vi.fn()}
       onOpenItem={onOpenItem}
+      onFixRule={onFixRule}
     />,
   );
-  return { groups, onOpenItem };
+  return { groups, onOpenItem, onFixRule };
 };
 
 describe('TestBench panel', () => {
@@ -90,11 +91,32 @@ describe('TestBench panel', () => {
     render(
       <TestBench
         groups={[]} ruleCount={RULES.length} tab="issues"
-        onTabChange={vi.fn()} onClose={onClose} onOpenItem={vi.fn()}
+        onTabChange={vi.fn()} onClose={onClose} onOpenItem={vi.fn()} onFixRule={vi.fn()}
       />,
     );
     await userEvent.click(screen.getByRole('button', { name: 'Close Test Bench' }));
     expect(onClose).toHaveBeenCalled();
+  });
+});
+
+describe('TestBench quick fixes', () => {
+  it('hands the row’s rule to the editor when Fix is pressed', async () => {
+    const { onFixRule } = renderBench(world([{ id: 'e1', name: 'Maren', aliases: ['the visitor'] }]));
+    await userEvent.click(screen.getByRole('button', { name: 'Fix' }));
+    expect(onFixRule).toHaveBeenCalledWith('alias-leading-article');
+  });
+
+  it('says Fix All once the row stands for more than one finding', () => {
+    renderBench(defective);
+    // Two articled aliases collapse into one row, so the button repairs both at once.
+    expect(screen.getByRole('button', { name: 'Fix All' })).toBeInTheDocument();
+  });
+
+  it('offers no Fix on a row whose repair is a judgment call', () => {
+    // No location is flagged as starting: which one should be is the author's decision, so the row is Open only.
+    renderBench({ ...world([]), locations: [{ id: 'l1', name: 'The Long Pier' }] });
+    expect(screen.getByText(/No location is flagged as a starting location/)).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /^Fix/ })).toBeNull();
   });
 });
 

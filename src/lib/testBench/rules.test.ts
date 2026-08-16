@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import type { Dictionary, DictionaryEntry, Entity, GameLocation, Stat, Trait, WorldOverview } from '@/types';
-import { runRules, groupFindings, RULES, type RuleWorld } from './rules';
+import { applyRuleFix, runRules, groupFindings, RULES, type RuleWorld } from './rules';
 
 // A structurally sound base world — a flagged starting location and nothing else — so each pack's tests
 // see only the defects they author in, and a clean fixture really does raise zero findings.
@@ -259,6 +259,9 @@ describe('reference-integrity rules', () => {
   it('flags a chip in a stat description even when its placeholder exists — nothing resolves it there', () => {
     const described = (description: string) => base({
       placeholders: [{ id: 'p1', name: 'Vice', values: ['ale'] }],
+      // The placeholder earns its place in a field that does resolve, so removing the stat's chip leaves a
+      // world with nothing else wrong with it.
+      entities: [{ id: 'e1', name: 'Maren', locations: ['harbor'], aiDescription: 'Fond of {{ph:p1:world:pl1}}.' }],
       stats: [stat({ id: 's1', name: 'Vigor', description })],
     });
     const found = only(described('Craving for {{ph:p1:world:pl1}}.'), 'chip-never-scanned');
@@ -271,6 +274,7 @@ describe('reference-integrity rules', () => {
   it('flags a chip in a stat descriptor', () => {
     const described = (description: string) => base({
       placeholders: [{ id: 'p1', name: 'Vice', values: ['ale'] }],
+      entities: [{ id: 'e1', name: 'Maren', locations: ['harbor'], aiDescription: 'Fond of {{ph:p1:world:pl1}}.' }],
       stats: [stat({ id: 's1', name: 'Vigor', descriptors: [{ id: 1, threshold: 0, description }] })],
     });
     const found = only(described('Weak from {{ph:p1:world:pl1}}.'), 'chip-never-scanned');
@@ -430,8 +434,200 @@ describe('reachability rules', () => {
   });
 });
 
+describe('the unused-placeholder rule', () => {
+  it('flags a placeholder nothing in the world reaches for', () => {
+    const found = only(base({ placeholders: [{ id: 'p1', name: 'Hue', values: ['red', 'blue'] }] }), 'placeholder-unused');
+    expect(found).toHaveLength(1);
+    expect(found[0].severity).toBe('info');
+    expect(found[0].items.map((i) => i.id)).toEqual(['p1']);
+    expect(found[0].message).toContain('Hue');
+  });
+
+  it('counts a trait pin as a use', () => {
+    expect(runRules(base({
+      placeholders: [{ id: 'p1', name: 'Hue', values: ['red', 'blue'] }],
+      traits: [trait({ id: 't1', name: 'Dyed', placeholderPins: [{ placeholderId: 'p1', value: 'red' }] })],
+    }))).toEqual([]);
+  });
+
+  it('counts a chip parked where it never resolves as a use — the chip is the problem, not the placeholder', () => {
+    // A chip in a stat description is its own error; reading it as "no mention" would offer to delete the
+    // placeholder underneath it and turn that error into a broken reference.
+    const w = base({
+      placeholders: [{ id: 'p1', name: 'Vice', values: ['ale'] }],
+      stats: [stat({ id: 's1', name: 'Vigor', description: 'Craving for {{ph:p1:world:pl1}}.' })],
+    });
+    expect(only(w, 'placeholder-unused')).toEqual([]);
+    expect(only(w, 'chip-never-scanned')).toHaveLength(1);
+  });
+
+  it('counts a chip in the world blurb as a use', () => {
+    expect(only(base({
+      worldOverview: { name: 'Sedge Landing', description: 'A fen of {{ph:p1:world:pl1}}.', systemPrompt: '' } as WorldOverview,
+      placeholders: [{ id: 'p1', name: 'Weather', values: ['rain'] }],
+    }), 'placeholder-unused')).toEqual([]);
+  });
+});
+
+/**
+ * One fixture per fixable rule, each raising that rule and nothing the fix can't reach. The round-trip and
+ * idempotence checks below run over this table, so a fix added without a fixture fails the registry test.
+ */
+const FIX_FIXTURES: Record<string, RuleWorld> = {
+  'alias-leading-article': world([{ id: 'e1', name: 'Maren', aliases: ['the visitor', 'An Old Hand'] }]),
+  'alias-self-duplicate': world([{ id: 'e1', name: 'Harbor Cats', aliases: ['Harbor Cat', 'strays'] }]),
+  // The Centaur Breeder shape: the legacy flag is the world's only surviving record of where play starts.
+  'legacy-start-location': base({ locations: [{ id: 'pasture', name: 'Pasture', isStartLocation: true } as GameLocation] }),
+  'entity-location-orphan': base({ entities: [{ id: 'e1', name: 'Maren', locations: ['harbor', 'gone'] }] }),
+  'placeholder-unused': base({ placeholders: [{ id: 'p1', name: 'Hue', values: ['red', 'blue'] }] }),
+};
+
+describe('quick fixes', () => {
+  for (const [ruleId, before] of Object.entries(FIX_FIXTURES)) {
+    it(`${ruleId}: repairs its own finding and raises nothing new`, () => {
+      expect(only(before, ruleId).length).toBeGreaterThan(0);
+      const after = applyRuleFix(before, ruleId);
+      expect(only(after, ruleId)).toEqual([]);
+      // Whatever else the fixture had wrong, the fix must not have added to it.
+      const raised = new Set(runRules(before).map((f) => f.ruleId));
+      expect(runRules(after).filter((f) => !raised.has(f.ruleId))).toEqual([]);
+    });
+
+    it(`${ruleId}: fixing twice equals fixing once`, () => {
+      const once = applyRuleFix(before, ruleId);
+      const twice = applyRuleFix(once, ruleId);
+      expect(twice).toEqual(once);
+      // Nothing left to repair means nothing rebuilt, so the second pass hands the world straight back.
+      expect(twice).toBe(once);
+    });
+  }
+
+  it('strips the article and leaves the rest of the alias list alone', () => {
+    const fixed = applyRuleFix(FIX_FIXTURES['alias-leading-article'], 'alias-leading-article');
+    expect(fixed.entities[0].aliases).toEqual(['visitor', 'Old Hand']);
+  });
+
+  it('collapses a strip that lands on an alias the entity already carries, in either order', () => {
+    const stripTo = (aliases: string[]) =>
+      applyRuleFix(world([{ id: 'e1', name: 'Maren', aliases }]), 'alias-leading-article').entities[0].aliases;
+    expect(stripTo(['the visitor', 'visitor'])).toEqual(['visitor']);
+    expect(stripTo(['visitor', 'the visitor'])).toEqual(['visitor']);
+    expect(stripTo(['the visitor', 'a visitor'])).toEqual(['visitor']);
+  });
+
+  it('leaves an entity the finding never named untouched, duplicate aliases and all', () => {
+    // The row is about articled aliases; tidying anything else would edit items the author was never shown.
+    const before = world([
+      { id: 'e1', name: 'Maren', aliases: ['the visitor'] },
+      { id: 'e2', name: 'Old Tobb', aliases: ['Tobb', 'Tobb'] },
+    ]);
+    const fixed = applyRuleFix(before, 'alias-leading-article');
+    expect(fixed.entities[0].aliases).toEqual(['visitor']);
+    expect(fixed.entities[1]).toBe(before.entities[1]);
+  });
+
+  it('leaves an article that arrives from a chip’s value — there is nothing in the text to strip', () => {
+    const chipped = {
+      ...world([{ id: 'e1', name: 'Maren', aliases: ['{{ph:p1:world:pl1}} visitor'] }]),
+      placeholders: [{ id: 'p1', name: 'Article', values: ['the'] }],
+    };
+    expect(only(chipped, 'alias-leading-article')).toHaveLength(1);
+    expect(applyRuleFix(chipped, 'alias-leading-article').entities[0].aliases).toEqual(['{{ph:p1:world:pl1}} visitor']);
+  });
+
+  it('drops the alias that repeats the entity name and keeps the rest', () => {
+    const fixed = applyRuleFix(FIX_FIXTURES['alias-self-duplicate'], 'alias-self-duplicate');
+    expect(fixed.entities[0].aliases).toEqual(['strays']);
+  });
+
+  it('carries a truthy legacy start flag onto isStarting rather than deleting the world’s only start intent', () => {
+    const fixed = applyRuleFix(FIX_FIXTURES['legacy-start-location'], 'legacy-start-location');
+    expect(fixed.locations[0]).toEqual({ id: 'pasture', name: 'Pasture', isStarting: true });
+    expect('isStartLocation' in fixed.locations[0]).toBe(false);
+  });
+
+  it('just deletes the legacy flag when a real starting location already claims the world', () => {
+    const fixed = applyRuleFix(base({
+      locations: [
+        { id: 'harbor', name: 'Harbor Steps', isStarting: true },
+        { id: 'pasture', name: 'Pasture', isStartLocation: true } as GameLocation,
+      ],
+    }), 'legacy-start-location');
+    expect(fixed.locations[1]).toEqual({ id: 'pasture', name: 'Pasture' });
+    expect(fixed.locations.filter((l) => l.isStarting)).toHaveLength(1);
+  });
+
+  it('deletes a false-valued legacy flag without promoting anything', () => {
+    const fixed = applyRuleFix(base({
+      locations: [{ id: 'pasture', name: 'Pasture', isStartLocation: false } as GameLocation],
+    }), 'legacy-start-location');
+    expect(fixed.locations[0]).toEqual({ id: 'pasture', name: 'Pasture' });
+  });
+
+  it('drops only the dead placements from an entity that still has a live one', () => {
+    const fixed = applyRuleFix(FIX_FIXTURES['entity-location-orphan'], 'entity-location-orphan');
+    expect(fixed.entities[0].locations).toEqual(['harbor']);
+  });
+
+  it('leaves an entity whose only placement is dead — where it belongs instead is the author’s call', () => {
+    const stranded = base({ entities: [{ id: 'e1', name: 'Maren', locations: ['gone'] }] });
+    const fixed = applyRuleFix(stranded, 'entity-location-orphan');
+    expect(fixed.entities[0].locations).toEqual(['gone']);
+    // The finding stands rather than being traded for an entity placed nowhere at all.
+    expect(only(fixed, 'entity-location-orphan')).toHaveLength(1);
+    expect(only(fixed, 'entity-nowhere')).toEqual([]);
+  });
+
+  it('deletes every unreferenced placeholder and keeps the referenced ones', () => {
+    const fixed = applyRuleFix({
+      ...world([{ id: 'e1', name: 'Maren', aiDescription: 'Fond of {{ph:p1:world:pl1}}.' }]),
+      placeholders: [
+        { id: 'p1', name: 'Vice', values: ['ale'] },
+        { id: 'p2', name: 'Hue', values: ['red', 'blue'] },
+      ],
+    }, 'placeholder-unused');
+    expect(fixed.placeholders?.map((p) => p.id)).toEqual(['p1']);
+  });
+
+  it('hands back the very same world when the rule has nothing to repair', () => {
+    const clean = world([{ id: 'e1', name: 'Maren', aliases: ['Wren'] }]);
+    for (const rule of RULES) expect(applyRuleFix(clean, rule.id)).toBe(clean);
+  });
+
+  it('leaves every slice it did not touch identical, so only the repair is written back', () => {
+    const before = FIX_FIXTURES['alias-leading-article'];
+    const after = applyRuleFix(before, 'alias-leading-article');
+    expect(after.entities).not.toBe(before.entities);
+    expect(after.locations).toBe(before.locations);
+    expect(after.placeholders).toBe(before.placeholders);
+    expect(after.worldOverview).toBe(before.worldOverview);
+  });
+
+  it('offers no fix where the repair is a judgment call', () => {
+    // Which location should start, which of two colliding entities should be renamed, where a placeless
+    // entity belongs — none of these has one right answer, so those rows offer Open and nothing else.
+    for (const id of ['no-starting-location', 'entity-match-collision', 'entity-nowhere', 'stat-code-unknown-stat']) {
+      expect(RULES.find((r) => r.id === id)?.fix).toBeUndefined();
+    }
+  });
+
+  it('marks a row fixable exactly when its rule carries a fix', () => {
+    const groups = groupFindings(runRules({
+      ...world([{ id: 'e1', name: 'Maren', aliases: ['the visitor'] }]),
+      locations: [{ id: 'harbor', name: 'Harbor Steps' }],
+    }));
+    expect(groups.find((g) => g.ruleId === 'alias-leading-article')?.fixable).toBe(true);
+    expect(groups.find((g) => g.ruleId === 'no-starting-location')?.fixable).toBe(false);
+  });
+});
+
 describe('the rule registry', () => {
   it('gives every rule a unique id', () => {
     expect(new Set(RULES.map((r) => r.id)).size).toBe(RULES.length);
+  });
+
+  it('round-trips every fix the engine carries', () => {
+    // The guard on the table above: a rule that gains a fix without a fixture never gets round-tripped.
+    expect(RULES.filter((r) => r.fix).map((r) => r.id).sort()).toEqual(Object.keys(FIX_FIXTURES).sort());
   });
 });

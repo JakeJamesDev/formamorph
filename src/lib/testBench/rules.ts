@@ -3,11 +3,12 @@
  * instrument lists. A rule is data — id, severity, owning editor section, and a `check` — so the same set
  * can be run whole (Issues) or filtered to a subset (Triggers) without a second implementation.
  *
- * Everything here is pure: no React, no storage, no world mutation. Rules diagnose; they never rewrite.
+ * Everything here is pure: no React, no storage, no world mutation. A rule diagnoses; where the repair is
+ * unambiguous it also carries a `fix`, which returns a new world rather than editing the one it was given.
  */
 import { collectPlaceholderPlacements, describePlaceholders, hasPlaceholders } from '@/lib/placeholders';
 import { matchKey } from '@/lib/entityMatch';
-import type { DictionaryEntry, Entity, GameLocation, World } from '@/types';
+import type { DictionaryEntry, Entity, GameLocation, Placeholder, World } from '@/types';
 
 /** The world a rule reads — the editor's live payload, which carries no record id or version. */
 export type RuleWorld = Omit<World, 'id' | 'version'>;
@@ -47,9 +48,31 @@ export interface Rule {
   check(world: RuleWorld): Finding[];
   /** Headline for the collapsed row when this rule fired `count` times. */
   summary(count: number): string;
+  /**
+   * The world with every unambiguous instance of this rule repaired — present only where the repair
+   * needs no authorial judgment. It re-derives what to repair from the world it is handed, so applying
+   * it twice equals applying it once, and it returns the world untouched when there is nothing to do.
+   */
+  fix?(world: RuleWorld): RuleWorld;
 }
 
 const quote = (text: string) => `“${text}”`;
+
+/** `list` with `fn` applied, or `list` itself when nothing changed — an untouched slice keeping its identity
+ *  is what lets a fix be written back as only the parts it actually rebuilt. */
+const mapChanged = <T>(list: T[], fn: (item: T) => T): T[] => {
+  let changed = false;
+  const next = list.map((item) => {
+    const mapped = fn(item);
+    if (mapped !== item) changed = true;
+    return mapped;
+  });
+  return changed ? next : list;
+};
+
+/** `world` carrying `value` for `key`, or `world` itself when that slice is the one it already had. */
+const withSlice = <K extends keyof RuleWorld>(world: RuleWorld, key: K, value: RuleWorld[K]): RuleWorld =>
+  value === world[key] ? world : { ...world, [key]: value };
 
 /** "a, b and c" — how a finding names the handful of items it covers. */
 const listNames = (names: string[]): string =>
@@ -73,6 +96,32 @@ const aliasesOf = (entity: Entity, world: RuleWorld): string[] =>
 // An alias phrase led by an article. Alias matching is case-sensitive, so "the visitor" misses every
 // sentence-initial "The visitor" and vice versa — the article is the whole defect.
 const LEADING_ARTICLE = /^(?:the|an|a)\s+\S/i;
+const ARTICLE_PREFIX = /^(?:the|an|a)\s+/i;
+
+/** `aliases` with each leading article dropped. A strip can land on a form the entity already carries —
+ *  "the visitor" beside "visitor" — so one of that pair goes; an alias the strip never touched is left
+ *  exactly as written, duplicates included, since it is no part of this finding. */
+const withoutArticles = (aliases: string[]): string[] => {
+  const next: string[] = [];
+  const stripped = new Set<string>();
+  for (const alias of aliases) {
+    // The article has to be in the raw text to be removable: one arriving from a chip's value has nothing
+    // here to strip, so it stays for the author to resolve.
+    const trimmed = alias.trim();
+    if (!LEADING_ARTICLE.test(trimmed)) {
+      if (!stripped.has(alias)) next.push(alias);
+      continue;
+    }
+    const bare = trimmed.replace(ARTICLE_PREFIX, '');
+    if (stripped.has(bare) || next.includes(bare)) continue;
+    stripped.add(bare);
+    next.push(bare);
+  }
+  return next;
+};
+
+const sameAliases = (a: string[], b: string[]): boolean =>
+  a.length === b.length && a.every((text, i) => text === b[i]);
 
 const aliasLeadingArticle: Rule = {
   id: 'alias-leading-article',
@@ -91,6 +140,12 @@ const aliasLeadingArticle: Rule = {
         items: [asItem(entity, world)],
       })),
   ),
+  fix: (world) => withSlice(world, 'entities', mapChanged(world.entities, (entity) => {
+    const aliases = entity.aliases;
+    if (!aliases?.length) return entity;
+    const next = withoutArticles(aliases);
+    return sameAliases(next, aliases) ? entity : { ...entity, aliases: next };
+  })),
 };
 
 const entityMatchCollision: Rule = {
@@ -146,6 +201,15 @@ const aliasSelfDuplicate: Rule = {
         items: [asItem(entity, world)],
       }));
   }),
+  fix: (world) => withSlice(world, 'entities', mapChanged(world.entities, (entity) => {
+    const nameKey = matchKey(describePlaceholders(entity.name ?? '', world.placeholders));
+    const aliases = entity.aliases;
+    if (!nameKey || !aliases?.length) return entity;
+    const next = aliases.filter(
+      (alias) => matchKey(describePlaceholders(alias ?? '', world.placeholders).trim()) !== nameKey,
+    );
+    return next.length === aliases.length ? entity : { ...entity, aliases: next };
+  })),
 };
 
 /** A finding for `rule` — the boilerplate trio copied from the rule itself. */
@@ -186,6 +250,18 @@ const entityLocationOrphan: Rule = {
         const item = asItem(entity, world);
         return finding(entityLocationOrphan, `${quote(item.name)} is placed at a location that doesn’t exist`, [item]);
       });
+  },
+  fix: (world) => {
+    const known = new Set(world.locations.map((l) => l.id));
+    return withSlice(world, 'entities', mapChanged(world.entities, (entity) => {
+      const placements = entity.locations;
+      if (!placements?.length) return entity;
+      const live = placements.filter((id) => known.has(id));
+      // Dropping the last placement would leave the entity nowhere, and where it belongs instead is the
+      // author's call — so an entity with nothing live left keeps its reference, and its finding.
+      if (live.length === placements.length || live.length === 0) return entity;
+      return { ...entity, locations: live };
+    }));
   },
 };
 
@@ -313,6 +389,41 @@ const chipNeverScanned: Rule = {
   }),
 };
 
+/** Every text in the world a chip token can sit in — deliberately wider than `chipOwners`, which lists only
+ *  the fields the resolver scans. "Never used" has to mean unmentioned *anywhere*, or a chip parked somewhere
+ *  that doesn't resolve would read as no mention at all and the placeholder under it would look disposable. */
+const allChipTexts = (world: RuleWorld): Array<string | undefined> => [
+  ...chipOwners(world).flatMap((owner) => owner.texts),
+  world.worldOverview.description,
+  ...world.stats.flatMap((s) => [s.description, ...s.descriptors.map((d) => d.description)]),
+  ...world.statUpdates.map((u) => u.prompt),
+];
+
+/** The placeholders nothing in the world reaches for — no chip anywhere, and no trait pinning them. */
+const unusedPlaceholders = (world: RuleWorld): Placeholder[] => {
+  const used = chipIds(allChipTexts(world));
+  for (const trait of world.traits) {
+    for (const pin of trait.placeholderPins ?? []) used.add(pin.placeholderId);
+  }
+  return (world.placeholders ?? []).filter((p) => !used.has(p.id));
+};
+
+const placeholderUnused: Rule = {
+  id: 'placeholder-unused',
+  severity: 'info',
+  section: 'placeholders',
+  summary: (count) => `${count} placeholders are defined but never used`,
+  check: (world) => unusedPlaceholders(world).map((placeholder) => {
+    const item = namedItem(placeholder.id, placeholder.name, world);
+    return finding(placeholderUnused, `${quote(item.name)} is defined but never used`, [item]);
+  }),
+  fix: (world) => {
+    const dead = new Set(unusedPlaceholders(world).map((p) => p.id));
+    if (dead.size === 0) return world;
+    return withSlice(world, 'placeholders', (world.placeholders ?? []).filter((p) => !dead.has(p.id)));
+  },
+};
+
 // A stat-name lookup in stat code, in either direction: `s.name === "X"` or `"X" === s.name`. Also matches
 // `==`/`!=` forms — any comparison against `.name` names a stat.
 const NAME_THEN_LITERAL = /\.name\s*[!=]==?\s*(["'`])((?:\\.|(?!\1).)*)\1/g;
@@ -429,6 +540,9 @@ const noStartingLocation: Rule = {
  *  intent is this rule. */
 const hasLegacyStart = (location: GameLocation): boolean => 'isStartLocation' in location;
 
+const legacyStartValue = (location: GameLocation): unknown =>
+  (location as GameLocation & { isStartLocation?: unknown }).isStartLocation;
+
 const legacyStartLocation: Rule = {
   id: 'legacy-start-location',
   severity: 'warning',
@@ -437,7 +551,7 @@ const legacyStartLocation: Rule = {
   check: (world) => world.locations.filter(hasLegacyStart).map((location) => {
     const item = namedItem(location.id, location.name, world);
     // Only a truthy value signals start intent; a false-valued leftover just needs deleting.
-    const advice = (location as GameLocation & { isStartLocation?: unknown }).isStartLocation
+    const advice = legacyStartValue(location)
       ? 'flag it as a starting location instead'
       : 'delete the field';
     return finding(
@@ -446,6 +560,19 @@ const legacyStartLocation: Rule = {
       [item],
     );
   }),
+  fix: (world) => {
+    // A truthy leftover is the world's only surviving record of its start intent, so deleting it outright
+    // would trade this finding for a world with no starting location. The first one carries that intent
+    // over to the live flag — but only when nothing already claims it, since a real flag supersedes it.
+    const promoteId = world.locations.some((l) => l.isStarting)
+      ? undefined
+      : world.locations.find((l) => hasLegacyStart(l) && legacyStartValue(l))?.id;
+    return withSlice(world, 'locations', mapChanged(world.locations, (location) => {
+      if (!hasLegacyStart(location)) return location;
+      const { isStartLocation: _legacy, ...rest } = location as GameLocation & { isStartLocation?: unknown };
+      return location.id === promoteId ? { ...rest, isStarting: true } : rest;
+    }));
+  },
 };
 
 const entityNowhere: Rule = {
@@ -483,7 +610,7 @@ const statDisabledForever: Rule = {
 export const RULES: readonly Rule[] = [
   aliasLeadingArticle, entityMatchCollision, aliasSelfDuplicate,
   entityLocationOrphan, traitToggleMissingStat, traitPinInvalid,
-  chipUnknownPlaceholder, chipNeverScanned, statCodeUnknownStat,
+  chipUnknownPlaceholder, chipNeverScanned, placeholderUnused, statCodeUnknownStat,
   entrySecondaryWithoutPrimary, entryInert, entryRegexInvalid,
   noStartingLocation, legacyStartLocation, entityNowhere, statDisabledForever,
 ];
@@ -493,6 +620,12 @@ export function runRules(world: RuleWorld): Finding[] {
   return RULES.flatMap((rule) => rule.check(world));
 }
 
+/** `world` with `ruleId`'s fix applied — the same world back when that rule carries none, or has nothing
+ *  left to repair. */
+export function applyRuleFix(world: RuleWorld, ruleId: string): RuleWorld {
+  return RULES.find((rule) => rule.id === ruleId)?.fix?.(world) ?? world;
+}
+
 /** A rule's findings collapsed into the single row the Issues list shows for them. */
 export interface FindingGroup {
   ruleId: string;
@@ -500,6 +633,8 @@ export interface FindingGroup {
   section: FindingSection;
   /** The row's line: the lone finding's own wording, or the rule's count-carrying summary. */
   headline: string;
+  /** Whether the rule behind the row carries a fix — what puts the Fix button on it. */
+  fixable: boolean;
   /** Every item the group's findings name, each once, in first-seen order. */
   items: FindingItem[];
   findings: Finding[];
@@ -532,6 +667,7 @@ export function groupFindings(findings: Finding[]): FindingGroup[] {
       headline: ruleFindings.length === 1 || !rule
         ? ruleFindings[0].message
         : rule.summary(ruleFindings.length),
+      fixable: !!rule?.fix,
       items,
       findings: ruleFindings,
     };
