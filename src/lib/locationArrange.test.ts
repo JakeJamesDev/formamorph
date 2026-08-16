@@ -37,6 +37,12 @@ const stacked: GameLocation[] = [
   { id: "attic", name: "Attic", parentId: "house", canvasPosition: { x: 20, y: 40 } },
 ];
 
+/** A group holding `names` as plain, never-positioned sub-locations. */
+const roomsIn = (group: string, names: string[]): GameLocation[] => [
+  { id: group, name: group },
+  ...names.map((id) => ({ id, name: id, parentId: group })),
+];
+
 const positionOf = (locations: GameLocation[], id: string) =>
   locations.find((l) => l.id === id)!.canvasPosition!;
 /** Every node's box measured from the canvas origin, which is where crossings and neighbors are judged. */
@@ -62,6 +68,31 @@ const distance = (rects: ReturnType<typeof rectsOf>, a: string, b: string) => {
   const to = centerOf(rects, b);
   return Math.hypot(to.x - from.x, to.y - from.y);
 };
+/** Whether two placed boxes sit on top of each other — what a pack must never produce. */
+const overlaps = (rects: ReturnType<typeof rectsOf>, a: string, b: string) => {
+  const one = rects.get(a)!, two = rects.get(b)!;
+  return one.x < two.x + two.width && two.x < one.x + one.width
+    && one.y < two.y + two.height && two.y < one.y + one.height;
+};
+/** The block a set of boxes occupies together, which is the shape the pack is aiming at. */
+const boundsOf = (rects: ReturnType<typeof rectsOf>, ids: string[]) => {
+  const boxes = ids.map((id) => rects.get(id)!);
+  const x = Math.min(...boxes.map((r) => r.x));
+  const y = Math.min(...boxes.map((r) => r.y));
+  return {
+    x,
+    y,
+    width: Math.max(...boxes.map((r) => r.x + r.width)) - x,
+    height: Math.max(...boxes.map((r) => r.y + r.height)) - y,
+  };
+};
+/** The order the pack laid boxes out in, read off the result the way an author reads it: rows top to bottom,
+ *  each row left to right. */
+const packOrder = (rects: ReturnType<typeof rectsOf>, ids: string[]) =>
+  [...ids].sort((a, b) => {
+    const one = rects.get(a)!, two = rects.get(b)!;
+    return one.y - two.y || one.x - two.x;
+  });
 /** Whether two straight center-to-center segments cross, which is what a layered layout is minimizing. */
 const crosses = (
   rects: ReturnType<typeof rectsOf>,
@@ -154,22 +185,72 @@ describe("autoArrange", () => {
     }
   });
 
-  it("keeps siblings with no authored travel in one rank, and ranks the pair a Connection joins", () => {
+  it("packs siblings with no authored travel into a grid, and ranks the pair a Connection joins", () => {
     // Free travel runs between every pair of siblings, so it orders nothing: four rooms of one place have no
-    // reason to stand in four columns, and a layout built on it would put them there.
-    const rooms: GameLocation[] = [
-      { id: "inn", name: "Inn" },
-      ...["bar", "kitchen", "loft", "yard"].map((id) => ({ id, name: id, parentId: "inn" })),
-    ];
+    // reason to stand in four columns, and no reason to stand in one either. They get packed.
+    const names = ["bar", "kitchen", "loft", "yard"];
+    const rooms = roomsIn("inn", names);
     const plain = autoArrange(rooms, [], "inn");
-    const columns = new Set(["bar", "kitchen", "loft", "yard"].map((id) => positionOf(plain, id).x));
-    expect(columns.size).toBe(1);
-    expect(rectsOf(plain).get("inn")!.width).toBeLessThan(rectsOf(rooms).get("inn")!.width * 2);
+    const columns = new Set(names.map((id) => positionOf(plain, id).x));
+    const rows = new Set(names.map((id) => positionOf(plain, id).y));
+    expect(columns.size).toBeGreaterThan(1); // not one column
+    expect(rows.size).toBeGreaterThan(1); // and not one row either
+    const rects = rectsOf(plain);
+    for (const [a, b] of names.flatMap((a, i) => names.slice(i + 1).map((b) => [a, b] as const))) {
+      expect(overlaps(rects, a, b)).toBe(false);
+    }
 
     // One authored Connection is a real ordering, and it is what pulls its two ends into travel order.
     const wired = autoArrange(rooms, [link("bar", "kitchen")], "inn");
     expect(positionOf(wired, "kitchen").x).toBeGreaterThan(positionOf(wired, "bar").x);
-    expect(positionOf(wired, "loft").x).toBe(positionOf(wired, "bar").x);
+  });
+
+  it("packs a larger plain group into a landscape block rather than a ribbon", () => {
+    const names = Array.from({ length: 12 }, (_, i) => `room${i}`);
+    const arranged = autoArrange(roomsIn("keep", names), [], "keep");
+    const block = boundsOf(rectsOf(arranged), names);
+    expect(block.width).toBeGreaterThan(block.height); // landscape...
+    expect(block.width / block.height).toBeLessThan(3); // ...but nothing like a ribbon
+    expect(new Set(names.map((id) => positionOf(arranged, id).x)).size).toBeGreaterThan(1);
+    expect(new Set(names.map((id) => positionOf(arranged, id).y)).size).toBeGreaterThan(1);
+  });
+
+  it("keeps a linked cluster whole while the loose sub-locations pack beside it", () => {
+    const names = ["one", "two", "three", "four", "five", "six"];
+    const rooms = roomsIn("keep", names);
+    const arranged = autoArrange(rooms, [link("two", "three")], "keep");
+    const rects = rectsOf(arranged);
+    // The pair stands in travel order...
+    expect(rects.get("three")!.x).toBeGreaterThan(rects.get("two")!.x);
+    // ...and nothing else was packed through the block the two of them occupy.
+    const cluster = boundsOf(rects, ["two", "three"]);
+    for (const id of ["one", "four", "five", "six"]) {
+      const loose = rects.get(id)!;
+      expect(loose.x < cluster.x + cluster.width && cluster.x < loose.x + loose.width
+        && loose.y < cluster.y + cluster.height && cluster.y < loose.y + loose.height).toBe(false);
+    }
+  });
+
+  it("gives a cluster the slot of its earliest member", () => {
+    const names = ["one", "two", "three", "four"];
+    const rooms = roomsIn("keep", names);
+    // Linking the first and last child makes one cluster whose earliest member is the first child, so the
+    // cluster takes the first slot and the unlinked middle two follow it.
+    expect(packOrder(rectsOf(autoArrange(rooms, [link("one", "four")], "keep")), names))
+      .toEqual(["one", "four", "two", "three"]);
+    // Link the middle two instead and the lone first child keeps the first slot ahead of them.
+    expect(packOrder(rectsOf(autoArrange(rooms, [link("two", "three")], "keep")), names))
+      .toEqual(["one", "two", "three", "four"]);
+  });
+
+  it("ignores links that cross the arranged group's frame", () => {
+    const names = ["one", "two", "three", "four"];
+    const rooms = [...roomsIn("keep", names), { id: "outside", name: "Outside" }];
+    const plain = autoArrange(rooms, [], "keep");
+    // A link from the group to its own child, and one in from a location the group does not hold, say nothing
+    // about the order of what is inside the box — so the box arranges exactly as it does with no links at all.
+    const boundary = autoArrange(rooms, [link("keep", "two"), link("outside", "three")], "keep");
+    for (const id of names) expect(positionOf(boundary, id)).toEqual(positionOf(plain, id));
   });
 
   it("leaves a world with nothing to arrange exactly as it was", () => {
@@ -202,19 +283,14 @@ describe("autoArrangeAll", () => {
     expect(cellar.y + cellar.height).toBeLessThanOrEqual(tavern.y + tavern.height);
 
     // Nothing the arrangement placed sits on top of anything else placed beside it.
-    const overlap = (of: ReturnType<typeof rectsOf>, a: string, b: string) => {
-      const one = of.get(a)!, two = of.get(b)!;
-      return one.x < two.x + two.width && two.x < one.x + one.width
-        && one.y < two.y + two.height && two.y < one.y + one.height;
-    };
-    expect(overlap(rects, "tavern", "house")).toBe(false);
-    expect(overlap(rects, "village", "landing")).toBe(false);
+    expect(overlaps(rects, "tavern", "house")).toBe(false);
+    expect(overlaps(rects, "village", "landing")).toBe(false);
 
     // The House's own rooms were stacked on one spot here, so arranging it makes it wider than the frame that
     // holds it was measured for — laid out the other way about, the Tavern would land inside the House.
     const grown = rectsOf(autoArrangeAll(stacked, []));
     expect(grown.get("house")!.height).toBeGreaterThan(rectsOf(stacked).get("house")!.height);
-    expect(overlap(grown, "tavern", "house")).toBe(false);
+    expect(overlaps(grown, "tavern", "house")).toBe(false);
   });
 
   it("arranges the same world into the same layout every time", () => {
