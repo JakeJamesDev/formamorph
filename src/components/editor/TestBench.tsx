@@ -224,7 +224,8 @@ const IssuesInstrument = ({
   </ScrollArea>
 );
 
-export interface TestBenchProps {
+/** The World Doctor's bundle: the marked finding rows and every action a row offers, fixes aside. */
+export interface IssuesProps {
   groups: FindingGroup[];
   /** The rows the author muted, kept reachable so a dismissal is never one-way. */
   dismissedGroups: FindingGroup[];
@@ -235,7 +236,16 @@ export interface TestBenchProps {
   /** How many stats carry code — what the on-demand check would have to run. */
   codedStatCount: number;
   codeCheckStatus: CodeCheckStatus;
-  /** The Bench-level `Testing as [PC] · at [location]` selection, resolved against the world. */
+  onOpenItem: OpenFindingItem;
+  onDismissRule: (ruleId: string) => void;
+  onRestoreRule: (ruleId: string) => void;
+  onMarkAllSeen: () => void;
+  /** Run every stat's code in the real sandbox and fold the failures into the list. */
+  onCheckStatCode: () => void;
+}
+
+/** The Bench-level `Testing as [PC] · at [location]` selection, resolved against the world. */
+export interface LensBarProps {
   lens: BenchLens;
   pcOptions: LensOption[];
   locationOptions: LensOption[];
@@ -243,48 +253,48 @@ export interface TestBenchProps {
   statOverrides: StatOverride[];
   onPcChange: (traitId: string | null) => void;
   onLocationChange: (locationId: string | null) => void;
-  tab: BenchTab;
-  onTabChange: (tab: BenchTab) => void;
-  onClose: () => void;
-  onOpenItem: OpenFindingItem;
-  /** Apply one rule's fix to the world — the editor's write-through, so it lands as a hand edit would. */
-  onFixRule: (ruleId: string) => void;
-  onDismissRule: (ruleId: string) => void;
-  onRestoreRule: (ruleId: string) => void;
-  onMarkAllSeen: () => void;
-  /** Run every stat's code in the real sandbox and fold the failures into the list. */
-  onCheckStatCode: () => void;
-  /** The Triggers scene text, held above the tab strip so switching instruments doesn't discard it. */
-  triggerText: string;
-  onTriggerTextChange: (text: string) => void;
-  /** The Triggers history box, held for the same reason. */
-  triggerHistory: string;
-  onTriggerHistoryChange: (text: string) => void;
-  triggerReport: TriggerReport;
+}
+
+/** The Activation Tester's bundle. Its text, history and semantic toggle live above the tab strip so
+ *  switching instruments doesn't discard the prose the author is testing with. */
+export interface TriggersProps {
+  text: string;
+  onTextChange: (text: string) => void;
+  history: string;
+  onHistoryChange: (text: string) => void;
+  report: TriggerReport;
   /** The matching-related findings of the same pass Issues lists, shown inline in Triggers. */
   matchingFindings: Finding[];
   /** Fill the Triggers boxes from the world's most recent save; absent when it has none. */
   onPasteLastTurn?: () => void;
-  /** The Triggers semantic toggle, held here so switching instruments doesn't silently turn it off. */
   semanticStatus: SemanticStatus;
   semanticOn: boolean;
   onSemanticChange: (on: boolean) => void;
-  /** What the harness serves from the lens location — the AI Context instrument's whole view-model. */
-  aiContext: AiContextData;
-  /** What a fresh game as the lens PC looks like — the Opening instrument's whole view-model. */
-  opening: OpeningData;
-  /** Draw fresh values for the Opening instrument's unpinned placeholders. */
-  onRerollOpening: () => void;
 }
 
-export function TestBench({
-  groups, dismissedGroups, ruleCount, newCount, codedStatCount, codeCheckStatus, tab, onTabChange, onClose,
-  lens, pcOptions, locationOptions, statOverrides, onPcChange, onLocationChange,
-  onOpenItem, onFixRule, onDismissRule, onRestoreRule, onMarkAllSeen, onCheckStatCode,
-  triggerText, onTriggerTextChange, triggerHistory, onTriggerHistoryChange, triggerReport,
-  matchingFindings, onPasteLastTurn, semanticStatus, semanticOn, onSemanticChange, aiContext,
-  opening, onRerollOpening,
-}: TestBenchProps) {
+/** The Opening instrument's bundle: the fresh-game view-model and its one action. */
+export interface OpeningProps {
+  data: OpeningData;
+  /** Draw fresh values for the unpinned placeholders. */
+  onReroll: () => void;
+}
+
+/** One bundle per Instrument plus the bench chrome, so adding an Instrument adds a bundle, not a prop row. */
+export interface TestBenchProps {
+  tab: BenchTab;
+  onTabChange: (tab: BenchTab) => void;
+  onClose: () => void;
+  /** Apply one rule's fix to the world — shared, because a Triggers warning's Fix is the Issues fix. */
+  onFixRule: (ruleId: string) => void;
+  issues: IssuesProps;
+  lens: LensBarProps;
+  triggers: TriggersProps;
+  /** What the harness serves from the lens location — the AI Context instrument's whole view-model. */
+  aiContext: AiContextData;
+  opening: OpeningProps;
+}
+
+export function TestBench({ tab, onTabChange, onClose, onFixRule, issues, lens, triggers, aiContext, opening }: TestBenchProps) {
   return (
     <div className="flex h-full flex-col gap-2 p-3">
       <div className="flex items-center gap-2">
@@ -294,14 +304,7 @@ export function TestBench({
           <X className="h-4 w-4" />
         </Button>
       </div>
-      <LensBar
-        lens={lens}
-        pcOptions={pcOptions}
-        locationOptions={locationOptions}
-        statOverrides={statOverrides}
-        onPcChange={onPcChange}
-        onLocationChange={onLocationChange}
-      />
+      <LensBar {...lens} />
       <Tabs
         value={tab}
         onValueChange={(v) => onTabChange(v as BenchTab)}
@@ -311,8 +314,8 @@ export function TestBench({
           {BENCH_TABS.map((t) => (
             <TabsTrigger key={t.value} value={t.value} className="px-1">
               {t.label}
-              {t.value === 'issues' && groups.length > 0 && (
-                <span className="ml-1 rounded-full bg-warning/20 px-1 text-meta text-warning">{groups.length}</span>
+              {t.value === 'issues' && issues.groups.length > 0 && (
+                <span className="ml-1 rounded-full bg-warning/20 px-1 text-meta text-warning">{issues.groups.length}</span>
               )}
             </TabsTrigger>
           ))}
@@ -322,37 +325,37 @@ export function TestBench({
           <TabsContent key={t.value} value={t.value} className="mt-0 min-h-0 flex-grow">
             {t.value === 'issues' && (
               <IssuesInstrument
-                groups={groups}
-                dismissedGroups={dismissedGroups}
-                ruleCount={ruleCount}
-                newCount={newCount}
-                codedStatCount={codedStatCount}
-                codeCheckStatus={codeCheckStatus}
-                onOpen={onOpenItem}
+                groups={issues.groups}
+                dismissedGroups={issues.dismissedGroups}
+                ruleCount={issues.ruleCount}
+                newCount={issues.newCount}
+                codedStatCount={issues.codedStatCount}
+                codeCheckStatus={issues.codeCheckStatus}
+                onOpen={issues.onOpenItem}
                 onFix={onFixRule}
-                onDismiss={onDismissRule}
-                onRestore={onRestoreRule}
-                onMarkAllSeen={onMarkAllSeen}
-                onCheckStatCode={onCheckStatCode}
+                onDismiss={issues.onDismissRule}
+                onRestore={issues.onRestoreRule}
+                onMarkAllSeen={issues.onMarkAllSeen}
+                onCheckStatCode={issues.onCheckStatCode}
               />
             )}
             {t.value === 'triggers' && (
               <TriggersInstrument
-                text={triggerText}
-                onTextChange={onTriggerTextChange}
-                history={triggerHistory}
-                onHistoryChange={onTriggerHistoryChange}
-                report={triggerReport}
-                warnings={matchingFindings}
+                text={triggers.text}
+                onTextChange={triggers.onTextChange}
+                history={triggers.history}
+                onHistoryChange={triggers.onHistoryChange}
+                report={triggers.report}
+                warnings={triggers.matchingFindings}
                 onFixRule={onFixRule}
-                onPasteLastTurn={onPasteLastTurn}
-                semanticStatus={semanticStatus}
-                semanticOn={semanticOn}
-                onSemanticChange={onSemanticChange}
+                onPasteLastTurn={triggers.onPasteLastTurn}
+                semanticStatus={triggers.semanticStatus}
+                semanticOn={triggers.semanticOn}
+                onSemanticChange={triggers.onSemanticChange}
               />
             )}
             {t.value === 'aiContext' && <AiContextInstrument data={aiContext} />}
-            {t.value === 'opening' && <OpeningInstrument data={opening} onReroll={onRerollOpening} />}
+            {t.value === 'opening' && <OpeningInstrument data={opening.data} onReroll={opening.onReroll} />}
           </TabsContent>
         ))}
       </Tabs>
@@ -409,14 +412,7 @@ const LensSelect = ({ icon: Icon, label, none, value, options, onChange }: {
 
 /** The Bench-level lens every instrument reads: who is being played, and where they are standing. Its notes
  *  sit under it because both are consequences of the PC on the selector directly above them. */
-const LensBar = ({ lens, pcOptions, locationOptions, statOverrides, onPcChange, onLocationChange }: {
-  lens: BenchLens;
-  pcOptions: LensOption[];
-  locationOptions: LensOption[];
-  statOverrides: StatOverride[];
-  onPcChange: (traitId: string | null) => void;
-  onLocationChange: (locationId: string | null) => void;
-}) => (
+const LensBar = ({ lens, pcOptions, locationOptions, statOverrides, onPcChange, onLocationChange }: LensBarProps) => (
   <div className="flex flex-col gap-1">
     <div className="flex items-center gap-1.5">
       <span className="shrink-0 text-meta text-muted-foreground">Testing as</span>

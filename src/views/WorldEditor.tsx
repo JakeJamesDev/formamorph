@@ -22,24 +22,10 @@ import { Plus, ArrowLeft, Save, FolderPlus, FilePlus, ImageDown, BookPlus, UserP
 import { ActionIcon } from '@/lib/actionIcons';
 import { cn } from "@/lib/utils";
 import EditorFindBar from '@/components/editor/EditorFindBar';
-import { TestBench, TestBenchButton, type CodeCheckStatus } from '@/components/editor/TestBench';
-import { asBenchTab } from '@/components/editor/benchTabs';
+import { TestBench, TestBenchButton } from '@/components/editor/TestBench';
 import { Drawer, DrawerContent, DrawerTitle } from '@/components/ui/drawer';
-import { applyRuleFix, RULES, selectMatchingFindings, type Finding, type FindingSection } from '@/lib/testBench/rules';
-import { buildAiContext, EMPTY_AI_CONTEXT } from '@/lib/testBench/aiContext';
-import { buildOpening, EMPTY_OPENING } from '@/lib/testBench/opening';
-import { useOpeningRolls } from '@/lib/testBench/useOpeningRolls';
-import { loadLastTurn, type LastTurn } from '@/lib/testBench/lastTurn';
-import { checkStatCode } from '@/lib/testBench/statCodeCheck';
-import { lensStatOverrides } from '@/lib/testBench/lens';
-import { useBenchFindings } from '@/lib/testBench/useBenchFindings';
-import { useBenchLens } from '@/lib/testBench/useBenchLens';
-import { useBenchTab } from '@/lib/testBench/useBenchTab';
-import { useDebouncedTriggerReport } from '@/lib/testBench/useTriggerReport';
-import { useTriggerSemantics } from '@/lib/testBench/useTriggerSemantics';
-import { joinHistory } from '@/lib/testBench/triggers';
-import { hasSeenDownloadNote, markDownloadNoteSeen } from '@/lib/testBench/downloadNote';
-import { useDebouncedFindings } from '@/lib/testBench/useFindings';
+import type { FindingSection } from '@/lib/testBench/rules';
+import { useTestBench } from '@/lib/testBench/useTestBench';
 import { collectSearchTargets, type SearchMatch } from '@/lib/worldSearch';
 import { revealEditorMatch, clearEditorMatch, revealSelectedRow } from '@/lib/editorFieldFocus';
 import { Panel, PanelGroup, PanelResizeHandle } from 'react-resizable-panels';
@@ -128,9 +114,8 @@ const WorldEditorInner = ({ onClose, embedded = false, backButton }: {
     updateStat, updateEntity, updateEntityGroup, updateLocation, updateTrait, updateTraitGroup,
     updateDictionary, updateDictionaryEntry, updatePlaceholder,
     removeStat, removeEntity, removeTrait, removeStatUpdate,
-    setStats, setLocations, setConnections, setEntities, setEntityGroups, setTraits, setTraitGroups,
-    setStatUpdates, setDictionaries, setPlaceholders,
-    worldMetadata, isWorldDirty, saveWorld: saveWorldCtx, discardChanges
+    setStats, setLocations, setEntities, setTraits, setTraitGroups, setStatUpdates,
+    isWorldDirty, saveWorld: saveWorldCtx, discardChanges
   } = useGameData();
   const { promptWorld, dialog: downscaleDialog } = useDownscalePrompt();
 
@@ -270,212 +255,22 @@ const WorldEditorInner = ({ onClose, embedded = false, backButton }: {
   const [showAddEntity, setShowAddEntity] = useState(false);
 
   // ── Test Bench ────────────────────────────────────────────────────────────
-  const [benchOpen, setBenchOpen] = useState(false);
-  // The open Instrument, remembered per world for the session — the sheet closing doesn't reset the setup.
-  const { tab: benchTab, setTab: setBenchTab } = useBenchTab(worldId, { open: benchOpen });
-  // Above the tab strip, so switching instruments (which unmounts the panel below it) doesn't discard the
-  // prose the author is testing with.
-  const [triggerText, setTriggerText] = useState('');
-  const [triggerHistory, setTriggerHistory] = useState('');
-  // `getWorldData` is memoized on the world arrays, so this payload's identity is the "world changed"
-  // signal the rule pass debounces on.
-  const benchWorld = useMemo(getWorldData, [getWorldData]);
-  const staticFindings = useDebouncedFindings(benchWorld);
-  // Stat-code execution is the one check the live pass can't carry — each stat costs a sandbox VM. Its
-  // findings are held from the last explicit run and dropped the moment the world moves, so a repaired stat
-  // can never keep showing its old failure.
-  const [codeFindings, setCodeFindings] = useState<Finding[]>([]);
-  const [codeCheckStatus, setCodeCheckStatus] = useState<CodeCheckStatus>('idle');
-  // Which run is the current one. A run started against a world the author has since edited must not land:
-  // its verdict is about code that no longer exists, which is the one thing the clearing below exists to stop.
-  const codeRunRef = useRef(0);
-  useEffect(() => {
-    codeRunRef.current += 1;
-    // Guarded so an ordinary keystroke doesn't re-render the panel to replace nothing with nothing.
-    setCodeFindings((prev) => (prev.length === 0 ? prev : []));
-    setCodeCheckStatus((prev) => (prev === 'idle' ? prev : 'idle'));
-  }, [benchWorld]);
-  const runStatCodeCheck = useCallback(async () => {
-    const run = (codeRunRef.current += 1);
-    setCodeCheckStatus('running');
-    try {
-      const found = await checkStatCode(getWorldData());
-      if (run !== codeRunRef.current) return;
-      setCodeFindings(found);
-      setCodeCheckStatus('done');
-    } catch (error) {
-      // The executor reports its own failures as results, so reaching here means the check itself broke —
-      // leaving the button spinning would strand the author with no way to try again.
-      console.error('Stat code check failed:', error);
-      if (run === codeRunRef.current) setCodeCheckStatus('idle');
-    }
-  }, [getWorldData]);
-  const codedStatCount = useMemo(
-    () => benchWorld.stats.filter((s) => s.code?.trim()).length,
-    [benchWorld],
-  );
-  const findings = useMemo(
-    () => (codeFindings.length === 0 ? staticFindings : [...staticFindings, ...codeFindings]),
-    [staticFindings, codeFindings],
-  );
-  // Semantic scoring is opt-in per session and never remembered: a toggle that came back on by itself would
-  // let an author read a semantic firing as proof their keywords work.
-  const [semanticOn, setSemanticOn] = useState(false);
-  const semantics = useTriggerSemantics(
-    benchOpen && benchTab === 'triggers', semanticOn, benchWorld, triggerText,
-  );
-  // The lens every instrument reads. It seeds from whatever location the author has open in the editor, so
-  // opening the Bench mid-edit lands on the place they were already looking at.
-  const benchLens = useBenchLens(worldId, benchWorld, {
-    open: benchOpen,
-    selectedLocationId: activeTab === 'locations' ? selectedItemId : null,
-  });
-  const lensStatOverridesForBench = useMemo(
-    () => lensStatOverrides(benchWorld, benchLens.lens),
-    [benchWorld, benchLens.lens],
-  );
-  const triggerReport = useDebouncedTriggerReport(benchWorld, triggerText, triggerHistory, {
-    semantic: semantics.input,
-    pins: benchLens.lens.pins,
-  });
-  // Assembled only while the author is looking at it: every enabled lore entry is concatenated and
-  // placeholder-scanned in there, which is not work to redo on each keystroke of an edit nobody is watching.
-  const aiContextLive = benchOpen && benchTab === 'aiContext';
-  const aiContext = useMemo(
-    () => (aiContextLive ? buildAiContext(benchWorld, benchLens.lens) : EMPTY_AI_CONTEXT),
-    [aiContextLive, benchWorld, benchLens.lens],
-  );
-  // The Opening instrument's frozen rolls live above the assembly so a tab switch never rerolls them; the
-  // assembly itself — stat settling, the roll table, the whole first prompt — runs only while watched.
-  const openingLive = benchOpen && benchTab === 'opening';
-  const openingRolls = useOpeningRolls(benchWorld, openingLive);
-  const opening = useMemo(
-    () => (openingLive ? buildOpening(benchWorld, benchLens.lens, openingRolls.rolls) : EMPTY_OPENING),
-    [openingLive, benchWorld, benchLens.lens, openingRolls.rolls],
-  );
-  const rerollOpening = useCallback(
-    () => openingRolls.reroll(benchLens.lens),
-    [openingRolls, benchLens.lens],
-  );
-  // The world's most recent save, read while the Bench is open so a turn played since it was last opened is
-  // the one offered. Absent when the world has never been played — then there is no button at all.
-  const [lastTurn, setLastTurn] = useState<LastTurn | null>(null);
-  useEffect(() => {
-    if (!benchOpen) return;
-    let live = true;
-    loadLastTurn(worldId, worldOverview.name).then((turn) => { if (live) setLastTurn(turn); });
-    return () => { live = false; };
-  }, [benchOpen, worldId, worldOverview.name]);
-  const pasteLastTurn = useCallback(() => {
-    if (!lastTurn) return;
-    setTriggerText(lastTurn.scene);
-    setTriggerHistory(joinHistory(lastTurn.history));
-  }, [lastTurn]);
-  const benchWorldMeta = worldMetadata.find((m) => m.id === worldId);
-  // Newness and dismissals are per world and outlive the session, so the rule pass's raw output goes through
-  // the stored marks before it reaches the panel or the badge.
-  const bench = useBenchFindings(worldId, benchWorldMeta?.sourceUpdatedAt, findings);
-  // Triggers shows the matching-related half of what Issues lists — the same rows, filtered rather than
-  // re-run, and taken after the dismissals so a rule muted on one tab stops nagging on both.
-  const matchingFindings = useMemo(
-    () => selectMatchingFindings(bench.groups.flatMap((group) => group.findings)),
-    [bench.groups],
-  );
-  // The Bench closing is what marks its list as shown — the author has had it in front of them.
-  const closeBench = useCallback(() => {
-    bench.markAllSeen();
-    setBenchOpen(false);
-  }, [bench]);
   // A finding's item is a place in the editor: land on its tab with it selected, and scroll the list to it
-  // the same way a search hit does. The mobile sheet covers the editor, so it closes on the way; the
-  // desktop panel sits beside it and stays open for the next finding.
-  const openFindingItem = useCallback((section: FindingSection, itemId: string) => {
+  // the same way a search hit does. A filter left in the list box would hide the very row being navigated to.
+  const navigateToBenchItem = useCallback((section: FindingSection, itemId: string) => {
     setActiveTab(section);
-    // A filter left in the list box would hide the very row being navigated to.
     setSearchTerm('');
     setSelectedItemId(itemId);
-    if (isMobile) closeBench();
     setTimeout(() => revealSelectedRow(editorRootRef.current), 0);
-  }, [isMobile, closeBench]);
-  // A downloaded copy nobody has edited yet: the first quick fix is what diverges it from its source, and
-  // that is worth saying once. After the note (or after any save) the copy is already edited and it'd be noise.
-  const noteFirstDownloadEdit = useCallback(() => {
-    if (!worldId || !benchWorldMeta?.sourceId || benchWorldMeta.dirty) return;
-    if (hasSeenDownloadNote(worldId)) return;
-    markDownloadNoteSeen(worldId);
-    toast.info('This world was downloaded — saving this fix marks your copy as edited.');
-  }, [worldId, benchWorldMeta?.sourceId, benchWorldMeta?.dirty]);
-  // A quick fix is a hand edit made all at once: the rule returns the repaired world and each slice it
-  // rebuilt is written back through the same setter the panels use, so the world goes dirty and Exit
-  // Without Saving is still the whole undo.
-  const applyBenchFix = useCallback((ruleId: string) => {
-    const before = getWorldData();
-    const after = applyRuleFix(before, ruleId);
-    if (after === before) return;
-    // `updateWorldOverview` merges, so a fix that ever needs to *remove* an overview field will need more
-    // than this line; none does today, and the rest of the payload is replaced wholesale.
-    if (after.worldOverview !== before.worldOverview) updateWorldOverview(after.worldOverview);
-    if (after.stats !== before.stats) setStats(after.stats);
-    if (after.locations !== before.locations) setLocations(after.locations);
-    if (after.connections !== before.connections) setConnections(after.connections ?? []);
-    if (after.entities !== before.entities) setEntities(after.entities);
-    if (after.entityGroups !== before.entityGroups) setEntityGroups(after.entityGroups ?? []);
-    if (after.traits !== before.traits) setTraits(after.traits);
-    if (after.traitGroups !== before.traitGroups) setTraitGroups(after.traitGroups ?? []);
-    if (after.statUpdates !== before.statUpdates) setStatUpdates(after.statUpdates);
-    if (after.dictionaries !== before.dictionaries) setDictionaries(after.dictionaries);
-    if (after.placeholders !== before.placeholders) setPlaceholders(after.placeholders ?? []);
-    noteFirstDownloadEdit();
-  }, [getWorldData, updateWorldOverview, setStats, setLocations, setConnections, setEntities,
-      setEntityGroups, setTraits, setTraitGroups, setStatUpdates, setDictionaries, setPlaceholders,
-      noteFirstDownloadEdit]);
-  const benchPanel = (
-    <TestBench
-      groups={bench.groups}
-      dismissedGroups={bench.dismissedGroups}
-      ruleCount={RULES.length}
-      newCount={bench.newCount}
-      codedStatCount={codedStatCount}
-      codeCheckStatus={codeCheckStatus}
-      tab={benchTab}
-      onTabChange={setBenchTab}
-      onClose={closeBench}
-      lens={benchLens.lens}
-      pcOptions={benchLens.pcOptions}
-      locationOptions={benchLens.locationOptions}
-      statOverrides={lensStatOverridesForBench}
-      onPcChange={benchLens.setPc}
-      onLocationChange={benchLens.setLocation}
-      onOpenItem={openFindingItem}
-      onFixRule={applyBenchFix}
-      onDismissRule={bench.dismissRule}
-      onRestoreRule={bench.restoreRule}
-      onMarkAllSeen={bench.markAllSeen}
-      onCheckStatCode={runStatCodeCheck}
-      triggerText={triggerText}
-      onTriggerTextChange={setTriggerText}
-      triggerHistory={triggerHistory}
-      onTriggerHistoryChange={setTriggerHistory}
-      triggerReport={triggerReport}
-      matchingFindings={matchingFindings}
-      onPasteLastTurn={lastTurn ? pasteLastTurn : undefined}
-      semanticStatus={semantics.status}
-      semanticOn={semanticOn}
-      onSemanticChange={setSemanticOn}
-      aiContext={aiContext}
-      opening={opening}
-      onRerollOpening={rerollOpening}
-    />
-  );
-  // DEV dev-router: `#dev?modal=worldEditor&bench=issues` opens the Bench on an instrument.
-  const devBench = devRoute?.bench;
-  useEffect(() => {
-    if (!import.meta.env.DEV) return;
-    const tab = asBenchTab(devBench);
-    if (!tab) return;
-    setBenchTab(tab);
-    setBenchOpen(true);
-  }, [devBench, setBenchTab]);
+  }, []);
+  const bench = useTestBench({
+    // Read at the moment of opening for the lens seed; other tabs' selections are not locations.
+    selectedLocationId: activeTab === 'locations' ? selectedItemId : null,
+    isMobile,
+    routedTab: devRoute?.bench,
+    navigateToItem: navigateToBenchItem,
+  });
+  const benchPanel = <TestBench {...bench.panelProps} />;
 
   const exportCurrentWorld = () => exportWorld(buildCurrentWorld());
 
@@ -905,10 +700,10 @@ const WorldEditorInner = ({ onClose, embedded = false, backButton }: {
         <Search className="h-4 w-4" />
       </Button>
       <TestBenchButton
-        count={bench.groups.length}
+        count={bench.count}
         newCount={bench.newCount}
-        open={benchOpen}
-        onClick={() => (benchOpen ? closeBench() : setBenchOpen(true))}
+        open={bench.open}
+        onClick={() => (bench.open ? bench.closeBench() : bench.openBench())}
       />
       <TutorialPopover entry={tutorial} nav={tutorialNav}>
         <ToggleGroup
@@ -1149,7 +944,7 @@ const WorldEditorInner = ({ onClose, embedded = false, backButton }: {
                 </Card>
               </div>
             </Panel>
-            {benchOpen && (
+            {bench.open && (
               <>
                 <PanelResizeHandle className="w-1 bg-secondary cursor-col-resize" />
                 <Panel id="editor-bench" order={3} defaultSize={28} minSize={20}>
@@ -1164,7 +959,7 @@ const WorldEditorInner = ({ onClose, embedded = false, backButton }: {
       </div>
       {/* Mobile has no room for a third pane, so the Bench arrives as a full-height sheet over the editor. */}
       {isMobile && (
-        <Drawer open={benchOpen} onOpenChange={(open) => (open ? setBenchOpen(true) : closeBench())}>
+        <Drawer open={bench.open} onOpenChange={(open) => (open ? bench.openBench() : bench.closeBench())}>
           <DrawerContent className="h-[92dvh]">
             <DrawerTitle className="sr-only">Test Bench</DrawerTitle>
             <div className="min-h-0 flex-grow">{benchPanel}</div>
