@@ -11,14 +11,17 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { AlertTriangle, ChevronDown, ChevronRight, ClipboardPaste, Users } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { Checkbox } from '@/components/ui/checkbox';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Textarea } from '@/components/ui/textarea';
 import { cn } from '@/lib/utils';
 import { isRuleFixable, type Finding } from '@/lib/testBench/rules';
+import { describeSemantic } from '@/lib/testBench/semantic';
 import {
   describeHitOrigin, describeNearMiss, messageCount, otherHistoryHits, HISTORY_SEPARATOR, REASON_LABEL,
-  type RenderedBlock, type TriggerEntry, type TriggerMark, type TriggerReport,
+  type RenderedBlock, type SemanticSummary, type TriggerEntry, type TriggerMark, type TriggerReport,
 } from '@/lib/testBench/triggers';
+import type { SemanticStatus } from '@/lib/testBench/useTriggerSemantics';
 import type { EntityMatch } from '@/lib/entityMatch';
 
 /** Which row the author is on — the same key a highlight in the text carries. */
@@ -170,6 +173,55 @@ const RenderedContext = ({ blocks, tokens }: { blocks: RenderedBlock[]; tokens: 
   );
 };
 
+/**
+ * The semantic pass's own switch. Explicit and off by default on purpose: an author whose world matches by
+ * keyword would otherwise read a semantic firing as proof their keywords work.
+ *
+ * Disabled without an index, and saying why — the Bench never builds one, since embedding a world's
+ * dictionary in the background is exactly the quiet cost the toggle exists to make visible.
+ */
+const SemanticToggle = ({ status, on, onChange, summary }: {
+  status: SemanticStatus;
+  on: boolean;
+  onChange: (on: boolean) => void;
+  summary?: SemanticSummary;
+}) => {
+  const note = status === 'ready' && summary
+    ? `${summary.indexed} of ${summary.eligible} scored against ${summary.threshold.toFixed(2)}`
+    : SEMANTIC_NOTE[status];
+  return (
+    <div className="flex items-center gap-1.5">
+      <Checkbox
+        id="bench-semantic"
+        checked={on}
+        disabled={status === 'checking' || status === 'unavailable'}
+        onCheckedChange={(checked) => onChange(checked === true)}
+        className="h-3.5 w-3.5"
+      />
+      <label htmlFor="bench-semantic" className="shrink-0 text-meta font-medium">Semantic</label>
+      <span
+        className={cn(
+          'min-w-0 truncate text-meta',
+          status === 'error' ? 'text-warning' : 'text-muted-foreground',
+        )}
+      >
+        {note}
+      </span>
+    </div>
+  );
+};
+
+/** Why there are no scores, in the state the toggle is in. `ready` states its coverage instead. */
+const SEMANTIC_NOTE: Record<SemanticStatus, string> = {
+  checking: 'looking for embeddings…',
+  unavailable: 'no embeddings — play this world once with Semantic Lore on',
+  off: 'off, so nothing below is a semantic result',
+  waiting: 'paste text above to score it',
+  loading: 'embedding the text…',
+  ready: '',
+  error: 'the embedding model could not be reached',
+};
+
 /** One detected entity: which written form put it on the page, and the text that did it. */
 const EntityRow = ({ match, selected, warnings, onFix, register }: {
   match: EntityMatch;
@@ -195,11 +247,13 @@ const EntityRow = ({ match, selected, warnings, onFix, register }: {
 );
 
 /** One dictionary entry's verdict: the evidence when it fired, the reason it didn't when it didn't. */
-const EntryRow = ({ entry, selected, historyCount, warnings, onFix, register }: {
+const EntryRow = ({ entry, selected, historyCount, semantic, warnings, onFix, register }: {
   entry: TriggerEntry;
   selected: boolean;
   /** How many history messages were traced — what a hit's distance is measured back from. */
   historyCount: number;
+  /** The semantic run behind the row, absent when there wasn't one. */
+  semantic?: SemanticSummary;
   warnings: Finding[];
   onFix: (ruleId: string) => void;
   register: (key: RowKey, el: HTMLDivElement | null) => void;
@@ -226,12 +280,25 @@ const EntryRow = ({ entry, selected, historyCount, warnings, onFix, register }: 
       </div>
       {entry.fired ? (
         <p className="mt-0.5 truncate text-meta text-muted-foreground">
-          {hit
-            ? `“${hit.keyword}” as “${hit.matchedText}” · ${describeHitOrigin(entry, hit, historyCount)}`
-            : 'Injected on every turn'}
+          {entry.reason === 'semantic'
+            ? 'Fired on meaning alone — no keyword matched.'
+            : hit
+              ? `“${hit.keyword}” as “${hit.matchedText}” · ${describeHitOrigin(entry, hit, historyCount)}`
+              : 'Injected on every turn'}
         </p>
       ) : (
         <p className="mt-0.5 text-meta leading-snug text-muted-foreground">{describeNearMiss(entry)}</p>
+      )}
+      {/* On a semantic firing the keyword verdict is still the useful half — the author is looking at a row
+          their matching rules missed. `no-match` says only "the words aren't there", which the line above
+          already said. */}
+      {entry.reason === 'semantic' && entry.nearMiss && entry.nearMiss !== 'no-match' && (
+        <p className="mt-0.5 text-meta leading-snug text-muted-foreground">{describeNearMiss(entry)}</p>
+      )}
+      {entry.semantic && semantic && (
+        <p className="mt-0.5 text-meta leading-snug text-muted-foreground">
+          {describeSemantic(entry.semantic, semantic.threshold, semantic.cap)}
+        </p>
       )}
       {fromHistory.map((h) => (
         <p key={h.region} className="mt-0.5 truncate text-meta text-muted-foreground">
@@ -262,10 +329,15 @@ export interface TriggersInstrumentProps {
   onFixRule: (ruleId: string) => void;
   /** Fill both boxes from the world's most recent save. Absent when the world has never been played. */
   onPasteLastTurn?: () => void;
+  /** Where the semantic pass stands — what the toggle is enabled by and what it says when it isn't. */
+  semanticStatus: SemanticStatus;
+  semanticOn: boolean;
+  onSemanticChange: (on: boolean) => void;
 }
 
 export function TriggersInstrument({
   text, onTextChange, history, onHistoryChange, report, warnings, onFixRule, onPasteLastTurn,
+  semanticStatus, semanticOn, onSemanticChange,
 }: TriggersInstrumentProps) {
   const [selected, setSelected] = useState<RowKey | null>(null);
   const [historyOpen, setHistoryOpen] = useState(false);
@@ -326,7 +398,7 @@ export function TriggersInstrument({
         className="min-h-[64px] shrink-0 resize-none"
         rows={3}
       />
-      <div className="shrink-0">
+      <div className="shrink-0 space-y-1.5">
         <Foldaway
           label="History"
           note={report.historyCount === 0
@@ -345,6 +417,12 @@ export function TriggersInstrument({
             rows={3}
           />
         </Foldaway>
+        <SemanticToggle
+          status={semanticStatus}
+          on={semanticOn}
+          onChange={onSemanticChange}
+          summary={report.semantic}
+        />
       </div>
       <ScrollArea className="min-h-0 flex-grow">
         <div className="space-y-2 pr-2">
@@ -432,6 +510,7 @@ export function TriggersInstrument({
                           entry={entry}
                           selected={selected === rowKey('entry', entry.entryId)}
                           historyCount={report.historyCount}
+                          semantic={report.semantic}
                           warnings={about(entry.entryId)}
                           onFix={onFixRule}
                           register={register}

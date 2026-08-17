@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { buildDictionaryContext, getActivatedDictionary, flattenEnabledBookEntries } from '@/lib/dictionaryUtils';
 import { estimateTokens } from '@/lib/memoryUtils';
+import { entryVectorKey, SEMANTIC_LORE_CAP } from '@/lib/semanticDictionary';
 import type { Dictionary, DictionaryEntry, Entity, Placeholder } from '@/types';
 import {
   buildTriggerReport, describeHitOrigin, describeNearMiss, describeRegion, joinHistory, otherHistoryHits,
@@ -469,5 +470,90 @@ describe('buildTriggerReport — highlight segments', () => {
 
   it('has nothing to lay out for empty text', () => {
     expect(buildTriggerReport(world(), '').segments).toEqual([]);
+  });
+});
+
+describe('buildTriggerReport — the semantic pass', () => {
+  /** A unit vector in the plane: the dot product of two of these is the cosine between them, which is what
+   *  the worker's L2-normalized vectors make `cosineSimilarity` compute. */
+  const at = (radians: number) => new Float32Array([Math.cos(radians), Math.sin(radians)]);
+  const queryVec = at(0);
+  const scoring = (score: number) => at(Math.acos(score));
+  const index = (pairs: Array<[DictionaryEntry, number]>) =>
+    new Map(pairs.map(([e, score]) => [entryVectorKey(e), scoring(score)]));
+
+  const beacon = entry({ id: 'd1', name: 'Old Beacon', key: ['beacon'], value: 'The beacon has not burned in years.' });
+  const tides = entry({ id: 'd2', name: 'Tides', key: ['tide'], value: 'The tide runs twice a day.' });
+  const scene = 'The tide pulls out past the ruined tower on the hill.';
+
+  it('leaves no trace of itself when it did not run', () => {
+    const report = buildTriggerReport(world({ dictionaries: [book([beacon, tides])] }), scene);
+    expect(report.semantic).toBeUndefined();
+    expect(report.entries.every((e) => e.semantic === undefined)).toBe(true);
+    expect(report.entries.every((e) => e.reason !== 'semantic')).toBe(true);
+  });
+
+  it('fires an entry no keyword reached, and says meaning is why', () => {
+    const report = buildTriggerReport(world({ dictionaries: [book([beacon, tides])] }), scene, {
+      semantic: { queryVec, vectors: index([[beacon, 0.6], [tides, 0.1]]), threshold: 0.4 },
+    });
+    const d1 = row(report, 'd1');
+    expect(d1.fired).toBe(true);
+    expect(d1.reason).toBe('semantic');
+    expect(d1.hits).toEqual([]);
+    expect(d1.semantic).toMatchObject({ state: 'activates' });
+    expect(d1.semantic?.score).toBeCloseTo(0.6, 4);
+  });
+
+  it('never lets a score take credit for a keyword firing', () => {
+    const report = buildTriggerReport(world({ dictionaries: [book([tides])] }), scene, {
+      semantic: { queryVec, vectors: index([[tides, 0.9]]), threshold: 0.4 },
+    });
+    const d2 = row(report, 'd2');
+    expect(d2.reason).toBe('keyword');
+    // The score is still reported — it just isn't what put the entry in.
+    expect(d2.semantic?.state).toBe('activates');
+  });
+
+  it('leaves a below-threshold entry out, with its score as the reason it can be trusted', () => {
+    const report = buildTriggerReport(world({ dictionaries: [book([beacon])] }), 'A quiet morning.', {
+      semantic: { queryVec, vectors: index([[beacon, 0.2]]), threshold: 0.4 },
+    });
+    const d1 = row(report, 'd1');
+    expect(d1.fired).toBe(false);
+    expect(d1.nearMiss).toBe('no-match');
+    expect(d1.semantic).toMatchObject({ state: 'below' });
+  });
+
+  it('injects a semantic firing into the block the model receives', () => {
+    const report = buildTriggerReport(world({ dictionaries: [book([beacon, tides])] }), scene, {
+      semantic: { queryVec, vectors: index([[beacon, 0.6], [tides, 0.1]]), threshold: 0.4 },
+    });
+    expect(report.rendered[0].text).toBe(buildDictionaryContext([beacon, tides], false));
+    expect(report.rendered[0].entryCount).toBe(2);
+  });
+
+  it('scores nothing the semantic pass skips, and counts what it covered', () => {
+    const constant = entry({ id: 'd3', name: 'House Rules', constant: true, value: 'Nobody draws steel indoors.' });
+    const report = buildTriggerReport(world({ dictionaries: [book([beacon, tides, constant])] }), scene, {
+      // `tides` has no vector: an entry the index hasn't reached can't fire on meaning, exactly as in play.
+      semantic: { queryVec, vectors: index([[beacon, 0.6]]), threshold: 0.4 },
+    });
+    expect(row(report, 'd3').semantic).toBeUndefined();
+    expect(row(report, 'd2').semantic).toEqual({ state: 'unindexed' });
+    expect(report.semantic).toEqual({ threshold: 0.4, cap: SEMANTIC_LORE_CAP, indexed: 1, eligible: 2 });
+  });
+
+  it('never scores an entry in a muted book — play does not scan it', () => {
+    const report = buildTriggerReport(
+      world({ dictionaries: [book([beacon], { enabled: false })] }),
+      scene,
+      { semantic: { queryVec, vectors: index([[beacon, 0.9]]), threshold: 0.4 } },
+    );
+    const d1 = row(report, 'd1');
+    expect(d1.fired).toBe(false);
+    expect(d1.nearMiss).toBe('book-disabled');
+    expect(d1.semantic).toBeUndefined();
+    expect(report.semantic?.eligible).toBe(0);
   });
 });

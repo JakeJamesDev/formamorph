@@ -30,6 +30,7 @@ import { loadLastTurn, type LastTurn } from '@/lib/testBench/lastTurn';
 import { checkStatCode } from '@/lib/testBench/statCodeCheck';
 import { useBenchFindings } from '@/lib/testBench/useBenchFindings';
 import { useDebouncedTriggerReport } from '@/lib/testBench/useTriggerReport';
+import { useTriggerSemantics } from '@/lib/testBench/useTriggerSemantics';
 import { joinHistory } from '@/lib/testBench/triggers';
 import { hasSeenDownloadNote, markDownloadNoteSeen } from '@/lib/testBench/downloadNote';
 import { useDebouncedFindings } from '@/lib/testBench/useFindings';
@@ -310,7 +311,15 @@ const WorldEditorInner = ({ onClose, embedded = false, backButton }: {
     () => (codeFindings.length === 0 ? staticFindings : [...staticFindings, ...codeFindings]),
     [staticFindings, codeFindings],
   );
-  const triggerReport = useDebouncedTriggerReport(benchWorld, triggerText, triggerHistory);
+  // Semantic scoring is opt-in per session and never remembered: a toggle that came back on by itself would
+  // let an author read a semantic firing as proof their keywords work.
+  const [semanticOn, setSemanticOn] = useState(false);
+  const semantics = useTriggerSemantics(
+    benchOpen && benchTab === 'triggers', semanticOn, benchWorld, triggerText,
+  );
+  const triggerReport = useDebouncedTriggerReport(benchWorld, triggerText, triggerHistory, {
+    semantic: semantics.input,
+  });
   // The world's most recent save, read while the Bench is open so a turn played since it was last opened is
   // the one offered. Absent when the world has never been played — then there is no button at all.
   const [lastTurn, setLastTurn] = useState<LastTurn | null>(null);
@@ -407,6 +416,9 @@ const WorldEditorInner = ({ onClose, embedded = false, backButton }: {
       triggerReport={triggerReport}
       matchingFindings={matchingFindings}
       onPasteLastTurn={lastTurn ? pasteLastTurn : undefined}
+      semanticStatus={semantics.status}
+      semanticOn={semanticOn}
+      onSemanticChange={setSemanticOn}
     />
   );
   // DEV dev-router: `#dev?modal=worldEditor&bench=issues` opens the Bench on an instrument.
