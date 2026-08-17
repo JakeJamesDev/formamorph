@@ -7,9 +7,10 @@
  * the same finding across recomputes. The seen record also holds what the finding *said*: editing a named
  * item changes its wording, which raises it as new again, so a stale mark can never hide a fresh defect.
  */
+import { createKeyedRecordStore } from '@/lib/keyedStorage';
 import type { Finding } from './rules';
 
-const STORAGE_KEY = 'FORMAMORPH_benchFindingState';
+const store = createKeyedRecordStore('local', 'FORMAMORPH_benchFindingState');
 
 export interface BenchWorldState {
   /** The source version the seen-set was recorded against. A downloaded world updating clears the set. */
@@ -113,20 +114,9 @@ export function withSource(state: BenchWorldState, source: string | undefined): 
   return state.source === undefined ? { ...state, source } : { ...state, source, seen: {} };
 }
 
-const readAll = (): Record<string, BenchWorldState> => {
-  try {
-    const raw: unknown = JSON.parse(localStorage.getItem(STORAGE_KEY) || '{}');
-    return raw && typeof raw === 'object' && !Array.isArray(raw)
-      ? (raw as Record<string, BenchWorldState>)
-      : {};
-  } catch {
-    return {};
-  }
-};
-
 /** The stored state for one world, sanitized — a hand-edited or half-written record reads as no marks. */
 export function readBenchState(worldId: string): BenchWorldState {
-  const stored: unknown = readAll()[worldId];
+  const stored = store.read(worldId);
   if (!stored || typeof stored !== 'object') return EMPTY_BENCH_STATE;
   const { source, seen, dismissed } = stored as Partial<BenchWorldState>;
   return {
@@ -137,9 +127,5 @@ export function readBenchState(worldId: string): BenchWorldState {
 }
 
 export function writeBenchState(worldId: string, state: BenchWorldState): void {
-  try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify({ ...readAll(), [worldId]: state }));
-  } catch {
-    // A full or blocked localStorage costs findings reading as new next session, nothing else.
-  }
+  store.write(worldId, state);
 }

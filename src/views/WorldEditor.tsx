@@ -23,7 +23,7 @@ import { ActionIcon } from '@/lib/actionIcons';
 import { cn } from "@/lib/utils";
 import EditorFindBar from '@/components/editor/EditorFindBar';
 import { TestBench, TestBenchButton, type CodeCheckStatus } from '@/components/editor/TestBench';
-import { asBenchTab, type BenchTab } from '@/components/editor/benchTabs';
+import { asBenchTab } from '@/components/editor/benchTabs';
 import { Drawer, DrawerContent, DrawerTitle } from '@/components/ui/drawer';
 import { applyRuleFix, RULES, selectMatchingFindings, type Finding, type FindingSection } from '@/lib/testBench/rules';
 import { buildAiContext, EMPTY_AI_CONTEXT } from '@/lib/testBench/aiContext';
@@ -34,6 +34,7 @@ import { checkStatCode } from '@/lib/testBench/statCodeCheck';
 import { lensStatOverrides } from '@/lib/testBench/lens';
 import { useBenchFindings } from '@/lib/testBench/useBenchFindings';
 import { useBenchLens } from '@/lib/testBench/useBenchLens';
+import { useBenchTab } from '@/lib/testBench/useBenchTab';
 import { useDebouncedTriggerReport } from '@/lib/testBench/useTriggerReport';
 import { useTriggerSemantics } from '@/lib/testBench/useTriggerSemantics';
 import { joinHistory } from '@/lib/testBench/triggers';
@@ -270,7 +271,8 @@ const WorldEditorInner = ({ onClose, embedded = false, backButton }: {
 
   // ── Test Bench ────────────────────────────────────────────────────────────
   const [benchOpen, setBenchOpen] = useState(false);
-  const [benchTab, setBenchTab] = useState<BenchTab>('issues');
+  // The open Instrument, remembered per world for the session — the sheet closing doesn't reset the setup.
+  const { tab: benchTab, setTab: setBenchTab } = useBenchTab(worldId, { open: benchOpen });
   // Above the tab strip, so switching instruments (which unmounts the panel below it) doesn't discard the
   // prose the author is testing with.
   const [triggerText, setTriggerText] = useState('');
@@ -473,7 +475,7 @@ const WorldEditorInner = ({ onClose, embedded = false, backButton }: {
     if (!tab) return;
     setBenchTab(tab);
     setBenchOpen(true);
-  }, [devBench]);
+  }, [devBench, setBenchTab]);
 
   const exportCurrentWorld = () => exportWorld(buildCurrentWorld());
 
