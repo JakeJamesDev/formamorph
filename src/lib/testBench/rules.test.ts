@@ -909,15 +909,48 @@ describe('entity completeness rules', () => {
     }), 'entity-long-description-no-summary')).toEqual([]);
   });
 
-  it('says what an AI summary over a short description trades away', () => {
-    const found = only(
-      world([{ id: 'e1', name: 'Maren', aiDescription: 'A fen trader, sharp about tides.', aiSummary: 'A trader.' }]),
-      'ai-summary-hides-description',
-    );
+  it('flags a summary that barely shortens its description, and prints the whole trade', () => {
+    // 600 characters of description leave every prompt to save ~30 tokens a turn. The old bound saw a long
+    // description, assumed the summary was earning its place, and said nothing.
+    const found = only(world([{
+      id: 'e1', name: 'Maren', aiDescription: 'A fen tale. '.repeat(50), aiSummary: 'A fen tale. '.repeat(40),
+    }]), 'ai-summary-hides-description');
     expect(found).toHaveLength(1);
     expect(found[0].severity).toBe('info');
-    expect(found[0].message).toMatch(/~\d+-token AI description/);
-    expect(found[0].message).toContain('for little savings');
+    expect(found[0].message).toContain('~120-token AI summary');
+    expect(found[0].message).toContain('~150-token AI description');
+    expect(found[0].message).toContain('save ~30 tokens');
+  });
+
+  it('collapses several of them into a row that still names the failed compression', () => {
+    const poor = { aiDescription: 'A fen tale. '.repeat(50), aiSummary: 'A fen tale. '.repeat(40) };
+    const groups = groupFindings(runRules(world([
+      { id: 'e1', name: 'Maren', ...poor }, { id: 'e2', name: 'Old Tobb', ...poor },
+    ])));
+    const row = groups.find((g) => g.ruleId === 'ai-summary-hides-description');
+    expect(row?.headline).toContain('2');
+    expect(row?.headline).toContain('barely shorten');
+  });
+
+  it('flags a summary longer than the description it hides — a strictly worse trade', () => {
+    const found = only(world([{
+      id: 'e1', name: 'Maren', aiDescription: 'A fen tale. '.repeat(20), aiSummary: 'A fen tale. '.repeat(30),
+    }]), 'ai-summary-hides-description');
+    expect(found).toHaveLength(1);
+    expect(found[0].message).toContain('~90-token AI summary');
+    expect(found[0].message).toContain('~60-token AI description');
+    expect(found[0].message).toContain('~30 tokens more');
+  });
+
+  it('says nothing about a summary that really compresses, short description or long', () => {
+    // Both directions the old absolute bound got wrong: it nagged the tight summary over a short
+    // description, and it could never praise one over a long description because it never looked.
+    for (const aiDescription of ['A fen tale. '.repeat(20), 'A fen tale. '.repeat(60)]) {
+      expect(only(
+        world([{ id: 'e1', name: 'Maren', aiDescription, aiSummary: 'A trader.' }]),
+        'ai-summary-hides-description',
+      )).toEqual([]);
+    }
     // A summary with no full description hides nothing.
     expect(only(
       world([{ id: 'e1', name: 'Maren', aiDescription: '', aiSummary: 'A trader.' }]),
@@ -925,33 +958,29 @@ describe('entity completeness rules', () => {
     )).toEqual([]);
   });
 
-  it('says nothing about a summary that shortens a long description — that is the field working', () => {
-    // The pincer this rule used to close on the author: told to write a summary by one rule, flagged for
-    // having written it by this one.
+  it('stays quiet under the floor however bad the ratio is', () => {
+    // A description repeated verbatim as its own summary is the worst ratio there is, saving nothing at
+    // all — and still not worth a row while the whole description costs less than a sentence of narration.
+    const under = 'A fen tale. '.repeat(13);
+    expect(estimateTokens(under.length)).toBe(39);
     expect(only(
-      world([{ id: 'e1', name: 'Maren', aiDescription: 'A fen tale. '.repeat(60), aiSummary: 'A fen tale.' }]),
+      world([{ id: 'e1', name: 'Maren', aiDescription: under, aiSummary: under }]),
       'ai-summary-hides-description',
     )).toEqual([]);
-  });
-
-  it('leaves a paragraph alone — that much text is reason enough for a summary', () => {
-    // ~430 characters: well under the long bound, and still worth summarizing. The rule is about a summary
-    // that buys nothing, not about every summary in the world.
-    const paragraph = 'Maren trades salt and rope off the harbor steps, and has done since the year '
-      + 'the tide took the old pier. She knows every skipper by their boat rather than their face, keeps '
-      + 'her ledger in a hand nobody else can read, and will not be hurried over a price by anyone who '
-      + 'still has both boots dry. Ask her about the fen at night and she will change the subject.';
-    expect(estimateTokens(paragraph.length)).toBeLessThan(150);
+    // One token more of description, the same ratio, and the savings are worth reporting.
+    const atFloor = `${under}word`;
+    expect(estimateTokens(atFloor.length)).toBe(40);
     expect(only(
-      world([{ id: 'e1', name: 'Maren', aiDescription: paragraph, aiSummary: 'A fen trader.' }]),
+      world([{ id: 'e1', name: 'Maren', aiDescription: atFloor, aiSummary: atFloor }]),
       'ai-summary-hides-description',
-    )).toEqual([]);
+    )).toHaveLength(1);
   });
 
   it('never raises both summary rules over one item, whatever the author wrote', () => {
-    const texts = { short: 'A fen trader.', long: 'A fen tale. '.repeat(60) };
-    for (const aiDescription of Object.values(texts)) {
-      for (const aiSummary of ['', 'A trader.']) {
+    const lengths = ['', 'A fen trader.', 'A fen tale. '.repeat(13), 'A fen tale. '.repeat(20),
+      'A fen tale. '.repeat(40), 'A fen tale. '.repeat(60)];
+    for (const aiDescription of lengths) {
+      for (const aiSummary of lengths) {
         const raised = runRules(world([{ id: 'e1', name: 'Maren', aiDescription, aiSummary }]))
           .filter((f) => f.ruleId === 'entity-long-description-no-summary' || f.ruleId === 'ai-summary-hides-description');
         expect(raised.length).toBeLessThanOrEqual(1);
@@ -974,14 +1003,14 @@ describe('entity completeness rules', () => {
     expect(only(
       chipWorld(wordy, ['A fen tale. '.repeat(20)]), 'entity-long-description-no-summary',
     )).toHaveLength(1);
-    // And the same measurement at the short rule's own, lower bound.
-    const brief = `${'A fen tale. '.repeat(20)}${chips(5)}`;
-    expect(estimateTokens(brief.length)).toBeGreaterThan(75);
+    // Both sides of the ratio resolve. One chip of summary is five tokens of syntax and sixty tokens of
+    // delivered text, so measuring what the author typed would hide a summary that compresses nothing.
+    const brief = 'A fen tale. '.repeat(20);
     expect(only(
-      chipWorld(brief, ['gull'], { aiSummary: 'A trader.' }), 'ai-summary-hides-description',
+      chipWorld(brief, ['A fen tale. '.repeat(20)], { aiSummary: chips(1) }), 'ai-summary-hides-description',
     )).toHaveLength(1);
     expect(only(
-      chipWorld(brief, ['A fen tale. '.repeat(10)], { aiSummary: 'A trader.' }), 'ai-summary-hides-description',
+      chipWorld(brief, ['gull'], { aiSummary: chips(1) }), 'ai-summary-hides-description',
     )).toEqual([]);
   });
 
@@ -989,7 +1018,7 @@ describe('entity completeness rules', () => {
     const found = only(base({
       locations: [{
         id: 'harbor', name: 'Harbor Steps', isStarting: true,
-        aiDescription: 'Steps to the water.', aiSummary: 'Steps.',
+        aiDescription: 'Reeds and black water. '.repeat(20), aiSummary: 'Reeds and black water. '.repeat(15),
       }],
     }), 'ai-summary-hides-description');
     expect(found).toHaveLength(1);
