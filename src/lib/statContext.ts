@@ -31,9 +31,8 @@ export function buildStatContext(
       const range = stat.max - stat.min;
       const percentage = range === 0 ? 0 : ((stat.value - stat.min) / range) * 100;
       // Sort ascending: the band is the first threshold at/above the current %, so order must be low→high
-      // regardless of how the world stored its descriptors. Read as `?? []` because the field the type calls
-      // required can be absent in hand-edited world JSON, and a stat with no bands has a status to omit
-      // rather than a turn to take down.
+      // regardless of how the world stored its descriptors. `?? []`: hand-edited world JSON can omit the
+      // field — no bands means no status, not a failed turn.
       const descriptor = [...(stat.descriptors ?? [])]
         .sort((a, b) => a.threshold - b.threshold)
         .find((d) => percentage <= d.threshold);

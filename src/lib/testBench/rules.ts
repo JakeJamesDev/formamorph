@@ -89,9 +89,12 @@ const mapChanged = <T>(list: T[], fn: (item: T) => T): T[] => {
   return changed ? next : list;
 };
 
-/** `world` carrying `value` for `key`, or `world` itself when that slice is the one it already had. */
+/** `world` carrying `value` for `key`, or `world` itself when that slice is the one it already had. An
+ *  empty result for an absent slice is also "nothing rebuilt" — writing `[]` back would backfill the
+ *  author's world with an array they never wrote. */
 const withSlice = <K extends keyof RuleWorld>(world: RuleWorld, key: K, value: RuleWorld[K]): RuleWorld =>
-  value === world[key] ? world : { ...world, [key]: value };
+  value === world[key] || (world[key] === undefined && Array.isArray(value) && value.length === 0)
+    ? world : { ...world, [key]: value };
 
 /** "a, b and c" — how a finding names the handful of items it covers. */
 const listNames = (names: string[]): string =>

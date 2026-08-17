@@ -768,6 +768,21 @@ describe('a world whose “required” arrays are absent', () => {
     expect(only(idless, 'stat-code-overrides-trait')).toHaveLength(1);
   });
 
+  it('resolves a chip in a name against a placeholder that lost its values', () => {
+    // Names route through describePlaceholders inside the pass, so a valueless def must read as empty
+    // there too — this is the one path STRIPPED's stat-description chip never exercises.
+    const chipNamed = {
+      ...base(),
+      // The articled alias raises a finding that has to *name* the entity, forcing the chip resolve.
+      entities: [{ id: 'e1', name: '{{ph:p1:world:pl1}}', aliases: ['the visitor'], locations: ['harbor'] }],
+      placeholders: [{ id: 'p1', name: 'Hue' }],
+    } as unknown as RuleWorld;
+    const found = only(chipNamed, 'alias-leading-article');
+    // The chip resolves to nothing, so the entity reads as Untitled rather than taking the pass down.
+    expect(found).toHaveLength(1);
+    expect(found[0].items[0].name).toBe('Untitled');
+  });
+
   it('diagnoses a world carrying no collections at all', () => {
     const findings = runRules({} as RuleWorld);
     // A world with no locations has no starting one — the pass still has something true to say about it.
@@ -775,10 +790,16 @@ describe('a world whose “required” arrays are absent', () => {
     expect(findings[0].items[0].name).toBe('This World');
   });
 
-  it('offers every quick fix on one without throwing', () => {
+  it('offers every quick fix on one, and a fix with nothing to repair never backfills an absent slice', () => {
+    // `toBe`, not just not-throwing: a fix that returns `{ ...world, entities: [] }` for a world that never
+    // had entities would write that array into the author's world through the editor's write-back.
+    const bare = {} as RuleWorld;
     for (const rule of RULES) {
-      expect(() => applyRuleFix(STRIPPED, rule.id)).not.toThrow();
-      expect(() => applyRuleFix({} as RuleWorld, rule.id)).not.toThrow();
+      expect(applyRuleFix(bare, rule.id)).toBe(bare);
+    }
+    // STRIPPED raises real findings, but none of them fixable with the slices it has — same world back.
+    for (const rule of RULES) {
+      expect(applyRuleFix(STRIPPED, rule.id)).toBe(STRIPPED);
     }
   });
 });

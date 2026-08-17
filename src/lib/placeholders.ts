@@ -95,7 +95,9 @@ export function primeRolls(
   pick: PlaceholderPick = weightedPick,
 ): PlaceholderRolls {
   const byId = new Map(placeholders.map((p) => [p.id, p]));
-  const isWild = (id: string) => (byId.get(id)?.values.length ?? 0) >= 2;
+  // Module-wide: `values` is read as `?? []` — hand-edited world JSON can omit it, and a def without a
+  // list is an empty placeholder, not a crash.
+  const isWild = (id: string) => (byId.get(id)?.values?.length ?? 0) >= 2;
   const roll = (id: string) => { const p = byId.get(id)!; return pick(p.values, p.weights); };
   const { worldIds, unique } = collectPlaceholderPlacements(texts);
 
@@ -148,21 +150,21 @@ export function absorbPlaceholders(
   // Two defs sharing a name and values but weighted differently are different defs — matching on values
   // alone would silently re-point the import's chips at the host world's distribution.
   const sameWeights = (a: Placeholder, b: Placeholder) =>
-    a.values.every((v) => placeholderWeight(a, v) === placeholderWeight(b, v));
+    (a.values ?? []).every((v) => placeholderWeight(a, v) === placeholderWeight(b, v));
   const toAdd: Placeholder[] = [];
   const idMap: Record<string, string> = {};
   // Match against the world's list plus anything added so far this pass (so two carried copies of the same def
   // collapse to one).
   const pool = [...worldPlaceholders];
   for (const c of carried) {
-    const match = pool.find((p) => p.name === c.name && sameValues(p.values, c.values) && sameWeights(p, c));
+    const match = pool.find((p) => p.name === c.name && sameValues(p.values ?? [], c.values ?? []) && sameWeights(p, c));
     if (match) {
       idMap[c.id] = match.id;
     } else {
       const fresh: Placeholder = {
         id: randomUUID(),
         name: c.name,
-        values: [...c.values],
+        values: [...(c.values ?? [])],
         ...(c.weights ? { weights: { ...c.weights } } : {}),
       };
       toAdd.push(fresh);
@@ -195,7 +197,7 @@ export function buildPlaceholderPreview(
     if (token in out) continue;
     const [, id, mode, placementId] = m;
     const ph = byId.get(id);
-    if (!ph || ph.values.length === 0) { out[token] = ''; continue; }
+    if (!ph?.values?.length) { out[token] = ''; continue; }
     if (ph.values.length === 1) { out[token] = ph.values[0]; continue; }
     const scope: PlaceholderMode = mode === 'unique' ? 'unique' : 'world';
     const key = scope === 'world' ? id : placementId;
@@ -226,7 +228,7 @@ export function describePlaceholders(
     if (!ph) return '';
     const pinned = pins?.[id];
     if (pinned != null) return pinned;
-    if (ph.values.length === 0) return '';
+    if (!ph.values?.length) return '';
     return ph.values.length === 1 ? ph.values[0] : `{${placeholderValueSummary(ph)}}`;
   });
 }
@@ -234,8 +236,9 @@ export function describePlaceholders(
 /** A Wildcard's options as one short line — first three, then `…`. The shared form behind the braces in
  *  {@link describePlaceholders}, the *tooltip* of an in-editor chip, and the *label* of a read-only pill. */
 export function placeholderValueSummary(ph: Placeholder): string {
-  const shown = ph.values.slice(0, 3).join('|');
-  return ph.values.length > 3 ? `${shown}|…` : shown;
+  const values = ph.values ?? [];
+  const shown = values.slice(0, 3).join('|');
+  return values.length > 3 ? `${shown}|…` : shown;
 }
 
 export interface ResolveOptions {
@@ -260,7 +263,7 @@ export function placeholderWeight(ph: Placeholder, value: string): number {
 
 /** True if any value carries a non-default weight — what gates the editor's percentage reveal. */
 export function isWeighted(ph: Placeholder): boolean {
-  return ph.values.some((v) => placeholderWeight(ph, v) !== 1);
+  return (ph.values ?? []).some((v) => placeholderWeight(ph, v) !== 1);
 }
 
 /**
@@ -269,9 +272,10 @@ export function isWeighted(ph: Placeholder): boolean {
  */
 export function placeholderChances(ph: Placeholder): Record<string, number> {
   const out: Record<string, number> = {};
-  const total = ph.values.reduce((sum, v) => sum + placeholderWeight(ph, v), 0);
-  for (const v of ph.values) {
-    out[v] = total > 0 ? (placeholderWeight(ph, v) / total) * 100 : 100 / ph.values.length;
+  const values = ph.values ?? [];
+  const total = values.reduce((sum, v) => sum + placeholderWeight(ph, v), 0);
+  for (const v of values) {
+    out[v] = total > 0 ? (placeholderWeight(ph, v) / total) * 100 : 100 / values.length;
   }
   return out;
 }
@@ -316,7 +320,7 @@ export function resolvePlaceholders(text: string, opts: ResolveOptions): string 
     // fact about the character, not about one sentence.
     const pinned = pins?.[id];
     if (pinned != null) return pinned;
-    if (ph.values.length === 0) return ''; // empty → nothing
+    if (!ph.values?.length) return ''; // empty → nothing
     if (ph.values.length === 1) return ph.values[0]; // Variable (fixed)
 
     // Wildcard: World shares one value per placeholder id; Unique rolls per placement id.

@@ -18,10 +18,8 @@ export interface AdvancedDataInput {
 }
 
 /**
- * Whether `w` holds anything Simple mode hides. Runs in the World Editor's render over the world as it
- * stands, so every collection is read as `?? []`: a hand-edited or third-party world can omit an array the
- * types call required, and a world with nothing to look through hides nothing rather than taking the
- * editor down.
+ * Whether `w` holds anything Simple mode hides. Collections read as `?? []`: hand-edited world JSON can
+ * omit any of them, and a world with nothing to look through hides nothing.
  */
 export function worldUsesAdvancedFeatures(w: AdvancedDataInput): boolean {
   if ((w.placeholders ?? []).length > 0) return true;
