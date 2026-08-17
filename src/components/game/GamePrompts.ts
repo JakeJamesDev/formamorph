@@ -50,6 +50,7 @@ export const defaultSystemPrompt = `You are the narrator stage of an interactive
 ## Foreground Lore
 <DICTIONARY>
 
+## Output
 Output only the story prose - the events themselves, with no labels, no mention of being an AI, and nothing after the scene ends. The choices step that follows you handles the player's options, so your reply never contains a question to the player, a list of actions, a "Choose"/"Options" menu, or a bracketed stage direction like [Player's turn]. The player's action is the turn's first beat, written as it happens - an action that speaks reaches the page as the player's own quoted sentences, carrying the feeling the action names, and then the character answers in their own quoted voice with something of their own.
 
 <LANGUAGE>`;
