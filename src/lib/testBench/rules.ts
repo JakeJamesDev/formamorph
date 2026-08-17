@@ -78,6 +78,11 @@ export interface Rule extends RuleHead {
 
 const quote = (text: string) => `“${text}”`;
 
+/** A finding for `rule` — the boilerplate trio copied from the rule itself. */
+const finding = (rule: RuleHead, message: string, items: FindingItem[]): Finding => ({
+  ruleId: rule.id, severity: rule.severity, section: rule.section, message, items,
+});
+
 /** `list` with `fn` applied, or `list` itself when nothing changed — an untouched slice keeping its identity
  *  is what lets a fix be written back as only the parts it actually rebuilt. */
 const mapChanged = <T>(list: T[], fn: (item: T) => T): T[] => {
@@ -156,13 +161,11 @@ const aliasLeadingArticle: Rule = {
   check: (world) => (world.entities ?? []).flatMap((entity) =>
     aliasesOf(entity, world)
       .filter((alias) => LEADING_ARTICLE.test(alias))
-      .map((alias) => ({
-        ruleId: aliasLeadingArticle.id,
-        severity: aliasLeadingArticle.severity,
-        section: aliasLeadingArticle.section,
-        message: `Alias ${quote(alias)} begins with an article — alias matching is case-sensitive, so it misses wherever the sentence capitalizes it differently`,
-        items: [asItem(entity, world)],
-      })),
+      .map((alias) => finding(
+        aliasLeadingArticle,
+        `Alias ${quote(alias)} begins with an article — alias matching is case-sensitive, so it misses wherever the sentence capitalizes it differently`,
+        [asItem(entity, world)],
+      )),
   ),
   fix: (world) => withSlice(world, 'entities', mapChanged(world.entities ?? [], (entity) => {
     const aliases = entity.aliases;
@@ -197,13 +200,11 @@ const entityMatchCollision: Rule = {
       .filter((bucket) => bucket.entities.length > 1)
       .map((bucket) => {
         const items = bucket.entities.map((e) => asItem(e, world));
-        return {
-          ruleId: entityMatchCollision.id,
-          severity: entityMatchCollision.severity,
-          section: entityMatchCollision.section,
-          message: `${quote(bucket.text)} matches ${listNames(items.map((i) => i.name))} — a mention of ${items.length > 2 ? 'any one detects them all' : 'either detects both'}`,
+        return finding(
+          entityMatchCollision,
+          `${quote(bucket.text)} matches ${listNames(items.map((i) => i.name))} — a mention of ${items.length > 2 ? 'any one detects them all' : 'either detects both'}`,
           items,
-        };
+        );
       });
   },
 };
@@ -219,13 +220,11 @@ const aliasSelfDuplicate: Rule = {
     if (!nameKey) return [];
     return aliasesOf(entity, world)
       .filter((alias) => matchKey(alias) === nameKey)
-      .map((alias) => ({
-        ruleId: aliasSelfDuplicate.id,
-        severity: aliasSelfDuplicate.severity,
-        section: aliasSelfDuplicate.section,
-        message: `Alias ${quote(alias)} repeats its own entity’s name, which already matches on its own`,
-        items: [asItem(entity, world)],
-      }));
+      .map((alias) => finding(
+        aliasSelfDuplicate,
+        `Alias ${quote(alias)} repeats its own entity’s name, which already matches on its own`,
+        [asItem(entity, world)],
+      ));
   }),
   fix: (world) => withSlice(world, 'entities', mapChanged(world.entities ?? [], (entity) => {
     const nameKey = matchKey(describePlaceholders(entity.name ?? '', world.placeholders));
@@ -237,11 +236,6 @@ const aliasSelfDuplicate: Rule = {
     return next.length === aliases.length ? entity : { ...entity, aliases: next };
   })),
 };
-
-/** A finding for `rule` — the boilerplate trio copied from the rule itself. */
-const finding = (rule: RuleHead, message: string, items: FindingItem[]): Finding => ({
-  ruleId: rule.id, severity: rule.severity, section: rule.section, message, items,
-});
 
 /** A non-entity item, chips resolved like the editor's own lists resolve them. */
 const namedItem = (id: string, name: string | undefined, world: RuleWorld, section?: FindingSection): FindingItem => ({

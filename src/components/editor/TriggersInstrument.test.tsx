@@ -89,7 +89,7 @@ describe('TriggersInstrument', () => {
     expect(screen.getByText(/appears only inside “riptides”/)).toBeInTheDocument();
   });
 
-  it('greys a muted book with the reason its entries were never scanned', () => {
+  it('grays a muted book with the reason its entries were never scanned', () => {
     renderTriggers(
       world({ dictionaries: [book([entry({ id: 'd1', name: 'Tides', key: ['tide'] })], { enabled: false })] }),
       'The tide pulls out.',
