@@ -12,8 +12,8 @@ import {
 import { matchKey } from '@/lib/entityMatch';
 import { activeDescriptor } from '@/lib/statContext';
 import {
-  describeInThresholdUnits, describeThreshold, descriptorSpans, isThresholdOutOfRange, statStartValue,
-  thresholdValue,
+  describeInThresholdUnits, describeThreshold, descriptorSpans, isThresholdOutOfRange, sortedDescriptors,
+  statStartValue, thresholdValue, uncoveredSpan, valueThreshold,
 } from '@/lib/statDescriptorGeometry';
 import { usesStatClock } from '@/lib/statCodeExecutor';
 import { estimateTokens } from '@/lib/memoryUtils';
@@ -742,6 +742,39 @@ const statDescriptorOutOfRange: Rule = {
   }),
 };
 
+const statDescriptorCoverageGap: Rule = {
+  id: 'stat-descriptor-coverage-gap',
+  severity: 'warning',
+  section: 'stats',
+  advanced: true,
+  summary: (count) => `${count} stats’ descriptor bands stop short of Max, so the top of the range has no status`,
+  // Every gap found in real worlds was the same misreading — thresholds taken as a band's floor, so the
+  // top band silently covers nothing above it. Deliberate silence at the full end is legitimate but rare;
+  // that author dismisses the row once.
+  check: (world) => (world.stats ?? []).flatMap((stat) => {
+    const gap = uncoveredSpan(stat);
+    if (!gap) return [];
+    const item = namedItem(stat.id, stat.name, world);
+    return [finding(
+      statDescriptorCoverageGap,
+      `${quote(item.name)}’s bands stop at ${describeInThresholdUnits(stat, gap.from)}, short of Max — the AI `
+      + 'is told no status for the rest of the range',
+      [item],
+    )];
+  }),
+  // The obvious repair: the top band's threshold becomes Max, so its wording covers the gap — exactly the
+  // floor-misreading author's intent ("from 70, Steady" keeps saying Steady at 100).
+  fix: (world) => withSlice(world, 'stats', mapChanged(world.stats ?? [], (stat) => {
+    if (!uncoveredSpan(stat)) return stat;
+    const sorted = sortedDescriptors(stat);
+    const top = sorted[sorted.length - 1];
+    return {
+      ...stat,
+      descriptors: (stat.descriptors ?? []).map((d) => (d === top ? { ...d, threshold: valueThreshold(stat, stat.max) } : d)),
+    };
+  })),
+};
+
 const statDescriptorDuplicateThreshold: Rule = {
   id: 'stat-descriptor-duplicate-threshold',
   severity: 'warning',
@@ -1437,7 +1470,7 @@ export const RULES: readonly Rule[] = [
   entrySecondaryWithoutPrimary, entryInert, entryRegexInvalid,
   noStartingLocation, legacyStartLocation, entityNowhere, statDisabledForever,
   statStartingOutOfRange, statStartNoDescriptor, statDescriptorDuplicateThreshold, statDescriptorOutOfRange,
-  statPercentageBounds,
+  statDescriptorCoverageGap, statPercentageBounds,
   statCodeNeverTicks, statTraitDeltaClamped, statCodeOverridesTrait, statAiLockFrozen,
   locationParentOrphan, connectionEndpointOrphan, statUpdateUnknownStat,
   aliasLowercaseNoTwin, entityNameInWildcardPool,

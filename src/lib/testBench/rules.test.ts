@@ -294,7 +294,8 @@ describe('reference-integrity rules', () => {
     const described = (description: string) => ({
       ...world([{ id: 'e1', name: 'Maren', aiDescription: 'Fond of {{ph:p1:world:pl1}}.' }]),
       placeholders: [{ id: 'p1', name: 'Vice', values: ['ale'] }],
-      stats: [stat({ id: 's1', name: 'Vigor', descriptors: [{ id: 1, threshold: 0, description }] })],
+      // Threshold at Max so this fixture is banding-clean — the defect under test is the chip alone.
+      stats: [stat({ id: 's1', name: 'Vigor', descriptors: [{ id: 1, threshold: 100, description }] })],
     });
     const found = only(described('Weak from {{ph:p1:world:pl1}}.'), 'chip-never-scanned');
     expect(found).toHaveLength(1);
@@ -555,6 +556,45 @@ describe('stat sanity rules', () => {
     }), 'stat-descriptor-out-of-range');
     expect(found).toHaveLength(1);
     expect(found[0].message).toContain('150%');
+  });
+
+  it('flags bands that stop short of Max, naming where coverage ends in the stat’s own unit', () => {
+    // The Vane Hollow shape: thresholds read as band floors, so the author's top band covers nothing above it.
+    const found = only(banded({ starting: 50 }), 'stat-descriptor-coverage-gap');
+    expect(found).toHaveLength(1);
+    expect(found[0].severity).toBe('warning');
+    expect(found[0].message).toContain('stop at 60 of 100');
+  });
+
+  it('says nothing when the bands reach Max, or when there are no bands at all', () => {
+    expect(only(banded({ descriptors: [
+      { id: 'd1', threshold: 30, description: 'barren' }, { id: 'd2', threshold: 100, description: 'fertile' },
+    ] }), 'stat-descriptor-coverage-gap')).toEqual([]);
+    expect(only(oneStat({}), 'stat-descriptor-coverage-gap')).toEqual([]);
+  });
+
+  it('reads the gap through the stat’s unit, so a percent stat is judged against 100%', () => {
+    const found = only(banded({ max: 10, thresholdUnit: 'percent', starting: 5 }), 'stat-descriptor-coverage-gap');
+    expect(found).toHaveLength(1);
+    expect(found[0].message).toContain('stop at 60%');
+    expect(only(banded({
+      max: 10, thresholdUnit: 'percent', starting: 5,
+      descriptors: [{ id: 'd1', threshold: 100, description: 'full' }],
+    }), 'stat-descriptor-coverage-gap')).toEqual([]);
+  });
+
+  it('fires alongside the start finding when the game also opens in the gap — this row carries the fix', () => {
+    const ids = runRules(banded({ starting: 80 })).map((f) => f.ruleId);
+    expect(ids).toContain('stat-start-no-descriptor');
+    expect(ids).toContain('stat-descriptor-coverage-gap');
+  });
+
+  it('raises only the top band to Max, in the stat’s own unit, leaving the rest untouched', () => {
+    const fixedRaw = applyRuleFix(banded({ starting: 50 }), 'stat-descriptor-coverage-gap');
+    expect(fixedRaw.stats[0].descriptors.map((d) => d.threshold)).toEqual([30, 100]);
+    const fixedPct = applyRuleFix(
+      banded({ max: 10, thresholdUnit: 'percent', starting: 5 }), 'stat-descriptor-coverage-gap');
+    expect(fixedPct.stats[0].descriptors.map((d) => d.threshold)).toEqual([30, 100]);
   });
 
   it('says nothing about a stat that carries no descriptors at all', () => {
@@ -1407,6 +1447,10 @@ const FIX_FIXTURES: Record<string, RuleWorld> = {
   'placeholder-unused': base({ placeholders: [{ id: 'p1', name: 'Hue', values: ['red', 'blue'] }] }),
   // A percentage stat whose range was authored before the editor pinned it, with a start the pinning moves.
   'stat-percentage-bounds': base({ stats: [stat({ id: 's1', name: 'Fertility', type: 'percentage', min: 0, max: 200, starting: 150 })] }),
+  // The floor-misreading shape: "from 70, Steady" leaves 70–100 silent; the fix stretches Steady to Max.
+  'stat-descriptor-coverage-gap': base({ stats: [stat({ id: 's1', name: 'Vigor', starting: 40, descriptors: [
+    { id: 'd1', threshold: 35, description: 'Winded' }, { id: 'd2', threshold: 70, description: 'Steady' },
+  ] })] }),
   'location-parent-orphan': base({
     locations: [
       { id: 'harbor', name: 'Harbor Steps', isStarting: true },
@@ -1634,6 +1678,7 @@ const RULE_SCOPE: Record<string, 'simple' | 'advanced'> = {
   'stat-code-never-ticks': 'advanced',
   'stat-code-overrides-trait': 'advanced',
   'stat-code-unknown-stat': 'advanced',
+  'stat-descriptor-coverage-gap': 'advanced',
   'stat-descriptor-duplicate-threshold': 'advanced',
   'stat-descriptor-out-of-range': 'advanced',
   'stat-start-no-descriptor': 'advanced',
