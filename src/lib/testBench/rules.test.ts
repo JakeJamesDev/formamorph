@@ -388,7 +388,7 @@ describe('reachability rules', () => {
 
   it('flags the legacy isStartLocation field, which the game no longer reads', () => {
     const withLegacy = base({
-      locations: [{ id: 'harbor', name: 'Fen', isStarting: true, isStartLocation: true } as GameLocation],
+      locations: [{ id: 'harbor', name: 'Fen', isStartLocation: true } as GameLocation],
     });
     const found = only(withLegacy, 'legacy-start-location');
     expect(found).toHaveLength(1);
@@ -396,6 +396,17 @@ describe('reachability rules', () => {
     expect(found[0].items.map((i) => i.id)).toEqual(['harbor']);
     expect(found[0].message).toContain('flag it as a starting location instead');
     expect(runRules(base({ locations: [{ id: 'harbor', name: 'Fen', isStarting: true }] }))).toEqual([]);
+  });
+
+  it('only advises deleting the field once a live flag already carries the start intent', () => {
+    // The checkbox is checked and the warning still shows — right, the dead key still ships in every
+    // export — but "flag it as a starting location instead" would be telling the author to do a done thing.
+    const found = only(base({
+      locations: [{ id: 'harbor', name: 'Fen', isStarting: true, isStartLocation: true } as GameLocation],
+    }), 'legacy-start-location');
+    expect(found).toHaveLength(1);
+    expect(found[0].message).toContain('delete the field');
+    expect(found[0].message).not.toContain('starting location instead');
   });
 
   it('fires on a false-valued legacy field too, but only advises deleting it', () => {
@@ -853,17 +864,32 @@ describe('entity completeness rules', () => {
     expect(only(w, 'entity-name-in-wildcard-pool')).toEqual([]);
   });
 
-  it('flags a missing description, naming which audience is blind', () => {
-    const bare = only(world([{ id: 'e1', name: 'Maren', playerDescription: '', aiDescription: '' }]), 'entity-missing-description');
+  it('flags each description gap under its own rule, naming which audience is blind', () => {
+    const bare = only(world([{ id: 'e1', name: 'Maren', playerDescription: '', aiDescription: '' }]), 'entity-missing-both-descriptions');
     expect(bare).toHaveLength(1);
     expect(bare[0].severity).toBe('info');
-    expect(bare[0].message).toContain('no player or AI description');
-    const aiOnly = only(world([{ id: 'e1', name: 'Maren', aiDescription: '' }]), 'entity-missing-description');
+    expect(bare[0].message).toContain('neither a player nor an AI description');
+    expect(bare[0].message).toContain('the prompt carries only its name');
+    const aiOnly = only(world([{ id: 'e1', name: 'Maren', aiDescription: '' }]), 'entity-missing-ai-description');
     expect(aiOnly[0].message).toContain('no AI description');
     expect(aiOnly[0].message).toContain('the prompt carries only its name');
-    const playerOnly = only(world([{ id: 'e1', name: 'Maren', playerDescription: ' ' }]), 'entity-missing-description');
+    const playerOnly = only(world([{ id: 'e1', name: 'Maren', playerDescription: ' ' }]), 'entity-missing-player-description');
     expect(playerOnly[0].message).toContain('no player description');
     expect(runRules(world([{ id: 'e1', name: 'Maren' }]))).toEqual([]);
+  });
+
+  it('raises exactly one description rule per entity — a double gap is the both-rule alone', () => {
+    const descriptionRules = new Set([
+      'entity-missing-player-description', 'entity-missing-ai-description', 'entity-missing-both-descriptions',
+    ]);
+    const raisedFor = (entity: Entity) =>
+      runRules(world([entity])).filter((f) => descriptionRules.has(f.ruleId)).map((f) => f.ruleId);
+    expect(raisedFor({ id: 'e1', name: 'Maren', playerDescription: '', aiDescription: '' }))
+      .toEqual(['entity-missing-both-descriptions']);
+    expect(raisedFor({ id: 'e1', name: 'Maren', playerDescription: '' }))
+      .toEqual(['entity-missing-player-description']);
+    expect(raisedFor({ id: 'e1', name: 'Maren', aiDescription: '' }))
+      .toEqual(['entity-missing-ai-description']);
   });
 
   it('still flags a missing AI description behind a summary, but says what the summary does reach', () => {
@@ -871,7 +897,7 @@ describe('entity completeness rules', () => {
     // here-roster is not. "Only its name" would be flatly untrue of an entity carrying a summary.
     const found = only(
       world([{ id: 'e1', name: 'Maren', aiDescription: '', aiSummary: 'A fen trader.' }]),
-      'entity-missing-description',
+      'entity-missing-ai-description',
     );
     expect(found).toHaveLength(1);
     expect(found[0].severity).toBe('info');
@@ -909,7 +935,7 @@ describe('entity completeness rules', () => {
     }), 'entity-long-description-no-summary')).toEqual([]);
   });
 
-  it('flags a summary that barely shortens its description, and prints the whole trade', () => {
+  it('flags a summary that saves almost nothing, and prints the whole trade', () => {
     // 600 characters of description leave every prompt to save ~30 tokens a turn. The old bound saw a long
     // description, assumed the summary was earning its place, and said nothing.
     const found = only(world([{
@@ -917,19 +943,27 @@ describe('entity completeness rules', () => {
     }]), 'ai-summary-hides-description');
     expect(found).toHaveLength(1);
     expect(found[0].severity).toBe('info');
-    expect(found[0].message).toContain('~120-token AI summary');
-    expect(found[0].message).toContain('~150-token AI description');
-    expect(found[0].message).toContain('save ~30 tokens');
+    expect(found[0].message).toContain('~150-token AI description and a ~120-token AI summary');
+    expect(found[0].message).toContain('only saves ~30 tokens a turn');
   });
 
-  it('collapses several of them into a row that still names the failed compression', () => {
+  it('lets a marginal ratio pass once the absolute savings are real', () => {
+    // The Rhea Belle case: a summary a hair over half its description, still clearing the savings floor
+    // every turn. Calling that "saves almost nothing" was flatly untrue, so the rule stays quiet.
+    const found = only(world([{
+      id: 'e1', name: 'Maren', aiDescription: 'A fen tale. '.repeat(32), aiSummary: 'A fen tale. '.repeat(17),
+    }]), 'ai-summary-hides-description');
+    expect(found).toEqual([]);
+  });
+
+  it('collapses several of them into a row that still names the failed trade', () => {
     const poor = { aiDescription: 'A fen tale. '.repeat(50), aiSummary: 'A fen tale. '.repeat(40) };
     const groups = groupFindings(runRules(world([
       { id: 'e1', name: 'Maren', ...poor }, { id: 'e2', name: 'Old Tobb', ...poor },
     ])));
     const row = groups.find((g) => g.ruleId === 'ai-summary-hides-description');
     expect(row?.headline).toContain('2');
-    expect(row?.headline).toContain('barely shorten');
+    expect(row?.headline).toContain('save almost nothing');
   });
 
   it('flags a summary longer than the description it hides — a strictly worse trade', () => {
@@ -967,7 +1001,7 @@ describe('entity completeness rules', () => {
       world([{ id: 'e1', name: 'Maren', aiDescription: under, aiSummary: under }]),
       'ai-summary-hides-description',
     )).toEqual([]);
-    // One token more of description, the same ratio, and the savings are worth reporting.
+    // One token more of description, the same ratio, and the row is worth showing.
     const atFloor = `${under}word`;
     expect(estimateTokens(atFloor.length)).toBe(40);
     expect(only(
@@ -1080,28 +1114,8 @@ describe('trait group rules', () => {
 });
 
 describe('placeholder pool rules', () => {
-  const uniques = (chips: number, values: string[], weights?: Record<string, number>) => ({
-    ...world([{
-      id: 'e1', name: 'Maren',
-      aiDescription: Array.from({ length: chips }, (_, i) => `{{ph:p1:unique:u${i + 1}}}`).join(' and '),
-    }]),
-    placeholders: [{ id: 'p1', name: 'Charm', values, ...(weights ? { weights } : {}) }],
-  });
-
-  it('flags more Unique chips than the pool has values — independent draws are bound to repeat', () => {
-    const found = only(uniques(3, ['bone', 'shell']), 'placeholder-unique-pool-too-small');
-    expect(found).toHaveLength(1);
-    expect(found[0].severity).toBe('warning');
-    expect(found[0].message).toContain('3 Unique chips');
-    expect(found[0].message).toContain('only 2 values');
-    expect(runRules(uniques(2, ['bone', 'shell']))).toEqual([]);
-  });
-
-  it('counts only the values a roll can land on — a benched value shrinks the pool', () => {
-    expect(only(uniques(3, ['bone', 'shell', 'wick'], { wick: 0 }), 'placeholder-unique-pool-too-small')).toHaveLength(1);
-    expect(only(uniques(3, ['bone', 'shell', 'wick']), 'placeholder-unique-pool-too-small')).toEqual([]);
-  });
-
+  // No rule counts Unique chips against the pool size: Unique mode is independent rolls per placement,
+  // not sampling without replacement, so repeats are normal at any chip count — never a defect.
   const weighted = (weights: Record<string, number>) => ({
     ...world([{ id: 'e1', name: 'Maren', aiDescription: 'Fond of {{ph:p1:world:pl1}}.' }]),
     placeholders: [{ id: 'p1', name: 'Vice', values: ['ale', 'dice'], weights }],
@@ -1564,7 +1578,6 @@ const RULE_SCOPE: Record<string, 'simple' | 'advanced'> = {
   'dictionary-secondary-without-primary': 'advanced',
   'entity-long-description-no-summary': 'advanced',
   'entity-name-in-wildcard-pool': 'advanced',
-  'placeholder-unique-pool-too-small': 'advanced',
   'placeholder-unused': 'advanced',
   'placeholder-weight-unknown-value': 'advanced',
   'stat-ai-lock-frozen': 'advanced',
@@ -1586,7 +1599,9 @@ const RULE_SCOPE: Record<string, 'simple' | 'advanced'> = {
   // Rule-level granularity: a name-vs-name collision is Simple-fixable, and an alias-caused one riding the
   // same rule into Simple is the accepted cost of not classifying per finding.
   'entity-match-collision': 'simple',
-  'entity-missing-description': 'simple',
+  'entity-missing-ai-description': 'simple',
+  'entity-missing-both-descriptions': 'simple',
+  'entity-missing-player-description': 'simple',
   'entity-nowhere': 'simple',
   // Its field is invisible in both modes, and the repair is the row's own one-click fix.
   'legacy-start-location': 'simple',

@@ -115,14 +115,14 @@ describe('useBenchFindings in Simple mode', () => {
 
   it('lists only the rows this mode can act on, and counts the rest', () => {
     const { result } = renderInMode(false, mixed);
-    expect(result.current.groups.map((g) => g.ruleId)).toEqual(['entity-missing-description']);
+    expect(result.current.groups.map((g) => g.ruleId)).toEqual(['entity-missing-player-description']);
     expect(result.current.advancedOnlyCount).toBe(1);
   });
 
   it('leaves the list whole in Advanced, with nothing folded away', () => {
     const { result } = renderInMode(true, mixed);
     expect(result.current.groups.map((g) => g.ruleId).sort())
-      .toEqual(['alias-leading-article', 'entity-missing-description']);
+      .toEqual(['alias-leading-article', 'entity-missing-player-description']);
     expect(result.current.advancedOnlyCount).toBe(0);
   });
 
@@ -141,7 +141,7 @@ describe('useBenchFindings in Simple mode', () => {
     // New means "you haven't seen this", not "the Bench counted it somewhere once".
     const { result } = renderInMode(true, mixed);
     expect(result.current.groups.find((g) => g.ruleId === 'alias-leading-article')?.newCount).toBe(1);
-    expect(result.current.groups.find((g) => g.ruleId === 'entity-missing-description')?.newCount).toBe(0);
+    expect(result.current.groups.find((g) => g.ruleId === 'entity-missing-player-description')?.newCount).toBe(0);
     expect(result.current.newCount).toBe(1);
   });
 
