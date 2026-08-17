@@ -149,7 +149,10 @@ export function collectSearchTargets(src: SearchSources): SearchTarget[] {
   // ── Overview ──────────────────────────────────────────────────────────────
   const ov = src.worldOverview;
   const ovWhere = { tab: 'overview', itemId: null, itemLabel: 'World' };
-  {
+  // Every collection below is read as `?? []`, and the overview only entered when it is there at all: a
+  // hand-edited or third-party world can omit what the types call required, and the scan runs in the
+  // editor's render, so a missing slice is nothing to search rather than a blank editor.
+  if (ov) {
     // `updateWorldOverview` merges a patch, so handing it a whole record works and keeps one code path.
     const { add, addEach } = bind('overview', ov, src.updateWorldOverview);
     add({ ...ovWhere, chipCapable: false }, 'name', 'World Name', ov.name, (r, v) => ({ ...r, name: v }));
@@ -172,7 +175,7 @@ export function collectSearchTargets(src: SearchSources): SearchTarget[] {
   }
 
   // ── Stats ─────────────────────────────────────────────────────────────────
-  src.stats.forEach((stat) => {
+  (src.stats ?? []).forEach((stat) => {
     const where = { tab: 'stats', itemId: stat.id, itemLabel: untitled(stat.name, 'Stat') };
     const { add } = bind(`stat:${stat.id}`, stat, src.updateStat);
     add({ ...where, chipCapable: true }, 'name', 'Name', stat.name, (r, v) => ({ ...r, name: v }));
@@ -184,7 +187,7 @@ export function collectSearchTargets(src: SearchSources): SearchTarget[] {
   });
 
   // ── Entities ──────────────────────────────────────────────────────────────
-  src.entities.forEach((entity) => {
+  (src.entities ?? []).forEach((entity) => {
     const where = { tab: 'entities', itemId: entity.id, itemLabel: untitled(entity.name, 'Entity') };
     const { add, addEach } = bind(`entity:${entity.id}`, entity, src.updateEntity);
     add({ ...where, chipCapable: true }, 'name', 'Name', entity.name, (r, v) => ({ ...r, name: v }));
@@ -195,14 +198,14 @@ export function collectSearchTargets(src: SearchSources): SearchTarget[] {
     add({ ...where, chipCapable: false }, 'type', 'Type', entity.type, (r, v) => ({ ...r, type: v }));
     add({ ...where, chipCapable: false }, 'imageTags', 'Image Tags', entity.imageTags, (r, v) => ({ ...r, imageTags: v }));
   });
-  src.entityGroups.forEach((group) => {
+  (src.entityGroups ?? []).forEach((group) => {
     const where = { tab: 'entities', itemId: group.id, itemLabel: untitled(group.name, 'Group') };
     const { add } = bind(`entityGroup:${group.id}`, group, src.updateEntityGroup);
     add({ ...where, chipCapable: false }, 'name', 'Group Name', group.name, (r, v) => ({ ...r, name: v }));
   });
 
   // ── Locations ─────────────────────────────────────────────────────────────
-  src.locations.forEach((location) => {
+  (src.locations ?? []).forEach((location) => {
     const where = { tab: 'locations', itemId: location.id, itemLabel: untitled(location.name, 'Location') };
     const { add } = bind(`location:${location.id}`, location, src.updateLocation);
     add({ ...where, chipCapable: true }, 'name', 'Name', location.name, (r, v) => ({ ...r, name: v }));
@@ -213,7 +216,7 @@ export function collectSearchTargets(src: SearchSources): SearchTarget[] {
   });
 
   // ── Traits ────────────────────────────────────────────────────────────────
-  src.traits.forEach((trait) => {
+  (src.traits ?? []).forEach((trait) => {
     const where = { tab: 'traits', itemId: trait.id, itemLabel: untitled(trait.name, 'Trait') };
     const { add } = bind(`trait:${trait.id}`, trait, src.updateTrait);
     add({ ...where, chipCapable: true }, 'name', 'Name', trait.name, (r, v) => ({ ...r, name: v }));
@@ -224,7 +227,7 @@ export function collectSearchTargets(src: SearchSources): SearchTarget[] {
         (r, v) => ({ ...r, placeholderPins: r.placeholderPins?.map((x, j) => (j === i ? { ...x, value: v } : x)) }));
     });
   });
-  src.traitGroups.forEach((group) => {
+  (src.traitGroups ?? []).forEach((group) => {
     const where = { tab: 'traits', itemId: group.id, itemLabel: untitled(group.name, 'Group') };
     const { add } = bind(`traitGroup:${group.id}`, group, src.updateTraitGroup);
     add({ ...where, chipCapable: true }, 'name', 'Group Name', group.name, (r, v) => ({ ...r, name: v }));
@@ -233,12 +236,12 @@ export function collectSearchTargets(src: SearchSources): SearchTarget[] {
   });
 
   // ── Dictionaries ──────────────────────────────────────────────────────────
-  src.dictionaries.forEach((book) => {
+  (src.dictionaries ?? []).forEach((book) => {
     const bookWhere = { tab: 'dictionary', itemId: book.id, itemLabel: untitled(book.name, 'Dictionary') };
     const { add: addBook } = bind(`book:${book.id}`, book, src.updateDictionary);
     addBook({ ...bookWhere, chipCapable: false }, 'name', 'Dictionary Name', book.name, (r, v) => ({ ...r, name: v }));
     addBook({ ...bookWhere, chipCapable: false }, 'description', 'Description', book.description, (r, v) => ({ ...r, description: v }));
-    book.entries.forEach((entry) => {
+    (book.entries ?? []).forEach((entry) => {
       // A regex entry drops the chip vocabulary, so its keys and value can't take a chip replacement.
       const chip = !entry.useRegex;
       const where = { tab: 'dictionary', itemId: entry.id, itemLabel: untitled(entry.name, 'Entry') };
@@ -252,7 +255,7 @@ export function collectSearchTargets(src: SearchSources): SearchTarget[] {
   });
 
   // ── Placeholders ──────────────────────────────────────────────────────────
-  src.placeholders.forEach((ph) => {
+  (src.placeholders ?? []).forEach((ph) => {
     const where = { tab: 'placeholders', itemId: ph.id, itemLabel: untitled(ph.name, 'Placeholder'), chipCapable: false };
     const { add, addEach } = bind(`placeholder:${ph.id}`, ph, src.updatePlaceholder);
     add(where, 'name', 'Name', ph.name, (r, v) => ({ ...r, name: v }));

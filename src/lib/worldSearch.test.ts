@@ -42,6 +42,31 @@ const targetFor = (list: SearchTarget[], fieldKey: string) => {
 };
 
 describe('collectSearchTargets', () => {
+  it('scans a world whose collections are simply absent without throwing', () => {
+    // Hand-edited or third-party world JSON can omit an array the types call required, and the scan runs in
+    // the editor's render — so a missing slice has to be nothing to search rather than a blank editor.
+    const { src } = sources();
+    const updatersOnly = Object.fromEntries(
+      Object.entries(src).filter(([, value]) => typeof value === 'function'),
+    ) as SearchSources;
+    expect(collectSearchTargets(updatersOnly)).toEqual([]);
+  });
+
+  it('keeps scanning the books that have entries when one book has none', () => {
+    const { src } = sources({
+      dictionaries: [
+        { id: 'b0', name: 'Empty Book' } as Dictionary,
+        {
+          id: 'b1', name: 'Herbs',
+          entries: [{ id: 'd1', name: 'Sedge', key: ['sedge'], value: 'A reed.' }],
+        } as Dictionary,
+      ],
+    });
+    const labels = collectSearchTargets(src).map((t) => t.itemLabel);
+    expect(labels).toContain('Empty Book');
+    expect(labels).toContain('Sedge');
+  });
+
   it('skips ids, media, and stat code', () => {
     const { src } = sources({
       stats: [{
