@@ -150,6 +150,7 @@ import {
   MiddlePanel,
   RightPanel,
 } from "../components/game/GamePanels";
+import { LocationBackdrop } from "../components/game/LocationBackdrop";
 import { ConfirmDialog } from "../components/ConfirmDialog";
 import { AiSetupGate } from "../components/AiSetupGate";
 import { useAiReachable } from "../lib/useAiReachable";
@@ -3814,19 +3815,15 @@ const GameViewer = ({
 
   return (
     <div
-      className={`flex ${isMobile ? "flex-col" : "p-4"} app-viewport text-label md:text-body bg-background bg-cover bg-center overflow-hidden`}
-      style={{
-        // A background-colored overlay composited over the image fades it toward the theme background.
-        // Dropped while the UI is hidden, so the eye toggle reveals the raw image.
-        backgroundImage: locationBackground
-          ? `${
-              !uiHidden && backgroundOverlay > 0
-                ? `linear-gradient(hsl(var(--background) / ${backgroundOverlay}), hsl(var(--background) / ${backgroundOverlay})), `
-                : ""
-            }${viewLocation ? `url(${viewLocation.backgroundImage})` : "url(./default-background.jpg)"}`
-          : undefined,
-      }}
+      className={`flex ${isMobile ? "flex-col" : "p-4"} app-viewport isolate text-label md:text-body bg-background overflow-hidden`}
     >
+      {locationBackground && (
+        <LocationBackdrop
+          image={viewLocation ? viewLocation.backgroundImage : "./default-background.jpg"}
+          overlay={backgroundOverlay}
+          overlayHidden={uiHidden}
+        />
+      )}
       <ThemedToastContainer />
 
       {isMobile && !uiHidden && (
