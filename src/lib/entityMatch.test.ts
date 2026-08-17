@@ -1,8 +1,9 @@
 import { describe, it, expect } from 'vitest';
-import { matchNames, findEntityNames, matchNamesLoose, sameCharacterName, stripQuotedSpeech, resolveEntityByName } from './entityMatch';
+import { matchNames, findNameMatches, findEntityNames, findEntityMatches, matchNamesLoose, sameCharacterName, stripQuotedSpeech, resolveEntityByName } from './entityMatch';
 import type { Entity } from '@/types';
 
 const ent = (name: string): Entity => ({ id: name, name });
+const withAliases = (name: string, aliases: string[]): Entity => ({ id: name, name, aliases });
 
 describe('matchNames — single-word names (capital guard)', () => {
   it('matches a proper-noun (capitalized) occurrence', () => {
@@ -142,8 +143,6 @@ describe('findEntityNames', () => {
 });
 
 describe('findEntityNames — aliases', () => {
-  const withAliases = (name: string, aliases: string[]): Entity => ({ id: name, name, aliases });
-
   it('resolves an alias hit to the canonical entity name', () => {
     const entities = [withAliases('Synthia', ['Matron', 'Matron of Teldoril'])];
     expect(findEntityNames('The Matron watches in silence.', entities)).toEqual(['Synthia']);
@@ -153,6 +152,11 @@ describe('findEntityNames — aliases', () => {
     const entities = [withAliases('Synthia', ['Em'])];
     expect(findEntityNames('Em waves.', entities)).toEqual(['Synthia']);
     expect(findEntityNames('the system reboots', entities)).toEqual([]); // no substring/lowercase hit
+  });
+
+  it('misses an alias the sentence capitalizes differently (why leading-article aliases are a defect)', () => {
+    const entities = [withAliases('Synthia', ['Matron'])];
+    expect(findEntityNames('the matron watches in silence.', entities)).toEqual([]);
   });
 
   it('matches an alias plural, irregulars included', () => {
@@ -170,6 +174,135 @@ describe('findEntityNames — aliases', () => {
   it('lists name hits in text order, then alias-only hits', () => {
     const entities = [withAliases('Synthia', ['Matron']), ent('Reyes')];
     expect(findEntityNames('Reyes bows before the Matron.', entities)).toEqual(['Reyes', 'Synthia']);
+  });
+});
+
+describe('findNameMatches — the evidence behind a hit', () => {
+  const spanOf = (text: string, name: string) => findNameMatches(text, [name])[0];
+
+  it('reports the matched form and its span for a single-word name', () => {
+    expect(spanOf('Then Hope steps forward.', 'Hope')).toEqual({
+      name: 'Hope',
+      matched: 'Hope',
+      via: 'name',
+      spans: [{ start: 5, end: 9, text: 'Hope' }],
+    });
+  });
+
+  it('quotes the plural as written while naming the authored singular', () => {
+    const match = spanOf('Goblins swarm the gate.', 'Goblin');
+    expect(match.matched).toBe('Goblin');
+    expect(match.spans).toEqual([{ start: 0, end: 7, text: 'Goblins' }]);
+  });
+
+  it('reports only the capitalized occurrences under the capital guard', () => {
+    const match = spanOf('you feel hope rising, then Hope steps forward', 'Hope');
+    expect(match.spans).toEqual([{ start: 27, end: 31, text: 'Hope' }]);
+  });
+
+  it('reports every occurrence, in text order', () => {
+    const match = spanOf('Mira meets Reyes; Mira waves.', 'Mira');
+    expect(match.spans.map((s) => s.start)).toEqual([0, 18]);
+  });
+
+  it('quotes the whole phrase, gap included, for an in-order multi-word hit', () => {
+    const match = spanOf('Emily J. Foster signs the ledger.', 'Emily Foster');
+    expect(match.via).toBe('name');
+    expect(match.spans).toEqual([{ start: 0, end: 15, text: 'Emily J. Foster' }]);
+  });
+
+  it('names the distinctive word that carried a partial hit, in the author’s casing', () => {
+    expect(spanOf('Foster nodded.', 'Emily Foster')).toEqual({
+      name: 'Emily Foster',
+      matched: 'Foster',
+      via: 'partial',
+      spans: [{ start: 0, end: 6, text: 'Foster' }],
+    });
+  });
+
+  it('prefers whole-name evidence when the partial pass would also hit', () => {
+    // "Emily" alone would satisfy the partial pass; the full name is the better answer to "why?".
+    const match = spanOf('Emily Foster waves.', 'Emily Foster');
+    expect(match).toMatchObject({ matched: 'Emily Foster', via: 'name' });
+  });
+
+  it('reports nothing for a name the text does not contain', () => {
+    expect(findNameMatches('nobody here', ['Mira'])).toEqual([]);
+  });
+
+  it('offsets index the searched text exactly', () => {
+    const text = 'The Wolves close in; Emily J. Foster does not flinch.';
+    for (const match of findNameMatches(text, ['Wolf', 'Emily Foster'])) {
+      for (const span of match.spans) {
+        expect(text.slice(span.start, span.end)).toBe(span.text);
+      }
+    }
+  });
+});
+
+describe('findEntityMatches — per-entity evidence', () => {
+  it('carries the entity id alongside the canonical name', () => {
+    expect(findEntityMatches('Mira nods.', [{ id: 'e1', name: 'Mira' }])).toEqual([
+      { entityId: 'e1', name: 'Mira', matched: 'Mira', via: 'name', spans: [{ start: 0, end: 4, text: 'Mira' }] },
+    ]);
+  });
+
+  it('reports an alias hit as the alias, resolved to the canonical name', () => {
+    const entities = [withAliases('Synthia', ['Matron', 'Matron of Teldoril'])];
+    expect(findEntityMatches('The Matron watches in silence.', entities)).toEqual([
+      { entityId: 'Synthia', name: 'Synthia', matched: 'Matron', via: 'alias', spans: [{ start: 4, end: 10, text: 'Matron' }] },
+    ]);
+  });
+
+  it('picks the alias covering the most text when two of them nest', () => {
+    // Highlighting "Matron" inside "Matron of Teldoril" would point at a fragment of its own evidence.
+    const entities = [withAliases('Synthia', ['Matron', 'Matron of Teldoril'])];
+    const [match] = findEntityMatches('The Matron of Teldoril nods.', entities);
+    expect(match.matched).toBe('Matron of Teldoril');
+    expect(match.spans).toEqual([{ start: 4, end: 22, text: 'Matron of Teldoril' }]);
+  });
+
+  it('quotes an alias plural as written, multi-word aliases included', () => {
+    const entities = [withAliases('Wolf', ['Grey One'])];
+    const [match] = findEntityMatches('The Grey Ones circle.', entities);
+    expect(match).toMatchObject({ name: 'Wolf', matched: 'Grey One', via: 'alias' });
+    expect(match.spans).toEqual([{ start: 4, end: 13, text: 'Grey Ones' }]);
+  });
+
+  it('reports both entities that claim the same span (collision evidence)', () => {
+    const entities: Entity[] = [ent('Matron'), withAliases('Synthia', ['Matron'])];
+    const matches = findEntityMatches('The Matron nods.', entities);
+    expect(matches.map((m) => m.name)).toEqual(['Matron', 'Synthia']);
+    expect(matches.map((m) => m.via)).toEqual(['name', 'alias']);
+    expect(matches.map((m) => m.spans)).toEqual([
+      [{ start: 4, end: 10, text: 'Matron' }],
+      [{ start: 4, end: 10, text: 'Matron' }],
+    ]);
+  });
+
+  it('reports both entities when a name and a partial reference overlap', () => {
+    const matches = findEntityMatches('Foster nodded.', [ent('Emily Foster'), ent('Foster')]);
+    expect(matches.map((m) => [m.name, m.via])).toEqual([
+      ['Emily Foster', 'partial'],
+      ['Foster', 'name'],
+    ]);
+    expect(matches[0].spans).toEqual(matches[1].spans);
+  });
+
+  it('lists name hits first, then alias-only hits', () => {
+    const entities: Entity[] = [withAliases('Synthia', ['Matron']), ent('Reyes')];
+    expect(findEntityMatches('Reyes bows before the Matron.', entities).map((m) => m.name)).toEqual([
+      'Reyes',
+      'Synthia',
+    ]);
+  });
+
+  it('reports two same-named entities separately while the name list still collapses them', () => {
+    // The duplicate-name collision an author most wants to see: one word, two entities behind it.
+    const entities: Entity[] = [{ id: 'e1', name: 'Guard' }, { id: 'e2', name: 'Guard' }];
+    const text = 'A Guard blocks the door.';
+    expect(findEntityMatches(text, entities).map((m) => m.entityId)).toEqual(['e1', 'e2']);
+    expect(findEntityNames(text, entities)).toEqual(['Guard']);
   });
 });
 
