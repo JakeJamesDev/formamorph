@@ -14,10 +14,9 @@ import { partitionFindings, withDismissed, withSeen, EMPTY_BENCH_STATE } from '@
 import { buildTriggerReport, type TriggerReport } from '@/lib/testBench/triggers';
 import type { SemanticStatus } from '@/lib/testBench/useTriggerSemantics';
 import type { Entity, WorldOverview } from '@/types';
-import type { BenchTab } from './benchTabs';
-import {
-  TestBench, TestBenchButton, type CodeCheckStatus, type OpenFindingItem, type TestBenchProps,
-} from './TestBench';
+import type { BenchTab } from '@/lib/testBench/benchTabs';
+import type { CodeCheckStatus, OpenFindingItem, TestBenchProps } from '@/lib/testBench/benchProps';
+import { TestBench, TestBenchButton } from './TestBench';
 
 // The panel renders whatever the rule pass produced, so the fixture goes through the real engine rather
 // than hand-built groups — a row shape the rules can't actually emit would prove nothing. The base world
