@@ -149,9 +149,8 @@ export function collectSearchTargets(src: SearchSources): SearchTarget[] {
   // ── Overview ──────────────────────────────────────────────────────────────
   const ov = src.worldOverview;
   const ovWhere = { tab: 'overview', itemId: null, itemLabel: 'World' };
-  // Every collection below is read as `?? []`, and the overview only entered when it is there at all: a
-  // hand-edited or third-party world can omit what the types call required, and the scan runs in the
-  // editor's render, so a missing slice is nothing to search rather than a blank editor.
+  // Collections read as `?? []`, the overview entered only when present: hand-edited world JSON can omit
+  // any of them, and a missing slice is nothing to search, not a blank editor.
   if (ov) {
     // `updateWorldOverview` merges a patch, so handing it a whole record works and keeps one code path.
     const { add, addEach } = bind('overview', ov, src.updateWorldOverview);
@@ -182,7 +181,7 @@ export function collectSearchTargets(src: SearchSources): SearchTarget[] {
     add({ ...where, chipCapable: false }, 'description', 'Description', stat.description, (r, v) => ({ ...r, description: v }));
     stat.descriptors?.forEach((d, i) => {
       add({ ...where, chipCapable: false }, `descriptors[${i}].description`, 'Descriptor', d.description,
-        (r, v) => ({ ...r, descriptors: r.descriptors.map((x, j) => (j === i ? { ...x, description: v } : x)) }));
+        (r, v) => ({ ...r, descriptors: (r.descriptors ?? []).map((x, j) => (j === i ? { ...x, description: v } : x)) }));
     });
   });
 

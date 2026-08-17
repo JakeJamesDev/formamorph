@@ -12,6 +12,7 @@ import {
   absorbPlaceholders,
   buildPlaceholderPreview,
   describePlaceholders,
+  placeholderValueSummary,
   placeholderWeight,
   placeholderChances,
   isWeighted,
@@ -173,6 +174,18 @@ describe('resolvePlaceholders', () => {
       expect(idMap.C1).toBe(toAdd[0].id);
     });
 
+    it('absorbPlaceholders reads a carried or world def that lost its values as an empty one', () => {
+      // Imported bundles are hand-editable JSON too; a valueless def absorbs as an empty placeholder.
+      const valueless = { id: 'C1', name: 'eye' } as Placeholder;
+      const { toAdd, idMap } = absorbPlaceholders([valueless], [{ id: 'W1', name: 'other', values: ['x'] } as Placeholder]);
+      expect(toAdd).toHaveLength(1);
+      expect(toAdd[0].values).toEqual([]);
+      // And an empty carried def matches an empty world def rather than duplicating it.
+      const { toAdd: none } = absorbPlaceholders([valueless], [{ id: 'W2', name: 'eye' } as Placeholder]);
+      expect(none).toEqual([]);
+      expect(idMap.C1).toBe(toAdd[0].id);
+    });
+
     it('absorbPlaceholders collapses two identical carried defs to one add', () => {
       const carried = [
         { id: 'A', name: 'eye', values: ['Red'] },
@@ -247,6 +260,14 @@ describe('resolvePlaceholders', () => {
       expect(out).toBe('[][]');
     });
 
+    it('reads a def that lost its values list as an empty one', () => {
+      // Hand-edited world JSON can omit `values` outright; the render-time rule pass routes every name
+      // through here, so a valueless def has to resolve to nothing rather than throw.
+      const valueless = { id: 'hue', name: 'Hue' } as Placeholder;
+      expect(describePlaceholders(`[${tok('hue', 'world', 'p1')}]`, [valueless])).toBe('[]');
+      expect(placeholderValueSummary(valueless)).toBe('');
+    });
+
     it('is deterministic — the same text always reads the same', () => {
       const t = tok('eye', 'world', 'p1');
       const defs = [P('eye', ['Red', 'Blue'])];
@@ -257,6 +278,19 @@ describe('resolvePlaceholders', () => {
       expect(describePlaceholders('plain text')).toBe('plain text');
       expect(describePlaceholders(tok('eye', 'world', 'p1'))).toBe('');
     });
+  });
+
+  it('resolves a def that lost its values list to nothing on every runtime path', () => {
+    // Same valueless-def case as the display test above, on the gameplay paths: Enter World primes rolls
+    // and resolves through these, so each has to skip the def rather than throw.
+    const valueless = { id: 'hue', name: 'Hue' } as Placeholder;
+    const text = tok('hue', 'world', 'p1');
+    const { rolls, setRoll } = collector();
+    expect(resolvePlaceholders(text, { placeholders: [valueless], rolls, setRoll })).toBe('');
+    expect(primeRolls([valueless], [text])).toEqual({ world: {}, unique: {} });
+    expect(buildPlaceholderPreview(text, [valueless])).toEqual({ [text]: '' });
+    expect(isWeighted(valueless)).toBe(false);
+    expect(placeholderChances(valueless)).toEqual({});
   });
 
   it('does not expand a chip that appears inside a resolved value (no nesting)', () => {
