@@ -28,6 +28,13 @@ const renderBench = (findings = articled, worldId: string | null = 'w1', source?
     { initialProps: { f: findings, s: source } },
   );
 
+/** The same hook standing in one editor mode or the other, which is all the fold depends on. */
+const renderInMode = (advanced: boolean, findings: ReturnType<typeof runRules>, worldId = 'w1') =>
+  renderHook(
+    ({ a }: { a: boolean }) => useBenchFindings(worldId, undefined, findings, a),
+    { initialProps: { a: advanced } },
+  );
+
 beforeEach(() => localStorage.clear());
 
 describe('useBenchFindings', () => {
@@ -95,6 +102,62 @@ describe('useBenchFindings', () => {
     act(() => result.current.markAllSeen());
     expect(result.current.newCount).toBe(0);
     expect(localStorage.getItem('FORMAMORPH_benchFindingState')).toBeNull();
+  });
+});
+
+describe('useBenchFindings in Simple mode', () => {
+  // One finding of each kind: an articled alias (Aliases is an Advanced-only field) and an entity with no
+  // player description (a field Simple shows, so its author can act on it).
+  const mixed = runRules(world([
+    { id: 'e1', name: 'Maren', aliases: ['The Visitor'] },
+    { id: 'e2', name: 'Old Tobb', playerDescription: '' },
+  ]));
+
+  it('lists only the rows this mode can act on, and counts the rest', () => {
+    const { result } = renderInMode(false, mixed);
+    expect(result.current.groups.map((g) => g.ruleId)).toEqual(['entity-missing-description']);
+    expect(result.current.advancedOnlyCount).toBe(1);
+  });
+
+  it('leaves the list whole in Advanced, with nothing folded away', () => {
+    const { result } = renderInMode(true, mixed);
+    expect(result.current.groups.map((g) => g.ruleId).sort())
+      .toEqual(['alias-leading-article', 'entity-missing-description']);
+    expect(result.current.advancedOnlyCount).toBe(0);
+  });
+
+  it('keeps the folded rows off the badge’s new count', () => {
+    const { result } = renderInMode(false, mixed);
+    // Both rows are unseen; only the one on screen is something the author can be told about.
+    expect(result.current.newCount).toBe(1);
+    act(() => result.current.markAllSeen());
+    expect(result.current.newCount).toBe(0);
+  });
+
+  it('still reads a folded row as new the first time Advanced shows it', () => {
+    const simple = renderInMode(false, mixed);
+    act(() => simple.result.current.markAllSeen());
+    simple.unmount();
+    // New means "you haven't seen this", not "the Bench counted it somewhere once".
+    const { result } = renderInMode(true, mixed);
+    expect(result.current.groups.find((g) => g.ruleId === 'alias-leading-article')?.newCount).toBe(1);
+    expect(result.current.groups.find((g) => g.ruleId === 'entity-missing-description')?.newCount).toBe(0);
+    expect(result.current.newCount).toBe(1);
+  });
+
+  it('counts one row per rule, however many findings are folded into it', () => {
+    const many = runRules(world([
+      { id: 'e1', name: 'Maren', aliases: ['The Visitor'] },
+      { id: 'e2', name: 'Old Tobb', aliases: ['The Fishmonger'] },
+    ]));
+    expect(renderInMode(false, many).result.current.advancedOnlyCount).toBe(1);
+  });
+
+  it('reports a world whose every finding is folded as having something to fold', () => {
+    const hidden = runRules(world([{ id: 'e1', name: 'Maren', aliases: ['The Visitor'] }]));
+    const { result } = renderInMode(false, hidden);
+    expect(result.current.groups).toEqual([]);
+    expect(result.current.advancedOnlyCount).toBe(1);
   });
 });
 

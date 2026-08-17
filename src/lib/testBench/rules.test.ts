@@ -1,8 +1,9 @@
 import { describe, it, expect } from 'vitest';
 import type { Dictionary, DictionaryEntry, Entity, GameLocation, Stat, Trait, WorldOverview } from '@/types';
+import { estimateTokens } from '@/lib/memoryUtils';
 import {
-  applyRuleFix, runRules, groupFindings, isRuleFixable, selectMatchingFindings, MATCHING_RULES, RULES,
-  type RuleWorld,
+  applyRuleFix, runRules, groupFindings, isAdvancedRule, isRuleFixable, selectMatchingFindings,
+  MATCHING_RULES, RULES, STAT_CODE_EXECUTION, type RuleWorld,
 } from './rules';
 
 /** A described entity at the starting location — what keeps the completeness rules quiet about a fixture
@@ -859,10 +860,25 @@ describe('entity completeness rules', () => {
     expect(bare[0].message).toContain('no player or AI description');
     const aiOnly = only(world([{ id: 'e1', name: 'Maren', aiDescription: '' }]), 'entity-missing-description');
     expect(aiOnly[0].message).toContain('no AI description');
-    expect(aiOnly[0].message).toContain('only its name');
+    expect(aiOnly[0].message).toContain('the prompt carries only its name');
     const playerOnly = only(world([{ id: 'e1', name: 'Maren', playerDescription: ' ' }]), 'entity-missing-description');
     expect(playerOnly[0].message).toContain('no player description');
     expect(runRules(world([{ id: 'e1', name: 'Maren' }]))).toEqual([]);
+  });
+
+  it('still flags a missing AI description behind a summary, but says what the summary does reach', () => {
+    // The delivery asymmetry, told straight: the summary-preferring prompts are served, the narrator's
+    // here-roster is not. "Only its name" would be flatly untrue of an entity carrying a summary.
+    const found = only(
+      world([{ id: 'e1', name: 'Maren', aiDescription: '', aiSummary: 'A fen trader.' }]),
+      'entity-missing-description',
+    );
+    expect(found).toHaveLength(1);
+    expect(found[0].severity).toBe('info');
+    expect(found[0].message).toContain('no AI description');
+    expect(found[0].message).toContain('roster of who is here carries only its name');
+    expect(found[0].message).toContain('every other prompt serves the summary');
+    expect(found[0].message).not.toContain('the prompt carries only its name');
   });
 
   it('flags a long AI description with no AI summary, in ~tokens', () => {
@@ -871,7 +887,7 @@ describe('entity completeness rules', () => {
     expect(found).toHaveLength(1);
     expect(found[0].severity).toBe('info');
     expect(found[0].message).toMatch(/~\d+ tokens/);
-    // A summary redirects the summary-reading passes, which is the other rule's business — not long anymore.
+    // A summary redirects the summary-reading passes, which is what the rule asks for — nothing left to say.
     expect(only(
       world([{ id: 'e1', name: 'Maren', aiDescription: longText, aiSummary: 'A fen tale.' }]),
       'entity-long-description-no-summary',
@@ -879,17 +895,93 @@ describe('entity completeness rules', () => {
     expect(runRules(world([{ id: 'e1', name: 'Maren', aiDescription: 'Short.' }]))).toEqual([]);
   });
 
-  it('says who has an AI summary, since only the narrator sees their full description', () => {
+  it('flags a long location description too — the same field at the same per-turn cost', () => {
+    const longText = 'Reeds and black water. '.repeat(40);
+    const found = only(base({
+      locations: [{ id: 'harbor', name: 'Harbor Steps', isStarting: true, aiDescription: longText }],
+    }), 'entity-long-description-no-summary');
+    expect(found).toHaveLength(1);
+    expect(found[0].items[0]).toMatchObject({ id: 'harbor', section: 'locations' });
+    expect(only(base({
+      locations: [{
+        id: 'harbor', name: 'Harbor Steps', isStarting: true, aiDescription: longText, aiSummary: 'The steps.',
+      }],
+    }), 'entity-long-description-no-summary')).toEqual([]);
+  });
+
+  it('says what an AI summary over a short description trades away', () => {
     const found = only(
-      world([{ id: 'e1', name: 'Maren', aiSummary: 'A trader.' }]),
+      world([{ id: 'e1', name: 'Maren', aiDescription: 'A fen trader, sharp about tides.', aiSummary: 'A trader.' }]),
       'ai-summary-hides-description',
     );
     expect(found).toHaveLength(1);
     expect(found[0].severity).toBe('info');
+    expect(found[0].message).toMatch(/~\d+-token AI description/);
+    expect(found[0].message).toContain('for little savings');
     // A summary with no full description hides nothing.
     expect(only(
       world([{ id: 'e1', name: 'Maren', aiDescription: '', aiSummary: 'A trader.' }]),
       'ai-summary-hides-description',
+    )).toEqual([]);
+  });
+
+  it('says nothing about a summary that shortens a long description — that is the field working', () => {
+    // The pincer this rule used to close on the author: told to write a summary by one rule, flagged for
+    // having written it by this one.
+    expect(only(
+      world([{ id: 'e1', name: 'Maren', aiDescription: 'A fen tale. '.repeat(60), aiSummary: 'A fen tale.' }]),
+      'ai-summary-hides-description',
+    )).toEqual([]);
+  });
+
+  it('leaves a paragraph alone — that much text is reason enough for a summary', () => {
+    // ~430 characters: well under the long bound, and still worth summarizing. The rule is about a summary
+    // that buys nothing, not about every summary in the world.
+    const paragraph = 'Maren trades salt and rope off the harbor steps, and has done since the year '
+      + 'the tide took the old pier. She knows every skipper by their boat rather than their face, keeps '
+      + 'her ledger in a hand nobody else can read, and will not be hurried over a price by anyone who '
+      + 'still has both boots dry. Ask her about the fen at night and she will change the subject.';
+    expect(estimateTokens(paragraph.length)).toBeLessThan(150);
+    expect(only(
+      world([{ id: 'e1', name: 'Maren', aiDescription: paragraph, aiSummary: 'A fen trader.' }]),
+      'ai-summary-hides-description',
+    )).toEqual([]);
+  });
+
+  it('never raises both summary rules over one item, whatever the author wrote', () => {
+    const texts = { short: 'A fen trader.', long: 'A fen tale. '.repeat(60) };
+    for (const aiDescription of Object.values(texts)) {
+      for (const aiSummary of ['', 'A trader.']) {
+        const raised = runRules(world([{ id: 'e1', name: 'Maren', aiDescription, aiSummary }]))
+          .filter((f) => f.ruleId === 'entity-long-description-no-summary' || f.ruleId === 'ai-summary-hides-description');
+        expect(raised.length).toBeLessThanOrEqual(1);
+      }
+    }
+  });
+
+  it('measures both rules on resolved chip text, not the chip syntax the author typed', () => {
+    const chips = (count: number) => '{{ph:p1:world:pl1}}'.repeat(count);
+    const chipWorld = (aiDescription: string, values: string[], over: Partial<Entity> = {}): RuleWorld => ({
+      ...world([{ id: 'e1', name: 'Maren', aiDescription, ...over }]),
+      placeholders: [{ id: 'p1', name: 'Coin Bird', values }],
+    });
+    // 480 characters of prose and ten chips: 670 raw, so a raw-length estimate calls it long — and 520 once
+    // the chips resolve to a bird, which is what the prompt actually pays for.
+    const wordy = `${'A fen tale. '.repeat(40)}${chips(10)}`;
+    expect(estimateTokens(wordy.length)).toBeGreaterThan(150);
+    expect(only(chipWorld(wordy, ['gull']), 'entity-long-description-no-summary')).toEqual([]);
+    // The same text with a chip that really is long resolves past the bound, and the rule fires.
+    expect(only(
+      chipWorld(wordy, ['A fen tale. '.repeat(20)]), 'entity-long-description-no-summary',
+    )).toHaveLength(1);
+    // And the same measurement at the short rule's own, lower bound.
+    const brief = `${'A fen tale. '.repeat(20)}${chips(5)}`;
+    expect(estimateTokens(brief.length)).toBeGreaterThan(75);
+    expect(only(
+      chipWorld(brief, ['gull'], { aiSummary: 'A trader.' }), 'ai-summary-hides-description',
+    )).toHaveLength(1);
+    expect(only(
+      chipWorld(brief, ['A fen tale. '.repeat(10)], { aiSummary: 'A trader.' }), 'ai-summary-hides-description',
     )).toEqual([]);
   });
 
@@ -1424,9 +1516,81 @@ describe('the matching subset Triggers surfaces', () => {
   });
 });
 
+/**
+ * Every row the Issues list can show, classified by hand: `advanced` where acting on the finding needs a
+ * field or tab Simple mode hides, `simple` where the author can fix it in either mode. A new rule is in
+ * neither list until its author puts it in one, which is the point — an unclassified rule would default to
+ * Simple and leak an Advanced concept to an author who has never seen the field.
+ */
+const RULE_SCOPE: Record<string, 'simple' | 'advanced'> = {
+  // Aliases, chips, stat code and descriptors, the Advanced dictionary options, trait wiring, AI summaries.
+  'alias-leading-article': 'advanced',
+  'alias-lowercase-no-twin': 'advanced',
+  'alias-self-duplicate': 'advanced',
+  'ai-summary-hides-description': 'advanced',
+  'chip-never-scanned': 'advanced',
+  'chip-unknown-placeholder': 'advanced',
+  'dictionary-disabled': 'advanced',
+  'dictionary-regex-invalid': 'advanced',
+  'dictionary-secondary-without-primary': 'advanced',
+  'entity-long-description-no-summary': 'advanced',
+  'entity-name-in-wildcard-pool': 'advanced',
+  'placeholder-unique-pool-too-small': 'advanced',
+  'placeholder-unused': 'advanced',
+  'placeholder-weight-unknown-value': 'advanced',
+  'stat-ai-lock-frozen': 'advanced',
+  'stat-code-execution': 'advanced',
+  'stat-code-never-ticks': 'advanced',
+  'stat-code-overrides-trait': 'advanced',
+  'stat-code-unknown-stat': 'advanced',
+  'stat-descriptor-duplicate-threshold': 'advanced',
+  'stat-start-no-descriptor': 'advanced',
+  'stat-trait-delta-clamped': 'advanced',
+  'trait-pin-invalid': 'advanced',
+  'trait-toggle-missing-stat': 'advanced',
+  'wildcard-single-value': 'advanced',
+  // Names, placement, structure, stat bounds, lore keywords, the world itself.
+  'connection-endpoint-orphan': 'simple',
+  'dictionary-entry-inert': 'simple',
+  'dictionary-keyword-substring': 'simple',
+  'entity-location-orphan': 'simple',
+  // Rule-level granularity: a name-vs-name collision is Simple-fixable, and an alias-caused one riding the
+  // same rule into Simple is the accepted cost of not classifying per finding.
+  'entity-match-collision': 'simple',
+  'entity-missing-description': 'simple',
+  'entity-nowhere': 'simple',
+  // Its field is invisible in both modes, and the repair is the row's own one-click fix.
+  'legacy-start-location': 'simple',
+  'location-no-entities': 'simple',
+  'location-parent-orphan': 'simple',
+  'no-starting-location': 'simple',
+  'stat-disabled-forever': 'simple',
+  'stat-percentage-bounds': 'simple',
+  'stat-starting-out-of-range': 'simple',
+  'stat-update-unknown-stat': 'simple',
+  'trait-group-multiple-defaults': 'simple',
+  'trait-group-too-small': 'simple',
+  'world-empty-system-prompt': 'simple',
+  'world-no-readme': 'simple',
+  'world-oversized-images': 'simple',
+};
+
 describe('the rule registry', () => {
   it('gives every rule a unique id', () => {
     expect(new Set(RULES.map((r) => r.id)).size).toBe(RULES.length);
+  });
+
+  it('makes every rule decide whether Simple mode can act on it', () => {
+    const heads = [...RULES, STAT_CODE_EXECUTION].map((r) => r.id);
+    expect(heads.slice().sort()).toEqual(Object.keys(RULE_SCOPE).sort());
+  });
+
+  it('folds exactly the rules classified Advanced, execution head included', () => {
+    for (const [ruleId, scope] of Object.entries(RULE_SCOPE)) {
+      expect([ruleId, isAdvancedRule(ruleId)]).toEqual([ruleId, scope === 'advanced']);
+    }
+    // An id no rule owns is shown rather than folded — the fold is a decision, never a default.
+    expect(isAdvancedRule('no-such-rule')).toBe(false);
   });
 
   it('round-trips every fix the engine carries', () => {

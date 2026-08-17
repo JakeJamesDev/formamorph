@@ -26,6 +26,10 @@ export interface IssuesProps {
   ruleCount: number;
   /** How many rows carry something the author has not been shown. */
   newCount: number;
+  /** How many rows Simple mode folded away, so the fold can say what is out of sight. Zero in Advanced. */
+  advancedOnlyCount: number;
+  /** The editor's mode. Simple shows no stat-code action: its verdicts are among the rows Simple folds. */
+  advanced: boolean;
   /** How many stats carry code — what the on-demand check would have to run. */
   codedStatCount: number;
   codeCheckStatus: CodeCheckStatus;

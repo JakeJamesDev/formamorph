@@ -36,6 +36,8 @@ export interface TestBenchWiring {
   selectedLocationId: string | null;
   /** Mobile renders the Bench as a covering sheet, so navigating to an item also closes it. */
   isMobile: boolean;
+  /** The editor's Simple/Advanced mode: Simple folds away the findings about fields it hides. */
+  advanced: boolean;
   /** The dev-router's `bench=` slot: an Instrument to open on (DEV builds only). */
   routedTab?: string;
   /** Land the editor on a finding's item: its tab active, its row selected and revealed. */
@@ -54,7 +56,9 @@ export interface TestBenchHandle {
   panelProps: TestBenchProps;
 }
 
-export function useTestBench({ selectedLocationId, isMobile, routedTab, navigateToItem }: TestBenchWiring): TestBenchHandle {
+export function useTestBench({
+  selectedLocationId, isMobile, advanced, routedTab, navigateToItem,
+}: TestBenchWiring): TestBenchHandle {
   const {
     worldId, worldOverview, getWorldData, worldMetadata, updateWorldOverview,
     setStats, setLocations, setConnections, setEntities, setEntityGroups,
@@ -165,9 +169,10 @@ export function useTestBench({ selectedLocationId, isMobile, routedTab, navigate
   const benchWorldMeta = worldMetadata.find((m) => m.id === worldId);
   // Newness and dismissals are per world and outlive the session, so the rule pass's raw output goes through
   // the stored marks before it reaches the panel or the badge.
-  const bench = useBenchFindings(worldId, benchWorldMeta?.sourceUpdatedAt, findings);
+  const bench = useBenchFindings(worldId, benchWorldMeta?.sourceUpdatedAt, findings, advanced);
   // Triggers shows the matching-related half of what Issues lists — the same rows, filtered rather than
-  // re-run, and taken after the dismissals so a rule muted on one tab stops nagging on both.
+  // re-run, and taken after the dismissals so a rule muted on one tab stops nagging on both. Taken after the
+  // mode fold too: alias hygiene is an Advanced field, and a Fix there would rewrite it unseen.
   const matchingFindings = useMemo(
     () => selectMatchingFindings(bench.groups.flatMap((group) => group.findings)),
     [bench.groups],
@@ -242,6 +247,8 @@ export function useTestBench({ selectedLocationId, isMobile, routedTab, navigate
         dismissedGroups: bench.dismissedGroups,
         ruleCount: RULES.length,
         newCount: bench.newCount,
+        advancedOnlyCount: bench.advancedOnlyCount,
+        advanced,
         codedStatCount,
         codeCheckStatus,
         onOpenItem: openFindingItem,

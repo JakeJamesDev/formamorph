@@ -42,7 +42,8 @@ const WORLD = benchEditorWorld({
   placeholders: [{ id: 'p1', name: 'Hue', values: ['red', 'blue'] }],
 });
 
-const setup = () => renderWorldEditorBench(WORLD);
+// Both defects live in Advanced-only fields, which is where the Bench lists them and offers the repair.
+const setup = () => renderWorldEditorBench(WORLD, 'advanced');
 
 /** Open the Bench and hand back its Fix buttons. */
 const openBench = async () => {
@@ -118,5 +119,16 @@ describe('WorldEditor — Bench quick fixes', () => {
     const [fixAlias] = await openBench();
     fireEvent.click(fixAlias);
     expect(toast.info).not.toHaveBeenCalled();
+  });
+
+  it('offers no repair in Simple mode for fields Simple mode hides', async () => {
+    // The same two defects, in the mode that shows neither field: the fold is the only thing on the list,
+    // and the world is untouched because there is no button to press.
+    const { ctx } = renderWorldEditorBench(WORLD, 'simple');
+    await clickOpenBench();
+    expect(await screen.findByRole('button', { name: '2 findings need Advanced mode' })).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /^Fix/ })).toBeNull();
+    expect(screen.queryByText('No Problems Found')).toBeNull();
+    expect(ctx().entities[0].aliases).toEqual(['the visitor']);
   });
 });

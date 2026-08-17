@@ -59,6 +59,8 @@ const benchProps = (groups: FindingGroup[], over: BenchOver = {}): TestBenchProp
     dismissedGroups: [],
     ruleCount: RULES.length,
     newCount: 0,
+    advancedOnlyCount: 0,
+    advanced: true,
     codedStatCount: 0,
     codeCheckStatus: 'idle',
     onOpenItem: vi.fn(),
@@ -307,6 +309,14 @@ describe('TestBench stat-code check', () => {
     expect(screen.getByText('Checked 1 coded stat')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Check Again' })).toBeEnabled();
   });
+
+  it('offers nothing to run in Simple mode, which would fold every verdict away', () => {
+    // Stat Code is an Advanced-only field, so its failures are among the rows Simple hides — a button whose
+    // whole result disappears into the fold is a button that reads as broken.
+    renderBench(world([]), { issues: { codedStatCount: 2, advanced: false } });
+    expect(screen.queryByRole('button', { name: /Check Stat Code|Check Again/ })).toBeNull();
+    expect(screen.queryByText(/stats have code/)).toBeNull();
+  });
 });
 
 describe('TestBench quick fixes', () => {
@@ -391,6 +401,42 @@ describe('TestBench newness', () => {
     const { issues } = renderMarked(articled);
     await userEvent.click(screen.getByRole('button', { name: 'Mark All Seen' }));
     expect(issues.onMarkAllSeen).toHaveBeenCalled();
+  });
+});
+
+describe('TestBench Simple-mode fold', () => {
+  const FOLD = { name: '2 findings need Advanced mode' };
+
+  it('folds the count away with no row to act on, and says where the way in is', async () => {
+    // Nothing else on the list, so every affordance the fold could offer would be its own.
+    render(<TestBench {...benchProps([], { issues: { advancedOnlyCount: 2 } })} />);
+    const fold = screen.getByRole('button', FOLD);
+    expect(fold).toHaveAttribute('aria-expanded', 'false');
+    await userEvent.click(fold);
+    expect(screen.getByText(/Switch the editor to Advanced/)).toBeInTheDocument();
+    // Expanding names no item and offers no repair — one click must not rewrite a field never seen.
+    expect(screen.queryByRole('button', { name: /^Fix/ })).toBeNull();
+    expect(screen.queryByRole('button', { name: /^Open|^Dismiss: / })).toBeNull();
+  });
+
+  it('says nothing at all in Advanced mode, where nothing is folded', () => {
+    renderBench(world([{ id: 'e1', name: 'Maren', aliases: ['the visitor'] }]), {
+      issues: { advancedOnlyCount: 0 },
+    });
+    expect(screen.queryByText(/need Advanced mode|needs Advanced mode/)).toBeNull();
+    expect(screen.getByText(/begins with an article/)).toBeInTheDocument();
+  });
+
+  it('never calls a world clean while it is hiding findings', () => {
+    const props = benchProps([], { issues: { advancedOnlyCount: 3 } });
+    render(<TestBench {...props} />);
+    expect(screen.queryByText('No Problems Found')).toBeNull();
+    expect(screen.getByRole('button', { name: '3 findings need Advanced mode' })).toBeInTheDocument();
+  });
+
+  it('counts a lone folded row in the singular', () => {
+    renderBench(world([]), { issues: { advancedOnlyCount: 1 } });
+    expect(screen.getByRole('button', { name: '1 finding needs Advanced mode' })).toBeInTheDocument();
   });
 });
 
