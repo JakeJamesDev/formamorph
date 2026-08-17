@@ -7,11 +7,15 @@
  * panel renders identically inside the desktop split and the mobile sheet.
  */
 import { useState } from 'react';
-import { AlertTriangle, ChevronDown, CircleX, EyeOff, FlaskConical, Info, MapPin, Play, Undo2, User, X } from 'lucide-react';
+import { AlertTriangle, CircleX, EyeOff, FlaskConical, Info, MapPin, Play, Undo2, User, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import {
+  Select, SelectContent, SelectGroup, SelectItem, SelectLabel, SelectTrigger, SelectValue,
+} from '@/components/ui/select';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { cn } from '@/lib/utils';
+import { describeBrokenPin, type BenchLens, type LensOption, type StatOverride } from '@/lib/testBench/lens';
 import { SEVERITIES, type Finding, type FindingGroup, type FindingSection, type Severity } from '@/lib/testBench/rules';
 import type { TriggerReport } from '@/lib/testBench/triggers';
 import type { SemanticStatus } from '@/lib/testBench/useTriggerSemantics';
@@ -228,6 +232,14 @@ export interface TestBenchProps {
   /** How many stats carry code — what the on-demand check would have to run. */
   codedStatCount: number;
   codeCheckStatus: CodeCheckStatus;
+  /** The Bench-level `Testing as [PC] · at [location]` selection, resolved against the world. */
+  lens: BenchLens;
+  pcOptions: LensOption[];
+  locationOptions: LensOption[];
+  /** The stats the lens PC switches away from the world's defaults. */
+  statOverrides: StatOverride[];
+  onPcChange: (traitId: string | null) => void;
+  onLocationChange: (locationId: string | null) => void;
   tab: BenchTab;
   onTabChange: (tab: BenchTab) => void;
   onClose: () => void;
@@ -258,6 +270,7 @@ export interface TestBenchProps {
 
 export function TestBench({
   groups, dismissedGroups, ruleCount, newCount, codedStatCount, codeCheckStatus, tab, onTabChange, onClose,
+  lens, pcOptions, locationOptions, statOverrides, onPcChange, onLocationChange,
   onOpenItem, onFixRule, onDismissRule, onRestoreRule, onMarkAllSeen, onCheckStatCode,
   triggerText, onTriggerTextChange, triggerHistory, onTriggerHistoryChange, triggerReport,
   matchingFindings, onPasteLastTurn, semanticStatus, semanticOn, onSemanticChange,
@@ -271,13 +284,14 @@ export function TestBench({
           <X className="h-4 w-4" />
         </Button>
       </div>
-      {/* Lens row: the shared `Testing as [PC] · at [location]` selectors, inert until the lens is wired. */}
-      <div className="flex items-center gap-1.5">
-        <span className="shrink-0 text-meta text-muted-foreground">Testing as</span>
-        <LensSlot icon={User} label="Test as character" />
-        <span className="shrink-0 text-meta text-muted-foreground">at</span>
-        <LensSlot icon={MapPin} label="Test at location" />
-      </div>
+      <LensBar
+        lens={lens}
+        pcOptions={pcOptions}
+        locationOptions={locationOptions}
+        statOverrides={statOverrides}
+        onPcChange={onPcChange}
+        onLocationChange={onLocationChange}
+      />
       <Tabs
         value={tab}
         onValueChange={(v) => onTabChange(v as BenchTab)}
@@ -334,17 +348,96 @@ export function TestBench({
   );
 }
 
-const LensSlot = ({ icon: Icon, label }: { icon: typeof User; label: string }) => (
-  <button
-    type="button"
-    disabled
-    aria-label={label}
-    className="flex min-w-0 flex-grow items-center gap-1 rounded-md border px-2 py-1 text-label disabled:opacity-50"
-  >
-    <Icon className="h-3.5 w-3.5 shrink-0 text-muted-foreground" aria-hidden />
-    <span className="truncate text-muted-foreground">—</span>
-    <ChevronDown className="ml-auto h-3 w-3 shrink-0 text-muted-foreground" aria-hidden />
-  </button>
+/** Radix has no value for "nothing selected", and an empty string is not a legal item value — so the
+ *  no-selection row carries a token of its own. */
+const NO_SELECTION = '__none__';
+
+/** One half of the lens. Empty of options means the world has nothing of that kind to pick, so the selector
+ *  says so on its face rather than opening onto an empty list. */
+const LensSelect = ({ icon: Icon, label, none, value, options, onChange }: {
+  icon: typeof User;
+  label: string;
+  /** What the no-selection row reads as — also what the trigger shows while nothing is picked. */
+  none: string;
+  value: string | null;
+  options: LensOption[];
+  onChange: (id: string | null) => void;
+}) => {
+  // Consecutive options sharing a heading become one labeled group; ungrouped options (locations) stay flat.
+  const groups: Array<{ name?: string; options: LensOption[] }> = [];
+  for (const option of options) {
+    const last = groups[groups.length - 1];
+    if (last && last.name === option.groupName) last.options.push(option);
+    else groups.push({ name: option.groupName, options: [option] });
+  }
+  return (
+    <Select
+      value={value ?? NO_SELECTION}
+      onValueChange={(next) => onChange(next === NO_SELECTION ? null : next)}
+      disabled={options.length === 0}
+    >
+      <SelectTrigger size="sm" aria-label={label} className="min-w-0 flex-grow gap-1">
+        <Icon className="h-3.5 w-3.5 shrink-0 text-muted-foreground" aria-hidden />
+        <SelectValue placeholder={none} />
+      </SelectTrigger>
+      <SelectContent>
+        <SelectItem value={NO_SELECTION}>{none}</SelectItem>
+        {groups.map((group, index) => (
+          <SelectGroup key={group.name ?? index}>
+            {group.name && <SelectLabel>{group.name}</SelectLabel>}
+            {group.options.map((option) => (
+              <SelectItem key={option.id} value={option.id}>{option.name}</SelectItem>
+            ))}
+          </SelectGroup>
+        ))}
+      </SelectContent>
+    </Select>
+  );
+};
+
+/** The Bench-level lens every instrument reads: who is being played, and where they are standing. Its notes
+ *  sit under it because both are consequences of the PC on the selector directly above them. */
+const LensBar = ({ lens, pcOptions, locationOptions, statOverrides, onPcChange, onLocationChange }: {
+  lens: BenchLens;
+  pcOptions: LensOption[];
+  locationOptions: LensOption[];
+  statOverrides: StatOverride[];
+  onPcChange: (traitId: string | null) => void;
+  onLocationChange: (locationId: string | null) => void;
+}) => (
+  <div className="flex flex-col gap-1">
+    <div className="flex items-center gap-1.5">
+      <span className="shrink-0 text-meta text-muted-foreground">Testing as</span>
+      <LensSelect
+        icon={User}
+        label="Test as character"
+        none="Anyone"
+        value={lens.state.pcTraitId}
+        options={pcOptions}
+        onChange={onPcChange}
+      />
+      <span className="shrink-0 text-meta text-muted-foreground">at</span>
+      <LensSelect
+        icon={MapPin}
+        label="Test at location"
+        none="Nowhere"
+        value={lens.state.locationId}
+        options={locationOptions}
+        onChange={onLocationChange}
+      />
+    </div>
+    {lens.brokenPins.map((pin) => (
+      <p key={`${pin.placeholderId}:${pin.value}`} className="flex items-start gap-1 text-meta text-destructive">
+        <CircleX className="mt-px h-3 w-3 shrink-0" aria-hidden />
+        {describeBrokenPin(pin)}
+      </p>
+    ))}
+    {statOverrides.length > 0 && (
+      <p className="text-meta text-muted-foreground">
+        {statOverrides.map((o) => `${o.enabled ? 'Adds' : 'Removes'} ${o.stat}`).join(' · ')}
+      </p>
+    )}
+  </div>
 );
 
 /**

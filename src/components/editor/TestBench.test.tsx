@@ -1,6 +1,9 @@
 import { describe, it, expect, vi } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import {
+  buildLens, EMPTY_LENS, lensLocationOptions, lensPcOptions, type LensState,
+} from '@/lib/testBench/lens';
 import { groupFindings, runRules, RULES, type FindingGroup, type RuleWorld } from '@/lib/testBench/rules';
 import { partitionFindings, withDismissed, withSeen, EMPTY_BENCH_STATE } from '@/lib/testBench/seenState';
 import { buildTriggerReport } from '@/lib/testBench/triggers';
@@ -34,6 +37,12 @@ const benchProps = (groups: FindingGroup[], over: Partial<TestBenchProps> = {}):
   tab: 'issues',
   onTabChange: vi.fn(),
   onClose: vi.fn(),
+  lens: buildLens(defective, EMPTY_LENS),
+  pcOptions: [],
+  locationOptions: lensLocationOptions(defective),
+  statOverrides: [],
+  onPcChange: vi.fn(),
+  onLocationChange: vi.fn(),
   onOpenItem: vi.fn(),
   onFixRule: vi.fn(),
   onDismissRule: vi.fn(),
@@ -113,6 +122,113 @@ describe('TestBench panel', () => {
     const { onClose } = renderBench(world([]));
     await userEvent.click(screen.getByRole('button', { name: 'Close Test Bench' }));
     expect(onClose).toHaveBeenCalled();
+  });
+});
+
+describe('TestBench lens bar', () => {
+  // A world with a playable character: an exclusive group of two origins, one of which pins a Wildcard.
+  const lensWorld: RuleWorld = {
+    ...world([]),
+    locations: [
+      { id: 'harbor', name: 'Harbor Steps', isStarting: true },
+      { id: 'market', name: 'The Long Market' },
+    ],
+    traitGroups: [{ id: 'g-origin', name: 'Origin', parentId: null, exclusive: true }],
+    traits: [
+      {
+        id: 't-sedge', name: 'Sedge-Born', groupId: 'g-origin', statChanges: [], order: 0,
+        placeholderPins: [{ placeholderId: 'ph-hair', value: 'copper' }],
+      },
+      { id: 't-reach', name: 'Reach-Born', groupId: 'g-origin', statChanges: [], order: 1 },
+    ],
+    placeholders: [{ id: 'ph-hair', name: 'Hair Color', values: ['ash', 'copper'] }],
+  };
+
+  const renderLens = (state: LensState, over: Partial<TestBenchProps> = {}) => renderBench(lensWorld, {
+    lens: buildLens(lensWorld, state),
+    pcOptions: lensPcOptions(lensWorld),
+    locationOptions: lensLocationOptions(lensWorld),
+    ...over,
+  });
+
+  const pcSelector = () => screen.getByRole('combobox', { name: 'Test as character' });
+  const locationSelector = () => screen.getByRole('combobox', { name: 'Test at location' });
+
+  it('shows the selection on both selectors', () => {
+    renderLens({ pcTraitId: 't-sedge', locationId: 'market' });
+    expect(pcSelector()).toHaveTextContent('Sedge-Born');
+    expect(locationSelector()).toHaveTextContent('The Long Market');
+  });
+
+  it('says who and where it is testing as when nothing is picked', () => {
+    renderLens(EMPTY_LENS);
+    expect(pcSelector()).toHaveTextContent('Anyone');
+    expect(locationSelector()).toHaveTextContent('Nowhere');
+  });
+
+  it('offers every exclusive-group trait under its group heading', async () => {
+    renderLens(EMPTY_LENS);
+    await userEvent.click(pcSelector());
+    expect(screen.getByRole('option', { name: 'Sedge-Born' })).toBeInTheDocument();
+    expect(screen.getByRole('option', { name: 'Reach-Born' })).toBeInTheDocument();
+    expect(screen.getByText('Origin')).toBeInTheDocument();
+  });
+
+  it('reports a pick as the id of the thing picked', async () => {
+    const { onPcChange } = renderLens(EMPTY_LENS);
+    await userEvent.click(pcSelector());
+    await userEvent.click(screen.getByRole('option', { name: 'Reach-Born' }));
+    expect(onPcChange).toHaveBeenCalledWith('t-reach');
+  });
+
+  it('clears back to no PC', async () => {
+    const { onPcChange } = renderLens({ pcTraitId: 't-sedge', locationId: null });
+    await userEvent.click(pcSelector());
+    await userEvent.click(screen.getByRole('option', { name: 'Anyone' }));
+    expect(onPcChange).toHaveBeenCalledWith(null);
+  });
+
+  it('has no PC to offer in a world with no exclusive group', () => {
+    renderBench(defective, { pcOptions: [], locationOptions: lensLocationOptions(defective) });
+    expect(pcSelector()).toBeDisabled();
+  });
+
+  it('stands above the tab strip, so switching instruments keeps the setup', () => {
+    const props = benchProps(groupFindings(runRules(lensWorld)), {
+      lens: buildLens(lensWorld, { pcTraitId: 't-sedge', locationId: 'market' }),
+      pcOptions: lensPcOptions(lensWorld),
+      locationOptions: lensLocationOptions(lensWorld),
+    });
+    const { rerender } = render(<TestBench {...props} />);
+    rerender(<TestBench {...props} tab="triggers" />);
+    expect(screen.getByRole('tab', { name: 'Triggers' })).toHaveAttribute('aria-selected', 'true');
+    expect(pcSelector()).toHaveTextContent('Sedge-Born');
+    expect(locationSelector()).toHaveTextContent('The Long Market');
+  });
+
+  it('says so when the PC pins a value the placeholder does not offer', () => {
+    const broken: RuleWorld = {
+      ...lensWorld,
+      traits: [{ ...lensWorld.traits[0], placeholderPins: [{ placeholderId: 'ph-hair', value: 'teal' }] }],
+    };
+    renderBench(broken, {
+      lens: buildLens(broken, { pcTraitId: 't-sedge', locationId: null }),
+      pcOptions: lensPcOptions(broken),
+      locationOptions: lensLocationOptions(broken),
+    });
+    expect(screen.getByText(/Pins “Hair Color” to “teal”, which isn’t one of its values/)).toBeInTheDocument();
+  });
+
+  it('is silent about pins the world honors', () => {
+    renderLens({ pcTraitId: 't-sedge', locationId: null });
+    expect(screen.queryByText(/isn’t one of its values/)).toBeNull();
+  });
+
+  it('names the stats the PC switches away from the world’s defaults', () => {
+    renderLens({ pcTraitId: 't-sedge', locationId: null }, {
+      statOverrides: [{ stat: 'Tide Sense', enabled: true }],
+    });
+    expect(screen.getByText('Adds Tide Sense')).toBeInTheDocument();
   });
 });
 

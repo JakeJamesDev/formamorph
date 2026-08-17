@@ -88,6 +88,37 @@ describe('useDebouncedTriggerReport', () => {
     expect(result.current.semantic).toBeUndefined();
   });
 
+  it('re-traces at once when the lens PC changes — a selection is a click, not a keystroke', () => {
+    vi.useFakeTimers();
+    // The entity's name is a Wildcard, so only a pin can make it match the prose.
+    const pinned: TriggerWorld = {
+      ...world,
+      entities: [{ id: 'e1', name: '{{ph:p1:world:x}}' }],
+      placeholders: [{ id: 'p1', name: 'Alias', values: ['Maren', 'Vosk'] }],
+    };
+    const { result, rerender } = renderHook(
+      ({ pins }) => useDebouncedTriggerReport(pinned, 'Maren crosses the yard.', '', { pins, delayMs: 250 }),
+      { initialProps: { pins: {} as Record<string, string> } },
+    );
+    expect(result.current.entities).toEqual([]);
+    rerender({ pins: { p1: 'Maren' } });
+    expect(result.current.entities.map((e) => e.name)).toEqual(['Maren']);
+  });
+
+  it('reads the pins by content, so an unrelated edit still waits out the debounce', () => {
+    vi.useFakeTimers();
+    // The lens rebuilds its pin map whenever the world does; an equal map must not read as a new character.
+    const { result, rerender } = renderHook(
+      ({ w, pins }) => useDebouncedTriggerReport(w, 'The tide pulls out.', '', { pins, delayMs: 250 }),
+      { initialProps: { w: world, pins: { p1: 'Maren' } } },
+    );
+    expect(result.current.fired).toBe(1);
+    rerender({ w: { ...world, dictionaries: [{ ...book, enabled: false }] }, pins: { p1: 'Maren' } });
+    expect(result.current.fired).toBe(1);
+    act(() => { vi.advanceTimersByTime(250); });
+    expect(result.current.fired).toBe(0);
+  });
+
   it('re-traces the same text when the world beneath it changes', () => {
     vi.useFakeTimers();
     const text = 'The tide pulls out.';

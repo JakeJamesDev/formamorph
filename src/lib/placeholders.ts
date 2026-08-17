@@ -208,14 +208,25 @@ export function buildPlaceholderPreview(
  * Display-only chip rendering for surfaces with no world or rolls behind them — a library card, a community
  * listing blurb. A Variable shows its value; a Wildcard shows its options as `{a|b}` (first 3, then `…`);
  * a chip whose def is missing or empty shows nothing. Never rolls, so the same text always reads the same.
+ *
+ * `pins` mask chips the way an active trait's do in {@link resolvePlaceholders}, in the same order: a chip
+ * whose placeholder the world doesn't have still shows nothing, since play can't pin what it can't find.
+ * That is what lets a design-time surface show a pinned character's text without inventing a roll.
  */
-export function describePlaceholders(text: string, placeholders: Placeholder[] = []): string {
+export function describePlaceholders(
+  text: string,
+  placeholders: Placeholder[] = [],
+  pins?: Record<string, string>,
+): string {
   if (!text || !hasPlaceholders(text)) return text;
   const byId = new Map(placeholders.map((p) => [p.id, p]));
   TOKEN_RE.lastIndex = 0;
   return text.replace(TOKEN_RE, (_full, id: string) => {
     const ph = byId.get(id);
-    if (!ph || ph.values.length === 0) return '';
+    if (!ph) return '';
+    const pinned = pins?.[id];
+    if (pinned != null) return pinned;
+    if (ph.values.length === 0) return '';
     return ph.values.length === 1 ? ph.values[0] : `{${placeholderValueSummary(ph)}}`;
   });
 }
