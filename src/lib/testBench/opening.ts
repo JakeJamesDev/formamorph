@@ -273,7 +273,6 @@ export function buildOpening(world: OpeningWorld, lens: BenchLens, rolls: Placeh
     template: defaultSystemPrompt,
     ctx,
     action: OPENING_SCENE_CUE,
-    playerNotes: '',
     history: [],
     dictionary: scannedEntries(world),
     actionVec: null,

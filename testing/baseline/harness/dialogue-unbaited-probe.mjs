@@ -134,7 +134,9 @@ const grab = (name) => {
   const at = source.indexOf(name + " = `");
   if (at === -1) throw new Error("missing " + name);
   const from = source.indexOf("`", at) + 1;
-  return source.slice(from, source.indexOf("`;", from));
+  // Probes run English-only, where the language chip renders to nothing, and the arms that do test the
+  // directive append their own wording — so the chip is stripped rather than left as a literal token.
+  return source.slice(from, source.indexOf("`;", from)).replaceAll("<LANGUAGE>", "").trimEnd();
 };
 const SYS = grab("defaultSystemPrompt");
 const MARKDOWN_ON = grab("MARKDOWN_ON");   // read the real markdown guidance so formatting changes are tested

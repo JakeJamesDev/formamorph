@@ -43,7 +43,9 @@ const grab = (name) => {
   const at = promptsSrc.indexOf(name + " = `");
   if (at === -1) throw new Error("missing " + name);
   const from = promptsSrc.indexOf("`", at) + 1;
-  return promptsSrc.slice(from, promptsSrc.indexOf("`;", from));
+  // Probes run English-only, where the language chip renders to nothing, and the arms that do test the
+  // directive append their own wording — so the chip is stripped rather than left as a literal token.
+  return promptsSrc.slice(from, promptsSrc.indexOf("`;", from)).replaceAll("<LANGUAGE>", "").trimEnd();
 };
 const SYS = grab("defaultSystemPrompt");
 const RECAP = grab("defaultRecapUserPrompt");

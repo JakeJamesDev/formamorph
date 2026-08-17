@@ -26,7 +26,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, dialogFullHeightMobil
 import { cn } from "@/lib/utils";
 import { FullscreenShell } from "@/components/FullscreenShell";
 import { useMorphFullscreen } from "@/lib/useMorphFullscreen";
-import { composePreviewValues } from "@/lib/previewValuePool";
+import { composePreviewValues, languagePreviewValue } from "@/lib/previewValuePool";
 import { Button } from "@/components/ui/button";
 import { RevealAnimationDemoButton } from "@/components/RevealAnimationDemo";
 import { FontTuneButton } from "@/components/FontTuneDialog";
@@ -898,9 +898,12 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, initialTab,
   // stand-ins, which is what the badge speaks to.
   const usingSampleValues = !previewValues;
   const effectivePreviewValues = composePreviewValues(
-    { paragraphLimit, maxTokens, markdownOutput, sectionStyle: activeSectionStyle, limitActiveCharacters, activeCharacterLimit },
+    { paragraphLimit, maxTokens, markdownOutput, sectionStyle: activeSectionStyle, limitActiveCharacters, activeCharacterLimit, language },
     previewValues,
   );
+  // The choices prompt's language chip names itself in the directive, so its preview says "choices" where
+  // the pool's default says "narration".
+  const choicesPreviewValues = { ...effectivePreviewValues, ...languagePreviewValue('choices', language) };
 
   // The selected prompt sub-tab, so the Reset button can target just that prompt.
   const [promptTab, setPromptTab] = useState(initialPromptTab ?? 'narration');
@@ -2427,7 +2430,7 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, initialTab,
                     value={showingUser ? choicesUserPrompt : choicesPrompt}
                     onChange={showingUser ? setChoicesUserPrompt : setChoicesPrompt}
                     variables={showingUser ? (PROMPT_KIND_USER_VARIABLES.choices ?? []) : PROMPT_KIND_VARIABLES.choices}
-                    previewValues={effectivePreviewValues}
+                    previewValues={choicesPreviewValues}
                     sampleData={usingSampleValues}
                     readOnlyReason={readOnlyReason}
                     onRequestEdit={duplicateForEditing}

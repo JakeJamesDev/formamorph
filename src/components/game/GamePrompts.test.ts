@@ -48,6 +48,8 @@ describe('default prompts carry the expected variable chips', () => {
       '<ENTITIES|sublocations.markdown>',
       '<ENTITIES|reachable.summary.markdown>',
       '<DICTIONARY>',
+      // Last, where recency makes a small model honor it — and where the code-side append used to sit.
+      '<LANGUAGE>',
     ]);
   });
 
@@ -63,6 +65,7 @@ describe('default prompts carry the expected variable chips', () => {
       '<ENTITIES|summary.markdown>',
       '<ENTITIES|sublocations.summary.markdown>',
       '<ENTITIES|reachable.summary.markdown>',
+      '<LANGUAGE>',
     ]);
   });
 

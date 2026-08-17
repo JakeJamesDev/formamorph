@@ -160,6 +160,12 @@ const TIME: PromptVariable = { token: '<TIME>', label: 'Time', color: HIGHLIGHT_
 // those people and no others. A value token like <NARRATION> — never a context block.
 const IN_FRAME: PromptVariable = { token: '<IN FRAME>', label: 'In Frame', color: HIGHLIGHT_PALETTE[8] };
 
+// The AI Language setting, as the directive the prompt actually carries (lib/languages `languageDirective`).
+// Placement is the author's: the default templates put it last, where recency makes a small model honor it,
+// and an author who knows their model better can move it. Renders nothing at all for English or a blank
+// value, so the chip costs those prompts neither a line nor a blank one.
+const LANGUAGE: PromptVariable = { token: '<LANGUAGE>', label: 'Language', color: HIGHLIGHT_PALETTE[14] };
+
 /** The chips the now-line message offers. All ordinary chips: the wording that used to be welded into
  *  bespoke `<SCENE …>` tokens now lives in each placement's prefix/suffix, so it can be reworded. */
 export const NOW_LINE_VARIABLES: PromptVariable[] = [LOCATION, ENTITIES, TIME, NOTES];
@@ -167,7 +173,7 @@ export const NOW_LINE_VARIABLES: PromptVariable[] = [LOCATION, ENTITIES, TIME, N
 /** All known variables — used by the parser to recognize any token regardless of which prompt it's in. */
 export const ALL_PROMPT_VARIABLES: PromptVariable[] = [
   WORLD, STATS, TRAITS, LOCATION, ENTITIES, NOTES, DICTIONARY, LENGTH, MARKDOWN, ACTIVE_CHARACTER, PLAYER_ACTION, NARRATION, CHARACTER, SUBJECT,
-  TIME, IN_FRAME,
+  TIME, IN_FRAME, LANGUAGE,
 ];
 
 /** The context chips every system prompt can reference; GameViewer substitutes them uniformly. */
@@ -176,9 +182,10 @@ const CONTEXT_VARS: PromptVariable[] = [WORLD, STATS, TRAITS, LOCATION, ENTITIES
 /** Which variables each prompt's toolbar offers. Every kind gets the shared context chips (even when its
  *  default text doesn't use them); some add their own extras (narration's length/markdown, character's name). */
 export const PROMPT_KIND_VARIABLES: Record<PromptKind, PromptVariable[]> = {
-  narration: [...CONTEXT_VARS, DICTIONARY, LENGTH, MARKDOWN],
+  narration: [...CONTEXT_VARS, DICTIONARY, LENGTH, MARKDOWN, LANGUAGE],
   thinking: [...CONTEXT_VARS],
-  choices: [...CONTEXT_VARS],
+  // The two prompts the player reads the output of, and so the two the language directive is worded for.
+  choices: [...CONTEXT_VARS, LANGUAGE],
   statupdates: [...CONTEXT_VARS],
   location: [...CONTEXT_VARS],
   summary: [...CONTEXT_VARS],

@@ -17,3 +17,16 @@ export const isEnglishLanguage = (language: string): boolean => {
   const value = language.trim().toLowerCase();
   return value === '' || value === 'english';
 };
+
+/** The player-facing prompts that carry a language chip. The id is also the noun its directive names. */
+export type LanguageSurface = 'narration' | 'choices';
+
+/**
+ * What one surface's `<LANGUAGE>` chip renders to — the imperative directive, or nothing at all when the
+ * value counts as English.
+ *
+ * The single definition of the wording: the default templates deliver it through the chip like any other,
+ * so there is no second copy in a builder that could drift from what an author's own placement sends.
+ */
+export const languageDirective = (surface: LanguageSurface, language: string): string =>
+  isEnglishLanguage(language) ? '' : `Write all ${surface} in ${language.trim()}.`;

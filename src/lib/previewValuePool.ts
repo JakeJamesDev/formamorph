@@ -2,6 +2,7 @@ import { lengthGuidance, type ParagraphLimit } from './outputLength';
 import { restyle } from './sectionStyle';
 import { type SectionStyle } from './promptPresets';
 import { markdownGuidance, activeCharacterGuidance } from '@/components/game/GamePrompts';
+import { languageDirective, type LanguageSurface } from './languages';
 import {
   ALL_PROMPT_VARIABLES,
   variableVariantIds,
@@ -26,7 +27,7 @@ import {
  */
 
 /** Which tokens the derived layer owns — real settings values, never sampled. */
-export const DERIVED_TOKENS = ['<LENGTH GUIDANCE>', '<MARKDOWN GUIDANCE>', '<ACTIVE CHARACTER GUIDANCE>'];
+export const DERIVED_TOKENS = ['<LENGTH GUIDANCE>', '<MARKDOWN GUIDANCE>', '<ACTIVE CHARACTER GUIDANCE>', '<LANGUAGE>'];
 
 const WORLD = `A quiet stretch of coast where the tide leaves more behind than it takes. People here trade in
 salvage and rumor, and nobody asks where either came from.`;
@@ -200,6 +201,17 @@ export interface DerivedPreviewSettings {
   sectionStyle: SectionStyle;
   limitActiveCharacters: boolean;
   activeCharacterLimit: number;
+  /** The AI Language setting, as the language chip renders it. */
+  language: string;
+}
+
+/**
+ * The language chip's value for one prompt surface. The two surfaces that offer the chip name themselves in
+ * the directive, so a preview has to be told which one it is rendering; the pool's own entry is the
+ * narration wording, and the choices field layers this over it.
+ */
+export function languagePreviewValue(surface: LanguageSurface, language: string): Record<string, string> {
+  return { '<LANGUAGE>': languageDirective(surface, language) };
 }
 
 /**
@@ -211,6 +223,7 @@ export function derivedPreviewValues(s: DerivedPreviewSettings): Record<string, 
     '<LENGTH GUIDANCE>': lengthGuidance(s.paragraphLimit, s.maxTokens),
     '<MARKDOWN GUIDANCE>': restyle(markdownGuidance(s.markdownOutput), s.sectionStyle),
     '<ACTIVE CHARACTER GUIDANCE>': activeCharacterGuidance(s.limitActiveCharacters, s.activeCharacterLimit),
+    ...languagePreviewValue('narration', s.language),
   };
 }
 
