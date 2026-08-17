@@ -90,3 +90,33 @@ describe('the descriptor unit control', () => {
     expect(screen.getAllByText('%').length).toBe(4);
   });
 });
+
+describe('the coverage bar', () => {
+  /** Every bar segment as [label, bold?] — the segments are the elements carrying a range title. */
+  const segments = () => [...document.querySelectorAll('div[title*="–"]')]
+    .map((el) => [el.textContent, el.className.includes('font-semibold')]);
+
+  it('bolds the band a fresh game opens in', () => {
+    renderManager(); // starts at 4 of 10 → the 6 band
+    expect(segments()).toEqual([['low', false], ['stocked', true], ['full', false]]);
+  });
+
+  it('follows the start value to another band', () => {
+    store.stat = { ...store.stat, value: 9 };
+    renderManager();
+    expect(segments()).toEqual([['low', false], ['stocked', false], ['full', true]]);
+  });
+
+  it('bolds the uncovered zone when the start lands where no band covers it', () => {
+    store.stat = { ...store.stat, max: 20, value: 15 };
+    renderManager();
+    expect(segments()).toEqual([['low', false], ['stocked', false], ['full', false], ['no status', true]]);
+  });
+
+  it('reads the opening band through the stat’s own unit', () => {
+    // Percent thresholds put the bands at 0.3 / 0.6 / 1 rocket, so a start of 4 clears every one of them.
+    store.stat = { ...store.stat, thresholdUnit: 'percent' };
+    renderManager();
+    expect(segments()).toEqual([['low', false], ['stocked', false], ['full', false], ['no status', true]]);
+  });
+});
