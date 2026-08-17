@@ -1054,18 +1054,21 @@ const summaryOwners = (world: RuleWorld): SummaryOwner[] => [
   })),
 ];
 
-/** An AI description's cost as the prompt will actually pay it — chips resolved first, the same way AI
- *  Context estimates, so chip syntax can't push a short description over the threshold. */
-const aiDescriptionTokens = (owner: SummaryOwner, world: RuleWorld): number =>
-  estimateTokens(describePlaceholders(owner.text.aiDescription ?? '', world.placeholders).length);
+/** A field's cost as the prompt will actually pay it — chips resolved first, the same way AI Context
+ *  estimates, so chip syntax can neither push a short description over a bound nor hide a bloated summary. */
+const resolvedTokens = (text: string | undefined, world: RuleWorld): number =>
+  estimateTokens(describePlaceholders(text ?? '', world.placeholders).length);
 
 // Long enough that serving the full text on every turn is a real cost to a small model's budget — the
 // summary field exists exactly to shorten these.
 const LONG_AI_DESCRIPTION_TOKENS = 150;
 
-// Half of long, and derived from it so the two can't drift independently. A description of a paragraph or
-// more is reason enough for a summary on its own; only well under that is the summary buying nothing.
-const SHORT_AI_DESCRIPTION_TOKENS = LONG_AI_DESCRIPTION_TOKENS / 2;
+// A summary that doesn't cut the description at least in half isn't buying the delivery cost it adds.
+const SUMMARY_COMPRESSION_RATIO = 0.5;
+
+// Below this the savings are too small to be worth a row whatever the ratio says, and flagging them would
+// nag an author over a handful of tokens a turn.
+const SUMMARY_SAVINGS_FLOOR_TOKENS = 40;
 
 const entityLongDescriptionNoSummary: Rule = {
   id: 'entity-long-description-no-summary',
@@ -1075,7 +1078,7 @@ const entityLongDescriptionNoSummary: Rule = {
   summary: (count) =>
     `${count} items have a long AI description and no AI summary, so the whole text enters the prompt every time`,
   check: (world) => summaryOwners(world).flatMap((owner) => {
-    const tokens = aiDescriptionTokens(owner, world);
+    const tokens = resolvedTokens(owner.text.aiDescription, world);
     if (owner.text.aiSummary?.trim() || tokens <= LONG_AI_DESCRIPTION_TOKENS) return [];
     return [finding(
       entityLongDescriptionNoSummary,
@@ -1090,16 +1093,22 @@ const aiSummaryHidesDescription: Rule = {
   severity: 'info',
   section: 'entities',
   advanced: true,
-  summary: (count) => `${count} items have an AI summary hiding a short description, for little savings`,
-  // Only a genuinely short description: hiding anything from a paragraph up is the trade the summary field
-  // exists to make, and flagging it would punish the very repair the sibling rule asks for.
+  summary: (count) => `${count} items’ AI summaries barely shorten the descriptions they hide`,
+  // The summary against the description it replaces, not the description alone: a summary earns hiding the
+  // full text by actually compressing it, at any description length the savings are worth counting.
   check: (world) => summaryOwners(world).flatMap((owner) => {
     if (!owner.text.aiSummary?.trim() || !owner.text.aiDescription?.trim()) return [];
-    const tokens = aiDescriptionTokens(owner, world);
-    if (tokens > SHORT_AI_DESCRIPTION_TOKENS) return [];
+    const description = resolvedTokens(owner.text.aiDescription, world);
+    if (description < SUMMARY_SAVINGS_FLOOR_TOKENS) return [];
+    const summary = resolvedTokens(owner.text.aiSummary, world);
+    if (summary <= description * SUMMARY_COMPRESSION_RATIO) return [];
+    const savings = description - summary;
+    const trade = savings >= 0
+      ? `to save ~${savings} tokens a turn`
+      : `and costs ~${-savings} tokens more a turn`;
     return [finding(
       aiSummaryHidesDescription,
-      `${quote(owner.item.name)} has a ~${tokens}-token AI description; the summary hides it from most prompts for little savings`,
+      `${quote(owner.item.name)} has a ~${summary}-token AI summary over a ~${description}-token AI description — it hides the description from most prompts ${trade}`,
       [owner.item],
     )];
   }),
