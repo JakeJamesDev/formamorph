@@ -1,7 +1,7 @@
 /**
  * The Test Bench — the World Editor's third panel, where an author tests how the harness reads their
- * world. Chrome is fixed: bench header, lens row, instrument tab strip, content. Only the Issues
- * instrument is built; the rest render as disabled tabs so the shape of the surface is honest.
+ * world. Chrome is fixed: bench header, lens row, instrument tab strip, content. Issues and Triggers are
+ * built; the rest render as disabled tabs so the shape of the surface is honest.
  *
  * Presentational: findings arrive as props, and navigation is a callback the editor fulfills, so the
  * panel renders identically inside the desktop split and the mobile sheet.
@@ -13,7 +13,9 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { cn } from '@/lib/utils';
 import { SEVERITIES, type FindingGroup, type FindingSection, type Severity } from '@/lib/testBench/rules';
+import type { TriggerReport } from '@/lib/testBench/triggers';
 import { BENCH_TABS, type BenchTab } from './benchTabs';
+import { TriggersInstrument } from './TriggersInstrument';
 
 /** Where the author is sent when they click an item a finding names. */
 export type OpenFindingItem = (section: FindingSection, itemId: string) => void;
@@ -236,11 +238,16 @@ export interface TestBenchProps {
   onMarkAllSeen: () => void;
   /** Run every stat's code in the real sandbox and fold the failures into the list. */
   onCheckStatCode: () => void;
+  /** The Triggers scene text, held above the tab strip so switching instruments doesn't discard it. */
+  triggerText: string;
+  onTriggerTextChange: (text: string) => void;
+  triggerReport: TriggerReport;
 }
 
 export function TestBench({
   groups, dismissedGroups, ruleCount, newCount, codedStatCount, codeCheckStatus, tab, onTabChange, onClose,
   onOpenItem, onFixRule, onDismissRule, onRestoreRule, onMarkAllSeen, onCheckStatCode,
+  triggerText, onTriggerTextChange, triggerReport,
 }: TestBenchProps) {
   return (
     <div className="flex h-full flex-col gap-2 p-3">
@@ -291,6 +298,9 @@ export function TestBench({
                 onMarkAllSeen={onMarkAllSeen}
                 onCheckStatCode={onCheckStatCode}
               />
+            )}
+            {t.value === 'triggers' && (
+              <TriggersInstrument text={triggerText} onTextChange={onTriggerTextChange} report={triggerReport} />
             )}
           </TabsContent>
         ))}

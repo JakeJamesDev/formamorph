@@ -183,19 +183,27 @@ function strongestAliasMatch(
 // unreliable. A trailing unterminated opener runs to the end of the text.
 const QUOTED_SPEECH_RE = /["“][^"”]*(?:["”]|$)/g;
 
+// A quoted run replaced by blank space of the same width, newlines kept — so the result is the same
+// length as its input and a span found in it indexes the original text unchanged. Whitespace is inert to
+// every consumer of the prose, so this is a positional change only.
+const blankOut = (run: string): string => run.replace(/[^\n]/g, ' ');
+
 /**
- * The narrative prose of `text` with quoted speech removed — what a character is *doing* on the page,
+ * The narrative prose of `text` with quoted speech blanked out — what a character is *doing* on the page,
  * rather than what other characters say about them. Presence parses read this: a name that only ever
  * appears inside quotation marks was talked about, not present. Mid-stream, an unterminated opening
  * quote swallows the rest, so a partial narration errs toward "this is dialogue" and resolves on the
  * next tick.
+ *
+ * Offsets are preserved: speech becomes spaces rather than disappearing, so a match's `start`/`end` still
+ * point into the text as the author wrote it — what lets a surface highlight the hit in the original.
  */
 export function stripQuotedSpeech(text: string): string {
   if (!text || !/["“]/.test(text)) return text;
   // Per paragraph: continuing speech re-opens each paragraph and closes only the last, so a span never
   // crosses a paragraph break — matching across one reads the next opener as a closer and leaks the
   // second paragraph's speech into prose.
-  return text.split(/(\n\s*\n)/).map((part, i) => (i % 2 ? part : part.replace(QUOTED_SPEECH_RE, ' '))).join('');
+  return text.split(/(\n\s*\n)/).map((part, i) => (i % 2 ? part : part.replace(QUOTED_SPEECH_RE, blankOut))).join('');
 }
 
 /**
