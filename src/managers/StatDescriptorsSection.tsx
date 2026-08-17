@@ -12,6 +12,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
+import { activeDescriptor } from '@/lib/statContext';
 import {
   convertDescriptorUnits, descriptorSpans, statMax, statMin, statStartValue, thresholdUnitOf,
   thresholdUnitTag, uncoveredSpan,
@@ -98,6 +99,9 @@ export const StatDescriptorsSection = ({
   const spanById = new Map(spans.map((span) => [span.id, span]));
   const gap = uncoveredSpan(stat);
   const start = statStartValue(stat);
+  // The band a fresh game opens in, through the game's own lookup so the bar can't disagree with play.
+  // Undefined means the start sits in the uncovered zone, which is then what applies.
+  const startBand = activeDescriptor(stat, start);
   const descriptors = stat.descriptors ?? [];
   // A Percentage stat is pinned to 0–100, where both readings are the same number — no choice to offer.
   const offersUnits = stat.type?.toLowerCase() !== 'percentage';
@@ -139,7 +143,7 @@ export const StatDescriptorsSection = ({
                 key={span.id}
                 text={span.description}
                 width={width(span.from, span.to)}
-                className={`${BAND_TINTS[i % BAND_TINTS.length]} text-primary-foreground`}
+                className={`${BAND_TINTS[i % BAND_TINTS.length]} text-primary-foreground${span.id === startBand?.id ? ' font-semibold' : ''}`}
                 title={`${span.from} – ${span.to}: ${span.description}`}
               />
             ))}
@@ -147,7 +151,7 @@ export const StatDescriptorsSection = ({
               <BarSegment
                 text="no status"
                 width={width(gap.from, gap.to)}
-                className="bg-destructive/15 text-destructive"
+                className={`bg-destructive/15 text-destructive${startBand ? '' : ' font-semibold'}`}
                 title={`${gap.from} – ${gap.to}: no status`}
               />
             )}
