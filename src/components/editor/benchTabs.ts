@@ -5,15 +5,15 @@ export const BENCH_TABS = [
   { value: 'issues', label: 'Issues' },
   { value: 'triggers', label: 'Triggers' },
   { value: 'aiContext', label: 'AI Context' },
-  { value: 'opening', label: 'Opening', unbuilt: true },
+  { value: 'opening', label: 'Opening' },
 ] as const;
 
 export type BenchTab = (typeof BENCH_TABS)[number]['value'];
 
-/** The tabs an author can actually stand on — what the dev-router can route to. */
-export const BUILT_BENCH_TABS = BENCH_TABS.filter((t) => !('unbuilt' in t && t.unbuilt)).map((t) => t.value);
+/** Every instrument is built, so the whole strip is routable. */
+export const BUILT_BENCH_TABS = BENCH_TABS.map((t) => t.value);
 
-/** Narrow an arbitrary string (a dev-route param) to a tab that exists and is built. */
+/** Narrow an arbitrary string (a dev-route param) to a tab that exists. */
 export function asBenchTab(value: string | undefined): BenchTab | null {
   return BUILT_BENCH_TABS.some((t) => t === value) ? (value as BenchTab) : null;
 }

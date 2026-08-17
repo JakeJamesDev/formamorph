@@ -5,6 +5,7 @@ import { buildAiContext } from '@/lib/testBench/aiContext';
 import {
   buildLens, EMPTY_LENS, lensLocationOptions, lensPcOptions, type LensState,
 } from '@/lib/testBench/lens';
+import { buildOpening, EMPTY_OPENING, primeOpeningRolls } from '@/lib/testBench/opening';
 import { groupFindings, runRules, RULES, type FindingGroup, type RuleWorld } from '@/lib/testBench/rules';
 import { partitionFindings, withDismissed, withSeen, EMPTY_BENCH_STATE } from '@/lib/testBench/seenState';
 import { buildTriggerReport } from '@/lib/testBench/triggers';
@@ -60,6 +61,8 @@ const benchProps = (groups: FindingGroup[], over: Partial<TestBenchProps> = {}):
   triggerReport: buildTriggerReport({ entities: [], dictionaries: [], placeholders: [] }, ''),
   matchingFindings: [],
   aiContext: buildAiContext(defective, buildLens(defective, EMPTY_LENS)),
+  opening: EMPTY_OPENING,
+  onRerollOpening: vi.fn(),
   ...over,
 });
 
@@ -89,12 +92,11 @@ describe('TestBench panel', () => {
     expect(screen.getByText(`${RULES.length} rules checked`)).toBeInTheDocument();
   });
 
-  it('offers the unbuilt instruments as disabled tabs', () => {
+  it('offers all four instruments as live tabs', () => {
     renderBench(defective);
-    for (const label of [/Issues/, 'Triggers', 'AI Context']) {
+    for (const label of [/Issues/, 'Triggers', 'AI Context', 'Opening']) {
       expect(screen.getByRole('tab', { name: label })).toBeEnabled();
     }
-    expect(screen.getByRole('tab', { name: 'Opening' })).toBeDisabled();
   });
 
   it('shows the AI Context instrument its cost, its blocks and the travel caveat', () => {
@@ -382,6 +384,74 @@ describe('TestBench dismissal', () => {
   it('says nothing about dismissals when there are none', () => {
     renderBench(articled);
     expect(screen.queryByText(/dismissed/)).toBeNull();
+  });
+});
+
+describe('TestBench Opening instrument', () => {
+  // A world with one banded stat starting exactly on a band edge, and one rolled Wildcard — enough to watch
+  // the slider re-band and the reroll land. The view-model goes through the real builder, deterministic pick.
+  const openingWorld: RuleWorld = {
+    ...world([]),
+    worldOverview: {
+      name: 'Sedge Landing', description: '', systemPrompt: 'Coin: {{ph:ph-coin:world:pl-c1}}.',
+    } as WorldOverview,
+    stats: [{
+      id: 's-nerve', name: 'Nerve', type: 'number', description: '', min: 0, max: 100, value: 25, regen: 0,
+      descriptors: [
+        { id: 'd1', threshold: 25, description: 'Shaky' },
+        { id: 'd2', threshold: 100, description: 'Iron' },
+      ],
+    }],
+    placeholders: [{ id: 'ph-coin', name: 'Coin Bird', values: ['gull', 'wren'] }],
+  };
+  const openingData = () => buildOpening(
+    openingWorld,
+    buildLens(openingWorld, EMPTY_LENS),
+    primeOpeningRolls(openingWorld, {}, (values) => values[0]),
+  );
+  const renderOpening = (over: Partial<TestBenchProps> = {}) =>
+    renderBench(openingWorld, { tab: 'opening', opening: openingData(), ...over });
+
+  it('shows the fresh game: cost, start, stats with their band, and the rolls', () => {
+    renderOpening();
+    expect(screen.getByText(/Turn one as the default character ≈ ~\d/)).toBeInTheDocument();
+    expect(screen.getByText(/Starts at Harbor Steps/)).toBeInTheDocument();
+    expect(screen.getByText('Nerve')).toBeInTheDocument();
+    expect(screen.getByText('Shaky')).toBeInTheDocument();
+    expect(screen.getByText('Coin Bird')).toBeInTheDocument();
+    expect(screen.getByText('gull')).toBeInTheDocument();
+  });
+
+  it('re-bands live as the slider scrubs, without touching the world', async () => {
+    // The instrument has no world-writing prop at all — scrubbing is structurally unable to edit anything.
+    renderOpening();
+    const thumb = screen.getByRole('slider', { name: 'Scrub Nerve' });
+    thumb.focus();
+    await userEvent.keyboard('{ArrowRight}');
+    expect(screen.getByText('Iron')).toBeInTheDocument();
+    expect(screen.getByText('26/100')).toBeInTheDocument();
+    expect(screen.queryByText('Shaky')).toBeNull();
+  });
+
+  it('opens the assembled first prompt on request', async () => {
+    renderOpening();
+    await userEvent.click(screen.getByRole('button', { name: /System Prompt/ }));
+    expect(screen.getByText(/Coin: gull\./)).toBeInTheDocument();
+  });
+
+  it('hands the reroll to the editor', async () => {
+    const { onRerollOpening } = renderOpening();
+    await userEvent.click(screen.getByRole('button', { name: /Reroll/ }));
+    expect(onRerollOpening).toHaveBeenCalledTimes(1);
+  });
+
+  it('says a world with no locations has nowhere to start', () => {
+    const homeless: RuleWorld = { ...openingWorld, locations: [] };
+    renderBench(homeless, {
+      tab: 'opening',
+      opening: buildOpening(homeless, buildLens(homeless, EMPTY_LENS), {}),
+    });
+    expect(screen.getByText(/nowhere to start/)).toBeInTheDocument();
   });
 });
 

@@ -11,7 +11,9 @@ import { resolveStartingLocation } from './startingLocation';
 import { resolvePlaceholders } from './placeholders';
 import { variableForToken, variableVariantIds, withVariant, decodeVariant, tokenVariant } from './promptVariables';
 import { NONE_PLACEHOLDER } from './promptFallbacks';
-import type { Connection, Dictionary, Entity, GameLocation, Placeholder, Stat, Trait, TraitGroup, WorldOverview } from '@/types';
+import type {
+  Connection, Dictionary, Entity, GameLocation, Placeholder, PlayerStat, Stat, Trait, TraitGroup, WorldOverview,
+} from '@/types';
 
 const STATS_VARIABLE = variableForToken('<STATS DESCRIPTION>')!;
 const STATS_TOKENS = [
@@ -32,6 +34,20 @@ export interface AuthoredWorld {
   placeholders?: Placeholder[];
 }
 
+/** Overrides for a preview scoped tighter than "the world's own opening" — the Test Bench's Opening
+ *  instrument passes the lens PC's traits, its settled stats and its frozen rolls through these. */
+export interface AuthoredPreviewOptions {
+  /** The traits the Traits block renders, in place of the world's defaults. */
+  activeTraitIds?: string[];
+  /** The stats the Stats chips render, in place of the authored list at its starting values. */
+  stats?: PlayerStat[];
+  /** The location the scene opens at, in place of a fresh starting-location roll. `null` is a real
+   *  choice (nowhere), so only an absent field falls back. */
+  location?: GameLocation | null;
+  /** Chip resolution, in place of a fresh unrecorded roll. */
+  resolve?: (text: string) => string;
+}
+
 /**
  * What the world being edited would put into a prompt, for the editor's Preview — the same context builders
  * the running game feeds its prompts, given the authored world instead of a playthrough.
@@ -42,15 +58,22 @@ export interface AuthoredWorld {
  * (the player's action, the narration, who is speaking) are absent, so the caller's sample pool still
  * covers them — the same layering `composePreviewValues` does for a live game.
  */
-export function authoredPreviewValues(world: AuthoredWorld): Record<string, string> {
+export function authoredPreviewValues(
+  world: AuthoredWorld,
+  options: AuthoredPreviewOptions = {},
+): Record<string, string> {
+  // Destructuring defaults are runtime-only backstops: the type demands the slices, but a hand-edited
+  // world JSON can still arrive without one, and a preview should read empty rather than fail.
   const {
-    worldOverview, stats, locations, connections = [], entities, traits, traitGroups = [], dictionaries = [], placeholders = [],
+    worldOverview, stats = [], locations = [], connections = [], entities = [], traits = [],
+    traitGroups = [], dictionaries = [], placeholders = [],
   } = world;
   // A world with no locations yet previews as "nowhere" rather than failing — the builders all take null.
-  const loc = resolveStartingLocation(locations, null) ?? null;
+  const loc = options.location !== undefined ? options.location : resolveStartingLocation(locations, null) ?? null;
   // Preview-only: chips resolve against a fresh roll, since a world has no playthrough whose rolls could
   // be reused. A Wildcard therefore shows one of its values rather than its raw token.
-  const resolve = (text: string) => resolvePlaceholders(text, { placeholders, rolls: {} });
+  const resolve = options.resolve
+    ?? ((text: string) => resolvePlaceholders(text, { placeholders, rolls: {} }));
 
   const presentIds = entityIdsAt(loc?.id, entities);
   const subEntityIds = sublocationEntityIds(loc, locations, entities);
@@ -72,7 +95,8 @@ export function authoredPreviewValues(world: AuthoredWorld): Record<string, stri
   };
 
   // Stats read their authored starting value — the same shape a playthrough's stats carry.
-  const playerStats = stats.map((stat) => ({ ...stat, value: typeof stat.value === 'number' ? stat.value : stat.min }));
+  const playerStats = options.stats
+    ?? stats.map((stat) => ({ ...stat, value: typeof stat.value === 'number' ? stat.value : stat.min }));
   const statsValues = Object.fromEntries(STATS_TOKENS.map((token) => {
     const sel = decodeVariant(STATS_VARIABLE, tokenVariant(token));
     return [token, buildStatContext(
@@ -87,12 +111,12 @@ export function authoredPreviewValues(world: AuthoredWorld): Record<string, stri
   const lore = flattenEnabledBookEntries(dictionaries).filter((entry) => entry.enabled !== false);
   const loreBlock = (entries: typeof lore) => buildDictionaryContext(entries, false) || NONE_PLACEHOLDER;
 
-  const defaultTraitIds = traits.filter((t) => t.isDefault).map((t) => t.id);
+  const contextTraitIds = options.activeTraitIds ?? traits.filter((t) => t.isDefault).map((t) => t.id);
   const traitsFor = (format: 'simple' | 'markdown' | 'xml') =>
-    buildTraitContext(defaultTraitIds, traits, traitGroups, format);
+    buildTraitContext(contextTraitIds, traits, traitGroups, format);
 
   const values: Record<string, string> = {
-    '<WORLD DESCRIPTION>': worldOverview.systemPrompt || '',
+    '<WORLD DESCRIPTION>': worldOverview?.systemPrompt || '',
     ...statsValues,
     '<TRAITS DESCRIPTION>': traitsFor('simple'),
     '<TRAITS DESCRIPTION|markdown>': traitsFor('markdown'),

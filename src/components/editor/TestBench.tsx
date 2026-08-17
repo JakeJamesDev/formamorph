@@ -1,7 +1,6 @@
 /**
  * The Test Bench — the World Editor's third panel, where an author tests how the harness reads their
- * world. Chrome is fixed: bench header, lens row, instrument tab strip, content. Opening is not built yet
- * and renders as a disabled tab, so the shape of the surface is honest.
+ * world. Chrome is fixed: bench header, lens row, instrument tab strip, content.
  *
  * Presentational: findings arrive as props, and navigation is a callback the editor fulfills, so the
  * panel renders identically inside the desktop split and the mobile sheet.
@@ -20,8 +19,10 @@ import { SEVERITIES, type Finding, type FindingGroup, type FindingSection, type 
 import type { TriggerReport } from '@/lib/testBench/triggers';
 import type { SemanticStatus } from '@/lib/testBench/useTriggerSemantics';
 import type { AiContextData } from '@/lib/testBench/aiContext';
+import type { OpeningData } from '@/lib/testBench/opening';
 import { AiContextInstrument } from './AiContextInstrument';
 import { BENCH_TABS, type BenchTab } from './benchTabs';
+import { OpeningInstrument } from './OpeningInstrument';
 import { TriggersInstrument } from './TriggersInstrument';
 
 /** Where the author is sent when they click an item a finding names. */
@@ -270,6 +271,10 @@ export interface TestBenchProps {
   onSemanticChange: (on: boolean) => void;
   /** What the harness serves from the lens location — the AI Context instrument's whole view-model. */
   aiContext: AiContextData;
+  /** What a fresh game as the lens PC looks like — the Opening instrument's whole view-model. */
+  opening: OpeningData;
+  /** Draw fresh values for the Opening instrument's unpinned placeholders. */
+  onRerollOpening: () => void;
 }
 
 export function TestBench({
@@ -278,6 +283,7 @@ export function TestBench({
   onOpenItem, onFixRule, onDismissRule, onRestoreRule, onMarkAllSeen, onCheckStatCode,
   triggerText, onTriggerTextChange, triggerHistory, onTriggerHistoryChange, triggerReport,
   matchingFindings, onPasteLastTurn, semanticStatus, semanticOn, onSemanticChange, aiContext,
+  opening, onRerollOpening,
 }: TestBenchProps) {
   return (
     <div className="flex h-full flex-col gap-2 p-3">
@@ -303,7 +309,7 @@ export function TestBench({
       >
         <TabsList className="grid h-auto w-full grid-cols-4">
           {BENCH_TABS.map((t) => (
-            <TabsTrigger key={t.value} value={t.value} disabled={'unbuilt' in t && t.unbuilt} className="px-1">
+            <TabsTrigger key={t.value} value={t.value} className="px-1">
               {t.label}
               {t.value === 'issues' && groups.length > 0 && (
                 <span className="ml-1 rounded-full bg-warning/20 px-1 text-meta text-warning">{groups.length}</span>
@@ -311,7 +317,7 @@ export function TestBench({
             </TabsTrigger>
           ))}
         </TabsList>
-        {/* One panel per trigger so every `aria-controls` resolves; only the built instrument has a body. */}
+        {/* One panel per trigger so every `aria-controls` resolves. */}
         {BENCH_TABS.map((t) => (
           <TabsContent key={t.value} value={t.value} className="mt-0 min-h-0 flex-grow">
             {t.value === 'issues' && (
@@ -346,6 +352,7 @@ export function TestBench({
               />
             )}
             {t.value === 'aiContext' && <AiContextInstrument data={aiContext} />}
+            {t.value === 'opening' && <OpeningInstrument data={opening} onReroll={onRerollOpening} />}
           </TabsContent>
         ))}
       </Tabs>

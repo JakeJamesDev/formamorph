@@ -26,10 +26,10 @@ import { estimateTokens } from '@/lib/memoryUtils';
 import { NONE_PLACEHOLDER } from '@/lib/promptFallbacks';
 import { decodeVariant, tokenVariant, variableForToken } from '@/lib/promptVariables';
 import { buildStatContext, type StatPieces } from '@/lib/statContext';
-import { enabledStats, exclusiveSiblings } from '@/lib/traitEffects';
+import { enabledStats } from '@/lib/traitEffects';
 import { buildTraitContext } from '@/lib/traitTree';
 import type { Entity, GameLocation, PlayerStat } from '@/types';
-import { resolveLensText, type BenchLens } from './lens';
+import { lensActiveTraits, resolveLensText, type BenchLens } from './lens';
 import type { RuleWorld } from './rules';
 
 /** The slices of the authored world this instrument reads. */
@@ -171,17 +171,9 @@ const ROSTERS: { scope: RosterScope; label: string; block: ContextBlockId }[] = 
   { scope: 'reachable', label: 'In Reachable Locations', block: 'reachableEntities' },
 ];
 
-/**
- * The traits active under this lens: the world's defaults, with the lens PC replacing whichever default its
- * own exclusive group contributed — the same substitution choosing that character in play makes.
- */
-function activeTraitIds(world: AiContextWorld, lens: BenchLens): string[] {
-  const traits = world.traits ?? [];
-  const defaults = traits.filter((t) => t.isDefault).map((t) => t.id);
-  if (!lens.pc) return defaults;
-  const retired = new Set(exclusiveSiblings(lens.pc, traits, world.traitGroups ?? []));
-  return [...defaults.filter((id) => id !== lens.pc!.id && !retired.has(id)), lens.pc.id];
-}
+/** The traits active under this lens, as the shared fresh-game substitution computes them. */
+const activeTraitIds = (world: AiContextWorld, lens: BenchLens): string[] =>
+  lensActiveTraits(world, lens).map((t) => t.id);
 
 /** The world's stats at their authored starting values, minus the ones this PC switches off. */
 function lensStats(world: AiContextWorld, lens: BenchLens): PlayerStat[] {
