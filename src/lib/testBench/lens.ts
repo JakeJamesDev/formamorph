@@ -9,7 +9,9 @@
  * Pure and world-shaped: nothing here reads storage or React, and nothing writes the world.
  */
 import { describePlaceholders } from '@/lib/placeholders';
-import { activePlaceholderPins, activeStatEnabled, inAuthoredOrder, traitOrderIndex } from '@/lib/traitEffects';
+import {
+  activePlaceholderPins, activeStatEnabled, exclusiveSiblings, inAuthoredOrder, traitOrderIndex,
+} from '@/lib/traitEffects';
 import type { GameLocation, Placeholder, Trait } from '@/types';
 import type { RuleWorld } from './rules';
 
@@ -145,6 +147,23 @@ export function buildLens(world: LensWorld, state: LensState): BenchLens {
     brokenPins: pc ? brokenPinsOf(pc, world.placeholders ?? []) : [],
     statEnabled: activeStatEnabled(world.stats ?? [], active),
   };
+}
+
+/**
+ * The traits a fresh game as this lens's PC starts with: the world's defaults, with the PC replacing
+ * whichever default its own exclusive group contributed, in authored order — the same substitution and
+ * ordering that choosing the character at game start applies.
+ */
+export function lensActiveTraits(world: LensWorld, lens: BenchLens): Trait[] {
+  const traits = world.traits ?? [];
+  const groups = world.traitGroups ?? [];
+  const order = traitOrderIndex(traits, groups);
+  const defaults = traits.filter((t) => t.isDefault);
+  if (!lens.pc) return inAuthoredOrder(defaults, order);
+  const pc = lens.pc;
+  const retired = new Set(exclusiveSiblings(pc, traits, groups));
+  const kept = defaults.filter((t) => t.id !== pc.id && !retired.has(t.id));
+  return inAuthoredOrder([...kept, pc], order);
 }
 
 /** A stat the PC switches away from the world's default, named as the stat list names it. */

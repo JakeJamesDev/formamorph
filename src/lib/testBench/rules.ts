@@ -8,6 +8,7 @@
  */
 import { collectPlaceholderPlacements, describePlaceholders, hasPlaceholders } from '@/lib/placeholders';
 import { matchKey } from '@/lib/entityMatch';
+import { activeDescriptor } from '@/lib/statContext';
 import { usesStatClock } from '@/lib/statCodeExecutor';
 import { clamp } from '@/lib/utils';
 import type {
@@ -370,6 +371,11 @@ const chipOwners = (world: RuleWorld): ChipOwner[] => [
   })),
 ];
 
+/** Every chip-bearing authored field, flat — the same field list the gameplay priming pass rolls across,
+ *  exported so the Bench's opening rolls prime exactly the placements a fresh game would. */
+export const chipBearingTexts = (world: RuleWorld): string[] =>
+  chipOwners(world).flatMap((owner) => owner.texts).filter((text): text is string => !!text);
+
 /** Every placeholder id the chips in `texts` reference, whatever their mode. */
 const chipIds = (texts: Array<string | undefined>): Set<string> => {
   const { worldIds, unique } = collectPlaceholderPlacements(texts.filter((t): t is string => !!t));
@@ -656,14 +662,8 @@ const startsInRange = (stat: Stat): boolean => {
   return value >= stat.min && value <= stat.max;
 };
 
-/** The descriptor a value falls under, or undefined when it sits above every band. Mirrors the prompt's own
- *  lookup (buildStatContext): thresholds are percentages of min→max, sorted ascending, and the first band at
- *  or above the value wins — so the order the author listed them in never decides anything. */
-const descriptorAt = (stat: Stat, value: number): StatDescriptor | undefined => {
-  const range = stat.max - stat.min;
-  const percent = range === 0 ? 0 : ((value - stat.min) / range) * 100;
-  return [...(stat.descriptors ?? [])].sort((a, b) => a.threshold - b.threshold).find((d) => percent <= d.threshold);
-};
+// Banding goes through statContext.activeDescriptor — the prompt's own lookup — so a rule can never band
+// a value differently from play.
 
 const statStartingOutOfRange: Rule = {
   id: 'stat-starting-out-of-range',
@@ -688,7 +688,7 @@ const statStartNoDescriptor: Rule = {
   check: (world) => (world.stats ?? [])
     // A start outside the range is the sharper diagnosis and already fires; its band is nobody's question.
     .filter((stat) => (stat.descriptors ?? []).length > 0 && startsInRange(stat)
-      && !descriptorAt(stat, startingValue(stat)))
+      && !activeDescriptor(stat, startingValue(stat)))
     .map((stat) => {
       const item = namedItem(stat.id, stat.name, world);
       return finding(

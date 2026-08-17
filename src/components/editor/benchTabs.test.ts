@@ -2,15 +2,11 @@ import { describe, it, expect } from 'vitest';
 import { asBenchTab, BENCH_TABS, BUILT_BENCH_TABS } from './benchTabs';
 
 describe('bench tab routing', () => {
-  it('accepts a built instrument', () => {
+  it('accepts every instrument in the strip', () => {
     expect(asBenchTab('issues')).toBe('issues');
     expect(asBenchTab('triggers')).toBe('triggers');
     expect(asBenchTab('aiContext')).toBe('aiContext');
-  });
-
-  it('refuses an instrument that only renders as a disabled tab', () => {
-    // Routing to one would open the Bench standing on a panel with nothing in it.
-    expect(asBenchTab('opening')).toBeNull();
+    expect(asBenchTab('opening')).toBe('opening');
   });
 
   it('refuses a name that is not a tab at all, and an absent one', () => {

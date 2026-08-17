@@ -27,6 +27,8 @@ import { asBenchTab, type BenchTab } from '@/components/editor/benchTabs';
 import { Drawer, DrawerContent, DrawerTitle } from '@/components/ui/drawer';
 import { applyRuleFix, RULES, selectMatchingFindings, type Finding, type FindingSection } from '@/lib/testBench/rules';
 import { buildAiContext, EMPTY_AI_CONTEXT } from '@/lib/testBench/aiContext';
+import { buildOpening, EMPTY_OPENING } from '@/lib/testBench/opening';
+import { useOpeningRolls } from '@/lib/testBench/useOpeningRolls';
 import { loadLastTurn, type LastTurn } from '@/lib/testBench/lastTurn';
 import { checkStatCode } from '@/lib/testBench/statCodeCheck';
 import { lensStatOverrides } from '@/lib/testBench/lens';
@@ -341,6 +343,18 @@ const WorldEditorInner = ({ onClose, embedded = false, backButton }: {
     () => (aiContextLive ? buildAiContext(benchWorld, benchLens.lens) : EMPTY_AI_CONTEXT),
     [aiContextLive, benchWorld, benchLens.lens],
   );
+  // The Opening instrument's frozen rolls live above the assembly so a tab switch never rerolls them; the
+  // assembly itself — stat settling, the roll table, the whole first prompt — runs only while watched.
+  const openingLive = benchOpen && benchTab === 'opening';
+  const openingRolls = useOpeningRolls(benchWorld, openingLive);
+  const opening = useMemo(
+    () => (openingLive ? buildOpening(benchWorld, benchLens.lens, openingRolls.rolls) : EMPTY_OPENING),
+    [openingLive, benchWorld, benchLens.lens, openingRolls.rolls],
+  );
+  const rerollOpening = useCallback(
+    () => openingRolls.reroll(benchLens.lens),
+    [openingRolls, benchLens.lens],
+  );
   // The world's most recent save, read while the Bench is open so a turn played since it was last opened is
   // the one offered. Absent when the world has never been played — then there is no button at all.
   const [lastTurn, setLastTurn] = useState<LastTurn | null>(null);
@@ -447,6 +461,8 @@ const WorldEditorInner = ({ onClose, embedded = false, backButton }: {
       semanticOn={semanticOn}
       onSemanticChange={setSemanticOn}
       aiContext={aiContext}
+      opening={opening}
+      onRerollOpening={rerollOpening}
     />
   );
   // DEV dev-router: `#dev?modal=worldEditor&bench=issues` opens the Bench on an instrument.
