@@ -31,8 +31,10 @@ export function buildStatContext(
       const range = stat.max - stat.min;
       const percentage = range === 0 ? 0 : ((stat.value - stat.min) / range) * 100;
       // Sort ascending: the band is the first threshold at/above the current %, so order must be low→high
-      // regardless of how the world stored its descriptors.
-      const descriptor = [...stat.descriptors]
+      // regardless of how the world stored its descriptors. Read as `?? []` because the field the type calls
+      // required can be absent in hand-edited world JSON, and a stat with no bands has a status to omit
+      // rather than a turn to take down.
+      const descriptor = [...(stat.descriptors ?? [])]
         .sort((a, b) => a.threshold - b.threshold)
         .find((d) => percentage <= d.threshold);
       // Whole numbers only: regen and stat code scale by the turn's measured hours, so a raw value can be

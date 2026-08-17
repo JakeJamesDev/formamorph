@@ -14,6 +14,13 @@ const focus = {
   descriptors: [{ id: 'd', threshold: 100, description: 'Sharp' }],
 } as unknown as PlayerStat;
 
+// The same stat as hand-edited or third-party world JSON delivers it: the descriptors array the type calls
+// required is simply not there. It reaches a live turn, not just the editor, so it has a status to omit
+// rather than a prompt to take down.
+const bandless = {
+  id: 'v', name: 'Vigor', type: 'number', description: 'Physical stamina.', min: 0, max: 100, value: 62, regen: 0,
+} as unknown as PlayerStat;
+
 const all = { values: true, status: true, meaning: true };
 
 describe('buildStatContext', () => {
@@ -77,6 +84,19 @@ describe('buildStatContext', () => {
   });
   it('percentage value + status → descriptor parenthesized after the percent', () => {
     expect(buildStatContext([focus], { values: true, status: true, meaning: false })).toBe('Focus: 40% (Sharp)');
+  });
+  it('a stat carrying no descriptors at all renders every other piece and omits the status', () => {
+    expect(buildStatContext([bandless], all)).toBe('Vigor: 62/100 — Physical stamina.');
+    expect(buildStatContext([bandless], { values: false, status: true, meaning: false })).toBe('Vigor');
+  });
+  it('an absent descriptors array reads exactly as an empty one, in every format', () => {
+    const empty = { ...bandless, descriptors: [] } as PlayerStat;
+    for (const format of ['simple', 'markdown', 'xml'] as const) {
+      expect(buildStatContext([bandless], all, format)).toBe(buildStatContext([empty], all, format));
+    }
+    expect(buildStatContext([bandless], all, 'xml')).toBe(
+      '<stat>\n  <name>Vigor</name>\n  <value>62/100</value>\n  <meaning>Physical stamina.</meaning>\n</stat>',
+    );
   });
   it('percentage renders as N% in xml', () => {
     expect(buildStatContext([focus], { values: true, status: false, meaning: false }, 'xml')).toBe(
