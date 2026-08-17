@@ -35,7 +35,10 @@ vi.mock('react-toastify', () => ({
 /** Two unambiguous defects on two tabs — an articled alias and a placeholder nothing uses — so the Bench
  *  shows two fixable rows and a second fix can be pressed without waiting for the first row to clear. */
 const WORLD = benchEditorWorld({
-  entities: [{ id: 'e1', name: 'Maren', aliases: ['the visitor'], locations: ['harbor'] }],
+  entities: [{
+    id: 'e1', name: 'Maren', aliases: ['the visitor'], locations: ['harbor'],
+    playerDescription: 'A trader.', aiDescription: 'Trades salt and rope.',
+  }],
   placeholders: [{ id: 'p1', name: 'Hue', values: ['red', 'blue'] }],
 });
 

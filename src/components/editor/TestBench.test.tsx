@@ -21,12 +21,17 @@ import {
 
 // The panel renders whatever the rule pass produced, so the fixture goes through the real engine rather
 // than hand-built groups — a row shape the rules can't actually emit would prove nothing. The base world
-// is structurally sound (a starting location, every entity placed) so only the authored defects fire.
+// is structurally sound and described (a starting location, every entity placed with both descriptions,
+// a prompt and a readme) so only the authored defects fire.
 const world = (entities: Entity[]): RuleWorld => ({
-  worldOverview: { name: 'Sedge Landing', description: '', systemPrompt: '' } as WorldOverview,
+  worldOverview: {
+    name: 'Sedge Landing', description: '', systemPrompt: 'Narrate the fen.', readme: 'A fen primer.',
+  } as WorldOverview,
   stats: [],
   locations: [{ id: 'harbor', name: 'Harbor Steps', isStarting: true }],
-  entities: entities.map((e) => ({ locations: ['harbor'], ...e })),
+  entities: entities.map((e) => ({
+    locations: ['harbor'], playerDescription: 'Seen around.', aiDescription: 'A fen regular.', ...e,
+  })),
   traits: [], statUpdates: [], dictionaries: [], placeholders: [],
 });
 

@@ -6,10 +6,16 @@
  * Everything here is pure: no React, no storage, no world mutation. A rule diagnoses; where the repair is
  * unambiguous it also carries a `fix`, which returns a new world rather than editing the one it was given.
  */
-import { collectPlaceholderPlacements, describePlaceholders, hasPlaceholders } from '@/lib/placeholders';
+import {
+  collectPlaceholderPlacements, describePlaceholders, hasPlaceholders, placeholderWeight,
+} from '@/lib/placeholders';
 import { matchKey } from '@/lib/entityMatch';
 import { activeDescriptor } from '@/lib/statContext';
 import { usesStatClock } from '@/lib/statCodeExecutor';
+import { estimateTokens } from '@/lib/memoryUtils';
+import { entityImages } from '@/lib/entityImages';
+import { dataUrlBytes, isRemoteImage } from '@/lib/imageBytes';
+import { formatBytes, IMAGE_CAPS, type ImageCap } from '@/lib/imageOptim';
 import { clamp } from '@/lib/utils';
 import type {
   DictionaryEntry, Entity, GameLocation, Placeholder, Stat, StatDescriptor, Trait, World,
@@ -869,6 +875,467 @@ const statAiLockFrozen: Rule = {
   },
 };
 
+// ── Reference integrity, continued: the checks ticket 02 deferred ─────────────────────────────────────────
+
+const locationParentOrphan: Rule = {
+  id: 'location-parent-orphan',
+  severity: 'error',
+  section: 'locations',
+  summary: (count) => `${count} locations sit under a parent location that doesn’t exist`,
+  check: (world) => {
+    const known = new Set((world.locations ?? []).map((l) => l.id));
+    return (world.locations ?? [])
+      .filter((location) => location.parentId != null && !known.has(location.parentId))
+      .map((location) => {
+        const item = namedItem(location.id, location.name, world);
+        return finding(
+          locationParentOrphan,
+          `${quote(item.name)} sits under a parent location that doesn’t exist — the containment tree is silently broken`,
+          [item],
+        );
+      });
+  },
+  // A dead parent already contributes nothing in play, so making the location top-level states what is
+  // already true; which real parent it belongs under instead is the author's call, made from a working tree.
+  fix: (world) => {
+    const known = new Set((world.locations ?? []).map((l) => l.id));
+    return withSlice(world, 'locations', mapChanged(world.locations ?? [], (location) =>
+      location.parentId != null && !known.has(location.parentId) ? { ...location, parentId: null } : location));
+  },
+};
+
+const connectionEndpointOrphan: Rule = {
+  id: 'connection-endpoint-orphan',
+  severity: 'warning',
+  section: 'locations',
+  summary: (count) => `${count} travel links point at locations that don’t exist`,
+  check: (world) => {
+    const byId = new Map((world.locations ?? []).map((l) => [l.id, l]));
+    return (world.connections ?? []).flatMap((connection) => {
+      const from = byId.get(connection.from);
+      const to = byId.get(connection.to);
+      if (from && to) return [];
+      const survivor = from ?? to;
+      // The way in is the endpoint that still exists — the link itself has no row of its own to open.
+      const item = survivor ? namedItem(survivor.id, survivor.name, world) : worldItem(world);
+      const message = survivor
+        ? `A travel link ${from ? 'from' : 'to'} ${quote(item.name)} points at a location that doesn’t exist — it can never be traveled`
+        : 'A travel link runs between two locations that don’t exist';
+      return [finding(connectionEndpointOrphan, message, [item])];
+    });
+  },
+};
+
+const statUpdateUnknownStat: Rule = {
+  id: 'stat-update-unknown-stat',
+  severity: 'warning',
+  section: 'stats',
+  summary: (count) => `${count} stat updates target stats that don’t exist`,
+  check: (world) => {
+    // Updates target runtime names, where chips have resolved — so both spellings are valid targets.
+    const known = new Set((world.stats ?? []).flatMap(
+      (s) => [s.name, describePlaceholders(s.name ?? '', world.placeholders)],
+    ));
+    return (world.statUpdates ?? []).flatMap((update) => {
+      const item = namedItem(update.id, update.name, world);
+      return (update.stats ?? [])
+        .filter((name) => name && !known.has(name))
+        .map((name) => finding(
+          statUpdateUnknownStat,
+          `${quote(item.name)} targets a stat named ${quote(name)}, which doesn’t exist`,
+          [item],
+        ));
+    });
+  },
+};
+
+// ── Entity hygiene, continued ─────────────────────────────────────────────────────────────────────────────
+
+const aliasLowercaseNoTwin: Rule = {
+  id: 'alias-lowercase-no-twin',
+  severity: 'info',
+  section: 'entities',
+  matching: true,
+  summary: (count) =>
+    `${count} lowercase multi-word aliases have no capitalized twin — alias matching is case-sensitive, so they miss wherever the text capitalizes them`,
+  check: (world) => (world.entities ?? []).flatMap((entity) => {
+    const aliases = aliasesOf(entity, world);
+    return aliases
+      // The leading article is the sharper diagnosis; once its fix strips it, this rule picks the alias up.
+      .filter((alias) => !LEADING_ARTICLE.test(alias))
+      .filter((alias) => /\s/.test(alias) && /[a-z]/.test(alias) && alias === alias.toLowerCase())
+      .filter((alias) => !aliases.some((twin) => twin !== alias && twin.toLowerCase() === alias.toLowerCase()))
+      .map((alias) => finding(
+        aliasLowercaseNoTwin,
+        `Alias ${quote(alias)} is all lowercase with no capitalized twin — alias matching is case-sensitive, so ${quote(alias.charAt(0).toUpperCase() + alias.slice(1))} at a sentence start is never detected`,
+        [asItem(entity, world)],
+      ));
+  }),
+};
+
+const entityNameInWildcardPool: Rule = {
+  id: 'entity-name-in-wildcard-pool',
+  severity: 'warning',
+  section: 'entities',
+  matching: true,
+  summary: (count) => `${count} entity names double as Wildcard values, so a roll can impersonate the entity`,
+  check: (world) => (world.entities ?? []).flatMap((entity) => {
+    const nameKey = matchKey(describePlaceholders(entity.name ?? '', world.placeholders));
+    if (!nameKey) return [];
+    return (world.placeholders ?? [])
+      .filter((ph) => (ph.values ?? []).length >= 2 && (ph.values ?? []).some((value) => matchKey(value) === nameKey))
+      .map((ph) => {
+        const item = asItem(entity, world);
+        return finding(
+          entityNameInWildcardPool,
+          `${quote(item.name)} is also a value of the Wildcard ${quote(ph.name)} — a roll that lands on it reads as a mention of the entity`,
+          [item, namedItem(ph.id, ph.name, world, 'placeholders')],
+        );
+      });
+  }),
+};
+
+const entityMissingDescription: Rule = {
+  id: 'entity-missing-description',
+  severity: 'info',
+  section: 'entities',
+  summary: (count) => `${count} entities have no player description or no AI description`,
+  check: (world) => (world.entities ?? []).flatMap((entity) => {
+    const noPlayer = !entity.playerDescription?.trim();
+    const noAi = !entity.aiDescription?.trim();
+    if (!noPlayer && !noAi) return [];
+    const item = asItem(entity, world);
+    const missing = noPlayer && noAi ? 'no player or AI description'
+      : noPlayer ? 'no player description' : 'no AI description';
+    return [finding(
+      entityMissingDescription,
+      `${quote(item.name)} has ${missing}${noAi ? ' — the narrator improvises from the bare name' : ''}`,
+      [item],
+    )];
+  }),
+};
+
+// Long enough that serving the full text on every turn is a real cost to a small model's budget — the
+// summary field exists exactly to shorten these.
+const LONG_AI_DESCRIPTION_TOKENS = 150;
+
+const entityLongDescriptionNoSummary: Rule = {
+  id: 'entity-long-description-no-summary',
+  severity: 'info',
+  section: 'entities',
+  summary: (count) =>
+    `${count} entities have a long AI description and no AI summary, so the whole text enters the prompt every time`,
+  check: (world) => (world.entities ?? []).flatMap((entity) => {
+    const tokens = estimateTokens((entity.aiDescription ?? '').length);
+    if (entity.aiSummary?.trim() || tokens <= LONG_AI_DESCRIPTION_TOKENS) return [];
+    const item = asItem(entity, world);
+    return [finding(
+      entityLongDescriptionNoSummary,
+      `${quote(item.name)}’s AI description is ~${tokens} tokens with no AI summary — the whole text enters the prompt every time`,
+      [item],
+    )];
+  }),
+};
+
+const aiSummaryHidesDescription: Rule = {
+  id: 'ai-summary-hides-description',
+  severity: 'info',
+  section: 'entities',
+  summary: (count) => `${count} items have an AI summary, so only the narrator sees their full description`,
+  check: (world) => {
+    const hides = (item: { aiSummary?: string; aiDescription?: string }) =>
+      !!item.aiSummary?.trim() && !!item.aiDescription?.trim();
+    const owners: FindingItem[] = [
+      ...(world.entities ?? []).filter(hides).map((e) => ({ ...asItem(e, world), section: 'entities' as const })),
+      ...(world.locations ?? []).filter(hides).map((l) => namedItem(l.id, l.name, world, 'locations')),
+    ];
+    return owners.map((owner) => finding(
+      aiSummaryHidesDescription,
+      `${quote(owner.name)} has an AI summary, so only the narrator sees its full description`,
+      [owner],
+    ));
+  },
+};
+
+const locationNoEntities: Rule = {
+  id: 'location-no-entities',
+  severity: 'info',
+  section: 'locations',
+  summary: (count) => `${count} locations contain no entities`,
+  check: (world) => {
+    const occupied = new Set((world.entities ?? []).flatMap((e) => e.locations ?? []));
+    return (world.locations ?? [])
+      .filter((location) => !occupied.has(location.id))
+      .map((location) => {
+        const item = namedItem(location.id, location.name, world);
+        return finding(locationNoEntities, `${quote(item.name)} contains no entities`, [item]);
+      });
+  },
+};
+
+// ── Trait groups ──────────────────────────────────────────────────────────────────────────────────────────
+
+const traitGroupMultipleDefaults: Rule = {
+  id: 'trait-group-multiple-defaults',
+  severity: 'warning',
+  section: 'traits',
+  summary: (count) => `${count} exclusive trait groups mark two or more traits as default`,
+  check: (world) => {
+    const traits = world.traits ?? [];
+    return (world.traitGroups ?? [])
+      .filter((group) => group.exclusive)
+      .flatMap((group) => {
+        const defaults = traits.filter((t) => t.groupId === group.id && t.isDefault);
+        if (defaults.length < 2) return [];
+        const groupItem = namedItem(group.id, group.name, world);
+        const defaultItems = defaults.map((t) => namedItem(t.id, t.name, world));
+        return [finding(
+          traitGroupMultipleDefaults,
+          `${quote(groupItem.name)} allows one active trait but marks ${listNames(defaultItems.map((i) => i.name))} as defaults — only one can actually apply`,
+          [groupItem, ...defaultItems],
+        )];
+      });
+  },
+};
+
+const traitGroupTooSmall: Rule = {
+  id: 'trait-group-too-small',
+  severity: 'info',
+  section: 'traits',
+  summary: (count) => `${count} exclusive trait groups hold fewer than two traits`,
+  check: (world) => {
+    const traits = world.traits ?? [];
+    return (world.traitGroups ?? [])
+      .filter((group) => group.exclusive)
+      .map((group) => ({ group, size: traits.filter((t) => t.groupId === group.id).length }))
+      .filter(({ size }) => size < 2)
+      .map(({ group, size }) => {
+        const item = namedItem(group.id, group.name, world);
+        return finding(
+          traitGroupTooSmall,
+          `${quote(item.name)} is an exclusive group with ${size === 0 ? 'no traits' : 'only one trait'} — a choice that isn’t a choice`,
+          [item],
+        );
+      });
+  },
+};
+
+// ── Placeholder pools ─────────────────────────────────────────────────────────────────────────────────────
+
+/** The values a roll can actually land on. Every value benched falls back to a uniform draw
+ *  (`weightedPick`), so an all-zero weight map benches nothing. */
+const drawableValues = (ph: Placeholder): string[] => {
+  const values = ph.values ?? [];
+  const positive = values.filter((value) => placeholderWeight(ph, value) > 0);
+  return positive.length > 0 ? positive : values;
+};
+
+const placeholderUniquePoolTooSmall: Rule = {
+  id: 'placeholder-unique-pool-too-small',
+  severity: 'warning',
+  section: 'placeholders',
+  summary: (count) => `${count} placeholders carry more Unique chips than they have values, so independent draws are bound to repeat`,
+  check: (world) => {
+    const { unique } = collectPlaceholderPlacements(chipBearingTexts(world));
+    const chipsPer = new Map<string, number>();
+    for (const placement of unique) chipsPer.set(placement.id, (chipsPer.get(placement.id) ?? 0) + 1);
+    const byId = new Map((world.placeholders ?? []).map((p) => [p.id, p]));
+    return [...chipsPer.entries()].flatMap(([id, chips]) => {
+      const ph = byId.get(id);
+      // A chip at a missing placeholder is chip-unknown-placeholder's business; a Variable never varies anyway.
+      if (!ph || (ph.values ?? []).length < 2) return [];
+      const pool = drawableValues(ph).length;
+      if (chips <= pool) return [];
+      const item = namedItem(ph.id, ph.name, world);
+      return [finding(
+        placeholderUniquePoolTooSmall,
+        `${chips} Unique chips draw from ${quote(item.name)}, which offers only ${pool} ${pool === 1 ? 'value' : 'values'} — independent draws are bound to repeat`,
+        [item],
+      )];
+    });
+  },
+};
+
+/** The weight-map keys that name no value in the pool — each one a weight applying to nothing. */
+const deadWeightKeys = (ph: Placeholder): string[] => {
+  const values = new Set(ph.values ?? []);
+  return Object.keys(ph.weights ?? {}).filter((key) => !values.has(key));
+};
+
+const placeholderWeightUnknownValue: Rule = {
+  id: 'placeholder-weight-unknown-value',
+  severity: 'warning',
+  section: 'placeholders',
+  summary: (count) => `${count} placeholders weight values their pool doesn’t contain`,
+  check: (world) => (world.placeholders ?? []).flatMap((ph) => {
+    const dead = deadWeightKeys(ph);
+    if (dead.length === 0) return [];
+    const item = namedItem(ph.id, ph.name, world);
+    return [finding(
+      placeholderWeightUnknownValue,
+      `${quote(item.name)} weights ${quote(dead[0])}, which isn’t one of its values — the weight applies to nothing`,
+      [item],
+    )];
+  }),
+  fix: (world) => withSlice(world, 'placeholders', mapChanged(world.placeholders ?? [], (ph) => {
+    const dead = new Set(deadWeightKeys(ph));
+    if (dead.size === 0) return ph;
+    const weights = Object.fromEntries(Object.entries(ph.weights ?? {}).filter(([key]) => !dead.has(key)));
+    // A weight map the repair empties goes entirely — absent already means a uniform draw.
+    if (Object.keys(weights).length === 0) {
+      const { weights: _dead, ...rest } = ph;
+      return rest;
+    }
+    return { ...ph, weights };
+  })),
+};
+
+const wildcardSingleValue: Rule = {
+  id: 'wildcard-single-value',
+  severity: 'info',
+  section: 'placeholders',
+  summary: (count) => `${count} Wildcards can only ever draw one value, so they never vary`,
+  check: (world) => (world.placeholders ?? [])
+    // One authored value is a Variable, which is supposed to be fixed — only weights can strand a Wildcard.
+    .filter((ph) => (ph.values ?? []).length >= 2 && drawableValues(ph).length === 1)
+    .map((ph) => {
+      const item = namedItem(ph.id, ph.name, world);
+      return finding(
+        wildcardSingleValue,
+        `${quote(item.name)} benches every value but ${quote(drawableValues(ph)[0])} by weight, so every roll lands the same`,
+        [item],
+      );
+    }),
+};
+
+// ── Dictionary authoring, continued ───────────────────────────────────────────────────────────────────────
+
+const dictionaryKeywordSubstring: Rule = {
+  id: 'dictionary-keyword-substring',
+  severity: 'warning',
+  section: 'dictionary',
+  matching: true,
+  summary: (count) =>
+    `${count} dictionary keywords are substrings of another entry’s keyword with whole-word matching off, so text meant for one fires both`,
+  check: (world) => {
+    const entries = allEntries(world);
+    return entries.flatMap((entry) => {
+      if (entry.useRegex || entry.matchWholeWords) return [];
+      // Folding mirrors the matcher's own flags: this entry matches case-insensitively unless it says otherwise.
+      const fold = (text: string) => (entry.caseSensitive ? text.trim() : text.trim().toLowerCase());
+      return primaryKeys(entry).flatMap((keyword) => {
+        const needle = fold(keyword);
+        if (!needle) return [];
+        return entries
+          .filter((other) => other !== entry && !other.useRegex)
+          .flatMap((other) => {
+            const hit = primaryKeys(other).find((k) => {
+              const hay = fold(k);
+              return hay.length > needle.length && hay.includes(needle);
+            });
+            if (!hit) return [];
+            const item = entryItem(entry, world);
+            const otherItem = entryItem(other, world);
+            return [finding(
+              dictionaryKeywordSubstring,
+              `${quote(item.name)}’s keyword ${quote(keyword)} is a substring of ${quote(hit)} on ${quote(otherItem.name)} — with whole-word matching off, text meant for one fires both`,
+              [item, otherItem],
+            )];
+          });
+      });
+    });
+  },
+};
+
+/** Deliberately not in the matching subset: the tracer already grays a muted book and its entries with the
+ *  reason on the row, and the rule would say it a second time in the same place. */
+const dictionaryDisabled: Rule = {
+  id: 'dictionary-disabled',
+  severity: 'info',
+  section: 'dictionary',
+  summary: (count) => `${count} dictionary books or entries are disabled`,
+  check: (world) => (world.dictionaries ?? []).flatMap((bookRecord) => {
+    if (bookRecord.enabled === false) {
+      const item = namedItem(bookRecord.id, bookRecord.name, world);
+      // The book is the broader diagnosis, so its entries' own toggles aren't repeated under it.
+      return [finding(
+        dictionaryDisabled,
+        `The book ${quote(item.name)} is disabled — none of its entries can fire`,
+        [item],
+      )];
+    }
+    return (bookRecord.entries ?? [])
+      .filter((entry) => entry.enabled === false)
+      .map((entry) => {
+        const item = entryItem(entry, world);
+        return finding(dictionaryDisabled, `${quote(item.name)} is disabled and can’t fire`, [item]);
+      });
+  }),
+};
+
+// ── The world itself ──────────────────────────────────────────────────────────────────────────────────────
+
+/** The world as a finding names it — for rules whose subject has no list row of its own. */
+const worldItem = (world: RuleWorld): FindingItem => ({
+  id: 'overview',
+  name: describePlaceholders(world.worldOverview?.name ?? '', world.placeholders).trim() || 'This World',
+});
+
+const worldEmptySystemPrompt: Rule = {
+  id: 'world-empty-system-prompt',
+  severity: 'warning',
+  section: 'overview',
+  summary: () => 'The world’s system prompt is empty',
+  check: (world) => world.worldOverview?.systemPrompt?.trim() ? [] : [finding(
+    worldEmptySystemPrompt,
+    'The system prompt is empty — the AI is told nothing about how to run this world',
+    [worldItem(world)],
+  )],
+};
+
+const worldNoReadme: Rule = {
+  id: 'world-no-readme',
+  severity: 'info',
+  section: 'overview',
+  summary: () => 'The world has no readme',
+  // An introduction readme counts: the two share one show-on-enter toggle, so either one greets the player.
+  check: (world) => world.worldOverview?.readme?.trim() || world.worldOverview?.introReadme?.trim() ? [] : [finding(
+    worldNoReadme,
+    'The world has no readme — a player entering it gets no introduction',
+    [worldItem(world)],
+  )],
+};
+
+/** Every embedded image with its display budget — the same slots the Optimize Images action walks. Only the
+ *  byte budget is checked: measuring pixels needs a decode the live pass can't afford, so anything this
+ *  flags, that action also flags — never the reverse. */
+const embeddedImageSlots = (world: RuleWorld): Array<{ item: FindingItem; url: string; cap: ImageCap }> => [
+  ...(world.worldOverview?.thumbnail
+    ? [{ item: worldItem(world), url: world.worldOverview.thumbnail, cap: IMAGE_CAPS.thumbnail }]
+    : []),
+  ...(world.entities ?? []).flatMap((e) => entityImages(e).map((url) => ({
+    item: { ...asItem(e, world), section: 'entities' as const }, url, cap: IMAGE_CAPS.entity,
+  }))),
+  ...(world.locations ?? []).flatMap((l) => (l.backgroundImage
+    ? [{ item: namedItem(l.id, l.name, world, 'locations'), url: l.backgroundImage, cap: IMAGE_CAPS.background }]
+    : [])),
+];
+
+const worldOversizedImages: Rule = {
+  id: 'world-oversized-images',
+  severity: 'info',
+  section: 'overview',
+  summary: (count) => `${count} embedded images are over their size budget — Optimize Images can shrink them`,
+  check: (world) => embeddedImageSlots(world)
+    // A linked image contributes no bytes to the world, so no budget applies.
+    .filter(({ url, cap }) => !isRemoteImage(url) && dataUrlBytes(url) > cap.maxBytes)
+    .map(({ item, url, cap }) => finding(
+      worldOversizedImages,
+      `${quote(item.name)}’s image is ${formatBytes(dataUrlBytes(url))}, over its ${formatBytes(cap.maxBytes)} budget — Optimize Images can shrink it`,
+      [item],
+    )),
+};
+
 /** Every rule the Bench runs, in catalog order. Display order comes from severity, not this list. */
 export const RULES: readonly Rule[] = [
   aliasLeadingArticle, entityMatchCollision, aliasSelfDuplicate,
@@ -878,6 +1345,13 @@ export const RULES: readonly Rule[] = [
   noStartingLocation, legacyStartLocation, entityNowhere, statDisabledForever,
   statStartingOutOfRange, statStartNoDescriptor, statDescriptorDuplicateThreshold, statPercentageBounds,
   statCodeNeverTicks, statTraitDeltaClamped, statCodeOverridesTrait, statAiLockFrozen,
+  locationParentOrphan, connectionEndpointOrphan, statUpdateUnknownStat,
+  aliasLowercaseNoTwin, entityNameInWildcardPool, entityMissingDescription,
+  entityLongDescriptionNoSummary, aiSummaryHidesDescription, locationNoEntities,
+  traitGroupMultipleDefaults, traitGroupTooSmall,
+  placeholderUniquePoolTooSmall, placeholderWeightUnknownValue, wildcardSingleValue,
+  dictionaryKeywordSubstring, dictionaryDisabled,
+  worldEmptySystemPrompt, worldNoReadme, worldOversizedImages,
 ];
 
 /**
