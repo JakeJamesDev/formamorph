@@ -180,11 +180,23 @@ describe('turn pass requests', () => {
       expect(build('choices').messages[0].content).toBe('Choices: I read the notices. | The notices are damp and half-illegible.');
     });
 
-    it('appends the language line to the choices and stat prompts when the game is not in English', () => {
-      expect(build('choices', {}, {}, { language: 'French' }).systemPrompt).toContain('\n Choice language: French');
+    it('appends the language directive to the choices and stat prompts when the game is not in English', () => {
+      expect(build('choices', {}, {}, { language: 'French' }).systemPrompt).toContain('\nWrite all choices in French.');
       expect(build('statUpdates', {}, {}, { language: 'French' }).systemPrompt).toContain('\n Please write in english');
-      expect(build('choices').systemPrompt).not.toContain('Choice language');
+      expect(build('choices').systemPrompt).not.toContain('Write all choices in');
       expect(build('statUpdates').systemPrompt).not.toContain('Please write in english');
+    });
+
+    it('counts blank, whitespace and any casing of English as English in both passes', () => {
+      for (const language of ['', '   ', 'english', 'ENGLISH', ' English ']) {
+        expect(build('choices', {}, {}, { language }).systemPrompt).not.toContain('Write all choices in');
+        expect(build('statUpdates', {}, {}, { language }).systemPrompt).not.toContain('Please write in english');
+      }
+    });
+
+    it('reads a padded value as the bare language name', () => {
+      expect(build('choices', {}, {}, { language: ' French ' }).systemPrompt)
+        .toContain('\n\nWrite all choices in French.');
     });
 
     it('digests and diarizes from the context the turn began in', () => {

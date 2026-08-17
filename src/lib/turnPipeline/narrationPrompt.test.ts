@@ -76,9 +76,33 @@ describe('buildNarrationPrompt', () => {
     expect(prompt).toContain('Remember the ferryman.');
   });
 
-  it('appends a narration language only when it is not English', () => {
-    expect(buildNarrationPrompt(base()).prompt).not.toContain('Narration language');
-    expect(buildNarrationPrompt(base({ language: 'Français' })).prompt).toContain('Narration language: Français');
+  it('appends an imperative language directive only when the language is not English', () => {
+    expect(buildNarrationPrompt(base()).prompt).not.toContain('Write all narration in');
+    expect(buildNarrationPrompt(base({ language: 'Français' })).prompt).toContain('Write all narration in Français.');
+    // The field takes any string, so the sentence has to read as an instruction for a style too.
+    expect(buildNarrationPrompt(base({ language: 'pirate speak' })).prompt)
+      .toContain('Write all narration in pirate speak.');
+  });
+
+  it('keeps the language directive as the last line even when lore is appended after the prompt', () => {
+    const { prompt } = buildNarrationPrompt(base({
+      language: 'French',
+      dictionary: [entry({ id: 'a', name: 'Ferryman', key: ['jetty'], value: 'He poles the flat boat.' })],
+    }));
+    // The backward-compat lore append is active here; the directive still has the final word.
+    expect(prompt).toContain('He poles the flat boat.');
+    expect(prompt.trimEnd().split('\n').pop()).toBe('Write all narration in French.');
+  });
+
+  it('counts blank, whitespace and any casing of English as English', () => {
+    for (const language of ['', '   ', 'english', 'ENGLISH', ' English ']) {
+      expect(buildNarrationPrompt(base({ language })).prompt).not.toContain('Write all narration in');
+    }
+  });
+
+  it('reads a padded value as the bare language name', () => {
+    expect(buildNarrationPrompt(base({ language: ' French ' })).prompt)
+      .toContain('Write all narration in French.');
   });
 
   it('routes before-position entries into the after block when the prompt has no before chip', () => {

@@ -49,7 +49,7 @@ export interface TurnSettings {
   characterDiaries: boolean;
   /** The Describe New Characters setting, which governs the discovery pass. */
   describeCharacters: boolean;
-  /** Narration language; anything but English appends a language line to some prompts. */
+  /** Narration language or style; anything but English appends a language directive to some prompts. */
   language: string;
 }
 

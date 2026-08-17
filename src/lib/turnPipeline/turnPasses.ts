@@ -9,6 +9,7 @@ import {
   parseDirectorCast,
   type ParsedDirector,
 } from '@/lib/stagedPlanning';
+import { isEnglishLanguage } from '@/lib/languages';
 import { matchLocationResponse } from '@/lib/locationMatch';
 import { parseChoices } from '@/lib/choices';
 import { parseStatUpdates } from '@/lib/statChanges';
@@ -58,8 +59,6 @@ export const effectiveActionFor = (input: TurnPlanInput): string =>
 
 const user = (content: string): ChatMessage[] => [{ role: 'user', content }];
 
-const isEnglish = (language: string): boolean => language.toLowerCase() === 'english';
-
 /**
  * The four assemblies a pass shares with a caller that asks the same thing outside a turn — the idle
  * drainers, which work on a turn that has already been stored, and the standalone re-rolls. Those callers
@@ -74,14 +73,15 @@ export const choicesSystemPrompt = (
   values: Record<string, string>,
 ): string =>
   renderPromptTemplate(template, values) +
-  (isEnglish(language) ? '' : `\n Choice language: ` + language);
+  (isEnglishLanguage(language) ? '' : `\n\nWrite all choices in ${language.trim()}.`);
 
 /** The stat system prompt. The stat names have to come back in English however the story is narrated. */
 export const statUpdatesSystemPrompt = (
   template: string,
   language: string,
   ctx: Record<string, string>,
-): string => renderPromptTemplate(template, ctx) + (isEnglish(language) ? '' : '\n Please write in english');
+): string =>
+  renderPromptTemplate(template, ctx) + (isEnglishLanguage(language) ? '' : '\n Please write in english');
 
 /** The digest's user message. A bracketed authorial direction never reaches it — it records story content. */
 export const summaryUserMessage = (template: string, action: string, narration: string): string =>
