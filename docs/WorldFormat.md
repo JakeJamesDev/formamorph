@@ -76,6 +76,7 @@ Each stat is a tracked mechanic. Two kinds exist, set by `type`:
 | `value` | Number \| [StatListItem](#stat-list-items)[] | Live value — a number for `number` stats, items for `list` stats |
 | `regen` | Number | Amount regenerated per time unit |
 | `descriptors` | Array | Threshold-based descriptions (below) |
+| `thresholdUnit` | String | `"raw"` (default, and what an absent field means) or `"percent"` — what a descriptor threshold's number measures |
 | `code` | String | Optional JS deriving this stat from others — see the **[Stat Code Guide](StatCodeGuide)** |
 | `morphBindings` | String[] | Body-mesh morph target names this stat drives; `[min, max]` maps linearly to influence `[0, 1]` |
 | `noIncrease` / `noDecrease` | Boolean | Stop the AI from raising/lowering the current value |
@@ -88,8 +89,10 @@ Each stat is a tracked mechanic. Two kinds exist, set by `type`:
 | Field | Type | Description |
 |---|---|---|
 | `id` | String \| Number | Unique identifier |
-| `threshold` | Number | Value at/under which this descriptor applies |
+| `threshold` | Number | The top of this descriptor's band — a stat value, or a percentage of `min`→`max` when the stat's `thresholdUnit` is `"percent"` |
 | `description` | String | Text for the stat at this level |
+
+The lowest band the value fits in wins, whatever order the array is in. A value above every threshold gets no descriptor, and the AI is told no status for that stat.
 
 #### Stat list items
 

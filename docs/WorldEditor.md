@@ -48,11 +48,18 @@ With no piece selected, the line is just the stat's name.
 
 Descriptors turn a number into a word — `Winded`, `Exhausted` — which is what the AI receives when the chip's **Status** piece is on.
 
-Each has a **Threshold %** and a **Description**. Two things trip authors up:
+Each has a **threshold** and a **Description**. A coverage bar above the rows draws every band's real extent across Min→Max, marks where the stat starts, and shows the range above your top band in red — the range where the AI is told no status at all. Each row says what it covers underneath it.
 
-> ⚠️ **Threshold % is a percentage of the way from Min to Max — not a raw value.** With Min 0 / Max 200, a threshold of `50` means the value 100.
->
-> ⚠️ **A threshold is the *top* of its band, and the lowest band the value fits in wins.** Descriptors are read low to high whatever order you list them in, so `30 → Barren` covers 0–30% and a `60` above it covers everything up to 60%. Give your highest descriptor a threshold of `100`, or a value above it gets no descriptor at all.
+> ⚠️ **A threshold is the *top* of its band, and the lowest band the value fits in wins.** Descriptors are read low to high whatever order you list them in, so `30 → Barren` covers Min–30 and a `60` above it covers everything up to 60. Give your highest descriptor a threshold of your **Max**, or a value above it gets no descriptor at all.
+
+**Thresholds in: Raw Unit | % of Max**
+
+| Setting | A threshold of `3` on a 0–10 stat means | Raise Max to 20 and… |
+|---|---|---|
+| **Raw Unit** (default) | the value 3 | the band still ends at 3 |
+| **% of Max** | 3% of the way from Min to Max — the value 0.3 | the band rescales to 0.6 |
+
+Pick **Raw Unit** for counters ("3 rockets is low") and **% of Max** for proportions ("the bottom 30% is low"). Switching converts your existing numbers, so no band moves at the moment you switch — the choice only decides what happens the next time you change the range. A **Percentage** stat is pinned to 0–100, where both readings are the same number, so it has no switch.
 
 ### Prevent AI Changes
 

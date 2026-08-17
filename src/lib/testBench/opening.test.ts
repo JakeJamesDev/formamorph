@@ -149,8 +149,19 @@ describe('buildOpening stats', () => {
     expect(luck?.traitShift).toBe(-5);
   });
 
-  it('derives bounds from the active traits, and bands against them', () => {
+  it('derives bounds from the active traits, and leaves raw bands where the author put them', () => {
     const nerve = openingFor(world(), 't-reach').stats.find((s) => s.id === 's-nerve');
+    expect(nerve?.max).toBe(160);
+    // Raw thresholds are stat values: a trait raising the ceiling to 160 moves nothing, so 40 is Steady
+    // exactly as it is on the authored range.
+    expect(nerve?.descriptor).toBe('Steady');
+  });
+
+  it('rescales a percent-threshold stat against the derived bounds', () => {
+    const proportional = world({
+      stats: stats.map((s) => (s.id === 's-nerve' ? { ...s, thresholdUnit: 'percent' as const } : s)),
+    });
+    const nerve = openingFor(proportional, 't-reach').stats.find((s) => s.id === 's-nerve');
     expect(nerve?.max).toBe(160);
     // 40 of 0..160 is exactly 25% — the Shaky band's edge, a different band than the authored range gives.
     expect(nerve?.descriptor).toBe('Shaky');

@@ -498,14 +498,63 @@ describe('stat sanity rules', () => {
     expect(found).toHaveLength(1);
     expect(found[0].severity).toBe('warning');
     expect(found[0].message).toContain('Fertility');
-    // Thresholds are percentages of min→max, so a band at 60 covers the value 60 and nothing above it.
+    // A band at 60 covers the value 60 and nothing above it.
     expect(only(banded({ starting: 60 }), 'stat-start-no-descriptor')).toEqual([]);
   });
 
-  it('reads thresholds as percentages of the stat’s own range, not as raw values', () => {
-    // Min 0 / max 200 puts the value 80 at 40% — inside the 60 band, whatever the raw number looks like.
-    expect(only(banded({ max: 200, starting: 80 }), 'stat-start-no-descriptor')).toEqual([]);
-    expect(only(banded({ max: 200, starting: 140 }), 'stat-start-no-descriptor')).toHaveLength(1);
+  it('states the start and where coverage stops in the same units, so the two are comparable', () => {
+    const message = only(banded({ starting: 80 }), 'stat-start-no-descriptor')[0].message;
+    // Raw thresholds, so both numbers are stat values: the start, and the top band's own ceiling.
+    expect(message).toContain('starts at 80 of 100');
+    expect(message).toContain('stops at 60 of 100');
+  });
+
+  it('reads thresholds as raw stat values, so a wider range leaves the bands where they were', () => {
+    // The rockets case: raising max cannot move a raw band, so 80 stays above the 60 band either way.
+    expect(only(banded({ max: 200, starting: 80 }), 'stat-start-no-descriptor')).toHaveLength(1);
+    expect(only(banded({ max: 200, starting: 50 }), 'stat-start-no-descriptor')).toEqual([]);
+  });
+
+  it('reads them as percentages of min→max when the stat opts in, and says so in percent', () => {
+    // Min 0 / max 200 puts the value 80 at 40% — inside the 60 band.
+    const proportional = (over: Partial<Stat>) => banded({ max: 200, thresholdUnit: 'percent', ...over });
+    expect(only(proportional({ starting: 80 }), 'stat-start-no-descriptor')).toEqual([]);
+    const found = only(proportional({ starting: 140 }), 'stat-start-no-descriptor');
+    expect(found).toHaveLength(1);
+    expect(found[0].message).toContain('starts at 70%');
+    expect(found[0].message).toContain('stops at 60%');
+  });
+
+  it('flags a threshold that sits outside the values the stat can ever hold', () => {
+    // A 0–10 stat still banded 30/60: the percent numbers the old reading left behind.
+    const found = only(banded({ max: 10 }), 'stat-descriptor-out-of-range');
+    expect(found).toHaveLength(1);
+    expect(found[0].severity).toBe('warning');
+    expect(found[0].message).toContain('30 of 10');
+    expect(found[0].message).toContain('never climb that far');
+  });
+
+  it('flags a threshold under the floor, which no value can reach downward', () => {
+    const found = only(banded({ min: 50, max: 100, starting: 60, descriptors: [
+      { id: 'd1', threshold: 20, description: 'barren' },
+      { id: 'd2', threshold: 100, description: 'fertile' },
+    ] }), 'stat-descriptor-out-of-range');
+    expect(found).toHaveLength(1);
+    expect(found[0].message).toContain('never fall that low');
+  });
+
+  it('says nothing about thresholds inside the range, under either unit', () => {
+    expect(only(banded({ max: 100 }), 'stat-descriptor-out-of-range')).toEqual([]);
+    expect(only(banded({ max: 10, thresholdUnit: 'percent' }), 'stat-descriptor-out-of-range')).toEqual([]);
+  });
+
+  it('measures a percent stat’s thresholds against 0–100, not against its own ceiling', () => {
+    const found = only(banded({
+      max: 10, thresholdUnit: 'percent',
+      descriptors: [{ id: 'd1', threshold: 150, description: 'impossible' }],
+    }), 'stat-descriptor-out-of-range');
+    expect(found).toHaveLength(1);
+    expect(found[0].message).toContain('150%');
   });
 
   it('says nothing about a stat that carries no descriptors at all', () => {
@@ -1586,6 +1635,7 @@ const RULE_SCOPE: Record<string, 'simple' | 'advanced'> = {
   'stat-code-overrides-trait': 'advanced',
   'stat-code-unknown-stat': 'advanced',
   'stat-descriptor-duplicate-threshold': 'advanced',
+  'stat-descriptor-out-of-range': 'advanced',
   'stat-start-no-descriptor': 'advanced',
   'stat-trait-delta-clamped': 'advanced',
   'trait-pin-invalid': 'advanced',
