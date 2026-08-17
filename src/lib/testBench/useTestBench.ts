@@ -10,8 +10,8 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { toast } from 'react-toastify';
 import { useGameData } from '@/contexts/GameDataContext';
-import { asBenchTab } from '@/components/editor/benchTabs';
-import type { CodeCheckStatus, TestBenchProps } from '@/components/editor/TestBench';
+import { asBenchTab } from './benchTabs';
+import type { CodeCheckStatus, TestBenchProps } from '@/lib/testBench/benchProps';
 import {
   applyRuleFix, RULES, selectMatchingFindings, type Finding, type FindingSection,
 } from './rules';

@@ -4,7 +4,7 @@
  * mobile sheet closing, and not worth greeting the author with next week.
  */
 import { useCallback, useEffect, useState } from 'react';
-import { asBenchTab, type BenchTab } from '@/components/editor/benchTabs';
+import { asBenchTab, type BenchTab } from './benchTabs';
 import { createKeyedRecordStore } from '@/lib/keyedStorage';
 
 const store = createKeyedRecordStore('session', 'FORMAMORPH_benchTab');
