@@ -14,6 +14,7 @@ import type { SectionStyle } from "../promptPresets";
 import { markdownGuidance } from "../../components/game/GamePrompts";
 import { lengthGuidance, type ParagraphLimit } from "../outputLength";
 import { NONE_PLACEHOLDER } from "../promptFallbacks";
+import { isEnglishLanguage } from "../languages";
 
 /** The per-entry activation report plus the verbatim scanned strings a hit landed in. */
 export interface DictionaryDebug {
@@ -110,14 +111,15 @@ ${playerNotes || NONE_PLACEHOLDER}
     }
   }
 
-  if (language.toLowerCase() != "english") prompt += `\n Narration language: ` + language;
-
   // Backward-compat: a prompt with no "after" dictionary chip still gets its lore appended (with heading), as
   // it was before the chip existed. (A missing "before" chip already routed those entries into `afterEntries`.)
   if (!hasAfterChip) {
     const dictionaryContext = resolvePH(buildDictionaryContext(afterEntries));
     if (dictionaryContext) prompt += `\n\n${restyle(dictionaryContext, sectionStyle)}`;
   }
+
+  // Last of every append: recency is what makes a small model honor it, so nothing may follow it.
+  if (!isEnglishLanguage(language)) prompt += `\n\nWrite all narration in ${language.trim()}.`;
 
   // AI-context capture. Every scanned source is a string the prompt genuinely contains, so the viewer can
   // locate each match directly — no re-derivation, and the highlights cannot drift from what activated.
