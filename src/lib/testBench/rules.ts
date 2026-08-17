@@ -595,18 +595,22 @@ const legacyStartLocation: Rule = {
   severity: 'warning',
   section: 'locations',
   summary: (count) => `${count} locations carry the legacy isStartLocation field, which the game no longer reads`,
-  check: (world) => (world.locations ?? []).filter(hasLegacyStart).map((location) => {
-    const item = namedItem(location.id, location.name, world);
-    // Only a truthy value signals start intent; a false-valued leftover just needs deleting.
-    const advice = legacyStartValue(location)
-      ? 'flag it as a starting location instead'
-      : 'delete the field';
-    return finding(
-      legacyStartLocation,
-      `${quote(item.name)} carries the legacy isStartLocation field, which the game no longer reads — ${advice}`,
-      [item],
-    );
-  }),
+  check: (world) => {
+    // Mirrors the fix: only a truthy value signals start intent, and only while no live flag carries it —
+    // once one does, the leftover has nothing left to say and just needs deleting.
+    const hasLiveStart = (world.locations ?? []).some((l) => l.isStarting);
+    return (world.locations ?? []).filter(hasLegacyStart).map((location) => {
+      const item = namedItem(location.id, location.name, world);
+      const advice = legacyStartValue(location) && !hasLiveStart
+        ? 'flag it as a starting location instead'
+        : 'delete the field';
+      return finding(
+        legacyStartLocation,
+        `${quote(item.name)} carries the legacy isStartLocation field, which the game no longer reads — ${advice}`,
+        [item],
+      );
+    });
+  },
   fix: (world) => {
     // A truthy leftover is the world's only surviving record of its start intent, so deleting it outright
     // would trade this finding for a world with no starting location. The first one carries that intent
@@ -1016,27 +1020,54 @@ const entityNameInWildcardPool: Rule = {
   }),
 };
 
-const entityMissingDescription: Rule = {
-  id: 'entity-missing-description',
-  severity: 'info',
-  section: 'entities',
-  summary: (count) => `${count} entities have no player description or no AI description`,
-  check: (world) => (world.entities ?? []).flatMap((entity) => {
-    const noPlayer = !entity.playerDescription?.trim();
-    const noAi = !entity.aiDescription?.trim();
-    if (!noPlayer && !noAi) return [];
-    const item = asItem(entity, world);
-    const missing = noPlayer && noAi ? 'no player or AI description'
-      : noPlayer ? 'no player description' : 'no AI description';
-    // An authored summary is served wherever a prompt prefers one, so only the narrator's roster of who is
-    // here is left with a bare name. Saying "only its name" for that entity would simply be untrue.
-    const blind = !noAi ? ''
-      : entity.aiSummary?.trim()
-        ? ' — the narrator’s roster of who is here carries only its name, while every other prompt serves the summary'
-        : ' — the prompt carries only its name';
-    return [finding(entityMissingDescription, `${quote(item.name)} has ${missing}${blind}`, [item])];
-  }),
+// An authored summary is served wherever a prompt prefers one, so only the narrator's roster of who is
+// here is left with a bare name. Saying "only its name" for that entity would simply be untrue.
+const aiBlindTail = (entity: Entity): string => entity.aiSummary?.trim()
+  ? ' — the narrator’s roster of who is here carries only its name, while every other prompt serves the summary'
+  : ' — the prompt carries only its name';
+
+/** The description-coverage rules, one per gap — split so each grouped row counts one kind of gap. They are
+ *  mutually exclusive: an entity missing both descriptions is only the both-rule's finding. */
+const descriptionRule = (
+  id: string,
+  summary: (count: number) => string,
+  fires: (noPlayer: boolean, noAi: boolean) => boolean,
+  message: (entity: Entity, name: string) => string,
+): Rule => {
+  const rule: Rule = {
+    id,
+    severity: 'info',
+    section: 'entities',
+    summary,
+    check: (world) => (world.entities ?? []).flatMap((entity) => {
+      if (!fires(!entity.playerDescription?.trim(), !entity.aiDescription?.trim())) return [];
+      const item = asItem(entity, world);
+      return [finding(rule, message(entity, quote(item.name)), [item])];
+    }),
+  };
+  return rule;
 };
+
+const entityMissingPlayerDescription = descriptionRule(
+  'entity-missing-player-description',
+  (count) => `${count} entities have no player description`,
+  (noPlayer, noAi) => noPlayer && !noAi,
+  (_entity, name) => `${name} has no player description`,
+);
+
+const entityMissingAiDescription = descriptionRule(
+  'entity-missing-ai-description',
+  (count) => `${count} entities have no AI description`,
+  (noPlayer, noAi) => noAi && !noPlayer,
+  (entity, name) => `${name} has no AI description${aiBlindTail(entity)}`,
+);
+
+const entityMissingBothDescriptions = descriptionRule(
+  'entity-missing-both-descriptions',
+  (count) => `${count} entities have neither a player nor an AI description`,
+  (noPlayer, noAi) => noPlayer && noAi,
+  (entity, name) => `${name} has neither a player nor an AI description${aiBlindTail(entity)}`,
+);
 
 /** What the two summary rules read: the AI description/summary pair, and the item as its own tab's list
  *  labels it. Entities and locations share the field pair and the per-turn cost, so they share the rules. */
@@ -1066,8 +1097,8 @@ const LONG_AI_DESCRIPTION_TOKENS = 150;
 // A summary that doesn't cut the description at least in half isn't buying the delivery cost it adds.
 const SUMMARY_COMPRESSION_RATIO = 0.5;
 
-// Below this the savings are too small to be worth a row whatever the ratio says, and flagging them would
-// nag an author over a handful of tokens a turn.
+// A summary clearing this many tokens a turn has earned its keep whatever the ratio says. Doubles as the
+// description floor: an item smaller than this isn't worth a row over a handful of tokens either way.
 const SUMMARY_SAVINGS_FLOOR_TOKENS = 40;
 
 const entityLongDescriptionNoSummary: Rule = {
@@ -1093,9 +1124,9 @@ const aiSummaryHidesDescription: Rule = {
   severity: 'info',
   section: 'entities',
   advanced: true,
-  summary: (count) => `${count} items’ AI summaries barely shorten the descriptions they hide`,
+  summary: (count) => `${count} items’ AI summaries save almost nothing over the descriptions they hide`,
   // The summary against the description it replaces, not the description alone: a summary earns hiding the
-  // full text by actually compressing it, at any description length the savings are worth counting.
+  // full text by what it saves, so real savings clear a marginal ratio and tiny savings don't.
   check: (world) => summaryOwners(world).flatMap((owner) => {
     if (!owner.text.aiSummary?.trim() || !owner.text.aiDescription?.trim()) return [];
     const description = resolvedTokens(owner.text.aiDescription, world);
@@ -1103,12 +1134,15 @@ const aiSummaryHidesDescription: Rule = {
     const summary = resolvedTokens(owner.text.aiSummary, world);
     if (summary <= description * SUMMARY_COMPRESSION_RATIO) return [];
     const savings = description - summary;
-    const trade = savings >= 0
-      ? `to save ~${savings} tokens a turn`
-      : `and costs ~${-savings} tokens more a turn`;
+    if (savings >= SUMMARY_SAVINGS_FLOOR_TOKENS) return [];
+    const trade = savings > 0
+      ? `this only saves ~${savings} tokens a turn`
+      : savings === 0
+        ? 'this saves nothing'
+        : `this costs ~${-savings} tokens more a turn`;
     return [finding(
       aiSummaryHidesDescription,
-      `${quote(owner.item.name)} has a ~${summary}-token AI summary over a ~${description}-token AI description — it hides the description from most prompts ${trade}`,
+      `${quote(owner.item.name)} has a ~${description}-token AI description and a ~${summary}-token AI summary — ${trade}`,
       [owner.item],
     )];
   }),
@@ -1185,33 +1219,6 @@ const drawableValues = (ph: Placeholder): string[] => {
   const values = ph.values ?? [];
   const positive = values.filter((value) => placeholderWeight(ph, value) > 0);
   return positive.length > 0 ? positive : values;
-};
-
-const placeholderUniquePoolTooSmall: Rule = {
-  id: 'placeholder-unique-pool-too-small',
-  severity: 'warning',
-  section: 'placeholders',
-  advanced: true,
-  summary: (count) => `${count} placeholders carry more Unique chips than they have values, so independent draws are bound to repeat`,
-  check: (world) => {
-    const { unique } = collectPlaceholderPlacements(chipBearingTexts(world));
-    const chipsPer = new Map<string, number>();
-    for (const placement of unique) chipsPer.set(placement.id, (chipsPer.get(placement.id) ?? 0) + 1);
-    const byId = new Map((world.placeholders ?? []).map((p) => [p.id, p]));
-    return [...chipsPer.entries()].flatMap(([id, chips]) => {
-      const ph = byId.get(id);
-      // A chip at a missing placeholder is chip-unknown-placeholder's business; a Variable never varies anyway.
-      if (!ph || (ph.values ?? []).length < 2) return [];
-      const pool = drawableValues(ph).length;
-      if (chips <= pool) return [];
-      const item = namedItem(ph.id, ph.name, world);
-      return [finding(
-        placeholderUniquePoolTooSmall,
-        `${chips} Unique chips draw from ${quote(item.name)}, which offers only ${pool} ${pool === 1 ? 'value' : 'values'} — independent draws are bound to repeat`,
-        [item],
-      )];
-    });
-  },
 };
 
 /** The weight-map keys that name no value in the pool — each one a weight applying to nothing. */
@@ -1407,10 +1414,11 @@ export const RULES: readonly Rule[] = [
   statStartingOutOfRange, statStartNoDescriptor, statDescriptorDuplicateThreshold, statPercentageBounds,
   statCodeNeverTicks, statTraitDeltaClamped, statCodeOverridesTrait, statAiLockFrozen,
   locationParentOrphan, connectionEndpointOrphan, statUpdateUnknownStat,
-  aliasLowercaseNoTwin, entityNameInWildcardPool, entityMissingDescription,
+  aliasLowercaseNoTwin, entityNameInWildcardPool,
+  entityMissingPlayerDescription, entityMissingAiDescription, entityMissingBothDescriptions,
   entityLongDescriptionNoSummary, aiSummaryHidesDescription, locationNoEntities,
   traitGroupMultipleDefaults, traitGroupTooSmall,
-  placeholderUniquePoolTooSmall, placeholderWeightUnknownValue, wildcardSingleValue,
+  placeholderWeightUnknownValue, wildcardSingleValue,
   dictionaryKeywordSubstring, dictionaryDisabled,
   worldEmptySystemPrompt, worldNoReadme, worldOversizedImages,
 ];
