@@ -25,7 +25,8 @@ import EditorFindBar from '@/components/editor/EditorFindBar';
 import { TestBench, TestBenchButton } from '@/components/editor/TestBench';
 import { asBenchTab, type BenchTab } from '@/components/editor/benchTabs';
 import { Drawer, DrawerContent, DrawerTitle } from '@/components/ui/drawer';
-import { applyRuleFix, groupFindings, RULES, type FindingSection } from '@/lib/testBench/rules';
+import { applyRuleFix, RULES, type FindingSection } from '@/lib/testBench/rules';
+import { useBenchFindings } from '@/lib/testBench/useBenchFindings';
 import { hasSeenDownloadNote, markDownloadNoteSeen } from '@/lib/testBench/downloadNote';
 import { useDebouncedFindings } from '@/lib/testBench/useFindings';
 import { collectSearchTargets, type SearchMatch } from '@/lib/worldSearch';
@@ -264,7 +265,15 @@ const WorldEditorInner = ({ onClose, embedded = false, backButton }: {
   // signal the rule pass debounces on.
   const benchWorld = useMemo(getWorldData, [getWorldData]);
   const findings = useDebouncedFindings(benchWorld);
-  const benchGroups = useMemo(() => groupFindings(findings), [findings]);
+  const benchWorldMeta = worldMetadata.find((m) => m.id === worldId);
+  // Newness and dismissals are per world and outlive the session, so the rule pass's raw output goes through
+  // the stored marks before it reaches the panel or the badge.
+  const bench = useBenchFindings(worldId, benchWorldMeta?.sourceUpdatedAt, findings);
+  // The Bench closing is what marks its list as shown — the author has had it in front of them.
+  const closeBench = useCallback(() => {
+    bench.markAllSeen();
+    setBenchOpen(false);
+  }, [bench]);
   // A finding's item is a place in the editor: land on its tab with it selected, and scroll the list to it
   // the same way a search hit does. The mobile sheet covers the editor, so it closes on the way; the
   // desktop panel sits beside it and stays open for the next finding.
@@ -273,12 +282,11 @@ const WorldEditorInner = ({ onClose, embedded = false, backButton }: {
     // A filter left in the list box would hide the very row being navigated to.
     setSearchTerm('');
     setSelectedItemId(itemId);
-    if (isMobile) setBenchOpen(false);
+    if (isMobile) closeBench();
     setTimeout(() => revealSelectedRow(editorRootRef.current), 0);
-  }, [isMobile]);
+  }, [isMobile, closeBench]);
   // A downloaded copy nobody has edited yet: the first quick fix is what diverges it from its source, and
   // that is worth saying once. After the note (or after any save) the copy is already edited and it'd be noise.
-  const benchWorldMeta = worldMetadata.find((m) => m.id === worldId);
   const noteFirstDownloadEdit = useCallback(() => {
     if (!worldId || !benchWorldMeta?.sourceId || benchWorldMeta.dirty) return;
     if (hasSeenDownloadNote(worldId)) return;
@@ -311,13 +319,18 @@ const WorldEditorInner = ({ onClose, embedded = false, backButton }: {
       noteFirstDownloadEdit]);
   const benchPanel = (
     <TestBench
-      groups={benchGroups}
+      groups={bench.groups}
+      dismissedGroups={bench.dismissedGroups}
       ruleCount={RULES.length}
+      newCount={bench.newCount}
       tab={benchTab}
       onTabChange={setBenchTab}
-      onClose={() => setBenchOpen(false)}
+      onClose={closeBench}
       onOpenItem={openFindingItem}
       onFixRule={applyBenchFix}
+      onDismissRule={bench.dismissRule}
+      onRestoreRule={bench.restoreRule}
+      onMarkAllSeen={bench.markAllSeen}
     />
   );
   // DEV dev-router: `#dev?modal=worldEditor&bench=issues` opens the Bench on an instrument.
@@ -757,7 +770,12 @@ const WorldEditorInner = ({ onClose, embedded = false, backButton }: {
       >
         <Search className="h-4 w-4" />
       </Button>
-      <TestBenchButton count={benchGroups.length} open={benchOpen} onClick={() => setBenchOpen((v) => !v)} />
+      <TestBenchButton
+        count={bench.groups.length}
+        newCount={bench.newCount}
+        open={benchOpen}
+        onClick={() => (benchOpen ? closeBench() : setBenchOpen(true))}
+      />
       <TutorialPopover entry={tutorial} nav={tutorialNav}>
         <ToggleGroup
           type="single"
@@ -1012,7 +1030,7 @@ const WorldEditorInner = ({ onClose, embedded = false, backButton }: {
       </div>
       {/* Mobile has no room for a third pane, so the Bench arrives as a full-height sheet over the editor. */}
       {isMobile && (
-        <Drawer open={benchOpen} onOpenChange={setBenchOpen}>
+        <Drawer open={benchOpen} onOpenChange={(open) => (open ? setBenchOpen(true) : closeBench())}>
           <DrawerContent className="h-[92dvh]">
             <DrawerTitle className="sr-only">Test Bench</DrawerTitle>
             <div className="min-h-0 flex-grow">{benchPanel}</div>
