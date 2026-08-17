@@ -334,15 +334,32 @@ describe('sameCharacterName (conservative de-dupe)', () => {
 
 describe('stripQuotedSpeech (presence reads prose, not dialogue)', () => {
   it('removes straight-quoted speech', () => {
-    expect(stripQuotedSpeech('"Serana will be pleased," she said.')).toBe('  she said.');
+    expect(stripQuotedSpeech('"Serana will be pleased," she said.')).toBe(`${' '.repeat(25)} she said.`);
   });
 
   it('removes curly-quoted speech', () => {
-    expect(stripQuotedSpeech('\u201CSerana will be pleased,\u201D she said.')).toBe('  she said.');
+    expect(stripQuotedSpeech('\u201CSerana will be pleased,\u201D she said.')).toBe(`${' '.repeat(25)} she said.`);
   });
 
   it('swallows a trailing unterminated opener (mid-stream partial narration)', () => {
-    expect(stripQuotedSpeech('Wolfram leans in. "Serana told me')).toBe('Wolfram leans in.  ');
+    expect(stripQuotedSpeech('Wolfram leans in. "Serana told me')).toBe(`Wolfram leans in. ${' '.repeat(15)}`);
+  });
+
+  it('leaves every surviving word where it was, so a match can be highlighted in the original', () => {
+    // The offsets a presence surface reports are only usable if the strip moves nothing: what the
+    // author pasted and what was searched must be the same string, minus the speech.
+    const text = '"Serana will be pleased," she said. Wolfram leaned in.';
+    const stripped = stripQuotedSpeech(text);
+    expect(stripped).toHaveLength(text.length);
+    const at = stripped.indexOf('Wolfram');
+    expect(text.slice(at, at + 'Wolfram'.length)).toBe('Wolfram');
+  });
+
+  it('keeps the line structure of blanked speech', () => {
+    // A quoted run crossing a line break must not pull the next line up \u2014 a highlight overlay lays its
+    // marks over the author's own lines.
+    const text = 'She spoke.\n"First line,\nsecond line," he said.';
+    expect(stripQuotedSpeech(text).split('\n')).toHaveLength(3);
   });
 
   it('returns quote-free text untouched', () => {

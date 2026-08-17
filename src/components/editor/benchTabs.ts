@@ -3,7 +3,7 @@
  *  `devRouter.test.ts` — so landing an instrument without making it routable fails the test. */
 export const BENCH_TABS = [
   { value: 'issues', label: 'Issues' },
-  { value: 'triggers', label: 'Triggers', unbuilt: true },
+  { value: 'triggers', label: 'Triggers' },
   { value: 'aiContext', label: 'AI Context', unbuilt: true },
   { value: 'opening', label: 'Opening', unbuilt: true },
 ] as const;

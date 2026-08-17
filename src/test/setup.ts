@@ -52,6 +52,13 @@ if (typeof Range !== 'undefined' && typeof Range.prototype.getBoundingClientRect
   Range.prototype.getClientRects = () => Object.assign([], { item: () => null }) as unknown as DOMRectList;
 }
 
+// Same layout gap: jsdom has nothing to scroll, so Element.scrollIntoView is missing entirely. Anything
+// that reveals a row after selecting it (the editor's find bar, the Test Bench's highlights) calls it as a
+// side effect of rendering, and the miss throws out of an effect rather than failing anything meaningful.
+if (typeof Element !== 'undefined' && typeof Element.prototype.scrollIntoView === 'undefined') {
+  Element.prototype.scrollIntoView = () => {};
+}
+
 // jsdom has no object-URL store. The upload path makes one to show the file being converted without handing
 // an <img> the multi-megabyte data URL, so without these the whole flow throws.
 if (typeof URL.createObjectURL === 'undefined') {

@@ -28,6 +28,7 @@ import { Drawer, DrawerContent, DrawerTitle } from '@/components/ui/drawer';
 import { applyRuleFix, RULES, type Finding, type FindingSection } from '@/lib/testBench/rules';
 import { checkStatCode } from '@/lib/testBench/statCodeCheck';
 import { useBenchFindings } from '@/lib/testBench/useBenchFindings';
+import { useDebouncedTriggerReport } from '@/lib/testBench/useTriggerReport';
 import { hasSeenDownloadNote, markDownloadNoteSeen } from '@/lib/testBench/downloadNote';
 import { useDebouncedFindings } from '@/lib/testBench/useFindings';
 import { collectSearchTargets, type SearchMatch } from '@/lib/worldSearch';
@@ -262,6 +263,9 @@ const WorldEditorInner = ({ onClose, embedded = false, backButton }: {
   // ── Test Bench ────────────────────────────────────────────────────────────
   const [benchOpen, setBenchOpen] = useState(false);
   const [benchTab, setBenchTab] = useState<BenchTab>('issues');
+  // Above the tab strip, so switching instruments (which unmounts the panel below it) doesn't discard the
+  // prose the author is testing with.
+  const [triggerText, setTriggerText] = useState('');
   // `getWorldData` is memoized on the world arrays, so this payload's identity is the "world changed"
   // signal the rule pass debounces on.
   const benchWorld = useMemo(getWorldData, [getWorldData]);
@@ -303,6 +307,7 @@ const WorldEditorInner = ({ onClose, embedded = false, backButton }: {
     () => (codeFindings.length === 0 ? staticFindings : [...staticFindings, ...codeFindings]),
     [staticFindings, codeFindings],
   );
+  const triggerReport = useDebouncedTriggerReport(benchWorld, triggerText);
   const benchWorldMeta = worldMetadata.find((m) => m.id === worldId);
   // Newness and dismissals are per world and outlive the session, so the rule pass's raw output goes through
   // the stored marks before it reaches the panel or the badge.
@@ -372,6 +377,9 @@ const WorldEditorInner = ({ onClose, embedded = false, backButton }: {
       onRestoreRule={bench.restoreRule}
       onMarkAllSeen={bench.markAllSeen}
       onCheckStatCode={runStatCodeCheck}
+      triggerText={triggerText}
+      onTriggerTextChange={setTriggerText}
+      triggerReport={triggerReport}
     />
   );
   // DEV dev-router: `#dev?modal=worldEditor&bench=issues` opens the Bench on an instrument.

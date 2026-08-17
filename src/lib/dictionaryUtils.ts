@@ -36,6 +36,16 @@ function keyMatcher(key: string, entry: DictionaryEntry, global = false): RegExp
   return new RegExp(body, flags);
 }
 
+/** An entry's keywords whose pattern does not compile — always empty unless `useRegex` is on. Such a key
+ *  silently never matches (and under `secondaryExclude` inverts to always-fire), which is what makes it
+ *  worth reporting rather than throwing. Primary and secondary keys both, since both go through the same
+ *  matcher. */
+export function invalidRegexKeys(entry: DictionaryEntry): string[] {
+  if (!entry.useRegex) return [];
+  const keys = [...parseKeywords(entry), ...(entry.secondaryKeys ?? []).filter(Boolean)];
+  return keys.filter((key) => keyMatcher(key, entry) === null);
+}
+
 /** Whether one keyword occurs in `haystack`, honoring `useRegex` / `matchWholeWords` / `caseSensitive`. */
 function keyMatches(key: string, haystack: string, entry: DictionaryEntry): boolean {
   if (!key || !haystack) return false;
@@ -157,7 +167,8 @@ export interface ActivationReport {
   byId: Map<string, EntryActivation>;
 }
 
-function ruleOf(entry: DictionaryEntry): MatchRule {
+/** How an entry's match flags read once `useRegex` has overruled `matchWholeWords`. */
+export function matchRuleOf(entry: DictionaryEntry): MatchRule {
   return {
     regex: !!entry.useRegex,
     wholeWord: !entry.useRegex && !!entry.matchWholeWords,
@@ -176,6 +187,15 @@ export function matchHits(entry: DictionaryEntry, sources: ScanSource[]): MatchH
     }
   }
   return hits;
+}
+
+/** The slice of `history` an entry actually reads: the last `scanDepth` messages, all of it when the depth
+ *  is unset, none of it at 0. The one place the depth window is cut, so a surface reporting what fell
+ *  outside it cuts the same window the activation pass did. */
+export function historyForEntry(entry: DictionaryEntry, history: ScanSource[]): ScanSource[] {
+  const depth = entry.scanDepth;
+  if (depth == null) return history;
+  return depth <= 0 ? [] : history.slice(-depth);
 }
 
 function secondaryStatus(entry: DictionaryEntry, haystack: string): SecondaryStatus | undefined {
@@ -220,7 +240,7 @@ export function explainActivation(
   const pending: DictionaryEntry[] = [];
 
   for (const entry of entries) {
-    const rule = ruleOf(entry);
+    const rule = matchRuleOf(entry);
     if (entry.enabled === false) {
       add({ entryId: entry.id, activated: false, reason: 'none', hits: [], rule });
       continue;
@@ -232,9 +252,7 @@ export function explainActivation(
       add(rec); activeEntries.push(entry);
       continue;
     }
-    const depth = entry.scanDepth;
-    const hist = depth == null ? historySources : depth <= 0 ? [] : historySources.slice(-depth);
-    const sources = [...sceneSources, ...hist];
+    const sources = [...sceneSources, ...historyForEntry(entry, historySources)];
     const hay = sources.map((s) => s.text).join('\n');
     const sec = secondaryStatus(entry, hay);
     const fires = firesWith(anyKeyMatches(parseKeywords(entry), hay, entry), sec);

@@ -3,6 +3,7 @@ import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { groupFindings, runRules, RULES, type FindingGroup, type RuleWorld } from '@/lib/testBench/rules';
 import { partitionFindings, withDismissed, withSeen, EMPTY_BENCH_STATE } from '@/lib/testBench/seenState';
+import { buildTriggerReport } from '@/lib/testBench/triggers';
 import type { Entity, WorldOverview } from '@/types';
 import { TestBench, TestBenchButton, type TestBenchProps } from './TestBench';
 
@@ -39,6 +40,9 @@ const benchProps = (groups: FindingGroup[], over: Partial<TestBenchProps> = {}):
   onRestoreRule: vi.fn(),
   onMarkAllSeen: vi.fn(),
   onCheckStatCode: vi.fn(),
+  triggerText: '',
+  onTriggerTextChange: vi.fn(),
+  triggerReport: buildTriggerReport({ entities: [], dictionaries: [], placeholders: [] }, ''),
   ...over,
 });
 
@@ -70,8 +74,10 @@ describe('TestBench panel', () => {
 
   it('offers the unbuilt instruments as disabled tabs', () => {
     renderBench(defective);
-    expect(screen.getByRole('tab', { name: /Issues/ })).toBeEnabled();
-    for (const label of ['Triggers', 'AI Context', 'Opening']) {
+    for (const label of [/Issues/, 'Triggers']) {
+      expect(screen.getByRole('tab', { name: label })).toBeEnabled();
+    }
+    for (const label of ['AI Context', 'Opening']) {
       expect(screen.getByRole('tab', { name: label })).toBeDisabled();
     }
   });
