@@ -635,6 +635,8 @@ export interface FindingGroup {
   headline: string;
   /** Whether the rule behind the row carries a fix — what puts the Fix button on it. */
   fixable: boolean;
+  /** How many of the row's findings the author has not been shown yet. Zero when newness isn't being tracked. */
+  newCount: number;
   /** Every item the group's findings name, each once, in first-seen order. */
   items: FindingItem[];
   findings: Finding[];
@@ -642,10 +644,13 @@ export interface FindingGroup {
 
 /**
  * Collapse findings per rule so fourteen bad aliases read as one problem, and order the rows by severity.
- * Within a severity, rules keep the order they fired in.
+ * Within a severity, rows carrying something new come first; the rest keep the order they fired in.
+ *
+ * `isNew` is how the caller reports newness — the rules themselves know nothing about what the author has
+ * already been shown.
  */
-export function groupFindings(findings: Finding[]): FindingGroup[] {
-  const byRule = new Map<string, Finding[]>();
+export function groupFindings<F extends Finding>(findings: F[], isNew?: (finding: F) => boolean): FindingGroup[] {
+  const byRule = new Map<string, F[]>();
   for (const finding of findings) {
     const bucket = byRule.get(finding.ruleId);
     if (bucket) bucket.push(finding);
@@ -668,9 +673,12 @@ export function groupFindings(findings: Finding[]): FindingGroup[] {
         ? ruleFindings[0].message
         : rule.summary(ruleFindings.length),
       fixable: !!rule?.fix,
+      newCount: isNew ? ruleFindings.filter(isNew).length : 0,
       items,
       findings: ruleFindings,
     };
   });
-  return groups.sort((a, b) => SEVERITIES.indexOf(a.severity) - SEVERITIES.indexOf(b.severity));
+  return groups.sort((a, b) =>
+    SEVERITIES.indexOf(a.severity) - SEVERITIES.indexOf(b.severity)
+    || Number(b.newCount > 0) - Number(a.newCount > 0));
 }

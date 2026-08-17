@@ -1,9 +1,10 @@
 import { describe, it, expect, vi } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { groupFindings, runRules, RULES, type RuleWorld } from '@/lib/testBench/rules';
+import { groupFindings, runRules, RULES, type FindingGroup, type RuleWorld } from '@/lib/testBench/rules';
+import { partitionFindings, withDismissed, withSeen, EMPTY_BENCH_STATE } from '@/lib/testBench/seenState';
 import type { Entity, WorldOverview } from '@/types';
-import { TestBench, TestBenchButton } from './TestBench';
+import { TestBench, TestBenchButton, type TestBenchProps } from './TestBench';
 
 // The panel renders whatever the rule pass produced, so the fixture goes through the real engine rather
 // than hand-built groups — a row shape the rules can't actually emit would prove nothing. The base world
@@ -21,20 +22,27 @@ const defective = world([
   { id: 'e2', name: 'Old Tobb', aliases: ['the fishmonger'] },
 ]);
 
-const renderBench = (from: RuleWorld, onOpenItem = vi.fn(), onFixRule = vi.fn()) => {
-  const groups = groupFindings(runRules(from));
-  render(
-    <TestBench
-      groups={groups}
-      ruleCount={RULES.length}
-      tab="issues"
-      onTabChange={vi.fn()}
-      onClose={vi.fn()}
-      onOpenItem={onOpenItem}
-      onFixRule={onFixRule}
-    />,
-  );
-  return { groups, onOpenItem, onFixRule };
+/** Everything the panel needs, so a test names only the props it is about. */
+const benchProps = (groups: FindingGroup[], over: Partial<TestBenchProps> = {}): TestBenchProps => ({
+  groups,
+  dismissedGroups: [],
+  ruleCount: RULES.length,
+  newCount: 0,
+  tab: 'issues',
+  onTabChange: vi.fn(),
+  onClose: vi.fn(),
+  onOpenItem: vi.fn(),
+  onFixRule: vi.fn(),
+  onDismissRule: vi.fn(),
+  onRestoreRule: vi.fn(),
+  onMarkAllSeen: vi.fn(),
+  ...over,
+});
+
+const renderBench = (from: RuleWorld, over: Partial<TestBenchProps> = {}) => {
+  const props = benchProps(groupFindings(runRules(from)), over);
+  render(<TestBench {...props} />);
+  return props;
 };
 
 describe('TestBench panel', () => {
@@ -87,13 +95,7 @@ describe('TestBench panel', () => {
   });
 
   it('closes from the bench header', async () => {
-    const onClose = vi.fn();
-    render(
-      <TestBench
-        groups={[]} ruleCount={RULES.length} tab="issues"
-        onTabChange={vi.fn()} onClose={onClose} onOpenItem={vi.fn()} onFixRule={vi.fn()}
-      />,
-    );
+    const { onClose } = renderBench(world([]));
     await userEvent.click(screen.getByRole('button', { name: 'Close Test Bench' }));
     expect(onClose).toHaveBeenCalled();
   });
@@ -120,26 +122,127 @@ describe('TestBench quick fixes', () => {
   });
 });
 
+describe('TestBench newness', () => {
+  // The panel is handed marked findings, so the fixture goes through the real seen-state seam rather than
+  // hand-set flags — a marking the store can't actually produce would prove nothing.
+  const marked = (from: RuleWorld, state = EMPTY_BENCH_STATE): Partial<TestBenchProps> => {
+    const { live, dismissed } = partitionFindings(runRules(from), state);
+    const groups = groupFindings(live, (f) => f.isNew);
+    return {
+      groups,
+      dismissedGroups: groupFindings(dismissed),
+      newCount: groups.filter((g) => g.newCount > 0).length,
+    };
+  };
+  const renderMarked = (from: RuleWorld, state = EMPTY_BENCH_STATE, over: Partial<TestBenchProps> = {}) => {
+    const props = benchProps([], { ...marked(from, state), ...over });
+    render(<TestBench {...props} />);
+    return props;
+  };
+  /** The rows on screen, in the order they are rendered. */
+  const rowOrder = () => screen.getAllByRole('button', { name: /^Dismiss: / })
+    .map((b) => b.getAttribute('aria-label')?.replace('Dismiss: ', ''));
+
+  const articled = world([{ id: 'e1', name: 'Maren', aliases: ['the visitor'] }]);
+
+  it('marks a row nobody has been shown yet', () => {
+    renderMarked(articled);
+    expect(screen.getByText('New')).toBeInTheDocument();
+  });
+
+  it('goes quiet once the row has been seen', () => {
+    renderMarked(articled, withSeen(EMPTY_BENCH_STATE, runRules(articled)));
+    expect(screen.queryByText('New')).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Mark All Seen' })).toBeNull();
+    // The finding is still listed — seen means known, not gone.
+    expect(screen.getByText(/begins with an article/)).toBeInTheDocument();
+  });
+
+  it('marks a known row again once a second instance of the same rule arrives', () => {
+    const seen = withSeen(EMPTY_BENCH_STATE, runRules(articled));
+    const both = world([
+      { id: 'e1', name: 'Maren', aliases: ['the visitor'] },
+      { id: 'e2', name: 'Old Tobb', aliases: ['the fishmonger'] },
+    ]);
+    renderMarked(both, seen);
+    expect(screen.getByText('New')).toBeInTheDocument();
+    expect(screen.getByText('1 new')).toBeInTheDocument();
+  });
+
+  it('sorts a new row above a known one of the same severity', () => {
+    // Both warnings. The articled alias fires first in catalog order, so only newness can reorder them.
+    const two = {
+      ...articled,
+      entities: [{ id: 'e1', name: 'Maren', aliases: ['the visitor'], locations: ['harbor'] }, { id: 'e2', name: 'Old Tobb', locations: [] }],
+    };
+    renderMarked(two, withSeen(EMPTY_BENCH_STATE, runRules(articled)));
+    expect(rowOrder()?.[0]).toMatch(/placed in no location/);
+  });
+
+  it('marks the whole list seen on request', async () => {
+    const { onMarkAllSeen } = renderMarked(articled);
+    await userEvent.click(screen.getByRole('button', { name: 'Mark All Seen' }));
+    expect(onMarkAllSeen).toHaveBeenCalled();
+  });
+});
+
+describe('TestBench dismissal', () => {
+  const articled = world([{ id: 'e1', name: 'Maren', aliases: ['the visitor'] }]);
+
+  it('hands the row’s rule over when dismissed', async () => {
+    const { onDismissRule } = renderBench(articled);
+    await userEvent.click(screen.getByRole('button', { name: /^Dismiss: / }));
+    expect(onDismissRule).toHaveBeenCalledWith('alias-leading-article');
+  });
+
+  it('keeps a muted row out of the list but reachable', async () => {
+    const state = withDismissed(EMPTY_BENCH_STATE, runRules(articled));
+    const { live, dismissed } = partitionFindings(runRules(articled), state);
+    const props = benchProps(groupFindings(live), { dismissedGroups: groupFindings(dismissed) });
+    render(<TestBench {...props} />);
+    expect(screen.getByText('No Problems Found')).toBeInTheDocument();
+    await userEvent.click(screen.getByRole('button', { name: '1 dismissed' }));
+    await userEvent.click(screen.getByRole('button', { name: /^Restore: / }));
+    expect(props.onRestoreRule).toHaveBeenCalledWith('alias-leading-article');
+  });
+
+  it('says nothing about dismissals when there are none', () => {
+    renderBench(articled);
+    expect(screen.queryByText(/dismissed/)).toBeNull();
+  });
+});
+
 describe('TestBenchButton', () => {
-  it('shows the finding count', () => {
-    render(<TestBenchButton count={7} open={false} onClick={vi.fn()} />);
+  it('shows what is new, prominently', () => {
+    render(<TestBenchButton count={7} newCount={3} open={false} onClick={vi.fn()} />);
+    expect(screen.getByRole('button', { name: 'Test Bench, 3 new findings' })).toBeInTheDocument();
+    expect(screen.getByText('3')).toHaveClass('bg-warning');
+  });
+
+  it('drops to a muted total once nothing is new', () => {
+    render(<TestBenchButton count={7} newCount={0} open={false} onClick={vi.fn()} />);
     expect(screen.getByRole('button', { name: 'Test Bench, 7 findings' })).toBeInTheDocument();
-    expect(screen.getByText('7')).toBeInTheDocument();
+    expect(screen.getByText('7')).toHaveClass('bg-muted');
+  });
+
+  it('counts a lone finding in the singular', () => {
+    render(<TestBenchButton count={1} newCount={1} open={false} onClick={vi.fn()} />);
+    expect(screen.getByRole('button', { name: 'Test Bench, 1 new finding' })).toBeInTheDocument();
   });
 
   it('stays quiet at zero', () => {
-    render(<TestBenchButton count={0} open={false} onClick={vi.fn()} />);
+    render(<TestBenchButton count={0} newCount={0} open={false} onClick={vi.fn()} />);
     expect(screen.getByRole('button', { name: 'Test Bench' })).toBeInTheDocument();
     expect(screen.queryByText('0')).not.toBeInTheDocument();
   });
 
   it('reads as pressed while the Bench is open', () => {
-    render(<TestBenchButton count={0} open onClick={vi.fn()} />);
+    render(<TestBenchButton count={0} newCount={0} open onClick={vi.fn()} />);
     expect(screen.getByRole('button', { name: 'Test Bench' })).toHaveAttribute('aria-pressed', 'true');
   });
 
   it('caps a runaway count so the icon button cannot grow', () => {
-    render(<TestBenchButton count={140} open={false} onClick={vi.fn()} />);
+    render(<TestBenchButton count={140} newCount={0} open={false} onClick={vi.fn()} />);
     expect(screen.getByText('99+')).toBeInTheDocument();
   });
 });

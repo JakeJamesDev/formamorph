@@ -6,7 +6,8 @@
  * Presentational: findings arrive as props, and navigation is a callback the editor fulfills, so the
  * panel renders identically inside the desktop split and the mobile sheet.
  */
-import { AlertTriangle, ChevronDown, CircleX, FlaskConical, Info, MapPin, User, X } from 'lucide-react';
+import { useState } from 'react';
+import { AlertTriangle, ChevronDown, CircleX, EyeOff, FlaskConical, Info, MapPin, Undo2, User, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -36,17 +37,27 @@ const SEVERITY_HEADING_COLOR: Record<Severity, string> = {
   info: 'text-muted-foreground',
 };
 
+/** The marker on a row carrying something the author hasn't been shown. A row is the unit they act on, so it
+ *  is marked or it isn't — a count of the instances inside it isn't anything they can answer separately. */
+const NewMarker = () => (
+  <span className="shrink-0 rounded-full bg-warning/20 px-1.5 text-meta font-medium text-warning">New</span>
+);
+
 /** One collapsed row: the problem in a line, then every item it names as its own way in. A row whose rule
  *  knows the repair also carries it — one button for the row, never a fix-everything across rows. */
-const FindingRow = ({ group, onOpen, onFix }: {
+const FindingRow = ({ group, onOpen, onFix, onDismiss }: {
   group: FindingGroup;
   onOpen: OpenFindingItem;
   onFix: (ruleId: string) => void;
+  onDismiss: (ruleId: string) => void;
 }) => (
   <div className="flex items-start gap-2 rounded-md border p-2">
     <SeverityIcon severity={group.severity} />
     <div className="min-w-0 flex-grow">
-      <p className="text-label leading-snug">{group.headline}</p>
+      <p className="text-label leading-snug">
+        {group.newCount > 0 && <><NewMarker />{' '}</>}
+        {group.headline}
+      </p>
       <div className="mt-1 flex flex-wrap gap-1">
         {group.items.map((item) => (
           <button
@@ -65,59 +76,132 @@ const FindingRow = ({ group, onOpen, onFix }: {
         {group.findings.length > 1 ? 'Fix All' : 'Fix'}
       </Button>
     )}
+    <Button
+      variant="ghost"
+      size="icon"
+      className="h-6 w-6 shrink-0 text-muted-foreground"
+      onClick={() => onDismiss(group.ruleId)}
+      aria-label={`Dismiss: ${group.headline}`}
+      title="Dismiss"
+    >
+      <EyeOff className="h-3.5 w-3.5" />
+    </Button>
   </div>
 );
 
-/** World Doctor: everything the rule pass raised, worst first, one row per rule. */
-const IssuesInstrument = ({ groups, ruleCount, onOpen, onFix }: {
+/** The muted rows, folded away until asked for — a dismissal the author can't take back is a trap. */
+const DismissedSection = ({ groups, onRestore }: {
   groups: FindingGroup[];
-  ruleCount: number;
-  onOpen: OpenFindingItem;
-  onFix: (ruleId: string) => void;
+  onRestore: (ruleId: string) => void;
 }) => {
-  if (groups.length === 0) {
-    return (
-      <div className="flex h-full flex-col items-center justify-center gap-1 text-center">
-        <p className="text-label font-medium">No Problems Found</p>
-        <p className="text-meta text-muted-foreground">{ruleCount} rules checked</p>
-      </div>
-    );
-  }
+  const [shown, setShown] = useState(false);
+  if (groups.length === 0) return null;
   return (
-    <ScrollArea className="h-full">
-      <div className="space-y-2 pr-2">
-        {SEVERITIES.map((severity) => {
-          const inSeverity = groups.filter((g) => g.severity === severity);
-          if (inSeverity.length === 0) return null;
-          return (
-            <div key={severity} className="space-y-2">
-              <p className={cn('pt-1 text-meta font-medium', SEVERITY_HEADING_COLOR[severity])}>
-                {SEVERITY_HEADING[severity]}
-              </p>
-              {inSeverity.map((group) => (
-                <FindingRow key={group.ruleId} group={group} onOpen={onOpen} onFix={onFix} />
-              ))}
+    <div className="mt-2 border-t pt-2">
+      <button
+        type="button"
+        onClick={() => setShown((v) => !v)}
+        className="text-meta text-muted-foreground hover:text-foreground"
+        aria-expanded={shown}
+      >
+        {groups.length} dismissed
+      </button>
+      {shown && (
+        <div className="mt-1 space-y-1">
+          {groups.map((group) => (
+            <div key={group.ruleId} className="flex items-start gap-2 rounded-md border border-dashed p-1.5">
+              <p className="min-w-0 flex-grow truncate text-meta text-muted-foreground">{group.headline}</p>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-5 w-5 shrink-0 text-muted-foreground"
+                onClick={() => onRestore(group.ruleId)}
+                aria-label={`Restore: ${group.headline}`}
+                title="Restore"
+              >
+                <Undo2 className="h-3.5 w-3.5" />
+              </Button>
             </div>
-          );
-        })}
-      </div>
-    </ScrollArea>
+          ))}
+        </div>
+      )}
+    </div>
   );
 };
 
+/** World Doctor: everything the rule pass raised, worst first, one row per rule. */
+const IssuesInstrument = ({ groups, dismissedGroups, ruleCount, newCount, onOpen, onFix, onDismiss, onRestore, onMarkAllSeen }: {
+  groups: FindingGroup[];
+  dismissedGroups: FindingGroup[];
+  ruleCount: number;
+  newCount: number;
+  onOpen: OpenFindingItem;
+  onFix: (ruleId: string) => void;
+  onDismiss: (ruleId: string) => void;
+  onRestore: (ruleId: string) => void;
+  onMarkAllSeen: () => void;
+}) => (
+  <ScrollArea className="h-full">
+    <div className="pr-2">
+      {newCount > 0 && (
+        <div className="mb-2 flex items-center gap-2">
+          <span className="text-meta font-medium text-warning">{newCount} new</span>
+          <Button variant="ghost" size="sm" className="ml-auto h-6 px-2 text-meta" onClick={onMarkAllSeen}>
+            Mark All Seen
+          </Button>
+        </div>
+      )}
+      {groups.length === 0 ? (
+        <div className="flex flex-col items-center gap-1 py-8 text-center">
+          <p className="text-label font-medium">No Problems Found</p>
+          <p className="text-meta text-muted-foreground">{ruleCount} rules checked</p>
+        </div>
+      ) : (
+        <div className="space-y-2">
+          {SEVERITIES.map((severity) => {
+            const inSeverity = groups.filter((g) => g.severity === severity);
+            if (inSeverity.length === 0) return null;
+            return (
+              <div key={severity} className="space-y-2">
+                <p className={cn('pt-1 text-meta font-medium', SEVERITY_HEADING_COLOR[severity])}>
+                  {SEVERITY_HEADING[severity]}
+                </p>
+                {inSeverity.map((group) => (
+                  <FindingRow key={group.ruleId} group={group} onOpen={onOpen} onFix={onFix} onDismiss={onDismiss} />
+                ))}
+              </div>
+            );
+          })}
+        </div>
+      )}
+      <DismissedSection groups={dismissedGroups} onRestore={onRestore} />
+    </div>
+  </ScrollArea>
+);
+
 export interface TestBenchProps {
   groups: FindingGroup[];
+  /** The rows the author muted, kept reachable so a dismissal is never one-way. */
+  dismissedGroups: FindingGroup[];
   /** How many rules ran — what makes a clean world read as verified rather than broken. */
   ruleCount: number;
+  /** How many rows carry something the author has not been shown. */
+  newCount: number;
   tab: BenchTab;
   onTabChange: (tab: BenchTab) => void;
   onClose: () => void;
   onOpenItem: OpenFindingItem;
   /** Apply one rule's fix to the world — the editor's write-through, so it lands as a hand edit would. */
   onFixRule: (ruleId: string) => void;
+  onDismissRule: (ruleId: string) => void;
+  onRestoreRule: (ruleId: string) => void;
+  onMarkAllSeen: () => void;
 }
 
-export function TestBench({ groups, ruleCount, tab, onTabChange, onClose, onOpenItem, onFixRule }: TestBenchProps) {
+export function TestBench({
+  groups, dismissedGroups, ruleCount, newCount, tab, onTabChange, onClose, onOpenItem,
+  onFixRule, onDismissRule, onRestoreRule, onMarkAllSeen,
+}: TestBenchProps) {
   return (
     <div className="flex h-full flex-col gap-2 p-3">
       <div className="flex items-center gap-2">
@@ -153,7 +237,17 @@ export function TestBench({ groups, ruleCount, tab, onTabChange, onClose, onOpen
         {BENCH_TABS.map((t) => (
           <TabsContent key={t.value} value={t.value} className="mt-0 min-h-0 flex-grow">
             {t.value === 'issues' && (
-              <IssuesInstrument groups={groups} ruleCount={ruleCount} onOpen={onOpenItem} onFix={onFixRule} />
+              <IssuesInstrument
+                groups={groups}
+                dismissedGroups={dismissedGroups}
+                ruleCount={ruleCount}
+                newCount={newCount}
+                onOpen={onOpenItem}
+                onFix={onFixRule}
+                onDismiss={onDismissRule}
+                onRestore={onRestoreRule}
+                onMarkAllSeen={onMarkAllSeen}
+              />
             )}
           </TabsContent>
         ))}
@@ -175,13 +269,22 @@ const LensSlot = ({ icon: Icon, label }: { icon: typeof User; label: string }) =
   </button>
 );
 
-/** The editor header's persistent way in, carrying the finding count. Icon-sized in every state, so the
- *  count appearing or clearing never reflows the header row. */
-export function TestBenchButton({ count, open, onClick }: {
+/**
+ * The editor header's persistent way in, carrying the finding count. Icon-sized in every state, so the count
+ * appearing or clearing never reflows the header row.
+ *
+ * The badge reports what is new, prominently; once the author has seen the list it drops to a muted total,
+ * so a still badge means "nothing has changed since you looked" rather than "nothing is wrong".
+ */
+export function TestBenchButton({ count, newCount, open, onClick }: {
   count: number;
+  newCount: number;
   open: boolean;
   onClick: () => void;
 }) {
+  const fresh = newCount > 0;
+  const shown = fresh ? newCount : count;
+  const noun = shown === 1 ? 'finding' : 'findings';
   return (
     <Button
       variant={open ? 'secondary' : 'ghost'}
@@ -189,16 +292,23 @@ export function TestBenchButton({ count, open, onClick }: {
       className="relative"
       onClick={onClick}
       aria-pressed={open}
-      aria-label={count > 0 ? `Test Bench, ${count} findings` : 'Test Bench'}
+      aria-label={
+        fresh ? `Test Bench, ${shown} new ${noun}`
+          : count > 0 ? `Test Bench, ${shown} ${noun}`
+            : 'Test Bench'
+      }
       title="Test Bench"
     >
       <FlaskConical className="h-4 w-4" />
       {count > 0 && (
         <span
           aria-hidden
-          className="absolute right-0 top-0 rounded-full bg-warning px-1 text-meta font-medium leading-tight text-warning-foreground"
+          className={cn(
+            'absolute right-0 top-0 rounded-full px-1 text-meta font-medium leading-tight',
+            fresh ? 'bg-warning text-warning-foreground' : 'bg-muted text-muted-foreground',
+          )}
         >
-          {count > 99 ? '99+' : count}
+          {shown > 99 ? '99+' : shown}
         </span>
       )}
     </Button>
