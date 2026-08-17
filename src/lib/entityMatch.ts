@@ -48,14 +48,102 @@ const COMMON_WORDS = new Set<string>([...commonWordsCore, ...commonWordsExtra]);
 // absorbs middle initials, honorifics, and parentheticals without spanning a sentence break.
 const MAX_NAME_GAP_WORDS = 2;
 
-/** True if `name` appears in `text` with an uppercase first letter (a proper-noun occurrence). */
-function occursCapitalized(text: string, name: string): boolean {
-  const re = makeWordRegex(name, 'gi');
+/** A stretch of the searched text a match landed on. `text` is that substring exactly as written, so a
+ *  singular name reports the plural it hit. `start`/`end` index the string that was searched. */
+export interface TextSpan {
+  start: number;
+  end: number;
+  text: string;
+}
+
+/** How a detection was earned: the whole written name, one distinctive word of a multi-word name, or an alias. */
+export type MatchVia = 'name' | 'partial' | 'alias';
+
+/** One name's detection with the evidence behind it. */
+export interface NameMatch {
+  /** The name as supplied — the value `matchNames` returns for this hit. */
+  name: string;
+  /** The form the matcher searched for: the whole name, or the lone word that carried a partial hit. */
+  matched: string;
+  via: MatchVia;
+  /** Every occurrence of the matched form, in text order. Never empty. */
+  spans: TextSpan[];
+}
+
+/**
+ * One entity's detection, resolved to the entity behind whichever written form matched. `name` is the
+ * entity's canonical name — what the presence surfaces show however it was written on the page.
+ */
+export interface EntityMatch extends NameMatch {
+  entityId: string;
+}
+
+// Every match of `re` in `text`, optionally keeping only the ones starting with a capital.
+function regexSpans(text: string, re: RegExp, capitalizedOnly = false): TextSpan[] {
+  const all = re.global ? re : new RegExp(re.source, `${re.flags}g`); // a non-global exec never advances
+  const spans: TextSpan[] = [];
   let m: RegExpExecArray | null;
-  while ((m = re.exec(text)) !== null) {
-    if (/[A-Z]/.test(m[0].charAt(0))) return true;
+  while ((m = all.exec(text)) !== null) {
+    if (capitalizedOnly && !/[A-Z]/.test(m[0].charAt(0))) continue;
+    spans.push({ start: m.index, end: m.index + m[0].length, text: m[0] });
   }
-  return false;
+  return spans;
+}
+
+/** Where `word` (or its singular/plural forms) occurs in `text`, word-bounded. `capitalizedOnly` keeps the
+ *  proper-noun guard; `caseSensitive` is the stricter rule aliases match under. */
+function wordSpans(
+  text: string,
+  word: string,
+  opts: { capitalizedOnly?: boolean; caseSensitive?: boolean } = {},
+): TextSpan[] {
+  return regexSpans(text, makeWordRegex(word, opts.caseSensitive ? 'g' : 'gi'), opts.capitalizedOnly);
+}
+
+/**
+ * Every name of `names` that `text` contains, each with the form that matched and where it hit. `matchNames`
+ * is this reduced to names; the surfaces that must explain a detection read the spans. Deduped by name,
+ * in first-seen order.
+ */
+export function findNameMatches(
+  text: string,
+  names: string[],
+  opts: { requireCapital?: boolean; partial?: boolean } = {},
+): NameMatch[] {
+  const { requireCapital = true, partial: allowPartial = true } = opts;
+  if (!text) return [];
+  const matches: NameMatch[] = [];
+  const found = new Set<string>();
+  for (const name of names) {
+    const trimmed = name?.trim();
+    if (!trimmed || found.has(name)) continue;
+    const words = trimmed.toLowerCase().split(/\s+/);
+    if (words.length === 1) {
+      const spans = wordSpans(text, trimmed, { capitalizedOnly: requireCapital });
+      if (spans.length) {
+        matches.push({ name, matched: trimmed, via: 'name', spans });
+        found.add(name);
+      }
+      continue;
+    }
+    // Whole-phrase first: when both passes would hit, the full name is the better answer to "why?".
+    const phrase = inOrderSpans(text, words);
+    if (phrase.length) {
+      matches.push({ name, matched: trimmed, via: 'name', spans: phrase });
+      found.add(name);
+      continue;
+    }
+    if (!allowPartial) continue;
+    // Partial reference: a distinctive word used as a proper noun (e.g. "Emily" for "Emily Foster").
+    for (const word of distinctiveWords(trimmed)) {
+      const spans = wordSpans(text, word, { capitalizedOnly: requireCapital });
+      if (!spans.length) continue;
+      matches.push({ name, matched: word, via: 'partial', spans });
+      found.add(name);
+      break;
+    }
+  }
+  return matches;
 }
 
 /**
@@ -68,41 +156,27 @@ export function matchNames(
   names: string[],
   opts: { requireCapital?: boolean; partial?: boolean } = {},
 ): string[] {
-  const { requireCapital = true, partial: allowPartial = true } = opts;
-  if (!text) return [];
-  const found = new Set<string>();
-  for (const name of names) {
-    const trimmed = name?.trim();
-    if (!trimmed || found.has(name)) continue;
-    const words = trimmed.toLowerCase().split(/\s+/);
-    if (words.length === 1) {
-      const matched = requireCapital
-        ? occursCapitalized(text, trimmed)
-        : makeWordRegex(trimmed).test(text);
-      if (matched) found.add(name);
-      continue;
-    }
-    // Partial reference: a distinctive word used as a proper noun (e.g. "Emily" for "Emily Foster").
-    const sig = distinctiveWords(trimmed);
-    const partial = allowPartial && (requireCapital
-      ? sig.some((w) => occursCapitalized(text, w))
-      : sig.some((w) => makeWordRegex(w).test(text)));
-    if (partial || occursInOrder(text, words)) found.add(name);
-  }
-  return [...found];
+  return findNameMatches(text, names, opts).map((m) => m.name);
 }
 
-/** True if any of an entity's aliases appears in `text`. Aliases match differently from names: exact
- *  **case-sensitive** and `\b`-word-bounded (so short nicknames like "Em" don't hit "System"), with the
- *  the same `pluralize`-based plural matching names get. A hit resolves to the entity's canonical name upstream. */
-function anyAliasMatches(text: string, aliases: string[] | undefined): boolean {
-  if (!aliases) return false;
-  for (const alias of aliases) {
+/** Which of an entity's aliases `text` bears out, and everywhere it occurs. Aliases match differently from
+ *  names: exact **case-sensitive** and `\b`-word-bounded (so short nicknames like "Em" don't hit "System"),
+ *  with the same `pluralize`-based plural matching names get. When several hit, the one covering the most
+ *  text wins — "Matron of Teldoril" is better evidence than the "Matron" nested inside it. */
+function strongestAliasMatch(
+  text: string,
+  aliases: string[] | undefined,
+): { alias: string; spans: TextSpan[] } | undefined {
+  let best: { alias: string; spans: TextSpan[]; width: number } | undefined;
+  for (const alias of aliases ?? []) {
     const trimmed = alias?.trim();
     if (!trimmed) continue;
-    if (makeWordRegex(trimmed, '').test(text)) return true;
+    const spans = wordSpans(text, trimmed, { caseSensitive: true });
+    if (!spans.length) continue;
+    const width = Math.max(...spans.map((s) => s.end - s.start));
+    if (!best || width > best.width) best = { alias: trimmed, spans, width };
   }
-  return false;
+  return best && { alias: best.alias, spans: best.spans };
 }
 
 // Straight or curly double-quoted spans. Single quotes are left alone — apostrophes make them
@@ -125,22 +199,46 @@ export function stripQuotedSpeech(text: string): string {
 }
 
 /**
- * The names of the defined entities that appear in `text`. An entity counts when its **name** matches
- * (via `matchNames`) OR any of its **aliases** matches (case-sensitive, word-bounded); either way the
- * returned value is the entity's canonical name. Name hits keep their in-text order; alias-only hits
- * follow in entity order. Deduped.
+ * The defined entities that appear in `text`, each with the written form that matched and where it hit.
+ * An entity counts when its **name** matches (via `findNameMatches`) OR any of its **aliases** matches
+ * (case-sensitive, word-bounded). Name hits come first in name order, alias-only hits follow in entity
+ * order; one entry per canonical name. Two entities laying claim to the same words are both reported,
+ * spans and all — that overlap is the evidence a collision leaves.
+ */
+export function findEntityMatches(
+  text: string,
+  entities: Entity[],
+  opts?: { requireCapital?: boolean; partial?: boolean },
+): EntityMatch[] {
+  const nameHits = new Map<string, NameMatch>();
+  for (const hit of findNameMatches(text, entities.map((e) => e.name), opts)) nameHits.set(hit.name, hit);
+  const byName: EntityMatch[] = [];
+  const byAlias: EntityMatch[] = [];
+  for (const entity of entities) {
+    const hit = nameHits.get(entity.name);
+    if (hit) {
+      byName.push({ ...hit, entityId: entity.id, name: entity.name });
+      continue;
+    }
+    const alias = strongestAliasMatch(text, entity.aliases);
+    if (alias) {
+      byAlias.push({ entityId: entity.id, name: entity.name, matched: alias.alias, via: 'alias', spans: alias.spans });
+    }
+  }
+  return [...byName, ...byAlias];
+}
+
+/**
+ * The names of the defined entities that appear in `text` — `findEntityMatches` with the evidence dropped
+ * and same-named entities collapsed, so the presence surfaces and the authoring tester can never disagree
+ * about who is present.
  */
 export function findEntityNames(
   text: string,
   entities: Entity[],
   opts?: { requireCapital?: boolean; partial?: boolean },
 ): string[] {
-  const found = matchNames(text, entities.map((e) => e.name), opts);
-  for (const entity of entities) {
-    if (found.includes(entity.name)) continue;
-    if (anyAliasMatches(text, entity.aliases)) found.push(entity.name);
-  }
-  return found;
+  return [...new Set(findEntityMatches(text, entities, opts).map((m) => m.name))];
 }
 
 /**
@@ -166,8 +264,13 @@ export function resolveEntityByName<T extends { name: string }>(name: string, en
 // Short/function words dropped before loose matching so a name like "The Wolf" can't match on "the".
 const LOOSE_STOPWORDS = new Set(['the', 'a', 'an', 'of', 'and', 'or', 'with']);
 
+// As written, so reported evidence quotes the author rather than a lowercased copy. Matching is
+// case-insensitive either way.
+const significantWordsAsWritten = (name: string): string[] =>
+  name.trim().split(/\s+/).filter((w) => w.length >= 3 && !LOOSE_STOPWORDS.has(w.toLowerCase()));
+
 const significantWords = (name: string): string[] =>
-  name.toLowerCase().split(/\s+/).filter((w) => w.length >= 3 && !LOOSE_STOPWORDS.has(w));
+  significantWordsAsWritten(name).map((w) => w.toLowerCase());
 
 /**
  * The words of `name` that could identify it on their own: its significant words minus the everyday ones.
@@ -175,20 +278,21 @@ const significantWords = (name: string): string[] =>
  * guarantee a miss, and a false positive is the cheaper error for the surfaces this feeds.
  */
 const distinctiveWords = (name: string): string[] => {
-  const sig = significantWords(name);
-  const distinct = sig.filter((w) => !COMMON_WORDS.has(w));
+  const sig = significantWordsAsWritten(name);
+  const distinct = sig.filter((w) => !COMMON_WORDS.has(w.toLowerCase()));
   return distinct.length > 0 ? distinct : sig;
 };
 
 /**
- * True if every word of a multi-word name occurs in `text` in order, with at most `MAX_NAME_GAP_WORDS`
+ * Where every word of a multi-word name occurs in `text` in order, with at most `MAX_NAME_GAP_WORDS`
  * unrelated words between neighbors — the phrase test that replaces a bare "all words appear somewhere"
- * check, which let two unrelated clauses ("the old woman … a young man") satisfy "Old Man".
+ * check, which let two unrelated clauses ("the old woman … a young man") satisfy "Old Man". A span covers
+ * the phrase as written, gap words included ("Emily J. Foster").
  */
-function occursInOrder(text: string, words: string[]): boolean {
+function inOrderSpans(text: string, words: string[]): TextSpan[] {
   const gap = String.raw`(?:\W+\w+){0,${MAX_NAME_GAP_WORDS}}\W+`;
   const parts = words.map((w) => `(?:${wordForms(w).map(escapeRegExp).join('|')})`);
-  return new RegExp(`\\b${parts.join(gap)}\\b`, 'i').test(text);
+  return regexSpans(text, new RegExp(`\\b${parts.join(gap)}\\b`, 'gi'));
 }
 
 /**
