@@ -11,6 +11,10 @@ import {
 } from '@/lib/placeholders';
 import { matchKey } from '@/lib/entityMatch';
 import { activeDescriptor } from '@/lib/statContext';
+import {
+  describeInThresholdUnits, describeThreshold, descriptorSpans, isThresholdOutOfRange, statStartValue,
+  thresholdValue,
+} from '@/lib/statDescriptorGeometry';
 import { usesStatClock } from '@/lib/statCodeExecutor';
 import { estimateTokens } from '@/lib/memoryUtils';
 import { entityImages } from '@/lib/entityImages';
@@ -667,15 +671,8 @@ const statDisabledForever: Rule = {
 
 // ── Stat sanity: numbers that can't mean what the author wrote ────────────────────────────────────────────
 
-/** A stat's value at the top of turn one, resolved exactly as the seeder resolves it (lib/statBackfill):
- *  the authored start, else any live value, else the floor. */
-const startingValue = (stat: Stat): number =>
-  typeof stat.starting === 'number' ? stat.starting
-    : typeof stat.value === 'number' ? stat.value
-      : stat.min ?? 0;
-
 const startsInRange = (stat: Stat): boolean => {
-  const value = startingValue(stat);
+  const value = statStartValue(stat);
   return value >= stat.min && value <= stat.max;
 };
 
@@ -691,7 +688,7 @@ const statStartingOutOfRange: Rule = {
     const item = namedItem(stat.id, stat.name, world);
     return finding(
       statStartingOutOfRange,
-      `${quote(item.name)} starts at ${startingValue(stat)}, outside its range of ${stat.min} to ${stat.max}`,
+      `${quote(item.name)} starts at ${statStartValue(stat)}, outside its range of ${stat.min} to ${stat.max}`,
       [item],
     );
   }),
@@ -706,15 +703,43 @@ const statStartNoDescriptor: Rule = {
   check: (world) => (world.stats ?? [])
     // A start outside the range is the sharper diagnosis and already fires; its band is nobody's question.
     .filter((stat) => (stat.descriptors ?? []).length > 0 && startsInRange(stat)
-      && !activeDescriptor(stat, startingValue(stat)))
+      && !activeDescriptor(stat, statStartValue(stat)))
     .map((stat) => {
       const item = namedItem(stat.id, stat.name, world);
+      const spans = descriptorSpans(stat);
+      const top = spans[spans.length - 1];
+      // Both numbers in the stat's own threshold unit: comparing a raw value against a percent threshold
+      // is exactly the reading that made this message unreadable.
       return finding(
         statStartNoDescriptor,
-        `${quote(item.name)} starts at ${startingValue(stat)}, above every descriptor threshold — the AI is told no status for it until the value drops`,
+        `${quote(item.name)} starts at ${describeInThresholdUnits(stat, statStartValue(stat))}, above its top band, `
+        + `which stops at ${describeInThresholdUnits(stat, top.to)} — the AI is told no status for it until the value drops`,
         [item],
       );
     }),
+};
+
+const statDescriptorOutOfRange: Rule = {
+  id: 'stat-descriptor-out-of-range',
+  severity: 'warning',
+  section: 'stats',
+  advanced: true,
+  summary: (count) => `${count} stats have a descriptor threshold outside the values the stat can hold`,
+  check: (world) => (world.stats ?? []).flatMap((stat) => {
+    const stray = (stat.descriptors ?? []).find((d) => isThresholdOutOfRange(stat, d.threshold));
+    if (!stray) return [];
+    const item = namedItem(stat.id, stat.name, world);
+    const above = thresholdValue(stat, stray.threshold) > stat.max;
+    return [finding(
+      statDescriptorOutOfRange,
+      `${quote(item.name)} bands ${quote(stray.description)} at ${describeThreshold(stat, stray.threshold)}, `
+      + `outside its range of ${stat.min} to ${stat.max} — `
+      + (above
+        ? 'the value can never climb that far, so the band below it covers everything up to the top'
+        : 'the value can never fall that low, so the band never shows'),
+      [item],
+    )];
+  }),
 };
 
 const statDescriptorDuplicateThreshold: Rule = {
@@ -735,7 +760,7 @@ const statDescriptorDuplicateThreshold: Rule = {
     const item = namedItem(stat.id, stat.name, world);
     return [finding(
       statDescriptorDuplicateThreshold,
-      `${quote(item.name)} has two descriptors at ${dead[0].threshold}% — only the first applies, so ${quote(dead[0].description)} never shows`,
+      `${quote(item.name)} has two descriptors at ${describeThreshold(stat, dead[0].threshold)} — only the first applies, so ${quote(dead[0].description)} never shows`,
       [item],
     )];
   }),
@@ -830,7 +855,7 @@ const statTraitDeltaClamped: Rule = {
   advanced: true,
   summary: (count) => `${count} trait stat penalties land on a stat already at its floor, so the clamp swallows them whole`,
   check: (world) => traitValueChanges(world)
-    .filter(({ stat, trait, delta }) => delta < 0 && startingValue(stat) <= traitFloor(stat, trait))
+    .filter(({ stat, trait, delta }) => delta < 0 && statStartValue(stat) <= traitFloor(stat, trait))
     .map(({ stat, trait, delta }) => {
       const items = statAndTrait(stat, trait, world);
       return finding(
@@ -1411,7 +1436,8 @@ export const RULES: readonly Rule[] = [
   chipUnknownPlaceholder, chipNeverScanned, placeholderUnused, statCodeUnknownStat,
   entrySecondaryWithoutPrimary, entryInert, entryRegexInvalid,
   noStartingLocation, legacyStartLocation, entityNowhere, statDisabledForever,
-  statStartingOutOfRange, statStartNoDescriptor, statDescriptorDuplicateThreshold, statPercentageBounds,
+  statStartingOutOfRange, statStartNoDescriptor, statDescriptorDuplicateThreshold, statDescriptorOutOfRange,
+  statPercentageBounds,
   statCodeNeverTicks, statTraitDeltaClamped, statCodeOverridesTrait, statAiLockFrozen,
   locationParentOrphan, connectionEndpointOrphan, statUpdateUnknownStat,
   aliasLowercaseNoTwin, entityNameInWildcardPool,

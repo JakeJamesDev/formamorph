@@ -6,7 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Trash2, Code, LayoutTemplate } from "lucide-react";
+import { Code, LayoutTemplate } from "lucide-react";
 import {
   Select,
   SelectContent,
@@ -24,7 +24,8 @@ import { useBodyMorphSources } from "@/lib/useBodyMorphNames";
 import { boundMorphNamesExcluding, buildMorphGroups } from "@/lib/bodyMorphs";
 import { clamp } from "@/lib/utils";
 import { useEditorMode } from '@/lib/editorMode';
-import type { Stat, StatDescriptor, StatType } from "@/types";
+import { StatDescriptorsSection } from './StatDescriptorsSection';
+import type { Stat, StatDescriptor, StatType, ThresholdUnit } from "@/types";
 
 /** The stat being edited — a loose, partial Stat while fields are filled in. */
 type EditingStat = Partial<Stat>;
@@ -121,6 +122,11 @@ const StatManager = ({ stat }: { stat: Stat }) => {
       handleChange("descriptors", updatedDescriptors);
       setNewDescriptor({ threshold: "", description: "" });
     }
+  };
+
+  // One write: a second `apply` would merge into the draft this one was built from and undo it.
+  const handleUnitChange = (thresholdUnit: ThresholdUnit, descriptors: StatDescriptor[]) => {
+    apply({ thresholdUnit, descriptors });
   };
 
   const handleRemoveDescriptor = (descriptorId: string | number) => {
@@ -318,69 +324,16 @@ const StatManager = ({ stat }: { stat: Stat }) => {
       )}
 
       {advanced && (
-      <div className="space-y-2">
-        <Label>Stat Descriptors</Label>
-        {editingStat.descriptors &&
-          editingStat.descriptors.map((descriptor, index) => (
-            <div key={descriptor.id} className="flex items-center space-x-2">
-              <Input
-                type="number"
-                value={descriptor.threshold}
-                onChange={(e) =>
-                  handleDescriptorChange(
-                    index,
-                    "threshold",
-                    Number(e.target.value),
-                  )
-                }
-                onBlur={handleDescriptorBlur}
-                placeholder="Threshold %"
-                className="w-24"
-              />
-              <Input
-                value={descriptor.description}
-                onChange={(e) =>
-                  handleDescriptorChange(index, "description", e.target.value)
-                }
-                placeholder="Description"
-                className="flex-grow"
-              />
-              <Button
-                variant="ghost"
-                size="icon"
-                onClick={() => handleRemoveDescriptor(descriptor.id)}
-              >
-                <Trash2 className="h-4 w-4" />
-              </Button>
-            </div>
-          ))}
-        <div className="flex items-center space-x-2">
-          <Input
-            type="number"
-            value={newDescriptor.threshold}
-            onChange={(e) =>
-              setNewDescriptor({
-                ...newDescriptor,
-                threshold: e.target.value === "" ? "" : Number(e.target.value),
-              })
-            }
-            placeholder="New Threshold %"
-            className="w-24"
-          />
-          <Input
-            value={newDescriptor.description}
-            onChange={(e) =>
-              setNewDescriptor({
-                ...newDescriptor,
-                description: e.target.value,
-              })
-            }
-            placeholder="New Description"
-            className="flex-grow"
-          />
-          <Button onClick={handleAddDescriptor}>Add</Button>
-        </div>
-      </div>
+        <StatDescriptorsSection
+          stat={editingStat}
+          newDescriptor={newDescriptor}
+          setNewDescriptor={setNewDescriptor}
+          onDescriptorChange={handleDescriptorChange}
+          onDescriptorBlur={handleDescriptorBlur}
+          onAddDescriptor={handleAddDescriptor}
+          onRemoveDescriptor={handleRemoveDescriptor}
+          onUnitChange={handleUnitChange}
+        />
       )}
 
       {/* Code Section — a plain section like its siblings; the `?` carries what it needs explaining. */}

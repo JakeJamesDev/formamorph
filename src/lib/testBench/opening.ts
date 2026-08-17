@@ -31,7 +31,7 @@ import { activePlaceholderPins, activeStatEnabled, enabledStats } from '@/lib/tr
 import { acquireTrait, seedStatBases, type TraitRuntimeState } from '@/lib/traitRuntime';
 import { buildNarrationPrompt } from '@/lib/turnPipeline/narrationPrompt';
 import { startingLocations } from '@/lib/startingLocation';
-import type { GameLocation, PlaceholderRolls, PlayerStat, Stat, StatDescriptor, Trait } from '@/types';
+import type { GameLocation, PlaceholderRolls, PlayerStat, Stat, StatDescriptor, ThresholdUnit, Trait } from '@/types';
 import { lensActiveTraits, resolveLensText, type BenchLens } from './lens';
 import { chipBearingTexts, type RuleWorld } from './rules';
 import { scannedEntries } from './triggers';
@@ -55,6 +55,8 @@ export interface OpeningStat {
   descriptor: string | null;
   /** The authored bands; the slider re-bands against them via `activeDescriptor`. */
   descriptors: StatDescriptor[];
+  /** Which unit those thresholds are in — carried so the slider bands exactly as play does. */
+  thresholdUnit?: ThresholdUnit;
   /** Bands exist but none covers the starting value — the AI is told no status (the contradiction class). */
   uncovered: boolean;
 }
@@ -213,6 +215,7 @@ export function buildOpening(world: OpeningWorld, lens: BenchLens, rolls: Placeh
       traitShift: stat.value - (seededValue.get(stat.id) ?? stat.value),
       descriptor: descriptor?.description ?? null,
       descriptors,
+      thresholdUnit: stat.thresholdUnit,
       uncovered: descriptors.length > 0 && !descriptor,
     };
   });

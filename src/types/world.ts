@@ -22,6 +22,9 @@ export interface StatDescriptor {
   description: string;
 }
 
+/** What a descriptor threshold's number means: the stat's own units, or a percentage of min→max. */
+export type ThresholdUnit = 'raw' | 'percent';
+
 /** A world-defined stat: its schema (type, range, descriptors) plus its live/starting value. */
 export interface Stat {
   id: string;
@@ -36,6 +39,9 @@ export interface Stat {
   value?: number;
   regen: number;
   descriptors: StatDescriptor[];
+  /** How this stat's descriptor thresholds read: `raw` in the stat's own units (bands stay put when the
+   *  range changes), `percent` as a share of min→max (bands rescale). Absent = raw. */
+  thresholdUnit?: ThresholdUnit;
   /** Optional JS executed to derive this stat's value from others. */
   code?: string;
   /** Body-mesh morph target names this stat drives; the value maps linearly across [min, authored max],

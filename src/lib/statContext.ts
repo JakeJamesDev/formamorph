@@ -1,24 +1,22 @@
 import type { PlayerStat, Stat, StatDescriptor } from '@/types';
 import { NONE_PLACEHOLDER } from './promptFallbacks';
+import { sortedDescriptors, thresholdValue, type BandedStat } from './statDescriptorGeometry';
 import { xmlEscape } from './utils';
 
 /**
- * The descriptor a value falls under, or undefined when it sits above every band. Thresholds are
- * percentages of min→max, sorted ascending, and the first band at or above the value wins — so the order
- * the author listed them in never decides anything. The single lookup behind the prompt's status piece;
- * design-time surfaces (the Test Bench) call it too so they can never band a value differently from play.
+ * The descriptor a value falls under, or undefined when it sits above every band. Bands sort ascending and
+ * the first one at or above the value wins — so the order the author listed them in never decides anything.
+ * A threshold reads as a raw stat value unless the stat opts into percent thresholds (lib/statDescriptorGeometry).
+ * The single lookup behind the prompt's status piece; design-time surfaces (the Test Bench) call it too so
+ * they can never band a value differently from play.
  */
 export function activeDescriptor(
-  stat: Pick<Stat, 'min' | 'max' | 'descriptors'>,
+  stat: BandedStat,
   value: number,
 ): StatDescriptor | undefined {
-  const range = stat.max - stat.min;
-  const percentage = range === 0 ? 0 : ((value - stat.min) / range) * 100;
-  // Read as `?? []` because the field the type calls required can be absent in hand-edited world JSON,
-  // and a stat with no bands has a status to omit rather than a turn to take down.
-  return [...(stat.descriptors ?? [])]
-    .sort((a, b) => a.threshold - b.threshold)
-    .find((d) => percentage <= d.threshold);
+  // `sortedDescriptors` reads the list as `?? []` because the field the type calls required can be absent
+  // in hand-edited world JSON, and a stat with no bands has a status to omit rather than a turn to take down.
+  return sortedDescriptors(stat).find((d) => value <= thresholdValue(stat, d.threshold));
 }
 
 /** A stat value as the prompt spells it: `62%` for a percentage stat, `62/100` otherwise. Whole numbers
