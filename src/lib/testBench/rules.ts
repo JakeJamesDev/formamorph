@@ -68,6 +68,9 @@ export interface RuleHead {
   /** Part of the matching-related subset Triggers surfaces inline beside the rows it is about. Marks a rule
    *  about what text detects what — never a rule about structure, which has no place in the tracer. */
   matching?: boolean;
+  /** Acting on this rule needs a field or tab Simple mode hides, so Simple folds it into a count rather than
+   *  listing a problem about something the author cannot see, let alone offering to fix it. */
+  advanced?: boolean;
   /** Headline for the collapsed row when this rule fired `count` times. */
   summary(count: number): string;
   /**
@@ -162,6 +165,7 @@ const aliasLeadingArticle: Rule = {
   severity: 'warning',
   section: 'entities',
   matching: true,
+  advanced: true,
   summary: (count) =>
     `${count} aliases begin with an article — alias matching is case-sensitive, so they miss wherever the sentence capitalizes them differently`,
   check: (world) => (world.entities ?? []).flatMap((entity) =>
@@ -220,6 +224,7 @@ const aliasSelfDuplicate: Rule = {
   severity: 'info',
   section: 'entities',
   matching: true,
+  advanced: true,
   summary: (count) => `${count} aliases repeat their own entity’s name, which already matches on its own`,
   check: (world) => (world.entities ?? []).flatMap((entity) => {
     const nameKey = matchKey(describePlaceholders(entity.name ?? '', world.placeholders));
@@ -295,6 +300,7 @@ const traitToggleMissingStat: Rule = {
   id: 'trait-toggle-missing-stat',
   severity: 'error',
   section: 'traits',
+  advanced: true,
   summary: (count) => `${count} trait stat toggles point at stats that don’t exist`,
   check: (world) => {
     const known = new Set((world.stats ?? []).map((s) => s.id));
@@ -311,6 +317,7 @@ const traitPinInvalid: Rule = {
   id: 'trait-pin-invalid',
   severity: 'error',
   section: 'traits',
+  advanced: true,
   summary: (count) =>
     `${count} trait placeholder pins are broken — a missing placeholder, or a value it doesn’t offer`,
   check: (world) => {
@@ -388,6 +395,7 @@ const chipUnknownPlaceholder: Rule = {
   id: 'chip-unknown-placeholder',
   severity: 'error',
   section: 'placeholders',
+  advanced: true,
   summary: (count) => `${count} items contain chips pointing at placeholders that don’t exist`,
   check: (world) => {
     const known = new Set((world.placeholders ?? []).map((p) => p.id));
@@ -405,6 +413,7 @@ const chipNeverScanned: Rule = {
   id: 'chip-never-scanned',
   severity: 'error',
   section: 'stats',
+  advanced: true,
   summary: (count) => `${count} stats carry chips in fields placeholders never resolve — they’ll read as raw text`,
   check: (world) => (world.stats ?? []).flatMap((stat) => {
     const item = namedItem(stat.id, stat.name, world);
@@ -443,6 +452,7 @@ const placeholderUnused: Rule = {
   id: 'placeholder-unused',
   severity: 'info',
   section: 'placeholders',
+  advanced: true,
   summary: (count) => `${count} placeholders are defined but never used`,
   check: (world) => unusedPlaceholders(world).map((placeholder) => {
     const item = namedItem(placeholder.id, placeholder.name, world);
@@ -478,6 +488,7 @@ const statCodeUnknownStat: Rule = {
   id: 'stat-code-unknown-stat',
   severity: 'error',
   section: 'stats',
+  advanced: true,
   summary: (count) => `${count} stats’ code looks up stat names that don’t exist`,
   check: (world) => {
     // Code compares against runtime names, where chips have resolved — so both spellings are valid targets.
@@ -504,6 +515,7 @@ const entrySecondaryWithoutPrimary: Rule = {
   severity: 'error',
   section: 'dictionary',
   matching: true,
+  advanced: true,
   summary: (count) => `${count} dictionary entries have secondary keywords but no primary ones, so they can never fire`,
   check: (world) => allEntries(world)
     // A constant entry fires regardless of keys, so "can never fire" would be false of it.
@@ -537,6 +549,7 @@ const entryRegexInvalid: Rule = {
   id: 'dictionary-regex-invalid',
   severity: 'error',
   section: 'dictionary',
+  advanced: true,
   summary: (count) => `${count} dictionary entries have regex keywords that don’t compile, so those keywords never match`,
   check: (world) => allEntries(world).flatMap((entry) => {
     if (!entry.useRegex) return [];
@@ -684,6 +697,7 @@ const statStartNoDescriptor: Rule = {
   id: 'stat-start-no-descriptor',
   severity: 'warning',
   section: 'stats',
+  advanced: true,
   summary: (count) => `${count} stats start above every descriptor band, so the AI is told no status for them`,
   check: (world) => (world.stats ?? [])
     // A start outside the range is the sharper diagnosis and already fires; its band is nobody's question.
@@ -703,6 +717,7 @@ const statDescriptorDuplicateThreshold: Rule = {
   id: 'stat-descriptor-duplicate-threshold',
   severity: 'warning',
   section: 'stats',
+  advanced: true,
   summary: (count) => `${count} stats have two descriptors on one threshold, so the second can never apply`,
   check: (world) => (world.stats ?? []).flatMap((stat) => {
     // The band sort is stable, so among equal thresholds the one written first is the one that wins.
@@ -756,6 +771,7 @@ const statCodeNeverTicks: Rule = {
   id: 'stat-code-never-ticks',
   severity: 'warning',
   section: 'stats',
+  advanced: true,
   summary: (count) =>
     `${count} stats have code that runs only on turns the AI changed a stat — nothing in this world reads a clock variable`,
   check: (world) => {
@@ -807,6 +823,7 @@ const statTraitDeltaClamped: Rule = {
   id: 'stat-trait-delta-clamped',
   severity: 'warning',
   section: 'stats',
+  advanced: true,
   summary: (count) => `${count} trait stat penalties land on a stat already at its floor, so the clamp swallows them whole`,
   check: (world) => traitValueChanges(world)
     .filter(({ stat, trait, delta }) => delta < 0 && startingValue(stat) <= traitFloor(stat, trait))
@@ -839,6 +856,7 @@ const statCodeOverridesTrait: Rule = {
   id: 'stat-code-overrides-trait',
   severity: 'warning',
   section: 'stats',
+  advanced: true,
   summary: (count) => `${count} trait stat changes target stats whose code recomputes them from scratch, which erases the change`,
   check: (world) => traitValueChanges(world)
     .filter(({ stat }) => stat.code?.trim() && !codeReadsSelf(stat, world))
@@ -856,6 +874,7 @@ const statAiLockFrozen: Rule = {
   id: 'stat-ai-lock-frozen',
   severity: 'info',
   section: 'stats',
+  advanced: true,
   summary: (count) => `${count} stats are locked against the AI with nothing else able to move them`,
   check: (world) => {
     const movedByTrait = new Set((world.traits ?? []).flatMap((trait) =>
@@ -956,6 +975,7 @@ const aliasLowercaseNoTwin: Rule = {
   severity: 'info',
   section: 'entities',
   matching: true,
+  advanced: true,
   summary: (count) =>
     `${count} lowercase multi-word aliases have no capitalized twin — alias matching is case-sensitive, so they miss wherever the text capitalizes them`,
   check: (world) => (world.entities ?? []).flatMap((entity) => {
@@ -978,6 +998,7 @@ const entityNameInWildcardPool: Rule = {
   severity: 'warning',
   section: 'entities',
   matching: true,
+  advanced: true,
   summary: (count) => `${count} entity names double as Wildcard values, so a roll can impersonate the entity`,
   check: (world) => (world.entities ?? []).flatMap((entity) => {
     const nameKey = matchKey(describePlaceholders(entity.name ?? '', world.placeholders));
@@ -1007,32 +1028,59 @@ const entityMissingDescription: Rule = {
     const item = asItem(entity, world);
     const missing = noPlayer && noAi ? 'no player or AI description'
       : noPlayer ? 'no player description' : 'no AI description';
-    return [finding(
-      entityMissingDescription,
-      `${quote(item.name)} has ${missing}${noAi ? ' — the prompt carries only its name' : ''}`,
-      [item],
-    )];
+    // An authored summary is served wherever a prompt prefers one, so only the narrator's roster of who is
+    // here is left with a bare name. Saying "only its name" for that entity would simply be untrue.
+    const blind = !noAi ? ''
+      : entity.aiSummary?.trim()
+        ? ' — the narrator’s roster of who is here carries only its name, while every other prompt serves the summary'
+        : ' — the prompt carries only its name';
+    return [finding(entityMissingDescription, `${quote(item.name)} has ${missing}${blind}`, [item])];
   }),
 };
+
+/** What the two summary rules read: the AI description/summary pair, and the item as its own tab's list
+ *  labels it. Entities and locations share the field pair and the per-turn cost, so they share the rules. */
+interface SummaryOwner {
+  item: FindingItem;
+  text: { aiDescription?: string; aiSummary?: string };
+}
+
+const summaryOwners = (world: RuleWorld): SummaryOwner[] => [
+  ...(world.entities ?? []).map((e) => ({
+    item: { ...asItem(e, world), section: 'entities' as const }, text: e,
+  })),
+  ...(world.locations ?? []).map((l) => ({
+    item: namedItem(l.id, l.name, world, 'locations'), text: l,
+  })),
+];
+
+/** An AI description's cost as the prompt will actually pay it — chips resolved first, the same way AI
+ *  Context estimates, so chip syntax can't push a short description over the threshold. */
+const aiDescriptionTokens = (owner: SummaryOwner, world: RuleWorld): number =>
+  estimateTokens(describePlaceholders(owner.text.aiDescription ?? '', world.placeholders).length);
 
 // Long enough that serving the full text on every turn is a real cost to a small model's budget — the
 // summary field exists exactly to shorten these.
 const LONG_AI_DESCRIPTION_TOKENS = 150;
 
+// Half of long, and derived from it so the two can't drift independently. A description of a paragraph or
+// more is reason enough for a summary on its own; only well under that is the summary buying nothing.
+const SHORT_AI_DESCRIPTION_TOKENS = LONG_AI_DESCRIPTION_TOKENS / 2;
+
 const entityLongDescriptionNoSummary: Rule = {
   id: 'entity-long-description-no-summary',
   severity: 'info',
   section: 'entities',
+  advanced: true,
   summary: (count) =>
-    `${count} entities have a long AI description and no AI summary, so the whole text enters the prompt every time`,
-  check: (world) => (world.entities ?? []).flatMap((entity) => {
-    const tokens = estimateTokens((entity.aiDescription ?? '').length);
-    if (entity.aiSummary?.trim() || tokens <= LONG_AI_DESCRIPTION_TOKENS) return [];
-    const item = asItem(entity, world);
+    `${count} items have a long AI description and no AI summary, so the whole text enters the prompt every time`,
+  check: (world) => summaryOwners(world).flatMap((owner) => {
+    const tokens = aiDescriptionTokens(owner, world);
+    if (owner.text.aiSummary?.trim() || tokens <= LONG_AI_DESCRIPTION_TOKENS) return [];
     return [finding(
       entityLongDescriptionNoSummary,
-      `${quote(item.name)}’s AI description is ~${tokens} tokens with no AI summary — the whole text enters the prompt every time`,
-      [item],
+      `${quote(owner.item.name)}’s AI description is ~${tokens} tokens with no AI summary — the whole text enters the prompt every time`,
+      [owner.item],
     )];
   }),
 };
@@ -1041,20 +1089,20 @@ const aiSummaryHidesDescription: Rule = {
   id: 'ai-summary-hides-description',
   severity: 'info',
   section: 'entities',
-  summary: (count) => `${count} items have an AI summary, so only the narrator sees their full description`,
-  check: (world) => {
-    const hides = (item: { aiSummary?: string; aiDescription?: string }) =>
-      !!item.aiSummary?.trim() && !!item.aiDescription?.trim();
-    const owners: FindingItem[] = [
-      ...(world.entities ?? []).filter(hides).map((e) => ({ ...asItem(e, world), section: 'entities' as const })),
-      ...(world.locations ?? []).filter(hides).map((l) => namedItem(l.id, l.name, world, 'locations')),
-    ];
-    return owners.map((owner) => finding(
+  advanced: true,
+  summary: (count) => `${count} items have an AI summary hiding a short description, for little savings`,
+  // Only a genuinely short description: hiding anything from a paragraph up is the trade the summary field
+  // exists to make, and flagging it would punish the very repair the sibling rule asks for.
+  check: (world) => summaryOwners(world).flatMap((owner) => {
+    if (!owner.text.aiSummary?.trim() || !owner.text.aiDescription?.trim()) return [];
+    const tokens = aiDescriptionTokens(owner, world);
+    if (tokens > SHORT_AI_DESCRIPTION_TOKENS) return [];
+    return [finding(
       aiSummaryHidesDescription,
-      `${quote(owner.name)} has an AI summary, so only the narrator sees its full description`,
-      [owner],
-    ));
-  },
+      `${quote(owner.item.name)} has a ~${tokens}-token AI description; the summary hides it from most prompts for little savings`,
+      [owner.item],
+    )];
+  }),
 };
 
 const locationNoEntities: Rule = {
@@ -1134,6 +1182,7 @@ const placeholderUniquePoolTooSmall: Rule = {
   id: 'placeholder-unique-pool-too-small',
   severity: 'warning',
   section: 'placeholders',
+  advanced: true,
   summary: (count) => `${count} placeholders carry more Unique chips than they have values, so independent draws are bound to repeat`,
   check: (world) => {
     const { unique } = collectPlaceholderPlacements(chipBearingTexts(world));
@@ -1166,6 +1215,7 @@ const placeholderWeightUnknownValue: Rule = {
   id: 'placeholder-weight-unknown-value',
   severity: 'warning',
   section: 'placeholders',
+  advanced: true,
   summary: (count) => `${count} placeholders weight values their pool doesn’t contain`,
   check: (world) => (world.placeholders ?? []).flatMap((ph) => {
     const dead = deadWeightKeys(ph);
@@ -1194,6 +1244,7 @@ const wildcardSingleValue: Rule = {
   id: 'wildcard-single-value',
   severity: 'info',
   section: 'placeholders',
+  advanced: true,
   summary: (count) => `${count} Wildcards can only ever draw one value, so they never vary`,
   check: (world) => (world.placeholders ?? [])
     // One authored value is a Variable, which is supposed to be fixed — only weights can strand a Wildcard.
@@ -1253,6 +1304,7 @@ const dictionaryDisabled: Rule = {
   id: 'dictionary-disabled',
   severity: 'info',
   section: 'dictionary',
+  advanced: true,
   summary: (count) => `${count} dictionary books or entries are disabled`,
   check: (world) => (world.dictionaries ?? []).flatMap((bookRecord) => {
     if (bookRecord.enabled === false) {
@@ -1363,6 +1415,7 @@ export const STAT_CODE_EXECUTION: RuleHead = {
   id: 'stat-code-execution',
   severity: 'error',
   section: 'stats',
+  advanced: true,
   summary: (count) => `${count} stats’ code fails when it actually runs`,
 };
 
@@ -1381,6 +1434,16 @@ const HEAD_BY_ID = new Map(RULE_HEADS.map((rule) => [rule.id, rule]));
  * matcher's own compilation, and the rule would say it a second time on the same row.
  */
 export const MATCHING_RULES: readonly Rule[] = RULES.filter((rule) => rule.matching);
+
+/** The rules Simple mode folds away, execution head included — every row the Issues list can show is
+ *  classified, so the fold can never be decided by whether someone remembered to mark a rule. */
+const ADVANCED_RULE_IDS = new Set(RULE_HEADS.filter((rule) => rule.advanced).map((rule) => rule.id));
+
+/** Whether acting on this rule's findings needs a field Simple mode hides. An id no rule owns reads as
+ *  Simple-visible: a row nothing can classify is better shown than silently folded away. */
+export function isAdvancedRule(ruleId: string): boolean {
+  return ADVANCED_RULE_IDS.has(ruleId);
+}
 
 /** Every finding the world raises. Pure — safe to run on each debounced world change. */
 export function runRules(world: RuleWorld): Finding[] {

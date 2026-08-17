@@ -8,6 +8,7 @@ import { useEffect, type ReactNode } from 'react';
 import { fireEvent, render, screen } from '@testing-library/react';
 import { vi } from 'vitest';
 import { GameDataProvider, useGameData } from '@/contexts/GameDataContext';
+import { writeEditorMode, type EditorMode } from '@/lib/editorMode';
 import { SettingsProvider } from '@/contexts/SettingsContext';
 import WorldEditor from '@/views/WorldEditor';
 import type { World } from '@/types';
@@ -56,9 +57,16 @@ const Harness = ({ world, children, onReady }: {
   return <>{children}</>;
 };
 
-/** Mount the editor over `world`; `ctx()` reads the live GameData handle for state assertions. */
-export const renderWorldEditorBench = (world: World) => {
+/**
+ * Mount the editor over `world` in `mode`; `ctx()` reads the live GameData handle for state assertions.
+ *
+ * The mode is stated rather than defaulted: the Bench folds away every finding about an Advanced-only field,
+ * so a suite about alias repairs or stat code is a suite about the Advanced editor, and one about the fold
+ * itself is about the Simple one.
+ */
+export const renderWorldEditorBench = (world: World, mode: EditorMode) => {
   let ctx!: GameDataHandle;
+  writeEditorMode(mode);
   render(
     <SettingsProvider>
       <GameDataProvider>

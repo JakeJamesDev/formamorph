@@ -133,14 +133,44 @@ const DismissedSection = ({ groups, onRestore }: {
   );
 };
 
+/**
+ * What Simple mode folded away — the rows about fields it hides. Counted and named rather than listed: an
+ * author who has never seen an alias field can't act on an alias finding, and a Fix here would rewrite one
+ * unseen. It says where the way in is instead.
+ */
+const AdvancedOnlySection = ({ count }: { count: number }) => {
+  const [shown, setShown] = useState(false);
+  if (count === 0) return null;
+  return (
+    <div className="mt-2 border-t pt-2">
+      <button
+        type="button"
+        onClick={() => setShown((v) => !v)}
+        className="text-meta text-muted-foreground hover:text-foreground"
+        aria-expanded={shown}
+      >
+        {count} {count === 1 ? 'finding needs' : 'findings need'} Advanced mode
+      </button>
+      {shown && (
+        <p className="mt-1 text-meta text-muted-foreground">
+          These are about fields Simple mode hides. Switch the editor to Advanced, beside the World Editor
+          title, to see them.
+        </p>
+      )}
+    </div>
+  );
+};
+
 /** The Issues tab's one manual action: run every stat's code for real and list what fails. Absent entirely
- *  from a world with no coded stats, since there would be nothing to run. */
-const StatCodeCheck = ({ codedStatCount, status, onRun }: {
+ *  from a world with no coded stats, since there would be nothing to run — and from Simple mode, which folds
+ *  the verdicts away, so running it there would look like a button that does nothing. */
+const StatCodeCheck = ({ codedStatCount, advanced, status, onRun }: {
   codedStatCount: number;
+  advanced: boolean;
   status: CodeCheckStatus;
   onRun: () => void;
 }) => {
-  if (codedStatCount === 0) return null;
+  if (codedStatCount === 0 || !advanced) return null;
   const running = status === 'running';
   return (
     <div className="mt-2 flex items-center gap-2 border-t pt-2">
@@ -159,13 +189,15 @@ const StatCodeCheck = ({ codedStatCount, status, onRun }: {
 
 /** World Doctor: everything the rule pass raised, worst first, one row per rule. */
 const IssuesInstrument = ({
-  groups, dismissedGroups, ruleCount, newCount, codedStatCount, codeCheckStatus,
+  groups, dismissedGroups, ruleCount, newCount, advancedOnlyCount, advanced, codedStatCount, codeCheckStatus,
   onOpen, onFix, onDismiss, onRestore, onMarkAllSeen, onCheckStatCode,
 }: {
   groups: FindingGroup[];
   dismissedGroups: FindingGroup[];
   ruleCount: number;
   newCount: number;
+  advancedOnlyCount: number;
+  advanced: boolean;
   codedStatCount: number;
   codeCheckStatus: CodeCheckStatus;
   onOpen: OpenFindingItem;
@@ -186,10 +218,14 @@ const IssuesInstrument = ({
         </div>
       )}
       {groups.length === 0 ? (
-        <div className="flex flex-col items-center gap-1 py-8 text-center">
-          <p className="text-label font-medium">No Problems Found</p>
-          <p className="text-meta text-muted-foreground">{ruleCount} rules checked</p>
-        </div>
+        // Only when there is genuinely nothing: a world whose every finding is folded away is not clean, and
+        // the fold below is what says so.
+        advancedOnlyCount === 0 && (
+          <div className="flex flex-col items-center gap-1 py-8 text-center">
+            <p className="text-label font-medium">No Problems Found</p>
+            <p className="text-meta text-muted-foreground">{ruleCount} rules checked</p>
+          </div>
+        )
       ) : (
         <div className="space-y-2">
           {SEVERITIES.map((severity) => {
@@ -208,7 +244,13 @@ const IssuesInstrument = ({
           })}
         </div>
       )}
-      <StatCodeCheck codedStatCount={codedStatCount} status={codeCheckStatus} onRun={onCheckStatCode} />
+      <StatCodeCheck
+        codedStatCount={codedStatCount}
+        advanced={advanced}
+        status={codeCheckStatus}
+        onRun={onCheckStatCode}
+      />
+      <AdvancedOnlySection count={advancedOnlyCount} />
       <DismissedSection groups={dismissedGroups} onRestore={onRestore} />
     </div>
   </ScrollArea>
@@ -249,6 +291,8 @@ export function TestBench({ tab, onTabChange, onClose, onFixRule, issues, lens, 
                 dismissedGroups={issues.dismissedGroups}
                 ruleCount={issues.ruleCount}
                 newCount={issues.newCount}
+                advancedOnlyCount={issues.advancedOnlyCount}
+                advanced={issues.advanced}
                 codedStatCount={issues.codedStatCount}
                 codeCheckStatus={issues.codeCheckStatus}
                 onOpen={issues.onOpenItem}

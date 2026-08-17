@@ -105,6 +105,25 @@ are Advanced-only.
 `window.__fmDev.goto('worldEditor', { tab, mode })` — a `mode` param so UI verification can land
 directly in either mode, instead of poking localStorage first.
 
+## Test Bench
+
+The Bench follows the same rule as the fields: **a finding whose repair needs a hidden field is
+hidden too.** Every rule head carries an `advanced` marker (`lib/testBench/rules`), and a registry
+test fails the build until a new rule declares one.
+
+| In Simple | What happens |
+|---|---|
+| **Badge + new count** | Advanced-scoped findings excluded — the badge is a to-do list of things this mode can fix |
+| **Issues list** | They aren't listed, so no **Fix** or **Open** can reach a field the author has never seen |
+| **The fold** | One line at the bottom: *"N findings need Advanced mode"*, expanding to say the switch beside the title is the way in. Same interaction as the dismissed fold |
+| **"No Problems Found"** | Suppressed while anything is folded — a world with hidden defects never reads as clean |
+| **Check Stat Code** | Hidden — every verdict it raises is Advanced-scoped, so in Simple it would read as a button that does nothing |
+| **Seen-state** | Only what was displayed is marked seen, so a folded finding is still **New** the first time Advanced shows it. Dismissals stay identity-keyed and mode-ignorant |
+| **Triggers** | Inherits the same filter: alias hygiene is an Advanced field, and its inline **Fix** would rewrite one unseen |
+
+Classification is per rule, not per finding — accepted cost: an `entity-match-collision` caused by an
+alias still surfaces in Simple, where the name half of it is fixable.
+
 ## Out of scope
 
 World *creation* is untouched. A new world is seeded exactly as today; Simple mode only changes

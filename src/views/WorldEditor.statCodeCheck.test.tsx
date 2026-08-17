@@ -48,7 +48,8 @@ const WORLD = benchEditorWorld({
   }],
 });
 
-const setup = () => renderWorldEditorBench(WORLD);
+// Stat Code is an Advanced-only field, so an author with code to check is an author in Advanced mode.
+const setup = () => renderWorldEditorBench(WORLD, 'advanced');
 
 /** Open the Bench and hand back the check's run button. */
 const openBench = async () => {

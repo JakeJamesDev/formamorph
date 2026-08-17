@@ -267,6 +267,7 @@ const WorldEditorInner = ({ onClose, embedded = false, backButton }: {
     // Read at the moment of opening for the lens seed; other tabs' selections are not locations.
     selectedLocationId: activeTab === 'locations' ? selectedItemId : null,
     isMobile,
+    advanced,
     routedTab: devRoute?.bench,
     navigateToItem: navigateToBenchItem,
   });
