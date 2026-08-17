@@ -14,6 +14,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { cn } from '@/lib/utils';
 import { SEVERITIES, type Finding, type FindingGroup, type FindingSection, type Severity } from '@/lib/testBench/rules';
 import type { TriggerReport } from '@/lib/testBench/triggers';
+import type { SemanticStatus } from '@/lib/testBench/useTriggerSemantics';
 import { BENCH_TABS, type BenchTab } from './benchTabs';
 import { TriggersInstrument } from './TriggersInstrument';
 
@@ -249,13 +250,17 @@ export interface TestBenchProps {
   matchingFindings: Finding[];
   /** Fill the Triggers boxes from the world's most recent save; absent when it has none. */
   onPasteLastTurn?: () => void;
+  /** The Triggers semantic toggle, held here so switching instruments doesn't silently turn it off. */
+  semanticStatus: SemanticStatus;
+  semanticOn: boolean;
+  onSemanticChange: (on: boolean) => void;
 }
 
 export function TestBench({
   groups, dismissedGroups, ruleCount, newCount, codedStatCount, codeCheckStatus, tab, onTabChange, onClose,
   onOpenItem, onFixRule, onDismissRule, onRestoreRule, onMarkAllSeen, onCheckStatCode,
   triggerText, onTriggerTextChange, triggerHistory, onTriggerHistoryChange, triggerReport,
-  matchingFindings, onPasteLastTurn,
+  matchingFindings, onPasteLastTurn, semanticStatus, semanticOn, onSemanticChange,
 }: TestBenchProps) {
   return (
     <div className="flex h-full flex-col gap-2 p-3">
@@ -317,6 +322,9 @@ export function TestBench({
                 warnings={matchingFindings}
                 onFixRule={onFixRule}
                 onPasteLastTurn={onPasteLastTurn}
+                semanticStatus={semanticStatus}
+                semanticOn={semanticOn}
+                onSemanticChange={onSemanticChange}
               />
             )}
           </TabsContent>

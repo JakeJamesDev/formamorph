@@ -3,6 +3,7 @@ import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { buildTriggerReport, joinHistory, splitHistory, type TriggerWorld } from '@/lib/testBench/triggers';
 import { runRules, selectMatchingFindings, type RuleWorld } from '@/lib/testBench/rules';
+import { entryVectorKey } from '@/lib/semanticDictionary';
 import type { Dictionary, DictionaryEntry, Entity, WorldOverview } from '@/types';
 import { TriggersInstrument, type TriggersInstrumentProps } from './TriggersInstrument';
 
@@ -32,6 +33,9 @@ const renderTriggers = (from: TriggerWorld, text: string, over: Partial<Triggers
       report={buildTriggerReport(from, text, { history: splitHistory(history) })}
       warnings={[]}
       onFixRule={onFixRule}
+      semanticStatus="unavailable"
+      semanticOn={false}
+      onSemanticChange={vi.fn()}
       {...over}
     />,
   );
@@ -301,5 +305,107 @@ describe('TriggersInstrument inline warnings', () => {
     renderTriggers(world({ dictionaries }), 'Maren watches the tide.', { warnings });
     const row = screen.getByText('Orphan').closest('div[class*="rounded-md"]');
     expect(within(row as HTMLElement).getByText(warnings[0].message)).toBeInTheDocument();
+  });
+});
+
+describe('TriggersInstrument — the semantic toggle', () => {
+  /** Unit vectors in the plane: their dot product is the cosine, which is what the worker's normalized
+   *  vectors make the real scorer compute. */
+  const at = (radians: number) => new Float32Array([Math.cos(radians), Math.sin(radians)]);
+  const scoring = (score: number) => at(Math.acos(score));
+  const beacon = entry({ id: 'd1', name: 'Old Beacon', key: ['beacon'], value: 'The beacon has not burned.' });
+  const tides = entry({ id: 'd2', name: 'Tides', key: ['tide'], value: 'The tide runs twice a day.' });
+  const lore = world({ dictionaries: [book([beacon, tides])] });
+  const scene = 'The ruined tower on the hill.';
+
+  /** The panel with a real semantic run behind it — the scores on screen come from the tracer, never from
+   *  a hand-built row. */
+  const renderScored = (scores: Array<[DictionaryEntry, number]>, over: Partial<TriggersInstrumentProps> = {}) =>
+    renderTriggers(lore, scene, {
+      report: buildTriggerReport(lore, scene, {
+        semantic: {
+          queryVec: at(0),
+          vectors: new Map(scores.map(([e, score]) => [entryVectorKey(e), scoring(score)])),
+          threshold: 0.4,
+        },
+      }),
+      semanticStatus: 'ready',
+      semanticOn: true,
+      ...over,
+    });
+
+  it('is off with nothing semantic on screen until the author asks for it', () => {
+    renderTriggers(lore, scene);
+    expect(screen.getByRole('checkbox', { name: 'Semantic' })).not.toBeChecked();
+    expect(screen.queryByText(/threshold/)).toBeNull();
+  });
+
+  it('cannot be turned on without an index, and says why', () => {
+    renderTriggers(lore, scene, { semanticStatus: 'unavailable' });
+    expect(screen.getByRole('checkbox', { name: 'Semantic' })).toBeDisabled();
+    expect(screen.getByText(/play this world once with Semantic Lore on/)).toBeInTheDocument();
+  });
+
+  it('is enabled once the world has an index', async () => {
+    const onSemanticChange = vi.fn();
+    renderTriggers(lore, scene, { semanticStatus: 'off', onSemanticChange });
+    const toggle = screen.getByRole('checkbox', { name: 'Semantic' });
+    expect(toggle).toBeEnabled();
+    await userEvent.click(toggle);
+    expect(onSemanticChange).toHaveBeenCalledWith(true);
+  });
+
+  it('states a score against the threshold rather than a bare fired-or-not', () => {
+    renderScored([[beacon, 0.6], [tides, 0.1]]);
+    expect(screen.getByText('0.60 vs the 0.40 threshold — close enough to fire on meaning.')).toBeInTheDocument();
+    expect(screen.getByText('0.10 vs the 0.40 threshold — too far to fire on meaning.')).toBeInTheDocument();
+  });
+
+  it('marks a semantic-only firing as one, so no keyword can be credited for it', () => {
+    renderScored([[beacon, 0.6], [tides, 0.1]]);
+    const row = screen.getByText('Old Beacon').closest('div[class*="rounded-md"]') as HTMLElement;
+    expect(within(row).getByText('Semantic')).toBeInTheDocument();
+    expect(within(row).getByText('Fired on meaning alone — no keyword matched.')).toBeInTheDocument();
+  });
+
+  it('leaves a keyword firing labeled as one even when its meaning also scores', () => {
+    const keyworded = 'The tide pulls out past the tower.';
+    renderTriggers(lore, keyworded, {
+      report: buildTriggerReport(lore, keyworded, {
+        semantic: {
+          queryVec: at(0),
+          vectors: new Map([[entryVectorKey(tides), scoring(0.9)]]),
+          threshold: 0.4,
+        },
+      }),
+      semanticStatus: 'ready',
+      semanticOn: true,
+    });
+    const row = screen.getByText('Tides').closest('div[class*="rounded-md"]') as HTMLElement;
+    expect(within(row).getByText('Keyword')).toBeInTheDocument();
+    expect(within(row).getByText(/“tide” as “tide”/)).toBeInTheDocument();
+  });
+
+  it('keeps the keyword diagnosis on a row that only meaning could fire', () => {
+    // The rows an author is here to fix: it fired, but their matching rule is why it took meaning to do it.
+    const blocked = entry({ id: 'd3', name: 'Riptides', key: ['tide'], matchWholeWords: true, value: 'The rip runs hard.' });
+    const near = world({ dictionaries: [book([blocked])] });
+    const text = 'The riptides drag the channel.';
+    renderTriggers(near, text, {
+      report: buildTriggerReport(near, text, {
+        semantic: { queryVec: at(0), vectors: new Map([[entryVectorKey(blocked), scoring(0.7)]]), threshold: 0.4 },
+      }),
+      semanticStatus: 'ready',
+      semanticOn: true,
+    });
+    const row = screen.getByText('Riptides').closest('div[class*="rounded-md"]') as HTMLElement;
+    expect(within(row).getByText('Fired on meaning alone — no keyword matched.')).toBeInTheDocument();
+    expect(within(row).getByText(/appears only inside “riptides”/)).toBeInTheDocument();
+  });
+
+  it('reports how much of the dictionary the run could score', () => {
+    renderScored([[beacon, 0.6]]);
+    expect(screen.getByText('1 of 2 scored against 0.40')).toBeInTheDocument();
+    expect(screen.getByText('Not embedded yet, so it cannot fire on meaning.')).toBeInTheDocument();
   });
 });

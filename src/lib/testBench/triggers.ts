@@ -14,8 +14,10 @@ import {
 import { findEntityMatches, stripQuotedSpeech, type EntityMatch } from '@/lib/entityMatch';
 import { estimateTokens } from '@/lib/memoryUtils';
 import { describePlaceholders } from '@/lib/placeholders';
+import { applySemanticLore } from '@/lib/semanticDictionary';
 import type { DictionaryEntry, Entity } from '@/types';
 import type { RuleWorld } from './rules';
+import { traceSemantic, type EntrySemantic, type SemanticInput } from './semantic';
 
 /** The slices of the authored world the tracer reads. */
 export type TriggerWorld = Pick<RuleWorld, 'entities' | 'dictionaries' | 'placeholders'>;
@@ -53,7 +55,8 @@ export interface TriggerEntry {
   rule: MatchRule;
   keywords: string[];
   constant: boolean;
-  /** Absent when the entry fired. */
+  /** Absent when the entry fired, except on a semantic firing — there the keyword verdict is still the
+   *  answer to "so why didn't my matching rules catch this?". */
   nearMiss?: NearMiss;
   /** Keywords whose regex does not compile — reported on the entry whether or not it fired, so a broken
    *  pattern is a flag on the row rather than a failed run. */
@@ -67,6 +70,9 @@ export interface TriggerEntry {
   scanDepth?: number;
   /** How many messages back the dropped hit sat — present only on `beyond-scan-depth`. */
   nearMissDistance?: number;
+  /** What the semantic pass made of this entry. Absent unless that pass ran, and absent on the entries it
+   *  never scores — so nothing on a keyword-only run can be read as a semantic result. */
+  semantic?: EntrySemantic;
 }
 
 /** One lore block as the harness would inject it — the string a `<DICTIONARY>` chip is replaced with. */
@@ -112,6 +118,18 @@ export interface TriggerReport {
   fired: number;
   /** How many of the fired entries fired because they are constant. */
   constant: number;
+  /** The semantic run behind the rows, present only when one happened — its absence is what makes a
+   *  keyword-only report unable to show a score anywhere. */
+  semantic?: SemanticSummary;
+}
+
+/** What one semantic run covered, for the line above the results. */
+export interface SemanticSummary {
+  threshold: number;
+  cap: number;
+  /** How many scannable entries had a vector — the rest cannot fire on meaning, exactly as in play. */
+  indexed: number;
+  eligible: number;
 }
 
 /** The region label the scene text is scanned under — the coordinate space the highlights live in. */
@@ -237,15 +255,23 @@ function wordAround(sources: ScanSource[], hit: MatchHit): string | undefined {
   return text.slice(start, end);
 }
 
+/** The entries a run scans: those of the books that are on. A muted book's entries still earn a row — they
+ *  are held back from the pass rather than dropped, so the row can say the book is why. */
+export const scannedEntries = (world: TriggerWorld): DictionaryEntry[] =>
+  (world.dictionaries ?? []).filter((b) => b.enabled !== false).flatMap((b) => b.entries ?? []);
+
 /**
  * What `sceneText` (and any `history`, oldest→newest) makes fire. Presence reads the prose with speech
  * blanked out, exactly as a turn does; the dictionary scans the text as written, also as a turn does — so
  * the two lists disagree with each other here for the same reason they do in play.
+ *
+ * `opts.semantic` adds the meaning-based pass over the top, folded in by the game's own `applySemanticLore`
+ * so a keyword firing keeps its stronger reason. Without it nothing semantic exists in the result at all.
  */
 export function buildTriggerReport(
   world: TriggerWorld,
   sceneText: string,
-  opts: { history?: string[] } = {},
+  opts: { history?: string[]; semantic?: SemanticInput } = {},
 ): TriggerReport {
   const placeholders = world.placeholders ?? [];
   const historyCount = (opts.history ?? []).length;
@@ -262,8 +288,12 @@ export function buildTriggerReport(
   // The muted books are held back from the pass rather than filtered out of it: play never scans them, so
   // running them here would invent a verdict the harness would not have reached.
   const books = world.dictionaries ?? [];
-  const live = books.filter((b) => b.enabled !== false);
-  const report = explainActivation(live.flatMap((b) => b.entries ?? []), scene, { history });
+  const live = scannedEntries(world);
+  const report = explainActivation(live, scene, { history });
+  // Semantic runs over the keyword report, as the narration prompt applies it: an entry the keywords already
+  // took keeps its reason, so a score can never be mistaken for what put it in.
+  const semantic = opts.semantic ? traceSemantic(live, placeholders, opts.semantic) : undefined;
+  if (semantic) applySemanticLore(report, semantic.activations);
 
   const entries: TriggerEntry[] = [];
   const activated: DictionaryEntry[] = []; // book order, which is the order the injected block renders in
@@ -305,7 +335,11 @@ export function buildTriggerReport(
         hits: activation.hits,
         secondary: activation.secondary,
         rule: activation.rule,
-        ...(activation.activated
+        semantic: semantic?.states.get(entry.id),
+        // A semantic firing is the one activation whose keyword verdict is still worth having: the author is
+        // looking at a row that fired *without* their matching rules, and why those missed is the thing they
+        // came here to fix. Every other firing is its own explanation.
+        ...(activation.activated && activation.reason !== 'semantic'
           ? { nearMissKeywords: [] }
           : classify(entry, scanned, dropped, activation.secondary, historyCount)),
       });
@@ -323,6 +357,14 @@ export function buildTriggerReport(
     checked: entries.length,
     fired: entries.filter((e) => e.fired).length,
     constant: entries.filter((e) => e.fired && e.reason === 'constant').length,
+    ...(semantic && {
+      semantic: {
+        threshold: semantic.threshold,
+        cap: semantic.cap,
+        indexed: semantic.indexed,
+        eligible: semantic.eligible,
+      },
+    }),
   };
 }
 
