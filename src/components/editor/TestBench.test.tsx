@@ -42,7 +42,10 @@ const benchProps = (groups: FindingGroup[], over: Partial<TestBenchProps> = {}):
   onCheckStatCode: vi.fn(),
   triggerText: '',
   onTriggerTextChange: vi.fn(),
+  triggerHistory: '',
+  onTriggerHistoryChange: vi.fn(),
   triggerReport: buildTriggerReport({ entities: [], dictionaries: [], placeholders: [] }, ''),
+  matchingFindings: [],
   ...over,
 });
 

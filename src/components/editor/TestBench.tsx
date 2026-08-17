@@ -12,7 +12,7 @@ import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { cn } from '@/lib/utils';
-import { SEVERITIES, type FindingGroup, type FindingSection, type Severity } from '@/lib/testBench/rules';
+import { SEVERITIES, type Finding, type FindingGroup, type FindingSection, type Severity } from '@/lib/testBench/rules';
 import type { TriggerReport } from '@/lib/testBench/triggers';
 import { BENCH_TABS, type BenchTab } from './benchTabs';
 import { TriggersInstrument } from './TriggersInstrument';
@@ -241,13 +241,21 @@ export interface TestBenchProps {
   /** The Triggers scene text, held above the tab strip so switching instruments doesn't discard it. */
   triggerText: string;
   onTriggerTextChange: (text: string) => void;
+  /** The Triggers history box, held for the same reason. */
+  triggerHistory: string;
+  onTriggerHistoryChange: (text: string) => void;
   triggerReport: TriggerReport;
+  /** The matching-related findings of the same pass Issues lists, shown inline in Triggers. */
+  matchingFindings: Finding[];
+  /** Fill the Triggers boxes from the world's most recent save; absent when it has none. */
+  onPasteLastTurn?: () => void;
 }
 
 export function TestBench({
   groups, dismissedGroups, ruleCount, newCount, codedStatCount, codeCheckStatus, tab, onTabChange, onClose,
   onOpenItem, onFixRule, onDismissRule, onRestoreRule, onMarkAllSeen, onCheckStatCode,
-  triggerText, onTriggerTextChange, triggerReport,
+  triggerText, onTriggerTextChange, triggerHistory, onTriggerHistoryChange, triggerReport,
+  matchingFindings, onPasteLastTurn,
 }: TestBenchProps) {
   return (
     <div className="flex h-full flex-col gap-2 p-3">
@@ -300,7 +308,16 @@ export function TestBench({
               />
             )}
             {t.value === 'triggers' && (
-              <TriggersInstrument text={triggerText} onTextChange={onTriggerTextChange} report={triggerReport} />
+              <TriggersInstrument
+                text={triggerText}
+                onTextChange={onTriggerTextChange}
+                history={triggerHistory}
+                onHistoryChange={onTriggerHistoryChange}
+                report={triggerReport}
+                warnings={matchingFindings}
+                onFixRule={onFixRule}
+                onPasteLastTurn={onPasteLastTurn}
+              />
             )}
           </TabsContent>
         ))}

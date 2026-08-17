@@ -1,7 +1,11 @@
 import { describe, it, expect } from 'vitest';
-import { getActivatedDictionary, flattenEnabledBookEntries } from '@/lib/dictionaryUtils';
+import { buildDictionaryContext, getActivatedDictionary, flattenEnabledBookEntries } from '@/lib/dictionaryUtils';
+import { estimateTokens } from '@/lib/memoryUtils';
 import type { Dictionary, DictionaryEntry, Entity, Placeholder } from '@/types';
-import { buildTriggerReport, describeNearMiss, describeRegion, type TriggerWorld } from './triggers';
+import {
+  buildTriggerReport, describeHitOrigin, describeNearMiss, describeRegion, joinHistory, otherHistoryHits,
+  splitHistory, type TriggerWorld,
+} from './triggers';
 
 const entry = (over: Partial<DictionaryEntry> & { id: string }): DictionaryEntry => ({
   name: '', key: [], value: 'lore', ...over,
@@ -186,7 +190,7 @@ describe('buildTriggerReport — every near-miss class, as the row states it', (
     expect(describeNearMiss(miss)).toBe('A keyword matched, but every secondary must appear too — “storm” missing.');
   });
 
-  it('names a hit that fell outside the entry’s scan depth', () => {
+  it('names a hit that fell outside the entry’s scan depth, and how far back it was', () => {
     const miss = missOf(
       [book([entry({ id: 'd1', key: ['tide'], scanDepth: 1 })])],
       'A quiet morning.',
@@ -194,7 +198,10 @@ describe('buildTriggerReport — every near-miss class, as the row states it', (
       ['The tide pulled out.', 'She walked the pier.'],
     );
     expect(miss.nearMiss).toBe('beyond-scan-depth');
-    expect(describeNearMiss(miss)).toBe('“tide” matched further back than its scan depth of 1 message.');
+    expect(miss.nearMissDistance).toBe(2);
+    expect(describeNearMiss(miss)).toBe(
+      '“tide” matched 2 messages back, further back than its scan depth of 1 message.',
+    );
   });
 
   it('fires the same entry once its hit is inside the depth window', () => {
@@ -222,6 +229,162 @@ describe('buildTriggerReport — every near-miss class, as the row states it', (
     const miss = missOf([book([entry({ id: 'd1', key: ['storm'] })])], 'A quiet morning.', 'd1');
     expect(miss.nearMiss).toBe('no-match');
     expect(describeNearMiss(miss)).toBe('No keyword found in the text.');
+  });
+});
+
+describe('buildTriggerReport — the rendered context', () => {
+  const lore = [
+    entry({ id: 'd1', name: 'Tides', key: ['tide'], value: 'The tide runs twice a day.' }),
+    entry({ id: 'd2', name: 'Storms', key: ['storm'], value: 'Storms come off the shelf.' }),
+    entry({ id: 'd3', name: 'House Rules', constant: true, value: 'Nobody draws steel indoors.' }),
+  ];
+  const scene = 'The tide pulls out past the sedge.';
+
+  /** What the game would inject for `entries`, through its own activation and its own block builder. */
+  const asPlayed = (books: Dictionary[], text: string, keep: (entry: DictionaryEntry) => boolean = () => true) =>
+    buildDictionaryContext(
+      getActivatedDictionary(flattenEnabledBookEntries(books), [text]).filter(keep),
+      false,
+    );
+
+  it('renders the block byte-for-byte as the game would inject it for the same entries', () => {
+    const books = [book(lore)];
+    const report = buildTriggerReport(world({ dictionaries: books }), scene);
+    expect(report.rendered).toHaveLength(1);
+    expect(report.rendered[0].text).toBe(asPlayed(books, scene));
+    expect(report.rendered[0].position).toBe('after');
+    expect(report.rendered[0].entryCount).toBe(2);
+  });
+
+  it('splits the two lorebook blocks by position, early one first', () => {
+    const books = [book([{ ...lore[0], position: 'before' as const }, lore[1], lore[2]])];
+    const report = buildTriggerReport(world({ dictionaries: books }), scene);
+    expect(report.rendered.map((b) => b.position)).toEqual(['before', 'after']);
+    expect(report.rendered[0].text).toBe(asPlayed(books, scene, (e) => e.position === 'before'));
+    expect(report.rendered[1].text).toBe(asPlayed(books, scene, (e) => e.position !== 'before'));
+  });
+
+  it('estimates the whole injection’s tokens from its rendered characters', () => {
+    const report = buildTriggerReport(world({ dictionaries: [book(lore)] }), scene);
+    expect(report.rendered[0].tokens).toBe(estimateTokens(report.rendered[0].text.length));
+    expect(report.renderedTokens).toBe(report.rendered.reduce((sum, b) => sum + b.tokens, 0));
+  });
+
+  it('has nothing to render when nothing fired', () => {
+    const report = buildTriggerReport(world({ dictionaries: [book(lore.slice(0, 2))] }), 'A quiet morning.');
+    expect(report.rendered).toEqual([]);
+    expect(report.renderedTokens).toBe(0);
+  });
+
+  it('leaves out a fired entry that carries no text, exactly as the injection does', () => {
+    const report = buildTriggerReport(
+      world({ dictionaries: [book([entry({ id: 'd1', name: 'Empty', key: ['tide'], value: '' })])] }),
+      scene,
+    );
+    expect(row(report, 'd1').fired).toBe(true);
+    expect(report.rendered).toEqual([]);
+  });
+
+  it('resolves the chips in an entry’s text as the editor describes them', () => {
+    const placeholders = [{ id: 'p1', name: 'Harbor', type: 'variable', values: ['Sedge Landing'] }] as unknown as Placeholder[];
+    const report = buildTriggerReport(
+      world({
+        dictionaries: [book([entry({ id: 'd1', name: 'Tides', key: ['tide'], value: 'The tide runs at {{ph:p1:world:x}}.' })])],
+        placeholders,
+      }),
+      scene,
+    );
+    expect(report.rendered[0].text).toBe('Tides: The tide runs at Sedge Landing.');
+  });
+});
+
+describe('buildTriggerReport — history evidence', () => {
+  const traced = (entryOver: Partial<DictionaryEntry>, history: string[]) => {
+    const report = buildTriggerReport(
+      world({ dictionaries: [book([entry({ id: 'd1', key: ['tide'], ...entryOver })])] }),
+      'A quiet morning.',
+      { history },
+    );
+    return { report, d1: row(report, 'd1') };
+  };
+
+  it('labels a history hit with its distance and the depth window that let it count', () => {
+    const { report, d1 } = traced({ scanDepth: 3 }, ['The tide pulled out.', 'She walked the pier.']);
+    expect(d1.fired).toBe(true);
+    expect(report.historyCount).toBe(2);
+    expect(describeHitOrigin(d1, d1.hits[0], report.historyCount)).toBe(
+      'History, 2 messages back · inside its scan depth of 3 messages',
+    );
+  });
+
+  it('says all of it is read when the entry sets no scan depth', () => {
+    const { report, d1 } = traced({}, ['She walked the pier.', 'The tide pulled out.']);
+    expect(describeHitOrigin(d1, d1.hits[0], report.historyCount)).toBe(
+      'History, 1 message back · no scan depth, so all history is read',
+    );
+  });
+
+  it('names each further message a hit came from, once, and never the one already reported', () => {
+    const report = buildTriggerReport(
+      world({ dictionaries: [book([entry({ id: 'd1', key: ['tide', 'ebb'] })])] }),
+      'The tide pulls out.',
+      { history: ['The ebb tide ran hard.', 'She walked the pier.'] },
+    );
+    const d1 = row(report, 'd1');
+    // Two keywords in one older message is one place the hit came from; the scene hit above needs no repeat.
+    const others = otherHistoryHits(d1);
+    expect(others).toHaveLength(1);
+    expect(describeHitOrigin(d1, others[0], report.historyCount)).toContain('2 messages back');
+  });
+
+  it('has no further messages to name when the only hit is the one already reported', () => {
+    const report = buildTriggerReport(
+      world({ dictionaries: [book([entry({ id: 'd1', key: ['tide'] })])] }),
+      'A quiet morning.',
+      { history: ['The tide ran hard.'] },
+    );
+    expect(otherHistoryHits(row(report, 'd1'))).toEqual([]);
+  });
+
+  it('leaves a scene hit unqualified — the depth window is nothing to do with it', () => {
+    const report = buildTriggerReport(
+      world({ dictionaries: [book([entry({ id: 'd1', key: ['tide'], scanDepth: 1 })])] }),
+      'The tide pulls out.',
+      { history: ['She walked the pier.'] },
+    );
+    const d1 = row(report, 'd1');
+    expect(describeHitOrigin(d1, d1.hits[0], report.historyCount)).toBe('Scene');
+  });
+
+  it('measures distance from the newest message, whatever the region index says', () => {
+    expect(describeRegion('history:2', 3)).toBe('History, 1 message back');
+    expect(describeRegion('history:0', 3)).toBe('History, 3 messages back');
+    // Nothing to measure against: the label falls back rather than inventing a distance.
+    expect(describeRegion('history:0')).toBe('History');
+  });
+});
+
+describe('the history box', () => {
+  it('reads rule-separated blocks as messages, oldest first', () => {
+    expect(splitHistory('One turn.\n---\nTwo turns.')).toEqual(['One turn.', 'Two turns.']);
+  });
+
+  it('keeps a multi-paragraph turn whole — a blank line inside narration starts no new message', () => {
+    // Narration runs to several paragraphs. Cut on blank lines and one turn becomes several, and every
+    // distance and scan-depth verdict measured from them is wrong.
+    const turn = 'She crossed the yard.\n\nThe tide was out.';
+    expect(splitHistory(joinHistory([turn, 'He followed.']))).toEqual([turn, 'He followed.']);
+  });
+
+  it('round-trips what Paste Last Turn writes, message for message', () => {
+    const messages = ['One.\n\nStill one.', 'Two.', 'Three.\n\nStill three.'];
+    expect(splitHistory(joinHistory(messages))).toEqual(messages);
+  });
+
+  it('takes a rule line however the author wrote it, and drops what is left over', () => {
+    expect(splitHistory('One.\n  ----  \nTwo.')).toEqual(['One.', 'Two.']);
+    expect(splitHistory('\n---\n  \n---\nOnly one.\n---\n')).toEqual(['Only one.']);
+    expect(splitHistory('')).toEqual([]);
   });
 });
 

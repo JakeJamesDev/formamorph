@@ -1,9 +1,10 @@
 import { describe, it, expect, vi } from 'vitest';
 import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { buildTriggerReport, type TriggerWorld } from '@/lib/testBench/triggers';
-import type { Dictionary, DictionaryEntry, Entity } from '@/types';
-import { TriggersInstrument } from './TriggersInstrument';
+import { buildTriggerReport, joinHistory, splitHistory, type TriggerWorld } from '@/lib/testBench/triggers';
+import { runRules, selectMatchingFindings, type RuleWorld } from '@/lib/testBench/rules';
+import type { Dictionary, DictionaryEntry, Entity, WorldOverview } from '@/types';
+import { TriggersInstrument, type TriggersInstrumentProps } from './TriggersInstrument';
 
 const entry = (over: Partial<DictionaryEntry> & { id: string }): DictionaryEntry => ({
   name: '', key: [], value: 'lore', ...over,
@@ -17,11 +18,35 @@ const world = (over: Partial<TriggerWorld> = {}): TriggerWorld =>
 
 // The panel renders whatever the real tracer produced — a row shape the module cannot emit would prove
 // nothing about what an author sees.
-const renderTriggers = (from: TriggerWorld, text: string) => {
+const renderTriggers = (from: TriggerWorld, text: string, over: Partial<TriggersInstrumentProps> = {}) => {
   const onTextChange = vi.fn();
-  render(<TriggersInstrument text={text} onTextChange={onTextChange} report={buildTriggerReport(from, text)} />);
-  return { onTextChange };
+  const onHistoryChange = vi.fn();
+  const onFixRule = vi.fn();
+  const history = over.history ?? '';
+  render(
+    <TriggersInstrument
+      text={text}
+      onTextChange={onTextChange}
+      history={history}
+      onHistoryChange={onHistoryChange}
+      report={buildTriggerReport(from, text, { history: splitHistory(history) })}
+      warnings={[]}
+      onFixRule={onFixRule}
+      {...over}
+    />,
+  );
+  return { onTextChange, onHistoryChange, onFixRule };
 };
+
+/** The matching findings the rule engine really raises for a world — never hand-built, so the sentence and
+ *  the fix on screen are the ones Issues would show. */
+const matchingFor = (over: Partial<RuleWorld>) => selectMatchingFindings(runRules({
+  worldOverview: { name: 'Sedge Landing', description: '', systemPrompt: '' } as WorldOverview,
+  stats: [],
+  locations: [{ id: 'harbor', name: 'Harbor Steps', isStarting: true }],
+  entities: [], traits: [], statUpdates: [], dictionaries: [], placeholders: [],
+  ...over,
+}));
 
 const sedge = world({
   entities: [ent('e1', 'Maren')],
@@ -137,5 +162,144 @@ describe('TriggersInstrument highlights', () => {
     await userEvent.click(span);
     expect(ringed()).toHaveLength(1);
     expect(within(ringed()[0] as HTMLElement).getByText('The Visitor')).toBeInTheDocument();
+  });
+});
+
+describe('TriggersInstrument rendered context', () => {
+  const lore = world({
+    dictionaries: [book([entry({ id: 'd1', name: 'Tides', key: ['tide'], value: 'The tide runs twice a day.' })])],
+  });
+
+  it('states the token estimate with its ~ prefix without being opened', () => {
+    renderTriggers(lore, 'The tide pulls out.');
+    expect(screen.getByRole('button', { name: /Rendered Context/ }).textContent).toMatch(/~\d+ tokens/);
+  });
+
+  it('shows the injected block verbatim once opened, with what is in it', async () => {
+    renderTriggers(lore, 'The tide pulls out.');
+    await userEvent.click(screen.getByRole('button', { name: /Rendered Context/ }));
+    expect(screen.getByText('Tides: The tide runs twice a day.')).toBeInTheDocument();
+    expect(screen.getByText(/Foreground Lore · 1 entry · ~\d+ tokens/)).toBeInTheDocument();
+  });
+
+  it('says plainly that nothing would be injected when nothing fired', async () => {
+    renderTriggers(lore, 'A quiet morning.');
+    expect(screen.getByRole('button', { name: /Rendered Context/ }).textContent).toMatch(/~0 tokens/);
+    await userEvent.click(screen.getByRole('button', { name: /Rendered Context/ }));
+    expect(screen.getByText('Nothing fired, so no entry’s text is injected.')).toBeInTheDocument();
+  });
+});
+
+describe('TriggersInstrument history', () => {
+  const deep = world({
+    dictionaries: [book([entry({ id: 'd1', name: 'Tides', key: ['tide'], scanDepth: 3 })])],
+  });
+
+  it('takes earlier messages and reports how many are being traced', async () => {
+    const { onHistoryChange } = renderTriggers(deep, 'A quiet morning.', {
+      history: joinHistory(['One turn.', 'Two turns.']),
+    });
+    expect(screen.getByRole('button', { name: /History/ }).textContent).toContain('2 messages');
+    await userEvent.click(screen.getByRole('button', { name: /History/ }));
+    await userEvent.type(screen.getByRole('textbox', { name: 'History messages' }), '!');
+    expect(onHistoryChange).toHaveBeenCalled();
+  });
+
+  it('labels a history hit with how far back it was and the depth window that let it count', () => {
+    renderTriggers(deep, 'A quiet morning.', { history: joinHistory(['The tide pulled out.', 'She walked the pier.']) });
+    expect(screen.getByText(
+      '“tide” as “tide” · History, 2 messages back · inside its scan depth of 3 messages',
+    )).toBeInTheDocument();
+  });
+
+  it('names each further message a hit came from, once, whatever matched in it', () => {
+    renderTriggers(
+      world({ dictionaries: [book([entry({ id: 'd1', name: 'Tides', key: ['tide', 'ebb'] })])] }),
+      'The tide pulls out.',
+      { history: joinHistory(['The ebb tide ran hard.', 'She walked the pier.']) },
+    );
+    // Two keywords in the one older message is still one place the hit came from.
+    const also = screen.getAllByText(/^Also/);
+    expect(also).toHaveLength(1);
+    expect(also[0].textContent).toContain('History, 2 messages back');
+  });
+
+  it('explains a hit the depth window dropped, with its distance', () => {
+    renderTriggers(
+      world({ dictionaries: [book([entry({ id: 'd1', name: 'Tides', key: ['tide'], scanDepth: 1 })])] }),
+      'A quiet morning.',
+      { history: joinHistory(['The tide pulled out.', 'She walked the pier.']) },
+    );
+    expect(screen.getByText(/matched 2 messages back, further back than its scan depth of 1 message/))
+      .toBeInTheDocument();
+  });
+});
+
+describe('TriggersInstrument paste last turn', () => {
+  it('is absent, not disabled, when the world has no save to read', () => {
+    renderTriggers(sedge, '');
+    expect(screen.queryByRole('button', { name: /Paste Last Turn/ })).toBeNull();
+  });
+
+  it('hands the paste back to the editor, which owns both boxes', async () => {
+    const onPasteLastTurn = vi.fn();
+    renderTriggers(sedge, '', { onPasteLastTurn });
+    await userEvent.click(screen.getByRole('button', { name: /Paste Last Turn/ }));
+    expect(onPasteLastTurn).toHaveBeenCalled();
+  });
+});
+
+describe('TriggersInstrument inline warnings', () => {
+  const articled: Entity[] = [{ id: 'e1', name: 'Maren', aliases: ['the visitor'], locations: ['harbor'] }];
+
+  it('states a matching warning beside the row it is about, in the engine’s own words', () => {
+    const warnings = matchingFor({ entities: articled });
+    renderTriggers(world({ entities: articled }), 'Maren watches the tide.', { warnings });
+    const row = screen.getByText(/Matched “Maren”/).closest('div[class*="rounded-md"]');
+    expect(within(row as HTMLElement).getByText(warnings[0].message)).toBeInTheDocument();
+  });
+
+  it('offers the rule’s own repair, and hands it back by rule id', async () => {
+    const warnings = matchingFor({ entities: articled });
+    const { onFixRule } = renderTriggers(world({ entities: articled }), 'Maren watches the tide.', { warnings });
+    await userEvent.click(screen.getByRole('button', { name: 'Fix' }));
+    expect(onFixRule).toHaveBeenCalledWith('alias-leading-article');
+  });
+
+  it('offers no Fix where the repair is a judgment call', () => {
+    // Which of two colliding entities should be renamed is the author's call, so the row states it and stops.
+    const colliding: Entity[] = [
+      { id: 'e1', name: 'Maren', locations: ['harbor'] },
+      { id: 'e2', name: 'Maren Vosk', aliases: ['Maren'], locations: ['harbor'] },
+    ];
+    const warnings = matchingFor({ entities: colliding });
+    renderTriggers(world({ entities: colliding }), 'Maren crosses the yard.', { warnings });
+    expect(screen.getAllByText(/matches Maren and Maren Vosk/).length).toBeGreaterThan(0);
+    expect(screen.queryByRole('button', { name: 'Fix' })).toBeNull();
+  });
+
+  it('still shows a warning whose item earned no row — the articled alias is why it earned none', () => {
+    // The rule's whole point: "the visitor" misses "The visitor", so the entity is undetected. Attaching the
+    // warning only to a row it failed to earn would hide the explanation for the failure.
+    const warnings = matchingFor({ entities: articled });
+    renderTriggers(world({ entities: articled }), 'The visitor crosses the yard.', { warnings });
+    expect(screen.queryByText(/Matched/)).toBeNull();
+    const loose = screen.getByText('Nothing below can show these').closest('div');
+    expect(within(loose as HTMLElement).getByText(warnings[0].message)).toBeInTheDocument();
+    expect(within(loose as HTMLElement).getByRole('button', { name: 'Fix' })).toBeInTheDocument();
+  });
+
+  it('keeps a warning off the loose list once its row is on screen', () => {
+    const warnings = matchingFor({ entities: articled });
+    renderTriggers(world({ entities: articled }), 'Maren watches the tide.', { warnings });
+    expect(screen.queryByText('Nothing below can show these')).toBeNull();
+  });
+
+  it('warns about an entry that can never fire, on the entry’s own row', () => {
+    const dictionaries = [book([entry({ id: 'd1', name: 'Orphan' })])];
+    const warnings = matchingFor({ dictionaries });
+    renderTriggers(world({ dictionaries }), 'Maren watches the tide.', { warnings });
+    const row = screen.getByText('Orphan').closest('div[class*="rounded-md"]');
+    expect(within(row as HTMLElement).getByText(warnings[0].message)).toBeInTheDocument();
   });
 });

@@ -1,6 +1,9 @@
 import { describe, it, expect } from 'vitest';
 import type { Dictionary, DictionaryEntry, Entity, GameLocation, Stat, Trait, WorldOverview } from '@/types';
-import { applyRuleFix, runRules, groupFindings, RULES, type RuleWorld } from './rules';
+import {
+  applyRuleFix, runRules, groupFindings, isRuleFixable, selectMatchingFindings, MATCHING_RULES, RULES,
+  type RuleWorld,
+} from './rules';
 
 // A structurally sound base world — a flagged starting location and nothing else — so each pack's tests
 // see only the defects they author in, and a clean fixture really does raise zero findings.
@@ -871,6 +874,48 @@ describe('quick fixes', () => {
     }));
     expect(groups.find((g) => g.ruleId === 'alias-leading-article')?.fixable).toBe(true);
     expect(groups.find((g) => g.ruleId === 'no-starting-location')?.fixable).toBe(false);
+  });
+});
+
+describe('the matching subset Triggers surfaces', () => {
+  // The world behind every case here: an articled alias, a self-duplicate, two entities matched by one
+  // word, an entry that can never fire — and a structural defect that has no business in a matching tracer.
+  const mixed: RuleWorld = {
+    ...world([
+      { id: 'e1', name: 'Maren', aliases: ['the visitor', 'Maren'] },
+      { id: 'e2', name: 'Maren Vosk', aliases: ['Maren'] },
+    ]),
+    dictionaries: [book([entry({ id: 'd1', name: 'Orphan' })])],
+    placeholders: [{ id: 'p1', name: 'Harbor', values: ['Sedge Landing'] }],
+  };
+
+  it('carries every matching rule and nothing structural', () => {
+    expect(MATCHING_RULES.map((r) => r.id).sort()).toEqual([
+      'alias-leading-article', 'alias-self-duplicate', 'dictionary-entry-inert',
+      'dictionary-secondary-without-primary', 'entity-match-collision',
+    ]);
+  });
+
+  it('selects those findings out of a pass that already ran, leaving the rest to Issues', () => {
+    const all = runRules(mixed);
+    const matching = selectMatchingFindings(all);
+    expect(new Set(matching.map((f) => f.ruleId))).toEqual(new Set([
+      'alias-leading-article', 'alias-self-duplicate', 'entity-match-collision', 'dictionary-entry-inert',
+    ]));
+    // The unused placeholder is a real finding — it just isn't about matching, so the tracer never shows it.
+    expect(all.some((f) => f.ruleId === 'placeholder-unused')).toBe(true);
+    expect(matching.some((f) => f.ruleId === 'placeholder-unused')).toBe(false);
+  });
+
+  it('is the same finding Issues shows, item for item and word for word', () => {
+    const all = runRules(mixed);
+    for (const finding of selectMatchingFindings(all)) expect(all).toContain(finding);
+  });
+
+  it('reports a rule’s repair from the same registry the Issues row reads', () => {
+    expect(isRuleFixable('alias-leading-article')).toBe(true);
+    expect(isRuleFixable('entity-match-collision')).toBe(false);
+    expect(isRuleFixable('no-such-rule')).toBe(false);
   });
 });
 
