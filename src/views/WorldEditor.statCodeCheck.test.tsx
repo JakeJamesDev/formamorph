@@ -1,12 +1,8 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, fireEvent, waitFor, act } from '@testing-library/react';
-import { useEffect, type ReactNode } from 'react';
-import { GameDataProvider, useGameData } from '@/contexts/GameDataContext';
-import { SettingsProvider } from '@/contexts/SettingsContext';
-import WorldEditor from './WorldEditor';
+import { screen, fireEvent, waitFor, act } from '@testing-library/react';
 import { checkStatCode } from '@/lib/testBench/statCodeCheck';
+import { benchEditorWorld, clickOpenBench, renderWorldEditorBench } from '@/test/worldEditorBench';
 import type { Finding } from '@/lib/testBench/rules';
-import type { World } from '@/types';
 
 /**
  * Guards the on-demand stat-code check through the real editor.
@@ -16,15 +12,6 @@ import type { World } from '@/types';
  * code the author has since edited can never land on the list. The check is stubbed here purely so the test
  * decides when a run finishes; the world, the editor and the rule pass are all real.
  */
-
-// jsdom has no matchMedia; SettingsProvider (theme) and useIsMobile (layout) both read it on mount.
-if (typeof window.matchMedia !== 'function') {
-  window.matchMedia = ((query: string) => ({
-    matches: false, media: query, onchange: null,
-    addEventListener: () => {}, removeEventListener: () => {},
-    addListener: () => {}, removeListener: () => {}, dispatchEvent: () => false,
-  })) as unknown as typeof window.matchMedia;
-}
 
 vi.mock('../services/WorldStorageService', () => ({
   default: {
@@ -54,43 +41,18 @@ const FAILURE: Finding = {
 };
 
 /** One coded stat that reads the clock, so the world's only Issues row is the one the check raises. */
-const WORLD = {
-  id: 'w1',
-  worldOverview: {
-    name: 'Sedge Landing', description: '', author: '', thumbnail: null, bgm: null,
-    systemPrompt: '', use3DModel: true, tags: [],
-  },
+const WORLD = benchEditorWorld({
   stats: [{
     id: 's1', name: 'Fertility', type: 'number', description: '', min: 0, max: 100, regen: 0,
     starting: 0, descriptors: [], code: 'return elapsedHours;',
   }],
-  locations: [{ id: 'harbor', name: 'Harbor Steps', isStarting: true }],
-  entities: [], placeholders: [], traits: [], statUpdates: [],
-} as unknown as World;
+});
 
-const Harness = ({ children, onReady }: { children?: ReactNode; onReady: (ctx: ReturnType<typeof useGameData>) => void }) => {
-  const ctx = useGameData();
-  useEffect(() => { ctx.loadWorldData(WORLD); /* once */ }, []); // eslint-disable-line react-hooks/exhaustive-deps
-  onReady(ctx);
-  return <>{children}</>;
-};
+const setup = () => renderWorldEditorBench(WORLD);
 
-const setup = () => {
-  let ctx!: ReturnType<typeof useGameData>;
-  render(
-    <SettingsProvider>
-      <GameDataProvider>
-        <Harness onReady={(c) => { ctx = c; }}>
-          <WorldEditor onClose={vi.fn()} embedded backButton />
-        </Harness>
-      </GameDataProvider>
-    </SettingsProvider>,
-  );
-  return { ctx: () => ctx };
-};
-
+/** Open the Bench and hand back the check's run button. */
 const openBench = async () => {
-  fireEvent.click(await screen.findByRole('button', { name: /^Test Bench/ }));
+  await clickOpenBench();
   return screen.findByRole('button', { name: /Check Stat Code/ });
 };
 

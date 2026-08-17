@@ -1,11 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, fireEvent, waitFor } from '@testing-library/react';
-import { useEffect, type ReactNode } from 'react';
+import { screen, fireEvent, waitFor } from '@testing-library/react';
 import { toast } from 'react-toastify';
-import { GameDataProvider, useGameData } from '@/contexts/GameDataContext';
-import { SettingsProvider } from '@/contexts/SettingsContext';
-import WorldEditor from './WorldEditor';
-import type { World } from '@/types';
+import { benchEditorWorld, clickOpenBench, renderWorldEditorBench } from '@/test/worldEditorBench';
 
 /**
  * Guards the Bench's quick fixes through the real editor.
@@ -14,15 +10,6 @@ import type { World } from '@/types';
  * repaired world back: the bug this shape invites is a rule returning a perfect world nobody applies. These
  * tests fail if the write-through — or the dirty flag it depends on — disappears.
  */
-
-// jsdom has no matchMedia; SettingsProvider (theme) and useIsMobile (layout) both read it on mount.
-if (typeof window.matchMedia !== 'function') {
-  window.matchMedia = ((query: string) => ({
-    matches: false, media: query, onchange: null,
-    addEventListener: () => {}, removeEventListener: () => {},
-    addListener: () => {}, removeListener: () => {}, dispatchEvent: () => false,
-  })) as unknown as typeof window.matchMedia;
-}
 
 const getWorldMetadata = vi.fn();
 
@@ -47,43 +34,16 @@ vi.mock('react-toastify', () => ({
 
 /** Two unambiguous defects on two tabs — an articled alias and a placeholder nothing uses — so the Bench
  *  shows two fixable rows and a second fix can be pressed without waiting for the first row to clear. */
-const WORLD = {
-  id: 'w1',
-  worldOverview: {
-    name: 'Sedge Landing', description: '', author: '', thumbnail: null, bgm: null,
-    systemPrompt: '', use3DModel: true, tags: [],
-  },
-  stats: [],
-  locations: [{ id: 'harbor', name: 'Harbor Steps', isStarting: true }],
+const WORLD = benchEditorWorld({
   entities: [{ id: 'e1', name: 'Maren', aliases: ['the visitor'], locations: ['harbor'] }],
   placeholders: [{ id: 'p1', name: 'Hue', values: ['red', 'blue'] }],
-  traits: [], statUpdates: [],
-} as unknown as World;
+});
 
-const Harness = ({ children, onReady }: { children?: ReactNode; onReady: (ctx: ReturnType<typeof useGameData>) => void }) => {
-  const ctx = useGameData();
-  useEffect(() => { ctx.loadWorldData(WORLD); /* once */ }, []); // eslint-disable-line react-hooks/exhaustive-deps
-  onReady(ctx);
-  return <>{children}</>;
-};
+const setup = () => renderWorldEditorBench(WORLD);
 
-const setup = () => {
-  let ctx!: ReturnType<typeof useGameData>;
-  render(
-    <SettingsProvider>
-      <GameDataProvider>
-        <Harness onReady={(c) => { ctx = c; }}>
-          <WorldEditor onClose={vi.fn()} embedded backButton />
-        </Harness>
-      </GameDataProvider>
-    </SettingsProvider>,
-  );
-  return { ctx: () => ctx };
-};
-
-/** Open the Bench from the editor header. */
+/** Open the Bench and hand back its Fix buttons. */
 const openBench = async () => {
-  fireEvent.click(await screen.findByRole('button', { name: /^Test Bench/ }));
+  await clickOpenBench();
   return screen.findAllByRole('button', { name: 'Fix' });
 };
 
