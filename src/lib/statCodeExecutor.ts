@@ -57,6 +57,16 @@ const resolveClock = (clock?: StatClock) => {
   };
 };
 
+/** How a run failed, for a caller that sorts failures rather than printing them. */
+export type StatCodeFailure = 'timeout' | 'non-number' | 'throw';
+
+export interface StatCodeResult {
+  value: number | null;
+  error: string | null;
+  /** Present exactly when `error` is. */
+  kind?: StatCodeFailure;
+}
+
 /** Run a stat's untrusted `code` in an isolated QuickJS (WASM) VM to compute `currentStat`'s value from
  *  the other stats and the story clock, clamped to its `[min, max]`. A ~1s interrupt timeout, memory, and
  *  stack caps bound it; empty code yields `{value: null}` (keep the manual value), and any error/non-number
@@ -67,7 +77,7 @@ export const executeStatCode = async (
   stats: Stat[],
   currentStat: Stat,
   clock?: StatClock,
-): Promise<{ value: number | null; error: string | null }> => {
+): Promise<StatCodeResult> => {
   // If code is empty, return null (use the manually set value)
   if (!code || code.trim() === '') {
     return { value: null, error: null };
@@ -127,11 +137,12 @@ export const executeStatCode = async (
         const err = typeof dumped === 'object' && dumped !== null ? dumped : { message: String(dumped) };
         // The interrupt handler surfaces as an "interrupted" InternalError — report it as the timeout.
         if (/interrupted/i.test(err.message || '')) {
-          return { value: null, error: 'Execution timed out' };
+          return { value: null, error: 'Execution timed out', kind: 'timeout' };
         }
         return {
           value: null,
-          error: `Error: ${err.message}\nStack: ${err.stack || 'No stack trace available'}`
+          error: `Error: ${err.message}\nStack: ${err.stack || 'No stack trace available'}`,
+          kind: 'throw'
         };
       }
 
@@ -144,7 +155,11 @@ export const executeStatCode = async (
 
       // Ensure the result is a number, clamped to the stat's min/max range.
       if (typeof raw !== 'number') {
-        return { value: null, error: 'Error: Code must return a number\nStack: No stack trace available' };
+        return {
+          value: null,
+          error: 'Error: Code must return a number\nStack: No stack trace available',
+          kind: 'non-number'
+        };
       }
       return { value: clamp(raw, currentStat.min || 0, currentStat.max || 100), error: null };
     } finally {
@@ -157,7 +172,8 @@ export const executeStatCode = async (
     // Provide more detailed error information
     return {
       value: null,
-      error: `Error: ${(error as Error).message}\nStack: ${(error as Error).stack || 'No stack trace available'}`
+      error: `Error: ${(error as Error).message}\nStack: ${(error as Error).stack || 'No stack trace available'}`,
+      kind: 'throw'
     };
   }
 };
