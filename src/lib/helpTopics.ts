@@ -291,7 +291,7 @@ They exist to give the story a memory with consequences. Prose alone drifts; a s
 - **Type** — a **Number** stat spans a range you set; a **Percentage** stat is pinned from 0 to 100 and shown everywhere as \`N%\`. Everything below works the same for both — a percentage stat just fixes the range for you and drops the Max, so you only set its **Initial Value (%)**.
 - **Min / Max / Initial Value** set the range and where the stat starts. (A percentage stat locks Min/Max at 0/100 and shows just Initial Value.)
 - **Regen** is added every turn, then clamped to the range — a positive number heals over time, a negative one bleeds.
-- **Stat Descriptors** turn a number into a word. **Threshold % is a percentage of the way from Min to Max, not a raw value**, and the *first* descriptor whose threshold the stat is at or below wins — so list them low to high, or the wrong one matches.
+- **Stat Descriptors** turn a number into a word. **Threshold % is a percentage of the way from Min to Max, not a raw value**, and a threshold is the *top* of its band — the lowest band the stat fits in wins, whatever order you list them in. Give the highest one a threshold of \`100\`, or a value above it gets no descriptor at all.
 - **Prevent AI Changes** locks a stat against the AI in one direction. Useful for anything only your world's rules should move.
 - **Body Sliders** bind a body morph to the stat, so its value drives the slider from Min to Max.
 - **Dynamic Value Calculation** replaces the value with the result of a small script that runs each turn. It has a **?** of its own beside it.

@@ -52,7 +52,7 @@ Each has a **Threshold %** and a **Description**. Two things trip authors up:
 
 > ⚠️ **Threshold % is a percentage of the way from Min to Max — not a raw value.** With Min 0 / Max 200, a threshold of `50` means the value 100.
 >
-> ⚠️ **The first descriptor at or below the threshold wins, in list order.** List them low to high. If `100 → Fine` sits first, it matches everything and nothing below it is ever reached.
+> ⚠️ **A threshold is the *top* of its band, and the lowest band the value fits in wins.** Descriptors are read low to high whatever order you list them in, so `30 → Barren` covers 0–30% and a `60` above it covers everything up to 60%. Give your highest descriptor a threshold of `100`, or a value above it gets no descriptor at all.
 
 ### Prevent AI Changes
 
