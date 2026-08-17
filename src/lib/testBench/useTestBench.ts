@@ -63,7 +63,7 @@ export function useTestBench({ selectedLocationId, isMobile, routedTab, navigate
 
   const [benchOpen, setBenchOpen] = useState(false);
   // The open Instrument, remembered per world for the session — the sheet closing doesn't reset the setup.
-  const { tab: benchTab, setTab: setBenchTab } = useBenchTab(worldId, { open: benchOpen });
+  const { tab: benchTab, setTab: setBenchTab, routeTab: routeBenchTab } = useBenchTab(worldId, { open: benchOpen });
   // Above the tab strip, so switching instruments (which unmounts the panel below it) doesn't discard the
   // prose the author is testing with.
   const [triggerText, setTriggerText] = useState('');
@@ -216,15 +216,15 @@ export function useTestBench({ selectedLocationId, isMobile, routedTab, navigate
   }, [getWorldData, updateWorldOverview, setStats, setLocations, setConnections, setEntities,
       setEntityGroups, setTraits, setTraitGroups, setStatUpdates, setDictionaries, setPlaceholders,
       noteFirstDownloadEdit]);
-  // DEV dev-router: `#dev?modal=worldEditor&bench=issues` opens the Bench on an instrument. The tab is
-  // written before the open, so the open's own seed reads it back rather than fighting it.
+  // DEV dev-router: `#dev?modal=worldEditor&bench=issues` opens the Bench on an instrument. The route wins
+  // the open's seed without being recorded, so it overrides the view but not the remembered tab.
   useEffect(() => {
     if (!import.meta.env.DEV) return;
     const tab = asBenchTab(routedTab);
     if (!tab) return;
-    setBenchTab(tab);
+    routeBenchTab(tab);
     setBenchOpen(true);
-  }, [routedTab, setBenchTab]);
+  }, [routedTab, routeBenchTab]);
 
   return {
     open: benchOpen,

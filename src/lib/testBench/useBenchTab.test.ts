@@ -41,11 +41,23 @@ describe('useBenchTab', () => {
     expect(sessionStorage.getItem('FORMAMORPH_benchTab')).toBeNull();
   });
 
-  it('reads back a tab written before the open — how a route-driven tab survives the seed', () => {
-    // The dev-router sets the tab and then opens; the seed must land on that write, not fight it.
+  it('shows a routed tab across the open without recording it', () => {
+    // The dev-router routes the tab and then opens; the seed must land on the route, not fight it —
+    // and the route is a view override, so the session record stays untouched.
     const { result, rerender } = mount({ open: false });
-    act(() => { result.current.setTab('aiContext'); });
+    act(() => { result.current.routeTab('aiContext'); });
     rerender({ open: true });
     expect(result.current.tab).toBe('aiContext');
+    expect(sessionStorage.getItem('FORMAMORPH_benchTab')).toBeNull();
+  });
+
+  it('spends the route on one seed, so a reopen lands on the author’s own tab again', () => {
+    sessionStorage.setItem('FORMAMORPH_benchTab', JSON.stringify({ w1: 'triggers' }));
+    const { result, rerender } = mount({ open: false });
+    act(() => { result.current.routeTab('aiContext'); });
+    rerender({ open: true });
+    rerender({ open: false });
+    rerender({ open: true });
+    expect(result.current.tab).toBe('triggers');
   });
 });
