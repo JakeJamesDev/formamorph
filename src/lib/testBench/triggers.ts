@@ -13,14 +13,20 @@ import {
 } from '@/lib/dictionaryUtils';
 import { findEntityMatches, stripQuotedSpeech, type EntityMatch } from '@/lib/entityMatch';
 import { estimateTokens } from '@/lib/memoryUtils';
-import { describePlaceholders } from '@/lib/placeholders';
 import { applySemanticLore } from '@/lib/semanticDictionary';
 import type { DictionaryEntry, Entity } from '@/types';
+import { resolveLensText } from './lens';
 import type { RuleWorld } from './rules';
 import { traceSemantic, type EntrySemantic, type SemanticInput } from './semantic';
 
 /** The slices of the authored world the tracer reads. */
 export type TriggerWorld = Pick<RuleWorld, 'entities' | 'dictionaries' | 'placeholders'>;
+
+/** The lens PC's placeholder pins — placeholder id → the value that character forces. */
+type Pins = Record<string, string>;
+
+/** Nothing pinned, shared so a lens-less run keeps report identity across calls. */
+const NO_PINS: Pins = {};
 
 /**
  * Why an entry the author is looking at did not fire — the near-miss classes, from "you turned it off" to
@@ -154,16 +160,16 @@ export function joinHistory(messages: string[]): string {
 }
 
 /** An entry as the dictionary list labels it. */
-const entryLabel = (entry: DictionaryEntry, placeholders: TriggerWorld['placeholders']): string =>
-  describePlaceholders(entry.name, placeholders) || parseKeywords(entry)[0] || 'Untitled entry';
+const entryLabel = (entry: DictionaryEntry, placeholders: TriggerWorld['placeholders'], pins: Pins): string =>
+  resolveLensText(entry.name, placeholders, pins) || parseKeywords(entry)[0] || 'Untitled entry';
 
 /** An entity with its authored chips resolved, so matching runs against the words that will be on the page.
- *  A multi-value Wildcard resolves to a summary rather than a value and so matches nothing — which is the
- *  truth about a name that is only decided at play time. */
-const resolveEntity = (entity: Entity, placeholders: TriggerWorld['placeholders']): Entity => ({
+ *  An unpinned multi-value Wildcard resolves to a summary rather than a value and so matches nothing — which
+ *  is the truth about a name that is only decided at play time. */
+const resolveEntity = (entity: Entity, placeholders: TriggerWorld['placeholders'], pins: Pins): Entity => ({
   ...entity,
-  name: describePlaceholders(entity.name, placeholders),
-  aliases: entity.aliases?.map((a) => describePlaceholders(a, placeholders)),
+  name: resolveLensText(entity.name, placeholders, pins),
+  aliases: entity.aliases?.map((a) => resolveLensText(a, placeholders, pins)),
 });
 
 /** Where one specific keyword of `entry` hits, under that entry's own flags. Probing through `matchHits`
@@ -267,17 +273,21 @@ export const scannedEntries = (world: TriggerWorld): DictionaryEntry[] =>
  *
  * `opts.semantic` adds the meaning-based pass over the top, folded in by the game's own `applySemanticLore`
  * so a keyword firing keeps its stronger reason. Without it nothing semantic exists in the result at all.
+ *
+ * `opts.pins` is the lens PC's: every chip that character fixes reads as their value, so an entity whose
+ * name is pinned matches the prose here exactly as it would in that playthrough.
  */
 export function buildTriggerReport(
   world: TriggerWorld,
   sceneText: string,
-  opts: { history?: string[]; semantic?: SemanticInput } = {},
+  opts: { history?: string[]; semantic?: SemanticInput; pins?: Pins } = {},
 ): TriggerReport {
   const placeholders = world.placeholders ?? [];
+  const pins = opts.pins ?? NO_PINS;
   const historyCount = (opts.history ?? []).length;
   const entities = findEntityMatches(
     stripQuotedSpeech(sceneText),
-    (world.entities ?? []).map((e) => resolveEntity(e, placeholders)),
+    (world.entities ?? []).map((e) => resolveEntity(e, placeholders, pins)),
   );
 
   const scene: ScanSource[] = sceneText ? [{ region: SCENE_REGION, text: sceneText }] : [];
@@ -291,7 +301,9 @@ export function buildTriggerReport(
   const live = scannedEntries(world);
   const report = explainActivation(live, scene, { history });
   // Semantic runs over the keyword report, as the narration prompt applies it: an entry the keywords already
-  // took keeps its reason, so a score can never be mistaken for what put it in.
+  // took keeps its reason, so a score can never be mistaken for what put it in. It reads the unpinned text
+  // because that is what the stored vectors were built from — pinning here would look every entry up under a
+  // key the index does not have.
   const semantic = opts.semantic ? traceSemantic(live, placeholders, opts.semantic) : undefined;
   if (semantic) applySemanticLore(report, semantic.activations);
 
@@ -302,7 +314,7 @@ export function buildTriggerReport(
     for (const entry of book.entries ?? []) {
       const base = {
         entryId: entry.id,
-        name: entryLabel(entry, placeholders),
+        name: entryLabel(entry, placeholders, pins),
         bookId: book.id,
         bookName: book.name,
         bookEnabled,
@@ -346,7 +358,7 @@ export function buildTriggerReport(
     }
   }
 
-  const rendered = renderBlocks(activated, placeholders);
+  const rendered = renderBlocks(activated, placeholders, pins);
   return {
     entities,
     entries,
@@ -373,15 +385,20 @@ export function buildTriggerReport(
  * entry's `position`, then rendered by the game's own `buildDictionaryContext` — headings excluded, since a
  * block is what a `<DICTIONARY>` chip is replaced with and the prompt owns the heading around it.
  *
- * Chips resolve as the editor describes them rather than as a playthrough rolled them: an author has no
- * rolls, and a Wildcard's summary is the honest answer about text decided at play time.
+ * Chips resolve through the lens: what the PC pins reads as their value, and everything else as the editor
+ * describes it rather than as a playthrough rolled it — an author has no rolls, and a Wildcard's summary is
+ * the honest answer about text decided at play time.
  */
-function renderBlocks(activated: DictionaryEntry[], placeholders: TriggerWorld['placeholders']): RenderedBlock[] {
+function renderBlocks(
+  activated: DictionaryEntry[],
+  placeholders: TriggerWorld['placeholders'],
+  pins: Pins,
+): RenderedBlock[] {
   const positions: Array<RenderedBlock['position']> = ['before', 'after'];
   return positions.flatMap((position) => {
     const inBlock = activated.filter((entry) =>
       (position === 'before') === (entry.position === 'before'));
-    const text = describePlaceholders(buildDictionaryContext(inBlock, false), placeholders);
+    const text = resolveLensText(buildDictionaryContext(inBlock, false), placeholders, pins);
     if (!text) return [];
     return [{
       position,

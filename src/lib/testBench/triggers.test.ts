@@ -434,6 +434,35 @@ describe('buildTriggerReport — entities present', () => {
   });
 });
 
+describe('buildTriggerReport — under the lens PC', () => {
+  const placeholders = [{ id: 'p1', name: 'Alias', values: ['Maren', 'Vosk'] }] as unknown as Placeholder[];
+  const pinned = world({
+    entities: [ent('e1', '{{ph:p1:world:x}}')],
+    dictionaries: [book([entry({ id: 'd1', name: 'The {{ph:p1:world:y}} Line', key: ['tide'], value: 'Of {{ph:p1:world:z}}.' })])],
+    placeholders,
+  });
+
+  it('matches an entity whose name the PC pins', () => {
+    const report = buildTriggerReport(pinned, 'Maren crosses the yard.', { pins: { p1: 'Maren' } });
+    expect(report.entities.map((e) => e.name)).toEqual(['Maren']);
+  });
+
+  it('does not match the other value of the same Wildcard', () => {
+    const report = buildTriggerReport(pinned, 'Maren crosses the yard.', { pins: { p1: 'Vosk' } });
+    expect(report.entities).toEqual([]);
+  });
+
+  it('matches nothing without a PC, since an unpinned Wildcard is decided at play time', () => {
+    expect(buildTriggerReport(pinned, 'Maren crosses the yard.').entities).toEqual([]);
+  });
+
+  it('labels an entry and renders its lore through the pin', () => {
+    const report = buildTriggerReport(pinned, 'The tide pulls out.', { pins: { p1: 'Maren' } });
+    expect(row(report, 'd1').name).toBe('The Maren Line');
+    expect(report.rendered[0].text).toContain('Of Maren.');
+  });
+});
+
 describe('buildTriggerReport — highlight segments', () => {
   it('splits the text into plain and claimed runs, in order', () => {
     const text = 'Maren watches the tide.';

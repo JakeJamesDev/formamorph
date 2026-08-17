@@ -59,6 +59,14 @@ if (typeof Element !== 'undefined' && typeof Element.prototype.scrollIntoView ==
   Element.prototype.scrollIntoView = () => {};
 }
 
+// jsdom implements no Pointer Capture either, and Radix's Select asks the pointer target whether it holds
+// capture before it will open — without these a click on any Select throws instead of opening its list.
+if (typeof Element !== 'undefined' && typeof Element.prototype.hasPointerCapture === 'undefined') {
+  Element.prototype.hasPointerCapture = () => false;
+  Element.prototype.setPointerCapture = () => {};
+  Element.prototype.releasePointerCapture = () => {};
+}
+
 // jsdom has no object-URL store. The upload path makes one to show the file being converted without handing
 // an <img> the multi-megabyte data URL, so without these the whole flow throws.
 if (typeof URL.createObjectURL === 'undefined') {

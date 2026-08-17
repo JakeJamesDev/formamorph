@@ -28,7 +28,9 @@ import { Drawer, DrawerContent, DrawerTitle } from '@/components/ui/drawer';
 import { applyRuleFix, RULES, selectMatchingFindings, type Finding, type FindingSection } from '@/lib/testBench/rules';
 import { loadLastTurn, type LastTurn } from '@/lib/testBench/lastTurn';
 import { checkStatCode } from '@/lib/testBench/statCodeCheck';
+import { lensStatOverrides } from '@/lib/testBench/lens';
 import { useBenchFindings } from '@/lib/testBench/useBenchFindings';
+import { useBenchLens } from '@/lib/testBench/useBenchLens';
 import { useDebouncedTriggerReport } from '@/lib/testBench/useTriggerReport';
 import { useTriggerSemantics } from '@/lib/testBench/useTriggerSemantics';
 import { joinHistory } from '@/lib/testBench/triggers';
@@ -317,8 +319,19 @@ const WorldEditorInner = ({ onClose, embedded = false, backButton }: {
   const semantics = useTriggerSemantics(
     benchOpen && benchTab === 'triggers', semanticOn, benchWorld, triggerText,
   );
+  // The lens every instrument reads. It seeds from whatever location the author has open in the editor, so
+  // opening the Bench mid-edit lands on the place they were already looking at.
+  const benchLens = useBenchLens(worldId, benchWorld, {
+    open: benchOpen,
+    selectedLocationId: activeTab === 'locations' ? selectedItemId : null,
+  });
+  const lensStatOverridesForBench = useMemo(
+    () => lensStatOverrides(benchWorld, benchLens.lens),
+    [benchWorld, benchLens.lens],
+  );
   const triggerReport = useDebouncedTriggerReport(benchWorld, triggerText, triggerHistory, {
     semantic: semantics.input,
+    pins: benchLens.lens.pins,
   });
   // The world's most recent save, read while the Bench is open so a turn played since it was last opened is
   // the one offered. Absent when the world has never been played — then there is no button at all.
@@ -403,6 +416,12 @@ const WorldEditorInner = ({ onClose, embedded = false, backButton }: {
       tab={benchTab}
       onTabChange={setBenchTab}
       onClose={closeBench}
+      lens={benchLens.lens}
+      pcOptions={benchLens.pcOptions}
+      locationOptions={benchLens.locationOptions}
+      statOverrides={lensStatOverridesForBench}
+      onPcChange={benchLens.setPc}
+      onLocationChange={benchLens.setLocation}
       onOpenItem={openFindingItem}
       onFixRule={applyBenchFix}
       onDismissRule={bench.dismissRule}
