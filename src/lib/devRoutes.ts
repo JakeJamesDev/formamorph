@@ -55,7 +55,7 @@ export const DEV_MODAL_TABS = {
   // The World Editor's Test Bench, opened beside the editor with `bench=…` naming the instrument
   // (`#dev?modal=worldEditor&bench=issues`). Only built instruments are listed — an unbuilt tab renders
   // disabled and has nothing to land on, so adding one here is part of building it.
-  worldEditorBench: ['issues', 'triggers'],
+  worldEditorBench: ['issues', 'triggers', 'aiContext'],
   // Admin Panel → Policies has a second level, one sub-tab per authored popup, reached with `subtab=…`.
   adminPanelPolicies: ['uploadGate', 'tagNotice'],
   // Admin Panel → Feedback uses the same `subtab=…` slot, one per branch.

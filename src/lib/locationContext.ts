@@ -13,6 +13,22 @@ type ContextFormat = "simple" | "markdown" | "xml";
 const pickDescription = (preferSummary: boolean, summary?: string, description?: string) =>
   preferSummary ? summary?.trim() || description : description;
 
+/** Which authored text a location or entity reaches the AI as. `none` means the item lists as a bare name. */
+export type ContextDelivery = 'full' | 'summary' | 'none';
+
+/** How one item's description arrives in a *list* (a roster or a location list) under `preferSummary` — the
+ *  classification of the choice `pickDescription` makes, so a surface reporting summary-vs-full can never
+ *  disagree with what was rendered. `summary` only where a summary was actually authored; a blank one falls
+ *  through to full. Not the current-location block, which also falls back to the legacy `description`. */
+export function contextDelivery(
+  item: { aiSummary?: string; aiDescription?: string },
+  preferSummary: boolean,
+): ContextDelivery {
+  const text = pickDescription(preferSummary, item.aiSummary, item.aiDescription);
+  if (!text || text.trim() === '') return 'none';
+  return preferSummary && item.aiSummary?.trim() ? 'summary' : 'full';
+}
+
 // The extra fields — beyond name and description, which are handled explicitly — that each builder feeds the
 // AI. An ALLOWLIST, not a denylist: everything else on a location/entity (media, ids, editor-only flags,
 // image tags, placeholder defs) is excluded by default, so a newly added world field can never silently leak
@@ -223,19 +239,33 @@ export function buildSublocationEntitiesContext(
   return renderEntityRoster(ids, entities, opts);
 }
 
-/** The current location's effective destinations paired with the travel hint each one is reached by (absent
- *  for implicit travel and for hintless Connections), in `lib/locationGraph` order. */
-function destinationEntries(
-  current: GameLocation,
+/** One place the player can move to, and how the trip is made. */
+export interface DestinationEntry {
+  location: GameLocation;
+  /** A Connection's authored travel hint. Absent for implicit travel and for hintless Connections. */
+  hint?: string;
+  via: "implicit" | "connection";
+}
+
+/** The current location's effective destinations paired with the travel hint each one is reached by, in
+ *  `lib/locationGraph` order. Exported so a surface that lists the destinations reads the same closed set the
+ *  prompt block renders from — a second computation could disagree with where a player can actually go. */
+export function navigableDestinationEntries(
+  current: MaybeLocation,
   locations: GameLocation[],
   connections: Connection[],
-): { location: GameLocation; hint?: string }[] {
+): DestinationEntry[] {
+  if (!current) return [];
   const byId = new Map(locations.map((l) => [l.id, l]));
-  const entries: { location: GameLocation; hint?: string }[] = [];
+  const entries: DestinationEntry[] = [];
   for (const [id, via] of effectiveDestinations(current.id, locations, connections)) {
     const location = byId.get(id);
     if (!location) continue; // a Connection pointing at a deleted location reaches nowhere
-    entries.push({ location, hint: via.via === "connection" ? via.connection.aiHint : undefined });
+    entries.push({
+      location,
+      hint: via.via === "connection" ? via.connection.aiHint : undefined,
+      via: via.via,
+    });
   }
   return entries;
 }
@@ -253,8 +283,7 @@ export function navigableDestinations(
   locations: GameLocation[],
   connections: Connection[],
 ): GameLocation[] {
-  if (!current) return [];
-  return destinationEntries(current, locations, connections).map((e) => e.location);
+  return navigableDestinationEntries(current, locations, connections).map((e) => e.location);
 }
 
 /**
@@ -270,7 +299,7 @@ export function buildDestinationsContext(
   opts: { preferSummary?: boolean; format?: ContextFormat; nameOnly?: boolean } = {},
 ): string {
   if (!current) return NONE_PLACEHOLDER;
-  const entries = destinationEntries(current, locations, connections);
+  const entries = navigableDestinationEntries(current, locations, connections);
   if (entries.length === 0) return NONE_PLACEHOLDER;
   const hints = new Map(entries.filter((e) => e.hint).map((e) => [e.location.id, e.hint!]));
   return buildLocationList(entries.map((e) => e.location), { ...opts, hints });

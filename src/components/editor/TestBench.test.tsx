@@ -1,6 +1,7 @@
 import { describe, it, expect, vi } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import { buildAiContext } from '@/lib/testBench/aiContext';
 import {
   buildLens, EMPTY_LENS, lensLocationOptions, lensPcOptions, type LensState,
 } from '@/lib/testBench/lens';
@@ -58,6 +59,7 @@ const benchProps = (groups: FindingGroup[], over: Partial<TestBenchProps> = {}):
   onTriggerHistoryChange: vi.fn(),
   triggerReport: buildTriggerReport({ entities: [], dictionaries: [], placeholders: [] }, ''),
   matchingFindings: [],
+  aiContext: buildAiContext(defective, buildLens(defective, EMPTY_LENS)),
   ...over,
 });
 
@@ -89,12 +91,23 @@ describe('TestBench panel', () => {
 
   it('offers the unbuilt instruments as disabled tabs', () => {
     renderBench(defective);
-    for (const label of [/Issues/, 'Triggers']) {
+    for (const label of [/Issues/, 'Triggers', 'AI Context']) {
       expect(screen.getByRole('tab', { name: label })).toBeEnabled();
     }
-    for (const label of ['AI Context', 'Opening']) {
-      expect(screen.getByRole('tab', { name: label })).toBeDisabled();
-    }
+    expect(screen.getByRole('tab', { name: 'Opening' })).toBeDisabled();
+  });
+
+  it('shows the AI Context instrument its cost, its blocks and the travel caveat', () => {
+    const lens = buildLens(defective, { pcTraitId: null, locationId: 'harbor' });
+    renderBench(defective, { tab: 'aiContext', lens, aiContext: buildAiContext(defective, lens) });
+    expect(screen.getByText(/A turn from here ≈ ~\d/)).toBeInTheDocument();
+    expect(screen.getByText('Entities Here')).toBeInTheDocument();
+    expect(screen.getByText(/can never be traveled to from here/)).toBeInTheDocument();
+  });
+
+  it('asks the AI Context instrument for a location when the lens stands nowhere', () => {
+    renderBench(defective, { tab: 'aiContext' });
+    expect(screen.getByText(/Pick a location in the lens/)).toBeInTheDocument();
   });
 
   it('stands on the instrument it was handed', () => {
