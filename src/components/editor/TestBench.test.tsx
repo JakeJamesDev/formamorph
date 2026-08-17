@@ -2,20 +2,16 @@ import { describe, it, expect, vi } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { buildAiContext, type AiContextData } from '@/lib/testBench/aiContext';
-import {
-  buildLens, EMPTY_LENS, lensLocationOptions, lensPcOptions,
-  type BenchLens, type LensOption, type LensState, type StatOverride,
-} from '@/lib/testBench/lens';
-import { buildOpening, EMPTY_OPENING, primeOpeningRolls, type OpeningData } from '@/lib/testBench/opening';
-import {
-  groupFindings, runRules, RULES, type Finding, type FindingGroup, type RuleWorld,
-} from '@/lib/testBench/rules';
+import { buildLens, EMPTY_LENS, lensLocationOptions, lensPcOptions, type LensState } from '@/lib/testBench/lens';
+import { buildOpening, EMPTY_OPENING, primeOpeningRolls } from '@/lib/testBench/opening';
+import { groupFindings, runRules, RULES, type FindingGroup, type RuleWorld } from '@/lib/testBench/rules';
 import { partitionFindings, withDismissed, withSeen, EMPTY_BENCH_STATE } from '@/lib/testBench/seenState';
-import { buildTriggerReport, type TriggerReport } from '@/lib/testBench/triggers';
-import type { SemanticStatus } from '@/lib/testBench/useTriggerSemantics';
+import { buildTriggerReport } from '@/lib/testBench/triggers';
 import type { Entity, WorldOverview } from '@/types';
 import type { BenchTab } from '@/lib/testBench/benchTabs';
-import type { CodeCheckStatus, OpenFindingItem, TestBenchProps } from '@/lib/testBench/benchProps';
+import type {
+  IssuesProps, LensBarProps, OpeningProps, TestBenchProps, TriggersProps,
+} from '@/lib/testBench/benchProps';
 import { TestBench, TestBenchButton } from './TestBench';
 
 // The panel renders whatever the rule pass produced, so the fixture goes through the real engine rather
@@ -39,128 +35,67 @@ const defective = world([
   { id: 'e2', name: 'Old Tobb', aliases: ['the fishmonger'] },
 ]);
 
-/** The panel's props laid out flat — the shape a test overrides by name; `toProps` folds them into the
- *  per-Instrument bundles the component takes, so a test still names only the props it is about. */
-interface FlatBenchProps {
-  groups: FindingGroup[];
-  dismissedGroups: FindingGroup[];
-  ruleCount: number;
-  newCount: number;
-  codedStatCount: number;
-  codeCheckStatus: CodeCheckStatus;
-  lens: BenchLens;
-  pcOptions: LensOption[];
-  locationOptions: LensOption[];
-  statOverrides: StatOverride[];
-  onPcChange: (traitId: string | null) => void;
-  onLocationChange: (locationId: string | null) => void;
-  tab: BenchTab;
-  onTabChange: (tab: BenchTab) => void;
-  onClose: () => void;
-  onOpenItem: OpenFindingItem;
-  onFixRule: (ruleId: string) => void;
-  onDismissRule: (ruleId: string) => void;
-  onRestoreRule: (ruleId: string) => void;
-  onMarkAllSeen: () => void;
-  onCheckStatCode: () => void;
-  triggerText: string;
-  onTriggerTextChange: (text: string) => void;
-  triggerHistory: string;
-  onTriggerHistoryChange: (text: string) => void;
-  triggerReport: TriggerReport;
-  matchingFindings: Finding[];
-  onPasteLastTurn?: () => void;
-  semanticStatus: SemanticStatus;
-  semanticOn: boolean;
-  onSemanticChange: (on: boolean) => void;
-  aiContext: AiContextData;
-  opening: OpeningData;
-  onRerollOpening: () => void;
+/** Per-bundle overrides — a test names only the chrome prop or bundle slice it is about. */
+interface BenchOver {
+  tab?: BenchTab;
+  onTabChange?: (tab: BenchTab) => void;
+  onClose?: () => void;
+  onFixRule?: (ruleId: string) => void;
+  issues?: Partial<IssuesProps>;
+  lens?: Partial<LensBarProps>;
+  triggers?: Partial<TriggersProps>;
+  aiContext?: AiContextData;
+  opening?: Partial<OpeningProps>;
 }
 
-const toProps = (flat: FlatBenchProps): TestBenchProps => ({
-  tab: flat.tab,
-  onTabChange: flat.onTabChange,
-  onClose: flat.onClose,
-  onFixRule: flat.onFixRule,
+/** Everything the panel needs, in the component's own bundle shape. */
+const benchProps = (groups: FindingGroup[], over: BenchOver = {}): TestBenchProps => ({
+  tab: over.tab ?? 'issues',
+  onTabChange: over.onTabChange ?? vi.fn(),
+  onClose: over.onClose ?? vi.fn(),
+  onFixRule: over.onFixRule ?? vi.fn(),
   issues: {
-    groups: flat.groups,
-    dismissedGroups: flat.dismissedGroups,
-    ruleCount: flat.ruleCount,
-    newCount: flat.newCount,
-    codedStatCount: flat.codedStatCount,
-    codeCheckStatus: flat.codeCheckStatus,
-    onOpenItem: flat.onOpenItem,
-    onDismissRule: flat.onDismissRule,
-    onRestoreRule: flat.onRestoreRule,
-    onMarkAllSeen: flat.onMarkAllSeen,
-    onCheckStatCode: flat.onCheckStatCode,
+    groups,
+    dismissedGroups: [],
+    ruleCount: RULES.length,
+    newCount: 0,
+    codedStatCount: 0,
+    codeCheckStatus: 'idle',
+    onOpenItem: vi.fn(),
+    onDismissRule: vi.fn(),
+    onRestoreRule: vi.fn(),
+    onMarkAllSeen: vi.fn(),
+    onCheckStatCode: vi.fn(),
+    ...over.issues,
   },
   lens: {
-    lens: flat.lens,
-    pcOptions: flat.pcOptions,
-    locationOptions: flat.locationOptions,
-    statOverrides: flat.statOverrides,
-    onPcChange: flat.onPcChange,
-    onLocationChange: flat.onLocationChange,
+    lens: buildLens(defective, EMPTY_LENS),
+    pcOptions: [],
+    locationOptions: lensLocationOptions(defective),
+    statOverrides: [],
+    onPcChange: vi.fn(),
+    onLocationChange: vi.fn(),
+    ...over.lens,
   },
   triggers: {
-    text: flat.triggerText,
-    onTextChange: flat.onTriggerTextChange,
-    history: flat.triggerHistory,
-    onHistoryChange: flat.onTriggerHistoryChange,
-    report: flat.triggerReport,
-    matchingFindings: flat.matchingFindings,
-    onPasteLastTurn: flat.onPasteLastTurn,
-    semanticStatus: flat.semanticStatus,
-    semanticOn: flat.semanticOn,
-    onSemanticChange: flat.onSemanticChange,
+    text: '',
+    onTextChange: vi.fn(),
+    history: '',
+    onHistoryChange: vi.fn(),
+    report: buildTriggerReport({ entities: [], dictionaries: [], placeholders: [] }, ''),
+    matchingFindings: [],
+    semanticStatus: 'unavailable',
+    semanticOn: false,
+    onSemanticChange: vi.fn(),
+    ...over.triggers,
   },
-  aiContext: flat.aiContext,
-  opening: { data: flat.opening, onReroll: flat.onRerollOpening },
+  aiContext: over.aiContext ?? buildAiContext(defective, buildLens(defective, EMPTY_LENS)),
+  opening: { data: EMPTY_OPENING, onReroll: vi.fn(), ...over.opening },
 });
 
-/** Everything the panel needs, so a test names only the props it is about. */
-const benchProps = (groups: FindingGroup[], over: Partial<FlatBenchProps> = {}): FlatBenchProps => ({
-  groups,
-  dismissedGroups: [],
-  ruleCount: RULES.length,
-  newCount: 0,
-  codedStatCount: 0,
-  codeCheckStatus: 'idle',
-  tab: 'issues',
-  onTabChange: vi.fn(),
-  onClose: vi.fn(),
-  lens: buildLens(defective, EMPTY_LENS),
-  pcOptions: [],
-  locationOptions: lensLocationOptions(defective),
-  statOverrides: [],
-  onPcChange: vi.fn(),
-  onLocationChange: vi.fn(),
-  onOpenItem: vi.fn(),
-  onFixRule: vi.fn(),
-  onDismissRule: vi.fn(),
-  onRestoreRule: vi.fn(),
-  onMarkAllSeen: vi.fn(),
-  onCheckStatCode: vi.fn(),
-  semanticStatus: 'unavailable',
-  semanticOn: false,
-  onSemanticChange: vi.fn(),
-  triggerText: '',
-  onTriggerTextChange: vi.fn(),
-  triggerHistory: '',
-  onTriggerHistoryChange: vi.fn(),
-  triggerReport: buildTriggerReport({ entities: [], dictionaries: [], placeholders: [] }, ''),
-  matchingFindings: [],
-  aiContext: buildAiContext(defective, buildLens(defective, EMPTY_LENS)),
-  opening: EMPTY_OPENING,
-  onRerollOpening: vi.fn(),
-  ...over,
-});
-
-const renderBench = (from: RuleWorld, over: Partial<FlatBenchProps> = {}) => {
+const renderBench = (from: RuleWorld, over: BenchOver = {}) => {
   const props = benchProps(groupFindings(runRules(from)), over);
-  render(<TestBench {...toProps(props)} />);
+  render(<TestBench {...props} />);
   return props;
 };
 
@@ -173,9 +108,9 @@ describe('TestBench panel', () => {
   });
 
   it('sends every item a row names to the editor tab that owns it', async () => {
-    const { onOpenItem } = renderBench(defective);
+    const { issues } = renderBench(defective);
     await userEvent.click(screen.getByRole('button', { name: 'Old Tobb' }));
-    expect(onOpenItem).toHaveBeenCalledWith('entities', 'e2');
+    expect(issues.onOpenItem).toHaveBeenCalledWith('entities', 'e2');
   });
 
   it('reports a clean world as verified, with the number of rules that ran', () => {
@@ -193,7 +128,7 @@ describe('TestBench panel', () => {
 
   it('shows the AI Context instrument its cost, its blocks and the travel caveat', () => {
     const lens = buildLens(defective, { pcTraitId: null, locationId: 'harbor' });
-    renderBench(defective, { tab: 'aiContext', lens, aiContext: buildAiContext(defective, lens) });
+    renderBench(defective, { tab: 'aiContext', lens: { lens }, aiContext: buildAiContext(defective, lens) });
     expect(screen.getByText(/A turn from here ≈ ~\d/)).toBeInTheDocument();
     expect(screen.getByText('Entities Here')).toBeInTheDocument();
     expect(screen.getByText(/can never be traveled to from here/)).toBeInTheDocument();
@@ -218,11 +153,11 @@ describe('TestBench panel', () => {
 
   it('opens a finding item on its own tab when it overrides the rule’s section', async () => {
     // A broken chip's rule lives on the Placeholders tab, but the item carrying it is an entity.
-    const { onOpenItem } = renderBench(
+    const { issues } = renderBench(
       world([{ id: 'e1', name: 'Maren', aiDescription: 'A {{ph:gone:world:pl1}} of the fen.' }]),
     );
     await userEvent.click(screen.getByRole('button', { name: 'Maren' }));
-    expect(onOpenItem).toHaveBeenCalledWith('entities', 'e1');
+    expect(issues.onOpenItem).toHaveBeenCalledWith('entities', 'e1');
   });
 
   it('closes from the bench header', async () => {
@@ -251,11 +186,13 @@ describe('TestBench lens bar', () => {
     placeholders: [{ id: 'ph-hair', name: 'Hair Color', values: ['ash', 'copper'] }],
   };
 
-  const renderLens = (state: LensState, over: Partial<FlatBenchProps> = {}) => renderBench(lensWorld, {
-    lens: buildLens(lensWorld, state),
-    pcOptions: lensPcOptions(lensWorld),
-    locationOptions: lensLocationOptions(lensWorld),
-    ...over,
+  const renderLens = (state: LensState, over: Partial<LensBarProps> = {}) => renderBench(lensWorld, {
+    lens: {
+      lens: buildLens(lensWorld, state),
+      pcOptions: lensPcOptions(lensWorld),
+      locationOptions: lensLocationOptions(lensWorld),
+      ...over,
+    },
   });
 
   const pcSelector = () => screen.getByRole('combobox', { name: 'Test as character' });
@@ -282,32 +219,34 @@ describe('TestBench lens bar', () => {
   });
 
   it('reports a pick as the id of the thing picked', async () => {
-    const { onPcChange } = renderLens(EMPTY_LENS);
+    const { lens } = renderLens(EMPTY_LENS);
     await userEvent.click(pcSelector());
     await userEvent.click(screen.getByRole('option', { name: 'Reach-Born' }));
-    expect(onPcChange).toHaveBeenCalledWith('t-reach');
+    expect(lens.onPcChange).toHaveBeenCalledWith('t-reach');
   });
 
   it('clears back to no PC', async () => {
-    const { onPcChange } = renderLens({ pcTraitId: 't-sedge', locationId: null });
+    const { lens } = renderLens({ pcTraitId: 't-sedge', locationId: null });
     await userEvent.click(pcSelector());
     await userEvent.click(screen.getByRole('option', { name: 'Anyone' }));
-    expect(onPcChange).toHaveBeenCalledWith(null);
+    expect(lens.onPcChange).toHaveBeenCalledWith(null);
   });
 
   it('has no PC to offer in a world with no exclusive group', () => {
-    renderBench(defective, { pcOptions: [], locationOptions: lensLocationOptions(defective) });
+    renderBench(defective, { lens: { pcOptions: [], locationOptions: lensLocationOptions(defective) } });
     expect(pcSelector()).toBeDisabled();
   });
 
   it('stands above the tab strip, so switching instruments keeps the setup', () => {
     const props = benchProps(groupFindings(runRules(lensWorld)), {
-      lens: buildLens(lensWorld, { pcTraitId: 't-sedge', locationId: 'market' }),
-      pcOptions: lensPcOptions(lensWorld),
-      locationOptions: lensLocationOptions(lensWorld),
+      lens: {
+        lens: buildLens(lensWorld, { pcTraitId: 't-sedge', locationId: 'market' }),
+        pcOptions: lensPcOptions(lensWorld),
+        locationOptions: lensLocationOptions(lensWorld),
+      },
     });
-    const { rerender } = render(<TestBench {...toProps(props)} />);
-    rerender(<TestBench {...toProps(props)} tab="triggers" />);
+    const { rerender } = render(<TestBench {...props} />);
+    rerender(<TestBench {...props} tab="triggers" />);
     expect(screen.getByRole('tab', { name: 'Triggers' })).toHaveAttribute('aria-selected', 'true');
     expect(pcSelector()).toHaveTextContent('Sedge-Born');
     expect(locationSelector()).toHaveTextContent('The Long Market');
@@ -319,9 +258,11 @@ describe('TestBench lens bar', () => {
       traits: [{ ...lensWorld.traits[0], placeholderPins: [{ placeholderId: 'ph-hair', value: 'teal' }] }],
     };
     renderBench(broken, {
-      lens: buildLens(broken, { pcTraitId: 't-sedge', locationId: null }),
-      pcOptions: lensPcOptions(broken),
-      locationOptions: lensLocationOptions(broken),
+      lens: {
+        lens: buildLens(broken, { pcTraitId: 't-sedge', locationId: null }),
+        pcOptions: lensPcOptions(broken),
+        locationOptions: lensLocationOptions(broken),
+      },
     });
     expect(screen.getByText(/Pins “Hair Color” to “teal”, which isn’t one of its values/)).toBeInTheDocument();
   });
@@ -343,26 +284,26 @@ describe('TestBench stat-code check', () => {
   const CHECK = { name: 'Check Stat Code' };
 
   it('offers nothing to run in a world whose stats carry no code', () => {
-    renderBench(world([]), { codedStatCount: 0 });
+    renderBench(world([]), { issues: { codedStatCount: 0 } });
     expect(screen.queryByRole('button', { name: /Check Stat Code|Check Again/ })).toBeNull();
   });
 
   it('runs the check on demand and never on its own', async () => {
-    const { onCheckStatCode } = renderBench(world([]), { codedStatCount: 2 });
+    const { issues } = renderBench(world([]), { issues: { codedStatCount: 2 } });
     expect(screen.getByText('2 stats have code, run separately')).toBeInTheDocument();
     // Rendering alone must not have run anything — a VM per stat is exactly what the badge can't afford.
-    expect(onCheckStatCode).not.toHaveBeenCalled();
+    expect(issues.onCheckStatCode).not.toHaveBeenCalled();
     await userEvent.click(screen.getByRole('button', CHECK));
-    expect(onCheckStatCode).toHaveBeenCalledTimes(1);
+    expect(issues.onCheckStatCode).toHaveBeenCalledTimes(1);
   });
 
   it('closes the button while a run is in flight', () => {
-    renderBench(world([]), { codedStatCount: 2, codeCheckStatus: 'running' });
+    renderBench(world([]), { issues: { codedStatCount: 2, codeCheckStatus: 'running' } });
     expect(screen.getByRole('button', { name: /Running/ })).toBeDisabled();
   });
 
   it('says what it checked once a run has finished, and offers another', () => {
-    renderBench(world([]), { codedStatCount: 1, codeCheckStatus: 'done' });
+    renderBench(world([]), { issues: { codedStatCount: 1, codeCheckStatus: 'done' } });
     expect(screen.getByText('Checked 1 coded stat')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Check Again' })).toBeEnabled();
   });
@@ -392,7 +333,7 @@ describe('TestBench quick fixes', () => {
 describe('TestBench newness', () => {
   // The panel is handed marked findings, so the fixture goes through the real seen-state seam rather than
   // hand-set flags — a marking the store can't actually produce would prove nothing.
-  const marked = (from: RuleWorld, state = EMPTY_BENCH_STATE): Partial<FlatBenchProps> => {
+  const marked = (from: RuleWorld, state = EMPTY_BENCH_STATE): Partial<IssuesProps> => {
     const { live, dismissed } = partitionFindings(runRules(from), state);
     const groups = groupFindings(live, (f) => f.isNew);
     return {
@@ -401,9 +342,9 @@ describe('TestBench newness', () => {
       newCount: groups.filter((g) => g.newCount > 0).length,
     };
   };
-  const renderMarked = (from: RuleWorld, state = EMPTY_BENCH_STATE, over: Partial<FlatBenchProps> = {}) => {
-    const props = benchProps([], { ...marked(from, state), ...over });
-    render(<TestBench {...toProps(props)} />);
+  const renderMarked = (from: RuleWorld, state = EMPTY_BENCH_STATE) => {
+    const props = benchProps([], { issues: marked(from, state) });
+    render(<TestBench {...props} />);
     return props;
   };
   /** The rows on screen, in the order they are rendered. */
@@ -447,9 +388,9 @@ describe('TestBench newness', () => {
   });
 
   it('marks the whole list seen on request', async () => {
-    const { onMarkAllSeen } = renderMarked(articled);
+    const { issues } = renderMarked(articled);
     await userEvent.click(screen.getByRole('button', { name: 'Mark All Seen' }));
-    expect(onMarkAllSeen).toHaveBeenCalled();
+    expect(issues.onMarkAllSeen).toHaveBeenCalled();
   });
 });
 
@@ -457,20 +398,20 @@ describe('TestBench dismissal', () => {
   const articled = world([{ id: 'e1', name: 'Maren', aliases: ['the visitor'] }]);
 
   it('hands the row’s rule over when dismissed', async () => {
-    const { onDismissRule } = renderBench(articled);
+    const { issues } = renderBench(articled);
     await userEvent.click(screen.getByRole('button', { name: /^Dismiss: / }));
-    expect(onDismissRule).toHaveBeenCalledWith('alias-leading-article');
+    expect(issues.onDismissRule).toHaveBeenCalledWith('alias-leading-article');
   });
 
   it('keeps a muted row out of the list but reachable', async () => {
     const state = withDismissed(EMPTY_BENCH_STATE, runRules(articled));
     const { live, dismissed } = partitionFindings(runRules(articled), state);
-    const props = benchProps(groupFindings(live), { dismissedGroups: groupFindings(dismissed) });
-    render(<TestBench {...toProps(props)} />);
+    const props = benchProps(groupFindings(live), { issues: { dismissedGroups: groupFindings(dismissed) } });
+    render(<TestBench {...props} />);
     expect(screen.getByText('No Problems Found')).toBeInTheDocument();
     await userEvent.click(screen.getByRole('button', { name: '1 dismissed' }));
     await userEvent.click(screen.getByRole('button', { name: /^Restore: / }));
-    expect(props.onRestoreRule).toHaveBeenCalledWith('alias-leading-article');
+    expect(props.issues.onRestoreRule).toHaveBeenCalledWith('alias-leading-article');
   });
 
   it('says nothing about dismissals when there are none', () => {
@@ -501,8 +442,8 @@ describe('TestBench Opening instrument', () => {
     buildLens(openingWorld, EMPTY_LENS),
     primeOpeningRolls(openingWorld, {}, (values) => values[0]),
   );
-  const renderOpening = (over: Partial<FlatBenchProps> = {}) =>
-    renderBench(openingWorld, { tab: 'opening', opening: openingData(), ...over });
+  const renderOpening = () =>
+    renderBench(openingWorld, { tab: 'opening', opening: { data: openingData() } });
 
   it('shows the fresh game: cost, start, stats with their band, and the rolls', () => {
     renderOpening();
@@ -532,16 +473,16 @@ describe('TestBench Opening instrument', () => {
   });
 
   it('hands the reroll to the editor', async () => {
-    const { onRerollOpening } = renderOpening();
+    const { opening } = renderOpening();
     await userEvent.click(screen.getByRole('button', { name: /Reroll/ }));
-    expect(onRerollOpening).toHaveBeenCalledTimes(1);
+    expect(opening.onReroll).toHaveBeenCalledTimes(1);
   });
 
   it('says a world with no locations has nowhere to start', () => {
     const homeless: RuleWorld = { ...openingWorld, locations: [] };
     renderBench(homeless, {
       tab: 'opening',
-      opening: buildOpening(homeless, buildLens(homeless, EMPTY_LENS), {}),
+      opening: { data: buildOpening(homeless, buildLens(homeless, EMPTY_LENS), {}) },
     });
     expect(screen.getByText(/nowhere to start/)).toBeInTheDocument();
   });

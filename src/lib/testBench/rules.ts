@@ -875,7 +875,7 @@ const statAiLockFrozen: Rule = {
   },
 };
 
-// ── Reference integrity, continued: the checks ticket 02 deferred ─────────────────────────────────────────
+// ── Reference integrity, continued: cross-slice references that point at nothing ──────────────────────────
 
 const locationParentOrphan: Rule = {
   id: 'location-parent-orphan',
@@ -1009,7 +1009,7 @@ const entityMissingDescription: Rule = {
       : noPlayer ? 'no player description' : 'no AI description';
     return [finding(
       entityMissingDescription,
-      `${quote(item.name)} has ${missing}${noAi ? ' — the narrator improvises from the bare name' : ''}`,
+      `${quote(item.name)} has ${missing}${noAi ? ' — the prompt carries only its name' : ''}`,
       [item],
     )];
   }),

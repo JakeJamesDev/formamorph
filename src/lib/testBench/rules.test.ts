@@ -859,7 +859,7 @@ describe('entity completeness rules', () => {
     expect(bare[0].message).toContain('no player or AI description');
     const aiOnly = only(world([{ id: 'e1', name: 'Maren', aiDescription: '' }]), 'entity-missing-description');
     expect(aiOnly[0].message).toContain('no AI description');
-    expect(aiOnly[0].message).toContain('improvises');
+    expect(aiOnly[0].message).toContain('only its name');
     const playerOnly = only(world([{ id: 'e1', name: 'Maren', playerDescription: ' ' }]), 'entity-missing-description');
     expect(playerOnly[0].message).toContain('no player description');
     expect(runRules(world([{ id: 'e1', name: 'Maren' }]))).toEqual([]);
