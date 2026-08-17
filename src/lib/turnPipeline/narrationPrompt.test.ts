@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { buildNarrationPrompt, type NarrationPromptInput } from './narrationPrompt';
+import { defaultSystemPrompt } from '@/components/game/GamePrompts';
 import type { DictionaryEntry } from '@/types/world';
 import type { ChatMessage } from '@/types';
 
@@ -22,7 +23,6 @@ const base = (over: Partial<NarrationPromptInput> = {}): NarrationPromptInput =>
   template: '## Game World\n<WORLD DESCRIPTION>\n\n## Current Location\n<LOCATION>\n',
   ctx: CTX,
   action: 'walk out onto the jetty',
-  playerNotes: 'Remember the ferryman.',
   history: HISTORY,
   dictionary: [],
   actionVec: null,
@@ -56,53 +56,92 @@ describe('buildNarrationPrompt', () => {
       'Remember the ferryman.\n' +
       '\n' +
       '## Current Location\n' +
-      'Sedge Landing — a jetty of grey boards.\n',
+      'Sedge Landing — a jetty of grey boards.',
     );
     // Same input, same bytes — nothing in the assembly reads a clock, a random, or module state.
     expect(buildNarrationPrompt(input).prompt).toBe(buildNarrationPrompt(input).prompt);
   });
 
-  it('inserts the notes fallback before the location header when the prompt has no notes chip', () => {
-    const { prompt } = buildNarrationPrompt(base({ playerNotes: 'Low tide at dusk.' }));
-    expect(prompt).toContain('## Player Notes\nLow tide at dusk.');
-    expect(prompt.indexOf('## Player Notes')).toBeLessThan(prompt.indexOf('## Current Location'));
+  it('injects no notes at all when the prompt carries no notes chip', () => {
+    const { prompt } = buildNarrationPrompt(base({ ctx: { ...CTX, '<NOTES>': 'Low tide at dusk.' } }));
+    expect(prompt).not.toContain('Player Notes');
+    expect(prompt).not.toContain('Low tide at dusk.');
   });
 
-  it('leaves the notes fallback out when the prompt carries a notes chip', () => {
+  it('renders the notes where the author put their chip', () => {
     const { prompt } = buildNarrationPrompt(base({
-      template: '## Notes\n<NOTES>\n\n## Current Location\n<LOCATION>\n',
+      template: '## Notes\n<NOTES>\n\n## Current Location\n<LOCATION>',
     }));
-    expect(prompt).not.toContain('## Player Notes');
-    expect(prompt).toContain('Remember the ferryman.');
+    expect(prompt).toContain('## Notes\nRemember the ferryman.');
+    expect(prompt.indexOf('Remember the ferryman.')).toBeLessThan(prompt.indexOf('## Current Location'));
   });
 
-  it('appends an imperative language directive only when the language is not English', () => {
-    expect(buildNarrationPrompt(base()).prompt).not.toContain('Write all narration in');
-    expect(buildNarrationPrompt(base({ language: 'Français' })).prompt).toContain('Write all narration in Français.');
-    // The field takes any string, so the sentence has to read as an instruction for a style too.
-    expect(buildNarrationPrompt(base({ language: 'pirate speak' })).prompt)
-      .toContain('Write all narration in pirate speak.');
+  it('scans and renders a notes chip that carries a prefix, like any other placement', () => {
+    // `<NOTES>` is affixable, so this spelling is one the chip editor produces. It resolves into the prompt
+    // like a bare placement, so the lore scan has to see it too — a substring test for `<NOTES>` misses it
+    // and would silently withhold the notes from activation.
+    const { prompt, dictionaryDebug } = buildNarrationPrompt(base({
+      template: '## Notes\n<NOTES|pre="Remember: ">\n\n## Current Location\n<LOCATION>',
+      // Nothing but the notes carries the keyword, so the entry fires only if the notes were scanned.
+      dictionary: [entry({ id: 'a', name: 'Ferryman', key: ['ferryman'], value: 'He poles the flat boat.' })],
+    }));
+    expect(prompt).toContain('Remember: Remember the ferryman.');
+    expect(dictionaryDebug.report.find((e) => e.entryId === 'a')?.activated).toBe(true);
+    expect(dictionaryDebug.sources.map((s) => s.region)).toContain('notes');
   });
 
-  it('keeps the language directive as the last line even when lore is appended after the prompt', () => {
+  it('reads an affixed dictionary placement as the chip it is', () => {
+    // Same trap on the lore chips: an affixed after-chip must not be read as "no dictionary chip", which
+    // would route every entry to a block the template does not have.
     const { prompt } = buildNarrationPrompt(base({
-      language: 'French',
+      template: '## Lore\n<DICTIONARY|pre="Lore: ">\n\n## Current Location\n<LOCATION>',
       dictionary: [entry({ id: 'a', name: 'Ferryman', key: ['jetty'], value: 'He poles the flat boat.' })],
     }));
-    // The backward-compat lore append is active here; the directive still has the final word.
-    expect(prompt).toContain('He poles the flat boat.');
-    expect(prompt.trimEnd().split('\n').pop()).toBe('Write all narration in French.');
+    expect(prompt).toContain('Lore: Ferryman: He poles the flat boat.');
   });
 
-  it('counts blank, whitespace and any casing of English as English', () => {
-    for (const language of ['', '   ', 'english', 'ENGLISH', ' English ']) {
+  it('renders the language directive wherever the author placed the chip', () => {
+    const at = (template: string) =>
+      buildNarrationPrompt(base({ template, language: 'French' })).prompt;
+    expect(at('<LANGUAGE>\n\n## Current Location\n<LOCATION>'))
+      .toBe('Write all narration in French.\n\n## Current Location\nSedge Landing — a jetty of grey boards.');
+    expect(at('## Current Location\n<LOCATION>\n\n<LANGUAGE>\n\n## Notes\n<NOTES>'))
+      .toBe('## Current Location\nSedge Landing — a jetty of grey boards.\n\nWrite all narration in French.\n\n## Notes\nRemember the ferryman.');
+    expect(at('## Current Location\n<LOCATION>\n\n<LANGUAGE>'))
+      .toBe('## Current Location\nSedge Landing — a jetty of grey boards.\n\nWrite all narration in French.');
+  });
+
+  it('injects no directive at all when the prompt carries no language chip, whatever the language', () => {
+    for (const language of ['French', 'pirate speak', 'Japanese']) {
       expect(buildNarrationPrompt(base({ language })).prompt).not.toContain('Write all narration in');
     }
   });
 
-  it('reads a padded value as the bare language name', () => {
-    expect(buildNarrationPrompt(base({ language: ' French ' })).prompt)
-      .toContain('Write all narration in French.');
+  it('reads a padded value as the bare language name, and takes a style as an instruction', () => {
+    const at = (language: string) =>
+      buildNarrationPrompt(base({ template: '<LOCATION>\n\n<LANGUAGE>', language })).prompt;
+    expect(at(' French ')).toContain('Write all narration in French.');
+    // The field takes any string, so the sentence has to read as an instruction for a style too.
+    expect(at('pirate speak')).toContain('Write all narration in pirate speak.');
+  });
+
+  it('resolves the chip to nothing for English, leaving no dangling blank lines', () => {
+    for (const language of ['', '   ', 'english', 'ENGLISH', ' English ']) {
+      const { prompt } = buildNarrationPrompt(base({ template: '<LOCATION>\n\n<LANGUAGE>', language }));
+      expect(prompt).toBe('Sedge Landing — a jetty of grey boards.');
+    }
+  });
+
+  it('renders the default template exactly as it shipped, in both language arms', () => {
+    const render = (language: string) =>
+      buildNarrationPrompt(base({ template: defaultSystemPrompt, language })).prompt;
+    const english = render('English');
+    // The chip takes its own blank lines with it: the prompt still ends on the template's last sentence.
+    expect(english.endsWith('answers in their own quoted voice with something of their own.')).toBe(true);
+    expect(english).not.toContain('Write all narration in');
+    // And the non-English arm is that same prompt plus the directive as its final line, one blank line
+    // after the body — the exact bytes the code-side append used to produce.
+    expect(render('French')).toBe(`${english}\n\nWrite all narration in French.`);
   });
 
   it('routes before-position entries into the after block when the prompt has no before chip', () => {
@@ -114,6 +153,16 @@ describe('buildNarrationPrompt', () => {
       dictionary,
     }));
     expect(prompt).toContain('Tide: It runs out fast.');
+  });
+
+  it('routes after-position entries into the before block when the prompt has no after chip', () => {
+    // The mirror of the case above: an entry's position is world data, so the chip the author kept takes
+    // both positions rather than half the lore going missing.
+    const { prompt } = buildNarrationPrompt(base({
+      template: '## Background\n<DICTIONARY|before>\n\n## Current Location\n<LOCATION>',
+      dictionary: [entry({ id: 'a', name: 'Ferryman', key: ['jetty'], value: 'He poles the flat boat.' })],
+    }));
+    expect(prompt).toContain('## Background\nFerryman: He poles the flat boat.');
   });
 
   it('splits the two lorebook blocks when the prompt carries both chips', () => {
@@ -130,11 +179,14 @@ describe('buildNarrationPrompt', () => {
     expect(prompt.indexOf('## Foreground')).toBeLessThan(prompt.indexOf('Ferryman:'));
   });
 
-  it('appends activated lore with its own heading when the prompt has no dictionary chip at all', () => {
-    const { prompt } = buildNarrationPrompt(base({
+  it('injects no lore at all when the prompt has no dictionary chip', () => {
+    const { prompt, dictionaryDebug } = buildNarrationPrompt(base({
       dictionary: [entry({ id: 'a', name: 'Ferryman', key: ['jetty'], value: 'He poles the flat boat.' })],
     }));
-    expect(prompt).toMatch(/#+ .*Lore[\s\S]*He poles the flat boat\./);
+    expect(prompt).not.toContain('He poles the flat boat.');
+    expect(prompt).not.toMatch(/Lore/);
+    // The entry still activated — it is the injection that the missing chip removes, not the scan.
+    expect(dictionaryDebug.report.find((e) => e.entryId === 'a')?.activated).toBe(true);
   });
 
   it('never injects a disabled entry, however well its keywords match', () => {

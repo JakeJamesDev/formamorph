@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import {
-  SAMPLE_PREVIEW_VALUES, DERIVED_TOKENS, derivedPreviewValues, composePreviewValues,
+  SAMPLE_PREVIEW_VALUES, DERIVED_TOKENS, derivedPreviewValues, composePreviewValues, languagePreviewValue,
 } from './previewValuePool';
 import { ALL_PROMPT_VARIABLES, variableVariantIds, withVariant, baseToken } from './promptVariables';
 import { resolveToken } from './promptTemplate';
@@ -17,7 +17,15 @@ const SETTINGS = {
   sectionStyle: 'markdown' as const,
   limitActiveCharacters: true,
   activeCharacterLimit: 3,
+  // Deliberately non-English: the language chip is the one token that renders nothing on an English game,
+  // so the whole-pool coverage checks below would have a hole to walk through otherwise. The English case
+  // is asserted on its own further down.
+  language: 'French',
 };
+
+/** The one token whose real value is legitimately empty — on an English game the language chip renders
+ *  nothing at all, which is the whole point of it. Every other token must always have something to show. */
+const LANGUAGE = '<LANGUAGE>';
 
 describe('the pool as a whole', () => {
   it('covers every token the vocabulary can render', () => {
@@ -32,6 +40,13 @@ describe('the pool as a whole', () => {
     const pool = composePreviewValues(SETTINGS);
     const blank = everyToken.filter((t) => !pool[t]?.trim());
     expect(blank).toEqual([]);
+  });
+
+  it('shows the language chip as nothing on an English game, and as the directive otherwise', () => {
+    // The one token that legitimately renders empty — a preview that padded it with a stand-in would show
+    // a line the model never receives.
+    expect(composePreviewValues({ ...SETTINGS, language: 'English' })[LANGUAGE]).toBe('');
+    expect(composePreviewValues(SETTINGS)[LANGUAGE]).toBe('Write all narration in French.');
   });
 });
 
@@ -49,6 +64,16 @@ describe('the derived layer', () => {
     expect(three['<ACTIVE CHARACTER GUIDANCE>']).not.toBe(eight['<ACTIVE CHARACTER GUIDANCE>']);
     const md = derivedPreviewValues({ ...SETTINGS, markdownOutput: false });
     expect(md['<MARKDOWN GUIDANCE>']).not.toBe(three['<MARKDOWN GUIDANCE>']);
+    const spanish = derivedPreviewValues({ ...SETTINGS, language: 'Spanish' });
+    expect(spanish[LANGUAGE]).toBe('Write all narration in Spanish.');
+  });
+
+  it('names the surface the chip is being previewed for', () => {
+    // The two prompts that offer the chip name themselves in the directive, so the choices field cannot
+    // just show the pool's narration wording.
+    expect(languagePreviewValue('choices', 'French')[LANGUAGE]).toBe('Write all choices in French.');
+    expect(languagePreviewValue('narration', 'French')[LANGUAGE]).toBe('Write all narration in French.');
+    expect(languagePreviewValue('choices', 'English')[LANGUAGE]).toBe('');
   });
 
   it('is never shadowed by a sample of the same token', () => {

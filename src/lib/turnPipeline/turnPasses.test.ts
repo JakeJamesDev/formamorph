@@ -4,7 +4,9 @@ import { planTurn } from './planTurn';
 import type { Entity } from '@/types';
 import type { TurnMaterial, TurnPassId, TurnPassRecord, TurnPlanInput, TurnSettings } from './turnPlan';
 import { TEST_PROMPTS, testInput } from './turnTestInputs';
-import { INLINE_THINKING_DIRECTIVE, OPENING_SCENE_CUE, planDirective } from '@/components/game/GamePrompts';
+import {
+  INLINE_THINKING_DIRECTIVE, OPENING_SCENE_CUE, planDirective, defaultChoicesPrompt,
+} from '@/components/game/GamePrompts';
 
 // Each pass assembles its own request. These tests call the records directly, with templates whose tokens
 // are recognizable, so a token rendered from the wrong context (or a cap that drifts) is visible.
@@ -180,23 +182,53 @@ describe('turn pass requests', () => {
       expect(build('choices').messages[0].content).toBe('Choices: I read the notices. | The notices are damp and half-illegible.');
     });
 
-    it('appends the language directive to the choices and stat prompts when the game is not in English', () => {
-      expect(build('choices', {}, {}, { language: 'French' }).systemPrompt).toContain('\nWrite all choices in French.');
-      expect(build('statUpdates', {}, {}, { language: 'French' }).systemPrompt).toContain('\n Please write in english');
-      expect(build('choices').systemPrompt).not.toContain('Write all choices in');
-      expect(build('statUpdates').systemPrompt).not.toContain('Please write in english');
+    it('renders the choices language directive where the template puts its chip', () => {
+      const withChip = { prompts: { ...TEST_PROMPTS, choices: 'CHOICES <WORLD DESCRIPTION> <ENTITIES>\n\n<LANGUAGE>' } };
+      expect(build('choices', {}, withChip, { language: 'French' }).systemPrompt)
+        .toBe('CHOICES TURN-LOCATION IN SCENE ONLY\n\nWrite all choices in French.');
+      const lead = { prompts: { ...TEST_PROMPTS, choices: '<LANGUAGE>\n\nCHOICES <WORLD DESCRIPTION> <ENTITIES>' } };
+      expect(build('choices', {}, lead, { language: 'French' }).systemPrompt)
+        .toBe('Write all choices in French.\n\nCHOICES TURN-LOCATION IN SCENE ONLY');
     });
 
-    it('counts blank, whitespace and any casing of English as English in both passes', () => {
-      for (const language of ['', '   ', 'english', 'ENGLISH', ' English ']) {
+    it('gives a chipless choices template no directive, whatever the language', () => {
+      for (const language of ['French', 'pirate speak', 'Japanese']) {
         expect(build('choices', {}, {}, { language }).systemPrompt).not.toContain('Write all choices in');
-        expect(build('statUpdates', {}, {}, { language }).systemPrompt).not.toContain('Please write in english');
+      }
+    });
+
+    it('resolves the choices chip to nothing for English, leaving no dangling blank lines', () => {
+      const withChip = { prompts: { ...TEST_PROMPTS, choices: 'CHOICES <WORLD DESCRIPTION> <ENTITIES>\n\n<LANGUAGE>' } };
+      for (const language of ['', '   ', 'english', 'ENGLISH', ' English ']) {
+        expect(build('choices', {}, withChip, { language }).systemPrompt)
+          .toBe('CHOICES TURN-LOCATION IN SCENE ONLY');
       }
     });
 
     it('reads a padded value as the bare language name', () => {
-      expect(build('choices', {}, {}, { language: ' French ' }).systemPrompt)
-        .toContain('\n\nWrite all choices in French.');
+      const withChip = { prompts: { ...TEST_PROMPTS, choices: 'CHOICES <WORLD DESCRIPTION> <ENTITIES>\n\n<LANGUAGE>' } };
+      expect(build('choices', {}, withChip, { language: ' French ' }).systemPrompt)
+        .toBe('CHOICES TURN-LOCATION IN SCENE ONLY\n\nWrite all choices in French.');
+    });
+
+    it('renders the default choices template exactly as it shipped, in both language arms', () => {
+      const shipped = { prompts: { ...TEST_PROMPTS, choices: defaultChoicesPrompt } };
+      const render = (language: string) => build('choices', {}, shipped, { language }).systemPrompt;
+      const english = render('English');
+      // The chip takes its own blank lines with it: the prompt still ends on the template's last rule.
+      expect(english.endsWith('quotation marks, headings, or commentary.')).toBe(true);
+      expect(english).not.toContain('Write all choices in');
+      // And the non-English arm is that same prompt plus the directive as its final line, one blank line
+      // after the body — the exact bytes the code-side append used to produce.
+      expect(render('French')).toBe(`${english}\n\nWrite all choices in French.`);
+    });
+
+    it('appends nothing to the stat prompt for any language', () => {
+      // The parsing contract is "echo the exact name from the list", and the list is in the world's own
+      // language — an English rider only invited the model to translate the names the parser matches on.
+      for (const language of ['English', 'French', 'Japanese', 'pirate speak', '']) {
+        expect(build('statUpdates', {}, {}, { language }).systemPrompt).toBe('STATS TURN-LOCATION');
+      }
     });
 
     it('digests and diarizes from the context the turn began in', () => {

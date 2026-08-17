@@ -1,0 +1,50 @@
+{
+  "_note": "Gold cases for probing the stat-updates pass in a NON-ENGLISH world — the arm that the deleted 'Please write in english' rider actually harmed. Same six axes as stat-relevance-cases.json, but the world, the stat names, their descriptions and the narration are all French, so a reply that translates a stat name is a name the parser cannot match. `expect` = stats that MUST change (with direction), `allow` = defensible secondaries, everything else is a trap. Run via harness/stat-language-probe.mjs.",
+  "world": "Un pays de marais froids, de gués et de hameaux d'anguilliers. Vous êtes Wren, cartographe itinérante qui relève les voies d'eau à pied, ses instruments sur le dos et une bourse bien maigre.",
+  "stats": [
+    { "name": "Vigueur", "min": 0, "max": 100, "value": 62, "description": "Endurance et énergie du corps - dépensée par l'effort, rendue par le repos et la nourriture." },
+    { "name": "Santé", "min": 0, "max": 100, "value": 88, "description": "État du corps - abaissé par les blessures et la maladie, rendu par les soins." },
+    { "name": "Volonté", "min": 0, "max": 100, "value": 74, "description": "Moral et force d'âme - usés par la peur et la perte, relevés par la victoire et le réconfort." },
+    { "name": "Chaleur", "min": 0, "max": 100, "value": 55, "description": "Chaleur du corps - perdue au froid et à l'eau, retrouvée près du feu et au sec." },
+    { "name": "Bourse", "min": 0, "max": 200, "value": 40, "description": "Pièces en main - dépensées à l'achat, gagnées au travail et à la vente." },
+    { "name": "Renom", "min": 0, "max": 100, "value": 30, "description": "Ce que le pays pense de vous - gagné par les services rendus, perdu par les affronts." }
+  ],
+  "cases": [
+    {
+      "name": "effort",
+      "narration": "Vous vous hissez à la force des bras le long du sentier raide, encombré de racines, votre sac vous tirant les épaules. En haut, vos bras tremblent et votre souffle vous scie la poitrine - mais vous y êtes, et sans une égratignure.",
+      "expect": { "Vigueur": "down" },
+      "allow": []
+    },
+    {
+      "name": "blessure",
+      "narration": "Un hameçon vous entre profondément dans la paume tandis que vous halez le filet, ouvrant une plaie déchirée. Vous le dégagez et bandez la main d'une bande de toile, mais elle bat à chaque battement de coeur et le sang traverse le pansement.",
+      "expect": { "Santé": "down" },
+      "allow": ["Vigueur"]
+    },
+    {
+      "name": "depense",
+      "narration": "Vous comptez six sous dans la paume tendue du passeur. Il grogne, les empoche sans un mot et vous désigne du menton le radeau qui attend. La traversée est à vous.",
+      "expect": { "Bourse": "down" },
+      "allow": []
+    },
+    {
+      "name": "froid",
+      "narration": "Vous passez le gué jusqu'à la taille, et le vent du large marais vous transperce à travers vos vêtements trempés. Vos dents claquent, et sur l'autre rive vous ne sentez plus vos doigts.",
+      "expect": { "Chaleur": "down" },
+      "allow": ["Vigueur"]
+    },
+    {
+      "name": "service-rendu",
+      "narration": "Vous ramenez l'enfant perdu au hameau avant la nuit. Les anguilliers sortent sur le pas de leur porte, la mère vous prend les deux mains, et le vieux du bout du chemin vous appelle par votre nom pour la première fois.",
+      "expect": { "Renom": "up" },
+      "allow": ["Volonté"]
+    },
+    {
+      "name": "deroute",
+      "narration": "Le relevé de la semaine est faux. Vous refaites les mesures trois fois et le tracé refuse toujours de fermer ; vous finissez assise dans la boue, la mine cassée, sans plus savoir par où reprendre.",
+      "expect": { "Volonté": "down" },
+      "allow": []
+    }
+  ]
+}

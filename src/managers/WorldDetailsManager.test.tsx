@@ -64,6 +64,9 @@ vi.mock('@/contexts/SettingsContext', () => ({
   useSettings: () => ({
     paragraphLimit: 'single', maxTokens: 800, markdownOutput: true,
     activeSectionStyle: 'default', limitActiveCharacters: true, activeCharacterLimit: 5,
+    // Non-English on purpose: the language chip renders nothing at all for English, so an English fixture
+    // could not tell the narration and choices wordings apart.
+    language: 'French',
     systemPrompt: PRESET_NARRATION, choicesPrompt: PRESET_CHOICES, statUpdatesPrompt: PRESET_STATS,
   }),
 }));
@@ -369,5 +372,17 @@ describe('the world narration prompt field', () => {
     // Length and markdown guidance are narration-only: the choices pass has nowhere to put them.
     expect(narrationVars.map((v) => v.token)).toContain('<LENGTH GUIDANCE>');
     expect(choicesVars.map((v) => v.token)).not.toContain('<LENGTH GUIDANCE>');
+    // The language chip is offered on both, since both are prompts the player reads the output of.
+    expect(narrationVars.map((v) => v.token)).toContain('<LANGUAGE>');
+    expect(choicesVars.map((v) => v.token)).toContain('<LANGUAGE>');
+  });
+
+  it('previews the language chip in the wording the open kind will actually send', async () => {
+    const languageOf = (label: string) =>
+      (field(label).previewValues as Record<string, string>)['<LANGUAGE>'];
+    const user = await openNarration();
+    expect(languageOf('World narration prompt')).toBe('Write all narration in French.');
+    await user.click(picker('Choices'));
+    expect(languageOf('World choices prompt')).toBe('Write all choices in French.');
   });
 });

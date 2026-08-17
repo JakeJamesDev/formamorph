@@ -9,7 +9,7 @@ import {
   parseDirectorCast,
   type ParsedDirector,
 } from '@/lib/stagedPlanning';
-import { isEnglishLanguage } from '@/lib/languages';
+import { languageDirective } from '@/lib/languages';
 import { matchLocationResponse } from '@/lib/locationMatch';
 import { parseChoices } from '@/lib/choices';
 import { parseStatUpdates } from '@/lib/statChanges';
@@ -66,22 +66,26 @@ const user = (content: string): ChatMessage[] => [{ role: 'user', content }];
  * the wording, and the conditions on it, exist once.
  */
 
-/** The choices system prompt, rendered against the scene's own entity roster. */
+/**
+ * The choices system prompt, rendered against the scene's own entity roster. The language directive rides
+ * the template's own `<LANGUAGE>` chip, so an author who moved or deleted it gets what they wrote; the
+ * trailing trim is what lets that chip sit last and cost an English game nothing.
+ */
 export const choicesSystemPrompt = (
   template: string,
   language: string,
   values: Record<string, string>,
 ): string =>
-  renderPromptTemplate(template, values) +
-  (isEnglishLanguage(language) ? '' : `\n\nWrite all choices in ${language.trim()}.`);
+  renderPromptTemplate(template, { ...values, '<LANGUAGE>': languageDirective('choices', language) }).trimEnd();
 
-/** The stat system prompt. The stat names have to come back in English however the story is narrated. */
-export const statUpdatesSystemPrompt = (
-  template: string,
-  language: string,
-  ctx: Record<string, string>,
-): string =>
-  renderPromptTemplate(template, ctx) + (isEnglishLanguage(language) ? '' : '\n Please write in english');
+/**
+ * The stat system prompt. Nothing is appended for any language: the parsing contract is that each line
+ * echoes a stat's exact name from the list above it, and that list carries the world's authored names
+ * whatever language they are written in — so an "answer in English" rider only invited the model to
+ * translate the very names the parser matches on.
+ */
+export const statUpdatesSystemPrompt = (template: string, ctx: Record<string, string>): string =>
+  renderPromptTemplate(template, ctx);
 
 /** The digest's user message. A bracketed authorial direction never reaches it — it records story content. */
 export const summaryUserMessage = (template: string, action: string, narration: string): string =>
@@ -358,7 +362,7 @@ const statUpdatesPass: TurnPassRecord<ReturnType<typeof parseStatUpdates>> = {
   buildRequest: (input, material) => {
     return {
       type: 'statUpdates',
-      systemPrompt: statUpdatesSystemPrompt(input.prompts.statUpdates, input.settings.language, material.ctx),
+      systemPrompt: statUpdatesSystemPrompt(input.prompts.statUpdates, material.ctx),
       messages: user(
         renderPromptTemplate(input.prompts.statUpdatesUser, {
           '<PLAYER ACTION>': material.effectiveAction,

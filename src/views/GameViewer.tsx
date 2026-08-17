@@ -1769,7 +1769,6 @@ const GameViewer = ({
           template: systemPrompt,
           ctx,
           action: effectiveAction,
-          playerNotes,
           history: fullMessageHistory,
           dictionary,
           actionVec,
@@ -2896,7 +2895,7 @@ const GameViewer = ({
     quiet = false,
   ): Promise<string> =>
     makeAIRequest({
-      systemPrompt: statUpdatesSystemPrompt(resolvedStatUpdatesPrompt, language, ctx),
+      systemPrompt: statUpdatesSystemPrompt(resolvedStatUpdatesPrompt, ctx),
       messages: [{ role: "user", content: renderPromptTemplate(statUpdatesUserPrompt, { "<PLAYER ACTION>": action, "<NARRATION>": narration }) }],
       type: "statUpdates",
       signal,

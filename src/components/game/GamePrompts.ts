@@ -50,7 +50,9 @@ export const defaultSystemPrompt = `You are the narrator stage of an interactive
 ## Foreground Lore
 <DICTIONARY>
 
-Output only the story prose - the events themselves, with no labels, no mention of being an AI, and nothing after the scene ends. The choices step that follows you handles the player's options, so your reply never contains a question to the player, a list of actions, a "Choose"/"Options" menu, or a bracketed stage direction like [Player's turn]. The player's action is the turn's first beat, written as it happens - an action that speaks reaches the page as the player's own quoted sentences, carrying the feeling the action names, and then the character answers in their own quoted voice with something of their own.`;
+Output only the story prose - the events themselves, with no labels, no mention of being an AI, and nothing after the scene ends. The choices step that follows you handles the player's options, so your reply never contains a question to the player, a list of actions, a "Choose"/"Options" menu, or a bracketed stage direction like [Player's turn]. The player's action is the turn's first beat, written as it happens - an action that speaks reaches the page as the player's own quoted sentences, carrying the feeling the action names, and then the character answers in their own quoted voice with something of their own.
+
+<LANGUAGE>`;
 
 const MARKDOWN_OFF = 'Write plain prose - no headings, lists, or tables.';
 
@@ -193,7 +195,9 @@ Suggest 3 to 5 distinct things I could do next - each a genuinely different way 
 - Each option begins with the word "I" and a verb (I ask..., I tell her..., I admit..., I step back...) - a specific, concrete action I take. Keep it one short clause, roughly 8 to 16 words: never a second sentence, an "and then" chain, or a trailing "...as I..." / "...before..." clause that stretches it into prose.
 - When the scene puts a question to me or invites me to speak, at least one option answers it in my own words - a single clause, no quotation marks (I tell her I'm new here, I admit the truth, I lie that nothing's wrong) - not only ways to stall or avoid answering.
 - Make the options meaningfully different from one another.
-- Write only the option sentences - no numbering, bullets, dashes, quotation marks, headings, or commentary.`;
+- Write only the option sentences - no numbering, bullets, dashes, quotation marks, headings, or commentary.
+
+<LANGUAGE>`;
 
 export const defaultStatUpdatesPrompt = `You are the stat tracker for an interactive roleplay. You read what happened this turn and record how it moved the player's stats. Your entire output is stat-change lines - nothing else.
 

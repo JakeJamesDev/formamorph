@@ -10,7 +10,7 @@ import PlaceholderField from "@/components/prompt/PlaceholderField";
 import { plainVocabulary } from "@/lib/chipVocabulary";
 import { PROMPT_KIND_VARIABLES } from "@/lib/promptVariables";
 import { authoredPreviewValues } from "@/lib/authoredPreviewValues";
-import { composePreviewValues } from "@/lib/previewValuePool";
+import { composePreviewValues, languagePreviewValue } from "@/lib/previewValuePool";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
@@ -39,6 +39,7 @@ const CustomPromptsSection = ({ focusField }: { focusField?: { fieldKey: string 
   } = useGameData();
   const {
     paragraphLimit, maxTokens, markdownOutput, activeSectionStyle, limitActiveCharacters, activeCharacterLimit,
+    language,
     systemPrompt: presetNarrationPrompt, choicesPrompt: presetChoicesPrompt,
     statUpdatesPrompt: presetStatUpdatesPrompt,
   } = useSettings();
@@ -49,7 +50,7 @@ const CustomPromptsSection = ({ focusField }: { focusField?: { fieldKey: string 
     () => composePreviewValues(
       {
         paragraphLimit, maxTokens, markdownOutput, sectionStyle: activeSectionStyle,
-        limitActiveCharacters, activeCharacterLimit,
+        limitActiveCharacters, activeCharacterLimit, language,
       },
       authoredPreviewValues({
         worldOverview, stats, locations, connections, entities, traits, traitGroups, dictionaries, placeholders,
@@ -57,6 +58,7 @@ const CustomPromptsSection = ({ focusField }: { focusField?: { fieldKey: string 
     ),
     [
       paragraphLimit, maxTokens, markdownOutput, activeSectionStyle, limitActiveCharacters, activeCharacterLimit,
+      language,
       worldOverview, stats, locations, connections, entities, traits, traitGroups, dictionaries, placeholders,
     ],
   );
@@ -151,7 +153,11 @@ const CustomPromptsSection = ({ focusField }: { focusField?: { fieldKey: string 
                 write(kind, { text, enabled });
               }}
               variables={PROMPT_KIND_VARIABLES[PROMPT_KIND_VARIABLE_KEY[kind]]}
-              previewValues={previewValues}
+              // The choices prompt's language chip names itself in the directive, so its preview says
+              // "choices" where the pool's default says "narration".
+              previewValues={kind === 'choices'
+                ? { ...previewValues, ...languagePreviewValue('choices', language) }
+                : previewValues}
               sampleData="Your world, sample turn"
               ariaLabel={`World ${label} prompt`}
               resizable
