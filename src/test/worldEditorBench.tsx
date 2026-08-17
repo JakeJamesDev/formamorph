@@ -21,18 +21,24 @@ if (typeof window.matchMedia !== 'function') {
   })) as unknown as typeof window.matchMedia;
 }
 
-/** A loadable world with the base a suite doesn't care about filled in: a named overview and a flagged
- *  starting location. The cast is deliberate — a suite supplies only the slices its tests are about, the
- *  way hand-authored world JSON arrives with fields the types call required simply absent. */
+/** A loadable world with the base a suite doesn't care about filled in — a named overview with a prompt and
+ *  readme, a flagged starting location, and one described resident keeping it occupied — clean under the full
+ *  rule registry, so a suite's Issues list shows only the defects it authors in. The cast is deliberate — a
+ *  suite supplies only the slices its tests are about, the way hand-authored world JSON arrives with fields
+ *  the types call required simply absent. */
 export const benchEditorWorld = (over: Partial<World>): World => ({
   id: 'w1',
   worldOverview: {
     name: 'Sedge Landing', description: '', author: '', thumbnail: null, bgm: null,
-    systemPrompt: '', use3DModel: true, tags: [],
+    systemPrompt: 'Narrate the fen.', readme: 'A fen primer.', use3DModel: true, tags: [],
   },
   stats: [],
   locations: [{ id: 'harbor', name: 'Harbor Steps', isStarting: true }],
-  entities: [], placeholders: [], traits: [], statUpdates: [],
+  entities: [{
+    id: 'resident', name: 'Odd Wick', playerDescription: 'The lamp-keeper.',
+    aiDescription: 'Keeps the harbor lamps lit.', locations: ['harbor'],
+  }],
+  placeholders: [], traits: [], statUpdates: [],
   ...over,
 } as unknown as World);
 

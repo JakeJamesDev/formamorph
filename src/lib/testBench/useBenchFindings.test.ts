@@ -4,12 +4,16 @@ import type { Entity, WorldOverview } from '@/types';
 import { runRules, type RuleWorld } from './rules';
 import { useBenchFindings } from './useBenchFindings';
 
-// Structurally sound, so only the authored alias defect fires.
+// Structurally sound and described, so only the authored alias defect fires.
 const world = (entities: Entity[]): RuleWorld => ({
-  worldOverview: { name: 'Sedge Landing', description: '', systemPrompt: '' } as WorldOverview,
+  worldOverview: {
+    name: 'Sedge Landing', description: '', systemPrompt: 'Narrate the fen.', readme: 'A fen primer.',
+  } as WorldOverview,
   stats: [],
   locations: [{ id: 'harbor', name: 'Harbor Steps', isStarting: true }],
-  entities: entities.map((e) => ({ locations: ['harbor'], ...e })),
+  entities: entities.map((e) => ({
+    locations: ['harbor'], playerDescription: 'Seen around.', aiDescription: 'A fen regular.', ...e,
+  })),
   traits: [], statUpdates: [], dictionaries: [], placeholders: [],
 });
 

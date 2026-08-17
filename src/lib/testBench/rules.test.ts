@@ -5,20 +5,35 @@ import {
   type RuleWorld,
 } from './rules';
 
-// A structurally sound base world — a flagged starting location and nothing else — so each pack's tests
-// see only the defects they author in, and a clean fixture really does raise zero findings.
+/** A described entity at the starting location — what keeps the completeness rules quiet about a fixture
+ *  that is about something else entirely. */
+const resident: Entity = {
+  id: 'resident', name: 'Odd Wick', playerDescription: 'The lamp-keeper.',
+  aiDescription: 'Keeps the harbor lamps lit.', locations: ['harbor'],
+};
+
+// A structurally sound base world — a flagged starting location, a readme, and one resident keeping the
+// harbor occupied — so each pack's tests see only the defects they author in, and a clean fixture really
+// does raise zero findings.
 const base = (overrides: Partial<RuleWorld> = {}): RuleWorld => ({
-  worldOverview: { name: 'Sedge Landing', description: '', systemPrompt: 'Narrate the fen.' } as WorldOverview,
+  worldOverview: {
+    name: 'Sedge Landing', description: '', systemPrompt: 'Narrate the fen.', readme: 'A fen primer.',
+  } as WorldOverview,
   stats: [],
   locations: [{ id: 'harbor', name: 'Harbor Steps', isStarting: true }],
-  entities: [],
+  entities: [resident],
   traits: [], statUpdates: [], dictionaries: [], placeholders: [],
   ...overrides,
 });
 
-// The alias tests' shorthand: the roster, placed at the starting location so presence rules stay quiet.
+// The alias tests' shorthand: the roster, placed at the starting location and described so presence and
+// completeness rules stay quiet; a test overrides exactly the fields its defect is about.
 const world = (entities: Entity[]): RuleWorld =>
-  base({ entities: entities.map((e) => ({ locations: ['harbor'], ...e })) });
+  base({
+    entities: entities.map((e) => ({
+      locations: ['harbor'], playerDescription: 'Seen around.', aiDescription: 'A fen regular.', ...e,
+    })),
+  });
 
 const stat = (overrides: Partial<Stat> & { id: string; name: string }): Stat => ({
   type: 'number', description: '', min: 0, max: 100, regen: 0, descriptors: [], ...overrides,
@@ -181,7 +196,7 @@ describe('reference-integrity rules', () => {
   });
 
   it('is silent once the entity is placed at a real location', () => {
-    expect(runRules(base({ entities: [{ id: 'e1', name: 'Maren', locations: ['harbor'] }] }))).toEqual([]);
+    expect(runRules(world([{ id: 'e1', name: 'Maren' }]))).toEqual([]);
   });
 
   it('flags a trait toggling a stat that doesn’t exist, and quiets when it points at a real one', () => {
@@ -218,9 +233,9 @@ describe('reference-integrity rules', () => {
   });
 
   it('flags a chip pointing at a placeholder that doesn’t exist, opening on the owner’s own tab', () => {
-    const chipped = (id: string) => base({
+    const chipped = (id: string) => ({
+      ...world([{ id: 'e1', name: 'Maren', aiDescription: `A {{ph:${id}:world:pl1}} of the fen.` }]),
       placeholders: [{ id: 'p1', name: 'Visitor', values: ['Maren'] }],
-      entities: [{ id: 'e1', name: 'Maren', locations: ['harbor'], aiDescription: `A {{ph:${id}:world:pl1}} of the fen.` }],
     });
     const found = only(chipped('gone'), 'chip-unknown-placeholder');
     expect(found).toHaveLength(1);
@@ -260,11 +275,11 @@ describe('reference-integrity rules', () => {
   });
 
   it('flags a chip in a stat description even when its placeholder exists — nothing resolves it there', () => {
-    const described = (description: string) => base({
-      placeholders: [{ id: 'p1', name: 'Vice', values: ['ale'] }],
+    const described = (description: string) => ({
       // The placeholder earns its place in a field that does resolve, so removing the stat's chip leaves a
       // world with nothing else wrong with it.
-      entities: [{ id: 'e1', name: 'Maren', locations: ['harbor'], aiDescription: 'Fond of {{ph:p1:world:pl1}}.' }],
+      ...world([{ id: 'e1', name: 'Maren', aiDescription: 'Fond of {{ph:p1:world:pl1}}.' }]),
+      placeholders: [{ id: 'p1', name: 'Vice', values: ['ale'] }],
       stats: [stat({ id: 's1', name: 'Vigor', description })],
     });
     const found = only(described('Craving for {{ph:p1:world:pl1}}.'), 'chip-never-scanned');
@@ -275,9 +290,9 @@ describe('reference-integrity rules', () => {
   });
 
   it('flags a chip in a stat descriptor', () => {
-    const described = (description: string) => base({
+    const described = (description: string) => ({
+      ...world([{ id: 'e1', name: 'Maren', aiDescription: 'Fond of {{ph:p1:world:pl1}}.' }]),
       placeholders: [{ id: 'p1', name: 'Vice', values: ['ale'] }],
-      entities: [{ id: 'e1', name: 'Maren', locations: ['harbor'], aiDescription: 'Fond of {{ph:p1:world:pl1}}.' }],
       stats: [stat({ id: 's1', name: 'Vigor', descriptors: [{ id: 1, threshold: 0, description }] })],
     });
     const found = only(described('Weak from {{ph:p1:world:pl1}}.'), 'chip-never-scanned');
@@ -363,23 +378,23 @@ describe('dictionary rules', () => {
 
 describe('reachability rules', () => {
   it('flags a world where no location is a starting location, with the Locations tab as the way in', () => {
-    const found = only(base({ locations: [{ id: 'l1', name: 'Fen' }] }), 'no-starting-location');
+    const found = only(base({ locations: [{ id: 'harbor', name: 'Fen' }] }), 'no-starting-location');
     expect(found).toHaveLength(1);
     expect(found[0].severity).toBe('error');
     expect(found[0].section).toBe('locations');
-    expect(runRules(base({ locations: [{ id: 'l1', name: 'Fen', isStarting: true }] }))).toEqual([]);
+    expect(runRules(base({ locations: [{ id: 'harbor', name: 'Fen', isStarting: true }] }))).toEqual([]);
   });
 
   it('flags the legacy isStartLocation field, which the game no longer reads', () => {
     const withLegacy = base({
-      locations: [{ id: 'l1', name: 'Fen', isStarting: true, isStartLocation: true } as GameLocation],
+      locations: [{ id: 'harbor', name: 'Fen', isStarting: true, isStartLocation: true } as GameLocation],
     });
     const found = only(withLegacy, 'legacy-start-location');
     expect(found).toHaveLength(1);
     expect(found[0].severity).toBe('warning');
-    expect(found[0].items.map((i) => i.id)).toEqual(['l1']);
+    expect(found[0].items.map((i) => i.id)).toEqual(['harbor']);
     expect(found[0].message).toContain('flag it as a starting location instead');
-    expect(runRules(base({ locations: [{ id: 'l1', name: 'Fen', isStarting: true }] }))).toEqual([]);
+    expect(runRules(base({ locations: [{ id: 'harbor', name: 'Fen', isStarting: true }] }))).toEqual([]);
   });
 
   it('fires on a false-valued legacy field too, but only advises deleting it', () => {
@@ -397,7 +412,7 @@ describe('reachability rules', () => {
     expect(found).toHaveLength(1);
     expect(found[0].severity).toBe('warning');
     expect(found[0].items.map((i) => i.id)).toEqual(['e1']);
-    expect(runRules(base({ entities: [{ id: 'e1', name: 'Farm Visitors', locations: ['harbor'] }] }))).toEqual([]);
+    expect(runRules(world([{ id: 'e1', name: 'Farm Visitors' }]))).toEqual([]);
   });
 
   it('flags a disabled stat no trait ever enables, and quiets when one does', () => {
@@ -429,12 +444,12 @@ describe('reachability rules', () => {
   });
 
   it('stays silent on a plain world that uses none of the advanced features', () => {
-    expect(runRules(base({
-      entities: [{ id: 'e1', name: 'Maren', locations: ['harbor'] }],
+    expect(runRules({
+      ...world([{ id: 'e1', name: 'Maren' }]),
       stats: [stat({ id: 's1', name: 'Vigor' })],
       dictionaries: [book([entry({ id: 'd1', name: 'Fen Lore', key: ['fen'] })])],
       traits: [trait({ id: 't1', name: 'Hardy' })],
-    }))).toEqual([]);
+    })).toEqual([]);
   });
 });
 
@@ -717,6 +732,395 @@ describe('the unused-placeholder rule', () => {
   });
 });
 
+describe('the deferred reference checks', () => {
+  const nested = (parentId: string) => base({
+    locations: [
+      { id: 'harbor', name: 'Harbor Steps', isStarting: true },
+      { id: 'loft', name: 'The Loft', parentId },
+    ],
+    entities: [resident, { ...resident, id: 'e-loft', name: 'Tallow', locations: ['loft'] }],
+  });
+
+  it('flags a location whose parent points at nothing, and quiets under a real parent', () => {
+    const found = only(nested('gone'), 'location-parent-orphan');
+    expect(found).toHaveLength(1);
+    expect(found[0].severity).toBe('error');
+    expect(found[0].section).toBe('locations');
+    expect(found[0].items.map((i) => i.id)).toEqual(['loft']);
+    expect(runRules(nested('harbor'))).toEqual([]);
+  });
+
+  it('leaves a top-level location alone, null or absent alike', () => {
+    const flat = base({
+      locations: [
+        { id: 'harbor', name: 'Harbor Steps', isStarting: true, parentId: null },
+        { id: 'loft', name: 'The Loft' },
+      ],
+      entities: [resident, { ...resident, id: 'e-loft', name: 'Tallow', locations: ['loft'] }],
+    });
+    expect(runRules(flat)).toEqual([]);
+  });
+
+  it('promotes the orphan to top-level as its fix — the dead parent already contributed nothing', () => {
+    const before = nested('gone');
+    const fixed = applyRuleFix(before, 'location-parent-orphan');
+    expect(fixed.locations[1].parentId).toBeNull();
+    // The location that was fine keeps its identity, so only the repair is written back.
+    expect(fixed.locations[0]).toBe(before.locations[0]);
+    expect(only(fixed, 'location-parent-orphan')).toEqual([]);
+  });
+
+  const linked = (from: string, to: string) => base({
+    locations: [
+      { id: 'harbor', name: 'Harbor Steps', isStarting: true },
+      { id: 'market', name: 'The Long Market' },
+    ],
+    entities: [resident, { ...resident, id: 'e-m', name: 'Stallkeep', locations: ['market'] }],
+    connections: [{ id: 'c1', from, to, twoWay: true }],
+  });
+
+  it('flags a travel link with a dead endpoint, naming the end that still exists', () => {
+    const found = only(linked('harbor', 'gone'), 'connection-endpoint-orphan');
+    expect(found).toHaveLength(1);
+    expect(found[0].severity).toBe('warning');
+    expect(found[0].message).toContain('from “Harbor Steps”');
+    expect(found[0].items.map((i) => i.id)).toEqual(['harbor']);
+    expect(only(linked('gone', 'market'), 'connection-endpoint-orphan')[0].message).toContain('to “The Long Market”');
+    expect(runRules(linked('harbor', 'market'))).toEqual([]);
+  });
+
+  it('still reports a link both of whose ends are gone', () => {
+    const found = only(linked('gone', 'lost'), 'connection-endpoint-orphan');
+    expect(found).toHaveLength(1);
+    expect(found[0].message).toContain('between two locations that don’t exist');
+  });
+
+  const updating = (target: string) => base({
+    stats: [stat({ id: 's1', name: 'Mana' })],
+    statUpdates: [{ id: 'u1', name: 'Hourly Drain', prompt: 'Drain it.', stats: [target], messageHistory: [] }],
+  });
+
+  it('flags a stat update targeting a stat name that doesn’t exist — a rename detaches silently', () => {
+    const found = only(updating('Manna'), 'stat-update-unknown-stat');
+    expect(found).toHaveLength(1);
+    expect(found[0].severity).toBe('warning');
+    expect(found[0].message).toContain('Manna');
+    expect(found[0].items.map((i) => i.id)).toEqual(['u1']);
+    expect(runRules(updating('Mana'))).toEqual([]);
+  });
+});
+
+describe('entity completeness rules', () => {
+  it('flags a lowercase multi-word alias with no capitalized twin, and quiets once the twin exists', () => {
+    const aliased = (aliases: string[]) => world([{ id: 'e1', name: 'Maren', aliases }]);
+    const found = only(aliased(['old fishmonger']), 'alias-lowercase-no-twin');
+    expect(found).toHaveLength(1);
+    expect(found[0].severity).toBe('info');
+    expect(found[0].message).toContain('“Old fishmonger”');
+    expect(runRules(aliased(['old fishmonger', 'Old fishmonger']))).toEqual([]);
+  });
+
+  it('leaves single-word and already-capitalized aliases alone', () => {
+    expect(only(world([{ id: 'e1', name: 'Maren', aliases: ['fishmonger', 'Old Hand'] }]), 'alias-lowercase-no-twin')).toEqual([]);
+  });
+
+  it('leaves an articled alias to the sharper article rule until its fix strips it', () => {
+    const articled = world([{ id: 'e1', name: 'Maren', aliases: ['the old hand'] }]);
+    expect(only(articled, 'alias-lowercase-no-twin')).toEqual([]);
+    // Once the article fix runs, what remains is a lowercase phrase — and this rule picks it up.
+    expect(only(applyRuleFix(articled, 'alias-leading-article'), 'alias-lowercase-no-twin')).toHaveLength(1);
+  });
+
+  it('flags an entity name that doubles as a Wildcard value, plural tolerance included', () => {
+    const pooled = (values: string[]) => ({
+      ...world([{ id: 'e1', name: 'Gull', aiDescription: 'Fond of {{ph:p1:world:pl1}}.' }]),
+      placeholders: [{ id: 'p1', name: 'Coin Bird', values }],
+    });
+    const found = only(pooled(['gulls', 'wren']), 'entity-name-in-wildcard-pool');
+    expect(found).toHaveLength(1);
+    expect(found[0].severity).toBe('warning');
+    expect(found[0].items.map((i) => i.id)).toEqual(['e1', 'p1']);
+    expect(found[0].items[1].section).toBe('placeholders');
+    expect(only(pooled(['heron', 'wren']), 'entity-name-in-wildcard-pool')).toEqual([]);
+  });
+
+  it('leaves a Variable alone — one fixed value is not a roll that can impersonate anyone', () => {
+    const w = {
+      ...world([{ id: 'e1', name: 'Gull', aiDescription: 'Fond of {{ph:p1:world:pl1}}.' }]),
+      placeholders: [{ id: 'p1', name: 'Coin Bird', values: ['gull'] }],
+    };
+    expect(only(w, 'entity-name-in-wildcard-pool')).toEqual([]);
+  });
+
+  it('flags a missing description, naming which audience is blind', () => {
+    const bare = only(world([{ id: 'e1', name: 'Maren', playerDescription: '', aiDescription: '' }]), 'entity-missing-description');
+    expect(bare).toHaveLength(1);
+    expect(bare[0].severity).toBe('info');
+    expect(bare[0].message).toContain('no player or AI description');
+    const aiOnly = only(world([{ id: 'e1', name: 'Maren', aiDescription: '' }]), 'entity-missing-description');
+    expect(aiOnly[0].message).toContain('no AI description');
+    expect(aiOnly[0].message).toContain('improvises');
+    const playerOnly = only(world([{ id: 'e1', name: 'Maren', playerDescription: ' ' }]), 'entity-missing-description');
+    expect(playerOnly[0].message).toContain('no player description');
+    expect(runRules(world([{ id: 'e1', name: 'Maren' }]))).toEqual([]);
+  });
+
+  it('flags a long AI description with no AI summary, in ~tokens', () => {
+    const longText = 'A fen tale. '.repeat(60);
+    const found = only(world([{ id: 'e1', name: 'Maren', aiDescription: longText }]), 'entity-long-description-no-summary');
+    expect(found).toHaveLength(1);
+    expect(found[0].severity).toBe('info');
+    expect(found[0].message).toMatch(/~\d+ tokens/);
+    // A summary redirects the summary-reading passes, which is the other rule's business — not long anymore.
+    expect(only(
+      world([{ id: 'e1', name: 'Maren', aiDescription: longText, aiSummary: 'A fen tale.' }]),
+      'entity-long-description-no-summary',
+    )).toEqual([]);
+    expect(runRules(world([{ id: 'e1', name: 'Maren', aiDescription: 'Short.' }]))).toEqual([]);
+  });
+
+  it('says who has an AI summary, since only the narrator sees their full description', () => {
+    const found = only(
+      world([{ id: 'e1', name: 'Maren', aiSummary: 'A trader.' }]),
+      'ai-summary-hides-description',
+    );
+    expect(found).toHaveLength(1);
+    expect(found[0].severity).toBe('info');
+    // A summary with no full description hides nothing.
+    expect(only(
+      world([{ id: 'e1', name: 'Maren', aiDescription: '', aiSummary: 'A trader.' }]),
+      'ai-summary-hides-description',
+    )).toEqual([]);
+  });
+
+  it('covers a location’s AI summary too, opening on the Locations tab', () => {
+    const found = only(base({
+      locations: [{
+        id: 'harbor', name: 'Harbor Steps', isStarting: true,
+        aiDescription: 'Steps to the water.', aiSummary: 'Steps.',
+      }],
+    }), 'ai-summary-hides-description');
+    expect(found).toHaveLength(1);
+    expect(found[0].items[0]).toMatchObject({ id: 'harbor', section: 'locations' });
+  });
+
+  it('flags a location containing no entities, and quiets once someone lives there', () => {
+    const market = (occupants: Entity[]) => base({
+      locations: [
+        { id: 'harbor', name: 'Harbor Steps', isStarting: true },
+        { id: 'market', name: 'The Long Market' },
+      ],
+      entities: [resident, ...occupants],
+    });
+    const found = only(market([]), 'location-no-entities');
+    expect(found).toHaveLength(1);
+    expect(found[0].severity).toBe('info');
+    expect(found[0].items.map((i) => i.id)).toEqual(['market']);
+    expect(runRules(market([{ ...resident, id: 'e-m', name: 'Stallkeep', locations: ['market'] }]))).toEqual([]);
+  });
+});
+
+describe('trait group rules', () => {
+  const grouped = (over: { exclusive?: boolean; defaults?: number; members?: number }) => {
+    const { exclusive = true, defaults = 0, members = 2 } = over;
+    return base({
+      traitGroups: [{ id: 'g1', name: 'Origin', parentId: null, exclusive }],
+      traits: Array.from({ length: members }, (_, i) => trait({
+        id: `t${i + 1}`, name: `Origin ${i + 1}`, groupId: 'g1', isDefault: i < defaults,
+      })),
+    });
+  };
+
+  it('flags an exclusive group defaulting two traits at once', () => {
+    const found = only(grouped({ defaults: 2 }), 'trait-group-multiple-defaults');
+    expect(found).toHaveLength(1);
+    expect(found[0].severity).toBe('warning');
+    expect(found[0].message).toContain('Origin 1 and Origin 2');
+    expect(found[0].items.map((i) => i.id)).toEqual(['g1', 't1', 't2']);
+    expect(runRules(grouped({ defaults: 1 }))).toEqual([]);
+  });
+
+  it('lets a non-exclusive group default whatever it likes', () => {
+    expect(only(grouped({ exclusive: false, defaults: 2 }), 'trait-group-multiple-defaults')).toEqual([]);
+  });
+
+  it('flags an exclusive group holding fewer than two traits — a choice that isn’t a choice', () => {
+    const one = only(grouped({ members: 1 }), 'trait-group-too-small');
+    expect(one).toHaveLength(1);
+    expect(one[0].severity).toBe('info');
+    expect(one[0].message).toContain('only one trait');
+    expect(only(grouped({ members: 0 }), 'trait-group-too-small')[0].message).toContain('no traits');
+    expect(runRules(grouped({ members: 2 }))).toEqual([]);
+  });
+
+  it('leaves a small non-exclusive group alone — a folder is not a choice', () => {
+    expect(only(grouped({ exclusive: false, members: 1 }), 'trait-group-too-small')).toEqual([]);
+  });
+});
+
+describe('placeholder pool rules', () => {
+  const uniques = (chips: number, values: string[], weights?: Record<string, number>) => ({
+    ...world([{
+      id: 'e1', name: 'Maren',
+      aiDescription: Array.from({ length: chips }, (_, i) => `{{ph:p1:unique:u${i + 1}}}`).join(' and '),
+    }]),
+    placeholders: [{ id: 'p1', name: 'Charm', values, ...(weights ? { weights } : {}) }],
+  });
+
+  it('flags more Unique chips than the pool has values — independent draws are bound to repeat', () => {
+    const found = only(uniques(3, ['bone', 'shell']), 'placeholder-unique-pool-too-small');
+    expect(found).toHaveLength(1);
+    expect(found[0].severity).toBe('warning');
+    expect(found[0].message).toContain('3 Unique chips');
+    expect(found[0].message).toContain('only 2 values');
+    expect(runRules(uniques(2, ['bone', 'shell']))).toEqual([]);
+  });
+
+  it('counts only the values a roll can land on — a benched value shrinks the pool', () => {
+    expect(only(uniques(3, ['bone', 'shell', 'wick'], { wick: 0 }), 'placeholder-unique-pool-too-small')).toHaveLength(1);
+    expect(only(uniques(3, ['bone', 'shell', 'wick']), 'placeholder-unique-pool-too-small')).toEqual([]);
+  });
+
+  const weighted = (weights: Record<string, number>) => ({
+    ...world([{ id: 'e1', name: 'Maren', aiDescription: 'Fond of {{ph:p1:world:pl1}}.' }]),
+    placeholders: [{ id: 'p1', name: 'Vice', values: ['ale', 'dice'], weights }],
+  });
+
+  it('flags a weight naming a value the pool doesn’t contain', () => {
+    const found = only(weighted({ ale: 2, grog: 3 }), 'placeholder-weight-unknown-value');
+    expect(found).toHaveLength(1);
+    expect(found[0].severity).toBe('warning');
+    expect(found[0].message).toContain('grog');
+    expect(runRules(weighted({ ale: 2, dice: 1 }))).toEqual([]);
+  });
+
+  it('drops only the dead weights as its fix, keeping the live ones', () => {
+    const fixed = applyRuleFix(weighted({ ale: 2, grog: 3 }), 'placeholder-weight-unknown-value');
+    expect(fixed.placeholders?.[0].weights).toEqual({ ale: 2 });
+  });
+
+  it('removes an emptied weight map entirely — absent already means a uniform draw', () => {
+    const fixed = applyRuleFix(weighted({ grog: 3 }), 'placeholder-weight-unknown-value');
+    expect(fixed.placeholders?.[0] && 'weights' in fixed.placeholders[0]).toBe(false);
+  });
+
+  it('flags a Wildcard whose weights bench every value but one, so it never varies', () => {
+    const found = only(weighted({ dice: 0 }), 'wildcard-single-value');
+    expect(found).toHaveLength(1);
+    expect(found[0].severity).toBe('info');
+    expect(found[0].message).toContain('“ale”');
+  });
+
+  it('reads an all-benched pool as the uniform fallback it actually is, not as a single value', () => {
+    // Zeroing everything still draws uniformly (weightedPick), so the Wildcard varies after all.
+    expect(only(weighted({ ale: 0, dice: 0 }), 'wildcard-single-value')).toEqual([]);
+    expect(runRules(weighted({ ale: 2, dice: 1 }))).toEqual([]);
+  });
+});
+
+describe('dictionary visibility rules', () => {
+  const twoEntries = (first: Partial<DictionaryEntry>, second: Partial<DictionaryEntry>) => base({
+    dictionaries: [book([
+      entry({ id: 'd1', name: 'Cat Lore', key: ['cat'], ...first }),
+      entry({ id: 'd2', name: 'Storm Lore', key: ['catastrophe'], ...second }),
+    ])],
+  });
+
+  it('flags a keyword that is a substring of another entry’s keyword while whole-word matching is off', () => {
+    const found = only(twoEntries({}, {}), 'dictionary-keyword-substring');
+    expect(found).toHaveLength(1);
+    expect(found[0].severity).toBe('warning');
+    expect(found[0].message).toContain('“cat”');
+    expect(found[0].message).toContain('“catastrophe”');
+    expect(found[0].items.map((i) => i.id)).toEqual(['d1', 'd2']);
+  });
+
+  it('quiets once whole-word matching bounds the shorter keyword', () => {
+    expect(runRules(twoEntries({ matchWholeWords: true }, {}))).toEqual([]);
+  });
+
+  it('respects the entry’s own case flag, and leaves regex entries to their own semantics', () => {
+    expect(only(twoEntries({ key: ['Cat'], caseSensitive: true }, {}), 'dictionary-keyword-substring')).toEqual([]);
+    expect(only(twoEntries({ key: ['Cat'] }, {}), 'dictionary-keyword-substring')).toHaveLength(1);
+    expect(only(twoEntries({ useRegex: true }, {}), 'dictionary-keyword-substring')).toEqual([]);
+  });
+
+  it('does not read two entries sharing one keyword as a substring of each other', () => {
+    expect(only(twoEntries({}, { key: ['cat'] }), 'dictionary-keyword-substring')).toEqual([]);
+  });
+
+  it('flags a disabled entry, and a disabled book as one row rather than one per entry', () => {
+    const muted = only(base({
+      dictionaries: [book([entry({ id: 'd1', name: 'Herbs', key: ['herb'], enabled: false })])],
+    }), 'dictionary-disabled');
+    expect(muted).toHaveLength(1);
+    expect(muted[0].severity).toBe('info');
+    expect(muted[0].message).toContain('“Herbs” is disabled');
+
+    const mutedBook = only(base({
+      dictionaries: [{
+        ...book([
+          entry({ id: 'd1', name: 'Herbs', key: ['herb'], enabled: false }),
+          entry({ id: 'd2', name: 'Tides', key: ['tide'] }),
+        ]),
+        enabled: false,
+      }],
+    }), 'dictionary-disabled');
+    expect(mutedBook).toHaveLength(1);
+    expect(mutedBook[0].message).toContain('The book “Book” is disabled');
+    expect(runRules(base({
+      dictionaries: [book([entry({ id: 'd1', name: 'Herbs', key: ['herb'] })])],
+    }))).toEqual([]);
+  });
+});
+
+describe('world-level rules', () => {
+  const overview = (over: Partial<WorldOverview>) => base({
+    worldOverview: {
+      name: 'Sedge Landing', description: '', systemPrompt: 'Narrate the fen.', readme: 'A fen primer.', ...over,
+    } as WorldOverview,
+  });
+
+  it('flags an empty system prompt as the one world-level warning', () => {
+    const found = only(overview({ systemPrompt: '  ' }), 'world-empty-system-prompt');
+    expect(found).toHaveLength(1);
+    expect(found[0].severity).toBe('warning');
+    expect(found[0].section).toBe('overview');
+    expect(runRules(overview({}))).toEqual([]);
+  });
+
+  it('flags a world with no readme, counting an introduction readme as one', () => {
+    const found = only(overview({ readme: '' }), 'world-no-readme');
+    expect(found).toHaveLength(1);
+    expect(found[0].severity).toBe('info');
+    expect(only(overview({ readme: '', introReadme: 'Welcome to the fen.' }), 'world-no-readme')).toEqual([]);
+  });
+
+  it('flags an embedded image over its byte budget and points at Optimize Images', () => {
+    const big = `data:image/png;base64,${'A'.repeat(280_000)}`;
+    const found = only(overview({ thumbnail: big }), 'world-oversized-images');
+    expect(found).toHaveLength(1);
+    expect(found[0].severity).toBe('info');
+    expect(found[0].message).toContain('Optimize Images');
+    expect(runRules(overview({ thumbnail: `data:image/png;base64,${'A'.repeat(1_000)}` }))).toEqual([]);
+  });
+
+  it('budgets an entity portrait against the entity cap, opening on the entity', () => {
+    const big = `data:image/webp;base64,${'A'.repeat(900_000)}`;
+    const found = only(world([{ id: 'e1', name: 'Maren', images: [big] }]), 'world-oversized-images');
+    expect(found).toHaveLength(1);
+    expect(found[0].items[0]).toMatchObject({ id: 'e1', section: 'entities' });
+    expect(runRules(world([{ id: 'e1', name: 'Maren', images: [`data:image/webp;base64,${'A'.repeat(1_000)}`] }]))).toEqual([]);
+  });
+
+  it('leaves a linked image alone — it contributes no bytes to the world', () => {
+    expect(only(
+      world([{ id: 'e1', name: 'Maren', images: ['https://example.com/a-very-large-portrait.png'] }]),
+      'world-oversized-images',
+    )).toEqual([]);
+  });
+});
+
 /**
  * A world as hand-edited or third-party JSON delivers one: the arrays the types call required are simply
  * absent. The cast is the fixture — this is exactly the shape TypeScript cannot stop from reaching the rules,
@@ -786,7 +1190,9 @@ describe('a world whose “required” arrays are absent', () => {
   it('diagnoses a world carrying no collections at all', () => {
     const findings = runRules({} as RuleWorld);
     // A world with no locations has no starting one — the pass still has something true to say about it.
-    expect(findings.map((f) => f.ruleId)).toEqual(['no-starting-location']);
+    expect(findings.map((f) => f.ruleId)).toEqual([
+      'no-starting-location', 'world-empty-system-prompt', 'world-no-readme',
+    ]);
     expect(findings[0].items[0].name).toBe('This World');
   });
 
@@ -817,6 +1223,17 @@ const FIX_FIXTURES: Record<string, RuleWorld> = {
   'placeholder-unused': base({ placeholders: [{ id: 'p1', name: 'Hue', values: ['red', 'blue'] }] }),
   // A percentage stat whose range was authored before the editor pinned it, with a start the pinning moves.
   'stat-percentage-bounds': base({ stats: [stat({ id: 's1', name: 'Fertility', type: 'percentage', min: 0, max: 200, starting: 150 })] }),
+  'location-parent-orphan': base({
+    locations: [
+      { id: 'harbor', name: 'Harbor Steps', isStarting: true },
+      { id: 'loft', name: 'The Loft', parentId: 'gone' },
+    ],
+    entities: [resident, { ...resident, id: 'e-loft', name: 'Tallow', locations: ['loft'] }],
+  }),
+  'placeholder-weight-unknown-value': {
+    ...world([{ id: 'e1', name: 'Maren', aiDescription: 'Fond of {{ph:p1:world:pl1}}.' }]),
+    placeholders: [{ id: 'p1', name: 'Vice', values: ['ale', 'dice'], weights: { ale: 2, grog: 3 } }],
+  },
 };
 
 describe('quick fixes', () => {
@@ -978,8 +1395,9 @@ describe('the matching subset Triggers surfaces', () => {
 
   it('carries every matching rule and nothing structural', () => {
     expect(MATCHING_RULES.map((r) => r.id).sort()).toEqual([
-      'alias-leading-article', 'alias-self-duplicate', 'dictionary-entry-inert',
-      'dictionary-secondary-without-primary', 'entity-match-collision',
+      'alias-leading-article', 'alias-lowercase-no-twin', 'alias-self-duplicate',
+      'dictionary-entry-inert', 'dictionary-keyword-substring',
+      'dictionary-secondary-without-primary', 'entity-match-collision', 'entity-name-in-wildcard-pool',
     ]);
   });
 
