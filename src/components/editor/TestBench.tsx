@@ -7,7 +7,7 @@
  * panel renders identically inside the desktop split and the mobile sheet.
  */
 import { useState } from 'react';
-import { AlertTriangle, ChevronDown, CircleX, EyeOff, FlaskConical, Info, MapPin, Undo2, User, X } from 'lucide-react';
+import { AlertTriangle, ChevronDown, CircleX, EyeOff, FlaskConical, Info, MapPin, Play, Undo2, User, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -129,17 +129,51 @@ const DismissedSection = ({ groups, onRestore }: {
   );
 };
 
+/** How far the on-demand stat-code check has got. It never runs on its own — every run costs one sandbox VM
+ *  per coded stat, which is why the live pass can't have it. */
+export type CodeCheckStatus = 'idle' | 'running' | 'done';
+
+/** The Issues tab's one manual action: run every stat's code for real and list what fails. Absent entirely
+ *  from a world with no coded stats, since there would be nothing to run. */
+const StatCodeCheck = ({ codedStatCount, status, onRun }: {
+  codedStatCount: number;
+  status: CodeCheckStatus;
+  onRun: () => void;
+}) => {
+  if (codedStatCount === 0) return null;
+  const running = status === 'running';
+  return (
+    <div className="mt-2 flex items-center gap-2 border-t pt-2">
+      <p className="min-w-0 flex-grow text-meta text-muted-foreground">
+        {status === 'done'
+          ? `Checked ${codedStatCount} coded ${codedStatCount === 1 ? 'stat' : 'stats'}`
+          : `${codedStatCount} ${codedStatCount === 1 ? 'stat has' : 'stats have'} code, run separately`}
+      </p>
+      <Button variant="outline" size="sm" className="h-6 shrink-0 px-2 text-meta" onClick={onRun} disabled={running}>
+        <Play className="mr-1 h-3 w-3" aria-hidden />
+        {running ? 'Running…' : status === 'done' ? 'Check Again' : 'Check Stat Code'}
+      </Button>
+    </div>
+  );
+};
+
 /** World Doctor: everything the rule pass raised, worst first, one row per rule. */
-const IssuesInstrument = ({ groups, dismissedGroups, ruleCount, newCount, onOpen, onFix, onDismiss, onRestore, onMarkAllSeen }: {
+const IssuesInstrument = ({
+  groups, dismissedGroups, ruleCount, newCount, codedStatCount, codeCheckStatus,
+  onOpen, onFix, onDismiss, onRestore, onMarkAllSeen, onCheckStatCode,
+}: {
   groups: FindingGroup[];
   dismissedGroups: FindingGroup[];
   ruleCount: number;
   newCount: number;
+  codedStatCount: number;
+  codeCheckStatus: CodeCheckStatus;
   onOpen: OpenFindingItem;
   onFix: (ruleId: string) => void;
   onDismiss: (ruleId: string) => void;
   onRestore: (ruleId: string) => void;
   onMarkAllSeen: () => void;
+  onCheckStatCode: () => void;
 }) => (
   <ScrollArea className="h-full">
     <div className="pr-2">
@@ -174,6 +208,7 @@ const IssuesInstrument = ({ groups, dismissedGroups, ruleCount, newCount, onOpen
           })}
         </div>
       )}
+      <StatCodeCheck codedStatCount={codedStatCount} status={codeCheckStatus} onRun={onCheckStatCode} />
       <DismissedSection groups={dismissedGroups} onRestore={onRestore} />
     </div>
   </ScrollArea>
@@ -187,6 +222,9 @@ export interface TestBenchProps {
   ruleCount: number;
   /** How many rows carry something the author has not been shown. */
   newCount: number;
+  /** How many stats carry code — what the on-demand check would have to run. */
+  codedStatCount: number;
+  codeCheckStatus: CodeCheckStatus;
   tab: BenchTab;
   onTabChange: (tab: BenchTab) => void;
   onClose: () => void;
@@ -196,11 +234,13 @@ export interface TestBenchProps {
   onDismissRule: (ruleId: string) => void;
   onRestoreRule: (ruleId: string) => void;
   onMarkAllSeen: () => void;
+  /** Run every stat's code in the real sandbox and fold the failures into the list. */
+  onCheckStatCode: () => void;
 }
 
 export function TestBench({
-  groups, dismissedGroups, ruleCount, newCount, tab, onTabChange, onClose, onOpenItem,
-  onFixRule, onDismissRule, onRestoreRule, onMarkAllSeen,
+  groups, dismissedGroups, ruleCount, newCount, codedStatCount, codeCheckStatus, tab, onTabChange, onClose,
+  onOpenItem, onFixRule, onDismissRule, onRestoreRule, onMarkAllSeen, onCheckStatCode,
 }: TestBenchProps) {
   return (
     <div className="flex h-full flex-col gap-2 p-3">
@@ -242,11 +282,14 @@ export function TestBench({
                 dismissedGroups={dismissedGroups}
                 ruleCount={ruleCount}
                 newCount={newCount}
+                codedStatCount={codedStatCount}
+                codeCheckStatus={codeCheckStatus}
                 onOpen={onOpenItem}
                 onFix={onFixRule}
                 onDismiss={onDismissRule}
                 onRestore={onRestoreRule}
                 onMarkAllSeen={onMarkAllSeen}
+                onCheckStatCode={onCheckStatCode}
               />
             )}
           </TabsContent>

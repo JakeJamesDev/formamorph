@@ -28,6 +28,8 @@ const benchProps = (groups: FindingGroup[], over: Partial<TestBenchProps> = {}):
   dismissedGroups: [],
   ruleCount: RULES.length,
   newCount: 0,
+  codedStatCount: 0,
+  codeCheckStatus: 'idle',
   tab: 'issues',
   onTabChange: vi.fn(),
   onClose: vi.fn(),
@@ -36,6 +38,7 @@ const benchProps = (groups: FindingGroup[], over: Partial<TestBenchProps> = {}):
   onDismissRule: vi.fn(),
   onRestoreRule: vi.fn(),
   onMarkAllSeen: vi.fn(),
+  onCheckStatCode: vi.fn(),
   ...over,
 });
 
@@ -98,6 +101,35 @@ describe('TestBench panel', () => {
     const { onClose } = renderBench(world([]));
     await userEvent.click(screen.getByRole('button', { name: 'Close Test Bench' }));
     expect(onClose).toHaveBeenCalled();
+  });
+});
+
+describe('TestBench stat-code check', () => {
+  const CHECK = { name: 'Check Stat Code' };
+
+  it('offers nothing to run in a world whose stats carry no code', () => {
+    renderBench(world([]), { codedStatCount: 0 });
+    expect(screen.queryByRole('button', { name: /Check Stat Code|Check Again/ })).toBeNull();
+  });
+
+  it('runs the check on demand and never on its own', async () => {
+    const { onCheckStatCode } = renderBench(world([]), { codedStatCount: 2 });
+    expect(screen.getByText('2 stats have code, run separately')).toBeInTheDocument();
+    // Rendering alone must not have run anything — a VM per stat is exactly what the badge can't afford.
+    expect(onCheckStatCode).not.toHaveBeenCalled();
+    await userEvent.click(screen.getByRole('button', CHECK));
+    expect(onCheckStatCode).toHaveBeenCalledTimes(1);
+  });
+
+  it('closes the button while a run is in flight', () => {
+    renderBench(world([]), { codedStatCount: 2, codeCheckStatus: 'running' });
+    expect(screen.getByRole('button', { name: /Running/ })).toBeDisabled();
+  });
+
+  it('says what it checked once a run has finished, and offers another', () => {
+    renderBench(world([]), { codedStatCount: 1, codeCheckStatus: 'done' });
+    expect(screen.getByText('Checked 1 coded stat')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Check Again' })).toBeEnabled();
   });
 });
 

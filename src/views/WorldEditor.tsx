@@ -22,10 +22,11 @@ import { Plus, ArrowLeft, Save, FolderPlus, FilePlus, ImageDown, BookPlus, UserP
 import { ActionIcon } from '@/lib/actionIcons';
 import { cn } from "@/lib/utils";
 import EditorFindBar from '@/components/editor/EditorFindBar';
-import { TestBench, TestBenchButton } from '@/components/editor/TestBench';
+import { TestBench, TestBenchButton, type CodeCheckStatus } from '@/components/editor/TestBench';
 import { asBenchTab, type BenchTab } from '@/components/editor/benchTabs';
 import { Drawer, DrawerContent, DrawerTitle } from '@/components/ui/drawer';
-import { applyRuleFix, RULES, type FindingSection } from '@/lib/testBench/rules';
+import { applyRuleFix, RULES, type Finding, type FindingSection } from '@/lib/testBench/rules';
+import { checkStatCode } from '@/lib/testBench/statCodeCheck';
 import { useBenchFindings } from '@/lib/testBench/useBenchFindings';
 import { hasSeenDownloadNote, markDownloadNoteSeen } from '@/lib/testBench/downloadNote';
 import { useDebouncedFindings } from '@/lib/testBench/useFindings';
@@ -264,7 +265,44 @@ const WorldEditorInner = ({ onClose, embedded = false, backButton }: {
   // `getWorldData` is memoized on the world arrays, so this payload's identity is the "world changed"
   // signal the rule pass debounces on.
   const benchWorld = useMemo(getWorldData, [getWorldData]);
-  const findings = useDebouncedFindings(benchWorld);
+  const staticFindings = useDebouncedFindings(benchWorld);
+  // Stat-code execution is the one check the live pass can't carry — each stat costs a sandbox VM. Its
+  // findings are held from the last explicit run and dropped the moment the world moves, so a repaired stat
+  // can never keep showing its old failure.
+  const [codeFindings, setCodeFindings] = useState<Finding[]>([]);
+  const [codeCheckStatus, setCodeCheckStatus] = useState<CodeCheckStatus>('idle');
+  // Which run is the current one. A run started against a world the author has since edited must not land:
+  // its verdict is about code that no longer exists, which is the one thing the clearing below exists to stop.
+  const codeRunRef = useRef(0);
+  useEffect(() => {
+    codeRunRef.current += 1;
+    // Guarded so an ordinary keystroke doesn't re-render the panel to replace nothing with nothing.
+    setCodeFindings((prev) => (prev.length === 0 ? prev : []));
+    setCodeCheckStatus((prev) => (prev === 'idle' ? prev : 'idle'));
+  }, [benchWorld]);
+  const runStatCodeCheck = useCallback(async () => {
+    const run = (codeRunRef.current += 1);
+    setCodeCheckStatus('running');
+    try {
+      const found = await checkStatCode(getWorldData());
+      if (run !== codeRunRef.current) return;
+      setCodeFindings(found);
+      setCodeCheckStatus('done');
+    } catch (error) {
+      // The executor reports its own failures as results, so reaching here means the check itself broke —
+      // leaving the button spinning would strand the author with no way to try again.
+      console.error('Stat code check failed:', error);
+      if (run === codeRunRef.current) setCodeCheckStatus('idle');
+    }
+  }, [getWorldData]);
+  const codedStatCount = useMemo(
+    () => benchWorld.stats.filter((s) => s.code?.trim()).length,
+    [benchWorld],
+  );
+  const findings = useMemo(
+    () => (codeFindings.length === 0 ? staticFindings : [...staticFindings, ...codeFindings]),
+    [staticFindings, codeFindings],
+  );
   const benchWorldMeta = worldMetadata.find((m) => m.id === worldId);
   // Newness and dismissals are per world and outlive the session, so the rule pass's raw output goes through
   // the stored marks before it reaches the panel or the badge.
@@ -323,6 +361,8 @@ const WorldEditorInner = ({ onClose, embedded = false, backButton }: {
       dismissedGroups={bench.dismissedGroups}
       ruleCount={RULES.length}
       newCount={bench.newCount}
+      codedStatCount={codedStatCount}
+      codeCheckStatus={codeCheckStatus}
       tab={benchTab}
       onTabChange={setBenchTab}
       onClose={closeBench}
@@ -331,6 +371,7 @@ const WorldEditorInner = ({ onClose, embedded = false, backButton }: {
       onDismissRule={bench.dismissRule}
       onRestoreRule={bench.restoreRule}
       onMarkAllSeen={bench.markAllSeen}
+      onCheckStatCode={runStatCodeCheck}
     />
   );
   // DEV dev-router: `#dev?modal=worldEditor&bench=issues` opens the Bench on an instrument.

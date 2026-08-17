@@ -8,7 +8,11 @@
  */
 import { collectPlaceholderPlacements, describePlaceholders, hasPlaceholders } from '@/lib/placeholders';
 import { matchKey } from '@/lib/entityMatch';
-import type { DictionaryEntry, Entity, GameLocation, Placeholder, World } from '@/types';
+import { usesStatClock } from '@/lib/statCodeExecutor';
+import { clamp } from '@/lib/utils';
+import type {
+  DictionaryEntry, Entity, GameLocation, Placeholder, Stat, StatDescriptor, Trait, World,
+} from '@/types';
 
 /** The world a rule reads — the editor's live payload, which carries no record id or version. */
 export type RuleWorld = Omit<World, 'id' | 'version'>;
@@ -41,11 +45,12 @@ export interface Finding {
   items: FindingItem[];
 }
 
-export interface Rule {
+/** What a finding's row needs from whatever raised it, with no way of raising it. Split out because not
+ *  everything the Issues list shows can run in the live pass — the stat-code execution check spins a VM. */
+export interface RuleHead {
   id: string;
   severity: Severity;
   section: FindingSection;
-  check(world: RuleWorld): Finding[];
   /** Headline for the collapsed row when this rule fired `count` times. */
   summary(count: number): string;
   /**
@@ -54,6 +59,10 @@ export interface Rule {
    * it twice equals applying it once, and it returns the world untouched when there is nothing to do.
    */
   fix?(world: RuleWorld): RuleWorld;
+}
+
+export interface Rule extends RuleHead {
+  check(world: RuleWorld): Finding[];
 }
 
 const quote = (text: string) => `“${text}”`;
@@ -213,7 +222,7 @@ const aliasSelfDuplicate: Rule = {
 };
 
 /** A finding for `rule` — the boilerplate trio copied from the rule itself. */
-const finding = (rule: Rule, message: string, items: FindingItem[]): Finding => ({
+const finding = (rule: RuleHead, message: string, items: FindingItem[]): Finding => ({
   ruleId: rule.id, severity: rule.severity, section: rule.section, message, items,
 });
 
@@ -588,20 +597,258 @@ const entityNowhere: Rule = {
     }),
 };
 
+/** The stats that can be live at some point in a playthrough — everything except a stat that starts disabled
+ *  with no trait to switch it on. A stat that is never live never runs its code and never reaches the AI. */
+const everActiveStats = (world: RuleWorld): Stat[] => {
+  const enabledBy = new Set(world.traits.flatMap((trait) =>
+    (trait.statToggles ?? []).filter((toggle) => toggle.enabled).map((toggle) => toggle.statId),
+  ));
+  return world.stats.filter((stat) => stat.enabled !== false || enabledBy.has(stat.id));
+};
+
 const statDisabledForever: Rule = {
   id: 'stat-disabled-forever',
   severity: 'warning',
   section: 'stats',
   summary: (count) => `${count} stats start disabled and no trait ever enables them`,
   check: (world) => {
-    const enabledBy = new Set(world.traits.flatMap((trait) =>
-      (trait.statToggles ?? []).filter((toggle) => toggle.enabled).map((toggle) => toggle.statId),
-    ));
+    const live = new Set(everActiveStats(world).map((stat) => stat.id));
     return world.stats
-      .filter((stat) => stat.enabled === false && !enabledBy.has(stat.id))
+      .filter((stat) => !live.has(stat.id))
       .map((stat) => {
         const item = namedItem(stat.id, stat.name, world);
         return finding(statDisabledForever, `${quote(item.name)} starts disabled and no trait ever enables it`, [item]);
+      });
+  },
+};
+
+// ── Stat sanity: numbers that can't mean what the author wrote ────────────────────────────────────────────
+
+/** A stat's value at the top of turn one, resolved exactly as the seeder resolves it (lib/statBackfill):
+ *  the authored start, else any live value, else the floor. */
+const startingValue = (stat: Stat): number =>
+  typeof stat.starting === 'number' ? stat.starting
+    : typeof stat.value === 'number' ? stat.value
+      : stat.min ?? 0;
+
+const startsInRange = (stat: Stat): boolean => {
+  const value = startingValue(stat);
+  return value >= stat.min && value <= stat.max;
+};
+
+/** The descriptor a value falls under, or undefined when it sits above every band. Mirrors the prompt's own
+ *  lookup (buildStatContext): thresholds are percentages of min→max, sorted ascending, and the first band at
+ *  or above the value wins — so the order the author listed them in never decides anything. */
+const descriptorAt = (stat: Stat, value: number): StatDescriptor | undefined => {
+  const range = stat.max - stat.min;
+  const percent = range === 0 ? 0 : ((value - stat.min) / range) * 100;
+  return [...stat.descriptors].sort((a, b) => a.threshold - b.threshold).find((d) => percent <= d.threshold);
+};
+
+const statStartingOutOfRange: Rule = {
+  id: 'stat-starting-out-of-range',
+  severity: 'error',
+  section: 'stats',
+  summary: (count) => `${count} stats start at a value outside their own min and max`,
+  check: (world) => world.stats.filter((stat) => !startsInRange(stat)).map((stat) => {
+    const item = namedItem(stat.id, stat.name, world);
+    return finding(
+      statStartingOutOfRange,
+      `${quote(item.name)} starts at ${startingValue(stat)}, outside its range of ${stat.min} to ${stat.max}`,
+      [item],
+    );
+  }),
+};
+
+const statStartNoDescriptor: Rule = {
+  id: 'stat-start-no-descriptor',
+  severity: 'warning',
+  section: 'stats',
+  summary: (count) => `${count} stats start above every descriptor band, so the AI is told no status for them`,
+  check: (world) => world.stats
+    // A start outside the range is the sharper diagnosis and already fires; its band is nobody's question.
+    .filter((stat) => stat.descriptors.length > 0 && startsInRange(stat)
+      && !descriptorAt(stat, startingValue(stat)))
+    .map((stat) => {
+      const item = namedItem(stat.id, stat.name, world);
+      return finding(
+        statStartNoDescriptor,
+        `${quote(item.name)} starts at ${startingValue(stat)}, above every descriptor threshold — the AI is told no status for it until the value drops`,
+        [item],
+      );
+    }),
+};
+
+const statDescriptorDuplicateThreshold: Rule = {
+  id: 'stat-descriptor-duplicate-threshold',
+  severity: 'warning',
+  section: 'stats',
+  summary: (count) => `${count} stats have two descriptors on one threshold, so the second can never apply`,
+  check: (world) => world.stats.flatMap((stat) => {
+    // The band sort is stable, so among equal thresholds the one written first is the one that wins.
+    const claimed = new Set<number>();
+    const dead: StatDescriptor[] = [];
+    for (const descriptor of stat.descriptors) {
+      if (claimed.has(descriptor.threshold)) dead.push(descriptor);
+      else claimed.add(descriptor.threshold);
+    }
+    if (dead.length === 0) return [];
+    const item = namedItem(stat.id, stat.name, world);
+    return [finding(
+      statDescriptorDuplicateThreshold,
+      `${quote(item.name)} has two descriptors at ${dead[0].threshold}% — only the first applies, so ${quote(dead[0].description)} never shows`,
+      [item],
+    )];
+  }),
+};
+
+const isOffRangePercentage = (stat: Stat): boolean =>
+  stat.type?.toLowerCase() === 'percentage' && (stat.min !== 0 || stat.max !== 100);
+
+/** A percentage stat on the range the editor itself forces the moment the type is chosen (StatManager's
+ *  `handleTypeChange`), with the start and live value carried into it. */
+const pinnedToPercent = (stat: Stat): Stat => ({
+  ...stat,
+  min: 0,
+  max: 100,
+  ...(typeof stat.starting === 'number' ? { starting: clamp(stat.starting, 0, 100) } : {}),
+  ...(typeof stat.value === 'number' ? { value: clamp(stat.value, 0, 100) } : {}),
+});
+
+const statPercentageBounds: Rule = {
+  id: 'stat-percentage-bounds',
+  severity: 'warning',
+  section: 'stats',
+  summary: (count) => `${count} percentage stats don’t run from 0 to 100, so the “%” the player sees is a raw number`,
+  check: (world) => world.stats.filter(isOffRangePercentage).map((stat) => {
+    const item = namedItem(stat.id, stat.name, world);
+    return finding(
+      statPercentageBounds,
+      `${quote(item.name)} is a percentage stat but runs from ${stat.min} to ${stat.max} — its value is displayed as a bare “%”, so the player is shown the raw number`,
+      [item],
+    );
+  }),
+  fix: (world) => withSlice(world, 'stats', mapChanged(world.stats, (stat) =>
+    isOffRangePercentage(stat) ? pinnedToPercent(stat) : stat)),
+};
+
+const statCodeNeverTicks: Rule = {
+  id: 'stat-code-never-ticks',
+  severity: 'warning',
+  section: 'stats',
+  summary: (count) =>
+    `${count} stats have code that runs only on turns the AI changed a stat — nothing in this world reads a clock variable`,
+  check: (world) => {
+    // The gate reads the *enabled* stats (GameViewer's `anyStatUsesClock` over `activeStats`), so a clock
+    // reference on a stat no trait ever switches on grants nothing — and that stat's own code never runs.
+    const coded = everActiveStats(world).filter((stat) => stat.code?.trim());
+    // One clock reference among them puts every coded stat on the every-turn schedule.
+    if (coded.some((stat) => usesStatClock(stat.code))) return [];
+    return coded.map((stat) => {
+      const item = namedItem(stat.id, stat.name, world);
+      return finding(
+        statCodeNeverTicks,
+        `Code on ${quote(item.name)} runs only on turns the AI reported a stat change — no stat in this world reads a clock variable, which is what puts code on the every-turn schedule`,
+        [item],
+      );
+    });
+  },
+};
+
+/** A trait's summed contribution to one stat on one axis. Traits are chosen one at a time, so a rule about a
+ *  single trait reads only that trait's own numbers. */
+const traitContribution = (stat: Stat, trait: Trait, type: 'starting' | 'min'): number => {
+  let total = 0;
+  for (const change of trait.statChanges ?? []) {
+    if (change.statId === stat.id && change.type === type) total += change.value;
+  }
+  return total;
+};
+
+/** The floor a stat rests on while `trait` is active — bounds derive before the value settles, and a trait's
+ *  min contribution only counts upward (traitRuntime's `deriveEffectiveStats`). */
+const traitFloor = (stat: Stat, trait: Trait): number =>
+  stat.min + Math.max(0, traitContribution(stat, trait, 'min'));
+
+/** Every trait that moves a stat's starting value, with the delta it asks for. */
+const traitValueChanges = (world: RuleWorld): Array<{ stat: Stat; trait: Trait; delta: number }> =>
+  world.stats.flatMap((stat) => world.traits.flatMap((trait) => {
+    const delta = traitContribution(stat, trait, 'starting');
+    return delta === 0 ? [] : [{ stat, trait, delta }];
+  }));
+
+/** The two ways in a stat/trait finding offers: the stat it is about, and the trait that caused it. */
+const statAndTrait = (stat: Stat, trait: Trait, world: RuleWorld): FindingItem[] => [
+  namedItem(stat.id, stat.name, world),
+  namedItem(trait.id, trait.name, world, 'traits'),
+];
+
+const statTraitDeltaClamped: Rule = {
+  id: 'stat-trait-delta-clamped',
+  severity: 'warning',
+  section: 'stats',
+  summary: (count) => `${count} trait stat penalties land on a stat already at its floor, so the clamp swallows them whole`,
+  check: (world) => traitValueChanges(world)
+    .filter(({ stat, trait, delta }) => delta < 0 && startingValue(stat) <= traitFloor(stat, trait))
+    .map(({ stat, trait, delta }) => {
+      const items = statAndTrait(stat, trait, world);
+      return finding(
+        statTraitDeltaClamped,
+        `${quote(items[1].name)} lowers ${quote(items[0].name)} by ${Math.abs(delta)}, but it already starts at its floor of ${traitFloor(stat, trait)} — the clamp swallows the whole change`,
+        items,
+      );
+    }),
+};
+
+/** Whether a stat's code builds on the stat's own current value, which is the one thing that lets a trait's
+ *  starting change survive the first recompute. Both ways code can find itself count: the injected
+ *  `currentStatId`, and its own name written as a literal. */
+const codeReadsSelf = (stat: Stat, world: RuleWorld): boolean => {
+  const code = stat.code ?? '';
+  // The id has to be quoted to be a lookup: bare containment would read a stat whose id is "1" out of
+  // `return 100;` and silently quiet the rule.
+  const quotedId = new RegExp(`["'\`]${stat.id.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}["'\`]`);
+  if (/\bcurrentStatId\b/.test(code) || quotedId.test(code)) return true;
+  const names = new Set([stat.name, describePlaceholders(stat.name ?? '', world.placeholders)]);
+  return statNamesInCode(code).some((name) => names.has(name));
+};
+
+const statCodeOverridesTrait: Rule = {
+  id: 'stat-code-overrides-trait',
+  severity: 'warning',
+  section: 'stats',
+  summary: (count) => `${count} trait stat changes target stats whose code recomputes them from scratch, which erases the change`,
+  check: (world) => traitValueChanges(world)
+    .filter(({ stat }) => stat.code?.trim() && !codeReadsSelf(stat, world))
+    .map(({ stat, trait, delta }) => {
+      const items = statAndTrait(stat, trait, world);
+      return finding(
+        statCodeOverridesTrait,
+        `${quote(items[1].name)} ${delta < 0 ? 'lowers' : 'raises'} ${quote(items[0].name)} by ${Math.abs(delta)}, but that stat’s code recomputes its value without reading it — the change is gone by the next run`,
+        items,
+      );
+    }),
+};
+
+const statAiLockFrozen: Rule = {
+  id: 'stat-ai-lock-frozen',
+  severity: 'info',
+  section: 'stats',
+  summary: (count) => `${count} stats are locked against the AI with nothing else able to move them`,
+  check: (world) => {
+    const movedByTrait = new Set(world.traits.flatMap((trait) =>
+      (trait.statChanges ?? []).filter((change) => change.type === 'starting').map((change) => change.statId),
+    ));
+    return world.stats
+      .filter((stat) => stat.noIncrease && stat.noDecrease && !stat.code?.trim() && !stat.regen
+        && !movedByTrait.has(stat.id))
+      .map((stat) => {
+        const item = namedItem(stat.id, stat.name, world);
+        return finding(
+          statAiLockFrozen,
+          `${quote(item.name)} is locked against the AI in both directions and has no code, regen or trait change to move it — its value never changes during play`,
+          [item],
+        );
       });
   },
 };
@@ -613,7 +860,24 @@ export const RULES: readonly Rule[] = [
   chipUnknownPlaceholder, chipNeverScanned, placeholderUnused, statCodeUnknownStat,
   entrySecondaryWithoutPrimary, entryInert, entryRegexInvalid,
   noStartingLocation, legacyStartLocation, entityNowhere, statDisabledForever,
+  statStartingOutOfRange, statStartNoDescriptor, statDescriptorDuplicateThreshold, statPercentageBounds,
+  statCodeNeverTicks, statTraitDeltaClamped, statCodeOverridesTrait, statAiLockFrozen,
 ];
+
+/**
+ * The stat-code execution check's row. It is a head without a `check` because it can't run in the live pass:
+ * every stat costs a sandbox VM, and the badge has to stay instant. `lib/testBench/statCodeCheck` raises its
+ * findings from the explicit action; they group and sort here like any other row.
+ */
+export const STAT_CODE_EXECUTION: RuleHead = {
+  id: 'stat-code-execution',
+  severity: 'error',
+  section: 'stats',
+  summary: (count) => `${count} stats’ code fails when it actually runs`,
+};
+
+/** Everything that can put a row in the Issues list — the live rules plus the on-demand check. */
+const RULE_HEADS: readonly RuleHead[] = [...RULES, STAT_CODE_EXECUTION];
 
 /** Every finding the world raises. Pure — safe to run on each debounced world change. */
 export function runRules(world: RuleWorld): Finding[] {
@@ -657,7 +921,7 @@ export function groupFindings<F extends Finding>(findings: F[], isNew?: (finding
     else byRule.set(finding.ruleId, [finding]);
   }
   const groups = [...byRule.entries()].map(([ruleId, ruleFindings]) => {
-    const rule = RULES.find((r) => r.id === ruleId);
+    const rule = RULE_HEADS.find((r) => r.id === ruleId);
     const items: FindingItem[] = [];
     const seen = new Set<string>();
     for (const item of ruleFindings.flatMap((f) => f.items)) {

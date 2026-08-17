@@ -304,7 +304,8 @@ describe('reference-integrity rules', () => {
     const chained = only(coded('const v = stats.filter(s => "Vigour" === s?.name);\nreturn v.length;'), 'stat-code-unknown-stat');
     expect(chained).toHaveLength(1);
 
-    expect(runRules(coded('const a = stats.find(s => s.name === "Vigor")?.value ?? 0;\nreturn a;'))).toEqual([]);
+    // Scoped to this rule: the fixture's code reads no clock variable, which is the stat-sanity pack's business.
+    expect(only(coded('const a = stats.find(s => s.name === "Vigor")?.value ?? 0;\nreturn a;'), 'stat-code-unknown-stat')).toEqual([]);
   });
 
   it('leaves dynamic name lookups alone — there is no literal to check', () => {
@@ -434,6 +435,250 @@ describe('reachability rules', () => {
   });
 });
 
+describe('stat sanity rules', () => {
+  const oneStat = (over: Partial<Stat>, traits: Trait[] = []) =>
+    base({ stats: [stat({ id: 's1', name: 'Fertility', ...over })], traits });
+
+  it('flags a starting value outside the stat’s own range, either end', () => {
+    const high = only(oneStat({ starting: 120 }), 'stat-starting-out-of-range');
+    expect(high).toHaveLength(1);
+    expect(high[0].severity).toBe('error');
+    expect(high[0].items.map((i) => i.id)).toEqual(['s1']);
+    expect(high[0].message).toContain('120');
+    expect(only(oneStat({ starting: -5 }), 'stat-starting-out-of-range')).toHaveLength(1);
+    // Both bounds are inclusive, and a stat with no authored start opens at its floor.
+    expect(runRules(oneStat({ starting: 100 }))).toEqual([]);
+    expect(runRules(oneStat({ starting: 0 }))).toEqual([]);
+    expect(runRules(oneStat({}))).toEqual([]);
+  });
+
+  it('reads a stat with no starting value but a live one from that live value', () => {
+    // The seeder's own order: starting, then value, then the floor (lib/statBackfill).
+    expect(only(oneStat({ value: 250 }), 'stat-starting-out-of-range')).toHaveLength(1);
+    expect(only(oneStat({ starting: 50, value: 250 }), 'stat-starting-out-of-range')).toEqual([]);
+  });
+
+  const banded = (over: Partial<Stat>) => oneStat({
+    descriptors: [{ id: 'd1', threshold: 30, description: 'barren' }, { id: 'd2', threshold: 60, description: 'fertile' }],
+    ...over,
+  });
+
+  it('flags a starting value that lands above every descriptor band', () => {
+    const found = only(banded({ starting: 80 }), 'stat-start-no-descriptor');
+    expect(found).toHaveLength(1);
+    expect(found[0].severity).toBe('warning');
+    expect(found[0].message).toContain('Fertility');
+    // Thresholds are percentages of min→max, so a band at 60 covers the value 60 and nothing above it.
+    expect(only(banded({ starting: 60 }), 'stat-start-no-descriptor')).toEqual([]);
+  });
+
+  it('reads thresholds as percentages of the stat’s own range, not as raw values', () => {
+    // Min 0 / max 200 puts the value 80 at 40% — inside the 60 band, whatever the raw number looks like.
+    expect(only(banded({ max: 200, starting: 80 }), 'stat-start-no-descriptor')).toEqual([]);
+    expect(only(banded({ max: 200, starting: 140 }), 'stat-start-no-descriptor')).toHaveLength(1);
+  });
+
+  it('says nothing about a stat that carries no descriptors at all', () => {
+    // Descriptors are optional; a stat without them isn't missing a band, it just has no status to report.
+    expect(runRules(oneStat({ starting: 80 }))).toEqual([]);
+  });
+
+  it('leaves the descriptor band alone when the starting value is out of range in the first place', () => {
+    // Out-of-range is the sharper diagnosis and already fires; a second row about its band is noise.
+    expect(only(banded({ starting: 500 }), 'stat-start-no-descriptor')).toEqual([]);
+  });
+
+  it('flags two descriptors sharing a threshold, since only the first can ever apply', () => {
+    const found = only(oneStat({
+      descriptors: [
+        { id: 'd1', threshold: 30, description: 'barren' },
+        { id: 'd2', threshold: 60, description: 'fertile' },
+        { id: 'd3', threshold: 60, description: 'teeming' },
+        { id: 'd4', threshold: 100, description: 'brimming' },
+      ],
+    }), 'stat-descriptor-duplicate-threshold');
+    expect(found).toHaveLength(1);
+    expect(found[0].severity).toBe('warning');
+    expect(found[0].message).toContain('60');
+    expect(found[0].message).toContain('teeming');
+  });
+
+  it('says nothing about descriptors listed out of order — the band lookup sorts them', () => {
+    // Verified against lib/statContext: the matcher sorts ascending before picking, so authored order
+    // never decides which band wins.
+    expect(runRules(oneStat({
+      descriptors: [
+        { id: 'd1', threshold: 100, description: 'brimming' },
+        { id: 'd2', threshold: 30, description: 'barren' },
+      ],
+    }))).toEqual([]);
+  });
+
+  it('flags a percentage stat whose bounds aren’t 0 and 100', () => {
+    const found = only(oneStat({ type: 'percentage', min: 10, max: 50, starting: 20 }), 'stat-percentage-bounds');
+    expect(found).toHaveLength(1);
+    expect(found[0].severity).toBe('warning');
+    expect(found[0].message).toContain('10');
+    expect(found[0].message).toContain('50');
+    expect(runRules(oneStat({ type: 'percentage', min: 0, max: 100 }))).toEqual([]);
+    // A number stat is free to use any range it likes.
+    expect(runRules(oneStat({ min: 10, max: 50, starting: 20 }))).toEqual([]);
+  });
+
+  it('flags coded stats when nothing in the world reads the clock, once per coded stat', () => {
+    const coded = base({
+      stats: [
+        stat({ id: 's1', name: 'Fertility', code: 'return 25;' }),
+        stat({ id: 's2', name: 'Weave', code: 'return Math.round(Math.random() * 100);' }),
+        stat({ id: 's3', name: 'Vigor' }),
+      ],
+    });
+    const found = only(coded, 'stat-code-never-ticks');
+    expect(found).toHaveLength(2);
+    expect(found.map((f) => f.items[0].id)).toEqual(['s1', 's2']);
+    expect(found[0].severity).toBe('warning');
+    expect(groupFindings(found)[0].headline).toContain('2');
+  });
+
+  it('quiets the clock rule as soon as any one stat’s code names a clock variable', () => {
+    // The gate is world-wide (GameViewer's anyStatUsesClock), so one reference puts every coded stat on
+    // the every-turn schedule.
+    expect(only(base({
+      stats: [
+        stat({ id: 's1', name: 'Fertility', code: 'return 25;' }),
+        stat({ id: 's2', name: 'Weave', code: 'return elapsedHours % 2;' }),
+      ],
+    }), 'stat-code-never-ticks')).toEqual([]);
+  });
+
+  it('doesn’t count a stat no trait ever switches on as reading the clock, or as coded', () => {
+    // The gate reads the enabled stats, so a clock reference parked on a stat that is never live grants the
+    // rest of the world nothing — and that stat's own code never runs, so it isn't a finding of its own.
+    const found = only(base({
+      stats: [
+        stat({ id: 's1', name: 'Fertility', code: 'return 25;' }),
+        stat({ id: 's2', name: 'Dust', code: 'return elapsedHours;', enabled: false }),
+      ],
+    }), 'stat-code-never-ticks');
+    expect(found.map((f) => f.items[0].id)).toEqual(['s1']);
+
+    // A trait that switches it on puts it back in play, clock reference and all.
+    expect(only(base({
+      stats: [
+        stat({ id: 's1', name: 'Fertility', code: 'return 25;' }),
+        stat({ id: 's2', name: 'Dust', code: 'return elapsedHours;', enabled: false }),
+      ],
+      traits: [trait({ id: 't1', name: 'Cursed', statToggles: [{ statId: 's2', enabled: true }] })],
+    }), 'stat-code-never-ticks')).toEqual([]);
+  });
+
+  it('flags a trait’s negative starting delta on a stat already resting at its floor', () => {
+    // The Centaur Breeder shape: a race penalty written against a stat that opens at zero, so the clamp
+    // eats the whole thing and every race starts identical.
+    const found = only(
+      oneStat({ starting: 0 }, [trait({ id: 't1', name: 'Ashen', statChanges: [{ statId: 's1', type: 'starting', value: -10 }] })]),
+      'stat-trait-delta-clamped',
+    );
+    expect(found).toHaveLength(1);
+    expect(found[0].severity).toBe('warning');
+    expect(found[0].items.map((i) => i.id)).toEqual(['s1', 't1']);
+    expect(found[0].items[1].section).toBe('traits');
+  });
+
+  it('counts the floor the trait itself raises, not just the authored min', () => {
+    // A trait that lifts the min to where the stat already sits leaves its own penalty nowhere to go.
+    const raises = trait({
+      id: 't1',
+      name: 'Ashen',
+      statChanges: [{ statId: 's1', type: 'min', value: 10 }, { statId: 's1', type: 'starting', value: -5 }],
+    });
+    expect(only(oneStat({ starting: 10 }, [raises]), 'stat-trait-delta-clamped')).toHaveLength(1);
+  });
+
+  it('says nothing when part of the delta actually lands', () => {
+    // 12 − 5 clamps to the floor at 10, so 2 points moved: the penalty is real, just smaller than written.
+    // Only a delta that moves nothing at all is the defect.
+    const partial = trait({ id: 't1', name: 'Ashen', statChanges: [{ statId: 's1', type: 'starting', value: -5 }] });
+    expect(runRules(oneStat({ min: 10, starting: 12 }, [partial]))).toEqual([]);
+    expect(runRules(oneStat({ starting: 40 }, [partial]))).toEqual([]);
+  });
+
+  it('says nothing about a positive delta, or one on a stat the trait leaves room under', () => {
+    const bonus = trait({ id: 't1', name: 'Blessed', statChanges: [{ statId: 's1', type: 'starting', value: 10 }] });
+    expect(runRules(oneStat({ starting: 0 }, [bonus]))).toEqual([]);
+  });
+
+  it('flags a trait’s starting delta on a stat whose code recomputes it from scratch', () => {
+    // Fertility's code recovers toward a fixed number, healing every race's penalty away within two turns.
+    const ashen = trait({ id: 't1', name: 'Ashen', statChanges: [{ statId: 's1', type: 'starting', value: -10 }] });
+    const found = only(oneStat({ starting: 40, code: 'return Math.round((stats.find(s => s.name === "Vigor")?.value ?? 0) / 2);' }, [ashen]), 'stat-code-overrides-trait');
+    expect(found).toHaveLength(1);
+    expect(found[0].severity).toBe('warning');
+    expect(found[0].items.map((i) => i.id)).toEqual(['s1', 't1']);
+    expect(found[0].items[1].section).toBe('traits');
+  });
+
+  it('says nothing when the code builds on the stat’s own value, which is what the trait moved', () => {
+    const ashen = trait({ id: 't1', name: 'Ashen', statChanges: [{ statId: 's1', type: 'starting', value: -10 }] });
+    // Both ways code can find itself: the injected id, and its own name as a literal.
+    const byId = 'const me = stats.find(s => s.id === currentStatId); return Math.min(me.value + 1, me.max);';
+    const byName = 'const me = stats.find(s => s.name === "Fertility"); return me.value + 1;';
+    expect(only(oneStat({ starting: 40, code: byId }, [ashen]), 'stat-code-overrides-trait')).toEqual([]);
+    expect(only(oneStat({ starting: 40, code: byName }, [ashen]), 'stat-code-overrides-trait')).toEqual([]);
+  });
+
+  it('reads a stat’s own id as a lookup only where it is quoted', () => {
+    // A short legacy id inside an ordinary number would otherwise read as a self-lookup and quiet the rule.
+    const ashen = trait({ id: 't1', name: 'Ashen', statChanges: [{ statId: '1', type: 'starting', value: -10 }] });
+    const shortId = (code: string) => base({
+      stats: [stat({ id: '1', name: 'Fertility', min: 0, max: 100, starting: 40, code })],
+      traits: [ashen],
+    });
+    expect(only(shortId('return 100;'), 'stat-code-overrides-trait')).toHaveLength(1);
+    expect(only(shortId('return stats.find(s => s.id === "1").value + 1;'), 'stat-code-overrides-trait')).toEqual([]);
+  });
+
+  it('says nothing when a trait moves a bound rather than the value', () => {
+    const wider = trait({ id: 't1', name: 'Ashen', statChanges: [{ statId: 's1', type: 'max', value: -10 }] });
+    expect(only(oneStat({ starting: 40, code: 'return 25;' }, [wider]), 'stat-code-overrides-trait')).toEqual([]);
+  });
+
+  it('flags a codeless stat locked in both directions with nothing else able to move it', () => {
+    const found = only(oneStat({ noIncrease: true, noDecrease: true }), 'stat-ai-lock-frozen');
+    expect(found).toHaveLength(1);
+    expect(found[0].severity).toBe('info');
+    expect(found[0].message).toContain('Fertility');
+  });
+
+  it('says nothing when something can still move the locked stat', () => {
+    const locks = { noIncrease: true, noDecrease: true } as const;
+    // Each of the three movers on its own is enough.
+    expect(runRules(oneStat({ ...locks, regen: 2 }))).toEqual([]);
+    expect(only(oneStat({ ...locks, code: 'return 25;', starting: 25 }), 'stat-ai-lock-frozen')).toEqual([]);
+    expect(runRules(oneStat(
+      { ...locks, starting: 40 },
+      [trait({ id: 't1', name: 'Ashen', statChanges: [{ statId: 's1', type: 'starting', value: -10 }] })],
+    ))).toEqual([]);
+    // And a lock in one direction only leaves the other direction open.
+    expect(runRules(oneStat({ noIncrease: true }))).toEqual([]);
+  });
+
+  it('stays silent on a plain, well-formed set of stats', () => {
+    expect(runRules(base({
+      stats: [
+        stat({
+          id: 's1',
+          name: 'Fertility',
+          starting: 20,
+          descriptors: [{ id: 'd1', threshold: 30, description: 'barren' }, { id: 'd2', threshold: 100, description: 'fertile' }],
+        }),
+        stat({ id: 's2', name: 'Vigor', type: 'percentage', min: 0, max: 100, starting: 50 }),
+      ],
+      traits: [trait({ id: 't1', name: 'Hardy', statChanges: [{ statId: 's2', type: 'starting', value: 10 }] })],
+    }))).toEqual([]);
+  });
+});
+
 describe('the unused-placeholder rule', () => {
   it('flags a placeholder nothing in the world reaches for', () => {
     const found = only(base({ placeholders: [{ id: 'p1', name: 'Hue', values: ['red', 'blue'] }] }), 'placeholder-unused');
@@ -480,6 +725,8 @@ const FIX_FIXTURES: Record<string, RuleWorld> = {
   'legacy-start-location': base({ locations: [{ id: 'pasture', name: 'Pasture', isStartLocation: true } as GameLocation] }),
   'entity-location-orphan': base({ entities: [{ id: 'e1', name: 'Maren', locations: ['harbor', 'gone'] }] }),
   'placeholder-unused': base({ placeholders: [{ id: 'p1', name: 'Hue', values: ['red', 'blue'] }] }),
+  // A percentage stat whose range was authored before the editor pinned it, with a start the pinning moves.
+  'stat-percentage-bounds': base({ stats: [stat({ id: 's1', name: 'Fertility', type: 'percentage', min: 0, max: 200, starting: 150 })] }),
 };
 
 describe('quick fixes', () => {
@@ -533,6 +780,11 @@ describe('quick fixes', () => {
     };
     expect(only(chipped, 'alias-leading-article')).toHaveLength(1);
     expect(applyRuleFix(chipped, 'alias-leading-article').entities[0].aliases).toEqual(['{{ph:p1:world:pl1}} visitor']);
+  });
+
+  it('pins a percentage stat to 0–100 and brings its start along, exactly as retyping the type would', () => {
+    const after = applyRuleFix(FIX_FIXTURES['stat-percentage-bounds'], 'stat-percentage-bounds');
+    expect(after.stats[0]).toMatchObject({ min: 0, max: 100, starting: 100 });
   });
 
   it('drops the alias that repeats the entity name and keeps the rest', () => {
@@ -606,7 +858,8 @@ describe('quick fixes', () => {
   it('offers no fix where the repair is a judgment call', () => {
     // Which location should start, which of two colliding entities should be renamed, where a placeless
     // entity belongs — none of these has one right answer, so those rows offer Open and nothing else.
-    for (const id of ['no-starting-location', 'entity-match-collision', 'entity-nowhere', 'stat-code-unknown-stat']) {
+    for (const id of ['no-starting-location', 'entity-match-collision', 'entity-nowhere', 'stat-code-unknown-stat',
+      'stat-starting-out-of-range', 'stat-descriptor-duplicate-threshold', 'stat-trait-delta-clamped']) {
       expect(RULES.find((r) => r.id === id)?.fix).toBeUndefined();
     }
   });
