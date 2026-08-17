@@ -25,10 +25,12 @@ import EditorFindBar from '@/components/editor/EditorFindBar';
 import { TestBench, TestBenchButton, type CodeCheckStatus } from '@/components/editor/TestBench';
 import { asBenchTab, type BenchTab } from '@/components/editor/benchTabs';
 import { Drawer, DrawerContent, DrawerTitle } from '@/components/ui/drawer';
-import { applyRuleFix, RULES, type Finding, type FindingSection } from '@/lib/testBench/rules';
+import { applyRuleFix, RULES, selectMatchingFindings, type Finding, type FindingSection } from '@/lib/testBench/rules';
+import { loadLastTurn, type LastTurn } from '@/lib/testBench/lastTurn';
 import { checkStatCode } from '@/lib/testBench/statCodeCheck';
 import { useBenchFindings } from '@/lib/testBench/useBenchFindings';
 import { useDebouncedTriggerReport } from '@/lib/testBench/useTriggerReport';
+import { joinHistory } from '@/lib/testBench/triggers';
 import { hasSeenDownloadNote, markDownloadNoteSeen } from '@/lib/testBench/downloadNote';
 import { useDebouncedFindings } from '@/lib/testBench/useFindings';
 import { collectSearchTargets, type SearchMatch } from '@/lib/worldSearch';
@@ -266,6 +268,7 @@ const WorldEditorInner = ({ onClose, embedded = false, backButton }: {
   // Above the tab strip, so switching instruments (which unmounts the panel below it) doesn't discard the
   // prose the author is testing with.
   const [triggerText, setTriggerText] = useState('');
+  const [triggerHistory, setTriggerHistory] = useState('');
   // `getWorldData` is memoized on the world arrays, so this payload's identity is the "world changed"
   // signal the rule pass debounces on.
   const benchWorld = useMemo(getWorldData, [getWorldData]);
@@ -307,11 +310,31 @@ const WorldEditorInner = ({ onClose, embedded = false, backButton }: {
     () => (codeFindings.length === 0 ? staticFindings : [...staticFindings, ...codeFindings]),
     [staticFindings, codeFindings],
   );
-  const triggerReport = useDebouncedTriggerReport(benchWorld, triggerText);
+  const triggerReport = useDebouncedTriggerReport(benchWorld, triggerText, triggerHistory);
+  // The world's most recent save, read while the Bench is open so a turn played since it was last opened is
+  // the one offered. Absent when the world has never been played — then there is no button at all.
+  const [lastTurn, setLastTurn] = useState<LastTurn | null>(null);
+  useEffect(() => {
+    if (!benchOpen) return;
+    let live = true;
+    loadLastTurn(worldId, worldOverview.name).then((turn) => { if (live) setLastTurn(turn); });
+    return () => { live = false; };
+  }, [benchOpen, worldId, worldOverview.name]);
+  const pasteLastTurn = useCallback(() => {
+    if (!lastTurn) return;
+    setTriggerText(lastTurn.scene);
+    setTriggerHistory(joinHistory(lastTurn.history));
+  }, [lastTurn]);
   const benchWorldMeta = worldMetadata.find((m) => m.id === worldId);
   // Newness and dismissals are per world and outlive the session, so the rule pass's raw output goes through
   // the stored marks before it reaches the panel or the badge.
   const bench = useBenchFindings(worldId, benchWorldMeta?.sourceUpdatedAt, findings);
+  // Triggers shows the matching-related half of what Issues lists — the same rows, filtered rather than
+  // re-run, and taken after the dismissals so a rule muted on one tab stops nagging on both.
+  const matchingFindings = useMemo(
+    () => selectMatchingFindings(bench.groups.flatMap((group) => group.findings)),
+    [bench.groups],
+  );
   // The Bench closing is what marks its list as shown — the author has had it in front of them.
   const closeBench = useCallback(() => {
     bench.markAllSeen();
@@ -379,7 +402,11 @@ const WorldEditorInner = ({ onClose, embedded = false, backButton }: {
       onCheckStatCode={runStatCodeCheck}
       triggerText={triggerText}
       onTriggerTextChange={setTriggerText}
+      triggerHistory={triggerHistory}
+      onTriggerHistoryChange={setTriggerHistory}
       triggerReport={triggerReport}
+      matchingFindings={matchingFindings}
+      onPasteLastTurn={lastTurn ? pasteLastTurn : undefined}
     />
   );
   // DEV dev-router: `#dev?modal=worldEditor&bench=issues` opens the Bench on an instrument.

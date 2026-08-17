@@ -51,6 +51,9 @@ export interface RuleHead {
   id: string;
   severity: Severity;
   section: FindingSection;
+  /** Part of the matching-related subset Triggers surfaces inline beside the rows it is about. Marks a rule
+   *  about what text detects what — never a rule about structure, which has no place in the tracer. */
+  matching?: boolean;
   /** Headline for the collapsed row when this rule fired `count` times. */
   summary(count: number): string;
   /**
@@ -136,6 +139,7 @@ const aliasLeadingArticle: Rule = {
   id: 'alias-leading-article',
   severity: 'warning',
   section: 'entities',
+  matching: true,
   summary: (count) =>
     `${count} aliases begin with an article — alias matching is case-sensitive, so they miss wherever the sentence capitalizes them differently`,
   check: (world) => world.entities.flatMap((entity) =>
@@ -161,6 +165,7 @@ const entityMatchCollision: Rule = {
   id: 'entity-match-collision',
   severity: 'warning',
   section: 'entities',
+  matching: true,
   summary: (count) =>
     `${count} written forms match more than one entity — a mention of either detects both`,
   check: (world) => {
@@ -196,6 +201,7 @@ const aliasSelfDuplicate: Rule = {
   id: 'alias-self-duplicate',
   severity: 'info',
   section: 'entities',
+  matching: true,
   summary: (count) => `${count} aliases repeat their own entity’s name, which already matches on its own`,
   check: (world) => world.entities.flatMap((entity) => {
     const nameKey = matchKey(describePlaceholders(entity.name ?? '', world.placeholders));
@@ -480,6 +486,7 @@ const entrySecondaryWithoutPrimary: Rule = {
   id: 'dictionary-secondary-without-primary',
   severity: 'error',
   section: 'dictionary',
+  matching: true,
   summary: (count) => `${count} dictionary entries have secondary keywords but no primary ones, so they can never fire`,
   check: (world) => allEntries(world)
     // A constant entry fires regardless of keys, so "can never fire" would be false of it.
@@ -498,6 +505,7 @@ const entryInert: Rule = {
   id: 'dictionary-entry-inert',
   severity: 'error',
   section: 'dictionary',
+  matching: true,
   summary: (count) => `${count} dictionary entries have no keywords and aren’t constant, so they can never fire`,
   check: (world) => allEntries(world)
     // Secondary-without-primary is the sharper diagnosis; this rule covers the entries with nothing at all.
@@ -879,15 +887,40 @@ export const STAT_CODE_EXECUTION: RuleHead = {
 /** Everything that can put a row in the Issues list — the live rules plus the on-demand check. */
 const RULE_HEADS: readonly RuleHead[] = [...RULES, STAT_CODE_EXECUTION];
 
+/** The one lookup from a finding's rule id back to what raised it. */
+const HEAD_BY_ID = new Map(RULE_HEADS.map((rule) => [rule.id, rule]));
+
+/**
+ * The matching-related rules — the subset Triggers surfaces inline. Derived from the same array Issues
+ * runs, so a rule cannot exist on one surface and not the other: a warning shown in the tracer is the
+ * Issues row, and its Fix is the Issues fix.
+ *
+ * A broken regex pattern is deliberately not here: the tracer already flags it on the entry from the
+ * matcher's own compilation, and the rule would say it a second time on the same row.
+ */
+export const MATCHING_RULES: readonly Rule[] = RULES.filter((rule) => rule.matching);
+
 /** Every finding the world raises. Pure — safe to run on each debounced world change. */
 export function runRules(world: RuleWorld): Finding[] {
   return RULES.flatMap((rule) => rule.check(world));
 }
 
+/** The matching-related findings among `findings` — the tracer's filter over a pass that already ran, so
+ *  the rules are never run twice for the two surfaces. */
+export function selectMatchingFindings<F extends Finding>(findings: F[]): F[] {
+  const matching = new Set(MATCHING_RULES.map((rule) => rule.id));
+  return findings.filter((finding) => matching.has(finding.ruleId));
+}
+
+/** Whether the rule behind a finding carries a repair — what puts a Fix button on a row, wherever the row is. */
+export function isRuleFixable(ruleId: string): boolean {
+  return !!HEAD_BY_ID.get(ruleId)?.fix;
+}
+
 /** `world` with `ruleId`'s fix applied — the same world back when that rule carries none, or has nothing
  *  left to repair. */
 export function applyRuleFix(world: RuleWorld, ruleId: string): RuleWorld {
-  return RULES.find((rule) => rule.id === ruleId)?.fix?.(world) ?? world;
+  return HEAD_BY_ID.get(ruleId)?.fix?.(world) ?? world;
 }
 
 /** A rule's findings collapsed into the single row the Issues list shows for them. */
@@ -921,7 +954,7 @@ export function groupFindings<F extends Finding>(findings: F[], isNew?: (finding
     else byRule.set(finding.ruleId, [finding]);
   }
   const groups = [...byRule.entries()].map(([ruleId, ruleFindings]) => {
-    const rule = RULE_HEADS.find((r) => r.id === ruleId);
+    const rule = HEAD_BY_ID.get(ruleId);
     const items: FindingItem[] = [];
     const seen = new Set<string>();
     for (const item of ruleFindings.flatMap((f) => f.items)) {

@@ -7,10 +7,12 @@
  * author can act on.
  */
 import {
-  explainActivation, historyForEntry, invalidRegexKeys, matchHits, matchRuleOf, parseKeywords,
+  buildDictionaryContext, explainActivation, historyForEntry, invalidRegexKeys, matchHits, matchRuleOf,
+  parseKeywords,
   type ActivationReason, type MatchHit, type MatchRule, type ScanSource, type SecondaryStatus,
 } from '@/lib/dictionaryUtils';
 import { findEntityMatches, stripQuotedSpeech, type EntityMatch } from '@/lib/entityMatch';
+import { estimateTokens } from '@/lib/memoryUtils';
 import { describePlaceholders } from '@/lib/placeholders';
 import type { DictionaryEntry, Entity } from '@/types';
 import type { RuleWorld } from './rules';
@@ -60,8 +62,23 @@ export interface TriggerEntry {
   nearMissKeywords: string[];
   /** The literal text behind the near-miss, where one exists (the word a blocked substring sits inside). */
   nearMissSample?: string;
-  /** The depth window that dropped a hit — present only on `beyond-scan-depth`. */
+  /** The entry's own history window, unset when it reads all of it — what a history hit's distance is
+   *  judged against, whether the hit landed inside it or fell out. */
   scanDepth?: number;
+  /** How many messages back the dropped hit sat — present only on `beyond-scan-depth`. */
+  nearMissDistance?: number;
+}
+
+/** One lore block as the harness would inject it — the string a `<DICTIONARY>` chip is replaced with. */
+export interface RenderedBlock {
+  /** Which of the prompt's two lorebook blocks it is: `before` renders early, `after` late. */
+  position: 'before' | 'after';
+  /** The block body, built by the game's own renderer, so it is what the model would receive. */
+  text: string;
+  /** How many fired entries contributed text (an entry with an empty value renders nothing). */
+  entryCount: number;
+  /** Approximate token cost — chars-based, since a world runs against arbitrary endpoints. */
+  tokens: number;
 }
 
 /** A highlight in the pasted text, pointing at the row that claims it. */
@@ -84,6 +101,12 @@ export interface TriggerReport {
   entries: TriggerEntry[];
   /** The pasted text split into plain and claimed runs. */
   segments: TriggerSegment[];
+  /** The lore blocks this run would inject, in prompt order; empty when nothing fired with a value. */
+  rendered: RenderedBlock[];
+  /** The whole injection's approximate token cost. */
+  renderedTokens: number;
+  /** How many history messages were offered — what a hit's distance is measured back from. */
+  historyCount: number;
   /** How many entries got a verdict — what makes "nothing fired" read as a result. */
   checked: number;
   fired: number;
@@ -93,6 +116,24 @@ export interface TriggerReport {
 
 /** The region label the scene text is scanned under — the coordinate space the highlights live in. */
 const SCENE_REGION = 'scene';
+
+/** The region prefix a history message is scanned under; the suffix is its index, oldest first. */
+const HISTORY_REGION_PREFIX = 'history:';
+
+/** What separates one pasted message from the next. A blank line cannot do it: narration is several
+ *  paragraphs, so blank lines would cut one turn into several and every distance measured from them would
+ *  be wrong. A rule line is something prose does not write by accident. */
+export const HISTORY_SEPARATOR = '---';
+
+/** The messages in the history box, oldest first — the order `opts.history` is scanned in. */
+export function splitHistory(text: string): string[] {
+  return text.split(/^[ \t]*-{3,}[ \t]*$/m).map((message) => message.trim()).filter(Boolean);
+}
+
+/** `messages` as the history box holds them, ready to paste back in. */
+export function joinHistory(messages: string[]): string {
+  return messages.join(`\n\n${HISTORY_SEPARATOR}\n\n`);
+}
 
 /** An entry as the dictionary list labels it. */
 const entryLabel = (entry: DictionaryEntry, placeholders: TriggerWorld['placeholders']): string =>
@@ -118,7 +159,8 @@ function classify(
   scanned: ScanSource[],
   dropped: ScanSource[],
   secondary: SecondaryStatus | undefined,
-): Pick<TriggerEntry, 'nearMiss' | 'nearMissKeywords' | 'nearMissSample' | 'scanDepth'> {
+  historyCount: number,
+): Pick<TriggerEntry, 'nearMiss' | 'nearMissKeywords' | 'nearMissSample' | 'nearMissDistance'> {
   const keywords = parseKeywords(entry);
   if (entry.enabled === false) return { nearMiss: 'entry-disabled', nearMissKeywords: [] };
   if (!entry.constant && keywords.length === 0) return { nearMiss: 'no-keywords', nearMissKeywords: [] };
@@ -144,7 +186,11 @@ function classify(
 
   const late = dropped.length > 0 ? matchHits(entry, dropped) : [];
   if (late.length > 0) {
-    return { nearMiss: 'beyond-scan-depth', nearMissKeywords: [late[0].keyword], scanDepth: entry.scanDepth };
+    return {
+      nearMiss: 'beyond-scan-depth',
+      nearMissKeywords: [late[0].keyword],
+      nearMissDistance: historyDistance(late[0].region, historyCount),
+    };
   }
 
   if (entry.matchWholeWords && !entry.useRegex) {
@@ -154,6 +200,30 @@ function classify(
     }
   }
   return { nearMiss: 'no-match', nearMissKeywords: [] };
+}
+
+const isHistoryRegion = (region: string) => region.startsWith(HISTORY_REGION_PREFIX);
+
+/**
+ * The further messages an entry's hits came out of, one per message — never the one the row's first hit has
+ * already named, since a second keyword in a message already placed says nothing new about where it was.
+ */
+export function otherHistoryHits(entry: TriggerEntry): MatchHit[] {
+  const first = entry.hits[0];
+  const byMessage = new Map<string, MatchHit>();
+  for (const hit of entry.hits) {
+    if (!isHistoryRegion(hit.region) || hit.region === first?.region || byMessage.has(hit.region)) continue;
+    byMessage.set(hit.region, hit);
+  }
+  return [...byMessage.values()];
+}
+
+/** How many messages back a history region sits, counting the newest as 1 — the distance an author thinks
+ *  in. Zero for anything that isn't a history region, or when there is no history to measure against. */
+function historyDistance(region: string, historyCount: number): number {
+  if (!isHistoryRegion(region) || historyCount <= 0) return 0;
+  const index = Number(region.slice(HISTORY_REGION_PREFIX.length));
+  return Number.isInteger(index) ? Math.max(0, historyCount - index) : 0;
 }
 
 /** The whole word a blocked substring sits inside — the thing the author has to see to believe the verdict. */
@@ -178,6 +248,7 @@ export function buildTriggerReport(
   opts: { history?: string[] } = {},
 ): TriggerReport {
   const placeholders = world.placeholders ?? [];
+  const historyCount = (opts.history ?? []).length;
   const entities = findEntityMatches(
     stripQuotedSpeech(sceneText),
     (world.entities ?? []).map((e) => resolveEntity(e, placeholders)),
@@ -195,6 +266,7 @@ export function buildTriggerReport(
   const report = explainActivation(live.flatMap((b) => b.entries ?? []), scene, { history });
 
   const entries: TriggerEntry[] = [];
+  const activated: DictionaryEntry[] = []; // book order, which is the order the injected block renders in
   for (const book of books) {
     const bookEnabled = book.enabled !== false;
     for (const entry of book.entries ?? []) {
@@ -207,6 +279,7 @@ export function buildTriggerReport(
         keywords: parseKeywords(entry),
         constant: !!entry.constant,
         badPatterns: invalidRegexKeys(entry),
+        scanDepth: entry.scanDepth,
       };
       if (!bookEnabled) {
         entries.push({
@@ -224,6 +297,7 @@ export function buildTriggerReport(
       if (!activation) continue; // unreachable: every live entry is in the report
       const scanned = [...scene, ...historyForEntry(entry, history)];
       const dropped = history.filter((s) => !scanned.includes(s));
+      if (activation.activated) activated.push(entry);
       entries.push({
         ...base,
         fired: activation.activated,
@@ -233,19 +307,47 @@ export function buildTriggerReport(
         rule: activation.rule,
         ...(activation.activated
           ? { nearMissKeywords: [] }
-          : classify(entry, scanned, dropped, activation.secondary)),
+          : classify(entry, scanned, dropped, activation.secondary, historyCount)),
       });
     }
   }
 
+  const rendered = renderBlocks(activated, placeholders);
   return {
     entities,
     entries,
     segments: buildSegments(sceneText, entities, entries),
+    rendered,
+    renderedTokens: rendered.reduce((total, block) => total + block.tokens, 0),
+    historyCount,
     checked: entries.length,
     fired: entries.filter((e) => e.fired).length,
     constant: entries.filter((e) => e.fired && e.reason === 'constant').length,
   };
+}
+
+/**
+ * The fired entries as the harness would inject them: split into the prompt's two lorebook blocks by each
+ * entry's `position`, then rendered by the game's own `buildDictionaryContext` — headings excluded, since a
+ * block is what a `<DICTIONARY>` chip is replaced with and the prompt owns the heading around it.
+ *
+ * Chips resolve as the editor describes them rather than as a playthrough rolled them: an author has no
+ * rolls, and a Wildcard's summary is the honest answer about text decided at play time.
+ */
+function renderBlocks(activated: DictionaryEntry[], placeholders: TriggerWorld['placeholders']): RenderedBlock[] {
+  const positions: Array<RenderedBlock['position']> = ['before', 'after'];
+  return positions.flatMap((position) => {
+    const inBlock = activated.filter((entry) =>
+      (position === 'before') === (entry.position === 'before'));
+    const text = describePlaceholders(buildDictionaryContext(inBlock, false), placeholders);
+    if (!text) return [];
+    return [{
+      position,
+      text,
+      entryCount: inBlock.filter((entry) => entry.value).length,
+      tokens: estimateTokens(text.length),
+    }];
+  });
 }
 
 /**
@@ -288,6 +390,9 @@ function buildSegments(text: string, entities: EntityMatch[], entries: TriggerEn
 
 const quote = (text: string) => `“${text}”`;
 
+/** "1 message" / "3 messages" — the unit every history distance and scan depth is stated in. */
+export const messageCount = (count: number): string => `${count} ${count === 1 ? 'message' : 'messages'}`;
+
 /** "a, b and c" — how a reason names the handful of keywords it is about. */
 const listKeywords = (keywords: string[]): string => {
   const quoted = keywords.map(quote);
@@ -317,7 +422,8 @@ export function describeNearMiss(entry: TriggerEntry): string {
         : `A keyword matched, but none of its secondary keywords did — needs ${keys}.`;
     case 'beyond-scan-depth': {
       const depth = entry.scanDepth ?? 0;
-      return `${keys} matched further back than its scan depth of ${depth} ${depth === 1 ? 'message' : 'messages'}.`;
+      const back = entry.nearMissDistance ? `${messageCount(entry.nearMissDistance)} back, ` : '';
+      return `${keys} matched ${back}further back than its scan depth of ${messageCount(depth)}.`;
     }
     case 'whole-word-blocked':
       return entry.nearMissSample
@@ -330,12 +436,31 @@ export function describeNearMiss(entry: TriggerEntry): string {
   }
 }
 
-/** The scanned region a hit came from, as the evidence line names it. */
-export function describeRegion(region: string): string {
+/**
+ * The scanned region a hit came from, as the evidence line names it. A history hit is placed by distance —
+ * `historyCount` is how many messages were offered, so the newest reads as one back.
+ */
+export function describeRegion(region: string, historyCount = 0): string {
   if (region === SCENE_REGION) return 'Scene';
-  if (region.startsWith('history:')) return 'History';
+  if (isHistoryRegion(region)) {
+    const back = historyDistance(region, historyCount);
+    return back > 0 ? `History, ${messageCount(back)} back` : 'History';
+  }
   if (region.startsWith('recursion:')) return 'Another entry';
   return region;
+}
+
+/**
+ * Where a hit was found and, for a history hit, the depth window that let it count. The verdict is the
+ * other half of the distance: two messages back means nothing until you know what the entry reads.
+ */
+export function describeHitOrigin(entry: TriggerEntry, hit: MatchHit, historyCount: number): string {
+  const where = describeRegion(hit.region, historyCount);
+  if (!isHistoryRegion(hit.region)) return where;
+  const depth = entry.scanDepth;
+  return depth == null
+    ? `${where} · no scan depth, so all history is read`
+    : `${where} · inside its scan depth of ${messageCount(depth)}`;
 }
 
 /** Why a firing happened, as its badge reads. */
