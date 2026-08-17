@@ -5,11 +5,12 @@ describe('bench tab routing', () => {
   it('accepts a built instrument', () => {
     expect(asBenchTab('issues')).toBe('issues');
     expect(asBenchTab('triggers')).toBe('triggers');
+    expect(asBenchTab('aiContext')).toBe('aiContext');
   });
 
   it('refuses an instrument that only renders as a disabled tab', () => {
     // Routing to one would open the Bench standing on a panel with nothing in it.
-    expect(asBenchTab('aiContext')).toBeNull();
+    expect(asBenchTab('opening')).toBeNull();
   });
 
   it('refuses a name that is not a tab at all, and an absent one', () => {

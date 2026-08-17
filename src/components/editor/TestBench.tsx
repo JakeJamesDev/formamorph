@@ -1,7 +1,7 @@
 /**
  * The Test Bench — the World Editor's third panel, where an author tests how the harness reads their
- * world. Chrome is fixed: bench header, lens row, instrument tab strip, content. Issues and Triggers are
- * built; the rest render as disabled tabs so the shape of the surface is honest.
+ * world. Chrome is fixed: bench header, lens row, instrument tab strip, content. Opening is not built yet
+ * and renders as a disabled tab, so the shape of the surface is honest.
  *
  * Presentational: findings arrive as props, and navigation is a callback the editor fulfills, so the
  * panel renders identically inside the desktop split and the mobile sheet.
@@ -19,6 +19,8 @@ import { describeBrokenPin, type BenchLens, type LensOption, type StatOverride }
 import { SEVERITIES, type Finding, type FindingGroup, type FindingSection, type Severity } from '@/lib/testBench/rules';
 import type { TriggerReport } from '@/lib/testBench/triggers';
 import type { SemanticStatus } from '@/lib/testBench/useTriggerSemantics';
+import type { AiContextData } from '@/lib/testBench/aiContext';
+import { AiContextInstrument } from './AiContextInstrument';
 import { BENCH_TABS, type BenchTab } from './benchTabs';
 import { TriggersInstrument } from './TriggersInstrument';
 
@@ -266,6 +268,8 @@ export interface TestBenchProps {
   semanticStatus: SemanticStatus;
   semanticOn: boolean;
   onSemanticChange: (on: boolean) => void;
+  /** What the harness serves from the lens location — the AI Context instrument's whole view-model. */
+  aiContext: AiContextData;
 }
 
 export function TestBench({
@@ -273,7 +277,7 @@ export function TestBench({
   lens, pcOptions, locationOptions, statOverrides, onPcChange, onLocationChange,
   onOpenItem, onFixRule, onDismissRule, onRestoreRule, onMarkAllSeen, onCheckStatCode,
   triggerText, onTriggerTextChange, triggerHistory, onTriggerHistoryChange, triggerReport,
-  matchingFindings, onPasteLastTurn, semanticStatus, semanticOn, onSemanticChange,
+  matchingFindings, onPasteLastTurn, semanticStatus, semanticOn, onSemanticChange, aiContext,
 }: TestBenchProps) {
   return (
     <div className="flex h-full flex-col gap-2 p-3">
@@ -341,6 +345,7 @@ export function TestBench({
                 onSemanticChange={onSemanticChange}
               />
             )}
+            {t.value === 'aiContext' && <AiContextInstrument data={aiContext} />}
           </TabsContent>
         ))}
       </Tabs>

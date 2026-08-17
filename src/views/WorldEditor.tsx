@@ -26,6 +26,7 @@ import { TestBench, TestBenchButton, type CodeCheckStatus } from '@/components/e
 import { asBenchTab, type BenchTab } from '@/components/editor/benchTabs';
 import { Drawer, DrawerContent, DrawerTitle } from '@/components/ui/drawer';
 import { applyRuleFix, RULES, selectMatchingFindings, type Finding, type FindingSection } from '@/lib/testBench/rules';
+import { buildAiContext, EMPTY_AI_CONTEXT } from '@/lib/testBench/aiContext';
 import { loadLastTurn, type LastTurn } from '@/lib/testBench/lastTurn';
 import { checkStatCode } from '@/lib/testBench/statCodeCheck';
 import { lensStatOverrides } from '@/lib/testBench/lens';
@@ -333,6 +334,13 @@ const WorldEditorInner = ({ onClose, embedded = false, backButton }: {
     semantic: semantics.input,
     pins: benchLens.lens.pins,
   });
+  // Assembled only while the author is looking at it: every enabled lore entry is concatenated and
+  // placeholder-scanned in there, which is not work to redo on each keystroke of an edit nobody is watching.
+  const aiContextLive = benchOpen && benchTab === 'aiContext';
+  const aiContext = useMemo(
+    () => (aiContextLive ? buildAiContext(benchWorld, benchLens.lens) : EMPTY_AI_CONTEXT),
+    [aiContextLive, benchWorld, benchLens.lens],
+  );
   // The world's most recent save, read while the Bench is open so a turn played since it was last opened is
   // the one offered. Absent when the world has never been played — then there is no button at all.
   const [lastTurn, setLastTurn] = useState<LastTurn | null>(null);
@@ -438,6 +446,7 @@ const WorldEditorInner = ({ onClose, embedded = false, backButton }: {
       semanticStatus={semantics.status}
       semanticOn={semanticOn}
       onSemanticChange={setSemanticOn}
+      aiContext={aiContext}
     />
   );
   // DEV dev-router: `#dev?modal=worldEditor&bench=issues` opens the Bench on an instrument.

@@ -4,7 +4,7 @@
 export const BENCH_TABS = [
   { value: 'issues', label: 'Issues' },
   { value: 'triggers', label: 'Triggers' },
-  { value: 'aiContext', label: 'AI Context', unbuilt: true },
+  { value: 'aiContext', label: 'AI Context' },
   { value: 'opening', label: 'Opening', unbuilt: true },
 ] as const;
 
