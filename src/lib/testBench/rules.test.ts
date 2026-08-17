@@ -718,6 +718,72 @@ describe('the unused-placeholder rule', () => {
 });
 
 /**
+ * A world as hand-edited or third-party JSON delivers one: the arrays the types call required are simply
+ * absent. The cast is the fixture — this is exactly the shape TypeScript cannot stop from reaching the rules,
+ * and the pass runs inside the editor's render, so one throw here is a blank editor rather than a row.
+ */
+const STRIPPED = {
+  worldOverview: { name: 'Sedge Landing' },
+  // No descriptors, and a chip in the description — the chip rule reads both fields on every stat.
+  stats: [{
+    id: 's1', name: 'Vigor', type: 'number', min: 0, max: 100, starting: 40, regen: 0,
+    description: 'Craving for {{ph:p1:world:pl1}}.',
+  }],
+  locations: [{ id: 'harbor', name: 'Harbor Steps', isStarting: true }],
+  entities: [{ id: 'e1', name: 'Maren', locations: ['harbor'] }],
+  // No statChanges, and a pin at a placeholder that carries no values.
+  traits: [{ id: 't1', name: 'Hardy', placeholderPins: [{ placeholderId: 'p1', value: 'red' }] }],
+  dictionaries: [{ id: 'b1', name: 'Book' }],
+  statUpdates: [{ id: 'u1', name: 'Hourly' }],
+  placeholders: [{ id: 'p1', name: 'Hue' }],
+} as unknown as RuleWorld;
+
+describe('a world whose “required” arrays are absent', () => {
+  it('diagnoses it rather than throwing on it', () => {
+    const ids = new Set(runRules(STRIPPED).map((f) => f.ruleId));
+    // The chip parked in a stat description is a finding; the descriptors the stat never carried are not.
+    expect(ids).toContain('chip-never-scanned');
+    expect(ids).not.toContain('stat-start-no-descriptor');
+  });
+
+  it('reads a stat with no descriptors exactly as a stat with an empty band list', () => {
+    const withBands = {
+      ...STRIPPED, stats: [{ ...STRIPPED.stats[0], descriptors: [] }],
+    } as RuleWorld;
+    expect(runRules(STRIPPED)).toEqual(runRules(withBands));
+  });
+
+  it('reads a placeholder with no values as one offering none, so a pin at it is still broken', () => {
+    const found = only(STRIPPED, 'trait-pin-invalid');
+    expect(found).toHaveLength(1);
+    expect(found[0].message).toContain('isn’t one of its values');
+  });
+
+  it('diagnoses a stat that lost its id instead of tripping over the missing lookup', () => {
+    const idless = {
+      ...base(),
+      stats: [{ name: 'Vigor', type: 'number', min: 0, max: 100, regen: 0, descriptors: [], code: 'return 50;' }],
+      traits: [{ name: 'Hardy', statChanges: [{ value: 5, type: 'starting' }] }],
+    } as unknown as RuleWorld;
+    expect(only(idless, 'stat-code-overrides-trait')).toHaveLength(1);
+  });
+
+  it('diagnoses a world carrying no collections at all', () => {
+    const findings = runRules({} as RuleWorld);
+    // A world with no locations has no starting one — the pass still has something true to say about it.
+    expect(findings.map((f) => f.ruleId)).toEqual(['no-starting-location']);
+    expect(findings[0].items[0].name).toBe('This World');
+  });
+
+  it('offers every quick fix on one without throwing', () => {
+    for (const rule of RULES) {
+      expect(() => applyRuleFix(STRIPPED, rule.id)).not.toThrow();
+      expect(() => applyRuleFix({} as RuleWorld, rule.id)).not.toThrow();
+    }
+  });
+});
+
+/**
  * One fixture per fixable rule, each raising that rule and nothing the fix can't reach. The round-trip and
  * idempotence checks below run over this table, so a fix added without a fixture fails the registry test.
  */

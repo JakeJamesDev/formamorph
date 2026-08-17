@@ -14,7 +14,14 @@ import type {
   DictionaryEntry, Entity, GameLocation, Placeholder, Stat, StatDescriptor, Trait, World,
 } from '@/types';
 
-/** The world a rule reads — the editor's live payload, which carries no record id or version. */
+/**
+ * The world a rule reads — the editor's live payload, which carries no record id or version.
+ *
+ * Every collection on it is read through `?? []`, and every field of one that the types call required.
+ * World JSON is hand-editable and arrives from third-party tools, so a "required" array can simply be
+ * absent; the pass runs inside the editor's render, where one throw is a blank screen rather than a
+ * finding. A rule diagnoses a malformed world — it never trips over one.
+ */
 export type RuleWorld = Omit<World, 'id' | 'version'>;
 
 /** Error: cannot work. Warning: works, but very likely not what was meant. Info: consistency only. */
@@ -93,7 +100,7 @@ const listNames = (names: string[]): string =>
 /** An entity as a finding names it: chips resolved, so the row reads like the editor's own list. */
 const asItem = (entity: Entity, world: RuleWorld): FindingItem => ({
   id: entity.id,
-  name: describePlaceholders(entity.name, world.placeholders) || 'Untitled',
+  name: describePlaceholders(entity.name ?? '', world.placeholders) || 'Untitled',
 });
 
 /** An entity's written forms — its name and aliases, chips resolved, blanks dropped. */
@@ -142,7 +149,7 @@ const aliasLeadingArticle: Rule = {
   matching: true,
   summary: (count) =>
     `${count} aliases begin with an article — alias matching is case-sensitive, so they miss wherever the sentence capitalizes them differently`,
-  check: (world) => world.entities.flatMap((entity) =>
+  check: (world) => (world.entities ?? []).flatMap((entity) =>
     aliasesOf(entity, world)
       .filter((alias) => LEADING_ARTICLE.test(alias))
       .map((alias) => ({
@@ -153,7 +160,7 @@ const aliasLeadingArticle: Rule = {
         items: [asItem(entity, world)],
       })),
   ),
-  fix: (world) => withSlice(world, 'entities', mapChanged(world.entities, (entity) => {
+  fix: (world) => withSlice(world, 'entities', mapChanged(world.entities ?? [], (entity) => {
     const aliases = entity.aliases;
     if (!aliases?.length) return entity;
     const next = withoutArticles(aliases);
@@ -171,7 +178,7 @@ const entityMatchCollision: Rule = {
   check: (world) => {
     // One bucket per piece of text the matcher can see, holding every entity that lays claim to it.
     const claims = new Map<string, { text: string; entities: Entity[] }>();
-    for (const entity of world.entities) {
+    for (const entity of world.entities ?? []) {
       const seen = new Set<string>();
       for (const form of writtenForms(entity, world)) {
         const key = matchKey(form);
@@ -203,7 +210,7 @@ const aliasSelfDuplicate: Rule = {
   section: 'entities',
   matching: true,
   summary: (count) => `${count} aliases repeat their own entity’s name, which already matches on its own`,
-  check: (world) => world.entities.flatMap((entity) => {
+  check: (world) => (world.entities ?? []).flatMap((entity) => {
     const nameKey = matchKey(describePlaceholders(entity.name ?? '', world.placeholders));
     if (!nameKey) return [];
     return aliasesOf(entity, world)
@@ -216,7 +223,7 @@ const aliasSelfDuplicate: Rule = {
         items: [asItem(entity, world)],
       }));
   }),
-  fix: (world) => withSlice(world, 'entities', mapChanged(world.entities, (entity) => {
+  fix: (world) => withSlice(world, 'entities', mapChanged(world.entities ?? [], (entity) => {
     const nameKey = matchKey(describePlaceholders(entity.name ?? '', world.placeholders));
     const aliases = entity.aliases;
     if (!nameKey || !aliases?.length) return entity;
@@ -245,7 +252,7 @@ const entryItem = (entry: DictionaryEntry, world: RuleWorld): FindingItem =>
 
 /** Every entry in every book — definition checks apply whether or not a book is currently enabled. */
 const allEntries = (world: RuleWorld): DictionaryEntry[] =>
-  world.dictionaries.flatMap((book) => book.entries ?? []);
+  (world.dictionaries ?? []).flatMap((book) => book.entries ?? []);
 
 const primaryKeys = (entry: DictionaryEntry): string[] => (entry.key ?? []).filter(Boolean);
 const secondaryKeys = (entry: DictionaryEntry): string[] => (entry.secondaryKeys ?? []).filter(Boolean);
@@ -258,8 +265,8 @@ const entityLocationOrphan: Rule = {
   section: 'entities',
   summary: (count) => `${count} entities are placed at locations that don’t exist`,
   check: (world) => {
-    const known = new Set(world.locations.map((l) => l.id));
-    return world.entities
+    const known = new Set((world.locations ?? []).map((l) => l.id));
+    return (world.entities ?? [])
       .filter((entity) => (entity.locations ?? []).some((id) => !known.has(id)))
       .map((entity) => {
         const item = asItem(entity, world);
@@ -267,8 +274,8 @@ const entityLocationOrphan: Rule = {
       });
   },
   fix: (world) => {
-    const known = new Set(world.locations.map((l) => l.id));
-    return withSlice(world, 'entities', mapChanged(world.entities, (entity) => {
+    const known = new Set((world.locations ?? []).map((l) => l.id));
+    return withSlice(world, 'entities', mapChanged(world.entities ?? [], (entity) => {
       const placements = entity.locations;
       if (!placements?.length) return entity;
       const live = placements.filter((id) => known.has(id));
@@ -286,8 +293,8 @@ const traitToggleMissingStat: Rule = {
   section: 'traits',
   summary: (count) => `${count} trait stat toggles point at stats that don’t exist`,
   check: (world) => {
-    const known = new Set(world.stats.map((s) => s.id));
-    return world.traits
+    const known = new Set((world.stats ?? []).map((s) => s.id));
+    return (world.traits ?? [])
       .filter((trait) => (trait.statToggles ?? []).some((toggle) => !known.has(toggle.statId)))
       .map((trait) => {
         const item = namedItem(trait.id, trait.name, world);
@@ -304,14 +311,14 @@ const traitPinInvalid: Rule = {
     `${count} trait placeholder pins are broken — a missing placeholder, or a value it doesn’t offer`,
   check: (world) => {
     const byId = new Map((world.placeholders ?? []).map((p) => [p.id, p]));
-    return world.traits.flatMap((trait) =>
+    return (world.traits ?? []).flatMap((trait) =>
       (trait.placeholderPins ?? []).flatMap((pin) => {
         const item = namedItem(trait.id, trait.name, world);
         const ph = byId.get(pin.placeholderId);
         if (!ph) {
           return [finding(traitPinInvalid, `${quote(item.name)} pins a placeholder that doesn’t exist`, [item])];
         }
-        if (!ph.values.includes(pin.value)) {
+        if (!(ph.values ?? []).includes(pin.value)) {
           return [finding(
             traitPinInvalid,
             `${quote(item.name)} pins ${quote(ph.name)} to ${quote(pin.value)}, which isn’t one of its values`,
@@ -334,14 +341,14 @@ interface ChipOwner {
 
 const chipOwners = (world: RuleWorld): ChipOwner[] => [
   {
-    item: { id: 'overview', name: world.worldOverview.name || 'Overview', section: 'overview' },
-    texts: [world.worldOverview.systemPrompt, world.worldOverview.readme, world.worldOverview.introReadme],
+    item: { id: 'overview', name: world.worldOverview?.name || 'Overview', section: 'overview' },
+    texts: [world.worldOverview?.systemPrompt, world.worldOverview?.readme, world.worldOverview?.introReadme],
   },
-  ...world.entities.map((e) => ({
+  ...(world.entities ?? []).map((e) => ({
     item: { ...asItem(e, world), section: 'entities' as const },
     texts: [e.name, ...(e.aliases ?? []), e.playerDescription, e.aiDescription, e.aiSummary, e.imageTags],
   })),
-  ...world.locations.map((l) => ({
+  ...(world.locations ?? []).map((l) => ({
     item: namedItem(l.id, l.name, world, 'locations'),
     texts: [l.name, l.playerDescription, l.aiDescription, l.aiSummary, l.description, l.imageTags],
   })),
@@ -349,8 +356,8 @@ const chipOwners = (world: RuleWorld): ChipOwner[] => [
     item: { ...entryItem(entry, world), section: 'dictionary' as const },
     texts: [entry.name, ...(entry.key ?? []), ...(entry.secondaryKeys ?? []), entry.value],
   })),
-  ...world.stats.map((s) => ({ item: namedItem(s.id, s.name, world, 'stats'), texts: [s.name] })),
-  ...world.traits.map((t) => ({
+  ...(world.stats ?? []).map((s) => ({ item: namedItem(s.id, s.name, world, 'stats'), texts: [s.name] })),
+  ...(world.traits ?? []).map((t) => ({
     item: namedItem(t.id, t.name, world, 'traits'),
     texts: [t.name, t.playerDescription, t.aiDescription],
   })),
@@ -390,11 +397,11 @@ const chipNeverScanned: Rule = {
   severity: 'error',
   section: 'stats',
   summary: (count) => `${count} stats carry chips in fields placeholders never resolve — they’ll read as raw text`,
-  check: (world) => world.stats.flatMap((stat) => {
+  check: (world) => (world.stats ?? []).flatMap((stat) => {
     const item = namedItem(stat.id, stat.name, world);
     const spots: string[] = [];
     if (stat.description && hasPlaceholders(stat.description)) spots.push('description');
-    if (stat.descriptors.some((d) => d.description && hasPlaceholders(d.description))) spots.push('descriptors');
+    if ((stat.descriptors ?? []).some((d) => d.description && hasPlaceholders(d.description))) spots.push('descriptors');
     if (spots.length === 0) return [];
     return [finding(
       chipNeverScanned,
@@ -409,15 +416,15 @@ const chipNeverScanned: Rule = {
  *  that doesn't resolve would read as no mention at all and the placeholder under it would look disposable. */
 const allChipTexts = (world: RuleWorld): Array<string | undefined> => [
   ...chipOwners(world).flatMap((owner) => owner.texts),
-  world.worldOverview.description,
-  ...world.stats.flatMap((s) => [s.description, ...s.descriptors.map((d) => d.description)]),
-  ...world.statUpdates.map((u) => u.prompt),
+  world.worldOverview?.description,
+  ...(world.stats ?? []).flatMap((s) => [s.description, ...(s.descriptors ?? []).map((d) => d.description)]),
+  ...(world.statUpdates ?? []).map((u) => u.prompt),
 ];
 
 /** The placeholders nothing in the world reaches for — no chip anywhere, and no trait pinning them. */
 const unusedPlaceholders = (world: RuleWorld): Placeholder[] => {
   const used = chipIds(allChipTexts(world));
-  for (const trait of world.traits) {
+  for (const trait of world.traits ?? []) {
     for (const pin of trait.placeholderPins ?? []) used.add(pin.placeholderId);
   }
   return (world.placeholders ?? []).filter((p) => !used.has(p.id));
@@ -465,8 +472,9 @@ const statCodeUnknownStat: Rule = {
   summary: (count) => `${count} stats’ code looks up stat names that don’t exist`,
   check: (world) => {
     // Code compares against runtime names, where chips have resolved — so both spellings are valid targets.
-    const known = new Set(world.stats.flatMap((s) => [s.name, describePlaceholders(s.name ?? '', world.placeholders)]));
-    return world.stats.flatMap((stat) => {
+    const stats = world.stats ?? [];
+    const known = new Set(stats.flatMap((s) => [s.name, describePlaceholders(s.name ?? '', world.placeholders)]));
+    return stats.flatMap((stat) => {
       if (!stat.code) return [];
       const item = namedItem(stat.id, stat.name, world);
       return [...new Set(statNamesInCode(stat.code))]
@@ -546,10 +554,10 @@ const noStartingLocation: Rule = {
   severity: 'error',
   section: 'locations',
   summary: () => 'No location is flagged as a starting location',
-  check: (world) => world.locations.some((l) => l.isStarting) ? [] : [finding(
+  check: (world) => (world.locations ?? []).some((l) => l.isStarting) ? [] : [finding(
     noStartingLocation,
     'No location is flagged as a starting location — a new game picks any location at random',
-    [{ id: 'locations', name: world.worldOverview.name || 'This World' }],
+    [{ id: 'locations', name: world.worldOverview?.name || 'This World' }],
   )],
 };
 
@@ -565,7 +573,7 @@ const legacyStartLocation: Rule = {
   severity: 'warning',
   section: 'locations',
   summary: (count) => `${count} locations carry the legacy isStartLocation field, which the game no longer reads`,
-  check: (world) => world.locations.filter(hasLegacyStart).map((location) => {
+  check: (world) => (world.locations ?? []).filter(hasLegacyStart).map((location) => {
     const item = namedItem(location.id, location.name, world);
     // Only a truthy value signals start intent; a false-valued leftover just needs deleting.
     const advice = legacyStartValue(location)
@@ -581,10 +589,11 @@ const legacyStartLocation: Rule = {
     // A truthy leftover is the world's only surviving record of its start intent, so deleting it outright
     // would trade this finding for a world with no starting location. The first one carries that intent
     // over to the live flag — but only when nothing already claims it, since a real flag supersedes it.
-    const promoteId = world.locations.some((l) => l.isStarting)
+    const locations = world.locations ?? [];
+    const promoteId = locations.some((l) => l.isStarting)
       ? undefined
-      : world.locations.find((l) => hasLegacyStart(l) && legacyStartValue(l))?.id;
-    return withSlice(world, 'locations', mapChanged(world.locations, (location) => {
+      : locations.find((l) => hasLegacyStart(l) && legacyStartValue(l))?.id;
+    return withSlice(world, 'locations', mapChanged(locations, (location) => {
       if (!hasLegacyStart(location)) return location;
       const { isStartLocation: _legacy, ...rest } = location as GameLocation & { isStartLocation?: unknown };
       return location.id === promoteId ? { ...rest, isStarting: true } : rest;
@@ -597,7 +606,7 @@ const entityNowhere: Rule = {
   severity: 'warning',
   section: 'entities',
   summary: (count) => `${count} entities are placed in no location, so they can never appear`,
-  check: (world) => world.entities
+  check: (world) => (world.entities ?? [])
     .filter((entity) => (entity.locations ?? []).length === 0)
     .map((entity) => {
       const item = asItem(entity, world);
@@ -608,10 +617,10 @@ const entityNowhere: Rule = {
 /** The stats that can be live at some point in a playthrough — everything except a stat that starts disabled
  *  with no trait to switch it on. A stat that is never live never runs its code and never reaches the AI. */
 const everActiveStats = (world: RuleWorld): Stat[] => {
-  const enabledBy = new Set(world.traits.flatMap((trait) =>
+  const enabledBy = new Set((world.traits ?? []).flatMap((trait) =>
     (trait.statToggles ?? []).filter((toggle) => toggle.enabled).map((toggle) => toggle.statId),
   ));
-  return world.stats.filter((stat) => stat.enabled !== false || enabledBy.has(stat.id));
+  return (world.stats ?? []).filter((stat) => stat.enabled !== false || enabledBy.has(stat.id));
 };
 
 const statDisabledForever: Rule = {
@@ -621,7 +630,7 @@ const statDisabledForever: Rule = {
   summary: (count) => `${count} stats start disabled and no trait ever enables them`,
   check: (world) => {
     const live = new Set(everActiveStats(world).map((stat) => stat.id));
-    return world.stats
+    return (world.stats ?? [])
       .filter((stat) => !live.has(stat.id))
       .map((stat) => {
         const item = namedItem(stat.id, stat.name, world);
@@ -650,7 +659,7 @@ const startsInRange = (stat: Stat): boolean => {
 const descriptorAt = (stat: Stat, value: number): StatDescriptor | undefined => {
   const range = stat.max - stat.min;
   const percent = range === 0 ? 0 : ((value - stat.min) / range) * 100;
-  return [...stat.descriptors].sort((a, b) => a.threshold - b.threshold).find((d) => percent <= d.threshold);
+  return [...(stat.descriptors ?? [])].sort((a, b) => a.threshold - b.threshold).find((d) => percent <= d.threshold);
 };
 
 const statStartingOutOfRange: Rule = {
@@ -658,7 +667,7 @@ const statStartingOutOfRange: Rule = {
   severity: 'error',
   section: 'stats',
   summary: (count) => `${count} stats start at a value outside their own min and max`,
-  check: (world) => world.stats.filter((stat) => !startsInRange(stat)).map((stat) => {
+  check: (world) => (world.stats ?? []).filter((stat) => !startsInRange(stat)).map((stat) => {
     const item = namedItem(stat.id, stat.name, world);
     return finding(
       statStartingOutOfRange,
@@ -673,9 +682,9 @@ const statStartNoDescriptor: Rule = {
   severity: 'warning',
   section: 'stats',
   summary: (count) => `${count} stats start above every descriptor band, so the AI is told no status for them`,
-  check: (world) => world.stats
+  check: (world) => (world.stats ?? [])
     // A start outside the range is the sharper diagnosis and already fires; its band is nobody's question.
-    .filter((stat) => stat.descriptors.length > 0 && startsInRange(stat)
+    .filter((stat) => (stat.descriptors ?? []).length > 0 && startsInRange(stat)
       && !descriptorAt(stat, startingValue(stat)))
     .map((stat) => {
       const item = namedItem(stat.id, stat.name, world);
@@ -692,11 +701,11 @@ const statDescriptorDuplicateThreshold: Rule = {
   severity: 'warning',
   section: 'stats',
   summary: (count) => `${count} stats have two descriptors on one threshold, so the second can never apply`,
-  check: (world) => world.stats.flatMap((stat) => {
+  check: (world) => (world.stats ?? []).flatMap((stat) => {
     // The band sort is stable, so among equal thresholds the one written first is the one that wins.
     const claimed = new Set<number>();
     const dead: StatDescriptor[] = [];
-    for (const descriptor of stat.descriptors) {
+    for (const descriptor of stat.descriptors ?? []) {
       if (claimed.has(descriptor.threshold)) dead.push(descriptor);
       else claimed.add(descriptor.threshold);
     }
@@ -728,7 +737,7 @@ const statPercentageBounds: Rule = {
   severity: 'warning',
   section: 'stats',
   summary: (count) => `${count} percentage stats don’t run from 0 to 100, so the “%” the player sees is a raw number`,
-  check: (world) => world.stats.filter(isOffRangePercentage).map((stat) => {
+  check: (world) => (world.stats ?? []).filter(isOffRangePercentage).map((stat) => {
     const item = namedItem(stat.id, stat.name, world);
     return finding(
       statPercentageBounds,
@@ -736,7 +745,7 @@ const statPercentageBounds: Rule = {
       [item],
     );
   }),
-  fix: (world) => withSlice(world, 'stats', mapChanged(world.stats, (stat) =>
+  fix: (world) => withSlice(world, 'stats', mapChanged(world.stats ?? [], (stat) =>
     isOffRangePercentage(stat) ? pinnedToPercent(stat) : stat)),
 };
 
@@ -780,7 +789,7 @@ const traitFloor = (stat: Stat, trait: Trait): number =>
 
 /** Every trait that moves a stat's starting value, with the delta it asks for. */
 const traitValueChanges = (world: RuleWorld): Array<{ stat: Stat; trait: Trait; delta: number }> =>
-  world.stats.flatMap((stat) => world.traits.flatMap((trait) => {
+  (world.stats ?? []).flatMap((stat) => (world.traits ?? []).flatMap((trait) => {
     const delta = traitContribution(stat, trait, 'starting');
     return delta === 0 ? [] : [{ stat, trait, delta }];
   }));
@@ -814,9 +823,11 @@ const statTraitDeltaClamped: Rule = {
 const codeReadsSelf = (stat: Stat, world: RuleWorld): boolean => {
   const code = stat.code ?? '';
   // The id has to be quoted to be a lookup: bare containment would read a stat whose id is "1" out of
-  // `return 100;` and silently quiet the rule.
-  const quotedId = new RegExp(`["'\`]${stat.id.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}["'\`]`);
-  if (/\bcurrentStatId\b/.test(code) || quotedId.test(code)) return true;
+  // `return 100;` and silently quiet the rule. An idless stat has no lookup to find, rather than an empty one.
+  const quotedId = stat.id
+    ? new RegExp(`["'\`]${stat.id.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}["'\`]`)
+    : undefined;
+  if (/\bcurrentStatId\b/.test(code) || quotedId?.test(code)) return true;
   const names = new Set([stat.name, describePlaceholders(stat.name ?? '', world.placeholders)]);
   return statNamesInCode(code).some((name) => names.has(name));
 };
@@ -844,10 +855,10 @@ const statAiLockFrozen: Rule = {
   section: 'stats',
   summary: (count) => `${count} stats are locked against the AI with nothing else able to move them`,
   check: (world) => {
-    const movedByTrait = new Set(world.traits.flatMap((trait) =>
+    const movedByTrait = new Set((world.traits ?? []).flatMap((trait) =>
       (trait.statChanges ?? []).filter((change) => change.type === 'starting').map((change) => change.statId),
     ));
-    return world.stats
+    return (world.stats ?? [])
       .filter((stat) => stat.noIncrease && stat.noDecrease && !stat.code?.trim() && !stat.regen
         && !movedByTrait.has(stat.id))
       .map((stat) => {
