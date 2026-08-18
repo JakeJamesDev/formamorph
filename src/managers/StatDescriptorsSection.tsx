@@ -14,8 +14,8 @@ import { Button } from '@/components/ui/button';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import { activeDescriptor } from '@/lib/statContext';
 import {
-  convertDescriptorUnits, descriptorSpans, statMax, statMin, statStartValue, thresholdUnitOf,
-  thresholdUnitTag, uncoveredSpan,
+  convertDescriptorUnits, descriptorSpans, startCaptionLeft, statMax, statMin, statStartValue,
+  thresholdInputWidthRem, thresholdTagInsetRem, thresholdUnitOf, thresholdUnitTag, uncoveredSpan,
 } from '@/lib/statDescriptorGeometry';
 import type { Stat, StatDescriptor, ThresholdUnit } from '@/types';
 
@@ -39,7 +39,7 @@ const UnitInput = ({ value, unit, onChange, onBlur, placeholder, ariaLabel }: {
   value: number | string; unit: string; placeholder?: string; ariaLabel: string;
   onChange: (v: string) => void; onBlur?: () => void;
 }) => (
-  <div className="relative w-28 flex-shrink-0">
+  <div className="relative flex-shrink-0" style={{ width: `${thresholdInputWidthRem(unit)}rem` }}>
     <Input
       type="number"
       value={value}
@@ -47,8 +47,8 @@ const UnitInput = ({ value, unit, onChange, onBlur, placeholder, ariaLabel }: {
       onBlur={onBlur}
       placeholder={placeholder}
       aria-label={ariaLabel}
-      // Padding tracks the tag's own length, so `of 100000` clears the value as `%` does.
-      style={{ paddingRight: `${unit.length * 0.55 + 1.1}rem` }}
+      // Width and padding both track the tag's length, so the tag never crowds out the value.
+      style={{ paddingRight: `${thresholdTagInsetRem(unit)}rem` }}
       className="[appearance:textfield] [&::-webkit-inner-spin-button]:hidden [&::-webkit-outer-spin-button]:hidden"
     />
     <span className="pointer-events-none absolute inset-y-0 right-2.5 flex items-center text-helper text-muted-foreground">
@@ -82,6 +82,36 @@ const BarSegment = ({ text, width, className, title }: {
       title={title}
     >
       <span className="line-clamp-2">{text}</span>
+    </div>
+  );
+};
+
+/** The turn-one marker under the bar: an arrow at the exact starting value, and a caption that centers
+ *  under it when it can and hugs the bar's edges when it can't — the arrow never moves for the caption. */
+const StartMarker = ({ fraction, start }: { fraction: number; start: number }) => {
+  const rowRef = useRef<HTMLDivElement>(null);
+  const captionRef = useRef<HTMLSpanElement>(null);
+  useLayoutEffect(() => {
+    const row = rowRef.current;
+    const caption = captionRef.current;
+    if (!row || !caption) return;
+    const place = () => {
+      caption.style.left = `${startCaptionLeft(fraction * row.clientWidth, caption.offsetWidth, row.clientWidth)}px`;
+    };
+    place();
+    const observer = new ResizeObserver(place);
+    observer.observe(row);
+    return () => observer.disconnect();
+  }, [fraction, start]);
+  return (
+    <div ref={rowRef} className="absolute inset-x-0 top-9">
+      <div
+        className="absolute h-0 w-0 -translate-x-1/2 border-x-[5px] border-b-[6px] border-x-transparent border-b-foreground"
+        style={{ left: `${fraction * 100}%` }}
+      />
+      <span ref={captionRef} className="absolute top-[7px] whitespace-nowrap text-helper leading-none text-muted-foreground">
+        starts at {start}
+      </span>
     </div>
   );
 };
@@ -156,15 +186,7 @@ export const StatDescriptorsSection = ({
               />
             )}
           </div>
-          <div
-            className="absolute top-9 flex -translate-x-1/2 flex-col items-center"
-            style={{ left: `clamp(2.5rem, ${((start - min) / range) * 100}%, calc(100% - 2.5rem))` }}
-          >
-            <div className="h-2 w-0.5 bg-foreground" />
-            <span className="whitespace-nowrap text-helper leading-none text-muted-foreground">
-              starts at {start}
-            </span>
-          </div>
+          <StartMarker fraction={Math.min(1, Math.max(0, (start - min) / range))} start={start} />
         </div>
       )}
 

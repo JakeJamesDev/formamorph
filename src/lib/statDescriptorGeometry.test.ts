@@ -1,8 +1,8 @@
 import { describe, it, expect } from 'vitest';
 import {
   convertDescriptorUnits, describeInThresholdUnits, describeThreshold, descriptorSpans,
-  isThresholdOutOfRange, statStartValue, thresholdUnitOf, thresholdUnitTag, thresholdValue,
-  uncoveredSpan, valueThreshold, type BandedStat,
+  isThresholdOutOfRange, startCaptionLeft, statStartValue, thresholdInputWidthRem, thresholdTagInsetRem,
+  thresholdUnitOf, thresholdUnitTag, thresholdValue, uncoveredSpan, valueThreshold, type BandedStat,
 } from './statDescriptorGeometry';
 
 // The world the whole feature exists for: ten rockets banded 3/6/10 in the stat's own units.
@@ -151,6 +151,47 @@ describe('unit labels', () => {
   it('states a stored threshold the same way', () => {
     expect(describeThreshold(rockets, 6)).toBe('6 of 10');
     expect(describeThreshold(proportional, 60)).toBe('60%');
+  });
+
+  it('compacts a five-digit ceiling and leaves four digits exact', () => {
+    expect(thresholdUnitTag({ min: 0, max: 100999 })).toBe('of 101k');
+    expect(thresholdUnitTag({ min: 0, max: 10000 })).toBe('of 10k');
+    expect(thresholdUnitTag({ min: 0, max: 9999 })).toBe('of 9999');
+  });
+
+  it('never compacts a percent tag', () => {
+    expect(thresholdUnitTag({ min: 0, max: 100999, thresholdUnit: 'percent' })).toBe('%');
+  });
+});
+
+describe('threshold input sizing', () => {
+  it('keeps the classic 7rem box for short tags', () => {
+    expect(thresholdInputWidthRem('%')).toBe(7);
+  });
+
+  it('widens with the tag so the value keeps its room', () => {
+    const small = thresholdInputWidthRem(thresholdUnitTag(rockets));
+    const large = thresholdInputWidthRem(thresholdUnitTag({ min: 0, max: 100999 }));
+    expect(large).toBeGreaterThan(small);
+    expect(large - thresholdTagInsetRem(thresholdUnitTag({ min: 0, max: 100999 }))).toBeGreaterThanOrEqual(4.5);
+  });
+});
+
+describe('startCaptionLeft', () => {
+  it('centers the caption under the marker when there is room', () => {
+    expect(startCaptionLeft(200, 60, 400)).toBe(170);
+  });
+
+  it('pins to the left edge instead of spilling out', () => {
+    expect(startCaptionLeft(10, 60, 400)).toBe(0);
+  });
+
+  it('pins to the right edge instead of spilling out', () => {
+    expect(startCaptionLeft(395, 60, 400)).toBe(340);
+  });
+
+  it('holds the left edge when the caption outgrows the container', () => {
+    expect(startCaptionLeft(50, 500, 400)).toBe(0);
   });
 });
 
