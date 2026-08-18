@@ -116,6 +116,11 @@ function worldImageSlots(world: World): ImageSlot[] {
 /** How many image-bearing slots a world has — the `total` of an optimize run's progress. */
 export const countWorldImages = (world: World): number => worldImageSlots(world).length;
 
+/** A world's images keyed by the `path` a scan tagged them with — how a caller reads back what one scanned
+ *  image became once a run finished with it. */
+export const worldImagesByPath = (world: World): Map<string, string> =>
+  new Map(worldImageSlots(world).map((slot) => [slot.path, slot.url]));
+
 /** Scan a world for images exceeding their budget. Returns only the oversized ones plus their total bytes. */
 export async function scanWorldImages(world: World): Promise<{ items: OversizedImage[]; totalBytes: number }> {
   const items: OversizedImage[] = [];
@@ -233,6 +238,18 @@ export async function downscaleWorldImages(
     entities,
     locations,
   };
+}
+
+/**
+ * The one sentence both optimize flows use for images a run left exactly as they were. The encoder keeps
+ * anything a WebP copy would grow, so a run can finish with the same offer still standing — said out loud
+ * that reads as a fact about the images rather than a button that did nothing. Empty when nothing was kept.
+ */
+export function describeKeptImages(kept: number): string {
+  if (kept <= 0) return '';
+  return kept === 1
+    ? 'Kept 1 image as it was — WebP wouldn’t make it smaller.'
+    : `Kept ${kept} images as they were — WebP wouldn’t make them smaller.`;
 }
 
 /** Human-readable byte size for prompt copy. */

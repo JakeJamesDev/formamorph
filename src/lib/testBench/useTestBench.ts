@@ -14,8 +14,10 @@ import { asBenchTab } from './benchTabs';
 import { readBenchPlacement, writeBenchPlacement, type BenchPlacement } from './benchPlacement';
 import type { BenchPopoverProps, CodeCheckStatus, TestBenchProps } from '@/lib/testBench/benchProps';
 import {
-  applyRuleFix, RULES, selectMatchingFindings, type Finding, type FindingSection,
+  applyRuleFix, IMAGE_WEBP_RULE_ID, RULES, selectMatchingFindings,
+  type Finding, type FindingSection, type RuleWorld,
 } from './rules';
+import { convertWorldImagesToWebp, describeWebpFixRun } from './imageWebpFix';
 import { buildAiContext, EMPTY_AI_CONTEXT } from './aiContext';
 import { buildOpening, EMPTY_OPENING } from './opening';
 import { useOpeningRolls } from './useOpeningRolls';
@@ -237,12 +239,11 @@ export function useTestBench({
     markDownloadNoteSeen(worldId);
     toast.info('This world was downloaded — saving this fix marks your copy as edited.');
   }, [worldId, benchWorldMeta?.sourceId, benchWorldMeta?.dirty]);
-  // A quick fix is a hand edit made all at once: the rule returns the repaired world and each slice it
-  // rebuilt is written back through the same setter the panels use, so the world goes dirty and Exit
-  // Without Saving is still the whole undo.
-  const applyBenchFix = useCallback((ruleId: string) => {
-    const before = getWorldData();
-    const after = applyRuleFix(before, ruleId);
+  // A quick fix is a hand edit made all at once: the repaired world's every rebuilt slice is written back
+  // through the same setter the panels use, so the world goes dirty and Exit Without Saving is still the
+  // whole undo. Shared by the pure fixes and the async image conversion, which differ only in what produced
+  // the world being written.
+  const writeFixedWorld = useCallback((before: RuleWorld, after: RuleWorld) => {
     if (after === before) return;
     // `updateWorldOverview` merges, so a fix that ever needs to *remove* an overview field will need more
     // than this line; none does today, and the rest of the payload is replaced wholesale.
@@ -258,9 +259,41 @@ export function useTestBench({
     if (after.dictionaries !== before.dictionaries) setDictionaries(after.dictionaries);
     if (after.placeholders !== before.placeholders) setPlaceholders(after.placeholders ?? []);
     noteFirstDownloadEdit();
-  }, [getWorldData, updateWorldOverview, setStats, setLocations, setConnections, setEntities,
+  }, [updateWorldOverview, setStats, setLocations, setConnections, setEntities,
       setEntityGroups, setTraits, setTraitGroups, setStatUpdates, setDictionaries, setPlaceholders,
       noteFirstDownloadEdit]);
+  // The image conversion is the one repair the pure pass can't carry — it decodes and re-encodes every
+  // convertible picture. So it runs like the stat-code check: one at a time, and a result about a world the
+  // author has since edited is dropped rather than written over the world they now have.
+  const [fixingRuleId, setFixingRuleId] = useState<string | null>(null);
+  const imageRunRef = useRef(0);
+  useEffect(() => { imageRunRef.current += 1; }, [benchWorld]);
+  const runImageWebpFix = useCallback(async () => {
+    const run = (imageRunRef.current += 1);
+    setFixingRuleId(IMAGE_WEBP_RULE_ID);
+    try {
+      const before = getWorldData();
+      const result = await convertWorldImagesToWebp(before);
+      if (run !== imageRunRef.current) return;
+      writeFixedWorld(before, result.world);
+      const report = describeWebpFixRun(result);
+      if (report) toast.info(report);
+    } catch (error) {
+      // The encoder returns the original on its own failures, so reaching here means the run itself broke —
+      // leaving the button spinning would strand the author with no way to try again.
+      console.error('Image WebP conversion failed:', error);
+    } finally {
+      setFixingRuleId(null);
+    }
+  }, [getWorldData, writeFixedWorld]);
+  const applyBenchFix = useCallback((ruleId: string) => {
+    if (ruleId === IMAGE_WEBP_RULE_ID) {
+      if (!fixingRuleId) void runImageWebpFix();
+      return;
+    }
+    const before = getWorldData();
+    writeFixedWorld(before, applyRuleFix(before, ruleId));
+  }, [getWorldData, writeFixedWorld, fixingRuleId, runImageWebpFix]);
   // DEV dev-router: `#dev?modal=worldEditor&bench=issues` opens the Bench on an instrument. The route wins
   // the open's seed without being recorded, so it overrides the view but not the remembered tab.
   useEffect(() => {
@@ -280,6 +313,7 @@ export function useTestBench({
     advanced,
     codedStatCount,
     codeCheckStatus,
+    fixingRuleId,
     onOpenItem: openFindingItem,
     onDismissRule: bench.dismissRule,
     onRestoreRule: bench.restoreRule,
