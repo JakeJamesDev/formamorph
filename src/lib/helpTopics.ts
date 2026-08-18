@@ -233,18 +233,42 @@ A trait is a durable fact about the character. Stats move constantly and the sto
 
 **Enabled by Default** pre-checks the trait on the selection screen. The player can still untick it.
 
-**Stat Changes** adjust a stat when the trait is taken. Each row is a stat, a number, and what to change. **They're all adjustments, not settings** — \`+20\` on a stat that starts at 50 gives you 70, not 20.
-
-- **Starting Value** shifts where the stat begins.
-- **Min** raises the stat's floor, pulling the value up with it if it's below. It can also be lowered, but only far enough to undo another trait's raise — never below the floor you gave the stat.
-- **Max** moves the ceiling either way. Lowering it below the current value drags the value down too.
-- **Regen** adds to what the stat recovers each turn. Negative bleeds.
+**Stat Changes** adjust a stat when the trait is taken — the section's own **?** explains each property and how the numbers stack.
 
 **Groups** organize the list, and they also speak to the AI: give a group an AI-Facing Description and it becomes a header above its chosen traits, letting you frame a whole set at once (*"Origin: where this life began"*). A group with nothing chosen inside it is skipped entirely.
 
 **Simple mode hides** Stat Availability and Placeholder Pins, and adds traits without groups. Switch the editor to Advanced to use them.
 
 Write the AI-Facing Description as a fact about the character the narrator can act on, not a stat note. *"Flinches at open water"* beats *"-20 swimming"*.`,
+  },
+  'worldEditor.statChanges': {
+    title: 'Stat Changes',
+    body: `Adjusts a stat when this trait is taken. Each row is a stat, a number, and which of the stat's properties to change.
+
+**They're all adjustments, not settings** — \`+20\` on a stat that starts at 50 gives you 70, not 20.
+
+- **Starting Value** shifts where the stat begins.
+- **Min** raises the stat's floor, pulling the value up with it if it's below. Negative changes can only take back what other traits added — the stat's own Min is the true bottom.
+- **Max** moves the ceiling either way. Lowering it below the current value drags the value down too.
+- **Regen** adds to what the stat recovers each turn. Negative bleeds.
+
+**Stat Changes are invisible to the AI.** It's told you're *Sickly*; it's never told that cost you 20 Vigor — the number does its work through the stat itself.`,
+  },
+  'worldEditor.statAvailability': {
+    title: 'Stat Availability',
+    body: `Switches a stat on or off while this trait is active, overriding the stat's own default. Each row names a stat and whether taking the trait enables or disables it.
+
+A stat that is off is gone, not just hidden: the player doesn't see it, the AI isn't told about it, and its regen and stat code pause until something turns it back on. The stat's own Enabled checkbox sets the default; a trait's switch overrides it only while the trait is active.
+
+When two active traits switch the same stat, the one lower in the trait list wins — the row says so whenever that applies.`,
+  },
+  'worldEditor.placeholderPins': {
+    title: 'Placeholder Pins',
+    body: `Holds a placeholder at a fixed value while this trait is active — a *Redhead* trait pinning Hair Color to *copper*. The playthrough's own roll is kept underneath and returns if the trait is switched off.
+
+The pinned value doesn't have to come from the placeholder's own list: the box suggests the authored values, but anything you type is used as written, so a trait can force a value nobody else rolls.
+
+When two active traits pin the same placeholder, the one lower in the trait list wins — the row says so whenever that applies.`,
   },
   'worldEditor.placeholders': {
     title: 'Placeholders',
