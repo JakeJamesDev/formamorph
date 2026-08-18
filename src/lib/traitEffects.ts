@@ -126,8 +126,8 @@ export function collapseExclusiveDefaults(ids: string[], traits: Trait[], groups
 
 /** Another trait claiming the same target, and which of the two the precedence rule picks. */
 export interface TraitConflict {
-  /** Names of the other traits targeting this, in authored order. */
-  others: string[];
+  /** The other traits targeting this, in authored order — id so the note can navigate to one. */
+  others: Array<{ id: string; name: string }>;
   /** Whether the trait being edited is the one that wins. */
   winsHere: boolean;
 }
@@ -157,7 +157,7 @@ export function traitConflicts(
       const others = inAuthoredOrder(rivals.filter((t) => claims(t).includes(id)), order);
       if (!others.length) continue;
       out[id] = {
-        others: others.map((t) => t.name),
+        others: others.map((t) => ({ id: t.id, name: t.name })),
         winsHere: others.every((t) => rank(t) < rank(trait)),
       };
     }
