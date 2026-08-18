@@ -97,15 +97,21 @@ const editorTheme = EditorView.theme({
   '.cm-placeholder': { color: 'hsl(var(--muted-foreground))' },
   // The popup and the squiggles hand out no colors of their own: both ride the app's tokens, so light
   // and dark come from the same place every other surface reads.
+  // No `overflow: hidden` on the tooltip itself: the completion info pane is an absolutely-positioned
+  // CHILD of it hanging at `left: 100%`, so clipping the tooltip erases the pane. The list clips instead.
   '.cm-tooltip.cm-tooltip-autocomplete': {
     border: '1px solid hsl(var(--border))',
     borderRadius: '0.375rem',
     backgroundColor: 'hsl(var(--popover))',
     color: 'hsl(var(--popover-foreground))',
     boxShadow: '0 4px 12px hsl(var(--foreground) / 0.12)',
-    overflow: 'hidden',
   },
-  '.cm-tooltip.cm-tooltip-autocomplete > ul': { fontFamily: 'inherit', maxHeight: '14rem' },
+  '.cm-tooltip.cm-tooltip-autocomplete > ul': {
+    fontFamily: 'inherit',
+    maxHeight: '14rem',
+    borderRadius: 'calc(0.375rem - 1px)',
+    overflow: 'hidden auto',
+  },
   '.cm-tooltip.cm-tooltip-autocomplete > ul > li': { padding: '0.2rem 0.5rem', lineHeight: '1.5' },
   '.cm-tooltip.cm-tooltip-autocomplete > ul > li[aria-selected]': {
     backgroundColor: 'hsl(var(--accent))',
