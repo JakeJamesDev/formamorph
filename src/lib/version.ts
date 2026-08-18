@@ -192,6 +192,30 @@ function migrateLocationConnections(world: Record<string, unknown>): void {
   world.connections = [...existing, ...records];
 }
 
+/**
+ * Move the pre-rebuild `isStartLocation` flag onto the live `isStarting` field. The rebuild implemented the
+ * feature under a new name without knowing the old one, so worlds authored in 1.x reach us with their start
+ * intent in a field nothing reads — a new game then picks any location at random. Every truthy leftover
+ * becomes a start candidate (the feature has always allowed several), and the field is dropped either way.
+ *
+ * A location already flagged `isStarting` means the world has been touched since the rename, so its author's
+ * choice stands and the leftovers are only deleted — promoting them would re-add candidates that author
+ * didn't pick. Idempotent: nothing carries the field after a run. Deliberately NOT version-gated, for the
+ * same reason as `foldDictionaryIntoBooks`: shipped 2.x worlds carry `version === APP_VERSION` yet can still
+ * hold the flag, since nothing stripped it before now.
+ */
+function migrateStartLocationFlag(world: Record<string, unknown>): void {
+  if (!Array.isArray(world.locations)) return;
+  const locations = world.locations as Array<Record<string, unknown>>;
+  if (!locations.some((l) => l && typeof l === 'object' && 'isStartLocation' in l)) return;
+  const hasLiveStart = locations.some((l) => l && typeof l === 'object' && l.isStarting);
+  world.locations = locations.map((raw) => {
+    if (!raw || typeof raw !== 'object' || !('isStartLocation' in raw)) return raw;
+    const { isStartLocation: legacy, ...rest } = raw;
+    return legacy && !hasLiveStart ? { ...rest, isStarting: true } : rest;
+  });
+}
+
 /** Split a legacy comma-joined keyword string into the array shape. */
 function splitLegacyKeys(raw: unknown): string[] {
   if (Array.isArray(raw)) return raw.map((k) => String(k)).filter(Boolean);
@@ -244,8 +268,8 @@ function coerceLegacyListStats(stats: readonly Stat[]): Stat[] {
 
 /**
  * Bring an imported world up to the current format and stamp it with `APP_VERSION`. The dictionary→books
- * fold, the keyword-array migration, the entity-gallery fold, the entity-location flip and the
- * connection-record pair-merge run unconditionally (they aren't
+ * fold, the keyword-array migration, the entity-gallery fold, the entity-location flip, the
+ * connection-record pair-merge and the start-flag rename run unconditionally (they aren't
  * version-gated — see `foldDictionaryIntoBooks`); the rest is skipped for a world already at `APP_VERSION`. Moves the legacy root `customPlayerVRM` bare data-URL into
  * `worldOverview.customPlayerVRM` as a `MediaAsset`, auto-binds legacy body stats to body morphs, and
  * renames v1.2 description keys on entities/locations/traits to the audience-based keys. Remaining field
@@ -260,6 +284,7 @@ export function migrateWorld(raw: unknown): World {
   migrateEntityGalleries(world);
   flipEntityLocationMembership(world);
   migrateLocationConnections(world);
+  migrateStartLocationFlag(world);
   if (world.version === APP_VERSION) return world as unknown as World;
 
   const overview = { ...((world.worldOverview as Record<string, unknown>) ?? {}) };
