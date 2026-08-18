@@ -7,7 +7,7 @@
  * that world held, and the caller decides whether that result is still current.
  */
 import { entityImages } from '@/lib/entityImages';
-import { dataUrlMime, isConvertibleImage, reencodeKeepsAnimation } from '@/lib/imageBytes';
+import { dataUrlMime, isConvertibleImage, reencodeKeepsAnimation, relabelDataUrl } from '@/lib/imageBytes';
 import { describeKeptImages, reencodeImageDataUrl } from '@/lib/imageOptim';
 import type { RuleWorld } from './rules';
 
@@ -21,6 +21,8 @@ export interface WebpFixRun {
   /** GIFs left untouched because this browser has no frame decoder, so converting would flatten them. Its
    *  own tally rather than part of `kept`: the reason differs, and so does what the author can do about it. */
   skippedAnimated: number;
+  /** Images whose format label disagreed with their bytes and was corrected to what the bytes say. */
+  relabeled: number;
 }
 
 /**
@@ -32,22 +34,27 @@ export async function convertWorldImagesToWebp(world: RuleWorld): Promise<WebpFi
   let converted = 0;
   let kept = 0;
   let skippedAnimated = 0;
+  let relabeled = 0;
 
   const convert = async (url: string): Promise<string> => {
-    if (!isConvertibleImage(url)) return url;
+    // The label is corrected before anything else, so a world that lied about a format stops lying even
+    // when there is nothing more to do — a JPEG marked image/png otherwise keeps its row alive forever.
+    const honest = relabelDataUrl(url);
+    if (honest !== url) relabeled += 1;
+    if (!isConvertibleImage(honest)) return honest;
     // Every flagged image the run leaves behind is counted, whichever reason left it: the row it belongs to
     // will still be there afterwards, and an author told nothing reads that as a Fix button that is broken.
-    if (!reencodeKeepsAnimation(url)) {
+    if (!reencodeKeepsAnimation(honest)) {
       skippedAnimated += 1;
-      return url;
+      return honest;
     }
-    const out = await reencodeImageDataUrl(url);
-    if (out !== url && dataUrlMime(out) === 'image/webp') {
+    const out = await reencodeImageDataUrl(honest);
+    if (out !== honest && dataUrlMime(out) === 'image/webp') {
       converted += 1;
       return out;
     }
     kept += 1;
-    return url;
+    return honest;
   };
 
   const thumbnail = world.worldOverview?.thumbnail;
@@ -83,7 +90,7 @@ export async function convertWorldImagesToWebp(world: RuleWorld): Promise<WebpFi
   // Nothing converted means nothing to write back: handing the same world reference back is what lets the
   // caller skip the write entirely, so a run that changed nothing never marks the world dirty.
   if (!thumbnailChanged && !entitiesChanged && !locationsChanged) {
-    return { world, converted, kept, skippedAnimated };
+    return { world, converted, kept, skippedAnimated, relabeled };
   }
 
   return {
@@ -96,6 +103,7 @@ export async function convertWorldImagesToWebp(world: RuleWorld): Promise<WebpFi
     converted,
     kept,
     skippedAnimated,
+    relabeled,
   };
 }
 
@@ -108,10 +116,21 @@ const describeSkippedAnimated = (skipped: number): string => {
     : `Left ${skipped} GIFs alone — converting them in this browser would flatten their animation.`;
 };
 
+/** Labels corrected to what the bytes say — its own line because the image is deliberately still not WebP,
+ *  and a row that just vanished with no conversion deserves its explanation. */
+const describeRelabeled = (relabeled: number): string => {
+  if (relabeled <= 0) return '';
+  return relabeled === 1
+    ? 'Corrected 1 image whose format label didn’t match its bytes.'
+    : `Corrected ${relabeled} images whose format labels didn’t match their bytes.`;
+};
+
 /** What to tell the author a run did. Empty when it converted everything it looked at — the row clearing
- *  already says so — and otherwise one line per reason anything is still there. */
-export function describeWebpFixRun({ converted, kept, skippedAnimated }: WebpFixRun): string {
-  const reasons = [describeKeptImages(kept), describeSkippedAnimated(skippedAnimated)].filter(Boolean);
+ *  already says so — and otherwise one line per reason anything is still there or changed another way. */
+export function describeWebpFixRun({ converted, kept, skippedAnimated, relabeled }: WebpFixRun): string {
+  const reasons = [
+    describeKeptImages(kept), describeSkippedAnimated(skippedAnimated), describeRelabeled(relabeled),
+  ].filter(Boolean);
   if (reasons.length === 0) return '';
   const done = converted === 1 ? 'Converted 1 image to WebP.' : `Converted ${converted} images to WebP.`;
   return [...(converted > 0 ? [done] : []), ...reasons].join(' ');

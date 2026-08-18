@@ -18,7 +18,7 @@ import {
 import { usesStatClock } from '@/lib/statCodeExecutor';
 import { estimateTokens } from '@/lib/memoryUtils';
 import { entityImages } from '@/lib/entityImages';
-import { dataUrlBytes, dataUrlMime, imageFormatLabel, isConvertibleImage, isRemoteImage } from '@/lib/imageBytes';
+import { dataUrlBytes, dataUrlRealMime, imageFormatLabel, isConvertibleImage, isRemoteImage } from '@/lib/imageBytes';
 import { formatBytes, IMAGE_CAPS, type ImageCap } from '@/lib/imageOptim';
 import { clamp } from '@/lib/utils';
 import type {
@@ -1472,7 +1472,7 @@ const imageNotWebp: Rule = {
     .filter(({ url }) => isConvertibleImage(url))
     .map(({ item, url }) => finding(
       imageNotWebp,
-      `${quote(item.name)}’s image is ${imageFormatLabel(dataUrlMime(url))}`
+      `${quote(item.name)}’s image is ${imageFormatLabel(dataUrlRealMime(url))}`
       + ' — converting it to lossless WebP would shrink it with no quality loss',
       [item],
     )),

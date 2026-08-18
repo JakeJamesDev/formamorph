@@ -1,5 +1,5 @@
 import type { Entity, World } from '@/types';
-import { dataUrlMime, fitWithin, isConvertibleImage, isRemoteImage, reencodeKeepsAnimation } from './imageBytes';
+import { dataUrlRealMime, fitWithin, isConvertibleImage, isRemoteImage, reencodeKeepsAnimation } from './imageBytes';
 import { encodeInWorker, measureInWorker } from './imageOptimWorkerClient';
 import { entityImages } from './entityImages';
 
@@ -43,7 +43,7 @@ async function scanItem(url: string, cap: ImageCap, path: string): Promise<Scann
   try {
     const { w, h, bytes } = await measureDataUrl(url);
     const oversized = Math.max(w, h) > cap.maxDim || bytes > cap.maxBytes;
-    if (oversized || convertible) return { path, cap, w, h, bytes, mime: dataUrlMime(url), oversized, convertible };
+    if (oversized || convertible) return { path, cap, w, h, bytes, mime: dataUrlRealMime(url), oversized, convertible };
   } catch {
     /* unreadable → treat as within budget */
   }
