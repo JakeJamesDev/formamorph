@@ -52,6 +52,7 @@ import { logKind } from '@/lib/playLog';
 import { cn } from "@/lib/utils";
 import { useResolvedWorld } from '@/lib/useResolvedWorld';
 import { effectiveDestinations } from '@/lib/locationGraph';
+import { TraitsTab } from './TraitsTab';
 
 /** A committed turn's saved reasoning (from its assistant-message JSON), or null. */
 function parseSavedReasoning(content: string): { text: string; ms: number } | null {
@@ -1335,36 +1336,17 @@ export const RightPanel = ({ onLocationClick, onToggleTrait, language, setLangua
           </ScrollArea>
         </TabsContent>
         <TabsContent value="traits" className="flex-grow overflow-hidden">
-          <ScrollArea className="h-[calc(100%-1rem)]">
-            {listedTraits.length > 0 ? (
-              listedTraits.map((trait) => {
-                // Unticked whether it was switched off or never taken — the panel draws no line between the
-                // two, because a trait that can be taken at will makes "owned" a distinction without a
-                // difference. Both read dimmed and both switch on the same way.
-                const off = disabledTraits.has(trait.id) || !heldTraitIds.has(trait.id);
-                // Only traits the author marked switchable get a control; the rest read as before.
-                const switchable = !!trait.playerToggle && !isViewingPast;
-                return (
-                  <div key={trait.id} className={`mb-1 flex items-start gap-2 ${off ? 'opacity-50' : ''}`}>
-                    {trait.playerToggle && (
-                      <Checkbox
-                        className="mt-1"
-                        checked={!off}
-                        disabled={!switchable}
-                        aria-label={`${off ? 'Switch on' : 'Switch off'} ${trait.name}`}
-                        onCheckedChange={(c) => onToggleTrait(trait.id, c === true)}
-                      />
-                    )}
-                    {/* A trait's own text self-pins (name already did, via the resolved collection), so a
-                        pinning trait's row reads its own value whatever else is switched on. */}
-                    <span>{trait.name}{trait.playerDescription ? `: ${resolveTraitText(trait, trait.playerDescription)}` : ''}</span>
-                  </div>
-                );
-              })
-            ) : (
-              <p>No traits acquired.</p>
-            )}
-          </ScrollArea>
+          {/* Unticked whether it was switched off or never taken — the panel draws no line between the two,
+              because a trait that can be taken at will makes "owned" a distinction without a difference. */}
+          <TraitsTab
+            traits={listedTraits}
+            groups={traitGroups}
+            stats={playerStats}
+            isOff={(id) => disabledTraits.has(id) || !heldTraitIds.has(id)}
+            readOnly={isViewingPast}
+            onToggleTrait={onToggleTrait}
+            resolveTraitText={resolveTraitText}
+          />
         </TabsContent>
         <TabsContent value="location" className="flex-grow overflow-hidden">
           <ScrollArea className="h-[calc(100%-1rem)]">

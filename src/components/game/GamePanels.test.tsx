@@ -364,7 +364,8 @@ describe('RightPanel — the traits tab against an edited world', () => {
     // The other half: the control has to follow the world, not appear for every trait.
     renderTraits(false);
     expect(screen.queryByRole('checkbox')).toBeNull();
-    expect(screen.getByText(/Brave/)).toBeInTheDocument();
+    // Scoped to the list itself, since the active-traits summary line names it too.
+    expect(within(screen.getByRole('group', { name: 'Traits' })).getByText(/Brave/)).toBeInTheDocument();
   });
 });
 
@@ -374,6 +375,7 @@ describe('RightPanel — acquirable traits in the traits tab', () => {
   const AUTHORED = [
     { id: 't-first', name: 'Feral', statChanges: [], playerToggle: true },
     { id: 't-fixed', name: 'Cursed', statChanges: [] },
+    { id: 't-mid', name: 'Wary', statChanges: [], playerToggle: true },
     { id: 't-last', name: 'Brave', statChanges: [], playerToggle: true },
   ];
 
@@ -395,14 +397,20 @@ describe('RightPanel — acquirable traits in the traits tab', () => {
 
   const listedNames = () =>
     screen.getAllByRole('checkbox').map((box) => box.getAttribute('aria-label') ?? '');
+  /** The panel folds every switched-off trait — acquirables included — behind one collapsed block. */
+  const openDisabled = () => fireEvent.click(screen.getByRole('button', { name: /^Disabled/ }));
 
-  it('lists a trait the player never chose beside the one they hold, in authored order', () => {
+  it('lists the traits the player never chose under the one they hold, in authored order', () => {
     renderPanel();
-    expect(listedNames()).toEqual(['Switch on Feral', 'Switch off Brave']);
+    expect(listedNames()).toEqual(['Switch off Brave']);
+
+    openDisabled();
+    expect(listedNames()).toEqual(['Switch off Brave', 'Switch on Feral', 'Switch on Wary']);
   });
 
   it('switches on a trait the player does not hold', () => {
     const view = renderPanel();
+    openDisabled();
     fireEvent.click(screen.getByRole('checkbox', { name: 'Switch on Feral' }));
     expect(view.props.onToggleTrait).toHaveBeenCalledWith('t-first', true);
   });
@@ -596,7 +604,7 @@ describe('placeholder names reach the panels resolved', () => {
       },
     });
 
-    expect(screen.getByText(/Sedge Native/)).toBeInTheDocument();
+    expect(within(screen.getByRole('group', { name: 'Traits' })).getByText(/Sedge Native/)).toBeInTheDocument();
     expect(container.textContent).not.toContain('{{ph:');
   });
 
@@ -652,9 +660,10 @@ describe('placeholder names reach the panels resolved', () => {
     expect(screen.getByText('Marrow Standing')).toBeInTheDocument();
     // …but on the Traits tab each card still names its own pin, name and description alike.
     act(() => { view.gameplay().setActiveTab('traits'); });
-    expect(screen.getByText(/Native of Sedge/)).toBeInTheDocument();
-    expect(screen.getByText(/Home is Sedge\./)).toBeInTheDocument();
-    expect(screen.getByText(/Sworn to Marrow/)).toBeInTheDocument();
+    const list = within(screen.getByRole('group', { name: 'Traits' }));
+    expect(list.getByText(/Native of Sedge/)).toBeInTheDocument();
+    expect(list.getByText(/Home is Sedge\./)).toBeInTheDocument();
+    expect(list.getByText(/Sworn to Marrow/)).toBeInTheDocument();
 
     // Switching both pinning traits off mid-game releases their pins: the stat bar falls back to the
     // frozen roll (Sedge here — sourced from the roll, since no pin is left active).
