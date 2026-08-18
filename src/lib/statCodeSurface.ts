@@ -70,6 +70,89 @@ export const SANDBOX_BUILTINS: readonly SurfaceEntry[] = [
   { name: 'undefined', detail: 'undefined', info: 'The absent value.' },
 ];
 
+/** The members offered after `stats.` — what the one array in the sandbox is actually used for, rather
+ *  than everything `Array.prototype` defines. */
+export const STATS_MEMBERS: readonly SurfaceEntry[] = [
+  { name: 'find', detail: '(fn) => Stat', info: 'The first stat the test returns true for, or undefined.' },
+  { name: 'filter', detail: '(fn) => Stat[]', info: 'Every stat the test returns true for, as a new array.' },
+  { name: 'map', detail: '(fn) => any[]', info: 'One result per stat, in order.' },
+  { name: 'some', detail: '(fn) => boolean', info: 'Whether any stat passes the test.' },
+  { name: 'every', detail: '(fn) => boolean', info: 'Whether every stat passes the test.' },
+  { name: 'reduce', detail: '(fn, start) => any', info: 'Fold the stats down to a single value.' },
+  { name: 'at', detail: '(index) => Stat', info: 'The stat at an index. Negative counts from the end.' },
+  { name: 'length', detail: 'number', info: 'How many stats the world has.' },
+];
+
+/**
+ * The static members worth offering after each object-shaped built-in. Everything listed is something
+ * QuickJS provides; the lists are trimmed to what stat code plausibly reaches for, so the popup teaches
+ * the sandbox rather than reciting a JavaScript reference.
+ *
+ * A built-in present here with an empty list offers nothing — which is still the point, because it stops
+ * the caret falling through to a list of stat fields that were never there.
+ *
+ * A Map rather than an object so a lookup keyed on whatever the author typed can't reach a prototype
+ * member. Its keys are the object-shaped half of `SANDBOX_BUILTINS`, and the guard beside this file holds
+ * the two together.
+ */
+export const BUILTIN_MEMBERS: ReadonlyMap<string, readonly SurfaceEntry[]> = new Map(Object.entries({
+  Math: [
+    { name: 'min', detail: '(...n) => number', info: 'The smallest of its arguments.' },
+    { name: 'max', detail: '(...n) => number', info: 'The largest of its arguments.' },
+    { name: 'round', detail: '(n) => number', info: 'Nearest whole number; halves round up.' },
+    { name: 'floor', detail: '(n) => number', info: 'Round down to a whole number.' },
+    { name: 'ceil', detail: '(n) => number', info: 'Round up to a whole number.' },
+    { name: 'trunc', detail: '(n) => number', info: 'Drop the fractional part, toward zero.' },
+    { name: 'abs', detail: '(n) => number', info: 'Distance from zero, so never negative.' },
+    { name: 'sign', detail: '(n) => number', info: '-1, 0 or 1, depending on the sign.' },
+    { name: 'pow', detail: '(n, exp) => number', info: 'The first argument raised to the second.' },
+    { name: 'sqrt', detail: '(n) => number', info: 'Square root.' },
+    { name: 'hypot', detail: '(...n) => number', info: 'Square root of the sum of the squares.' },
+    { name: 'log', detail: '(n) => number', info: 'Natural logarithm.' },
+    { name: 'exp', detail: '(n) => number', info: 'E raised to the given power.' },
+    { name: 'random', detail: '() => number', info: 'A number from 0 up to but not including 1. Reseeded each run.' },
+    { name: 'PI', detail: 'number', info: 'The ratio of a circle’s circumference to its diameter.' },
+    { name: 'E', detail: 'number', info: 'The base of the natural logarithm.' },
+  ],
+  JSON: [
+    { name: 'parse', detail: '(text) => any', info: 'Read a value back out of JSON text.' },
+    { name: 'stringify', detail: '(value) => string', info: 'Write a value as JSON text.' },
+  ],
+  Object: [
+    { name: 'keys', detail: '(obj) => string[]', info: 'The object’s own property names.' },
+    { name: 'values', detail: '(obj) => any[]', info: 'The object’s own property values.' },
+    { name: 'entries', detail: '(obj) => any[][]', info: 'One [name, value] pair per own property.' },
+    { name: 'assign', detail: '(target, ...src) => obj', info: 'Copy properties onto the first object.' },
+    { name: 'fromEntries', detail: '(pairs) => obj', info: 'Build an object from [name, value] pairs.' },
+    { name: 'freeze', detail: '(obj) => obj', info: 'Make an object read-only.' },
+  ],
+  Number: [
+    { name: 'isFinite', detail: '(n) => boolean', info: 'Whether the value is a number and not infinite.' },
+    { name: 'isInteger', detail: '(n) => boolean', info: 'Whether the value is a whole number.' },
+    { name: 'isNaN', detail: '(n) => boolean', info: 'Whether the value is the not-a-number value.' },
+    { name: 'parseFloat', detail: '(text) => number', info: 'Read a decimal number out of a string.' },
+    { name: 'parseInt', detail: '(text) => number', info: 'Read a whole number out of a string.' },
+    { name: 'EPSILON', detail: 'number', info: 'The smallest gap between two representable numbers near 1.' },
+    { name: 'MAX_SAFE_INTEGER', detail: 'number', info: 'The largest whole number that stays exact.' },
+    { name: 'MIN_SAFE_INTEGER', detail: 'number', info: 'The smallest whole number that stays exact.' },
+  ],
+  Array: [
+    { name: 'isArray', detail: '(value) => boolean', info: 'Whether the value is an array.' },
+    { name: 'from', detail: '(value, fn?) => any[]', info: 'Build an array from anything list-shaped.' },
+    { name: 'of', detail: '(...items) => any[]', info: 'An array of the arguments given.' },
+  ],
+  String: [
+    { name: 'fromCharCode', detail: '(...codes) => string', info: 'Build a string from character codes.' },
+    { name: 'raw', detail: '(strings, ...v) => string', info: 'A template literal with its escapes left alone.' },
+  ],
+  Boolean: [],
+  Date: [
+    { name: 'now', detail: '() => number', info: 'Real-world milliseconds since 1970. The story clock is elapsedHours.' },
+    { name: 'parse', detail: '(text) => number', info: 'Read a date string as milliseconds.' },
+    { name: 'UTC', detail: '(y, m, ...) => number', info: 'Milliseconds for a date given in UTC parts.' },
+  ],
+}));
+
 /** Names a reference may use without being a typo, beyond the sandbox's own. Language-level things the
  *  grammar reports as variables, plus the errors QuickJS defines. */
 export const LANGUAGE_NAMES: readonly string[] = [

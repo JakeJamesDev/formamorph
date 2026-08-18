@@ -19,11 +19,12 @@ import {
   undo, undoDepth,
 } from '@codemirror/commands';
 import {
-  bracketMatching, indentOnInput, syntaxHighlighting, indentUnit,
+  bracketMatching, getIndentUnit, getIndentation, indentOnInput, indentString, syntaxHighlighting,
+  indentUnit,
 } from '@codemirror/language';
 import { javascript } from '@codemirror/lang-javascript';
 import {
-  autocompletion,
+  acceptCompletion, autocompletion,
   type CompletionContext, type CompletionResult as CMCompletionResult,
 } from '@codemirror/autocomplete';
 import { linter, lintGutter, type Diagnostic } from '@codemirror/lint';
@@ -155,10 +156,51 @@ function getTooltipHost(): HTMLElement | undefined {
   if (!tooltipHost) {
     tooltipHost = document.createElement('div');
     tooltipHost.style.pointerEvents = 'auto';
-    tooltipHost.addEventListener('pointerdown', (event) => event.stopPropagation());
+    // Wheel and touch for the same reason as the pointer: a dialog's scroll lock listens on the document
+    // and preventDefaults any scroll whose target sits outside the dialog, which is every option in a
+    // body-parented list. Stopping the event here means it never reaches that listener.
+    for (const type of ['pointerdown', 'wheel', 'touchmove']) {
+      tooltipHost.addEventListener(type, (event) => event.stopPropagation());
+    }
     document.body.appendChild(tooltipHost);
   }
   return tooltipHost;
+}
+
+/**
+ * What Tab does to the document, following VS Code's own rule rather than always shifting the line:
+ * a blank line takes the indent its syntax asks for, a caret takes one indent unit where it stands,
+ * a selection inside one line is typed over, and only whole or multiple lines move as a block.
+ */
+function tabIndent(view: EditorView): boolean {
+  const { state } = view;
+  const range = state.selection.main;
+  const first = state.doc.lineAt(range.from);
+  const last = state.doc.lineAt(range.to);
+  const wholeLine = range.from === first.from && range.to === first.to;
+  if (first.number !== last.number || (!range.empty && wholeLine)) return indentMore(view);
+
+  if (range.empty && !/\S/.test(first.text)) {
+    const wanted = getIndentation(state, first.from);
+    const good = wanted == null ? '' : indentString(state, wanted);
+    // Already at or past the depth the syntax asks for, so Tab goes on adding units from here.
+    if (good && !first.text.startsWith(good)) {
+      view.dispatch(state.update({
+        changes: { from: first.from, to: first.to, insert: good },
+        selection: { anchor: first.from + good.length },
+        userEvent: 'input.indent',
+        scrollIntoView: true,
+      }));
+      return true;
+    }
+  }
+
+  const unit = indentString(state, getIndentUnit(state));
+  view.dispatch(state.update(state.replaceSelection(unit), {
+    userEvent: 'input.indent',
+    scrollIntoView: true,
+  }));
+  return true;
 }
 
 export interface CodeSession {
@@ -220,16 +262,20 @@ export function createCodeSession(options: CodeSessionOptions): CodeSession {
    *  trapped in the field. Spent by that Tab, and dropped by anything else typed in between. */
   let tabEscapes = false;
 
-  /** Tab indents, except immediately after Escape, where declining it hands the key back to the browser and
-   *  focus leaves the field. This is the only Tab binding, so nothing downstream can indent behind it. */
+  /** Tab takes the highlighted completion, then indents, except immediately after Escape, where declining
+   *  it hands the key back to the browser and focus leaves the field. These are the only Tab bindings, so
+   *  nothing downstream can indent behind them. */
   const tabKeys: Extension = keymap.of([
     // Returning false lets Escape through to whatever is listening — the full-screen overlay closes on it.
     // An open completion popup takes the key before this binding is reached, so the Escape that dismisses
     // a list neither arms the tab escape nor shuts the window behind it.
     { key: 'Escape', run: () => { tabEscapes = true; return false; } },
+    // Handlers for one key run in the order written, first true wins. `acceptCompletion` returns false
+    // with no popup open, so Tab falls through to indenting on its own — no flag tracks the popup.
+    { key: 'Tab', run: acceptCompletion },
     {
       key: 'Tab',
-      run: (target) => { if (!tabEscapes) return indentMore(target); tabEscapes = false; return false; },
+      run: (target) => { if (!tabEscapes) return tabIndent(target); tabEscapes = false; return false; },
       shift: (target) => { if (!tabEscapes) return indentLess(target); tabEscapes = false; return false; },
     },
   ]);

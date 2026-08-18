@@ -10,8 +10,8 @@ import { javascriptLanguage } from '@codemirror/lang-javascript';
 import type { Tree } from '@lezer/common';
 import { findSlotRanges, parseTemplateSlots } from '@/lib/statCodeTemplates';
 import {
-  SANDBOX_BUILTINS, SANDBOX_GLOBALS, SANDBOX_KNOWN_NAMES, STAT_FIELDS, nearestSurfaceName,
-  type SurfaceEntry,
+  BUILTIN_MEMBERS, SANDBOX_BUILTINS, SANDBOX_GLOBALS, SANDBOX_KNOWN_NAMES, STATS_MEMBERS, STAT_FIELDS,
+  nearestSurfaceName, type SurfaceEntry,
 } from '@/lib/statCodeSurface';
 
 export type DiagnosticSeverity = 'error' | 'warning';
@@ -107,15 +107,59 @@ function statLikeNames(code: string, tree: Tree): Set<string> {
   return names;
 }
 
-/** Whether the expression before a `.` is recognizably a stat, so its fields lead the list. */
-function objectLooksLikeStat(code: string, tree: Tree, dotPos: number): boolean {
-  const node = tree.resolveInner(dotPos, -1);
-  const member = node.name === 'MemberExpression' ? node : node.parent;
-  const object = member?.firstChild;
-  if (!object) return false;
-  const text = code.slice(object.from, object.to);
-  if (/^stats\b/.test(text)) return /\.(find|at|filter|pop|shift)\b|\[/.test(text);
-  return statLikeNames(code, tree).has(text.replace(/[?!]+$/, ''));
+/**
+ * The source of the expression a `.` hangs off, scanned backwards over the member chain. Read from the
+ * text rather than the tree because the tree can't shape the case that matters most: half-typed code like
+ * `stats.find(s => …).` parses as an unclosed argument list, whose "object" is the open paren.
+ */
+function expressionBeforeDot(code: string, dotPos: number): string | null {
+  let end = dotPos;
+  while (end > 0 && /\s/.test(code[end - 1])) end -= 1;
+  let start = end;
+  while (start > 0) {
+    const char = code[start - 1];
+    if (char === ')' || char === ']') {
+      const open = char === ')' ? '(' : '[';
+      let depth = 0;
+      let index = start - 1;
+      for (; index >= 0; index -= 1) {
+        if (code[index] === char) depth += 1;
+        else if (code[index] === open && (depth -= 1) === 0) break;
+      }
+      // Nothing opened it, so the caret is somewhere the chain can't be read.
+      if (index < 0) return null;
+      start = index;
+      // `?` rides along for optional chaining; anything else in front of a name — `!`, `(`, an operator —
+      // ends the chain, so `if (!me.` still names `me`.
+    } else if (isWordChar(char) || char === '.' || char === '?') {
+      start -= 1;
+    } else break;
+  }
+  // A trailing `?` belongs to the optional-chaining dot, not to the expression being named.
+  const text = code.slice(start, end).trim().replace(/\?+$/, '');
+  return text.length > 0 ? text : null;
+}
+
+/** Whether the expression before a `.` is recognizably a stat, so its fields are the honest list. The
+ *  calls named are the ones that hand back a single stat; `filter` hands back another array, so a chain
+ *  ending in it is one of the shapes that stays quiet. */
+function looksLikeStat(code: string, tree: Tree, expression: string): boolean {
+  if (/^stats\b/.test(expression)) return /\.(find|at|pop|shift)\b|\[/.test(expression);
+  return statLikeNames(code, tree).has(expression);
+}
+
+/**
+ * What the expression before a dot can be shown to carry, or null where nothing can be. The order is the
+ * order of certainty: a named built-in, then the one array the sandbox injects, then anything that reads
+ * as a stat — and silence for everything else, because a wrong list reads as the editor asserting the
+ * sandbox holds something it never has.
+ */
+function membersAfterDot(code: string, tree: Tree, dotPos: number): readonly SurfaceEntry[] | null {
+  const expression = expressionBeforeDot(code, dotPos);
+  if (expression === null) return null;
+  if (expression === 'stats') return STATS_MEMBERS;
+  return BUILTIN_MEMBERS.get(expression)
+    ?? (looksLikeStat(code, tree, expression) ? STAT_FIELDS : null);
 }
 
 const asCompletion = (entry: SurfaceEntry, type: CompletionKind, boost?: number): CodeCompletion => ({
@@ -177,10 +221,12 @@ export function statCodeCompletions(
   // A completion inside a slot would be filling in template syntax with sandbox names.
   if (overlapsAny(from, pos, ranges)) return null;
 
+  // After a dot the list is only ever as good as what the expression can be shown to be. A wrong guess
+  // here is worse than silence: it reads as the editor asserting the sandbox has something it doesn't.
   if (/\.\s*$/.test(beforeWord)) {
-    const dotPos = beforeWord.replace(/\s+$/, '').length - 1;
-    const boost = objectLooksLikeStat(code, tree, dotPos) ? 1 : -1;
-    return { from, to: pos, options: STAT_FIELDS.map((field) => asCompletion(field, 'property', boost)) };
+    const members = membersAfterDot(code, tree, beforeWord.replace(/\s+$/, '').length - 1);
+    if (!members) return null;
+    return { from, to: pos, options: members.map((member) => asCompletion(member, 'property')) };
   }
 
   const declared = declaredNames(code, tree);

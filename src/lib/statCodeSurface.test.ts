@@ -1,7 +1,8 @@
 import { describe, it, expect } from 'vitest';
 import { executeStatCode } from './statCodeExecutor';
 import {
-  LANGUAGE_NAMES, SANDBOX_BUILTINS, SANDBOX_GLOBALS, STAT_FIELDS, nearestSurfaceName,
+  BUILTIN_MEMBERS, LANGUAGE_NAMES, SANDBOX_BUILTINS, SANDBOX_GLOBALS, STATS_MEMBERS, STAT_FIELDS,
+  nearestSurfaceName,
 } from './statCodeSurface';
 import type { Stat } from '@/types';
 
@@ -35,6 +36,26 @@ describe('the described surface against the sandbox that provides it', () => {
   it('describes every field a marshalled stat carries, and no field it does not', async () => {
     const expected = STAT_FIELDS.map(field => field.name).sort().join(',');
     await expect(run(`return Object.keys(stats[0]).sort().join(',') === ${JSON.stringify(expected)} ? 1 : 0;`))
+      .resolves.toEqual({ value: 1, error: null });
+  });
+
+  // The member tables are keyed by name, so a built-in renamed in one list and not the other would offer
+  // its members after a name the linter flags as unknown.
+  it('keys its member tables on built-ins the surface also describes', () => {
+    const known = SANDBOX_BUILTINS.map(entry => entry.name);
+    expect([...BUILTIN_MEMBERS.keys()].filter(name => !known.includes(name))).toEqual([]);
+  });
+
+  // Offered after a dot, so a name the VM lacks is the editor promising an author `undefined`.
+  it.each([...BUILTIN_MEMBERS].flatMap(
+    ([builtin, members]) => members.map(member => [builtin, member.name] as const),
+  ))('reaches %s.%s', async (builtin, member) => {
+    await expect(run(`return typeof ${builtin}.${member} === 'undefined' ? 0 : 1;`))
+      .resolves.toEqual({ value: 1, error: null });
+  });
+
+  it.each(STATS_MEMBERS.map(member => member.name))('reaches stats.%s', async (member) => {
+    await expect(run(`return typeof stats.${member} === 'undefined' ? 0 : 1;`))
       .resolves.toEqual({ value: 1, error: null });
   });
 
