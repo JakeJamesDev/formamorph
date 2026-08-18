@@ -1209,9 +1209,11 @@ export const RightPanel = ({ onLocationClick, onToggleTrait, language, setLangua
     [playerStats, activeTraits],
   );
   // Filtered for display but carrying each stat's index in the full array, which the edit slider writes back to.
+  // Hidden stats stay live for the AI, regen and code — they just never render, which also drops their
+  // delta chip, bar band and history deltas (all keyed off the row).
   const visibleStats = playerStats
     .map((stat, index) => ({ stat, index }))
-    .filter(({ stat }) => statEnabled[stat.id] !== false);
+    .filter(({ stat }) => statEnabled[stat.id] !== false && stat.hidden !== true);
   // On a past page show the viewed turn's location (Location tab); live otherwise.
   const displayLocation = isViewingPast
     ? (locations.find((l) => l.id === viewLocationId) ?? currentLocation)

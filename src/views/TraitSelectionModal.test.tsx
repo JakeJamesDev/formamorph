@@ -3,7 +3,7 @@ import { describe, it, expect, vi } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import TraitSelectionModal from './TraitSelectionModal';
-import type { Trait, TraitGroup } from '@/types';
+import type { Stat, Trait, TraitGroup } from '@/types';
 
 // These cases cover the picker's grouping and selection wiring, not placeholders; the real resolver — and
 // the draft pins it carries — is exercised in MainMenu.
@@ -203,5 +203,39 @@ describe('TraitSelectionModal', () => {
     expect(onConfirm).toHaveBeenCalledTimes(1);
     fireEvent.click(screen.getByText('Abort'));
     expect(onAbort).toHaveBeenCalledTimes(1);
+  });
+
+  it('omits hidden stats from a card, and drops the Stat Changes block when none remain', () => {
+    const worldStats: Stat[] = [
+      { id: 'vigor', name: 'Vigor', type: 'number', description: '', min: 0, max: 100, regen: 0, descriptors: [] },
+      { id: 'luck', name: 'Luck', type: 'number', description: '', min: 0, max: 100, regen: 0, descriptors: [], hidden: true },
+    ];
+    const cardTraits: Trait[] = [
+      {
+        id: 'mixed', name: 'Fortunate', groupId: null, order: 0,
+        statChanges: [
+          { statId: 'vigor', value: 5, type: 'starting' },
+          { statId: 'luck', value: 10, type: 'starting' },
+        ],
+      },
+      { id: 'covert', name: 'Marked', groupId: null, order: 1, statChanges: [{ statId: 'luck', value: -10, type: 'starting' }] },
+    ];
+    render(
+      <TraitSelectionModal
+        traits={cardTraits}
+        traitGroups={[]}
+        stats={worldStats}
+        resolveText={identity}
+        resolveTraitText={traitIdentity}
+        selectedTraits={[]}
+        onTraitSelect={() => {}}
+        onConfirm={() => {}}
+        onAbort={() => {}}
+      />,
+    );
+    // The mixed card names only the visible stat; the hidden-only card has no Stat Changes block at all.
+    expect(screen.getByText(/Vigor: \+5/)).toBeInTheDocument();
+    expect(screen.queryByText(/Luck/)).toBeNull();
+    expect(screen.getAllByText('Stat Changes:')).toHaveLength(1);
   });
 });

@@ -50,6 +50,9 @@ export interface Stat {
   /** `false` starts the stat inert — hidden from the player and the AI, regen and code paused — until a
    *  trait switches it on. Absent = enabled. */
   enabled?: boolean;
+  /** `true` hides the stat from the player (panel, deltas, trait cards) while the AI still reads it and
+   *  regen and code keep running. Absent = visible. */
+  hidden?: boolean;
   /** Editor flags that stop the AI from changing this stat in a given direction. */
   noIncrease?: boolean;
   noIncreaseMax?: boolean;
