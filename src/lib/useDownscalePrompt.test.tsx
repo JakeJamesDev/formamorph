@@ -180,3 +180,68 @@ describe('useDownscalePrompt — the Optimize offer counts only what converts', 
     expect(toast.info).not.toHaveBeenCalled();
   });
 });
+
+/**
+ * Optimize is about total world size, so a convertible image is offered at any size — while Downscale, the
+ * size tool, appears only when something is actually over budget.
+ */
+describe('useDownscalePrompt — within-budget convertibles are still offered Optimize', () => {
+  const worldWith = (thumbnail: string, images: string[] = []) => ({
+    id: 'w',
+    worldOverview: { thumbnail },
+    entities: images.length ? [{ id: 'e1', name: 'Maren', images }] : [],
+    locations: [],
+  } as unknown as World);
+
+  // Within every budget (thumbnail cap is 512px / 200 KB); URLs naming 'big' exceed both.
+  const SMALL = { w: 256, h: 256, bytes: 50_000 };
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    vi.mocked(measureInWorker).mockImplementation((url: string) =>
+      Promise.resolve(url.includes('big') ? OVERSIZED : SMALL));
+    vi.mocked(encodeInWorker).mockResolvedValue('data:image/webp;base64,small');
+  });
+
+  it('a world of small PNGs still prompts — Optimize offered, Downscale not', async () => {
+    render(<Host />);
+    let run!: Promise<World | null>;
+    act(() => { run = api.promptWorld(worldWith('data:image/png;base64,tiny')); });
+
+    // The absence check has to happen while the dialog is still up — once a choice closes it, every button
+    // is gone and the assertion would pass no matter what was offered.
+    await screen.findByText('Optimize');
+    expect(screen.queryByText('Downscale')).toBeNull();
+    fireEvent.click(screen.getByText('Optimize'));
+    expect((await run)?.worldOverview.thumbnail).toBe('data:image/webp;base64,small');
+  });
+
+  it('says why the set is listed when nothing in it is over budget', async () => {
+    render(<Host />);
+    act(() => { void api.promptWorld(worldWith('data:image/png;base64,tiny')); });
+
+    expect(await screen.findByText(/1 image lossless WebP would shrink/)).toBeInTheDocument();
+    expect(screen.queryByText(/larger than recommended/)).toBeNull();
+  });
+
+  it('a world whose small images are already efficient prompts nothing', async () => {
+    render(<Host />);
+    let run!: Promise<World | null>;
+    act(() => { run = api.promptWorld(worldWith('data:image/jpeg;base64,tiny')); });
+
+    await expect(run).resolves.toBeNull();
+    expect(screen.queryByText('Optimize')).toBeNull();
+  });
+
+  it('a mixed set names both counts and scopes Downscale to the oversized', async () => {
+    render(<Host />);
+    act(() => {
+      void api.promptWorld(worldWith('data:image/jpeg;base64,big', ['data:image/png;base64,tiny']));
+    });
+
+    expect(await screen.findByText(/2 images worth optimizing — 1 larger than recommended/)).toBeInTheDocument();
+    expect(screen.getByText(/Downscale also shrinks the 1 larger than recommended/)).toBeInTheDocument();
+    expect(screen.getByText('Optimize')).toBeInTheDocument();
+    expect(screen.getByText('Downscale')).toBeInTheDocument();
+  });
+});

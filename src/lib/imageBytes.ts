@@ -94,3 +94,11 @@ export const imageFormatLabel = (mime: string): string =>
  * encoder has no animation-preserving path, so a GIF would come back as a single flattened frame.
  */
 export const supportsAnimatedDecode = (): boolean => 'ImageDecoder' in globalThis;
+
+/**
+ * True when re-encoding this image keeps everything it is: any static format always, a GIF only when the
+ * browser can decode its frames. The Optimize pass and the World Doctor's Fix both gate on this, so neither
+ * ever flattens an animation the other would have kept.
+ */
+export const reencodeKeepsAnimation = (url: string): boolean =>
+  dataUrlMime(url) !== 'image/gif' || supportsAnimatedDecode();

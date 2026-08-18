@@ -7,7 +7,7 @@
  * that world held, and the caller decides whether that result is still current.
  */
 import { entityImages } from '@/lib/entityImages';
-import { dataUrlMime, isConvertibleImage, supportsAnimatedDecode } from '@/lib/imageBytes';
+import { dataUrlMime, isConvertibleImage, reencodeKeepsAnimation } from '@/lib/imageBytes';
 import { describeKeptImages, reencodeImageDataUrl } from '@/lib/imageOptim';
 import type { RuleWorld } from './rules';
 
@@ -23,11 +23,6 @@ export interface WebpFixRun {
   skippedAnimated: number;
 }
 
-/** Whether a convertible image can be re-encoded without risking what it does. A GIF on a browser with no
- *  frame decoder would come back as one flattened frame — the one outcome a repair must never produce. */
-const canReencode = (url: string): boolean =>
-  dataUrlMime(url) !== 'image/gif' || supportsAnimatedDecode();
-
 /**
  * Convert every convertible image in `world` to lossless WebP at its original resolution, returning the new
  * world and the tally. A result that isn't WebP is discarded: the encoder falls back to lossy JPEG where WebP
@@ -42,7 +37,7 @@ export async function convertWorldImagesToWebp(world: RuleWorld): Promise<WebpFi
     if (!isConvertibleImage(url)) return url;
     // Every flagged image the run leaves behind is counted, whichever reason left it: the row it belongs to
     // will still be there afterwards, and an author told nothing reads that as a Fix button that is broken.
-    if (!canReencode(url)) {
+    if (!reencodeKeepsAnimation(url)) {
       skippedAnimated += 1;
       return url;
     }
