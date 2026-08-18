@@ -18,7 +18,10 @@ import {
 import { usesStatClock } from '@/lib/statCodeExecutor';
 import { estimateTokens } from '@/lib/memoryUtils';
 import { entityImages } from '@/lib/entityImages';
-import { dataUrlBytes, dataUrlRealMime, imageFormatLabel, isConvertibleImage, isRemoteImage } from '@/lib/imageBytes';
+import {
+  dataUrlBytes, dataUrlMime, dataUrlRealMime, imageFormatLabel, isConvertibleImage, isRemoteImage,
+  relabelDataUrl, sniffDataUrlMime,
+} from '@/lib/imageBytes';
 import { formatBytes, IMAGE_CAPS, type ImageCap } from '@/lib/imageOptim';
 import { clamp } from '@/lib/utils';
 import type {
@@ -1478,6 +1481,44 @@ const imageNotWebp: Rule = {
     )),
 };
 
+/** True when this image's stored label claims a different format than its bytes are. */
+const isMislabeledImage = (url: string): boolean => {
+  const real = sniffDataUrlMime(url);
+  return !!real && real !== dataUrlMime(url);
+};
+
+const imageMislabeled: Rule = {
+  id: 'image-mislabeled',
+  severity: 'info',
+  section: 'overview',
+  summary: (count) => `${count} embedded images are labeled as a format their bytes are not`,
+  check: (world) => embeddedImageSlots(world)
+    .filter(({ url }) => isMislabeledImage(url))
+    .map(({ item, url }) => finding(
+      imageMislabeled,
+      `${quote(item.name)}’s image is labeled ${imageFormatLabel(dataUrlMime(url))} but its bytes are `
+      + `${imageFormatLabel(sniffDataUrlMime(url))} — Fix corrects the label`,
+      [item],
+    )),
+  // Format decisions everywhere already read the bytes, so the label is corrected, never trusted.
+  fix: (world) => {
+    const thumb = world.worldOverview?.thumbnail;
+    const nextThumb = thumb ? relabelDataUrl(thumb) : thumb;
+    let out = nextThumb === thumb ? world
+      : { ...world, worldOverview: { ...world.worldOverview, thumbnail: nextThumb } };
+    out = withSlice(out, 'entities', mapChanged(world.entities ?? [], (entity) => {
+      const images = entityImages(entity);
+      const next = mapChanged(images, relabelDataUrl);
+      return next === images ? entity : { ...entity, images: next };
+    }));
+    out = withSlice(out, 'locations', mapChanged(world.locations ?? [], (location) => {
+      const next = location.backgroundImage ? relabelDataUrl(location.backgroundImage) : location.backgroundImage;
+      return next === location.backgroundImage ? location : { ...location, backgroundImage: next };
+    }));
+    return out;
+  },
+};
+
 /** Every rule the Bench runs, in catalog order. Display order comes from severity, not this list. */
 export const RULES: readonly Rule[] = [
   aliasLeadingArticle, entityMatchCollision, aliasSelfDuplicate,
@@ -1495,7 +1536,7 @@ export const RULES: readonly Rule[] = [
   traitGroupMultipleDefaults, traitGroupTooSmall,
   placeholderWeightUnknownValue, wildcardSingleValue,
   dictionaryKeywordSubstring, dictionaryDisabled,
-  worldEmptySystemPrompt, worldNoReadme, worldOversizedImages, imageNotWebp,
+  worldEmptySystemPrompt, worldNoReadme, worldOversizedImages, imageNotWebp, imageMislabeled,
 ];
 
 /**
