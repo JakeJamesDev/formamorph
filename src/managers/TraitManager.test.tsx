@@ -64,6 +64,16 @@ beforeEach(() => {
   onOpenTrait.mockClear();
 });
 
+// An unknown topic id renders no button at all, so the hint buttons prove their ids resolve.
+describe('the section help buttons', () => {
+  it('mount registered topics for all three sections', () => {
+    renderManager();
+    expect(screen.getByRole('button', { name: 'About Stat Changes' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'About Stat Availability' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'About Placeholder Pins' })).toBeInTheDocument();
+  });
+});
+
 describe('the conflict note', () => {
   it('names the winner and navigates to a clicked rival', async () => {
     renderManager();

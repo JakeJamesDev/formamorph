@@ -11,6 +11,7 @@ import PlaceholderField, { PlaceholderNameField } from '@/components/prompt/Plac
 import { describePlaceholders } from '@/lib/placeholders';
 import { traitConflicts, type TraitConflict } from '@/lib/traitEffects';
 import { useEditorMode } from '@/lib/editorMode';
+import { HelpButton } from '@/components/HelpButton';
 import type { Trait, StatChange, TraitStatToggle, TraitPlaceholderPin } from '@/types';
 
 /** Names another trait that claims the same target, and says which way the tie falls. Silent when nothing
@@ -118,8 +119,10 @@ const TraitManager = ({ trait, onOpenTrait }: { trait: Trait; onOpenTrait: (id: 
         <span className="text-meta text-muted-foreground">(switchable from the Traits panel during play)</span>
       </label>
       <div className="space-y-2">
-        {/* block so the Add button below always wraps to its own line, even with no rows yet */}
-        <Label className="block">Stat Changes</Label>
+        <div className="flex items-center gap-2">
+          <Label>Stat Changes</Label>
+          <HelpButton topicId="worldEditor.statChanges" className="h-6 w-6" />
+        </div>
         {editingTrait.statChanges.map((statChange, index) => (
           <div key={index} className="flex space-x-2">
             <Select
@@ -165,16 +168,15 @@ const TraitManager = ({ trait, onOpenTrait }: { trait: Trait; onOpenTrait: (id: 
             </Button>
           </div>
         ))}
-        <Button onClick={handleStatChangeAdd}>Add Stat Change</Button>
+        <Button size="sm" onClick={handleStatChangeAdd}>Add Stat Change</Button>
       </div>
 
       {advanced && (
       <div className="space-y-2">
-        <Label className="block">Stat Availability</Label>
-        <p className="text-meta text-muted-foreground">
-          Switches a stat on or off while this trait is active, overriding the stat&apos;s own default. A stat that
-          is off is hidden from the player and the AI, and its regen and code pause.
-        </p>
+        <div className="flex items-center gap-2">
+          <Label>Stat Availability</Label>
+          <HelpButton topicId="worldEditor.statAvailability" className="h-6 w-6" />
+        </div>
         {statToggles.map((toggle, index) => (
           <div key={index} className="space-y-1">
           <div className="flex space-x-2">
@@ -209,7 +211,7 @@ const TraitManager = ({ trait, onOpenTrait }: { trait: Trait; onOpenTrait: (id: 
           <ConflictNote conflict={conflicts.stats[toggle.statId]} onOpen={onOpenTrait} />
           </div>
         ))}
-        <Button onClick={() => setStatToggles([...statToggles, { statId: '', enabled: true }])}>
+        <Button size="sm" onClick={() => setStatToggles([...statToggles, { statId: '', enabled: true }])}>
           Add Stat Availability
         </Button>
       </div>
@@ -217,11 +219,10 @@ const TraitManager = ({ trait, onOpenTrait }: { trait: Trait; onOpenTrait: (id: 
 
       {advanced && (
       <div className="space-y-2">
-        <Label className="block">Placeholder Pins</Label>
-        <p className="text-meta text-muted-foreground">
-          Holds a placeholder at a fixed value while this trait is active. The playthrough&apos;s own roll is kept
-          underneath and returns if the trait is switched off.
-        </p>
+        <div className="flex items-center gap-2">
+          <Label>Placeholder Pins</Label>
+          <HelpButton topicId="worldEditor.placeholderPins" className="h-6 w-6" />
+        </div>
         {pins.map((pin, index) => (
           <div key={index} className="space-y-1">
           <div className="flex space-x-2">
@@ -261,7 +262,7 @@ const TraitManager = ({ trait, onOpenTrait }: { trait: Trait; onOpenTrait: (id: 
           <ConflictNote conflict={conflicts.placeholders[pin.placeholderId]} onOpen={onOpenTrait} />
           </div>
         ))}
-        <Button onClick={() => setPins([...pins, { placeholderId: '', value: '' }])}>Add Placeholder Pin</Button>
+        <Button size="sm" onClick={() => setPins([...pins, { placeholderId: '', value: '' }])}>Add Placeholder Pin</Button>
       </div>
       )}
     </div>
