@@ -79,7 +79,13 @@ export const renderWorldEditorBench = (world: World, mode: EditorMode) => {
   return { ctx: () => ctx };
 };
 
-/** Open the Bench from the editor header. */
-export const clickOpenBench = async () => {
+/** Click the editor header's flask — whose first stop is the quick-triage popover, not the full panel. */
+export const clickFlask = async () => {
   fireEvent.click(await screen.findByRole('button', { name: /^Test Bench/ }));
+};
+
+/** Open the full Bench panel the way an author reaches it: the flask, then the popover's one button. */
+export const clickOpenBench = async () => {
+  await clickFlask();
+  fireEvent.click(await screen.findByRole('button', { name: 'Open Test Bench' }));
 };

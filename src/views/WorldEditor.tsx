@@ -23,6 +23,7 @@ import { ActionIcon } from '@/lib/actionIcons';
 import { cn } from "@/lib/utils";
 import EditorFindBar from '@/components/editor/EditorFindBar';
 import { TestBench, TestBenchButton } from '@/components/editor/TestBench';
+import { BenchPopover } from '@/components/editor/BenchPopover';
 import { Drawer, DrawerContent, DrawerTitle } from '@/components/ui/drawer';
 import type { FindingSection } from '@/lib/testBench/rules';
 import { useTestBench } from '@/lib/testBench/useTestBench';
@@ -700,12 +701,15 @@ const WorldEditorInner = ({ onClose, embedded = false, backButton }: {
       >
         <Search className="h-4 w-4" />
       </Button>
-      <TestBenchButton
-        count={bench.count}
-        newCount={bench.newCount}
-        open={bench.open}
-        onClick={() => (bench.open ? bench.closeBench() : bench.openBench())}
-      />
+      {/* The flask's first stop is quick triage; the full panel is one button inside it. */}
+      <BenchPopover {...bench.popoverProps}>
+        <TestBenchButton
+          count={bench.count}
+          newCount={bench.newCount}
+          open={bench.active}
+          onClick={bench.toggleFlask}
+        />
+      </BenchPopover>
       <TutorialPopover entry={tutorial} nav={tutorialNav}>
         <ToggleGroup
           type="single"
@@ -919,17 +923,24 @@ const WorldEditorInner = ({ onClose, embedded = false, backButton }: {
                 <Card className="h-full flex flex-col">
                   <CardHeader className="space-y-0 pb-2">{headerBar}</CardHeader>
                   <CardContent className="flex-grow flex flex-col overflow-hidden pt-6">
-                    <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-grow flex flex-col min-h-0">
-                      {tabsList}
-                      {addSearchBar}
-                      {/* The detail pane is the other half of a master-detail split, in its own resizable
-                          panel outside the tab root — the tab's own content is this list. */}
-                      {tabPanels(
-                        <div className="flex-grow min-h-0 mt-4" onClick={deselectOnListClick}>
-                          {canvasView ? listContent : <ScrollArea className="h-full">{listContent}</ScrollArea>}
-                        </div>
-                      )}
-                    </Tabs>
+                    {/* The embedded Bench takes the tab strip, the add/search bar and the list; the detail
+                        panel beside it stays live, so a finding's item opens visibly next to the list being
+                        triaged. The editor's own tab and selection state is untouched behind it. */}
+                    {bench.embedded ? (
+                      <div className="flex-grow min-h-0">{benchPanel}</div>
+                    ) : (
+                      <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-grow flex flex-col min-h-0">
+                        {tabsList}
+                        {addSearchBar}
+                        {/* The detail pane is the other half of a master-detail split, in its own resizable
+                            panel outside the tab root — the tab's own content is this list. */}
+                        {tabPanels(
+                          <div className="flex-grow min-h-0 mt-4" onClick={deselectOnListClick}>
+                            {canvasView ? listContent : <ScrollArea className="h-full">{listContent}</ScrollArea>}
+                          </div>
+                        )}
+                      </Tabs>
+                    )}
                   </CardContent>
                   {footerBar}
                 </Card>
@@ -945,7 +956,7 @@ const WorldEditorInner = ({ onClose, embedded = false, backButton }: {
                 </Card>
               </div>
             </Panel>
-            {bench.open && (
+            {bench.docked && (
               <>
                 <PanelResizeHandle className="w-1 bg-secondary cursor-col-resize" />
                 <Panel id="editor-bench" order={3} defaultSize={28} minSize={20}>
@@ -960,7 +971,7 @@ const WorldEditorInner = ({ onClose, embedded = false, backButton }: {
       </div>
       {/* Mobile has no room for a third pane, so the Bench arrives as a full-height sheet over the editor. */}
       {isMobile && (
-        <Drawer open={bench.open} onOpenChange={(open) => (open ? bench.openBench() : bench.closeBench())}>
+        <Drawer open={bench.open} onOpenChange={(open) => { if (!open) bench.closeBench(); }}>
           <DrawerContent className="h-[92dvh]">
             <DrawerTitle className="sr-only">Test Bench</DrawerTitle>
             <div className="min-h-0 flex-grow">{benchPanel}</div>
