@@ -413,6 +413,63 @@ describe('migrateWorld', () => {
   });
 });
 
+describe('migrateWorld — pre-rebuild start flag', () => {
+  type StartLoc = { id: string; isStarting?: boolean; isStartLocation?: unknown };
+  const withLocations = (locations: unknown[], version?: string) =>
+    migrateWorld({ ...(version ? { version } : {}), worldOverview: {}, locations }) as unknown as {
+      locations: StartLoc[];
+    };
+
+  it('promotes every truthy legacy flag to a start candidate and drops the field', () => {
+    const out = withLocations([
+      { id: 'harbor', isStartLocation: true },
+      { id: 'fen', isStartLocation: true },
+      { id: 'ridge' },
+    ]);
+    expect(out.locations.map((l) => l.isStarting)).toEqual([true, true, undefined]);
+    expect(out.locations.some((l) => 'isStartLocation' in l)).toBe(false);
+  });
+
+  it('drops a falsy legacy flag without making it a candidate', () => {
+    const out = withLocations([{ id: 'harbor', isStartLocation: false }, { id: 'fen', isStartLocation: true }]);
+    expect(out.locations.map((l) => l.isStarting)).toEqual([undefined, true]);
+    expect(out.locations.some((l) => 'isStartLocation' in l)).toBe(false);
+  });
+
+  it('keeps the live flag authoritative: leftovers are deleted, not promoted', () => {
+    const out = withLocations([
+      { id: 'harbor', isStartLocation: true },
+      { id: 'fen', isStarting: true },
+    ]);
+    expect(out.locations.map((l) => l.isStarting)).toEqual([undefined, true]);
+    expect(out.locations.some((l) => 'isStartLocation' in l)).toBe(false);
+  });
+
+  it('is idempotent — a second run leaves the promoted flags as the first did', () => {
+    const once = withLocations([{ id: 'harbor', isStartLocation: true }, { id: 'fen', isStartLocation: true }]);
+    const twice = migrateWorld(once) as unknown as { locations: StartLoc[] };
+    expect(twice.locations.map((l) => l.isStarting)).toEqual([true, true]);
+  });
+
+  it('runs on a world already stamped at APP_VERSION (nothing stripped the flag before now)', () => {
+    const out = withLocations([{ id: 'harbor', isStartLocation: true }], APP_VERSION);
+    expect(out.locations[0].isStarting).toBe(true);
+    expect('isStartLocation' in out.locations[0]).toBe(false);
+  });
+
+  it('leaves a world that never carried the flag untouched', () => {
+    const locations = [{ id: 'harbor', isStarting: true }, { id: 'fen' }];
+    expect(withLocations(locations).locations).toStrictEqual(locations);
+  });
+
+  it('survives malformed locations', () => {
+    const out = withLocations([null, { id: 'harbor', isStartLocation: true }]);
+    expect(out.locations[0]).toBeNull();
+    expect(out.locations[1].isStarting).toBe(true);
+    expect(() => migrateWorld({ worldOverview: {}, locations: 'nope' })).not.toThrow();
+  });
+});
+
 describe('migrateWorld — dictionary keyword arrays', () => {
   type KeyedWorld = {
     dictionaries?: { entries: { key: string[]; secondaryKeys?: string[] }[] }[];
