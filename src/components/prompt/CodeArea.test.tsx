@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach } from 'vitest';
+import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { useState } from 'react';
 import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
@@ -38,6 +38,12 @@ async function editor(): Promise<HTMLElement> {
 }
 
 const owned = () => screen.getByTestId('owned').textContent;
+
+/** CodeMirror debounces the completion query typing kicks off (`activateOnTypingDelay`, 100ms) and ignores
+ *  keys aimed at a list that has only just opened (`interactionDelay`, 75ms). Both are measured from the
+ *  event rather than from the test, so clearing the longer of the two is enough on any machine — a slow
+ *  run pushes the event later too. This is the beat a real author takes; nothing here polls for it. */
+const settle = () => new Promise(resolve => { setTimeout(resolve, 150); });
 
 describe('CodeArea', () => {
   // The split preference is shared and persisted, so one test's toggle would otherwise decide the next.
@@ -278,18 +284,76 @@ describe('CodeArea', () => {
     expect(owned()).toHaveLength('return 1;2'.length);
   });
 
-  it('indents with Tab, and lets Escape hand the next Tab back for moving on', async () => {
+  // VS Code types an indent where the caret stands rather than shifting the line under it, and that is
+  // the muscle memory an author brings to a code field.
+  it('types an indent at the caret rather than shoving the whole line sideways', async () => {
     const user = userEvent.setup();
     render(<Harness />);
     await user.click(await editor());
     await user.keyboard('return 1;');
+    await user.keyboard('{ArrowLeft>2/}');
     await user.tab();
-    expect(owned()).toBe('  return 1;');
+    expect(owned()).toBe('return   1;');
+  });
 
-    // Escape spends the next Tab on leaving the field rather than on another indent.
+  it('lets Escape hand the next Tab back for moving on', async () => {
+    const user = userEvent.setup();
+    render(<Harness />);
+    const field = await editor();
+    await user.click(field);
+    await user.keyboard('return 1;');
+    await settle();
+
     await user.keyboard('{Escape}');
     await user.tab();
+    expect(owned()).toBe('return 1;');
+    // Left, not merely declined to indent — a Tab that did nothing would be its own trap.
+    expect(document.activeElement).not.toBe(field);
+  });
+
+  it('replaces a selection inside one line, the way typing would', async () => {
+    const user = userEvent.setup();
+    render(<Harness />);
+    await user.click(await editor());
+    await user.keyboard('return abc;');
+    // `bc;` selected — a partial selection, so Tab is a keystroke like any other.
+    await user.keyboard('{Shift>}{ArrowLeft}{ArrowLeft}{ArrowLeft}{/Shift}');
+    await user.tab();
+    expect(owned()).toBe('return a  ');
+  });
+
+  it('shifts every line of a selection that spans more than one', async () => {
+    const user = userEvent.setup();
+    render(<Harness initial={'return 1;\nreturn 2;'} />);
+    await user.click(await editor());
+    await user.keyboard('{Control>}a{/Control}');
+    await user.tab();
+    expect(owned()).toBe('  return 1;\n  return 2;');
+
+    await user.tab({ shift: true });
+    expect(owned()).toBe('return 1;\nreturn 2;');
+  });
+
+  // A whole line selected is a block indent even though it is only one line — otherwise selecting a line
+  // and pressing Tab would delete it.
+  it('shifts a whole selected line instead of typing over it', async () => {
+    const user = userEvent.setup();
+    render(<Harness initial="return 1;" />);
+    await user.click(await editor());
+    await user.keyboard('{Control>}a{/Control}');
+    await user.tab();
     expect(owned()).toBe('  return 1;');
+  });
+
+  // One keypress to start a nested line: the depth comes from the code around it, not from a fixed unit.
+  it('takes a blank line to the depth its surroundings ask for', async () => {
+    const user = userEvent.setup();
+    render(<Harness initial={'function f() {\n  if (x) {\n'} />);
+    await user.click(await editor());
+    await user.keyboard('{Control>}{End}{/Control}');
+    await user.tab();
+    // Two blocks deep, so four spaces — an indent unit added blindly would have given two.
+    expect(owned()).toBe('function f() {\n  if (x) {\n    ');
   });
 
   it('carries the pair into full screen as a split, and back to one pane on request', async () => {
@@ -348,11 +412,57 @@ describe('CodeArea', () => {
     await waitFor(() => expect(popup()).toBeNull());
     // That Escape went to the list, so this Tab still indents — the field is not yet being left.
     await user.tab();
-    expect(owned()).toBe('  return elap');
+    expect(owned()).toBe('return elap  ');
 
     await user.keyboard('{Escape}');
     await user.tab();
-    expect(owned()).toBe('  return elap');
+    expect(owned()).toBe('return elap  ');
+  });
+
+  it('takes the highlighted completion on Tab, the way every editor does', async () => {
+    const user = userEvent.setup();
+    render(<Harness />);
+    await user.click(await editor());
+    await user.keyboard('return elap');
+    await waitFor(() => expect(popup()).toBeTruthy());
+    await settle();
+
+    await user.tab();
+    expect(owned()).toBe('return elapsedHours');
+  });
+
+  it('still takes the highlighted completion on Enter', async () => {
+    const user = userEvent.setup();
+    render(<Harness />);
+    await user.click(await editor());
+    await user.keyboard('return elap');
+    await waitFor(() => expect(popup()).toBeTruthy());
+    await settle();
+
+    await user.keyboard('{Enter}');
+    expect(owned()).toBe('return elapsedHours');
+  });
+
+  // The popup hangs off `<body>`, and a dialog's scroll lock preventDefaults any scroll whose target is
+  // outside the dialog — which is every option in the list. Stopping it short of the document is what
+  // leaves the list scrollable, by wheel on a desktop and by drag on a touch screen.
+  it.each(['wheel', 'touchmove'])('keeps a %s over the completion list from reaching the scroll lock', async (type) => {
+    const user = userEvent.setup();
+    render(<Harness />);
+    await user.click(await editor());
+    await user.keyboard('return elap');
+    await waitFor(() => expect(popup()).toBeTruthy());
+
+    const reachedDocument = vi.fn();
+    document.addEventListener(type, reachedDocument);
+    try {
+      popup()!.dispatchEvent(type === 'wheel'
+        ? new WheelEvent('wheel', { bubbles: true, deltaY: 60 })
+        : new Event('touchmove', { bubbles: true }));
+      expect(reachedDocument).not.toHaveBeenCalled();
+    } finally {
+      document.removeEventListener(type, reachedDocument);
+    }
   });
 
   it('underlines a name the sandbox does not provide', async () => {

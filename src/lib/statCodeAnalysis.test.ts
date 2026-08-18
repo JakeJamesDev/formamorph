@@ -138,11 +138,61 @@ describe('statCodeCompletions', () => {
     expect(offered).toEqual(['id', 'name', 'type', 'description', 'min', 'max', 'value', 'regen']);
   });
 
-  it('leads with the fields when the object came out of stats, and defers when it did not', () => {
-    const known = completeAt('const me = stats.find(s => s.id === currentStatId);\nreturn me.|');
-    const unknown = completeAt('const other = 5;\nreturn other.|');
-    expect(known?.options[0].boost).toBeGreaterThan(0);
-    expect(unknown?.options[0].boost).toBeLessThan(0);
+  it('offers the stat fields off the find call itself, without a variable in between', () => {
+    expect(labels('return stats.find(s => s.id === currentStatId).|')).toContain('value');
+    expect(labels('return stats.find(s => s.id === currentStatId)?.|')).toContain('regen');
+    expect(labels('return stats[0].|')).toContain('max');
+  });
+
+  // A list offered after an expression nothing can name reads as the editor claiming `other.value` and
+  // `Math.regen` exist, which is worse than offering nothing at all.
+  it('says nothing after an expression it cannot type', () => {
+    expect(labels('const other = 5;\nreturn other.|')).toEqual([]);
+    expect(labels('const me = stats[0];\nreturn me.name.|')).toEqual([]);
+    expect(labels('return "text".|')).toEqual([]);
+    // `filter` hands back another array, so the chain is no more a stat than `stats` itself is.
+    expect(labels('return stats.filter(s => s.value > 0).|')).toEqual([]);
+  });
+
+  it('still names a stat behind the operators an expression is written with', () => {
+    const doc = 'const me = stats.find(s => s.id === currentStatId);\nif (!me.|) return 0;';
+    expect(labels(doc)).toContain('value');
+  });
+
+  it('offers each built-in’s own members, and never a stat field among them', () => {
+    for (const [builtin, expected] of [
+      ['Math', 'round'], ['JSON', 'stringify'], ['Object', 'keys'], ['Number', 'isFinite'],
+      ['Array', 'isArray'], ['String', 'fromCharCode'], ['Date', 'now'],
+    ] as const) {
+      const offered = labels(`return ${builtin}.|`);
+      expect(offered, builtin).toContain(expected);
+      expect(offered, builtin).not.toContain('regen');
+      expect(offered, builtin).not.toContain('value');
+    }
+    // Boolean has no static members worth offering; what matters is that silence is what it gets.
+    expect(labels('return Boolean.|')).toEqual([]);
+  });
+
+  it('completes a half-typed built-in member rather than starting the list over', () => {
+    const result = completeAt('return Math.ro|');
+    expect(result?.options.map(option => option.label)).toContain('round');
+    expect(result?.from).toBe('return Math.'.length);
+    expect(result?.to).toBe('return Math.ro'.length);
+  });
+
+  it('offers array members after stats, which is not itself a stat', () => {
+    const offered = labels('return stats.|');
+    expect(offered).toEqual(['find', 'filter', 'map', 'some', 'every', 'reduce', 'at', 'length']);
+  });
+
+  // The info string is what the popup's description card reads out, and it is the only place the editor
+  // gets to explain the sandbox as the author types.
+  it('explains every member it offers', () => {
+    for (const doc of ['return Math.|', 'return stats.|', 'return stats[0].|']) {
+      const options = completeAt(doc)?.options ?? [];
+      expect(options.length, doc).toBeGreaterThan(0);
+      for (const option of options) expect(option.info, `${doc} ${option.label}`).toBeTruthy();
+    }
   });
 
   it('offers the world’s stat names inside a string, where a typo fails silently', () => {
