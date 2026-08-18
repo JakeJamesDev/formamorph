@@ -325,26 +325,18 @@ const traitPinInvalid: Rule = {
   severity: 'error',
   section: 'traits',
   advanced: true,
-  summary: (count) =>
-    `${count} trait placeholder pins are broken — a missing placeholder, or a value it doesn’t offer`,
+  summary: (count) => `${count} trait placeholder pins name a placeholder that doesn’t exist`,
+  // Only the placeholder has to exist. Pinning a value its list doesn't carry is the feature — a trait
+  // forcing a shade nobody else rolls — and play applies it verbatim.
   check: (world) => {
-    const byId = new Map((world.placeholders ?? []).map((p) => [p.id, p]));
+    const known = new Set((world.placeholders ?? []).map((p) => p.id));
     return (world.traits ?? []).flatMap((trait) =>
-      (trait.placeholderPins ?? []).flatMap((pin) => {
-        const item = namedItem(trait.id, trait.name, world);
-        const ph = byId.get(pin.placeholderId);
-        if (!ph) {
-          return [finding(traitPinInvalid, `${quote(item.name)} pins a placeholder that doesn’t exist`, [item])];
-        }
-        if (!(ph.values ?? []).includes(pin.value)) {
-          return [finding(
-            traitPinInvalid,
-            `${quote(item.name)} pins ${quote(ph.name)} to ${quote(pin.value)}, which isn’t one of its values`,
-            [item],
-          )];
-        }
-        return [];
-      }),
+      (trait.placeholderPins ?? [])
+        .filter((pin) => !known.has(pin.placeholderId))
+        .map(() => {
+          const item = namedItem(trait.id, trait.name, world);
+          return finding(traitPinInvalid, `${quote(item.name)} pins a placeholder that doesn’t exist`, [item]);
+        }),
     );
   },
 };

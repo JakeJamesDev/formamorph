@@ -222,14 +222,13 @@ describe('reference-integrity rules', () => {
     expect(found[0].message).toContain('doesn’t exist');
   });
 
-  it('flags a pin to a value the placeholder doesn’t offer, and accepts one it does', () => {
+  // Pinning off-list is the feature, not a fault: a trait may force a value nobody else rolls.
+  it('says nothing about a pin to a value the placeholder doesn’t offer', () => {
     const pinned = (value: string) => base({
       placeholders: [{ id: 'p1', name: 'Hue', values: ['red', 'blue'] }],
       traits: [trait({ id: 't1', name: 'Dyed', placeholderPins: [{ placeholderId: 'p1', value }] })],
     });
-    const found = only(pinned('green'), 'trait-pin-invalid');
-    expect(found).toHaveLength(1);
-    expect(found[0].message).toContain('green');
+    expect(runRules(pinned('green'))).toEqual([]);
     expect(runRules(pinned('red'))).toEqual([]);
   });
 
@@ -1449,10 +1448,8 @@ describe('a world whose “required” arrays are absent', () => {
     expect(runRules(STRIPPED)).toEqual(runRules(withBands));
   });
 
-  it('reads a placeholder with no values as one offering none, so a pin at it is still broken', () => {
-    const found = only(STRIPPED, 'trait-pin-invalid');
-    expect(found).toHaveLength(1);
-    expect(found[0].message).toContain('isn’t one of its values');
+  it('leaves a pin at a values-less placeholder alone, since the placeholder is the part that must exist', () => {
+    expect(only(STRIPPED, 'trait-pin-invalid')).toEqual([]);
   });
 
   it('diagnoses a stat that lost its id instead of tripping over the missing lookup', () => {

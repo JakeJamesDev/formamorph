@@ -1,7 +1,7 @@
-import { useId } from 'react';
 import { useGameData } from '@/contexts/GameDataContext';
 import { useEditingDraft } from '@/lib/useEditingDraft';
 import { Input } from "@/components/ui/input";
+import { TokenAutocomplete } from '@/components/TokenAutocomplete';
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -28,8 +28,6 @@ const ConflictNote = ({ conflict }: { conflict?: TraitConflict }) => {
 const TraitManager = ({ trait }: { trait: Trait }) => {
   const { updateTrait, stats, placeholders, traits, traitGroups } = useGameData();
   const { draft: editingTrait, apply, setField: handleChange } = useEditingDraft<Trait>(trait, updateTrait);
-  // One datalist per pinned placeholder row, suggesting that placeholder's authored values.
-  const pinListId = useId();
 
   const handleStatChangeAdd = () => {
     apply({ statChanges: [...editingTrait.statChanges, { statId: '', value: 0, type: 'min' } as StatChange] });
@@ -226,17 +224,19 @@ const TraitManager = ({ trait }: { trait: Trait }) => {
             </Select>
             {/* Free text with the placeholder's authored values suggested — a trait may pin a value the
                 list doesn't carry (a "Redhead" trait naming a shade nobody else rolls). */}
-            <Input
-              value={pin.value}
-              list={`${pinListId}-${index}`}
-              placeholder="Pinned value"
-              onChange={(e) => updatePin(index, { value: e.target.value })}
-            />
-            <datalist id={`${pinListId}-${index}`}>
-              {placeholders.find((p) => p.id === pin.placeholderId)?.values.map((v) => (
-                <option key={v} value={v} />
-              ))}
-            </datalist>
+            {/* w-full to match the SelectTrigger beside it — equal flex bases split the row in half,
+                exactly as the plain Input this replaced did. */}
+            <div className="w-full min-w-0">
+              <TokenAutocomplete
+                single
+                openOnFocus
+                values={pin.value ? [pin.value] : []}
+                onChange={(vals) => updatePin(index, { value: vals[0] ?? '' })}
+                options={placeholders.find((p) => p.id === pin.placeholderId)?.values ?? []}
+                ariaLabel="Pinned value"
+                placeholder="Pinned value"
+              />
+            </div>
             <Button
               variant="ghost"
               size="icon"

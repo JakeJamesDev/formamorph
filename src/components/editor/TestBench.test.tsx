@@ -279,24 +279,36 @@ describe('TestBench lens bar', () => {
     expect(locationSelector()).toHaveTextContent('The Long Market');
   });
 
-  it('says so when the PC pins a value the placeholder does not offer', () => {
-    const broken: RuleWorld = {
+  /** The bench as `pinned` would show it, with the PC pinning through `placeholderId`. */
+  const renderPinned = (placeholderId: string, value: string) => {
+    const pinned: RuleWorld = {
       ...lensWorld,
-      traits: [{ ...lensWorld.traits[0], placeholderPins: [{ placeholderId: 'ph-hair', value: 'teal' }] }],
+      traits: [{ ...lensWorld.traits[0], placeholderPins: [{ placeholderId, value }] }],
     };
-    renderBench(broken, {
+    renderBench(pinned, {
       lens: {
-        lens: buildLens(broken, { pcTraitId: 't-sedge', locationId: null }),
-        pcOptions: lensPcOptions(broken),
-        locationOptions: lensLocationOptions(broken),
+        lens: buildLens(pinned, { pcTraitId: 't-sedge', locationId: null }),
+        pcOptions: lensPcOptions(pinned),
+        locationOptions: lensLocationOptions(pinned),
       },
     });
-    expect(screen.getByText(/Pins “Hair Color” to “teal”, which isn’t one of its values/)).toBeInTheDocument();
+  };
+
+  it('says so when the PC pins a placeholder the world no longer has', () => {
+    renderPinned('ph-gone', 'teal');
+    expect(screen.getByText(/Pins a placeholder that doesn’t exist, so “teal” is never applied/))
+      .toBeInTheDocument();
+  });
+
+  // Pinning off-list is the feature — play applies it verbatim, so the lens reads the same as playing it.
+  it('is silent about a pin naming a value the placeholder does not offer', () => {
+    renderPinned('ph-hair', 'teal');
+    expect(screen.queryByText(/Pins a placeholder/)).toBeNull();
   });
 
   it('is silent about pins the world honors', () => {
     renderLens({ pcTraitId: 't-sedge', locationId: null });
-    expect(screen.queryByText(/isn’t one of its values/)).toBeNull();
+    expect(screen.queryByText(/Pins a placeholder/)).toBeNull();
   });
 
   it('names the stats the PC switches away from the world’s defaults', () => {

@@ -102,6 +102,31 @@ describe('TokenAutocomplete', () => {
     expect(onChange).toHaveBeenCalledWith(['Dragon']);
   });
 
+  it('accepts the highlighted suggestion on Tab, like Enter', async () => {
+    const user = userEvent.setup();
+    const onChange = vi.fn();
+    render(<TokenAutocomplete values={[]} onChange={onChange} options={options} placeholder="tag…" />);
+    await user.type(screen.getByRole('textbox'), 'dra');
+    await user.tab();
+    expect(onChange).toHaveBeenCalledWith(['Dragon']);
+    expect(screen.getByRole('textbox')).toHaveFocus(); // still here for the next chip
+  });
+
+  it('lets Tab pass through an untyped field, so tabbing across the form deposits nothing', async () => {
+    const user = userEvent.setup();
+    const onChange = vi.fn();
+    render(
+      <>
+        <TokenAutocomplete single openOnFocus values={[]} onChange={onChange} options={options} />
+        <button>next field</button>
+      </>,
+    );
+    await user.click(screen.getByRole('textbox')); // list opens on focus, nothing typed
+    await user.tab();
+    expect(onChange).not.toHaveBeenCalled();
+    expect(screen.getByRole('button', { name: 'next field' })).toHaveFocus();
+  });
+
   it('does not show suggestions on focus by default (only after typing)', async () => {
     const user = userEvent.setup();
     render(<TokenAutocomplete values={[]} onChange={() => {}} options={options} placeholder="tag…" />);

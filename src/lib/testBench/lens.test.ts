@@ -130,22 +130,19 @@ describe('broken pins', () => {
     expect(buildLens(pinning('ash'), { pcTraitId: 't-sedge', locationId: null }).brokenPins).toEqual([]);
   });
 
-  it('surfaces a pin naming a value the placeholder does not have', () => {
-    const [broken] = buildLens(pinning('teal'), { pcTraitId: 't-sedge', locationId: null }).brokenPins;
-    expect(broken).toMatchObject({ reason: 'missing-value', placeholderName: 'Hair Color', value: 'teal' });
-    expect(describeBrokenPin(broken)).toContain('isn’t one of its values');
+  // An off-list pin is the feature — a trait forcing a shade nobody else rolls — so the lens applies it
+  // exactly as play does and stays quiet.
+  it('says nothing about a pin naming a value the placeholder does not offer', () => {
+    const lens = buildLens(pinning('teal'), { pcTraitId: 't-sedge', locationId: null });
+    expect(lens.brokenPins).toEqual([]);
+    expect(lens.pins).toEqual({ 'ph-hair': 'teal' });
   });
 
   it('surfaces a pin naming a placeholder that is gone', () => {
     const [broken] = buildLens(pinning('copper', 'ph-deleted'), { pcTraitId: 't-sedge', locationId: null })
       .brokenPins;
-    expect(broken).toMatchObject({ reason: 'missing-placeholder', value: 'copper' });
+    expect(broken).toMatchObject({ placeholderId: 'ph-deleted', value: 'copper' });
     expect(describeBrokenPin(broken)).toContain('doesn’t exist');
-  });
-
-  it('still applies a broken value, because a playthrough would', () => {
-    const lens = buildLens(pinning('teal'), { pcTraitId: 't-sedge', locationId: null });
-    expect(lens.pins).toEqual({ 'ph-hair': 'teal' });
   });
 });
 

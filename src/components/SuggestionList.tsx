@@ -21,6 +21,9 @@ export function SuggestionList({ items, active, onPick, onHover, className }: {
         <button
           type="button"
           key={s}
+          // Not a tab stop: rows are arrow/mouse targets, and the field's blur would close the list from
+          // under a row Tab landed on anyway.
+          tabIndex={-1}
           onMouseDown={(e) => { e.preventDefault(); onPick(s); }}
           onMouseEnter={() => onHover(i)}
           className={cn("flex w-full items-center rounded-sm px-2 py-1.5 text-label text-left", i === active && "bg-accent text-accent-foreground")}
