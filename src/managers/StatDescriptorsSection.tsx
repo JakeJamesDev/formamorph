@@ -7,7 +7,7 @@
  * computes, which is the same geometry the prompt's band lookup and the Bench's rules read.
  */
 import { useLayoutEffect, useRef } from 'react';
-import { AlertTriangle, Trash2 } from 'lucide-react';
+import { Trash2 } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
@@ -198,16 +198,6 @@ export const StatDescriptorsSection = ({
           </div>
         );
       })}
-
-      {gap && (
-        <p className="flex items-center gap-1.5 text-helper text-muted-foreground">
-          <AlertTriangle className="h-3.5 w-3.5 flex-shrink-0 text-amber-500" />
-          <span>
-            {gap.from} – {gap.to} has no descriptor — the AI is told no status there
-            {start > gap.from && start <= gap.to ? ` (the stat starts at ${start})` : ''}.
-          </span>
-        </p>
-      )}
 
       <div className="flex items-center space-x-2">
         <UnitInput
