@@ -68,7 +68,7 @@ describe('downscaleWorldImages', () => {
   };
 
   const deps: DownscaleDeps = {
-    isOversized: (url) => Promise.resolve(url.startsWith('BIG')),
+    shouldEncode: (url) => Promise.resolve(url.startsWith('BIG')),
     optimize: (url) => Promise.resolve(`OPT:${url}`),
   };
 
@@ -87,7 +87,7 @@ describe('downscaleWorldImages', () => {
 
   it('the reencode-deps path visits the same oversized fields (no downscale)', async () => {
     const reencodeDeps: DownscaleDeps = {
-      isOversized: (url) => Promise.resolve(url.startsWith('BIG')),
+      shouldEncode: (url) => Promise.resolve(url.startsWith('BIG')),
       optimize: (url) => Promise.resolve(`WEBP:${url}`),
     };
     const out = await downscaleWorldImages(world, reencodeDeps);
@@ -110,7 +110,7 @@ describe('downscaleWorldImages', () => {
     const controller = new AbortController();
     const optimized: string[] = [];
     const abortingDeps: DownscaleDeps = {
-      isOversized: () => Promise.resolve(true),
+      shouldEncode: () => Promise.resolve(true),
       optimize: (url) => {
         // Abort mid-run, as the editor's unmount cleanup does — after the first image completes.
         optimized.push(url);
@@ -128,7 +128,7 @@ describe('downscaleWorldImages', () => {
     const controller = new AbortController();
     controller.abort();
     const spyDeps: DownscaleDeps = {
-      isOversized: () => Promise.resolve(true),
+      shouldEncode: () => Promise.resolve(true),
       optimize: (url) => Promise.resolve(`OPT:${url}`),
     };
     await expect(downscaleWorldImages(world, spyDeps, undefined, controller.signal)).rejects.toMatchObject({

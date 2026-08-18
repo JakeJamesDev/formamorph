@@ -1,5 +1,5 @@
 import type { Entity, World } from '@/types';
-import { dataUrlMime, fitWithin, isRemoteImage } from './imageBytes';
+import { dataUrlMime, fitWithin, isConvertibleImage, isRemoteImage, reencodeKeepsAnimation } from './imageBytes';
 import { encodeInWorker, measureInWorker } from './imageOptimWorkerClient';
 import { entityImages } from './entityImages';
 
@@ -29,17 +29,21 @@ export const measureDataUrl = (url: string): Promise<{ w: number; h: number; byt
   measureInWorker(url);
 
 /**
- * The one place the over-budget rule lives: measure `url` and describe it when it exceeds either budget —
- * catching a 4000px photo AND a small-dim multi-MB animated GIF. Null when it fits or can't be read.
- * Every scan/check below goes through this, so the rule can't drift between call sites.
+ * The one place the scan rule lives: measure `url` and describe it when the popup has something to offer —
+ * over either budget (a 4000px photo, a small-dim multi-MB animated GIF), or a format a lossless WebP
+ * shrinks at any size. Null when neither applies or it can't be read. Every scan/check below goes through
+ * this, so the rule can't drift between call sites.
  */
-async function oversizedItem(url: string, cap: ImageCap, path: string): Promise<OversizedImage | null> {
+async function scanItem(url: string, cap: ImageCap, path: string): Promise<ScannedImage | null> {
   // A linked image contributes no bytes to the world, so no budget applies — and the worker's fetch of a
   // cross-origin URL would only fail into the catch below anyway.
   if (isRemoteImage(url)) return null;
+  // A GIF this browser can't re-decode is offered nothing lossless — converting it would flatten it.
+  const convertible = isConvertibleImage(url) && reencodeKeepsAnimation(url);
   try {
     const { w, h, bytes } = await measureDataUrl(url);
-    if (Math.max(w, h) > cap.maxDim || bytes > cap.maxBytes) return { path, cap, w, h, bytes, mime: dataUrlMime(url) };
+    const oversized = Math.max(w, h) > cap.maxDim || bytes > cap.maxBytes;
+    if (oversized || convertible) return { path, cap, w, h, bytes, mime: dataUrlMime(url), oversized, convertible };
   } catch {
     /* unreadable → treat as within budget */
   }
@@ -48,16 +52,16 @@ async function oversizedItem(url: string, cap: ImageCap, path: string): Promise<
 
 /** True when the image exceeds either budget. */
 export async function isOversized(url: string, cap: ImageCap): Promise<boolean> {
-  return (await oversizedItem(url, cap, '')) !== null;
+  return (await scanItem(url, cap, ''))?.oversized ?? false;
 }
 
-/** Scan standalone image data-URLs against one cap (e.g. character portraits), returning only the oversized
- *  ones — the flat-list sibling of `scanWorldImages`. Blank/unreadable entries are skipped. */
-export async function scanImages(urls: (string | undefined | null)[], cap: ImageCap): Promise<OversizedImage[]> {
-  const items: OversizedImage[] = [];
+/** Scan standalone image data-URLs against one cap (e.g. character portraits), returning the ones worth
+ *  offering to re-encode — the flat-list sibling of `scanWorldImages`. Blank/unreadable entries are skipped. */
+export async function scanImages(urls: (string | undefined | null)[], cap: ImageCap): Promise<ScannedImage[]> {
+  const items: ScannedImage[] = [];
   for (const url of urls) {
     if (!url) continue;
-    const item = await oversizedItem(url, cap, '');
+    const item = await scanItem(url, cap, '');
     if (item) items.push(item);
   }
   return items;
@@ -86,14 +90,18 @@ export function estimateEncodedBytes(
   return Math.round(bytes * LOSSY_FACTOR * (fit.w * fit.h) / (w * h));
 }
 
-/** One oversized image found in a world, tagged with which field it came from. */
-export interface OversizedImage {
+/** One image a scan surfaced, tagged with which field it came from and why it's listed. */
+export interface ScannedImage {
   path: string;
   cap: ImageCap;
   w: number;
   h: number;
   bytes: number;
   mime: string;
+  /** Exceeds either budget — what Downscale acts on. */
+  oversized: boolean;
+  /** A lossless WebP would shrink it (and re-encoding is safe) — what Optimize acts on. */
+  convertible: boolean;
 }
 
 type ImageSlot = { url: string; cap: ImageCap; path: string };
@@ -121,11 +129,12 @@ export const countWorldImages = (world: World): number => worldImageSlots(world)
 export const worldImagesByPath = (world: World): Map<string, string> =>
   new Map(worldImageSlots(world).map((slot) => [slot.path, slot.url]));
 
-/** Scan a world for images exceeding their budget. Returns only the oversized ones plus their total bytes. */
-export async function scanWorldImages(world: World): Promise<{ items: OversizedImage[]; totalBytes: number }> {
-  const items: OversizedImage[] = [];
+/** Scan a world for images worth offering to re-encode — over budget or losslessly convertible — plus their
+ *  total bytes. */
+export async function scanWorldImages(world: World): Promise<{ items: ScannedImage[]; totalBytes: number }> {
+  const items: ScannedImage[] = [];
   for (const slot of worldImageSlots(world)) {
-    const item = await oversizedItem(slot.url, slot.cap, slot.path);
+    const item = await scanItem(slot.url, slot.cap, slot.path);
     if (item) items.push(item);
   }
   return { items, totalBytes: items.reduce((sum, i) => sum + i.bytes, 0) };
@@ -134,13 +143,19 @@ export async function scanWorldImages(world: World): Promise<{ items: OversizedI
 /** Injectable deps so the field-walking logic is unit-testable without a real canvas. */
 export interface DownscaleDeps {
   optimize: (url: string, cap: ImageCap) => Promise<string>;
-  isOversized: (url: string, cap: ImageCap) => Promise<boolean>;
+  /** Whether this mode re-encodes the image at all — the per-mode gate the walk asks before dispatching. */
+  shouldEncode: (url: string, cap: ImageCap) => Promise<boolean>;
 }
 
-const REAL_DEPS: DownscaleDeps = { optimize: optimizeImageDataUrl, isOversized };
+/** Downscale cares about large files: only images over their budget are touched. */
+const REAL_DEPS: DownscaleDeps = { optimize: optimizeImageDataUrl, shouldEncode: isOversized };
 
-/** Deps for the "Optimize" (WebP, keep resolution) world pass — same oversized-gating, no downscale. */
-export const REENCODE_DEPS: DownscaleDeps = { optimize: (url) => reencodeImageDataUrl(url), isOversized };
+/** Deps for the "Optimize" (WebP, keep resolution) world pass: every losslessly convertible image at any
+ *  size — Optimize is about total world size, not display budgets. */
+export const REENCODE_DEPS: DownscaleDeps = {
+  optimize: (url) => reencodeImageDataUrl(url),
+  shouldEncode: (url) => Promise.resolve(isConvertibleImage(url) && reencodeKeepsAnimation(url)),
+};
 
 /** An image-handling choice offered on import: leave images as-is, optimize (lossless WebP), or downscale. */
 export type OptimizeMode = 'off' | 'optimize' | 'downscale';
@@ -150,9 +165,9 @@ function depsForMode(mode: OptimizeMode): DownscaleDeps | null {
   return mode === 'optimize' ? REENCODE_DEPS : mode === 'downscale' ? REAL_DEPS : null;
 }
 
-/** Apply an optimize mode to every oversized image in a world; a no-op (returns the same world) for 'off'.
- *  `onProgress(done, total)` reports per-image progress; an aborted `signal` rejects with an AbortError
- *  (see `downscaleWorldImages`). */
+/** Apply an optimize mode to every image the mode selects in a world; a no-op (returns the same world) for
+ *  'off'. `onProgress(done, total)` reports per-image progress; an aborted `signal` rejects with an
+ *  AbortError (see `downscaleWorldImages`). */
 export async function applyWorldOptimize(
   world: World,
   mode: OptimizeMode,
@@ -163,7 +178,8 @@ export async function applyWorldOptimize(
   return deps ? downscaleWorldImages(world, deps, onProgress, signal) : world;
 }
 
-/** Apply an optimize mode to a single image data-URL (e.g. a character portrait); no-op for 'off' or within-budget. */
+/** Apply an optimize mode to a single image data-URL (e.g. a character portrait); no-op for 'off' or when
+ *  the mode has nothing to do with it. */
 export async function applyImageOptimize(
   url: string | undefined | null,
   mode: OptimizeMode,
@@ -171,7 +187,7 @@ export async function applyImageOptimize(
 ): Promise<string | undefined | null> {
   const deps = depsForMode(mode);
   if (!deps || !url) return url;
-  return (await deps.isOversized(url, cap)) ? deps.optimize(url, cap) : url;
+  return (await deps.shouldEncode(url, cap)) ? deps.optimize(url, cap) : url;
 }
 
 /**
@@ -194,9 +210,9 @@ export async function applyEntityImagesOptimize(
 }
 
 /**
- * Return a new world with every oversized image re-encoded in place (shape-preserving — still a data-URL). Only
- * the three image fields are touched; all other data is passed through untouched. `onProgress(done, total)` fires
- * once per image-bearing slot as it resolves (monotonic; within-budget slots tick too so the bar still fills).
+ * Return a new world with every image the deps select re-encoded in place (shape-preserving — still a data-URL).
+ * Only the three image fields are touched; all other data is passed through untouched. `onProgress(done, total)`
+ * fires once per image-bearing slot as it resolves (monotonic; skipped slots tick too so the bar still fills).
  *
  * Slots are processed sequentially — the encode worker serializes them anyway (the WASM encode is one long
  * synchronous call), and dispatching one at a time is what lets `signal` actually stop the run between images:
@@ -215,7 +231,7 @@ export async function downscaleWorldImages(
   const opt = async (url: string | undefined | null, cap: ImageCap): Promise<string | undefined | null> => {
     if (!url) return url;
     if (signal?.aborted) throw new DOMException('Optimize canceled', 'AbortError');
-    const result = (await deps.isOversized(url, cap)) ? await deps.optimize(url, cap) : url;
+    const result = (await deps.shouldEncode(url, cap)) ? await deps.optimize(url, cap) : url;
     onProgress?.(++done, total);
     return result;
   };
