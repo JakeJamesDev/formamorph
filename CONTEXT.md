@@ -37,8 +37,12 @@ The visual node-graph surface for authoring locations — containment as nested 
 _Avoid_: node graph, map view
 
 **Test Bench**:
-The World Editor's testing surface — one dock (mobile: Sheet) hosting every authoring instrument, available in both editor modes. Shows what the harness computes from the authored world, never what the AI will do with it.
-_Avoid_: World Lab, dock (that's the chrome, not the feature)
+The World Editor's testing surface hosting every authoring instrument, available in both editor modes. Reached through the Bench Popover for quick triage, or as a full panel that is either embedded in the editor's list panel or docked beside it (mobile: Sheet). Shows what the harness computes from the authored world, never what the AI will do with it.
+_Avoid_: World Lab, dock (that's one chrome, not the feature)
+
+**Bench Popover**:
+The Test Bench's quick-triage chrome — the flask button's first stop, hosting only the World Doctor's findings list so an author with a few issues resolves them without opening the full panel.
+_Avoid_: mini bench, quick view
 
 **Instrument**:
 One tool inside the Test Bench — the World Doctor, the Activation Tester, an inspector. Each answers one author question.

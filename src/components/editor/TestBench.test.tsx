@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from 'vitest';
-import { render, screen } from '@testing-library/react';
+import { cleanup, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { buildAiContext, type AiContextData } from '@/lib/testBench/aiContext';
 import { buildLens, EMPTY_LENS, lensLocationOptions, lensPcOptions, type LensState } from '@/lib/testBench/lens';
@@ -10,7 +10,7 @@ import { buildTriggerReport } from '@/lib/testBench/triggers';
 import type { Entity, WorldOverview } from '@/types';
 import type { BenchTab } from '@/lib/testBench/benchTabs';
 import type {
-  IssuesProps, LensBarProps, OpeningProps, TestBenchProps, TriggersProps,
+  IssuesProps, LensBarProps, OpeningProps, PlacementControl, TestBenchProps, TriggersProps,
 } from '@/lib/testBench/benchProps';
 import { TestBench, TestBenchButton } from './TestBench';
 
@@ -95,9 +95,9 @@ const benchProps = (groups: FindingGroup[], over: BenchOver = {}): TestBenchProp
   opening: { data: EMPTY_OPENING, onReroll: vi.fn(), ...over.opening },
 });
 
-const renderBench = (from: RuleWorld, over: BenchOver = {}) => {
+const renderBench = (from: RuleWorld, over: BenchOver = {}, placementControl?: PlacementControl) => {
   const props = benchProps(groupFindings(runRules(from)), over);
-  render(<TestBench {...props} />);
+  render(<TestBench {...props} placementControl={placementControl} />);
   return props;
 };
 
@@ -119,6 +119,30 @@ describe('TestBench panel', () => {
     renderBench(world([{ id: 'e1', name: 'Maren', aliases: ['Wren'] }]));
     expect(screen.getByText('No Problems Found')).toBeInTheDocument();
     expect(screen.getByText(`${RULES.length} rules checked`)).toBeInTheDocument();
+  });
+
+  it('offers the placement it is not in, whichever one that is', async () => {
+    const onToggle = vi.fn();
+    renderBench(defective, {}, { placement: 'embedded', onToggle });
+    const popOut = screen.getByRole('button', { name: 'Pop Out' });
+    // The icon points where the Bench would go, so the two placements can't read alike at a glance.
+    expect(popOut.querySelector('svg')).toHaveClass('lucide-panel-right');
+    await userEvent.click(popOut);
+    expect(onToggle).toHaveBeenCalledTimes(1);
+
+    cleanup();
+    renderBench(defective, {}, { placement: 'docked', onToggle });
+    const embed = screen.getByRole('button', { name: 'Embed in Editor' });
+    expect(embed.querySelector('svg')).toHaveClass('lucide-panel-left');
+    expect(screen.queryByRole('button', { name: 'Pop Out' })).toBeNull();
+  });
+
+  it('offers no placement at all where there is nowhere else to be', () => {
+    // The mobile sheet: one full panel, no second place to put it.
+    renderBench(defective);
+    expect(screen.queryByRole('button', { name: 'Pop Out' })).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Embed in Editor' })).toBeNull();
+    expect(screen.getByRole('button', { name: 'Close Test Bench' })).toBeInTheDocument();
   });
 
   it('offers all four instruments as live tabs', () => {

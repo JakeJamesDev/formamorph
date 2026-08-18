@@ -9,6 +9,7 @@ import type { SemanticStatus } from '@/lib/testBench/useTriggerSemantics';
 import type { AiContextData } from '@/lib/testBench/aiContext';
 import type { OpeningData } from '@/lib/testBench/opening';
 import type { BenchTab } from './benchTabs';
+import type { BenchPlacement } from './benchPlacement';
 
 /** Where the author is sent when they click an item a finding names. */
 export type OpenFindingItem = (section: FindingSection, itemId: string) => void;
@@ -76,6 +77,23 @@ export interface OpeningProps {
   onReroll: () => void;
 }
 
+/** The desktop header's placement toggle. Absent on mobile, whose full panel is the sheet either way. */
+export interface PlacementControl {
+  placement: BenchPlacement;
+  onToggle: () => void;
+}
+
+/** The Bench Popover's whole contract bar the flask it anchors to, which only the view has. */
+export interface BenchPopoverProps {
+  open: boolean;
+  /** Escape, or a click anywhere but the flask — which owns its own toggle. */
+  onClose: () => void;
+  issues: IssuesProps;
+  onFixRule: (ruleId: string) => void;
+  /** The compact way on to the full panel — embedded or docked on desktop, the sheet on mobile. */
+  onOpenPanel: () => void;
+}
+
 /** One bundle per Instrument plus the bench chrome, so adding an Instrument adds a bundle, not a prop row. */
 export interface TestBenchProps {
   tab: BenchTab;
@@ -83,6 +101,8 @@ export interface TestBenchProps {
   onClose: () => void;
   /** Apply one rule's fix to the world — shared, because a Triggers warning's Fix is the Issues fix. */
   onFixRule: (ruleId: string) => void;
+  /** Where this panel sits and how to move it. Absent in the mobile sheet, which has nowhere else to go. */
+  placementControl?: PlacementControl;
   issues: IssuesProps;
   lens: LensBarProps;
   triggers: TriggersProps;

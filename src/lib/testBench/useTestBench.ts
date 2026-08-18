@@ -11,7 +11,8 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { toast } from 'react-toastify';
 import { useGameData } from '@/contexts/GameDataContext';
 import { asBenchTab } from './benchTabs';
-import type { CodeCheckStatus, TestBenchProps } from '@/lib/testBench/benchProps';
+import { readBenchPlacement, writeBenchPlacement, type BenchPlacement } from './benchPlacement';
+import type { BenchPopoverProps, CodeCheckStatus, TestBenchProps } from '@/lib/testBench/benchProps';
 import {
   applyRuleFix, RULES, selectMatchingFindings, type Finding, type FindingSection,
 } from './rules';
@@ -44,15 +45,24 @@ export interface TestBenchWiring {
   navigateToItem: (section: FindingSection, itemId: string) => void;
 }
 
-/** The Bench as the view wires it: the open flag, the header button's numbers, and the panel's props. */
+/** The Bench as the view wires it: where each surface goes, the header button's numbers, and one prop
+ *  bundle per surface. */
 export interface TestBenchHandle {
+  /** Whether the full panel is showing — embedded, docked, or as the mobile sheet. */
   open: boolean;
-  openBench: () => void;
   closeBench: () => void;
+  /** Where an open panel goes on desktop. Both false on mobile, whose full panel is the sheet. */
+  embedded: boolean;
+  docked: boolean;
+  /** The flask's one-button semantics: nothing showing opens the popover, anything showing closes. */
+  toggleFlask: () => void;
+  /** Whether any Bench surface is showing — what the flask reads as pressed from. */
+  active: boolean;
   /** How many rows the Issues list shows — the header badge's muted total. */
   count: number;
   /** How many of them carry something the author has not been shown — the badge's loud number. */
   newCount: number;
+  popoverProps: BenchPopoverProps;
   panelProps: TestBenchProps;
 }
 
@@ -182,13 +192,43 @@ export function useTestBench({
     bench.markAllSeen();
     setBenchOpen(false);
   }, [bench]);
-  const openBench = useCallback(() => setBenchOpen(true), []);
+  // The quick-triage popover, which shows the same list under the same rule: closing it is what marks the
+  // list shown. Opening the full panel *from* it skips the mark — the list is about to be in front of the
+  // author again, and quieting the badge there would hide what they came to read.
+  const [popoverOpen, setPopoverOpen] = useState(false);
+  const closePopover = useCallback(() => {
+    bench.markAllSeen();
+    setPopoverOpen(false);
+  }, [bench]);
+  const openPanelFromPopover = useCallback(() => {
+    setPopoverOpen(false);
+    setBenchOpen(true);
+  }, []);
+  // One button for the whole feature: the flask opens the cheapest surface first, and closes whichever one
+  // is showing.
+  const toggleFlask = useCallback(() => {
+    if (benchOpen) closeBench();
+    else if (popoverOpen) closePopover();
+    else setPopoverOpen(true);
+  }, [benchOpen, popoverOpen, closeBench, closePopover]);
+  // Chrome, not authoring: remembered globally, so "Open Test Bench" opens the Bench the way this author
+  // works rather than the way the last world left it.
+  const [placement, setPlacement] = useState<BenchPlacement>(readBenchPlacement);
+  // The write sits out here rather than inside the updater: a state updater that stores as a side effect
+  // toggles twice, back to where it started, the moment anything replays it.
+  const togglePlacement = useCallback(() => {
+    const next = placement === 'embedded' ? 'docked' : 'embedded';
+    writeBenchPlacement(next);
+    setPlacement(next);
+  }, [placement]);
   // A finding's item is a place in the editor: the view lands on it, and the mobile sheet — which covers the
-  // editor — closes on the way; the desktop panel sits beside it and stays open for the next finding.
+  // editor — closes on the way. Only the sheet: a desktop panel sits beside the editor and stays open for
+  // the next finding, and the popover covers nothing on either. Guarded on the sheet actually being what is
+  // open, since closing marks the list seen — from the popover that would quiet a list still on screen.
   const openFindingItem = useCallback((section: FindingSection, itemId: string) => {
     navigateToItem(section, itemId);
-    if (isMobile) closeBench();
-  }, [navigateToItem, isMobile, closeBench]);
+    if (isMobile && benchOpen) closeBench();
+  }, [navigateToItem, isMobile, benchOpen, closeBench]);
   // A downloaded copy nobody has edited yet: the first quick fix is what diverges it from its source, and
   // that is worth saying once. After the note (or after any save) the copy is already edited and it'd be noise.
   const noteFirstDownloadEdit = useCallback(() => {
@@ -231,32 +271,46 @@ export function useTestBench({
     setBenchOpen(true);
   }, [routedTab, routeBenchTab]);
 
+  const issues = {
+    groups: bench.groups,
+    dismissedGroups: bench.dismissedGroups,
+    ruleCount: RULES.length,
+    newCount: bench.newCount,
+    advancedOnlyCount: bench.advancedOnlyCount,
+    advanced,
+    codedStatCount,
+    codeCheckStatus,
+    onOpenItem: openFindingItem,
+    onDismissRule: bench.dismissRule,
+    onRestoreRule: bench.restoreRule,
+    onMarkAllSeen: bench.markAllSeen,
+    onCheckStatCode: runStatCodeCheck,
+  };
+
   return {
     open: benchOpen,
-    openBench,
     closeBench,
+    embedded: !isMobile && benchOpen && placement === 'embedded',
+    docked: !isMobile && benchOpen && placement === 'docked',
+    toggleFlask,
+    active: benchOpen || popoverOpen,
     count: bench.groups.length,
     newCount: bench.newCount,
+    popoverProps: {
+      open: popoverOpen,
+      onClose: closePopover,
+      issues,
+      onFixRule: applyBenchFix,
+      onOpenPanel: openPanelFromPopover,
+    },
     panelProps: {
       tab: benchTab,
       onTabChange: setBenchTab,
       onClose: closeBench,
       onFixRule: applyBenchFix,
-      issues: {
-        groups: bench.groups,
-        dismissedGroups: bench.dismissedGroups,
-        ruleCount: RULES.length,
-        newCount: bench.newCount,
-        advancedOnlyCount: bench.advancedOnlyCount,
-        advanced,
-        codedStatCount,
-        codeCheckStatus,
-        onOpenItem: openFindingItem,
-        onDismissRule: bench.dismissRule,
-        onRestoreRule: bench.restoreRule,
-        onMarkAllSeen: bench.markAllSeen,
-        onCheckStatCode: runStatCodeCheck,
-      },
+      // Mobile's full panel is the sheet, which has nowhere else to be — so no toggle there.
+      placementControl: isMobile ? undefined : { placement, onToggle: togglePlacement },
+      issues,
       lens: {
         lens: benchLens.lens,
         pcOptions: benchLens.pcOptions,
