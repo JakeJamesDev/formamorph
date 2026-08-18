@@ -7,7 +7,7 @@
  * Reads and writes the authored world through GameDataContext directly; the panel itself stays presentational
  * and receives everything as `panelProps`.
  */
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { toast } from 'react-toastify';
 import { useGameData } from '@/contexts/GameDataContext';
 import { asBenchTab } from './benchTabs';
@@ -32,6 +32,7 @@ import { useTriggerSemantics } from './useTriggerSemantics';
 import { joinHistory } from './triggers';
 import { hasSeenDownloadNote, markDownloadNoteSeen } from './downloadNote';
 import { useDebouncedFindings } from './useFindings';
+import { useLatestRun } from './useLatestRun';
 
 /** What the Bench needs from the view — the editor's own knowledge, nothing Bench-owned. */
 export interface TestBenchWiring {
@@ -93,30 +94,27 @@ export function useTestBench({
   // can never keep showing its old failure.
   const [codeFindings, setCodeFindings] = useState<Finding[]>([]);
   const [codeCheckStatus, setCodeCheckStatus] = useState<CodeCheckStatus>('idle');
-  // Which run is the current one. A run started against a world the author has since edited must not land:
-  // its verdict is about code that no longer exists, which is the one thing the clearing below exists to stop.
-  const codeRunRef = useRef(0);
+  const beginCodeRun = useLatestRun(benchWorld);
   useEffect(() => {
-    codeRunRef.current += 1;
     // Guarded so an ordinary keystroke doesn't re-render the panel to replace nothing with nothing.
     setCodeFindings((prev) => (prev.length === 0 ? prev : []));
     setCodeCheckStatus((prev) => (prev === 'idle' ? prev : 'idle'));
   }, [benchWorld]);
   const runStatCodeCheck = useCallback(async () => {
-    const run = (codeRunRef.current += 1);
+    const stillCurrent = beginCodeRun();
     setCodeCheckStatus('running');
     try {
       const found = await checkStatCode(getWorldData());
-      if (run !== codeRunRef.current) return;
+      if (!stillCurrent()) return;
       setCodeFindings(found);
       setCodeCheckStatus('done');
     } catch (error) {
       // The executor reports its own failures as results, so reaching here means the check itself broke —
       // leaving the button spinning would strand the author with no way to try again.
       console.error('Stat code check failed:', error);
-      if (run === codeRunRef.current) setCodeCheckStatus('idle');
+      if (stillCurrent()) setCodeCheckStatus('idle');
     }
-  }, [getWorldData]);
+  }, [getWorldData, beginCodeRun]);
   const codedStatCount = useMemo(
     () => benchWorld.stats.filter((s) => s.code?.trim()).length,
     [benchWorld],
@@ -266,15 +264,14 @@ export function useTestBench({
   // convertible picture. So it runs like the stat-code check: one at a time, and a result about a world the
   // author has since edited is dropped rather than written over the world they now have.
   const [fixingRuleId, setFixingRuleId] = useState<string | null>(null);
-  const imageRunRef = useRef(0);
-  useEffect(() => { imageRunRef.current += 1; }, [benchWorld]);
+  const beginImageRun = useLatestRun(benchWorld);
   const runImageWebpFix = useCallback(async () => {
-    const run = (imageRunRef.current += 1);
+    const stillCurrent = beginImageRun();
     setFixingRuleId(IMAGE_WEBP_RULE_ID);
     try {
       const before = getWorldData();
       const result = await convertWorldImagesToWebp(before);
-      if (run !== imageRunRef.current) return;
+      if (!stillCurrent()) return;
       writeFixedWorld(before, result.world);
       const report = describeWebpFixRun(result);
       if (report) toast.info(report);
@@ -285,7 +282,7 @@ export function useTestBench({
     } finally {
       setFixingRuleId(null);
     }
-  }, [getWorldData, writeFixedWorld]);
+  }, [getWorldData, writeFixedWorld, beginImageRun]);
   const applyBenchFix = useCallback((ruleId: string) => {
     if (ruleId === IMAGE_WEBP_RULE_ID) {
       if (!fixingRuleId) void runImageWebpFix();
