@@ -213,7 +213,9 @@ describe('TestBench lens bar', () => {
     placeholders: [{ id: 'ph-hair', name: 'Hair Color', values: ['ash', 'copper'] }],
   };
 
+  // On a lens tab: Issues is the one instrument that reads nothing from the lens, so the bar isn't there.
   const renderLens = (state: LensState, over: Partial<LensBarProps> = {}) => renderBench(lensWorld, {
+    tab: 'triggers',
     lens: {
       lens: buildLens(lensWorld, state),
       pcOptions: lensPcOptions(lensWorld),
@@ -260,12 +262,16 @@ describe('TestBench lens bar', () => {
   });
 
   it('has no PC to offer in a world with no exclusive group', () => {
-    renderBench(defective, { lens: { pcOptions: [], locationOptions: lensLocationOptions(defective) } });
+    renderBench(defective, {
+      tab: 'triggers',
+      lens: { pcOptions: [], locationOptions: lensLocationOptions(defective) },
+    });
     expect(pcSelector()).toBeDisabled();
   });
 
-  it('stands above the tab strip, so switching instruments keeps the setup', () => {
+  it('keeps the setup when switching between the instruments that read it', () => {
     const props = benchProps(groupFindings(runRules(lensWorld)), {
+      tab: 'triggers',
       lens: {
         lens: buildLens(lensWorld, { pcTraitId: 't-sedge', locationId: 'market' }),
         pcOptions: lensPcOptions(lensWorld),
@@ -273,10 +279,26 @@ describe('TestBench lens bar', () => {
       },
     });
     const { rerender } = render(<TestBench {...props} />);
-    rerender(<TestBench {...props} tab="triggers" />);
-    expect(screen.getByRole('tab', { name: 'Triggers' })).toHaveAttribute('aria-selected', 'true');
+    rerender(<TestBench {...props} tab="opening" />);
+    expect(screen.getByRole('tab', { name: 'Opening' })).toHaveAttribute('aria-selected', 'true');
     expect(pcSelector()).toHaveTextContent('Sedge-Born');
     expect(locationSelector()).toHaveTextContent('The Long Market');
+  });
+
+  it('is absent from Issues, the one instrument that reads nothing from it', () => {
+    const props = benchProps(groupFindings(runRules(lensWorld)), {
+      tab: 'triggers',
+      lens: {
+        lens: buildLens(lensWorld, { pcTraitId: 't-sedge', locationId: 'market' }),
+        pcOptions: lensPcOptions(lensWorld),
+        locationOptions: lensLocationOptions(lensWorld),
+      },
+    });
+    const { rerender } = render(<TestBench {...props} />);
+    expect(pcSelector()).toBeInTheDocument();
+    rerender(<TestBench {...props} tab="issues" />);
+    expect(screen.queryByRole('combobox', { name: 'Test as character' })).toBeNull();
+    expect(screen.queryByRole('combobox', { name: 'Test at location' })).toBeNull();
   });
 
   /** The bench as `pinned` would show it, with the PC pinning through `placeholderId`. */
@@ -286,6 +308,7 @@ describe('TestBench lens bar', () => {
       traits: [{ ...lensWorld.traits[0], placeholderPins: [{ placeholderId, value }] }],
     };
     renderBench(pinned, {
+      tab: 'triggers',
       lens: {
         lens: buildLens(pinned, { pcTraitId: 't-sedge', locationId: null }),
         pcOptions: lensPcOptions(pinned),

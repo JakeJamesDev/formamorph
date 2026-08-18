@@ -2,10 +2,12 @@
  *  this, and the dev-router ledger (`DEV_MODAL_TABS.worldEditorBench`) is guarded against the built ones in
  *  `devRouter.test.ts` — so landing an instrument without making it routable fails the test. */
 export const BENCH_TABS = [
-  { value: 'issues', label: 'Issues' },
-  { value: 'triggers', label: 'Triggers' },
-  { value: 'aiContext', label: 'AI Context' },
-  { value: 'opening', label: 'Opening' },
+  // usesLens: whether the instrument reads the Testing-as/at lens — the bar only shows where it does.
+  // Issues runs the rule pass over the authored world as-is, so the lens has nothing to tell it.
+  { value: 'issues', label: 'Issues', usesLens: false },
+  { value: 'triggers', label: 'Triggers', usesLens: true },
+  { value: 'aiContext', label: 'AI Context', usesLens: true },
+  { value: 'opening', label: 'Opening', usesLens: true },
 ] as const;
 
 export type BenchTab = (typeof BENCH_TABS)[number]['value'];
