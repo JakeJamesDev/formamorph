@@ -633,11 +633,11 @@ const WorldEditorInner = ({ onClose, embedded = false, backButton }: {
   );
   const detailContent = (
     <ChipInsertTargetProvider>
-    <div className="p-6">
+    <div className="p-3">
       {/* One palette for the whole panel. Not on the Placeholders tab itself: a placeholder's own values
           are plain text, since a chip inside one would never be expanded (resolution is single-pass). */}
       {advanced && activeTab !== "placeholders" && (
-        <PlaceholderPaletteBar placeholders={placeholders} className="-mx-6 -mt-6 mb-4 px-6" />
+        <PlaceholderPaletteBar placeholders={placeholders} className="-mx-3 -mt-3 mb-3 px-3" />
       )}
       {activeTab === "overview" && (
         <WorldDetailsManager focusField={findField} />
@@ -811,7 +811,7 @@ const WorldEditorInner = ({ onClose, embedded = false, backButton }: {
     </div>
   );
   const footerBar = (
-    <div className="p-4 border-t flex flex-wrap gap-2 justify-between">
+    <div className="p-3 border-t flex flex-wrap gap-2 justify-between">
       {downscaleDialog}
       <div className="flex gap-2">
         {exportContext && (
@@ -887,8 +887,8 @@ const WorldEditorInner = ({ onClose, embedded = false, backButton }: {
         {isMobile ? (
           <div className="h-full w-full">
             <Card className="h-full flex flex-col rounded-none border-x-0">
-              <CardHeader className="space-y-0 pb-2 px-2">{headerBar}</CardHeader>
-              <CardContent className="flex-grow flex flex-col overflow-hidden px-2 pt-2">
+              <CardHeader className="space-y-0 p-2">{headerBar}</CardHeader>
+              <CardContent className="flex-grow flex flex-col overflow-hidden p-2">
                 <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-grow flex flex-col min-h-0">
                   {/* The tab strip doesn't fit mobile, so it scrolls horizontally. */}
                   <div className="overflow-x-auto flex-shrink-0">{tabsList}</div>
@@ -919,10 +919,10 @@ const WorldEditorInner = ({ onClose, embedded = false, backButton }: {
           <PanelGroup direction="horizontal">
             {/* The Bench comes and goes, so every panel carries an id+order for the group to track it. */}
             <Panel id="editor-list" order={1} defaultSize={50} minSize={30}>
-              <div className="h-full p-4">
+              <div className="h-full p-3">
                 <Card className="h-full flex flex-col">
-                  <CardHeader className="space-y-0 pb-2">{headerBar}</CardHeader>
-                  <CardContent className="flex-grow flex flex-col overflow-hidden pt-6">
+                  <CardHeader className="space-y-0 p-3 pb-2">{headerBar}</CardHeader>
+                  <CardContent className="flex-grow flex flex-col overflow-hidden p-3">
                     {/* The embedded Bench takes the tab strip, the add/search bar and the list; the detail
                         panel beside it stays live, so a finding's item opens visibly next to the list being
                         triaged. The editor's own tab and selection state is untouched behind it. */}
@@ -948,7 +948,7 @@ const WorldEditorInner = ({ onClose, embedded = false, backButton }: {
             </Panel>
             <PanelResizeHandle className="w-1 bg-secondary cursor-col-resize" />
             <Panel id="editor-detail" order={2} minSize={30}>
-              <div className="h-full p-4">
+              <div className="h-full p-3">
                 <Card className="h-full">
                   <CardContent className="h-full p-0">
                     <ScrollArea className="h-full">{detailContent}</ScrollArea>
@@ -960,7 +960,7 @@ const WorldEditorInner = ({ onClose, embedded = false, backButton }: {
               <>
                 <PanelResizeHandle className="w-1 bg-secondary cursor-col-resize" />
                 <Panel id="editor-bench" order={3} defaultSize={28} minSize={20}>
-                  <div className="h-full p-4 pl-0">
+                  <div className="h-full p-3">
                     <Card className="h-full overflow-hidden">{benchPanel}</Card>
                   </div>
                 </Panel>
