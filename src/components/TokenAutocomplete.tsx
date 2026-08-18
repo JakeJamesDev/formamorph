@@ -166,6 +166,11 @@ export function TokenAutocomplete({ values, onChange, options, placeholder, aria
     } else if (e.key === "ArrowUp") {
       e.preventDefault();
       setActive((a) => Math.max(a - 1, 0));
+    } else if (e.key === "Tab" && !e.shiftKey && open && suggestions[active] && query.trim()) {
+      // Tab accepts like Enter — but only once something is typed, so tabbing across the form past an
+      // openOnFocus field deposits nothing. Shift+Tab always just leaves.
+      e.preventDefault();
+      commit(suggestions[active]);
     } else if (e.key === "Backspace" && !single && !text && values.length) {
       remove(values[values.length - 1]);
     } else if (e.key === "Escape") {

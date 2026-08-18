@@ -35,14 +35,13 @@ export interface LensOption {
   groupName?: string;
 }
 
-/** A pin the world cannot honor: it names a placeholder that is gone, or a value that placeholder doesn't
- *  offer. Surfaced rather than applied silently — a pin that reads as working and isn't is the whole trap. */
+/** A pin the world cannot honor: it names a placeholder that is gone, so nothing it says ever reaches the
+ *  text. Surfaced rather than dropped silently — a pin that reads as working and isn't is the whole trap.
+ *  A pin to a value the placeholder's list doesn't carry is not broken; forcing an off-list value is what
+ *  the field is for, and play applies it verbatim. */
 export interface BrokenPin {
   placeholderId: string;
-  /** The placeholder's name, or its id where the world has no such placeholder to name. */
-  placeholderName: string;
   value: string;
-  reason: 'missing-placeholder' | 'missing-value';
 }
 
 /** The lens resolved against a world: who and where, and everything that follows from the PC. */
@@ -112,26 +111,10 @@ export function seedLens(
 
 /** Every pin of `trait` the world cannot honor, in the order the trait declares them. */
 function brokenPinsOf(trait: Trait, placeholders: Placeholder[]): BrokenPin[] {
-  const byId = new Map(placeholders.map((p) => [p.id, p]));
-  return (trait.placeholderPins ?? []).flatMap((pin): BrokenPin[] => {
-    if (!pin.placeholderId || !pin.value) return [];
-    const ph = byId.get(pin.placeholderId);
-    if (!ph) {
-      return [{
-        placeholderId: pin.placeholderId,
-        placeholderName: pin.placeholderId,
-        value: pin.value,
-        reason: 'missing-placeholder' as const,
-      }];
-    }
-    if (ph.values.includes(pin.value)) return [];
-    return [{
-      placeholderId: ph.id,
-      placeholderName: ph.name || ph.id,
-      value: pin.value,
-      reason: 'missing-value' as const,
-    }];
-  });
+  const known = new Set(placeholders.map((p) => p.id));
+  return (trait.placeholderPins ?? [])
+    .filter((pin) => pin.placeholderId && pin.value && !known.has(pin.placeholderId))
+    .map((pin) => ({ placeholderId: pin.placeholderId, value: pin.value }));
 }
 
 /** The lens as every instrument reads it. A PC the world no longer has resolves to none rather than to a
@@ -183,12 +166,10 @@ export function lensStatOverrides(world: LensWorld, lens: BenchLens): StatOverri
 
 const quote = (text: string) => `“${text}”`;
 
-/** A broken pin as the sentence under the selector reads. Says what the pin claims and what the world has
- *  instead, since "broken" alone sends the author looking for which of the two moved. */
+/** A broken pin as the sentence under the selector reads. Names the value it claims to force, since
+ *  "broken" alone sends the author looking for which end of the pin moved. */
 export function describeBrokenPin(pin: BrokenPin): string {
-  return pin.reason === 'missing-placeholder'
-    ? `Pins a placeholder that doesn’t exist, so ${quote(pin.value)} is never applied.`
-    : `Pins ${quote(pin.placeholderName)} to ${quote(pin.value)}, which isn’t one of its values.`;
+  return `Pins a placeholder that doesn’t exist, so ${quote(pin.value)} is never applied.`;
 }
 
 /**
