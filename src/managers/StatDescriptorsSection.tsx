@@ -106,10 +106,10 @@ const StartMarker = ({ fraction, start }: { fraction: number; start: number }) =
   return (
     <div ref={rowRef} className="absolute inset-x-0 top-9">
       <div
-        className="absolute h-0 w-0 -translate-x-1/2 border-x-[5px] border-b-[6px] border-x-transparent border-b-foreground"
+        className="absolute h-0 w-0 -translate-x-1/2 border-x-[5px] border-b-[6px] border-x-transparent border-b-foreground motion-safe:transition-[left] motion-safe:duration-100"
         style={{ left: `${fraction * 100}%` }}
       />
-      <span ref={captionRef} className="absolute top-[7px] whitespace-nowrap text-helper leading-none text-muted-foreground">
+      <span ref={captionRef} className="absolute top-[7px] whitespace-nowrap text-helper leading-none text-muted-foreground motion-safe:transition-[left] motion-safe:duration-100">
         starts at {start}
       </span>
     </div>
