@@ -39,8 +39,10 @@ const NewMarker = () => (
 
 /** One collapsed row: the problem in a line, then every item it names as its own way in. A row whose rule
  *  knows the repair also carries it — one button for the row, never a fix-everything across rows. */
-const FindingRow = ({ group, onOpen, onFix, onDismiss }: {
+const FindingRow = ({ group, fixing, onOpen, onFix, onDismiss }: {
   group: FindingGroup;
+  /** This row's repair is in flight — the one that re-encodes images, which takes long enough to show. */
+  fixing: boolean;
   onOpen: OpenFindingItem;
   onFix: (ruleId: string) => void;
   onDismiss: (ruleId: string) => void;
@@ -66,8 +68,14 @@ const FindingRow = ({ group, onOpen, onFix, onDismiss }: {
       </div>
     </div>
     {group.fixable && (
-      <Button variant="outline" size="sm" className="h-6 shrink-0 px-2 text-meta" onClick={() => onFix(group.ruleId)}>
-        {group.findings.length > 1 ? 'Fix All' : 'Fix'}
+      <Button
+        variant="outline"
+        size="sm"
+        className="h-6 shrink-0 px-2 text-meta"
+        disabled={fixing}
+        onClick={() => onFix(group.ruleId)}
+      >
+        {fixing ? 'Fixing…' : group.findings.length > 1 ? 'Fix All' : 'Fix'}
       </Button>
     )}
     <Button
@@ -220,6 +228,7 @@ export function IssuesInstrument({ issues, onFix }: IssuesInstrumentProps) {
                   <FindingRow
                     key={group.ruleId}
                     group={group}
+                    fixing={issues.fixingRuleId === group.ruleId}
                     onOpen={issues.onOpenItem}
                     onFix={onFix}
                     onDismiss={issues.onDismissRule}

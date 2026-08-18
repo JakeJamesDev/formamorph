@@ -10,6 +10,8 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import type { Entity, World } from '@/types';
+import { toast } from 'react-toastify';
+import { dataUrlMime, improvedByLosslessWebp } from './imageBytes';
 import { useClosingSnapshot } from './useClosingSnapshot';
 import { withOptimizeProgress } from './optimizeProgress';
 import { entityImages } from './entityImages';
@@ -19,8 +21,10 @@ import {
   applyWorldOptimize,
   IMAGE_CAPS,
   countWorldImages,
+  describeKeptImages,
   estimateEncodedBytes,
   formatBytes,
+  worldImagesByPath,
   scanImages,
   scanWorldImages,
   type ImageCap,
@@ -33,8 +37,11 @@ interface OptimizeStats {
   /** How many images are over budget. */
   n: number;
   totalBytes: number;
-  /** False when every image is already WebP — Optimize (lossless WebP→WebP) would be a no-op, so it's hidden. */
+  /** False when no image would come back smaller — a JPEG's lossless WebP grows and an already-WebP one
+   *  re-encodes to itself, so the encoder keeps both and Optimize would be an offer that does nothing. */
   canOptimize: boolean;
+  /** How many of them Optimize would actually convert — what the offer can honestly promise. */
+  optCount: number;
   optTotal: number;
   downTotal: number;
 }
@@ -49,10 +56,11 @@ interface PromptCopy {
 const optimizeStats = (items: OversizedImage[]): OptimizeStats => ({
   n: items.length,
   totalBytes: items.reduce((s, i) => s + i.bytes, 0),
-  canOptimize: items.some((i) => i.mime !== 'image/webp'),
-  // An already-WebP image re-encodes to itself, so Optimize leaves its bytes as-is.
+  canOptimize: items.some((i) => improvedByLosslessWebp(i.mime)),
+  optCount: items.filter((i) => improvedByLosslessWebp(i.mime)).length,
+  // An image Optimize can't improve is kept exactly as it is, so it counts at the bytes it already has.
   optTotal: items.reduce(
-    (s, i) => s + (i.mime === 'image/webp' ? i.bytes : estimateEncodedBytes(i.bytes, i.w, i.h, 'reencode', i.cap)),
+    (s, i) => s + (improvedByLosslessWebp(i.mime) ? estimateEncodedBytes(i.bytes, i.w, i.h, 'reencode', i.cap) : i.bytes),
     0,
   ),
   downTotal: items.reduce((s, i) => s + estimateEncodedBytes(i.bytes, i.w, i.h, 'downscale', i.cap), 0),
@@ -64,13 +72,29 @@ const optimizeStats = (items: OversizedImage[]): OptimizeStats => ({
  */
 const optimizeTail = (s: OptimizeStats, many: boolean): string => {
   const them = many ? 'them' : 'it';
+  // Named as a count whenever it isn't all of them: a photo's lossless WebP is bigger, so the encoder keeps
+  // it — and an offer that says "converts them" describes a run that cannot happen.
+  const subject = s.optCount < s.n ? `${s.optCount} of ${them}` : them;
   return (
     (s.canOptimize
-      ? `Optimize converts ${them} to lossless WebP${many ? '' : ' at the same resolution'} (~${formatBytes(s.optTotal)}, no quality loss). `
+      ? `Optimize converts ${subject} to lossless WebP${many ? '' : ' at the same resolution'} (~${formatBytes(s.optTotal)}, no quality loss). `
       : '') +
     `Downscale ${s.canOptimize ? 'also shrinks' : 'shrinks'} ${them}${many ? '' : ' to fit'} ` +
     `(~${formatBytes(s.downTotal)}). Animated GIFs keep their animation.`
   );
+};
+
+/**
+ * Say once when an Optimize run finished with images still in their original format. The encoder keeps
+ * anything a WebP copy would grow, so a run can legitimately leave the same images the popup just offered to
+ * convert — and an author told nothing reads the unchanged offer as the run having failed.
+ */
+const reportKeptImages = (offered: OversizedImage[], optimized: World): void => {
+  const now = worldImagesByPath(optimized);
+  const kept = offered.filter((item) => improvedByLosslessWebp(item.mime)
+    && dataUrlMime(now.get(item.path) ?? '') !== 'image/webp').length;
+  const message = describeKeptImages(kept);
+  if (message) toast.info(message);
 };
 
 interface PromptAction {
@@ -165,10 +189,13 @@ export function useDownscalePrompt() {
       }));
       if (mode === 'off') return null;
       try {
-        if (onProgress) return await applyWorldOptimize(world, mode, onProgress, signal);
-        return await withOptimizeProgress(countWorldImages(world), (tick) =>
-          applyWorldOptimize(world, mode, (done) => tick(done), signal),
-        );
+        const optimized = onProgress
+          ? await applyWorldOptimize(world, mode, onProgress, signal)
+          : await withOptimizeProgress(countWorldImages(world), (tick) =>
+            applyWorldOptimize(world, mode, (done) => tick(done), signal),
+          );
+        if (mode === 'optimize') reportKeptImages(items, optimized);
+        return optimized;
       } catch (error) {
         if ((error as DOMException).name === 'AbortError') return null;
         throw error;

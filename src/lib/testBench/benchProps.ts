@@ -34,6 +34,9 @@ export interface IssuesProps {
   /** How many stats carry code — what the on-demand check would have to run. */
   codedStatCount: number;
   codeCheckStatus: CodeCheckStatus;
+  /** The rule whose repair is running, when one is. Only the async image conversion can be — a pure fix
+   *  lands within the click — and the row it belongs to shows the work rather than looking unresponsive. */
+  fixingRuleId: string | null;
   onOpenItem: OpenFindingItem;
   onDismissRule: (ruleId: string) => void;
   onRestoreRule: (ruleId: string) => void;

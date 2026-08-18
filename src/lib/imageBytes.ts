@@ -64,3 +64,33 @@ export const imageHost = (url: string): string => {
     return url;
   }
 };
+
+/**
+ * True when re-encoding this format as lossless WebP genuinely makes it smaller. PNG, GIF and BMP all carry
+ * bytes WebP's lossless mode reclaims for free; JPEG does not (a lossless copy of it grows, and a lossy one
+ * costs quality), SVG is text that would only get bigger as pixels, and WebP is already there.
+ *
+ * The one answer the World Doctor rule, its Fix, and the Optimize popup all read, so the three surfaces
+ * cannot disagree about what counts as convertible.
+ */
+export function improvedByLosslessWebp(mime: string): boolean {
+  return mime === 'image/png' || mime === 'image/gif' || mime === 'image/bmp' || mime === 'image/x-ms-bmp';
+}
+
+/**
+ * True when a stored image is one a lossless WebP conversion genuinely improves: it carries its own bytes
+ * (a remote link carries none of the world's) and its format has something to gain. The World Doctor rule
+ * and its Fix both ask this, so the row and the run cannot disagree about what the Fix is for.
+ */
+export const isConvertibleImage = (url: string): boolean =>
+  !isRemoteImage(url) && improvedByLosslessWebp(dataUrlMime(url));
+
+/** An image format as an author would name it — `PNG`, `GIF`, `BMP`. */
+export const imageFormatLabel = (mime: string): string =>
+  mime.replace(/^image\/(x-ms-)?/, '').toUpperCase();
+
+/**
+ * True when the browser can decode an animated image's frames (WebCodecs `ImageDecoder`). Without it the
+ * encoder has no animation-preserving path, so a GIF would come back as a single flattened frame.
+ */
+export const supportsAnimatedDecode = (): boolean => 'ImageDecoder' in globalThis;

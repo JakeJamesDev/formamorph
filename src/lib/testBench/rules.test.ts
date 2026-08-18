@@ -1326,7 +1326,10 @@ describe('world-level rules', () => {
     expect(found).toHaveLength(1);
     expect(found[0].severity).toBe('info');
     expect(found[0].message).toContain('Optimize Images');
-    expect(runRules(overview({ thumbnail: `data:image/png;base64,${'A'.repeat(1_000)}` }))).toEqual([]);
+    // Scoped to this rule: a small PNG is within budget, and that it could still be a smaller WebP is the
+    // conversion rule's business, not this one's.
+    expect(only(overview({ thumbnail: `data:image/png;base64,${'A'.repeat(1_000)}` }), 'world-oversized-images'))
+      .toEqual([]);
   });
 
   it('budgets an entity portrait against the entity cap, opening on the entity', () => {
@@ -1342,6 +1345,71 @@ describe('world-level rules', () => {
       world([{ id: 'e1', name: 'Maren', images: ['https://example.com/a-very-large-portrait.png'] }]),
       'world-oversized-images',
     )).toEqual([]);
+  });
+});
+
+describe('the lossless-WebP conversion rule', () => {
+  const image = (mime: string) => `data:${mime};base64,${'A'.repeat(80)}`;
+  // One world holding every format an author can paste in: two a lossless WebP genuinely shrinks, three it
+  // cannot, and a link whose bytes aren't the world's at all.
+  const mixed = (): RuleWorld => ({
+    ...base({
+      worldOverview: {
+        name: 'Sedge Landing', description: '', systemPrompt: 'Narrate the fen.', readme: 'A fen primer.',
+        thumbnail: image('image/jpeg'),
+      } as WorldOverview,
+      locations: [
+        { id: 'harbor', name: 'Harbor Steps', isStarting: true, backgroundImage: image('image/gif') },
+        { id: 'quay', name: 'The Quay', backgroundImage: image('image/svg+xml') },
+      ],
+      entities: [
+        { ...resident, images: [image('image/png')] },
+        { ...resident, id: 'e2', name: 'Maren', images: ['https://example.com/portrait.png'] },
+        { ...resident, id: 'e3', name: 'Tallow', images: [image('image/webp')] },
+      ],
+    }),
+  });
+
+  it('flags exactly the images a lossless WebP would shrink, naming each owner as a way in', () => {
+    const found = only(mixed(), 'image-not-webp');
+    // The PNG portrait and the GIF background — and nothing else in a world holding five other images.
+    expect(found).toHaveLength(2);
+    expect(found.map((f) => f.items[0]).map(({ id, section }) => ({ id, section })))
+      .toEqual([{ id: 'resident', section: 'entities' }, { id: 'harbor', section: 'locations' }]);
+    expect(found.every((f) => f.severity === 'info')).toBe(true);
+  });
+
+  it('names the format the author would recognize', () => {
+    const [png, gif] = only(mixed(), 'image-not-webp');
+    expect(png.message).toContain('PNG');
+    expect(gif.message).toContain('GIF');
+    expect(png.message).toContain('lossless WebP');
+  });
+
+  it('says nothing about a world whose every image is already WebP', () => {
+    expect(only(world([{ id: 'e1', name: 'Maren', images: [image('image/webp')] }]), 'image-not-webp')).toEqual([]);
+  });
+
+  it('flags a BMP thumbnail on the world itself', () => {
+    const found = only(base({
+      worldOverview: {
+        name: 'Sedge Landing', description: '', systemPrompt: 'Narrate the fen.', readme: 'A fen primer.',
+        thumbnail: image('image/bmp'),
+      } as WorldOverview,
+    }), 'image-not-webp');
+    expect(found).toHaveLength(1);
+    expect(found[0].items[0]).toMatchObject({ id: 'overview', name: 'Sedge Landing' });
+    expect(found[0].message).toContain('BMP');
+  });
+
+  it('collapses a world full of PNGs into one row carrying a Fix', () => {
+    const many = world([1, 2, 3].map((n) => ({ id: `e${n}`, name: `Face ${n}`, images: [image('image/png')] })));
+    const [group] = groupFindings(only(many, 'image-not-webp'));
+    expect(group.headline).toBe('3 embedded images would be smaller as lossless WebP');
+    expect(group.items).toHaveLength(3);
+    // The repair is async and lives in the Bench, but the row offers it exactly like any other.
+    expect(group.fixable).toBe(true);
+    expect(isRuleFixable('image-not-webp')).toBe(true);
   });
 });
 
@@ -1698,6 +1766,7 @@ const RULE_SCOPE: Record<string, 'simple' | 'advanced'> = {
   'entity-missing-both-descriptions': 'simple',
   'entity-missing-player-description': 'simple',
   'entity-nowhere': 'simple',
+  'image-not-webp': 'simple',
   // Its field is invisible in both modes, and the repair is the row's own one-click fix.
   'legacy-start-location': 'simple',
   'location-no-entities': 'simple',
@@ -1735,5 +1804,15 @@ describe('the rule registry', () => {
   it('round-trips every fix the engine carries', () => {
     // The guard on the table above: a rule that gains a fix without a fixture never gets round-tripped.
     expect(RULES.filter((r) => r.fix).map((r) => r.id).sort()).toEqual(Object.keys(FIX_FIXTURES).sort());
+  });
+
+  it('keeps the image conversion out of the pure-fix table on purpose', () => {
+    // Its repair decodes and re-encodes every picture, which no pure pass can do — so it carries `asyncFix`
+    // and the Bench fulfills it. Said here rather than special-cased in the round-trip above, so the day
+    // someone gives it a `fix` this test is what argues with them.
+    const rule = RULES.find((r) => r.id === 'image-not-webp');
+    expect(rule?.fix).toBeUndefined();
+    expect(rule?.asyncFix).toBe(true);
+    expect(FIX_FIXTURES['image-not-webp']).toBeUndefined();
   });
 });

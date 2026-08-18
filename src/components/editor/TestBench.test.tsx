@@ -63,6 +63,7 @@ const benchProps = (groups: FindingGroup[], over: BenchOver = {}): TestBenchProp
     advanced: true,
     codedStatCount: 0,
     codeCheckStatus: 'idle',
+    fixingRuleId: null,
     onOpenItem: vi.fn(),
     onDismissRule: vi.fn(),
     onRestoreRule: vi.fn(),

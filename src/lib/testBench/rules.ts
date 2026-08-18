@@ -18,7 +18,7 @@ import {
 import { usesStatClock } from '@/lib/statCodeExecutor';
 import { estimateTokens } from '@/lib/memoryUtils';
 import { entityImages } from '@/lib/entityImages';
-import { dataUrlBytes, isRemoteImage } from '@/lib/imageBytes';
+import { dataUrlBytes, dataUrlMime, imageFormatLabel, isConvertibleImage, isRemoteImage } from '@/lib/imageBytes';
 import { formatBytes, IMAGE_CAPS, type ImageCap } from '@/lib/imageOptim';
 import { clamp } from '@/lib/utils';
 import type {
@@ -83,6 +83,9 @@ export interface RuleHead {
    * it twice equals applying it once, and it returns the world untouched when there is nothing to do.
    */
   fix?(world: RuleWorld): RuleWorld;
+  /** The repair exists but can't be a `fix`: it decodes and re-encodes images, so it is async and lives in
+   *  the Bench hook. The row still carries a Fix button; only what fulfills it differs. */
+  asyncFix?: boolean;
 }
 
 export interface Rule extends RuleHead {
@@ -1462,6 +1465,27 @@ const worldOversizedImages: Rule = {
     )),
 };
 
+/** The id of the one rule whose repair can't be a pure `fix` — named here so the Bench hook that fulfills
+ *  it and the row that offers it agree on which rule that is. */
+export const IMAGE_WEBP_RULE_ID = 'image-not-webp';
+
+const imageNotWebp: Rule = {
+  id: IMAGE_WEBP_RULE_ID,
+  severity: 'info',
+  section: 'overview',
+  // The repair decodes and re-encodes every image, which the pure pass can't do — `useTestBench` runs it.
+  asyncFix: true,
+  summary: (count) => `${count} embedded images would be smaller as lossless WebP`,
+  check: (world) => embeddedImageSlots(world)
+    .filter(({ url }) => isConvertibleImage(url))
+    .map(({ item, url }) => finding(
+      imageNotWebp,
+      `${quote(item.name)}’s image is ${imageFormatLabel(dataUrlMime(url))}`
+      + ' — converting it to lossless WebP would shrink it with no quality loss',
+      [item],
+    )),
+};
+
 /** Every rule the Bench runs, in catalog order. Display order comes from severity, not this list. */
 export const RULES: readonly Rule[] = [
   aliasLeadingArticle, entityMatchCollision, aliasSelfDuplicate,
@@ -1479,7 +1503,7 @@ export const RULES: readonly Rule[] = [
   traitGroupMultipleDefaults, traitGroupTooSmall,
   placeholderWeightUnknownValue, wildcardSingleValue,
   dictionaryKeywordSubstring, dictionaryDisabled,
-  worldEmptySystemPrompt, worldNoReadme, worldOversizedImages,
+  worldEmptySystemPrompt, worldNoReadme, worldOversizedImages, imageNotWebp,
 ];
 
 /**
@@ -1533,9 +1557,11 @@ export function selectMatchingFindings<F extends Finding>(findings: F[]): F[] {
   return findings.filter((finding) => matching.has(finding.ruleId));
 }
 
-/** Whether the rule behind a finding carries a repair — what puts a Fix button on a row, wherever the row is. */
+/** Whether the rule behind a finding carries a repair — what puts a Fix button on a row, wherever the row is.
+ *  Either kind counts: a pure `fix` the pass applies, or the async one the Bench runs. */
 export function isRuleFixable(ruleId: string): boolean {
-  return !!HEAD_BY_ID.get(ruleId)?.fix;
+  const head = HEAD_BY_ID.get(ruleId);
+  return !!head?.fix || !!head?.asyncFix;
 }
 
 /** `world` with `ruleId`'s fix applied — the same world back when that rule carries none, or has nothing
@@ -1551,7 +1577,7 @@ export interface FindingGroup {
   section: FindingSection;
   /** The row's line: the lone finding's own wording, or the rule's count-carrying summary. */
   headline: string;
-  /** Whether the rule behind the row carries a fix — what puts the Fix button on it. */
+  /** Whether the rule behind the row carries a repair — what puts the Fix button on it, pure or async. */
   fixable: boolean;
   /** How many of the row's findings the author has not been shown yet. Zero when newness isn't being tracked. */
   newCount: number;
@@ -1590,7 +1616,7 @@ export function groupFindings<F extends Finding>(findings: F[], isNew?: (finding
       headline: ruleFindings.length === 1 || !rule
         ? ruleFindings[0].message
         : rule.summary(ruleFindings.length),
-      fixable: !!rule?.fix,
+      fixable: isRuleFixable(ruleId),
       newCount: isNew ? ruleFindings.filter(isNew).length : 0,
       items,
       findings: ruleFindings,
