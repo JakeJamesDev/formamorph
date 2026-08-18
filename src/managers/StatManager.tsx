@@ -179,6 +179,7 @@ const StatManager = ({ stat }: { stat: Stat }) => {
           onChange={(e) => handleChange("description", e.target.value)}
         />
       </div>
+      {advanced && (
       <div className="space-y-2">
         <Label>Availability</Label>
         <label className="flex items-center space-x-2 cursor-pointer">
@@ -189,10 +190,22 @@ const StatManager = ({ stat }: { stat: Stat }) => {
           <span>Enabled</span>
         </label>
         <p className="text-helper text-muted-foreground">
-          Turn this off to keep the stat hidden until a trait switches it on. A disabled stat is invisible
+          Turn this off to keep the stat inert until a trait switches it on. A disabled stat is invisible
           to the player and the AI, and its regen and code pause.
         </p>
+        <label className="flex items-center space-x-2 cursor-pointer">
+          <Checkbox
+            checked={editingStat.hidden === true}
+            onCheckedChange={(c) => handleChange("hidden", c === true)}
+          />
+          <span>Hidden</span>
+        </label>
+        <p className="text-helper text-muted-foreground">
+          A hidden stat never shows to the player, but the AI still reads it and its regen and code keep
+          running — for dice rolls, cooldowns, and other bookkeeping.
+        </p>
       </div>
+      )}
       {isNumeric && (
         <div className="flex flex-col gap-4">
           {isPercentage ? (

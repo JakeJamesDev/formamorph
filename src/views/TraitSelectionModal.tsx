@@ -103,6 +103,10 @@ const TraitSelectionModal = ({
   const isExclusive = !!current.group?.exclusive;
   const exclusiveValue = sectionTraits.find((t) => selectedTraits.includes(t.id))?.id ?? '';
 
+  // A hidden stat's changes still apply; the card just doesn't name it.
+  const shownStatChanges = (trait: Trait) =>
+    trait.statChanges.filter((change) => stats.find((s) => s.id === change.statId)?.hidden !== true);
+
   const traitRows = sectionTraits.map((trait) => (
     <div key={trait.id} className="mb-2 sm:mb-4 p-2 border rounded">
       <div className="flex items-center space-x-2 mb-2">
@@ -127,11 +131,11 @@ const TraitSelectionModal = ({
       {trait.playerDescription?.trim() && (
         <p className="text-meta sm:text-label mb-2">{resolveTraitText(trait, trait.playerDescription)}</p>
       )}
-      {trait.statChanges.length > 0 && (
+      {shownStatChanges(trait).length > 0 && (
         <div className="text-meta sm:text-label">
           <strong>Stat Changes:</strong>
           <ul className="list-disc list-inside">
-            {trait.statChanges.map((change, idx) => (
+            {shownStatChanges(trait).map((change, idx) => (
               <li key={idx}>
                 {getStatName(trait, change.statId)}: {change.value > 0 ? '+' : ''}{change.value} ({change.type})
               </li>

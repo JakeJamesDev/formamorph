@@ -323,6 +323,17 @@ describe('RightPanel', () => {
     renderRightPanel({}, { turns: TURNS, stats: STATS });
     expect(screen.queryByText(/Viewing turn/)).toBeNull();
   });
+
+  // A hidden stat has no row at all, which is also what keeps its delta chip, bar band and
+  // history deltas off-screen — they only render inside the row.
+  it('renders no row for a hidden stat', () => {
+    renderRightPanel({}, {
+      turns: TURNS,
+      stats: [statFixture('Vigor', 50), statFixture('Luck', 30, { hidden: true })],
+    });
+    expect(screen.getByText('Vigor')).toBeInTheDocument();
+    expect(screen.queryByText('Luck')).toBeNull();
+  });
 });
 
 describe('RightPanel — the traits tab against an edited world', () => {
