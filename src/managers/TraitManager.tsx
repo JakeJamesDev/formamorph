@@ -15,17 +15,30 @@ import type { Trait, StatChange, TraitStatToggle, TraitPlaceholderPin } from '@/
 
 /** Names another trait that claims the same target, and says which way the tie falls. Silent when nothing
  *  else claims it — the common case, where an extra line would just be noise. */
-const ConflictNote = ({ conflict }: { conflict?: TraitConflict }) => {
+const ConflictNote = ({ conflict, onOpen }: { conflict?: TraitConflict; onOpen: (id: string) => void }) => {
   if (!conflict) return null;
-  const others = conflict.others.join(', ');
+  // The winner is whichever claimant sits lowest in the trait list; `others` is in authored order, so
+  // when this trait loses, the last one is the one that beats it.
+  const winner = conflict.winsHere ? null : conflict.others[conflict.others.length - 1];
+  const link = (t: { id: string; name: string }) => (
+    <button
+      type="button"
+      className="underline underline-offset-2 hover:text-foreground"
+      onClick={() => onOpen(t.id)}
+    >
+      {t.name}
+    </button>
+  );
   return (
     <p className="text-meta text-muted-foreground pl-1">
-      Also set by {others}. {conflict.winsHere ? 'This trait' : others} wins — the lower trait in the list does.
+      Also set by {conflict.others.map((t, i) => (
+        <span key={t.id}>{i > 0 && ', '}{link(t)}</span>
+      ))}. The lowest in the trait list wins: {winner ? link(winner) : 'this trait'}.
     </p>
   );
 };
 
-const TraitManager = ({ trait }: { trait: Trait }) => {
+const TraitManager = ({ trait, onOpenTrait }: { trait: Trait; onOpenTrait: (id: string) => void }) => {
   const { updateTrait, stats, placeholders, traits, traitGroups } = useGameData();
   const { draft: editingTrait, apply, setField: handleChange } = useEditingDraft<Trait>(trait, updateTrait);
 
@@ -193,7 +206,7 @@ const TraitManager = ({ trait }: { trait: Trait }) => {
               <Trash2 className="h-4 w-4" />
             </Button>
           </div>
-          <ConflictNote conflict={conflicts.stats[toggle.statId]} />
+          <ConflictNote conflict={conflicts.stats[toggle.statId]} onOpen={onOpenTrait} />
           </div>
         ))}
         <Button onClick={() => setStatToggles([...statToggles, { statId: '', enabled: true }])}>
@@ -245,7 +258,7 @@ const TraitManager = ({ trait }: { trait: Trait }) => {
               <Trash2 className="h-4 w-4" />
             </Button>
           </div>
-          <ConflictNote conflict={conflicts.placeholders[pin.placeholderId]} />
+          <ConflictNote conflict={conflicts.placeholders[pin.placeholderId]} onOpen={onOpenTrait} />
           </div>
         ))}
         <Button onClick={() => setPins([...pins, { placeholderId: '', value: '' }])}>Add Placeholder Pin</Button>

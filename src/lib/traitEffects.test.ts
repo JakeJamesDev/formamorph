@@ -149,9 +149,9 @@ describe('conflict detection', () => {
   it('names the rival and says the later trait wins', () => {
     const traits = [vampire, cured, lone];
     expect(traitConflicts(vampire, traits, groups).stats.s1)
-      .toEqual({ others: ['Cured'], winsHere: false });
+      .toEqual({ others: [{ id: 'cured', name: 'Cured' }], winsHere: false });
     expect(traitConflicts(cured, traits, groups).stats.s1)
-      .toEqual({ others: ['Vampire'], winsHere: true });
+      .toEqual({ others: [{ id: 'vampire', name: 'Vampire' }], winsHere: true });
   });
 
   it('stays silent for a target nothing else claims', () => {
@@ -169,7 +169,7 @@ describe('conflict detection', () => {
     const raven = T('raven', { name: 'Raven', groupId: 'excl', order: 1, placeholderPins: [{ placeholderId: 'hair', value: 'black' }] });
     const dyed = T('dyed', { name: 'Dyed', groupId: 'plain', order: 0, placeholderPins: [{ placeholderId: 'hair', value: 'green' }] });
     expect(traitConflicts(red, [red, raven, dyed], groups).placeholders.hair)
-      .toEqual({ others: ['Dyed'], winsHere: false });
+      .toEqual({ others: [{ id: 'dyed', name: 'Dyed' }], winsHere: false });
   });
 
   it('ignores half-filled rows rather than reporting a conflict on the empty id', () => {

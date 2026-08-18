@@ -12,13 +12,19 @@ const sedgeBorn = {
   placeholderPins: [{ placeholderId: 'p1', value: 'copper' }],
 } as unknown as Trait;
 
+// A lower-listed rival pinning the same placeholder, so the conflict note has something to say.
+const marshWed = {
+  id: 't2', name: 'Marsh-Wed', statChanges: [],
+  placeholderPins: [{ placeholderId: 'p1', value: 'sable' }],
+} as unknown as Trait;
+
 const store: { trait: Trait; writes: Trait[]; rerender: () => void } =
   { trait: sedgeBorn, writes: [], rerender: () => {} };
 
 vi.mock('@/contexts/GameDataContext', () => ({
   useGameData: () => ({
     stats: [],
-    traits: [store.trait],
+    traits: [store.trait, marshWed],
     traitGroups: [],
     placeholders: [{ id: 'p1', name: 'Hair Color', values: ['ash', 'copper'] }],
     updateTrait: (next: Trait) => {
@@ -34,11 +40,13 @@ vi.mock('@/components/prompt/PlaceholderField', () => ({
   PlaceholderNameField: (props: { value: string }) => <input readOnly value={props.value} />,
 }));
 
+const onOpenTrait = vi.fn();
+
 /** Renders the manager against the live store, re-rendering whenever it writes. */
 const Harness = () => {
   const [, setTick] = useState(0);
   store.rerender = () => setTick((n) => n + 1);
-  return <TraitManager trait={store.trait} />;
+  return <TraitManager trait={store.trait} onOpenTrait={onOpenTrait} />;
 };
 
 const renderManager = () => render(
@@ -53,6 +61,20 @@ const lastPins = () => store.writes[store.writes.length - 1].placeholderPins;
 beforeEach(() => {
   store.trait = { ...sedgeBorn, placeholderPins: [{ placeholderId: 'p1', value: 'copper' }] };
   store.writes = [];
+  onOpenTrait.mockClear();
+});
+
+describe('the conflict note', () => {
+  it('names the winner and navigates to a clicked rival', async () => {
+    renderManager();
+    // Sedge-Born sits above Marsh-Wed, so Marsh-Wed wins — named as the winner, and clickable.
+    expect(screen.getByText(/The lowest in the trait list wins/)).toBeInTheDocument();
+    // Named twice — once in the rival list, once as the winner — and both navigate.
+    const links = screen.getAllByRole('button', { name: 'Marsh-Wed' });
+    expect(links).toHaveLength(2);
+    await userEvent.click(links[0]);
+    expect(onOpenTrait).toHaveBeenCalledWith('t2');
+  });
 });
 
 describe('the placeholder pin row', () => {

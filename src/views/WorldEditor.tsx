@@ -658,7 +658,12 @@ const WorldEditorInner = ({ onClose, embedded = false, backButton }: {
         <GroupManager key={selectedGroup.id} group={selectedGroup} />
       )}
       {activeTab === "traits" && !selectedGroup && selectedTrait && (
-        <TraitManager key={selectedTrait.id} trait={selectedTrait} />
+        <TraitManager
+          key={selectedTrait.id}
+          trait={selectedTrait}
+          // A conflict note names a rival trait; clicking the name lands on it like a Bench finding does.
+          onOpenTrait={(id) => navigateToBenchItem('traits', id)}
+        />
       )}
       {activeTab === "dictionary" && selectedBook && (
         <DictionaryBookManager key={selectedBook.id} book={selectedBook} />
