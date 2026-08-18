@@ -61,7 +61,6 @@ export function TestBench({
           <X className="h-4 w-4" />
         </Button>
       </div>
-      <LensBar {...lens} />
       <Tabs
         value={tab}
         onValueChange={(v) => onTabChange(v as BenchTab)}
@@ -77,6 +76,9 @@ export function TestBench({
             </TabsTrigger>
           ))}
         </TabsList>
+        {/* Below the strip, and only on the instruments that read it — the selection itself is Bench-level
+            state, so it survives visits to a tab that hides the bar. */}
+        {BENCH_TABS.find((t) => t.value === tab)?.usesLens && <LensBar {...lens} />}
         {/* One panel per trigger so every `aria-controls` resolves. */}
         {BENCH_TABS.map((t) => (
           <TabsContent key={t.value} value={t.value} className="mt-0 min-h-0 flex-grow">
