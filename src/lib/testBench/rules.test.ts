@@ -1435,6 +1435,60 @@ describe('the lossless-WebP conversion rule', () => {
   });
 });
 
+describe('the mislabeled-image rule', () => {
+  const withBytes = (label: string, bytes: number[]) =>
+    `data:${label};base64,${Buffer.from(bytes).toString('base64')}`;
+  const JPEG_BYTES = [0xff, 0xd8, 0xff, 0xe0, 0x00, 0x10, 0x4a, 0x46, 0x49, 0x46, 0x00, 0x01];
+  const PNG_BYTES = [0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 0x00, 0x00, 0x00, 0x0d];
+
+  // Every slot kind mislabeled at once: a JPEG-bytes thumbnail marked PNG, a PNG-bytes portrait marked
+  // JPEG, and a JPEG-bytes background marked GIF.
+  const lying = (): RuleWorld => base({
+    worldOverview: {
+      name: 'Sedge Landing', description: '', systemPrompt: 'Narrate the fen.', readme: 'A fen primer.',
+      thumbnail: withBytes('image/png', JPEG_BYTES),
+    } as WorldOverview,
+    entities: [{ id: 'e1', name: 'Maren', images: [withBytes('image/jpeg', PNG_BYTES)] } as Entity],
+    locations: [{ id: 'harbor', name: 'Harbor Steps', isStarting: true, backgroundImage: withBytes('image/gif', JPEG_BYTES) }],
+  });
+
+  it('flags each lying label, naming what it claims and what the bytes are', () => {
+    const found = only(lying(), 'image-mislabeled');
+    expect(found).toHaveLength(3);
+    const thumbRow = found.find((f) => f.items[0].id === 'overview');
+    expect(thumbRow?.message).toContain('labeled PNG');
+    expect(thumbRow?.message).toContain('bytes are JPEG');
+  });
+
+  it('says nothing for honest labels or bytes it cannot recognize', () => {
+    const honest = world([{ id: 'e1', name: 'Maren', images: [withBytes('image/png', PNG_BYTES)] }]);
+    expect(only(honest, 'image-mislabeled')).toEqual([]);
+    // The opaque payloads every other fixture uses — no signature, so no verdict to disagree with.
+    const opaque = world([{ id: 'e1', name: 'Maren', images: [`data:image/png;base64,${'A'.repeat(80)}`] }]);
+    expect(only(opaque, 'image-mislabeled')).toEqual([]);
+  });
+
+  it('Fix relabels the thumbnail, a gallery image and a background in one pass', () => {
+    const fixed = applyRuleFix(lying(), 'image-mislabeled');
+    expect(fixed.worldOverview?.thumbnail?.startsWith('data:image/jpeg;')).toBe(true);
+    expect(fixed.entities?.[0].images?.[0].startsWith('data:image/png;')).toBe(true);
+    expect(fixed.locations?.[0].backgroundImage?.startsWith('data:image/jpeg;')).toBe(true);
+    expect(only(fixed, 'image-mislabeled')).toEqual([]);
+  });
+
+  it('Fix is idempotent and leaves an honest world by reference', () => {
+    const once = applyRuleFix(lying(), 'image-mislabeled');
+    expect(applyRuleFix(once, 'image-mislabeled')).toBe(once);
+  });
+
+  it('collapses into one row carrying an ordinary pure Fix', () => {
+    const [group] = groupFindings(only(lying(), 'image-mislabeled'));
+    expect(group.headline).toBe('3 embedded images are labeled as a format their bytes are not');
+    expect(group.fixable).toBe(true);
+    expect(isRuleFixable('image-mislabeled')).toBe(true);
+  });
+});
+
 /**
  * A world as hand-edited or third-party JSON delivers one: the arrays the types call required are simply
  * absent. The cast is the fixture — this is exactly the shape TypeScript cannot stop from reaching the rules,
@@ -1550,6 +1604,8 @@ const FIX_FIXTURES: Record<string, RuleWorld> = {
     ...world([{ id: 'e1', name: 'Maren', aiDescription: 'Fond of {{ph:p1:world:pl1}}.' }]),
     placeholders: [{ id: 'p1', name: 'Vice', values: ['ale', 'dice'], weights: { ale: 2, grog: 3 } }],
   },
+  // JPEG magic numbers under a PNG label — the fix rewrites the label to what the bytes say.
+  'image-mislabeled': world([{ id: 'e1', name: 'Maren', images: ['data:image/png;base64,/9j/4AAQSkZJRgAB'] }]),
 };
 
 describe('quick fixes', () => {
@@ -1786,6 +1842,7 @@ const RULE_SCOPE: Record<string, 'simple' | 'advanced'> = {
   'entity-missing-both-descriptions': 'simple',
   'entity-missing-player-description': 'simple',
   'entity-nowhere': 'simple',
+  'image-mislabeled': 'simple',
   'image-not-webp': 'simple',
   // Its field is invisible in both modes, and the repair is the row's own one-click fix.
   'legacy-start-location': 'simple',
