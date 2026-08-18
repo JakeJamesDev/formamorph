@@ -95,9 +95,33 @@ export function statStartValue(stat: BandedStat): number {
   return statMin(stat);
 }
 
-/** The tag every threshold input wears: `%` for percent thresholds, `of <max>` for raw ones. */
+/** Five digits is where an exact ceiling starts crowding out the value beside it. */
+const COMPACT_TAG_FLOOR = 10000;
+const compactNumber = new Intl.NumberFormat('en', { notation: 'compact', maximumFractionDigits: 1 });
+
+/** The tag every threshold input wears: `%` for percent thresholds, `of <max>` for raw ones — compacted
+ *  (`of 101k`) once the ceiling reaches five digits; the exact number stays in the row's covers caption. */
 export function thresholdUnitTag(stat: BandedStat): string {
-  return thresholdUnitOf(stat) === 'percent' ? '%' : `of ${round2(statMax(stat))}`;
+  if (thresholdUnitOf(stat) === 'percent') return '%';
+  const max = round2(statMax(stat));
+  return `of ${max >= COMPACT_TAG_FLOOR ? compactNumber.format(max).toLowerCase() : max}`;
+}
+
+/** The right inset that keeps a typed value clear of its tag, in rem. */
+export function thresholdTagInsetRem(tag: string): number {
+  return tag.length * 0.55 + 1.1;
+}
+
+/** A threshold input's width: the tag's inset plus room for the value itself, floored at the classic
+ *  7rem box so short tags render exactly as they always have. */
+export function thresholdInputWidthRem(tag: string): number {
+  return Math.max(7, thresholdTagInsetRem(tag) + 4.5);
+}
+
+/** The left edge that centers the start caption under its marker while keeping it inside the bar: pinned
+ *  at whichever edge centering would spill past, and at the left when it cannot fit at all. */
+export function startCaptionLeft(markerCenter: number, captionWidth: number, containerWidth: number): number {
+  return Math.max(0, Math.min(markerCenter - captionWidth / 2, containerWidth - captionWidth));
 }
 
 /** A raw value spelled in the stat's threshold unit — `3 of 10` or `30%` — so a message comparing a value
