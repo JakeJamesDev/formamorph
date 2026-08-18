@@ -38,6 +38,51 @@ export function dataUrlMime(url: string): string {
   return /^data:([^;,]+)/.exec(url)?.[1] ?? '';
 }
 
+// Magic-number signatures for the formats the image pipeline handles, checked against the payload's first
+// bytes. WebP's needs 12 bytes (RIFF····WEBP); everything else decides in the first four.
+const MAGIC: Array<{ mime: string; test: (b: Uint8Array) => boolean }> = [
+  { mime: 'image/png', test: (b) => b[0] === 0x89 && b[1] === 0x50 && b[2] === 0x4e && b[3] === 0x47 },
+  { mime: 'image/jpeg', test: (b) => b[0] === 0xff && b[1] === 0xd8 && b[2] === 0xff },
+  { mime: 'image/gif', test: (b) => b[0] === 0x47 && b[1] === 0x49 && b[2] === 0x46 && b[3] === 0x38 },
+  {
+    mime: 'image/webp',
+    test: (b) => b[0] === 0x52 && b[1] === 0x49 && b[2] === 0x46 && b[3] === 0x46
+      && b[8] === 0x57 && b[9] === 0x45 && b[10] === 0x42 && b[11] === 0x50,
+  },
+  { mime: 'image/bmp', test: (b) => b[0] === 0x42 && b[1] === 0x4d },
+];
+
+/** The format a base64 data-URL's bytes actually are, from their magic numbers — '' when the payload isn't
+ *  base64, is too short, or matches no known signature. */
+export function sniffDataUrlMime(url: string): string {
+  const comma = url.indexOf(',');
+  if (comma === -1 || !url.slice(0, comma).includes(';base64')) return '';
+  try {
+    // 16 base64 chars → 12 bytes, enough for every signature above.
+    const head = atob(url.slice(comma + 1, comma + 17));
+    if (head.length < 12) return '';
+    const bytes = Uint8Array.from(head, (c) => c.charCodeAt(0));
+    return MAGIC.find(({ test }) => test(bytes))?.mime ?? '';
+  } catch {
+    return '';
+  }
+}
+
+/**
+ * The format an image data-URL really holds: its bytes' word when recognized, its label's otherwise.
+ * Labels lie — a bundled world ships a JPEG marked `image/png` — so every decision that hinges on format
+ * (convertibility, animation safety, the name shown to the author) reads this instead of the label.
+ */
+export const dataUrlRealMime = (url: string): string => sniffDataUrlMime(url) || dataUrlMime(url);
+
+/** Rewrite a data-URL whose label disagrees with its bytes to say what it really is. Returns the same
+ *  string when the label already tells the truth or the bytes aren't recognizable. */
+export function relabelDataUrl(url: string): string {
+  const real = sniffDataUrlMime(url);
+  if (!real || real === dataUrlMime(url)) return url;
+  return url.replace(/^data:[^;,]+/, `data:${real}`);
+}
+
 /**
  * True when a stored image value points at a remote host rather than carrying its own bytes. Lives in this
  * leaf module so the optimize pipeline can ask without importing the fetch/DOM side of `imageSource`.
@@ -83,7 +128,7 @@ export function improvedByLosslessWebp(mime: string): boolean {
  * and its Fix both ask this, so the row and the run cannot disagree about what the Fix is for.
  */
 export const isConvertibleImage = (url: string): boolean =>
-  !isRemoteImage(url) && improvedByLosslessWebp(dataUrlMime(url));
+  !isRemoteImage(url) && improvedByLosslessWebp(dataUrlRealMime(url));
 
 /** An image format as an author would name it — `PNG`, `GIF`, `BMP`. */
 export const imageFormatLabel = (mime: string): string =>
@@ -101,4 +146,4 @@ export const supportsAnimatedDecode = (): boolean => 'ImageDecoder' in globalThi
  * ever flattens an animation the other would have kept.
  */
 export const reencodeKeepsAnimation = (url: string): boolean =>
-  dataUrlMime(url) !== 'image/gif' || supportsAnimatedDecode();
+  dataUrlRealMime(url) !== 'image/gif' || supportsAnimatedDecode();

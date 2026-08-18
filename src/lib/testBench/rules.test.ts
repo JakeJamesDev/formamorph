@@ -1389,6 +1389,29 @@ describe('the lossless-WebP conversion rule', () => {
     expect(only(world([{ id: 'e1', name: 'Maren', images: [image('image/webp')] }]), 'image-not-webp')).toEqual([]);
   });
 
+  // Real magic numbers under a lying label — the bundled-world case where a JPEG marked image/png was
+  // flagged forever because the encoder's grow-guard kept it on every run.
+  const withBytes = (label: string, bytes: number[]) =>
+    `data:${label};base64,${Buffer.from(bytes).toString('base64')}`;
+  const JPEG_BYTES = [0xff, 0xd8, 0xff, 0xe0, 0x00, 0x10, 0x4a, 0x46, 0x49, 0x46, 0x00, 0x01];
+  const BMP_BYTES = [0x42, 0x4d, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00];
+
+  it('ignores an image whose PNG label hides JPEG bytes — the shrink it promises cannot happen', () => {
+    expect(only(
+      world([{ id: 'e1', name: 'Maren', images: [withBytes('image/png', JPEG_BYTES)] }]),
+      'image-not-webp',
+    )).toEqual([]);
+  });
+
+  it('names the format the bytes are, not the one the label claims', () => {
+    const [found] = only(
+      world([{ id: 'e1', name: 'Maren', images: [withBytes('image/png', BMP_BYTES)] }]),
+      'image-not-webp',
+    );
+    expect(found.message).toContain('BMP');
+    expect(found.message).not.toContain('PNG');
+  });
+
   it('flags a BMP thumbnail on the world itself', () => {
     const found = only(base({
       worldOverview: {
