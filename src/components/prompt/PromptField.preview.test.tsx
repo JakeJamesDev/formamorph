@@ -67,3 +67,40 @@ describe('PromptField preview resolves affixes', () => {
     expect(screen.getByTestId('md').textContent).toBe("at Sarah's Place with Mira present.");
   });
 });
+
+describe('the Edit/Preview toggle earns its place', () => {
+  it('disables Preview on a plain field whose text has no chip', () => {
+    // Values on offer but nothing in the text to swap: the preview would be character-identical to the
+    // editor. The strip stays — hiding it would reflow the field around the caret on the first insert —
+    // but Preview is not clickable.
+    show('plain guidance, no chips at all');
+    expect(screen.getByRole('tab', { name: 'Preview' })).toBeDisabled();
+  });
+
+  it('enables Preview once the text embeds a chip', () => {
+    show('at <LOCATION|name>.');
+    expect(screen.getByRole('tab', { name: 'Preview' })).toBeEnabled();
+  });
+
+  it('keeps Preview enabled on a chip-free markdown field, whose preview is the rendered prose', () => {
+    show('just *prose*', true);
+    expect(screen.getByRole('tab', { name: 'Preview' })).toBeEnabled();
+  });
+
+  it('lands back on Edit when the open Preview loses its chips under it', async () => {
+    // A preset switch or find-bar replace can swap the value while Preview is open. When the chips go,
+    // Preview disables — and a disabled tab must not stay the active one.
+    const { rerender } = render(
+      <PromptField value="at <LOCATION|name>." onChange={() => {}} vocabulary={promptVocabulary([])} previewValues={VALUES} />,
+    );
+    await openPreview();
+    expect(screen.getByTestId('prompt-preview')).toBeInTheDocument();
+
+    rerender(
+      <PromptField value="swapped to plain text" onChange={() => {}} vocabulary={promptVocabulary([])} previewValues={VALUES} />,
+    );
+    expect(screen.getByRole('tab', { name: 'Preview' })).toBeDisabled();
+    expect(screen.getByRole('tab', { name: 'Edit' })).toHaveAttribute('data-state', 'active');
+    expect(screen.queryByTestId('prompt-preview')).not.toBeInTheDocument();
+  });
+});

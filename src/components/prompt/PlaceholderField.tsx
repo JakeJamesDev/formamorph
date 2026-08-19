@@ -41,8 +41,9 @@ const PlaceholderField = ({ value, onChange, placeholders, markdown = false, res
     // eslint-disable-next-line react-hooks/exhaustive-deps -- rollNonce forces a fresh roll on each Preview open
     [value, placeholders, rollNonce],
   );
-  // The Edit/Preview toggle only makes sense once the world/item defines placeholders to insert; with none,
-  // this is a plain text field (no preview). Gated on the defined list, not on chips in this field's text.
+  // With no placeholders defined this is a plain text field: no values to preview with, so none are passed.
+  // PromptField adds the per-field gate — even with values on offer, Preview disables until a chip is in
+  // the text.
   const hasPlaceholders = placeholders.length > 0;
   return (
     <PromptField
