@@ -1175,6 +1175,8 @@ export const RightPanel = ({ onLocationClick, onToggleTrait, language, setLangua
     totalPages,
     activeTab,
     setActiveTab,
+    traitsView,
+    setTraitsView,
     commitManualStatEdit,
     viewTraits: savedTraits,
     viewDisabledTraitIds,
@@ -1346,6 +1348,8 @@ export const RightPanel = ({ onLocationClick, onToggleTrait, language, setLangua
             readOnly={isViewingPast}
             onToggleTrait={onToggleTrait}
             resolveTraitText={resolveTraitText}
+            view={traitsView}
+            setView={setTraitsView}
           />
         </TabsContent>
         <TabsContent value="location" className="flex-grow overflow-hidden">

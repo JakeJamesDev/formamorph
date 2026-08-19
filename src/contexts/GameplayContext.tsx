@@ -36,6 +36,7 @@ import type {
   Dictionary,
   SceneEntity,
   EntityVisualPreference,
+  TraitsPanelView,
 } from '@/types';
 
 // Frozen empties for the `view*` fallbacks: a literal `[]` there is a new identity per render, which
@@ -130,6 +131,11 @@ function useProvideGameplay() {
   // so last turn's bars clear cleanly before this turn's grow animation. Cosmetic-only; cleared on a timer.
   const [drainingStatChanges, setDrainingStatChanges] = useState<Record<string, number>>({});
   const [activeTab, setActiveTab] = useState("stats");
+  // The Traits tab's arrangement lives out here for the same reason `activeTab` does: the panel is unmounted
+  // the moment the player looks at another tab.
+  const [traitsView, setTraitsView] = useState<TraitsPanelView>({
+    query: '', keys: null, open: new Set(), openDisabled: new Set(), expanded: new Set(),
+  });
   // Stat-driven body morph influences, keyed by morph name (built from stats' morphBindings).
   const [bodyMorphValues, setBodyMorphValues] = useState<Record<string, number>>({});
   const [isFlashing, setIsFlashing] = useState(false);
@@ -658,6 +664,8 @@ function useProvideGameplay() {
     setDrainingStatChanges,
     activeTab,
     setActiveTab,
+    traitsView,
+    setTraitsView,
     logsEndRef,
     isFlashing,
     setIsFlashing,

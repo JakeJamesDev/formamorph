@@ -181,6 +181,24 @@ export interface GameState {
  *  entity carrying both an image and a 3D model; no entry means the image, as it always has. */
 export type EntityVisualPreference = Record<string, 'model' | 'image'>;
 
+/**
+ * How the player has the Traits tab arranged right now. Held in Gameplay rather than in the panel, because
+ * switching tabs (and switching panels on mobile) unmounts it — and a filter or a fold that evaporates on
+ * every glance at the stats is worse than no filter at all. Never saved: it lasts the session.
+ */
+export interface TraitsPanelView {
+  /** The filter box's text. */
+  query: string;
+  /** The section list `open` was seeded for; a change means a different world or turn, so it re-seeds. */
+  keys: string | null;
+  /** Sections currently unfolded. Seeded to the ones holding an enabled trait. */
+  open: ReadonlySet<string>;
+  /** Sections whose "Disabled (N)" block is unfolded. */
+  openDisabled: ReadonlySet<string>;
+  /** Traits showing their stat-change list. */
+  expanded: ReadonlySet<string>;
+}
+
 /** Versioned save-file envelope persisted to IndexedDB (version 2). */
 export interface SaveObject {
   currentState: GameState;
