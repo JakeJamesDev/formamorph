@@ -2,8 +2,8 @@
 // everything switched off folded into a per-section Disabled block. A world with a hundred traits has to
 // stay readable in a quarter-width column, and the author's grouping is the structure that does it.
 //
-// Expand/collapse state is deliberately session-only — the tab opens on the same sensible default every
-// time rather than on whatever the player last left behind.
+// The filter and the folds live in Gameplay (`traitsView`), because the tab is unmounted the moment the
+// player looks at Stats. They last the session and are never saved.
 
 import React from 'react';
 import { Badge } from '@/components/ui/badge';
@@ -13,7 +13,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { ChevronDown, Search } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { buildTraitSections, viewTraitSection, type TraitBlock, type TraitSection } from '@/lib/traitSections';
-import type { Stat, StatChange, Trait, TraitGroup } from '@/types';
+import type { Stat, StatChange, Trait, TraitGroup, TraitsPanelView } from '@/types';
 
 /** What a trait's stat-change list needs of a stat: its name, and whether the player may see it at all. */
 export type TraitTabStat = Pick<Stat, 'id' | 'name'> & Pick<Partial<Stat>, 'hidden'>;
@@ -30,48 +30,53 @@ export interface TraitsTabProps {
   onToggleTrait: (traitId: string, enabled: boolean) => void;
   /** A trait's own text resolved through its own placeholder pins. */
   resolveTraitText: (trait: Trait, text: string) => string;
+  /** The tab's own filter/fold state, owned by Gameplay so it outlives the unmount. */
+  view: TraitsPanelView;
+  setView: React.Dispatch<React.SetStateAction<TraitsPanelView>>;
 }
 
-/** Flip one key in a set of open/expanded keys. */
-const useKeySet = () => {
-  const [keys, setKeys] = React.useState<ReadonlySet<string>>(new Set());
-  const flip = React.useCallback((key: string) => {
-    setKeys((prev) => {
-      const next = new Set(prev);
-      if (!next.delete(key)) next.add(key);
-      return next;
-    });
-  }, []);
-  return [keys, flip, setKeys] as const;
+/** The same set with `key` added if it was absent, removed if it was there. */
+const flipKey = (keys: ReadonlySet<string>, key: string): ReadonlySet<string> => {
+  const next = new Set(keys);
+  if (!next.delete(key)) next.add(key);
+  return next;
 };
 
-const sectionHasEnabled = (section: TraitSection, isOff: (id: string) => boolean) =>
-  section.blocks.some((b) => b.traits.some((t) => !isOff(t.id)));
+const EMPTY: ReadonlySet<string> = new Set();
+
+/** Which sections a fresh look at this trait list opens: the ones holding something switched on. */
+const seedOpen = (sections: TraitSection[], isOff: (id: string) => boolean): ReadonlySet<string> =>
+  new Set(sections.filter((s) => s.blocks.some((b) => b.traits.some((t) => !isOff(t.id)))).map((s) => s.key));
 
 export const TraitsTab = ({
-  traits, groups, stats, isOff, readOnly, onToggleTrait, resolveTraitText,
+  traits, groups, stats, isOff, readOnly, onToggleTrait, resolveTraitText, view, setView,
 }: TraitsTabProps) => {
-  const [query, setQuery] = React.useState('');
-  const [flipped, flipSection, setFlipped] = useKeySet();
-  const [openDisabled, flipDisabled, setOpenDisabled] = useKeySet();
-  const [expanded, flipExpanded] = useKeySet();
-
   const sections = React.useMemo(() => buildTraitSections(traits, groups), [traits, groups]);
   const sectionKeys = sections.map((s) => s.key).join('|');
 
-  // The default open set is a first-look layout, not a live rule: it is settled when the section list itself
-  // changes (a new world, or paging into a turn that held different traits) and never re-derived on a
-  // toggle, so switching a trait off can't collapse the section under the player's hands.
-  const [lastKeys, setLastKeys] = React.useState(sectionKeys);
-  const [defaultOpen, setDefaultOpen] = React.useState<ReadonlySet<string>>(
-    () => new Set(sections.filter((s) => sectionHasEnabled(s, isOff)).map((s) => s.key)),
-  );
-  if (lastKeys !== sectionKeys) {
-    setLastKeys(sectionKeys);
-    setDefaultOpen(new Set(sections.filter((s) => sectionHasEnabled(s, isOff)).map((s) => s.key)));
-    setFlipped(new Set());
-    setOpenDisabled(new Set());
-  }
+  // Which sections stand open is seeded from what is switched on, then owned by the player. It re-seeds only
+  // when the section list itself changes (a different world, or paging into a turn that held other traits) —
+  // never on a toggle, so switching a trait off can't fold the section under the player's hands. The stored
+  // state catches up in an effect; this render already reads the seed, so nothing flashes shut first.
+  const stale = view.keys !== sectionKeys;
+  const open = stale ? seedOpen(sections, isOff) : view.open;
+  const openDisabled = stale ? EMPTY : view.openDisabled;
+  const query = view.query;
+  React.useEffect(() => {
+    if (!stale) return;
+    setView((v) => ({ ...v, keys: sectionKeys, open: seedOpen(sections, isOff), openDisabled: EMPTY }));
+  });
+
+  // Every flip reads the stored view rather than this render's copy, so two of them in one batch don't
+  // overwrite each other — and each falls back to the seed for the render before the effect has stored it.
+  const patch = (next: Partial<TraitsPanelView>) => setView((v) => ({ ...v, ...next }));
+  const flipSection = (key: string) => setView((v) => ({
+    ...v, open: flipKey(v.keys === sectionKeys ? v.open : seedOpen(sections, isOff), key),
+  }));
+  const flipDisabled = (key: string) => setView((v) => ({
+    ...v, openDisabled: flipKey(v.keys === sectionKeys ? v.openDisabled : EMPTY, key),
+  }));
+  const flipExpanded = (id: string) => setView((v) => ({ ...v, expanded: flipKey(v.expanded, id) }));
 
   const describe = React.useCallback(
     (trait: Trait) => resolveTraitText(trait, trait.playerDescription ?? ''),
@@ -91,7 +96,7 @@ export const TraitsTab = ({
     const changes = trait.statChanges
       .map((change) => ({ change, stat: statById.get(change.statId) }))
       .filter((c): c is { change: StatChange; stat: TraitTabStat } => c.stat !== undefined && c.stat.hidden !== true);
-    const isExpanded = expanded.has(trait.id);
+    const isExpanded = view.expanded.has(trait.id);
     const description = describe(trait).trim();
     const toggleLabel = `${off ? 'Switch on' : 'Switch off'} ${trait.name}`;
     return (
@@ -182,7 +187,7 @@ export const TraitsTab = ({
         <Search className="absolute left-2 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
         <Input
           value={query}
-          onChange={(e) => setQuery(e.target.value)}
+          onChange={(e) => patch({ query: e.target.value })}
           aria-label="Filter traits"
           placeholder="Filter traits…"
           className="h-8 pl-7 text-label"
@@ -199,8 +204,7 @@ export const TraitsTab = ({
           {views.length === 0 && <p className="px-1 text-label text-muted-foreground">No traits match “{query.trim()}”.</p>}
           {views.map(({ section, view }) => {
             // A filter that matched inside a collapsed section has to open it, or the result is invisible.
-            const isOpen = section.name === null || filtering
-              || (flipped.has(section.key) !== defaultOpen.has(section.key));
+            const isOpen = section.name === null || filtering || open.has(section.key);
             const disabledOpen = filtering || openDisabled.has(section.key);
             return (
               <div

@@ -198,6 +198,87 @@ describe('the traits tab filter', () => {
   });
 });
 
+describe('the traits tab keeps how the player left it', () => {
+  const GROUPS = [G('g-body', 'Physical'), G('g-mind', 'Mental')];
+  const TRAITS = [
+    T('t-strong', 'Strong Back', { groupId: 'g-body', statChanges: [{ statId: 'vigor', value: 10, type: 'starting' }] }),
+    T('t-fleet', 'Fleet Footed', { groupId: 'g-body' }),
+    T('t-quick', 'Quick Study', { groupId: 'g-mind' }),
+  ];
+  /** Leave the tab, then come back — the panel is unmounted in between, as Radix does it. */
+  const leaveAndReturn = (view: ReturnType<typeof renderTraits>) => {
+    act(() => { view.gameplay().setActiveTab('stats'); });
+    expect(screen.queryByRole('textbox', { name: 'Filter traits' })).toBeNull();
+    act(() => { view.gameplay().setActiveTab('traits'); });
+  };
+
+  it('still holds the filter text after a look at another tab', () => {
+    const view = renderTraits(TRAITS, GROUPS, ['t-strong']);
+    fireEvent.change(screen.getByRole('textbox', { name: 'Filter traits' }), { target: { value: 'quick' } });
+    leaveAndReturn(view);
+
+    expect(screen.getByRole('textbox', { name: 'Filter traits' })).toHaveValue('quick');
+    expect(shown()).toEqual(['Switch on Quick Study']);
+  });
+
+  it('keeps the sections and Disabled blocks the player folded open or shut', () => {
+    const view = renderTraits(TRAITS, GROUPS, ['t-strong']);
+    fireEvent.click(screen.getByRole('button', { name: /^Physical/ }));      // shut a section that opened
+    fireEvent.click(screen.getByRole('button', { name: 'Mental, 0 enabled' })); // open one that started shut
+    openDisabled('Mental');
+    leaveAndReturn(view);
+
+    expect(screen.getByRole('button', { name: /^Physical/ })).toHaveAttribute('aria-expanded', 'false');
+    expect(shown()).toEqual(['Switch on Quick Study']);
+  });
+
+  it('keeps both folds when two land in the same batch', () => {
+    renderTraits(TRAITS, GROUPS, ['t-strong']);
+    // React batches within one act, so a flip reading this render's copy would lose the earlier one.
+    act(() => {
+      fireEvent.click(screen.getByRole('button', { name: /^Physical/ }));
+      fireEvent.click(screen.getByRole('button', { name: /^Mental/ }));
+    });
+    expect(screen.getByRole('button', { name: /^Physical/ })).toHaveAttribute('aria-expanded', 'false');
+    expect(screen.getByRole('button', { name: /^Mental/ })).toHaveAttribute('aria-expanded', 'true');
+  });
+
+  it('keeps a revealed stat-change list open', () => {
+    const view = renderTraits(TRAITS, GROUPS, ['t-strong']);
+    fireEvent.click(screen.getByRole('button', { name: /Strong Back/ }));
+    expect(screen.getByText(/Vigor/)).toHaveTextContent('Vigor: +10');
+
+    leaveAndReturn(view);
+    expect(screen.getByText(/Vigor/)).toHaveTextContent('Vigor: +10');
+  });
+
+  it('re-seeds the folds when the trait list itself changes, rather than carrying another turn\'s', () => {
+    const held = [T('t-strong', 'Strong Back', { groupId: 'g-body' })];
+    const view = renderRightPanel({}, {
+      turns: [
+        { action: 'walk', narration: 'The dock creaks.', turnId: 't1', traits: held },
+        { action: 'walk on', narration: 'The dock holds.', turnId: 't2', traits: held },
+      ],
+      stats: STATS,
+      world: { traits: TRAITS, traitGroups: GROUPS },
+      seed: (gameplay) => {
+        gameplay.setPlayerTraits(held);
+        gameplay.setActiveTab('traits');
+      },
+    });
+    fireEvent.click(screen.getByRole('button', { name: /^Physical/ }));
+    expect(screen.getByRole('button', { name: /^Physical/ })).toHaveAttribute('aria-expanded', 'false');
+
+    // Paging back drops the acquirable traits, so Mental disappears and the section list is a different one.
+    act(() => {
+      const gameplay = view.gameplay();
+      gameplay.setUserPage(1);
+      gameplay.setDisplayedMessages(gameplay.fullMessageHistory.slice(0, 2));
+    });
+    expect(screen.getByRole('button', { name: /^Physical/ })).toHaveAttribute('aria-expanded', 'true');
+  });
+});
+
 describe('an exclusive trait group reads as a set of alternatives', () => {
   const GROUPS = [G('g-past', 'Background', { exclusive: true })];
   const TRAITS = [
