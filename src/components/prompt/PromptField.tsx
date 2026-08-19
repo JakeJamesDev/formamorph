@@ -29,6 +29,10 @@ import { MarkdownRenderer } from '@/components/game/MarkdownRenderer';
 import { type MarkdownAction } from '@/lib/markdownToolbar';
 import { type PromptVariable } from '@/lib/promptVariables';
 import { resolveToken } from '@/lib/promptTemplate';
+import {
+  tintValue, emptyMarker, stripTintSentinels, tintMarkStyle, emptyMarkStyle,
+  TINT_MARK_CLASS, EMPTY_MARK_CLASS, EMPTY_MARK_LABEL,
+} from '@/lib/previewTint';
 import { ChipVocabularyContext, promptVocabulary, type ChipVocabulary } from '@/lib/chipVocabulary';
 import { cn } from '@/lib/utils';
 import { useIsMobile } from '@/lib/useIsMobile';
@@ -501,14 +505,22 @@ function PreviewPane({ value, previewValues, vocab, scrollRef, onScroll }: {
         // matches what the model receives. It returns undefined for another family's token (placeholders),
         // which then falls back to that family's own by-token lookup. `??` — '' is a real result.
         const rendered = resolveToken(seg.token, previewValues) ?? previewValues[seg.token] ?? seg.token;
-        // An affixed chip with nothing to show renders as nothing, not an empty highlight.
-        if (rendered === '') return null;
+        // A chip with nothing to show — an absent value, or an affixed placement whose whole phrase drops
+        // out — leaves a marker rather than vanishing, so an empty resolution reads differently from a
+        // placeholder the author never inserted. The model still receives nothing.
+        if (rendered === '') {
+          return (
+            <mark
+              key={i}
+              role="img"
+              aria-label={EMPTY_MARK_LABEL}
+              className={EMPTY_MARK_CLASS}
+              style={emptyMarkStyle(color)}
+            />
+          );
+        }
         return (
-          <mark
-            key={i}
-            className="rounded px-0.5"
-            style={color ? { backgroundColor: `${color}59`, color: 'inherit' } : undefined}
-          >
+          <mark key={i} className={TINT_MARK_CLASS} style={tintMarkStyle(color)}>
             {rendered}
           </mark>
         );
@@ -518,8 +530,9 @@ function PreviewPane({ value, previewValues, vocab, scrollRef, onScroll }: {
 }
 
 /** Preview for a markdown field: resolve each chip to its value, then render the result the way the game
- *  will. Deliberately untinted — this pane's job is to show exactly what the player sees, and the markdown
- *  renderer takes a string (no raw HTML), so a chip-colored span couldn't survive it anyway. */
+ *  will — with each value tinted its chip's color, the same as the plain pane. The renderer takes a string,
+ *  so each value carries its color through the parse as sentinel characters and comes back out as a mark
+ *  (see previewTint). Author text and values are scrubbed first, so neither can forge a pairing. */
 function MarkdownPreviewPane({ value, previewValues, vocab, scrollRef, onScroll }: {
   value: string;
   previewValues?: Record<string, string>;
@@ -529,11 +542,16 @@ function MarkdownPreviewPane({ value, previewValues, vocab, scrollRef, onScroll 
 }) {
   const resolved = vocab
     .parse(value)
-    .map((seg) => (seg.type === 'text' ? seg.value : resolveToken(seg.token, previewValues ?? {}) ?? previewValues?.[seg.token] ?? seg.token))
+    .map((seg) => {
+      if (seg.type === 'text') return stripTintSentinels(seg.value);
+      const rendered = resolveToken(seg.token, previewValues ?? {}) ?? previewValues?.[seg.token] ?? seg.token;
+      const color = vocab.color(seg.token);
+      return rendered === '' ? emptyMarker(color) : tintValue(stripTintSentinels(rendered), color);
+    })
     .join('');
   return (
     <div ref={scrollRef} onScroll={onScroll} data-testid="prompt-preview" className="h-full min-h-[160px] overflow-auto rounded-md border border-input bg-muted/40 px-3 py-2 text-label">
-      <MarkdownRenderer text={resolved} />
+      <MarkdownRenderer text={resolved} tinted />
     </div>
   );
 }

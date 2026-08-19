@@ -1,10 +1,11 @@
 import { memo, type ComponentProps } from 'react';
-import { Streamdown } from 'streamdown';
+import { Streamdown, defaultRehypePlugins } from 'streamdown';
 import { createCodePlugin } from '@streamdown/code';
 import { markdownCodeThemes } from '@/lib/markdownCodeTheme';
 import remarkGfm from 'remark-gfm';
 import remarkBreaks from 'remark-breaks';
 import { remarkSubSuper } from '@/lib/remarkSubSuper';
+import { rehypePreviewTint } from '@/lib/previewTint';
 import { getRevealTiming } from '@/lib/revealTimingStore';
 import { cn } from '@/lib/utils';
 import 'streamdown/styles.css';
@@ -21,6 +22,12 @@ const REMARK_PLUGINS: ComponentProps<typeof Streamdown>['remarkPlugins'] =
 const PLUGINS: ComponentProps<typeof Streamdown>['plugins'] = {
   code: createCodePlugin({ themes: markdownCodeThemes }),
 };
+
+// Streamdown's own defaults plus ours, in that order: the tint runs after the sanitizer, so it neither
+// relaxes what author markdown may contain nor has its own marks stripped. A module constant because
+// Streamdown memoizes each block on plugin-array identity.
+const TINT_REHYPE_PLUGINS: ComponentProps<typeof Streamdown>['rehypePlugins'] =
+  [...Object.values(defaultRehypePlugins), rehypePreviewTint];
 
 const COMPONENTS: ComponentProps<typeof Streamdown>['components'] = {
   table: ({ node: _node, className, children, ...props }) => (
@@ -45,9 +52,12 @@ const COMPONENTS: ComponentProps<typeof Streamdown>['components'] = {
  * Streamdown keyframe name (e.g. `moveIn`) and `easing` its timing function; timing (duration/stagger)
  * comes from the model's smoothed rate. Move/Grow/Stretch also read `--rl-*` vars + transform-origin
  * from the narration container (set by the caller).
+ *
+ * `tinted` turns on the author-side chip highlighting: the caller marks up resolved placeholder values and
+ * they come back as chip-colored marks. Off everywhere the player reads.
  */
 export const MarkdownRenderer = memo(function MarkdownRenderer(
-  { text, animate = false, animation = 'fadeIn', easing }: { text: string; animate?: boolean; animation?: string; easing?: string },
+  { text, animate = false, animation = 'fadeIn', easing, tinted = false }: { text: string; animate?: boolean; animation?: string; easing?: string; tinted?: boolean },
 ) {
   // Read the current fade timing at render (a new sentence's release re-renders us via the text prop),
   // so the words just added animate at the model's current smoothed rate.
@@ -55,6 +65,7 @@ export const MarkdownRenderer = memo(function MarkdownRenderer(
     <div className="[overflow-wrap:anywhere] [&_ul]:list-outside [&_ul]:pl-6 [&_ol]:list-outside [&_ol]:pl-6">
       <Streamdown
         remarkPlugins={REMARK_PLUGINS}
+        rehypePlugins={tinted ? TINT_REHYPE_PLUGINS : undefined}
         components={COMPONENTS}
         plugins={PLUGINS}
         controls={false}
