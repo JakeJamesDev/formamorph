@@ -362,8 +362,15 @@ function measureDrag(
   };
 }
 
-/** The box a measured drag would come to rest in. */
-function landsIn({ locations, id, rects, center }: DragGeometry): string | null {
+/**
+ * The innermost location a measured drag's center sits in, of the ones `accepts` allows. Both questions a
+ * drag asks of the map — which group box would take it, and which leaf it is hovering over — are the same
+ * containment test read against a different set of candidates, so they share one answer to differ from.
+ */
+function innermostAt(
+  { locations, id, rects, center }: DragGeometry,
+  accepts: (loc: GameLocation) => boolean,
+): string | null {
   const byId = new Map(locations.map((l) => [l.id, l]));
   const depthOf = (loc: GameLocation) => {
     let depth = 0;
@@ -375,7 +382,7 @@ function landsIn({ locations, id, rects, center }: DragGeometry): string | null 
   for (const loc of locations) {
     const rect = rects.get(loc.id);
     if (!rect) continue;
-    if (!locations.some((l) => l.parentId === loc.id)) continue; // a leaf is a name, not a container
+    if (!accepts(loc)) continue;
     if (isDescendantLocation(locations, id, loc.id)) continue; // a location cannot come to hold itself
     const inside = center.x >= rect.x && center.x <= rect.x + rect.width
       && center.y >= rect.y && center.y <= rect.y + rect.height;
@@ -385,21 +392,64 @@ function landsIn({ locations, id, rects, center }: DragGeometry): string | null 
   return into?.id ?? null;
 }
 
+/** The box a measured drag would come to rest in. A leaf is a name, not a container. */
+const landsIn = (drag: DragGeometry): string | null =>
+  innermostAt(drag, (loc) => drag.locations.some((l) => l.parentId === loc.id));
+
+/**
+ * The childless location a drag is currently over, which the canvas may arm after a dwell — the one gesture
+ * that starts a hierarchy where there was none. Only a candidate: nothing here commits, and a drag released
+ * over an unarmed leaf is still a plain move.
+ *
+ * A location cannot be handed to itself, to anything it holds, or to a location traveling in the same drag —
+ * so none of those is ever offered, and no dwell can compose a cycle.
+ */
+export function leafTarget(
+  locations: GameLocation[],
+  id: string,
+  position: { x: number; y: number },
+  carried: string[] = [],
+): string | null {
+  const drag = measureDrag(locations, id, position);
+  if (!drag) return null;
+  return innermostAt(drag, (loc) => {
+    if (locations.some((l) => l.parentId === loc.id)) return false; // a group already takes drops on contact
+    if (loc.id === id) return false;
+    return !carried.some((other) => other === loc.id || isDescendantLocation(locations, other, loc.id));
+  });
+}
+
+/**
+ * Whether a leaf the canvas armed is still one this drag may legally be given to. Read afresh against the
+ * world rather than trusted: arming happened frames ago, and a location that has gained a child since is a
+ * group box, which takes its drops by containment rather than by being aimed at.
+ */
+const armable = (locations: GameLocation[], id: string, armed: string | null | undefined): armed is string =>
+  !!armed && armed !== id && locations.some((l) => l.id === armed)
+  && !locations.some((l) => l.parentId === armed)
+  && !isDescendantLocation(locations, id, armed);
+
 /**
  * Drop geometry → what the world becomes. `position` is the resting place as the canvas reports it, measured
  * against the box that held the location when the drag *began*. Where it lands is `dropTarget`'s answer — the
  * same one the drag was lighting up all the way in.
+ *
+ * `armed` is the leaf the canvas armed under a dwell, if any. The dwell itself is the canvas's — a clock has
+ * no place in what a drop *means* — so all that arrives here is which leaf, and the drop is read against it.
  */
 export function dropIntent(
   locations: GameLocation[],
   id: string,
   position: { x: number; y: number },
+  armed?: string | null,
 ): CanvasDrop | null {
   const drag = measureDrag(locations, id, position);
   if (!drag) return null;
   const { rects, held, heldOrigin } = drag;
 
-  const parentId = landsIn(drag);
+  // An armed leaf outranks containment: it sits inside whatever box the drag is also over, so nesting into it
+  // is the innermost answer, and it is the one the author watched light up.
+  const parentId = armable(locations, id, armed) ? armed : landsIn(drag);
   if (parentId === held) return { kind: "move", id, parentId, position };
   const origin = (parentId && rects.get(parentId)) || { x: 0, y: 0 };
   return {
@@ -437,12 +487,15 @@ export function applyCanvasDrop(locations: GameLocation[], drop: CanvasDrop): Ga
 export function multiDropIntents(
   locations: GameLocation[],
   moves: { id: string; position: { x: number; y: number } }[],
+  armed?: string | null,
 ): CanvasDrop[] {
   const carried = (id: string) =>
     moves.some((other) => other.id !== id && isDescendantLocation(locations, other.id, id));
+  // A leaf traveling in the drag is not a place to land: it is being moved, not aimed at.
+  const into = armed && moves.some((move) => move.id === armed) ? null : armed;
   return moves
     .filter((move) => !carried(move.id))
-    .map((move) => dropIntent(locations, move.id, move.position))
+    .map((move) => dropIntent(locations, move.id, move.position, into))
     .filter((drop): drop is CanvasDrop => drop !== null);
 }
 

@@ -1,5 +1,5 @@
 import {
-  createContext, useCallback, useContext, useEffect, useMemo, useRef, useState,
+  createContext, Fragment, useCallback, useContext, useEffect, useMemo, useRef, useState,
 } from 'react';
 import {
   Background, ControlButton, Controls, Handle, MiniMap, Panel,
@@ -10,7 +10,7 @@ import '@xyflow/react/dist/base.css';
 import {
   AlertTriangle, AlignHorizontalDistributeCenter, AlignStartHorizontal, AlignStartVertical,
   AlignVerticalDistributeCenter, ArrowLeft, ArrowLeftRight, ArrowRight, Check, CornerDownRight, Grid2x2,
-  LayoutGrid, Magnet, Maximize2, Minimize2, Minus, Search, Spline, Star, Trash2, X,
+  LayoutGrid, Magnet, Maximize2, Minimize2, Minus, Redo2, Search, Spline, Star, Trash2, Undo2, X,
 } from 'lucide-react';
 import { useGameData } from '@/contexts/GameDataContext';
 import FullscreenShell from '@/components/FullscreenShell';
@@ -28,10 +28,13 @@ import { describePlaceholders } from '@/lib/placeholders';
 import type { ConnectionDirection } from '@/lib/connectionEditing';
 import {
   applyCanvasDrops, applyCanvasIntent, buildLocationCanvas, CANVAS_GRID, connectIntent, connectionEnds,
-  deleteIntent, directionIntent, directionOf, hintIntent, isStationaryClick, LONG_PRESS_MS,
+  deleteIntent, directionIntent, directionOf, hintIntent, isStationaryClick, leafTarget, LONG_PRESS_MS,
   multiDropIntents, TOUCH_SLOP, UNNAMED_LOCATION,
   type CanvasIntent, type CanvasNodeData,
 } from '@/lib/locationCanvas';
+import {
+  canvasMenuSections, type CanvasMenuItem, type CanvasMenuSection,
+} from '@/lib/canvasMenu';
 import {
   canvasHistoryFor, historyShortcut, recordCanvasEdit, redoCanvasEdit, undoCanvasEdit,
   type CanvasHistory,
@@ -71,6 +74,17 @@ interface DropTarget {
 }
 
 const IDLE: DropTarget = { active: false, into: [], toTopLevel: false };
+
+/**
+ * The childless location the drag has rested on long enough to nest into. Its own channel rather than a field
+ * of the drop target: that is written on a drag frame, and a dwell fires while the pointer is *still*, so a
+ * highlight waiting for the next frame would be one that never arrives.
+ */
+const ArmedLeafContext = createContext<string | null>(null);
+
+/** How long a drag rests on a leaf before that leaf will take it. A deliberate pause, in the same
+ *  neighborhood as the hold a finger uses to pick a box out. */
+const NEST_DWELL_MS = LONG_PRESS_MS;
 const DropTargetContext = createContext<DropTarget>(IDLE);
 
 /**
@@ -138,14 +152,19 @@ const EdgeAnchors = ({ dropHeight }: { dropHeight: string }) => {
 /** A location with no sub-locations: one box carrying its name. */
 const LocationNode = ({ id, data, selected }: NodeProps<LocationNodeType>) => {
   const flashing = useContext(FlashContext) === id;
+  // Armed by a drag resting on it: this box is about to become one holding what is being dragged, and saying
+  // so before the release is what lets the author bail by moving away.
+  const armed = useContext(ArmedLeafContext) === id;
   return (
     <div
       title={data.unreachable ? UNREACHABLE_TITLE : undefined}
+      data-drop-target={armed || undefined}
       data-flash={flashing || undefined}
       className={cn(
         'group/node flex h-full w-full items-center justify-center gap-1.5 rounded-md border bg-card px-3 text-label text-card-foreground',
         data.unreachable && 'border-destructive',
         flashing ? flashRing : selected && 'ring-2 ring-ring',
+        armed && 'bg-primary/10 ring-2 ring-primary',
       )}
     >
       <EdgeAnchors dropHeight="!h-full" />
@@ -282,17 +301,8 @@ type MenuTarget =
   | { kind: 'selection' }
   | { kind: 'pane' };
 
-/** One row of the menu. `checked` is what makes a row a setting rather than an action; `exclusive` marks the
- *  settings that are one choice between each other rather than a switch of their own. */
-interface MenuItem {
-  label: string;
-  checked?: boolean;
-  exclusive?: boolean;
-  onSelect: () => void;
-}
-
 /** What a row is, as a screen reader is told it: an action, a switch, or one option among several. */
-const roleOf = (item: MenuItem) => {
+const roleOf = (item: CanvasMenuItem) => {
   if (item.checked === undefined) return 'menuitem';
   return item.exclusive ? 'menuitemradio' : 'menuitemcheckbox';
 };
@@ -300,10 +310,14 @@ const roleOf = (item: MenuItem) => {
 /**
  * The canvas's own right-click menu, standing in for the browser's. It carries what is being done to the map
  * and the choices that describe how it is drawn, so the surface itself stays free of chrome.
+ *
+ * Drawn as the groups `canvasMenuSections` hands over, ruled off from each other: walking an edit back, doing
+ * something to what was clicked, and changing how the map is drawn are different kinds of thing, and one
+ * unbroken run of rows leaves the author to work that out by trying.
  */
-const CanvasMenu = ({ at, items, onClose }: {
+const CanvasMenu = ({ at, sections, onClose }: {
   at: { x: number; y: number };
-  items: MenuItem[];
+  sections: CanvasMenuSection[];
   onClose: () => void;
 }) => (
   <div
@@ -313,19 +327,33 @@ const CanvasMenu = ({ at, items, onClose }: {
     aria-label="Canvas Options"
     onContextMenu={(e) => e.preventDefault()}
   >
-    {items.map((item) => (
-      <button
-        key={item.label}
-        type="button"
-        role={roleOf(item)}
-        aria-checked={item.checked}
-        className="flex w-full items-center gap-2 rounded px-2 py-1.5 text-left text-label hover:bg-accent hover:text-accent-foreground"
-        onClick={() => { item.onSelect(); onClose(); }}
-      >
-        {/* The tick's column is held even by an action, so every label in the menu starts on one line. */}
-        <Check className={cn('h-4 w-4 shrink-0', item.checked ? 'opacity-100' : 'opacity-0')} />
-        {item.label}
-      </button>
+    {sections.map((section, index) => (
+      <Fragment key={section.map((item) => item.label).join('|')}>
+        {index > 0 && <Separator role="separator" className="my-1" />}
+        {section.map((item) => (
+          <button
+            key={item.label}
+            type="button"
+            role={roleOf(item)}
+            aria-checked={item.checked}
+            disabled={item.disabled}
+            aria-disabled={item.disabled}
+            className={cn(
+              'flex w-full items-center gap-2 rounded px-2 py-1.5 text-left text-label',
+              item.disabled
+                // Greyed rather than dropped: the menu keeps its shape, and the row is where an author learns
+                // the map has an undo at all.
+                ? 'text-muted-foreground opacity-50'
+                : 'hover:bg-accent hover:text-accent-foreground',
+            )}
+            onClick={() => { item.onSelect(); onClose(); }}
+          >
+            {/* The tick's column is held even by an action, so every label in the menu starts on one line. */}
+            <Check className={cn('h-4 w-4 shrink-0', item.checked ? 'opacity-100' : 'opacity-0')} />
+            {item.label}
+          </button>
+        ))}
+      </Fragment>
     ))}
   </div>
 );
@@ -493,6 +521,7 @@ const STYLE_ICONS: Record<ConnectionStyle, typeof Minus> = {
 const CanvasToolbar = ({
   arrangeLabel, onArrange, alignable, distributable, onAlign, onDistribute,
   snap, setSnap, gridVisible, setGridVisible, connectionStyle, setConnectionStyle,
+  canUndo, canRedo, onUndo, onRedo,
 }: {
   arrangeLabel: string;
   onArrange: () => void;
@@ -506,6 +535,10 @@ const CanvasToolbar = ({
   setGridVisible: (next: boolean) => void;
   connectionStyle: ConnectionStyle;
   setConnectionStyle: (next: ConnectionStyle) => void;
+  canUndo: boolean;
+  canRedo: boolean;
+  onUndo: () => void;
+  onRedo: () => void;
 }) => (
   // Scrolls sideways rather than spilling off a narrow window: every tool stays reachable at any width, and
   // the row keeps its own height so the search box beneath it has a fixed place to sit.
@@ -569,6 +602,20 @@ const CanvasToolbar = ({
           );
         })}
       </ToggleGroup>
+      <Separator orientation="vertical" className="mx-0.5 h-6" />
+      {/* The keyboard's own pair, made visible. Trailing the row rather than leading it: these walk back what
+          every tool to their left just did, and an empty stack says so by greying out rather than vanishing. */}
+      {([
+        { label: 'Undo', Icon: Undo2, can: canUndo, act: onUndo },
+        { label: 'Redo', Icon: Redo2, can: canRedo, act: onRedo },
+      ] as const).map(({ label, Icon, can, act }) => (
+        <Button
+          key={label} variant="ghost" size="icon" className="h-8 w-8"
+          title={label} aria-label={label} disabled={!can} onClick={act}
+        >
+          <Icon className="h-4 w-4" />
+        </Button>
+      ))}
     </div>
   </Panel>
 );
@@ -690,21 +737,33 @@ const CanvasInner = ({ selectedId, onSelect, session, fullscreen, onToggleFullsc
   // exist, so the panel would close under the author's hand if it were pinned to an arrow's id.
   const selectedConnection = connections.find((c) => c.id === selectedConnectionId) ?? null;
 
+  // The stack itself is a ref — nothing on the map is drawn from it — but the chrome that offers it is, so
+  // what each side holds is mirrored here and read back after every edit and every step taken.
+  const [history, setHistory] = useState({ canUndo: false, canRedo: false });
+  const syncHistory = useCallback(() => {
+    const { past, future } = historyRef.current;
+    setHistory({ canUndo: past.length > 0, canRedo: future.length > 0 });
+  }, [historyRef]);
+  // The stack outlives this component: arriving at a canvas mid-session finds whatever the last one left.
+  useEffect(syncHistory, [syncHistory]);
+
   // Every write the canvas makes goes through one of these two, which is what leaves the stack holding the map's
   // whole edit history rather than the part of it someone remembered to record.
   const commitLocations = useCallback((next: GameLocation[], mergeKey?: string) => {
     historyRef.current = recordCanvasEdit(historyRef.current, {
       slice: 'locations', before: locations, after: next, mergeKey,
     });
+    syncHistory();
     setLocations(next);
-  }, [locations, setLocations, historyRef]);
+  }, [locations, setLocations, historyRef, syncHistory]);
 
   const commitConnections = useCallback((next: Connection[], mergeKey?: string) => {
     historyRef.current = recordCanvasEdit(historyRef.current, {
       slice: 'connections', before: connections, after: next, mergeKey,
     });
+    syncHistory();
     setConnections(next);
-  }, [connections, setConnections, historyRef]);
+  }, [connections, setConnections, historyRef, syncHistory]);
 
   const applyIntent = useCallback((intent: CanvasIntent | null, mergeKey?: string) => {
     if (!intent) return;
@@ -769,32 +828,68 @@ const CanvasInner = ({ selectedId, onSelect, session, fullscreen, onToggleFullsc
 
   const [dropInto, setDropInto] = useState<DropTarget>(IDLE);
 
+  /**
+   * The leaf a drag is resting on, once it has rested long enough. A childless location is a name rather than
+   * a container, so it takes a drop only on purpose — the wait is what tells "dropping this in here" apart
+   * from "on my way past". Moving to another leaf, or off every leaf, disarms at once.
+   *
+   * The clock lives here and nowhere near the drop logic: which leaf is armed is all the rules need to know.
+   */
+  const [armedLeaf, setArmedLeaf] = useState<string | null>(null);
+  const dwellRef = useRef<{ over: string | null; timer: number | null }>({ over: null, timer: null });
+  const dwellOn = useCallback((candidate: string | null) => {
+    const dwell = dwellRef.current;
+    if (dwell.over === candidate) return;
+    if (dwell.timer) window.clearTimeout(dwell.timer);
+    dwell.over = candidate;
+    setArmedLeaf(null);
+    dwell.timer = candidate === null
+      ? null
+      : window.setTimeout(() => setArmedLeaf(candidate), NEST_DWELL_MS);
+  }, []);
+  useEffect(() => () => { if (dwellRef.current.timer) window.clearTimeout(dwellRef.current.timer); }, []);
+
   // The drag asks for the drops it would make, on every frame — so the boxes an author watched light up are
   // the boxes the drop then commits to, from the one answer rather than from two that agree by inspection.
   // A selection is judged a location at a time here exactly as it is on release, so a gesture carrying one
   // location into a box and another out of one says both things at once.
+  /** What the nodes a drag is carrying are asking the world to become — the one answer the highlight is drawn
+   *  from and the drop is committed from, so the boxes an author watched light up are the boxes they get. */
+  const dropsFor = useCallback((moved: Node[]) => multiDropIntents(
+    locations, moved.map((n) => ({ id: n.id, position: n.position })), armedLeaf,
+  ), [locations, armedLeaf]);
+
   const handleDrag = useCallback((_: unknown, node: Node, dragged: Node[]) => {
     const moved = dragged.length ? dragged : [node];
-    const drops = multiDropIntents(locations, moved.map((n) => ({ id: n.id, position: n.position })));
+    // The leaf under the node the author is actually holding, never one traveling with it.
+    dwellOn(leafTarget(locations, node.id, node.position, moved.map((n) => n.id)));
+    const drops = dropsFor(moved);
     setDropInto({
       active: true,
       into: drops.map((drop) => drop.parentId).filter((id): id is string => id !== null),
       toTopLevel: drops.some((drop) => drop.kind === 'reparent' && drop.parentId === null),
     });
-  }, [locations]);
+  }, [locations, dropsFor, dwellOn]);
 
   // A drag either moves a location or changes what holds it, and where it came to rest decides which — so
   // there is one gesture to learn, and the map edits the world's shape rather than only its arrangement.
   // A whole selection dragged at once is that one gesture, made of every node it carried.
   const handleDragStop = useCallback((_: unknown, node: Node, dragged: Node[]) => {
     setDropInto(IDLE);
-    const moved = dragged.length ? dragged : [node];
-    const drops = multiDropIntents(locations, moved.map((n) => ({ id: n.id, position: n.position })));
+    const drops = dropsFor(dragged.length ? dragged : [node]);
+    dwellOn(null);
+    // One edit however many locations the armed leaf just came to hold, so one press puts them all back.
     if (drops.length) commitLocations(applyCanvasDrops(locations, drops));
-  }, [locations, commitLocations]);
+  }, [locations, commitLocations, dropsFor, dwellOn]);
 
   // Reported by xyflow rather than tracked by us: the marquee and Shift-click both land here, so one reading
   // covers every way a selection can be composed.
+  /** An armed leaf is where the drop goes, so no box behind it claims the same drop at the same time. */
+  const dropHighlight = useMemo<DropTarget>(
+    () => (armedLeaf ? { active: dropInto.active, into: [], toTopLevel: false } : dropInto),
+    [dropInto, armedLeaf],
+  );
+
   const handleSelectionChange = useCallback(({ nodes: picked }: { nodes: Node[] }) => {
     reportSelection(picked.map((n) => n.id));
   }, [reportSelection]);
@@ -808,9 +903,10 @@ const CanvasInner = ({ selectedId, onSelect, session, fullscreen, onToggleFullsc
       : redoCanvasEdit(historyRef.current, world);
     if (!step) return;
     historyRef.current = step.history;
+    syncHistory();
     if (step.restore.slice === 'locations') setLocations(step.restore.locations);
     else setConnections(step.restore.connections);
-  }, [historyRef, locations, connections, setLocations, setConnections]);
+  }, [historyRef, locations, connections, setLocations, setConnections, syncHistory]);
 
   /**
    * Which box the toolbar's Auto Arrange lays out: the selected group itself where the author picked one, the
@@ -986,9 +1082,9 @@ const CanvasInner = ({ selectedId, onSelect, session, fullscreen, onToggleFullsc
    * a leaf has nothing to lay out — and its recursive form on open canvas, which is the top level's own row.
    * Each writes the world once, so the arrangement is one edit rather than one per location moved.
    */
-  const menuActions = (target: MenuTarget): MenuItem[] => {
+  const menuActions = (target: MenuTarget): CanvasMenuItem[] => {
     if (target.kind === 'node') {
-      const items: MenuItem[] = [{
+      const items: CanvasMenuItem[] = [{
         label: 'Edit Location',
         onSelect: () => {
           setSelection((id) => id === target.id);
@@ -1030,7 +1126,8 @@ const CanvasInner = ({ selectedId, onSelect, session, fullscreen, onToggleFullsc
       // end of a right-drag pan, which is a gesture the browser would otherwise answer with a menu.
       onContextMenu={(e) => e.preventDefault()}
     >
-      <DropTargetContext.Provider value={dropInto}>
+      <DropTargetContext.Provider value={dropHighlight}>
+      <ArmedLeafContext.Provider value={armedLeaf}>
       <FlashContext.Provider value={flashId}>
       <ReactFlow<LocationNodeType, Edge>
         nodes={nodes}
@@ -1105,6 +1202,10 @@ const CanvasInner = ({ selectedId, onSelect, session, fullscreen, onToggleFullsc
             setGridVisible={setGridVisible}
             connectionStyle={connectionStyle}
             setConnectionStyle={setConnectionStyle}
+            canUndo={history.canUndo}
+            canRedo={history.canRedo}
+            onUndo={() => travelHistory('undo')}
+            onRedo={() => travelHistory('redo')}
           />
         )}
         {fullscreen && <LocationSearch find={findLocations} onPick={revealLocation} />}
@@ -1123,23 +1224,23 @@ const CanvasInner = ({ selectedId, onSelect, session, fullscreen, onToggleFullsc
         )}
       </ReactFlow>
       </FlashContext.Provider>
+      </ArmedLeafContext.Provider>
       </DropTargetContext.Provider>
       {menu && (
         <CanvasMenu
           at={menu.at}
           onClose={() => setMenu(null)}
-          items={[
-            ...menuActions(menu.target),
-            { label: 'Snap To Grid', checked: snap, onSelect: () => setSnap(!snap) },
-            { label: 'Show Grid', checked: gridVisible, onSelect: () => setGridVisible(!gridVisible) },
-            // The three shapes are one choice, so they sit together at the foot of the menu.
-            ...CONNECTION_STYLES.map(({ value, label }) => ({
-              label,
-              checked: connectionStyle === value,
-              exclusive: true,
-              onSelect: () => setConnectionStyle(value),
-            })),
-          ]}
+          sections={canvasMenuSections(
+            { ...history, snap, gridVisible, connectionStyle },
+            {
+              undo: () => travelHistory('undo'),
+              redo: () => travelHistory('redo'),
+              setSnap,
+              setGridVisible,
+              setConnectionStyle,
+            },
+            menuActions(menu.target),
+          )}
         />
       )}
     </div>
