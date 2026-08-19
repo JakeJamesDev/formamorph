@@ -3,7 +3,7 @@ import {
   createConnection, directionFrom, withDirection, withHint, type ConnectionDirection,
 } from "./connectionEditing";
 import { implicitPairs, overriddenPairs, pairKey, reachableFromStarts } from "./locationGraph";
-import { isDescendantLocation } from "./locationTree";
+import { holderOf, isDescendantLocation } from "./locationTree";
 
 /**
  * The canvas's mapping layer: world data in, node and edge descriptions out. Everything the map means lives
@@ -30,12 +30,6 @@ const LAYOUT_ROW_WIDTH = 660;
 
 /** What a location with no name of its own is called, wherever one is read for the author to see. */
 export const UNNAMED_LOCATION = "Unnamed Location";
-
-/** The box a location actually sits in. A parent id pointing at a location that isn't here would strand its
- *  children off the map, so an unknown one reads as top-level. */
-export function holderOf(locations: GameLocation[], loc: GameLocation): string | null {
-  return loc.parentId && locations.some((l) => l.id === loc.parentId) ? loc.parentId : null;
-}
 
 export interface CanvasNodeData {
   /** The location's name as the author reads it (chips resolved by the caller's resolver). */

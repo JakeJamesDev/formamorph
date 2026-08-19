@@ -27,6 +27,14 @@ describe('flattenLocationTree', () => {
       ['A', 0, null], ['B', 1, 'A'], ['C', 1, 'A'], ['D', 0, null],
     ]);
   });
+
+  it('keeps a location whose parent is gone, as a top-level one', () => {
+    const orphaned = [L('A'), L('B', 'A'), L('X', 'deleted-parent')];
+    const flat = flattenLocationTree(buildLocationTree(orphaned));
+    expect(flat.map((n) => [n.id, n.depth, n.parentId])).toEqual([
+      ['A', 0, null], ['B', 1, 'A'], ['X', 0, null],
+    ]);
+  });
 });
 
 describe('removeCollapsedChildren', () => {

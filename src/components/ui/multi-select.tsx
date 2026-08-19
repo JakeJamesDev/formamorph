@@ -82,6 +82,8 @@ interface MultiSelectOption {
 	value: string;
 	/** Optional icon component to display alongside the option. */
 	icon?: React.ComponentType<{ className?: string }>;
+	/** How deeply nested this option is under the ones above it, indenting the row it renders as. */
+	depth?: number;
 	/** Whether this option is disabled */
 	disabled?: boolean;
 	/** Custom styling for the option */
@@ -94,6 +96,13 @@ interface MultiSelectOption {
 		gradient?: string;
 	};
 }
+
+/** How far one level of nesting sets an option in. */
+const OPTION_INDENT_REM = 1;
+
+/** A nested option's own inset, on top of the padding every row already carries. */
+const indentOf = (option: MultiSelectOption) =>
+	option.depth ? { paddingLeft: `${option.depth * OPTION_INDENT_REM}rem` } : undefined;
 
 /**
  * Group interface for organizing options
@@ -1108,6 +1117,7 @@ export const MultiSelect = React.forwardRef<MultiSelectRef, MultiSelectProps>(
 															"cursor-pointer",
 															option.disabled && "opacity-50 cursor-not-allowed"
 														)}
+														style={indentOf(option)}
 														disabled={option.disabled}>
 														<div
 															className={cn(
@@ -1149,6 +1159,7 @@ export const MultiSelect = React.forwardRef<MultiSelectRef, MultiSelectProps>(
 														"cursor-pointer",
 														option.disabled && "opacity-50 cursor-not-allowed"
 													)}
+													style={indentOf(option)}
 													disabled={option.disabled}>
 													<div
 														className={cn(

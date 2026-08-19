@@ -36,6 +36,10 @@ _Avoid_: tree edges, default connections
 The visual node-graph surface for authoring locations — containment as nested Groups, travel as arrows. The list view's spatial twin inside the same Locations panel.
 _Avoid_: node graph, map view
 
+**Map**:
+The player-facing readonly twin of the Locations Canvas, shown during play — same layout and arrows, no editing. Clicking a location travels there.
+_Avoid_: canvas (authoring term), world map
+
 **Test Bench**:
 The World Editor's testing surface hosting every authoring instrument, available in both editor modes. Reached through the Bench Popover for quick triage, or as a full panel that is either embedded in the editor's list panel or docked beside it (mobile: Sheet). Shows what the harness computes from the authored world, never what the AI will do with it.
 _Avoid_: World Lab, dock (that's one chrome, not the feature)

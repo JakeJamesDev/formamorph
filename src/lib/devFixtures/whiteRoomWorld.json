@@ -45,7 +45,49 @@
       "ambientSound": null,
       "entities": [
         "1783535099434"
-      ]
+      ],
+      "canvasPosition": {
+        "x": 0,
+        "y": 0
+      }
+    },
+    {
+      "id": "dev-alcove",
+      "name": "Observation Alcove",
+      "inGameDescription": "",
+      "detailedDescription": "",
+      "backgroundImage": null,
+      "ambientSound": null,
+      "parentId": "1783535114538",
+      "canvasPosition": {
+        "x": 20,
+        "y": 36
+      }
+    },
+    {
+      "id": "dev-vent",
+      "name": "Vent Crawl",
+      "inGameDescription": "",
+      "detailedDescription": "",
+      "backgroundImage": null,
+      "ambientSound": null,
+      "parentId": "dev-alcove",
+      "canvasPosition": {
+        "x": 20,
+        "y": 36
+      }
+    },
+    {
+      "id": "dev-corridor",
+      "name": "Corridor",
+      "inGameDescription": "",
+      "detailedDescription": "",
+      "backgroundImage": null,
+      "ambientSound": null,
+      "canvasPosition": {
+        "x": 360,
+        "y": 0
+      }
     }
   ],
   "entities": [
@@ -70,5 +112,14 @@
   ],
   "statUpdates": [],
   "dictionary": [],
-  "customPlayerVRM": null
+  "customPlayerVRM": null,
+  "connections": [
+    {
+      "id": "dev-conn-1",
+      "from": "1783535114538",
+      "to": "dev-corridor",
+      "twoWay": false,
+      "aiHint": "through the sealed hatch"
+    }
+  ]
 }

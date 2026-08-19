@@ -1,5 +1,6 @@
 import type { GameLocation } from "@/types";
-import { holderOf, UNNAMED_LOCATION } from "./locationCanvas";
+import { UNNAMED_LOCATION } from "./locationCanvas";
+import { holderOf } from "./locationTree";
 
 /**
  * Finding a location by name on a map too big to read at a glance. Matching is a plain value here so the
