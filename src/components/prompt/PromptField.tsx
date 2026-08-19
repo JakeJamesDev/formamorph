@@ -604,6 +604,16 @@ const PromptField = ({ value, onChange, variables = [], vocabulary, previewValue
   // A markdown field always has something to preview (the rendered prose); a plain chip field only earns
   // the toggle once there are values to swap in.
   const showTabs = markdown || !!previewValues;
+  // ...but with no chip in the text the preview is character-identical to the editor, so Preview disables.
+  // Disabled rather than hidden: the tab strip taking height away exactly as the author inserts their
+  // first chip is a reflow around the caret, worse than the strip idling.
+  const hasChips = useMemo(() => vocab.parse(value).some((seg) => seg.type === 'variable'), [vocab, value]);
+  const previewEnabled = markdown || hasChips;
+  // The value can change under an open Preview (a preset switch, a find-bar replace). If that disables
+  // Preview, land back on Edit — a disabled tab must not stay the active one.
+  useEffect(() => {
+    if (!previewEnabled && tab !== 'edit') setTab('edit');
+  }, [previewEnabled, tab]);
 
   // Layout: the field measures itself rather than asking the device, so a shrunken desktop window falls
   // back to tabs and mobile never reaches the split threshold — no breakpoint to keep in sync.
@@ -635,7 +645,8 @@ const PromptField = ({ value, onChange, variables = [], vocabulary, previewValue
   // Fullscreen measures the viewport, not the inline slot it was opened from.
   const effectiveWidth = fullscreen ? (typeof window !== 'undefined' ? window.innerWidth - 48 : 0) : containerWidth;
   const layout = resolveLayout(splitMode, effectiveWidth, showTabs, fullscreen);
-  const split = layout === 'split';
+  // A split with Preview disabled would show two identical panes, so it waits for a chip too.
+  const split = layout === 'split' && previewEnabled;
   // Scroll containers for each tab (only one is mounted at a time). ContentEditable forwards its ref to
   // the editable <div>, which is the Edit-mode scroller (overflow-auto via EDITOR_CLASS).
   const editScrollRef = useRef<HTMLDivElement | null>(null);
@@ -794,8 +805,9 @@ const PromptField = ({ value, onChange, variables = [], vocabulary, previewValue
   );
 
   // Swipe between panes when they can't sit side by side and the screen is the whole surface — the
-  // mobile expression of the split, landing on the same content position via the shared anchor.
-  const swipeable = isMobile && fullscreen && !split && showTabs;
+  // mobile expression of the split, landing on the same content position via the shared anchor. With
+  // Preview disabled the tab bar shows instead: dots would offer a position the gesture can't reach.
+  const swipeable = isMobile && fullscreen && !split && showTabs && previewEnabled;
   const touchX = useRef<number | null>(null);
   const swipeHandlers = swipeable ? {
     onTouchStart: (e: React.TouchEvent) => { touchX.current = e.touches[0].clientX; },
@@ -837,10 +849,11 @@ const PromptField = ({ value, onChange, variables = [], vocabulary, previewValue
         {showTabs && fullscreen && effectiveWidth - 12 >= MIN_PANE_WIDTH * 2 && (
           <button
             type="button"
+            disabled={!previewEnabled}
             onClick={() => setSplitMode(split ? 'tabs' : 'split')}
             title={split ? 'Show one pane at a time' : 'Show edit and preview side by side'}
             aria-label={split ? 'Show one pane at a time' : 'Show edit and preview side by side'}
-            className="rounded p-1.5 text-muted-foreground hover:bg-accent hover:text-foreground"
+            className="rounded p-1.5 text-muted-foreground hover:bg-accent hover:text-foreground disabled:pointer-events-none disabled:opacity-50"
           >
             {split ? <Square className="h-4 w-4" /> : <Columns2 className="h-4 w-4" />}
           </button>
@@ -876,7 +889,7 @@ const PromptField = ({ value, onChange, variables = [], vocabulary, previewValue
       ) : (
         <TabsList className="grid w-full grid-cols-2 flex-shrink-0">
           <TabsTrigger value="edit">Edit</TabsTrigger>
-          <TabsTrigger value="preview">Preview</TabsTrigger>
+          <TabsTrigger value="preview" disabled={!previewEnabled}>Preview</TabsTrigger>
         </TabsList>
       )}
       <TabsContent value="edit" className="mt-2 flex-1 min-h-0 data-[state=active]:flex flex-col" {...swipeHandlers}>
