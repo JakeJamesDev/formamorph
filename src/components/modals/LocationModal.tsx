@@ -78,7 +78,7 @@ export const LocationModal = ({
                       className={cn(
                         "w-full truncate rounded-md py-2 pr-3 text-left text-label",
                         here
-                          ? "bg-accent font-medium text-accent-foreground"
+                          ? "bg-primary font-medium text-primary-foreground"
                           : "hover:bg-accent hover:text-accent-foreground",
                       )}
                     >
