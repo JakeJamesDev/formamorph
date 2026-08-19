@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { ChevronDown, ChevronRight, List, Map as MapIcon } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { ScrollArea } from "@/components/ui/scroll-area";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import LocationMap from "@/components/game/LocationMap";
 import { UNNAMED_LOCATION } from "@/lib/locationCanvas";
@@ -94,74 +95,78 @@ export const LocationModal = ({
               Map
             </TabsTrigger>
           </TabsList>
-          <TabsContent value="list" className="min-h-0 flex-1 overflow-y-auto px-6 pb-6">
-            <ul className="space-y-1">
-              {rows.map(({ id, depth, location }) => {
-                const here = id === currentLocationId;
-                const description = resolveText(location.playerDescription || location.description || "").trim();
-                const name = location.name || UNNAMED_LOCATION;
-                const hidden = descendantCount.get(id) ?? 0;
-                const isParent = hidden > 0;
-                const isCollapsed = collapsed.has(id);
-                const Chevron = isCollapsed ? ChevronRight : ChevronDown;
-                return (
-                  <li key={id} aria-level={depth + 1}>
-                    <div
-                      className={cn(
-                        "flex items-center rounded-md",
-                        here ? "bg-primary text-primary-foreground" : "hover:bg-accent hover:text-accent-foreground",
-                      )}
-                      style={{ paddingLeft: `${ROW_INSET_REM + depth * INDENT_REM}rem` }}
-                    >
-                      {isParent ? (
+          <TabsContent value="list" className="min-h-0 flex-1">
+            {/* Padding on the Root, so the overlay scrollbar sits beside the rows rather than out on the
+                dialog's own edge. */}
+            <ScrollArea className="h-full px-6 pb-6">
+              <ul className="space-y-1">
+                {rows.map(({ id, depth, location }) => {
+                  const here = id === currentLocationId;
+                  const description = resolveText(location.playerDescription || location.description || "").trim();
+                  const name = location.name || UNNAMED_LOCATION;
+                  const hidden = descendantCount.get(id) ?? 0;
+                  const isParent = hidden > 0;
+                  const isCollapsed = collapsed.has(id);
+                  const Chevron = isCollapsed ? ChevronRight : ChevronDown;
+                  return (
+                    <li key={id} aria-level={depth + 1}>
+                      <div
+                        className={cn(
+                          "flex items-center rounded-md",
+                          here ? "bg-primary text-primary-foreground" : "hover:bg-accent hover:text-accent-foreground",
+                        )}
+                        style={{ paddingLeft: `${ROW_INSET_REM + depth * INDENT_REM}rem` }}
+                      >
+                        {isParent ? (
+                          <button
+                            type="button"
+                            aria-expanded={!isCollapsed}
+                            aria-label={`${isCollapsed ? "Expand" : "Collapse"} ${name}`}
+                            onClick={(event) => { event.stopPropagation(); toggle(id); }}
+                            className="-ml-1 flex h-11 w-11 shrink-0 items-center justify-center rounded-md"
+                          >
+                            <Chevron className="h-4 w-4" aria-hidden="true" />
+                          </button>
+                        ) : (
+                          <span className="-ml-1 h-11 w-11 shrink-0" aria-hidden="true" />
+                        )}
                         <button
                           type="button"
-                          aria-expanded={!isCollapsed}
-                          aria-label={`${isCollapsed ? "Expand" : "Collapse"} ${name}`}
-                          onClick={(event) => { event.stopPropagation(); toggle(id); }}
-                          className="-ml-1 flex h-11 w-11 shrink-0 items-center justify-center rounded-md"
+                          aria-current={here ? "location" : undefined}
+                          onClick={() => travel(location)}
+                          className="min-w-0 flex-1 rounded-md py-2 pr-3 text-left text-label"
                         >
-                          <Chevron className="h-4 w-4" aria-hidden="true" />
-                        </button>
-                      ) : (
-                        <span className="-ml-1 h-11 w-11 shrink-0" aria-hidden="true" />
-                      )}
-                      <button
-                        type="button"
-                        aria-current={here ? "location" : undefined}
-                        onClick={() => travel(location)}
-                        className="min-w-0 flex-1 rounded-md py-2 pr-3 text-left text-label"
-                      >
-                        <span className="flex items-center gap-1.5">
-                          <span className="truncate font-semibold">{name}</span>
-                          {isCollapsed && (
+                          <span className="flex items-center gap-1.5">
+                            <span className="truncate font-semibold">{name}</span>
+                            {isCollapsed && (
+                              <span
+                                className={cn(
+                                  "shrink-0 rounded-full px-1 text-meta font-medium",
+                                  here ? "bg-primary-foreground/20" : "bg-muted text-muted-foreground",
+                                )}
+                              >
+                                {hidden}
+                                <span className="sr-only">{hidden === 1 ? " place" : " places"}</span>
+                              </span>
+                            )}
+                          </span>
+                          {description && (
                             <span
                               className={cn(
-                                "shrink-0 rounded-full px-1 text-meta font-medium",
-                                here ? "bg-primary-foreground/20" : "bg-muted text-muted-foreground",
+                                "block truncate font-normal text-helper",
+                                here ? "text-primary-foreground/75" : "text-muted-foreground",
                               )}
                             >
-                              {hidden}
-                              <span className="sr-only">{hidden === 1 ? " place" : " places"}</span>
+                              {description}
                             </span>
                           )}
-                        </span>
-                        {description && (
-                          <span
-                            className={cn(
-                              "block truncate font-normal text-helper",
-                              here ? "text-primary-foreground/75" : "text-muted-foreground",
-                            )}
-                          >
-                            {description}
-                          </span>
-                        )}
-                      </button>
-                    </div>
-                  </li>
-                );
-              })}
-            </ul>
+                        </button>
+                      </div>
+                    </li>
+                  );
+                })}
+              </ul>
+            </ScrollArea>
           </TabsContent>
           <TabsContent value="map" className="min-h-0 flex-1 px-6 pb-6">
             <div className="h-full w-full overflow-hidden rounded-md border">
