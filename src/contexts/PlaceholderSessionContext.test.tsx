@@ -91,6 +91,18 @@ describe('PlaceholderSessionProvider', () => {
     expect(TOWN.values).toContain(h.rolls().unique?.['intro-1']);
   });
 
+  it('rolls a Wildcard that appears only in the opening cue', () => {
+    // The cue is resolved into the input box at Start Game, so a placement it alone carries has to be
+    // primed with the rest — resolving from an unprimed roll draws a new value on every render.
+    const w = world();
+    (w.worldOverview as { openingCue?: string }).openingCue =
+      `You wake in ${encodePlaceholderToken({ id: TOWN.id, mode: 'unique', placementId: 'cue-1' })}.`;
+    const h = mount();
+    h.loadWorld(w);
+    h.begin();
+    expect(TOWN.values).toContain(h.rolls().unique?.['cue-1']);
+  });
+
   it('keeps its rolls when the session is reopened on the way into the game view', () => {
     const h = mount();
     h.loadWorld();

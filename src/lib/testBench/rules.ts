@@ -355,7 +355,10 @@ interface ChipOwner {
 const chipOwners = (world: RuleWorld): ChipOwner[] => [
   {
     item: { id: 'overview', name: world.worldOverview?.name || 'Overview', section: 'overview' },
-    texts: [world.worldOverview?.systemPrompt, world.worldOverview?.readme, world.worldOverview?.introReadme],
+    texts: [
+      world.worldOverview?.systemPrompt, world.worldOverview?.readme, world.worldOverview?.introReadme,
+      world.worldOverview?.openingCue,
+    ],
   },
   ...(world.entities ?? []).map((e) => ({
     item: { ...asItem(e, world), section: 'entities' as const },

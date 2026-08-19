@@ -2,8 +2,9 @@ import { useState } from 'react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, act } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import type { Dictionary, Entity, GameLocation, Stat, Trait, WorldOverview } from '@/types';
+import type { Dictionary, Entity, GameLocation, Placeholder, Stat, Trait, WorldOverview } from '@/types';
 import { EditorModeContext } from '@/lib/editorMode';
+import { OPENING_SCENE_CUE } from '@/components/game/GamePrompts';
 import WorldDetailsManager from './WorldDetailsManager';
 
 const PRESET_NARRATION = 'PRESET narration prompt';
@@ -41,6 +42,8 @@ const traits = [
   { id: 't2', name: 'Landlocked', aiDescription: 'You have never seen the sea.', isDefault: false },
 ] as unknown as Trait[];
 
+const placeholders = [{ id: 'p1', name: 'Hair Color', values: ['ash', 'copper'] }] as unknown as Placeholder[];
+
 const dictionaries = [{
   id: 'b1', name: 'Lore', enabled: true,
   entries: [
@@ -57,7 +60,7 @@ vi.mock('@/contexts/GameDataContext', () => ({
       world.overview = { ...world.overview, ...patch };
       world.rerender();
     },
-    stats, locations, entities, traits, traitGroups: [], dictionaries, placeholders: [],
+    stats, locations, entities, traits, traitGroups: [], dictionaries, placeholders,
   }),
 }));
 vi.mock('@/contexts/SettingsContext', () => ({
@@ -80,7 +83,12 @@ vi.mock('@/components/prompt/PromptField', () => ({
     return <div data-testid={props.ariaLabel ?? 'prompt-field'} />;
   },
 }));
-vi.mock('@/components/prompt/PlaceholderField', () => ({ default: () => <div /> }));
+vi.mock('@/components/prompt/PlaceholderField', () => ({
+  default: (props: { ariaLabel?: string }) => {
+    if (props.ariaLabel) fieldProps.byLabel[props.ariaLabel] = props;
+    return <div data-testid={props.ariaLabel ?? 'placeholder-field'} />;
+  },
+}));
 
 /** Renders the manager against the live `world`, re-rendering whenever the manager writes to it. */
 const Harness = () => {
@@ -384,5 +392,90 @@ describe('the world narration prompt field', () => {
     expect(languageOf('World narration prompt')).toBe('Write all narration in French.');
     await user.click(picker('Choices'));
     expect(languageOf('World choices prompt')).toBe('Write all choices in French.');
+  });
+});
+
+/** The one field the section shows, and the checkbox that applies it. */
+const CUE_FIELD = 'World opening cue';
+const cueCheckbox = () => screen.getByRole('checkbox', { name: "Use this world's opening cue" });
+
+describe('the opening cue section', () => {
+  it('is hidden in Simple mode', () => {
+    renderManager(false);
+    expect(screen.queryByText('Opening Cue')).not.toBeInTheDocument();
+    expect(screen.queryByTestId(CUE_FIELD)).not.toBeInTheDocument();
+  });
+
+  it('opens on the shipped cue, storing nothing and applying nothing', () => {
+    renderManager();
+
+    expect(field(CUE_FIELD).value).toBe(OPENING_SCENE_CUE);
+    expect(screen.getByText(/This is the standard cue/)).toBeInTheDocument();
+    expect(world.overview.openingCue).toBeUndefined();
+    expect(cueCheckbox()).not.toBeChecked();
+  });
+
+  it('stores the text on the first edit that diverges from the shipped cue', () => {
+    renderManager();
+    edit(CUE_FIELD, `${OPENING_SCENE_CUE} And it is raining.`);
+
+    expect(world.overview.openingCue).toBe(`${OPENING_SCENE_CUE} And it is raining.`);
+    // Writing is not applying: the checkbox is what switches a drafted cue on.
+    expect(world.overview.openingCueEnabled).toBe(false);
+  });
+
+  it('does not store a template that came back unchanged', () => {
+    renderManager();
+    edit(CUE_FIELD, OPENING_SCENE_CUE);
+
+    // The field echoes its value on mount and on any no-op edit; that must not become an authored cue.
+    expect(world.overview.openingCue).toBeUndefined();
+  });
+
+  it('switching the cue off keeps the text it holds', async () => {
+    const user = userEvent.setup();
+    world.overview.openingCue = 'You wake in the reed-beds.';
+    world.overview.openingCueEnabled = true;
+    renderManager();
+    await user.click(cueCheckbox());
+
+    expect(world.overview.openingCueEnabled).toBe(false);
+    expect(world.overview.openingCue).toBe('You wake in the reed-beds.');
+    expect(screen.getByText(/Not used until you switch this on/)).toBeInTheDocument();
+  });
+
+  it('offers Reset only for a cue the author actually wrote', async () => {
+    const user = userEvent.setup();
+    renderManager();
+    // The prompt tabs are closed, so the only Reset on screen is the cue's.
+    expect(screen.queryByRole('button', { name: 'Reset' })).not.toBeInTheDocument();
+
+    edit(CUE_FIELD, 'You wake in the reed-beds.');
+    expect(screen.getByRole('button', { name: 'Reset' })).toBeInTheDocument();
+
+    await user.click(screen.getByRole('button', { name: 'Reset' }));
+    await user.click(screen.getByRole('button', { name: 'Cancel' }));
+    expect(world.overview.openingCue).toBe('You wake in the reed-beds.');
+  });
+
+  it('drops the stored cue and returns the field to the shipped one', async () => {
+    const user = userEvent.setup();
+    world.overview.openingCue = 'You wake in the reed-beds.';
+    world.overview.openingCueEnabled = true;
+    renderManager();
+    await user.click(screen.getByRole('button', { name: 'Reset' }));
+    await user.click(screen.getByRole('button', { name: 'Confirm' }));
+
+    expect(world.overview.openingCue).toBeUndefined();
+    expect(field(CUE_FIELD).value).toBe(OPENING_SCENE_CUE);
+    // Reset discards authored text; it does not decline the feature.
+    expect(world.overview.openingCueEnabled).toBe(true);
+  });
+
+  it('offers the world’s placeholders as chips', () => {
+    renderManager();
+    // A Wildcard in the cue is how a world opens differently each playthrough, so the field has to be the
+    // chip-capable one with this world's own placeholders in its palette.
+    expect(field(CUE_FIELD).placeholders).toEqual(placeholders);
   });
 });

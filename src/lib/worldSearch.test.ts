@@ -165,6 +165,25 @@ describe('collectSearchTargets', () => {
     })]]);
   });
 
+  it('reaches a stored opening cue, switched on or not', () => {
+    const { src, writes } = sources({
+      worldOverview: overview({ openingCue: 'You wake in the reed-beds.', openingCueEnabled: false }),
+    });
+    const targets = collectSearchTargets(src);
+    expect(targetFor(targets, 'openingCue'))
+      .toMatchObject({ value: 'You wake in the reed-beds.', fieldLabel: 'Opening Cue', chipCapable: true });
+
+    targetFor(targets, 'openingCue').write('You wake in the reed-beds, already wet.');
+    // The switch is the author's; a replace edits their text and leaves it where they set it.
+    expect(writes).toEqual([['overview', expect.objectContaining({
+      openingCue: 'You wake in the reed-beds, already wet.', openingCueEnabled: false,
+    })]]);
+  });
+
+  it('offers no target for an opening cue still tracking the default', () => {
+    expect(collectSearchTargets(sources().src).map((t) => t.fieldKey)).not.toContain('openingCue');
+  });
+
   it('offers no target for a prompt tab still tracking the preset', () => {
     // Nothing is stored, so there is no world text to find — and a replace would freeze a prompt the
     // author never wrote.

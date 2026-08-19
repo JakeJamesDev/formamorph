@@ -63,6 +63,12 @@ describe('worldUsesAdvancedFeatures', () => {
     }))).toBe(true);
   });
 
+  it('says yes about a stored opening cue, even one switched off', () => {
+    expect(worldUsesAdvancedFeatures(plain({
+      worldOverview: overview({ openingCue: 'You wake in the reed-beds.', openingCueEnabled: false }),
+    }))).toBe(true);
+  });
+
   it('says no about a world whose collections are simply absent, rather than throwing on it', () => {
     // Hand-edited or third-party world JSON can omit an array the types call required, and this runs in the
     // editor's render — so a world with nothing to look through hides nothing rather than blanking the editor.

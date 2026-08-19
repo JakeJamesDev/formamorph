@@ -1,3 +1,4 @@
+import { OPENING_CUE_FIELD_KEY, setOpeningCue, storedOpeningCue } from '@/lib/openingCue';
 import { parsePlaceholderText } from '@/lib/placeholders';
 import {
   setWorldPromptOverride, storedWorldPrompt, worldPromptFieldKey, WORLD_PROMPT_KINDS, WORLD_PROMPT_KIND_LABELS,
@@ -164,6 +165,10 @@ export function collectSearchTargets(src: SearchSources): SearchTarget[] {
     // which one — the breadcrumb is all the author has to go on once both hold the same phrase.
     add({ ...ovWhere, chipCapable: true }, 'introReadme', 'Readme (Introduction)', ov.introReadme, (r, v) => ({ ...r, introReadme: v }));
     add({ ...ovWhere, chipCapable: true }, 'readme', 'Readme (Gameplay)', ov.readme, (r, v) => ({ ...r, readme: v }));
+    // Registered only once the author has stored a cue: a field still tracking the shipped default holds
+    // no world text to find, and replacing into it would freeze a cue nobody wrote.
+    add({ ...ovWhere, chipCapable: true }, OPENING_CUE_FIELD_KEY, 'Opening Cue', storedOpeningCue(ov),
+      (r, v) => ({ ...r, ...setOpeningCue({ text: v }) }));
     // One target per custom prompt the author has actually stored — a tab still tracking the preset holds
     // no world text to find, and replacing into it would silently freeze a prompt nobody wrote.
     WORLD_PROMPT_KINDS.forEach((kind) => {

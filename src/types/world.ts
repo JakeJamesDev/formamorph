@@ -343,6 +343,12 @@ export interface WorldOverview {
   introReadme?: string;
   /** Prompt text this world supplies in place of the player's preset. Absent = the player's preset alone. */
   promptOverrides?: WorldPromptOverrides;
+  /** The text the input box opens pre-filled with at Start Game, in place of the shipped cue. Placeholder
+   *  chips resolve at pre-fill time; the player edits the result before submitting (see lib/openingCue). */
+  openingCue?: string;
+  /** `false` keeps `openingCue` on the world without applying it. Absent = stored text is applied, so a
+   *  world hand-authored without the flag still opens with its cue. */
+  openingCueEnabled?: boolean;
 }
 
 /** A complete authored world: overview plus all stats, locations, entities, traits, and updates. */

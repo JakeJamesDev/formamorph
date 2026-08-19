@@ -20,7 +20,6 @@ import {
   stripOocDirectives,
   planDirective,
   INLINE_THINKING_DIRECTIVE,
-  OPENING_SCENE_CUE,
 } from '@/components/game/GamePrompts';
 
 /**
@@ -293,10 +292,10 @@ const narrationPass: TurnPassRecord<string> = {
   isDue: () => true,
   buildRequest: (input, material) => {
     // The opening turn sends the player's (editable) cue verbatim; the legacy "START GAME" sentinel maps
-    // to the default cue. Later turns send the bare action, matching the stored history shape.
+    // to the cue this world opens on. Later turns send the bare action, matching the stored history shape.
     const actionText = isOpening(input)
       ? material.action === 'START GAME'
-        ? OPENING_SCENE_CUE
+        ? input.prompts.openingCue
         : material.action
       : material.action;
     // The user template and the OOC rider apply only with thinking off — plan and inline modes append

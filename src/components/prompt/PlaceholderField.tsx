@@ -15,7 +15,7 @@ import { PLACEHOLDER_TRIGGER, placeholderHint } from '@/lib/placeholderInsert';
  * Wildcard → a random pick (World shared per placeholder, Unique per placement) — re-rolled each time the
  * tab is opened. The resolved text is tinted the chip's own color, like the prompt previews.
  */
-const PlaceholderField = ({ value, onChange, placeholders, markdown = false, resizable = false, placeholder, className, readOnly = false, label, labelAside }: {
+const PlaceholderField = ({ value, onChange, placeholders, markdown = false, resizable = false, placeholder, className, readOnly = false, label, labelAside, ariaLabel }: {
   value: string;
   onChange: (v: string) => void;
   placeholders: Placeholder[];
@@ -30,6 +30,8 @@ const PlaceholderField = ({ value, onChange, placeholders, markdown = false, res
   placeholder?: string;
   className?: string;
   readOnly?: boolean;
+  /** Names the editor for assistive tech, for a field whose caption is not its own `label`. */
+  ariaLabel?: string;
 }) => {
   const vocab = usePlaceholderChipVocabulary(placeholders);
   // Bumped on each Preview open to re-roll Wildcards.
@@ -56,6 +58,7 @@ const PlaceholderField = ({ value, onChange, placeholders, markdown = false, res
       placeholder={placeholder}
       className={className}
       readOnly={readOnly}
+      ariaLabel={ariaLabel}
       insertTrigger={PLACEHOLDER_TRIGGER}
     />
   );

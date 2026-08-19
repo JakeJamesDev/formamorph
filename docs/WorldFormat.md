@@ -60,6 +60,8 @@ Every world saved or exported by Formamorph 2.0+ carries a top-level `version` s
 | `tags` | String[] | Tags shown/searchable in the world browser |
 | `customPlayerVRM` | [MediaAsset](#-media-fields) \| null | Optional per-world custom player `.vrm` |
 | `readme` | String | Optional markdown shown to the player on entering the world (per-world "Show Readme" toggle) |
+| `openingCue` | String | Optional text the player's input box opens pre-filled with at Start Game, in place of the standard cue. Supports placeholder chips, resolved at pre-fill |
+| `openingCueEnabled` | Boolean | Whether `openingCue` is applied. Absent = applied when `openingCue` holds text |
 
 ### 📊 `stats`
 

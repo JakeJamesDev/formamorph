@@ -1,3 +1,4 @@
+import { OPENING_SCENE_CUE } from '@/components/game/GamePrompts';
 import type { TurnPlanInput, TurnPrompts, TurnSettings } from './turnPlan';
 
 /**
@@ -16,6 +17,7 @@ export const TEST_PROMPTS: TurnPrompts = {
   storyboard: 'STORYBOARD <WORLD DESCRIPTION>',
   narrationUser: 'Player: <PLAYER ACTION>',
   oocDirective: 'OOC RIDER',
+  openingCue: OPENING_SCENE_CUE,
   choices: 'CHOICES <WORLD DESCRIPTION> <ENTITIES>',
   choicesUser: 'Choices: <PLAYER ACTION> | <NARRATION>',
   statUpdates: 'STATS <WORLD DESCRIPTION>',
