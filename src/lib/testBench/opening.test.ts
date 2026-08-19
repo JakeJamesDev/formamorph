@@ -233,6 +233,25 @@ describe('the assembled first prompt', () => {
     expect(opening.user).toContain(OPENING_SCENE_CUE);
   });
 
+  it('sends the world’s own cue once the author switches it on, chips and all resolved', () => {
+    const cue = `You wake with ${chip('ph-hair', 'world', 'pl-h9')} hair and the tide already climbing.`;
+    const w = world({
+      worldOverview: { name: 'Sedge Landing', description: '', systemPrompt: '', openingCue: cue } as WorldOverview,
+    });
+    const opening = openingFor(w);
+
+    expect(opening.user).toContain('You wake with ash hair and the tide already climbing.');
+    expect(opening.user).not.toContain(OPENING_SCENE_CUE);
+  });
+
+  it('keeps the shipped cue for a world whose cue is switched off or blank', () => {
+    const ov = (over: Partial<WorldOverview>) =>
+      world({ worldOverview: { name: 'W', description: '', systemPrompt: '', ...over } as WorldOverview });
+    expect(openingFor(ov({ openingCue: 'Never applied.', openingCueEnabled: false })).user)
+      .toContain(OPENING_SCENE_CUE);
+    expect(openingFor(ov({ openingCue: '   ', openingCueEnabled: true })).user).toContain(OPENING_SCENE_CUE);
+  });
+
   it('resolves chips through the active traits’ pins', () => {
     const opening = openingFor(world(), 't-reach');
     expect(opening.system).toContain('Hair: copper.');

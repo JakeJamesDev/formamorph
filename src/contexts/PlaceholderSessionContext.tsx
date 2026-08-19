@@ -81,6 +81,8 @@ export function PlaceholderSessionProvider({ children }: { children: ReactNode }
       worldOverview.systemPrompt || '',
       worldOverview.readme || '',
       worldOverview.introReadme || '',
+      worldOverview.openingCue || '',
+
       ...entities.flatMap((e) => [e.name, ...(e.aliases ?? []), e.playerDescription, e.aiDescription, e.aiSummary, e.imageTags]),
       ...locations.flatMap((l) => [l.name, l.playerDescription, l.aiDescription, l.aiSummary, l.description, l.imageTags]),
       ...dictionaries.flatMap((b) => b.entries.flatMap((en) => [en.name, ...(en.key ?? []), ...(en.secondaryKeys ?? []), en.value])),

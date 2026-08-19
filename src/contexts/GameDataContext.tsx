@@ -303,7 +303,13 @@ function useProvideGameData() {
       introReadme: overview.introReadme || defaultOverview.introReadme,
       // Allowlisted like everything above — omitting it here would silently drop a world's authored
       // narration prompt on load, and the next saveWorld would write the loss back to disk.
-      ...(overview.promptOverrides ? { promptOverrides: overview.promptOverrides } : {})
+      ...(overview.promptOverrides ? { promptOverrides: overview.promptOverrides } : {}),
+      // Same allowlist rule. The flag is spread only when it is actually a boolean: absent means "applied
+      // if there is text", which is not the same as `false`.
+      ...(typeof overview.openingCue === 'string' ? { openingCue: overview.openingCue } : {}),
+      ...(typeof overview.openingCueEnabled === 'boolean'
+        ? { openingCueEnabled: overview.openingCueEnabled }
+        : {})
     };
     // Replace, never merge: a merge lets a field the normalizer doesn't set survive from the previously
     // loaded world, leaking it into this one and into the next saveWorld.

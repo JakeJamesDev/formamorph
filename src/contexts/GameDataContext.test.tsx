@@ -365,4 +365,30 @@ describe('loadWorldData', () => {
     act(() => { result.current.loadWorldData(world('b', {})); });
     expect(result.current.worldOverview.promptOverrides).toBeUndefined();
   });
+
+  it("carries the world's opening cue and its switch through the load", () => {
+    // Same allowlist trap as the prompt override above: a dropped cue is written back by the next
+    // saveWorld, so the author's opening would vanish from their own world on reopening it.
+    const { result } = renderHook(() => useGameData(), { wrapper });
+    const exported = JSON.parse(JSON.stringify(
+      world('a', { openingCue: 'You wake in the reed-beds.', openingCueEnabled: false }),
+    ));
+    act(() => { result.current.loadWorldData(exported); });
+    expect(result.current.worldOverview.openingCue).toBe('You wake in the reed-beds.');
+    expect(result.current.worldOverview.openingCueEnabled).toBe(false);
+  });
+
+  it('leaves the switch absent for a world that only carries cue text, so the text still applies', () => {
+    const { result } = renderHook(() => useGameData(), { wrapper });
+    act(() => { result.current.loadWorldData(world('a', { openingCue: 'You wake in the reed-beds.' })); });
+    expect(result.current.worldOverview.openingCueEnabled).toBeUndefined();
+  });
+
+  it("does not leak one world's opening cue into the next", () => {
+    const { result } = renderHook(() => useGameData(), { wrapper });
+    act(() => { result.current.loadWorldData(world('a', { openingCue: 'A cue', openingCueEnabled: true })); });
+    act(() => { result.current.loadWorldData(world('b', {})); });
+    expect(result.current.worldOverview.openingCue).toBeUndefined();
+    expect(result.current.worldOverview.openingCueEnabled).toBeUndefined();
+  });
 });

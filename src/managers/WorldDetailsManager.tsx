@@ -18,6 +18,8 @@ import {
   clearWorldPromptOverride, setWorldPromptOverride, storedWorldPrompt, worldPromptEnabled, worldPromptFieldKey,
   WORLD_PROMPT_KINDS, WORLD_PROMPT_KIND_LABELS, type WorldPromptKind,
 } from "@/lib/worldPrompt";
+import { clearOpeningCue, openingCueEnabled, setOpeningCue, storedOpeningCue } from "@/lib/openingCue";
+import { OPENING_SCENE_CUE } from "@/components/game/GamePrompts";
 import { useEditorMode } from "@/lib/editorMode";
 
 /** Which preset field each kind replaces, and which chip palette that prompt is written against. */
@@ -191,6 +193,73 @@ const CustomPromptsSection = ({ focusField }: { focusField?: { fieldKey: string 
 };
 
 /**
+ * The text the player's input box opens pre-filled with at Start Game, in place of the shipped cue. The
+ * field opens on the shipped cue as an unstored template, so an author edits the guardrails rather than
+ * writing blind; the first edit is what stores it on the world, and Reset drops it back to tracking the
+ * shipped one. There is no player-facing opt-out — the pre-filled box is editable, so the player already
+ * has the last word on what the opening turn says.
+ */
+const OpeningCueSection = () => {
+  const { worldOverview, updateWorldOverview, placeholders } = useGameData();
+  const { advanced } = useEditorMode();
+  const [confirmReset, setConfirmReset] = useState(false);
+
+  if (!advanced) return null;
+
+  const stored = storedOpeningCue(worldOverview);
+  const enabled = openingCueEnabled(worldOverview);
+
+  return (
+    <div className="space-y-2">
+      <div className="flex items-center justify-between gap-2">
+        <Label className="leading-none">Opening Cue</Label>
+        <Checkbox
+          checked={enabled}
+          // Switching off keeps the text and only clears the flag, so a stray click costs nothing — the
+          // editor writes straight through to world state, where the only undo is discarding every edit.
+          onCheckedChange={(c) => updateWorldOverview(setOpeningCue({ enabled: c === true }))}
+          aria-label="Use this world's opening cue"
+        />
+      </div>
+
+      <PlaceholderField
+        value={stored ?? OPENING_SCENE_CUE}
+        // Storing on the first divergence is what keeps an untouched world tracking the shipped cue: a
+        // world only carries a cue its author actually wrote.
+        onChange={(text) => {
+          if (stored === undefined && text === OPENING_SCENE_CUE) return;
+          updateWorldOverview(setOpeningCue({ text, enabled }));
+        }}
+        placeholders={placeholders}
+        ariaLabel="World opening cue"
+        resizable
+      />
+      <div className="flex items-start justify-between gap-2">
+        <p className="text-meta text-muted-foreground">
+          {enabled
+            ? 'Pre-fills the player’s input box when they start this world. They can still edit it before they send it.'
+            : 'Not used until you switch this on — players start on the standard cue.'}
+          {stored === undefined && ' This is the standard cue, and follows it until you edit it here.'}
+        </p>
+        {stored !== undefined && (
+          <Button variant="ghost" size="sm" className="shrink-0" onClick={() => setConfirmReset(true)}>
+            Reset
+          </Button>
+        )}
+      </div>
+
+      <ConfirmDialog
+        open={confirmReset}
+        onOpenChange={setConfirmReset}
+        title="Discard this world's opening cue?"
+        description="It goes back to following the standard cue. The text you wrote here is not kept."
+        onConfirm={() => { updateWorldOverview(clearOpeningCue()); setConfirmReset(false); }}
+      />
+    </div>
+  );
+};
+
+/**
  * The world's two readmes, one tab each. The player never sees them together: the Introduction opens over
  * the first enter-world setup screen and the Gameplay one on entering the game, so writing for a player
  * who has already built their character stays out of the pre-trait window.
@@ -278,6 +347,8 @@ const WorldDetailsManager = ({ focusField }: { focusField?: { fieldKey: string }
       </div>
 
       <CustomPromptsSection focusField={focusField} />
+
+      <OpeningCueSection />
 
       <ReadmeSection focusField={focusField} />
     </div>

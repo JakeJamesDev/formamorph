@@ -8,6 +8,32 @@ Sections land here as each tab's help is written, so a tab missing below simply 
 
 ---
 
+## Overview
+
+The world's own tab: its name, description, thumbnail and the AI-facing text that frames every turn.
+
+### Opening Cue
+
+**Advanced mode only.** The text the player's input box opens pre-filled with when they press **Start Game**. Without one, every world opens on the same standard cue — a generic "write the opening scene" instruction. With one, your world's first turn is the one you designed.
+
+Switch the checkbox on and write what the opening turn should ask the narrator for.
+
+> 💡 It is a **starting point, not a script.** The player still reads the cue in their input box and can tweak or replace it before sending. That is why there is no player-side opt-out: they already have the last word.
+
+| Behavior | What happens |
+|---|---|
+| **Opens on the standard cue** | The field shows the shipped cue, guardrails and all, so you edit from something that works. It keeps following it until your first edit. |
+| **First edit stores it** | Only a change you actually make is saved onto the world. Opening the field writes nothing. |
+| **Switching it off keeps the text** | The checkbox decides whether the cue is *used*; it never discards what you wrote. |
+| **Reset** | Drops your stored text and returns the field to following the standard cue. Asks first. |
+| **Blank falls back** | An applied cue that is empty or only spaces sends the standard cue instead, never an empty opening. |
+
+**Placeholder chips work here.** A Wildcard in the cue rolls per playthrough, so the same world can open on a different detail each time — and the player sees the rolled words, never the chip.
+
+> ⚠️ The whole cue is yours: nothing is appended to it. If you delete the "don't ask the player what to do" line the shipped cue carries, the AI may open by offering options — a separate step already does that. Edit from the template rather than starting from an empty field.
+
+---
+
 ## Stats
 
 The numbers that describe your player — health, coin, reputation, whatever your world needs. Each stat holds a value between a **Min** and a **Max**, and the AI sees them on every turn.

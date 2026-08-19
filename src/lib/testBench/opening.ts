@@ -14,9 +14,7 @@
  *
  * Pure and world-shaped: no React, no storage, no world mutation.
  */
-import {
-  defaultNarrationUserPrompt, defaultSystemPrompt, OPENING_SCENE_CUE,
-} from '@/components/game/GamePrompts';
+import { defaultNarrationUserPrompt, defaultSystemPrompt } from '@/components/game/GamePrompts';
 import { DEFAULT_MAX_TOKENS } from '@/contexts/settingsDefaults';
 import { authoredPreviewValues } from '@/lib/authoredPreviewValues';
 import { estimateTokens } from '@/lib/memoryUtils';
@@ -24,6 +22,7 @@ import {
   collectPlaceholderPlacements, placeholderChances, primeRolls, resolvePlaceholders,
   type PlaceholderPick,
 } from '@/lib/placeholders';
+import { resolveOpeningCue } from '@/lib/openingCue';
 import { NONE_PLACEHOLDER } from '@/lib/promptFallbacks';
 import { renderPromptTemplate } from '@/lib/promptTemplate';
 import { activeDescriptor } from '@/lib/statContext';
@@ -272,10 +271,12 @@ export function buildOpening(world: OpeningWorld, lens: BenchLens, rolls: Placeh
     '<NOTES>': NONE_PLACEHOLDER,
     '<TIME>': NONE_PLACEHOLDER,
   };
+  // The world's own cue when the author switched one on, resolved as the pre-fill resolves it.
+  const cue = resolve(resolveOpeningCue(world.worldOverview));
   const { prompt: system } = buildNarrationPrompt({
     template: defaultSystemPrompt,
     ctx,
-    action: OPENING_SCENE_CUE,
+    action: cue,
     history: [],
     dictionary: scannedEntries(world),
     actionVec: null,
@@ -288,7 +289,7 @@ export function buildOpening(world: OpeningWorld, lens: BenchLens, rolls: Placeh
     sectionStyle: 'markdown',
     resolvePH: resolve,
   });
-  const user = renderPromptTemplate(defaultNarrationUserPrompt, { '<PLAYER ACTION>': OPENING_SCENE_CUE });
+  const user = renderPromptTemplate(defaultNarrationUserPrompt, { '<PLAYER ACTION>': cue });
 
   return {
     pcName: lens.pc ? resolveLensText(lens.pc.name, placeholders, pins) : null,

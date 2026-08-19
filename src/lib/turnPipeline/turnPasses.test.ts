@@ -129,6 +129,19 @@ describe('turn pass requests', () => {
         `Player: ${OPENING_SCENE_CUE}`,
       );
     });
+
+    it('maps the legacy sentinel to the world’s own cue when it has one', () => {
+      // An old save's history holds the sentinel, so the re-sent opening has to resolve the same way a
+      // fresh pre-fill would — the world's cue, not the shipped one.
+      const worldCue = 'You wake in the reed-beds with the tide already climbing.';
+      const message = lastMessage(
+        'narration',
+        { action: 'START GAME' },
+        { isGameStarted: false, prompts: { ...TEST_PROMPTS, openingCue: worldCue } },
+        { thinkingMode: 'off' },
+      );
+      expect(message).toBe(`Player: ${worldCue}`);
+    });
   });
 
   describe('the planning stages', () => {
