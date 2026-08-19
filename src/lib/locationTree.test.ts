@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import {
   buildLocationTree, flattenLocationTree, removeCollapsedChildren, isDescendantLocation,
-  removeLocationPromotingChildren, getLocationDropProjection, applyLocationDrop,
+  removeLocationPromotingChildren, getLocationDropProjection, applyLocationDrop, defaultCollapsedLocations,
 } from './locationTree';
 import type { GameLocation } from '@/types';
 
@@ -100,5 +100,45 @@ describe('applyLocationDrop', () => {
     const flat = [L('A'), L('B', 'A')];
     const out = applyLocationDrop(flat, [], 'A', 'B', 24, 24);
     expect(out).toBe(flat);
+  });
+});
+
+describe('defaultCollapsedLocations', () => {
+  // Castle: [Hall: [Cellar], Tower] · Moor: [Cairn: [Barrow]] — two worlds' worth of nesting, far apart.
+  const world: GameLocation[] = [
+    L('castle'), L('hall', 'castle'), L('cellar', 'hall'), L('tower', 'castle'),
+    L('moor'), L('cairn', 'moor'), L('barrow', 'cairn'),
+  ];
+
+  it('collapses nothing when the player is nowhere', () => {
+    expect([...defaultCollapsedLocations(world, [], null)]).toEqual([]);
+  });
+
+  it('holds open the chain of places holding the player', () => {
+    const collapsed = defaultCollapsedLocations(world, [], 'cellar');
+    expect(collapsed.has('castle')).toBe(false);
+    expect(collapsed.has('hall')).toBe(false);
+  });
+
+  it('collapses branches the player cannot reach in one hop', () => {
+    expect(defaultCollapsedLocations(world, [], 'cellar').has('moor')).toBe(true);
+    expect(defaultCollapsedLocations(world, [], 'cellar').has('cairn')).toBe(true);
+  });
+
+  it('opens the whole ancestor chain of a Connection\'s far end', () => {
+    const connections = [{ id: 'c1', from: 'cellar', to: 'barrow', twoWay: false }];
+    const collapsed = defaultCollapsedLocations(world, connections, 'cellar');
+    expect(collapsed.has('moor')).toBe(false);
+    expect(collapsed.has('cairn')).toBe(false);
+  });
+
+  it('opens only the nesting neighborhood in a world with no Connections', () => {
+    expect([...defaultCollapsedLocations(world, [], 'hall')].sort()).toEqual(['cairn', 'moor']);
+  });
+
+  it('never names a location that holds nothing', () => {
+    const collapsed = defaultCollapsedLocations(world, [], 'castle');
+    expect(collapsed.has('barrow')).toBe(false);
+    expect(collapsed.has('tower')).toBe(false);
   });
 });

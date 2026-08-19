@@ -4,8 +4,9 @@
 // tree from the single flat array; a drag rewrites the array so its order encodes the new tree.
 
 import { arrayMove } from '@dnd-kit/sortable';
+import { effectiveDestinations } from "@/lib/locationGraph";
 import { clamp } from "@/lib/utils";
-import type { GameLocation } from '@/types';
+import type { Connection, GameLocation } from '@/types';
 
 export interface LocationTreeNode {
   id: string;
@@ -173,4 +174,31 @@ export function applyLocationDrop(
   };
   walk(null);
   return result;
+}
+
+/**
+ * Which parents a travel list opens closed: every location holding sublocations whose subtree holds neither
+ * the player nor anywhere they can reach in one hop. What stays open is the chain of places holding the
+ * player plus the ancestry of every effective destination, so a well-wired world opens on its likely trips.
+ * A player standing nowhere collapses nothing.
+ */
+export function defaultCollapsedLocations(
+  locations: GameLocation[], connections: Connection[], currentLocationId: string | null,
+): Set<string> {
+  if (!currentLocationId) return new Set();
+
+  const byId = new Map(locations.map((l) => [l.id, l]));
+  const parents = new Set(locations.map((l) => holderOf(locations, l)).filter((id): id is string => id !== null));
+
+  const keep = new Set<string>([currentLocationId, ...effectiveDestinations(currentLocationId, locations, connections).keys()]);
+  const expanded = new Set<string>();
+  for (const id of keep) {
+    let cur: string | null = id;
+    while (cur && !expanded.has(cur)) {
+      expanded.add(cur);
+      const loc = byId.get(cur);
+      cur = loc ? holderOf(locations, loc) : null;
+    }
+  }
+  return new Set([...parents].filter((id) => !expanded.has(id)));
 }
