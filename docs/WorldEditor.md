@@ -16,7 +16,7 @@ The world's own tab: its name, description, thumbnail and the AI-facing text tha
 
 **Advanced mode only.** The text the player's input box opens pre-filled with when they press **Start Game**. Without one, every world opens on the same standard cue — a generic "write the opening scene" instruction. With one, your world's first turn is the one you designed.
 
-Switch the checkbox on and write what the opening turn should ask the narrator for.
+Switch the checkbox on and the field appears, ready to write what the opening turn should ask the narrator for. Switched off, the section is just its checkbox — a world opening on the standard cue costs you no space.
 
 > 💡 It is a **starting point, not a script.** The player still reads the cue in their input box and can tweak or replace it before sending. That is why there is no player-side opt-out: they already have the last word.
 
@@ -24,7 +24,7 @@ Switch the checkbox on and write what the opening turn should ask the narrator f
 |---|---|
 | **Opens on the standard cue** | The field shows the shipped cue, guardrails and all, so you edit from something that works. It keeps following it until your first edit. |
 | **First edit stores it** | Only a change you actually make is saved onto the world. Opening the field writes nothing. |
-| **Switching it off keeps the text** | The checkbox decides whether the cue is *used*; it never discards what you wrote. |
+| **Switching it off keeps the text** | The checkbox decides whether the cue is *used*; it never discards what you wrote. The field goes away, your words don't — switch it back on to find them. |
 | **Reset** | Drops your stored text and returns the field to following the standard cue. Asks first. |
 | **Blank falls back** | An applied cue that is empty or only spaces sends the standard cue instead, never an empty opening. |
 

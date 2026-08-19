@@ -198,6 +198,9 @@ const CustomPromptsSection = ({ focusField }: { focusField?: { fieldKey: string 
  * writing blind; the first edit is what stores it on the world, and Reset drops it back to tracking the
  * shipped one. There is no player-facing opt-out — the pre-filled box is editable, so the player already
  * has the last word on what the opening turn says.
+ *
+ * The switch is the whole section until it is on: a world not opening on its own cue has no field worth
+ * the panel height. Switching off keeps whatever was written, so nothing is lost behind the hidden field.
  */
 const OpeningCueSection = () => {
   const { worldOverview, updateWorldOverview, placeholders } = useGameData();
@@ -222,31 +225,34 @@ const OpeningCueSection = () => {
         />
       </div>
 
-      <PlaceholderField
-        value={stored ?? OPENING_SCENE_CUE}
-        // Storing on the first divergence is what keeps an untouched world tracking the shipped cue: a
-        // world only carries a cue its author actually wrote.
-        onChange={(text) => {
-          if (stored === undefined && text === OPENING_SCENE_CUE) return;
-          updateWorldOverview(setOpeningCue({ text, enabled }));
-        }}
-        placeholders={placeholders}
-        ariaLabel="World opening cue"
-        resizable
-      />
-      <div className="flex items-start justify-between gap-2">
-        <p className="text-meta text-muted-foreground">
-          {enabled
-            ? 'Pre-fills the player’s input box when they start this world. They can still edit it before they send it.'
-            : 'Not used until you switch this on — players start on the standard cue.'}
-          {stored === undefined && ' This is the standard cue, and follows it until you edit it here.'}
-        </p>
-        {stored !== undefined && (
-          <Button variant="ghost" size="sm" className="shrink-0" onClick={() => setConfirmReset(true)}>
-            Reset
-          </Button>
-        )}
-      </div>
+      {enabled && (
+        <>
+          <PlaceholderField
+            value={stored ?? OPENING_SCENE_CUE}
+            // Storing on the first divergence is what keeps an untouched world tracking the shipped cue: a
+            // world only carries a cue its author actually wrote.
+            onChange={(text) => {
+              if (stored === undefined && text === OPENING_SCENE_CUE) return;
+              updateWorldOverview(setOpeningCue({ text, enabled }));
+            }}
+            placeholders={placeholders}
+            ariaLabel="World opening cue"
+            resizable
+          />
+          <div className="flex items-start justify-between gap-2">
+            <p className="text-meta text-muted-foreground">
+              Pre-fills the player’s input box when they start this world. They can still edit it before
+              they send it.
+              {stored === undefined && ' This is the standard cue, and follows it until you edit it here.'}
+            </p>
+            {stored !== undefined && (
+              <Button variant="ghost" size="sm" className="shrink-0" onClick={() => setConfirmReset(true)}>
+                Reset
+              </Button>
+            )}
+          </div>
+        </>
+      )}
 
       <ConfirmDialog
         open={confirmReset}
@@ -346,9 +352,9 @@ const WorldDetailsManager = ({ focusField }: { focusField?: { fieldKey: string }
         />
       </div>
 
-      <CustomPromptsSection focusField={focusField} />
-
       <OpeningCueSection />
+
+      <CustomPromptsSection focusField={focusField} />
 
       <ReadmeSection focusField={focusField} />
     </div>
