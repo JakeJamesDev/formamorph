@@ -2,10 +2,9 @@ import {
   createContext, useCallback, useContext, useEffect, useMemo, useRef, useState,
 } from 'react';
 import {
-  Background, BaseEdge, ControlButton, Controls, EdgeLabelRenderer, Handle, MarkerType, MiniMap, Panel,
-  Position, ReactFlow, ReactFlowProvider, useConnection, useInternalNode, useNodesState, useReactFlow,
-  useStoreApi,
-  type Edge, type EdgeProps, type Node, type NodeProps,
+  Background, ControlButton, Controls, Handle, MiniMap, Panel,
+  Position, ReactFlow, ReactFlowProvider, useConnection, useNodesState, useReactFlow, useStoreApi,
+  type Edge, type Node, type NodeProps,
 } from '@xyflow/react';
 import '@xyflow/react/dist/base.css';
 import {
@@ -15,11 +14,10 @@ import {
 } from 'lucide-react';
 import { useGameData } from '@/contexts/GameDataContext';
 import FullscreenShell from '@/components/FullscreenShell';
+import { FloatingEdge } from '@/components/FloatingEdge';
+import { toFlowEdge } from '@/lib/canvasEdges';
 import { useCanvasConnectionStyle, useCanvasGridVisible, useCanvasSnap } from '@/lib/canvasPrefs';
-import {
-  CONNECTION_STYLES, edgeGeometry, isConnectionStyle, type ConnectionStyle,
-} from '@/lib/canvasEdgePath';
-import { DEFAULT_CANVAS_CONNECTION_STYLE } from '@/contexts/settingsDefaults';
+import { CONNECTION_STYLES, isConnectionStyle, type ConnectionStyle } from '@/lib/canvasEdgePath';
 import { useDevRoute } from '@/lib/devRouter';
 import { useMorphFullscreen } from '@/lib/useMorphFullscreen';
 import { Button } from '@/components/ui/button';
@@ -30,14 +28,15 @@ import { describePlaceholders } from '@/lib/placeholders';
 import type { ConnectionDirection } from '@/lib/connectionEditing';
 import {
   applyCanvasDrops, applyCanvasIntent, buildLocationCanvas, CANVAS_GRID, connectIntent, connectionEnds,
-  deleteIntent, directionIntent, directionOf, hintIntent, holderOf, isStationaryClick, LONG_PRESS_MS,
+  deleteIntent, directionIntent, directionOf, hintIntent, isStationaryClick, LONG_PRESS_MS,
   multiDropIntents, TOUCH_SLOP, UNNAMED_LOCATION,
-  type CanvasEdge, type CanvasIntent, type CanvasNodeData,
+  type CanvasIntent, type CanvasNodeData,
 } from '@/lib/locationCanvas';
 import {
   canvasHistoryFor, historyShortcut, recordCanvasEdit, redoCanvasEdit, undoCanvasEdit,
   type CanvasHistory,
 } from '@/lib/canvasHistory';
+import { holderOf } from '@/lib/locationTree';
 import { autoArrange, autoArrangeAll } from '@/lib/locationArrange';
 import {
   alignLocations, distributeLocations, nudgeLocations, type AlignEdge, type DistributeAxis,
@@ -210,74 +209,7 @@ const TopLevelDrop = () => {
 };
 
 const nodeTypes = { location: LocationNode, locationGroup: LocationGroupNode };
-
-/** Half the gap between a pair's two arrows — each rides to the left of its own direction of travel. */
-const ARROW_OFFSET = 5;
-
-/**
- * A border-to-border arrow, drawn one step to the left of the direction it travels: a pair's two directions
- * therefore sit side by side instead of on top of each other, and the map is read by counting arrows.
- *
- * Where it runs and what shape it takes are `lib/canvasEdgePath`'s answers; all this holds is the boxes xyflow
- * measured, so the author's chosen shape and the Group border-anchoring are one testable set of numbers.
- */
-const FloatingEdge = ({ id, source, target, markerEnd, style, label, data }: EdgeProps) => {
-  const sourceNode = useInternalNode(source);
-  const targetNode = useInternalNode(target);
-  if (!sourceNode || !targetNode) return null;
-  const rectOf = (node: NonNullable<typeof sourceNode>) => ({
-    x: node.internals.positionAbsolute.x,
-    y: node.internals.positionAbsolute.y,
-    width: node.measured.width ?? 0,
-    height: node.measured.height ?? 0,
-  });
-  // xyflow hands edge data back as unknown values; the shape it is holding is `toFlowEdge`'s own.
-  const wanted = String(data?.connectionStyle);
-  const { path, labelAt } = edgeGeometry(rectOf(sourceNode), rectOf(targetNode), {
-    style: isConnectionStyle(wanted) ? wanted : DEFAULT_CANVAS_CONNECTION_STYLE,
-    offset: ARROW_OFFSET,
-  });
-  return (
-    <>
-      <BaseEdge id={id} path={path} markerEnd={markerEnd} style={style} />
-      {label && (
-        <EdgeLabelRenderer>
-          <div
-            className="pointer-events-none absolute rounded bg-background/80 px-1 text-meta text-primary"
-            style={{ transform: `translate(-50%, -50%) translate(${labelAt.x}px, ${labelAt.y - 10}px)` }}
-          >
-            {label}
-          </div>
-        </EdgeLabelRenderer>
-      )}
-    </>
-  );
-};
-
 const edgeTypes = { floating: FloatingEdge };
-
-/** Dashed and muted for free implicit travel, solid and primary-colored for an authored Connection. Both
- *  answer a click, so the cursor says so — one selects its record, the other becomes one. The chosen shape
- *  rides on the edge itself, so changing it redraws the map through the same path every other edit takes. */
-function toFlowEdge(edge: CanvasEdge, selected: boolean, connectionStyle: ConnectionStyle): Edge {
-  const implicit = edge.kind === 'implicit';
-  const color = implicit ? 'hsl(var(--muted-foreground))' : 'hsl(var(--primary))';
-  return {
-    id: edge.id,
-    source: edge.source,
-    target: edge.target,
-    type: 'floating',
-    label: edge.label,
-    data: { connectionStyle },
-    style: {
-      stroke: color,
-      strokeWidth: implicit ? 1.3 : selected ? 3.5 : 2,
-      cursor: 'pointer',
-      ...(implicit ? { strokeDasharray: '5 5', opacity: 0.8 } : {}),
-    },
-    markerEnd: { type: MarkerType.ArrowClosed, color, width: implicit ? 14 : 16, height: implicit ? 14 : 16 },
-  };
-}
 
 /** The three ways a pair's travel can run, worded from the pair's first end so the option an author just
  *  clicked stays where it was. Full names live in the labels; the arrows read against the header. */
@@ -830,7 +762,7 @@ const CanvasInner = ({ selectedId, onSelect, session, fullscreen, onToggleFullsc
 
   const edges = useMemo(
     () => map.edges.map(
-      (edge) => toFlowEdge(edge, edge.connectionId === selectedConnectionId, connectionStyle),
+      (edge) => toFlowEdge(edge, connectionStyle, { selected: edge.connectionId === selectedConnectionId }),
     ),
     [map, selectedConnectionId, connectionStyle],
   );

@@ -18,7 +18,7 @@ interface EntityFieldsProps {
   /** The world's placeholders (World Editor only — a library character has no world to draw them from). */
   placeholders?: Placeholder[];
   /** When provided, renders the Locations picker (World Editor only — a library character has no world locations). */
-  locationOptions?: { label: string; value: string }[];
+  locationOptions?: { label: string; value: string; depth?: number }[];
   selectedLocationIds?: string[];
   onLocationsChange?: (ids: string[]) => void;
 }

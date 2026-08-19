@@ -2,9 +2,10 @@ import dagre from "@dagrejs/dagre";
 import type { Connection, GameLocation } from "@/types";
 import {
   CANVAS_GRID, CANVAS_NODE_HEIGHT, CANVAS_NODE_WIDTH, GROUP_HEADER, GROUP_PADDING,
-  buildLocationCanvas, holderOf,
+  buildLocationCanvas,
 } from "./locationCanvas";
 import { pairKey } from "./locationGraph";
+import { holderOf } from "./locationTree";
 
 /**
  * Auto Arrange: the canvas's one automatic layout (ADR-0004), asked for by name rather than run behind the

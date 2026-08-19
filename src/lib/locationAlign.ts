@@ -1,6 +1,6 @@
 import type { GameLocation } from "@/types";
-import { canvasRects, holderOf, withCanvasPosition } from "./locationCanvas";
-import { isDescendantLocation } from "./locationTree";
+import { canvasRects, withCanvasPosition } from "./locationCanvas";
+import { holderOf, isDescendantLocation } from "./locationTree";
 
 /**
  * The finishing moves a hand-made arrangement gets: a selection lined up on one edge, spaced evenly along one

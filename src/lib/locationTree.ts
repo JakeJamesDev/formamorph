@@ -13,15 +13,25 @@ export interface LocationTreeNode {
   children: LocationTreeNode[];
 }
 
-/** Direct children of `parentId`, in `locations` array order. */
-function childrenOf(locations: GameLocation[], parentId: string | null): GameLocation[] {
-  return locations.filter((l) => (l.parentId ?? null) === parentId);
+/** The box a location actually sits in. A parent id pointing at a location that isn't here holds nothing, so
+ *  it reads as no parent at all — otherwise the location it names would be nowhere in the tree at all. */
+export function holderOf(locations: GameLocation[], location: GameLocation): string | null {
+  const parentId = location.parentId ?? null;
+  return parentId && locations.some((l) => l.id === parentId) ? parentId : null;
 }
 
-/** Build the full nested tree of top-level nodes, each carrying its recursive children. */
+/** Build the full nested tree of top-level nodes, each carrying its recursive children. Every location is
+ *  filed under its holder in one pass, so a deep world costs one walk rather than one per level. */
 export function buildLocationTree(locations: GameLocation[]): LocationTreeNode[] {
+  const known = new Set(locations.map((l) => l.id));
+  const childrenOf = new Map<string | null, GameLocation[]>();
+  for (const location of locations) {
+    const parentId = location.parentId ?? null;
+    const holder = parentId && known.has(parentId) ? parentId : null;
+    childrenOf.set(holder, [...(childrenOf.get(holder) ?? []), location]);
+  }
   const build = (parentId: string | null): LocationTreeNode[] =>
-    childrenOf(locations, parentId).map((l) => ({ id: l.id, location: l, children: build(l.id) }));
+    (childrenOf.get(parentId) ?? []).map((l) => ({ id: l.id, location: l, children: build(l.id) }));
   return build(null);
 }
 

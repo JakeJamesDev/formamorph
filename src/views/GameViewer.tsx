@@ -747,6 +747,7 @@ const GameViewer = ({
     switch (devRoute?.modal) {
       case 'settings': setIsSettingsOpen(true); break;
       case 'export': setIsExportModalOpen(true); break;
+      case 'location': setIsLocationModalOpen(true); break;
     }
   }, [devRoute?.modal]);
   // Entity modal is a per-entity detail view (needs a selected entity), so open the first one — and wait
@@ -3961,6 +3962,8 @@ const GameViewer = ({
         isOpen={isLocationModalOpen}
         onOpenChange={setIsLocationModalOpen}
         locations={locations}
+        connections={connections}
+        currentLocationId={currentLocation?.id ?? null}
         changeLocation={changeLocation}
       />
 
