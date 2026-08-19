@@ -49,7 +49,8 @@
       "canvasPosition": {
         "x": 0,
         "y": 0
-      }
+      },
+      "playerDescription": "A seamless white cube with no visible door, lit from everywhere and nowhere at once."
     },
     {
       "id": "dev-alcove",
@@ -62,7 +63,8 @@
       "canvasPosition": {
         "x": 20,
         "y": 36
-      }
+      },
+      "playerDescription": "A shallow recess behind one-way glass, its narrow desk stacked with clipboards, cold coffee, and a humming bank of monitors that watch the room beyond in patient silence."
     },
     {
       "id": "dev-vent",
@@ -75,7 +77,8 @@
       "canvasPosition": {
         "x": 20,
         "y": 36
-      }
+      },
+      "playerDescription": "A tight aluminum duct that rattles underhand and smells faintly of ozone."
     },
     {
       "id": "dev-corridor",
