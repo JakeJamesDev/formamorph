@@ -3,7 +3,8 @@ import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import PromptField from './PromptField';
 import { promptVocabulary } from '@/lib/chipVocabulary';
-import { joinToken } from '@/lib/promptVariables';
+import { colorForToken, joinToken } from '@/lib/promptVariables';
+import { tintValue, emptyMarker, stripTintSentinels, EMPTY_MARK_LABEL } from '@/lib/previewTint';
 
 // The Preview tab must show what the MODEL receives, not a raw token — which means it has to apply each
 // placement's affixes and the vanish-when-empty rule, exactly as renderPromptTemplate does. The value map
@@ -47,12 +48,33 @@ describe('PromptField preview resolves affixes', () => {
     expect(screen.queryByText(/pre="/)).not.toBeInTheDocument();
   });
 
-  it('shows an affixed chip with no value as nothing at all', async () => {
+  it('leaves a marker where an affixed chip resolved to nothing', async () => {
     show(`at <LOCATION|name>.${notes}`);
     await openPreview();
-    // The notes chip resolves to N/A, so the whole placement — label and value — disappears.
+    // The notes chip resolves to N/A, so the whole placement — label and value — drops out of what the
+    // model receives. The preview still marks the spot, so a chip contributing nothing is visible.
     expect(screen.queryByText(/Notes:/)).not.toBeInTheDocument();
     expect(screen.queryByText(/N\/A/)).not.toBeInTheDocument();
+    expect(screen.getByLabelText(EMPTY_MARK_LABEL)).toBeInTheDocument();
+  });
+
+  it('leaves a marker where a chip resolved to an empty value', async () => {
+    render(
+      <PromptField
+        value="Notes: <NOTES>"
+        onChange={() => {}}
+        vocabulary={promptVocabulary([])}
+        previewValues={{ '<NOTES>': '' }}
+      />,
+    );
+    await openPreview();
+    expect(screen.getByLabelText(EMPTY_MARK_LABEL)).toBeInTheDocument();
+  });
+
+  it('leaves no marker where every chip resolved to something', async () => {
+    show(`at <LOCATION|name>${cast}.`);
+    await openPreview();
+    expect(screen.queryByLabelText(EMPTY_MARK_LABEL)).not.toBeInTheDocument();
   });
 
   it('still shows N/A for the same chip without affixes', async () => {
@@ -64,7 +86,53 @@ describe('PromptField preview resolves affixes', () => {
   it('applies affixes in the markdown preview too', async () => {
     show(`at <LOCATION|name>${cast}.`, true);
     await openPreview();
-    expect(screen.getByTestId('md').textContent).toBe("at Sarah's Place with Mira present.");
+    // Read past the tint markup: what the pane renders as prose is the same string the model receives.
+    expect(stripTintSentinels(screen.getByTestId('md').textContent ?? ''))
+      .toBe("at Sarah's Place with Mira present.");
+  });
+});
+
+// The markdown preview can't wrap a value in an element itself — it hands the renderer one string — so it
+// marks each value up with its chip's color for the renderer's tint plugin to turn back into a mark. What
+// that markup becomes is covered against a real markdown parse in previewTint.test.ts; these guard that the
+// pane marks up the right text with the right chip's color.
+describe('the markdown preview hands the renderer tinted values', () => {
+  it('marks up each resolved value in its own chip color', async () => {
+    show(`at <LOCATION|name>${cast}.`, true);
+    await openPreview();
+    const location = tintValue("Sarah's Place", colorForToken('<LOCATION|name>'));
+    const entities = tintValue(' with Mira present', colorForToken('<ENTITIES|name>'));
+    expect(screen.getByTestId('md').textContent).toBe(`at ${location}${entities}.`);
+  });
+
+  it('marks the spot where a chip resolved to nothing', async () => {
+    show(`at <LOCATION|name>.${notes}`, true);
+    await openPreview();
+    expect(screen.getByTestId('md').textContent).toContain(emptyMarker(colorForToken('<NOTES>')));
+  });
+
+  it('scrubs the tint markup out of author text and values before marking up', async () => {
+    // Nothing typed or resolved may forge a pairing: a value carrying the marker characters would otherwise
+    // close another chip's highlight early, or open one that swallows the rest of the pane.
+    const forged = tintValue('x', colorForToken('<NOTES>'));
+    render(
+      <PromptField
+        value={`${forged}at <LOCATION|name>.`}
+        onChange={() => {}}
+        vocabulary={promptVocabulary([])}
+        previewValues={{ '<LOCATION|name>': `${forged}Sarah's Place` }}
+        markdown
+      />,
+    );
+    await openPreview();
+    expect(screen.getByTestId('md').textContent)
+      .toBe(`xat ${tintValue("xSarah's Place", colorForToken('<LOCATION|name>'))}.`);
+  });
+
+  it('leaves a chip-free field as plain markdown', async () => {
+    show('just *prose*, no chips', true);
+    await openPreview();
+    expect(screen.getByTestId('md').textContent).toBe('just *prose*, no chips');
   });
 });
 
