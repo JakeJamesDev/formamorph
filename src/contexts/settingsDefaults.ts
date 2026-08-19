@@ -1,6 +1,7 @@
 // Type-only: the font tuning shape lives with its clamping and CSS mapping in lib/fontTuning.
 import type { FontTuning, FontTuningMap } from '@/lib/fontTuning';
 import type { ConnectionStyle } from '@/lib/canvasEdgePath';
+import type { TravelView } from '@/lib/travelPrefs';
 
 // Built-in endpoint defaults, behind the read-only "Default" preset. Each honors its VITE_DEFAULT_* override.
 // Kept out of SettingsContext so that file only exports components/hooks (react-refresh).
@@ -96,6 +97,10 @@ export const DEFAULT_CANVAS_SNAP = true;
 export const DEFAULT_CANVAS_GRID_VISIBLE = true;
 // Straight lines are the plainest reading of the map, so curves and elbows are opted into.
 export const DEFAULT_CANVAS_CONNECTION_STYLE: ConnectionStyle = 'straight';
+
+// The Change Location dialog's first-open view. A per-player preference like the canvas ones above — the
+// dialog thereafter opens on whichever view was used last.
+export const DEFAULT_TRAVEL_VIEW: TravelView = 'list';
 
 // Preset color themes. Each (except the base) is a full set of token overrides in index.css keyed by a
 // `data-theme` attribute on <html>. Adding a theme = a new value here + a matching

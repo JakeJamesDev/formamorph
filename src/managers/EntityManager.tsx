@@ -4,7 +4,7 @@ import { useEditingDraft } from '@/lib/useEditingDraft';
 import { withEntityLocations } from '@/lib/entityPresence';
 import type { Entity } from '@/types';
 import { describePlaceholders } from '@/lib/placeholders';
-import { buildLocationTree, flattenLocationTree } from '@/lib/locationTree';
+import { locationRows } from '@/lib/locationTree';
 
 const EntityManager = ({ entity }: { entity: Entity }) => {
   const { updateEntity, locations, placeholders } = useGameData();
@@ -31,7 +31,7 @@ const EntityManager = ({ entity }: { entity: Entity }) => {
       onChange={handleChange}
       placeholders={placeholders}
       // Read as the tree it is, so the picker presents the hierarchy the way the game's own list does.
-      locationOptions={flattenLocationTree(buildLocationTree(locations)).map(({ location, depth }) => ({
+      locationOptions={locationRows(locations).map(({ location, depth }) => ({
         label: describePlaceholders(location.name, placeholders),
         value: location.id,
         depth,

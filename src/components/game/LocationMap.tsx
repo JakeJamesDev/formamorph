@@ -8,7 +8,7 @@ import { FloatingEdge } from '@/components/FloatingEdge';
 import { toFlowEdge } from '@/lib/canvasEdges';
 import { useCanvasConnectionStyle } from '@/lib/canvasPrefs';
 import {
-  buildLocationCanvas, CANVAS_GRID, isStationaryClick, TOUCH_SLOP, UNNAMED_LOCATION,
+  buildLocationCanvas, CANVAS_GRID, isTravelClick, TOUCH_SLOP, UNNAMED_LOCATION, type TravelPress,
 } from '@/lib/locationCanvas';
 import { cn } from '@/lib/utils';
 import type { Connection, GameLocation } from '@/types';
@@ -38,10 +38,13 @@ const TravelContext = createContext<(id: string, event: React.MouseEvent) => voi
 /** Marked as the player's own: the box they are standing in. */
 const hereRing = 'border-primary ring-2 ring-primary';
 
-const nodeFace = 'text-label text-card-foreground hover:bg-accent hover:text-accent-foreground';
-
-/** A location with no sub-locations: one box carrying its name, the whole of it the way there. */
-const MapLocationNode = ({ id, data }: NodeProps<MapNode>) => {
+/** The clickable face both node shapes share: the location's name, pinned where the player is standing,
+ *  wired to travel. Each shape supplies only the geometry the button fills. */
+const TravelButton = ({ id, data, className }: {
+  id: string;
+  data: MapNodeData;
+  className: string;
+}) => {
   const travel = useContext(TravelContext);
   return (
     <button
@@ -50,9 +53,8 @@ const MapLocationNode = ({ id, data }: NodeProps<MapNode>) => {
       aria-current={data.here ? 'location' : undefined}
       onClick={(event) => travel(id, event)}
       className={cn(
-        'flex h-full w-full items-center justify-center gap-1.5 rounded-md border bg-card px-3',
-        nodeFace,
-        data.here && hereRing,
+        'items-center gap-1.5 bg-card text-label text-card-foreground hover:bg-accent hover:text-accent-foreground',
+        className,
       )}
     >
       {data.here && <MapPin className="h-3.5 w-3.5 shrink-0 text-primary" aria-hidden="true" />}
@@ -61,25 +63,22 @@ const MapLocationNode = ({ id, data }: NodeProps<MapNode>) => {
   );
 };
 
+/** A location with no sub-locations: one box carrying its name, the whole of it the way there. */
+const MapLocationNode = ({ id, data }: NodeProps<MapNode>) => (
+  <TravelButton
+    id={id}
+    data={data}
+    className={cn('flex h-full w-full justify-center rounded-md border px-3', data.here && hereRing)}
+  />
+);
+
 /** A location holding sub-locations: a box around them, named along its top. The name is the way *to* it —
  *  the frame itself is the places inside, so only the strip along the top travels. */
-const MapGroupNode = ({ id, data }: NodeProps<MapNode>) => {
-  const travel = useContext(TravelContext);
-  return (
-    <div className={cn('h-full w-full rounded-md border bg-muted/40', data.here && hereRing)}>
-      <button
-        type="button"
-        title={data.label}
-        aria-current={data.here ? 'location' : undefined}
-        onClick={(event) => travel(id, event)}
-        className={cn('flex w-full items-center gap-1.5 rounded-t-md border-b bg-card px-3 py-1.5', nodeFace)}
-      >
-        {data.here && <MapPin className="h-3.5 w-3.5 shrink-0 text-primary" aria-hidden="true" />}
-        <span className="truncate">{data.label}</span>
-      </button>
-    </div>
-  );
-};
+const MapGroupNode = ({ id, data }: NodeProps<MapNode>) => (
+  <div className={cn('h-full w-full rounded-md border bg-muted/40', data.here && hereRing)}>
+    <TravelButton id={id} data={data} className="flex w-full rounded-t-md border-b px-3 py-1.5" />
+  </div>
+);
 
 const nodeTypes = { location: MapLocationNode, locationGroup: MapGroupNode };
 const edgeTypes = { floating: FloatingEdge };
@@ -93,18 +92,11 @@ const LocationMap = ({ locations, connections, currentLocationId, onTravel }: {
   // The same shape the canvas draws arrows in — presentation, and one person's own preference, so someone who
   // both authors and plays reads one map rather than two.
   const [connectionStyle] = useCanvasConnectionStyle();
-  // Where the press that is about to become a click went down. A map is dragged around far more often than it
-  // is clicked, and a drag that came to rest over a box still ends in a click on it — so a press that
-  // traveled is a pan, and only one that stayed put is somewhere the player asked to go. A finger is allowed
-  // more travel than a mouse: it rests on a surface rather than being held above one.
-  const pressRef = useRef<{ at: { x: number; y: number }; slop?: number } | null>(null);
+  // Where the press that is about to become a click went down; `isTravelClick` judges the click against it.
+  const pressRef = useRef<TravelPress | null>(null);
 
   const travel = useCallback((id: string, event: React.MouseEvent) => {
-    const press = pressRef.current;
-    // `detail` counts the clicks a pointer made; a box reached by keyboard reports none, and has no
-    // resting place to be judged against.
-    if (press && event.detail > 0
-      && !isStationaryClick(press.at, { x: event.clientX, y: event.clientY }, press.slop)) return;
+    if (!isTravelClick(pressRef.current, { x: event.clientX, y: event.clientY, detail: event.detail })) return;
     const location = locations.find((l) => l.id === id);
     if (location) onTravel(location);
   }, [locations, onTravel]);
