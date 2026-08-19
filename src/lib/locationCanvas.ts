@@ -467,6 +467,27 @@ export function isStationaryClick(
   return Math.hypot(up.x - down.x, up.y - down.y) <= slop;
 }
 
+/** A press as the Map records it: where it went down, and how far it may wander and still be a click —
+ *  a finger's slop where the press was a touch, the mouse's tighter default otherwise. */
+export interface TravelPress {
+  at: { x: number; y: number };
+  slop?: number;
+}
+
+/**
+ * Whether a click on a Map box asks to travel there. A map is dragged around far more often than it is
+ * clicked, and a pan that comes to rest over a box still raises a click on it — so a press that traveled is
+ * a pan, and only one that stayed put is somewhere the player asked to go. A click with no clicks in it
+ * (`detail` 0) came from the keyboard: no resting place to judge, always travel.
+ */
+export function isTravelClick(
+  press: TravelPress | null,
+  click: { x: number; y: number; detail: number },
+): boolean {
+  if (!press || click.detail === 0) return true;
+  return isStationaryClick(press.at, { x: click.x, y: click.y }, press.slop ?? CLICK_SLOP);
+}
+
 /** A selection's drops, written onto the world in one pass. */
 export function applyCanvasDrops(locations: GameLocation[], drops: CanvasDrop[]): GameLocation[] {
   return drops.reduce(applyCanvasDrop, locations);

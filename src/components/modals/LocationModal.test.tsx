@@ -59,6 +59,17 @@ describe('the Change Location list reads the world as a tree', () => {
     expect(rowLevels()).toEqual(['1', '2', '3', '2', '1']);
   });
 
+  it('sets each row in further than the one holding it', () => {
+    openDialog();
+    // The inset is the indentation the player sees; jsdom has no layout, so the inline style is the seam.
+    const insets = rows().map((row) => parseFloat(row.querySelector('button')!.style.paddingLeft));
+    const byName = Object.fromEntries(rowNames().map((name, i) => [name, insets[i]]));
+    expect(byName['Hall']).toBeGreaterThan(byName['Castle']);
+    expect(byName['Cellar']).toBeGreaterThan(byName['Hall']);
+    expect(byName['Tower']).toBe(byName['Hall']);
+    expect(byName['Moor']).toBe(byName['Castle']);
+  });
+
   it('offers a parent location as its own destination, not only its children', async () => {
     const changeLocation = vi.fn();
     openDialog({ changeLocation });
@@ -97,7 +108,7 @@ describe('the Change Location dialog remembers the view the player travels by', 
     expect(screen.getByTestId('location-map')).toHaveAttribute('data-current', 'hall');
   });
 
-  it('opens on the Map once the player has traveled by it', async () => {
+  it('opens on the Map once the player has switched to it', async () => {
     openDialog();
     await userEvent.click(screen.getByRole('tab', { name: 'Map' }));
     cleanup();

@@ -4,28 +4,17 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import LocationMap from "@/components/game/LocationMap";
 import { UNNAMED_LOCATION } from "@/lib/locationCanvas";
-import { buildLocationTree, flattenLocationTree } from "@/lib/locationTree";
-import { usePersistentState, type Codec } from "@/lib/usePersistentState";
+import { locationRows } from "@/lib/locationTree";
+import { useTravelView, type TravelView } from "@/lib/travelPrefs";
 import { cn } from "@/lib/utils";
 import type { Connection, GameLocation } from "@/types";
 
 /**
  * Where the player goes, in the two ways a world can be read: the List, which is the location tree with each
  * sublocation sitting under the place that holds it, and the Map, which is the world laid out as its author
- * arranged it. Both travel the same way the old dropdown did — silently and at once, to anywhere, with no
- * turn and no narration behind it (ADR-0006).
+ * arranged it. Travel from either is silent and instant, to anywhere, with no turn and no narration behind
+ * it (ADR-0006).
  */
-
-/** The two ways in, as they are stored. A view retired from the dialog would leave the name behind. */
-type TravelView = "list" | "map";
-
-const travelViewCodec: Codec<TravelView> = {
-  parse: (raw) => {
-    if (raw !== "list" && raw !== "map") throw new Error("not a travel view");
-    return raw;
-  },
-  serialize: (value) => value,
-};
 
 /** How far one level of nesting sets a row in, and where the shallowest row starts. */
 const INDENT_REM = 1.25;
@@ -41,13 +30,9 @@ export const LocationModal = ({
   currentLocationId: string | null;
   changeLocation: (location: GameLocation) => void;
 }) => {
-  // The player's own preference rather than anything about the world: whichever way they traveled by last is
-  // the way the dialog opens next time, and it never reaches a save.
-  const [view, setView] = usePersistentState<TravelView>(
-    "FORMAMORPH_travelView", "list", travelViewCodec,
-  );
+  const [view, setView] = useTravelView();
 
-  const rows = useMemo(() => flattenLocationTree(buildLocationTree(locations)), [locations]);
+  const rows = useMemo(() => locationRows(locations), [locations]);
 
   // Held steady across renders: the Map hands it down to every box on it as context.
   const travel = useCallback((location: GameLocation) => {

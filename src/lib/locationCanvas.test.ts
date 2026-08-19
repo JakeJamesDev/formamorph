@@ -2,7 +2,8 @@ import { describe, it, expect } from "vitest";
 import {
   CANVAS_NODE_HEIGHT, CANVAS_NODE_WIDTH, GROUP_HEADER, GROUP_PADDING,
   applyCanvasDrop, buildLocationCanvas, connectIntent, connectionEnds, deleteIntent, directionIntent,
-  applyCanvasDrops, directionOf, dropIntent, dropTarget, hintIntent, isStationaryClick, multiDropIntents,
+  applyCanvasDrops, directionOf, dropIntent, dropTarget, hintIntent, isStationaryClick, isTravelClick,
+  multiDropIntents,
   TOUCH_SLOP,
   newLocationPosition, withCanvasPosition,
   type CanvasIntent,
@@ -519,6 +520,28 @@ describe("isStationaryClick", () => {
   it("reads a menu asked for without any press at all as a click", () => {
     // The keyboard's menu key, and anything else that raises the request on its own.
     expect(isStationaryClick(null, { x: 100, y: 100 })).toBe(true);
+  });
+});
+
+describe("isTravelClick", () => {
+  it("travels on a click that stayed put, refuses the one ending a pan", () => {
+    expect(isTravelClick({ at: { x: 100, y: 100 } }, { x: 102, y: 101, detail: 1 })).toBe(true);
+    expect(isTravelClick({ at: { x: 100, y: 100 } }, { x: 160, y: 100, detail: 1 })).toBe(false);
+  });
+
+  it("gives a finger the touch slop the press recorded", () => {
+    // The same 8px of travel: refused as a mouse click, accepted as a tap.
+    expect(isTravelClick({ at: { x: 100, y: 100 } }, { x: 108, y: 100, detail: 1 })).toBe(false);
+    expect(isTravelClick({ at: { x: 100, y: 100 }, slop: TOUCH_SLOP }, { x: 108, y: 100, detail: 1 })).toBe(true);
+  });
+
+  it("always travels on a keyboard activation, whatever press came before it", () => {
+    // Enter on a focused box raises a click with detail 0 at coordinates unrelated to any prior press.
+    expect(isTravelClick({ at: { x: 100, y: 100 } }, { x: 0, y: 0, detail: 0 })).toBe(true);
+  });
+
+  it("travels when no press was recorded at all", () => {
+    expect(isTravelClick(null, { x: 50, y: 50, detail: 1 })).toBe(true);
   });
 });
 

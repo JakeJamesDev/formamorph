@@ -55,6 +55,11 @@ export function flattenLocationTree(tree: LocationTreeNode[]): FlatLocationNode[
   return out;
 }
 
+/** The whole tree as the rows a list draws: depth-first, each tagged with its indentation depth. */
+export function locationRows(locations: GameLocation[]): FlatLocationNode[] {
+  return flattenLocationTree(buildLocationTree(locations));
+}
+
 /** Drop every node that descends from any id in `ids` (collapsed nodes, the dragged subtree). */
 export function removeCollapsedChildren(items: FlatLocationNode[], ids: Iterable<string>): FlatLocationNode[] {
   const exclude = new Set(ids);
@@ -131,7 +136,7 @@ export function applyLocationDrop(
   locations: GameLocation[], collapsedIds: Iterable<string>,
   activeId: string, overId: string, dragOffset: number, indentationWidth: number,
 ): GameLocation[] {
-  const full = flattenLocationTree(buildLocationTree(locations));
+  const full = locationRows(locations);
   const visible = removeCollapsedChildren(full, [...collapsedIds, activeId]);
   if (!visible.some((i) => i.id === overId) || !visible.some((i) => i.id === activeId)) return locations;
 

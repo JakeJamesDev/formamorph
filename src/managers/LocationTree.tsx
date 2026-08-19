@@ -2,7 +2,7 @@ import { randomUUID } from "@/lib/uuid";
 import { useMemo } from 'react';
 import { useGameData } from '@/contexts/GameDataContext';
 import {
-  buildLocationTree, flattenLocationTree, removeCollapsedChildren, getLocationDropProjection,
+  locationRows, removeCollapsedChildren, getLocationDropProjection,
   applyLocationDrop, removeLocationPromotingChildren, type FlatLocationNode,
 } from '@/lib/locationTree';
 import { SortableTree, type SortableTreeAdapter } from './SortableTree';
@@ -22,7 +22,7 @@ const LocationTree = ({ selectedId, onSelect }: { selectedId: string | null; onS
   );
 
   const adapter: SortableTreeAdapter<FlatLocationNode> = {
-    getVisible: (collapsed) => removeCollapsedChildren(flattenLocationTree(buildLocationTree(locations)), collapsed),
+    getVisible: (collapsed) => removeCollapsedChildren(locationRows(locations), collapsed),
     projectDepth: (visible, activeId, overId, offsetLeft) =>
       getLocationDropProjection(visible, activeId, overId, offsetLeft, TREE_INDENT)?.depth ?? null,
     onDrop: (activeId, overId, offsetLeft, collapsed) => {
