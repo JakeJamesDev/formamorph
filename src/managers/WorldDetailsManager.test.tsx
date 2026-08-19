@@ -400,53 +400,72 @@ const CUE_FIELD = 'World opening cue';
 const cueCheckbox = () => screen.getByRole('checkbox', { name: "Use this world's opening cue" });
 
 describe('the opening cue section', () => {
+  /** Renders with the cue switched on, which is the only state that shows a field. */
+  const openCue = async () => {
+    const user = userEvent.setup();
+    renderManager();
+    await user.click(cueCheckbox());
+    return user;
+  };
+
   it('is hidden in Simple mode', () => {
     renderManager(false);
     expect(screen.queryByText('Opening Cue')).not.toBeInTheDocument();
     expect(screen.queryByTestId(CUE_FIELD)).not.toBeInTheDocument();
   });
 
-  it('opens on the shipped cue, storing nothing and applying nothing', () => {
+  it('is a switch and nothing else until it is switched on', () => {
+    world.overview.openingCue = 'You wake in the reed-beds.';
+    world.overview.openingCueEnabled = false;
     renderManager();
+
+    // A world not opening on its own cue has no field worth the panel height — but the text is still there.
+    expect(screen.getByText('Opening Cue')).toBeInTheDocument();
+    expect(cueCheckbox()).not.toBeChecked();
+    expect(screen.queryByTestId(CUE_FIELD)).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Reset' })).not.toBeInTheDocument();
+    expect(world.overview.openingCue).toBe('You wake in the reed-beds.');
+  });
+
+  it('opens on the shipped cue, storing nothing', async () => {
+    await openCue();
 
     expect(field(CUE_FIELD).value).toBe(OPENING_SCENE_CUE);
     expect(screen.getByText(/This is the standard cue/)).toBeInTheDocument();
     expect(world.overview.openingCue).toBeUndefined();
-    expect(cueCheckbox()).not.toBeChecked();
   });
 
-  it('stores the text on the first edit that diverges from the shipped cue', () => {
-    renderManager();
+  it('stores the text on the first edit that diverges from the shipped cue', async () => {
+    await openCue();
     edit(CUE_FIELD, `${OPENING_SCENE_CUE} And it is raining.`);
 
     expect(world.overview.openingCue).toBe(`${OPENING_SCENE_CUE} And it is raining.`);
-    // Writing is not applying: the checkbox is what switches a drafted cue on.
-    expect(world.overview.openingCueEnabled).toBe(false);
+    expect(world.overview.openingCueEnabled).toBe(true);
   });
 
-  it('does not store a template that came back unchanged', () => {
-    renderManager();
+  it('does not store a template that came back unchanged', async () => {
+    await openCue();
     edit(CUE_FIELD, OPENING_SCENE_CUE);
 
     // The field echoes its value on mount and on any no-op edit; that must not become an authored cue.
     expect(world.overview.openingCue).toBeUndefined();
   });
 
-  it('switching the cue off keeps the text it holds', async () => {
+  it('switching the cue off keeps the text it holds, and takes the field away', async () => {
     const user = userEvent.setup();
     world.overview.openingCue = 'You wake in the reed-beds.';
     world.overview.openingCueEnabled = true;
     renderManager();
-    await user.click(cueCheckbox());
+    expect(screen.getByTestId(CUE_FIELD)).toBeInTheDocument();
 
+    await user.click(cueCheckbox());
     expect(world.overview.openingCueEnabled).toBe(false);
     expect(world.overview.openingCue).toBe('You wake in the reed-beds.');
-    expect(screen.getByText(/Not used until you switch this on/)).toBeInTheDocument();
+    expect(screen.queryByTestId(CUE_FIELD)).not.toBeInTheDocument();
   });
 
   it('offers Reset only for a cue the author actually wrote', async () => {
-    const user = userEvent.setup();
-    renderManager();
+    const user = await openCue();
     // The prompt tabs are closed, so the only Reset on screen is the cue's.
     expect(screen.queryByRole('button', { name: 'Reset' })).not.toBeInTheDocument();
 
@@ -472,8 +491,8 @@ describe('the opening cue section', () => {
     expect(world.overview.openingCueEnabled).toBe(true);
   });
 
-  it('offers the world’s placeholders as chips', () => {
-    renderManager();
+  it('offers the world’s placeholders as chips', async () => {
+    await openCue();
     // A Wildcard in the cue is how a world opens differently each playthrough, so the field has to be the
     // chip-capable one with this world's own placeholders in its palette.
     expect(field(CUE_FIELD).placeholders).toEqual(placeholders);
