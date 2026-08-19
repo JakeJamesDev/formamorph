@@ -143,6 +143,9 @@ const LocationMap = ({ locations, connections, currentLocationId, onTravel }: {
           ...(event.pointerType === 'touch' ? { slop: TOUCH_SLOP } : {}),
         };
       }}
+      // The browser's menu never opens over the map, exactly as on the canvas: every button that isn't
+      // clicking a box is a pan, and the platform answers the right one's release with a menu.
+      onContextMenu={(event) => event.preventDefault()}
     >
       <TravelContext.Provider value={travel}>
         <ReactFlow<MapNode, Edge>
@@ -156,8 +159,9 @@ const LocationMap = ({ locations, connections, currentLocationId, onTravel }: {
           nodesFocusable={false}
           elementsSelectable={false}
           edgesFocusable={false}
-          // Drag pans and two fingers pinch, which is the whole of what a map does.
-          panOnDrag
+          // Any button's drag pans — the canvas's right- and middle-drag panning, plus the left button,
+          // which a readonly map has no marquee to reserve for. Two fingers pinch.
+          panOnDrag={[0, 1, 2]}
           zoomOnPinch
           minZoom={0.2}
           fitView
