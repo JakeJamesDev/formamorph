@@ -3965,6 +3965,7 @@ const GameViewer = ({
         connections={connections}
         currentLocationId={currentLocation?.id ?? null}
         changeLocation={changeLocation}
+        resolveText={resolvePH}
       />
 
 

@@ -21,7 +21,7 @@ const INDENT_REM = 1.25;
 const ROW_INSET_REM = 0.75;
 
 export const LocationModal = ({
-  isOpen, onOpenChange, locations, connections, currentLocationId, changeLocation,
+  isOpen, onOpenChange, locations, connections, currentLocationId, changeLocation, resolveText,
 }: {
   isOpen: boolean;
   onOpenChange: (open: boolean) => void;
@@ -29,6 +29,7 @@ export const LocationModal = ({
   connections: Connection[];
   currentLocationId: string | null;
   changeLocation: (location: GameLocation) => void;
+  resolveText: (text: string) => string;
 }) => {
   const [view, setView] = useTravelView();
 
@@ -68,6 +69,7 @@ export const LocationModal = ({
             <ul className="space-y-1">
               {rows.map(({ id, depth, location }) => {
                 const here = id === currentLocationId;
+                const description = resolveText(location.playerDescription || location.description || "").trim();
                 return (
                   <li key={id} aria-level={depth + 1}>
                     <button
@@ -76,13 +78,23 @@ export const LocationModal = ({
                       onClick={() => travel(location)}
                       style={{ paddingLeft: `${ROW_INSET_REM + depth * INDENT_REM}rem` }}
                       className={cn(
-                        "w-full truncate rounded-md py-2 pr-3 text-left text-label",
+                        "w-full rounded-md py-2 pr-3 text-left text-label",
                         here
                           ? "bg-primary font-medium text-primary-foreground"
                           : "hover:bg-accent hover:text-accent-foreground",
                       )}
                     >
-                      {location.name || UNNAMED_LOCATION}
+                      <span className="block truncate">{location.name || UNNAMED_LOCATION}</span>
+                      {description && (
+                        <span
+                          className={cn(
+                            "block truncate font-normal text-helper",
+                            here ? "text-primary-foreground/75" : "text-muted-foreground",
+                          )}
+                        >
+                          {description}
+                        </span>
+                      )}
                     </button>
                   </li>
                 );

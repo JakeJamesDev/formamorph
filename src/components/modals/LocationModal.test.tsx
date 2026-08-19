@@ -37,6 +37,7 @@ const openDialog = (props: Partial<Parameters<typeof LocationModal>[0]> = {}) =>
       connections={[]}
       currentLocationId="hall"
       changeLocation={() => {}}
+      resolveText={(text) => text}
       {...props}
     />,
   );
@@ -90,6 +91,52 @@ describe('the Change Location list reads the world as a tree', () => {
     openDialog();
     expect(screen.getByRole('button', { name: 'Hall' })).toHaveAttribute('aria-current', 'location');
     expect(screen.getByRole('button', { name: 'Cellar' })).not.toHaveAttribute('aria-current');
+  });
+});
+
+describe('each travel row carries the place\'s description', () => {
+  beforeEach(() => localStorage.clear());
+
+  // The described fixture: what the player is told about a place, in the two fields a world can say it in.
+  const DESCRIBED: GameLocation[] = [
+    { id: 'hall', name: 'Hall', playerDescription: 'Banners hang from the rafters.', description: 'Authored notes.' },
+    { id: 'moor', name: 'Moor', description: 'Mist over open ground.' },
+    { id: 'void', name: 'Void' },
+  ];
+
+  /** The description line of a row, or null when the row has none. */
+  const descriptionOf = (name: string) => {
+    const button = screen.getByRole('button', { name: new RegExp(`^${name}`) });
+    const [, description] = button.querySelectorAll('span');
+    return description?.textContent ?? null;
+  };
+
+  it('shows the player description, falling back to the authored one', () => {
+    openDialog({ locations: DESCRIBED, currentLocationId: 'hall' });
+    expect(descriptionOf('Hall')).toBe('Banners hang from the rafters.');
+    expect(descriptionOf('Moor')).toBe('Mist over open ground.');
+  });
+
+  it('gives a location with no description a name-only row', () => {
+    openDialog({ locations: DESCRIBED, currentLocationId: 'hall' });
+    expect(descriptionOf('Void')).toBeNull();
+  });
+
+  it('reads descriptions through the placeholder resolver', () => {
+    openDialog({
+      locations: DESCRIBED,
+      currentLocationId: 'hall',
+      resolveText: (text) => text.replace('Banners', 'Standards'),
+    });
+    expect(descriptionOf('Hall')).toBe('Standards hang from the rafters.');
+  });
+
+  it('keeps the description to a single clipped line', () => {
+    openDialog({ locations: DESCRIBED, currentLocationId: 'hall' });
+    // jsdom has no layout, so the truncation class is the seam — as the inset test reads paddingLeft.
+    const button = screen.getByRole('button', { name: /^Hall/ });
+    const [, description] = button.querySelectorAll('span');
+    expect(description.className).toContain('truncate');
   });
 });
 
