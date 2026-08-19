@@ -3,7 +3,7 @@ import {
   CANVAS_NODE_HEIGHT, CANVAS_NODE_WIDTH, GROUP_HEADER, GROUP_PADDING,
   applyCanvasDrop, buildLocationCanvas, connectIntent, connectionEnds, deleteIntent, directionIntent,
   applyCanvasDrops, directionOf, dropIntent, dropTarget, hintIntent, isStationaryClick, isTravelClick,
-  multiDropIntents,
+  multiDropIntents, leafTarget,
   TOUCH_SLOP,
   newLocationPosition, withCanvasPosition,
   type CanvasIntent,
@@ -497,6 +497,120 @@ describe("dropIntent", () => {
     const out = applyCanvasDrop(after, dropIntent(after, "shore", { x: 900, y: 700 })!);
     expect(flattenLocationTree(buildLocationTree(out)).find((r) => r.id === "shore"))
       .toMatchObject({ parentId: null, depth: 0 });
+  });
+});
+
+describe("leaf nesting", () => {
+  // Two locations standing apart at the top level, both drawn as plain boxes: Landing at (0, 0) and Shore
+  // out at (400, 0), each 180 x 52. Dragging Shore to (10, 0) brings its center to (100, 26) — over Landing.
+  const flat: GameLocation[] = [
+    { id: "landing", name: "Landing", isStarting: true, canvasPosition: { x: 0, y: 0 } },
+    { id: "shore", name: "Shore", canvasPosition: { x: 400, y: 0 } },
+    { id: "reef", name: "Reef", canvasPosition: { x: 400, y: 200 } },
+  ];
+
+  it("names the leaf a drag is over, so the canvas knows what it may arm", () => {
+    expect(leafTarget(flat, "shore", { x: 10, y: 0 })).toBe("landing");
+    expect(leafTarget(flat, "shore", { x: 900, y: 700 })).toBeNull();
+  });
+
+  it("never offers the dragged location itself, or anything it holds", () => {
+    // Village holds Tavern; dragging the Village over its own Tavern must not arm the Tavern.
+    const held: GameLocation[] = [
+      { id: "village", name: "Village", isStarting: true, canvasPosition: { x: 0, y: 0 } },
+      { id: "tavern", name: "Tavern", parentId: "village", canvasPosition: { x: GROUP_PADDING, y: GROUP_HEADER } },
+    ];
+    expect(leafTarget(held, "village", { x: 0, y: 0 })).toBeNull();
+    expect(leafTarget(flat, "shore", { x: 400, y: 0 })).toBeNull();
+  });
+
+  it("never offers a location riding along in the same drag", () => {
+    expect(leafTarget(flat, "shore", { x: 10, y: 0 }, ["landing"])).toBeNull();
+  });
+
+  it("leaves an unarmed drag over a leaf a plain move", () => {
+    expect(dropIntent(flat, "shore", { x: 10, y: 0 })).toEqual({
+      kind: "move", id: "shore", parentId: null, position: { x: 10, y: 0 },
+    });
+  });
+
+  it("nests into an armed leaf, at the point the drag was released", () => {
+    const drop = dropIntent(flat, "shore", { x: 10, y: 0 }, "landing");
+    expect(drop).toEqual({ kind: "reparent", id: "shore", parentId: "landing", position: { x: 10, y: 0 } });
+    const after = applyCanvasDrop(flat, drop!);
+    expect(after.find((l) => l.id === "shore")?.parentId).toBe("landing");
+    // The leaf is a box around its new child now, and the child is held clear of the frame it sits in.
+    expect(buildLocationCanvas(after, []).nodes.find((n) => n.id === "landing")!.type).toBe("locationGroup");
+  });
+
+  it("re-reads the release point against the box that is about to hold it", () => {
+    // Landing stands at (100, 50); Shore released at (60, 40) has its center at (150, 66), inside Landing.
+    // The stored position is measured from Landing's own corner, so it is behind and above it, not (60, 40).
+    const apart: GameLocation[] = [
+      { id: "landing", name: "Landing", isStarting: true, canvasPosition: { x: 100, y: 50 } },
+      { id: "shore", name: "Shore", canvasPosition: { x: 400, y: 0 } },
+    ];
+    expect(leafTarget(apart, "shore", { x: 60, y: 40 })).toBe("landing");
+    expect(dropIntent(apart, "shore", { x: 60, y: 40 }, "landing")).toEqual({
+      kind: "reparent", id: "shore", parentId: "landing", position: { x: -40, y: -10 },
+    });
+  });
+
+  it("ignores an armed target the drop could never legally make", () => {
+    expect(dropIntent(flat, "shore", { x: 10, y: 0 }, "shore")).toMatchObject({ kind: "move" });
+    expect(dropIntent(flat, "shore", { x: 10, y: 0 }, "nowhere")).toMatchObject({ kind: "move" });
+    const held: GameLocation[] = [
+      { id: "village", name: "Village", isStarting: true, canvasPosition: { x: 0, y: 0 } },
+      { id: "tavern", name: "Tavern", parentId: "village", canvasPosition: { x: GROUP_PADDING, y: GROUP_HEADER } },
+    ];
+    expect(dropIntent(held, "village", { x: 0, y: 0 }, "tavern")).toMatchObject({ kind: "move" });
+  });
+
+  it("hands a leaf that has since become a group back to plain containment", () => {
+    // Armed frames ago, the Village has taken a child in the meantime: it is a box now, and a box takes the
+    // drop only when the drag is actually inside it — which, out at (900, 700), this one is not.
+    const grown: GameLocation[] = [
+      { id: "village", name: "Village", isStarting: true, canvasPosition: { x: 0, y: 0 } },
+      { id: "tavern", name: "Tavern", parentId: "village", canvasPosition: { x: GROUP_PADDING, y: GROUP_HEADER } },
+      { id: "shore", name: "Shore", canvasPosition: { x: 400, y: 0 } },
+    ];
+    expect(dropIntent(grown, "shore", { x: 900, y: 700 }, "village")).toEqual({
+      kind: "move", id: "shore", parentId: null, position: { x: 900, y: 700 },
+    });
+  });
+
+  it("nests a whole selection into one armed leaf", () => {
+    const drops = multiDropIntents(flat, [
+      { id: "shore", position: { x: 10, y: 0 } },
+      { id: "reef", position: { x: 30, y: 20 } },
+    ], "landing");
+    expect(drops).toEqual([
+      { kind: "reparent", id: "shore", parentId: "landing", position: { x: 10, y: 0 } },
+      { kind: "reparent", id: "reef", parentId: "landing", position: { x: 30, y: 20 } },
+    ]);
+    const after = applyCanvasDrops(flat, drops);
+    expect(after.filter((l) => l.parentId === "landing").map((l) => l.id)).toEqual(["shore", "reef"]);
+  });
+
+  it("ignores an armed leaf that is itself part of the drag", () => {
+    const drops = multiDropIntents(flat, [
+      { id: "shore", position: { x: 10, y: 0 } },
+      { id: "landing", position: { x: 0, y: 0 } },
+    ], "landing");
+    expect(drops.every((d) => d.kind === "move")).toBe(true);
+  });
+
+  it("leaves authored Connections between the nested pair untouched", () => {
+    const conns: Connection[] = [{ id: "c1", from: "shore", to: "landing", twoWay: false, aiHint: "along the sand" }];
+    const before = buildLocationCanvas(flat, conns).edges.filter((e) => e.connectionId === "c1");
+    const after = applyCanvasDrop(flat, dropIntent(flat, "shore", { x: 10, y: 0 }, "landing")!);
+    expect(after.find((l) => l.id === "shore")?.parentId).toBe("landing");
+    // The one-way link is still one arrow after the nest, hint and all: the pair is now parent and child,
+    // whose free travel would otherwise be its own rule for them and quietly hand back the walk home.
+    const drawn = buildLocationCanvas(after, conns).edges.filter((e) => e.connectionId === "c1");
+    expect(drawn).toEqual(before);
+    expect(drawn.map((e) => e.id)).toEqual(["connection:c1:forward"]);
+    expect(connectionsAt("shore", conns).map((v) => v.connection)).toEqual(conns);
   });
 });
 
