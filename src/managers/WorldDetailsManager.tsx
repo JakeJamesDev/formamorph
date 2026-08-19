@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import { useGameData } from '@/contexts/GameDataContext';
 import { useSettings } from '@/contexts/SettingsContext';
 import { Label } from "@/components/ui/label";
@@ -18,7 +18,9 @@ import {
   clearWorldPromptOverride, setWorldPromptOverride, storedWorldPrompt, worldPromptEnabled, worldPromptFieldKey,
   WORLD_PROMPT_KINDS, WORLD_PROMPT_KIND_LABELS, type WorldPromptKind,
 } from "@/lib/worldPrompt";
-import { clearOpeningCue, openingCueEnabled, setOpeningCue, storedOpeningCue } from "@/lib/openingCue";
+import {
+  clearOpeningCue, openingCueEnabled, OPENING_CUE_FIELD_KEY, setOpeningCue, storedOpeningCue,
+} from "@/lib/openingCue";
 import { OPENING_SCENE_CUE } from "@/components/game/GamePrompts";
 import { useEditorMode } from "@/lib/editorMode";
 
@@ -28,11 +30,39 @@ const PROMPT_KIND_VARIABLE_KEY = {
 } as const;
 
 /**
- * Optional per-world replacements for the player's narration, choices, and stat-update system prompts, one
- * tab each with its enable checkbox in the tab's own chrome. A tab opens on the prompt the game would run
- * right now — the active preset's — as an unstored template, so an author edits something that works; the
- * first edit is what stores it on the world, and Reset drops it back to tracking the preset. Only these
- * three system prompts are replaceable; every other AI pass keeps running on the player's own preset.
+ * The opening cue shares the section's picker without being a {@link WorldPromptKind}: it is the player's
+ * first message rather than a system prompt, and it lives on its own overview field instead of in
+ * `promptOverrides`. So the panel keys widen by one where the override type does not.
+ */
+type PanelKind = WorldPromptKind | 'opening';
+
+/** The three system prompts first, then the outlier — the cue is a different kind of text. */
+const PANEL_KINDS: PanelKind[] = [...WORLD_PROMPT_KINDS, 'opening'];
+
+const PANEL_LABELS: Record<PanelKind, string> = { ...WORLD_PROMPT_KIND_LABELS, opening: 'Opening' };
+
+/** The note-and-Reset row under whichever panel is open. Reset appears only for text the author stored. */
+const PanelFooter = ({ note, onReset }: { note: ReactNode; onReset?: () => void }) => (
+  <div className="flex items-start justify-between gap-2">
+    <p className="text-meta text-muted-foreground">{note}</p>
+    {onReset && (
+      <Button variant="ghost" size="sm" className="shrink-0" onClick={onReset}>
+        Reset
+      </Button>
+    )}
+  </div>
+);
+
+/**
+ * The text this world supplies in place of the player's own, one panel each with its enable checkbox in the
+ * picker's chrome: the narration, choices, and stat-update system prompts, plus the opening cue the input
+ * box is pre-filled with at Start Game. A panel opens on what the game would run right now — the active
+ * preset's prompt, or the shipped cue — as an unstored template, so an author edits something that works;
+ * the first edit is what stores it on the world, and Reset drops it back to tracking the template. Only
+ * these three system prompts are replaceable; every other AI pass keeps running on the player's own preset.
+ *
+ * The cue needs no player-facing opt-out where the prompts do: the pre-filled box is editable, so the
+ * player already has the last word on what the opening turn says.
  */
 const CustomPromptsSection = ({ focusField }: { focusField?: { fieldKey: string } | null }) => {
   const {
@@ -65,10 +95,10 @@ const CustomPromptsSection = ({ focusField }: { focusField?: { fieldKey: string 
     ],
   );
   const { advanced } = useEditorMode();
-  // No kind open by default, and picking the open one again closes it: three large prompt fields is more
-  // of the panel than an author who isn't writing prompts should have to scroll past.
-  const [tab, setTab] = useState<WorldPromptKind | null>(null);
-  const [resetKind, setResetKind] = useState<WorldPromptKind | null>(null);
+  // Nothing open by default, and picking the open one again closes it: four large fields is more of the
+  // panel than an author who isn't writing prompts should have to scroll past.
+  const [tab, setTab] = useState<PanelKind | null>(null);
+  const [resetKind, setResetKind] = useState<PanelKind | null>(null);
 
   // The prompt each tab tracks: what the game would send right now, preset pins and all — not the shipped
   // default, which an author with an edited preset would not recognize as theirs.
@@ -78,13 +108,17 @@ const CustomPromptsSection = ({ focusField }: { focusField?: { fieldKey: string 
     statUpdates: presetStatUpdatesPrompt,
   };
 
-  // Only the find bar can reach a tab that isn't showing, and it arrives as a fresh object per navigation.
+  // Only the find bar can reach a panel that isn't showing, and it arrives as a fresh object per navigation.
   useEffect(() => {
+    if (focusField?.fieldKey === OPENING_CUE_FIELD_KEY) { setTab('opening'); return; }
     const hit = WORLD_PROMPT_KINDS.find((kind) => focusField?.fieldKey === worldPromptFieldKey(kind));
     if (hit) setTab(hit);
   }, [focusField]);
 
   if (!advanced) return null;
+
+  const storedCue = storedOpeningCue(worldOverview);
+  const cueEnabled = openingCueEnabled(worldOverview);
 
   const write = (kind: WorldPromptKind, update: { text?: string; enabled?: boolean }) =>
     updateWorldOverview({ promptOverrides: setWorldPromptOverride(worldOverview.promptOverrides, kind, update) });
@@ -93,53 +127,103 @@ const CustomPromptsSection = ({ focusField }: { focusField?: { fieldKey: string 
   // writes straight through to world state, where the only undo is discarding every unsaved edit at once.
   // Switching on opens the kind, since the author is about to want it; switching off leaves the panel as
   // it stands rather than yanking a field open around the click.
-  const toggle = (kind: WorldPromptKind, on: boolean) => {
+  const toggle = (kind: PanelKind, on: boolean) => {
     if (on) setTab(kind);
-    write(kind, { enabled: on });
+    if (kind === 'opening') updateWorldOverview(setOpeningCue({ enabled: on }));
+    else write(kind, { enabled: on });
   };
 
   const reset = () => {
-    if (resetKind) {
+    if (resetKind === 'opening') updateWorldOverview(clearOpeningCue());
+    else if (resetKind) {
       updateWorldOverview({ promptOverrides: clearWorldPromptOverride(worldOverview.promptOverrides, resetKind) });
     }
     setResetKind(null);
   };
 
   return (
-    <div className="space-y-2">
-      <div className="flex items-center justify-between gap-2">
-        <Label className="leading-none">Custom Prompts</Label>
-        {/* A segmented control rather than tabs: picking the open kind again clears the selection, which
-            Tabs cannot express. The checkbox sits beside its item rather than inside it — a button inside
-            a button is invalid — so the wrapper carries the selected chrome for the pair. */}
-        <ToggleGroup
-          type="single"
-          value={tab ?? ''}
-          onValueChange={(v) => setTab((v || null) as WorldPromptKind | null)}
-        >
-          {WORLD_PROMPT_KINDS.map((kind) => (
+    // A query container, so the picker below folds on the width it actually gets: this panel is a
+    // drag-resizable pane on desktop, where a viewport breakpoint would say "wide" for a column the
+    // author has just dragged narrow.
+    <div className="space-y-2 [container-type:inline-size]">
+      <Label className="block leading-none">Custom Prompts</Label>
+      {/* A segmented control rather than tabs: picking the open kind again clears the selection, which
+          Tabs cannot express. The checkbox sits beside its item rather than inside it — a button inside
+          a button is invalid — so the wrapper carries the selected chrome for the pair. Its own row, and
+          a grid rather than wrapping flex: four checkbox-and-label pairs do not fit a narrow column, and
+          letting them wrap freely strands the fourth alone on a full-width second row. */}
+      <ToggleGroup
+        type="single"
+        value={tab ?? ''}
+        onValueChange={(v) => setTab((v || null) as PanelKind | null)}
+        // Four across only once the row clears the column with room to spare; two-up below that. Sized to
+        // its own labels rather than the column, so it stays a control instead of stretching into a banner.
+        className="inline-grid h-auto grid-cols-2 [@container(min-width:32rem)]:grid-cols-4"
+      >
+        {PANEL_KINDS.map((kind, i) => (
+          <div key={kind} className="inline-flex items-center">
+            {/* The app's pipe (see PromptField's toolbar), pairing each checkbox with the label after it
+                rather than the one before. Only between neighbors on a row, never opening one: the second
+                of each pair always, the third only once the same query above puts all four on one row.
+                On this muted chrome the usual bg-border is invisible, hence the stronger fill. */}
+            <span
+              aria-hidden
+              className={cn('mx-0.5 h-4 w-px shrink-0 bg-muted-foreground/40',
+                i % 2 === 0 && 'hidden',
+                i === 2 && '[@container(min-width:32rem)]:inline-block')}
+            />
             <div
-              key={kind}
-              className={cn('inline-flex items-center gap-2 rounded-sm pl-2 transition-all',
+              className={cn('inline-flex flex-1 items-center gap-2 rounded-sm pl-2 transition-all',
                 tab === kind && 'bg-background shadow-sm')}
             >
               <Checkbox
-                checked={worldPromptEnabled(worldOverview, kind)}
+                className="shrink-0"
+                checked={kind === 'opening' ? cueEnabled : worldPromptEnabled(worldOverview, kind)}
                 onCheckedChange={(c) => toggle(kind, c === true)}
-                aria-label={`Use this world's ${WORLD_PROMPT_KIND_LABELS[kind].toLowerCase()} prompt`}
+                aria-label={kind === 'opening'
+                  ? "Use this world's opening cue"
+                  : `Use this world's ${PANEL_LABELS[kind].toLowerCase()} prompt`}
               />
               <ToggleGroupItem
                 value={kind}
-                className="px-2 data-[state=on]:bg-transparent data-[state=on]:shadow-none"
+                className="flex-1 px-2 data-[state=on]:bg-transparent data-[state=on]:shadow-none"
               >
-                {WORLD_PROMPT_KIND_LABELS[kind]}
+                {PANEL_LABELS[kind]}
               </ToggleGroupItem>
             </div>
-          ))}
-        </ToggleGroup>
-      </div>
+          </div>
+        ))}
+      </ToggleGroup>
 
-      {tab && (() => {
+      {tab === 'opening' && (
+        <div className="space-y-2">
+          <PlaceholderField
+            value={storedCue ?? OPENING_SCENE_CUE}
+            // Storing on the first divergence is what keeps an untouched world tracking the shipped cue: a
+            // world only carries a cue its author actually wrote.
+            onChange={(text) => {
+              if (storedCue === undefined && text === OPENING_SCENE_CUE) return;
+              updateWorldOverview(setOpeningCue({ text, enabled: cueEnabled }));
+            }}
+            placeholders={placeholders}
+            ariaLabel="World opening cue"
+            resizable
+          />
+          <PanelFooter
+            note={(
+              <>
+                {cueEnabled
+                  ? 'Pre-fills the player’s input box when they start this world. They can still edit it before they send it.'
+                  : 'Not applied until you switch this one on — players start on the standard cue.'}
+                {storedCue === undefined && ' This is the standard cue, and follows it until you edit it here.'}
+              </>
+            )}
+            onReset={storedCue === undefined ? undefined : () => setResetKind('opening')}
+          />
+        </div>
+      )}
+
+      {tab !== null && tab !== 'opening' && (() => {
         const kind = tab;
         const label = WORLD_PROMPT_KIND_LABELS[kind].toLowerCase();
         const stored = storedWorldPrompt(worldOverview, kind);
@@ -164,19 +248,17 @@ const CustomPromptsSection = ({ focusField }: { focusField?: { fieldKey: string 
               ariaLabel={`World ${label} prompt`}
               resizable
             />
-            <div className="flex items-start justify-between gap-2">
-              <p className="text-meta text-muted-foreground">
-                {enabled
-                  ? `Replaces the player's ${label} prompt while they play this world. They can decline it from the world's details window.`
-                  : `Not applied until you switch this one on — players use their own ${label} prompt.`}
-                {stored === undefined && ` This is your current ${label} prompt, and follows it until you edit it here.`}
-              </p>
-              {stored !== undefined && (
-                <Button variant="ghost" size="sm" className="shrink-0" onClick={() => setResetKind(kind)}>
-                  Reset
-                </Button>
+            <PanelFooter
+              note={(
+                <>
+                  {enabled
+                    ? `Replaces the player's ${label} prompt while they play this world. They can decline it from the world's details window.`
+                    : `Not applied until you switch this one on — players use their own ${label} prompt.`}
+                  {stored === undefined && ` This is your current ${label} prompt, and follows it until you edit it here.`}
+                </>
               )}
-            </div>
+              onReset={stored === undefined ? undefined : () => setResetKind(kind)}
+            />
           </div>
         );
       })()}
@@ -184,82 +266,13 @@ const CustomPromptsSection = ({ focusField }: { focusField?: { fieldKey: string 
       <ConfirmDialog
         open={resetKind !== null}
         onOpenChange={(open) => { if (!open) setResetKind(null); }}
-        title={`Discard this world's ${WORLD_PROMPT_KIND_LABELS[resetKind ?? 'narration'].toLowerCase()} prompt?`}
-        description="It goes back to following your own prompt. The text you wrote here is not kept."
+        title={resetKind === 'opening'
+          ? "Discard this world's opening cue?"
+          : `Discard this world's ${WORLD_PROMPT_KIND_LABELS[resetKind ?? 'narration'].toLowerCase()} prompt?`}
+        description={resetKind === 'opening'
+          ? 'It goes back to following the standard cue. The text you wrote here is not kept.'
+          : 'It goes back to following your own prompt. The text you wrote here is not kept.'}
         onConfirm={reset}
-      />
-    </div>
-  );
-};
-
-/**
- * The text the player's input box opens pre-filled with at Start Game, in place of the shipped cue. The
- * field opens on the shipped cue as an unstored template, so an author edits the guardrails rather than
- * writing blind; the first edit is what stores it on the world, and Reset drops it back to tracking the
- * shipped one. There is no player-facing opt-out — the pre-filled box is editable, so the player already
- * has the last word on what the opening turn says.
- *
- * The switch is the whole section until it is on: a world not opening on its own cue has no field worth
- * the panel height. Switching off keeps whatever was written, so nothing is lost behind the hidden field.
- */
-const OpeningCueSection = () => {
-  const { worldOverview, updateWorldOverview, placeholders } = useGameData();
-  const { advanced } = useEditorMode();
-  const [confirmReset, setConfirmReset] = useState(false);
-
-  if (!advanced) return null;
-
-  const stored = storedOpeningCue(worldOverview);
-  const enabled = openingCueEnabled(worldOverview);
-
-  return (
-    <div className="space-y-2">
-      <div className="flex items-center justify-between gap-2">
-        <Label className="leading-none">Opening Cue</Label>
-        <Checkbox
-          checked={enabled}
-          // Switching off keeps the text and only clears the flag, so a stray click costs nothing — the
-          // editor writes straight through to world state, where the only undo is discarding every edit.
-          onCheckedChange={(c) => updateWorldOverview(setOpeningCue({ enabled: c === true }))}
-          aria-label="Use this world's opening cue"
-        />
-      </div>
-
-      {enabled && (
-        <>
-          <PlaceholderField
-            value={stored ?? OPENING_SCENE_CUE}
-            // Storing on the first divergence is what keeps an untouched world tracking the shipped cue: a
-            // world only carries a cue its author actually wrote.
-            onChange={(text) => {
-              if (stored === undefined && text === OPENING_SCENE_CUE) return;
-              updateWorldOverview(setOpeningCue({ text, enabled }));
-            }}
-            placeholders={placeholders}
-            ariaLabel="World opening cue"
-            resizable
-          />
-          <div className="flex items-start justify-between gap-2">
-            <p className="text-meta text-muted-foreground">
-              Pre-fills the player’s input box when they start this world. They can still edit it before
-              they send it.
-              {stored === undefined && ' This is the standard cue, and follows it until you edit it here.'}
-            </p>
-            {stored !== undefined && (
-              <Button variant="ghost" size="sm" className="shrink-0" onClick={() => setConfirmReset(true)}>
-                Reset
-              </Button>
-            )}
-          </div>
-        </>
-      )}
-
-      <ConfirmDialog
-        open={confirmReset}
-        onOpenChange={setConfirmReset}
-        title="Discard this world's opening cue?"
-        description="It goes back to following the standard cue. The text you wrote here is not kept."
-        onConfirm={() => { updateWorldOverview(clearOpeningCue()); setConfirmReset(false); }}
       />
     </div>
   );
@@ -351,8 +364,6 @@ const WorldDetailsManager = ({ focusField }: { focusField?: { fieldKey: string }
           resizable
         />
       </div>
-
-      <OpeningCueSection />
 
       <CustomPromptsSection focusField={focusField} />
 
