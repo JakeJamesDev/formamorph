@@ -146,6 +146,10 @@ const LocationMap = ({ locations, connections, currentLocationId, onTravel }: {
       // The browser's menu never opens over the map, exactly as on the canvas: every button that isn't
       // clicking a box is a pan, and the platform answers the right one's release with a menu.
       onContextMenu={(event) => event.preventDefault()}
+      // d3-zoom starts a pan without cancelling the press's own default, and a middle press's default is
+      // Chrome's autoscroll — a second scroll mode fighting the pan it rides on. The left button keeps its
+      // default: pressing a location box has focus to hand out.
+      onMouseDownCapture={(event) => { if (event.button !== 0) event.preventDefault(); }}
     >
       <TravelContext.Provider value={travel}>
         <ReactFlow<MapNode, Edge>
