@@ -745,10 +745,14 @@ const WorldEditorInner = ({ onClose, embedded = false, backButton }: {
       </TutorialPopover>
     </div>
   );
+  // The strip fills its row and the tabs share it out. Not on mobile: there the strip is the one that
+  // scrolls sideways, and tabs told to share a width they already overflow would squeeze rather than scroll.
   const tabsList = (
-    <TabsList className="flex-shrink-0">
+    <TabsList className={cn('flex-shrink-0', !isMobile && 'w-full')}>
       {visibleTabs.map((t) => (
-        <TabsTrigger key={t.value} value={t.value}>{t.label}</TabsTrigger>
+        <TabsTrigger key={t.value} value={t.value} className={isMobile ? undefined : 'flex-1'}>
+          {t.label}
+        </TabsTrigger>
       ))}
     </TabsList>
   );
