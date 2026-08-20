@@ -7,10 +7,14 @@ import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
   Search, RotateCcw, ArrowDownWideNarrow, ArrowUpNarrowWide, ArrowLeft, X, SlidersHorizontal, ChevronDown,
-  Earth, User, BookOpen, Globe, ShieldAlert,
+  Earth, User, BookOpen, Globe, ShieldAlert, Trophy,
 } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { CATALOG_KINDS, KIND_LABELS, kindOf, type CatalogKind } from "@/lib/catalogKinds";
+import { KIND_LABELS, kindOf, type CatalogKind } from "@/lib/catalogKinds";
+import { BROWSE_TABS, BROWSE_TAB_LABELS, type BrowseTab } from "@/lib/browseTabs";
+import { contestPhase, contestWonBy, entriesOf, orderContestEntries } from "@/lib/contests";
+import { useContests } from "@/lib/useContests";
+import { ContestBar, ContestWinner } from "@/components/community/ContestBar";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Pager } from "@/components/ui/pagination";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -77,8 +81,9 @@ interface CommunityCreationsBrowserProps {
   isAuthenticated: boolean;
   currentUser: WorldRecord | null;
   openImageViewer: (src: string | undefined, alt: string | undefined) => void;
-  /** DEV dev-router: the kind tab to open on (`#dev?modal=community&tab=entity`). */
-  initialKind?: CatalogKind;
+  /** The tab to open on — the dev-router's (`#dev?modal=community&tab=entity`), or Contest when an
+   *  event banner sent the player here. */
+  initialTab?: BrowseTab;
   /** A listing to open the details for, arriving from somewhere else — a notification feed row. */
   openListing?: { id: string; kind: string } | null;
   /** Fired once that listing has been opened, or found to be gone, so the host can clear its request. */
@@ -93,7 +98,7 @@ interface CommunityCreationsBrowserProps {
 // and comments, and download/refresh/update copies to the local library.
 const CommunityCreationsBrowser = ({
   open, onOpenChange, worlds, setWorlds, entities, dictionaries, refreshEntities, refreshDictionaries,
-  isAuthenticated, currentUser, openImageViewer, initialKind, openListing, onListingOpened,
+  isAuthenticated, currentUser, openImageViewer, initialTab, openListing, onListingOpened,
   events = [], onOpenEvent,
 }: CommunityCreationsBrowserProps) => {
   // Catalog fetch/cache/sync (loads on open, refreshes in the background).
@@ -131,8 +136,9 @@ const CommunityCreationsBrowser = ({
   );
   const toggleCommunityBrowserModalCollapsed = () => setCommunityBrowserModalCollapsed((prev) => !prev);
 
-  // Which kind is being browsed. The catalog holds all three; the pipeline below scopes to this one.
-  const [browseKind, setBrowseKind] = useState<CatalogKind>(initialKind ?? 'world');
+  // Which tab is being browsed. The catalog holds every kind; the pipeline below scopes to this one.
+  // Contest is a fourth tab rather than a fourth kind — a narrowing of the worlds already in hand.
+  const [browseTab, setBrowseTab] = useState<BrowseTab>(initialTab ?? 'world');
 
   // Entities and dictionaries download into their own libraries, one copy per listing. Worlds keep the
   // coordinator's multi-copy flow (see useLibraryDownload for why the two differ).
@@ -193,8 +199,46 @@ const CommunityCreationsBrowser = ({
   // Narrowed before paging, not after: filtering the page in hand would leave the pager counting pages
   // that are mostly empty. The catalog is one request that already carries every quarantined listing this
   // account may see, so this is a filter over it rather than another fetch — the same as search and tags.
-  const catalogInView = quarantinedOnly ? remoteWorlds.filter(isQuarantined) : remoteWorlds;
+  const catalogForKinds = quarantinedOnly ? remoteWorlds.filter(isQuarantined) : remoteWorlds;
   const quarantinedCount = remoteWorlds.filter(isQuarantined).length;
+
+  // Contests: the one running now and the archives behind it. The tab appears while there is either.
+  const { contests, loaded: contestsLoaded } = useContests(open);
+  const [selectedContestId, setSelectedContestId] = useState<string | null>(null);
+  // The newest contest is the default — the running one when there is one, since that is how they sort.
+  const shownContest = contests.find((c) => c.id === selectedContestId) ?? contests[0] ?? null;
+
+  // A fresh shuffle seed each time the browser opens, so a live contest is re-ordered per visit but holds
+  // still while the reader is looking at it. The archive picked last time is dropped at the same moment:
+  // the running contest is what a visit opens on, not whichever old one was last read.
+  const [shuffleSeed, setShuffleSeed] = useState(() => Math.random());
+  useEffect(() => {
+    if (!open) return;
+    setShuffleSeed(Math.random());
+    setSelectedContestId(null);
+  }, [open]);
+
+  // The browser is mounted for the app's lifetime, so the tab it was asked to open on is applied each
+  // time it opens rather than only at mount — otherwise the second click on an event banner lands on
+  // whichever tab the last visit was left on.
+  useEffect(() => {
+    if (open && initialTab) setBrowseTab(initialTab);
+  }, [open, initialTab]);
+
+  // A contest that ends up not being browsable — the read failed, or the router aimed here on a server
+  // with no contests — leaves the reader on a tab with no trigger. Send them back to the catalog.
+  useEffect(() => {
+    if (browseTab === 'contest' && open && contestsLoaded && contests.length === 0) setBrowseTab('world');
+  }, [browseTab, open, contestsLoaded, contests.length]);
+
+  const contestOrder = useCallback(
+    (list: WorldRecord[]) => orderContestEntries(list, shownContest, shuffleSeed),
+    [shownContest, shuffleSeed],
+  );
+
+  const catalogInView = browseTab === 'contest'
+    ? entriesOf(remoteWorlds, shownContest?.id)
+    : catalogForKinds;
 
   const {
     searchQuery, applySearchInput, authorFilter, setAuthorFilter, tagFilter, setTagFilter,
@@ -207,8 +251,9 @@ const CommunityCreationsBrowser = ({
     resetHiddenWorlds, unhideWorld, hiddenWorldName,
     allAuthors, allTags, filteredRemoteWorlds, totalPages, pagedRemoteWorlds,
   } = useCommunityBrowserFilters(
-    catalogInView, downloadStateForRecord, open, browseKind,
+    catalogInView, downloadStateForRecord, open, browseTab,
     currentUser?.id ? String(currentUser.id) : undefined,
+    browseTab === 'contest' ? contestOrder : undefined,
   );
 
   /** Whether anything is narrowing the grid — what tells an empty result from an empty catalog. */
@@ -216,7 +261,7 @@ const CommunityCreationsBrowser = ({
 
   // Admin-only, and only once something is actually quarantined: a toggle that can only ever show an
   // empty list is a control that teaches nothing.
-  const quarantineControl = viewerIsStaff && quarantinedCount > 0 ? (
+  const quarantineControl = viewerIsStaff && quarantinedCount > 0 && browseTab !== 'contest' ? (
     <Button
       variant={quarantinedOnly ? 'default' : 'outline'}
       size="sm"
@@ -368,7 +413,7 @@ const CommunityCreationsBrowser = ({
 
     const found = remoteWorlds.find((w) => (w._id || w.id) === openListing.id);
     if (found) {
-      setBrowseKind(kindOf(found));
+      setBrowseTab(kindOf(found));
       // Set directly rather than through the click handler, which is rebuilt every render and would
       // make this effect chase its own identity.
       setSelectedRemoteWorld(found);
@@ -403,6 +448,13 @@ const CommunityCreationsBrowser = ({
         <BookOpen className="h-5 w-5 min-[1040px]:hidden" />
         <span className="hidden min-[1040px]:inline">Dictionaries</span>
       </TabsTrigger>
+      {/* A fourth tab only while there is a contest to browse — running, or finished and archived. */}
+      {contests.length > 0 && (
+        <TabsTrigger value="contest" aria-label="Contest" title="Contest">
+          <Trophy className="h-5 w-5 min-[1040px]:hidden" />
+          <span className="hidden min-[1040px]:inline">Contest</span>
+        </TabsTrigger>
+      )}
     </TabsList>
     </TutorialPopover>
   );
@@ -420,8 +472,8 @@ const CommunityCreationsBrowser = ({
       <Input
         // The prefix hint is desktop-only: on mobile it outruns the field and hides the word "Search".
         placeholder={isMobile
-          ? `Search ${KIND_LABELS[browseKind].many.toLowerCase()}…`
-          : `Search ${KIND_LABELS[browseKind].many.toLowerCase()}… or type author:, tag:, status:`}
+          ? `Search ${BROWSE_TAB_LABELS[browseTab].many.toLowerCase()}…`
+          : `Search ${BROWSE_TAB_LABELS[browseTab].many.toLowerCase()}… or type author:, tag:, status:`}
         className="pl-8"
         value={searchQuery}
         onChange={(e) => { dismissIfShowing('community-search-prefixes'); applySearchInput(e.target.value); }}
@@ -450,7 +502,9 @@ const CommunityCreationsBrowser = ({
     </Button>
   );
 
-  const sortControl = (
+  // A contest's entries are ordered by the contest, not by the reader: shuffled while it runs, by likes
+  // once it is judged. Offering a sort that the grid then overrides would be a control that lies.
+  const sortControl = browseTab === 'contest' ? null : (
     <div className="flex items-center gap-1">
       <Select value={sortField} onValueChange={(v) => { setSortField(v); setCurrentPage(1); }}>
         <SelectTrigger className="w-[160px] h-9"><SelectValue /></SelectTrigger>
@@ -532,7 +586,7 @@ const CommunityCreationsBrowser = ({
     </TutorialPopover>
   );
 
-  const updatesControl = (
+  const updatesControl = browseTab === 'contest' ? null : (
     <label className="ml-auto flex items-center gap-2 shrink-0 cursor-pointer text-label select-none">
       <Checkbox
         checked={sortUpdatesFirst}
@@ -598,7 +652,7 @@ const CommunityCreationsBrowser = ({
         >
           {/* The kind switcher lives in the header and its results below it, so one root spans both.
               `contents` on the root and each panel leaves the dialog's own flex column untouched. */}
-          <Tabs value={browseKind} onValueChange={(v) => setBrowseKind(v as CatalogKind)} className="contents">
+          <Tabs value={browseTab} onValueChange={(v) => setBrowseTab(v as BrowseTab)} className="contents">
           {/* Header: back · title · search · refresh always visible. On mobile the sort/filter controls
               collapse behind a "Filters" toggle; on desktop they stay inline. */}
           <Collapsible open={filtersOpen} onOpenChange={setFiltersOpen} className="shrink-0 border-b">
@@ -668,14 +722,29 @@ const CommunityCreationsBrowser = ({
             </div>
           </Collapsible>
 
-          {/* A panel per kind so every trigger's `aria-controls` resolves; one grid serves whichever kind is
-              showing, so the other two render empty. */}
-          {CATALOG_KINDS.filter((k) => k !== browseKind).map((k) => (
+          {/* The contest's own header: which contest, where it stands, its rules, and — once several have
+              been run — which archive is being read. Above the grid rather than inside it, so it stays put
+              while the entries scroll. */}
+          {browseTab === 'contest' && shownContest && (
+            <>
+              <ContestBar
+                contest={shownContest}
+                contests={contests}
+                onSelect={setSelectedContestId}
+                entryCount={catalogInView.length}
+              />
+              {contestPhase(shownContest) === 'decided' && <ContestWinner contest={shownContest} />}
+            </>
+          )}
+
+          {/* A panel per tab so every trigger's `aria-controls` resolves; one grid serves whichever tab is
+              showing, so the others render empty. */}
+          {BROWSE_TABS.filter((k) => k !== browseTab).map((k) => (
             <TabsContent key={k} value={k} className="contents" />
           ))}
 
           {/* Scrollable results */}
-          <TabsContent value={browseKind} className="contents">
+          <TabsContent value={browseTab} className="contents">
           <ScrollArea className="flex-1 min-h-0">
             {/* World grid */}
             <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4 px-6 py-4">
@@ -692,11 +761,15 @@ const CommunityCreationsBrowser = ({
                 <div className="col-span-full text-center py-12 text-muted-foreground">
                   {/* Filters now outlive the session, so an empty grid names them rather than reading as an
                       empty catalog. */}
-                  {quarantinedOnly ?
-                    `No ${KIND_LABELS[browseKind].many.toLowerCase()} are quarantined.` :
+                  {browseTab === 'contest' && !anyFilterApplied ?
+                    (shownContest && contestPhase(shownContest) === 'live'
+                      ? 'No entries yet. Publish a world with the contest switch on to be the first.'
+                      : 'This contest ended with no entries.') :
+                    quarantinedOnly ?
+                    `No ${BROWSE_TAB_LABELS[browseTab].many.toLowerCase()} are quarantined.` :
                     anyFilterApplied ?
-                      `No ${KIND_LABELS[browseKind].many.toLowerCase()} match your filters. Clear them to see everything.` :
-                      `No ${KIND_LABELS[browseKind].many.toLowerCase()} available. Be the first to publish one!`}
+                      `No ${BROWSE_TAB_LABELS[browseTab].many.toLowerCase()} match your filters. Clear them to see everything.` :
+                      `No ${BROWSE_TAB_LABELS[browseTab].many.toLowerCase()} available. Be the first to publish one!`}
                 </div>
               ) : (
                 pagedRemoteWorlds.map((world) => {
@@ -718,6 +791,7 @@ const CommunityCreationsBrowser = ({
                       onLike={handleLike}
                       onQuarantine={setQuarantining}
                       onRelease={handleRelease}
+                      wonContest={contestWonBy(world, contests)?.title ?? null}
                       likeTutorial={
                         tutorial?.id === 'community-like' && worldId === likeAnchorId ? tutorial : null
                       }
@@ -840,8 +914,8 @@ const CommunityCreationsBrowser = ({
       <ConfirmDialog
         open={!!remoteWorldToDelete}
         onOpenChange={(o) => !o && setRemoteWorldToDelete(null)}
-        title={`Delete Published ${KIND_LABELS[browseKind].one}`}
-        description={`Are you sure you want to delete this published ${KIND_LABELS[browseKind].one.toLowerCase()}? This will remove it from the server and it will no longer be available to other users. This action cannot be undone.`}
+        title={`Delete Published ${BROWSE_TAB_LABELS[browseTab].one}`}
+        description={`Are you sure you want to delete this published ${BROWSE_TAB_LABELS[browseTab].one.toLowerCase()}? This will remove it from the server and it will no longer be available to other users. This action cannot be undone.`}
         onConfirm={() => handleRemoteWorldDelete(remoteWorldToDelete!)}
       />
 

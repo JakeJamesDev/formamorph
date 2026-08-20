@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { DEV_MODAL_TABS, DEV_MODALS } from './devRoutes';
-import { CATALOG_KINDS } from './catalogKinds';
+import { BROWSE_TABS } from './browseTabs';
 import { DEV_FIXTURES } from './devFixtures';
 import { SETTINGS_TABS } from '@/components/modals/settingsTabs';
 import { WORLD_EDITOR_TABS } from '@/views/worldEditorTabs';
@@ -94,9 +94,10 @@ describe('dev-router coverage guard', () => {
     expect([...DEV_MODAL_TABS.worldEditorLocations]).toEqual(LOCATION_VIEWS.map((v) => v.value));
   });
 
-  it('ledger lists exactly the kinds the Community browser tabs between', () => {
-    // The browser renders one tab per catalog kind, so a new kind must be consciously covered here too.
-    expect([...DEV_MODAL_TABS.community]).toEqual([...CATALOG_KINDS]);
+  it('ledger lists exactly the tabs the Community browser switches between', () => {
+    // The browser renders one tab per catalog kind plus Contest, so a new one must be consciously
+    // covered here too.
+    expect([...DEV_MODAL_TABS.community]).toEqual([...BROWSE_TABS]);
   });
 
   it('ledger lists exactly the library card tabs MainMenu renders', () => {

@@ -20,8 +20,13 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
   - **Community Events:**
     - **A banner on the main menu and in Community Creations announces a running contest or announcement**, naming it and the dates it runs between. Dismissing it collapses it to a small chip that keeps the event one click away.
     - **A poster appears once when an event starts and once when it ends**, and closes only when you say you have read it. Signed in, reading it also clears the matching message from your inbox; signed out, the device remembers on its own.
+    - **A Contest tab in Community Creations gathers every entry in one place**, with the contest's dates and a Rules button above the grid. It appears while a contest is running and stays afterwards for the archives.
+    - **Entries are freshly ordered on each visit while the contest runs**, then stand by likes once judging starts, with the staff's pick held at the front.
+    - **The winner's card carries a trophy wherever it is found**, in the ordinary catalog as well as in the contest.
+    - **A dropdown in the contest bar reaches past contests** once more than one has been run; the running one is what opens by default.
 - **🛠️ Developer tooling**
   - **The dev-router opens the event banner and acknowledge poster on a canned event** — `#dev?view=mainMenu&modal=eventAck`, with `tab=start` or `tab=end` picking the phase.
+  - **The dev-router opens the Contest tab on canned contests** — `#dev?view=mainMenu&modal=community&tab=contest` serves one running contest and two archives, so the tab and its selector are reachable without a live event.
 
 ---
 

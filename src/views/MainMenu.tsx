@@ -70,7 +70,7 @@ import DictionaryStorageService from '../services/DictionaryStorageService';
 import EntityStorageService from '../services/EntityStorageService';
 import ModelStorageService from '../services/ModelStorageService';
 import AuthService from '../services/AuthService';
-import type { World, Stat, CharacterData, Dictionary, DictionaryMetadata, Entity, EntityMetadata, ModelMetadata } from '@/types';
+import type { World, Stat, CharacterData, Dictionary, DictionaryMetadata, Entity, EntityMetadata, ModelMetadata, ServerEvent } from '@/types';
 import { migrateWorld } from '@/lib/version';
 import { isDesktop } from '@/lib/imageGen/desktop';
 import { useIsMobile } from '@/lib/useIsMobile';
@@ -108,6 +108,8 @@ import { type PoliciesTab as PoliciesSubTab } from "@/components/menu/policiesTa
 import { type FeedbackTab as FeedbackSubTab } from "@/components/menu/feedbackTabs";
 import MessageService from "@/services/MessageService";
 import { useActiveEvents } from "@/lib/useActiveEvents";
+import { asBrowseTab, type BrowseTab } from "@/lib/browseTabs";
+import { isContestEvent } from "@/lib/serverEvents";
 import { EventBanner } from "@/components/events/EventBanner";
 import { EventAckModal } from "@/components/events/EventAckModal";
 import FeedbackService from "@/services/FeedbackService";
@@ -115,7 +117,6 @@ import { FeedbackHubDialog } from "@/components/menu/FeedbackHubDialog";
 import { AuthModals } from "@/components/menu/AuthModals";
 import { PublishModal } from "@/components/menu/PublishModal";
 import { worldPublishPayload, entityPublishPayload, dictionaryPublishPayload, type PublishPayload } from "@/lib/publishPayload";
-import { type CatalogKind } from "@/lib/catalogKinds";
 import { BackupRestoreDialog } from "@/components/menu/BackupRestoreDialog";
 import { COMMUNITY_ENABLED } from "@/lib/featureFlags";
 import { isStaff } from "@/lib/roles";
@@ -1252,8 +1253,15 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
   // nothing, so this is the only thing that notices a broadcast sent mid-session.
   const activeEvents = useActiveEvents({ onPoll: refreshUnreadCount });
 
-  /** Take the player to where an event's content lives. */
-  const openEvent = useCallback(() => setShowCommunityBrowser(true), []);
+  // Which Community Creations tab to open on. Set when an event banner sends the player to its content;
+  // cleared as the browser closes, so the next plain visit lands on the catalog again.
+  const [communityTab, setCommunityTab] = useState<BrowseTab | undefined>(undefined);
+
+  /** Take the player to where an event's content lives — the contest tab, for a contest. */
+  const openEvent = useCallback((event: ServerEvent) => {
+    setCommunityTab(isContestEvent(event) ? 'contest' : undefined);
+    setShowCommunityBrowser(true);
+  }, []);
 
   // The feedback half of the badge. Separate from messages because reading a thread changes it, so it is
   // re-read on demand rather than only when auth changes.
@@ -2478,7 +2486,7 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
           {/* Community Creations browser — see CommunityCreationsBrowser.tsx */}
           <CommunityCreationsBrowser
             open={showCommunityBrowser}
-            onOpenChange={setShowCommunityBrowser}
+            onOpenChange={(next) => { setShowCommunityBrowser(next); if (!next) setCommunityTab(undefined); }}
             worlds={worlds}
             setWorlds={setWorlds}
             entities={entities}
@@ -2488,7 +2496,7 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
             isAuthenticated={isAuthenticated}
             currentUser={currentUser}
             openImageViewer={openImageViewer}
-            initialKind={devRoute?.modal === 'community' ? (devRoute.tab as CatalogKind | undefined) : undefined}
+            initialTab={communityTab ?? (devRoute?.modal === 'community' ? asBrowseTab(devRoute.tab) : undefined)}
             openListing={pendingListing}
             onListingOpened={handleListingOpened}
             events={activeEvents}

@@ -38,6 +38,16 @@ class EventService {
     const body = await this.unwrap<{ data: ServerEvent[] }>(response, 'Failed to load events');
     return body.data ?? [];
   }
+
+  /**
+   * Every event that has started, the ones already over included — what the contest archives are read
+   * from. Staff additionally see what is still scheduled, which is why the token rides along.
+   */
+  async fetchList(): Promise<ServerEvent[]> {
+    const response = await fetch(`${this.apiUrl}/events`, { headers: this.authHeaders() });
+    const body = await this.unwrap<{ data: ServerEvent[] }>(response, 'Failed to load events');
+    return body.data ?? [];
+  }
 }
 
 export default new EventService();

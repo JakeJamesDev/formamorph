@@ -35,3 +35,36 @@ export function devEventSample(phase: ServerEventPhase = 'start'): ServerEvent {
     winnerAuthorName: ended ? 'sedgewright' : null,
   };
 }
+
+/**
+ * A canned set of contests for the Community Creations contest tab: one running, two archived, one of
+ * them decided — enough for the tab, its slim bar and its archive selector. The entries themselves come
+ * from the real catalog, so a dev machine with no contest entries sees the tab's empty state.
+ */
+export function devContestSamples(): ServerEvent[] {
+  const day = 86_400_000;
+  const now = Date.now();
+  const running = devEventSample('start');
+
+  return [
+    running,
+    {
+      ...running,
+      id: 'dev-contest-decided',
+      title: 'Autumn Ruins Contest',
+      startsAt: new Date(now - 60 * day).toISOString(),
+      endsAt: new Date(now - 30 * day).toISOString(),
+      winnerMessageId: 'dev-message-winner',
+      winnerWorldId: 'dev-world',
+      winnerName: 'The Long Thaw',
+      winnerAuthorName: 'sedgewright',
+    },
+    {
+      ...running,
+      id: 'dev-contest-judging',
+      title: 'Spring Tides Contest',
+      startsAt: new Date(now - 20 * day).toISOString(),
+      endsAt: new Date(now - 2 * day).toISOString(),
+    },
+  ];
+}
