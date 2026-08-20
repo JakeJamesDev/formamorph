@@ -117,6 +117,26 @@ describe('alias hygiene rules', () => {
     expect(ofRule([{ id: 'e1', name: 'Harbor Cats', aliases: ['Harbor Cat'] }], 'alias-self-duplicate')).toHaveLength(1);
   });
 
+  it('leaves a lowercase alias of a one-word name alone', () => {
+    // A one-word name only matches capitalized, so this alias is the only thing catching lowercase prose.
+    expect(ofRule([{ id: 'e1', name: 'Ghost', aliases: ['ghost'] }], 'alias-self-duplicate')).toEqual([]);
+    expect(ofRule([{ id: 'e1', name: 'Wolf', aliases: ['wolves'] }], 'alias-self-duplicate')).toEqual([]);
+  });
+
+  it('still flags a capitalized repeat of a one-word name', () => {
+    expect(ofRule([{ id: 'e1', name: 'Ghost', aliases: ['Ghosts'] }], 'alias-self-duplicate')).toHaveLength(1);
+  });
+
+  it('flags a lowercase repeat of a multi-word name, which matches every casing already', () => {
+    expect(ofRule([{ id: 'e1', name: 'Harbor Cats', aliases: ['harbor cat'] }], 'alias-self-duplicate')).toHaveLength(1);
+  });
+
+  it('keeps the lowercase alias when the repeat rule is fixed', () => {
+    const before = world([{ id: 'e1', name: 'Ghost', aliases: ['ghost', 'Ghost'] }]);
+    const after = applyRuleFix(before, 'alias-self-duplicate');
+    expect(after.entities?.[0].aliases).toEqual(['ghost']);
+  });
+
   it('says nothing about a world whose aliases are clean', () => {
     expect(runRules(world(corrected))).toEqual([]);
   });
