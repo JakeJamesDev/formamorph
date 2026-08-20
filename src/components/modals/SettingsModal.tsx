@@ -2287,7 +2287,7 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, initialTab,
                         <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground/70">
                           {g.label}
                         </span>
-                        <span className="h-px flex-1 bg-border" aria-hidden />
+                        <span className="h-hairline flex-1 bg-border" aria-hidden />
                       </div>
                       {g.tabs.map((t) => {
                         const selected = t === activePromptTab;

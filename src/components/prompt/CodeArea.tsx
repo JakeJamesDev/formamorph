@@ -168,7 +168,7 @@ function CodeAreaBody({
           >
             <Redo2 className="h-4 w-4" />
           </button>
-          <span className="mx-0.5 w-px self-stretch bg-border" />
+          <span className="mx-0.5 w-hairline self-stretch bg-border" />
           {showTabs && fullscreen && effectiveWidth - 12 >= MIN_PANE_WIDTH * 2 && (
             <button
               type="button"

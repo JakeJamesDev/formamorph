@@ -22,6 +22,12 @@ module.exports = {
       },
     },
     extend: {
+      // One device pixel, whatever the display is scaled to — `h-hairline` / `w-hairline` for a rule that
+      // must not come out a half-shade thicker in one place than another. `--dpr` is published by
+      // `lib/devicePixelGrid`; the fallback keeps the line a whole pixel before it lands.
+      spacing: {
+        hairline: 'calc(1px / var(--dpr, 1))',
+      },
       // The whole app follows the Font setting via --app-font (defined in index.css :root, overridden
       // inline by the setting). Preflight applies fontFamily.sans to <html>, so this themes everything.
       fontFamily: {

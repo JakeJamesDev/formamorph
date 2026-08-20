@@ -143,9 +143,9 @@ export const MemoryPanel = ({ onRegenerateMemory }: {
               <div key={row.id}>
                 {i === dividerAt && (
                   <div className="flex items-center gap-2 py-1" aria-label="Recent Memories">
-                    <div className="h-px flex-grow bg-border" />
+                    <div className="h-hairline flex-grow bg-border" />
                     <span className="text-[10px] uppercase tracking-wide text-muted-foreground">Recent</span>
-                    <div className="h-px flex-grow bg-border" />
+                    <div className="h-hairline flex-grow bg-border" />
                   </div>
                 )}
                 {/* The accent marks the minority state — what actually reached the model last turn. In a
