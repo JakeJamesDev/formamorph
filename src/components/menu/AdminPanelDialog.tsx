@@ -12,6 +12,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ManageUsersTab } from "@/components/menu/ManageUsersTab";
 import { BroadcastsTab } from "@/components/menu/BroadcastsTab";
 import { PoliciesTab } from "@/components/menu/PoliciesTab";
+import { EventsTab } from "@/components/menu/EventsTab";
 import { FeedbackTab } from "@/components/menu/FeedbackTab";
 import { AuditLogTab } from "@/components/menu/AuditLogTab";
 import { useResetOnOpen } from "@/lib/useResetOnOpen";
@@ -38,7 +39,8 @@ export function AdminPanelDialog({
   open, onOpenChange, initialTab = 'users', initialPoliciesTab, initialFeedbackTab,
 }: AdminPanelDialogProps) {
   // Broadcasts and Policies are an administrator's: speaking to everyone at once and writing what the
-  // site requires are not moderation. The rest of the panel is the everyday work, open to any staff.
+  // site requires are not moderation. The rest of the panel is the everyday work, open to any staff —
+  // Events included, since picking a contest winner is a judgement any staff makes.
   const owner = isAdmin(AuthService.getCurrentUser());
 
   const [tab, setTab] = useState<AdminPanelTab>(initialTab);
@@ -71,10 +73,11 @@ export function AdminPanelDialog({
           onValueChange={(value) => setTab(value as AdminPanelTab)}
           className="w-full min-w-0 flex flex-col flex-1 min-h-0"
         >
-          <TabsList className={cn('grid w-full flex-shrink-0', owner ? 'grid-cols-5' : 'grid-cols-3')}>
+          <TabsList className={cn('grid w-full flex-shrink-0', owner ? 'grid-cols-6' : 'grid-cols-4')}>
             <TabsTrigger value="users">Users</TabsTrigger>
             {owner && <TabsTrigger value="broadcasts">Broadcasts</TabsTrigger>}
             {owner && <TabsTrigger value="policies">Policies</TabsTrigger>}
+            <TabsTrigger value="events">Events</TabsTrigger>
             <TabsTrigger value="feedback">Feedback</TabsTrigger>
             <TabsTrigger value="log">Log</TabsTrigger>
           </TabsList>
@@ -102,6 +105,12 @@ export function AdminPanelDialog({
               </ScrollArea>
             </TabsContent>
           )}
+
+          <TabsContent value="events" className="flex-1 min-h-0 data-[state=active]:flex flex-col">
+            <ScrollArea className="flex-1 min-h-0 px-1">
+              <EventsTab active={open && tab === 'events'} />
+            </ScrollArea>
+          </TabsContent>
 
           <TabsContent value="feedback" className="flex-1 min-h-0 data-[state=active]:flex flex-col">
             <ScrollArea className="flex-1 min-h-0 px-1">

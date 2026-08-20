@@ -55,8 +55,13 @@ export const DEV_MODAL_TABS = {
   profile: ['messages', 'notifications', 'terms'],
   // The reader's side of feedback, behind the main menu's Feedback button; one tab per branch.
   feedbackHub: ['bugs', 'suggestions'],
-  // The admin tools: accounts, broadcasts, the publish policies, the feedback queues, and the log.
-  adminPanel: ['users', 'broadcasts', 'policies', 'feedback', 'log'],
+  // The admin tools: accounts, broadcasts, the publish policies, the events calendar, the feedback
+  // queues, and the log. `tab=events` serves a canned calendar (`devEventSample.ts`), so the tab's three
+  // groups are reachable without a live server; which of its two role views appears follows the session.
+  adminPanel: ['users', 'broadcasts', 'policies', 'events', 'feedback', 'log'],
+  // Admin Panel → Events uses the `subtab=…` slot for which of its two role views to render over the
+  // canned calendar, so the moderator's read-only half is reachable without a second account.
+  adminPanelEvents: ['admin', 'staff'],
   // The World Editor's Locations tab shows one of two views of the same locations, switched with `subtab=…`
   // (`#dev?modal=worldEditor&tab=locations&subtab=canvas`). Adding `fullscreen=1` opens the canvas in its
   // full-screen window on arrival — the same canvas, so it is not a third view and not listed as one.
