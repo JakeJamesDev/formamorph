@@ -1,5 +1,5 @@
 import AuthService from './AuthService';
-import type { ServerEvent } from '@/types';
+import type { ServerEvent, ServerEventDraft } from '@/types';
 
 /** Server error envelope: this API answers with `error`, older handlers read `message`. */
 interface ErrorBody {
@@ -32,6 +32,11 @@ class EventService {
     return (await response.json()) as T;
   }
 
+  /** A JSON body with the caller's token — every write below needs one. */
+  private writeHeaders(): HeadersInit {
+    return { 'Content-Type': 'application/json', ...this.authHeaders() };
+  }
+
   /** Every event currently running, of every type. Empty on a server that has no events layer. */
   async fetchActive(): Promise<ServerEvent[]> {
     const response = await fetch(`${this.apiUrl}/events/active`, { headers: this.authHeaders() });
@@ -47,6 +52,61 @@ class EventService {
     const response = await fetch(`${this.apiUrl}/events`, { headers: this.authHeaders() });
     const body = await this.unwrap<{ data: ServerEvent[] }>(response, 'Failed to load events');
     return body.data ?? [];
+  }
+
+  /**
+   * Schedule an event. Administrator only; the server posts its opening announcement itself.
+   *
+   * @param draft - The authored fields, with the window as ISO instants
+   */
+  async create(draft: ServerEventDraft): Promise<ServerEvent> {
+    const response = await fetch(`${this.apiUrl}/events`, {
+      method: 'POST',
+      headers: this.writeHeaders(),
+      body: JSON.stringify(draft),
+    });
+    return (await this.unwrap<{ data: ServerEvent }>(response, 'Failed to create the event')).data;
+  }
+
+  /**
+   * Rewrite an event. Nothing is re-announced: the notices already sent are ordinary broadcasts, edited
+   * under Broadcasts. A started event's start cannot move, and a type never changes.
+   */
+  async update(id: string, draft: ServerEventDraft): Promise<ServerEvent> {
+    const response = await fetch(`${this.apiUrl}/events/${id}`, {
+      method: 'PUT',
+      headers: this.writeHeaders(),
+      body: JSON.stringify(draft),
+    });
+    return (await this.unwrap<{ data: ServerEvent }>(response, 'Failed to save the event')).data;
+  }
+
+  /** Call an event off — the answer for anything already announced. Releases a contest's entries. */
+  async cancel(id: string): Promise<ServerEvent> {
+    const response = await fetch(`${this.apiUrl}/events/${id}/cancel`, {
+      method: 'POST',
+      headers: this.writeHeaders(),
+    });
+    return (await this.unwrap<{ data: ServerEvent }>(response, 'Failed to cancel the event')).data;
+  }
+
+  /** Remove an event nobody was told about. The server refuses one that has started. */
+  async remove(id: string): Promise<void> {
+    const response = await fetch(`${this.apiUrl}/events/${id}`, {
+      method: 'DELETE',
+      headers: this.writeHeaders(),
+    });
+    await this.unwrap<{ success: boolean }>(response, 'Failed to delete the event');
+  }
+
+  /** Name a contest's winner. Any staff; the server refuses the picker's own entry and a quarantined one. */
+  async pickWinner(id: string, worldId: string): Promise<ServerEvent> {
+    const response = await fetch(`${this.apiUrl}/events/${id}/winner`, {
+      method: 'PUT',
+      headers: this.writeHeaders(),
+      body: JSON.stringify({ worldId }),
+    });
+    return (await this.unwrap<{ data: ServerEvent }>(response, 'Failed to announce the winner')).data;
   }
 }
 

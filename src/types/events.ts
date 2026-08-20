@@ -43,3 +43,20 @@ export interface ServerEvent {
   winnerName: string | null;
   winnerAuthorName: string | null;
 }
+
+/**
+ * The authored half of an event, as the admin form sends it.
+ *
+ * The window is written as ISO instants, which is the only format the server compares reliably. An edit
+ * sends the same shape: the server reads only what changed, so a field left out is a field left alone.
+ */
+export interface ServerEventDraft {
+  type: ServerEventType;
+  title: string;
+  bannerText: string;
+  body: string;
+  /** Contests only; null clears it. */
+  rulesText: string | null;
+  startsAt: string;
+  endsAt: string;
+}

@@ -24,8 +24,10 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
     - **Entries are freshly ordered on each visit while the contest runs**, then stand by likes once judging starts, with the staff's pick held at the front.
     - **The winner's card carries a trophy wherever it is found**, in the ordinary catalog as well as in the contest.
     - **A dropdown in the contest bar reaches past contests** once more than one has been run; the running one is what opens by default.
+    - **Publishing a world while a contest is running offers a switch that enters it**, naming the contest, the day it closes, and a link to its rules. It appears only for a world you are publishing as new, since entering happens at publish time — and if you already have an entry, the card names it instead of offering the switch, so a publish is never spent on a request the server would refuse.
 - **🛠️ Developer tooling**
   - **The dev-router opens the event banner and acknowledge poster on a canned event** — `#dev?view=mainMenu&modal=eventAck`, with `tab=start` or `tab=end` picking the phase.
+  - **The dev-router opens the publish dialog on a canned world and a canned running contest** — `#dev?view=mainMenu&modal=publish`, so the dialog and the contest opt-in inside it are reachable with nothing published and no event running.
   - **The dev-router opens the Contest tab on canned contests** — `#dev?view=mainMenu&modal=community&tab=contest` serves one running contest and two archives, so the tab and its selector are reachable without a live event.
 
 ---

@@ -35,8 +35,10 @@ export type DevView = (typeof DEV_VIEWS)[number];
  *  fetch, so its typography is checkable offline and always shows every shape the notes can take.
  *  `eventAck` opens the running-event acknowledge poster on a canned event (`devEventSample.ts`) instead of
  *  the events poll, so both it and the main menu's event banner are checkable without a live event; `tab=…`
- *  picks which phase, an opening or an ending. */
-export const DEV_MODALS = ['settings', 'entity', 'export', 'menu', 'worldEditor', 'intro', 'avatar', 'backup', 'aiSetup', 'entityEditor', 'dictionaryEditor', 'modelDetails', 'community', 'memoryManager', 'profile', 'feedbackHub', 'adminPanel', 'editText', 'location', 'changelog', 'eventAck'] as const;
+ *  picks which phase, an opening or an ending. `publish` opens MainMenu's publish dialog on a canned world
+ *  (`devPublishSample.ts`) and a canned running contest, so the dialog and the contest opt-in inside it are
+ *  reachable on a profile with nothing published and no event really running. */
+export const DEV_MODALS = ['settings', 'entity', 'export', 'menu', 'worldEditor', 'intro', 'avatar', 'backup', 'aiSetup', 'entityEditor', 'dictionaryEditor', 'modelDetails', 'community', 'memoryManager', 'profile', 'feedbackHub', 'adminPanel', 'editText', 'location', 'changelog', 'eventAck', 'publish'] as const;
 export type DevModal = (typeof DEV_MODALS)[number];
 
 /** Coverage ledger: tabbed surface → the sub-tabs the router can target (via `tab=…`). Kept in lockstep

@@ -48,6 +48,17 @@ export function contestsOf(events: ServerEvent[], now: Date = new Date()): Serve
 }
 
 /**
+ * The one contest taking entries right now, if any.
+ *
+ * Read from the events poll, which already carries only what is running, but judged against the clock
+ * anyway: a poll five minutes stale can still be holding a contest whose deadline has passed, and
+ * offering an entry the server would refuse is worse than offering none.
+ */
+export function activeContestOf(events: ServerEvent[], now: Date = new Date()): ServerEvent | null {
+  return events.find((event) => isContestEvent(event) && isContestRunning(event, now)) ?? null;
+}
+
+/**
  * The contest a listing was entered into.
  *
  * The catalog row carries the server's own column name; the withdraw reply and anything built from the

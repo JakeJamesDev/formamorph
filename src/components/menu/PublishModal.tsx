@@ -21,7 +21,12 @@ import PolicyService, { TERMS_REQUIRED } from "@/services/PolicyService";
 import { publishTags, type PublishPayload } from "@/lib/publishPayload";
 import { remoteImagesInContent } from "@/lib/embedRemoteImages";
 import { isExpiringImageHost } from "@/lib/imageBytes";
+import { ContestEntryCard } from "@/components/menu/ContestEntryCard";
+import { activeContestOf, entriesOf } from "@/lib/contests";
+import { CONTEST_ALREADY_ENTERED, CONTEST_NOT_ACTIVE } from "@/services/WorldStorageService";
+import { useDevRoute } from "@/lib/devRouter";
 import { AlertTriangle } from "lucide-react";
+import type { ServerEvent } from "@/types";
 
 interface PublishModalProps {
   open: boolean;
@@ -29,6 +34,8 @@ interface PublishModalProps {
   isAuthenticated: boolean;
   /** What to publish, built by the per-kind helpers in `lib/publishPayload`. */
   payload: PublishPayload | null;
+  /** The events running right now, from the events poll. Only a contest among them is read here. */
+  events?: ServerEvent[];
 }
 
 /**
@@ -38,11 +45,14 @@ interface PublishModalProps {
  *
  * The overwrite list is fetched per kind: your characters are never offered as targets for a world.
  */
-export function PublishModal({ open, onOpenChange, isAuthenticated, payload }: PublishModalProps) {
+export function PublishModal({ open, onOpenChange, isAuthenticated, payload, events = [] }: PublishModalProps) {
   const [userWorlds, setUserWorlds] = useState<WorldRecord[]>([]);
   const [selectedWorldToOverride, setSelectedWorldToOverride] = useState<string | null>(null);
   const [isPublishing, setIsPublishing] = useState(false);
   const [publishError, setPublishError] = useState('');
+  // Whether this upload is also a contest entry, and what the server said if it refused to take it.
+  const [enterContest, setEnterContest] = useState(false);
+  const [contestError, setContestError] = useState('');
 
   const policies = usePublishPolicies(open, isAuthenticated);
   // Which popup is in the way, and what the publish was going to do once it clears.
@@ -58,6 +68,26 @@ export function PublishModal({ open, onOpenChange, isAuthenticated, payload }: P
     [payload],
   );
   const noun = KIND_LABELS[kind].one.toLowerCase();
+
+  // DEV: `#dev?view=mainMenu&modal=publish` serves a canned running contest instead of the events poll,
+  // so the opt-in card is checkable without one really running (the ack modal's precedent). The import is
+  // DEV-gated, so the sample never ships.
+  const devRoute = useDevRoute();
+  const devFixture = import.meta.env.DEV && devRoute?.modal === 'publish';
+  const [devEvents, setDevEvents] = useState<ServerEvent[]>([]);
+  useEffect(() => {
+    if (!devFixture) return;
+    void import('@/lib/devEventSample').then(({ devEventSample }) => setDevEvents([devEventSample()]));
+  }, [devFixture]);
+
+  // Entering happens at publish time, so the opt-in belongs to a new listing only: a contest flag on an
+  // overwrite would mean moving a listing that already exists into the contest, which nothing supports.
+  const contest = activeContestOf(devFixture ? devEvents : events);
+  const showContestCard = Boolean(contest) && kind === 'world' && selectedWorldToOverride === 'new';
+  // The author's own listings are already on hand for the overwrite list, and they carry the column — so
+  // an entry that would be refused is known before the upload rather than after it.
+  const existingEntry = contest ? entriesOf(userWorlds, contest.id)[0] ?? null : null;
+  const enteredName = existingEntry ? String(existingEntry.name ?? 'a world') : null;
   // What's open right now, readable from inside an async callback that captured an older `kind`.
   const kindRef = useRef(kind);
   kindRef.current = kind;
@@ -84,10 +114,15 @@ export function PublishModal({ open, onOpenChange, isAuthenticated, payload }: P
   const publish = async (targetId: string | null) => {
     if (!payload) return;
     setPublishError('');
+    setContestError('');
     setIsPublishing(true);
 
+    // Read at the upload, not captured when Publish was pressed: the upload gate can send this whole
+    // path round again, and the entry has to survive that trip as surely as the target does.
+    const entering = !targetId && enterContest && !enteredName && contest ? contest.id : null;
+
     try {
-      await WorldStorageService.publishItem(payload, targetId);
+      await WorldStorageService.publishItem(payload, targetId, entering);
 
       // No refetch: the modal closes here and reloads its listings on the next open, so re-reading them
       // only to discard them is a round-trip the user waits on.
@@ -96,7 +131,17 @@ export function PublishModal({ open, onOpenChange, isAuthenticated, payload }: P
     } catch (error) {
       // The gate can be raised, or an acceptance reset, after this modal read its policy state. The
       // server is the authority, so its refusal reopens the popup rather than showing a dead error.
-      if ((error as { code?: string }).code === TERMS_REQUIRED) {
+      const code = (error as { code?: string }).code;
+
+      // A contest refusal is about the switch, so it is answered where the switch is — the card keeps the
+      // contest's name beside it, and losing the whole publish to a toast would take that with it.
+      if (code === CONTEST_ALREADY_ENTERED || code === CONTEST_NOT_ACTIVE) {
+        setContestError((error as Error).message || 'This contest is not taking entries.');
+        setEnterContest(false);
+        return;
+      }
+
+      if (code === TERMS_REQUIRED) {
         await policies.refresh();
         policies.reopen();
         setPendingTarget(targetId);
@@ -173,6 +218,8 @@ export function PublishModal({ open, onOpenChange, isAuthenticated, payload }: P
     setSelectedWorldToOverride('new');
     setUserWorlds([]);
     setPublishError('');
+    setEnterContest(false);
+    setContestError('');
     fetchUserWorlds();
     // Fetch only when the modal opens, auth changes, or the kind changes — not on fetchUserWorlds identity.
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -263,6 +310,18 @@ export function PublishModal({ open, onOpenChange, isAuthenticated, payload }: P
                 )}
               </RadioGroup>
             </div>
+
+            {/* Hidden rather than disabled when there is no contest, this isn't a world, or an existing
+                listing is being replaced — a control nobody can use explains nothing. */}
+            {showContestCard && contest && (
+              <ContestEntryCard
+                contest={contest}
+                checked={enterContest}
+                onCheckedChange={setEnterContest}
+                enteredName={enteredName}
+                error={contestError || null}
+              />
+            )}
           </div>
         </ScrollArea>
 
@@ -287,7 +346,7 @@ export function PublishModal({ open, onOpenChange, isAuthenticated, payload }: P
             onClick={handlePublish}
             disabled={isPublishing || !payload || policies.showBlockedNotice}
           >
-            {isPublishing ? 'Publishing...' : 'Publish'}
+            {isPublishing ? 'Publishing...' : showContestCard && enterContest ? 'Publish & Enter' : 'Publish'}
           </Button>
         </DialogFooter>
       </DialogContent>
