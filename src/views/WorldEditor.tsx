@@ -18,7 +18,7 @@ import { Input } from "@/components/ui/input";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { Plus, ArrowLeft, Save, FolderPlus, FilePlus, ImageDown, BookPlus, UserPlus, Loader2, Search } from "lucide-react";
+import { Plus, ArrowLeft, Save, FolderPlus, FilePlus, ImageDown, BookPlus, UserPlus, Loader2, Search, List, Map } from "lucide-react";
 import { ActionIcon } from '@/lib/actionIcons';
 import { cn } from "@/lib/utils";
 import EditorFindBar from '@/components/editor/EditorFindBar';
@@ -762,11 +762,11 @@ const WorldEditorInner = ({ onClose, embedded = false, backButton }: {
   // The active tab's help topic, when it has copy yet — drives the `?` beside the search box.
   const helpTopicId = worldEditorTopicId(activeTab);
   const addSearchBar = activeTab !== "overview" && (
-    <div className="flex space-x-2 flex-shrink-0 mt-4">
+    <div className="flex items-center space-x-2 flex-shrink-0 mt-4">
       {advanced && (activeTab === "traits" || activeTab === "entities") ? (
         <Popover open={addMenuOpen} onOpenChange={setAddMenuOpen}>
           <PopoverTrigger asChild>
-            <Button size="icon">
+            <Button size="icon" className="h-9 w-9 shrink-0">
               <Plus className="h-4 w-4" />
             </Button>
           </PopoverTrigger>
@@ -788,7 +788,7 @@ const WorldEditorInner = ({ onClose, embedded = false, backButton }: {
           </PopoverContent>
         </Popover>
       ) : (
-        <Button onClick={activeTab === "dictionary" ? handleAddBook : activeTab === "placeholders" ? handleAddPlaceholder : activeTab === "traits" ? handleAddTrait : addItem} size="icon">
+        <Button onClick={activeTab === "dictionary" ? handleAddBook : activeTab === "placeholders" ? handleAddPlaceholder : activeTab === "traits" ? handleAddTrait : addItem} size="icon" className="h-9 w-9 shrink-0">
           <Plus className="h-4 w-4" />
         </Button>
       )}
@@ -801,7 +801,13 @@ const WorldEditorInner = ({ onClose, embedded = false, backButton }: {
           className="flex-shrink-0"
         >
           {LOCATION_VIEWS.map((v) => (
-            <ToggleGroupItem key={v.value} value={v.value}>{v.label}</ToggleGroupItem>
+            isMobile
+              ? (
+                <ToggleGroupItem key={v.value} value={v.value} aria-label={v.label} title={v.label} className="px-2">
+                  {v.value === 'canvas' ? <Map className="h-4 w-4" /> : <List className="h-4 w-4" />}
+                </ToggleGroupItem>
+              )
+              : <ToggleGroupItem key={v.value} value={v.value}>{v.label}</ToggleGroupItem>
           ))}
         </ToggleGroup>
       ) : null}

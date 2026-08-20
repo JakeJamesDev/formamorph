@@ -23,6 +23,10 @@ import { useMorphFullscreen } from '@/lib/useMorphFullscreen';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Separator } from '@/components/ui/separator';
+import {
+  ContextMenu, ContextMenuCheckboxItem, ContextMenuContent, ContextMenuItem, ContextMenuRadioGroup,
+  ContextMenuRadioItem, ContextMenuSeparator, ContextMenuTrigger,
+} from '@/components/ui/context-menu';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import { describePlaceholders } from '@/lib/placeholders';
 import type { ConnectionDirection } from '@/lib/connectionEditing';
@@ -301,12 +305,6 @@ type MenuTarget =
   | { kind: 'selection' }
   | { kind: 'pane' };
 
-/** What a row is, as a screen reader is told it: an action, a switch, or one option among several. */
-const roleOf = (item: CanvasMenuItem) => {
-  if (item.checked === undefined) return 'menuitem';
-  return item.exclusive ? 'menuitemradio' : 'menuitemcheckbox';
-};
-
 /**
  * The canvas's own right-click menu, standing in for the browser's. It carries what is being done to the map
  * and the choices that describe how it is drawn, so the surface itself stays free of chrome.
@@ -314,48 +312,42 @@ const roleOf = (item: CanvasMenuItem) => {
  * Drawn as the groups `canvasMenuSections` hands over, ruled off from each other: walking an edit back, doing
  * something to what was clicked, and changing how the map is drawn are different kinds of thing, and one
  * unbroken run of rows leaves the author to work that out by trying.
+ *
+ * Radix owns the placement: portaled above the panels the canvas sits inside, flipped back into view at a
+ * viewport edge, and dismissed, focused and walked by the arrows the way every other menu in the app is.
  */
-const CanvasMenu = ({ at, sections, onClose }: {
-  at: { x: number; y: number };
-  sections: CanvasMenuSection[];
-  onClose: () => void;
-}) => (
-  <div
-    className="absolute z-10 min-w-44 rounded-md border bg-popover p-1 text-popover-foreground shadow-md"
-    style={{ left: at.x, top: at.y }}
-    role="menu"
-    aria-label="Canvas Options"
-    onContextMenu={(e) => e.preventDefault()}
-  >
+const CanvasMenu = ({ sections }: { sections: CanvasMenuSection[] }) => (
+  <ContextMenuContent aria-label="Canvas Options" className="min-w-44">
     {sections.map((section, index) => (
       <Fragment key={section.map((item) => item.label).join('|')}>
-        {index > 0 && <Separator role="separator" className="my-1" />}
-        {section.map((item) => (
-          <button
-            key={item.label}
-            type="button"
-            role={roleOf(item)}
-            aria-checked={item.checked}
-            disabled={item.disabled}
-            aria-disabled={item.disabled}
-            className={cn(
-              'flex w-full items-center gap-2 rounded px-2 py-1.5 text-left text-label',
-              item.disabled
-                // Greyed rather than dropped: the menu keeps its shape, and the row is where an author learns
-                // the map has an undo at all.
-                ? 'text-muted-foreground opacity-50'
-                : 'hover:bg-accent hover:text-accent-foreground',
-            )}
-            onClick={() => { item.onSelect(); onClose(); }}
-          >
-            {/* The tick's column is held even by an action, so every label in the menu starts on one line. */}
-            <Check className={cn('h-4 w-4 shrink-0', item.checked ? 'opacity-100' : 'opacity-0')} />
-            {item.label}
-          </button>
-        ))}
+        {index > 0 && <ContextMenuSeparator />}
+        {section[0]?.exclusive
+          // One choice between each other, so the group is what carries which one is taken.
+          ? (
+            <ContextMenuRadioGroup value={section.find((item) => item.checked)?.label ?? ''}>
+              {section.map((item) => (
+                <ContextMenuRadioItem key={item.label} value={item.label} checked={item.checked} onSelect={item.onSelect}>
+                  {item.label}
+                </ContextMenuRadioItem>
+              ))}
+            </ContextMenuRadioGroup>
+          )
+          : section.map((item) => (item.checked === undefined
+            ? (
+              <ContextMenuItem key={item.label} disabled={item.disabled} onSelect={item.onSelect}>
+                {/* The tick's column is held even by an action, so every label in the menu starts on one line. */}
+                <Check className="h-4 w-4 shrink-0 opacity-0" />
+                {item.label}
+              </ContextMenuItem>
+            )
+            : (
+              <ContextMenuCheckboxItem key={item.label} checked={item.checked} onSelect={item.onSelect}>
+                {item.label}
+              </ContextMenuCheckboxItem>
+            )))}
       </Fragment>
     ))}
-  </div>
+  </ContextMenuContent>
 );
 
 /**
@@ -662,7 +654,9 @@ const CanvasInner = ({ selectedId, onSelect, session, fullscreen, onToggleFullsc
   const [snap, setSnap] = useCanvasSnap();
   const [gridVisible, setGridVisible] = useCanvasGridVisible();
   const [connectionStyle, setConnectionStyle] = useCanvasConnectionStyle();
-  const [menu, setMenu] = useState<{ at: { x: number; y: number }; target: MenuTarget } | null>(null);
+  // What the next menu will be a menu of. Radix owns whether one is open and where; all this holds is which
+  // target the right-click that is about to open it landed on.
+  const [menuTarget, setMenuTarget] = useState<MenuTarget>({ kind: 'pane' });
   // The box the map has just traveled to, and the wait before it stops being marked.
   const [flashId, setFlashId] = useState<string | null>(null);
   const flashTimer = useRef<number | null>(null);
@@ -675,18 +669,45 @@ const CanvasInner = ({ selectedId, onSelect, session, fullscreen, onToggleFullsc
   // Whether the canvas is the surface the author is working on, which is what its keys answer to.
   const activeRef = useRef(false);
 
-  // The menu is drawn in the canvas's own frame, so where it was asked for is a point in that frame.
+  // Says what the menu about to open is a menu of, and lets the event travel on to the Radix trigger that
+  // opens it. The menu belongs to a right-click that stayed put; a right-drag was a pan, and the platform
+  // asks for a menu on its release too — that one is stopped here, so the trigger never hears it.
   const openMenu = useCallback((event: React.MouseEvent | MouseEvent, target: MenuTarget) => {
-    event.preventDefault();
-    // The menu belongs to a right-click that stayed put; a right-drag was a pan, and the platform asks for a
-    // menu on its release too.
-    if (!isStationaryClick(pointerDownRef.current, { x: event.clientX, y: event.clientY })) return;
-    const frame = frameRef.current?.getBoundingClientRect();
-    setMenu({
-      at: { x: event.clientX - (frame?.left ?? 0), y: event.clientY - (frame?.top ?? 0) },
-      target,
-    });
+    if (!isStationaryClick(pointerDownRef.current, { x: event.clientX, y: event.clientY })) {
+      event.preventDefault();
+      event.stopPropagation();
+      return;
+    }
+    setMenuTarget(target);
   }, []);
+
+  // Set while the frame is re-raising a right-click of its own, so that press is left alone the second time.
+  const reraisingRef = useRef(false);
+
+  /**
+   * Right-clicking the open pane reaches the trigger already defaulted: the pane pans with the right button,
+   * so xyflow answers every right-click over it by killing the browser's menu — and Radix, like every
+   * composed handler, passes on an event something has already spoken for. The press is raised again from
+   * the frame itself, which is the one the trigger is listening to, so the menu opens where it was asked for.
+   */
+  const reraiseForTrigger = (event: React.MouseEvent) => {
+    if (reraisingRef.current) { reraisingRef.current = false; return; }
+    // The chrome floating over the map — the toolbar, the search box, an arrow's panel — is not the map, and
+    // a menu about how the map is drawn is not what a right-click there is asking for.
+    if ((event.target as HTMLElement).closest?.('.react-flow__panel, input, textarea, [contenteditable]')) {
+      event.preventDefault();
+      return;
+    }
+    // A right-drag was a pan; the menu its release asks for is not one the author wanted.
+    if (!isStationaryClick(pointerDownRef.current, { x: event.clientX, y: event.clientY })) return;
+    if (!event.defaultPrevented) return;
+    const frame = frameRef.current;
+    if (!frame) return;
+    reraisingRef.current = true;
+    frame.dispatchEvent(new MouseEvent('contextmenu', {
+      bubbles: true, cancelable: true, clientX: event.clientX, clientY: event.clientY, button: 2,
+    }));
+  };
 
   // One reading of a location's name, for the map, the inspector's header and the search box alike: what the
   // author sees written on a box is what they search for and what an arrow's panel calls it.
@@ -977,7 +998,6 @@ const CanvasInner = ({ selectedId, onSelect, session, fullscreen, onToggleFullsc
       activeRef.current = !!frameRef.current?.contains(event.target as globalThis.Node);
     };
     const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') setMenu(null);
       if (!activeRef.current || focusing(event.target)) return;
       // In full screen, Escape is the way out of the window — a keypress meaning "leave" must not also empty
       // the selection the author is taking back to the pane with them.
@@ -1118,13 +1138,15 @@ const CanvasInner = ({ selectedId, onSelect, session, fullscreen, onToggleFullsc
   };
 
   return (
+    // The frame is the menu's trigger, so the browser's own menu never opens over the canvas — Radix takes
+    // every right-click the pane, a node or the selection did not already stop as a pan's release.
+    <ContextMenu>
+    <ContextMenuTrigger asChild>
     <div
       ref={frameRef}
       className="relative h-full w-full"
       onPointerDownCapture={handlePointerDown}
-      // The browser's menu never opens over the canvas — not over a node, not over the pane, and not at the
-      // end of a right-drag pan, which is a gesture the browser would otherwise answer with a menu.
-      onContextMenu={(e) => e.preventDefault()}
+      onContextMenu={reraiseForTrigger}
     >
       <DropTargetContext.Provider value={dropHighlight}>
       <ArmedLeafContext.Provider value={armedLeaf}>
@@ -1146,7 +1168,7 @@ const CanvasInner = ({ selectedId, onSelect, session, fullscreen, onToggleFullsc
         }}
         onSelectionChange={handleSelectionChange}
         onEdgeClick={handleEdgeClick}
-        onPaneClick={() => { setSelectedConnectionId(null); setMenu(null); }}
+        onPaneClick={() => setSelectedConnectionId(null)}
         onPaneContextMenu={(e) => openMenu(e, { kind: 'pane' })}
         onNodeContextMenu={(e, node) => openMenu(e, menuTargetFor(node.id))}
         onSelectionContextMenu={(e) => openMenu(e, { kind: 'selection' })}
@@ -1226,24 +1248,22 @@ const CanvasInner = ({ selectedId, onSelect, session, fullscreen, onToggleFullsc
       </FlashContext.Provider>
       </ArmedLeafContext.Provider>
       </DropTargetContext.Provider>
-      {menu && (
-        <CanvasMenu
-          at={menu.at}
-          onClose={() => setMenu(null)}
-          sections={canvasMenuSections(
-            { ...history, snap, gridVisible, connectionStyle },
-            {
-              undo: () => travelHistory('undo'),
-              redo: () => travelHistory('redo'),
-              setSnap,
-              setGridVisible,
-              setConnectionStyle,
-            },
-            menuActions(menu.target),
-          )}
-        />
-      )}
     </div>
+    </ContextMenuTrigger>
+    <CanvasMenu
+      sections={canvasMenuSections(
+        { ...history, snap, gridVisible, connectionStyle },
+        {
+          undo: () => travelHistory('undo'),
+          redo: () => travelHistory('redo'),
+          setSnap,
+          setGridVisible,
+          setConnectionStyle,
+        },
+        menuActions(menuTarget),
+      )}
+    />
+    </ContextMenu>
   );
 };
 

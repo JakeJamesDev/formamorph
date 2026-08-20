@@ -31,8 +31,8 @@ const PlaceholderEditor = () => {
       backLabel="Placeholders"
       list={
         <div className="p-2 space-y-2">
-          <Button size="sm" onClick={add} className="w-full">
-            <Plus className="h-4 w-4 mr-1" /> Add Placeholder
+          <Button size="icon" onClick={add} aria-label="Add Placeholder" title="Add Placeholder">
+            <Plus className="h-4 w-4" />
           </Button>
           <PlaceholderList selectedId={selectedId} onSelect={setSelectedId} />
         </div>
