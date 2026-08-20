@@ -129,6 +129,7 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
   - **World Editor:**
     - **The map's right-click menu is no longer cut off by the edge of the panel it opens in.** Right-clicking the Locations canvas near a panel edge used to open a menu with its lower half sliced away, because the menu was drawn inside the canvas rather than over the page. It is now drawn above everything and turns back on itself at the edge of the window, so every row is reachable wherever you click. It also walks with the arrow keys, closes with Escape, and opens on a long press on mobile.
     - **Every add button in the editor is now the same compact square + button.** The one in the add and search bar and the ones in the Connections and Stat Descriptors panels were three different shapes and sizes; all of them are now one small square button, sitting level with the box beside it, and hovering one names what it adds.
+    - **The editor's tab strip now fills the width of the panel rather than sitting centered in it.** Overview through Placeholders share the row between them, so each tab is a wider target. On mobile the strip still scrolls sideways as it did.
     - **On mobile the Locations List/Canvas switch is drawn as two icons.** The two labels ate the room the add and search controls needed on a narrow screen. On a desktop-width window the labels are unchanged.
 
 ---
