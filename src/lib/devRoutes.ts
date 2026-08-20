@@ -44,8 +44,10 @@ export type DevModal = (typeof DEV_MODALS)[number];
 export const DEV_MODAL_TABS = {
   settings: ['display', 'output', 'prompts', 'endpoints', 'data'],
   worldEditor: ['overview', 'stats', 'entities', 'locations', 'traits', 'dictionary', 'placeholders'],
-  // Community Creations browses one kind per tab; these are the server's kinds (see lib/catalogKinds).
-  community: ['world', 'entity', 'dictionary'],
+  // Community Creations browses one kind per tab, plus Contest — a view over the worlds already in the
+  // catalog rather than a fourth kind (see lib/browseTabs). `tab=contest` serves canned contests, so the
+  // tab is reachable whether or not one is really running.
+  community: ['world', 'entity', 'dictionary', 'contest'],
   // The account dialog: admin messages, the follow feed, and the terms. Password and logout are header
   // buttons rather than tabs, so neither is routable.
   profile: ['messages', 'notifications', 'terms'],
