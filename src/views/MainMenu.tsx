@@ -107,6 +107,9 @@ import { type AdminPanelTab } from "@/components/menu/adminPanelTabs";
 import { type PoliciesTab as PoliciesSubTab } from "@/components/menu/policiesTabs";
 import { type FeedbackTab as FeedbackSubTab } from "@/components/menu/feedbackTabs";
 import MessageService from "@/services/MessageService";
+import { useActiveEvents } from "@/lib/useActiveEvents";
+import { EventBanner } from "@/components/events/EventBanner";
+import { EventAckModal } from "@/components/events/EventAckModal";
 import FeedbackService from "@/services/FeedbackService";
 import { FeedbackHubDialog } from "@/components/menu/FeedbackHubDialog";
 import { AuthModals } from "@/components/menu/AuthModals";
@@ -1205,22 +1208,20 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
     }
   };
 
-  // Pull the admin-message badge whenever the session changes: on mount for an already-signed-in user,
-  // and again right after a login. The first count of a session also raises a toast, so a message sent
-  // while the player was away is noticed without opening the profile dialog.
-  useEffect(() => {
-    if (!COMMUNITY_ENABLED || !isAuthenticated) {
-      setUnreadMessages(0);
-      setMessageSeverity(null);
-      announcedUnreadRef.current = false;
-      return;
-    }
-
-    let current = true;
+  // Re-read the admin-message badge. The first count of a session also raises a toast, so a message
+  // sent while the player was away is noticed without opening the profile dialog.
+  //
+  // Counted rather than fire-and-forget: the auth effect and the events poll both call this, so two
+  // reads can be in flight at once, and a signing-out-and-back-in-as-someone-else round trip would
+  // otherwise let the previous account's count land last.
+  const unreadReadId = useRef(0);
+  const refreshUnreadCount = useCallback(() => {
+    if (!COMMUNITY_ENABLED || !AuthService.isAuthenticated()) return;
+    const read = (unreadReadId.current += 1);
 
     MessageService.fetchUnreadCount()
       .then(({ unread, topSeverity }) => {
-        if (!current) return;
+        if (read !== unreadReadId.current) return;
         setUnreadMessages(unread);
         setMessageSeverity(topSeverity);
 
@@ -1231,9 +1232,28 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
       })
       // The badge is not worth a toast of its own when the community server is unreachable.
       .catch((error) => console.error('Failed to load unread message count:', error));
+  }, []);
 
-    return () => { current = false; };
-  }, [isAuthenticated]);
+  // Whenever the session changes: on mount for an already-signed-in user, and again right after a login.
+  useEffect(() => {
+    if (!COMMUNITY_ENABLED || !isAuthenticated) {
+      setUnreadMessages(0);
+      setMessageSeverity(null);
+      announcedUnreadRef.current = false;
+      // Retires any read still in flight from the session that just ended.
+      unreadReadId.current += 1;
+      return;
+    }
+
+    refreshUnreadCount();
+  }, [isAuthenticated, refreshUnreadCount]);
+
+  // Running community events, polled. The poll nudges the badge along with itself: the server pushes
+  // nothing, so this is the only thing that notices a broadcast sent mid-session.
+  const activeEvents = useActiveEvents({ onPoll: refreshUnreadCount });
+
+  /** Take the player to where an event's content lives. */
+  const openEvent = useCallback(() => setShowCommunityBrowser(true), []);
 
   // The feedback half of the badge. Separate from messages because reading a thread changes it, so it is
   // re-read on demand rather than only when auth changes.
@@ -1385,6 +1405,10 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
       {downscaleDialog}
       {worldExportDialog}
       <ThemedToastContainer />
+
+      {/* Running-event banner. In-flow and shrink-0 like the mobile nav and footer, so it compresses the
+          scroll frame rather than covering anything; the root's top padding already clears the fixed bar. */}
+      {COMMUNITY_ENABLED && <EventBanner events={activeEvents} onOpenEvent={openEvent} />}
 
       {/* Top control bar: card-type switcher (left) + action buttons/hamburger (center) + view toggle &
           settings (right). items-center keeps every control on the settings cog's centerline (the cog is
@@ -2448,6 +2472,9 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
             payload={publishPayload}
           />
 
+          {/* One-time acknowledge poster for an event that has just started or just ended. */}
+          <EventAckModal events={activeEvents} isAuthenticated={isAuthenticated} onOpenEvent={openEvent} />
+
           {/* Community Creations browser — see CommunityCreationsBrowser.tsx */}
           <CommunityCreationsBrowser
             open={showCommunityBrowser}
@@ -2464,6 +2491,8 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
             initialKind={devRoute?.modal === 'community' ? (devRoute.tab as CatalogKind | undefined) : undefined}
             openListing={pendingListing}
             onListingOpened={handleListingOpened}
+            events={activeEvents}
+            onOpenEvent={openEvent}
           />
         </>
       )}

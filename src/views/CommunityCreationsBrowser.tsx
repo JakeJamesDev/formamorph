@@ -25,7 +25,8 @@ import { useLibraryDownload } from "@/lib/useLibraryDownload";
 import { useDownscalePrompt } from "@/lib/useDownscalePrompt";
 import EntityStorageService from "@/services/EntityStorageService";
 import DictionaryStorageService from "@/services/DictionaryStorageService";
-import type { Entity, Dictionary, EntityMetadata, DictionaryMetadata } from "@/types";
+import type { Entity, Dictionary, EntityMetadata, DictionaryMetadata, ServerEvent } from "@/types";
+import { EventBanner } from "@/components/events/EventBanner";
 import { useClosingSnapshot } from "@/lib/useClosingSnapshot";
 import { useCommunityBrowserFilters } from "@/lib/useCommunityBrowserFilters";
 import { MessageComposerDialog } from "@/components/menu/MessageComposerDialog";
@@ -82,6 +83,10 @@ interface CommunityCreationsBrowserProps {
   openListing?: { id: string; kind: string } | null;
   /** Fired once that listing has been opened, or found to be gone, so the host can clear its request. */
   onListingOpened?: () => void;
+  /** Running community events, announced in the header the same way the main menu announces them. */
+  events?: ServerEvent[];
+  /** Open the place an event's content lives — the contest tab, for a contest. */
+  onOpenEvent?: (event: ServerEvent) => void;
 }
 
 // The Community Creations browser: browse/search/filter/sort the published catalog, view world details
@@ -89,6 +94,7 @@ interface CommunityCreationsBrowserProps {
 const CommunityCreationsBrowser = ({
   open, onOpenChange, worlds, setWorlds, entities, dictionaries, refreshEntities, refreshDictionaries,
   isAuthenticated, currentUser, openImageViewer, initialKind, openListing, onListingOpened,
+  events = [], onOpenEvent,
 }: CommunityCreationsBrowserProps) => {
   // Catalog fetch/cache/sync (loads on open, refreshes in the background).
   const { remoteWorlds, setRemoteWorlds, isLoadingRemoteWorlds, isSyncingCatalog, loadCatalog } = useCatalogSync(open);
@@ -654,6 +660,11 @@ const CommunityCreationsBrowser = ({
               ) : (
                 filterBar
               )}
+
+              {/* The same event banner the main menu carries — the two surfaces share no shell, so this
+                  is a second instance rather than a moved one. Margins come from the header's own
+                  padding, so the card's are dropped. */}
+              <EventBanner events={events} onOpenEvent={onOpenEvent} className="mx-0 mb-0" />
             </div>
           </Collapsible>
 
