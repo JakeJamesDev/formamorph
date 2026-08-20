@@ -12,6 +12,17 @@ Each release groups changes as **Major** / **Minor**, then **Added** / **Removed
 
 _Unreleased — new work accumulates here until it earns a version bump. The next batch will pin its own version; `package.json` reads **2.13.0** (just released below)._
 
+### Minor Changes
+
+#### ➕ Added
+
+- **👤 User-facing**
+  - **Community Events:**
+    - **A banner on the main menu and in Community Creations announces a running contest or announcement**, naming it and the dates it runs between. Dismissing it collapses it to a small chip that keeps the event one click away.
+    - **A poster appears once when an event starts and once when it ends**, and closes only when you say you have read it. Signed in, reading it also clears the matching message from your inbox; signed out, the device remembers on its own.
+- **🛠️ Developer tooling**
+  - **The dev-router opens the event banner and acknowledge poster on a canned event** — `#dev?view=mainMenu&modal=eventAck`, with `tab=start` or `tab=end` picking the phase.
+
 ---
 
 <details>

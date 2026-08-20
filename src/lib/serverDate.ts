@@ -25,3 +25,10 @@ export function formatServerDateTime(timestamp: string): string {
     timeStyle: 'short',
   }) ?? '';
 }
+
+/** A server timestamp as a readable local date, without the time; empty when it cannot be parsed. */
+export function formatServerDate(timestamp: string): string {
+  return parseServerDate(timestamp)?.toLocaleDateString(undefined, {
+    dateStyle: 'medium',
+  }) ?? '';
+}
