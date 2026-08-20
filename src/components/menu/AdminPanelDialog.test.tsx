@@ -15,6 +15,7 @@ vi.mock('./ManageUsersTab', () => ({ ManageUsersTab: () => <div data-testid="use
 vi.mock('./BroadcastsTab', () => ({ BroadcastsTab: () => <div data-testid="broadcasts" /> }));
 vi.mock('./PoliciesTab', () => ({ PoliciesTab: () => <div data-testid="policies" /> }));
 vi.mock('./AuditLogTab', () => ({ AuditLogTab: () => <div data-testid="log" /> }));
+vi.mock('./EventsTab', () => ({ EventsTab: () => <div data-testid="events" /> }));
 vi.mock('./FeedbackQueueTab', () => ({
   FeedbackQueueTab: ({ type }: { type: string }) => <div data-testid={`queue-${type}`} />,
 }));
@@ -61,6 +62,13 @@ describe('the tab strip', () => {
     expect(screen.getByTestId('queue-bug')).toBeTruthy();
   });
 
+  it('carries the events calendar', () => {
+    render(<AdminPanelDialog open onOpenChange={() => {}} initialTab="events" />);
+
+    expect(screen.getByRole('tab', { name: 'Events' })).toBeTruthy();
+    expect(screen.getByTestId('events')).toBeTruthy();
+  });
+
   it('carries the record of what was done', () => {
     render(<AdminPanelDialog open onOpenChange={() => {}} initialTab="log" />);
 
@@ -94,6 +102,16 @@ describe('what a moderator sees', () => {
     expect(screen.getByRole('tab', { name: 'Log' })).toBeTruthy();
     expect(screen.queryByRole('tab', { name: 'Broadcasts' })).toBeNull();
     expect(screen.queryByRole('tab', { name: 'Policies' })).toBeNull();
+  });
+
+  it('keeps the events calendar, since picking a contest winner is any staff member’s', async () => {
+    const AuthService = (await import('@/services/AuthService')).default;
+    vi.spyOn(AuthService, 'getCurrentUser').mockReturnValue({ id: 'm1', username: 'a-mod', accountType: 'mod' });
+
+    render(<AdminPanelDialog open onOpenChange={() => {}} initialTab="events" />);
+
+    expect(screen.getByRole('tab', { name: 'Events' })).toBeTruthy();
+    expect(activeTab()).toBe('Events');
   });
 
   it('lands on Users when pointed at a tab they cannot see', async () => {

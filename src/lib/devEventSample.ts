@@ -68,3 +68,66 @@ export function devContestSamples(): ServerEvent[] {
     },
   ];
 }
+
+/**
+ * A canned calendar for the admin Events tab: one of every state the tab groups by, so all three
+ * groups, both role views and every row control are reachable without a live server.
+ *
+ * Dates are relative, and the states are the ones the tab derives from them rather than stamped —
+ * a fixture whose state was asserted rather than derived would hide a bug in the derivation.
+ */
+export function devAdminEventSamples(): ServerEvent[] {
+  const day = 86_400_000;
+  const now = Date.now();
+  const base = devEventSample('start');
+
+  return [
+    { ...base, id: 'dev-event-active', title: 'Winter World-Building Contest' },
+    {
+      ...base,
+      id: 'dev-event-notice',
+      type: 'announcement',
+      title: 'Update Preview',
+      bannerText: 'The next update lands next week — see what is coming.',
+      rulesText: null,
+      startsAt: new Date(now - 2 * day).toISOString(),
+      endsAt: new Date(now + 5 * day).toISOString(),
+    },
+    {
+      ...base,
+      id: 'dev-event-judging',
+      title: 'Spring Tides Contest',
+      startsAt: new Date(now - 20 * day).toISOString(),
+      endsAt: new Date(now - 2 * day).toISOString(),
+    },
+    {
+      ...base,
+      id: 'dev-event-scheduled',
+      title: 'Autumn Hauntings Contest',
+      startsAt: new Date(now + 10 * day).toISOString(),
+      endsAt: new Date(now + 30 * day).toISOString(),
+      startMessageId: null,
+    },
+    {
+      ...base,
+      id: 'dev-event-ended',
+      title: 'Autumn Ruins Contest',
+      startsAt: new Date(now - 60 * day).toISOString(),
+      endsAt: new Date(now - 30 * day).toISOString(),
+      winnerMessageId: 'dev-message-winner',
+      winnerWorldId: 'dev-world',
+      winnerName: 'The Long Thaw',
+      winnerAuthorName: 'sedgewright',
+    },
+    {
+      ...base,
+      id: 'dev-event-cancelled',
+      type: 'announcement',
+      title: 'Midsummer Screenshot Week',
+      rulesText: null,
+      startsAt: new Date(now - 15 * day).toISOString(),
+      endsAt: new Date(now - 8 * day).toISOString(),
+      cancelledAt: new Date(now - 12 * day).toISOString(),
+    },
+  ];
+}

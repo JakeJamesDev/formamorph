@@ -14,6 +14,7 @@ import { POLICIES_TABS } from '@/components/menu/policiesTabs';
 import { FEEDBACK_TABS } from '@/components/menu/feedbackTabs';
 import { MY_FEEDBACK_TABS } from '@/components/menu/myFeedbackTabs';
 import { EVENT_ACK_PHASES } from '@/components/events/eventAckPhases';
+import { EVENTS_TAB_ROLE_VIEWS } from '@/lib/adminEvents';
 import { isSaveEnvelope } from './version';
 import whiteRoomWorld from './devFixtures/whiteRoomWorld.json';
 import whiteRoomSave from './devFixtures/whiteRoomSave.json';
@@ -110,6 +111,10 @@ describe('dev-router coverage guard', () => {
 
   it('ledger lists exactly the Policies sub-tabs the surface renders', () => {
     expect([...DEV_MODAL_TABS.adminPanelPolicies]).toEqual([...POLICIES_TABS]);
+  });
+
+  it('ledger lists exactly the Events role views the tab renders', () => {
+    expect([...DEV_MODAL_TABS.adminPanelEvents]).toEqual([...EVENTS_TAB_ROLE_VIEWS]);
   });
 
   it('ledger lists exactly the Feedback sub-tabs the surface renders', () => {

@@ -102,6 +102,14 @@ export function groupAdminEvents(
   return groups;
 }
 
+/**
+ * The two role views the Events tab has, for the dev-router to land on either.
+ *
+ * Which one a real session gets follows its account; naming them is what lets the read-only half be
+ * checked without a second account and a live server.
+ */
+export const EVENTS_TAB_ROLE_VIEWS = ['admin', 'staff'] as const;
+
 /** Which controls an event's row offers. Everything false is a read-only row. */
 export interface AdminEventActions {
   pickWinner: boolean;

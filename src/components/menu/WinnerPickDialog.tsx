@@ -21,8 +21,13 @@ import WorldStorageService from "@/services/WorldStorageService";
 import type { WorldRecord } from "@/components/WorldDetails";
 import type { ServerEvent } from "@/types";
 
-/** A page wide enough to hold a community-sized contest, since entries are filtered from the catalog. */
-const ENTRY_PAGE = 100;
+/**
+ * The whole catalog in one request, which is how the community browser reads it too.
+ *
+ * Entries are filtered out of the catalog rather than asked for by contest, so a short page would hide
+ * whichever entries fell past it — and an entry the judge cannot see is one that cannot win.
+ */
+const ENTRY_PAGE = 1000;
 
 interface WinnerPickDialogProps {
   open: boolean;
