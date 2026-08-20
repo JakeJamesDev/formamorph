@@ -2,7 +2,7 @@
 
 All notable changes to Formamorph. This fork's first line is **2.0.0** — a full TypeScript rebuild of the upstream JavaScript app ([FieryLionite's Formamorph](https://fierylion.itch.io/formamorph), ~v1.2) — with feature parity as the baseline plus new features on top.
 
-> ✅ **2.0.0 – 2.12.2 are released** (collapsed below). New work lands under **🚧 In Progress** — an unnumbered section, so changes accumulate without pinning a version. When a batch earns a release its section is marked **Released** and collapsed, and a fresh In Progress opens. `package.json` reads **2.12.2** — the latest released version.
+> ✅ **2.0.0 – 2.13.0 are released** (collapsed below). New work lands under **🚧 In Progress** — an unnumbered section, so changes accumulate without pinning a version. When a batch earns a release its section is marked **Released** and collapsed, and a fresh In Progress opens. `package.json` reads **2.13.0** — the latest released version.
 
 Each release groups changes as **Major** / **Minor**, then **Added** / **Removed** / **Fixed**, and within those by audience: 👤 user-facing · 🛠️ developer tooling · ⚙️ backend. Where two or more changes touch the same feature, they sit together under that feature's name.
 
@@ -10,7 +10,12 @@ Each release groups changes as **Major** / **Minor**, then **Added** / **Removed
 
 ## 🚧 In Progress
 
-_Unreleased — new work accumulates here until it earns a version bump. The next batch will pin its own version; `package.json` reads **2.12.2** (just released below)._
+_Unreleased — new work accumulates here until it earns a version bump. The next batch will pin its own version; `package.json` reads **2.13.0** (just released below)._
+
+---
+
+<details>
+<summary><strong>✅ 2.13.0 — Released 2026-08-19</strong> — The Locations tab becomes a real map you arrange, wire and search — with connections, nesting by drag, auto-arrange, undo and a full-screen canvas; a Test Bench that finds what is wrong with your world and fixes what it safely can; traveling in-game shown as a nested tree or a clickable map; and a world can write the line its story opens on (click to expand)</summary>
 
 ### Minor Changes
 
@@ -133,6 +138,7 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
     - **On mobile the Locations List/Canvas switch is drawn as two icons.** The two labels ate the room the add and search controls needed on a narrow screen. On a desktop-width window the labels are unchanged.
   - **Divider lines are now drawn one screen pixel thick everywhere instead of coming out heavier in some places than others.** On a display running at 125% or 150% scaling — the Windows default on most laptops — a one-pixel rule falls between two screen pixels, so the separators in a menu, the rules between settings and the small upright dividers in the prompt editor each rendered at whatever weight their position happened to land on. Every rule in the app now measures itself against the display it is on.
 
+</details>
 ---
 
 <details>
