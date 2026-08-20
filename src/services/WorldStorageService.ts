@@ -8,6 +8,12 @@ import { describePlaceholders } from '@/lib/placeholders';
 import { readDeletedDefaultWorlds, tombstoneDefaultWorld, type DefaultWorldSeed } from '@/lib/defaultWorlds';
 import type { Placeholder, WorldMetadata } from '@/types';
 
+/** The publish refused because this author already has an entry in the contest. */
+export const CONTEST_ALREADY_ENTERED = 'CONTEST_ALREADY_ENTERED';
+
+/** The publish named a contest that isn't taking entries — the wrong one, or one that has since closed. */
+export const CONTEST_NOT_ACTIVE = 'CONTEST_NOT_ACTIVE';
+
 /** A locally-stored world record (metadata + nested world `data`). Inner fields stay loose since
  *  they round-trip through IndexedDB/JSON and aren't read field-by-field here. */
 export interface StoredWorldRecord {
@@ -542,8 +548,12 @@ class WorldStorageService {
    * Publish a world, character, or dictionary: `PUT` updates when `targetId` names one of the user's own
    * listings, else `POST` creates. Requires auth; rethrows on failure. Build `payload` with the per-kind
    * helpers in `lib/publishPayload`, which own where each kind's fields come from.
+   *
+   * `contestEventId` enters the new listing into a contest. It rides top-level beside the tags and is
+   * omitted when absent: it is intent about this upload rather than part of the content, so it never
+   * reaches the world's own shape, and a server without an events layer is sent nothing new.
    */
-  async publishItem(payload: PublishPayload, targetId: string | null = null) {
+  async publishItem(payload: PublishPayload, targetId: string | null = null, contestEventId: string | null = null) {
     if (!AuthService.isAuthenticated()) {
       throw new Error('You must be logged in to publish');
     }
@@ -575,7 +585,8 @@ class WorldStorageService {
           kind: payload.kind,
           // Sent top-level because only a world keeps a copy inside its content, where the server looks
           // first. A character or a book has nowhere in its own shape to hide these.
-          tags: payload.tags ?? []
+          tags: payload.tags ?? [],
+          ...(contestEventId ? { contestEventId } : {})
         })
       });
 

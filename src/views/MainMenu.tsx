@@ -352,6 +352,11 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
     // Library editors open on a blank draft — nothing is stored, so these are reachable on a fresh profile.
     if (devRoute?.modal === 'entityEditor') setDraftEntity({ id: randomUUID(), name: 'New Character' });
     if (devRoute?.modal === 'dictionaryEditor') setDraftDictionary({ id: randomUUID(), name: 'New Dictionary', enabled: true, entries: [] });
+    // The publish dialog names itself from a payload, so it opens on a canned world rather than on
+    // whatever the library happens to hold — it is reachable on an empty profile that way.
+    if (devRoute?.modal === 'publish') {
+      void import('@/lib/devPublishSample').then(({ devPublishPayload }) => openPublish(devPublishPayload()));
+    }
     // Unlike the editors above, a model preview needs a real model — open the first one, if the library has any.
     if (devRoute?.modal === 'modelDetails') {
       setCardType('models');
@@ -2478,6 +2483,7 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
             onOpenChange={setShowPublishModal}
             isAuthenticated={isAuthenticated}
             payload={publishPayload}
+            events={activeEvents}
           />
 
           {/* One-time acknowledge poster for an event that has just started or just ended. */}

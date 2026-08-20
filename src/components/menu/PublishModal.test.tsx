@@ -30,7 +30,7 @@ describe('PublishModal target selection', () => {
     await userEvent.click(screen.getByRole('button', { name: 'Publish' }));
 
     // null target = POST a new listing, not a PUT over an existing one.
-    expect(WorldStorageService.publishItem).toHaveBeenCalledWith(worldPayload, null);
+    expect(WorldStorageService.publishItem).toHaveBeenCalledWith(worldPayload, null, null);
   });
 
   it('publishes over the listing you picked', async () => {
@@ -40,7 +40,7 @@ describe('PublishModal target selection', () => {
     await userEvent.click(await screen.findByLabelText('Existing World (w1, 0 downloads)'));
     await userEvent.click(screen.getByRole('button', { name: 'Publish' }));
 
-    expect(WorldStorageService.publishItem).toHaveBeenCalledWith(worldPayload, 'w1');
+    expect(WorldStorageService.publishItem).toHaveBeenCalledWith(worldPayload, 'w1', null);
   });
 
   it('drops a target picked for a previous publish when reopened for another kind', async () => {
@@ -59,8 +59,8 @@ describe('PublishModal target selection', () => {
     await screen.findByText('Publish Dictionary');
     await userEvent.click(screen.getByRole('button', { name: 'Publish' }));
 
-    expect(WorldStorageService.publishItem).toHaveBeenCalledWith(dictPayload, null);
-    expect(WorldStorageService.publishItem).not.toHaveBeenCalledWith(dictPayload, 'w1');
+    expect(WorldStorageService.publishItem).toHaveBeenCalledWith(dictPayload, null, null);
+    expect(WorldStorageService.publishItem).not.toHaveBeenCalledWith(dictPayload, 'w1', null);
   });
 
   it('drops a stale target before the new listings load, not after', async () => {
@@ -83,8 +83,8 @@ describe('PublishModal target selection', () => {
     await userEvent.click(screen.getByRole('button', { name: 'Publish' }));
 
     // The world 'w1' must not be the target of a dictionary publish.
-    expect(WorldStorageService.publishItem).toHaveBeenCalledWith(dictPayload, null);
-    expect(WorldStorageService.publishItem).not.toHaveBeenCalledWith(dictPayload, 'w1');
+    expect(WorldStorageService.publishItem).toHaveBeenCalledWith(dictPayload, null, null);
+    expect(WorldStorageService.publishItem).not.toHaveBeenCalledWith(dictPayload, 'w1', null);
   });
 
   it('ignores a slower response for a kind that is no longer open', async () => {

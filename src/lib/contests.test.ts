@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import {
-  contestPhase, contestsOf, contestEntryIdOf, contestWonBy, entriesOf, isContestRunning,
+  activeContestOf, contestPhase, contestsOf, contestEntryIdOf, contestWonBy, entriesOf, isContestRunning,
   isContestWinner, orderContestEntries, shuffleWithSeed,
 } from './contests';
 import type { WorldRecord } from '@/components/WorldDetails';
@@ -137,5 +137,24 @@ describe('the seeded shuffle', () => {
   it('leaves a one-item list alone rather than reaching past its end', () => {
     expect(shuffleWithSeed(['only'], 0.5)).toEqual(['only']);
     expect(shuffleWithSeed([], 0.5)).toEqual([]);
+  });
+});
+
+describe('the contest taking entries right now', () => {
+  it('is the running contest among the events', () => {
+    const announcement = event({ id: 'a1', type: 'announcement' });
+    expect(activeContestOf([announcement, event()])?.id).toBe('e1');
+  });
+
+  it('is nothing when the only contest has closed, however the poll still lists it', () => {
+    expect(activeContestOf([event({ startsAt: at(-20), endsAt: at(-1) })])).toBeNull();
+  });
+
+  it('is nothing when the only contest was cancelled', () => {
+    expect(activeContestOf([event({ cancelledAt: at(-1) })])).toBeNull();
+  });
+
+  it('is nothing when no event is a contest', () => {
+    expect(activeContestOf([event({ type: 'announcement' })])).toBeNull();
   });
 });

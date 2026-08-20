@@ -2,9 +2,7 @@ import { useState } from 'react';
 import { Calendar, Trophy } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import {
-  Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle,
-} from '@/components/ui/dialog';
+import { ContestRulesDialog } from '@/components/community/ContestRulesDialog';
 import { formatServerDate } from '@/lib/serverDate';
 import { contestPhase, type ContestPhase } from '@/lib/contests';
 import { daysRemaining } from '@/lib/serverEvents';
@@ -78,20 +76,7 @@ export function ContestBar({ contest, contests, onSelect, entryCount }: ContestB
         Rules
       </Button>
 
-      <Dialog open={rulesOpen} onOpenChange={setRulesOpen}>
-        <DialogContent className="max-w-md">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              <Trophy className="h-5 w-5 text-warning" aria-hidden /> {contest.title}
-            </DialogTitle>
-            <DialogDescription>{dates}</DialogDescription>
-          </DialogHeader>
-          <p className="text-label text-muted-foreground whitespace-pre-line">{contest.bannerText}</p>
-          {contest.rulesText && (
-            <p className="text-label whitespace-pre-line">{contest.rulesText}</p>
-          )}
-        </DialogContent>
-      </Dialog>
+      <ContestRulesDialog contest={contest} open={rulesOpen} onOpenChange={setRulesOpen} />
     </div>
   );
 }
