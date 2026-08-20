@@ -131,6 +131,19 @@ describe('alias hygiene rules', () => {
     expect(ofRule([{ id: 'e1', name: 'Harbor Cats', aliases: ['harbor cat'] }], 'alias-self-duplicate')).toHaveLength(1);
   });
 
+  it('leaves an articled repeat of an articled name to the sharper article rule', () => {
+    // Deleting it would lose what stripping the article buys: a bare "Beast" the articled name never matches.
+    const articled = world([{ id: 'e1', name: 'The Beast', aliases: ['the beast'] }]);
+    expect(only(articled, 'alias-self-duplicate')).toEqual([]);
+    // Fix All runs every rule's fix, so the repeat fix has to spare it too.
+    expect(applyRuleFix(articled, 'alias-self-duplicate').entities?.[0].aliases).toEqual(['the beast']);
+    const stripped = applyRuleFix(articled, 'alias-leading-article');
+    expect(stripped.entities?.[0].aliases).toEqual(['beast']);
+    // Stripped, it is no longer the name's text at all — so the repeat rule stays quiet rather than
+    // reclaiming the alias the article fix just made useful.
+    expect(only(stripped, 'alias-self-duplicate')).toEqual([]);
+  });
+
   it('keeps the lowercase alias when the repeat rule is fixed', () => {
     const before = world([{ id: 'e1', name: 'Ghost', aliases: ['ghost', 'Ghost'] }]);
     const after = applyRuleFix(before, 'alias-self-duplicate');

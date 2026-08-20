@@ -251,6 +251,9 @@ const aliasSelfDuplicate: Rule = {
   check: (world) => (world.entities ?? []).flatMap((entity) => {
     const name = describePlaceholders(entity.name ?? '', world.placeholders);
     return aliasesOf(entity, world)
+      // An articled alias of an articled name is the article rule's: its fix strips to a bare form the
+      // name can't match on its own, where deleting the alias would drop that coverage.
+      .filter((alias) => !LEADING_ARTICLE.test(alias))
       .filter((alias) => nameCoversAlias(name, alias))
       .map((alias) => finding(
         aliasSelfDuplicate,
@@ -262,9 +265,10 @@ const aliasSelfDuplicate: Rule = {
     const name = describePlaceholders(entity.name ?? '', world.placeholders);
     const aliases = entity.aliases;
     if (!aliases?.length) return entity;
-    const next = aliases.filter(
-      (alias) => !nameCoversAlias(name, describePlaceholders(alias ?? '', world.placeholders).trim()),
-    );
+    const next = aliases.filter((alias) => {
+      const text = describePlaceholders(alias ?? '', world.placeholders).trim();
+      return LEADING_ARTICLE.test(text) || !nameCoversAlias(name, text);
+    });
     return next.length === aliases.length ? entity : { ...entity, aliases: next };
   })),
 };
