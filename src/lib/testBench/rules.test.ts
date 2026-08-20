@@ -944,6 +944,14 @@ describe('entity completeness rules', () => {
     expect(only(world([{ id: 'e1', name: 'Maren', aliases: ['fishmonger', 'Old Hand'] }]), 'alias-lowercase-no-twin')).toEqual([]);
   });
 
+  it('leaves a lowercase copy of a multi-word name to the repeat rule alone', () => {
+    // The name is the capitalized twin — it matches any casing — so asking for one too would contradict
+    // the repeat finding, which is about to delete this alias.
+    const repeated = world([{ id: 'e1', name: 'Pumpkin Queen', aliases: ['pumpkin queen'] }]);
+    expect(only(repeated, 'alias-lowercase-no-twin')).toEqual([]);
+    expect(runRules(repeated).map((f) => f.ruleId)).toEqual(['alias-self-duplicate']);
+  });
+
   it('leaves an articled alias to the sharper article rule until its fix strips it', () => {
     const articled = world([{ id: 'e1', name: 'Maren', aliases: ['the old hand'] }]);
     expect(only(articled, 'alias-lowercase-no-twin')).toEqual([]);

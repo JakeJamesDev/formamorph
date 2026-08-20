@@ -1054,9 +1054,13 @@ const aliasLowercaseNoTwin: Rule = {
     `${count} lowercase multi-word aliases have no capitalized twin — alias matching is case-sensitive, so they miss wherever the text capitalizes them`,
   check: (world) => (world.entities ?? []).flatMap((entity) => {
     const aliases = aliasesOf(entity, world);
+    const name = describePlaceholders(entity.name ?? '', world.placeholders);
     return aliases
       // The leading article is the sharper diagnosis; once its fix strips it, this rule picks the alias up.
       .filter((alias) => !LEADING_ARTICLE.test(alias))
+      // The name is the twin: a multi-word name matches any casing, so telling the author to add a
+      // capitalized copy of an alias the self-duplicate rule is about to delete is two contrary answers.
+      .filter((alias) => !nameCoversAlias(name, alias))
       .filter((alias) => /\s/.test(alias) && /[a-z]/.test(alias) && alias === alias.toLowerCase())
       .filter((alias) => !aliases.some((twin) => twin !== alias && twin.toLowerCase() === alias.toLowerCase()))
       .map((alias) => finding(
