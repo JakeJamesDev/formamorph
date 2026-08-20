@@ -36,7 +36,7 @@ const TagField = ({ label, value, onChange, placeholders = [], placeholder, aria
         {label && <Label className="leading-none">{label}</Label>}
         <div className="flex items-center gap-1">
           {aside}
-          {aside && <span className="mx-0.5 h-4 w-px bg-border" aria-hidden />}
+          {aside && <span className="mx-0.5 h-4 w-hairline bg-border" aria-hidden />}
           <TagHistoryButtons history={history} />
         </div>
       </div>

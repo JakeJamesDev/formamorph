@@ -155,7 +155,7 @@ function SplitButton({ items, label, disabled, apply }: {
       >
         <Icon className="h-4 w-4" />
       </button>
-      <span className="h-4 w-px bg-border" aria-hidden />
+      <span className="h-4 w-hairline bg-border" aria-hidden />
       <Popover open={open} onOpenChange={setOpen}>
         <PopoverTrigger asChild>
           <button
@@ -859,11 +859,11 @@ const PromptField = ({ value, onChange, variables = [], vocabulary, previewValue
         {label && !markdown && labelAside && (
           <>
             {labelAside}
-            <span className="mx-0.5 w-px self-stretch bg-border" />
+            <span className="mx-0.5 w-hairline self-stretch bg-border" />
           </>
         )}
         <HistoryButtons disabled={editingDisabled} />
-        <span className="mx-0.5 w-px self-stretch bg-border" />
+        <span className="mx-0.5 w-hairline self-stretch bg-border" />
         {showTabs && fullscreen && effectiveWidth - 12 >= MIN_PANE_WIDTH * 2 && (
           <button
             type="button"

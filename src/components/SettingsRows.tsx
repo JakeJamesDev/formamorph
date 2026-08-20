@@ -53,7 +53,7 @@ export function Section({ title, hint, children }: { title: string; hint?: strin
       <div className="space-y-1">
         <div className="flex items-baseline gap-3">
           <h3 className="text-meta font-semibold uppercase tracking-wider text-muted-foreground">{title}</h3>
-          <div className="h-px flex-1 bg-border" />
+          <div className="h-hairline flex-1 bg-border" />
         </div>
         {hint && <Hint>{hint}</Hint>}
       </div>

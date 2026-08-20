@@ -1430,7 +1430,7 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
             </PopoverTrigger>
             <PopoverContent align="center" className="flex flex-col gap-2 w-72 [&>button]:w-full [&_svg]:shrink-0">
               {actionButtons}
-              <div className="h-px bg-border my-1" />
+              <div className="h-hairline bg-border my-1" />
               <Button variant="ghost" className="justify-start" onClick={() => setShowLoadDialog(true)}>
                 <FolderOpen className="mr-2 h-4 w-4" /> Load Game
               </Button>

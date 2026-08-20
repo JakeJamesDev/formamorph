@@ -168,7 +168,7 @@ const CustomPromptsSection = ({ focusField }: { focusField?: { fieldKey: string 
                 On this muted chrome the usual bg-border is invisible, hence the stronger fill. */}
             <span
               aria-hidden
-              className={cn('mx-0.5 h-4 w-px shrink-0 bg-muted-foreground/40',
+              className={cn('mx-0.5 h-4 w-hairline shrink-0 bg-muted-foreground/40',
                 i % 2 === 0 && 'hidden',
                 i === 2 && '[@container(min-width:32rem)]:inline-block')}
             />

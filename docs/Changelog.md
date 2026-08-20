@@ -131,6 +131,7 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
     - **Every add button in the editor is now the same compact square + button.** The one in the add and search bar and the ones in the Connections and Stat Descriptors panels were three different shapes and sizes; all of them are now one small square button, sitting level with the box beside it, and hovering one names what it adds.
     - **The editor's tab strip now fills the width of the panel rather than sitting centered in it.** Overview through Placeholders share the row between them, so each tab is a wider target. On mobile the strip still scrolls sideways as it did.
     - **On mobile the Locations List/Canvas switch is drawn as two icons.** The two labels ate the room the add and search controls needed on a narrow screen. On a desktop-width window the labels are unchanged.
+  - **Divider lines are now drawn one screen pixel thick everywhere instead of coming out heavier in some places than others.** On a display running at 125% or 150% scaling — the Windows default on most laptops — a one-pixel rule falls between two screen pixels, so the separators in a menu, the rules between settings and the small upright dividers in the prompt editor each rendered at whatever weight their position happened to land on. Every rule in the app now measures itself against the display it is on.
 
 ---
 
