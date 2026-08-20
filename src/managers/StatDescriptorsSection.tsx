@@ -7,7 +7,7 @@
  * computes, which is the same geometry the prompt's band lookup and the Bench's rules read.
  */
 import { useLayoutEffect, useRef } from 'react';
-import { Trash2 } from 'lucide-react';
+import { Plus, Trash2 } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
@@ -235,7 +235,7 @@ export const StatDescriptorsSection = ({
           placeholder="New Description"
           className="flex-grow"
         />
-        <Button onClick={onAddDescriptor}>Add</Button>
+        <Button onClick={onAddDescriptor} size="icon" className="h-9 w-9 shrink-0" aria-label="Add Descriptor" title="Add Descriptor"><Plus className="h-4 w-4" /></Button>
       </div>
     </div>
   );

@@ -78,8 +78,8 @@ const StatUpdatesManager = ({ statUpdate }: { statUpdate: StatUpdate }) => {
 
       <div className="space-y-2">
         <Label>Message History</Label>
-        <Button onClick={handleAddMessage} size="sm">
-          <Plus className="h-4 w-4 mr-2" /> Add Message
+        <Button onClick={handleAddMessage} size="icon" aria-label="Add Message" title="Add Message">
+          <Plus className="h-4 w-4" />
         </Button>
         <div className="border rounded-md p-2 space-y-2">
           {(editingStatUpdate.messageHistory || []).map((message, index) => (

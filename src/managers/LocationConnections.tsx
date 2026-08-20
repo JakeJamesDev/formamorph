@@ -108,7 +108,7 @@ const LocationConnections = ({ location }: { location: GameLocation }) => {
           </div>
         );
       })}
-      <div className="flex gap-2">
+      <div className="flex items-center gap-2">
         <Select value={target} onValueChange={setTarget} disabled={targets.length === 0}>
           <SelectTrigger aria-label="Connect To">
             <SelectValue placeholder={targets.length ? 'Connect to…' : 'No locations left to connect'} />
@@ -119,8 +119,8 @@ const LocationConnections = ({ location }: { location: GameLocation }) => {
             ))}
           </SelectContent>
         </Select>
-        <Button onClick={handleAdd} disabled={!target} className="shrink-0">
-          <Plus className="h-4 w-4 mr-2" /> Add Connection
+        <Button onClick={handleAdd} disabled={!target} size="icon" className="h-9 w-9 shrink-0" aria-label="Add Connection" title="Add Connection">
+          <Plus className="h-4 w-4" />
         </Button>
       </div>
     </div>
