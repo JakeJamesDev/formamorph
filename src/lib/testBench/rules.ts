@@ -229,6 +229,18 @@ const entityMatchCollision: Rule = {
   },
 };
 
+/**
+ * Whether an entity's own name already matches everywhere `alias` does, so the alias buys nothing. Same
+ * text to `matchKey` is not enough: a single-word name only matches capitalized, while aliases match
+ * case-sensitively, so a lowercase alias of a one-word name is the author's cover for lowercase prose.
+ * A multi-word name matches case-insensitively and so covers every casing of itself.
+ */
+const nameCoversAlias = (name: string, alias: string): boolean => {
+  const trimmed = name.trim();
+  if (!trimmed || matchKey(alias) !== matchKey(trimmed)) return false;
+  return /\s/.test(trimmed) || /[A-Z]/.test(alias.trim().charAt(0));
+};
+
 const aliasSelfDuplicate: Rule = {
   id: 'alias-self-duplicate',
   severity: 'info',
@@ -237,10 +249,9 @@ const aliasSelfDuplicate: Rule = {
   advanced: true,
   summary: (count) => `${count} aliases repeat their own entity’s name, which already matches on its own`,
   check: (world) => (world.entities ?? []).flatMap((entity) => {
-    const nameKey = matchKey(describePlaceholders(entity.name ?? '', world.placeholders));
-    if (!nameKey) return [];
+    const name = describePlaceholders(entity.name ?? '', world.placeholders);
     return aliasesOf(entity, world)
-      .filter((alias) => matchKey(alias) === nameKey)
+      .filter((alias) => nameCoversAlias(name, alias))
       .map((alias) => finding(
         aliasSelfDuplicate,
         `Alias ${quote(alias)} repeats its own entity’s name, which already matches on its own`,
@@ -248,11 +259,11 @@ const aliasSelfDuplicate: Rule = {
       ));
   }),
   fix: (world) => withSlice(world, 'entities', mapChanged(world.entities ?? [], (entity) => {
-    const nameKey = matchKey(describePlaceholders(entity.name ?? '', world.placeholders));
+    const name = describePlaceholders(entity.name ?? '', world.placeholders);
     const aliases = entity.aliases;
-    if (!nameKey || !aliases?.length) return entity;
+    if (!aliases?.length) return entity;
     const next = aliases.filter(
-      (alias) => matchKey(describePlaceholders(alias ?? '', world.placeholders).trim()) !== nameKey,
+      (alias) => !nameCoversAlias(name, describePlaceholders(alias ?? '', world.placeholders).trim()),
     );
     return next.length === aliases.length ? entity : { ...entity, aliases: next };
   })),
