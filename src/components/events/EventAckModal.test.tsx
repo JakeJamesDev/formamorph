@@ -153,3 +153,90 @@ describe('EventAckModal', () => {
     expect(screen.queryByRole('button', { name: 'View Entries' })).not.toBeInTheDocument();
   });
 });
+
+describe('the poster waiting its turn', () => {
+  it('holds while the intro animation still has the screen', () => {
+    render(<EventAckModal events={[event()]} isAuthenticated held />);
+
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+  });
+
+  it('posts as soon as the hold lifts, with nothing acknowledged in the meantime', () => {
+    const { rerender } = render(<EventAckModal events={[event()]} isAuthenticated held />);
+    expect(isEventAcknowledged('e1', 'start')).toBe(false);
+
+    rerender(<EventAckModal events={[event()]} isAuthenticated />);
+
+    expect(screen.getByRole('dialog')).toBeInTheDocument();
+  });
+
+  it('posts immediately when there is no intro to wait for', () => {
+    render(<EventAckModal events={[event()]} isAuthenticated />);
+
+    expect(screen.getByRole('dialog')).toBeInTheDocument();
+  });
+});
+
+describe('what the organizer styled', () => {
+  const band = () => screen.getByRole('dialog').querySelector('.text-display')?.parentElement as HTMLElement;
+
+  it('keeps the app default when the event carries no styling', () => {
+    render(<EventAckModal events={[event()]} isAuthenticated />);
+
+    expect(band().className).toContain('bg-info');
+    expect(band().style.backgroundColor).toBe('');
+  });
+
+  it('keeps the app default on a server that has never heard of the styling fields', () => {
+    // The whole point of tolerating their absence: a client update must not break against a lagging deploy.
+    const legacy = event();
+    delete (legacy as Partial<ServerEvent>).posterColor;
+    delete (legacy as Partial<ServerEvent>).posterImageUrl;
+
+    render(<EventAckModal events={[legacy]} isAuthenticated />);
+
+    expect(band().className).toContain('bg-info');
+  });
+
+  it('paints the band in the organizer color, with text that holds against it', () => {
+    render(<EventAckModal events={[event({ posterColor: '#fef08a' })]} isAuthenticated />);
+
+    expect(band().style.backgroundColor).toBe('rgb(254, 240, 138)');
+    // Pale yellow: the fixed white would have been white-on-white.
+    expect(band().style.color).toBe('rgb(28, 25, 23)');
+    expect(band().className).not.toContain('bg-info');
+  });
+
+  it('leads with the organizer artwork under a wash', () => {
+    render(<EventAckModal events={[event({ posterImageUrl: '/api/event-posters/a.webp' })]} isAuthenticated />);
+
+    const art = screen.getByTestId('poster-band-image');
+    expect(art.style.backgroundImage).toContain('/api/event-posters/a.webp');
+  });
+
+  it('keeps the text light over artwork chosen without a color', () => {
+    // Nothing paints the band, so without this the title inherits the panel's own dark text and lands
+    // on a dark wash.
+    render(<EventAckModal events={[event({ posterImageUrl: '/api/event-posters/a.webp' })]} isAuthenticated />);
+
+    expect(band().style.color).toBe('rgb(255, 255, 255)');
+    expect(band().className).not.toContain('bg-info');
+  });
+
+  it('styles the ending the same way it styled the opening', () => {
+    markEventAcknowledged('e1', 'start');
+    const ended = event({ posterColor: '#1e3a8a', winnerName: 'The Long Thaw', winnerAuthorName: 'sedgewright' });
+
+    render(<EventAckModal events={[ended]} isAuthenticated />);
+
+    expect(screen.getByText('Winner Announced')).toBeInTheDocument();
+    expect(band().style.backgroundColor).toBe('rgb(30, 58, 138)');
+  });
+
+  it('reads the body as markdown rather than as the symbols it was typed with', () => {
+    render(<EventAckModal events={[event({ body: 'Build **something strange**.' })]} isAuthenticated />);
+
+    // Streamdown renders emphasis as a tagged span rather than a `<strong>`.
+    expect(screen.getByText('something strange')).toHaveAttribute('data-streamdown', 'strong');
+  });
+});

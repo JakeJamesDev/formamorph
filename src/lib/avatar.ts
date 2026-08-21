@@ -1,6 +1,7 @@
 /**
  * Profile images: where they load from, and what stands in when there is none.
  */
+import { serverAssetSrc } from './serverAssets';
 
 /** What the crop step produces, and the only sizes the server stores. */
 export const AVATAR_SIZE = 256;
@@ -14,20 +15,12 @@ export const AVATAR_ACCEPT = 'image/png,image/jpeg,image/webp,image/gif';
 /**
  * The full URL of a stored avatar.
  *
- * The server answers with a root-relative path (`/api/avatars/…`) because it does not know what host the
- * client reached it on — the desktop shell and the web build use different ones — so the origin is added
- * here. An absolute URL is passed through, in case a future deploy serves them from a CDN.
- *
  * @param path - The `avatarUrl` from any server DTO
  * @param apiUrl - The API base the client is talking to
  * @returns An absolute URL, or null when there is no avatar
  */
 export function avatarSrc(path: string | null | undefined, apiUrl: string): string | null {
-  if (!path) return null;
-  if (/^https?:\/\//i.test(path)) return path;
-
-  // `apiUrl` already ends in `/api`, which the server's path also starts with.
-  return `${apiUrl.replace(/\/api\/?$/, '')}${path}`;
+  return serverAssetSrc(path, apiUrl);
 }
 
 /** The letter shown when somebody has no image. Falls back to a shape rather than an empty circle. */

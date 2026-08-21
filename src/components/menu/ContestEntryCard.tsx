@@ -20,6 +20,13 @@ interface ContestEntryCardProps {
   withdrawing?: boolean;
   /** A refusal the server gave, shown where the switch was. */
   error?: string | null;
+  /**
+   * The listing being replaced is the one already entered: the card is context, not a control.
+   *
+   * Nothing here is offered, because nothing here applies — the update keeps the entry either way, and a
+   * withdraw beside an update reads as a choice about the upload rather than about the entry.
+   */
+  readOnly?: boolean;
 }
 
 /**
@@ -34,11 +41,11 @@ interface ContestEntryCardProps {
  * is the moment they are agreed to.
  */
 export function ContestEntryCard({
-  contest, checked, onCheckedChange, enteredName, onWithdraw, withdrawing, error,
+  contest, checked, onCheckedChange, enteredName, onWithdraw, withdrawing, error, readOnly = false,
 }: ContestEntryCardProps) {
   const [rulesOpen, setRulesOpen] = useState(false);
-  // Either one takes the switch away: there is nothing this publish can still opt into.
-  const armed = !enteredName && !error;
+  // Any of the three takes the switch away: there is nothing this publish can still opt into.
+  const armed = !readOnly && !enteredName && !error;
 
   return (
     <div
@@ -53,7 +60,11 @@ export function ContestEntryCard({
         {/* Nothing here truncates: on a narrow screen the clip takes the contest's own name, or the
             one-entry-per-creator half of the line under it. Both are what an author is agreeing to. */}
         <div className="text-label font-semibold">{contest.title}</div>
-        {enteredName ? (
+        {readOnly ? (
+          <div className="text-meta text-muted-foreground">
+            This listing is your entry. Updating it keeps the entry.
+          </div>
+        ) : enteredName ? (
           <div className="text-meta text-muted-foreground">
             You already entered {enteredName}. Withdraw it first to enter something else.
           </div>
@@ -70,7 +81,7 @@ export function ContestEntryCard({
           </Button>
           {/* Beside the line that advises it, so "withdraw it first" is something to press rather than a
               trip to another screen. */}
-          {enteredName && onWithdraw && (
+          {!readOnly && enteredName && onWithdraw && (
             <Button
               variant="link"
               className="px-0 h-auto text-meta text-destructive"

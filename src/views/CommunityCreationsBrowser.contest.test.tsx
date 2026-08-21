@@ -451,3 +451,72 @@ describe('withdrawing an entry from the contest tab', () => {
     expect(gridNames()).toEqual(['Saltmarsh']);
   });
 });
+
+describe('the banner stack on the contest tab', () => {
+  const announcement = () =>
+    contest({ id: 'a1', type: 'announcement', title: 'Server Maintenance', bannerText: 'Down for an hour.' });
+
+  it('drops the contest card, whose action goes where the reader already is', async () => {
+    server.events = [contest()];
+    renderBrowser({ events: [contest()], onOpenEvent: vi.fn() });
+
+    // On the catalog it is there, advertising the way in.
+    expect(await screen.findByRole('button', { name: 'View Entries' })).toBeInTheDocument();
+
+    await openContestTab();
+
+    expect(screen.queryByRole('button', { name: 'View Entries' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Dismiss' })).not.toBeInTheDocument();
+  });
+
+  it('keeps announcement cards, which are unrelated news', async () => {
+    server.events = [contest()];
+    renderBrowser({ events: [contest(), announcement()], onOpenEvent: vi.fn() });
+
+    await openContestTab();
+
+    expect(screen.getByText('Server Maintenance')).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'View Entries' })).not.toBeInTheDocument();
+  });
+
+  it('brings the contest card back on any other tab', async () => {
+    server.events = [contest()];
+    renderBrowser({ events: [contest()], onOpenEvent: vi.fn() });
+
+    await openContestTab();
+    await userEvent.click(screen.getByRole('tab', { name: 'Worlds' }));
+
+    expect(await screen.findByRole('button', { name: 'View Entries' })).toBeInTheDocument();
+  });
+});
+
+describe('the rules dialog', () => {
+  const openRules = async (event: ServerEvent) => {
+    server.events = [event];
+    renderBrowser();
+    await openContestTab();
+    await userEvent.click(await screen.findByRole('button', { name: 'Rules' }));
+    return screen.findByRole('dialog');
+  };
+
+  it('opens under the poster header band, so it reads as the same event', async () => {
+    const dialog = await openRules(contest({ posterColor: '#1e3a8a' }));
+
+    const band = within(dialog).getByText('Contest Rules').parentElement as HTMLElement;
+    expect(band.style.backgroundColor).toBe('rgb(30, 58, 138)');
+    expect(band.style.color).toBe('rgb(255, 255, 255)');
+  });
+
+  it('keeps the default band when the organizer styled nothing', async () => {
+    const dialog = await openRules(contest());
+
+    const band = within(dialog).getByText('Contest Rules').parentElement as HTMLElement;
+    expect(band.className).toContain('bg-info');
+  });
+
+  it('reads the rules as markdown rather than as the symbols they were typed with', async () => {
+    await openRules(contest({ rulesText: 'One entry **per creator**.' }));
+
+    expect(await screen.findByText('per creator')).toHaveAttribute('data-streamdown', 'strong');
+  });
+});

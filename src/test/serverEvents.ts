@@ -27,6 +27,10 @@ export const serverEvent = (over: Partial<ServerEvent> = {}): ServerEvent => ({
   bannerText: 'Build a world around a single season.',
   body: 'The long version.',
   rulesText: 'One entry per creator.',
+  // Present and null, the way the server sends them for an event nobody styled — a test about a server
+  // that predates the fields deletes them rather than relying on the fixture to leave them out.
+  posterColor: null,
+  posterImageUrl: null,
   startsAt: daysFrom(-4),
   endsAt: daysFrom(12),
   cancelledAt: null,

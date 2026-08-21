@@ -315,3 +315,90 @@ describe('the rules behind the switch', () => {
     expect(WorldStorageService.publishItem).toHaveBeenCalledWith(worldPayload, null, 'e1');
   });
 });
+
+describe('updating the listing that holds the entry', () => {
+  const entered = () => {
+    vi.mocked(WorldStorageService.getUserWorlds).mockResolvedValue([
+      listing('w1', 'Salt-Bright Reaches', { contest_event_id: 'e1' }),
+      listing('w2', 'Nine Quiet Doors'),
+    ]);
+  };
+
+  it('says which listing carries the entry, on the row where it is picked', async () => {
+    entered();
+    view();
+
+    expect(await screen.findByText('In Summer Isles Contest')).toBeTruthy();
+  });
+
+  it('badges only the entered listing, not every listing the author has', async () => {
+    entered();
+    view();
+
+    await screen.findByText('In Summer Isles Contest');
+    expect(screen.getAllByText(/^In Summer Isles Contest$/)).toHaveLength(1);
+  });
+
+  it('keeps the contest card up while that listing is the target, as context rather than a control', async () => {
+    entered();
+    view();
+
+    await userEvent.click(await screen.findByLabelText('Salt-Bright Reaches (w1, 0 downloads)'));
+
+    expect(screen.getByText('Summer Isles Contest')).toBeTruthy();
+    expect(screen.getByText(/This listing is your entry/)).toBeTruthy();
+    // No switch and no withdraw: the entry rides along either way, so neither is a choice about this upload.
+    expect(theSwitch()).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Withdraw Entry' })).toBeNull();
+  });
+
+  it('still hides the card when some other listing is the target', async () => {
+    entered();
+    view();
+
+    await userEvent.click(await screen.findByLabelText('Nine Quiet Doors (w2, 0 downloads)'));
+
+    expect(screen.queryByText('Summer Isles Contest')).toBeNull();
+  });
+
+  it('sends no contest flag when updating the entered listing', async () => {
+    entered();
+    view();
+
+    await userEvent.click(await screen.findByLabelText('Salt-Bright Reaches (w1, 0 downloads)'));
+    await userEvent.click(screen.getByRole('button', { name: 'Publish' }));
+
+    expect(WorldStorageService.publishItem).toHaveBeenCalledWith(worldPayload, 'w1', null);
+  });
+});
+
+describe('when the entry publishes', () => {
+  it('closes the window, the way a plain publish does', async () => {
+    const onOpenChange = vi.fn();
+    render(
+      <PublishModal open onOpenChange={onOpenChange} isAuthenticated payload={worldPayload} events={[contest()]} />,
+    );
+
+    await userEvent.click(await screen.findByRole('switch'));
+    await userEvent.click(screen.getByRole('button', { name: 'Publish & Enter' }));
+
+    await waitFor(() => expect(toast.success).toHaveBeenCalled());
+    expect(onOpenChange).toHaveBeenCalledWith(false);
+  });
+
+  it('leaves it open when the entry is refused, so the switch can be answered', async () => {
+    vi.mocked(WorldStorageService.publishItem).mockRejectedValue(
+      Object.assign(new Error('That contest is not taking entries.'), { code: CONTEST_NOT_ACTIVE }),
+    );
+    const onOpenChange = vi.fn();
+    render(
+      <PublishModal open onOpenChange={onOpenChange} isAuthenticated payload={worldPayload} events={[contest()]} />,
+    );
+
+    await userEvent.click(await screen.findByRole('switch'));
+    await userEvent.click(screen.getByRole('button', { name: 'Publish & Enter' }));
+
+    await screen.findByText('That contest is not taking entries.');
+    expect(onOpenChange).not.toHaveBeenCalledWith(false);
+  });
+});
