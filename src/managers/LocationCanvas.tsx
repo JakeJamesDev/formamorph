@@ -1,5 +1,6 @@
 import {
   createContext, Fragment, useCallback, useContext, useEffect, useMemo, useRef, useState,
+  type RefObject,
 } from 'react';
 import {
   Background, ControlButton, Controls, Handle, MiniMap, Panel,
@@ -316,8 +317,12 @@ type MenuTarget =
  * Radix owns the placement: portaled above the panels the canvas sits inside, flipped back into view at a
  * viewport edge, and dismissed, focused and walked by the arrows the way every other menu in the app is.
  */
-const CanvasMenu = ({ sections }: { sections: CanvasMenuSection[] }) => (
-  <ContextMenuContent aria-label="Canvas Options" className="min-w-44">
+const CanvasMenu = ({ sections, menuRef }: {
+  sections: CanvasMenuSection[];
+  /** Lets the keydown scope count the portaled menu as the canvas (see `trackPointer`). */
+  menuRef: RefObject<HTMLDivElement>;
+}) => (
+  <ContextMenuContent ref={menuRef} aria-label="Canvas Options" className="min-w-44">
     {sections.map((section, index) => (
       <Fragment key={section.map((item) => item.label).join('|')}>
         {index > 0 && <ContextMenuSeparator />}
@@ -661,6 +666,7 @@ const CanvasInner = ({ selectedId, onSelect, session, fullscreen, onToggleFullsc
   const [flashId, setFlashId] = useState<string | null>(null);
   const flashTimer = useRef<number | null>(null);
   const frameRef = useRef<HTMLDivElement | null>(null);
+  const menuRef = useRef<HTMLDivElement>(null);
   // Where the pointer last went down, which is what says whether the press that opened a menu had traveled.
   const pointerDownRef = useRef<{ x: number; y: number } | null>(null);
   // Set while a hold's own release is still to come: the click it raises belongs to the hold, not to the
@@ -995,7 +1001,10 @@ const CanvasInner = ({ selectedId, onSelect, session, fullscreen, onToggleFullsc
     const inChrome = (target: EventTarget | null) =>
       !!(target as HTMLElement | null)?.closest?.('[role="toolbar"]');
     const trackPointer = (event: PointerEvent) => {
-      activeRef.current = !!frameRef.current?.contains(event.target as globalThis.Node);
+      // The context menu portals out of the frame, but pressing its items is working on the map — without
+      // this, picking Auto Arrange deadens the very next Ctrl+Z.
+      const target = event.target as globalThis.Node;
+      activeRef.current = !!frameRef.current?.contains(target) || !!menuRef.current?.contains(target);
     };
     const onKeyDown = (event: KeyboardEvent) => {
       if (!activeRef.current || focusing(event.target)) return;
@@ -1251,6 +1260,7 @@ const CanvasInner = ({ selectedId, onSelect, session, fullscreen, onToggleFullsc
     </div>
     </ContextMenuTrigger>
     <CanvasMenu
+      menuRef={menuRef}
       sections={canvasMenuSections(
         { ...history, snap, gridVisible, connectionStyle },
         {

@@ -88,13 +88,15 @@ export const chrome = {
 };
 
 /**
- * Open the World Editor on a stored world with its Custom Narration Prompt switched on — the editor's
- * only prompt field, and the one whose parent writes each keystroke through to GameDataContext.
+ * Open the World Editor on a stored world with its custom narration prompt switched on and its panel
+ * open — the prompt field whose parent writes each keystroke through to GameDataContext.
  */
 export async function openWorldNarrationPrompt(page: Page): Promise<void> {
   await openWorldEditor(page);
-  const toggle = page.getByRole('checkbox', { name: 'Custom Narration Prompt' });
+  const toggle = page.getByRole('checkbox', { name: "Use this world's narration prompt" });
+  // Switching the checkbox on opens the panel itself; only an already-armed prompt needs picking open.
   if ((await toggle.getAttribute('data-state')) !== 'checked') await toggle.click();
+  else await page.getByRole('radio', { name: 'Narration' }).click();
   await page.getByLabel('World narration prompt').waitFor();
 }
 
@@ -108,7 +110,7 @@ export async function openWorldEditor(page: Page): Promise<void> {
     const worlds = await dev.listWorlds();
     await dev.editWorld(worlds[0].id);
   });
-  await page.getByRole('checkbox', { name: 'Custom Narration Prompt' }).waitFor();
+  await page.getByRole('checkbox', { name: "Use this world's narration prompt" }).waitFor();
 }
 
 /**

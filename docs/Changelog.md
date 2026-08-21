@@ -35,6 +35,11 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
   - **The dev-router opens the Contest tab on canned contests** — `#dev?view=mainMenu&modal=community&tab=contest` serves one running contest and two archives, so the tab and its selector are reachable without a live event.
   - **The browser suite covers the whole contest entry flow against a real server** — sign in, publish a world with the entry switch on, find it in the Contest tab and the catalog. It runs against a local FormamorphServer named by `E2E_API_URL` (which the runner also hands the dev server, so a test publish can never reach the live workshop), and skips rather than fails on a machine without one.
 
+#### 🔧 Fixed
+
+- **👤 User-facing**
+  - **Ctrl+Z answers right after a command from the locations map's right-click menu again.** Picking Auto Arrange — or any other command — from the menu left the map deaf to the keyboard until you clicked it once more, so the arrangement you had just asked for couldn't be taken straight back. The menu now counts as working on the map, the way it did before it was rebuilt.
+
 ---
 
 <details>
