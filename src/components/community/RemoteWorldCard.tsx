@@ -1,4 +1,4 @@
-import { EyeOff, Download, MessageSquare, Trash2, ShieldAlert, ShieldCheck, Trophy } from "lucide-react";
+import { EyeOff, Download, MessageSquare, Trash2, ShieldAlert, ShieldCheck, TicketX, Trophy } from "lucide-react";
 import { ActionIcon } from "@/lib/actionIcons";
 import { Progress } from "@/components/ui/progress";
 import IndeterminateProgress from "@/components/ui/indeterminate-progress";
@@ -39,6 +39,8 @@ interface RemoteWorldCardProps {
   onRelease?: (world: WorldRecord) => void;
   /** The contest this listing won, if it won one — the trophy travels with the world, not with the tab. */
   wonContest?: string | null;
+  /** Take this listing out of the contest it was entered in. Offered on the contest tab, to its author. */
+  onWithdraw?: (world: WorldRecord) => void;
   /** The like tutorial, when this is the card chosen to anchor it. */
   likeTutorial?: TutorialEntry | null;
   likeTutorialNav?: TutorialNav;
@@ -49,7 +51,7 @@ interface RemoteWorldCardProps {
 export function RemoteWorldCard({
   world, downloadState: dlState, downloadProgress, isAuthenticated, currentUser,
   onView, onHideWorld, onHideAuthor, onHideTag, onContextualDownload, onDelete, onLike, onQuarantine, onRelease,
-  wonContest, likeTutorial, likeTutorialNav,
+  wonContest, onWithdraw, likeTutorial, likeTutorialNav,
 }: RemoteWorldCardProps) {
   // Get the world ID (server uses _id)
   const worldId = world._id || world.id;
@@ -217,6 +219,18 @@ export function RemoteWorldCard({
 
       {(isOwnedByUser || mayModerate) && (
         <div className="mt-auto pt-1 flex justify-end gap-1">
+          {/* Leaving a contest is not deleting anything, so it reads as the trophy coming off rather than
+              as a destructive control — and it is only ever on the author's own entry. */}
+          {isOwnedByUser && onWithdraw && (
+            <button
+              className="p-1 text-muted-foreground hover:text-foreground"
+              onClick={(e) => { e.stopPropagation(); onWithdraw(world); }}
+              aria-label={`Withdraw ${world.name || noun} from the contest`}
+              title="Take it out of the contest — the listing stays published"
+            >
+              <TicketX className="h-5 w-5" />
+            </button>
+          )}
           {/* Quarantine is the gentler half of the same job as Delete, so it sits beside it. */}
           {mayModerate && !quarantined && onQuarantine && (
             <button

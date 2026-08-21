@@ -71,8 +71,11 @@ class EventService {
   /**
    * Rewrite an event. Nothing is re-announced: the notices already sent are ordinary broadcasts, edited
    * under Broadcasts. A started event's start cannot move, and a type never changes.
+   *
+   * @param draft - The fields to change; a key left out is a field left alone, which is how an edit
+   *                to a started event avoids naming the start it may no longer move
    */
-  async update(id: string, draft: ServerEventDraft): Promise<ServerEvent> {
+  async update(id: string, draft: Partial<ServerEventDraft>): Promise<ServerEvent> {
     const response = await fetch(`${this.apiUrl}/events/${id}`, {
       method: 'PUT',
       headers: this.writeHeaders(),

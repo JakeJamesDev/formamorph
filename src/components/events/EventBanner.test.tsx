@@ -3,29 +3,7 @@ import { renderToString } from 'react-dom/server';
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { EventBanner } from './EventBanner';
 import { isEventBannerDismissed, markEventBannerDismissed } from '@/lib/eventSeenStore';
-import type { ServerEvent } from '@/types';
-
-const day = 86_400_000;
-const at = (offsetDays: number) => new Date(Date.now() + offsetDays * day).toISOString();
-
-const event = (over: Partial<ServerEvent> = {}): ServerEvent => ({
-  id: 'e1',
-  type: 'contest',
-  title: 'Winter World-Building Contest',
-  bannerText: 'Build a world around a single season.',
-  body: 'The long version.',
-  rulesText: 'One entry per creator.',
-  startsAt: at(-4),
-  endsAt: at(12),
-  cancelledAt: null,
-  startMessageId: 'm-start',
-  endMessageId: null,
-  winnerMessageId: null,
-  winnerWorldId: null,
-  winnerName: null,
-  winnerAuthorName: null,
-  ...over,
-});
+import { serverEvent as event } from '@/test/serverEvents';
 
 beforeEach(() => localStorage.clear());
 
@@ -113,6 +91,36 @@ describe('EventBanner', () => {
     expect(screen.queryByRole('button', { name: 'View Entries' })).not.toBeInTheDocument();
   });
 
+  it('opens the contest from the card body, so the whole card is the target', () => {
+    const onOpenEvent = vi.fn();
+    render(<EventBanner events={[event()]} onOpenEvent={onOpenEvent} />);
+
+    fireEvent.click(screen.getByRole('button', { name: /Winter World-Building Contest/ }));
+
+    expect(onOpenEvent).toHaveBeenCalledWith(expect.objectContaining({ id: 'e1' }));
+  });
+
+  it('leaves Dismiss to dismiss — the card body must not swallow the button that refuses it', () => {
+    const onOpenEvent = vi.fn();
+    render(<EventBanner events={[event()]} onOpenEvent={onOpenEvent} />);
+
+    fireEvent.click(screen.getByRole('button', { name: 'Dismiss' }));
+
+    expect(onOpenEvent).not.toHaveBeenCalled();
+    expect(isEventBannerDismissed('e1', 'start')).toBe(true);
+  });
+
+  it('re-opens an announcement from its own card body', () => {
+    const onOpenEvent = vi.fn();
+    render(<EventBanner events={[event({ type: 'announcement' })]} onOpenEvent={onOpenEvent} />);
+
+    fireEvent.click(screen.getByRole('button', { name: /Winter World-Building Contest/ }));
+
+    // Nowhere to be sent, so the click is inert rather than a navigation to nothing.
+    expect(onOpenEvent).not.toHaveBeenCalled();
+    expect(screen.getByRole('button', { name: 'Dismiss' })).toBeInTheDocument();
+  });
+
   it('re-opens an announcement from its chip, which has nowhere else to go', () => {
     const onOpenEvent = vi.fn();
     render(<EventBanner events={[event({ type: 'announcement' })]} onOpenEvent={onOpenEvent} />);
@@ -122,5 +130,39 @@ describe('EventBanner', () => {
 
     expect(onOpenEvent).not.toHaveBeenCalled();
     expect(screen.getByRole('button', { name: 'Dismiss' })).toBeInTheDocument();
+  });
+});
+
+describe('when several events run at once', () => {
+  const notice = event({ id: 'e2', type: 'announcement', title: 'Server Maintenance' });
+
+  it('announces every one of them rather than hiding all but the first', () => {
+    render(<EventBanner events={[notice, event()]} onOpenEvent={vi.fn()} />);
+
+    expect(screen.getByText('Winter World-Building Contest')).toBeInTheDocument();
+    expect(screen.getByText('Server Maintenance')).toBeInTheDocument();
+    expect(screen.getAllByRole('button', { name: 'Dismiss' })).toHaveLength(2);
+  });
+
+  it('leads with the contest, whichever order the server listed them in', () => {
+    render(<EventBanner events={[notice, event()]} onOpenEvent={vi.fn()} />);
+
+    const order = [...document.querySelectorAll('*')];
+    const at = (label: string) => order.indexOf(screen.getByText(label));
+    expect(at('Winter World-Building Contest')).toBeLessThan(at('Server Maintenance'));
+  });
+
+  it('collapses each to its own chip, leaving the other standing', () => {
+    render(<EventBanner events={[event(), notice]} onOpenEvent={vi.fn()} />);
+
+    // The contest leads, so its Dismiss is the first of the two.
+    fireEvent.click(screen.getAllByRole('button', { name: 'Dismiss' })[0]);
+
+    expect(isEventBannerDismissed('e1', 'start')).toBe(true);
+    expect(isEventBannerDismissed('e2', 'start')).toBe(false);
+    // One card left, and one chip beside it.
+    expect(screen.getAllByRole('button', { name: 'Dismiss' })).toHaveLength(1);
+    expect(screen.getByText('Server Maintenance')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /Winter World-Building Contest/ })).toHaveTextContent('12d');
   });
 });

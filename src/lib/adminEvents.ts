@@ -8,7 +8,7 @@
  * moment a window closed between two reads.
  */
 import { parseServerDate } from './serverDate';
-import { isContestEvent } from './serverEvents';
+import { hasWinner, isContestEvent } from './serverEvents';
 import type { ServerEvent } from '@/types';
 
 /**
@@ -17,7 +17,7 @@ import type { ServerEvent } from '@/types';
  * `judging` is a contest whose window has closed with no winner yet — the one state that asks something
  * of whoever is looking, which is why it is told apart from `ended` rather than folded into it.
  */
-export type AdminEventState = 'active' | 'judging' | 'scheduled' | 'ended' | 'cancelled';
+export type AdminEventState = 'active' | 'judging' | 'scheduled' | 'ended' | 'canceled';
 
 /** How each state reads on its badge. */
 export const ADMIN_EVENT_STATE_LABELS: Record<AdminEventState, string> = {
@@ -25,7 +25,7 @@ export const ADMIN_EVENT_STATE_LABELS: Record<AdminEventState, string> = {
   judging: 'Judging',
   scheduled: 'Scheduled',
   ended: 'Ended',
-  cancelled: 'Cancelled',
+  canceled: 'Canceled',
 };
 
 /** The tint each state badge carries, so the five read apart at a glance. */
@@ -34,7 +34,7 @@ export const ADMIN_EVENT_STATE_STYLES: Record<AdminEventState, string> = {
   judging: 'bg-warning/10 text-warning',
   scheduled: 'bg-info/10 text-info',
   ended: 'bg-muted text-muted-foreground',
-  cancelled: 'bg-destructive/10 text-destructive',
+  canceled: 'bg-destructive/10 text-destructive',
 };
 
 /**
@@ -43,7 +43,7 @@ export const ADMIN_EVENT_STATE_STYLES: Record<AdminEventState, string> = {
  * @param now - The instant to judge against; defaults to the current time
  */
 export function adminEventState(event: ServerEvent, now: Date = new Date()): AdminEventState {
-  if (event.cancelledAt) return 'cancelled';
+  if (event.cancelledAt) return 'canceled';
 
   const starts = parseServerDate(event.startsAt);
   const ends = parseServerDate(event.endsAt);
@@ -55,8 +55,7 @@ export function adminEventState(event: ServerEvent, now: Date = new Date()): Adm
   if (now.getTime() < starts.getTime()) return 'scheduled';
   if (now.getTime() < ends.getTime()) return 'active';
 
-  const undecided = isContestEvent(event) && !event.winnerWorldId && !event.winnerName;
-  return undecided ? 'judging' : 'ended';
+  return isContestEvent(event) && !hasWinner(event) ? 'judging' : 'ended';
 }
 
 /** The three groups the Events tab lists, in the order it lists them. */
@@ -70,7 +69,7 @@ export interface AdminEventGroups {
 /**
  * Split events into the tab's three groups, newest window first within each.
  *
- * Cancelled events are an administrator's business: a called-off event is a decision to explain, and a
+ * Canceled events are an administrator's business: a called-off event is a decision to explain, and a
  * moderator's read of the calendar is about what is happening rather than what was withdrawn.
  *
  * @param viewerIsAdmin - Whether the viewer may create and withdraw events
@@ -85,7 +84,7 @@ export function groupAdminEvents(
 
   for (const event of events) {
     const state = adminEventState(event, now);
-    if (state === 'cancelled' && !viewerIsAdmin) continue;
+    if (state === 'canceled' && !viewerIsAdmin) continue;
 
     if (state === 'active' || state === 'judging') groups.happeningNow.push(event);
     else if (state === 'scheduled') groups.scheduled.push(event);
@@ -155,7 +154,7 @@ export function adminEventActions(
 export function adminEventSummary(event: ServerEvent, now: Date = new Date()): string {
   const state = adminEventState(event, now);
 
-  if (state === 'cancelled') return 'Cancelled — entries released and notices recalled';
+  if (state === 'canceled') return 'Canceled — entries released and notices recalled';
   if (state === 'scheduled') return 'Not started — staff only until it opens';
   if (state === 'judging') return 'Closed for entries — waiting on a winner';
   if (state === 'active') return isContestEvent(event) ? 'Open for entries' : 'Banner live';

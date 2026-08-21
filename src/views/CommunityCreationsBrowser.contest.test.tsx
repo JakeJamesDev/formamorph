@@ -3,6 +3,9 @@ import { render, screen, cleanup, waitFor, within } from '@testing-library/react
 import userEvent from '@testing-library/user-event';
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import CommunityCreationsBrowser from './CommunityCreationsBrowser';
+import WorldStorageService from '@/services/WorldStorageService';
+import { toast } from 'react-toastify';
+import { daysFrom, serverEvent, stubMatchMedia } from '@/test/serverEvents';
 import type { WorldRecord } from '@/components/WorldDetails';
 import type { ServerEvent } from '@/types';
 
@@ -13,8 +16,13 @@ vi.mock('@/services/AuthService', () => ({
 }));
 
 vi.mock('@/services/WorldStorageService', () => ({
-  default: { API_URL: 'https://example.test/api' },
+  default: { API_URL: 'https://example.test/api', withdrawFromContest: vi.fn(async () => {}) },
+  CONTEST_WINNER: 'CONTEST_WINNER',
 }));
+
+// The catalog's IndexedDB store. What a withdrawal corrects in it is not what this file is about; that
+// the entry leaves the grid is.
+vi.mock('@/lib/worldCatalog', () => ({ replaceCatalog: vi.fn(async () => {}) }));
 
 const server = vi.hoisted(() => ({ events: [] as unknown[] }));
 
@@ -44,27 +52,9 @@ vi.mock('@/components/community/RemoteWorldDetailsModal', () => ({ RemoteWorldDe
 
 const reader = { id: 'u1', username: 'reader', accountType: 'normal' } as unknown as WorldRecord;
 
-const day = 86_400_000;
-const at = (offsetDays: number) => new Date(Date.now() + offsetDays * day).toISOString();
+const at = (offsetDays: number) => daysFrom(offsetDays);
 
-const contest = (over: Partial<ServerEvent> = {}): ServerEvent => ({
-  id: 'e1',
-  type: 'contest',
-  title: 'Winter World-Building Contest',
-  bannerText: 'Build a world around a single season.',
-  body: 'The long version.',
-  rulesText: 'One entry per creator.',
-  startsAt: at(-4),
-  endsAt: at(12),
-  cancelledAt: null,
-  startMessageId: 'm-start',
-  endMessageId: null,
-  winnerMessageId: null,
-  winnerWorldId: null,
-  winnerName: null,
-  winnerAuthorName: null,
-  ...over,
-});
+const contest = (over: Partial<ServerEvent> = {}): ServerEvent => serverEvent(over);
 
 const listing = (name: string, over: Record<string, unknown> = {}) => ({
   _id: name, id: name, name, kind: 'world', description: `${name} description`,
@@ -105,11 +95,7 @@ const gridNames = () => screen.getAllByRole('heading', { level: 3 }).map((h) => 
 
 beforeEach(() => {
   localStorage.clear();
-  window.matchMedia = ((query: string) => ({
-    matches: false, media: query, onchange: null,
-    addEventListener: () => {}, removeEventListener: () => {},
-    addListener: () => {}, removeListener: () => {}, dispatchEvent: () => false,
-  })) as unknown as typeof window.matchMedia;
+  stubMatchMedia();
 
   catalog.items = [];
   server.events = [];
@@ -371,5 +357,97 @@ describe('the kind labels the browser reaches for', () => {
     // The lookups the browser makes on the tab value — the search placeholder, the empty-state copy, the
     // delete dialog's title — used to index the server's kinds, which a contest tab is none of.
     expect(await screen.findByPlaceholderText(/Search entries…/)).toBeInTheDocument();
+  });
+});
+
+describe('withdrawing an entry from the contest tab', () => {
+  /** An entry the signed-in reader published, so the card is one they own. */
+  const mine = (name: string, over: Record<string, unknown> = {}) =>
+    listing(name, { contest_event_id: 'e1', author: { id: 'u1', username: 'reader' }, ...over });
+
+  const openWithdraw = async (name: string) => {
+    await userEvent.click(await screen.findByRole('button', { name: `Withdraw ${name} from the contest` }));
+  };
+
+  it('offers the control on your own entry and on nobody else’s', async () => {
+    server.events = [contest()];
+    catalog.items = [mine('Saltmarsh'), listing('Thawline', { contest_event_id: 'e1' })];
+    renderBrowser();
+    await openContestTab();
+
+    await waitFor(() => expect(gridNames().sort()).toEqual(['Saltmarsh', 'Thawline']));
+    expect(screen.getByRole('button', { name: 'Withdraw Saltmarsh from the contest' })).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Withdraw Thawline from the contest' })).toBeNull();
+  });
+
+  it('is not offered to a moderator on somebody else’s entry, whose contest this is not', async () => {
+    // A moderator's own row is already there — Delete and Quarantine — so this is the one place the
+    // ownership check has to hold on its own rather than being carried by the row not rendering.
+    const moderator = { id: 'u9', username: 'a-mod', accountType: 'mod' } as unknown as WorldRecord;
+    server.events = [contest()];
+    catalog.items = [listing('Thawline', { contest_event_id: 'e1' })];
+    renderBrowser({ currentUser: moderator });
+    await openContestTab();
+
+    await waitFor(() => expect(gridNames()).toEqual(['Thawline']));
+    expect(screen.getByRole('button', { name: 'Delete world' })).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /Withdraw Thawline/ })).toBeNull();
+  });
+
+  it('is not offered on the catalog tab, where the listing is not an entry being browsed', async () => {
+    server.events = [contest()];
+    catalog.items = [mine('Saltmarsh')];
+    renderBrowser();
+
+    await waitFor(() => expect(gridNames()).toEqual(['Saltmarsh']));
+    expect(screen.queryByRole('button', { name: /Withdraw Saltmarsh/ })).toBeNull();
+  });
+
+  it('is not offered once the contest has been decided — the server refuses to release a winner', async () => {
+    server.events = [contest({
+      startsAt: at(-20), endsAt: at(-2), winnerWorldId: 'Saltmarsh', winnerName: 'Saltmarsh',
+    })];
+    catalog.items = [mine('Saltmarsh')];
+    renderBrowser();
+    await openContestTab();
+
+    await waitFor(() => expect(gridNames()).toEqual(['Saltmarsh']));
+    expect(screen.queryByRole('button', { name: /Withdraw Saltmarsh/ })).toBeNull();
+  });
+
+  it('confirms first, then drops the entry out of the grid', async () => {
+    server.events = [contest()];
+    catalog.items = [mine('Saltmarsh'), listing('Thawline', { contest_event_id: 'e1' })];
+    renderBrowser();
+    await openContestTab();
+    await waitFor(() => expect(gridNames().sort()).toEqual(['Saltmarsh', 'Thawline']));
+
+    await openWithdraw('Saltmarsh');
+    expect(await screen.findByText(/It stays published with its likes and comments/)).toBeInTheDocument();
+    expect(WorldStorageService.withdrawFromContest).not.toHaveBeenCalled();
+
+    await userEvent.click(screen.getByRole('button', { name: 'Withdraw It' }));
+
+    await waitFor(() => expect(WorldStorageService.withdrawFromContest).toHaveBeenCalledWith('Saltmarsh'));
+    await waitFor(() => expect(gridNames()).toEqual(['Thawline']));
+  });
+
+  it('leaves the entry where it is when the server refuses', async () => {
+    vi.mocked(WorldStorageService.withdrawFromContest).mockRejectedValueOnce(
+      Object.assign(new Error('A contest winner cannot be withdrawn.'), { code: 'CONTEST_WINNER' }),
+    );
+    server.events = [contest()];
+    catalog.items = [mine('Saltmarsh')];
+    renderBrowser();
+    await openContestTab();
+    await waitFor(() => expect(gridNames()).toEqual(['Saltmarsh']));
+
+    await openWithdraw('Saltmarsh');
+    await userEvent.click(screen.getByRole('button', { name: 'Withdraw It' }));
+
+    await waitFor(() => expect(toast.error).toHaveBeenCalledWith(
+      'A contest winner cannot be withdrawn. Delete the listing if you want it gone.',
+    ));
+    expect(gridNames()).toEqual(['Saltmarsh']);
   });
 });

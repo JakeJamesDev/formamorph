@@ -110,6 +110,8 @@ import MessageService from "@/services/MessageService";
 import { useActiveEvents } from "@/lib/useActiveEvents";
 import { asBrowseTab, type BrowseTab } from "@/lib/browseTabs";
 import { isContestEvent } from "@/lib/serverEvents";
+import { judgingContestsOf } from "@/lib/contests";
+import { useContests } from "@/lib/useContests";
 import { EventBanner } from "@/components/events/EventBanner";
 import { EventAckModal } from "@/components/events/EventAckModal";
 import FeedbackService from "@/services/FeedbackService";
@@ -1257,6 +1259,18 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
   // Running community events, polled. The poll nudges the badge along with itself: the server pushes
   // nothing, so this is the only thing that notices a broadcast sent mid-session.
   const activeEvents = useActiveEvents({ onPoll: refreshUnreadCount });
+
+  // The contests feed, read once at launch. The events poll carries only what is running, so a contest
+  // that closed while nobody was looking is invisible to it — and the poster saying judging has begun
+  // would only ever reach whoever happened to be online at the deadline.
+  const { contests } = useContests(COMMUNITY_ENABLED);
+
+  // What the acknowledge poster may show: what is running, plus contests waiting on a winner. A pick or
+  // a cancellation drops one out of the second list, so no stale "judging has begun" survives the news.
+  const announceable = useMemo(
+    () => [...activeEvents, ...judgingContestsOf(contests)],
+    [activeEvents, contests],
+  );
 
   // Which Community Creations tab to open on. Set when an event banner sends the player to its content;
   // cleared as the browser closes, so the next plain visit lands on the catalog again.
@@ -2487,7 +2501,7 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
           />
 
           {/* One-time acknowledge poster for an event that has just started or just ended. */}
-          <EventAckModal events={activeEvents} isAuthenticated={isAuthenticated} onOpenEvent={openEvent} />
+          <EventAckModal events={announceable} isAuthenticated={isAuthenticated} onOpenEvent={openEvent} />
 
           {/* Community Creations browser — see CommunityCreationsBrowser.tsx */}
           <CommunityCreationsBrowser

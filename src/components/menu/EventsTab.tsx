@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { toast } from "react-toastify";
 import { Ban, Calendar, CheckCircle2, Clock, Loader2, Megaphone, Pencil, Plus, Trophy, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -26,6 +26,7 @@ import {
 import { isContestEvent } from "@/lib/serverEvents";
 import { formatServerDate } from "@/lib/serverDate";
 import { isAdmin } from "@/lib/roles";
+import { useDevEventSample } from "@/lib/useDevEventSample";
 import { useDevRoute } from "@/lib/devRouter";
 import AuthService from "@/services/AuthService";
 import EventService from "@/services/EventService";
@@ -83,7 +84,7 @@ export function EventsTab({ active }: EventsTabProps) {
   const [composing, setComposing] = useState(false);
   const [editing, setEditing] = useState<ServerEvent | null>(null);
   const [picking, setPicking] = useState<ServerEvent | null>(null);
-  const [cancelling, setCancelling] = useState<ServerEvent | null>(null);
+  const [canceling, setCanceling] = useState<ServerEvent | null>(null);
   const [removing, setRemoving] = useState<ServerEvent | null>(null);
   const [busy, setBusy] = useState(false);
 
@@ -114,24 +115,21 @@ export function EventsTab({ active }: EventsTabProps) {
 
   // DEV: `#dev?modal=adminPanel&tab=events` serves a canned calendar — one of each state — so the tab,
   // its three groups and both role views are checkable without a live server.
-  useEffect(() => {
-    if (!active || !devFixture) return;
-    void import('@/lib/devEventSample').then(({ devAdminEventSamples }) => {
-      setEvents(devAdminEventSamples());
-      setLoading(false);
-    });
-  }, [active, devFixture]);
+  const samples = useDevEventSample(devFixture && active);
+  const devEvents = useMemo(() => (samples ? samples.devAdminEventSamples() : []), [samples]);
 
-  const groups = groupAdminEvents(events, viewerIsAdmin);
-  const nothing = !loading && events.length === 0;
+  const shown = devFixture ? devEvents : events;
+  const stillLoading = devFixture ? samples === null : loading;
+  const groups = groupAdminEvents(shown, viewerIsAdmin);
+  const nothing = !stillLoading && shown.length === 0;
 
   const handleCancel = async () => {
-    if (!cancelling) return;
+    if (!canceling) return;
     setBusy(true);
     try {
-      await EventService.cancel(cancelling.id);
-      toast.success('Event cancelled');
-      setCancelling(null);
+      await EventService.cancel(canceling.id);
+      toast.success('Event canceled');
+      setCanceling(null);
       refresh();
     } catch (error) {
       toast.error((error as Error).message || 'Failed to cancel the event');
@@ -171,7 +169,7 @@ export function EventsTab({ active }: EventsTabProps) {
           </Button>
         )}
         {allowed.cancel && (
-          <Button size="sm" variant="destructive" onClick={() => setCancelling(event)}>
+          <Button size="sm" variant="destructive" onClick={() => setCanceling(event)}>
             <Ban className="mr-1.5 h-3.5 w-3.5" aria-hidden /> Cancel
           </Button>
         )}
@@ -193,7 +191,7 @@ export function EventsTab({ active }: EventsTabProps) {
       key={event.id}
       className={cn(
         'flex flex-wrap items-center gap-x-3 gap-y-2 border-b py-2.5',
-        adminEventState(event) === 'cancelled' && 'opacity-60',
+        adminEventState(event) === 'canceled' && 'opacity-60',
       )}
     >
       <div className="flex-1 min-w-[12rem]">
@@ -243,7 +241,7 @@ export function EventsTab({ active }: EventsTabProps) {
         )}
       </div>
 
-      {loading && (
+      {stillLoading && (
         <div className="flex items-center justify-center gap-2 py-12 text-label text-muted-foreground">
           <Loader2 className="h-4 w-4 animate-spin" aria-hidden /> Loading events…
         </div>
@@ -257,7 +255,7 @@ export function EventsTab({ active }: EventsTabProps) {
         </p>
       )}
 
-      {!loading && events.length > 0 && (
+      {!stillLoading && shown.length > 0 && (
         <>
           <GroupHeading icon={Clock}>Happening Now</GroupHeading>
           {groups.happeningNow.length > 0
@@ -302,13 +300,13 @@ export function EventsTab({ active }: EventsTabProps) {
         />
       )}
 
-      <AlertDialog open={Boolean(cancelling)} onOpenChange={(isOpen) => { if (!isOpen) setCancelling(null); }}>
+      <AlertDialog open={Boolean(canceling)} onOpenChange={(isOpen) => { if (!isOpen) setCanceling(null); }}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Cancel “{cancelling?.title}”?</AlertDialogTitle>
+            <AlertDialogTitle>Cancel “{canceling?.title}”?</AlertDialogTitle>
             <AlertDialogDescription>
               The banner comes down, its announcement is recalled, and everyone is told it was called off.
-              {cancelling && isContestEvent(cancelling) && ' Entries go back to being ordinary listings.'}
+              {canceling && isContestEvent(canceling) && ' Entries go back to being ordinary listings.'}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

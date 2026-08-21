@@ -3,6 +3,7 @@ import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { toast } from 'react-toastify';
 import { EventFormDialog } from './EventFormDialog';
 import EventService from '@/services/EventService';
+import { daysFrom, serverEvent } from '@/test/serverEvents';
 import type { ServerEvent } from '@/types';
 
 vi.mock('react-toastify', () => ({ toast: { error: vi.fn(), success: vi.fn(), info: vi.fn() } }));
@@ -11,27 +12,10 @@ vi.mock('@/services/AuthService', () => ({
   default: { token: 't', getCurrentUser: () => ({ id: 'a1', username: 'root-admin', accountType: 'admin' }) },
 }));
 
-const day = 86_400_000;
-const at = (offsetDays: number) => new Date(Date.now() + offsetDays * day).toISOString();
+const at = (offsetDays: number) => daysFrom(offsetDays);
 
-const event = (over: Partial<ServerEvent> = {}): ServerEvent => ({
-  id: 'e1',
-  type: 'contest',
-  title: 'Summer Isles Contest',
-  bannerText: 'Enter by September.',
-  body: 'Build a world among the Summer Isles.',
-  rulesText: 'One entry per creator.',
-  startsAt: at(-4),
-  endsAt: at(8),
-  cancelledAt: null,
-  startMessageId: 'm1',
-  endMessageId: null,
-  winnerMessageId: null,
-  winnerWorldId: null,
-  winnerName: null,
-  winnerAuthorName: null,
-  ...over,
-});
+const event = (over: Partial<ServerEvent> = {}): ServerEvent =>
+  serverEvent({ title: 'Summer Isles Contest', startsAt: at(-4), endsAt: at(8), ...over });
 
 const field = (label: string) => screen.getByLabelText(label) as HTMLInputElement;
 const type = (label: string, value: string) => fireEvent.change(field(label), { target: { value } });

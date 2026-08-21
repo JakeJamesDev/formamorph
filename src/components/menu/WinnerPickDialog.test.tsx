@@ -4,6 +4,7 @@ import { toast } from 'react-toastify';
 import { WinnerPickDialog } from './WinnerPickDialog';
 import EventService from '@/services/EventService';
 import WorldStorageService from '@/services/WorldStorageService';
+import { serverEvent } from '@/test/serverEvents';
 import type { ServerEvent } from '@/types';
 
 vi.mock('react-toastify', () => ({ toast: { error: vi.fn(), success: vi.fn(), info: vi.fn() } }));
@@ -22,23 +23,13 @@ vi.mock('@/lib/useCachedThumbnail', () => ({
   CachedThumbnail: () => <img alt="" />,
 }));
 
-const contest: ServerEvent = {
+const contest: ServerEvent = serverEvent({
   id: 'c1',
-  type: 'contest',
   title: 'Summer Isles Contest',
-  bannerText: 'Enter by September.',
-  body: 'Build a world among the Summer Isles.',
-  rulesText: 'One entry per creator.',
   startsAt: '2026-07-01T12:00:00.000Z',
   endsAt: '2026-08-01T12:00:00.000Z',
-  cancelledAt: null,
-  startMessageId: 'm1',
   endMessageId: 'm2',
-  winnerMessageId: null,
-  winnerWorldId: null,
-  winnerName: null,
-  winnerAuthorName: null,
-};
+});
 
 const listing = (over: Record<string, unknown> = {}) => ({
   _id: 'w1',
