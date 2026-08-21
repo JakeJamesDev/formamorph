@@ -77,6 +77,40 @@ Two caveats worth knowing:
   `mouse.wheel` reproduces the reflow (the list jumped 334 → 358px before the fix). Any future scroll
   spec has to use real input.
 
+## The contest flow needs a server
+
+[contest-entry.spec.ts](e2e/contest-entry.spec.ts) publishes a world into a running contest and finds it
+again in the Contest tab. It is the one spec that talks to a real
+[FormamorphServer](https://github.com/JakeJamesDev/FormamorphServer), so it **skips unless you point it at
+one** — `npm run test:e2e` on a machine without one reports it as a skip, never a failure.
+
+```bash
+E2E_API_URL=http://localhost:8797/api npm run test:e2e -- --project=desktop
+```
+
+Setting `E2E_API_URL` hands that base to the dev server as `VITE_API_URL_DEV` and stops it reusing an
+already-running one — a server started without the override still points at the live workshop, and
+publishing a test world there is not a mistake worth risking. The spec also blocks every off-machine
+request as a second belt.
+
+### Seeding a scratch server
+
+From a FormamorphServer checkout, against throwaway directories so your own local data is untouched
+(the last line runs the server, so give it its own shell):
+
+```bash
+export DATA_DIR=/tmp/e2e/data DB_PATH=/tmp/e2e/data/e2e.db STORAGE_ROOT=/tmp/e2e/storage JWT_SECRET=e2e
+ADMIN_USERNAME=e2eadmin ADMIN_PASSWORD=e2eadminpass node src/utils/initDb.js
+PORT=8797 node src/server.js
+```
+
+Then log in as that admin and `POST /api/events` a contest whose `startsAt` is in the past and `endsAt`
+in the future (`type: "contest"`, plus `title`, `bannerText`, `body`). The spec finds it through
+`GET /api/events/active` and skips with a note if there isn't one.
+
+Each run registers its own account, because a contest takes one entry per creator — so the flow is
+repeatable, but the server's credential limiter (20 per 15 minutes per IP) caps a debugging loop.
+
 ## CI
 
 Not wired into a workflow yet. `npm run test:e2e` is CI-ready (it retries once and reports in

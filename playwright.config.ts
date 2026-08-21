@@ -13,6 +13,13 @@ const PORT = Number(process.env.E2E_PORT ?? 5183);
 // `localhost`, not `127.0.0.1`: Vite binds the hostname, and on Windows the numeric form can miss it.
 const BASE_URL = `http://localhost:${PORT}`;
 
+/**
+ * A local FormamorphServer for the specs that need one (`contest-entry.spec.ts`). Handed to the dev
+ * server as its API base, because the app reads that at start-up and the default in `.env` is the live
+ * workshop — a run without the override would publish to production. Unset, those specs skip.
+ */
+const API_URL = process.env.E2E_API_URL;
+
 export default defineConfig({
   testDir: './e2e',
   // Serial by default: the suite shares one dev server and the specs write localStorage keys the app
@@ -43,7 +50,10 @@ export default defineConfig({
     // Its own port, so a run never fights the dev servers on 5180-5182 (see `.claude/launch.json`).
     command: `npm run dev -- --port ${PORT} --strictPort`,
     url: BASE_URL,
-    reuseExistingServer: !process.env.CI,
+    // Never reuse when an API base is named: an already-running server was started against a different
+    // one, and pointing the app at the wrong API is exactly what must not happen silently.
+    reuseExistingServer: !process.env.CI && !API_URL,
+    env: API_URL ? { ...process.env, VITE_API_URL_DEV: API_URL } as Record<string, string> : undefined,
     timeout: 120_000,
     stdout: 'ignore',
     stderr: 'pipe',
