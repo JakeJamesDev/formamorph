@@ -33,6 +33,7 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
   - **The dev-router opens the publish dialog on a canned world and a canned running contest** — `#dev?view=mainMenu&modal=publish`, so the dialog and the contest opt-in inside it are reachable with nothing published and no event running.
   - **The dev-router opens the admin Events tab on a canned calendar** — `#dev?view=mainMenu&modal=adminPanel&tab=events` serves one event of every state, so all three groups and both role views are reachable without a live server.
   - **The dev-router opens the Contest tab on canned contests** — `#dev?view=mainMenu&modal=community&tab=contest` serves one running contest and two archives, so the tab and its selector are reachable without a live event.
+  - **The browser suite covers the whole contest entry flow against a real server** — sign in, publish a world with the entry switch on, find it in the Contest tab and the catalog. It runs against a local FormamorphServer named by `E2E_API_URL` (which the runner also hands the dev server, so a test publish can never reach the live workshop), and skips rather than fails on a machine without one.
 
 ---
 

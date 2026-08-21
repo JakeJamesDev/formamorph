@@ -110,3 +110,18 @@ export async function openWorldEditor(page: Page): Promise<void> {
   });
   await page.getByRole('checkbox', { name: 'Custom Narration Prompt' }).waitFor();
 }
+
+/**
+ * Sign in through the footer's account button, the way a player does.
+ *
+ * The token could be seeded into `localStorage` instead, but a session made that way never proves the
+ * login round-trip works — and every flow that needs an account needs the server to have answered.
+ */
+export async function signIn(page: Page, username: string, password: string): Promise<void> {
+  await page.getByRole('button', { name: 'Login' }).click();
+  const dialog = page.getByRole('dialog').filter({ has: page.getByText('Enter your credentials') });
+  await dialog.getByLabel('Username').fill(username);
+  await dialog.getByLabel('Password', { exact: true }).fill(password);
+  await dialog.getByRole('button', { name: 'Login', exact: true }).click();
+  await page.getByRole('button', { name: /^User Profile/ }).waitFor();
+}
