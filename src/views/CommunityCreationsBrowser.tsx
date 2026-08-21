@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useEffect } from 'react';
+import React, { useState, useCallback, useEffect, useRef } from 'react';
 import { toast } from 'react-toastify';
 import { Button } from "@/components/ui/button";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
@@ -24,6 +24,8 @@ import { cn } from "@/lib/utils";
 import { usePersistentState, boolCodec } from "@/lib/usePersistentState";
 import { CHIP_BASE } from "@/components/Chip";
 import { useCatalogSync } from "@/lib/useCatalogSync";
+import { replaceCatalog, type CatalogWorld } from "@/lib/worldCatalog";
+import { useContestWithdrawal } from "@/lib/useContestWithdrawal";
 import { useDownloadCoordinator } from "@/lib/useDownloadCoordinator";
 import { useLibraryDownload } from "@/lib/useLibraryDownload";
 import { useDownscalePrompt } from "@/lib/useDownscalePrompt";
@@ -235,6 +237,24 @@ const CommunityCreationsBrowser = ({
     (list: WorldRecord[]) => orderContestEntries(list, shownContest, shuffleSeed),
     [shownContest, shuffleSeed],
   );
+
+  // Withdrawing clears the flag on the server; the catalog in hand and its cache are corrected to match,
+  // so the entry leaves the grid at once and stays gone across a reopen. Re-fetching instead would seed
+  // the grid from the stale cache first, flashing the entry back in before the reply landed.
+  // Read through a ref rather than captured: a like or a download can land while the withdrawal is in
+  // flight, and a snapshot taken when the button was pressed would undo it.
+  const remoteWorldsRef = useRef(remoteWorlds);
+  remoteWorldsRef.current = remoteWorlds;
+
+  const withdrawal = useContestWithdrawal(useCallback((listingId: string) => {
+    const released = remoteWorldsRef.current.map((record) => (
+      String(record._id || record.id) === listingId
+        ? { ...record, contest_event_id: null, contestEventId: null }
+        : record
+    ));
+    setRemoteWorlds(released);
+    void replaceCatalog(released as CatalogWorld[]);
+  }, [setRemoteWorlds]));
 
   const catalogInView = browseTab === 'contest'
     ? entriesOf(remoteWorlds, shownContest?.id)
@@ -792,6 +812,14 @@ const CommunityCreationsBrowser = ({
                       onQuarantine={setQuarantining}
                       onRelease={handleRelease}
                       wonContest={contestWonBy(world, contests)?.title ?? null}
+                      // Only where the entry is the subject, and only while it is still an entry: a
+                      // decided contest keeps its winner, and the server refuses to release one.
+                      onWithdraw={browseTab === 'contest' && shownContest && contestPhase(shownContest) !== 'decided'
+                        ? (entry) => withdrawal.ask({
+                            id: String(entry._id || entry.id),
+                            name: String(entry.name ?? 'That world'),
+                          })
+                        : undefined}
                       likeTutorial={
                         tutorial?.id === 'community-like' && worldId === likeAnchorId ? tutorial : null
                       }
@@ -972,6 +1000,8 @@ const CommunityCreationsBrowser = ({
           initialScope="existing"
         />
       )}
+
+      {withdrawal.dialog}
     </>
   );
 };

@@ -24,6 +24,8 @@ import { isExpiringImageHost } from "@/lib/imageBytes";
 import { ContestEntryCard } from "@/components/menu/ContestEntryCard";
 import { activeContestOf, entriesOf } from "@/lib/contests";
 import { CONTEST_ALREADY_ENTERED, CONTEST_NOT_ACTIVE } from "@/services/WorldStorageService";
+import { useContestWithdrawal } from "@/lib/useContestWithdrawal";
+import { useDevEventSample } from "@/lib/useDevEventSample";
 import { useDevRoute } from "@/lib/devRouter";
 import { AlertTriangle } from "lucide-react";
 import type { ServerEvent } from "@/types";
@@ -70,15 +72,11 @@ export function PublishModal({ open, onOpenChange, isAuthenticated, payload, eve
   const noun = KIND_LABELS[kind].one.toLowerCase();
 
   // DEV: `#dev?view=mainMenu&modal=publish` serves a canned running contest instead of the events poll,
-  // so the opt-in card is checkable without one really running (the ack modal's precedent). The import is
-  // DEV-gated, so the sample never ships.
+  // so the opt-in card is checkable without one really running (the ack modal's precedent).
   const devRoute = useDevRoute();
   const devFixture = import.meta.env.DEV && devRoute?.modal === 'publish';
-  const [devEvents, setDevEvents] = useState<ServerEvent[]>([]);
-  useEffect(() => {
-    if (!devFixture) return;
-    void import('@/lib/devEventSample').then(({ devEventSample }) => setDevEvents([devEventSample()]));
-  }, [devFixture]);
+  const samples = useDevEventSample(devFixture);
+  const devEvents = useMemo(() => (samples ? [samples.devEventSample()] : []), [samples]);
 
   // Entering happens at publish time, so the opt-in belongs to a new listing only: a contest flag on an
   // overwrite would mean moving a listing that already exists into the contest, which nothing supports.
@@ -109,6 +107,10 @@ export function PublishModal({ open, onOpenChange, isAuthenticated, payload, eve
       setPublishError(`Failed to load your published ${KIND_LABELS[kind].many.toLowerCase()}`);
     }
   };
+
+  // Withdrawing re-reads the listings this modal already fetched, which is what the card's preflight is
+  // built from: the switch arms itself again in place, with no reopen and no reload.
+  const withdrawal = useContestWithdrawal(() => { void fetchUserWorlds(); });
 
   /** Publish as a new listing, or replace `targetId` when given one. */
   const publish = async (targetId: string | null) => {
@@ -319,6 +321,10 @@ export function PublishModal({ open, onOpenChange, isAuthenticated, payload, eve
                 checked={enterContest}
                 onCheckedChange={setEnterContest}
                 enteredName={enteredName}
+                onWithdraw={existingEntry
+                  ? () => withdrawal.ask({ id: String(existingEntry._id || existingEntry.id), name: enteredName ?? 'That world' })
+                  : undefined}
+                withdrawing={withdrawal.busy}
                 error={contestError || null}
               />
             )}
@@ -380,6 +386,8 @@ export function PublishModal({ open, onOpenChange, isAuthenticated, payload, eve
           onCancel={() => setTagNoticeOpen(false)}
         />
       )}
+
+      {withdrawal.dialog}
     </>
   );
 }

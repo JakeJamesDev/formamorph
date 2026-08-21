@@ -1,32 +1,12 @@
 import { describe, it, expect } from 'vitest';
 import {
   activeContestOf, contestPhase, contestsOf, contestEntryIdOf, contestWonBy, entriesOf, isContestRunning,
-  isContestWinner, orderContestEntries, shuffleWithSeed,
+  isContestWinner, judgingContestsOf, orderContestEntries, shuffleWithSeed,
 } from './contests';
+import { daysFrom, serverEvent as event } from '@/test/serverEvents';
 import type { WorldRecord } from '@/components/WorldDetails';
-import type { ServerEvent } from '@/types';
 
-const day = 86_400_000;
-const at = (offsetDays: number) => new Date(Date.now() + offsetDays * day).toISOString();
-
-const event = (over: Partial<ServerEvent> = {}): ServerEvent => ({
-  id: 'e1',
-  type: 'contest',
-  title: 'Winter World-Building Contest',
-  bannerText: 'Build a world around a single season.',
-  body: 'The long version.',
-  rulesText: 'One entry per creator.',
-  startsAt: at(-4),
-  endsAt: at(12),
-  cancelledAt: null,
-  startMessageId: 'm-start',
-  endMessageId: null,
-  winnerMessageId: null,
-  winnerWorldId: null,
-  winnerName: null,
-  winnerAuthorName: null,
-  ...over,
-});
+const at = (offsetDays: number) => daysFrom(offsetDays);
 
 const entry = (id: string, likes: number, eventId: string | null = 'e1'): WorldRecord => ({
   _id: id, name: id, likes, contest_event_id: eventId,
@@ -61,11 +41,51 @@ describe('the contests worth showing', () => {
     expect(contestsOf([ended, recent, running]).map((e) => e.id)).toEqual(['now', 'recent', 'old']);
   });
 
-  it('drops announcements and cancelled contests, which no longer happened', () => {
+  it('drops announcements and canceled contests, which no longer happened', () => {
     const announcement = event({ id: 'a1', type: 'announcement' });
     const called_off = event({ id: 'c1', cancelledAt: at(-1) });
 
     expect(contestsOf([announcement, called_off, event()]).map((e) => e.id)).toEqual(['e1']);
+  });
+});
+
+describe('the contests still waiting on a winner', () => {
+  it('is the closed contest with nothing decided — what the end poster is owed for', () => {
+    const closed = event({ id: 'closed', startsAt: at(-20), endsAt: at(-2) });
+
+    expect(judgingContestsOf([closed]).map((e) => e.id)).toEqual(['closed']);
+  });
+
+  it('drops a contest still taking entries, which has not ended to announce', () => {
+    expect(judgingContestsOf([event()])).toEqual([]);
+  });
+
+  it('drops one whose winner has been picked — that news travels by broadcast and badge', () => {
+    const decided = event({ startsAt: at(-20), endsAt: at(-2), winnerWorldId: 'w1', winnerName: 'Lantern Reef' });
+
+    expect(judgingContestsOf([decided])).toEqual([]);
+  });
+
+  it('drops one that was called off, which ended in nothing to judge', () => {
+    const called_off = event({ startsAt: at(-20), endsAt: at(-2), cancelledAt: at(-2) });
+
+    expect(judgingContestsOf([called_off])).toEqual([]);
+  });
+
+  it('drops an announcement, whose ending is nobody to wait for', () => {
+    const notice = event({ type: 'announcement', startsAt: at(-20), endsAt: at(-2) });
+
+    expect(judgingContestsOf([notice])).toEqual([]);
+  });
+
+  it('drops one that has not started, which staff see in this same feed', () => {
+    const scheduled = event({ id: 'soon', startsAt: at(4), endsAt: at(20) });
+
+    expect(judgingContestsOf([scheduled])).toEqual([]);
+  });
+
+  it('drops one whose window cannot be read rather than announcing an undated ending', () => {
+    expect(judgingContestsOf([event({ endsAt: 'not a date' })])).toEqual([]);
   });
 });
 
@@ -150,7 +170,7 @@ describe('the contest taking entries right now', () => {
     expect(activeContestOf([event({ startsAt: at(-20), endsAt: at(-1) })])).toBeNull();
   });
 
-  it('is nothing when the only contest was cancelled', () => {
+  it('is nothing when the only contest was canceled', () => {
     expect(activeContestOf([event({ cancelledAt: at(-1) })])).toBeNull();
   });
 

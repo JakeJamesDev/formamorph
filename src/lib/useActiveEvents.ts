@@ -1,6 +1,7 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import EventService from '@/services/EventService';
 import { COMMUNITY_ENABLED } from '@/lib/featureFlags';
+import { useDevEventSample } from '@/lib/useDevEventSample';
 import { useDevRoute } from '@/lib/devRouter';
 import type { ServerEvent } from '@/types';
 
@@ -74,14 +75,15 @@ export function useActiveEvents({ onPoll }: ActiveEventsOptions = {}): ServerEve
   }, [refresh, devFixture]);
 
   // DEV: `#dev?modal=eventAck` serves a canned event instead of the network, so the banner and the
-  // acknowledge modal are checkable offline and whether or not one is really running. The import is
-  // DEV-gated, so the sample never ships (the changelog sample's precedent).
-  useEffect(() => {
-    if (!devFixture) return;
-    void import('@/lib/devEventSample').then(({ devEventSample }) => {
-      setEvents([devEventSample(devRoute?.tab === 'end' ? 'end' : 'start')]);
-    });
-  }, [devFixture, devRoute?.tab]);
+  // acknowledge modal are checkable offline and whether or not one is really running.
+  const samples = useDevEventSample(devFixture);
+  const phase = devRoute?.tab === 'end' ? 'end' : 'start';
+  // Memoized because the sample's id is fresh per call: built in the render body it would be a new event
+  // every frame, and an acknowledgment keyed by id would never stick.
+  const devEvents = useMemo(
+    () => (samples ? [samples.devEventSample(phase)] : []),
+    [samples, phase],
+  );
 
-  return events;
+  return devFixture ? devEvents : events;
 }

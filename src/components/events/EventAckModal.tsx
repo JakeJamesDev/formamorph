@@ -4,7 +4,7 @@ import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import MessageService from '@/services/MessageService';
 import { formatServerDate } from '@/lib/serverDate';
-import { eventPhase, isContestEvent, phaseMessageId } from '@/lib/serverEvents';
+import { eventPhase, hasWinner, isContestEvent, phaseMessageId } from '@/lib/serverEvents';
 import { isEventAcknowledged, markEventAcknowledged } from '@/lib/eventSeenStore';
 import type { ServerEvent } from '@/types';
 
@@ -44,11 +44,13 @@ export function EventAckModal({ events, isAuthenticated, onOpenEvent }: EventAck
   const contest = isContestEvent(event);
   const Icon = phase === 'end' ? Trophy : Megaphone;
 
+  const decided = hasWinner(event);
+
   const eyebrow = phase === 'end'
-    ? (event.winnerName ? 'Winner Announced' : 'This Event Has Ended')
+    ? (decided ? 'Winner Announced' : 'This Event Has Ended')
     : (contest ? 'A Contest Has Started' : 'An Announcement');
 
-  const title = phase === 'end' && event.winnerName
+  const title = phase === 'end' && decided
     ? `“${event.winnerName}”${event.winnerAuthorName ? ` by ${event.winnerAuthorName}` : ''}`
     : event.title;
 
@@ -92,7 +94,7 @@ export function EventAckModal({ events, isAuthenticated, onOpenEvent }: EventAck
                 variant="outline"
                 onClick={() => { acknowledge(); onOpenEvent(event); }}
               >
-                {phase === 'end' ? 'See The Winner' : 'View Entries'}
+                {decided ? 'See The Winner' : 'View Entries'}
               </Button>
             )}
             <Button onClick={acknowledge}>Got It</Button>

@@ -3,29 +3,11 @@ import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { EventAckModal } from './EventAckModal';
 import MessageService from '@/services/MessageService';
 import { isEventAcknowledged, markEventAcknowledged } from '@/lib/eventSeenStore';
+import { daysFrom, serverEvent } from '@/test/serverEvents';
 import type { ServerEvent } from '@/types';
 
-const day = 86_400_000;
-const at = (offsetDays: number) => new Date(Date.now() + offsetDays * day).toISOString();
-
-const event = (over: Partial<ServerEvent> = {}): ServerEvent => ({
-  id: 'e1',
-  type: 'contest',
-  title: 'Winter World-Building Contest',
-  bannerText: 'Build a world around a single season.',
-  body: 'Enter by publishing a world with the contest switch on.',
-  rulesText: 'One entry per creator.',
-  startsAt: at(-4),
-  endsAt: at(12),
-  cancelledAt: null,
-  startMessageId: 'm-start',
-  endMessageId: null,
-  winnerMessageId: null,
-  winnerWorldId: null,
-  winnerName: null,
-  winnerAuthorName: null,
-  ...over,
-});
+const event = (over: Partial<ServerEvent> = {}): ServerEvent =>
+  serverEvent({ body: 'Enter by publishing a world with the contest switch on.', ...over });
 
 beforeEach(() => {
   localStorage.clear();
@@ -118,6 +100,30 @@ describe('EventAckModal', () => {
 
     fireEvent.click(screen.getByRole('button', { name: 'Got It' }));
     await waitFor(() => expect(markRead).toHaveBeenCalledWith('m-win'));
+  });
+
+  it('posts that judging has begun for a contest closed with no winner yet', async () => {
+    const markRead = vi.spyOn(MessageService, 'markRead').mockResolvedValue();
+    // The one a player who launched the app after the deadline gets: closed, undecided, unacknowledged.
+    const closed = event({ startsAt: daysFrom(-20), endsAt: daysFrom(-1), endMessageId: 'm-end' });
+
+    render(<EventAckModal events={[closed]} isAuthenticated onOpenEvent={vi.fn()} />);
+
+    expect(screen.getByText('This Event Has Ended')).toBeInTheDocument();
+    // Not "See The Winner": there isn't one yet, and the entries are what there is to look at.
+    expect(screen.getByRole('button', { name: 'View Entries' })).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Got It' }));
+    await waitFor(() => expect(markRead).toHaveBeenCalledWith('m-end'));
+  });
+
+  it('stays acknowledged for a judging contest already answered on this device', () => {
+    markEventAcknowledged('e1', 'end');
+    const closed = event({ startsAt: daysFrom(-20), endsAt: daysFrom(-1) });
+
+    render(<EventAckModal events={[closed]} isAuthenticated />);
+
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
   });
 
   it('takes the player to the entries, acknowledging on the way', () => {

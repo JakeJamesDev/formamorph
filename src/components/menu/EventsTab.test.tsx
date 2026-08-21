@@ -2,6 +2,7 @@ import { render, screen, cleanup, fireEvent, waitFor } from '@testing-library/re
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { EventsTab } from './EventsTab';
 import EventService from '@/services/EventService';
+import { daysFrom, serverEvent } from '@/test/serverEvents';
 import type { ServerEvent } from '@/types';
 
 vi.mock('react-toastify', () => ({ toast: { error: vi.fn(), success: vi.fn(), info: vi.fn() } }));
@@ -23,32 +24,15 @@ vi.mock('@/services/AuthService', () => ({
   default: { token: 't', getCurrentUser: () => currentUser },
 }));
 
-const day = 86_400_000;
-const at = (offsetDays: number) => new Date(Date.now() + offsetDays * day).toISOString();
+const at = (offsetDays: number) => daysFrom(offsetDays);
 
-const event = (over: Partial<ServerEvent> = {}): ServerEvent => ({
-  id: 'e1',
-  type: 'contest',
-  title: 'Summer Isles Contest',
-  bannerText: 'Enter by September.',
-  body: 'Build a world among the Summer Isles.',
-  rulesText: 'One entry per creator.',
-  startsAt: at(-4),
-  endsAt: at(8),
-  cancelledAt: null,
-  startMessageId: 'm1',
-  endMessageId: null,
-  winnerMessageId: null,
-  winnerWorldId: null,
-  winnerName: null,
-  winnerAuthorName: null,
-  ...over,
-});
+const event = (over: Partial<ServerEvent> = {}): ServerEvent =>
+  serverEvent({ title: 'Summer Isles Contest', startsAt: at(-4), endsAt: at(8), ...over });
 
 const running = event({ id: 'running', title: 'Running Contest' });
 const judging = event({ id: 'judging', title: 'Judging Contest', startsAt: at(-20), endsAt: at(-2) });
 const scheduled = event({ id: 'scheduled', title: 'Future Contest', startsAt: at(5), endsAt: at(20) });
-const cancelled = event({ id: 'cancelled', title: 'Called Off Contest', cancelledAt: at(-1) });
+const canceled = event({ id: 'canceled', title: 'Called Off Contest', cancelledAt: at(-1) });
 
 const asAdmin = () => { currentUser.accountType = 'admin'; };
 const asMod = () => { currentUser.accountType = 'mod'; };
@@ -135,7 +119,7 @@ describe('what an administrator may do', () => {
   });
 
   it('sees the events that were called off', async () => {
-    await renderTab([running, cancelled]);
+    await renderTab([running, canceled]);
 
     expect(screen.getByText('Called Off Contest')).toBeTruthy();
   });
@@ -210,7 +194,7 @@ describe('what a moderator may do', () => {
 
   it('is not shown the events that were called off', async () => {
     asMod();
-    await renderTab([running, cancelled]);
+    await renderTab([running, canceled]);
 
     expect(screen.queryByText('Called Off Contest')).toBeNull();
   });

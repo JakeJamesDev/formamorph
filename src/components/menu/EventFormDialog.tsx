@@ -11,6 +11,7 @@ import {
 } from "@/components/ui/dialog";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { useResetOnOpen } from "@/lib/useResetOnOpen";
@@ -80,26 +81,25 @@ export function EventFormDialog({ open, onOpenChange, editing = null, onSaved }:
     if (!start || !end) return toast.error('A start and an end are required');
     if (new Date(end) <= new Date(start)) return toast.error('The end has to come after the start');
 
-    const draft: ServerEventDraft = {
+    const authored = {
       type,
       title: title.trim(),
       bannerText: bannerText.trim(),
       body: body.trim(),
       rulesText: isContest ? rulesText.trim() || null : null,
-      startsAt: start,
       endsAt: end,
     };
+    // The start rides along only while it can still move. An edit reads the keys it is given, so
+    // omitting it is how a typo fix in the banner avoids being refused for touching the start.
+    const draft: Partial<ServerEventDraft> = started ? authored : { ...authored, startsAt: start };
 
     setSaving(true);
     try {
       if (editing) {
-        // The start is sent only while it can still move. An edit reads the keys it is given, so
-        // leaving it out is how a typo fix in the banner avoids being refused for touching the start.
-        if (started) delete (draft as Partial<ServerEventDraft>).startsAt;
         await EventService.update(editing.id, draft);
         toast.success('Event saved');
       } else {
-        await EventService.create(draft);
+        await EventService.create({ ...authored, startsAt: start });
         toast.success('Event scheduled');
       }
 
@@ -148,7 +148,7 @@ export function EventFormDialog({ open, onOpenChange, editing = null, onSaved }:
           )}
 
           <div className="space-y-2">
-            <label htmlFor="eventTitle" className="text-label font-medium">Title</label>
+            <Label htmlFor="eventTitle">Title</Label>
             <Input
               id="eventTitle"
               value={title}
@@ -159,7 +159,7 @@ export function EventFormDialog({ open, onOpenChange, editing = null, onSaved }:
           </div>
 
           <div className="space-y-2">
-            <label htmlFor="eventBanner" className="text-label font-medium">Banner Text</label>
+            <Label htmlFor="eventBanner">Banner Text</Label>
             <Input
               id="eventBanner"
               value={bannerText}
@@ -174,7 +174,7 @@ export function EventFormDialog({ open, onOpenChange, editing = null, onSaved }:
 
           <div className="space-y-2">
             <div className="flex items-baseline justify-between">
-              <label htmlFor="eventBody" className="text-label font-medium">Details</label>
+              <Label htmlFor="eventBody">Details</Label>
               <span className="text-meta text-muted-foreground">{body.length} / {BODY_MAX}</span>
             </div>
             <Textarea
@@ -189,7 +189,7 @@ export function EventFormDialog({ open, onOpenChange, editing = null, onSaved }:
 
           {isContest && (
             <div className="space-y-2">
-              <label htmlFor="eventRules" className="text-label font-medium">Rules</label>
+              <Label htmlFor="eventRules">Rules</Label>
               <Textarea
                 id="eventRules"
                 value={rulesText}
@@ -206,7 +206,7 @@ export function EventFormDialog({ open, onOpenChange, editing = null, onSaved }:
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div className="space-y-2">
-              <label htmlFor="eventStarts" className="text-label font-medium">Starts</label>
+              <Label htmlFor="eventStarts">Starts</Label>
               <Input
                 id="eventStarts"
                 type="datetime-local"
@@ -222,7 +222,7 @@ export function EventFormDialog({ open, onOpenChange, editing = null, onSaved }:
             </div>
 
             <div className="space-y-2">
-              <label htmlFor="eventEnds" className="text-label font-medium">Ends</label>
+              <Label htmlFor="eventEnds">Ends</Label>
               <Input
                 id="eventEnds"
                 type="datetime-local"

@@ -14,6 +14,9 @@ export const CONTEST_ALREADY_ENTERED = 'CONTEST_ALREADY_ENTERED';
 /** The publish named a contest that isn't taking entries — the wrong one, or one that has since closed. */
 export const CONTEST_NOT_ACTIVE = 'CONTEST_NOT_ACTIVE';
 
+/** The withdrawal was refused because this entry was picked as the winner. */
+export const CONTEST_WINNER = 'CONTEST_WINNER';
+
 /** A locally-stored world record (metadata + nested world `data`). Inner fields stay loose since
  *  they round-trip through IndexedDB/JSON and aren't read field-by-field here. */
 export interface StoredWorldRecord {
@@ -603,6 +606,35 @@ class WorldStorageService {
     } catch (error) {
       console.error('Error publishing:', error);
       throw error;
+    }
+  }
+
+  /**
+   * Take a listing back out of the contest it was entered in.
+   *
+   * A withdrawal, never a move: the listing itself stays published and keeps its likes, comments and
+   * downloads — only the entry flag goes. The server allows the author or a moderator, audits every one,
+   * and refuses to release a picked winner with a `CONTEST_WINNER` code.
+   *
+   * @param listingId - The published listing's server id
+   */
+  async withdrawFromContest(listingId: string): Promise<void> {
+    if (!AuthService.isAuthenticated()) {
+      throw new Error('You must be logged in to withdraw an entry');
+    }
+
+    const response = await fetch(`${this.API_URL}/worlds/${listingId}/contest`, {
+      method: 'DELETE',
+      headers: { Authorization: `Bearer ${AuthService.token}` },
+    });
+
+    if (!response.ok) {
+      const body = await response.json().catch(() => ({}));
+      const failure = new Error(
+        body.error || body.message || 'Failed to withdraw the entry',
+      ) as Error & { code?: string };
+      if (body.code) failure.code = body.code;
+      throw failure;
     }
   }
 }

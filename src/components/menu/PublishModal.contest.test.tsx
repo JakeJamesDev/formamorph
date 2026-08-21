@@ -3,38 +3,22 @@ import { render, screen, cleanup, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { toast } from 'react-toastify';
 import { PublishModal } from './PublishModal';
-import WorldStorageService, { CONTEST_ALREADY_ENTERED, CONTEST_NOT_ACTIVE } from '@/services/WorldStorageService';
+import WorldStorageService, { CONTEST_ALREADY_ENTERED, CONTEST_NOT_ACTIVE, CONTEST_WINNER } from '@/services/WorldStorageService';
 import PolicyService, { TERMS_REQUIRED } from '@/services/PolicyService';
+import { daysFrom, serverEvent } from '@/test/serverEvents';
 import type { PublishPayload } from '@/lib/publishPayload';
 import type { WorldRecord } from '@/components/WorldDetails';
 import type { PolicyState, ServerEvent } from '@/types';
 
 vi.mock('react-toastify', () => ({ toast: { error: vi.fn(), success: vi.fn(), info: vi.fn() } }));
 
-const day = 86_400_000;
-const at = (offsetDays: number) => new Date(Date.now() + offsetDays * day).toISOString();
+const at = (offsetDays: number) => daysFrom(offsetDays);
 
 const worldPayload: PublishPayload = { kind: 'world', name: 'My World', description: 'd', contentData: {} };
 const dictPayload: PublishPayload = { kind: 'dictionary', name: 'My Book', description: '', contentData: {} };
 
-const contest = (over: Partial<ServerEvent> = {}): ServerEvent => ({
-  id: 'e1',
-  type: 'contest',
-  title: 'Summer Isles Contest',
-  bannerText: 'Build a world among the isles.',
-  body: 'The long version.',
-  rulesText: 'One entry per creator.',
-  startsAt: at(-2),
-  endsAt: at(10),
-  cancelledAt: null,
-  startMessageId: null,
-  endMessageId: null,
-  winnerMessageId: null,
-  winnerWorldId: null,
-  winnerName: null,
-  winnerAuthorName: null,
-  ...over,
-});
+const contest = (over: Partial<ServerEvent> = {}): ServerEvent =>
+  serverEvent({ title: 'Summer Isles Contest', startsAt: at(-2), endsAt: at(10), ...over });
 
 const listing = (id: string, name: string, over: Partial<WorldRecord> = {}): WorldRecord =>
   ({ _id: id, name, downloads: 0, ...over });
@@ -221,6 +205,65 @@ describe('an author who already has an entry', () => {
     expect(await screen.findByRole('switch')).toBeTruthy();
     expect(screen.queryByText(/You already entered/)).toBeNull();
   });
+
+  it('can act on the card own advice — withdraw is offered where "withdraw it first" is said', async () => {
+    vi.mocked(WorldStorageService.getUserWorlds).mockResolvedValue([
+      listing('w1', 'Salt-Bright Reaches', { contest_event_id: 'e1' }),
+    ]);
+    view();
+
+    await screen.findByText(/You already entered Salt-Bright Reaches/);
+    expect(screen.getByRole('button', { name: 'Withdraw Entry' })).toBeTruthy();
+  });
+
+  it('confirms before withdrawing, so a mis-click removes nothing', async () => {
+    const withdraw = vi.spyOn(WorldStorageService, 'withdrawFromContest').mockResolvedValue();
+    vi.mocked(WorldStorageService.getUserWorlds).mockResolvedValue([
+      listing('w1', 'Salt-Bright Reaches', { contest_event_id: 'e1' }),
+    ]);
+    view();
+
+    await userEvent.click(await screen.findByRole('button', { name: 'Withdraw Entry' }));
+
+    expect(await screen.findByText(/It stays published with its likes and comments/)).toBeTruthy();
+    expect(withdraw).not.toHaveBeenCalled();
+  });
+
+  it('arms the switch again once the entry is out, with no reopen', async () => {
+    vi.spyOn(WorldStorageService, 'withdrawFromContest').mockResolvedValue();
+    // The re-read after a successful withdrawal is the server's own answer, no longer holding the flag.
+    vi.mocked(WorldStorageService.getUserWorlds)
+      .mockResolvedValueOnce([listing('w1', 'Salt-Bright Reaches', { contest_event_id: 'e1' })])
+      .mockResolvedValue([listing('w1', 'Salt-Bright Reaches')]);
+    view();
+
+    await userEvent.click(await screen.findByRole('button', { name: 'Withdraw Entry' }));
+    await userEvent.click(await screen.findByRole('button', { name: 'Withdraw It' }));
+
+    expect(await screen.findByRole('switch')).toBeTruthy();
+    expect(screen.queryByText(/You already entered/)).toBeNull();
+  });
+
+  it('explains the refusal when the entry turns out to be the winner', async () => {
+    vi.spyOn(WorldStorageService, 'withdrawFromContest').mockRejectedValue(
+      Object.assign(new Error('A contest winner cannot be withdrawn. Delete the listing if you want it gone.'), {
+        code: CONTEST_WINNER,
+      }),
+    );
+    vi.mocked(WorldStorageService.getUserWorlds).mockResolvedValue([
+      listing('w1', 'Salt-Bright Reaches', { contest_event_id: 'e1' }),
+    ]);
+    view();
+
+    await userEvent.click(await screen.findByRole('button', { name: 'Withdraw Entry' }));
+    await userEvent.click(await screen.findByRole('button', { name: 'Withdraw It' }));
+
+    await waitFor(() => expect(toast.error).toHaveBeenCalledWith(
+      'A contest winner cannot be withdrawn. Delete the listing if you want it gone.',
+    ));
+    // Still theirs, still entered: nothing moved on a refusal.
+    expect(screen.getByText(/You already entered Salt-Bright Reaches/)).toBeTruthy();
+  });
 });
 
 describe('when the server refuses the entry', () => {
@@ -260,7 +303,7 @@ describe('the rules behind the switch', () => {
     // — which is why the policy popups are siblings of it. This one is nested, so it says so out loud.
     view();
 
-    await userEvent.click(await screen.findByRole('button', { name: 'Contest rules' }));
+    await userEvent.click(await screen.findByRole('button', { name: 'Contest Rules' }));
     expect(await screen.findByText('One entry per creator.')).toBeTruthy();
 
     await userEvent.keyboard('{Escape}');

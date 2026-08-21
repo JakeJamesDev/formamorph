@@ -4,6 +4,7 @@
  * server and without an event really running. `tab=start|end` picks which phase is served.
  */
 import { randomUUID } from '@/lib/uuid';
+import { DAY_MS } from '@/lib/serverDate';
 import type { ServerEvent, ServerEventPhase } from '@/types';
 
 /**
@@ -12,7 +13,6 @@ import type { ServerEvent, ServerEventPhase } from '@/types';
  * than staying collapsed from the last look at them.
  */
 export function devEventSample(phase: ServerEventPhase = 'start'): ServerEvent {
-  const day = 86_400_000;
   const now = Date.now();
   const ended = phase === 'end';
 
@@ -24,8 +24,8 @@ export function devEventSample(phase: ServerEventPhase = 'start'): ServerEvent {
     body: 'Build a world around a single season — one place, one mood, one story worth returning to. '
       + 'Enter by publishing a world with the contest switch turned on.',
     rulesText: 'One entry per creator. Entries stay editable until the deadline, then lock for judging.',
-    startsAt: new Date(now - 4 * day).toISOString(),
-    endsAt: new Date(now + (ended ? -1 * day : 12 * day)).toISOString(),
+    startsAt: new Date(now - 4 * DAY_MS).toISOString(),
+    endsAt: new Date(now + (ended ? -1 * DAY_MS : 12 * DAY_MS)).toISOString(),
     cancelledAt: null,
     startMessageId: 'dev-message-start',
     endMessageId: ended ? 'dev-message-end' : null,
@@ -42,7 +42,6 @@ export function devEventSample(phase: ServerEventPhase = 'start'): ServerEvent {
  * from the real catalog, so a dev machine with no contest entries sees the tab's empty state.
  */
 export function devContestSamples(): ServerEvent[] {
-  const day = 86_400_000;
   const now = Date.now();
   const running = devEventSample('start');
 
@@ -52,8 +51,8 @@ export function devContestSamples(): ServerEvent[] {
       ...running,
       id: 'dev-contest-decided',
       title: 'Autumn Ruins Contest',
-      startsAt: new Date(now - 60 * day).toISOString(),
-      endsAt: new Date(now - 30 * day).toISOString(),
+      startsAt: new Date(now - 60 * DAY_MS).toISOString(),
+      endsAt: new Date(now - 30 * DAY_MS).toISOString(),
       winnerMessageId: 'dev-message-winner',
       winnerWorldId: 'dev-world',
       winnerName: 'The Long Thaw',
@@ -63,8 +62,8 @@ export function devContestSamples(): ServerEvent[] {
       ...running,
       id: 'dev-contest-judging',
       title: 'Spring Tides Contest',
-      startsAt: new Date(now - 20 * day).toISOString(),
-      endsAt: new Date(now - 2 * day).toISOString(),
+      startsAt: new Date(now - 20 * DAY_MS).toISOString(),
+      endsAt: new Date(now - 2 * DAY_MS).toISOString(),
     },
   ];
 }
@@ -77,7 +76,6 @@ export function devContestSamples(): ServerEvent[] {
  * a fixture whose state was asserted rather than derived would hide a bug in the derivation.
  */
 export function devAdminEventSamples(): ServerEvent[] {
-  const day = 86_400_000;
   const now = Date.now();
   const base = devEventSample('start');
 
@@ -90,30 +88,30 @@ export function devAdminEventSamples(): ServerEvent[] {
       title: 'Update Preview',
       bannerText: 'The next update lands next week — see what is coming.',
       rulesText: null,
-      startsAt: new Date(now - 2 * day).toISOString(),
-      endsAt: new Date(now + 5 * day).toISOString(),
+      startsAt: new Date(now - 2 * DAY_MS).toISOString(),
+      endsAt: new Date(now + 5 * DAY_MS).toISOString(),
     },
     {
       ...base,
       id: 'dev-event-judging',
       title: 'Spring Tides Contest',
-      startsAt: new Date(now - 20 * day).toISOString(),
-      endsAt: new Date(now - 2 * day).toISOString(),
+      startsAt: new Date(now - 20 * DAY_MS).toISOString(),
+      endsAt: new Date(now - 2 * DAY_MS).toISOString(),
     },
     {
       ...base,
       id: 'dev-event-scheduled',
       title: 'Autumn Hauntings Contest',
-      startsAt: new Date(now + 10 * day).toISOString(),
-      endsAt: new Date(now + 30 * day).toISOString(),
+      startsAt: new Date(now + 10 * DAY_MS).toISOString(),
+      endsAt: new Date(now + 30 * DAY_MS).toISOString(),
       startMessageId: null,
     },
     {
       ...base,
       id: 'dev-event-ended',
       title: 'Autumn Ruins Contest',
-      startsAt: new Date(now - 60 * day).toISOString(),
-      endsAt: new Date(now - 30 * day).toISOString(),
+      startsAt: new Date(now - 60 * DAY_MS).toISOString(),
+      endsAt: new Date(now - 30 * DAY_MS).toISOString(),
       winnerMessageId: 'dev-message-winner',
       winnerWorldId: 'dev-world',
       winnerName: 'The Long Thaw',
@@ -121,13 +119,13 @@ export function devAdminEventSamples(): ServerEvent[] {
     },
     {
       ...base,
-      id: 'dev-event-cancelled',
+      id: 'dev-event-canceled',
       type: 'announcement',
       title: 'Midsummer Screenshot Week',
       rulesText: null,
-      startsAt: new Date(now - 15 * day).toISOString(),
-      endsAt: new Date(now - 8 * day).toISOString(),
-      cancelledAt: new Date(now - 12 * day).toISOString(),
+      startsAt: new Date(now - 15 * DAY_MS).toISOString(),
+      endsAt: new Date(now - 8 * DAY_MS).toISOString(),
+      cancelledAt: new Date(now - 12 * DAY_MS).toISOString(),
     },
   ];
 }

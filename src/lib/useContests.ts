@@ -1,7 +1,8 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import EventService from '@/services/EventService';
 import { COMMUNITY_ENABLED } from '@/lib/featureFlags';
 import { contestsOf } from '@/lib/contests';
+import { useDevEventSample } from '@/lib/useDevEventSample';
 import { useDevRoute } from '@/lib/devRouter';
 import type { ServerEvent } from '@/types';
 
@@ -39,14 +40,11 @@ export function useContests(open: boolean): { contests: ServerEvent[]; loaded: b
   }, [open, devFixture]);
 
   // DEV: `#dev?modal=community&tab=contest` serves canned contests — one running and two archived — so
-  // the tab, its three grid states and its archive selector are checkable without a live event.
-  useEffect(() => {
-    if (!open || !devFixture) return;
-    void import('@/lib/devEventSample').then(({ devContestSamples }) => {
-      setContests(devContestSamples());
-      setLoaded(true);
-    });
-  }, [open, devFixture]);
+  // the tab, its three grid states and its archive selector are checkable without a live event. Memoized
+  // for the same reason the events poll's fixture is: the running sample's id is fresh per call.
+  const samples = useDevEventSample(devFixture && open);
+  const devContests = useMemo(() => (samples ? samples.devContestSamples() : []), [samples]);
 
+  if (devFixture) return { contests: devContests, loaded: samples !== null };
   return { contests, loaded };
 }

@@ -8,30 +8,14 @@ import {
   groupAdminEvents,
   winnerBlockReason,
 } from './adminEvents';
+import { daysFrom, serverEvent } from '@/test/serverEvents';
 import type { ServerEvent } from '@/types';
 
 const NOW = new Date('2026-08-20T12:00:00Z');
-const day = 86_400_000;
-const at = (offsetDays: number) => new Date(NOW.getTime() + offsetDays * day).toISOString();
+const at = (offsetDays: number) => daysFrom(offsetDays, NOW);
 
-const event = (over: Partial<ServerEvent> = {}): ServerEvent => ({
-  id: 'e1',
-  type: 'contest',
-  title: 'Summer Isles Contest',
-  bannerText: 'Enter by September.',
-  body: 'Build a world among the Summer Isles.',
-  rulesText: 'One entry per creator.',
-  startsAt: at(-4),
-  endsAt: at(8),
-  cancelledAt: null,
-  startMessageId: 'm1',
-  endMessageId: null,
-  winnerMessageId: null,
-  winnerWorldId: null,
-  winnerName: null,
-  winnerAuthorName: null,
-  ...over,
-});
+const event = (over: Partial<ServerEvent> = {}): ServerEvent =>
+  serverEvent({ title: 'Summer Isles Contest', startsAt: at(-4), endsAt: at(8), ...over });
 
 describe('which state an event is in', () => {
   it('is active inside its window', () => {
@@ -58,8 +42,8 @@ describe('which state an event is in', () => {
     expect(adminEventState(notice, NOW)).toBe('ended');
   });
 
-  it('is cancelled whatever the clock says', () => {
-    expect(adminEventState(event({ cancelledAt: at(-1) }), NOW)).toBe('cancelled');
+  it('is canceled whatever the clock says', () => {
+    expect(adminEventState(event({ cancelledAt: at(-1) }), NOW)).toBe('canceled');
   });
 
   it('counts the closing instant as closed, not as one more moment of running', () => {

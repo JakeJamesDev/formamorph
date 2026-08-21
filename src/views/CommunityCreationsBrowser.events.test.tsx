@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { render, screen, fireEvent, cleanup, waitFor } from '@testing-library/react';
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import CommunityCreationsBrowser from './CommunityCreationsBrowser';
+import { serverEvent, stubMatchMedia } from '@/test/serverEvents';
 import type { WorldRecord } from '@/components/WorldDetails';
 import type { ServerEvent } from '@/types';
 
@@ -34,24 +35,7 @@ vi.mock('@/components/community/RemoteWorldDetailsModal', () => ({ RemoteWorldDe
 
 const reader = { id: 'u1', username: 'reader', accountType: 'normal' } as unknown as WorldRecord;
 
-const day = 86_400_000;
-const contest: ServerEvent = {
-  id: 'e1',
-  type: 'contest',
-  title: 'Winter World-Building Contest',
-  bannerText: 'Build a world around a single season.',
-  body: 'The long version.',
-  rulesText: 'One entry per creator.',
-  startsAt: new Date(Date.now() - 4 * day).toISOString(),
-  endsAt: new Date(Date.now() + 12 * day).toISOString(),
-  cancelledAt: null,
-  startMessageId: 'm-start',
-  endMessageId: null,
-  winnerMessageId: null,
-  winnerWorldId: null,
-  winnerName: null,
-  winnerAuthorName: null,
-};
+const contest: ServerEvent = serverEvent();
 
 const renderBrowser = (props: Partial<{ events: ServerEvent[]; onOpenEvent: (e: ServerEvent) => void }> = {}) =>
   render(
@@ -73,11 +57,7 @@ const renderBrowser = (props: Partial<{ events: ServerEvent[]; onOpenEvent: (e: 
 
 beforeEach(() => {
   localStorage.clear();
-  window.matchMedia = ((query: string) => ({
-    matches: false, media: query, onchange: null,
-    addEventListener: () => {}, removeEventListener: () => {},
-    addListener: () => {}, removeListener: () => {}, dispatchEvent: () => false,
-  })) as unknown as typeof window.matchMedia;
+  stubMatchMedia();
 
   catalog.items = [];
   vi.spyOn(console, 'error').mockImplementation(() => {});

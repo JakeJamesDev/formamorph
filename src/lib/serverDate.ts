@@ -1,3 +1,6 @@
+/** A day in milliseconds — the unit event windows, contest deadlines and quarantine clocks are counted in. */
+export const DAY_MS = 86_400_000;
+
 /**
  * Parse a timestamp that came from the community server.
  *

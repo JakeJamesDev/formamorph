@@ -1,35 +1,31 @@
 import { describe, it, expect } from 'vitest';
-import { daysRemaining, eventChipMarker, eventPhase, isContestEvent, phaseMessageId } from './serverEvents';
+import { daysRemaining, eventChipMarker, eventPhase, hasWinner, isContestEvent, phaseMessageId } from './serverEvents';
+import { daysFrom, serverEvent } from '@/test/serverEvents';
 import type { ServerEvent } from '@/types';
 
 const NOW = new Date('2026-08-20T12:00:00Z');
-const day = 86_400_000;
-const at = (offsetDays: number) => new Date(NOW.getTime() + offsetDays * day).toISOString();
+const at = (offsetDays: number) => daysFrom(offsetDays, NOW);
 
-const event = (over: Partial<ServerEvent> = {}): ServerEvent => ({
-  id: 'e1',
-  type: 'contest',
-  title: 'Winter World-Building Contest',
-  bannerText: 'Build a world around a single season.',
-  body: 'The long version.',
-  rulesText: 'One entry per creator.',
-  startsAt: at(-4),
-  endsAt: at(12),
-  cancelledAt: null,
-  startMessageId: 'm-start',
-  endMessageId: null,
-  winnerMessageId: null,
-  winnerWorldId: null,
-  winnerName: null,
-  winnerAuthorName: null,
-  ...over,
-});
+const event = (over: Partial<ServerEvent> = {}): ServerEvent =>
+  serverEvent({ startsAt: at(-4), endsAt: at(12), ...over });
 
 describe('isContestEvent', () => {
   it('is true only for the contest type — an unknown future type is not one', () => {
     expect(isContestEvent(event())).toBe(true);
     expect(isContestEvent(event({ type: 'announcement' }))).toBe(false);
     expect(isContestEvent(event({ type: 'tournament' }))).toBe(false);
+  });
+});
+
+describe('hasWinner', () => {
+  it('reads either half of what the pick stamps', () => {
+    expect(hasWinner(event({ winnerWorldId: 'w1' }))).toBe(true);
+    expect(hasWinner(event({ winnerName: 'The Long Thaw' }))).toBe(true);
+    expect(hasWinner(event())).toBe(false);
+  });
+
+  it('is not answered by the broadcast, which is posted after the pick and can fail', () => {
+    expect(hasWinner(event({ winnerMessageId: 'm-win' }))).toBe(false);
   });
 });
 
@@ -44,7 +40,7 @@ describe('eventPhase', () => {
 
   it('is the ending as soon as a winner is named, even mid-window', () => {
     expect(eventPhase(event({ winnerName: 'The Long Thaw' }), NOW)).toBe('end');
-    expect(eventPhase(event({ winnerMessageId: 'm-win' }), NOW)).toBe('end');
+    expect(eventPhase(event({ winnerWorldId: 'w1' }), NOW)).toBe('end');
   });
 
   it('treats an unreadable end timestamp as still open rather than instantly over', () => {

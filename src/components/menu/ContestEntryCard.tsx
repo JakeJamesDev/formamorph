@@ -14,6 +14,10 @@ interface ContestEntryCardProps {
   onCheckedChange: (next: boolean) => void;
   /** The listing this author already has in the contest, when they have one. */
   enteredName?: string | null;
+  /** Take that entry back out. Absent leaves the card's advice to be acted on elsewhere. */
+  onWithdraw?: () => void;
+  /** Whether a withdrawal is in flight, which quiets the control. */
+  withdrawing?: boolean;
   /** A refusal the server gave, shown where the switch was. */
   error?: string | null;
 }
@@ -29,7 +33,9 @@ interface ContestEntryCardProps {
  * refuse. The rules sit behind the same dialog the contest tab shows, because publishing into a contest
  * is the moment they are agreed to.
  */
-export function ContestEntryCard({ contest, checked, onCheckedChange, enteredName, error }: ContestEntryCardProps) {
+export function ContestEntryCard({
+  contest, checked, onCheckedChange, enteredName, onWithdraw, withdrawing, error,
+}: ContestEntryCardProps) {
   const [rulesOpen, setRulesOpen] = useState(false);
   // Either one takes the switch away: there is nothing this publish can still opt into.
   const armed = !enteredName && !error;
@@ -58,9 +64,23 @@ export function ContestEntryCard({ contest, checked, onCheckedChange, enteredNam
             Enter this world · closes {formatServerDate(contest.endsAt)} · one entry per creator
           </div>
         )}
-        <Button variant="link" className="px-0 h-auto text-meta" onClick={() => setRulesOpen(true)}>
-          Contest rules
-        </Button>
+        <div className="flex items-center gap-3">
+          <Button variant="link" className="px-0 h-auto text-meta" onClick={() => setRulesOpen(true)}>
+            Contest Rules
+          </Button>
+          {/* Beside the line that advises it, so "withdraw it first" is something to press rather than a
+              trip to another screen. */}
+          {enteredName && onWithdraw && (
+            <Button
+              variant="link"
+              className="px-0 h-auto text-meta text-destructive"
+              disabled={withdrawing}
+              onClick={onWithdraw}
+            >
+              {withdrawing ? 'Withdrawing…' : 'Withdraw Entry'}
+            </Button>
+          )}
+        </div>
       </div>
 
       {armed && (

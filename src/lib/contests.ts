@@ -4,7 +4,7 @@
  * tab, its slim bar and their tests all read the same answers from here.
  */
 import { parseServerDate } from './serverDate';
-import { isContestEvent } from './serverEvents';
+import { hasWinner, isContestEvent } from './serverEvents';
 import type { WorldRecord } from '@/components/WorldDetails';
 import type { ServerEvent } from '@/types';
 
@@ -32,7 +32,7 @@ export function isContestRunning(event: ServerEvent, now: Date = new Date()): bo
  * on a slow clock has not reopened for entries.
  */
 export function contestPhase(event: ServerEvent, now: Date = new Date()): ContestPhase {
-  if (event.winnerWorldId || event.winnerName) return 'decided';
+  if (hasWinner(event)) return 'decided';
   return isContestRunning(event, now) ? 'live' : 'judging';
 }
 
@@ -56,6 +56,24 @@ export function contestsOf(events: ServerEvent[], now: Date = new Date()): Serve
  */
 export function activeContestOf(events: ServerEvent[], now: Date = new Date()): ServerEvent | null {
   return events.find((event) => isContestEvent(event) && isContestRunning(event, now)) ?? null;
+}
+
+/**
+ * The contests whose window has closed with no winner named yet.
+ *
+ * What the end-of-contest poster is still owed for. Read from the contests feed rather than the events
+ * poll, which carries only what is running: a player who launches the app the morning after a deadline
+ * was never online for the transition, and the poll has nothing left to tell them.
+ *
+ * The clock is checked rather than `contestPhase`, which reads a contest that has not started yet as
+ * judging — staff see scheduled ones in this feed.
+ */
+export function judgingContestsOf(events: ServerEvent[], now: Date = new Date()): ServerEvent[] {
+  return events.filter((event) => {
+    if (!isContestEvent(event) || event.cancelledAt || hasWinner(event)) return false;
+    const ends = parseServerDate(event.endsAt);
+    return Boolean(ends && ends.getTime() <= now.getTime());
+  });
 }
 
 /**
