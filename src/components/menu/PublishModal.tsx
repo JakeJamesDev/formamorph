@@ -27,7 +27,7 @@ import { CONTEST_ALREADY_ENTERED, CONTEST_NOT_ACTIVE } from "@/services/WorldSto
 import { useContestWithdrawal } from "@/lib/useContestWithdrawal";
 import { useDevEventSample } from "@/lib/useDevEventSample";
 import { useDevRoute } from "@/lib/devRouter";
-import { AlertTriangle } from "lucide-react";
+import { AlertTriangle, Trophy } from "lucide-react";
 import type { ServerEvent } from "@/types";
 
 interface PublishModalProps {
@@ -80,12 +80,18 @@ export function PublishModal({ open, onOpenChange, isAuthenticated, payload, eve
 
   // Entering happens at publish time, so the opt-in belongs to a new listing only: a contest flag on an
   // overwrite would mean moving a listing that already exists into the contest, which nothing supports.
+  // The card itself reaches further than the opt-in does — see `showContestCard`.
   const contest = activeContestOf(devFixture ? devEvents : events);
-  const showContestCard = Boolean(contest) && kind === 'world' && selectedWorldToOverride === 'new';
   // The author's own listings are already on hand for the overwrite list, and they carry the column — so
   // an entry that would be refused is known before the upload rather than after it.
   const existingEntry = contest ? entriesOf(userWorlds, contest.id)[0] ?? null : null;
   const enteredName = existingEntry ? String(existingEntry.name ?? 'a world') : null;
+  const enteredId = existingEntry ? String(existingEntry._id || existingEntry.id) : null;
+  // Updating the entered listing is not a decision about entering — the entry rides along whatever
+  // happens here — so the card stays as context rather than vanishing the moment that row is picked.
+  const updatingEntry = Boolean(enteredId) && selectedWorldToOverride === enteredId;
+  const showContestCard = Boolean(contest) && kind === 'world'
+    && (selectedWorldToOverride === 'new' || updatingEntry);
   // What's open right now, readable from inside an async callback that captured an older `kind`.
   const kindRef = useRef(kind);
   kindRef.current = kind;
@@ -304,6 +310,14 @@ export function PublishModal({ open, onOpenChange, isAuthenticated, payload, eve
                             <Label htmlFor={radioId}>
                               {world.name} ({shortId}, {downloads} downloads)
                             </Label>
+                            {/* Which listing carries the entry, said on the row where it is picked —
+                                otherwise an author updating a world has no way to know it is the one. */}
+                            {contest && worldId === enteredId && (
+                              <span className="inline-flex w-fit items-center gap-1 rounded-full bg-warning/15 px-2 py-0.5 text-meta text-warning">
+                                <Trophy className="h-3 w-3" aria-hidden />
+                                In {contest.title}
+                              </span>
+                            )}
                           </div>
                         </div>
                       );
@@ -313,7 +327,7 @@ export function PublishModal({ open, onOpenChange, isAuthenticated, payload, eve
               </RadioGroup>
             </div>
 
-            {/* Hidden rather than disabled when there is no contest, this isn't a world, or an existing
+            {/* Hidden rather than disabled when there is no contest, this isn't a world, or some other
                 listing is being replaced — a control nobody can use explains nothing. */}
             {showContestCard && contest && (
               <ContestEntryCard
@@ -321,8 +335,9 @@ export function PublishModal({ open, onOpenChange, isAuthenticated, payload, eve
                 checked={enterContest}
                 onCheckedChange={setEnterContest}
                 enteredName={enteredName}
-                onWithdraw={existingEntry
-                  ? () => withdrawal.ask({ id: String(existingEntry._id || existingEntry.id), name: enteredName ?? 'That world' })
+                readOnly={updatingEntry}
+                onWithdraw={existingEntry && enteredId
+                  ? () => withdrawal.ask({ id: enteredId, name: enteredName ?? 'That world' })
                   : undefined}
                 withdrawing={withdrawal.busy}
                 error={contestError || null}

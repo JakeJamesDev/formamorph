@@ -2500,8 +2500,14 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
             events={activeEvents}
           />
 
-          {/* One-time acknowledge poster for an event that has just started or just ended. */}
-          <EventAckModal events={announceable} isAuthenticated={isAuthenticated} onOpenEvent={openEvent} />
+          {/* One-time acknowledge poster for an event that has just started or just ended. It waits for
+              the welcome intro to finish, so a first-run player meets the menu before the poster. */}
+          <EventAckModal
+            events={announceable}
+            isAuthenticated={isAuthenticated}
+            onOpenEvent={openEvent}
+            held={introActive}
+          />
 
           {/* Community Creations browser — see CommunityCreationsBrowser.tsx */}
           <CommunityCreationsBrowser

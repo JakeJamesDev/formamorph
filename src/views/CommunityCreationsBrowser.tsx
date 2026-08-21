@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useEffect, useRef } from 'react';
+import React, { useState, useCallback, useEffect, useMemo, useRef } from 'react';
 import { toast } from 'react-toastify';
 import { Button } from "@/components/ui/button";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
@@ -13,6 +13,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { KIND_LABELS, kindOf, type CatalogKind } from "@/lib/catalogKinds";
 import { BROWSE_TABS, BROWSE_TAB_LABELS, type BrowseTab } from "@/lib/browseTabs";
 import { contestPhase, contestWonBy, entriesOf, orderContestEntries } from "@/lib/contests";
+import { isContestEvent } from "@/lib/serverEvents";
 import { useContests } from "@/lib/useContests";
 import { ContestBar, ContestWinner } from "@/components/community/ContestBar";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -209,6 +210,14 @@ const CommunityCreationsBrowser = ({
   const [selectedContestId, setSelectedContestId] = useState<string | null>(null);
   // The newest contest is the default — the running one when there is one, since that is how they sort.
   const shownContest = contests.find((c) => c.id === selectedContestId) ?? contests[0] ?? null;
+
+  // On the contest's own tab its banner card is the one card with nowhere to send anyone: its action goes
+  // where the reader already is. Announcements are untouched — they are unrelated news, and hiding the
+  // contest must not take them down with it.
+  const bannerEvents = useMemo(
+    () => (browseTab === 'contest' ? events.filter((event) => !isContestEvent(event)) : events),
+    [browseTab, events],
+  );
 
   // A fresh shuffle seed each time the browser opens, so a live contest is re-ordered per visit but holds
   // still while the reader is looking at it. The archive picked last time is dropped at the same moment:
@@ -738,7 +747,7 @@ const CommunityCreationsBrowser = ({
               {/* The same event banner the main menu carries — the two surfaces share no shell, so this
                   is a second instance rather than a moved one. Margins come from the header's own
                   padding, so the card's are dropped. */}
-              <EventBanner events={events} onOpenEvent={onOpenEvent} className="mx-0 mb-0" />
+              <EventBanner events={bannerEvents} onOpenEvent={onOpenEvent} className="mx-0 mb-0" />
             </div>
           </Collapsible>
 

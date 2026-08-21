@@ -29,6 +29,13 @@ export interface ServerEvent {
   body: string;
   /** Contests only: what entrants are agreeing to. */
   rulesText: string | null;
+  /**
+   * The organizer's color for the poster's header band, as a hex string. Absent on a server that has not
+   * deployed the styling fields yet, which is why every reader goes through `posterStyle`.
+   */
+  posterColor?: string | null;
+  /** The band's artwork, as the server's root-relative path. */
+  posterImageUrl?: string | null;
   startsAt: string;
   endsAt: string;
   cancelledAt: string | null;
@@ -57,6 +64,13 @@ export interface ServerEventDraft {
   body: string;
   /** Contests only; null clears it. */
   rulesText: string | null;
+  /** The poster band's color as `#rrggbb`; null restores the default band. */
+  posterColor: string | null;
+  /**
+   * The band's artwork as a data URI, which the server stores as a file. Null clears whatever is there;
+   * omitting the key on an edit leaves the stored image alone.
+   */
+  posterImage: string | null;
   startsAt: string;
   endsAt: string;
 }
