@@ -4,7 +4,7 @@ import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { EventBanner, EventBannerChips } from './EventBanner';
 import { useEventBanners } from './useEventBanners';
 import { isEventBannerDismissed, markEventBannerDismissed } from '@/lib/eventSeenStore';
-import { serverEvent as event } from '@/test/serverEvents';
+import { daysFrom, serverEvent as event } from '@/test/serverEvents';
 import type { ServerEvent } from '@/types';
 
 beforeEach(() => localStorage.clear());
@@ -48,10 +48,10 @@ describe('EventBanner', () => {
     expect(screen.getByRole('button', { name: 'View Entries' })).toBeInTheDocument();
   });
 
-  it('shows the outcome once a winner has been named', () => {
-    render(<Banners events={[event({ winnerName: 'The Long Thaw', winnerAuthorName: 'sedgewright' })]} />);
+  it('shows the outcome once the results are announced', () => {
+    render(<Banners events={[event({ resultsAnnouncedAt: daysFrom(-1), placements: [{ place: 1, worldId: 'w1', worldName: 'The Long Thaw', authorName: 'sedgewright' }] })]} />);
 
-    expect(screen.getByText(/Winner announced — The Long Thaw by sedgewright/)).toBeInTheDocument();
+    expect(screen.getByText(/Results announced — The Long Thaw by sedgewright/)).toBeInTheDocument();
   });
 
   it('takes the player to the entries', () => {
@@ -105,7 +105,7 @@ describe('EventBanner', () => {
 
   it('opens as a card again when the event reaches its ending, however thoroughly it was dismissed', () => {
     markEventBannerDismissed('e1', 'start');
-    render(<Banners events={[event({ winnerName: 'The Long Thaw' })]} onOpenEvent={vi.fn()} />);
+    render(<Banners events={[event({ resultsAnnouncedAt: daysFrom(-1), placements: [{ place: 1, worldId: 'w1', worldName: 'The Long Thaw', authorName: 'sedgewright' }] })]} onOpenEvent={vi.fn()} />);
 
     expect(screen.getByRole('button', { name: 'Dismiss' })).toBeInTheDocument();
   });

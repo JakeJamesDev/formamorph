@@ -80,8 +80,8 @@ Two caveats worth knowing:
 ## The contest flow needs a server
 
 [contest-entry.spec.ts](e2e/contest-entry.spec.ts) publishes a world into a running contest and finds it
-again in the Contest tab — then, in a second flow, has staff pick that entry as the winner and checks the
-trophy reaches the author's own library. It is the one spec that talks to a real
+again in the Contest tab — then, in a second flow, has an admin announce a podium with that entry on it
+and checks the place badge reaches the author's own library. It is the one spec that talks to a real
 [FormamorphServer](https://github.com/JakeJamesDev/FormamorphServer), so it **skips unless you point it at
 one** — `npm run test:e2e` on a machine without one reports it as a skip, never a failure.
 
@@ -112,12 +112,15 @@ in the future (`type: "contest"`, plus `title`, `bannerText`, `body`). The spec 
 Each flow registers its own account, because a contest takes one entry per creator — so the spec is
 repeatable, but the server's credential limiter (20 per 15 minutes per IP) caps a debugging loop.
 
-**The winner half needs two more things**, and skips with a note when either is missing:
+**The results half needs two more things**, and skips with a note when either is missing:
 
 | Needs | Why | How |
 | --- | --- | --- |
-| A staff account | Only staff may pick a winner, and never their own entry | The seeding recipe's `e2eadmin`; override with `E2E_ADMIN_USERNAME` / `E2E_ADMIN_PASSWORD` |
-| A contest with no winner yet | The server refuses a second pick | Seed a fresh contest for each run of this flow |
+| An **admin** account | Only admins may announce results, and never their own entry — moderators are refused | The seeding recipe's `e2eadmin`; override with `E2E_ADMIN_USERNAME` / `E2E_ADMIN_PASSWORD` |
+| A contest that has not announced yet | The server refuses a second announcement | Seed a fresh contest for each run of this flow |
+
+💡 With a second entry already in the contest, the flow awards this run's world **2nd place** rather
+than 1st — gold is the one place a badge that ignored the podium would still get right.
 
 ## CI
 

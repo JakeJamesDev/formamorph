@@ -89,7 +89,7 @@ import { filesFrom, importSummaryToast } from '@/lib/importFiles';
 import CommunityCreationsBrowser from './CommunityCreationsBrowser';
 import { WorldDetailsColumn, DateTimeText, type WorldRecord } from "@/components/WorldDetails";
 import SortableWorldCard from "@/components/SortableWorldCard";
-import { WinnerBadges } from "@/components/WinnerBadges";
+import { PlaceBadges } from "@/components/PlaceBadges";
 import { LibraryWorldCard } from "@/components/LibraryWorldCard";
 import { WorldActionButton } from "@/components/WorldActionButton";
 import { GradientButton } from "@/components/GradientButton";
@@ -112,7 +112,7 @@ import MessageService from "@/services/MessageService";
 import { useActiveEvents } from "@/lib/useActiveEvents";
 import { asBrowseTab, type BrowseTab } from "@/lib/browseTabs";
 import { isContestEvent } from "@/lib/serverEvents";
-import { contestsWonBy, judgingContestsOf } from "@/lib/contests";
+import { placementsBy, judgingContestsOf } from "@/lib/contests";
 import { useContests } from "@/lib/useContests";
 import { EventBanner, EventBannerChips } from "@/components/events/EventBanner";
 import { useEventBanners } from "@/components/events/useEventBanners";
@@ -1272,7 +1272,7 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
   // would only ever reach whoever happened to be online at the deadline.
   const { contests } = useContests(COMMUNITY_ENABLED);
 
-  // What the acknowledge poster may show: what is running, plus contests waiting on a winner. A pick or
+  // What the acknowledge poster may show: what is running, plus contests waiting on results. An announce or
   // a cancellation drops one out of the second list, so no stale "judging has begun" survives the news.
   const announceable = useMemo(
     () => [...activeEvents, ...judgingContestsOf(contests)],
@@ -1987,7 +1987,7 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
               </Button>
             </DialogTitle>
             {/* Under the title, as on the card it was opened from — the library agrees with itself. */}
-            {selectedWorld && <WinnerBadges contests={contestsWonBy(selectedWorld, contests)} className="mr-8" />}
+            {selectedWorld && <PlaceBadges placements={placementsBy(selectedWorld, contests)} className="mr-8" />}
           </DialogHeader>
 
           <div className="flex-1 min-h-0 flex flex-col">

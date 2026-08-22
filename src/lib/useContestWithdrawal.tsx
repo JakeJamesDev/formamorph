@@ -12,7 +12,7 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import { useClosingSnapshot } from '@/lib/useClosingSnapshot';
-import WorldStorageService, { CONTEST_WINNER } from '@/services/WorldStorageService';
+import WorldStorageService, { CONTEST_PLACED } from '@/services/WorldStorageService';
 
 /** The listing a withdrawal is being asked about. */
 interface WithdrawTarget {
@@ -35,8 +35,8 @@ interface ContestWithdrawal {
  *
  * Guarded by a confirmation rather than done on the click, because it is the one contest action with
  * nothing to undo it — there is no re-enter route, and a contest past its deadline would refuse one
- * anyway. A winner cannot be withdrawn at all; the server says so and the refusal is repeated as it came
- * rather than as a generic failure.
+ * anyway. A world on the podium cannot be withdrawn at all; the server says so and the refusal is
+ * repeated as it came rather than as a generic failure.
  *
  * @param onWithdrawn - Called with the listing's id once the server has released it, for whatever the
  *                      surface needs to re-read
@@ -56,8 +56,8 @@ export function useContestWithdrawal(onWithdrawn?: (listingId: string) => void):
       onWithdrawn?.(pending.id);
     } catch (error) {
       const failure = error as Error & { code?: string };
-      toast.error(failure.code === CONTEST_WINNER
-        ? 'A contest winner cannot be withdrawn. Delete the listing if you want it gone.'
+      toast.error(failure.code === CONTEST_PLACED
+        ? 'A world that placed cannot be withdrawn. Delete the listing if you want it gone.'
         : failure.message || 'Failed to withdraw the entry');
     } finally {
       setBusy(false);
@@ -73,7 +73,7 @@ export function useContestWithdrawal(onWithdrawn?: (listingId: string) => void):
       <AlertDialogContent>
         <AlertDialogHeader>
           <AlertDialogTitle className="flex items-center gap-2">
-            <Trophy className="h-5 w-5 text-warning" aria-hidden />
+            <Trophy className="h-5 w-5 text-gold" aria-hidden />
             Withdraw “{shown?.name}”?
           </AlertDialogTitle>
           <AlertDialogDescription>

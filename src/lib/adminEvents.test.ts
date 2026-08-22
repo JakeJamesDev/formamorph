@@ -6,13 +6,26 @@ import {
   adminEventActions,
   adminEventSummary,
   groupAdminEvents,
-  winnerBlockReason,
+  entryBlockReason,
 } from './adminEvents';
 import { daysFrom, serverEvent } from '@/test/serverEvents';
 import type { ServerEvent } from '@/types';
 
 const NOW = new Date('2026-08-20T12:00:00Z');
 const at = (offsetDays: number) => daysFrom(offsetDays, NOW);
+
+/**
+ * A contest whose results are out. The stamp rides with the podium, as it does on the server: assigning
+ * a place is not announcing it, and a fixture that split them would test a state nothing produces.
+ */
+const decided = (over: Partial<ServerEvent> = {}): ServerEvent => event({
+  startsAt: at(-9),
+  endsAt: at(-1),
+  resultsAnnouncedAt: at(-1),
+  winnerMessageId: 'm-results',
+  placements: [{ place: 1, worldId: 'w1', worldName: 'Lantern Reef', authorName: 'suneater' }],
+  ...over,
+});
 
 const event = (over: Partial<ServerEvent> = {}): ServerEvent =>
   serverEvent({ title: 'Summer Isles Contest', startsAt: at(-4), endsAt: at(8), ...over });
@@ -26,17 +39,15 @@ describe('which state an event is in', () => {
     expect(adminEventState(event({ startsAt: at(2), endsAt: at(9) }), NOW)).toBe('scheduled');
   });
 
-  it('is judging once a contest closes with no winner', () => {
+  it('is judging once a contest closes with its results still to come', () => {
     expect(adminEventState(event({ startsAt: at(-9), endsAt: at(-1) }), NOW)).toBe('judging');
   });
 
-  it('is ended once a contest has a winner', () => {
-    const decided = event({ startsAt: at(-9), endsAt: at(-1), winnerWorldId: 'w1', winnerName: 'Lantern Reef' });
-
-    expect(adminEventState(decided, NOW)).toBe('ended');
+  it('is ended once a contest has announced its results', () => {
+    expect(adminEventState(decided(), NOW)).toBe('ended');
   });
 
-  it('is ended for a closed announcement, which has no winner to wait for', () => {
+  it('is ended for a closed announcement, which has no results to wait for', () => {
     const notice = event({ type: 'announcement', startsAt: at(-9), endsAt: at(-1) });
 
     expect(adminEventState(notice, NOW)).toBe('ended');
@@ -55,7 +66,7 @@ describe('grouping the calendar', () => {
   const running = event({ id: 'running' });
   const judging = event({ id: 'judging', startsAt: at(-20), endsAt: at(-2) });
   const soon = event({ id: 'soon', startsAt: at(3), endsAt: at(10) });
-  const over = event({ id: 'over', startsAt: at(-40), endsAt: at(-30), winnerName: 'Lantern Reef' });
+  const over = decided({ id: 'over', startsAt: at(-40), endsAt: at(-30) });
   const called_off = event({ id: 'called-off', cancelledAt: at(-1) });
   const all = [over, called_off, soon, judging, running];
 
@@ -96,26 +107,45 @@ describe('grouping the calendar', () => {
 });
 
 describe('what a row offers', () => {
-  it('offers a moderator the winner pick and nothing else', () => {
+  it('offers a moderator nothing at all, the podium included', () => {
+    // The tightening: announcing results speaks to every player at once, so it left the moderation team
+    // along with scheduling and calling off.
     const judging = event({ startsAt: at(-9), endsAt: at(-1) });
 
     expect(adminEventActions(judging, false, NOW)).toEqual({
-      pickWinner: true, edit: false, cancel: false, remove: false,
+      announceResults: false, editPodium: false, edit: false, cancel: false, remove: false,
     });
+  });
+
+  it('offers an administrator the announce once the entries close', () => {
+    const judging = event({ startsAt: at(-9), endsAt: at(-1) });
+
+    expect(adminEventActions(judging, true, NOW))
+      .toMatchObject({ announceResults: true, editPodium: false });
   });
 
   it('offers an administrator the edit and the cancel while an event runs', () => {
     expect(adminEventActions(event(), true, NOW)).toMatchObject({ edit: true, cancel: true });
   });
 
-  it('offers no winner pick until the entries close', () => {
-    expect(adminEventActions(event(), true, NOW).pickWinner).toBe(false);
+  it('offers no announce until the entries close', () => {
+    expect(adminEventActions(event(), true, NOW).announceResults).toBe(false);
   });
 
-  it('offers no winner pick once one has been named', () => {
-    const decided = event({ startsAt: at(-9), endsAt: at(-1), winnerName: 'Lantern Reef' });
+  it('trades the announce for the edit once the results are out', () => {
+    expect(adminEventActions(decided(), true, NOW))
+      .toMatchObject({ announceResults: false, editPodium: true });
+  });
 
-    expect(adminEventActions(decided, true, NOW).pickWinner).toBe(false);
+  it('offers no podium edit on a contest that has not announced', () => {
+    expect(adminEventActions(event({ startsAt: at(-9), endsAt: at(-1) }), true, NOW).editPodium).toBe(false);
+  });
+
+  it('offers no podium on an announcement, which has no entries to place', () => {
+    const notice = event({ type: 'announcement', startsAt: at(-9), endsAt: at(-1) });
+
+    expect(adminEventActions(notice, true, NOW))
+      .toMatchObject({ announceResults: false, editPodium: false });
   });
 
   it('offers delete only before a start, when nobody has been told anything', () => {
@@ -125,25 +155,33 @@ describe('what a row offers', () => {
     expect(adminEventActions(event(), true, NOW).remove).toBe(false);
   });
 
-  it('offers nothing on an event already called off', () => {
-    expect(adminEventActions(event({ cancelledAt: at(-1) }), true, NOW)).toEqual({
-      pickWinner: false, edit: false, cancel: false, remove: false,
+  it('offers nothing on an event already called off, a stored podium included', () => {
+    expect(adminEventActions(decided({ cancelledAt: at(-1) }), true, NOW)).toEqual({
+      announceResults: false, editPodium: false, edit: false, cancel: false, remove: false,
     });
   });
 });
 
 describe('the line under the title', () => {
-  it('names the winner once there is one', () => {
-    const decided = event({
-      startsAt: at(-9), endsAt: at(-1), winnerName: 'Lantern Reef', winnerAuthorName: 'suneater',
-    });
-
-    expect(adminEventSummary(decided, NOW)).toBe('Won by Lantern Reef — suneater');
+  it('names first place once the results are out', () => {
+    expect(adminEventSummary(decided(), NOW)).toBe('1st Place: Lantern Reef — suneater');
   });
 
-  it('says a closed contest is waiting on one', () => {
+  it('counts the rest of the podium rather than listing it', () => {
+    const full = decided({
+      placements: [
+        { place: 1, worldId: 'w1', worldName: 'Lantern Reef', authorName: 'suneater' },
+        { place: 2, worldId: 'w2', worldName: 'Nine Bells', authorName: 'marrowmoss' },
+        { place: 3, worldId: 'w3', worldName: 'Kindling', authorName: 'ashgrove' },
+      ],
+    });
+
+    expect(adminEventSummary(full, NOW)).toBe('1st Place: Lantern Reef — suneater (+2 more)');
+  });
+
+  it('says a closed contest is waiting on its results', () => {
     expect(adminEventSummary(event({ startsAt: at(-9), endsAt: at(-1) }), NOW))
-      .toBe('Closed for entries — waiting on a winner');
+      .toBe('Closed for entries — waiting on the results');
   });
 
   it('tells a running contest apart from a running notice', () => {
@@ -179,20 +217,20 @@ describe('the window fields', () => {
   });
 });
 
-describe('which entries cannot win', () => {
+describe('which entries cannot be placed', () => {
   it('refuses a quarantined entry', () => {
-    expect(winnerBlockReason({ authorId: 'u2', quarantined: true }, 'u1')).toBe('Quarantined');
+    expect(entryBlockReason({ authorId: 'u2', quarantined: true }, 'u1')).toBe('Quarantined');
   });
 
-  it('refuses the picker their own entry', () => {
-    expect(winnerBlockReason({ authorId: 'u1', quarantined: false }, 'u1')).toBe('Your entry');
+  it('refuses the judge their own entry', () => {
+    expect(entryBlockReason({ authorId: 'u1', quarantined: false }, 'u1')).toBe('Your entry');
   });
 
   it('allows anyone else', () => {
-    expect(winnerBlockReason({ authorId: 'u2', quarantined: false }, 'u1')).toBeNull();
+    expect(entryBlockReason({ authorId: 'u2', quarantined: false }, 'u1')).toBeNull();
   });
 
-  it('reads a missing author as one the picker does not own, the server being the authority anyway', () => {
-    expect(winnerBlockReason({ authorId: null, quarantined: false }, 'u1')).toBeNull();
+  it('reads a missing author as one the judge does not own, the server being the authority anyway', () => {
+    expect(entryBlockReason({ authorId: null, quarantined: false }, 'u1')).toBeNull();
   });
 });

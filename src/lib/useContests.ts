@@ -12,7 +12,7 @@ import type { ServerEvent } from '@/types';
  * Read from the shared events cache rather than per surface: the main menu holds this open for the whole
  * session and the browser asks again on every open, and the archive is a list that only ever grows. A
  * read inside the cache's window is answered from memory; past it, what is held is shown at once and the
- * fresh answer arrives behind it, which is how a winner announced mid-session reaches an open browser.
+ * fresh answer arrives behind it, which is how a podium announced mid-session reaches an open browser.
  *
  * A failed read leaves the list empty, so the tab simply doesn't appear.
  *

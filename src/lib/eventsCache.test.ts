@@ -18,7 +18,7 @@ vi.mock('@/services/EventService', () => ({
  * Two things have to hold. Opening a surface that wants the list a second time must not go back to the
  * server — the archive is permanent and the whole point of holding it is not re-downloading it. And an
  * admin's change must reach what is already mounted, because the alternative is telling a player to
- * restart the app to see the winner that was just announced.
+ * restart the app to see the podium that was just announced.
  */
 
 const list = () => vi.mocked(EventService.fetchList);

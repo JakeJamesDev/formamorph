@@ -6,7 +6,7 @@
  * running right now — the case most tests want — and anything else is an override.
  */
 import { DAY_MS } from '@/lib/serverDate';
-import type { ServerEvent } from '@/types';
+import type { ContestPlace, ServerEvent } from '@/types';
 
 export { DAY_MS };
 
@@ -37,9 +37,28 @@ export const serverEvent = (over: Partial<ServerEvent> = {}): ServerEvent => ({
   startMessageId: 'm-start',
   endMessageId: null,
   winnerMessageId: null,
-  winnerWorldId: null,
-  winnerName: null,
-  winnerAuthorName: null,
+  resultsAnnouncedAt: null,
+  placements: [],
+  ...over,
+});
+
+/**
+ * A contest whose results are out, with the podium handed in as `[worldId, name, author]` triples.
+ *
+ * The announcement stamp rides along with the podium, because on the server it always does: assigning a
+ * place is not announcing it, and a fixture that supplied one without the other would let a test pass
+ * against a state the server never produces.
+ */
+export const decidedContest = (
+  podium: Array<[worldId: string | null, worldName: string, authorName: string]>,
+  over: Partial<ServerEvent> = {},
+): ServerEvent => serverEvent({
+  endsAt: daysFrom(-1),
+  winnerMessageId: 'm-results',
+  resultsAnnouncedAt: daysFrom(0),
+  placements: podium.map(([worldId, worldName, authorName], index) => ({
+    place: (index + 1) as ContestPlace, worldId, worldName, authorName,
+  })),
   ...over,
 });
 

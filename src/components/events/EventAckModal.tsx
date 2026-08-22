@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { MarkdownRenderer } from '@/components/game/MarkdownRenderer';
 import { EventPosterBand } from '@/components/events/EventPosterBand';
 import MessageService from '@/services/MessageService';
-import { eventPhase, hasWinner, isContestEvent, phaseMessageId } from '@/lib/serverEvents';
+import { eventPhase, isContestEvent, phaseMessageId, placementsOf, resultsAnnounced } from '@/lib/serverEvents';
 import { isEventAcknowledged, markEventAcknowledged } from '@/lib/eventSeenStore';
 import { useEventProse } from '@/lib/useEventProse';
 import type { ServerEvent } from '@/types';
@@ -60,14 +60,15 @@ export function EventAckModal({ events, isAuthenticated, onOpenEvent, held = fal
   const contest = isContestEvent(event);
   const Icon = phase === 'end' ? Trophy : Megaphone;
 
-  const decided = hasWinner(event);
+  const decided = resultsAnnounced(event);
+  const [gold] = placementsOf(event);
 
   const eyebrow = phase === 'end'
-    ? (decided ? 'Winner Announced' : 'This Event Has Ended')
+    ? (decided ? 'Results Announced' : 'This Event Has Ended')
     : (contest ? 'A Contest Has Started' : 'An Announcement');
 
-  const title = phase === 'end' && decided
-    ? `“${event.winnerName}”${event.winnerAuthorName ? ` by ${event.winnerAuthorName}` : ''}`
+  const title = phase === 'end' && decided && gold
+    ? `“${gold.worldName}” by ${gold.authorName}`
     : event.title;
 
   const acknowledge = () => {
@@ -111,7 +112,7 @@ export function EventAckModal({ events, isAuthenticated, onOpenEvent, held = fal
                 variant="outline"
                 onClick={() => { acknowledge(); onOpenEvent(event); }}
               >
-                {decided ? 'See The Winner' : 'View Entries'}
+                {decided ? 'See The Results' : 'View Entries'}
               </Button>
             )}
             <Button onClick={acknowledge}>Got It</Button>

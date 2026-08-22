@@ -41,7 +41,7 @@ describe('EventAckModal', () => {
   });
 
   it('reads the body back out of the server when the row came without one', async () => {
-    // A contest waiting on a winner comes from the archive feed, which is served without its prose — the
+    // A contest waiting on results comes from the archive feed, which is served without its prose — the
     // poster is one of only two surfaces that show any, so it fetches the one event it is about.
     const full = event({ body: 'The contest is closed. Judging has begun.' });
     server.detail = { e1: full };
@@ -142,21 +142,23 @@ describe('EventAckModal', () => {
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
   });
 
-  it('posts the ending separately, naming the winner and marking that broadcast read', async () => {
+  it('posts the ending separately, naming first place and marking that broadcast read', async () => {
     const markRead = vi.spyOn(MessageService, 'markRead').mockResolvedValue();
     markEventAcknowledged('e1', 'start');
-    const ended = event({ winnerName: 'The Long Thaw', winnerAuthorName: 'sedgewright', winnerMessageId: 'm-win' });
+    const ended = event({
+      resultsAnnouncedAt: daysFrom(-1), placements: [{ place: 1, worldId: 'w1', worldName: 'The Long Thaw', authorName: 'sedgewright' }], winnerMessageId: 'm-results',
+    });
 
     render(<EventAckModal events={[ended]} isAuthenticated />);
 
-    expect(screen.getByText('Winner Announced')).toBeInTheDocument();
+    expect(screen.getByText('Results Announced')).toBeInTheDocument();
     expect(screen.getByText(/The Long Thaw/)).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole('button', { name: 'Got It' }));
-    await waitFor(() => expect(markRead).toHaveBeenCalledWith('m-win'));
+    await waitFor(() => expect(markRead).toHaveBeenCalledWith('m-results'));
   });
 
-  it('posts that judging has begun for a contest closed with no winner yet', async () => {
+  it('posts that judging has begun for a contest closed with its results still to come', async () => {
     const markRead = vi.spyOn(MessageService, 'markRead').mockResolvedValue();
     // The one a player who launched the app after the deadline gets: closed, undecided, unacknowledged.
     const closed = event({ startsAt: daysFrom(-20), endsAt: daysFrom(-1), endMessageId: 'm-end' });
@@ -164,7 +166,7 @@ describe('EventAckModal', () => {
     render(<EventAckModal events={[closed]} isAuthenticated onOpenEvent={vi.fn()} />);
 
     expect(screen.getByText('This Event Has Ended')).toBeInTheDocument();
-    // Not "See The Winner": there isn't one yet, and the entries are what there is to look at.
+    // Not "See The Results": there are none yet, and the entries are what there is to look at.
     expect(screen.getByRole('button', { name: 'View Entries' })).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole('button', { name: 'Got It' }));
@@ -279,11 +281,13 @@ describe('what the organizer styled', () => {
 
   it('styles the ending the same way it styled the opening', () => {
     markEventAcknowledged('e1', 'start');
-    const ended = event({ posterColor: '#1e3a8a', winnerName: 'The Long Thaw', winnerAuthorName: 'sedgewright' });
+    const ended = event({
+      posterColor: '#1e3a8a', resultsAnnouncedAt: daysFrom(-1), placements: [{ place: 1, worldId: 'w1', worldName: 'The Long Thaw', authorName: 'sedgewright' }],
+    });
 
     render(<EventAckModal events={[ended]} isAuthenticated />);
 
-    expect(screen.getByText('Winner Announced')).toBeInTheDocument();
+    expect(screen.getByText('Results Announced')).toBeInTheDocument();
     expect(band().style.backgroundColor).toBe('rgb(30, 58, 138)');
   });
 
