@@ -1,37 +1,13 @@
 import { describe, it, expect } from 'vitest';
-import { avatarHue, avatarInitial, avatarSrc } from './avatar';
+import { avatarHue, avatarInitial } from './avatar';
 
 /**
- * Where a profile image loads from, and what stands in when there is none.
+ * What stands in for a profile image when there is none.
  *
  * The fallback matters as much as the image: most accounts will never set one, so the letter circle is
- * what the catalog and every comment thread are actually made of.
+ * what the catalog and every comment thread are actually made of. Where a set image loads from is
+ * `serverAssetSrc`, tested alongside it.
  */
-
-describe('the image URL', () => {
-  it('hangs the server’s path off the API origin', () => {
-    // The server answers with a root-relative path because it does not know which host reached it —
-    // the desktop shell and the web build use different ones.
-    expect(avatarSrc('/api/avatars/abc.webp', 'https://example.test/api'))
-      .toBe('https://example.test/api/avatars/abc.webp');
-  });
-
-  it('does not double the /api segment', () => {
-    expect(avatarSrc('/api/avatars/abc.webp', 'https://example.test/api/'))
-      .toBe('https://example.test/api/avatars/abc.webp');
-  });
-
-  it('leaves an absolute URL alone, in case these ever move to a CDN', () => {
-    expect(avatarSrc('https://cdn.test/abc.webp', 'https://example.test/api'))
-      .toBe('https://cdn.test/abc.webp');
-  });
-
-  it('is null for somebody who has none', () => {
-    expect(avatarSrc(null, 'https://example.test/api')).toBeNull();
-    expect(avatarSrc(undefined, 'https://example.test/api')).toBeNull();
-    expect(avatarSrc('', 'https://example.test/api')).toBeNull();
-  });
-});
 
 describe('the fallback letter', () => {
   it('is the first character of the name, capitalized', () => {

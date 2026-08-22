@@ -4,7 +4,7 @@ import { Camera, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { UserAvatar } from "@/components/UserAvatar";
 import { AvatarCropDialog } from "@/components/menu/AvatarCropDialog";
-import { AVATAR_ACCEPT, MAX_AVATAR_UPLOAD_BYTES } from "@/lib/avatar";
+import { IMAGE_UPLOAD_ACCEPT, MAX_AVATAR_UPLOAD_BYTES } from "@/lib/avatar";
 import AuthService from "@/services/AuthService";
 
 interface ProfileAvatarEditorProps {
@@ -92,7 +92,7 @@ export function ProfileAvatarEditor({ username, avatarUrl, onChanged, disabled =
         <input
           ref={input}
           type="file"
-          accept={AVATAR_ACCEPT}
+          accept={IMAGE_UPLOAD_ACCEPT}
           className="hidden"
           aria-label="Profile image file"
           onChange={(event) => pick(event.target.files?.[0])}

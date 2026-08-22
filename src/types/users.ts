@@ -9,7 +9,7 @@ import type { CatalogKind } from '@/lib/catalogKinds';
 export interface PublicProfile {
   id: string;
   username: string;
-  /** Their profile image, or null when they have none. Root-relative; see `avatarSrc`. */
+  /** Their profile image, or null when they have none. Root-relative; see `serverAssetSrc`. */
   avatarUrl: string | null;
   /** When the account was created, as a server timestamp — see `lib/serverDate`. */
   createdAt: string;

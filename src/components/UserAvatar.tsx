@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { cn } from "@/lib/utils";
-import { avatarHue, avatarInitial, avatarSrc } from "@/lib/avatar";
+import { avatarHue, avatarInitial } from "@/lib/avatar";
+import { serverAssetSrc } from "@/lib/serverAssets";
 import WorldStorageService from "@/services/WorldStorageService";
 
 /** Named sizes rather than a free number: the same face appears at the same few scales throughout. */
@@ -34,7 +35,7 @@ export function UserAvatar({ username, avatarUrl, size = 'sm', className }: User
   // replacement gets its own chance rather than inheriting the last one's failure.
   const [failed, setFailed] = useState<string | null>(null);
 
-  const src = avatarSrc(avatarUrl, WorldStorageService.API_URL);
+  const src = serverAssetSrc(avatarUrl, WorldStorageService.API_URL);
   const showImage = Boolean(src) && failed !== src;
 
   const shared = cn(

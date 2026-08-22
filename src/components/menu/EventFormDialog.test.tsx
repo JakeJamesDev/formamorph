@@ -173,6 +173,7 @@ describe('editing one', () => {
     render(<EventFormDialog open onOpenChange={() => {}} editing={event()} />);
 
     expect(field('Title').value).toBe('Summer Isles Contest');
+    // `field` is typed for the inputs every other assertion here reads; Rules is the one textarea.
     expect((field('Rules') as unknown as HTMLTextAreaElement).value).toBe('One entry per creator.');
   });
 

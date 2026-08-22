@@ -80,8 +80,8 @@ interface DateTimeFieldProps {
  * A moment, picked in the app's own chrome.
  *
  * The native `datetime-local` input opens the browser's calendar, which follows the operating system's
- * theme rather than this app's — foreign next to everything around it, and unreachable to style. This is
- * the same value in the same format, so what reads and writes it is unchanged; only the picking moved.
+ * theme rather than this app's — foreign next to everything around it, and unreachable to style. This
+ * reads and writes the same `YYYY-MM-DDTHH:mm` string that input does, so it drops in wherever one was.
  *
  * Date and time are two controls because they are two decisions: the calendar answers which day, and the
  * time field answers when on it, without a popover in the way of typing an hour.
