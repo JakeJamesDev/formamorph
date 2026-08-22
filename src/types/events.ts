@@ -25,10 +25,13 @@ export interface ServerEvent {
   title: string;
   /** One line for the banner. */
   bannerText: string;
-  /** The acknowledge modal's body. */
-  body: string;
-  /** Contests only: what entrants are agreeing to. */
-  rulesText: string | null;
+  /**
+   * The acknowledge modal's body. Absent — not null — on a row from a slim list, which is how a reader
+   * knows to fetch the event in full before showing prose.
+   */
+  body?: string;
+  /** Contests only: what entrants are agreeing to. Absent on a slim row; null when there are none. */
+  rulesText?: string | null;
   /**
    * The organizer's color for the poster's header band, as a hex string. Absent on a server that has not
    * deployed the styling fields yet, which is why every reader goes through `posterStyle`.

@@ -2,6 +2,7 @@ import { Trophy } from 'lucide-react';
 import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog';
 import { MarkdownRenderer } from '@/components/game/MarkdownRenderer';
 import { EventPosterBand } from '@/components/events/EventPosterBand';
+import { useEventProse } from '@/lib/useEventProse';
 import type { ServerEvent } from '@/types';
 
 interface ContestRulesDialogProps {
@@ -20,7 +21,12 @@ interface ContestRulesDialogProps {
  * It opens under the poster's own header band, organizer color and all, so the rules are visibly the
  * same event the poster announced rather than a second thing with the same name.
  */
-export function ContestRulesDialog({ contest, open, onOpenChange }: ContestRulesDialogProps) {
+export function ContestRulesDialog({ contest: row, open, onOpenChange }: ContestRulesDialogProps) {
+  // The archive's rows are served without their prose, so the rules are read back on the press that
+  // opens this — the one moment anyone wants them. The dialog opens on what it already knows and fills
+  // the rules in behind: unlike the poster, nothing here is answered once and gone.
+  const { event: contest } = useEventProse(row, open);
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent aria-describedby={undefined} className="max-w-md p-0 gap-0 overflow-hidden">

@@ -1,10 +1,12 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { Calendar, Trophy } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import {
+  Select, SelectContent, SelectGroup, SelectItem, SelectLabel, SelectTrigger, SelectValue,
+} from '@/components/ui/select';
 import { ContestRulesDialog } from '@/components/community/ContestRulesDialog';
 import { formatServerDate } from '@/lib/serverDate';
-import { contestPhase, type ContestPhase } from '@/lib/contests';
+import { contestPhase, contestSections, type ContestPhase } from '@/lib/contests';
 import { daysRemaining } from '@/lib/serverEvents';
 import type { ServerEvent } from '@/types';
 
@@ -44,6 +46,9 @@ export function ContestBar({ contest, contests, onSelect, entryCount }: ContestB
   const [rulesOpen, setRulesOpen] = useState(false);
   const phase = contestPhase(contest);
   const dates = `${formatServerDate(contest.startsAt)} – ${formatServerDate(contest.endsAt)}`;
+  // The archive is permanent, so this list is a calendar rather than a menu: what has not concluded sits
+  // on top and everything else is filed under the year it ran.
+  const sections = useMemo(() => contestSections(contests), [contests]);
 
   return (
     <div className="shrink-0 border-b px-6 py-2 flex flex-wrap items-center gap-x-3 gap-y-2 text-label">
@@ -55,8 +60,13 @@ export function ContestBar({ contest, contests, onSelect, entryCount }: ContestB
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
-            {contests.map((option) => (
-              <SelectItem key={option.id} value={option.id}>{option.title}</SelectItem>
+            {sections.map((section) => (
+              <SelectGroup key={section.label}>
+                <SelectLabel>{section.label}</SelectLabel>
+                {section.contests.map((option) => (
+                  <SelectItem key={option.id} value={option.id}>{option.title}</SelectItem>
+                ))}
+              </SelectGroup>
             ))}
           </SelectContent>
         </Select>

@@ -29,6 +29,7 @@ import { isAdmin } from "@/lib/roles";
 import { useDevEventSample } from "@/lib/useDevEventSample";
 import { useDevRoute } from "@/lib/devRouter";
 import { refreshActiveEvents } from "@/lib/useActiveEvents";
+import { invalidateEvents } from "@/lib/eventsCache";
 import AuthService from "@/services/AuthService";
 import EventService from "@/services/EventService";
 import type { ServerEvent } from "@/types";
@@ -37,6 +38,14 @@ interface EventsTabProps {
   /** Whether the tab is visible; the list only fetches while it is. */
   active: boolean;
 }
+
+/**
+ * How many finished events the Past group shows before folding the rest behind its expander.
+ *
+ * Nothing is dropped — the record is permanent — but this is the group staff read straight after a
+ * contest ends, and at a monthly cadence it is years deep. Ten is a screenful of the recent ones.
+ */
+const PAST_SHOWN = 10;
 
 /** The badge saying which state an event is in. */
 function StateBadge({ event }: { event: ServerEvent }) {
@@ -88,6 +97,7 @@ export function EventsTab({ active }: EventsTabProps) {
   const [canceling, setCanceling] = useState<ServerEvent | null>(null);
   const [removing, setRemoving] = useState<ServerEvent | null>(null);
   const [busy, setBusy] = useState(false);
+  const [showAllPast, setShowAllPast] = useState(false);
 
   const devRoute = useDevRoute();
   const devFixture = import.meta.env.DEV && devRoute?.modal === 'adminPanel' && devRoute.tab === 'events';
@@ -97,10 +107,13 @@ export function EventsTab({ active }: EventsTabProps) {
   const viewerIsAdmin = devRoleView ? devRoleView === 'admin' : isAdmin(AuthService.getCurrentUser());
 
   // Every mutation lands here, so the app-wide events poll is nudged alongside the tab's own list —
-  // an extended deadline reopens the publish flow's contest card now, not at the next poll.
+  // an extended deadline reopens the publish flow's contest card now, not at the next poll. The shared
+  // events cache is dropped for the same reason: a winner just picked has to reach the archive and its
+  // badges in this session, not the player's next launch.
   const refresh = useCallback(() => {
     setNonce((n) => n + 1);
     refreshActiveEvents();
+    invalidateEvents();
   }, []);
 
   useEffect(() => {
@@ -275,8 +288,15 @@ export function EventsTab({ active }: EventsTabProps) {
 
           <GroupHeading icon={CheckCircle2}>Past</GroupHeading>
           {groups.past.length > 0
-            ? groups.past.map(eventRow)
+            ? (showAllPast ? groups.past : groups.past.slice(0, PAST_SHOWN)).map(eventRow)
             : <p className="text-meta text-muted-foreground">Nothing has finished yet.</p>}
+          {groups.past.length > PAST_SHOWN && (
+            <Button size="sm" variant="ghost" className="mt-2" onClick={() => setShowAllPast((shown) => !shown)}>
+              {showAllPast
+                ? 'Show Fewer'
+                : `Show Older (${groups.past.length - PAST_SHOWN})`}
+            </Button>
+          )}
         </>
       )}
 

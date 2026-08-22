@@ -23,6 +23,10 @@ vi.mock('./WinnerPickDialog', () => ({
 const { refreshActiveEvents } = vi.hoisted(() => ({ refreshActiveEvents: vi.fn() }));
 vi.mock('@/lib/useActiveEvents', () => ({ refreshActiveEvents }));
 
+// The shared events list players read. Its own behavior is covered beside it; here the wiring is.
+const { invalidateEvents } = vi.hoisted(() => ({ invalidateEvents: vi.fn() }));
+vi.mock('@/lib/eventsCache', () => ({ invalidateEvents, resetEventsCache: () => {} }));
+
 const currentUser = { id: 'a1', username: 'root-admin', accountType: 'admin' };
 vi.mock('@/services/AuthService', () => ({
   default: { token: 't', getCurrentUser: () => currentUser },
@@ -186,6 +190,18 @@ describe('what an administrator may do', () => {
 
     await waitFor(() => expect(refreshActiveEvents).toHaveBeenCalled());
   });
+
+  it('drops the shared events list too, so the archive and its badges agree in this session', async () => {
+    invalidateEvents.mockClear();
+    vi.spyOn(EventService, 'cancel').mockResolvedValue({ ...running, cancelledAt: at(0) });
+    await renderTab([running]);
+    expect(invalidateEvents).not.toHaveBeenCalled();
+
+    fireEvent.click(screen.getByRole('button', { name: /^Cancel$/ }));
+    fireEvent.click(await screen.findByRole('button', { name: 'Cancel Event' }));
+
+    await waitFor(() => expect(invalidateEvents).toHaveBeenCalled());
+  });
 });
 
 describe('what a moderator may do', () => {
@@ -230,5 +246,53 @@ describe('what a moderator may do', () => {
     await renderTab([decided]);
 
     expect(screen.queryByRole('button', { name: /Pick Winner/ })).toBeNull();
+  });
+});
+
+describe('the Past group once there are years of them', () => {
+  /** `count` finished announcements, newest first — what a monthly cadence leaves behind. */
+  const finished = (count: number): ServerEvent[] =>
+    Array.from({ length: count }, (_, i) => event({
+      id: `past-${i}`,
+      type: 'announcement',
+      title: `Past ${i}`,
+      startsAt: at(-30 - i * 30),
+      endsAt: at(-29 - i * 30),
+    }));
+
+  it('shows the newest handful and folds the rest behind one action', async () => {
+    await renderTab(finished(13));
+
+    expect(screen.getByText('Past 0')).toBeInTheDocument();
+    expect(screen.getByText('Past 9')).toBeInTheDocument();
+    expect(screen.queryByText('Past 10')).toBeNull();
+    expect(screen.getByRole('button', { name: 'Show Older (3)' })).toBeInTheDocument();
+  });
+
+  it('reveals every one of them when the action is pressed — the record is never gone', async () => {
+    await renderTab(finished(13));
+
+    fireEvent.click(screen.getByRole('button', { name: 'Show Older (3)' }));
+
+    expect(screen.getByText('Past 12')).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Show Fewer' }));
+    expect(screen.queryByText('Past 12')).toBeNull();
+  });
+
+  it('offers nothing to expand while the group still fits', async () => {
+    await renderTab(finished(10));
+
+    expect(screen.getByText('Past 9')).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /Show Older/ })).toBeNull();
+  });
+
+  it('folds the same way for a moderator, whose calendar is the shorter one', async () => {
+    asMod();
+
+    await renderTab([...finished(12), canceled]);
+
+    // The canceled event is an administrator's business and never joins the count.
+    expect(screen.queryByText('Called Off Contest')).toBeNull();
+    expect(screen.getByRole('button', { name: 'Show Older (2)' })).toBeInTheDocument();
   });
 });

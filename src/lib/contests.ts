@@ -16,6 +16,10 @@ import type { ServerEvent } from '@/types';
  */
 export type ContestPhase = 'live' | 'judging' | 'decided';
 
+/** Newest window first — the order every list of contests is read in. */
+const byNewestStart = (a: ServerEvent, b: ServerEvent): number =>
+  (parseServerDate(b.startsAt)?.getTime() ?? 0) - (parseServerDate(a.startsAt)?.getTime() ?? 0);
+
 /** Whether a contest is inside its window — running now, rather than scheduled or over. */
 export function isContestRunning(event: ServerEvent, now: Date = new Date()): boolean {
   if (event.cancelledAt) return false;
@@ -43,7 +47,7 @@ export function contestsOf(events: ServerEvent[], now: Date = new Date()): Serve
     .sort((a, b) => {
       const running = Number(isContestRunning(b, now)) - Number(isContestRunning(a, now));
       if (running !== 0) return running;
-      return (parseServerDate(b.startsAt)?.getTime() ?? 0) - (parseServerDate(a.startsAt)?.getTime() ?? 0);
+      return byNewestStart(a, b);
     });
 }
 
@@ -167,5 +171,64 @@ export function contestsWonBy(record: WorldRecord, events: ServerEvent[]): Serve
   return events
     .filter((event) => isContestEvent(event) && !event.cancelledAt
       && (isContestWinner(record, event) || (Boolean(event.winnerWorldId) && record.sourceId === event.winnerWorldId)))
-    .sort((a, b) => (parseServerDate(b.startsAt)?.getTime() ?? 0) - (parseServerDate(a.startsAt)?.getTime() ?? 0));
+    .sort(byNewestStart);
+}
+
+/** One heading in the archive selector, and the contests filed under it. */
+export interface ContestSection {
+  /** The heading, as the selector renders it. */
+  label: string;
+  /** The contests it holds, newest first. */
+  contests: ServerEvent[];
+}
+
+/** The heading over everything still going on — running, being judged, or not yet started. */
+const CURRENT_LABEL = 'Current';
+
+/** The heading a contest whose start cannot be read is filed under, rather than being dropped. */
+const UNDATED_LABEL = 'Undated';
+
+/**
+ * The archive selector's sections: what has not concluded, then one heading per calendar year.
+ *
+ * Sixty contests is a wall of titles, and the one thing a reader is usually after — the contest running
+ * now — is the one a flat list buries in the middle of it. The undecided ones lead as their own section
+ * so "still happening" never reads as history, and the rest become a calendar.
+ *
+ * Nothing is capped or filtered: the archive is the record, so every contest handed in comes back under
+ * some heading, including one whose window cannot be read at all.
+ *
+ * @param now - The instant to judge the phases against; defaults to the current time
+ */
+export function contestSections(contests: ServerEvent[], now: Date = new Date()): ContestSection[] {
+  const newestFirst = [...contests].sort(byNewestStart);
+
+  const current: ServerEvent[] = [];
+  const undated: ServerEvent[] = [];
+  const years = new Map<number, ServerEvent[]>();
+
+  newestFirst.forEach((contest) => {
+    if (contestPhase(contest, now) !== 'decided') {
+      current.push(contest);
+      return;
+    }
+    const started = parseServerDate(contest.startsAt);
+    if (!started) {
+      undated.push(contest);
+      return;
+    }
+    const year = started.getFullYear();
+    const bucket = years.get(year);
+    if (bucket) bucket.push(contest);
+    else years.set(year, [contest]);
+  });
+
+  const sections: ContestSection[] = [];
+  if (current.length > 0) sections.push({ label: CURRENT_LABEL, contests: current });
+  [...years.keys()]
+    .sort((a, b) => b - a)
+    .forEach((year) => sections.push({ label: String(year), contests: years.get(year) ?? [] }));
+  if (undated.length > 0) sections.push({ label: UNDATED_LABEL, contests: undated });
+
+  return sections;
 }

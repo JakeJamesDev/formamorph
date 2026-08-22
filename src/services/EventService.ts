@@ -47,11 +47,23 @@ class EventService {
   /**
    * Every event that has started, the ones already over included — what the contest archives are read
    * from. Staff additionally see what is still scheduled, which is why the token rides along.
+   *
+   * The archive is permanent, so this list only ever grows. Asked for slim, it comes back without the
+   * poster body and rules prose, which is most of a row's bytes; a server that has never heard of the
+   * parameter ignores it and answers with whole rows, which are a superset of the same shape.
+   *
+   * @param options - `slim` asks for rows without prose
    */
-  async fetchList(): Promise<ServerEvent[]> {
-    const response = await fetch(`${this.apiUrl}/events`, { headers: this.authHeaders() });
+  async fetchList({ slim = false }: { slim?: boolean } = {}): Promise<ServerEvent[]> {
+    const response = await fetch(`${this.apiUrl}/events${slim ? '?slim=1' : ''}`, { headers: this.authHeaders() });
     const body = await this.unwrap<{ data: ServerEvent[] }>(response, 'Failed to load events');
     return body.data ?? [];
+  }
+
+  /** One event in full, prose included — what a slim row is read out to when a surface needs its text. */
+  async fetchOne(id: string): Promise<ServerEvent> {
+    const response = await fetch(`${this.apiUrl}/events/${id}`, { headers: this.authHeaders() });
+    return (await this.unwrap<{ data: ServerEvent }>(response, 'Failed to load the event')).data;
   }
 
   /**
