@@ -94,6 +94,67 @@ describe('postComment', () => {
   });
 });
 
+describe('updateComment', () => {
+  it('throws when not authenticated', async () => {
+    await expect(WorldStorageService.updateComment('c1', 'fixed')).rejects.toThrow(/logged in/);
+  });
+
+  it('PUTs the new text to the comment itself, signed', async () => {
+    // The flat comment route, not a world-scoped one: the server has no nested edit path.
+    AuthService.token = 'tok';
+    vi.mocked(fetch).mockResolvedValue(res({ data: { id: 'c1', content: 'fixed' } }));
+
+    await WorldStorageService.updateComment('c1', 'fixed');
+
+    const [url, init] = vi.mocked(fetch).mock.calls[0];
+    expect(url as string).toContain('/comments/c1');
+    expect(init?.method).toBe('PUT');
+    expect((init?.headers as Record<string, string>).Authorization).toBe('Bearer tok');
+    expect(JSON.parse(init?.body as string)).toEqual({ content: 'fixed' });
+  });
+
+  it('hands back the server’s version, so the edited marker comes from the server', async () => {
+    AuthService.token = 'tok';
+    vi.mocked(fetch).mockResolvedValue(res({ data: { id: 'c1', content: 'fixed', edited_at: '2026-08-22T10:00:00.000Z' } }));
+
+    expect(await WorldStorageService.updateComment('c1', 'fixed')).toEqual({
+      id: 'c1', content: 'fixed', edited_at: '2026-08-22T10:00:00.000Z',
+    });
+  });
+
+  it('surfaces a refusal rather than swallowing it', async () => {
+    AuthService.token = 'tok';
+    vi.mocked(fetch).mockResolvedValue(res({ error: 'Not authorized to update this comment' }, false, 403));
+
+    await expect(WorldStorageService.updateComment('c1', 'fixed')).rejects.toThrow(/Not authorized/);
+  });
+});
+
+describe('deleteComment', () => {
+  it('throws when not authenticated', async () => {
+    await expect(WorldStorageService.deleteComment('c1')).rejects.toThrow(/logged in/);
+  });
+
+  it('DELETEs the comment itself, signed', async () => {
+    AuthService.token = 'tok';
+    vi.mocked(fetch).mockResolvedValue(res({ success: true, data: {} }));
+
+    await WorldStorageService.deleteComment('c1');
+
+    const [url, init] = vi.mocked(fetch).mock.calls[0];
+    expect(url as string).toContain('/comments/c1');
+    expect(init?.method).toBe('DELETE');
+    expect((init?.headers as Record<string, string>).Authorization).toBe('Bearer tok');
+  });
+
+  it('surfaces a refusal rather than swallowing it', async () => {
+    AuthService.token = 'tok';
+    vi.mocked(fetch).mockResolvedValue(res({ error: 'Not authorized to delete this comment' }, false, 403));
+
+    await expect(WorldStorageService.deleteComment('c1')).rejects.toThrow(/Not authorized/);
+  });
+});
+
 describe('publishItem', () => {
   const payload = (over = {}) => ({
     kind: 'world' as const, name: 'N', description: 'D', thumbnail: 't', contentData: { a: 1 }, ...over,
