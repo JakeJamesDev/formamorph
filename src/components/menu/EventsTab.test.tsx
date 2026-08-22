@@ -19,6 +19,10 @@ vi.mock('./WinnerPickDialog', () => ({
   ),
 }));
 
+// The app-wide events poll lives in MainMenu; here only the nudge itself is the tab's to prove.
+const { refreshActiveEvents } = vi.hoisted(() => ({ refreshActiveEvents: vi.fn() }));
+vi.mock('@/lib/useActiveEvents', () => ({ refreshActiveEvents }));
+
 const currentUser = { id: 'a1', username: 'root-admin', accountType: 'admin' };
 vi.mock('@/services/AuthService', () => ({
   default: { token: 't', getCurrentUser: () => currentUser },
@@ -169,6 +173,18 @@ describe('what an administrator may do', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Cancel Event' }));
 
     await waitFor(() => expect(fetchList).toHaveBeenCalledTimes(2));
+  });
+
+  it('nudges the app-wide events poll after a mutation, so an edit reaches the publish flow at once', async () => {
+    refreshActiveEvents.mockClear();
+    vi.spyOn(EventService, 'cancel').mockResolvedValue({ ...running, cancelledAt: at(0) });
+    await renderTab([running]);
+    expect(refreshActiveEvents).not.toHaveBeenCalled();
+
+    fireEvent.click(screen.getByRole('button', { name: /^Cancel$/ }));
+    fireEvent.click(await screen.findByRole('button', { name: 'Cancel Event' }));
+
+    await waitFor(() => expect(refreshActiveEvents).toHaveBeenCalled());
   });
 });
 

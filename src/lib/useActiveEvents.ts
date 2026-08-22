@@ -11,6 +11,19 @@ export const EVENTS_POLL_MS = 5 * 60 * 1000;
 /** The closest together two focus-driven reads may land. Alt-tabbing is not news about an event. */
 export const EVENTS_FOCUS_FLOOR_MS = 60 * 1000;
 
+/** The mounted polls, so an admin's event write can nudge them without threading a callback down. */
+const pollers = new Set<() => void>();
+
+/**
+ * Re-read every mounted events poll now.
+ *
+ * Called after an admin creates, edits, cancels, or decides an event: the poll is minutes-slow by
+ * design, and an extended deadline that reopens a contest must reach the publish flow before then.
+ */
+export function refreshActiveEvents(): void {
+  pollers.forEach((poll) => poll());
+}
+
 interface ActiveEventsOptions {
   /**
    * Called after every successful poll. The server pushes nothing, so this is the app's one chance to
@@ -60,6 +73,7 @@ export function useActiveEvents({ onPoll }: ActiveEventsOptions = {}): ServerEve
     if (!COMMUNITY_ENABLED || devFixture) return;
 
     void refresh();
+    pollers.add(refresh);
     const timer = window.setInterval(() => { void refresh(); }, EVENTS_POLL_MS);
     const onFocus = () => {
       if (Date.now() - lastReadAt.current < EVENTS_FOCUS_FLOOR_MS) return;
@@ -69,6 +83,7 @@ export function useActiveEvents({ onPoll }: ActiveEventsOptions = {}): ServerEve
 
     return () => {
       readId.current += 1;
+      pollers.delete(refresh);
       window.clearInterval(timer);
       window.removeEventListener('focus', onFocus);
     };

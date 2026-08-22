@@ -8,7 +8,7 @@ import type { ServerEvent } from '@/types';
 const flag = vi.hoisted(() => ({ enabled: true }));
 vi.mock('@/lib/featureFlags', () => ({ get COMMUNITY_ENABLED() { return flag.enabled; } }));
 
-const { useActiveEvents, EVENTS_POLL_MS, EVENTS_FOCUS_FLOOR_MS } = await import('./useActiveEvents');
+const { useActiveEvents, refreshActiveEvents, EVENTS_POLL_MS, EVENTS_FOCUS_FLOOR_MS } = await import('./useActiveEvents');
 
 const sample: ServerEvent = {
   id: 'e1', type: 'contest', title: 'A Contest', bannerText: 'blurb', body: 'body',
@@ -74,6 +74,20 @@ describe('useActiveEvents', () => {
     await act(async () => { await vi.advanceTimersByTimeAsync(EVENTS_FOCUS_FLOOR_MS); });
     await act(async () => { window.dispatchEvent(new Event('focus')); });
     await waitFor(() => expect(fetchActive).toHaveBeenCalledTimes(2));
+  });
+
+  it('re-reads at once when an admin event write announces itself, and never after unmount', async () => {
+    const fetchActive = stub([sample]);
+    const { unmount } = render(<Probe seen={() => {}} />);
+    await waitFor(() => expect(fetchActive).toHaveBeenCalledTimes(1));
+
+    // An extended contest deadline must reach the publish flow now, not at the next 5-minute poll.
+    await act(async () => { refreshActiveEvents(); });
+    expect(fetchActive).toHaveBeenCalledTimes(2);
+
+    unmount();
+    await act(async () => { refreshActiveEvents(); });
+    expect(fetchActive).toHaveBeenCalledTimes(2);
   });
 
   it('nudges its caller after each successful read, through whichever callback is current', async () => {
