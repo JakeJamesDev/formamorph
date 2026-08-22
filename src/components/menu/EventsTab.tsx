@@ -28,6 +28,7 @@ import { formatServerDate } from "@/lib/serverDate";
 import { isAdmin } from "@/lib/roles";
 import { useDevEventSample } from "@/lib/useDevEventSample";
 import { useDevRoute } from "@/lib/devRouter";
+import { refreshActiveEvents } from "@/lib/useActiveEvents";
 import AuthService from "@/services/AuthService";
 import EventService from "@/services/EventService";
 import type { ServerEvent } from "@/types";
@@ -95,7 +96,12 @@ export function EventsTab({ active }: EventsTabProps) {
   const devRoleView = devFixture ? devRoute?.subtab : undefined;
   const viewerIsAdmin = devRoleView ? devRoleView === 'admin' : isAdmin(AuthService.getCurrentUser());
 
-  const refresh = useCallback(() => setNonce((n) => n + 1), []);
+  // Every mutation lands here, so the app-wide events poll is nudged alongside the tab's own list —
+  // an extended deadline reopens the publish flow's contest card now, not at the next poll.
+  const refresh = useCallback(() => {
+    setNonce((n) => n + 1);
+    refreshActiveEvents();
+  }, []);
 
   useEffect(() => {
     if (!active || devFixture) return;
