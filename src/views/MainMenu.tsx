@@ -112,7 +112,8 @@ import { asBrowseTab, type BrowseTab } from "@/lib/browseTabs";
 import { isContestEvent } from "@/lib/serverEvents";
 import { judgingContestsOf } from "@/lib/contests";
 import { useContests } from "@/lib/useContests";
-import { EventBanner } from "@/components/events/EventBanner";
+import { EventBanner, EventBannerChips } from "@/components/events/EventBanner";
+import { useEventBanners } from "@/components/events/useEventBanners";
 import { EventAckModal } from "@/components/events/EventAckModal";
 import FeedbackService from "@/services/FeedbackService";
 import { FeedbackHubDialog } from "@/components/menu/FeedbackHubDialog";
@@ -1282,6 +1283,8 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
     setShowCommunityBrowser(true);
   }, []);
 
+  const banners = useEventBanners(activeEvents);
+
   // The feedback half of the badge. Separate from messages because reading a thread changes it, so it is
   // re-read on demand rather than only when auth changes.
   useEffect(() => {
@@ -1435,7 +1438,7 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
 
       {/* Running-event banner. In-flow and shrink-0 like the mobile nav and footer, so it compresses the
           scroll frame rather than covering anything; the root's top padding already clears the fixed bar. */}
-      {COMMUNITY_ENABLED && <EventBanner events={activeEvents} onOpenEvent={openEvent} />}
+      {COMMUNITY_ENABLED && <EventBanner banners={banners} onOpenEvent={openEvent} />}
 
       {/* Top control bar: card-type switcher (left) + action buttons/hamburger (center) + view toggle &
           settings (right). items-center keeps every control on the settings cog's centerline (the cog is
@@ -1495,11 +1498,21 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
           </Popover>
         </div>
 
-        {/* Grid/detailed view toggle + settings (cog stays right-most) */}
-        <div className="flex-1 flex items-center justify-end gap-2">
+        {/* Grid/detailed view toggle + settings (cog stays right-most). min-w-0 so a chip beside them can
+            be squeezed rather than pushing the cell past the bar's right edge. */}
+        <div className="flex-1 min-w-0 flex items-center justify-end gap-2">
+          {/* Dismissed banners, centered in the slack this cell was already holding rather than pushed
+              against the buttons beside it. It takes the free width and gives it back as it shrinks, so
+              a chip costs the bar no row and never crowds the controls it sits between. */}
+          {COMMUNITY_ENABLED && (
+            <EventBannerChips banners={banners} onOpenEvent={openEvent} className="grow justify-center" />
+          )}
           <ToggleGroup
             type="single"
             value={layoutMode}
+            // shrink-0 here and on the menu beside it: a chip in this cell is the one thing that may give
+            // width back, so the controls it sits beside keep theirs at every viewport.
+            className="shrink-0"
             // Clicking the active item again would otherwise clear the layout mode, which has no empty state.
             onValueChange={(v) => { if (v) setLayoutMode(v as 'grid' | 'detailed'); }}
           >
@@ -1512,7 +1525,7 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
           </ToggleGroup>
           {/* Right menu — hidden below 1000px, where its items fold into the center hamburger; the view toggle
               then becomes the right-most control. */}
-          <div className="hidden min-[1000px]:block">
+          <div className="hidden min-[1000px]:block shrink-0">
             <Popover>
               <PopoverTrigger asChild>
                 <button
