@@ -211,7 +211,7 @@ const decidedContest = event({
   startsAt: at(-20),
   endsAt: at(-2),
   resultsAnnouncedAt: at(-1),
-  winnerMessageId: 'm-results',
+  resultsMessageId: 'm-results',
   placements: [{ place: 1, worldId: 'w1', worldName: 'Lantern Reef', authorName: 'suneater' }],
 });
 

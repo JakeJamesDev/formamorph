@@ -36,7 +36,7 @@ export const serverEvent = (over: Partial<ServerEvent> = {}): ServerEvent => ({
   cancelledAt: null,
   startMessageId: 'm-start',
   endMessageId: null,
-  winnerMessageId: null,
+  resultsMessageId: null,
   resultsAnnouncedAt: null,
   placements: [],
   ...over,
@@ -54,7 +54,7 @@ export const decidedContest = (
   over: Partial<ServerEvent> = {},
 ): ServerEvent => serverEvent({
   endsAt: daysFrom(-1),
-  winnerMessageId: 'm-results',
+  resultsMessageId: 'm-results',
   resultsAnnouncedAt: daysFrom(0),
   placements: podium.map(([worldId, worldName, authorName], index) => ({
     place: (index + 1) as ContestPlace, worldId, worldName, authorName,

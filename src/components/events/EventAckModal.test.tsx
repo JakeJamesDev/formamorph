@@ -146,7 +146,7 @@ describe('EventAckModal', () => {
     const markRead = vi.spyOn(MessageService, 'markRead').mockResolvedValue();
     markEventAcknowledged('e1', 'start');
     const ended = event({
-      resultsAnnouncedAt: daysFrom(-1), placements: [{ place: 1, worldId: 'w1', worldName: 'The Long Thaw', authorName: 'sedgewright' }], winnerMessageId: 'm-results',
+      resultsAnnouncedAt: daysFrom(-1), placements: [{ place: 1, worldId: 'w1', worldName: 'The Long Thaw', authorName: 'sedgewright' }], resultsMessageId: 'm-results',
     });
 
     render(<EventAckModal events={[ended]} isAuthenticated />);

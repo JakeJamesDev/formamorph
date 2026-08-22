@@ -22,7 +22,7 @@ const decided = (over: Partial<ServerEvent> = {}): ServerEvent => event({
   startsAt: at(-9),
   endsAt: at(-1),
   resultsAnnouncedAt: at(-1),
-  winnerMessageId: 'm-results',
+  resultsMessageId: 'm-results',
   placements: [{ place: 1, worldId: 'w1', worldName: 'Lantern Reef', authorName: 'suneater' }],
   ...over,
 });

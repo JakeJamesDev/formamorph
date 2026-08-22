@@ -320,7 +320,7 @@ describe('editing an announced podium', () => {
   const announced: ServerEvent = serverEvent({
     ...contest,
     resultsAnnouncedAt: '2026-08-02T12:00:00.000Z',
-    winnerMessageId: 'm-results',
+    resultsMessageId: 'm-results',
     placements: [
       { place: 1, worldId: 'w1', worldName: 'Pearl of the Undertow', authorName: 'mirelle' },
       { place: 2, worldId: 'w2', worldName: 'Ninth Wave Shoals', authorName: 'corrin' },

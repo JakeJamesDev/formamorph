@@ -13,7 +13,7 @@ const { useActiveEvents, refreshActiveEvents, EVENTS_POLL_MS, EVENTS_FOCUS_FLOOR
 const sample: ServerEvent = {
   id: 'e1', type: 'contest', title: 'A Contest', bannerText: 'blurb', body: 'body',
   rulesText: null, startsAt: '2026-08-01T00:00:00Z', endsAt: '2026-09-01T00:00:00Z',
-  cancelledAt: null, startMessageId: null, endMessageId: null, winnerMessageId: null,
+  cancelledAt: null, startMessageId: null, endMessageId: null, resultsMessageId: null,
   resultsAnnouncedAt: null, placements: [],
 };
 
