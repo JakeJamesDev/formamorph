@@ -33,7 +33,8 @@ import { useDownscalePrompt } from "@/lib/useDownscalePrompt";
 import EntityStorageService from "@/services/EntityStorageService";
 import DictionaryStorageService from "@/services/DictionaryStorageService";
 import type { Entity, Dictionary, EntityMetadata, DictionaryMetadata, ServerEvent } from "@/types";
-import { EventBanner } from "@/components/events/EventBanner";
+import { EventBanner, EventBannerChips } from "@/components/events/EventBanner";
+import { useEventBanners } from "@/components/events/useEventBanners";
 import { useClosingSnapshot } from "@/lib/useClosingSnapshot";
 import { useCommunityBrowserFilters } from "@/lib/useCommunityBrowserFilters";
 import { MessageComposerDialog } from "@/components/menu/MessageComposerDialog";
@@ -218,6 +219,16 @@ const CommunityCreationsBrowser = ({
     () => (browseTab === 'contest' ? events.filter((event) => !isContestEvent(event)) : events),
     [browseTab, events],
   );
+
+  const banners = useEventBanners(bannerEvents);
+
+  // The banner here drives this browser's own tab rather than asking the host to re-open it: the host's
+  // request is already set to the contest by the time the second click lands, so re-sending it is a
+  // no-op React bails on and the button dies. Anything that isn't a contest still goes back to the host.
+  const openEventFromBanner = useCallback((event: ServerEvent) => {
+    if (isContestEvent(event)) setBrowseTab('contest');
+    else onOpenEvent?.(event);
+  }, [onOpenEvent]);
 
   // A fresh shuffle seed each time the browser opens, so a live contest is re-ordered per visit but holds
   // still while the reader is looking at it. The archive picked last time is dropped at the same moment:
@@ -531,6 +542,11 @@ const CommunityCreationsBrowser = ({
     </Button>
   );
 
+  // Dismissed banners ride the header's own toolbar rather than a row of their own — a full-width row
+  // reserved for a chip is most of a row of nothing. True centering is out in a row that wraps, so they
+  // trail the controls and wrap with them.
+  const eventChips = <EventBannerChips banners={banners} onOpenEvent={openEventFromBanner} />;
+
   // A contest's entries are ordered by the contest, not by the reader: shuffled while it runs, by likes
   // once it is judged. Offering a sort that the grid then overrides would be a control that lies.
   const sortControl = browseTab === 'contest' ? null : (
@@ -699,7 +715,7 @@ const CommunityCreationsBrowser = ({
                     {searchControl}
                     {refreshControl}
                   </div>
-                  <div className="flex items-center gap-2">
+                  <div className="flex flex-wrap items-center gap-2">
                     {kindTabs}
                     {quarantineControl}
                     <TutorialPopover entry={filtersToggleTutorial} nav={tutorialNav} align="end">
@@ -719,6 +735,7 @@ const CommunityCreationsBrowser = ({
                       </Button>
                     </CollapsibleTrigger>
                     </TutorialPopover>
+                    {eventChips}
                   </div>
                 </>
               ) : (
@@ -732,6 +749,7 @@ const CommunityCreationsBrowser = ({
                   {quarantineControl}
                   {refreshControl}
                   {sortControl}
+                  {eventChips}
                 </div>
               )}
 
@@ -747,7 +765,7 @@ const CommunityCreationsBrowser = ({
               {/* The same event banner the main menu carries — the two surfaces share no shell, so this
                   is a second instance rather than a moved one. Margins come from the header's own
                   padding, so the card's are dropped. */}
-              <EventBanner events={bannerEvents} onOpenEvent={onOpenEvent} className="mx-0 mb-0" />
+              <EventBanner banners={banners} onOpenEvent={openEventFromBanner} className="mx-0 mb-0" />
             </div>
           </Collapsible>
 
