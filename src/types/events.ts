@@ -46,12 +46,31 @@ export interface ServerEvent {
   startMessageId: string | null;
   /** The broadcast posted when the window closed. */
   endMessageId: string | null;
-  /** Contests only: the broadcast naming the winner. */
+  /** Contests only: the broadcast naming the podium. */
   winnerMessageId: string | null;
-  winnerWorldId: string | null;
-  /** Snapshots taken at the pick, so the archive survives the world being deleted. */
-  winnerName: string | null;
-  winnerAuthorName: string | null;
+  /**
+   * Contests only: when the results were announced, which is what makes a contest decided. Not any one
+   * place existing — an announced podium stays editable, and a contest must not un-decide mid-correction.
+   */
+  resultsAnnouncedAt: string | null;
+  /** Contests only: the podium, gold first. Empty until the results are announced. */
+  placements: EventPlacement[];
+}
+
+/** Which step of the podium a world is on. Three, and no ties — see the contest podium spec. */
+export type ContestPlace = 1 | 2 | 3;
+
+/**
+ * One step of a contest's podium.
+ *
+ * `worldId` is null once the listing is gone, which is exactly why the two names are snapshots rather
+ * than a lookup: the archive has to still read after a placed world is deleted.
+ */
+export interface EventPlacement {
+  place: ContestPlace;
+  worldId: string | null;
+  worldName: string;
+  authorName: string;
 }
 
 /**

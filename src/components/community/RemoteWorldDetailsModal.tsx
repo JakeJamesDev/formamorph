@@ -18,8 +18,8 @@ import { UserAvatar } from "@/components/UserAvatar";
 import { UserName } from "@/components/UserName";
 import { LikeButton } from "@/components/community/LikeButton";
 import { WorldActionButton } from "@/components/WorldActionButton";
-import { WinnerBadges } from "@/components/WinnerBadges";
-import { contestsWonBy } from "@/lib/contests";
+import { PlaceBadges } from "@/components/PlaceBadges";
+import { placementsBy } from "@/lib/contests";
 import type { ServerEvent } from "@/types";
 
 interface RemoteWorldDetailsModalProps {
@@ -38,7 +38,7 @@ interface RemoteWorldDetailsModalProps {
   currentUser?: WorldRecord | null;
   /** Records a like. Absent leaves the heart a plain count. */
   onLike?: (world: WorldRecord, liked: boolean) => Promise<void>;
-  /** The contest archive the browser already fetched, so a winner is badged here as it is on its card. */
+  /** The contest archive the browser already fetched, so a placement is badged here as on its card. */
   contests?: ServerEvent[];
 }
 
@@ -140,7 +140,7 @@ export function RemoteWorldDetailsModal({
             </Button>
           </DialogTitle>
           {/* Under the title, as on the card: opening a winning card must not lose what the card said. */}
-          {world && <WinnerBadges contests={contestsWonBy(world, contests)} className="mr-8" />}
+          {world && <PlaceBadges placements={placementsBy(world, contests)} className="mr-8" />}
         </DialogHeader>
 
         {world && (

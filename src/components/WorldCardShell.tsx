@@ -14,7 +14,7 @@ interface WorldCardShellProps extends React.HTMLAttributes<HTMLDivElement> {
   description?: string;
   /** The author line — plain text, or an interactive element (e.g. a hide-author span). */
   author?: ReactNode;
-  /** A line about the card's subject (e.g. a winner badge), between the author and the card's own content. */
+  /** A line about the card's subject (e.g. a place badge), between the author and the card's own content. */
   note?: ReactNode;
   /** Surface/border variant classes for the frame (e.g. `bg-background`, the update highlight, `touch-none`). */
   frameClassName?: string;

@@ -15,9 +15,9 @@ import { UserAvatar } from "@/components/UserAvatar";
 import { RoleBadge } from "@/components/RoleBadge";
 import { canModerate, isStaff } from "@/lib/roles";
 import { TutorialPopover } from "@/components/TutorialPopover";
-import { WinnerBadges } from "@/components/WinnerBadges";
+import { PlaceBadges } from "@/components/PlaceBadges";
 import type { TutorialEntry, TutorialNav } from "@/lib/tutorials";
-import type { ServerEvent } from "@/types";
+import type { ContestPlacement } from "@/lib/contests";
 
 interface RemoteWorldCardProps {
   world: WorldRecord;
@@ -39,8 +39,8 @@ interface RemoteWorldCardProps {
   onQuarantine?: (world: WorldRecord) => void;
   /** Lifts a quarantine. Admin surfaces only. */
   onRelease?: (world: WorldRecord) => void;
-  /** The contests this listing won — the trophy travels with the world, not with the tab it was won in. */
-  wonContests?: ServerEvent[];
+  /** Where this listing placed — the badge travels with the world, not with the tab it was won in. */
+  placements?: ContestPlacement[];
   /** Take this listing out of the contest it was entered in. Offered on the contest tab, to its author. */
   onWithdraw?: (world: WorldRecord) => void;
   /** The like tutorial, when this is the card chosen to anchor it. */
@@ -53,7 +53,7 @@ interface RemoteWorldCardProps {
 export function RemoteWorldCard({
   world, downloadState: dlState, downloadProgress, isAuthenticated, currentUser,
   onView, onHideWorld, onHideAuthor, onHideTag, onContextualDownload, onDelete, onLike, onQuarantine, onRelease,
-  wonContests = [], onWithdraw, likeTutorial, likeTutorialNav,
+  placements = [], onWithdraw, likeTutorial, likeTutorialNav,
 }: RemoteWorldCardProps) {
   // Get the world ID (server uses _id)
   const worldId = world._id || world.id;
@@ -193,7 +193,7 @@ export function RemoteWorldCard({
 
       {/* Won a contest: said on the card itself, so the honor is visible wherever the world is found
           rather than only in the tab the contest was run in. */}
-      <WinnerBadges contests={wonContests} className="mb-2" />
+      <PlaceBadges placements={placements} className="mb-2" />
 
       {/* Tags */}
       <div className="mb-2">

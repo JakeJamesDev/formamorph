@@ -14,7 +14,7 @@ const sample: ServerEvent = {
   id: 'e1', type: 'contest', title: 'A Contest', bannerText: 'blurb', body: 'body',
   rulesText: null, startsAt: '2026-08-01T00:00:00Z', endsAt: '2026-09-01T00:00:00Z',
   cancelledAt: null, startMessageId: null, endMessageId: null, winnerMessageId: null,
-  winnerWorldId: null, winnerName: null, winnerAuthorName: null,
+  resultsAnnouncedAt: null, placements: [],
 };
 
 /** Renders the hook and exposes what it last returned, plus the poll callback it was handed. */

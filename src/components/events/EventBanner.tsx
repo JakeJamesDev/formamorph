@@ -2,7 +2,7 @@ import { Megaphone, Trophy } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import { formatServerDate } from '@/lib/serverDate';
-import { eventChipMarker, eventPhase, hasWinner, isContestEvent } from '@/lib/serverEvents';
+import { eventChipMarker, eventPhase, isContestEvent, placementsOf, resultsAnnounced } from '@/lib/serverEvents';
 import type { EventBanners } from './useEventBanners';
 import type { ServerEvent } from '@/types';
 
@@ -37,8 +37,9 @@ function EventBannerCard(
   const Icon = bannerIcon(event);
 
   const dateRange = `${formatServerDate(event.startsAt)} – ${formatServerDate(event.endsAt)}`;
-  const line = eventPhase(event) === 'end' && hasWinner(event)
-    ? `Winner announced — ${event.winnerName}${event.winnerAuthorName ? ` by ${event.winnerAuthorName}` : ''}`
+  const [gold] = placementsOf(event);
+  const line = eventPhase(event) === 'end' && resultsAnnounced(event)
+    ? `Results announced${gold ? ` — ${gold.worldName} by ${gold.authorName}` : ''}`
     : `${dateRange} · ${event.bannerText}`;
 
   // The whole card leads where its own action does: a contest's entries. An announcement has nowhere to

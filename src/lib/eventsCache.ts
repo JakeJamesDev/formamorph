@@ -3,7 +3,7 @@
  *
  * The archive is permanent, so the list only grows: without this, the main menu's launch read and every
  * open of the Community Creations browser each pull the whole thing down again. Held in memory for the
- * session and deliberately never persisted — an archive on disk would put winner badges in front of a
+ * session and deliberately never persisted — an archive on disk would put place badges in front of a
  * player who is offline, which the badge work decided against.
  *
  * Rows are asked for slim. A server that has never heard of the parameter answers with whole rows, so
@@ -18,7 +18,7 @@ import type { ServerEvent } from '@/types';
  * How long a read stands before the next reader revalidates behind it.
  *
  * The events poll's own interval, shared rather than restated: an archive is no more urgent than the
- * banner, so reopening the browser inside the window costs nothing and a winner announced mid-session
+ * banner, so reopening the browser inside the window costs nothing and a podium announced mid-session
  * still lands within it.
  */
 export const EVENTS_STALE_MS = EVENTS_POLL_MS;

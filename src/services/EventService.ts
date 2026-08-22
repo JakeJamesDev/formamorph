@@ -1,5 +1,11 @@
 import AuthService from './AuthService';
-import type { ServerEvent, ServerEventDraft } from '@/types';
+import type { ContestPlace, ServerEvent, ServerEventDraft } from '@/types';
+
+/** One step of a podium as the write routes take it: which place, and which listing is on it. */
+export interface PodiumEntry {
+  place: ContestPlace;
+  worldId: string;
+}
 
 /** Server error envelope: this API answers with `error`, older handlers read `message`. */
 interface ErrorBody {
@@ -114,14 +120,30 @@ class EventService {
     await this.unwrap<{ success: boolean }>(response, 'Failed to delete the event');
   }
 
-  /** Name a contest's winner. Any staff; the server refuses the picker's own entry and a quarantined one. */
-  async pickWinner(id: string, worldId: string): Promise<ServerEvent> {
-    const response = await fetch(`${this.apiUrl}/events/${id}/winner`, {
+  /**
+   * Publish a contest's podium and broadcast it. Admins only.
+   *
+   * The whole podium in one call, so no player ever meets a contest that has announced gold and is still
+   * thinking about silver. The server refuses the judge's own entry, a quarantined one, a place given
+   * twice and a podium with a gap in it.
+   */
+  async announceResults(id: string, placements: PodiumEntry[]): Promise<ServerEvent> {
+    const response = await fetch(`${this.apiUrl}/events/${id}/results`, {
       method: 'PUT',
       headers: this.writeHeaders(),
-      body: JSON.stringify({ worldId }),
+      body: JSON.stringify({ placements }),
     });
-    return (await this.unwrap<{ data: ServerEvent }>(response, 'Failed to announce the winner')).data;
+    return (await this.unwrap<{ data: ServerEvent }>(response, 'Failed to announce the results')).data;
+  }
+
+  /** Correct an announced podium. Admins only; broadcasts nothing, and is recorded per change. */
+  async editPlacements(id: string, placements: PodiumEntry[]): Promise<ServerEvent> {
+    const response = await fetch(`${this.apiUrl}/events/${id}/placements`, {
+      method: 'PUT',
+      headers: this.writeHeaders(),
+      body: JSON.stringify({ placements }),
+    });
+    return (await this.unwrap<{ data: ServerEvent }>(response, 'Failed to update the podium')).data;
   }
 }
 

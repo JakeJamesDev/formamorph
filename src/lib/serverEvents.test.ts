@@ -1,5 +1,8 @@
 import { describe, it, expect } from 'vitest';
-import { daysRemaining, eventChipMarker, eventPhase, hasWinner, isContestEvent, phaseMessageId } from './serverEvents';
+import {
+  daysRemaining, eventChipMarker, eventPhase, isContestEvent, phaseMessageId, placeOf, placementsOf,
+  resultsAnnounced,
+} from './serverEvents';
 import { daysFrom, serverEvent } from '@/test/serverEvents';
 import type { ServerEvent } from '@/types';
 
@@ -9,6 +12,13 @@ const at = (offsetDays: number) => daysFrom(offsetDays, NOW);
 const event = (over: Partial<ServerEvent> = {}): ServerEvent =>
   serverEvent({ startsAt: at(-4), endsAt: at(12), ...over });
 
+/** A contest whose results are out, with a gold placement to go with the stamp. */
+const decided = (over: Partial<ServerEvent> = {}): ServerEvent => event({
+  resultsAnnouncedAt: at(0),
+  placements: [{ place: 1, worldId: 'w1', worldName: 'The Long Thaw', authorName: 'sedgewright' }],
+  ...over,
+});
+
 describe('isContestEvent', () => {
   it('is true only for the contest type — an unknown future type is not one', () => {
     expect(isContestEvent(event())).toBe(true);
@@ -17,15 +27,63 @@ describe('isContestEvent', () => {
   });
 });
 
-describe('hasWinner', () => {
-  it('reads either half of what the pick stamps', () => {
-    expect(hasWinner(event({ winnerWorldId: 'w1' }))).toBe(true);
-    expect(hasWinner(event({ winnerName: 'The Long Thaw' }))).toBe(true);
-    expect(hasWinner(event())).toBe(false);
+describe('resultsAnnounced', () => {
+  it('reads the announcement stamp', () => {
+    expect(resultsAnnounced(decided())).toBe(true);
+    expect(resultsAnnounced(event())).toBe(false);
   });
 
-  it('is not answered by the broadcast, which is posted after the pick and can fail', () => {
-    expect(hasWinner(event({ winnerMessageId: 'm-win' }))).toBe(false);
+  it('is not answered by a stored place, which is assigned before it is published', () => {
+    // Assigning is not announcing. A podium held without the stamp is a contest still being judged.
+    expect(resultsAnnounced(event({
+      placements: [{ place: 1, worldId: 'w1', worldName: 'The Long Thaw', authorName: 'sedgewright' }],
+    }))).toBe(false);
+  });
+
+  it('is not answered by the broadcast, which is posted after the stamp and can fail', () => {
+    expect(resultsAnnounced(event({ winnerMessageId: 'm-results' }))).toBe(false);
+  });
+});
+
+describe('placementsOf', () => {
+  it('hands back the podium as it stands', () => {
+    expect(placementsOf(decided()).map((p) => p.place)).toEqual([1]);
+  });
+
+  it('answers empty for a row from a server that has never heard of a podium', () => {
+    // A slim archive row can arrive without the list at all; an archive nobody can read is better empty
+    // than thrown.
+    const older = { ...event() } as Partial<ServerEvent>;
+    delete older.placements;
+
+    expect(placementsOf(older as ServerEvent)).toEqual([]);
+  });
+});
+
+describe('placeOf', () => {
+  const podium = event({
+    resultsAnnouncedAt: at(0),
+    placements: [
+      { place: 1, worldId: 'w1', worldName: 'Gold', authorName: 'a' },
+      { place: 2, worldId: 'w2', worldName: 'Silver', authorName: 'b' },
+      { place: 3, worldId: null, worldName: 'Deleted Bronze', authorName: 'c' },
+    ],
+  });
+
+  it('names which step a world is on', () => {
+    expect(placeOf(podium, 'w1')).toBe(1);
+    expect(placeOf(podium, 'w2')).toBe(2);
+  });
+
+  it('is null for a world that placed nowhere', () => {
+    expect(placeOf(podium, 'w9')).toBeNull();
+    expect(placeOf(event(), 'w1')).toBeNull();
+  });
+
+  it('never matches a deleted listing, whose id is gone rather than blank', () => {
+    // The snapshot keeps the name; the id does not survive, and a null must not answer to a null.
+    expect(placeOf(podium, null)).toBeNull();
+    expect(placeOf(podium, undefined)).toBeNull();
   });
 });
 
@@ -38,9 +96,8 @@ describe('eventPhase', () => {
     expect(eventPhase(event({ endsAt: at(-1) }), NOW)).toBe('end');
   });
 
-  it('is the ending as soon as a winner is named, even mid-window', () => {
-    expect(eventPhase(event({ winnerName: 'The Long Thaw' }), NOW)).toBe('end');
-    expect(eventPhase(event({ winnerWorldId: 'w1' }), NOW)).toBe('end');
+  it('is the ending as soon as the results are out, even mid-window', () => {
+    expect(eventPhase(decided(), NOW)).toBe('end');
   });
 
   it('treats an unreadable end timestamp as still open rather than instantly over', () => {
@@ -53,9 +110,9 @@ describe('phaseMessageId', () => {
     expect(phaseMessageId(event(), 'start')).toBe('m-start');
   });
 
-  it('prefers the winner broadcast over the end broadcast for the ending', () => {
-    const ended = event({ endMessageId: 'm-end', winnerMessageId: 'm-win' });
-    expect(phaseMessageId(ended, 'end')).toBe('m-win');
+  it('prefers the results broadcast over the end broadcast for the ending', () => {
+    const ended = event({ endMessageId: 'm-end', winnerMessageId: 'm-results' });
+    expect(phaseMessageId(ended, 'end')).toBe('m-results');
     expect(phaseMessageId(event({ endMessageId: 'm-end' }), 'end')).toBe('m-end');
   });
 
@@ -83,7 +140,7 @@ describe('eventChipMarker', () => {
   });
 
   it('names the outcome once it has one', () => {
-    expect(eventChipMarker(event({ winnerName: 'The Long Thaw' }), NOW)).toBe('Winner');
+    expect(eventChipMarker(decided(), NOW)).toBe('Results');
     expect(eventChipMarker(event({ endsAt: at(-1) }), NOW)).toBe('Ended');
   });
 });

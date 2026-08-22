@@ -4,15 +4,16 @@
  * tab, its slim bar and their tests all read the same answers from here.
  */
 import { parseServerDate } from './serverDate';
-import { hasWinner, isContestEvent } from './serverEvents';
+import { isContestEvent, placeOf, placementsOf, resultsAnnounced } from './serverEvents';
 import type { WorldRecord } from '@/components/WorldDetails';
-import type { ServerEvent } from '@/types';
+import type { ContestPlace, ServerEvent } from '@/types';
 
 /**
  * How far through its life a contest is.
  *
- * `live` still takes entries, `judging` has closed but has no winner yet, and `decided` has one. The
- * two later states are the archive: the layout is the same and nothing can be entered into either.
+ * `live` still takes entries, `judging` has closed with its results still to come, and `decided` has
+ * announced them. The two later states are the archive: the layout is the same and nothing can be
+ * entered into either.
  */
 export type ContestPhase = 'live' | 'judging' | 'decided';
 
@@ -32,11 +33,11 @@ export function isContestRunning(event: ServerEvent, now: Date = new Date()): bo
 /**
  * Which of its three states a contest is in.
  *
- * A winner outranks the clock: a contest decided early is decided, and one whose window is still open
- * on a slow clock has not reopened for entries.
+ * The announcement outranks the clock: a contest decided early is decided, and one whose window is still
+ * open on a slow clock has not reopened for entries.
  */
 export function contestPhase(event: ServerEvent, now: Date = new Date()): ContestPhase {
-  if (hasWinner(event)) return 'decided';
+  if (resultsAnnounced(event)) return 'decided';
   return isContestRunning(event, now) ? 'live' : 'judging';
 }
 
@@ -63,7 +64,7 @@ export function activeContestOf(events: ServerEvent[], now: Date = new Date()): 
 }
 
 /**
- * The contests whose window has closed with no winner named yet.
+ * The contests whose window has closed with their results still to come.
  *
  * What the end-of-contest poster is still owed for. Read from the contests feed rather than the events
  * poll, which carries only what is running: a player who launches the app the morning after a deadline
@@ -74,7 +75,7 @@ export function activeContestOf(events: ServerEvent[], now: Date = new Date()): 
  */
 export function judgingContestsOf(events: ServerEvent[], now: Date = new Date()): ServerEvent[] {
   return events.filter((event) => {
-    if (!isContestEvent(event) || event.cancelledAt || hasWinner(event)) return false;
+    if (!isContestEvent(event) || event.cancelledAt || resultsAnnounced(event)) return false;
     const ends = parseServerDate(event.endsAt);
     return Boolean(ends && ends.getTime() <= now.getTime());
   });
@@ -97,10 +98,10 @@ export function entriesOf(catalog: WorldRecord[], eventId: string | null | undef
   return catalog.filter((record) => contestEntryIdOf(record) === eventId);
 }
 
-/** Whether this listing is the world a contest was won by. */
-export function isContestWinner(record: WorldRecord, event: ServerEvent | null): boolean {
-  if (!event?.winnerWorldId) return false;
-  return String(record._id || record.id) === event.winnerWorldId;
+/** Which place this listing took in a contest, or null when it took none. */
+export function placeInContest(record: WorldRecord, event: ServerEvent | null): ContestPlace | null {
+  if (!event) return null;
+  return placeOf(event, String(record._id || record.id));
 }
 
 /**
@@ -133,8 +134,8 @@ const likesOf = (record: WorldRecord): number => Number(record.likes ?? 0) || 0;
  * The order a contest's entries are shown in.
  *
  * While the contest runs the order is shuffled per visit, so entering early is not itself an advantage.
- * Once judging starts the shuffle would only obscure the standings, so entries settle by likes — and a
- * picked winner is pinned to the front of them.
+ * Once judging starts the shuffle would only obscure the standings, so entries settle by likes — and the
+ * podium is pinned to the front of them, gold then silver then bronze.
  *
  * @param seed - The visit's shuffle seed; only read while the contest is live
  */
@@ -148,30 +149,48 @@ export function orderContestEntries(
   if (contestPhase(event, now) === 'live') return shuffleWithSeed(entries, seed);
 
   const byLikes = [...entries].sort((a, b) => likesOf(b) - likesOf(a));
-  const winner = byLikes.find((record) => isContestWinner(record, event));
-  if (!winner) return byLikes;
-  return [winner, ...byLikes.filter((record) => record !== winner)];
+  const placed: WorldRecord[] = [];
+
+  // Walked in podium order rather than filtered, so the three lead in the order they placed rather than
+  // in whatever order likes happened to leave them.
+  placementsOf(event).forEach((placement) => {
+    const record = byLikes.find((entry) => String(entry._id || entry.id) === placement.worldId);
+    if (record) placed.push(record);
+  });
+
+  if (placed.length === 0) return byLikes;
+  return [...placed, ...byLikes.filter((record) => !placed.includes(record))];
+}
+
+/** A contest a world placed in, and the step it took. */
+export interface ContestPlacement {
+  contest: ServerEvent;
+  place: ContestPlace;
 }
 
 /**
- * Every contest a record won, out of the ones on hand, newest first.
+ * Every contest a record placed in, out of the ones on hand, newest first.
  *
- * What puts the trophy on a world wherever it is shown — the community card and its details, the local
- * library card and its details. All of them, because a world that wins twice has won twice; dropping the
- * older title would quietly rank one honor above another.
+ * What puts the badge on a world wherever it is shown — the community card and its details, the local
+ * library card and its details. All of them, because a world that places twice has placed twice; dropping
+ * the older title would quietly rank one honor above another.
  *
- * Two records answer to the same win: the listing, by its own server id, and a local copy, by the
+ * Two records answer to the same placement: the listing, by its own server id, and a local copy, by the
  * `sourceId` its download or publish link carries — however it got there, and however much it has been
- * edited since. Only this question reads the link; whether a *listing* is the winning entry, which is
- * what pins one to the front of the contest grid, stays `isContestWinner`.
+ * edited since. Only this question reads the link; whether a *listing* placed, which is what pins one to
+ * the front of the contest grid, stays `placeInContest`.
  *
- * A contest called off awarded nothing, whatever it had stamped before it was cancelled.
+ * A contest called off awarded nothing, whatever podium it had stored before it was cancelled.
  */
-export function contestsWonBy(record: WorldRecord, events: ServerEvent[]): ServerEvent[] {
+export function placementsBy(record: WorldRecord, events: ServerEvent[]): ContestPlacement[] {
   return events
-    .filter((event) => isContestEvent(event) && !event.cancelledAt
-      && (isContestWinner(record, event) || (Boolean(event.winnerWorldId) && record.sourceId === event.winnerWorldId)))
-    .sort(byNewestStart);
+    .filter((event) => isContestEvent(event) && !event.cancelledAt)
+    .sort(byNewestStart)
+    .flatMap((contest) => {
+      const place = placeInContest(record, contest)
+        ?? (record.sourceId ? placeOf(contest, String(record.sourceId)) : null);
+      return place ? [{ contest, place }] : [];
+    });
 }
 
 /** One heading in the archive selector, and the contests filed under it. */

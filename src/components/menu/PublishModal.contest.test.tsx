@@ -3,7 +3,7 @@ import { render, screen, cleanup, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { toast } from 'react-toastify';
 import { PublishModal } from './PublishModal';
-import WorldStorageService, { CONTEST_ALREADY_ENTERED, CONTEST_NOT_ACTIVE, CONTEST_WINNER } from '@/services/WorldStorageService';
+import WorldStorageService, { CONTEST_ALREADY_ENTERED, CONTEST_NOT_ACTIVE, CONTEST_PLACED } from '@/services/WorldStorageService';
 import PolicyService, { TERMS_REQUIRED } from '@/services/PolicyService';
 import { daysFrom, serverEvent } from '@/test/serverEvents';
 import type { PublishPayload } from '@/lib/publishPayload';
@@ -252,10 +252,10 @@ describe('an author who already has an entry', () => {
     expect(screen.queryByText(/You already entered/)).toBeNull();
   });
 
-  it('explains the refusal when the entry turns out to be the winner', async () => {
+  it('explains the refusal when the entry turns out to have placed', async () => {
     vi.spyOn(WorldStorageService, 'withdrawFromContest').mockRejectedValue(
-      Object.assign(new Error('A contest winner cannot be withdrawn. Delete the listing if you want it gone.'), {
-        code: CONTEST_WINNER,
+      Object.assign(new Error('A world that placed cannot be withdrawn. Delete the listing if you want it gone.'), {
+        code: CONTEST_PLACED,
       }),
     );
     vi.mocked(WorldStorageService.getUserWorlds).mockResolvedValue([
@@ -267,7 +267,7 @@ describe('an author who already has an entry', () => {
     await userEvent.click(await screen.findByRole('button', { name: 'Withdraw It' }));
 
     await waitFor(() => expect(toast.error).toHaveBeenCalledWith(
-      'A contest winner cannot be withdrawn. Delete the listing if you want it gone.',
+      'A world that placed cannot be withdrawn. Delete the listing if you want it gone.',
     ));
     // Still theirs, still entered: nothing moved on a refusal.
     expect(screen.getByText(/You already entered Salt-Bright Reaches/)).toBeTruthy();

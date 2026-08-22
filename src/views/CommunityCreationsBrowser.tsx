@@ -12,10 +12,10 @@ import {
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { KIND_LABELS, kindOf, type CatalogKind } from "@/lib/catalogKinds";
 import { BROWSE_TABS, BROWSE_TAB_LABELS, type BrowseTab } from "@/lib/browseTabs";
-import { contestPhase, contestsWonBy, entriesOf, orderContestEntries } from "@/lib/contests";
+import { contestPhase, placementsBy, entriesOf, orderContestEntries } from "@/lib/contests";
 import { isContestEvent } from "@/lib/serverEvents";
 import { useContests } from "@/lib/useContests";
-import { ContestBar, ContestWinner } from "@/components/community/ContestBar";
+import { ContestBar, ContestPodium } from "@/components/community/ContestBar";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Pager } from "@/components/ui/pagination";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -780,7 +780,7 @@ const CommunityCreationsBrowser = ({
                 onSelect={setSelectedContestId}
                 entryCount={catalogInView.length}
               />
-              {contestPhase(shownContest) === 'decided' && <ContestWinner contest={shownContest} />}
+              {contestPhase(shownContest) === 'decided' && <ContestPodium contest={shownContest} />}
             </>
           )}
 
@@ -838,9 +838,9 @@ const CommunityCreationsBrowser = ({
                       onLike={handleLike}
                       onQuarantine={setQuarantining}
                       onRelease={handleRelease}
-                      wonContests={contestsWonBy(world, contests)}
+                      placements={placementsBy(world, contests)}
                       // Only where the entry is the subject, and only while it is still an entry: a
-                      // decided contest keeps its winner, and the server refuses to release one.
+                      // decided contest keeps its podium, and the server refuses to release a placed world.
                       onWithdraw={browseTab === 'contest' && shownContest && contestPhase(shownContest) !== 'decided'
                         ? (entry) => withdrawal.ask({
                             id: String(entry._id || entry.id),

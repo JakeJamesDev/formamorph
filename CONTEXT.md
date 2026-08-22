@@ -32,6 +32,14 @@ _Avoid_: box, container
 The travel a location gets for free from containment — its parent, children, and siblings — without any authored Connection.
 _Avoid_: tree edges, default connections
 
+**Listing Changelog**:
+The author-maintained update history on a published listing (any kind) — a date-sorted list of Changelog Entries, newest first. Listing metadata, not world content: it never travels with downloads or exports, and editing it never marks the listing as updated.
+_Avoid_: changelog (unqualified — that's the app's own changelog), version history
+
+**Changelog Entry**:
+One item in a Listing Changelog: an author-chosen title, a markdown body, and an author-set date. Fully editable and deletable by the author after the fact.
+_Avoid_: release note, version
+
 **Locations Canvas**:
 The visual node-graph surface for authoring locations — containment as nested Groups, travel as arrows. The list view's spatial twin inside the same Locations panel.
 _Avoid_: node graph, map view

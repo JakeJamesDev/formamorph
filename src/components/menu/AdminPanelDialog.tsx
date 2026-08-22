@@ -40,7 +40,7 @@ export function AdminPanelDialog({
 }: AdminPanelDialogProps) {
   // Broadcasts and Policies are an administrator's: speaking to everyone at once and writing what the
   // site requires are not moderation. The rest of the panel is the everyday work, open to any staff —
-  // Events included, since picking a contest winner is a judgement any staff makes.
+  // Events included: the calendar is worth reading whether or not a viewer may act on it.
   const owner = isAdmin(AuthService.getCurrentUser());
 
   const [tab, setTab] = useState<AdminPanelTab>(initialTab);

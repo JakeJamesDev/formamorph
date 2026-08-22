@@ -13,9 +13,9 @@ vi.mock('./EventFormDialog', () => ({
     <div data-testid="event-form">{editing ? `editing ${editing.title}` : 'new'}</div>
   ),
 }));
-vi.mock('./WinnerPickDialog', () => ({
-  WinnerPickDialog: ({ contest }: { contest: ServerEvent }) => (
-    <div data-testid="winner-dialog">{contest.title}</div>
+vi.mock('./PodiumDialog', () => ({
+  PodiumDialog: ({ contest }: { contest: ServerEvent }) => (
+    <div data-testid="podium-dialog">{contest.title}</div>
   ),
 }));
 
@@ -73,7 +73,7 @@ describe('the calendar', () => {
   });
 
   it('groups what is running, what is scheduled and what is over', async () => {
-    await renderTab([running, judging, scheduled, event({ id: 'over', title: 'Old Contest', startsAt: at(-60), endsAt: at(-30), winnerName: 'Lantern Reef' })]);
+    await renderTab([running, judging, scheduled, event({ id: 'over', title: 'Old Contest', startsAt: at(-60), endsAt: at(-30), resultsAnnouncedAt: at(-30), placements: [{ place: 1, worldId: 'w1', worldName: 'Lantern Reef', authorName: 'suneater' }] })]);
 
     // Which group a title landed in is its position between the headings — the grouping is the whole
     // point of the list, and a test that only checked the titles were present would pass on a flat one.
@@ -204,14 +204,57 @@ describe('what an administrator may do', () => {
   });
 });
 
-describe('what a moderator may do', () => {
-  it('picks a winner, which is the judgement the tab is staff-visible for', async () => {
-    asMod();
+/** A contest whose results are out, so the row offers an edit rather than an announce. */
+const decidedContest = event({
+  id: 'decided',
+  title: 'Decided Contest',
+  startsAt: at(-20),
+  endsAt: at(-2),
+  resultsAnnouncedAt: at(-1),
+  winnerMessageId: 'm-results',
+  placements: [{ place: 1, worldId: 'w1', worldName: 'Lantern Reef', authorName: 'suneater' }],
+});
+
+describe('announcing and correcting a podium', () => {
+  it('opens the podium dialog on the contest being judged', async () => {
     await renderTab([judging]);
 
-    fireEvent.click(screen.getByRole('button', { name: /Pick Winner/ }));
+    fireEvent.click(screen.getByRole('button', { name: /Announce Results/ }));
 
-    expect(screen.getByTestId('winner-dialog').textContent).toBe('Judging Contest');
+    expect(screen.getByTestId('podium-dialog').textContent).toBe('Judging Contest');
+  });
+
+  it('offers no announce while a contest is still taking entries', async () => {
+    await renderTab([running]);
+
+    expect(screen.queryByRole('button', { name: /Announce Results/ })).toBeNull();
+  });
+
+  it('trades the announce for an edit once the results are out', async () => {
+    await renderTab([decidedContest]);
+
+    expect(screen.queryByRole('button', { name: /Announce Results/ })).toBeNull();
+    expect(screen.getByRole('button', { name: /Edit Podium/ })).toBeInTheDocument();
+  });
+
+  it('reopens the same dialog to correct an announced podium', async () => {
+    await renderTab([decidedContest]);
+
+    fireEvent.click(screen.getByRole('button', { name: /Edit Podium/ }));
+
+    expect(screen.getByTestId('podium-dialog').textContent).toBe('Decided Contest');
+  });
+});
+
+describe('what a moderator may do', () => {
+  it('is offered no podium at all, announce or edit', async () => {
+    // The tightening: results speak to every player at once, so publishing them left the moderation
+    // team along with scheduling and calling off.
+    asMod();
+    await renderTab([judging, decidedContest]);
+
+    expect(screen.queryByRole('button', { name: /Announce Results/ })).toBeNull();
+    expect(screen.queryByRole('button', { name: /Edit Podium/ })).toBeNull();
   });
 
   it('is not offered the controls that speak to every player', async () => {
@@ -231,22 +274,6 @@ describe('what a moderator may do', () => {
     expect(screen.queryByText('Called Off Contest')).toBeNull();
   });
 
-  it('is offered no winner pick while a contest is still taking entries', async () => {
-    asMod();
-    await renderTab([running]);
-
-    expect(screen.queryByRole('button', { name: /Pick Winner/ })).toBeNull();
-  });
-
-  it('is offered no winner pick once one has been named', async () => {
-    asMod();
-    const decided = event({
-      id: 'decided', title: 'Decided Contest', startsAt: at(-20), endsAt: at(-2), winnerName: 'Lantern Reef',
-    });
-    await renderTab([decided]);
-
-    expect(screen.queryByRole('button', { name: /Pick Winner/ })).toBeNull();
-  });
 });
 
 describe('the Past group once there are years of them', () => {

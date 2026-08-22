@@ -104,7 +104,7 @@ describe('what a moderator sees', () => {
     expect(screen.queryByRole('tab', { name: 'Policies' })).toBeNull();
   });
 
-  it('keeps the events calendar, since picking a contest winner is any staff member’s', async () => {
+  it('keeps the events calendar, which is worth reading whether or not a viewer may act on it', async () => {
     const AuthService = (await import('@/services/AuthService')).default;
     vi.spyOn(AuthService, 'getCurrentUser').mockReturnValue({ id: 'm1', username: 'a-mod', accountType: 'mod' });
 

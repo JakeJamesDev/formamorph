@@ -5,7 +5,7 @@
  */
 import { randomUUID } from '@/lib/uuid';
 import { DAY_MS } from '@/lib/serverDate';
-import type { ServerEvent, ServerEventPhase } from '@/types';
+import type { EventPlacement, ServerEvent, ServerEventPhase } from '@/types';
 
 /**
  * A canned running contest, at whichever phase is asked for. Dates are relative so it is never stale,
@@ -29,16 +29,22 @@ export function devEventSample(phase: ServerEventPhase = 'start'): ServerEvent {
     cancelledAt: null,
     startMessageId: 'dev-message-start',
     endMessageId: ended ? 'dev-message-end' : null,
-    winnerMessageId: ended ? 'dev-message-winner' : null,
-    winnerWorldId: ended ? 'dev-world' : null,
-    winnerName: ended ? 'The Long Thaw' : null,
-    winnerAuthorName: ended ? 'sedgewright' : null,
+    winnerMessageId: ended ? 'dev-message-results' : null,
+    resultsAnnouncedAt: ended ? new Date(now - DAY_MS).toISOString() : null,
+    placements: ended ? DEV_PODIUM : [],
   };
 }
 
+/** A full podium, so every dev surface meets three places rather than only gold. */
+const DEV_PODIUM: EventPlacement[] = [
+  { place: 1, worldId: 'dev-world', worldName: 'The Long Thaw', authorName: 'sedgewright' },
+  { place: 2, worldId: 'dev-world-2', worldName: 'Nine Frozen Bells', authorName: 'marrowmoss' },
+  { place: 3, worldId: 'dev-world-3', worldName: 'The Kindling Hour', authorName: 'ashgrove' },
+];
+
 /**
  * A canned set of contests for the Community Creations contest tab: one running, two archived, one of
- * them decided — enough for the tab, its slim bar and its archive selector. The entries themselves come
+ * them decided with a full podium — enough for the tab, its slim bar and its archive selector. The entries themselves come
  * from the real catalog, so a dev machine with no contest entries sees the tab's empty state.
  */
 export function devContestSamples(): ServerEvent[] {
@@ -53,10 +59,9 @@ export function devContestSamples(): ServerEvent[] {
       title: 'Autumn Ruins Contest',
       startsAt: new Date(now - 60 * DAY_MS).toISOString(),
       endsAt: new Date(now - 30 * DAY_MS).toISOString(),
-      winnerMessageId: 'dev-message-winner',
-      winnerWorldId: 'dev-world',
-      winnerName: 'The Long Thaw',
-      winnerAuthorName: 'sedgewright',
+      winnerMessageId: 'dev-message-results',
+      resultsAnnouncedAt: new Date(now - 29 * DAY_MS).toISOString(),
+      placements: DEV_PODIUM,
     },
     {
       ...running,
@@ -112,10 +117,9 @@ export function devAdminEventSamples(): ServerEvent[] {
       title: 'Autumn Ruins Contest',
       startsAt: new Date(now - 60 * DAY_MS).toISOString(),
       endsAt: new Date(now - 30 * DAY_MS).toISOString(),
-      winnerMessageId: 'dev-message-winner',
-      winnerWorldId: 'dev-world',
-      winnerName: 'The Long Thaw',
-      winnerAuthorName: 'sedgewright',
+      winnerMessageId: 'dev-message-results',
+      resultsAnnouncedAt: new Date(now - 29 * DAY_MS).toISOString(),
+      placements: DEV_PODIUM,
     },
     {
       ...base,
