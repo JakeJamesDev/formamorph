@@ -25,7 +25,12 @@ const listing = (id: string, name: string, over: Partial<WorldRecord> = {}): Wor
 
 const NO_POLICIES: PolicyState = { uploadGate: null, tagNotice: null };
 
-const view = (props: { payload?: PublishPayload | null; events?: ServerEvent[]; open?: boolean } = {}) =>
+const view = (
+  props: {
+    payload?: PublishPayload | null; events?: ServerEvent[]; open?: boolean;
+    localId?: string; onLinked?: () => void;
+  } = {},
+) =>
   render(
     <PublishModal
       open={props.open ?? true}
@@ -33,6 +38,8 @@ const view = (props: { payload?: PublishPayload | null; events?: ServerEvent[]; 
       isAuthenticated
       payload={props.payload === undefined ? worldPayload : props.payload}
       events={props.events ?? [contest()]}
+      localId={props.localId}
+      onLinked={props.onLinked}
     />,
   );
 
@@ -44,6 +51,7 @@ beforeEach(() => {
   vi.spyOn(PolicyService, 'fetchPolicies').mockResolvedValue(NO_POLICIES);
   vi.spyOn(WorldStorageService, 'getUserWorlds').mockResolvedValue([]);
   vi.spyOn(WorldStorageService, 'publishItem').mockResolvedValue({});
+  vi.spyOn(WorldStorageService, 'linkWorldToListing').mockResolvedValue();
 });
 
 afterEach(() => {
@@ -400,5 +408,96 @@ describe('when the entry publishes', () => {
 
     await screen.findByText('That contest is not taking entries.');
     expect(onOpenChange).not.toHaveBeenCalledWith(false);
+  });
+});
+
+describe('linking the local world to what was published', () => {
+  const created = { id: 'srv-9', updated_at: '2026-01-02 03:04:05' };
+
+  it('points the published world at its new listing', async () => {
+    vi.mocked(WorldStorageService.publishItem).mockResolvedValue(created);
+    view({ localId: 'local-1' });
+
+    await screen.findByRole('switch');
+    await userEvent.click(screen.getByRole('button', { name: 'Publish' }));
+
+    await waitFor(() => expect(WorldStorageService.linkWorldToListing).toHaveBeenCalledWith(
+      'local-1', 'srv-9', '2026-01-02 03:04:05',
+    ));
+  });
+
+  it('points it at the listing it overwrote, too', async () => {
+    vi.mocked(WorldStorageService.getUserWorlds).mockResolvedValue([listing('w1', 'Salt-Bright Reaches')]);
+    vi.mocked(WorldStorageService.publishItem).mockResolvedValue({ id: 'w1', updated_at: '2026-02-03 04:05:06' });
+    view({ localId: 'local-1' });
+
+    await userEvent.click(await screen.findByLabelText('Salt-Bright Reaches (w1, 0 downloads)'));
+    await userEvent.click(screen.getByRole('button', { name: 'Publish' }));
+
+    await waitFor(() => expect(WorldStorageService.linkWorldToListing).toHaveBeenCalledWith(
+      'local-1', 'w1', '2026-02-03 04:05:06',
+    ));
+  });
+
+  it('links nothing when the server refused the upload', async () => {
+    vi.mocked(WorldStorageService.publishItem).mockRejectedValue(
+      Object.assign(new Error('That contest is not taking entries.'), { code: CONTEST_NOT_ACTIVE }),
+    );
+    view({ localId: 'local-1' });
+
+    await userEvent.click(await screen.findByRole('switch'));
+    await userEvent.click(screen.getByRole('button', { name: 'Publish & Enter' }));
+
+    await screen.findByText('That contest is not taking entries.');
+    expect(WorldStorageService.linkWorldToListing).not.toHaveBeenCalled();
+  });
+
+  it('links nothing when the reply carries no listing id, rather than linking to nothing', async () => {
+    vi.mocked(WorldStorageService.publishItem).mockResolvedValue({});
+    view({ localId: 'local-1' });
+
+    await screen.findByRole('switch');
+    await userEvent.click(screen.getByRole('button', { name: 'Publish' }));
+
+    await waitFor(() => expect(toast.success).toHaveBeenCalled());
+    expect(WorldStorageService.linkWorldToListing).not.toHaveBeenCalled();
+  });
+
+  it('tells the library its list is stale, so the browser knows the copy is a copy', async () => {
+    // The list the menu is holding was read before the link was written, and the community browser reads
+    // its download states out of it — an unrefreshed one offers the author their own listing to download.
+    vi.mocked(WorldStorageService.publishItem).mockResolvedValue(created);
+    const onLinked = vi.fn();
+    view({ localId: 'local-1', onLinked });
+
+    await screen.findByRole('switch');
+    await userEvent.click(screen.getByRole('button', { name: 'Publish' }));
+
+    await waitFor(() => expect(onLinked).toHaveBeenCalled());
+  });
+
+  it('says nothing to the library when the link could not be written', async () => {
+    vi.mocked(WorldStorageService.publishItem).mockResolvedValue(created);
+    vi.mocked(WorldStorageService.linkWorldToListing).mockRejectedValue(new Error('store is gone'));
+    const onLinked = vi.fn();
+    view({ localId: 'local-1', onLinked });
+
+    await screen.findByRole('switch');
+    await userEvent.click(screen.getByRole('button', { name: 'Publish' }));
+
+    // The publish still succeeded: a link that could not be written costs the link, never the upload.
+    await waitFor(() => expect(toast.success).toHaveBeenCalled());
+    expect(onLinked).not.toHaveBeenCalled();
+  });
+
+  it('links nothing for a kind with no local world behind it', async () => {
+    vi.mocked(WorldStorageService.publishItem).mockResolvedValue(created);
+    view({ payload: dictPayload });
+
+    await screen.findByText('Publish Dictionary');
+    await userEvent.click(screen.getByRole('button', { name: 'Publish' }));
+
+    await waitFor(() => expect(toast.success).toHaveBeenCalled());
+    expect(WorldStorageService.linkWorldToListing).not.toHaveBeenCalled();
   });
 });

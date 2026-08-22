@@ -14,6 +14,8 @@ interface WorldCardShellProps extends React.HTMLAttributes<HTMLDivElement> {
   description?: string;
   /** The author line — plain text, or an interactive element (e.g. a hide-author span). */
   author?: ReactNode;
+  /** A line about the card's subject (e.g. a winner badge), between the author and the card's own content. */
+  note?: ReactNode;
   /** Surface/border variant classes for the frame (e.g. `bg-background`, the update highlight, `touch-none`). */
   frameClassName?: string;
 }
@@ -26,7 +28,7 @@ interface WorldCardShellProps extends React.HTMLAttributes<HTMLDivElement> {
  * Forwards a ref + spreads the rest onto the frame so a caller can attach dnd-kit listeners / `onClick`.
  */
 export const WorldCardShell = forwardRef<HTMLDivElement, WorldCardShellProps>(function WorldCardShell(
-  { thumbnail, thumbnailOverlay, cornerAction, name, description, author, frameClassName, className, children, ...rest },
+  { thumbnail, thumbnailOverlay, cornerAction, name, description, author, note, frameClassName, className, children, ...rest },
   ref,
 ) {
   return (
@@ -50,6 +52,7 @@ export const WorldCardShell = forwardRef<HTMLDivElement, WorldCardShellProps>(fu
           <MarkdownRenderer text={description || 'No description available.'} />
         </div>
         {author != null && <div className="text-meta text-muted-foreground mb-1">{author}</div>}
+        {note}
         {children}
       </div>
     </div>

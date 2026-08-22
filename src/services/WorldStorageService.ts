@@ -346,6 +346,45 @@ class WorldStorageService {
     return { failed, updated };
   }
 
+  /**
+   * Point a local world at the community listing it was just published to.
+   *
+   * The download path stamps the same two fields; this is the publish side of it, so an author's own copy
+   * is a copy of their listing rather than an unrelated world that happens to look like one. Only the
+   * wrapper fields are written — `storeWorld` wants a whole record, and a publish has no reason to
+   * rewrite the content it just uploaded.
+   *
+   * A world deleted between the upload and the reply is left alone rather than resurrected.
+   *
+   * @param worldId - The local library record that was published
+   * @param sourceId - The listing's server id
+   * @param sourceUpdatedAt - The listing's `updated_at` after the publish, so the author's own card offers
+   *                          no update against the version they just uploaded. Absent clears whatever was
+   *                          stamped before: an old download's stamp against a listing that has since been
+   *                          republished reads as exactly the update this is here to prevent, while no
+   *                          stamp at all reads as a plain re-download
+   */
+  async linkWorldToListing(worldId: string, sourceId: string, sourceUpdatedAt?: string): Promise<void> {
+    await this.ensureInitialized();
+
+    return new Promise<void>((resolve, reject) => {
+      const store = this.db!.transaction([this.storeName], 'readwrite').objectStore(this.storeName);
+      const getRequest = store.get(worldId);
+      getRequest.onsuccess = () => {
+        const existing = getRequest.result;
+        if (!existing) return resolve();
+        const putRequest = store.put({
+          ...existing,
+          sourceId,
+          sourceUpdatedAt,
+        });
+        putRequest.onsuccess = () => resolve();
+        putRequest.onerror = () => reject('Failed to link world to its listing');
+      };
+      getRequest.onerror = () => reject('Failed to link world to its listing');
+    });
+  }
+
   /** Remove a world from IndexedDB by `id`; this is the only path that drops the sticky `sourceId` link. */
   async deleteWorld(worldId: string) {
     await this.ensureInitialized();
@@ -602,7 +641,10 @@ class WorldStorageService {
         throw failure;
       }
 
-      return await response.json();
+      // The listing itself, not the envelope around it: what the caller wants is its id and its fresh
+      // `updated_at`, to link the local copy to what was just published.
+      const responseData = await response.json();
+      return responseData.data || responseData;
     } catch (error) {
       console.error('Error publishing:', error);
       throw error;

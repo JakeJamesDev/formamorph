@@ -150,11 +150,22 @@ export function orderContestEntries(
 }
 
 /**
- * The contest a listing won, out of the ones on hand.
+ * Every contest a record won, out of the ones on hand, newest first.
  *
- * What puts the trophy on a card wherever it is shown — the honor belongs to the world, not to the tab
- * it was found in.
+ * What puts the trophy on a world wherever it is shown — the community card and its details, the local
+ * library card and its details. All of them, because a world that wins twice has won twice; dropping the
+ * older title would quietly rank one honor above another.
+ *
+ * Two records answer to the same win: the listing, by its own server id, and a local copy, by the
+ * `sourceId` its download or publish link carries — however it got there, and however much it has been
+ * edited since. Only this question reads the link; whether a *listing* is the winning entry, which is
+ * what pins one to the front of the contest grid, stays `isContestWinner`.
+ *
+ * A contest called off awarded nothing, whatever it had stamped before it was cancelled.
  */
-export function contestWonBy(record: WorldRecord, events: ServerEvent[]): ServerEvent | null {
-  return events.find((event) => isContestEvent(event) && isContestWinner(record, event)) ?? null;
+export function contestsWonBy(record: WorldRecord, events: ServerEvent[]): ServerEvent[] {
+  return events
+    .filter((event) => isContestEvent(event) && !event.cancelledAt
+      && (isContestWinner(record, event) || (Boolean(event.winnerWorldId) && record.sourceId === event.winnerWorldId)))
+    .sort((a, b) => (parseServerDate(b.startsAt)?.getTime() ?? 0) - (parseServerDate(a.startsAt)?.getTime() ?? 0));
 }

@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import {
-  activeContestOf, contestPhase, contestsOf, contestEntryIdOf, contestWonBy, entriesOf, isContestRunning,
+  activeContestOf, contestPhase, contestsOf, contestEntryIdOf, contestsWonBy, entriesOf, isContestRunning,
   isContestWinner, judgingContestsOf, orderContestEntries, shuffleWithSeed,
 } from './contests';
 import { daysFrom, serverEvent as event } from '@/test/serverEvents';
@@ -111,8 +111,32 @@ describe('which listings belong to a contest', () => {
 
   it('finds the contest a listing won, so its card can say so anywhere', () => {
     const decided = event({ id: 'won', winnerWorldId: 'w2' });
-    expect(contestWonBy(entry('w2', 0), [event(), decided])?.id).toBe('won');
-    expect(contestWonBy(entry('w1', 0), [event(), decided])).toBeNull();
+    expect(contestsWonBy(entry('w2', 0), [event(), decided]).map((e) => e.id)).toEqual(['won']);
+    expect(contestsWonBy(entry('w1', 0), [event(), decided])).toEqual([]);
+  });
+
+  it('finds it for a local copy too, by the listing its download link names', () => {
+    // The library holds no listing id of its own; what ties a copy to the world that won is `sourceId`.
+    const decided = event({ id: 'won', winnerWorldId: 'w2' });
+    const copy: WorldRecord = { id: 'downloaded-abc', name: 'Saltmarsh', sourceId: 'w2' };
+    expect(contestsWonBy(copy, [decided]).map((e) => e.id)).toEqual(['won']);
+    expect(contestsWonBy({ id: 'downloaded-def', name: 'Other' }, [decided])).toEqual([]);
+  });
+
+  it('reports every contest one world has won, newest first', () => {
+    const older = event({ id: 'older', startsAt: at(-400), endsAt: at(-380), winnerWorldId: 'w2' });
+    const newer = event({ id: 'newer', startsAt: at(-40), endsAt: at(-20), winnerWorldId: 'w2' });
+    expect(contestsWonBy(entry('w2', 0), [older, newer]).map((e) => e.id)).toEqual(['newer', 'older']);
+  });
+
+  it('awards nothing for a contest that was called off', () => {
+    const cancelled = event({ id: 'off', winnerWorldId: 'w2', cancelledAt: at(-1) });
+    expect(contestsWonBy(entry('w2', 0), [cancelled])).toEqual([]);
+  });
+
+  it('awards nothing for an announcement that happens to carry the id', () => {
+    const announcement = event({ id: 'ann', type: 'announcement', winnerWorldId: 'w2' });
+    expect(contestsWonBy(entry('w2', 0), [announcement])).toEqual([]);
   });
 });
 

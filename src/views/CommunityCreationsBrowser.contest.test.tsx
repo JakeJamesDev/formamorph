@@ -16,7 +16,11 @@ vi.mock('@/services/AuthService', () => ({
 }));
 
 vi.mock('@/services/WorldStorageService', () => ({
-  default: { API_URL: 'https://example.test/api', withdrawFromContest: vi.fn(async () => {}) },
+  default: {
+    API_URL: 'https://example.test/api',
+    withdrawFromContest: vi.fn(async () => {}),
+    fetchComments: vi.fn(async () => ({ data: [], total: 0, pagination: {} })),
+  },
   CONTEST_WINNER: 'CONTEST_WINNER',
 }));
 
@@ -47,8 +51,6 @@ vi.mock('@/lib/useCatalogSync', () => ({
     };
   },
 }));
-
-vi.mock('@/components/community/RemoteWorldDetailsModal', () => ({ RemoteWorldDetailsModal: () => null }));
 
 const reader = { id: 'u1', username: 'reader', accountType: 'normal' } as unknown as WorldRecord;
 
@@ -212,6 +214,54 @@ describe('what the contest grid shows in each of its three states', () => {
     expect(screen.getByRole('tab', { name: 'Worlds' })).toHaveAttribute('data-state', 'active');
     const badge = await screen.findByTitle('Winter World-Building Contest');
     expect(badge).toHaveTextContent('Winner — Winter World-Building Contest');
+  });
+
+  it('keeps the trophy in the details opened from a winning card', async () => {
+    // One click away from where it was won is exactly where the honor used to evaporate.
+    server.events = [contest({
+      startsAt: at(-20), endsAt: at(-2), winnerWorldId: 'Saltmarsh', winnerName: 'Saltmarsh',
+    })];
+    catalog.items = [listing('Saltmarsh', { contest_event_id: 'e1' })];
+    renderBrowser();
+
+    await userEvent.click(await screen.findByRole('heading', { level: 3, name: 'Saltmarsh' }));
+
+    const details = await screen.findByRole('dialog', { name: /Saltmarsh/ });
+    expect(within(details).getByText('Winner —', { exact: false })).toBeInTheDocument();
+    expect(within(details).getByTitle('Winter World-Building Contest')).toHaveTextContent(
+      'Winner — Winter World-Building Contest',
+    );
+  });
+
+  it('leaves the details bare for a listing that won nothing', async () => {
+    server.events = [contest({
+      startsAt: at(-20), endsAt: at(-2), winnerWorldId: 'Saltmarsh', winnerName: 'Saltmarsh',
+    })];
+    catalog.items = [listing('Thawline', { contest_event_id: 'e1' })];
+    renderBrowser();
+
+    await userEvent.click(await screen.findByRole('heading', { level: 3, name: 'Thawline' }));
+
+    const details = await screen.findByRole('dialog', { name: /Thawline/ });
+    expect(within(details).queryByText('Winner —', { exact: false })).not.toBeInTheDocument();
+  });
+
+  it('names every contest one world has won, in the details as on the card', async () => {
+    server.events = [
+      contest({ id: 'e1', startsAt: at(-20), endsAt: at(-2), winnerWorldId: 'Saltmarsh', winnerName: 'Saltmarsh' }),
+      contest({
+        id: 'e0', title: 'Autumn Ruins Contest', startsAt: at(-400), endsAt: at(-380),
+        winnerWorldId: 'Saltmarsh', winnerName: 'Saltmarsh',
+      }),
+    ];
+    catalog.items = [listing('Saltmarsh', { contest_event_id: 'e1' })];
+    renderBrowser();
+
+    await userEvent.click(await screen.findByRole('heading', { level: 3, name: 'Saltmarsh' }));
+
+    const details = await screen.findByRole('dialog', { name: /Saltmarsh/ });
+    expect(within(details).getByTitle('Winter World-Building Contest')).toBeInTheDocument();
+    expect(within(details).getByTitle('Autumn Ruins Contest')).toBeInTheDocument();
   });
 
   it('says a running contest is still waiting for its first entry', async () => {
