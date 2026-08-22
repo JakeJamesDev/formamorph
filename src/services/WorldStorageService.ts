@@ -559,6 +559,54 @@ class WorldStorageService {
     return responseData.data || responseData;
   }
 
+  /**
+   * Rewrite one's own comment. The server allows nobody else, moderators included.
+   *
+   * Addressed to the comment rather than to the world it sits on — the server has no world-scoped edit
+   * path. The returned row carries the server's `edited_at`, which is what the thread shows.
+   *
+   * @param commentId - The comment's server id
+   * @param content - The replacement text
+   */
+  async updateComment(commentId: string, content: string) {
+    if (!AuthService.isAuthenticated()) {
+      throw new Error('You must be logged in to comment');
+    }
+    const response = await fetch(`${this.API_URL}/comments/${commentId}`, {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${AuthService.token}`,
+      },
+      body: JSON.stringify({ content }),
+    });
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      throw new Error(errorData.error || errorData.message || 'Failed to save the comment');
+    }
+    const responseData = await response.json();
+    return responseData.data || responseData;
+  }
+
+  /**
+   * Remove a comment: its author, the author of the listing it sits on, or staff moderating.
+   *
+   * @param commentId - The comment's server id
+   */
+  async deleteComment(commentId: string) {
+    if (!AuthService.isAuthenticated()) {
+      throw new Error('You must be logged in to comment');
+    }
+    const response = await fetch(`${this.API_URL}/comments/${commentId}`, {
+      method: 'DELETE',
+      headers: { 'Authorization': `Bearer ${AuthService.token}` },
+    });
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      throw new Error(errorData.error || errorData.message || 'Failed to delete the comment');
+    }
+  }
+
   /** Fetch the current user's published worlds; returns `[]` when unauthenticated or on error. */
   async getUserWorlds(kind: CatalogKindQuery = 'world') {
     if (!AuthService.isAuthenticated()) return [];

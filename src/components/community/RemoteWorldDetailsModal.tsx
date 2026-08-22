@@ -1,12 +1,16 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useMemo, useRef } from "react";
 import { toast } from "react-toastify";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { Textarea } from "@/components/ui/textarea";
 import { Progress } from "@/components/ui/progress";
 import IndeterminateProgress from "@/components/ui/indeterminate-progress";
-import { Globe, Columns2, RectangleVertical } from "lucide-react";
+import { Globe, Columns2, RectangleVertical, Pencil, Trash2, X } from "lucide-react";
 import { ActionIcon } from "@/lib/actionIcons";
+import { ConfirmDialog } from "@/components/ConfirmDialog";
+import { MarkdownRenderer } from "@/components/game/MarkdownRenderer";
+import PromptField from "@/components/prompt/PromptField";
+import { plainVocabulary } from "@/lib/chipVocabulary";
+import { canModerate } from "@/lib/roles";
 import { cn } from "@/lib/utils";
 import { useCachedThumbnail } from "@/lib/useCachedThumbnail";
 import { WorldDetailsColumn, DateTimeText, splitColumnClasses, type WorldRecord } from "@/components/WorldDetails";
@@ -42,6 +46,12 @@ interface RemoteWorldDetailsModalProps {
   contests?: ServerEvent[];
 }
 
+/** The same cap a feedback comment carries, so the two comment boxes hold the same amount. */
+const COMMENT_MAX = 4000;
+
+/** How many more comments each "Load more" adds to the window on screen. */
+const COMMENTS_PAGE = 20;
+
 /** The remote-world details modal: metadata + download action (left) and comments (right). Owns its own
  *  comment state/paging; download state is supplied by the parent's download coordinator via props. */
 export function RemoteWorldDetailsModal({
@@ -51,27 +61,39 @@ export function RemoteWorldDetailsModal({
 }: RemoteWorldDetailsModalProps) {
   const [comments, setComments] = useState<WorldRecord[]>([]);
   const [commentsTotal, setCommentsTotal] = useState(0);
-  const [commentsPage, setCommentsPage] = useState(1);
+  const [commentsShown, setCommentsShown] = useState(COMMENTS_PAGE);
   const [commentsHasMore, setCommentsHasMore] = useState(false);
   const [commentsLoading, setCommentsLoading] = useState(false);
   const [commentText, setCommentText] = useState('');
   const [postingComment, setPostingComment] = useState(false);
+  // The comment being rewritten, and its draft text. Only one is open at a time.
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editDraft, setEditDraft] = useState('');
+  const [savingEdit, setSavingEdit] = useState(false);
+  const [pendingDelete, setPendingDelete] = useState<string | null>(null);
+
+  const plainVocab = useMemo(() => plainVocabulary(), []);
 
   // Token each comments fetch so a slow response for a since-closed world can't land in a different world's
   // modal: opening world B fires a newer request, and world A's late result is discarded.
   const commentsReqRef = useRef(0);
 
-  // Load comments for the world detail modal (page 1 resets, higher pages append).
-  const loadComments = async (worldId: string, page = 1) => {
+  /**
+   * Read the first `wanted` comments — the whole window on screen, not the next page of it.
+   *
+   * Asking for one page at a time by number would skip a comment as soon as one had been deleted: the
+   * rows below it shift up by one, and the next page starts past the row that moved into it.
+   */
+  const loadComments = async (worldId: string, wanted = COMMENTS_PAGE) => {
     const reqId = ++commentsReqRef.current;
     setCommentsLoading(true);
     try {
-      const res = await WorldStorageService.fetchComments(worldId, page, 20);
+      const res = await WorldStorageService.fetchComments(worldId, 1, wanted);
       if (reqId !== commentsReqRef.current) return; // superseded by a newer world's fetch
       setCommentsTotal(res.total);
       setCommentsHasMore(!!res.pagination?.next);
-      setCommentsPage(page);
-      setComments((prev) => (page === 1 ? res.data : [...prev, ...res.data]));
+      setCommentsShown(wanted);
+      setComments(res.data);
     } finally {
       if (reqId === commentsReqRef.current) setCommentsLoading(false);
     }
@@ -95,12 +117,44 @@ export function RemoteWorldDetailsModal({
     }
   };
 
+  const handleSaveEdit = async () => {
+    const next = editDraft.trim();
+    if (!editingId || !next) return;
+
+    setSavingEdit(true);
+    try {
+      const updated = await WorldStorageService.updateComment(editingId, next);
+      // Written in from the server's answer rather than from the draft, so the edited marker and the
+      // stored text are the same ones the next reader will get.
+      setComments((prev) => prev.map((c) => (c.id === updated.id ? updated : c)));
+      setEditingId(null);
+    } catch (error) {
+      toast.error((error as Error).message || 'Failed to save the comment');
+    } finally {
+      setSavingEdit(false);
+    }
+  };
+
+  const handleDeleteComment = async (commentId: string) => {
+    try {
+      await WorldStorageService.deleteComment(commentId);
+      setComments((prev) => prev.filter((c) => c.id !== commentId));
+      setCommentsTotal((n) => Math.max(0, n - 1));
+      // The edit box would otherwise stay open over a comment that no longer exists.
+      if (editingId === commentId) setEditingId(null);
+    } catch (error) {
+      toast.error((error as Error).message || 'Failed to delete the comment');
+    }
+  };
+
   // Fetch comments whenever the detail modal opens for a world.
   useEffect(() => {
     if (open && world) {
       setComments([]);
       setCommentText('');
-      loadComments(world._id || world.id, 1);
+      setEditingId(null);
+      setPendingDelete(null);
+      loadComments(world._id || world.id, COMMENTS_PAGE);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, world?._id, world?.id]);
@@ -119,6 +173,20 @@ export function RemoteWorldDetailsModal({
     world?.author && currentUser &&
     (world.author.id === currentUser.id || world.author.username === currentUser.username)
   );
+
+  /** Whether the reader wrote this comment. Only they may rewrite it, with no deadline on it. */
+  const isOwnComment = (comment: WorldRecord) =>
+    Boolean(currentUser && comment.author?.id && comment.author.id === currentUser.id);
+
+  /**
+   * Whether to offer the bin: the commenter, the author of the listing it sits on, or staff who may
+   * reach the commenter. The server decides the same thing again; this only keeps off screen a control
+   * that would be refused. A comment's author carries `role` (null for an ordinary account), which is
+   * what the shared helper reads as an account type.
+   */
+  const mayDelete = (comment: WorldRecord) =>
+    isOwnComment(comment) || isOwnListing ||
+    canModerate(currentUser, { id: comment.author?.id, accountType: comment.author?.role ?? 'normal' });
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -250,20 +318,27 @@ export function RemoteWorldDetailsModal({
               <h3 className="text-helper font-semibold text-muted-foreground">Comments ({commentsTotal})</h3>
 
               {isAuthenticated ? (
-                <div className="space-y-2">
-                  <Textarea
-                    placeholder="Leave a comment..."
+                <div className="space-y-2 min-w-0">
+                  <PromptField
                     value={commentText}
-                    onChange={(e) => setCommentText(e.target.value)}
-                    className="min-h-[60px]"
+                    onChange={(next) => setCommentText(next.slice(0, COMMENT_MAX))}
+                    vocabulary={plainVocab}
+                    markdown
+                    ariaLabel="Comment"
+                    placeholder="Leave a comment..."
                   />
-                  <Button
-                    size="sm"
-                    disabled={postingComment || !commentText.trim()}
-                    onClick={handlePostComment}
-                  >
-                    {postingComment ? 'Posting...' : 'Post Comment'}
-                  </Button>
+                  <div className="flex items-center gap-2">
+                    <Button
+                      size="sm"
+                      disabled={postingComment || !commentText.trim()}
+                      onClick={handlePostComment}
+                    >
+                      {postingComment ? 'Posting...' : 'Post Comment'}
+                    </Button>
+                    <span className="ml-auto text-meta text-muted-foreground">
+                      {commentText.length} / {COMMENT_MAX}
+                    </span>
+                  </div>
                 </div>
               ) : (
                 <p className="text-helper text-muted-foreground">Log in to leave a comment.</p>
@@ -271,17 +346,71 @@ export function RemoteWorldDetailsModal({
 
               <div className="space-y-3">
                 {comments.map((c) => (
-                  <div key={c.id} className="text-label border-b border-border/50 pb-2 last:border-0">
+                  <div key={c.id} className="text-label border-b border-border/50 pb-2 last:border-0 min-w-0">
                     <div className="flex items-center justify-between gap-2">
                       <span className="flex items-center gap-1.5 min-w-0 font-medium">
                         <UserAvatar username={c.author?.username} avatarUrl={c.author?.avatarUrl} size="xs" />
                         <UserName userId={c.author?.id} username={c.author?.username} role={c.author?.role} />
                       </span>
-                      <span className="text-meta text-muted-foreground">
+                      <span className="flex shrink-0 items-center gap-1 text-meta text-muted-foreground">
                         {c.created_at ? formatServerDateTime(c.created_at) : ''}
+                        {/* Said plainly, so a reader can tell a comment changed after the replies to it. */}
+                        {c.edited_at && <span className="italic">· edited</span>}
+                        {editingId !== c.id && (isOwnComment(c) || mayDelete(c)) && (
+                          <span className="flex items-center">
+                            {/* The pencil is the commenter's alone: moderation reaches as far as taking
+                                a comment down, never as far as rewriting somebody's words. */}
+                            {isOwnComment(c) && (
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-7 w-7"
+                                aria-label="Edit comment"
+                                onClick={() => { setEditingId(c.id); setEditDraft(c.content || ''); }}
+                              >
+                                <Pencil className="h-3.5 w-3.5" />
+                              </Button>
+                            )}
+                            {mayDelete(c) && (
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-7 w-7 text-destructive hover:text-destructive/80"
+                                aria-label="Delete comment"
+                                onClick={() => setPendingDelete(c.id)}
+                              >
+                                <Trash2 className="h-3.5 w-3.5" />
+                              </Button>
+                            )}
+                          </span>
+                        )}
                       </span>
                     </div>
-                    <p className="text-muted-foreground whitespace-pre-wrap mt-1">{c.content}</p>
+
+                    {editingId === c.id ? (
+                      <div className="mt-2 space-y-2 min-w-0">
+                        <PromptField
+                          value={editDraft}
+                          onChange={(next) => setEditDraft(next.slice(0, COMMENT_MAX))}
+                          vocabulary={plainVocab}
+                          markdown
+                          ariaLabel="Comment text"
+                        />
+                        <div className="flex items-center gap-2">
+                          <Button size="sm" onClick={handleSaveEdit} disabled={savingEdit || !editDraft.trim()}>
+                            {savingEdit ? 'Saving…' : 'Save'}
+                          </Button>
+                          <Button variant="ghost" size="sm" onClick={() => setEditingId(null)}>
+                            <X className="mr-2 h-4 w-4" /> Cancel
+                          </Button>
+                          <span className="ml-auto text-meta text-muted-foreground">
+                            {editDraft.length} / {COMMENT_MAX}
+                          </span>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="mt-1 min-w-0"><MarkdownRenderer text={c.content || ''} /></div>
+                    )}
                   </div>
                 ))}
                 {comments.length === 0 && !commentsLoading && (
@@ -292,7 +421,7 @@ export function RemoteWorldDetailsModal({
                     variant="outline"
                     size="sm"
                     disabled={commentsLoading}
-                    onClick={() => loadComments(world._id || world.id, commentsPage + 1)}
+                    onClick={() => loadComments(world._id || world.id, commentsShown + COMMENTS_PAGE)}
                   >
                     {commentsLoading ? 'Loading...' : 'Load more'}
                   </Button>
@@ -301,6 +430,19 @@ export function RemoteWorldDetailsModal({
             </div>
           </div>
         )}
+
+        <ConfirmDialog
+          open={!!pendingDelete}
+          onOpenChange={(isOpen) => { if (!isOpen) setPendingDelete(null); }}
+          title="Delete this comment?"
+          description="It goes for good, and the rest of the thread stays as it is."
+          onConfirm={() => {
+            const commentId = pendingDelete;
+            setPendingDelete(null);
+            if (commentId) void handleDeleteComment(commentId);
+          }}
+          onCancel={() => setPendingDelete(null)}
+        />
       </DialogContent>
     </Dialog>
   );
