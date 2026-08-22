@@ -565,3 +565,120 @@ describe('default worlds: seed vs. the player deleting one', () => {
     expect(localStorage.getItem('FORMAMORPH_deletedDefaultWorlds')).toBeNull();
   });
 });
+
+describe('the listing changelog', () => {
+  const entryRow = (over: Record<string, unknown> = {}) => ({
+    id: 'e1',
+    world_id: 'w1',
+    title: 'Update 1',
+    body: 'The drowned quarter is walkable now.',
+    entry_date: '2026-08-01',
+    created_at: '2026-08-01T12:00:00.000Z',
+    updated_at: '2026-08-01T12:00:00.000Z',
+    ...over,
+  });
+
+  it('asks for the changelog as part of the listing, behind the opt-in flag', async () => {
+    vi.mocked(fetch).mockResolvedValue(res({ data: { id: 'w1', changelog: [] } }));
+
+    await WorldStorageService.fetchChangelog('w1');
+
+    expect(vi.mocked(fetch).mock.calls[0][0]).toContain('/worlds/w1?includeChangelog=true');
+  });
+
+  it('hands back the entries in reading order', async () => {
+    vi.mocked(fetch).mockResolvedValue(res({
+      data: {
+        id: 'w1',
+        changelog: [entryRow({ id: 'old', entry_date: '2026-01-01' }), entryRow({ id: 'new', entry_date: '2026-08-01' })],
+      },
+    }));
+
+    const entries = await WorldStorageService.fetchChangelog('w1');
+
+    expect(entries?.map((e) => e.id)).toEqual(['new', 'old']);
+  });
+
+  it('answers null on a server whose listings carry no changelog field', async () => {
+    // The whole of graceful degradation: an older community deploy answers the flag by ignoring it, and
+    // every surface reading this hides itself rather than showing an empty tab.
+    vi.mocked(fetch).mockResolvedValue(res({ data: { id: 'w1', name: 'Sedge Landing' } }));
+
+    expect(await WorldStorageService.fetchChangelog('w1')).toBeNull();
+  });
+
+  it('tells an empty changelog apart from a server that has none', async () => {
+    vi.mocked(fetch).mockResolvedValue(res({ data: { id: 'w1', changelog: [] } }));
+
+    expect(await WorldStorageService.fetchChangelog('w1')).toEqual([]);
+  });
+
+  it('answers null rather than throwing when the request fails', async () => {
+    vi.mocked(fetch).mockResolvedValue(res({ error: 'World not found' }, false, 404));
+
+    expect(await WorldStorageService.fetchChangelog('w1')).toBeNull();
+  });
+
+  it('answers null when the network is gone', async () => {
+    vi.mocked(fetch).mockRejectedValue(new Error('offline'));
+
+    expect(await WorldStorageService.fetchChangelog('w1')).toBeNull();
+  });
+
+  it('posts a new entry with its fields trimmed', async () => {
+    AuthService.token = 'tok';
+    vi.mocked(fetch).mockResolvedValue(res({ data: entryRow() }, true, 201));
+
+    const created = await WorldStorageService.createChangelogEntry('w1', {
+      title: '  Update 1  ', body: '  Something changed.  ', date: '2026-08-01',
+    });
+
+    const [url, init] = vi.mocked(fetch).mock.calls[0] as [string, RequestInit];
+    expect(url).toContain('/worlds/w1/changelog');
+    expect(init.method).toBe('POST');
+    expect(JSON.parse(init.body as string)).toEqual({
+      title: 'Update 1', body: 'Something changed.', date: '2026-08-01',
+    });
+    expect(created.id).toBe('e1');
+  });
+
+  it('addresses an edit through the listing the entry belongs to', async () => {
+    AuthService.token = 'tok';
+    vi.mocked(fetch).mockResolvedValue(res({ data: entryRow({ title: 'New for v2' }) }));
+
+    await WorldStorageService.updateChangelogEntry('w1', 'e1', {
+      title: 'New for v2', body: 'Rewritten.', date: '2026-08-01',
+    });
+
+    const [url, init] = vi.mocked(fetch).mock.calls[0] as [string, RequestInit];
+    expect(url).toContain('/worlds/w1/changelog/e1');
+    expect(init.method).toBe('PUT');
+  });
+
+  it('raises the server refusal, so the popup can show it beside the field', async () => {
+    AuthService.token = 'tok';
+    vi.mocked(fetch).mockResolvedValue(res({ error: 'A changelog holds at most 100 entries.' }, false, 400));
+
+    await expect(WorldStorageService.createChangelogEntry('w1', {
+      title: 'Update 1', body: 'Something changed.', date: '2026-08-01',
+    })).rejects.toThrow('A changelog holds at most 100 entries.');
+  });
+
+  it('makes no request at all when nobody is signed in', async () => {
+    await expect(WorldStorageService.createChangelogEntry('w1', {
+      title: 'Update 1', body: 'Something changed.', date: '2026-08-01',
+    })).rejects.toThrow(/logged in/i);
+    expect(fetch).not.toHaveBeenCalled();
+  });
+
+  it('deletes an entry through its listing', async () => {
+    AuthService.token = 'tok';
+    vi.mocked(fetch).mockResolvedValue(res({ data: {} }));
+
+    await WorldStorageService.deleteChangelogEntry('w1', 'e1');
+
+    const [url, init] = vi.mocked(fetch).mock.calls[0] as [string, RequestInit];
+    expect(url).toContain('/worlds/w1/changelog/e1');
+    expect(init.method).toBe('DELETE');
+  });
+});

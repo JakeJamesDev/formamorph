@@ -8,6 +8,7 @@ import { Globe, Columns2, RectangleVertical, Pencil, Trash2, X } from "lucide-re
 import { ActionIcon } from "@/lib/actionIcons";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
 import { MarkdownRenderer } from "@/components/game/MarkdownRenderer";
+import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import PromptField from "@/components/prompt/PromptField";
 import { plainVocabulary } from "@/lib/chipVocabulary";
 import { canModerate } from "@/lib/roles";
@@ -21,6 +22,8 @@ import WorldStorageService from "@/services/WorldStorageService";
 import { UserAvatar } from "@/components/UserAvatar";
 import { UserName } from "@/components/UserName";
 import { LikeButton } from "@/components/community/LikeButton";
+import { ChangelogPanel } from "@/components/community/ChangelogPanel";
+import { defaultChangelogTab, type ChangelogEntry, type ChangelogTab } from "@/lib/listingChangelog";
 import { WorldActionButton } from "@/components/WorldActionButton";
 import { PlaceBadges } from "@/components/PlaceBadges";
 import { placementsBy } from "@/lib/contests";
@@ -71,12 +74,19 @@ export function RemoteWorldDetailsModal({
   const [editDraft, setEditDraft] = useState('');
   const [savingEdit, setSavingEdit] = useState(false);
   const [pendingDelete, setPendingDelete] = useState<string | null>(null);
+  // Null until the listing has been read, and null forever against a server that has never heard of
+  // changelogs — which is what keeps the whole feature invisible rather than broken on an old deploy.
+  const [changelog, setChangelog] = useState<ChangelogEntry[] | null>(null);
+  const [tab, setTab] = useState<ChangelogTab>('comments');
 
   const plainVocab = useMemo(() => plainVocabulary(), []);
 
   // Token each comments fetch so a slow response for a since-closed world can't land in a different world's
   // modal: opening world B fires a newer request, and world A's late result is discarded.
   const commentsReqRef = useRef(0);
+
+  /** The same guard for the changelog fetch, which races the same way. */
+  const changelogReqRef = useRef(0);
 
   /**
    * Read the first `wanted` comments — the whole window on screen, not the next page of it.
@@ -147,14 +157,34 @@ export function RemoteWorldDetailsModal({
     }
   };
 
-  // Fetch comments whenever the detail modal opens for a world.
+  /**
+   * Read the listing's changelog, and decide which panel this reader arrives on.
+   *
+   * Tokened like the comments fetch, and for the same reason: a slow answer for a since-closed world must
+   * not land in a different world's modal.
+   */
+  const loadChangelog = async (worldId: string, forWorld: WorldRecord) => {
+    const reqId = ++changelogReqRef.current;
+    const entries = await WorldStorageService.fetchChangelog(worldId);
+    if (reqId !== changelogReqRef.current) return;
+
+    setChangelog(entries);
+    setTab(defaultChangelogTab(entries, downloadStateForWorld(forWorld)));
+  };
+
+  // Fetch comments and the changelog whenever the detail modal opens for a world.
   useEffect(() => {
     if (open && world) {
       setComments([]);
       setCommentText('');
       setEditingId(null);
       setPendingDelete(null);
+      // Cleared rather than left standing: the previous world's history must not show under this one's
+      // name for the frames before the fetch answers.
+      setChangelog(null);
+      setTab('comments');
       loadComments(world._id || world.id, COMMENTS_PAGE);
+      void loadChangelog(world._id || world.id, world);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, world?._id, world?.id]);
@@ -313,8 +343,34 @@ export function RemoteWorldDetailsModal({
               />
             </div>
 
-            {/* Right column: comments */}
+            {/* Right column: the changelog and the comments, one at a time. */}
             <div className={cn(splitColumnClasses(collapsed).right, "space-y-3")}>
+              {/* Absent entirely when there is nothing to switch to — a listing with no changelog looks
+                  exactly as it always did, which is most of them. Its author sees the switch regardless,
+                  so the way to start a changelog is where the changelog will appear. */}
+              {changelog && (changelog.length > 0 || isOwnListing) && (
+                <ToggleGroup
+                  type="single"
+                  value={tab}
+                  // A single ToggleGroup clears its value when the active item is clicked again; one panel
+                  // is always shown, so an empty result is ignored rather than stored.
+                  onValueChange={(next) => { if (next) setTab(next as ChangelogTab); }}
+                  className="w-full"
+                >
+                  <ToggleGroupItem value="changelog" className="flex-1">Changelog</ToggleGroupItem>
+                  <ToggleGroupItem value="comments" className="flex-1">Comments</ToggleGroupItem>
+                </ToggleGroup>
+              )}
+
+              {changelog && tab === 'changelog' ? (
+                <ChangelogPanel
+                  worldId={world._id || world.id}
+                  entries={changelog}
+                  onEntriesChange={setChangelog}
+                  canEdit={isOwnListing}
+                />
+              ) : (
+                <>
               <h3 className="text-helper font-semibold text-muted-foreground">Comments ({commentsTotal})</h3>
 
               {isAuthenticated ? (
@@ -427,6 +483,8 @@ export function RemoteWorldDetailsModal({
                   </Button>
                 )}
               </div>
+                </>
+              )}
             </div>
           </div>
         )}

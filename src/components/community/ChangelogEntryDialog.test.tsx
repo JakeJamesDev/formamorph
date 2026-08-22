@@ -1,0 +1,173 @@
+import { render, screen, fireEvent, cleanup, waitFor } from '@testing-library/react';
+import { describe, it, expect, afterEach, vi } from 'vitest';
+import { ChangelogEntryDialog } from './ChangelogEntryDialog';
+import { todayForDateInput } from '@/lib/listingChangelog';
+
+// jsdom can't drive a real Lexical selection; the editor is stubbed to a textarea so it can be filled.
+vi.mock('@/components/prompt/PromptField', () => ({
+  default: ({ value, onChange, ariaLabel, placeholder }: {
+    value: string; onChange: (v: string) => void; ariaLabel?: string; placeholder?: string;
+  }) => (
+    <textarea
+      aria-label={ariaLabel}
+      placeholder={placeholder}
+      value={value}
+      onChange={(e) => onChange(e.target.value)}
+    />
+  ),
+}));
+
+/**
+ * The one popup that writes a Changelog Entry.
+ *
+ * Every surface uses it — adding, backfilling, rewriting, and the note attached to a publish — so what it
+ * hands back has to be the same three fields whichever door was used, and it has to refuse the same
+ * things the server would before the author waits on a round trip to hear it.
+ */
+
+const titleBox = () => screen.getByLabelText('Title') as HTMLInputElement;
+const dateBox = () => screen.getByLabelText('Date') as HTMLInputElement;
+const bodyBox = () => screen.getByLabelText('What changed') as HTMLTextAreaElement;
+const submit = (name: RegExp = /add entry|save entry/i) => screen.getByRole('button', { name });
+
+const show = (props: Record<string, unknown> = {}) =>
+  render(
+    <ChangelogEntryDialog
+      open
+      onOpenChange={() => {}}
+      onSubmit={() => {}}
+      {...props}
+    />
+  );
+
+const fill = (over: { title?: string; body?: string; date?: string } = {}) => {
+  if (over.title !== undefined) fireEvent.change(titleBox(), { target: { value: over.title } });
+  if (over.body !== undefined) fireEvent.change(bodyBox(), { target: { value: over.body } });
+  if (over.date !== undefined) fireEvent.change(dateBox(), { target: { value: over.date } });
+};
+
+afterEach(() => {
+  cleanup();
+  vi.restoreAllMocks();
+});
+
+describe('opening the popup', () => {
+  it('starts blank and dated today when there is no entry to edit', () => {
+    show();
+
+    expect(titleBox().value).toBe('');
+    expect(bodyBox().value).toBe('');
+    expect(dateBox().value).toBe(todayForDateInput());
+  });
+
+  it('fills in the entry it was handed, its own date included', () => {
+    // Backfilled history is the reason the date is a field at all; an edit that reset it to today would
+    // rewrite the one thing the author set deliberately.
+    show({ entry: { title: 'New for v2', body: 'The ferry runs again.', date: '2026-01-09' } });
+
+    expect(titleBox().value).toBe('New for v2');
+    expect(bodyBox().value).toBe('The ferry runs again.');
+    expect(dateBox().value).toBe('2026-01-09');
+  });
+
+  it('names itself for what it is doing', () => {
+    show();
+    expect(screen.getByText('Add Changelog Entry')).toBeInTheDocument();
+
+    cleanup();
+    show({ entry: { title: 'x', body: 'y', date: '2026-01-09' } });
+    expect(screen.getByText('Edit Changelog Entry')).toBeInTheDocument();
+  });
+
+  it('lets the caller name the button, so a publish can say what it really does', () => {
+    show({ submitLabel: 'Attach to Update' });
+
+    expect(screen.getByRole('button', { name: 'Attach to Update' })).toBeInTheDocument();
+  });
+});
+
+describe('handing the draft back', () => {
+  it('submits the three fields, trimmed', () => {
+    const onSubmit = vi.fn();
+    show({ onSubmit });
+
+    fill({ title: '  Update 1  ', body: '  The drowned quarter is walkable.  ', date: '2026-08-01' });
+    fireEvent.click(submit());
+
+    expect(onSubmit).toHaveBeenCalledWith({
+      title: 'Update 1',
+      body: 'The drowned quarter is walkable.',
+      date: '2026-08-01',
+    });
+  });
+
+  it('closes once the caller has taken it', async () => {
+    const onOpenChange = vi.fn();
+    show({ onOpenChange, onSubmit: () => {} });
+
+    fill({ title: 'Update 1', body: 'Something changed.' });
+    fireEvent.click(submit());
+
+    await waitFor(() => expect(onOpenChange).toHaveBeenCalledWith(false));
+  });
+
+  it('stays open with the refusal beside the field when the caller throws', async () => {
+    // What the author wrote is still on screen, and a message they can act on belongs next to it rather
+    // than in a toast over a popup that has closed.
+    const onOpenChange = vi.fn();
+    show({
+      onOpenChange,
+      onSubmit: () => { throw new Error('A changelog holds at most 100 entries.'); },
+    });
+
+    fill({ title: 'Update 1', body: 'Something changed.' });
+    fireEvent.click(submit());
+
+    expect(await screen.findByRole('alert')).toHaveTextContent('A changelog holds at most 100 entries.');
+    expect(onOpenChange).not.toHaveBeenCalledWith(false);
+    expect(titleBox().value).toBe('Update 1');
+  });
+
+  it('sends nothing at all when the entry has no title', () => {
+    const onSubmit = vi.fn();
+    show({ onSubmit });
+
+    fill({ title: '   ', body: 'Something changed.' });
+    fireEvent.click(submit());
+
+    expect(onSubmit).not.toHaveBeenCalled();
+    expect(screen.getByRole('alert')).toBeInTheDocument();
+  });
+
+  it('sends nothing when the entry says nothing', () => {
+    const onSubmit = vi.fn();
+    show({ onSubmit });
+
+    fill({ title: 'Update 1', body: '  ' });
+    fireEvent.click(submit());
+
+    expect(onSubmit).not.toHaveBeenCalled();
+  });
+
+  it('sends nothing when the date is not a day that exists', () => {
+    const onSubmit = vi.fn();
+    show({ onSubmit });
+
+    fill({ title: 'Update 1', body: 'Something changed.', date: '2026-02-31' });
+    fireEvent.click(submit());
+
+    expect(onSubmit).not.toHaveBeenCalled();
+  });
+
+  it('hands nothing back when it is cancelled', () => {
+    const onSubmit = vi.fn();
+    const onOpenChange = vi.fn();
+    show({ onSubmit, onOpenChange });
+
+    fill({ title: 'Update 1', body: 'Something changed.' });
+    fireEvent.click(screen.getByRole('button', { name: /cancel/i }));
+
+    expect(onSubmit).not.toHaveBeenCalled();
+    expect(onOpenChange).toHaveBeenCalledWith(false);
+  });
+});
