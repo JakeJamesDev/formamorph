@@ -5,7 +5,6 @@
  * read the same answer, so a band composed in the admin form is the band players are shown. An event
  * from a server without the styling fields resolves to the default look here rather than at each reader.
  */
-import type { ServerEvent } from '@/types';
 
 /** What the band renders as, once the color, the artwork and their absence have all been accounted for. */
 export interface PosterBand {
@@ -118,7 +117,7 @@ export interface PosterStyleSource {
  *                   omitting it leaves the path as it came
  */
 export function posterBand(
-  event: PosterStyleSource | ServerEvent | null | undefined,
+  event: PosterStyleSource | null | undefined,
   imageSrc: (path: string) => string | null = (path) => path,
 ): PosterBand {
   if (!event) return DEFAULT_BAND;

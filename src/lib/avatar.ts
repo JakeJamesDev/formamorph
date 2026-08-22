@@ -1,7 +1,6 @@
 /**
- * Profile images: where they load from, and what stands in when there is none.
+ * Profile images: what stands in when there is none, and what a picker will take.
  */
-import { serverAssetSrc } from './serverAssets';
 
 /** What the crop step produces, and the only sizes the server stores. */
 export const AVATAR_SIZE = 256;
@@ -9,19 +8,13 @@ export const AVATAR_SIZE = 256;
 /** The largest file the picker will take, before cropping. Room for a phone photo. */
 export const MAX_AVATAR_UPLOAD_BYTES = 10 * 1024 * 1024;
 
-/** What the file picker offers, and what the crop canvas can decode. An animated source is flattened. */
-export const AVATAR_ACCEPT = 'image/png,image/jpeg,image/webp,image/gif';
-
 /**
- * The full URL of a stored avatar.
+ * What a file picker for an uploaded image offers, and what the crop canvas can decode.
  *
- * @param path - The `avatarUrl` from any server DTO
- * @param apiUrl - The API base the client is talking to
- * @returns An absolute URL, or null when there is no avatar
+ * One list for every picker that feeds the community server — avatars and event posters both — so
+ * adding or dropping a supported format is a single edit. An animated source is flattened.
  */
-export function avatarSrc(path: string | null | undefined, apiUrl: string): string | null {
-  return serverAssetSrc(path, apiUrl);
-}
+export const IMAGE_UPLOAD_ACCEPT = 'image/png,image/jpeg,image/webp,image/gif';
 
 /** The letter shown when somebody has no image. Falls back to a shape rather than an empty circle. */
 export function avatarInitial(username: string | null | undefined): string {

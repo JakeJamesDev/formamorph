@@ -36,7 +36,7 @@ export interface BugDiagnostics {
 export interface FeedbackReporter {
   id: string | null;
   username: string | null;
-  /** Their profile image, or null when they have none. Root-relative; see `avatarSrc`. */
+  /** Their profile image, or null when they have none. Root-relative; see `serverAssetSrc`. */
   avatarUrl?: string | null;
   /**
    * Their staff role when they filed it, or null for an ordinary account.
@@ -83,7 +83,7 @@ export interface FeedbackComment {
   author: {
     id: string | null;
     username: string | null;
-    /** Their profile image, or null when they have none. Root-relative; see `avatarSrc`. */
+    /** Their profile image, or null when they have none. Root-relative; see `serverAssetSrc`. */
     avatarUrl?: string | null;
     /**
      * What they were when they wrote it, which is what the badge says. Null for an ordinary reply.

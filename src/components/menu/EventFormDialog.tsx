@@ -20,6 +20,7 @@ import { EventPosterBand } from "@/components/events/EventPosterBand";
 import { useResetOnOpen } from "@/lib/useResetOnOpen";
 import { adminEventState, fromLocalInputValue, toLocalInputValue } from "@/lib/adminEvents";
 import { parsePosterColor } from "@/lib/posterStyle";
+import { IMAGE_UPLOAD_ACCEPT } from "@/lib/avatar";
 import EventService from "@/services/EventService";
 import type { ServerEvent, ServerEventDraft, ServerEventType } from "@/types";
 
@@ -27,9 +28,6 @@ import type { ServerEvent, ServerEventDraft, ServerEventType } from "@/types";
 const TITLE_MAX = 120;
 const BANNER_MAX = 280;
 const BODY_MAX = 4000;
-
-/** What the poster picker offers, and what the server stores. */
-const POSTER_ACCEPT = 'image/png,image/jpeg,image/webp,image/gif';
 
 /** The largest artwork the server will take. Matches its own cap, so the refusal happens before the upload. */
 const POSTER_MAX_BYTES = 2 * 1024 * 1024;
@@ -284,7 +282,7 @@ export function EventFormDialog({ open, onOpenChange, editing = null, onSaved }:
               <input
                 ref={filePicker}
                 type="file"
-                accept={POSTER_ACCEPT}
+                accept={IMAGE_UPLOAD_ACCEPT}
                 aria-label="Poster image"
                 className="hidden"
                 onChange={(e) => { takeImage(e.target.files?.[0]); e.target.value = ''; }}
