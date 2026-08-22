@@ -5,6 +5,7 @@ import WorldStorageService, { type StoredWorldRecord } from './WorldStorageServi
 import { clearDeletedDefaultWorlds } from '@/lib/defaultWorlds';
 import { encodePlaceholderToken } from '@/lib/placeholders';
 import AuthService from './AuthService';
+import { getDownloadState } from '@/lib/downloadState';
 
 const res = (body: unknown, ok = true, status = 200): Response =>
   ({ ok, status, json: async () => body } as unknown as Response);
@@ -124,6 +125,15 @@ describe('publishItem', () => {
     const body = JSON.parse(vi.mocked(fetch).mock.calls[0][1]?.body as string);
     expect(body.kind).toBe('entity');
     expect(body.contentData).toEqual({ name: 'Mara' });
+  });
+
+  it('hands back the listing itself, so a caller can link the local copy to it', async () => {
+    AuthService.token = 'tok';
+    vi.mocked(fetch).mockResolvedValue(res({ success: true, data: { id: 'created', updated_at: '2026-01-02 03:04:05' } }));
+
+    const listing = await WorldStorageService.publishItem(payload());
+
+    expect(listing).toEqual({ id: 'created', updated_at: '2026-01-02 03:04:05' });
   });
 
   it('mirrors the list fields into previewData, never the content', async () => {
@@ -308,6 +318,51 @@ const writeRaw = (record: StoredWorldRecord): Promise<void> =>
       req.onerror = () => { reject(req.error); db.close(); };
     };
   });
+
+describe('linkWorldToListing', () => {
+  const world: StoredWorldRecord = {
+    id: 'link-1',
+    name: 'Salt-Bright Reaches',
+    data: {
+      worldOverview: { name: 'Salt-Bright Reaches' },
+      stats: [], locations: [], entities: [], traits: [], statUpdates: [],
+    },
+  };
+
+  it('points a published world at its listing without touching what was uploaded', async () => {
+    await WorldStorageService.storeWorld(world);
+
+    await WorldStorageService.linkWorldToListing('link-1', 'srv-1', '2026-01-02 03:04:05');
+
+    const meta = (await WorldStorageService.getWorldMetadata()).find((m) => m.id === 'link-1');
+    expect(meta?.sourceId).toBe('srv-1');
+    expect(meta?.sourceUpdatedAt).toBe('2026-01-02 03:04:05');
+    // The content is the author's own, and publishing it is no reason to rewrite it.
+    expect(await WorldStorageService.getWorldData('link-1')).toEqual({ ...world.data, id: 'link-1' });
+
+    await WorldStorageService.deleteWorld('link-1');
+  });
+
+  it('clears a stamp the reply did not renew, rather than leaving one that reads as an update', async () => {
+    // A copy downloaded long ago carries the version it held then. Publishing over that listing and
+    // keeping the old stamp would offer the author their own upload back as an update — no stamp at all
+    // reads as a plain re-download, which is the safe answer when the server told us nothing.
+    await WorldStorageService.storeWorld({ ...world, id: 'link-2' });
+    await WorldStorageService.linkWorldToListing('link-2', 'srv-2', '2020-01-02 03:04:05');
+
+    await WorldStorageService.linkWorldToListing('link-2', 'srv-2', undefined);
+
+    const meta = (await WorldStorageService.getWorldMetadata()).find((m) => m.id === 'link-2');
+    expect(meta?.sourceUpdatedAt).toBeUndefined();
+    expect(getDownloadState('2026-01-02 03:04:05', [meta!])).toBe('refresh');
+
+    await WorldStorageService.deleteWorld('link-2');
+  });
+
+  it('does nothing for a world that is no longer in the library', async () => {
+    await expect(WorldStorageService.linkWorldToListing('gone', 'srv-3', '2026-01-02 03:04:05')).resolves.toBeUndefined();
+  });
+});
 
 describe('loadDefaultWorlds (content-hash refresh)', () => {
   // The real bundled world, hashed through the real `?raw` glob — the smallest one keeps the parse cheap.

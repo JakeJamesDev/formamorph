@@ -38,6 +38,14 @@ interface PublishModalProps {
   payload: PublishPayload | null;
   /** The events running right now, from the events poll. Only a contest among them is read here. */
   events?: ServerEvent[];
+  /**
+   * The local world this payload was built from, so a successful publish can link it to its listing.
+   * Worlds only: they are the kind whose local copy the community browser tracks, and the kind a contest
+   * can be won by.
+   */
+  localId?: string;
+  /** Called once a published world's link has been written, so the caller can re-read its library. */
+  onLinked?: () => void;
 }
 
 /**
@@ -47,7 +55,9 @@ interface PublishModalProps {
  *
  * The overwrite list is fetched per kind: your characters are never offered as targets for a world.
  */
-export function PublishModal({ open, onOpenChange, isAuthenticated, payload, events = [] }: PublishModalProps) {
+export function PublishModal({
+  open, onOpenChange, isAuthenticated, payload, events = [], localId, onLinked,
+}: PublishModalProps) {
   const [userWorlds, setUserWorlds] = useState<WorldRecord[]>([]);
   const [selectedWorldToOverride, setSelectedWorldToOverride] = useState<string | null>(null);
   const [isPublishing, setIsPublishing] = useState(false);
@@ -130,7 +140,22 @@ export function PublishModal({ open, onOpenChange, isAuthenticated, payload, eve
     const entering = !targetId && enterContest && !enteredName && contest ? contest.id : null;
 
     try {
-      await WorldStorageService.publishItem(payload, targetId, entering);
+      const listing = await WorldStorageService.publishItem(payload, targetId, entering);
+
+      // The author's copy becomes a copy of the listing it just became, the way a downloaded one is —
+      // which is what carries a later contest win back to the library they actually work in. The listing's
+      // post-publish stamp rides along so their own card doesn't then offer them their own upload as an
+      // update. Failing to write it costs a link, never the publish, so its own failure is swallowed here
+      // rather than reaching the catch below and reading as a refused upload.
+      const listingId = listing?._id || listing?.id;
+      if (kind === 'world' && localId && listingId) {
+        const linked = await WorldStorageService.linkWorldToListing(localId, String(listingId), listing?.updated_at)
+          .then(() => true)
+          .catch((error) => { console.error('Failed to link the published world to its listing:', error); return false; });
+        // The library list the caller is holding predates the link, and the community browser reads its
+        // download states from it — so without this the author's own listing offers them a first download.
+        if (linked) onLinked?.();
+      }
 
       // No refetch: the modal closes here and reloads its listings on the next open, so re-reading them
       // only to discard them is a round-trip the user waits on.

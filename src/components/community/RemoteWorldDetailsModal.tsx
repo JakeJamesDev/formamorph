@@ -18,6 +18,9 @@ import { UserAvatar } from "@/components/UserAvatar";
 import { UserName } from "@/components/UserName";
 import { LikeButton } from "@/components/community/LikeButton";
 import { WorldActionButton } from "@/components/WorldActionButton";
+import { WinnerBadges } from "@/components/WinnerBadges";
+import { contestsWonBy } from "@/lib/contests";
+import type { ServerEvent } from "@/types";
 
 interface RemoteWorldDetailsModalProps {
   open: boolean;
@@ -35,6 +38,8 @@ interface RemoteWorldDetailsModalProps {
   currentUser?: WorldRecord | null;
   /** Records a like. Absent leaves the heart a plain count. */
   onLike?: (world: WorldRecord, liked: boolean) => Promise<void>;
+  /** The contest archive the browser already fetched, so a winner is badged here as it is on its card. */
+  contests?: ServerEvent[];
 }
 
 /** The remote-world details modal: metadata + download action (left) and comments (right). Owns its own
@@ -42,7 +47,7 @@ interface RemoteWorldDetailsModalProps {
 export function RemoteWorldDetailsModal({
   open, onOpenChange, world, collapsed, onToggleCollapsed,
   isAuthenticated, openImageViewer, downloadStateForWorld, downloadProgress, onContextualDownload,
-  currentUser, onLike,
+  currentUser, onLike, contests = [],
 }: RemoteWorldDetailsModalProps) {
   const [comments, setComments] = useState<WorldRecord[]>([]);
   const [commentsTotal, setCommentsTotal] = useState(0);
@@ -134,6 +139,8 @@ export function RemoteWorldDetailsModal({
               {collapsed ? <Columns2 className="h-4 w-4" /> : <RectangleVertical className="h-4 w-4" />}
             </Button>
           </DialogTitle>
+          {/* Under the title, as on the card: opening a winning card must not lose what the card said. */}
+          {world && <WinnerBadges contests={contestsWonBy(world, contests)} className="mr-8" />}
         </DialogHeader>
 
         {world && (

@@ -12,7 +12,7 @@ import {
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { KIND_LABELS, kindOf, type CatalogKind } from "@/lib/catalogKinds";
 import { BROWSE_TABS, BROWSE_TAB_LABELS, type BrowseTab } from "@/lib/browseTabs";
-import { contestPhase, contestWonBy, entriesOf, orderContestEntries } from "@/lib/contests";
+import { contestPhase, contestsWonBy, entriesOf, orderContestEntries } from "@/lib/contests";
 import { isContestEvent } from "@/lib/serverEvents";
 import { useContests } from "@/lib/useContests";
 import { ContestBar, ContestWinner } from "@/components/community/ContestBar";
@@ -838,7 +838,7 @@ const CommunityCreationsBrowser = ({
                       onLike={handleLike}
                       onQuarantine={setQuarantining}
                       onRelease={handleRelease}
-                      wonContest={contestWonBy(world, contests)?.title ?? null}
+                      wonContests={contestsWonBy(world, contests)}
                       // Only where the entry is the subject, and only while it is still an entry: a
                       // decided contest keeps its winner, and the server refuses to release one.
                       onWithdraw={browseTab === 'contest' && shownContest && contestPhase(shownContest) !== 'decided'
@@ -883,6 +883,7 @@ const CommunityCreationsBrowser = ({
         onContextualDownload={handleCardDownload}
         currentUser={currentUser}
         onLike={handleLike}
+        contests={contests}
       />
 
       {/* Refresh/Update decision: download a separate copy vs overwrite an existing local copy */}

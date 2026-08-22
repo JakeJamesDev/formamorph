@@ -10,14 +10,16 @@ import { WorldCardShell } from "@/components/WorldCardShell";
  *  start a drag so a plain click still selects the world. `detailed` mirrors the community-browser card layout.
  *  `aspect='portrait'` gives the grid image a tall 2:3 frame (for character portraits) instead of the short
  *  landscape default. Omit `onSelect` for a card with nothing to open — it drops the pointer cursor too, so
- *  the tile doesn't advertise a click it won't answer. `badge` overlays the grid thumbnail's top-left. */
-function SortableWorldCard({ world, onSelect, onDelete, layout, aspect = 'landscape', badge }: {
+ *  the tile doesn't advertise a click it won't answer. `badge` overlays the grid thumbnail's top-left, and
+ *  `note` is the same thing said as a line in the detailed layout, which has no thumbnail to overlay. */
+function SortableWorldCard({ world, onSelect, onDelete, layout, aspect = 'landscape', badge, note }: {
   world: WorldRecord;
   onSelect?: (id: string) => void;
   onDelete: (id: string) => void;
   layout: 'grid' | 'detailed';
   aspect?: 'landscape' | 'portrait';
   badge?: React.ReactNode;
+  note?: React.ReactNode;
 }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } =
     useSortable({ id: world.id });
@@ -50,6 +52,7 @@ function SortableWorldCard({ world, onSelect, onDelete, layout, aspect = 'landsc
         // Omitted rather than "By Unknown" when there is none: a character or a book in your own library
         // has no byline to print, and the shell drops the line entirely when it gets nothing.
         author={world.author ? `By ${world.author}` : undefined}
+        note={note}
         thumbnail={world.thumbnail
           ? (
             <img
@@ -112,7 +115,7 @@ function SortableWorldCard({ world, onSelect, onDelete, layout, aspect = 'landsc
       ) : (
         <div className={`w-full ${aspect === 'portrait' ? 'aspect-[2/3]' : 'h-48'} bg-muted`} />
       )}
-      {badge && <div className="absolute top-1 left-1 z-10">{badge}</div>}
+      {badge && <div className="absolute top-1 left-1 z-10 max-w-[calc(100%-0.5rem)]">{badge}</div>}
       {/* Flex row, not an absolute corner button: the trash keeps its own column so a long name wraps
           beside it instead of running underneath, and it bottom-aligns with the last line of the name. */}
       <div className="absolute bottom-0 left-0 right-0 bg-overlay/50 p-2 flex items-end gap-2">

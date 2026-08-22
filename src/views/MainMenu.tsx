@@ -89,6 +89,8 @@ import { filesFrom, importSummaryToast } from '@/lib/importFiles';
 import CommunityCreationsBrowser from './CommunityCreationsBrowser';
 import { WorldDetailsColumn, DateTimeText, type WorldRecord } from "@/components/WorldDetails";
 import SortableWorldCard from "@/components/SortableWorldCard";
+import { WinnerBadges } from "@/components/WinnerBadges";
+import { LibraryWorldCard } from "@/components/LibraryWorldCard";
 import { WorldActionButton } from "@/components/WorldActionButton";
 import { GradientButton } from "@/components/GradientButton";
 import DictionaryEditorModal from "@/components/modals/DictionaryEditorModal";
@@ -110,7 +112,7 @@ import MessageService from "@/services/MessageService";
 import { useActiveEvents } from "@/lib/useActiveEvents";
 import { asBrowseTab, type BrowseTab } from "@/lib/browseTabs";
 import { isContestEvent } from "@/lib/serverEvents";
-import { judgingContestsOf } from "@/lib/contests";
+import { contestsWonBy, judgingContestsOf } from "@/lib/contests";
 import { useContests } from "@/lib/useContests";
 import { EventBanner, EventBannerChips } from "@/components/events/EventBanner";
 import { useEventBanners } from "@/components/events/useEventBanners";
@@ -462,8 +464,12 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
   // What the publish modal is publishing. Deliberately not cleared on close: the modal names itself from
   // the payload's kind, so dropping it would flash the title back to "World" during the fade-out.
   const [publishPayload, setPublishPayload] = useState<PublishPayload | null>(null);
-  const openPublish = (payload: PublishPayload) => {
+  // Which local world the open payload came from, so a successful publish can link the two. Only worlds
+  // pass one; the other kinds publish without a local record to point at a listing.
+  const [publishLocalId, setPublishLocalId] = useState<string | undefined>(undefined);
+  const openPublish = (payload: PublishPayload, localId?: string) => {
     setPublishPayload(payload);
+    setPublishLocalId(localId);
     setShowPublishModal(true);
   };
 
@@ -1747,9 +1753,10 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
             >
               <SortableContext items={worlds.map((w) => w.id)} strategy={rectSortingStrategy}>
                 {worlds.map((world) => (
-                  <SortableWorldCard
+                  <LibraryWorldCard
                     key={world.id}
                     world={world}
+                    contests={contests}
                     layout={layoutMode}
                     onSelect={handleWorldSelection}
                     onDelete={setWorldToDelete}
@@ -1979,6 +1986,8 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
                 {worldModalCollapsed ? <Columns2 className="h-4 w-4" /> : <RectangleVertical className="h-4 w-4" />}
               </Button>
             </DialogTitle>
+            {/* Under the title, as on the card it was opened from — the library agrees with itself. */}
+            {selectedWorld && <WinnerBadges contests={contestsWonBy(selectedWorld, contests)} className="mr-8" />}
           </DialogHeader>
 
           <div className="flex-1 min-h-0 flex flex-col">
@@ -2122,7 +2131,7 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
                   {isAuthenticated && (
                     <WorldActionButton
                       tone="redSoft"
-                      onClick={() => selectedWorld && openPublish(worldPublishPayload(selectedWorld.data))}
+                      onClick={() => selectedWorld && openPublish(worldPublishPayload(selectedWorld.data), selectedWorld.id)}
                     >
                       <ActionIcon.publish className="mr-2 h-4 w-4" /> Publish World
                     </WorldActionButton>
@@ -2510,6 +2519,8 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
             onOpenChange={setShowPublishModal}
             isAuthenticated={isAuthenticated}
             payload={publishPayload}
+            localId={publishLocalId}
+            onLinked={() => { void refreshWorlds(); }}
             events={activeEvents}
           />
 
