@@ -6,6 +6,7 @@ import { migrateWorld } from '@/lib/version';
 import { contentHash } from '@/lib/contentHash';
 import { describePlaceholders } from '@/lib/placeholders';
 import { readDeletedDefaultWorlds, tombstoneDefaultWorld, type DefaultWorldSeed } from '@/lib/defaultWorlds';
+import { changelogOf, type ChangelogDraft, type ChangelogEntry } from '@/lib/listingChangelog';
 import type { Placeholder, WorldMetadata } from '@/types';
 
 /** The publish refused because this author already has an entry in the contest. */
@@ -605,6 +606,106 @@ class WorldStorageService {
       const errorData = await response.json().catch(() => ({}));
       throw new Error(errorData.error || errorData.message || 'Failed to delete the comment');
     }
+  }
+
+  /**
+   * Read a listing's changelog, or learn that this server has none.
+   *
+   * Fetched as part of the listing behind the opt-in flag rather than from a route of its own, which is
+   * how the server serves it. Null means the deploy predates the feature — see `changelogOf`, which is
+   * what every surface reads the answer through, so the feature can be simply invisible against an older
+   * server rather than broken. A failed request is null for the same reason: nothing is worth an error
+   * toast over a panel the reader did not ask for.
+   *
+   * @param worldId - The listing's server id
+   */
+  async fetchChangelog(worldId: string): Promise<ChangelogEntry[] | null> {
+    try {
+      const headers: Record<string, string> = {};
+      if (AuthService.isAuthenticated()) {
+        headers['Authorization'] = `Bearer ${AuthService.token}`;
+      }
+      const response = await fetch(`${this.API_URL}/worlds/${worldId}?includeChangelog=true`, { headers });
+      if (!response.ok) return null;
+
+      const body = await response.json();
+
+      return changelogOf(body.data);
+    } catch (error) {
+      console.error('Error fetching the changelog:', error);
+      return null;
+    }
+  }
+
+  /**
+   * Add an entry to a listing's changelog.
+   *
+   * @param worldId - The listing's server id
+   * @param draft - The three authored fields
+   */
+  async createChangelogEntry(worldId: string, draft: ChangelogDraft): Promise<ChangelogEntry> {
+    return this.writeChangelog('POST', `/worlds/${worldId}/changelog`, draft, 'Failed to add the entry');
+  }
+
+  /**
+   * Rewrite one entry. Addressed through its listing, because an entry has no meaning apart from it.
+   *
+   * @param worldId - The listing's server id
+   * @param entryId - The entry's id
+   * @param draft - The replacement fields
+   */
+  async updateChangelogEntry(worldId: string, entryId: string, draft: ChangelogDraft): Promise<ChangelogEntry> {
+    return this.writeChangelog(
+      'PUT', `/worlds/${worldId}/changelog/${entryId}`, draft, 'Failed to save the entry',
+    );
+  }
+
+  /**
+   * Remove one entry.
+   *
+   * @param worldId - The listing's server id
+   * @param entryId - The entry's id
+   */
+  async deleteChangelogEntry(worldId: string, entryId: string): Promise<void> {
+    if (!AuthService.isAuthenticated()) throw new Error('You must be logged in to edit a changelog');
+
+    const response = await fetch(`${this.API_URL}/worlds/${worldId}/changelog/${entryId}`, {
+      method: 'DELETE',
+      headers: { 'Authorization': `Bearer ${AuthService.token}` },
+    });
+
+    if (!response.ok) {
+      const body = await response.json().catch(() => ({}));
+      throw new Error(body.error || body.message || 'Failed to delete the entry');
+    }
+  }
+
+  /** The half `createChangelogEntry` and `updateChangelogEntry` share: same body, same auth, same refusal. */
+  private async writeChangelog(
+    method: 'POST' | 'PUT',
+    path: string,
+    draft: ChangelogDraft,
+    fallbackError: string,
+  ): Promise<ChangelogEntry> {
+    if (!AuthService.isAuthenticated()) throw new Error('You must be logged in to edit a changelog');
+
+    const response = await fetch(`${this.API_URL}${path}`, {
+      method,
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${AuthService.token}`,
+      },
+      body: JSON.stringify({ title: draft.title.trim(), body: draft.body.trim(), date: draft.date }),
+    });
+
+    if (!response.ok) {
+      const body = await response.json().catch(() => ({}));
+      throw new Error(body.error || body.message || fallbackError);
+    }
+
+    const body = await response.json();
+
+    return body.data as ChangelogEntry;
   }
 
   /** Fetch the current user's published worlds; returns `[]` when unauthenticated or on error. */

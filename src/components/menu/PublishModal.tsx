@@ -27,7 +27,9 @@ import { CONTEST_ALREADY_ENTERED, CONTEST_NOT_ACTIVE } from "@/services/WorldSto
 import { useContestWithdrawal } from "@/lib/useContestWithdrawal";
 import { useDevEventSample } from "@/lib/useDevEventSample";
 import { useDevRoute } from "@/lib/devRouter";
-import { AlertTriangle, Trophy } from "lucide-react";
+import { ChangelogEntryDialog } from "@/components/community/ChangelogEntryDialog";
+import { type ChangelogDraft } from "@/lib/listingChangelog";
+import { AlertTriangle, ScrollText, Trophy } from "lucide-react";
 import type { ServerEvent } from "@/types";
 
 interface PublishModalProps {
@@ -65,6 +67,16 @@ export function PublishModal({
   // Whether this upload is also a contest entry, and what the server said if it refused to take it.
   const [enterContest, setEnterContest] = useState(false);
   const [contestError, setContestError] = useState('');
+
+  // The optional note about what changed. Held here until the update-publish succeeds, so a refused
+  // upload costs nothing that was written. `changelogSupported` stays false against a server that has
+  // never heard of changelogs, which is what keeps the section off screen there.
+  const [changelogDraft, setChangelogDraft] = useState<ChangelogDraft | null>(null);
+  const [changelogSupported, setChangelogSupported] = useState(false);
+  const [changelogOpen, setChangelogOpen] = useState(false);
+  const changelogReqRef = useRef(0);
+  /** The answer, once one listing has given it. Null until then, and again on the next opening. */
+  const changelogSupportRef = useRef<boolean | null>(null);
 
   const policies = usePublishPolicies(open, isAuthenticated);
   // Which popup is in the way, and what the publish was going to do once it clears.
@@ -157,6 +169,21 @@ export function PublishModal({
         if (linked) onLinked?.();
       }
 
+      // Sent only now that the update is really up: an entry describing changes nobody received would be
+      // a lie in the listing's own history, so a refused publish must leave the draft where it is. Its own
+      // failure is answered on its own rather than reaching the catch below — the update did go out, and
+      // reading that as a refused upload would be the same lie the other way round.
+      if (targetId && changelogDraft) {
+        try {
+          await WorldStorageService.createChangelogEntry(targetId, changelogDraft);
+        } catch (error) {
+          toast.error(
+            `${KIND_LABELS[kind].one} updated, but the changelog entry did not save. Add it from the listing's Changelog.`,
+          );
+          console.error('Failed to attach the changelog entry:', error);
+        }
+      }
+
       // No refetch: the modal closes here and reloads its listings on the next open, so re-reading them
       // only to discard them is a round-trip the user waits on.
       onOpenChange(false);
@@ -241,6 +268,36 @@ export function PublishModal({
     setShowGate(false);
   };
 
+  /** The listing this publish would replace, or null when it is publishing something new. */
+  const overwriteTarget = selectedWorldToOverride && selectedWorldToOverride !== 'new'
+    ? selectedWorldToOverride
+    : null;
+
+  // Whether this server keeps changelogs at all. Asked only once picking an existing listing has made it
+  // relevant — a first publish has no history to add to, which is why the ask is update-only — and asked
+  // once per opening rather than once per row: the answer is about the deploy, not about the listing,
+  // while the question rides the single-listing endpoint, which serves the thumbnail as a base64
+  // data-URI. Clicking down five listings would otherwise fetch five thumbnails to learn one boolean.
+  useEffect(() => {
+    // A note written about one listing must not ride along on a publish to another.
+    setChangelogDraft(null);
+    if (!overwriteTarget) {
+      setChangelogSupported(false);
+      return;
+    }
+    if (changelogSupportRef.current !== null) {
+      setChangelogSupported(changelogSupportRef.current);
+      return;
+    }
+
+    const reqId = ++changelogReqRef.current;
+    void WorldStorageService.fetchChangelog(overwriteTarget).then((entries) => {
+      if (reqId !== changelogReqRef.current) return;
+      changelogSupportRef.current = entries !== null;
+      setChangelogSupported(entries !== null);
+    });
+  }, [overwriteTarget]);
+
   // Load the user's listings when the publish modal is opened, or when the kind changes under it.
   useEffect(() => {
     if (!open) return;
@@ -253,6 +310,9 @@ export function PublishModal({
     setPublishError('');
     setEnterContest(false);
     setContestError('');
+    // Asked again on the next opening rather than held for the app's lifetime: this dialog is mounted for
+    // the whole session, and one refused request must not hide the feature until a restart.
+    changelogSupportRef.current = null;
     fetchUserWorlds();
     // Fetch only when the modal opens, auth changes, or the kind changes — not on fetchUserWorlds identity.
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -352,6 +412,38 @@ export function PublishModal({
               </RadioGroup>
             </div>
 
+            {/* Only for an update, and only where the server keeps changelogs. Optional throughout: a
+                quick fix should not have to be written up before it can go out. */}
+            {overwriteTarget && changelogSupported && (
+              <div className="mt-4 rounded-md border p-3 space-y-2">
+                <div className="flex items-start gap-2">
+                  <ScrollText className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" aria-hidden />
+                  <div className="min-w-0">
+                    <p className="text-label font-medium">Changelog Entry</p>
+                    <p className="text-meta text-muted-foreground">
+                      Optional. Tell anyone holding a copy what this update changes.
+                    </p>
+                  </div>
+                </div>
+
+                {changelogDraft ? (
+                  <div className="flex items-center gap-2 min-w-0">
+                    <span className="min-w-0 truncate text-label">{changelogDraft.title}</span>
+                    <Button size="sm" variant="ghost" className="ml-auto" onClick={() => setChangelogOpen(true)}>
+                      Edit
+                    </Button>
+                    <Button size="sm" variant="ghost" onClick={() => setChangelogDraft(null)}>
+                      Remove
+                    </Button>
+                  </div>
+                ) : (
+                  <Button size="sm" variant="outline" onClick={() => setChangelogOpen(true)}>
+                    Describe What Changed
+                  </Button>
+                )}
+              </div>
+            )}
+
             {/* Hidden rather than disabled when there is no contest, this isn't a world, or some other
                 listing is being replaced — a control nobody can use explains nothing. */}
             {showContestCard && contest && (
@@ -426,6 +518,17 @@ export function PublishModal({
           onCancel={() => setTagNoticeOpen(false)}
         />
       )}
+
+      {/* The same popup the changelog tab uses, so writing an entry is one familiar act wherever it
+          starts. Here it only hands the draft back — nothing is sent until the update is up. */}
+      <ChangelogEntryDialog
+        open={changelogOpen}
+        onOpenChange={setChangelogOpen}
+        entry={changelogDraft}
+        submitLabel="Attach to Update"
+        description="Optional. This is added to the listing's changelog once the update is published."
+        onSubmit={setChangelogDraft}
+      />
 
       {withdrawal.dialog}
     </>
