@@ -47,7 +47,7 @@ export interface ServerEvent {
   /** The broadcast posted when the window closed. */
   endMessageId: string | null;
   /** Contests only: the broadcast naming the podium. */
-  winnerMessageId: string | null;
+  resultsMessageId: string | null;
   /**
    * Contests only: when the results were announced, which is what makes a contest decided. Not any one
    * place existing — an announced podium stays editable, and a contest must not un-decide mid-correction.

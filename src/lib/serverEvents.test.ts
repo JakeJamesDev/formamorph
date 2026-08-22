@@ -41,7 +41,7 @@ describe('resultsAnnounced', () => {
   });
 
   it('is not answered by the broadcast, which is posted after the stamp and can fail', () => {
-    expect(resultsAnnounced(event({ winnerMessageId: 'm-results' }))).toBe(false);
+    expect(resultsAnnounced(event({ resultsMessageId: 'm-results' }))).toBe(false);
   });
 });
 
@@ -111,7 +111,7 @@ describe('phaseMessageId', () => {
   });
 
   it('prefers the results broadcast over the end broadcast for the ending', () => {
-    const ended = event({ endMessageId: 'm-end', winnerMessageId: 'm-results' });
+    const ended = event({ endMessageId: 'm-end', resultsMessageId: 'm-results' });
     expect(phaseMessageId(ended, 'end')).toBe('m-results');
     expect(phaseMessageId(event({ endMessageId: 'm-end' }), 'end')).toBe('m-end');
   });

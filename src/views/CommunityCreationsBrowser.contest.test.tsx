@@ -73,7 +73,7 @@ const decided = (
 ): ServerEvent => ({
   ...event,
   resultsAnnouncedAt: at(-1),
-  winnerMessageId: 'm-results',
+  resultsMessageId: 'm-results',
   placements: podium.map(([worldId, worldName, authorName], index) => ({
     place: (index + 1) as 1 | 2 | 3, worldId, worldName, authorName: authorName ?? 'sedgewright',
   })),

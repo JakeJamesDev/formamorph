@@ -58,7 +58,7 @@ export function eventPhase(event: ServerEvent, now: Date = new Date()): ServerEv
 /** The broadcast an acknowledgment of this phase should mark read; null when the event carries none. */
 export function phaseMessageId(event: ServerEvent, phase: ServerEventPhase): string | null {
   if (phase === 'start') return event.startMessageId;
-  return event.winnerMessageId ?? event.endMessageId;
+  return event.resultsMessageId ?? event.endMessageId;
 }
 
 /**
