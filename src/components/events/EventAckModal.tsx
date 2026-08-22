@@ -7,6 +7,7 @@ import { EventPosterBand } from '@/components/events/EventPosterBand';
 import MessageService from '@/services/MessageService';
 import { eventPhase, hasWinner, isContestEvent, phaseMessageId } from '@/lib/serverEvents';
 import { isEventAcknowledged, markEventAcknowledged } from '@/lib/eventSeenStore';
+import { useEventProse } from '@/lib/useEventProse';
 import type { ServerEvent } from '@/types';
 
 interface EventAckModalProps {
@@ -39,7 +40,7 @@ export function EventAckModal({ events, isAuthenticated, onOpenEvent, held = fal
   // means answering one poster reveals the next rather than emptying the queue.
   const [acknowledged, setAcknowledged] = useState<string[]>([]);
 
-  const event = useMemo(
+  const unacknowledged = useMemo(
     () => events.find((candidate) => {
       const key = `${candidate.id}:${eventPhase(candidate)}`;
       return !acknowledged.includes(key) && !isEventAcknowledged(candidate.id, eventPhase(candidate));
@@ -47,7 +48,13 @@ export function EventAckModal({ events, isAuthenticated, onOpenEvent, held = fal
     [events, acknowledged],
   );
 
-  if (!event || held) return null;
+  // The poster is the one player-facing surface that shows an event's body, and the archive it may come
+  // from is served without one — so the body is read back for the poster actually about to be shown.
+  // It waits for that read the same way it waits for the intro: acknowledging is once and for good, and
+  // a poster answered in the moment before its body landed is a body nobody ever sees.
+  const { event, pending } = useEventProse(unacknowledged, !held);
+
+  if (!event || held || pending) return null;
 
   const phase = eventPhase(event);
   const contest = isContestEvent(event);
@@ -96,7 +103,7 @@ export function EventAckModal({ events, isAuthenticated, onOpenEvent, held = fal
           {/* The organizer writes this in the same markdown editor world prose is written in, so it is
               read the same way rather than as the symbols they typed. */}
           <div className="text-label text-muted-foreground">
-            <MarkdownRenderer text={event.body} />
+            <MarkdownRenderer text={event.body ?? ''} />
           </div>
           <div className="flex justify-end gap-2">
             {contest && onOpenEvent && (

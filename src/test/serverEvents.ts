@@ -43,6 +43,14 @@ export const serverEvent = (over: Partial<ServerEvent> = {}): ServerEvent => ({
   ...over,
 });
 
+/** The same event as a slim list serves it: every field but the two prose ones. */
+export const withoutProse = (event: ServerEvent): ServerEvent => {
+  const row = { ...event };
+  delete row.body;
+  delete row.rulesText;
+  return row;
+};
+
 /**
  * A `matchMedia` the browser's page-size effect can attach listeners to.
  *

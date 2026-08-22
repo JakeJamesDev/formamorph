@@ -2,15 +2,25 @@ import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { EventAckModal } from './EventAckModal';
 import MessageService from '@/services/MessageService';
+import EventService from '@/services/EventService';
 import { isEventAcknowledged, markEventAcknowledged } from '@/lib/eventSeenStore';
-import { daysFrom, serverEvent } from '@/test/serverEvents';
+import { daysFrom, serverEvent, withoutProse } from '@/test/serverEvents';
 import type { ServerEvent } from '@/types';
+
+const server = vi.hoisted(() => ({ detail: {} as Record<string, unknown> }));
+
+vi.mock('@/services/EventService', () => ({
+  default: { fetchOne: vi.fn(async (id: string) => server.detail[id]) },
+}));
 
 const event = (over: Partial<ServerEvent> = {}): ServerEvent =>
   serverEvent({ body: 'Enter by publishing a world with the contest switch on.', ...over });
 
+
 beforeEach(() => {
   localStorage.clear();
+  server.detail = {};
+  vi.mocked(EventService.fetchOne).mockClear();
   vi.spyOn(console, 'error').mockImplementation(() => {});
 });
 
@@ -28,6 +38,50 @@ describe('EventAckModal', () => {
     expect(screen.getByText('A Contest Has Started')).toBeInTheDocument();
     expect(screen.getByText('Winter World-Building Contest')).toBeInTheDocument();
     expect(screen.getByText(/Enter by publishing a world/)).toBeInTheDocument();
+  });
+
+  it('reads the body back out of the server when the row came without one', async () => {
+    // A contest waiting on a winner comes from the archive feed, which is served without its prose — the
+    // poster is one of only two surfaces that show any, so it fetches the one event it is about.
+    const full = event({ body: 'The contest is closed. Judging has begun.' });
+    server.detail = { e1: full };
+
+    render(<EventAckModal events={[withoutProse(full)]} isAuthenticated={false} />);
+
+    expect(await screen.findByText(/Judging has begun/)).toBeInTheDocument();
+    expect(EventService.fetchOne).toHaveBeenCalledWith('e1');
+  });
+
+  it('asks for nothing further when the row already carries its body', () => {
+    render(<EventAckModal events={[event()]} isAuthenticated={false} />);
+
+    expect(screen.getByText(/Enter by publishing a world/)).toBeInTheDocument();
+    expect(EventService.fetchOne).not.toHaveBeenCalled();
+  });
+
+  it('waits for the body rather than offering a Got It that would bury it', async () => {
+    // Acknowledging is once and for good, so a poster answered in the moment before its body arrived is
+    // a body nobody ever sees. Nothing is shown until the read settles.
+    let arrive: (full: ServerEvent) => void = () => {};
+    vi.mocked(EventService.fetchOne).mockReturnValueOnce(new Promise((resolve) => { arrive = resolve; }));
+    const full = event({ body: 'The contest is closed. Judging has begun.' });
+
+    render(<EventAckModal events={[withoutProse(full)]} isAuthenticated={false} />);
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+
+    arrive(full);
+
+    expect(await screen.findByText(/Judging has begun/)).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Got It' })).toBeInTheDocument();
+  });
+
+  it('posts it anyway when the body cannot be read, so the poster is never one nobody can dismiss', async () => {
+    vi.mocked(EventService.fetchOne).mockRejectedValueOnce(new Error('offline'));
+
+    render(<EventAckModal events={[withoutProse(event())]} isAuthenticated={false} />);
+
+    expect(await screen.findByText('Winter World-Building Contest')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Got It' })).toBeInTheDocument();
   });
 
   it('closes only by being acknowledged — no Escape, no X to scroll past it with', () => {

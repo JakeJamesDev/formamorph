@@ -1,9 +1,11 @@
 import { describe, it, expect } from 'vitest';
 import {
   activeContestOf, contestPhase, contestsOf, contestEntryIdOf, contestsWonBy, entriesOf, isContestRunning,
-  isContestWinner, judgingContestsOf, orderContestEntries, shuffleWithSeed,
+  isContestWinner, judgingContestsOf, orderContestEntries, shuffleWithSeed, contestSections,
 } from './contests';
+import type { ContestSection } from './contests';
 import { daysFrom, serverEvent as event } from '@/test/serverEvents';
+import { formatServerDate } from './serverDate';
 import type { WorldRecord } from '@/components/WorldDetails';
 
 const at = (offsetDays: number) => daysFrom(offsetDays);
@@ -200,5 +202,91 @@ describe('the contest taking entries right now', () => {
 
   it('is nothing when no event is a contest', () => {
     expect(activeContestOf([event({ type: 'announcement' })])).toBeNull();
+  });
+});
+
+describe('the archive selector’s sections', () => {
+  // Fixed instants rather than offsets: a section is named after a calendar year, so which side of New
+  // Year the suite runs on must not decide what it is called.
+  const NOW = new Date('2026-08-22T12:00:00.000Z');
+  const on = (iso: string) => iso;
+  const labels = (sections: ContestSection[]) => sections.map((s) => s.label);
+  const ids = (sections: ContestSection[]) => sections.map((s) => s.contests.map((c) => c.id));
+
+  it('pins the running contest above the years', () => {
+    const running = event({ id: 'now', startsAt: on('2026-08-01T00:00:00.000Z'), endsAt: on('2026-09-01T00:00:00.000Z') });
+    const older = event({ id: 'spring', startsAt: on('2026-03-01T00:00:00.000Z'), endsAt: on('2026-04-01T00:00:00.000Z'), winnerWorldId: 'w1' });
+
+    const sections = contestSections([older, running], NOW);
+
+    expect(labels(sections)).toEqual(['Current', '2026']);
+    expect(ids(sections)).toEqual([['now'], ['spring']]);
+  });
+
+  it('puts a contest being judged in that same top section, so undecided reads apart from history', () => {
+    const judging = event({ id: 'judging', startsAt: on('2026-06-01T00:00:00.000Z'), endsAt: on('2026-07-01T00:00:00.000Z') });
+    const decided = event({ id: 'decided', startsAt: on('2026-05-01T00:00:00.000Z'), endsAt: on('2026-06-01T00:00:00.000Z'), winnerWorldId: 'w1' });
+
+    expect(ids(contestSections([decided, judging], NOW))).toEqual([['judging'], ['decided']]);
+  });
+
+  it('gives each year its own section, newest year first and newest contest first inside it', () => {
+    const decided = (id: string, startsAt: string) =>
+      event({ id, startsAt, endsAt: startsAt, winnerWorldId: 'w1' });
+    // Mid-year instants, deliberately: the heading is the *local* year, matching the date the bar prints
+    // beside the title, so a midnight-UTC start would name whichever year the runner's zone puts it in.
+    const list = [
+      decided('a', '2024-02-01T12:00:00.000Z'),
+      decided('b', '2026-06-01T12:00:00.000Z'),
+      decided('c', '2025-11-01T12:00:00.000Z'),
+      decided('d', '2025-04-01T12:00:00.000Z'),
+    ];
+
+    const sections = contestSections(list, NOW);
+
+    expect(labels(sections)).toEqual(['2026', '2025', '2024']);
+    expect(ids(sections)).toEqual([['b'], ['c', 'd'], ['a']]);
+  });
+
+  it('heads a contest with the same year the bar prints beside its title', () => {
+    // The archive is read as a calendar, so the heading and the date under it have to agree — which they
+    // only do if both are read in the viewer's own zone.
+    const newYear = event({ id: 'ny', startsAt: '2026-01-01T03:00:00.000Z', endsAt: '2026-02-01T00:00:00.000Z', winnerWorldId: 'w1' });
+
+    const [section] = contestSections([newYear], NOW);
+
+    expect(section.label).toBe(formatServerDate(newYear.startsAt).match(/\d{4}/)?.[0]);
+  });
+
+  it('drops the top section when nothing is undecided, rather than heading an empty list', () => {
+    const decided = event({ id: 'decided', startsAt: on('2025-05-01T00:00:00.000Z'), endsAt: on('2025-06-01T00:00:00.000Z'), winnerWorldId: 'w1' });
+
+    expect(labels(contestSections([decided], NOW))).toEqual(['2025']);
+  });
+
+  it('is empty for an empty archive, and one section for a single contest', () => {
+    expect(contestSections([], NOW)).toEqual([]);
+    expect(ids(contestSections([event({ id: 'only' })], NOW))).toEqual([['only']]);
+  });
+
+  it('keeps a contest whose start cannot be read, under its own heading', () => {
+    const undated = event({ id: 'undated', startsAt: 'not a date', endsAt: 'not a date', winnerWorldId: 'w1' });
+    const dated = event({ id: 'dated', startsAt: on('2025-05-01T00:00:00.000Z'), endsAt: on('2025-06-01T00:00:00.000Z'), winnerWorldId: 'w1' });
+
+    const sections = contestSections([undated, dated], NOW);
+
+    expect(labels(sections)).toEqual(['2025', 'Undated']);
+    expect(ids(sections)).toEqual([['dated'], ['undated']]);
+  });
+
+  it('holds every contest it was handed, so nothing drops out of the record', () => {
+    const list = [
+      event({ id: 'now' }),
+      event({ id: 'x', startsAt: on('2021-01-01T00:00:00.000Z'), endsAt: on('2021-02-01T00:00:00.000Z'), winnerWorldId: 'w1' }),
+      event({ id: 'y', startsAt: on('2019-01-01T00:00:00.000Z'), endsAt: on('2019-02-01T00:00:00.000Z') }),
+    ];
+
+    expect(contestSections(list, NOW).flatMap((s) => s.contests).map((c) => c.id).sort())
+      .toEqual(['now', 'x', 'y']);
   });
 });

@@ -4,8 +4,9 @@ import userEvent from '@testing-library/user-event';
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import CommunityCreationsBrowser from './CommunityCreationsBrowser';
 import WorldStorageService from '@/services/WorldStorageService';
+import EventService from '@/services/EventService';
 import { toast } from 'react-toastify';
-import { daysFrom, serverEvent, stubMatchMedia } from '@/test/serverEvents';
+import { daysFrom, serverEvent, stubMatchMedia, withoutProse } from '@/test/serverEvents';
 import type { WorldRecord } from '@/components/WorldDetails';
 import type { ServerEvent } from '@/types';
 
@@ -28,12 +29,13 @@ vi.mock('@/services/WorldStorageService', () => ({
 // the entry leaves the grid is.
 vi.mock('@/lib/worldCatalog', () => ({ replaceCatalog: vi.fn(async () => {}) }));
 
-const server = vi.hoisted(() => ({ events: [] as unknown[] }));
+const server = vi.hoisted(() => ({ events: [] as unknown[], detail: {} as Record<string, unknown> }));
 
 vi.mock('@/services/EventService', () => ({
   default: {
     fetchActive: vi.fn(async () => []),
     fetchList: vi.fn(async () => server.events),
+    fetchOne: vi.fn(async (id: string) => server.detail[id]),
   },
 }));
 
@@ -57,6 +59,7 @@ const reader = { id: 'u1', username: 'reader', accountType: 'normal' } as unknow
 const at = (offsetDays: number) => daysFrom(offsetDays);
 
 const contest = (over: Partial<ServerEvent> = {}): ServerEvent => serverEvent(over);
+
 
 const listing = (name: string, over: Record<string, unknown> = {}) => ({
   _id: name, id: name, name, kind: 'world', description: `${name} description`,
@@ -328,6 +331,46 @@ describe('reaching the rules and the archives', () => {
     await waitFor(() => expect(gridNames()).toEqual(['Ruinsong']));
   });
 
+  it('files the archive under year headings, with what is still going on pinned above them', async () => {
+    // Sixty of these after five years, so the dropdown has to read as a calendar. The running contest
+    // and one still being judged lead; a decided one is filed under the year it ran.
+    server.events = [
+      contest({ id: 'won', title: 'Autumn Ruins Contest', startsAt: '2025-10-01T12:00:00.000Z', endsAt: '2025-11-01T12:00:00.000Z', winnerWorldId: 'w9', winnerName: 'Ruinsong' }),
+      contest({ id: 'judging', title: 'Summer Depths Contest', startsAt: at(-40), endsAt: at(-30) }),
+      contest(),
+    ];
+    renderBrowser();
+    await openContestTab();
+
+    await userEvent.click(await screen.findByRole('combobox', { name: 'Contest' }));
+
+    const current = await screen.findByRole('group', { name: 'Current' });
+    expect(within(current).getByRole('option', { name: 'Winter World-Building Contest' })).toBeInTheDocument();
+    expect(within(current).getByRole('option', { name: 'Summer Depths Contest' })).toBeInTheDocument();
+
+    const archived = screen.getByRole('group', { name: '2025' });
+    expect(within(archived).getByRole('option', { name: 'Autumn Ruins Contest' })).toBeInTheDocument();
+  });
+
+  it('still switches the grid when the pick comes from a year section', async () => {
+    server.events = [
+      contest({ id: 'won', title: 'Autumn Ruins Contest', startsAt: '2025-10-01T12:00:00.000Z', endsAt: '2025-11-01T12:00:00.000Z', winnerWorldId: 'Ruinsong', winnerName: 'Ruinsong' }),
+      contest(),
+    ];
+    catalog.items = [
+      listing('Saltmarsh', { contest_event_id: 'e1', likes: 2 }),
+      listing('Ruinsong', { contest_event_id: 'won', likes: 4 }),
+    ];
+    renderBrowser();
+    await openContestTab();
+
+    await userEvent.click(await screen.findByRole('combobox', { name: 'Contest' }));
+    const archived = await screen.findByRole('group', { name: '2025' });
+    await userEvent.click(within(archived).getByRole('option', { name: 'Autumn Ruins Contest' }));
+
+    await waitFor(() => expect(gridNames()).toEqual(['Ruinsong']));
+  });
+
   it('opens the next visit on the running contest, not the archive last read', async () => {
     server.events = [
       contest({ id: 'old', title: 'Autumn Ruins Contest', startsAt: at(-40), endsAt: at(-30) }),
@@ -568,5 +611,22 @@ describe('the rules dialog', () => {
     await openRules(contest({ rulesText: 'One entry **per creator**.' }));
 
     expect(await screen.findByText('per creator')).toHaveAttribute('data-streamdown', 'strong');
+  });
+
+  it('reads the rules back out of the server when the archive row came without them', async () => {
+    // The list is served without its prose, so the rules arrive on the press that asks for them.
+    const full = contest({ rulesText: 'One entry per creator, no exceptions.' });
+    server.detail = { e1: full };
+
+    await openRules(withoutProse(full));
+
+    expect(await screen.findByText(/no exceptions/)).toBeInTheDocument();
+  });
+
+  it('asks for nothing further when the row already carries its rules', async () => {
+    await openRules(contest({ rulesText: 'One entry per creator.' }));
+
+    expect(await screen.findByText('One entry per creator.')).toBeInTheDocument();
+    expect(EventService.fetchOne).not.toHaveBeenCalled();
   });
 });
