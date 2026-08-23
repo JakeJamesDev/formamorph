@@ -10,6 +10,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { DateTimeField } from "@/components/ui/date-time-field";
 import PromptField from "@/components/prompt/PromptField";
 import { plainVocabulary } from "@/lib/chipVocabulary";
 import { useResetOnOpen } from "@/lib/useResetOnOpen";
@@ -108,13 +109,10 @@ export function ChangelogEntryDialog({
 
           <div className="space-y-2">
             <Label htmlFor="changelogDate">Date</Label>
-            <Input
-              id="changelogDate"
-              type="date"
-              value={date}
-              onChange={(event) => setDate(event.target.value)}
-              className="w-fit"
-            />
+            {/* The app's own calendar, not the browser's — which follows the operating system's theme and
+                cannot be styled. Day-only: an entry is dated to the day, and an hour on it would be a
+                control that changes nothing. */}
+            <DateTimeField id="changelogDate" label="Date" value={date} onChange={setDate} dateOnly />
             {/* The reason the field is here at all: a history written after the fact should carry the days
                 it happened on, not the day it was typed up. */}
             <p className="text-meta text-muted-foreground">
