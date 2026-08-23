@@ -8,6 +8,24 @@ import { DAY_MS } from '@/lib/serverDate';
 import type { EventPlacement, ServerEvent, ServerEventPhase } from '@/types';
 
 /**
+ * Stand-in poster artwork: a 2:1 picture in four quadrants with a marked subject a quarter across and
+ * three quarters down. Inline rather than a file, so it loads with no server, and deliberately lopsided
+ * so a band that ignored the framing below is visible at a glance rather than plausible.
+ */
+const DEV_POSTER_ART = `data:image/svg+xml;utf8,${encodeURIComponent(`
+<svg xmlns="http://www.w3.org/2000/svg" width="1000" height="500">
+  <rect width="500" height="250" fill="#1e3a8a"/>
+  <rect x="500" width="500" height="250" fill="#7c3aed"/>
+  <rect y="250" width="500" height="250" fill="#0f766e"/>
+  <rect x="500" y="250" width="500" height="250" fill="#b45309"/>
+  <circle cx="250" cy="375" r="80" fill="#fde047"/>
+  <text x="250" y="392" font-size="44" font-family="sans-serif" text-anchor="middle" fill="#1c1917">HERE</text>
+</svg>`)}`;
+
+/** Framed on that marker, at twice the scale that just covers the band. */
+const DEV_POSTER_PLACEMENT = { zoom: 2, x: 0.25, y: 0.75 };
+
+/**
  * A canned running contest, at whichever phase is asked for. Dates are relative so it is never stale,
  * and the id is fresh on every visit so the acknowledge modal and the banner arrive un-answered rather
  * than staying collapsed from the last look at them.
@@ -24,6 +42,9 @@ export function devEventSample(phase: ServerEventPhase = 'start'): ServerEvent {
     body: 'Build a world around a single season — one place, one mood, one story worth returning to. '
       + 'Enter by publishing a world with the contest switch turned on.',
     rulesText: 'One entry per creator. Entries stay editable until the deadline, then lock for judging.',
+    posterColor: '#1e3a8a',
+    posterImageUrl: DEV_POSTER_ART,
+    posterPlacement: DEV_POSTER_PLACEMENT,
     startsAt: new Date(now - 4 * DAY_MS).toISOString(),
     endsAt: new Date(now + (ended ? -1 * DAY_MS : 12 * DAY_MS)).toISOString(),
     cancelledAt: null,

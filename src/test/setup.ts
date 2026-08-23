@@ -59,6 +59,22 @@ if (typeof Element !== 'undefined' && typeof Element.prototype.scrollIntoView ==
   Element.prototype.scrollIntoView = () => {};
 }
 
+// jsdom has no PointerEvent constructor, so a dispatched pointer event falls back to a bare Event and
+// drops the coordinates with it — a drag then reads `clientX: undefined` and computes NaN. A mouse event
+// carries exactly the fields a pointer one needs on top of it.
+if (typeof window !== 'undefined' && typeof window.PointerEvent === 'undefined') {
+  class PointerEventStub extends MouseEvent {
+    pointerId: number;
+
+    constructor(type: string, init: PointerEventInit = {}) {
+      super(type, init);
+      this.pointerId = init.pointerId ?? 0;
+    }
+  }
+
+  window.PointerEvent = PointerEventStub as unknown as typeof window.PointerEvent;
+}
+
 // jsdom implements no Pointer Capture either, and Radix's Select asks the pointer target whether it holds
 // capture before it will open — without these a click on any Select throws instead of opening its list.
 if (typeof Element !== 'undefined' && typeof Element.prototype.hasPointerCapture === 'undefined') {

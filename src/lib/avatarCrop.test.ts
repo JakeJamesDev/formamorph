@@ -30,6 +30,24 @@ describe('filling the circle', () => {
   });
 });
 
+describe('filling a rectangle', () => {
+  it('scales to whichever side needs the most, not to the square case', () => {
+    // A 1000x500 source in an 800x600 band: scaling to the width would leave the height short, so the
+    // height is what decides.
+    expect(coverScale(1000, 500, 800, 600)).toBe(600 / 500);
+  });
+
+  it('lets the width decide when the frame is the wider shape', () => {
+    expect(coverScale(1000, 500, 800, 100)).toBe(800 / 1000);
+  });
+
+  it('reads a single frame argument as the square the avatar asks for', () => {
+    // The avatar callers pass one number; a rect helper that stopped answering them would be a
+    // silent change to every profile picture already cropped.
+    expect(coverScale(1000, 500, FRAME)).toBe(coverScale(1000, 500, FRAME, FRAME));
+  });
+});
+
 describe('holding the pan inside the picture', () => {
   it('allows no travel on a source that only just covers the frame', () => {
     // A square at cover scale has nothing spare in either direction, so every pan clamps to center.
@@ -64,6 +82,24 @@ describe('holding the pan inside the picture', () => {
   it('holds the zoom inside its own range', () => {
     expect(clampCrop({ ...IDENTITY_CROP, zoom: 99 }, 512, 512, FRAME).zoom).toBe(MAX_ZOOM);
     expect(clampCrop({ ...IDENTITY_CROP, zoom: 0 }, 512, 512, FRAME).zoom).toBe(MIN_ZOOM);
+  });
+});
+
+describe('holding the pan inside a rectangle', () => {
+  it('gives travel on the axis with slack and none on the axis without', () => {
+    // 1000x500 covering an 800x200 band is 800 wide by 400 tall: nothing spare across, 100 down.
+    const clamped = clampCrop({ zoom: 1, offsetX: 999, offsetY: 999 }, 1000, 500, 800, 200);
+
+    expect(clamped.offsetX).toBe(0);
+    expect(clamped.offsetY).toBe(100);
+  });
+
+  it('swaps which axis has the slack when the frame turns tall', () => {
+    // The same source covering a 200x800 band is 1600 wide by 800 tall: 700 across, nothing down.
+    const clamped = clampCrop({ zoom: 1, offsetX: 999, offsetY: 999 }, 1000, 500, 200, 800);
+
+    expect(clamped.offsetX).toBe(700);
+    expect(clamped.offsetY).toBe(0);
   });
 });
 

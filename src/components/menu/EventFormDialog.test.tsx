@@ -333,7 +333,9 @@ describe('styling the poster', () => {
     const art = new File(['art-bytes'], 'band.png', { type: 'image/png' });
     fireEvent.change(field('Poster image'), { target: { files: [art] } });
 
-    await waitFor(() => expect(screen.getByTestId('poster-band-image')).toBeTruthy());
+    // The pick also opens the positioning dialog, whose band is a second copy of the artwork.
+    await waitFor(() => expect(screen.getAllByTestId('poster-band-image').length).toBeGreaterThan(0));
+    fireEvent.keyDown(document.body, { key: 'Escape' });
     fireEvent.click(screen.getByRole('button', { name: /Create Event/ }));
 
     await waitFor(() => expect(create).toHaveBeenCalled());
@@ -352,5 +354,353 @@ describe('the band preview before a window is set', () => {
     setMoment('Ends', 'October 21st, 2026', '12:00');
 
     expect(screen.getByTestId('poster-preview').textContent).toContain('–');
+  });
+});
+
+/**
+ * Repositioning the artwork — the positioning dialog.
+ *
+ * The framing is edited in its own dialog, avatar-style: picking a picture opens it, Reposition
+ * reopens it, and the form's own preview stays inert. jsdom neither lays out nor decodes, and the crop
+ * math needs both, so each is supplied the way a browser would: a band with a measured box, and a
+ * picture with natural proportions. A 1000x500 source covering an 800x200 band draws 800x400 — nothing
+ * spare across, 100 either way down.
+ */
+
+/** A decode that answers with fixed proportions, the way a loaded picture does. */
+const stubImageDecode = (width = 1000, height = 500) => {
+  class StubImage {
+    onload: (() => void) | null = null;
+    naturalWidth = width;
+    naturalHeight = height;
+
+    set src(_value: string) {
+      queueMicrotask(() => this.onload?.());
+    }
+  }
+
+  vi.stubGlobal('Image', StubImage);
+};
+
+/** A band laid out at a given size. */
+const stubBandSize = (width = 800, height = 200) => {
+  vi.spyOn(Element.prototype, 'getBoundingClientRect').mockReturnValue({
+    width, height, top: 0, left: 0, right: width, bottom: height, x: 0, y: 0, toJSON: () => ({}),
+  });
+};
+
+const surface = () => screen.getByTestId('poster-position-surface');
+const positioningOpen = () => screen.queryByTestId('poster-position-surface') !== null;
+const repositionButton = () => screen.getByRole('button', { name: /Reposition/ });
+
+/** Wait until the dialog has measured and decoded enough to accept a drag. */
+const positioningReady = async () =>
+  waitFor(() => expect(screen.getByLabelText('Zoom in')).not.toBeDisabled());
+
+/** Pick artwork; the positioning dialog opens on it by itself. */
+const uploadArt = async () => {
+  const art = new File(['art-bytes'], 'band.png', { type: 'image/png' });
+  fireEvent.change(field('Poster image'), { target: { files: [art] } });
+  await waitFor(() => expect(positioningOpen()).toBe(true));
+  await positioningReady();
+};
+
+const savePosition = () => fireEvent.click(screen.getByRole('button', { name: 'Save Position' }));
+
+const cancelPositioning = async () => {
+  fireEvent.click(screen.getByRole('button', { name: 'Cancel' }));
+  await waitFor(() => expect(positioningOpen()).toBe(false));
+};
+
+/** Reopen the dialog from the form. */
+const reposition = async () => {
+  fireEvent.click(repositionButton());
+  await waitFor(() => expect(positioningOpen()).toBe(true));
+  await positioningReady();
+};
+
+/** Drag the artwork by a distance inside the dialog's band. */
+const dragBy = (dx: number, dy: number) => {
+  fireEvent.pointerDown(surface(), { clientX: 400, clientY: 100, pointerId: 1 });
+  fireEvent.pointerMove(surface(), { clientX: 400 + dx, clientY: 100 + dy, pointerId: 1 });
+  fireEvent.pointerUp(surface(), { clientX: 400 + dx, clientY: 100 + dy, pointerId: 1 });
+};
+
+describe('framing the poster artwork', () => {
+  it('opens the positioning dialog on a fresh pick, and offers Reposition only alongside artwork', async () => {
+    stubImageDecode();
+    stubBandSize();
+    render(<EventFormDialog open onOpenChange={() => {}} />);
+
+    expect(screen.queryByRole('button', { name: /Reposition/ })).toBeNull();
+
+    await uploadArt();
+    expect(positioningOpen()).toBe(true);
+
+    savePosition();
+    await waitFor(() => expect(positioningOpen()).toBe(false));
+    expect(repositionButton()).toBeTruthy();
+  });
+
+  it('keeps the form preview inert, so scrolling the form can never move the picture', async () => {
+    const create = vi.spyOn(EventService, 'create').mockResolvedValue(event());
+    stubImageDecode();
+    stubBandSize();
+    render(<EventFormDialog open onOpenChange={() => {}} />);
+
+    fillValid();
+    await uploadArt();
+    await cancelPositioning();
+
+    const preview = screen.getByTestId('poster-preview');
+    fireEvent.pointerDown(preview, { clientX: 400, clientY: 100, pointerId: 1 });
+    fireEvent.pointerMove(preview, { clientX: 400, clientY: 40, pointerId: 1 });
+    fireEvent.pointerUp(preview, { clientX: 400, clientY: 40, pointerId: 1 });
+    fireEvent.wheel(preview, { deltaY: -100 });
+    fireEvent.click(screen.getByRole('button', { name: /Create Event/ }));
+
+    await waitFor(() => expect(create).toHaveBeenCalled());
+    expect(create.mock.calls[0][0].posterPlacement).toBeNull();
+  });
+
+  it('carries what was dragged into the saved event', async () => {
+    const create = vi.spyOn(EventService, 'create').mockResolvedValue(event());
+    stubImageDecode();
+    stubBandSize();
+    render(<EventFormDialog open onOpenChange={() => {}} />);
+
+    fillValid();
+    await uploadArt();
+    // Up 50 pixels against a picture drawn 400 tall: an eighth of it, so the focal point moves down.
+    dragBy(0, -50);
+    savePosition();
+    fireEvent.click(screen.getByRole('button', { name: /Create Event/ }));
+
+    await waitFor(() => expect(create).toHaveBeenCalled());
+    expect(create.mock.calls[0][0].posterPlacement).toEqual({ zoom: 1, x: 0.5, y: 0.625 });
+  });
+
+  it('discards a drag on Cancel, exactly as the avatar crop does', async () => {
+    const create = vi.spyOn(EventService, 'create').mockResolvedValue(event());
+    stubImageDecode();
+    stubBandSize();
+    render(<EventFormDialog open onOpenChange={() => {}} />);
+
+    fillValid();
+    await uploadArt();
+    dragBy(0, -50);
+    await cancelPositioning();
+    fireEvent.click(screen.getByRole('button', { name: /Create Event/ }));
+
+    await waitFor(() => expect(create).toHaveBeenCalled());
+    // The picture stays; only the framing that was being tried is abandoned.
+    expect(create.mock.calls[0][0].posterPlacement).toBeNull();
+    expect(String(create.mock.calls[0][0].posterImage)).toMatch(/^data:/);
+  });
+
+  it('holds a drag inside the picture, so blank space can never reach the band', async () => {
+    const create = vi.spyOn(EventService, 'create').mockResolvedValue(event());
+    stubImageDecode();
+    stubBandSize();
+    render(<EventFormDialog open onOpenChange={() => {}} />);
+
+    fillValid();
+    await uploadArt();
+    dragBy(0, -9999);
+    savePosition();
+    fireEvent.click(screen.getByRole('button', { name: /Create Event/ }));
+
+    await waitFor(() => expect(create).toHaveBeenCalled());
+    // A quarter of the picture is the furthest the band's own height lets it travel.
+    expect(create.mock.calls[0][0].posterPlacement).toEqual({ zoom: 1, x: 0.5, y: 0.75 });
+  });
+
+  it('zooms on the wheel, out on the way down', async () => {
+    const create = vi.spyOn(EventService, 'create').mockResolvedValue(event());
+    stubImageDecode();
+    stubBandSize();
+    render(<EventFormDialog open onOpenChange={() => {}} />);
+
+    fillValid();
+    await uploadArt();
+    fireEvent.wheel(surface(), { deltaY: -100 });
+    savePosition();
+    fireEvent.click(screen.getByRole('button', { name: /Create Event/ }));
+
+    await waitFor(() => expect(create).toHaveBeenCalled());
+    expect(create.mock.calls[0][0].posterPlacement?.zoom).toBeCloseTo(1.2);
+  });
+
+  it('zooms a step at a time on the buttons, and stops at the floor', async () => {
+    const create = vi.spyOn(EventService, 'create').mockResolvedValue(event());
+    stubImageDecode();
+    stubBandSize();
+    render(<EventFormDialog open onOpenChange={() => {}} />);
+
+    fillValid();
+    await uploadArt();
+    fireEvent.click(screen.getByLabelText('Zoom in'));
+    fireEvent.click(screen.getByLabelText('Zoom in'));
+    // Three steps back from 1.5 would leave the picture smaller than the band it has to cover.
+    fireEvent.click(screen.getByLabelText('Zoom out'));
+    fireEvent.click(screen.getByLabelText('Zoom out'));
+    fireEvent.click(screen.getByLabelText('Zoom out'));
+    savePosition();
+    fireEvent.click(screen.getByRole('button', { name: /Create Event/ }));
+
+    await waitFor(() => expect(create).toHaveBeenCalled());
+    expect(create.mock.calls[0][0].posterPlacement?.zoom).toBe(1);
+  });
+
+  it('shows the chosen zoom on the slider, which offers the same range', async () => {
+    stubImageDecode();
+    stubBandSize();
+    render(<EventFormDialog open onOpenChange={() => {}} />);
+
+    await uploadArt();
+    fireEvent.click(screen.getByLabelText('Zoom in'));
+
+    const slider = screen.getByRole('slider', { name: 'Poster zoom' });
+    expect(slider).toHaveAttribute('aria-valuenow', '1.25');
+    expect(slider).toHaveAttribute('aria-valuemin', '1');
+    expect(slider).toHaveAttribute('aria-valuemax', '4');
+  });
+
+  it('recenters on Reset without making the organizer pick the file again', async () => {
+    const create = vi.spyOn(EventService, 'create').mockResolvedValue(event());
+    stubImageDecode();
+    stubBandSize();
+    render(<EventFormDialog open onOpenChange={() => {}} />);
+
+    fillValid();
+    await uploadArt();
+    dragBy(0, -50);
+    fireEvent.click(screen.getByRole('button', { name: /Reset/ }));
+    savePosition();
+    fireEvent.click(screen.getByRole('button', { name: /Create Event/ }));
+
+    await waitFor(() => expect(create).toHaveBeenCalled());
+    expect(create.mock.calls[0][0].posterPlacement).toBeNull();
+    expect(screen.getByTestId('poster-band-image')).toBeTruthy();
+  });
+
+  it('recenters when a different picture is chosen, which the old framing would crop wrongly', async () => {
+    const create = vi.spyOn(EventService, 'create').mockResolvedValue(event());
+    stubImageDecode();
+    stubBandSize();
+    render(<EventFormDialog open onOpenChange={() => {}} />);
+
+    fillValid();
+    await uploadArt();
+    dragBy(0, -50);
+    savePosition();
+
+    // The replacement opens the dialog again, already centered — Reset dark is the form saying so.
+    const replacement = new File(['other-art'], 'other.png', { type: 'image/png' });
+    fireEvent.change(field('Poster image'), { target: { files: [replacement] } });
+    await waitFor(() => expect(positioningOpen()).toBe(true));
+    await positioningReady();
+    expect(screen.getByRole('button', { name: /Reset/ })).toBeDisabled();
+
+    savePosition();
+    fireEvent.click(screen.getByRole('button', { name: /Create Event/ }));
+
+    await waitFor(() => expect(create).toHaveBeenCalled());
+    expect(create.mock.calls[0][0].posterPlacement).toBeNull();
+  });
+
+  it('clears the framing along with the picture it framed', async () => {
+    const update = vi.spyOn(EventService, 'update').mockResolvedValue(event());
+    stubImageDecode();
+    stubBandSize();
+    const framed = event({
+      posterImageUrl: '/api/event-posters/a.webp',
+      posterPlacement: { zoom: 2, x: 0.4, y: 0.6 },
+    });
+    render(<EventFormDialog open onOpenChange={() => {}} editing={framed} />);
+
+    fireEvent.click(screen.getByRole('button', { name: 'Remove Image' }));
+    fireEvent.click(screen.getByRole('button', { name: /Save Event/ }));
+
+    await waitFor(() => expect(update).toHaveBeenCalled());
+    expect(update.mock.calls[0][1]).toMatchObject({ posterImage: null, posterPlacement: null });
+    // Nothing left to open the dialog on either.
+    expect(screen.queryByRole('button', { name: /Reposition/ })).toBeNull();
+  });
+
+  it('opens an edit on the framing the event already carries', async () => {
+    stubImageDecode();
+    stubBandSize();
+    const framed = event({
+      posterImageUrl: '/api/event-posters/a.webp',
+      posterPlacement: { zoom: 2, x: 0.4, y: 0.6 },
+    });
+    render(<EventFormDialog open onOpenChange={() => {}} editing={framed} />);
+
+    await reposition();
+
+    expect(screen.getByRole('slider', { name: 'Poster zoom' })).toHaveAttribute('aria-valuenow', '2');
+  });
+
+  it('sends a nudged framing without re-uploading the picture it belongs to', async () => {
+    const update = vi.spyOn(EventService, 'update').mockResolvedValue(event());
+    stubImageDecode();
+    stubBandSize();
+    const framed = event({ posterImageUrl: '/api/event-posters/a.webp' });
+    render(<EventFormDialog open onOpenChange={() => {}} editing={framed} />);
+
+    await reposition();
+    dragBy(0, -50);
+    savePosition();
+    fireEvent.click(screen.getByRole('button', { name: /Save Event/ }));
+
+    await waitFor(() => expect(update).toHaveBeenCalled());
+    expect(update.mock.calls[0][1]).toMatchObject({ posterPlacement: { zoom: 1, x: 0.5, y: 0.625 } });
+    // Re-sending the file would rewrite it on the server for a change that never touched a pixel.
+    expect(update.mock.calls[0][1]).not.toHaveProperty('posterImage');
+  });
+});
+
+describe('the framing guards', () => {
+  it('opens an edit on no framing at all when the stored one is not one', async () => {
+    // Held as it came, it would be sent straight back and the save refused over a field nobody touched.
+    const update = vi.spyOn(EventService, 'update').mockResolvedValue(event());
+    stubImageDecode();
+    stubBandSize();
+    const broken = event({
+      posterImageUrl: '/api/event-posters/a.webp',
+      posterPlacement: { zoom: 40, x: 2, y: -1 },
+    });
+    render(<EventFormDialog open onOpenChange={() => {}} editing={broken} />);
+
+    fireEvent.click(screen.getByRole('button', { name: /Save Event/ }));
+
+    await waitFor(() => expect(update).toHaveBeenCalled());
+    expect(update.mock.calls[0][1]).toHaveProperty('posterPlacement', null);
+  });
+
+  it('drags against the band the artwork is drawn in, not the bordered box around it', async () => {
+    // Two boxes a couple of pixels apart clamp to different places, and the band silently pulls the
+    // placement back on release. The outer box is made obviously larger here, so which one the drag
+    // measured is readable in the answer.
+    const create = vi.spyOn(EventService, 'create').mockResolvedValue(event());
+    stubImageDecode();
+    vi.spyOn(Element.prototype, 'getBoundingClientRect').mockImplementation(function (this: Element) {
+      const outer = this.querySelector('[data-testid="poster-position-surface"]') !== null;
+      const [width, height] = outer ? [900, 400] : [800, 200];
+      return { width, height, top: 0, left: 0, right: width, bottom: height, x: 0, y: 0, toJSON: () => ({}) };
+    });
+    render(<EventFormDialog open onOpenChange={() => {}} />);
+
+    fillValid();
+    await uploadArt();
+    dragBy(0, -50);
+    savePosition();
+    fireEvent.click(screen.getByRole('button', { name: /Create Event/ }));
+
+    await waitFor(() => expect(create).toHaveBeenCalled());
+    // 50 pixels against the 400-tall picture the 800x200 band draws. The 900x400 box would draw it 450
+    // tall and answer 0.611.
+    expect(create.mock.calls[0][0].posterPlacement?.y).toBeCloseTo(0.625);
   });
 });
