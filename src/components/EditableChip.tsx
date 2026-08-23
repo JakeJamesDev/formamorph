@@ -56,7 +56,11 @@ export function EditableChip({ value, onCommit, onRemove, sortable = false, getS
     if (editing && inputRef.current) { inputRef.current.focus(); inputRef.current.select(); }
   }, [editing]);
 
-  const startEdit = () => { setText(value); setActive(0); setEditing(true); };
+  // A placeholder value written in the multiline editor holds newlines, and `<input>` strips them from any
+  // value assigned to it — so an inline rename would commit the paragraph flattened. Such a chip is display
+  // only; it is edited in the multiline view it was written in.
+  const renameable = !value.includes('\n');
+  const startEdit = () => { if (renameable) { setText(value); setActive(0); setEditing(true); } };
   const cancel = () => { setEditing(false); setText(value); };
   const finish = (raw: string) => {
     setEditing(false);
@@ -165,7 +169,9 @@ export function EditableChip({ value, onCommit, onRemove, sortable = false, getS
           const kind = pointerType.current ?? (e.nativeEvent as PointerEvent).pointerType;
           if (kind === "touch" || kind === "pen") startEdit();
         },
-        title: onActivate ? "Click to open, double-click to rename" : "Tap or double-click to edit",
+        title: !renameable
+          ? (onActivate ? "Click to open — switch to Multiline to edit the text" : "Switch to Multiline to edit this value")
+          : onActivate ? "Click to open, double-click to rename" : "Tap or double-click to edit",
       }}
       grabbable={sortable}
     />

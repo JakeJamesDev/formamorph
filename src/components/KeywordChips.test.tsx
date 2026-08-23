@@ -115,4 +115,39 @@ describe('KeywordChips', () => {
       expect(splitButton()).not.toBeInTheDocument();
     });
   });
+
+  // Placeholder values may hold paragraphs (written in the multiline editor); the chip list is where they
+  // come back into a one-line surface.
+  describe('a value holding newlines', () => {
+    const PARA = 'A weathered lighthouse.\n\nIts beam sweeps the bay.';
+
+    it('shows its first line and an ellipsis, not the whole paragraph', () => {
+      render(<KeywordChips keywords={[PARA]} onChange={vi.fn()} />);
+      expect(screen.getByText('A weathered lighthouse. …')).toBeInTheDocument();
+      expect(screen.queryByText(/beam sweeps/)).not.toBeInTheDocument();
+    });
+
+    it('still removes on the chip’s own ×, keyed by the whole value', async () => {
+      const user = userEvent.setup();
+      const onChange = vi.fn();
+      render(<KeywordChips keywords={[PARA, 'Dusk']} onChange={onChange} />);
+      // The accessible name is the whole value (whitespace-collapsed by the name computation), not the summary.
+      await user.click(screen.getByRole('button', { name: 'Remove A weathered lighthouse. Its beam sweeps the bay.' }));
+      expect(onChange).toHaveBeenCalledWith(['Dusk']);
+    });
+
+    it('refuses inline rename — a text input would silently eat the newlines', async () => {
+      const user = userEvent.setup();
+      render(<KeywordChips keywords={[PARA]} onChange={vi.fn()} />);
+      await user.dblClick(screen.getByText('A weathered lighthouse. …'));
+      expect(screen.queryByLabelText(`Edit ${PARA}`)).not.toBeInTheDocument();
+    });
+
+    it('leaves a single-line chip renaming as it always did', async () => {
+      const user = userEvent.setup();
+      render(<KeywordChips keywords={['Dusk']} onChange={vi.fn()} />);
+      await user.dblClick(screen.getByText('Dusk'));
+      expect(screen.getByLabelText('Edit Dusk')).toBeInTheDocument();
+    });
+  });
 });

@@ -13,6 +13,7 @@ import {
   buildPlaceholderPreview,
   describePlaceholders,
   placeholderValueSummary,
+  placeholderValueLine,
   placeholderWeight,
   placeholderChances,
   isWeighted,
@@ -277,6 +278,29 @@ describe('resolvePlaceholders', () => {
     it('leaves chipless text and defaults missing defs to none', () => {
       expect(describePlaceholders('plain text')).toBe('plain text');
       expect(describePlaceholders(tok('eye', 'world', 'p1'))).toBe('');
+    });
+  });
+
+  describe('placeholderValueLine (one-line form of a value)', () => {
+    it('leaves a single-line value alone', () => {
+      expect(placeholderValueLine('Emerald green')).toBe('Emerald green');
+    });
+
+    it('cuts a multiline value to its first line plus an ellipsis', () => {
+      expect(placeholderValueLine('A lighthouse.\n\nIts beam sweeps the bay.')).toBe('A lighthouse. …');
+    });
+
+    it('marks a value whose first line is blank rather than showing a leading gap', () => {
+      expect(placeholderValueLine('\nA lighthouse.')).toBe('…');
+    });
+
+    it('flattens every value a Wildcard summary shows', () => {
+      // The tooltip of an in-editor chip, a read-only pill and a library card's blurb all read this —
+      // a paragraph value has to arrive as one line on each of them.
+      expect(placeholderValueSummary(P('scene', ['Dawn\nover the docks.', 'Dusk'])))
+        .toBe('Dawn …|Dusk');
+      expect(describePlaceholders(tok('scene', 'world', 'p1'), [P('scene', ['Dawn\nover the docks.', 'Dusk'])]))
+        .toBe('{Dawn …|Dusk}');
     });
   });
 

@@ -233,10 +233,19 @@ export function describePlaceholders(
   });
 }
 
+/** One value as a single line — a paragraph-length value becomes its first line plus `…`. Every one-line
+ *  surface reads a value through this; resolution never does, so what the AI and the player get is verbatim. */
+export function placeholderValueLine(value: string): string {
+  const nl = value.indexOf('\n');
+  if (nl === -1) return value;
+  const head = value.slice(0, nl).trimEnd();
+  return head ? `${head} …` : '…';
+}
+
 /** A Wildcard's options as one short line — first three, then `…`. The shared form behind the braces in
  *  {@link describePlaceholders}, the *tooltip* of an in-editor chip, and the *label* of a read-only pill. */
 export function placeholderValueSummary(ph: Placeholder): string {
-  const values = ph.values ?? [];
+  const values = (ph.values ?? []).map(placeholderValueLine);
   const shown = values.slice(0, 3).join('|');
   return values.length > 3 ? `${shown}|…` : shown;
 }
