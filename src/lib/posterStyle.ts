@@ -6,6 +6,9 @@
  * from a server without the styling fields resolves to the default look here rather than at each reader.
  */
 
+import { MAX_ZOOM, MIN_ZOOM, clampCrop, clampZoom, coverScale } from '@/lib/avatarCrop';
+import type { PosterPlacement } from '@/types';
+
 /** What the band renders as, once the color, the artwork and their absence have all been accounted for. */
 export interface PosterBand {
   /** The band's fill, or null when the app's default band applies. */
@@ -18,11 +21,13 @@ export interface PosterBand {
   scrim: string | null;
   /** Fill for the date pill: the foreground at a fraction, or null when the default band applies. */
   pill: string | null;
+  /** How the organizer framed the artwork, or null for the centered cover. */
+  placement: PosterPlacement | null;
 }
 
 /** The band with nothing chosen: the app's own info blue, in both themes. */
 export const DEFAULT_BAND: PosterBand = {
-  color: null, foreground: null, imageUrl: null, scrim: null, pill: null,
+  color: null, foreground: null, imageUrl: null, scrim: null, pill: null, placement: null,
 };
 
 /** Light and dark text, picked by luminance rather than by theme — the band's fill is the same in both. */
@@ -99,10 +104,132 @@ function translucent(color: string, alpha: number): string {
   return `rgba(${r}, ${g}, ${b}, ${alpha})`;
 }
 
+/** Nothing framed: the whole picture's middle at the band's middle, at the scale that just covers it. */
+export const CENTERED_PLACEMENT: PosterPlacement = { zoom: 1, x: 0.5, y: 0.5 };
+
+/** A width and a height in pixels — a decoded source, or a measured band. */
+export interface Size {
+  width: number;
+  height: number;
+}
+
+/** Where the artwork is drawn inside a band, in that band's own pixels. */
+export interface PlacedArtwork extends Size {
+  /** Offset of the artwork's left edge from the band's, negative wherever it overhangs. */
+  left: number;
+  top: number;
+}
+
+/** Whether a number is one, and inside a range. */
+const within = (value: unknown, low: number, high: number): value is number =>
+  typeof value === 'number' && Number.isFinite(value) && value >= low && value <= high;
+
+/**
+ * Read a stored placement.
+ *
+ * Refused rather than repaired, and refused to null, which is the centered cover: the column is written
+ * through an API, so a row from a hand-crafted request or an older tool has to be caught somewhere, and
+ * a band that quietly renders as it always did beats one hanging off the edge of its own artwork.
+ *
+ * @param value - Whatever the event carries
+ * @returns The placement, or null when it is not one
+ */
+export function parsePosterPlacement(value: unknown): PosterPlacement | null {
+  if (!value || typeof value !== 'object') return null;
+
+  const { zoom, x, y } = value as Record<string, unknown>;
+  if (!within(zoom, MIN_ZOOM, MAX_ZOOM) || !within(x, 0, 1) || !within(y, 0, 1)) return null;
+
+  return { zoom, x, y };
+}
+
+/**
+ * The artwork's size and offset once a placement is applied to a particular band.
+ *
+ * Scale is the cover scale times the zoom, and the chosen point of the source is put at the band's
+ * center — which is what makes one stored value frame the same subject in a wide band and a tall one.
+ * The placement is held inside its own artwork on the way through, so a value that predates a resize
+ * still cannot expose blank space.
+ *
+ * @param placement - The organizer's chosen framing
+ * @param source - The decoded artwork's natural size
+ * @param frame - The band being filled
+ * @returns Where to draw the artwork, or null while either size is still unknown
+ */
+export function placeArtwork(placement: PosterPlacement, source: Size, frame: Size): PlacedArtwork | null {
+  if (!source.width || !source.height || !frame.width || !frame.height) return null;
+
+  const held = clampPlacement(placement, source, frame);
+  const scale = coverScale(source.width, source.height, frame.width, frame.height) * held.zoom;
+  const width = source.width * scale;
+  const height = source.height * scale;
+
+  return { width, height, left: frame.width / 2 - held.x * width, top: frame.height / 2 - held.y * height };
+}
+
+/**
+ * A placement brought inside what its artwork can actually cover.
+ *
+ * Expressed as the pan the avatar's crop already clamps: a focal point is the same choice as an offset
+ * from center, so the rule about not dragging a picture off its frame is written once.
+ *
+ * @param placement - The chosen framing
+ * @param source - The decoded artwork's natural size
+ * @param frame - The band being filled
+ * @returns The framing, with its zoom and focal point inside their ranges
+ */
+export function clampPlacement(placement: PosterPlacement, source: Size, frame: Size): PosterPlacement {
+  const zoom = clampZoom(placement.zoom);
+  const drawn = drawnSize(zoom, source, frame);
+  if (!drawn.width || !drawn.height) return { ...CENTERED_PLACEMENT, zoom };
+
+  const held = clampCrop(
+    { zoom, offsetX: drawn.width * (0.5 - placement.x), offsetY: drawn.height * (0.5 - placement.y) },
+    source.width, source.height, frame.width, frame.height,
+  );
+
+  return { zoom, x: 0.5 - held.offsetX / drawn.width, y: 0.5 - held.offsetY / drawn.height };
+}
+
+/**
+ * The framing after the artwork is dragged by a distance on screen.
+ *
+ * The focal point moves against the pointer, because dragging the picture left is what brings the right
+ * of it into view.
+ *
+ * @param placement - The framing being dragged from
+ * @param move - How far the pointer travelled, in the band's pixels
+ * @param source - The decoded artwork's natural size
+ * @param frame - The band being filled
+ * @returns The framing at the new position, clamped
+ */
+export function panPlacement(
+  placement: PosterPlacement,
+  move: { x: number; y: number },
+  source: Size,
+  frame: Size,
+): PosterPlacement {
+  const drawn = drawnSize(clampZoom(placement.zoom), source, frame);
+  if (!drawn.width || !drawn.height) return clampPlacement(placement, source, frame);
+
+  return clampPlacement(
+    { ...placement, x: placement.x - move.x / drawn.width, y: placement.y - move.y / drawn.height },
+    source, frame,
+  );
+}
+
+/** How large the artwork is drawn in a band at a given zoom. */
+function drawnSize(zoom: number, source: Size, frame: Size): Size {
+  const scale = coverScale(source.width, source.height, frame.width, frame.height) * zoom;
+
+  return { width: source.width * scale, height: source.height * scale };
+}
+
 /** The styling an event carries, in whatever form it reaches this client. */
 export interface PosterStyleSource {
   posterColor?: string | null;
   posterImageUrl?: string | null;
+  posterPlacement?: PosterPlacement | null;
 }
 
 /**
@@ -135,5 +262,7 @@ export function posterBand(
     imageUrl,
     scrim: imageUrl ? (color ? translucent(color, SCRIM_ALPHA) : NEUTRAL_SCRIM) : null,
     pill: translucent(color ? foregroundFor(color) : LIGHT_TEXT, PILL_ALPHA),
+    // Only alongside artwork: a framing left behind by a picture that was removed has nothing to frame.
+    placement: imageUrl ? parsePosterPlacement(event.posterPlacement) : null,
   };
 }

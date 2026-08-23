@@ -3,7 +3,9 @@ import type { ReactNode } from 'react';
 import WorldStorageService from '@/services/WorldStorageService';
 import { serverAssetSrc } from '@/lib/serverAssets';
 import { formatServerDate } from '@/lib/serverDate';
-import { posterBand, type PosterStyleSource } from '@/lib/posterStyle';
+import { placeArtwork, posterBand, type PosterStyleSource } from '@/lib/posterStyle';
+import { useElementSize } from '@/lib/useElementSize';
+import { useImageSize } from '@/lib/useImageSize';
 import { cn } from '@/lib/utils';
 
 /** The band needs only an event's window and its styling — a draft being written has both. */
@@ -38,8 +40,16 @@ export function EventPosterBand({ event, icon: Icon, eyebrow, title, className }
   const starts = formatServerDate(event.startsAt);
   const ends = formatServerDate(event.endsAt);
 
+  // The band's height follows its title and the viewport, so where an organizer's chosen point of the
+  // artwork lands is only answerable once this particular band has been measured. Both are read only
+  // when there is a framing to apply; without one the artwork is the browser's own centered cover.
+  const [bandRef, frame] = useElementSize();
+  const source = useImageSize(band.placement ? band.imageUrl : null);
+  const placed = band.placement && source ? placeArtwork(band.placement, source, frame) : null;
+
   return (
     <div
+      ref={bandRef}
       className={cn(
         'relative isolate flex flex-col items-center gap-2 px-6 pt-8 pb-5 text-center',
         !band.foreground && 'bg-info text-info-foreground',
@@ -56,8 +66,14 @@ export function EventPosterBand({ event, icon: Icon, eyebrow, title, className }
           {/* Artwork and its wash are backgrounds rather than an `img`: the band is decoration behind the
               title, and an image element here would be one more thing a screen reader stops on. */}
           <div
-            className="absolute inset-0 -z-10 bg-cover bg-center"
-            style={{ backgroundImage: `url("${band.imageUrl}")` }}
+            className={cn('absolute inset-0 -z-10', placed ? 'bg-no-repeat' : 'bg-cover bg-center')}
+            style={{
+              backgroundImage: `url("${band.imageUrl}")`,
+              ...(placed && {
+                backgroundSize: `${placed.width}px ${placed.height}px`,
+                backgroundPosition: `${placed.left}px ${placed.top}px`,
+              }),
+            }}
             aria-hidden
             data-testid="poster-band-image"
           />

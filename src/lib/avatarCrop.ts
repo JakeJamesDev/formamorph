@@ -16,46 +16,67 @@ export const MAX_ZOOM = 4;
 export const IDENTITY_CROP: CropTransform = { zoom: 1, offsetX: 0, offsetY: 0 };
 
 /**
- * The scale at which a source just covers a square of `frame` pixels.
+ * A zoom brought inside the range the reader is offered, and away from a value that is not a number.
  *
- * Cover rather than contain: a circle with letterboxing inside it reads as a mistake, and the reader can
- * always pan to whichever part they meant.
+ * @param zoom - Whatever was asked for
+ * @returns The zoom, between the floor and the ceiling
+ */
+export function clampZoom(zoom: number): number {
+  if (!Number.isFinite(zoom)) return MIN_ZOOM;
+
+  return Math.min(MAX_ZOOM, Math.max(MIN_ZOOM, zoom));
+}
+
+/**
+ * The scale at which a source just covers a frame.
+ *
+ * Cover rather than contain: a circle or a band with letterboxing in it reads as a mistake, and the
+ * reader can always pan to whichever part they meant. The frame is a rectangle so the poster band — whose
+ * height follows its title and the viewport — is the same calculation as the avatar's fixed square.
  *
  * @param width - Source width in pixels
  * @param height - Source height in pixels
- * @param frame - The square being filled
+ * @param frameWidth - The frame being filled
+ * @param frameHeight - Its height; a square when left out, which is what the avatar asks for
  * @returns The scale factor, or 0 for a source with no area
  */
-export function coverScale(width: number, height: number, frame: number): number {
+export function coverScale(
+  width: number,
+  height: number,
+  frameWidth: number,
+  frameHeight: number = frameWidth
+): number {
   if (!width || !height) return 0;
 
-  return Math.max(frame / width, frame / height);
+  return Math.max(frameWidth / width, frameHeight / height);
 }
 
 /**
  * Clamp a pan so the source cannot be dragged off its own frame.
  *
- * Without this the reader can pull the image away from under the circle and crop empty space, which the
- * preview shows honestly and then bakes in.
+ * Without this the reader can pull the image away from under the frame and expose empty space, which the
+ * preview shows honestly and then keeps.
  *
  * @param transform - The chosen zoom and offset
  * @param width - Source width in pixels
  * @param height - Source height in pixels
- * @param frame - The square being filled
+ * @param frameWidth - The frame being filled
+ * @param frameHeight - Its height; a square when left out
  * @returns The same transform with its offsets brought inside the allowed range
  */
 export function clampCrop(
   transform: CropTransform,
   width: number,
   height: number,
-  frame: number
+  frameWidth: number,
+  frameHeight: number = frameWidth
 ): CropTransform {
-  const zoom = Math.min(MAX_ZOOM, Math.max(MIN_ZOOM, transform.zoom));
-  const scale = coverScale(width, height, frame) * zoom;
+  const zoom = clampZoom(transform.zoom);
+  const scale = coverScale(width, height, frameWidth, frameHeight) * zoom;
 
   // How far each axis overhangs the frame; half of it in either direction is the travel available.
-  const slackX = Math.max(0, (width * scale - frame) / 2);
-  const slackY = Math.max(0, (height * scale - frame) / 2);
+  const slackX = Math.max(0, (width * scale - frameWidth) / 2);
+  const slackY = Math.max(0, (height * scale - frameHeight) / 2);
 
   return {
     zoom,

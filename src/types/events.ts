@@ -14,6 +14,23 @@ export type ServerEventType = 'contest' | 'announcement';
 export type ServerEventPhase = 'start' | 'end';
 
 /**
+ * Where an organizer put a poster's artwork inside its band.
+ *
+ * A focal point rather than a crop box: `x`/`y` are the fraction of the source that sits at the band's
+ * center, and `zoom` multiplies the scale that just covers whatever frame is rendering. That is what lets
+ * one stored value hold the same subject in the wide desktop band, the tall mobile one and the form's
+ * preview alike. Null is the centered cover an event with no chosen placement renders as.
+ */
+export interface PosterPlacement {
+  /** Multiplier over the scale that just covers the band. 1 is "fits exactly". */
+  zoom: number;
+  /** Fraction across the source that sits at the band's center, 0-1. */
+  x: number;
+  /** Fraction down the source that sits at the band's center, 0-1. */
+  y: number;
+}
+
+/**
  * An event as `GET /api/events/active` serves it.
  *
  * `type` is deliberately a bare string: a server running ahead of this client may name a type it has
@@ -39,6 +56,11 @@ export interface ServerEvent {
   posterColor?: string | null;
   /** The band's artwork, as the server's root-relative path. */
   posterImageUrl?: string | null;
+  /**
+   * Where the organizer framed that artwork, or null for the centered cover. Absent on a server that has
+   * not deployed the column yet, which reads the same as null.
+   */
+  posterPlacement?: PosterPlacement | null;
   startsAt: string;
   endsAt: string;
   cancelledAt: string | null;
@@ -93,6 +115,11 @@ export interface ServerEventDraft {
    * omitting the key on an edit leaves the stored image alone.
    */
   posterImage: string | null;
+  /**
+   * Where that artwork is framed; null restores the centered cover. Sent independently of the image, so
+   * a placement-only edit needs no re-upload — and omitting the key leaves the stored one alone.
+   */
+  posterPlacement: PosterPlacement | null;
   startsAt: string;
   endsAt: string;
 }

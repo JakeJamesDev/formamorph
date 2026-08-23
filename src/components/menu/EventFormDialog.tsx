@@ -1,6 +1,6 @@
 import { useMemo, useRef, useState } from "react";
 import { toast } from "react-toastify";
-import { ImagePlus, Megaphone, Plus, Save, Trophy } from "lucide-react";
+import { ImagePlus, Megaphone, Move, Plus, Save, Trophy } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -17,12 +17,13 @@ import { DateTimeField } from "@/components/ui/date-time-field";
 import PromptField from "@/components/prompt/PromptField";
 import { plainVocabulary } from "@/lib/chipVocabulary";
 import { EventPosterBand } from "@/components/events/EventPosterBand";
+import { PosterPositionDialog } from "@/components/events/PosterPositionDialog";
 import { useResetOnOpen } from "@/lib/useResetOnOpen";
 import { adminEventState, fromLocalInputValue, toLocalInputValue } from "@/lib/adminEvents";
-import { parsePosterColor } from "@/lib/posterStyle";
+import { parsePosterColor, parsePosterPlacement } from "@/lib/posterStyle";
 import { IMAGE_UPLOAD_ACCEPT } from "@/lib/avatar";
 import EventService from "@/services/EventService";
-import type { ServerEvent, ServerEventDraft, ServerEventType } from "@/types";
+import type { PosterPlacement, ServerEvent, ServerEventDraft, ServerEventType } from "@/types";
 
 /** Mirrors the server's caps, so the counters and the field limits agree with what it will accept. */
 const TITLE_MAX = 120;
@@ -74,6 +75,11 @@ export function EventFormDialog({ open, onOpenChange, editing = null, onSaved }:
   const [storedImage, setStoredImage] = useState<string | null>(null);
   const [pickedImage, setPickedImage] = useState<string | null>(null);
   const [imageChanged, setImageChanged] = useState(false);
+  // Where the organizer framed the artwork, and whether the positioning dialog is up. The framing is
+  // edited there rather than on the form's own preview — a crop surface inside a scrolling form fights
+  // it — so the preview here stays inert and only ever shows the committed choice.
+  const [posterPlacement, setPosterPlacement] = useState<PosterPlacement | null>(null);
+  const [positioning, setPositioning] = useState(false);
   const filePicker = useRef<HTMLInputElement | null>(null);
 
   // No placeholders in an event: a `{{ph…}}` an organizer types stays inert text, exactly as it reads.
@@ -93,6 +99,10 @@ export function EventFormDialog({ open, onOpenChange, editing = null, onSaved }:
     setStoredImage(editing?.posterImageUrl ?? null);
     setPickedImage(null);
     setImageChanged(false);
+    // Read through the parser, exactly as the color beside it is: a framing outside its ranges held in
+    // form state would be sent straight back, and the save refused over a field nobody touched.
+    setPosterPlacement(parsePosterPlacement(editing?.posterPlacement));
+    setPositioning(false);
     setSaving(false);
   });
 
@@ -109,6 +119,10 @@ export function EventFormDialog({ open, onOpenChange, editing = null, onSaved }:
     reader.onload = () => {
       setPickedImage(String(reader.result));
       setImageChanged(true);
+      // A framing chosen for one picture would crop a different one somewhere nobody meant — and the
+      // positioning dialog opens straight onto the fresh pick, the way the avatar's crop does.
+      setPosterPlacement(null);
+      setPositioning(true);
     };
     reader.onerror = () => toast.error('That image could not be read');
     reader.readAsDataURL(file);
@@ -118,6 +132,9 @@ export function EventFormDialog({ open, onOpenChange, editing = null, onSaved }:
     setPickedImage(null);
     setStoredImage(null);
     setImageChanged(true);
+    // Nothing left to frame, and a transform left behind would misplace whatever is uploaded next.
+    setPosterPlacement(null);
+    setPositioning(false);
   };
 
   const handleSave = async () => {
@@ -137,6 +154,9 @@ export function EventFormDialog({ open, onOpenChange, editing = null, onSaved }:
       body: body.trim(),
       rulesText: isContest ? rulesText.trim() || null : null,
       posterColor,
+      // Sent whether or not the artwork moved: nudging the framing of a stored image must not mean
+      // re-uploading it, and the server reads the two keys independently.
+      posterPlacement,
       endsAt: end,
     };
     // The artwork rides along only when it moved: an edit that never opened the picker must leave the
@@ -279,6 +299,13 @@ export function EventFormDialog({ open, onOpenChange, editing = null, onSaved }:
               <Button variant="outline" size="sm" disabled={!previewImage} onClick={clearImage}>
                 Remove Image
               </Button>
+              {/* Only alongside artwork. Reopens the positioning dialog a fresh pick opens by itself,
+                  so a bad crop on an event edited later is a ten-second fix without re-uploading. */}
+              {previewImage && (
+                <Button variant="outline" size="sm" onClick={() => setPositioning(true)}>
+                  <Move className="mr-2 h-4 w-4" aria-hidden /> Reposition
+                </Button>
+              )}
               <input
                 ref={filePicker}
                 type="file"
@@ -290,12 +317,21 @@ export function EventFormDialog({ open, onOpenChange, editing = null, onSaved }:
             </div>
             <p className="text-meta text-muted-foreground">
               Both are optional — an event with neither keeps the default band. Images up to 2MB.
+              {previewImage && ' Reposition chooses which part of the picture the band shows.'}
             </p>
 
-            {/* The same band players are shown, composed from what is in the form right now. */}
+            {/* The same band players are shown, composed from what is in the form right now. Inert by
+                design: the framing is edited in its own dialog, so scrolling past this preview can
+                never nudge the picture or highlight its text. */}
             <div className="overflow-hidden rounded-lg border" data-testid="poster-preview">
               <EventPosterBand
-                event={{ posterColor, posterImageUrl: previewImage, startsAt, endsAt }}
+                event={{
+                  posterColor,
+                  posterImageUrl: previewImage,
+                  posterPlacement,
+                  startsAt,
+                  endsAt,
+                }}
                 icon={isContest ? Trophy : Megaphone}
                 eyebrow={isContest ? 'A Contest Has Started' : 'An Announcement'}
                 title={<div className="text-display font-semibold text-balance">{title || 'Your event title'}</div>}
@@ -329,6 +365,31 @@ export function EventFormDialog({ open, onOpenChange, editing = null, onSaved }:
               : <><Plus className="mr-2 h-4 w-4" aria-hidden /> Create Event</>}
           </Button>
         </DialogFooter>
+
+        {/* The crop surface, avatar-style: opened by a fresh pick and by Reposition, its body is the
+            same band composed from the form's values with the framing being tried. */}
+        <PosterPositionDialog
+          open={positioning}
+          onOpenChange={setPositioning}
+          imageUrl={previewImage}
+          placement={posterPlacement}
+          onSave={setPosterPlacement}
+        >
+          {(draft) => (
+            <EventPosterBand
+              event={{
+                posterColor,
+                posterImageUrl: previewImage,
+                posterPlacement: draft,
+                startsAt,
+                endsAt,
+              }}
+              icon={isContest ? Trophy : Megaphone}
+              eyebrow={isContest ? 'A Contest Has Started' : 'An Announcement'}
+              title={<div className="text-display font-semibold text-balance">{title || 'Your event title'}</div>}
+            />
+          )}
+        </PosterPositionDialog>
       </DialogContent>
     </Dialog>
   );
