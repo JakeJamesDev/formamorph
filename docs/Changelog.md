@@ -72,6 +72,7 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
 
 - **👤 User-facing**
   - **Ctrl+Z answers right after a command from the locations map's right-click menu again.** Picking Auto Arrange — or any other command — from the menu left the map deaf to the keyboard until you clicked it once more, so the arrangement you had just asked for couldn't be taken straight back. The menu now counts as working on the map, the way it did before it was rebuilt.
+  - **Renaming a placeholder's value carries every trait that pinned it.** A trait holding Hair Color at "Red" used to keep forcing "Red" after you renamed that value to "Crimson" — a value the placeholder no longer offered, with nothing in the editor to say so, and the mismatch only showing up in play. The rename now reaches every trait in the world at once, and every pin within a trait. A pin you typed yourself rather than picking off the list is never rewritten, and reordering the values or swapping one out for a different one leaves all pins alone. Saved playthroughs pick the corrected pin up when you load them.
 
 ---
 

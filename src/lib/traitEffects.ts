@@ -175,3 +175,59 @@ export function traitConflicts(
     ),
   };
 }
+
+/** One value-list edit that reads as a rename: the string that sat at a position, and what replaced it. */
+export interface PlaceholderValueRename {
+  from: string;
+  to: string;
+}
+
+/**
+ * The renames in an edit to a placeholder's value list. Same identity rule as the draw weights: a
+ * same-length change is a rename or a reorder (chip edits keep their position), so a position whose value
+ * changed is a rename — unless the old string still sits somewhere in the new list, which makes it a
+ * reorder. A length change is an add or a delete and renames nothing.
+ */
+export function renamedPlaceholderValues(prev: string[], next: string[]): PlaceholderValueRename[] {
+  if (prev.length !== next.length) return [];
+  const out: PlaceholderValueRename[] = [];
+  next.forEach((to, i) => {
+    const from = prev[i];
+    if (!from || !to || from === to || next.includes(from)) return;
+    out.push({ from, to });
+  });
+  return out;
+}
+
+/**
+ * Carry every trait pin on one placeholder across that placeholder's renames, so a value the author
+ * re-spells stays pinned instead of orphaning the pin on a string the placeholder no longer offers.
+ * A pin holding anything else — another placeholder, a custom string the author typed off the list, a
+ * half-filled row (no rename ever names the empty string) — is left exactly as written. Returns `traits`
+ * itself when nothing matched.
+ */
+export function repinRenamedValues(
+  traits: Trait[],
+  placeholderId: string,
+  renames: PlaceholderValueRename[],
+): Trait[] {
+  if (!renames.length) return traits;
+  const byOldValue = new Map(renames.map((r) => [r.from, r.to]));
+  let touched = false;
+  const out = traits.map((trait) => {
+    const pins = trait.placeholderPins;
+    if (!pins?.length) return trait;
+    let changed = false;
+    const next = pins.map((pin) => {
+      if (pin.placeholderId !== placeholderId) return pin;
+      const value = byOldValue.get(pin.value);
+      if (value === undefined) return pin;
+      changed = true;
+      return { ...pin, value };
+    });
+    if (!changed) return trait;
+    touched = true;
+    return { ...trait, placeholderPins: next };
+  });
+  return touched ? out : traits;
+}
