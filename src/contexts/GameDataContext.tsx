@@ -6,6 +6,7 @@ import { migrateWorld, APP_VERSION } from '@/lib/version';
 import { dropLocationFromEntities } from '@/lib/entityPresence';
 import { dropLocationFromConnections } from '@/lib/locationGraph';
 import { newLocationPosition } from '@/lib/locationCanvas';
+import { renamedPlaceholderValues, repinRenamedValues } from '@/lib/traitEffects';
 import { useDictionaryStoreState, DictionaryStoreProvider } from '@/contexts/DictionaryStoreContext';
 import { placeholderStore, PlaceholderStoreProvider } from '@/contexts/PlaceholderStoreContext';
 import type {
@@ -184,17 +185,27 @@ function useProvideGameData() {
     setPlaceholders(prev => [...prev, newPlaceholder]);
   }, []);
 
+  // Renaming a value carries the trait pins that targeted it, so vocabulary cleanup is one field edit
+  // rather than a hunt through every trait. Pins are keyed by value string, so nothing else links them.
   const updatePlaceholder = useCallback((updated: Placeholder) => {
+    const before = placeholders.find(p => p.id === updated.id);
     setPlaceholders(prev => prev.map(p => (p.id === updated.id ? updated : p)));
-  }, []);
+    if (!before) return;
+    const renames = renamedPlaceholderValues(before.values ?? [], updated.values ?? []);
+    if (renames.length) setTraits(prev => repinRenamedValues(prev, updated.id, renames));
+  }, [placeholders]);
 
   const removePlaceholder = useCallback((id: string) => {
     setPlaceholders(prev => prev.filter(p => p.id !== id));
   }, []);
 
   // The world's placeholders as a scoped store, so the same editing widgets can be reused elsewhere
-  // (the library editors) against an isolated store.
-  const phStore = useMemo(() => placeholderStore(placeholders, setPlaceholders), [placeholders]);
+  // (the library editors) against an isolated store. The world's own update path replaces the generic
+  // one so the editing widgets get the pin sweep too; a library item has no traits and needs none.
+  const phStore = useMemo(
+    () => ({ ...placeholderStore(placeholders, setPlaceholders), updatePlaceholder }),
+    [placeholders, updatePlaceholder],
+  );
 
   const addTrait = useCallback((newTrait: Trait) => {
     setTraits(prevTraits => [...prevTraits, newTrait]);

@@ -392,3 +392,41 @@ describe('loadWorldData', () => {
     expect(result.current.worldOverview.openingCueEnabled).toBeUndefined();
   });
 });
+
+describe('renaming a placeholder value', () => {
+  // Pins are stored as plain strings, so only the update path can connect a rename to the traits.
+  const worldWithPins = () => ({
+    ...world('w', {}),
+    placeholders: [
+      { id: 'hair', name: 'Hair Color', values: ['Red', 'Blue'] },
+      { id: 'eyes', name: 'Eye Color', values: ['Red'] },
+    ],
+    traits: [
+      { id: 't1', name: 'Ember', statChanges: [], placeholderPins: [{ placeholderId: 'hair', value: 'Red' }] },
+      { id: 't2', name: 'Glass', statChanges: [], placeholderPins: [{ placeholderId: 'eyes', value: 'Red' }] },
+    ],
+  } as unknown as World);
+
+  it('carries the trait pins that targeted it, and leaves another placeholder holding the same string alone', () => {
+    const { result } = renderHook(() => useGameData(), { wrapper });
+    act(() => { result.current.loadWorldData(worldWithPins()); });
+
+    act(() => {
+      result.current.updatePlaceholder({ id: 'hair', name: 'Hair Color', values: ['Crimson', 'Blue'] });
+    });
+
+    expect(result.current.traits[0].placeholderPins).toEqual([{ placeholderId: 'hair', value: 'Crimson' }]);
+    expect(result.current.traits[1].placeholderPins).toEqual([{ placeholderId: 'eyes', value: 'Red' }]);
+  });
+
+  it('routes the editing widgets through the same sweep, so the placeholder editor propagates too', () => {
+    const { result } = renderHook(() => useGameData(), { wrapper });
+    act(() => { result.current.loadWorldData(worldWithPins()); });
+
+    act(() => {
+      result.current.phStore.updatePlaceholder({ id: 'hair', name: 'Hair Color', values: ['Crimson', 'Blue'] });
+    });
+
+    expect(result.current.traits[0].placeholderPins).toEqual([{ placeholderId: 'hair', value: 'Crimson' }]);
+  });
+});

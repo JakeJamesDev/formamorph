@@ -10,6 +10,8 @@ import {
   traitConflicts,
   collapseExclusiveDefaults,
   refreshChosenTraits,
+  renamedPlaceholderValues,
+  repinRenamedValues,
 } from './traitEffects';
 
 const T = (id: string, extra: Partial<Trait> = {}): Trait => ({
@@ -193,5 +195,69 @@ describe('collapseExclusiveDefaults', () => {
 
   it('leaves non-exclusive groups and ungrouped traits alone', () => {
     expect(collapseExclusiveDefaults(['c', 'd', 'loose'], traits, groups)).toEqual(['c', 'd', 'loose']);
+  });
+});
+
+describe('pins following a placeholder value rename', () => {
+  const P = (placeholderId: string, value: string) => ({ placeholderId, value });
+  // The author-visible operation: an edit to one placeholder's value list, and what the world's traits
+  // pin afterwards. Composed here so the tests state behavior, not the shape of the intermediate pairs.
+  const afterEdit = (traits: Trait[], placeholderId: string, prev: string[], next: string[]) =>
+    repinRenamedValues(traits, placeholderId, renamedPlaceholderValues(prev, next));
+  const pinsOf = (traits: Trait[]) => traits.map((t) => t.placeholderPins ?? []);
+
+  it('carries a pin onto the renamed value', () => {
+    const traits = [T('t', { placeholderPins: [P('hair', 'Red')] })];
+    expect(pinsOf(afterEdit(traits, 'hair', ['Red', 'Blue'], ['Crimson', 'Blue'])))
+      .toEqual([[P('hair', 'Crimson')]]);
+  });
+
+  it('leaves pins alone when the values were only reordered', () => {
+    const traits = [T('t', { placeholderPins: [P('hair', 'Red')] })];
+    expect(afterEdit(traits, 'hair', ['Red', 'Blue'], ['Blue', 'Red'])).toBe(traits);
+  });
+
+  it('treats a delete plus an add as two edits, not a rename', () => {
+    const traits = [T('t', { placeholderPins: [P('hair', 'Red')] })];
+    // Length changes, so nothing is claimed to have been renamed into anything.
+    expect(afterEdit(traits, 'hair', ['Red', 'Blue'], ['Blue'])).toBe(traits);
+    expect(afterEdit(traits, 'hair', ['Red', 'Blue'], ['Red', 'Blue', 'Green'])).toBe(traits);
+  });
+
+  it('reaches every trait in the world and every matching pin within a trait', () => {
+    const traits = [
+      T('a', { placeholderPins: [P('hair', 'Red'), P('eyes', 'Red')] }),
+      T('b', { placeholderPins: [P('hair', 'Red')] }),
+      T('c'),
+    ];
+    expect(pinsOf(afterEdit(traits, 'hair', ['Red'], ['Crimson']))).toEqual([
+      [P('hair', 'Crimson'), P('eyes', 'Red')],
+      [P('hair', 'Crimson')],
+      [],
+    ]);
+  });
+
+  it('never rewrites a custom pin the author typed off the value list', () => {
+    const traits = [T('t', { placeholderPins: [P('hair', 'Ash-Gray')] })];
+    expect(afterEdit(traits, 'hair', ['Red'], ['Crimson'])).toBe(traits);
+  });
+
+  it('leaves a half-filled pin row alone even when a blank value is renamed', () => {
+    const traits = [T('t', { placeholderPins: [P('hair', ''), P('', 'Red')] })];
+    expect(afterEdit(traits, 'hair', ['', 'Red'], ['Crimson', 'Red'])).toBe(traits);
+  });
+
+  it('carries the pin through each keystroke of a rename', () => {
+    let traits = [T('t', { placeholderPins: [P('hair', 'Red')] })];
+    traits = afterEdit(traits, 'hair', ['Red'], ['Re']);
+    traits = afterEdit(traits, 'hair', ['Re'], ['Cr']);
+    traits = afterEdit(traits, 'hair', ['Cr'], ['Crimson']);
+    expect(pinsOf(traits)).toEqual([[P('hair', 'Crimson')]]);
+  });
+
+  it('leaves a rename that still exists elsewhere in the list alone', () => {
+    // "Red" survives at another position, so the edit reads as adding a value, not renaming one.
+    const traits = [T('t', { placeholderPins: [P('hair', 'Red')] })];
+    expect(afterEdit(traits, 'hair', ['Red', 'Red'], ['Crimson', 'Red'])).toBe(traits);
   });
 });
