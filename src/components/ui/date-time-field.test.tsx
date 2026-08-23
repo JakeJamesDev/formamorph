@@ -16,7 +16,9 @@ import { DateTimeField } from './date-time-field';
 
 /** The field is controlled, so the harness holds the value the way its real caller does. */
 function Harness(
-  { initial, onChange, readOnly }: { initial: string; onChange: (next: string) => void; readOnly?: boolean },
+  { initial, onChange, readOnly, dateOnly }: {
+    initial: string; onChange: (next: string) => void; readOnly?: boolean; dateOnly?: boolean;
+  },
 ) {
   const [value, setValue] = useState(initial);
   return (
@@ -25,12 +27,13 @@ function Harness(
       onChange={(next) => { setValue(next); onChange(next); }}
       label="Starts"
       readOnly={readOnly}
+      dateOnly={dateOnly}
     />
   );
 }
 
-const view = (value: string, onChange = vi.fn(), extra: { readOnly?: boolean } = {}) => {
-  render(<Harness initial={value} onChange={onChange} readOnly={extra.readOnly} />);
+const view = (value: string, onChange = vi.fn(), extra: { readOnly?: boolean; dateOnly?: boolean } = {}) => {
+  render(<Harness initial={value} onChange={onChange} readOnly={extra.readOnly} dateOnly={extra.dateOnly} />);
   return onChange;
 };
 
@@ -138,5 +141,37 @@ describe('a window that has already opened', () => {
     expect(screen.queryByRole('grid')).toBeNull();
     expect(timeField()).toHaveAttribute('readonly');
     expect(onChange).not.toHaveBeenCalled();
+  });
+});
+
+describe('a field asked for a day rather than a moment', () => {
+  it('offers no clock, because an hour on it would change nothing', () => {
+    view('2026-08-21', vi.fn(), { dateOnly: true });
+
+    expect(screen.queryByLabelText('Starts time')).toBeNull();
+    expect(dateButton().textContent).toMatch(/Aug/);
+  });
+
+  it('reads and writes the bare day', async () => {
+    const onChange = view('2026-08-21', vi.fn(), { dateOnly: true });
+
+    await userEvent.click(dateButton());
+    await userEvent.click(await screen.findByRole('button', { name: /August 25th, 2026/ }));
+
+    expect(onChange).toHaveBeenLastCalledWith('2026-08-25');
+  });
+
+  it('stops stretching across the row it no longer shares', () => {
+    // The stretch exists to divide a row between two controls; alone, the button would grow to whatever
+    // width its container happens to have.
+    view('2026-08-21', vi.fn(), { dateOnly: true });
+
+    expect(dateButton().className.split(' ')).not.toContain('flex-1');
+  });
+
+  it('still stretches when it has a time field to share with', () => {
+    view('2026-08-21T14:30');
+
+    expect(dateButton().className.split(' ')).toContain('flex-1');
   });
 });

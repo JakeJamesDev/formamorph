@@ -64,6 +64,40 @@ const entry = (over: Partial<ChangelogEntry> = {}): ChangelogEntry => ({
 
 const account = (id: string) => ({ id, username: id, accountType: 'normal' }) as unknown as WorldRecord;
 
+/** The day the entry popup's calendar button is showing, as the reader sees it. */
+const shownDay = () => screen.getByRole('button', { name: 'Date date' }).textContent;
+
+/** What that button reads for a given day, so a test names the day rather than a locale's rendering. */
+const asShown = (day: string) => {
+  const [year, month, date] = day.split('-').map(Number);
+  return new Date(year, month - 1, date)
+    .toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' });
+};
+
+/**
+ * Pick a day out of the app's own calendar: open it, page to the month, press the day.
+ *
+ * The cell is named with its month, not just its ordinal: `showOutsideDays` puts the next month's first
+ * days in the last row, so "1st, 2026" alone matches two cells and clicking the wrong one picks the
+ * wrong month.
+ */
+const pickDate = (day: string) => {
+  fireEvent.click(screen.getByRole('button', { name: 'Date date' }));
+
+  const [year, month, date] = day.split('-').map(Number);
+  const target = new Date(year, month - 1, 1).getTime();
+  const monthName = new Date(year, month - 1, 1).toLocaleDateString('en-US', { month: 'long' });
+  const suffix = ['th', 'st', 'nd', 'rd'][(date % 100 - 20) % 10] ?? ['th', 'st', 'nd', 'rd'][date % 100] ?? 'th';
+  const cell = () => screen.queryByRole('button', { name: new RegExp(`${monthName} ${date}${suffix}, ${year}`) });
+  const shown = () => new Date(`${screen.getByRole('grid').getAttribute('aria-label')} 1`).getTime();
+
+  for (let paged = 0; paged < 36 && !cell(); paged++) {
+    fireEvent.click(screen.getByRole('button', { name: target > shown() ? /Next Month/i : /Previous Month/i }));
+  }
+
+  fireEvent.click(cell()!);
+};
+
 /**
  * Stand in for the service, faithfully: it answers through the same `changelogOf` the real one does, so
  * what the panel is handed is in the order the server's answer really arrives in. `null` is what an old
@@ -251,7 +285,7 @@ describe('who may maintain it', () => {
     fireEvent.click(await screen.findByRole('button', { name: /add entry/i }));
     fireEvent.change(screen.getByLabelText('Title'), { target: { value: 'Update 2' } });
     fireEvent.change(screen.getByLabelText('What changed'), { target: { value: 'The middle news.' } });
-    fireEvent.change(screen.getByLabelText('Date'), { target: { value: '2026-04-01' } });
+    pickDate('2026-04-01');
     fireEvent.click(screen.getByRole('button', { name: 'Add Entry' }));
 
     await waitFor(() => expect(WorldStorageService.createChangelogEntry).toHaveBeenCalledWith(
@@ -272,7 +306,7 @@ describe('who may maintain it', () => {
 
     expect((screen.getByLabelText('Title') as HTMLInputElement).value).toBe('Update 1');
     expect((screen.getByLabelText('What changed') as HTMLTextAreaElement).value).toBe('The old wording.');
-    expect((screen.getByLabelText('Date') as HTMLInputElement).value).toBe('2026-01-09');
+    expect(shownDay()).toBe(asShown('2026-01-09'));
   });
 
   it('takes a deleted entry off the panel', async () => {

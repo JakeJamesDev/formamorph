@@ -64,11 +64,16 @@ function formatDay(day: string): string {
 const DEFAULT_TIME = '00:00';
 
 interface DateTimeFieldProps {
-  /** The moment, as `YYYY-MM-DDTHH:mm` in the reader's own zone — the value a native field carried. */
+  /** The moment, as `YYYY-MM-DDTHH:mm` in the reader's own zone — the value a native field carried.
+   *  Under `dateOnly` it is a bare `YYYY-MM-DD` instead, the value a native `type="date"` carried. */
   value: string;
   onChange: (next: string) => void;
   /** Names the pair for a screen reader; the two controls take it as "<label> date" and "<label> time". */
   label: string;
+  /** Ask for a day rather than a moment: no time control, and the field stops stretching to fill its row.
+   *  For something dated to the day — a changelog entry — where an hour would be a control that changes
+   *  nothing and a clock beside it a question nobody asked. */
+  dateOnly?: boolean;
   /** Shown but not editable — a window that has already opened, say. */
   readOnly?: boolean;
   /** Ties a caller's `<Label htmlFor>` to the date button. */
@@ -86,7 +91,9 @@ interface DateTimeFieldProps {
  * Date and time are two controls because they are two decisions: the calendar answers which day, and the
  * time field answers when on it, without a popover in the way of typing an hour.
  */
-export function DateTimeField({ value, onChange, label, readOnly = false, id, className }: DateTimeFieldProps) {
+export function DateTimeField({
+  value, onChange, label, readOnly = false, dateOnly = false, id, className,
+}: DateTimeFieldProps) {
   const generatedId = useId();
   const buttonId = id ?? generatedId;
   const [open, setOpen] = useState(false);
@@ -95,8 +102,10 @@ export function DateTimeField({ value, onChange, label, readOnly = false, id, cl
   const selected = dayToDate(day);
 
   // Either half alone is not a moment, so the value is only written once both are known. The time keeps
-  // its default until a day is picked, which is what lets the calendar be opened first.
-  const emit = (nextDay: string, nextTime: string) => onChange(nextDay ? `${nextDay}T${nextTime}` : '');
+  // its default until a day is picked, which is what lets the calendar be opened first. A day-only field
+  // has no second half to wait for and writes the bare day.
+  const emit = (nextDay: string, nextTime: string) =>
+    onChange(!nextDay ? '' : dateOnly ? nextDay : `${nextDay}T${nextTime}`);
 
   return (
     <div className={cn('flex flex-wrap items-center gap-2', className)}>
@@ -108,7 +117,9 @@ export function DateTimeField({ value, onChange, label, readOnly = false, id, cl
             aria-label={`${label} date`}
             disabled={readOnly}
             className={cn(
-              'flex h-10 flex-1 min-w-[9rem] items-center gap-2 rounded-md border border-input bg-background px-3 text-label',
+              'flex h-10 min-w-[9rem] items-center gap-2 rounded-md border border-input bg-background px-3 text-label',
+              // Only the pair shares a row, so only the pair has a stretch to divide.
+              !dateOnly && 'flex-1',
               'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset',
               'disabled:cursor-not-allowed disabled:opacity-50',
               !day && 'text-muted-foreground',
@@ -135,14 +146,16 @@ export function DateTimeField({ value, onChange, label, readOnly = false, id, cl
         </PopoverContent>
       </Popover>
 
-      <Input
-        type="time"
-        aria-label={`${label} time`}
-        className="w-[7.5rem]"
-        value={time || DEFAULT_TIME}
-        readOnly={readOnly}
-        onChange={(event) => emit(day, event.target.value || DEFAULT_TIME)}
-      />
+      {!dateOnly && (
+        <Input
+          type="time"
+          aria-label={`${label} time`}
+          className="w-[7.5rem]"
+          value={time || DEFAULT_TIME}
+          readOnly={readOnly}
+          onChange={(event) => emit(day, event.target.value || DEFAULT_TIME)}
+        />
+      )}
     </div>
   );
 }

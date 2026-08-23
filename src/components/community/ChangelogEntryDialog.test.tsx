@@ -26,9 +26,44 @@ vi.mock('@/components/prompt/PromptField', () => ({
  */
 
 const titleBox = () => screen.getByLabelText('Title') as HTMLInputElement;
-const dateBox = () => screen.getByLabelText('Date') as HTMLInputElement;
 const bodyBox = () => screen.getByLabelText('What changed') as HTMLTextAreaElement;
 const submit = (name: RegExp = /add entry|save entry/i) => screen.getByRole('button', { name });
+
+/** The day the themed calendar's button is showing, as the reader sees it. */
+const dateButton = () => screen.getByRole('button', { name: 'Date date' });
+const shownDay = () => dateButton().textContent;
+
+/** What the button reads for a given day, so a test names the day rather than a locale's rendering. */
+const asShown = (day: string) => {
+  const [year, month, date] = day.split('-').map(Number);
+  return new Date(year, month - 1, date)
+    .toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' });
+};
+
+/**
+ * Pick a day out of the app's own calendar: open it, page to the month, press the day. Adapted from the
+ * event form's helper, which drives the same field.
+ */
+const pickDate = (day: string) => {
+  fireEvent.click(dateButton());
+
+  const [year, month, date] = day.split('-').map(Number);
+  const target = new Date(year, month - 1, 1).getTime();
+  // Named with its month, not just its ordinal: `showOutsideDays` puts the next month's first days in the
+  // last row, so "1st, 2026" alone matches two cells — and clicking the wrong one picks the wrong month.
+  const monthName = new Date(year, month - 1, 1).toLocaleDateString('en-US', { month: 'long' });
+  const suffix = ['th', 'st', 'nd', 'rd'][(date % 100 - 20) % 10] ?? ['th', 'st', 'nd', 'rd'][date % 100] ?? 'th';
+  const label = `${monthName} ${date}${suffix}, ${year}`;
+
+  const cell = () => screen.queryByRole('button', { name: new RegExp(label) });
+  const shown = () => new Date(`${screen.getByRole('grid').getAttribute('aria-label')} 1`).getTime();
+
+  for (let paged = 0; paged < 36 && !cell(); paged++) {
+    fireEvent.click(screen.getByRole('button', { name: target > shown() ? /Next Month/i : /Previous Month/i }));
+  }
+
+  fireEvent.click(cell()!);
+};
 
 const show = (props: Record<string, unknown> = {}) =>
   render(
@@ -43,7 +78,7 @@ const show = (props: Record<string, unknown> = {}) =>
 const fill = (over: { title?: string; body?: string; date?: string } = {}) => {
   if (over.title !== undefined) fireEvent.change(titleBox(), { target: { value: over.title } });
   if (over.body !== undefined) fireEvent.change(bodyBox(), { target: { value: over.body } });
-  if (over.date !== undefined) fireEvent.change(dateBox(), { target: { value: over.date } });
+  if (over.date !== undefined) pickDate(over.date);
 };
 
 afterEach(() => {
@@ -57,7 +92,7 @@ describe('opening the popup', () => {
 
     expect(titleBox().value).toBe('');
     expect(bodyBox().value).toBe('');
-    expect(dateBox().value).toBe(todayForDateInput());
+    expect(shownDay()).toBe(asShown(todayForDateInput()));
   });
 
   it('fills in the entry it was handed, its own date included', () => {
@@ -67,7 +102,7 @@ describe('opening the popup', () => {
 
     expect(titleBox().value).toBe('New for v2');
     expect(bodyBox().value).toBe('The ferry runs again.');
-    expect(dateBox().value).toBe('2026-01-09');
+    expect(shownDay()).toBe(asShown('2026-01-09'));
   });
 
   it('names itself for what it is doing', () => {
@@ -149,14 +184,18 @@ describe('handing the draft back', () => {
     expect(onSubmit).not.toHaveBeenCalled();
   });
 
-  it('sends nothing when the date is not a day that exists', () => {
+  it('sends nothing while no day has been picked', () => {
+    // Reachable through an entry whose date was never set — `??` passes an empty string through, so the
+    // calendar opens on "Pick a date" and the entry is not a dated one yet.
+    // A day that does not exist cannot come out of a calendar at all; that guard lives in
+    // `isCalendarDate` and is tested against `listingChangelog` directly.
     const onSubmit = vi.fn();
-    show({ onSubmit });
+    show({ onSubmit, entry: { title: 'Update 1', body: 'Something changed.', date: '' } });
 
-    fill({ title: 'Update 1', body: 'Something changed.', date: '2026-02-31' });
     fireEvent.click(submit());
 
     expect(onSubmit).not.toHaveBeenCalled();
+    expect(screen.getByRole('alert')).toBeInTheDocument();
   });
 
   it('hands nothing back when it is cancelled', () => {
