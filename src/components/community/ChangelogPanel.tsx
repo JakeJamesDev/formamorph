@@ -86,7 +86,7 @@ export function ChangelogPanel({ worldId, entries, onEntriesChange, canEdit }: C
         entries.map((entry) => (
           <div key={entry.id} className="border-b border-border/50 pb-2 last:border-0 min-w-0">
             <div className="flex items-center justify-between gap-2">
-              <span className="min-w-0 truncate font-medium">{entry.title}</span>
+              <span className="min-w-0 truncate text-title font-semibold">{entry.title}</span>
               <span className="flex shrink-0 items-center gap-1 text-meta text-muted-foreground">
                 {formatChangelogDate(entry.entry_date)}
                 {canEdit && (
@@ -113,7 +113,7 @@ export function ChangelogPanel({ worldId, entries, onEntriesChange, canEdit }: C
                 )}
               </span>
             </div>
-            <div className="mt-1 min-w-0"><MarkdownRenderer text={entry.body} /></div>
+            <div className="mt-1 min-w-0 text-muted-foreground"><MarkdownRenderer text={entry.body} /></div>
           </div>
         ))
       )}
