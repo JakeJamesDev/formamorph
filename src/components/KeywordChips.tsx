@@ -18,7 +18,7 @@ import { commaSplitCandidate, splitPastedChips, replaceChipValue } from '@/compo
 import { EditableChip } from '@/components/EditableChip';
 import ChipInput from '@/components/prompt/ChipInput';
 import { usePlaceholderChipVocabulary } from '@/lib/chipVocabulary';
-import { hasPlaceholders } from '@/lib/placeholders';
+import { hasPlaceholders, placeholderValueLine } from '@/lib/placeholders';
 import { PLACEHOLDER_TRIGGER, placeholderHint } from '@/lib/placeholderInsert';
 import type { Placeholder } from '@/types';
 import PlaceholderText from '@/components/prompt/PlaceholderText';
@@ -167,7 +167,11 @@ export function KeywordChips({
                   key={kw}
                   value={kw}
                   sortable
-                  label={hasPlaceholders(kw) ? <PlaceholderText text={kw} placeholders={placeholders ?? []} /> : undefined}
+                  // A value written in the multiline editor comes back as its first line — a chip row is a
+                  // one-line surface, and a paragraph in one would wrap the whole box.
+                  label={hasPlaceholders(kw)
+                    ? <PlaceholderText text={kw} placeholders={placeholders ?? []} />
+                    : kw.includes('\n') ? placeholderValueLine(kw) : undefined}
                   placeholders={placeholders}
                   suffix={chipSuffix?.(kw)}
                   onActivate={onChipClick}
