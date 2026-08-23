@@ -306,6 +306,9 @@ export function DateTimeField({
         <PopoverContent portal={false} className="w-auto p-3" align="start">
           <DayPicker
             mode="single"
+            // rdp's cells use `font: inherit`, and the popover inherits body size; text-label matches
+            // the caption dropdowns and the clock columns.
+            className="text-label"
             selected={selected}
             defaultMonth={selected}
             showOutsideDays
