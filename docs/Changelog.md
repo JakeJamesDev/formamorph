@@ -16,6 +16,8 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
 
 #### 🔧 Fixed
 
+- **👤 User-facing**
+  - **Your edits to a discovered character now survive re-generating and rolling back.** Re-generating a turn or rolling back used to reset the story's discovered cast to how it looked when that turn ended — an edited description reverted, and the game would then spend a request re-describing a character it already knew. Both actions now keep the cast as you have it, dropping only characters introduced by the turns that were undone; re-rolling the very turn that introduced someone discards them, and if the fresh narration names them again they are discovered anew. A character you deleted stays deleted through it all.
 - **🛠️ Developer tooling**
   - **The test suite passes on a UTC runner.** One test asserted the machine's own timezone sits west of Greenwich, one suite's service mock let an effect reject unhandled, and the first CodeMirror typing test could lose a keystroke under CI load — three failures CI hit that a westward dev machine never showed.
 

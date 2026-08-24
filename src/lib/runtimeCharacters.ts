@@ -1,6 +1,6 @@
 import { randomUUID } from "@/lib/uuid";
 import type { ChatMessage, Entity, GameLocation, DiscoveredEntity } from '@/types';
-import { parseTurnContent } from '@/lib/turnDigest';
+import { parseTurnContent, survivingTurnIds } from '@/lib/turnDigest';
 import { stripReasoning } from '@/lib/aiResponse';
 import { trimToLastSentence } from '@/lib/outputLength';
 import { escapeRegExp } from '@/lib/utils';
@@ -46,6 +46,23 @@ export function selectDueDiscovery(history: ChatMessage[], knownNames: string[])
     }
   }
   return null;
+}
+
+/** Sentinel `sourceTurnId` for a world-authored character present from the start — anchored to no turn,
+ *  so rewind pruning must never drop it. */
+export const INITIAL_SOURCE_TURN_ID = 'initial';
+
+/**
+ * The discovered records to retain after a rewind: those whose introducing turn still exists in the
+ * rewound `history`. Records anchored to no real turn — a missing `sourceTurnId` (legacy saves) or the
+ * initial-characters sentinel — are always kept; dropping them could never be undone by re-rolling.
+ */
+export function pruneDiscoveredToHistory(discovered: DiscoveredEntity[], history: ChatMessage[]): DiscoveredEntity[] {
+  const surviving = survivingTurnIds(history);
+  const kept = discovered.filter(
+    (d) => !d.sourceTurnId || d.sourceTurnId === INITIAL_SOURCE_TURN_ID || surviving.has(d.sourceTurnId),
+  );
+  return kept.length === discovered.length ? discovered : kept; // nothing to drop — keep the identity
 }
 
 /** Build a minimal valid runtime `Entity` from a coined name and a generated AI-facing description. `id`

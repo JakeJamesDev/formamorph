@@ -10,7 +10,7 @@
 // The turn's `sceneTags` line stays in the message: it is a few dozen bytes, it makes a scene reproducible
 // without its pixels, and riding the message means it rolls back with the turn for free.
 
-import { parseTurnContent, serializeTurnContent } from './turnDigest';
+import { parseTurnContent, serializeTurnContent, survivingTurnIds } from './turnDigest';
 import type { ChatMessage } from '@/types';
 
 /** Scene images by turn id, oldest first within a turn. */
@@ -38,12 +38,7 @@ export function removeSceneImage(map: SceneImageMap, turnId: string, index: numb
  * holding pixels for scenes that no longer exist.
  */
 export function pruneSceneImages(map: SceneImageMap, history: ChatMessage[]): SceneImageMap {
-  const live = new Set<string>();
-  for (const message of history) {
-    if (message.role !== 'assistant') continue;
-    const turnId = parseTurnContent(message.content)?.turnId;
-    if (turnId) live.add(turnId);
-  }
+  const live = survivingTurnIds(history);
   const kept = Object.keys(map).filter((id) => live.has(id));
   if (kept.length === Object.keys(map).length) return map; // nothing to drop — keep the identity
   return Object.fromEntries(kept.map((id) => [id, map[id]]));

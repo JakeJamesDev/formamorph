@@ -239,8 +239,13 @@ function useProvideGameplay() {
       setDisabledTraitIds(gameState.disabledTraitIds ?? []);
       setAppliedTraitValues(gameState.appliedTraitValues ?? {});
       setVisibleEntities(normalizeVisibleEntities(gameState.visibleEntities));
-      setDiscoveredEntities(gameState.discoveredEntities ?? []);
-      setSuppressedCharacterNames(gameState.suppressedCharacterNames ?? []);
+      // Rollback / re-generate also keep the live discovered cast + suppressed names (they carry the
+      // player's edits and deletions, which land after the snapshot froze); the rewind handlers prune
+      // the cast to the surviving turns themselves.
+      if (!opts?.keepLiveHistory) {
+        setDiscoveredEntities(gameState.discoveredEntities ?? []);
+        setSuppressedCharacterNames(gameState.suppressedCharacterNames ?? []);
+      }
       setLogEntries(gameState.logEntries);
       setGameplayText(gameState.gameplayText);
       setGameTime(gameState.gameTime);

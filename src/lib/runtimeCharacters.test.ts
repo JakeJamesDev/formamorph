@@ -5,6 +5,8 @@ import {
   discoveredAsEntities,
   cleanDiscoveredDescription,
   selectReachableVisitors,
+  pruneDiscoveredToHistory,
+  INITIAL_SOURCE_TURN_ID,
 } from './runtimeCharacters';
 import { entityIdsAt } from './entityPresence';
 import { buildEntityContext } from './locationContext';
@@ -74,6 +76,55 @@ describe('selectDueDiscovery', () => {
       turn({ turnId: 't2', narration: '   ', entities: ['Wraith'] }),
     ];
     expect(selectDueDiscovery(history, known)).toBeNull();
+  });
+});
+
+describe('pruneDiscoveredToHistory', () => {
+  const record = (id: string, sourceTurnId: string): DiscoveredEntity => ({
+    entity: { id, name: id },
+    sourceTurnId,
+  });
+  const history: ChatMessage[] = [
+    turn({ turnId: 't1', narration: 'First.' }),
+    turn({ turnId: 't2', narration: 'Second.' }),
+  ];
+
+  it('keeps a record whose introducing turn survives the rewind', () => {
+    expect(pruneDiscoveredToHistory([record('a', 't1')], history)).toEqual([record('a', 't1')]);
+  });
+
+  it('drops a record whose introducing turn was sliced off', () => {
+    expect(pruneDiscoveredToHistory([record('a', 't1'), record('b', 't9')], history)).toEqual([record('a', 't1')]);
+  });
+
+  it('always keeps a legacy record with no source turn', () => {
+    // Legacy saves predate sourceTurnId; the cast models that missing field.
+    const legacy = { entity: { id: 'old', name: 'Old' } } as DiscoveredEntity;
+    expect(pruneDiscoveredToHistory([legacy], [])).toEqual([legacy]);
+  });
+
+  it('always keeps a world-authored initial character (anchored to no turn)', () => {
+    expect(pruneDiscoveredToHistory([record('init', INITIAL_SOURCE_TURN_ID)], [])).toEqual([
+      record('init', INITIAL_SOURCE_TURN_ID),
+    ]);
+  });
+
+  it('drops every turn-anchored record against an empty history', () => {
+    expect(pruneDiscoveredToHistory([record('a', 't1'), record('b', 't2')], [])).toEqual([]);
+  });
+
+  it('returns the input array untouched when nothing drops, so a state setter can skip the update', () => {
+    const all = [record('a', 't1'), record('b', 't2')];
+    expect(pruneDiscoveredToHistory(all, history)).toBe(all);
+  });
+
+  it('ignores user messages and assistant turns without an id when collecting surviving turns', () => {
+    const noisy: ChatMessage[] = [
+      { role: 'user', content: 'go north' },
+      turn({ narration: 'No id.' }),
+      turn({ turnId: 't2', narration: 'Second.' }),
+    ];
+    expect(pruneDiscoveredToHistory([record('a', 't1'), record('b', 't2')], noisy)).toEqual([record('b', 't2')]);
   });
 });
 

@@ -73,7 +73,7 @@ import {
   type ParsedDirector,
 } from "../lib/stagedPlanning";
 import { selectRelevantDiary } from "../lib/semanticDiary";
-import { selectDueDiscovery, materializeDiscoveredEntity, discoveredAsEntities, cleanDiscoveredDescription } from "../lib/runtimeCharacters";
+import { selectDueDiscovery, materializeDiscoveredEntity, discoveredAsEntities, cleanDiscoveredDescription, pruneDiscoveredToHistory, INITIAL_SOURCE_TURN_ID } from "../lib/runtimeCharacters";
 import { entityIdsAt } from "../lib/entityPresence";
 import { selectRegenSource, buildRegenContext, buildRegenUserMessage, REGEN_LABELS } from "../lib/discoveredRegen";
 import { trimToLastSentence } from "../lib/outputLength";
@@ -831,6 +831,17 @@ const GameViewer = ({
   }, [setPlayerStats]);
   const messagesPerPage = 2; // One AI message + one user message
 
+  // Shared rewind sweep: cut the flat history at `page` and prune everything keyed by turn id to the
+  // surviving turns — the (player-edited) discovered cast drops only characters whose introducing turn
+  // was discarded (named again by a fresh roll, they are discovered anew), and scene images go with
+  // their turns. Suppressed names stay whole; a deletion has no turn anchor to prune by.
+  const rewindHistoryToPage = (page: number) => {
+    const rewound = sliceHistoryToPage(fullMessageHistory, page, messagesPerPage);
+    setFullMessageHistory(rewound);
+    setDiscoveredEntities((prev) => pruneDiscoveredToHistory(prev, rewound));
+    setSceneImages((prev) => pruneSceneImages(prev, rewound));
+  };
+
   const handleRollback = () => {
     if (currentPage >= totalPages) return;
     const targetState = rollbackState(gameStates, currentPage);
@@ -843,11 +854,7 @@ const GameViewer = ({
     // A render still in flight targets a turn this rollback discards — stop it, or its finished image
     // would land back under the dead turn id (and ride into any opted-in save, invisible and unprunable).
     cancelSceneImage();
-    const rewound = sliceHistoryToPage(fullMessageHistory, currentPage, messagesPerPage);
-    setFullMessageHistory(rewound);
-    // Scene images live beside the history now, so a rolled-away turn's pictures have to be swept
-    // explicitly — inside the message they used to go with it.
-    setSceneImages((prev) => pruneSceneImages(prev, rewound));
+    rewindHistoryToPage(currentPage);
     setUserPage(null); // the rolled-back turn is now the latest — resume following it
     // Seed the live notes scratchpad from the rolled-back turn's own notes (per-turn notes live on the
     // message, and keepLiveHistory skips the snapshot's notes) so a later re-generate/action uses them.
@@ -936,13 +943,11 @@ const GameViewer = ({
     if (!previousState || action === null) return;
     // Restore the prior turn's mechanical state but keep the live narration + notes (see handleRollback),
     // rewinding the flat history to just before the turn being re-rolled. The re-send appends a fresh turn.
-    loadGameState(previousState, locations, { keepLiveHistory: true });
+    if (!loadGameState(previousState, locations, { keepLiveHistory: true })) return;
     // Stop a render aimed at the turn being re-rolled: left running, it would finish into a dead turn id
     // AND overlap the re-roll's language-model request on the one GPU.
     cancelSceneImage();
-    const rewound = sliceHistoryToPage(fullMessageHistory, currentPage - 1, messagesPerPage);
-    setFullMessageHistory(rewound);
-    setSceneImages((prev) => pruneSceneImages(prev, rewound)); // the re-rolled turn's pictures go with it
+    rewindHistoryToPage(currentPage - 1);
     // The notes scratchpad is left alone: regen only targets the latest page, where the live scratchpad is
     // always at least as fresh as the message's frozen notes (a stopped turn freezes none at all —
     // re-seeding from the message here wiped the player's notes).
@@ -3453,7 +3458,7 @@ const GameViewer = ({
       // to the authored world). They flow through the existing discovered-entity path; loadGame overrides.
       if (location && initialCharacters && initialCharacters.length > 0) {
         setDiscoveredEntities(
-          initialCharacters.map((entity) => ({ entity, locationId: location.id, sourceTurnId: 'initial' })),
+          initialCharacters.map((entity) => ({ entity, locationId: location.id, sourceTurnId: INITIAL_SOURCE_TURN_ID })),
         );
       }
 
