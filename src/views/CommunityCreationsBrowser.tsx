@@ -106,7 +106,7 @@ const CommunityCreationsBrowser = ({
   events = [], onOpenEvent,
 }: CommunityCreationsBrowserProps) => {
   // Catalog fetch/cache/sync (loads on open, refreshes in the background).
-  const { remoteWorlds, setRemoteWorlds, isLoadingRemoteWorlds, isSyncingCatalog, loadCatalog } = useCatalogSync(open);
+  const { remoteWorlds, setRemoteWorlds, isLoadingRemoteWorlds, isSyncingCatalog, catalogSettled, loadCatalog } = useCatalogSync(open);
   const [remoteWorldToDelete, setRemoteWorldToDelete] = useState<string | null>(null);
   // Set once someone else's item has been deleted, offering to tell its author why. The takedown itself
   // has already landed — declining leaves it removed and simply unexplained, as suspending does.
@@ -446,10 +446,16 @@ const CommunityCreationsBrowser = ({
   };
 
   // A listing named from outside — a notification feed row. The catalog is one request for every kind, so
-  // there is nothing to fetch: switch to its tab and open it once the catalog is in hand. Waiting for the
-  // load rather than looking immediately is what makes this work on a cold open of the browser.
+  // there is nothing to fetch: switch to its tab and open it once the catalog is in hand. The list at
+  // arrival may be last visit's snapshot (or still empty), so a lookup miss only counts once a refresh
+  // has settled during this open; until then the request is held rather than misreported as deleted.
   useEffect(() => {
-    if (!open || !openListing || isLoadingRemoteWorlds) return;
+    if (!open) {
+      // Closed while still waiting: drop the request rather than popping its modal on a later visit.
+      if (openListing) onListingOpened?.();
+      return;
+    }
+    if (!openListing) return;
 
     const found = remoteWorlds.find((w) => (w._id || w.id) === openListing.id);
     if (found) {
@@ -458,13 +464,15 @@ const CommunityCreationsBrowser = ({
       // make this effect chase its own identity.
       setSelectedRemoteWorld(found);
       setShowRemoteWorldDetailsModal(true);
+    } else if (!catalogSettled) {
+      return;
     } else {
       // Deleted or quarantined between the feed being read and the row being clicked.
       toast.info('That listing is no longer in Community Creations');
     }
 
     onListingOpened?.();
-  }, [open, openListing, isLoadingRemoteWorlds, remoteWorlds, onListingOpened]);
+  }, [open, openListing, catalogSettled, remoteWorlds, onListingOpened]);
 
   // Header control fragments — reused across the mobile (collapsible) and desktop (inline) header layouts.
   // Mirrors the local library's tabs (MainMenu's `cardType`) so the same three kinds read the same way

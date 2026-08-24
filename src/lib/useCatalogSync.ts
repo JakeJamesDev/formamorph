@@ -19,6 +19,9 @@ export function useCatalogSync(open: boolean) {
   const [remoteWorlds, setRemoteWorlds] = useState<WorldRecord[]>([]);
   const [isLoadingRemoteWorlds, setIsLoadingRemoteWorlds] = useState(false);
   const [isSyncingCatalog, setIsSyncingCatalog] = useState(false);
+  // Whether a refresh attempt has finished during this open. Until then the list in hand is at best
+  // last visit's snapshot, so a lookup miss (e.g. a listing named by a notification) proves nothing.
+  const [catalogSettled, setCatalogSettled] = useState(false);
 
   const loadCatalog = async (force = false) => {
     try {
@@ -43,6 +46,8 @@ export function useCatalogSync(open: boolean) {
     } finally {
       setIsLoadingRemoteWorlds(false);
       setIsSyncingCatalog(false);
+      // Success or failure, an attempt finished: misses may now be trusted.
+      setCatalogSettled(true);
     }
   };
 
@@ -50,8 +55,11 @@ export function useCatalogSync(open: boolean) {
   useEffect(() => {
     if (open && COMMUNITY_ENABLED) {
       loadCatalog();
+    } else if (!open) {
+      // The next open must wait for its own refresh before a lookup miss means anything.
+      setCatalogSettled(false);
     }
   }, [open]);
 
-  return { remoteWorlds, setRemoteWorlds, isLoadingRemoteWorlds, isSyncingCatalog, loadCatalog };
+  return { remoteWorlds, setRemoteWorlds, isLoadingRemoteWorlds, isSyncingCatalog, catalogSettled, loadCatalog };
 }
