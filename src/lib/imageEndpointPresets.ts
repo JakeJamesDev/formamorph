@@ -2,6 +2,7 @@ import { randomUUID } from "@/lib/uuid";
 import type { Codec } from './usePersistentState';
 import type { ImageProviderId } from './imageGen';
 import { DEFAULT_COMFY_WORKFLOW } from './imageGen/comfyui';
+import { NOVELAI_DEFAULTS } from './imageGen/novelai';
 import {
   DEFAULT_IMAGE_PROVIDER, DEFAULT_IMAGE_ENDPOINT, DEFAULT_IMAGE_API_TOKEN, DEFAULT_IMAGE_MODEL,
   DEFAULT_IMAGE_POSITIVE, DEFAULT_IMAGE_NEGATIVE, DEFAULT_IMAGE_PORTRAIT_WIDTH, DEFAULT_IMAGE_PORTRAIT_HEIGHT,
@@ -87,6 +88,7 @@ function coerceValues(rec: Record<string, unknown>): ImageEndpointValues {
       rec.provider === 'openai' ? 'openai'
       : rec.provider === 'comfyui' ? 'comfyui'
       : rec.provider === 'invokeai' ? 'invokeai'
+      : rec.provider === 'novelai' ? 'novelai'
       : rec.provider === 'a1111' ? 'a1111'
       : d.provider,
     endpoint: str('endpoint', d.endpoint),
@@ -186,6 +188,44 @@ export function deletePreset(store: ImageEndpointPresetStore, id: string): Image
 /** Reset a preset's values back to the built-in defaults. */
 export function resetPreset(store: ImageEndpointPresetStore, id: string): ImageEndpointPresetStore {
   return { ...store, presets: store.presets.map((p) => (p.id === id ? { ...p, values: { ...DEFAULT_IMAGE_ENDPOINT_VALUES } } : p)) };
+}
+
+/** Values seeded into a preset the first time it is pointed at a provider that has an opinion about
+ *  them. NovelAI's are the settings its free-generation window covers, plus a blank endpoint so a URL
+ *  typed for the previous provider doesn't outlive it (blank resolves to NovelAI's host at request time). */
+const PROVIDER_SEED: Partial<Record<ImageProviderId, Partial<ImageEndpointValues>>> = {
+  novelai: {
+    endpoint: '',
+    model: NOVELAI_DEFAULTS.model,
+    portraitWidth: NOVELAI_DEFAULTS.width,
+    portraitHeight: NOVELAI_DEFAULTS.height,
+    landscapeWidth: NOVELAI_DEFAULTS.width,
+    landscapeHeight: NOVELAI_DEFAULTS.height,
+    steps: NOVELAI_DEFAULTS.steps,
+  },
+};
+
+/** Whether these values already look like a configured preset for `provider`, in which case switching
+ *  back to it must not overwrite what the user set. The NovelAI test is by id prefix, not membership in
+ *  the hardcoded list, so a model this build doesn't list still counts as configured. */
+const isConfiguredFor = (values: ImageEndpointValues, provider: ImageProviderId): boolean =>
+  provider === 'novelai' && /^nai-diffusion/.test(values.model);
+
+/** `values` pointed at `provider`, with that provider's seed values applied on a first switch. */
+export function providerSwitchValues(values: ImageEndpointValues, provider: ImageProviderId): ImageEndpointValues {
+  const seed = PROVIDER_SEED[provider];
+  if (!seed || isConfiguredFor(values, provider)) return { ...values, provider };
+  return { ...values, ...seed, provider };
+}
+
+/** Point the active preset at `provider` (seeding its defaults on a first switch). */
+export function setProvider(store: ImageEndpointPresetStore, provider: ImageProviderId): ImageEndpointPresetStore {
+  return {
+    ...store,
+    presets: store.presets.map((p) =>
+      p.id === store.activeId ? { ...p, values: providerSwitchValues({ ...DEFAULT_IMAGE_ENDPOINT_VALUES, ...p.values }, provider) } : p,
+    ),
+  };
 }
 
 /** Patch one value on the active preset (every preset is editable). */

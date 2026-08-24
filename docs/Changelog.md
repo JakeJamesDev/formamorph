@@ -14,6 +14,11 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
 
 ### Minor Changes
 
+#### ➕ Added
+
+- **👤 User-facing**
+  - **NovelAI can now draw your images.** Pick **NovelAI** as the image provider in Settings, paste the persistent API token from your NovelAI account, and scene pictures and editor artwork come from the model you already subscribe to — no local image server, no desktop app, straight from the browser. Choosing it sets the model, size and steps to what an **Opus** subscription draws for free (1024×1024 at 28 steps); going above either spends Anlas. Your prompt and negative prompt are translated into whatever the chosen model expects, so V3, V4, V4.5 and V5 all take the same text you already write. **Stop** frees the app up straight away, but NovelAI cannot call back a picture it has started, so that one may still cost Anlas. An expired token, an empty Anlas balance, and a second picture already being drawn each say so in words rather than failing as an unexplained error.
+
 #### 🔧 Fixed
 
 - **👤 User-facing**

@@ -6,6 +6,7 @@ const TITLES: Record<ImageProviderId, string> = {
   a1111: "Set up Automatic1111 / Forge",
   comfyui: "Set up ComfyUI",
   invokeai: "Set up InvokeAI",
+  novelai: "Set up NovelAI",
   openai: "Set up OpenAI-compatible (cloud)",
 };
 
@@ -27,7 +28,7 @@ const ImageSetupGuide = ({
       </DialogHeader>
 
       <div className="space-y-2 text-label">
-        {provider !== "openai" && (
+        {provider !== "openai" && provider !== "novelai" && (
           <p className="text-muted-foreground">Assumes it&apos;s already installed.</p>
         )}
 
@@ -61,6 +62,15 @@ const ImageSetupGuide = ({
               <li><strong>Face Fix</strong> needs no extension, but the first image you generate with it on pauses while InvokeAI downloads its detector models (a few hundred MB, once).</li>
             </ul>
           </>
+        )}
+
+        {provider === "novelai" && (
+          <ul className="list-disc list-inside text-muted-foreground space-y-0.5">
+            <li>Needs a NovelAI subscription. In NovelAI, open the <strong>cog icon</strong> → <strong>Account</strong> tab and scroll to <strong>Get Persistent API Token</strong> — copy it before closing the popup, as it is shown only once.</li>
+            <li>Paste it into <strong>API Token</strong> above. It stays on your machine. The endpoint is already set to <Code>https://image.novelai.net</Code>.</li>
+            <li><strong>Opus</strong> subscribers get one free image per request at up to <strong>1024×1024</strong> and <strong>28 steps</strong> — the settings this provider starts on. Going above either spends Anlas.</li>
+            <li>NovelAI cannot interrupt a generation it has already started, so <strong>Stop</strong> only frees the app up — that image may still cost Anlas.</li>
+          </ul>
         )}
 
         {provider === "openai" && (

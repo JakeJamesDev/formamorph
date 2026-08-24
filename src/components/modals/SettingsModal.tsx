@@ -57,6 +57,7 @@ import { defaultSystemPrompt, defaultNarrationUserPrompt, defaultRecapUserPrompt
 import { isDesktop } from '@/lib/imageGen/desktop';
 import { fetchComfyMeta, DEFAULT_COMFY_WORKFLOW, type ComfyMeta } from '@/lib/imageGen/comfyui';
 import { fetchInvokeMeta, invokeConnectionMessage, encodersFor, vaesFor, PREFIXED_BASES, type InvokeMeta } from '@/lib/imageGen/invokeai';
+import { NOVELAI_MODELS, NOVELAI_DEFAULTS } from '@/lib/imageGen/novelai';
 import { DEFAULT_ENDPOINT_BY_PROVIDER, resolveImageEndpoint } from '@/lib/imageGen';
 import { TokenAutocomplete } from '@/components/TokenAutocomplete';
 import { COMMON_LANGUAGES } from '@/lib/languages';
@@ -64,6 +65,9 @@ import ImageSetupGuide from './ImageSetupGuide';
 import ComfyWorkflowGuide from './ComfyWorkflowGuide';
 import { DEFAULT_TAG_PROMPT, SUBJECT_GUIDANCE } from '@/lib/imagePrompt';
 import { resetTutorials, useSeenTutorialCount, useTutorial } from '@/lib/tutorials';
+
+/** What the Model trigger shows for a NovelAI preset with no model set — the id the provider falls back to. */
+const novelaiDefaultLabel = NOVELAI_MODELS.find((m) => m.id === NOVELAI_DEFAULTS.model)?.label ?? NOVELAI_DEFAULTS.model;
 
 // The segmented rows' options. Copy lives in `settingsCopy`; these bindings only narrow `value` to the
 // setting's own union, so an option that drifts from the setting fails to compile.
@@ -1936,6 +1940,7 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, initialTab,
                     <SelectItem value="comfyui">ComfyUI (local)</SelectItem>
                     <SelectItem value="invokeai">InvokeAI (local)</SelectItem>
                     <SelectItem value="a1111">Automatic1111 / Forge (local)</SelectItem>
+                    <SelectItem value="novelai">NovelAI (cloud)</SelectItem>
                     <SelectItem value="openai" disabled={!desktop}>
                       OpenAI-compatible (cloud){desktop ? '' : ' — desktop app only'}
                     </SelectItem>
@@ -1968,6 +1973,22 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, initialTab,
                     options={comfyMeta?.checkpoints ?? []}
                     placeholder="(server default)"
                   />
+                ) : imageProvider === 'novelai' ? (
+                  <Select value={imageModel} onValueChange={setImageModel}>
+                    {/* A preset seeded from the env var can arrive with no model; the provider falls back
+                        to its default, so the trigger names it rather than sitting blank. */}
+                    <SelectTrigger id="imageModel"><SelectValue placeholder={novelaiDefaultLabel} /></SelectTrigger>
+                    <SelectContent>
+                      {NOVELAI_MODELS.map((m) => (
+                        <SelectItem key={m.id} value={m.id}>{m.label}</SelectItem>
+                      ))}
+                      {/* A preset carrying a model id this build doesn't list still needs an item, or
+                          Radix would render an empty trigger. */}
+                      {imageModel && !NOVELAI_MODELS.some((m) => m.id === imageModel) && (
+                        <SelectItem value={imageModel}>{imageModel}</SelectItem>
+                      )}
+                    </SelectContent>
+                  </Select>
                 ) : imageProvider === 'invokeai' ? (
                   <div className="grid gap-1.5">
                     <TokenAutocomplete

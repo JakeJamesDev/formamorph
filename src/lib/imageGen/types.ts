@@ -1,7 +1,7 @@
 // Shared shape for AI image generation. `ImageGenParams` is the lowest-common-denominator request
 // (the A1111 txt2img field set) that every provider normalizes toward; providers drop what they can't map.
 
-export type ImageProviderId = 'a1111' | 'openai' | 'comfyui' | 'invokeai';
+export type ImageProviderId = 'a1111' | 'openai' | 'comfyui' | 'invokeai' | 'novelai';
 
 export interface ImageGenParams {
   prompt: string;

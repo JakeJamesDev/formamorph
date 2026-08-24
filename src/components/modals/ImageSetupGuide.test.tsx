@@ -18,6 +18,14 @@ describe('ImageSetupGuide', () => {
     expect(screen.queryByText(/--enable-cors-header/)).not.toBeInTheDocument();
   });
 
+  it('tells a NovelAI user where the token lives, and what Stop does to Anlas', () => {
+    render(<ImageSetupGuide provider="novelai" open onOpenChange={() => {}} />);
+    expect(screen.getByText(/Get Persistent API Token/)).toBeInTheDocument();
+    expect(screen.getByText(/may still cost Anlas/)).toBeInTheDocument();
+    // Nothing to install — the "assumes it's already installed" line is for the local providers.
+    expect(screen.queryByText(/already installed/)).not.toBeInTheDocument();
+  });
+
   it('renders nothing when closed', () => {
     render(<ImageSetupGuide provider="comfyui" open={false} onOpenChange={() => {}} />);
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
