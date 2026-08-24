@@ -336,6 +336,217 @@ describe('RightPanel', () => {
   });
 });
 
+/** Vigor's authored bands: ≤30 Winded, ≤70 Steady. Above 70 the stat is in no band at all. */
+const BANDS = [
+  { id: 'b-low', threshold: 30, description: 'Winded' },
+  { id: 'b-mid', threshold: 70, description: 'Steady' },
+];
+/** Vigor at `value`, banded. */
+const banded = (value: number) => statFixture('Vigor', value, { descriptors: BANDS });
+/** The row a stat's name sits in — the descriptor line and the readout are siblings of that name. */
+const statRow = (name: string) => {
+  const row = screen.getByText(name).closest('div.mb-2');
+  if (!row) throw new Error(`no stat row for ${name}`);
+  return row as HTMLElement;
+};
+/** The descriptor line under a stat's bar, or null when the row doesn't carry one. */
+const descriptorLine = (name: string) => statRow(name).querySelector('p');
+
+describe('RightPanel — the stat descriptor line', () => {
+  it('names the band the current value falls in', () => {
+    renderRightPanel({}, { turns: TURNS, stats: [banded(20)] });
+    expect(descriptorLine('Vigor')).toHaveTextContent('Winded');
+  });
+
+  it('names the band a higher value falls in instead', () => {
+    renderRightPanel({}, { turns: TURNS, stats: [banded(50)] });
+    expect(descriptorLine('Vigor')).toHaveTextContent('Steady');
+  });
+
+  // An authoring gap is the author's business, not something to present to the player as "no status".
+  it('writes nothing when the value sits above every band', () => {
+    renderRightPanel({}, { turns: TURNS, stats: [banded(90)] });
+    expect(screen.queryByText('Steady')).toBeNull();
+    expect(descriptorLine('Vigor')).toHaveTextContent('');
+  });
+
+  it('keeps the line in a bandless stat of a world that has descriptors, so rows stay level', () => {
+    renderRightPanel({}, { turns: TURNS, stats: [banded(20), statFixture('Coin', 25)] });
+    expect(descriptorLine('Coin')).not.toBeNull();
+  });
+
+  it('costs a world with no descriptors at all nothing', () => {
+    renderRightPanel({}, { turns: TURNS, stats: [statFixture('Vigor', 20), statFixture('Coin', 25)] });
+    expect(descriptorLine('Vigor')).toBeNull();
+    expect(descriptorLine('Coin')).toBeNull();
+  });
+
+  // A hidden stat has no row, so it can't be what puts the line on everyone else's.
+  it('does not let a hidden stat reserve the line for the ones the player can see', () => {
+    renderRightPanel({}, {
+      turns: TURNS,
+      stats: [statFixture('Vigor', 20), statFixture('Luck', 30, { hidden: true, descriptors: BANDS })],
+    });
+    expect(descriptorLine('Vigor')).toBeNull();
+  });
+
+  it('offers the full text on hover, so a paragraph-long band can be read without being shown', () => {
+    const long = 'Comfortable enough to stop counting every coin twice over';
+    renderRightPanel({}, {
+      turns: TURNS,
+      stats: [statFixture('Vigor', 20, { descriptors: [{ id: 'b-long', threshold: 30, description: long }] })],
+    });
+    expect(descriptorLine('Vigor')).toHaveAttribute('title', long);
+  });
+});
+
+describe('RightPanel — the band-change flash', () => {
+  const PAGED_TURNS = [
+    { action: 'rest', narration: 'You rest.', turnId: 't1', stats: [banded(50)] },
+    { action: 'run', narration: 'You run.', turnId: 't2' },
+  ];
+
+  /** The span the flash class lands on, inside a stat's descriptor line. */
+  const flashSpan = (name: string) => descriptorLine(name)?.querySelector('span');
+
+  it('does not flash a band that was simply there when the panel opened', () => {
+    renderRightPanel({}, { turns: TURNS, stats: [banded(20)] });
+    expect(flashSpan('Vigor')).not.toHaveClass('stat-band-flash');
+  });
+
+  it('flashes when paging back lands on a turn in a different band', () => {
+    const view = renderRightPanel({}, { turns: PAGED_TURNS, stats: [banded(20)] });
+    expect(flashSpan('Vigor')).toHaveTextContent('Winded');
+
+    act(() => {
+      const gameplay = view.gameplay();
+      gameplay.setUserPage(1);
+      gameplay.setDisplayedMessages(gameplay.fullMessageHistory.slice(0, 2));
+    });
+
+    expect(flashSpan('Vigor')).toHaveTextContent('Steady');
+    expect(flashSpan('Vigor')).toHaveClass('stat-band-flash');
+  });
+
+  it('shows the new band but skips the flash when the player asked for less motion', () => {
+    const real = window.matchMedia;
+    window.matchMedia = ((query: string) => ({
+      matches: query.includes('prefers-reduced-motion'), media: query, onchange: null,
+      addEventListener: () => {}, removeEventListener: () => {},
+      addListener: () => {}, removeListener: () => {}, dispatchEvent: () => false,
+    })) as unknown as typeof window.matchMedia;
+    try {
+      const view = renderRightPanel({}, { turns: PAGED_TURNS, stats: [banded(20)] });
+      act(() => {
+        const gameplay = view.gameplay();
+        gameplay.setUserPage(1);
+        gameplay.setDisplayedMessages(gameplay.fullMessageHistory.slice(0, 2));
+      });
+
+      expect(flashSpan('Vigor')).toHaveTextContent('Steady');
+      expect(flashSpan('Vigor')).not.toHaveClass('stat-band-flash');
+    } finally {
+      window.matchMedia = real;
+    }
+  });
+
+  it('leaves a band the player typed themselves alone', () => {
+    renderRightPanel({}, { turns: TURNS, stats: [banded(20)] });
+    fireEvent.click(screen.getByRole('button', { name: 'Edit Stats' }));
+
+    fireEvent.change(screen.getByRole('spinbutton', { name: 'Vigor' }), { target: { value: '50' } });
+
+    expect(flashSpan('Vigor')).toHaveTextContent('Steady');
+    expect(flashSpan('Vigor')).not.toHaveClass('stat-band-flash');
+  });
+});
+
+describe('RightPanel — typing a stat value', () => {
+  /** Edit mode, on the live turn, over one banded Vigor. */
+  const renderEditing = (stat = banded(20)) => {
+    const view = renderRightPanel({}, { turns: TURNS, stats: [stat] });
+    fireEvent.click(screen.getByRole('button', { name: 'Edit Stats' }));
+    return view;
+  };
+  const field = () => screen.getByRole('spinbutton', { name: 'Vigor' });
+  const value = (view: PanelHarness<unknown>) => view.gameplay().playerStats[0].value;
+
+  it('leaves the readout as plain text until edit mode is on', () => {
+    renderRightPanel({}, { turns: TURNS, stats: [banded(20)] });
+    expect(screen.queryByRole('spinbutton')).toBeNull();
+    expect(statRow('Vigor')).toHaveTextContent('20 / 100');
+  });
+
+  it('replaces the readout numeral with a field, keeping the range suffix beside it', () => {
+    renderEditing();
+    expect(field()).toHaveValue(20);
+    expect(screen.getByText('/ 100')).toBeInTheDocument();
+  });
+
+  it('commits every keystroke, so the bar and the descriptor track the typing', () => {
+    const view = renderEditing();
+    fireEvent.change(field(), { target: { value: '5' } });
+    expect(value(view)).toBe(5);
+
+    fireEvent.change(field(), { target: { value: '55' } });
+    expect(value(view)).toBe(55);
+    expect(descriptorLine('Vigor')).toHaveTextContent('Steady');
+  });
+
+  it('clamps a value typed over the max as it is typed', () => {
+    const view = renderEditing();
+    fireEvent.change(field(), { target: { value: '9999' } });
+    expect(value(view)).toBe(100);
+    expect(field()).toHaveValue(100);
+  });
+
+  it('clamps a value typed under the min of a stat whose floor is above zero', () => {
+    const view = renderEditing(statFixture('Vigor', 33, { min: 10, max: 50, descriptors: BANDS }));
+    fireEvent.change(field(), { target: { value: '3' } });
+    expect(value(view)).toBe(10);
+    expect(field()).toHaveValue(10);
+  });
+
+  it('holds the stat while the field is empty, and snaps the text back on blur', () => {
+    const view = renderEditing();
+    fireEvent.change(field(), { target: { value: '' } });
+    expect(value(view)).toBe(20);
+    expect(field()).toHaveValue(null);
+
+    fireEvent.blur(field());
+    expect(field()).toHaveValue(20);
+  });
+
+  it('follows the slider, which is still there for coarse adjustment', () => {
+    const view = renderEditing();
+    expect(screen.getByRole('slider')).toBeInTheDocument();
+
+    act(() => { view.gameplay().setPlayerStats([banded(80)]); });
+    expect(field()).toHaveValue(80);
+  });
+
+  it('offers no field or slider on a past turn', () => {
+    const view = renderRightPanel({}, {
+      turns: [
+        { action: 'rest', narration: 'You rest.', turnId: 't1' },
+        { action: 'run', narration: 'You run.', turnId: 't2' },
+      ],
+      stats: [banded(20)],
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Edit Stats' }));
+
+    act(() => {
+      const gameplay = view.gameplay();
+      gameplay.setUserPage(1);
+      gameplay.setDisplayedMessages(gameplay.fullMessageHistory.slice(0, 2));
+    });
+
+    expect(screen.queryByRole('spinbutton')).toBeNull();
+    expect(screen.queryByRole('slider')).toBeNull();
+    expect(screen.getByRole('button', { name: 'Edit Stats' })).toBeDisabled();
+  });
+});
+
 describe('RightPanel — the traits tab against an edited world', () => {
   /** A save whose frozen trait predates the author marking it switchable — the shape the bug lived in. */
   const renderTraits = (authoredToggle: boolean) => {

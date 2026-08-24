@@ -64,6 +64,9 @@ export interface TurnFixture {
   diaries?: Record<string, string>;
   /** The traits the player held on this turn, for the history view's trait list. */
   traits?: Trait[];
+  /** The stats as this turn left them, for the history view's stat rows. Defaults to the harness-wide
+   *  `stats`, which is what makes every turn read the same unless a case wants them to move. */
+  stats?: PlayerStat[];
 }
 
 export interface PanelHarnessOptions {
@@ -140,7 +143,7 @@ export function turnHistory(turns: TurnFixture[]): ChatMessage[] {
 /** The per-turn mechanical snapshot paging back reads; only the fields the panels display are filled. */
 function snapshotFixture(turn: TurnFixture, stats: PlayerStat[]): GameState {
   return {
-    playerStats: stats,
+    playerStats: turn.stats ?? stats,
     playerTraits: turn.traits ?? [],
     visibleEntities: [],
     logEntries: [],

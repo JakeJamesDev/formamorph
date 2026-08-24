@@ -10,8 +10,6 @@ import { clearTurnDerived } from '@/lib/turnDigest';
 import { usePlayerModelUrl } from '@/lib/usePlayerModelUrl';
 import { mergeBodyMorphs } from '@/lib/bodyMorphs';
 import { useIsMobile } from '@/lib/useIsMobile';
-import { usePrefersReducedMotion } from '@/lib/usePrefersReducedMotion';
-import { statBarFrame, bandOrigin, formatStatDelta } from '@/lib/statBar';
 import { traitOrderIndex, inAuthoredOrder, activeStatEnabled, refreshChosenTraits } from '@/lib/traitEffects';
 import { listablePlayerTraits } from '@/lib/traitRuntime';
 import { MarkdownRenderer } from './MarkdownRenderer';
@@ -27,7 +25,6 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
 import { CONTINUE_CHOICE } from "@/lib/choices";
 import { Progress } from "@/components/ui/progress";
-import { Slider } from "@/components/ui/slider";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
@@ -53,6 +50,7 @@ import { cn } from "@/lib/utils";
 import { useResolvedWorld } from '@/lib/useResolvedWorld';
 import { effectiveDestinations } from '@/lib/locationGraph';
 import { TraitsTab } from './TraitsTab';
+import { StatRow } from './StatRow';
 
 /** A committed turn's saved reasoning (from its assistant-message JSON), or null. */
 function parseSavedReasoning(content: string): { text: string; ms: number } | null {
@@ -1110,52 +1108,6 @@ export const MiddlePanel = ({
   );
 };
 
-/**
- * A stat bar with an animated +/- change band. One shared mechanism covers every case (an AI-computed
- * change, paging between turns, and a band draining on submit): the accent fill slides from the turn's
- * previous value to its current value, and a colored band (`bg-success` gain / `bg-destructive` loss) is
- * painted over the [prev, cur] region on top. `delta` is the signed change the band represents (`cur − prev`);
- * `draining` collapses last turn's band back toward the current value on submit (accent unmoved), leaving a
- * clean bar before the next turn grows. Geometry is the pure `statBarFrame`; under reduced-motion everything
- * snaps to its final state (no slide/grow, no drain band). `animKey` re-triggers the animation when the
- * value+delta coincide between turns (e.g. scrolling between two past turns) — pass the page number.
- */
-const StatBar = ({ value, min, max, delta, draining, animKey }: {
-  value: number; min: number; max: number; delta: number; draining: boolean;
-  animKey?: string | number;
-}) => {
-  const reduce = usePrefersReducedMotion();
-  // The band always spans the turn's previous value (`value − delta`) to its current value, whether it's
-  // growing in or draining away; only the animation and the accent's motion differ.
-  const frame = statBarFrame(value - delta, value, min, max);
-  const key = `${value}-${delta}-${animKey ?? ''}`;
-  return (
-    <div className="relative h-4 w-full overflow-hidden rounded-full bg-secondary">
-      <div
-        // Accent slides prev→cur on a grow; on a drain the value is unchanged so it holds at its width.
-        key={`fill-${key}`}
-        className={`absolute inset-y-0 left-0 bg-primary ${!reduce && !draining ? 'stat-fill-slide' : ''}`}
-        style={{
-          width: `${frame.curPct}%`,
-          ['--fill-from']: `${frame.prevPct}%`,
-          ['--fill-to']: `${frame.curPct}%`,
-        } as React.CSSProperties}
-      />
-      {frame.hasBand && !(reduce && draining) && (
-        <div
-          key={`${draining ? 'drain' : 'grow'}-${key}`}
-          className={`${reduce ? '' : draining ? 'stat-delta-drain' : 'stat-delta-grow'} absolute inset-y-0 ${frame.gain ? 'bg-success' : 'bg-destructive'}`}
-          style={{
-            left: `${frame.bandLeftPct}%`,
-            width: `${frame.bandWidthPct}%`,
-            transformOrigin: bandOrigin(frame.gain, draining),
-          }}
-        />
-      )}
-    </div>
-  );
-};
-
 export const RightPanel = ({ onLocationClick, onToggleTrait, language, setLanguage }: {
   onLocationClick: () => void;
   /** Switch a chosen trait on or off mid-play; owned by GameViewer, which reverses its stat changes. */
@@ -1217,6 +1169,10 @@ export const RightPanel = ({ onLocationClick, onToggleTrait, language, setLangua
   const visibleStats = playerStats
     .map((stat, index) => ({ stat, index }))
     .filter(({ stat }) => statEnabled[stat.id] !== false && stat.hidden !== true);
+  // Whether the descriptor line is part of this world's stat list at all. Held across every row so the list
+  // keeps its shape as values move in and out of bands; a world that names none of them pays nothing, and a
+  // stat the player never sees can't put the line there for the ones they do.
+  const anyDescriptors = visibleStats.some(({ stat }) => (stat.descriptors?.length ?? 0) > 0);
   // On a past page show the viewed turn's location (Location tab); live otherwise.
   const displayLocation = isViewingPast
     ? (locations.find((l) => l.id === viewLocationId) ?? currentLocation)
@@ -1265,63 +1221,29 @@ export const RightPanel = ({ onLocationClick, onToggleTrait, language, setLangua
         <TabsContent value="stats" className="flex-grow overflow-hidden">
           <ScrollArea className="h-[calc(100%-1rem)] relative">
             {visibleStats.map(({ stat, index }) => {
-              const statValue = stat.value;
-              const isPercentage = stat.type === 'percentage';
-              const change = recentStatChanges[stat.name.toLowerCase()] || 0;
-              // Regen and stat code scale by the turn's measured hours, so values and deltas are often
-              // fractional. The value reads whole; a change keeps a tenth when it has one, so a sub-point
-              // gain isn't printed as `+0`. The underlying value keeps its full precision either way.
-              const shownValue = Math.round(statValue);
-              const shownChange = formatStatDelta(change);
+              const key = stat.name.toLowerCase();
               return (
-              <div key={index} className="mb-2">
-                <div className="flex justify-between items-center">
-                  <span>{stat.name}</span>
-                  <div className="flex items-center gap-2">
-                    {shownChange && (
-                      <span
-                        key={`${currentPage}-${change}`}
-                        className={`${isViewingPast ? 'stat-delta-text-in' : (recentStatFading ? 'stat-delta-text-out' : 'stat-delta-text')} text-label ${change > 0 ? 'text-success' : 'text-destructive'}`}
-                      >
-                        {shownChange}
-                      </span>
-                    )}
-                    <span>{isPercentage ? `${shownValue}%` : `${shownValue} / ${Math.round(stat.max)}`}</span>
-                  </div>
-                </div>
-                {isEditMode && !isViewingPast ? (
-                  <Slider
-                    // Whole-step slider, so it tracks the rounded readout rather than a fractional value.
-                    value={[shownValue]}
-                    min={stat.min}
-                    max={stat.max}
-                    step={1}
-                    className="mt-2"
-                    onValueChange={(value) => {
-                      const newStats = [...playerStats];
-                      newStats[index] = { ...stat, value: value[0] };
-                      commitManualStatEdit(newStats);
-                    }}
-                  />
-                ) : (
-                  <StatBar
-                    value={statValue}
-                    min={stat.min}
-                    max={stat.max}
-                    // While reviewing a past turn, show that turn's change as a persistent, animate-in band
-                    // (green/red grow); live, use the transient held/draining deltas.
-                    // Live: a held change grows, else a draining change collapses. History: the turn's change
-                    // grows in (never drains). Both feed the same (value − delta → value) geometry.
-                    delta={isViewingPast
-                      ? change
-                      : (heldStatChanges[stat.name.toLowerCase()] || drainingStatChanges[stat.name.toLowerCase()] || 0)}
-                    draining={!isViewingPast
-                      && !heldStatChanges[stat.name.toLowerCase()]
-                      && !!drainingStatChanges[stat.name.toLowerCase()]}
-                    animKey={isViewingPast ? currentPage : undefined}
-                  />
-                )}
-              </div>
+                <StatRow
+                  key={index}
+                  stat={stat}
+                  change={recentStatChanges[key] || 0}
+                  // Live: a held change grows, else a draining change collapses. History: the turn's own
+                  // change grows in (never drains).
+                  barDelta={isViewingPast
+                    ? (recentStatChanges[key] || 0)
+                    : (heldStatChanges[key] || drainingStatChanges[key] || 0)}
+                  draining={!isViewingPast && !heldStatChanges[key] && !!drainingStatChanges[key]}
+                  page={currentPage}
+                  isViewingPast={isViewingPast}
+                  fading={recentStatFading}
+                  editable={isEditMode && !isViewingPast}
+                  reserveDescriptorLine={anyDescriptors}
+                  onCommitValue={(value) => {
+                    const newStats = [...playerStats];
+                    newStats[index] = { ...stat, value };
+                    commitManualStatEdit(newStats);
+                  }}
+                />
               );
             })}
             <div className="absolute bottom-2 right-2">
@@ -1330,6 +1252,8 @@ export const RightPanel = ({ onLocationClick, onToggleTrait, language, setLangua
                 size="icon"
                 onClick={() => setIsEditMode(!isEditMode)}
                 disabled={isViewingPast}
+                aria-label="Edit Stats"
+                aria-pressed={isEditMode}
                 className="h-8 w-8"
               >
                 <Pencil className="h-4 w-4" />
