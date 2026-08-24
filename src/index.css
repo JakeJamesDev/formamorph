@@ -437,6 +437,17 @@
   button {
     font-size-adjust: inherit;
   }
+  /* Native number spinners are unthemeable gray chrome; wheel-stepping, arrow keys and typing cover the
+     same ground, so number fields render as plain text fields. */
+  input[type='number'] {
+    -moz-appearance: textfield;
+    appearance: textfield;
+  }
+  input[type='number']::-webkit-inner-spin-button,
+  input[type='number']::-webkit-outer-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+  }
   /* WebKit/Blink: thin, rounded, border-colored thumb on a transparent track. */
   *::-webkit-scrollbar {
     width: 10px;
