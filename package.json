@@ -1,7 +1,7 @@
 {
   "name": "formamorph",
   "private": true,
-  "version": "2.13.0",
+  "version": "2.14.0",
   "license": "PolyForm-Noncommercial-1.0.0",
   "type": "module",
   "main": "electron/main.cjs",

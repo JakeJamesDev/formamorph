@@ -2,7 +2,7 @@
 
 All notable changes to Formamorph. This fork's first line is **2.0.0** — a full TypeScript rebuild of the upstream JavaScript app ([FieryLionite's Formamorph](https://fierylion.itch.io/formamorph), ~v1.2) — with feature parity as the baseline plus new features on top.
 
-> ✅ **2.0.0 – 2.13.0 are released** (collapsed below). New work lands under **🚧 In Progress** — an unnumbered section, so changes accumulate without pinning a version. When a batch earns a release its section is marked **Released** and collapsed, and a fresh In Progress opens. `package.json` reads **2.13.0** — the latest released version.
+> ✅ **2.0.0 – 2.14.0 are released** (collapsed below). New work lands under **🚧 In Progress** — an unnumbered section, so changes accumulate without pinning a version. When a batch earns a release its section is marked **Released** and collapsed, and a fresh In Progress opens. `package.json` reads **2.14.0** — the latest released version.
 
 Each release groups changes as **Major** / **Minor**, then **Added** / **Removed** / **Fixed**, and within those by audience: 👤 user-facing · 🛠️ developer tooling · ⚙️ backend. Where two or more changes touch the same feature, they sit together under that feature's name.
 
@@ -10,7 +10,12 @@ Each release groups changes as **Major** / **Minor**, then **Added** / **Removed
 
 ## 🚧 In Progress
 
-_Unreleased — new work accumulates here until it earns a version bump. The next batch will pin its own version; `package.json` reads **2.13.0** (just released below)._
+_Unreleased — new work accumulates here until it earns a version bump. The next batch will pin its own version; `package.json` reads **2.14.0** (just released below)._
+
+---
+
+<details>
+<summary><strong>✅ 2.14.0 — Released 2026-08-23</strong> — Community events arrive: contest banners and posters, a Contest tab with podiums and archives, and an admin calendar to run it all — published listings carry an update history you write, comments become markdown you can edit, and a placeholder's values can be whole paragraphs (click to expand)</summary>
 
 ### Minor Changes
 
@@ -80,6 +85,8 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
   - **A notification's listing now opens even when the community browser hasn't caught up to it yet.** The browser shows last visit's catalog first and refreshes it in the background — but a listing published since then, exactly what a "published a new world" notification points at, was looked up in that old list, declared "no longer in Community Creations", and dropped. The browser now waits for the refresh before giving a verdict: the listing opens the moment the fresh catalog lands, and only a listing genuinely gone still gets the notice. The same fix covers opening a listing from someone's profile, and closing the browser mid-lookup cancels the request instead of saving it up to pop open on a later visit.
   - **Ctrl+Z answers right after a command from the locations map's right-click menu again.** Picking Auto Arrange — or any other command — from the menu left the map deaf to the keyboard until you clicked it once more, so the arrangement you had just asked for couldn't be taken straight back. The menu now counts as working on the map, the way it did before it was rebuilt.
   - **Renaming a placeholder's value carries every trait that pinned it.** A trait holding Hair Color at "Red" used to keep forcing "Red" after you renamed that value to "Crimson" — a value the placeholder no longer offered, with nothing in the editor to say so, and the mismatch only showing up in play. The rename now reaches every trait in the world at once, and every pin within a trait. A pin you typed yourself rather than picking off the list is never rewritten, and reordering the values or swapping one out for a different one leaves all pins alone. Saved playthroughs pick the corrected pin up when you load them.
+
+</details>
 
 ---
 
