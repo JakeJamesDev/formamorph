@@ -48,6 +48,18 @@ _Avoid_: node graph, map view
 The player-facing readonly twin of the Locations Canvas, shown during play — same layout and arrows, no editing. Clicking a location travels there.
 _Avoid_: canvas (authoring term), world map
 
+**Report**:
+A signed-in user's one-shot ticket flagging a Report Target to staff — a category plus optional details. Never public, never a conversation; it ends in exactly one Outcome.
+_Avoid_: flag, feedback (that's bug/suggestion)
+
+**Report Target**:
+The thing a Report points at — a listing (any kind), a comment, or a user profile — captured by snapshot at report time so the ticket outlives the content's deletion.
+_Avoid_: subject, reported item
+
+**Outcome**:
+The recorded resolution of a Report: action taken, or dismissed. Delivered to the reporter as an inbox message with an optional staff note; never names the specific moderation action.
+_Avoid_: verdict, resolution status
+
 **Test Bench**:
 The World Editor's testing surface hosting every authoring instrument, available in both editor modes. Reached through the Bench Popover for quick triage, or as a full panel that is either embedded in the editor's list panel or docked beside it (mobile: Sheet). Shows what the harness computes from the authored world, never what the AI will do with it.
 _Avoid_: World Lab, dock (that's one chrome, not the feature)
