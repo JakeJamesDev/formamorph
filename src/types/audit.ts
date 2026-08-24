@@ -14,6 +14,8 @@ export const AUDIT_ACTIONS = [
   'avatar_removed',
   'role_changed',
   'feedback_edited',
+  'report_actioned',
+  'report_dismissed',
 ] as const;
 export type AuditAction = (typeof AUDIT_ACTIONS)[number];
 

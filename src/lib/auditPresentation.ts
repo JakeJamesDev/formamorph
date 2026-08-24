@@ -17,6 +17,8 @@ export const AUDIT_ACTION_LABELS: Record<AuditAction, string> = {
   avatar_removed: 'Image removed',
   role_changed: 'Role changed',
   feedback_edited: 'Feedback edited',
+  report_actioned: 'Report actioned',
+  report_dismissed: 'Report dismissed',
 };
 
 /** The tint each action carries, so a scan down the list separates removals from the rest. */
@@ -36,6 +38,9 @@ export const AUDIT_ACTION_STYLES: Record<AuditAction, string> = {
   avatar_removed: 'bg-destructive/10 text-destructive',
   role_changed: 'bg-info/10 text-info',
   feedback_edited: 'bg-info/10 text-info',
+  // A decision, not a removal: what was actually done to the content is logged by the act itself.
+  report_actioned: 'bg-warning/10 text-warning',
+  report_dismissed: 'bg-muted text-muted-foreground',
 };
 
 /** The filter's options, in the order the server declares them. */

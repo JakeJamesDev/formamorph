@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { toast } from "react-toastify";
-import { UserPlus, UserMinus } from "lucide-react";
+import { UserPlus, UserMinus, Flag } from "lucide-react";
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle,
 } from "@/components/ui/dialog";
@@ -9,6 +9,8 @@ import { Button } from "@/components/ui/button";
 import { UserAvatar } from "@/components/UserAvatar";
 import { RoleBadge } from "@/components/RoleBadge";
 import { UserCreationsTab } from "@/components/community/UserCreationsTab";
+import { ReportDialog } from "@/components/community/ReportDialog";
+import { useReportsEnabled } from "@/lib/useReportsEnabled";
 import { ProfileStats } from "@/components/community/ProfileStats";
 import { parseServerDate } from "@/lib/serverDate";
 import UserService from "@/services/UserService";
@@ -36,8 +38,11 @@ export function UserProfileDialog({ userId, onOpenChange, fallbackUsername, onOp
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [isFollowBusy, setIsFollowBusy] = useState(false);
+  const [reporting, setReporting] = useState(false);
 
   const myId = String(AuthService.getCurrentUser()?.id ?? '');
+  // Signed-out visitors and servers without the feature get no control at all.
+  const reportsEnabled = useReportsEnabled(Boolean(myId));
 
   useEffect(() => {
     if (!userId) return;
@@ -59,6 +64,8 @@ export function UserProfileDialog({ userId, onOpenChange, fallbackUsername, onOp
   // Offered only to somebody who could act on it: following needs an account, and following yourself
   // would put your own work in your own news.
   const canFollow = Boolean(profile) && Boolean(myId) && profile?.id !== myId;
+  // The same rule as following, for the same reason: reporting yourself is not a thing to offer.
+  const canReport = reportsEnabled && Boolean(profile) && profile?.id !== myId;
 
   const toggleFollow = async () => {
     if (!profile) return;
@@ -137,6 +144,25 @@ export function UserProfileDialog({ userId, onOpenChange, fallbackUsername, onOp
         {/* Straight under the header rather than behind a tab: there is only one thing to show, and a bar
             with a single trigger on it costs a row of the dialog to say so. */}
         <UserCreationsTab userId={userId} username={name} onOpenListing={onOpenListing} />
+
+        {/* Under their work rather than beside their name: an offensive image or username is the reason
+            this exists, and both are already on screen above. */}
+        {canReport && (
+          <Button
+            variant="ghost"
+            size="sm"
+            className="mx-auto gap-1.5 text-muted-foreground hover:text-destructive"
+            onClick={() => setReporting(true)}
+          >
+            <Flag className="h-3.5 w-3.5" /> Report Profile
+          </Button>
+        )}
+
+        <ReportDialog
+          open={reporting}
+          onOpenChange={setReporting}
+          target={profile ? { kind: 'profile', id: profile.id, name: profile.username } : null}
+        />
       </DialogContent>
     </Dialog>
   );

@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { Shield } from "lucide-react";
 import {
   Dialog,
@@ -14,6 +14,7 @@ import { BroadcastsTab } from "@/components/menu/BroadcastsTab";
 import { PoliciesTab } from "@/components/menu/PoliciesTab";
 import { EventsTab } from "@/components/menu/EventsTab";
 import { FeedbackTab } from "@/components/menu/FeedbackTab";
+import { ReportsTab } from "@/components/menu/ReportsTab";
 import { AuditLogTab } from "@/components/menu/AuditLogTab";
 import { useResetOnOpen } from "@/lib/useResetOnOpen";
 import { type AdminPanelTab } from "@/components/menu/adminPanelTabs";
@@ -21,6 +22,7 @@ import { type PoliciesTab as PoliciesSubTab } from "@/components/menu/policiesTa
 import { type FeedbackTab as FeedbackSubTab } from "@/components/menu/feedbackTabs";
 import { isAdmin } from "@/lib/roles";
 import AuthService from "@/services/AuthService";
+import ReportService from "@/services/ReportService";
 
 interface AdminPanelDialogProps {
   open: boolean;
@@ -31,12 +33,18 @@ interface AdminPanelDialogProps {
   initialPoliciesTab?: PoliciesSubTab;
   /** Feedback sub-tab to open on, when `initialTab` is `feedback`. */
   initialFeedbackTab?: FeedbackSubTab;
+  /** Opens a reported listing — or the listing a reported comment sits on — in Community Creations.
+   *  Absent leaves those groups readable but not followable. */
+  onOpenListing?: (listingId: string) => void;
+  /** Called when the open-report count may have changed, so the caller's own badge can re-read it. */
+  onReportsChanged?: () => void;
 }
 
 /** Admin tools behind one dialog: accounts, broadcasts, the publish policies, both feedback queues, and
  *  the record of what was done. */
 export function AdminPanelDialog({
   open, onOpenChange, initialTab = 'users', initialPoliciesTab, initialFeedbackTab,
+  onOpenListing, onReportsChanged,
 }: AdminPanelDialogProps) {
   // Broadcasts and Policies are an administrator's: speaking to everyone at once and writing what the
   // site requires are not moderation. The rest of the panel is the everyday work, open to any staff —
@@ -44,8 +52,23 @@ export function AdminPanelDialog({
   const owner = isAdmin(AuthService.getCurrentUser());
 
   const [tab, setTab] = useState<AdminPanelTab>(initialTab);
+  // How many targets have an open report on them. Zero against a server without the feature, so the tab
+  // simply carries no count rather than reporting a failure nobody can act on.
+  const [openReports, setOpenReports] = useState(0);
+
+  const readOpenReports = useCallback(() => {
+    void ReportService.fetchOpenCount().then(setOpenReports);
+    onReportsChanged?.();
+  }, [onReportsChanged]);
 
   useResetOnOpen(open, () => setTab(initialTab));
+
+  // Read once per opening rather than per tab switch: it labels a tab the reader can see from anywhere
+  // in the panel, and a resolution re-reads it on the spot.
+  useEffect(() => {
+    if (!open) return;
+    void ReportService.fetchOpenCount().then(setOpenReports);
+  }, [open]);
 
   // Also honor a *change* of `initialTab` while the dialog is already open — the dev-router points at a
   // tab by changing this prop, and without it a second `goto` at an open panel is silently ignored.
@@ -73,12 +96,15 @@ export function AdminPanelDialog({
           onValueChange={(value) => setTab(value as AdminPanelTab)}
           className="w-full min-w-0 flex flex-col flex-1 min-h-0"
         >
-          <TabsList className={cn('grid w-full flex-shrink-0', owner ? 'grid-cols-6' : 'grid-cols-4')}>
+          <TabsList className={cn('grid w-full flex-shrink-0', owner ? 'grid-cols-7' : 'grid-cols-5')}>
             <TabsTrigger value="users">Users</TabsTrigger>
             {owner && <TabsTrigger value="broadcasts">Broadcasts</TabsTrigger>}
             {owner && <TabsTrigger value="policies">Policies</TabsTrigger>}
             <TabsTrigger value="events">Events</TabsTrigger>
             <TabsTrigger value="feedback">Feedback</TabsTrigger>
+            {/* The count rides the label rather than a badge beside it: the strip is a fixed grid, and a
+                floating badge on one trigger shifts every other one's text off center. */}
+            <TabsTrigger value="reports">Reports{openReports > 0 && ` (${openReports > 9 ? '9+' : openReports})`}</TabsTrigger>
             <TabsTrigger value="log">Log</TabsTrigger>
           </TabsList>
 
@@ -115,6 +141,16 @@ export function AdminPanelDialog({
           <TabsContent value="feedback" className="flex-1 min-h-0 data-[state=active]:flex flex-col">
             <ScrollArea className="flex-1 min-h-0 px-1">
               <FeedbackTab active={open && tab === 'feedback'} initialTab={initialFeedbackTab} />
+            </ScrollArea>
+          </TabsContent>
+
+          <TabsContent value="reports" className="flex-1 min-h-0 data-[state=active]:flex flex-col">
+            <ScrollArea className="flex-1 min-h-0 px-1">
+              <ReportsTab
+                active={open && tab === 'reports'}
+                onOpenListing={onOpenListing}
+                onResolved={readOpenReports}
+              />
             </ScrollArea>
           </TabsContent>
 

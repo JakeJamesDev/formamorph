@@ -17,6 +17,7 @@ import PolicyService from "@/services/PolicyService";
 import WorldStorageService from "@/services/WorldStorageService";
 import AuthService from "@/services/AuthService";
 import MessageService from "@/services/MessageService";
+import { useUserProfile } from "@/contexts/userProfileStore";
 import { type WorldRecord } from "@/components/WorldDetails";
 import type { SentMessage } from "@/types";
 
@@ -100,6 +101,9 @@ export function ManageUsersTab({ active }: ManageUsersTabProps) {
   const [sentNonce, setSentNonce] = useState(0);
   // Set to the user whose upload-terms acceptance is about to be cleared.
   const [pendingTermsReset, setPendingTermsReset] = useState<WorldRecord | null>(null);
+
+  // The app's one profile dialog, so a staff member sees an account exactly as the room does.
+  const { openProfile } = useUserProfile();
 
   const adminUsername = String(AuthService.getCurrentUser()?.username || 'Admin');
   // Changing what somebody *is* belongs to an administrator; the rest of this table is any staff's.
@@ -498,7 +502,15 @@ export function ManageUsersTab({ active }: ManageUsersTabProps) {
                               avatarUrl={user.avatarUrl as string | null | undefined}
                               size="sm"
                             />
-                            <span className="truncate">{user.username}</span>
+                            {/* The name opens the profile: moderating an account without being able to
+                                see it is guesswork, and the image is half of what gets reported. */}
+                            <button
+                              type="button"
+                              className="truncate hover:underline"
+                              onClick={() => openProfile(userId, usernameOf(user))}
+                            >
+                              {user.username}
+                            </button>
                             <RoleBadge role={user.accountType as string | null | undefined} />
                           </div>
                         </td>

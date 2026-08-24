@@ -4,7 +4,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import IndeterminateProgress from "@/components/ui/indeterminate-progress";
-import { Globe, Columns2, RectangleVertical, Pencil, Trash2, X } from "lucide-react";
+import { Globe, Columns2, RectangleVertical, Pencil, Trash2, X, Flag } from "lucide-react";
 import { ActionIcon } from "@/lib/actionIcons";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
 import { MarkdownRenderer } from "@/components/game/MarkdownRenderer";
@@ -22,6 +22,9 @@ import WorldStorageService from "@/services/WorldStorageService";
 import { UserAvatar } from "@/components/UserAvatar";
 import { UserName } from "@/components/UserName";
 import { LikeButton } from "@/components/community/LikeButton";
+import { ReportDialog } from "@/components/community/ReportDialog";
+import { useReportsEnabled } from "@/lib/useReportsEnabled";
+import type { ReportTargetKind } from "@/lib/contentReports";
 import { ChangelogPanel } from "@/components/community/ChangelogPanel";
 import { defaultChangelogTab, type ChangelogEntry, type ChangelogTab } from "@/lib/listingChangelog";
 import { WorldActionButton } from "@/components/WorldActionButton";
@@ -78,6 +81,14 @@ export function RemoteWorldDetailsModal({
   // changelogs — which is what keeps the whole feature invisible rather than broken on an old deploy.
   const [changelog, setChangelog] = useState<ChangelogEntry[] | null>(null);
   const [tab, setTab] = useState<ChangelogTab>('comments');
+  // What the report dialog is aimed at, or null when it is closed. One dialog for both the listing and
+  // any comment on it — they differ only in what they point at.
+  const [reportTarget, setReportTarget] =
+    useState<{ kind: ReportTargetKind; id: string; name?: string | null; noun?: string } | null>(null);
+
+  // Off entirely for a signed-out reader and against a server without the feature, so no surface here
+  // ever offers an action that would be refused.
+  const reportsEnabled = useReportsEnabled(isAuthenticated);
 
   const plainVocab = useMemo(() => plainVocabulary(), []);
 
@@ -183,6 +194,7 @@ export function RemoteWorldDetailsModal({
       // name for the frames before the fetch answers.
       setChangelog(null);
       setTab('comments');
+      setReportTarget(null);
       loadComments(world._id || world.id, COMMENTS_PAGE);
       void loadChangelog(world._id || world.id, world);
     }
@@ -338,6 +350,27 @@ export function RemoteWorldDetailsModal({
                       <h3 className="text-helper font-semibold text-muted-foreground">Updated</h3>
                       <p>{world.updated_at ? <DateTimeText value={world.updated_at} /> : "Unknown"}</p>
                     </div>
+
+                    {/* Quiet and at the bottom, under everything the page is actually for. Never on your
+                        own listing — reporting yourself is a way into the queue, not moderation. */}
+                    {reportsEnabled && !isOwnListing && (
+                      <div className="col-span-2">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="gap-1.5 text-muted-foreground hover:text-destructive"
+                          onClick={() => setReportTarget({
+                            kind: 'listing',
+                            id: world._id || world.id,
+                            name: world.name,
+                            // The same word the button uses, so the dialog is visibly about this thing.
+                            noun: KIND_LABELS[kindOf(world)].one,
+                          })}
+                        >
+                          <Flag className="h-3.5 w-3.5" /> Report This {KIND_LABELS[kindOf(world)].one}
+                        </Button>
+                      </div>
+                    )}
                   </div>
                 }
               />
@@ -412,8 +445,25 @@ export function RemoteWorldDetailsModal({
                         {c.created_at ? formatServerDateTime(c.created_at) : ''}
                         {/* Said plainly, so a reader can tell a comment changed after the replies to it. */}
                         {c.edited_at && <span className="italic">· edited</span>}
-                        {editingId !== c.id && (isOwnComment(c) || mayDelete(c)) && (
+                        {editingId !== c.id && (isOwnComment(c) || mayDelete(c) || (reportsEnabled && !isOwnComment(c))) && (
                           <span className="flex items-center">
+                            {/* Per comment rather than per thread: an abusive reply under a listing that
+                                is otherwise fine is the case this exists for. */}
+                            {reportsEnabled && !isOwnComment(c) && (
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-7 w-7 text-muted-foreground hover:text-destructive"
+                                aria-label="Report comment"
+                                onClick={() => setReportTarget({
+                                  kind: 'comment',
+                                  id: c.id,
+                                  name: world.name,
+                                })}
+                              >
+                                <Flag className="h-3.5 w-3.5" />
+                              </Button>
+                            )}
                             {/* The pencil is the commenter's alone: moderation reaches as far as taking
                                 a comment down, never as far as rewriting somebody's words. */}
                             {isOwnComment(c) && (
@@ -488,6 +538,12 @@ export function RemoteWorldDetailsModal({
             </div>
           </div>
         )}
+
+        <ReportDialog
+          open={reportTarget !== null}
+          onOpenChange={(isOpen) => { if (!isOpen) setReportTarget(null); }}
+          target={reportTarget}
+        />
 
         <ConfirmDialog
           open={!!pendingDelete}
