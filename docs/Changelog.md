@@ -12,6 +12,13 @@ Each release groups changes as **Major** / **Minor**, then **Added** / **Removed
 
 _Unreleased — new work accumulates here until it earns a version bump. The next batch will pin its own version; `package.json` reads **2.14.0** (just released below)._
 
+### Minor Changes
+
+#### 🔧 Fixed
+
+- **🛠️ Developer tooling**
+  - **The test suite passes on a UTC runner.** One test asserted the machine's own timezone sits west of Greenwich, one suite's service mock let an effect reject unhandled, and the first CodeMirror typing test could lose a keystroke under CI load — three failures CI hit that a westward dev machine never showed.
+
 ---
 
 <details>

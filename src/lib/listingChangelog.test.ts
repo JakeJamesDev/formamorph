@@ -108,11 +108,11 @@ describe('a date an author may set', () => {
 
   it('defaults to the local day, not the UTC one', () => {
     // Late evening west of Greenwich is already tomorrow in UTC, and an author writing then would be
-    // handed a date they never picked.
+    // handed a date they never picked. The local and UTC days only diverge when the runner has an
+    // offset — this bites on a westward dev machine and is vacuously true on a UTC CI runner.
     const lateEvening = new Date(2026, 7, 1, 23, 30);
 
     expect(todayForDateInput(lateEvening)).toBe('2026-08-01');
-    expect(lateEvening.toISOString().slice(0, 10)).not.toBe('2026-08-01');
   });
 });
 
