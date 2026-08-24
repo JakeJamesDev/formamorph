@@ -2,9 +2,9 @@
  * How loud each waiting thing is, and what color says so.
  *
  * One ladder across three channels that have nothing else in common: an admin message carries its own
- * severity, while a feedback reply and a follow carry none, so they sit below the quietest message and
- * share the theme's accent. The split the color draws is "the administrators are talking to you" versus
- * "the community is", which is the distinction worth a color.
+ * severity, while a feedback reply and a follow carry none, so they sit below the quietest message.
+ * Everything routine wears the theme's accent, whoever sent it; only a message loud enough to warn or
+ * suspend gets its own color, which is the distinction worth one.
  *
  * The badge on the profile circle is one number over all three, so it takes the color of the loudest
  * thing in it. Ties need no tiebreak: two things of equal rank are the same color by definition, so
@@ -19,7 +19,8 @@ export type UnreadKind = (typeof UNREAD_KINDS)[number];
 export const UNREAD_MARK_STYLES: Record<UnreadKind, { mark: string; badge: string }> = {
   follow: { mark: 'bg-primary', badge: 'bg-primary text-primary-foreground' },
   feedback: { mark: 'bg-primary', badge: 'bg-primary text-primary-foreground' },
-  info: { mark: 'bg-info', badge: 'bg-info text-info-foreground' },
+  // Routine messages share the accent: only the ladder's rank, not its color, says "admin".
+  info: { mark: 'bg-primary', badge: 'bg-primary text-primary-foreground' },
   warning: { mark: 'bg-warning', badge: 'bg-warning text-warning-foreground' },
   urgent: { mark: 'bg-destructive', badge: 'bg-destructive text-destructive-foreground' },
 };

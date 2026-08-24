@@ -69,6 +69,13 @@ describe('the colors', () => {
     // The whole point of the change: a suspension notice must not look like a bug reply.
     expect(UNREAD_MARK_STYLES.urgent.mark).not.toBe(UNREAD_MARK_STYLES.feedback.mark);
   });
+
+  it('paints a routine message the same accent as the community', () => {
+    // Follows, feedback and ordinary notices are all just "something new" — a badge that turns a
+    // different color over a mundane broadcast reads as an alarm it isn't.
+    expect(UNREAD_MARK_STYLES.info.mark).toBe(UNREAD_MARK_STYLES.follow.mark);
+    expect(UNREAD_MARK_STYLES.info.badge).toBe(UNREAD_MARK_STYLES.follow.badge);
+  });
 });
 
 describe('the badge on the profile circle', () => {
