@@ -39,6 +39,23 @@ async function editor(): Promise<HTMLElement> {
 
 const owned = () => screen.getByTestId('owned').textContent;
 
+/** Types text one character at a time, confirming each landed in the parent's value before the next.
+ *  Under CI load CodeMirror can drop a keystroke dispatched while it is mid-update, and a burst of
+ *  keys then fails far from the cause with a character missing from the middle of the word. `expected`
+ *  maps what has been typed so far to the value the parent should hold (default: the typed text is
+ *  the whole value, i.e. typing into an empty field). */
+async function type(
+  user: ReturnType<typeof userEvent.setup>,
+  text: string,
+  expected: (typed: string) => string = (typed) => typed,
+) {
+  for (let i = 0; i < text.length; i++) {
+    await user.keyboard(text[i]);
+    const want = expected(text.slice(0, i + 1));
+    await waitFor(() => expect(owned()).toBe(want));
+  }
+}
+
 /** CodeMirror debounces the completion query typing kicks off (`activateOnTypingDelay`, 100ms) and ignores
  *  keys aimed at a list that has only just opened (`interactionDelay`, 75ms). Both are measured from the
  *  event rather than from the test, so clearing the longer of the two is enough on any machine — a slow
@@ -53,10 +70,7 @@ describe('CodeArea', () => {
     const user = userEvent.setup();
     render(<Harness />);
     await user.click(await editor());
-    // First CodeMirror mount in the file: under CI load its post-focus measure cycle can swallow a
-    // keystroke fired in the same beat, so let it finish before typing (same wait the list tests use).
-    await settle();
-    await user.keyboard('return 1;');
+    await type(user, 'return 1;');
 
     expect(owned()).toBe('return 1;');
   });
@@ -65,7 +79,7 @@ describe('CodeArea', () => {
     const user = userEvent.setup();
     render(<Harness />);
     await user.click(await editor());
-    await user.keyboard('alpha');
+    await type(user, 'alpha');
     expect(owned()).toBe('alpha');
 
     await user.click(screen.getByLabelText('Undo'));
@@ -85,12 +99,12 @@ describe('CodeArea', () => {
     const user = userEvent.setup();
     render(<Harness />);
     await user.click(await editor());
-    await user.keyboard('alpha');
+    await type(user, 'alpha');
     await user.click(screen.getByLabelText('Undo'));
     expect(screen.getByLabelText('Redo')).toBeEnabled();
 
     await user.click(await editor());
-    await user.keyboard('x');
+    await type(user, 'x');
     expect(screen.getByLabelText('Redo')).toBeDisabled();
   });
 
@@ -98,7 +112,7 @@ describe('CodeArea', () => {
     const user = userEvent.setup();
     render(<Harness />);
     await user.click(await editor());
-    await user.keyboard('return  + 1;');
+    await type(user, 'return  + 1;');
     // Put the caret back in the gap the snippet belongs in.
     await user.keyboard('{ArrowLeft>5/}');
 
@@ -117,7 +131,7 @@ describe('CodeArea', () => {
     expect(owned()).toBe('{{name:number=0}}');
 
     // `name` is what varies, so typing replaces it rather than adding to it.
-    await user.keyboard('hunger');
+    await type(user, 'hunger', (typed) => `{{${typed}:number=0}}`);
     expect(owned()).toBe('{{hunger:number=0}}');
   });
 
@@ -125,7 +139,7 @@ describe('CodeArea', () => {
     const user = userEvent.setup();
     render(<Harness />);
     await user.click(await editor());
-    await user.keyboard('return ');
+    await type(user, 'return ');
     await user.click(screen.getByLabelText('Variable'));
     await user.click(screen.getByText('This stat’s value'));
     expect(owned()).toBe('return stats.find(s => s.id === currentStatId)?.value ?? 0');
@@ -172,7 +186,7 @@ describe('CodeArea', () => {
     const user = userEvent.setup();
     render(<Harness />);
     await user.click(await editor());
-    await user.keyboard('return 1;');
+    await type(user, 'return 1;');
     expect(screen.queryByRole('dialog')).toBeNull();
 
     await user.click(screen.getByLabelText('Edit full screen'));
@@ -238,7 +252,7 @@ describe('CodeArea', () => {
     const user = userEvent.setup();
     render(<Harness />);
     await user.click(await editor());
-    await user.keyboard('return elap');
+    await type(user, 'return elap');
 
     await waitFor(() => expect(document.querySelector('.cm-tooltip-autocomplete')).toBeTruthy());
     const tooltip = document.querySelector('.cm-tooltip-autocomplete') as HTMLElement;
@@ -273,7 +287,7 @@ describe('CodeArea', () => {
     const user = userEvent.setup();
     render(<Harness preview />);
     await user.click(await editor());
-    await user.keyboard('return 1;');
+    await type(user, 'return 1;');
 
     await user.click(screen.getByRole('tab', { name: 'Preview' }));
     await user.click(screen.getByRole('tab', { name: 'Edit' }));
@@ -293,7 +307,7 @@ describe('CodeArea', () => {
     const user = userEvent.setup();
     render(<Harness />);
     await user.click(await editor());
-    await user.keyboard('return 1;');
+    await type(user, 'return 1;');
     await user.keyboard('{ArrowLeft>2/}');
     await user.tab();
     expect(owned()).toBe('return   1;');
@@ -304,7 +318,7 @@ describe('CodeArea', () => {
     render(<Harness />);
     const field = await editor();
     await user.click(field);
-    await user.keyboard('return 1;');
+    await type(user, 'return 1;');
     await settle();
 
     await user.keyboard('{Escape}');
@@ -318,7 +332,7 @@ describe('CodeArea', () => {
     const user = userEvent.setup();
     render(<Harness />);
     await user.click(await editor());
-    await user.keyboard('return abc;');
+    await type(user, 'return abc;');
     // `bc;` selected — a partial selection, so Tab is a keystroke like any other.
     await user.keyboard('{Shift>}{ArrowLeft}{ArrowLeft}{ArrowLeft}{/Shift}');
     await user.tab();
@@ -382,7 +396,7 @@ describe('CodeArea', () => {
     const user = userEvent.setup();
     render(<Harness />);
     await user.click(await editor());
-    await user.keyboard('return elap');
+    await type(user, 'return elap');
 
     await waitFor(() => expect(popup()).toBeTruthy());
     // The matched prefix is its own span, so the entry is found by what it reads as, not by one text node.
@@ -397,7 +411,7 @@ describe('CodeArea', () => {
     const user = userEvent.setup();
     render(<Harness statNames={['Health', 'Stamina']} />);
     await user.click(await editor());
-    await user.keyboard('return "');
+    await type(user, 'return "');
 
     await waitFor(() => expect(popup()).toBeTruthy());
     expect(within(popup()!).getByText('Stamina')).toBeInTheDocument();
@@ -408,7 +422,7 @@ describe('CodeArea', () => {
     const user = userEvent.setup();
     render(<Harness />);
     await user.click(await editor());
-    await user.keyboard('return elap');
+    await type(user, 'return elap');
     await waitFor(() => expect(popup()).toBeTruthy());
 
     await user.keyboard('{Escape}');
@@ -426,7 +440,7 @@ describe('CodeArea', () => {
     const user = userEvent.setup();
     render(<Harness />);
     await user.click(await editor());
-    await user.keyboard('return elap');
+    await type(user, 'return elap');
     await waitFor(() => expect(popup()).toBeTruthy());
     await settle();
 
@@ -438,7 +452,7 @@ describe('CodeArea', () => {
     const user = userEvent.setup();
     render(<Harness />);
     await user.click(await editor());
-    await user.keyboard('return elap');
+    await type(user, 'return elap');
     await waitFor(() => expect(popup()).toBeTruthy());
     await settle();
 
@@ -449,22 +463,22 @@ describe('CodeArea', () => {
   // The popup hangs off `<body>`, and a dialog's scroll lock preventDefaults any scroll whose target is
   // outside the dialog — which is every option in the list. Stopping it short of the document is what
   // leaves the list scrollable, by wheel on a desktop and by drag on a touch screen.
-  it.each(['wheel', 'touchmove'])('keeps a %s over the completion list from reaching the scroll lock', async (type) => {
+  it.each(['wheel', 'touchmove'])('keeps a %s over the completion list from reaching the scroll lock', async (kind) => {
     const user = userEvent.setup();
     render(<Harness />);
     await user.click(await editor());
-    await user.keyboard('return elap');
+    await type(user, 'return elap');
     await waitFor(() => expect(popup()).toBeTruthy());
 
     const reachedDocument = vi.fn();
-    document.addEventListener(type, reachedDocument);
+    document.addEventListener(kind, reachedDocument);
     try {
-      popup()!.dispatchEvent(type === 'wheel'
+      popup()!.dispatchEvent(kind === 'wheel'
         ? new WheelEvent('wheel', { bubbles: true, deltaY: 60 })
         : new Event('touchmove', { bubbles: true }));
       expect(reachedDocument).not.toHaveBeenCalled();
     } finally {
-      document.removeEventListener(type, reachedDocument);
+      document.removeEventListener(kind, reachedDocument);
     }
   });
 
