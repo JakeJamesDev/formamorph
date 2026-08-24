@@ -53,6 +53,9 @@ describe('CodeArea', () => {
     const user = userEvent.setup();
     render(<Harness />);
     await user.click(await editor());
+    // First CodeMirror mount in the file: under CI load its post-focus measure cycle can swallow a
+    // keystroke fired in the same beat, so let it finish before typing (same wait the list tests use).
+    await settle();
     await user.keyboard('return 1;');
 
     expect(owned()).toBe('return 1;');

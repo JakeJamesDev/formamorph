@@ -21,6 +21,9 @@ vi.mock('@/services/WorldStorageService', () => ({
     API_URL: 'https://example.test/api',
     withdrawFromContest: vi.fn(async () => {}),
     fetchComments: vi.fn(async () => ({ data: [], total: 0, pagination: {} })),
+    // The details modal fetches these on open; a missing one rejects in an effect and fails the run
+    // as an unhandled error even while every assertion passes.
+    fetchChangelog: vi.fn(async () => []),
   },
   CONTEST_PLACED: 'CONTEST_PLACED',
 }));
