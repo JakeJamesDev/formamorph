@@ -3,13 +3,14 @@ import { createContext, useContext, useState, useEffect, useRef, useCallback, us
 import { defaultSystemPrompt, defaultNarrationUserPrompt, defaultRecapUserPrompt, defaultRehydrateUserPrompt, defaultOocDirectivePrompt, defaultChoicesPrompt, defaultStatUpdatesPrompt, defaultLocationChangePrompt, defaultThinkingPrompt, defaultSummaryPrompt, defaultChoicesUserPrompt, defaultStatUpdatesUserPrompt, defaultLocationChangeUserPrompt, defaultSummaryUserPrompt, defaultDiaryPrompt, defaultDirectorPrompt, defaultDirectorUserPrompt, defaultCharacterPrompt, defaultStoryboardPrompt, defaultNowLinePrompt, defaultTimePassedPrompt, defaultTimePassedUserPrompt, defaultOpeningTimePrompt, defaultOpeningTimeUserPrompt, defaultSceneTagsPrompt, defaultSceneTagsUserPrompt } from '../components/game/GamePrompts';
 import { DEFAULT_ENDPOINT, DEFAULT_API_TOKEN, DEFAULT_MODEL_NAME, DEFAULT_MAX_TOKENS, DEFAULT_CONTEXT_WINDOW, DEFAULT_LOCAL_CONTEXT_SIZE, DEFAULT_LOCAL_GPU_LAYERS, DEFAULT_LOCAL_FLASH_ATTENTION, DEFAULT_LOCAL_PARALLEL_REQUESTS, DEFAULT_LOCAL_AUTO_LOAD, DEFAULT_GEN_TEMPERATURE, DEFAULT_GEN_TOP_P, DEFAULT_GEN_REPETITION_PENALTY, DEFAULT_GEN_TOP_K, DEFAULT_GEN_MIN_P, DEFAULT_THEME_COLOR, BASE_THEME_COLOR, THEME_COLORS, DEFAULT_FONT, DEFAULT_FONT_TUNINGS, FONT_OPTIONS, SYSTEM_FONT_STACK, DEFAULT_NARRATION_FONT, DEFAULT_NARRATION_SCALE, DEFAULT_NARRATION_LINE_HEIGHT, NARRATION_FONT_OPTIONS, fontStack, fontSizeAdjust, DEFAULT_UPDATE_CHANNEL, DEFAULT_SCENE_IMAGE_AUTO, DEFAULT_CONTINUE_CHOICE, CONTINUE_CHOICE_MODES, type ContinueChoiceMode, type ThemeColor, type FontChoice, type NarrationFont, type UpdateChannel } from './settingsDefaults';
 import { isDesktop } from '../lib/imageGen/desktop';
+import type { ImageProviderId } from '../lib/imageGen';
 import { useLocalLlmStatus } from '../lib/useLocalLlmStatus';
 import { DEFAULT_TAG_PROMPT } from '../lib/imagePrompt';
 import {
   imageEndpointPresetCodec, makeDefaultStore as makeImageStore, presetStoreFromEnv, DEFAULT_IMAGE_ENDPOINT_VALUES,
   activeValues as imageEndpointActiveValues, setActive as imageSetActive, addPreset as imageAddPreset,
   renamePreset as imageRenamePreset, deletePreset as imageDeletePreset, resetPreset as imageResetPreset,
-  updateValue as imageUpdateValue,
+  updateValue as imageUpdateValue, setProvider as imageSetProvider,
   type ImageEndpointPresetStore, type ImageEndpointValues, type ImageEndpointValueKey,
 } from '../lib/imageEndpointPresets';
 import {
@@ -858,7 +859,9 @@ function useProvideSettings() {
     workflow: imageWorkflow, invokeEncoder: imageInvokeEncoder, invokeVae: imageInvokeVae,
     invokeBoard: imageInvokeBoard,
   } = imageValues;
-  const setImageProvider = patchImage('provider');
+  // Switching provider seeds that provider's own defaults the first time, so a NovelAI preset lands
+  // inside its free-generation window without hand-tuning.
+  const setImageProvider = (provider: ImageProviderId) => setImagePresetStore((s) => imageSetProvider(s, provider));
   const setImageEndpoint = patchImage('endpoint');
   const setImageApiToken = patchImage('apiToken');
   const setImageModel = patchImage('model');
@@ -882,7 +885,11 @@ function useProvideSettings() {
     if (!import.meta.env.DEV) return;
     return registerDevHook('setImage', (partial: Partial<ImageEndpointValues>) => {
       setImagePresetStore((s) => (Object.entries(partial) as [ImageEndpointValueKey, ImageEndpointValues[ImageEndpointValueKey]][])
-        .reduce((acc, [key, value]) => imageUpdateValue(acc, key, value), s));
+        // `provider` goes through the same seeding path the dropdown uses, so the hook lands the app in a
+        // state the UI can actually produce.
+        .reduce((acc, [key, value]) => (key === 'provider'
+          ? imageSetProvider(acc, value as ImageProviderId)
+          : imageUpdateValue(acc, key, value)), s));
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps -- register the dev hook once; setImagePresetStore is stable
   }, []);
