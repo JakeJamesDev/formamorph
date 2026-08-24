@@ -65,6 +65,17 @@ export function serializeTurnContent(content: AITurnResult): string {
   return JSON.stringify(content);
 }
 
+/** The turn ids present in `history` — what a rewind left standing, for prunes keyed by turn id. */
+export function survivingTurnIds(history: ChatMessage[]): Set<string> {
+  const ids = new Set<string>();
+  for (const message of history) {
+    if (message.role !== 'assistant') continue;
+    const turnId = parseTurnContent(message.content)?.turnId;
+    if (turnId) ids.add(turnId);
+  }
+  return ids;
+}
+
 /**
  * Pick the `turnId`s of assistant turns that are due for a digest: those with a stable id and no
  * summary yet. `skipRecent` optionally excludes the N most recent assistant turns (default 0 — every
