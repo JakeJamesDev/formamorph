@@ -9,7 +9,9 @@ const Slider = React.forwardRef<
 >(({ className, "aria-label": ariaLabel, ...props }, ref) => (
   <SliderPrimitive.Root
     ref={ref}
-    className={cn("relative flex w-full touch-none select-none items-center", className)}
+    // h-5 makes the root as tall as its thumb: Radix positions the thumb absolutely, so without it the
+    // flow height is the 8px track and the thumb overhangs onto whatever sits below.
+    className={cn("relative flex h-5 w-full touch-none select-none items-center", className)}
     {...props}>
     <SliderPrimitive.Track
       className="relative h-2 w-full grow overflow-hidden rounded-full bg-secondary">
