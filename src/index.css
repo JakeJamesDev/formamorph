@@ -602,6 +602,16 @@ b {
 .stat-delta-text-in {
   animation: stat-delta-text-in 300ms ease-out both;
 }
+/* Stat descriptor band change: the text jumps to full brightness, holds a beat, then decays back to its
+   resting muted color — a flash, not a fade-in. */
+@keyframes stat-band-flash {
+  0%   { color: hsl(var(--foreground)); }
+  25%  { color: hsl(var(--foreground)); }
+  100% { color: hsl(var(--muted-foreground)); }
+}
+.stat-band-flash {
+  animation: stat-band-flash 1.2s ease-out both;
+}
 /* Slide the base fill from the turn's previous value to its value (via CSS vars) so it always animates from
    the correct origin — the same mechanism for a live change and for paging between turns, keeping the fill
    in step with the grow band regardless of navigation. */

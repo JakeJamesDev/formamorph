@@ -19,7 +19,28 @@
       "max": 10,
       "starting": 0,
       "regen": 0,
-      "descriptors": [],
+      "descriptors": [
+        {
+          "id": "rd1",
+          "threshold": 2,
+          "description": "Rattled"
+        },
+        {
+          "id": "rd2",
+          "threshold": 5,
+          "description": "Uneasy"
+        },
+        {
+          "id": "rd3",
+          "threshold": 8,
+          "description": "Composed"
+        },
+        {
+          "id": "rd4",
+          "threshold": 10,
+          "description": "Unshakable"
+        }
+      ],
       "value": 3
     },
     {
@@ -31,8 +52,62 @@
       "max": 100,
       "starting": 0,
       "regen": 0,
-      "descriptors": [],
+      "descriptors": [
+        {
+          "id": "cd1",
+          "threshold": 10,
+          "description": "Broke"
+        },
+        {
+          "id": "cd2",
+          "threshold": 35,
+          "description": "Scraping By"
+        },
+        {
+          "id": "cd3",
+          "threshold": 70,
+          "description": "Comfortable enough to stop counting every coin twice over"
+        },
+        {
+          "id": "cd4",
+          "threshold": 100,
+          "description": "Flush"
+        }
+      ],
       "value": 25
+    },
+    {
+      "id": "stat-warmth",
+      "name": "Warmth",
+      "type": "number",
+      "description": "Body heat in the drafty room.",
+      "min": 10,
+      "max": 50,
+      "starting": 25,
+      "regen": 0,
+      "descriptors": [
+        {
+          "id": "wd1",
+          "threshold": 18,
+          "description": "Freezing"
+        },
+        {
+          "id": "wd2",
+          "threshold": 30,
+          "description": "Chilly"
+        },
+        {
+          "id": "wd3",
+          "threshold": 42,
+          "description": "Warm"
+        },
+        {
+          "id": "wd4",
+          "threshold": 50,
+          "description": "Toasty"
+        }
+      ],
+      "value": 33
     }
   ],
   "locations": [
