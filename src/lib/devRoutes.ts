@@ -56,9 +56,10 @@ export const DEV_MODAL_TABS = {
   // The reader's side of feedback, behind the main menu's Feedback button; one tab per branch.
   feedbackHub: ['bugs', 'suggestions'],
   // The admin tools: accounts, broadcasts, the publish policies, the events calendar, the feedback
-  // queues, and the log. `tab=events` serves a canned calendar (`devEventSample.ts`), so the tab's three
-  // groups are reachable without a live server; which of its two role views appears follows the session.
-  adminPanel: ['users', 'broadcasts', 'policies', 'events', 'feedback', 'log'],
+  // queues, the report queue, and the log. `tab=events` serves a canned calendar (`devEventSample.ts`),
+  // so the tab's three groups are reachable without a live server; which of its two role views appears
+  // follows the session. `tab=reports` needs a live server with the feature — it opens empty otherwise.
+  adminPanel: ['users', 'broadcasts', 'policies', 'events', 'feedback', 'reports', 'log'],
   // Admin Panel → Events uses the `subtab=…` slot for which of its two role views to render over the
   // canned calendar, so the moderator's read-only half is reachable without a second account.
   adminPanelEvents: ['admin', 'staff'],

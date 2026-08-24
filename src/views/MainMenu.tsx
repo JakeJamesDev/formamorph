@@ -104,6 +104,7 @@ import { UserAvatar } from "@/components/UserAvatar";
 import { UserName } from "@/components/UserName";
 import { badgeKind, UNREAD_MARK_STYLES } from "@/lib/unreadSeverity";
 import UserService from "@/services/UserService";
+import ReportService from "@/services/ReportService";
 import { type MyFeedbackTabKey } from "@/components/menu/myFeedbackTabs";
 import { type AdminPanelTab } from "@/components/menu/adminPanelTabs";
 import { type PoliciesTab as PoliciesSubTab } from "@/components/menu/policiesTabs";
@@ -525,6 +526,11 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
 
   // Admin "Manage Users" dialog: open state here; its list/paging/fetch live in the dialog component.
   const [showAdminPanel, setShowAdminPanel] = useState(false);
+  // Targets with an open report on them, for the badge on the Admin Panel button. Staff only, and zero
+  // against a server without the feature — the button simply wears no badge there.
+  const [openReports, setOpenReports] = useState(0);
+  // Bumped after a resolution, so the badge follows the queue rather than the session.
+  const [reportCountNonce, setReportCountNonce] = useState(0);
   const [unreadMessages, setUnreadMessages] = useState(0);
   // The loudest unread message, which is what colors the badge. Null when the inbox holds nothing new.
   const [messageSeverity, setMessageSeverity] = useState<string | null>(null);
@@ -1291,6 +1297,23 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
 
   const banners = useEventBanners(activeEvents);
 
+  // The staff half of the badge story. Its own channel because it counts work rather than news: it is
+  // the same number for every staff member, and it clears when somebody — anybody — resolves a group.
+  useEffect(() => {
+    if (!COMMUNITY_ENABLED || !isAuthenticated || !isStaff(currentUser)) {
+      setOpenReports(0);
+      return;
+    }
+
+    let current = true;
+
+    ReportService.fetchOpenCount()
+      .then((open) => { if (current) setOpenReports(open); })
+      .catch((error) => console.error('Failed to load the open report count:', error));
+
+    return () => { current = false; };
+  }, [isAuthenticated, currentUser, reportCountNonce]);
+
   // The feedback half of the badge. Separate from messages because reading a thread changes it, so it is
   // re-read on demand rather than only when auth changes.
   useEffect(() => {
@@ -1415,6 +1438,14 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
           onClick={() => setShowAdminPanel(true)}
         >
           <Shield className="mr-2 h-4 w-4" /> Admin Panel
+          {/* Reports are the one thing in this panel that waits on somebody. The count rides the button
+              rather than the profile circle: that badge is what is waiting for *you*, and a report queue
+              is waiting for whichever of the team gets to it. */}
+          {openReports > 0 && (
+            <span className="ml-2 rounded-full bg-destructive px-1.5 text-meta font-semibold text-destructive-foreground">
+              {openReports > 9 ? '9+' : openReports}
+            </span>
+          )}
         </GradientButton>
       )}
     </>
@@ -2602,6 +2633,12 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
         initialTab={devRoute?.modal === 'adminPanel' ? (devRoute.tab as AdminPanelTab | undefined) : undefined}
         initialPoliciesTab={devRoute?.modal === 'adminPanel' ? (devRoute.subtab as PoliciesSubTab | undefined) : undefined}
         initialFeedbackTab={devRoute?.modal === 'adminPanel' ? (devRoute.subtab as FeedbackSubTab | undefined) : undefined}
+        onOpenListing={(listingId) => {
+          // The panel stays open behind the browser: judging a listing is a step inside working the
+          // queue, not a departure from it.
+          handleOpenListing({ id: listingId, kind: 'world' });
+        }}
+        onReportsChanged={() => setReportCountNonce((n) => n + 1)}
       />
     </div>
   );
