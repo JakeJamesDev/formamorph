@@ -15,6 +15,7 @@ export const DEFAULT_WORLDS: DefaultWorldSeed[] = [
   { id: 'rampage', defaultName: 'City Rampage' },
   { id: 'valentines', defaultName: 'Valentines Survival' },
   { id: 'drone', defaultName: 'Reincarnated Drone' },
+  { id: 'veilwood', defaultName: 'Veilwood' },
 ];
 
 export const isDefaultWorldId = (id: string): boolean => DEFAULT_WORLDS.some((w) => w.id === id);
