@@ -116,6 +116,25 @@ const WORLDS = {
       moths: /moth/i.test(text),
     }),
   },
+  sugarscape: {
+    actions: [
+      "The craving spikes as I pass a wedged boulder cookie. I break off a chunk and eat it while walking, trying to keep the crumbs off my shirt.",
+      "A gummy bear wobbles out from behind a wafer tree and spreads its arms wide for a hug. I dodge left and sprint for the dunes.",
+    ],
+    flags: (text) => {
+      const f = [];
+      if (/\bblood(y|ied)?\b|\bgore\b|corpse|dismember|entrails|viscera/i.test(text)) f.push("TONE-GORE");
+      // Nothing in the Sugarscape speaks (the curse may whisper; creatures may not).
+      if (/(bear|pouncer|swarmers?|brawler|waypost|gingerbread|cyclone)[^.\n]{0,40}\b(says?|speaks?|whispers?|shouts?|calls? out|asks?|replies|growls? ["“])/i.test(text)) f.push("ENTITY-SPEAKS");
+      return f;
+    },
+    info: (text) => ({
+      curse: /craving|the hunger|the curse/i.test(text),
+      fullness: /\bfull(ness)?\b|stomach|stuffed/i.test(text),
+      resist: /resist|fight the urge|urge to eat|white-knuckl|gritted/i.test(text),
+      fixation: /chocolate chip cookies|strawberry shortcake|salted caramel|cinnamon rolls/i.test(text),
+    }),
+  },
 };
 
 // ---------- assembly from the real world JSON ----------
