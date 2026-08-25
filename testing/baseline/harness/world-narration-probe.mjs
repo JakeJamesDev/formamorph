@@ -135,6 +135,28 @@ const WORLDS = {
       fixation: /chocolate chip cookies|strawberry shortcake|salted caramel|cinnamon rolls/i.test(text),
     }),
   },
+  slime: {
+    actions: [
+      "A green slime flows off the curb toward my shoes. I duck into the abandoned diner, grab the salt shaker off the counter, and hurl a handful at it.",
+      "The checkpoint light sweeps toward me. I pull my sleeves down over my wrists and walk toward the barrier like a bored, healthy person.",
+    ],
+    flags: (text) => {
+      const f = [];
+      // Slimes engulf, never wound: no blood, no dissolved flesh.
+      if (/\bblood(y|ied)?\b|\bgore\b|corpse|dissolv\w+ (flesh|skin)|melt\w* (flesh|skin)/i.test(text)) f.push("TONE-GORE");
+      // The conversion's hard guard: assimilation stays clinical, never intimate or anatomical.
+      if (/\b(womb|breasts?|orifice|moan\w*|naked|nude)\b|\b(belly|stomach) (swell|grow)/i.test(text)) f.push("NSFW-RESIDUE");
+      // Slimes never speak ("whispers across the pavement" is movement, so only true speech verbs).
+      if (/(slime|creeper|bloom)[^.\n]{0,40}\b(says?|asks?|replies|speaks?)\b/i.test(text)) f.push("SLIME-SPEAKS");
+      return f;
+    },
+    info: (text) => ({
+      assim: /assimilat|translucen|green tint|sea glass/i.test(text),
+      salt: /\bsalt/i.test(text),
+      cordon: /checkpoint|patrol|quarantine|watch\b/i.test(text),
+      signoff: /Stay dry, Ashburn|thanks you for your compliance|damp is not doom|repeats until it doesn/i.test(text),
+    }),
+  },
 };
 
 // ---------- assembly from the real world JSON ----------
