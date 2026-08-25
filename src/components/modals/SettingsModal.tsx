@@ -2395,6 +2395,9 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, initialTab,
                               </ConfirmDialog>
                             )}
                           </div>
+                          {/* Read before the template: when this message is sent is runtime-conditional,
+                              so it can't be inferred from the field being visible. */}
+                          <p className="text-helper text-muted-foreground italic">{f.sentWhen}</p>
                           <PromptField
                             value={f.value}
                             onChange={f.set}

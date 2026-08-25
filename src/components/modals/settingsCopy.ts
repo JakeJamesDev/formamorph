@@ -18,6 +18,9 @@ export type SettingCopy = {
   description: string;
   /** Markdown shown behind the `ⓘ`. Carries cost, tradeoff, or mechanism — never a restatement. */
   info?: string;
+  /** Narration-message fields only: when this message is sent, in terms of app features and the turn —
+   *  the timing is runtime-conditional, so it can't be inferred from the field being visible. */
+  sentWhen?: string;
   /** Renders the badge. The word itself never appears in `description`. */
   experimental?: true;
 };
@@ -481,22 +484,26 @@ Lower it first when a model won't fit.`,
   recapMessage: {
     label: 'Recap Message',
     description: 'Asks for the story so far in one exchange.',
-    info: 'The question the story recap answers — older turns ride the narration history as this one exchange. Only used while Memory Summaries is on.',
+    sentWhen: 'Rides the narration history once Memory Summaries has condensed older turns.',
+    info: 'The question the story recap answers. The reply is pre-written from the summaries, so the AI reads the story so far as its own words.',
   },
   nowMessage: {
     label: 'Now Message',
     description: 'Closes the recap with where things stand now.',
-    info: 'Each chip carries its own clause and disappears when it has nothing to say, so any combination still reads as a sentence.',
+    sentWhen: 'Rides the narration history at the end of the recap’s reply.',
+    info: 'The recap is all past tense; without this stated present, the AI can restart a live scene as a fresh arrival. Each chip carries its own clause and disappears when it has nothing to say, so any combination still reads as a sentence.',
   },
   recallMessage: {
     label: 'Recall Message',
     description: 'Frames a recalled scene as the past.',
-    info: 'Used when Scene Recall brings an old turn back word-for-word.',
+    sentWhen: 'Rides the narration history when Scene Recall brings an old turn back.',
+    info: 'Sent right after the recap, with the old turn’s full narration as the reply. The wording must mark the scene as past — an unframed old scene can overrule what the recap says happened since.',
   },
   directionMessage: {
     label: 'Direction Message',
     description: 'Marks bracketed text as your direction, not speech.',
-    info: 'Rides with your action whenever it contains [square brackets] — tells the AI the bracketed text is you directing the scene as the author, not something your character says.',
+    sentWhen: 'Rides with your action whenever it contains [square brackets].',
+    info: 'Tells the AI the bracketed text is you directing the scene as the author, not something your character says.',
   },
 
   // ── Data · Saves ────────────────────────────────────────────────────────────
