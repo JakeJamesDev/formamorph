@@ -89,6 +89,18 @@ describe('settings copy', () => {
     expect(bad).toEqual([]);
   });
 
+  it('says when every narration message is sent, in one line', () => {
+    // The message fields are runtime-conditional riders, so visibility alone can't say when one is sent —
+    // each carries a `sentWhen`, held to the same one-sentence, one-line ceiling as a description.
+    const messages = entries.filter(([k]) => k.endsWith('Message'));
+    expect(messages.filter(([, c]) => !c.sentWhen?.trim()).map(([k]) => k)).toEqual([]);
+    const bad = messages.filter(([, c]) =>
+      !c.sentWhen!.endsWith('.')
+      || c.sentWhen!.slice(0, -1).includes('. ')
+      || c.sentWhen!.trim().split(/\s+/).length > MAX_DESCRIPTION_WORDS);
+    expect(bad.map(([k, c]) => `${k}: ${c.sentWhen}`)).toEqual([]);
+  });
+
   it('carries experimental as a flag rather than a word in the copy', () => {
     // R6 — the badge carries this, so the description spends all twelve words on what the setting does.
     const bad = entries.filter(([, c]) => /experimental/i.test(c.description));
