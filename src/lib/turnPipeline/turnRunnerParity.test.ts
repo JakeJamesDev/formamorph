@@ -43,6 +43,8 @@ const materialFor = (index: number): TurnMaterial => {
     sceneEntityTokens: {},
     destinations: [],
     narrationSystemPrompt: narration.systemPrompt,
+    narrationSystemPromptRuns: [],
+    historyRuns: [],
     trimmedHistory: narration.messages.slice(0, -1),
     narration: '',
     lastStory: index > 0 ? narrationOf(fixture.turns[index - 1]).response ?? '' : '',

@@ -1,4 +1,5 @@
 import type { AIRequestType, ChatMessage, Entity } from '@/types';
+import type { AnatomyRun, RequestAnatomy } from '@/lib/requestAnatomy';
 import type { ThinkingMode } from '@/contexts/SettingsContext';
 
 /**
@@ -130,8 +131,12 @@ export interface TurnMaterial {
    * notes fallback that produce it are the narration request's own assembly, not a turn decision.
    */
   narrationSystemPrompt: string;
+  /** Request Anatomy runs over `narrationSystemPrompt`. Empty leaves the system prompt unlabeled. */
+  narrationSystemPromptRuns: AnatomyRun[];
   /** The trimmed history the narration rides on; this turn's user message is appended to it. */
   trimmedHistory: ChatMessage[];
+  /** Request Anatomy runs, one list per entry of `trimmedHistory`. Empty leaves the history unlabeled. */
+  historyRuns: AnatomyRun[][];
   /** The narration text this turn produced; empty before the narration pass has answered. */
   narration: string;
   /** The last narration the planning stages recap from. */
@@ -166,7 +171,9 @@ export function emptyTurnMaterial(seed: TurnMaterialSeed): TurnMaterial {
     ctx: {},
     sceneEntityTokens: {},
     narrationSystemPrompt: "",
+    narrationSystemPromptRuns: [],
     trimmedHistory: [],
+    historyRuns: [],
     narration: "",
     lastStory: "",
     plannerRecap: "",
@@ -186,6 +193,12 @@ export interface TurnPassRequest {
   messages: ChatMessage[];
   /** The cap the pass asks for; null means the request type's own default applies downstream. */
   maxTokens: number | null;
+  /**
+   * The Request Anatomy sidecar: which runs of `systemPrompt` and `messages` are authored prompt text and
+   * which are assembled context. Inspection only — the request layer builds its body from `systemPrompt`
+   * and `messages` alone, so nothing here can reach an endpoint. Absent means unlabeled.
+   */
+  anatomy?: RequestAnatomy;
   silent: boolean;
   /** The turn a silent request summarizes; absent on foreground passes. */
   attachTurnId?: string;

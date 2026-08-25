@@ -8,7 +8,8 @@ import {
   type ScanSource,
 } from "../dictionaryUtils";
 import { selectSemanticLore, applySemanticLore } from "../semanticDictionary";
-import { renderPromptTemplate, parsePromptTemplate } from "../promptTemplate";
+import { renderPromptTemplateRuns, parsePromptTemplate } from "../promptTemplate";
+import { trimEndTiled, type AnatomyRun } from "../requestAnatomy";
 import { splitToken } from "../promptVariables";
 import { restyle } from "../sectionStyle";
 import type { SectionStyle } from "../promptPresets";
@@ -62,6 +63,9 @@ export interface NarrationPromptInput {
 
 export interface NarrationPromptResult {
   prompt: string;
+  /** The Request Anatomy runs over `prompt`: the author's template prose against the values its chips
+   *  injected. Tiles `prompt` exactly. */
+  runs: AnatomyRun[];
   dictionaryDebug: DictionaryDebug;
 }
 
@@ -114,14 +118,15 @@ export function buildNarrationPrompt(input: NarrationPromptInput): NarrationProm
   // preset's section style to match the authored prompt's headers; the lore blocks carry no headers of their
   // own and need none. Trailing whitespace goes, so a trailing chip that resolves to nothing — the language
   // chip on an English game — leaves no dangling blank lines behind it.
-  const prompt = renderPromptTemplate(template, {
+  const rendered = trimEndTiled(renderPromptTemplateRuns(template, {
     ...ctx,
     "<LENGTH GUIDANCE>": lengthGuidance(paragraphLimit, maxTokens),
     "<MARKDOWN GUIDANCE>": restyle(markdownGuidance(markdownOutput), sectionStyle),
     "<DICTIONARY>": resolvePH(buildDictionaryContext(afterEntries, false)) || NONE_PLACEHOLDER,
     "<DICTIONARY|before>": resolvePH(buildDictionaryContext(beforeEntries, false)) || NONE_PLACEHOLDER,
     "<LANGUAGE>": languageDirective("narration", language),
-  }).trimEnd();
+  }, { source: "system-template", contextLabel: "world-data" }));
+  const prompt = rendered.content;
 
   // AI-context capture. Every scanned source is a string the prompt genuinely contains, so the viewer can
   // locate each match directly — no re-derivation, and the highlights cannot drift from what activated.
@@ -135,5 +140,5 @@ export function buildNarrationPrompt(input: NarrationPromptInput): NarrationProm
   const sources = [...dictCorpus.scene, ...dictCorpus.history, ...recursionSources]
     .filter((s) => hitRegions.has(s.region));
 
-  return { prompt, dictionaryDebug: { report, sources } };
+  return { prompt, runs: rendered.runs, dictionaryDebug: { report, sources } };
 }

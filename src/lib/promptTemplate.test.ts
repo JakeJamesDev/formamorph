@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest';
-import { parsePromptTemplate, serializeSegments, renderPromptTemplate, resolveToken } from './promptTemplate';
+import { parsePromptTemplate, serializeSegments, renderPromptTemplate, renderPromptTemplateRuns, resolveToken } from './promptTemplate';
+import { runsTile } from './requestAnatomy';
 import { joinToken } from './promptVariables';
 import {
   defaultNowLinePrompt,
@@ -351,5 +352,76 @@ describe('resolveToken (shared by the renderer and the editor preview)', () => {
   it('agrees with renderPromptTemplate for the same token', () => {
     const token = affixed('<ENTITIES>', 'name');
     expect(renderPromptTemplate(token, values)).toBe(resolveToken(token, values));
+  });
+});
+
+describe('renderPromptTemplateRuns', () => {
+  const labels = { source: 'system-template' as const, contextLabel: 'world-data' as const };
+  const slice = (t: { content: string; runs: { start: number; end: number }[] }) =>
+    t.runs.map((r) => t.content.slice(r.start, r.end));
+
+  it('renders byte-identically to renderPromptTemplate', () => {
+    const values = {
+      '<WORLD DESCRIPTION>': 'A drowned delta town.',
+      '<NOTES>': 'Keep the tide rising.',
+      '<STATS DESCRIPTION>': 'Health 8/10',
+    };
+    for (const template of [
+      defaultSystemPrompt,
+      defaultChoicesPrompt,
+      defaultStatUpdatesPrompt,
+      'A <WORLD DESCRIPTION> B <NOTES> C',
+      'no chips at all',
+      '<WORLD DESCRIPTION>',
+      'trailing <UNKNOWN CHIP>',
+    ]) {
+      expect(renderPromptTemplateRuns(template, values, labels).content).toBe(
+        renderPromptTemplate(template, values),
+      );
+    }
+  });
+
+  it('splits authored template prose from the value a chip injected', () => {
+    const tiled = renderPromptTemplateRuns('Before <WORLD DESCRIPTION> after.', { '<WORLD DESCRIPTION>': 'DELTA' }, labels);
+    expect(slice(tiled)).toEqual(['Before ', 'DELTA', ' after.']);
+    expect(tiled.runs.map((r) => r.source ?? r.contextLabel)).toEqual([
+      'system-template', 'world-data', 'system-template',
+    ]);
+  });
+
+  it('counts an unresolved token as authored text, since that is what the model reads', () => {
+    const tiled = renderPromptTemplateRuns('keep <NOTES>', {}, labels);
+    expect(tiled.content).toBe('keep <NOTES>');
+    expect(tiled.runs).toHaveLength(1);
+    expect(tiled.runs[0].source).toBe('system-template');
+  });
+
+  it('tiles the rendered content exactly, for every default prompt', () => {
+    const values = { '<WORLD DESCRIPTION>': 'W', '<NOTES>': 'N', '<ENTITIES>': 'E', '<LOCATION>': 'L' };
+    for (const template of [
+      defaultSystemPrompt, defaultChoicesPrompt, defaultStatUpdatesPrompt, defaultLocationChangePrompt,
+      defaultThinkingPrompt, defaultSummaryPrompt, defaultDirectorPrompt, defaultCharacterPrompt,
+      defaultStoryboardPrompt, defaultDiaryPrompt,
+    ]) {
+      const tiled = renderPromptTemplateRuns(template, values, labels);
+      expect(runsTile(tiled.content, tiled.runs)).toBe(true);
+    }
+  });
+
+  it('carries an affixed chip whole into its context run, wrapper included', () => {
+    const token = joinToken({ base: '<NOTES>', pre: 'Remember: ', post: '.' });
+    const tiled = renderPromptTemplateRuns(`x ${token} y`, { '<NOTES>': 'tide' }, labels);
+    expect(slice(tiled)).toEqual(['x ', 'Remember: tide.', ' y']);
+  });
+
+  it('labels the user template and the typed action apart', () => {
+    const tiled = renderPromptTemplateRuns(
+      'My action this turn: <PLAYER ACTION>',
+      { '<PLAYER ACTION>': 'I wade toward the skiff.' },
+      { source: 'user-template', contextLabel: 'action' },
+    );
+    expect(slice(tiled)).toEqual(['My action this turn: ', 'I wade toward the skiff.']);
+    expect(tiled.runs[0].source).toBe('user-template');
+    expect(tiled.runs[1].contextLabel).toBe('action');
   });
 });

@@ -1,8 +1,9 @@
 import { describe, it, expect } from 'vitest';
 import { TURN_PASSES, TURN_PASS_CAPS } from './turnPasses';
 import { planTurn } from './planTurn';
-import type { Entity } from '@/types';
+import type { ChatMessage, Entity } from '@/types';
 import type { TurnMaterial, TurnPassId, TurnPassRecord, TurnPlanInput, TurnSettings } from './turnPlan';
+import { runsTile } from '@/lib/requestAnatomy';
 import { TEST_PROMPTS, testInput } from './turnTestInputs';
 import {
   INLINE_THINKING_DIRECTIVE, OPENING_SCENE_CUE, planDirective, defaultChoicesPrompt,
@@ -25,6 +26,8 @@ const material = (over: Partial<TurnMaterial> = {}): TurnMaterial => ({
   sceneEntityTokens: { '<ENTITIES>': 'IN SCENE ONLY' },
   destinations: ['The Far Bank', 'The Sedge Road'],
   narrationSystemPrompt: 'ASSEMBLED NARRATION PROMPT',
+  narrationSystemPromptRuns: [],
+  historyRuns: [],
   trimmedHistory: [
     { role: 'user', content: 'START GAME' },
     { role: 'assistant', content: 'The dock is damp.' },
@@ -354,5 +357,82 @@ describe('turn pass requests', () => {
       expect(typeof record.parseResponse).toBe('function');
       expect(record.type.length).toBeGreaterThan(0);
     }
+  });
+});
+
+describe('the narration request anatomy', () => {
+  const HISTORY: ChatMessage[] = [
+    { role: 'user', content: 'a1' },
+    { role: 'assistant', content: 'g1' },
+  ];
+  const HISTORY_RUNS = [
+    [{ start: 0, end: 2, contextLabel: 'past-action' as const }],
+    [{ start: 0, end: 2, contextLabel: 'past-narration' as const }],
+  ];
+  const withHistory = { trimmedHistory: HISTORY, historyRuns: HISTORY_RUNS };
+  const anatomyOf = (over: Partial<TurnMaterial> = {}, settings: Partial<TurnSettings> = {}, planOver: Partial<TurnPlanInput> = {}) =>
+    build('narration', { ...withHistory, ...over }, planOver, settings).anatomy!;
+  /** The final user turn's runs, paired with the text each one selects. */
+  const finalRuns = (over: Partial<TurnMaterial> = {}, settings: Partial<TurnSettings> = {}, planOver: Partial<TurnPlanInput> = {}) => {
+    const request = build('narration', { ...withHistory, ...over }, planOver, settings);
+    const content = request.messages[request.messages.length - 1].content;
+    const runs = request.anatomy!.messages[request.anatomy!.messages.length - 1];
+    return runs.map((r) => [r.source ?? r.contextLabel, content.slice(r.start, r.end)]);
+  };
+
+  it('sends byte-identical messages whether or not the caller supplied a sidecar', () => {
+    const labeled = build('narration', withHistory, {}, { thinkingMode: 'off' });
+    const unlabeled = build('narration', { trimmedHistory: HISTORY, historyRuns: [] }, {}, { thinkingMode: 'off' });
+    expect(labeled.messages).toEqual(unlabeled.messages);
+    expect(labeled.systemPrompt).toBe(unlabeled.systemPrompt);
+  });
+
+  it('lines the sidecar up with the messages it sends, tiling each one', () => {
+    const request = build('narration', withHistory, {}, { thinkingMode: 'off' });
+    const anatomy = request.anatomy!;
+    expect(anatomy.messages).toHaveLength(request.messages.length);
+    request.messages.forEach((m, i) => expect(runsTile(m.content, anatomy.messages[i])).toBe(true));
+  });
+
+  it('carries the caller assembled system-prompt runs through untouched', () => {
+    const runs = [{ start: 0, end: 8, source: 'system-template' as const }];
+    expect(anatomyOf({ narrationSystemPromptRuns: runs }).system).toEqual(runs);
+  });
+
+  it('carries the history runs through in order, ahead of this turn own', () => {
+    expect(anatomyOf().messages.slice(0, 2)).toEqual(HISTORY_RUNS);
+  });
+
+  it('leaves history unlabeled — never misaligned — when the caller built no sidecar', () => {
+    const anatomy = anatomyOf({ historyRuns: [] });
+    expect(anatomy.messages.slice(0, 2)).toEqual([[], []]);
+    expect(anatomy.messages[2].length).toBeGreaterThan(0);
+  });
+
+  it('splits the user template from the action the player typed', () => {
+    expect(finalRuns({}, { thinkingMode: 'off' })).toEqual([
+      ['user-template', 'Player: '],
+      ['action', 'I read the notices.'],
+    ]);
+  });
+
+  it('marks the direction rider on a bracketed turn, and leaves no trace without brackets', () => {
+    const bracket = { action: 'I wait. [make her leave]' };
+    expect(finalRuns(bracket, { thinkingMode: 'off' })).toEqual([
+      ['user-template', 'Player: '],
+      ['action', 'I wait. [make her leave]\n\n'],
+      ['direction', 'OOC RIDER'],
+    ]);
+    expect(finalRuns({}, { thinkingMode: 'off' }).some(([label]) => label === 'direction')).toBe(false);
+    // Thinking on: no user template and no rider, so the action stands alone as context.
+    expect(finalRuns(bracket, { thinkingMode: 'staged' })).toEqual([['action', 'I wait. [make her leave]']]);
+  });
+
+  it('labels the inline thinking directive and the turn plan as context, not as anything authored', () => {
+    const inline = finalRuns({}, { thinkingMode: 'inline' });
+    expect(inline[inline.length - 1][0]).toBe('mode-directive');
+    const planned = finalRuns({ turnPlan: 'Scene: dusk.' }, { thinkingMode: 'staged' });
+    expect(planned[planned.length - 1][0]).toBe('turn-plan');
+    expect(planned[planned.length - 1][1]).toContain('Scene: dusk.');
   });
 });

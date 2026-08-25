@@ -204,7 +204,7 @@ describe('notes in the assembled history', () => {
 
   it('with digests off, notes lead as a standing block ahead of the verbatim history', () => {
     const turns = parseTurns(history());
-    const messages = buildVerbatimHistory(turns, WIDE, 0, 0, [
+    const { messages } = buildVerbatimHistory(turns, WIDE, 0, 0, [
       { id: 'n1', text: 'FIRST', anchorTurn: 2 },
       { id: 'n2', text: 'SECOND', anchorTurn: 6 },
     ], 'RECAP?');
