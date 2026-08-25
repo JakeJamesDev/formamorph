@@ -1163,7 +1163,7 @@ const GameViewer = ({
       // Assembled from the same context values every other prompt uses: each chip carries its own wording
       // in its affixes and disappears with its value, so any combination still reads as a sentence.
       const nowLine = currentLocation ? renderPromptTemplate(nowLinePrompt, buildContextValuesRef.current()) : undefined;
-      const { messages, counts, bandTurnIds, rehydratedTurnIds } = buildBandedHistory({
+      const { messages, runs, counts, bandTurnIds, rehydratedTurnIds } = buildBandedHistory({
         turns,
         contextWindow,
         promptTokens,
@@ -1192,7 +1192,7 @@ const GameViewer = ({
         setContextMemoryIds(bandTurnIds);
         setRehydratedMemoryIds(rehydratedTurnIds);
       }
-      return messages;
+      return { messages, runs };
     }
     lastBandCountsRef.current = null;
     // Digests off: no band to anchor into, so the player's own memories lead as a standing block.
@@ -1775,7 +1775,7 @@ const GameViewer = ({
         // diary retrieval). Null = all semantic features quietly off for this turn.
         actionVec = await embedActionVec(effectiveAction);
 
-        const { prompt, dictionaryDebug } = buildNarrationPrompt({
+        const { prompt, runs, dictionaryDebug } = buildNarrationPrompt({
           template: systemPrompt,
           ctx,
           action: effectiveAction,
@@ -1800,7 +1800,7 @@ const GameViewer = ({
         // The context meter re-trims with the same scores + action vector so its counts mirror this turn.
         lastRelevanceScoresRef.current = relevanceScores;
         lastActionVecRef.current = actionVec;
-        const trimmedHistory = getTrimmedMessageHistory(estimateTokens(prompt.length), effectiveAction, relevanceScores, actionVec, true);
+        const { messages: trimmedHistory, runs: historyRuns } = getTrimmedMessageHistory(estimateTokens(prompt.length), effectiveAction, relevanceScores, actionVec, true);
 
         // Add user message to history after getting trimmed history. Stores the proxy on the opening turn so
         // later turns' context is byte-identical to the old flow (the real opening text lives in openingActionRef).
@@ -1840,7 +1840,9 @@ const GameViewer = ({
         return {
           ctx,
           narrationSystemPrompt: prompt,
+          narrationSystemPromptRuns: runs,
           trimmedHistory,
+          historyRuns,
           lastStory: band?.lastStory ?? lastStory,
           plannerRecap: band?.recap ?? "",
           activeCharacterGuidance: activeCharacterGuidance(limitActiveCharacters, activeCharacterLimit),
@@ -3610,7 +3612,7 @@ const GameViewer = ({
   // not on every render.
   const memoryStats = useMemo(() => {
     const promptTokens = estimateTokens(lastPromptChars);
-    const trimmed = getTrimmedMessageHistory(promptTokens, "", lastRelevanceScoresRef.current, lastActionVecRef.current);
+    const { messages: trimmed } = getTrimmedMessageHistory(promptTokens, "", lastRelevanceScoresRef.current, lastActionVecRef.current);
     return {
       promptTokens,
       trimmed,

@@ -1,6 +1,7 @@
 import type { ChatMessage } from '@/types';
 import type { TurnPassRecord, TurnPassRequest, TurnPlanInput, TurnMaterial, TurnPassSubject } from './turnPlan';
-import { renderPromptTemplate } from '@/lib/promptTemplate';
+import { renderPromptTemplate, promptTemplatePieces } from '@/lib/promptTemplate';
+import { tilePieces, type AnatomyPiece } from '@/lib/requestAnatomy';
 import { NONE_PLACEHOLDER } from '@/lib/promptFallbacks';
 import {
   buildCharacterUserMessage,
@@ -284,7 +285,7 @@ const storyboardPass: TurnPassRecord<string> = {
  * notes fallback); what the pass owns is the final user turn — the action as the model receives it, plus
  * whatever this turn's mode rides on it.
  */
-const narrationPass: TurnPassRecord<string> = {
+export const narrationPass: TurnPassRecord<string> = {
   id: 'narration',
   type: 'narration',
   stage: 'narration',
@@ -300,23 +301,41 @@ const narrationPass: TurnPassRecord<string> = {
       : material.action;
     // The user template and the OOC rider apply only with thinking off — plan and inline modes append
     // their own directives, which must never sandwich against custom text.
-    const oocRider =
-      hasOocDirective(actionText) && input.prompts.oocDirective.trim() ? `\n\n${input.prompts.oocDirective}` : '';
-    let content =
+    const ridden = hasOocDirective(actionText) && input.prompts.oocDirective.trim();
+    // The message is assembled as labeled pieces, so the Request Anatomy sidecar below cannot describe a
+    // message the model isn't sent: the content IS the pieces joined.
+    const pieces: AnatomyPiece[] =
       input.settings.thinkingMode === 'off'
-        ? renderPromptTemplate(input.prompts.narrationUser, { '<PLAYER ACTION>': actionText }) + oocRider
-        : actionText;
+        ? [
+            ...promptTemplatePieces(
+              input.prompts.narrationUser,
+              { '<PLAYER ACTION>': actionText },
+              { source: 'user-template', contextLabel: 'action' },
+            ),
+            ...(ridden
+              ? [{ text: '\n\n', glue: true }, { text: input.prompts.oocDirective, source: 'direction' as const }]
+              : []),
+          ]
+        : [{ text: actionText, contextLabel: 'action' }];
     // Both directives ride the final user turn, adjacent to where the model writes — recency is what makes
     // small models actually honor them.
-    if (input.settings.thinkingMode === 'inline') content += INLINE_THINKING_DIRECTIVE;
-    if (material.turnPlan) content += planDirective(material.turnPlan);
+    if (input.settings.thinkingMode === 'inline') pieces.push({ text: INLINE_THINKING_DIRECTIVE, contextLabel: 'mode-directive' });
+    if (material.turnPlan) pieces.push({ text: planDirective(material.turnPlan), contextLabel: 'turn-plan' });
+    const finalTurn = tilePieces(pieces);
+    // A caller that assembled the history without a sidecar leaves those messages unlabeled rather than
+    // misaligning the ones this pass does own.
+    const historyRuns =
+      material.historyRuns.length === material.trimmedHistory.length
+        ? material.historyRuns
+        : material.trimmedHistory.map(() => []);
     return {
       type: 'narration',
       systemPrompt: material.narrationSystemPrompt,
-      messages: [...material.trimmedHistory, { role: 'user', content }],
+      messages: [...material.trimmedHistory, { role: 'user', content: finalTurn.content }],
       maxTokens: null,
       silent: false,
       quiet: false,
+      anatomy: { system: material.narrationSystemPromptRuns, messages: [...historyRuns, finalTurn.runs] },
     };
   },
   parseResponse: (raw) => raw,

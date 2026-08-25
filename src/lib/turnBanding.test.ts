@@ -11,6 +11,7 @@ import {
   IMPORTANCE_SPREAD,
   type BandTurn,
 } from './turnBanding';
+import { runsTile } from './requestAnatomy';
 
 const user = (content: string): ChatMessage => ({ role: 'user', content });
 
@@ -66,7 +67,7 @@ describe('buildVerbatimHistory', () => {
       ...pair('a2', { turnId: 't2', narration: 'g2' }),
     ]);
     const out = buildVerbatimHistory(turns, WIDE, 0, 0);
-    expect(out.map((m) => m.content)).toEqual(['a1', 'g1', 'a2', 'g2']);
+    expect(out.messages.map((m) => m.content)).toEqual(['a1', 'g1', 'a2', 'g2']);
   });
 
   it('keeps the newest turns and drops older ones past the budget', () => {
@@ -76,7 +77,7 @@ describe('buildVerbatimHistory', () => {
       ...pair('a3', { turnId: 't3', narration: 'g3' }),
     ]);
     const out = buildVerbatimHistory(turns, 5120, 0, 0);
-    expect(out.map((m) => m.content)).toEqual(['a2', 'g2', 'a3', 'g3']);
+    expect(out.messages.map((m) => m.content)).toEqual(['a2', 'g2', 'a3', 'g3']);
   });
 });
 
@@ -632,5 +633,115 @@ describe('buildBandedHistory in-world time stamps', () => {
       .toBe(plain.counts.turnsBanded);
     expect(buildBandedHistory({ ...base, turns, keywords: [], stamp, contextWindow: exact }).counts.turnsBanded)
       .toBeLessThan(plain.counts.turnsBanded);
+  });
+});
+
+describe('buildBandedHistory anatomy runs', () => {
+  const RECAP = 'Recap the story so far.';
+  const RECALL = 'Recall in full the earlier moment my next action returns to.';
+  const NOW = 'Now you are at the dock; the scene is already underway.';
+  const base = {
+    contextWindow: WIDE, promptTokens: 0, maxTokens: 0, verbatimFloor: 2, rehydrateCap: WIDE,
+    actionEntities: [] as string[], keywords: [] as string[], recapPrompt: RECAP,
+  };
+  const fourTurns = () => parseTurns([
+    ...pair('a1', { turnId: 't1', narration: 'g1', summary: 's1' }),
+    ...pair('a2', { turnId: 't2', narration: 'g2', summary: 's2' }),
+    ...pair('a3', { turnId: 't3', narration: 'g3', summary: 's3' }),
+    ...pair('a4', { turnId: 't4', narration: 'g4', summary: 's4' }),
+  ]);
+  /** Every run's label paired with the text its offsets actually select. */
+  const labeled = (r: ReturnType<typeof buildBandedHistory>) =>
+    r.runs.map((runs, i) => runs.map((run) => [run.source ?? run.contextLabel, r.messages[i].content.slice(run.start, run.end)]));
+
+  it('gives every message a run list that tiles its content exactly', () => {
+    const out = buildBandedHistory({ ...base, turns: fourTurns(), nowLine: NOW, semanticRehydrate: ['t2'], rehydratePrompt: RECALL });
+    expect(out.runs).toHaveLength(out.messages.length);
+    out.messages.forEach((m, i) => expect(runsTile(m.content, out.runs[i])).toBe(true));
+  });
+
+  it('labels the recap question as authored and its digests as condensed context', () => {
+    const out = buildBandedHistory({ ...base, turns: fourTurns() });
+    expect(labeled(out)[0]).toEqual([['recap', RECAP]]);
+    expect(labeled(out)[1]).toEqual([['condensed', 's1 s2']]);
+  });
+
+  it('marks the now-line inside the recap reply, sliced to exactly the now-line text', () => {
+    const out = buildBandedHistory({ ...base, turns: fourTurns(), nowLine: NOW });
+    const reply = out.runs[1];
+    expect(reply).toHaveLength(2);
+    // The blank line that joins them rides with the digests, so the now run starts on its own first word.
+    expect(out.messages[1].content.slice(reply[0].start, reply[0].end)).toBe('s1 s2\n\n');
+    expect(out.messages[1].content.slice(reply[1].start, reply[1].end)).toBe(NOW);
+    expect(reply[1].source).toBe('now');
+  });
+
+  it('leaves no now run at all when no now-line was passed', () => {
+    const out = buildBandedHistory({ ...base, turns: fourTurns() });
+    expect(out.runs.flat().some((r) => r.source === 'now')).toBe(false);
+  });
+
+  it('leaves no recap or now runs when the floor swallows every turn (no band)', () => {
+    const out = buildBandedHistory({ ...base, turns: fourTurns(), verbatimFloor: 99, nowLine: NOW });
+    const sources = out.runs.flat().map((r) => r.source);
+    expect(sources).not.toContain('recap');
+    expect(sources).not.toContain('now');
+    expect(out.messages.some((m) => m.content.includes(NOW))).toBe(false);
+  });
+
+  it('describes a verbatim pair asymmetrically: the action, then the narration that answered it', () => {
+    const out = buildBandedHistory({ ...base, turns: fourTurns() });
+    expect(labeled(out).slice(2)).toEqual([
+      [['past-action', 'a3']],
+      [['past-narration', 'g3']],
+      [['past-action', 'a4']],
+      [['past-narration', 'g4']],
+    ]);
+  });
+
+  it('labels the recall exchange, and drops both runs when Scene Recall did not fire', () => {
+    const on = buildBandedHistory({ ...base, turns: fourTurns(), semanticRehydrate: ['t2'], rehydratePrompt: RECALL });
+    expect(labeled(on)[2]).toEqual([['recall', RECALL]]);
+    expect(labeled(on)[3]).toEqual([['recalled', 'g2']]);
+    const off = buildBandedHistory({ ...base, turns: fourTurns(), semanticRehydrate: null, rehydratePrompt: RECALL });
+    const labels = off.runs.flat().map((r) => r.source ?? r.contextLabel);
+    expect(labels).not.toContain('recall');
+    expect(labels).not.toContain('recalled');
+  });
+
+  it('separates a player note from the digests it sits between', () => {
+    const out = buildBandedHistory({
+      ...base, turns: fourTurns(),
+      notes: [{ id: 'n1', text: 'The tide turns at dusk.', anchorTurn: 1 }],
+    });
+    // Each join rides with the piece before it, so every run starts on its own first character.
+    expect(labeled(out)[1]).toEqual([
+      ['condensed', 's1 '],
+      ['notes', 'The tide turns at dusk. '],
+      ['condensed', 's2'],
+    ]);
+  });
+
+  it('carries the in-world stamp inside the run of the memory it labels', () => {
+    const stamp = (pos: number) => `[Day ${pos}]`;
+    const out = buildBandedHistory({ ...base, turns: fourTurns(), stamp });
+    expect(labeled(out)[1]).toEqual([['condensed', '[Day 1] s1 [Day 3] s2']]);
+  });
+});
+
+describe('buildVerbatimHistory anatomy runs', () => {
+  it('tiles every message, and names the notes lead as the player own writing', () => {
+    const turns = parseTurns([
+      ...pair('a1', { turnId: 't1', narration: 'g1' }),
+      ...pair('a2', { turnId: 't2', narration: 'g2' }),
+    ]);
+    const out = buildVerbatimHistory(turns, WIDE, 0, 0, [{ id: 'n1', text: 'FIRST', anchorTurn: 2 }], 'RECAP?');
+    expect(out.runs).toHaveLength(out.messages.length);
+    out.messages.forEach((m, i) => expect(runsTile(m.content, out.runs[i])).toBe(true));
+    expect(out.runs[0][0].source).toBe('recap');
+    expect(out.runs[1][0].contextLabel).toBe('notes');
+    expect(out.runs.slice(2).flat().map((r) => r.contextLabel)).toEqual([
+      'past-action', 'past-narration', 'past-action', 'past-narration',
+    ]);
   });
 });

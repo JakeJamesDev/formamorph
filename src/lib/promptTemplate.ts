@@ -1,5 +1,6 @@
 import { TOKEN_PATTERN, splitToken } from './promptVariables';
 import { NONE_PLACEHOLDER } from './promptFallbacks';
+import { tilePieces, type AnatomyPiece, type AnatomySource, type ContextLabel, type TiledRuns } from './requestAnatomy';
 
 /** A prompt template parsed into an ordered run of literal text and variable tokens. */
 export type PromptSegment =
@@ -59,6 +60,38 @@ export function renderPromptTemplate(template: string, values: Record<string, st
  * all. Values are keyed by the affix-free token; a token from another chip family (placeholders) doesn't
  * parse here and returns undefined, leaving that family's own lookup to handle it.
  */
+/**
+ * The same render as {@link renderPromptTemplate}, plus the run boundaries between what the author typed
+ * and what a chip injected — the Request Anatomy sidecar's first source. `content` is byte-identical to
+ * `renderPromptTemplate`'s output on the same inputs, which is what lets a labeled request be the request.
+ *
+ * A token with no value stays as the raw token, so it is counted as authored: an unresolved `<...>` is text
+ * the author typed and the model reads verbatim.
+ */
+export function renderPromptTemplateRuns(
+  template: string,
+  values: Record<string, string>,
+  labels: { source: AnatomySource; contextLabel: ContextLabel },
+): TiledRuns {
+  return tilePieces(promptTemplatePieces(template, values, labels));
+}
+
+/** The same split as {@link renderPromptTemplateRuns}, left as pieces so a caller can append its own
+ *  (the narration's OOC rider, a mode directive) before tiling the message as a whole. */
+export function promptTemplatePieces(
+  template: string,
+  values: Record<string, string>,
+  labels: { source: AnatomySource; contextLabel: ContextLabel },
+): AnatomyPiece[] {
+  return parsePromptTemplate(template).map((segment) => {
+    if (segment.type === 'text') return { text: segment.value, source: labels.source };
+    const resolved = resolveToken(segment.token, values);
+    return resolved === undefined
+      ? { text: segment.token, source: labels.source }
+      : { text: resolved, contextLabel: labels.contextLabel };
+  });
+}
+
 export function resolveToken(token: string, values: Record<string, string>): string | undefined {
   const parts = splitToken(token);
   if (!parts) return undefined;

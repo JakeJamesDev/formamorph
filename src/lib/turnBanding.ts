@@ -1,4 +1,5 @@
 import type { ChatMessage, DictionaryEntry } from '@/types';
+import { tilePieces, type AnatomyPiece, type AnatomyRun } from './requestAnatomy';
 import type { MemoryNote } from './memoryOverrides';
 import { parseTurnContent } from './turnDigest';
 import { getActivatedDictionary, parseKeywords } from './dictionaryUtils';
@@ -58,8 +59,21 @@ export interface BandCounts {
   turnsRehydrated: number;
 }
 
+/** One whole message as a single labeled run. Empty content gets no run, so the tiling invariant holds. */
+function wholeRun(content: string, label: Pick<AnatomyRun, 'source' | 'contextLabel'>): AnatomyRun[] {
+  return content ? [{ start: 0, end: content.length, ...label }] : [];
+}
+
+/** A verbatim turn's pair of runs: the action the player took, then the narration that answered it.
+ *  Deliberately not two copies of one label — adjacent twins read as a bug rather than as a turn. */
+function pairRuns(userContent: string, gameText: string): AnatomyRun[][] {
+  return [wholeRun(userContent, { contextLabel: 'past-action' }), wholeRun(gameText, { contextLabel: 'past-narration' })];
+}
+
 export interface BandResult {
   messages: ChatMessage[];
+  /** Request Anatomy runs, one list per entry of `messages`. Each list tiles its message exactly. */
+  runs: AnatomyRun[][];
   /** The turn ids that survived into the digest band, chronological. Feed back as `stickyIds` next
    *  turn to give incumbents hysteresis. Empty when there is no band. */
   bandTurnIds: string[];
@@ -142,11 +156,18 @@ function pairTokenCost(turn: BandTurn): number {
 /** A stamp resolver over the same position domain the pieces sort by (see lib/gameClock). */
 export type BandStamp = (pos: number) => string;
 
-function bandPieces(turns: BandTurn[], notes: MemoryNote[] = [], stamp?: BandStamp): string[] {
-  const pieces: Array<{ pos: number; order: number; text: string }> = [];
-  for (const t of turns) pieces.push({ pos: t.index, order: 0, text: (t.summary || '').trim() });
+/** A band body piece and which feature wrote it — the two read alike to the model, and apart in the
+ *  Request Anatomy. */
+interface BandPiece {
+  text: string;
+  kind: 'digest' | 'note';
+}
+
+function bandPieces(turns: BandTurn[], notes: MemoryNote[] = [], stamp?: BandStamp): BandPiece[] {
+  const pieces: Array<{ pos: number; order: number; text: string; kind: BandPiece['kind'] }> = [];
+  for (const t of turns) pieces.push({ pos: t.index, order: 0, text: (t.summary || '').trim(), kind: 'digest' });
   // order 1 breaks a tie toward the note: it was written after that turn committed.
-  for (const n of notes) pieces.push({ pos: n.anchorTurn, order: 1, text: (n.text || '').trim() });
+  for (const n of notes) pieces.push({ pos: n.anchorTurn, order: 1, text: (n.text || '').trim(), kind: 'note' });
   return pieces
     .sort((a, b) => a.pos - b.pos || a.order - b.order)
     .filter((p) => p.text)
@@ -154,14 +175,29 @@ function bandPieces(turns: BandTurn[], notes: MemoryNote[] = [], stamp?: BandSta
     // like a digest — it sits at an anchor in the same chronology and reads as one.
     .map((p) => {
       const label = stamp?.(p.pos)?.trim();
-      return label ? `${label} ${p.text}` : p.text;
+      return { text: label ? `${label} ${p.text}` : p.text, kind: p.kind };
     });
+}
+
+/** The recap exchange's assistant reply, and the runs over it: each body piece under the feature that
+ *  wrote it, the now-line under the editor that owns it. The joins ride with the text they join, so the
+ *  now-line's run starts on its own first character. */
+function recapReplyTiled(pieces: BandPiece[], nowLine?: string): { content: string; runs: AnatomyRun[] } {
+  const parts: AnatomyPiece[] = [];
+  pieces.forEach((piece, i) => {
+    if (i > 0) parts.push({ text: ' ', glue: true });
+    parts.push({ text: piece.text, contextLabel: piece.kind === 'note' ? 'notes' : 'condensed' });
+  });
+  if (nowLine) {
+    parts.push({ text: '\n\n', glue: true }, { text: nowLine, source: 'now' });
+  }
+  return tilePieces(parts);
 }
 
 /** The digests joined into the recap exchange's assistant reply. Space-joined — the exact merged form
  *  the digest-framing probe validated (newline-join is untested). */
 function mergedBandText(turns: BandTurn[], notes: MemoryNote[] = [], stamp?: BandStamp): string {
-  return bandPieces(turns, notes, stamp).join(' ');
+  return bandPieces(turns, notes, stamp).map((p) => p.text).join(' ');
 }
 
 /** The token cost of the whole digest band as it actually rides: one recap-question user line plus the
@@ -179,7 +215,7 @@ function bandExchangeCost(turns: BandTurn[], recapPrompt: string, nowLine?: stri
 
 /** Join the band body into the planner's recap block (chronological, one piece per line). */
 function buildBandText(turns: BandTurn[], notes: MemoryNote[] = [], stamp?: BandStamp): string {
-  return bandPieces(turns, notes, stamp).join('\n');
+  return bandPieces(turns, notes, stamp).map((p) => p.text).join('\n');
 }
 
 /** Walk the flat history in user→assistant pairs and parse each assistant turn's JSON. Unparseable or
@@ -220,24 +256,28 @@ export function buildVerbatimHistory(
   maxTokens: number,
   notes: MemoryNote[] = [],
   recapPrompt = '',
-): ChatMessage[] {
+): { messages: ChatMessage[]; runs: AnatomyRun[][] } {
   const margin = Math.max(256, Math.round(contextWindow * 0.05));
   let budget = Math.max(0, contextWindow - promptTokens - maxTokens - margin);
   const noteBody = notes.map((n) => (n.text || '').trim()).filter(Boolean).join(' ');
   const lead: ChatMessage[] = [];
+  const leadRuns: AnatomyRun[][] = [];
   if (noteBody && recapPrompt) {
     lead.push({ role: 'user', content: recapPrompt }, { role: 'assistant', content: noteBody });
+    leadRuns.push(wholeRun(recapPrompt, { source: 'recap' }), wholeRun(noteBody, { contextLabel: 'notes' }));
     budget = Math.max(0, budget - estimateTokens(JSON.stringify(lead).length));
   }
   const out: ChatMessage[] = [];
+  const outRuns: AnatomyRun[][] = [];
   let used = 0;
   for (let i = turns.length - 1; i >= 0; i--) {
     const cost = pairTokenCost(turns[i]);
     if (used + cost > budget) break;
     out.unshift(turns[i].userMsg, { role: 'assistant', content: turns[i].gameText });
+    outRuns.unshift(...pairRuns(turns[i].userMsg.content, turns[i].gameText));
     used += cost;
   }
-  return [...lead, ...out];
+  return { messages: [...lead, ...out], runs: [...leadRuns, ...outRuns] };
 }
 
 /** Significant keywords from `text` (lowercased, length ≥ 3, minus stopwords) unioned with the
@@ -471,23 +511,28 @@ export function buildBandedHistory(args: {
   // narration length (see module header); answered to a recap question, the short style belongs to a
   // different task.
   const messages: ChatMessage[] = [];
-  const bandBody = mergedBandText(bandTurns, notes, stamp);
-  if (bandBody) {
-    const reply = nowLine ? `${bandBody}\n\n${nowLine}` : bandBody;
-    messages.push({ role: 'user', content: recapPrompt }, { role: 'assistant', content: reply });
+  const runs: AnatomyRun[][] = [];
+  const pieces = bandPieces(bandTurns, notes, stamp);
+  if (pieces.length > 0) {
+    const reply = recapReplyTiled(pieces, nowLine);
+    messages.push({ role: 'user', content: recapPrompt }, { role: 'assistant', content: reply.content });
+    runs.push(wholeRun(recapPrompt, { source: 'recap' }), reply.runs);
   }
   if (rehydratedTurns.length > 0) {
     const scenes = [...rehydratedTurns].sort((a, b) => a.index - b.index).map((t) => t.gameText).join('\n\n');
     messages.push({ role: 'user', content: rehydratePrompt }, { role: 'assistant', content: scenes });
+    runs.push(wholeRun(rehydratePrompt, { source: 'recall' }), wholeRun(scenes, { contextLabel: 'recalled' }));
   }
   const ordered = [...floorTaken].sort((a, b) => a.index - b.index);
   for (const t of ordered) {
     messages.push({ ...t.userMsg }, { role: 'assistant', content: t.gameText });
+    runs.push(...pairRuns(t.userMsg.content, t.gameText));
   }
 
   const bandText = buildBandText(bandTurns, notes, stamp);
   return {
     messages,
+    runs,
     bandTurnIds: bandTurns.map((t) => t.turnId).filter((id): id is string => !!id),
     rehydratedTurnIds: rehydratedTurns.map((t) => t.turnId).filter((id): id is string => !!id),
     // The summarized-older turns as a labeled block (empty when there is no band), for consumers (the

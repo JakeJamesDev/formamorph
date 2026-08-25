@@ -25,6 +25,8 @@ const material = (over: Partial<TurnMaterial> = {}): TurnMaterial => ({
   sceneEntityTokens: {},
   destinations: ['The Long Pier'],
   narrationSystemPrompt: 'NARRATION SYSTEM',
+  narrationSystemPromptRuns: [],
+  historyRuns: [],
   trimmedHistory: [],
   narration: NARRATION,
   lastStory: 'Previously…',
