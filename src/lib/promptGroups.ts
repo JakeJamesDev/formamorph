@@ -42,13 +42,15 @@ export const PROMPT_DESCRIPTIONS: Record<string, string> = {
   storyboard: "Reconciles every character's intentions into a single plan for the turn.",
 };
 
-/** Which part of the selected prompt is on show. */
-export type PromptSurface = 'system' | 'user' | 'messages' | 'options';
+/** Which part of the selected prompt is on show. `anatomy` is the odd one out: not a field to edit but a
+ *  read-only map of where the other surfaces land in a request, so it exists only on the narration prompt. */
+export type PromptSurface = 'system' | 'user' | 'messages' | 'anatomy' | 'options';
 
 export const SURFACE_LABELS: Record<PromptSurface, string> = {
   system: 'System Prompt',
   user: 'User Message',
   messages: 'Messages',
+  anatomy: 'Anatomy',
   options: 'Options',
 };
 
