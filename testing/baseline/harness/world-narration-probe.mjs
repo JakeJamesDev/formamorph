@@ -95,6 +95,27 @@ const WORLDS = {
       power: /\bpower\b|charge|battery/i.test(text),
     }),
   },
+  veilwood: {
+    actions: [
+      "I kneel by the roots, pick one of the orange-stemmed mushrooms, and eat it slowly, watching the treeline.",
+      "Something sleek and eyeless hauls itself out of the black water — the Dread Crawler. I freeze mid-step and hold my breath.",
+    ],
+    flags: (text) => {
+      const f = [];
+      if (/\bblood(y|ied)?\b|\bgore\b|corpse|dismember|entrails|viscera/i.test(text)) f.push("TONE-GORE");
+      // The crawler is blind: narration must not credit it with sight. Sight verbs need a "you/your"
+      // object — bare "spots?" also matches the noun ("the spot where you knelt").
+      if (/crawler[^.\n]{0,80}\b(sees|saw|spots|spotted|stares at|glares at|watches|looks at|catches sight of)\s+(you|your)\b/i.test(text) ||
+          /\b(its|the crawler'?s) eyes\b/i.test(text)) f.push("CRAWLER-SEES");
+      return f;
+    },
+    info: (text) => ({
+      effects: /stamina|energy|strength/i.test(text),
+      hunger: /hunger|hungry|appetite|stomach/i.test(text),
+      stillness: /\bstill(ness)?\b|freeze|frozen|motionless|statue/i.test(text),
+      moths: /moth/i.test(text),
+    }),
+  },
 };
 
 // ---------- assembly from the real world JSON ----------
