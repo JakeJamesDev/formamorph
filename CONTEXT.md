@@ -91,3 +91,15 @@ _Avoid_: turn config
 **Turn Commit**:
 The computed state delta a finished turn applies — history, clock, stats, discoveries.
 _Avoid_: turn state, commit object
+
+**Request Anatomy**:
+The labeled map of one assembled request — every message split into runs and marked as either the player's own prompt text or context the app assembled. Rendered in the AI Context viewer for real turns, and in Settings → Prompts → Narration → Anatomy for an example one. A sidecar alongside the messages, never part of them, so it never reaches an endpoint.
+_Avoid_: request breakdown, prompt map
+
+**Authored Run**:
+A stretch of a message that came from one of the six prompt-editor surfaces a player can type in — System Prompt, User Message, Recap, Now, Recall, Direction. Highlighted and named by the field that owns it.
+_Avoid_: user text, prompt segment
+
+**Context Run**:
+A stretch of a message the app assembled rather than the player writing — injected world data, condensed memories, a recalled scene, an earlier turn, the typed action. Muted beneath the Authored Runs, each explained in the player's own words.
+_Avoid_: filler, scaffolding

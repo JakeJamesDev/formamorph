@@ -107,6 +107,8 @@ import { computeTurnCommit, type TurnCommit } from "../lib/turnPipeline/computeT
 import { classifyTurnError, type TurnErrorKind } from "../lib/turnPipeline/turnErrors";
 import { emptyTurnMaterial, type TurnMaterial, type TurnPrompts, type TurnSettings } from "../lib/turnPipeline/turnPlan";
 import { parseTurns, buildVerbatimHistory, buildBandedHistory, extractKeywords, type BandCounts } from "../lib/turnBanding";
+import { toAnatomyBlocks, type RequestAnatomy } from "../lib/requestAnatomy";
+import { RequestAnatomyView } from "../components/game/RequestAnatomyView";
 import { buildStamper, formatAbsolute, hoursByPosition, FLAT_HOURS_PER_TURN } from "../lib/gameClock";
 import { milestoneCandidates, agedMilestoneCandidates, resolveMilestoneDrop, resolveMilestoneKeep, buildIncrementalMilestoneUserMessage, parseIncrementalMilestoneReply, applyIncrementalVerdict } from "../lib/milestoneMemory";
 import { applyMemoryOverrides, activeNotes } from "../lib/memoryOverrides";
@@ -186,6 +188,10 @@ interface DebugRequest {
   id?: string;
   // Narration only: the dictionary activation behind this turn's injected lore.
   dictionary?: DictionaryDebug;
+  // Narration only: which runs of the sent messages are authored prompt text and which are assembled
+  // context (see lib/requestAnatomy). Absent on turns captured before the anatomy existed — those render
+  // unlabeled, exactly as they did.
+  anatomy?: RequestAnatomy;
 }
 interface DebugTurn {
   action: string;
@@ -221,6 +227,12 @@ interface AiCallArgs {
   /** Absent (or null) leaves the request type's own default cap to apply downstream. */
   maxTokens?: number | null;
   signal?: AbortSignal;
+  /**
+   * Inspection sidecar for the AI-context viewer (see lib/requestAnatomy). Captured with the request and
+   * dropped here — the request spec is built from `systemPrompt` and `messages` alone, so it never reaches
+   * the network.
+   */
+  anatomy?: RequestAnatomy;
   /**
    * Silent requests (the memory digest) run without UI noise: no "Generating…" label, and they surface in
    * the status bar / AI-context viewer only when the "Show Silent Requests" setting is on. When captured,
@@ -2307,6 +2319,7 @@ const GameViewer = ({
     silent = false,
     attachTurnId,
     quiet: quietLabel = false,
+    anatomy,
   }: AiCallArgs) => {
     // The parity recording observes the seam itself: exactly the arguments this call received, in
     // dispatch order, before anything downstream shapes them. Inert unless the harness armed it.
@@ -2363,6 +2376,9 @@ const GameViewer = ({
             messages: spec.body.messages,
             id: captureId,
             dictionary,
+            // The sidecar indexes the messages the caller stated; the wire list prepends the system
+            // message, which `toAnatomyBlocks` accounts for when the viewer lines the two up.
+            anatomy,
             endpoint: toDebugEndpoint(target),
           },
         ],
@@ -4455,19 +4471,32 @@ const GameViewer = ({
                                       </button>
                                     </CollapsibleTrigger>
                                     <CollapsibleContent className="p-2 pt-0">
-                                      {msgSegs.map((ms, j) => {
-                                        if (searchActive && ms.segs.length === 0) return null;
-                                        return (
-                                          <div key={j} className="mb-2">
-                                            <div className="font-medium text-muted-foreground uppercase">
-                                              {ms.role}
+                                      {/* Labeled shape when this request carried a Request Anatomy — but not
+                                          while searching: the search filter rewrites each block's text, and
+                                          run offsets index the real one. */}
+                                      {req.anatomy && !searchActive ? (
+                                        <RequestAnatomyView
+                                          blocks={toAnatomyBlocks(req.messages, req.anatomy)}
+                                          mode="full"
+                                          // Dictionary/hydration marks compose with the run styling by
+                                          // segmenting each run's own slice.
+                                          renderText={(text) => renderSegs(segmentsFor(text, req, false))}
+                                        />
+                                      ) : (
+                                        msgSegs.map((ms, j) => {
+                                          if (searchActive && ms.segs.length === 0) return null;
+                                          return (
+                                            <div key={j} className="mb-2">
+                                              <div className="font-medium text-muted-foreground uppercase">
+                                                {ms.role}
+                                              </div>
+                                              <pre className="whitespace-pre-wrap break-words bg-muted/50 p-2 rounded">
+                                                {renderSegs(ms.segs)}
+                                              </pre>
                                             </div>
-                                            <pre className="whitespace-pre-wrap break-words bg-muted/50 p-2 rounded">
-                                              {renderSegs(ms.segs)}
-                                            </pre>
-                                          </div>
-                                        );
-                                      })}
+                                          );
+                                        })
+                                      )}
                                     </CollapsibleContent>
                                   </Collapsible>
                                 )}
@@ -4553,6 +4582,7 @@ const GameViewer = ({
         initialTab={settingsTab ?? asSettingsTab(devRoute?.tab)}
         initialEndpointTab={settingsEndpointTab}
         initialPromptTab={devRoute?.subtab}
+        initialPromptSurface={devRoute?.surface}
       />
 
       <AiSetupGate

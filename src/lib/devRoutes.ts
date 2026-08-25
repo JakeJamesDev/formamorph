@@ -83,6 +83,10 @@ export const DEV_MODAL_TABS = {
   // MainMenu's library card-type switcher. Not a modal: reached with `tab=…` and no `modal=…`, i.e.
   // `#dev?view=mainMenu&tab=models`. Listed here so the same drift guard covers it.
   mainMenu: ['worlds', 'entities', 'dictionaries', 'models'],
+  // Settings → Prompts has a THIRD level: which surface of the open prompt is on show, reached with
+  // `surface=…` (`#dev?modal=settings&tab=prompts&subtab=narration&surface=anatomy`). Anatomy exists only
+  // on the narration prompt, and the editor falls back to System wherever a surface doesn't apply.
+  settingsPromptSurfaces: ['system', 'user', 'messages', 'anatomy', 'options'],
   // GameViewer's side panel (Entities/Notes/Memory/Logs). Also not a modal: `#dev?view=gameViewer&tab=memory`.
   // The mobile-only `model` tab is deliberately not routable.
   gameViewer: ['entities', 'notes', 'memory', 'logs'],

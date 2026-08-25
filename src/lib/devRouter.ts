@@ -21,6 +21,9 @@ export interface DevRoute {
   tab?: string;
   /** Second-level tab within a tab (e.g. which prompt under Settings → Prompts). */
   subtab?: string;
+  /** Third level under Settings → Prompts: which surface of the open prompt (System / User / Messages /
+   *  Anatomy / Options). Its own slot because `subtab` already names the prompt. */
+  surface?: string;
   /** Open the World Editor's Test Bench on this instrument. Its own slot rather than `subtab`, because
    *  the Bench sits beside the editor's tabs instead of inside one. */
   bench?: string;
@@ -43,6 +46,7 @@ function parseHash(hash: string): DevRoute | null {
   const modal = params.get('modal');
   const tab = params.get('tab');
   const subtab = params.get('subtab');
+  const surface = params.get('surface');
   const bench = params.get('bench');
   const fixture = params.get('fixture');
   const probe = params.get('probe');
@@ -55,6 +59,7 @@ function parseHash(hash: string): DevRoute | null {
   if (modal) route.modal = modal;
   if (tab) route.tab = tab;
   if (subtab) route.subtab = subtab;
+  if (surface) route.surface = surface;
   if (bench) route.bench = bench;
   if (fixture) route.fixture = fixture;
   return route;
@@ -94,12 +99,13 @@ export function installDevRouter(): () => void {
   // SettingsContext) survive regardless of effect order — child effects run before this parent effect.
   w.__fmDev = Object.assign(w.__fmDev ?? {}, {
     /** Jump to a screen/modal/tab in one call — sets the `#dev` hash the consumers react to. */
-    goto(view?: string, opts?: { modal?: string; tab?: string; subtab?: string; bench?: string; fixture?: string; probe?: string; mode?: string; fullscreen?: boolean }) {
+    goto(view?: string, opts?: { modal?: string; tab?: string; subtab?: string; surface?: string; bench?: string; fixture?: string; probe?: string; mode?: string; fullscreen?: boolean }) {
       const params = new URLSearchParams();
       if (view) params.set('view', view);
       if (opts?.modal) params.set('modal', opts.modal);
       if (opts?.tab) params.set('tab', opts.tab);
       if (opts?.subtab) params.set('subtab', opts.subtab);
+      if (opts?.surface) params.set('surface', opts.surface);
       if (opts?.bench) params.set('bench', opts.bench);
       if (opts?.fullscreen) params.set('fullscreen', '1');
       if (opts?.mode) params.set('mode', opts.mode);

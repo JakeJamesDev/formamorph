@@ -21,6 +21,7 @@ import { APP_VERSION } from '@/lib/version';
 import { normalizeEndpointUrl, endpointUrlWasCompleted } from '@/lib/endpointUrl';
 import { computePromptTabAvailability } from '@/lib/promptTabAvailability';
 import { visibleGroups, SURFACE_LABELS, PROMPT_DESCRIPTIONS, type PromptSurface } from '@/lib/promptGroups';
+import { RequestAnatomyPanel } from './RequestAnatomyPanel';
 import { Settings } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, dialogFullHeightMobile } from "@/components/ui/dialog";
 import { cn } from "@/lib/utils";
@@ -424,7 +425,7 @@ function PromptsShell({ fullscreen, sourceRef, children }: {
   );
 }
 
-export const SettingsModal = ({ isOpen, onOpenChange, previewValues, initialTab, initialEndpointTab, initialPromptTab, onWorldsRestored, forcedMode }: {
+export const SettingsModal = ({ isOpen, onOpenChange, previewValues, initialTab, initialEndpointTab, initialPromptTab, initialPromptSurface, onWorldsRestored, forcedMode }: {
   isOpen: boolean;
   onOpenChange: (open: boolean) => void;
   /** Called after Restore Default Worlds re-seeds, so a world list on screen can refresh. */
@@ -438,6 +439,7 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, initialTab,
   initialEndpointTab?: string;
   /** DEV dev-router: which prompt under the Prompts tab to open (e.g. 'narration', 'thinking'). */
   initialPromptTab?: string;
+  initialPromptSurface?: string;
   /** Overrides the stored Simple/Advanced preference (the dev-router's `mode` param; tests set it directly). */
   forcedMode?: SettingsMode;
 }) => {
@@ -945,7 +947,12 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, initialTab,
   // exchange (Recap, Recall, Direction), stacked with per-field resets, each hidden with its feature.
   // A System | User | Messages | Options toggle swaps between them (User/Messages only where they exist).
   // `promptView` resets to System on every tab change.
-  const [promptView, setPromptView] = useState<'system' | 'user' | 'messages' | 'options'>('system');
+  const [promptView, setPromptView] = useState<PromptSurface>('system');
+  // DEV dev-router: land on a named surface (`surface=…`). Re-runs when the prompt changes too, since
+  // switching prompts resets the view to System.
+  useEffect(() => {
+    if (initialPromptSurface) setPromptView(initialPromptSurface as PromptSurface);
+  }, [initialPromptSurface, initialPromptTab]);
   // Fullscreen for the whole Prompts panel (rail included), not for one field — see PromptsShell.
   const [promptsFullscreen, setPromptsFullscreen] = useState(false);
   const promptsPanelRef = useRef<HTMLDivElement | null>(null);
@@ -1002,14 +1009,19 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, initialTab,
       variables: undefined,
     }] : []),
   ];
+  // The Request Anatomy view maps the narration prompt's own surfaces onto a real request, so it exists
+  // only there — every other prompt is a single system/user pair with nothing to map.
+  const anatomyAvailable = activePromptTab === 'narration';
   // Which parts the open prompt actually has — the rail lists exactly these under it.
   const activeSurfaces: PromptSurface[] = [
     'system',
     ...(activeUserPrompt ? ['user' as const] : []),
     ...(messagesAvailable ? ['messages' as const] : []),
+    ...(anatomyAvailable ? ['anatomy' as const] : []),
     'options',
   ];
   const showingOptions = promptView === 'options';
+  const showingAnatomy = promptView === 'anatomy' && anatomyAvailable;
   // The Reset button targets whichever template is on screen. `label` is the full noun ("Narration Prompt"
   // or just "Message" for the user-message template), so the button reads "Reset <label>". The Messages
   // view carries its own per-field resets, so the footer button hides there (like Options).
@@ -2351,11 +2363,14 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, initialTab,
 
               <div className="flex flex-1 min-w-0 min-h-0 flex-col gap-2">
 
-              {/* What this prompt is for, above it rather than beneath: at the bottom of a full-height
-                  editor it sat below the fold, which is the one place a description is no use. */}
-              <p className="flex-shrink-0 text-helper text-muted-foreground">
-                {PROMPT_DESCRIPTIONS[activePromptTab]}
-              </p>
+              {/* What this prompt is for — only over the System editor, which is the prompt it describes;
+                  the other surfaces have their own content and get the row back. Above rather than beneath:
+                  at the bottom of a full-height editor it sat below the fold. */}
+              {promptView === 'system' && (
+                <p className="flex-shrink-0 text-helper text-muted-foreground">
+                  {PROMPT_DESCRIPTIONS[activePromptTab]}
+                </p>
+              )}
 
               {showingOptions && (
                 <ScrollArea className="mt-4 flex-1 min-h-0">
@@ -2372,7 +2387,21 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, initialTab,
                 </ScrollArea>
               )}
 
-              {!showingOptions && (
+              {showingAnatomy && (
+                <RequestAnatomyPanel
+                  prompts={{
+                    system: systemPrompt,
+                    narrationUser: narrationUserPrompt,
+                    recap: recapUserPrompt,
+                    now: nowLinePrompt,
+                    recall: rehydrateUserPrompt,
+                    direction: oocDirectivePrompt,
+                  }}
+                  values={effectivePreviewValues}
+                />
+              )}
+
+              {!showingOptions && !showingAnatomy && (
               <>
               <TabsContent value="narration" className="mt-4 flex-1 min-h-0 data-[state=active]:flex flex-col">
                 {showingMessages ? (
@@ -2642,7 +2671,7 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, initialTab,
             {/* Reset targets the on-screen template; hidden on the Options sub-tab (edits no template)
                 and the Messages view (per-field resets). */}
             <div className="flex flex-wrap justify-end items-center gap-2 flex-shrink-0">
-              {!activePresetIsBuiltIn && !showingOptions && !showingMessages && (
+              {!activePresetIsBuiltIn && !showingOptions && !showingMessages && !showingAnatomy && (
                 <ConfirmDialog
                   title={`Reset ${resetTarget.label}`}
                   description={`Are you sure you want to reset the ${resetTarget.label} to its default value?`}

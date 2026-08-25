@@ -52,15 +52,6 @@ export function renderPromptTemplate(template: string, values: Record<string, st
 }
 
 /**
- * What one token renders to, or `undefined` when it has no value in the map (callers keep the raw token).
- * An empty string is a real result — an affixed placement whose value is absent renders as nothing — so
- * callers must use `??`, never `||`.
- *
- * Shared with the editor's preview panes so a preview shows exactly what the model receives, affixes and
- * all. Values are keyed by the affix-free token; a token from another chip family (placeholders) doesn't
- * parse here and returns undefined, leaving that family's own lookup to handle it.
- */
-/**
  * The same render as {@link renderPromptTemplate}, plus the run boundaries between what the author typed
  * and what a chip injected — the Request Anatomy sidecar's first source. `content` is byte-identical to
  * `renderPromptTemplate`'s output on the same inputs, which is what lets a labeled request be the request.
@@ -92,6 +83,15 @@ export function promptTemplatePieces(
   });
 }
 
+/**
+ * What one token renders to, or `undefined` when it has no value in the map (callers keep the raw token).
+ * An empty string is a real result — an affixed placement whose value is absent renders as nothing — so
+ * callers must use `??`, never `||`.
+ *
+ * Shared with the editor's preview panes so a preview shows exactly what the model receives, affixes and
+ * all. Values are keyed by the affix-free token; a token from another chip family (placeholders) doesn't
+ * parse here and returns undefined, leaving that family's own lookup to handle it.
+ */
 export function resolveToken(token: string, values: Record<string, string>): string | undefined {
   const parts = splitToken(token);
   if (!parts) return undefined;

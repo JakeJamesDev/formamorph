@@ -1614,6 +1614,7 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
         initialTab={settingsTab ?? asSettingsTab(devRoute?.tab)}
         initialEndpointTab={settingsEndpointTab}
         initialPromptTab={devRoute?.subtab}
+        initialPromptSurface={devRoute?.surface}
         onWorldsRestored={refreshWorlds}
       />
       <AiSetupGate

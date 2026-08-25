@@ -171,7 +171,7 @@ export const SOURCE_LABELS: Record<AnatomySource, string> = {
 /** What each context run is, in the player's own words. The action/narration pair is deliberately
  *  asymmetric: two identical labels on adjacent blocks read as a bug rather than as a turn. */
 export const CONTEXT_LABELS: Record<ContextLabel, string> = {
-  'world-data': 'world data injected by your chips — description, stats, location, entities, lore',
+  'world-data': 'world data from your chips',
   condensed: 'older turns, condensed by Memory Summaries',
   notes: 'your own memory notes, as you wrote them',
   recalled: 'the turn Scene Recall brought back, word-for-word',
