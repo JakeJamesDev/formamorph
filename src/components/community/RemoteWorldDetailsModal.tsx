@@ -22,9 +22,8 @@ import WorldStorageService from "@/services/WorldStorageService";
 import { UserAvatar } from "@/components/UserAvatar";
 import { UserName } from "@/components/UserName";
 import { LikeButton } from "@/components/community/LikeButton";
-import { ReportDialog } from "@/components/community/ReportDialog";
+import { ReportDialog, type ReportTarget } from "@/components/community/ReportDialog";
 import { useReportsEnabled } from "@/lib/useReportsEnabled";
-import type { ReportTargetKind } from "@/lib/contentReports";
 import { ChangelogPanel } from "@/components/community/ChangelogPanel";
 import { defaultChangelogTab, type ChangelogEntry, type ChangelogTab } from "@/lib/listingChangelog";
 import { WorldActionButton } from "@/components/WorldActionButton";
@@ -83,8 +82,7 @@ export function RemoteWorldDetailsModal({
   const [tab, setTab] = useState<ChangelogTab>('comments');
   // What the report dialog is aimed at, or null when it is closed. One dialog for both the listing and
   // any comment on it — they differ only in what they point at.
-  const [reportTarget, setReportTarget] =
-    useState<{ kind: ReportTargetKind; id: string; name?: string | null; noun?: string } | null>(null);
+  const [reportTarget, setReportTarget] = useState<ReportTarget | null>(null);
 
   // Off entirely for a signed-out reader and against a server without the feature, so no surface here
   // ever offers an action that would be refused.
@@ -459,6 +457,7 @@ export function RemoteWorldDetailsModal({
                                   kind: 'comment',
                                   id: c.id,
                                   name: world.name,
+                                  author: c.author?.username,
                                 })}
                               >
                                 <Flag className="h-3.5 w-3.5" />

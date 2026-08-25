@@ -18,17 +18,29 @@ import {
 } from "@/lib/contentReports";
 import ReportService, { AlreadyReportedError } from "@/services/ReportService";
 
+/**
+ * What a report is aimed at.
+ *
+ * `noun` is what the surface that opened this calls the thing — a listing is a World, an Entity or a
+ * Dictionary depending on where you are, and the dialog saying "listing" over a button that said
+ * "World" reads as two different things. Omit it for the kind's own word.
+ *
+ * For comments, `name` is the listing the comment sits on and `author` is who wrote the comment —
+ * comments have no name of their own, so the line names both instead.
+ */
+export interface ReportTarget {
+  kind: ReportTargetKind;
+  id: string;
+  name?: string | null;
+  noun?: string;
+  author?: string | null;
+}
+
 interface ReportDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  /**
-   * What is being reported. Null closes the dialog without a target to send.
-   *
-   * `noun` is what the surface that opened this calls the thing — a listing is a World, an Entity or a
-   * Dictionary depending on where you are, and the dialog saying "listing" over a button that said
-   * "World" reads as two different things. Omit it for the kind's own word.
-   */
-  target: { kind: ReportTargetKind; id: string; name?: string | null; noun?: string } | null;
+  /** What is being reported. Null closes the dialog without a target to send. */
+  target: ReportTarget | null;
 }
 
 /** What each kind of target is called when the surface that opened this offers no word of its own. */
@@ -115,7 +127,17 @@ export function ReportDialog({ open, onOpenChange, target }: ReportDialogProps) 
           <div className="space-y-4 py-2">
             {target?.name && (
               <p className="text-helper text-muted-foreground truncate">
-                Reporting the {noun} <span className="font-medium text-foreground">{target.name}</span>
+                {target.kind === 'comment' ? (
+                  <>
+                    Reporting{' '}
+                    {target.author
+                      ? <><span className="font-medium text-foreground">{target.author}</span>&rsquo;s</>
+                      : 'a'}{' '}
+                    comment on <span className="font-medium text-foreground">{target.name}</span>
+                  </>
+                ) : (
+                  <>Reporting the {noun} <span className="font-medium text-foreground">{target.name}</span></>
+                )}
               </p>
             )}
 

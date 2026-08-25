@@ -100,6 +100,25 @@ describe('filing a report', () => {
     expect(screen.getByRole('heading', { name: /Report This Listing/ })).toBeTruthy();
   });
 
+  it('names the commenter and the listing when reporting a comment', async () => {
+    // A comment has no name of its own; showing the listing's name alone reads as the comment's title.
+    render(<ReportDialog open onOpenChange={vi.fn()} target={{
+      kind: 'comment', id: 'c1', name: 'Sedge Landing', author: 'benny',
+    }} />);
+
+    const line = screen.getByText(/Reporting/).closest('p');
+    expect(line?.textContent).toBe('Reporting benny’s comment on Sedge Landing');
+  });
+
+  it('still points at the listing when the commenter has no name', async () => {
+    render(<ReportDialog open onOpenChange={vi.fn()} target={{
+      kind: 'comment', id: 'c1', name: 'Sedge Landing',
+    }} />);
+
+    const line = screen.getByText(/Reporting/).closest('p');
+    expect(line?.textContent).toBe('Reporting a comment on Sedge Landing');
+  });
+
   it('says up front that the author never learns who reported them', async () => {
     // The question that decides whether somebody reports at all, so it is answered before they start.
     render(<ReportDialog open onOpenChange={vi.fn()} target={listing} />);
