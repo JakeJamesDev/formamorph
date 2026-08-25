@@ -37,8 +37,10 @@ export type DevView = (typeof DEV_VIEWS)[number];
  *  the events poll, so both it and the main menu's event banner are checkable without a live event; `tab=…`
  *  picks which phase, an opening or an ending. `publish` opens MainMenu's publish dialog on a canned world
  *  (`devPublishSample.ts`) and a canned running contest, so the dialog and the contest opt-in inside it are
- *  reachable on a profile with nothing published and no event really running. */
-export const DEV_MODALS = ['settings', 'entity', 'export', 'menu', 'worldEditor', 'intro', 'avatar', 'backup', 'aiSetup', 'entityEditor', 'dictionaryEditor', 'modelDetails', 'community', 'memoryManager', 'profile', 'feedbackHub', 'adminPanel', 'editText', 'location', 'changelog', 'eventAck', 'publish'] as const;
+ *  reachable on a profile with nothing published and no event really running. `worldPrompts` opens
+ *  MainMenu's read-only Custom Prompts viewer; with no world selected it renders a canned sample
+ *  override, so it's reachable on an empty library. */
+export const DEV_MODALS = ['settings', 'entity', 'export', 'menu', 'worldEditor', 'intro', 'avatar', 'backup', 'aiSetup', 'entityEditor', 'dictionaryEditor', 'modelDetails', 'community', 'memoryManager', 'profile', 'feedbackHub', 'adminPanel', 'editText', 'location', 'changelog', 'eventAck', 'publish', 'worldPrompts'] as const;
 export type DevModal = (typeof DEV_MODALS)[number];
 
 /** Coverage ledger: tabbed surface → the sub-tabs the router can target (via `tab=…`). Kept in lockstep

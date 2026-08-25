@@ -1,4 +1,7 @@
 import { useState, useEffect } from 'react';
+import {
+  defaultSystemPrompt, defaultChoicesPrompt, defaultStatUpdatesPrompt,
+} from '@/components/game/GamePrompts';
 import type { WorldOverview, WorldPromptOverrides } from '@/types';
 
 const STORAGE_KEY = 'FORMAMORPH_worldPromptOptOut';
@@ -14,6 +17,13 @@ export const WORLD_PROMPT_KIND_LABELS: Record<WorldPromptKind, string> = {
   narration: 'Narration',
   choices: 'Choices',
   statUpdates: 'Stats',
+};
+
+/** The prompt each pass runs on out of the box — what a world's own text is read against. */
+export const SHIPPED_PROMPT_DEFAULTS: Record<WorldPromptKind, string> = {
+  narration: defaultSystemPrompt,
+  choices: defaultChoicesPrompt,
+  statUpdates: defaultStatUpdatesPrompt,
 };
 
 type TextKey = 'systemPrompt' | 'choicesPrompt' | 'statUpdatesPrompt';

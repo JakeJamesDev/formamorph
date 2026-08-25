@@ -46,6 +46,7 @@
     "@radix-ui/react-toggle-group": "^1.1.19",
     "@streamdown/code": "^1.1.1",
     "@xyflow/react": "^12.11.3",
+    "diff": "^9.0.0",
     "electron-updater": "^6.8.9",
     "fflate": "^0.8.3",
     "node-llama-cpp": "^3.19.0",

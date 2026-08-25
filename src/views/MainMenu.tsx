@@ -70,7 +70,7 @@ import DictionaryStorageService from '../services/DictionaryStorageService';
 import EntityStorageService from '../services/EntityStorageService';
 import ModelStorageService from '../services/ModelStorageService';
 import AuthService from '../services/AuthService';
-import type { World, Stat, CharacterData, Dictionary, DictionaryMetadata, Entity, EntityMetadata, ModelMetadata, ServerEvent } from '@/types';
+import type { World, Stat, CharacterData, Dictionary, DictionaryMetadata, Entity, EntityMetadata, ModelMetadata, ServerEvent, WorldOverview } from '@/types';
 import { migrateWorld } from '@/lib/version';
 import { isDesktop } from '@/lib/imageGen/desktop';
 import { useIsMobile } from '@/lib/useIsMobile';
@@ -134,6 +134,7 @@ import {
   customizedPromptKinds, promptKindsPhrase, worldPrompt, useWorldPromptOptOut, WORLD_PROMPT_KIND_LABELS,
   type WorldPromptKind,
 } from "@/lib/worldPrompt";
+import { PromptDiff, PromptDiffModeToggle, type PromptDiffMode } from "@/components/game/PromptDiff";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useWorldPromptPresets, GLOBAL_PRESET_VALUE } from "@/lib/worldPromptPreset";
 import PatreonIcon from "@/components/PatreonIcon";
@@ -261,15 +262,21 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
   const { promptWorld, promptWorldsBatch, promptImagesBatch, promptEntity, dialog: downscaleDialog } = useDownscalePrompt();
   const { exportWorld, dialog: worldExportDialog } = useWorldExport(promptWorld);
   const [selectedWorld, setSelectedWorld] = useState<WorldRecord | null>(null);
+  // DEV only: a canned override the prompt viewer falls back to, so its dev route is reachable on a
+  // library holding no world that rewrites a prompt. Never set in prod.
+  const [devPromptSample, setDevPromptSample] = useState<WorldOverview | null>(null);
+  const promptOverview = selectedWorld?.data?.worldOverview ?? devPromptSample ?? undefined;
   // Which passes the selected world rewrites — what the details notice names, what the viewer tabs, and
   // what the single opt-out declines. A world that stores a prompt but switched it off customizes nothing.
-  const customPromptKinds = useMemo(
-    () => customizedPromptKinds(selectedWorld?.data?.worldOverview), [selectedWorld]);
+  const customPromptKinds = useMemo(() => customizedPromptKinds(promptOverview), [promptOverview]);
   // Falls back to whichever kind the world does customize, so the viewer never opens on an empty tab.
   const [promptTab, setPromptTab] = useState<string>('narration');
   const shownPromptTab = customPromptKinds.includes(promptTab as WorldPromptKind)
     ? promptTab
     : customPromptKinds[0] ?? 'narration';
+  // Changes vs Raw, reset every time the viewer opens: which one you last read is a reading preference for
+  // that sitting, not a setting, and the diff is the view that answers "what did this world change".
+  const [promptView, setPromptView] = useState<PromptDiffMode>('changes');
   // Library grid layout: "grid" (compact cards) or "detailed" (community-browser-style card + info
   // beneath). Kept per tab and persisted: the four libraries hold different-shaped things, and wanting
   // worlds as big cards says nothing about wanting the same of a hundred characters. Worlds keep the
@@ -329,6 +336,8 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
 
   const [showCodeModal, setShowCodeModal] = useState(false);
   const [showWorldPrompts, setShowWorldPrompts] = useState(false);
+  // Every opening lands on Changes, whichever view the last one was left on.
+  useEffect(() => { if (showWorldPrompts) setPromptView('changes'); }, [showWorldPrompts]);
   const [showSettings, setShowSettings] = useState(false);
   // Forces Settings to a specific tab when something deep-links into it (the AI setup gate → Endpoint).
   // Cleared on close so the next deep-link re-triggers the modal's initialTab effect.
@@ -355,6 +364,13 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
     if (devRoute?.modal === 'worldEditor') setShowWorldEditor(true);
     if (devRoute?.modal === 'avatar') setShowCharacterCustomization(true);
     if (devRoute?.modal === 'aiSetup') setGate({ reason: 'firstRun' });
+    // The prompt viewer reads a world's overrides, so it opens on a canned one rather than on whatever the
+    // library happens to hold — a world really selected from a card still wins over it.
+    if (devRoute?.modal === 'worldPrompts') {
+      setShowWorldPrompts(true);
+      void import('@/lib/devWorldPromptSample')
+        .then(({ devWorldPromptOverview }) => setDevPromptSample(devWorldPromptOverview()));
+    }
     // Library editors open on a blank draft — nothing is stored, so these are reachable on a fresh profile.
     if (devRoute?.modal === 'entityEditor') setDraftEntity({ id: randomUUID(), name: 'New Character' });
     if (devRoute?.modal === 'dictionaryEditor') setDraftDictionary({ id: randomUUID(), name: 'New Dictionary', enabled: true, entries: [] });
@@ -2375,20 +2391,30 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
         </DialogContent>
       </Dialog>
 
-      {/* Read-only view of the world's authored prompts, one tab per pass it rewrites. Chips are shown as
-          their raw tokens: this is the text as authored, not a per-turn render, and the AI-context viewer
-          already shows the filled one. */}
+      {/* Read-only view of the world's authored prompts, one tab per pass it rewrites, opening on what the
+          author changed against the prompt Formamorph ships for that pass — the whole text says little about
+          which parts are this world's doing. Chips are shown as their raw tokens: this is the text as
+          authored, not a per-turn render, and the AI-context viewer already shows the filled one. */}
       <Dialog open={showWorldPrompts} onOpenChange={setShowWorldPrompts}>
         <DialogContent className="sm:max-w-[700px] h-[85dvh] flex flex-col">
           <DialogHeader className="shrink-0">
-            <DialogTitle className="leading-normal">Custom Prompts</DialogTitle>
+            {/* The mode switch shares the title row (pr-6 clears the dialog's X), and the description
+                doubles as the legend — its "added"/"removed" carry the diff's actual colors — so the
+                chrome costs no row of its own. */}
+            <div className="flex items-center justify-between gap-3 pr-6">
+              <DialogTitle className="leading-normal">Custom Prompts</DialogTitle>
+              <PromptDiffModeToggle mode={promptView} onModeChange={setPromptView} />
+            </div>
           </DialogHeader>
 
           <DialogDescription className="shrink-0">
-            This world runs the {customPromptKinds.length > 1 ? 'passes' : 'pass'} below on its own text in
-            place of yours. Uncheck &ldquo;Use this world&apos;s
-            {customPromptKinds.length > 1 ? ' prompts' : ' prompt'}&rdquo; in the world&apos;s window to use
-            your own instead.
+            This world rewrites the {customPromptKinds.length > 1 ? 'passes' : 'pass'} below — text
+            it <span className="bg-emerald-500/25 rounded-[2px] px-0.5 text-foreground">added</span> to the
+            default prompt is tinted, text it{' '}
+            <span className="bg-red-500/10 text-red-600 dark:text-red-400 line-through decoration-red-500/70 rounded-[2px] px-0.5">removed</span>{' '}
+            is struck through. Uncheck &ldquo;Use this
+            world&apos;s{customPromptKinds.length > 1 ? ' prompts' : ' prompt'}&rdquo; in the world&apos;s
+            window to use your own.
           </DialogDescription>
 
           <Tabs
@@ -2409,9 +2435,7 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
                 value={kind}
                 className="flex-1 min-h-0 mt-0 overflow-auto rounded-md bg-muted p-4"
               >
-                <pre className="text-label font-mono whitespace-pre-wrap">
-                  {worldPrompt(selectedWorld?.data?.worldOverview, kind) ?? ''}
-                </pre>
+                <PromptDiff kind={kind} text={worldPrompt(promptOverview, kind) ?? ''} mode={promptView} />
               </TabsContent>
             ))}
           </Tabs>
