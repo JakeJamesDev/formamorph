@@ -12,6 +12,13 @@ Each release groups changes as **Major** / **Minor**, then **Added** / **Removed
 
 _Unreleased — new work accumulates here until it earns a version bump. The next batch will pin its own version; `package.json` reads **2.14.0** (just released below)._
 
+### Minor Changes
+
+#### ➕ Added
+
+- **👤 User-facing**
+  - **The Valentines Survival bundled world is rebuilt from a single room into a full game — a connected school to escape through, named characters, starting traits, and lore that changes every run.** The premise is unchanged — escape school on Valentine's Day before the chocolate-armed crowd catches you — but the single room is now a school you can actually run through: seven connected places from Classroom 2-B to the Front Gate, named characters including the fan club president and a whistle-carrying PE teacher guarding the exits, ten starting traits across three groups that shape each run, a lorebook of school rules and rumors, and a readme that explains how to survive. Your speed now reads out live from your stamina and sugar, and each playthrough rolls a different best friend, front-page rumor, and guard post. Your existing copy updates itself on next launch — unless you've edited that world yourself, in which case your version is left alone as always.
+
 ---
 
 <details>
