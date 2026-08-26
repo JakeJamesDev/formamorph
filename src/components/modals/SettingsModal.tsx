@@ -2398,6 +2398,10 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, initialTab,
                     direction: oocDirectivePrompt,
                   }}
                   values={effectivePreviewValues}
+                  settings={{
+                    thinkingMode, sectionStyle: activeSectionStyle, markdownOutput, paragraphLimit,
+                    language, maxTokens, memoryDigests, semanticMemory, semanticRehydration, timeContext,
+                  }}
                 />
               )}
 
