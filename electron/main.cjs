@@ -7,7 +7,9 @@ const fs = require('node:fs');
 const os = require('node:os');
 const { pathToFileURL } = require('node:url');
 const { collect: collectVram } = require('./vramCollect.cjs');
-const llmEngine = require('./llmEngine.cjs');
+// The engine runs in a utility process; this is its main-process face, with the same API the engine module
+// exports. See llmEngineProxy.cjs.
+const llmEngine = require('./llmEngineProxy.cjs');
 const modelDownload = require('./modelDownload.cjs');
 const { scanModels, resolveModelRef, isRootRef } = require('./modelScan.cjs');
 const modelMove = require('./modelMove.cjs');
@@ -197,11 +199,12 @@ ipcMain.handle('net-fetch', async (_event, { url, method = 'GET', headers = {}, 
 // separate helper. Mirrors the standalone helper's "no GPU" payload when nvidia-smi is missing/errors.
 ipcMain.handle('vram-stats', async () => {
   try {
-    // selfPid lets the renderer pick our own row out of the per-process list (the bundled engine runs in
-    // this process), to attribute Formamorph's VRAM share on the widget.
-    return { ...(await collectVram()), selfPid: process.pid };
+    // selfPid lets the renderer pick our own row out of the per-process list, to attribute Formamorph's VRAM
+    // share on the widget. Our VRAM is the bundled engine's, so it's the engine child's pid whenever one is
+    // running; with no engine there's nothing of ours in the list either way.
+    return { ...(await collectVram()), selfPid: llmEngine.enginePid() ?? process.pid };
   } catch {
-    return { error: 'nvidia-smi-not-found', gpus: [], processes: [], selfPid: process.pid };
+    return { error: 'nvidia-smi-not-found', gpus: [], processes: [], selfPid: llmEngine.enginePid() ?? process.pid };
   }
 });
 
@@ -396,5 +399,6 @@ app.on('window-all-closed', () => {
   if (process.platform !== 'darwin') app.quit();
 });
 
-// Free the model + close the local server before the process exits.
-app.on('will-quit', () => { llmEngine.stop(); });
+// Free the model + close the local server before the process exits. Kill rather than await a stop: quit
+// won't wait for the round trip, and ending the engine child is what releases the model either way.
+app.on('will-quit', () => { llmEngine.dispose(); });

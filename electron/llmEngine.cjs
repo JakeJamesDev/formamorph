@@ -1,6 +1,10 @@
-// Desktop-only local LLM engine. Loads a GGUF via node-llama-cpp (in the Electron main process) and
-// serves a minimal OpenAI-compatible chat-completions endpoint on 127.0.0.1, so the renderer can point
-// its normal OpenAI endpoint at http://localhost:<port>/v1 with no other changes.
+// Desktop-only local LLM engine. Loads a GGUF via node-llama-cpp and serves a minimal OpenAI-compatible
+// chat-completions endpoint on 127.0.0.1, so the renderer can point its normal OpenAI endpoint at
+// http://localhost:<port>/v1 with no other changes.
+//
+// Hosted in a child process (llmEngineHost.cjs), not the Electron main process: model loads and token
+// decoding are synchronous native work, and the main process's event loop is also the app's window message
+// pump. The main process reaches it through llmEngineProxy.cjs, which keeps this module's exact API.
 //
 // Single model; N in-flight requests via a pool of context sequences (see start/handleChatCompletion).
 // node-llama-cpp is ESM-only, so it's pulled in via dynamic import() from this CommonJS module.
@@ -33,7 +37,12 @@ const NO_ENGINE = {
 // Serializable status shared with the renderer (no live handles). status: stopped|loading|ready|error.
 // contextSize/gpuLayers/flashAttention are the options the current model was loaded with, so the renderer
 // can tell whether pending settings differ from what's actually applied.
-let state = { status: 'stopped', modelPath: null, modelId: null, port: null, error: null, ...NO_ENGINE };
+/** The idle status, every field the renderer expects declared. Also the proxy's starting mirror. */
+function stoppedState() {
+  return { status: 'stopped', modelPath: null, modelId: null, port: null, error: null, ...NO_ENGINE };
+}
+
+let state = stoppedState();
 
 let server = null;
 let llama = null;
@@ -377,8 +386,8 @@ async function stop() {
   // Reject anyone still queued for a slot so their request fails cleanly instead of hanging.
   for (const resolve of waitQueue.splice(0)) { try { resolve(null); } catch { /* ignore */ } }
   server = null; sequences = []; freeSequences.length = 0; context = null; model = null; llama = null; chatWrapper = null;
-  setState({ status: 'stopped', modelPath: null, modelId: null, port: null, error: null, ...NO_ENGINE });
+  setState(stoppedState());
   return getState();
 }
 
-module.exports = { start, stop, getState, onStatus };
+module.exports = { start, stop, getState, onStatus, stoppedState };
