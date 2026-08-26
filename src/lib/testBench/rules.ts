@@ -459,13 +459,18 @@ const allChipTexts = (world: RuleWorld): Array<string | undefined> => [
   ...(world.statUpdates ?? []).map((u) => u.prompt),
 ];
 
-/** The placeholders nothing in the world reaches for — no chip anywhere, and no trait pinning them. */
-const unusedPlaceholders = (world: RuleWorld): Placeholder[] => {
-  const used = chipIds(allChipTexts(world));
-  for (const trait of world.traits ?? []) {
-    for (const pin of trait.placeholderPins ?? []) used.add(pin.placeholderId);
-  }
-  return (world.placeholders ?? []).filter((p) => !used.has(p.id));
+/** The placeholders no chip anywhere references, each with the traits still pinning it. A pin is authored
+ *  intent, not a placement — any pin entry counts, empty value included — so the two rules over this list
+ *  exactly partition "unplaced", and the delete-fix can never orphan a pin. */
+const unplacedPlaceholders = (world: RuleWorld): Array<{ placeholder: Placeholder; pinnedBy: Trait[] }> => {
+  const placed = chipIds(allChipTexts(world));
+  return (world.placeholders ?? [])
+    .filter((p) => !placed.has(p.id))
+    .map((placeholder) => ({
+      placeholder,
+      pinnedBy: (world.traits ?? []).filter((t) =>
+        (t.placeholderPins ?? []).some((pin) => pin.placeholderId === placeholder.id)),
+    }));
 };
 
 const placeholderUnused: Rule = {
@@ -474,15 +479,40 @@ const placeholderUnused: Rule = {
   section: 'placeholders',
   advanced: true,
   summary: (count) => `${count} placeholders are defined but never used`,
-  check: (world) => unusedPlaceholders(world).map((placeholder) => {
-    const item = namedItem(placeholder.id, placeholder.name, world);
-    return finding(placeholderUnused, `${quote(item.name)} is defined but never used`, [item]);
-  }),
+  check: (world) => unplacedPlaceholders(world)
+    .filter(({ pinnedBy }) => pinnedBy.length === 0)
+    .map(({ placeholder }) => {
+      const item = namedItem(placeholder.id, placeholder.name, world);
+      return finding(placeholderUnused, `${quote(item.name)} is defined but never used`, [item]);
+    }),
   fix: (world) => {
-    const dead = new Set(unusedPlaceholders(world).map((p) => p.id));
+    const dead = new Set(unplacedPlaceholders(world)
+      .filter(({ pinnedBy }) => pinnedBy.length === 0)
+      .map(({ placeholder }) => placeholder.id));
     if (dead.size === 0) return world;
     return withSlice(world, 'placeholders', (world.placeholders ?? []).filter((p) => !dead.has(p.id)));
   },
+};
+
+/** The forgot-to-place case: a trait wires a value in, but no text carries the chip, so the pinned value
+ *  is never seen. No fix — only the author knows where the chip belongs. */
+const placeholderPinnedUnused: Rule = {
+  id: 'placeholder-pinned-unused',
+  severity: 'warning',
+  section: 'placeholders',
+  advanced: true,
+  summary: (count) => `${count} placeholders are pinned by traits but placed in no text`,
+  check: (world) => unplacedPlaceholders(world)
+    .filter(({ pinnedBy }) => pinnedBy.length > 0)
+    .map(({ placeholder, pinnedBy }) => {
+      const item = namedItem(placeholder.id, placeholder.name, world);
+      const traitItems = pinnedBy.map((t) => namedItem(t.id, t.name, world, 'traits'));
+      return finding(
+        placeholderPinnedUnused,
+        `${quote(item.name)} is pinned by ${listNames(traitItems.map((t) => t.name))} but placed in no text — the pinned value never shows up`,
+        [item, ...traitItems],
+      );
+    }),
 };
 
 // A stat-name lookup in stat code, in either direction: `s.name === "X"` or `"X" === s.name`. Also matches
@@ -1545,7 +1575,7 @@ const imageMislabeled: Rule = {
 export const RULES: readonly Rule[] = [
   aliasLeadingArticle, entityMatchCollision, aliasSelfDuplicate,
   entityLocationOrphan, traitToggleMissingStat, traitPinInvalid,
-  chipUnknownPlaceholder, chipNeverScanned, placeholderUnused, statCodeUnknownStat,
+  chipUnknownPlaceholder, chipNeverScanned, placeholderUnused, placeholderPinnedUnused, statCodeUnknownStat,
   entrySecondaryWithoutPrimary, entryInert, entryRegexInvalid,
   noStartingLocation, legacyStartLocation, entityNowhere, statDisabledForever,
   statStartingOutOfRange, statStartNoDescriptor, statDescriptorDuplicateThreshold, statDescriptorOutOfRange,

@@ -261,8 +261,8 @@ describe('reference-integrity rules', () => {
       placeholders: [{ id: 'p1', name: 'Hue', values: ['red', 'blue'] }],
       traits: [trait({ id: 't1', name: 'Dyed', placeholderPins: [{ placeholderId: 'p1', value }] })],
     });
-    expect(runRules(pinned('green'))).toEqual([]);
-    expect(runRules(pinned('red'))).toEqual([]);
+    expect(only(pinned('green'), 'trait-pin-invalid')).toEqual([]);
+    expect(only(pinned('red'), 'trait-pin-invalid')).toEqual([]);
   });
 
   it('flags a chip pointing at a placeholder that doesn’t exist, opening on the owner’s own tab', () => {
@@ -839,11 +839,11 @@ describe('the unused-placeholder rule', () => {
     expect(found[0].message).toContain('Hue');
   });
 
-  it('counts a trait pin as a use', () => {
-    expect(runRules(base({
+  it('routes a pinned but unplaced placeholder to the pinned rule, never this one', () => {
+    expect(only(base({
       placeholders: [{ id: 'p1', name: 'Hue', values: ['red', 'blue'] }],
       traits: [trait({ id: 't1', name: 'Dyed', placeholderPins: [{ placeholderId: 'p1', value: 'red' }] })],
-    }))).toEqual([]);
+    }), 'placeholder-unused')).toEqual([]);
   });
 
   it('counts a chip parked where it never resolves as a use — the chip is the problem, not the placeholder', () => {
@@ -862,6 +862,53 @@ describe('the unused-placeholder rule', () => {
       worldOverview: { name: 'Sedge Landing', description: 'A fen of {{ph:p1:world:pl1}}.', systemPrompt: '' } as WorldOverview,
       placeholders: [{ id: 'p1', name: 'Weather', values: ['rain'] }],
     }), 'placeholder-unused')).toEqual([]);
+  });
+});
+
+describe('the pinned-but-unplaced rule', () => {
+  const pinnedOnly = base({
+    placeholders: [{ id: 'p1', name: 'Hue', values: ['red', 'blue'] }],
+    traits: [trait({ id: 't1', name: 'Dyed', placeholderPins: [{ placeholderId: 'p1', value: 'red' }] })],
+  });
+
+  it('flags a placeholder a trait pins but no text places, naming both sides', () => {
+    const found = only(pinnedOnly, 'placeholder-pinned-unused');
+    expect(found).toHaveLength(1);
+    expect(found[0].severity).toBe('warning');
+    // The placeholder is the defect; each pinning trait rides along as its own way in.
+    expect(found[0].items.map((i) => [i.id, i.section])).toEqual([['p1', undefined], ['t1', 'traits']]);
+    expect(found[0].message).toContain('Hue');
+    expect(found[0].message).toContain('Dyed');
+  });
+
+  it('says nothing once the pinned placeholder is placed somewhere', () => {
+    expect(runRules({
+      ...pinnedOnly,
+      worldOverview: { ...pinnedOnly.worldOverview, readme: 'A fen of {{ph:p1:world:pl1}}.' } as WorldOverview,
+    })).toEqual([]);
+  });
+
+  it('counts an empty-value pin as pinned — intent, not effect, is what the rule reads', () => {
+    const w = base({
+      placeholders: [{ id: 'p1', name: 'Hue', values: ['red', 'blue'] }],
+      traits: [trait({ id: 't1', name: 'Dyed', placeholderPins: [{ placeholderId: 'p1', value: '' }] })],
+    });
+    expect(only(w, 'placeholder-pinned-unused')).toHaveLength(1);
+    // And never the plain rule — its delete-fix would orphan the pin.
+    expect(only(w, 'placeholder-unused')).toEqual([]);
+  });
+
+  it('leaves a pin naming an unknown placeholder to the invalid-pin rule', () => {
+    const w = base({
+      traits: [trait({ id: 't1', name: 'Dyed', placeholderPins: [{ placeholderId: 'gone', value: 'red' }] })],
+    });
+    expect(only(w, 'placeholder-pinned-unused')).toEqual([]);
+    expect(only(w, 'trait-pin-invalid')).toHaveLength(1);
+  });
+
+  it('offers no fix — only the author knows where the chip belongs', () => {
+    expect(isRuleFixable('placeholder-pinned-unused')).toBe(false);
+    expect(applyRuleFix(pinnedOnly, 'placeholder-pinned-unused')).toBe(pinnedOnly);
   });
 });
 
@@ -1857,6 +1904,7 @@ const RULE_SCOPE: Record<string, 'simple' | 'advanced'> = {
   'entity-long-description-no-summary': 'advanced',
   'entity-name-in-wildcard-pool': 'advanced',
   'placeholder-unused': 'advanced',
+  'placeholder-pinned-unused': 'advanced',
   'placeholder-weight-unknown-value': 'advanced',
   'stat-ai-lock-frozen': 'advanced',
   'stat-code-execution': 'advanced',
