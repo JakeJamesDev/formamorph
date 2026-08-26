@@ -38,6 +38,10 @@ const TINT_ALPHA = '59';
 /** The tinted run's classes, shared so both panes highlight identically. */
 export const TINT_MARK_CLASS = 'rounded px-0.5';
 
+/** Marks a chip tint apart from an author's own `==highlight==`, which is a `<mark>` too. Both panes set it,
+ *  and the edit↔preview scroll sync anchors on it so author highlights stay out of the chip ordering. */
+export const TINT_MARK_ATTR = 'data-tint';
+
 /** The empty-value marker's classes. A sliver the width of a caret, so it reads as a trace rather than text. */
 export const EMPTY_MARK_CLASS =
   'mx-px inline-block h-[0.85em] w-[0.4em] translate-y-[0.1em] rounded-[2px] border border-muted-foreground/50 bg-muted-foreground/25 align-baseline';
@@ -110,6 +114,7 @@ function markNode(color: string, children: HastNode[]): HastNode {
     properties: {
       className: TINT_MARK_CLASS.split(' '),
       style: `background-color:${color}${TINT_ALPHA};color:inherit`,
+      dataTint: '',
     },
     children,
   };
@@ -124,6 +129,7 @@ function emptyNode(color: string): HastNode {
       style: `border-color:${color};background-color:${color}${TINT_ALPHA}`,
       role: 'img',
       ariaLabel: EMPTY_MARK_LABEL,
+      dataTint: '',
     },
     children: [],
   };

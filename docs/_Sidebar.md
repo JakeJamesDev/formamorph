@@ -7,6 +7,7 @@
 - [🎭 Entities in Play](Entities)
 
 **Reference**
+- [✍️ Text Formatting](TextFormatting)
 - [🛠️ World Editor](WorldEditor)
 - [📐 World Format](WorldFormat)
 - [🧮 Stat Code Guide](StatCodeGuide)

@@ -532,6 +532,48 @@ b {
   font-weight: var(--fm-weight-bold, 700);
 }
 
+/* Author highlights — `==text==` and `=r=text==` — from remark-flexible-markers. Hue and intensity each
+   tune in one place: a per-color RGB triplet plus one shared alpha. The keyless base takes the theme's own
+   primary, so it belongs to whichever of the eight palettes is on rather than being default yellow, and a
+   key we don't style below falls back to it. Every fill is translucent over inherited text color, which is
+   what lets one rule set read correctly on light and dark backgrounds alike. */
+:root {
+  --md-hl-alpha: 0.45;
+  /* Lower than the keyed colors: the base blends the theme's own primary, which in the dark palettes is a
+     near-white, and at 0.45 it lifted the fill close enough to the light body text to drop below 4.5:1
+     (graphite dark measured 3.79). 0.38 clears every theme in both modes at no visible cost. */
+  --md-hl-alpha-base: 0.38;
+  --md-hl-red: 239 68 68;
+  --md-hl-orange: 249 115 22;
+  --md-hl-yellow: 234 179 8;
+  --md-hl-green: 34 197 94;
+  --md-hl-cyan: 6 182 212;
+  --md-hl-blue: 59 130 246;
+  --md-hl-purple: 168 85 247;
+  --md-hl-pink: 236 72 153;
+  --md-hl-gray: 115 115 115;
+}
+
+.flexible-marker {
+  background-color: hsl(var(--primary) / var(--md-hl-alpha-base));
+  color: inherit;
+  padding: 0 0.15em;
+  border-radius: 0.15em;
+  /* A highlight wrapping to the next line keeps its fill and rounding on both halves. */
+  -webkit-box-decoration-break: clone;
+  box-decoration-break: clone;
+}
+
+.flexible-marker-red { background-color: rgb(var(--md-hl-red) / var(--md-hl-alpha)); }
+.flexible-marker-orange { background-color: rgb(var(--md-hl-orange) / var(--md-hl-alpha)); }
+.flexible-marker-yellow { background-color: rgb(var(--md-hl-yellow) / var(--md-hl-alpha)); }
+.flexible-marker-green { background-color: rgb(var(--md-hl-green) / var(--md-hl-alpha)); }
+.flexible-marker-cyan { background-color: rgb(var(--md-hl-cyan) / var(--md-hl-alpha)); }
+.flexible-marker-blue { background-color: rgb(var(--md-hl-blue) / var(--md-hl-alpha)); }
+.flexible-marker-purple { background-color: rgb(var(--md-hl-purple) / var(--md-hl-alpha)); }
+.flexible-marker-pink { background-color: rgb(var(--md-hl-pink) / var(--md-hl-alpha)); }
+.flexible-marker-gray { background-color: rgb(var(--md-hl-gray) / var(--md-hl-alpha)); }
+
 /* Composed per-word entrance animation for the reveal (built in RevealAnimationDemo). Fade, Move,
    Scale and Blur are independent, stackable effects on orthogonal properties, so one keyframe covers
    every combination: each effect contributes CSS vars (set on the narration container); unset vars sit

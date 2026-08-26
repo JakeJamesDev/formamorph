@@ -51,6 +51,7 @@
     "fflate": "^0.8.3",
     "node-llama-cpp": "^3.19.0",
     "pluralize": "^8.0.0",
+    "remark-flexible-markers": "^1.3.6",
     "wordlist-english": "^1.2.1"
   },
   "devDependencies": {
