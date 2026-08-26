@@ -4,6 +4,7 @@ import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import PromptField from './PromptField';
 import { plainVocabulary } from '@/lib/chipVocabulary';
+import { HIGHLIGHT_COLORS } from '@/lib/markdownToolbar';
 
 // Keep Streamdown out of jsdom — the preview's text mapping is covered in promptFieldState.test.ts.
 vi.mock('@/components/game/MarkdownRenderer', () => ({
@@ -29,6 +30,23 @@ describe('PromptField (markdown wiring)', () => {
     unmount();
     render(<Harness />);
     expect(screen.queryByLabelText('Bold')).not.toBeInTheDocument();
+  });
+
+  it('offers the highlight colors behind a chevron rather than only the plain highlighter', async () => {
+    // The nine color keys are otherwise invisible: nothing in the editor says they exist, and an author
+    // who never opens the wiki never finds them.
+    const user = userEvent.setup();
+    render(<Harness markdown />);
+    expect(screen.queryByText('Red Highlight')).not.toBeInTheDocument();
+
+    await user.click(screen.getByLabelText('Highlight color'));
+    for (const { label } of HIGHLIGHT_COLORS) {
+      const row = await screen.findByText(`${label} Highlight`);
+      // A row named Red must be painted red: the name alone leaves nine identical highlighter icons.
+      expect(row.querySelector(`.flexible-marker-${label.toLowerCase()}`), label).toBeInTheDocument();
+    }
+    // The keyless base sits alongside them, so a colored run can be taken back to the theme's own color.
+    expect(screen.getByText('Highlight').querySelector('.flexible-marker-default')).toBeInTheDocument();
   });
 
   it('opens a split-button menu on click and keeps it open after the press ends', async () => {

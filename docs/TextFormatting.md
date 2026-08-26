@@ -44,6 +44,8 @@ Put a single letter between the first pair of equals signs to pick a color inste
 
 The closing marker is always a plain `==`, whether or not you used a key. A letter that isn't in the table falls back to the plain themed highlight rather than breaking.
 
+You don't have to type any of it. The **highlighter button** in the toolbar has a chevron beside it that opens all ten colors, each shown as its own swatch, and the button then remembers whichever you picked last. Pressing a color on text that already carries a different one recolors it in place; pressing the color it already has takes the highlight off.
+
 > [!NOTE]
 > The content can't start or end with a space — `==loose plank==` highlights, `== loose plank ==` doesn't. An empty `====` renders as nothing at all.
 

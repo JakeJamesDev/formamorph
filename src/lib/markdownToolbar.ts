@@ -4,12 +4,30 @@
 // Every action toggles: applying one that is already in effect removes it. Headings and lists share a
 // slot (applying one replaces the other), while quote nests around them independently.
 
-export type WrapAction = 'bold' | 'italic' | 'strike' | 'code' | 'sub' | 'sup' | 'highlight';
+export type WrapAction = 'bold' | 'italic' | 'strike' | 'code' | 'sub' | 'sup';
 export type PrefixAction = 'h1' | 'h2' | 'h3' | 'h4' | 'ul' | 'ol' | 'task' | 'quote';
+
+/** The color keys `=r=text==` takes, letters matching the color initials the stylesheet paints. */
+export const HIGHLIGHT_COLORS = [
+  { key: 'r', label: 'Red' },
+  { key: 'o', label: 'Orange' },
+  { key: 'y', label: 'Yellow' },
+  { key: 'g', label: 'Green' },
+  { key: 'c', label: 'Cyan' },
+  { key: 'b', label: 'Blue' },
+  { key: 'p', label: 'Purple' },
+  { key: 'q', label: 'Pink' },
+  { key: 'x', label: 'Gray' },
+] as const;
+
+export type HighlightColorKey = (typeof HIGHLIGHT_COLORS)[number]['key'];
+/** `highlight` is the keyless base, which takes the theme's own color. */
+export type HighlightAction = 'highlight' | `highlight:${HighlightColorKey}`;
 
 export type MarkdownAction =
   | WrapAction
   | PrefixAction
+  | HighlightAction
   | 'link' | 'image' // inserts taking a url
   | 'codeblock' | 'rule' | 'table'; // block inserts
 
@@ -28,8 +46,6 @@ const WRAP: Record<WrapAction, { marker: string; placeholder: string }> = {
   // Pandoc-style sub/sup, per remarkSubSuper. Their content may not contain whitespace.
   sub: { marker: '~', placeholder: 'sub' },
   sup: { marker: '^', placeholder: 'sup' },
-  // Obsidian's highlight. A color key (`=r=…==`) is typed, not offered here.
-  highlight: { marker: '==', placeholder: 'highlighted text' },
 };
 
 /** Line-level prefixes; `ol` is handled specially (sequential numbering). */
@@ -91,6 +107,76 @@ function wrap(
   const innerStart = selStart + marker.length;
   return {
     value: value.slice(0, selStart) + inserted + value.slice(selEnd),
+    selectionStart: innerStart,
+    selectionEnd: innerStart + selected.length,
+  };
+}
+
+const HIGHLIGHT_PLACEHOLDER = 'highlighted text';
+const HIGHLIGHT_CLOSE = '==';
+/** An opening marker sitting immediately before a position, capturing the color key it carries. */
+const HIGHLIGHT_OPEN_BEFORE = /=([a-z]?)=$/;
+/** A whole highlight, markers included, as a covering selection sees it. */
+const HIGHLIGHT_COVERED = /^=([a-z]?)=([\s\S]+)==$/;
+
+export function isHighlightAction(action: MarkdownAction): action is HighlightAction {
+  return action === 'highlight' || action.startsWith('highlight:');
+}
+
+/** The color key an action carries; empty for the themed base. */
+function highlightKey(action: HighlightAction): string {
+  return action === 'highlight' ? '' : action.slice('highlight:'.length);
+}
+
+/** The highlight the selection sits exactly inside, or null. Both markers must be there: a bare `==` in
+ *  front of the selection is ordinary prose unless something closes it right after. */
+function highlightAround(value: string, selStart: number, selEnd: number): { key: string; start: number } | null {
+  if (value.slice(selEnd, selEnd + HIGHLIGHT_CLOSE.length) !== HIGHLIGHT_CLOSE) return null;
+  const match = HIGHLIGHT_OPEN_BEFORE.exec(value.slice(0, selStart));
+  return match ? { key: match[1], start: selStart - match[0].length } : null;
+}
+
+/**
+ * Wrap the selection in a highlight, or retarget the one it already carries: the same color again removes
+ * the markers, a different one swaps the opener so the run recolors in place. Nesting instead would give
+ * `=b==r=text====`, which reads as a highlight of the literal text `=r=text`.
+ *
+ * The markers are asymmetric — `=r=` opens and a plain `==` closes — so this can't go through `wrap`.
+ */
+function highlight(value: string, selStart: number, selEnd: number, key: string): SelectionEdit {
+  const open = `=${key}=`;
+
+  // Selection sits inside the markers ("=r=|brave|==").
+  const inside = highlightAround(value, selStart, selEnd);
+  if (inside) {
+    const inner = value.slice(selStart, selEnd);
+    const rest = value.slice(selEnd + HIGHLIGHT_CLOSE.length);
+    const body = inside.key === key ? inner : `${open}${inner}${HIGHLIGHT_CLOSE}`;
+    const innerStart = inside.start + (inside.key === key ? 0 : open.length);
+    return {
+      value: value.slice(0, inside.start) + body + rest,
+      selectionStart: innerStart,
+      selectionEnd: innerStart + inner.length,
+    };
+  }
+
+  // Selection covers the markers ("|=r=brave==|").
+  const covered = HIGHLIGHT_COVERED.exec(value.slice(selStart, selEnd));
+  if (covered) {
+    const inner = covered[2];
+    const body = covered[1] === key ? inner : `${open}${inner}${HIGHLIGHT_CLOSE}`;
+    const innerStart = selStart + (covered[1] === key ? 0 : open.length);
+    return {
+      value: value.slice(0, selStart) + body + value.slice(selEnd),
+      selectionStart: innerStart,
+      selectionEnd: innerStart + inner.length,
+    };
+  }
+
+  const selected = value.slice(selStart, selEnd) || HIGHLIGHT_PLACEHOLDER;
+  const innerStart = selStart + open.length;
+  return {
+    value: value.slice(0, selStart) + open + selected + HIGHLIGHT_CLOSE + value.slice(selEnd),
     selectionStart: innerStart,
     selectionEnd: innerStart + selected.length,
   };
@@ -206,14 +292,14 @@ function prefixLines(
 export function applyMarkdownAction(
   value: string, selStart: number, selEnd: number, action: MarkdownAction,
 ): SelectionEdit {
+  if (isHighlightAction(action)) return highlight(value, selStart, selEnd, highlightKey(action));
   switch (action) {
     case 'bold':
     case 'italic':
     case 'strike':
     case 'code':
     case 'sub':
-    case 'sup':
-    case 'highlight': {
+    case 'sup': {
       const { marker, placeholder } = WRAP[action];
       return wrap(value, selStart, selEnd, marker, placeholder);
     }
