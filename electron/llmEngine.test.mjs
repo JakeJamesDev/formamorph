@@ -6,7 +6,7 @@ const { start, stop, getState, onStatus } = llmEngine;
 // The renderer's LocalLlmState (src/lib/imageGen/desktop.ts) promises every one of these on every status.
 // A branch that forgets one hands the UI `undefined` where the type says `number | null`.
 const STATE_KEYS = [
-  'status', 'modelPath', 'modelId', 'port', 'error',
+  'status', 'modelPath', 'modelId', 'port', 'error', 'loadProgress',
   'contextSize', 'gpuLayers', 'flashAttention', 'parallelRequests', 'maxContextSize', 'engineVramMB',
   'gpuBackend', 'gpuDeviceNames', 'deviceVramTotalMB', 'deviceVramFreeMB',
 ];

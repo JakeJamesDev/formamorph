@@ -17,6 +17,7 @@ const { portableUserDataDir, migratePersistentStores } = require('./portableProf
 const { corsResponse } = require('./corsShim.cjs');
 const { contextMenuTemplate } = require('./contextMenu.cjs');
 const updater = require('./updater.cjs');
+const perfMeter = require('./perfMeter.cjs');
 
 // Portable/AppImage builds keep their whole profile (settings, saves, worlds, library) beside the exe so
 // copying the folder carries everything; installed (mac dmg) and dev keep the OS-default userData (dev would
@@ -399,6 +400,13 @@ app.on('window-all-closed', () => {
   if (process.platform !== 'darwin') app.quit();
 });
 
+// Opt-in responsiveness meter (`npm run desktop:perf`). A no-op without the flag, and its renderer half is
+// injected rather than bundled, so nothing reaches a normal build.
+const stopPerfMeter = perfMeter.start({
+  getWindow: () => mainWindow,
+  getEnginePid: () => llmEngine.enginePid(),
+});
+
 // Free the model + close the local server before the process exits. Kill rather than await a stop: quit
 // won't wait for the round trip, and ending the engine child is what releases the model either way.
-app.on('will-quit', () => { llmEngine.dispose(); });
+app.on('will-quit', () => { stopPerfMeter(); llmEngine.dispose(); });

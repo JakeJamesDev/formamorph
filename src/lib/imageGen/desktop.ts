@@ -100,6 +100,9 @@ export interface LocalLlmState {
   port: number | null;
   /** Error message when status is 'error'. */
   error: string | null;
+  /** Whole-percent progress while status is 'loading', null at every other status. Weights stream in over
+   *  tens of seconds for a large model, so this is the only sign the load is moving. */
+  loadProgress: number | null;
   /** Options the loaded model was loaded with (null when no model is loaded) — lets the UI tell whether
    *  pending settings differ from what's actually applied. */
   contextSize: number | null;

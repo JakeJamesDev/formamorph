@@ -39,7 +39,7 @@ const NO_ENGINE = {
 // can tell whether pending settings differ from what's actually applied.
 /** The idle status, every field the renderer expects declared. Also the proxy's starting mirror. */
 function stoppedState() {
-  return { status: 'stopped', modelPath: null, modelId: null, port: null, error: null, ...NO_ENGINE };
+  return { status: 'stopped', modelPath: null, modelId: null, port: null, error: null, loadProgress: null, ...NO_ENGINE };
 }
 
 let state = stoppedState();
@@ -292,8 +292,8 @@ async function start({ modelPath, port = DEFAULT_PORT, contextSize, gpuLayers, f
   // before the load so a failure still reports the device it tried: when CUDA breaks and llama.cpp falls
   // back to Vulkan on an iGPU, every model reports "not enough VRAM" while the discrete card sits idle.
   const device = { gpuBackend: null, gpuDeviceNames: null, deviceVramTotalMB: null, deviceVramFreeMB: null };
-  if (!modelPath) { setState({ status: 'error', modelPath: null, modelId: null, port, error: 'No modelPath provided.', ...NO_ENGINE }); return getState(); }
-  setState({ status: 'loading', modelPath, modelId: path.basename(modelPath), port, error: null, ...applied, ...device });
+  if (!modelPath) { setState({ status: 'error', modelPath: null, modelId: null, port, error: 'No modelPath provided.', loadProgress: null, ...NO_ENGINE }); return getState(); }
+  setState({ status: 'loading', modelPath, modelId: path.basename(modelPath), port, error: null, loadProgress: 0, ...applied, ...device });
   try {
     const nlc = await import('node-llama-cpp');
     LlamaChatSession = nlc.LlamaChatSession;
@@ -323,6 +323,15 @@ async function start({ modelPath, port = DEFAULT_PORT, contextSize, gpuLayers, f
     else if (typeof contextSize === 'number' && contextSize > 0) {
       loadOpts.gpuLayers = { fitContext: { contextSize } };
     }
+    // llama.cpp reports load progress far more often than a status push is worth; whole percents cap this at
+    // 100 messages for a load that otherwise sits silent for a minute on a 20GB model.
+    let lastPct = -1;
+    loadOpts.onLoadProgress = (p) => {
+      const pct = Math.max(0, Math.min(100, Math.round(p * 100)));
+      if (pct === lastPct || state.status !== 'loading') return;
+      lastPct = pct;
+      setState({ ...getState(), loadProgress: pct });
+    };
     model = await llama.loadModel(loadOpts);
     // Wrappers are immutable once constructed, so one instance serves every request's session. A resolution
     // failure falls back to per-session "auto", which is what an unresolved wrapper means to LlamaChatSession.
@@ -360,12 +369,12 @@ async function start({ modelPath, port = DEFAULT_PORT, contextSize, gpuLayers, f
       server.once('error', reject);
       server.listen(port, '127.0.0.1', resolve);
     });
-    setState({ status: 'ready', modelPath, modelId: path.basename(modelPath), port, error: null, ...applied, ...device });
+    setState({ status: 'ready', modelPath, modelId: path.basename(modelPath), port, error: null, loadProgress: null, ...applied, ...device });
   } catch (e) {
     await stop();
     // Keep the device diagnostics: which backend a failed load ran on is exactly what an out-of-VRAM error
     // can't tell you on its own.
-    setState({ status: 'error', modelPath, modelId: null, port, error: String((e && e.message) || e), ...NO_ENGINE, ...device });
+    setState({ status: 'error', modelPath, modelId: null, port, error: String((e && e.message) || e), loadProgress: null, ...NO_ENGINE, ...device });
   }
   return getState();
 }
