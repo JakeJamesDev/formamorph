@@ -79,8 +79,35 @@ describe('EngineStatusLine', () => {
     const { container } = render(<EngineStatusLine engine={engine({
       status: 'loading', modelId: 'big-model.gguf', loadProgress: null,
     })} />);
-    expect(container.textContent).toContain('loading big-model.gguf');
-    expect(container.textContent).not.toContain('%');
+    // Scoped to the status text: the indeterminate bar ships a <style> block whose keyframes contain '%'.
+    const line = container.firstElementChild?.firstElementChild;
+    expect(line?.textContent).toContain('loading big-model.gguf');
+    expect(line?.textContent).not.toContain('%');
+  });
+
+  it('draws a bar filled to the load position, not just a number', () => {
+    const { container } = render(<EngineStatusLine engine={engine({
+      status: 'loading', modelId: 'big-model.gguf', loadProgress: 42,
+    })} />);
+    const bar = container.querySelector('[role="progressbar"]');
+    expect(bar).not.toBeNull();
+    // The fill is drawn by sliding the indicator in from the left, so 42% sits at translateX(-58%).
+    expect(bar?.querySelector('div')?.getAttribute('style')).toContain('translateX(-58%)');
+  });
+
+  it('keeps a bar moving before the first percentage arrives', () => {
+    const { container } = render(<EngineStatusLine engine={engine({
+      status: 'loading', modelId: 'big-model.gguf', loadProgress: null,
+    })} />);
+    // Indeterminate: a bar is present, but it reports no position to sit at.
+    const bar = container.querySelector('[role="progressbar"]');
+    expect(bar).not.toBeNull();
+    expect(bar?.getAttribute('aria-valuenow')).toBeNull();
+  });
+
+  it('shows no bar once the model is ready', () => {
+    const { container } = render(<EngineStatusLine engine={engine({ status: 'ready', modelId: 'm.gguf' })} />);
+    expect(container.querySelector('[role="progressbar"]')).toBeNull();
   });
 
   it('drops the percentage once the model is ready', () => {
