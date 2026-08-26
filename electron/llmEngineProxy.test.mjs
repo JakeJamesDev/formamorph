@@ -140,6 +140,40 @@ describe('engine proxy over a real child process', () => {
     expect(proxy.enginePid()).not.toBe(dead);
   });
 
+  it('reports a stop that overlaps another stop as stopped, not as a crash', async () => {
+    proxy = makeProxy();
+    await proxy.start({ port: 1234 });
+    // The renderer's Stop while a delete or a folder move is stopping the engine of its own accord.
+    const [a, b] = await Promise.all([proxy.stop(), proxy.stop()]);
+    expect([a.status, b.status]).toEqual(['stopped', 'stopped']);
+    expect([a.error, b.error]).toEqual([null, null]);
+    expect(proxy.getState().status).toBe('stopped');
+  });
+
+  it('answers a call to a child that dies before it ever spawns', async () => {
+    // Electron's utility process exits without emitting `spawn` when it cannot launch its module, so its
+    // `ready` is a promise nothing resolves. Only a stub can hold a channel in that state.
+    let exited = null;
+    proxy = createEngineProxy({
+      spawn: () => ({
+        ready: new Promise(() => {}),
+        pid: () => null,
+        send: () => {},
+        onMessage: () => {},
+        onExit: (cb) => { exited = cb; },
+        kill: () => {},
+      }),
+    });
+
+    const started = proxy.start({ port: 1234 });
+    exited({ code: 1, signal: null });
+
+    const s = await started;
+    expect(s.status).toBe('error');
+    expect(s.error).toMatch(/stopped unexpectedly \(exit code 1\)/i);
+    expect(keysOf(s)).toEqual(expectedKeys);
+  });
+
   it('leaves no child behind on dispose', async () => {
     proxy = makeProxy();
     await proxy.start({ port: 1234 });

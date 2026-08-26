@@ -18,7 +18,11 @@ function nodeChannel(modulePath = HOST) {
   const { fork } = require('node:child_process');
   const child = fork(modulePath, [], { stdio: 'inherit' });
   return {
-    ready: new Promise((resolve, reject) => { child.once('spawn', resolve); child.once('error', reject); }),
+    ready: new Promise((resolve, reject) => {
+      child.once('spawn', resolve);
+      child.once('error', reject);
+      child.once('exit', () => reject(new Error('The engine process exited before it started.')));
+    }),
     pid: () => child.pid ?? null,
     send: (msg) => child.send(msg),
     onMessage: (cb) => child.on('message', cb),
@@ -33,7 +37,12 @@ function electronChannel(modulePath = HOST) {
   const { utilityProcess } = require('electron');
   const child = utilityProcess.fork(modulePath, [], { serviceName: 'Formamorph Engine' });
   return {
-    ready: new Promise((resolve) => child.once('spawn', resolve)),
+    // A utility process that can't launch its module exits without ever spawning, so `exit` has to settle
+    // this too — otherwise the first call waits on a promise nothing will ever resolve.
+    ready: new Promise((resolve, reject) => {
+      child.once('spawn', resolve);
+      child.once('exit', () => reject(new Error('The engine process exited before it started.')));
+    }),
     pid: () => child.pid ?? null,
     send: (msg) => child.postMessage(msg),
     onMessage: (cb) => child.on('message', cb),
@@ -73,8 +82,11 @@ function createEngineProxy({ spawn = electronChannel } = {}) {
     const dying = channel;
     if (!dying) return;
     channel = null; // before kill(), so the exit handler knows this one was asked for
-    settlePending(errorState('The engine process stopped unexpectedly.'));
+    // Anything still in flight is answered 'stopped', not a crash — this teardown was asked for.
+    settlePending(stoppedState());
     try { dying.kill(); } catch { /* already gone */ }
+    // A kill part-way through a load would otherwise leave the mirror reading 'loading' with nothing behind it.
+    if (mirror.status !== 'stopped') publish(stoppedState());
   }
 
   /** The child went away unasked (crashed, or became unreachable). Report it and let the next start spawn a
@@ -109,16 +121,15 @@ function createEngineProxy({ spawn = electronChannel } = {}) {
     return ch;
   }
 
-  async function call(method, ...args) {
+  function call(method, ...args) {
     const ch = channel ?? spawnChannel();
     const id = nextId++;
     const reply = new Promise((resolve, reject) => pending.set(id, { resolve, reject }));
-    try {
-      await ch.ready;
-      ch.send({ type: 'call', id, method, args });
-    } catch {
-      lose(ch, ''); // unreachable child: settles this call with the error state rather than hanging it
-    }
+    // Send once the child is up, but never let the answer wait on `ready` itself: a child that dies before it
+    // spawns never settles it, and it's the exit handler that answers the call in that case.
+    ch.ready
+      .then(() => ch.send({ type: 'call', id, method, args }))
+      .catch(() => lose(ch, '')); // unreachable child: answer this call rather than hang it
     return reply;
   }
 
