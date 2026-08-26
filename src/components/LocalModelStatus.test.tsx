@@ -1,13 +1,13 @@
 import { render, cleanup } from '@testing-library/react';
 import { describe, it, expect, afterEach } from 'vitest';
-import { EngineDeviceLine, GpuMemoryBox } from './LocalModelStatus';
+import { EngineDeviceLine, EngineStatusLine, GpuMemoryBox } from './LocalModelStatus';
 import type { LocalLlmState } from '@/lib/imageGen/desktop';
 import type { VramStats } from '@/lib/useVramStats';
 
 afterEach(cleanup);
 
 const stopped: LocalLlmState = {
-  status: 'stopped', modelPath: null, modelId: null, port: null, error: null,
+  status: 'stopped', modelPath: null, modelId: null, port: null, error: null, loadProgress: null,
   contextSize: null, gpuLayers: null, flashAttention: null, parallelRequests: null,
   maxContextSize: null, engineVramMB: null,
   gpuBackend: null, gpuDeviceNames: null, deviceVramTotalMB: null, deviceVramFreeMB: null,
@@ -64,6 +64,31 @@ describe('EngineDeviceLine', () => {
     const { container } = render(<EngineDeviceLine engine={engine({ gpuBackend: 'metal', gpuDeviceNames: [] })} />);
     expect(container.textContent).toContain('Metal');
     expect(container.textContent).not.toContain('GB');
+  });
+});
+
+describe('EngineStatusLine', () => {
+  it('shows how far a load has got, so a minute-long load is visibly moving', () => {
+    const { container } = render(<EngineStatusLine engine={engine({
+      status: 'loading', modelId: 'big-model.gguf', loadProgress: 42,
+    })} />);
+    expect(container.textContent).toContain('loading big-model.gguf — 42%');
+  });
+
+  it('names the model without a percentage before the first progress report', () => {
+    const { container } = render(<EngineStatusLine engine={engine({
+      status: 'loading', modelId: 'big-model.gguf', loadProgress: null,
+    })} />);
+    expect(container.textContent).toContain('loading big-model.gguf');
+    expect(container.textContent).not.toContain('%');
+  });
+
+  it('drops the percentage once the model is ready', () => {
+    const { container } = render(<EngineStatusLine engine={engine({
+      status: 'ready', modelId: 'big-model.gguf', loadProgress: null,
+    })} />);
+    expect(container.textContent).toContain('ready — big-model.gguf');
+    expect(container.textContent).not.toContain('%');
   });
 });
 

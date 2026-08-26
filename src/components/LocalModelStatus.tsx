@@ -13,7 +13,12 @@ export function EngineStatusLine({ engine, className }: { engine: LocalLlmState;
     <div className={`text-meta text-muted-foreground ${className ?? ''}`}>
       Engine:{' '}
       {engine.status === 'ready' ? <span className="text-success">ready — {engine.modelId}</span>
-        : engine.status === 'loading' ? <span className="text-warning">loading {engine.modelId}…</span>
+        : engine.status === 'loading' ? (
+          <span className="text-warning">
+            loading {engine.modelId}
+            {engine.loadProgress != null && ` — ${engine.loadProgress}%`}…
+          </span>
+        )
         : engine.status === 'error' ? <span className="text-destructive">error: {engine.error}</span>
         : 'no model loaded'}
     </div>

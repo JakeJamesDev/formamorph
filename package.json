@@ -21,6 +21,7 @@
     "test:e2e:install": "playwright install chromium",
     "preview": "vite preview",
     "desktop:dev": "vite build && electron .",
+    "desktop:perf": "vite build && electron . --perf-meter",
     "desktop:build": "vite build && electron-builder --win dir --publish never",
     "desktop:build:linux": "vite build && electron-builder --linux AppImage --publish never",
     "desktop:build:linux:publish": "vite build && electron-builder --linux AppImage --publish always",

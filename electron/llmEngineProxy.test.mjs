@@ -11,7 +11,7 @@ const makeProxy = () => createEngineProxy({ spawn: nodeChannel });
 // The renderer's LocalLlmState promises every one of these on every status, and the proxy is now what the
 // renderer reads. A reply or push that drops one hands the UI `undefined` where the type says `number | null`.
 const STATE_KEYS = [
-  'status', 'modelPath', 'modelId', 'port', 'error',
+  'status', 'modelPath', 'modelId', 'port', 'error', 'loadProgress',
   'contextSize', 'gpuLayers', 'flashAttention', 'parallelRequests', 'maxContextSize', 'engineVramMB',
   'gpuBackend', 'gpuDeviceNames', 'deviceVramTotalMB', 'deviceVramFreeMB',
 ];
