@@ -90,6 +90,14 @@ describe('promptFieldState', () => {
     it('inserts a placeholder for an empty selection', () => {
       expect(runAction('', 0, 0, 'bold')).toBe('**bold text**');
     });
+
+    it('wraps the selected text in a highlight', () => {
+      expect(runAction('mind the loose plank', 9, 20, 'highlight')).toBe('mind the ==loose plank==');
+    });
+
+    it('inserts a highlight placeholder for an empty selection', () => {
+      expect(runAction('', 0, 0, 'highlight')).toBe('==highlighted text==');
+    });
   });
 
   describe('plainVocabulary', () => {

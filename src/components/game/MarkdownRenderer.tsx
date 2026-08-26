@@ -4,6 +4,7 @@ import { createCodePlugin } from '@streamdown/code';
 import { markdownCodeThemes } from '@/lib/markdownCodeTheme';
 import remarkGfm from 'remark-gfm';
 import remarkBreaks from 'remark-breaks';
+import remarkFlexibleMarkers from 'remark-flexible-markers';
 import { remarkSubSuper } from '@/lib/remarkSubSuper';
 import { rehypePreviewTint } from '@/lib/previewTint';
 import { getRevealTiming } from '@/lib/revealTimingStore';
@@ -11,8 +12,15 @@ import { cn } from '@/lib/utils';
 import 'streamdown/styles.css';
 
 // `singleTilde: false` hands `~x~` to remarkSubSuper (subscript); GFM keeps `~~strike~~`.
-const REMARK_PLUGINS: ComponentProps<typeof Streamdown>['remarkPlugins'] =
-  [[remarkGfm, { singleTilde: false }], remarkBreaks, remarkSubSuper];
+// The marker plugin is Obsidian's `==highlight==`, plus `=r=…==` for a color key; `remove` drops an empty
+// marker rather than leaving a hollow mark for the stylesheet to paint. Styling lives in index.css against
+// the classes it emits.
+const REMARK_PLUGINS: ComponentProps<typeof Streamdown>['remarkPlugins'] = [
+  [remarkGfm, { singleTilde: false }],
+  remarkBreaks,
+  remarkSubSuper,
+  [remarkFlexibleMarkers, { actionForEmptyContent: 'remove' }],
+];
 
 // Streamdown boxes every table in a bordered card inside a second bordered scroller. Our markdown
 // surfaces are already panels, so that reads as a box in a box. Keep the scroller and the solid fill
@@ -23,11 +31,32 @@ const PLUGINS: ComponentProps<typeof Streamdown>['plugins'] = {
   code: createCodePlugin({ themes: markdownCodeThemes }),
 };
 
-// Streamdown's own defaults plus ours, in that order: the tint runs after the sanitizer, so it neither
-// relaxes what author markdown may contain nor has its own marks stripped. A module constant because
-// Streamdown memoizes each block on plugin-array identity.
+/** The fields of Streamdown's sanitize schema we extend. It ships as an opaque plugin tuple. */
+interface SanitizeSchema { tagNames?: string[]; attributes?: Record<string, unknown> }
+
+// Highlights reach the sanitizer as `<mark class="flexible-marker …">`, and the default schema allows
+// neither the tag nor a class on it. Streamdown's `allowedTags` prop only reaches the sanitizer while
+// Streamdown still owns the rehype array — the tinted panes below pass their own — so the allowance goes
+// into the schema both arrays share. Classes only: no inline style is allowlisted.
+// The tuple check keeps a Streamdown that stops shipping the schema this way from throwing at import: the
+// renderer then loses highlights rather than the app losing its markdown.
+const { raw, sanitize, harden } = defaultRehypePlugins;
+const [sanitizePlugin, sanitizeSchema] =
+  (Array.isArray(sanitize) ? sanitize : [sanitize, {}]) as [unknown, SanitizeSchema];
+const MARK_SCHEMA: SanitizeSchema = {
+  ...sanitizeSchema,
+  tagNames: [...(sanitizeSchema.tagNames ?? []), 'mark'],
+  attributes: { ...sanitizeSchema.attributes, mark: ['className'] },
+};
+
+// Module constants because Streamdown memoizes each block on plugin-array identity.
+const REHYPE_PLUGINS = [raw, [sanitizePlugin, MARK_SCHEMA], harden] as
+  ComponentProps<typeof Streamdown>['rehypePlugins'];
+
+// The tint runs after the sanitizer, so it neither relaxes what author markdown may contain nor has its own
+// marks stripped.
 const TINT_REHYPE_PLUGINS: ComponentProps<typeof Streamdown>['rehypePlugins'] =
-  [...Object.values(defaultRehypePlugins), rehypePreviewTint];
+  [...(REHYPE_PLUGINS ?? []), rehypePreviewTint];
 
 const COMPONENTS: ComponentProps<typeof Streamdown>['components'] = {
   table: ({ node: _node, className, children, ...props }) => (
@@ -65,7 +94,7 @@ export const MarkdownRenderer = memo(function MarkdownRenderer(
     <div className="[overflow-wrap:anywhere] [&_ul]:list-outside [&_ul]:pl-6 [&_ol]:list-outside [&_ol]:pl-6">
       <Streamdown
         remarkPlugins={REMARK_PLUGINS}
-        rehypePlugins={tinted ? TINT_REHYPE_PLUGINS : undefined}
+        rehypePlugins={tinted ? TINT_REHYPE_PLUGINS : REHYPE_PLUGINS}
         components={COMPONENTS}
         plugins={PLUGINS}
         controls={false}

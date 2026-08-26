@@ -67,6 +67,19 @@ describe('applyMarkdownAction — added inline actions', () => {
     expect(run('H2O', 1, 2, 'sub').value).toBe('H~2~O');
     expect(run('x2', 1, 2, 'sup').value).toBe('x^2^');
   });
+
+  it('wraps and unwraps a highlight', () => {
+    const on = run('mind the loose plank', 9, 20, 'highlight');
+    expect(on.value).toBe('mind the ==loose plank==');
+    expect(on.selected).toBe('loose plank');
+    expect(run(on.value, 11, 22, 'highlight').value).toBe('mind the loose plank');
+  });
+
+  it('inserts a highlight placeholder when nothing is selected', () => {
+    const r = run('', 0, 0, 'highlight');
+    expect(r.value).toBe('==highlighted text==');
+    expect(r.selected).toBe('highlighted text');
+  });
 });
 
 describe('applyMarkdownAction — inserts', () => {

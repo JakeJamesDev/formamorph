@@ -4,7 +4,7 @@
 // Every action toggles: applying one that is already in effect removes it. Headings and lists share a
 // slot (applying one replaces the other), while quote nests around them independently.
 
-export type WrapAction = 'bold' | 'italic' | 'strike' | 'code' | 'sub' | 'sup';
+export type WrapAction = 'bold' | 'italic' | 'strike' | 'code' | 'sub' | 'sup' | 'highlight';
 export type PrefixAction = 'h1' | 'h2' | 'h3' | 'h4' | 'ul' | 'ol' | 'task' | 'quote';
 
 export type MarkdownAction =
@@ -28,6 +28,8 @@ const WRAP: Record<WrapAction, { marker: string; placeholder: string }> = {
   // Pandoc-style sub/sup, per remarkSubSuper. Their content may not contain whitespace.
   sub: { marker: '~', placeholder: 'sub' },
   sup: { marker: '^', placeholder: 'sup' },
+  // Obsidian's highlight. A color key (`=r=…==`) is typed, not offered here.
+  highlight: { marker: '==', placeholder: 'highlighted text' },
 };
 
 /** Line-level prefixes; `ol` is handled specially (sequential numbering). */
@@ -210,7 +212,8 @@ export function applyMarkdownAction(
     case 'strike':
     case 'code':
     case 'sub':
-    case 'sup': {
+    case 'sup':
+    case 'highlight': {
       const { marker, placeholder } = WRAP[action];
       return wrap(value, selStart, selEnd, marker, placeholder);
     }

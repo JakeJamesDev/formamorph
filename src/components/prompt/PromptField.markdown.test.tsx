@@ -21,6 +21,7 @@ describe('PromptField (markdown wiring)', () => {
   it('shows the formatting toolbar only when markdown is on', () => {
     const { unmount } = render(<Harness markdown />);
     expect(screen.getByLabelText('Bold')).toBeInTheDocument();
+    expect(screen.getByLabelText('Highlight')).toBeInTheDocument();
     // Headings/lists/inserts sit behind split buttons: the face is the group's default action.
     expect(screen.getByLabelText('Heading 1')).toBeInTheDocument();
     expect(screen.getByLabelText('Heading level')).toBeInTheDocument();

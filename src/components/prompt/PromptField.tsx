@@ -13,7 +13,7 @@ import { HistoryPlugin, createEmptyHistoryState } from '@lexical/react/LexicalHi
 import { LexicalErrorBoundary } from '@lexical/react/LexicalErrorBoundary';
 import { useLexicalComposerContext } from '@lexical/react/LexicalComposerContext';
 import {
-  Bold, Italic, Strikethrough, Heading1, Heading2, Heading3, Heading4,
+  Bold, Italic, Strikethrough, Highlighter, Heading1, Heading2, Heading3, Heading4,
   List, ListOrdered, ListChecks, Link2, Image, Table, SquareCode, Minus, Subscript, Superscript,
   Quote, Code, Undo2, Redo2, ChevronDown,
   Maximize2, Minimize2, Columns2, Square,
@@ -43,6 +43,7 @@ import { ChipTypeaheadPlugin } from './ChipTypeahead';
 import { ChipInsertTargetPlugin } from './ChipInsertTarget';
 import { ChipDragPlugin } from './ChipDrag';
 import { TOOLBAR_BTN } from './toolbarStyles';
+import { anchorAt, applyAnchor, captureAnchor, caretOffset, type ScrollAnchor } from './previewScrollSync';
 
 interface ToolbarItem { action: MarkdownAction; Icon: typeof Bold; title: string }
 
@@ -51,6 +52,7 @@ const MARKDOWN_TOOLBAR: ToolbarItem[] = [
   { action: 'bold', Icon: Bold, title: 'Bold' },
   { action: 'italic', Icon: Italic, title: 'Italic' },
   { action: 'strike', Icon: Strikethrough, title: 'Strikethrough' },
+  { action: 'highlight', Icon: Highlighter, title: 'Highlight' },
   { action: 'code', Icon: Code, title: 'Inline code' },
   { action: 'quote', Icon: Quote, title: 'Blockquote' },
 ];
@@ -388,105 +390,6 @@ const EDITOR_CLASS =
   'h-full min-h-[160px] w-full overflow-auto rounded-md border border-input bg-background px-3 py-2 ' +
   'text-label outline-none whitespace-pre-wrap';
 
-// --- edit <-> preview scroll sync ---
-// The two panes have very different heights (a chip is one short token; its expanded value can be many
-// lines), so a whole-document fraction maps poorly. Instead we anchor on the variable elements both panes
-// share in the same order — Lexical chips (`data-lexical-decorator`) in Edit, expanded `<mark>`s in
-// Preview — and record the viewport center as a position *between two chips*, which we then reproduce in
-// the other pane. Non-uniform expansion above/below the reading spot no longer skews the result.
-
-/** A captured scroll position: interpolated between shared anchors `seg`..`seg+1`, or a whole-document
- *  fraction when the pane has no chips to align on. */
-type ScrollAnchor = { seg: number; t: number } | { frac: number };
-
-const anchorSelector = (tab: string) => (tab === 'edit' ? '[data-lexical-decorator]' : 'mark');
-
-/** Anchor element tops (px from content top), bracketed by the content's own top (0) and bottom
- *  (scrollHeight) — giving `chips + 1` gaps to interpolate within. */
-function anchorPositions(el: HTMLElement, tab: string): number[] {
-  const contentTop = el.getBoundingClientRect().top - el.scrollTop;
-  const tops = Array.from(el.querySelectorAll<HTMLElement>(anchorSelector(tab)))
-    .map((a) => a.getBoundingClientRect().top - contentTop);
-  return [0, ...tops, el.scrollHeight];
-}
-
-/**
- * The anchor for one position in the pane's content, measured in px from the content's top. Scrolling
- * passes the viewport centre; the caret passes its own offset, which is what makes the preview follow the
- * line being written rather than the middle of the view.
- */
-function anchorAt(el: HTMLElement, tab: string, offset: number): ScrollAnchor {
-  const pos = anchorPositions(el, tab);
-  if (pos.length <= 2) return { frac: offset / el.scrollHeight }; // no chips → whole-document fraction
-  let seg = 0;
-  while (seg < pos.length - 2 && offset >= pos[seg + 1]) seg++;
-  return { seg, t: (offset - pos[seg]) / (pos[seg + 1] - pos[seg] || 1) };
-}
-
-function captureAnchor(el: HTMLElement | null, tab: string): ScrollAnchor | null {
-  if (!el || el.scrollHeight <= el.clientHeight) return null;
-  return anchorAt(el, tab, el.scrollTop + el.clientHeight / 2);
-}
-
-/** The top of one node's box, measuring a text node through a range since only elements have rects. */
-function nodeTop(node: Node): number | null {
-  if (node.nodeType === Node.ELEMENT_NODE) {
-    const r = (node as Element).getBoundingClientRect();
-    return r.height ? r.top : null;
-  }
-  const r = document.createRange();
-  r.selectNodeContents(node);
-  const box = r.getBoundingClientRect();
-  return box.height ? box.top : null;
-}
-
-/** Viewport y of the caret, or null when nothing measurable can be found. */
-function caretTop(range: Range): number | null {
-  // A collapsed range inside text has zero width but a real line height — that is the good case.
-  const rect = range.getBoundingClientRect();
-  if (rect.height) return rect.top;
-
-  // Beside a chip there is no text box to measure: the chip is a Lexical decorator (an element), so a
-  // caret placed against it collapses to an empty rect. Measure the node the caret sits against instead —
-  // without this the caret reads as position zero and the preview jumps to the top instead of following.
-  const { startContainer, startOffset } = range;
-  if (startContainer.nodeType === Node.ELEMENT_NODE) {
-    const kids = (startContainer as Element).childNodes;
-    for (const neighbor of [kids[startOffset], kids[startOffset - 1]]) {
-      const top = neighbor ? nodeTop(neighbor) : null;
-      if (top !== null) return top;
-    }
-  }
-
-  // Last resort: the element the caret is in. Coarse, but never wrong by more than its own height.
-  const host = startContainer.nodeType === Node.ELEMENT_NODE
-    ? (startContainer as Element)
-    : startContainer.parentElement;
-  return host ? nodeTop(host) : null;
-}
-
-function caretOffset(el: HTMLElement): number | null {
-  const sel = window.getSelection();
-  if (!sel || sel.rangeCount === 0) return null;
-  const range = sel.getRangeAt(0);
-  if (!el.contains(range.startContainer)) return null;
-  const top = caretTop(range);
-  if (top === null) return null;
-  return top - (el.getBoundingClientRect().top - el.scrollTop);
-}
-
-function applyAnchor(el: HTMLElement | null, tab: string, anchor: ScrollAnchor): void {
-  if (!el) return;
-  let center: number;
-  if ('frac' in anchor) center = anchor.frac * el.scrollHeight;
-  else {
-    const pos = anchorPositions(el, tab);
-    const seg = Math.min(anchor.seg, pos.length - 2); // guard against a differing anchor count
-    center = pos[seg] + anchor.t * (pos[seg + 1] - pos[seg]);
-  }
-  el.scrollTop = Math.max(0, Math.min(el.scrollHeight - el.clientHeight, center - el.clientHeight / 2));
-}
-
 /** The substituted prompt, with each variable's value lightly tinted its accent color (matching the
  *  chip and the Insert key) so it's obvious which text came from which variable. */
 function PreviewPane({ value, previewValues, vocab, scrollRef, onScroll }: {
@@ -516,11 +419,12 @@ function PreviewPane({ value, previewValues, vocab, scrollRef, onScroll }: {
               aria-label={EMPTY_MARK_LABEL}
               className={EMPTY_MARK_CLASS}
               style={emptyMarkStyle(color)}
+              data-tint=""
             />
           );
         }
         return (
-          <mark key={i} className={TINT_MARK_CLASS} style={tintMarkStyle(color)}>
+          <mark key={i} className={TINT_MARK_CLASS} style={tintMarkStyle(color)} data-tint="">
             {rendered}
           </mark>
         );

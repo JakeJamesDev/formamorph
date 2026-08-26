@@ -4,6 +4,7 @@ import remarkParse from 'remark-parse';
 import remarkGfm from 'remark-gfm';
 import remarkBreaks from 'remark-breaks';
 import remarkRehype from 'remark-rehype';
+import remarkFlexibleMarkers from 'remark-flexible-markers';
 import { toHtml } from 'hast-util-to-html';
 import { remarkSubSuper } from './remarkSubSuper';
 import { rehypePreviewTint, tintValue, emptyMarker, stripTintSentinels } from './previewTint';
@@ -18,6 +19,9 @@ const processor = unified()
   .use(remarkGfm, { singleTilde: false })
   .use(remarkBreaks)
   .use(remarkSubSuper)
+  // An author's own `==highlight==` is a mark too, so the stack carries the marker plugin: what tells the
+  // two apart only shows up when both are in the same output.
+  .use(remarkFlexibleMarkers, { actionForEmptyContent: 'remove' })
   .use(remarkRehype)
   .use(rehypePreviewTint);
 
@@ -84,6 +88,20 @@ describe('preview tint plugin', () => {
 
   it('leaves ordinary markdown untouched when no chip resolved', () => {
     expect(render('Plain **prose** with a [link](https://example.com).')).not.toContain('<mark');
+  });
+
+  it('brands a tinted run so it is distinguishable from an author highlight', () => {
+    const html = render(`${tintValue('Mira', AMBER)} and ==her plank==`);
+    const tags = html.match(/<mark[^>]*>/g) ?? [];
+    expect(tags).toHaveLength(2);
+    expect(tags[0]).toContain('data-tint');
+    // The author's own highlight is a mark with no brand — that is what the scroll sync selects against.
+    expect(tags[1]).not.toContain('data-tint');
+    expect(tags[1]).toContain('flexible-marker');
+  });
+
+  it('brands the empty-value marker too', () => {
+    expect(render(`Notes:${emptyMarker(MINT)} done.`)).toMatch(/<mark[^>]*data-tint[^>]*><\/mark>/);
   });
 
   it('strips stray sentinel characters without breaking a real pairing', () => {
