@@ -39,6 +39,9 @@ let server = null;
 let llama = null;
 let model = null;
 let context = null;
+// The model's chat template, resolved once at load time. LlamaChatSession resolves it per session when left
+// on "auto", which re-parses the template on every request (~250-430ms of synchronous work).
+let chatWrapper = null;
 
 // Parallel request slots: the context is created with N sequences (llama.cpp batches them), so up to N
 // requests decode at once. `freeSequences` holds the idle ones; when all are busy, incoming requests wait in
@@ -191,7 +194,7 @@ async function handleChatCompletion(req, res) {
   let seq;
   try { seq = await acquireSequence(); } catch { seq = null; }
   if (!seq) { res.off('close', onClose); return sendJson(res, 503, { error: { message: 'Model is not loaded.' } }); }
-  const session = new LlamaChatSession({ contextSequence: seq });
+  const session = new LlamaChatSession(chatWrapper ? { contextSequence: seq, chatWrapper } : { contextSequence: seq });
   session.setChatHistory(chatHistory);
   const raw = makeRawReconstructor();
 
@@ -312,6 +315,9 @@ async function start({ modelPath, port = DEFAULT_PORT, contextSize, gpuLayers, f
       loadOpts.gpuLayers = { fitContext: { contextSize } };
     }
     model = await llama.loadModel(loadOpts);
+    // Wrappers are immutable once constructed, so one instance serves every request's session. A resolution
+    // failure falls back to per-session "auto", which is what an unresolved wrapper means to LlamaChatSession.
+    try { chatWrapper = nlc.resolveChatWrapper(model); } catch { chatWrapper = null; }
     // The model's trained context length is the hard ceiling for contextSize — surface it so the UI can cap
     // its slider, and clamp our request to it (createContext rejects a contextSize above the trained max).
     const trainedMax = typeof model.trainContextSize === 'number' ? model.trainContextSize : null;
@@ -370,7 +376,7 @@ async function stop() {
   try { if (model?.dispose) await model.dispose(); } catch { /* ignore */ }
   // Reject anyone still queued for a slot so their request fails cleanly instead of hanging.
   for (const resolve of waitQueue.splice(0)) { try { resolve(null); } catch { /* ignore */ } }
-  server = null; sequences = []; freeSequences.length = 0; context = null; model = null; llama = null;
+  server = null; sequences = []; freeSequences.length = 0; context = null; model = null; llama = null; chatWrapper = null;
   setState({ status: 'stopped', modelPath: null, modelId: null, port: null, error: null, ...NO_ENGINE });
   return getState();
 }
