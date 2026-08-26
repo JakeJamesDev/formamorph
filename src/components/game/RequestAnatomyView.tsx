@@ -83,21 +83,24 @@ function AuthoredRun({
       {children}
     </>
   );
+  if (!onJump) return <mark className={cn('rounded-sm px-0.5 text-inherit', style.mark)}>{body}</mark>;
+  // The mark itself is the control: a <button> is an atomic inline-block, which paints its background as
+  // one rectangle to the container edge instead of wrapping per line the way highlighted text must.
   return (
-    <mark className={cn('rounded-sm px-0.5 text-inherit', style.mark)}>
-      {onJump ? (
-        // Inline so a run still wraps with the text around it; the dotted rule is what says it opens.
-        <button
-          type="button"
-          onClick={onJump}
-          title={`Open the ${SOURCE_LABELS[source]}`}
-          className="inline cursor-pointer text-left underline decoration-dotted underline-offset-2 hover:decoration-solid focus-visible:ring-1 focus-visible:ring-ring focus-visible:ring-inset"
-        >
-          {body}
-        </button>
-      ) : (
-        body
+    <mark
+      role="button"
+      tabIndex={0}
+      onClick={onJump}
+      onKeyDown={(e) => {
+        if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onJump(); }
+      }}
+      title={`Open the ${SOURCE_LABELS[source]}`}
+      className={cn(
+        'rounded-sm px-0.5 text-inherit cursor-pointer underline decoration-dotted underline-offset-2 hover:decoration-solid focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring',
+        style.mark,
       )}
+    >
+      {body}
     </mark>
   );
 }
