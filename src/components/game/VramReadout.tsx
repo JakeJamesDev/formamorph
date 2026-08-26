@@ -1,10 +1,4 @@
-import type { VramStats } from "@/lib/useVramStats";
-
-const GB = 1024;
-
-function fmtGB(mb: number | null): string {
-  return mb == null ? "?" : (mb / GB).toFixed(1);
-}
+import { fmtGB, type VramStats } from "@/lib/useVramStats";
 
 // Live VRAM readout shared by the Settings dialog and the TTS modal. Takes the polled
 // stats as a prop so the parent owns a single useVramStats poll (no double-polling).

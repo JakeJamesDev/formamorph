@@ -114,7 +114,7 @@ export function LocalModelPanel() {
       </div>
 
       {/* GPU memory + engine status, shared with the model-manager popup. */}
-      <GpuMemoryBox stats={vram} {...resolveOwnVram(vram, engine.engineVramMB)} />
+      <GpuMemoryBox stats={vram} engine={engine} {...resolveOwnVram(vram, engine.engineVramMB)} />
 
       <Row {...rowCopy('localModel')}>
         <div className="flex items-center gap-3">

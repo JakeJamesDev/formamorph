@@ -15,10 +15,25 @@ const DEFAULT_PORT = 8977;
 const GPU_LAYERS_AUTO = -1;
 const GPU_LAYERS_MAX = -2;
 
+// The load-dependent half of the status: the options the current model was loaded with, and the device
+// node-llama-cpp picked for it. All null when nothing is loaded.
+const NO_ENGINE = {
+  contextSize: null,
+  gpuLayers: null,
+  flashAttention: null,
+  parallelRequests: null,
+  maxContextSize: null,
+  engineVramMB: null,
+  gpuBackend: null,
+  gpuDeviceNames: null,
+  deviceVramTotalMB: null,
+  deviceVramFreeMB: null,
+};
+
 // Serializable status shared with the renderer (no live handles). status: stopped|loading|ready|error.
-// contextSize/gpuLayers/flashAttention are the options the current model was loaded with (null when none),
-// so the renderer can tell whether pending settings differ from what's actually applied.
-let state = { status: 'stopped', modelPath: null, modelId: null, port: null, error: null, contextSize: null, gpuLayers: null, flashAttention: null, parallelRequests: null, maxContextSize: null, engineVramMB: null };
+// contextSize/gpuLayers/flashAttention are the options the current model was loaded with, so the renderer
+// can tell whether pending settings differ from what's actually applied.
+let state = { status: 'stopped', modelPath: null, modelId: null, port: null, error: null, ...NO_ENGINE };
 
 let server = null;
 let llama = null;
@@ -261,16 +276,30 @@ async function start({ modelPath, port = DEFAULT_PORT, contextSize, gpuLayers, f
     maxContextSize: null, // filled in once the model loads and reports its trained context length
     engineVramMB: null, // filled in from the device VRAM delta across load (our footprint per llama.cpp)
   };
-  if (!modelPath) { setState({ status: 'error', modelPath: null, modelId: null, port, error: 'No modelPath provided.', contextSize: null, gpuLayers: null, flashAttention: null, parallelRequests: null, maxContextSize: null, engineVramMB: null }); return getState(); }
-  setState({ status: 'loading', modelPath, modelId: path.basename(modelPath), port, error: null, ...applied });
+  // Which backend and device node-llama-cpp selected, and the VRAM it sizes the load against. Captured
+  // before the load so a failure still reports the device it tried: when CUDA breaks and llama.cpp falls
+  // back to Vulkan on an iGPU, every model reports "not enough VRAM" while the discrete card sits idle.
+  const device = { gpuBackend: null, gpuDeviceNames: null, deviceVramTotalMB: null, deviceVramFreeMB: null };
+  if (!modelPath) { setState({ status: 'error', modelPath: null, modelId: null, port, error: 'No modelPath provided.', ...NO_ENGINE }); return getState(); }
+  setState({ status: 'loading', modelPath, modelId: path.basename(modelPath), port, error: null, ...applied, ...device });
   try {
     const nlc = await import('node-llama-cpp');
     LlamaChatSession = nlc.LlamaChatSession;
     llama = await nlc.getLlama();
+    // llama.gpu is false when no GPU backend was selected; report that as 'cpu' so the field is always a name.
+    device.gpuBackend = llama.gpu === false ? 'cpu' : llama.gpu;
+    try { device.gpuDeviceNames = await llama.getGpuDeviceNames(); } catch { /* not every backend enumerates devices */ }
     // Device VRAM before we allocate anything — the delta after load+context is our footprint (weights +
     // KV cache), from llama.cpp's own accounting. Robust across GPUs where per-process nvidia-smi is null.
     let vramUsedBefore = null;
-    try { vramUsedBefore = (await llama.getVramState()).used; } catch { /* not all backends report VRAM */ }
+    try {
+      const vram = await llama.getVramState();
+      vramUsedBefore = vram.used;
+      device.deviceVramTotalMB = Math.round(vram.total / 1024 / 1024);
+      device.deviceVramFreeMB = Math.round(vram.free / 1024 / 1024);
+    } catch { /* not all backends report VRAM */ }
+    // Publish the device now rather than at 'ready', so a slow load shows what it's loading onto.
+    setState({ ...getState(), ...device });
     const loadOpts = { modelPath };
     // AUTO → fit layers around the KV cache we're about to allocate; MAX → "max" (all layers); else the
     // literal layer count. Auto-fitting without `fitContext` sizes layers to free VRAM alone and offloads
@@ -316,10 +345,12 @@ async function start({ modelPath, port = DEFAULT_PORT, contextSize, gpuLayers, f
       server.once('error', reject);
       server.listen(port, '127.0.0.1', resolve);
     });
-    setState({ status: 'ready', modelPath, modelId: path.basename(modelPath), port, error: null, ...applied });
+    setState({ status: 'ready', modelPath, modelId: path.basename(modelPath), port, error: null, ...applied, ...device });
   } catch (e) {
     await stop();
-    setState({ status: 'error', modelPath, modelId: null, port, error: String((e && e.message) || e), contextSize: null, gpuLayers: null, flashAttention: null, parallelRequests: null, maxContextSize: null, engineVramMB: null });
+    // Keep the device diagnostics: which backend a failed load ran on is exactly what an out-of-VRAM error
+    // can't tell you on its own.
+    setState({ status: 'error', modelPath, modelId: null, port, error: String((e && e.message) || e), ...NO_ENGINE, ...device });
   }
   return getState();
 }
@@ -340,7 +371,7 @@ async function stop() {
   // Reject anyone still queued for a slot so their request fails cleanly instead of hanging.
   for (const resolve of waitQueue.splice(0)) { try { resolve(null); } catch { /* ignore */ } }
   server = null; sequences = []; freeSequences.length = 0; context = null; model = null; llama = null;
-  setState({ status: 'stopped', modelPath: null, modelId: null, port: null, error: null, contextSize: null, gpuLayers: null, flashAttention: null, parallelRequests: null, maxContextSize: null, engineVramMB: null });
+  setState({ status: 'stopped', modelPath: null, modelId: null, port: null, error: null, ...NO_ENGINE });
   return getState();
 }
 

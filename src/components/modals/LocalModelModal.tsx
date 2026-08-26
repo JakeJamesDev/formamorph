@@ -594,7 +594,7 @@ export function LocalModelModal({ open, onOpenChange }: { open: boolean; onOpenC
 
         {/* Engine status + GPU memory (shared with the endpoint panel). */}
         <EngineStatusLine engine={engine} className="shrink-0" />
-        <GpuMemoryBox stats={vram} className="shrink-0" {...resolveOwnVram(vram, engine.engineVramMB)} />
+        <GpuMemoryBox stats={vram} engine={engine} className="shrink-0" {...resolveOwnVram(vram, engine.engineVramMB)} />
 
         {/* Top-level view: what's installed, what we suggest, and where all of it lives. */}
         <ToggleGroup

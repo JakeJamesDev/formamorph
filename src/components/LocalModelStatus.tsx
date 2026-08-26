@@ -1,6 +1,8 @@
-import type { VramStats } from '@/lib/useVramStats';
+import { fmtGB, type VramStats } from '@/lib/useVramStats';
 import VramReadout from '@/components/game/VramReadout';
 import type { LocalLlmState } from '@/lib/imageGen/desktop';
+
+const BACKEND_LABELS: Record<string, string> = { cuda: 'CUDA', vulkan: 'Vulkan', metal: 'Metal', cpu: 'CPU' };
 
 /**
  * The local engine's status as a short colored line ("Engine: ready — model.gguf"). Shared by the
@@ -19,24 +21,52 @@ export function EngineStatusLine({ engine, className }: { engine: LocalLlmState;
 }
 
 /**
- * GPU memory box (label + VRAM bars). Presentational — the caller owns the `useVramStats` poll so there's
- * never a double poll. Shared by the endpoint panel and the model-manager popup.
+ * The backend and device llama.cpp actually chose, plus the VRAM it sized the load against. Sits directly
+ * under the nvidia-smi bars: a load that falls back to the CPU or to an iGPU over Vulkan then reads as a
+ * visible mismatch with the card listed above it, instead of as an unexplained out-of-VRAM error.
+ * Renders nothing until a backend has been selected.
+ */
+export function EngineDeviceLine({ engine }: { engine: LocalLlmState }) {
+  if (!engine.gpuBackend) return null;
+  const onCpu = engine.gpuBackend === 'cpu';
+  const devices = engine.gpuDeviceNames?.length ? engine.gpuDeviceNames.join(', ') : null;
+  return (
+    <div className="mt-3 border-t border-border pt-2 text-meta text-muted-foreground">
+      <span className="font-semibold">Engine device: </span>
+      <span className={onCpu ? 'text-warning' : undefined}>
+        {BACKEND_LABELS[engine.gpuBackend] ?? engine.gpuBackend}
+      </span>
+      {devices && <> — {devices}</>}
+      {engine.deviceVramTotalMB != null && (
+        <> · {fmtGB(engine.deviceVramFreeMB)} / {fmtGB(engine.deviceVramTotalMB)} GB free at load</>
+      )}
+    </div>
+  );
+}
+
+/**
+ * GPU memory box (label + VRAM bars, and the engine's own device when one is passed). Presentational — the
+ * caller owns the `useVramStats` poll so there's never a double poll. Shared by the endpoint panel and the
+ * model-manager popup.
  */
 export function GpuMemoryBox({
   stats,
   className,
   ownUsedMB = null,
   ownEstimated = false,
+  engine,
 }: {
   stats: VramStats;
   className?: string;
   ownUsedMB?: number | null;
   ownEstimated?: boolean;
+  engine?: LocalLlmState;
 }) {
   return (
     <div className={`rounded-md border border-border p-3 ${className ?? ''}`}>
       <div className="mb-2 text-meta font-semibold text-muted-foreground">GPU memory</div>
       <VramReadout stats={stats} ownUsedMB={ownUsedMB} ownEstimated={ownEstimated} />
+      {engine && <EngineDeviceLine engine={engine} />}
     </div>
   );
 }
