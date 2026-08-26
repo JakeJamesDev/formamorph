@@ -60,6 +60,7 @@ const FindingRow = ({ group, fixing, onOpen, onFix, onDismiss }: {
             key={item.id}
             type="button"
             onClick={() => onOpen(item.section ?? group.section, item.id)}
+            title={item.name}
             className="max-w-full truncate rounded border px-1.5 text-meta text-muted-foreground hover:bg-accent hover:text-foreground"
           >
             {item.name}
