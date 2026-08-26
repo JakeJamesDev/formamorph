@@ -55,6 +55,7 @@ const materialFor = (index: number): TurnMaterial => {
     npcCastSize: 0,
     intents: [],
     overflow: [],
+    sceneCast: [],
   };
 };
 

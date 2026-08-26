@@ -1,10 +1,12 @@
 import { describe, it, expect } from 'vitest';
 import {
-  buildAnatomyPreview, anatomyToggleAvailability,
+  buildAnatomyHub, anatomyToggleAvailability, hubToggleAvailability,
   type AnatomyConditions, type AnatomyPreviewPrompts, type AnatomyPreviewSettings,
 } from './anatomyPreview';
 import { runsTile, type AnatomyBlock } from './requestAnatomy';
 import { composePreviewValues } from './previewValuePool';
+import { PARITY_PROMPTS } from './turnPipeline/parityTestInputs';
+import { allGroupedTabs } from './promptGroups';
 import type { ThinkingMode } from '@/contexts/SettingsContext';
 import {
   defaultSystemPrompt, defaultNarrationUserPrompt, defaultRecapUserPrompt,
@@ -23,6 +25,7 @@ const SETTINGS: AnatomyPreviewSettings = {
   semanticMemory: true,
   semanticRehydration: true,
   timeContext: false,
+  locationAutoApply: false,
 };
 
 const valuesFor = (s: AnatomyPreviewSettings) => composePreviewValues({
@@ -32,24 +35,35 @@ const valuesFor = (s: AnatomyPreviewSettings) => composePreviewValues({
 
 const PROMPTS: AnatomyPreviewPrompts = {
   system: defaultSystemPrompt,
-  narrationUser: defaultNarrationUserPrompt,
   recap: defaultRecapUserPrompt,
   now: defaultNowLinePrompt,
   recall: defaultRehydrateUserPrompt,
-  direction: defaultOocDirectivePrompt,
+  turn: {
+    ...PARITY_PROMPTS,
+    narrationUser: defaultNarrationUserPrompt,
+    oocDirective: defaultOocDirectivePrompt,
+  },
 };
 
 const ALL_ON: AnatomyConditions = { recap: true, recall: true, brackets: true };
 
-/** One preview under a settings/condition combination, with the chip pool composed from the same settings. */
-const preview = (
+/** One hub under a settings/condition combination, with the chip pool composed from the same settings. */
+const hub = (
+  tab: string,
   over: Partial<AnatomyConditions> = {},
   prompts = PROMPTS,
   settingsOver: Partial<AnatomyPreviewSettings> = {},
 ) => {
   const settings = { ...SETTINGS, ...settingsOver };
-  return buildAnatomyPreview(prompts, valuesFor(settings), { ...ALL_ON, ...over }, settings);
+  return buildAnatomyHub(tab, prompts, valuesFor(settings), { ...ALL_ON, ...over }, settings);
 };
+
+/** The narration hub's single request, which most of this suite is about. */
+const preview = (
+  over: Partial<AnatomyConditions> = {},
+  prompts = PROMPTS,
+  settingsOver: Partial<AnatomyPreviewSettings> = {},
+) => hub('narration', over, prompts, settingsOver)[0].blocks;
 
 /** Every label present anywhere in a preview, authored and context alike. */
 const labels = (blocks: AnatomyBlock[]) =>
@@ -65,7 +79,7 @@ const contextTextOf = (blocks: AnatomyBlock[], label: string) =>
 
 const MODES: ThinkingMode[] = ['off', 'precall', 'inline', 'staged'];
 
-describe('buildAnatomyPreview', () => {
+describe('the narration hub', () => {
   it('opens with the system message and continues as an alternating conversation', () => {
     const blocks = preview();
     expect(blocks[0].role).toBe('system');
@@ -167,7 +181,7 @@ describe('buildAnatomyPreview', () => {
   });
 });
 
-describe('buildAnatomyPreview under the Thinking mode the player runs', () => {
+describe('the narration hub under the Thinking mode the player runs', () => {
   it('sends the user template and the direction rider only with thinking off', () => {
     for (const thinkingMode of MODES) {
       const has = labels(preview({}, PROMPTS, { thinkingMode }));
@@ -209,7 +223,7 @@ describe('buildAnatomyPreview under the Thinking mode the player runs', () => {
   });
 });
 
-describe('buildAnatomyPreview under the output settings the player chose', () => {
+describe('the narration hub under the output settings the player chose', () => {
   const systemText = (over: Partial<AnatomyPreviewSettings>) => preview({}, PROMPTS, over)[0].content;
 
   it('renders the system prompt in the section style the player picked', () => {
@@ -240,7 +254,7 @@ describe('buildAnatomyPreview under the output settings the player chose', () =>
   });
 });
 
-describe('buildAnatomyPreview under the memory settings the player chose', () => {
+describe('the narration hub under the memory settings the player chose', () => {
   it('leaves no recap trace with Memory Summaries off, even with the toggle forced on', () => {
     const off = labels(preview({ recap: true }, PROMPTS, { memoryDigests: false }));
     for (const label of ['recap', 'now', 'condensed', 'recall', 'recalled']) {
@@ -306,6 +320,109 @@ describe('anatomyToggleAvailability', () => {
         expect(drawn.includes('recap')).toBe(available.recap);
         expect(drawn.includes('recall')).toBe(available.recall);
       }
+    }
+  });
+});
+
+/** Which template each prompt's hub renders as its system prompt, so an edit to it can be traced through. */
+const SYSTEM_TEMPLATE: Record<string, string> = {
+  narration: 'system', thinking: 'thinking', director: 'director', character: 'character',
+  storyboard: 'storyboard', choices: 'choices', statupdates: 'statUpdates',
+  location: 'locationChange', summary: 'summary', diary: 'diary',
+  timepassed: 'timePassed', timeopening: 'openingTime', scenetags: 'sceneTags',
+};
+
+/** The same prompts with one template swapped for a marker that still carries a chip, so both the authored
+ *  run and the world data around it stay visible. */
+const withMarker = (tab: string, marker: string): AnatomyPreviewPrompts => {
+  const key = SYSTEM_TEMPLATE[tab];
+  const value = `${marker} <WORLD DESCRIPTION>`;
+  return key === 'system'
+    ? { ...PROMPTS, system: value }
+    : { ...PROMPTS, turn: { ...PROMPTS.turn, [key]: value } };
+};
+
+describe('every prompt in the rail has a hub', () => {
+  const TABS = allGroupedTabs();
+
+  it.each(TABS)('draws the request %s is part of', (tab) => {
+    const requests = hub(tab);
+    expect(requests.length).toBeGreaterThan(0);
+    for (const request of requests) {
+      expect(request.blocks[0].role).toBe('system');
+      expect(request.blocks.length).toBeGreaterThan(1);
+    }
+  });
+
+  it.each(TABS)('tiles every block of %s exactly', (tab) => {
+    for (const thinkingMode of MODES) {
+      for (const request of hub(tab, {}, PROMPTS, { thinkingMode })) {
+        request.blocks.forEach((b) => expect(runsTile(b.content, b.runs)).toBe(true));
+      }
+    }
+  });
+
+  it.each(TABS)('shows the player their own text in %s, not a paraphrase of it', (tab) => {
+    const marked = hub(tab, {}, withMarker(tab, 'MY OWN WORDS'));
+    expect(textOf(marked[0].blocks, 'system-template').join('')).toContain('MY OWN WORDS');
+    // The chip beside it still renders its value rather than the token that asked for it.
+    expect(contextTextOf(marked[0].blocks, 'world-data').join('')).not.toContain('<WORLD DESCRIPTION>');
+  });
+
+  it.each(TABS)('names the request kind %s belongs to', (tab) => {
+    for (const request of hub(tab)) expect(request.type).toBeTruthy();
+  });
+});
+
+describe('the location hub follows the detection mode', () => {
+  // The shipped template asks only about the action, so a narration chip is added here: the two modes
+  // send the router at different points of the turn, and this is what that difference looks like.
+  const asking = {
+    ...PROMPTS,
+    turn: { ...PROMPTS.turn, locationChangeUser: 'Action: <PLAYER ACTION>\nStory: <NARRATION>' },
+  };
+  const narrationIn = (tab: string, locationAutoApply: boolean) => {
+    const requests = hub(tab, {}, asking, { locationAutoApply });
+    return {
+      keys: requests.map((r) => r.key),
+      narration: requests[0].blocks.some((b) => b.runs.some((r) => r.contextLabel === 'narration')),
+    };
+  };
+
+  it('draws only the pre-narration request when the mode resolves the move up front', () => {
+    const { keys, narration } = narrationIn('location', true);
+    expect(keys).toEqual(['locationAuto']);
+    // It runs before the story is written, so the narration chip has nothing to fill it with.
+    expect(narration).toBe(false);
+  });
+
+  it('draws only the post-narration request when the mode offers the move instead', () => {
+    const { keys, narration } = narrationIn('location', false);
+    expect(keys).toEqual(['locationSuggest']);
+    expect(narration).toBe(true);
+  });
+});
+
+describe('the fan-out hubs', () => {
+  it('draws one example subject and says so, rather than repeating the cast', () => {
+    for (const tab of ['character', 'diary']) {
+      const requests = hub(tab);
+      expect(requests).toHaveLength(1);
+      expect(requests[0].caption).toContain('per character');
+      expect(requests[0].caption).toContain('Wren');
+      expect(requests[0].blocks.map((b) => b.content).join('')).toContain('Wren');
+    }
+  });
+});
+
+describe('hubToggleAvailability', () => {
+  it('offers the narration conditions on the narration hub, where the assembly reads them', () => {
+    expect(hubToggleAvailability('narration', SETTINGS)).toEqual(anatomyToggleAvailability(SETTINGS));
+  });
+
+  it('offers no toggle on a hub whose pass reads none of them', () => {
+    for (const tab of allGroupedTabs().filter((t) => t !== 'narration')) {
+      expect(hubToggleAvailability(tab, SETTINGS)).toEqual({ recap: false, recall: false, brackets: false });
     }
   });
 });

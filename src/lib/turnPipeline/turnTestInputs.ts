@@ -30,6 +30,8 @@ export const TEST_PROMPTS: TurnPrompts = {
   openingTimeUser: 'Opening: <NARRATION>',
   diary: 'DIARY <WORLD DESCRIPTION>',
   discoverEntity: 'DISCOVER PROMPT',
+  sceneTags: 'TAGS <WORLD DESCRIPTION>',
+  sceneTagsUser: 'Draw: <NARRATION> | In frame: <IN FRAME>',
 };
 
 /** Everything on — the shape the parity capture ran in, so switching one thing off isolates it. */

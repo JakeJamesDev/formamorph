@@ -1,4 +1,4 @@
-import { render, screen, cleanup, within } from '@testing-library/react';
+import { render, screen, cleanup, within, fireEvent } from '@testing-library/react';
 import { describe, it, expect, afterEach } from 'vitest';
 import { RequestAnatomyView } from './RequestAnatomyView';
 import { CONTEXT_LABELS, tilePieces, type AnatomyBlock, type AnatomyPiece } from '@/lib/requestAnatomy';
@@ -234,5 +234,60 @@ describe('ContextRun line layout', () => {
     expect(container.querySelector('p')!.textContent).toContain(
       `lead\n<${CONTEXT_LABELS['world-data']}>\nVALUE`,
     );
+  });
+});
+
+describe('RequestAnatomyView jumps', () => {
+  const runButton = (source: string) => screen.getByRole('button', { name: new RegExp(source) });
+
+  it('leaves every run inert without a request type to resolve against', () => {
+    render(<RequestAnatomyView blocks={BLOCKS} mode="full" onJump={() => {}} />);
+    expect(screen.queryAllByRole('button')).toHaveLength(0);
+  });
+
+  it('leaves every run inert without a handler, however the request is typed', () => {
+    render(<RequestAnatomyView blocks={BLOCKS} mode="full" type="narration" />);
+    expect(screen.queryAllByRole('button')).toHaveLength(0);
+  });
+
+  it('opens the editor a captured run belongs to, resolved from the request own type', () => {
+    const jumps: unknown[] = [];
+    render(<RequestAnatomyView blocks={BLOCKS} mode="full" type="narration" onJump={(t) => jumps.push(t)} />);
+    fireEvent.click(runButton('You are the narrator'));
+    fireEvent.click(runButton('Recap the story so far'));
+    fireEvent.click(runButton('Now you are at The Landing'));
+    expect(jumps).toEqual([
+      { tab: 'narration', surface: 'system' },
+      { tab: 'narration', surface: 'messages', field: 'recap' },
+      { tab: 'narration', surface: 'messages', field: 'now' },
+    ]);
+  });
+
+  it('never makes the text the app assembled clickable', () => {
+    render(<RequestAnatomyView blocks={BLOCKS} mode="full" type="narration" onJump={() => {}} />);
+    // Every button on screen belongs to an authored run; the world data and the condensed band are not.
+    for (const text of ['Sample Town sits above the water.', 'They found a map.']) {
+      expect(screen.getByText(text, { exact: false }).closest('button')).toBeNull();
+    }
+  });
+
+  it('leaves an unlabeled capture with nothing to click, as it had before the sidecar existed', () => {
+    render(
+      <RequestAnatomyView
+        blocks={[{ role: 'user', content: 'unlabeled wall of text', runs: [] }]}
+        mode="full"
+        type="narration"
+        onJump={() => {}}
+      />,
+    );
+    expect(screen.getByText('unlabeled wall of text')).toBeInTheDocument();
+    expect(screen.queryAllByRole('button')).toHaveLength(0);
+  });
+
+  it('resolves nothing to click on a call with no editor behind it', () => {
+    render(<RequestAnatomyView blocks={BLOCKS} mode="full" type="discoverEntity" onJump={() => {}} />);
+    // The two stacked narration lines still belong to the Narration prompt; the system template does not.
+    expect(screen.queryByRole('button', { name: /You are the narrator/ })).toBeNull();
+    expect(screen.getByRole('button', { name: /Recap the story so far/ })).toBeInTheDocument();
   });
 });

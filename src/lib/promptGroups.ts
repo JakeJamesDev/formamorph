@@ -42,17 +42,24 @@ export const PROMPT_DESCRIPTIONS: Record<string, string> = {
   storyboard: "Reconciles every character's intentions into a single plan for the turn.",
 };
 
-/** Which part of the selected prompt is on show. `anatomy` is the odd one out: not a field to edit but a
- *  read-only map of where the other surfaces land in a request, so it exists only on the narration prompt. */
-export type PromptSurface = 'system' | 'user' | 'messages' | 'anatomy' | 'options';
+/** Which editor of the selected prompt is on show. Null is the Anatomy hub: the prompt selected with no
+ *  editor open, which is where selecting a prompt lands. */
+export type PromptSurface = 'system' | 'user' | 'messages' | 'options';
 
 export const SURFACE_LABELS: Record<PromptSurface, string> = {
   system: 'System Prompt',
   user: 'User Message',
   messages: 'Messages',
-  anatomy: 'Anatomy',
   options: 'Options',
 };
+
+/** What the hub is called wherever it needs a name of its own — the rail's own row for it, and the
+ *  dev-router's `surface=…` value. */
+export const HUB_LABEL = 'Anatomy';
+export const HUB_ROUTE = 'anatomy';
+
+/** Every `surface=…` value the dev-router accepts: the editors, plus the hub. */
+export const PROMPT_SURFACE_ROUTES: string[] = [...Object.keys(SURFACE_LABELS), HUB_ROUTE];
 
 /**
  * The groups with their unavailable prompts removed, and empty groups dropped — so a player with images

@@ -26,7 +26,8 @@ export type TurnPassId =
   | 'timePassed'
   | 'openingTime'
   | 'diary'
-  | 'discoverEntity';
+  | 'discoverEntity'
+  | 'sceneTags';
 
 /** Where a pass sits relative to the narration. Passes run in stage order, then in plan order. */
 export type TurnStage = 'preNarration' | 'planning' | 'narration' | 'postNarration';
@@ -80,6 +81,8 @@ export interface TurnPrompts {
   openingTimeUser: string;
   diary: string;
   discoverEntity: string;
+  sceneTags: string;
+  sceneTagsUser: string;
 }
 
 /** Everything the planner decides from. Plain values only — no React, no clock, no globals. */
@@ -155,6 +158,9 @@ export interface TurnMaterial {
   intents: { name: string; text: string }[];
   /** Cast members beyond the active-character cap, named to the storyboarder but not asked. */
   overflow: string[];
+  /** Who the scene-tag pass has in frame, in narration order, already capped to what a booru model holds
+   *  apart. Empty draws an empty scene. */
+  sceneCast: string[];
   /** Who each fan-out pass runs for. A pass with no entry, or an empty one, sends nothing. */
   subjects?: Partial<Record<TurnPassId, TurnPassSubject[]>>;
   /** The being this request is about, for a fan-out pass. */
@@ -183,6 +189,7 @@ export function emptyTurnMaterial(seed: TurnMaterialSeed): TurnMaterial {
     npcCastSize: 0,
     intents: [],
     overflow: [],
+    sceneCast: [],
   };
 }
 

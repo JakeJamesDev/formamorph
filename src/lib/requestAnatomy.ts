@@ -3,10 +3,13 @@ import type { ChatMessage } from '@/types';
 /**
  * Request Anatomy: the labeled map of one assembled request.
  *
- * Every message the narration request sends is split into two kinds of **run** — *authored* text, owned by
- * one of the six prompt-editor surfaces a player can type in, and *context*, which the app assembled around
- * it. The runs ride as a sidecar: a parallel structure aligned to the messages by index and offset, never a
- * field on {@link ChatMessage}. Nothing here can reach an endpoint, because nothing here is a message.
+ * Every message a request sends is split into two kinds of **run** — *authored* text, owned by a
+ * prompt-editor surface the player can type in, and *context*, which the app assembled around it. The runs
+ * ride as a sidecar: a parallel structure aligned to the messages by index and offset, never a field on
+ * {@link ChatMessage}. Nothing here can reach an endpoint, because nothing here is a message.
+ *
+ * A source names the *editor*, not the prompt: every pass has a System Prompt and most have a User Message,
+ * so which prompt a run belongs to comes from the request's own type (see `promptJump`).
  *
  * Runs are built by joining labeled pieces ({@link tilePieces}), so a message's runs tile its content by
  * construction — the offsets cannot drift from the text they index.
@@ -34,7 +37,12 @@ export type ContextLabel =
   | 'past-narration'
   | 'action'
   | 'mode-directive'
-  | 'turn-plan';
+  | 'turn-plan'
+  | 'narration'
+  | 'character-brief'
+  | 'diary-brief'
+  | 'intents'
+  | 'scene-cast';
 
 /** One run of a message's content: authored when `source` is set, context otherwise. */
 export interface AnatomyRun {
@@ -180,4 +188,9 @@ export const CONTEXT_LABELS: Record<ContextLabel, string> = {
   action: 'your action, as you typed it',
   'mode-directive': 'the instruction your Thinking mode adds',
   'turn-plan': 'the plan this turn was given before it was written',
+  narration: 'the narration this turn produced',
+  'character-brief': 'who this character is, what they remember, and where the scene left them',
+  'diary-brief': 'who is writing, and the turn they are writing about',
+  intents: 'what each character said they want this turn',
+  'scene-cast': 'who is in frame for this picture',
 };

@@ -84,9 +84,9 @@ export const DEV_MODAL_TABS = {
   // `#dev?view=mainMenu&tab=models`. Listed here so the same drift guard covers it.
   mainMenu: ['worlds', 'entities', 'dictionaries', 'models'],
   // Settings → Prompts has a THIRD level: which surface of the open prompt is on show, reached with
-  // `surface=…` (`#dev?modal=settings&tab=prompts&subtab=narration&surface=anatomy`). Anatomy exists only
-  // on the narration prompt, and the editor falls back to System wherever a surface doesn't apply.
-  settingsPromptSurfaces: ['system', 'user', 'messages', 'anatomy', 'options'],
+  // `surface=…` (`#dev?modal=settings&tab=prompts&subtab=narration&surface=anatomy`). `anatomy` is the
+  // hub every prompt lands on, not an editor; the panel falls back to it wherever a surface doesn't apply.
+  settingsPromptSurfaces: ['system', 'user', 'messages', 'options', 'anatomy'],
   // GameViewer's side panel (Entities/Notes/Memory/Logs). Also not a modal: `#dev?view=gameViewer&tab=memory`.
   // The mobile-only `model` tab is deliberately not routable.
   gameViewer: ['entities', 'notes', 'memory', 'logs'],
