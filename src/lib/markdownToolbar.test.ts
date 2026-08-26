@@ -82,6 +82,64 @@ describe('applyMarkdownAction — added inline actions', () => {
   });
 });
 
+// The colored highlights are the one asymmetric markup the toolbar writes — `=r=` opens, a plain `==`
+// closes — so they get their own path rather than the symmetric wrap bold and italic share.
+describe('applyMarkdownAction — highlight colors', () => {
+  it('opens with the color key and closes plain', () => {
+    const r = run('mind the loose plank', 9, 20, 'highlight:r');
+    expect(r.value).toBe('mind the =r=loose plank==');
+    expect(r.selected).toBe('loose plank');
+  });
+
+  it('inserts a colored placeholder when nothing is selected', () => {
+    const r = run('', 0, 0, 'highlight:g');
+    expect(r.value).toBe('=g=highlighted text==');
+    expect(r.selected).toBe('highlighted text');
+  });
+
+  it('removes a color when its own key is pressed again', () => {
+    const r = run('mind the =r=loose plank==', 12, 23, 'highlight:r');
+    expect(r.value).toBe('mind the loose plank');
+    expect(r.selected).toBe('loose plank');
+  });
+
+  it('recolors in place rather than nesting when a different key is pressed', () => {
+    // Pressing blue on red text must swap the opener. Nesting would produce `=b==r=text====`, which reads
+    // as a highlight of the literal text "=r=text".
+    const r = run('mind the =r=loose plank==', 12, 23, 'highlight:b');
+    expect(r.value).toBe('mind the =b=loose plank==');
+    expect(r.selected).toBe('loose plank');
+  });
+
+  it('takes a colored run down to the themed base', () => {
+    const r = run('mind the =r=loose plank==', 12, 23, 'highlight');
+    expect(r.value).toBe('mind the ==loose plank==');
+  });
+
+  it('colors a run that was highlighted plain', () => {
+    const r = run('mind the ==loose plank==', 11, 22, 'highlight:y');
+    expect(r.value).toBe('mind the =y=loose plank==');
+  });
+
+  it('works from a selection that covers the markers', () => {
+    expect(run('mind the =r=loose plank==', 9, 25, 'highlight:r').value).toBe('mind the loose plank');
+    expect(run('mind the =r=loose plank==', 9, 25, 'highlight:b').value).toBe('mind the =b=loose plank==');
+    expect(run('mind the ==loose plank==', 9, 24, 'highlight').value).toBe('mind the loose plank');
+  });
+
+  it('leaves the selection on the text after a recolor from a covering selection', () => {
+    const r = run('mind the =r=loose plank==', 9, 25, 'highlight:b');
+    expect(r.selected).toBe('loose plank');
+  });
+
+  it('does not read an ordinary equals run as a highlight to retarget', () => {
+    // `a==b` is not a highlight, so pressing red must wrap the selection rather than treat the `==` in
+    // front of it as an opener and swallow it.
+    const r = run('a==b', 3, 4, 'highlight:r');
+    expect(r.value).toBe('a===r=b==');
+  });
+});
+
 describe('applyMarkdownAction — inserts', () => {
   it('inserts an image with the alt text selected', () => {
     const r = run('', 0, 0, 'image');

@@ -2,6 +2,7 @@ import { describe, it, expect } from 'vitest';
 import { render } from '@testing-library/react';
 import { MarkdownRenderer } from './MarkdownRenderer';
 import { tintValue } from '@/lib/previewTint';
+import { HIGHLIGHT_COLORS } from '@/lib/markdownToolbar';
 
 // The highlight syntax only proves itself at the far end of the whole pipeline: the remark plugin has to
 // match, the marks have to survive the sanitizer, and the classes have to arrive intact for the stylesheet
@@ -27,14 +28,13 @@ describe('markdown highlight syntax', () => {
     expect(mark.classList).not.toContain('flexible-marker-default');
   });
 
-  it('renders each of the nine documented color keys as its own class', () => {
-    const keys: [string, string][] = [
-      ['r', 'red'], ['o', 'orange'], ['y', 'yellow'], ['g', 'green'], ['c', 'cyan'],
-      ['b', 'blue'], ['p', 'purple'], ['q', 'pink'], ['x', 'gray'],
-    ];
-    for (const [key, color] of keys) {
+  it('renders every key the toolbar offers as the class its swatch is drawn with', () => {
+    // The toolbar labels each color and paints its swatch with `flexible-marker-<lowercased label>`. That
+    // only holds while the plugin's own name for the key agrees, so the two are checked against each other
+    // rather than against a second hardcoded list.
+    for (const { key, label } of HIGHLIGHT_COLORS) {
       const [mark] = marks(`=${key}=word==`);
-      expect([...mark.classList], `key ${key}`).toContain(`flexible-marker-${color}`);
+      expect([...mark.classList], `key ${key}`).toContain(`flexible-marker-${label.toLowerCase()}`);
     }
   });
 

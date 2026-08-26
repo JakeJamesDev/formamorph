@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type MouseEvent as ReactMouseEvent, type ReactNode } from 'react';
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type CSSProperties, type MouseEvent as ReactMouseEvent, type ReactNode } from 'react';
 import {
   $getRoot, $getSelection, $isRangeSelection, $createParagraphNode,
   $isElementNode,
@@ -26,7 +26,7 @@ import { useMorphFullscreen } from '@/lib/useMorphFullscreen';
 import { ReadOnlyNotice } from './ReadOnlyNotice';
 import { CHIP_BASE } from '@/components/Chip';
 import { MarkdownRenderer } from '@/components/game/MarkdownRenderer';
-import { type MarkdownAction } from '@/lib/markdownToolbar';
+import { type MarkdownAction, HIGHLIGHT_COLORS } from '@/lib/markdownToolbar';
 import { type PromptVariable } from '@/lib/promptVariables';
 import { resolveToken } from '@/lib/promptTemplate';
 import {
@@ -45,17 +45,37 @@ import { ChipDragPlugin } from './ChipDrag';
 import { TOOLBAR_BTN } from './toolbarStyles';
 import { anchorAt, applyAnchor, captureAnchor, caretOffset, type ScrollAnchor } from './previewScrollSync';
 
-interface ToolbarItem { action: MarkdownAction; Icon: typeof Bold; title: string }
+interface ToolbarItem {
+  action: MarkdownAction;
+  Icon: typeof Bold;
+  title: string;
+  /** A `flexible-marker-*` class, on the items whose icon alone can't say them apart. */
+  swatch?: string;
+}
 
 // Always visible: the formatting an author reaches for mid-sentence.
 const MARKDOWN_TOOLBAR: ToolbarItem[] = [
   { action: 'bold', Icon: Bold, title: 'Bold' },
   { action: 'italic', Icon: Italic, title: 'Italic' },
   { action: 'strike', Icon: Strikethrough, title: 'Strikethrough' },
-  { action: 'highlight', Icon: Highlighter, title: 'Highlight' },
   { action: 'code', Icon: Code, title: 'Inline code' },
   { action: 'quote', Icon: Quote, title: 'Blockquote' },
 ];
+
+// Ten highlighters sharing one icon, told apart by the color they paint. The class each carries is the one
+// the renderer puts on the mark, so a swatch is drawn by the same rule as the highlight it stands for.
+const HIGHLIGHT_ITEMS: ToolbarItem[] = [
+  { action: 'highlight', Icon: Highlighter, title: 'Highlight', swatch: 'flexible-marker-default' },
+  ...HIGHLIGHT_COLORS.map(({ key, label }) => ({
+    action: `highlight:${key}` as MarkdownAction,
+    Icon: Highlighter,
+    title: `${label} Highlight`,
+    swatch: `flexible-marker-${label.toLowerCase()}`,
+  })),
+];
+
+/** Swatches show the color itself, not the wash it reads as behind text, so both alphas go to 1 locally. */
+const OPAQUE_SWATCH = { '--md-hl-alpha': 1, '--md-hl-alpha-base': 1 } as CSSProperties;
 
 // Everything else groups behind a split button: its face applies the last action picked from the group,
 // its chevron opens the rest. Nine buttons of markdown on one row read as a wall; three do not.
@@ -125,6 +145,24 @@ function HistoryButtons({ disabled }: { disabled: boolean }) {
 }
 
 /**
+ * One item's glyph. A swatch rides at the foot of the icon rather than beside it, so a colored item is the
+ * same 16px box as an uncolored one and the toolbar row keeps one height.
+ */
+function ItemGlyph({ item }: { item: ToolbarItem }) {
+  if (!item.swatch) return <item.Icon className="h-4 w-4" />;
+  return (
+    <span className="relative block h-4 w-4">
+      <item.Icon className="h-4 w-4" />
+      <span
+        aria-hidden
+        style={OPAQUE_SWATCH}
+        className={cn('absolute inset-x-0 bottom-0 h-[3px] flexible-marker', item.swatch)}
+      />
+    </span>
+  );
+}
+
+/**
  * A group of related actions as one control: the face applies whichever the author picked last, the
  * chevron beside it opens the rest. The two halves highlight separately and carry a divider, since one
  * hover state across both reads as a single button that then does two different things.
@@ -139,7 +177,7 @@ function SplitButton({ items, label, disabled, apply }: {
 }) {
   const [current, setCurrent] = useState(items[0]);
   const [open, setOpen] = useState(false);
-  const { Icon, title } = current;
+  const { title } = current;
 
   const press = (item: ToolbarItem) => (event: ReactMouseEvent) => {
     event.preventDefault();
@@ -155,7 +193,7 @@ function SplitButton({ items, label, disabled, apply }: {
         onMouseDown={press(current)}
         className={cn(TOOLBAR_BTN, 'rounded-r-none pr-1')}
       >
-        <Icon className="h-4 w-4" />
+        <ItemGlyph item={current} />
       </button>
       <span className="h-4 w-hairline bg-border" aria-hidden />
       <Popover open={open} onOpenChange={setOpen}>
@@ -178,7 +216,7 @@ function SplitButton({ items, label, disabled, apply }: {
                 key={item.action} type="button" onMouseDown={press(item)}
                 className="flex items-center gap-2 rounded px-2 py-1.5 text-helper text-muted-foreground hover:bg-accent hover:text-foreground"
               >
-                <item.Icon className="h-4 w-4" />
+                <ItemGlyph item={item} />
                 {item.title}
               </button>
             ))}
@@ -211,6 +249,7 @@ function MarkdownToolbar({ parse, disabled }: { parse: ChipVocabulary['parse']; 
           <Icon className="h-4 w-4" />
         </button>
       ))}
+      <SplitButton items={HIGHLIGHT_ITEMS} label="Highlight color" disabled={disabled} apply={apply} />
       <SplitButton items={HEADING_ITEMS} label="Heading level" disabled={disabled} apply={apply} />
       <SplitButton items={LIST_ITEMS} label="List type" disabled={disabled} apply={apply} />
       <SplitButton items={INSERT_ITEMS} label="Insert" disabled={disabled} apply={apply} />
