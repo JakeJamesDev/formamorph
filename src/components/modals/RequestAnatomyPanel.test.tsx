@@ -55,48 +55,41 @@ const show = (over: Partial<AnatomyPreviewSettings> = {}, tab = 'narration', onJ
     <RequestAnatomyPanel tab={tab} prompts={PROMPTS} values={VALUES} settings={{ ...SETTINGS, ...over }} onJump={onJump} />,
   );
 
-const RECAP = 'Memory Summaries condensed';
-const RECALL = 'Scene Recall hit';
-const BRACKETS = 'Bracketed action';
-
-describe('RequestAnatomyPanel toggles', () => {
-  it('offers all three conditions when every setting behind them is on', () => {
+describe('RequestAnatomyPanel header', () => {
+  it('says the one thing worth saying, with no toolbar of toggles', () => {
     show();
-    for (const label of [RECAP, RECALL, BRACKETS]) {
-      expect(screen.getByText(label)).toBeInTheDocument();
+    expect(screen.getByText(/Highlighted text is yours/)).toBeInTheDocument();
+    expect(screen.queryByRole('checkbox')).toBeNull();
+  });
+
+  it('draws every settings-allowed condition without being asked', () => {
+    // With the toggles gone the hub shows the playthrough at its fullest: the recap band, the recall
+    // pull, and the bracket rider all present when the settings allow them.
+    show({ thinkingMode: 'off' });
+    for (const label of [SOURCE_LABELS.recap, SOURCE_LABELS.recall, SOURCE_LABELS.direction]) {
+      expect(screen.getAllByText(label).length).toBeGreaterThan(0);
     }
   });
 
-  it('drops the recap and recall toggles with Memory Summaries off', () => {
+  it('still drops what the settings rule out', () => {
     show({ memoryDigests: false });
-    expect(screen.queryByText(RECAP)).toBeNull();
-    expect(screen.queryByText(RECALL)).toBeNull();
-    expect(screen.getByText(BRACKETS)).toBeInTheDocument();
+    expect(screen.queryByText(SOURCE_LABELS.recap)).toBeNull();
+    expect(screen.queryByText(SOURCE_LABELS.recall)).toBeNull();
   });
 
-  it('drops only the recall toggle when Scene Recall itself is unavailable', () => {
-    for (const off of [{ semanticMemory: false }, { semanticRehydration: false }]) {
-      show(off);
-      expect(screen.queryByText(RECALL)).toBeNull();
-      expect(screen.getByText(RECAP)).toBeInTheDocument();
-      cleanup();
-    }
-  });
-
-  it('keeps the bracket toggle in every Thinking mode, since the bracket always rides the action', () => {
-    for (const thinkingMode of ['off', 'precall', 'inline', 'staged'] as const) {
-      show({ thinkingMode });
-      expect(screen.getByText(BRACKETS)).toBeInTheDocument();
-      cleanup();
-    }
-  });
-
-  it('offers no toggle at all on a hub whose own pass reads none of the conditions', () => {
-    for (const tab of allGroupedTabs().filter((t) => t !== 'narration')) {
-      show({}, tab);
-      for (const label of [RECAP, RECALL, BRACKETS]) expect(screen.queryByText(label)).toBeNull();
-      cleanup();
-    }
+  it('offers fullscreen only when the caller wired it', () => {
+    show();
+    expect(screen.queryByRole('button', { name: 'View full screen' })).toBeNull();
+    cleanup();
+    const onFs = vi.fn();
+    render(
+      <RequestAnatomyPanel
+        tab="narration" prompts={PROMPTS} values={VALUES} settings={SETTINGS}
+        onJump={() => {}} fullscreen={false} onRequestFullscreen={onFs}
+      />,
+    );
+    fireEvent.click(screen.getByRole('button', { name: 'View full screen' }));
+    expect(onFs).toHaveBeenCalled();
   });
 });
 

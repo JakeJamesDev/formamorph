@@ -62,8 +62,8 @@ export interface AnatomyPreviewSettings {
 }
 
 /**
- * Which condition toggles this configuration can demonstrate at all. The panel hides the rest, and the
- * builder gates on the same answer, so no toggle can promise something the assembly would ignore.
+ * Which conditions this configuration can produce at all. The builder gates on this, so a caller asking
+ * for a condition the settings rule out draws the request without it rather than a lie.
  *
  * These are the Recap and Recall editor surfaces' own availability conditions. Brackets are never gated:
  * the bracket rides the action in every Thinking mode, and the Direction rider answering it only with
@@ -77,19 +77,6 @@ export function anatomyToggleAvailability(
     recall: settings.memoryDigests && settings.semanticMemory && settings.semanticRehydration,
     brackets: true,
   };
-}
-
-/**
- * The same answer for one prompt's hub. A condition exists only where the assembly reads it, and the
- * recap, the recall and the bracket rider are all conditions on the narration exchange — so no other hub
- * offers a toggle its own pass would ignore.
- */
-export function hubToggleAvailability(
-  tab: string,
-  settings: AnatomyPreviewSettings,
-): Record<keyof AnatomyConditions, boolean> {
-  if (tab === 'narration') return anatomyToggleAvailability(settings);
-  return { recap: false, recall: false, brackets: false };
 }
 
 /** Every prompt surface a hub shows the player their own text in. */

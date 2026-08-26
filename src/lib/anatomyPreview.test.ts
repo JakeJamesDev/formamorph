@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import {
-  buildAnatomyHub, anatomyToggleAvailability, hubToggleAvailability,
+  buildAnatomyHub, anatomyToggleAvailability,
   type AnatomyConditions, type AnatomyPreviewPrompts, type AnatomyPreviewSettings,
 } from './anatomyPreview';
 import { runsTile, type AnatomyBlock } from './requestAnatomy';
@@ -411,18 +411,6 @@ describe('the fan-out hubs', () => {
       expect(requests[0].caption).toContain('per character');
       expect(requests[0].caption).toContain('Wren');
       expect(requests[0].blocks.map((b) => b.content).join('')).toContain('Wren');
-    }
-  });
-});
-
-describe('hubToggleAvailability', () => {
-  it('offers the narration conditions on the narration hub, where the assembly reads them', () => {
-    expect(hubToggleAvailability('narration', SETTINGS)).toEqual(anatomyToggleAvailability(SETTINGS));
-  });
-
-  it('offers no toggle on a hub whose pass reads none of them', () => {
-    for (const tab of allGroupedTabs().filter((t) => t !== 'narration')) {
-      expect(hubToggleAvailability(tab, SETTINGS)).toEqual({ recap: false, recall: false, brackets: false });
     }
   });
 });
