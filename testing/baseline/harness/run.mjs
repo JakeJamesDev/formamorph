@@ -227,7 +227,7 @@ async function runOne(browser, cfg, model, profile) {
   if (model.modelPath) {
     const modelId = path.basename(model.modelPath);
     await context.addInitScript(({ modelId, port }) => {
-      const ready = { status: "ready", modelPath: modelId, modelId, port, error: null, contextSize: null, gpuLayers: null, flashAttention: null, parallelRequests: 1, maxContextSize: null, engineVramMB: null };
+      const ready = { status: "ready", modelPath: modelId, modelId, port, error: null, contextSize: null, gpuLayers: null, flashAttention: null, parallelRequests: 1, maxContextSize: null, engineVramMB: null, gpuBackend: null, gpuDeviceNames: null, deviceVramTotalMB: null, deviceVramFreeMB: null };
       const P = (v) => Promise.resolve(v);
       window.formamorphDesktop = {
         // A no-op net-fetch bridge so isDesktop()-gated fetches don't throw; real chat requests go over HTTP.

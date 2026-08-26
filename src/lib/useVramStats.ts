@@ -17,6 +17,13 @@ export interface VramProcess {
 
 export type VramStatus = "connecting" | "online" | "no-gpu" | "offline";
 
+const GB = 1024;
+
+/** MB → a one-decimal GB string, so every VRAM figure in the UI reads the same way. */
+export function fmtGB(mb: number | null): string {
+  return mb == null ? "?" : (mb / GB).toFixed(1);
+}
+
 export interface VramStats {
   status: VramStatus;
   gpus: VramGpu[];

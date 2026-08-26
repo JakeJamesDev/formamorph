@@ -111,6 +111,15 @@ export interface LocalLlmState {
   maxContextSize: number | null;
   /** Our VRAM footprint in MB (device-usage delta across model load), or null if unknown/no model. */
   engineVramMB: number | null;
+  /** The backend llama.cpp selected — 'cuda' | 'vulkan' | 'metal' | 'cpu' — or null before one is chosen.
+   *  Survives a failed load, so an out-of-VRAM error still says which device it ran on. */
+  gpuBackend: string | null;
+  /** Devices that backend enumerated, or null when it can't enumerate them. */
+  gpuDeviceNames: string[] | null;
+  /** Total / free VRAM in MB on the selected device, read just before the load sizes itself against it.
+   *  A mismatch against the nvidia-smi readout means llama.cpp picked a different device than expected. */
+  deviceVramTotalMB: number | null;
+  deviceVramFreeMB: number | null;
 }
 
 declare global {
