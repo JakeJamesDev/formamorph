@@ -132,7 +132,7 @@ export function AiSetupGate({ open, reason, mode, blocker, reachable, recheck, o
   const description = blocker === 'unknownModel'
     ? 'Your endpoint is answering, but it has no model loaded and doesn’t recognize the model name Formamorph is set to ask for — so every turn would fail. Load a model, or set the model name to one your server lists.'
     : embedBlocked
-    ? 'Formamorph is running inside another site’s page, and browsers don’t let an embedded page reach servers on your machine or local network. Open it in its own tab and your browser will ask your permission instead.'
+    ? 'Formamorph is running inside another site’s page, and browsers don’t let an embedded page reach servers on your machine or local network — only a tab of its own can ask your browser for that permission.'
     : custom
     ? 'Formamorph couldn’t get a response from your custom endpoint. Check that the server is running and the URL is right.'
     : blocker === 'engineDown'
@@ -175,9 +175,10 @@ export function AiSetupGate({ open, reason, mode, blocker, reachable, recheck, o
           </p>
         ) : embedBlocked ? (
           <p className="text-helper text-muted-foreground">
-            It’s the same game at the same address, so your saves and settings come with you — allow the
-            prompt when it appears. If the new tab still can’t connect, check that your server is running
-            and that the Endpoint URL is right.
+            A new tab can connect — allow the prompt when it appears — but it starts with storage of its
+            own, so worlds and saves made here stay here. Export anything you want to keep and import it
+            in the new tab. For regular play on a local model, the desktop app connects directly; a cloud
+            endpoint works right here in the embed.
           </p>
         ) : custom ? (
           <p className="text-helper text-muted-foreground">
@@ -222,7 +223,8 @@ export function AiSetupGate({ open, reason, mode, blocker, reachable, recheck, o
         )}
 
         <DialogFooter className="gap-2 sm:justify-start">
-          {/* Same origin, so the new tab carries the same saves and settings — and is the top-level page
+          {/* Same origin but NOT the same storage: partitioning keys the embed's data under the embedding
+              site, so the tab starts fresh — the copy above says so. The tab's value is being top-level page
               the browser will offer its local-network prompt for. */}
           {embedBlocked && <Button onClick={openInOwnTab}>Open in a New Tab</Button>}
           {/* The poll gets there on its own; this is for people who'd rather not wait for the next tick. */}
