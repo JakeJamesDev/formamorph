@@ -12,6 +12,13 @@ Each release groups changes as **Major** / **Minor**, then **Added** / **Removed
 
 _Unreleased — new work accumulates here until it earns a version bump. The next batch will pin its own version; `package.json` reads **2.15.0** (just released below)._
 
+### Minor Changes
+
+#### 🔧 Fixed
+
+- **👤 User-facing**
+  - **The embed-blocked guidance now says a popped-out tab starts with storage of its own — export and import carry your worlds over, and the desktop app is named as the direct route for local models.** The 2.15.0 wording promised that saves and settings follow into the new tab because the address is the same; browsers partition an embedded page's storage under the site embedding it, so they don't — the tab starts fresh. The setup gate and the connection guide now say so plainly, point at export/import for anything worth keeping, and note that a cloud endpoint works inside the embed and the desktop app connects to local servers directly.
+
 ---
 
 <details>

@@ -55,9 +55,10 @@ const LlmSetupGuide = ({
                 <strong>Playing inside another site&apos;s embed?</strong>
                 <p className="text-muted-foreground">
                   Browsers don&apos;t let an embedded page reach servers on your machine or local network,
-                  and the site embedding this game hasn&apos;t granted that. Open the game in its own tab —
-                  same address, so your saves and settings come with you, and your browser will ask your
-                  permission instead of refusing outright.
+                  and the site embedding this game hasn&apos;t granted that. In a tab of its own the game
+                  can ask your permission and connect — but the tab keeps storage of its own, so export
+                  any worlds or saves you want to bring and import them there. The desktop app connects
+                  to local servers directly, with none of this in the way.
                 </p>
                 <Button size="sm" className="mt-2" onClick={openInOwnTab}>
                   Open in a New Tab
