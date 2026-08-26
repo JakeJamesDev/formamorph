@@ -1,4 +1,7 @@
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Button } from "@/components/ui/button";
+import { isCrossOriginEmbed, isLocalEndpoint, openInOwnTab } from "@/lib/localNetworkEmbed";
+import { isDesktop } from "@/lib/imageGen/desktop";
 import { Code } from "./guideBits";
 
 /** Derive a browsable base (`http://host:port`) from the configured chat-completions URL, for the
@@ -14,9 +17,9 @@ const baseOf = (url?: string): string | null => {
 };
 
 /** Shown after the app can't reach the configured AI server. The failure is opaque in-page (a server
- *  that's off, a wrong URL, and CORS-disabled all look identical), so this walks the three causes in
- *  likelihood order rather than asserting one. Shown on desktop too — the CORS shim should make step 3
- *  moot there, but users still report CORS-shaped desktop failures. */
+ *  that's off, a wrong URL, CORS-disabled and a denied local-network permission all look identical), so
+ *  this walks the causes in likelihood order rather than asserting one. Shown on desktop too — the CORS
+ *  shim should make the CORS step moot there, but users still report CORS-shaped desktop failures. */
 const LlmSetupGuide = ({
   open,
   onOpenChange,
@@ -28,6 +31,12 @@ const LlmSetupGuide = ({
 }) => {
   const base = baseOf(endpointUrl);
   const modelsUrl = base ? `${base}/v1/models` : null;
+  // A checklist of candidate causes, not a verdict — so, like the three below it, the embed cause is
+  // listed whenever it *could* apply. (The setup gate asserts a cause instead, and gates on a real
+  // failed probe: `shouldOfferPopOut`.) Both conditions are false in the desktop app, which is never
+  // framed and reaches local servers directly.
+  const localEndpoint = !isDesktop() && isLocalEndpoint(endpointUrl ?? "");
+  const embedBlocked = isCrossOriginEmbed() && localEndpoint;
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent aria-describedby={undefined} className="sm:max-w-[560px]">
@@ -37,10 +46,24 @@ const LlmSetupGuide = ({
 
         <div className="space-y-3 text-label">
           <p className="text-muted-foreground">
-            The browser can&apos;t tell exactly why, so check all three:
+            The browser can&apos;t tell exactly why, so check each of these:
           </p>
 
           <ol className="list-decimal list-outside space-y-3 pl-5">
+            {embedBlocked && (
+              <li>
+                <strong>Playing inside another site&apos;s embed?</strong>
+                <p className="text-muted-foreground">
+                  Browsers don&apos;t let an embedded page reach servers on your machine or local network,
+                  and the site embedding this game hasn&apos;t granted that. Open the game in its own tab —
+                  same address, so your saves and settings come with you, and your browser will ask your
+                  permission instead of refusing outright.
+                </p>
+                <Button size="sm" className="mt-2" onClick={openInOwnTab}>
+                  Open in a New Tab
+                </Button>
+              </li>
+            )}
             <li>
               <strong>Is the server running?</strong>
               <p className="text-muted-foreground">
@@ -79,6 +102,15 @@ const LlmSetupGuide = ({
               </ul>
             </li>
           </ol>
+
+          {localEndpoint && (
+            <p className="text-muted-foreground">
+              <strong>One more thing your browser does:</strong> the first time a page reaches a server on
+              your machine or local network, Chrome and Firefox ask your permission. Allow it when the
+              prompt appears. If you dismissed or blocked it, re-allow it from the icon at the left of the
+              address bar → <strong>Site settings</strong>, then reload.
+            </p>
+          )}
         </div>
       </DialogContent>
     </Dialog>
