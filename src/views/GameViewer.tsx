@@ -97,6 +97,7 @@ import {
   statUpdatesSystemPrompt,
   summaryUserMessage,
   discoverUserMessage,
+  sceneTagsPass,
 } from "../lib/turnPipeline/turnPasses";
 import { buildNarrationPrompt, type DictionaryDebug } from "../lib/turnPipeline/narrationPrompt";
 import { buildPlannerBand } from "../lib/turnPipeline/plannerBand";
@@ -105,9 +106,10 @@ import { planTurn, planHasPass } from "../lib/turnPipeline/planTurn";
 import { runTurn, type TurnAdvance, type TurnRequestAdapter } from "../lib/turnPipeline/turnRunner";
 import { computeTurnCommit, type TurnCommit } from "../lib/turnPipeline/computeTurnCommit";
 import { classifyTurnError, type TurnErrorKind } from "../lib/turnPipeline/turnErrors";
-import { emptyTurnMaterial, type TurnMaterial, type TurnPrompts, type TurnSettings } from "../lib/turnPipeline/turnPlan";
+import { emptyTurnMaterial, type TurnMaterial, type TurnPlanInput, type TurnPrompts, type TurnSettings } from "../lib/turnPipeline/turnPlan";
 import { parseTurns, buildVerbatimHistory, buildBandedHistory, extractKeywords, type BandCounts } from "../lib/turnBanding";
 import { toAnatomyBlocks, type RequestAnatomy } from "../lib/requestAnatomy";
+import type { PromptJumpTarget } from "../lib/promptJump";
 import { RequestAnatomyView } from "../components/game/RequestAnatomyView";
 import { buildStamper, formatAbsolute, hoursByPosition, FLAT_HOURS_PER_TURN } from "../lib/gameClock";
 import { milestoneCandidates, agedMilestoneCandidates, resolveMilestoneDrop, resolveMilestoneKeep, buildIncrementalMilestoneUserMessage, parseIncrementalMilestoneReply, applyIncrementalVerdict } from "../lib/milestoneMemory";
@@ -251,9 +253,6 @@ interface AiCallArgs {
 
 // A stable empty array for turns with no scene image, so the panel's prop identity doesn't churn.
 const EMPTY_IMAGES: string[] = [];
-
-// The scene-tag pass answers with one line of tags; enough for a rich action line, not for prose.
-const SCENE_TAGS_MAX_TOKENS = 120;
 
 // How many of a character's own recent diary entries to feed into its motivation pass (its memory).
 const DIARY_MEMORY_ENTRIES = 5;
@@ -730,11 +729,19 @@ const GameViewer = ({
   const canReportBug = COMMUNITY_ENABLED && Boolean(AuthService.token);
   const [settingsTab, setSettingsTab] = useState<SettingsTabId | undefined>(undefined);
   const [settingsEndpointTab, setSettingsEndpointTab] = useState<string | undefined>(undefined);
+  // Where a click on a highlighted run in the AI-context viewer sends Settings: the prompt that owns the
+  // text, its editor, and — for the stacked narration lines — which field.
+  const [settingsPrompt, setSettingsPrompt] = useState<PromptJumpTarget | undefined>(undefined);
   useSettingsOpenRequest((tab, endpointTab) => {
     setSettingsTab(tab);
     setSettingsEndpointTab(endpointTab);
     setIsSettingsOpen(true);
   });
+  const openPromptEditor = (target: PromptJumpTarget) => {
+    setSettingsTab('prompts');
+    setSettingsPrompt(target);
+    setIsSettingsOpen(true);
+  };
 
   // --- AI setup gate -------------------------------------------------------------------------------
   // Warn on entering a world whose configured AI doesn't answer, rather than blocking the launch from the
@@ -1524,6 +1531,20 @@ const GameViewer = ({
     diary: diaryPrompt,
     // Not a preset surface, so the pass sends it as authored.
     discoverEntity: defaultDiscoverEntityPrompt,
+    sceneTags: sceneTagsPrompt,
+    sceneTagsUser: sceneTagsUserPrompt,
+  });
+
+  /** The plan input a pass dispatched outside a turn builds its request from — the scene-tag pass, which
+   *  the scene-image flow drives on a turn already stored. */
+  const standalonePassInput = (): TurnPlanInput => ({
+    action: "",
+    isGameStarted: true,
+    destinationCount: 0,
+    locationCount: locations.length,
+    hasCurrentLocation: !!currentLocation,
+    settings: turnSettings(),
+    prompts: turnPrompts(),
   });
 
   /** The settings-derived booleans this turn's shape depends on. */
@@ -2742,21 +2763,13 @@ const GameViewer = ({
     if (signal.aborted) return "";
     // The tag pass is silent and attached to this turn, so it shows in the AI-context viewer under the
     // scene it describes (with Show Silent Requests on) rather than under whatever turn is current.
-    const actionTags = await makeAIRequest({
-      systemPrompt: renderPromptTemplate(sceneTagsPrompt, buildContextValues()),
-      messages: [{
-        role: "user",
-        content: renderPromptTemplate(sceneTagsUserPrompt, {
-          "<NARRATION>": narration,
-          "<IN FRAME>": cast.length ? cast.map((c) => c.name).join(", ") : "nobody - an empty scene",
-        }),
-      }],
-      type: "sceneTags",
-      maxTokens: SCENE_TAGS_MAX_TOKENS,
-      signal,
-      silent: true,
-      attachTurnId: turnId,
+    const request = sceneTagsPass.buildRequest(standalonePassInput(), {
+      ...emptyTurnMaterial({ action: "", effectiveAction: "", turnId, baseCtx: {}, destinations: [] }),
+      ctx: buildContextValues(),
+      narration,
+      sceneCast: cast.map((c) => c.name),
     });
+    const actionTags = await makeAIRequest({ ...request, signal });
     if (signal.aborted) return "";
     const line = composeSceneTags({ characters: cast, locationTags, actionTags, places, knownTags });
     // Stored whether or not an image follows, so the player can read and edit what would be sent.
@@ -4478,6 +4491,10 @@ const GameViewer = ({
                                         <RequestAnatomyView
                                           blocks={toAnatomyBlocks(req.messages, req.anatomy)}
                                           mode="full"
+                                          // A capture stores its type as a plain string; an unknown one
+                                          // simply resolves to no editor and leaves the run inert.
+                                          type={req.type as AIRequestType}
+                                          onJump={openPromptEditor}
                                           // Dictionary/hydration marks compose with the run styling by
                                           // segmenting each run's own slice.
                                           renderText={(text) => renderSegs(segmentsFor(text, req, false))}
@@ -4577,12 +4594,13 @@ const GameViewer = ({
 
       <SettingsModal
         isOpen={isSettingsOpen}
-        onOpenChange={(v) => { setIsSettingsOpen(v); if (!v) { setSettingsTab(undefined); setSettingsEndpointTab(undefined); } }}
+        onOpenChange={(v) => { setIsSettingsOpen(v); if (!v) { setSettingsTab(undefined); setSettingsEndpointTab(undefined); setSettingsPrompt(undefined); } }}
         previewValues={promptPreviewValues}
         initialTab={settingsTab ?? asSettingsTab(devRoute?.tab)}
         initialEndpointTab={settingsEndpointTab}
-        initialPromptTab={devRoute?.subtab}
-        initialPromptSurface={devRoute?.surface}
+        initialPromptTab={settingsPrompt?.tab ?? devRoute?.subtab}
+        initialPromptSurface={settingsPrompt?.surface ?? devRoute?.surface}
+        initialPromptField={settingsPrompt?.field}
       />
 
       <AiSetupGate

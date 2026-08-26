@@ -1,5 +1,7 @@
 import type { ReactNode } from 'react';
 import { cn } from '@/lib/utils';
+import type { AIRequestType } from '@/types';
+import { resolvePromptJump, type PromptJumpTarget } from '@/lib/promptJump';
 import {
   CONTEXT_LABELS,
   SOURCE_LABELS,
@@ -13,10 +15,12 @@ import {
  * blocks inside Messages, the player's own prompt text highlighted and named by the editor that owns it,
  * everything the app assembled muted beneath it.
  *
- * Shared by the in-game AI Context viewer and Settings → Prompts → Narration → Anatomy. They differ only
- * in how much of a context run survives: AI Context shows real turns, so the bytes are the point; the
- * Settings view collapses context to an explanation plus a one-line excerpt so the whole request reads in
- * one scan.
+ * Shared by the in-game AI Context viewer and the Settings Anatomy hub. They differ only in how much of a
+ * context run survives: AI Context shows real turns, so the bytes are the point; the hub collapses context
+ * to an explanation plus a one-line excerpt so the whole request reads in one scan.
+ *
+ * Given `onJump`, an authored run becomes a button onto the editor that owns it. Context runs never do —
+ * the app assembled them, so there is nothing to open.
  */
 
 /** How much of a context run is drawn. */
@@ -44,6 +48,10 @@ const EXCERPT_CHARS = 110;
 export interface RequestAnatomyViewProps {
   blocks: AnatomyBlock[];
   mode: AnatomyContextMode;
+  /** Which kind of request these blocks are, so a click resolves to the prompt that owns the run. */
+  type?: AIRequestType;
+  /** Called with the editor an authored run belongs to. Absent leaves every run inert. */
+  onJump?: (target: PromptJumpTarget) => void;
   /**
    * Optional enrichment for one slice of text — the AI-context viewer's dictionary and hydration
    * highlighting. Called per run, so a highlighter never has to know about runs. Absent renders plain text.
@@ -53,16 +61,43 @@ export interface RequestAnatomyViewProps {
   className?: string;
 }
 
-function AuthoredRun({ source, named, children }: { source: AnatomySource; named: boolean; children: ReactNode }) {
+function AuthoredRun({
+  source,
+  named,
+  onJump,
+  children,
+}: {
+  source: AnatomySource;
+  named: boolean;
+  onJump?: () => void;
+  children: ReactNode;
+}) {
   const style = SOURCE_STYLES[source];
-  return (
-    <mark className={cn('rounded-sm px-0.5 text-inherit', style.mark)}>
+  const body = (
+    <>
       {named && (
         <span className={cn('mr-1 rounded-sm px-1 align-middle text-meta font-medium', style.chip)}>
           {SOURCE_LABELS[source]}
         </span>
       )}
       {children}
+    </>
+  );
+  return (
+    <mark className={cn('rounded-sm px-0.5 text-inherit', style.mark)}>
+      {onJump ? (
+        // Inline so a run still wraps with the text around it; the dotted rule is what says it opens.
+        <button
+          type="button"
+          onClick={onJump}
+          title={`Open the ${SOURCE_LABELS[source]}`}
+          className="inline cursor-pointer text-left underline decoration-dotted underline-offset-2 hover:decoration-solid focus-visible:ring-1 focus-visible:ring-ring focus-visible:ring-inset"
+        >
+          {body}
+        </button>
+      ) : (
+        body
+      )}
     </mark>
   );
 }
@@ -136,11 +171,14 @@ function BlockBody({
   blockIndex,
   mode,
   renderText,
+  jumpTo,
 }: {
   block: AnatomyBlock;
   blockIndex: number;
   mode: AnatomyContextMode;
   renderText?: RequestAnatomyViewProps['renderText'];
+  /** What clicking a run of this source should do, or undefined where nothing owns it. */
+  jumpTo?: (source: AnatomySource) => (() => void) | undefined;
 }) {
   const draw = (text: string): ReactNode => (renderText ? renderText(text, block, blockIndex) : text);
   const parts: ReactNode[] = [];
@@ -161,7 +199,9 @@ function BlockBody({
         <span key={i}>
           {lead ? draw(lead) : null}
           {body ? (
-            <AuthoredRun source={run.source} named={firstOfSource}>{draw(body)}</AuthoredRun>
+            <AuthoredRun source={run.source} named={firstOfSource} onJump={jumpTo?.(run.source)}>
+              {draw(body)}
+            </AuthoredRun>
           ) : null}
           {tail ? draw(tail) : null}
         </span>,
@@ -189,9 +229,15 @@ function Region({ title, hint, children }: { title: string; hint: string; childr
   );
 }
 
-export function RequestAnatomyView({ blocks, mode, renderText, className }: RequestAnatomyViewProps) {
+export function RequestAnatomyView({ blocks, mode, type, onJump, renderText, className }: RequestAnatomyViewProps) {
+  const jumpTo = onJump && type
+    ? (source: AnatomySource) => {
+        const target = resolvePromptJump(source, type);
+        return target ? () => onJump(target) : undefined;
+      }
+    : undefined;
   const body = (block: AnatomyBlock, index: number) => (
-    <BlockBody block={block} blockIndex={index} mode={mode} renderText={renderText} />
+    <BlockBody block={block} blockIndex={index} mode={mode} renderText={renderText} jumpTo={jumpTo} />
   );
   const system = blocks.map((b, i) => [b, i] as const).filter(([b]) => b.role === 'system');
   const messages = blocks.map((b, i) => [b, i] as const).filter(([b]) => b.role !== 'system');

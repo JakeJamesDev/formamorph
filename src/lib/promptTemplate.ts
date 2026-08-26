@@ -62,9 +62,18 @@ export function renderPromptTemplate(template: string, values: Record<string, st
 export function renderPromptTemplateRuns(
   template: string,
   values: Record<string, string>,
-  labels: { source: AnatomySource; contextLabel: ContextLabel },
+  labels: TemplateLabels,
 ): TiledRuns {
   return tilePieces(promptTemplatePieces(template, values, labels));
+}
+
+/** How a template's two kinds of text are labeled: `source` for what the author typed, `contextLabel` for
+ *  what a chip injected. `tokens` overrides that per chip, keyed by the affix-free token — a user message
+ *  carrying both `<PLAYER ACTION>` and `<NARRATION>` is two different things, not one. */
+export interface TemplateLabels {
+  source: AnatomySource;
+  contextLabel: ContextLabel;
+  tokens?: Record<string, ContextLabel>;
 }
 
 /** The same split as {@link renderPromptTemplateRuns}, left as pieces so a caller can append its own
@@ -72,14 +81,14 @@ export function renderPromptTemplateRuns(
 export function promptTemplatePieces(
   template: string,
   values: Record<string, string>,
-  labels: { source: AnatomySource; contextLabel: ContextLabel },
+  labels: TemplateLabels,
 ): AnatomyPiece[] {
   return parsePromptTemplate(template).map((segment) => {
     if (segment.type === 'text') return { text: segment.value, source: labels.source };
     const resolved = resolveToken(segment.token, values);
-    return resolved === undefined
-      ? { text: segment.token, source: labels.source }
-      : { text: resolved, contextLabel: labels.contextLabel };
+    if (resolved === undefined) return { text: segment.token, source: labels.source };
+    const key = splitToken(segment.token)?.key;
+    return { text: resolved, contextLabel: (key && labels.tokens?.[key]) || labels.contextLabel };
   });
 }
 

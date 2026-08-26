@@ -53,6 +53,7 @@ const material = (over: Partial<TurnMaterial> = {}): TurnMaterial => ({
   npcCastSize: 0,
   intents: [],
   overflow: [],
+  sceneCast: [],
   ...over,
 });
 

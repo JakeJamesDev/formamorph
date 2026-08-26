@@ -20,7 +20,8 @@ import { type SharedPreset } from '@/lib/promptPresetShare';
 import { APP_VERSION } from '@/lib/version';
 import { normalizeEndpointUrl, endpointUrlWasCompleted } from '@/lib/endpointUrl';
 import { computePromptTabAvailability } from '@/lib/promptTabAvailability';
-import { visibleGroups, SURFACE_LABELS, PROMPT_DESCRIPTIONS, type PromptSurface } from '@/lib/promptGroups';
+import { visibleGroups, SURFACE_LABELS, HUB_LABEL, HUB_ROUTE, PROMPT_DESCRIPTIONS, type PromptSurface } from '@/lib/promptGroups';
+import type { MessageField, PromptJumpTarget } from '@/lib/promptJump';
 import { RequestAnatomyPanel } from './RequestAnatomyPanel';
 import { Settings } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, dialogFullHeightMobile } from "@/components/ui/dialog";
@@ -54,7 +55,7 @@ import { cachedImageBytes, clearCachedImages } from '@/lib/remoteImageCache';
 import { formatBytes } from '@/lib/imageOptim';
 import { DEFAULT_WORLDS, readDeletedDefaultWorlds, clearDeletedDefaultWorlds } from '@/lib/defaultWorlds';
 import { PresetNameDialog } from './PresetNameDialog';
-import { defaultSystemPrompt, defaultNarrationUserPrompt, defaultRecapUserPrompt, defaultRehydrateUserPrompt, defaultOocDirectivePrompt, defaultChoicesPrompt, defaultStatUpdatesPrompt, defaultLocationChangePrompt, defaultThinkingPrompt, defaultSummaryPrompt, defaultChoicesUserPrompt, defaultStatUpdatesUserPrompt, defaultLocationChangeUserPrompt, defaultSummaryUserPrompt, defaultDiaryPrompt, defaultDirectorPrompt, defaultDirectorUserPrompt, defaultCharacterPrompt, defaultStoryboardPrompt, defaultNowLinePrompt, defaultTimePassedPrompt, defaultTimePassedUserPrompt, defaultOpeningTimePrompt, defaultOpeningTimeUserPrompt, defaultSceneTagsPrompt, defaultSceneTagsUserPrompt } from '../game/GamePrompts';
+import { defaultSystemPrompt, defaultNarrationUserPrompt, defaultRecapUserPrompt, defaultRehydrateUserPrompt, defaultOocDirectivePrompt, defaultChoicesPrompt, defaultStatUpdatesPrompt, defaultLocationChangePrompt, defaultThinkingPrompt, defaultSummaryPrompt, defaultChoicesUserPrompt, defaultStatUpdatesUserPrompt, defaultLocationChangeUserPrompt, defaultSummaryUserPrompt, defaultDiaryPrompt, defaultDirectorPrompt, defaultDirectorUserPrompt, defaultCharacterPrompt, defaultStoryboardPrompt, defaultNowLinePrompt, defaultTimePassedPrompt, defaultTimePassedUserPrompt, defaultOpeningTimePrompt, defaultOpeningTimeUserPrompt, defaultSceneTagsPrompt, defaultSceneTagsUserPrompt, defaultDiscoverEntityPrompt, OPENING_SCENE_CUE } from '../game/GamePrompts';
 import { isDesktop } from '@/lib/imageGen/desktop';
 import { fetchComfyMeta, DEFAULT_COMFY_WORKFLOW, type ComfyMeta } from '@/lib/imageGen/comfyui';
 import { fetchInvokeMeta, invokeConnectionMessage, encodersFor, vaesFor, PREFIXED_BASES, type InvokeMeta } from '@/lib/imageGen/invokeai';
@@ -425,7 +426,7 @@ function PromptsShell({ fullscreen, sourceRef, children }: {
   );
 }
 
-export const SettingsModal = ({ isOpen, onOpenChange, previewValues, initialTab, initialEndpointTab, initialPromptTab, initialPromptSurface, onWorldsRestored, forcedMode }: {
+export const SettingsModal = ({ isOpen, onOpenChange, previewValues, initialTab, initialEndpointTab, initialPromptTab, initialPromptSurface, initialPromptField, onWorldsRestored, forcedMode }: {
   isOpen: boolean;
   onOpenChange: (open: boolean) => void;
   /** Called after Restore Default Worlds re-seeds, so a world list on screen can refresh. */
@@ -437,9 +438,12 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, initialTab,
   /** Which AI Endpoints sub-tab to open ('text-endpoint' | 'img-endpoint' | 'img-tagprompt'). Used by the
    *  "Open Settings" shortcut in the image generation dialog to land straight on Image. */
   initialEndpointTab?: string;
-  /** DEV dev-router: which prompt under the Prompts tab to open (e.g. 'narration', 'thinking'). */
+  /** Which prompt under the Prompts tab to open (e.g. 'narration', 'thinking'). Set by the dev-router, and
+   *  by a click on a highlighted run in the in-game AI-context viewer. */
   initialPromptTab?: string;
   initialPromptSurface?: string;
+  /** Which stacked field of the Messages view to scroll to and focus on arrival. */
+  initialPromptField?: MessageField;
   /** Overrides the stored Simple/Advanced preference (the dev-router's `mode` param; tests set it directly). */
   forcedMode?: SettingsMode;
 }) => {
@@ -903,9 +907,13 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, initialTab,
   // Guidance follows the player's own settings and is real either way; only the world-state tokens are
   // stand-ins, which is what the badge speaks to.
   const usingSampleValues = !previewValues;
-  const effectivePreviewValues = composePreviewValues(
-    { paragraphLimit, maxTokens, markdownOutput, sectionStyle: activeSectionStyle, limitActiveCharacters, activeCharacterLimit, language },
-    previewValues,
+  // Memoized because the Anatomy hub keys its whole assembly on this pool (see `hubSettings`).
+  const effectivePreviewValues = useMemo(
+    () => composePreviewValues(
+      { paragraphLimit, maxTokens, markdownOutput, sectionStyle: activeSectionStyle, limitActiveCharacters, activeCharacterLimit, language },
+      previewValues,
+    ),
+    [paragraphLimit, maxTokens, markdownOutput, activeSectionStyle, limitActiveCharacters, activeCharacterLimit, language, previewValues],
   );
   // The choices prompt's language chip names itself in the directive, so its preview says "choices" where
   // the pool's default says "narration".
@@ -945,18 +953,33 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, initialTab,
   // Each prompt has a System editor, an Options sub-tab, and — for the aux prompts — a User-message editor.
   // Narration additionally has a Messages view: the conditional user-slot lines that ride the narration
   // exchange (Recap, Recall, Direction), stacked with per-field resets, each hidden with its feature.
-  // A System | User | Messages | Options toggle swaps between them (User/Messages only where they exist).
-  // `promptView` resets to System on every tab change.
-  const [promptView, setPromptView] = useState<PromptSurface>('system');
+  // Null is the Anatomy hub — the prompt with no editor open, which is where selecting one lands.
+  const [promptView, setPromptView] = useState<PromptSurface | null>(null);
+  // Which stacked field of the Messages view to scroll to and focus on arrival, set by a hub jump.
+  const [jumpField, setJumpField] = useState<MessageField | null>(null);
   // DEV dev-router: land on a named surface (`surface=…`). Re-runs when the prompt changes too, since
-  // switching prompts resets the view to System.
+  // switching prompts returns to the hub. `anatomy` is the hub itself, and so is anything unrecognized.
   useEffect(() => {
-    if (initialPromptSurface) setPromptView(initialPromptSurface as PromptSurface);
-  }, [initialPromptSurface, initialPromptTab]);
+    if (!initialPromptSurface) return;
+    setPromptView(
+      initialPromptSurface === HUB_ROUTE || !(initialPromptSurface in SURFACE_LABELS)
+        ? null
+        : (initialPromptSurface as PromptSurface),
+    );
+    setJumpField(initialPromptField ?? null);
+  }, [initialPromptSurface, initialPromptTab, initialPromptField]);
   // Fullscreen for the whole Prompts panel (rail included), not for one field — see PromptsShell.
   const [promptsFullscreen, setPromptsFullscreen] = useState(false);
   const promptsPanelRef = useRef<HTMLDivElement | null>(null);
-  const selectPromptTab = (t: string) => { setPromptTab(t); setPromptView('system'); };
+  // Selecting a prompt — including re-selecting the open one — returns to its hub, so the map is always
+  // one click away from any editor.
+  const selectPromptTab = (t: string) => { setPromptTab(t); setPromptView(null); setJumpField(null); };
+  /** A clicked run in the anatomy: open the prompt and the editor that owns it. */
+  const jumpToPrompt = (target: PromptJumpTarget) => {
+    setPromptTab(target.tab);
+    setPromptView(target.surface);
+    setJumpField(target.field ?? null);
+  };
   // The rail's groups, with prompts whose feature is off already removed.
   const railGroups = visibleGroups(promptAvailable);
   const userPrompts: Record<string, { value: string; set: (s: string) => void; reset: () => void; variables: typeof PROMPT_KIND_VARIABLES.choices }> = {
@@ -1009,19 +1032,84 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, initialTab,
       variables: undefined,
     }] : []),
   ];
-  // The Request Anatomy view maps the narration prompt's own surfaces onto a real request, so it exists
-  // only there — every other prompt is a single system/user pair with nothing to map.
-  const anatomyAvailable = activePromptTab === 'narration';
-  // Which parts the open prompt actually has — the rail lists exactly these under it.
+  // The stacked Messages fields, by key, so a jump from the hub can land on the one it named.
+  const messageFieldRefs = useRef<Record<string, HTMLDivElement | null>>({});
+  useEffect(() => {
+    if (!jumpField || !showingMessages) return;
+    const node = messageFieldRefs.current[jumpField];
+    // Instant, not smooth: the field has to be under the cursor by the time focus lands on it. A built-in
+    // preset's editors are read-only, so there is nothing to put a caret in — the scroll is the whole jump.
+    node?.scrollIntoView({ block: 'start' });
+    node?.querySelector<HTMLElement>('[data-lexical-editor][contenteditable="true"]')?.focus();
+    setJumpField(null);
+  }, [jumpField, showingMessages]);
+
+  // The generation settings the Anatomy hub draws under. Memoized alongside its prompts and its value pool
+  // so all three inputs are stable: a hub re-runs a turn's worth of assembly, and a fresh object on any of
+  // them would redo that for every unrelated state change in the modal.
+  const hubSettings = useMemo(() => ({
+    thinkingMode, sectionStyle: activeSectionStyle, markdownOutput, paragraphLimit,
+    language, maxTokens, memoryDigests, semanticMemory, semanticRehydration, timeContext,
+    locationAutoApply,
+  }), [
+    thinkingMode, activeSectionStyle, markdownOutput, paragraphLimit, language, maxTokens,
+    memoryDigests, semanticMemory, semanticRehydration, timeContext, locationAutoApply,
+  ]);
+
+  // Every prompt the Anatomy hub renders a request from, as authored.
+  const hubPrompts = useMemo(() => ({
+    system: systemPrompt,
+    recap: recapUserPrompt,
+    now: nowLinePrompt,
+    recall: rehydrateUserPrompt,
+    turn: {
+      locationChange: locationChangePromptText || '',
+      locationChangeUser: locationChangeUserPrompt,
+      thinking: thinkingPrompt,
+      director: directorPrompt,
+      directorUser: directorUserPrompt,
+      character: characterPrompt,
+      storyboard: storyboardPrompt,
+      narrationUser: narrationUserPrompt,
+      oocDirective: oocDirectivePrompt,
+      // The hub draws a mid-story turn, so the opening cue and the discovery prompt are along for the
+      // shape only — neither is an editor surface, and no hub renders either.
+      openingCue: OPENING_SCENE_CUE,
+      discoverEntity: defaultDiscoverEntityPrompt,
+      choices: choicesPrompt,
+      choicesUser: choicesUserPrompt,
+      statUpdates: statUpdatesPrompt,
+      statUpdatesUser: statUpdatesUserPrompt,
+      summary: summaryPrompt,
+      summaryUser: summaryUserPrompt,
+      timePassed: timePassedPrompt,
+      timePassedUser: timePassedUserPrompt,
+      openingTime: openingTimePrompt,
+      openingTimeUser: openingTimeUserPrompt,
+      diary: diaryPrompt,
+      sceneTags: sceneTagsPrompt,
+      sceneTagsUser: sceneTagsUserPrompt,
+    },
+  }), [
+    systemPrompt, recapUserPrompt, nowLinePrompt, rehydrateUserPrompt,
+    locationChangePromptText, locationChangeUserPrompt, thinkingPrompt, directorPrompt, directorUserPrompt,
+    characterPrompt, storyboardPrompt, narrationUserPrompt, oocDirectivePrompt,
+    choicesPrompt, choicesUserPrompt, statUpdatesPrompt, statUpdatesUserPrompt,
+    summaryPrompt, summaryUserPrompt, timePassedPrompt, timePassedUserPrompt,
+    openingTimePrompt, openingTimeUserPrompt, diaryPrompt, sceneTagsPrompt, sceneTagsUserPrompt,
+  ]);
+
+  // Which editors the open prompt actually has — the rail lists exactly these under it.
   const activeSurfaces: PromptSurface[] = [
     'system',
     ...(activeUserPrompt ? ['user' as const] : []),
     ...(messagesAvailable ? ['messages' as const] : []),
-    ...(anatomyAvailable ? ['anatomy' as const] : []),
     'options',
   ];
   const showingOptions = promptView === 'options';
-  const showingAnatomy = promptView === 'anatomy' && anatomyAvailable;
+  // The hub: the prompt selected with no editor open. An editor the open prompt doesn't have lands here
+  // too, rather than on a blank panel.
+  const showingHub = promptView === null || !activeSurfaces.includes(promptView);
   // The Reset button targets whichever template is on screen. `label` is the full noun ("Narration Prompt"
   // or just "Message" for the user-message template), so the button reads "Reset <label>". The Messages
   // view carries its own per-field resets, so the footer button hides there (like Options).
@@ -2278,17 +2366,17 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, initialTab,
                 {/* Prompt and surface entries live in one list but must not share a value string, or
                     Radix matches both and renders their labels concatenated. */}
                 <Select
-                  value={`surface:${promptView}`}
+                  value={`surface:${promptView ?? HUB_ROUTE}`}
                   onValueChange={(v) => {
                     const [kind, id] = v.split(':');
                     if (kind === 'prompt') selectPromptTab(id);
-                    else setPromptView(id as PromptSurface);
+                    else setPromptView(id === HUB_ROUTE ? null : (id as PromptSurface));
                   }}
                 >
                   {/* Named outright rather than via SelectValue: the value tracks only the surface, and
                       the reader needs to see which prompt they're in. */}
                   <SelectTrigger>
-                    <span className="truncate leading-normal">{selectedPrompt.label} &middot; {SURFACE_LABELS[promptView]}</span>
+                    <span className="truncate leading-normal">{selectedPrompt.label} &middot; {promptView ? SURFACE_LABELS[promptView] : HUB_LABEL}</span>
                   </SelectTrigger>
                   <SelectContent>
                     {railGroups.map((g) => (
@@ -2302,6 +2390,9 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, initialTab,
                     <SelectSeparator />
                     <SelectGroup>
                       <SelectLabel>{selectedPrompt.label}</SelectLabel>
+                      {/* The hub is a destination on mobile as well, since there is no prompt row to
+                          re-tap here — the dropdown carries both levels at once. */}
+                      <SelectItem value={`surface:${HUB_ROUTE}`}>{HUB_LABEL}</SelectItem>
                       {activeSurfaces.map((s) => (
                         <SelectItem key={s} value={`surface:${s}`}>{SURFACE_LABELS[s]}</SelectItem>
                       ))}
@@ -2387,32 +2478,28 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, initialTab,
                 </ScrollArea>
               )}
 
-              {showingAnatomy && (
+              {showingHub && (
                 <RequestAnatomyPanel
-                  prompts={{
-                    system: systemPrompt,
-                    narrationUser: narrationUserPrompt,
-                    recap: recapUserPrompt,
-                    now: nowLinePrompt,
-                    recall: rehydrateUserPrompt,
-                    direction: oocDirectivePrompt,
-                  }}
+                  tab={activePromptTab}
+                  prompts={hubPrompts}
                   values={effectivePreviewValues}
-                  settings={{
-                    thinkingMode, sectionStyle: activeSectionStyle, markdownOutput, paragraphLimit,
-                    language, maxTokens, memoryDigests, semanticMemory, semanticRehydration, timeContext,
-                  }}
+                  settings={hubSettings}
+                  onJump={jumpToPrompt}
                 />
               )}
 
-              {!showingOptions && !showingAnatomy && (
+              {!showingOptions && !showingHub && (
               <>
               <TabsContent value="narration" className="mt-4 flex-1 min-h-0 data-[state=active]:flex flex-col">
                 {showingMessages ? (
                   <ScrollArea className="flex-1 min-h-0">
                     <div className="flex flex-col gap-5 pr-3">
                       {messageFields.map((f) => (
-                        <div key={f.key} className="flex flex-col gap-1">
+                        <div
+                          key={f.key}
+                          ref={(node) => { messageFieldRefs.current[f.key] = node; }}
+                          className="flex flex-col gap-1 scroll-mt-2"
+                        >
                           <div className="flex items-center justify-between">
                             <span className="flex items-center gap-1.5 text-label font-medium">
                               {f.label}
@@ -2675,7 +2762,7 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, initialTab,
             {/* Reset targets the on-screen template; hidden on the Options sub-tab (edits no template)
                 and the Messages view (per-field resets). */}
             <div className="flex flex-wrap justify-end items-center gap-2 flex-shrink-0">
-              {!activePresetIsBuiltIn && !showingOptions && !showingMessages && !showingAnatomy && (
+              {!activePresetIsBuiltIn && !showingOptions && !showingMessages && !showingHub && (
                 <ConfirmDialog
                   title={`Reset ${resetTarget.label}`}
                   description={`Are you sure you want to reset the ${resetTarget.label} to its default value?`}

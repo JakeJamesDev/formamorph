@@ -8,6 +8,7 @@ import {
   defaultChoicesPrompt, defaultChoicesUserPrompt,
   defaultDiaryPrompt, defaultDirectorPrompt, defaultDirectorUserPrompt,
   defaultCharacterPrompt, defaultStoryboardPrompt, defaultDiscoverEntityPrompt,
+  defaultSceneTagsPrompt, defaultSceneTagsUserPrompt,
   defaultLocationChangePrompt, defaultLocationChangeUserPrompt,
   defaultNarrationUserPrompt, defaultOocDirectivePrompt,
   defaultOpeningTimePrompt, defaultOpeningTimeUserPrompt, OPENING_SCENE_CUE,
@@ -70,6 +71,10 @@ export const PARITY_PROMPTS: TurnPrompts = {
   openingTimeUser: defaultOpeningTimeUserPrompt,
   diary: defaultDiaryPrompt,
   discoverEntity: defaultDiscoverEntityPrompt,
+  // The recording is of a turn, and the scene-tag pass is dispatched by the scene-image flow instead, so
+  // these carry the shipped defaults for completeness rather than because the capture used them.
+  sceneTags: defaultSceneTagsPrompt,
+  sceneTagsUser: defaultSceneTagsUserPrompt,
 };
 
 /** Request types the turn itself dispatches. Anything else in the recording is an idle drainer. */
