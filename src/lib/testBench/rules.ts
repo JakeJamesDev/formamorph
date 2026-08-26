@@ -502,17 +502,28 @@ const placeholderPinnedUnused: Rule = {
   section: 'placeholders',
   advanced: true,
   summary: (count) => `${count} placeholders are pinned by traits but placed in no text`,
-  check: (world) => unplacedPlaceholders(world)
-    .filter(({ pinnedBy }) => pinnedBy.length > 0)
-    .map(({ placeholder, pinnedBy }) => {
+  check: (world) => {
+    const flagged = unplacedPlaceholders(world).filter(({ pinnedBy }) => pinnedBy.length > 0);
+    // A trait's chip carries every flagged placeholder it pins. The grouped row dedups items by id, so a
+    // trait pinning two of them lands beside only the first — the label, not adjacency, says which is whose.
+    const flaggedNames = new Map(flagged.map(({ placeholder }) =>
+      [placeholder.id, namedItem(placeholder.id, placeholder.name, world).name]));
+    const traitItem = (t: Trait): FindingItem => {
+      const pinned = (t.placeholderPins ?? [])
+        .map((pin) => flaggedNames.get(pin.placeholderId))
+        .filter((name): name is string => name !== undefined);
+      const base = namedItem(t.id, t.name, world, 'traits');
+      return { ...base, name: `${base.name} (pins ${listNames(pinned.map(quote))})` };
+    };
+    return flagged.map(({ placeholder, pinnedBy }) => {
       const item = namedItem(placeholder.id, placeholder.name, world);
-      const traitItems = pinnedBy.map((t) => namedItem(t.id, t.name, world, 'traits'));
       return finding(
         placeholderPinnedUnused,
-        `${quote(item.name)} is pinned by ${listNames(traitItems.map((t) => t.name))} but placed in no text — the pinned value never shows up`,
-        [item, ...traitItems],
+        `${quote(item.name)} is pinned by ${listNames(pinnedBy.map((t) => namedItem(t.id, t.name, world).name))} but placed in no text — the pinned value never shows up`,
+        [item, ...pinnedBy.map(traitItem)],
       );
-    }),
+    });
+  },
 };
 
 // A stat-name lookup in stat code, in either direction: `s.name === "X"` or `"X" === s.name`. Also matches

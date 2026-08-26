@@ -875,10 +875,44 @@ describe('the pinned-but-unplaced rule', () => {
     const found = only(pinnedOnly, 'placeholder-pinned-unused');
     expect(found).toHaveLength(1);
     expect(found[0].severity).toBe('warning');
-    // The placeholder is the defect; each pinning trait rides along as its own way in.
+    // The placeholder is the defect; each pinning trait rides along as its own way in, labeled with
+    // what it pins so the chip reads on its own.
     expect(found[0].items.map((i) => [i.id, i.section])).toEqual([['p1', undefined], ['t1', 'traits']]);
+    expect(found[0].items[1].name).toBe('Dyed (pins “Hue”)');
     expect(found[0].message).toContain('Hue');
     expect(found[0].message).toContain('Dyed');
+  });
+
+  it('labels a trait with every flagged placeholder it pins, identically in each finding', () => {
+    // The grouped row dedups items by id, keeping the first occurrence — so the one chip that survives
+    // must already name both placeholders, or the second finding loses its trait entirely.
+    const found = only(base({
+      placeholders: [
+        { id: 'p1', name: 'Hue', values: ['red', 'blue'] },
+        { id: 'p2', name: 'Tint', values: ['warm', 'cool'] },
+      ],
+      traits: [trait({ id: 't1', name: 'Dyed', placeholderPins: [
+        { placeholderId: 'p1', value: 'red' }, { placeholderId: 'p2', value: 'warm' },
+      ] })],
+    }), 'placeholder-pinned-unused');
+    expect(found).toHaveLength(2);
+    expect(found[0].items[1].name).toBe('Dyed (pins “Hue” and “Tint”)');
+    expect(found[1].items[1].name).toBe(found[0].items[1].name);
+  });
+
+  it('keeps a pin to a placed placeholder out of the label — that pin is not the problem', () => {
+    const found = only(base({
+      worldOverview: { name: 'Sedge Landing', description: '', systemPrompt: 'A fen of {{ph:p2:world:pl1}}.' } as WorldOverview,
+      placeholders: [
+        { id: 'p1', name: 'Hue', values: ['red', 'blue'] },
+        { id: 'p2', name: 'Tint', values: ['warm', 'cool'] },
+      ],
+      traits: [trait({ id: 't1', name: 'Dyed', placeholderPins: [
+        { placeholderId: 'p1', value: 'red' }, { placeholderId: 'p2', value: 'warm' },
+      ] })],
+    }), 'placeholder-pinned-unused');
+    expect(found).toHaveLength(1);
+    expect(found[0].items[1].name).toBe('Dyed (pins “Hue”)');
   });
 
   it('says nothing once the pinned placeholder is placed somewhere', () => {
