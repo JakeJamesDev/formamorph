@@ -1,3 +1,5 @@
+import { Progress } from '@/components/ui/progress';
+import IndeterminateProgress from '@/components/ui/indeterminate-progress';
 import { fmtGB, type VramStats } from '@/lib/useVramStats';
 import VramReadout from '@/components/game/VramReadout';
 import type { LocalLlmState } from '@/lib/imageGen/desktop';
@@ -5,22 +7,35 @@ import type { LocalLlmState } from '@/lib/imageGen/desktop';
 const BACKEND_LABELS: Record<string, string> = { cuda: 'CUDA', vulkan: 'Vulkan', metal: 'Metal', cpu: 'CPU' };
 
 /**
- * The local engine's status as a short colored line ("Engine: ready — model.gguf"). Shared by the
- * endpoint panel and the model-manager popup so the two never drift.
+ * The local engine's status as a short colored line ("Engine: ready — model.gguf"), with a progress bar
+ * under it while a model reads in. Shared by the endpoint panel and the model-manager popup so the two
+ * never drift.
  */
 export function EngineStatusLine({ engine, className }: { engine: LocalLlmState; className?: string }) {
+  const loading = engine.status === 'loading';
   return (
-    <div className={`text-meta text-muted-foreground ${className ?? ''}`}>
-      Engine:{' '}
-      {engine.status === 'ready' ? <span className="text-success">ready — {engine.modelId}</span>
-        : engine.status === 'loading' ? (
-          <span className="text-warning">
-            loading {engine.modelId}
-            {engine.loadProgress != null && ` — ${engine.loadProgress}%`}…
-          </span>
-        )
-        : engine.status === 'error' ? <span className="text-destructive">error: {engine.error}</span>
-        : 'no model loaded'}
+    <div className={className}>
+      <div className="text-meta text-muted-foreground">
+        Engine:{' '}
+        {engine.status === 'ready' ? <span className="text-success">ready — {engine.modelId}</span>
+          : loading ? (
+            <span className="text-warning">
+              loading {engine.modelId}
+              {engine.loadProgress != null && ` — ${engine.loadProgress}%`}…
+            </span>
+          )
+          : engine.status === 'error' ? <span className="text-destructive">error: {engine.error}</span>
+          : 'no model loaded'}
+      </div>
+      {/* A large model reads in over the better part of a minute. The bar is indeterminate until the engine
+          reports its first percentage, so the wait never looks like nothing is happening. */}
+      {loading && (
+        <div className="mt-1">
+          {engine.loadProgress == null
+            ? <IndeterminateProgress />
+            : <Progress value={engine.loadProgress} className="h-1" />}
+        </div>
+      )}
     </div>
   );
 }
