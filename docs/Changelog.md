@@ -2,7 +2,7 @@
 
 All notable changes to Formamorph. This fork's first line is **2.0.0** — a full TypeScript rebuild of the upstream JavaScript app ([FieryLionite's Formamorph](https://fierylion.itch.io/formamorph), ~v1.2) — with feature parity as the baseline plus new features on top.
 
-> ✅ **2.0.0 – 2.15.0 are released** (collapsed below). New work lands under **🚧 In Progress** — an unnumbered section, so changes accumulate without pinning a version. When a batch earns a release its section is marked **Released** and collapsed, and a fresh In Progress opens. `package.json` reads **2.15.0** — the latest released version.
+> ✅ **2.0.0 – 2.15.1 are released** (collapsed below). New work lands under **🚧 In Progress** — an unnumbered section, so changes accumulate without pinning a version. When a batch earns a release its section is marked **Released** and collapsed, and a fresh In Progress opens. `package.json` reads **2.15.1** — the latest released version.
 
 Each release groups changes as **Major** / **Minor**, then **Added** / **Removed** / **Fixed**, and within those by audience: 👤 user-facing · 🛠️ developer tooling · ⚙️ backend. Where two or more changes touch the same feature, they sit together under that feature's name.
 
@@ -10,7 +10,12 @@ Each release groups changes as **Major** / **Minor**, then **Added** / **Removed
 
 ## 🚧 In Progress
 
-_Unreleased — new work accumulates here until it earns a version bump. The next batch will pin its own version; `package.json` reads **2.15.0** (just released below)._
+_Unreleased — new work accumulates here until it earns a version bump. The next batch will pin its own version; `package.json` reads **2.15.1** (just released below)._
+
+---
+
+<details>
+<summary><strong>✅ 2.15.1 — Released 2026-08-26</strong> — The embed-blocked guidance tells the truth about a popped-out tab's storage: it starts fresh, export/import carries worlds over, and the desktop app is the direct route for local models (click to expand)</summary>
 
 ### Minor Changes
 
@@ -18,6 +23,8 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
 
 - **👤 User-facing**
   - **The embed-blocked guidance now says a popped-out tab starts with storage of its own — export and import carry your worlds over, and the desktop app is named as the direct route for local models.** The 2.15.0 wording promised that saves and settings follow into the new tab because the address is the same; browsers partition an embedded page's storage under the site embedding it, so they don't — the tab starts fresh. The setup gate and the connection guide now say so plainly, point at export/import for anything worth keeping, and note that a cloud endpoint works inside the embed and the desktop app connects to local servers directly.
+
+</details>
 
 ---
 
