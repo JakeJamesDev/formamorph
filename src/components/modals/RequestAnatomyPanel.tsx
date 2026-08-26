@@ -1,12 +1,11 @@
-import { useMemo, useState } from 'react';
+import { useMemo } from 'react';
 import { Maximize2, Minimize2 } from 'lucide-react';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Checkbox } from '@/components/ui/checkbox';
 import { HintInfo } from '@/components/SettingsRows';
 import { RequestAnatomyView } from '@/components/game/RequestAnatomyView';
 import type { PromptJumpTarget } from '@/lib/promptJump';
 import {
-  buildAnatomyHub, hubToggleAvailability,
+  buildAnatomyHub,
   type AnatomyConditions, type AnatomyPreviewPrompts, type AnatomyPreviewSettings,
 } from '@/lib/anatomyPreview';
 
@@ -14,17 +13,12 @@ import {
  * The Anatomy hub: what a prompt *is*, shown the moment it is selected in Settings → Prompts. The whole
  * request (or requests) that prompt is part of, drawn from an example playthrough under the player's own
  * generation settings, with every highlighted run a way into the editor that owns it.
- *
- * The toggles are assembly conditions, not display switches — each one re-runs the real chain, so a run
- * that disappears disappears because it genuinely isn't sent. A condition the player's settings can't
- * produce has no toggle at all, and neither does a prompt whose own pass never reads one.
  */
 
-const CONDITIONS: { key: keyof AnatomyConditions; label: string; hint?: string }[] = [
-  { key: 'recap', label: 'Memory Summaries condensed' },
-  { key: 'recall', label: 'Scene Recall hit', hint: 'Recall pulls from the condensed band, so it needs one' },
-  { key: 'brackets', label: 'Bracketed action' },
-];
+/** The fixture playthrough at its fullest: every condition the player's settings allow is shown firing.
+ *  One a playthrough could skip (no recall hit this turn) still can't promise anything — the builder
+ *  drops what the settings themselves rule out. */
+const ALL_CONDITIONS: AnatomyConditions = { recap: true, recall: true, brackets: true };
 
 export function RequestAnatomyPanel({
   tab,
@@ -46,42 +40,25 @@ export function RequestAnatomyPanel({
   fullscreen?: boolean;
   onRequestFullscreen?: () => void;
 }) {
-  const [conditions, setConditions] = useState<AnatomyConditions>({ recap: true, recall: true, brackets: true });
-  const available = hubToggleAvailability(tab, settings);
   const requests = useMemo(
-    () => buildAnatomyHub(tab, prompts, values, conditions, settings),
-    [tab, prompts, values, conditions, settings],
+    () => buildAnatomyHub(tab, prompts, values, ALL_CONDITIONS, settings),
+    [tab, prompts, values, settings],
   );
-  const toggles = CONDITIONS.filter(({ key }) => available[key]);
 
   return (
     <div className="flex flex-1 min-h-0 flex-col">
-      <div className="mb-2 flex flex-wrap items-center gap-x-4 gap-y-2 rounded-md border border-border p-2">
+      {/* A description line like the System editor's, not a toolbar: one sentence, the fuller legend
+          behind the ⓘ, and the panel's one control at the far end. */}
+      <div className="mb-2 flex flex-shrink-0 items-center gap-1.5">
+        <p className="text-helper text-muted-foreground">
+          Highlighted text is yours — click it to open its editor.
+        </p>
         <HintInfo>
           {`${requests.length > 1 ? 'The requests' : 'The request'} this prompt is part of, drawn from an example playthrough under your current settings.\n\n` +
             '- **Highlighted text** is your own — click it to open the field it comes from.\n' +
             '- **Dimmed text** is what the app assembled around it.\n' +
-            (toggles.length
-              ? '- **Each toggle** is a real condition — turning one off re-runs the assembly without it.'
-              : '')}
+            '- **A message that is missing** is one your settings never send.'}
         </HintInfo>
-        {toggles.map(({ key, label, hint }) => {
-          const disabled = key === 'recall' && !conditions.recap;
-          return (
-            <label
-              key={key}
-              className={`flex items-center gap-1.5 text-label ${disabled ? 'text-muted-foreground' : 'cursor-pointer'}`}
-              title={disabled ? hint : undefined}
-            >
-              <Checkbox
-                checked={conditions[key] && !disabled}
-                disabled={disabled}
-                onCheckedChange={(v) => setConditions((c) => ({ ...c, [key]: v === true }))}
-              />
-              {label}
-            </label>
-          );
-        })}
         {onRequestFullscreen && (
           <button
             type="button"
