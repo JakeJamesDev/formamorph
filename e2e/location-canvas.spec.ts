@@ -906,8 +906,11 @@ test.describe('Locations canvas', () => {
     await expect(alignLeft).toBeDisabled();
     await expect(spaceDown).toBeDisabled();
 
-    const pane = (await window_.locator('.react-flow__pane').boundingBox())!;
-    await page.mouse.click(pane.x + 8, pane.y + 8);
+    // An empty stretch of pane in either viewport — the top-left corner belongs to the search box (desktop)
+    // or the toolbar (mobile), and a click there hands Ctrl+A to the input instead of arming the canvas.
+    // Clicking through the locator also waits out the window's opening zoom, which a raw mouse click at a
+    // box measured mid-animation does not.
+    await window_.locator('.react-flow__pane').click({ position: { x: 300, y: 550 } });
     await page.keyboard.press('Control+a');
     await expect(window_.locator('.react-flow__node.selected')).toHaveCount(3);
     await expect(alignLeft).toBeEnabled();
