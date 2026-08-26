@@ -1,0 +1,50 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Formamorph embed harness</title>
+<style>
+  body { margin: 0; font: 14px system-ui, sans-serif; background: #1a1a1a; color: #ddd; display: flex; flex-direction: column; height: 100vh; }
+  header { padding: 8px 12px; display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+  button { padding: 6px 10px; cursor: pointer; }
+  button.active { outline: 2px solid #6cf; }
+  #note { color: #999; }
+  iframe { flex: 1; border: 0; width: 100%; }
+</style>
+</head>
+<body>
+<header>
+  <strong>Embed harness</strong>
+  <button id="itch">itch simulation (no permission delegation)</button>
+  <button id="fixed">fixed embed (allow="local-network-access")</button>
+  <button id="dev">UI-only (local dev server)</button>
+  <span id="note"></span>
+</header>
+<iframe id="frame" title="embedded app"></iframe>
+<script>
+  // Serve this page on 127.0.0.1 (NOT localhost) so even the dev-server variant is cross-origin.
+  const PAGES_URL = 'https://jakejamesdev.github.io/formamorph/';
+  const DEV_URL = 'http://localhost:5173/';
+  const frame = document.getElementById('frame');
+  const note = document.getElementById('note');
+  const modes = {
+    itch:  { url: PAGES_URL, allow: '', note: 'Public-origin iframe, no delegation — expect the browser denial + our guidance.' },
+    fixed: { url: PAGES_URL, allow: 'local-network-access', note: 'Delegated — expect the permission prompt, then a working connection.' },
+    dev:   { url: DEV_URL,  allow: '', note: 'Cross-origin but local→local, so no browser denial — tests detection/copy only (stop LM Studio to trip the probe).' },
+  };
+  for (const [id, m] of Object.entries(modes)) {
+    document.getElementById(id).addEventListener('click', (e) => {
+      document.querySelectorAll('button').forEach((b) => b.classList.remove('active'));
+      e.target.classList.add('active');
+      // Replace the frame so the allow attribute is applied fresh (it is read at load).
+      const next = document.createElement('iframe');
+      next.id = 'frame'; next.title = 'embedded app';
+      if (m.allow) next.setAttribute('allow', m.allow);
+      next.src = m.url;
+      document.getElementById('frame').replaceWith(next);
+      note.textContent = m.note;
+    });
+  }
+</script>
+</body>
+</html>
