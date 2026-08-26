@@ -7,6 +7,8 @@ import {
 } from '@/lib/localModels';
 import { useVramStats } from '@/lib/useVramStats';
 import { useLocalLlmStatus } from '@/lib/useLocalLlmStatus';
+import { useSettings } from '@/contexts/SettingsContext';
+import { isCrossOriginEmbed, isLocalEndpoint, openInOwnTab, shouldOfferPopOut } from '@/lib/localNetworkEmbed';
 import type { AiBlocker, AiMode } from '@/lib/useAiReachable';
 import {
   downloadLocalModel, cancelLocalDownload, subscribeLocalDownload, DOWNLOAD_PAUSED,
@@ -48,6 +50,9 @@ export function AiSetupGate({ open, reason, mode, blocker, reachable, recheck, o
   onReady: () => void;
 }) {
   const engine = useLocalLlmStatus();
+  // Read from context rather than taken as a prop: it must be the exact URL the probe used, and a
+  // caller passing its own copy is how the two would drift apart.
+  const { activeEndpointUrl } = useSettings();
   const vram = useVramStats('', { enabled: open && mode === 'local' });
   const [tier, setTier] = useState<VramTier>('tier8');
   const [showAll, setShowAll] = useState(false);
@@ -104,8 +109,21 @@ export function AiSetupGate({ open, reason, mode, blocker, reachable, recheck, o
   };
 
   const custom = mode === 'custom';
+
+  // An embedded page can't reach the player's own machine unless the embedding site delegates the
+  // browser's local-network permission — and itch's game frame doesn't. The probe can't see that (the
+  // denial is an opaque TypeError), so the situation is what names it: inside a frame, pointed at a
+  // local address, and not answering. Same failure, a truer explanation and a remedy that works.
+  const embedBlocked = useMemo(() => shouldOfferPopOut({
+    embedded: isCrossOriginEmbed(),
+    localEndpoint: isLocalEndpoint(activeEndpointUrl),
+    probeFailed: custom && blocker === 'unreachable',
+  }), [activeEndpointUrl, custom, blocker]);
+
   const title = blocker === 'unknownModel'
     ? 'No model loaded on your server'
+    : embedBlocked
+    ? 'This site’s embed is blocking your server'
     : custom
     ? 'Can’t reach your endpoint'
     : blocker === 'engineDown'
@@ -113,6 +131,8 @@ export function AiSetupGate({ open, reason, mode, blocker, reachable, recheck, o
     : 'Set up your AI';
   const description = blocker === 'unknownModel'
     ? 'Your endpoint is answering, but it has no model loaded and doesn’t recognize the model name Formamorph is set to ask for — so every turn would fail. Load a model, or set the model name to one your server lists.'
+    : embedBlocked
+    ? 'Formamorph is running inside another site’s page, and browsers don’t let an embedded page reach servers on your machine or local network. Open it in its own tab and your browser will ask your permission instead.'
     : custom
     ? 'Formamorph couldn’t get a response from your custom endpoint. Check that the server is running and the URL is right.'
     : blocker === 'engineDown'
@@ -152,6 +172,12 @@ export function AiSetupGate({ open, reason, mode, blocker, reachable, recheck, o
         ) : blocker === 'unknownModel' ? (
           <p className="text-helper text-muted-foreground">
             Load a model in LM Studio and this continues on its own — no need to reload.
+          </p>
+        ) : embedBlocked ? (
+          <p className="text-helper text-muted-foreground">
+            It’s the same game at the same address, so your saves and settings come with you — allow the
+            prompt when it appears. If the new tab still can’t connect, check that your server is running
+            and that the Endpoint URL is right.
           </p>
         ) : custom ? (
           <p className="text-helper text-muted-foreground">
@@ -196,9 +222,12 @@ export function AiSetupGate({ open, reason, mode, blocker, reachable, recheck, o
         )}
 
         <DialogFooter className="gap-2 sm:justify-start">
+          {/* Same origin, so the new tab carries the same saves and settings — and is the top-level page
+              the browser will offer its local-network prompt for. */}
+          {embedBlocked && <Button onClick={openInOwnTab}>Open in a New Tab</Button>}
           {/* The poll gets there on its own; this is for people who'd rather not wait for the next tick. */}
           {custom && (
-            <Button onClick={recheck} disabled={reachable === null}>
+            <Button variant={embedBlocked ? 'outline' : 'default'} onClick={recheck} disabled={reachable === null}>
               {reachable === null ? 'Checking…' : 'Try again'}
             </Button>
           )}

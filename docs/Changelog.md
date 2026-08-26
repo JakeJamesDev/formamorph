@@ -34,6 +34,7 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
 #### 🔧 Fixed
 
 - **👤 User-facing**
+  - **Playing the game embedded in another site — itch.io, say — now tells you the embed is what's blocking your own AI server, and offers a one-click Open in a New Tab that fixes it.** Browsers now ask your permission before a page reaches a server on your machine or local network, and an embedded page is never allowed to ask, so LM Studio and Ollama connections simply failed there while the app said to check a server that was working fine. The setup window now names the real cause and opens the game in its own tab, where the browser asks you properly — the same address, so your saves, settings and endpoint come with you, and the game continues on its own the moment it connects. The connection guide gained the same step at the top of its checklist, and everyone pointed at a local server now gets a note about that permission prompt and how to re-allow it if it was dismissed.
   - **The Windows download is no longer flagged as a virus by Windows Defender.** Defender's machine-learning scanner was misreading the launcher in the portable Windows zip as a trojan and quarantining it on some machines. The launcher is now built in a way that no longer trips that detection — verified against Defender and the other major scanners on VirusTotal. If Defender already quarantined your copy, redownload the newest release; nothing on your machine was actually infected.
 
 ---
