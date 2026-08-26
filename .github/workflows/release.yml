@@ -77,9 +77,10 @@ jobs:
           # Embed the shared app icon (public/icon.png) into the stub as a Windows resource so it shows the same
           # icon as the app in Explorer/taskbar. go-winres generates the *.syso that `go build` links in.
           # -H=windowsgui puts the stub on the GUI subsystem so Windows never flashes a console window on launch.
+          # No -s -w: symbol-stripped Go binaries trip Defender's Wacatac ML detection (A/B verified on VirusTotal).
           (cd launcher \
             && go run github.com/tc-hib/go-winres@v0.3.3 simply --icon ../public/icon.png \
-            && go build -trimpath -ldflags "-s -w -H=windowsgui" -o "../release/root/Formamorph.exe" . \
+            && go build -trimpath -ldflags "-H=windowsgui" -o "../release/root/Formamorph.exe" . \
             && rm -f rsrc_windows_*.syso)
           cp -r release/win-unpacked/* release/root/app/
           (cd release/root && 7z a -tzip "../Formamorph-${VER}-win.zip" . >/dev/null)
