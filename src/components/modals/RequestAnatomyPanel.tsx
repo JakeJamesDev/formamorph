@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react';
+import { Maximize2, Minimize2 } from 'lucide-react';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Checkbox } from '@/components/ui/checkbox';
 import { HintInfo } from '@/components/SettingsRows';
@@ -31,6 +32,8 @@ export function RequestAnatomyPanel({
   values,
   settings,
   onJump,
+  fullscreen,
+  onRequestFullscreen,
 }: {
   /** Which prompt's hub this is — one of the rail's own ids. */
   tab: string;
@@ -39,6 +42,9 @@ export function RequestAnatomyPanel({
   settings: AnatomyPreviewSettings;
   /** Open the editor a clicked run belongs to. */
   onJump: (target: PromptJumpTarget) => void;
+  /** The Prompts panel's fullscreen, same as the editors toggle — shown as a button when wired. */
+  fullscreen?: boolean;
+  onRequestFullscreen?: () => void;
 }) {
   const [conditions, setConditions] = useState<AnatomyConditions>({ recap: true, recall: true, brackets: true });
   const available = hubToggleAvailability(tab, settings);
@@ -76,6 +82,17 @@ export function RequestAnatomyPanel({
             </label>
           );
         })}
+        {onRequestFullscreen && (
+          <button
+            type="button"
+            onClick={onRequestFullscreen}
+            title={fullscreen ? 'Exit full screen' : 'View full screen'}
+            aria-label={fullscreen ? 'Exit full screen' : 'View full screen'}
+            className="ml-auto rounded p-1.5 text-muted-foreground hover:bg-accent hover:text-foreground"
+          >
+            {fullscreen ? <Minimize2 className="h-4 w-4" /> : <Maximize2 className="h-4 w-4" />}
+          </button>
+        )}
       </div>
       <ScrollArea className="flex-1 min-h-0 pr-3">
         {requests.length === 0 ? (

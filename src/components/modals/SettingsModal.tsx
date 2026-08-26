@@ -2485,6 +2485,8 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, initialTab,
                   values={effectivePreviewValues}
                   settings={hubSettings}
                   onJump={jumpToPrompt}
+                  fullscreen={promptsFullscreen}
+                  onRequestFullscreen={() => setPromptsFullscreen((f) => !f)}
                 />
               )}
 
