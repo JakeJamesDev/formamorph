@@ -93,7 +93,7 @@ The computed state delta a finished turn applies — history, clock, stats, disc
 _Avoid_: turn state, commit object
 
 **Request Anatomy**:
-The labeled map of one assembled request — every message split into runs and marked as either the player's own prompt text or context the app assembled. Rendered in the AI Context viewer for real turns, and in Settings → Prompts → Narration → Anatomy for an example one. A sidecar alongside the messages, never part of them, so it never reaches an endpoint.
+The labeled map of one assembled request — every message split into runs and marked as either the player's own prompt text or context the app assembled. Rendered in the AI Context viewer for real turns, and in Settings → Prompts → Narration → Anatomy for an example one built under the player's live generation settings. A sidecar alongside the messages, never part of them, so it never reaches an endpoint.
 _Avoid_: request breakdown, prompt map
 
 **Authored Run**:
