@@ -2,7 +2,7 @@
 
 All notable changes to Formamorph. This fork's first line is **2.0.0** — a full TypeScript rebuild of the upstream JavaScript app ([FieryLionite's Formamorph](https://fierylion.itch.io/formamorph), ~v1.2) — with feature parity as the baseline plus new features on top.
 
-> ✅ **2.0.0 – 2.14.0 are released** (collapsed below). New work lands under **🚧 In Progress** — an unnumbered section, so changes accumulate without pinning a version. When a batch earns a release its section is marked **Released** and collapsed, and a fresh In Progress opens. `package.json` reads **2.14.0** — the latest released version.
+> ✅ **2.0.0 – 2.15.0 are released** (collapsed below). New work lands under **🚧 In Progress** — an unnumbered section, so changes accumulate without pinning a version. When a batch earns a release its section is marked **Released** and collapsed, and a fresh In Progress opens. `package.json` reads **2.15.0** — the latest released version.
 
 Each release groups changes as **Major** / **Minor**, then **Added** / **Removed** / **Fixed**, and within those by audience: 👤 user-facing · 🛠️ developer tooling · ⚙️ backend. Where two or more changes touch the same feature, they sit together under that feature's name.
 
@@ -10,7 +10,12 @@ Each release groups changes as **Major** / **Minor**, then **Added** / **Removed
 
 ## 🚧 In Progress
 
-_Unreleased — new work accumulates here until it earns a version bump. The next batch will pin its own version; `package.json` reads **2.14.0** (just released below)._
+_Unreleased — new work accumulates here until it earns a version bump. The next batch will pin its own version; `package.json` reads **2.15.0** (just released below)._
+
+---
+
+<details>
+<summary><strong>✅ 2.15.0 — Released 2026-08-26</strong> — Six bundled worlds arrive rebuilt or brand new with connected maps, starting traits, and lore that changes every run, the Request Anatomy shows every request a turn sends and fronts every prompt in Settings, the desktop engine moves into its own process so the window stays smooth — with a model load bar and a graphics device readout, ==highlight== syntax colors prose everywhere it renders, playing embedded on another site names the browser permission blocking your local AI server and opens the tab that fixes it, and the Windows download no longer trips Defender (click to expand)</summary>
 
 ### Minor Changes
 
@@ -49,6 +54,8 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
   - **The Windows download is no longer flagged as a virus by Windows Defender.** Defender's machine-learning scanner was misreading the launcher in the portable Windows zip as a trojan and quarantining it on some machines. The launcher is now built in a way that no longer trips that detection — verified against Defender and the other major scanners on VirusTotal. If Defender already quarantined your copy, redownload the newest release; nothing on your machine was actually infected.
 - **⚙️ Backend**
   - **The desktop app's built-in engine is updated to node-llama-cpp 3.20.0.** The update carries a newer llama.cpp, fixes a crash that could hit when unloading a model, and adds support for newer model families such as Muse Glimmer.
+
+</details>
 
 ---
 
