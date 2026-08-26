@@ -298,7 +298,7 @@ export function RequestAnatomyView({ blocks, mode, type, onJump, renderText, cla
                 'rounded-md border p-2',
                 block.role === 'assistant'
                   ? 'mr-4 border-border bg-card sm:mr-6'
-                  : 'ml-4 border-primary/25 bg-primary/10 sm:ml-6',
+                  : 'ml-4 border-primary/40 bg-primary/10 sm:ml-6',
               )}
             >
               <div className="mb-0.5 text-meta text-muted-foreground">{ROLE_LABELS[block.role]}</div>
