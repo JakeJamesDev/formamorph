@@ -31,6 +31,11 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
 - **🛠️ Developer tooling**
   - **A world-narration probe checks a bundled world's authored voice against a real model.** `testing/baseline/harness/world-narration-probe.mjs` assembles the real narration system prompt from an actual `src/defaultworlds/` JSON — resolved placeholders, default traits, rolled starting location, lore book — and chains scripted turns, auto-flagging per-world tone and mechanic violations (gore in the comedy worlds, premature Aegis-One, the drone speaking, the blind crawler credited with sight, dessert creatures speaking, intimate rather than clinical transformation prose) alongside the shared red flags.
 
+#### 🔧 Fixed
+
+- **👤 User-facing**
+  - **The Windows download is no longer flagged as a virus by Windows Defender.** Defender's machine-learning scanner was misreading the launcher in the portable Windows zip as a trojan and quarantining it on some machines. The launcher is now built in a way that no longer trips that detection — verified against Defender and the other major scanners on VirusTotal. If Defender already quarantined your copy, redownload the newest release; nothing on your machine was actually infected.
+
 ---
 
 <details>
