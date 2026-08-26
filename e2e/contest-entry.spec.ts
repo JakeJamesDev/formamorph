@@ -192,7 +192,7 @@ async function publishIntoTheContest(page: Page): Promise<{
   // phases are answered before the first paint: the results half sees the closing one too.
   await openApp(page, {
     FORMAMORPH_eventAcknowledged: [`${running.id}:start`, `${running.id}:end`],
-  });
+  }, { liveEvents: true });
 
   await signIn(page, username, password);
   expect(stray, `the dev server on this port is not pointed at ${API} — restart it with E2E_API_URL set`)

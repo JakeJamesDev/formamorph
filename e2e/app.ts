@@ -3,7 +3,7 @@ import { TUTORIALS } from '../src/lib/tutorials';
 
 /** Dev-router surface installed by `src/lib/devRouter.ts` (DEV builds only). */
 interface DevRouter {
-  goto(view?: string, opts?: { modal?: string; tab?: string; subtab?: string; fixture?: string; fullscreen?: boolean }): void;
+  goto(view?: string, opts?: { modal?: string; tab?: string; subtab?: string; surface?: string; fixture?: string; fullscreen?: boolean }): void;
   listWorlds(): Promise<{ id: string; name: string }[]>;
   editWorld(id: string): Promise<void>;
 }
@@ -32,9 +32,17 @@ const BASE_SEED: Record<string, string> = {
  * Load the app with a known localStorage baseline. `extra` overrides or adds keys — strings are stored
  * raw and everything else JSON-encoded, matching the app's own persistence codecs.
  */
-export async function openApp(page: Page, extra: Record<string, unknown> = {}): Promise<void> {
+export async function openApp(
+  page: Page,
+  extra: Record<string, unknown> = {},
+  opts: { liveEvents?: boolean } = {},
+): Promise<void> {
   const seed = { ...BASE_SEED } as Record<string, string>;
   for (const [k, v] of Object.entries(extra)) seed[k] = typeof v === 'string' ? v : JSON.stringify(v);
+  // A live event's poster is modal over the Main Menu and its id isn't known statically, so it can't be
+  // pre-dismissed through the seed like the intro and tutorials — answer the fetch with no events instead.
+  // Contest specs, which are about events, opt back in with `liveEvents`.
+  if (!opts.liveEvents) await page.route('**/events/active*', (route) => route.fulfill({ json: [] }));
   await page.addInitScript((s: Record<string, string>) => {
     for (const [k, v] of Object.entries(s)) localStorage.setItem(k, v);
   }, seed);
@@ -46,7 +54,7 @@ export async function openApp(page: Page, extra: Record<string, unknown> = {}): 
 export async function gotoDev(
   page: Page,
   view: string,
-  opts?: { modal?: string; tab?: string; subtab?: string; fixture?: string; fullscreen?: boolean },
+  opts?: { modal?: string; tab?: string; subtab?: string; surface?: string; fixture?: string; fullscreen?: boolean },
 ): Promise<void> {
   await page.evaluate(
     ([v, o]) => (window as unknown as { __fmDev: DevRouter }).__fmDev.goto(v as string, o as Parameters<DevRouter['goto']>[1]),
@@ -62,7 +70,9 @@ export async function gotoDev(
  * an author would be editing.
  */
 export async function openPromptEditor(page: Page, prompt = 'narration'): Promise<void> {
-  await gotoDev(page, 'mainMenu', { modal: 'settings', tab: 'prompts', subtab: prompt });
+  // Selecting a prompt lands on its Anatomy hub; these specs exercise the editor, so route past the hub
+  // to the System Prompt surface directly.
+  await gotoDev(page, 'mainMenu', { modal: 'settings', tab: 'prompts', subtab: prompt, surface: 'system' });
   await page.getByRole('combobox', { name: 'Preset' }).waitFor();
   await ensureEditablePreset(page);
 }
