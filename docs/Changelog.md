@@ -12,6 +12,13 @@ Each release groups changes as **Major** / **Minor**, then **Added** / **Removed
 
 _Unreleased — new work accumulates here until it earns a version bump. The next batch will pin its own version; `package.json` reads **2.15.1** (just released below)._
 
+### Minor Changes
+
+#### 🔧 Fixed
+
+- **👤 User-facing**
+  - **Models now load on a machine with a discrete graphics card beside an integrated one, and a new GPU Device row lets you say which card the engine uses.** The engine counted every graphics device as a single pool of memory, which on such a machine reported tens of gigabytes total and nothing free — so every model failed to fit at every setting while the real card sat idle. A driver update that switches the integrated GPU on is enough to put a working machine into that state, which is why it looked random and why reinstalling never helped. The engine is now held to one card, so the memory it sizes a load against is that card's own. **Auto** picks your discrete card — by name where your system can name it, otherwise by ruling out the integrated ones — and changes nothing at all on a machine with one card. The GPU Device row in the Local Model settings lists every card the engine can see so you can overrule Auto yourself; it says so plainly when there is no GPU to pick, remembers your choice across launches, and falls back to Auto if the card you chose is later gone. The **Engine device** line above it names the card in force and whether Auto or you chose it, so a wrong pick reads off a single screenshot. Changing the device reloads the model onto it without restarting the app.
+
 ---
 
 <details>

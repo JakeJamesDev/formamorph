@@ -38,6 +38,11 @@ export const DEFAULT_LOCAL_FLASH_ATTENTION = true;
 // slot's window is ~contextSize / N — 2 balances a real turn-batch speedup against the halved per-slot window.
 export const LOCAL_PARALLEL_REQUESTS_MAX = 8;
 export const DEFAULT_LOCAL_PARALLEL_REQUESTS = 2;
+// Which GPU the bundled engine runs on, as a device *name* so the choice survives a driver update that
+// reorders the adapters. AUTO picks the discrete card and ignores an integrated one — see
+// electron/engineDevice.cjs for the policy; the value is only ever resolved to an index in main.
+export const LOCAL_GPU_DEVICE_AUTO = 'auto';
+export const DEFAULT_LOCAL_GPU_DEVICE = LOCAL_GPU_DEVICE_AUTO;
 // On by default: the engine picks an installed model and loads it as soon as anything routes to it, and a
 // finished download loads itself. Off leaves loading to the Load button, so VRAM is only spent on demand.
 export const DEFAULT_LOCAL_AUTO_LOAD = true;

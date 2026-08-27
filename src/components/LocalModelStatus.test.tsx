@@ -11,6 +11,7 @@ const stopped: LocalLlmState = {
   contextSize: null, gpuLayers: null, flashAttention: null, parallelRequests: null,
   maxContextSize: null, engineVramMB: null,
   gpuBackend: null, gpuDeviceNames: null, deviceVramTotalMB: null, deviceVramFreeMB: null,
+  gpuDeviceIndex: null, gpuDeviceOrigin: null, gpuDeviceOptions: null,
 };
 
 const engine = (over: Partial<LocalLlmState>): LocalLlmState => ({ ...stopped, ...over });
@@ -47,6 +48,44 @@ describe('EngineDeviceLine', () => {
     expect(text).toContain('Vulkan');
     expect(text).toContain('Intel(R) UHD Graphics 770');
     expect(text).toContain('1.9 / 2.0 GB');
+  });
+
+  it('says the pinned device was the automatic pick, so a wrong pin reads off one screenshot', () => {
+    const { container } = render(<EngineDeviceLine engine={engine({
+      status: 'ready', gpuBackend: 'vulkan', gpuDeviceNames: ['NVIDIA GeForce RTX 4080'],
+      gpuDeviceIndex: 1, gpuDeviceOrigin: 'auto',
+    })} />);
+    const text = container.textContent ?? '';
+    expect(text).toContain('NVIDIA GeForce RTX 4080');
+    expect(text).toContain('Auto');
+  });
+
+  it('distinguishes a device the player chose from one Auto picked', () => {
+    const { container } = render(<EngineDeviceLine engine={engine({
+      status: 'ready', gpuBackend: 'vulkan', gpuDeviceNames: ['Intel(R) UHD Graphics 770'],
+      gpuDeviceIndex: 0, gpuDeviceOrigin: 'manual',
+    })} />);
+    const text = container.textContent ?? '';
+    expect(text).toContain('Chosen');
+    expect(text).not.toContain('Auto');
+  });
+
+  it('says so when the chosen device is gone and Auto stood in for it', () => {
+    const { container } = render(<EngineDeviceLine engine={engine({
+      status: 'ready', gpuBackend: 'vulkan', gpuDeviceNames: ['NVIDIA GeForce RTX 4080'],
+      gpuDeviceIndex: 0, gpuDeviceOrigin: 'fallback-auto',
+    })} />);
+    expect(container.textContent).toContain('chosen device not found');
+  });
+
+  it('says nothing about a pick on a machine that needed no pin', () => {
+    const { container } = render(<EngineDeviceLine engine={engine({
+      status: 'ready', gpuBackend: 'vulkan', gpuDeviceNames: ['NVIDIA GeForce RTX 4080'],
+    })} />);
+    const text = container.textContent ?? '';
+    expect(text).toContain('NVIDIA GeForce RTX 4080');
+    expect(text).not.toContain('Auto');
+    expect(text).not.toContain('Chosen');
   });
 
   it('flags a CPU-only backend as a warning', () => {

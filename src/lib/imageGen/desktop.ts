@@ -123,6 +123,34 @@ export interface LocalLlmState {
    *  A mismatch against the nvidia-smi readout means llama.cpp picked a different device than expected. */
   deviceVramTotalMB: number | null;
   deviceVramFreeMB: number | null;
+  /** The device index the backend was restricted to, or null when it was left unfiltered. Pinning one
+   *  device is what stops llama.cpp aggregating several adapters' memory into a budget belonging to none. */
+  gpuDeviceIndex: number | null;
+  /** Where the pin came from — the automatic policy, the player's choice, or a chosen device that no
+   *  longer exists (so the policy chose instead). Null when nothing was pinned. */
+  gpuDeviceOrigin: EngineDeviceOrigin | null;
+  /** The unfiltered device list the pin was resolved against, in index order — what `gpuDeviceIndex` indexes
+   *  into. A pinned backend can only enumerate its own device, so this is the only record of what it was
+   *  chosen from, and the answer to "why that one" in a bug report. Null when nothing was pinned. */
+  gpuDeviceOptions: string[] | null;
+}
+
+/** How the engine's pinned device was arrived at. */
+export type EngineDeviceOrigin = 'auto' | 'manual' | 'fallback-auto';
+
+/** Every GPU the engine could be pinned to. An empty list under a `cpu` backend is a machine with no GPU;
+ *  an empty list under a null backend means nothing answered, which is not the same thing. */
+export interface EngineDeviceList {
+  /** The backend that enumerated them ('vulkan' | 'cuda' | 'metal' | 'cpu'), or null when none answered. */
+  backend: string | null;
+  devices: string[];
+}
+
+/** The device an engine state is pinned to, by name — null when nothing was pinned. Read from the list the
+ *  pin was resolved against rather than from what the pinned backend reports, which is filtered. */
+export function pinnedEngineDevice(engine: LocalLlmState): string | null {
+  if (engine.gpuDeviceIndex == null) return null;
+  return engine.gpuDeviceOptions?.[engine.gpuDeviceIndex] ?? null;
 }
 
 declare global {
@@ -161,8 +189,10 @@ declare global {
         cancelMove: () => Promise<boolean>;
         /** Subscribe to move progress; returns an unsubscribe fn. */
         onMoveProgress: (cb: (p: LocalMoveProgress) => void) => () => void;
-        /** Set engine load options (context size / GPU layers / flash attention); reloads if changed. */
-        setOptions: (opts: { contextSize: number; gpuLayers: number; flashAttention: boolean; parallelRequests: number }) => Promise<LocalLlmState>;
+        /** Set engine load options (context size / GPU layers / flash attention / GPU device); reloads if changed. */
+        setOptions: (opts: { contextSize: number; gpuLayers: number; flashAttention: boolean; parallelRequests: number; gpuDevice: string }) => Promise<LocalLlmState>;
+        /** Every GPU the engine can pin to, for the device picker. */
+        listDevices: () => Promise<EngineDeviceList>;
         /** Download a GGUF from Hugging Face, loading it on finish unless autoLoad is false; resolves with
          *  the saved path. */
         download: (opts: { url: string; fileName: string; autoLoad?: boolean }) => Promise<{ path: string }>;
@@ -284,9 +314,14 @@ export function subscribeLocalMove(cb: (p: LocalMoveProgress) => void): () => vo
   return llm?.onMoveProgress ? llm.onMoveProgress(cb) : () => {};
 }
 
-/** Set engine load options (context size / GPU layers / flash attention); reloads if they changed. */
-export const setLocalLlmOptions = (opts: { contextSize: number; gpuLayers: number; flashAttention: boolean; parallelRequests: number }): Promise<LocalLlmState> =>
+/** Set engine load options (context size / GPU layers / flash attention / GPU device); reloads if they changed. */
+export const setLocalLlmOptions = (opts: { contextSize: number; gpuLayers: number; flashAttention: boolean; parallelRequests: number; gpuDevice: string }): Promise<LocalLlmState> =>
   requireLlm().setOptions(opts);
+
+/** Every GPU the engine can pin to. Off desktop, and on a machine whose backend can't enumerate, an empty
+ *  list — which the picker states rather than showing an empty dropdown. */
+export const listLocalGpuDevices = (): Promise<EngineDeviceList> =>
+  isLocalLlmAvailable() ? requireLlm().listDevices() : Promise.resolve({ backend: null, devices: [] });
 
 /** Download a GGUF from Hugging Face, loading it on finish unless autoLoad is false; resolves with the
  *  saved path. */

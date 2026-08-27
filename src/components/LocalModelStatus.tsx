@@ -2,9 +2,16 @@ import { Progress } from '@/components/ui/progress';
 import IndeterminateProgress from '@/components/ui/indeterminate-progress';
 import { fmtGB, type VramStats } from '@/lib/useVramStats';
 import VramReadout from '@/components/game/VramReadout';
-import type { LocalLlmState } from '@/lib/imageGen/desktop';
+import type { EngineDeviceOrigin, LocalLlmState } from '@/lib/imageGen/desktop';
 
 const BACKEND_LABELS: Record<string, string> = { cuda: 'CUDA', vulkan: 'Vulkan', metal: 'Metal', cpu: 'CPU' };
+
+/** Where the engine's pinned device came from, in the player's terms. */
+const DEVICE_ORIGIN_LABELS: Record<EngineDeviceOrigin, string> = {
+  auto: 'Auto',
+  manual: 'Chosen',
+  'fallback-auto': 'Auto — chosen device not found',
+};
 
 /**
  * The local engine's status as a short colored line ("Engine: ready — model.gguf"), with a progress bar
@@ -50,6 +57,8 @@ export function EngineDeviceLine({ engine }: { engine: LocalLlmState }) {
   if (!engine.gpuBackend) return null;
   const onCpu = engine.gpuBackend === 'cpu';
   const devices = engine.gpuDeviceNames?.length ? engine.gpuDeviceNames.join(', ') : null;
+  // Only set when a device was actually pinned, so a single-GPU machine says nothing extra.
+  const origin = engine.gpuDeviceOrigin ? DEVICE_ORIGIN_LABELS[engine.gpuDeviceOrigin] : null;
   return (
     <div className="mt-3 border-t border-border pt-2 text-meta text-muted-foreground">
       <span className="font-semibold">Engine device: </span>
@@ -57,6 +66,7 @@ export function EngineDeviceLine({ engine }: { engine: LocalLlmState }) {
         {BACKEND_LABELS[engine.gpuBackend] ?? engine.gpuBackend}
       </span>
       {devices && <> — {devices}</>}
+      {origin && <> ({origin})</>}
       {engine.deviceVramTotalMB != null && (
         <> · {fmtGB(engine.deviceVramFreeMB)} / {fmtGB(engine.deviceVramTotalMB)} GB free at load</>
       )}
