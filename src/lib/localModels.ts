@@ -70,7 +70,7 @@ export const DOWNLOADS_AS_OF = '2026-07';
 //
 // ORDER IS LOAD-BEARING: entries are grouped by tier, and within a tier they run best-first by screen ranking
 // (testing/baseline/leaderboard.md), with untested/unfit models last. The UI recommends a tier's FIRST entry
-// and lists in this order (AiSetupGate `recommendFor`, LocalModelModal) — keep new entries in rank position.
+// and lists in this order (`groupModelsByFit` below, LocalModelModal) — keep new entries in rank position.
 export const LOCAL_MODELS: LocalModelInfo[] = [
   // ≤4 GB — 2-4B
   // Thin by design, not by neglect: the 2026-07-17 screen (3 seeds each, gate world, built-in engine) cut
@@ -192,6 +192,35 @@ export const LOCAL_MODELS: LocalModelInfo[] = [
     released: '2024-12', downloads: 38_367,
   },
 ];
+
+/** The catalog split by how each entry fits a detected GPU, as the setup gate's three sections. */
+export interface ModelFitGroups {
+  /** Models built for the detected tier, in catalog rank order. */
+  bestFit: LocalModelInfo[];
+  /** Models for smaller cards, nearest tier first. */
+  alsoFits: LocalModelInfo[];
+  /** Models that want more VRAM than was detected, nearest tier first. */
+  tooBig: LocalModelInfo[];
+  /** The pick: the best-fit group's first entry, or null if that tier is empty. */
+  recommended: LocalModelInfo | null;
+}
+
+/**
+ * Split the catalog into fit groups for a detected VRAM tier. Pure, so the gate's sections are testable
+ * without rendering one. Catalog order is the only ranking signal and it survives inside every group, which
+ * is why the recommendation is simply the best-fit group's first entry.
+ */
+export function groupModelsByFit(tier: VramTier): ModelFitGroups {
+  const rank = (t: VramTier) => VRAM_TIERS.findIndex((v) => v.value === t);
+  const detected = rank(tier);
+  const bestFit = LOCAL_MODELS.filter((m) => m.tier === tier);
+  // Array.sort is stable, so re-ordering by tier distance leaves catalog order intact inside each tier.
+  const alsoFits = LOCAL_MODELS.filter((m) => rank(m.tier) < detected)
+    .sort((a, b) => rank(b.tier) - rank(a.tier));
+  const tooBig = LOCAL_MODELS.filter((m) => rank(m.tier) > detected)
+    .sort((a, b) => rank(a.tier) - rank(b.tier));
+  return { bestFit, alsoFits, tooBig, recommended: bestFit[0] ?? null };
+}
 
 /** The HF repo id for a model, parsed from its resolve URL — the key for live download-count lookups. */
 export function repoOf(m: LocalModelInfo): string {

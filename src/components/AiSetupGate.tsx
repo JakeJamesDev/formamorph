@@ -1,11 +1,16 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
+import { toast } from 'react-toastify';
+import { CheckCircle2, Loader2 } from 'lucide-react';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
+import { ScrollArea } from '@/components/ui/scroll-area';
+import { cn } from '@/lib/utils';
 import {
-  LOCAL_MODELS, formatModelSize, tierForVram, type LocalModelInfo, type VramTier,
+  VRAM_TIERS, formatModelSize, groupModelsByFit, tierForVram, type LocalModelInfo, type VramTier,
 } from '@/lib/localModels';
-import { useVramStats } from '@/lib/useVramStats';
+import { fmtGB, useVramStats } from '@/lib/useVramStats';
 import { useLocalLlmStatus } from '@/lib/useLocalLlmStatus';
 import { useSettings } from '@/contexts/SettingsContext';
 import { isCrossOriginEmbed, isLocalEndpoint, openInOwnTab, shouldOfferPopOut } from '@/lib/localNetworkEmbed';
@@ -22,18 +27,84 @@ export type GateReason = 'firstRun' | 'play';
 /** How often the gate re-probes a custom endpoint. Tuned to human scale — starting a server takes seconds. */
 const ENDPOINT_POLL_MS = 3000;
 
-/** The catalog is ordered best-first within each tier by screen ranking (see localModels.ts), so the tier's
- *  first entry is its recommended pick. (Was "largest that fits" — size is a poor proxy for quality; it would
- *  push the untested 70B in No-Limit over the top-scoring 31B.) */
-function recommendFor(tier: VramTier): LocalModelInfo | null {
-  return LOCAL_MODELS.find((m) => m.tier === tier) ?? null;
+/** Where the local setup flow is: picking a model, fetching it, loading it, or done. */
+type SetupPhase = 'choose' | 'downloading' | 'loading' | 'ready';
+
+// One toast at a time in each role, so a dismissed gate can update its progress line in place rather than
+// stacking a new toast per event. Both live in the app's shared notification region.
+const PROGRESS_TOAST = 'ai-setup-progress';
+const READY_TOAST = 'ai-setup-ready';
+
+/** A model's row in the setup list: what it is, what it costs, and one line on how it writes. */
+function ModelRow({ model, recommended, dimmed, onDownload }: {
+  model: LocalModelInfo;
+  recommended?: boolean;
+  dimmed?: boolean;
+  onDownload: () => void;
+}) {
+  return (
+    <div className={cn(
+      'flex items-start justify-between gap-3 rounded-md border border-border p-3',
+      recommended && 'border-primary/50 bg-primary/5',
+      // Dimmed, not disabled: a warning the player can overrule on their own hardware.
+      dimmed && 'opacity-55',
+    )}>
+      <div className="min-w-0">
+        <div className="flex flex-wrap items-center gap-2">
+          <span className="text-label font-medium">{model.name}</span>
+          {recommended && <Badge>Recommended</Badge>}
+          {model.reasoning && <Badge variant="outline">Reasoning</Badge>}
+        </div>
+        <div className="text-meta text-muted-foreground">
+          {model.params} · {model.quant} · {formatModelSize(model.sizeBytes)}
+        </div>
+        <p className="mt-1 text-helper text-muted-foreground">{model.note}</p>
+      </div>
+      <Button size="sm" variant={recommended ? 'default' : 'outline'} className="shrink-0" onClick={onDownload}>
+        Download
+      </Button>
+    </div>
+  );
+}
+
+/** One titled block of the fit-grouped list. Renders nothing when its group is empty. */
+function Section({ title, helper, models, recommendedId, dimmed, onDownload }: {
+  title: string;
+  helper?: string;
+  models: LocalModelInfo[];
+  recommendedId?: string;
+  dimmed?: boolean;
+  onDownload: (m: LocalModelInfo) => void;
+}) {
+  if (models.length === 0) return null;
+  return (
+    <div className="space-y-2">
+      <div>
+        <div className="text-meta font-medium uppercase tracking-wide text-muted-foreground">{title}</div>
+        {helper && <p className="text-helper text-muted-foreground">{helper}</p>}
+      </div>
+      <div className="space-y-2">
+        {models.map((m) => (
+          <ModelRow
+            key={m.id}
+            model={m}
+            recommended={m.id === recommendedId}
+            dimmed={dimmed}
+            onDownload={() => onDownload(m)}
+          />
+        ))}
+      </div>
+    </div>
+  );
 }
 
 /**
- * The "your AI isn't set up yet" gate. On the bundled desktop engine it offers a one-click download sized to
- * the detected GPU (full tier list behind "Show all"); on any custom endpoint it points at Settings instead,
- * since we can't fix someone else's server for them. A download runs in the background — the gate keeps
- * showing progress and calls `onReady` the moment the engine comes up, so a queued launch resumes itself.
+ * The "your AI isn't set up yet" gate. On the bundled desktop engine it walks the player from a
+ * GPU-sized recommendation through the download and the weight load to a success step; on any custom
+ * endpoint it points at Settings instead, since we can't fix someone else's server for them.
+ *
+ * Nothing here traps the player. Closing mid-flight hands the download to a toast in the app's shared
+ * notification region, and a completion toast says when the engine came up.
  */
 export function AiSetupGate({ open, reason, mode, blocker, reachable, recheck, onOpenChange, onOpenSettings, onReady }: {
   open: boolean;
@@ -46,7 +117,7 @@ export function AiSetupGate({ open, reason, mode, blocker, reachable, recheck, o
   recheck: () => void;
   onOpenChange: (v: boolean) => void;
   onOpenSettings: () => void;
-  /** Fired when the engine becomes ready while the gate is open (download finished + model loaded). */
+  /** Fired when the player takes the success step's action, or when a custom endpoint starts answering. */
   onReady: () => void;
 }) {
   const engine = useLocalLlmStatus();
@@ -56,9 +127,16 @@ export function AiSetupGate({ open, reason, mode, blocker, reachable, recheck, o
   const vram = useVramStats('', { enabled: open && mode === 'local' });
   const [tier, setTier] = useState<VramTier>('tier8');
   const [showAll, setShowAll] = useState(false);
+  const [phase, setPhase] = useState<SetupPhase>('choose');
+  const [picked, setPicked] = useState<LocalModelInfo | null>(null);
   const [progress, setProgress] = useState<LocalDownloadProgress | null>(null);
   const [error, setError] = useState<string | null>(null);
+  // True between dismissing the gate mid-flight and the engine coming up: the window the toast covers.
+  const [handedOff, setHandedOff] = useState(false);
   const tieredRef = useRef(false);
+  const pickedRef = useRef<LocalModelInfo | null>(null);
+  const progressToastRef = useRef(false);
+  const wasOpenRef = useRef(false);
 
   // Size the recommendation to the detected GPU, once per open.
   useEffect(() => {
@@ -68,14 +146,30 @@ export function AiSetupGate({ open, reason, mode, blocker, reachable, recheck, o
     if (total) { setTier(tierForVram(total)); tieredRef.current = true; }
   }, [open, vram]);
 
-  useEffect(() => subscribeLocalDownload((p) => setProgress(p.done ? null : p)), []);
+  // Progress events are broadcast to every listener, so match them against the file this gate asked for.
+  // A download started elsewhere (the model manager) adopts the gate only when it has nothing of its own.
+  useEffect(() => subscribeLocalDownload((p) => {
+    if (pickedRef.current && p.fileName !== pickedRef.current.fileName) return;
+    if (p.done) { setProgress(null); setPhase('loading'); return; }
+    setProgress(p);
+    setPhase('downloading');
+  }), []);
 
-  // The whole point of the gate: once the engine is up, let the caller resume whatever it was blocking.
-  // Local only — the bundled engine can be running even when the user is pointed at a custom endpoint,
-  // and that says nothing about whether *their* endpoint answers.
+  // Once the engine is up the gate has done its job. Local gets a success step the player closes with an
+  // explicit action; engine-down never runs the download flow, so it keeps resolving straight through.
   useEffect(() => {
-    if (open && mode === 'local' && engine.status === 'ready') onReady();
-  }, [open, mode, engine.status, onReady]);
+    if (mode !== 'local' || engine.status !== 'ready') return;
+    if (open && blocker === 'engineDown') { onReady(); return; }
+    setPhase('ready');
+  }, [open, mode, engine.status, blocker, onReady]);
+
+  // A load that fails is the engine-down case, not a stall. Without this the loading state spins forever
+  // on the exact failure the gate exists to explain.
+  useEffect(() => {
+    if (mode !== 'local' || engine.status !== 'error') return;
+    setPhase((p) => (p === 'loading' ? 'choose' : p));
+    setError(engine.error ?? 'The engine couldn’t load that model.');
+  }, [mode, engine.status, engine.error]);
 
   // A custom endpoint has no status to subscribe to, so poll it while the gate is up. This is what lets
   // "start LM Studio, come back" resolve itself, matching how the local engine already self-heals.
@@ -89,22 +183,99 @@ export function AiSetupGate({ open, reason, mode, blocker, reachable, recheck, o
     if (open && mode === 'custom' && reachable === true) onReady();
   }, [open, mode, reachable, onReady]);
 
-  const recommended = useMemo(() => recommendFor(tier), [tier]);
-  const downloading = progress !== null;
+  // Reopening takes the flow back from the toasts: the dialog is the fuller view of the same state.
+  useEffect(() => {
+    if (open === wasOpenRef.current) return;
+    wasOpenRef.current = open;
+    if (!open) return;
+    setHandedOff(false);
+    setShowAll(false);
+    setError(null);
+    setPhase((p) => (p === 'ready' ? 'choose' : p));
+    if (progressToastRef.current) { toast.dismiss(PROGRESS_TOAST); progressToastRef.current = false; }
+    toast.dismiss(READY_TOAST);
+  }, [open]);
+
+  const groups = useMemo(() => groupModelsByFit(tier), [tier]);
+  const recommended = groups.recommended;
   const pct = progress && progress.total ? Math.round((progress.received / progress.total) * 100) : 0;
+  const workingName = picked?.name ?? 'your model';
+  const readyName = picked?.name ?? engine.modelId ?? 'Your model';
+
+  // Progress toast for a gate dismissed mid-flight. The app has one notification region, so the handoff
+  // goes there rather than into a corner of its own.
+  useEffect(() => {
+    if (!handedOff || phase === 'ready') return; // the completion toast below owns the finished handoff
+    if (phase === 'choose') {
+      // The work stopped without finishing — a failed download, or a load the engine gave up on. Leaving
+      // the toast up would claim work that ended, and hide why it ended.
+      if (progressToastRef.current) { toast.dismiss(PROGRESS_TOAST); progressToastRef.current = false; }
+      setHandedOff(false);
+      if (error) toast.error(`Setup stopped: ${error}`);
+      return;
+    }
+    const body = phase === 'loading' ? (
+      <div>
+        <div>Loading {workingName}…</div>
+        <div className="text-meta text-muted-foreground">Download complete · loading into your GPU.</div>
+      </div>
+    ) : (
+      <div>
+        <div>Downloading {workingName}…</div>
+        <div className="text-meta text-muted-foreground">
+          {formatModelSize(progress?.received ?? 0)} / {formatModelSize(progress?.total ?? 0)} ({pct}%)
+        </div>
+      </div>
+    );
+    // The loading phase has no byte figures, so hold the bar where the download left it rather than
+    // emptying it at the one moment the download succeeded. react-toastify closes a toast whose
+    // controlled bar reaches 1, so full stops just short.
+    const bar = phase === 'loading' ? 0.99 : Math.min(pct / 100, 0.99);
+    if (progressToastRef.current) toast.update(PROGRESS_TOAST, { render: body, progress: bar });
+    else {
+      toast(body, { toastId: PROGRESS_TOAST, autoClose: false, progress: bar });
+      progressToastRef.current = true;
+    }
+  }, [handedOff, phase, progress, pct, workingName, error]);
+
+  // The engine came up while the gate was dismissed: swap the progress line for the invitation the
+  // success step would have shown.
+  useEffect(() => {
+    if (!handedOff || phase !== 'ready') return;
+    if (progressToastRef.current) { toast.dismiss(PROGRESS_TOAST); progressToastRef.current = false; }
+    toast(
+      <div className="space-y-2">
+        <div>
+          <div>Your model is ready</div>
+          <div className="text-meta text-muted-foreground">{readyName} is loaded and answering.</div>
+        </div>
+        <Button size="sm" variant="outline" onClick={() => { toast.dismiss(READY_TOAST); onOpenSettings(); }}>
+          Open Settings
+        </Button>
+      </div>,
+      { toastId: READY_TOAST, autoClose: false },
+    );
+    setHandedOff(false);
+  }, [handedOff, phase, readyName, onOpenSettings]);
 
   const startDownload = async (m: LocalModelInfo) => {
     setError(null);
+    setPicked(m);
+    pickedRef.current = m;
+    setPhase('downloading');
     setProgress({ fileName: m.fileName, received: 0, total: m.sizeBytes, done: false });
     try {
-      // Always loads on finish, whatever the auto-load setting says: the gate resolves on the engine
-      // reaching ready, so a download that didn't load would leave it waiting forever.
+      // Always loads on finish, whatever the auto-load setting says: the gate's success step waits on the
+      // engine reaching ready, and a download that didn't load would leave it waiting forever.
       await downloadLocalModel({ url: m.url, fileName: m.fileName });
-    } catch (e) {
-      // A pause is a choice, not a failure.
-      if (!(e as Error).message.includes(DOWNLOAD_PAUSED)) setError((e as Error).message);
-    } finally {
       setProgress(null);
+      setPhase('loading');
+    } catch (e) {
+      // A pause is a choice, not a failure: it drops back to the list with the partial kept on disk.
+      if (!(e as Error).message.includes(DOWNLOAD_PAUSED)) setError((e as Error).message);
+      pickedRef.current = null;
+      setProgress(null);
+      setPhase('choose');
     }
   };
 
@@ -120,7 +291,26 @@ export function AiSetupGate({ open, reason, mode, blocker, reachable, recheck, o
     probeFailed: custom && blocker === 'unreachable',
   }), [activeEndpointUrl, custom, blocker]);
 
-  const title = blocker === 'unknownModel'
+  // The download-and-load walk, which only the bundled engine has. Every other branch keeps its own copy
+  // and its single remedy.
+  const localFlow = !custom && !embedBlocked && blocker !== 'unknownModel' && blocker !== 'engineDown';
+  const inFlow = localFlow && phase !== 'choose';
+
+  const gpu = vram.status === 'online' ? vram.gpus[0] : undefined;
+  const tierLabel = VRAM_TIERS.find((t) => t.value === tier)?.label;
+  const detected = gpu?.name && gpu.totalMB ? (
+    <p className="text-meta text-muted-foreground">
+      Detected: {gpu.name} · {fmtGB(gpu.totalMB)} GB VRAM{tierLabel ? ` · ${tierLabel} class` : ''}
+    </p>
+  ) : null;
+
+  const title = phase === 'downloading' && inFlow
+    ? `Downloading ${workingName}`
+    : phase === 'loading' && inFlow
+    ? 'Loading your model'
+    : phase === 'ready' && inFlow
+    ? 'You’re ready'
+    : blocker === 'unknownModel'
     ? 'No model loaded on your server'
     : embedBlocked
     ? 'This site’s embed is blocking your server'
@@ -129,7 +319,13 @@ export function AiSetupGate({ open, reason, mode, blocker, reachable, recheck, o
     : blocker === 'engineDown'
     ? 'Your model didn’t load'
     : 'Set up your AI';
-  const description = blocker === 'unknownModel'
+  const description = phase === 'downloading' && inFlow
+    ? 'The model saves to your models folder and loads on its own when the download finishes.'
+    : phase === 'loading' && inFlow
+    ? `${workingName} is loading into your GPU. This can take a minute on the first load.`
+    : phase === 'ready' && inFlow
+    ? `${readyName} is loaded and answering on your machine.`
+    : blocker === 'unknownModel'
     ? 'Your endpoint is answering, but it has no model loaded and doesn’t recognize the model name Formamorph is set to ask for — so every turn would fail. Load a model, or set the model name to one your server lists.'
     : embedBlocked
     ? 'Formamorph is running inside another site’s page, and browsers don’t let an embedded page reach servers on your machine or local network — only a tab of its own can ask your browser for that permission.'
@@ -137,37 +333,57 @@ export function AiSetupGate({ open, reason, mode, blocker, reachable, recheck, o
     ? 'Formamorph couldn’t get a response from your custom endpoint. Check that the server is running and the URL is right.'
     : blocker === 'engineDown'
     ? 'A model is installed but the engine couldn’t load it — it may not fit in VRAM at the current settings.'
+    : localFlow && showAll
+    ? 'Pick a model for your machine. Bigger models write better and run slower.'
     : 'Formamorph runs its AI on your own machine. Download a model to start playing — no account, no endpoint setup.';
 
+  /** Close the dialog, handing an in-flight download or load to the toast on the way out. */
+  const dismiss = () => {
+    if (phase === 'downloading' || phase === 'loading') setHandedOff(true);
+    onOpenChange(false);
+  };
+
+  const expanded = localFlow && phase === 'choose' && showAll;
+
   return (
-    <Dialog open={open} onOpenChange={(v) => { if (!v && !downloading) onOpenChange(false); }}>
-      <DialogContent
-        className="w-[min(96vw,560px)] max-w-none"
-        // Dismissible in both reasons: the gate is a warning, not a cell. Only a download in flight holds it
-        // open, since closing would lose the progress view they need.
-        hideClose={downloading}
-        onInteractOutside={(e) => { if (downloading) e.preventDefault(); }}
-        onEscapeKeyDown={(e) => { if (downloading) e.preventDefault(); }}
-      >
-        <DialogHeader>
+    <Dialog open={open} onOpenChange={(v) => { if (!v) dismiss(); }}>
+      <DialogContent className={cn('w-[min(96vw,560px)] max-w-none', expanded && 'flex h-[680px] max-h-[92dvh] flex-col')}>
+        <DialogHeader className={cn(expanded && 'shrink-0')}>
           <DialogTitle>{title}</DialogTitle>
           <DialogDescription>{description}</DialogDescription>
         </DialogHeader>
 
         {error && <p className="text-helper text-destructive">{error}</p>}
 
-        {downloading ? (
+        {inFlow && phase === 'downloading' ? (
           <div className="space-y-2">
             <Progress value={pct} />
             <div className="flex items-center justify-between text-meta text-muted-foreground">
               <span>
-                {formatModelSize(progress.received)} / {formatModelSize(progress.total)} ({pct}%)
+                {formatModelSize(progress?.received ?? 0)} / {formatModelSize(progress?.total ?? 0)} ({pct}%)
               </span>
               <Button size="sm" variant="ghost" onClick={() => cancelLocalDownload()}>Pause</Button>
             </div>
             <p className="text-helper text-muted-foreground">
-              You can keep browsing while this downloads — the game starts on its own once it’s ready.
+              You can close this window — the download keeps going, and a toast shows the progress.
             </p>
+          </div>
+        ) : inFlow && phase === 'loading' ? (
+          <div className="space-y-2">
+            <div className="flex items-center gap-3 rounded-md border border-border p-3">
+              <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+              <div className="text-helper text-muted-foreground">Download complete · loading weights…</div>
+            </div>
+            <p className="text-helper text-muted-foreground">
+              You can close this window — a toast tells you when it’s ready.
+            </p>
+          </div>
+        ) : inFlow && phase === 'ready' ? (
+          <div className="flex items-center gap-3 rounded-md border border-border p-3">
+            <CheckCircle2 className="h-5 w-5 text-success" />
+            <div className="text-helper text-muted-foreground">
+              Everything runs locally — no account, no internet needed during play.
+            </div>
           </div>
         ) : blocker === 'unknownModel' ? (
           <p className="text-helper text-muted-foreground">
@@ -184,62 +400,84 @@ export function AiSetupGate({ open, reason, mode, blocker, reachable, recheck, o
           <p className="text-helper text-muted-foreground">
             Start your server and this will continue on its own — no need to reload.
           </p>
-        ) : blocker === 'engineDown' ? null : (
+        ) : blocker === 'engineDown' ? null : !showAll ? (
           <div className="space-y-3">
+            {detected}
             {recommended && (
-              <div className="space-y-2 rounded-md border border-border p-3">
-                <div className="font-medium">
-                  {recommended.name}{' '}
-                  <span className="text-meta text-muted-foreground">
-                    {recommended.params} · {recommended.quant} · {formatModelSize(recommended.sizeBytes)}
-                  </span>
-                </div>
-                <p className="text-helper text-muted-foreground">{recommended.note}</p>
-                <Button onClick={() => startDownload(recommended)}>
-                  Download ({formatModelSize(recommended.sizeBytes)})
-                </Button>
-              </div>
+              <ModelRow model={recommended} recommended onDownload={() => startDownload(recommended)} />
             )}
-            {!showAll ? (
-              <Button variant="link" className="h-auto p-0 text-helper" onClick={() => setShowAll(true)}>
-                Show all models
-              </Button>
-            ) : (
-              <div className="space-y-2">
-                {LOCAL_MODELS.filter((m) => m.id !== recommended?.id).map((m) => (
-                  <div key={m.id} className="flex items-center justify-between gap-2 rounded-md border border-border p-2">
-                    <div className="min-w-0">
-                      <div className="truncate text-label font-medium">{m.name}</div>
-                      <div className="text-meta text-muted-foreground">{m.params} · {formatModelSize(m.sizeBytes)}</div>
-                    </div>
-                    <Button size="sm" variant="outline" className="shrink-0" onClick={() => startDownload(m)}>
-                      Download
-                    </Button>
-                  </div>
-                ))}
-              </div>
-            )}
+            <Button variant="link" className="h-auto p-0 text-helper" onClick={() => setShowAll(true)}>
+              Show all models
+            </Button>
           </div>
+        ) : (
+          <>
+            <div className="shrink-0">{detected}</div>
+            {/* Fixed-height dialog + its own scroller: the full list is taller than any viewport, and a
+                dialog that grows past the screen clips its own buttons off the bottom. */}
+            <ScrollArea data-testid="model-list-scroll" className="-mr-3 min-h-0 flex-1 pr-3">
+              <div className="space-y-5">
+                <Section
+                  title="Best for Your GPU"
+                  models={groups.bestFit}
+                  recommendedId={recommended?.id}
+                  onDownload={startDownload}
+                />
+                <Section
+                  title="Also Fits"
+                  helper="Smaller models. Faster turns, simpler writing."
+                  models={groups.alsoFits}
+                  onDownload={startDownload}
+                />
+                <Section
+                  title="Too Big for Your GPU"
+                  helper="These need more video memory than your GPU has. They run very slowly, if at all."
+                  models={groups.tooBig}
+                  dimmed
+                  onDownload={startDownload}
+                />
+              </div>
+            </ScrollArea>
+          </>
         )}
 
-        <DialogFooter className="gap-2 sm:justify-start">
-          {/* Same origin but NOT the same storage: partitioning keys the embed's data under the embedding
-              site, so the tab starts fresh — the copy above says so. The tab's value is being top-level page
-              the browser will offer its local-network prompt for. */}
-          {embedBlocked && <Button onClick={openInOwnTab}>Open in a New Tab</Button>}
-          {/* The poll gets there on its own; this is for people who'd rather not wait for the next tick. */}
-          {custom && (
-            <Button variant={embedBlocked ? 'outline' : 'default'} onClick={recheck} disabled={reachable === null}>
-              {reachable === null ? 'Checking…' : 'Try again'}
-            </Button>
-          )}
-          <Button variant="outline" onClick={onOpenSettings}>Open Settings</Button>
-          {/* Always skippable: at first run they can look around before committing to a download; in a world
-              they can read and explore, and the turn simply fails until the AI answers. */}
-          {!downloading && (
-            <Button variant="ghost" onClick={() => onOpenChange(false)}>
-              {reason === 'play' ? 'Continue anyway' : 'Later'}
-            </Button>
+        <DialogFooter className={cn('gap-2 sm:justify-start', expanded && 'shrink-0')}>
+          {inFlow && phase === 'ready' ? (
+            <>
+              <Button onClick={onReady}>{reason === 'play' ? 'Continue' : 'Start Playing'}</Button>
+              <Button variant="outline" onClick={onOpenSettings}>Open Settings</Button>
+            </>
+          ) : inFlow ? (
+            <Button variant="ghost" onClick={dismiss}>Close</Button>
+          ) : (
+            <>
+              {expanded && (
+                <Button variant="link" className="h-auto p-0 text-helper" onClick={() => setShowAll(false)}>
+                  Show fewer models
+                </Button>
+              )}
+              {/* Same origin but NOT the same storage: partitioning keys the embed's data under the embedding
+                  site, so the tab starts fresh — the copy above says so. The tab's value is being top-level page
+                  the browser will offer its local-network prompt for. */}
+              {embedBlocked && <Button onClick={openInOwnTab}>Open in a New Tab</Button>}
+              {/* The poll gets there on its own; this is for people who'd rather not wait for the next tick. */}
+              {custom && (
+                <Button variant={embedBlocked ? 'outline' : 'default'} onClick={recheck} disabled={reachable === null}>
+                  {reachable === null ? 'Checking…' : 'Try again'}
+                </Button>
+              )}
+              <Button variant="outline" onClick={onOpenSettings}>Open Settings</Button>
+              {/* Always skippable: at first run they can look around before committing to a download; in a world
+                  they can read and explore, and the turn simply fails until the AI answers. */}
+              <Button variant="ghost" onClick={dismiss}>
+                {reason === 'play' ? 'Continue anyway' : 'Later'}
+              </Button>
+              {localFlow && !showAll && (
+                <span className="self-center text-helper text-muted-foreground">
+                  You can set this up anytime in Settings → Endpoints.
+                </span>
+              )}
+            </>
           )}
         </DialogFooter>
       </DialogContent>

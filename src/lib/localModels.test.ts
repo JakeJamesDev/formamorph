@@ -1,5 +1,8 @@
 import { describe, it, expect } from 'vitest';
-import { LOCAL_MODELS, VRAM_TIERS, repoOf, formatReleased, formatDownloads, formatModelSize } from './localModels';
+import {
+  LOCAL_MODELS, VRAM_TIERS, groupModelsByFit, repoOf, formatReleased, formatDownloads, formatModelSize,
+  type VramTier,
+} from './localModels';
 
 describe('localModels catalog', () => {
   it('every model fits its tier ceiling', () => {
@@ -80,5 +83,51 @@ describe('localModels catalog', () => {
     expect(formatModelSize(999_499_999)).toBe('999 MB');
     expect(formatModelSize(999_500)).toBe('1 MB'); // not '1000 KB'
     expect(formatModelSize(999_499)).toBe('999 KB');
+  });
+});
+
+describe('groupModelsByFit', () => {
+  const TIERS: VramTier[] = VRAM_TIERS.map((t) => t.value);
+  const rank = (t: VramTier) => TIERS.indexOf(t);
+  const idsOf = (list: { id: string }[]) => list.map((m) => m.id);
+  const tiersOf = (list: { tier: VramTier }[]) => [...new Set(list.map((m) => m.tier))];
+
+  it.each(TIERS)('files every catalog entry into exactly one group for %s', (tier) => {
+    // The gate shows all three sections and nothing else, so a model in two groups is a duplicate row and a
+    // model in none is silently undownloadable.
+    const g = groupModelsByFit(tier);
+    const all = idsOf([...g.bestFit, ...g.alsoFits, ...g.tooBig]);
+    expect(new Set(all).size).toBe(all.length);
+    expect(new Set(all)).toEqual(new Set(idsOf(LOCAL_MODELS)));
+  });
+
+  it.each(TIERS)('groups %s by fit against the detected tier', (tier) => {
+    const g = groupModelsByFit(tier);
+    for (const m of g.bestFit) expect(m.tier, m.id).toBe(tier);
+    for (const m of g.alsoFits) expect(rank(m.tier), m.id).toBeLessThan(rank(tier));
+    for (const m of g.tooBig) expect(rank(m.tier), m.id).toBeGreaterThan(rank(tier));
+  });
+
+  it.each(TIERS)('recommends the first catalog entry of the detected tier (%s)', (tier) => {
+    // Catalog order is the only quality ranking; the tier's first entry is its top pick.
+    const g = groupModelsByFit(tier);
+    expect(g.recommended).toBe(g.bestFit[0]);
+    expect(g.recommended?.id).toBe(LOCAL_MODELS.find((m) => m.tier === tier)?.id);
+  });
+
+  it('lists smaller models nearest tier first, keeping catalog order inside a tier', () => {
+    const g = groupModelsByFit('unlimited');
+    expect(tiersOf(g.alsoFits)).toEqual(['tier16', 'tier8', 'tier4']);
+    expect(idsOf(g.alsoFits.filter((m) => m.tier === 'tier8')))
+      .toEqual(idsOf(LOCAL_MODELS.filter((m) => m.tier === 'tier8')));
+  });
+
+  it('lists too-big models nearest tier first', () => {
+    expect(tiersOf(groupModelsByFit('tier4').tooBig)).toEqual(['tier8', 'tier16', 'unlimited']);
+  });
+
+  it('leaves the outer groups empty at the ends of the tier range', () => {
+    expect(groupModelsByFit('tier4').alsoFits).toEqual([]);
+    expect(groupModelsByFit('unlimited').tooBig).toEqual([]);
   });
 });

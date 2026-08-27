@@ -755,7 +755,8 @@ const GameViewer = ({
     aiGateShownRef.current = true;
     setAiGateOpen(true);
   }, [aiReachable]);
-  // The AI came up while the warning was showing — nothing is queued behind it, so just dismiss.
+  // The player took the gate's Continue action once setup finished — nothing is queued behind it, so
+  // just dismiss.
   const handleAiGateReady = useCallback(() => setAiGateOpen(false), []);
 
   // DEV dev-router: open an in-game modal when the hash asks for it (Menu routes via MenuModal's own
@@ -4611,7 +4612,7 @@ const GameViewer = ({
         reachable={aiReachable}
         recheck={aiRecheck}
         onOpenChange={(v) => { if (!v) setAiGateOpen(false); }}
-        onOpenSettings={() => { setAiGateOpen(false); setIsSettingsOpen(true); }}
+        onOpenSettings={() => { setAiGateOpen(false); setSettingsTab('endpoints'); setIsSettingsOpen(true); }}
         onReady={handleAiGateReady}
       />
 
