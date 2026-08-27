@@ -11,6 +11,8 @@
 
 /** The setting value meaning "let the policy choose". Anything else is a device name to pin to. */
 const ENGINE_DEVICE_AUTO = 'auto';
+/** The setting value meaning "no pin at all": every visible device stays in play (multi-GPU splitting). */
+const ENGINE_DEVICE_ALL = 'all';
 
 /**
  * Names that only ever belong to an integrated GPU. Matched against the normalized name, so `(R)`/`(TM)`
@@ -52,14 +54,17 @@ const isIntegrated = (name) => {
 function autoPick(deviceNames, nvidiaGpus) {
   // One adapter is no aggregate — there is nothing for a pin to fix, so don't change what llama.cpp does.
   if (deviceNames.length < 2) return null;
-  // An nvidia-smi name is the strongest evidence available that a device is the discrete card.
-  const matched = deviceNames.findIndex((name) => nvidiaGpus.some((gpu) => namesMatch(name, gpu && gpu.name)));
-  if (matched !== -1) return matched;
-  // No nvidia-smi (an AMD or Intel discrete card): drop the names that only an integrated GPU carries.
-  const survivors = [];
-  deviceNames.forEach((name, index) => { if (!isIntegrated(name)) survivors.push(index); });
-  // Exactly one survivor is an answer; zero or several is a guess, and a wrong pin is worse than none.
-  return survivors.length === 1 ? survivors[0] : null;
+  // The problem being fixed is an integrated GPU polluting the memory budget of the one real card. So
+  // count the *real* cards — an nvidia-smi match, or any name the integrated patterns don't claim — and
+  // pin only when exactly one stands beside identifiable integrated ones. Two or more real cards is a
+  // configuration llama.cpp handles by design (Max layers splits a model across them); pinning one would
+  // silently halve that machine's VRAM, which is worse than the bug.
+  const real = [];
+  deviceNames.forEach((name, index) => {
+    const matchesNvidia = nvidiaGpus.some((gpu) => namesMatch(name, gpu && gpu.name));
+    if (matchesNvidia || !isIntegrated(name)) real.push(index);
+  });
+  return real.length === 1 ? real[0] : null;
 }
 
 /**
@@ -76,6 +81,10 @@ function selectEngineDevice({ deviceNames, nvidiaGpus, setting } = {}) {
   const gpus = Array.isArray(nvidiaGpus) ? nvidiaGpus : [];
   const wanted = typeof setting === 'string' ? setting : ENGINE_DEVICE_AUTO;
 
+  // Explicitly unfiltered: the escape hatch for a machine Auto pins (a dGPU+iGPU rig whose owner wants
+  // llama.cpp splitting across both anyway).
+  if (wanted === ENGINE_DEVICE_ALL) return { index: null, origin: null };
+
   if (wanted !== ENGINE_DEVICE_AUTO) {
     // Resolved by name against the current enumeration, so a driver change that reorders the indices
     // doesn't silently move the pin to a different card. Matched exactly, not normalized: the setting was
@@ -91,4 +100,4 @@ function selectEngineDevice({ deviceNames, nvidiaGpus, setting } = {}) {
   return { index, origin: index == null ? null : 'auto' };
 }
 
-module.exports = { selectEngineDevice, ENGINE_DEVICE_AUTO };
+module.exports = { selectEngineDevice, ENGINE_DEVICE_AUTO, ENGINE_DEVICE_ALL };
