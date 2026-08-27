@@ -11,11 +11,18 @@ const TEMP_SUFFIX = '.moving';
 
 let canceled = false;
 
-/** True when the name is something we own and should carry across: a model or a resumable download. */
+/**
+ * True when the name is something we own and should carry across: a model, a resumable download, or the
+ * sidecar that says which of that download's chunks landed. A `.part` that arrives without its sidecar
+ * looks like an untrustworthy full-length partial and gets restarted from zero.
+ */
 const isMovable = (name) => {
   const lower = name.toLowerCase();
-  return lower.endsWith('.gguf') || lower.endsWith('.gguf.part');
+  return lower.endsWith('.gguf') || lower.endsWith('.gguf.part') || lower.endsWith('.gguf.part.json');
 };
+
+/** True for a download's resume sidecar, which has to reach the new folder before its `.part` does. */
+const isSidecar = (name) => name.toLowerCase().endsWith('.gguf.part.json');
 
 /** Size in bytes, or 0 when the file can't be stat'd. */
 function sizeOf(p) {
@@ -110,7 +117,10 @@ async function moveModels({ from, to }, onProgress = () => {}) {
   const skipped = [];
   if (src === dest) return { moved, skipped, canceled: false };
 
-  const files = listMovable(src);
+  // Sidecars first. A cancel between a `.part` and its sidecar would otherwise land a full-length
+  // preallocated part in the new folder with no bitmap, which reads as a complete partial and offers a
+  // resume that then throws the file away. A sidecar with no part is simply ignored.
+  const files = listMovable(src).sort((a, b) => Number(isSidecar(b.name)) - Number(isSidecar(a.name)));
   const totalBytes = files.reduce((n, f) => n + f.size, 0);
   let movedBytes = 0;
 
