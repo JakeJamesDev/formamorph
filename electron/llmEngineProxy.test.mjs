@@ -14,6 +14,7 @@ const STATE_KEYS = [
   'status', 'modelPath', 'modelId', 'port', 'error', 'loadProgress',
   'contextSize', 'gpuLayers', 'flashAttention', 'parallelRequests', 'maxContextSize', 'engineVramMB',
   'gpuBackend', 'gpuDeviceNames', 'deviceVramTotalMB', 'deviceVramFreeMB',
+  'gpuDeviceIndex', 'gpuDeviceOrigin', 'gpuDeviceOptions',
 ];
 const keysOf = (s) => Object.keys(s).sort();
 const expectedKeys = [...STATE_KEYS].sort();
@@ -41,6 +42,14 @@ describe('engine proxy over a real child process', () => {
     expect(s.error).toMatch(/no modelpath/i);
     expect(keysOf(s)).toEqual(expectedKeys);
     expect(proxy.getState()).toEqual(s);
+  });
+
+  it('carries the device pin across to the child and back in its state', async () => {
+    proxy = makeProxy();
+    const s = await proxy.start({ port: 1234, gpuDeviceIndex: 1, gpuDeviceOrigin: 'manual' });
+    expect(s.gpuDeviceIndex).toBe(1);
+    expect(s.gpuDeviceOrigin).toBe('manual');
+    expect(proxy.getState().gpuDeviceIndex).toBe(1);
   });
 
   it('hands out copies of the mirror, so a caller cannot corrupt it', async () => {
@@ -172,6 +181,53 @@ describe('engine proxy over a real child process', () => {
     expect(s.status).toBe('error');
     expect(s.error).toMatch(/stopped unexpectedly \(exit code 1\)/i);
     expect(keysOf(s)).toEqual(expectedKeys);
+  });
+
+  it('answers a device enumeration without adopting it as the engine state', async () => {
+    // A stub child, because a real enumeration initializes a Vulkan backend — the one thing these tests
+    // must not do. What is under test is the parent half: a reply whose value is not a state must not
+    // land in the mirror the renderer reads.
+    const sent = [];
+    let deliver = null;
+    proxy = createEngineProxy({
+      spawn: () => ({
+        ready: Promise.resolve(),
+        pid: () => 1,
+        send: (m) => sent.push(m),
+        onMessage: (cb) => { deliver = cb; },
+        onExit: () => {},
+        kill: () => {},
+      }),
+    });
+
+    const devices = proxy.listDevices();
+    await vi.waitFor(() => expect(sent.length).toBe(1));
+    expect(sent[0].method).toBe('listDevices');
+    deliver({ type: 'reply', id: sent[0].id, ok: true, value: { gpuBackend: 'vulkan', gpuDeviceNames: ['A', 'B'] } });
+
+    await expect(devices).resolves.toEqual({ gpuBackend: 'vulkan', gpuDeviceNames: ['A', 'B'] });
+    expect(proxy.getState().status).toBe('stopped');
+    expect(keysOf(proxy.getState())).toEqual(expectedKeys);
+  });
+
+  it('answers a pending enumeration when the child dies under it', async () => {
+    // settlePending hands every waiter the stopped state; an enumeration's caller must not be handed one
+    // and read it as a device list.
+    let exited = null;
+    proxy = createEngineProxy({
+      spawn: () => ({
+        ready: new Promise(() => {}),
+        pid: () => null,
+        send: () => {},
+        onMessage: () => {},
+        onExit: (cb) => { exited = cb; },
+        kill: () => {},
+      }),
+    });
+
+    const devices = proxy.listDevices();
+    exited({ code: 1, signal: null });
+    await expect(devices).resolves.toBeNull();
   });
 
   it('leaves no child behind on dispose', async () => {

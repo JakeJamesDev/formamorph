@@ -2,6 +2,8 @@ import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@/components/ui/select';
+import { Hint } from '@/components/ui/typography';
 import { Row, ValueSlider, CheckRow, Section } from '@/components/SettingsRows';
 import { SETTINGS_BUTTONS } from './settingsCopy';
 import { rowCopy } from './settingsRowCopy';
@@ -9,10 +11,11 @@ import { useSettings } from '@/contexts/SettingsContext';
 import { useLocalLlmStatus } from '@/lib/useLocalLlmStatus';
 import { useVramStats, resolveOwnVram } from '@/lib/useVramStats';
 import { EngineStatusLine, GpuMemoryBox } from '@/components/LocalModelStatus';
-import { setLocalLlmOptions } from '@/lib/imageGen/desktop';
+import { setLocalLlmOptions, listLocalGpuDevices, pinnedEngineDevice, type EngineDeviceList } from '@/lib/imageGen/desktop';
 import {
   LOCAL_GPU_LAYERS_MAX, GPU_LAYERS_AUTO, GPU_LAYERS_MAX, LOCAL_PARALLEL_REQUESTS_MAX, DEFAULT_MAX_TOKENS,
   DEFAULT_LOCAL_CONTEXT_SIZE, DEFAULT_LOCAL_GPU_LAYERS, DEFAULT_LOCAL_FLASH_ATTENTION, DEFAULT_LOCAL_PARALLEL_REQUESTS,
+  LOCAL_GPU_DEVICE_AUTO, DEFAULT_LOCAL_GPU_DEVICE,
   DEFAULT_GEN_TEMPERATURE, DEFAULT_GEN_TOP_P, DEFAULT_GEN_REPETITION_PENALTY, DEFAULT_GEN_TOP_K, DEFAULT_GEN_MIN_P,
 } from '@/contexts/settingsDefaults';
 import { LocalModelModal } from './LocalModelModal';
@@ -28,6 +31,7 @@ export function LocalModelPanel() {
     localGpuLayers, setLocalGpuLayers,
     localFlashAttention, setLocalFlashAttention,
     localParallelRequests, setLocalParallelRequests,
+    localGpuDevice, setLocalGpuDevice,
     localMaxTokens, setLocalMaxTokens,
     genTemperature, setGenTemperature,
     genTopP, setGenTopP,
@@ -40,6 +44,19 @@ export function LocalModelPanel() {
   const [showManager, setShowManager] = useState(false);
   const [reloading, setReloading] = useState(false);
   const vram = useVramStats('', { enabled: true });
+  const [gpuDevices, setGpuDevices] = useState<EngineDeviceList>({ backend: null, devices: [] });
+
+  // Every GPU the engine could pin to. Asked for once: it costs a short-lived engine process when nothing
+  // has enumerated yet, and the list only changes when drivers do.
+  useEffect(() => {
+    let active = true;
+    listLocalGpuDevices().then((d) => { if (active) setGpuDevices(d); }).catch(() => { /* leave the row on its no-GPU state */ });
+    return () => { active = false; };
+  }, []);
+
+  // A chosen device the current enumeration no longer has (an eGPU unplugged, a driver removed). It stays
+  // on the list, marked, so the row reads as a stale choice rather than as a blank control.
+  const deviceMissing = localGpuDevice !== LOCAL_GPU_DEVICE_AUTO && !gpuDevices.devices.includes(localGpuDevice);
 
   // GPU Layers mode (Auto / Max / a fixed Custom count), derived from the sentinel-carrying setting.
   const gpuMode = localGpuLayers === GPU_LAYERS_AUTO ? 'auto' : localGpuLayers === GPU_LAYERS_MAX ? 'max' : 'custom';
@@ -56,12 +73,20 @@ export function LocalModelPanel() {
     if (engine.maxContextSize && localContextSize > engine.maxContextSize) setLocalContextSize(engine.maxContextSize);
   }, [engine.maxContextSize, localContextSize, setLocalContextSize]);
 
+  // The engine reports the device it pinned, not the setting that asked for it — Auto and a fallback both
+  // mean no manual pin is in force. A choice that no longer resolves has nothing to gain from a reload.
+  const pinnedDevice = engine.gpuDeviceOrigin === 'manual' ? pinnedEngineDevice(engine) : null;
+  const deviceDiffers = localGpuDevice === LOCAL_GPU_DEVICE_AUTO
+    ? pinnedDevice != null
+    : !deviceMissing && pinnedDevice !== localGpuDevice;
+
   // Whether the pending engine settings differ from what the current model was loaded with.
   const optionsDiffer =
     localContextSize !== engine.contextSize ||
     localGpuLayers !== engine.gpuLayers ||
     localFlashAttention !== engine.flashAttention ||
-    localParallelRequests !== engine.parallelRequests;
+    localParallelRequests !== engine.parallelRequests ||
+    deviceDiffers;
 
   // When Save & Reload can act: a loaded model whose settings changed, OR a failed load — so a context/GPU
   // setting that overflowed VRAM can be lowered and retried (the error state otherwise trapped the user).
@@ -74,7 +99,7 @@ export function LocalModelPanel() {
   const saveReload = async () => {
     setReloading(true);
     try {
-      await setLocalLlmOptions({ contextSize: localContextSize, gpuLayers: localGpuLayers, flashAttention: localFlashAttention, parallelRequests: localParallelRequests });
+      await setLocalLlmOptions({ contextSize: localContextSize, gpuLayers: localGpuLayers, flashAttention: localFlashAttention, parallelRequests: localParallelRequests, gpuDevice: localGpuDevice });
     } finally {
       setReloading(false);
     }
@@ -85,6 +110,7 @@ export function LocalModelPanel() {
     setLocalGpuLayers(DEFAULT_LOCAL_GPU_LAYERS);
     setLocalFlashAttention(DEFAULT_LOCAL_FLASH_ATTENTION);
     setLocalParallelRequests(DEFAULT_LOCAL_PARALLEL_REQUESTS);
+    setLocalGpuDevice(DEFAULT_LOCAL_GPU_DEVICE);
     setLocalMaxTokens(DEFAULT_MAX_TOKENS);
     setGenTemperature(DEFAULT_GEN_TEMPERATURE);
     setGenTopP(DEFAULT_GEN_TOP_P);
@@ -161,6 +187,29 @@ export function LocalModelPanel() {
           {...rowCopy('localGpu')}
         />
       )}
+
+      {/* Which GPU the engine loads onto. Visible in Simple too: on a machine with a discrete card beside
+          an integrated one, this is the row that decides whether any model loads at all. */}
+      <Row htmlFor="localGpuDevice" {...rowCopy('localGpuDevice')}>
+        {gpuDevices.devices.length === 0 && !deviceMissing ? (
+          // A 'cpu' backend answered and found nothing; a null one never answered at all. Saying "no GPU"
+          // for the second would be a claim about the machine we haven't earned.
+          <Hint>
+            {gpuDevices.backend === null
+              ? 'The engine couldn’t list your graphics cards.'
+              : 'No GPU available — models run on the CPU.'}
+          </Hint>
+        ) : (
+          <Select value={localGpuDevice} onValueChange={setLocalGpuDevice}>
+            <SelectTrigger id="localGpuDevice"><SelectValue /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value={LOCAL_GPU_DEVICE_AUTO}>Auto</SelectItem>
+              {gpuDevices.devices.map((name) => <SelectItem key={name} value={name}>{name}</SelectItem>)}
+              {deviceMissing && <SelectItem value={localGpuDevice}>{localGpuDevice} (not found)</SelectItem>}
+            </SelectContent>
+          </Select>
+        )}
+      </Row>
 
       {/* Flash Attention groups with the reload settings above (all "apply on reload"). */}
       {advancedMode && (

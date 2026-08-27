@@ -409,6 +409,13 @@ Lower it first when a model won't fit.`,
     description: 'Runs the model on the GPU.',
     info: 'Recommended. Off falls back to CPU-only — slower, but works without a capable GPU.',
   },
+  localGpuDevice: {
+    label: 'GPU Device',
+    description: 'Chooses which GPU the engine loads models onto.',
+    info: `**Auto** takes your discrete card and ignores an integrated one.
+
+Pick a card by name if Auto chose wrong — **Engine device** above names the one it settled on.`,
+  },
   localFlashAttention: {
     label: 'Flash Attention',
     description: 'Uses less KV-cache VRAM and often runs faster.',

@@ -10,6 +10,13 @@ const { stoppedState } = require('./llmEngine.cjs');
 
 const HOST = path.join(__dirname, 'llmEngineHost.cjs');
 
+// Methods whose answer IS the engine state, so the mirror adopts it. Anything else answers with a value of
+// its own (a device enumeration), which must never land in the state the renderer reads.
+//
+// Known here rather than tagged onto the child's reply because a call that dies with its child never gets a
+// reply at all, and settlePending still has to answer it in the shape its caller asked for.
+const STATE_METHODS = new Set(['start', 'stop', 'getState']);
+
 /**
  * Fork the host under plain Node. Used by tests and probes, and by anything driving the engine outside
  * Electron. `ready` gates the first send, since a message posted before the child is up is dropped.
@@ -70,9 +77,10 @@ function createEngineProxy({ spawn = electronChannel } = {}) {
 
   const errorState = (message) => ({ ...stoppedState(), status: 'error', error: message });
 
-  /** Answer everything still waiting on the child, so an IPC handler never hangs on a dead process. */
+  /** Answer everything still waiting on the child, so an IPC handler never hangs on a dead process. A
+   *  caller that asked for something other than the state gets null rather than a state to misread. */
   function settlePending(state) {
-    for (const waiter of pending.values()) waiter.resolve({ ...state });
+    for (const waiter of pending.values()) waiter.resolve(waiter.wantsState ? { ...state } : null);
     pending.clear();
   }
 
@@ -114,8 +122,9 @@ function createEngineProxy({ spawn = electronChannel } = {}) {
       pending.delete(msg.id);
       // The engine pushed this state before replying, so subscribers have already seen it — adopt it into
       // the mirror without notifying again.
-      if (msg.ok) { mirror = msg.state; waiter.resolve(getState()); }
-      else waiter.reject(new Error(msg.error));
+      if (!msg.ok) waiter.reject(new Error(msg.error));
+      else if (waiter.wantsState) { mirror = msg.value; waiter.resolve(getState()); }
+      else waiter.resolve(msg.value);
     });
     ch.onExit(({ code, signal }) => lose(ch, exitDetail(code, signal)));
     return ch;
@@ -124,7 +133,8 @@ function createEngineProxy({ spawn = electronChannel } = {}) {
   function call(method, ...args) {
     const ch = channel ?? spawnChannel();
     const id = nextId++;
-    const reply = new Promise((resolve, reject) => pending.set(id, { resolve, reject }));
+    const wantsState = STATE_METHODS.has(method);
+    const reply = new Promise((resolve, reject) => pending.set(id, { resolve, reject, wantsState }));
     // Send once the child is up, but never let the answer wait on `ready` itself: a child that dies before it
     // spawns never settles it, and it's the exit handler that answers the call in that case.
     ch.ready
@@ -134,6 +144,10 @@ function createEngineProxy({ spawn = electronChannel } = {}) {
   }
 
   const start = (options) => call('start', options);
+
+  /** Every GPU the backend can see, unfiltered. Spawns a child if none is running — so call it on a proxy
+   *  of its own, whose child dies with the answer, rather than on the one serving a loaded model. */
+  const listDevices = () => call('listDevices');
 
   async function stop() {
     // Nothing to tear down, but keep the in-process engine's status sequence: its stop always reported
@@ -154,6 +168,7 @@ function createEngineProxy({ spawn = electronChannel } = {}) {
     stop,
     getState,
     onStatus,
+    listDevices,
     /** Pid of the engine child, for VRAM self-attribution. Null while no child is running. */
     enginePid: () => channel?.pid() ?? null,
     /** Kill the child without waiting on it — for app quit, where an awaited stop may not get to finish. */
