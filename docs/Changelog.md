@@ -12,6 +12,13 @@ Each release groups changes as **Major** / **Minor**, then **Added** / **Removed
 
 _Unreleased — new work accumulates here until it earns a version bump. The next batch will pin its own version; `package.json` reads **2.15.2** (just released below)._
 
+### Minor Changes
+
+#### 🔧 Fixed
+
+- **👤 User-facing**
+  - **The desktop AI setup popup is rebuilt as one flow: a sorted model list that scrolls, a download you can close, and a clear finish.** Show all models used to dump every model into one flat list that grew past the screen and clipped its own buttons. The list now sits in its own scroller and is grouped by fit against your graphics card — **Best for Your GPU**, **Also Fits**, and a dimmed **Too Big for Your GPU** you can still download from. Every row carries the model's one-line description beside its size, the recommended pick is badged in place instead of repeated above, and models that think before they answer are marked **Reasoning**. The popup also names the card and memory it detected, so you can see the recommendation is for your machine, and the expanded list folds back to the single recommendation. Starting a download no longer locks you in: close the window and a toast in the usual top-right corner keeps the model name and byte count updating. When the file lands, the popup says **Loading your model** through the minute the engine spends reading weights, rather than silently returning to the model list. Setup then ends on a short **You're ready** step with one button, or on a completion toast with **Open Settings** if you closed the window. The old line promising the game "starts on its own" is gone everywhere, because it never did.
+
 ---
 
 <details>

@@ -405,7 +405,8 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
   const { reachable, mode, blocker, recheck } = useAiReachable();
   const [gate, setGate] = useState<{ reason: GateReason } | null>(null);
 
-  // Close the first-run nudge the moment the engine comes up — nothing is queued behind it any more.
+  // The player took the gate's Start Playing action once setup finished — nothing is queued behind the
+  // nudge, so just dismiss it.
   const handleGateReady = useCallback(() => setGate(null), []);
 
   // First-run nudge: once the intro is done and we know the bundled engine has nothing to run, offer the
