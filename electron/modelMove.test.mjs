@@ -33,6 +33,7 @@ describe('isMovable / listMovable: what comes along', () => {
     expect(isMovable('a.gguf')).toBe(true);
     expect(isMovable('A.GGUF')).toBe(true);
     expect(isMovable('a.gguf.part')).toBe(true);
+    expect(isMovable('a.gguf.part.json')).toBe(true); // the resume sidecar travels with its part file
     expect(isMovable('notes.txt')).toBe(false);
     expect(isMovable('a.gguf.moving')).toBe(false);
   });
@@ -62,6 +63,18 @@ describe('moveModels: the happy path', () => {
     expect(fs.existsSync(path.join(to(), 'a.gguf'))).toBe(true);
     expect(fs.existsSync(path.join(from(), 'a.gguf'))).toBe(false);
     expect(fs.existsSync(path.join(from(), 'notes.txt'))).toBe(true);
+  });
+
+  it('moves a resume sidecar before the part file it describes', async () => {
+    write(path.join(from(), 'b.gguf.part'), 50);
+    write(path.join(from(), 'b.gguf.part.json'), 20);
+
+    const res = await moveModels({ from: from(), to: to() });
+
+    // A cancel between the two must never leave the part behind without its bitmap: a full-length part
+    // with no sidecar reads as a finished partial and its resume throws the bytes away.
+    expect(res.moved).toEqual(['b.gguf.part.json', 'b.gguf.part']);
+    expect(fs.existsSync(path.join(to(), 'b.gguf.part.json'))).toBe(true);
   });
 
   it('preserves file contents exactly', async () => {
