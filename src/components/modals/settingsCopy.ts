@@ -387,75 +387,96 @@ You can always draw a single scene by hand from the button above the story inste
   },
   localContextSize: {
     label: 'Context Size',
-    description: 'Sets how much the model keeps in context.',
-    info: `Also the engine's main **VRAM** cost, and capped at the loaded model's trained maximum.
+    description: 'Sets how much recent story the model can see.',
+    info: `Context is the model's working memory, measured in tokens (word pieces). Everything the model reads each turn must fit in it.
 
-Lower it first when a model won't fit.`,
+More context uses more **VRAM**. When a model does not fit, lower this first.`,
   },
   localGpuLayers: {
     label: 'GPU Layers',
     description: 'Chooses how much of the model runs on the GPU.',
-    info: `- **Auto** fits as many layers as your VRAM allows
-- **Max** offloads the whole model — needed for large or multi-GPU setups, and can run out of VRAM
-- **Custom** pins an exact count`,
+    info: `A model is a stack of layers. Each layer moved to the GPU runs faster, but takes VRAM.
+
+- **Auto** offloads as many layers as fit
+- **Max** offloads the whole model. Use it to split across GPUs. It can run out of VRAM
+- **Custom** sets an exact count`,
   },
   localLayers: {
     label: 'Layers',
     description: 'Sets how many layers to offload.',
-    info: '0 keeps the model on the CPU entirely.',
   },
   localGpu: {
     label: 'GPU',
     description: 'Runs the model on the GPU.',
-    info: 'Recommended. Off falls back to CPU-only — slower, but works without a capable GPU.',
+    info: 'Recommended. Off runs the model on the CPU. That is slower, but works without a capable GPU.',
   },
   localGpuDevice: {
     label: 'GPU Device',
     description: 'Chooses which GPU the engine loads models onto.',
-    info: `**Auto** takes your discrete card and ignores an integrated one.
+    info: `- **Auto** uses your discrete GPU. With more than one, it uses all of them. With none, it uses the integrated GPU
+- **All GPUs** always uses every GPU, so a large model can split across them
+- Pick a GPU by name to use only that one
 
-Pick a card by name if Auto chose wrong — **Engine device** above names the one it settled on.`,
+The **Engine device** line above shows the result.`,
   },
   localFlashAttention: {
     label: 'Flash Attention',
-    description: 'Uses less KV-cache VRAM and often runs faster.',
-    info: 'On by default; turn it off only if an older GPU or backend won\'t run it.',
+    description: 'Saves VRAM and often runs faster.',
+    info: `Flash Attention is a faster way for the model to read its context. The result is the same; the work uses less memory.
+
+Turn it off only if an old GPU or backend cannot run it.`,
   },
   localParallelRequests: {
     label: 'Parallel Requests',
     description: 'Sets how many requests the model answers at once.',
-    info: 'Higher speeds up a turn, but splits the context between slots and uses more VRAM.',
+    info: `After the narration, a turn sends several follow-up requests: choices, stat changes, the location check. This setting is how many the model answers at the same time instead of one after another.
+
+A higher value speeds up a turn. But the requests split the context between them, and each uses more VRAM.`,
   },
   localAutoLoad: {
     label: 'Auto-Load',
     description: 'Loads a model without waiting to be asked.',
-    info: '**On** — the first model in your download folder loads whenever the bundled engine is the one in use, and a finished download loads itself.\n\n**Off** — nothing loads until you press **Load**, so no VRAM is spent until you ask for it.',
+    info: '**On** — the first model in your download folder loads when the engine is in use. A finished download also loads itself.\n\n**Off** — nothing loads until you press **Load**. No VRAM is spent until you ask.',
   },
   localTemperature: {
     label: 'Temperature',
     description: 'Raises randomness; lower values stay focused.',
+    info: `Temperature scales how boldly the model picks each word. Low values take the safe pick. High values give rare words a chance.
+
+Around 0.7 fits most story models. Above 1.2 the text can lose coherence.`,
   },
   localMaxTokens: {
     label: 'Max Output Tokens',
     description: 'Caps how long each reply may run.',
+    info: 'A reply that hits the cap ends at the last full sentence.',
   },
   localTopP: {
     label: 'Top-p',
     description: 'Trims unlikely words below a probability cutoff.',
+    info: `The model picks from the smallest set of words whose chances add up to P.
+
+1 turns it off.`,
   },
   localTopK: {
     label: 'Top-k',
     description: 'Limits sampling to the K most likely tokens.',
-    info: '0 turns it off.',
+    info: `The model picks each word from only the K best candidates. A low value keeps the text focused. A high value allows more variety.
+
+0 turns it off.`,
   },
   localMinP: {
     label: 'Min-p',
     description: 'Drops tokens far below the top token’s probability.',
-    info: '0 turns it off.',
+    info: `The cutoff is a fraction of the best candidate's probability. So it adapts: strict when the model is confident, loose when it is not.
+
+0 turns it off.`,
   },
   localRepetitionPenalty: {
     label: 'Repetition Penalty',
-    description: 'Discourages repeating text above 1.',
+    description: 'Penalizes repeated words; 1 turns it off.',
+    info: `The model pays a small cost to reuse words it already wrote, so it reaches for new phrasing.
+
+Small steps matter: 1.05 to 1.15 is typical. High values can break names and punctuation.`,
   },
 
   // ── Prompts · Options ───────────────────────────────────────────────────────

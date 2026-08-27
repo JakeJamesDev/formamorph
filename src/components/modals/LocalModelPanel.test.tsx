@@ -1,7 +1,7 @@
 // Storage is real (in-memory): SettingsProvider reads it on mount, and the device setting persists there.
 import 'fake-indexeddb/auto';
 import { describe, it, expect, beforeEach, vi } from 'vitest';
-import { render, screen } from '@testing-library/react';
+import { act, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { SettingsProvider } from '@/contexts/SettingsContext';
 import { LocalModelPanel } from './LocalModelPanel';
@@ -27,9 +27,10 @@ const readyEngine = (over: Partial<LocalLlmState> = {}): LocalLlmState => ({
 let setOptionsCalls: Record<string, unknown>[] = [];
 
 /** Stand the desktop bridge up so the panel takes its desktop path — the only one the picker exists on. */
-function stubDesktop({ devices, backend = 'vulkan', engine = readyEngine() }: {
+function stubDesktop({ devices, backend = 'vulkan', autoPick = null, engine = readyEngine() }: {
   devices: string[];
   backend?: string | null;
+  autoPick?: string | null;
   engine?: LocalLlmState;
 }) {
   window.formamorphDesktop = {
@@ -38,7 +39,7 @@ function stubDesktop({ devices, backend = 'vulkan', engine = readyEngine() }: {
     llm: {
       status: () => Promise.resolve(engine),
       onStatus: () => () => {},
-      listDevices: () => Promise.resolve({ backend, devices }),
+      listDevices: () => Promise.resolve({ backend, devices, autoPick }),
       setOptions: (opts: Record<string, unknown>) => { setOptionsCalls.push(opts); return Promise.resolve(engine); },
     },
   } as unknown as Window['formamorphDesktop'];
@@ -59,8 +60,8 @@ beforeEach(() => {
 });
 
 describe('local model GPU device picker', () => {
-  it('offers every GPU the engine can see, and starts on Auto', async () => {
-    stubDesktop({ devices: [IGPU, DISCRETE] });
+  it('offers every GPU the engine can see, and starts on Auto naming the card it will use', async () => {
+    stubDesktop({ devices: [IGPU, DISCRETE], autoPick: DISCRETE });
     openPanel();
 
     const picker = await screen.findByRole('combobox');
@@ -68,7 +69,57 @@ describe('local model GPU device picker', () => {
 
     await userEvent.click(picker);
     const options = (await screen.findAllByRole('option')).map((o) => o.textContent);
-    expect(options).toEqual(['Auto', IGPU, DISCRETE]);
+    expect(options).toEqual([`Auto (${DISCRETE})`, 'All GPUs', IGPU, DISCRETE]);
+  });
+
+  it('labels Auto with All GPUs when it will not choose between several real cards', async () => {
+    stubDesktop({ devices: ['NVIDIA GeForce RTX 3090', 'NVIDIA GeForce RTX 3090'], autoPick: null });
+    openPanel();
+
+    await userEvent.click(await screen.findByRole('combobox'));
+    const options = (await screen.findAllByRole('option')).map((o) => o.textContent);
+    expect(options[0]).toBe('Auto (All GPUs)');
+  });
+
+  it('offers All GPUs, and choosing it arms a reload that undoes the pin in force', async () => {
+    // A dGPU+iGPU rig whose owner wants llama.cpp splitting across both: Auto pinned the discrete card,
+    // and All GPUs is the way out.
+    stubDesktop({
+      devices: [IGPU, DISCRETE],
+      engine: readyEngine({ gpuDeviceNames: [DISCRETE], gpuDeviceIndex: 1, gpuDeviceOrigin: 'auto', gpuDeviceOptions: [IGPU, DISCRETE] }),
+    });
+    openPanel();
+
+    await userEvent.click(await screen.findByRole('combobox'));
+    await userEvent.click(await screen.findByRole('option', { name: 'All GPUs' }));
+
+    const reload = screen.getByRole('button', { name: /save.*reload/i });
+    expect(reload).toBeEnabled();
+    await userEvent.click(reload);
+    expect(setOptionsCalls[0].gpuDevice).toBe('all');
+  });
+
+  it('keeps the reload disarmed on All GPUs while nothing is pinned', async () => {
+    // All GPUs = no pin, and an unpinned engine is already exactly that — arming here would offer a
+    // reload that changes nothing.
+    stubDesktop({ devices: [IGPU, DISCRETE] }); // readyEngine(): unpinned
+    savedDevice('all');
+    openPanel();
+
+    expect(await screen.findByRole('combobox')).toHaveTextContent('All GPUs');
+    expect(screen.getByRole('button', { name: /save.*reload/i })).toBeDisabled();
+  });
+
+  it('hides the GPU Device row while GPU is off', async () => {
+    // With zero layers offloaded the whole model runs on the CPU. A device choice changes nothing then,
+    // so the row goes away instead of offering a dead control.
+    stubDesktop({ devices: [IGPU, DISCRETE], autoPick: DISCRETE });
+    localStorage.setItem('FORMAMORPH_localGpuLayers', '0');
+    openPanel();
+
+    await act(async () => {}); // let the device fetch land, so a wrongly rendered row would be visible
+    expect(screen.queryByText('GPU Device')).toBeNull();
+    expect(screen.queryByRole('combobox')).toBeNull();
   });
 
   it('says no GPU is available rather than offering an empty list', async () => {
@@ -144,7 +195,7 @@ describe('local model GPU device picker', () => {
     expect(picker).toHaveTextContent(/not found/i);
 
     await userEvent.click(picker);
-    await userEvent.click(await screen.findByRole('option', { name: 'Auto' }));
+    await userEvent.click(await screen.findByRole('option', { name: /^Auto \(/ }));
     expect(picker).toHaveTextContent('Auto');
   });
 

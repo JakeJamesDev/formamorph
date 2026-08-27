@@ -307,11 +307,19 @@ ipcMain.handle('llm-set-options', async (_event, opts) => {
   return llmEngine.getState();
 });
 
-// Every GPU the engine could be pinned to, for the device picker: { backend, devices }. An empty list with
-// a 'cpu' backend is a machine with no GPU, which the picker says rather than offering nothing.
+// Every GPU the engine could be pinned to, for the device picker: { backend, devices, autoPick }. An empty
+// list with a 'cpu' backend is a machine with no GPU, which the picker says rather than offering nothing.
+// autoPick is the card Auto would use right now, so the dropdown can show it next to the word.
 ipcMain.handle('llm-list-devices', async () => {
   const enumeration = await currentEnumeration();
-  return { backend: enumeration.gpuBackend, devices: enumeration.gpuDeviceNames };
+  let autoPick = null;
+  if (enumeration.gpuBackend === 'vulkan') {
+    let nvidiaGpus = [];
+    try { nvidiaGpus = (await collectVram()).gpus; } catch { /* the name-pattern fallback stands */ }
+    const pick = selectEngineDevice({ deviceNames: enumeration.gpuDeviceNames, nvidiaGpus });
+    if (pick.index != null) autoPick = enumeration.gpuDeviceNames[pick.index] ?? null;
+  }
+  return { backend: enumeration.gpuBackend, devices: enumeration.gpuDeviceNames, autoPick };
 });
 
 // Installed GGUF filenames across every searched folder (used where only names matter).

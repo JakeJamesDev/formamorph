@@ -144,6 +144,8 @@ export interface EngineDeviceList {
   /** The backend that enumerated them ('vulkan' | 'cuda' | 'metal' | 'cpu'), or null when none answered. */
   backend: string | null;
   devices: string[];
+  /** The card Auto would use right now, or null when Auto uses them all. Shown next to "Auto" in the picker. */
+  autoPick: string | null;
 }
 
 /** The device an engine state is pinned to, by name — null when nothing was pinned. Read from the list the
@@ -321,7 +323,7 @@ export const setLocalLlmOptions = (opts: { contextSize: number; gpuLayers: numbe
 /** Every GPU the engine can pin to. Off desktop, and on a machine whose backend can't enumerate, an empty
  *  list — which the picker states rather than showing an empty dropdown. */
 export const listLocalGpuDevices = (): Promise<EngineDeviceList> =>
-  isLocalLlmAvailable() ? requireLlm().listDevices() : Promise.resolve({ backend: null, devices: [] });
+  isLocalLlmAvailable() ? requireLlm().listDevices() : Promise.resolve({ backend: null, devices: [], autoPick: null });
 
 /** Download a GGUF from Hugging Face, loading it on finish unless autoLoad is false; resolves with the
  *  saved path. */

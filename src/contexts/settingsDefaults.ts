@@ -42,6 +42,9 @@ export const DEFAULT_LOCAL_PARALLEL_REQUESTS = 2;
 // reorders the adapters. AUTO picks the discrete card and ignores an integrated one — see
 // electron/engineDevice.cjs for the policy; the value is only ever resolved to an index in main.
 export const LOCAL_GPU_DEVICE_AUTO = 'auto';
+// "All GPUs": no pin at all, every visible device in play (llama.cpp multi-GPU splitting). The escape
+// hatch for a machine Auto pins. Mirrors ENGINE_DEVICE_ALL in electron/engineDevice.cjs.
+export const LOCAL_GPU_DEVICE_ALL = 'all';
 export const DEFAULT_LOCAL_GPU_DEVICE = LOCAL_GPU_DEVICE_AUTO;
 // On by default: the engine picks an installed model and loads it as soon as anything routes to it, and a
 // finished download loads itself. Off leaves loading to the Load button, so VRAM is only spent on demand.

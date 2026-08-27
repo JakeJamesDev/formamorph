@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import engineDevice from './engineDevice.cjs';
 
-const { selectEngineDevice, ENGINE_DEVICE_AUTO } = engineDevice;
+const { selectEngineDevice, ENGINE_DEVICE_AUTO, ENGINE_DEVICE_ALL } = engineDevice;
 
 /** nvidia-smi rows carry more than a name; only the name is ever read, but pass the real shape. */
 const nvidia = (...names) => names.map((name, index) => ({ index, name, totalMB: 16376, usedMB: 1200, freeMB: 15176 }));
@@ -25,12 +25,30 @@ describe('selectEngineDevice · Auto', () => {
     expect(pick.index).toBe(1);
   });
 
-  it('takes the lowest index when two devices both match nvidia-smi', () => {
+  it('leaves a dual-NVIDIA rig unfiltered, so multi-GPU splitting keeps working', () => {
+    // Two real cards is a configuration llama.cpp handles by design (Max layers auto-splits across them);
+    // pinning one would silently halve that machine's VRAM.
     const pick = selectEngineDevice({
       deviceNames: ['NVIDIA GeForce RTX 3090', 'NVIDIA GeForce RTX 3090'],
       nvidiaGpus: nvidia('NVIDIA GeForce RTX 3090', 'NVIDIA GeForce RTX 3090'),
     });
-    expect(pick).toEqual({ index: 0, origin: 'auto' });
+    expect(pick).toEqual({ index: null, origin: null });
+  });
+
+  it('leaves an NVIDIA card beside a discrete AMD card unfiltered rather than favoring the NVIDIA', () => {
+    const pick = selectEngineDevice({
+      deviceNames: ['NVIDIA GeForce RTX 4080', 'AMD Radeon RX 7900 XTX'],
+      nvidiaGpus: nvidia('NVIDIA GeForce RTX 4080'),
+    });
+    expect(pick).toEqual({ index: null, origin: null });
+  });
+
+  it('still pins the NVIDIA card when everything beside it is integrated', () => {
+    const pick = selectEngineDevice({
+      deviceNames: [IGPU, 'AMD Radeon(TM) Graphics', DISCRETE],
+      nvidiaGpus: nvidia(DISCRETE),
+    });
+    expect(pick).toEqual({ index: 2, origin: 'auto' });
   });
 
   it('excludes the integrated GPU by name when there is no nvidia-smi to ask', () => {
@@ -95,6 +113,14 @@ describe('selectEngineDevice · Auto', () => {
   it('treats the auto sentinel as the same request as no setting', () => {
     const args = { deviceNames: [IGPU, DISCRETE], nvidiaGpus: nvidia(DISCRETE) };
     expect(selectEngineDevice({ ...args, setting: ENGINE_DEVICE_AUTO })).toEqual(selectEngineDevice(args));
+  });
+});
+
+describe('selectEngineDevice · All GPUs', () => {
+  it('leaves the backend unfiltered on request, even where Auto would pin', () => {
+    // The escape hatch for a machine Auto pins: multi-GPU splitting across everything visible.
+    const pick = selectEngineDevice({ deviceNames: [IGPU, DISCRETE], nvidiaGpus: nvidia(DISCRETE), setting: ENGINE_DEVICE_ALL });
+    expect(pick).toEqual({ index: null, origin: null });
   });
 });
 
