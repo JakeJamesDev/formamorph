@@ -2,7 +2,7 @@
 
 All notable changes to Formamorph. This fork's first line is **2.0.0** — a full TypeScript rebuild of the upstream JavaScript app ([FieryLionite's Formamorph](https://fierylion.itch.io/formamorph), ~v1.2) — with feature parity as the baseline plus new features on top.
 
-> ✅ **2.0.0 – 2.15.1 are released** (collapsed below). New work lands under **🚧 In Progress** — an unnumbered section, so changes accumulate without pinning a version. When a batch earns a release its section is marked **Released** and collapsed, and a fresh In Progress opens. `package.json` reads **2.15.1** — the latest released version.
+> ✅ **2.0.0 – 2.15.2 are released** (collapsed below). New work lands under **🚧 In Progress** — an unnumbered section, so changes accumulate without pinning a version. When a batch earns a release its section is marked **Released** and collapsed, and a fresh In Progress opens. `package.json` reads **2.15.2** — the latest released version.
 
 Each release groups changes as **Major** / **Minor**, then **Added** / **Removed** / **Fixed**, and within those by audience: 👤 user-facing · 🛠️ developer tooling · ⚙️ backend. Where two or more changes touch the same feature, they sit together under that feature's name.
 
@@ -10,14 +10,22 @@ Each release groups changes as **Major** / **Minor**, then **Added** / **Removed
 
 ## 🚧 In Progress
 
-_Unreleased — new work accumulates here until it earns a version bump. The next batch will pin its own version; `package.json` reads **2.15.1** (just released below)._
+_Unreleased — new work accumulates here until it earns a version bump. The next batch will pin its own version; `package.json` reads **2.15.2** (just released below)._
+
+---
+
+<details>
+<summary><strong>✅ 2.15.2 — Released 2026-08-27</strong> — The desktop engine loads models onto one graphics card instead of pooling every card's memory — so machines with an integrated GPU beside a discrete one work again — a GPU Device picker makes the choice yours; and every setting in the Display, Output, and Data tabs states its effect in one line, with a tip that defines the concept (click to expand)</summary>
 
 ### Minor Changes
 
 #### 🔧 Fixed
 
 - **👤 User-facing**
-  - **Models now load on a machine with a discrete graphics card beside an integrated one, and a new GPU Device row lets you say which card the engine uses.** The engine counted every graphics device as a single pool of memory, which on such a machine reported tens of gigabytes total and nothing free — so every model failed to fit at every setting while the real card sat idle. A driver update that switches the integrated GPU on is enough to put a working machine into that state, which is why it looked random and why reinstalling never helped. The engine is now held to one card, so the memory it sizes a load against is that card's own. **Auto** picks your discrete card — by name where your system can name it, otherwise by ruling out the integrated ones — and changes nothing at all on a machine with one card. The GPU Device row in the Local Model settings lists every card the engine can see so you can overrule Auto yourself; it says so plainly when there is no GPU to pick, remembers your choice across launches, and falls back to Auto if the card you chose is later gone. The **Engine device** line above it names the card in force and whether Auto or you chose it, so a wrong pick reads off a single screenshot. Changing the device reloads the model onto it without restarting the app.
+  - **Models now load on a machine with a discrete graphics card beside an integrated one, and a new GPU Device row lets you say which card the engine uses.** The engine counted every graphics device as one shared pool of memory. On these machines the pool reported tens of gigabytes total and zero free. Every model then failed to fit, at every setting, while the real card sat idle. A driver update can switch the integrated GPU on, which is why working machines broke "randomly" and why a reinstall never helped. The engine now uses one card and sizes each load against that card's real memory. **Auto** picks your discrete card and ignores integrated graphics. It shows the card it picked right in the dropdown. On a machine with one card, or with several real cards, Auto changes nothing, so a rig that splits a large model across two GPUs keeps doing that. The new **GPU Device** row in the Local Model settings lists every card the engine can see. Pick a card by name to overrule Auto, or pick **All GPUs** to keep every card available for splitting. The row says so plainly when there is no GPU to pick. Your choice is saved across launches. If your chosen card is later gone, the engine falls back to Auto and says so. The **Engine device** line above the row names the card in use and who chose it, so a wrong pick reads off a single screenshot. Changing the device reloads the model onto the new card without an app restart.
+  - **Every setting in the Display, Output, and Data tabs now states its effect in one line, with a ⓘ tip that defines the concept in detail.** Tips that only repeated their own line are gone, and the System Prompts row gained one. Two Paragraph Limit notes claimed a capped reply can end mid-sentence; a capped reply ends at the last full sentence, and the notes now say so.
+
+</details>
 
 ---
 
