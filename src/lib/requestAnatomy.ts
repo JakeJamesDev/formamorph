@@ -177,6 +177,22 @@ export function toAnatomyBlocks(messages: ChatMessage[], anatomy?: RequestAnatom
   }));
 }
 
+/**
+ * The two regions the anatomy draws, each block paired with its own index. Reading order is System Prompt
+ * then Messages, which is not the order the blocks arrive in — anything numbering what the view draws
+ * needs this rather than the array.
+ */
+export function anatomyRegions<T extends { role: AnatomyBlock['role'] }>(blocks: T[]): {
+  system: (readonly [T, number])[];
+  messages: (readonly [T, number])[];
+} {
+  const paired = blocks.map((block, i) => [block, i] as const);
+  return {
+    system: paired.filter(([block]) => block.role === 'system'),
+    messages: paired.filter(([block]) => block.role !== 'system'),
+  };
+}
+
 /** What each editor surface is called, so a run points at the field that owns it. */
 export const SOURCE_LABELS: Record<AnatomySource, string> = {
   'system-template': 'System Prompt',
