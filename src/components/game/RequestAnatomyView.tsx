@@ -7,6 +7,7 @@ import { promptVocabulary } from '@/lib/chipVocabulary';
 import { PROMPT_LABELS } from '@/lib/promptGroups';
 import { resolveChipJump, resolveContextJump, resolvePromptJump, type PromptJumpTarget } from '@/lib/promptJump';
 import {
+  anatomyRegions,
   CONTEXT_HINTS,
   CONTEXT_LABELS,
   SOURCE_LABELS,
@@ -73,9 +74,11 @@ export interface RequestAnatomyViewProps {
   onJump?: (target: PromptJumpTarget) => void;
   /**
    * Optional enrichment for one slice of text — the AI-context viewer's dictionary and hydration
-   * highlighting. Called per run, so a highlighter never has to know about runs. Absent renders plain text.
+   * highlighting. Called per run, so a highlighter never has to know about runs; `start` is where the
+   * slice begins in the block, which is what lets a highlighter address the block's own text. Absent
+   * renders plain text.
    */
-  renderText?: (text: string, block: AnatomyBlock, blockIndex: number) => ReactNode;
+  renderText?: (text: string, block: AnatomyBlock, blockIndex: number, start: number) => ReactNode;
   /**
    * Verbatim rendering: every run's text draws unstyled, unnamed, and inert — no tint, no dim, no label
    * chips, no jumps. Keeps the regions, the chat stagger, and the font. The AI-context viewer reads this
@@ -266,7 +269,8 @@ function BlockBody({
   /** A chip's click and destination, or undefined where it leads nowhere. */
   chipJumpTo?: (run: AnatomyRun) => ChipJump | undefined;
 }) {
-  const draw = (text: string): ReactNode => (renderText ? renderText(text, block, blockIndex) : text);
+  const draw = (text: string, start: number): ReactNode =>
+    (renderText ? renderText(text, block, blockIndex, start) : text);
   // Which source is under the pointer, so every piece of it lights together — a template split by chips
   // is several marks, and lighting only the hovered one reads as disconnected fragments.
   const [hotSource, setHotSource] = useState<AnatomySource | null>(null);
@@ -276,10 +280,10 @@ function BlockBody({
   const named = new Set<AnatomySource>();
   let at = 0;
   block.runs.forEach((run, i) => {
-    if (run.start > at) parts.push(<span key={`gap-${i}`}>{draw(block.content.slice(at, run.start))}</span>);
+    if (run.start > at) parts.push(<span key={`gap-${i}`}>{draw(block.content.slice(at, run.start), at)}</span>);
     const text = block.content.slice(run.start, run.end);
     if (plain) {
-      parts.push(<span key={i} {...{ [ANATOMY_RUN_ATTR]: '' }}>{draw(text)}</span>);
+      parts.push(<span key={i} {...{ [ANATOMY_RUN_ATTR]: '' }}>{draw(text, run.start)}</span>);
       at = run.end;
       return;
     }
@@ -294,7 +298,7 @@ function BlockBody({
       if (body) named.add(authored);
       parts.push(
         <span key={i} {...{ [ANATOMY_RUN_ATTR]: '' }}>
-          {lead ? draw(lead) : null}
+          {lead ? draw(lead, run.start) : null}
           {body ? (
             <AuthoredRun
               source={authored}
@@ -304,10 +308,10 @@ function BlockBody({
               hot={hotSource === authored}
               onHover={setHotSource}
             >
-              {draw(body)}
+              {draw(body, run.start + lead.length)}
             </AuthoredRun>
           ) : null}
-          {tail ? draw(tail) : null}
+          {tail ? draw(tail, run.end - tail.length) : null}
         </span>,
       );
     } else if (mode === 'chips' && (run.chip || run.contextLabel)) {
@@ -322,11 +326,11 @@ function BlockBody({
         </span>,
       );
     } else {
-      parts.push(<ResolvedContext key={i}>{draw(text)}</ResolvedContext>);
+      parts.push(<ResolvedContext key={i}>{draw(text, run.start)}</ResolvedContext>);
     }
     at = run.end;
   });
-  if (at < block.content.length) parts.push(<span key="tail">{draw(block.content.slice(at))}</span>);
+  if (at < block.content.length) parts.push(<span key="tail">{draw(block.content.slice(at), at)}</span>);
   // Same size as the prompt editors and their preview panes — this is the same text, read side by side.
   return <p className="whitespace-pre-wrap break-words text-label">{parts}</p>;
 }
@@ -387,8 +391,7 @@ export function RequestAnatomyView({ blocks, mode, type, onJump, renderText, pla
       chipJumpTo={chipJumpTo}
     />
   );
-  const system = blocks.map((b, i) => [b, i] as const).filter(([b]) => b.role === 'system');
-  const messages = blocks.map((b, i) => [b, i] as const).filter(([b]) => b.role !== 'system');
+  const { system, messages } = anatomyRegions(blocks);
   return (
     <div className={cn('flex flex-col gap-3', className)}>
       <Region title="System Prompt" hint="one block, sent first, sets the rules">

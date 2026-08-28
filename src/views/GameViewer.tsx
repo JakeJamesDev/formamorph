@@ -1,5 +1,5 @@
 import { randomUUID } from "@/lib/uuid";
-import React, { useState, useEffect, useCallback, useRef, useMemo } from "react";
+import React, { useState, useEffect, useLayoutEffect, useCallback, useRef, useMemo } from "react";
 import { useGameData } from "../contexts/GameDataContext";
 import { useSettings } from "@/contexts/SettingsContext";
 import { useSettingsOpenRequest } from "@/lib/useSettingsOpenRequest";
@@ -22,7 +22,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Collapsible, CollapsibleTrigger, CollapsibleContent } from "@/components/ui/collapsible";
 import { Pager } from "@/components/ui/pagination";
-import { Music, SquarePen, Database, ScrollText, ChevronDown, ChevronRight, ChevronsDownUp, ChevronsUpDown, Search, Eye, EyeOff } from "lucide-react";
+import { Music, SquarePen, Database, ScrollText, ChevronDown, ChevronRight, ChevronUp, ChevronsDownUp, ChevronsUpDown, Search, Eye, EyeOff } from "lucide-react";
 import { ActionIcon } from '@/lib/actionIcons';
 import IndeterminateProgress from "../components/ui/indeterminate-progress";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
@@ -108,9 +108,12 @@ import { computeTurnCommit, type TurnCommit } from "../lib/turnPipeline/computeT
 import { classifyTurnError, type TurnErrorKind } from "../lib/turnPipeline/turnErrors";
 import { emptyTurnMaterial, type TurnMaterial, type TurnPlanInput, type TurnPrompts, type TurnSettings } from "../lib/turnPipeline/turnPlan";
 import { parseTurns, buildVerbatimHistory, buildBandedHistory, extractKeywords, type BandCounts } from "../lib/turnBanding";
-import { toAnatomyBlocks, type RequestAnatomy } from "../lib/requestAnatomy";
+import { anatomyRegions, toAnatomyBlocks, type RequestAnatomy } from "../lib/requestAnatomy";
 import type { PromptJumpTarget } from "../lib/promptJump";
 import { RequestAnatomyView } from "../components/game/RequestAnatomyView";
+import {
+  markFindHits, markFraction, parseFindTerms, planFindHits, type FindMarked,
+} from "@/lib/findMarks";
 import { buildStamper, formatAbsolute, hoursByPosition, FLAT_HOURS_PER_TURN } from "../lib/gameClock";
 import { milestoneCandidates, agedMilestoneCandidates, resolveMilestoneDrop, resolveMilestoneKeep, buildIncrementalMilestoneUserMessage, parseIncrementalMilestoneReply, applyIncrementalVerdict } from "../lib/milestoneMemory";
 import { applyMemoryOverrides, activeNotes } from "../lib/memoryOverrides";
@@ -812,6 +815,17 @@ const GameViewer = ({
   const [debugHighlightMode, setDebugHighlightMode] = useState<"dictionary" | "hydrations">("dictionary");
   const [disabledHydrations, setDisabledHydrations] = useState<Record<string, boolean>>({});
   const [debugSearch, setDebugSearch] = useState("");
+  const debugFindTerms = useMemo(() => parseFindTerms(debugSearch), [debugSearch]);
+  // Which hit the find bar is on, counted in the current turn's document order. The ref shadows it so a
+  // second step taken before React re-renders still moves on from the first, rather than repeating it.
+  const [debugHitIndex, setDebugHitIndex] = useState(0);
+  const debugHitRef = useRef(0);
+  // Requests a search folded shut for having no hits, that the reader opened anyway. Separate from
+  // `collapsedDebug` so the fold never touches the arrangement they made for themselves.
+  const [debugUnfolded, setDebugUnfolded] = useState<Record<string, boolean>>({});
+  // The overview ruler: one tick per hit currently on screen, as a fraction of the scrollable height.
+  const [debugTicks, setDebugTicks] = useState<{ index: number; fraction: number }[]>([]);
+  const debugViewportRef = useRef<HTMLDivElement>(null);
   const [collapsedDebug, setCollapsedDebug] = useState<Record<string | number, boolean>>({});
   // When on (default), the viewer hides turns that aren't part of the live context — re-generated,
   // rolled-back (pruned), and aborted ones — leaving only the pages the AI currently sees.
@@ -826,6 +840,59 @@ const GameViewer = ({
   useEffect(() => {
     if (visibleDebugTurns.length > 0) setDebugPage(visibleDebugTurns.length);
   }, [visibleDebugTurns.length]);
+  // A new query, or a new turn, starts at the first hit again and drops the folds opened by hand.
+  useEffect(() => {
+    debugHitRef.current = 0;
+    setDebugHitIndex(0);
+    setDebugUnfolded({});
+  }, [debugSearch, debugPage]);
+  /**
+   * Redraw the overview ruler from what is on screen: one tick per mounted hit, at its share of the
+   * scrollable height. Hits inside a collapsed section aren't mounted, so they simply get no tick — the
+   * counter still counts them, since it reads the turn's text rather than the viewport.
+   */
+  const syncDebugTicks = useCallback(() => {
+    const viewport = debugViewportRef.current;
+    const marks = viewport ? [...viewport.querySelectorAll<HTMLElement>("[data-find-hit]")] : [];
+    const top = viewport?.getBoundingClientRect().top ?? 0;
+    const next = viewport
+      ? marks.map((el) => ({
+          index: Number(el.dataset.findHit),
+          fraction: markFraction(
+            el.getBoundingClientRect().top - top + viewport.scrollTop,
+            viewport.scrollHeight,
+          ),
+        }))
+      : [];
+    setDebugTicks((prev) =>
+      prev.length === next.length && prev.every((t, i) => t.index === next[i].index && t.fraction === next[i].fraction)
+        ? prev
+        : next,
+    );
+  }, []);
+  // Scroll the hit being read to the middle of the view. Instant, never smooth: a jump between mentions
+  // is navigation, and animating it is motion the reader never asked for.
+  useLayoutEffect(() => {
+    if (!isDebugOpen) return;
+    const target = debugViewportRef.current?.querySelector<HTMLElement>(`[data-find-hit="${debugHitIndex}"]`);
+    target?.scrollIntoView({ block: "center", behavior: "instant" });
+  }, [isDebugOpen, debugHitIndex, debugSearch, debugPage]);
+  // The ruler follows the document: a new hit set, a section opened or closed, or content that resized.
+  useLayoutEffect(() => {
+    syncDebugTicks();
+  }, [syncDebugTicks, isDebugOpen, debugHitIndex, debugSearch, debugPage, collapsedDebug, debugUnfolded, debugHighlightMode]);
+  useEffect(() => {
+    const viewport = isDebugOpen && debugFindTerms.length > 0 ? debugViewportRef.current : null;
+    if (!viewport) return;
+    const resize = new ResizeObserver(() => syncDebugTicks());
+    if (viewport.firstElementChild) resize.observe(viewport.firstElementChild);
+    // A section opens and closes by mounting and unmounting its content, and Radix does that in a pass of
+    // its own — after this render's effects have already measured. Watching the tree catches it; the
+    // resize observer above catches everything that changes height without changing the tree.
+    const mutations = new MutationObserver(() => syncDebugTicks());
+    mutations.observe(viewport, { childList: true, subtree: true });
+    return () => { resize.disconnect(); mutations.disconnect(); };
+  }, [isDebugOpen, debugFindTerms, syncDebugTicks]);
   const isMobile = useIsMobile();
   const [mobilePanel, setMobilePanel] = useState("game");
   const [showPotatoPCDialog, setShowPotatoPCDialog] = useState(false);
@@ -4037,26 +4104,55 @@ const GameViewer = ({
               colorMap[entry.id] = palette[i % palette.length];
               nameById.set(entry.id, entry.name || parseKeywords(entry)[0] || "unnamed");
             });
-            const searchTerms = debugSearch.trim().toLowerCase().split(/\s+/).filter(Boolean);
-            const searchActive = searchTerms.length > 0;
-            // Keep only lines matching any search term; collapse each run of dropped lines into "...".
-            const filterLines = (text: string) => {
-              const out = [];
-              let pendingGap = false;
-              let shownAny = false;
-              text.split("\n").forEach((line) => {
-                if (searchTerms.some((t) => line.toLowerCase().includes(t))) {
-                  if (pendingGap) out.push("...");
-                  out.push(line);
-                  shownAny = true;
-                  pendingGap = false;
-                } else {
-                  pendingGap = true;
-                }
-              });
-              if (shownAny && pendingGap) out.push("...");
-              return shownAny ? out.join("\n") : "";
+            // Search marks the text where it stands and steps between the marks. It never rewrites what
+            // is on screen, so the regions, the chat stagger, and the dictionary highlights all survive it.
+            const findTerms = debugFindTerms;
+            const searchActive = findTerms.length > 0;
+            // Page = turn; show the requests captured for the currently selected (visible) turn.
+            const totalDebugPages = visibleDebugTurns.length;
+            const pageIndex = Math.min(Math.max(debugPage, 1), Math.max(totalDebugPages, 1)) - 1;
+            const currentTurn = visibleDebugTurns[pageIndex];
+            const currentRequests = currentTurn?.requests ?? [];
+            /* Every block of this turn, in the order the viewer draws them: each request's input blocks
+               (System Prompt region before Messages, as the anatomy lays them out), then its raw output.
+               Numbering the hits over that sequence is what makes "3 of 11" mean the third mention of the
+               turn, whatever the reader has collapsed. */
+            const findChunks = currentRequests.flatMap((req, i) => {
+              const anatomy = req.anatomy ? toAnatomyBlocks(req.messages, req.anatomy) : null;
+              const regions = anatomy ? anatomyRegions(anatomy) : null;
+              const inputs = regions
+                ? [...regions.system, ...regions.messages].map(([block, bi]) => ({ blockIndex: bi, text: block.content }))
+                : req.messages.map((m, bi) => ({ blockIndex: bi, text: m.content }));
+              const chunks = inputs.map(({ blockIndex, text }) => ({
+                key: `${i}:in:${blockIndex}`, group: `group-${i}`, section: i as string | number, request: i, text,
+              }));
+              if (typeof req.response === "string") {
+                chunks.push({ key: `${i}:out`, group: `group-${i}`, section: `out-${i}`, request: i, text: req.response });
+              }
+              return chunks;
+            });
+            const findPlan = planFindHits(findChunks.map((c) => c.text), findTerms);
+            const findByKey = new Map(findChunks.map((c, k) => [c.key, findPlan.blocks[k]]));
+            // Which request and section owns each hit, so navigating to one opens whatever hides it, and
+            // how many hits each request holds, which is what decides the fold.
+            const hitOwners: { group: string; section: string | number }[] = [];
+            const hitsPerRequest = currentRequests.map(() => 0);
+            findChunks.forEach((chunk, k) => {
+              hitsPerRequest[chunk.request] += findPlan.blocks[k].hits.length;
+              findPlan.blocks[k].hits.forEach(() => hitOwners.push({ group: chunk.group, section: chunk.section }));
+            });
+            const hitTotal = findPlan.total;
+            const currentHit = hitTotal > 0 ? Math.min(debugHitIndex, hitTotal - 1) : 0;
+            const goToHit = (next: number) => {
+              if (hitTotal === 0) return;
+              const wrapped = ((next % hitTotal) + hitTotal) % hitTotal;
+              const owner = hitOwners[wrapped];
+              // A hit inside something collapsed is still a hit; opening it is part of going there.
+              if (owner) setCollapsedDebug((prev) => ({ ...prev, [owner.group]: false, [owner.section]: false }));
+              debugHitRef.current = wrapped;
+              setDebugHitIndex(wrapped);
             };
+            const stepHit = (delta: number) => goToHit(debugHitRef.current + delta);
             // One inline match-chip: the entry it belongs to plus the exact hit behind it (drives the popover).
             interface DictChip { entryId: string; color: string; activation: EntryActivation; hit: MatchHit; }
             // A rendered run of text — plain, a legacy flat color mark (hydrations), or a dictionary match-chip.
@@ -4064,14 +4160,12 @@ const GameViewer = ({
             // Dictionary highlighter — the truthful path. Marks ONLY the real activation hits, located inside
             // the exact scanned strings (`dict.sources`) captured for this turn, so a highlight means the text
             // genuinely drove an entry to activate. `dict` is undefined for non-narration requests and raw
-            // output (never scanned) — those render plain. Honors the search filter and the legend toggles.
+            // output (never scanned) — those render plain. Honors the legend toggles.
             const buildDictSegments = (text: string, dict?: DictionaryDebug): Seg[] => {
-              const shown = searchActive ? filterLines(text) : text;
-              if (searchActive && !shown) return [];
-              if (!dict) return shown ? [{ text: shown }] : [];
+              if (!dict) return text ? [{ text }] : [];
               // Locate real activation hits (lib does the offset math + overlap resolution); paint on the color.
               return locateMatches(
-                shown,
+                text,
                 dict.report,
                 dict.sources,
                 (entryId) => disabledHighlights[entryId] || !colorMap[entryId],
@@ -4081,13 +4175,9 @@ const GameViewer = ({
                   : { text: seg.text },
               );
             };
-            // Hydration highlighter: no section/declaration logic — just mark the (active) hydration terms,
-            // honoring the search filter and returning [] when search hides everything.
-            const buildHydrationSegments = (text: string, rules: HighlightRule[]): HighlightSegment[] => {
-              const t = searchActive ? filterLines(text) : text;
-              if (searchActive && !t) return [];
-              return highlightSegments(t, rules);
-            };
+            // Hydration highlighter: no section/declaration logic — just mark the (active) hydration terms.
+            const buildHydrationSegments = (text: string, rules: HighlightRule[]): HighlightSegment[] =>
+              highlightSegments(text, rules);
             // Human labels for a scanned region + an entry's match rule, shown in the reason popover.
             // Scene regions are the prompt token that produced the block, so the label names the scope the
             // player actually sees in the prompt (here / sub-locations / nearby).
@@ -4145,15 +4235,31 @@ const GameViewer = ({
                 </div>
               );
             };
-            const renderSegs = (segs: Seg[]) =>
+            /* A search hit's face: one amber accent over whatever the highlighters already drew, with a
+               stronger fill for the hit being read. On a dictionary chip the accent is a ring, so the
+               entry keeps its own color and its popover keeps answering — a find mark opens nothing. */
+            const findFill = (find: FindMarked<Seg>["find"], onChip: boolean) => {
+              if (!find) return "";
+              const current = find.index === currentHit;
+              if (onChip) return current ? "ring-2 ring-amber-600" : "ring-1 ring-amber-500";
+              return current
+                ? "bg-amber-400 text-black ring-2 ring-amber-600"
+                : "bg-amber-200 text-black ring-1 ring-amber-500";
+            };
+            // Only the run holding a hit's first character is addressable, so a hit split across runs is
+            // still one place to scroll to and one tick on the ruler.
+            const findAttrs = (find: FindMarked<Seg>["find"]) =>
+              find?.head ? { "data-find-hit": String(find.index) } : {};
+            const renderSegs = (segs: FindMarked<Seg>[]) =>
               segs.map((seg, k) => {
                 if (seg.chip) {
                   return (
                     <Popover key={k}>
                       <PopoverTrigger asChild>
                         <mark
+                          {...findAttrs(seg.find)}
                           style={{ backgroundColor: seg.color, color: "#000" }}
-                          className="rounded px-0.5 cursor-pointer hover:ring-2 hover:ring-ring"
+                          className={`rounded px-0.5 cursor-pointer hover:ring-2 hover:ring-ring ${findFill(seg.find, true)}`}
                         >
                           {seg.text}
                         </mark>
@@ -4164,23 +4270,26 @@ const GameViewer = ({
                     </Popover>
                   );
                 }
-                return seg.color ? (
-                  <mark
-                    key={k}
-                    style={{ backgroundColor: seg.color, color: "#000" }}
-                    className="rounded px-0.5"
-                  >
+                if (seg.color) {
+                  return (
+                    <mark
+                      key={k}
+                      {...findAttrs(seg.find)}
+                      style={{ backgroundColor: seg.color, color: "#000" }}
+                      className={`rounded px-0.5 ${findFill(seg.find, true)}`}
+                    >
+                      {seg.text}
+                    </mark>
+                  );
+                }
+                return seg.find ? (
+                  <mark key={k} {...findAttrs(seg.find)} className={`rounded px-0.5 ${findFill(seg.find, false)}`}>
                     {seg.text}
                   </mark>
                 ) : (
                   <span key={k}>{seg.text}</span>
                 );
               });
-            // Page = turn; show the requests captured for the currently selected (visible) turn.
-            const totalDebugPages = visibleDebugTurns.length;
-            const pageIndex = Math.min(Math.max(debugPage, 1), Math.max(totalDebugPages, 1)) - 1;
-            const currentTurn = visibleDebugTurns[pageIndex];
-            const currentRequests = currentTurn?.requests ?? [];
             // This turn's narration activation report drives the legend's activated/dimmed state.
             const activationById = new Map(
               (currentRequests.find((r) => r.type === "narration")?.dictionary?.report ?? []).map((a) => [a.entryId, a]),
@@ -4214,6 +4323,14 @@ const GameViewer = ({
               debugHighlightMode === "hydrations"
                 ? buildHydrationSegments(text, req.type === "narration" ? activeHydrationRules : [])
                 : buildDictSegments(text, isOutput ? undefined : req.dictionary);
+            /* One slice of one block, marked by the highlighters and then by the search. `key` names the
+               block in this turn's hit plan and `start` is where the slice begins inside it, so a block
+               drawn in pieces still marks the same hits under the same numbers. */
+            const renderBlock = (text: string, req: DebugRequest, isOutput: boolean, key: string, start = 0) => {
+              const segs = segmentsFor(text, req, isOutput);
+              const plan = searchActive ? findByKey.get(key) : undefined;
+              return renderSegs(plan ? markFindHits(segs, plan.hits, start, plan.base) : segs);
+            };
             // The memory digest for this turn (stored on its assistant message), if one has been generated.
             const currentSummary = currentTurn?.turnId
               ? fullMessageHistory
@@ -4332,22 +4449,54 @@ const GameViewer = ({
                   )}
                 </div>
                 <div className="flex items-center gap-2 flex-shrink-0">
+                  {/* The find controls share the search field's frame, so the toolbar keeps its one row. */}
                   <div className="relative flex-grow">
                     <Search className="pointer-events-none absolute left-2 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                     <Input
                       value={debugSearch}
                       onChange={(e) => setDebugSearch(e.target.value)}
-                      placeholder="Search lines (space-separated terms)…"
-                      className="pl-8 h-8 text-meta"
+                      onKeyDown={(e) => {
+                        if (e.key !== "Enter") return;
+                        e.preventDefault();
+                        stepHit(e.shiftKey ? -1 : 1);
+                      }}
+                      placeholder="Search (space-separated terms)…"
+                      className={`pl-8 h-8 text-meta ${searchActive ? "pr-28" : ""}`}
                     />
+                    {searchActive && (
+                      <div className="absolute right-1 top-1/2 flex -translate-y-1/2 items-center gap-0.5">
+                        <span className="px-1 text-meta tabular-nums text-muted-foreground">
+                          {hitTotal > 0 ? `${currentHit + 1} of ${hitTotal}` : "0 of 0"}
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => stepHit(-1)}
+                          disabled={hitTotal === 0}
+                          aria-label="Previous match"
+                          title="Previous match (Shift+Enter)"
+                          className="rounded p-1 text-muted-foreground hover:bg-accent hover:text-foreground disabled:opacity-40"
+                        >
+                          <ChevronUp className="h-4 w-4" />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => stepHit(1)}
+                          disabled={hitTotal === 0}
+                          aria-label="Next match"
+                          title="Next match (Enter)"
+                          className="rounded p-1 text-muted-foreground hover:bg-accent hover:text-foreground disabled:opacity-40"
+                        >
+                          <ChevronDown className="h-4 w-4" />
+                        </button>
+                      </div>
+                    )}
                   </div>
                   <Button
                     variant="outline"
                     size="sm"
                     onClick={toggleAll}
-                    disabled={searchActive || currentRequests.length === 0}
+                    disabled={currentRequests.length === 0}
                     className="h-8 flex-shrink-0 gap-1"
-                    title={searchActive ? "Disabled while searching" : undefined}
                   >
                     {allCollapsed ? (
                       <ChevronsUpDown className="h-4 w-4" />
@@ -4395,7 +4544,21 @@ const GameViewer = ({
                   </div>
                 )}
                 <div className="flex-grow min-h-0">
-                  <ScrollArea className="h-full">
+                  {/* While searching, the bar stays out so its ticks do — an overview that hides when the
+                      pointer leaves is no overview. */}
+                  <ScrollArea
+                    className="h-full"
+                    viewportRef={debugViewportRef}
+                    type={searchActive ? "always" : undefined}
+                    marks={searchActive
+                      ? debugTicks.map((tick) => ({
+                          fraction: tick.fraction,
+                          current: tick.index === currentHit,
+                          label: `Match ${tick.index + 1} of ${hitTotal}`,
+                        }))
+                      : undefined}
+                    onMarkSelect={(k) => goToHit(debugTicks[k].index)}
+                  >
                     <div className="space-y-4 text-meta">
                       {totalDebugPages === 0 ? (
                         <p className="text-muted-foreground">
@@ -4405,33 +4568,30 @@ const GameViewer = ({
                         </p>
                       ) : (
                         currentRequests.map((req, i) => {
-                          const msgSegs = req.messages.map((m) => ({
-                            role: m.role,
-                            segs: segmentsFor(m.content, req, false),
-                          }));
-                          const hasReqMatch = msgSegs.some((ms) => ms.segs.length > 0);
-                          // Raw, unmodified AI output for this request (captured in makeAIRequest).
-                          const outSegs =
-                            typeof req.response === "string" ? segmentsFor(req.response, req, true) : null;
-                          const hasOutMatch = outSegs !== null && outSegs.length > 0;
-                          // While searching, drop the whole block only if neither the request nor its output matches.
-                          if (searchActive && !hasReqMatch && !hasOutMatch) return null;
-                          const groupOpen = searchActive ? true : !collapsedDebug[`group-${i}`];
-                          const reqOpen = searchActive ? true : !collapsedDebug[i];
-                          const outOpen = searchActive ? true : !collapsedDebug[`out-${i}`];
+                          /* A search folds a request with no hits shut and says so, so the turn keeps its
+                             shape without the noise. The fold is derived, never stored: it neither reads
+                             nor writes the reader's own collapse map, so clearing the search restores
+                             exactly the arrangement they made. Opening a folded request by hand still works. */
+                          const folded = searchActive && hitsPerRequest[i] === 0;
+                          const groupOpen = folded ? !!debugUnfolded[`group-${i}`] : !collapsedDebug[`group-${i}`];
+                          const reqOpen = !collapsedDebug[i];
+                          const outOpen = !collapsedDebug[`out-${i}`];
                           return (
                             <Collapsible
                               key={i}
                               open={groupOpen}
-                              onOpenChange={(o) =>
-                                setCollapsedDebug((prev) => ({ ...prev, [`group-${i}`]: !o }))
-                              }
+                              onOpenChange={(o) => (folded
+                                ? setDebugUnfolded((prev) => ({ ...prev, [`group-${i}`]: o }))
+                                : setCollapsedDebug((prev) => ({ ...prev, [`group-${i}`]: !o })))}
                               className="border border-border rounded-md"
                             >
                               <CollapsibleTrigger asChild>
                                 <button className="flex w-full items-center justify-between gap-2 p-2 text-left font-semibold">
                                   <span className="flex flex-wrap items-baseline gap-x-2 gap-y-1">
-                                    <span>Request {i + 1}: {req.type}</span>
+                                    <span>
+                                      Request {i + 1}: {req.type}
+                                      {folded && <span className="font-normal text-muted-foreground"> · no matches</span>}
+                                    </span>
                                     {/* Which endpoint served it. A routed prompt is called out; one following
                                         the active preset is shown quietly, since that is the norm. */}
                                     {req.endpoint && (
@@ -4458,55 +4618,50 @@ const GameViewer = ({
                                 </button>
                               </CollapsibleTrigger>
                               <CollapsibleContent className="space-y-2 p-2 pt-0">
-                                {(!searchActive || hasReqMatch) && (
-                                  <Collapsible
-                                    open={reqOpen}
-                                    onOpenChange={(o) =>
-                                      setCollapsedDebug((prev) => ({ ...prev, [i]: !o }))
-                                    }
-                                    className="border border-border rounded-md"
-                                  >
-                                    <CollapsibleTrigger asChild>
-                                      <button className="flex w-full items-center justify-between gap-2 p-2 text-left font-semibold">
-                                        <span>Raw Input</span>
-                                        {reqOpen ? (
-                                          <ChevronDown className="h-4 w-4 flex-shrink-0" />
-                                        ) : (
-                                          <ChevronRight className="h-4 w-4 flex-shrink-0" />
-                                        )}
-                                      </button>
-                                    </CollapsibleTrigger>
-                                    <CollapsibleContent className="p-2 pt-0">
-                                      {/* Region/chat shape when this request carried a Request Anatomy — but
-                                          not while searching: the search filter rewrites each block's text,
-                                          and run offsets index the real one. `plain` keeps the bytes
-                                          verbatim; provenance reading lives in the Settings anatomy hub. */}
-                                      {req.anatomy && !searchActive ? (
-                                        <RequestAnatomyView
-                                          blocks={toAnatomyBlocks(req.messages, req.anatomy)}
-                                          mode="resolved"
-                                          plain
-                                          renderText={(text) => renderSegs(segmentsFor(text, req, false))}
-                                        />
+                                <Collapsible
+                                  open={reqOpen}
+                                  onOpenChange={(o) =>
+                                    setCollapsedDebug((prev) => ({ ...prev, [i]: !o }))
+                                  }
+                                  className="border border-border rounded-md"
+                                >
+                                  <CollapsibleTrigger asChild>
+                                    <button className="flex w-full items-center justify-between gap-2 p-2 text-left font-semibold">
+                                      <span>Raw Input</span>
+                                      {reqOpen ? (
+                                        <ChevronDown className="h-4 w-4 flex-shrink-0" />
                                       ) : (
-                                        msgSegs.map((ms, j) => {
-                                          if (searchActive && ms.segs.length === 0) return null;
-                                          return (
-                                            <div key={j} className="mb-2">
-                                              <div className="font-medium text-muted-foreground uppercase">
-                                                {ms.role}
-                                              </div>
-                                              <p className="whitespace-pre-wrap break-words text-label bg-muted/50 p-2 rounded">
-                                                {renderSegs(ms.segs)}
-                                              </p>
-                                            </div>
-                                          );
-                                        })
+                                        <ChevronRight className="h-4 w-4 flex-shrink-0" />
                                       )}
-                                    </CollapsibleContent>
-                                  </Collapsible>
-                                )}
-                                {outSegs !== null && (!searchActive || hasOutMatch) && (
+                                    </button>
+                                  </CollapsibleTrigger>
+                                  <CollapsibleContent className="p-2 pt-0">
+                                    {/* Region/chat shape when this request carried a Request Anatomy.
+                                        `plain` keeps the bytes verbatim; provenance reading lives in the
+                                        Settings anatomy hub. */}
+                                    {req.anatomy ? (
+                                      <RequestAnatomyView
+                                        blocks={toAnatomyBlocks(req.messages, req.anatomy)}
+                                        mode="resolved"
+                                        plain
+                                        renderText={(text, _block, blockIndex, start) =>
+                                          renderBlock(text, req, false, `${i}:in:${blockIndex}`, start)}
+                                      />
+                                    ) : (
+                                      req.messages.map((message, j) => (
+                                        <div key={j} className="mb-2">
+                                          <div className="font-medium text-muted-foreground uppercase">
+                                            {message.role}
+                                          </div>
+                                          <p className="whitespace-pre-wrap break-words text-label bg-muted/50 p-2 rounded">
+                                            {renderBlock(message.content, req, false, `${i}:in:${j}`)}
+                                          </p>
+                                        </div>
+                                      ))
+                                    )}
+                                  </CollapsibleContent>
+                                </Collapsible>
+                                {typeof req.response === "string" && (
                                   <Collapsible
                                     open={outOpen}
                                     onOpenChange={(o) =>
@@ -4529,7 +4684,7 @@ const GameViewer = ({
                                           read top to bottom. */}
                                       <p className="whitespace-pre-wrap break-words text-label rounded-lg border border-border p-3">
                                         {req.response ? (
-                                          renderSegs(outSegs)
+                                          renderBlock(req.response, req, true, `${i}:out`)
                                         ) : (
                                           <span className="text-muted-foreground">(empty output)</span>
                                         )}
