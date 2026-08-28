@@ -137,6 +137,45 @@ describe('RequestAnatomyView resolved mode', () => {
   });
 });
 
+describe('RequestAnatomyView plain (verbatim) rendering', () => {
+  it('draws every byte with no marks, no dimming, and no label chips', () => {
+    const { container } = render(<RequestAnatomyView blocks={BLOCKS} mode="resolved" plain />);
+    expect(container.textContent).toContain('You are the narrator.');
+    expect(container.textContent).toContain('Sample Town sits above the water.');
+    expect(container.textContent).toContain('They found a map.');
+    expect(container.querySelectorAll('mark')).toHaveLength(0);
+    expect(container.querySelectorAll('.text-muted-foreground\\/70')).toHaveLength(0);
+    expect(screen.queryByText('System Prompt', { selector: 'span,button' })).toBeNull();
+  });
+
+  it('stays inert with a jump handler wired: nothing is clickable', () => {
+    const { container } = render(
+      <RequestAnatomyView blocks={BLOCKS} mode="resolved" plain type="narration" onJump={() => {}} />,
+    );
+    expect(container.querySelectorAll('[role="button"], button')).toHaveLength(0);
+  });
+
+  it('keeps the regions and the chat stagger', () => {
+    render(<RequestAnatomyView blocks={BLOCKS} mode="resolved" plain />);
+    expect(within(region('System Prompt')).getByText(/You are the narrator/)).toBeInTheDocument();
+    const messages = within(region('Messages')).getAllByText(/^(user|assistant)$/);
+    expect(messages.map((m) => m.textContent)).toEqual(['user', 'assistant']);
+  });
+
+  it('still hands each run slice to the caller, spelling the blocks out in full', () => {
+    const { container } = render(
+      <RequestAnatomyView
+        blocks={BLOCKS}
+        mode="resolved"
+        plain
+        renderText={(text) => <span data-testid="slice">{text}</span>}
+      />,
+    );
+    const slices = [...container.querySelectorAll('[data-testid="slice"]')].map((s) => s.textContent);
+    expect(slices.join('')).toBe(BLOCKS.map((b) => b.content).join(''));
+  });
+});
+
 describe('RequestAnatomyView chips mode', () => {
   it('collapses a chip run to the editor own chip, labeled the way the editor labels it', () => {
     render(<RequestAnatomyView blocks={BLOCKS} mode="chips" />);

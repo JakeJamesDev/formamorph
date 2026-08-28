@@ -20,9 +20,10 @@ import {
  * blocks inside Messages, the player's own prompt text highlighted and named by the editor that owns it,
  * everything the app assembled muted beneath it.
  *
- * Shared by the in-game AI Context viewer and the Settings Anatomy hub. They differ in mode: the viewer
- * shows real turns, so it draws the resolved bytes; the hub also offers Chips, which collapses every
- * assembled run to the chip that produced it, so the request reads as the player's own template.
+ * Shared by the in-game AI Context viewer and the Settings Anatomy hub. The hub reads provenance: tinted
+ * template runs, dimmed context, label chips, and a Chips mode that collapses every assembled run to the
+ * chip that produced it. The viewer shows real turns and passes `plain`, which keeps this layout but draws
+ * every byte verbatim — its dictionary and hydration marks are the only color there.
  *
  * Given `onJump`, an authored run becomes a button onto the editor that owns it, and in Chips mode a chip
  * becomes one too — onto its own placement in that editor, or onto the anatomy of the prompt that wrote it.
@@ -75,6 +76,12 @@ export interface RequestAnatomyViewProps {
    * highlighting. Called per run, so a highlighter never has to know about runs. Absent renders plain text.
    */
   renderText?: (text: string, block: AnatomyBlock, blockIndex: number) => ReactNode;
+  /**
+   * Verbatim rendering: every run's text draws unstyled, unnamed, and inert — no tint, no dim, no label
+   * chips, no jumps. Keeps the regions, the chat stagger, and the font. The AI-context viewer reads this
+   * way so its dictionary and hydration marks are the only color on the page.
+   */
+  plain?: boolean;
   /** Extra classes on the outer container. */
   className?: string;
 }
@@ -244,6 +251,7 @@ function BlockBody({
   block,
   blockIndex,
   mode,
+  plain,
   renderText,
   jumpTo,
   chipJumpTo,
@@ -251,6 +259,7 @@ function BlockBody({
   block: AnatomyBlock;
   blockIndex: number;
   mode: AnatomyViewMode;
+  plain?: boolean;
   renderText?: RequestAnatomyViewProps['renderText'];
   /** What clicking a run of this source should do, or undefined where nothing owns it. */
   jumpTo?: (source: AnatomySource) => (() => void) | undefined;
@@ -269,6 +278,11 @@ function BlockBody({
   block.runs.forEach((run, i) => {
     if (run.start > at) parts.push(<span key={`gap-${i}`}>{draw(block.content.slice(at, run.start))}</span>);
     const text = block.content.slice(run.start, run.end);
+    if (plain) {
+      parts.push(<span key={i} {...{ [ANATOMY_RUN_ATTR]: '' }}>{draw(text)}</span>);
+      at = run.end;
+      return;
+    }
     // A chip's run is the value the chip injected, not the prose the author typed around it — so a run
     // carrying one is a chip wherever it came from.
     const authored = run.chip ? undefined : run.source;
@@ -329,7 +343,7 @@ function Region({ title, hint, children }: { title: string; hint: string; childr
   );
 }
 
-export function RequestAnatomyView({ blocks, mode, type, onJump, renderText, className }: RequestAnatomyViewProps) {
+export function RequestAnatomyView({ blocks, mode, type, onJump, renderText, plain, className }: RequestAnatomyViewProps) {
   const jumpTo = useMemo(
     () => (onJump && type
       ? (source: AnatomySource) => {
@@ -367,6 +381,7 @@ export function RequestAnatomyView({ blocks, mode, type, onJump, renderText, cla
       block={block}
       blockIndex={index}
       mode={mode}
+      plain={plain}
       renderText={renderText}
       jumpTo={jumpTo}
       chipJumpTo={chipJumpTo}
