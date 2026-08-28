@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { render, screen, cleanup, fireEvent } from '@testing-library/react';
 import { describe, it, expect, afterEach, vi } from 'vitest';
 import { RequestAnatomyPanel } from './RequestAnatomyPanel';
-import type { AnatomyViewMode } from '@/components/game/RequestAnatomyView';
+import { ANATOMY_RUN_ATTR, type AnatomyViewMode } from '@/components/game/RequestAnatomyView';
 import type { PromptJumpTarget } from '@/lib/promptJump';
 import { composePreviewValues } from '@/lib/previewValuePool';
 import type { AnatomyPreviewPrompts, AnatomyPreviewSettings } from '@/lib/anatomyPreview';
@@ -82,6 +82,16 @@ const atWidth = (px: number) => {
 const showFullscreen = (px: number) => {
   atWidth(px);
   return render(<Harness tab="narration" settings={SETTINGS} onJump={() => {}} fullscreen />);
+};
+
+/** The element that actually scrolls inside a pane. */
+const viewport = () => document.querySelector<HTMLElement>('[data-radix-scroll-area-viewport]')!;
+
+/** jsdom gives every box zero height, so a pane meant to be scrollable is told its own size. Stubbed on
+ *  the prototype, since a flip mounts a pane that does not exist yet when the test sets this up. */
+const scrollablePanes = ({ scrollHeight, clientHeight }: { scrollHeight: number; clientHeight: number }) => {
+  vi.spyOn(HTMLElement.prototype, 'scrollHeight', 'get').mockReturnValue(scrollHeight);
+  vi.spyOn(HTMLElement.prototype, 'clientHeight', 'get').mockReturnValue(clientHeight);
 };
 
 /** The hub's own view bar — the same two-value bar the prompt editors carry over their panes. */
@@ -200,6 +210,37 @@ describe('RequestAnatomyPanel preview', () => {
       expect(screen.getByText(/per character in the scene/)).toBeInTheDocument();
       cleanup();
     }
+  });
+});
+
+describe('RequestAnatomyPanel scroll parity', () => {
+  afterEach(() => vi.restoreAllMocks());
+
+  /** The runs each view lays out, which is what the two are scrolled together by. */
+  const runsIn = (root: HTMLElement) => root.querySelectorAll(`[${ANATOMY_RUN_ATTR}]`).length;
+
+  it('draws one anchor per run in both views, so a position in one exists in the other', () => {
+    show();
+    const chips = runsIn(document.body);
+    expect(chips).toBeGreaterThan(0);
+    showMode('Preview');
+    // Same count, so an anchor captured against the nth run resolves to the nth run in the other view.
+    expect(runsIn(document.body)).toBe(chips);
+  });
+
+  // Where the flip actually *lands* is not assertable here: jsdom measures every box at zero, so every run
+  // top collapses to the same position and any interpolation resolves to the top whether the panel applied
+  // the anchor or ignored it. Faking rects would only test the fake. That half is checked in the browser.
+
+  it('starts a different prompt at its own top rather than where the last one was left', () => {
+    scrollablePanes({ scrollHeight: 2000, clientHeight: 400 });
+    const { rerender } = show();
+    const scroller = viewport();
+    scroller.scrollTop = 800;
+    fireEvent.scroll(scroller);
+    // The hub stays mounted when the rail selects another prompt, so the pane keeps whatever scroll it had.
+    rerender(<Harness tab="choices" settings={SETTINGS} onJump={() => {}} />);
+    expect(viewport().scrollTop).toBe(0);
   });
 });
 

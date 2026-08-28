@@ -43,7 +43,7 @@ import { ChipTypeaheadPlugin } from './ChipTypeahead';
 import { ChipInsertTargetPlugin } from './ChipInsertTarget';
 import { ChipDragPlugin } from './ChipDrag';
 import { TOOLBAR_BTN } from './toolbarStyles';
-import { anchorAt, applyAnchor, captureAnchor, caretOffset, type ScrollAnchor } from './previewScrollSync';
+import { anchorAt, applyAnchor, captureAnchor, caretOffset, PROMPT_ANCHORS, type ScrollAnchor } from './previewScrollSync';
 
 interface ToolbarItem {
   action: MarkdownAction;
@@ -627,10 +627,10 @@ const PromptField = ({ value, onChange, variables = [], vocabulary, previewValue
     if (!split || !edit || !target) return;
     const offset = caretOffset(edit);
     if (offset === null) return;
-    const anchor = anchorAt(edit, 'edit', offset);
+    const anchor = anchorAt(edit, PROMPT_ANCHORS.edit, offset);
     proxyAnchor.current = anchor;
     applying.current = true;
-    applyAnchor(target, 'preview', anchor);
+    applyAnchor(target, PROMPT_ANCHORS.preview, anchor);
     releaseApplying();
   }, [split]);
 
@@ -651,13 +651,13 @@ const PromptField = ({ value, onChange, variables = [], vocabulary, previewValue
   const handleScroll = (e: React.UIEvent<HTMLDivElement>) => {
     if (applying.current) return;
     const from = e.currentTarget === editScrollRef.current ? 'edit' : 'preview';
-    const anchor = captureAnchor(e.currentTarget, from);
+    const anchor = captureAnchor(e.currentTarget, PROMPT_ANCHORS[from]);
     proxyAnchor.current = anchor;
     if (!split || !anchor) return;
     const target = from === 'edit' ? previewScrollRef.current : editScrollRef.current;
     if (!target) return;
     applying.current = true;
-    applyAnchor(target, from === 'edit' ? 'preview' : 'edit', anchor);
+    applyAnchor(target, from === 'edit' ? PROMPT_ANCHORS.preview : PROMPT_ANCHORS.edit, anchor);
     releaseApplying();
   };
 
@@ -687,7 +687,7 @@ const PromptField = ({ value, onChange, variables = [], vocabulary, previewValue
     const run = () => {
       const el = tab === 'edit' ? editScrollRef.current : previewScrollRef.current;
       if (!el) { applying.current = false; return; }
-      applyAnchor(el, tab, anchor);
+      applyAnchor(el, tab === 'edit' ? PROMPT_ANCHORS.edit : PROMPT_ANCHORS.preview, anchor);
       if (el.scrollHeight !== prevHeight && tries < 10) {
         prevHeight = el.scrollHeight;
         tries++;
