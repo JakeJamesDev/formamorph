@@ -4,7 +4,7 @@ import {
   type AnatomyConditions, type AnatomyPreviewPrompts, type AnatomyPreviewSettings,
 } from './anatomyPreview';
 import { runsTile, type AnatomyBlock } from './requestAnatomy';
-import { composePreviewValues } from './previewValuePool';
+import { composePreviewValues, SAMPLE_PREVIEW_VALUES, SAMPLE_TURN } from './previewValuePool';
 import { PARITY_PROMPTS } from './turnPipeline/parityTestInputs';
 import { allGroupedTabs } from './promptGroups';
 import type { ThinkingMode } from '@/contexts/SettingsContext';
@@ -435,5 +435,21 @@ describe('the fan-out hubs', () => {
       expect(requests[0].caption).toContain('Wren');
       expect(requests[0].blocks.map((b) => b.content).join('')).toContain('Wren');
     }
+  });
+});
+
+describe('the hub and the editor Preview tell one story', () => {
+  const text = (tab: string) => hub(tab).flatMap((r) => r.blocks.map((b) => b.content)).join('\n');
+
+  it('renders the same current-turn values the field previews sample', () => {
+    const pool = SAMPLE_PREVIEW_VALUES;
+    expect(text('scenetags')).toContain(pool['<IN FRAME>']);
+    expect(text('statupdates')).toContain(pool['<NARRATION>']);
+    expect(text('summary')).toContain(pool['<PLAYER ACTION>']);
+    expect(text('character')).toContain(pool['<CHARACTER NAME>']);
+  });
+
+  it('describes the subject with the words the sample turn owns', () => {
+    expect(text('character')).toContain(SAMPLE_TURN.character.summary);
   });
 });
