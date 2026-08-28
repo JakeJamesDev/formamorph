@@ -4358,8 +4358,13 @@ const GameViewer = ({
             };
             return (
               <>
-                <DialogTitle className="sr-only">AI Context</DialogTitle>
                 <div className="flex flex-wrap items-center gap-2 flex-shrink-0 pr-8 text-meta">
+                  {/* The title rides the legend row rather than a row of its own. Below md the row is
+                      tight enough that it reads as a label, so it goes back to being screen-reader-only. */}
+                  <DialogTitle className="sr-only md:not-sr-only md:flex md:flex-shrink-0 md:items-center md:gap-1.5 md:text-label">
+                    <ScrollText className="h-4 w-4" />
+                    AI Context
+                  </DialogTitle>
                   {/* Highlight-mode toggle: dictionary entries vs the per-turn rehydration signal. */}
                   <div className="inline-flex flex-shrink-0 overflow-hidden rounded border border-border">
                     {(["dictionary", "hydrations"] as const).map((m) => (
