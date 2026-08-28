@@ -103,7 +103,7 @@ const showMode = (label: 'Chips' | 'Preview') => fireEvent.mouseDown(modeTab(lab
 describe('RequestAnatomyPanel header', () => {
   it('says the one thing worth saying, with no toolbar of condition toggles', () => {
     show();
-    expect(screen.getByText(/every blank shown as the chip that fills it/)).toBeInTheDocument();
+    expect(screen.getByText(/each blank shown as the chip that fills it/)).toBeInTheDocument();
     expect(screen.queryByRole('checkbox')).toBeNull();
   });
 

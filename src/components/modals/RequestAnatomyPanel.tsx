@@ -177,10 +177,10 @@ export function RequestAnatomyPanel({
       <div className="mb-2 flex flex-shrink-0 items-center gap-1.5">
         <p className="text-helper text-muted-foreground">
           {split
-            ? 'Your template on the left, the request it produces on the right — click a chip to open it.'
+            ? 'Your template on the left, and the request it produces on the right. Click a chip to see it in its editor.'
             : mode === 'chips'
-              ? 'Your text, with every blank shown as the chip that fills it — click one to open it.'
-              : 'The whole request as the AI receives it. Highlighted text is yours — click it to open its editor.'}
+              ? 'Your text, with each blank shown as the chip that fills it. Click a chip to see it in its editor.'
+              : 'The whole request as the AI receives it. Highlighted text is yours. Click it to open its editor.'}
         </p>
         <HintInfo>
           {`${requests.length > 1 ? 'The requests' : 'The request'} this prompt is part of, drawn from an example playthrough under your current settings.\n\n` +

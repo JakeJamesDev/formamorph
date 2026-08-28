@@ -193,6 +193,19 @@ describe('RequestAnatomyView chips mode', () => {
     );
     expect(container.textContent).toContain('unlabeled wall of text');
   });
+
+  it('draws the prose plain — everything visible is the player own, so a tint would mark all of it', () => {
+    const { container } = render(<RequestAnatomyView blocks={BLOCKS} mode="chips" />);
+    expect(container.querySelectorAll('mark')).toHaveLength(0);
+    expect(container.textContent).toContain('You are the narrator.');
+  });
+
+  it('draws a template chip neutral, saving the vocabulary color for the editor it leads to', () => {
+    const { container } = render(<RequestAnatomyView blocks={BLOCKS} mode="chips" />);
+    const pill = container.querySelector('[data-chip-token] [data-chip]');
+    expect(pill).not.toBeNull();
+    expect(pill!.getAttribute('style')).toBeNull();
+  });
 });
 
 describe('RequestAnatomyView run labeling', () => {
@@ -291,10 +304,12 @@ describe('RequestAnatomyView jumps', () => {
     ]);
   });
 
-  it('keeps an authored run clickable in chips mode too', () => {
+  it('keeps an authored source reachable in chips mode, through its label', () => {
     const jumps: unknown[] = [];
     render(<RequestAnatomyView blocks={BLOCKS} mode="chips" type="narration" onJump={(t) => jumps.push(t)} />);
-    fireEvent.click(runButton('You are the narrator'));
+    // Chips mode draws the prose plain, so the label is the click — not the text.
+    expect(screen.getByText('You are the narrator.', { exact: false }).closest('button')).toBeNull();
+    fireEvent.click(screen.getByRole('button', { name: 'System Prompt' }));
     expect(jumps).toEqual([{ tab: 'narration', surface: 'system' }]);
   });
 
