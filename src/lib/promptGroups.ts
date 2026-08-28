@@ -19,9 +19,17 @@ export const PROMPT_GROUPS: PromptGroup[] = [
   { label: 'Images', tabs: ['scenetags'] },
 ];
 
+/** Every prompt the Settings rail can select — the `promptTab` ids. A jump target names one of these, so
+ *  a map keyed by it is total and a lookup needs no fallback. */
+export type PromptTab =
+  | 'narration' | 'thinking' | 'director' | 'character' | 'storyboard' | 'choices'
+  | 'statupdates' | 'location' | 'timepassed' | 'timeopening'
+  | 'summary' | 'diary'
+  | 'scenetags';
+
 /** What each prompt is called wherever it is named: the rail's own row, and a jump that says where it
- *  goes. Keyed by `promptTab` id. */
-export const PROMPT_LABELS: Record<string, string> = {
+ *  goes. */
+export const PROMPT_LABELS: Record<PromptTab, string> = {
   narration: 'Narration',
   thinking: 'Planning',
   choices: 'Choices',

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useLayoutEffect, useMemo, useRef } from 'react';
 import { Columns2, Maximize2, Minimize2, Square } from 'lucide-react';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -6,7 +6,7 @@ import { HintInfo } from '@/components/SettingsRows';
 import { ANATOMY_RUN_ATTR, RequestAnatomyView, type AnatomyViewMode } from '@/components/game/RequestAnatomyView';
 import { applyAnchor, captureAnchor, type ScrollAnchor } from '@/components/prompt/previewScrollSync';
 import type { PromptJumpTarget } from '@/lib/promptJump';
-import { resolveLayout, usePromptSplitMode, MIN_PANE_WIDTH } from '@/lib/promptLayout';
+import { resolveLayout, splitAvailable, usePromptSplitMode, useContainerWidth } from '@/lib/promptLayout';
 import {
   buildAnatomyHub,
   type AnatomyConditions, type AnatomyPreviewPrompts, type AnatomyPreviewSettings,
@@ -62,27 +62,12 @@ export function RequestAnatomyPanel({
     [tab, prompts, values, settings],
   );
   // The same split the prompt editors offer, on the same shared preference: full screen, wide enough, and
-  // the author's own pin. Measured rather than assumed, since the rail keeps its width beside the panel.
-  //
-  // Two things about full screen decide how this is measured. It re-parents the panel into an overlay
-  // without remounting it, so the flip has to re-measure — an observer alone leaves the panel on its
-  // in-place width. And the window animates in on a transform, so it is laid out at full size from the
-  // first frame: `clientWidth` is already the final width, where a client rect would report the animation
-  // part way through.
-  const panelRef = useRef<HTMLDivElement | null>(null);
-  const [width, setWidth] = useState(0);
-  useEffect(() => {
-    const el = panelRef.current;
-    if (!el) return;
-    const measure = () => setWidth(el.clientWidth);
-    measure();
-    const observer = new ResizeObserver(measure);
-    observer.observe(el);
-    return () => observer.disconnect();
-  }, [fullscreen]);
+  // the author's own pin. Measured rather than assumed, since the rail keeps its width beside the panel;
+  // keyed on the fullscreen flip, which re-parents the panel without a resize the observer would see.
+  const [measureRef, width] = useContainerWidth(fullscreen);
   const [splitMode, setSplitMode] = usePromptSplitMode();
   const split = resolveLayout(splitMode, width, true, !!fullscreen) === 'split';
-  const canSplit = !!fullscreen && width - 12 >= MIN_PANE_WIDTH * 2;
+  const canSplit = splitAvailable(width, !!fullscreen);
 
   // Where the reader is, held as the pane-independent anchor the prompt editors use — so flipping the view
   // lands on the same run rather than at the top, and side by side the two panes travel together. Both
@@ -186,7 +171,7 @@ export function RequestAnatomyPanel({
   );
 
   return (
-    <div ref={panelRef} className="flex flex-1 min-h-0 flex-col">
+    <div ref={measureRef} className="flex flex-1 min-h-0 flex-col">
       {/* A description line like the System editor's, not a toolbar: one sentence, the fuller legend
           behind the ⓘ, and the panel's own controls at the far end. */}
       <div className="mb-2 flex flex-shrink-0 items-center gap-1.5">

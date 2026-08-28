@@ -257,8 +257,8 @@ describe('buildNarrationPrompt anatomy runs', () => {
   });
 
   it('identifies the length guidance by its own chip, never as world data from the world', () => {
-    // The regression this guards: every chip in this prompt used to be labeled "world data from your
-    // chips", so the reply-length instruction was presented to the player as part of their world.
+    // Guards against a catch-all label over every chip, which presents the reply-length instruction to
+    // the player as part of their world.
     const { prompt, runs } = buildNarrationPrompt(base({
       template: '## Game World\n<WORLD DESCRIPTION>\n\n<LENGTH GUIDANCE>',
       paragraphLimit: 'auto',

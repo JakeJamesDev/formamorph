@@ -191,7 +191,7 @@ describe('RequestAnatomyPanel preview', () => {
     show({ thinkingMode: 'off' });
     showMode('Preview');
     const shown = document.body.textContent ?? '';
-    // The fixture's own turns ride the history in full — the excerpt that used to end each one is gone.
+    // The fixture's own turns ride the history in full — no excerpt cuts one short.
     expect(shown).toContain('and inside it, a map with Harrow');
     expect(shown).not.toContain('…');
   });

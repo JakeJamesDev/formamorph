@@ -35,7 +35,13 @@ export function resolveLayout(
   if (!hasPreview || !fullscreen) return 'tabs';
   if (mode === 'split') return 'split';
   if (mode === 'tabs') return 'tabs';
-  return (containerWidth - SPLIT_GUTTER) / 2 >= MIN_PANE_WIDTH ? 'split' : 'tabs';
+  return splitAvailable(containerWidth, fullscreen) ? 'split' : 'tabs';
+}
+
+/** Whether the split can be offered at all — the toggle's own gate, and what `auto` picks by. One
+ *  predicate, so a surface can never offer a toggle for a layout `resolveLayout` would refuse. */
+export function splitAvailable(containerWidth: number, fullscreen: boolean): boolean {
+  return fullscreen && (containerWidth - SPLIT_GUTTER) / 2 >= MIN_PANE_WIDTH;
 }
 
 /** Read a stored mode, treating anything unrecognized as `auto`. */
@@ -76,18 +82,26 @@ export function usePromptSplitMode(): [PromptSplitMode, (m: PromptSplitMode) => 
   return [mode, update];
 }
 
-/** The element's live content width, measured rather than assumed so a resized window re-decides. */
-export function useContainerWidth(): [(el: HTMLElement | null) => void, number] {
+/**
+ * The element's live content width, measured rather than assumed so a resized window re-decides.
+ *
+ * Layout width (`clientWidth`, and the observer's own content rect), never a client rect: the fullscreen
+ * window animates in on a transform, and a rect taken mid-animation reports the scaled box.
+ *
+ * `remeasureKey` forces a fresh measure when it changes — for a move the observer cannot see, like the
+ * fullscreen toggle re-parenting the element into an overlay without remounting it.
+ */
+export function useContainerWidth(remeasureKey?: unknown): [(el: HTMLElement | null) => void, number] {
   const [width, setWidth] = useState(0);
   const [node, setNode] = useState<HTMLElement | null>(null);
 
   useEffect(() => {
     if (!node) return;
-    setWidth(node.getBoundingClientRect().width);
+    setWidth(node.clientWidth);
     const ro = new ResizeObserver((entries) => setWidth(entries[0].contentRect.width));
     ro.observe(node);
     return () => ro.disconnect();
-  }, [node]);
+  }, [node, remeasureKey]);
 
   return [setNode, width];
 }

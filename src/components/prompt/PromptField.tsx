@@ -36,7 +36,7 @@ import {
 import { ChipVocabularyContext, promptVocabulary, type ChipVocabulary } from '@/lib/chipVocabulary';
 import { cn } from '@/lib/utils';
 import { useIsMobile } from '@/lib/useIsMobile';
-import { resolveLayout, usePromptSplitMode, useContainerWidth, MIN_PANE_WIDTH } from '@/lib/promptLayout';
+import { resolveLayout, splitAvailable, usePromptSplitMode, useContainerWidth } from '@/lib/promptLayout';
 import { VariableNode, $createVariableNode, PromptDragContext } from './VariableNode';
 import { buildEditorState, serializeRoot, $applyMarkdownAction } from './promptFieldState';
 import { ChipTypeaheadPlugin } from './ChipTypeahead';
@@ -807,7 +807,7 @@ const PromptField = ({ value, onChange, variables = [], vocabulary, previewValue
         )}
         <HistoryButtons disabled={editingDisabled} />
         <span className="mx-0.5 w-hairline self-stretch bg-border" />
-        {showTabs && fullscreen && effectiveWidth - 12 >= MIN_PANE_WIDTH * 2 && (
+        {showTabs && splitAvailable(effectiveWidth, fullscreen) && (
           <button
             type="button"
             disabled={!previewEnabled}

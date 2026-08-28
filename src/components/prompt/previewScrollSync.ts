@@ -5,8 +5,8 @@ import { TINT_MARK_ATTR } from '@/lib/previewTint';
  *
  * A whole-document fraction maps poorly (a chip is one short token; its expanded value can be many lines),
  * so the position is recorded as a spot *between two shared anchors* — elements both panes render in the
- * same order — and reproduced in the other pane. Non-uniform expansion above or below the reading spot no
- * longer skews the result.
+ * same order — and reproduced in the other pane, so non-uniform expansion above or below the reading spot
+ * cannot skew the result.
  *
  * Which elements those are is the caller's: the prompt field pairs Lexical chips against the expanded chip
  * marks ({@link PROMPT_ANCHORS}); the Request Anatomy pairs each run's own wrapper, which both its views

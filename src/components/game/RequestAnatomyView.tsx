@@ -175,18 +175,23 @@ function AssemblyChip({ label, title }: { label: string; title: string }) {
   );
 }
 
+/** A chip's click and the tooltip that names where it goes, resolved as one so the two cannot disagree —
+ *  a chip with nothing behind it gets neither. */
+export interface ChipJump {
+  go: () => void;
+  destination: string;
+}
+
 /** A chip in the anatomy, clickable where it leads somewhere. The button is what carries the keyboard and
  *  the hover affordance; the pill inside it is the same one the editor draws. */
-function ChipRun({ run, jumpTo }: { run: AnatomyRun; jumpTo?: (run: AnatomyRun) => (() => void) | undefined }) {
+function ChipRun({ run, jumpTo }: { run: AnatomyRun; jumpTo?: (run: AnatomyRun) => ChipJump | undefined }) {
   const jump = jumpTo?.(run);
-  // Said only where the click exists: a chip with nothing behind it must not promise a destination.
-  const destination = jump ? jumpDestination(run) : undefined;
   const pill = run.chip ? (
-    <TokenChip token={run.chip} vocab={ANATOMY_VOCABULARY} title={destination} />
+    <TokenChip token={run.chip} vocab={ANATOMY_VOCABULARY} title={jump?.destination} />
   ) : run.contextLabel ? (
     <AssemblyChip
       label={CONTEXT_LABELS[run.contextLabel]}
-      title={destination ?? CONTEXT_HINTS[run.contextLabel]}
+      title={jump?.destination ?? CONTEXT_HINTS[run.contextLabel]}
     />
   ) : null;
   if (!pill) return null;
@@ -194,26 +199,13 @@ function ChipRun({ run, jumpTo }: { run: AnatomyRun; jumpTo?: (run: AnatomyRun) 
   return (
     <button
       type="button"
-      onClick={jump}
-      title={destination}
+      onClick={jump.go}
+      title={jump.destination}
       className="rounded align-baseline hover:brightness-110 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
     >
       {pill}
     </button>
   );
-}
-
-/** What a chip's tooltip says about where it goes, or undefined where it goes nowhere and the pill's own
- *  words are the whole tooltip. */
-function jumpDestination(run: AnatomyRun): string | undefined {
-  if (run.chip && run.source) return `Show this chip in the ${SOURCE_LABELS[run.source]}`;
-  if (!run.chip && run.contextLabel) {
-    const target = resolveContextJump(run.contextLabel);
-    if (target) {
-      return `${CONTEXT_HINTS[run.contextLabel]} — open the ${PROMPT_LABELS[target.tab] ?? target.tab} prompt`;
-    }
-  }
-  return undefined;
 }
 
 /** One block's content, split at its run boundaries. Text outside every run (a request-layer suffix, or a
@@ -232,8 +224,8 @@ function BlockBody({
   renderText?: RequestAnatomyViewProps['renderText'];
   /** What clicking a run of this source should do, or undefined where nothing owns it. */
   jumpTo?: (source: AnatomySource) => (() => void) | undefined;
-  /** What clicking a chip should do, or undefined where it leads nowhere. */
-  chipJumpTo?: (run: AnatomyRun) => (() => void) | undefined;
+  /** A chip's click and destination, or undefined where it leads nowhere. */
+  chipJumpTo?: (run: AnatomyRun) => ChipJump | undefined;
 }) {
   const draw = (text: string): ReactNode => (renderText ? renderText(text, block, blockIndex) : text);
   // Which source is under the pointer, so every piece of it lights together — a template split by chips
@@ -320,13 +312,21 @@ export function RequestAnatomyView({ blocks, mode, type, onJump, renderText, cla
   // wrote — to that prompt's anatomy.
   const chipJumpTo = useMemo(
     () => (onJump
-      ? (run: AnatomyRun) => {
-          const target = run.chip && run.source && type
-            ? resolveChipJump(run.source, type, run.chip)
-            : !run.chip && run.contextLabel
-              ? resolveContextJump(run.contextLabel)
-              : null;
-          return target ? () => onJump(target) : undefined;
+      ? (run: AnatomyRun): ChipJump | undefined => {
+          if (run.chip) {
+            const target = run.source && type ? resolveChipJump(run.source, type, run.chip) : null;
+            if (!target || !run.source) return undefined;
+            return { go: () => onJump(target), destination: `Show this chip in the ${SOURCE_LABELS[run.source]}` };
+          }
+          if (run.contextLabel) {
+            const target = resolveContextJump(run.contextLabel);
+            if (!target) return undefined;
+            return {
+              go: () => onJump(target),
+              destination: `${CONTEXT_HINTS[run.contextLabel]} — open the ${PROMPT_LABELS[target.tab]} prompt`,
+            };
+          }
+          return undefined;
         }
       : undefined),
     [onJump, type],

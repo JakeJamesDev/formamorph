@@ -1,6 +1,6 @@
 import type { AIRequestType } from '@/types';
 import type { AnatomySource, ContextLabel } from './requestAnatomy';
-import type { PromptSurface } from './promptGroups';
+import type { PromptSurface, PromptTab } from './promptGroups';
 
 /**
  * Where a highlighted run in a Request Anatomy goes when it is clicked: the prompt it belongs to, the
@@ -13,7 +13,7 @@ import type { PromptSurface } from './promptGroups';
 
 /** Which prompt in the Settings rail owns each kind of request. A request with no editor surface at all —
  *  the discovery pass, the milestone selector — is absent, so a run on one has nowhere to go. */
-export const PROMPT_TAB_FOR_REQUEST: Partial<Record<AIRequestType, string>> = {
+export const PROMPT_TAB_FOR_REQUEST: Partial<Record<AIRequestType, PromptTab>> = {
   narration: 'narration',
   thinking: 'thinking',
   director: 'director',
@@ -39,7 +39,7 @@ const MESSAGE_FIELDS: readonly AnatomySource[] = ['recap', 'now', 'recall', 'dir
  * chip to reveal once there. No `surface` means the prompt's Anatomy hub — the state with no editor open.
  */
 export interface PromptJumpTarget {
-  tab: string;
+  tab: PromptTab;
   surface?: PromptSurface;
   field?: MessageField;
   /** The affix-free token of the chip to scroll to and ring on arrival. */
@@ -76,17 +76,18 @@ export function resolveChipJump(
  * Which prompt wrote the content behind each assembled run. Following one goes to that prompt's Anatomy
  * hub, so the hub reads as a map of the turn: a block here, the request that produced it one click away.
  *
- * Absent labels are the ones nobody authored — the player's own action, the turns already played, their
- * notes, the directive a Thinking mode adds — so a chip for one of those stays inert.
+ * Absent labels are absent for one of two reasons. Most name content nobody authored — the player's own
+ * action, the turns already played, their notes, the directive a Thinking mode adds — so a chip for one of
+ * those stays inert. `narration` and `scene-cast` do have an author, but every run carrying them comes
+ * from a template chip (`<NARRATION>`, `<IN FRAME>`), and a template chip's click already goes to the more
+ * specific place: its own placement in the editor that holds it. An owner row for either could never fire.
  */
-export const CONTEXT_OWNER: Partial<Record<ContextLabel, string>> = {
+export const CONTEXT_OWNER: Partial<Record<ContextLabel, PromptTab>> = {
   'turn-plan': 'thinking',
-  narration: 'narration',
   'character-brief': 'character',
   intents: 'character',
   'diary-brief': 'diary',
   condensed: 'summary',
-  'scene-cast': 'scenetags',
 };
 
 /** The prompt whose anatomy an assembled run leads to, or null where nothing wrote it. */
