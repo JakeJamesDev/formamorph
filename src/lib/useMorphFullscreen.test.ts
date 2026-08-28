@@ -219,6 +219,27 @@ describe('useMorphFullscreen', () => {
     act(() => result.current.close());
     expect(result.current.contentClassName).toContain('fade-out-0');
   });
+
+  it('carries the dim sheet out with the shrinking box instead of holding it dark until unmount', () => {
+    const { sourceEl, boxEl } = makeElements();
+    const { result } = renderHook(() => useMorphFullscreen({ current: sourceEl }));
+
+    act(() => result.current.open());
+    act(() => result.current.boxRef(boxEl));
+    act(() => vi.advanceTimersByTime(400));
+    expect(result.current.overlayClassName).not.toContain('opacity-0');
+
+    // The fade starts with the shrink, not after it — the sheet held at full dark through the whole
+    // trip and released only at unmount is the flash this class exists to remove.
+    act(() => result.current.close());
+    expect(result.current.overlayClassName).toContain('opacity-0');
+
+    // And it stays held at 0 through `closed`: the dialog primitive keeps the overlay in the tree for
+    // its own exit animation, and a class that reverted here would flash the sheet back mid-teardown.
+    act(() => vi.advanceTimersByTime(400));
+    expect(result.current.phase).toBe('closed');
+    expect(result.current.overlayClassName).toContain('opacity-0');
+  });
 });
 
 describe('useMorphResize', () => {

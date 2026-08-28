@@ -15,6 +15,7 @@ const openMorph = (): MorphFullscreen => ({
   toggle: () => {},
   boxRef: () => {},
   contentClassName: '',
+  overlayClassName: '',
 });
 
 describe('FullscreenShell', () => {
