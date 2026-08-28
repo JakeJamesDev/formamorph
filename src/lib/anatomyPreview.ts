@@ -13,6 +13,7 @@ import { buildStamper, hoursByPosition } from './gameClock';
 import type { SectionStyle } from './promptPresets';
 import type { ParagraphLimit } from './outputLength';
 import { toAnatomyBlocks, type AnatomyBlock } from './requestAnatomy';
+import { SAMPLE_TURN } from './previewValuePool';
 
 /**
  * The Anatomy hub shown in Settings → Prompts the moment a prompt is selected: the whole request that
@@ -134,14 +135,14 @@ const FIXTURE_ELAPSED_HOURS = FIXTURE_TURNS.reduce((h, t) => h + t.timeDelta, 0)
 /** The turn Scene Recall brings back — the scene the current action returns to. */
 const RECALLED_TURN_ID = 't2';
 
-/** This turn's action, and the authorial direction a bracketed one carries. */
-const FIXTURE_ACTION = 'I take the map and start down toward the causeway.';
-const FIXTURE_BRACKET = ' [keep the tide going out through this scene]';
+/** This turn's beat — action, narration, cast, subject — shared with the editor's Preview pane, so the
+ *  hub and a field preview cannot tell two different stories about one token. */
+const FIXTURE_ACTION = SAMPLE_TURN.action;
+const FIXTURE_NARRATION = SAMPLE_TURN.narration;
+const FIXTURE_SCENE_CAST = SAMPLE_TURN.sceneCast;
 
-/** What this turn's narration answered with — canned like the four before it, and for the same reason:
- *  every post-narration pass is fed the story the model just wrote, not something a setting decides. */
-const FIXTURE_NARRATION =
-  'The stair takes you down past the lamp and out onto the flats, where the causeway stones are showing black and streaming. Behind you Wren has not moved, but she is watching, the pole idle across her knees.';
+/** The authorial direction a bracketed action carries. */
+const FIXTURE_BRACKET = ' [keep the tide going out through this scene]';
 
 /** The plan a planning mode hands the narration. Canned with the narrations, and for the same reason: a
  *  plan is what an earlier pass's model wrote this run, not something a setting decides. */
@@ -160,8 +161,8 @@ const FIXTURE_OVERFLOW = ['Harrow'];
 /** The cast member the fan-out hubs stand one request up for. */
 const FIXTURE_SUBJECT_ENTITY: Entity = {
   id: 'preview-wren',
-  name: 'Wren',
-  aiSummary: 'The salvager who works the Landing rail; brusque, and watches the water more than she says.',
+  name: SAMPLE_TURN.character.name,
+  aiSummary: SAMPLE_TURN.character.summary,
 };
 const FIXTURE_SUBJECT = {
   name: FIXTURE_SUBJECT_ENTITY.name,
@@ -170,9 +171,8 @@ const FIXTURE_SUBJECT = {
   diary: ['I told them about the crate and not about Harrow. Let them find the stall shut themselves.'],
 };
 
-/** Where the location router could send this turn, and who the picture would have in frame. */
+/** Where the location router could send this turn. Parse-side only — never rendered into a request. */
 const FIXTURE_DESTINATIONS = ['The Causeway', 'The Town Stair'];
-const FIXTURE_SCENE_CAST = ['Wren'];
 
 /** The fixture playthrough as flat chat history, in the shape a stored game holds it. */
 function fixtureHistory(): ChatMessage[] {

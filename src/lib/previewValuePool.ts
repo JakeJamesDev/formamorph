@@ -32,6 +32,26 @@ export const DERIVED_TOKENS = ['<LENGTH GUIDANCE>', '<MARKDOWN GUIDANCE>', '<ACT
 const WORLD = `A quiet stretch of coast where the tide leaves more behind than it takes. People here trade in
 salvage and rumor, and nobody asks where either came from.`;
 
+/**
+ * The sample playthrough's current beat — the values only a live turn supplies. The Anatomy hub cans this
+ * same beat as its pipeline material (anatomyPreview.ts), so the editor's Preview pane and the hub cannot
+ * tell two different stories about one token.
+ */
+export const SAMPLE_TURN = {
+  /** This turn's action, as the player typed it. */
+  action: 'I take the map and start down toward the causeway.',
+  /** The narration the model answered with, which every post-narration pass reads. */
+  narration:
+    'The stair takes you down past the lamp and out onto the flats, where the causeway stones are showing black and streaming. Behind you Wren has not moved, but she is watching, the pole idle across her knees.',
+  /** Who the scene composer put in frame — entities only, which is all the real cast can resolve to. */
+  sceneCast: ['Wren'],
+  /** The cast member the staged passes single out. */
+  character: {
+    name: 'Wren',
+    summary: 'The lamp-keeper who works the Landing rail; unhurried, and watches the water more than she says.',
+  },
+};
+
 const NOTES = `Traveler is looking for the person who sold them a false map.`;
 
 const TIME = 'Day 3, evening';
@@ -160,14 +180,14 @@ function sampleFor(variable: PromptVariable, variantId: string | null): string {
     case '<DICTIONARY>':
       return variantId === 'before' ? DICTIONARY_BEFORE : DICTIONARY_AFTER;
     case '<PLAYER ACTION>':
-      return 'I ask her who else has been down here tonight.';
+      return SAMPLE_TURN.action;
     case '<NARRATION>':
-      return `Wren doesn't look up from the lamp. "Nobody worth the asking," she says, and the pole shifts
-against her shoulder. Out past the pilings something knocks twice against stone, and stops.`;
+      return SAMPLE_TURN.narration;
     case '<CHARACTER NAME>':
-      return 'Wren';
+      return SAMPLE_TURN.character.name;
     case '<IN FRAME>':
-      return 'Wren, the traveler';
+      // Joined the way the scene-tags pass joins the real cast.
+      return SAMPLE_TURN.sceneCast.join(', ');
     case '<SUBJECT>':
       return 'a weathered lamp-keeper on a stone shore';
     default:
