@@ -388,6 +388,13 @@ export function variantLabelForToken(token: string): string | null {
   return labels.length ? labels.join(', ') : null;
 }
 
+/** The affix-free key a chip is identified by — the same string `buildContextValues` keys values on, so
+ *  one placement's wording never makes it a different chip. Falls back to the token itself for a family
+ *  that does not parse here (placeholders). */
+export function chipTokenKey(token: string): string {
+  return splitToken(token)?.key ?? token;
+}
+
 /** The accent color for a token, or undefined for an unknown token. */
 export function colorForToken(token: string): string | undefined {
   return variableForToken(token)?.color;

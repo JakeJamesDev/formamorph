@@ -65,13 +65,24 @@ const preview = (
   settingsOver: Partial<AnatomyPreviewSettings> = {},
 ) => hub('narration', over, prompts, settingsOver)[0].blocks;
 
-/** Every label present anywhere in a preview, authored and context alike. */
+/** Every label present anywhere in a preview: the editor a run's text was typed in, or what the app
+ *  assembled. A chip's run is named by its own token instead — see {@link chipsIn}. */
 const labels = (blocks: AnatomyBlock[]) =>
-  blocks.flatMap((b) => b.runs.map((r) => r.source ?? r.contextLabel));
+  blocks.flatMap((b) => b.runs.filter((r) => !r.chip).map((r) => r.source ?? r.contextLabel));
 
-/** The text one source's run actually selects, across every block. */
+/** Every chip token the runs of a preview carry. */
+const chipsIn = (blocks: AnatomyBlock[]) =>
+  blocks.flatMap((b) => b.runs.flatMap((r) => (r.chip ? [r.chip] : [])));
+
+/** The text one source's authored run actually selects, across every block. */
 const textOf = (blocks: AnatomyBlock[], source: string) =>
-  blocks.flatMap((b) => b.runs.filter((r) => r.source === source).map((r) => b.content.slice(r.start, r.end)));
+  blocks.flatMap((b) => b.runs
+    .filter((r) => r.source === source && !r.chip)
+    .map((r) => b.content.slice(r.start, r.end)));
+
+/** The text one chip's run actually selects, across every block. */
+const chipTextOf = (blocks: AnatomyBlock[], chip: string) =>
+  blocks.flatMap((b) => b.runs.filter((r) => r.chip === chip).map((r) => b.content.slice(r.start, r.end)));
 
 /** The text one context label's run actually selects, across every block. */
 const contextTextOf = (blocks: AnatomyBlock[], label: string) =>
@@ -119,7 +130,7 @@ describe('the narration hub', () => {
     expect(new Set(labels(preview()))).toEqual(
       new Set([
         'system-template', 'user-template', 'recap', 'now', 'recall', 'direction',
-        'world-data', 'condensed', 'recalled', 'past-action', 'past-narration', 'action',
+        'condensed', 'recalled', 'past-action', 'past-narration',
       ]),
     );
   });
@@ -159,21 +170,33 @@ describe('the narration hub', () => {
     expect(labels(preview({ recap: false, recall: true }))).not.toContain('recalled');
   });
 
-  it('separates the template the player typed from the action it wraps', () => {
+  it('separates the template the player typed from the action its chip wraps', () => {
     const blocks = preview({ brackets: false });
     const last = blocks[blocks.length - 1];
-    const runs = last.runs.map((r) => [r.source ?? r.contextLabel, last.content.slice(r.start, r.end)]);
-    expect(runs).toContainEqual(['action', 'I take the map and start down toward the causeway.']);
-    expect(runs.some(([label]) => label === 'user-template')).toBe(true);
+    expect(chipTextOf([last], '<PLAYER ACTION>'))
+      .toEqual(['I take the map and start down toward the causeway.']);
+    // The prose around the chip stays the player's own, under its own editor.
+    expect(textOf([last], 'user-template').length).toBeGreaterThan(0);
   });
 
-  it('splits the system prompt into the author words and the world data its chips inject', () => {
+  it('splits the system prompt into the author words and the chips that inject the rest', () => {
     const system = preview()[0];
-    const chipRuns = system.runs.filter((r) => r.contextLabel === 'world-data');
+    const chipRuns = system.runs.filter((r) => r.chip);
     expect(chipRuns.length).toBeGreaterThan(1);
+    // Each chip run is named for itself, never lumped under one catch-all.
+    expect(new Set(chipsIn([system])).size).toBe(chipRuns.length);
     // A chip's run holds the injected value, never the token that asked for it.
     expect(chipRuns.map((r) => system.content.slice(r.start, r.end)).join('\n')).not.toContain('<WORLD DESCRIPTION>');
     expect(system.content).toContain('Sample Town');
+  });
+
+  it('names the length guidance as its own chip, never as world data from the world', () => {
+    // A limit has to be set for the chip to render anything at all — 'none' injects nothing.
+    const system = preview({}, PROMPTS, { paragraphLimit: 'auto' })[0];
+    expect(chipsIn([system])).toContain('<LENGTH GUIDANCE>');
+    const guidance = chipTextOf([system], '<LENGTH GUIDANCE>').join('');
+    expect(guidance).toContain('paragraph');
+    expect(guidance).not.toContain('Sample Town');
   });
 
   it('is deterministic — the same inputs draw the same request every time', () => {
@@ -366,7 +389,7 @@ describe('every prompt in the rail has a hub', () => {
     const marked = hub(tab, {}, withMarker(tab, 'MY OWN WORDS'));
     expect(textOf(marked[0].blocks, 'system-template').join('')).toContain('MY OWN WORDS');
     // The chip beside it still renders its value rather than the token that asked for it.
-    expect(contextTextOf(marked[0].blocks, 'world-data').join('')).not.toContain('<WORLD DESCRIPTION>');
+    expect(chipTextOf(marked[0].blocks, '<WORLD DESCRIPTION>').join('')).not.toContain('<WORLD DESCRIPTION>');
   });
 
   it.each(TABS)('names the request kind %s belongs to', (tab) => {

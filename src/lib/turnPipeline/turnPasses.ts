@@ -64,12 +64,12 @@ export const SCENE_TAGS_EMPTY_CAST = 'nobody - an empty scene';
  * cannot drift from the text they index.
  */
 
-/** A system prompt and the runs over it: what the author typed, against the world data its chips inject. */
+/** A system prompt and the runs over it: what the author typed, against the values its chips inject. */
 const systemTiled = (template: string, values: Record<string, string>): TiledRuns =>
-  renderPromptTemplateRuns(template, values, { source: 'system-template', contextLabel: 'world-data' });
+  renderPromptTemplateRuns(template, values, { source: 'system-template' });
 
-/** A user-message template and the runs over it. The chips a user message carries are each a different
- *  thing — the action, the narration, who is in frame — so each is named for itself. */
+/** A user-message template and the runs over it. A few of the chips a user message carries hold what an
+ *  earlier prompt wrote — the action, the narration, who is in frame — so those name what wrote them. */
 const userTiled = (
   template: string,
   values: Record<string, string>,
@@ -77,7 +77,6 @@ const userTiled = (
 ): TiledRuns =>
   renderPromptTemplateRuns(template, values, {
     source: 'user-template',
-    contextLabel: 'world-data',
     tokens: { '<PLAYER ACTION>': 'action', '<NARRATION>': 'narration', ...tokens },
   });
 
@@ -354,7 +353,7 @@ export const narrationPass: TurnPassRecord<string> = {
             ...promptTemplatePieces(
               input.prompts.narrationUser,
               { '<PLAYER ACTION>': actionText },
-              { source: 'user-template', contextLabel: 'action' },
+              { source: 'user-template', tokens: { '<PLAYER ACTION>': 'action' } },
             ),
             ...(ridden
               ? [{ text: '\n\n', glue: true }, { text: input.prompts.oocDirective, source: 'direction' as const }]

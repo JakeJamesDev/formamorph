@@ -20,8 +20,10 @@ import { type SharedPreset } from '@/lib/promptPresetShare';
 import { APP_VERSION } from '@/lib/version';
 import { normalizeEndpointUrl, endpointUrlWasCompleted } from '@/lib/endpointUrl';
 import { computePromptTabAvailability } from '@/lib/promptTabAvailability';
-import { visibleGroups, SURFACE_LABELS, HUB_LABEL, HUB_ROUTE, PROMPT_DESCRIPTIONS, type PromptSurface } from '@/lib/promptGroups';
+import { visibleGroups, SURFACE_LABELS, HUB_LABEL, HUB_ROUTE, PROMPT_DESCRIPTIONS, PROMPT_LABELS, type PromptSurface } from '@/lib/promptGroups';
 import type { MessageField, PromptJumpTarget } from '@/lib/promptJump';
+import { revealEditorChip } from '@/lib/editorFieldFocus';
+import type { AnatomyViewMode } from '@/components/game/RequestAnatomyView';
 import { RequestAnatomyPanel } from './RequestAnatomyPanel';
 import { Settings } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, dialogFullHeightMobile } from "@/components/ui/dialog";
@@ -923,20 +925,22 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, initialTab,
   const [promptTab, setPromptTab] = useState(initialPromptTab ?? 'narration');
   // DEV dev-router: honor a requested prompt sub-tab (a `subtab=…` in the hash).
   useEffect(() => { if (initialPromptTab) setPromptTab(initialPromptTab); }, [initialPromptTab]);
+  // Names come from the shared map, so a jump that says where it goes and the rail row it lands on cannot
+  // call the same prompt two different things.
   const promptResets: Record<string, { label: string; reset: () => void }> = {
-    narration: { label: 'Narration', reset: () => setSystemPrompt(defaultSystemPrompt) },
-    thinking: { label: 'Planning', reset: () => setThinkingPrompt(defaultThinkingPrompt) },
-    choices: { label: 'Choices', reset: () => setChoicesPrompt(defaultChoicesPrompt) },
-    statupdates: { label: 'Stat Updates', reset: () => setStatUpdatesPrompt(defaultStatUpdatesPrompt) },
-    location: { label: 'Location Change', reset: () => setLocationChangePromptText(defaultLocationChangePrompt) },
-    summary: { label: 'Summaries', reset: () => setSummaryPrompt(defaultSummaryPrompt) },
-    timepassed: { label: 'Clock', reset: () => setTimePassedPrompt(defaultTimePassedPrompt) },
-    timeopening: { label: 'Opening', reset: () => setOpeningTimePrompt(defaultOpeningTimePrompt) },
-    scenetags: { label: 'Scene Tags', reset: () => setSceneTagsPrompt(defaultSceneTagsPrompt) },
-    diary: { label: 'Diary', reset: () => setDiaryPrompt(defaultDiaryPrompt) },
-    director: { label: 'Director', reset: () => setDirectorPrompt(defaultDirectorPrompt) },
-    character: { label: 'Character', reset: () => setCharacterPrompt(defaultCharacterPrompt) },
-    storyboard: { label: 'Storyboard', reset: () => setStoryboardPrompt(defaultStoryboardPrompt) },
+    narration: { label: PROMPT_LABELS.narration, reset: () => setSystemPrompt(defaultSystemPrompt) },
+    thinking: { label: PROMPT_LABELS.thinking, reset: () => setThinkingPrompt(defaultThinkingPrompt) },
+    choices: { label: PROMPT_LABELS.choices, reset: () => setChoicesPrompt(defaultChoicesPrompt) },
+    statupdates: { label: PROMPT_LABELS.statupdates, reset: () => setStatUpdatesPrompt(defaultStatUpdatesPrompt) },
+    location: { label: PROMPT_LABELS.location, reset: () => setLocationChangePromptText(defaultLocationChangePrompt) },
+    summary: { label: PROMPT_LABELS.summary, reset: () => setSummaryPrompt(defaultSummaryPrompt) },
+    timepassed: { label: PROMPT_LABELS.timepassed, reset: () => setTimePassedPrompt(defaultTimePassedPrompt) },
+    timeopening: { label: PROMPT_LABELS.timeopening, reset: () => setOpeningTimePrompt(defaultOpeningTimePrompt) },
+    scenetags: { label: PROMPT_LABELS.scenetags, reset: () => setSceneTagsPrompt(defaultSceneTagsPrompt) },
+    diary: { label: PROMPT_LABELS.diary, reset: () => setDiaryPrompt(defaultDiaryPrompt) },
+    director: { label: PROMPT_LABELS.director, reset: () => setDirectorPrompt(defaultDirectorPrompt) },
+    character: { label: PROMPT_LABELS.character, reset: () => setCharacterPrompt(defaultCharacterPrompt) },
+    storyboard: { label: PROMPT_LABELS.storyboard, reset: () => setStoryboardPrompt(defaultStoryboardPrompt) },
   };
   // Each prompt tab only exists while its prompt is enabled (toggled in Generation → System Prompts, or
   // its governing setting for Thinking/Summary). If the open tab is no longer available (disabled since,
@@ -957,6 +961,11 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, initialTab,
   const [promptView, setPromptView] = useState<PromptSurface | null>(null);
   // Which stacked field of the Messages view to scroll to and focus on arrival, set by a hub jump.
   const [jumpField, setJumpField] = useState<MessageField | null>(null);
+  // Which chip the arriving editor should scroll to and ring, set by a hub jump onto one.
+  const [jumpChip, setJumpChip] = useState<string | null>(null);
+  // How the hub draws a request. Held here rather than in the panel so a trip into an editor and back
+  // keeps it, and rather than in settings because it is a way of looking, not a preference.
+  const [anatomyMode, setAnatomyMode] = useState<AnatomyViewMode>('chips');
   // DEV dev-router: land on a named surface (`surface=…`). Re-runs when the prompt changes too, since
   // switching prompts returns to the hub. `anatomy` is the hub itself, and so is anything unrecognized.
   useEffect(() => {
@@ -974,11 +983,13 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, initialTab,
   // Selecting a prompt — including re-selecting the open one — returns to its hub, so the map is always
   // one click away from any editor.
   const selectPromptTab = (t: string) => { setPromptTab(t); setPromptView(null); setJumpField(null); };
-  /** A clicked run in the anatomy: open the prompt and the editor that owns it. */
+  /** A clicked run or chip in the anatomy: open the prompt, the editor that owns it, and — for a chip —
+   *  the placement itself. A target with no surface is another prompt's hub. */
   const jumpToPrompt = (target: PromptJumpTarget) => {
     setPromptTab(target.tab);
-    setPromptView(target.surface);
+    setPromptView(target.surface ?? null);
     setJumpField(target.field ?? null);
+    setJumpChip(target.chip ?? null);
   };
   // The rail's groups, with prompts whose feature is off already removed.
   const railGroups = visibleGroups(promptAvailable);
@@ -1043,6 +1054,12 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, initialTab,
     node?.querySelector<HTMLElement>('[data-lexical-editor][contenteditable="true"]')?.focus();
     setJumpField(null);
   }, [jumpField, showingMessages]);
+  // A chip jump lands on the editor holding it; the reveal waits out that editor's mount on its own.
+  useEffect(() => {
+    if (!jumpChip || !promptView) return;
+    revealEditorChip(jumpChip);
+    setJumpChip(null);
+  }, [jumpChip, promptView]);
 
   // The generation settings the Anatomy hub draws under. Memoized alongside its prompts and its value pool
   // so all three inputs are stable: a hub re-runs a turn's worth of assembly, and a fresh object on any of
@@ -2484,6 +2501,8 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, initialTab,
                   prompts={hubPrompts}
                   values={effectivePreviewValues}
                   settings={hubSettings}
+                  mode={anatomyMode}
+                  onModeChange={setAnatomyMode}
                   onJump={jumpToPrompt}
                   fullscreen={promptsFullscreen}
                   onRequestFullscreen={() => setPromptsFullscreen((f) => !f)}

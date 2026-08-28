@@ -18,6 +18,9 @@
  */
 
 const RING_CLASS = 'editor-find-target';
+
+/** How a chip announces which token it stands for, so a jump can find it without a wired-up ref. */
+export const CHIP_TOKEN_ATTR = 'data-chip-token';
 const HIGHLIGHT_NAME = 'editor-find-match';
 const MIRROR_CLASS = 'editor-find-mirror';
 
@@ -320,6 +323,35 @@ function revealRect(field: Field, rect: DOMRect): void {
 /** Drop the marker — the find bar closing, or a search that no longer matches anything. */
 export function clearEditorMatch(): void {
   clearMarker();
+}
+
+/** How long a revealed chip wears its ring. Long enough to find by eye, short enough that it is gone
+ *  before the next edit — nothing here clears it on interaction. */
+const CHIP_RING_MS = 1600;
+
+/**
+ * Reveal one chip in a prompt editor: scroll it into view and ring it, without taking focus.
+ *
+ * The chip is found by its own affix-free token rather than by a ref, since the editor rebuilds its
+ * decorators on every remount and a jump lands before that first render. Same retry budget as the find
+ * bar's field lookup, and for the same reason: opening a prompt mounts its editor a few frames later.
+ *
+ * Searched from the document rather than from a panel, because full screen re-parents the whole Prompts
+ * panel into an overlay — a root captured before the jump no longer contains the editor. Being inside a
+ * Lexical editor is what makes it the right chip: the anatomy draws chips of its own, outside one.
+ */
+export function revealEditorChip(token: string, attempt = 0): void {
+  if (!token) return;
+  const chip = document.querySelector<HTMLElement>(
+    `[data-lexical-editor] [${CHIP_TOKEN_ATTR}="${CSS.escape(token)}"]`,
+  );
+  if (!chip) {
+    if (attempt < RETRY_LIMIT) setTimeout(() => revealEditorChip(token, attempt + 1), RETRY_MS);
+    return;
+  }
+  chip.classList.add(RING_CLASS);
+  setTimeout(() => chip.classList.remove(RING_CLASS), CHIP_RING_MS);
+  revealRect(chip, chip.getBoundingClientRect());
 }
 
 /**

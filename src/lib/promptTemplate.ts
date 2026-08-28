@@ -67,12 +67,11 @@ export function renderPromptTemplateRuns(
   return tilePieces(promptTemplatePieces(template, values, labels));
 }
 
-/** How a template's two kinds of text are labeled: `source` for what the author typed, `contextLabel` for
- *  what a chip injected. `tokens` overrides that per chip, keyed by the affix-free token — a user message
- *  carrying both `<PLAYER ACTION>` and `<NARRATION>` is two different things, not one. */
+/** How a template's two kinds of text are labeled. `source` is the editor the template lives in, carried by
+ *  the author's prose and by its chips alike. A chip's run is identified by its own affix-free token;
+ *  `tokens` adds a context label to the few whose value another prompt wrote. */
 export interface TemplateLabels {
   source: AnatomySource;
-  contextLabel: ContextLabel;
   tokens?: Record<string, ContextLabel>;
 }
 
@@ -87,8 +86,13 @@ export function promptTemplatePieces(
     if (segment.type === 'text') return { text: segment.value, source: labels.source };
     const resolved = resolveToken(segment.token, values);
     if (resolved === undefined) return { text: segment.token, source: labels.source };
-    const key = splitToken(segment.token)?.key;
-    return { text: resolved, contextLabel: (key && labels.tokens?.[key]) || labels.contextLabel };
+    const key = splitToken(segment.token)?.key ?? segment.token;
+    return {
+      text: resolved,
+      source: labels.source,
+      chip: key,
+      ...(labels.tokens?.[key] ? { contextLabel: labels.tokens[key] } : {}),
+    };
   });
 }
 

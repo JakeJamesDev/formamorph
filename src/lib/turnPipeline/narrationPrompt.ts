@@ -125,7 +125,7 @@ export function buildNarrationPrompt(input: NarrationPromptInput): NarrationProm
     "<DICTIONARY>": resolvePH(buildDictionaryContext(afterEntries, false)) || NONE_PLACEHOLDER,
     "<DICTIONARY|before>": resolvePH(buildDictionaryContext(beforeEntries, false)) || NONE_PLACEHOLDER,
     "<LANGUAGE>": languageDirective("narration", language),
-  }, { source: "system-template", contextLabel: "world-data" }));
+  }, { source: "system-template" }));
   const prompt = rendered.content;
 
   // AI-context capture. Every scanned source is a string the prompt genuinely contains, so the viewer can

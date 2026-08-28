@@ -1,8 +1,13 @@
-import { useState, type ReactNode } from 'react';
+import { useMemo, useState, type ReactNode } from 'react';
 import { cn } from '@/lib/utils';
 import type { AIRequestType } from '@/types';
-import { resolvePromptJump, type PromptJumpTarget } from '@/lib/promptJump';
+import { CHIP_BASE } from '@/components/Chip';
+import { TokenChip } from '@/components/prompt/TokenChip';
+import { promptVocabulary } from '@/lib/chipVocabulary';
+import { PROMPT_LABELS } from '@/lib/promptGroups';
+import { resolveChipJump, resolveContextJump, resolvePromptJump, type PromptJumpTarget } from '@/lib/promptJump';
 import {
+  CONTEXT_HINTS,
   CONTEXT_LABELS,
   SOURCE_LABELS,
   type AnatomyBlock,
@@ -15,16 +20,19 @@ import {
  * blocks inside Messages, the player's own prompt text highlighted and named by the editor that owns it,
  * everything the app assembled muted beneath it.
  *
- * Shared by the in-game AI Context viewer and the Settings Anatomy hub. They differ only in how much of a
- * context run survives: AI Context shows real turns, so the bytes are the point; the hub collapses context
- * to an explanation plus a one-line excerpt so the whole request reads in one scan.
+ * Shared by the in-game AI Context viewer and the Settings Anatomy hub. They differ in mode: the viewer
+ * shows real turns, so it draws the resolved bytes; the hub also offers Chips, which collapses every
+ * assembled run to the chip that produced it, so the request reads as the player's own template.
  *
- * Given `onJump`, an authored run becomes a button onto the editor that owns it. Context runs never do —
- * the app assembled them, so there is nothing to open.
+ * Given `onJump`, an authored run becomes a button onto the editor that owns it, and in Chips mode a chip
+ * becomes one too — onto its own placement in that editor, or onto the anatomy of the prompt that wrote it.
  */
 
-/** How much of a context run is drawn. */
-export type AnatomyContextMode = 'full' | 'preview';
+/** How the request is drawn: as the template's chips, or as the bytes the model receives. */
+export type AnatomyViewMode = 'chips' | 'resolved';
+
+/** The anatomy draws prompt-variable chips only, and never inserts one, so it needs no palette. */
+const ANATOMY_VOCABULARY = promptVocabulary([]);
 
 /** Per-source accent. Each has a light and a dark face, since both surfaces render in either theme.
  *  `markHot` and `chipEdge` dress a clickable run: hovering any piece of a source deepens the tint on
@@ -46,15 +54,12 @@ const ROLE_LABELS: Record<AnatomyBlock['role'], string> = {
   assistant: 'assistant',
 };
 
-/** How much of a context run's own text a preview shows before it stops being a glance. */
-const EXCERPT_CHARS = 110;
-
 export interface RequestAnatomyViewProps {
   blocks: AnatomyBlock[];
-  mode: AnatomyContextMode;
+  mode: AnatomyViewMode;
   /** Which kind of request these blocks are, so a click resolves to the prompt that owns the run. */
   type?: AIRequestType;
-  /** Called with the editor an authored run belongs to. Absent leaves every run inert. */
+  /** Called with where a clicked run or chip leads. Absent leaves everything inert. */
   onJump?: (target: PromptJumpTarget) => void;
   /**
    * Optional enrichment for one slice of text — the AI-context viewer's dictionary and hydration
@@ -128,66 +133,78 @@ function AuthoredRun({
   );
 }
 
-/** The trailing blank lines a run carries are structure, not content — kept so the block still reads as
- *  the request, but never counted as part of an excerpt. */
-function splitTrailingBreak(text: string): [string, string] {
-  const body = text.replace(/\s+$/, '');
-  return [body, text.slice(body.length)];
-}
-
 /** A run's own text, with the blank lines that join it to its neighbors peeled off either end. Those are
  *  assembly, not authorship: left inside the mark they put the label chip at the end of the line above and
- *  highlight an empty line below. */
+ *  highlight an empty line below, and left inside a chip they vanish with the text the chip replaces. */
 function peelBreaks(text: string): [string, string, string] {
   const lead = /^\s*/.exec(text)![0];
   if (lead.length === text.length) return [text, '', ''];
-  const [body, tail] = splitTrailingBreak(text.slice(lead.length));
-  return [lead, body, tail];
+  const body = text.slice(lead.length).replace(/\s+$/, '');
+  return [lead, body, text.slice(lead.length + body.length)];
 }
 
-function ContextRun({
-  run,
-  text,
-  mode,
-  midLine,
-  children,
-}: {
-  run: AnatomyRun;
-  text: string;
-  mode: AnatomyContextMode;
-  /** The run begins mid-line, so its explanation needs a line break of its own first. */
-  midLine: boolean;
-  children: ReactNode;
-}) {
-  // The explanation always stands on its own line, with the run's text starting directly on the next.
-  const explanation = run.contextLabel ? (
-    <>
-      {midLine ? '\n' : null}
-      <span className="italic">&lt;{CONTEXT_LABELS[run.contextLabel]}&gt;</span>
-      {'\n'}
-    </>
-  ) : null;
-  if (mode === 'full') {
-    return (
-      <span className="text-muted-foreground/70">
-        {explanation}
-        <span className="opacity-70">{children}</span>
-      </span>
-    );
-  }
-  const [body, trailing] = splitTrailingBreak(text);
-  const firstLine = body.split('\n')[0];
-  const cut = firstLine.length > EXCERPT_CHARS;
-  const excerpt = cut ? firstLine.slice(0, EXCERPT_CHARS).trimEnd() : firstLine;
-  // One ellipsis, whether the line was cut or there are more lines behind it.
-  const more = cut || body.length > firstLine.length;
+/** What the app assembled, drawn as the bytes it is: dimmed, so it reads apart from the player's own text
+ *  without anything being said about it. */
+function ResolvedContext({ children }: { children: ReactNode }) {
   return (
     <span className="text-muted-foreground/70">
-      {explanation}
-      <span className="opacity-70">{excerpt}{more ? ' …' : ''}</span>
-      {trailing || ' '}
+      <span className="opacity-70">{children}</span>
     </span>
   );
+}
+
+/** A run the app assembled, collapsed to its own chip: a short title-case name, the plain-words
+ *  explanation in the tooltip. Deliberately unlike a template chip — nothing in an editor answers to it. */
+function AssemblyChip({ label, title }: { label: string; title: string }) {
+  return (
+    <span
+      title={title}
+      className={cn(CHIP_BASE, 'border border-dashed border-muted-foreground/50 bg-muted/60 text-muted-foreground align-baseline')}
+    >
+      {label}
+    </span>
+  );
+}
+
+/** A chip in the anatomy, clickable where it leads somewhere. The button is what carries the keyboard and
+ *  the hover affordance; the pill inside it is the same one the editor draws. */
+function ChipRun({ run, jumpTo }: { run: AnatomyRun; jumpTo?: (run: AnatomyRun) => (() => void) | undefined }) {
+  const jump = jumpTo?.(run);
+  // Said only where the click exists: a chip with nothing behind it must not promise a destination.
+  const destination = jump ? jumpDestination(run) : undefined;
+  const pill = run.chip ? (
+    <TokenChip token={run.chip} vocab={ANATOMY_VOCABULARY} title={destination} />
+  ) : run.contextLabel ? (
+    <AssemblyChip
+      label={CONTEXT_LABELS[run.contextLabel]}
+      title={destination ?? CONTEXT_HINTS[run.contextLabel]}
+    />
+  ) : null;
+  if (!pill) return null;
+  if (!jump) return pill;
+  return (
+    <button
+      type="button"
+      onClick={jump}
+      title={destination}
+      className="rounded align-baseline hover:brightness-110 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+    >
+      {pill}
+    </button>
+  );
+}
+
+/** What a chip's tooltip says about where it goes, or undefined where it goes nowhere and the pill's own
+ *  words are the whole tooltip. */
+function jumpDestination(run: AnatomyRun): string | undefined {
+  if (run.chip && run.source) return `Show this chip in the ${SOURCE_LABELS[run.source]}`;
+  if (!run.chip && run.contextLabel) {
+    const target = resolveContextJump(run.contextLabel);
+    if (target) {
+      return `${CONTEXT_HINTS[run.contextLabel]} — open the ${PROMPT_LABELS[target.tab] ?? target.tab} prompt`;
+    }
+  }
+  return undefined;
 }
 
 /** One block's content, split at its run boundaries. Text outside every run (a request-layer suffix, or a
@@ -198,13 +215,16 @@ function BlockBody({
   mode,
   renderText,
   jumpTo,
+  chipJumpTo,
 }: {
   block: AnatomyBlock;
   blockIndex: number;
-  mode: AnatomyContextMode;
+  mode: AnatomyViewMode;
   renderText?: RequestAnatomyViewProps['renderText'];
   /** What clicking a run of this source should do, or undefined where nothing owns it. */
   jumpTo?: (source: AnatomySource) => (() => void) | undefined;
+  /** What clicking a chip should do, or undefined where it leads nowhere. */
+  chipJumpTo?: (run: AnatomyRun) => (() => void) | undefined;
 }) {
   const draw = (text: string): ReactNode => (renderText ? renderText(text, block, blockIndex) : text);
   // Which source is under the pointer, so every piece of it lights together — a template split by chips
@@ -218,21 +238,24 @@ function BlockBody({
   block.runs.forEach((run, i) => {
     if (run.start > at) parts.push(<span key={`gap-${i}`}>{draw(block.content.slice(at, run.start))}</span>);
     const text = block.content.slice(run.start, run.end);
-    if (run.source) {
+    // A chip's run is the value the chip injected, not the prose the author typed around it — so a run
+    // carrying one is a chip wherever it came from.
+    const authored = run.chip ? undefined : run.source;
+    if (authored) {
       // The joins either side stay outside the mark, so the label chip leads the run's first real word.
       const [lead, body, tail] = peelBreaks(text);
       // An all-whitespace run draws no chip, so it must not spend the source's one naming either.
-      const firstOfSource = !!body && !named.has(run.source);
-      if (body) named.add(run.source);
+      const firstOfSource = !!body && !named.has(authored);
+      if (body) named.add(authored);
       parts.push(
         <span key={i}>
           {lead ? draw(lead) : null}
           {body ? (
             <AuthoredRun
-              source={run.source}
+              source={authored}
               named={firstOfSource}
-              onJump={jumpTo?.(run.source)}
-              hot={hotSource === run.source}
+              onJump={jumpTo?.(authored)}
+              hot={hotSource === authored}
               onHover={setHotSource}
             >
               {draw(body)}
@@ -241,9 +264,19 @@ function BlockBody({
           {tail ? draw(tail) : null}
         </span>,
       );
+    } else if (mode === 'chips' && (run.chip || run.contextLabel)) {
+      // The joins either side are the request's shape, so they survive the collapse — only the value the
+      // run stands for is replaced by the chip that asked for it.
+      const [lead, , tail] = peelBreaks(text);
+      parts.push(
+        <span key={i}>
+          {lead || null}
+          <ChipRun run={run} jumpTo={chipJumpTo} />
+          {tail || null}
+        </span>,
+      );
     } else {
-      const midLine = run.start > 0 && block.content[run.start - 1] !== '\n';
-      parts.push(<ContextRun key={i} run={run} text={text} mode={mode} midLine={midLine}>{draw(text)}</ContextRun>);
+      parts.push(<ResolvedContext key={i}>{draw(text)}</ResolvedContext>);
     }
     at = run.end;
   });
@@ -265,14 +298,39 @@ function Region({ title, hint, children }: { title: string; hint: string; childr
 }
 
 export function RequestAnatomyView({ blocks, mode, type, onJump, renderText, className }: RequestAnatomyViewProps) {
-  const jumpTo = onJump && type
-    ? (source: AnatomySource) => {
-        const target = resolvePromptJump(source, type);
-        return target ? () => onJump(target) : undefined;
-      }
-    : undefined;
+  const jumpTo = useMemo(
+    () => (onJump && type
+      ? (source: AnatomySource) => {
+          const target = resolvePromptJump(source, type);
+          return target ? () => onJump(target) : undefined;
+        }
+      : undefined),
+    [onJump, type],
+  );
+  // A chip leads either to its own placement in the editor that holds it, or — for a block another prompt
+  // wrote — to that prompt's anatomy.
+  const chipJumpTo = useMemo(
+    () => (onJump
+      ? (run: AnatomyRun) => {
+          const target = run.chip && run.source && type
+            ? resolveChipJump(run.source, type, run.chip)
+            : !run.chip && run.contextLabel
+              ? resolveContextJump(run.contextLabel)
+              : null;
+          return target ? () => onJump(target) : undefined;
+        }
+      : undefined),
+    [onJump, type],
+  );
   const body = (block: AnatomyBlock, index: number) => (
-    <BlockBody block={block} blockIndex={index} mode={mode} renderText={renderText} jumpTo={jumpTo} />
+    <BlockBody
+      block={block}
+      blockIndex={index}
+      mode={mode}
+      renderText={renderText}
+      jumpTo={jumpTo}
+      chipJumpTo={chipJumpTo}
+    />
   );
   const system = blocks.map((b, i) => [b, i] as const).filter(([b]) => b.role === 'system');
   const messages = blocks.map((b, i) => [b, i] as const).filter(([b]) => b.role !== 'system');

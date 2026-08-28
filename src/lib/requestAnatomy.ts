@@ -25,11 +25,10 @@ export type AnatomySource =
   | 'direction';
 
 /**
- * What produced a context run. Each names the feature behind it in the player's own voice; adjacent runs
- * never share a label, so a repeated label reads as one block rather than a bug.
+ * What produced a context run the app assembled. A run a chip produced is identified by its token instead
+ * (see {@link AnatomyRun.chip}), so nothing here is a catch-all for "whatever a chip injected".
  */
 export type ContextLabel =
-  | 'world-data'
   | 'condensed'
   | 'notes'
   | 'recalled'
@@ -44,11 +43,16 @@ export type ContextLabel =
   | 'intents'
   | 'scene-cast';
 
-/** One run of a message's content: authored when `source` is set, context otherwise. */
+/**
+ * One run of a message's content. `source` is the editor whose field the run came out of — the text itself
+ * when nothing else is set, or the template that placed the chip when `chip` is. `chip` is the affix-free
+ * token, so the anatomy can draw the very chip the player placed. `contextLabel` names an assembled run.
+ */
 export interface AnatomyRun {
   start: number;
   end: number;
   source?: AnatomySource;
+  chip?: string;
   contextLabel?: ContextLabel;
 }
 
@@ -68,6 +72,7 @@ export interface RequestAnatomy {
 export interface AnatomyPiece {
   text: string;
   source?: AnatomySource;
+  chip?: string;
   contextLabel?: ContextLabel;
   glue?: boolean;
 }
@@ -79,7 +84,7 @@ export interface TiledRuns {
 }
 
 const sameLabel = (a: AnatomyPiece, b: AnatomyRun): boolean =>
-  a.source === b.source && a.contextLabel === b.contextLabel;
+  a.source === b.source && a.chip === b.chip && a.contextLabel === b.contextLabel;
 
 /**
  * Join pieces into one string and the runs covering it. Empty pieces vanish, adjacent pieces sharing a
@@ -108,7 +113,13 @@ export function tilePieces(pieces: AnatomyPiece[]): TiledRuns {
       continue;
     }
     if (last && sameLabel(piece, last)) last.end = content.length;
-    else runs.push({ start, end: content.length, ...(piece.source ? { source: piece.source } : {}), ...(piece.contextLabel ? { contextLabel: piece.contextLabel } : {}) });
+    else runs.push({
+      start,
+      end: content.length,
+      ...(piece.source ? { source: piece.source } : {}),
+      ...(piece.chip ? { chip: piece.chip } : {}),
+      ...(piece.contextLabel ? { contextLabel: piece.contextLabel } : {}),
+    });
   }
   // Trailing glue with nothing after it still has to land somewhere, or the runs stop short of the content.
   if (leading) {
@@ -176,10 +187,25 @@ export const SOURCE_LABELS: Record<AnatomySource, string> = {
   direction: 'Direction Message',
 };
 
-/** What each context run is, in the player's own words. The action/narration pair is deliberately
- *  asymmetric: two identical labels on adjacent blocks read as a bug rather than as a turn. */
+/** What each assembled run is called on its chip — short and title-case, so a chip stays pill-sized. */
 export const CONTEXT_LABELS: Record<ContextLabel, string> = {
-  'world-data': 'world data from your chips',
+  condensed: 'Memory Recap',
+  notes: 'Notes',
+  recalled: 'Recalled Turn',
+  'past-action': 'Past Action',
+  'past-narration': 'Past Narration',
+  action: 'Your Action',
+  'mode-directive': 'Mode Directive',
+  'turn-plan': 'Turn Plan',
+  narration: 'Narration',
+  'character-brief': 'Character Brief',
+  'diary-brief': 'Diary Brief',
+  intents: 'Intents',
+  'scene-cast': 'Scene Cast',
+};
+
+/** What each assembled run is, in the player's own words — the chip's tooltip. */
+export const CONTEXT_HINTS: Record<ContextLabel, string> = {
   condensed: 'older turns, condensed by Memory Summaries',
   notes: 'your own memory notes, as you wrote them',
   recalled: 'the turn Scene Recall brought back, word-for-word',

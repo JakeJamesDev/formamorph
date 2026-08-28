@@ -19,6 +19,24 @@ export const PROMPT_GROUPS: PromptGroup[] = [
   { label: 'Images', tabs: ['scenetags'] },
 ];
 
+/** What each prompt is called wherever it is named: the rail's own row, and a jump that says where it
+ *  goes. Keyed by `promptTab` id. */
+export const PROMPT_LABELS: Record<string, string> = {
+  narration: 'Narration',
+  thinking: 'Planning',
+  choices: 'Choices',
+  statupdates: 'Stat Updates',
+  location: 'Location Change',
+  summary: 'Summaries',
+  timepassed: 'Clock',
+  timeopening: 'Opening',
+  scenetags: 'Scene Tags',
+  diary: 'Diary',
+  director: 'Director',
+  character: 'Character',
+  storyboard: 'Storyboard',
+};
+
 /**
  * One line per prompt, saying what job it does in the turn — shown above the editor, where it is read
  * before the prompt rather than after it.
