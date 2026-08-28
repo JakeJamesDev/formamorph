@@ -82,6 +82,7 @@ export interface RequestAnatomyViewProps {
 function AuthoredRun({
   source,
   named,
+  flat,
   onJump,
   hot,
   onHover,
@@ -89,6 +90,9 @@ function AuthoredRun({
 }: {
   source: AnatomySource;
   named: boolean;
+  /** Chips mode: the prose stays plain — with everything assembled collapsed to chips, all visible text
+   *  is the player's own, so a tint would mark the whole page. The one label keeps the accent. */
+  flat?: boolean;
   onJump?: () => void;
   /** Another piece of this source is under the pointer, so this one lights with it. */
   hot?: boolean;
@@ -96,6 +100,32 @@ function AuthoredRun({
   children: ReactNode;
 }) {
   const style = SOURCE_STYLES[source];
+  if (flat) {
+    if (!named) return <>{children}</>;
+    const labelClass = cn('mr-1 rounded-sm px-1 align-middle text-meta font-medium', style.chip);
+    return (
+      <>
+        {onJump ? (
+          <button
+            type="button"
+            onClick={onJump}
+            title={`Open the ${SOURCE_LABELS[source]}`}
+            className={cn(
+              labelClass,
+              'border shadow-sm cursor-pointer hover:brightness-125',
+              'focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring',
+              style.chipEdge,
+            )}
+          >
+            {SOURCE_LABELS[source]}
+          </button>
+        ) : (
+          <span className={labelClass}>{SOURCE_LABELS[source]}</span>
+        )}
+        {children}
+      </>
+    );
+  }
   const body = (
     <>
       {named && (
@@ -187,7 +217,7 @@ export interface ChipJump {
 function ChipRun({ run, jumpTo }: { run: AnatomyRun; jumpTo?: (run: AnatomyRun) => ChipJump | undefined }) {
   const jump = jumpTo?.(run);
   const pill = run.chip ? (
-    <TokenChip token={run.chip} vocab={ANATOMY_VOCABULARY} title={jump?.destination} />
+    <TokenChip token={run.chip} vocab={ANATOMY_VOCABULARY} neutral title={jump?.destination} />
   ) : run.contextLabel ? (
     <AssemblyChip
       label={CONTEXT_LABELS[run.contextLabel]}
@@ -255,6 +285,7 @@ function BlockBody({
             <AuthoredRun
               source={authored}
               named={firstOfSource}
+              flat={mode === 'chips'}
               onJump={jumpTo?.(authored)}
               hot={hotSource === authored}
               onHover={setHotSource}

@@ -20,6 +20,9 @@ import type { ChipVocabulary } from '@/lib/chipVocabulary';
 export interface TokenChipProps extends Omit<ComponentPropsWithoutRef<'span'>, 'title' | 'children' | 'vocab'> {
   token: string;
   vocab: ChipVocabulary;
+  /** Skip the vocabulary's accent and wear the chip's neutral chrome. The Request Anatomy's face: there
+   *  the template prose is the content, so a chip reads as a quiet placeholder, not a highlight. */
+  neutral?: boolean;
   /** Hover text, where the caller has something to say the vocabulary does not (a jump destination). */
   title?: string;
   onRemove?: (label: string) => void;
@@ -27,10 +30,10 @@ export interface TokenChipProps extends Omit<ComponentPropsWithoutRef<'span'>, '
 }
 
 export const TokenChip = forwardRef<HTMLSpanElement, TokenChipProps>(function TokenChip(
-  { token, vocab, title, onRemove, grabbable, className, ...rest },
+  { token, vocab, neutral, title, onRemove, grabbable, className, ...rest },
   ref,
 ) {
-  const color = vocab.color(token);
+  const color = neutral ? undefined : vocab.color(token);
   // Reflect the mode in the chip text so it's readable at a glance, not only in the pop-out.
   const variantLabel = vocab.variantLabel(token);
   const name = vocab.label(token);
