@@ -75,6 +75,10 @@ export function useMorphResize(key: string | number): (element: HTMLElement | nu
       box.style.transform = '';
       box.style.transformOrigin = '';
       box.style.animation = '';
+      // Restoring the class animation restarts it from frame one — the whole open zoom-and-fade would
+      // replay at the end of every trip. Jump it straight to done; finished with no fill, it applies
+      // nothing, and the real close still starts its own exit animation fresh.
+      box.getAnimations?.().forEach((animation) => animation.finish());
     }, ENTER_MS + 100);
   }, [key, reduceMotion]);
 
