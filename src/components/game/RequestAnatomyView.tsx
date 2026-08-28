@@ -31,6 +31,15 @@ import {
 /** How the request is drawn: as the template's chips, or as the bytes the model receives. */
 export type AnatomyViewMode = 'chips' | 'resolved';
 
+/**
+ * Marks one run's own element, so the two views can be scrolled to the same place.
+ *
+ * Both draw exactly one of these per run, in the same order — a chip in one, the text it stands for in the
+ * other — which is what lets a position captured in either be reproduced in the other. The pairing is by
+ * construction here, not by a selector that happens to match the same count.
+ */
+export const ANATOMY_RUN_ATTR = 'data-anatomy-run';
+
 /** The anatomy draws prompt-variable chips only, and never inserts one, so it needs no palette. */
 const ANATOMY_VOCABULARY = promptVocabulary([]);
 
@@ -147,7 +156,7 @@ function peelBreaks(text: string): [string, string, string] {
  *  without anything being said about it. */
 function ResolvedContext({ children }: { children: ReactNode }) {
   return (
-    <span className="text-muted-foreground/70">
+    <span {...{ [ANATOMY_RUN_ATTR]: '' }} className="text-muted-foreground/70">
       <span className="opacity-70">{children}</span>
     </span>
   );
@@ -248,7 +257,7 @@ function BlockBody({
       const firstOfSource = !!body && !named.has(authored);
       if (body) named.add(authored);
       parts.push(
-        <span key={i}>
+        <span key={i} {...{ [ANATOMY_RUN_ATTR]: '' }}>
           {lead ? draw(lead) : null}
           {body ? (
             <AuthoredRun
@@ -269,7 +278,7 @@ function BlockBody({
       // run stands for is replaced by the chip that asked for it.
       const [lead, , tail] = peelBreaks(text);
       parts.push(
-        <span key={i}>
+        <span key={i} {...{ [ANATOMY_RUN_ATTR]: '' }}>
           {lead || null}
           <ChipRun run={run} jumpTo={chipJumpTo} />
           {tail || null}

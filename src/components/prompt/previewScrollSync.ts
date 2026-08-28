@@ -1,34 +1,42 @@
 import { TINT_MARK_ATTR } from '@/lib/previewTint';
 
 /**
- * Edit↔Preview scroll sync for the markdown prompt field.
+ * Scroll sync between two panes showing one document at different heights.
  *
- * The two panes have very different heights (a chip is one short token; its expanded value can be many
- * lines), so a whole-document fraction maps poorly. Instead we anchor on the variable elements both panes
- * share in the same order — Lexical chips (`data-lexical-decorator`) in Edit, the expanded chip marks in
- * Preview — and record the viewport center as a position *between two chips*, which we then reproduce in
- * the other pane. Non-uniform expansion above/below the reading spot no longer skews the result.
+ * A whole-document fraction maps poorly (a chip is one short token; its expanded value can be many lines),
+ * so the position is recorded as a spot *between two shared anchors* — elements both panes render in the
+ * same order — and reproduced in the other pane. Non-uniform expansion above or below the reading spot no
+ * longer skews the result.
+ *
+ * Which elements those are is the caller's: the prompt field pairs Lexical chips against the expanded chip
+ * marks ({@link PROMPT_ANCHORS}); the Request Anatomy pairs each run's own wrapper, which both its views
+ * draw one of.
  */
 
 /** A captured scroll position: interpolated between shared anchors `seg`..`seg+1`, or a whole-document
- *  fraction when the pane has no chips to align on. */
+ *  fraction when the pane has no anchors to align on. */
 export type ScrollAnchor = { seg: number; t: number } | { frac: number };
 
 /**
- * The elements the two panes align on, in document order. Preview selects the chip-tinted marks by their
- * brand rather than every `<mark>`: an author's own `==highlight==` renders as one too, and each of those
- * would insert an anchor Edit has no counterpart for, sliding every later pairing out by one.
+ * The prompt field's two pane selectors. Preview selects the chip-tinted marks by their brand rather than
+ * every `<mark>`: an author's own `==highlight==` renders as one too, and each of those would insert an
+ * anchor Edit has no counterpart for, sliding every later pairing out by one.
  */
-export function anchorElements(el: HTMLElement, tab: string): HTMLElement[] {
-  const selector = tab === 'edit' ? '[data-lexical-decorator]' : `mark[${TINT_MARK_ATTR}]`;
+export const PROMPT_ANCHORS = {
+  edit: '[data-lexical-decorator]',
+  preview: `mark[${TINT_MARK_ATTR}]`,
+} as const;
+
+/** The elements a pane aligns on, in document order. */
+export function anchorElements(el: HTMLElement, selector: string): HTMLElement[] {
   return Array.from(el.querySelectorAll<HTMLElement>(selector));
 }
 
 /** Anchor element tops (px from content top), bracketed by the content's own top (0) and bottom
- *  (scrollHeight) — giving `chips + 1` gaps to interpolate within. */
-function anchorPositions(el: HTMLElement, tab: string): number[] {
+ *  (scrollHeight) — giving `anchors + 1` gaps to interpolate within. */
+function anchorPositions(el: HTMLElement, selector: string): number[] {
   const contentTop = el.getBoundingClientRect().top - el.scrollTop;
-  const tops = anchorElements(el, tab).map((a) => a.getBoundingClientRect().top - contentTop);
+  const tops = anchorElements(el, selector).map((a) => a.getBoundingClientRect().top - contentTop);
   return [0, ...tops, el.scrollHeight];
 }
 
@@ -37,17 +45,17 @@ function anchorPositions(el: HTMLElement, tab: string): number[] {
  * passes the viewport centre; the caret passes its own offset, which is what makes the preview follow the
  * line being written rather than the middle of the view.
  */
-export function anchorAt(el: HTMLElement, tab: string, offset: number): ScrollAnchor {
-  const pos = anchorPositions(el, tab);
-  if (pos.length <= 2) return { frac: offset / el.scrollHeight }; // no chips → whole-document fraction
+export function anchorAt(el: HTMLElement, selector: string, offset: number): ScrollAnchor {
+  const pos = anchorPositions(el, selector);
+  if (pos.length <= 2) return { frac: offset / el.scrollHeight }; // no anchors → whole-document fraction
   let seg = 0;
   while (seg < pos.length - 2 && offset >= pos[seg + 1]) seg++;
   return { seg, t: (offset - pos[seg]) / (pos[seg + 1] - pos[seg] || 1) };
 }
 
-export function captureAnchor(el: HTMLElement | null, tab: string): ScrollAnchor | null {
+export function captureAnchor(el: HTMLElement | null, selector: string): ScrollAnchor | null {
   if (!el || el.scrollHeight <= el.clientHeight) return null;
-  return anchorAt(el, tab, el.scrollTop + el.clientHeight / 2);
+  return anchorAt(el, selector, el.scrollTop + el.clientHeight / 2);
 }
 
 /** The top of one node's box, measuring a text node through a range since only elements have rects. */
@@ -97,12 +105,12 @@ export function caretOffset(el: HTMLElement): number | null {
   return top - (el.getBoundingClientRect().top - el.scrollTop);
 }
 
-export function applyAnchor(el: HTMLElement | null, tab: string, anchor: ScrollAnchor): void {
+export function applyAnchor(el: HTMLElement | null, selector: string, anchor: ScrollAnchor): void {
   if (!el) return;
   let center: number;
   if ('frac' in anchor) center = anchor.frac * el.scrollHeight;
   else {
-    const pos = anchorPositions(el, tab);
+    const pos = anchorPositions(el, selector);
     const seg = Math.min(anchor.seg, pos.length - 2); // guard against a differing anchor count
     center = pos[seg] + anchor.t * (pos[seg + 1] - pos[seg]);
   }

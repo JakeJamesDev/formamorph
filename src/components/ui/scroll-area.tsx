@@ -5,8 +5,12 @@ import { cn } from "@/lib/utils"
 
 const ScrollArea = React.forwardRef<
   React.ElementRef<typeof ScrollAreaPrimitive.Root>,
-  React.ComponentPropsWithoutRef<typeof ScrollAreaPrimitive.Root>
->(({ className, children, ...props }, ref) => (
+  React.ComponentPropsWithoutRef<typeof ScrollAreaPrimitive.Root> & {
+    /** The element that actually scrolls. `ref` lands on Root, which never moves — a caller that has to
+     *  read or set the scroll position needs this one. */
+    viewportRef?: React.Ref<HTMLDivElement>
+  }
+>(({ className, children, viewportRef, ...props }, ref) => (
   <ScrollAreaPrimitive.Root
     ref={ref}
     className={cn("relative overflow-hidden", className)}
@@ -16,7 +20,7 @@ const ScrollArea = React.forwardRef<
         `[&>div]:!block` overrides Radix's inline `display:table` on the viewport's content wrapper —
         table shrink-wraps to content width, letting long rows overflow horizontally (breaking `truncate`);
         block keeps it viewport-width so children clip. We have no horizontal ScrollArea, so this is safe. */}
-    <ScrollAreaPrimitive.Viewport className="h-full w-full rounded-[inherit] pr-[11px] [&>div]:!block">
+    <ScrollAreaPrimitive.Viewport ref={viewportRef} className="h-full w-full rounded-[inherit] pr-[11px] [&>div]:!block">
       {children}
     </ScrollAreaPrimitive.Viewport>
     <ScrollBar />

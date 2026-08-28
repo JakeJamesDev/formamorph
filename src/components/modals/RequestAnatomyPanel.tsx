@@ -1,9 +1,10 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { Columns2, Maximize2, Minimize2, Square } from 'lucide-react';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { HintInfo } from '@/components/SettingsRows';
-import { RequestAnatomyView, type AnatomyViewMode } from '@/components/game/RequestAnatomyView';
+import { ANATOMY_RUN_ATTR, RequestAnatomyView, type AnatomyViewMode } from '@/components/game/RequestAnatomyView';
+import { applyAnchor, captureAnchor, type ScrollAnchor } from '@/components/prompt/previewScrollSync';
 import type { PromptJumpTarget } from '@/lib/promptJump';
 import { resolveLayout, usePromptSplitMode, MIN_PANE_WIDTH } from '@/lib/promptLayout';
 import {
@@ -27,6 +28,9 @@ import {
 const ALL_CONDITIONS: AnatomyConditions = { recap: true, recall: true, brackets: true };
 
 const MODE_LABELS: Record<AnatomyViewMode, string> = { chips: 'Chips', resolved: 'Preview' };
+
+/** What the two views are scrolled together by: one element per run, drawn by both. */
+const ANATOMY_RUN_SELECTOR = `[${ANATOMY_RUN_ATTR}]`;
 
 export function RequestAnatomyPanel({
   tab,
@@ -80,8 +84,83 @@ export function RequestAnatomyPanel({
   const split = resolveLayout(splitMode, width, true, !!fullscreen) === 'split';
   const canSplit = !!fullscreen && width - 12 >= MIN_PANE_WIDTH * 2;
 
+  // Where the reader is, held as the pane-independent anchor the prompt editors use — so flipping the view
+  // lands on the same run rather than at the top, and side by side the two panes travel together. Both
+  // views draw one element per run, so the anchor maps between them exactly.
+  const viewports = useRef<Record<AnatomyViewMode, HTMLDivElement | null>>({ chips: null, resolved: null });
+  const anchor = useRef<ScrollAnchor | null>(null);
+  // True while a scroll of ours is in flight, so the event it provokes is not read back as the reader's.
+  const applying = useRef(false);
+  const release = () => {
+    const open = () => { applying.current = false; };
+    // rAF alone strands the gate in a tab that is not compositing; the timer is the one that always comes.
+    requestAnimationFrame(open);
+    setTimeout(open, 50);
+  };
+  // Read inside the scroll handler, which outlives the render that bound it.
+  const splitNow = useRef(split);
+  splitNow.current = split;
+
+  /**
+   * A pane's scroller arriving or leaving.
+   *
+   * Everything happens here rather than in an effect because the view bar mounts its new pane in a later
+   * commit than the one that switched to it: an effect keyed on the mode runs while this ref is still null,
+   * and would silently do nothing. The listener goes on the viewport itself, since a scroll event does not
+   * bubble and the Root a handler on `<ScrollArea>` would land on is not the element that moved.
+   */
+  const unbind = useRef<Record<AnatomyViewMode, (() => void) | null>>({ chips: null, resolved: null });
+  const bindViewport = useCallback((m: AnatomyViewMode) => (el: HTMLDivElement | null) => {
+    unbind.current[m]?.();
+    unbind.current[m] = null;
+    viewports.current[m] = el;
+    if (!el) return;
+    const onScroll = () => {
+      if (applying.current) return;
+      anchor.current = captureAnchor(el, ANATOMY_RUN_SELECTOR);
+      const other = viewports.current[m === 'chips' ? 'resolved' : 'chips'];
+      if (!splitNow.current || !anchor.current || !other) return;
+      applying.current = true;
+      applyAnchor(other, ANATOMY_RUN_SELECTOR, anchor.current);
+      release();
+    };
+    el.addEventListener('scroll', onScroll);
+    unbind.current[m] = () => el.removeEventListener('scroll', onScroll);
+    // Arriving where the reader already was, which is what makes the flip land on the same run.
+    if (!anchor.current) return;
+    applying.current = true;
+    applyAnchor(el, ANATOMY_RUN_SELECTOR, anchor.current);
+    release();
+  }, []);
+  // Stable per pane, so the ref fires on a real mount rather than on every render.
+  const bindChips = useMemo(() => bindViewport('chips'), [bindViewport]);
+  const bindResolved = useMemo(() => bindViewport('resolved'), [bindViewport]);
+
+  // Landing on a freshly mounted pane: put it where the reader was. Layout, so it lands before paint.
+  //
+  // A different prompt is a different document, so it opens at its own top — and the panes it opens in are
+  // the ones the last prompt left scrolled, so they are put back rather than merely un-anchored. Both are
+  // handled here rather than in an effect of their own: a passive effect would run after this one had
+  // already applied the stale position.
+  const lastTab = useRef(tab);
+  useLayoutEffect(() => {
+    applying.current = true;
+    const panes = split ? (['chips', 'resolved'] as const) : ([mode] as const);
+    if (lastTab.current !== tab) {
+      lastTab.current = tab;
+      anchor.current = null;
+      for (const m of panes) { const el = viewports.current[m]; if (el) el.scrollTop = 0; }
+    } else if (anchor.current) {
+      for (const m of panes) applyAnchor(viewports.current[m], ANATOMY_RUN_SELECTOR, anchor.current);
+    }
+    release();
+  }, [mode, split, requests, tab]);
+
   const pane = (paneMode: AnatomyViewMode) => (
-    <ScrollArea className="flex-1 min-h-0 pr-3">
+    <ScrollArea
+      className="flex-1 min-h-0 pr-3"
+      viewportRef={paneMode === 'chips' ? bindChips : bindResolved}
+    >
       {requests.length === 0 ? (
         <p className="text-helper text-muted-foreground">
           Your current settings never send this request, so there is nothing to draw.
