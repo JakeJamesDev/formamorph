@@ -356,7 +356,7 @@ describe('resolveToken (shared by the renderer and the editor preview)', () => {
 });
 
 describe('renderPromptTemplateRuns', () => {
-  const labels = { source: 'system-template' as const, contextLabel: 'world-data' as const };
+  const labels = { source: 'system-template' as const };
   const slice = (t: { content: string; runs: { start: number; end: number }[] }) =>
     t.runs.map((r) => t.content.slice(r.start, r.end));
 
@@ -381,12 +381,27 @@ describe('renderPromptTemplateRuns', () => {
     }
   });
 
-  it('splits authored template prose from the value a chip injected', () => {
+  it('splits authored template prose from the value a chip injected, and names the chip that did it', () => {
     const tiled = renderPromptTemplateRuns('Before <WORLD DESCRIPTION> after.', { '<WORLD DESCRIPTION>': 'DELTA' }, labels);
     expect(slice(tiled)).toEqual(['Before ', 'DELTA', ' after.']);
-    expect(tiled.runs.map((r) => r.source ?? r.contextLabel)).toEqual([
-      'system-template', 'world-data', 'system-template',
-    ]);
+    expect(tiled.runs.map((r) => r.chip)).toEqual([undefined, '<WORLD DESCRIPTION>', undefined]);
+    // Every run still names the editor it came out of, chips included, so a click knows where to go.
+    expect(tiled.runs.every((r) => r.source === 'system-template')).toBe(true);
+  });
+
+  it('identifies a chip by its variant, so two modes of one variable are two different chips', () => {
+    const tiled = renderPromptTemplateRuns(
+      '<STATS DESCRIPTION|numbers> then <STATS DESCRIPTION>',
+      { '<STATS DESCRIPTION|numbers>': '8/10', '<STATS DESCRIPTION>': 'Hale' },
+      labels,
+    );
+    expect(tiled.runs.map((r) => r.chip)).toEqual(['<STATS DESCRIPTION|numbers>', undefined, '<STATS DESCRIPTION>']);
+  });
+
+  it('identifies an affixed placement by the chip itself, so the wording it carries is not a new chip', () => {
+    const token = joinToken({ base: '<NOTES>', pre: 'Remember: ', post: '.' });
+    const tiled = renderPromptTemplateRuns(token, { '<NOTES>': 'tide' }, labels);
+    expect(tiled.runs.map((r) => r.chip)).toEqual(['<NOTES>']);
   });
 
   it('counts an unresolved token as authored text, since that is what the model reads', () => {
@@ -418,10 +433,12 @@ describe('renderPromptTemplateRuns', () => {
     const tiled = renderPromptTemplateRuns(
       'My action this turn: <PLAYER ACTION>',
       { '<PLAYER ACTION>': 'I wade toward the skiff.' },
-      { source: 'user-template', contextLabel: 'action' },
+      { source: 'user-template', tokens: { '<PLAYER ACTION>': 'action' } },
     );
     expect(slice(tiled)).toEqual(['My action this turn: ', 'I wade toward the skiff.']);
-    expect(tiled.runs[0].source).toBe('user-template');
+    expect(tiled.runs[0].chip).toBeUndefined();
+    expect(tiled.runs[1].chip).toBe('<PLAYER ACTION>');
+    // The few chips holding what another pass wrote keep a name for it, on top of their own token.
     expect(tiled.runs[1].contextLabel).toBe('action');
   });
 });

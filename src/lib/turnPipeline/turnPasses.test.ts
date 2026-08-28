@@ -374,12 +374,13 @@ describe('the narration request anatomy', () => {
   const withHistory = { trimmedHistory: HISTORY, historyRuns: HISTORY_RUNS };
   const anatomyOf = (over: Partial<TurnMaterial> = {}, settings: Partial<TurnSettings> = {}, planOver: Partial<TurnPlanInput> = {}) =>
     build('narration', { ...withHistory, ...over }, planOver, settings).anatomy!;
-  /** The final user turn's runs, paired with the text each one selects. */
+  /** The final user turn's runs, paired with the text each one selects. A run a chip produced is named by
+   *  its token; the rest by the editor they came from, or by what the app assembled. */
   const finalRuns = (over: Partial<TurnMaterial> = {}, settings: Partial<TurnSettings> = {}, planOver: Partial<TurnPlanInput> = {}) => {
     const request = build('narration', { ...withHistory, ...over }, planOver, settings);
     const content = request.messages[request.messages.length - 1].content;
     const runs = request.anatomy!.messages[request.anatomy!.messages.length - 1];
-    return runs.map((r) => [r.source ?? r.contextLabel, content.slice(r.start, r.end)]);
+    return runs.map((r) => [r.chip ?? r.source ?? r.contextLabel, content.slice(r.start, r.end)]);
   };
 
   it('sends byte-identical messages whether or not the caller supplied a sidecar', () => {
@@ -411,10 +412,10 @@ describe('the narration request anatomy', () => {
     expect(anatomy.messages[2].length).toBeGreaterThan(0);
   });
 
-  it('splits the user template from the action the player typed', () => {
+  it('splits the user template from the action chip the player typed into', () => {
     expect(finalRuns({}, { thinkingMode: 'off' })).toEqual([
       ['user-template', 'Player: '],
-      ['action', 'I read the notices.'],
+      ['<PLAYER ACTION>', 'I read the notices.'],
     ]);
   });
 
@@ -422,7 +423,7 @@ describe('the narration request anatomy', () => {
     const bracket = { action: 'I wait. [make her leave]' };
     expect(finalRuns(bracket, { thinkingMode: 'off' })).toEqual([
       ['user-template', 'Player: '],
-      ['action', 'I wait. [make her leave]\n\n'],
+      ['<PLAYER ACTION>', 'I wait. [make her leave]\n\n'],
       ['direction', 'OOC RIDER'],
     ]);
     expect(finalRuns({}, { thinkingMode: 'off' }).some(([label]) => label === 'direction')).toBe(false);
@@ -491,12 +492,14 @@ describe('every pass request anatomy', () => {
     const request = build('choices');
     const runs = request.anatomy!.messages[0];
     const content = request.messages[0].content;
-    expect(runs.map((r) => [r.source ?? r.contextLabel, content.slice(r.start, r.end)])).toEqual([
+    expect(runs.map((r) => [r.chip ?? r.source, content.slice(r.start, r.end)])).toEqual([
       ['user-template', 'Choices: '],
-      ['action', 'I read the notices.'],
+      ['<PLAYER ACTION>', 'I read the notices.'],
       ['user-template', ' | '],
-      ['narration', 'The notices are damp and half-illegible.'],
+      ['<NARRATION>', 'The notices are damp and half-illegible.'],
     ]);
+    // Those two also name what wrote them, so the anatomy can lead back to the prompt behind each.
+    expect(runs.map((r) => r.contextLabel)).toEqual([undefined, 'action', undefined, 'narration']);
   });
 
   it('names the director’s narration as the past — nothing has been written this turn yet', () => {
@@ -561,12 +564,14 @@ describe('the scene-tag pass', () => {
   it('names its own runs: the template, the narration, and who is in frame', () => {
     const request = buildTags({ sceneCast: ['Bram'] });
     const content = request.messages[0].content;
-    expect(request.anatomy!.messages[0].map((r) => [r.source ?? r.contextLabel, content.slice(r.start, r.end)])).toEqual([
+    expect(request.anatomy!.messages[0].map((r) => [r.chip ?? r.source, content.slice(r.start, r.end)])).toEqual([
       ['user-template', 'Draw: '],
-      ['narration', 'She turns the pole over once.'],
+      ['<NARRATION>', 'She turns the pole over once.'],
       ['user-template', ' | In frame: '],
-      ['scene-cast', 'Bram'],
+      ['<IN FRAME>', 'Bram'],
     ]);
+    expect(request.anatomy!.messages[0].map((r) => r.contextLabel))
+      .toEqual([undefined, 'narration', undefined, 'scene-cast']);
     expect(runsTile(request.systemPrompt, request.anatomy!.system)).toBe(true);
   });
 });

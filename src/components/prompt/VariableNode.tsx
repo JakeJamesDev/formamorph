@@ -6,7 +6,8 @@ import {
   type LexicalNode, type NodeKey, type SerializedLexicalNode, type Spread,
 } from 'lexical';
 import { useLexicalComposerContext } from '@lexical/react/LexicalComposerContext';
-import { Chip, ChipRenameInput } from '@/components/Chip';
+import { ChipRenameInput } from '@/components/Chip';
+import { TokenChip } from './TokenChip';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -62,11 +63,6 @@ function VariableChip({ nodeKey, token }: { nodeKey: NodeKey; token: string }) {
   useEffect(() => editor.registerEditableListener(setEditable), [editor]);
   const known = vocab.isKnown(token);
   const color = vocab.color(token);
-  // Reflect the mode in the chip text so it's readable at a glance, not only in the pop-out.
-  const variantLabel = vocab.variantLabel(token);
-  const label = variantLabel ? `${vocab.label(token)} (${variantLabel})` : vocab.label(token);
-  // What the chip will become, for the tooltip — the label already says which placeholder it is.
-  const hint = vocab.hint?.(token);
 
   const axes = known ? vocab.axes(token) : [];
   const selection = known ? vocab.selection(token) : {};
@@ -140,20 +136,15 @@ function VariableChip({ nodeKey, token }: { nodeKey: NodeKey; token: string }) {
   return (
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
-        <span
+        <TokenChip
+          token={token}
+          vocab={vocab}
           draggable={editable}
           onDragStart={editable ? handleDragStart : undefined}
           onDoubleClick={renameable ? startRename : undefined}
-          className="inline-block align-baseline"
-        >
-          <Chip
-            label={label}
-            title={hint ? `${vocab.label(token)} — ${hint}` : undefined}
-            onRemove={editable ? remove : undefined}
-            grabbable={editable}
-            style={color ? { backgroundColor: color, color: '#000' } : undefined}
-          />
-        </span>
+          onRemove={editable ? remove : undefined}
+          grabbable={editable}
+        />
       </PopoverTrigger>
       <PopoverContent
         className={axes.some((a) => a.options.length >= 4) ? 'w-96' : 'w-64'}

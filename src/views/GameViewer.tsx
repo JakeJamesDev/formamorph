@@ -4491,7 +4491,7 @@ const GameViewer = ({
                                       {req.anatomy && !searchActive ? (
                                         <RequestAnatomyView
                                           blocks={toAnatomyBlocks(req.messages, req.anatomy)}
-                                          mode="full"
+                                          mode="resolved"
                                           // A capture stores its type as a plain string; an unknown one
                                           // simply resolves to no editor and leaves the run inert.
                                           type={req.type as AIRequestType}

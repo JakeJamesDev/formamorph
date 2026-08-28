@@ -1,7 +1,7 @@
 // Storage is real (in-memory): SettingsProvider and the modal both read it on mount.
 import 'fake-indexeddb/auto';
 import { describe, it, expect, beforeEach, vi } from 'vitest';
-import { render, screen, fireEvent } from '@testing-library/react';
+import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { SettingsProvider } from '@/contexts/SettingsContext';
 import { ThemeProvider } from '@/components/theme-provider';
 import { SettingsModal } from './SettingsModal';
@@ -114,5 +114,63 @@ describe('Settings → Prompts jumps', () => {
     // The Messages view stacks the live conditional lines, each under its own name.
     expect(screen.getByText('Recap Message')).toBeInTheDocument();
     expect(screen.getByText('Now Message')).toBeInTheDocument();
+  });
+});
+
+describe('Settings → Prompts anatomy view mode', () => {
+  /** The hub's view bar. Radix Tabs select on mousedown, which a plain click never sends. */
+  const modeTab = (label: 'Chips' | 'Preview') => screen.getByRole('tab', { name: label });
+  const showMode = (label: 'Chips' | 'Preview') => fireEvent.mouseDown(modeTab(label));
+
+  it('keeps the chosen view while another prompt is selected', () => {
+    openPrompts();
+    showMode('Preview');
+    fireEvent.click(railRow('Choices'));
+    expect(onHub()).toBe(true);
+    expect(modeTab('Preview')).toHaveAttribute('data-state', 'active');
+  });
+
+  it('keeps it across a trip into an editor and back to the hub', () => {
+    openPrompts();
+    showMode('Preview');
+    fireEvent.click(railRow(SURFACE_LABELS.system));
+    expect(onSystemEditor()).toBe(true);
+    fireEvent.click(railRow('Narration'));
+    expect(modeTab('Preview')).toHaveAttribute('data-state', 'active');
+  });
+});
+
+describe('Settings → Prompts chip jumps', () => {
+  /** A chip in the drawn request, found by where its tooltip says it goes. */
+  const chipInto = (editor: string) =>
+    screen.getAllByRole('button').find((b) => b.getAttribute('title') === `Show this chip in the ${editor}`)!;
+
+  it('opens the editor holding a clicked chip, and reveals that chip there', async () => {
+    // jsdom has no layout, so the scroll the reveal asks for is the observable half of it; the ring is
+    // the other, and lands on the chip's own node.
+    const scrollTo = vi.fn();
+    Element.prototype.scrollIntoView = scrollTo;
+    openPrompts();
+    fireEvent.click(chipInto(SURFACE_LABELS.system));
+    expect(onSystemEditor()).toBe(true);
+    expect(onHub()).toBe(false);
+    // The reveal retries on a timer until the editor's chips have mounted.
+    await waitFor(
+      () => expect(document.querySelector('[data-chip-token].editor-find-target')).not.toBeNull(),
+      { timeout: 3000 },
+    );
+    expect(scrollTo).toHaveBeenCalled();
+  });
+
+  it('follows an assembled block to the anatomy of the prompt that wrote it', () => {
+    openPrompts();
+    // Memory Summaries ships on, so the narration request carries the condensed recap band.
+    const recap = screen.getAllByRole('button').find((b) => b.getAttribute('title')?.includes('open the Summaries prompt'))!;
+    fireEvent.click(recap);
+    // The destination is that prompt's own hub, not one of its editors.
+    expect(onHub()).toBe(true);
+    // Which prompt's hub it is: opening its System editor names the job the Summaries prompt does.
+    fireEvent.click(railRow(SURFACE_LABELS.system));
+    expect(screen.getByText(/Condenses an older turn/)).toBeInTheDocument();
   });
 });

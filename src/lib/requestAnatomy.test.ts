@@ -4,6 +4,7 @@ import {
   trimEndTiled,
   runsTile,
   toAnatomyBlocks,
+  CONTEXT_HINTS,
   CONTEXT_LABELS,
   SOURCE_LABELS,
   type AnatomyRun,
@@ -16,18 +17,18 @@ describe('tilePieces', () => {
   it('covers the joined content exactly, in order', () => {
     const { content, runs } = tilePieces([
       { text: 'You are the narrator.\n\n', source: 'system-template' },
-      { text: 'Sedge Landing is drowned.', contextLabel: 'world-data' },
+      { text: 'Sedge Landing is drowned.', source: 'system-template', chip: '<WORLD DESCRIPTION>' },
     ]);
     expect(content).toBe('You are the narrator.\n\nSedge Landing is drowned.');
     expect(runsTile(content, runs)).toBe(true);
     expect(sliced(content, runs)).toEqual(['You are the narrator.\n\n', 'Sedge Landing is drowned.']);
-    expect(runs.map((r) => r.source ?? r.contextLabel)).toEqual(['system-template', 'world-data']);
+    expect(runs.map((r) => r.chip ?? r.source)).toEqual(['system-template', '<WORLD DESCRIPTION>']);
   });
 
   it('drops empty pieces without leaving a zero-width run', () => {
     const { content, runs } = tilePieces([
       { text: 'kept', source: 'system-template' },
-      { text: '', contextLabel: 'world-data' },
+      { text: '', contextLabel: 'condensed' },
     ]);
     expect(content).toBe('kept');
     expect(runs).toHaveLength(1);
@@ -41,6 +42,24 @@ describe('tilePieces', () => {
     ]);
     expect(runs).toHaveLength(2);
     expect(sliced(content, runs)).toEqual(['ab', 'c']);
+  });
+
+  it('keeps two chips apart, however identically the template around them is labeled', () => {
+    const { content, runs } = tilePieces([
+      { text: 'Health 8/10', source: 'system-template', chip: '<STATS DESCRIPTION>' },
+      { text: 'Wren is here.', source: 'system-template', chip: '<ENTITIES>' },
+    ]);
+    expect(sliced(content, runs)).toEqual(['Health 8/10', 'Wren is here.']);
+    expect(runs.map((r) => r.chip)).toEqual(['<STATS DESCRIPTION>', '<ENTITIES>']);
+  });
+
+  it('keeps a chip run out of the author prose it sits between, though they share a source', () => {
+    const { content, runs } = tilePieces([
+      { text: 'Before ', source: 'system-template' },
+      { text: 'DELTA', source: 'system-template', chip: '<WORLD DESCRIPTION>' },
+      { text: ' after.', source: 'system-template' },
+    ]);
+    expect(sliced(content, runs)).toEqual(['Before ', 'DELTA', ' after.']);
   });
 
   it('does not merge an authored run into a context run that carries no label', () => {
@@ -93,7 +112,7 @@ describe('trimEndTiled', () => {
   it('clamps the last run to the trimmed content', () => {
     const tiled = tilePieces([
       { text: 'kept', source: 'system-template' },
-      { text: 'value\n\n\n', contextLabel: 'world-data' },
+      { text: 'value\n\n\n', contextLabel: 'condensed' },
     ]);
     const trimmed = trimEndTiled(tiled);
     expect(trimmed.content).toBe('keptvalue');
@@ -104,7 +123,7 @@ describe('trimEndTiled', () => {
   it('drops a run that trimming erases entirely', () => {
     const tiled = tilePieces([
       { text: 'kept', source: 'system-template' },
-      { text: '\n\n', contextLabel: 'world-data' },
+      { text: '\n\n', contextLabel: 'condensed' },
     ]);
     const trimmed = trimEndTiled(tiled);
     expect(trimmed.content).toBe('kept');
@@ -165,8 +184,13 @@ describe('label vocabulary', () => {
     expect(Object.values(SOURCE_LABELS).every((v) => v.length > 0)).toBe(true);
   });
 
-  it('describes every context label in the player voice, with no duplicates', () => {
-    const values = Object.values(CONTEXT_LABELS);
-    expect(new Set(values).size).toBe(values.length);
+  it('names every assembled run shortly and distinctly, and explains each in the player voice', () => {
+    const names = Object.values(CONTEXT_LABELS);
+    expect(new Set(names).size).toBe(names.length);
+    // Chip-sized: a name is a few title-case words, never the sentence that explains it.
+    for (const name of names) expect(name.split(' ').length).toBeLessThanOrEqual(3);
+    for (const key of Object.keys(CONTEXT_LABELS) as (keyof typeof CONTEXT_LABELS)[]) {
+      expect(CONTEXT_HINTS[key].length).toBeGreaterThan(CONTEXT_LABELS[key].length);
+    }
   });
 });

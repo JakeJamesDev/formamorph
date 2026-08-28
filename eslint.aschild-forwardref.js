@@ -13,6 +13,7 @@ export const REF_SAFE_ASCHILD_CHILDREN = [
   'Button', // src/components/ui/button.tsx
   'GradientButton',
   'WorldActionButton',
+  'TokenChip', // src/components/prompt/TokenChip.tsx
   // lucide-react icons forward refs
   'ChevronDown',
   // Radix's own Slot — merging the ref it is handed into its child is the whole job.
