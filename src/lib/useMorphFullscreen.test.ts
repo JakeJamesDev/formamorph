@@ -272,4 +272,27 @@ describe('useMorphResize', () => {
     act(() => vi.advanceTimersByTime(400));
     expect(boxEl.style.animation).toBe('');
   });
+
+  it('hands the animation back already finished, so the open zoom-and-fade does not replay', () => {
+    // Restoring `animation: ''` flips animation-name from `none` back to the class's, which starts it
+    // over from frame one — the window blinked out and zoomed back in at the end of every trip.
+    const { boxEl } = makeElements();
+    let measured = 0;
+    boxEl.getBoundingClientRect = () => (measured++ === 0 ? rect(0, 0, 400, 300) : rect(0, 0, 1000, 800));
+    const finish = vi.fn();
+    (boxEl as HTMLElement & { getAnimations(): Animation[] }).getAnimations =
+      () => [{ finish } as unknown as Animation];
+
+    const { result, rerender } = renderHook(({ key }: { key: string }) => useMorphResize(key), {
+      initialProps: { key: 'window' },
+    });
+    act(() => result.current(boxEl));
+    rerender({ key: 'full' });
+    // Not before the trip lands: the box is still travelling on its inline transform.
+    expect(finish).not.toHaveBeenCalled();
+
+    act(() => vi.advanceTimersByTime(400));
+    expect(boxEl.style.animation).toBe('');
+    expect(finish).toHaveBeenCalled();
+  });
 });
