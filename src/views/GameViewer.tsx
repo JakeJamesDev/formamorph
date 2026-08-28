@@ -737,11 +737,6 @@ const GameViewer = ({
     setSettingsEndpointTab(endpointTab);
     setIsSettingsOpen(true);
   });
-  const openPromptEditor = (target: PromptJumpTarget) => {
-    setSettingsTab('prompts');
-    setSettingsPrompt(target);
-    setIsSettingsOpen(true);
-  };
 
   // --- AI setup gate -------------------------------------------------------------------------------
   // Warn on entering a world whose configured AI doesn't answer, rather than blocking the launch from the
@@ -4473,7 +4468,7 @@ const GameViewer = ({
                                   >
                                     <CollapsibleTrigger asChild>
                                       <button className="flex w-full items-center justify-between gap-2 p-2 text-left font-semibold">
-                                        <span>Prompt</span>
+                                        <span>Raw Input</span>
                                         {reqOpen ? (
                                           <ChevronDown className="h-4 w-4 flex-shrink-0" />
                                         ) : (
@@ -4482,19 +4477,15 @@ const GameViewer = ({
                                       </button>
                                     </CollapsibleTrigger>
                                     <CollapsibleContent className="p-2 pt-0">
-                                      {/* Labeled shape when this request carried a Request Anatomy — but not
-                                          while searching: the search filter rewrites each block's text, and
-                                          run offsets index the real one. */}
+                                      {/* Region/chat shape when this request carried a Request Anatomy — but
+                                          not while searching: the search filter rewrites each block's text,
+                                          and run offsets index the real one. `plain` keeps the bytes
+                                          verbatim; provenance reading lives in the Settings anatomy hub. */}
                                       {req.anatomy && !searchActive ? (
                                         <RequestAnatomyView
                                           blocks={toAnatomyBlocks(req.messages, req.anatomy)}
                                           mode="resolved"
-                                          // A capture stores its type as a plain string; an unknown one
-                                          // simply resolves to no editor and leaves the run inert.
-                                          type={req.type as AIRequestType}
-                                          onJump={openPromptEditor}
-                                          // Dictionary/hydration marks compose with the run styling by
-                                          // segmenting each run's own slice.
+                                          plain
                                           renderText={(text) => renderSegs(segmentsFor(text, req, false))}
                                         />
                                       ) : (
@@ -4505,9 +4496,9 @@ const GameViewer = ({
                                               <div className="font-medium text-muted-foreground uppercase">
                                                 {ms.role}
                                               </div>
-                                              <pre className="whitespace-pre-wrap break-words bg-muted/50 p-2 rounded">
+                                              <p className="whitespace-pre-wrap break-words text-label bg-muted/50 p-2 rounded">
                                                 {renderSegs(ms.segs)}
-                                              </pre>
+                                              </p>
                                             </div>
                                           );
                                         })
@@ -4534,13 +4525,15 @@ const GameViewer = ({
                                       </button>
                                     </CollapsibleTrigger>
                                     <CollapsibleContent className="p-2 pt-0">
-                                      <pre className="whitespace-pre-wrap break-words bg-muted/50 p-2 rounded">
+                                      {/* Same face as the Raw Input blocks: this is the same conversation,
+                                          read top to bottom. */}
+                                      <p className="whitespace-pre-wrap break-words text-label rounded-lg border border-border p-3">
                                         {req.response ? (
                                           renderSegs(outSegs)
                                         ) : (
                                           <span className="text-muted-foreground">(empty output)</span>
                                         )}
-                                      </pre>
+                                      </p>
                                     </CollapsibleContent>
                                   </Collapsible>
                                 )}
