@@ -25,7 +25,7 @@ import { Pager } from "@/components/ui/pagination";
 import { Music, SquarePen, Database, ScrollText, ChevronDown, ChevronRight, ChevronsDownUp, ChevronsUpDown, Search, Eye, EyeOff } from "lucide-react";
 import { ActionIcon } from '@/lib/actionIcons';
 import IndeterminateProgress from "../components/ui/indeterminate-progress";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { toast } from "react-toastify";
 import { ThemedToastContainer } from "@/components/ThemedToastContainer";
@@ -768,6 +768,7 @@ const GameViewer = ({
       case 'settings': setIsSettingsOpen(true); break;
       case 'export': setIsExportModalOpen(true); break;
       case 'location': setIsLocationModalOpen(true); break;
+      case 'aiContext': setIsDebugOpen(true); break;
     }
   }, [devRoute?.modal]);
   // Entity modal is a per-entity detail view (needs a selected entity), so open the first one — and wait
@@ -4030,7 +4031,7 @@ const GameViewer = ({
 
       {/* Full AI context sent each turn, paginated by turn */}
       <Dialog open={isDebugOpen} onOpenChange={setIsDebugOpen}>
-        <DialogContent aria-describedby={undefined} className="max-w-[90vw] w-[90vw] h-[85dvh] flex flex-col overflow-hidden">
+        <DialogContent aria-describedby={undefined} className="max-w-[95vw] w-[95vw] h-[90dvh] flex flex-col overflow-hidden">
           {(() => {
             const palette = HIGHLIGHT_PALETTE;
             // Stable per-entry color + name lookups (by the live dictionary's order), shared by the legend,
@@ -4245,23 +4246,8 @@ const GameViewer = ({
             };
             return (
               <>
-                <DialogHeader className="flex-shrink-0">
-                  <div className="flex items-center justify-between gap-2 pr-8">
-                    <DialogTitle className="flex items-center gap-2"><ScrollText className="h-4 w-4" /> AI context</DialogTitle>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      className="gap-1.5"
-                      onClick={handleExportDebugContext}
-                      disabled={debugTurns.length === 0}
-                      title="Download the full turn history as JSON"
-                    >
-                      <ActionIcon.export className="h-4 w-4" />
-                      Export
-                    </Button>
-                  </div>
-                </DialogHeader>
-                <div className="flex flex-wrap items-center gap-2 flex-shrink-0 text-meta">
+                <DialogTitle className="sr-only">AI Context</DialogTitle>
+                <div className="flex flex-wrap items-center gap-2 flex-shrink-0 pr-8 text-meta">
                   {/* Highlight-mode toggle: dictionary entries vs the per-turn rehydration signal. */}
                   <div className="inline-flex flex-shrink-0 overflow-hidden rounded border border-border">
                     {(["dictionary", "hydrations"] as const).map((m) => (
@@ -4382,6 +4368,17 @@ const GameViewer = ({
                     />
                     Current context only
                   </label>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="h-8 flex-shrink-0 gap-1.5"
+                    onClick={handleExportDebugContext}
+                    disabled={debugTurns.length === 0}
+                    title="Download the full turn history as JSON"
+                  >
+                    <ActionIcon.export className="h-4 w-4" />
+                    Export
+                  </Button>
                 </div>
                 {currentTurn && (
                   <div className="flex-shrink-0 text-meta text-muted-foreground truncate">
