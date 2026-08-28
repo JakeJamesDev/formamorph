@@ -113,6 +113,9 @@ export interface MorphFullscreen {
   /** Goes on whatever sits inside that box. Fades rather than scaling, since a container transform that
    *  scales its own contents reads as the text stretching. */
   contentClassName: string;
+  /** Goes on the dialog's dim sheet, pacing its fade to the trip. Left to the stock dialog classes it
+   *  snaps in at 150ms and holds fully dark until the overlay unmounts, well after the box has landed. */
+  overlayClassName: string;
 }
 
 /**
@@ -291,6 +294,16 @@ export function useMorphFullscreen(sourceRef: RefObject<HTMLElement | null>): Mo
       ? 'animate-in fade-in-0 duration-200 delay-100 fill-mode-both'
       : '';
 
+  // Durations approximate ENTER_MS/EXIT_MS at the named steps, like `contentClassName` above. They
+  // reach both clocks — the sheet's mount fade-in animation, and the transition that carries it out
+  // alongside the shrinking box, where the stock classes would hold it dark until the overlay unmounts,
+  // well after the box has landed. The `data-[state=open]:` wrapper is load-bearing: the stock sheet
+  // pins its 150ms under that variant, and only an equal-specificity duration lands after it in the
+  // sheet order. `closed` keeps opacity at 0 while the dialog primitive tears the overlay down.
+  const overlayClassName = phase === 'leaving' || phase === 'closed'
+    ? 'opacity-0 transition-opacity data-[state=open]:duration-200'
+    : 'transition-opacity data-[state=open]:duration-300';
+
   return {
     mounted,
     phase,
@@ -299,5 +312,6 @@ export function useMorphFullscreen(sourceRef: RefObject<HTMLElement | null>): Mo
     toggle,
     boxRef,
     contentClassName,
+    overlayClassName,
   };
 }

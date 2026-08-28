@@ -53,10 +53,12 @@ const DialogContent = React.forwardRef<
     /** Drop the stock zoom-and-fade so the caller can animate the box itself — a transform of its own
      *  would otherwise be overwritten frame by frame by the one these classes are running. */
     unanimated?: boolean;
+    /** Extra classes for the dim sheet behind the box, for callers that pace its fade themselves. */
+    overlayClassName?: string;
   }
->(({ className, children, hideClose = false, unanimated = false, ...props }, ref) => (
+>(({ className, children, hideClose = false, unanimated = false, overlayClassName, ...props }, ref) => (
   <DialogPortal>
-    <DialogOverlay />
+    <DialogOverlay className={overlayClassName} />
     <DialogPrimitive.Content
       ref={ref}
       className={cn(

@@ -37,6 +37,7 @@ export function FullscreenShell({ morph, title, showTitle = false, returnFocus, 
         ref={morph.boxRef}
         unanimated
         hideClose
+        overlayClassName={morph.overlayClassName}
         aria-describedby={undefined}
         // Focus is moved by hand, without scrolling. Left to the dialog primitive it lands on the first
         // control inside the window — and since the window opens sitting on top of the field it came from,
