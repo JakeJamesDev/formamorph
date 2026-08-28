@@ -86,14 +86,20 @@ describe('resolveContextJump', () => {
     expect(resolveContextJump('intents')).toEqual({ tab: 'character' });
     expect(resolveContextJump('diary-brief')).toEqual({ tab: 'diary' });
     expect(resolveContextJump('condensed')).toEqual({ tab: 'summary' });
-    expect(resolveContextJump('scene-cast')).toEqual({ tab: 'scenetags' });
-    expect(resolveContextJump('narration')).toEqual({ tab: 'narration' });
   });
 
   it('leaves the blocks nobody authored inert', () => {
     // The player's own words, the turns already played, their notes, and a mode's own directive: there is
     // no prompt to open, so a chip for one of these must not offer a click.
     for (const label of ['action', 'past-action', 'past-narration', 'recalled', 'notes', 'mode-directive'] as const) {
+      expect(resolveContextJump(label)).toBeNull();
+    }
+  });
+
+  it('carries no owner for a label that only ever rides a template chip', () => {
+    // Every `narration` and `scene-cast` run comes from a chip (`<NARRATION>`, `<IN FRAME>`), and a chip's
+    // click goes to its own placement — an owner row here could never fire, so there must not be one.
+    for (const label of ['narration', 'scene-cast'] as const) {
       expect(resolveContextJump(label)).toBeNull();
     }
   });

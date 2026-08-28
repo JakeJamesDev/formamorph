@@ -118,7 +118,7 @@ describe('RequestAnatomyView resolved mode', () => {
     const { container } = render(<RequestAnatomyView blocks={blocks} mode="resolved" />);
     const body = [...container.querySelectorAll('p')].pop()!;
     expect(body.textContent).toBe('the condensed body');
-    // The pseudo-tag the view used to print above each context run is gone in both spellings.
+    // No pseudo-tag over the run, in either spelling: no angle brackets, no label sentence.
     expect(container.textContent).not.toContain('<');
     expect(container.textContent).not.toContain(CONTEXT_LABELS.condensed);
   });
