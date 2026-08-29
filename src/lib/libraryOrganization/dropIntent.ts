@@ -1,5 +1,3 @@
-import type { LibraryTileSize } from './types';
-
 /** What a drop on a tile means: fold the two into a folder, or slot the dragged tile beside it. */
 export type DropIntent =
   | { kind: 'group' }
@@ -21,39 +19,26 @@ export interface TileRect {
 const CENTER_BAND = 0.4;
 
 /**
- * Read a drop position over one tile.
+ * Whether a drop at this point folds the dragged tile into the tile under it.
  *
- * The middle of a tile groups; everywhere else reorders. A pointer outside the tile's box never groups
- * — the collision layer hands the nearest tile even when the pointer is past the grid's first or last
- * tile, and that drop has to mean "put it at the boundary", not "fold these two". Outside the box on
- * the vertical axis, the side alone decides: below is after, above is before.
+ * The middle of the tile groups; everywhere else, including anywhere outside its box, is left to the
+ * reorder the sortable layer already computes. The point must be the dragged tile's center in the same
+ * drag-start coordinate space the tile's rect was measured in — the space every other collision reading
+ * lives in — never the live pointer, which drifts out of that space as the preview slides tiles around.
  *
- * Inside the box, small tiles take before/after from their top and bottom halves, so hand-stacking a
- * column reads the way the packer already stacks a run of them; every other tile reads left and right.
- * A drag that cannot group — a folder tile, which never nests — uses the whole tile for reordering
- * instead of losing its middle to a gesture it would refuse.
- *
- * @param point - Where the pointer is, not where the dragged tile's center is: a large tile's center
- *   can sit in a small target's middle while the player is pointing at its edge
- * @param rect - The tile being dropped on
+ * @param canGroup - False for drags that can never group, such as a folder tile, which never nests;
+ *   their middle would otherwise be a dead zone
  */
-export function dropIntent(
+export function isGroupDrop(
   point: { x: number; y: number },
   rect: TileRect,
-  { canGroup, overSize }: { canGroup: boolean; overSize: LibraryTileSize },
-): DropIntent {
-  // Past the tile vertically: the boundary drop. Below the last row or above the first, this is the
-  // only reading that lets a tile reach the very start or end of the grid.
-  if (point.y > rect.top + rect.height) return { kind: 'reorder', position: 'after' };
-  if (point.y < rect.top) return { kind: 'reorder', position: 'before' };
+  canGroup: boolean,
+): boolean {
+  if (!canGroup) return false;
 
   const centerX = rect.left + rect.width / 2;
   const centerY = rect.top + rect.height / 2;
 
-  const inMiddle = Math.abs(point.x - centerX) <= (rect.width * CENTER_BAND) / 2
+  return Math.abs(point.x - centerX) <= (rect.width * CENTER_BAND) / 2
     && Math.abs(point.y - centerY) <= (rect.height * CENTER_BAND) / 2;
-  if (canGroup && inMiddle) return { kind: 'group' };
-
-  const before = overSize === 'small' ? point.y < centerY : point.x < centerX;
-  return { kind: 'reorder', position: before ? 'before' : 'after' };
 }

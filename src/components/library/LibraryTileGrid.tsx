@@ -31,7 +31,7 @@ import {
   ContextMenuTrigger,
 } from '@/components/ui/context-menu';
 import {
-  dropIntent,
+  isGroupDrop,
   packTiles,
   packedRowCount,
   projectedOrder,
@@ -294,17 +294,27 @@ export function LibraryTileGrid<T>({
     };
   };
 
+  /**
+   * The detailed layout's strategy: stock sorting, except while the drop would group. A grouping drop
+   * changes no order, so sliding cards around during one would show a reorder that is not going to
+   * happen — and would move the ringed tile away from the spot the reading found it at. The packed
+   * grid gets the same stillness for free, since its preview order only changes on a reorder intent.
+   */
+  const detailedStrategy: SortingStrategy = (args) =>
+    (drag?.intent?.kind === 'group' ? null : rectSortingStrategy(args));
+
   const sensors = useSensors(
     useSensor(MouseSensor, { activationConstraint: { distance: 8 } }),
     useSensor(TouchSensor, { activationConstraint: { delay: 200, tolerance: 5 } }),
   );
 
   /**
-   * The reading of the drag: which tile it is over (from dnd-kit's collision events) and where the
-   * pointer is (from a native listener). Split this way because neither source alone is trustworthy —
-   * dnd-kit's per-event coordinates lag several events behind under a fast drag, and the pointer alone
-   * cannot say which tile counts as "over" once the preview starts sliding tiles around. The intent is
-   * recomputed from both on every native move, so the reading at release is the release position.
+   * The reading of the drag: which tile it is over, from dnd-kit's collision events, and where the
+   * pointer is, from a native listener. The pointer has to come from the browser directly — dnd-kit's
+   * own coordinates run through React state and lag several events behind under a fast drag, so a
+   * quick release would execute a reading the player had already moved past. Both sources live in
+   * one space: viewport coordinates, against tile rects measured at drag start. The preview slides
+   * tiles away from those rects only by transform, so no reading ever disagrees with another.
    */
   const pointerRef = useRef<{ x: number; y: number } | null>(null);
   const overRef = useRef<{ id: string; rect: TileRect } | null>(null);
@@ -313,23 +323,27 @@ export function LibraryTileGrid<T>({
   const computePreview = (activeId: string): DragPreview => {
     const over = overRef.current;
     const point = pointerRef.current;
-    if (!over || over.id === activeId) return { activeId, overId: activeId, intent: null };
+    if (!over || !point || over.id === activeId) return { activeId, overId: activeId, intent: null };
 
     // Inside a folder there is nothing to group into, since groups hold only items.
     const canGroup = !openGroupId && !tiles.group(activeId);
-    const intent = point
-      ? dropIntent(point, over.rect, {
-        canGroup,
-        overSize: layout === 'grid' ? tiles.size(over.id) : 'medium',
-      })
-      : ({ kind: 'reorder', position: 'after' } as const);
-
+    const intent: DropIntent = isGroupDrop(point, over.rect, canGroup)
+      ? { kind: 'group' }
+      // The stock sortable rule: the dragged tile takes the over tile's slot, landing after it when
+      // it came from earlier in the list and before it otherwise. The reading moves only when the
+      // over tile does — never with the pointer's position inside it — which is what keeps the
+      // projection from flapping under small pointer moves. Past the grid's first or last tile the
+      // collision layer hands that end tile over, so the same rule reaches both ends.
+      : {
+        kind: 'reorder',
+        position: renderedIds.indexOf(activeId) < renderedIds.indexOf(over.id) ? 'after' : 'before',
+      };
     return { activeId, overId: over.id, intent };
   };
 
   const commitPreview = (next: DragPreview) => {
     dragRef.current = next;
-    // The per-pixel stream re-renders the grid only when the reading actually changed.
+    // The per-move stream re-renders the grid only when the reading actually changed.
     setDrag((prev) => (
       prev
         && prev.overId === next.overId
@@ -415,25 +429,30 @@ export function LibraryTileGrid<T>({
 
     return (
       <>
-        <ContextMenuLabel>Tile Size</ContextMenuLabel>
-        <ContextMenuRadioGroup
-          value={tiles.size(id)}
-          onValueChange={(value) => tiles.setSize(id, value as LibraryTileSize)}
-        >
-          {SIZE_LABELS.map(({ size, label }) => (
-            <ContextMenuRadioItem key={size} value={size}>{label}</ContextMenuRadioItem>
-          ))}
-        </ContextMenuRadioGroup>
+        {/* Sizes only shape the packed grid; the detailed layout draws uniform cards, so offering
+            them there would be a menu that does nothing. A size set in grid still persists. */}
+        {layout === 'grid' && (
+          <>
+            <ContextMenuLabel>Tile Size</ContextMenuLabel>
+            <ContextMenuRadioGroup
+              value={tiles.size(id)}
+              onValueChange={(value) => tiles.setSize(id, value as LibraryTileSize)}
+            >
+              {SIZE_LABELS.map(({ size, label }) => (
+                <ContextMenuRadioItem key={size} value={size}>{label}</ContextMenuRadioItem>
+              ))}
+            </ContextMenuRadioGroup>
+            <ContextMenuSeparator />
+          </>
+        )}
 
         {group ? (
           <>
-            <ContextMenuSeparator />
             <ContextMenuItem onSelect={() => setOpenGroupId(group.id)}>Open Group</ContextMenuItem>
             <ContextMenuItem onSelect={() => tiles.disband(group.id)}>Delete Group</ContextMenuItem>
           </>
         ) : (
           <>
-            <ContextMenuSeparator />
             <ContextMenuLabel>Add To Group</ContextMenuLabel>
             {tiles.groups
               .filter((candidate) => candidate.id !== inFolder?.id)
@@ -525,10 +544,11 @@ export function LibraryTileGrid<T>({
         dragRef.current = start;
         setDrag(start);
       }}
-      // Both events feed the same reading. onDragOver alone misses the pointer crossing from a tile's
-      // edge into its middle (it fires only when the tile changes); onDragMove alone lags one frame on
-      // tile changes (its `over` is recomputed after the move). Together every position is read fresh,
-      // and the equality guard keeps the per-pixel stream from re-rendering a grid nothing changed in.
+      // Both events feed the same reading. onDragOver alone misses movement within one tile — from
+      // its edge into its middle — since it fires only when the over tile changes; onDragMove alone
+      // lags one frame on tile changes, because its `over` is recomputed after the move. Together
+      // every position is read fresh, and the equality guard in commitPreview keeps the per-move
+      // stream from re-rendering a grid nothing changed in.
       onDragOver={updateDrag}
       onDragMove={updateDrag}
       onDragCancel={() => {
@@ -561,7 +581,7 @@ export function LibraryTileGrid<T>({
           >
             <SortableContext
               items={renderedIds}
-              strategy={layout === 'grid' ? packedStrategy : rectSortingStrategy}
+              strategy={layout === 'grid' ? packedStrategy : detailedStrategy}
             >
               {renderedIds.map(renderTile)}
             </SortableContext>
