@@ -169,10 +169,10 @@ export function EditableChip({ value, onCommit, onRemove, sortable = false, getS
           const kind = pointerType.current ?? (e.nativeEvent as PointerEvent).pointerType;
           if (kind === "touch" || kind === "pen") startEdit();
         },
-        title: !renameable
-          ? (onActivate ? "Click to open — switch to Multiline to edit the text" : "Switch to Multiline to edit this value")
-          : onActivate ? "Click to open, double-click to rename" : "Tap or double-click to edit",
       }}
+      tip={!renameable
+        ? (onActivate ? "Click to open — switch to Multiline to edit the text" : "Switch to Multiline to edit this value")
+        : onActivate ? "Click to open, double-click to rename" : "Tap or double-click to edit"}
       grabbable={sortable}
     />
   );

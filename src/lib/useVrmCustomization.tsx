@@ -10,6 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Undo2 } from 'lucide-react';
 import type { CharacterData, HairTypeDef } from '@/types';
 import type { VRMCapabilities, VRMViewerHandle } from '@/views/VRMViewer';
+import { Tip } from '@/components/ui/tooltip';
 
 /**
  * Owns the avatar-customization surface — the sliders and color pickers that read a model's detected
@@ -32,9 +33,11 @@ const ColorRow = ({ label, value, onChange, onRevert }: {
   <div className="flex items-center space-x-2">
     <Label className="flex-1">{label}</Label>
     <Input type="color" value={value} onChange={onChange} className="w-10 h-10 p-0 border-0" />
-    <Button variant="ghost" size="icon" onClick={onRevert} title="Revert to original">
-      <Undo2 className="h-4 w-4" />
-    </Button>
+    <Tip tip="Revert to original">
+      <Button variant="ghost" size="icon" onClick={onRevert}>
+        <Undo2 className="h-4 w-4" />
+      </Button>
+    </Tip>
   </div>
 );
 

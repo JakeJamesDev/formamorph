@@ -2,6 +2,7 @@ import { describe, it, expect } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import * as React from 'react';
+import { Popover, PopoverContent, PopoverTrigger } from './popover';
 import { Tip, TooltipProvider } from './tooltip';
 
 /** The app mounts the provider once at its root, so every case here runs through it. */
@@ -39,6 +40,37 @@ describe('a tip on a control', () => {
     await userEvent.tab();
 
     expect(screen.queryByText('Delete world')).toBeNull();
+  });
+
+  it('leaves the control its own ref, which its call site is still using', () => {
+    // The sweep wraps controls that already hand their node somewhere — a sortable's `setNodeRef`, a chip's
+    // `innerRef`. If the trigger took that ref for itself, drag and the find bar would go quietly dead.
+    const seen: HTMLElement[] = [];
+    renderTip(
+      <Tip tip="Drag to reorder">
+        <span ref={(el) => { if (el) seen.push(el); }} id="grip">g</span>
+      </Tip>,
+    );
+    expect(seen).toHaveLength(1);
+    expect(seen[0].id).toBe('grip');
+  });
+
+  it('shares one control with a popover trigger', () => {
+    // The prompt toolbar's split buttons carry both: the tip names the half, the popover opens the rest.
+    renderTip(
+      <Popover>
+        <Tip tip="Heading level">
+          <PopoverTrigger asChild>
+            <button type="button"><span aria-hidden="true">v</span></button>
+          </PopoverTrigger>
+        </Tip>
+        <PopoverContent>the rest</PopoverContent>
+      </Popover>,
+    );
+    const trigger = screen.getByRole('button', { name: 'Heading level' });
+    // Radix's own attribute: the popover still holds the button it was given.
+    expect(trigger.getAttribute('aria-haspopup')).toBe('dialog');
+    expect(trigger.hasAttribute('data-base-ui-tooltip-trigger')).toBe(true);
   });
 
   it('renders the control itself, with no wrapper element around it', () => {

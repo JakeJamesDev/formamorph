@@ -5,6 +5,7 @@ import { Label } from "@/components/ui/label";
 import { AlertTriangle, CornerDownLeft, ImagePlus, Link as LucideLink, Box as LucideBox, Music, X } from "lucide-react";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
+import { Tip } from "@/components/ui/tooltip";
 import ModelViewer from '../views/ModelViewer';
 import AudioPlayer from '../components/game/AudioPlayer';
 import { useDownscalePrompt } from './useDownscalePrompt';
@@ -212,15 +213,15 @@ export const ImageUpload = ({ onChange, id, value, cap, previewClassName, object
   });
 
   const removeButton = (
-    <button
-      type="button"
-      onClick={(e) => { e.preventDefault(); e.stopPropagation(); onChange(""); }}
-      className="absolute top-1 right-1 rounded-full bg-overlay/60 p-1 text-white hover:bg-overlay/80"
-      title="Remove image"
-      aria-label="Remove image"
-    >
-      <X className="h-4 w-4" />
-    </button>
+    <Tip tip="Remove image">
+      <button
+        type="button"
+        onClick={(e) => { e.preventDefault(); e.stopPropagation(); onChange(""); }}
+        className="absolute top-1 right-1 rounded-full bg-overlay/60 p-1 text-white hover:bg-overlay/80"
+      >
+        <X className="h-4 w-4" />
+      </button>
+    </Tip>
   );
 
   // Clicking an uploaded image opens the shared pan/zoom viewer instead of re-triggering the file picker.
@@ -252,26 +253,26 @@ export const ImageUpload = ({ onChange, id, value, cap, previewClassName, object
         {/* Icon-only: the label was the width of the word for an action the Enter key already performs, and
             the icon says so. Lit only once the draft is a link it can take — until then it's inert, so the
             cell says whether pressing it would do anything. */}
-        <Button
-          type="button"
-          variant="ghost"
-          size="icon"
-          disabled={!urlCommittable}
-          className={cn(
-            // Only the divider edge is bordered, so the cell shares the field's own frame on its other three
-            // sides. `disabled:opacity-100` keeps that divider at full strength while inert — the muted
-            // foreground carries the off state on its own.
-            'absolute inset-y-0 right-0 h-auto w-10 rounded-l-none border-y-0 border-r-0 border-l border-l-input disabled:opacity-100',
-            urlCommittable
-              ? 'bg-primary text-primary-foreground hover:bg-primary/90'
-              : 'bg-transparent text-muted-foreground',
-          )}
-          onClick={commitUrl}
-          title="Use this image URL"
-          aria-label="Use this image URL"
-        >
-          <CornerDownLeft className="h-4 w-4" />
-        </Button>
+        <Tip tip="Use this image URL">
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon"
+            disabled={!urlCommittable}
+            className={cn(
+              // Only the divider edge is bordered, so the cell shares the field's own frame on its other three
+              // sides. `disabled:opacity-100` keeps that divider at full strength while inert — the muted
+              // foreground carries the off state on its own.
+              'absolute inset-y-0 right-0 h-auto w-10 rounded-l-none border-y-0 border-r-0 border-l border-l-input disabled:opacity-100',
+              urlCommittable
+                ? 'bg-primary text-primary-foreground hover:bg-primary/90'
+                : 'bg-transparent text-muted-foreground',
+            )}
+            onClick={commitUrl}
+          >
+            <CornerDownLeft className="h-4 w-4" />
+          </Button>
+        </Tip>
         {/* Last child, so the focus ring paints over the button cell too and reads as one widget's glow
             rather than stopping at the divider. Inert to the pointer, so it never eats a click. */}
         <span
@@ -294,32 +295,35 @@ export const ImageUpload = ({ onChange, id, value, cap, previewClassName, object
   const badge = expiring
     ? {
         label: 'Expiring link',
-        title: `Discord links like this one stop working after a while. Use a permanent host so the picture doesn't disappear later.\n${value ?? ''}`,
+        tip: `Discord links like this one stop working after a while. Use a permanent host so the picture doesn't disappear later.\n${value ?? ''}`,
         className: 'bg-amber-500/90',
         icon: <AlertTriangle className="h-3 w-3" />,
       }
     : status === 'unreadable'
       ? {
           label: 'Linked image, display only',
-          title: `${imageHost(value ?? '')} won't let Formamorph download this picture. It shows online, but won't work offline and can't be put into a character card.\n${value ?? ''}`,
+          tip: `${imageHost(value ?? '')} won't let Formamorph download this picture. It shows online, but won't work offline and can't be put into a character card.\n${value ?? ''}`,
           className: 'bg-amber-500/90',
           icon: <LucideLink className="h-3 w-3" />,
         }
       : {
           label: 'Linked image',
-          title: value ?? '',
+          tip: value ?? '',
           className: 'bg-overlay/60',
           icon: <LucideLink className="h-3 w-3" />,
         };
 
+  // A marker with nothing but its tip to go on, so it takes a tab stop rather than staying mouse-only.
   const remoteBadge = remote && (
-    <span
-      className={cn('absolute top-1 left-1 rounded-full p-1 text-white', badge.className)}
-      title={badge.title}
-      aria-label={badge.label}
-    >
-      {badge.icon}
-    </span>
+    <Tip tip={badge.tip}>
+      <span
+        tabIndex={0}
+        className={cn('absolute top-1 left-1 rounded-full p-1 text-white', badge.className)}
+        aria-label={badge.label}
+      >
+        {badge.icon}
+      </span>
+    </Tip>
   );
 
   // A dead link is worth showing at authoring time rather than letting it surface mid-play.
@@ -450,16 +454,16 @@ export const SoundUpload = ({ onChange, id, value }: {
             <AudioPlayer src={value.data} className="w-full" />
             <div className="flex items-center justify-between gap-2 mt-2">
               <p className="text-helper text-muted-foreground truncate">{value.name}</p>
-              <Button
-                type="button"
-                variant="ghost"
-                size="sm"
-                onClick={(e) => { e.preventDefault(); e.stopPropagation(); onChange(undefined); }}
-                title="Remove sound"
-                aria-label="Remove sound"
-              >
-                <X className="h-4 w-4" />
-              </Button>
+              <Tip tip="Remove sound">
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  onClick={(e) => { e.preventDefault(); e.stopPropagation(); onChange(undefined); }}
+                >
+                  <X className="h-4 w-4" />
+                </Button>
+              </Tip>
             </div>
           </div>
         ) : (
@@ -502,16 +506,16 @@ export const ModelUpload = ({ model, onModelChange, uniqueId }: {
               <ModelViewer model={model} modelType={resolveModelType(model)} />
             </DialogContent>
           </Dialog>
-          <Button
-            type="button"
-            variant="ghost"
-            size="sm"
-            onClick={() => onModelChange(undefined)}
-            title="Remove model"
-            aria-label="Remove model"
-          >
-            <X className="h-4 w-4" />
-          </Button>
+          <Tip tip="Remove model">
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              onClick={() => onModelChange(undefined)}
+            >
+              <X className="h-4 w-4" />
+            </Button>
+          </Tip>
         </div>
       ) : (
         <div>

@@ -24,13 +24,13 @@ export interface TokenChipProps extends Omit<ComponentPropsWithoutRef<'span'>, '
    *  the template prose is the content, so a chip reads as a quiet placeholder, not a highlight. */
   neutral?: boolean;
   /** Hover text, where the caller has something to say the vocabulary does not (a jump destination). */
-  title?: string;
+  tip?: string;
   onRemove?: (label: string) => void;
   grabbable?: boolean;
 }
 
 export const TokenChip = forwardRef<HTMLSpanElement, TokenChipProps>(function TokenChip(
-  { token, vocab, neutral, title, onRemove, grabbable, className, ...rest },
+  { token, vocab, neutral, tip, onRemove, grabbable, className, ...rest },
   ref,
 ) {
   const color = neutral ? undefined : vocab.color(token);
@@ -49,7 +49,7 @@ export const TokenChip = forwardRef<HTMLSpanElement, TokenChipProps>(function To
       <Chip
         label={variantLabel ? `${name} (${variantLabel})` : name}
         removeLabel={name}
-        title={title ?? (hint ? `${name} — ${hint}` : undefined)}
+        tip={tip ?? (hint ? `${name} — ${hint}` : undefined)}
         onRemove={onRemove}
         grabbable={grabbable}
         style={color ? { backgroundColor: color, color: '#000' } : undefined}

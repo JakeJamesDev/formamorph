@@ -15,6 +15,7 @@ import { generateImage, buildImageRequest } from '@/lib/imageGen';
 import { type ImageCap } from '@/lib/imageOptim';
 import { useDownscalePrompt } from '@/lib/useDownscalePrompt';
 import { cn } from '@/lib/utils';
+import { Tip } from '@/components/ui/tooltip';
 
 /** The preset's own prefix as hint text. Labelled, because an empty box showing tags reads as "nothing is
  *  being sent" rather than "this is what you already get on top of whatever you type". */
@@ -286,9 +287,11 @@ export function GenerateImageButton({ subject, cap, onChange, tags, onTagsChange
           <DialogFooter className="flex flex-col sm:flex-row gap-2">
             <Button type="button" variant="outline" onClick={() => closeDialog(false)}>Cancel</Button>
             {generating ? (
-              <Button type="button" variant="destructive" onClick={stop} title="Stop generating">
-                <Square className="h-4 w-4" /> Stop
-              </Button>
+              <Tip tip="Stop generating" labelsChild={false}>
+                <Button type="button" variant="destructive" onClick={stop}>
+                  <Square className="h-4 w-4" /> Stop
+                </Button>
+              </Tip>
             ) : (
               <Button type="button" variant="secondary" onClick={generate} disabled={placing}>
                 <Sparkles className="h-4 w-4" /> {preview ? 'Regenerate' : 'Generate'}

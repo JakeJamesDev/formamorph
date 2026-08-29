@@ -227,7 +227,7 @@ export interface ChipJump {
 function ChipRun({ run, jumpTo }: { run: AnatomyRun; jumpTo?: (run: AnatomyRun) => ChipJump | undefined }) {
   const jump = jumpTo?.(run);
   const pill = run.chip ? (
-    <TokenChip token={run.chip} vocab={ANATOMY_VOCABULARY} neutral title={jump?.destination} />
+    <TokenChip token={run.chip} vocab={ANATOMY_VOCABULARY} neutral tip={jump?.destination} />
   ) : run.contextLabel ? (
     <AssemblyChip
       label={CONTEXT_LABELS[run.contextLabel]}

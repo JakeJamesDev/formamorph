@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useLayoutEffect, useRef, useState, type ReactNode } from 'react';
 import { Columns2, Maximize2, Minimize2, Redo2, Square, Undo2, Braces, Variable } from 'lucide-react';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Tip } from '@/components/ui/tooltip';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
@@ -19,8 +20,9 @@ function InsertMenu({ items, label, Icon, onPick }: {
   return (
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
+        {/* No tip: the button wears the label beside its icon, so a tip would repeat it word for word. */}
         <button
-          type="button" title={label} aria-label={label}
+          type="button" aria-label={label}
           onMouseDown={(event) => event.preventDefault()}
           className={cn(TOOLBAR_BTN, 'flex items-center gap-1 data-[state=open]:bg-accent data-[state=open]:text-foreground')}
         >
@@ -154,41 +156,45 @@ function CodeAreaBody({
           <InsertMenu items={STAT_CODE_SNIPPETS} label="Variable" Icon={Variable} onPick={insert} />
         </div>
         <div className="flex flex-shrink-0 items-center gap-1">
-          <button
-            type="button" title="Undo" aria-label="Undo" className={TOOLBAR_BTN}
-            disabled={!session?.canUndo()}
-            onMouseDown={(event) => { event.preventDefault(); session?.undo(); }}
-          >
-            <Undo2 className="h-4 w-4" />
-          </button>
-          <button
-            type="button" title="Redo" aria-label="Redo" className={TOOLBAR_BTN}
-            disabled={!session?.canRedo()}
-            onMouseDown={(event) => { event.preventDefault(); session?.redo(); }}
-          >
-            <Redo2 className="h-4 w-4" />
-          </button>
+          <Tip tip="Undo">
+            <button
+              type="button" className={TOOLBAR_BTN}
+              disabled={!session?.canUndo()}
+              onMouseDown={(event) => { event.preventDefault(); session?.undo(); }}
+            >
+              <Undo2 className="h-4 w-4" />
+            </button>
+          </Tip>
+          <Tip tip="Redo">
+            <button
+              type="button" className={TOOLBAR_BTN}
+              disabled={!session?.canRedo()}
+              onMouseDown={(event) => { event.preventDefault(); session?.redo(); }}
+            >
+              <Redo2 className="h-4 w-4" />
+            </button>
+          </Tip>
           <span className="mx-0.5 w-hairline self-stretch bg-border" />
           {showTabs && fullscreen && effectiveWidth - 12 >= MIN_PANE_WIDTH * 2 && (
+            <Tip tip={split ? 'Show one pane at a time' : 'Show edit and preview side by side'}>
+              <button
+                type="button"
+                onMouseDown={(event) => { event.preventDefault(); setSplitMode(split ? 'tabs' : 'split'); }}
+                className={TOOLBAR_BTN}
+              >
+                {split ? <Square className="h-4 w-4" /> : <Columns2 className="h-4 w-4" />}
+              </button>
+            </Tip>
+          )}
+          <Tip tip={fullscreen ? 'Exit full screen' : 'Edit full screen'}>
             <button
               type="button"
-              onMouseDown={(event) => { event.preventDefault(); setSplitMode(split ? 'tabs' : 'split'); }}
-              title={split ? 'Show one pane at a time' : 'Show edit and preview side by side'}
-              aria-label={split ? 'Show one pane at a time' : 'Show edit and preview side by side'}
               className={TOOLBAR_BTN}
+              onMouseDown={(event) => { event.preventDefault(); onToggleFullscreen(); }}
             >
-              {split ? <Square className="h-4 w-4" /> : <Columns2 className="h-4 w-4" />}
+              {fullscreen ? <Minimize2 className="h-4 w-4" /> : <Maximize2 className="h-4 w-4" />}
             </button>
-          )}
-          <button
-            type="button"
-            title={fullscreen ? 'Exit full screen' : 'Edit full screen'}
-            aria-label={fullscreen ? 'Exit full screen' : 'Edit full screen'}
-            className={TOOLBAR_BTN}
-            onMouseDown={(event) => { event.preventDefault(); onToggleFullscreen(); }}
-          >
-            {fullscreen ? <Minimize2 className="h-4 w-4" /> : <Maximize2 className="h-4 w-4" />}
-          </button>
+          </Tip>
         </div>
       </div>
       {!showTabs ? editSurface : split ? (

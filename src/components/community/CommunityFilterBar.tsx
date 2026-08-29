@@ -121,7 +121,7 @@ export function CommunityFilterBar({
               label={STATUS_FACET_LABELS[facet]}
               removeLabel={STATUS_FACET_LABELS[facet]}
               className="border-primary/40 bg-primary/10 text-foreground"
-              title={`Status filter: ${STATUS_FACET_LABELS[facet]}`}
+              tip={`Status filter: ${STATUS_FACET_LABELS[facet]}`}
               onRemove={() => toggleStatus(facet)}
             />
           ))}
@@ -130,7 +130,7 @@ export function CommunityFilterBar({
               key={`author-${author}`}
               label={`by ${author}`}
               removeLabel={author}
-              title={`Author filter: ${author}`}
+              tip={`Author filter: ${author}`}
               onRemove={() => setAuthorFilter(authorFilter.filter((a) => a !== author))}
             />
           ))}
@@ -149,7 +149,7 @@ export function CommunityFilterBar({
               key={`tag-${tag}`}
               label={`#${tag}`}
               removeLabel={tag}
-              title={`Tag filter: ${tag}`}
+              tip={`Tag filter: ${tag}`}
               onRemove={() => setTagFilter(tagFilter.filter((t) => t !== tag))}
             />
           ))}

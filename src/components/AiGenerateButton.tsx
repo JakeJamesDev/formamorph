@@ -6,6 +6,7 @@ import { summarizeDescription } from '@/lib/summarize';
 import { bridgeDescription, type BridgeKind } from '@/lib/bridgeDescription';
 import { buildImagePrompt, type ImageSubjectKind } from '@/lib/imagePrompt';
 import { TOOLBAR_BTN } from '@/components/prompt/toolbarStyles';
+import { Tip } from '@/components/ui/tooltip';
 
 type GenerateMode = 'summary' | 'tags' | 'playerDesc' | 'aiDesc';
 
@@ -70,16 +71,17 @@ const AiGenerateButton = ({ mode, source, onChange, kind }: {
   };
 
   return (
-    <button
-      type="button"
-      className={TOOLBAR_BTN}
-      onClick={generate}
-      disabled={loading || !source?.trim()}
-      title={loading ? `Generating ${noun}…` : `Generate ${noun} from ${SOURCE_NOUN[mode]}`}
-      aria-label={`Generate ${noun}`}
-    >
-      {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />}
-    </button>
+    <Tip tip={loading ? `Generating ${noun}…` : `Generate ${noun} from ${SOURCE_NOUN[mode]}`}>
+      <button
+        type="button"
+        className={TOOLBAR_BTN}
+        onClick={generate}
+        disabled={loading || !source?.trim()}
+        aria-label={`Generate ${noun}`}
+      >
+        {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />}
+      </button>
+    </Tip>
   );
 };
 
