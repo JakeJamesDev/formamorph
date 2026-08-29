@@ -4355,13 +4355,57 @@ const GameViewer = ({
             };
             return (
               <>
-                <div className="flex flex-wrap items-center gap-2 flex-shrink-0 pr-8 text-meta">
-                  {/* The title rides the legend row rather than a row of its own. Below md the row is
-                      tight enough that it reads as a label, so it goes back to being screen-reader-only. */}
+                {/* The header row: the title beside the search field; pr-8 keeps it clear of the
+                    dialog's Close button. Below md the title goes back to being screen-reader-only. */}
+                <div className="flex items-center gap-2 flex-shrink-0 pr-8">
                   <DialogTitle className="sr-only md:not-sr-only md:flex md:flex-shrink-0 md:items-center md:gap-1.5 md:text-label">
                     <ScrollText className="h-4 w-4" />
                     AI Context
                   </DialogTitle>
+                  {/* The find controls share the search field's frame, so the toolbar keeps its one row. */}
+                  <div className="relative min-w-0 flex-grow">
+                    <Search className="pointer-events-none absolute left-2 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                    <Input
+                      value={debugSearch}
+                      onChange={(e) => setDebugSearch(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key !== "Enter") return;
+                        e.preventDefault();
+                        stepHit(e.shiftKey ? -1 : 1);
+                      }}
+                      placeholder="Search (space-separated terms)…"
+                      className={`pl-8 h-8 text-meta ${searchActive ? "pr-28" : ""}`}
+                    />
+                    {searchActive && (
+                      <div className="absolute right-1 top-1/2 flex -translate-y-1/2 items-center gap-0.5">
+                        <span className="px-1 text-meta tabular-nums text-muted-foreground">
+                          {hitTotal > 0 ? `${currentHit + 1} of ${hitTotal}` : "0 of 0"}
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => stepHit(-1)}
+                          disabled={hitTotal === 0}
+                          aria-label="Previous match"
+                          title="Previous match (Shift+Enter)"
+                          className="rounded p-1 text-muted-foreground hover:bg-accent hover:text-foreground disabled:opacity-40"
+                        >
+                          <ChevronUp className="h-4 w-4" />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => stepHit(1)}
+                          disabled={hitTotal === 0}
+                          aria-label="Next match"
+                          title="Next match (Enter)"
+                          className="rounded p-1 text-muted-foreground hover:bg-accent hover:text-foreground disabled:opacity-40"
+                        >
+                          <ChevronDown className="h-4 w-4" />
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                </div>
+                <div className="flex flex-wrap items-center gap-2 flex-shrink-0 text-meta">
                   {/* Highlight-mode toggle: dictionary entries vs the per-turn rehydration signal. */}
                   <div className="inline-flex flex-shrink-0 overflow-hidden rounded border border-border">
                     {(["dictionary", "hydrations"] as const).map((m) => (
@@ -4450,47 +4494,22 @@ const GameViewer = ({
                     <span className="text-muted-foreground">No hydration terms for this turn.</span>
                   )}
                 </div>
+                {/* The turn line and the view controls share one row: the text truncates on the left,
+                    the buttons keep their size on the right. */}
                 <div className="flex items-center gap-2 flex-shrink-0">
-                  {/* The find controls share the search field's frame, so the toolbar keeps its one row. */}
-                  <div className="relative flex-grow">
-                    <Search className="pointer-events-none absolute left-2 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                    <Input
-                      value={debugSearch}
-                      onChange={(e) => setDebugSearch(e.target.value)}
-                      onKeyDown={(e) => {
-                        if (e.key !== "Enter") return;
-                        e.preventDefault();
-                        stepHit(e.shiftKey ? -1 : 1);
-                      }}
-                      placeholder="Search (space-separated terms)…"
-                      className={`pl-8 h-8 text-meta ${searchActive ? "pr-28" : ""}`}
-                    />
-                    {searchActive && (
-                      <div className="absolute right-1 top-1/2 flex -translate-y-1/2 items-center gap-0.5">
-                        <span className="px-1 text-meta tabular-nums text-muted-foreground">
-                          {hitTotal > 0 ? `${currentHit + 1} of ${hitTotal}` : "0 of 0"}
+                  <div className="min-w-0 flex-grow truncate text-meta text-muted-foreground">
+                    {currentTurn && (
+                      <>
+                        <span className={currentTurn.regenerated || currentTurn.pruned ? "line-through" : ""}>
+                          Turn {pageIndex + 1} of {totalDebugPages}
+                          {currentTurn.action ? ` — "${currentTurn.action}"` : ""}
                         </span>
-                        <button
-                          type="button"
-                          onClick={() => stepHit(-1)}
-                          disabled={hitTotal === 0}
-                          aria-label="Previous match"
-                          title="Previous match (Shift+Enter)"
-                          className="rounded p-1 text-muted-foreground hover:bg-accent hover:text-foreground disabled:opacity-40"
-                        >
-                          <ChevronUp className="h-4 w-4" />
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => stepHit(1)}
-                          disabled={hitTotal === 0}
-                          aria-label="Next match"
-                          title="Next match (Enter)"
-                          className="rounded p-1 text-muted-foreground hover:bg-accent hover:text-foreground disabled:opacity-40"
-                        >
-                          <ChevronDown className="h-4 w-4" />
-                        </button>
-                      </div>
+                        {currentTurn.regenerated ? (
+                          <span className="ml-2 font-medium text-warning">Re-generated</span>
+                        ) : currentTurn.pruned ? (
+                          <span className="ml-2 font-medium text-warning">Pruned</span>
+                        ) : null}
+                      </>
                     )}
                   </div>
                   <Button
@@ -4526,19 +4545,6 @@ const GameViewer = ({
                     Export
                   </Button>
                 </div>
-                {currentTurn && (
-                  <div className="flex-shrink-0 text-meta text-muted-foreground truncate">
-                    <span className={currentTurn.regenerated || currentTurn.pruned ? "line-through" : ""}>
-                      Turn {pageIndex + 1} of {totalDebugPages}
-                      {currentTurn.action ? ` — "${currentTurn.action}"` : ""}
-                    </span>
-                    {currentTurn.regenerated ? (
-                      <span className="ml-2 font-medium text-warning">Re-generated</span>
-                    ) : currentTurn.pruned ? (
-                      <span className="ml-2 font-medium text-warning">Pruned</span>
-                    ) : null}
-                  </div>
-                )}
                 {showSilentRequests && currentSummary && (
                   <div className="flex-shrink-0 rounded-md border border-border bg-muted/40 p-2 text-meta">
                     <div className="mb-1 font-semibold text-muted-foreground">Memory summary</div>
