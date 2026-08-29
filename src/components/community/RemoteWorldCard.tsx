@@ -1,6 +1,7 @@
 import { EyeOff, Download, MessageSquare, Trash2, ShieldAlert, ShieldCheck, TicketX } from "lucide-react";
 import { ActionIcon } from "@/lib/actionIcons";
 import { Progress } from "@/components/ui/progress";
+import { Tip } from "@/components/ui/tooltip";
 import IndeterminateProgress from "@/components/ui/indeterminate-progress";
 import { cn } from "@/lib/utils";
 import { CachedThumbnail } from "@/lib/useCachedThumbnail";
@@ -105,13 +106,14 @@ export function RemoteWorldCard({
       name={world.name}
       description={world.description}
       cornerAction={(
-        <button
-          onClick={(e) => { e.stopPropagation(); onHideWorld(worldId); }}
-          className="absolute top-1 right-1 z-10 p-1 rounded bg-overlay/50 text-white hover:bg-overlay/70"
-          title="Hide this world"
-        >
-          <EyeOff className="h-4 w-4" />
-        </button>
+        <Tip tip="Hide this world">
+          <button
+            onClick={(e) => { e.stopPropagation(); onHideWorld(worldId); }}
+            className="absolute top-1 right-1 z-10 p-1 rounded bg-overlay/50 text-white hover:bg-overlay/70"
+          >
+            <EyeOff className="h-4 w-4" />
+          </button>
+        </Tip>
       )}
       thumbnailOverlay={downloadProgress !== undefined ? (
         // Downloading: swap the button for a centered status bar. -1 ⇒ size unknown.
@@ -128,20 +130,21 @@ export function RemoteWorldCard({
       ) : (
         /* Contextual download — centered on the thumbnail, fades in on hover; same color as the hide
            button, 2x size. Icon reflects whether the world is new, current (refresh), or has an update. */
-        <button
-          onClick={(e) => { e.stopPropagation(); onContextualDownload(world, dlState); }}
-          className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-10 p-2 rounded bg-overlay/50 text-white hover:bg-overlay/70 opacity-0 pointer-events-none transition-opacity group-hover:opacity-100 group-hover:pointer-events-auto"
-          title={dlState === 'update' ? "Update available — download the newer version" : dlState === 'refresh' ? `Re-download this ${noun}` : `Download this ${noun}`}
-          aria-label={dlState === 'update' ? "Update available" : dlState === 'refresh' ? `Re-download this ${noun}` : `Download this ${noun}`}
-        >
-          {dlState === 'update' ? (
-            <ActionIcon.cloudUpdate className="h-8 w-8" />
-          ) : dlState === 'refresh' ? (
-            <ActionIcon.cloudRefresh className="h-8 w-8" />
-          ) : (
-            <ActionIcon.cloudDownload className="h-8 w-8" />
-          )}
-        </button>
+        <Tip tip={dlState === 'update' ? "Update available — download the newer version" : dlState === 'refresh' ? `Re-download this ${noun}` : `Download this ${noun}`}>
+          <button
+            onClick={(e) => { e.stopPropagation(); onContextualDownload(world, dlState); }}
+            className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-10 p-2 rounded bg-overlay/50 text-white hover:bg-overlay/70 opacity-0 pointer-events-none transition-opacity group-hover:opacity-100 group-hover:pointer-events-auto"
+            aria-label={dlState === 'update' ? "Update available" : dlState === 'refresh' ? `Re-download this ${noun}` : `Download this ${noun}`}
+          >
+            {dlState === 'update' ? (
+              <ActionIcon.cloudUpdate className="h-8 w-8" />
+            ) : dlState === 'refresh' ? (
+              <ActionIcon.cloudRefresh className="h-8 w-8" />
+            ) : (
+              <ActionIcon.cloudDownload className="h-8 w-8" />
+            )}
+          </button>
+        </Tip>
       )}
       thumbnail={world.thumbnail_file ? (
         <CachedThumbnail
@@ -161,13 +164,17 @@ export function RemoteWorldCard({
       author={(
         <span className="inline-flex items-center gap-1.5 min-w-0">
           <UserAvatar username={world.author?.username} avatarUrl={world.author?.avatarUrl} size="xs" />
-          <span
-            onClick={(e) => { e.stopPropagation(); if (world.author?.username) onHideAuthor(world.author.username); }}
-            title={world.author?.username ? `Hide all worlds by ${world.author.username}` : undefined}
-            className={world.author?.username ? "cursor-pointer hover:line-through truncate" : "truncate"}
+          <Tip
+            tip={world.author?.username ? `Hide all worlds by ${world.author.username}` : undefined}
+            labelsChild={false}
           >
-            By {world.author?.username || "Unknown"}
-          </span>
+            <span
+              onClick={(e) => { e.stopPropagation(); if (world.author?.username) onHideAuthor(world.author.username); }}
+              className={world.author?.username ? "cursor-pointer hover:line-through truncate" : "truncate"}
+            >
+              By {world.author?.username || "Unknown"}
+            </span>
+          </Tip>
           <RoleBadge role={world.author?.role} />
         </span>
       )}
@@ -183,12 +190,18 @@ export function RemoteWorldCard({
         ) : (
           <span className="justify-self-start">{likeControl}</span>
         )}
-        <span className="flex items-center gap-1 justify-self-center" title="Downloads">
-          <Download className="h-3 w-3" /> {world.downloads || 0}
-        </span>
-        <span className="flex items-center gap-1 justify-self-end" title="Comments">
-          <MessageSquare className="h-3 w-3" /> {world.comment_count || 0}
-        </span>
+        {/* The number is the content and the tip only says what it counts, so it does not become the
+            name — that would hide the count from a reader. */}
+        <Tip tip="Downloads" labelsChild={false}>
+          <span className="flex items-center gap-1 justify-self-center">
+            <Download className="h-3 w-3" /> {world.downloads || 0}
+          </span>
+        </Tip>
+        <Tip tip="Comments" labelsChild={false}>
+          <span className="flex items-center gap-1 justify-self-end">
+            <MessageSquare className="h-3 w-3" /> {world.comment_count || 0}
+          </span>
+        </Tip>
       </div>
 
       {/* Won a contest: said on the card itself, so the honor is visible wherever the world is found
@@ -220,35 +233,38 @@ export function RemoteWorldCard({
           {/* Leaving a contest is not deleting anything, so it reads as the trophy coming off rather than
               as a destructive control — and it is only ever on the author's own entry. */}
           {isOwnedByUser && onWithdraw && (
-            <button
-              className="p-1 text-muted-foreground hover:text-foreground"
-              onClick={(e) => { e.stopPropagation(); onWithdraw(world); }}
-              aria-label={`Withdraw ${world.name || noun} from the contest`}
-              title="Take it out of the contest — the listing stays published"
-            >
-              <TicketX className="h-5 w-5" />
-            </button>
+            <Tip tip="Take it out of the contest — the listing stays published">
+              <button
+                className="p-1 text-muted-foreground hover:text-foreground"
+                onClick={(e) => { e.stopPropagation(); onWithdraw(world); }}
+                aria-label={`Withdraw ${world.name || noun} from the contest`}
+              >
+                <TicketX className="h-5 w-5" />
+              </button>
+            </Tip>
           )}
           {/* Quarantine is the gentler half of the same job as Delete, so it sits beside it. */}
           {mayModerate && !quarantined && onQuarantine && (
-            <button
-              className="p-1 text-warning hover:text-warning/80"
-              onClick={(e) => { e.stopPropagation(); onQuarantine(world); }}
-              aria-label={`Quarantine ${world.name || noun}`}
-              title="Hide it while the author fixes it"
-            >
-              <ShieldAlert className="h-5 w-5" />
-            </button>
+            <Tip tip="Hide it while the author fixes it">
+              <button
+                className="p-1 text-warning hover:text-warning/80"
+                onClick={(e) => { e.stopPropagation(); onQuarantine(world); }}
+                aria-label={`Quarantine ${world.name || noun}`}
+              >
+                <ShieldAlert className="h-5 w-5" />
+              </button>
+            </Tip>
           )}
           {mayModerate && quarantined && onRelease && (
-            <button
-              className="p-1 text-success hover:text-success/80"
-              onClick={(e) => { e.stopPropagation(); onRelease(world); }}
-              aria-label={`Release ${world.name || noun}`}
-              title="Put it back in Community Creations"
-            >
-              <ShieldCheck className="h-5 w-5" />
-            </button>
+            <Tip tip="Put it back in Community Creations">
+              <button
+                className="p-1 text-success hover:text-success/80"
+                onClick={(e) => { e.stopPropagation(); onRelease(world); }}
+                aria-label={`Release ${world.name || noun}`}
+              >
+                <ShieldCheck className="h-5 w-5" />
+              </button>
+            </Tip>
           )}
           <button
             className="p-1 text-destructive hover:text-destructive/80"

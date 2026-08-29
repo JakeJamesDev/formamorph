@@ -2,6 +2,7 @@ import { useState } from "react";
 import { toast } from "react-toastify";
 import { Heart } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { Tip } from "@/components/ui/tooltip";
 
 interface LikeButtonProps {
   /** How many accounts have liked it. */
@@ -34,7 +35,10 @@ export function LikeButton({ likes, liked, onToggle, size = 'sm', className }: L
 
   if (!onToggle) {
     return (
-      <span className={cn('flex items-center gap-1', className)} title={label}>{body}</span>
+      // The tip counts too, so it names the span: the heart is decorative and a bare "3" says nothing.
+      <Tip tip={label}>
+        <span className={cn('flex items-center gap-1', className)}>{body}</span>
+      </Tip>
     );
   }
 
@@ -50,20 +54,21 @@ export function LikeButton({ likes, liked, onToggle, size = 'sm', className }: L
   };
 
   return (
-    <button
-      type="button"
-      // These sit inside cards that are themselves clickable.
-      onClick={(e) => { e.stopPropagation(); toggle(); }}
-      disabled={isBusy}
-      aria-pressed={Boolean(liked)}
-      aria-label={liked ? `Unlike — ${label}` : `Like — ${label}`}
-      title={liked ? 'You like this' : 'Like this'}
-      className={cn(
-        'flex items-center gap-1 rounded-sm transition-colors hover:text-like focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:opacity-60',
-        className
-      )}
-    >
-      {body}
-    </button>
+    <Tip tip={liked ? 'You like this' : 'Like this'}>
+      <button
+        type="button"
+        // These sit inside cards that are themselves clickable.
+        onClick={(e) => { e.stopPropagation(); toggle(); }}
+        disabled={isBusy}
+        aria-pressed={Boolean(liked)}
+        aria-label={liked ? `Unlike — ${label}` : `Like — ${label}`}
+        className={cn(
+          'flex items-center gap-1 rounded-sm transition-colors hover:text-like focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:opacity-60',
+          className
+        )}
+      >
+        {body}
+      </button>
+    </Tip>
   );
 }

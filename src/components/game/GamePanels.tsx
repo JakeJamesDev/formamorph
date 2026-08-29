@@ -29,6 +29,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Tip } from "@/components/ui/tooltip";
 import { Pager } from "@/components/ui/pagination";
 import VRMViewer from '@/views/VRMViewer';
 import { EntityVisual, hasEntityVisual } from './EntityVisual';
@@ -216,15 +217,16 @@ export const LeftPanel = ({ entities, onEntityClick, onRegenerateMemory }: {
                 <ToggleGroupItem value="entities">Entities</ToggleGroupItem>
               </ToggleGroup>
             )}
-            <Button
-              variant="ghost"
-              size="icon"
-              className="absolute right-0"
-              onClick={() => setShowModel((s) => !s)}
-              title={showModel ? "Hide Avatar" : "Show Avatar"}
-            >
-              {showModel ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
-            </Button>
+            <Tip tip={showModel ? "Hide Avatar" : "Show Avatar"}>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="absolute right-0"
+                onClick={() => setShowModel((s) => !s)}
+              >
+                {showModel ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+              </Button>
+            </Tip>
           </div>
           {showModel && (
             // No model ⇒ always the Entities view (there's no Avatar to swap to).
@@ -295,16 +297,16 @@ export const LeftPanel = ({ entities, onEntityClick, onRegenerateMemory }: {
                       <span className="min-w-0 truncate">{label}</span>
                       {isRemovable && (
                         <span className="flex items-center gap-1 shrink-0">
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="h-6 w-6 text-muted-foreground hover:text-destructive"
-                            aria-label={`Remove ${label}`}
-                            title={`Remove ${label}`}
-                            onClick={(e) => { e.stopPropagation(); setPendingRemoval(label); }}
-                          >
-                            <Trash2 className="h-3.5 w-3.5" />
-                          </Button>
+                          <Tip tip={`Remove ${label}`}>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-6 w-6 text-muted-foreground hover:text-destructive"
+                              onClick={(e) => { e.stopPropagation(); setPendingRemoval(label); }}
+                            >
+                              <Trash2 className="h-3.5 w-3.5" />
+                            </Button>
+                          </Tip>
                         </span>
                       )}
                     </div>
@@ -633,15 +635,16 @@ export const MiddlePanel = ({
             <div className="flex items-center gap-2 shrink-0">
               <TtsPlaybackBar className="w-auto flex-grow" />
               {ttsLoaded && (
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  onClick={() => onRegenerateTTS()}
-                  disabled={ttsGenerating}
-                  title="Regenerate audio for current text"
-                >
-                  {ttsGenerating ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />}
-                </Button>
+                <Tip tip="Regenerate audio for current text">
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={() => onRegenerateTTS()}
+                    disabled={ttsGenerating}
+                  >
+                    {ttsGenerating ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />}
+                  </Button>
+                </Tip>
               )}
               <Button
                 variant="ghost"
@@ -657,29 +660,30 @@ export const MiddlePanel = ({
                 overflow menu so this row can't grow back across the narration. Each button fades on its
                 own while idle — pointer devices only, see `.narration-tool` in index.css. */}
             <div className="absolute top-2 right-2 z-10 flex gap-1">
-              <Button
-                variant="ghost"
-                size="icon"
-                className="narration-tool h-8 w-8"
-                data-idle="true"
-                onClick={() => setIsEditMode(true)}
-                title="Edit text"
-              >
-                <Pencil className="h-4 w-4" />
-              </Button>
+              <Tip tip="Edit text">
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="narration-tool h-8 w-8"
+                  data-idle="true"
+                  onClick={() => setIsEditMode(true)}
+                >
+                  <Pencil className="h-4 w-4" />
+                </Button>
+              </Tip>
               <Popover open={toolMenuOpen} onOpenChange={setToolMenuOpen}>
-                <PopoverTrigger asChild>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="narration-tool h-8 w-8"
-                    data-idle={toolMenuOpen || toolBusy ? undefined : "true"}
-                    aria-label="More narration options"
-                    title="More narration options"
-                  >
-                    {toolBusy ? <Loader2 className="h-4 w-4 animate-spin" /> : <MoreHorizontal className="h-4 w-4" />}
-                  </Button>
-                </PopoverTrigger>
+                <Tip tip="More narration options">
+                  <PopoverTrigger asChild>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="narration-tool h-8 w-8"
+                      data-idle={toolMenuOpen || toolBusy ? undefined : "true"}
+                    >
+                      {toolBusy ? <Loader2 className="h-4 w-4 animate-spin" /> : <MoreHorizontal className="h-4 w-4" />}
+                    </Button>
+                  </PopoverTrigger>
+                </Tip>
                 <PopoverContent align="end" className="w-52 p-1">
                   <div className="flex flex-col">
                     {sceneImagesAvailable && (
@@ -743,9 +747,11 @@ export const MiddlePanel = ({
               <div className="mb-3 p-2 border border-dashed border-primary/50 rounded relative">
                 <div className="flex items-center justify-between mb-1">
                   <span className="text-meta text-muted-foreground">Markdown preview (/markdown test)</span>
-                  <Button variant="ghost" size="icon" className="h-6 w-6" onClick={onDismissCommandPreview} title="Dismiss preview">
-                    <X className="h-4 w-4" />
-                  </Button>
+                  <Tip tip="Dismiss preview">
+                    <Button variant="ghost" size="icon" className="h-6 w-6" onClick={onDismissCommandPreview}>
+                      <X className="h-4 w-4" />
+                    </Button>
+                  </Tip>
                 </div>
                 <div style={revealStyle}>
                   <MarkdownRenderer text={gameplayText} animate={revealOn} animation={revealAnim} easing={revealEasing} />

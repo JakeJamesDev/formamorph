@@ -15,7 +15,7 @@ import { ThemedToastContainer } from '@/components/ThemedToastContainer';
 import 'react-toastify/dist/ReactToastify.css';
 import { Button } from "@/components/ui/button";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
-import { Tip } from "@/components/ui/tooltip";
+import { Tip, Tooltip, TooltipTrigger, TooltipPortal, TooltipPositioner, TooltipPopup } from "@/components/ui/tooltip";
 import {ConfirmDialog} from "@/components/ConfirmDialog";
 import {FilePlus2, DoorOpen, Pencil, AlertTriangle, Code, User, Shield, Globe, LayoutGrid, GalleryThumbnails, Columns2, RectangleVertical, Menu, Earth, BookOpen, ChevronLast, MoreHorizontal, PersonStanding, MessageSquarePlus, FolderOpen, Archive, Settings, ScrollText, type LucideIcon } from "lucide-react";
 import { ActionIcon } from '@/lib/actionIcons';
@@ -556,6 +556,7 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
   // Feedback button rather than the profile circle: that is where the threads are now, and a count is
   // easiest to act on sitting on the thing it is about.
   const [unreadBugs, setUnreadBugs] = useState(0);
+  const feedbackLabel = unreadBugs > 0 ? `Feedback (${unreadBugs} unread)` : 'Feedback';
   // Bumped to re-read the bug count after a thread is opened or replied to.
   const [bugCountNonce, setBugCountNonce] = useState(0);
   const [showFeedback, setShowFeedback] = useState(false);
@@ -1513,10 +1514,12 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
             onValueChange={(v) => { if (v) setCardType(v as typeof cardType); }}
           >
             {CARD_TABS.map(({ value, label, Icon }) => (
-              <ToggleGroupItem key={value} value={value} aria-label={label} title={label}>
-                <Icon className="h-5 w-5 min-[1100px]:hidden" />
-                <span className="hidden min-[1100px]:inline">{label}</span>
-              </ToggleGroupItem>
+              <Tip key={value} tip={label}>
+                <ToggleGroupItem value={value}>
+                  <Icon className="h-5 w-5 min-[1100px]:hidden" />
+                  <span className="hidden min-[1100px]:inline">{label}</span>
+                </ToggleGroupItem>
+              </Tip>
             ))}
           </ToggleGroup>
         </div>
@@ -1586,15 +1589,13 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
               then becomes the right-most control. */}
           <div className="hidden min-[1000px]:block shrink-0">
             <Popover>
-              <PopoverTrigger asChild>
-                <button
-                  className="p-3 bg-secondary text-secondary-foreground rounded-full shadow-lg hover:bg-secondary/80 transition-colors"
-                  aria-label="Menu"
-                  title="Menu"
-                >
-                  <Menu className="h-6 w-6" />
-                </button>
-              </PopoverTrigger>
+              <Tip tip="Menu">
+                <PopoverTrigger asChild>
+                  <button className="p-3 bg-secondary text-secondary-foreground rounded-full shadow-lg hover:bg-secondary/80 transition-colors">
+                    <Menu className="h-6 w-6" />
+                  </button>
+                </PopoverTrigger>
+              </Tip>
               {/* Sized for `Backup & Restore` plus its icon; w-48 left it scrunched. */}
               <PopoverContent align="end" className="w-60 p-1">
                 <div className="flex flex-col">
@@ -1700,12 +1701,14 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
                       // A plain .glb carries no VRM metadata, so it has no license and its morph targets
                       // aren't guaranteed — say so on the card rather than letting it pass as a full VRM.
                       badge={model.license?.metaVersion === null ? (
-                        <span
-                          className="rounded bg-overlay/70 px-1.5 py-0.5 text-[10px] font-semibold text-white"
-                          title="Plain glTF: no license information, and morph targets aren't guaranteed."
-                        >
-                          GLB
-                        </span>
+                        <Tip tip="Plain glTF: no license information, and morph targets aren't guaranteed.">
+                          <span
+                            tabIndex={0}
+                            className="rounded bg-overlay/70 px-1.5 py-0.5 text-[10px] font-semibold text-white"
+                          >
+                            GLB
+                          </span>
+                        </Tip>
                       ) : undefined}
                       onSelect={setPreviewModelId}
                       onDelete={setModelToDelete}
@@ -1903,29 +1906,41 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
           {/* Reading the queue needs an account as much as filing does, so this only appears once signed
               in — the server refuses either way. */}
           {COMMUNITY_ENABLED && isAuthenticated && (
-            <TutorialPopover
-              entry={menuTutorial?.id === 'main-menu-feedback' ? menuTutorial : null}
-              nav={menuTutorialNav}
-              side="top"
-              align="start"
-            >
-            <button
-              className="relative p-3 bg-secondary text-secondary-foreground rounded-full shadow-lg hover:bg-secondary/80 transition-colors"
-              onClick={() => { dismissMenuTutorial('main-menu-feedback'); setShowFeedback(true); }}
-              title={unreadBugs > 0 ? `Feedback (${unreadBugs} unread)` : "Feedback"}
-              aria-label={unreadBugs > 0 ? `Feedback (${unreadBugs} unread)` : "Feedback"}
-            >
-              <MessageSquarePlus className="h-6 w-6" />
-              {unreadBugs > 0 && (
-                <span className={cn(
-                  'absolute -top-0.5 -right-0.5 min-w-5 h-5 px-1 flex items-center justify-center rounded-full text-[10px] font-bold',
-                  UNREAD_MARK_STYLES.feedback.badge
-                )}>
-                  {unreadBugs > 9 ? '9+' : unreadBugs}
-                </span>
-              )}
-            </button>
-            </TutorialPopover>
+            // The tutorial hands its child the anchor ref, so the tip is built from the parts here: the
+            // trigger has to be the element the popover anchors to, which `Tip` cannot be.
+            <Tooltip>
+              <TutorialPopover
+                entry={menuTutorial?.id === 'main-menu-feedback' ? menuTutorial : null}
+                nav={menuTutorialNav}
+                side="top"
+                align="start"
+              >
+                <TooltipTrigger
+                  aria-label={feedbackLabel}
+                  render={(
+                    <button
+                      className="relative p-3 bg-secondary text-secondary-foreground rounded-full shadow-lg hover:bg-secondary/80 transition-colors"
+                      onClick={() => { dismissMenuTutorial('main-menu-feedback'); setShowFeedback(true); }}
+                    >
+                      <MessageSquarePlus className="h-6 w-6" />
+                      {unreadBugs > 0 && (
+                        <span className={cn(
+                          'absolute -top-0.5 -right-0.5 min-w-5 h-5 px-1 flex items-center justify-center rounded-full text-[10px] font-bold',
+                          UNREAD_MARK_STYLES.feedback.badge
+                        )}>
+                          {unreadBugs > 9 ? '9+' : unreadBugs}
+                        </span>
+                      )}
+                    </button>
+                  )}
+                />
+              </TutorialPopover>
+              <TooltipPortal>
+                <TooltipPositioner side="top">
+                  <TooltipPopup>{feedbackLabel}</TooltipPopup>
+                </TooltipPositioner>
+              </TooltipPortal>
+            </Tooltip>
           )}
           {!isMobile && (isDesktop() ? <UpdateVersionControl /> : <WebVersionChangelog />)}
         </div>
@@ -1933,15 +1948,15 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
         {/* Center: copyright + origin credit (original is MIT — see THIRD-PARTY-NOTICES / legal/). The
             "Based on…" line collapses into the ⋯ menu on mobile; the © stays (it replays the intro). */}
         <div className="text-center text-meta text-muted-foreground/60 whitespace-nowrap leading-tight">
-          <button
-            type="button"
-            onClick={() => onReplayIntro?.()}
-            className="cursor-pointer hover:text-muted-foreground transition-colors"
-            title="Replay intro"
-            aria-label="Replay intro"
-          >
-            © 2026 Jake James
-          </button>
+          <Tip tip="Replay intro">
+            <button
+              type="button"
+              onClick={() => onReplayIntro?.()}
+              className="cursor-pointer hover:text-muted-foreground transition-colors"
+            >
+              © 2026 Jake James
+            </button>
+          </Tip>
           {!isMobile && (
             <div>
               Based on{' '}
@@ -2029,16 +2044,16 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
               {/* `truncate` clips to the line box, and DialogTitle's `leading-none` leaves it exactly one
                   em tall — descenders fall outside and crop. Fits within the row's existing height. */}
               <span className="truncate leading-normal">{selectedWorld?.name}</span>
-              <Button
-                variant="ghost"
-                size="icon"
-                className="ml-auto mr-8 h-8 w-8 shrink-0 hidden md:inline-flex"
-                onClick={toggleWorldModalCollapsed}
-                title={worldModalCollapsed ? "Expand to two columns" : "Collapse to single column"}
-                aria-label={worldModalCollapsed ? "Expand to two columns" : "Collapse to single column"}
-              >
-                {worldModalCollapsed ? <Columns2 className="h-4 w-4" /> : <RectangleVertical className="h-4 w-4" />}
-              </Button>
+              <Tip tip={worldModalCollapsed ? "Expand to two columns" : "Collapse to single column"}>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="ml-auto mr-8 h-8 w-8 shrink-0 hidden md:inline-flex"
+                  onClick={toggleWorldModalCollapsed}
+                >
+                  {worldModalCollapsed ? <Columns2 className="h-4 w-4" /> : <RectangleVertical className="h-4 w-4" />}
+                </Button>
+              </Tip>
             </DialogTitle>
             {/* Under the title, as on the card it was opened from — the library agrees with itself. */}
             {selectedWorld && <PlaceBadges placements={placementsBy(selectedWorld, contests)} className="mr-8" />}
@@ -2085,17 +2100,18 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
                 </div>
               }
               thumbnail={
-                <div
-                  className="hidden sm:block relative w-full pt-[56.25%] cursor-zoom-in"
-                  onClick={() => openImageViewer(selectedWorld?.thumbnail, selectedWorld?.name)}
-                  title="Click to enlarge"
-                >
-                  <img
-                    src={selectedWorld?.thumbnail}
-                    alt={selectedWorld?.name}
-                    className="absolute top-0 left-0 w-full h-full object-cover rounded-lg"
-                  />
-                </div>
+                <Tip tip="Click to enlarge" labelsChild={false}>
+                  <div
+                    className="hidden sm:block relative w-full pt-[56.25%] cursor-zoom-in"
+                    onClick={() => openImageViewer(selectedWorld?.thumbnail, selectedWorld?.name)}
+                  >
+                    <img
+                      src={selectedWorld?.thumbnail}
+                      alt={selectedWorld?.name}
+                      className="absolute top-0 left-0 w-full h-full object-cover rounded-lg"
+                    />
+                  </div>
+                </Tip>
               }
               actions={
                 <div className="space-y-2">

@@ -45,8 +45,8 @@ const show = (record: WorldRecord, props: Record<string, unknown> = {}) =>
     />
   );
 
-/** The heart, whether it is a button or a plain count. */
-const heart = () => screen.getByTitle(/like this|you like this|^\d+ likes?$/i);
+/** The heart, whether it is a button or a plain count. Both are named by their count. */
+const heart = () => screen.getByLabelText(/\d+ likes?$/i);
 
 afterEach(() => {
   cleanup();
@@ -57,9 +57,11 @@ describe('the like count on a card', () => {
   it('sits beside the downloads and comments it is there to be compared with', () => {
     show(world(), { onLike: vi.fn() });
 
-    expect(screen.getByText('3')).toBeTruthy();
-    expect(screen.getByTitle('Downloads').textContent).toContain('7');
-    expect(screen.getByTitle('Comments').textContent).toContain('2');
+    // All three read off one row, which is the point of the comparison.
+    const row = heart().closest('div');
+    expect(row?.textContent).toContain('3');
+    expect(row?.textContent).toContain('7');
+    expect(row?.textContent).toContain('2');
   });
 
   it('reads zero for something nobody has liked', () => {

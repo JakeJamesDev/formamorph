@@ -3,6 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Chip } from "@/components/Chip";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Tip } from "@/components/ui/tooltip";
 import { TokenAutocomplete } from "@/components/TokenAutocomplete";
 import {
   STATUS_FACET_LABELS, availableFacets, type StatusFacet,
@@ -89,15 +90,16 @@ export function CommunityFilterBar({
           <div className="space-y-1">
             <div className="flex items-center justify-between">
               <span className="text-meta font-medium text-muted-foreground">Tags</span>
-              <Button
-                variant="outline"
-                size="sm"
-                className="h-6 px-2 text-meta"
-                onClick={() => setTagMode(tagMode === 'any' ? 'all' : 'any')}
-                title="Toggle match: Any vs All"
-              >
-                Match {tagMode === 'any' ? 'Any' : 'All'}
-              </Button>
+              <Tip tip="Toggle match: Any vs All" labelsChild={false}>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="h-6 px-2 text-meta"
+                  onClick={() => setTagMode(tagMode === 'any' ? 'all' : 'any')}
+                >
+                  Match {tagMode === 'any' ? 'Any' : 'All'}
+                </Button>
+              </Tip>
             </div>
             <TokenAutocomplete
               values={tagFilter}
@@ -135,14 +137,15 @@ export function CommunityFilterBar({
             />
           ))}
           {tagFilter.length > 0 && (
-            <button
-              type="button"
-              onClick={() => setTagMode(tagMode === 'any' ? 'all' : 'any')}
-              className="text-meta text-muted-foreground underline-offset-2 hover:underline"
-              title="Toggle match: Any vs All"
-            >
-              {tagMode === 'any' ? 'any of' : 'all of'}
-            </button>
+            <Tip tip="Toggle match: Any vs All" labelsChild={false}>
+              <button
+                type="button"
+                onClick={() => setTagMode(tagMode === 'any' ? 'all' : 'any')}
+                className="text-meta text-muted-foreground underline-offset-2 hover:underline"
+              >
+                {tagMode === 'any' ? 'any of' : 'all of'}
+              </button>
+            </Tip>
           )}
           {tagFilter.map((tag) => (
             <Chip

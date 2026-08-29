@@ -27,6 +27,7 @@ import { ActionIcon } from '@/lib/actionIcons';
 import IndeterminateProgress from "../components/ui/indeterminate-progress";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Tip } from "@/components/ui/tooltip";
 import { toast } from "react-toastify";
 import { ThemedToastContainer } from "@/components/ThemedToastContainer";
 import "react-toastify/dist/ReactToastify.css";
@@ -3736,14 +3737,13 @@ const GameViewer = ({
     return (
       <div className="flex items-center gap-2 mb-1">
         <Popover>
-          <PopoverTrigger asChild>
-            <button
-              className="text-muted-foreground hover:text-foreground"
-              title="Memory usage"
-            >
-              <Database className="h-4 w-4" />
-            </button>
-          </PopoverTrigger>
+          <Tip tip="Memory usage">
+            <PopoverTrigger asChild>
+              <button className="text-muted-foreground hover:text-foreground">
+                <Database className="h-4 w-4" />
+              </button>
+            </PopoverTrigger>
+          </Tip>
           <PopoverContent align="start" className="w-64 text-meta space-y-1">
             <div className="font-semibold">Context window: {windowTokens.toLocaleString()} tok</div>
             {row("Prompt", promptTokens)}
@@ -3974,15 +3974,16 @@ const GameViewer = ({
       {/* Hide-UI toggle: reveals the background image. While the UI is hidden the button fades out completely
           until hovered. Hidden on mobile — the panels already fill the screen there, so it isn't needed. */}
       {!isMobile && (
-      <Button
-        onClick={() => setUiHidden((h) => !h)}
-        title={uiHidden ? "Show UI" : "Hide UI"}
-        className={`absolute bottom-2 left-2 z-30 flex items-center justify-center rounded-full w-10 h-10 p-0 transition-opacity ${
-          uiHidden ? "opacity-0 hover:opacity-100" : "opacity-100"
-        }`}
-      >
-        {uiHidden ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
-      </Button>
+      <Tip tip={uiHidden ? "Show UI" : "Hide UI"}>
+        <Button
+          onClick={() => setUiHidden((h) => !h)}
+          className={`absolute bottom-2 left-2 z-30 flex items-center justify-center rounded-full w-10 h-10 p-0 transition-opacity ${
+            uiHidden ? "opacity-0 hover:opacity-100" : "opacity-100"
+          }`}
+        >
+          {uiHidden ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
+        </Button>
+      </Tip>
       )}
 
       {/* BGM + AI-context buttons — desktop only. On mobile the music toggle is dropped and AI context moves
@@ -3997,26 +3998,28 @@ const GameViewer = ({
             className={`h-5 w-5 ${bgmEnabled ? "" : "text-muted-foreground"}`}
           />
         </Button>
-        <Button
-          onClick={() => setIsDebugOpen(true)}
-          className="flex items-center justify-center rounded-full w-10 h-10 p-0"
-          title="Show the full AI context sent each turn"
-        >
-          <ScrollText className="h-5 w-5" />
-        </Button>
+        <Tip tip="Show the full AI context sent each turn">
+          <Button
+            onClick={() => setIsDebugOpen(true)}
+            className="flex items-center justify-center rounded-full w-10 h-10 p-0"
+          >
+            <ScrollText className="h-5 w-5" />
+          </Button>
+        </Tip>
       </div>
       )}
 
       {/* Edit-world + Menu buttons — desktop only. On mobile both fold into the tab-row menu. */}
       {!uiHidden && !isMobile && (
       <div className="absolute top-16 right-2 md:top-2 flex gap-2">
-        <Button
-          onClick={() => setIsEditingWorld(true)}
-          className="flex items-center justify-center rounded-full w-10 h-10 p-0"
-          title="Edit World"
-        >
-          <SquarePen className="h-5 w-5" />
-        </Button>
+        <Tip tip="Edit World">
+          <Button
+            onClick={() => setIsEditingWorld(true)}
+            className="flex items-center justify-center rounded-full w-10 h-10 p-0"
+          >
+            <SquarePen className="h-5 w-5" />
+          </Button>
+        </Tip>
         {menuModal()}
       </div>
       )}
@@ -4381,26 +4384,28 @@ const GameViewer = ({
                         <span className="px-1 text-meta tabular-nums text-muted-foreground">
                           {hitTotal > 0 ? `${currentHit + 1} of ${hitTotal}` : "0 of 0"}
                         </span>
-                        <button
-                          type="button"
-                          onClick={() => stepHit(-1)}
-                          disabled={hitTotal === 0}
-                          aria-label="Previous match"
-                          title="Previous match (Shift+Enter)"
-                          className="rounded p-1 text-muted-foreground hover:bg-accent hover:text-foreground disabled:opacity-40"
-                        >
-                          <ChevronUp className="h-4 w-4" />
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => stepHit(1)}
-                          disabled={hitTotal === 0}
-                          aria-label="Next match"
-                          title="Next match (Enter)"
-                          className="rounded p-1 text-muted-foreground hover:bg-accent hover:text-foreground disabled:opacity-40"
-                        >
-                          <ChevronDown className="h-4 w-4" />
-                        </button>
+                        <Tip tip="Previous match (Shift+Enter)">
+                          <button
+                            type="button"
+                            onClick={() => stepHit(-1)}
+                            disabled={hitTotal === 0}
+                            aria-label="Previous match"
+                            className="rounded p-1 text-muted-foreground hover:bg-accent hover:text-foreground disabled:opacity-40"
+                          >
+                            <ChevronUp className="h-4 w-4" />
+                          </button>
+                        </Tip>
+                        <Tip tip="Next match (Enter)">
+                          <button
+                            type="button"
+                            onClick={() => stepHit(1)}
+                            disabled={hitTotal === 0}
+                            aria-label="Next match"
+                            className="rounded p-1 text-muted-foreground hover:bg-accent hover:text-foreground disabled:opacity-40"
+                          >
+                            <ChevronDown className="h-4 w-4" />
+                          </button>
+                        </Tip>
                       </div>
                     )}
                   </div>
@@ -4433,36 +4438,38 @@ const GameViewer = ({
                         const label = (semantic ? "≈ " : "") + (entry.name || parseKeywords(entry)[0] || "unnamed");
                         if (!activated) {
                           return (
-                            <span
-                              key={entry.id}
-                              className="rounded border border-border px-1.5 py-0.5 opacity-40 text-muted-foreground"
-                              title="Did not activate this turn"
-                            >
-                              {label}
-                            </span>
+                            <Tip key={entry.id} tip="Did not activate this turn" labelsChild={false}>
+                              <span className="rounded border border-border px-1.5 py-0.5 opacity-40 text-muted-foreground">
+                                {label}
+                              </span>
+                            </Tip>
                           );
                         }
                         const disabled = disabledHighlights[entry.id];
                         return (
-                          <button
+                          <Tip
                             key={entry.id}
-                            onClick={() =>
-                              setDisabledHighlights((prev) => ({ ...prev, [entry.id]: !prev[entry.id] }))
-                            }
-                            className="rounded border px-1.5 py-0.5"
-                            style={
-                              disabled
-                                ? { borderColor: colorMap[entry.id], opacity: 0.5 }
-                                : { backgroundColor: colorMap[entry.id], borderColor: colorMap[entry.id], color: "#000" }
-                            }
-                            title={
+                            labelsChild={false}
+                            tip={
                               semantic
                                 ? `Activated by meaning (similarity ${activation?.semanticSimilarity?.toFixed(2) ?? "?"}) — no keyword hit to highlight`
                                 : disabled ? "Click to show highlights" : "Click to hide highlights"
                             }
                           >
-                            {label}
-                          </button>
+                            <button
+                              onClick={() =>
+                                setDisabledHighlights((prev) => ({ ...prev, [entry.id]: !prev[entry.id] }))
+                              }
+                              className="rounded border px-1.5 py-0.5"
+                              style={
+                                disabled
+                                  ? { borderColor: colorMap[entry.id], opacity: 0.5 }
+                                  : { backgroundColor: colorMap[entry.id], borderColor: colorMap[entry.id], color: "#000" }
+                              }
+                            >
+                              {label}
+                            </button>
+                          </Tip>
                         );
                       })
                     ) : (
@@ -4473,21 +4480,25 @@ const GameViewer = ({
                       const disabled = disabledHydrations[term];
                       const color = hydrationColorMap[term.toLowerCase()];
                       return (
-                        <button
+                        <Tip
                           key={term}
-                          onClick={() =>
-                            setDisabledHydrations((prev) => ({ ...prev, [term]: !prev[term] }))
-                          }
-                          className="rounded border px-1.5 py-0.5"
-                          style={
-                            disabled
-                              ? { borderColor: color, opacity: 0.5 }
-                              : { backgroundColor: color, borderColor: color, color: "#000" }
-                          }
-                          title={disabled ? "Click to enable highlight" : "Click to disable highlight"}
+                          labelsChild={false}
+                          tip={disabled ? "Click to enable highlight" : "Click to disable highlight"}
                         >
-                          {term}
-                        </button>
+                          <button
+                            onClick={() =>
+                              setDisabledHydrations((prev) => ({ ...prev, [term]: !prev[term] }))
+                            }
+                            className="rounded border px-1.5 py-0.5"
+                            style={
+                              disabled
+                                ? { borderColor: color, opacity: 0.5 }
+                                : { backgroundColor: color, borderColor: color, color: "#000" }
+                            }
+                          >
+                            {term}
+                          </button>
+                        </Tip>
                       );
                     })
                   ) : (
@@ -4533,17 +4544,18 @@ const GameViewer = ({
                     />
                     Current context only
                   </label>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="h-8 flex-shrink-0 gap-1.5"
-                    onClick={handleExportDebugContext}
-                    disabled={debugTurns.length === 0}
-                    title="Download the full turn history as JSON"
-                  >
-                    <ActionIcon.export className="h-4 w-4" />
-                    Export
-                  </Button>
+                  <Tip tip="Download the full turn history as JSON" labelsChild={false}>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="h-8 flex-shrink-0 gap-1.5"
+                      onClick={handleExportDebugContext}
+                      disabled={debugTurns.length === 0}
+                    >
+                      <ActionIcon.export className="h-4 w-4" />
+                      Export
+                    </Button>
+                  </Tip>
                 </div>
                 {showSilentRequests && currentSummary && (
                   <div className="flex-shrink-0 rounded-md border border-border bg-muted/40 p-2 text-meta">
@@ -4603,19 +4615,20 @@ const GameViewer = ({
                                     {/* Which endpoint served it. A routed prompt is called out; one following
                                         the active preset is shown quietly, since that is the norm. */}
                                     {req.endpoint && (
-                                      <span
-                                        // The routed chip is marked by a tinted border + the arrow, not by
-                                        // colored text: `primary` is a pale accent that all but vanishes as
-                                        // text on a light surface (measured 1.24:1).
-                                        className={`rounded px-1.5 py-0.5 text-meta font-normal ${
-                                          req.endpoint.routed
-                                            ? "border border-primary/60 bg-primary/15 text-foreground"
-                                            : "bg-muted text-muted-foreground"
-                                        }`}
-                                        title={`${req.endpoint.model} · ${req.endpoint.url}`}
-                                      >
-                                        {req.endpoint.routed ? "→ " : ""}{req.endpoint.preset} · {req.endpoint.model}
-                                      </span>
+                                      <Tip tip={`${req.endpoint.model} · ${req.endpoint.url}`} labelsChild={false}>
+                                        <span
+                                          // The routed chip is marked by a tinted border + the arrow, not by
+                                          // colored text: `primary` is a pale accent that all but vanishes as
+                                          // text on a light surface (measured 1.24:1).
+                                          className={`rounded px-1.5 py-0.5 text-meta font-normal ${
+                                            req.endpoint.routed
+                                              ? "border border-primary/60 bg-primary/15 text-foreground"
+                                              : "bg-muted text-muted-foreground"
+                                          }`}
+                                        >
+                                          {req.endpoint.routed ? "→ " : ""}{req.endpoint.preset} · {req.endpoint.model}
+                                        </span>
+                                      </Tip>
                                     )}
                                   </span>
                                   {groupOpen ? (
