@@ -1335,7 +1335,7 @@ const LocationCanvas = (props: { selectedId: string | null; onSelect: (id: strin
       <CanvasInner
         {...props}
         session={session}
-        fullscreen={morph.mounted}
+        fullscreen={morph.contentInOverlay}
         onToggleFullscreen={toggleFullscreen}
       />
     </ReactFlowProvider>
@@ -1345,7 +1345,7 @@ const LocationCanvas = (props: { selectedId: string | null; onSelect: (id: strin
     // The pane's own box stays laid out at its real size while the window is up: it is what the window grows
     // out of and shrinks back into, and a collapsed source has nothing to travel between.
     <div ref={hostRef} className="relative h-full w-full">
-      {!morph.mounted && canvas}
+      {!morph.contentInOverlay && canvas}
       {morph.mounted && (
         <FullscreenShell
           morph={windowMorph}
@@ -1353,7 +1353,9 @@ const LocationCanvas = (props: { selectedId: string | null; onSelect: (id: strin
           // The control that opened the window went with the canvas, so closing has to be told where to land.
           returnFocus={() => hostRef.current?.querySelector<HTMLElement>('.react-flow__controls button:last-child')}
         >
-          <div className="min-h-0 flex-1">{canvas}</div>
+          {/* Handed back to the pane the moment closing starts: the window is a fading panel by then, and
+              the docked canvas has to be under it from the first frame. */}
+          <div className="min-h-0 flex-1">{morph.contentInOverlay ? canvas : null}</div>
         </FullscreenShell>
       )}
     </div>

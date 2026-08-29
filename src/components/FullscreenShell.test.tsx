@@ -9,6 +9,8 @@ const read = (p: string) => readFileSync(resolve(__dirname, '../..', p), 'utf8')
 
 const openMorph = (): MorphFullscreen => ({
   mounted: true,
+  contentInOverlay: true,
+  boxClassName: '',
   phase: 'open',
   open: () => {},
   close: () => {},

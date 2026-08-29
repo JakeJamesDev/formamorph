@@ -73,40 +73,28 @@ describe('useMorphFullscreen', () => {
     expect(boxEl.style.transition).toBe('');
   });
 
-  it('keeps the overlay mounted until it has shrunk back into the field', () => {
+  it('closes as a fade in place: mounted through the fade, content handed back at once, no return trip', () => {
     const { sourceEl, boxEl, writes } = makeElements();
     const { result } = renderHook(() => useMorphFullscreen({ current: sourceEl }));
     act(() => result.current.open());
     act(() => result.current.boxRef(boxEl));
     act(() => vi.advanceTimersByTime(400));
+    expect(result.current.contentInOverlay).toBe(true);
+    const writesBeforeClose = writes.length;
 
     act(() => result.current.close());
+    // The overlay stays for its fade-out, but the content belongs to the docked slot from the first
+    // frame — the box is a plain fading panel, and a shrink would be invisible against the panel below.
     expect(result.current.mounted).toBe(true);
     expect(result.current.phase).toBe('leaving');
+    expect(result.current.contentInOverlay).toBe(false);
+    expect(result.current.boxClassName).toContain('opacity-0');
     act(() => vi.advanceTimersByTime(50));
-    expect(writes[writes.length - 1]).toBe('translate(20px, 40px) scale(0.2, 0.075)');
+    expect(writes.length).toBe(writesBeforeClose);
 
     act(() => vi.advanceTimersByTime(400));
     expect(result.current.mounted).toBe(false);
     expect(result.current.phase).toBe('closed');
-  });
-
-  it('shrinks back to where the editor came from even after handing it to the overlay', () => {
-    // Some callers move their editor into the window rather than leaving a copy behind, so on the way out
-    // the source element is a child of the very box being animated. Measuring it then reports the overlay's
-    // own rect, the trip inverts onto where the box already is, and the close collapses to a plain fade.
-    const { sourceEl, boxEl, writes } = makeElements();
-    const { result } = renderHook(() => useMorphFullscreen({ current: sourceEl }));
-    act(() => result.current.open());
-    act(() => result.current.boxRef(boxEl));
-    act(() => vi.advanceTimersByTime(400));
-
-    boxEl.appendChild(sourceEl);
-    sourceEl.getBoundingClientRect = () => rect(0, 0, 1000, 800);
-
-    act(() => result.current.close());
-    act(() => vi.advanceTimersByTime(50));
-    expect(writes[writes.length - 1]).toBe('translate(20px, 40px) scale(0.2, 0.075)');
   });
 
   it('puts the panels behind it back where they were reading, however they got moved', () => {
@@ -172,6 +160,8 @@ describe('useMorphFullscreen', () => {
     expect(writes.filter(Boolean)).toEqual([]);
 
     act(() => result.current.close());
+    // The close fade still runs — an opacity-only exit is reduced-motion safe, like the app's other fades.
+    act(() => vi.advanceTimersByTime(400));
     expect(result.current.mounted).toBe(false);
   });
 

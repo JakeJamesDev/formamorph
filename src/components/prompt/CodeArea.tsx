@@ -280,7 +280,7 @@ export function CodeArea(props: CodeAreaProps) {
         fullscreen={false}
         onToggleFullscreen={morph.toggle}
         session={session}
-        active={!morph.mounted}
+        active={!morph.contentInOverlay}
         expose={holdSource}
       />
       {/* No heading: the field's own caption rides in the toolbar and comes with it, so a header row
@@ -292,7 +292,7 @@ export function CodeArea(props: CodeAreaProps) {
           fullscreen
           onToggleFullscreen={morph.close}
           session={session}
-          active
+          active={morph.contentInOverlay}
         />
       </FullscreenShell>
     </>
