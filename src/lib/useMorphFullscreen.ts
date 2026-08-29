@@ -292,10 +292,14 @@ export function useMorphFullscreen(sourceRef: RefObject<HTMLElement | null>): Mo
     if (!travel(false)) settleRef.current(false);
   }, [travel]);
 
+  // Both fades span the whole trip, the settle buffer included. Shorter ones left the box visibly
+  // empty — the exit faded out in 150ms of a ~290ms trip, so the shrunken box sat blank over the panel
+  // before the real content popped back, and the enter's delay blanked the first 100ms of the growth.
+  // An empty box reads as the widget vanishing; a fade that is still going when the swap lands does not.
   const contentClassName = phase === 'leaving'
-    ? 'animate-out fade-out-0 duration-150 fill-mode-both'
+    ? 'animate-out fade-out-0 duration-300 fill-mode-both'
     : phase === 'entering'
-      ? 'animate-in fade-in-0 duration-200 delay-100 fill-mode-both'
+      ? 'animate-in fade-in-0 duration-300 fill-mode-both'
       : '';
 
   // Durations approximate ENTER_MS/EXIT_MS at the named steps, like `contentClassName` above. They
