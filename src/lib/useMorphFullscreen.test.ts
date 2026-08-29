@@ -205,7 +205,15 @@ describe('useMorphFullscreen', () => {
     // Covered through the whole trip: the widget underneath never animates, so revealing it mid-travel
     // would show it scaled with the box.
     expect(result.current.veilClassName).not.toContain('opacity-0');
-    act(() => vi.advanceTimersByTime(400));
+    act(() => vi.advanceTimersByTime(200));
+    expect(result.current.veilClassName).not.toContain('opacity-0');
+    // The reveal starts on the landing clock (ENTER_MS), while the phase is still settling — waiting
+    // for the settle's safety buffer left the landed box sitting veiled for an extra beat.
+    act(() => vi.advanceTimersByTime(100));
+    expect(result.current.phase).toBe('entering');
+    expect(result.current.veilClassName).toContain('opacity-0');
+    act(() => vi.advanceTimersByTime(100));
+    expect(result.current.phase).toBe('open');
     expect(result.current.veilClassName).toContain('opacity-0');
 
     // And covered again before the box moves, so the shrinking box is a clean panel.
