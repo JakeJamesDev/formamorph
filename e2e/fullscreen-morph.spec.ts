@@ -144,16 +144,20 @@ test('closing: the window shrinks back into the docked slot, solid, with the pan
   // size is proven small only relative to full screen, not tiny in absolute terms.
   expect(area(frames[frames.length - 1])).toBeLessThan(full * 0.85);
 
-  // Solid the whole way down — the shrink is the animation; a fading panel reads as vanishing — and
-  // edged, since it shrinks over content of its own color.
-  for (const s of frames) {
+  // Solid and edged through the travel — the shrink is the animation, and it happens over content of
+  // the panel's own color.
+  for (const s of travel) {
     expect(s.opacity).toBeGreaterThan(0.95);
     expect(s.veil).toBeGreaterThan(0.95);
-  }
-  for (const s of travel) {
     expect(s.borderW).toBeGreaterThanOrEqual(1);
     expect(s.shadow).toBe(true);
   }
+  // Then the reveal: once parked at the docked size, the window must fade away over the restored
+  // widget through real intermediate opacities. Without this it unmounts as a solid blank panel and
+  // the widget appears in a single frame — the pop the whole design exists to remove.
+  const landed = frames.filter((s) => area(s) <= docked * 1.05);
+  expect(landed.filter((s) => s.opacity > 0.05 && s.opacity < 0.95).length).toBeGreaterThanOrEqual(2);
+  for (const s of landed) expect(s.docked).toBe(true);
   // The dim layer is still meaningfully dark halfway through the shrink — it fades with the trip, not
   // ahead of it — and the docked panel is back underneath from the start of the travel, so the window
   // lands flush on the real widget instead of an empty slot.

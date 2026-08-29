@@ -91,8 +91,8 @@ describe('useMorphFullscreen', () => {
     expect(result.current.boxClassName).toContain('border');
     act(() => vi.advanceTimersByTime(50));
     expect(writes[writes.length - 1]).toBe('translate(20px, 40px) scale(0.2, 0.075)');
-
-    act(() => vi.advanceTimersByTime(400));
+    // The box then fades over the widget after landing, so the settle waits out shrink plus reveal.
+    act(() => vi.advanceTimersByTime(600));
     expect(result.current.mounted).toBe(false);
     expect(result.current.phase).toBe('closed');
   });
@@ -229,7 +229,7 @@ describe('useMorphFullscreen', () => {
 
     // And it stays held at 0 through `closed`: the dialog primitive keeps the overlay in the tree for
     // its own exit animation, and a class that reverted here would flash the sheet back mid-teardown.
-    act(() => vi.advanceTimersByTime(400));
+    act(() => vi.advanceTimersByTime(600));
     expect(result.current.phase).toBe('closed');
     expect(result.current.overlayClassName).toContain('opacity-0');
   });

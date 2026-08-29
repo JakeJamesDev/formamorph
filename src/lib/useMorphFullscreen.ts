@@ -3,6 +3,10 @@ import { usePrefersReducedMotion } from '@/lib/usePrefersReducedMotion';
 
 const ENTER_MS = 260;
 const EXIT_MS = 190;
+/** The reveal after either landing: entering it is the veil fading off the contents; leaving it is the
+ *  parked window fading off the restored widget. Without the second one the close ends as a solid blank
+ *  panel swapped for the widget in a single frame. */
+const REVEAL_MS = 200;
 /** Decelerate: quick to leave the field, slow to settle at full size. */
 const EASE = 'cubic-bezier(0.2, 0, 0, 1)';
 
@@ -232,7 +236,7 @@ export function useMorphFullscreen(sourceRef: RefObject<HTMLElement | null>): Mo
    *  fires it never has to be re-created when it changes identity. */
   const settleRef = useRef((leaving: boolean) => {
     const box = boxEl.current;
-    if (box) { box.style.transition = ''; box.style.transform = ''; box.style.transformOrigin = ''; }
+    if (box) { box.style.transition = ''; box.style.transform = ''; box.style.transformOrigin = ''; box.style.opacity = ''; }
     if (leaving) { setMounted(false); setPhase('closed'); } else setPhase('open');
   });
   // Held in a ref for the same reason, and re-pointed each render so it never closes over a stale capture.
@@ -252,21 +256,28 @@ export function useMorphFullscreen(sourceRef: RefObject<HTMLElement | null>): Mo
     box.style.transformOrigin = 'top left';
     box.style.transition = 'none';
     box.style.transform = withBase(base, leaving ? '' : inverted);
+    box.style.opacity = '';
     void box.offsetWidth;
 
     // The release waits for a painted frame rather than following in this one: a transition declared
     // alongside an element's first style computation does not run, and the overlay was portaled in only
     // moments ago.
+    // Leaving carries the reveal inline with the shrink: opacity delayed to start as the box lands, so
+    // the parked window dissolves over the restored widget instead of vanishing. Inline because the
+    // inline transform transition replaces every class-declared transition on the element.
     const release = () => {
-      box.style.transition = `transform ${ms}ms ${EASE}`;
+      box.style.transition = leaving
+        ? `transform ${ms}ms ${EASE}, opacity ${REVEAL_MS}ms ease ${ms}ms`
+        : `transform ${ms}ms ${EASE}`;
       box.style.transform = withBase(base, leaving ? inverted : '');
+      if (leaving) box.style.opacity = '0';
     };
     frame.current = requestAnimationFrame(() => { frame.current = requestAnimationFrame(release); });
 
     // Armed here rather than inside `release`, and on a clock rather than `transitionend`: a hidden tab
     // suspends frames altogether, so a settle that waited on the release would never come and the overlay
     // would sit parked over the field for good. Landing early costs the animation, not the end state.
-    timer.current = setTimeout(() => settleRef.current(leaving), ms + 100);
+    timer.current = setTimeout(() => settleRef.current(leaving), ms + (leaving ? REVEAL_MS : 0) + 100);
     return true;
   }, [reduceMotion]);
 
