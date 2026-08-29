@@ -8,8 +8,11 @@ import {
   useSensor,
   useSensors,
   type DragEndEvent,
+  type DragMoveEvent,
+  type DragOverEvent,
 } from '@dnd-kit/core';
 import { restrictToFirstScrollableAncestor } from '@dnd-kit/modifiers';
+import { getEventCoordinates } from '@dnd-kit/utilities';
 import { SortableContext, rectSortingStrategy, type SortingStrategy } from '@dnd-kit/sortable';
 import { ArrowLeft, FolderMinus } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -27,7 +30,16 @@ import {
   ContextMenuSeparator,
   ContextMenuTrigger,
 } from '@/components/ui/context-menu';
-import { dropIntent, packTiles, packedRowCount, type LibraryTileSize } from '@/lib/libraryOrganization';
+import {
+  dropIntent,
+  packTiles,
+  packedRowCount,
+  projectedOrder,
+  type DropIntent,
+  type LibraryTileSize,
+  type PackedTile,
+  type TileRect,
+} from '@/lib/libraryOrganization';
 import type { LibraryTiles } from '@/lib/useLibraryTiles';
 import { LibraryGroupTile } from '@/components/library/LibraryGroupTile';
 
@@ -50,8 +62,13 @@ const BREAKPOINTS = { sm: 640, lg: 1024 };
 /** The header's drop target: dropping a tile here takes it out of the folder. */
 const UNGROUP_DROP_ID = '__library-ungroup__';
 
-/** A packed grid places every tile itself, so dnd-kit must not also shuffle their neighbours. */
-const NO_SHIFT: SortingStrategy = () => null;
+/** The drag in progress: what is held, what it is over, and what dropping there would do. */
+interface DragPreview {
+  activeId: string;
+  overId: string;
+  /** Null while the pointer is over nothing the drop can act on. */
+  intent: DropIntent | null;
+}
 
 const SIZE_LABELS: { size: LibraryTileSize; label: string }[] = [
   { size: 'small', label: 'Small' },
@@ -100,6 +117,19 @@ function useMeasuredWidth(): [(node: HTMLDivElement | null) => void, number] {
   }, []);
 
   return [measure, width];
+}
+
+/** Every tile's cell in the packed grid, by id. Empty in the detailed layout, which packs nothing. */
+function usePlacement(
+  order: string[],
+  sizes: Record<string, LibraryTileSize>,
+  columns: number,
+  layout: 'grid' | 'detailed',
+): Map<string, PackedTile> {
+  return useMemo(() => {
+    if (layout !== 'grid') return new Map();
+    return new Map(packTiles(order, sizes, columns).map((tile) => [tile.id, tile]));
+  }, [order, sizes, columns, layout]);
 }
 
 /** The header of the folder view: back out, rename in place, and a drop zone that ungroups. */
@@ -198,8 +228,13 @@ export function LibraryTileGrid<T>({
   emptyState?: React.ReactNode;
 }) {
   const [openGroupId, setOpenGroupId] = useState<string | null>(null);
-  const [dragging, setDragging] = useState(false);
+  const [drag, setDrag] = useState<DragPreview | null>(null);
+  // The same reading, held outside the render cycle: React defers renders for continuous pointer
+  // events, so a fast move-and-release can drop before the state carrying the last intent has
+  // rendered. The ref is written synchronously in the event handler and is what the drop reads.
+  const dragRef = useRef<DragPreview | null>(null);
   const [measureGrid, width] = useMeasuredWidth();
+  const dragging = drag !== null;
 
   const openGroup = openGroupId ? tiles.group(openGroupId) : undefined;
   useEffect(() => {
@@ -216,24 +251,142 @@ export function LibraryTileGrid<T>({
 
   const mediumCols = useMediumColumns(mediumColumns);
   const baseCols = mediumCols * 2;
-  const packed = useMemo(
-    () => (layout === 'grid' ? packTiles(renderedIds, tiles.organization.sizes, baseCols) : []),
-    [layout, renderedIds, tiles.organization.sizes, baseCols],
-  );
-  const placement = useMemo(() => new Map(packed.map((tile) => [tile.id, tile])), [packed]);
+
+  // Where the tiles stand right now, and where they would stand if the drag were dropped. The two are
+  // the same list unless a reorder is being previewed, and a grouping drop reflows nothing at all.
+  const previewOrder = useMemo(() => {
+    if (layout !== 'grid' || !drag || drag.intent?.kind !== 'reorder') return renderedIds;
+    return projectedOrder(tiles.organization, tiles.itemIds, {
+      activeId: drag.activeId,
+      overId: drag.overId,
+      position: drag.intent.position,
+      container: openGroupId,
+    });
+  }, [layout, drag, renderedIds, tiles.organization, tiles.itemIds, openGroupId]);
+
+  // Tiles keep their real grid slots for the whole drag; the preview below moves them by animated
+  // transform, exactly the way the flat grid's sortable strategy always did, so a reorder slides the
+  // board around instead of snapping it.
+  const placement = usePlacement(renderedIds, tiles.organization.sizes, baseCols, layout);
+  const previewPlacement = usePlacement(previewOrder, tiles.organization.sizes, baseCols, layout);
 
   // Row height comes from the medium tile's ratio, so a medium tile is exactly the size it always was
   // and the half and double sizes fall out of it.
   const cellWidth = width > 0 ? (width - (baseCols - 1) * GAP) / baseCols : 0;
   const cellHeight = cellWidth > 0 ? ((2 * cellWidth + GAP) / ASPECT[aspect] - GAP) / 2 : 0;
 
+  /**
+   * The strategy the sortable tiles animate by: each tile's offset from its slot to where the packer
+   * says it lands if the drag drops now. dnd-kit transitions these transforms itself, which is what
+   * made the old uniform grid feel smooth — this feeds that same pipeline positions that are actually
+   * true for packed, mixed-size tiles. The held tile is skipped; it follows the pointer.
+   */
+  const packedStrategy: SortingStrategy = ({ index }) => {
+    const id = renderedIds[index];
+    const from = placement.get(id);
+    const to = previewPlacement.get(id);
+    if (!from || !to || (from.col === to.col && from.row === to.row)) return null;
+    return {
+      x: (to.col - from.col) * (cellWidth + GAP),
+      y: (to.row - from.row) * (cellHeight + GAP),
+      scaleX: 1,
+      scaleY: 1,
+    };
+  };
+
   const sensors = useSensors(
     useSensor(MouseSensor, { activationConstraint: { distance: 8 } }),
     useSensor(TouchSensor, { activationConstraint: { delay: 200, tolerance: 5 } }),
   );
 
+  /**
+   * The reading of the drag: which tile it is over (from dnd-kit's collision events) and where the
+   * pointer is (from a native listener). Split this way because neither source alone is trustworthy —
+   * dnd-kit's per-event coordinates lag several events behind under a fast drag, and the pointer alone
+   * cannot say which tile counts as "over" once the preview starts sliding tiles around. The intent is
+   * recomputed from both on every native move, so the reading at release is the release position.
+   */
+  const pointerRef = useRef<{ x: number; y: number } | null>(null);
+  const overRef = useRef<{ id: string; rect: TileRect } | null>(null);
+
+  /** The drop reading for the current pointer and over-tile, or a null intent when there is neither. */
+  const computePreview = (activeId: string): DragPreview => {
+    const over = overRef.current;
+    const point = pointerRef.current;
+    if (!over || over.id === activeId) return { activeId, overId: activeId, intent: null };
+
+    // Inside a folder there is nothing to group into, since groups hold only items.
+    const canGroup = !openGroupId && !tiles.group(activeId);
+    const intent = point
+      ? dropIntent(point, over.rect, {
+        canGroup,
+        overSize: layout === 'grid' ? tiles.size(over.id) : 'medium',
+      })
+      : ({ kind: 'reorder', position: 'after' } as const);
+
+    return { activeId, overId: over.id, intent };
+  };
+
+  const commitPreview = (next: DragPreview) => {
+    dragRef.current = next;
+    // The per-pixel stream re-renders the grid only when the reading actually changed.
+    setDrag((prev) => (
+      prev
+        && prev.overId === next.overId
+        && prev.intent?.kind === next.intent?.kind
+        && (prev.intent?.kind !== 'reorder' || next.intent?.kind !== 'reorder'
+          || prev.intent.position === next.intent.position)
+        ? prev
+        : next
+    ));
+  };
+
+  // Fresh closures for the native listener below, which cannot re-subscribe per render.
+  const previewFnsRef = useRef({ computePreview, commitPreview });
+  previewFnsRef.current = { computePreview, commitPreview };
+
+  /** dnd-kit's collision events keep the over-tile current; the pointer is seeded as a fallback. */
+  const updateDrag = (event: DragMoveEvent | DragOverEvent) => {
+    const { active, over } = event;
+    overRef.current = over && over.id !== UNGROUP_DROP_ID && String(over.id) !== String(active.id)
+      ? { id: String(over.id), rect: over.rect }
+      : null;
+    if (!pointerRef.current) {
+      const grabbed = getEventCoordinates(event.activatorEvent);
+      if (grabbed) pointerRef.current = { x: grabbed.x + event.delta.x, y: grabbed.y + event.delta.y };
+    }
+    commitPreview(computePreview(String(active.id)));
+  };
+
+  // The native pointer, read directly off the document while a drag is live. This is what makes the
+  // reading exact at release: the browser's last move event always lands here before the mouseup does,
+  // with no framework scheduling in between.
+  useEffect(() => {
+    if (!dragging) return;
+    const onMove = (event: MouseEvent | TouchEvent) => {
+      const source = 'touches' in event ? event.touches[0] : event;
+      if (!source) return;
+      pointerRef.current = { x: source.clientX, y: source.clientY };
+      const current = dragRef.current;
+      if (current) previewFnsRef.current.commitPreview(previewFnsRef.current.computePreview(current.activeId));
+    };
+    window.addEventListener('mousemove', onMove, { capture: true, passive: true });
+    window.addEventListener('touchmove', onMove, { capture: true, passive: true });
+    return () => {
+      window.removeEventListener('mousemove', onMove, { capture: true });
+      window.removeEventListener('touchmove', onMove, { capture: true });
+    };
+  }, [dragging]);
+
   const handleDragEnd = (event: DragEndEvent) => {
-    setDragging(false);
+    // The drop executes what the preview last promised. The last move's reading is the one the player
+    // watched the tiles slide toward; re-reading at the drop reconstructs the pointer from a rect
+    // dnd-kit has already stopped translating, and lands somewhere else.
+    const preview = dragRef.current;
+    dragRef.current = null;
+    pointerRef.current = null;
+    overRef.current = null;
+    setDrag(null);
     const { active, over } = event;
     if (!over) return;
 
@@ -244,18 +397,8 @@ export function LibraryTileGrid<T>({
     }
 
     const overId = String(over.id);
-    if (activeId === overId) return;
-
-    const rect = active.rect.current.translated;
-    // Inside a folder there is nothing to group into, since groups hold only items.
-    const canGroup = !openGroupId && !tiles.group(activeId);
-    const intent = rect
-      ? dropIntent(
-        { x: rect.left + rect.width / 2, y: rect.top + rect.height / 2 },
-        over.rect,
-        { canGroup, overSize: layout === 'grid' ? tiles.size(overId) : 'medium' },
-      )
-      : ({ kind: 'reorder', position: 'after' } as const);
+    const intent = preview?.overId === overId ? preview.intent : null;
+    if (!intent) return;
 
     if (intent.kind === 'group') {
       if (tiles.group(overId)) tiles.addTo(activeId, overId);
@@ -326,10 +469,21 @@ export function LibraryTileGrid<T>({
       }
       : undefined;
 
+    // The tile a grouping drop would fold into. Nothing reflows for that drop, so the ring is the only
+    // thing that says what it will do.
+    const groupTarget = drag?.intent?.kind === 'group' && drag.overId === id;
+
     return (
       <ContextMenu key={id}>
         <ContextMenuTrigger asChild>
-          <div style={style} className={cn('min-w-0', layout === 'detailed' && 'h-full')}>
+          <div
+            style={style}
+            className={cn(
+              'min-w-0',
+              layout === 'detailed' && 'h-full',
+              groupTarget && 'rounded-lg ring-2 ring-primary ring-offset-2 ring-offset-background',
+            )}
+          >
             {group ? (
               <LibraryGroupTile
                 group={group}
@@ -356,7 +510,7 @@ export function LibraryTileGrid<T>({
   const gridStyle: React.CSSProperties = layout === 'grid'
     ? {
       gridTemplateColumns: `repeat(${baseCols}, minmax(0, 1fr))`,
-      gridTemplateRows: `repeat(${Math.max(1, packedRowCount(packed))}, ${Math.max(1, Math.round(cellHeight))}px)`,
+      gridTemplateRows: `repeat(${Math.max(1, packedRowCount([...placement.values()]), packedRowCount([...previewPlacement.values()]))}, ${Math.max(1, Math.round(cellHeight))}px)`,
     }
     : {};
 
@@ -364,8 +518,25 @@ export function LibraryTileGrid<T>({
     <DndContext
       sensors={sensors}
       collisionDetection={closestCenter}
-      onDragStart={() => setDragging(true)}
-      onDragCancel={() => setDragging(false)}
+      onDragStart={({ active }) => {
+        const start = { activeId: String(active.id), overId: String(active.id), intent: null };
+        pointerRef.current = null;
+        overRef.current = null;
+        dragRef.current = start;
+        setDrag(start);
+      }}
+      // Both events feed the same reading. onDragOver alone misses the pointer crossing from a tile's
+      // edge into its middle (it fires only when the tile changes); onDragMove alone lags one frame on
+      // tile changes (its `over` is recomputed after the move). Together every position is read fresh,
+      // and the equality guard keeps the per-pixel stream from re-rendering a grid nothing changed in.
+      onDragOver={updateDrag}
+      onDragMove={updateDrag}
+      onDragCancel={() => {
+        dragRef.current = null;
+        pointerRef.current = null;
+        overRef.current = null;
+        setDrag(null);
+      }}
       onDragEnd={handleDragEnd}
       // Clamp the drag to the scroll viewport and never auto-scroll the page, so dragging a tile past
       // an edge scrolls this finite frame rather than growing the page.
@@ -390,7 +561,7 @@ export function LibraryTileGrid<T>({
           >
             <SortableContext
               items={renderedIds}
-              strategy={layout === 'grid' ? NO_SHIFT : rectSortingStrategy}
+              strategy={layout === 'grid' ? packedStrategy : rectSortingStrategy}
             >
               {renderedIds.map(renderTile)}
             </SortableContext>

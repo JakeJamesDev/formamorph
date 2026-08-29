@@ -9,6 +9,7 @@ import {
   groupOf,
   loadTabOrganization,
   moveTile,
+  reorderTopLevel,
   pruneOrganization,
   removeFromGroup,
   renameGroup,
@@ -20,11 +21,14 @@ import {
   type LibraryGroup,
   type LibraryTabOrganization,
   type LibraryTileSize,
+  type TileMove,
 } from '@/lib/libraryOrganization';
 
 /** One tab's tile arrangement plus the actions the grid dispatches against it. */
 export interface LibraryTiles {
   organization: LibraryTabOrganization;
+  /** The ids the tab currently holds, which the grid needs to project a reorder before it happens. */
+  itemIds: string[];
   /** Folders and loose items, in the order the main grid draws them. */
   topLevel: string[];
   /** Every folder in this tab, in the order they stand in the grid. */
@@ -41,12 +45,7 @@ export interface LibraryTiles {
   removeFrom: (itemId: string) => void;
   disband: (groupId: string) => void;
   rename: (groupId: string, name: string) => void;
-  move: (args: {
-    activeId: string;
-    overId: string;
-    position: 'before' | 'after';
-    container?: string | null;
-  }) => void;
+  move: (move: TileMove) => void;
   setPromptPreset: (groupId: string, presetId: string | null) => void;
 }
 
@@ -97,6 +96,7 @@ export function useLibraryTiles(
 
   return {
     organization,
+    itemIds,
     topLevel,
     groups,
     group: useCallback((id: string) => organization.groups[id], [organization]),
@@ -109,7 +109,11 @@ export function useLibraryTiles(
     removeFrom: useCallback((itemId) => setOrganization((prev) => removeFromGroup(prev, itemId)), []),
     disband: useCallback((groupId) => setOrganization((prev) => disbandGroup(prev, groupId)), []),
     rename: useCallback((groupId, name) => setOrganization((prev) => renameGroup(prev, groupId, name)), []),
-    move: useCallback((args) => setOrganization((prev) => moveTile(prev, args)), []),
+    // The main grid reorders against what it draws, not against the stored order, which can hold
+    // fewer ids; a folder's member list is already the whole list.
+    move: useCallback((move: TileMove) => setOrganization((prev) => (
+      move.container ? moveTile(prev, move) : reorderTopLevel(prev, itemIds, move)
+    )), [itemIds]),
     setPromptPreset: useCallback(
       (groupId, presetId) => setOrganization((prev) => setGroupPromptPreset(prev, groupId, presetId)),
       [],
