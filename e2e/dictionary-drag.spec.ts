@@ -63,7 +63,7 @@ function grip(page: Page, label: string) {
     .first();
 }
 
-async function dragBy(page: Page, label: string, dy: number): Promise<void> {
+async function dragBy(page: Page, label: string, dy: number, onStep?: () => Promise<void>): Promise<void> {
   const g = grip(page, label);
   await g.scrollIntoViewIfNeeded();
   const box = (await g.boundingBox())!;
@@ -76,6 +76,7 @@ async function dragBy(page: Page, label: string, dy: number): Promise<void> {
   for (let i = 1; i <= steps; i++) {
     await page.mouse.move(cx, cy + Math.sign(dy) * 8 + (dy * i) / steps);
     await page.waitForTimeout(30);
+    await onStep?.();
   }
   await page.waitForTimeout(300); // let the displacement transition finish before dropping
   await page.mouse.up();
@@ -102,9 +103,16 @@ test('displaced entry rows slide, not snap, in both drag directions', async ({ p
   await page.getByText(BOOK, { exact: true }).click();
   await expect(grip(page, 'Entry 3')).toBeVisible();
 
-  // Down: Entry 1 over Entry 2 → Entry 2 slides up through intermediate positions.
+  // Down: Entry 1 over Entry 2 → Entry 2 slides up through intermediate positions. Mid-drag, no row
+  // may sit in the :hover state — the tree's hit-testing goes dark so rows don't light under the cursor.
   await startSampler(page, ['Entry 2']);
-  await dragBy(page, 'Entry 1', 120);
+  const hoverCounts: number[] = [];
+  await dragBy(page, 'Entry 1', 120, async () => {
+    hoverCounts.push(
+      await page.evaluate(() => document.querySelectorAll('[role="dialog"] div.cursor-pointer:hover').length),
+    );
+  });
+  expect(Math.max(...hoverCounts), 'no row may show hover at any point while dragging').toBe(0);
   expect(intermediates(await samples(page), 'Entry 2'), 'down-drag should animate').toBeGreaterThanOrEqual(3);
 
   // Up: Entry 5 over Entry 4 → Entry 4 slides down through intermediate positions.

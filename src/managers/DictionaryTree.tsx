@@ -447,7 +447,9 @@ const DictionaryTree = ({ selectedId, onSelect }: { selectedId: string | null; o
         }}
       >
         <SortableContext items={bookIds} strategy={verticalListSortingStrategy}>
-          <div className="flex flex-col gap-3">
+          {/* Hit-testing goes dark while a drag is live: rows under the cursor would light their hover
+              state and pop tooltips. Drops are unaffected — dnd-kit collision is rect-based. */}
+          <div className={`flex flex-col gap-3${draggingBook || activeEntryId ? ' pointer-events-none' : ''}`}>
             {dictionaries.map((book) => (
               <BookRow
                 key={book.id}
