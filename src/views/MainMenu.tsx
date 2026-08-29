@@ -15,6 +15,7 @@ import { ThemedToastContainer } from '@/components/ThemedToastContainer';
 import 'react-toastify/dist/ReactToastify.css';
 import { Button } from "@/components/ui/button";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
+import { Tip } from "@/components/ui/tooltip";
 import {ConfirmDialog} from "@/components/ConfirmDialog";
 import {FilePlus2, DoorOpen, Pencil, AlertTriangle, Code, User, Shield, Globe, LayoutGrid, GalleryThumbnails, Columns2, RectangleVertical, Menu, Earth, BookOpen, ChevronLast, MoreHorizontal, PersonStanding, MessageSquarePlus, FolderOpen, Archive, Settings, ScrollText, type LucideIcon } from "lucide-react";
 import { ActionIcon } from '@/lib/actionIcons';
@@ -1570,12 +1571,16 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
             // Clicking the active item again would otherwise clear the layout mode, which has no empty state.
             onValueChange={(v) => { if (v) setLayoutMode(v as 'grid' | 'detailed'); }}
           >
-            <ToggleGroupItem value="grid" aria-label="Grid view" title="Grid view">
-              <LayoutGrid className="h-5 w-5" />
-            </ToggleGroupItem>
-            <ToggleGroupItem value="detailed" aria-label="Detailed view" title="Detailed view">
-              <GalleryThumbnails className="h-5 w-5" />
-            </ToggleGroupItem>
+            <Tip tip="Grid view">
+              <ToggleGroupItem value="grid">
+                <LayoutGrid className="h-5 w-5" />
+              </ToggleGroupItem>
+            </Tip>
+            <Tip tip="Detailed view">
+              <ToggleGroupItem value="detailed">
+                <GalleryThumbnails className="h-5 w-5" />
+              </ToggleGroupItem>
+            </Tip>
           </ToggleGroup>
           {/* Right menu — hidden below 1000px, where its items fold into the center hamburger; the view toggle
               then becomes the right-most control. */}
