@@ -193,9 +193,9 @@ interface DebugRequest {
   id?: string;
   // Narration only: the dictionary activation behind this turn's injected lore.
   dictionary?: DictionaryDebug;
-  // Narration only: which runs of the sent messages are authored prompt text and which are assembled
-  // context (see lib/requestAnatomy). Absent on turns captured before the anatomy existed — those render
-  // unlabeled, exactly as they did.
+  // Which runs of the sent messages are authored prompt text and which are assembled context (see
+  // lib/requestAnatomy). Absent on drainer requests, re-rolls, and pre-anatomy captures — the viewer
+  // draws the same region/chat layout either way; runs only matter to the Settings anatomy hub.
   anatomy?: RequestAnatomy;
 }
 interface DebugTurn {
@@ -4118,11 +4118,8 @@ const GameViewer = ({
                Numbering the hits over that sequence is what makes "3 of 11" mean the third mention of the
                turn, whatever the reader has collapsed. */
             const findChunks = currentRequests.flatMap((req, i) => {
-              const anatomy = req.anatomy ? toAnatomyBlocks(req.messages, req.anatomy) : null;
-              const regions = anatomy ? anatomyRegions(anatomy) : null;
-              const inputs = regions
-                ? [...regions.system, ...regions.messages].map(([block, bi]) => ({ blockIndex: bi, text: block.content }))
-                : req.messages.map((m, bi) => ({ blockIndex: bi, text: m.content }));
+              const regions = anatomyRegions(toAnatomyBlocks(req.messages, req.anatomy));
+              const inputs = [...regions.system, ...regions.messages].map(([block, bi]) => ({ blockIndex: bi, text: block.content }));
               const chunks = inputs.map(({ blockIndex, text }) => ({
                 key: `${i}:in:${blockIndex}`, group: `group-${i}`, section: i as string | number, request: i, text,
               }));
@@ -4641,29 +4638,17 @@ const GameViewer = ({
                                     </button>
                                   </CollapsibleTrigger>
                                   <CollapsibleContent className="p-2 pt-0">
-                                    {/* Region/chat shape when this request carried a Request Anatomy.
-                                        `plain` keeps the bytes verbatim; provenance reading lives in the
+                                    {/* Every request gets the region/chat shape — a missing anatomy sidecar
+                                        (drainer requests, re-rolls, pre-anatomy captures) just means no runs,
+                                        which `plain` never draws anyway. Provenance reading lives in the
                                         Settings anatomy hub. */}
-                                    {req.anatomy ? (
-                                      <RequestAnatomyView
-                                        blocks={toAnatomyBlocks(req.messages, req.anatomy)}
-                                        mode="resolved"
-                                        plain
-                                        renderText={(text, _block, blockIndex, start) =>
-                                          renderBlock(text, req, false, `${i}:in:${blockIndex}`, start)}
-                                      />
-                                    ) : (
-                                      req.messages.map((message, j) => (
-                                        <div key={j} className="mb-2">
-                                          <div className="font-medium text-muted-foreground uppercase">
-                                            {message.role}
-                                          </div>
-                                          <p className="whitespace-pre-wrap break-words text-label bg-muted/50 p-2 rounded">
-                                            {renderBlock(message.content, req, false, `${i}:in:${j}`)}
-                                          </p>
-                                        </div>
-                                      ))
-                                    )}
+                                    <RequestAnatomyView
+                                      blocks={toAnatomyBlocks(req.messages, req.anatomy)}
+                                      mode="resolved"
+                                      plain
+                                      renderText={(text, _block, blockIndex, start) =>
+                                        renderBlock(text, req, false, `${i}:in:${blockIndex}`, start)}
+                                    />
                                   </CollapsibleContent>
                                 </Collapsible>
                                 {typeof req.response === "string" && (
