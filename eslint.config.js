@@ -7,6 +7,7 @@ import tseslint from 'typescript-eslint'
 import tsdoc from 'eslint-plugin-tsdoc'
 import { TYPOGRAPHY_LEGACY } from './eslint.typography-legacy.js'
 import { composedForwardRefRule } from './eslint.composed-forwardref.js'
+import { noNativeTitleRule } from './eslint.no-native-title.js'
 
 // Raw Tailwind size utilities say how big text is, never what it is — so `text-xs` reads the same on a
 // hint and on a deliberately compact control, and the two can't be told apart or retuned separately.
@@ -88,8 +89,18 @@ export default tseslint.config(
   },
   {
     files: ['src/**/*.tsx'],
-    plugins: { formamorph: { rules: { 'composed-forwardref': composedForwardRefRule } } },
-    rules: { 'formamorph/composed-forwardref': 'error' },
+    plugins: {
+      formamorph: {
+        rules: {
+          'composed-forwardref': composedForwardRefRule,
+          'no-native-title': noNativeTitleRule,
+        },
+      },
+    },
+    rules: {
+      'formamorph/composed-forwardref': 'error',
+      'formamorph/no-native-title': 'error',
+    },
   },
   {
     // Tests carry non-TSDoc block comments (e.g. the `@vitest-environment` pragma) — skip tsdoc there.

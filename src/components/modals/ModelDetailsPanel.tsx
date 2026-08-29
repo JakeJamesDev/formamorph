@@ -8,6 +8,7 @@ import { useVrmCustomization } from '@/lib/useVrmCustomization';
 import { useIsMobile } from '@/lib/useIsMobile';
 import { formatBytes } from '@/lib/imageOptim';
 import type { VrmLicense } from '@/types';
+import { Tip } from '@/components/ui/tooltip';
 
 /** One label/value row of the details column. `min-w-0` on the value cell lets a long value truncate rather
  *  than forcing the panel wider (grid tracks default to `min-width: auto`). */
@@ -101,7 +102,11 @@ export function ModelDetailsPanel({ open, name, url, license, size, failed = fal
       <Row label="Size">{formatBytes(size ?? 0)}</Row>
       <Row label="License">
         {license?.licenseName ?? (license?.licenseUrl
-          ? <a href={license.licenseUrl} target="_blank" rel="noopener noreferrer" title={license.licenseUrl} className="block truncate underline hover:text-foreground">{license.licenseUrl}</a>
+          ? (
+            <Tip tip={license.licenseUrl} labelsChild={false}>
+              <a href={license.licenseUrl} target="_blank" rel="noopener noreferrer" className="block truncate underline hover:text-foreground">{license.licenseUrl}</a>
+            </Tip>
+          )
           : <Unknown />)}
       </Row>
       <Row label="Redistribution">

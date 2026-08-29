@@ -22,6 +22,7 @@ import FeedbackService from "@/services/FeedbackService";
 import AuthService from "@/services/AuthService";
 import { cn } from "@/lib/utils";
 import type { BugDiagnostics, FeedbackDetail, FeedbackStatus } from "@/types";
+import { Tip } from "@/components/ui/tooltip";
 
 const COMMENT_MAX = 4000;
 
@@ -248,15 +249,19 @@ export function FeedbackThreadView({
                 ))}
               </SelectContent>
             </Select>
-            <Button
-              variant="ghost"
-              size="icon"
-              aria-label={thread.locked ? 'Unlock thread' : 'Lock thread'}
-              title={thread.locked ? 'Open it to replies again' : 'Close it to further replies'}
-              onClick={() => toggleLock(!thread.locked)}
+            <Tip
+              tip={thread.locked ? 'Open it to replies again' : 'Close it to further replies'}
+              labelsChild={false}
             >
-              {thread.locked ? <LockOpen className="h-4 w-4" /> : <Lock className="h-4 w-4" />}
-            </Button>
+              <Button
+                variant="ghost"
+                size="icon"
+                aria-label={thread.locked ? 'Unlock thread' : 'Lock thread'}
+                onClick={() => toggleLock(!thread.locked)}
+              >
+                {thread.locked ? <LockOpen className="h-4 w-4" /> : <Lock className="h-4 w-4" />}
+              </Button>
+            </Tip>
             <Button
               variant="ghost"
               size="icon"
@@ -285,16 +290,16 @@ export function FeedbackThreadView({
             {/* Only when there is something this reader may change: an inert control reads as a
                 permission they have lost rather than as one they never had. */}
             {(canEditProse || canRefile) && (
-              <Button
-                variant="ghost"
-                size="icon"
-                className="h-7 w-7"
-                aria-label="Edit this report"
-                title="Edit this report"
-                onClick={() => setEditingThread(true)}
-              >
-                <Pencil className="h-4 w-4" />
-              </Button>
+              <Tip tip="Edit this report">
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-7 w-7"
+                  onClick={() => setEditingThread(true)}
+                >
+                  <Pencil className="h-4 w-4" />
+                </Button>
+              </Tip>
             )}
           </div>
         </div>

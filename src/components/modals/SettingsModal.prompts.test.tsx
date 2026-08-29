@@ -6,6 +6,7 @@ import { SettingsProvider } from '@/contexts/SettingsContext';
 import { ThemeProvider } from '@/components/theme-provider';
 import { SettingsModal } from './SettingsModal';
 import { SURFACE_LABELS, HUB_LABEL } from '@/lib/promptGroups';
+import { CONTEXT_LABELS } from '@/lib/requestAnatomy';
 
 /**
  * Settings → Prompts navigation: what selecting a prompt lands on, what the rail lists under it, and how
@@ -121,9 +122,9 @@ describe('Settings → Prompts fullscreen', () => {
 });
 
 describe('Settings → Prompts jumps', () => {
-  /** A highlighted run in the drawn request — a button whose title names the editor it opens. */
+  /** A highlighted run in the drawn request — a button named for the editor it opens. */
   const anatomyRun = (editor: string) =>
-    screen.getAllByRole('button').find((b) => b.getAttribute('title') === `Open the ${editor}`)!;
+    screen.getAllByRole('button').find((b) => b.getAttribute('aria-label') === `Open the ${editor}`)!;
 
   it('opens the editor a highlighted run belongs to', () => {
     openPrompts();
@@ -169,9 +170,9 @@ describe('Settings → Prompts anatomy view mode', () => {
 });
 
 describe('Settings → Prompts chip jumps', () => {
-  /** A chip in the drawn request, found by where its tooltip says it goes. */
-  const chipInto = (editor: string) =>
-    screen.getAllByRole('button').find((b) => b.getAttribute('title') === `Show this chip in the ${editor}`)!;
+  /** A chip in the drawn request. A chip is named by its own word, here as in the editor, and the
+   *  editor it belongs to rides its tip — so the chip to click is named, not the destination. */
+  const chip = (label: string) => screen.getByRole('button', { name: label });
 
   it('opens the editor holding a clicked chip, and reveals that chip there', async () => {
     // jsdom has no layout, so the scroll the reveal asks for is the observable half of it; the ring is
@@ -179,7 +180,8 @@ describe('Settings → Prompts chip jumps', () => {
     const scrollTo = vi.fn();
     Element.prototype.scrollIntoView = scrollTo;
     openPrompts();
-    fireEvent.click(chipInto(SURFACE_LABELS.system));
+    // The World chip is placed in the narration System Prompt.
+    fireEvent.click(chip('World'));
     expect(onSystemEditor()).toBe(true);
     expect(onHub()).toBe(false);
     // The reveal retries on a timer until the editor's chips have mounted.
@@ -193,8 +195,7 @@ describe('Settings → Prompts chip jumps', () => {
   it('follows an assembled block to the anatomy of the prompt that wrote it', () => {
     openPrompts();
     // Memory Summaries ships on, so the narration request carries the condensed recap band.
-    const recap = screen.getAllByRole('button').find((b) => b.getAttribute('title')?.includes('open the Summaries prompt'))!;
-    fireEvent.click(recap);
+    fireEvent.click(chip(CONTEXT_LABELS.condensed));
     // The destination is that prompt's own hub, not one of its editors.
     expect(onHub()).toBe(true);
     // Which prompt's hub it is: opening its System editor names the job the Summaries prompt does.

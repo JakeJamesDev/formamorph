@@ -53,6 +53,7 @@ import { searchLocations, type LocationMatch } from '@/lib/locationSearch';
 import { usePrefersReducedMotion } from '@/lib/usePrefersReducedMotion';
 import { cn } from '@/lib/utils';
 import type { Connection, GameLocation } from '@/types';
+import { Tip } from '@/components/ui/tooltip';
 
 /**
  * The Locations canvas: the world's navigable shape as a map, and the primary place to draw on it. What a
@@ -131,12 +132,13 @@ const EdgeAnchors = ({ dropHeight }: { dropHeight: string }) => {
   const drawing = useConnection((c) => c.inProgress);
   return (
     <>
-      <Handle
-        type="source"
-        position={Position.Right}
-        title="Drag To Connect"
-        className="!h-3 !w-3 !border-2 !border-background !bg-primary opacity-0 transition-opacity group-hover/node:opacity-100"
-      />
+      <Tip tip="Drag To Connect">
+        <Handle
+          type="source"
+          position={Position.Right}
+          className="!h-3 !w-3 !border-2 !border-background !bg-primary opacity-0 transition-opacity group-hover/node:opacity-100"
+        />
+      </Tip>
       <Handle
         type="target"
         position={Position.Left}
@@ -161,21 +163,23 @@ const LocationNode = ({ id, data, selected }: NodeProps<LocationNodeType>) => {
   // so before the release is what lets the author bail by moving away.
   const armed = useContext(ArmedLeafContext) === id;
   return (
-    <div
-      title={data.unreachable ? UNREACHABLE_TITLE : undefined}
-      data-drop-target={armed || undefined}
-      data-flash={flashing || undefined}
-      className={cn(
-        'group/node flex h-full w-full items-center justify-center gap-1.5 rounded-md border bg-card px-3 text-label text-card-foreground',
-        data.unreachable && 'border-destructive',
-        flashing ? flashRing : selected && 'ring-2 ring-ring',
-        armed && 'bg-primary/10 ring-2 ring-primary',
-      )}
-    >
-      <EdgeAnchors dropHeight="!h-full" />
-      <NodeBadges data={data} />
-      <span className="truncate">{data.label}</span>
-    </div>
+    // The box already carries its own name; the tip only says it cannot be reached.
+    <Tip tip={data.unreachable ? UNREACHABLE_TITLE : undefined} labelsChild={false}>
+      <div
+        data-drop-target={armed || undefined}
+        data-flash={flashing || undefined}
+        className={cn(
+          'group/node flex h-full w-full items-center justify-center gap-1.5 rounded-md border bg-card px-3 text-label text-card-foreground',
+          data.unreachable && 'border-destructive',
+          flashing ? flashRing : selected && 'ring-2 ring-ring',
+          armed && 'bg-primary/10 ring-2 ring-primary',
+        )}
+      >
+        <EdgeAnchors dropHeight="!h-full" />
+        <NodeBadges data={data} />
+        <span className="truncate">{data.label}</span>
+      </div>
+    </Tip>
   );
 };
 
@@ -186,23 +190,24 @@ const LocationGroupNode = ({ id, data, selected }: NodeProps<LocationNodeType>) 
   const willTakeTheDrop = useContext(DropTargetContext).into.includes(id);
   const flashing = useContext(FlashContext) === id;
   return (
-    <div
-      title={data.unreachable ? UNREACHABLE_TITLE : undefined}
-      data-drop-target={willTakeTheDrop || undefined}
-      data-flash={flashing || undefined}
-      className={cn(
-        'group/node h-full w-full rounded-md border bg-muted/40',
-        data.unreachable && 'border-destructive',
-        flashing ? flashRing : selected && 'ring-2 ring-ring',
-        willTakeTheDrop && 'bg-primary/10 ring-2 ring-primary',
-      )}
-    >
-      <EdgeAnchors dropHeight="!h-9" />
-      <div className="flex items-center gap-1.5 rounded-t-md border-b bg-card px-3 py-1.5 text-label text-card-foreground">
-        <NodeBadges data={data} />
-        <span className="truncate">{data.label}</span>
+    <Tip tip={data.unreachable ? UNREACHABLE_TITLE : undefined} labelsChild={false}>
+      <div
+        data-drop-target={willTakeTheDrop || undefined}
+        data-flash={flashing || undefined}
+        className={cn(
+          'group/node h-full w-full rounded-md border bg-muted/40',
+          data.unreachable && 'border-destructive',
+          flashing ? flashRing : selected && 'ring-2 ring-ring',
+          willTakeTheDrop && 'bg-primary/10 ring-2 ring-primary',
+        )}
+      >
+        <EdgeAnchors dropHeight="!h-9" />
+        <div className="flex items-center gap-1.5 rounded-t-md border-b bg-card px-3 py-1.5 text-label text-card-foreground">
+          <NodeBadges data={data} />
+          <span className="truncate">{data.label}</span>
+        </div>
       </div>
-    </div>
+    </Tip>
   );
 };
 
@@ -259,16 +264,22 @@ const ConnectionInspector = ({ connection, nameOf, onIntent, onClose }: {
   return (
     <Panel position="top-right" className="!m-2 w-72 space-y-2 rounded-md border bg-card p-3 shadow-md">
       <div className="flex items-center gap-1">
-        <span className="min-w-0 flex-grow truncate text-label" title={`${names[0]} — ${names[1]}`}>
-          {names[0]} — {names[1]}
-        </span>
-        <Button variant="ghost" size="icon" className="h-7 w-7 shrink-0" title="Delete Connection"
-          onClick={() => onIntent(deleteIntent(connection))}>
-          <Trash2 className="h-4 w-4" />
-        </Button>
-        <Button variant="ghost" size="icon" className="h-7 w-7 shrink-0" title="Close" onClick={onClose}>
-          <X className="h-4 w-4" />
-        </Button>
+        <Tip tip={`${names[0]} — ${names[1]}`} labelsChild={false}>
+          <span className="min-w-0 flex-grow truncate text-label">
+            {names[0]} — {names[1]}
+          </span>
+        </Tip>
+        <Tip tip="Delete Connection">
+          <Button variant="ghost" size="icon" className="h-7 w-7 shrink-0"
+            onClick={() => onIntent(deleteIntent(connection))}>
+            <Trash2 className="h-4 w-4" />
+          </Button>
+        </Tip>
+        <Tip tip="Close">
+          <Button variant="ghost" size="icon" className="h-7 w-7 shrink-0" onClick={onClose}>
+            <X className="h-4 w-4" />
+          </Button>
+        </Tip>
       </div>
       <ToggleGroup
         type="single"
@@ -280,9 +291,11 @@ const ConnectionInspector = ({ connection, nameOf, onIntent, onClose }: {
         onValueChange={(v) => { if (v) onIntent(directionIntent(connection, v as ConnectionDirection)); }}
       >
         {DIRECTIONS.map(({ value, Icon, label }) => (
-          <ToggleGroupItem key={value} value={value} className="flex-1" aria-label={label(...names)} title={label(...names)}>
-            <Icon className="h-4 w-4" />
-          </ToggleGroupItem>
+          <Tip key={value} tip={label(...names)}>
+            <ToggleGroupItem value={value} className="flex-1">
+              <Icon className="h-4 w-4" />
+            </ToggleGroupItem>
+          </Tip>
         ))}
       </ToggleGroup>
       <Input
@@ -545,26 +558,32 @@ const CanvasToolbar = ({
       aria-label="Canvas Tools"
       className="flex w-max items-center gap-1 rounded-md border bg-card p-1 shadow-md"
     >
-      <Button variant="ghost" size="sm" onClick={onArrange} title={arrangeLabel} aria-label={arrangeLabel}>
-        <LayoutGrid className="mr-1.5 h-4 w-4" />
-        {arrangeLabel}
-      </Button>
+      <Tip tip={arrangeLabel} labelsChild={false}>
+        <Button variant="ghost" size="sm" onClick={onArrange}>
+          <LayoutGrid className="mr-1.5 h-4 w-4" />
+          {arrangeLabel}
+        </Button>
+      </Tip>
       <Separator orientation="vertical" className="mx-0.5 h-6" />
       {ALIGN_TOOLS.map(({ label, Icon, edge }) => (
-        <Button
-          key={edge} variant="ghost" size="icon" className="h-8 w-8" title={label} aria-label={label}
-          disabled={!alignable} onClick={() => onAlign(edge)}
-        >
-          <Icon className="h-4 w-4" />
-        </Button>
+        <Tip key={edge} tip={label}>
+          <Button
+            variant="ghost" size="icon" className="h-8 w-8"
+            disabled={!alignable} onClick={() => onAlign(edge)}
+          >
+            <Icon className="h-4 w-4" />
+          </Button>
+        </Tip>
       ))}
       {DISTRIBUTE_TOOLS.map(({ label, Icon, axis }) => (
-        <Button
-          key={axis} variant="ghost" size="icon" className="h-8 w-8" title={label} aria-label={label}
-          disabled={!distributable} onClick={() => onDistribute(axis)}
-        >
-          <Icon className="h-4 w-4" />
-        </Button>
+        <Tip key={axis} tip={label}>
+          <Button
+            variant="ghost" size="icon" className="h-8 w-8"
+            disabled={!distributable} onClick={() => onDistribute(axis)}
+          >
+            <Icon className="h-4 w-4" />
+          </Button>
+        </Tip>
       ))}
       <Separator orientation="vertical" className="mx-0.5 h-6" />
       {/* Two switches rather than a choice between them: either can be had without the other. Plain pressed
@@ -573,12 +592,14 @@ const CanvasToolbar = ({
         { label: 'Snap To Grid', Icon: Magnet, on: snap, set: setSnap },
         { label: 'Show Grid', Icon: Grid2x2, on: gridVisible, set: setGridVisible },
       ] as const).map(({ label, Icon, on, set }) => (
-        <Button
-          key={label} variant={on ? 'secondary' : 'ghost'} size="icon" className="h-8 w-8"
-          aria-pressed={on} title={label} aria-label={label} onClick={() => set(!on)}
-        >
-          <Icon className="h-4 w-4" />
-        </Button>
+        <Tip key={label} tip={label}>
+          <Button
+            variant={on ? 'secondary' : 'ghost'} size="icon" className="h-8 w-8"
+            aria-pressed={on} onClick={() => set(!on)}
+          >
+            <Icon className="h-4 w-4" />
+          </Button>
+        </Tip>
       ))}
       <Separator orientation="vertical" className="mx-0.5 h-6" />
       <ToggleGroup
@@ -593,9 +614,11 @@ const CanvasToolbar = ({
         {CONNECTION_STYLES.map(({ value, label }) => {
           const Icon = STYLE_ICONS[value];
           return (
-            <ToggleGroupItem key={value} value={value} className="h-7 px-2" title={label} aria-label={label}>
-              <Icon className="h-4 w-4" />
-            </ToggleGroupItem>
+            <Tip key={value} tip={label}>
+              <ToggleGroupItem value={value} className="h-7 px-2">
+                <Icon className="h-4 w-4" />
+              </ToggleGroupItem>
+            </Tip>
           );
         })}
       </ToggleGroup>
@@ -606,12 +629,14 @@ const CanvasToolbar = ({
         { label: 'Undo', Icon: Undo2, can: canUndo, act: onUndo },
         { label: 'Redo', Icon: Redo2, can: canRedo, act: onRedo },
       ] as const).map(({ label, Icon, can, act }) => (
-        <Button
-          key={label} variant="ghost" size="icon" className="h-8 w-8"
-          title={label} aria-label={label} disabled={!can} onClick={act}
-        >
-          <Icon className="h-4 w-4" />
-        </Button>
+        <Tip key={label} tip={label}>
+          <Button
+            variant="ghost" size="icon" className="h-8 w-8"
+            disabled={!can} onClick={act}
+          >
+            <Icon className="h-4 w-4" />
+          </Button>
+        </Tip>
       ))}
     </div>
   </Panel>
@@ -1208,9 +1233,10 @@ const CanvasInner = ({ selectedId, onSelect, session, fullscreen, onToggleFullsc
         {/* The embedded canvas's whole chrome: the zoom controls, and the way to the big one. Everything
             heavier belongs to full screen, so the quick view stays a view. */}
         <Controls showInteractive={false}>
+          {/* No tip: xyflow's ControlButton does not forward a ref, so it cannot be a tooltip trigger.
+              The name it announces is the part that mattered. */}
           <ControlButton
             onClick={onToggleFullscreen}
-            title={fullscreen ? 'Exit full screen' : 'Edit full screen'}
             aria-label={fullscreen ? 'Exit full screen' : 'Edit full screen'}
           >
             {fullscreen ? <Minimize2 /> : <Maximize2 />}

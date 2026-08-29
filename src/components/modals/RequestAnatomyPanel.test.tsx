@@ -282,12 +282,13 @@ describe('RequestAnatomyPanel full screen', () => {
 
 describe('RequestAnatomyPanel jumps', () => {
   /** The clickable runs on screen — the buttons an authored run becomes. */
-  const runButtons = () => screen.getAllByRole('button').filter((b) => b.getAttribute('title')?.startsWith('Open the '));
+  const runButtons = () => screen.getAllByRole('button')
+    .filter((b) => b.getAttribute('aria-label')?.startsWith('Open the '));
 
   it('makes an authored run a way into the editor that owns it', () => {
     const onJump = vi.fn();
     show({ thinkingMode: 'off' }, 'choices', onJump);
-    const system = runButtons().find((b) => b.title === `Open the ${SOURCE_LABELS['system-template']}`)!;
+    const system = runButtons().find((b) => b.getAttribute('aria-label') === `Open the ${SOURCE_LABELS['system-template']}`)!;
     fireEvent.click(system);
     expect(onJump).toHaveBeenCalledWith({ tab: 'choices', surface: 'system' });
   });
@@ -295,7 +296,7 @@ describe('RequestAnatomyPanel jumps', () => {
   it('sends a stacked narration line to its own field on the Messages view', () => {
     const onJump = vi.fn();
     show({ thinkingMode: 'off' }, 'narration', onJump);
-    fireEvent.click(runButtons().find((b) => b.title === `Open the ${SOURCE_LABELS.recap}`)!);
+    fireEvent.click(runButtons().find((b) => b.getAttribute('aria-label') === `Open the ${SOURCE_LABELS.recap}`)!);
     expect(onJump).toHaveBeenCalledWith({ tab: 'narration', surface: 'messages', field: 'recap' });
   });
 
@@ -307,7 +308,8 @@ describe('RequestAnatomyPanel jumps', () => {
   it('makes a template chip a way into its own placement in the editor', () => {
     const onJump = vi.fn();
     show({ thinkingMode: 'off' }, 'choices', onJump);
-    const chip = screen.getAllByRole('button').find((b) => b.title === 'Show this chip in the System Prompt')!;
+    // A chip is named by its own word, here as in the editor — the destination rides its tip.
+    const chip = screen.getByRole('button', { name: 'World' });
     fireEvent.click(chip);
     expect(onJump).toHaveBeenCalledWith(expect.objectContaining({ tab: 'choices', surface: 'system' }));
     expect(onJump.mock.calls[0][0].chip).toMatch(/^<.+>$/);

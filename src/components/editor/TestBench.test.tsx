@@ -116,9 +116,12 @@ describe('TestBench panel', () => {
     expect(issues.onOpenItem).toHaveBeenCalledWith('entities', 'e2');
   });
 
-  it('carries each chip’s full name as its tooltip — the chip truncates, the title must not', () => {
+  it('carries each chip’s full name as its tooltip — the chip truncates, the tip must not', async () => {
     renderBench(defective);
-    expect(screen.getByRole('button', { name: 'Old Tobb' })).toHaveAttribute('title', 'Old Tobb');
+
+    await userEvent.hover(screen.getByRole('button', { name: 'Old Tobb' }));
+
+    expect(await screen.findByText('Old Tobb', { selector: 'div' })).toBeVisible();
   });
 
   it('reports a clean world as verified, with the number of rules that ran', () => {

@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, afterEach } from 'vitest';
 import { screen, fireEvent, act, within } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { getGameplayText } from '@/lib/gameplayTextStore';
 import { CONTINUE_CHOICE } from '@/lib/choices';
 import { encodePlaceholderToken } from '@/lib/placeholders';
@@ -390,13 +391,16 @@ describe('RightPanel — the stat descriptor line', () => {
     expect(descriptorLine('Vigor')).toBeNull();
   });
 
-  it('offers the full text on hover, so a paragraph-long band can be read without being shown', () => {
+  it('offers the full text on hover, so a paragraph-long band can be read without being shown', async () => {
     const long = 'Comfortable enough to stop counting every coin twice over';
     renderRightPanel({}, {
       turns: TURNS,
       stats: [statFixture('Vigor', 20, { descriptors: [{ id: 'b-long', threshold: 30, description: long }] })],
     });
-    expect(descriptorLine('Vigor')).toHaveAttribute('title', long);
+
+    await userEvent.hover(descriptorLine('Vigor')!);
+
+    expect(await screen.findByText(long, { selector: 'div' })).toBeVisible();
   });
 });
 

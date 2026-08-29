@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { IMAGE_CAPS } from '../lib/imageOptim';
 import ImageTagsField from './ImageTagsField';
 
@@ -101,10 +102,11 @@ describe('ImageTagsField gallery', () => {
     expect(tile('Image 2').querySelector('svg')).toBeNull();
   });
 
-  it('says a tile can be dragged, and lets a press through as a plain click', () => {
+  it('says a tile can be dragged, and lets a press through as a plain click', async () => {
     setup([A, B]);
 
-    expect(tile('Primary image').getAttribute('title')).toMatch(/Drag to reorder/);
+    await userEvent.hover(tile('Primary image'));
+    expect(await screen.findByText(/Drag to reorder/)).toBeVisible();
     // The 5px activation constraint is what keeps this working; a tap must still frame the picture.
     fireEvent.click(tile('Image 2'));
     expect(slotWrapper(B).className).not.toMatch(/hidden/);

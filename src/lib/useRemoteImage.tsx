@@ -7,7 +7,7 @@
  */
 /* eslint-disable react-refresh/only-export-components -- this module intentionally co-locates the
    `useRemoteImage` hook with its `<img>` wrapper `RemoteImg`; they're one unit. */
-import { useEffect, useState, type ImgHTMLAttributes } from 'react';
+import { forwardRef, useEffect, useState, type ImgHTMLAttributes } from 'react';
 import { isRemoteImage } from './imageSource';
 import { getCachedImage, putCachedImage } from './remoteImageCache';
 
@@ -68,12 +68,14 @@ export function useRemoteImage(url: string | null | undefined): { src: string; s
   return { src, status };
 }
 
-/** Drop-in `<img>` whose `src` resolves through the cache. Everything else forwards untouched. */
-export function RemoteImg({ src, onStatus, ...rest }: ImgHTMLAttributes<HTMLImageElement> & {
+/** Drop-in `<img>` whose `src` resolves through the cache. Everything else forwards untouched, the ref
+ *  included — a `<Tip>` composes onto this, and a trigger without a ref has nothing to point at. */
+export const RemoteImg = forwardRef<HTMLImageElement, ImgHTMLAttributes<HTMLImageElement> & {
   /** Told where the showing pixels came from, for callers that surface it (the editor's link badge). */
   onStatus?: (status: RemoteStatus) => void;
-}) {
+}>(({ src, onStatus, ...rest }, ref) => {
   const { src: resolved, status } = useRemoteImage(typeof src === 'string' ? src : '');
   useEffect(() => { onStatus?.(status); }, [status, onStatus]);
-  return <img src={resolved} {...rest} />;
-}
+  return <img ref={ref} src={resolved} {...rest} />;
+});
+RemoteImg.displayName = 'RemoteImg';

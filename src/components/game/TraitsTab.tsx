@@ -14,6 +14,7 @@ import { ChevronDown, Search } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { buildTraitSections, viewTraitSection, type TraitBlock, type TraitSection } from '@/lib/traitSections';
 import type { Stat, StatChange, Trait, TraitGroup, TraitsPanelView } from '@/types';
+import { Tip } from '@/components/ui/tooltip';
 
 /** What a trait's stat-change list needs of a stat: its name, and whether the player may see it at all. */
 export type TraitTabStat = Pick<Stat, 'id' | 'name'> & Pick<Partial<Stat>, 'hidden'>;
@@ -196,10 +197,13 @@ export const TraitsTab = ({
       <ScrollArea className="min-h-0 flex-1">
         <div className="space-y-2 pb-2">
           {active.length > 0 && (
-            <p className="truncate px-1 text-helper text-muted-foreground" title={active.map((t) => t.name).join(', ')}>
-              <span className="font-medium text-foreground/70">{active.length} active:</span>{' '}
-              {active.map((t) => t.name).join(', ')}
-            </p>
+            // The clipped list spelled out; the line already reads itself out in full to a screen reader.
+            <Tip tip={active.map((t) => t.name).join(', ')} labelsChild={false}>
+              <p className="truncate px-1 text-helper text-muted-foreground">
+                <span className="font-medium text-foreground/70">{active.length} active:</span>{' '}
+                {active.map((t) => t.name).join(', ')}
+              </p>
+            </Tip>
           )}
           {views.length === 0 && <p className="px-1 text-label text-muted-foreground">No traits match “{query.trim()}”.</p>}
           {views.map(({ section, view }) => {

@@ -15,6 +15,7 @@ import {
   type AnatomyRun,
   type AnatomySource,
 } from '@/lib/requestAnatomy';
+import { Tip } from '@/components/ui/tooltip';
 
 /**
  * One request drawn as its Request Anatomy: a hard System Prompt / Messages split, chat-staggered message
@@ -116,19 +117,20 @@ function AuthoredRun({
     return (
       <>
         {onJump ? (
-          <button
-            type="button"
-            onClick={onJump}
-            title={`Open the ${SOURCE_LABELS[source]}`}
-            className={cn(
-              labelClass,
-              'border shadow-sm cursor-pointer hover:brightness-125',
-              'focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring',
-              style.chipEdge,
-            )}
-          >
-            {SOURCE_LABELS[source]}
-          </button>
+          <Tip tip={`Open the ${SOURCE_LABELS[source]}`}>
+            <button
+              type="button"
+              onClick={onJump}
+              className={cn(
+                labelClass,
+                'border shadow-sm cursor-pointer hover:brightness-125',
+                'focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring',
+                style.chipEdge,
+              )}
+            >
+              {SOURCE_LABELS[source]}
+            </button>
+          </Tip>
         ) : (
           <span className={labelClass}>{SOURCE_LABELS[source]}</span>
         )}
@@ -159,26 +161,27 @@ function AuthoredRun({
   // one rectangle to the container edge instead of wrapping per line the way highlighted text must. At
   // rest a clickable run looks like any other; the pointer and the deepened tint are the hover signal.
   return (
-    <mark
-      role="button"
-      tabIndex={0}
-      onClick={onJump}
-      onKeyDown={(e) => {
-        if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onJump(); }
-      }}
-      onMouseEnter={() => onHover?.(source)}
-      onMouseLeave={() => onHover?.(null)}
-      onFocus={() => onHover?.(source)}
-      onBlur={() => onHover?.(null)}
-      title={`Open the ${SOURCE_LABELS[source]}`}
-      className={cn(
-        'rounded-sm px-0.5 text-inherit cursor-pointer transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring',
-        style.mark,
-        hot && style.markHot,
-      )}
-    >
-      {body}
-    </mark>
+    <Tip tip={`Open the ${SOURCE_LABELS[source]}`} labelsChild={false}>
+      <mark
+        role="button"
+        tabIndex={0}
+        onClick={onJump}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onJump(); }
+        }}
+        onMouseEnter={() => onHover?.(source)}
+        onMouseLeave={() => onHover?.(null)}
+        onFocus={() => onHover?.(source)}
+        onBlur={() => onHover?.(null)}
+        className={cn(
+          'rounded-sm px-0.5 text-inherit cursor-pointer transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring',
+          style.mark,
+          hot && style.markHot,
+        )}
+      >
+        {body}
+      </mark>
+    </Tip>
   );
 }
 
@@ -204,14 +207,15 @@ function ResolvedContext({ children }: { children: ReactNode }) {
 
 /** A run the app assembled, collapsed to its own chip: a short title-case name, the plain-words
  *  explanation in the tooltip. Deliberately unlike a template chip — nothing in an editor answers to it. */
-function AssemblyChip({ label, title }: { label: string; title: string }) {
+function AssemblyChip({ label, tip }: { label: string; tip?: string }) {
   return (
-    <span
-      title={title}
-      className={cn(CHIP_BASE, 'border border-dashed border-muted-foreground/50 bg-muted/60 text-muted-foreground align-baseline')}
-    >
-      {label}
-    </span>
+    <Tip tip={tip} labelsChild={false}>
+      <span
+        className={cn(CHIP_BASE, 'border border-dashed border-muted-foreground/50 bg-muted/60 text-muted-foreground align-baseline')}
+      >
+        {label}
+      </span>
+    </Tip>
   );
 }
 
@@ -226,25 +230,29 @@ export interface ChipJump {
  *  the hover affordance; the pill inside it is the same one the editor draws. */
 function ChipRun({ run, jumpTo }: { run: AnatomyRun; jumpTo?: (run: AnatomyRun) => ChipJump | undefined }) {
   const jump = jumpTo?.(run);
+  // A jump wraps the pill in its own tip below, so the assembly chip takes one only when nothing wraps
+  // it — two triggers on the same words open two bubbles saying the same thing.
   const pill = run.chip ? (
     <TokenChip token={run.chip} vocab={ANATOMY_VOCABULARY} neutral tip={jump?.destination} />
   ) : run.contextLabel ? (
     <AssemblyChip
       label={CONTEXT_LABELS[run.contextLabel]}
-      title={jump?.destination ?? CONTEXT_HINTS[run.contextLabel]}
+      tip={jump ? undefined : CONTEXT_HINTS[run.contextLabel]}
     />
   ) : null;
   if (!pill) return null;
   if (!jump) return pill;
   return (
-    <button
-      type="button"
-      onClick={jump.go}
-      title={jump.destination}
-      className="rounded align-baseline hover:brightness-110 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
-    >
-      {pill}
-    </button>
+    // The pill's own word names the button, as it does wherever else a chip is drawn.
+    <Tip tip={jump.destination} labelsChild={false}>
+      <button
+        type="button"
+        onClick={jump.go}
+        className="rounded align-baseline hover:brightness-110 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+      >
+        {pill}
+      </button>
+    </Tip>
   );
 }
 

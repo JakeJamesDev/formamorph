@@ -11,6 +11,7 @@ import { MESSAGE_SEVERITY_STYLES, formatMessageDate } from "@/lib/messageSeverit
 import MessageService from "@/services/MessageService";
 import { cn } from "@/lib/utils";
 import type { InboxMessage } from "@/types";
+import { Tip } from "@/components/ui/tooltip";
 
 interface MessagesTabProps {
   /** Whether the tab is mounted and visible; a fresh fetch runs each time this turns true. */
@@ -166,12 +167,13 @@ export function MessagesTab({ active, onUnreadChange }: MessagesTabProps) {
                       min-width defaults to its content, so without `min-w-0` on both the row and the
                       text a long subject widens the dialog instead of ellipsing. */}
                   <span className="flex items-center gap-2 min-w-0">
-                    <span
-                      className={cn('text-label truncate min-w-0', message.readAt ? 'font-normal' : 'font-semibold')}
-                      title={message.subject}
-                    >
-                      {message.subject}
-                    </span>
+                    <Tip tip={message.subject} labelsChild={false}>
+                      <span
+                        className={cn('text-label truncate min-w-0', message.readAt ? 'font-normal' : 'font-semibold')}
+                      >
+                        {message.subject}
+                      </span>
+                    </Tip>
                     {!message.readAt && (
                       <UnreadDot label="Unread" kind={kindOfSeverity(message.severity)} />
                     )}
@@ -182,9 +184,7 @@ export function MessagesTab({ active, onUnreadChange }: MessagesTabProps) {
                     <span>·</span>
                     <span>{formatMessageDate(message.createdAt)}</span>
                     {message.editedAt && (
-                      <span title={`Edited ${formatMessageDate(message.editedAt)}`}>
-                        · Edited {formatMessageDate(message.editedAt)}
-                      </span>
+                      <span>· Edited {formatMessageDate(message.editedAt)}</span>
                     )}
                     {message.broadcast && (
                       <Megaphone className="h-3 w-3 shrink-0" aria-label="Sent to everyone" />
@@ -198,13 +198,16 @@ export function MessagesTab({ active, onUnreadChange }: MessagesTabProps) {
               </button>
 
               {message.scope === 'pinned' ? (
-                <span
-                  className="h-7 w-7 shrink-0 flex items-center justify-center text-muted-foreground"
-                  title="Kept by an administrator — this can't be dismissed"
-                  aria-label="Pinned by an administrator"
-                >
-                  <Pin className="h-4 w-4" />
-                </span>
+                // A marker whose tip is the whole of it, so it takes a tab stop and reaches a keyboard.
+                <Tip tip="Kept by an administrator — this can't be dismissed" labelsChild={false}>
+                  <span
+                    className="h-7 w-7 shrink-0 flex items-center justify-center text-muted-foreground"
+                    tabIndex={0}
+                    aria-label="Pinned by an administrator"
+                  >
+                    <Pin className="h-4 w-4" />
+                  </span>
+                </Tip>
               ) : (
                 <Button
                   variant="ghost"

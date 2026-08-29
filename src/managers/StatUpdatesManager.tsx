@@ -9,6 +9,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Plus, X } from "lucide-react";
 import type { StatUpdate, ChatMessage } from '@/types';
 import { describePlaceholders } from '@/lib/placeholders';
+import { Tip } from "@/components/ui/tooltip";
 
 const StatUpdatesManager = ({ statUpdate }: { statUpdate: StatUpdate }) => {
   const { stats, updateStatUpdate, placeholders } = useGameData();
@@ -78,9 +79,11 @@ const StatUpdatesManager = ({ statUpdate }: { statUpdate: StatUpdate }) => {
 
       <div className="space-y-2">
         <Label>Message History</Label>
-        <Button onClick={handleAddMessage} size="icon" aria-label="Add Message" title="Add Message">
-          <Plus className="h-4 w-4" />
-        </Button>
+        <Tip tip="Add Message">
+          <Button onClick={handleAddMessage} size="icon">
+            <Plus className="h-4 w-4" />
+          </Button>
+        </Tip>
         <div className="border rounded-md p-2 space-y-2">
           {(editingStatUpdate.messageHistory || []).map((message, index) => (
             <div key={index} className="p-2 border rounded">

@@ -1,5 +1,6 @@
 import { describe, it, expect, vi } from 'vitest';
 import { screen, fireEvent, act, within } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { encodePlaceholderToken } from '@/lib/placeholders';
 import { renderRightPanel, statFixture, type PanelHarnessOptions } from '@/test/gamePanels';
 import type { Trait, TraitGroup } from '@/types';
@@ -117,10 +118,13 @@ describe('the traits tab groups traits the way the world was authored', () => {
 describe('the traits tab summarizes what is active', () => {
   const TRAITS = [T('t-a', 'Keen Eyes'), T('t-b', 'Strong Back'), T('t-c', 'Bad Knee')];
 
-  it('names every active trait on one line', () => {
+  it('names every active trait on one line', async () => {
     renderTraits(TRAITS, [], ['t-a', 't-b']);
-    // The line truncates, so the full list lives on the hover title as well as in the text.
-    expect(screen.getByTitle('Keen Eyes, Strong Back')).toHaveTextContent('2 active: Keen Eyes, Strong Back');
+    // The line truncates, so the full list lives on the hover tip as well as in the text.
+    const line = screen.getByText(/2 active:/).closest('p')!;
+    expect(line).toHaveTextContent('2 active: Keen Eyes, Strong Back');
+    await userEvent.hover(line);
+    expect(await screen.findByText('Keen Eyes, Strong Back', { selector: 'div' })).toBeVisible();
   });
 
   it('says nothing at all when no trait is active', () => {
@@ -131,7 +135,7 @@ describe('the traits tab summarizes what is active', () => {
   it('drops a trait from the line the moment it is switched off', () => {
     const view = renderTraits(TRAITS, [], ['t-a', 't-b']);
     act(() => { view.gameplay().setDisabledTraitIds(['t-a']); });
-    expect(screen.getByTitle('Strong Back')).toHaveTextContent('1 active: Strong Back');
+    expect(screen.getByText(/1 active:/).closest('p')).toHaveTextContent('1 active: Strong Back');
   });
 });
 

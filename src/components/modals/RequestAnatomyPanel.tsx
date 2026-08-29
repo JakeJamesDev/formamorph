@@ -11,6 +11,7 @@ import {
   buildAnatomyHub,
   type AnatomyConditions, type AnatomyPreviewPrompts, type AnatomyPreviewSettings,
 } from '@/lib/anatomyPreview';
+import { Tip } from '@/components/ui/tooltip';
 
 /**
  * The Anatomy hub: what a prompt *is*, shown the moment it is selected in Settings → Prompts. The whole
@@ -192,26 +193,26 @@ export function RequestAnatomyPanel({
         </HintInfo>
         <div className="ml-auto flex items-center gap-1">
           {canSplit && (
-            <button
-              type="button"
-              onClick={() => setSplitMode(split ? 'tabs' : 'split')}
-              title={split ? 'Show one view at a time' : 'Show chips and preview side by side'}
-              aria-label={split ? 'Show one view at a time' : 'Show chips and preview side by side'}
-              className="rounded p-1.5 text-muted-foreground hover:bg-accent hover:text-foreground"
-            >
-              {split ? <Square className="h-4 w-4" /> : <Columns2 className="h-4 w-4" />}
-            </button>
+            <Tip tip={split ? 'Show one view at a time' : 'Show chips and preview side by side'}>
+              <button
+                type="button"
+                onClick={() => setSplitMode(split ? 'tabs' : 'split')}
+                className="rounded p-1.5 text-muted-foreground hover:bg-accent hover:text-foreground"
+              >
+                {split ? <Square className="h-4 w-4" /> : <Columns2 className="h-4 w-4" />}
+              </button>
+            </Tip>
           )}
           {onRequestFullscreen && (
-            <button
-              type="button"
-              onClick={onRequestFullscreen}
-              title={fullscreen ? 'Exit full screen' : 'View full screen'}
-              aria-label={fullscreen ? 'Exit full screen' : 'View full screen'}
-              className="rounded p-1.5 text-muted-foreground hover:bg-accent hover:text-foreground"
-            >
-              {fullscreen ? <Minimize2 className="h-4 w-4" /> : <Maximize2 className="h-4 w-4" />}
-            </button>
+            <Tip tip={fullscreen ? 'Exit full screen' : 'View full screen'}>
+              <button
+                type="button"
+                onClick={onRequestFullscreen}
+                className="rounded p-1.5 text-muted-foreground hover:bg-accent hover:text-foreground"
+              >
+                {fullscreen ? <Minimize2 className="h-4 w-4" /> : <Maximize2 className="h-4 w-4" />}
+              </button>
+            </Tip>
           )}
         </div>
       </div>

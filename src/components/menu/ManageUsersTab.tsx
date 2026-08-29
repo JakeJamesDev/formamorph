@@ -20,6 +20,7 @@ import MessageService from "@/services/MessageService";
 import { useUserProfile } from "@/contexts/userProfileStore";
 import { type WorldRecord } from "@/components/WorldDetails";
 import type { SentMessage } from "@/types";
+import { Tip } from "@/components/ui/tooltip";
 
 /** Prefill offered after a suspension, so the user learns why without the admin retyping it. */
 const SUSPENSION_TEMPLATE = {
@@ -550,17 +551,18 @@ export function ManageUsersTab({ active }: ManageUsersTabProps) {
                             <span className={`text-label ${TERMS_LABELS[termsResponseOf(user)].className}`}>
                               {TERMS_LABELS[termsResponseOf(user)].label}
                             </span>
-                            <Button
-                              size="icon"
-                              variant="ghost"
-                              className="h-7 w-7"
-                              title="Reset terms"
-                              aria-label={`Reset terms for ${usernameOf(user)}`}
-                              disabled={termsResponseOf(user) === 'unanswered' || !mayModerate(user)}
-                              onClick={() => setPendingTermsReset(user)}
-                            >
-                              <RotateCcw className="h-3.5 w-3.5" />
-                            </Button>
+                            <Tip tip="Reset terms" labelsChild={false}>
+                              <Button
+                                size="icon"
+                                variant="ghost"
+                                className="h-7 w-7"
+                                aria-label={`Reset terms for ${usernameOf(user)}`}
+                                disabled={termsResponseOf(user) === 'unanswered' || !mayModerate(user)}
+                                onClick={() => setPendingTermsReset(user)}
+                              >
+                                <RotateCcw className="h-3.5 w-3.5" />
+                              </Button>
+                            </Tip>
                           </div>
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-label font-medium">

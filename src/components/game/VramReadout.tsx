@@ -47,11 +47,12 @@ export default function VramReadout({
             </div>
             <div className="relative h-2 rounded-full bg-muted/70 overflow-hidden">
               <div className={`h-full ${barColor} transition-all`} style={{ width: `${usedPct}%` }} />
+              {/* No tip: the legend under the bar carries this same line, and it is on screen whenever
+                  the sliver is. */}
               {ownPct > 0 && (
                 <div
                   className="absolute inset-y-0 left-0 bg-primary transition-all"
                   style={{ width: `${ownPct}%` }}
-                  title={`Formamorph: ${ownEstimated ? "~" : ""}${fmtGB(ownUsedMB)} GB`}
                 />
               )}
             </div>

@@ -18,6 +18,7 @@ import {
   thresholdInputWidthRem, thresholdTagInsetRem, thresholdUnitOf, thresholdUnitTag, uncoveredSpan,
 } from '@/lib/statDescriptorGeometry';
 import type { Stat, StatDescriptor, ThresholdUnit } from '@/types';
+import { Tip } from '@/components/ui/tooltip';
 
 export interface StatDescriptorsSectionProps {
   stat: Partial<Stat>;
@@ -59,8 +60,8 @@ const UnitInput = ({ value, unit, onChange, onBlur, placeholder, ariaLabel }: {
 
 /** A band of the bar. Its label wraps to two centered lines and steps its font down until it fits, so long
  *  descriptor prose narrows the text rather than dictating it. */
-const BarSegment = ({ text, width, className, title }: {
-  text: string; width: string; className: string; title: string;
+const BarSegment = ({ text, width, className, tip }: {
+  text: string; width: string; className: string; tip: string;
 }) => {
   const boxRef = useRef<HTMLDivElement>(null);
   useLayoutEffect(() => {
@@ -75,14 +76,15 @@ const BarSegment = ({ text, width, className, title }: {
     }
   }, [text, width]);
   return (
-    <div
-      ref={boxRef}
-      className={`flex items-center justify-center overflow-hidden px-1 text-center leading-tight ${className}`}
-      style={{ width }}
-      title={title}
-    >
-      <span className="line-clamp-2">{text}</span>
-    </div>
+    <Tip tip={tip} labelsChild={false}>
+      <div
+        ref={boxRef}
+        className={`flex items-center justify-center overflow-hidden px-1 text-center leading-tight ${className}`}
+        style={{ width }}
+      >
+        <span className="line-clamp-2">{text}</span>
+      </div>
+    </Tip>
   );
 };
 
@@ -174,7 +176,7 @@ export const StatDescriptorsSection = ({
                 text={span.description}
                 width={width(span.from, span.to)}
                 className={`${BAND_TINTS[i % BAND_TINTS.length]} text-primary-foreground${span.id === startBand?.id ? ' font-semibold' : ''}`}
-                title={`${span.from} – ${span.to}: ${span.description}`}
+                tip={`${span.from} – ${span.to}: ${span.description}`}
               />
             ))}
             {gap && (
@@ -182,7 +184,7 @@ export const StatDescriptorsSection = ({
                 text="no status"
                 width={width(gap.from, gap.to)}
                 className={`bg-destructive/15 text-destructive${startBand ? '' : ' font-semibold'}`}
-                title={`${gap.from} – ${gap.to}: no status`}
+                tip={`${gap.from} – ${gap.to}: no status`}
               />
             )}
           </div>
@@ -235,7 +237,9 @@ export const StatDescriptorsSection = ({
           placeholder="New Description"
           className="flex-grow"
         />
-        <Button onClick={onAddDescriptor} size="icon" className="h-9 w-9 shrink-0" aria-label="Add Descriptor" title="Add Descriptor"><Plus className="h-4 w-4" /></Button>
+        <Tip tip="Add Descriptor">
+          <Button onClick={onAddDescriptor} size="icon" className="h-9 w-9 shrink-0"><Plus className="h-4 w-4" /></Button>
+        </Tip>
       </div>
     </div>
   );

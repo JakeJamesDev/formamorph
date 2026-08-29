@@ -10,6 +10,7 @@ import { useCanvasConnectionStyle } from '@/lib/canvasPrefs';
 import {
   buildLocationCanvas, CANVAS_GRID, isTravelClick, TOUCH_SLOP, UNNAMED_LOCATION, type TravelPress,
 } from '@/lib/locationCanvas';
+import { Tip } from '@/components/ui/tooltip';
 import { cn } from '@/lib/utils';
 import type { Connection, GameLocation } from '@/types';
 
@@ -47,19 +48,21 @@ const TravelButton = ({ id, data, className }: {
 }) => {
   const travel = useContext(TravelContext);
   return (
-    <button
-      type="button"
-      title={data.label}
-      aria-current={data.here ? 'location' : undefined}
-      onClick={(event) => travel(id, event)}
-      className={cn(
-        'items-center gap-1.5 bg-card text-label text-card-foreground hover:bg-accent hover:text-accent-foreground',
-        className,
-      )}
-    >
-      {data.here && <MapPin className="h-3.5 w-3.5 shrink-0 text-primary" aria-hidden="true" />}
-      <span className="truncate">{data.label}</span>
-    </button>
+    // A small box clips a long name, so the tip spells it out; the button still names itself by it.
+    <Tip tip={data.label} labelsChild={false}>
+      <button
+        type="button"
+        aria-current={data.here ? 'location' : undefined}
+        onClick={(event) => travel(id, event)}
+        className={cn(
+          'items-center gap-1.5 bg-card text-label text-card-foreground hover:bg-accent hover:text-accent-foreground',
+          className,
+        )}
+      >
+        {data.here && <MapPin className="h-3.5 w-3.5 shrink-0 text-primary" aria-hidden="true" />}
+        <span className="truncate">{data.label}</span>
+      </button>
+    </Tip>
   );
 };
 

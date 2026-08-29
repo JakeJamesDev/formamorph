@@ -27,6 +27,7 @@ import {
   groupSaves, mergeOrder, folderRefFor, FOLDER_ORDER_KEY, type SaveMeta, type SaveFolder, type WorldRef,
 } from '../../lib/saveOrdering';
 import type { SaveRecord } from "@/types";
+import { Tip } from "@/components/ui/tooltip";
 
 const formatGameTime = (time: number) => {
   const hours = Math.floor(time);
@@ -78,14 +79,15 @@ function SortableSaveRow({ row, disabled, busy, onLoad, onExport, onDelete }: {
       )}
     >
       {/* Drag handle — far left */}
-      <span
-        {...attributes}
-        {...listeners}
-        className="cursor-grab touch-none px-1 py-2 text-muted-foreground shrink-0 self-stretch flex items-center"
-        title="Drag to reorder"
-      >
-        <GripVertical className="h-4 w-4" />
-      </span>
+      <Tip tip="Drag to reorder">
+        <span
+          {...attributes}
+          {...listeners}
+          className="cursor-grab touch-none px-1 py-2 text-muted-foreground shrink-0 self-stretch flex items-center"
+        >
+          <GripVertical className="h-4 w-4" />
+        </span>
+      </Tip>
 
       {/* Details — middle column grows, wraps, and loads on click */}
       <div
@@ -109,25 +111,27 @@ function SortableSaveRow({ row, disabled, busy, onLoad, onExport, onDelete }: {
       </div>
 
       {/* Export then Delete — right-anchored */}
-      <Button
-        variant="ghost"
-        size="sm"
-        className="h-7 w-7 p-0 shrink-0"
-        disabled={busy}
-        title="Export save"
-        onClick={(e) => { e.stopPropagation(); onExport(row); }}
-      >
-        <ActionIcon.export className="h-3.5 w-3.5" />
-      </Button>
-      <Button
-        variant="ghost"
-        size="sm"
-        className="h-7 w-7 p-0 shrink-0 text-destructive"
-        title="Delete save"
-        onClick={(e) => { e.stopPropagation(); onDelete(row); }}
-      >
-        <X className="h-4 w-4" />
-      </Button>
+      <Tip tip="Export save">
+        <Button
+          variant="ghost"
+          size="sm"
+          className="h-7 w-7 p-0 shrink-0"
+          disabled={busy}
+          onClick={(e) => { e.stopPropagation(); onExport(row); }}
+        >
+          <ActionIcon.export className="h-3.5 w-3.5" />
+        </Button>
+      </Tip>
+      <Tip tip="Delete save">
+        <Button
+          variant="ghost"
+          size="sm"
+          className="h-7 w-7 p-0 shrink-0 text-destructive"
+          onClick={(e) => { e.stopPropagation(); onDelete(row); }}
+        >
+          <X className="h-4 w-4" />
+        </Button>
+      </Tip>
     </div>
   );
 }
@@ -177,14 +181,15 @@ function SortableFolderRow({ folder, onOpen }: { folder: SaveFolder; onOpen: (f:
       style={style}
       className="flex items-center gap-1 w-full rounded-md border border-input bg-background pr-3 text-left text-label transition-colors hover:bg-accent hover:text-accent-foreground"
     >
-      <span
-        {...attributes}
-        {...listeners}
-        className="cursor-grab touch-none px-1 py-2 text-muted-foreground shrink-0 self-stretch flex items-center"
-        title="Drag to reorder"
-      >
-        <GripVertical className="h-4 w-4" />
-      </span>
+      <Tip tip="Drag to reorder">
+        <span
+          {...attributes}
+          {...listeners}
+          className="cursor-grab touch-none px-1 py-2 text-muted-foreground shrink-0 self-stretch flex items-center"
+        >
+          <GripVertical className="h-4 w-4" />
+        </span>
+      </Tip>
       <div
         role="button"
         tabIndex={0}

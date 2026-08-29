@@ -51,6 +51,7 @@ import {
   type LocalMoveProgress,
   type LocalMoveResult,
 } from '@/lib/imageGen/desktop';
+import { Tip } from '@/components/ui/tooltip';
 
 /** Catalog display name keyed by GGUF filename, for labeling installed files we recognize. */
 const CATALOG_BY_FILE = new Map(LOCAL_MODELS.map((m) => [m.fileName, m.name]));
@@ -101,9 +102,11 @@ function InstalledRow({ item, engine, busyFile, onLoad, onUnload, onDelete }: {
         </div>
         {known && <div className="truncate text-meta text-muted-foreground">{item.fileName}</div>}
         {external && (
-          <div className="truncate text-meta text-muted-foreground" title={item.path}>
-            {item.subpath ? `From ${item.subpath}` : 'From your other folder'}
-          </div>
+          <Tip tip={item.path} labelsChild={false}>
+            <div className="truncate text-meta text-muted-foreground">
+              {item.subpath ? `From ${item.subpath}` : 'From your other folder'}
+            </div>
+          </Tip>
         )}
       </div>
       <span className="shrink-0 text-meta tabular-nums text-muted-foreground">{formatModelSize(item.size)}</span>
@@ -180,8 +183,12 @@ function MoveModelsDialog({ flow, onMove, onSkip, onCancel, onDone }: {
               </DialogDescription>
             </DialogHeader>
             <div className="space-y-2 text-meta">
-              <div className="truncate font-mono text-muted-foreground" title={flow.from}>From {flow.from}</div>
-              <div className="truncate font-mono text-muted-foreground" title={flow.to}>To {flow.to}</div>
+              <Tip tip={flow.from} labelsChild={false}>
+                <div className="truncate font-mono text-muted-foreground">From {flow.from}</div>
+              </Tip>
+              <Tip tip={flow.to} labelsChild={false}>
+                <div className="truncate font-mono text-muted-foreground">To {flow.to}</div>
+              </Tip>
               <p className="text-warning">
                 The old folder is no longer searched, so anything left there won&apos;t appear in your model list.
               </p>
@@ -302,7 +309,9 @@ function SearchLocations({ locations, onChange, onChangeDownloadDir, autoLoad, o
           {/* The path gets its own row above the buttons: these run long, and truncating one to make
               room for controls hides the part that identifies the folder. */}
           <div className="flex min-w-0 items-baseline gap-2">
-            <span className="min-w-0 flex-grow truncate font-mono text-meta" title={rootDir}>{rootDir}</span>
+            <Tip tip={rootDir} labelsChild={false}>
+              <span className="min-w-0 flex-grow truncate font-mono text-meta">{rootDir}</span>
+            </Tip>
             {freeBytes !== null && (
               <span className="shrink-0 text-meta tabular-nums text-muted-foreground">
                 {formatModelSize(freeBytes)} free
@@ -349,11 +358,13 @@ function SearchLocations({ locations, onChange, onChangeDownloadDir, autoLoad, o
           >
             Folder
           </RowLabel>
-          <div className="min-w-0 truncate text-meta" title={externalDir ?? undefined}>
-            {externalDir
-              ? <span className="font-mono">{externalDir}</span>
-              : <span className="text-muted-foreground">Not set</span>}
-          </div>
+          <Tip tip={externalDir ?? undefined} labelsChild={false}>
+            <div className="min-w-0 truncate text-meta">
+              {externalDir
+                ? <span className="font-mono">{externalDir}</span>
+                : <span className="text-muted-foreground">Not set</span>}
+            </div>
+          </Tip>
           <div className="flex items-center gap-2 sm:col-start-2">
             {!externalDir && lmStudioDir && (
               <Button

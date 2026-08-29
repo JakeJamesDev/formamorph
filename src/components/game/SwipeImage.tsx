@@ -1,5 +1,6 @@
 import { useRef, useState, type PointerEvent as ReactPointerEvent } from 'react';
 import { RemoteImg } from '@/lib/useRemoteImage';
+import { Tip } from '@/components/ui/tooltip';
 
 /** Past this fraction of the picture's width, letting go commits the swipe instead of springing back. */
 const COMMIT_FRACTION = 0.25;
@@ -91,14 +92,15 @@ export function SwipeImage({ images, index, onStep, alt, onZoom, className }: {
         }}
         onTransitionEnd={onSettled}
       >
-        <RemoteImg
-          src={at(0)}
-          alt={alt}
-          className="max-w-full max-h-full object-contain cursor-zoom-in select-none"
-          title="Click to enlarge"
-          draggable={false}
-          onClick={() => { if (dx === 0) onZoom(); }}
-        />
+        <Tip tip="Click to enlarge" labelsChild={false}>
+          <RemoteImg
+            src={at(0)}
+            alt={alt}
+            className="max-w-full max-h-full object-contain cursor-zoom-in select-none"
+            draggable={false}
+            onClick={() => { if (dx === 0) onZoom(); }}
+          />
+        </Tip>
         {incoming !== null && (
           <RemoteImg
             src={at(incoming)}

@@ -10,6 +10,7 @@ import { entityImages } from '@/lib/entityImages';
 import ModelViewer from '@/views/ModelViewer';
 import { SwipeImage } from './SwipeImage';
 import type { Entity } from '@/types';
+import { Tip } from '@/components/ui/tooltip';
 
 /** The visual an entity can be shown by, if it has one at all. */
 export type EntityVisualSource = Pick<Entity, 'id' | 'name' | 'images' | 'model'>;
@@ -157,13 +158,15 @@ const Picture = ({ images, index, gallery, name, onZoom }: {
 }) => {
   if (!gallery) {
     return (
-      <RemoteImg
-        src={images[index]}
-        alt={name}
-        className="max-w-full max-h-full object-contain cursor-zoom-in"
-        title="Click to enlarge"
-        onClick={onZoom}
-      />
+      // The alt already names the picture; the tip only says it opens.
+      <Tip tip="Click to enlarge" labelsChild={false}>
+        <RemoteImg
+          src={images[index]}
+          alt={name}
+          className="max-w-full max-h-full object-contain cursor-zoom-in"
+          onClick={onZoom}
+        />
+      </Tip>
     );
   }
   return (
@@ -182,16 +185,16 @@ const CornerButton = ({ label, onClick, children }: {
   onClick: () => void;
   children: React.ReactNode;
 }) => (
-  <Button
-    variant="secondary"
-    size="icon"
-    className="absolute top-1 right-1 h-8 w-8 opacity-80 hover:opacity-100"
-    aria-label={label}
-    title={label}
-    onClick={onClick}
-  >
-    {children}
-  </Button>
+  <Tip tip={label}>
+    <Button
+      variant="secondary"
+      size="icon"
+      className="absolute top-1 right-1 h-8 w-8 opacity-80 hover:opacity-100"
+      onClick={onClick}
+    >
+      {children}
+    </Button>
+  </Tip>
 );
 
 export default EntityVisual;

@@ -6,6 +6,7 @@ import { APP_VERSION } from '@/lib/version';
 import { BUILD_TAG } from '@/lib/buildInfo';
 import { checkForUpdate } from '@/services/UpdateService';
 import { useDevRoute } from '@/lib/devRouter';
+import { Tip } from '@/components/ui/tooltip';
 
 /** Web footer version: there's no self-update, but clicking still shows the latest release's notes. Fetches
  *  lazily on first open (never on load / on a timer, unlike the desktop checker) and links to the full wiki
@@ -42,14 +43,15 @@ export function WebVersionChangelog() {
 
   return (
     <>
-      <button
-        type="button"
-        onClick={openDialog}
-        className="text-meta text-muted-foreground/60 select-none cursor-pointer hover:text-muted-foreground transition-colors"
-        title="What’s new"
-      >
-        v{APP_VERSION}{BUILD_TAG && ` · ${BUILD_TAG}`}
-      </button>
+      <Tip tip="What’s new">
+        <button
+          type="button"
+          onClick={openDialog}
+          className="text-meta text-muted-foreground/60 select-none cursor-pointer hover:text-muted-foreground transition-colors"
+        >
+          v{APP_VERSION}{BUILD_TAG && ` · ${BUILD_TAG}`}
+        </button>
+      </Tip>
 
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent aria-describedby={undefined} hideClose className="max-w-3xl">

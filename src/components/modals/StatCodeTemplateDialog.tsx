@@ -41,6 +41,7 @@ import {
   saveUserTemplate,
 } from '@/services/StatTemplateStorageService';
 import type { Stat } from '@/types';
+import { Tip } from '@/components/ui/tooltip';
 
 const BLANK_TEMPLATE: StatCodeTemplate = {
   id: '',
@@ -353,21 +354,25 @@ export function StatCodeTemplateDialog({ open, onOpenChange, stats, currentStatI
                     <div className="flex items-center justify-between gap-1 px-1 pt-3">
                       <p className="text-meta text-muted-foreground">My Templates</p>
                       <span className="flex items-center">
-                        <button
-                          type="button" title="Import templates" aria-label="Import templates"
-                          className="rounded p-1 text-muted-foreground hover:bg-accent hover:text-foreground"
-                          onClick={() => fileRef.current?.click()}
-                        >
-                          <ActionIcon.import className="h-3.5 w-3.5" />
-                        </button>
-                        <button
-                          type="button" title="Export templates" aria-label="Export templates"
-                          disabled={sortedUser.length === 0}
-                          className="rounded p-1 text-muted-foreground hover:bg-accent hover:text-foreground disabled:pointer-events-none disabled:opacity-40"
-                          onClick={exportPack}
-                        >
-                          <ActionIcon.export className="h-3.5 w-3.5" />
-                        </button>
+                        <Tip tip="Import templates">
+                          <button
+                            type="button"
+                            className="rounded p-1 text-muted-foreground hover:bg-accent hover:text-foreground"
+                            onClick={() => fileRef.current?.click()}
+                          >
+                            <ActionIcon.import className="h-3.5 w-3.5" />
+                          </button>
+                        </Tip>
+                        <Tip tip="Export templates">
+                          <button
+                            type="button"
+                            disabled={sortedUser.length === 0}
+                            className="rounded p-1 text-muted-foreground hover:bg-accent hover:text-foreground disabled:pointer-events-none disabled:opacity-40"
+                            onClick={exportPack}
+                          >
+                            <ActionIcon.export className="h-3.5 w-3.5" />
+                          </button>
+                        </Tip>
                       </span>
                     </div>
                     {sortedUser.map(templateButton)}

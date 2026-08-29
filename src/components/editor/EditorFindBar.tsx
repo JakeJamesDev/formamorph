@@ -7,6 +7,7 @@ import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription,
   AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
+import { Tip } from '@/components/ui/tooltip';
 import { cn } from '@/lib/utils';
 import { useIsMobile } from '@/lib/useIsMobile';
 import { WORLD_EDITOR_TABS } from '@/views/worldEditorTabs';
@@ -72,16 +73,16 @@ function MatchToggle({ on, onClick, label, last, children }: {
   children: ReactNode;
 }) {
   return (
-    <button
-      type="button"
-      onClick={onClick}
-      aria-pressed={on}
-      aria-label={label}
-      title={label}
-      className={cn(FIELD_CELL, last && 'rounded-r-md', on ? 'bg-primary text-primary-foreground' : FIELD_CELL_IDLE)}
-    >
-      {children}
-    </button>
+    <Tip tip={label}>
+      <button
+        type="button"
+        onClick={onClick}
+        aria-pressed={on}
+        className={cn(FIELD_CELL, last && 'rounded-r-md', on ? 'bg-primary text-primary-foreground' : FIELD_CELL_IDLE)}
+      >
+        {children}
+      </button>
+    </Tip>
   );
 }
 
@@ -98,15 +99,15 @@ function ModeSwap({ onClick, label, last, children }: {
   children: ReactNode;
 }) {
   return (
-    <button
-      type="button"
-      onClick={onClick}
-      aria-label={label}
-      title={label}
-      className={cn(FIELD_CELL, last && 'rounded-r-md', FIELD_CELL_IDLE)}
-    >
-      {children}
-    </button>
+    <Tip tip={label}>
+      <button
+        type="button"
+        onClick={onClick}
+        className={cn(FIELD_CELL, last && 'rounded-r-md', FIELD_CELL_IDLE)}
+      >
+        {children}
+      </button>
+    </Tip>
   );
 }
 
@@ -338,12 +339,16 @@ export default function EditorFindBar({
               )}
             </FieldWithTrailing>
             <div className="flex items-center gap-1">
-              <Button variant="ghost" size="icon" className="h-7 w-7 shrink-0" onClick={replaceCurrent} disabled={!canReplace} aria-label="Replace" title="Replace">
-                <Replace className="h-4 w-4" />
-              </Button>
-              <Button variant="ghost" size="icon" className="h-7 w-7 shrink-0" onClick={() => setConfirmAll(true)} disabled={!canReplace} aria-label="Replace all" title="Replace all">
-                <ReplaceAll className="h-4 w-4" />
-              </Button>
+              <Tip tip="Replace">
+                <Button variant="ghost" size="icon" className="h-7 w-7 shrink-0" onClick={replaceCurrent} disabled={!canReplace}>
+                  <Replace className="h-4 w-4" />
+                </Button>
+              </Tip>
+              <Tip tip="Replace all">
+                <Button variant="ghost" size="icon" className="h-7 w-7 shrink-0" onClick={() => setConfirmAll(true)} disabled={!canReplace}>
+                  <ReplaceAll className="h-4 w-4" />
+                </Button>
+              </Tip>
             </div>
           </>
         )}
