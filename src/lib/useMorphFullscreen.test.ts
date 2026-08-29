@@ -206,18 +206,21 @@ describe('useMorphFullscreen', () => {
     vi.unstubAllGlobals();
   });
 
-  it('fades its contents in behind the growing box, and out ahead of the shrinking one', () => {
+  it('keeps the widget covered while the box travels, and reveals it only once landed', () => {
     const { sourceEl, boxEl } = makeElements();
     const { result } = renderHook(() => useMorphFullscreen({ current: sourceEl }));
 
     act(() => result.current.open());
     act(() => result.current.boxRef(boxEl));
-    expect(result.current.contentClassName).toContain('fade-in-0');
+    // Covered through the whole trip: the widget underneath never animates, so revealing it mid-travel
+    // would show it scaled with the box.
+    expect(result.current.veilClassName).not.toContain('opacity-0');
     act(() => vi.advanceTimersByTime(400));
-    expect(result.current.contentClassName).toBe('');
+    expect(result.current.veilClassName).toContain('opacity-0');
 
+    // And covered again before the box moves, so the shrinking box is a clean panel.
     act(() => result.current.close());
-    expect(result.current.contentClassName).toContain('fade-out-0');
+    expect(result.current.veilClassName).not.toContain('opacity-0');
   });
 
   it('carries the dim sheet out with the shrinking box instead of holding it dark until unmount', () => {

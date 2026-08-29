@@ -114,9 +114,11 @@ export interface MorphFullscreen {
   toggle: () => void;
   /** Goes on the overlay's own box — the element that grows out of the source and shrinks back into it. */
   boxRef: (element: HTMLElement | null) => void;
-  /** Goes on whatever sits inside that box. Fades rather than scaling, since a container transform that
-   *  scales its own contents reads as the text stretching. */
-  contentClassName: string;
+  /** Goes on the solid sheet drawn over the box's contents. The widget underneath renders at its final
+   *  size and never animates — scaled with the box it reads as the text stretching, and faded mid-flight
+   *  it reads as vanishing. The sheet hides it while the box travels, fades away once the box lands, and
+   *  covers again instantly on the way out so the shrinking box is a clean panel. */
+  veilClassName: string;
   /** Goes on the dialog's dim sheet, pacing its fade to the trip. Left to the stock dialog classes it
    *  snaps in at 150ms and holds fully dark until the overlay unmounts, well after the box has landed. */
   overlayClassName: string;
@@ -292,17 +294,14 @@ export function useMorphFullscreen(sourceRef: RefObject<HTMLElement | null>): Mo
     if (!travel(false)) settleRef.current(false);
   }, [travel]);
 
-  // Both fades span the whole trip, the settle buffer included. Shorter ones left the box visibly
-  // empty — the exit faded out in 150ms of a ~290ms trip, so the shrunken box sat blank over the panel
-  // before the real content popped back, and the enter's delay blanked the first 100ms of the growth.
-  // An empty box reads as the widget vanishing; a fade that is still going when the swap lands does not.
-  const contentClassName = phase === 'leaving'
-    ? 'animate-out fade-out-0 duration-300 fill-mode-both'
-    : phase === 'entering'
-      ? 'animate-in fade-in-0 duration-300 fill-mode-both'
-      : '';
+  // Opaque for every phase but `open`: the reveal is sequenced after the landing, not blended into the
+  // travel. `open` arrives with the transition, so entering→open fades the sheet away; open→leaving drops
+  // it, so the cover snaps back before the box moves.
+  const veilClassName = phase === 'open'
+    ? 'opacity-0 transition-opacity duration-200'
+    : 'opacity-100';
 
-  // Durations approximate ENTER_MS/EXIT_MS at the named steps, like `contentClassName` above. They
+  // Durations approximate ENTER_MS/EXIT_MS at the named steps. They
   // reach both clocks — the sheet's mount fade-in animation, and the transition that carries it out
   // alongside the shrinking box, where the stock classes would hold it dark until the overlay unmounts,
   // well after the box has landed. The `data-[state=open]:` wrapper is load-bearing: the stock sheet
@@ -319,7 +318,7 @@ export function useMorphFullscreen(sourceRef: RefObject<HTMLElement | null>): Mo
     close,
     toggle,
     boxRef,
-    contentClassName,
+    veilClassName,
     overlayClassName,
   };
 }

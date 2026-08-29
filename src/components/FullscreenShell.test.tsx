@@ -14,7 +14,7 @@ const openMorph = (): MorphFullscreen => ({
   close: () => {},
   toggle: () => {},
   boxRef: () => {},
-  contentClassName: '',
+  veilClassName: '',
   overlayClassName: '',
 });
 
