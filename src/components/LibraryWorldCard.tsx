@@ -13,12 +13,16 @@ import type { ServerEvent } from '@/types';
  *
  * @param contests - The contest archive on hand; empty offline
  */
-export function LibraryWorldCard({ world, contests, layout, onSelect, onDelete }: {
+export function LibraryWorldCard({ world, contests, layout, onSelect, onDelete, fill, compact }: {
   world: WorldRecord;
   contests: ServerEvent[];
   layout: 'grid' | 'detailed';
   onSelect: (id: string) => void;
   onDelete: (id: string) => void;
+  /** Fill the tile the grid hands it, instead of taking its height from the layout. */
+  fill?: boolean;
+  /** Trade the name strip for a tooltip, on the smallest tile size. */
+  compact?: boolean;
 }) {
   const placements = placementsBy(world, contests);
 
@@ -26,6 +30,8 @@ export function LibraryWorldCard({ world, contests, layout, onSelect, onDelete }
     <SortableWorldCard
       world={world}
       layout={layout}
+      fill={fill}
+      compact={compact}
       // The grid tile is all thumbnail, so the badge rides a plate over it; the detailed card has a body
       // to put the same line in. Only the overlay is guarded — that slot wraps whatever it is given in a
       // positioned box, and a box around nothing is still a box.

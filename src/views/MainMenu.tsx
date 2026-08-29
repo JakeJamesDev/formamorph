@@ -42,22 +42,8 @@ import { AiSetupGate, type GateReason } from '../components/AiSetupGate';
 import { useAiReachable } from '@/lib/useAiReachable';
 import { LoadGameDialog } from '../components/modals/LoadGameDialog';
 import WorldEditor from './WorldEditor';
-import {
-  DndContext,
-  closestCenter,
-  MouseSensor,
-  TouchSensor,
-  useSensor,
-  useSensors,
-  type DragEndEvent,
-} from '@dnd-kit/core';
-import {
-  SortableContext,
-  arrayMove,
-  rectSortingStrategy,
-} from '@dnd-kit/sortable';
-import { restrictToFirstScrollableAncestor } from '@dnd-kit/modifiers';
-import { CONTAINED_AUTO_SCROLL } from '@/lib/dndAutoScroll';
+import { LibraryTileGrid } from '@/components/library/LibraryTileGrid';
+import { useLibraryTiles } from '@/lib/useLibraryTiles';
 import TraitSelectionModal from './TraitSelectionModal';
 import StartingLocationModal from './StartingLocationModal';
 import DictionarySelectionModal from './DictionarySelectionModal';
@@ -156,12 +142,6 @@ interface MainMenuProps {
 const AI_SETUP_SEEN_KEY = 'FORMAMORPH_aiSetupSeen';
 
 
-// User-defined world/dictionary ordering is a UI preference, persisted as an ordered list of ids.
-const WORLD_ORDER_KEY = 'FORMAMORPH_worldOrder';
-const DICTIONARY_ORDER_KEY = 'FORMAMORPH_dictionaryOrder';
-const ENTITY_ORDER_KEY = 'FORMAMORPH_entityOrder';
-const MODEL_ORDER_KEY = 'FORMAMORPH_modelOrder';
-
 /** The library's card-type tabs, with their icon + label, so the top switcher and the mobile bottom bar
  *  render from one source and can't drift. */
 const CARD_TABS: { value: MainMenuCardTab; label: string; Icon: LucideIcon }[] = [
@@ -194,23 +174,16 @@ const gridColsClass = (base: number, sm: number, lg: number) =>
 // The landscape world grid's columns per breakpoint. Portrait character cards are ~half the width, so the
 // Entities grid fits twice as many (`× 2`).
 const WORLD_GRID_COLS = { base: 1, sm: 2, lg: 3 };
-const ENTITY_GRID_CLASS = gridColsClass(WORLD_GRID_COLS.base * 2, WORLD_GRID_COLS.sm * 2, WORLD_GRID_COLS.lg * 2);
+const ENTITY_GRID_COLS = {
+  base: WORLD_GRID_COLS.base * 2,
+  sm: WORLD_GRID_COLS.sm * 2,
+  lg: WORLD_GRID_COLS.lg * 2,
+};
 /** Columns for the detailed (community-card) layout — the wide card needs the same room a world's does. */
 const DETAILED_GRID_CLASS = gridColsClass(WORLD_GRID_COLS.base, WORLD_GRID_COLS.sm, 4);
 const LAYOUT_MODE_KEY = 'FORMAMORPH_layoutMode';
 // Persisted preference to force the local world modal's single-column (portrait) layout at any width.
 const WORLD_MODAL_COLLAPSED_KEY = 'FORMAMORPH_worldModalCollapsed';
-
-const loadOrder = (key: string): string[] => {
-  try { return JSON.parse(localStorage.getItem(key) || '[]'); }
-  catch { return []; }
-};
-const loadWorldOrder = (): string[] => loadOrder(WORLD_ORDER_KEY);
-// Sort by saved order; ids not in the saved order keep their relative order at the end.
-const applyWorldOrder = <T extends { id: string }>(list: T[], order: string[]): T[] => {
-  const rank = (id: string) => { const i = order.indexOf(id); return i === -1 ? Infinity : i; };
-  return [...list].sort((a, b) => rank(a.id) - rank(b.id));
-};
 
 
 /**
@@ -260,6 +233,12 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
   const { worldPreset, setWorldPreset } = useWorldPromptPresets();
   // Only the preset list is needed here; the pin is applied by GameViewer when the world opens.
   const { builtinPresets, promptPresets } = useSettings();
+  /** A preset id as the player knows it, or undefined when nothing names that id any more. */
+  const presetName = useCallback(
+    (id: string | undefined) =>
+      [...builtinPresets, ...promptPresets].find((preset) => preset.id === id)?.name,
+    [builtinPresets, promptPresets],
+  );
   const { promptWorld, promptWorldsBatch, promptImagesBatch, promptEntity, dialog: downscaleDialog } = useDownscalePrompt();
   const { exportWorld, dialog: worldExportDialog } = useWorldExport(promptWorld);
   const [selectedWorld, setSelectedWorld] = useState<WorldRecord | null>(null);
@@ -628,11 +607,10 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
         isLoading: false,
         defaultName: DEFAULT_WORLDS.find(dw => dw.id === world.id)?.defaultName || world.name
       }));
-      const ordered = applyWorldOrder(mapped, loadWorldOrder());
-      setWorlds(ordered);
+      setWorlds(mapped);
       // Returned as well as set: a caller that has to re-derive something from the fresh list can't read it
       // back out of state in the same tick.
-      return ordered;
+      return mapped;
     } catch (error) {
       console.error('Error loading worlds:', error);
       return [];
@@ -705,7 +683,7 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
     try {
       await DictionaryStorageService.initialize();
       const metadata = await DictionaryStorageService.getDictionaryMetadata();
-      setDictionaries(applyWorldOrder(metadata, loadOrder(DICTIONARY_ORDER_KEY)));
+      setDictionaries(metadata);
     } catch (error) {
       console.error('Error loading dictionaries:', error);
     } finally {
@@ -722,7 +700,7 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
       await ModelStorageService.initialize();
       await ModelStorageService.seedDefaultModel(DEFAULT_AVATAR_URL);
       const metadata = await ModelStorageService.getModelMetadata();
-      setModels(applyWorldOrder(metadata, loadOrder(MODEL_ORDER_KEY)));
+      setModels(metadata);
     } catch (error) {
       console.error('Error loading models:', error);
     } finally {
@@ -768,7 +746,7 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
     try {
       await EntityStorageService.initialize();
       const metadata = await EntityStorageService.getEntityMetadata();
-      setEntities(applyWorldOrder(metadata, loadOrder(ENTITY_ORDER_KEY)));
+      setEntities(metadata);
     } catch (error) {
       console.error('Error loading characters:', error);
     } finally {
@@ -1376,35 +1354,31 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
     toast.success('Logged out successfully');
   };
 
-  // Mouse drags immediately (8px); touch requires a short press-and-hold so a swipe scrolls the grid instead
-  // of grabbing a card (no scroll wheel on mobile). Shared by the worlds, dictionary, and entity grids.
-  const worldSensors = useSensors(
-    useSensor(MouseSensor, { activationConstraint: { distance: 8 } }),
-    useSensor(TouchSensor, { activationConstraint: { delay: 200, tolerance: 5 } }),
-  );
+  // Every library grid's tile arrangement — folders, sizes, and the order the two sit in. Device-local,
+  // one record per tab, seeded from the flat card order the library kept before tiles.
+  const worldIds = useMemo(() => worlds.map((world) => world.id as string), [worlds]);
+  const entityIds = useMemo(() => entities.map((entity) => entity.id), [entities]);
+  const dictionaryIds = useMemo(() => dictionaries.map((dictionary) => dictionary.id), [dictionaries]);
+  const modelIds = useMemo(() => models.map((model) => model.id), [models]);
+  const worldTiles = useLibraryTiles('worlds', worldIds, !isLoadingWorlds);
+  const entityTiles = useLibraryTiles('entities', entityIds, !isLoadingEntities);
+  const dictionaryTiles = useLibraryTiles('dictionaries', dictionaryIds, !isLoadingDictionaries);
+  const modelTiles = useLibraryTiles('models', modelIds, !isLoadingModels);
 
-  // Reorder one library grid and persist the new id order — shared by the worlds, dictionary, and
-  // character grids, which differ only in their state setter and storage key. The loose `id` constraint
-  // is for WorldRecord (the sanctioned Record<string, any>), which can't satisfy `{ id: string }`.
-  const makeDragEndHandler = <T extends { id?: unknown }>(
-    setItems: React.Dispatch<React.SetStateAction<T[]>>,
-    orderKey: string,
-  ) => (event: DragEndEvent) => {
-    const { active, over } = event;
-    if (!over || active.id === over.id) return;
-    setItems((prev) => {
-      const oldIndex = prev.findIndex((item) => item.id === active.id);
-      const newIndex = prev.findIndex((item) => item.id === over.id);
-      if (oldIndex === -1 || newIndex === -1) return prev;
-      const next = arrayMove(prev, oldIndex, newIndex);
-      localStorage.setItem(orderKey, JSON.stringify(next.map((item) => item.id)));
-      return next;
-    });
-  };
-  const handleWorldDragEnd = makeDragEndHandler(setWorlds, WORLD_ORDER_KEY);
-  const handleDictionaryDragEnd = makeDragEndHandler(setDictionaries, DICTIONARY_ORDER_KEY);
-  const handleEntityDragEnd = makeDragEndHandler(setEntities, ENTITY_ORDER_KEY);
-  const handleModelDragEnd = makeDragEndHandler(setModels, MODEL_ORDER_KEY);
+  // A world in a folder can take the folder's preset. The details popup names it, because the dropdown
+  // there shows the world's own pin and an unpinned world would otherwise read as following the global
+  // selection. A setting naming a deleted preset resolves to nothing, exactly as a stale world pin does.
+  const selectedGroupPreset = useMemo(() => {
+    if (!selectedWorld) return null;
+    const group = worldTiles.groupOfItem(selectedWorld.id);
+    const name = presetName(group?.settings.promptPreset);
+    return group && name ? { group, name } : null;
+  }, [selectedWorld, worldTiles, presetName]);
+  const effectivePresetNote = selectedWorld
+    && !presetName(worldPreset(selectedWorld.id))
+    && selectedGroupPreset
+    ? `From group “${selectedGroupPreset.group.name}”: ${selectedGroupPreset.name}`
+    : null;
 
   // The singular noun for the selected card type — drives the contextual New/Import button labels.
   const cardNoun = cardType === 'worlds' ? 'World'
@@ -1673,157 +1647,160 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
         className="hidden"
       />
 
-      {/* Worlds, Entities, Dictionaries, and Models are card grids. */}
+      {/* Worlds, Entities, Dictionaries, and Models are card grids of sizable, groupable tiles. */}
       {cardType === 'models' ? (
-        <ScrollArea className="flex-1 min-h-0 container mx-auto px-4">
-          {!isLoadingModels && models.length === 0 ? (
+        <LibraryTileGrid
+          items={models}
+          idOf={(model) => model.id}
+          tiles={modelTiles}
+          layout="grid"
+          aspect="portrait"
+          mediumColumns={ENTITY_GRID_COLS}
+          detailedColumnsClass={DETAILED_GRID_CLASS}
+          thumbnailOf={(model) => model.thumbnail}
+          emptyState={!isLoadingModels ? (
             <div className="flex items-center justify-center py-16 px-4 select-none">
               <p className="max-w-md text-center text-helper text-muted-foreground">
                 No player avatars yet — use <span className="font-semibold">Import Avatar</span> to add a .vrm.
               </p>
             </div>
-          ) : (
-            <div className={`grid ${ENTITY_GRID_CLASS} gap-4`}>
-              <DndContext
-                sensors={worldSensors}
-                collisionDetection={closestCenter}
-                onDragEnd={handleModelDragEnd}
-                modifiers={[restrictToFirstScrollableAncestor]}
-                autoScroll={CONTAINED_AUTO_SCROLL}
-              >
-                <SortableContext items={models.map((m) => m.id)} strategy={rectSortingStrategy}>
-                  {models.map((model) => (
-                    <SortableWorldCard
-                      key={model.id}
-                      world={{ id: model.id, name: model.name, thumbnail: model.thumbnail }}
-                      layout="grid"
-                      aspect="portrait"
-                      // A plain .glb carries no VRM metadata, so it has no license and its morph targets
-                      // aren't guaranteed — say so on the card rather than letting it pass as a full VRM.
-                      badge={model.license?.metaVersion === null ? (
-                        <Tip tip="Plain glTF: no license information, and morph targets aren't guaranteed.">
-                          <span
-                            tabIndex={0}
-                            className="rounded bg-overlay/70 px-1.5 py-0.5 text-[10px] font-semibold text-white"
-                          >
-                            GLB
-                          </span>
-                        </Tip>
-                      ) : undefined}
-                      onSelect={setPreviewModelId}
-                      onDelete={setModelToDelete}
-                    />
-                  ))}
-                </SortableContext>
-              </DndContext>
-            </div>
+          ) : undefined}
+          renderCard={(model, { fill, compact }) => (
+            <SortableWorldCard
+              world={{ id: model.id, name: model.name, thumbnail: model.thumbnail }}
+              layout="grid"
+              aspect="portrait"
+              fill={fill}
+              compact={compact}
+              // A plain .glb carries no VRM metadata, so it has no license and its morph targets
+              // aren't guaranteed — say so on the card rather than letting it pass as a full VRM.
+              badge={model.license?.metaVersion === null ? (
+                <Tip tip="Plain glTF: no license information, and morph targets aren't guaranteed.">
+                  <span
+                    tabIndex={0}
+                    className="rounded bg-overlay/70 px-1.5 py-0.5 text-[10px] font-semibold text-white"
+                  >
+                    GLB
+                  </span>
+                </Tip>
+              ) : undefined}
+              onSelect={setPreviewModelId}
+              onDelete={setModelToDelete}
+            />
           )}
-        </ScrollArea>
+        />
       ) : cardType === 'entities' ? (
-        <ScrollArea className="flex-1 min-h-0 container mx-auto px-4">
-          {!isLoadingEntities && entities.length === 0 ? (
+        <LibraryTileGrid
+          items={entities}
+          idOf={(entity) => entity.id}
+          tiles={entityTiles}
+          layout={layoutMode}
+          aspect="portrait"
+          mediumColumns={ENTITY_GRID_COLS}
+          detailedColumnsClass={DETAILED_GRID_CLASS}
+          thumbnailOf={(entity) => entity.image}
+          emptyState={!isLoadingEntities ? (
             <div className="flex items-center justify-center py-16 px-4 select-none">
               <p className="max-w-md text-center text-helper text-muted-foreground">
                 No characters yet — use <span className="font-semibold">New Entity</span> or <span className="font-semibold">Import Entity</span> to add one.
               </p>
             </div>
-          ) : (
-            <div className={`grid ${layoutMode === 'detailed' ? DETAILED_GRID_CLASS : ENTITY_GRID_CLASS} gap-4`}>
-              <DndContext
-                sensors={worldSensors}
-                collisionDetection={closestCenter}
-                onDragEnd={handleEntityDragEnd}
-                modifiers={[restrictToFirstScrollableAncestor]}
-                autoScroll={CONTAINED_AUTO_SCROLL}
-              >
-                <SortableContext items={entities.map((e) => e.id)} strategy={rectSortingStrategy}>
-                  {entities.map((entity) => (
-                    <SortableWorldCard
-                      key={entity.id}
-                      world={{ id: entity.id, name: entity.name, description: entity.description, thumbnail: entity.image, tags: entity.tags }}
-                      layout={layoutMode}
-                      aspect="portrait"
-                      onSelect={setEditingEntityId}
-                      onDelete={setEntityToDelete}
-                    />
-                  ))}
-                </SortableContext>
-              </DndContext>
-            </div>
+          ) : undefined}
+          renderCard={(entity, { layout, fill, compact }) => (
+            <SortableWorldCard
+              world={{ id: entity.id, name: entity.name, description: entity.description, thumbnail: entity.image, tags: entity.tags }}
+              layout={layout}
+              aspect="portrait"
+              fill={fill}
+              compact={compact}
+              onSelect={setEditingEntityId}
+              onDelete={setEntityToDelete}
+            />
           )}
-        </ScrollArea>
+        />
       ) : cardType === 'dictionaries' ? (
-        <ScrollArea className="flex-1 min-h-0 container mx-auto px-4">
-          {!isLoadingDictionaries && dictionaries.length === 0 ? (
+        <LibraryTileGrid
+          items={dictionaries}
+          idOf={(dictionary) => dictionary.id}
+          tiles={dictionaryTiles}
+          layout={layoutMode}
+          aspect="landscape"
+          mediumColumns={WORLD_GRID_COLS}
+          detailedColumnsClass={DETAILED_GRID_CLASS}
+          thumbnailOf={(dictionary) => dictionary.thumbnail}
+          emptyState={!isLoadingDictionaries ? (
             <div className="flex items-center justify-center py-16 px-4 select-none">
               <p className="max-w-md text-center text-helper text-muted-foreground">
                 No dictionaries yet — use <span className="font-semibold">New Dictionary</span> or <span className="font-semibold">Import Dictionary</span> to add one.
               </p>
             </div>
-          ) : (
-            <div className={`grid ${layoutMode === 'detailed' ? DETAILED_GRID_CLASS : gridColsClass(WORLD_GRID_COLS.base, WORLD_GRID_COLS.sm, WORLD_GRID_COLS.lg)} gap-4`}>
-              <DndContext
-                sensors={worldSensors}
-                collisionDetection={closestCenter}
-                onDragEnd={handleDictionaryDragEnd}
-                modifiers={[restrictToFirstScrollableAncestor]}
-                autoScroll={CONTAINED_AUTO_SCROLL}
-              >
-                <SortableContext items={dictionaries.map((d) => d.id)} strategy={rectSortingStrategy}>
-                  {dictionaries.map((dictionary) => (
-                    <SortableWorldCard
-                      key={dictionary.id}
-                      world={dictionary}
-                      layout={layoutMode}
-                      onSelect={setEditingDictionaryId}
-                      onDelete={setDictionaryToDelete}
-                    />
-                  ))}
-                </SortableContext>
-              </DndContext>
-            </div>
+          ) : undefined}
+          renderCard={(dictionary, { layout, fill, compact }) => (
+            <SortableWorldCard
+              world={dictionary}
+              layout={layout}
+              fill={fill}
+              compact={compact}
+              onSelect={setEditingDictionaryId}
+              onDelete={setDictionaryToDelete}
+            />
           )}
-        </ScrollArea>
-      ) : (
-      /* Bounded scroll viewport (Radix ScrollArea Root is overflow-hidden) so drag-reorder
-         auto-scroll stays inside this frame instead of growing the page in either axis. */
-      <ScrollArea className="flex-1 min-h-0 container mx-auto px-4">
-        <div className={`grid ${gridColsClass(WORLD_GRID_COLS.base, WORLD_GRID_COLS.sm, layoutMode === 'detailed' ? 4 : WORLD_GRID_COLS.lg)} gap-4`}>
-          {isLoadingWorlds ? (
-            Array(6).fill(0).map((_, index) => (
+        />
+      ) : isLoadingWorlds ? (
+        <ScrollArea className="flex-1 min-h-0 container mx-auto px-4">
+          <div className={`grid ${gridColsClass(WORLD_GRID_COLS.base, WORLD_GRID_COLS.sm, WORLD_GRID_COLS.lg)} gap-4`}>
+            {Array(6).fill(0).map((_, index) => (
               <div key={index} className="relative w-full h-48 rounded-lg overflow-hidden">
                 <Skeleton className="w-full h-full" />
                 <div className="absolute bottom-0 left-0 right-0 bg-overlay/50 p-2">
                   <Skeleton className="h-6 w-24" />
                 </div>
               </div>
-            ))
-          ) : (
-            <DndContext
-              sensors={worldSensors}
-              collisionDetection={closestCenter}
-              onDragEnd={handleWorldDragEnd}
-              // Clamp the drag to the ScrollArea viewport and never auto-scroll the page/window,
-              // so dragging a tile past an edge scrolls this finite frame rather than growing the page.
-              modifiers={[restrictToFirstScrollableAncestor]}
-              autoScroll={CONTAINED_AUTO_SCROLL}
-            >
-              <SortableContext items={worlds.map((w) => w.id)} strategy={rectSortingStrategy}>
-                {worlds.map((world) => (
-                  <LibraryWorldCard
-                    key={world.id}
-                    world={world}
-                    contests={contests}
-                    layout={layoutMode}
-                    onSelect={handleWorldSelection}
-                    onDelete={setWorldToDelete}
-                  />
-                ))}
-              </SortableContext>
-            </DndContext>
+            ))}
+          </div>
+        </ScrollArea>
+      ) : (
+        <LibraryTileGrid
+          items={worlds}
+          idOf={(world) => world.id as string}
+          tiles={worldTiles}
+          layout={layoutMode}
+          aspect="landscape"
+          mediumColumns={WORLD_GRID_COLS}
+          detailedColumnsClass={DETAILED_GRID_CLASS}
+          thumbnailOf={(world) => world.thumbnail}
+          groupPresetName={(groupId) => presetName(worldTiles.group(groupId)?.settings.promptPreset)}
+          groupSettings={(groupId) => (
+            <div className="flex items-center gap-2">
+              <label htmlFor="group-preset" className="text-helper text-muted-foreground">Prompts</label>
+              <Select
+                value={worldTiles.group(groupId)?.settings.promptPreset || GLOBAL_PRESET_VALUE}
+                onValueChange={(v) =>
+                  worldTiles.setPromptPreset(groupId, v === GLOBAL_PRESET_VALUE ? null : v)
+                }
+              >
+                <SelectTrigger id="group-preset" className="h-8 w-[210px]"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value={GLOBAL_PRESET_VALUE}>No group preset</SelectItem>
+                  {[...builtinPresets, ...promptPresets].map((p) => (
+                    <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
           )}
-        </div>
-      </ScrollArea>
+          renderCard={(world, { layout, fill, compact }) => (
+            <LibraryWorldCard
+              world={world}
+              contests={contests}
+              layout={layout}
+              fill={fill}
+              compact={compact}
+              onSelect={handleWorldSelection}
+              onDelete={setWorldToDelete}
+            />
+          )}
+        />
       )}
 
       {/* Mobile card-type switch: an in-flow bottom tab bar (one-tap, always visible) that frees the cramped
@@ -2256,12 +2233,19 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
               >
                 <SelectTrigger id="world-preset" className="h-8 w-[210px]"><SelectValue /></SelectTrigger>
                 <SelectContent>
-                  <SelectItem value={GLOBAL_PRESET_VALUE}>Use global preset</SelectItem>
+                  <SelectItem value={GLOBAL_PRESET_VALUE}>
+                    {selectedGroupPreset ? 'Use group preset' : 'Use global preset'}
+                  </SelectItem>
                   {[...builtinPresets, ...promptPresets].map((p) => (
                     <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>
                   ))}
                 </SelectContent>
               </Select>
+              {/* Three levels can decide the preset, so the one that wins is named rather than left to
+                  be inferred from an unpinned dropdown. */}
+              {effectivePresetNote && (
+                <span className="text-meta text-muted-foreground">{effectivePresetNote}</span>
+              )}
             </div>
 
             {/* Entry options sit opposite the pin so the two kinds of control stay visually separate. */}

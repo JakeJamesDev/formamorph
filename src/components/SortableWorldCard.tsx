@@ -5,6 +5,7 @@ import { Trash2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { CardTags, type WorldRecord } from "@/components/WorldDetails";
 import { WorldCardShell } from "@/components/WorldCardShell";
+import { Tip } from "@/components/ui/tooltip";
 
 /** A draggable local-world tile. The whole card is the drag handle; a small move distance is required to
  *  start a drag so a plain click still selects the world. `detailed` mirrors the community-browser card layout.
@@ -12,7 +13,7 @@ import { WorldCardShell } from "@/components/WorldCardShell";
  *  landscape default. Omit `onSelect` for a card with nothing to open — it drops the pointer cursor too, so
  *  the tile doesn't advertise a click it won't answer. `badge` overlays the grid thumbnail's top-left, and
  *  `note` is the same thing said as a line in the detailed layout, which has no thumbnail to overlay. */
-function SortableWorldCard({ world, onSelect, onDelete, layout, aspect = 'landscape', badge, note }: {
+function SortableWorldCard({ world, onSelect, onDelete, layout, aspect = 'landscape', badge, note, fill, compact }: {
   world: WorldRecord;
   onSelect?: (id: string) => void;
   onDelete: (id: string) => void;
@@ -20,6 +21,10 @@ function SortableWorldCard({ world, onSelect, onDelete, layout, aspect = 'landsc
   aspect?: 'landscape' | 'portrait';
   badge?: React.ReactNode;
   note?: React.ReactNode;
+  /** Fill the tile the grid hands it, instead of taking its height from `aspect`. */
+  fill?: boolean;
+  /** Trade the name strip for a tooltip, so the smallest tile is thumbnail and nothing else. */
+  compact?: boolean;
 }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } =
     useSortable({ id: world.id });
@@ -45,7 +50,7 @@ function SortableWorldCard({ world, onSelect, onDelete, layout, aspect = 'landsc
         {...listeners}
         // content-visibility:auto lets the browser skip layout/paint for off-screen cards; the auto
         // intrinsic-size reserves space (remembered after first paint) so scrolling stays stable.
-        frameClassName="bg-card touch-pan-y [content-visibility:auto] [contain-intrinsic-size:auto_360px]"
+        frameClassName="h-full bg-card touch-pan-y [content-visibility:auto] [contain-intrinsic-size:auto_360px]"
         onClick={() => onSelect?.(world.id)}
         name={world.name}
         description={world.description}
@@ -86,7 +91,19 @@ function SortableWorldCard({ world, onSelect, onDelete, layout, aspect = 'landsc
     );
   }
 
-  return (
+  // A filled tile takes its box from the grid, so the height hints that size an auto tile are dropped
+  // along with the intrinsic-size reservation they exist to feed.
+  const frameSize = fill
+    ? 'h-full w-full'
+    : cn(
+      'touch-pan-y [content-visibility:auto]',
+      aspect === 'portrait' ? '[contain-intrinsic-size:auto_360px]' : '[contain-intrinsic-size:auto_240px]',
+    );
+  const mediaSize = fill
+    ? 'h-full w-full'
+    : cn('w-full', aspect === 'portrait' ? 'aspect-[2/3]' : 'h-48');
+
+  const tile = (
     <div
       ref={setNodeRef}
       style={style}
@@ -96,9 +113,11 @@ function SortableWorldCard({ world, onSelect, onDelete, layout, aspect = 'landsc
       // their height (remembered after first paint) so the scroll frame doesn't jump. The reservation is
       // per-aspect: a 2:3 portrait stands about half again as tall as the landscape tile, and a single
       // figure for both would misreserve one of them on first paint.
-      className={`relative rounded-lg overflow-hidden transition-opacity touch-pan-y [content-visibility:auto] ${
-        aspect === 'portrait' ? '[contain-intrinsic-size:auto_360px]' : '[contain-intrinsic-size:auto_240px]'
-      } ${onSelect ? 'cursor-pointer hover:opacity-90' : ''}`}
+      className={cn(
+        'relative rounded-lg overflow-hidden transition-opacity touch-pan-y',
+        frameSize,
+        onSelect && 'cursor-pointer hover:opacity-90',
+      )}
       onClick={() => onSelect?.(world.id)}
     >
       {world.thumbnail ? (
@@ -108,29 +127,45 @@ function SortableWorldCard({ world, onSelect, onDelete, layout, aspect = 'landsc
           // Top-anchored for character art, as in the detailed card and the community browser: even a 2:3
           // frame crops a portrait, and the face is the part worth keeping.
           className={cn(
-            'w-full object-cover select-none pointer-events-none',
-            aspect === 'portrait' ? 'aspect-[2/3] object-top' : 'h-48',
+            'object-cover select-none pointer-events-none',
+            mediaSize,
+            aspect === 'portrait' && 'object-top',
           )}
         />
       ) : (
-        <div className={`w-full ${aspect === 'portrait' ? 'aspect-[2/3]' : 'h-48'} bg-muted`} />
+        <div className={cn(mediaSize, 'bg-muted')} />
       )}
       {badge && <div className="absolute top-1 left-1 z-10 max-w-[calc(100%-0.5rem)]">{badge}</div>}
-      {/* Flex row, not an absolute corner button: the trash keeps its own column so a long name wraps
-          beside it instead of running underneath, and it bottom-aligns with the last line of the name. */}
-      <div className="absolute bottom-0 left-0 right-0 bg-overlay/50 p-2 flex items-end gap-2">
-        <h3 className="min-w-0 flex-1 break-words text-white font-semibold">{world.name}</h3>
+      {compact ? (
         <button
-          className="shrink-0 p-1 text-destructive hover:text-destructive/80"
+          className="absolute bottom-0.5 right-0.5 z-10 rounded bg-overlay/50 p-0.5 text-destructive hover:text-destructive/80"
           onPointerDown={(e) => e.stopPropagation()}
           onClick={handleDelete}
           aria-label="Delete world"
         >
-          <Trash2 className="h-5 w-5" />
+          <Trash2 className="h-4 w-4" />
         </button>
-      </div>
+      ) : (
+        /* Flex row, not an absolute corner button: the trash keeps its own column so a long name wraps
+           beside it instead of running underneath, and it bottom-aligns with the last line of the name. */
+        <div className="absolute bottom-0 left-0 right-0 bg-overlay/50 p-2 flex items-end gap-2">
+          <h3 className="min-w-0 flex-1 break-words text-white font-semibold">{world.name}</h3>
+          <button
+            className="shrink-0 p-1 text-destructive hover:text-destructive/80"
+            onPointerDown={(e) => e.stopPropagation()}
+            onClick={handleDelete}
+            aria-label="Delete world"
+          >
+            <Trash2 className="h-5 w-5" />
+          </button>
+        </div>
+      )}
     </div>
   );
+
+  // A small tile has no room for the name strip, so the name is a tip instead. `labelsChild` is off:
+  // the delete button inside already carries its own label, and the tile is not a control.
+  return compact ? <Tip tip={world.name} labelsChild={false}>{tile}</Tip> : tile;
 }
 
 export default SortableWorldCard;

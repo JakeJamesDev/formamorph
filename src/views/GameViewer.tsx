@@ -36,7 +36,8 @@ import ReadmeModal from "../components/game/ReadmeModal";
 import { useReadmeVisibility } from "@/lib/useReadmeVisibility";
 import { resolveOpeningCue } from "@/lib/openingCue";
 import { resolveWorldPrompt, useWorldPromptOptOut } from "@/lib/worldPrompt";
-import { useWorldPromptPresets } from "@/lib/worldPromptPreset";
+import { useWorldPromptPresets, resolveEffectivePreset } from "@/lib/worldPromptPreset";
+import { groupPromptPreset, loadTabOrganization } from "@/lib/libraryOrganization";
 import { EntityModal } from "../components/modals/EntityModal";
 import { LocationModal } from "../components/modals/LocationModal";
 import { SettingsModal } from "../components/modals/SettingsModal";
@@ -336,12 +337,23 @@ const GameViewer = ({
   // global selection. Re-pinning from Settings writes back through `setWorldPreset`.
   const { worldPreset, setWorldPreset } = useWorldPromptPresets();
   const { beginSessionPreset, endSessionPreset } = settings;
+  // A library folder can carry a preset for every world inside it. The world's own pin still wins, and a
+  // level naming a deleted preset drops silently to the next — the arrangement is read straight from
+  // device-local storage, since it is a library preference the game never writes back to.
+  const groupPreset = useMemo(
+    () => (worldId ? groupPromptPreset(loadTabOrganization('worlds'), worldId) : undefined),
+    [worldId],
+  );
   useEffect(() => {
-    beginSessionPreset(worldPreset(worldId) ?? null, (id) => setWorldPreset(worldId, id));
+    const effective = resolveEffectivePreset(worldPreset(worldId), groupPreset, {
+      presets: settings.promptPresets,
+    });
+    beginSessionPreset(effective.presetId, (id) => setWorldPreset(worldId, id));
     return () => endSessionPreset();
-    // Re-runs only when the world changes; `worldPreset`/`setWorldPreset` are recreated every render.
+    // Re-runs only when the world or its folder's preset changes; `worldPreset`/`setWorldPreset` and the
+    // preset list are recreated every render.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [worldId, beginSessionPreset, endSessionPreset]);
+  }, [worldId, groupPreset, beginSessionPreset, endSessionPreset]);
   const {
     bgmEnabled,
     setBgmEnabled,
