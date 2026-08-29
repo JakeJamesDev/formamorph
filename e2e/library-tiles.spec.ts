@@ -49,6 +49,51 @@ async function openLibrary(page: Page): Promise<void> {
   await expect(thumbnails(page).nth(1)).toBeVisible();
 }
 
+/** Drag one tile to another tile's left edge, the region that reorders instead of grouping. */
+async function dragToLeftEdge(page: Page, from: Locator, to: Locator): Promise<void> {
+  const start = await from.boundingBox();
+  const end = await to.boundingBox();
+  if (!start || !end) throw new Error('a tile has no box to drag between');
+
+  const startX = start.x + start.width / 2;
+  const startY = start.y + start.height / 2;
+  const endX = end.x + 8;
+  const endY = end.y + end.height / 2;
+
+  await page.mouse.move(startX, startY);
+  await page.mouse.down();
+  await page.mouse.move(startX + 12, startY, { steps: 2 });
+  await page.mouse.move(endX, endY, { steps: 12 });
+  await page.mouse.move(endX, endY);
+  await page.mouse.up();
+}
+
+test.describe('reordering library tiles', () => {
+  test('drops a tile on another\'s edge to reorder, on a library never arranged before', async ({ page }) => {
+    // The regression this guards: a fresh library stores no order at all, so a reorder that only
+    // edited the stored list was a silent no-op — and an edge drop that read as "group" instead
+    // made a folder the player never asked for.
+    await openLibrary(page);
+
+    // Adjacent tiles, not the grid's far corners: on the phone profile the grid is one column and
+    // the far tiles sit below the fold, where the mouse cannot reach without scrolling.
+    const names = await thumbnails(page).evaluateAll((imgs) =>
+      imgs.map((img) => (img as HTMLImageElement).alt));
+    const second = thumbnails(page).nth(1);
+    const first = thumbnails(page).nth(0);
+
+    await dragToLeftEdge(page, second, first);
+
+    await expect(thumbnails(page).first()).toHaveAttribute('alt', names[1]);
+    await expect(page.getByRole('heading', { name: 'New Group' })).toHaveCount(0);
+
+    // The new order is what the library reopens with.
+    await page.reload();
+    await expect(page.getByRole('button', { name: 'Delete world' }).first()).toBeVisible();
+    await expect(thumbnails(page).first()).toHaveAttribute('alt', names[1]);
+  });
+});
+
 test.describe('grouping library tiles', () => {
   test('drops one tile on another to make a folder, opens it, and comes back', async ({ page }) => {
     await openLibrary(page);

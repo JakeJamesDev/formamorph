@@ -38,6 +38,13 @@ describe('dropIntent', () => {
     expect(dropIntent({ x: 520, y: 400 }, offset, medium)).toEqual({ kind: 'reorder', position: 'before' });
   });
 
+  it('reads a pointer past the tile as a boundary drop, never as a grouping', () => {
+    // Past the grid's last tile the collision layer still hands that tile over, so without this rule
+    // the very last slot would be unreachable: every drop there would fold a folder instead.
+    expect(dropIntent({ x: 100, y: 220 }, rect, medium)).toEqual({ kind: 'reorder', position: 'after' });
+    expect(dropIntent({ x: 100, y: -10 }, rect, medium)).toEqual({ kind: 'reorder', position: 'before' });
+  });
+
   it('takes the far corners of a large tile as edges, not as its middle', () => {
     const large = { canGroup: true, overSize: 'large' } as const;
 

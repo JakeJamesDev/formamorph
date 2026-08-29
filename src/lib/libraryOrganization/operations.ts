@@ -171,34 +171,72 @@ export function setTileSize(
   return { ...org, sizes: { ...org.sizes, [id]: size } };
 }
 
-/**
- * Move a tile to sit before or after another in the same list.
- *
- * @param container - The folder being reordered, or omitted for the main grid
- */
-export function moveTile(
-  org: LibraryTabOrganization,
-  { activeId, overId, position, container }: {
-    activeId: string;
-    overId: string;
-    position: 'before' | 'after';
-    container?: string | null;
-  },
-): LibraryTabOrganization {
-  if (activeId === overId) return org;
+/** Where a tile is being dropped: which tile, which side, and the folder it happens in. */
+export interface TileMove {
+  activeId: string;
+  overId: string;
+  position: 'before' | 'after';
+  /** The folder being reordered, or omitted for the main grid. */
+  container?: string | null;
+}
 
-  const group = container ? org.groups[container] : undefined;
-  if (container && !group) return org;
-  const list = group ? group.members : org.order;
-  if (!list.includes(activeId) || !list.includes(overId)) return org;
+/** The list with `activeId` moved beside `overId`, or null when the move does not apply to it. */
+const moveInList = (list: string[], { activeId, overId, position }: TileMove): string[] | null => {
+  if (activeId === overId) return null;
+  if (!list.includes(activeId) || !list.includes(overId)) return null;
 
   const rest = list.filter((id) => id !== activeId);
-  const at = rest.indexOf(overId) + (position === 'after' ? 1 : 0);
-  const next = spliced(rest, at, 0, activeId);
+  return spliced(rest, rest.indexOf(overId) + (position === 'after' ? 1 : 0), 0, activeId);
+};
+
+/** Move a tile to sit before or after another inside one folder. */
+export function moveTile(org: LibraryTabOrganization, move: TileMove): LibraryTabOrganization {
+  const group = move.container ? org.groups[move.container] : undefined;
+  if (move.container && !group) return org;
+
+  const next = moveInList(group ? group.members : org.order, move);
+  if (!next) return org;
 
   return group
     ? { ...org, groups: { ...org.groups, [group.id]: { ...group, members: next } } }
     : { ...org, order: next };
+}
+
+/**
+ * Move a tile in the main grid, against the tiles the grid is actually drawing.
+ *
+ * The stored order can hold fewer ids than the grid shows, because anything it has never seen is drawn
+ * at the end instead. Reordering against the stored list alone would therefore do nothing at all on a
+ * library that has never been arranged. This reorders the drawn list and writes that whole list down,
+ * which is what the flat grid before it did on every drag.
+ *
+ * @param itemIds - The ids the tab currently holds
+ */
+export function reorderTopLevel(
+  org: LibraryTabOrganization,
+  itemIds: string[],
+  move: TileMove,
+): LibraryTabOrganization {
+  const next = moveInList(topLevelIds(org, itemIds), move);
+  return next ? { ...org, order: next } : org;
+}
+
+/**
+ * The order the grid would draw if the drag in progress were dropped now, so a drag can preview where
+ * its tile lands. A move that would be refused comes back as the order already on screen.
+ *
+ * @param itemIds - The ids the tab currently holds
+ */
+export function projectedOrder(
+  org: LibraryTabOrganization,
+  itemIds: string[],
+  move: TileMove,
+): string[] {
+  if (move.container) {
+    const members = org.groups[move.container]?.members ?? [];
+    return moveInList(members, move) ?? members;
+  }
+  return topLevelIds(reorderTopLevel(org, itemIds, move), itemIds);
 }
 
 /** Pin a folder's member worlds to a prompt preset, or pass null to drop the setting. */
