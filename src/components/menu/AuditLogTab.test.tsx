@@ -4,7 +4,7 @@ import { AuditLogTab } from './AuditLogTab';
 import AuditService from '@/services/AuditService';
 import { describeAuditEntry, auditActorName, auditPredicate, actionFilterValue, ANY_ACTION } from '@/lib/auditPresentation';
 import { RoleBadge } from '@/components/RoleBadge';
-import type { AuditEntry } from '@/types';
+import { AUDIT_ACTIONS, type AuditEntry } from '@/types';
 
 vi.mock('react-toastify', () => ({ toast: { error: vi.fn(), success: vi.fn(), info: vi.fn() } }));
 
@@ -282,6 +282,57 @@ describe('what each entry reads as', () => {
   it('does not invent a name for a listing that had none', () => {
     expect(line({ action: 'listing_deleted', target: { kind: 'world', name: null } }))
       .toBe('root-admin deleted a world by trouble');
+  });
+
+  it('reads the arc of an event', () => {
+    const event = { targetUser: null, target: { kind: 'event', name: 'Summertime Vibes 2026' } };
+
+    expect(line({ action: 'event_created', ...event }))
+      .toBe('root-admin scheduled the event “Summertime Vibes 2026”');
+    expect(line({ action: 'event_edited', ...event }))
+      .toBe('root-admin edited the event “Summertime Vibes 2026”');
+    expect(line({ action: 'event_cancelled', ...event }))
+      .toBe('root-admin canceled the event “Summertime Vibes 2026”');
+    expect(line({ action: 'event_deleted', ...event }))
+      .toBe('root-admin deleted the event “Summertime Vibes 2026”');
+  });
+
+  it('names the contest a podium belongs to, and leaves the podium to the snippet', () => {
+    expect(line({ action: 'results_announced', target: { kind: 'event', name: 'Summertime Vibes 2026' } }))
+      .toBe('root-admin announced the results of “Summertime Vibes 2026”');
+    expect(line({ action: 'podium_edited', target: { kind: 'event', name: 'Summertime Vibes 2026' } }))
+      .toBe('root-admin corrected the podium of “Summertime Vibes 2026”');
+  });
+
+  it('separates pulling your own entry from having it pulled', () => {
+    // Self-withdrawal names no target on the server, the delete precedent.
+    expect(line({
+      action: 'entry_withdrawn',
+      actor: { id: 'u1', username: 'wren_hallow', wasAdmin: false },
+      targetUser: null,
+      target: { kind: 'world', name: 'Sedge Landing' },
+      snippet: 'Summertime Vibes 2026',
+    })).toBe('wren_hallow withdrew their own world “Sedge Landing” from a contest');
+
+    expect(line({
+      action: 'entry_withdrawn',
+      target: { kind: 'world', name: 'Sedge Landing' },
+      snippet: 'Summertime Vibes 2026',
+    })).toBe('root-admin withdrew the world “Sedge Landing” by trouble from a contest');
+  });
+
+  it('says how a report group closed, and about what', () => {
+    expect(line({ action: 'report_actioned', target: { kind: 'world', name: 'Sedge Landing' } }))
+      .toBe('root-admin acted on the reports about “Sedge Landing” by trouble');
+    expect(line({ action: 'report_dismissed', target: { kind: 'world', name: 'Sedge Landing' } }))
+      .toBe('root-admin dismissed the reports about “Sedge Landing” by trouble');
+  });
+
+  it('has a sentence for every action the client knows', () => {
+    // The fallback exists for a server newer than this build; a listed action reaching it is drift.
+    for (const action of AUDIT_ACTIONS) {
+      expect(auditPredicate(entry({ action })), action).not.toContain('does not recognize');
+    }
   });
 });
 

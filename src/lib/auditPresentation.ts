@@ -17,6 +17,13 @@ export const AUDIT_ACTION_LABELS: Record<AuditAction, string> = {
   avatar_removed: 'Image removed',
   role_changed: 'Role changed',
   feedback_edited: 'Feedback edited',
+  event_created: 'Event scheduled',
+  event_edited: 'Event edited',
+  event_cancelled: 'Event canceled',
+  event_deleted: 'Event deleted',
+  results_announced: 'Results announced',
+  podium_edited: 'Podium edited',
+  entry_withdrawn: 'Entry withdrawn',
   report_actioned: 'Report actioned',
   report_dismissed: 'Report dismissed',
 };
@@ -38,6 +45,13 @@ export const AUDIT_ACTION_STYLES: Record<AuditAction, string> = {
   avatar_removed: 'bg-destructive/10 text-destructive',
   role_changed: 'bg-info/10 text-info',
   feedback_edited: 'bg-info/10 text-info',
+  event_created: 'bg-info/10 text-info',
+  event_edited: 'bg-info/10 text-info',
+  event_cancelled: 'bg-warning/10 text-warning',
+  event_deleted: 'bg-destructive/10 text-destructive',
+  results_announced: 'bg-success/10 text-success',
+  podium_edited: 'bg-info/10 text-info',
+  entry_withdrawn: 'bg-muted text-muted-foreground',
   // A decision, not a removal: what was actually done to the content is logged by the act itself.
   report_actioned: 'bg-warning/10 text-warning',
   report_dismissed: 'bg-muted text-muted-foreground',
@@ -158,8 +172,35 @@ export function auditPredicate(entry: AuditEntry): string {
       return target
         ? `edited the ${noun ?? 'thread'}${name ? ` “${name}”` : ''} by ${target}`
         : `edited a ${noun ?? 'thread'}${name ? ` “${name}”` : ''}`;
-    default:
+    case 'event_created':
+      return `scheduled the event${name ? ` “${name}”` : ''}`;
+    case 'event_edited':
+      return `edited the event${name ? ` “${name}”` : ''}`;
+    case 'event_cancelled':
+      return `canceled the event${name ? ` “${name}”` : ''}`;
+    case 'event_deleted':
+      return `deleted the event${name ? ` “${name}”` : ''}`;
+    // The podium itself is the snippet, so the sentence only says which contest.
+    case 'results_announced':
+      return `announced the results of${name ? ` “${name}”` : ' a contest'}`;
+    case 'podium_edited':
+      return `corrected the podium of${name ? ` “${name}”` : ' a contest'}`;
+    // The contest it left is the snippet; the sentence names what was pulled.
+    case 'entry_withdrawn':
+      return target
+        ? `withdrew ${name ? `the ${noun ?? 'listing'} “${name}”` : `a ${noun ?? 'listing'}`} by ${target} from a contest`
+        : `withdrew their own ${noun ?? 'listing'}${name ? ` “${name}”` : ''} from a contest`;
+    // Closed a whole report group; the staff note, if any, is the snippet.
+    case 'report_actioned':
+      return `acted on the reports${name ? ` about “${name}”` : ''}${target ? ` by ${target}` : ''}`;
+    case 'report_dismissed':
+      return `dismissed the reports${name ? ` about “${name}”` : ''}${target ? ` by ${target}` : ''}`;
+    // Unreachable while the switch covers `AuditAction`; kept for a server newer than this build.
+    default: {
+      const unhandled: never = entry.action;
+      void unhandled;
       return 'did something the app does not recognize';
+    }
   }
 }
 
