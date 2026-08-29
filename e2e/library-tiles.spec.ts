@@ -94,6 +94,28 @@ test.describe('reordering library tiles', () => {
   });
 });
 
+test.describe('the detailed layout', () => {
+  test('offers no tile sizes and reorders on an edge drop instead of grouping', async ({ page }) => {
+    await openApp(page, { FORMAMORPH_layoutMode: 'detailed' });
+    await expect(page.getByRole('button', { name: 'Delete world' }).first()).toBeVisible();
+    await expect(thumbnails(page).nth(1)).toBeVisible();
+
+    // Sizes shape only the packed grid, so the detailed menu must not offer them.
+    await thumbnails(page).first().click({ button: 'right' });
+    await expect(page.getByRole('menuitem', { name: 'Create New Group' })).toBeVisible();
+    await expect(page.getByText('Tile Size')).toHaveCount(0);
+    await page.keyboard.press('Escape');
+
+    // An edge drop reorders here exactly as it does in the grid; only a middle drop groups.
+    const names = await thumbnails(page).evaluateAll((imgs) =>
+      imgs.map((img) => (img as HTMLImageElement).alt));
+    await dragToLeftEdge(page, thumbnails(page).nth(1), thumbnails(page).nth(0));
+
+    await expect(thumbnails(page).first()).toHaveAttribute('alt', names[1]);
+    await expect(page.getByRole('heading', { name: 'New Group' })).toHaveCount(0);
+  });
+});
+
 test.describe('grouping library tiles', () => {
   test('drops one tile on another to make a folder, opens it, and comes back', async ({ page }) => {
     await openLibrary(page);
