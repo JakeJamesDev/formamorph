@@ -1,5 +1,10 @@
 import { useState, useEffect } from 'react';
-import { BUILTIN_PRESETS, type PromptPresetStore } from './promptPresets';
+import { BUILTIN_PRESETS } from './promptPresets';
+
+/** Everything preset resolution needs: the ids that currently exist. `PromptPresetStore` satisfies it. */
+export interface PresetIdSource {
+  presets: { id: string }[];
+}
 
 const STORAGE_KEY = 'FORMAMORPH_worldPromptPresets';
 
@@ -13,11 +18,42 @@ export const GLOBAL_PRESET_VALUE = '__global__';
  */
 export function resolvePinnedPreset(
   pinnedId: string | undefined,
-  store: PromptPresetStore,
+  store: PresetIdSource,
 ): string | null {
   if (!pinnedId) return null;
   const exists = BUILTIN_PRESETS.some((b) => b.id === pinnedId) || store.presets.some((p) => p.id === pinnedId);
   return exists ? pinnedId : null;
+}
+
+/** Which level decided the preset a world runs on. */
+export type PresetSource = 'world' | 'group' | 'global';
+
+export interface EffectivePreset {
+  /** The preset to run, or null to follow the player's global selection. */
+  presetId: string | null;
+  source: PresetSource;
+}
+
+/**
+ * The preset a world actually runs on: its own pin first, then the setting on the library folder it sits
+ * in, then the global selection. Each level is validated the same way, so a level naming a deleted preset
+ * drops silently to the next rather than breaking entry into the world.
+ *
+ * @param pinnedId - The world's own pin
+ * @param groupPresetId - The preset its library folder applies to its members
+ */
+export function resolveEffectivePreset(
+  pinnedId: string | undefined,
+  groupPresetId: string | undefined,
+  store: PresetIdSource,
+): EffectivePreset {
+  const pinned = resolvePinnedPreset(pinnedId, store);
+  if (pinned) return { presetId: pinned, source: 'world' };
+
+  const fromGroup = resolvePinnedPreset(groupPresetId, store);
+  if (fromGroup) return { presetId: fromGroup, source: 'group' };
+
+  return { presetId: null, source: 'global' };
 }
 
 /**

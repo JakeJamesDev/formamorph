@@ -1,6 +1,11 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import { renderHook, act } from '@testing-library/react';
-import { resolvePinnedPreset, useWorldPromptPresets, GLOBAL_PRESET_VALUE } from './worldPromptPreset';
+import {
+  resolveEffectivePreset,
+  resolvePinnedPreset,
+  useWorldPromptPresets,
+  GLOBAL_PRESET_VALUE,
+} from './worldPromptPreset';
 import { emptyStore, type PromptPresetStore } from './promptPresets';
 
 const storeWith = (ids: string[]): PromptPresetStore => ({
@@ -26,6 +31,46 @@ describe('resolvePinnedPreset', () => {
     // built-in, so without this guard a deleted preset would silently switch the world to Default
     // rather than back to whatever the player has selected globally.
     expect(resolvePinnedPreset('deleted-preset', storeWith(['mine']))).toBeNull();
+  });
+});
+
+describe('resolveEffectivePreset', () => {
+  const store = storeWith(['mine', 'theirs']);
+
+  it('lets a world pin beat the group it sits in', () => {
+    expect(resolveEffectivePreset('mine', 'theirs', store))
+      .toEqual({ presetId: 'mine', source: 'world' });
+  });
+
+  it('applies the group setting to a world with no pin of its own', () => {
+    expect(resolveEffectivePreset(undefined, 'theirs', store))
+      .toEqual({ presetId: 'theirs', source: 'group' });
+  });
+
+  it('leaves a world with neither following the global selection', () => {
+    expect(resolveEffectivePreset(undefined, undefined, store))
+      .toEqual({ presetId: null, source: 'global' });
+  });
+
+  it('drops to the group when the world pin names a deleted preset', () => {
+    expect(resolveEffectivePreset('gone', 'theirs', store))
+      .toEqual({ presetId: 'theirs', source: 'group' });
+  });
+
+  it('drops to the global selection when the group setting names a deleted preset', () => {
+    // A stale group setting must never block entering a world, so it fails silently to the next level.
+    expect(resolveEffectivePreset(undefined, 'gone', store))
+      .toEqual({ presetId: null, source: 'global' });
+  });
+
+  it('drops all the way to global when both levels name deleted presets', () => {
+    expect(resolveEffectivePreset('gone', 'also-gone', store))
+      .toEqual({ presetId: null, source: 'global' });
+  });
+
+  it('accepts a built-in at either level', () => {
+    expect(resolveEffectivePreset('simple', undefined, emptyStore).source).toBe('world');
+    expect(resolveEffectivePreset(undefined, 'simple', emptyStore).source).toBe('group');
   });
 });
 
