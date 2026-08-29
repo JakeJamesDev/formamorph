@@ -32,14 +32,19 @@ const ScrollArea = React.forwardRef<
 >(({ className, children, viewportRef, marks, onMarkSelect, ...props }, ref) => (
   <ScrollAreaPrimitive.Root
     ref={ref}
-    className={cn("relative overflow-hidden", className)}
+    className={cn("relative flex flex-col overflow-hidden", className)}
     {...props}>
-    {/* Reserve a gutter slightly wider than the scrollbar (w-2.5 = 10px) so content never sits
+    {/* The viewport is sized by flex (`flex-auto min-h-0`), not `h-full`: a percentage height cannot
+        resolve when an ancestor is capped only by `max-h-*` (its height is indefinite), so the viewport
+        silently grew to content height and nothing wheel-scrolled. Flex sizing fills the root's used
+        height either way. The scrollbar and corner are absolutely positioned, so the viewport is the
+        root's only in-flow child.
+        Reserve a gutter slightly wider than the scrollbar (w-2.5 = 10px) so content never sits
         under the overlay bar, plus a 1px margin so the bar isn't flush against the content.
         `[&>div]:!block` overrides Radix's inline `display:table` on the viewport's content wrapper —
         table shrink-wraps to content width, letting long rows overflow horizontally (breaking `truncate`);
         block keeps it viewport-width so children clip. We have no horizontal ScrollArea, so this is safe. */}
-    <ScrollAreaPrimitive.Viewport ref={viewportRef} className="h-full w-full rounded-[inherit] pr-[11px] [&>div]:!block">
+    <ScrollAreaPrimitive.Viewport ref={viewportRef} className="w-full flex-auto min-h-0 rounded-[inherit] pr-[11px] [&>div]:!block">
       {children}
     </ScrollAreaPrimitive.Viewport>
     <ScrollBar marks={marks} onMarkSelect={onMarkSelect} />

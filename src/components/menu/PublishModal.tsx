@@ -444,24 +444,26 @@ export function PublishModal({
               </div>
             )}
 
-            {/* Hidden rather than disabled when there is no contest, this isn't a world, or some other
-                listing is being replaced — a control nobody can use explains nothing. */}
-            {showContestCard && contest && (
-              <ContestEntryCard
-                contest={contest}
-                checked={enterContest}
-                onCheckedChange={setEnterContest}
-                enteredName={enteredName}
-                readOnly={updatingEntry}
-                onWithdraw={existingEntry && enteredId
-                  ? () => withdrawal.ask({ id: enteredId, name: enteredName ?? 'That world' })
-                  : undefined}
-                withdrawing={withdrawal.busy}
-                error={contestError || null}
-              />
-            )}
           </div>
         </ScrollArea>
+
+        {/* Hidden rather than disabled when there is no contest, this isn't a world, or some other
+            listing is being replaced — a control nobody can use explains nothing. Pinned below the
+            scrolling list so a long overwrite list can never push the opt-in out of sight. */}
+        {showContestCard && contest && (
+          <ContestEntryCard
+            contest={contest}
+            checked={enterContest}
+            onCheckedChange={setEnterContest}
+            enteredName={enteredName}
+            readOnly={updatingEntry}
+            onWithdraw={existingEntry && enteredId
+              ? () => withdrawal.ask({ id: enteredId, name: enteredName ?? 'That world' })
+              : undefined}
+            withdrawing={withdrawal.busy}
+            error={contestError || null}
+          />
+        )}
 
         {/* Warn, don't block: the author may know, or may be publishing a draft. But this is the one moment
             the breakage lands on other people, so it says so plainly rather than only badging the editor. */}
