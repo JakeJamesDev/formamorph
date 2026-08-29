@@ -1,5 +1,6 @@
 import { randomUUID } from "@/lib/uuid";
-import { useState } from 'react';
+import { useCallback, useLayoutEffect, useRef, useState } from 'react';
+import { useVirtualizer, defaultRangeExtractor, type Range } from '@tanstack/react-virtual';
 import { useDictionaryStore } from '@/contexts/DictionaryStoreContext';
 import { usePlaceholderStore } from '@/contexts/PlaceholderStoreContext';
 import { ConfirmDialog } from '@/components/ConfirmDialog';
@@ -58,10 +59,112 @@ function EntryRow({ entry, selected, onSelect, onToggleEnabled, onDuplicate, onR
   );
 }
 
+/** Entry count above which a zone renders through the virtualizer instead of mounting every row. Big
+ *  imported books (tens of thousands of entries) crash the renderer if all rows mount at once. */
+const VIRTUALIZE_AT = 200;
+
+/** Estimated row height: EditorRow's `min-h-14` (56px); real heights are measured per row. */
+const ROW_ESTIMATE = 56;
+/** EditorRowList's `gap-1`, in px. */
+const ROW_GAP = 4;
+
+/**
+ * Virtualized entry rows for a large zone: only the visible window mounts, absolutely positioned inside a
+ * spacer sized to the whole list. Scrolling is owned by the nearest ScrollArea viewport. The dragged row is
+ * pinned into the window (rangeExtractor) so a drag survives auto-scrolling it out of view.
+ */
+function VirtualEntryRows({ entries, activeEntryId, listClassName, setDropRef, selectedId, onSelectEntry, onToggleEntryEnabled, onDuplicateEntry, onRemoveEntry }: {
+  entries: DictionaryEntry[];
+  /** Entry id being dragged, if any — kept mounted regardless of scroll position. */
+  activeEntryId: string | null;
+  listClassName?: string;
+  /** The zone's droppable ref; goes on the list element, same as the non-virtual path. */
+  setDropRef: (el: HTMLElement | null) => void;
+  selectedId: string | null;
+  onSelectEntry: (id: string) => void;
+  onToggleEntryEnabled: (entry: DictionaryEntry, enabled: boolean) => void;
+  onDuplicateEntry: (id: string) => void;
+  onRemoveEntry: (id: string) => void;
+}) {
+  const listRef = useRef<HTMLDivElement | null>(null);
+  const [scrollEl, setScrollEl] = useState<HTMLElement | null>(null);
+  const [scrollMargin, setScrollMargin] = useState(0);
+
+  useLayoutEffect(() => {
+    setScrollEl((listRef.current?.closest('[data-radix-scroll-area-viewport]') as HTMLElement | null) ?? null);
+  }, []);
+  // Anchor the window math to the list's offset in the viewport; re-anchor whenever the scroll content
+  // resizes (book headers and the other zone collapse/expand above this list). Guarded set, so the
+  // virtualizer's own height changes don't loop.
+  useLayoutEffect(() => {
+    const list = listRef.current;
+    if (!list || !scrollEl) return;
+    const measure = () => {
+      const margin = list.getBoundingClientRect().top - scrollEl.getBoundingClientRect().top + scrollEl.scrollTop;
+      setScrollMargin((prev) => (Math.abs(prev - margin) > 1 ? margin : prev));
+    };
+    measure();
+    const content = scrollEl.firstElementChild;
+    if (typeof ResizeObserver === 'undefined' || !content) return;
+    const observer = new ResizeObserver(measure);
+    observer.observe(content);
+    return () => observer.disconnect();
+  }, [scrollEl]);
+
+  const activeIndex = activeEntryId ? entries.findIndex((e) => e.id === activeEntryId) : -1;
+  const rangeExtractor = useCallback((range: Range) => {
+    const indexes = defaultRangeExtractor(range);
+    if (activeIndex >= 0 && !indexes.includes(activeIndex)) indexes.push(activeIndex);
+    return indexes;
+  }, [activeIndex]);
+
+  const virtualizer = useVirtualizer({
+    count: entries.length,
+    getScrollElement: () => scrollEl,
+    estimateSize: () => ROW_ESTIMATE,
+    gap: ROW_GAP,
+    overscan: 8,
+    scrollMargin,
+    rangeExtractor,
+    // A sane window before the first real measurement, so rows paint immediately (and in jsdom, where
+    // ResizeObserver never fires and this stays the measurement).
+    initialRect: { width: 600, height: 600 },
+  });
+
+  return (
+    <EditorRowList
+      ref={(el) => { listRef.current = el; setDropRef(el); }}
+      className={listClassName}
+      style={{ position: 'relative', height: virtualizer.getTotalSize() }}
+    >
+      {virtualizer.getVirtualItems().map((row) => {
+        const entry = entries[row.index];
+        return (
+          <div
+            key={entry.id}
+            ref={virtualizer.measureElement}
+            data-index={row.index}
+            style={{ position: 'absolute', top: 0, left: 0, width: '100%', transform: `translateY(${row.start - scrollMargin}px)` }}
+          >
+            <EntryRow
+              entry={entry}
+              selected={selectedId === entry.id}
+              onSelect={onSelectEntry}
+              onToggleEnabled={onToggleEntryEnabled}
+              onDuplicate={onDuplicateEntry}
+              onRemove={onRemoveEntry}
+            />
+          </div>
+        );
+      })}
+    </EditorRowList>
+  );
+}
+
 /** One droppable, collapsible zone (Background/Foreground) within a book; empty zones still accept a drop.
  *  `flat` (Simple mode) drops the heading and the dashed frame so a book's two zones read as one list —
  *  each zone still owns its own drops, so an entry never silently changes where it sits in the prompt. */
-function DictZone({ bookId, position, entries, collapsed, onToggleCollapse, flat, selectedId, onSelectEntry, onToggleEntryEnabled, onDuplicateEntry, onRemoveEntry }: {
+function DictZone({ bookId, position, entries, collapsed, onToggleCollapse, flat, selectedId, activeEntryId, onSelectEntry, onToggleEntryEnabled, onDuplicateEntry, onRemoveEntry }: {
   bookId: string;
   position: 'before' | 'after';
   /** Simple mode: render as part of one flat list rather than a labeled zone. */
@@ -70,6 +173,7 @@ function DictZone({ bookId, position, entries, collapsed, onToggleCollapse, flat
   collapsed: boolean;
   onToggleCollapse: () => void;
   selectedId: string | null;
+  activeEntryId: string | null;
   onSelectEntry: (id: string) => void;
   onToggleEntryEnabled: (entry: DictionaryEntry, enabled: boolean) => void;
   onDuplicateEntry: (id: string) => void;
@@ -78,6 +182,11 @@ function DictZone({ bookId, position, entries, collapsed, onToggleCollapse, flat
   const { setNodeRef, isOver } = useDroppable({ id: `zone:${bookId}:${position}` });
   // An empty zone is a drop target only; with no heading to explain it there is nothing to show.
   if (flat && entries.length === 0) return null;
+  const listClassName = flat
+    ? undefined
+    : `rounded-md border border-dashed p-1 min-h-[2.5rem] transition-colors ${
+        isOver ? 'border-primary bg-secondary/40' : 'border-border/50'
+      }`;
   return (
     <div>
       {!flat && (
@@ -95,14 +204,20 @@ function DictZone({ bookId, position, entries, collapsed, onToggleCollapse, flat
       )}
       {(flat || !collapsed) && (
         <SortableContext items={entries.map((e) => e.id)} strategy={verticalListSortingStrategy}>
-          <EditorRowList
-            ref={setNodeRef}
-            className={flat
-              ? undefined
-              : `rounded-md border border-dashed p-1 min-h-[2.5rem] transition-colors ${
-                  isOver ? 'border-primary bg-secondary/40' : 'border-border/50'
-                }`}
-          >
+          {entries.length > VIRTUALIZE_AT ? (
+            <VirtualEntryRows
+              entries={entries}
+              activeEntryId={activeEntryId}
+              listClassName={listClassName}
+              setDropRef={setNodeRef}
+              selectedId={selectedId}
+              onSelectEntry={onSelectEntry}
+              onToggleEntryEnabled={onToggleEntryEnabled}
+              onDuplicateEntry={onDuplicateEntry}
+              onRemoveEntry={onRemoveEntry}
+            />
+          ) : (
+          <EditorRowList ref={setNodeRef} className={listClassName}>
             {entries.map((entry) => (
               <EntryRow
                 key={entry.id}
@@ -116,6 +231,7 @@ function DictZone({ bookId, position, entries, collapsed, onToggleCollapse, flat
             ))}
             {!flat && entries.length === 0 && <p className="px-2 py-1 text-meta text-muted-foreground">Drag entries here.</p>}
           </EditorRowList>
+          )}
         </SortableContext>
       )}
     </div>
@@ -123,11 +239,12 @@ function DictZone({ bookId, position, entries, collapsed, onToggleCollapse, flat
 }
 
 /** One book ("dictionary") — a collapsible, reorderable, selectable header over two entry zones. */
-function BookRow({ book, collapsed, collapsedZones, selectedId, onToggleCollapse, onToggleZone, onSelect, onToggleEnabled, onAddEntry, onDeleteBook, entryHandlers }: {
+function BookRow({ book, collapsed, collapsedZones, selectedId, activeEntryId, onToggleCollapse, onToggleZone, onSelect, onToggleEnabled, onAddEntry, onDeleteBook, entryHandlers }: {
   book: Dictionary;
   collapsed: boolean;
   collapsedZones: Set<string>;
   selectedId: string | null;
+  activeEntryId: string | null;
   onToggleCollapse: (id: string) => void;
   onToggleZone: (key: string) => void;
   onSelect: (id: string) => void;
@@ -179,12 +296,12 @@ function BookRow({ book, collapsed, collapsedZones, selectedId, onToggleCollapse
           <DictZone
             bookId={book.id} position="before" entries={before} flat={!advanced}
             collapsed={collapsedZones.has(`${book.id}:before`)} onToggleCollapse={() => onToggleZone(`${book.id}:before`)}
-            selectedId={selectedId} {...entryHandlers}
+            selectedId={selectedId} activeEntryId={activeEntryId} {...entryHandlers}
           />
           <DictZone
             bookId={book.id} position="after" entries={after} flat={!advanced}
             collapsed={collapsedZones.has(`${book.id}:after`)} onToggleCollapse={() => onToggleZone(`${book.id}:after`)}
-            selectedId={selectedId} {...entryHandlers}
+            selectedId={selectedId} activeEntryId={activeEntryId} {...entryHandlers}
           />
         </div>
       )}
@@ -202,6 +319,8 @@ const DictionaryTree = ({ selectedId, onSelect }: { selectedId: string | null; o
   // While a book is being dragged, collapse every book: they can be large and can't nest, so a compact
   // list reorders cleanly. This is transient (doesn't touch the persistent `collapsed` set).
   const [draggingBook, setDraggingBook] = useState(false);
+  // The entry being dragged, so a virtualized zone keeps its row mounted while auto-scroll moves the window.
+  const [activeEntryId, setActiveEntryId] = useState<string | null>(null);
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
@@ -236,11 +355,14 @@ const DictionaryTree = ({ selectedId, onSelect }: { selectedId: string | null; o
   });
 
   const handleDragStart = ({ active }: DragStartEvent) => {
-    if (isBook(String(active.id))) setDraggingBook(true);
+    const id = String(active.id);
+    if (isBook(id)) setDraggingBook(true);
+    else setActiveEntryId(id);
   };
 
   const handleDragEnd = ({ active, over }: DragEndEvent) => {
     setDraggingBook(false);
+    setActiveEntryId(null);
     if (!over) return;
     const activeId = String(active.id);
     const overId = String(over.id);
@@ -309,7 +431,7 @@ const DictionaryTree = ({ selectedId, onSelect }: { selectedId: string | null; o
         collisionDetection={closestCorners}
         onDragStart={handleDragStart}
         onDragEnd={handleDragEnd}
-        onDragCancel={() => setDraggingBook(false)}
+        onDragCancel={() => { setDraggingBook(false); setActiveEntryId(null); }}
         modifiers={[restrictToVerticalAxis, restrictToFirstScrollableAncestor]}
         // Re-measure continuously so the drag tracks the layout as books collapse/expand mid-drag.
         measuring={{ droppable: { strategy: MeasuringStrategy.Always } }}
@@ -327,6 +449,7 @@ const DictionaryTree = ({ selectedId, onSelect }: { selectedId: string | null; o
                 collapsed={draggingBook || collapsed.has(book.id)}
                 collapsedZones={collapsedZones}
                 selectedId={selectedId}
+                activeEntryId={activeEntryId}
                 onToggleCollapse={toggleCollapse}
                 onToggleZone={toggleZone}
                 onSelect={onSelect}
