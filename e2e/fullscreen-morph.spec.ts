@@ -110,6 +110,12 @@ test('opening: the window grows through intermediate sizes, solid, over a dimmed
   // dark and doing the work.
   const mid = travel[Math.floor(travel.length / 2)];
   expect(mid.overlay).toBeGreaterThan(0.5);
+
+  // The reveal starts at landing, not after the settle buffer: the veil is fully off well before the
+  // buffered timeline (~600ms with click latency) could manage it.
+  const revealed = frames.find((s) => s.veil >= 0 && s.veil < 0.1);
+  expect(revealed).toBeTruthy();
+  expect(revealed!.t).toBeLessThan(560);
 });
 
 test('closing: the window shrinks back into the docked slot, solid, with the panel restored under it', async ({ page }) => {

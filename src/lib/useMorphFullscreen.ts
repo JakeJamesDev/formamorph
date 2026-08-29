@@ -154,12 +154,19 @@ export function useMorphFullscreen(sourceRef: RefObject<HTMLElement | null>): Mo
   const boxEl = useRef<HTMLElement | null>(null);
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const frame = useRef<number | null>(null);
+  /** Set at ENTER_MS, when the growing box reaches full size: the reveal starts here, not at the settle
+   *  — the settle's extra buffer guards cleanup against timer jitter and would otherwise be 100ms of the
+   *  landed box just sitting there veiled. */
+  const [landed, setLanded] = useState(false);
+  const landTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   /** Drop any trip still in flight. Refs only, so it never needs to change identity. */
   const stop = useCallback(() => {
     if (timer.current) clearTimeout(timer.current);
+    if (landTimer.current) clearTimeout(landTimer.current);
     if (frame.current !== null) cancelAnimationFrame(frame.current);
     timer.current = null;
+    landTimer.current = null;
     frame.current = null;
   }, []);
   useEffect(() => stop, [stop]);
@@ -219,6 +226,7 @@ export function useMorphFullscreen(sourceRef: RefObject<HTMLElement | null>): Mo
     captureScrollers();
     snapshot();
     stop();
+    setLanded(false);
     setMounted(true);
     setPhase('entering');
   }, [captureScrollers, snapshot, stop]);
@@ -278,6 +286,7 @@ export function useMorphFullscreen(sourceRef: RefObject<HTMLElement | null>): Mo
     // suspends frames altogether, so a settle that waited on the release would never come and the overlay
     // would sit parked over the field for good. Landing early costs the animation, not the end state.
     timer.current = setTimeout(() => settleRef.current(leaving), ms + (leaving ? REVEAL_MS : 0) + 100);
+    if (!leaving) landTimer.current = setTimeout(() => setLanded(true), ENTER_MS);
     return true;
   }, [reduceMotion]);
 
@@ -321,10 +330,11 @@ export function useMorphFullscreen(sourceRef: RefObject<HTMLElement | null>): Mo
     if (!travel(false)) settleRef.current(false);
   }, [travel]);
 
-  // Opaque for every phase but `open`: the reveal is sequenced after the landing, not blended into the
-  // travel. `open` arrives with the transition, so entering→open fades the sheet away; open→leaving drops
-  // it, so the cover snaps back before the box fades.
-  const veilClassName = phase === 'open'
+  // Opaque until the box lands: the reveal is sequenced after the travel, not blended into it, and it
+  // starts on the `landed` clock rather than waiting out the settle's safety buffer. The class string is
+  // identical for a landed `entering` and for `open`, so the settle never restarts the fade. Leaving
+  // drops it, so the cover snaps back before the box shrinks.
+  const veilClassName = phase === 'open' || (phase === 'entering' && landed)
     ? 'opacity-0 transition-opacity duration-200'
     : 'opacity-100';
 
