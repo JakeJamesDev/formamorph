@@ -10,6 +10,7 @@ import {
   Earth, User, BookOpen, Globe, ShieldAlert, Trophy,
 } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Tip } from "@/components/ui/tooltip";
 import { KIND_LABELS, kindOf, type CatalogKind } from "@/lib/catalogKinds";
 import { BROWSE_TABS, BROWSE_TAB_LABELS, type BrowseTab } from "@/lib/browseTabs";
 import { contestPhase, placementsBy, entriesOf, orderContestEntries } from "@/lib/contests";
@@ -302,17 +303,18 @@ const CommunityCreationsBrowser = ({
   // Admin-only, and only once something is actually quarantined: a toggle that can only ever show an
   // empty list is a control that teaches nothing.
   const quarantineControl = viewerIsStaff && quarantinedCount > 0 && browseTab !== 'contest' ? (
-    <Button
-      variant={quarantinedOnly ? 'default' : 'outline'}
-      size="sm"
-      className="shrink-0 gap-1"
-      aria-pressed={quarantinedOnly}
-      onClick={() => setQuarantinedOnly((prev) => !prev)}
-      title="Show only what is hidden pending changes"
-    >
-      <ShieldAlert className="h-4 w-4" />
-      Quarantined ({quarantinedCount})
-    </Button>
+    <Tip tip="Show only what is hidden pending changes" labelsChild={false}>
+      <Button
+        variant={quarantinedOnly ? 'default' : 'outline'}
+        size="sm"
+        className="shrink-0 gap-1"
+        aria-pressed={quarantinedOnly}
+        onClick={() => setQuarantinedOnly((prev) => !prev)}
+      >
+        <ShieldAlert className="h-4 w-4" />
+        Quarantined ({quarantinedCount})
+      </Button>
+    </Tip>
   ) : null;
 
   // On mobile the sort/filter controls collapse behind a "Filters" toggle; on desktop they stay inline.
@@ -484,24 +486,32 @@ const CommunityCreationsBrowser = ({
       align="start"
     >
     <TabsList onPointerDownCapture={() => dismissIfShowing('community-kind-tabs')}>
-      <TabsTrigger value="world" aria-label="Worlds" title="Worlds">
-        <Earth className="h-5 w-5 min-[1040px]:hidden" />
-        <span className="hidden min-[1040px]:inline">Worlds</span>
-      </TabsTrigger>
-      <TabsTrigger value="entity" aria-label="Entities" title="Entities">
-        <User className="h-5 w-5 min-[1040px]:hidden" />
-        <span className="hidden min-[1040px]:inline">Entities</span>
-      </TabsTrigger>
-      <TabsTrigger value="dictionary" aria-label="Dictionaries" title="Dictionaries">
-        <BookOpen className="h-5 w-5 min-[1040px]:hidden" />
-        <span className="hidden min-[1040px]:inline">Dictionaries</span>
-      </TabsTrigger>
+      <Tip tip="Worlds">
+        <TabsTrigger value="world">
+          <Earth className="h-5 w-5 min-[1040px]:hidden" />
+          <span className="hidden min-[1040px]:inline">Worlds</span>
+        </TabsTrigger>
+      </Tip>
+      <Tip tip="Entities">
+        <TabsTrigger value="entity">
+          <User className="h-5 w-5 min-[1040px]:hidden" />
+          <span className="hidden min-[1040px]:inline">Entities</span>
+        </TabsTrigger>
+      </Tip>
+      <Tip tip="Dictionaries">
+        <TabsTrigger value="dictionary">
+          <BookOpen className="h-5 w-5 min-[1040px]:hidden" />
+          <span className="hidden min-[1040px]:inline">Dictionaries</span>
+        </TabsTrigger>
+      </Tip>
       {/* A fourth tab only while there is a contest to browse — running, or finished and archived. */}
       {contests.length > 0 && (
-        <TabsTrigger value="contest" aria-label="Contest" title="Contest">
-          <Trophy className="h-5 w-5 min-[1040px]:hidden" />
-          <span className="hidden min-[1040px]:inline">Contest</span>
-        </TabsTrigger>
+        <Tip tip="Contest">
+          <TabsTrigger value="contest">
+            <Trophy className="h-5 w-5 min-[1040px]:hidden" />
+            <span className="hidden min-[1040px]:inline">Contest</span>
+          </TabsTrigger>
+        </Tip>
       )}
     </TabsList>
     </TutorialPopover>
@@ -537,17 +547,18 @@ const CommunityCreationsBrowser = ({
   );
 
   const refreshControl = (
-    <Button
-      variant="outline"
-      size="icon"
-      className="h-9 w-9 shrink-0"
-      title="Refresh catalog"
-      disabled={isSyncingCatalog}
-      onClick={() => loadCatalog(true)}
-    >
-      {/* Reversed spin: animate-spin turns clockwise, but this glyph's arrow points counterclockwise. */}
-      <RotateCcw className={`h-4 w-4 ${isSyncingCatalog ? 'animate-spin [animation-direction:reverse]' : ''}`} />
-    </Button>
+    <Tip tip="Refresh catalog">
+      <Button
+        variant="outline"
+        size="icon"
+        className="h-9 w-9 shrink-0"
+        disabled={isSyncingCatalog}
+        onClick={() => loadCatalog(true)}
+      >
+        {/* Reversed spin: animate-spin turns clockwise, but this glyph's arrow points counterclockwise. */}
+        <RotateCcw className={`h-4 w-4 ${isSyncingCatalog ? 'animate-spin [animation-direction:reverse]' : ''}`} />
+      </Button>
+    </Tip>
   );
 
   // Dismissed banners ride the header's own toolbar rather than a row of their own — a full-width row
@@ -568,15 +579,16 @@ const CommunityCreationsBrowser = ({
           <SelectItem value="likes">Likes</SelectItem>
         </SelectContent>
       </Select>
-      <Button
-        variant="outline"
-        size="icon"
-        className="h-9 w-9 shrink-0"
-        title={sortOrder === 'desc' ? 'Descending' : 'Ascending'}
-        onClick={() => { setSortOrder((o) => (o === 'desc' ? 'asc' : 'desc')); setCurrentPage(1); }}
-      >
-        {sortOrder === 'desc' ? <ArrowDownWideNarrow className="h-4 w-4" /> : <ArrowUpNarrowWide className="h-4 w-4" />}
-      </Button>
+      <Tip tip={sortOrder === 'desc' ? 'Descending' : 'Ascending'}>
+        <Button
+          variant="outline"
+          size="icon"
+          className="h-9 w-9 shrink-0"
+          onClick={() => { setSortOrder((o) => (o === 'desc' ? 'asc' : 'desc')); setCurrentPage(1); }}
+        >
+          {sortOrder === 'desc' ? <ArrowDownWideNarrow className="h-4 w-4" /> : <ArrowUpNarrowWide className="h-4 w-4" />}
+        </Button>
+      </Tip>
     </div>
   );
 

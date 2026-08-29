@@ -3,7 +3,10 @@ import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import * as React from 'react';
 import { Popover, PopoverContent, PopoverTrigger } from './popover';
-import { Tip, TooltipProvider } from './tooltip';
+import { Slot } from '@radix-ui/react-slot';
+import {
+  Tip, Tooltip, TooltipPopup, TooltipPortal, TooltipPositioner, TooltipProvider, TooltipTrigger,
+} from './tooltip';
 
 /** The app mounts the provider once at its root, so every case here runs through it. */
 const renderTip = (ui: React.ReactElement) => render(<TooltipProvider>{ui}</TooltipProvider>);
@@ -153,5 +156,40 @@ describe('a tip with no text', () => {
     await userEvent.tab();
     expect(screen.getByRole('button')).toHaveFocus();
     expect(document.body.querySelectorAll('[data-side]')).toHaveLength(0);
+  });
+});
+
+describe('a tip on a control another component already holds by ref', () => {
+  /** The shape `TutorialPopover` uses: it anchors its explanation to whatever element it is handed. */
+  const AnchorHolder = ({ onAnchor, children }: {
+    onAnchor: (el: HTMLElement | null) => void;
+    children: React.ReactNode;
+  }) => <Slot ref={onAnchor}>{children}</Slot>;
+
+  it('leaves that component the real element, and still opens on focus', async () => {
+    // `Tip` is a plain function, so it cannot be the child here — the holder's ref would land on nothing
+    // and the explanation would point at the page instead of the control. The parts compose instead.
+    const anchors: (HTMLElement | null)[] = [];
+    render(
+      <TooltipProvider>
+        <Tooltip>
+          <AnchorHolder onAnchor={(el) => anchors.push(el)}>
+            <TooltipTrigger aria-label="Feedback" render={<button type="button" id="feedback" />} />
+          </AnchorHolder>
+          <TooltipPortal>
+            <TooltipPositioner>
+              <TooltipPopup>Feedback</TooltipPopup>
+            </TooltipPositioner>
+          </TooltipPortal>
+        </Tooltip>
+      </TooltipProvider>,
+    );
+
+    expect(anchors.filter(Boolean).map((el) => el!.id)).toContain('feedback');
+
+    await userEvent.tab();
+
+    expect(screen.getByRole('button', { name: 'Feedback' })).toHaveFocus();
+    expect(screen.getByText('Feedback', { selector: 'div' })).toBeVisible();
   });
 });

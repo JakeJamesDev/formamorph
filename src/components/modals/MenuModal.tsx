@@ -4,6 +4,7 @@ import { Popover, PopoverTrigger, PopoverContent } from "@/components/ui/popover
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Tip } from "@/components/ui/tooltip";
 import { Menu, Save, FolderOpen, SquarePen, ScrollText, Settings, MessageSquarePlus, DoorOpen } from "lucide-react";
 import { ConfirmDialog } from '../ConfirmDialog';
 import { getAllSaveRecords } from './dbUtils';
@@ -95,11 +96,13 @@ export const MenuModal = ({ onSettingsClick, onReportBug, onSave, onLoad, worldO
   return (
     <>
       <Popover open={menuOpen} onOpenChange={setMenuOpen}>
-        <PopoverTrigger asChild>
-          <Button className="flex items-center justify-center rounded-full w-10 h-10 p-0" title="Menu">
-            <Menu className="h-5 w-5" />
-          </Button>
-        </PopoverTrigger>
+        <Tip tip="Menu">
+          <PopoverTrigger asChild>
+            <Button className="flex items-center justify-center rounded-full w-10 h-10 p-0">
+              <Menu className="h-5 w-5" />
+            </Button>
+          </PopoverTrigger>
+        </Tip>
         {/* Wide enough for `Exit to Main Menu` plus its icon with room to spare — at w-48 it had 14px. */}
         <PopoverContent align="end" className="w-60 p-1">
           <div className="flex flex-col">

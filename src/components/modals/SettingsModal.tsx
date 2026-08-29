@@ -37,6 +37,7 @@ import { FontTuneButton } from "@/components/FontTuneDialog";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Tip } from "@/components/ui/tooltip";
 import { Progress } from "@/components/ui/progress";
 import { loadEmbeddingModel, disposeEmbeddingModel, type EmbeddingLoadProgress } from '@/lib/embeddingWorkerClient';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -1274,21 +1275,22 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, initialTab,
                 className="ml-auto h-8"
               >
                 <ToggleGroupItem value="simple" className="px-2 py-1">Simple</ToggleGroupItem>
-                <ToggleGroupItem
-                  value="advanced"
-                  className="relative px-2 py-1"
-                  // The marker rides the switch that acts on it: it says "there is more through here",
-                  // which is exactly what this control does.
-                  title={hasHiddenValues ? 'Some hidden settings are off their defaults. Switch to Advanced to see them.' : undefined}
+                {/* The marker rides the switch that acts on it: it says "there is more through here",
+                    which is exactly what this control does. */}
+                <Tip
+                  tip={hasHiddenValues ? 'Some hidden settings are off their defaults. Switch to Advanced to see them.' : undefined}
+                  labelsChild={false}
                 >
-                  Advanced
-                  {hasHiddenValues && (
-                    <span
-                      aria-label="Hidden settings are off their defaults"
-                      className="absolute right-0.5 top-0.5 h-1.5 w-1.5 rounded-full bg-primary"
-                    />
-                  )}
-                </ToggleGroupItem>
+                  <ToggleGroupItem value="advanced" className="relative px-2 py-1">
+                    Advanced
+                    {hasHiddenValues && (
+                      <span
+                        aria-label="Hidden settings are off their defaults"
+                        className="absolute right-0.5 top-0.5 h-1.5 w-1.5 rounded-full bg-primary"
+                      />
+                    )}
+                  </ToggleGroupItem>
+                </Tip>
               </ToggleGroup>
             </TutorialPopover>
           </div>

@@ -144,7 +144,7 @@ describe('MiddlePanel — the audio row', () => {
     setTtsPlayback({ duration: 12 });
     const view = renderMiddlePanel({ ttsLoaded: true }, { turns: TURNS, stats: STATS });
 
-    fireEvent.click(screen.getByTitle('Regenerate audio for current text'));
+    fireEvent.click(screen.getByRole('button', { name: 'Regenerate audio for current text' }));
     expect(view.props.onRegenerateTTS).toHaveBeenCalled();
     // With audio in hand the narration menu offers neither of the two entries that produce it.
     fireEvent.click(screen.getByRole('button', { name: 'More narration options' }));
@@ -247,7 +247,7 @@ describe('MiddlePanel — editing a turn\'s narration', () => {
 
   /** Rewrite the viewed turn through the Edit Text modal and save. */
   const rewriteAs = async (text: string) => {
-    fireEvent.click(screen.getByTitle('Edit text'));
+    fireEvent.click(screen.getByRole('button', { name: 'Edit text' }));
     const dialog = await screen.findByRole('dialog');
     fireEvent.change(within(dialog).getByRole('textbox'), { target: { value: text } });
     fireEvent.click(within(dialog).getByRole('button', { name: 'Save' }));

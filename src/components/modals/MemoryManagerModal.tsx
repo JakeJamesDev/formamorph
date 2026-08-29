@@ -9,6 +9,7 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Badge } from '@/components/ui/badge';
+import { Tip } from '@/components/ui/tooltip';
 import { ConfirmDialog } from '@/components/ConfirmDialog';
 import { HelpButton } from '@/components/HelpButton';
 import { Pin, PinOff, RotateCcw, Trash2, Undo2, Pencil, RefreshCw, Plus, Loader2, Check, X } from 'lucide-react';
@@ -270,7 +271,6 @@ export const MemoryManagerModal = ({
                   {/* Accent marks what actually reached the model last turn — the minority state, and the
                       one the panel can't otherwise tell you. See MemoryPanel for the reasoning. */}
                   <div
-                    title={row.asScene ? 'Sent as a full scene last turn' : row.inContext ? 'Sent to the story last turn' : undefined}
                     className={cn(
                       'rounded border border-border p-2',
                       !row.kept && !isEditing && 'opacity-60',
@@ -300,57 +300,77 @@ export const MemoryManagerModal = ({
                     ) : (
                       <>
                         <div className="flex items-start gap-2">
-                          <p className={cn('flex-grow text-meta', !row.kept && 'line-through')}>{row.text}</p>
+                          {/* The tip rides the text rather than the row: a row-wide trigger would also fire
+                              under the action buttons, which carry tips of their own. It reaches exactly as
+                              far as the accent it explains, which is hidden while editing. */}
+                          <Tip
+                            labelsChild={false}
+                            tip={row.asScene ? 'Sent as a full scene last turn' : row.inContext ? 'Sent to the story last turn' : undefined}
+                          >
+                            <p className={cn('flex-grow text-meta', !row.kept && 'line-through')}>{row.text}</p>
+                          </Tip>
                           <div className="flex flex-shrink-0 items-center gap-0.5">
                             {row.deleted ? (
-                              <Button variant="ghost" size="icon" className="h-6 w-6" title="Restore This Memory" onClick={() => restore(row)}>
-                                <Undo2 className="h-3.5 w-3.5" />
-                              </Button>
+                              <Tip tip="Restore This Memory">
+                                <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => restore(row)}>
+                                  <Undo2 className="h-3.5 w-3.5" />
+                                </Button>
+                              </Tip>
                             ) : (
                               <>
                                 {row.edited && (
-                                  <Button variant="ghost" size="icon" className="h-6 w-6" title="Revert to the Original" onClick={() => revert(row)}>
-                                    <Undo2 className="h-3.5 w-3.5" />
-                                  </Button>
+                                  <Tip tip="Revert to the Original">
+                                    <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => revert(row)}>
+                                      <Undo2 className="h-3.5 w-3.5" />
+                                    </Button>
+                                  </Tip>
                                 )}
-                                <Button variant="ghost" size="icon" className="h-6 w-6" title="Edit This Memory" onClick={() => startEdit(row)}>
-                                  <Pencil className="h-3.5 w-3.5" />
-                                </Button>
-                                {!row.isNote && onRegenerate && (
-                                  <Button
-                                    variant="ghost"
-                                    size="icon"
-                                    className="h-6 w-6"
-                                    // Editing stays live mid-turn, but a regeneration is an AI request:
-                                    // it waits for the turn rather than contending with it.
-                                    title={isWaitingForAI ? 'Wait for the Current Turn to Finish' : 'Have the Story Write This Memory Again'}
-                                    disabled={regenerating !== null || isWaitingForAI}
-                                    onClick={() => regenerate(row)}
-                                  >
-                                    {regenerating === row.id
-                                      ? <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                                      : <RefreshCw className="h-3.5 w-3.5" />}
+                                <Tip tip="Edit This Memory">
+                                  <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => startEdit(row)}>
+                                    <Pencil className="h-3.5 w-3.5" />
                                   </Button>
+                                </Tip>
+                                {!row.isNote && onRegenerate && (
+                                  // Editing stays live mid-turn, but a regeneration is an AI request:
+                                  // it waits for the turn rather than contending with it.
+                                  <Tip tip={isWaitingForAI ? 'Wait for the Current Turn to Finish' : 'Have the Story Write This Memory Again'}>
+                                    <Button
+                                      variant="ghost"
+                                      size="icon"
+                                      className="h-6 w-6"
+                                      disabled={regenerating !== null || isWaitingForAI}
+                                      onClick={() => regenerate(row)}
+                                    >
+                                      {regenerating === row.id
+                                        ? <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                                        : <RefreshCw className="h-3.5 w-3.5" />}
+                                    </Button>
+                                  </Tip>
                                 )}
                                 {!row.isNote && row.pin && (
-                                  <Button variant="ghost" size="icon" className="h-6 w-6" title="Clear Pin (Let the Story Decide)" onClick={() => setPin(row.id, null)}>
-                                    <RotateCcw className="h-3.5 w-3.5" />
-                                  </Button>
+                                  <Tip tip="Clear Pin (Let the Story Decide)">
+                                    <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => setPin(row.id, null)}>
+                                      <RotateCcw className="h-3.5 w-3.5" />
+                                    </Button>
+                                  </Tip>
                                 )}
                                 {!row.isNote && (
-                                  <Button
-                                    variant="ghost"
-                                    size="icon"
-                                    className={cn('h-6 w-6', row.pin && 'text-primary')}
-                                    title={row.kept ? 'Forget This Memory' : 'Pin This Memory'}
-                                    onClick={() => setPin(row.id, row.kept ? 'drop' : 'keep')}
-                                  >
-                                    {row.kept ? <PinOff className="h-3.5 w-3.5" /> : <Pin className="h-3.5 w-3.5" />}
-                                  </Button>
+                                  <Tip tip={row.kept ? 'Forget This Memory' : 'Pin This Memory'}>
+                                    <Button
+                                      variant="ghost"
+                                      size="icon"
+                                      className={cn('h-6 w-6', row.pin && 'text-primary')}
+                                      onClick={() => setPin(row.id, row.kept ? 'drop' : 'keep')}
+                                    >
+                                      {row.kept ? <PinOff className="h-3.5 w-3.5" /> : <Pin className="h-3.5 w-3.5" />}
+                                    </Button>
+                                  </Tip>
                                 )}
-                                <Button variant="ghost" size="icon" className="h-6 w-6" title="Delete This Memory" onClick={() => remove(row)}>
-                                  <Trash2 className="h-3.5 w-3.5" />
-                                </Button>
+                                <Tip tip="Delete This Memory">
+                                  <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => remove(row)}>
+                                    <Trash2 className="h-3.5 w-3.5" />
+                                  </Button>
+                                </Tip>
                               </>
                             )}
                           </div>

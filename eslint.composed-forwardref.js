@@ -16,6 +16,7 @@ export const REF_SAFE_COMPOSED_CHILDREN = [
   'WorldActionButton',
   'TokenChip', // src/components/prompt/TokenChip.tsx
   'ToggleGroupItem', // src/components/ui/toggle-group.tsx
+  'TabsTrigger', // src/components/ui/tabs.tsx
   'Checkbox', // src/components/ui/checkbox.tsx
   // Radix triggers forward their ref, and pass anything else they are handed down through their own
   // `asChild` — which is how a tip and a popover share one button.
