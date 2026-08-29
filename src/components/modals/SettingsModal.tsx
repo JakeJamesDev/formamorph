@@ -409,22 +409,26 @@ function PromptOptionsPanel({ endpoint, verbatim, reasoning, reasoningBudget, sa
  */
 function PromptsShell({ morph, sourceRef, children }: {
   morph: MorphFullscreen;
-  /** The tab panel the rail sits in — what the window grows out of and shrinks back into. */
+  /** The tab panel the rail sits in — what the window grows out of. */
   sourceRef: React.RefObject<HTMLElement | null>;
   children: React.ReactNode;
 }) {
   if (!morph.mounted) return <>{children}</>;
   // A panel, not a field: nothing inside it carries a caption, so this is the one window that has to name
-  // itself.
+  // itself. While closing, the children are already back in the tab panel and the shell above them is just
+  // the fading panel.
   return (
-    <FullscreenShell
-      morph={morph}
-      title="Prompts"
-      showTitle
-      returnFocus={() => sourceRef.current?.querySelector<HTMLElement>('button[aria-label="Edit full screen"]')}
-    >
-      {children}
-    </FullscreenShell>
+    <>
+      {!morph.contentInOverlay && children}
+      <FullscreenShell
+        morph={morph}
+        title="Prompts"
+        showTitle
+        returnFocus={() => sourceRef.current?.querySelector<HTMLElement>('button[aria-label="Edit full screen"]')}
+      >
+        {morph.contentInOverlay ? children : null}
+      </FullscreenShell>
+    </>
   );
 }
 
@@ -978,10 +982,11 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, initialTab,
     setJumpField(initialPromptField ?? null);
   }, [initialPromptSurface, initialPromptTab, initialPromptField]);
   // Fullscreen for the whole Prompts panel (rail included), not for one field — see PromptsShell. The
-  // morph is the single source of truth: fields read `mounted`, which stays up through the closing trip.
+  // morph is the single source of truth: fields read `contentInOverlay`, so they return to their docked
+  // form the moment the close starts — under the overlay, by then a fading solid panel.
   const promptsPanelRef = useRef<HTMLDivElement | null>(null);
   const promptsMorph = useMorphFullscreen(promptsPanelRef);
-  const promptsFullscreen = promptsMorph.mounted;
+  const promptsFullscreen = promptsMorph.contentInOverlay;
   // Selecting a prompt — including re-selecting the open one — returns to its hub, so the map is always
   // one click away from any editor.
   const selectPromptTab = (t: string) => { setPromptTab(t); setPromptView(null); setJumpField(null); };

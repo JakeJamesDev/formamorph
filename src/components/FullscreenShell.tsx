@@ -66,6 +66,7 @@ export function FullscreenShell({ morph, title, showTitle = false, returnFocus, 
           'flex flex-col gap-4 overflow-hidden border-0 p-4',
           dialogFullHeight,
           'w-screen max-w-none left-0 translate-x-0 rounded-none sm:rounded-none',
+          morph.boxClassName,
           className,
         )}
       >

@@ -586,9 +586,9 @@ const PromptField = ({ value, onChange, variables = [], vocabulary, previewValue
   // wrapper on the way in and remembers it for the way back.
   const bodyRef = useRef<HTMLDivElement | null>(null);
   const morph = useMorphFullscreen(bodyRef);
-  // `mounted` and not `phase === 'open'`: the body has to stay inside the overlay while it shrinks, or
-  // there would be nothing travelling.
-  const fullscreen = hostedFullscreen ? !!fullscreenProp : morph.mounted;
+  // `contentInOverlay`, not `mounted`: closing is the overlay fading out in place, so the body has to be
+  // back in its docked slot — under the fading panel — from the first frame of the close.
+  const fullscreen = hostedFullscreen ? !!fullscreenProp : morph.contentInOverlay;
   // The field's height, held open while its body is away in the overlay. Without it the panel this sits in
   // gets shorter by exactly one editor, and the browser clamps its scroll to the new bottom — so opening
   // full screen jumped the page behind it, and closing jumped it back.
@@ -906,15 +906,19 @@ const PromptField = ({ value, onChange, variables = [], vocabulary, previewValue
             Settings dialog, and Radix parks `pointer-events: none` on the body while one is open — a
             plain portaled div inherits that and renders dead, under Radix's own overlay. Letting Radix
             own the stack also gives the fullscreen its focus trap and Escape for free. */}
-        {fullscreen && !hostedFullscreen ? (
+        {!hostedFullscreen && morph.mounted ? (
           <>
-            <div aria-hidden className="flex-shrink-0" style={{ height: heldHeight ?? undefined }} />
+            {/* While closing, the body is back here and the still-mounted shell above it is just the
+                fading panel — so the spacer that held the body's slot open gives way to the body itself. */}
+            {fullscreen
+              ? <div aria-hidden className="flex-shrink-0" style={{ height: heldHeight ?? undefined }} />
+              : body}
             <FullscreenShell
               morph={morph}
               title={ariaLabel ?? 'Prompt editor'}
               returnFocus={() => bodyRef.current?.querySelector<HTMLElement>('button[aria-label="Edit full screen"]')}
             >
-              {body}
+              {fullscreen ? body : null}
             </FullscreenShell>
           </>
         ) : (

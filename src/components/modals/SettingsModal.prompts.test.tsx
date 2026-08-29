@@ -93,9 +93,9 @@ describe('Settings → Prompts dev-router landing', () => {
 });
 
 describe('Settings → Prompts fullscreen', () => {
-  it('keeps the panel in its full-screen form while the window is still closing', async () => {
-    // Every element gets area: the morph refuses to travel between zero-size rects (jsdom lays nothing
-    // out), and with no trip the close settles synchronously — there is no "still closing" to assert.
+  it('hands the docked panel back at the exit click, under the still-fading window', async () => {
+    // Every element gets area: the morph refuses to grow out of a zero-size rect (jsdom lays nothing
+    // out), and the geometry should look like the real thing either way.
     const rect = { left: 10, top: 10, width: 300, height: 200, right: 310, bottom: 210, x: 10, y: 10, toJSON: () => ({}) } as DOMRect;
     const spy = vi.spyOn(Element.prototype, 'getBoundingClientRect').mockReturnValue(rect);
     try {
@@ -105,14 +105,15 @@ describe('Settings → Prompts fullscreen', () => {
       expect(screen.getAllByRole('button', { name: 'Exit full screen' }).length).toBeGreaterThan(0);
 
       fireEvent.click(screen.getAllByRole('button', { name: 'Exit full screen' })[0]);
-      // The window shrinks for ~290ms after this click. Through that trip the fields must keep their
-      // full-screen form — their flag is the morph's own `mounted`, which stays up until the box lands.
-      // Driven from a separate boolean, they snapped to the windowed layout inside the still-open window.
+      // Closing is the window fading out in place over the restored view, so the instant the exit is
+      // pressed the docked panel — its toggle back to "View full screen" — must already be rendered,
+      // while the window itself is still mounted for its fade. `hidden: true` because the dialog
+      // primitive aria-hides everything outside the still-open window; the panel paints regardless.
       expect(screen.getByRole('dialog', { name: 'Prompts' })).toBeTruthy();
-      expect(screen.getAllByRole('button', { name: 'Exit full screen' }).length).toBeGreaterThan(0);
+      expect(screen.getAllByRole('button', { name: 'View full screen', hidden: true }).length).toBeGreaterThan(0);
+      expect(screen.queryAllByRole('button', { name: 'Exit full screen', hidden: true })).toHaveLength(0);
 
       await waitFor(() => expect(screen.queryByRole('dialog', { name: 'Prompts' })).toBeNull());
-      expect(screen.queryAllByRole('button', { name: 'Exit full screen' })).toHaveLength(0);
     } finally {
       spy.mockRestore();
     }
