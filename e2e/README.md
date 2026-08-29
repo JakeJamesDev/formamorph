@@ -67,6 +67,16 @@ is stripped from production builds, which is why these tests need `npm run dev` 
 focus behavior, and dropdown scrolling. Each guard was verified by putting its bug back and watching the
 test go red.
 
+[tooltip-hover.spec.ts](e2e/tooltip-hover.spec.ts) — the themed tooltip on the Main Menu's view toggle:
+hover opens it, moving to the neighbor opens that one through the shared instant window, and keyboard
+focus opens the same tip. Desktop only for the two hover guards — a touch profile has no hover, and the
+native `title` these replaced never showed there either.
+
+> **No stopwatch.** The instant window is read off the popup's `data-instant`, not off elapsed time.
+> Note that the provider's `timeout` does **not** control it: a direct move from one trigger to its
+> neighbor hands over instantly whatever that value is. What makes them one group is the shared provider,
+> so removing it is the mutation that turns this guard red.
+
 Two caveats worth knowing:
 
 - **Focus, not the keyboard.** There is no soft keyboard to drive, so the specs measure what *summons*
