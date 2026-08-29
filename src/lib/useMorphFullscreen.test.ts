@@ -73,24 +73,24 @@ describe('useMorphFullscreen', () => {
     expect(boxEl.style.transition).toBe('');
   });
 
-  it('closes as a fade in place: mounted through the fade, content handed back at once, no return trip', () => {
+  it('closes by shrinking the veiled panel back onto the slot the content already reoccupies', () => {
     const { sourceEl, boxEl, writes } = makeElements();
     const { result } = renderHook(() => useMorphFullscreen({ current: sourceEl }));
     act(() => result.current.open());
     act(() => result.current.boxRef(boxEl));
     act(() => vi.advanceTimersByTime(400));
     expect(result.current.contentInOverlay).toBe(true);
-    const writesBeforeClose = writes.length;
 
     act(() => result.current.close());
-    // The overlay stays for its fade-out, but the content belongs to the docked slot from the first
-    // frame — the box is a plain fading panel, and a shrink would be invisible against the panel below.
+    // The content belongs to the docked slot from the first frame of the close; the box that stays
+    // behind is a veiled solid panel wearing its travel edge, shrinking onto that very slot.
     expect(result.current.mounted).toBe(true);
     expect(result.current.phase).toBe('leaving');
     expect(result.current.contentInOverlay).toBe(false);
-    expect(result.current.boxClassName).toContain('opacity-0');
+    expect(result.current.veilClassName).toContain('opacity-100');
+    expect(result.current.boxClassName).toContain('border');
     act(() => vi.advanceTimersByTime(50));
-    expect(writes.length).toBe(writesBeforeClose);
+    expect(writes[writes.length - 1]).toBe('translate(20px, 40px) scale(0.2, 0.075)');
 
     act(() => vi.advanceTimersByTime(400));
     expect(result.current.mounted).toBe(false);

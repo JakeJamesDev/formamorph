@@ -110,8 +110,8 @@ export interface MorphFullscreen {
   mounted: boolean;
   /** Where the caller should render its content: in the overlay while it opens and stands, back in its
    *  docked slot the moment closing starts. The way out is the overlay — by then a solid veiled panel —
-   *  fading away over the already-restored view, so the docked content must be under it from the first
-   *  frame of the close. */
+   *  shrinking onto the already-restored view, so the docked content must be under it from the first
+   *  frame of the close for the landing to be flush. */
   contentInOverlay: boolean;
   phase: MorphPhase;
   open: () => void;
@@ -125,9 +125,8 @@ export interface MorphFullscreen {
    *  lands, and covers again instantly when closing starts, turning the box into the plain panel that
    *  then fades out. */
   veilClassName: string;
-  /** Goes on the box itself. Closing is not a return trip — a background-colored box shrinking over a
-   *  background-colored panel is invisible, so there is nothing to watch and the landing reads as a pop.
-   *  Instead the box holds still and fades out over the restored docked view. */
+  /** Goes on the box itself: the edge — border and shadow — it wears while traveling, so a
+   *  background-colored panel moving over background-colored surfaces reads as a window, not nothing. */
   boxClassName: string;
   /** Goes on the dialog's dim sheet, pacing its fade to the trip. Left to the stock dialog classes it
    *  snaps in at 150ms and holds fully dark until the overlay unmounts, well after the box has landed. */
@@ -240,33 +239,34 @@ export function useMorphFullscreen(sourceRef: RefObject<HTMLElement | null>): Mo
   const restoreRef = useRef(restoreScrollers);
   restoreRef.current = restoreScrollers;
 
-  /** Run the opening trip, given the box is attached. Returns false when there is nothing to travel
-   *  between, so the caller can land on the end state instead. Closing never travels — see `boxClassName`. */
-  const travel = useCallback((): boolean => {
+  /** Run the trip for `leaving`, given the box is attached. Returns false when there is nothing to
+   *  travel between, so the caller can land on the end state instead. */
+  const travel = useCallback((leaving: boolean): boolean => {
     const box = boxEl.current;
     const from = sourceRect.current;
     const base = box ? baseTransform(box) : '';
     const inverted = box && from ? invertOnto(box, from) : null;
     if (!box || !inverted || reduceMotion) return false;
 
+    const ms = leaving ? EXIT_MS : ENTER_MS;
     box.style.transformOrigin = 'top left';
     box.style.transition = 'none';
-    box.style.transform = withBase(base, inverted);
+    box.style.transform = withBase(base, leaving ? '' : inverted);
     void box.offsetWidth;
 
     // The release waits for a painted frame rather than following in this one: a transition declared
     // alongside an element's first style computation does not run, and the overlay was portaled in only
     // moments ago.
     const release = () => {
-      box.style.transition = `transform ${ENTER_MS}ms ${EASE}`;
-      box.style.transform = withBase(base, '');
+      box.style.transition = `transform ${ms}ms ${EASE}`;
+      box.style.transform = withBase(base, leaving ? inverted : '');
     };
     frame.current = requestAnimationFrame(() => { frame.current = requestAnimationFrame(release); });
 
     // Armed here rather than inside `release`, and on a clock rather than `transitionend`: a hidden tab
     // suspends frames altogether, so a settle that waited on the release would never come and the overlay
     // would sit parked over the field for good. Landing early costs the animation, not the end state.
-    timer.current = setTimeout(() => settleRef.current(false), ENTER_MS + 100);
+    timer.current = setTimeout(() => settleRef.current(leaving), ms + 100);
     return true;
   }, [reduceMotion]);
 
@@ -277,18 +277,20 @@ export function useMorphFullscreen(sourceRef: RefObject<HTMLElement | null>): Mo
     if (phase !== 'entering' && phase !== 'leaving') return;
     const leaving = phase === 'leaving';
     if (leaving) {
-      // No return trip: the box fades out in place (see `boxClassName`) while the docked content is
-      // already back under it. The clock here only has to outlast that fade before unmounting.
-      timer.current = setTimeout(() => settleRef.current(true), EXIT_MS + 100);
+      // The docked content is back in its slot as of this very commit (`contentInOverlay`), so measure
+      // that slot fresh and shrink the veiled panel onto it — unmounting then lands flush on the real
+      // widget, with nothing left to pop.
+      snapshot();
+      if (!travel(true)) settleRef.current(true);
       return stop;
     }
     // Entering, the overlay is portaled in by the dialog primitive and its ref lands *after* this effect,
     // so there is usually nothing here yet to measure. The trip then starts from the ref callback instead
     // — which is why opening used to skip the animation while closing ran correctly.
     if (!boxEl.current) { awaitingBox.current = true; return; }
-    if (!travel()) settleRef.current(false);
+    if (!travel(false)) settleRef.current(false);
     return stop;
-  }, [phase, travel, stop]);
+  }, [phase, travel, stop, snapshot]);
 
   // Closing hands focus around for several frames — the trap, the browser's reveal, a smooth `scroll-behavior`
   // still animating — so the panels are put back once the dust has settled rather than only on the first tick.
@@ -305,7 +307,7 @@ export function useMorphFullscreen(sourceRef: RefObject<HTMLElement | null>): Mo
     boxEl.current = element;
     if (!element || !awaitingBox.current) return;
     awaitingBox.current = false;
-    if (!travel()) settleRef.current(false);
+    if (!travel(false)) settleRef.current(false);
   }, [travel]);
 
   // Opaque for every phase but `open`: the reveal is sequenced after the landing, not blended into the
@@ -315,21 +317,27 @@ export function useMorphFullscreen(sourceRef: RefObject<HTMLElement | null>): Mo
     ? 'opacity-0 transition-opacity duration-200'
     : 'opacity-100';
 
-  // Duration tracks EXIT_MS at the nearest named step; the settle clock above outlasts it. The box also
-  // stops catching the pointer, since the docked view under it is live again.
-  const boxClassName = phase === 'leaving' ? 'opacity-0 transition-opacity duration-200 pointer-events-none' : '';
+  // In flight the box needs an edge of its own: it is a background-colored panel moving over surfaces
+  // of the same color, and in the earliest frames — the ones where a small panel is actually
+  // distinguishable — the dim behind it has barely built up. Leaving, it also stops catching the
+  // pointer, since the docked view under it is live again.
+  const boxClassName = phase === 'entering'
+    ? 'border shadow-2xl'
+    : phase === 'leaving'
+      ? 'border shadow-2xl pointer-events-none'
+      : '';
 
   const contentInOverlay = phase === 'entering' || phase === 'open';
 
-  // Durations approximate ENTER_MS/EXIT_MS at the named steps. They
-  // reach both clocks — the sheet's mount fade-in animation, and the transition that carries it out
-  // alongside the shrinking box, where the stock classes would hold it dark until the overlay unmounts,
-  // well after the box has landed. The `data-[state=open]:` wrapper is load-bearing: the stock sheet
-  // pins its 150ms under that variant, and only an equal-specificity duration lands after it in the
-  // sheet order. `closed` keeps opacity at 0 while the dialog primitive tears the overlay down.
+  // The dim leads the travel in and trails it out — it is what the moving panel is visible against.
+  // Entering keeps the stock 150ms fade-in, dark well before the 260ms trip is half done. Leaving
+  // stretches the fade-out past EXIT_MS so the backdrop is still dim while the panel shrinks; the
+  // `data-[state=open]:` wrapper is load-bearing there — the stock sheet pins its 150ms under that
+  // variant, and only an equal-specificity duration lands after it in the sheet order. `closed` keeps
+  // opacity at 0 while the dialog primitive tears the overlay down.
   const overlayClassName = phase === 'leaving' || phase === 'closed'
-    ? 'opacity-0 transition-opacity data-[state=open]:duration-200'
-    : 'transition-opacity data-[state=open]:duration-300';
+    ? 'opacity-0 transition-opacity data-[state=open]:duration-300'
+    : 'transition-opacity';
 
   return {
     mounted,
