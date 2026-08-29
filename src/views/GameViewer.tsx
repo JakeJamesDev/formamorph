@@ -4358,8 +4358,8 @@ const GameViewer = ({
                 {/* The header row: the title beside the search field; pr-8 keeps it clear of the
                     dialog's Close button. Below md the title goes back to being screen-reader-only. */}
                 <div className="flex items-center gap-2 flex-shrink-0 pr-8">
-                  <DialogTitle className="sr-only md:not-sr-only md:flex md:flex-shrink-0 md:items-center md:gap-1.5 md:text-label">
-                    <ScrollText className="h-4 w-4" />
+                  <DialogTitle className="sr-only md:not-sr-only md:flex md:flex-shrink-0 md:items-center md:gap-1.5">
+                    <ScrollText className="h-5 w-5" />
                     AI Context
                   </DialogTitle>
                   {/* The find controls share the search field's frame, so the toolbar keeps its one row. */}
@@ -4374,7 +4374,7 @@ const GameViewer = ({
                         stepHit(e.shiftKey ? -1 : 1);
                       }}
                       placeholder="Search (space-separated terms)…"
-                      className={`pl-8 h-8 text-meta ${searchActive ? "pr-28" : ""}`}
+                      className={`pl-8 ${searchActive ? "pr-28" : ""}`}
                     />
                     {searchActive && (
                       <div className="absolute right-1 top-1/2 flex -translate-y-1/2 items-center gap-0.5">
