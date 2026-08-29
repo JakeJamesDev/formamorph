@@ -1,5 +1,5 @@
 import { randomUUID } from "@/lib/uuid";
-import { useCallback, useLayoutEffect, useRef, useState } from 'react';
+import { useCallback, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { useVirtualizer, defaultRangeExtractor, type Range } from '@tanstack/react-virtual';
 import { useDictionaryStore } from '@/contexts/DictionaryStoreContext';
 import { usePlaceholderStore } from '@/contexts/PlaceholderStoreContext';
@@ -180,6 +180,8 @@ function DictZone({ bookId, position, entries, collapsed, onToggleCollapse, flat
   onRemoveEntry: (id: string) => void;
 }) {
   const { setNodeRef, isOver } = useDroppable({ id: `zone:${bookId}:${position}` });
+  // Stable reference for the same entries — see the note on `before`/`after` in BookRow.
+  const entryIds = useMemo(() => entries.map((e) => e.id), [entries]);
   // An empty zone is a drop target only; with no heading to explain it there is nothing to show.
   if (flat && entries.length === 0) return null;
   const listClassName = flat
@@ -203,7 +205,7 @@ function DictZone({ bookId, position, entries, collapsed, onToggleCollapse, flat
       </button>
       )}
       {(flat || !collapsed) && (
-        <SortableContext items={entries.map((e) => e.id)} strategy={verticalListSortingStrategy}>
+        <SortableContext items={entryIds} strategy={verticalListSortingStrategy}>
           {entries.length > VIRTUALIZE_AT ? (
             <VirtualEntryRows
               entries={entries}
@@ -264,8 +266,10 @@ function BookRow({ book, collapsed, collapsedZones, selectedId, activeEntryId, o
   const style = { transform: CSS.Translate.toString(transform), transition, opacity: isDragging ? 0.5 : 1, zIndex: isDragging ? 1 : undefined };
   const selected = selectedId === book.id;
   const faded = book.enabled === false;
-  const before = book.entries.filter((e) => e.position === 'before');
-  const after = book.entries.filter((e) => e.position !== 'before');
+  // Memoized: useSortable compares its SortableContext's items BY REFERENCE, and a fresh array on a
+  // mid-drag render silently downgrades every displaced row's transition to 0ms (rows snap, no animation).
+  const before = useMemo(() => book.entries.filter((e) => e.position === 'before'), [book.entries]);
+  const after = useMemo(() => book.entries.filter((e) => e.position !== 'before'), [book.entries]);
   const enabledCount = book.entries.filter((e) => e.enabled !== false).length;
 
   return (
@@ -327,6 +331,8 @@ const DictionaryTree = ({ selectedId, onSelect }: { selectedId: string | null; o
     useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
   );
 
+  // Stable reference for the same books — see the note on `before`/`after` in BookRow.
+  const bookIds = useMemo(() => dictionaries.map((b) => b.id), [dictionaries]);
   const isBook = (id: string) => dictionaries.some((b) => b.id === id);
   // Locate an entry by id across all books; returns its owning book id and position.
   const findEntry = (id: string): { bookId: string; position: 'before' | 'after' } | null => {
@@ -440,7 +446,7 @@ const DictionaryTree = ({ selectedId, onSelect }: { selectedId: string | null; o
             el !== document.scrollingElement && el !== document.body && el !== document.documentElement,
         }}
       >
-        <SortableContext items={dictionaries.map((b) => b.id)} strategy={verticalListSortingStrategy}>
+        <SortableContext items={bookIds} strategy={verticalListSortingStrategy}>
           <div className="flex flex-col gap-3">
             {dictionaries.map((book) => (
               <BookRow
