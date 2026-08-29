@@ -1,5 +1,6 @@
 import { Lock, Copy } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { Tip } from '@/components/ui/tooltip';
 import { cn } from '@/lib/utils';
 
 /**
@@ -22,11 +23,14 @@ export function ReadOnlyNotice({ reason, onRequestEdit, className }: {
         'flex flex-shrink-0 items-center gap-2 rounded-md border border-border bg-muted/50 px-2 py-1 text-meta sm:text-helper text-muted-foreground',
         className,
       )}
-      title={reason}
     >
       <Lock className="h-3.5 w-3.5 shrink-0" />
-      {/* One line, never wrapped: at mobile width the full sentence took two rows off the editor. */}
-      <span className="min-w-0 flex-1 truncate">{reason}</span>
+      {/* One line, never wrapped: at mobile width the full sentence took two rows off the editor. The tip
+          carries the tail the ellipsis eats, and rides the text rather than the row — the row holds a
+          button, and a tab stop wrapped around one reads as a control that does nothing. */}
+      <Tip tip={reason} labelsChild={false}>
+        <span className="min-w-0 flex-1 truncate">{reason}</span>
+      </Tip>
       {onRequestEdit && (
         <Button variant="outline" size="sm" className="h-7 shrink-0 px-2" onClick={onRequestEdit}>
           <Copy className="mr-1 h-3.5 w-3.5" /> Duplicate &amp; Edit

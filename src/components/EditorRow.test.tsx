@@ -23,7 +23,7 @@ describe('EditorRow', () => {
         actions={[{ icon: <span>c</span>, title: 'Duplicate', onClick: duplicate }]}
       />,
     );
-    fireEvent.click(screen.getByTitle('Duplicate'));
+    fireEvent.click(screen.getByRole('button', { name: 'Duplicate' }));
     expect(duplicate).toHaveBeenCalledTimes(1);
     // The action sits inside the row's own click target, so without stopPropagation clicking Duplicate
     // would also change which item the detail pane is showing.
@@ -92,7 +92,7 @@ describe('EditorRow', () => {
     const label = screen.getByText(/A name long enough/);
     expect(label.className).toContain('min-w-0');
     expect(label.className).toContain('truncate');
-    expect(screen.getByTitle('Delete').className).toContain('shrink-0');
+    expect(screen.getByRole('button', { name: 'Delete' }).className).toContain('shrink-0');
   });
 
   it('indents a nested row on top of the padding every row shares, not instead of it', () => {

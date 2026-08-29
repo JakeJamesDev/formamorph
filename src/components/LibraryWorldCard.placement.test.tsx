@@ -43,6 +43,10 @@ const view = (world: WorldRecord, contests: ServerEvent[], layout: 'grid' | 'det
 
 afterEach(cleanup);
 
+/** The badge line for a contest. Its name is drawn inside the line, and the tip that used to be a `title`
+ *  now repeats it — so the visible text is what locates the row it belongs to. */
+const badge = (contestTitle: string) => screen.getByText(contestTitle).closest('p') as HTMLElement;
+
 describe('a downloaded world that placed in a contest', () => {
   it.each([
     [1, '1st Place'],
@@ -51,7 +55,7 @@ describe('a downloaded world that placed in a contest', () => {
   ] as const)('names place %i as "%s" on the grid tile', (place, label) => {
     view(localWorld({ sourceId: 'srv-salt' }), [decided(place)]);
 
-    expect(screen.getByTitle('Winter World-Building Contest'))
+    expect(badge('Winter World-Building Contest'))
       .toHaveTextContent(`${label} — Winter World-Building Contest`);
   });
 
@@ -62,13 +66,13 @@ describe('a downloaded world that placed in a contest', () => {
   ] as const)('colors place %i with its own metal', (place, token) => {
     view(localWorld({ sourceId: 'srv-salt' }), [decided(place)]);
 
-    expect(screen.getByTitle('Winter World-Building Contest')).toHaveClass(token);
+    expect(badge('Winter World-Building Contest')).toHaveClass(token);
   });
 
   it('wears the same badge in the detailed layout, so a layout choice hides nothing', () => {
     view(localWorld({ sourceId: 'srv-salt' }), [decided(2)], 'detailed');
 
-    expect(screen.getByTitle('Winter World-Building Contest'))
+    expect(badge('Winter World-Building Contest'))
       .toHaveTextContent('2nd Place — Winter World-Building Contest');
   });
 
@@ -89,8 +93,8 @@ describe('a downloaded world that placed in a contest', () => {
     const older = decided(3, { id: 'e0', title: 'Autumn Ruins Contest', startsAt: at(-400), endsAt: at(-380) });
     const { container } = view(localWorld({ sourceId: 'srv-salt' }), [decided(1), older]);
 
-    expect(screen.getByTitle('Winter World-Building Contest')).toHaveTextContent('1st Place');
-    expect(screen.getByTitle('Autumn Ruins Contest')).toHaveTextContent('3rd Place');
+    expect(badge('Winter World-Building Contest')).toHaveTextContent('1st Place');
+    expect(badge('Autumn Ruins Contest')).toHaveTextContent('3rd Place');
     expect(within(container).getAllByText(/Contest$/).map((n) => n.textContent))
       .toEqual(['Winter World-Building Contest', 'Autumn Ruins Contest']);
   });

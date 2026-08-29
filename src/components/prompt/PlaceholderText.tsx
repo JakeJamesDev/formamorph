@@ -1,4 +1,5 @@
 import { useMemo, type ReactNode } from 'react';
+import { Tip } from '@/components/ui/tooltip';
 import { placeholderVocabulary } from '@/lib/chipVocabulary';
 import { hasPlaceholders, parsePlaceholderText, decodePlaceholderToken, placeholderValueSummary } from '@/lib/placeholders';
 import { cn } from '@/lib/utils';
@@ -38,27 +39,32 @@ const PlaceholderText = ({ text, placeholders, className }: {
         // form does and what makes a broken reference invisible in a list.
         if (!ph) {
           return (
-            <span
-              key={i}
-              title="This placeholder no longer exists — it will resolve to nothing"
-              className={cn('mx-0.5 rounded px-1 text-[0.85em] ring-1 ring-destructive/50 text-destructive', className)}
-            >
-              ?
-            </span>
+            <Tip key={i} tip="This placeholder no longer exists — it will resolve to nothing" labelsChild={false}>
+              <span
+                className={cn('mx-0.5 rounded px-1 text-[0.85em] ring-1 ring-destructive/50 text-destructive', className)}
+              >
+                ?
+              </span>
+            </Tip>
           );
         }
         // Values, not the name: a row is showing what this thing will be called, so the pill previews it.
         // A placeholder with nothing to draw from falls back to its name, since an empty pill says nothing.
         const values = ph.values.length ? placeholderValueSummary(ph) : ph.name;
         return (
-          <span
+          // Inline in a row's label, dozens to a list: no tab stop, matching the chips it reads as.
+          <Tip
             key={i}
-            title={`${ph.name}${ph.values.length ? '' : ' — no values'}${decoded.mode === 'unique' ? ' (Unique)' : ''}`}
-            className={cn('mx-0.5 rounded px-1 text-[0.85em] font-medium', className)}
-            style={{ backgroundColor: vocab.color(seg.token), color: '#000' }}
+            tip={`${ph.name}${ph.values.length ? '' : ' — no values'}${decoded.mode === 'unique' ? ' (Unique)' : ''}`}
+            labelsChild={false}
           >
-            {values}
-          </span>
+            <span
+              className={cn('mx-0.5 rounded px-1 text-[0.85em] font-medium', className)}
+              style={{ backgroundColor: vocab.color(seg.token), color: '#000' }}
+            >
+              {values}
+            </span>
+          </Tip>
         );
       })}
     </>

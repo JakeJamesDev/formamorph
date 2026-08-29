@@ -5,6 +5,7 @@ import { parseServerDate } from "@/lib/serverDate"
 import { cn } from "@/lib/utils";
 import { CHIP_BASE } from "@/components/Chip";
 import { MarkdownRenderer } from "@/components/game/MarkdownRenderer";
+import { Tip } from "@/components/ui/tooltip";
 
 /** Loose shape for server/catalog world payloads, whose fields vary by endpoint and save version.
  *  Shared by the main menu and the Community Creations browser; the one sanctioned dynamic-JSON bag. */
@@ -160,18 +161,18 @@ export function CardTags({ tags, onHide }: { tags: string[]; onHide?: (tag: stri
   }
 
   const chip = (tag: string, i: number) => (
-    <span
-      key={i}
-      onClick={onHide ? (e) => { e.stopPropagation(); onHide(tag); } : undefined}
-      title={onHide ? `Hide all worlds tagged "${tag}"` : undefined}
-      className={cn(
-        CHIP_BASE,
-        "bg-primary text-primary-foreground",
-        onHide && "cursor-pointer hover:line-through",
-      )}
-    >
-      {tag}
-    </span>
+    <Tip key={i} tip={onHide ? `Hide all worlds tagged "${tag}"` : undefined} labelsChild={false}>
+      <span
+        onClick={onHide ? (e) => { e.stopPropagation(); onHide(tag); } : undefined}
+        className={cn(
+          CHIP_BASE,
+          "bg-primary text-primary-foreground",
+          onHide && "cursor-pointer hover:line-through",
+        )}
+      >
+        {tag}
+      </span>
+    </Tip>
   );
 
   // One wrapper owns the hover: entering opens, leaving closes. The expanded overlay is a CHILD

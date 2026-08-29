@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react';
 import { ChevronDown, ChevronRight } from 'lucide-react';
 import { CHIP_BASE, ChipRenameInput } from '@/components/Chip';
+import { Tip } from '@/components/ui/tooltip';
 import { usePlaceholderChipVocabulary } from '@/lib/chipVocabulary';
 import { usePaletteCollapsed } from '@/lib/usePaletteCollapsed';
 import { cn } from '@/lib/utils';
@@ -65,34 +66,38 @@ const PlaceholderPaletteBar = ({ placeholders, className }: {
                 onCancel={() => setRenaming(null)}
               />
             ) : (
-              <button
+              <Tip
                 key={item.token}
-                type="button"
-                // Draggable even with no claimed field: dropping into one is its own way in, and needs no
-                // prior focus. Clicking still needs a target, so only that is disabled.
-                draggable
-                onDragStart={(e) => {
-                  e.dataTransfer.setData(CHIP_DRAG_MIME, item.token);
-                  e.dataTransfer.effectAllowed = 'copy';
-                }}
-                // Not `disabled`: that would block the drag too. Clicking is what needs a claimed field, so
-                // only clicking goes inert — dimmed to say so, while the chip stays draggable.
-                aria-disabled={!insert}
-                // Keep the target field's focus and selection: the insert reads its caret to know where to land.
-                // `detail > 1` is the second press of a double-click: that one is starting a rename, not
-                // asking for another copy.
-                onMouseDown={(e) => { e.preventDefault(); if (e.detail < 2) insert?.(item.token); }}
-                onDoubleClick={vocab.rename ? () => startRename(item.token) : undefined}
-                title={insert ? `Insert ${item.label}, or drag it into a field` : `Drag ${item.label} into a field, or click into one first`}
-                className={cn(
-                  CHIP_BASE,
-                  'border',
-                  insert ? 'cursor-pointer hover:brightness-95' : 'cursor-grab opacity-50',
-                )}
-                style={{ backgroundColor: item.color, color: '#000' }}
+                tip={insert ? `Insert ${item.label}, or drag it into a field` : `Drag ${item.label} into a field, or click into one first`}
+                labelsChild={false}
               >
-                {item.label}
-              </button>
+                <button
+                  type="button"
+                  // Draggable even with no claimed field: dropping into one is its own way in, and needs no
+                  // prior focus. Clicking still needs a target, so only that is disabled.
+                  draggable
+                  onDragStart={(e) => {
+                    e.dataTransfer.setData(CHIP_DRAG_MIME, item.token);
+                    e.dataTransfer.effectAllowed = 'copy';
+                  }}
+                  // Not `disabled`: that would block the drag too. Clicking is what needs a claimed field, so
+                  // only clicking goes inert — dimmed to say so, while the chip stays draggable.
+                  aria-disabled={!insert}
+                  // Keep the target field's focus and selection: the insert reads its caret to know where to land.
+                  // `detail > 1` is the second press of a double-click: that one is starting a rename, not
+                  // asking for another copy.
+                  onMouseDown={(e) => { e.preventDefault(); if (e.detail < 2) insert?.(item.token); }}
+                  onDoubleClick={vocab.rename ? () => startRename(item.token) : undefined}
+                  className={cn(
+                    CHIP_BASE,
+                    'border',
+                    insert ? 'cursor-pointer hover:brightness-95' : 'cursor-grab opacity-50',
+                  )}
+                  style={{ backgroundColor: item.color, color: '#000' }}
+                >
+                  {item.label}
+                </button>
+              </Tip>
             )))}
           </div>
         )}

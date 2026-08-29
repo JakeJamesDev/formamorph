@@ -267,7 +267,7 @@ describe('what the contest grid shows in each of its three states', () => {
     // Still on the ordinary catalog: the badge is on the card, not on the tab it was won in — and it
     // names the step, so a runner-up is not shown as the winner.
     expect(screen.getByRole('tab', { name: 'Worlds' })).toHaveAttribute('data-state', 'active');
-    const badge = await screen.findByTitle('Winter World-Building Contest');
+    const badge = (await screen.findByText('Winter World-Building Contest')).closest('p') as HTMLElement;
     expect(badge).toHaveTextContent('2nd Place — Winter World-Building Contest');
   });
 
@@ -280,7 +280,7 @@ describe('what the contest grid shows in each of its three states', () => {
     await userEvent.click(await screen.findByRole('heading', { level: 3, name: 'Saltmarsh' }));
 
     const details = await screen.findByRole('dialog', { name: /Saltmarsh/ });
-    expect(within(details).getByTitle('Winter World-Building Contest')).toHaveTextContent(
+    expect(within(details).getByText('Winter World-Building Contest').closest('p') as HTMLElement).toHaveTextContent(
       '1st Place — Winter World-Building Contest',
     );
   });
@@ -310,8 +310,8 @@ describe('what the contest grid shows in each of its three states', () => {
     await userEvent.click(await screen.findByRole('heading', { level: 3, name: 'Saltmarsh' }));
 
     const details = await screen.findByRole('dialog', { name: /Saltmarsh/ });
-    expect(within(details).getByTitle('Winter World-Building Contest')).toHaveTextContent('1st Place');
-    expect(within(details).getByTitle('Autumn Ruins Contest')).toHaveTextContent('3rd Place');
+    expect(within(details).getByText('Winter World-Building Contest').closest('p') as HTMLElement).toHaveTextContent('1st Place');
+    expect(within(details).getByText('Autumn Ruins Contest').closest('p') as HTMLElement).toHaveTextContent('3rd Place');
   });
 
   it('says a running contest is still waiting for its first entry', async () => {

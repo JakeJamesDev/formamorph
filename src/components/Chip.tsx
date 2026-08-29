@@ -4,6 +4,7 @@ import { useRef, useState, type CSSProperties, type ReactNode } from "react";
 import { X } from "lucide-react";
 import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
+import { Tip } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
 
 /** Single source for the rounded-square chip shape + aspect ratio (matches the AI Context popup's
@@ -49,7 +50,7 @@ export function replaceChipValue(list: string[], old: string, next: string): str
 
 /** A removable rounded-square chip. Neutral by default; pass `className` for a semantic color.
  *  Omit `onRemove` to render a non-removable chip (e.g. inside a read-only prompt editor). */
-export function Chip({ label, removeLabel, onRemove, className, innerRef, style, dragProps, grabbable, title }: {
+export function Chip({ label, removeLabel, onRemove, className, innerRef, style, dragProps, grabbable, tip }: {
   /** A node, not just text, so a chip can hold a nested chip (a placeholder inside a name). */
   label: ReactNode;
   /** The value handed to `onRemove`, and the accessible name when `label` is decorated (it carries a
@@ -62,39 +63,42 @@ export function Chip({ label, removeLabel, onRemove, className, innerRef, style,
   dragProps?: Record<string, unknown>;
   grabbable?: boolean;
   /** Hover text — what the chip is, when its label shows something else. */
-  title?: string;
+  tip?: string;
 }) {
   // A node label has no string form to name the remove button with, so `removeLabel` carries it.
   const name = removeLabel ?? (typeof label === 'string' ? label : '');
   return (
-    <span
-      ref={innerRef}
-      style={style}
-      title={title}
-      // A chip is a value, not decoration: it is where a keyword or placeholder value is shown, so the
-      // World Editor's find bar has to be able to reach it the way it reaches a text field.
-      data-chip=""
-      {...dragProps}
-      className={cn(
-        CHIP_BASE,
-        "border bg-secondary text-secondary-foreground",
-        grabbable && "cursor-grab touch-none select-none",
-        className,
-      )}
-    >
-      {label}
-      {onRemove && (
-        <button
-          type="button"
-          onPointerDown={(e) => e.stopPropagation()}
-          onClick={() => onRemove(name)}
-          className="hover:text-destructive"
-          aria-label={`Remove ${name}`}
-        >
-          <X className="h-3 w-3" />
-        </button>
-      )}
-    </span>
+    // No tab stop of its own: chips run dozens to a list and live inside the prompt editor's
+    // contenteditable, where an added stop costs more than the tip is worth. The label is on the chip.
+    <Tip tip={tip} labelsChild={false}>
+      <span
+        ref={innerRef}
+        style={style}
+        // A chip is a value, not decoration: it is where a keyword or placeholder value is shown, so the
+        // World Editor's find bar has to be able to reach it the way it reaches a text field.
+        data-chip=""
+        {...dragProps}
+        className={cn(
+          CHIP_BASE,
+          "border bg-secondary text-secondary-foreground",
+          grabbable && "cursor-grab touch-none select-none",
+          className,
+        )}
+      >
+        {label}
+        {onRemove && (
+          <button
+            type="button"
+            onPointerDown={(e) => e.stopPropagation()}
+            onClick={() => onRemove(name)}
+            className="hover:text-destructive"
+            aria-label={`Remove ${name}`}
+          >
+            <X className="h-3 w-3" />
+          </button>
+        )}
+      </span>
+    </Tip>
   );
 }
 

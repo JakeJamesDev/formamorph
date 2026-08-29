@@ -12,6 +12,7 @@ import { Button } from "@/components/ui/button";
 import { Slider } from "@/components/ui/slider";
 import { ZoomIn, ZoomOut, Maximize } from "lucide-react";
 import { GalleryControls, type GalleryControlsProps } from "./GalleryControls";
+import { Tip } from '@/components/ui/tooltip';
 
 const MIN_SCALE = 1;
 const MAX_SCALE = 8;
@@ -45,9 +46,11 @@ function ZoomControls() {
 
   return (
     <div className="absolute bottom-4 left-1/2 -translate-x-1/2 z-10 flex items-center gap-2 rounded-md border bg-background/80 p-2 shadow-md backdrop-blur">
-      <Button variant="ghost" size="icon" className="shrink-0" onClick={() => zoomOut()} title="Zoom out">
-        <ZoomOut className="h-5 w-5" />
-      </Button>
+      <Tip tip="Zoom out">
+        <Button variant="ghost" size="icon" className="shrink-0" onClick={() => zoomOut()}>
+          <ZoomOut className="h-5 w-5" />
+        </Button>
+      </Tip>
       <Slider
         className="w-40"
         min={MIN_SCALE}
@@ -58,12 +61,16 @@ function ZoomControls() {
         onValueChange={(v) => { if (draggingSlider.current) zoomToScale(v[0]); }}
         onValueCommit={() => { draggingSlider.current = false; }}
       />
-      <Button variant="ghost" size="icon" className="shrink-0" onClick={() => zoomIn()} title="Zoom in">
-        <ZoomIn className="h-5 w-5" />
-      </Button>
-      <Button variant="ghost" size="icon" className="shrink-0" onClick={() => resetTransform()} title="Fit to screen">
-        <Maximize className="h-5 w-5" />
-      </Button>
+      <Tip tip="Zoom in">
+        <Button variant="ghost" size="icon" className="shrink-0" onClick={() => zoomIn()}>
+          <ZoomIn className="h-5 w-5" />
+        </Button>
+      </Tip>
+      <Tip tip="Fit to screen">
+        <Button variant="ghost" size="icon" className="shrink-0" onClick={() => resetTransform()}>
+          <Maximize className="h-5 w-5" />
+        </Button>
+      </Tip>
     </div>
   );
 }

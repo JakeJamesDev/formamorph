@@ -1,6 +1,7 @@
 import * as React from "react"
 import * as ScrollAreaPrimitive from "@radix-ui/react-scroll-area"
 
+import { Tip } from "@/components/ui/tooltip"
 import { cn } from "@/lib/utils"
 
 /** One place worth seeing in the content, drawn as a tick in the scroll bar's track. */
@@ -71,21 +72,21 @@ const ScrollBar = React.forwardRef<
         tick inside it at either end without measuring anything. Their pointerdown is stopped so Radix's
         click-to-scroll on the track doesn't swallow the jump. */}
     {orientation === "vertical" && marks?.map((mark, i) => (
-      <button
-        key={i}
-        type="button"
-        data-scroll-mark={i}
-        data-current={mark.current ? "" : undefined}
-        aria-label={mark.label ?? `Jump to mark ${i + 1}`}
-        title={mark.label}
-        onPointerDown={(event) => event.stopPropagation()}
-        onClick={() => onMarkSelect?.(i)}
-        style={{ top: `calc(${mark.fraction} * (100% - ${MARK_HEIGHT}px))` }}
-        className={cn(
-          "absolute inset-x-0 h-[3px] rounded-sm",
-          mark.current ? "bg-amber-500 ring-1 ring-amber-700" : "bg-amber-400/80 hover:bg-amber-400"
-        )}
-      />
+      <Tip key={i} tip={mark.label} side="left">
+        <button
+          type="button"
+          data-scroll-mark={i}
+          data-current={mark.current ? "" : undefined}
+          aria-label={mark.label ?? `Jump to mark ${i + 1}`}
+          onPointerDown={(event) => event.stopPropagation()}
+          onClick={() => onMarkSelect?.(i)}
+          style={{ top: `calc(${mark.fraction} * (100% - ${MARK_HEIGHT}px))` }}
+          className={cn(
+            "absolute inset-x-0 h-[3px] rounded-sm",
+            mark.current ? "bg-amber-500 ring-1 ring-amber-700" : "bg-amber-400/80 hover:bg-amber-400"
+          )}
+        />
+      </Tip>
     ))}
   </ScrollAreaPrimitive.ScrollAreaScrollbar>
 ))

@@ -19,6 +19,7 @@ import {
   Maximize2, Minimize2, Columns2, Square,
 } from 'lucide-react';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Tip } from '@/components/ui/tooltip';
 import { Label } from '@/components/ui/label';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { FullscreenShell } from '@/components/FullscreenShell';
@@ -126,20 +127,24 @@ function HistoryButtons({ disabled }: { disabled: boolean }) {
 
   return (
     <>
-      <button
-        type="button" title="Undo" aria-label="Undo" className={TOOLBAR_BTN}
-        disabled={disabled || !canUndo}
-        onMouseDown={run(UNDO_COMMAND)}
-      >
-        <Undo2 className="h-4 w-4" />
-      </button>
-      <button
-        type="button" title="Redo" aria-label="Redo" className={TOOLBAR_BTN}
-        disabled={disabled || !canRedo}
-        onMouseDown={run(REDO_COMMAND)}
-      >
-        <Redo2 className="h-4 w-4" />
-      </button>
+      <Tip tip="Undo">
+        <button
+          type="button" className={TOOLBAR_BTN}
+          disabled={disabled || !canUndo}
+          onMouseDown={run(UNDO_COMMAND)}
+        >
+          <Undo2 className="h-4 w-4" />
+        </button>
+      </Tip>
+      <Tip tip="Redo">
+        <button
+          type="button" className={TOOLBAR_BTN}
+          disabled={disabled || !canRedo}
+          onMouseDown={run(REDO_COMMAND)}
+        >
+          <Redo2 className="h-4 w-4" />
+        </button>
+      </Tip>
     </>
   );
 }
@@ -188,24 +193,30 @@ function SplitButton({ items, label, disabled, apply }: {
 
   return (
     <span className="flex items-center">
-      <button
-        type="button" title={title} aria-label={title} disabled={disabled}
-        onMouseDown={press(current)}
-        className={cn(TOOLBAR_BTN, 'rounded-r-none pr-1')}
-      >
-        <ItemGlyph item={current} />
-      </button>
+      <Tip tip={title}>
+        <button
+          type="button" disabled={disabled}
+          onMouseDown={press(current)}
+          className={cn(TOOLBAR_BTN, 'rounded-r-none pr-1')}
+        >
+          <ItemGlyph item={current} />
+        </button>
+      </Tip>
       <span className="h-4 w-hairline bg-border" aria-hidden />
       <Popover open={open} onOpenChange={setOpen}>
-        <PopoverTrigger asChild>
-          <button
-            type="button" title={label} aria-label={label} disabled={disabled}
-            onMouseDown={(event) => event.preventDefault()}
-            className={cn(TOOLBAR_BTN, 'rounded-l-none px-1 py-2 data-[state=open]:bg-accent data-[state=open]:text-foreground')}
-          >
-            <ChevronDown className="h-3 w-3" />
-          </button>
-        </PopoverTrigger>
+        {/* Two triggers on one button: the tip wraps the popover's trigger, which passes both sets of
+            props down through its own `asChild`. */}
+        <Tip tip={label}>
+          <PopoverTrigger asChild>
+            <button
+              type="button" disabled={disabled}
+              onMouseDown={(event) => event.preventDefault()}
+              className={cn(TOOLBAR_BTN, 'rounded-l-none px-1 py-2 data-[state=open]:bg-accent data-[state=open]:text-foreground')}
+            >
+              <ChevronDown className="h-3 w-3" />
+            </button>
+          </PopoverTrigger>
+        </Tip>
         <PopoverContent
           align="start" className="w-auto p-1"
           onOpenAutoFocus={(event) => event.preventDefault()}
@@ -241,13 +252,15 @@ function MarkdownToolbar({ parse, disabled }: { parse: ChipVocabulary['parse']; 
   return (
     <div className="flex flex-wrap items-center gap-1">
       {MARKDOWN_TOOLBAR.map(({ action, Icon, title }) => (
-        <button
-          key={action} type="button" title={title} aria-label={title} disabled={disabled}
-          onMouseDown={(event) => { event.preventDefault(); apply(action); }}
-          className={TOOLBAR_BTN}
-        >
-          <Icon className="h-4 w-4" />
-        </button>
+        <Tip key={action} tip={title}>
+          <button
+            type="button" disabled={disabled}
+            onMouseDown={(event) => { event.preventDefault(); apply(action); }}
+            className={TOOLBAR_BTN}
+          >
+            <Icon className="h-4 w-4" />
+          </button>
+        </Tip>
       ))}
       <SplitButton items={HIGHLIGHT_ITEMS} label="Highlight color" disabled={disabled} apply={apply} />
       <SplitButton items={HEADING_ITEMS} label="Heading level" disabled={disabled} apply={apply} />
@@ -407,17 +420,18 @@ function VariableToolbar({ vocab, interactive }: {
     <div data-editor-find-skip className="flex items-center gap-1 min-w-0 overflow-x-auto sm:flex-wrap sm:overflow-visible [scrollbar-width:none] [&::-webkit-scrollbar]{display:none}">
       <span className="text-meta text-muted-foreground mr-1 flex-shrink-0">Insert:</span>
       {items.map((v) => (
-        <button
-          key={v.token}
-          type="button"
-          disabled={!interactive}
-          onClick={interactive ? () => insert(v.token) : undefined}
-          title={interactive ? `Insert ${v.label}` : v.label}
-          className={cn(CHIP_BASE, 'border flex-shrink-0', interactive ? 'cursor-pointer hover:brightness-95' : 'cursor-default')}
-          style={{ backgroundColor: v.color, color: '#000' }}
-        >
-          {v.label}
-        </button>
+        // Nothing to add while inert: the tip said the label the chip is already showing.
+        <Tip key={v.token} tip={interactive ? `Insert ${v.label}` : undefined} labelsChild={false}>
+          <button
+            type="button"
+            disabled={!interactive}
+            onClick={interactive ? () => insert(v.token) : undefined}
+            className={cn(CHIP_BASE, 'border flex-shrink-0', interactive ? 'cursor-pointer hover:brightness-95' : 'cursor-default')}
+            style={{ backgroundColor: v.color, color: '#000' }}
+          >
+            {v.label}
+          </button>
+        </Tip>
       ))}
     </div>
   );
@@ -808,26 +822,27 @@ const PromptField = ({ value, onChange, variables = [], vocabulary, previewValue
         <HistoryButtons disabled={editingDisabled} />
         <span className="mx-0.5 w-hairline self-stretch bg-border" />
         {showTabs && splitAvailable(effectiveWidth, fullscreen) && (
+          <Tip tip={split ? 'Show one pane at a time' : 'Show edit and preview side by side'}>
+            <button
+              type="button"
+              disabled={!previewEnabled}
+              onClick={() => setSplitMode(split ? 'tabs' : 'split')}
+              className="rounded p-1.5 text-muted-foreground hover:bg-accent hover:text-foreground disabled:pointer-events-none disabled:opacity-50"
+            >
+              {split ? <Square className="h-4 w-4" /> : <Columns2 className="h-4 w-4" />}
+            </button>
+          </Tip>
+        )}
+        {/* The tip is also the name the fullscreen shell hands focus back by, so the two cannot drift. */}
+        <Tip tip={fullscreen ? 'Exit full screen' : 'Edit full screen'}>
           <button
             type="button"
-            disabled={!previewEnabled}
-            onClick={() => setSplitMode(split ? 'tabs' : 'split')}
-            title={split ? 'Show one pane at a time' : 'Show edit and preview side by side'}
-            aria-label={split ? 'Show one pane at a time' : 'Show edit and preview side by side'}
-            className="rounded p-1.5 text-muted-foreground hover:bg-accent hover:text-foreground disabled:pointer-events-none disabled:opacity-50"
+            onClick={toggleFullscreen}
+            className="rounded p-1.5 text-muted-foreground hover:bg-accent hover:text-foreground"
           >
-            {split ? <Square className="h-4 w-4" /> : <Columns2 className="h-4 w-4" />}
+            {fullscreen ? <Minimize2 className="h-4 w-4" /> : <Maximize2 className="h-4 w-4" />}
           </button>
-        )}
-        <button
-          type="button"
-          onClick={toggleFullscreen}
-          title={fullscreen ? 'Exit full screen' : 'Edit full screen'}
-          aria-label={fullscreen ? 'Exit full screen' : 'Edit full screen'}
-          className="rounded p-1.5 text-muted-foreground hover:bg-accent hover:text-foreground"
-        >
-          {fullscreen ? <Minimize2 className="h-4 w-4" /> : <Maximize2 className="h-4 w-4" />}
-        </button>
+        </Tip>
       </div>
     </div>
   );

@@ -9,6 +9,7 @@ import remarkGfm from 'remark-gfm';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Slider } from '@/components/ui/slider';
 import { Popover, PopoverTrigger, PopoverContent } from '@/components/ui/popover';
+import { Tip } from '@/components/ui/tooltip';
 import { Hint } from '@/components/ui/typography';
 import 'streamdown/styles.css';
 
@@ -114,9 +115,12 @@ export function RowLabel({ htmlFor, align = 'center', muted, info, experimental,
  *  of the wording; it's a caveat, not something you need in order to operate the setting. */
 function ExperimentalBadge() {
   return (
-    <span title="Experimental — this setting may change or be removed." aria-label="Experimental" className="shrink-0 text-muted-foreground">
-      <FlaskConical className="h-4 w-4" />
-    </span>
+    // The tip is the only carrier of the wording, so the marker takes a tab stop and hands it to the keyboard too.
+    <Tip tip="Experimental — this setting may change or be removed.">
+      <span tabIndex={0} aria-label="Experimental" className="shrink-0 text-muted-foreground">
+        <FlaskConical className="h-4 w-4" />
+      </span>
+    </Tip>
   );
 }
 
@@ -124,9 +128,11 @@ function ExperimentalBadge() {
  *  pick it. Matched to the experimental flask so the two markers read as one family. */
 export function RecommendedMark() {
   return (
-    <span title="Recommended" aria-label="Recommended" className="ml-1.5 inline-flex shrink-0 text-muted-foreground">
-      <Sparkles className="h-3.5 w-3.5" />
-    </span>
+    <Tip tip="Recommended">
+      <span tabIndex={0} aria-label="Recommended" className="ml-1.5 inline-flex shrink-0 text-muted-foreground">
+        <Sparkles className="h-3.5 w-3.5" />
+      </span>
+    </Tip>
   );
 }
 

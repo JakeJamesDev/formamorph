@@ -2,6 +2,7 @@ import { forwardRef, type CSSProperties, type HTMLAttributes, type ReactNode } f
 import { GripVertical, ChevronRight, ChevronDown } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
+import { Tip } from '@/components/ui/tooltip';
 import { cn } from '@/lib/utils';
 
 /** px of indent per nesting level — also the horizontal drag distance that changes a row's depth. */
@@ -125,45 +126,52 @@ export function EditorRow({
       ) : lead === 'spacer' ? (
         <span className="w-4 shrink-0" aria-hidden="true" />
       ) : null}
-      <span
-        {...gripProps}
-        onClick={(e) => e.stopPropagation()}
-        className={cn('shrink-0 cursor-grab touch-none px-1', chrome)}
-        title={gripTitle}
-      >
-        <GripVertical className="h-4 w-4" />
-      </span>
-      {checkbox && (
-        <Checkbox
-          checked={checkbox.checked}
-          onCheckedChange={(v) => checkbox.onChange(v === true)}
+      {/* The grip takes its tab stop from the caller's drag attributes, so it is already reachable. */}
+      <Tip tip={gripTitle}>
+        <span
+          {...gripProps}
           onClick={(e) => e.stopPropagation()}
-          className="mx-1 shrink-0"
-          title={checkbox.checked ? 'Enabled — click to disable' : 'Disabled — click to enable'}
-        />
+          className={cn('shrink-0 cursor-grab touch-none px-1', chrome)}
+        >
+          <GripVertical className="h-4 w-4" />
+        </span>
+      </Tip>
+      {checkbox && (
+        <Tip tip={checkbox.checked ? 'Enabled — click to disable' : 'Disabled — click to enable'}>
+          <Checkbox
+            checked={checkbox.checked}
+            onCheckedChange={(v) => checkbox.onChange(v === true)}
+            onClick={(e) => e.stopPropagation()}
+            className="mx-1 shrink-0"
+          />
+        </Tip>
       )}
       {icon}
       {/* Truncates rather than wrapping: a long name must never push the actions off the row. */}
       <span className={cn('min-w-0 flex-grow truncate', labelClass)}>{label}</span>
       {meta !== undefined && (
-        <span
-          className={cn('shrink-0 text-meta mr-1', selected ? 'text-primary-foreground/80' : 'text-muted-foreground')}
-          title={metaTitle}
-        >
-          {meta}
-        </span>
+        // The meta is the one place a row says something only a tip spells out, so it takes a tab stop of
+        // its own — and only while it has a tip to give.
+        <Tip tip={metaTitle} labelsChild={false}>
+          <span
+            tabIndex={metaTitle ? 0 : undefined}
+            className={cn('shrink-0 text-meta mr-1', selected ? 'text-primary-foreground/80' : 'text-muted-foreground')}
+          >
+            {meta}
+          </span>
+        </Tip>
       )}
       {actions?.map((action) => (
-        <Button
-          key={action.title}
-          variant="ghost"
-          size="icon"
-          className={cn('shrink-0', chrome)}
-          onClick={(e) => { e.stopPropagation(); action.onClick(); }}
-          title={action.title}
-        >
-          {action.icon}
-        </Button>
+        <Tip key={action.title} tip={action.title}>
+          <Button
+            variant="ghost"
+            size="icon"
+            className={cn('shrink-0', chrome)}
+            onClick={(e) => { e.stopPropagation(); action.onClick(); }}
+          >
+            {action.icon}
+          </Button>
+        </Tip>
       ))}
     </div>
   );
