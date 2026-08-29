@@ -29,7 +29,7 @@ import { Settings } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, dialogFullHeightMobile } from "@/components/ui/dialog";
 import { cn } from "@/lib/utils";
 import { FullscreenShell } from "@/components/FullscreenShell";
-import { useMorphFullscreen } from "@/lib/useMorphFullscreen";
+import { useMorphFullscreen, type MorphFullscreen } from "@/lib/useMorphFullscreen";
 import { composePreviewValues, languagePreviewValue } from "@/lib/previewValuePool";
 import { Button } from "@/components/ui/button";
 import { RevealAnimationDemoButton } from "@/components/RevealAnimationDemo";
@@ -395,24 +395,24 @@ function PromptOptionsPanel({ endpoint, verbatim, reasoning, reasoningBudget, sa
 }
 
 /**
- * The Prompts panel, either in place or filling the screen. Fullscreen is owned here rather than by
- * PromptField so the rail comes with it — the editor alone in a full-screen window loses the very
+ * The Prompts panel, either in place or filling the screen. Fullscreen belongs to the whole panel rather
+ * than to PromptField so the rail comes with it — the editor alone in a full-screen window loses the very
  * navigation that makes a long prompt findable.
+ *
+ * The caller owns the morph and hands the fields `morph.mounted` as their fullscreen flag. That flag
+ * stays up through the closing trip, so the panel keeps its full-screen form while the box shrinks —
+ * driven from a separate boolean, the fields snapped to their windowed layout inside the still-shrinking
+ * window the moment the toggle was pressed.
  *
  * Toggling re-parents the panel into the overlay, so the editor is rebuilt from its value: the text is
  * safe (it is controlled) but the undo stack starts fresh on either side of the toggle.
  */
-function PromptsShell({ fullscreen, sourceRef, children }: {
-  fullscreen: boolean;
+function PromptsShell({ morph, sourceRef, children }: {
+  morph: MorphFullscreen;
   /** The tab panel the rail sits in — what the window grows out of and shrinks back into. */
   sourceRef: React.RefObject<HTMLElement | null>;
   children: React.ReactNode;
 }) {
-  // The caller owns the flag, so the morph follows it rather than the other way round. The rail has no
-  // wrapper of its own — its children are flex items of the tab panel — so the panel is what it grows from.
-  const morph = useMorphFullscreen(sourceRef);
-  useEffect(() => { if (fullscreen) morph.open(); else morph.close(); }, [fullscreen]); // eslint-disable-line react-hooks/exhaustive-deps
-
   if (!morph.mounted) return <>{children}</>;
   // A panel, not a field: nothing inside it carries a caption, so this is the one window that has to name
   // itself.
@@ -977,9 +977,11 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, initialTab,
     );
     setJumpField(initialPromptField ?? null);
   }, [initialPromptSurface, initialPromptTab, initialPromptField]);
-  // Fullscreen for the whole Prompts panel (rail included), not for one field — see PromptsShell.
-  const [promptsFullscreen, setPromptsFullscreen] = useState(false);
+  // Fullscreen for the whole Prompts panel (rail included), not for one field — see PromptsShell. The
+  // morph is the single source of truth: fields read `mounted`, which stays up through the closing trip.
   const promptsPanelRef = useRef<HTMLDivElement | null>(null);
+  const promptsMorph = useMorphFullscreen(promptsPanelRef);
+  const promptsFullscreen = promptsMorph.mounted;
   // Selecting a prompt — including re-selecting the open one — returns to its hub, so the map is always
   // one click away from any editor.
   const selectPromptTab = (t: string) => { setPromptTab(t); setPromptView(null); setJumpField(null); };
@@ -2321,7 +2323,7 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, initialTab,
 
           {advanced && (
           <TabsContent ref={promptsPanelRef} value="prompts" className="pt-4 px-2 pb-4 flex-1 min-h-0 data-[state=active]:flex flex-col gap-4">
-            <PromptsShell fullscreen={promptsFullscreen} sourceRef={promptsPanelRef}>
+            <PromptsShell morph={promptsMorph} sourceRef={promptsPanelRef}>
             {/* Preset selector: the whole prompt set switches together. Built-in presets (Default, Simple)
                 are read-only and differ only in section-header style. */}
             <div className="flex items-center gap-2 flex-shrink-0">
@@ -2505,7 +2507,7 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, initialTab,
                   onModeChange={setAnatomyMode}
                   onJump={jumpToPrompt}
                   fullscreen={promptsFullscreen}
-                  onRequestFullscreen={() => setPromptsFullscreen((f) => !f)}
+                  onRequestFullscreen={promptsMorph.toggle}
                 />
               )}
 
@@ -2548,7 +2550,7 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, initialTab,
                     readOnlyReason={readOnlyReason}
                     onRequestEdit={duplicateForEditing}
                     fullscreen={promptsFullscreen}
-                    onRequestFullscreen={() => setPromptsFullscreen((f) => !f)}
+                    onRequestFullscreen={promptsMorph.toggle}
                             readOnly={activePresetIsBuiltIn}
                           />
                           <p className="text-helper text-muted-foreground">{f.description}</p>
@@ -2566,7 +2568,7 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, initialTab,
                     readOnlyReason={readOnlyReason}
                     onRequestEdit={duplicateForEditing}
                     fullscreen={promptsFullscreen}
-                    onRequestFullscreen={() => setPromptsFullscreen((f) => !f)}
+                    onRequestFullscreen={promptsMorph.toggle}
                     readOnly={activePresetIsBuiltIn}
                   />
                 )}
@@ -2583,7 +2585,7 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, initialTab,
                     readOnlyReason={readOnlyReason}
                     onRequestEdit={duplicateForEditing}
                     fullscreen={promptsFullscreen}
-                    onRequestFullscreen={() => setPromptsFullscreen((f) => !f)}
+                    onRequestFullscreen={promptsMorph.toggle}
                     readOnly={activePresetIsBuiltIn}
                   />
                 </TabsContent>
@@ -2600,7 +2602,7 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, initialTab,
                     readOnlyReason={readOnlyReason}
                     onRequestEdit={duplicateForEditing}
                     fullscreen={promptsFullscreen}
-                    onRequestFullscreen={() => setPromptsFullscreen((f) => !f)}
+                    onRequestFullscreen={promptsMorph.toggle}
                     readOnly={activePresetIsBuiltIn}
                   />
                 </TabsContent>
@@ -2617,7 +2619,7 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, initialTab,
                     readOnlyReason={readOnlyReason}
                     onRequestEdit={duplicateForEditing}
                     fullscreen={promptsFullscreen}
-                    onRequestFullscreen={() => setPromptsFullscreen((f) => !f)}
+                    onRequestFullscreen={promptsMorph.toggle}
                     readOnly={activePresetIsBuiltIn}
                   />
                 </TabsContent>
@@ -2634,7 +2636,7 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, initialTab,
                     readOnlyReason={readOnlyReason}
                     onRequestEdit={duplicateForEditing}
                     fullscreen={promptsFullscreen}
-                    onRequestFullscreen={() => setPromptsFullscreen((f) => !f)}
+                    onRequestFullscreen={promptsMorph.toggle}
                     readOnly={activePresetIsBuiltIn}
                   />
                 </TabsContent>
@@ -2651,7 +2653,7 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, initialTab,
                     readOnlyReason={readOnlyReason}
                     onRequestEdit={duplicateForEditing}
                     fullscreen={promptsFullscreen}
-                    onRequestFullscreen={() => setPromptsFullscreen((f) => !f)}
+                    onRequestFullscreen={promptsMorph.toggle}
                     readOnly={activePresetIsBuiltIn}
                   />
                 </TabsContent>
@@ -2668,7 +2670,7 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, initialTab,
                     readOnlyReason={readOnlyReason}
                     onRequestEdit={duplicateForEditing}
                     fullscreen={promptsFullscreen}
-                    onRequestFullscreen={() => setPromptsFullscreen((f) => !f)}
+                    onRequestFullscreen={promptsMorph.toggle}
                     readOnly={activePresetIsBuiltIn}
                   />
                 </TabsContent>
@@ -2685,7 +2687,7 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, initialTab,
                     readOnlyReason={readOnlyReason}
                     onRequestEdit={duplicateForEditing}
                     fullscreen={promptsFullscreen}
-                    onRequestFullscreen={() => setPromptsFullscreen((f) => !f)}
+                    onRequestFullscreen={promptsMorph.toggle}
                     readOnly={activePresetIsBuiltIn}
                   />
                 </TabsContent>
@@ -2702,7 +2704,7 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, initialTab,
                     readOnlyReason={readOnlyReason}
                     onRequestEdit={duplicateForEditing}
                     fullscreen={promptsFullscreen}
-                    onRequestFullscreen={() => setPromptsFullscreen((f) => !f)}
+                    onRequestFullscreen={promptsMorph.toggle}
                     readOnly={activePresetIsBuiltIn}
                   />
                 </TabsContent>
@@ -2719,7 +2721,7 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, initialTab,
                     readOnlyReason={readOnlyReason}
                     onRequestEdit={duplicateForEditing}
                     fullscreen={promptsFullscreen}
-                    onRequestFullscreen={() => setPromptsFullscreen((f) => !f)}
+                    onRequestFullscreen={promptsMorph.toggle}
                     readOnly={activePresetIsBuiltIn}
                   />
                 </TabsContent>
@@ -2736,7 +2738,7 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, initialTab,
                     readOnlyReason={readOnlyReason}
                     onRequestEdit={duplicateForEditing}
                     fullscreen={promptsFullscreen}
-                    onRequestFullscreen={() => setPromptsFullscreen((f) => !f)}
+                    onRequestFullscreen={promptsMorph.toggle}
                     readOnly={activePresetIsBuiltIn}
                   />
                 </TabsContent>
@@ -2753,7 +2755,7 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, initialTab,
                     readOnlyReason={readOnlyReason}
                     onRequestEdit={duplicateForEditing}
                     fullscreen={promptsFullscreen}
-                    onRequestFullscreen={() => setPromptsFullscreen((f) => !f)}
+                    onRequestFullscreen={promptsMorph.toggle}
                     readOnly={activePresetIsBuiltIn}
                   />
                 </TabsContent>
@@ -2770,7 +2772,7 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, initialTab,
                     readOnlyReason={readOnlyReason}
                     onRequestEdit={duplicateForEditing}
                     fullscreen={promptsFullscreen}
-                    onRequestFullscreen={() => setPromptsFullscreen((f) => !f)}
+                    onRequestFullscreen={promptsMorph.toggle}
                     readOnly={activePresetIsBuiltIn}
                   />
                 </TabsContent>

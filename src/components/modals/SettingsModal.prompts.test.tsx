@@ -92,6 +92,33 @@ describe('Settings → Prompts dev-router landing', () => {
   });
 });
 
+describe('Settings → Prompts fullscreen', () => {
+  it('keeps the panel in its full-screen form while the window is still closing', async () => {
+    // Every element gets area: the morph refuses to travel between zero-size rects (jsdom lays nothing
+    // out), and with no trip the close settles synchronously — there is no "still closing" to assert.
+    const rect = { left: 10, top: 10, width: 300, height: 200, right: 310, bottom: 210, x: 10, y: 10, toJSON: () => ({}) } as DOMRect;
+    const spy = vi.spyOn(Element.prototype, 'getBoundingClientRect').mockReturnValue(rect);
+    try {
+      openPrompts();
+      fireEvent.click(screen.getAllByRole('button', { name: 'View full screen' })[0]);
+      expect(screen.getByRole('dialog', { name: 'Prompts' })).toBeTruthy();
+      expect(screen.getAllByRole('button', { name: 'Exit full screen' }).length).toBeGreaterThan(0);
+
+      fireEvent.click(screen.getAllByRole('button', { name: 'Exit full screen' })[0]);
+      // The window shrinks for ~290ms after this click. Through that trip the fields must keep their
+      // full-screen form — their flag is the morph's own `mounted`, which stays up until the box lands.
+      // Driven from a separate boolean, they snapped to the windowed layout inside the still-open window.
+      expect(screen.getByRole('dialog', { name: 'Prompts' })).toBeTruthy();
+      expect(screen.getAllByRole('button', { name: 'Exit full screen' }).length).toBeGreaterThan(0);
+
+      await waitFor(() => expect(screen.queryByRole('dialog', { name: 'Prompts' })).toBeNull());
+      expect(screen.queryAllByRole('button', { name: 'Exit full screen' })).toHaveLength(0);
+    } finally {
+      spy.mockRestore();
+    }
+  });
+});
+
 describe('Settings → Prompts jumps', () => {
   /** A highlighted run in the drawn request — a button whose title names the editor it opens. */
   const anatomyRun = (editor: string) =>
