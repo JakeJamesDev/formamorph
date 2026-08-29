@@ -237,15 +237,25 @@ describe('the password popup', () => {
   });
 });
 
+/**
+ * One profile stat. The number and its word sit in one role-less span — the word `sr-only`, so a reader
+ * who cannot see the icon still hears it — and the same string is what the span raises on hover.
+ */
+const stat = async (value: string, word: string) => {
+  const el = (await screen.findByText(word)).closest('span[tabindex]');
+  expect(el).toHaveTextContent(`${value}${word}`);
+  return el;
+};
+
 describe('your own numbers on the account dialog', () => {
   it('reads the same row a stranger sees on your profile popup', async () => {
     // Two places showing one account must not become two answers to the same question.
     // Needs an id: the header reads the public profile route, which is keyed on one.
     renderProfile({ currentUser: user({ id: 'u1' }) });
 
-    expect(await screen.findByTitle('3 followers')).toBeTruthy();
-    expect(screen.getByTitle('41 likes')).toBeTruthy();
-    expect(screen.getByTitle('108 downloads')).toBeTruthy();
+    expect(await stat('3', 'followers')).toBeTruthy();
+    expect(await stat('41', 'likes')).toBeTruthy();
+    expect(await stat('108', 'downloads')).toBeTruthy();
   });
 });
 

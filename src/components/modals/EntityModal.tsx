@@ -10,6 +10,7 @@ import { usePlaceholderResolver } from "@/lib/usePlaceholderResolver";
 import { useEntityVisualPreference } from "@/lib/useEntityVisualPreference";
 import { useEntityGallery } from "@/lib/useEntityGallery";
 import type { Entity } from "@/types";
+import { Tip } from "@/components/ui/tooltip";
 
 /** Editing hooks for a runtime-discovered character, whose description lives in the save rather than the
  *  authored world. Absent for authored entities, which the modal renders read-only. */
@@ -164,18 +165,22 @@ export const EntityModal = ({ entity, isOpen, onOpenChange, editing }: {
                       <Button variant="ghost" size="sm" onClick={startEdit} disabled={regenerating}>
                         <Pencil className="h-4 w-4 mr-1" /> Edit
                       </Button>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={regenerate}
-                        disabled={regenerating || editing.busy}
-                        title={editing.busy ? 'Available once the story is done generating' : undefined}
+                      <Tip
+                        tip={editing.busy ? 'Available once the story is done generating' : undefined}
+                        labelsChild={false}
                       >
-                        {regenerating
-                          ? <Loader2 className="h-4 w-4 mr-1 animate-spin" />
-                          : <RefreshCw className="h-4 w-4 mr-1" />}
-                        Regenerate
-                      </Button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={regenerate}
+                          disabled={regenerating || editing.busy}
+                        >
+                          {regenerating
+                            ? <Loader2 className="h-4 w-4 mr-1 animate-spin" />
+                            : <RefreshCw className="h-4 w-4 mr-1" />}
+                          Regenerate
+                        </Button>
+                      </Tip>
                     </div>
                   )}
                 </div>

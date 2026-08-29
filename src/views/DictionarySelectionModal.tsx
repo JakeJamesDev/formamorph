@@ -16,6 +16,7 @@ import { restrictToVerticalAxis, restrictToFirstScrollableAncestor } from '@dnd-
 import DictionaryStorageService from '@/services/DictionaryStorageService';
 import { buildInitialSelection, finalizeSelection, type DictionarySelectionItem } from '@/lib/dictionarySelection';
 import type { Dictionary, DictionaryMetadata } from '@/types';
+import { Tip } from '@/components/ui/tooltip';
 
 /** One draggable dictionary row: grip (leftmost) + enabled checkbox + name + description + entry count. */
 function SelectionRow({ item, onToggle }: {
@@ -40,20 +41,22 @@ function SelectionRow({ item, onToggle }: {
       style={style}
       className={`flex items-center gap-2 p-2 border rounded ${item.enabled ? '' : 'opacity-60'}`}
     >
-      <span
-        {...attributes}
-        {...listeners}
-        className="cursor-grab touch-none px-1 text-muted-foreground shrink-0"
-        title="Drag to reorder"
-      >
-        <GripVertical className="h-4 w-4" />
-      </span>
-      <Checkbox
-        checked={item.enabled}
-        onCheckedChange={(v) => onToggle(item.key, v === true)}
-        className="shrink-0"
-        title={item.enabled ? 'Enabled — click to disable' : 'Disabled — click to enable'}
-      />
+      <Tip tip="Drag to reorder">
+        <span
+          {...attributes}
+          {...listeners}
+          className="cursor-grab touch-none px-1 text-muted-foreground shrink-0"
+        >
+          <GripVertical className="h-4 w-4" />
+        </span>
+      </Tip>
+      <Tip tip={item.enabled ? 'Enabled — click to disable' : 'Disabled — click to enable'}>
+        <Checkbox
+          checked={item.enabled}
+          onCheckedChange={(v) => onToggle(item.key, v === true)}
+          className="shrink-0"
+        />
+      </Tip>
       <div className="min-w-0 flex-1">
         <div className="flex items-baseline gap-2">
           <span className="font-semibold truncate">{item.book.name || 'Untitled'}</span>
@@ -65,9 +68,12 @@ function SelectionRow({ item, onToggle }: {
           <p className="text-meta text-muted-foreground truncate">{item.book.description}</p>
         )}
       </div>
-      <span className="text-meta text-muted-foreground shrink-0" title="Enabled entries / total entries">
-        {enabledEntries}/{item.entryCount}
-      </span>
+      {/* A pair of bare numbers only a tip explains, so it takes a tab stop and reaches a keyboard. */}
+      <Tip tip="Enabled entries / total entries">
+        <span className="text-meta text-muted-foreground shrink-0" tabIndex={0}>
+          {enabledEntries}/{item.entryCount}
+        </span>
+      </Tip>
     </div>
   );
 }

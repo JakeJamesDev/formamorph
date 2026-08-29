@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Slider } from "@/components/ui/slider";
 import { cn, formatMMSS } from "@/lib/utils";
 import { useVolumeMute } from "@/lib/useVolumeMute";
+import { Tip } from "@/components/ui/tooltip";
 
 // Compact, on-theme player replacing the native <audio controls> so it matches the app's
 // Button/Slider styling. `src` is a URL / data URL (e.g. uploaded background music or entity
@@ -71,9 +72,11 @@ export default function AudioPlayer({ src, autoPlay = false, className }: {
       <span className="text-meta text-muted-foreground whitespace-nowrap shrink-0">
         {formatMMSS(currentTime)} / {formatMMSS(duration)}
       </span>
-      <Button variant="ghost" size="icon" onClick={toggleMute} className="shrink-0" title="Mute / unmute">
-        <VolumeIcon className="h-4 w-4" />
-      </Button>
+      <Tip tip="Mute / unmute">
+        <Button variant="ghost" size="icon" onClick={toggleMute} className="shrink-0">
+          <VolumeIcon className="h-4 w-4" />
+        </Button>
+      </Tip>
       <Slider
         value={[ttsVolume]}
         max={1}

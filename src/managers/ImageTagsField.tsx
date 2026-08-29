@@ -32,6 +32,7 @@ import type { ImageCap } from '../lib/imageOptim';
 import type { ImageSubjectKind } from '@/lib/imagePrompt';
 import { useEditorMode } from '@/lib/editorMode';
 import type { Placeholder } from '@/types';
+import { Tip } from '@/components/ui/tooltip';
 
 interface ImageTagsFieldProps {
   /** Field label above the upload — "Background Image" for locations, "Image" for entities. */
@@ -81,32 +82,37 @@ const ImageTile = ({ id, url, index, framed, onSelect }: {
   const { setNodeRef, transform, transition, isDragging, attributes, listeners } = useSortable({ id });
   const primary = index === 0;
   return (
-    <button
-      ref={setNodeRef}
-      type="button"
-      // Translate, not Transform: the latter bakes in dnd-kit's slot-fit scale and resizes the dragged tile.
-      style={{ transform: CSS.Translate.toString(transform), transition }}
-      {...attributes}
-      {...listeners}
-      onClick={onSelect}
-      title={primary
+    // The tip explains the tile; the short spoken name stays on the button.
+    <Tip
+      tip={primary
         ? 'Primary — stands in wherever one image is shown. Drag to reorder.'
         : `Image ${index + 1} — drag to reorder.`}
-      aria-label={primary ? 'Primary image' : `Image ${index + 1}`}
-      aria-pressed={framed}
-      className={cn(
-        'relative h-14 w-14 shrink-0 overflow-hidden rounded-md border-2 touch-none',
-        framed ? 'border-primary' : 'border-border hover:border-muted-foreground',
-        isDragging && 'opacity-50',
-      )}
+      labelsChild={false}
     >
-      <RemoteImg src={url} alt="" className="h-full w-full object-cover" />
-      {primary && (
-        <span className="absolute bottom-0 right-0 rounded-tl bg-overlay/70 p-0.5 text-white">
-          <Star className="h-2.5 w-2.5 fill-current" />
-        </span>
-      )}
-    </button>
+      <button
+        ref={setNodeRef}
+        type="button"
+        // Translate, not Transform: the latter bakes in dnd-kit's slot-fit scale and resizes the dragged tile.
+        style={{ transform: CSS.Translate.toString(transform), transition }}
+        {...attributes}
+        {...listeners}
+        onClick={onSelect}
+        aria-label={primary ? 'Primary image' : `Image ${index + 1}`}
+        aria-pressed={framed}
+        className={cn(
+          'relative h-14 w-14 shrink-0 overflow-hidden rounded-md border-2 touch-none',
+          framed ? 'border-primary' : 'border-border hover:border-muted-foreground',
+          isDragging && 'opacity-50',
+        )}
+      >
+        <RemoteImg src={url} alt="" className="h-full w-full object-cover" />
+        {primary && (
+          <span className="absolute bottom-0 right-0 rounded-tl bg-overlay/70 p-0.5 text-white">
+            <Star className="h-2.5 w-2.5 fill-current" />
+          </span>
+        )}
+      </button>
+    </Tip>
   );
 };
 

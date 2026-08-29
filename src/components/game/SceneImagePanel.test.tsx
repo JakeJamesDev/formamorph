@@ -162,7 +162,7 @@ describe('SceneImagePanel', () => {
     const onCancel = vi.fn();
     const { rerender } = render(<SceneImagePanel {...props} job="image" progress={0.42} onCancel={onCancel} />);
     expect(screen.getByText('42%')).toBeInTheDocument();
-    fireEvent.click(screen.getByTitle('Stop'));
+    fireEvent.click(screen.getByRole('button', { name: 'Stop' }));
     expect(onCancel).toHaveBeenCalled();
 
     // Providers that report nothing still have to look busy.

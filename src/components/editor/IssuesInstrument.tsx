@@ -8,6 +8,7 @@
 import { useState } from 'react';
 import { AlertTriangle, CircleX, EyeOff, Info, Play, Undo2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { Tip } from '@/components/ui/tooltip';
 import { cn } from '@/lib/utils';
 import { SEVERITIES, type FindingGroup, type Severity } from '@/lib/testBench/rules';
 import type { CodeCheckStatus, IssuesProps, OpenFindingItem } from '@/lib/testBench/benchProps';
@@ -56,15 +57,16 @@ const FindingRow = ({ group, fixing, onOpen, onFix, onDismiss }: {
       </p>
       <div className="mt-1 flex flex-wrap gap-1">
         {group.items.map((item) => (
-          <button
-            key={item.id}
-            type="button"
-            onClick={() => onOpen(item.section ?? group.section, item.id)}
-            title={item.name}
-            className="max-w-full truncate rounded border px-1.5 text-meta text-muted-foreground hover:bg-accent hover:text-foreground"
-          >
-            {item.name}
-          </button>
+          // The tip is the clipped name spelled out, so the button keeps naming itself by what it shows.
+          <Tip key={item.id} tip={item.name} labelsChild={false}>
+            <button
+              type="button"
+              onClick={() => onOpen(item.section ?? group.section, item.id)}
+              className="max-w-full truncate rounded border px-1.5 text-meta text-muted-foreground hover:bg-accent hover:text-foreground"
+            >
+              {item.name}
+            </button>
+          </Tip>
         ))}
       </div>
     </div>
@@ -79,16 +81,17 @@ const FindingRow = ({ group, fixing, onOpen, onFix, onDismiss }: {
         {fixing ? 'Fixing…' : group.findings.length > 1 ? 'Fix All' : 'Fix'}
       </Button>
     )}
-    <Button
-      variant="ghost"
-      size="icon"
-      className="h-6 w-6 shrink-0 text-muted-foreground"
-      onClick={() => onDismiss(group.ruleId)}
-      aria-label={`Dismiss: ${group.headline}`}
-      title="Dismiss"
-    >
-      <EyeOff className="h-3.5 w-3.5" />
-    </Button>
+    <Tip tip="Dismiss" labelsChild={false}>
+      <Button
+        variant="ghost"
+        size="icon"
+        className="h-6 w-6 shrink-0 text-muted-foreground"
+        onClick={() => onDismiss(group.ruleId)}
+        aria-label={`Dismiss: ${group.headline}`}
+      >
+        <EyeOff className="h-3.5 w-3.5" />
+      </Button>
+    </Tip>
   </div>
 );
 
@@ -114,16 +117,17 @@ const DismissedSection = ({ groups, onRestore }: {
           {groups.map((group) => (
             <div key={group.ruleId} className="flex items-start gap-2 rounded-md border border-dashed p-1.5">
               <p className="min-w-0 flex-grow truncate text-meta text-muted-foreground">{group.headline}</p>
-              <Button
-                variant="ghost"
-                size="icon"
-                className="h-5 w-5 shrink-0 text-muted-foreground"
-                onClick={() => onRestore(group.ruleId)}
-                aria-label={`Restore: ${group.headline}`}
-                title="Restore"
-              >
-                <Undo2 className="h-3.5 w-3.5" />
-              </Button>
+              <Tip tip="Restore" labelsChild={false}>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-5 w-5 shrink-0 text-muted-foreground"
+                  onClick={() => onRestore(group.ruleId)}
+                  aria-label={`Restore: ${group.headline}`}
+                >
+                  <Undo2 className="h-3.5 w-3.5" />
+                </Button>
+              </Tip>
             </div>
           ))}
         </div>

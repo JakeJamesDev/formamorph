@@ -7,6 +7,7 @@ import { usePlaceholderStore } from '@/contexts/PlaceholderStoreContext';
 import PlaceholderList from './PlaceholderList';
 import PlaceholderManager from './PlaceholderManager';
 import type { Placeholder } from '@/types';
+import { Tip } from '@/components/ui/tooltip';
 
 /**
  * Self-contained placeholder editor — a list of placeholders and the editor for the selected one, bound to the
@@ -31,9 +32,11 @@ const PlaceholderEditor = () => {
       backLabel="Placeholders"
       list={
         <div className="p-2 space-y-2">
-          <Button size="icon" onClick={add} aria-label="Add Placeholder" title="Add Placeholder">
-            <Plus className="h-4 w-4" />
-          </Button>
+          <Tip tip="Add Placeholder">
+            <Button size="icon" onClick={add}>
+              <Plus className="h-4 w-4" />
+            </Button>
+          </Tip>
           <PlaceholderList selectedId={selectedId} onSelect={setSelectedId} />
         </div>
       }

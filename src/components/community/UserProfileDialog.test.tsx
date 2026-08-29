@@ -33,6 +33,16 @@ afterEach(() => {
   vi.restoreAllMocks();
 });
 
+/**
+ * One profile stat. The number and its word sit in one role-less span — the word `sr-only`, so a reader
+ * who cannot see the icon still hears it — and the same string is what the span raises on hover.
+ */
+const stat = async (value: string, word: string) => {
+  const el = (await screen.findByText(word)).closest('span[tabindex]');
+  expect(el).toHaveTextContent(`${value}${word}`);
+  return el;
+};
+
 describe('opening somebody’s profile', () => {
   it('shows their name, picture and signup date', async () => {
     vi.spyOn(UserService, 'fetchProfile').mockResolvedValue(profile({ avatarUrl: '/api/avatars/abc.webp' }));
@@ -113,8 +123,8 @@ describe('what their work has earned', () => {
 
     render(<UserProfileDialog userId="u1" onOpenChange={() => {}} />);
 
-    expect(await screen.findByTitle('41 likes')).toBeTruthy();
-    expect(screen.getByTitle('108 downloads')).toBeTruthy();
+    expect(await stat('41', 'likes')).toBeTruthy();
+    expect(await stat('108', 'downloads')).toBeTruthy();
   });
 
   it('counts one of each in the singular', async () => {
@@ -122,8 +132,8 @@ describe('what their work has earned', () => {
 
     render(<UserProfileDialog userId="u1" onOpenChange={() => {}} />);
 
-    expect(await screen.findByTitle('1 like')).toBeTruthy();
-    expect(screen.getByTitle('1 download')).toBeTruthy();
+    expect(await stat('1', 'like')).toBeTruthy();
+    expect(await stat('1', 'download')).toBeTruthy();
   });
 
   it('shows zeros rather than vanishing for somebody who has published nothing', async () => {
@@ -132,8 +142,8 @@ describe('what their work has earned', () => {
 
     render(<UserProfileDialog userId="u1" onOpenChange={() => {}} />);
 
-    expect(await screen.findByTitle('0 likes')).toBeTruthy();
-    expect(screen.getByTitle('0 downloads')).toBeTruthy();
+    expect(await stat('0', 'likes')).toBeTruthy();
+    expect(await stat('0', 'downloads')).toBeTruthy();
   });
 
   it('says nothing at all when the account could not be read', async () => {
@@ -143,7 +153,7 @@ describe('what their work has earned', () => {
     render(<UserProfileDialog userId="u1" onOpenChange={() => {}} />);
     await screen.findByText('User not found');
 
-    expect(screen.queryByTitle(/likes|downloads/)).toBeNull();
+    expect(screen.queryByText(/^(likes|downloads)$/)).toBeNull();
   });
 });
 
@@ -154,7 +164,7 @@ describe('the follow button', () => {
 
     render(<UserProfileDialog userId="u1" onOpenChange={() => {}} />);
 
-    expect(await screen.findByTitle('12 followers')).toBeTruthy();
+    expect(await stat('12', 'followers')).toBeTruthy();
   });
 
   it('counts one follower in the singular', async () => {
@@ -163,7 +173,7 @@ describe('the follow button', () => {
 
     render(<UserProfileDialog userId="u1" onOpenChange={() => {}} />);
 
-    expect(await screen.findByTitle('1 follower')).toBeTruthy();
+    expect(await stat('1', 'follower')).toBeTruthy();
   });
 
   it('is offered to a signed-in reader', async () => {
@@ -216,7 +226,7 @@ describe('the follow button', () => {
     fireEvent.click(await screen.findByRole('button', { name: 'Follow' }));
 
     await waitFor(() => expect(screen.getByRole('button', { name: 'Following' })).toBeTruthy());
-    expect(screen.getByTitle('5 followers')).toBeTruthy();
+    expect(await stat('5', 'followers')).toBeTruthy();
     expect(setFollowing).toHaveBeenCalledWith('u1', true);
   });
 
@@ -229,6 +239,6 @@ describe('the follow button', () => {
     fireEvent.click(await screen.findByRole('button', { name: 'Follow' }));
 
     await waitFor(() => expect(screen.getByRole('button', { name: 'Follow' })).toBeTruthy());
-    expect(screen.getByTitle('4 followers')).toBeTruthy();
+    expect(await stat('4', 'followers')).toBeTruthy();
   });
 });

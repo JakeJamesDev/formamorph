@@ -21,6 +21,7 @@ import { AiContextInstrument } from './AiContextInstrument';
 import { IssuesInstrument } from './IssuesInstrument';
 import { OpeningInstrument } from './OpeningInstrument';
 import { TriggersInstrument } from './TriggersInstrument';
+import { Tip } from '@/components/ui/tooltip';
 
 /** The toggle names the placement it would move to, not the one it is in — it is an action, not a label. */
 const PLACEMENT_TOGGLE: Record<BenchPlacement, { label: string; icon: typeof PanelLeft }> = {
@@ -40,16 +41,16 @@ export function TestBench({
         <FlaskConical className="h-4 w-4 text-muted-foreground" aria-hidden />
         <span className="text-label font-medium">Test Bench</span>
         {toggle && placementControl && (
-          <Button
-            variant="ghost"
-            size="icon"
-            className="ml-auto h-7 w-7"
-            onClick={placementControl.onToggle}
-            aria-label={toggle.label}
-            title={toggle.label}
-          >
-            <toggle.icon className="h-4 w-4" />
-          </Button>
+          <Tip tip={toggle.label}>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="ml-auto h-7 w-7"
+              onClick={placementControl.onToggle}
+            >
+              <toggle.icon className="h-4 w-4" />
+            </Button>
+          </Tip>
         )}
         <Button
           variant="ghost"
@@ -213,31 +214,33 @@ export function TestBenchButton({ count, newCount, open, onClick }: {
   const shown = fresh ? newCount : count;
   const noun = shown === 1 ? 'finding' : 'findings';
   return (
-    <Button
-      variant={open ? 'secondary' : 'ghost'}
-      size="icon"
-      className="relative"
-      onClick={onClick}
-      aria-pressed={open}
-      aria-label={
-        fresh ? `Test Bench, ${shown} new ${noun}`
-          : count > 0 ? `Test Bench, ${shown} ${noun}`
-            : 'Test Bench'
-      }
-      title="Test Bench"
-    >
-      <FlaskConical className="h-4 w-4" />
-      {count > 0 && (
-        <span
-          aria-hidden
-          className={cn(
-            'absolute right-0 top-0 rounded-full px-1 text-meta font-medium leading-tight',
-            fresh ? 'bg-warning text-warning-foreground' : 'bg-muted text-muted-foreground',
-          )}
-        >
-          {shown > 99 ? '99+' : shown}
-        </span>
-      )}
-    </Button>
+    // The count belongs in the spoken name and not in the tip, so the aria-label stays as it is.
+    <Tip tip="Test Bench" labelsChild={false}>
+      <Button
+        variant={open ? 'secondary' : 'ghost'}
+        size="icon"
+        className="relative"
+        onClick={onClick}
+        aria-pressed={open}
+        aria-label={
+          fresh ? `Test Bench, ${shown} new ${noun}`
+            : count > 0 ? `Test Bench, ${shown} ${noun}`
+              : 'Test Bench'
+        }
+      >
+        <FlaskConical className="h-4 w-4" />
+        {count > 0 && (
+          <span
+            aria-hidden
+            className={cn(
+              'absolute right-0 top-0 rounded-full px-1 text-meta font-medium leading-tight',
+              fresh ? 'bg-warning text-warning-foreground' : 'bg-muted text-muted-foreground',
+            )}
+          >
+            {shown > 99 ? '99+' : shown}
+          </span>
+        )}
+      </Button>
+    </Tip>
   );
 }

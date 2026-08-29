@@ -4,6 +4,7 @@ import { Slider } from "@/components/ui/slider";
 import { useGameplay } from "@/contexts/GameplayContext";
 import { cn, formatMMSS } from "@/lib/utils";
 import { useVolumeMute } from "@/lib/useVolumeMute";
+import { Tip } from "@/components/ui/tooltip";
 
 // Seek-bar widget bound to the Web Audio TTS engine (not an <audio> element), so the same engine
 // that streams sentences as they generate also drives play/pause and scrubbing — no hand-off.
@@ -27,9 +28,11 @@ export default function TtsPlaybackBar({ className }: { className?: string }) {
       <span className="text-meta text-muted-foreground whitespace-nowrap shrink-0">
         {formatMMSS(position)} / {formatMMSS(duration)}
       </span>
-      <Button variant="ghost" size="icon" onClick={toggleMute} className="shrink-0" title="Mute / unmute">
-        <VolumeIcon className="h-4 w-4" />
-      </Button>
+      <Tip tip="Mute / unmute">
+        <Button variant="ghost" size="icon" onClick={toggleMute} className="shrink-0">
+          <VolumeIcon className="h-4 w-4" />
+        </Button>
+      </Tip>
       <Slider
         value={[ttsVolume]}
         max={1}

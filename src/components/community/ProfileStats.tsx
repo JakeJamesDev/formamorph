@@ -1,10 +1,14 @@
 import { Users, Heart, Download } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { Tip } from "@/components/ui/tooltip";
 import type { PublicProfile } from "@/types";
 
 /**
  * One number on a profile: the icon carries the meaning on screen, the word carries it to a reader who
- * cannot see the icon.
+ * cannot see the icon, and the tip puts that word in front of a pointer or a keyboard.
+ *
+ * The word stays a real `sr-only` node rather than becoming the tip's `aria-label`: this span has no
+ * role, and ARIA does not allow a label on a generic element.
  */
 function ProfileStat({ icon: Icon, value, label }: {
   icon: typeof Users;
@@ -12,11 +16,13 @@ function ProfileStat({ icon: Icon, value, label }: {
   label: string;
 }) {
   return (
-    <span className="flex items-center gap-1.5" title={`${value} ${label}`}>
-      <Icon className="h-4 w-4" aria-hidden />
-      <span className="tabular-nums">{value}</span>
-      <span className="sr-only">{label}</span>
-    </span>
+    <Tip tip={`${value} ${label}`} labelsChild={false}>
+      <span className="flex items-center gap-1.5" tabIndex={0}>
+        <Icon className="h-4 w-4" aria-hidden />
+        <span className="tabular-nums">{value}</span>
+        <span className="sr-only">{label}</span>
+      </span>
+    </Tip>
   );
 }
 

@@ -6,6 +6,7 @@ import { statFieldStep, statFieldText } from '@/lib/statValueField';
 import { usePrefersReducedMotion } from '@/lib/usePrefersReducedMotion';
 import { Input } from '@/components/ui/input';
 import { Slider } from '@/components/ui/slider';
+import { Tip } from '@/components/ui/tooltip';
 
 /** How long a value has to settle before its band is announced, so scrubbing through five bands is one
  *  announcement rather than five. */
@@ -226,13 +227,15 @@ export const StatRow = ({
       )}
       {(band || reserveDescriptorLine) && (
         // Truncated with the full text on hover, so a paragraph-length band can't push the list around.
-        <p className="min-h-4 truncate text-meta text-muted-foreground" title={band?.description}>
-          {band && (
-            <span key={flashKey} className={flashKey > 0 ? 'stat-band-flash' : undefined}>
-              {band.description}
-            </span>
-          )}
-        </p>
+        <Tip tip={band?.description} labelsChild={false}>
+          <p className="min-h-4 truncate text-meta text-muted-foreground">
+            {band && (
+              <span key={flashKey} className={flashKey > 0 ? 'stat-band-flash' : undefined}>
+                {band.description}
+              </span>
+            )}
+          </p>
+        </Tip>
       )}
       <span role="status" aria-live="polite" className="sr-only">{announced}</span>
     </div>

@@ -29,6 +29,7 @@ import { defaultChangelogTab, type ChangelogEntry, type ChangelogTab } from "@/l
 import { WorldActionButton } from "@/components/WorldActionButton";
 import { PlaceBadges } from "@/components/PlaceBadges";
 import { placementsBy } from "@/lib/contests";
+import { Tip } from "@/components/ui/tooltip";
 import type { ServerEvent } from "@/types";
 
 interface RemoteWorldDetailsModalProps {
@@ -236,16 +237,16 @@ export function RemoteWorldDetailsModal({
             {/* `leading-normal` overrides DialogTitle's `leading-none`, whose one-em line box crops
                 descenders under `truncate`'s overflow clip. Fits the row's existing height. */}
             <span className="truncate leading-normal">{world?.name || 'World Details'}</span>
-            <Button
-              variant="ghost"
-              size="icon"
-              className="ml-auto mr-8 shrink-0 hidden md:inline-flex"
-              onClick={onToggleCollapsed}
-              title={collapsed ? "Expand to two columns" : "Collapse to single column"}
-              aria-label={collapsed ? "Expand to two columns" : "Collapse to single column"}
-            >
-              {collapsed ? <Columns2 className="h-4 w-4" /> : <RectangleVertical className="h-4 w-4" />}
-            </Button>
+            <Tip tip={collapsed ? "Expand to two columns" : "Collapse to single column"}>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="ml-auto mr-8 shrink-0 hidden md:inline-flex"
+                onClick={onToggleCollapsed}
+              >
+                {collapsed ? <Columns2 className="h-4 w-4" /> : <RectangleVertical className="h-4 w-4" />}
+              </Button>
+            </Tip>
           </DialogTitle>
           {/* Under the title, as on the card: opening a winning card must not lose what the card said. */}
           {world && <PlaceBadges placements={placementsBy(world, contests)} className="mr-8" />}
@@ -261,30 +262,33 @@ export function RemoteWorldDetailsModal({
                 thumbnail={
                   /* World Thumbnail — click to open the pan/zoom viewer (uses the cached blob src, so the
                      zoom isn't CORP-blocked like the raw cross-origin URL would be). */
-                  <div
-                    className={cn(
-                      "relative w-full pt-[56.25%] rounded-lg overflow-hidden",
-                      thumbSrc && "cursor-zoom-in",
-                    )}
-                    onClick={() => thumbSrc && openImageViewer(thumbSrc, world.name)}
-                    title={thumbSrc ? "Click to enlarge" : undefined}
-                  >
-                    {thumbSrc ? (
-                      <img
-                        src={thumbSrc}
-                        alt={world.name}
-                        className={cn(
-                          "absolute top-0 left-0 w-full h-full object-cover",
-                          // Entity art is almost always a portrait; anchor it to the top so faces aren't cropped.
-                          kindOf(world) === 'entity' && "object-top",
-                        )}
-                      />
-                    ) : (
-                      <div className="absolute top-0 left-0 w-full h-full flex items-center justify-center bg-muted text-muted-foreground">
-                        <Globe className="h-16 w-16" />
-                      </div>
-                    )}
-                  </div>
+                  // No tip without a thumbnail, and none of the machinery either — the tip is the whole
+                  // hint that the picture opens. The image below carries the name, so it stays visual only.
+                  <Tip tip={thumbSrc ? "Click to enlarge" : undefined} labelsChild={false}>
+                    <div
+                      className={cn(
+                        "relative w-full pt-[56.25%] rounded-lg overflow-hidden",
+                        thumbSrc && "cursor-zoom-in",
+                      )}
+                      onClick={() => thumbSrc && openImageViewer(thumbSrc, world.name)}
+                    >
+                      {thumbSrc ? (
+                        <img
+                          src={thumbSrc}
+                          alt={world.name}
+                          className={cn(
+                            "absolute top-0 left-0 w-full h-full object-cover",
+                            // Entity art is almost always a portrait; anchor it to the top so faces aren't cropped.
+                            kindOf(world) === 'entity' && "object-top",
+                          )}
+                        />
+                      ) : (
+                        <div className="absolute top-0 left-0 w-full h-full flex items-center justify-center bg-muted text-muted-foreground">
+                          <Globe className="h-16 w-16" />
+                        </div>
+                      )}
+                    </div>
+                  </Tip>
                 }
                 actions={(() => {
                   // Mirror the contextual card button (none/refresh/update), icon and all.

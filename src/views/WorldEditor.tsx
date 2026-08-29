@@ -94,6 +94,7 @@ import { useDownscalePrompt } from '@/lib/useDownscalePrompt';
 import { SortableRow, type SortableListItem } from '@/components/SortableList';
 import { EditorRowList } from '@/components/EditorRow';
 import PlaceholderText from '@/components/prompt/PlaceholderText';
+import { Tip } from '@/components/ui/tooltip';
 
 /** The fields a reorderable list row needs (every editor item has these). */
 type ListItem = SortableListItem;
@@ -696,16 +697,17 @@ const WorldEditorInner = ({ onClose, embedded = false, backButton }: {
       {/* On mobile you have just come from tapping this world open, and the row needs every pixel for the controls
           that do something — so the heading is read out but not drawn there. */}
       <CardTitle className={isMobile ? 'sr-only' : undefined}>World Editor</CardTitle>
-      <Button
-        variant="ghost"
-        size="icon"
-        className="ml-auto"
-        onClick={() => openFind(false)}
-        aria-label="Find and replace"
-        title="Find and replace (Ctrl+F)"
-      >
-        <Search className="h-4 w-4" />
-      </Button>
+      <Tip tip="Find and replace (Ctrl+F)" labelsChild={false}>
+        <Button
+          variant="ghost"
+          size="icon"
+          className="ml-auto"
+          onClick={() => openFind(false)}
+          aria-label="Find and replace"
+        >
+          <Search className="h-4 w-4" />
+        </Button>
+      </Tip>
       {/* The flask's first stop is quick triage; the full panel is one button inside it. */}
       <BenchPopover {...bench.popoverProps}>
         <TestBenchButton
@@ -725,22 +727,26 @@ const WorldEditorInner = ({ onClose, embedded = false, backButton }: {
           className={isMobile ? "h-8" : undefined}
         >
           <ToggleGroupItem value="simple" className={isMobile ? "px-2 py-1" : undefined}>Simple</ToggleGroupItem>
-          <ToggleGroupItem
-            value="advanced"
-            className={cn('relative', isMobile && 'px-2 py-1')}
-            // The marker rides the switch that acts on it rather than sitting beside it as its own icon:
-            // it says "there is more through here", which is exactly what this control does, and a row on a
-            // mobile has no room for a second thing saying so.
-            title={hasHiddenData ? 'This world uses advanced features. Switch to Advanced to see them.' : undefined}
+          {/* The marker rides the switch that acts on it rather than sitting beside it as its own icon:
+              it says "there is more through here", which is exactly what this control does, and a row on a
+              mobile has no room for a second thing saying so. */}
+          <Tip
+            tip={hasHiddenData ? 'This world uses advanced features. Switch to Advanced to see them.' : undefined}
+            labelsChild={false}
           >
-            Advanced
-            {hasHiddenData && (
-              <span
-                aria-label="This world uses advanced features"
-                className="absolute right-0.5 top-0.5 h-1.5 w-1.5 rounded-full bg-primary"
-              />
-            )}
-          </ToggleGroupItem>
+            <ToggleGroupItem
+              value="advanced"
+              className={cn('relative', isMobile && 'px-2 py-1')}
+            >
+              Advanced
+              {hasHiddenData && (
+                <span
+                  aria-label="This world uses advanced features"
+                  className="absolute right-0.5 top-0.5 h-1.5 w-1.5 rounded-full bg-primary"
+                />
+              )}
+            </ToggleGroupItem>
+          </Tip>
         </ToggleGroup>
       </TutorialPopover>
     </div>
@@ -807,9 +813,11 @@ const WorldEditorInner = ({ onClose, embedded = false, backButton }: {
           {LOCATION_VIEWS.map((v) => (
             isMobile
               ? (
-                <ToggleGroupItem key={v.value} value={v.value} aria-label={v.label} title={v.label} className="px-2">
-                  {v.value === 'canvas' ? <Map className="h-4 w-4" /> : <List className="h-4 w-4" />}
-                </ToggleGroupItem>
+                <Tip key={v.value} tip={v.label}>
+                  <ToggleGroupItem value={v.value} className="px-2">
+                    {v.value === 'canvas' ? <Map className="h-4 w-4" /> : <List className="h-4 w-4" />}
+                  </ToggleGroupItem>
+                </Tip>
               )
               : <ToggleGroupItem key={v.value} value={v.value}>{v.label}</ToggleGroupItem>
           ))}
@@ -848,19 +856,21 @@ const WorldEditorInner = ({ onClose, embedded = false, backButton }: {
         {/* Advanced-only: an oversized upload is already offered Optimize/Downscale as it lands, so what
             this adds is the bulk pass over a world that is already large. */}
         {advanced && (
-        <Button variant="outline" size="sm" onClick={optimizeImages} disabled={optimizeProgress !== null} title="Downscale oversized images to conserve file size">
-          {optimizeProgress !== null ? (
-            <>
-              <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-              {optimizeProgress === 'scanning' ? 'Scanning…' : `Optimizing ${optimizeProgress.done}/${optimizeProgress.total}…`}
-            </>
-          ) : (
-            <>
-              <ImageDown className="h-4 w-4 mr-2" />
-              Optimize Images
-            </>
-          )}
-        </Button>
+          <Tip tip="Downscale oversized images to conserve file size" labelsChild={false}>
+            <Button variant="outline" size="sm" onClick={optimizeImages} disabled={optimizeProgress !== null}>
+              {optimizeProgress !== null ? (
+                <>
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  {optimizeProgress === 'scanning' ? 'Scanning…' : `Optimizing ${optimizeProgress.done}/${optimizeProgress.total}…`}
+                </>
+              ) : (
+                <>
+                  <ImageDown className="h-4 w-4 mr-2" />
+                  Optimize Images
+                </>
+              )}
+            </Button>
+          </Tip>
         )}
         <Button size="sm" onClick={saveWorld} disabled={!isWorldDirty}>
           <Save className="h-4 w-4 mr-2" />

@@ -14,6 +14,7 @@ import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Textarea } from '@/components/ui/textarea';
+import { Tip } from '@/components/ui/tooltip';
 import { cn } from '@/lib/utils';
 import { isRuleFixable, type Finding } from '@/lib/testBench/rules';
 import { describeSemantic } from '@/lib/testBench/semantic';
@@ -98,14 +99,15 @@ const RowWarnings = ({ findings, onFix }: { findings: Finding[]; onFix: (ruleId:
         <AlertTriangle className="mt-0.5 h-3 w-3 shrink-0" aria-hidden />
         <span className="min-w-0 flex-grow">{finding.message}</span>
         {isRuleFixable(finding.ruleId) && (
-          <button
-            type="button"
-            onClick={() => onFix(finding.ruleId)}
-            className="shrink-0 rounded border border-warning/40 px-1 hover:bg-accent hover:text-foreground"
-            title="Applies this rule’s repair wherever it fires"
-          >
-            Fix
-          </button>
+          <Tip tip="Applies this rule’s repair wherever it fires" labelsChild={false}>
+            <button
+              type="button"
+              onClick={() => onFix(finding.ruleId)}
+              className="shrink-0 rounded border border-warning/40 px-1 hover:bg-accent hover:text-foreground"
+            >
+              Fix
+            </button>
+          </Tip>
         )}
       </div>
     ))}
@@ -129,19 +131,20 @@ const HighlightedText = ({ segments, selected, onSelect }: {
       const isSelected = at >= 0;
       const entity = segment.marks.some((m) => m.kind === 'entity');
       return (
-        <button
-          key={i}
-          type="button"
-          onClick={() => onSelect(markKey(next))}
-          title={segment.marks.map((m) => m.label).join(' · ')}
-          className={cn(
-            'rounded-sm underline decoration-dotted underline-offset-2 hover:bg-accent',
-            entity ? 'bg-primary/15 text-foreground' : 'bg-warning/15 text-foreground',
-            isSelected && 'ring-1 ring-ring',
-          )}
-        >
-          {segment.text}
-        </button>
+        // The tip names what matched here; the button keeps announcing the words it marks.
+        <Tip key={i} tip={segment.marks.map((m) => m.label).join(' · ')} labelsChild={false}>
+          <button
+            type="button"
+            onClick={() => onSelect(markKey(next))}
+            className={cn(
+              'rounded-sm underline decoration-dotted underline-offset-2 hover:bg-accent',
+              entity ? 'bg-primary/15 text-foreground' : 'bg-warning/15 text-foreground',
+              isSelected && 'ring-1 ring-ring',
+            )}
+          >
+            {segment.text}
+          </button>
+        </Tip>
       );
     })}
   </div>

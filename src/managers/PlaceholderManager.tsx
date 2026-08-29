@@ -14,6 +14,7 @@ import { placeholderWeight, placeholderChances, placeholderValueLine, isWeighted
 import { plainVocabulary } from '@/lib/chipVocabulary';
 import { cn } from '@/lib/utils';
 import type { Placeholder } from '@/types';
+import { Tip } from '@/components/ui/tooltip';
 
 /**
  * Carry per-value weights across an edit to the value list. A same-length change is a rename or a reorder
@@ -155,32 +156,32 @@ const PlaceholderManager = ({ placeholder }: { placeholder: Placeholder }) => {
           {/* Only offered once a weight is non-default — with a uniform list there is nothing to reveal.
               Chips only: the multiline boxes carry a chance apiece, so there is nothing left to reveal. */}
           {style === 'chips' && weighted && count > 1 && (
-            <Button
-              type="button"
-              variant="ghost"
-              size="icon"
-              className="h-6 w-6"
-              aria-pressed={showChances}
-              aria-label={showChances ? 'Hide roll chances' : 'Show roll chances'}
-              title={showChances ? 'Hide roll chances' : 'Show roll chances'}
-              onClick={() => setShowChances((s) => !s)}
-            >
-              {showChances ? <EyeOff className="h-3.5 w-3.5" /> : <Eye className="h-3.5 w-3.5" />}
-            </Button>
-          )}
-          <div className="ml-auto flex items-center gap-1">
-            {style === 'multiline' && boxes.length > 1 && (
+            <Tip tip={showChances ? 'Hide roll chances' : 'Show roll chances'}>
               <Button
                 type="button"
                 variant="ghost"
                 size="icon"
                 className="h-6 w-6"
-                aria-label={anyOpen ? 'Collapse all values' : 'Expand all values'}
-                title={anyOpen ? 'Collapse all values' : 'Expand all values'}
-                onClick={() => setCollapsed(anyOpen ? new Set(boxes.map((b) => b.id)) : new Set<string>())}
+                aria-pressed={showChances}
+                onClick={() => setShowChances((s) => !s)}
               >
-                {anyOpen ? <ChevronsDownUp className="h-3.5 w-3.5" /> : <ChevronsUpDown className="h-3.5 w-3.5" />}
+                {showChances ? <EyeOff className="h-3.5 w-3.5" /> : <Eye className="h-3.5 w-3.5" />}
               </Button>
+            </Tip>
+          )}
+          <div className="ml-auto flex items-center gap-1">
+            {style === 'multiline' && boxes.length > 1 && (
+              <Tip tip={anyOpen ? 'Collapse all values' : 'Expand all values'}>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon"
+                  className="h-6 w-6"
+                  onClick={() => setCollapsed(anyOpen ? new Set(boxes.map((b) => b.id)) : new Set<string>())}
+                >
+                  {anyOpen ? <ChevronsDownUp className="h-3.5 w-3.5" /> : <ChevronsUpDown className="h-3.5 w-3.5" />}
+                </Button>
+              </Tip>
             )}
             <ToggleGroup
               type="single"
@@ -328,17 +329,18 @@ const MultilineValues = ({
                   <span className="w-10 text-right text-meta text-muted-foreground">{chance(value)}</span>
                 </>
               )}
-              <Button
-                type="button"
-                variant="ghost"
-                size="icon"
-                className="h-6 w-6"
-                aria-label={`Remove value ${i + 1}`}
-                title="Remove value"
-                onClick={() => onRemove(box.id)}
-              >
-                <Trash2 className="h-3.5 w-3.5" />
-              </Button>
+              <Tip tip="Remove value" labelsChild={false}>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon"
+                  className="h-6 w-6"
+                  aria-label={`Remove value ${i + 1}`}
+                  onClick={() => onRemove(box.id)}
+                >
+                  <Trash2 className="h-3.5 w-3.5" />
+                </Button>
+              </Tip>
             </div>
           </div>
           {open && (

@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Pin, PinOff, RotateCcw, SlidersHorizontal } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { Tip } from '@/components/ui/tooltip';
 
 /**
  * The Memory side-panel tab: the story's long-term memory at a glance. Lists every memory with the AI
@@ -152,7 +153,6 @@ export const MemoryPanel = ({ onRegenerateMemory }: {
                     long story most kept memories sit out any given turn, so marking those instead would
                     fade the whole panel and leave the informative row unmarked. */}
                 <div
-                  title={row.asScene ? 'Sent as a full scene last turn' : row.inContext ? 'Sent to the story last turn' : undefined}
                   className={cn(
                     'group flex items-start gap-1 rounded border border-border p-2',
                     !row.kept && 'opacity-50',
@@ -161,32 +161,41 @@ export const MemoryPanel = ({ onRegenerateMemory }: {
                   )}
                 >
                   <div className="flex-grow">
-                    <p className={cn('text-meta', !row.kept && 'line-through')}>{row.text}</p>
+                    {/* On the text, not the row: a row-wide trigger sits under the pin buttons and the
+                        two tips would open together. */}
+                    <Tip
+                      tip={row.asScene ? 'Sent as a full scene last turn' : row.inContext ? 'Sent to the story last turn' : undefined}
+                      labelsChild={false}
+                    >
+                      <p className={cn('text-meta', !row.kept && 'line-through')}>{row.text}</p>
+                    </Tip>
                     {row.stamp && <p className="mt-0.5 text-[10px] text-muted-foreground">{row.stamp}</p>}
                   </div>
                   <div className="flex flex-shrink-0 items-center gap-0.5">
                     {row.pin && (
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="h-6 w-6"
-                        title="Clear Pin (Let the Story Decide)"
-                        onClick={() => setPin(row.id, null)}
-                      >
-                        <RotateCcw className="h-3.5 w-3.5" />
-                      </Button>
+                      <Tip tip="Clear Pin (Let the Story Decide)">
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-6 w-6"
+                          onClick={() => setPin(row.id, null)}
+                        >
+                          <RotateCcw className="h-3.5 w-3.5" />
+                        </Button>
+                      </Tip>
                     )}
                     {/* Player-written memories are never judged, so there is nothing to pin against. */}
                     {!row.isNote && (
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className={cn('h-6 w-6', row.pin && 'text-primary')}
-                        title={row.kept ? 'Forget This Memory' : 'Pin This Memory'}
-                        onClick={() => setPin(row.id, row.kept ? 'drop' : 'keep')}
-                      >
-                        {row.kept ? <PinOff className="h-3.5 w-3.5" /> : <Pin className="h-3.5 w-3.5" />}
-                      </Button>
+                      <Tip tip={row.kept ? 'Forget This Memory' : 'Pin This Memory'}>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className={cn('h-6 w-6', row.pin && 'text-primary')}
+                          onClick={() => setPin(row.id, row.kept ? 'drop' : 'keep')}
+                        >
+                          {row.kept ? <PinOff className="h-3.5 w-3.5" /> : <Pin className="h-3.5 w-3.5" />}
+                        </Button>
+                      </Tip>
                     )}
                   </div>
                 </div>

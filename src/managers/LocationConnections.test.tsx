@@ -99,7 +99,7 @@ describe('LocationConnections', () => {
 
   it('deletes the Connection', () => {
     render(<LocationConnections location={at('ledge')} />);
-    fireEvent.click(screen.getByTitle('Delete Connection to Cave'));
+    fireEvent.click(screen.getByRole('button', { name: 'Delete Connection to Cave' }));
     expect(removeConnection).toHaveBeenCalledWith('c1');
   });
 

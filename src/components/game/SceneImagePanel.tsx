@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
 import TagField from '@/components/prompt/TagField';
 import { ImageZoomViewer } from '@/components/ImageZoomViewer';
+import { Tip } from '@/components/ui/tooltip';
 
 /**
  * A turn's scene images, under its narration: the current picture, arrows to browse the ones drawn before
@@ -80,9 +81,11 @@ export const SceneImagePanel = ({
               <span className="text-meta text-muted-foreground whitespace-nowrap">{Math.round(progress * 100)}%</span>
             </>
           )}
-          <Button variant="destructive" size="icon" className="h-7 w-7 shrink-0" onClick={onCancel} title="Stop">
-            <Square className="h-3.5 w-3.5" />
-          </Button>
+          <Tip tip="Stop">
+            <Button variant="destructive" size="icon" className="h-7 w-7 shrink-0" onClick={onCancel}>
+              <Square className="h-3.5 w-3.5" />
+            </Button>
+          </Tip>
         </div>
       )}
 
@@ -92,13 +95,15 @@ export const SceneImagePanel = ({
         <img src={preview} alt="Drawing…" className="mx-auto max-h-72 rounded-md border opacity-90" />
       ) : current && (
         <>
-          <img
-            src={current}
-            alt={`Scene illustration${tags ? `: ${tags}` : ''}`}
-            title={tags}
-            className="mx-auto max-h-72 rounded-md border cursor-zoom-in"
-            onClick={() => setZoomOpen(true)}
-          />
+          {/* The alt already carries the tags; the tip only puts them on screen. */}
+          <Tip tip={tags} labelsChild={false}>
+            <img
+              src={current}
+              alt={`Scene illustration${tags ? `: ${tags}` : ''}`}
+              className="mx-auto max-h-72 rounded-md border cursor-zoom-in"
+              onClick={() => setZoomOpen(true)}
+            />
+          </Tip>
           <ImageZoomViewer src={current} alt="Scene illustration" open={zoomOpen} onOpenChange={setZoomOpen} />
         </>
       )}
@@ -106,29 +111,29 @@ export const SceneImagePanel = ({
       <div className="flex items-center gap-1">
         {images.length > 1 && (
           <>
-            <Button
-              variant="ghost"
-              size="icon"
-              className="h-7 w-7"
-              onClick={() => setIndex((i) => Math.max(0, i - 1))}
-              disabled={index === 0}
-              title="Previous image"
-              aria-label="Previous image"
-            >
-              <ChevronLeft className="h-4 w-4" />
-            </Button>
+            <Tip tip="Previous image">
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-7 w-7"
+                onClick={() => setIndex((i) => Math.max(0, i - 1))}
+                disabled={index === 0}
+              >
+                <ChevronLeft className="h-4 w-4" />
+              </Button>
+            </Tip>
             <span className="text-meta text-muted-foreground tabular-nums">{Math.min(index, images.length - 1) + 1}/{images.length}</span>
-            <Button
-              variant="ghost"
-              size="icon"
-              className="h-7 w-7"
-              onClick={() => setIndex((i) => Math.min(images.length - 1, i + 1))}
-              disabled={index >= images.length - 1}
-              title="Next image"
-              aria-label="Next image"
-            >
-              <ChevronRight className="h-4 w-4" />
-            </Button>
+            <Tip tip="Next image">
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-7 w-7"
+                onClick={() => setIndex((i) => Math.min(images.length - 1, i + 1))}
+                disabled={index >= images.length - 1}
+              >
+                <ChevronRight className="h-4 w-4" />
+              </Button>
+            </Tip>
           </>
         )}
         <div className="flex-1" />
@@ -136,16 +141,16 @@ export const SceneImagePanel = ({
           {showTags ? 'Hide tags' : 'Tags'}
         </Button>
         {current && (
-          <Button
-            variant="ghost"
-            size="icon"
-            className="h-7 w-7"
-            onClick={() => onDelete(Math.min(index, images.length - 1))}
-            title="Delete this image"
-            aria-label="Delete this image"
-          >
-            <Trash2 className="h-4 w-4" />
-          </Button>
+          <Tip tip="Delete this image">
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-7 w-7"
+              onClick={() => onDelete(Math.min(index, images.length - 1))}
+            >
+              <Trash2 className="h-4 w-4" />
+            </Button>
+          </Tip>
         )}
       </div>
 
@@ -162,9 +167,11 @@ export const SceneImagePanel = ({
           <div className="flex items-center gap-2">
             {/* Re-rolling the tags costs one small text request and no render — the loop for judging whether
                 the tags themselves are any good, before spending a picture on them. */}
-            <Button variant="outline" size="sm" disabled={busy} onClick={onRegenerateTags} title="Write a new tag line from this turn">
-              <Dices className="h-4 w-4" /> Re-roll tags
-            </Button>
+            <Tip tip="Write a new tag line from this turn" labelsChild={false}>
+              <Button variant="outline" size="sm" disabled={busy} onClick={onRegenerateTags}>
+                <Dices className="h-4 w-4" /> Re-roll tags
+              </Button>
+            </Tip>
             {/* An edited line is drawn exactly as written; an untouched one re-reads the narration, which is
                 what the player wants when the tags were fine and the picture simply came out badly. */}
             <Button variant="secondary" size="sm" disabled={busy} onClick={() => onGenerate(edited ? draft : undefined)}>

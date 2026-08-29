@@ -9,6 +9,7 @@ import { KIND_LABELS, type CatalogKind } from "@/lib/catalogKinds";
 import { formatServerDateTime } from "@/lib/serverDate";
 import UserService from "@/services/UserService";
 import type { FeedItem, FollowedUser } from "@/types";
+import { Tip } from "@/components/ui/tooltip";
 
 interface NotificationsTabProps {
   /** Whether the tab is visible; opening it is what reads the feed, which marks it read. */
@@ -105,16 +106,16 @@ export function NotificationsTab({ active, onRead, onOpenListing }: Notification
                 <div className="flex-1 min-w-0">
                   <UserName userId={user.id} username={user.username} role={user.role} className="text-label text-left" />
                 </div>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="h-7 w-7 shrink-0"
-                  aria-label={`Unfollow ${user.username}`}
-                  title={`Unfollow ${user.username}`}
-                  onClick={() => unfollow(user)}
-                >
-                  <UserMinus className="h-4 w-4" />
-                </Button>
+                <Tip tip={`Unfollow ${user.username}`}>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-7 w-7 shrink-0"
+                    onClick={() => unfollow(user)}
+                  >
+                    <UserMinus className="h-4 w-4" />
+                  </Button>
+                </Tip>
               </div>
             ))}
           </div>

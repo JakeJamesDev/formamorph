@@ -9,6 +9,7 @@ import { MESSAGE_SEVERITY_STYLES, formatMessageDate } from "@/lib/messageSeverit
 import MessageService from "@/services/MessageService";
 import { cn } from "@/lib/utils";
 import type { SentMessage } from "@/types";
+import { Tip } from "@/components/ui/tooltip";
 
 const PAGE_SIZE = 10;
 
@@ -135,12 +136,13 @@ export function SentMessageList({ audience, userId, refreshNonce = 0, emptyLabel
                       {/* `min-w-0` on both the row and the text, or a long subject widens the dialog
                           instead of ellipsing — a flex child won't shrink below its content. */}
                       <span className="flex items-center gap-2 min-w-0">
-                        <span
-                          className={cn('text-label truncate min-w-0', message.recalledAt && 'line-through')}
-                          title={message.subject}
-                        >
-                          {message.subject}
-                        </span>
+                        <Tip tip={message.subject} labelsChild={false}>
+                          <span
+                            className={cn('text-label truncate min-w-0', message.recalledAt && 'line-through')}
+                          >
+                            {message.subject}
+                          </span>
+                        </Tip>
                         {message.broadcast && <Megaphone className="h-3 w-3 shrink-0" aria-label="Broadcast" />}
                         {message.scope === 'pinned' && <Pin className="h-3 w-3 shrink-0" aria-label="Pinned" />}
                         {message.scope === 'new' && <Users className="h-3 w-3 shrink-0" aria-label="Also reaches new accounts" />}

@@ -7,6 +7,7 @@ import { formatModelSize } from '@/lib/localModels';
 import { useSettings } from '@/contexts/SettingsContext';
 import { useUpdateChecker } from '@/hooks/useUpdateChecker';
 import { UpdateDialog } from '@/components/modals/UpdateDialog';
+import { Tip } from '@/components/ui/tooltip';
 
 /** Desktop-only footer version line: the version number opens the update dialog, gains a " — Update
  *  Available!" tag when a newer release exists, and shows download progress → an "Update & Restart" button
@@ -19,15 +20,16 @@ export function UpdateVersionControl() {
 
   return (
     <div className="flex flex-col items-start gap-1">
-      <button
-        type="button"
-        onClick={() => setDialogOpen(true)}
-        className="text-meta text-muted-foreground/60 select-none cursor-pointer hover:text-muted-foreground transition-colors"
-        title="Check for updates"
-      >
-        v{APP_VERSION}{BUILD_TAG && ` · ${BUILD_TAG}`}
-        {updateReady && <span className="text-info"> — Update Available!</span>}
-      </button>
+      <Tip tip="Check for updates">
+        <button
+          type="button"
+          onClick={() => setDialogOpen(true)}
+          className="text-meta text-muted-foreground/60 select-none cursor-pointer hover:text-muted-foreground transition-colors"
+        >
+          v{APP_VERSION}{BUILD_TAG && ` · ${BUILD_TAG}`}
+          {updateReady && <span className="text-info"> — Update Available!</span>}
+        </button>
+      </Tip>
 
       {state.phase === 'downloading' && (
         <div className="w-44 space-y-0.5">

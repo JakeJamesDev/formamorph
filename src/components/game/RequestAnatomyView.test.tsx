@@ -1,4 +1,5 @@
 import { render, screen, cleanup, within, fireEvent } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { describe, it, expect, afterEach } from 'vitest';
 import { RequestAnatomyView } from './RequestAnatomyView';
 import { CONTEXT_HINTS, CONTEXT_LABELS, tilePieces, type AnatomyBlock, type AnatomyPiece } from '@/lib/requestAnatomy';
@@ -191,10 +192,13 @@ describe('RequestAnatomyView chips mode', () => {
     expect(screen.getByText('Stats (Range)')).toBeInTheDocument();
   });
 
-  it('collapses an assembled run to its own chip, short name out and the sentence in the tooltip', () => {
+  it('collapses an assembled run to its own chip, short name out and the sentence in the tooltip', async () => {
     render(<RequestAnatomyView blocks={BLOCKS} mode="chips" />);
     const chip = screen.getByText(CONTEXT_LABELS.condensed);
-    expect(chip.getAttribute('title')).toMatch(/condensed by Memory Summaries/);
+
+    await userEvent.hover(chip);
+
+    expect(await screen.findByText(/condensed by Memory Summaries/)).toBeVisible();
     expect(screen.queryByText(/They found a map/)).toBeNull();
   });
 
@@ -348,7 +352,8 @@ describe('RequestAnatomyView jumps', () => {
     render(<RequestAnatomyView blocks={BLOCKS} mode="chips" type="narration" onJump={(t) => jumps.push(t)} />);
     // Chips mode draws the prose plain, so the label is the click — not the text.
     expect(screen.getByText('You are the narrator.', { exact: false }).closest('button')).toBeNull();
-    fireEvent.click(screen.getByRole('button', { name: 'System Prompt' }));
+    // The label chip is named for what clicking it does, so the match is on the editor it opens.
+    fireEvent.click(screen.getByRole('button', { name: /System Prompt/ }));
     expect(jumps).toEqual([{ tab: 'narration', surface: 'system' }]);
   });
 
@@ -389,10 +394,12 @@ describe('RequestAnatomyView chip jumps', () => {
     expect(jumps).toEqual([{ tab: 'narration', surface: 'system', chip: '<WORLD DESCRIPTION>' }]);
   });
 
-  it('says where a chip goes before it is clicked', () => {
+  it('says where a chip goes before it is clicked', async () => {
     render(<RequestAnatomyView blocks={BLOCKS} mode="chips" type="narration" onJump={() => {}} />);
-    expect(screen.getByRole('button', { name: 'World' }).getAttribute('title'))
-      .toBe('Show this chip in the System Prompt');
+
+    await userEvent.hover(screen.getByRole('button', { name: 'World' }));
+
+    expect(await screen.findByText('Show this chip in the System Prompt')).toBeVisible();
   });
 
   it('is reachable and activatable from the keyboard', () => {
@@ -405,12 +412,13 @@ describe('RequestAnatomyView chip jumps', () => {
     expect(jumps).toHaveLength(1);
   });
 
-  it('sends an assembled chip to the anatomy of the prompt that wrote its content', () => {
+  it('sends an assembled chip to the anatomy of the prompt that wrote its content', async () => {
     const jumps: unknown[] = [];
     const blocks = [block('user', [{ text: 'the plan', contextLabel: 'turn-plan' }])];
     render(<RequestAnatomyView blocks={blocks} mode="chips" type="narration" onJump={(t) => jumps.push(t)} />);
     const chip = screen.getByRole('button', { name: CONTEXT_LABELS['turn-plan'] });
-    expect(chip.getAttribute('title')).toContain('open the Planning prompt');
+    await userEvent.hover(chip);
+    expect(await screen.findByText(/open the Planning prompt/)).toBeVisible();
     fireEvent.click(chip);
     // No surface: the destination is that prompt's hub, not one of its editors.
     expect(jumps).toEqual([{ tab: 'thinking' }]);
@@ -428,12 +436,15 @@ describe('RequestAnatomyView chip jumps', () => {
     }
   });
 
-  it('leaves every chip inert without a handler, and promises no destination either', () => {
+  it('leaves every chip inert without a handler, and promises no destination either', async () => {
     render(<RequestAnatomyView blocks={BLOCKS} mode="chips" type="narration" />);
     expect(screen.queryAllByRole('button')).toHaveLength(0);
-    expect(screen.getByText('World').closest('[title]')).toBeNull();
+    // Base UI stamps every live trigger, so its absence is the absence of a "where it goes" tip.
+    expect(screen.getByText('World').hasAttribute('data-base-ui-tooltip-trigger')).toBe(false);
+
     // The assembled chip keeps its own explanation — that is what it is, not where it goes.
-    expect(screen.getByText(CONTEXT_LABELS.condensed).getAttribute('title'))
-      .toBe(CONTEXT_HINTS.condensed);
+    await userEvent.hover(screen.getByText(CONTEXT_LABELS.condensed));
+
+    expect(await screen.findByText(CONTEXT_HINTS.condensed)).toBeVisible();
   });
 });

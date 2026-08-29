@@ -92,8 +92,9 @@ describe('the descriptor unit control', () => {
 });
 
 describe('the coverage bar', () => {
-  /** Every bar segment as [label, bold?] — the segments are the elements carrying a range title. */
-  const segments = () => [...document.querySelectorAll('div[title*="–"]')]
+  /** Every bar segment as [label, bold?] — each segment raises its own range on hover, and Base UI
+   *  stamps every live trigger, so that attribute is what the segments have in common. */
+  const segments = () => [...document.querySelectorAll('div[data-base-ui-tooltip-trigger]')]
     .map((el) => [el.textContent, el.className.includes('font-semibold')]);
 
   it('bolds the band a fresh game opens in', () => {
