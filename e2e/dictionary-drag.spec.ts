@@ -41,6 +41,13 @@ test('displaced entry rows slide, not snap, in both drag directions', async ({ p
   // Over the virtualization threshold, so the windowed path (the riskier one) is what's measured.
   await importBook(page, 600);
   await page.getByText(BOOK, { exact: true }).click();
+  // Mobile's ListDetail pushes the book's detail pane over the tree and parallaxes the rows off-screen;
+  // pop back so the tree is front and interactable. Desktop shows both panes and renders no back button.
+  const back = page.locator(IN_DIALOG).getByRole('button', { name: 'Dictionary', exact: true });
+  if (await back.isVisible()) {
+    await back.click();
+    await page.waitForTimeout(250); // the list pane slides back over 200ms
+  }
   await expect(grip(page, 'Entry 3')).toBeVisible();
 
   // Down: Entry 1 over Entry 2 → Entry 2 slides up through intermediate positions. Mid-drag, no row
