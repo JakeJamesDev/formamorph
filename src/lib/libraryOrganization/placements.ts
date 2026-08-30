@@ -37,6 +37,36 @@ function firstFit(board: Board, id: string, span: number): PackedTile {
   }
 }
 
+/**
+ * Remove every row and column no footprint touches, shifting everything up and left.
+ *
+ * Partial holes are the player's and stay put; a line nothing crosses is dead space the grid would
+ * only ever scroll past. A footprint spanning a candidate line keeps it alive, so collapsing can never
+ * fold a tile, and disjoint footprints stay disjoint because lines only ever move closer together.
+ *
+ * Returns the same array when nothing collapses, so callers can cheaply tell a no-op apart.
+ */
+export function collapseBoard(tiles: PackedTile[]): PackedTile[] {
+  const used = { rows: new Set<number>(), cols: new Set<number>() };
+  for (const tile of tiles) {
+    for (let i = 0; i < tile.span; i++) {
+      used.rows.add(tile.row + i);
+      used.cols.add(tile.col + i);
+    }
+  }
+  const packed = (lines: Set<number>): Map<number, number> =>
+    new Map([...lines].sort((a, b) => a - b).map((line, index) => [line, index]));
+  const rowTo = packed(used.rows);
+  const colTo = packed(used.cols);
+  const still = [...rowTo].every(([from, to]) => from === to)
+    && [...colTo].every(([from, to]) => from === to);
+  return still ? tiles : tiles.map((tile) => ({
+    ...tile,
+    row: rowTo.get(tile.row)!,
+    col: colTo.get(tile.col)!,
+  }));
+}
+
 /** Stored widths, nearest to `columns` first; a tie goes to the wider board, which says more. */
 const nearestWidths = (placements: Record<number, PlacementMap>, columns: number): number[] =>
   Object.keys(placements)
@@ -60,11 +90,12 @@ function seedOrder(org: LibraryTabOrganization, ids: string[], columns: number):
 /**
  * Every tile's home in one grid at one width.
  *
- * A width the player has arranged is returned as they left it, holes included — nothing here compacts,
- * repacks, or tidies. A width first seen is seeded from the nearest arranged one through the packer, so
- * a new device shows a familiar order rather than an alphabet. Anything with no home yet — a freshly
- * imported world, a tile whose stored spot no longer fits the grid — takes the first free block, which
- * leaves every other tile exactly where it was.
+ * A width the player has arranged is returned as they left it, holes included. The one tidying that
+ * happens is {@link collapseBoard}: a row or column nothing touches folds away, so a partial hole is
+ * the player's and dead lines are nobody's. A width first seen is seeded from the nearest arranged one
+ * through the packer, so a new device shows a familiar order rather than an alphabet. Anything with no
+ * home yet — a freshly imported world, a tile whose stored spot no longer fits the grid — takes the
+ * first free block, which leaves every other tile exactly where it was.
  *
  * Only `ids` are laid down, so the folders' member grids and the main grid never block each other even
  * though one map per width covers them all.
@@ -82,7 +113,7 @@ export function resolvePlacements(
   const stored = org.placements[cols];
 
   if (!stored) {
-    const packed = packTiles(seedOrder(org, ids, cols), org.sizes, cols);
+    const packed = collapseBoard(packTiles(seedOrder(org, ids, cols), org.sizes, cols));
     return Object.fromEntries(packed.map((tile) => [tile.id, { row: tile.row, col: tile.col }]));
   }
 
@@ -96,7 +127,9 @@ export function resolvePlacements(
   }
   for (const id of homeless) board.taken.push(firstFit(board, id, span(id)));
 
-  return Object.fromEntries(board.taken.map((tile) => [tile.id, { row: tile.row, col: tile.col }]));
+  return Object.fromEntries(
+    collapseBoard(board.taken).map((tile) => [tile.id, { row: tile.row, col: tile.col }]),
+  );
 }
 
 /** The organization with one width's map replaced; every other width is left alone. */

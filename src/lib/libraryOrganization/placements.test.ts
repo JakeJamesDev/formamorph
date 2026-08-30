@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import {
+  collapseBoard,
   prunePlacements,
   resolvePlacements,
   rowMajor,
@@ -68,12 +69,22 @@ describe('resolvePlacements', () => {
     expect(rowMajor(places, ['a', 'b'])).toEqual(['b', 'a']);
   });
 
-  it('keeps every stored home exactly where it is, holes and all', () => {
-    // A gap at columns 2-3 is part of the arrangement; nothing here is allowed to close it.
-    const stored = homes([['a', 0, 0], ['b', 0, 4], ['c', 2, 0]]);
+  it('keeps every stored home exactly where it is, partial holes and all', () => {
+    // The row-0 gap at columns 2-3 is part of the arrangement; `c` below keeps those columns alive,
+    // so nothing here is allowed to close it.
+    const stored = homes([['a', 0, 0], ['b', 0, 4], ['c', 2, 2]]);
     const state = org({ order: ['a', 'b', 'c'], placements: { 8: stored } });
 
     expect(resolvePlacements(state, ['a', 'b', 'c'], 8)).toEqual(stored);
+  });
+
+  it('folds a row and a column nothing touches, and leaves the rest of the shape alone', () => {
+    // Rows 2-3 and columns 2-3 are crossed by no footprint at all: dead lines, not holes.
+    const stored = homes([['a', 0, 0], ['b', 0, 4], ['c', 4, 0]]);
+    const state = org({ order: ['a', 'b', 'c'], placements: { 8: stored } });
+
+    expect(resolvePlacements(state, ['a', 'b', 'c'], 8))
+      .toEqual(homes([['a', 0, 0], ['b', 0, 2], ['c', 2, 0]]));
   });
 
   it('drops a newcomer into the first free space and leaves the arrangement alone', () => {
@@ -108,6 +119,32 @@ describe('resolvePlacements', () => {
     const places = resolvePlacements(state, ['a'], 8);
 
     expect(places.a.col + spanAt('large', 8)).toBeLessThanOrEqual(8);
+  });
+});
+
+describe('collapseBoard', () => {
+  const tile = (id: string, row: number, col: number, span: number) => ({ id, row, col, span });
+
+  it('slides everything past a dead line closer, up and left', () => {
+    const folded = collapseBoard([tile('a', 2, 2, 2), tile('b', 6, 6, 1)]);
+
+    // Leading lines are dead lines too, and so is the whole gap between the tiles: the board pulls
+    // to the top-left corner and the two footprints end up touching.
+    expect(folded).toEqual([tile('a', 0, 0, 2), tile('b', 2, 2, 1)]);
+  });
+
+  it('keeps a line any footprint crosses, so a partial hole survives', () => {
+    const board = [tile('big', 0, 0, 4), tile('s', 0, 5, 1)];
+
+    // Every row is crossed by `big`, so no row folds even though `s` sits alone in row 0. Column 4
+    // is crossed by nothing, so `s` slides left to meet the large tile.
+    expect(collapseBoard(board)).toEqual([tile('big', 0, 0, 4), tile('s', 0, 4, 1)]);
+  });
+
+  it('returns the very same array when nothing is dead', () => {
+    const board = [tile('a', 0, 0, 1), tile('b', 1, 1, 1)];
+
+    expect(collapseBoard(board)).toBe(board);
   });
 });
 
