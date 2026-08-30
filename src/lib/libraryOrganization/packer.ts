@@ -9,7 +9,7 @@ export interface PackedTile {
 }
 
 /** Base cells per side, at half / one / double a medium tile. */
-const SPAN: Record<LibraryTileSize, number> = { small: 1, medium: 2, large: 4 };
+export const TILE_SPAN: Record<LibraryTileSize, number> = { small: 1, medium: 2, large: 4 };
 
 /** The column a run of small tiles is filling, and how deep it has stacked so far. */
 interface SmallRun {
@@ -65,7 +65,7 @@ export function packTiles(
   let run: SmallRun | null = null;
 
   for (const id of order) {
-    const span = Math.min(SPAN[sizes[id] ?? 'medium'], cols);
+    const span = Math.min(TILE_SPAN[sizes[id] ?? 'medium'], cols);
     if (span > 1) {
       run = null;
       const [row, col] = firstFit(span);

@@ -51,7 +51,9 @@ export function LibraryGroupTile({
   onOpen: (groupId: string) => void;
 }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } =
-    useSortable({ id: group.id });
+    // The tile board slides displaced tiles itself; dnd-kit's layout animation would stack a second
+    // offset on the same move, so the tile starts twice as far away.
+    useSortable({ id: group.id, animateLayoutChanges: layout === 'grid' ? () => false : undefined });
   const style = {
     transform: CSS.Translate.toString(transform),
     transition,

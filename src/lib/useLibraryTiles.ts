@@ -3,6 +3,7 @@ import { randomUUID } from '@/lib/uuid';
 import type { MainMenuCardTab } from '@/views/mainMenuTabs';
 import {
   addToGroup,
+  commitPlacements,
   createGroupFromItem,
   disbandGroup,
   groupOf,
@@ -19,6 +20,7 @@ import {
   type LibraryGroup,
   type LibraryTabOrganization,
   type LibraryTileSize,
+  type PlacementMap,
 } from '@/lib/libraryOrganization';
 
 /** One tab's tile arrangement plus the actions the grid dispatches against it. */
@@ -33,7 +35,11 @@ export interface LibraryTiles {
   group: (id: string) => LibraryGroup | undefined;
   groupOfItem: (itemId: string) => LibraryGroup | undefined;
   size: (id: string) => LibraryTileSize;
-  setSize: (id: string, size: LibraryTileSize) => void;
+  /**
+   * Resize one tile. `ids` are the tiles sharing its grid, so a tile that outgrows its cell can find a
+   * free one without disturbing them.
+   */
+  setSize: (id: string, size: LibraryTileSize, ids?: string[]) => void;
   addTo: (itemId: string, groupId: string) => void;
   /** Fold a tile into a brand-new folder on its own, for the context menu's New Group entry. */
   groupWithNew: (itemId: string) => void;
@@ -42,6 +48,13 @@ export interface LibraryTiles {
   rename: (groupId: string, name: string) => void;
   /** Write the list a drag finished with as the order, for the main grid or one folder's members. */
   commitOrder: (drawn: string[], container?: string | null) => void;
+  /** Write the board a grid drag finished with: every tile's cell at this width, and the order it reads as. */
+  commitPlacements: (
+    columns: number,
+    places: PlacementMap,
+    ids: string[],
+    container?: string | null,
+  ) => void;
   setPromptPreset: (groupId: string, presetId: string | null) => void;
 }
 
@@ -94,7 +107,10 @@ export function useLibraryTiles(
     group: useCallback((id: string) => organization.groups[id], [organization]),
     groupOfItem: useCallback((itemId: string) => groupOf(organization, itemId), [organization]),
     size: useCallback((id: string) => tileSize(organization, id), [organization]),
-    setSize: useCallback((id, size) => setOrganization((prev) => setTileSize(prev, id, size)), []),
+    setSize: useCallback(
+      (id, size, ids) => setOrganization((prev) => setTileSize(prev, id, size, ids)),
+      [],
+    ),
     groupWithNew,
     addTo: useCallback((itemId, groupId) => setOrganization((prev) => addToGroup(prev, itemId, groupId)), []),
     removeFrom: useCallback((itemId) => setOrganization((prev) => removeFromGroup(prev, itemId)), []),
@@ -103,6 +119,12 @@ export function useLibraryTiles(
     commitOrder: useCallback((drawn: string[], container?: string | null) => {
       setOrganization((prev) => setDrawnOrder(prev, drawn, container));
     }, []),
+    commitPlacements: useCallback(
+      (columns: number, places: PlacementMap, ids: string[], container?: string | null) => {
+        setOrganization((prev) => commitPlacements(prev, { columns, places, ids, container }));
+      },
+      [],
+    ),
     setPromptPreset: useCallback(
       (groupId, presetId) => setOrganization((prev) => setGroupPromptPreset(prev, groupId, presetId)),
       [],

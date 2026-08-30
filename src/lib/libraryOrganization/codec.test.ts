@@ -29,7 +29,38 @@ describe('loadTabOrganization', () => {
   it('adopts the old flat card order, so an existing library is not scrambled by the update', () => {
     localStorage.setItem(LEGACY_ORDER_KEYS.worlds, JSON.stringify(['w3', 'w1', 'w2']));
 
-    expect(loadTabOrganization('worlds')).toEqual({ order: ['w3', 'w1', 'w2'], groups: {}, sizes: {} });
+    // No arrangement yet: the flat order is the whole seed, and the board derives its cells from it.
+    expect(loadTabOrganization('worlds')).toEqual({
+      ...emptyTabOrganization(),
+      order: ['w3', 'w1', 'w2'],
+    });
+  });
+
+  it('round-trips the per-width arrangement, holes and all', () => {
+    const org = {
+      ...grouped(),
+      placements: { 8: { a: { row: 0, col: 0 }, b: { row: 2, col: 4 } }, 4: { a: { row: 1, col: 2 } } },
+    };
+    saveTabOrganization('worlds', org);
+
+    expect(loadTabOrganization('worlds').placements).toEqual(org.placements);
+  });
+
+  it('drops an arrangement entry the grid could not draw', () => {
+    localStorage.setItem(TILE_STORAGE_KEYS.worlds, JSON.stringify({
+      order: ['a', 'b', 'c', 'd'],
+      groups: {},
+      sizes: {},
+      placements: {
+        8: { a: { row: 0, col: 0 }, b: { row: -1, col: 0 }, c: { row: 0 }, d: 'nowhere' },
+        // A width that is not a column count says nothing about any board.
+        wide: { a: { row: 0, col: 0 } },
+        0: { a: { row: 0, col: 0 } },
+      },
+    }));
+
+    // What survives is exactly the one readable home; the rest resolve to free spots at render time.
+    expect(loadTabOrganization('worlds').placements).toEqual({ 8: { a: { row: 0, col: 0 } } });
   });
 
   it('prefers organized state over the old order once the player has arranged anything', () => {

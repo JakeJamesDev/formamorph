@@ -52,6 +52,8 @@ export interface DragOptions {
   cancel?: boolean;
   /** Runs once the pointer has arrived and rested, just before the release. */
   onHeld?: () => Promise<void>;
+  /** Points to travel through on the way, for a gesture that turns rather than going straight there. */
+  via?: { x: number; y: number }[];
 }
 
 /**
@@ -77,17 +79,21 @@ export async function dragBetween(
   end: { x: number; y: number },
   options: DragOptions = {},
 ): Promise<void> {
-  const { steps = 12, hold = 250, interval = 0, cancel = false, onHeld } = options;
+  const { steps = 12, hold = 250, interval = 0, cancel = false, onHeld, via = [] } = options;
 
   await page.mouse.move(start.x, start.y);
   await page.mouse.down();
   await page.mouse.move(start.x + 12, start.y, { steps: 2 });
-  for (let i = 1; i <= steps; i++) {
-    await page.mouse.move(
-      start.x + 12 + ((end.x - start.x - 12) * i) / steps,
-      start.y + ((end.y - start.y) * i) / steps,
-    );
-    if (interval) await page.waitForTimeout(interval);
+  let from = { x: start.x + 12, y: start.y };
+  for (const leg of [...via, end]) {
+    for (let i = 1; i <= steps; i++) {
+      await page.mouse.move(
+        from.x + ((leg.x - from.x) * i) / steps,
+        from.y + ((leg.y - from.y) * i) / steps,
+      );
+      if (interval) await page.waitForTimeout(interval);
+    }
+    from = leg;
   }
   await page.mouse.move(end.x, end.y);
   if (hold) await page.waitForTimeout(hold);
@@ -263,4 +269,120 @@ export function intermediates(samples: TileSample[], name: string, step: number)
     if (d > step * 0.15 && d < step * 0.85) seen.add(Math.round(d));
   }
   return seen.size;
+}
+
+/** One tile's footprint on the board, in base cells. */
+export interface TileCell {
+  row: number;
+  col: number;
+  span: number;
+}
+
+/**
+ * Where every tile stands, by the name on its thumbnail, read off the rendered grid.
+ *
+ * The cells come from the browser's own resolved grid placement rather than from anything the drag
+ * keeps, so this measures where a player sees a tile — not what the board believes about it.
+ */
+export function boardCells(page: Page): Promise<Record<string, TileCell>> {
+  return page.evaluate(() => {
+    const grid = document.querySelector('[data-radix-scroll-area-viewport] div.grid');
+    if (!grid) return {};
+    const cells: Record<string, { row: number; col: number; span: number }> = {};
+    for (const cell of [...grid.children]) {
+      const img = cell.querySelector('img[alt]:not([alt=""])') as HTMLImageElement | null;
+      const name = img?.alt ?? cell.querySelector('h3')?.textContent?.trim();
+      if (!name) continue;
+      const style = getComputedStyle(cell);
+      const span = Number(style.gridColumnEnd.replace('span ', '')) || 1;
+      cells[name] = {
+        row: Number(style.gridRowStart) - 1,
+        col: Number(style.gridColumnStart) - 1,
+        span,
+      };
+    }
+    return cells;
+  });
+}
+
+/** The grid's own geometry, so a cell can be turned into a point on the page. */
+export function gridPitch(page: Page): Promise<{ left: number; top: number; x: number; y: number }> {
+  return page.evaluate(() => {
+    const grid = document.querySelector('[data-radix-scroll-area-viewport] div.grid') as HTMLElement;
+    const box = grid.getBoundingClientRect();
+    const style = getComputedStyle(grid);
+    const gap = parseFloat(style.rowGap) || 0;
+    const columns = style.gridTemplateColumns.split(' ').map(parseFloat);
+    const rows = style.gridTemplateRows.split(' ').map(parseFloat);
+    return { left: box.left, top: box.top, x: columns[0] + gap, y: rows[0] + gap };
+  });
+}
+
+/**
+ * Carry one named tile until its top-left corner sits on a chosen base cell.
+ *
+ * The drag is aimed at the tile's corner rather than at another tile, because a mixed-size board has
+ * cells no tile occupies and the whole point is which cell the footprint claims.
+ */
+export async function dragTileToCell(
+  page: Page,
+  name: string,
+  cell: { row: number; col: number },
+  options: DragOptions & { via?: never; through?: { row: number; col: number }[] } = {},
+): Promise<void> {
+  const box = await page.getByRole('img', { name, exact: true }).first().boundingBox();
+  if (!box) throw new Error(`no tile named ${name}`);
+  const pitch = await gridPitch(page);
+  const start = { x: box.x + box.width / 2, y: box.y + box.height / 2 };
+  const aim = (at: { row: number; col: number }) => ({
+    x: start.x + (pitch.left + at.col * pitch.x - box.x),
+    y: start.y + (pitch.top + at.row * pitch.y - box.y),
+  });
+  const { through, ...rest } = options;
+  await dragBetween(page, start, aim(cell), { ...rest, via: through?.map(aim) });
+}
+
+/** Set one tile's size through the context menu, the only place a player can. */
+export async function setTileSize(
+  page: Page,
+  name: string,
+  size: 'Small' | 'Medium' | 'Large',
+): Promise<void> {
+  await page.getByRole('img', { name, exact: true }).first().click({ button: 'right' });
+  await page.getByRole('menuitemradio', { name: size }).click();
+  await page.waitForTimeout(150);
+}
+
+/** True when two footprints claim any base cell in common. */
+export const cellsOverlap = (a: TileCell, b: TileCell): boolean =>
+  a.row < b.row + b.span && b.row < a.row + a.span
+  && a.col < b.col + b.span && b.col < a.col + a.span;
+
+/**
+ * Start recording how far any tile is pushed from its grid cell by an inline transform, per frame.
+ *
+ * A board that simply redraws never pushes anything; only a slide does. One rAF loop for the page's
+ * life, emptied on each call, the same lifetime rule the other samplers here follow.
+ */
+export function startTransformSampler(page: Page): Promise<void> {
+  return page.evaluate(() => {
+    const w = window as unknown as { __shiftMax: number; __shiftLoop?: boolean };
+    w.__shiftMax = 0;
+    if (w.__shiftLoop) return;
+    w.__shiftLoop = true;
+    const tick = () => {
+      const grid = document.querySelector('[data-radix-scroll-area-viewport] div.grid');
+      for (const cell of grid ? [...grid.children] : []) {
+        const matrix = new DOMMatrixReadOnly(getComputedStyle(cell).transform);
+        w.__shiftMax = Math.max(w.__shiftMax, Math.hypot(matrix.m41, matrix.m42));
+      }
+      requestAnimationFrame(tick);
+    };
+    requestAnimationFrame(tick);
+  });
+}
+
+/** The furthest any tile was pushed since the last {@link startTransformSampler}, in pixels. */
+export function maxTransformSeen(page: Page): Promise<number> {
+  return page.evaluate(() => Math.round((window as unknown as { __shiftMax: number }).__shiftMax));
 }
