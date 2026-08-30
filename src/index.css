@@ -887,3 +887,11 @@ b {
 .react-flow__attribution a:hover {
   opacity: 1;
 }
+
+/* Hit-testing goes dark for the length of an editor drag. `EditorDndContext` stamps the attribute while a
+   drag is live; the wrapper draws no box of its own, and `pointer-events` is inherited, so this reaches
+   every row under it. Without it, rows light their hover state and pop tooltips under the moving cursor.
+   Drops are unaffected — dnd-kit's collision is rect-based, not hit-tested. */
+[data-editor-dragging] {
+  pointer-events: none;
+}

@@ -5,14 +5,10 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, Di
 import { Button } from "@/components/ui/button";
 import { Loader2, X, GripVertical, Folder, FolderOpen, ChevronLeft } from "lucide-react";
 import { ActionIcon } from "@/lib/actionIcons";
-import {
-  DndContext, closestCenter, PointerSensor, KeyboardSensor, useSensor, useSensors, type DragEndEvent,
-} from '@dnd-kit/core';
-import {
-  SortableContext, useSortable, sortableKeyboardCoordinates, verticalListSortingStrategy, arrayMove,
-} from '@dnd-kit/sortable';
+import { type DragEndEvent } from '@dnd-kit/core';
+import { useSortable, verticalListSortingStrategy, arrayMove } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
-import { restrictToVerticalAxis, restrictToFirstScrollableAncestor } from '@dnd-kit/modifiers';
+import { EditorDndContext, StableSortableContext } from '@/components/dnd/EditorDndContext';
 import { ConfirmDialog } from '../ConfirmDialog';
 import {
   getAllSaveRecords, deleteSaveRecord, putSaveRecord, migrateLegacySaves, getOrder, setOrder,
@@ -243,11 +239,6 @@ export function LoadGameDialog({ open, onOpenChange, current, onLoad, title, ico
   // In-game cross-world confirm. `targetWorldId` set ⇒ installed world, we'll switch; absent ⇒ warn + load in place.
   const [pendingLoad, setPendingLoad] = React.useState<{ row: SaveRow; targetWorldId?: string } | null>(null);
   const [blockedLoad, setBlockedLoad] = React.useState<SaveRow | null>(null); // cold-start orphan (world not installed)
-
-  const sensors = useSensors(
-    useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
-    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
-  );
 
   React.useEffect(() => () => { terminateExportWorker(); }, []);
 
@@ -518,31 +509,23 @@ export function LoadGameDialog({ open, onOpenChange, current, onLoad, title, ico
                 height to resolve against, so it sizes to content and clips with no scroll. `overflow-y-auto`
                 treats `max-h` as a real scroll boundary and stays the dnd autoscroll ancestor. */}
             <div className="max-h-[60dvh] overflow-y-auto">
-              <div className="space-y-2 p-1">
+              {/* Flex gap, not `space-y`: the drag layer wraps its rows in an element of its own, and a
+                  `> * + *` rule would stop reaching them. A gap still does, since that wrapper draws no box. */}
+              <div className="flex flex-col gap-2 p-1">
                 {atRoot ? (
                   <>
                     {currentFolder && <PinnedFolderRow folder={currentFolder} onOpen={(f) => setActiveKey(f.key)} />}
-                    <DndContext
-                      sensors={sensors}
-                      collisionDetection={closestCenter}
-                      onDragEnd={handleFolderDragEnd}
-                      modifiers={[restrictToVerticalAxis, restrictToFirstScrollableAncestor]}
-                    >
-                      <SortableContext items={listFolders.map(f => f.key)} strategy={verticalListSortingStrategy}>
+                    <EditorDndContext onDragEnd={handleFolderDragEnd}>
+                      <StableSortableContext items={listFolders} getId={(f) => f.key} strategy={verticalListSortingStrategy}>
                         {listFolders.map(f => (
                           <SortableFolderRow key={f.key} folder={f} onOpen={(x) => setActiveKey(x.key)} />
                         ))}
-                      </SortableContext>
-                    </DndContext>
+                      </StableSortableContext>
+                    </EditorDndContext>
                   </>
                 ) : (
-                  <DndContext
-                    sensors={sensors}
-                    collisionDetection={closestCenter}
-                    onDragEnd={handleSaveDragEnd}
-                    modifiers={[restrictToVerticalAxis, restrictToFirstScrollableAncestor]}
-                  >
-                    <SortableContext items={shownSaves.map(s => s.id)} strategy={verticalListSortingStrategy}>
+                  <EditorDndContext onDragEnd={handleSaveDragEnd}>
+                    <StableSortableContext items={shownSaves} strategy={verticalListSortingStrategy}>
                       {shownSaves.map(row => (
                         <SortableSaveRow
                           key={row.id}
@@ -554,8 +537,8 @@ export function LoadGameDialog({ open, onOpenChange, current, onLoad, title, ico
                           onDelete={(r) => setPendingDelete(r)}
                         />
                       ))}
-                    </SortableContext>
-                  </DndContext>
+                    </StableSortableContext>
+                  </EditorDndContext>
                 )}
 
                 {busy && (

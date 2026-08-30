@@ -1,14 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import {
-  DndContext,
-  closestCenter,
-  PointerSensor,
-  useSensor,
-  useSensors,
-  type DragEndEvent,
-} from '@dnd-kit/core';
-import { SortableContext, arrayMove, verticalListSortingStrategy, useSortable } from '@dnd-kit/sortable';
-import { restrictToVerticalAxis, restrictToFirstScrollableAncestor } from '@dnd-kit/modifiers';
+import { type DragEndEvent } from '@dnd-kit/core';
+import { arrayMove, verticalListSortingStrategy, useSortable } from '@dnd-kit/sortable';
+import { EditorDndContext, StableSortableContext } from '@/components/dnd/EditorDndContext';
 import { CSS } from '@dnd-kit/utilities';
 import { GripVertical, X } from 'lucide-react';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
@@ -477,8 +470,6 @@ export function LocalModelModal({ open, onOpenChange }: { open: boolean; onOpenC
     setMoveFlow((prev) => (prev?.phase === 'moving' ? { ...prev, progress: p } : prev));
   }), []);
 
-  const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 8 } }));
-
   const handleDragEnd = (e: DragEndEvent) => {
     const { active, over } = e;
     if (!over || active.id === over.id) return;
@@ -636,28 +627,22 @@ export function LocalModelModal({ open, onOpenChange }: { open: boolean; onOpenC
         ) : view === 'installed' ? (
           <>
           <ScrollArea className="min-h-0 flex-1">
-            <div className="space-y-2">
+            {/* Flex gap, not `space-y`: the drag layer wraps its rows in an element of its own, and a
+                `> * + *` rule would stop reaching them. A gap still does, since that wrapper draws no box. */}
+            <div className="flex flex-col gap-2">
             {installed.length === 0 ? (
               <div className="pt-8 text-center text-helper text-muted-foreground">
                 No models installed. Grab one from the Recommended tab, drop a `.gguf` into your download
                 folder, or point us at a folder you already keep models in from the Options tab.
               </div>
             ) : (
-              <DndContext
-                sensors={sensors}
-                collisionDetection={closestCenter}
+              <EditorDndContext
+                // A longer reach before a press becomes a drag than the editor lists take: a row here is a
+                // dense block of controls, and 5px is inside the slop of a tap on one.
+                activationDistance={8}
                 onDragEnd={handleDragEnd}
-                // Lock drags to the vertical axis and clamp them to this scroll frame; never auto-scroll the
-                // page/window (that's the runaway "infinite scroll"). Mirrors the world/dictionary lists.
-                modifiers={[restrictToVerticalAxis, restrictToFirstScrollableAncestor]}
-                autoScroll={{
-                  canScroll: (el) =>
-                    el !== document.scrollingElement &&
-                    el !== document.body &&
-                    el !== document.documentElement,
-                }}
               >
-                <SortableContext items={installed.map((i) => i.id)} strategy={verticalListSortingStrategy}>
+                <StableSortableContext items={installed} strategy={verticalListSortingStrategy}>
                   {installed.map((item) => (
                     <InstalledRow
                       key={item.id}
@@ -669,8 +654,8 @@ export function LocalModelModal({ open, onOpenChange }: { open: boolean; onOpenC
                       onDelete={(it, name) => setConfirmDelete({ fileName: it.fileName, name })}
                     />
                   ))}
-                </SortableContext>
-              </DndContext>
+                </StableSortableContext>
+              </EditorDndContext>
             )}
             </div>
           </ScrollArea>
