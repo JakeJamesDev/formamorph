@@ -31,9 +31,35 @@ export interface SimResult {
   blocker: SimBlocker | null;
 }
 
+/** One shadow cell the gesture has pushed out of a tile that has not moved yet. */
+export interface SimGhost {
+  /** Stable per-cell key, so a rendering can track one cell across advances. */
+  key: string;
+  id: string;
+  row: number;
+  col: number;
+}
+
+/** A swept tile still standing: how much of it is displaced, and the way its cells lean. */
+export interface SimResistance {
+  id: string;
+  /** Fraction of the tile's cells the gesture has displaced, 0..1. */
+  swept: number;
+  /** The displacement vector most of its swept cells share. */
+  lean: CellAnchor;
+}
+
+/** The sim's shadow state, for tooling that draws the machinery. Gameplay never reads it. */
+export interface SimInspection {
+  ghosts: SimGhost[];
+  resisting: SimResistance[];
+}
+
 export interface CellSim {
   /** Step the dragged footprint to `want` and read the board it leaves. */
   advance: (want: CellAnchor) => SimResult;
+  /** Read the shadow cells behind the last advance. Debug affordance; the app does not call it. */
+  inspect: () => SimInspection;
 }
 
 /** Cells a tile must have swept before the whole group moves. Fixed: no setting, no UI. */
@@ -211,5 +237,31 @@ export function createCellSim(
     };
   };
 
-  return { advance };
+  const inspect = (): SimInspection => {
+    const ghosts: SimGhost[] = [];
+    const resisting: SimResistance[] = [];
+    for (const tile of home.values()) {
+      let i = 0;
+      for (let r = 0; r < tile.span; r++) {
+        for (let c = 0; c < tile.span; c++) {
+          const key = `${tile.id}:${i++}`;
+          const cell = cells.get(key)!;
+          if (cell.row !== tile.row + r || cell.col !== tile.col + c) {
+            ghosts.push({ key, id: tile.id, row: cell.row, col: cell.col });
+          }
+        }
+      }
+      const pushed = displacement(tile);
+      if (pushed.length) {
+        resisting.push({
+          id: tile.id,
+          swept: pushed.length / (tile.span * tile.span),
+          lean: modal(pushed),
+        });
+      }
+    }
+    return { ghosts, resisting };
+  };
+
+  return { advance, inspect };
 }

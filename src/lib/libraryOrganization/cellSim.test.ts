@@ -232,3 +232,45 @@ describe('createCellSim', () => {
     for (const want of path) expectSound(sim.advance(want), 5, spans);
   });
 });
+
+describe('inspect', () => {
+  it('reports the swept cell of a standing tile as a ghost, with its lean and fraction', () => {
+    const sim = createCellSim(board([['a', 0, 0, 1], ['big', 0, 1, 4]]), 'a', 6);
+
+    // One corner cell of sixteen: far below consent, so the tile stands and its cell is a ghost.
+    const result = sim.advance({ row: 0, col: 1 });
+    const { ghosts, resisting } = sim.inspect();
+
+    expect(result.blocked).toBe(true);
+    expect(ghosts).toEqual([{ key: expect.stringMatching(/^big:/), id: 'big', row: 0, col: 0 }]);
+    expect(resisting).toEqual([{ id: 'big', swept: 1 / 16, lean: { row: 0, col: -1 } }]);
+  });
+
+  it('reads empty at rest, over open cells, and after a completed trade', () => {
+    const sim = createCellSim(board([['a', 0, 0, 1], ['b', 0, 1, 2]]), 'a', 6);
+
+    // Over open cells: nothing swept, nothing to show.
+    sim.advance({ row: 2, col: 0 });
+    expect(sim.inspect()).toEqual({ ghosts: [], resisting: [] });
+
+    // Half of b swept, cell by cell: one ghost on the way, then the trade reforms b's cells and it
+    // drops out of the shadow readout on the same advance.
+    sim.advance({ row: 0, col: 0 });
+    sim.advance({ row: 0, col: 1 });
+    expect(sim.inspect().ghosts).toHaveLength(1);
+    const traded = sim.advance({ row: 0, col: 2 });
+    expect(traded.moved).toEqual(['b']);
+    expect(sim.inspect()).toEqual({ ghosts: [], resisting: [] });
+  });
+
+  it('reads empty again when a sweep is taken back', () => {
+    const sim = createCellSim(board([['a', 0, 0, 1], ['big', 0, 1, 4]]), 'a', 6);
+
+    sim.advance({ row: 0, col: 1 });
+    expect(sim.inspect().ghosts.length).toBeGreaterThan(0);
+
+    // The same single-axis step in reverse walks the cell home.
+    sim.advance({ row: 0, col: 0 });
+    expect(sim.inspect()).toEqual({ ghosts: [], resisting: [] });
+  });
+});
