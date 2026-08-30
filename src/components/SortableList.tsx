@@ -1,24 +1,10 @@
-import {
-  DndContext,
-  closestCenter,
-  PointerSensor,
-  KeyboardSensor,
-  useSensor,
-  useSensors,
-  type DragEndEvent,
-} from '@dnd-kit/core';
-import {
-  SortableContext,
-  useSortable,
-  arrayMove,
-  verticalListSortingStrategy,
-  sortableKeyboardCoordinates,
-} from '@dnd-kit/sortable';
+import { type DragEndEvent } from '@dnd-kit/core';
+import { useSortable, arrayMove, verticalListSortingStrategy } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
-import { restrictToVerticalAxis, restrictToFirstScrollableAncestor } from '@dnd-kit/modifiers';
 import { type ReactNode } from 'react';
 import { Copy, X } from 'lucide-react';
 import { EditorRow, EditorRowList } from '@/components/EditorRow';
+import { EditorDndContext, StableSortableContext } from '@/components/dnd/EditorDndContext';
 
 export interface SortableListItem {
   id: string;
@@ -91,11 +77,6 @@ export function SortableList<T extends SortableListItem>({
   onDuplicate: (id: string) => void;
   onReorder: (next: T[]) => void;
 }) {
-  const sensors = useSensors(
-    useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
-    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
-  );
-
   const handleDragEnd = (event: DragEndEvent) => {
     const { active, over } = event;
     if (!over || active.id === over.id) return;
@@ -106,17 +87,8 @@ export function SortableList<T extends SortableListItem>({
   };
 
   return (
-    <DndContext
-      sensors={sensors}
-      collisionDetection={closestCenter}
-      onDragEnd={handleDragEnd}
-      modifiers={[restrictToVerticalAxis, restrictToFirstScrollableAncestor]}
-      autoScroll={{
-        canScroll: (el) =>
-          el !== document.scrollingElement && el !== document.body && el !== document.documentElement,
-      }}
-    >
-      <SortableContext items={items.map((i) => i.id)} strategy={verticalListSortingStrategy}>
+    <EditorDndContext onDragEnd={handleDragEnd}>
+      <StableSortableContext items={items} strategy={verticalListSortingStrategy}>
         <EditorRowList>
           {items.map((item) => (
             <SortableRow
@@ -129,7 +101,7 @@ export function SortableList<T extends SortableListItem>({
             />
           ))}
         </EditorRowList>
-      </SortableContext>
-    </DndContext>
+      </StableSortableContext>
+    </EditorDndContext>
   );
 }

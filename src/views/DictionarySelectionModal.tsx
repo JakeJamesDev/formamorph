@@ -1,18 +1,13 @@
-import { useMemo, useState } from 'react';
+import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Checkbox } from '@/components/ui/checkbox';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { GripVertical } from 'lucide-react';
-import {
-  DndContext, closestCorners, PointerSensor, KeyboardSensor, useSensor, useSensors,
-  type DragEndEvent,
-} from '@dnd-kit/core';
-import {
-  SortableContext, useSortable, sortableKeyboardCoordinates, verticalListSortingStrategy, arrayMove,
-} from '@dnd-kit/sortable';
+import { closestCorners, type DragEndEvent } from '@dnd-kit/core';
+import { useSortable, verticalListSortingStrategy, arrayMove } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
-import { restrictToVerticalAxis, restrictToFirstScrollableAncestor } from '@dnd-kit/modifiers';
+import { EditorDndContext, StableSortableContext } from '@/components/dnd/EditorDndContext';
 import DictionaryStorageService from '@/services/DictionaryStorageService';
 import { buildInitialSelection, finalizeSelection, type DictionarySelectionItem } from '@/lib/dictionarySelection';
 import type { Dictionary, DictionaryMetadata } from '@/types';
@@ -107,13 +102,6 @@ const DictionarySelectionModal = ({
   );
   const [resolving, setResolving] = useState(false);
 
-  const sensors = useSensors(
-    useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
-    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
-  );
-
-  const ids = useMemo(() => items.map((i) => i.key), [items]);
-
   const toggle = (key: string, enabled: boolean) =>
     setItems((prev) => prev.map((i) => (i.key === key ? { ...i, enabled } : i)));
 
@@ -156,20 +144,15 @@ const DictionarySelectionModal = ({
         </p>
 
         <ScrollArea className="flex-1 mb-4">
-          <DndContext
-            sensors={sensors}
-            collisionDetection={closestCorners}
-            onDragEnd={handleDragEnd}
-            modifiers={[restrictToVerticalAxis, restrictToFirstScrollableAncestor]}
-          >
-            <SortableContext items={ids} strategy={verticalListSortingStrategy}>
+          <EditorDndContext collisionDetection={closestCorners} onDragEnd={handleDragEnd}>
+            <StableSortableContext items={items} getId={(i) => i.key} strategy={verticalListSortingStrategy}>
               <div className="flex flex-col gap-2 pr-2">
                 {items.map((item) => (
                   <SelectionRow key={item.key} item={item} onToggle={toggle} />
                 ))}
               </div>
-            </SortableContext>
-          </DndContext>
+            </StableSortableContext>
+          </EditorDndContext>
         </ScrollArea>
 
         <div className="flex gap-2 flex-shrink-0">

@@ -1,11 +1,10 @@
 import { useRef, useState } from 'react';
-import {
-  DndContext, closestCenter, PointerSensor, KeyboardSensor, useSensor, useSensors, type DragEndEvent,
-} from '@dnd-kit/core';
-import {
-  SortableContext, useSortable, arrayMove, rectSortingStrategy, sortableKeyboardCoordinates,
-} from '@dnd-kit/sortable';
+import { type DragEndEvent } from '@dnd-kit/core';
+import { useSortable, arrayMove, rectSortingStrategy } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
+import { EditorDndContext, StableSortableContext } from '@/components/dnd/EditorDndContext';
+
+const NO_MODIFIERS: never[] = [];
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
@@ -288,12 +287,6 @@ const ImageTagsField = ({ label, images, onImagesChange, slots = 1, embeddedLimi
   // The picture itself can't be the id: it is a data URL megabytes long, and two copies of one picture
   // would collide into a single id.
   const tileIds = useStableIds(shown);
-  const sensors = useSensors(
-    // A press only becomes a drag after 5px, so a tap still frames the picture instead of nudging it.
-    useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
-    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
-  );
-
   /** Reordering is the whole promote gesture: slot 0 is what stands in wherever one picture is shown, and
    *  the order is the order the game shows them in. */
   const handleReorder = ({ active, over }: DragEndEvent) => {
@@ -353,12 +346,12 @@ const ImageTagsField = ({ label, images, onImagesChange, slots = 1, embeddedLimi
         // Frozen while a batch converts: the slots the pictures are landing in are still being written, so
         // reframing or reordering mid-run would act on a list about to change under it.
         <div className={cn('flex flex-wrap items-center gap-2', batch && 'pointer-events-none opacity-50')}>
-          {/* `autoScroll={false}` and `closestCenter`, matching KeywordChips: this strip sits inside the
-              entity editor's ScrollArea, where dnd-kit's auto-scroll chases the dragged item into empty
-              space and an empty collision result flips the sort gap every frame. */}
-          <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleReorder} autoScroll={false}>
+          {/* No modifiers and no auto-scroll, matching KeywordChips: this strip sits inside the entity
+              editor's ScrollArea, where dnd-kit's auto-scroll chases the dragged item into empty space and
+              an empty collision result flips the sort gap every frame. */}
+          <EditorDndContext modifiers={NO_MODIFIERS} autoScroll={false} onDragEnd={handleReorder}>
             {/* rectSortingStrategy (2D), not a single-row one: the strip wraps once there are enough. */}
-            <SortableContext items={tileIds} strategy={rectSortingStrategy}>
+            <StableSortableContext items={tileIds} strategy={rectSortingStrategy}>
               {shown.map((url, i) => (
                 <ImageTile
                   key={tileIds[i]}
@@ -369,8 +362,8 @@ const ImageTagsField = ({ label, images, onImagesChange, slots = 1, embeddedLimi
                   onSelect={() => setShowing(i)}
                 />
               ))}
-            </SortableContext>
-          </DndContext>
+            </StableSortableContext>
+          </EditorDndContext>
           {/* Outside the sortable set: dropping a picture onto "add" would mean nothing. */}
           {openSlot !== -1 && (
             <AddTile

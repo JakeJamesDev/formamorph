@@ -67,26 +67,9 @@ import AddDictionaryModal from '@/components/modals/AddDictionaryModal';
 import AddEntityModal from '@/components/modals/AddEntityModal';
 import { exportEntityCard } from '@/lib/entityFile';
 import { absorbPlaceholders, remapPlaceholderIds, describePlaceholders } from '@/lib/placeholders';
-import {
-  DndContext,
-  closestCenter,
-  PointerSensor,
-  KeyboardSensor,
-  useSensor,
-  useSensors,
-  type DragEndEvent,
-} from '@dnd-kit/core';
-import {
-  SortableContext,
-  arrayMove,
-  verticalListSortingStrategy,
-  sortableKeyboardCoordinates,
-} from '@dnd-kit/sortable';
-import {
-  restrictToVerticalAxis,
-  restrictToFirstScrollableAncestor,
-} from '@dnd-kit/modifiers';
-import { CONTAINED_AUTO_SCROLL } from '@/lib/dndAutoScroll';
+import { type DragEndEvent } from '@dnd-kit/core';
+import { arrayMove, verticalListSortingStrategy } from '@dnd-kit/sortable';
+import { EditorDndContext, StableSortableContext } from '@/components/dnd/EditorDndContext';
 import { UnsavedChangesDialog } from "@/components/UnsavedChangesDialog";
 import { APP_VERSION } from '@/lib/version';
 import type { Stat, Entity, GameLocation, StatUpdate, Dictionary, World } from '@/types';
@@ -513,11 +496,6 @@ const WorldEditorInner = ({ onClose, embedded = false, backButton }: {
     statUpdates: { items: statUpdates, setItems: setStatUpdates },
   };
 
-  const sensors = useSensors(
-    useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
-    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
-  );
-
   // Reorder the active tab's full array (filter-safe: located by id).
   const handleRowDragEnd = (event: DragEndEvent) => {
     const { active, over } = event;
@@ -580,19 +558,8 @@ const WorldEditorInner = ({ onClose, embedded = false, backButton }: {
         : <EmptyListHint noun={activeTab} />;
     }
     return (
-    <DndContext
-      sensors={sensors}
-      collisionDetection={closestCenter}
-      onDragEnd={handleRowDragEnd}
-      // Vertical-only movement, clamped to the scroll viewport's bounds so dragging can't
-      // extend the scrollable area infinitely.
-      modifiers={[restrictToVerticalAxis, restrictToFirstScrollableAncestor]}
-      autoScroll={CONTAINED_AUTO_SCROLL}
-    >
-      <SortableContext
-        items={items.map((i) => i.id)}
-        strategy={verticalListSortingStrategy}
-      >
+    <EditorDndContext onDragEnd={handleRowDragEnd}>
+      <StableSortableContext items={items} strategy={verticalListSortingStrategy}>
         <EditorRowList>
           {items.map((item) => (
             <SortableRow
@@ -606,8 +573,8 @@ const WorldEditorInner = ({ onClose, embedded = false, backButton }: {
             />
           ))}
         </EditorRowList>
-      </SortableContext>
-    </DndContext>
+      </StableSortableContext>
+    </EditorDndContext>
     );
   };
 

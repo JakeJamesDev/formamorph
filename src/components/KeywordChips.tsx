@@ -1,19 +1,7 @@
 import { useState, type ChangeEvent, type ClipboardEvent, type KeyboardEvent, type ReactNode } from 'react';
-import {
-  DndContext,
-  closestCenter,
-  PointerSensor,
-  KeyboardSensor,
-  useSensor,
-  useSensors,
-  type DragEndEvent,
-} from '@dnd-kit/core';
-import {
-  SortableContext,
-  arrayMove,
-  rectSortingStrategy,
-  sortableKeyboardCoordinates,
-} from '@dnd-kit/sortable';
+import { type DragEndEvent } from '@dnd-kit/core';
+import { arrayMove, rectSortingStrategy } from '@dnd-kit/sortable';
+import { EditorDndContext, StableSortableContext } from '@/components/dnd/EditorDndContext';
 import { commaSplitCandidate, splitPastedChips, replaceChipValue } from '@/components/Chip';
 import { EditableChip } from '@/components/EditableChip';
 import ChipInput from '@/components/prompt/ChipInput';
@@ -38,6 +26,7 @@ import PlaceholderText from '@/components/prompt/PlaceholderText';
  * is single-pass and a chip inside one would never expand.
  */
 const NO_PLACEHOLDERS: Placeholder[] = [];
+const NO_MODIFIERS: never[] = [];
 
 export function KeywordChips({
   keywords,
@@ -69,11 +58,6 @@ export function KeywordChips({
   const vocab = usePlaceholderChipVocabulary(placeholders ?? NO_PLACEHOLDERS);
   // The last committed chip that reads like a comma-separated list, with the segments it would become.
   const [splitOffer, setSplitOffer] = useState<{ chip: string; parts: string[] } | null>(null);
-  const sensors = useSensors(
-    useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
-    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
-  );
-
   /** Append keywords that aren't already present; returns the resulting list. */
   const appendKeywords = (raw: string[]) => {
     const next = [...keywords];
@@ -155,12 +139,14 @@ export function KeywordChips({
   return (
     <div className="space-y-1">
       <div className="flex flex-wrap items-center gap-1 rounded-md border border-border bg-background/80 p-2">
-        <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd} autoScroll={false}>
+        {/* No modifiers and no auto-scroll: chips wrap in two dimensions inside a box that never scrolls,
+            so the vertical-list clamps would pin a drag to a single column. */}
+        <EditorDndContext modifiers={NO_MODIFIERS} autoScroll={false} onDragEnd={handleDragEnd}>
           {/* rectSortingStrategy (2D), not horizontalListSortingStrategy: the container is flex-wrap, so chips
               span multiple rows — a single-row strategy mispositions drags once they wrap. Dedup stays
               case-sensitive (unlike TokenAutocomplete) because dictionary keyword matching supports a
               per-entry caseSensitive mode, so distinct-case keywords can be meaningful. */}
-          <SortableContext items={keywords} strategy={rectSortingStrategy}>
+          <StableSortableContext items={keywords} strategy={rectSortingStrategy}>
             {keywords.map((kw) => {
               const chip = (
                 <EditableChip
@@ -181,8 +167,8 @@ export function KeywordChips({
               );
               return renderChip ? <span key={kw}>{renderChip(chip, kw)}</span> : chip;
             })}
-          </SortableContext>
-        </DndContext>
+          </StableSortableContext>
+        </EditorDndContext>
         {chipsEnabled ? (
           // The growth lives out here, on the flex item itself. Passed through `className` it reaches the
           // editable instead, whose wrapper then shrink-wraps — leaving the editor a eighth of the box wide

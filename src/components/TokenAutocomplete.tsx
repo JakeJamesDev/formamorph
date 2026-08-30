@@ -1,25 +1,14 @@
 import { useMemo, useState } from "react";
-import {
-  DndContext,
-  closestCenter,
-  PointerSensor,
-  KeyboardSensor,
-  useSensor,
-  useSensors,
-  type DragEndEvent,
-} from "@dnd-kit/core";
-import {
-  SortableContext,
-  arrayMove,
-  rectSortingStrategy,
-  sortableKeyboardCoordinates,
-} from "@dnd-kit/sortable";
+import { type DragEndEvent } from "@dnd-kit/core";
+import { arrayMove, rectSortingStrategy } from "@dnd-kit/sortable";
+import { EditorDndContext, StableSortableContext } from "@/components/dnd/EditorDndContext";
 import { Chip, SortableChip, splitPastedChips, replaceChipValue } from "./Chip";
 import { EditableChip } from "./EditableChip";
 import { SuggestionList } from "./SuggestionList";
 import { rankTagSuggestions } from "@/lib/tagSuggest";
 
 const SUGGESTION_LIMIT = 50;
+const NO_MODIFIERS: never[] = [];
 
 /**
  * Chip input with autocomplete. Type to filter `options` (closest match); Enter or a clicked suggestion
@@ -50,11 +39,6 @@ export function TokenAutocomplete({ values, onChange, options, placeholder, aria
   const [text, setText] = useState("");
   const [open, setOpen] = useState(false);
   const [active, setActive] = useState(0);
-
-  const sensors = useSensors(
-    useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
-    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
-  );
 
   // In single mode the input reflects the one committed value; in multi mode it's the transient chip buffer.
   const query = single ? (values[0] ?? "") : text;
@@ -185,11 +169,12 @@ export function TokenAutocomplete({ values, onChange, options, placeholder, aria
           smaller than every other field's read as a different kind of control. */}
       <div className={`flex flex-wrap items-center gap-1 rounded-md border border-input bg-background min-w-[180px] ${single ? "px-3 h-10" : "px-2 py-1 min-h-10"}`}>
         {!single && (reorderable ? (
-          <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
-            <SortableContext items={values} strategy={rectSortingStrategy}>
+          // Chips wrap in two dimensions inside a box that never scrolls, so no axis clamp and no auto-scroll.
+          <EditorDndContext modifiers={NO_MODIFIERS} autoScroll={false} onDragEnd={handleDragEnd}>
+            <StableSortableContext items={values} strategy={rectSortingStrategy}>
               {values.map(renderChip)}
-            </SortableContext>
-          </DndContext>
+            </StableSortableContext>
+          </EditorDndContext>
         ) : values.map(renderChip))}
         <input
           value={single ? query : text}

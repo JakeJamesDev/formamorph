@@ -1,5 +1,8 @@
 import { test, expect, type Page } from '@playwright/test';
 import { openApp, gotoDev } from './app';
+import {
+  IN_DIALOG, dragBy, dragWatchingHover, editorGrip, intermediates, samples, startSampler,
+} from './dragSampling';
 
 /**
  * Dragging a dictionary entry must animate the displaced neighbors, both directions.
@@ -30,70 +33,7 @@ async function importBook(page: Page, count: number): Promise<void> {
   await expect(page.getByText(BOOK, { exact: true })).toBeVisible();
 }
 
-/** Per-frame sampler of the watched rows' computed transforms (one rAF loop; labels swap per drag). */
-function startSampler(page: Page, labels: string[]): Promise<void> {
-  return page.evaluate((watch) => {
-    const w = window as unknown as { __samples: unknown[]; __watch: string[]; __loop?: boolean };
-    w.__samples = [];
-    w.__watch = watch;
-    if (w.__loop) return;
-    w.__loop = true;
-    const tick = () => {
-      const rec: Record<string, string> = {};
-      for (const label of w.__watch) {
-        const row = [...document.querySelectorAll('[role="dialog"] div.cursor-pointer')]
-          .find((el) => el.querySelector('span.truncate')?.textContent === label) as HTMLElement | undefined;
-        rec[label] = row ? getComputedStyle(row).transform : 'gone';
-      }
-      w.__samples.push(rec);
-      requestAnimationFrame(tick);
-    };
-    requestAnimationFrame(tick);
-  }, labels);
-}
-
-const samples = (page: Page) =>
-  page.evaluate(() => (window as unknown as { __samples: Record<string, string>[] }).__samples);
-
-function grip(page: Page, label: string) {
-  return page
-    .locator('[role="dialog"] div.cursor-pointer')
-    .filter({ has: page.locator('span.truncate', { hasText: new RegExp(`^${label}$`) }) })
-    .locator('span.cursor-grab')
-    .first();
-}
-
-async function dragBy(page: Page, label: string, dy: number, onStep?: () => Promise<void>): Promise<void> {
-  const g = grip(page, label);
-  await g.scrollIntoViewIfNeeded();
-  const box = (await g.boundingBox())!;
-  const cx = box.x + box.width / 2;
-  const cy = box.y + box.height / 2;
-  await page.mouse.move(cx, cy);
-  await page.mouse.down();
-  await page.mouse.move(cx, cy + Math.sign(dy) * 8); // clear the sensor's 5px activation distance
-  const steps = 12;
-  for (let i = 1; i <= steps; i++) {
-    await page.mouse.move(cx, cy + Math.sign(dy) * 8 + (dy * i) / steps);
-    await page.waitForTimeout(30);
-    await onStep?.();
-  }
-  await page.waitForTimeout(300); // let the displacement transition finish before dropping
-  await page.mouse.up();
-  await page.waitForTimeout(200);
-}
-
-/** Distinct intermediate translateY positions a row passed through (excludes rest states 0/±60/none). */
-function intermediates(recs: Record<string, string>[], label: string): number {
-  const seen = new Set<number>();
-  for (const rec of recs) {
-    const v = rec[label];
-    if (!v || v === 'none' || v === 'gone') continue;
-    const ty = Number(v.split(',').pop()!.replace(')', '').trim());
-    if (Number.isFinite(ty) && ty !== 0 && Math.abs(Math.abs(ty) - 60) > 1) seen.add(Math.round(ty));
-  }
-  return seen.size;
-}
+const grip = (page: Page, label: string) => editorGrip(page, IN_DIALOG, label);
 
 test('displaced entry rows slide, not snap, in both drag directions', async ({ page }) => {
   await openApp(page);
@@ -105,18 +45,13 @@ test('displaced entry rows slide, not snap, in both drag directions', async ({ p
 
   // Down: Entry 1 over Entry 2 → Entry 2 slides up through intermediate positions. Mid-drag, no row
   // may sit in the :hover state — the tree's hit-testing goes dark so rows don't light under the cursor.
-  await startSampler(page, ['Entry 2']);
-  const hoverCounts: number[] = [];
-  await dragBy(page, 'Entry 1', 120, async () => {
-    hoverCounts.push(
-      await page.evaluate(() => document.querySelectorAll('[role="dialog"] div.cursor-pointer:hover').length),
-    );
-  });
-  expect(Math.max(...hoverCounts), 'no row may show hover at any point while dragging').toBe(0);
+  await startSampler(page, IN_DIALOG, ['Entry 2']);
+  const hovered = await dragWatchingHover(page, IN_DIALOG, grip(page, 'Entry 1'), { dy: 120 });
+  expect(hovered, 'no row may show hover at any point while dragging').toBe(0);
   expect(intermediates(await samples(page), 'Entry 2'), 'down-drag should animate').toBeGreaterThanOrEqual(3);
 
   // Up: Entry 5 over Entry 4 → Entry 4 slides down through intermediate positions.
-  await startSampler(page, ['Entry 4']);
-  await dragBy(page, 'Entry 5', -120);
+  await startSampler(page, IN_DIALOG, ['Entry 4']);
+  await dragBy(page, grip(page, 'Entry 5'), { dy: -120 });
   expect(intermediates(await samples(page), 'Entry 4'), 'up-drag should animate').toBeGreaterThanOrEqual(3);
 });

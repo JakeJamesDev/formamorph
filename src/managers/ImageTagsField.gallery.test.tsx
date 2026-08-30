@@ -256,7 +256,9 @@ describe('ImageTagsField gallery', () => {
     });
 
     expect(await screen.findByRole('status', { name: 'Converting image 1 of 2' })).toBeTruthy();
-    expect(tile('Primary image').closest('div')!.className).toMatch(/pointer-events-none/);
+    // Any ancestor, not the immediate one: the strip is frozen as a whole, and the drag layer it renders
+    // through sits between the tiles and the frozen container.
+    expect(tile('Primary image').closest('.pointer-events-none')).not.toBeNull();
     // From the dropped file, not the data URL it encodes to — a base64 string that size blocks the main
     // thread for long enough that this overlay never reaches the screen while the work is happening.
     const src = screen.getByRole('status', { name: /^Converting/ }).querySelector('img')!.getAttribute('src')!;
@@ -268,7 +270,7 @@ describe('ImageTagsField gallery', () => {
 
     release[1]();
     await waitFor(() => expect(screen.queryByRole('status', { name: /^Converting/ })).toBeNull());
-    expect(tile('Primary image').closest('div')!.className).not.toMatch(/pointer-events-none/);
+    expect(tile('Primary image').closest('.pointer-events-none')).toBeNull();
   });
 
   it('shows no bar when the batch is kept at full size — nothing is being converted', async () => {
