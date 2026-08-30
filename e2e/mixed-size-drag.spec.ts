@@ -3,6 +3,7 @@ import {
   boardCells,
   cellsOverlap,
   dragTileToCell,
+  gridPitch,
   maxTransformSeen,
   openLibrary,
   setTileSize,
@@ -193,7 +194,7 @@ test.describe('mixed-size tile drag', () => {
     // blocked release still means "put it down", not "fold it in".
     await dragTileToCell(page, names[0], { row: wall.row, col: wall.col + 2 }, {
       through: [{ row: before[names[1]].row, col: before[names[1]].col + 1 }],
-      hold: 150,
+      hold: 100,
     });
 
     const after = await boardCells(page);
@@ -256,6 +257,46 @@ test.describe('mixed-size tile drag', () => {
     expect(await tileOrder(page)).toEqual([names[0], names[1]]);
   });
 
+  test('the pointer alone picks the group target when the claim middle hangs over empty board', async ({ page }) => {
+    await openLibrary(page);
+    const names = await tileOrder(page);
+    await setTileSize(page, names[0], 'Large');
+    const big = (await boardCells(page))[names[0]];
+
+    // Clear the tile beside the large one, so the cell past the large's edge is truly empty.
+    const inWay = Object.entries(await boardCells(page)).find(([, at]) =>
+      at.row === big.row && at.col === big.col + big.span);
+    expect(inWay, 'no tile beside the large one to clear').toBeTruthy();
+    await dragTileToCell(page, inWay![0], { row: 6, col: 0 });
+
+    // A medium from the cleared column, carried by a corner grab: parked on the large tile's right
+    // edge, the claim's middle cell is the empty one just cleared — only the pointer, riding near the
+    // carried tile's top-left corner, touches the large tile. The finger is the intent.
+    const carried = Object.entries(await boardCells(page)).find(([name, at]) =>
+      name !== names[0] && at.span === 2 && at.col >= big.col + big.span)?.[0];
+    expect(carried, 'no medium beside the large to carry').toBeTruthy();
+    const box = (await page.getByRole('img', { name: carried!, exact: true }).first().boundingBox())!;
+    const pitch = await gridPitch(page);
+    const dest = {
+      x: pitch.left + (big.col + big.span - 1) * pitch.x + pitch.x * 0.45,
+      y: pitch.top + big.row * pitch.y + pitch.y * 0.45,
+    };
+    await page.mouse.move(box.x + box.width * 0.2, box.y + box.height * 0.2);
+    await page.mouse.down();
+    await page.mouse.move(box.x + box.width * 0.2 + 12, box.y + box.height * 0.2, { steps: 2 });
+    await page.mouse.move(dest.x + pitch.x, dest.y, { steps: 8 });
+    await page.mouse.move(dest.x, dest.y, { steps: 4 });
+    await page.waitForTimeout(700);
+    const armed = await page.locator('[data-group-target]').count();
+    await page.mouse.up();
+    await page.waitForTimeout(250);
+
+    expect(armed, 'the pointer hold never armed').toBe(1);
+    const after = await boardCells(page);
+    expect(after['New Group'], 'no folder appeared').toBeTruthy();
+    expect(after[carried!]).toBeUndefined();
+  });
+
   test('a tile that makes way is moved, never grouped, however long the hold', async ({ page }) => {
     await openLibrary(page);
     const names = await tileOrder(page);
@@ -314,8 +355,9 @@ test.describe('mixed-size tile drag', () => {
     );
     expect(swept.length, 'the field the drag needs is not standing in its path').toBeGreaterThan(2);
 
-    // Two columns to the right, straight through that field.
-    await dragTileToCell(page, names[0], { row: 0, col: 2 }, { steps: 20, interval: 20 });
+    // Two columns to the right, straight through that field. Released quickly: a small that ends the
+    // crawl standing under the pointer is a group target the moment the dwell passes.
+    await dragTileToCell(page, names[0], { row: 0, col: 2 }, { steps: 20, interval: 20, hold: 100 });
 
     const after = await boardCells(page);
     expect(Object.keys(after).sort(), 'a tile fell off the board').toEqual(Object.keys(before).sort());
