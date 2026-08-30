@@ -36,10 +36,10 @@ export interface LibraryTiles {
   groupOfItem: (itemId: string) => LibraryGroup | undefined;
   size: (id: string) => LibraryTileSize;
   /**
-   * Resize one tile. `ids` are the tiles sharing its grid, so a tile that outgrows its cell can find a
-   * free one without disturbing them.
+   * Resize one tile. `ids` are the tiles sharing its grid and `columns` is the width on screen, so
+   * the tile grows where it stands and only what it lands on makes way.
    */
-  setSize: (id: string, size: LibraryTileSize, ids?: string[]) => void;
+  setSize: (id: string, size: LibraryTileSize, ids?: string[], columns?: number) => void;
   addTo: (itemId: string, groupId: string) => void;
   /** Fold a tile into a brand-new folder on its own, for the context menu's New Group entry. */
   groupWithNew: (itemId: string) => void;
@@ -108,7 +108,7 @@ export function useLibraryTiles(
     groupOfItem: useCallback((itemId: string) => groupOf(organization, itemId), [organization]),
     size: useCallback((id: string) => tileSize(organization, id), [organization]),
     setSize: useCallback(
-      (id, size, ids) => setOrganization((prev) => setTileSize(prev, id, size, ids)),
+      (id, size, ids, columns) => setOrganization((prev) => setTileSize(prev, id, size, ids, columns)),
       [],
     ),
     groupWithNew,
