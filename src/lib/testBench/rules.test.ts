@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import type { Dictionary, DictionaryEntry, Entity, GameLocation, Stat, Trait, WorldOverview } from '@/types';
 import { estimateTokens } from '@/lib/memoryUtils';
+import { IMAGE_CAPS } from '@/lib/imageOptim';
 import {
   applyRuleFix, runRules, groupFindings, isAdvancedRule, isRuleFixable, selectMatchingFindings,
   MATCHING_RULES, RULES, STAT_CODE_EXECUTION, type RuleWorld,
@@ -1442,7 +1443,8 @@ describe('world-level rules', () => {
   });
 
   it('flags an embedded image over its byte budget and points at Optimize Images', () => {
-    const big = `data:image/png;base64,${'A'.repeat(280_000)}`;
+    // Sized off the live budget, so a cap change cannot quietly turn this fixture small.
+    const big = `data:image/png;base64,${'A'.repeat(Math.ceil((IMAGE_CAPS.thumbnail.maxBytes * 4) / 3) + 8)}`;
     const found = only(overview({ thumbnail: big }), 'world-oversized-images');
     expect(found).toHaveLength(1);
     expect(found[0].severity).toBe('info');
