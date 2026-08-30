@@ -19,8 +19,12 @@ function thumbnails(page: Page): Locator {
   return page.locator('img[alt]:not([alt=""])');
 }
 
-/** Drag one tile onto the middle of another, which is the region that groups them. */
-async function dragOntoCenter(page: Page, from: Locator, to: Locator): Promise<void> {
+/**
+ * Group two tiles by parking one on the other: carry it onto the target's middle and rest there
+ * through the hover wait and the arming window, until the ring is up. Pass `hold: 0` for a quick
+ * drop, which must read as a reorder instead — grouping is only ever a deliberate park.
+ */
+async function dragOntoCenter(page: Page, from: Locator, to: Locator, hold = 700): Promise<void> {
   const start = await from.boundingBox();
   const end = await to.boundingBox();
   if (!start || !end) throw new Error('a tile has no box to drag between');
@@ -37,6 +41,7 @@ async function dragOntoCenter(page: Page, from: Locator, to: Locator): Promise<v
   await page.mouse.move(startX + 12, startY, { steps: 2 });
   await page.mouse.move(endX, endY, { steps: 12 });
   await page.mouse.move(endX, endY);
+  if (hold > 0) await page.waitForTimeout(hold);
   await page.mouse.up();
 }
 
@@ -91,6 +96,83 @@ test.describe('reordering library tiles', () => {
     await page.reload();
     await expect(page.getByRole('button', { name: 'Delete world' }).first()).toBeVisible();
     await expect(thumbnails(page).first()).toHaveAttribute('alt', names[1]);
+  });
+
+  test('moves a tile away and back before dropping, leaving the order unchanged', async ({ page }) => {
+    // The regression this guards: the drag preview used to simulate the reorder against stale
+    // geometry, so backtracking mid-drag diverged from the board and the drop landed somewhere else.
+    // The board now reorders its real list live, so coming back is a real return.
+    await openLibrary(page);
+
+    const names = await thumbnails(page).evaluateAll((imgs) =>
+      imgs.map((img) => (img as HTMLImageElement).alt));
+    const start = await thumbnails(page).nth(0).boundingBox();
+    const target = await thumbnails(page).nth(1).boundingBox();
+    if (!start || !target) throw new Error('a tile has no box');
+    const startX = start.x + start.width / 2;
+    const startY = start.y + start.height / 2;
+
+    await page.mouse.move(startX, startY);
+    await page.mouse.down();
+    await page.mouse.move(startX + 12, startY, { steps: 2 });
+    // Settle past the neighbor's far edge long enough for it to slide aside...
+    await page.mouse.move(target.x + target.width - 10, startY, { steps: 8 });
+    await page.waitForTimeout(400);
+    // ...then come back to the start and drop.
+    await page.mouse.move(startX, startY, { steps: 8 });
+    await page.waitForTimeout(400);
+    await page.mouse.up();
+
+    for (const [i, name] of names.entries()) {
+      await expect(thumbnails(page).nth(i)).toHaveAttribute('alt', name);
+    }
+    await expect(page.getByRole('heading', { name: 'New Group' })).toHaveCount(0);
+  });
+
+  test('abandons a held group by dragging onward, ending as a plain move', async ({ page }) => {
+    // Park long enough to arm the fold, then leave: the drop must move the tile, never fold it.
+    await openLibrary(page);
+
+    const names = await thumbnails(page).evaluateAll((imgs) =>
+      imgs.map((img) => (img as HTMLImageElement).alt));
+    const start = await thumbnails(page).nth(0).boundingBox();
+    const target = await thumbnails(page).nth(1).boundingBox();
+    if (!start || !target) throw new Error('a tile has no box');
+    const startX = start.x + start.width / 2;
+    const startY = start.y + start.height / 2;
+
+    await page.mouse.move(startX, startY);
+    await page.mouse.down();
+    await page.mouse.move(startX + 12, startY, { steps: 2 });
+    await page.mouse.move(target.x + target.width / 2, target.y + target.height / 2, { steps: 8 });
+    await page.waitForTimeout(700);
+    // Into the gutter past the target — beside it in a row, below it in the phone's single column:
+    // under half overlap on either neighbor, so the group lets go.
+    const sameRow = Math.abs(start.y - target.y) < 4;
+    await page.mouse.move(
+      sameRow ? target.x + target.width + 8 : target.x + target.width / 2,
+      sameRow ? target.y + target.height / 2 : target.y + target.height + 8,
+      { steps: 6 },
+    );
+    await page.waitForTimeout(400);
+    await page.mouse.up();
+
+    await expect(page.getByRole('heading', { name: 'New Group' })).toHaveCount(0);
+    await expect(thumbnails(page).first()).toHaveAttribute('alt', names[1]);
+  });
+
+  test('reorders on a quick drop over a tile\'s middle, because grouping needs a rest', async ({ page }) => {
+    // The regression this guards: grouping used to arm the instant the pointer touched a tile's
+    // middle, so a drop there while repositioning folded two tiles the player never meant to fold.
+    await openLibrary(page);
+
+    const names = await thumbnails(page).evaluateAll((imgs) =>
+      imgs.map((img) => (img as HTMLImageElement).alt));
+
+    await dragOntoCenter(page, thumbnails(page).nth(1), thumbnails(page).nth(0), 0);
+
+    await expect(thumbnails(page).first()).toHaveAttribute('alt', names[1]);
+    await expect(page.getByRole('heading', { name: 'New Group' })).toHaveCount(0);
   });
 });
 

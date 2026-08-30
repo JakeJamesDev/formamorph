@@ -5,10 +5,8 @@ import {
   createGroupFromItem,
   disbandGroup,
   groupOf,
-  moveTile,
-  projectedOrder,
   pruneOrganization,
-  reorderTopLevel,
+  setDrawnOrder,
   removeFromGroup,
   renameGroup,
   setGroupPromptPreset,
@@ -212,92 +210,6 @@ describe('setTileSize', () => {
   });
 });
 
-describe('moveTile', () => {
-  it('reorders the top level, before or after the tile dropped on', () => {
-    expect(moveTile(withItems('a', 'b', 'c'), { activeId: 'c', overId: 'a', position: 'before' }).order)
-      .toEqual(['c', 'a', 'b']);
-    expect(moveTile(withItems('a', 'b', 'c'), { activeId: 'a', overId: 'c', position: 'after' }).order)
-      .toEqual(['b', 'c', 'a']);
-  });
-
-  it('reorders inside a folder without touching the top level', () => {
-    const org = moveTile(addToGroup(withGroup(), 'c', 'g1'), {
-      activeId: 'c', overId: 'a', position: 'before', container: 'g1',
-    });
-
-    expect(org.groups.g1.members).toEqual(['c', 'a', 'b']);
-    expect(org.order).toEqual(['g1']);
-  });
-
-  it('ignores a move onto itself, or onto a tile in another list', () => {
-    const org = withGroup();
-
-    expect(moveTile(org, { activeId: 'c', overId: 'c', position: 'before' })).toBe(org);
-    expect(moveTile(org, { activeId: 'c', overId: 'a', position: 'before' })).toBe(org);
-  });
-});
-
-describe('reorderTopLevel', () => {
-  it('reorders the main grid and writes the order it drew, not just the part it had stored', () => {
-    // A library never arranged has an empty order and draws every tile by the sort-to-end rule. The
-    // first reorder has to write that drawn order down, or the move lands nowhere.
-    const org = reorderTopLevel(emptyTabOrganization(), ['a', 'b', 'c'], {
-      activeId: 'c', overId: 'a', position: 'before',
-    });
-
-    expect(org.order).toEqual(['c', 'a', 'b']);
-    expect(topLevelIds(org, ['a', 'b', 'c'])).toEqual(['c', 'a', 'b']);
-  });
-
-  it('reorders a folder tile against a loose one', () => {
-    const org = reorderTopLevel(withGroup(), ['a', 'b', 'c'], {
-      activeId: 'c', overId: 'g1', position: 'before',
-    });
-
-    expect(topLevelIds(org, ['a', 'b', 'c'])).toEqual(['c', 'g1']);
-  });
-
-  it('keeps an item that arrived since the last arrangement in the order it writes', () => {
-    const org = reorderTopLevel({ ...emptyTabOrganization(), order: ['a', 'b'] }, ['a', 'b', 'fresh'], {
-      activeId: 'a', overId: 'b', position: 'after',
-    });
-
-    expect(org.order).toEqual(['b', 'a', 'fresh']);
-  });
-
-  it('ignores a move onto itself, or onto a tile the grid is not drawing', () => {
-    const org = withGroup();
-
-    expect(reorderTopLevel(org, ['a', 'b', 'c'], { activeId: 'c', overId: 'c', position: 'before' }))
-      .toBe(org);
-    // `a` is inside the folder, so it is not a tile the main grid draws.
-    expect(reorderTopLevel(org, ['a', 'b', 'c'], { activeId: 'c', overId: 'a', position: 'before' }))
-      .toBe(org);
-  });
-});
-
-describe('projectedOrder', () => {
-  it('reads the order the grid would draw if the drag were dropped now', () => {
-    expect(projectedOrder(emptyTabOrganization(), ['a', 'b', 'c'], {
-      activeId: 'a', overId: 'c', position: 'after',
-    })).toEqual(['b', 'c', 'a']);
-  });
-
-  it('projects a folder\'s own list when the drag is inside one', () => {
-    const org = addToGroup(withGroup(), 'c', 'g1');
-
-    expect(projectedOrder(org, ['a', 'b', 'c'], {
-      activeId: 'c', overId: 'a', position: 'before', container: 'g1',
-    })).toEqual(['c', 'a', 'b']);
-  });
-
-  it('leaves the order alone for a move it would refuse, so the preview never lies', () => {
-    expect(projectedOrder(withGroup(), ['a', 'b', 'c'], {
-      activeId: 'c', overId: 'c', position: 'before',
-    })).toEqual(['g1', 'c']);
-  });
-});
-
 describe('group settings', () => {
   it('carries a prompt preset on the folder', () => {
     expect(setGroupPromptPreset(withGroup(), 'g1', 'noir').groups.g1.settings.promptPreset).toBe('noir');
@@ -368,5 +280,36 @@ describe('pruneOrganization', () => {
     const org = withGroup();
 
     expect(pruneOrganization(org, ['a', 'b', 'c'])).toBe(org);
+  });
+});
+
+describe('setDrawnOrder', () => {
+  it('writes the drawn list as the top-level order, wholesale', () => {
+    const org = setDrawnOrder(withItems('a', 'b', 'c'), ['c', 'a', 'b']);
+
+    expect(org.order).toEqual(['c', 'a', 'b']);
+  });
+
+  it('adopts the drawn list on a library that stored no order at all', () => {
+    // A never-arranged library draws by the sort-to-end rule; the first drag hands the whole drawn
+    // list over, so it must land even though the stored order was empty.
+    const org = setDrawnOrder(emptyTabOrganization(), ['b', 'a']);
+
+    expect(org.order).toEqual(['b', 'a']);
+  });
+
+  it('rearranges a folder\'s members in place', () => {
+    const org = setDrawnOrder(withGroup(), ['b', 'a'], 'g1');
+
+    expect(org.groups.g1.members).toEqual(['b', 'a']);
+  });
+
+  it('refuses a folder list that adds, drops, or repeats members', () => {
+    const org = withGroup();
+
+    expect(setDrawnOrder(org, ['a'], 'g1')).toBe(org);
+    expect(setDrawnOrder(org, ['a', 'b', 'c'], 'g1')).toBe(org);
+    expect(setDrawnOrder(org, ['a', 'a'], 'g1')).toBe(org);
+    expect(setDrawnOrder(org, ['b', 'a'], 'missing')).toBe(org);
   });
 });

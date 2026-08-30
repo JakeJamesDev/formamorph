@@ -12,33 +12,31 @@ export interface TileRect {
 }
 
 /**
- * Share of the tile, per side, that counts as its middle rather than an edge. Deliberately under half:
- * grouping and reordering compete for the same tile, and reordering is the more common gesture, so the
- * edges win the tie.
+ * Share of the smaller tile that must be covered before a drop reads as stacking one tile on the
+ * other. Half: clearly stacked without demanding pixel alignment.
  */
-const CENTER_BAND = 0.4;
+export const GROUP_OVERLAP = 0.5;
+
+/** The share of the smaller box the two rects' intersection covers, 0 for disjoint rects. */
+export function groupOverlapRatio(carried: TileRect, target: TileRect): number {
+  const width = Math.min(carried.left + carried.width, target.left + target.width)
+    - Math.max(carried.left, target.left);
+  const height = Math.min(carried.top + carried.height, target.top + target.height)
+    - Math.max(carried.top, target.top);
+  if (width <= 0 || height <= 0) return 0;
+
+  const smaller = Math.min(carried.width * carried.height, target.width * target.height);
+  return smaller > 0 ? (width * height) / smaller : 0;
+}
 
 /**
- * Whether a drop at this point folds the dragged tile into the tile under it.
+ * Whether the carried tile sits on the target enough that dropping it would fold the two together.
  *
- * The middle of the tile groups; everywhere else, including anywhere outside its box, is left to the
- * reorder the sortable layer already computes. The point must be the dragged tile's center in the same
- * drag-start coordinate space the tile's rect was measured in — the space every other collision reading
- * lives in — never the live pointer, which drifts out of that space as the preview slides tiles around.
- *
- * @param canGroup - False for drags that can never group, such as a folder tile, which never nests;
- *   their middle would otherwise be a dead zone
+ * The overlap is measured against the smaller of the two boxes, so a small tile can group onto a
+ * large one it can never cover half of, and a large tile brushing a small one's corner does not
+ * group just because the sliver is the small tile's whole edge. The target rect must be where the
+ * tile is DRAWN right now — a tile the reorder preview slid aside is only a target at its new spot,
+ * never at the empty slot it left behind.
  */
-export function isGroupDrop(
-  point: { x: number; y: number },
-  rect: TileRect,
-  canGroup: boolean,
-): boolean {
-  if (!canGroup) return false;
-
-  const centerX = rect.left + rect.width / 2;
-  const centerY = rect.top + rect.height / 2;
-
-  return Math.abs(point.x - centerX) <= (rect.width * CENTER_BAND) / 2
-    && Math.abs(point.y - centerY) <= (rect.height * CENTER_BAND) / 2;
-}
+export const isGroupOverlap = (carried: TileRect, target: TileRect): boolean =>
+  groupOverlapRatio(carried, target) >= GROUP_OVERLAP;

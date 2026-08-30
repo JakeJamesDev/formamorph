@@ -171,72 +171,29 @@ export function setTileSize(
   return { ...org, sizes: { ...org.sizes, [id]: size } };
 }
 
-/** Where a tile is being dropped: which tile, which side, and the folder it happens in. */
-export interface TileMove {
-  activeId: string;
-  overId: string;
-  position: 'before' | 'after';
-  /** The folder being reordered, or omitted for the main grid. */
-  container?: string | null;
-}
-
-/** The list with `activeId` moved beside `overId`, or null when the move does not apply to it. */
-const moveInList = (list: string[], { activeId, overId, position }: TileMove): string[] | null => {
-  if (activeId === overId) return null;
-  if (!list.includes(activeId) || !list.includes(overId)) return null;
-
-  const rest = list.filter((id) => id !== activeId);
-  return spliced(rest, rest.indexOf(overId) + (position === 'after' ? 1 : 0), 0, activeId);
-};
-
-/** Move a tile to sit before or after another inside one folder. */
-export function moveTile(org: LibraryTabOrganization, move: TileMove): LibraryTabOrganization {
-  const group = move.container ? org.groups[move.container] : undefined;
-  if (move.container && !group) return org;
-
-  const next = moveInList(group ? group.members : org.order, move);
-  if (!next) return org;
-
-  return group
-    ? { ...org, groups: { ...org.groups, [group.id]: { ...group, members: next } } }
-    : { ...org, order: next };
-}
-
 /**
- * Move a tile in the main grid, against the tiles the grid is actually drawing.
+ * Write the list a drag finished with as the order, wholesale. The main grid reorders live while a
+ * drag runs, so the drop hands over the drawn list itself rather than a single move. Inside a folder
+ * only the existing members can be rearranged: a drawn list that adds, drops, or invents ids is
+ * refused, since an order write must never change what a folder holds.
  *
- * The stored order can hold fewer ids than the grid shows, because anything it has never seen is drawn
- * at the end instead. Reordering against the stored list alone would therefore do nothing at all on a
- * library that has never been arranged. This reorders the drawn list and writes that whole list down,
- * which is what the flat grid before it did on every drag.
- *
- * @param itemIds - The ids the tab currently holds
+ * @param container - The folder whose members were rearranged, or null for the main grid
  */
-export function reorderTopLevel(
+export function setDrawnOrder(
   org: LibraryTabOrganization,
-  itemIds: string[],
-  move: TileMove,
+  drawn: string[],
+  container?: string | null,
 ): LibraryTabOrganization {
-  const next = moveInList(topLevelIds(org, itemIds), move);
-  return next ? { ...org, order: next } : org;
-}
+  if (!container) return { ...org, order: drawn };
 
-/**
- * The order the grid would draw if the drag in progress were dropped now, so a drag can preview where
- * its tile lands. A move that would be refused comes back as the order already on screen.
- *
- * @param itemIds - The ids the tab currently holds
- */
-export function projectedOrder(
-  org: LibraryTabOrganization,
-  itemIds: string[],
-  move: TileMove,
-): string[] {
-  if (move.container) {
-    const members = org.groups[move.container]?.members ?? [];
-    return moveInList(members, move) ?? members;
-  }
-  return topLevelIds(reorderTopLevel(org, itemIds, move), itemIds);
+  const group = org.groups[container];
+  if (!group) return org;
+  const members = new Set(group.members);
+  const valid = drawn.length === group.members.length && drawn.every((id) => members.has(id))
+    && new Set(drawn).size === drawn.length;
+  if (!valid) return org;
+
+  return { ...org, groups: { ...org.groups, [container]: { ...group, members: drawn } } };
 }
 
 /** Pin a folder's member worlds to a prompt preset, or pass null to drop the setting. */
