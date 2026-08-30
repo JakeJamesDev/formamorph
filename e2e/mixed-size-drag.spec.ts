@@ -44,10 +44,6 @@ function expectSoundBoard(cells: Record<string, TileCell>, columns: number) {
 /** Base-cell columns the board is wide at this viewport: three medium tiles on desktop, one on a phone. */
 const columnsFor = (page: Page) => (page.viewportSize()!.width >= 1024 ? 6 : 2);
 
-/** The drop outline's state right now: normal over a spot the release can take, alert over one it cannot. */
-const outlineState = (page: Page) =>
-  page.locator('[data-drop-outline]').getAttribute('data-drop-outline');
-
 test.describe('mixed-size tile drag', () => {
   test.skip(({ page }) => columnsFor(page) < 6, 'a phone board is two cells wide; see the width test');
 
@@ -57,15 +53,10 @@ test.describe('mixed-size tile drag', () => {
     await setTileSize(page, names[0], 'Large');
     await setTileSize(page, names[1], 'Small');
     const before = await boardCells(page);
-    let whileOverTheCorner: string | null = null;
 
     // One cell into the big tile: far too little of it swept for the whole group to shift.
-    await dragTileToCell(page, names[1], before[names[0]], {
-      hold: 500,
-      onHeld: async () => { whileOverTheCorner = await outlineState(page); },
-    });
+    await dragTileToCell(page, names[1], before[names[0]], { hold: 500 });
 
-    expect(whileOverTheCorner, 'the outline never said the spot was taken').toBe('blocked');
     expect(await boardCells(page)).toMatchObject({ [names[0]]: before[names[0]] });
     expectSoundBoard(await boardCells(page), columnsFor(page));
   });
@@ -124,6 +115,30 @@ test.describe('mixed-size tile drag', () => {
     expect(await boardCells(page)).toEqual(after);
   });
 
+  test('a row nothing touches folds away, and stays folded after a reload', async ({ page }) => {
+    await openLibrary(page);
+    const names = await tileOrder(page);
+    const before = await boardCells(page);
+    const carried = names[names.length - 1];
+
+    // Park the bottom-right tile two rows lower; the commit stores this width's arrangement.
+    await dragTileToCell(page, carried, { row: before[carried].row + 2, col: before[carried].col });
+
+    // Shrinking the two tiles beside its old home leaves their second row crossed by nothing. A dead
+    // row folds, so the parked tile pulls up one; the shrunken tiles hold their anchors.
+    await setTileSize(page, names[3], 'Small');
+    await setTileSize(page, names[4], 'Small');
+
+    const folded = await boardCells(page);
+    expect(folded[names[3]]).toEqual({ row: 2, col: 0, span: 1 });
+    expect(folded[names[4]]).toEqual({ row: 2, col: 2, span: 1 });
+    expect(folded[carried]).toEqual({ row: 3, col: before[carried].col, span: 2 });
+
+    await page.reload();
+    await page.getByRole('button', { name: 'Delete world' }).first().waitFor();
+    expect(await boardCells(page)).toEqual(folded);
+  });
+
   test('Escape mid-gesture puts every tile back', async ({ page }) => {
     await openLibrary(page);
     const names = await tileOrder(page);
@@ -143,18 +158,15 @@ test.describe('mixed-size tile drag', () => {
     await setTileSize(page, names[3], 'Large');
     const before = await boardCells(page);
     const wall = before[names[3]];
-    let whileOverTheWall: string | null = null;
 
     // One gesture, two halves: across a medium tile, which earns its dodge, and then on into the large
     // one, which refuses. The release happens over the refusal.
     await dragTileToCell(page, names[0], wall, {
       through: [{ row: before[names[1]].row, col: before[names[1]].col + 2 }],
       hold: 400,
-      onHeld: async () => { whileOverTheWall = await outlineState(page); },
     });
 
     const after = await boardCells(page);
-    expect(whileOverTheWall, 'the outline never said the spot was taken').toBe('blocked');
     expect(after[names[3]], 'the tile in the way was disturbed').toEqual(wall);
     expect(after[names[1]], 'an earned dodge was thrown away').not.toEqual(before[names[1]]);
     expectSoundBoard(after, columnsFor(page));

@@ -119,12 +119,11 @@ function useMeasuredWidth(): [
   return [measure, width, node];
 }
 
-/** The dragged tile's footprint while a gesture runs, and whether it can actually claim that spot. */
+/** The dragged tile's footprint while a gesture runs, which is what keeps the grid tall enough. */
 interface Claim {
   row: number;
   col: number;
   span: number;
-  blocked: boolean;
 }
 
 /** One cell key, so an anchor that has not changed costs nothing. */
@@ -398,8 +397,8 @@ export function LibraryTileGrid<T>({
    * whole group follows only once the gesture has swept half of it, so a big tile clipped at the corner
    * simply stands there.
    *
-   * A blocked claim still draws the dodges that really happened; only the claim itself is refused, which
-   * the drop outline says by turning alert-colored.
+   * A blocked claim still draws the dodges that really happened; only the claim itself is refused, and
+   * the release then commits the last board the gesture could legally leave.
    */
   const simulateDrag = (event: DragMoveEvent | DragOverEvent) => {
     const sim = simRef.current;
@@ -412,7 +411,7 @@ export function LibraryTileGrid<T>({
 
     const result = sim.advance(want);
     const next = boardOf(result);
-    setClaim({ ...result.pinned, blocked: result.blocked });
+    setClaim(result.pinned);
     setBoard(next);
     // A blocked board is drawn — the dodges it holds really happened — but never remembered, so the
     // release falls back to the last one the gesture could legally have left behind.
@@ -504,7 +503,7 @@ export function LibraryTileGrid<T>({
     validRef.current = homes;
     anchorRef.current = anchorKey(homes[id].row, homes[id].col);
     setBoard(homes);
-    setClaim({ ...homes[id], span: spanOf(id), blocked: false });
+    setClaim({ ...homes[id], span: spanOf(id) });
   };
 
   /** The context menu for one tile: its size, then whatever grouping applies to it. */
@@ -689,22 +688,6 @@ export function LibraryTileGrid<T>({
             <StableSortableContext items={drawnIds} strategy={NULL_STRATEGY}>
               {drawnIds.map(renderTile)}
             </StableSortableContext>
-            {/* The only other thing a mixed-size drag says: the spot about to be claimed, and whether a
-                release there will actually take it. No cells, no percentages, no status text. */}
-            {claim && layout === 'grid' && (
-              <div
-                aria-hidden
-                data-drop-outline={claim.blocked ? 'blocked' : 'valid'}
-                style={{
-                  gridColumn: `${claim.col + 1} / span ${claim.span}`,
-                  gridRow: `${claim.row + 1} / span ${claim.span}`,
-                }}
-                className={cn(
-                  'pointer-events-none rounded-lg border-2',
-                  claim.blocked ? 'border-destructive' : 'border-primary',
-                )}
-              />
-            )}
           </div>
         )}
       </ScrollArea>
