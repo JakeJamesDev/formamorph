@@ -77,6 +77,31 @@ native `title` these replaced never showed there either.
 > neighbor hands over instantly whatever that value is. What makes them one group is the shared provider,
 > so removing it is the mutation that turns this guard red.
 
+[library-drag-parity.spec.ts](e2e/library-drag-parity.spec.ts) — the library board's drag, as twelve executable
+rules. It is a **parity** suite: every rule was measured against the library as it stood before the tile board
+landed, and the file is written against app-level observables only (thumbnail order by `alt`, bounding boxes,
+the absence of a folder heading) so it runs unchanged on either implementation.
+
+> **How to re-validate it.** Add a worktree at the commit before the tile board, junction `node_modules` into
+> it, copy the two files across, and run:
+>
+> ```bash
+> git worktree add --detach ../_parity 9beea58
+> ```
+>
+> Then `cp e2e/tileDrag.ts e2e/library-drag-parity.spec.ts ../_parity/e2e/` and
+> `E2E_PORT=5186 npx playwright test library-drag-parity` from inside it. Twenty-four pass, two skip — the same
+> score the current code gets. A rule that only the new board can satisfy does not belong in this file.
+
+Two claims about the old code turned out to be false once measured there, so they are **not** asserted.
+Releasing away from the board did *not* commit nothing: `closestCenter` always returns its nearest droppable
+however far the pointer is, so the tile landed beside whichever tile was closest. And the settle was *not* a
+fade: the card's `transition-opacity` class was dead — `useSortable` writes an inline transform-only
+`transition` that overrides it — so the released tile snapped to its slot and to full opacity in one frame.
+
+[library-tiles.spec.ts](e2e/library-tiles.spec.ts) — the folder half: made from the tile's menu, filled and
+emptied from it, arranged inside, and never touched by a drag.
+
 Two caveats worth knowing:
 
 - **Focus, not the keyboard.** There is no soft keyboard to drive, so the specs measure what *summons*

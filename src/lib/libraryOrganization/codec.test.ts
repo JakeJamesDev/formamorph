@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import { LEGACY_ORDER_KEYS, TILE_STORAGE_KEYS, loadTabOrganization, saveTabOrganization } from './codec';
-import { addToGroup, createGroupFromDrop, setTileSize } from './operations';
+import { addToGroup, createGroupFromItem, setTileSize } from './operations';
 import { emptyTabOrganization, type LibraryTabOrganization } from './types';
 
 const stored = (tab: 'worlds' | 'entities') =>
@@ -8,9 +8,13 @@ const stored = (tab: 'worlds' | 'entities') =>
 
 const grouped = (): LibraryTabOrganization =>
   setTileSize(
-    createGroupFromDrop({ ...emptyTabOrganization(), order: ['a', 'b', 'c'] }, {
-      groupId: 'g1', dragId: 'b', targetId: 'a',
-    }),
+    addToGroup(
+      createGroupFromItem({ ...emptyTabOrganization(), order: ['a', 'b', 'c'] }, {
+        groupId: 'g1', itemId: 'a',
+      }),
+      'b',
+      'g1',
+    ),
     'c',
     'small',
   );

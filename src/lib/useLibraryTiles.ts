@@ -3,7 +3,6 @@ import { randomUUID } from '@/lib/uuid';
 import type { MainMenuCardTab } from '@/views/mainMenuTabs';
 import {
   addToGroup,
-  createGroupFromDrop,
   createGroupFromItem,
   disbandGroup,
   groupOf,
@@ -35,8 +34,6 @@ export interface LibraryTiles {
   groupOfItem: (itemId: string) => LibraryGroup | undefined;
   size: (id: string) => LibraryTileSize;
   setSize: (id: string, size: LibraryTileSize) => void;
-  /** Fold two tiles into a brand-new folder. */
-  groupTiles: (dragId: string, targetId: string) => void;
   addTo: (itemId: string, groupId: string) => void;
   /** Fold a tile into a brand-new folder on its own, for the context menu's New Group entry. */
   groupWithNew: (itemId: string) => void;
@@ -85,10 +82,6 @@ export function useLibraryTiles(
     [topLevel, organization],
   );
 
-  const groupTiles = useCallback((dragId: string, targetId: string) => {
-    setOrganization((prev) => createGroupFromDrop(prev, { groupId: randomUUID(), dragId, targetId }));
-  }, []);
-
   const groupWithNew = useCallback((itemId: string) => {
     setOrganization((prev) => createGroupFromItem(prev, { groupId: randomUUID(), itemId }));
   }, []);
@@ -102,7 +95,6 @@ export function useLibraryTiles(
     groupOfItem: useCallback((itemId: string) => groupOf(organization, itemId), [organization]),
     size: useCallback((id: string) => tileSize(organization, id), [organization]),
     setSize: useCallback((id, size) => setOrganization((prev) => setTileSize(prev, id, size)), []),
-    groupTiles,
     groupWithNew,
     addTo: useCallback((itemId, groupId) => setOrganization((prev) => addToGroup(prev, itemId, groupId)), []),
     removeFrom: useCallback((itemId) => setOrganization((prev) => removeFromGroup(prev, itemId)), []),

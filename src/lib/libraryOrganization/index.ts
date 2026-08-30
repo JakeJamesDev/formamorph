@@ -8,4 +8,3 @@ export * from './types';
 export * from './operations';
 export * from './packer';
 export * from './codec';
-export * from './dropIntent';
