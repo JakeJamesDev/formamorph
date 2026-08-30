@@ -13,9 +13,10 @@ export interface ImageCap {
   maxBytes: number;
 }
 
-/** Display-driven budgets: thumbnails render ~192px, entity images in a modal, backgrounds full-viewport. */
+/** Display-driven budgets: a Large library tile renders thumbnails at ~800px, entity images in a
+ *  modal, backgrounds full-viewport. */
 export const IMAGE_CAPS = {
-  thumbnail: { maxDim: 512, maxBytes: 200_000 },
+  thumbnail: { maxDim: 1024, maxBytes: 500_000 },
   entity: { maxDim: 1024, maxBytes: 600_000 },
   background: { maxDim: 1920, maxBytes: 1_500_000 },
 } as const satisfies Record<string, ImageCap>;
