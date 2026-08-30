@@ -256,7 +256,7 @@ test.describe('library drag parity', () => {
     // tile board's group drop — the offset grab leaves the claim on a neighbor that cannot dodge, and
     // holding that past the group dwell is the grouping gesture now.
     await page.mouse.move(to.x, to.y, { steps: 10 });
-    await page.waitForTimeout(150);
+    await page.waitForTimeout(100);
     await startCopySampler(page, names[0]);
     const released = await now(page);
     await page.mouse.up();
