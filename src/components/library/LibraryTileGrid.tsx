@@ -3,7 +3,6 @@ import {
   DragOverlay,
   MouseSensor,
   TouchSensor,
-  useDroppable,
   useSensor,
   useSensors,
   type DragEndEvent,
@@ -14,7 +13,7 @@ import { restrictToFirstScrollableAncestor } from '@dnd-kit/modifiers';
 import { arrayMove, type SortingStrategy } from '@dnd-kit/sortable';
 import { EditorDndContext, StableSortableContext } from '@/components/dnd/EditorDndContext';
 import { sameIds } from '@/lib/useSortableIds';
-import { ArrowLeft, FolderMinus } from 'lucide-react';
+import { ArrowLeft } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -30,8 +29,6 @@ import {
   ContextMenuTrigger,
 } from '@/components/ui/context-menu';
 import {
-  GROUP_OVERLAP,
-  groupOverlapRatio,
   packTiles,
   packedRowCount,
   type LibraryTileSize,
@@ -58,21 +55,6 @@ const GAP = 16;
 
 /** Tailwind's `sm` and `lg` breakpoints, so column counts change where the rest of the app's do. */
 const BREAKPOINTS = { sm: 640, lg: 1024 };
-
-/** The header's drop target: dropping a tile here takes it out of the folder. */
-const UNGROUP_DROP_ID = '__library-ungroup__';
-
-/**
- * How long a drag settles over a tile before that hover is read at all — as a slide-aside, or as the
- * start of a group. Long enough that a drag passing across a tile reads as nothing.
- */
-const HOVER_MS = 150;
-
-/**
- * How long the carried tile must then hold on a group target before the drop arms as a fold, with the
- * ring fading in for exactly this long.
- */
-const GROUP_ARM_MS = 300;
 
 /** Tiles hold their real grid slots at all times; reorders change the slots, never a transform. */
 const NULL_STRATEGY: SortingStrategy = () => null;
@@ -139,15 +121,13 @@ function usePlacement(
   }, [order, sizes, columns, layout]);
 }
 
-/** The header of the folder view: back out, rename in place, and a drop zone that ungroups. */
-function FolderHeader({ name, dragging, settings, onBack, onRename }: {
+/** The header of the folder view: back out and rename in place. Taking a tile out is a menu item. */
+function FolderHeader({ name, settings, onBack, onRename }: {
   name: string;
-  dragging: boolean;
   settings?: React.ReactNode;
   onBack: () => void;
   onRename: (name: string) => void;
 }) {
-  const { setNodeRef, isOver } = useDroppable({ id: UNGROUP_DROP_ID });
   const [draft, setDraft] = useState(name);
   useEffect(() => setDraft(name), [name]);
 
@@ -173,19 +153,6 @@ function FolderHeader({ name, dragging, settings, onBack, onRename }: {
         className="h-8 w-56 font-semibold"
       />
       {settings}
-      {/* Only while a drag is live: an always-on zone would be a permanent bar over the grid. */}
-      {dragging && (
-        <div
-          ref={setNodeRef}
-          className={cn(
-            'ml-auto flex items-center gap-2 rounded-md border border-dashed px-3 py-1.5 text-label',
-            isOver ? 'border-primary bg-primary/10 text-primary' : 'border-border text-muted-foreground',
-          )}
-        >
-          <FolderMinus className="h-4 w-4" />
-          Move Out Of Group
-        </div>
-      )}
     </div>
   );
 }
@@ -195,7 +162,10 @@ function FolderHeader({ name, dragging, settings, onBack, onRename }: {
  *
  * The grid layout packs tiles at their own size — half, one, or double a medium tile — while the
  * detailed layout keeps uniform cards and shows folders as cards among them. Clicking a folder swaps the
- * grid for that folder's members, with a header that renames it and a drop zone that takes tiles out.
+ * grid for that folder's members, with a header that renames it in place.
+ *
+ * A drag does exactly one thing here: move a tile. Folders are made, filled, and emptied from the tile's
+ * context menu and nowhere else, so no gesture can restructure a library that was only being tidied.
  *
  * @param items - Everything the tab holds; the arrangement decides which of them the grid draws
  * @param idOf - The library id of one item, which is what the arrangement is keyed by
@@ -235,18 +205,15 @@ export function LibraryTileGrid<T>({
   emptyState?: React.ReactNode;
 }) {
   const [openGroupId, setOpenGroupId] = useState<string | null>(null);
-  // The drag in progress: the carried tile, the LIVE order the board is drawing — reordered in place
-  // as the drag moves, the way dnd-kit's own sortable examples do — and any group charge building.
-  // `drawnRef` mirrors the drawn order synchronously, so the drop commits exactly what is on screen
-  // even when the last change has not rendered yet.
+  // The drag in progress: the carried tile and the LIVE order the board is drawing — reordered in place
+  // as the drag moves, the way dnd-kit's own sortable examples do. `drawnRef` mirrors the drawn order
+  // synchronously, so the drop commits exactly what is on screen even when the last change has not
+  // rendered yet.
   const [activeId, setActiveId] = useState<string | null>(null);
   const [drawn, setDrawn] = useState<string[] | null>(null);
-  const [charge, setCharge] = useState<{ targetId: string; armed: boolean } | null>(null);
   const [overlaySize, setOverlaySize] = useState<{ width: number; height: number } | null>(null);
   const drawnRef = useRef<string[] | null>(null);
-  const chargeRef = useRef<{ targetId: string; armed: boolean } | null>(null);
   const [measureGrid, width] = useMeasuredWidth();
-  const dragging = activeId !== null;
 
   const openGroup = openGroupId ? tiles.group(openGroupId) : undefined;
   useEffect(() => {
@@ -279,31 +246,9 @@ export function LibraryTileGrid<T>({
     useSensor(TouchSensor, { activationConstraint: { delay: 200, tolerance: 5 } }),
   );
 
-  /**
-   * The hover clock: which tile the drag has settled over, waiting to be read. One short wait decides
-   * what hovering a tile means — deeply overlapped, it starts a group charge; anything else, the tile
-   * slides out of the way and the vacant slot takes its place under the carried tile. The wait is what
-   * lets both gestures exist at once: an instant slide-aside would whisk every group target away
-   * before it could ever be parked on, and an instant group would fold tiles on every pass-through.
-   */
-  const hoverRef = useRef<{ overId: string; timer: number; inZone: boolean } | null>(null);
-  const armTimerRef = useRef<number | null>(null);
   // The tile a slide-aside just moved, so the same collision events cannot re-trigger it before the
   // board's rects are re-measured. Cleared as soon as the drag settles over anything else.
   const settledRef = useRef<string | null>(null);
-
-  const clearHover = () => {
-    if (hoverRef.current) window.clearTimeout(hoverRef.current.timer);
-    hoverRef.current = null;
-  };
-
-  const discharge = () => {
-    if (armTimerRef.current !== null) window.clearTimeout(armTimerRef.current);
-    armTimerRef.current = null;
-    if (!chargeRef.current) return;
-    chargeRef.current = null;
-    setCharge(null);
-  };
 
   const setDrawnBoth = (next: string[]) => {
     drawnRef.current = next;
@@ -320,21 +265,11 @@ export function LibraryTileGrid<T>({
     setDrawnBoth(arrayMove(current, from, to));
   };
 
-  /** Start the group charge on a tile: the ring fades in, and the arm timer makes the drop a fold. */
-  const beginCharge = (targetId: string) => {
-    chargeRef.current = { targetId, armed: false };
-    setCharge({ targetId, armed: false });
-    armTimerRef.current = window.setTimeout(() => {
-      if (chargeRef.current?.targetId !== targetId) return;
-      chargeRef.current = { targetId, armed: true };
-      setCharge({ targetId, armed: true });
-    }, GROUP_ARM_MS);
-  };
-
   /**
-   * The per-move reading. Everything is measured against the live board — the drawn order is real,
-   * the rects dnd-kit hands over are re-measured whenever it changes — so what the reading sees is
-   * exactly what the player sees, and the drop can only ever do what the board showed.
+   * The per-move reading. Crossing onto a tile slides it aside at once — there is nothing else a hover
+   * could mean, so there is nothing to wait to find out. Everything is measured against the live board:
+   * the drawn order is real and the rects dnd-kit hands over are re-measured whenever it changes, so
+   * the reading sees exactly what the player sees and the drop can only do what the board showed.
    */
   const updateDrag = (event: DragMoveEvent | DragOverEvent) => {
     const { active, over } = event;
@@ -344,46 +279,13 @@ export function LibraryTileGrid<T>({
       if (initial) setOverlaySize({ width: initial.width, height: initial.height });
     }
 
-    const overId = over && over.id !== UNGROUP_DROP_ID && String(over.id) !== id
-      ? String(over.id)
-      : null;
+    const overId = over && String(over.id) !== id ? String(over.id) : null;
     if (settledRef.current && settledRef.current !== overId) settledRef.current = null;
-    if (!overId || overId === settledRef.current) {
-      clearHover();
-      discharge();
-      return;
-    }
-
-    // How much of the carried tile sits on the over tile, both boxes live.
-    const carried = active.rect.current.translated;
-    const canGroup = !openGroupId && !tiles.group(id);
-    const inZone = canGroup && carried !== null && over !== null
-      && groupOverlapRatio(carried, over.rect) >= GROUP_OVERLAP;
-
-    if (chargeRef.current) {
-      if (chargeRef.current.targetId === overId && inZone) return;
-      // Backing off the target cancels the group instantly, armed or not.
-      discharge();
-    }
-
-    if (hoverRef.current?.overId === overId) {
-      hoverRef.current.inZone = inZone;
-      return;
-    }
-    clearHover();
-    const timer = window.setTimeout(() => {
-      const hover = hoverRef.current;
-      hoverRef.current = null;
-      if (!hover || hover.overId !== overId) return;
-      if (hover.inZone) beginCharge(overId);
-      else dodge(id, overId);
-    }, HOVER_MS);
-    hoverRef.current = { overId, timer, inZone };
+    if (!overId || overId === settledRef.current) return;
+    dodge(id, overId);
   };
 
   const resetDrag = () => {
-    clearHover();
-    discharge();
     settledRef.current = null;
     drawnRef.current = null;
     setDrawn(null);
@@ -392,31 +294,20 @@ export function LibraryTileGrid<T>({
   };
 
   const handleDragEnd = (event: DragEndEvent) => {
-    // The drop persists the order on screen, with one last stock arrayMove toward the tile released
-    // on, so a quick drop lands where every plain sortable would put it — and an armed group folds
-    // instead, exactly as the completed ring promised.
-    const armed = chargeRef.current?.armed ? chargeRef.current.targetId : null;
+    // The drop persists the order on screen, with one last stock arrayMove toward the tile released on,
+    // so a drop too quick to have slid anything still lands where every plain sortable would put it.
     let order = drawnRef.current ?? renderedIds;
     resetDrag();
     const { active, over } = event;
     if (!over) return;
 
     const id = String(active.id);
-    if (over.id === UNGROUP_DROP_ID) {
-      tiles.removeFrom(id);
-      return;
-    }
-
-    if (!armed && String(over.id) !== id) {
+    if (String(over.id) !== id) {
       const from = order.indexOf(id);
       const to = order.indexOf(String(over.id));
       if (from !== -1 && to !== -1 && from !== to) order = arrayMove(order, from, to);
     }
     if (!sameIds(order, renderedIds)) tiles.commitOrder(order, openGroupId);
-    if (armed) {
-      if (tiles.group(armed)) tiles.addTo(id, armed);
-      else tiles.groupTiles(id, armed);
-    }
   };
 
   /** The context menu for one tile: its size, then whatever grouping applies to it. */
@@ -485,12 +376,6 @@ export function LibraryTileGrid<T>({
       }
       : undefined;
 
-    // The tile a parked drop would fold into. Its cell is its real position — tiles never carry
-    // preview transforms here — so the ring sits exactly where the player sees the tile. It fades in
-    // while the arming window runs, so the group is watched coming and can be pulled away from; with
-    // reduced motion it appears only at arm.
-    const chargeHere = charge?.targetId === id ? charge : null;
-
     return (
       <ContextMenu key={id}>
         <ContextMenuTrigger asChild>
@@ -499,16 +384,12 @@ export function LibraryTileGrid<T>({
             className={cn(
               'relative min-w-0',
               layout === 'detailed' && 'h-full',
+              // The carried tile's slot stands empty, because the overlay is already drawing it. Leaving
+              // a dimmed copy here would put two of the same tile on screen at once, which the flat grid
+              // never did: it floated the card itself and left a gap behind.
+              id === activeId && 'opacity-0',
             )}
           >
-            {chargeHere && (
-              <div
-                className={cn(
-                  'pointer-events-none absolute inset-0 z-10 rounded-lg ring-2 ring-primary ring-offset-2 ring-offset-background',
-                  !chargeHere.armed && 'animate-in fade-in duration-300 motion-reduce:hidden',
-                )}
-              />
-            )}
             {group ? (
               <LibraryGroupTile
                 group={group}
@@ -543,13 +424,16 @@ export function LibraryTileGrid<T>({
    * The overlay's stand-in for the carried tile: the thumbnail — or a folder's mosaic — in a box the
    * size the tile had. The real card components register sortables, which the overlay must not, so
    * this is a plain clone rather than a second render of the card.
+   *
+   * Half opacity, and nothing else: the flat grid carried the card itself at exactly this, with no
+   * shadow or ring under the hand.
    */
   const overlayContent = (id: string) => {
     const group = tiles.group(id);
     const item = byId.get(id);
     const thumb = item ? thumbnailOf(item) : undefined;
     return (
-      <div className="h-full w-full overflow-hidden rounded-lg bg-card shadow-lg ring-1 ring-border">
+      <div className="h-full w-full overflow-hidden rounded-lg bg-card opacity-50">
         {group ? (
           <div className="grid h-full w-full grid-cols-2 grid-rows-2 gap-px">
             {Array.from({ length: 4 }, (_, i) => {
@@ -592,7 +476,6 @@ export function LibraryTileGrid<T>({
       {openGroup && (
         <FolderHeader
           name={openGroup.name}
-          dragging={dragging}
           settings={groupSettings?.(openGroup.id)}
           onBack={() => setOpenGroupId(null)}
           onRename={(name) => tiles.rename(openGroup.id, name)}
@@ -614,7 +497,10 @@ export function LibraryTileGrid<T>({
       {/* The carried tile itself, rendered in a portal that follows the pointer. Its in-flow element
           stays in the board — moving slot to slot with the live order, dimmed — which IS the hole the
           drop will fill. */}
-      <DragOverlay>
+      {/* No drop animation: the old grid settled in one frame, and the default 250ms slide fights the
+          synchronous state reset — its side effect re-hides the just-revealed tile, which reads as a
+          flash. On release the overlay vanishes and the tile stands in its slot, same paint. */}
+      <DragOverlay dropAnimation={null}>
         {activeId && overlaySize && (
           <div style={overlaySize} className="pointer-events-none">
             {overlayContent(activeId)}

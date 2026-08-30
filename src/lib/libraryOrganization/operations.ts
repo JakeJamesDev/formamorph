@@ -36,45 +36,9 @@ const detach = (
 );
 
 /**
- * Fold two tiles into a new folder standing where the target tile stood.
+ * Put one tile into a new folder of its own, standing where the tile stood.
  *
- * Rejected — the state comes back untouched — when either side is already a folder, since groups hold
- * only items, or when a tile is dropped on itself.
- *
- * @param groupId - The id to mint the folder under; the caller owns id generation
- */
-export function createGroupFromDrop(
-  org: LibraryTabOrganization,
-  { groupId, dragId, targetId }: { groupId: string; dragId: string; targetId: string },
-): LibraryTabOrganization {
-  if (dragId === targetId) return org;
-  if (isGroupId(org, dragId) || isGroupId(org, targetId)) return org;
-
-  const group: LibraryGroup = {
-    id: groupId,
-    name: NEW_GROUP_NAME,
-    members: [targetId, dragId],
-    settings: {},
-  };
-  const groups = detach(detach(org.groups, dragId), targetId);
-  // A library never rearranged has an empty order and draws every tile by the sort-to-end rule, so the
-  // target often has no slot to take over. The folder is appended rather than left off the order, which
-  // would leave it nowhere to render.
-  const slot = org.order.indexOf(targetId);
-  const placed = slot === -1 ? [...org.order, groupId] : spliced(org.order, slot, 1, groupId);
-  const order = without(placed, dragId);
-  const size = org.sizes[targetId];
-
-  return {
-    order,
-    groups: { ...groups, [groupId]: group },
-    sizes: size ? { ...org.sizes, [groupId]: size } : org.sizes,
-  };
-}
-
-/**
- * Put one tile into a new folder of its own, standing where the tile stood — the context menu's New
- * Group action, which has no second tile to fold in.
+ * This is how every folder starts: the context menu's New Group action. No drag gesture makes one.
  *
  * @param groupId - The id to mint the folder under; the caller owns id generation
  */

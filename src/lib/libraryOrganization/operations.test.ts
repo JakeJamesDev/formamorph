@@ -1,7 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import {
   addToGroup,
-  createGroupFromDrop,
   createGroupFromItem,
   disbandGroup,
   groupOf,
@@ -21,61 +20,15 @@ const withItems = (...ids: string[]): LibraryTabOrganization => ({ ...emptyTabOr
 
 /** `a` and `b` grouped as `g1`, with `c` still loose beside the folder. */
 const withGroup = (): LibraryTabOrganization =>
-  createGroupFromDrop(withItems('a', 'b', 'c'), { groupId: 'g1', dragId: 'b', targetId: 'a' });
+  addToGroup(createGroupFromItem(withItems('a', 'b', 'c'), { groupId: 'g1', itemId: 'a' }), 'b', 'g1');
 
 /** Two folders in one tab: `g1` holds a and b, `g2` holds c and d. */
 const withTwoGroups = (): LibraryTabOrganization =>
-  createGroupFromDrop(
-    createGroupFromDrop(withItems('a', 'b', 'c', 'd'), { groupId: 'g1', dragId: 'b', targetId: 'a' }),
-    { groupId: 'g2', dragId: 'd', targetId: 'c' },
+  addToGroup(
+    createGroupFromItem(withGroup(), { groupId: 'g2', itemId: 'c' }),
+    'd',
+    'g2',
   );
-
-describe('createGroupFromDrop', () => {
-  it('folds both tiles into a new group that takes the target tile place', () => {
-    const org = withGroup();
-
-    expect(org.order).toEqual(['g1', 'c']);
-    expect(org.groups.g1.members).toEqual(['a', 'b']);
-    expect(org.groups.g1.name).toBe(NEW_GROUP_NAME);
-    expect(org.groups.g1.settings).toEqual({});
-  });
-
-  it('gives the new folder the size of the tile it was dropped on', () => {
-    const org = setTileSize(withItems('a', 'b'), 'a', 'large');
-
-    expect(tileSize(createGroupFromDrop(org, { groupId: 'g1', dragId: 'b', targetId: 'a' }), 'g1'))
-      .toBe('large');
-  });
-
-  it('refuses to nest a group inside a group', () => {
-    const org = withGroup();
-
-    expect(createGroupFromDrop(org, { groupId: 'g2', dragId: 'g1', targetId: 'c' })).toBe(org);
-    expect(createGroupFromDrop(org, { groupId: 'g2', dragId: 'c', targetId: 'g1' })).toBe(org);
-  });
-
-  it('refuses to group a tile with itself', () => {
-    const org = withItems('a', 'b');
-
-    expect(createGroupFromDrop(org, { groupId: 'g1', dragId: 'a', targetId: 'a' })).toBe(org);
-  });
-
-  it('takes the dragged item out of the folder it was already in', () => {
-    const org = createGroupFromDrop(withGroup(), { groupId: 'g2', dragId: 'b', targetId: 'c' });
-
-    expect(org.groups.g1.members).toEqual(['a']);
-    expect(org.groups.g2.members).toEqual(['c', 'b']);
-  });
-
-  it('lists the folder even when the tile dropped on was never in the saved order', () => {
-    // The common case on a library that has never been rearranged: the order is empty and every tile
-    // is drawn by the sort-to-end rule. A folder left out of the order would render nowhere at all.
-    const org = createGroupFromDrop(emptyTabOrganization(), { groupId: 'g1', dragId: 'b', targetId: 'a' });
-
-    expect(org.order).toEqual(['g1']);
-    expect(topLevelIds(org, ['a', 'b', 'c'])).toEqual(['g1', 'c']);
-  });
-});
 
 describe('createGroupFromItem', () => {
   it('puts a lone tile in a folder standing where the tile stood', () => {
@@ -84,6 +37,12 @@ describe('createGroupFromItem', () => {
     expect(org.order).toEqual(['a', 'g1', 'c']);
     expect(org.groups.g1.members).toEqual(['b']);
     expect(org.groups.g1.name).toBe(NEW_GROUP_NAME);
+  });
+
+  it('gives the new folder the size of the tile it grew from', () => {
+    const org = setTileSize(withItems('a', 'b'), 'a', 'large');
+
+    expect(tileSize(createGroupFromItem(org, { groupId: 'g1', itemId: 'a' }), 'g1')).toBe('large');
   });
 
   it('lists the folder even when the tile was never in the saved order', () => {
