@@ -1,4 +1,10 @@
-import { prunePlacements, resizePlacements, rowMajor, withPlacements } from './placements';
+import {
+  prunePlacements,
+  resizePlacements,
+  resolvePlacements,
+  rowMajor,
+  withPlacements,
+} from './placements';
 import {
   NEW_GROUP_NAME,
   type LibraryGroup,
@@ -164,17 +170,24 @@ export function renameGroup(
  *
  * @param ids - The tiles sharing this one's grid. Given, the tile is re-fitted at every arranged width;
  *   omitted, only the size changes and the board is left to be resolved at render time.
+ * @param columns - The width being looked at. Its board is stored before the resize when it never has
+ *   been, so a width the player has only viewed resizes like an arranged one instead of repacking.
  */
 export function setTileSize(
   org: LibraryTabOrganization,
   id: string,
   size: LibraryTileSize,
   ids?: string[],
+  columns?: number,
 ): LibraryTabOrganization {
   if (tileSize(org, id) === size) return org;
+  const width = columns ? Math.max(1, Math.floor(columns)) : 0;
+  const held = ids && width > 0 && !org.placements[width]
+    ? withPlacements(org, width, resolvePlacements(org, ids, width))
+    : org;
   const resized = size === 'medium'
-    ? { ...org, sizes: dropKey(org.sizes, id) }
-    : { ...org, sizes: { ...org.sizes, [id]: size } };
+    ? { ...held, sizes: dropKey(held.sizes, id) }
+    : { ...held, sizes: { ...held.sizes, [id]: size } };
   return ids ? resizePlacements(resized, id, ids) : resized;
 }
 

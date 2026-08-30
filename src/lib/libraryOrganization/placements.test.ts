@@ -192,7 +192,7 @@ describe('setTileSize with a grid to fit into', () => {
     expect(next.placements[8].b).toEqual({ row: 0, col: 4 });
   });
 
-  it('moves a grown tile to the nearest free space rather than crushing its neighbors', () => {
+  it('grows in place, and whoever the bigger footprint lands on moves to their nearest free block', () => {
     const state = org({
       order: ['a', 'b'],
       placements: { 8: homes([['a', 0, 0], ['b', 0, 2]]) },
@@ -200,9 +200,9 @@ describe('setTileSize with a grid to fit into', () => {
 
     const next = setTileSize(state, 'a', 'large', ['a', 'b']);
 
-    // `b` never budges; `a` finds the first block of four that is genuinely free.
-    expect(next.placements[8].b).toEqual({ row: 0, col: 2 });
-    expect(next.placements[8].a).toEqual({ row: 0, col: 4 });
+    // The resize is felt where it happened: `a` stands its ground, `b` steps just clear of it.
+    expect(next.placements[8].a).toEqual({ row: 0, col: 0 });
+    expect(next.placements[8].b).toEqual({ row: 0, col: 4 });
   });
 
   it('keeps the anchor when a tile shrinks', () => {
@@ -217,7 +217,7 @@ describe('setTileSize with a grid to fit into', () => {
     expect(next.placements[8].a).toEqual({ row: 0, col: 4 });
   });
 
-  it('re-fits the tile at every width it has a home in', () => {
+  it('re-fits at every width it has a home in, in place at each', () => {
     const state = org({
       order: ['a', 'b'],
       placements: { 8: homes([['a', 0, 0], ['b', 0, 2]]), 4: homes([['a', 0, 0], ['b', 0, 2]]) },
@@ -225,9 +225,25 @@ describe('setTileSize with a grid to fit into', () => {
 
     const next = setTileSize(state, 'a', 'large', ['a', 'b']);
 
-    expect(next.placements[8].a).toEqual({ row: 0, col: 4 });
-    // Four columns wide, a large tile fills the row, so it drops below the tile that stayed.
-    expect(next.placements[4].a).toEqual({ row: 2, col: 0 });
-    expect(next.placements[4].b).toEqual({ row: 0, col: 2 });
+    expect(next.placements[8].a).toEqual({ row: 0, col: 0 });
+    expect(next.placements[8].b).toEqual({ row: 0, col: 4 });
+    // Four columns wide the large tile fills the whole band, so `b` has nowhere beside it and takes
+    // the nearest block below instead.
+    expect(next.placements[4].a).toEqual({ row: 0, col: 0 });
+    expect(next.placements[4].b).toEqual({ row: 4, col: 2 });
+  });
+
+  it('stores the viewed width on its first resize, so a viewed board resizes like an arranged one', () => {
+    // Nothing stored at width 8: the board on screen is the packed seed. Handing the width in makes
+    // the resize hold that board still instead of letting the packer reflow everything.
+    const state = org({ order: ['a', 'b', 'c'] });
+
+    const next = setTileSize(state, 'a', 'large', ['a', 'b', 'c'], 8);
+
+    // The seed put the mediums at columns 0, 2 and 4; `a` grows over `b`, which tucks in under `c`
+    // right beside the grown tile, and `c` — never touched — holds the exact cell it was drawn at.
+    expect(next.placements[8].a).toEqual({ row: 0, col: 0 });
+    expect(next.placements[8].c).toEqual({ row: 0, col: 4 });
+    expect(next.placements[8].b).toEqual({ row: 2, col: 4 });
   });
 });

@@ -520,7 +520,7 @@ export function LibraryTileGrid<T>({
             <ContextMenuLabel>Tile Size</ContextMenuLabel>
             <ContextMenuRadioGroup
               value={tiles.size(id)}
-              onValueChange={(value) => tiles.setSize(id, value as LibraryTileSize, renderedIds)}
+              onValueChange={(value) => tiles.setSize(id, value as LibraryTileSize, renderedIds, baseCols)}
             >
               {SIZE_LABELS.map(({ size, label }) => (
                 <ContextMenuRadioItem key={size} value={size}>{label}</ContextMenuRadioItem>

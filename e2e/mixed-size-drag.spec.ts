@@ -159,10 +159,11 @@ test.describe('mixed-size tile drag', () => {
     const before = await boardCells(page);
     const wall = before[names[3]];
 
-    // One gesture, two halves: across a medium tile, which earns its dodge, and then on into the large
-    // one, which refuses. The release happens over the refusal.
-    await dragTileToCell(page, names[0], wall, {
-      through: [{ row: before[names[1]].row, col: before[names[1]].col + 2 }],
+    // One gesture, two halves: across a medium tile, which earns its dodge, and then down into the
+    // large one, which refuses. The descent aims at the wall's interior so it cannot re-sweep the
+    // dodged tile at its new home and walk the dodge back.
+    await dragTileToCell(page, names[0], { row: wall.row, col: wall.col + 2 }, {
+      through: [{ row: before[names[1]].row, col: before[names[1]].col + 1 }],
       hold: 400,
     });
 
@@ -203,21 +204,28 @@ test.describe('mixed-size tile drag', () => {
   test('a large tile carried through a field of smalls stacks them behind it', async ({ page }) => {
     await openLibrary(page);
     const names = await tileOrder(page);
-    const smalls = names.slice(1, 5);
-    for (const name of smalls) await setTileSize(page, name, 'Small');
+    for (const name of names.slice(1)) await setTileSize(page, name, 'Small');
     await setTileSize(page, names[0], 'Large');
     const before = await boardCells(page);
 
-    // Two columns to the right, straight through the field the resize left standing there.
+    // The tiles standing in the two columns the drag is about to sweep through; the growth pushed
+    // the rest below the large tile's rows, out of this gesture's reach.
+    const swept = names.slice(1).filter(
+      (name) => before[name].col >= 2 && before[name].row < before[names[0]].span,
+    );
+    expect(swept.length, 'the field the drag needs is not standing in its path').toBeGreaterThan(2);
+
+    // Two columns to the right, straight through that field.
     await dragTileToCell(page, names[0], { row: 0, col: 2 }, { steps: 20, interval: 20 });
 
     const after = await boardCells(page);
     expect(Object.keys(after).sort(), 'a tile fell off the board').toEqual(Object.keys(before).sort());
-    expect(after[names[0]]).toEqual({ row: 0, col: 2, span: 4 });
+    expect(after[names[0]].span, 'the carried tile lost its shape').toBe(4);
     expectSoundBoard(after, columnsFor(page));
-    // Each small it swept ended up behind the drag rather than standing its ground.
-    for (const name of smalls) {
+    // Each small it swept ended up behind the drag — to its left — rather than standing its ground.
+    for (const name of swept) {
       expect(after[name].col, `${name} did not give way`).toBeLessThan(before[name].col);
+      expect(after[name].col, `${name} is not behind the drag`).toBeLessThan(after[names[0]].col);
     }
   });
 });

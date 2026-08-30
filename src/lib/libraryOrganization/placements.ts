@@ -161,12 +161,28 @@ export function prunePlacements(
   return changed ? next : placements;
 }
 
+/** The free block of the tile's span nearest its own anchor. The rows past everything are empty, so
+ *  scanning one span beyond the tallest footprint always finds one. */
+function nearestFit(board: Board, tile: PackedTile): PackedTile {
+  const limit = board.taken.reduce((max, t) => Math.max(max, t.row + t.span), 0) + tile.span;
+  let best: { score: number; spot: PackedTile } | null = null;
+  for (let row = 0; row <= limit; row++) {
+    for (let col = 0; col <= board.columns - tile.span; col++) {
+      const spot = { ...tile, row, col };
+      if (!fits(board, spot)) continue;
+      const score = (row - tile.row) ** 2 + (col - tile.col) ** 2;
+      if (!best || score < best.score) best = { score, spot };
+    }
+  }
+  return best!.spot;
+}
+
 /**
  * Re-place one tile at the size the organization now records for it, in every width it has a home in.
  *
- * Nothing else moves. A tile that still fits keeps its anchor, so shrinking never disturbs anything and
- * growing into free space is free. One that no longer fits takes the first free block instead of pushing
- * its neighbors around, so a resize can never destroy the arrangement it sits in.
+ * The tile grows where it stands, and whoever the bigger footprint lands on moves to their own nearest
+ * free block instead — closest casualties first — so a resize is felt right where it happened rather
+ * than throwing the resized tile across the board. Shrinking lands on no one and so moves nothing.
  *
  * @param ids - The tiles sharing this tile's grid, so another grid's homes cannot block it
  */
@@ -184,15 +200,24 @@ export function resizePlacements(
     }
 
     const span = (tileId: string) => spanAt(org.sizes[tileId] ?? 'medium', cols);
-    const board: Board = { columns: cols, taken: [] };
-    for (const other of ids) {
-      const at = places[other];
-      if (other !== id && at) board.taken.push({ id: other, row: at.row, col: at.col, span: span(other) });
-    }
+    const at = places[id];
+    const grown: PackedTile = { id, row: at.row, col: Math.min(at.col, cols - span(id)), span: span(id) };
+    const others = ids
+      .filter((other) => other !== id && places[other])
+      .map((other) => ({ id: other, ...places[other], span: span(other) }));
 
-    const held = { id, row: places[id].row, col: places[id].col, span: span(id) };
-    const spot = fits(board, held) ? held : firstFit(board, id, span(id));
-    placements[cols] = { ...places, [id]: { row: spot.row, col: spot.col } };
+    const board: Board = { columns: cols, taken: [grown, ...others.filter((t) => !hits(t, grown))] };
+    const bumped = others
+      .filter((t) => hits(t, grown))
+      .sort((a, b) =>
+        (a.row - grown.row) ** 2 + (a.col - grown.col) ** 2
+        - ((b.row - grown.row) ** 2 + (b.col - grown.col) ** 2));
+    for (const tile of bumped) board.taken.push(nearestFit(board, tile));
+
+    placements[cols] = {
+      ...places,
+      ...Object.fromEntries(board.taken.map((t) => [t.id, { row: t.row, col: t.col }])),
+    };
   }
   return { ...org, placements };
 }
