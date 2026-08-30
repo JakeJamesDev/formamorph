@@ -8,12 +8,11 @@ import {
   disbandGroup,
   groupOf,
   loadTabOrganization,
-  moveTile,
-  reorderTopLevel,
   pruneOrganization,
   removeFromGroup,
   renameGroup,
   saveTabOrganization,
+  setDrawnOrder,
   setGroupPromptPreset,
   setTileSize,
   tileSize,
@@ -21,13 +20,12 @@ import {
   type LibraryGroup,
   type LibraryTabOrganization,
   type LibraryTileSize,
-  type TileMove,
 } from '@/lib/libraryOrganization';
 
 /** One tab's tile arrangement plus the actions the grid dispatches against it. */
 export interface LibraryTiles {
   organization: LibraryTabOrganization;
-  /** The ids the tab currently holds, which the grid needs to project a reorder before it happens. */
+  /** The ids the tab currently holds. */
   itemIds: string[];
   /** Folders and loose items, in the order the main grid draws them. */
   topLevel: string[];
@@ -45,7 +43,8 @@ export interface LibraryTiles {
   removeFrom: (itemId: string) => void;
   disband: (groupId: string) => void;
   rename: (groupId: string, name: string) => void;
-  move: (move: TileMove) => void;
+  /** Write the list a drag finished with as the order, for the main grid or one folder's members. */
+  commitOrder: (drawn: string[], container?: string | null) => void;
   setPromptPreset: (groupId: string, presetId: string | null) => void;
 }
 
@@ -109,11 +108,9 @@ export function useLibraryTiles(
     removeFrom: useCallback((itemId) => setOrganization((prev) => removeFromGroup(prev, itemId)), []),
     disband: useCallback((groupId) => setOrganization((prev) => disbandGroup(prev, groupId)), []),
     rename: useCallback((groupId, name) => setOrganization((prev) => renameGroup(prev, groupId, name)), []),
-    // The main grid reorders against what it draws, not against the stored order, which can hold
-    // fewer ids; a folder's member list is already the whole list.
-    move: useCallback((move: TileMove) => setOrganization((prev) => (
-      move.container ? moveTile(prev, move) : reorderTopLevel(prev, itemIds, move)
-    )), [itemIds]),
+    commitOrder: useCallback((drawn: string[], container?: string | null) => {
+      setOrganization((prev) => setDrawnOrder(prev, drawn, container));
+    }, []),
     setPromptPreset: useCallback(
       (groupId, presetId) => setOrganization((prev) => setGroupPromptPreset(prev, groupId, presetId)),
       [],
