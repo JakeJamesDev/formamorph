@@ -24,17 +24,37 @@ export interface LibraryGroup {
   settings: LibraryGroupSettings;
 }
 
+/** A tile's home in the base-cell grid: the cell its top-left corner sits in. */
+export interface TilePlacement {
+  row: number;
+  col: number;
+}
+
+/** Every tile's home at one grid width, by id. Ids the map has never seen have no home yet. */
+export type PlacementMap = Record<string, TilePlacement>;
+
 /**
  * One library tab's organization. `order` is the top level and holds item ids and group ids together;
  * `sizes` covers both kinds, so a folder tile resizes like any other.
+ *
+ * `placements` is where the arrangement really lives: one map per base-cell column count, so a board
+ * arranged on a phone and the same board on a desktop keep their own layouts and never scramble each
+ * other. Holes are part of the arrangement — nothing here ever compacts. `order` stays as the linear
+ * reading of the board, for the detailed layout and for seeding a width no one has visited yet.
  */
 export interface LibraryTabOrganization {
   order: string[];
   groups: Record<string, LibraryGroup>;
   sizes: Record<string, LibraryTileSize>;
+  placements: Record<number, PlacementMap>;
 }
 
 /** The name a group takes until the player renames it. */
 export const NEW_GROUP_NAME = 'New Group';
 
-export const emptyTabOrganization = (): LibraryTabOrganization => ({ order: [], groups: {}, sizes: {} });
+export const emptyTabOrganization = (): LibraryTabOrganization => ({
+  order: [],
+  groups: {},
+  sizes: {},
+  placements: {},
+});

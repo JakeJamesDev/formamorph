@@ -27,7 +27,9 @@ function SortableWorldCard({ world, onSelect, onDelete, layout, aspect = 'landsc
   compact?: boolean;
 }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } =
-    useSortable({ id: world.id });
+    // The tile board slides displaced tiles itself; dnd-kit's layout animation would stack a second
+    // offset on the same move, so the card starts twice as far away.
+    useSortable({ id: world.id, animateLayoutChanges: layout === 'grid' ? () => false : undefined });
   const style = {
     // Translate (not Transform): Transform bakes in a scale that resizes the dragged card to the target slot.
     transform: CSS.Translate.toString(transform),

@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import {
   addToGroup,
+  commitPlacements,
   createGroupFromItem,
   disbandGroup,
   groupOf,
@@ -270,5 +271,101 @@ describe('setDrawnOrder', () => {
     expect(setDrawnOrder(org, ['a', 'b', 'c'], 'g1')).toBe(org);
     expect(setDrawnOrder(org, ['a', 'a'], 'g1')).toBe(org);
     expect(setDrawnOrder(org, ['b', 'a'], 'missing')).toBe(org);
+  });
+});
+
+describe('commitPlacements', () => {
+  /** A tab with two tiles arranged at one width, plus a folder member sharing that width map. */
+  const arranged = (): LibraryTabOrganization => ({
+    ...withItems('a', 'b'),
+    placements: { 6: { a: { row: 0, col: 0 }, b: { row: 0, col: 2 }, member: { row: 4, col: 0 } } },
+  });
+
+  it('writes the board the drag finished with, at the width it was arranged at', () => {
+    const next = commitPlacements(arranged(), {
+      columns: 6,
+      places: { a: { row: 0, col: 2 }, b: { row: 0, col: 0 } },
+      ids: ['a', 'b'],
+    });
+
+    expect(next.placements[6].a).toEqual({ row: 0, col: 2 });
+    expect(next.placements[6].b).toEqual({ row: 0, col: 0 });
+  });
+
+  it('leaves the homes of tiles from another grid alone', () => {
+    // One map covers the width, folders included. A drag in the main grid must not evict a member.
+    const next = commitPlacements(arranged(), {
+      columns: 6,
+      places: { a: { row: 2, col: 0 }, b: { row: 2, col: 2 } },
+      ids: ['a', 'b'],
+    });
+
+    expect(next.placements[6].member).toEqual({ row: 4, col: 0 });
+  });
+
+  it('writes the order the board now reads as, so the flat list follows the cells', () => {
+    const next = commitPlacements(arranged(), {
+      columns: 6,
+      places: { a: { row: 2, col: 0 }, b: { row: 0, col: 0 } },
+      ids: ['a', 'b'],
+    });
+
+    expect(next.order).toEqual(['b', 'a']);
+  });
+
+  it('writes the member order of a folder rather than the top-level one', () => {
+    const org = { ...withGroup(), placements: {} };
+
+    const next = commitPlacements(org, {
+      columns: 6,
+      places: { a: { row: 0, col: 2 }, b: { row: 0, col: 0 } },
+      ids: ['a', 'b'],
+      container: 'g1',
+    });
+
+    expect(next.groups.g1.members).toEqual(['b', 'a']);
+    expect(next.order).toEqual(org.order);
+  });
+});
+
+describe('a tile that changes grid gives up its cell', () => {
+  /** Three loose tiles, each with a home at one width. */
+  const arranged = (): LibraryTabOrganization => ({
+    ...withItems('a', 'b', 'c'),
+    placements: { 6: { a: { row: 0, col: 0 }, b: { row: 0, col: 2 }, c: { row: 2, col: 0 } } },
+  });
+
+  it('hands the cell to the folder a tile is folded into, so the board does not jump', () => {
+    const next = createGroupFromItem(arranged(), { groupId: 'g1', itemId: 'a' });
+
+    expect(next.placements[6].g1).toEqual({ row: 0, col: 0 });
+    expect(next.placements[6].a).toBeUndefined();
+  });
+
+  it('gives the cell up when a tile joins a folder', () => {
+    const grouped = createGroupFromItem(arranged(), { groupId: 'g1', itemId: 'a' });
+
+    const next = addToGroup(grouped, 'b', 'g1');
+
+    // Its old cell belongs to the main grid; claiming it inside the folder would evict a member.
+    expect(next.placements[6].b).toBeUndefined();
+    expect(next.placements[6].c).toEqual({ row: 2, col: 0 });
+  });
+
+  it('gives the cell up again when a tile leaves a folder', () => {
+    const grouped = addToGroup(createGroupFromItem(arranged(), { groupId: 'g1', itemId: 'a' }), 'b', 'g1');
+
+    const next = removeFromGroup(grouped, 'b');
+
+    expect(next.placements[6].b).toBeUndefined();
+  });
+
+  it('frees a disbanded folder’s own cell', () => {
+    const grouped = addToGroup(createGroupFromItem(arranged(), { groupId: 'g1', itemId: 'a' }), 'b', 'g1');
+
+    const next = disbandGroup(grouped, 'g1');
+
+    expect(next.placements[6].g1).toBeUndefined();
+    expect(next.placements[6].c).toEqual({ row: 2, col: 0 });
   });
 });

@@ -1,9 +1,35 @@
+import { prunePlacements, resizePlacements, rowMajor, withPlacements } from './placements';
 import {
   NEW_GROUP_NAME,
   type LibraryGroup,
   type LibraryTabOrganization,
   type LibraryTileSize,
+  type PlacementMap,
 } from './types';
+
+/** The same record without one key, for the many places a default is stored as no entry at all. */
+const dropKey = <T,>(record: Record<string, T>, key: string): Record<string, T> => {
+  const { [key]: _dropped, ...rest } = record;
+  return rest;
+};
+
+/**
+ * Hand one tile's cells to another id, or give them up entirely when `to` is null.
+ *
+ * A tile that changes which grid it is drawn in has to arrive homeless: its old cell belongs to the
+ * board it left, and claiming the same cell on the board it joined would push whoever stands there out.
+ */
+const rehome = (
+  placements: Record<number, PlacementMap>,
+  from: string,
+  to: string | null,
+): Record<number, PlacementMap> => Object.fromEntries(
+  Object.entries(placements).map(([width, places]) => {
+    const at = places[from];
+    const rest = dropKey(places, from);
+    return [Number(width), at && to ? { ...rest, [to]: at } : rest];
+  }),
+);
 
 /** True when the id names a folder in this tab rather than a library item. */
 export const isGroupId = (org: LibraryTabOrganization, id: string): boolean => id in org.groups;
@@ -53,12 +79,15 @@ export function createGroupFromItem(
   const size = org.sizes[itemId];
 
   return {
+    ...org,
     order: slot === -1 ? [...org.order, groupId] : spliced(org.order, slot, 1, groupId),
     groups: {
       ...groups,
       [groupId]: { id: groupId, name: NEW_GROUP_NAME, members: [itemId], settings: {} },
     },
     sizes: size ? { ...org.sizes, [groupId]: size } : org.sizes,
+    // The folder inherits the tile's cell, so the board looks the same the moment the folder appears.
+    placements: rehome(org.placements, itemId, groupId),
   };
 }
 
@@ -73,9 +102,10 @@ export function addToGroup(
 
   const groups = detach(org.groups, itemId);
   return {
+    ...org,
     order: without(org.order, itemId),
     groups: { ...groups, [groupId]: { ...groups[groupId], members: [...groups[groupId].members, itemId] } },
-    sizes: org.sizes,
+    placements: rehome(org.placements, itemId, null),
   };
 }
 
@@ -86,9 +116,10 @@ export function removeFromGroup(org: LibraryTabOrganization, itemId: string): Li
 
   const members = without(group.members, itemId);
   const moved: LibraryTabOrganization = {
+    ...org,
     order: [...org.order, itemId],
     groups: { ...org.groups, [group.id]: { ...group, members } },
-    sizes: org.sizes,
+    placements: rehome(org.placements, itemId, null),
   };
   return members.length === 0 ? disbandGroup(moved, group.id) : moved;
 }
@@ -103,9 +134,16 @@ export function disbandGroup(org: LibraryTabOrganization, groupId: string): Libr
     ? [...org.order, ...group.members]
     : spliced(org.order, slot, 1, ...group.members);
   const { [groupId]: _removed, ...groups } = org.groups;
-  const { [groupId]: _size, ...sizes } = org.sizes;
 
-  return { order, groups, sizes };
+  // The folder's cell frees up and its members arrive homeless, so each takes the first free block
+  // rather than claiming a spot some other tile is standing in.
+  return {
+    ...org,
+    order,
+    groups,
+    sizes: dropKey(org.sizes, groupId),
+    placements: rehome(org.placements, groupId, null),
+  };
 }
 
 /** Rename a folder. A blank name is ignored, so an emptied field leaves the folder named as it was. */
@@ -121,18 +159,23 @@ export function renameGroup(
   return { ...org, groups: { ...org.groups, [groupId]: { ...group, name: trimmed } } };
 }
 
-/** Resize one tile, item or folder alike. Medium is the default, so it is stored as no entry. */
+/**
+ * Resize one tile, item or folder alike. Medium is the default, so it is stored as no entry.
+ *
+ * @param ids - The tiles sharing this one's grid. Given, the tile is re-fitted at every arranged width;
+ *   omitted, only the size changes and the board is left to be resolved at render time.
+ */
 export function setTileSize(
   org: LibraryTabOrganization,
   id: string,
   size: LibraryTileSize,
+  ids?: string[],
 ): LibraryTabOrganization {
   if (tileSize(org, id) === size) return org;
-  if (size === 'medium') {
-    const { [id]: _dropped, ...sizes } = org.sizes;
-    return { ...org, sizes };
-  }
-  return { ...org, sizes: { ...org.sizes, [id]: size } };
+  const resized = size === 'medium'
+    ? { ...org, sizes: dropKey(org.sizes, id) }
+    : { ...org, sizes: { ...org.sizes, [id]: size } };
+  return ids ? resizePlacements(resized, id, ids) : resized;
 }
 
 /**
@@ -158,6 +201,33 @@ export function setDrawnOrder(
   if (!valid) return org;
 
   return { ...org, groups: { ...org.groups, [container]: { ...group, members: drawn } } };
+}
+
+/**
+ * Write the board a drag finished with: where every tile in one grid now lives at this width, and the
+ * linear order that board reads as.
+ *
+ * Only the dragged grid's tiles are written, so the folders' member homes at the same width survive
+ * untouched. The order follows because plenty still needs one — the detailed layout, and any width the
+ * player has yet to visit.
+ *
+ * @param columns - Base-cell columns the board was arranged at
+ * @param places - Every tile's home in that grid, the holes between them included
+ * @param ids - The tiles that grid draws
+ * @param container - The folder whose members were arranged, or null for the main grid
+ */
+export function commitPlacements(
+  org: LibraryTabOrganization,
+  { columns, places, ids, container }: {
+    columns: number;
+    places: PlacementMap;
+    ids: string[];
+    container?: string | null;
+  },
+): LibraryTabOrganization {
+  const width = Math.max(1, Math.floor(columns));
+  const merged = { ...org.placements[width], ...places };
+  return setDrawnOrder(withPlacements(org, width, merged), rowMajor(places, ids), container);
 }
 
 /** Pin a folder's member worlds to a prompt preset, or pass null to drop the setting. */
@@ -222,10 +292,14 @@ export function pruneOrganization(
     Object.entries(org.sizes).filter(([id]) => known.has(id) || id in groups),
   );
 
+  // A deleted tile's cells free up and everything else keeps its home, so a deletion never reflows.
+  const placements = prunePlacements(org.placements, new Set([...itemIds, ...Object.keys(groups)]));
+
   const unchanged = order.length === org.order.length
     && Object.keys(groups).length === Object.keys(org.groups).length
     && Object.keys(sizes).length === Object.keys(org.sizes).length
+    && placements === org.placements
     && Object.entries(groups).every(([id, group]) => group.members.length === org.groups[id].members.length);
 
-  return unchanged ? org : { order, groups, sizes };
+  return unchanged ? org : { ...org, order, groups, sizes, placements };
 }

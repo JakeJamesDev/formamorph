@@ -5,6 +5,7 @@ import {
   type LibraryGroupSettings,
   type LibraryTabOrganization,
   type LibraryTileSize,
+  type PlacementMap,
 } from './types';
 
 /** Where each tab's tile arrangement lives, one key per tab so the grids can never bleed into each other. */
@@ -42,6 +43,34 @@ const readJson = (key: string): unknown => {
     return undefined;
   }
 };
+
+/** A cell index the grid can actually use: a whole number, at or past the board's first row or column. */
+const isCell = (value: unknown): value is number =>
+  typeof value === 'number' && Number.isInteger(value) && value >= 0;
+
+/**
+ * The per-width arrangement maps. A width that is not a positive whole number of columns, or a home
+ * that is not a real cell, is dropped rather than trusted — an unreadable home resolves to a free spot,
+ * which is the same thing the board does for a tile it has never seen.
+ */
+function readPlacements(raw: unknown): Record<number, PlacementMap> {
+  if (!isRecord(raw)) return {};
+
+  const placements: Record<number, PlacementMap> = {};
+  for (const [key, value] of Object.entries(raw)) {
+    const width = Number(key);
+    if (!Number.isInteger(width) || width <= 0 || !isRecord(value)) continue;
+
+    const places: PlacementMap = {};
+    for (const [id, spot] of Object.entries(value)) {
+      if (isRecord(spot) && isCell(spot.row) && isCell(spot.col)) {
+        places[id] = { row: spot.row, col: spot.col };
+      }
+    }
+    placements[width] = places;
+  }
+  return placements;
+}
 
 /** A stored group, or null when the entry is not one — an empty folder included, since it shows nothing. */
 const readGroup = (id: string, value: unknown, taken: Set<string>): LibraryGroup | null => {
@@ -94,7 +123,7 @@ export function loadTabOrganization(tab: MainMenuCardTab): LibraryTabOrganizatio
     }
   }
 
-  return { order, groups, sizes };
+  return { order, groups, sizes, placements: readPlacements(raw.placements) };
 }
 
 /** Write one tab's arrangement. A full or blocked storage costs the arrangement, never the session. */
