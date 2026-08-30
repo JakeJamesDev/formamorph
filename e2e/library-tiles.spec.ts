@@ -112,14 +112,15 @@ test.describe('folders are made from the menu', () => {
   });
 });
 
-test.describe('a drag never touches a folder', () => {
+test.describe('a folder that can make way is moved, not filled', () => {
   test('parks a tile on a folder and still only reorders around it', async ({ page }) => {
     await openLibrary(page);
     const names = await tileOrder(page);
     await newGroupFrom(page, 0);
     const loose = await tileOrder(page);
 
-    // Dead center on the folder, held far longer than any dwell a fold could have wanted.
+    // Dead center on the folder, held far past the group dwell. On this uniform board the folder can
+    // dodge, and moving always beats grouping — so nothing is left standing to arm a group drop.
     await dragBetween(page, await cellCenter(page, 1), await cellCenter(page, 0), { hold: 1400 });
 
     // The folder took the drop as a neighbor would: it moved along, and its one member stayed its own.

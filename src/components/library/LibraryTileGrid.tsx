@@ -132,6 +132,9 @@ const anchorKey = (row: number, col: number) => `${row}:${col}`;
 /** How long a displaced tile takes to reach its new cell. Matches the sortable rows elsewhere. */
 const SLIDE_MS = 200;
 
+/** ms the carried tile must hold over a standing tile before a release means group rather than move. */
+const GROUP_HOLD_MS = 400;
+
 /** The board a sim result describes: every tile's home, the dragged one included. */
 const boardOf = (result: SimResult): PlacementMap => ({
   ...Object.fromEntries(result.tiles.map((tile) => [tile.id, { row: tile.row, col: tile.col }])),
@@ -199,8 +202,9 @@ function FolderHeader({ name, settings, onBack, onRename }: {
  * detailed layout keeps uniform cards and shows folders as cards among them. Clicking a folder swaps the
  * grid for that folder's members, with a header that renames it in place.
  *
- * A drag does exactly one thing here: move a tile. Folders are made, filled, and emptied from the tile's
- * context menu and nowhere else, so no gesture can restructure a library that was only being tidied.
+ * A drag moves a tile, and moving always wins. Only when the carried tile holds over a tile this
+ * gesture cannot move does a group drop arm — the release then folds the carried tile into the one it
+ * was held over. Everything else about folders stays in the context menu.
  *
  * @param items - Everything the tab holds; the arrangement decides which of them the grid draws
  * @param idOf - The library id of one item, which is what the arrangement is keyed by
@@ -264,6 +268,12 @@ export function LibraryTileGrid<T>({
   // The last board the gesture could legally leave behind. A release over a blocked spot commits this
   // one rather than the illegal claim, so the dodges stand and the tile in the way is untouched.
   const validRef = useRef<PlacementMap | null>(null);
+  // The tile a release would group the carried one into. Armed only after the carried tile has held
+  // over a tile that stands its ground for GROUP_HOLD_MS; the ref mirrors the state for the handlers,
+  // and holdRef is the countdown toward arming.
+  const [groupTarget, setGroupTarget] = useState<string | null>(null);
+  const groupTargetRef = useRef<string | null>(null);
+  const holdRef = useRef<{ target: string; timer: number } | null>(null);
   const [measureGrid, width, gridNode] = useMeasuredWidth();
 
   const openGroup = openGroupId ? tiles.group(openGroupId) : undefined;
@@ -396,6 +406,54 @@ export function LibraryTileGrid<T>({
     };
   };
 
+  /** Stop any countdown and stand down an armed group target. */
+  const disarmGroup = () => {
+    if (holdRef.current) {
+      clearTimeout(holdRef.current.timer);
+      holdRef.current = null;
+    }
+    if (groupTargetRef.current) {
+      groupTargetRef.current = null;
+      setGroupTarget(null);
+    }
+  };
+
+  /**
+   * The tile a release right now could mean grouping into: the one standing under the middle of the
+   * claim. A tile that could make way already has — the sim moves whatever consents on the same
+   * advance — so a tile still standing there is one this gesture cannot move. Folders never nest, so a
+   * carried folder has no candidate, and neither does a drag inside a folder view.
+   */
+  const groupCandidate = (result: SimResult): string | null => {
+    if (openGroupId || tiles.group(result.pinned.id)) return null;
+    const row = result.pinned.row + Math.floor(result.pinned.span / 2);
+    const col = result.pinned.col + Math.floor(result.pinned.span / 2);
+    const under = result.tiles.find((tile) =>
+      tile.row <= row && row < tile.row + tile.span
+      && tile.col <= col && col < tile.col + tile.span);
+    return under?.id ?? null;
+  };
+
+  /**
+   * Grouping never overrides moving: it arms only after the carried tile has held over the same
+   * standing tile for GROUP_HOLD_MS. Passing across a tile changes the candidate and resets the
+   * countdown, and a tile that dodges away stops being the candidate the moment it moves.
+   */
+  const updateArming = (result: SimResult) => {
+    const candidate = groupCandidate(result);
+    if (candidate === (holdRef.current?.target ?? groupTargetRef.current)) return;
+    disarmGroup();
+    if (!candidate) return;
+    holdRef.current = {
+      target: candidate,
+      timer: window.setTimeout(() => {
+        holdRef.current = null;
+        groupTargetRef.current = candidate;
+        setGroupTarget(candidate);
+      }, GROUP_HOLD_MS),
+    };
+  };
+
   /**
    * The per-move reading, for the grid layout: step the gesture's simulation to the cell the tile is
    * over and draw whatever board that leaves. Cells the footprint sweeps dodge behind it at once, and a
@@ -421,6 +479,7 @@ export function LibraryTileGrid<T>({
     // A blocked board is drawn — the dodges it holds really happened — but never remembered, so the
     // release falls back to the last one the gesture could legally have left behind.
     if (!result.blocked) validRef.current = next;
+    updateArming(result);
   };
 
   /**
@@ -447,6 +506,7 @@ export function LibraryTileGrid<T>({
   };
 
   const resetDrag = () => {
+    disarmGroup();
     settledRef.current = null;
     drawnRef.current = null;
     simRef.current = null;
@@ -463,10 +523,18 @@ export function LibraryTileGrid<T>({
     if (layout === 'grid') {
       // The last board the gesture could legally leave. Every dodge that really happened is in it, and a
       // claim that was refused simply never landed.
+      const target = groupTargetRef.current;
       const settled = validRef.current;
       resetDrag();
       if (settled && !samePlaces(settled, homes)) {
         tiles.commitPlacements(baseCols, settled, renderedIds, openGroupId);
+      }
+      // An armed release groups on top of the settled board: the dodges stand, and the carried tile
+      // folds into the tile it was held over rather than landing anywhere.
+      if (target) {
+        const id = String(event.active.id);
+        if (tiles.group(target)) tiles.addTo(id, target);
+        else tiles.groupWith(id, target);
       }
       return;
     }
@@ -588,6 +656,7 @@ export function LibraryTileGrid<T>({
               else tileNodes.current.delete(id);
             }}
             style={style}
+            data-group-target={id === groupTarget ? '' : undefined}
             className={cn(
               'relative min-w-0',
               layout === 'detailed' && 'h-full',
@@ -595,6 +664,8 @@ export function LibraryTileGrid<T>({
               // a dimmed copy here would put two of the same tile on screen at once, which the flat grid
               // never did: it floated the card itself and left a gap behind.
               id === activeId && 'opacity-0',
+              // A ring, not a transform: the slide effect owns this element's inline transform.
+              id === groupTarget && 'rounded-lg ring-2 ring-primary',
             )}
           >
             {group ? (

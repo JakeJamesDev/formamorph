@@ -4,6 +4,7 @@ import {
   commitPlacements,
   createGroupFromItem,
   disbandGroup,
+  groupItems,
   groupOf,
   pruneOrganization,
   setDrawnOrder,
@@ -98,6 +99,36 @@ describe('addToGroup', () => {
     const org = withGroup();
 
     expect(addToGroup(org, 'a', 'g1')).toBe(org);
+  });
+});
+
+describe('groupItems', () => {
+  it('folds both tiles into one new folder standing where the target stood', () => {
+    const org = groupItems(withItems('a', 'b', 'c'), { groupId: 'g1', itemId: 'a', targetId: 'b' });
+
+    expect(org.groups.g1.members).toEqual(['b', 'a']);
+    expect(org.order).toEqual(['g1', 'c']);
+  });
+
+  it('hands the target cell to the folder and frees the carried tile cell', () => {
+    const arranged: LibraryTabOrganization = {
+      ...withItems('a', 'b'),
+      placements: { 6: { a: { row: 0, col: 0 }, b: { row: 0, col: 2 } } },
+    };
+
+    const org = groupItems(arranged, { groupId: 'g1', itemId: 'a', targetId: 'b' });
+
+    expect(org.placements[6].g1).toEqual({ row: 0, col: 2 });
+    expect(org.placements[6].a).toBeUndefined();
+    expect(org.placements[6].b).toBeUndefined();
+  });
+
+  it('refuses a folder on either side, and a tile dropped on itself', () => {
+    const org = withGroup();
+
+    expect(groupItems(org, { groupId: 'g2', itemId: 'g1', targetId: 'c' })).toBe(org);
+    expect(groupItems(org, { groupId: 'g2', itemId: 'c', targetId: 'g1' })).toBe(org);
+    expect(groupItems(org, { groupId: 'g2', itemId: 'c', targetId: 'c' })).toBe(org);
   });
 });
 
