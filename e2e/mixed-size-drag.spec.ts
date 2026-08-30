@@ -54,8 +54,10 @@ test.describe('mixed-size tile drag', () => {
     await setTileSize(page, names[1], 'Small');
     const before = await boardCells(page);
 
-    // One cell into the big tile: far too little of it swept for the whole group to shift.
-    await dragTileToCell(page, names[1], before[names[0]], { hold: 500 });
+    // One cell into the big tile: far too little of it swept for the whole group to shift. Released
+    // almost at once — the group dwell starts as soon as the claim sits on the standing tile, so any
+    // real rest here would turn the poke into the grouping gesture.
+    await dragTileToCell(page, names[1], before[names[0]], { hold: 50 });
 
     expect(await boardCells(page)).toMatchObject({ [names[0]]: before[names[0]] });
     expectSoundBoard(await boardCells(page), columnsFor(page));
@@ -187,10 +189,11 @@ test.describe('mixed-size tile drag', () => {
 
     // One gesture, two halves: across a medium tile, which earns its dodge, and then down into the
     // large one, which refuses. The descent aims at the wall's interior so it cannot re-sweep the
-    // dodged tile at its new home and walk the dodge back.
+    // dodged tile at its new home and walk the dodge back. Released before the group dwell, so the
+    // blocked release still means "put it down", not "fold it in".
     await dragTileToCell(page, names[0], { row: wall.row, col: wall.col + 2 }, {
       through: [{ row: before[names[1]].row, col: before[names[1]].col + 1 }],
-      hold: 400,
+      hold: 150,
     });
 
     const after = await boardCells(page);
@@ -225,6 +228,76 @@ test.describe('mixed-size tile drag', () => {
       expect(at.y, 'painted beyond the travel in y').toBeGreaterThanOrEqual(Math.min(rest.y, landed.y) - 4);
       expect(at.y, 'painted beyond the travel in y').toBeLessThanOrEqual(Math.max(rest.y, landed.y) + 4);
     }
+  });
+
+  test('holding over a tile that cannot move folds both into a new group', async ({ page }) => {
+    await openLibrary(page);
+    const names = await tileOrder(page);
+    await setTileSize(page, names[0], 'Large');
+    await setTileSize(page, names[1], 'Small');
+    const big = (await boardCells(page))[names[0]];
+
+    // Dead center of the large tile: a one-cell sweep can never move it, so the tile stands, the hold
+    // outlasts the dwell, and the release means group rather than move.
+    let armed = 0;
+    await dragTileToCell(page, names[1], { row: big.row + 2, col: big.col + 2 }, {
+      hold: 800,
+      onHeld: async () => { armed = await page.locator('[data-group-target]').count(); },
+    });
+
+    expect(armed, 'the hold never armed the group drop').toBe(1);
+    const after = await boardCells(page);
+    expect(after['New Group'], 'no folder appeared').toBeTruthy();
+    expect(after[names[0]]).toBeUndefined();
+    expect(after[names[1]]).toBeUndefined();
+
+    // The folder holds the tile it grew from first, then the one that was dropped in.
+    await page.getByRole('heading', { name: 'New Group' }).click();
+    expect(await tileOrder(page)).toEqual([names[0], names[1]]);
+  });
+
+  test('a tile that makes way is moved, never grouped, however long the hold', async ({ page }) => {
+    await openLibrary(page);
+    const names = await tileOrder(page);
+    await setTileSize(page, names[0], 'Small');
+    const before = await boardCells(page);
+    const target = before[names[1]];
+
+    // The same sweep that earns a dodge, held far past the group dwell: the tile makes way, and once
+    // it has moved nothing stands under the claim for a group drop to arm against.
+    let armed = -1;
+    await dragTileToCell(page, names[0], { row: target.row, col: target.col + 1 }, {
+      hold: 900,
+      onHeld: async () => { armed = await page.locator('[data-group-target]').count(); },
+    });
+
+    expect(armed, 'the hold armed against a tile that had made way').toBe(0);
+    await expect(page.getByRole('heading', { name: 'New Group' })).toHaveCount(0);
+    const after = await boardCells(page);
+    expect(after[names[1]]).toEqual({ row: target.row, col: target.col - 1, span: 2 });
+    expect(after[names[0]]).toEqual({ row: target.row, col: target.col + 1, span: 1 });
+  });
+
+  test('a drop onto a standing folder adds the carried tile to it', async ({ page }) => {
+    await openLibrary(page);
+    const names = await tileOrder(page);
+
+    // A folder from the menu, grown large enough that a small tile's sweep can never move it.
+    await page.getByRole('img', { name: names[0], exact: true }).first().click({ button: 'right' });
+    await page.getByRole('menuitem', { name: 'Create New Group' }).click();
+    await page.getByRole('heading', { name: 'New Group' }).click({ button: 'right' });
+    await page.getByRole('menuitemradio', { name: 'Large' }).click();
+    await page.waitForTimeout(150);
+    await setTileSize(page, names[1], 'Small');
+    const folder = (await boardCells(page))['New Group'];
+
+    await dragTileToCell(page, names[1], { row: folder.row + 2, col: folder.col + 2 }, { hold: 800 });
+
+    // No second folder: the carried tile joined the one it was held over.
+    await expect(page.getByRole('heading', { name: 'New Group' })).toHaveCount(1);
+    expect((await boardCells(page))[names[1]]).toBeUndefined();
+    await page.getByRole('heading', { name: 'New Group' }).click();
+    expect(await tileOrder(page)).toEqual([names[0], names[1]]);
   });
 
   test('a large tile carried through a field of smalls stacks them behind it', async ({ page }) => {

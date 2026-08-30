@@ -252,8 +252,11 @@ test.describe('library drag parity', () => {
     await page.mouse.move(box.x + box.width * 0.2, box.y + box.height * 0.2);
     await page.mouse.down();
     await page.mouse.move(box.x + box.width * 0.2 + 12, box.y + box.height * 0.2);
+    // Long enough for any mid-drag slide (200ms) to finish, short enough that the park cannot arm the
+    // tile board's group drop — the offset grab leaves the claim on a neighbor that cannot dodge, and
+    // holding that past the group dwell is the grouping gesture now.
     await page.mouse.move(to.x, to.y, { steps: 10 });
-    await page.waitForTimeout(400);
+    await page.waitForTimeout(150);
     await startCopySampler(page, names[0]);
     const released = await now(page);
     await page.mouse.up();

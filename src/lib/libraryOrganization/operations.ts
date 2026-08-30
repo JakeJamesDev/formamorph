@@ -115,6 +115,22 @@ export function addToGroup(
   };
 }
 
+/**
+ * Fold two loose tiles into one new folder, standing where the target stood.
+ *
+ * The drag gesture's group drop: the carried item joins the item it was held over. The folder takes
+ * the target's cell and size, so the board looks the same the moment it appears.
+ *
+ * @param groupId - The id to mint the folder under; the caller owns id generation
+ */
+export function groupItems(
+  org: LibraryTabOrganization,
+  { groupId, itemId, targetId }: { groupId: string; itemId: string; targetId: string },
+): LibraryTabOrganization {
+  if (itemId === targetId || isGroupId(org, itemId) || isGroupId(org, targetId)) return org;
+  return addToGroup(createGroupFromItem(org, { groupId, itemId: targetId }), itemId, groupId);
+}
+
 /** Take an item out of its folder and back to the end of the main grid, disbanding a folder left empty. */
 export function removeFromGroup(org: LibraryTabOrganization, itemId: string): LibraryTabOrganization {
   const group = groupOf(org, itemId);

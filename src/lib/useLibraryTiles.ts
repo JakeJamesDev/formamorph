@@ -6,6 +6,7 @@ import {
   commitPlacements,
   createGroupFromItem,
   disbandGroup,
+  groupItems,
   groupOf,
   loadTabOrganization,
   pruneOrganization,
@@ -43,6 +44,8 @@ export interface LibraryTiles {
   addTo: (itemId: string, groupId: string) => void;
   /** Fold a tile into a brand-new folder on its own, for the context menu's New Group entry. */
   groupWithNew: (itemId: string) => void;
+  /** Fold two loose tiles into one new folder where the target stood, for the drag's group drop. */
+  groupWith: (itemId: string, targetId: string) => void;
   removeFrom: (itemId: string) => void;
   disband: (groupId: string) => void;
   rename: (groupId: string, name: string) => void;
@@ -112,6 +115,9 @@ export function useLibraryTiles(
       [],
     ),
     groupWithNew,
+    groupWith: useCallback((itemId: string, targetId: string) => {
+      setOrganization((prev) => groupItems(prev, { groupId: randomUUID(), itemId, targetId }));
+    }, []),
     addTo: useCallback((itemId, groupId) => setOrganization((prev) => addToGroup(prev, itemId, groupId)), []),
     removeFrom: useCallback((itemId) => setOrganization((prev) => removeFromGroup(prev, itemId)), []),
     disband: useCallback((groupId) => setOrganization((prev) => disbandGroup(prev, groupId)), []),
