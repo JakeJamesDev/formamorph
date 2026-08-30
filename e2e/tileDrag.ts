@@ -189,10 +189,10 @@ export function copySamples(page: Page): Promise<{ t: number; copies: number[] }
   );
 }
 
-/** One sample of the watched tiles' page positions, stamped with the frame's clock. */
+/** One sample of the watched tiles' painted boxes, stamped with the frame's clock. */
 export interface TileSample {
   t: number;
-  at: Record<string, { x: number; y: number } | null>;
+  at: Record<string, { x: number; y: number; w: number; h: number } | null>;
 }
 
 /**
@@ -218,12 +218,12 @@ export function startTileSampler(page: Page, names: string[]): Promise<number> {
       if (!w.__tileLoop) {
         w.__tileLoop = true;
         const tick = () => {
-          const at: Record<string, { x: number; y: number } | null> = {};
+          const at: Record<string, { x: number; y: number; w: number; h: number } | null> = {};
           const imgs = [...document.querySelectorAll(w.__tileSelector)] as HTMLImageElement[];
           for (const name of w.__tileWatch) {
             const el = imgs.find((img) => img.alt === name);
             const box = el?.getBoundingClientRect();
-            at[name] = box ? { x: box.left, y: box.top } : null;
+            at[name] = box ? { x: box.left, y: box.top, w: box.width, h: box.height } : null;
           }
           w.__tileSamples.push({ t: performance.now(), at });
           requestAnimationFrame(tick);
