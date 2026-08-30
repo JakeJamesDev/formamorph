@@ -129,39 +129,8 @@ interface Claim {
 /** One cell key, so an anchor that has not changed costs nothing. */
 const anchorKey = (row: number, col: number) => `${row}:${col}`;
 
-/** How far a tile has to travel back to look like it never left, in pixels. */
-interface Slide {
-  dx: number;
-  dy: number;
-}
-
 /** How long a displaced tile takes to reach its new cell. Matches the sortable rows elsewhere. */
 const SLIDE_MS = 200;
-
-/**
- * The offsets that make a board change read as movement.
- *
- * Grid cells cannot be animated between, so a tile that changes cell is drawn at its new one and then
- * pushed back to the old one for a single frame; releasing that push is the slide. The distances come
- * from the cells themselves rather than from measuring the page, because the grid's pitch is known and a
- * measurement mid-gesture would read a tile that is already moving.
- *
- * The carried tile is left out: the overlay under the pointer is already drawing it.
- */
-function slidesBetween(
-  before: PlacementMap,
-  after: PlacementMap,
-  pitch: { x: number; y: number },
-  carried: string,
-): Record<string, Slide> {
-  const slides: Record<string, Slide> = {};
-  for (const [id, at] of Object.entries(after)) {
-    const was = before[id];
-    if (id === carried || !was || (was.row === at.row && was.col === at.col)) continue;
-    slides[id] = { dx: (was.col - at.col) * pitch.x, dy: (was.row - at.row) * pitch.y };
-  }
-  return slides;
-}
 
 /** The board a sim result describes: every tile's home, the dragged one included. */
 const boardOf = (result: SimResult): PlacementMap => ({
@@ -279,9 +248,14 @@ export function LibraryTileGrid<T>({
   const [board, setBoard] = useState<PlacementMap | null>(null);
   const [claim, setClaim] = useState<Claim | null>(null);
   // The tile elements and the board they were last painted at, which is what a slide is measured from.
-  // The column count rides along, because a cell only means a distance on the board it was read from.
+  // The column count rides along, because a cell only means a distance on the board it was read from;
+  // so does each tile's span, because a resize has to be animated from the size that was on screen.
   const tileNodes = useRef(new Map<string, HTMLDivElement>());
-  const paintedRef = useRef<{ columns: number; places: PlacementMap } | null>(null);
+  const paintedRef = useRef<{
+    columns: number;
+    places: PlacementMap;
+    spans: Record<string, number>;
+  } | null>(null);
   const [overlaySize, setOverlaySize] = useState<{ width: number; height: number } | null>(null);
   const drawnRef = useRef<string[] | null>(null);
   // One simulation per gesture: the sweep it accumulates is that gesture's own history.
@@ -337,21 +311,52 @@ export function LibraryTileGrid<T>({
   useLayoutEffect(() => {
     const before = paintedRef.current;
     const measured = cellWidth > 0 && cellHeight > 0;
+    const spans = Object.fromEntries(drawnIds.map((id) => [id, spanOf(id)]));
     // A cell means something different on a board of a different width, so a board painted at one
     // column count is no distance at all from a board painted at another. Both the unmeasured grid and
     // the width that just changed drop the comparison rather than animate against it.
-    paintedRef.current = layout === 'grid' && measured ? { columns: baseCols, places: live } : null;
+    paintedRef.current = layout === 'grid' && measured
+      ? { columns: baseCols, places: live, spans }
+      : null;
     if (!before || !measured || before.columns !== baseCols) return;
 
-    for (const [id, slide] of Object.entries(slidesBetween(before.places, live, pitch, activeId ?? ''))) {
+    // Each moved tile is pushed back to where it was — and a resized one back to the size it was —
+    // then the push is forced into the layout and released. The carried tile is left out: the overlay
+    // under the pointer is already drawing it.
+    for (const [id, at] of Object.entries(live)) {
       const node = tileNodes.current.get(id);
-      if (!node) continue;
+      const was = before.places[id];
+      if (!node || !was || id === activeId) continue;
+      const dx = (was.col - at.col) * pitch.x;
+      const dy = (was.row - at.row) * pitch.y;
+      const from = before.spans[id] ?? spans[id];
+      const resized = from !== spans[id];
+      if (!dx && !dy && !resized) continue;
+
       node.style.transition = 'none';
-      node.style.transform = `translate3d(${slide.dx}px, ${slide.dy}px, 0)`;
+      node.style.transform = dx || dy ? `translate3d(${dx}px, ${dy}px, 0)` : '';
+      if (resized) {
+        node.style.width = `${from * cellWidth + (from - 1) * GAP}px`;
+        node.style.height = `${from * cellHeight + (from - 1) * GAP}px`;
+      }
       // Read the box back, so the browser has a start value to animate away from.
       void node.offsetHeight;
-      node.style.transition = `transform ${SLIDE_MS}ms ease`;
+      node.style.transition = resized
+        ? `transform ${SLIDE_MS}ms ease, width ${SLIDE_MS}ms ease, height ${SLIDE_MS}ms ease`
+        : `transform ${SLIDE_MS}ms ease`;
       node.style.transform = '';
+      if (resized) {
+        // A transition cannot end at `auto`, so the target is written in pixels and the box handed
+        // back to the grid once the animation settles.
+        node.style.width = `${spans[id] * cellWidth + (spans[id] - 1) * GAP}px`;
+        node.style.height = `${spans[id] * cellHeight + (spans[id] - 1) * GAP}px`;
+        const settle = () => {
+          node.style.width = '';
+          node.style.height = '';
+        };
+        node.addEventListener('transitionend', settle, { once: true });
+        node.addEventListener('transitioncancel', settle, { once: true });
+      }
     }
   });
 

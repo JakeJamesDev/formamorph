@@ -139,6 +139,32 @@ test.describe('mixed-size tile drag', () => {
     expect(await boardCells(page)).toEqual(folded);
   });
 
+  test('a resized tile grows through in-between sizes while its neighbor slides clear', async ({ page }) => {
+    await openLibrary(page);
+    const names = await tileOrder(page);
+    await startTileSampler(page, [names[0], names[1]]);
+
+    await setTileSize(page, names[0], 'Large');
+    await page.waitForTimeout(400);
+
+    const samples = await tileSamples(page);
+    const of = (name: string) => samples.map((s) => s.at[name]).filter((at) => at !== null);
+
+    // The grown tile passes through sizes between the two, rather than snapping to the new one.
+    const widths = of(names[0]).map((at) => Math.round(at.w));
+    const [wMin, wMax] = [Math.min(...widths), Math.max(...widths)];
+    expect(wMax, 'the tile never grew').toBeGreaterThan(wMin + 100);
+    const grew = new Set(widths.filter((w) => w > wMin + 4 && w < wMax - 4));
+    expect(grew.size, 'the growth snapped instead of animating').toBeGreaterThanOrEqual(3);
+
+    // And the neighbor it landed on slid through in-between positions on its way clear.
+    const ys = of(names[1]).map((at) => Math.round(at.y));
+    const [yMin, yMax] = [Math.min(...ys), Math.max(...ys)];
+    expect(yMax, 'the neighbor never made way').toBeGreaterThan(yMin + 100);
+    const slid = new Set(ys.filter((y) => y > yMin + 4 && y < yMax - 4));
+    expect(slid.size, 'the neighbor snapped instead of sliding').toBeGreaterThanOrEqual(3);
+  });
+
   test('Escape mid-gesture puts every tile back', async ({ page }) => {
     await openLibrary(page);
     const names = await tileOrder(page);
@@ -187,7 +213,7 @@ test.describe('mixed-size tile drag', () => {
 
     const path = (await tileSamples(page))
       .map((sample) => sample.at[watched])
-      .filter((at): at is { x: number; y: number } => at !== null);
+      .filter((at) => at !== null);
     const rest = path[0];
     const landed = path[path.length - 1];
     expect(rest.x !== landed.x || rest.y !== landed.y, 'the tile never moved').toBe(true);
