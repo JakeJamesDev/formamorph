@@ -11,6 +11,7 @@ import {
   startTransformSampler,
   tileOrder,
   tileSamples,
+  tiles,
   type TileCell,
 } from './tileDrag';
 
@@ -114,7 +115,8 @@ test.describe('mixed-size tile drag', () => {
     }
 
     await page.reload();
-    await page.getByRole('button', { name: 'Delete world' }).first().waitFor();
+    // No seed toast after a reload — the worlds already exist — so the tiles are the settled signal.
+    await tiles(page).nth(2).waitFor();
 
     // And the board is stored as cells, not as an order that would repack itself on the way back in.
     expect(await boardCells(page)).toEqual(after);
@@ -142,7 +144,7 @@ test.describe('mixed-size tile drag', () => {
     expect(folded[carried]).toEqual({ row: 3, col: before[carried].col, span: 2 });
 
     await page.reload();
-    await page.getByRole('button', { name: 'Delete world' }).first().waitFor();
+    await tiles(page).nth(2).waitFor();
     expect(await boardCells(page)).toEqual(folded);
   });
 
