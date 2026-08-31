@@ -24,10 +24,6 @@ on:
         description: 'Push desktop builds to itch.io'
         type: boolean
         default: false
-      itch_hidden:
-        description: 'Pass --hidden to butler (first push to a NEW channel only; errors on existing channels)'
-        type: boolean
-        default: false
 
 jobs:
   build:
@@ -187,13 +183,12 @@ jobs:
       - name: Push web build to itch.io
         env:
           BUTLER_API_KEY: ${{ secrets.BUTLER_API_KEY }}
-          FLAGS: ${{ inputs.itch_hidden && '--hidden' || '' }}
         run: |
           set -euo pipefail
           ZIP=$(ls formamorph-web-*.zip)
           VER=${ZIP#formamorph-web-}; VER=${VER%.zip}
           unzip -q "$ZIP" -d web
-          butler push web fierylion/formamorph:html5 --userversion "$VER" $FLAGS
+          butler push web fierylion/formamorph:html5 --userversion "$VER"
 
   # Desktop goes to itch only on major/minor releases (tag ends in .0), never on patches.
   itch-desktop:
@@ -211,13 +206,12 @@ jobs:
       - name: Push desktop builds to itch.io
         env:
           BUTLER_API_KEY: ${{ secrets.BUTLER_API_KEY }}
-          FLAGS: ${{ inputs.itch_hidden && '--hidden' || '' }}
         run: |
           set -euo pipefail
           WINZIP=$(ls Formamorph-*-win.zip)
           VER=${WINZIP#Formamorph-}; VER=${VER%-win.zip}
           # Windows ships unzipped (launcher at root) so butler can diff files between pushes.
           unzip -q "$WINZIP" -d win
-          butler push win fierylion/formamorph:windows --userversion "$VER" $FLAGS
-          butler push "$(ls *.AppImage)" fierylion/formamorph:linux --userversion "$VER" $FLAGS
-          butler push "$(ls *.dmg)" fierylion/formamorph:mac --userversion "$VER" $FLAGS
+          butler push win fierylion/formamorph:windows --userversion "$VER"
+          butler push "$(ls *.AppImage)" fierylion/formamorph:linux --userversion "$VER"
+          butler push "$(ls *.dmg)" fierylion/formamorph:mac --userversion "$VER"
