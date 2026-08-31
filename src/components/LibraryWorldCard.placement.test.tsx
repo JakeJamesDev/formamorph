@@ -35,7 +35,6 @@ const view = (world: WorldRecord, contests: ServerEvent[], layout: 'grid' | 'det
           contests={contests}
           layout={layout}
           onSelect={() => {}}
-          onDelete={() => {}}
         />
       </SortableContext>
     </DndContext>,

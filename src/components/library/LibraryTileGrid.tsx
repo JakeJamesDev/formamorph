@@ -14,7 +14,7 @@ import { arrayMove, type SortingStrategy } from '@dnd-kit/sortable';
 import { getEventCoordinates } from '@dnd-kit/utilities';
 import { EditorDndContext, StableSortableContext } from '@/components/dnd/EditorDndContext';
 import { sameIds } from '@/lib/useSortableIds';
-import { ArrowLeft } from 'lucide-react';
+import { ArrowLeft, Trash2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -197,6 +197,7 @@ function FolderHeader({ name, settings, onBack, onRename }: {
  * @param tiles - This tab's arrangement and the actions the grid dispatches against it
  * @param renderCard - The tab's own card for one item, told how to fill and label its tile
  * @param groupSettings - Settings shown in the folder header; omit on tabs that carry none
+ * @param onDelete - Deletes one item, offered as the context menu's last entry
  */
 export function LibraryTileGrid<T>({
   items,
@@ -211,6 +212,7 @@ export function LibraryTileGrid<T>({
   groupSettings,
   groupPresetName,
   emptyState,
+  onDelete,
 }: {
   items: T[];
   idOf: (item: T) => string;
@@ -229,6 +231,7 @@ export function LibraryTileGrid<T>({
   groupSettings?: (groupId: string) => React.ReactNode;
   groupPresetName?: (groupId: string) => string | undefined;
   emptyState?: React.ReactNode;
+  onDelete?: (id: string) => void;
 }) {
   const [openGroupId, setOpenGroupId] = useState<string | null>(null);
   // The drag in progress. The grid layout draws the LIVE board the cell simulation reports, so every
@@ -601,8 +604,12 @@ export function LibraryTileGrid<T>({
               value={tiles.size(id)}
               onValueChange={(value) => tiles.setSize(id, value as LibraryTileSize, renderedIds, baseCols)}
             >
+              {/* The shared radio item only draws its check when told: it takes `checked` itself
+                  rather than reading the group. */}
               {SIZE_LABELS.map(({ size, label }) => (
-                <ContextMenuRadioItem key={size} value={size}>{label}</ContextMenuRadioItem>
+                <ContextMenuRadioItem key={size} value={size} checked={tiles.size(id) === size}>
+                  {label}
+                </ContextMenuRadioItem>
               ))}
             </ContextMenuRadioGroup>
             <ContextMenuSeparator />
@@ -630,6 +637,19 @@ export function LibraryTileGrid<T>({
             {inFolder && (
               <ContextMenuItem onSelect={() => tiles.removeFrom(id)}>Remove From Group</ContextMenuItem>
             )}
+          </>
+        )}
+
+        {/* The card draws no delete control anymore, so the menu is where an item is deleted. */}
+        {!group && onDelete && (
+          <>
+            <ContextMenuSeparator />
+            <ContextMenuItem
+              className="text-destructive focus:text-destructive"
+              onSelect={() => onDelete(id)}
+            >
+              <Trash2 className="mr-2 h-4 w-4" /> Delete
+            </ContextMenuItem>
           </>
         )}
       </>

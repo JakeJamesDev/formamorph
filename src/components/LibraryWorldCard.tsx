@@ -13,12 +13,11 @@ import type { ServerEvent } from '@/types';
  *
  * @param contests - The contest archive on hand; empty offline
  */
-export function LibraryWorldCard({ world, contests, layout, onSelect, onDelete, fill, compact }: {
+export function LibraryWorldCard({ world, contests, layout, onSelect, fill, compact }: {
   world: WorldRecord;
   contests: ServerEvent[];
   layout: 'grid' | 'detailed';
   onSelect: (id: string) => void;
-  onDelete: (id: string) => void;
   /** Fill the tile the grid hands it, instead of taking its height from the layout. */
   fill?: boolean;
   /** Trade the name strip for a tooltip, on the smallest tile size. */
@@ -40,7 +39,6 @@ export function LibraryWorldCard({ world, contests, layout, onSelect, onDelete, 
         : undefined}
       note={<PlaceBadges placements={placements} className="mb-2" />}
       onSelect={onSelect}
-      onDelete={onDelete}
     />
   );
 }
