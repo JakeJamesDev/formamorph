@@ -2,7 +2,8 @@ import { useState } from 'react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import type { Trait } from '@/types';
+import { encodePlaceholderToken } from '@/lib/placeholders';
+import type { Placeholder, Trait } from '@/types';
 import { EditorModeContext } from '@/lib/editorMode';
 import TraitManager from './TraitManager';
 
@@ -18,6 +19,19 @@ const marshWed = {
   placeholderPins: [{ placeholderId: 'p1', value: 'sable' }],
 } as unknown as Trait;
 
+// Through the real codec, never a hand-written token: a test that spells the wire format itself keeps
+// passing after that format moves.
+const chip = (id: string) => encodePlaceholderToken({ id, mode: 'world', placementId: `v-${id}` });
+
+// Hair Color is the flat placeholder the pin row was built for; Molly is the structured one — a Wildcard
+// whose two values are each a whole other placeholder, which is what a pin has to be able to name.
+const WORLD: Placeholder[] = [
+  { id: 'p1', name: 'Hair Color', values: ['ash', 'copper'] },
+  { id: 'molly', name: 'Molly', values: [chip('iswhite'), chip('isasian')] },
+  { id: 'iswhite', name: 'isWhite', values: ['fair skin'] },
+  { id: 'isasian', name: 'isAsian', values: ['tan skin'] },
+];
+
 const store: { trait: Trait; writes: Trait[]; rerender: () => void } =
   { trait: sedgeBorn, writes: [], rerender: () => {} };
 
@@ -26,7 +40,7 @@ vi.mock('@/contexts/GameDataContext', () => ({
     stats: [],
     traits: [store.trait, marshWed],
     traitGroups: [],
-    placeholders: [{ id: 'p1', name: 'Hair Color', values: ['ash', 'copper'] }],
+    placeholders: WORLD,
     updateTrait: (next: Trait) => {
       store.writes.push(next);
       store.trait = next;
@@ -118,6 +132,50 @@ describe('the placeholder pin row', () => {
     await userEvent.type(pinField(), 'as');
     await userEvent.tab();
     expect(lastPins()).toEqual([{ placeholderId: 'p1', value: 'ash' }]);
+  });
+
+  it('offers a chip-bearing value as what it will read as, never as the token behind it', async () => {
+    store.trait = { ...sedgeBorn, placeholderPins: [{ placeholderId: 'molly', value: '' }] };
+    renderManager();
+    await userEvent.click(pinField());
+    expect(screen.getByRole('button', { name: 'fair skin' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'tan skin' })).toBeInTheDocument();
+  });
+
+  it('pins the variant itself when one is picked, not the words it reads as', async () => {
+    store.trait = { ...sedgeBorn, placeholderPins: [{ placeholderId: 'molly', value: '' }] };
+    renderManager();
+    await userEvent.click(pinField());
+    await userEvent.click(screen.getByRole('button', { name: 'tan skin' }));
+    // The stored value is the chip — which is what resolution follows into isAsian.
+    expect(lastPins()).toEqual([{ placeholderId: 'molly', value: chip('isasian') }]);
+  });
+
+  it('shows a pinned variant as a pill, leaving the field empty rather than full of token', async () => {
+    store.trait = { ...sedgeBorn, placeholderPins: [{ placeholderId: 'molly', value: chip('isasian') }] };
+    renderManager();
+    expect(pinField().value).toBe('');
+    expect(screen.getByText('tan skin')).toBeInTheDocument();
+    // Clearing the pill empties the pin without dropping its row, so a different value is one pick away.
+    await userEvent.click(screen.getByRole('button', { name: 'Remove tan skin' }));
+    expect(lastPins()).toEqual([{ placeholderId: 'molly', value: '' }]);
+  });
+
+  it('leaves a pinned variant alone when Tab moves on, since nothing was typed', async () => {
+    store.trait = { ...sedgeBorn, placeholderPins: [{ placeholderId: 'molly', value: chip('isasian') }] };
+    renderManager();
+    // Focus opens the whole list with its first row highlighted; Tab past it must deposit nothing.
+    await userEvent.click(pinField());
+    await userEvent.tab();
+    expect(store.writes).toEqual([]);
+  });
+
+  it('replaces a pinned variant with free text on the first keystroke', async () => {
+    store.trait = { ...sedgeBorn, placeholderPins: [{ placeholderId: 'molly', value: chip('isasian') }] };
+    renderManager();
+    await userEvent.type(pinField(), 'teal');
+    expect(lastPins()).toEqual([{ placeholderId: 'molly', value: 'teal' }]);
+    expect(screen.queryByText('tan skin')).toBeNull();
   });
 
   it('offers nothing where the pin names no placeholder yet, and still takes text', async () => {

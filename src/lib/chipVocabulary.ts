@@ -12,7 +12,7 @@ import {
 } from './promptVariables';
 import {
   parsePlaceholderText, decodePlaceholderToken, encodePlaceholderToken, placeholderValueSummary,
-  placeholderPathChildren, placeholderPathLevel, newPlaceholder,
+  placeholderPathChildren, placeholderPathLevel, newPlaceholder, describePlaceholders,
 } from './placeholders';
 import type { PlaceholderKindNoun, PlaceholderSegment } from './placeholders';
 
@@ -227,7 +227,9 @@ export function placeholderVocabulary(
       const d = decodePlaceholderToken(t);
       const ph = d && byId.get(d.id);
       if (!ph) return undefined;
-      return ph.values.length ? placeholderValueSummary(ph) : 'no values';
+      // A path chip stands for the part it names, so it previews that part rather than the root's own pool.
+      if (d.path?.length) return describePlaceholders(t, placeholders) || 'no values';
+      return placeholderValueSummary(ph, placeholders) || 'no values';
     },
     variantLabel: (t) => (decodePlaceholderToken(t)?.mode === 'unique' ? 'Unique' : null),
     color: (t) => {

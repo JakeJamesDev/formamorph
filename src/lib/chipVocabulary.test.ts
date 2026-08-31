@@ -119,6 +119,19 @@ describe('placeholderVocabulary — drill and inline create', () => {
     expect(v.label(deeper)).toBe('Molly › isWhite › Hair');
   });
 
+  it('hints what the part a path names will become, not what the root holds', () => {
+    const step = v.drill?.(tok('molly', 'world'))?.[0].token as string;
+    const deeper = v.drill?.(step)?.[0].token as string;
+    // Molly's own pool is the two variants; this chip stands for isWhite's Hair, so that is what it previews.
+    expect(v.hint?.(deeper)).toBe('{brown|black}');
+  });
+
+  it('reads a value that holds a chip as what that chip becomes, never as the token behind it', () => {
+    const hint = v.hint?.(tok('molly', 'world')) ?? '';
+    expect(hint).not.toContain('{{ph:');
+    expect(hint).toContain('brown');
+  });
+
   it('keeps the row on the accent of the chip it drills, so a path reads as one chip', () => {
     const row = v.drill?.(tok('molly', 'world'))?.[0];
     expect(row?.color).toBe(v.color(tok('molly', 'world')));

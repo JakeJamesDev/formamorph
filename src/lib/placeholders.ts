@@ -493,10 +493,18 @@ export function placeholderValueLine(value: string): string {
   return head ? `${head} …` : '…';
 }
 
-/** A Wildcard's options as one short line — first three, then `…`. The shared form behind the braces in
- *  {@link describePlaceholders}, the *tooltip* of an in-editor chip, and the *label* of a read-only pill. */
-export function placeholderValueSummary(ph: Placeholder): string {
-  const values = (ph.values ?? []).map(placeholderValueLine);
+/**
+ * A Wildcard's options as one short line — first three, then `…`. The shared form behind the braces in
+ * {@link describePlaceholders}, the *tooltip* of an in-editor chip, and the *label* of a read-only pill.
+ *
+ * Values are chip-capable, so pass `placeholders` wherever the list is at hand: a value holding a chip then
+ * reads as what that chip will become rather than as the token behind it, and a value that would read as
+ * nothing is left out instead of leaving a bare `|` in the line.
+ */
+export function placeholderValueSummary(ph: Placeholder, placeholders?: Placeholder[]): string {
+  const values = (ph.values ?? [])
+    .map((v) => placeholderValueLine(placeholders ? describePlaceholders(v, placeholders) : v))
+    .filter((v) => v !== '');
   const shown = values.slice(0, 3).join('|');
   return values.length > 3 ? `${shown}|…` : shown;
 }
@@ -682,7 +690,9 @@ function walkToPath(token: PlaceholderToken, byId: Map<string, Placeholder>): Pl
  *  declares — the two coincide there — and past that `roll` decides. */
 export type PlaceholderKindNoun = 'Variable' | 'Wildcard' | 'Object';
 
-function kindNoun(ph: Placeholder): PlaceholderKindNoun {
+/** What to call a placeholder, for any surface that names its kind. One word per thing, so a picker heading
+ *  and a Test Bench finding never disagree about what a placeholder is. */
+export function placeholderKindNoun(ph: Placeholder): PlaceholderKindNoun {
   if ((ph.values?.length ?? 0) === 1) return 'Variable';
   return (ph.roll ?? true) ? 'Wildcard' : 'Object';
 }
@@ -731,7 +741,7 @@ export function placeholderPathLevel(
     }
   }
   return {
-    kind: kindNoun(at),
+    kind: placeholderKindNoun(at),
     depth,
     // Counted against every value, prose ones included: a value with no part of that name is a roll the
     // slot misses on, whether it is another variant or a plain string.

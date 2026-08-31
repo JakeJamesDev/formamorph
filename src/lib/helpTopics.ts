@@ -268,6 +268,8 @@ When two active traits switch the same stat, the one lower in the trait list win
 
 The pinned value doesn't have to come from the placeholder's own list: the box suggests the authored values, but anything you type is used as written, so a trait can force a value nobody else rolls.
 
+A value that is a chip pins that part — pin a Wildcard to the value holding *isAsian* and every chip of it takes that variant. The box shows each suggested value as what it will read as, not as the chip behind it, and pinning one keeps the chip.
+
 When two active traits pin the same placeholder, the one lower in the trait list wins — the row says so whenever that applies.`,
   },
   'worldEditor.placeholders': {
@@ -278,10 +280,15 @@ When two active traits pin the same placeholder, the one lower in the trait list
 
 They exist so a world can vary without being rewritten. Author *"the {{Eye Color}} stranger"* once, and it reads as a real detail every playthrough — sometimes the same detail on purpose, sometimes a fresh one each time.
 
-**The kind is set by how many values you give it:**
+**The Kind row says what a placeholder is:**
 
-- **One value → a Variable.** It always resolves to that value. Change it here once and every chip updates. Good for a name or a fact you want consistent and easy to edit.
-- **Two or more → a Wildcard.** It resolves to a *random* one of the values. Good for variety — a crowd of strangers who aren't all identical.
+- **Wildcard** — it randomizes. One of its values is picked, and every chip of it shows that pick. Good for variety — a crowd of strangers who aren't all identical.
+- **Object** — it holds. All of its values apply, joined together wherever it is placed. Good for a thing made of parts.
+- **Variable** — what either kind is called while it has one value. It always resolves to that value, so changing it here updates every chip.
+
+New placeholders are born Wildcards, and one you have never touched reads as the kind its value count already implies.
+
+**Parts.** A value that is exactly one chip is a **part** of the placeholder holding it, addressable as \`Name › Part\`. That is how an Object is built out of other placeholders.
 
 **World vs. Unique** (Wildcards only). Each chip you place chooses how its roll is shared:
 

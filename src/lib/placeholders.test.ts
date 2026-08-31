@@ -314,6 +314,19 @@ describe('resolvePlaceholders', () => {
       expect(describePlaceholders(tok('scene', 'world', 'p1'), [P('scene', ['Dawn\nover the docks.', 'Dusk'])]))
         .toBe('{Dawn …|Dusk}');
     });
+
+    it('reads a value that holds a chip through the describe pass, given the list to walk', () => {
+      const world = [P('molly', [tok('hair', 'world', 'v1'), 'plain']), P('hair', ['brown', 'black'])];
+      const molly = world[0];
+      // Without the list there is nothing to name the chip with, so the token is all the summary can say.
+      expect(placeholderValueSummary(molly)).toContain('{{ph:');
+      expect(placeholderValueSummary(molly, world)).toBe('{brown|black}|plain');
+    });
+
+    it('leaves out a value that would read as nothing rather than showing a bare separator', () => {
+      const world = [P('molly', [tok('gone', 'world', 'v1'), 'plain'])];
+      expect(placeholderValueSummary(world[0], world)).toBe('plain');
+    });
   });
 
   it('resolves a def that lost its values list to nothing on every runtime path', () => {

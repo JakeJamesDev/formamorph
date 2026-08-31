@@ -1,3 +1,4 @@
+import { useMemo } from 'react';
 import { useGameData } from '@/contexts/GameDataContext';
 import { useEditingDraft } from '@/lib/useEditingDraft';
 import { Input } from "@/components/ui/input";
@@ -8,7 +9,8 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Trash2 } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import PlaceholderField, { PlaceholderNameField } from '@/components/prompt/PlaceholderField';
-import { describePlaceholders } from '@/lib/placeholders';
+import { describePlaceholders, placeholderValueLine } from '@/lib/placeholders';
+import { placeholderVocabulary } from '@/lib/chipVocabulary';
 import { traitConflicts, type TraitConflict } from '@/lib/traitEffects';
 import { useEditorMode } from '@/lib/editorMode';
 import { HelpButton } from '@/components/HelpButton';
@@ -72,6 +74,13 @@ const TraitManager = ({ trait, onOpenTrait }: { trait: Trait; onOpenTrait: (id: 
   const setPins = (next: TraitPlaceholderPin[]) => apply({ placeholderPins: next.length ? next : undefined });
   const updatePin = (index: number, patch: Partial<TraitPlaceholderPin>) =>
     setPins(pins.map((p, i) => (i === index ? { ...p, ...patch } : p)));
+  const pinVocab = useMemo(() => placeholderVocabulary(placeholders), [placeholders]);
+  /** A value as the pin picker shows it: a value holding chips reads as what it will resolve to, so pinning
+   *  a variant reads like what it does. One that would read as nothing — its target is gone, or holds no
+   *  values — falls back to the chip's own name, since a blank row is nothing to pick. What the pin stores
+   *  is the value itself either way. */
+  const describeValue = (value: string) =>
+    placeholderValueLine(describePlaceholders(value, placeholders)) || pinVocab.label(value);
 
   const { advanced } = useEditorMode();
 
@@ -247,6 +256,7 @@ const TraitManager = ({ trait, onOpenTrait }: { trait: Trait; onOpenTrait: (id: 
                 values={pin.value ? [pin.value] : []}
                 onChange={(vals) => updatePin(index, { value: vals[0] ?? '' })}
                 options={placeholders.find((p) => p.id === pin.placeholderId)?.values ?? []}
+                describe={describeValue}
                 ariaLabel="Pinned value"
                 placeholder="Pinned value"
               />

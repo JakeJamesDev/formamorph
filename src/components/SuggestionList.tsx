@@ -9,11 +9,14 @@ import { useWheelScroll } from "@/lib/useWheelScroll";
  * The wheel is handled rather than left to the browser: a caller may portal this out of a modal dialog,
  * whose scroll lock cancels every wheel that lands outside its content. See {@link useWheelScroll}.
  */
-export function SuggestionList({ items, active, onPick, onHover, className }: {
+export function SuggestionList({ items, active, onPick, onHover, label, className }: {
   items: string[];
   active: number;
   onPick: (item: string) => void;
   onHover: (index: number) => void;
+  /** What a row reads as, where the item itself isn't readable (a placeholder chip's stored token). The
+   *  item is still what a pick commits. */
+  label?: (item: string) => string;
   className?: string;
 }) {
   const scroller = useWheelScroll<HTMLDivElement>();
@@ -34,7 +37,7 @@ export function SuggestionList({ items, active, onPick, onHover, className }: {
           onMouseEnter={() => onHover(i)}
           className={cn("flex w-full items-center rounded-sm px-2 py-1.5 text-label text-left", i === active && "bg-accent text-accent-foreground")}
         >
-          {s}
+          {label ? label(s) : s}
         </button>
       ))}
     </div>
