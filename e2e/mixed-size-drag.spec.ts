@@ -42,8 +42,10 @@ function expectSoundBoard(cells: Record<string, TileCell>, columns: number) {
   }
 }
 
-/** Base-cell columns the board is wide at this viewport: three medium tiles on desktop, one on a phone. */
-const columnsFor = (page: Page) => (page.viewportSize()!.width >= 1024 ? 6 : 2);
+/** Base-cell columns at this viewport, mirroring the app's fit rule: as many 296px medium tiles as
+ *  the window minus its padding holds, two base cells each, never fewer than two. */
+const columnsFor = (page: Page) =>
+  Math.max(1, Math.floor((page.viewportSize()!.width - 32 + 16) / (296 + 16))) * 2;
 
 test.describe('mixed-size tile drag', () => {
   test.skip(({ page }) => columnsFor(page) < 6, 'a phone board is two cells wide; see the width test');
@@ -119,6 +121,8 @@ test.describe('mixed-size tile drag', () => {
   });
 
   test('a row nothing touches folds away, and stays folded after a reload', async ({ page }) => {
+    // Pinned to a three-medium board: the expected cells below assume that row-major seeding.
+    await page.setViewportSize({ width: 1100, height: 860 });
     await openLibrary(page);
     const names = await tileOrder(page);
     const before = await boardCells(page);
@@ -342,6 +346,8 @@ test.describe('mixed-size tile drag', () => {
   });
 
   test('a large tile carried through a field of smalls stacks them behind it', async ({ page }) => {
+    // Pinned to a three-medium board, where the grown tile leaves a standing field in its path.
+    await page.setViewportSize({ width: 1100, height: 860 });
     await openLibrary(page);
     const names = await tileOrder(page);
     for (const name of names.slice(1)) await setTileSize(page, name, 'Small');
@@ -368,6 +374,29 @@ test.describe('mixed-size tile drag', () => {
       expect(after[name].col, `${name} did not give way`).toBeLessThan(before[name].col);
       expect(after[name].col, `${name} is not behind the drag`).toBeLessThan(after[names[0]].col);
     }
+  });
+});
+
+test.describe('the board fills the width it has', () => {
+  test.skip(({ page }) => columnsFor(page) < 6, 'the phone board is covered by the width test');
+
+  test('the board fits as many columns as the window allows', async ({ page }) => {
+    await openLibrary(page);
+    const columns = () => page.evaluate(() => {
+      const grid = document.querySelector('[data-radix-scroll-area-viewport] div.grid') as HTMLElement;
+      return getComputedStyle(grid).gridTemplateColumns.split(' ').length;
+    });
+
+    // 1280 window: four mediums fit, so eight base cells — a column the old ladder never granted.
+    expect(await columns()).toBe(8);
+
+    await page.setViewportSize({ width: 1720, height: 860 });
+    await page.waitForTimeout(300);
+    expect(await columns(), 'a wider window earned no columns').toBe(10);
+
+    await page.setViewportSize({ width: 1100, height: 860 });
+    await page.waitForTimeout(300);
+    expect(await columns()).toBe(6);
   });
 });
 
