@@ -562,10 +562,12 @@ const CommunityCreationsBrowser = ({
     </Tip>
   );
 
-  // Dismissed banners ride the header's own toolbar rather than a row of their own — a full-width row
-  // reserved for a chip is most of a row of nothing. True centering is out in a row that wraps, so they
-  // trail the controls and wrap with them.
-  const eventChips = <EventBannerChips banners={banners} onOpenEvent={openEventFromBanner} />;
+  // Dismissed banners ride the filter row rather than a row of their own — a full-width row reserved for
+  // a chip is most of a row of nothing. They center in the space the filter controls leave. Mobile drops
+  // them: that row is already the tabs, the Filters toggle and the quarantine control on a narrow screen.
+  const eventChips = isMobile ? null : (
+    <EventBannerChips banners={banners} onOpenEvent={openEventFromBanner} />
+  );
 
   // A contest's entries are ordered by the contest, not by the reader: shuffled while it runs, by likes
   // once it is judged. Offering a sort that the grid then overrides would be a control that lies.
@@ -653,7 +655,7 @@ const CommunityCreationsBrowser = ({
   );
 
   const updatesControl = browseTab === 'contest' ? null : (
-    <label className="ml-auto flex items-center gap-2 shrink-0 cursor-pointer text-label select-none">
+    <label className="flex items-center gap-2 shrink-0 cursor-pointer text-label select-none">
       <Checkbox
         checked={sortUpdatesFirst}
         onCheckedChange={(c) => { setSortUpdatesFirst(c === true); setCurrentPage(1); }}
@@ -680,9 +682,10 @@ const CommunityCreationsBrowser = ({
       allAuthors={allAuthors}
       allTags={allTags}
       signedIn={isAuthenticated}
+      centered={eventChips}
+      trailing={updatesControl}
     >
       {hiddenControl}
-      {updatesControl}
     </CommunityFilterBar>
     </div>
     </TutorialPopover>
@@ -756,7 +759,6 @@ const CommunityCreationsBrowser = ({
                       </Button>
                     </CollapsibleTrigger>
                     </TutorialPopover>
-                    {eventChips}
                   </div>
                 </>
               ) : (
@@ -770,7 +772,6 @@ const CommunityCreationsBrowser = ({
                   {quarantineControl}
                   {refreshControl}
                   {sortControl}
-                  {eventChips}
                 </div>
               )}
 
