@@ -51,8 +51,14 @@ interface Level {
 interface Match {
   query: string;
   rows: Row[];
+  /** Whether the create row is on offer, which decides how far the selection may run. */
+  offersCreate: boolean;
   rect: { left: number; top: number; bottom: number };
 }
+
+/** A modifier turns a horizontal arrow into a selection or a word jump, which is the caret's business
+ *  rather than the menu's. */
+const held = (e: KeyboardEvent | null) => !!e && (e.shiftKey || e.ctrlKey || e.metaKey || e.altKey);
 
 /** The caret's viewport box, falling back to the editor's own when the caret sits against a chip and
  *  collapses to an empty rect. */
@@ -150,18 +156,21 @@ export function ChipTypeaheadPlugin({ trigger, vocab }: {
       const rows = source
         .filter((r) => r.label.toLowerCase().includes(query.toLowerCase()))
         .map((r) => ({ ...r, parts: (vocab.drill?.(r.token) ?? []).length > 0 }));
+      const offersCreate = !level && !!vocab.create && !!query.trim();
       // Nothing to offer and nothing to make means the trigger was meant literally, and the menu gets out
       // of the prose's way. Inside a level it waits instead: the author opened that on purpose, and a
       // filter that currently matches nothing is a keystroke away from matching again.
-      if (!rows.length && !level && !(vocab.create && query.trim())) return;
+      if (!rows.length && !level && !offersCreate) return;
       const rect = caretRect(editor.getRootElement());
-      if (rect) next = { query, rows, rect };
+      if (rect) next = { query, rows, rect, offersCreate };
     });
     // Leaving the run re-arms the menu, so a later trigger in the same field still opens.
     if (!next) { dismissed.current = false; return close(); }
     if (dismissed.current) return;
     const found = next as Match;
     setMatch(found);
+    // The create row is deliberately outside this clamp: as the last chip row drops out from under a
+    // selection, the selection drops with it rather than sliding onto the offer to author one.
     setIndex((i) => (found.rows.length ? Math.min(Math.max(i, 0), found.rows.length - 1) : -1));
   }, [editor, vocab, trigger, close]);
 
@@ -178,7 +187,7 @@ export function ChipTypeaheadPlugin({ trigger, vocab }: {
   }, [clearQuery, refresh]);
 
   // The create row sits past the last chip row, so one index covers the whole menu.
-  const createName = !path.length && vocab.create ? match?.query.trim() || null : null;
+  const createName = match?.offersCreate ? match.query.trim() : null;
   const rows = match?.rows;
   const count = (rows?.length ?? 0) + (createName ? 1 : 0);
   const countRef = useRef(0);
@@ -210,14 +219,14 @@ export function ChipTypeaheadPlugin({ trigger, vocab }: {
     // Right walks into the highlighted row's parts; with nothing to walk into it stays the caret key it is.
     editor.registerCommand(KEY_ARROW_RIGHT_COMMAND, (e) => {
       const row = matchRef.current?.rows[indexRef.current];
-      if (!row?.parts) return false;
+      if (!row?.parts || held(e)) return false;
       e?.preventDefault();
       walk([...pathRef.current, { token: row.token, label: row.label }]);
       return true;
     }, COMMAND_PRIORITY_HIGH),
     // Left backs out of a level; at the root there is none, so the caret keeps it.
     editor.registerCommand(KEY_ARROW_LEFT_COMMAND, (e) => {
-      if (!matchRef.current || !pathRef.current.length) return false;
+      if (!matchRef.current || !pathRef.current.length || held(e)) return false;
       e?.preventDefault();
       walk(pathRef.current.slice(0, -1));
       return true;
