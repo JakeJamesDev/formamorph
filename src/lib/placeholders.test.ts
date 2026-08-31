@@ -15,6 +15,7 @@ import {
   collectUsedPlaceholders,
   collectPlaceholderParts,
   placeholderPathChildren,
+  placeholderPathLevel,
   remapPlaceholderIds,
   absorbPlaceholders,
   buildPlaceholderPreview,
@@ -985,6 +986,80 @@ describe('placeholderPathChildren', () => {
     ];
     const rows = placeholderPathChildren({ id: 'variant', mode: 'world', placementId: 'p1' }, world);
     expect(rows.map((p) => p.name)).toEqual(['Hair']);
+  });
+});
+
+/**
+ * What a picker shows for the placeholder a path lands on: which kind of thing it is, the slot names a roll
+ * can route to, and how many of its values no path can address. The slot marker is the point — a name
+ * missing from one variant resolves to nothing whenever that variant rolls.
+ */
+describe('placeholderPathLevel', () => {
+  const level = (id: string, ...path: PlaceholderSegment[]) =>
+    placeholderPathLevel({ id, mode: 'world', placementId: 'p1', path }, DEMO);
+  const slots = (id: string, ...path: PlaceholderSegment[]) =>
+    (level(id, ...path)?.slots ?? []).map((s) => `${s.name}${s.partial ? ' ⚠' : ''}`);
+
+  it('names the kind of thing the level is', () => {
+    expect(level('molly')?.kind).toBe('Wildcard');
+    expect(level('iswhite')?.kind).toBe('Object');
+    expect(level('black')?.kind).toBe('Variable');
+  });
+
+  it('reads a one-value placeholder as a Variable whichever kind it declares', () => {
+    const world: Placeholder[] = [{ id: 'a', name: 'A', roll: false, values: ['only'] }];
+    expect(placeholderPathLevel({ id: 'a', mode: 'world', placementId: 'p1' }, world)?.kind).toBe('Variable');
+  });
+
+  it('gathers the slot names its variants hold, marking one they do not all hold', () => {
+    // isWhite holds Hair, Eyes and Freckles; isAsian holds only Hair. Whichever rolls, Hair is there.
+    expect(slots('molly')).toEqual(['Hair', 'Eyes ⚠', 'Freckles ⚠']);
+  });
+
+  it('marks a slot partial when a plain value could roll in place of a variant', () => {
+    // Both chip values hold Hair, but the third value is prose — the slot misses when it rolls.
+    const world: Placeholder[] = [
+      { id: 'who', name: 'Who', values: [chip('a'), chip('b'), 'a stranger'] },
+      { id: 'a', name: 'A', roll: false, values: [chip('hair')] },
+      { id: 'b', name: 'B', roll: false, values: [chip('hair')] },
+      { id: 'hair', name: 'Hair', values: ['brown'] },
+    ];
+    const got = placeholderPathLevel({ id: 'who', mode: 'world', placementId: 'p1' }, world);
+    expect(got?.slots).toEqual([{ name: 'Hair', partial: true }]);
+  });
+
+  it('offers no slots where nothing rolls, so a name means the part it says', () => {
+    expect(slots('iswhite')).toEqual([]); // an Object: all of its values apply
+    expect(slots('black')).toEqual([]); // a Variable: one value, and no roll to route through
+  });
+
+  it('counts the values no path can address', () => {
+    expect(level('isasian')?.plain).toBe(1); // "dark brown eyes" is prose
+    expect(level('hair')?.plain).toBe(1); // "fiery red" beside three chips
+    expect(level('molly')?.plain).toBe(0);
+    expect(level('eyes')?.plain).toBe(3); // every value is prose
+  });
+
+  it('follows the path before it reads the level', () => {
+    expect(level('molly', val('iswhite'))?.kind).toBe('Object');
+    expect(level('molly', val('iswhite'), val('hair'))?.kind).toBe('Wildcard');
+  });
+
+  it('reports how far it walked, so a caller can cut the path to it', () => {
+    expect(level('molly')?.depth).toBe(0);
+    expect(level('molly', val('iswhite'))?.depth).toBe(1);
+  });
+
+  it('stops at the deepest step it can follow — the level that offered the one it stopped on', () => {
+    // A slot names no one target until a roll picks it, and a val naming nothing held lands nowhere. Both
+    // read as Molly, which is where either segment was chosen.
+    expect(level('molly', slot('Hair'))).toMatchObject({ kind: 'Wildcard', depth: 0 });
+    expect(level('molly', val('town'))).toMatchObject({ kind: 'Wildcard', depth: 0 });
+    expect(level('molly', val('iswhite'), slot('Hair'))).toMatchObject({ kind: 'Object', depth: 1 });
+  });
+
+  it('reports nothing at all only when the chip names no placeholder', () => {
+    expect(level('ghost')).toBeNull();
   });
 });
 

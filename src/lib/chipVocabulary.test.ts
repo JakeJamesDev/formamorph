@@ -202,3 +202,101 @@ describe('chip affixes in the editor vocabulary (gate 8)', () => {
     expect(vocab.setAffixes('<WORLD DESCRIPTION>', ' x ', '')).toBe('<WORLD DESCRIPTION>');
   });
 });
+
+/**
+ * What the drill picker reads: the trail a chip's path took, the slots a roll can route to, and the values
+ * no path addresses. The typeahead's own `drill` still supplies the parts — this is only what a picker says
+ * about them on top.
+ */
+describe('placeholderVocabulary — structure', () => {
+  const val = (ref: string): PlaceholderSegment => ({ kind: 'val', ref });
+  const chip = (id: string) => encodePlaceholderToken({ id, mode: 'world', placementId: `v-${id}` });
+  const WORLD: Placeholder[] = [
+    { id: 'molly', name: 'Molly', values: [chip('white'), chip('asian')] },
+    { id: 'white', name: 'isWhite', roll: false, values: [chip('hair'), chip('eyes')] },
+    { id: 'asian', name: 'isAsian', roll: false, values: [chip('hair')] },
+    { id: 'hair', name: 'Hair', values: ['brown', 'black'] },
+    { id: 'eyes', name: 'Eyes', values: ['green'] },
+  ];
+  const v = placeholderVocabulary(WORLD);
+
+  it('heads the parts section with what the level is', () => {
+    expect(v.structure?.(tok('molly', 'world'))?.partsLabel).toBe('Wildcard Variants');
+    expect(v.structure?.(tok('white', 'world'))?.partsLabel).toBe('Object Parts');
+    expect(v.structure?.(tok('asian', 'world'))?.partsLabel).toBe('Variable Part');
+  });
+
+  it('offers each slot as the same chip with the name appended to its path', () => {
+    const slot = v.structure?.(tok('molly', 'world'))?.slots.find((s) => s.label === 'Hair');
+    expect(decodePlaceholderToken(slot?.token ?? '')?.path).toEqual([{ kind: 'slot', name: 'Hair' }]);
+  });
+
+  it('marks the slot the other value cannot supply', () => {
+    const slots = v.structure?.(tok('molly', 'world'))?.slots ?? [];
+    expect(slots.map((s) => [s.label, s.partial])).toEqual([['Hair', false], ['Eyes', true]]);
+  });
+
+  it('trails the path it walked, root first, ending where the chip stands', () => {
+    const drilled = v.drill?.(tok('molly', 'world'))?.[0].token as string;
+    const trail = v.structure?.(drilled)?.trail ?? [];
+    expect(trail.map((c) => c.label)).toEqual(['Molly', 'isWhite']);
+    // Each crumb is the same chip cut back to that depth, so clicking one walks there. The root crumb
+    // carries no path at all, which is the shape a chip placed before paths existed already had.
+    expect(decodePlaceholderToken(trail[0].token)?.path).toBeUndefined();
+    expect(decodePlaceholderToken(trail[1].token)?.path).toEqual([val('white')]);
+  });
+
+  it('keeps the mode and placement of the chip it describes', () => {
+    const slot = v.structure?.(tok('molly', 'unique', 'p9'))?.slots[0];
+    const d = decodePlaceholderToken(slot?.token ?? '')!;
+    expect(d.mode).toBe('unique');
+    expect(d.placementId).toBe('p9');
+  });
+
+  it('counts the values no path can address', () => {
+    expect(v.structure?.(tok('hair', 'world'))?.plain).toBe(2);
+    expect(v.structure?.(tok('molly', 'world'))?.plain).toBe(0);
+  });
+
+  it('describes nothing for a chip whose placeholder is gone', () => {
+    expect(v.structure?.(tok('ghost', 'world'))).toBeNull();
+  });
+
+  it('cuts the trail to the level it could walk to, so a slot chip describes where that slot was chosen', () => {
+    const slotChip = encodePlaceholderToken({
+      id: 'molly', mode: 'world', placementId: 'p1', path: [{ kind: 'slot', name: 'Hair' }],
+    });
+    const described = v.structure?.(slotChip);
+    expect(described?.trail.map((c) => c.label)).toEqual(['Molly']);
+    expect(described?.partsLabel).toBe('Wildcard Variants');
+    // And the slots it offers hang off that level, not off the segment it could not follow.
+    const hair = described?.slots.find((s) => s.label === 'Hair');
+    expect(decodePlaceholderToken(hair?.token ?? '')?.path).toEqual([{ kind: 'slot', name: 'Hair' }]);
+  });
+
+  it('is absent on the static prompt family, which has no structure to walk', () => {
+    expect(promptVocabulary([]).structure).toBeUndefined();
+    expect(promptVocabulary([]).repoint).toBeUndefined();
+  });
+});
+
+/** Re-aiming a placed chip: what it names changes, what the placement itself decided does not. */
+describe('placeholderVocabulary — repoint', () => {
+  const v = placeholderVocabulary([P('eye', ['Red', 'Blue']), P('king', ['Aldric'])]);
+
+  it('takes the target and the path from the pick', () => {
+    const picked = v.drill?.(tok('eye', 'world'))?.[0]?.token;
+    const moved = v.repoint?.(tok('king', 'unique', 'p9'), picked ?? tok('eye', 'world', 'other')) as string;
+    expect(decodePlaceholderToken(moved)?.id).toBe('eye');
+  });
+
+  it('keeps the mode and placement of the chip being moved, not the pick’s', () => {
+    const d = decodePlaceholderToken(v.repoint?.(tok('king', 'unique', 'p9'), tok('eye', 'world', 'other')) ?? '')!;
+    expect(d.mode).toBe('unique');
+    expect(d.placementId).toBe('p9');
+  });
+
+  it('leaves the chip alone when either side is not a token of this family', () => {
+    expect(v.repoint?.(tok('king', 'world'), '<LOCATION>')).toBe(tok('king', 'world'));
+  });
+});
