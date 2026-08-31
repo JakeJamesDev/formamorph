@@ -12,8 +12,9 @@ export const TITLE_SCRIM = 'bg-gradient-to-t from-black/80 via-black/40 to-trans
 const TITLE_MAX_LINES = 3;
 
 /**
- * A card name over the art: one line until the card (a `group`) is hovered, then it slides up to
- * show up to three lines. A name still clipped at three lines carries the full text as a tip.
+ * A card name over the art: one line until the art (the nearest `group`) is hovered, then it
+ * slides up to show up to three lines. A name still clipped at three lines carries the full text
+ * as a tip.
  */
 export function OverlayTitle({ name, className }: { name: string; className?: string }) {
   const ref = useRef<HTMLHeadingElement>(null);
@@ -109,11 +110,13 @@ export const WorldCardShell = forwardRef<HTMLDivElement, WorldCardShellProps>(fu
   return (
     <div
       ref={ref}
-      className={cn('group relative flex flex-col rounded-lg border cursor-pointer', frameClassName, className)}
+      className={cn('relative flex flex-col rounded-lg border cursor-pointer', frameClassName, className)}
       {...rest}
     >
       {cornerAction}
-      <div className={cn('relative bg-muted rounded-t-lg overflow-hidden', THUMB_FRAME.landscape)}>
+      {/* The `group` is the image, not the card: the name reveal and the hover actions all key off
+          hovering the art, so mousing over the text block below changes nothing. */}
+      <div className={cn('group relative bg-muted rounded-t-lg overflow-hidden', THUMB_FRAME.landscape)}>
         {thumbnailOverlay}
         {thumbnail ?? (
           <div className="w-full h-full flex items-center justify-center text-muted-foreground">

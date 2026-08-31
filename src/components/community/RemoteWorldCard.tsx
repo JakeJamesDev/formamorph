@@ -99,7 +99,6 @@ export function RemoteWorldCard({
   return (
     <WorldCardShell
       // Highlight worlds with an available update with the semantic info tint + ring.
-      // The shell's frame is a `group`, which the download and hide overlays fade in on.
       frameClassName={cn(
         dlState === 'update'
           ? "border-info bg-info/10 ring-1 ring-info"
@@ -108,39 +107,6 @@ export function RemoteWorldCard({
       onClick={() => onView(world)}
       name={world.name}
       description={world.description}
-      cornerAction={(
-        /* Both actions fade in with the card hover, so an idle card is all art. Download sits beside
-           hide rather than centered on the thumbnail, where it covered the name once names started
-           expanding on the same hover. Icon reflects whether the world is new, current (refresh), or
-           has an update. */
-        <div className="absolute top-1 right-1 z-10 flex gap-1">
-          {downloadProgress === undefined && (
-            <Tip tip={dlState === 'update' ? "Update available — download the newer version" : dlState === 'refresh' ? `Re-download this ${noun}` : `Download this ${noun}`}>
-              <button
-                onClick={(e) => { e.stopPropagation(); onContextualDownload(world, dlState); }}
-                className="p-1 rounded bg-overlay/50 text-white hover:bg-overlay/70 opacity-0 pointer-events-none transition-opacity group-hover:opacity-100 group-hover:pointer-events-auto"
-                aria-label={dlState === 'update' ? "Update available" : dlState === 'refresh' ? `Re-download this ${noun}` : `Download this ${noun}`}
-              >
-                {dlState === 'update' ? (
-                  <ActionIcon.cloudUpdate className="h-5 w-5" />
-                ) : dlState === 'refresh' ? (
-                  <ActionIcon.cloudRefresh className="h-5 w-5" />
-                ) : (
-                  <ActionIcon.cloudDownload className="h-5 w-5" />
-                )}
-              </button>
-            </Tip>
-          )}
-          <Tip tip="Hide this world">
-            <button
-              onClick={(e) => { e.stopPropagation(); onHideWorld(worldId); }}
-              className="p-1 rounded bg-overlay/50 text-white hover:bg-overlay/70 opacity-0 pointer-events-none transition-opacity group-hover:opacity-100 group-hover:pointer-events-auto"
-            >
-              <EyeOff className="h-5 w-5" />
-            </button>
-          </Tip>
-        </div>
-      )}
       thumbnailOverlay={downloadProgress !== undefined ? (
         // Downloading: a centered status bar. -1 ⇒ size unknown.
         <div
@@ -153,7 +119,36 @@ export function RemoteWorldCard({
             <Progress value={downloadProgress * 100} className="h-2" />
           )}
         </div>
-      ) : undefined}
+      ) : (
+        /* Both actions fade in when the art is hovered, so an idle card is all art: a top-right
+           cluster with download — the primary action — in the corner, clear of names expanding at
+           the bottom. Icon reflects whether the world is new, current (refresh), or has an update. */
+        <div className="absolute top-1 right-1 z-10 flex gap-1">
+          <Tip tip="Hide this world">
+            <button
+              onClick={(e) => { e.stopPropagation(); onHideWorld(worldId); }}
+              className="p-1 rounded bg-overlay/50 text-white hover:bg-overlay/70 opacity-0 pointer-events-none transition-opacity group-hover:opacity-100 group-hover:pointer-events-auto"
+            >
+              <EyeOff className="h-5 w-5" />
+            </button>
+          </Tip>
+          <Tip tip={dlState === 'update' ? "Update available — download the newer version" : dlState === 'refresh' ? `Re-download this ${noun}` : `Download this ${noun}`}>
+            <button
+              onClick={(e) => { e.stopPropagation(); onContextualDownload(world, dlState); }}
+              className="p-1 rounded bg-overlay/50 text-white hover:bg-overlay/70 opacity-0 pointer-events-none transition-opacity group-hover:opacity-100 group-hover:pointer-events-auto"
+              aria-label={dlState === 'update' ? "Update available" : dlState === 'refresh' ? `Re-download this ${noun}` : `Download this ${noun}`}
+            >
+              {dlState === 'update' ? (
+                <ActionIcon.cloudUpdate className="h-5 w-5" />
+              ) : dlState === 'refresh' ? (
+                <ActionIcon.cloudRefresh className="h-5 w-5" />
+              ) : (
+                <ActionIcon.cloudDownload className="h-5 w-5" />
+              )}
+            </button>
+          </Tip>
+        </div>
+      )}
       thumbnail={world.thumbnail_file ? (
         <CachedThumbnail
           file={world.thumbnail_file}
