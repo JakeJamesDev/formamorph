@@ -45,8 +45,8 @@ function viewToggle(page: Page, name: string): Locator {
 async function openMenu(page: Page): Promise<void> {
   await openApp(page, { FORMAMORPH_layoutMode: 'grid' });
   await viewToggle(page, GRID).waitFor();
-  // A card's delete button: present in both layouts, and only once the seeded list has been read back.
-  await page.getByRole('button', { name: 'Delete world' }).first().waitFor();
+  // The seed toast is the settled signal; the cards carry no delete button anymore.
+  await page.getByText('Loaded default worlds').waitFor({ state: 'visible' });
 }
 
 /** Walk the real tab order to `target`, so focus arrives in keyboard modality the way a user's does. */

@@ -168,7 +168,8 @@ test.describe('library drag parity', () => {
     expect(reordered).not.toEqual(names);
 
     await page.reload();
-    await page.getByRole('button', { name: 'Delete world' }).first().waitFor();
+    // No seed toast after a reload — the worlds already exist — so the tiles are the settled signal.
+    await tiles(page).nth(2).waitFor();
 
     expect(await tileOrder(page)).toEqual(reordered);
   });

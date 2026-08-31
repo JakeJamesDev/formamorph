@@ -29,8 +29,9 @@ export function tileOrder(page: Page): Promise<string[]> {
 export async function openLibrary(page: Page, layout: 'grid' | 'detailed' = 'grid'): Promise<void> {
   await openApp(page, { FORMAMORPH_layoutMode: layout });
   // The bundled worlds are seeded into IndexedDB after the menu mounts; a drag measured before that
-  // re-render is measured against tiles that are about to move.
-  await page.getByRole('button', { name: 'Delete world' }).first().waitFor();
+  // re-render is measured against tiles that are about to move. The toast is the settled signal —
+  // polling the world list goes true one tick early, and the cards carry no delete button anymore.
+  await page.getByText('Loaded default worlds').waitFor({ state: 'visible' });
   await tiles(page).nth(2).waitFor();
 }
 
