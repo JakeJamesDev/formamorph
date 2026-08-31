@@ -160,6 +160,18 @@ describe('ChipTypeahead — drilling into a placeholder’s parts', () => {
     expect(value()).toBe('{Mol.');
   });
 
+  it('leaves a modified arrow to the caret, so selecting across the query is still possible', async () => {
+    render(<Harness />);
+    const user = await open('Molly');
+    await user.keyboard('{Shift>}{ArrowRight}{/Shift}');
+    // Shift-Right extends a selection; hijacking it would walk into Molly instead.
+    await waitFor(() => expect(offered()).toEqual(['Molly']));
+    await user.keyboard('{ArrowRight}');
+    await waitFor(() => expect(offered()).toEqual(['isWhite', 'isAsian']));
+    await user.keyboard('{Shift>}{ArrowLeft}{/Shift}');
+    expect(offered()).toEqual(['isWhite', 'isAsian']);
+  });
+
   it('inserts the walked path, not just the placeholder it started from', async () => {
     render(<Harness />);
     const user = await open('Molly');
