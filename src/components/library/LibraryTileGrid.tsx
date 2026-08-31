@@ -46,21 +46,11 @@ import { LibraryGroupTile } from '@/components/library/LibraryGroupTile';
 /** The scroll-viewport clamp alone; a grid drag moves in both axes, so no vertical-list clamp. */
 const GRID_MODIFIERS = [restrictToFirstScrollableAncestor];
 
-/** Medium-tile columns per breakpoint; base cells are twice these, since a medium tile spans two. */
-export interface MediumColumns {
-  base: number;
-  sm: number;
-  lg: number;
-}
-
 /** Tile shape per tab, as the width-to-height ratio of a medium tile. */
 const ASPECT = { landscape: 16 / 9, portrait: 2 / 3 };
 
 /** The grid's gutter, in pixels. Matches `gap-4`, which the tile grid sets in CSS. */
 const GAP = 16;
-
-/** Tailwind's `sm` and `lg` breakpoints, so column counts change where the rest of the app's do. */
-const BREAKPOINTS = { sm: 640, lg: 1024 };
 
 /** Tiles hold their real grid slots at all times; reorders change the slots, never a transform. */
 const NULL_STRATEGY: SortingStrategy = () => null;
@@ -71,23 +61,19 @@ const SIZE_LABELS: { size: LibraryTileSize; label: string }[] = [
   { size: 'large', label: 'Large' },
 ];
 
-/** The medium-tile column count for the current viewport width. */
-function useMediumColumns(columns: MediumColumns): number {
-  const read = useCallback(() => {
-    const width = typeof window === 'undefined' ? BREAKPOINTS.lg : window.innerWidth;
-    if (width >= BREAKPOINTS.lg) return columns.lg;
-    return width >= BREAKPOINTS.sm ? columns.sm : columns.base;
-  }, [columns]);
-
-  const [count, setCount] = useState(read);
-  useEffect(() => {
-    const update = () => setCount(read());
-    update();
-    window.addEventListener('resize', update);
-    return () => window.removeEventListener('resize', update);
-  }, [read]);
-
-  return count;
+/**
+ * As many medium columns as the measured width fits, never fewer than one.
+ *
+ * The grid's own measured width is the source of truth, so the board fills whatever room it has —
+ * an ultrawide simply gets more columns — and a width change lands as a redraw at the new cell
+ * pitch. The first frame, before the ResizeObserver has reported, falls back to the window width
+ * minus the board's own padding, so the opening paint already stands at the right column count.
+ */
+function fitMediumColumns(measured: number, minMediumWidth: number): number {
+  const width = measured > 0
+    ? measured
+    : (typeof window === 'undefined' ? 1024 : window.innerWidth - 32);
+  return Math.max(1, Math.floor((width + GAP) / (minMediumWidth + GAP)));
 }
 
 /**
@@ -172,7 +158,7 @@ function FolderHeader({ name, settings, onBack, onRename }: {
   useEffect(() => setDraft(name), [name]);
 
   return (
-    <div className="container mx-auto px-4 pb-3 flex flex-wrap items-center gap-3">
+    <div className="px-4 pb-3 flex flex-wrap items-center gap-3">
       <Button variant="ghost" size="sm" onClick={onBack} className="gap-1">
         <ArrowLeft className="h-4 w-4" />
         Library
@@ -220,7 +206,7 @@ export function LibraryTileGrid<T>({
   tiles,
   layout,
   aspect,
-  mediumColumns,
+  minMediumWidth,
   detailedColumnsClass,
   thumbnailOf,
   renderCard,
@@ -233,7 +219,8 @@ export function LibraryTileGrid<T>({
   tiles: LibraryTiles;
   layout: 'grid' | 'detailed';
   aspect: 'landscape' | 'portrait';
-  mediumColumns: MediumColumns;
+  /** The narrowest a medium tile may render, in px; the grid fits as many columns as that allows. */
+  minMediumWidth: number;
   detailedColumnsClass: string;
   thumbnailOf: (item: T) => string | undefined;
   renderCard: (item: T, options: {
@@ -293,7 +280,7 @@ export function LibraryTileGrid<T>({
     [openGroup, byId, tiles.topLevel],
   );
 
-  const mediumCols = useMediumColumns(mediumColumns);
+  const mediumCols = fitMediumColumns(width, minMediumWidth);
   const baseCols = mediumCols * 2;
 
   const spanOf = useCallback(
@@ -778,7 +765,7 @@ export function LibraryTileGrid<T>({
           onRename={(name) => tiles.rename(openGroup.id, name)}
         />
       )}
-      <ScrollArea className="flex-1 min-h-0 container mx-auto px-4">
+      <ScrollArea className="flex-1 min-h-0 px-4">
         {renderedIds.length === 0 && !openGroup ? emptyState : (
           <div
             ref={measureGrid}

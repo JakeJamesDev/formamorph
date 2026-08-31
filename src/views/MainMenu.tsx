@@ -161,26 +161,15 @@ const listSaves = (names: string[]): string => {
 };
 
 
-// Responsive column counts for the card grids. Tailwind only emits classes it sees literally, so map each
-// count to its class string; the counts themselves are the single source of truth (the entity grid derives
-// from the world grid by math, not a hard-coded number).
-const GRID_COL_CLASS: Record<'base' | 'sm' | 'lg', Record<number, string>> = {
-  base: { 1: 'grid-cols-1', 2: 'grid-cols-2' },
-  sm: { 2: 'sm:grid-cols-2', 4: 'sm:grid-cols-4' },
-  lg: { 3: 'lg:grid-cols-3', 4: 'lg:grid-cols-4', 6: 'lg:grid-cols-6' },
-};
-const gridColsClass = (base: number, sm: number, lg: number) =>
-  `${GRID_COL_CLASS.base[base]} ${GRID_COL_CLASS.sm[sm]} ${GRID_COL_CLASS.lg[lg]}`;
-// The landscape world grid's columns per breakpoint. Portrait character cards are ~half the width, so the
-// Entities grid fits twice as many (`× 2`).
-const WORLD_GRID_COLS = { base: 1, sm: 2, lg: 3 };
-const ENTITY_GRID_COLS = {
-  base: WORLD_GRID_COLS.base * 2,
-  sm: WORLD_GRID_COLS.sm * 2,
-  lg: WORLD_GRID_COLS.lg * 2,
-};
-/** Columns for the detailed (community-card) layout — the wide card needs the same room a world's does. */
-const DETAILED_GRID_CLASS = gridColsClass(WORLD_GRID_COLS.base, WORLD_GRID_COLS.sm, 4);
+// The card grids fit as many columns as the width allows, from a per-tab minimum tile width. The
+// landscape minimum is the narrowest a medium world tile ever rendered under the old breakpoint
+// ladder (a 640px window's pair), so no window shows fewer columns than it used to — wider ones
+// simply gain more. Portrait character tiles are half a world tile less half a gutter.
+const WORLD_MIN_TILE = 296;
+const ENTITY_MIN_TILE = (WORLD_MIN_TILE - 16) / 2;
+/** Columns for the detailed (community-card) layout — pure CSS, since it keeps no cell arrangement.
+ *  The minimum matches the narrowest card the old four-across breakpoint produced. */
+const DETAILED_GRID_CLASS = 'grid-cols-[repeat(auto-fill,minmax(236px,1fr))]';
 const LAYOUT_MODE_KEY = 'FORMAMORPH_layoutMode';
 // Persisted preference to force the local world modal's single-column (portrait) layout at any width.
 const WORLD_MODAL_COLLAPSED_KEY = 'FORMAMORPH_worldModalCollapsed';
@@ -1655,7 +1644,7 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
           tiles={modelTiles}
           layout="grid"
           aspect="portrait"
-          mediumColumns={ENTITY_GRID_COLS}
+          minMediumWidth={ENTITY_MIN_TILE}
           detailedColumnsClass={DETAILED_GRID_CLASS}
           thumbnailOf={(model) => model.thumbnail}
           emptyState={!isLoadingModels ? (
@@ -1696,7 +1685,7 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
           tiles={entityTiles}
           layout={layoutMode}
           aspect="portrait"
-          mediumColumns={ENTITY_GRID_COLS}
+          minMediumWidth={ENTITY_MIN_TILE}
           detailedColumnsClass={DETAILED_GRID_CLASS}
           thumbnailOf={(entity) => entity.image}
           emptyState={!isLoadingEntities ? (
@@ -1725,7 +1714,7 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
           tiles={dictionaryTiles}
           layout={layoutMode}
           aspect="landscape"
-          mediumColumns={WORLD_GRID_COLS}
+          minMediumWidth={WORLD_MIN_TILE}
           detailedColumnsClass={DETAILED_GRID_CLASS}
           thumbnailOf={(dictionary) => dictionary.thumbnail}
           emptyState={!isLoadingDictionaries ? (
@@ -1747,8 +1736,8 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
           )}
         />
       ) : isLoadingWorlds ? (
-        <ScrollArea className="flex-1 min-h-0 container mx-auto px-4">
-          <div className={`grid ${gridColsClass(WORLD_GRID_COLS.base, WORLD_GRID_COLS.sm, WORLD_GRID_COLS.lg)} gap-4`}>
+        <ScrollArea className="flex-1 min-h-0 px-4">
+          <div className="grid grid-cols-[repeat(auto-fill,minmax(296px,1fr))] gap-4">
             {Array(6).fill(0).map((_, index) => (
               <div key={index} className="relative w-full h-48 rounded-lg overflow-hidden">
                 <Skeleton className="w-full h-full" />
@@ -1766,7 +1755,7 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
           tiles={worldTiles}
           layout={layoutMode}
           aspect="landscape"
-          mediumColumns={WORLD_GRID_COLS}
+          minMediumWidth={WORLD_MIN_TILE}
           detailedColumnsClass={DETAILED_GRID_CLASS}
           thumbnailOf={(world) => world.thumbnail}
           groupPresetName={(groupId) => presetName(worldTiles.group(groupId)?.settings.promptPreset)}
