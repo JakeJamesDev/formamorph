@@ -3,7 +3,7 @@ import { CSS } from '@dnd-kit/utilities';
 import { Folder, Sparkles } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Tip } from '@/components/ui/tooltip';
-import { TITLE_SCRIM, WorldCardShell } from '@/components/WorldCardShell';
+import { OverlayTitle, TITLE_SCRIM, WorldCardShell } from '@/components/WorldCardShell';
 import type { LibraryGroup } from '@/lib/libraryOrganization';
 import { thumbFit, type ThumbAspect } from '@/lib/thumbAspect';
 
@@ -99,7 +99,7 @@ export function LibraryGroupTile({
       {...attributes}
       {...listeners}
       className={cn(
-        'relative rounded-lg overflow-hidden border-2 border-border transition-opacity touch-pan-y',
+        'group relative rounded-lg overflow-hidden border-2 border-border transition-opacity touch-pan-y',
         'cursor-pointer hover:opacity-90',
         fill ? 'h-full w-full' : 'h-48 w-full',
       )}
@@ -114,7 +114,7 @@ export function LibraryGroupTile({
       {!compact && (
         <div className={cn('absolute bottom-0 left-0 right-0 p-2 pt-8 flex items-end gap-2', TITLE_SCRIM)}>
           <Folder className="h-5 w-5 shrink-0 text-white" />
-          <h3 className="min-w-0 flex-1 break-words text-white font-semibold">{group.name}</h3>
+          <OverlayTitle name={group.name} className="min-w-0 flex-1" />
           <span className="shrink-0 text-meta text-white/70">{group.members.length}</span>
         </div>
       )}
