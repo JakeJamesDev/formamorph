@@ -266,6 +266,9 @@ export function LibraryTileGrid<T>({
   const holdRef = useRef<{ target: string; timer: number } | null>(null);
   // The last board the sim reported, so the arming read can run on pointer moves that changed no cell.
   const resultRef = useRef<SimResult | null>(null);
+  // The scroll viewport and its offsets at drag start: event deltas already carry the scroll since
+  // then, and the grid's rect has shifted by the same amount, so the pointer read must back one out.
+  const scrollBaseRef = useRef<{ el: HTMLElement; left: number; top: number } | null>(null);
   const [measureGrid, width, gridNode] = useMeasuredWidth();
 
   const openGroup = openGroupId ? tiles.group(openGroupId) : undefined;
@@ -416,8 +419,11 @@ export function LibraryTileGrid<T>({
     const pressed = getEventCoordinates(event.activatorEvent);
     if (!grid || !pressed || cellWidth <= 0 || cellHeight <= 0) return null;
     const box = grid.getBoundingClientRect();
-    const x = pressed.x + event.delta.x - box.left;
-    const y = pressed.y + event.delta.y - box.top;
+    const base = scrollBaseRef.current;
+    const scrollX = base ? base.el.scrollLeft - base.left : 0;
+    const scrollY = base ? base.el.scrollTop - base.top : 0;
+    const x = pressed.x + event.delta.x - scrollX - box.left;
+    const y = pressed.y + event.delta.y - scrollY - box.top;
     if (x < 0 || y < 0) return null;
     return { row: Math.floor(y / (cellHeight + GAP)), col: Math.floor(x / (cellWidth + GAP)) };
   };
@@ -516,6 +522,7 @@ export function LibraryTileGrid<T>({
   const resetDrag = () => {
     disarmGroup();
     resultRef.current = null;
+    scrollBaseRef.current = null;
     settledRef.current = null;
     drawnRef.current = null;
     simRef.current = null;
@@ -582,6 +589,13 @@ export function LibraryTileGrid<T>({
       id,
       baseCols,
     );
+    // Seeded with a no-move advance, so the arming read is live from the first pointer move rather
+    // than from the first anchor change.
+    resultRef.current = simRef.current.advance(homes[id]);
+    const scroller = gridNode.current?.closest('[data-radix-scroll-area-viewport]');
+    scrollBaseRef.current = scroller instanceof HTMLElement
+      ? { el: scroller, left: scroller.scrollLeft, top: scroller.scrollTop }
+      : null;
     validRef.current = homes;
     anchorRef.current = anchorKey(homes[id].row, homes[id].col);
     setBoard(homes);
