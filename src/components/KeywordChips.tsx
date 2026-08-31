@@ -148,6 +148,14 @@ export function KeywordChips({
     return kw.includes('\n') ? placeholderValueLine(kw) : undefined;
   };
 
+  /** A tag that is nothing but a chip wears that placeholder's accent: it *is* the placeholder, so it reads
+   *  as one rather than as a literal string that happens to be spelled like one. A chip inside a longer tag
+   *  is prose, and the pill it already draws inside the neutral chip carries the accent instead. */
+  const chipColor = (kw: string): string | undefined => {
+    const lone = lonePlaceholderAsPath ? lonePlaceholderToken(kw) : null;
+    return lone ? vocab.color(lone) : undefined;
+  };
+
   return (
     <div className="space-y-1">
       <div className="flex flex-wrap items-center gap-1 rounded-md border border-border bg-background/80 p-2">
@@ -168,6 +176,7 @@ export function KeywordChips({
                   // A value written in the multiline editor comes back as its first line — a chip row is a
                   // one-line surface, and a paragraph in one would wrap the whole box.
                   label={chipLabel(kw)}
+                  color={chipColor(kw)}
                   placeholders={placeholders}
                   suffix={chipSuffix?.(kw)}
                   onActivate={onChipClick}

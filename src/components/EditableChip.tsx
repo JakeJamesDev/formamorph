@@ -20,7 +20,7 @@ import type { Placeholder } from "@/types";
  * `onActivate` claims the single click/tap for the host (a per-chip popover); text editing then stays on
  * double-click, so the popover must offer its own way to rename on touch. `suffix` trails the label.
  */
-export function EditableChip({ value, onCommit, onRemove, sortable = false, getSuggestions, onActivate, suffix, label, placeholders }: {
+export function EditableChip({ value, onCommit, onRemove, sortable = false, getSuggestions, onActivate, suffix, label, color, placeholders }: {
   value: string;
   onCommit: (next: string) => void;
   onRemove: (value: string) => void;
@@ -28,6 +28,8 @@ export function EditableChip({ value, onCommit, onRemove, sortable = false, getS
   getSuggestions?: (query: string) => string[];
   onActivate?: (value: string) => void;
   suffix?: string;
+  /** Accent for a value that *is* a placeholder rather than text about one. Absent ⇒ the neutral tag chip. */
+  color?: string;
   /** What to show, when the stored value isn't readable as-is (a value holding placeholder tokens). A node,
    *  so the placeholders inside it can be drawn as chips; `value` still names the chip for a screen reader. */
   label?: ReactNode;
@@ -146,13 +148,18 @@ export function EditableChip({ value, onCommit, onRemove, sortable = false, getS
       removeLabel={value}
       onRemove={onRemove}
       innerRef={sortable ? setNodeRef : undefined}
-      style={sortable ? {
-        // Translate (not Transform): Transform bakes in a scale that resizes the dragged chip to the target.
-        transform: CSS.Translate.toString(transform),
-        transition,
-        opacity: isDragging ? 0.5 : 1,
-        zIndex: isDragging ? 1 : undefined,
-      } : undefined}
+      style={{
+        // The same accent-with-black-text recipe every other placeholder chip wears, so a value that *is* a
+        // placeholder looks like one. Everything inside — the weight suffix, the × — inherits it.
+        ...(color ? { backgroundColor: color, color: '#000' } : undefined),
+        ...(sortable ? {
+          // Translate (not Transform): Transform bakes in a scale that resizes the dragged chip to the target.
+          transform: CSS.Translate.toString(transform),
+          transition,
+          opacity: isDragging ? 0.5 : 1,
+          zIndex: isDragging ? 1 : undefined,
+        } : undefined),
+      }}
       dragProps={{
         ...(sortable ? { ...attributes, ...listeners } : {}),
         onDoubleClick: startEdit,
