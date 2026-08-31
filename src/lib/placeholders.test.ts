@@ -14,6 +14,7 @@ import {
   primeRolls,
   collectUsedPlaceholders,
   collectPlaceholderParts,
+  placeholderPathChildren,
   remapPlaceholderIds,
   absorbPlaceholders,
   buildPlaceholderPreview,
@@ -929,6 +930,61 @@ describe('collectPlaceholderParts', () => {
     const cyclic: Placeholder[] = [{ id: 'a', name: 'A', values: [chip('a'), chip('b')] }];
     expect(collectPlaceholderParts(cyclic).has('a')).toBe(false);
     expect(collectPlaceholderParts(cyclic).get('b')).toEqual(['a']);
+  });
+});
+
+/**
+ * What one level of the `{` typeahead's drill offers: follow the `val` segments a drilled chip already
+ * carries, then read the structural children of whatever that lands on. The drill has to agree with the
+ * resolver about which value is a child, so the same lone-chip reading decides both.
+ */
+describe('placeholderPathChildren', () => {
+  const at = (id: string, ...path: PlaceholderSegment[]) =>
+    placeholderPathChildren({ id, mode: 'world', placementId: 'p1', path }, DEMO).map((p) => p.name);
+
+  it('offers a root placeholder its own parts, in value order', () => {
+    expect(at('molly')).toEqual(['isWhite', 'isAsian']);
+  });
+
+  it('follows a val segment into the part it picks', () => {
+    expect(at('molly', val('iswhite'))).toEqual(['Hair', 'Eyes', 'Freckles']);
+  });
+
+  it('goes as deep as the path does', () => {
+    expect(at('molly', val('iswhite'), val('hair'))).toEqual(['Brown', 'Blonde', 'Black']);
+  });
+
+  it('offers nothing under a placeholder whose values are plain text', () => {
+    expect(at('eyes')).toEqual([]);
+  });
+
+  it('leaves out a chip that only composes into a longer value', () => {
+    // Intro's one value is prose with a Town chip in it: Town is a root an author places, not Intro's part.
+    expect(at('intro')).toEqual([]);
+  });
+
+  it('offers nothing past a slot, which names no one target until a roll picks it', () => {
+    // isWhite does hold something named Hair, so a picker that read the slot as a direct child by name
+    // would happily walk on into it — and be wrong wherever the same slot routes through a roll instead.
+    expect(at('iswhite', slot('Hair'))).toEqual([]);
+    expect(at('molly', slot('Hair'))).toEqual([]);
+  });
+
+  it('offers nothing when a val names something the placeholder does not hold', () => {
+    expect(at('molly', val('town'))).toEqual([]);
+  });
+
+  it('offers nothing for a deleted placeholder', () => {
+    expect(at('ghost')).toEqual([]);
+  });
+
+  it('names a part once however many values point at it', () => {
+    const world: Placeholder[] = [
+      { id: 'variant', name: 'Variant', values: [chip('hair', val('brown')), chip('hair', val('black'))] },
+      { id: 'hair', name: 'Hair', values: ['brown', 'black'] },
+    ];
+    const rows = placeholderPathChildren({ id: 'variant', mode: 'world', placementId: 'p1' }, world);
+    expect(rows.map((p) => p.name)).toEqual(['Hair']);
   });
 });
 

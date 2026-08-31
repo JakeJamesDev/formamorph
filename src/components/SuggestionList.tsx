@@ -1,9 +1,13 @@
 import { cn } from "@/lib/utils";
+import { useWheelScroll } from "@/lib/useWheelScroll";
 
 /**
  * Shared autocomplete dropdown: string suggestions with one highlighted (`active`) row. Rows commit on
  * mousedown (before the input blurs); mousedown on the list's own padding/scrollbar is swallowed so it
  * doesn't blur-close the field. Position/width come from `className` (the caller anchors it).
+ *
+ * The wheel is handled rather than left to the browser: a caller may portal this out of a modal dialog,
+ * whose scroll lock cancels every wheel that lands outside its content. See {@link useWheelScroll}.
  */
 export function SuggestionList({ items, active, onPick, onHover, className }: {
   items: string[];
@@ -12,8 +16,10 @@ export function SuggestionList({ items, active, onPick, onHover, className }: {
   onHover: (index: number) => void;
   className?: string;
 }) {
+  const scroller = useWheelScroll<HTMLDivElement>();
   return (
     <div
+      ref={scroller}
       onMouseDown={(e) => { if (e.target === e.currentTarget) e.preventDefault(); }}
       className={cn("absolute z-50 mt-1 max-h-56 overflow-y-auto rounded-md border bg-popover p-1 text-popover-foreground shadow-md", className)}
     >

@@ -12,6 +12,7 @@ import {
 } from './promptVariables';
 import {
   parsePlaceholderText, decodePlaceholderToken, encodePlaceholderToken, placeholderValueSummary,
+  placeholderPathChildren, newPlaceholder,
 } from './placeholders';
 
 /**
@@ -48,6 +49,12 @@ export interface ChipVocabulary {
   palette(): { token: string; label: string; color?: string }[];
   /** Prepare a palette token for a fresh insertion (placeholders re-mint their placement id). */
   freshInsertToken(token: string): string;
+  /** The rows one level under this token — each the same chip drilled one segment deeper. Present only where
+   *  the family has structure to walk; the static prompt variables have none. */
+  drill?(token: string): { token: string; label: string; color?: string }[];
+  /** Mint a new member of the family under this name and return a token to insert. Present only where the
+   *  family is authored and a store is bound to write to. */
+  create?(name: string): string;
   /** Rename what the chip stands for, everywhere it is used. Present only where the family is authored and
    *  a store is bound to write to — prompt variables are fixed, so they never offer it. */
   rename?(token: string, next: string): void;
@@ -146,8 +153,12 @@ export function plainVocabulary(): ChipVocabulary {
  *  has 2+ values (a single-value Variable has nothing to randomize). */
 export function placeholderVocabulary(
   placeholders: Placeholder[],
-  /** Writes a renamed placeholder back. Omit where placeholders are only being displayed. */
-  onRename?: (placeholder: Placeholder) => void,
+  /** What the vocabulary may write back. Omit where placeholders are only being displayed — the chips are
+   *  then not renameable and the typeahead offers no inline create. */
+  { onRename, onCreate }: {
+    onRename?: (placeholder: Placeholder) => void;
+    onCreate?: (placeholder: Placeholder) => void;
+  } = {},
 ): ChipVocabulary {
   const byId = new Map(placeholders.map((p) => [p.id, p]));
   return {
@@ -206,6 +217,22 @@ export function placeholderVocabulary(
       const d = decodePlaceholderToken(t);
       return d ? encodePlaceholderToken({ ...d, placementId: randomUUID() }) : t;
     },
+    // A row names only the part it adds; the breadcrumb above it carries where that part sits, and the
+    // inserted chip's own label spells the whole path out.
+    drill: (t) => {
+      const d = decodePlaceholderToken(t);
+      if (!d) return [];
+      return placeholderPathChildren(d, placeholders).map((child) => ({
+        token: encodePlaceholderToken({ ...d, path: [...(d.path ?? []), { kind: 'val', ref: child.id }] }),
+        label: child.name,
+        color: placeholderColor(d.id),
+      }));
+    },
+    create: onCreate && ((name) => {
+      const made = newPlaceholder(name);
+      onCreate(made);
+      return encodePlaceholderToken({ id: made.id, mode: 'world', placementId: PALETTE_PID });
+    }),
   };
 }
 
@@ -218,8 +245,12 @@ export function placeholderVocabulary(
  */
 export function usePlaceholderChipVocabulary(placeholders: Placeholder[]): ChipVocabulary {
   const store = usePlaceholderStoreOptional();
-  const update = store?.updatePlaceholder;
-  return useMemo(() => placeholderVocabulary(placeholders, update), [placeholders, update]);
+  const onRename = store?.updatePlaceholder;
+  const onCreate = store?.addPlaceholder;
+  return useMemo(
+    () => placeholderVocabulary(placeholders, { onRename, onCreate }),
+    [placeholders, onRename, onCreate],
+  );
 }
 
 /** The editor reads its vocabulary here. Defaults to the prompt family (empty palette) so existing prompt
