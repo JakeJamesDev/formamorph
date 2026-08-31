@@ -43,6 +43,9 @@ export interface PlaceholderToken {
 // editor, not typed, so a stray literal that happens to match still resolves to "" unless its id names a
 // real placeholder. The path group is optional, so a token written before this feature parses unchanged.
 const TOKEN_RE = /\{\{ph:([^:{}]+):(world|unique):([^:{}]+)(?::([^:{}]+))?\}\}/g;
+// The same token with nothing around it: "is this string one whole chip?". Built once — both readers of it
+// run per value on render paths. Ungreedy of state: no `g`, so `exec` never carries a `lastIndex`.
+const WHOLE_TOKEN_RE = new RegExp(`^${TOKEN_RE.source}$`);
 
 // Path grammar: segments joined by `>`, each `v<targetId>` (explicit pick) or `s<name>` (slot). Slot names
 // are author text, so the four characters the grammar owns are percent-escaped.
@@ -75,7 +78,7 @@ export function encodePlaceholderToken(t: PlaceholderToken): string {
 
 /** Decode a single token string, or `null` if it isn't a well-formed placeholder token. */
 export function decodePlaceholderToken(token: string): PlaceholderToken | null {
-  const m = new RegExp(`^${TOKEN_RE.source}$`).exec(token);
+  const m = WHOLE_TOKEN_RE.exec(token);
   if (!m) return null;
   const base = { id: m[1], mode: m[2] as PlaceholderMode, placementId: m[3] };
   if (!m[4]) return base;
@@ -87,6 +90,24 @@ export function decodePlaceholderToken(token: string): PlaceholderToken | null {
 export function hasPlaceholders(text: string): boolean {
   TOKEN_RE.lastIndex = 0;
   return TOKEN_RE.test(text);
+}
+
+/** The token string of a value that is *exactly* one chip — the shape that makes a value a structural child
+ *  of the placeholder holding it. A chip with text around it composes into the value instead, and is not
+ *  addressable. */
+export function lonePlaceholderToken(value: string): string | null {
+  const m = WHOLE_TOKEN_RE.exec(value ?? '');
+  return m ? m[0] : null;
+}
+
+/**
+ * A freshly authored placeholder. Born a Wildcard, stated rather than inferred: the flat workflow is
+ * unchanged, and the kind is the author's from the first keystroke instead of shifting as the second value
+ * lands. Every surface that creates one goes through here, so no path can quietly leave the kind unsaid.
+ * Import and absorb do not — those carry the kind the exporting world declared.
+ */
+export function newPlaceholder(name: string, values: string[] = []): Placeholder {
+  return { id: randomUUID(), name, values, roll: true };
 }
 
 /** Split text into literal runs and placeholder-chip tokens (mirrors parsePromptTemplate for the `{{ph}}`
@@ -579,13 +600,6 @@ interface ResolveCtx {
   depth: number;
 }
 
-/** The token string of a value that is *exactly* one chip — the shape that makes a value a structural child.
- *  A chip with text around it composes into the value instead, and is not addressable. */
-function loneChipToken(value: string): string | null {
-  const m = new RegExp(`^${TOKEN_RE.source}$`).exec(value ?? '');
-  return m ? m[0] : null;
-}
-
 /** Every structural child in a value list: its lone-chip values, paired with the placeholder each one roots
  *  at. Shared by the resolve and describe walks, which disagree about rolls but not about structure. */
 function childChips(
@@ -594,7 +608,7 @@ function childChips(
 ): Array<{ token: PlaceholderToken; target: Placeholder }> {
   const out: Array<{ token: PlaceholderToken; target: Placeholder }> = [];
   for (const value of values) {
-    const raw = loneChipToken(value);
+    const raw = lonePlaceholderToken(value);
     const token = raw ? decodePlaceholderToken(raw) : null;
     const target = token ? byId.get(token.id) : undefined;
     if (token && target) out.push({ token, target });
@@ -706,7 +720,7 @@ function walkSegs(ph: Placeholder, segs: WalkSegment[], ctx: ResolveCtx): string
     const pinned = seg.authored ? ctx.pins?.[ph.id] : undefined;
     if (pinned != null) {
       if (!rest.length) return resolveValue(pinned, next);
-      const raw = loneChipToken(pinned);
+      const raw = lonePlaceholderToken(pinned);
       const token = raw ? decodePlaceholderToken(raw) : null;
       if (!token) {
         ctx.report({ kind: 'slot-miss', placeholderId: ph.id, asked: seg.ref, segment: 'val' });
@@ -727,7 +741,7 @@ function walkSegs(ph: Placeholder, segs: WalkSegment[], ctx: ResolveCtx): string
   const direct = childChips(ph.values ?? [], ctx.byId).find((c) => c.target.name === seg.name);
   if (direct) return intoChild(direct.token, rest);
   if (placeholderIsChoice(ph)) {
-    const raw = loneChipToken(selectValue(ph, next));
+    const raw = lonePlaceholderToken(selectValue(ph, next));
     const token = raw ? decodePlaceholderToken(raw) : null;
     if (token) return intoChild(token, segs);
   }

@@ -66,7 +66,7 @@ import { parseJsonText, terminateWorker as terminateJsonWorker } from '@/lib/jso
 import AddDictionaryModal from '@/components/modals/AddDictionaryModal';
 import AddEntityModal from '@/components/modals/AddEntityModal';
 import { exportEntityCard } from '@/lib/entityFile';
-import { absorbPlaceholders, remapPlaceholderIds, describePlaceholders } from '@/lib/placeholders';
+import { absorbPlaceholders, remapPlaceholderIds, describePlaceholders, newPlaceholder } from '@/lib/placeholders';
 import { type DragEndEvent } from '@dnd-kit/core';
 import { arrayMove, verticalListSortingStrategy } from '@dnd-kit/sortable';
 import { EditorDndContext, StableSortableContext } from '@/components/dnd/EditorDndContext';
@@ -395,10 +395,10 @@ const WorldEditorInner = ({ onClose, embedded = false, backButton }: {
   };
 
   const handleAddPlaceholder = () => {
-    const id = randomUUID();
-    addPlaceholder({ id, name: searchTerm.trim() || 'New Placeholder', values: [] });
+    const p = newPlaceholder(searchTerm.trim() || 'New Placeholder');
+    addPlaceholder(p);
     setSearchTerm('');
-    setSelectedItemId(id);
+    setSelectedItemId(p.id);
   };
 
   // New traits/groups append at the root; the author drags them into folders. Order = root sibling count.

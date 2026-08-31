@@ -114,6 +114,11 @@ function placeholderColor(id: string): string {
 // Palette tokens carry a sentinel placement id; freshInsertToken re-mints a real one on insertion.
 const PALETTE_PID = 'palette';
 
+// What a chip reads as when the placeholder it names is gone. Displays only — resolution says `''`.
+const MISSING_NAME = '(missing)';
+// Reads a drill path as one name. Matches the separator the trait groups and the location canvas use.
+const PATH_SEPARATOR = ' › ';
+
 /**
  * A vocabulary with no token family at all: everything is literal text and the insert toolbar is empty.
  * For fields that render before any roll exists (the world description), where a `{{ph…}}` token would
@@ -158,7 +163,12 @@ export function placeholderVocabulary(
     label: (t) => {
       const d = decodePlaceholderToken(t);
       if (!d) return t;
-      return byId.get(d.id)?.name ?? '(missing)';
+      const root = byId.get(d.id)?.name ?? MISSING_NAME;
+      if (!d.path?.length) return root;
+      // The whole path, so `Molly › Hair` and a root `Hair` never read alike. A slot segment is already a
+      // name; a val segment names the placeholder it picks.
+      return [root, ...d.path.map((s) => (s.kind === 'slot' ? s.name : byId.get(s.ref)?.name ?? MISSING_NAME))]
+        .join(PATH_SEPARATOR);
     },
     // A chip in a field names its placeholder; what it will become goes in the tooltip, so the chip stays
     // one short word wide however many values there are.

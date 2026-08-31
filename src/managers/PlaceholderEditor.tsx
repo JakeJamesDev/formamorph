@@ -1,12 +1,11 @@
-import { randomUUID } from "@/lib/uuid";
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Plus } from 'lucide-react';
 import { ListDetail } from '@/components/ui/list-detail';
 import { usePlaceholderStore } from '@/contexts/PlaceholderStoreContext';
+import { newPlaceholder } from '@/lib/placeholders';
 import PlaceholderList from './PlaceholderList';
 import PlaceholderManager from './PlaceholderManager';
-import type { Placeholder } from '@/types';
 import { Tip } from '@/components/ui/tooltip';
 
 /**
@@ -20,7 +19,7 @@ const PlaceholderEditor = () => {
   const selected = placeholders.find((p) => p.id === selectedId) ?? null;
 
   const add = () => {
-    const p: Placeholder = { id: randomUUID(), name: 'New Placeholder', values: [] };
+    const p = newPlaceholder('New Placeholder');
     addPlaceholder(p);
     setSelectedId(p.id);
   };

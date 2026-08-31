@@ -25,6 +25,7 @@ import {
   remintPlaceholderPlacements,
   remintPlaceholdersDeep,
   remintPlaceholderDef,
+  newPlaceholder,
 } from './placeholders';
 
 const P = (id: string, values: string[]): Placeholder => ({ id, name: id, values });
@@ -543,6 +544,13 @@ describe('choice vs record', () => {
   it('lets `roll` override the inference in both directions', () => {
     expect(placeholderIsChoice({ id: 'r', name: 'r', values: ['a', 'b'], roll: false })).toBe(false);
     expect(placeholderIsChoice({ id: 'c', name: 'c', values: ['a'], roll: true })).toBe(false); // nothing to draw
+  });
+
+  it('states the kind on a freshly authored placeholder rather than leaving it to be inferred', () => {
+    // Every creation surface builds through this one factory, so no path can quietly leave the kind unsaid.
+    expect(newPlaceholder('Hair')).toMatchObject({ name: 'Hair', values: [], roll: true });
+    expect(newPlaceholder('Hair', ['brown'])).toMatchObject({ values: ['brown'], roll: true });
+    expect(newPlaceholder('a').id).not.toBe(newPlaceholder('a').id);
   });
 
   it('joins every value of a record with ", " and drops the empty ones', () => {

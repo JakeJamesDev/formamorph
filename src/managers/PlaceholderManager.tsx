@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { ChevronDown, ChevronsDownUp, ChevronsUpDown, Eye, EyeOff, Plus, Trash2 } from 'lucide-react';
 import { useEditingDraft } from '@/lib/useEditingDraft';
 import { randomUUID } from '@/lib/uuid';
@@ -8,10 +8,11 @@ import { Button } from '@/components/ui/button';
 import { Popover, PopoverAnchor, PopoverContent } from '@/components/ui/popover';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import { KeywordChips } from '@/components/KeywordChips';
-import PromptField from '@/components/prompt/PromptField';
+import { HintInfo } from '@/components/SettingsRows';
+import PlaceholderField from '@/components/prompt/PlaceholderField';
 import { usePlaceholderStore } from '@/contexts/PlaceholderStoreContext';
-import { placeholderWeight, placeholderChances, placeholderValueLine, isWeighted } from '@/lib/placeholders';
-import { plainVocabulary } from '@/lib/chipVocabulary';
+import { placeholderWeight, placeholderChances, placeholderValueLine, parsePlaceholderText, isWeighted } from '@/lib/placeholders';
+import { usePlaceholderChipVocabulary } from '@/lib/chipVocabulary';
 import { cn } from '@/lib/utils';
 import type { Placeholder } from '@/types';
 import { Tip } from '@/components/ui/tooltip';
@@ -39,6 +40,19 @@ function remapWeights(
  *  is stored, so a placeholder is re-read on every open rather than remembered. */
 type ValueStyle = 'chips' | 'multiline';
 
+/** What a placeholder is, as the selector states it. Stored as `roll`. */
+type PlaceholderKind = 'wildcard' | 'object';
+
+// The brief line under the selector decides; this defines. Kept out of the state line so a Wildcard's own
+// row reads as one short sentence.
+const KIND_INFO = `**Wildcard** randomizes — one of its values is picked, and every chip of it shows that pick.
+
+**Object** holds — all of its values apply, joined together wherever it is placed.
+
+- With one value the two coincide: it is a **Variable**, and always resolves to that value.
+- A Wildcard chip in world text chooses **World** (one pick shared everywhere) or **Unique** (its own).
+- A value that is exactly one chip is a **part** of this placeholder, addressable as \`Name › Part\`.`;
+
 /** One multiline box: its text as typed, under an id of its own so a box survives being emptied, renamed,
  *  or collapsed — none of which the value string it holds could key. */
 interface ValueBox {
@@ -65,13 +79,14 @@ const boxValues = (boxes: ValueBox[]): string[] => {
 
 const sameValues = (a: string[], b: string[]) => a.length === b.length && a.every((v, i) => v === b[i]);
 
-/** Right-panel editor for a placeholder: a name and its values. The behavior is inferred from the value
- *  count — 1 value is a fixed Variable, 2+ is a random Wildcard — surfaced as a live hint. Values are edited
- *  either as chips (short values: click one for its draw weight, the eye reveals every chance) or as one
- *  markdown box per value (paragraph-length values). Writes back through the scoped `PlaceholderStore`
- *  (the world's, or the library item's isolated store). */
+/** Right-panel editor for a placeholder: what kind of thing it is, its name, and its values. The kind
+ *  selector declares Wildcard or Object explicitly; an untouched placeholder shows the kind its value count
+ *  already implies, so no shipped world needs migrating. Values are edited either as chips (short values:
+ *  click one for its draw weight, the eye reveals every chance) or as one markdown box per value
+ *  (paragraph-length values), and either way they may hold placeholder chips of their own. Writes back
+ *  through the scoped `PlaceholderStore` (the world's, or the library item's isolated store). */
 const PlaceholderManager = ({ placeholder }: { placeholder: Placeholder }) => {
-  const { updatePlaceholder } = usePlaceholderStore();
+  const { placeholders, updatePlaceholder } = usePlaceholderStore();
   const { draft: editing, apply } = useEditingDraft(placeholder, updatePlaceholder);
   const [openValue, setOpenValue] = useState<string | null>(null);
   const [showChances, setShowChances] = useState(false);
@@ -89,9 +104,13 @@ const PlaceholderManager = ({ placeholder }: { placeholder: Placeholder }) => {
   useEffect(() => {
     setBoxes((prev) => (sameValues(boxValues(prev), placeholder.values) ? prev : toBoxes(placeholder.values)));
   }, [placeholder.values]);
-  // Placeholder values are literal text — resolution is single-pass, so a chip inside one would never
-  // expand. Same reason the chip palette is suppressed for them.
-  const plainVocab = useMemo(() => plainVocabulary(), []);
+  const vocab = usePlaceholderChipVocabulary(placeholders);
+  /** One value as a line a plain-text surface can show: a chip in it is named rather than spelled out as
+   *  the token behind it, which is what a value list holding chips would otherwise print. */
+  const valueLine = (value: string) =>
+    placeholderValueLine(
+      parsePlaceholderText(value).map((s) => (s.type === 'text' ? s.value : vocab.label(s.token))).join(''),
+    );
   // The weight pop-out hangs off whichever chip was clicked, tracked by element rather than by wrapping the
   // open one: a wrapper that appears on click replaces the chip's DOM node mid-gesture, and the second
   // click of a double-click then lands on a different element, so double-click-to-rename never fired.
@@ -101,12 +120,17 @@ const PlaceholderManager = ({ placeholder }: { placeholder: Placeholder }) => {
   const count = editing.values.length;
   const weighted = isWeighted(editing);
   const chances = placeholderChances(editing);
-  const hint =
+  // An untouched placeholder reads as a Wildcard: that is what 2+ values already do, and what one value
+  // does either way. Nothing is written until the author presses the selector.
+  const kind: PlaceholderKind = (editing.roll ?? true) ? 'wildcard' : 'object';
+  const state =
     count === 0
-      ? 'No values yet — this resolves to nothing until you add one.'
+      ? 'No values yet — this resolves to nothing.'
       : count === 1
-        ? 'One value → a Variable: always resolves to this value. Reuse it, edit it here once.'
-        : `${count} values → a Wildcard: resolves to a random value. Each chip chooses World (same everywhere) or Unique (its own roll).`;
+        ? 'A Variable: always resolves to its one value.'
+        : kind === 'wildcard'
+          ? `Picks one of ${count} values.`
+          : `Shows all ${count} values.`;
 
   const setValues = (values: string[]) =>
     apply({ values, weights: remapWeights(editing.values, values, editing.weights) });
@@ -149,6 +173,25 @@ const PlaceholderManager = ({ placeholder }: { placeholder: Placeholder }) => {
       <div className="space-y-2">
         <Label>Name</Label>
         <Input value={editing.name} onChange={(e) => apply({ name: e.target.value })} placeholder="e.g. Eye Color" />
+      </div>
+      <div className="space-y-2">
+        <div className="flex items-center gap-2">
+          <Label>Kind</Label>
+          <HintInfo>{KIND_INFO}</HintInfo>
+        </div>
+        <ToggleGroup
+          type="single"
+          value={kind}
+          // Clicking the item already on clears a single ToggleGroup's value. A placeholder is always one
+          // kind or the other, so an empty result is ignored rather than written back.
+          onValueChange={(v) => { if (v) apply({ roll: v === 'wildcard' }); }}
+          aria-label="Placeholder kind"
+          className="h-8"
+        >
+          <ToggleGroupItem value="wildcard" className="h-6 px-2 text-helper">Wildcard</ToggleGroupItem>
+          <ToggleGroupItem value="object" className="h-6 px-2 text-helper">Object</ToggleGroupItem>
+        </ToggleGroup>
+        <p className="text-helper text-muted-foreground">{state}</p>
       </div>
       <div className="space-y-2">
         <div className="flex items-center gap-2">
@@ -201,7 +244,8 @@ const PlaceholderManager = ({ placeholder }: { placeholder: Placeholder }) => {
           <MultilineValues
             boxes={boxes}
             collapsed={collapsed}
-            vocabulary={plainVocab}
+            placeholders={placeholders}
+            line={valueLine}
             weight={count > 1 ? (v) => placeholderWeight(editing, v) : undefined}
             chance={pct}
             onToggleCollapsed={toggleCollapsed}
@@ -216,6 +260,10 @@ const PlaceholderManager = ({ placeholder }: { placeholder: Placeholder }) => {
           <KeywordChips
             keywords={editing.values}
             onChange={setValues}
+            placeholders={placeholders}
+            // A value that is only a chip is a part of this placeholder, so it reads as the part it names
+            // rather than as what that part will become.
+            lonePlaceholderAsPath
             placeholder="e.g. Red — press Enter for each"
             // Toggles, like the placeholder chips' own pop-out: without this, clicking the open chip
             // re-opened it and the only way out was clicking somewhere else entirely.
@@ -246,7 +294,7 @@ const PlaceholderManager = ({ placeholder }: { placeholder: Placeholder }) => {
           >
             {openValue !== null && (
               <>
-                <p className="truncate text-label font-medium">{placeholderValueLine(openValue)}</p>
+                <p className="truncate text-label font-medium">{valueLine(openValue)}</p>
                 <Label className="text-meta text-muted-foreground">Draw Weight</Label>
                 <Input
                   type="number"
@@ -266,7 +314,6 @@ const PlaceholderManager = ({ placeholder }: { placeholder: Placeholder }) => {
           </PopoverContent>
         </Popover>
         )}
-        <p className="text-helper text-muted-foreground">{hint}</p>
       </div>
     </div>
   );
@@ -276,11 +323,13 @@ const PlaceholderManager = ({ placeholder }: { placeholder: Placeholder }) => {
  *  collapses to its first line with its weight and remove still live, so a long list stays tunable while
  *  scannable. `weight` is omitted below two values — there is nothing to weigh against. */
 const MultilineValues = ({
-  boxes, collapsed, vocabulary, weight, chance, onToggleCollapsed, onText, onWeight, onRemove, onAdd,
+  boxes, collapsed, placeholders, line, weight, chance, onToggleCollapsed, onText, onWeight, onRemove, onAdd,
 }: {
   boxes: ValueBox[];
   collapsed: ReadonlySet<string>;
-  vocabulary: ReturnType<typeof plainVocabulary>;
+  placeholders: Placeholder[];
+  /** One value as the collapsed card's summary line — see the manager's `valueLine`. */
+  line: (value: string) => string;
   weight?: (value: string) => number;
   chance: (value: string) => string;
   onToggleCollapsed: (id: string) => void;
@@ -309,7 +358,7 @@ const MultilineValues = ({
               <span className="shrink-0 text-helper font-medium text-muted-foreground">Value {i + 1}</span>
               {!open && (
                 <span className="min-w-0 truncate text-helper text-muted-foreground/70">
-                  {placeholderValueLine(value) || 'Empty value'}
+                  {line(value) || 'Empty value'}
                 </span>
               )}
             </button>
@@ -345,10 +394,10 @@ const MultilineValues = ({
           </div>
           {open && (
             <div className="p-2">
-              <PromptField
+              <PlaceholderField
                 value={box.text}
                 onChange={(text) => onText(box.id, text)}
-                vocabulary={vocabulary}
+                placeholders={placeholders}
                 markdown
                 ariaLabel={`Value ${i + 1}`}
                 placeholder="Value text — markdown supported"
