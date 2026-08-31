@@ -6,6 +6,7 @@ import { editorTabsFor } from '@/views/worldEditorTabs';
 import { worldUsesAdvancedFeatures } from './editorAdvancedData';
 import type { Dictionary, Entity, GameLocation, Placeholder, Stat, Trait, WorldOverview } from '@/types';
 
+import { phValues } from '@/test/placeholderValues';
 /** Stands in for an Advanced-only field — the same gate every one of them uses. */
 const Gated = () => (useEditorMode().advanced ? <p>Aliases</p> : null);
 
@@ -59,7 +60,7 @@ describe('worldUsesAdvancedFeatures', () => {
   });
 
   it.each([
-    ['a placeholder', { placeholders: [{ id: 'p1', name: 'Eye Color', values: ['gray'] }] as Placeholder[] }],
+    ['a placeholder', { placeholders: [{ id: 'p1', name: 'Eye Color', values: phValues(['gray']) }] as Placeholder[] }],
     ['an always-inject entry', { dictionaries: [{ id: 'b1', name: 'Lore', enabled: true, entries: [{ id: 'd1', key: ['tide'], value: 'It takes.', constant: true }] }] as unknown as Dictionary[] }],
     ['a regex entry', { dictionaries: [{ id: 'b1', name: 'Lore', enabled: true, entries: [{ id: 'd1', key: ['tid.'], value: 'It takes.', useRegex: true }] }] as unknown as Dictionary[] }],
     ['secondary keywords', { dictionaries: [{ id: 'b1', name: 'Lore', enabled: true, entries: [{ id: 'd1', key: ['bridge'], value: 'A toll.', secondaryKeys: ['toll'] }] }] as unknown as Dictionary[] }],

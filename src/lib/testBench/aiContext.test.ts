@@ -5,9 +5,10 @@ import type { Connection, Dictionary, Entity, GameLocation, Placeholder, Stat, T
 import { buildAiContext, type AiContextWorld, type ContextBlockId } from './aiContext';
 import { buildLens, type LensState } from './lens';
 
+import { phValues } from '@/test/placeholderValues';
 // A chip in an entity's name and in a connection's travel hint, so both paths through the lens are covered.
 const HAIR_CHIP = '{{ph:ph-hair:world:p1}}';
-const hairColor: Placeholder = { id: 'ph-hair', name: 'Hair Color', values: ['ash', 'copper', 'jet'] };
+const hairColor: Placeholder = { id: 'ph-hair', name: 'Hair Color', values: phValues(['ash', 'copper', 'jet']) };
 
 const traitGroups: TraitGroup[] = [{ id: 'g-origin', name: 'Origin', parentId: null, exclusive: true }];
 const traits: Trait[] = [

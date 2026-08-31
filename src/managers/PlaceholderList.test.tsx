@@ -4,6 +4,7 @@ import { encodePlaceholderToken } from '@/lib/placeholders';
 import type { Placeholder } from '@/types';
 import PlaceholderList from './PlaceholderList';
 
+import { phValues } from '@/test/placeholderValues';
 const setPlaceholders = vi.fn();
 const removePlaceholder = vi.fn();
 let stored: Placeholder[] = [];
@@ -39,7 +40,7 @@ vi.mock('@/components/SortableList', async (importOriginal) => {
  *  `at` distinguishes two placements of the same target, which are two different value strings. */
 const chip = (id: string, at = '1') => encodePlaceholderToken({ id, mode: 'world', placementId: `v-${id}-${at}` });
 
-const P = (id: string, name: string, values: string[] = []): Placeholder => ({ id, name, values });
+const P = (id: string, name: string, values: string[] = []): Placeholder => ({ id, name, values: phValues(values) });
 
 // Molly holds two variants, each variant holds Hair, and Town is only ever named inside prose. So Molly,
 // Town and Intro are the placeholders an author places, and everything else is a part of something.

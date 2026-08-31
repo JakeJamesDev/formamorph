@@ -1,9 +1,10 @@
 import { describe, it, expect } from 'vitest';
-import { APP_VERSION, migrateWorld, migrateSave, isSaveEnvelope } from './version';
+import { APP_VERSION, migrateWorld, migrateSave, isSaveEnvelope, migrateCarriedPlaceholders } from './version';
+import { placeholderWeight } from './placeholders';
 import { entityIdsAt } from './entityPresence';
 import { buildEntityContext } from './locationContext';
 import { effectiveDestinations } from './locationGraph';
-import type { Connection, Entity, GameLocation, SaveObject } from '@/types';
+import type { Connection, Entity, GameLocation, Placeholder, SaveObject } from '@/types';
 
 // Loose view of a migrated world for assertions (avoids `any`).
 type DescItem = {
@@ -508,6 +509,81 @@ describe('migrateWorld — dictionary keyword arrays', () => {
 
   it('defaults a missing key to []', () => {
     expect(withEntries([{ id: 'a', name: 'a', value: 'v' }]).dictionaries?.[0].entries[0].key).toEqual([]);
+  });
+});
+
+describe('migrateWorld — placeholder value records', () => {
+  const withPlaceholders = (placeholders: unknown[], version?: string) =>
+    migrateWorld({ ...(version ? { version } : {}), placeholders }) as unknown as { placeholders?: Placeholder[] };
+  const first = (placeholders: unknown[], version?: string) => withPlaceholders(placeholders, version).placeholders![0];
+
+  it('gives every legacy string value a record with a stable id', () => {
+    const out = first([{ id: 'p1', name: 'Hair', values: ['Red', 'Blue'] }]);
+    expect(out.values.map((v) => v.text)).toEqual(['Red', 'Blue']);
+    expect(out.values.map((v) => v.id)).toEqual([expect.any(String), expect.any(String)]);
+    expect(out.values[0].id).not.toBe(out.values[1].id);
+  });
+
+  it('rekeys the weight map from value text to the id that text was minted under', () => {
+    const out = first([{ id: 'p1', name: 'Hair', values: ['Red', 'Blue'], weights: { Red: 3 } }]);
+    expect(out.weights).toEqual({ [out.values[0].id]: 3 });
+    expect(placeholderWeight(out, out.values[0])).toBe(3);
+    expect(placeholderWeight(out, out.values[1])).toBe(1);
+  });
+
+  it('drops a weight naming no value — its key space is gone, so nothing could read it again', () => {
+    const out = first([{ id: 'p1', name: 'Hair', values: ['Red'], weights: { Red: 2, grog: 5 } }]);
+    expect(Object.keys(out.weights ?? {})).toEqual([out.values[0].id]);
+  });
+
+  it('removes an emptied weight map rather than storing one that weighs nothing', () => {
+    const out = first([{ id: 'p1', name: 'Hair', values: ['Red'], weights: { grog: 5 } }]);
+    expect('weights' in out).toBe(false);
+  });
+
+  it('leaves an already-converted map alone, dead keys included — that is the Bench’s finding to make', () => {
+    // Stripping it here would quietly repair the exact condition `placeholder-weight-unknown-value` reports,
+    // so the rule could never fire on a stored world and its Fix could never run.
+    const values = [{ id: 'v-red', text: 'Red' }];
+    const out = first([{ id: 'p1', name: 'Hair', values, weights: { 'v-red': 2, 'v-gone': 5 } }]);
+    expect(out.weights).toEqual({ 'v-red': 2, 'v-gone': 5 });
+  });
+
+  it('is idempotent — a second run keeps every id and every weight', () => {
+    const once = withPlaceholders([{ id: 'p1', name: 'Hair', values: ['Red', 'Blue'], weights: { Red: 3 } }]);
+    const twice = migrateWorld(once) as unknown as { placeholders?: Placeholder[] };
+    expect(twice.placeholders).toEqual(once.placeholders);
+  });
+
+  it('converts only the strings in a half-converted list, keeping the records already there', () => {
+    // Hand-edited world JSON is the only way to reach this, and re-minting the record would orphan its
+    // weight. Detected by element type, one value at a time.
+    const kept = { id: 'v-kept', text: 'Red' };
+    const out = first([{ id: 'p1', name: 'Hair', values: [kept, 'Blue'], weights: { 'v-kept': 3 } }]);
+    expect(out.values[0]).toEqual(kept);
+    expect(out.values[1].text).toBe('Blue');
+    expect(out.weights).toEqual({ 'v-kept': 3 });
+  });
+
+  it('runs on a world already stamped at APP_VERSION (shipped 2.x worlds predate the records)', () => {
+    expect(first([{ id: 'p1', name: 'Hair', values: ['Red'] }], APP_VERSION).values[0].text).toBe('Red');
+  });
+
+  it('leaves a world with no placeholders alone', () => {
+    expect('placeholders' in migrateWorld({ version: APP_VERSION })).toBe(false);
+  });
+});
+
+describe('migrateCarriedPlaceholders', () => {
+  it('converts the defs an entity card or a dictionary file carries, which never see migrateWorld', () => {
+    const [out] = migrateCarriedPlaceholders([{ id: 'p1', name: 'Hair', values: ['Red'], weights: { Red: 4 } }]);
+    expect(out.values[0].text).toBe('Red');
+    expect(out.weights).toEqual({ [out.values[0].id]: 4 });
+  });
+
+  it('reads anything that is not a list as no defs at all', () => {
+    expect(migrateCarriedPlaceholders(undefined)).toEqual([]);
+    expect(migrateCarriedPlaceholders('nonsense')).toEqual([]);
   });
 });
 

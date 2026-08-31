@@ -4,6 +4,7 @@ import { collectSearchTargets, findMatches, replaceAll, spliceText } from '@/lib
 import type { SearchSources, SearchTarget } from '@/lib/worldSearch';
 import type { Dictionary, Entity, GameLocation, Placeholder, Stat, Trait, WorldOverview } from '@/types';
 
+import { phValueId, phValues } from '@/test/placeholderValues';
 const LOOSE = { matchCase: false, wholeWord: false };
 
 const overview = (over: Partial<WorldOverview> = {}): WorldOverview => ({
@@ -50,6 +51,12 @@ describe('collectSearchTargets', () => {
       Object.entries(src).filter(([, value]) => typeof value === 'function'),
     ) as SearchSources;
     expect(collectSearchTargets(updatersOnly)).toEqual([]);
+  });
+
+  it('keeps scanning a placeholder that carries no values array at all', () => {
+    // Same reason as the slice above: hand-edited world JSON can omit it, and the scan runs in the render.
+    const { src } = sources({ placeholders: [{ id: 'p1', name: 'Season' } as Placeholder] });
+    expect(collectSearchTargets(src).map((t) => t.fieldKey)).toEqual(['name']);
   });
 
   it('keeps scanning the books that have entries when one book has none', () => {
@@ -193,11 +200,38 @@ describe('collectSearchTargets', () => {
     expect(keys).not.toContain('promptOverrides.statUpdatesPrompt');
   });
 
-  it('carries a placeholder value weight across an edit to that value', () => {
-    const ph: Placeholder = { id: 'p1', name: 'Season', values: ['spring', 'winter'], weights: { spring: 3, winter: 1 } };
+  it('keeps a value’s id when it rewrites the text, so the weight stays put with nothing carried', () => {
+    const ph: Placeholder = {
+      id: 'p1',
+      name: 'Season',
+      values: phValues(['spring', 'winter']),
+      weights: { [phValueId('spring')]: 3, [phValueId('winter')]: 1 },
+    };
     const { src, writes } = sources({ placeholders: [ph] });
     targetFor(collectSearchTargets(src), 'values[0]').write('summer');
-    expect(writes[0][1]).toMatchObject({ values: ['summer', 'winter'], weights: { summer: 3, winter: 1 } });
+    // The value keeps its id, so the weight follows it and nothing is carried across the edit.
+    expect(writes[0][1]).toMatchObject({
+      values: [{ id: phValueId('spring'), text: 'summer' }, { id: phValueId('winter'), text: 'winter' }],
+      weights: { [phValueId('spring')]: 3, [phValueId('winter')]: 1 },
+    });
+  });
+
+  it('names a retyped pin’s value by id when the list carries it, and drops the id when it does not', () => {
+    const ph: Placeholder = { id: 'hair', name: 'Hair', values: phValues(['Red', 'Crimson']) };
+    const pinned = {
+      id: 't1', name: 'Ember', statChanges: [],
+      placeholderPins: [{ placeholderId: 'hair', value: 'Red', valueId: phValueId('Red') }],
+    } as unknown as Trait;
+    const onList = sources({ placeholders: [ph], traits: [pinned] });
+    targetFor(collectSearchTargets(onList.src), 'placeholderPins[0].value').write('Crimson');
+    expect(onList.writes[0][1]).toMatchObject({
+      placeholderPins: [{ placeholderId: 'hair', value: 'Crimson', valueId: phValueId('Crimson') }],
+    });
+    const offList = sources({ placeholders: [ph], traits: [pinned] });
+    targetFor(collectSearchTargets(offList.src), 'placeholderPins[0].value').write('Ash-Gray');
+    // Strict, so a stale id left behind on the pin fails rather than reading as absent.
+    expect((offList.writes[0][1] as Trait).placeholderPins)
+      .toStrictEqual([{ placeholderId: 'hair', value: 'Ash-Gray' }]);
   });
 });
 

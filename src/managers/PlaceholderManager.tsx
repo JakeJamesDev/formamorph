@@ -11,30 +11,14 @@ import { KeywordChips } from '@/components/KeywordChips';
 import { HintInfo } from '@/components/SettingsRows';
 import PlaceholderField from '@/components/prompt/PlaceholderField';
 import { usePlaceholderStore } from '@/contexts/PlaceholderStoreContext';
-import { placeholderWeight, placeholderChances, placeholderValueLine, parsePlaceholderText, isWeighted } from '@/lib/placeholders';
+import {
+  placeholderWeight, placeholderChances, placeholderValueLine, parsePlaceholderText, isWeighted,
+  reconcilePlaceholderValues, prunePlaceholderWeights,
+} from '@/lib/placeholders';
 import { usePlaceholderChipVocabulary } from '@/lib/chipVocabulary';
 import { cn } from '@/lib/utils';
-import type { Placeholder } from '@/types';
+import type { Placeholder, PlaceholderValue } from '@/types';
 import { Tip } from '@/components/ui/tooltip';
-
-/**
- * Carry per-value weights across an edit to the value list. A same-length change is a rename or a reorder
- * (chip edits keep position), so a value with no weight of its own inherits whatever sat in its slot;
- * otherwise weights simply follow their value and dropped values lose theirs.
- */
-function remapWeights(
-  prev: string[],
-  next: string[],
-  weights: Record<string, number> | undefined,
-): Record<string, number> | undefined {
-  if (!weights) return undefined;
-  const out: Record<string, number> = {};
-  next.forEach((v, i) => {
-    const w = weights[v] ?? (prev.length === next.length ? weights[prev[i]] : undefined);
-    if (w != null) out[v] = w;
-  });
-  return Object.keys(out).length ? out : undefined;
-}
 
 /** Which of the two value-editing styles a placeholder is being edited in. Session-only — nothing about it
  *  is stored, so a placeholder is re-read on every open rather than remembered. */
@@ -60,13 +44,14 @@ interface ValueBox {
   text: string;
 }
 
-const toBoxes = (values: string[]): ValueBox[] => values.map((text) => ({ id: randomUUID(), text }));
+const toBoxes = (values: readonly PlaceholderValue[]): ValueBox[] =>
+  values.map(({ text }) => ({ id: randomUUID(), text }));
 
 /**
  * The value list a set of boxes stands for: outer whitespace trimmed (the internal newlines are the whole
- * point), a box that reads as empty left out, and a repeat of an earlier value collapsed into it. Those are
- * the same exact-string invariants the chip path holds — weights are keyed by value, and the chip row can
- * only draw a list whose entries are distinct.
+ * point), a box that reads as empty left out, and a repeat of an earlier value collapsed into it. Values
+ * stay unique by text, which is the invariant the chip row holds too — it can only draw a list whose
+ * entries are distinct.
  */
 const boxValues = (boxes: ValueBox[]): string[] => {
   const out: string[] = [];
@@ -92,7 +77,7 @@ const PlaceholderManager = ({ placeholder }: { placeholder: Placeholder }) => {
   const [showChances, setShowChances] = useState(false);
   // A value the chip row can't hold decides the style on open; from there it is the author's pick.
   const [style, setStyle] = useState<ValueStyle>(
-    () => (placeholder.values.some((v) => v.includes('\n')) ? 'multiline' : 'chips'),
+    () => (placeholder.values.some((v) => v.text.includes('\n')) ? 'multiline' : 'chips'),
   );
   const [boxes, setBoxes] = useState<ValueBox[]>(() => toBoxes(placeholder.values));
   const [collapsed, setCollapsed] = useState<ReadonlySet<string>>(() => new Set<string>());
@@ -102,7 +87,8 @@ const PlaceholderManager = ({ placeholder }: { placeholder: Placeholder }) => {
   // Fresh boxes carry fresh ids, so the collapse set no longer names any of them and the re-read list opens
   // expanded — which is what an author whose text just changed under them should be shown.
   useEffect(() => {
-    setBoxes((prev) => (sameValues(boxValues(prev), placeholder.values) ? prev : toBoxes(placeholder.values)));
+    const texts = placeholder.values.map((v) => v.text);
+    setBoxes((prev) => (sameValues(boxValues(prev), texts) ? prev : toBoxes(placeholder.values)));
   }, [placeholder.values]);
   const vocab = usePlaceholderChipVocabulary(placeholders);
   /** One value as a line a plain-text surface can show: a chip in it is named rather than spelled out as
@@ -120,6 +106,9 @@ const PlaceholderManager = ({ placeholder }: { placeholder: Placeholder }) => {
   const count = editing.values.length;
   const weighted = isWeighted(editing);
   const chances = placeholderChances(editing);
+  // Both value editors work in text — it is what the author types and what a chip is keyed by — while
+  // weights and chances key by the value's id. This is the one crossing between the two.
+  const byText = new Map(editing.values.map((v) => [v.text, v]));
   // An untouched placeholder reads as a Wildcard: that is what 2+ values already do, and what one value
   // does either way. Nothing is written until the author presses the selector.
   const kind: PlaceholderKind = (editing.roll ?? true) ? 'wildcard' : 'object';
@@ -132,17 +121,27 @@ const PlaceholderManager = ({ placeholder }: { placeholder: Placeholder }) => {
           ? `Picks one of ${count} values.`
           : `Shows all ${count} values.`;
 
-  const setValues = (values: string[]) =>
-    apply({ values, weights: remapWeights(editing.values, values, editing.weights) });
+  // A value keeps its id across a rename, so its weight follows it with nothing to carry. Only the values
+  // an edit dropped need clearing out.
+  const setValues = (texts: string[]) => {
+    const values = reconcilePlaceholderValues(editing.values, texts);
+    apply({ values, weights: prunePlaceholderWeights(editing.weights, values) });
+  };
 
   const setWeight = (value: string, weight: number) => {
+    const id = byText.get(value)?.id;
+    if (!id) return;
     const weights = { ...(editing.weights ?? {}) };
-    if (weight === 1) delete weights[value];
-    else weights[value] = weight;
+    if (weight === 1) delete weights[id];
+    else weights[id] = weight;
     apply({ weights: Object.keys(weights).length ? weights : undefined });
   };
 
-  const pct = (v: string) => `${Math.round(chances[v] ?? 0)}%`;
+  const weightOf = (value: string) => {
+    const v = byText.get(value);
+    return v ? placeholderWeight(editing, v) : 1;
+  };
+  const pct = (v: string) => `${Math.round(chances[byText.get(v)?.id ?? ''] ?? 0)}%`;
 
   /** Every box edit lands here: the boxes are what the author sees, the value list is what they stand for. */
   const writeBoxes = (next: ValueBox[]) => {
@@ -246,7 +245,7 @@ const PlaceholderManager = ({ placeholder }: { placeholder: Placeholder }) => {
             collapsed={collapsed}
             placeholders={placeholders}
             line={valueLine}
-            weight={count > 1 ? (v) => placeholderWeight(editing, v) : undefined}
+            weight={count > 1 ? weightOf : undefined}
             chance={pct}
             onToggleCollapsed={toggleCollapsed}
             onText={(id, text) => writeBoxes(boxes.map((b) => (b.id === id ? { ...b, text } : b)))}
@@ -258,7 +257,7 @@ const PlaceholderManager = ({ placeholder }: { placeholder: Placeholder }) => {
         <Popover open={openValue !== null} onOpenChange={(o) => !o && setOpenValue(null)}>
           <PopoverAnchor virtualRef={anchor} />
           <KeywordChips
-            keywords={editing.values}
+            keywords={editing.values.map((v) => v.text)}
             onChange={setValues}
             placeholders={placeholders}
             // A value that is only a chip is a part of this placeholder, so it reads as the part it names
@@ -301,7 +300,7 @@ const PlaceholderManager = ({ placeholder }: { placeholder: Placeholder }) => {
                   min={0}
                   step={1}
                   autoFocus
-                  value={placeholderWeight(editing, openValue)}
+                  value={weightOf(openValue)}
                   onChange={(e) => setWeight(openValue, Math.max(0, Math.round(Number(e.target.value) || 0)))}
                 />
                 <p className="text-meta text-muted-foreground">

@@ -21,8 +21,8 @@ export function usePlaceholderResolver(): (text: string) => string {
   const pins = useMemo(() => {
     const off = new Set(viewDisabledTraitIds);
     const active = inAuthoredOrder(viewTraits.filter((t) => !off.has(t.id)), traitOrderIndex(traits, traitGroups));
-    return activePlaceholderPins(active);
-  }, [viewTraits, viewDisabledTraitIds, traits, traitGroups]);
+    return activePlaceholderPins(active, placeholders);
+  }, [viewTraits, viewDisabledTraitIds, traits, traitGroups, placeholders]);
   return useCallback(
     (text: string) => resolvePlaceholders(text, { placeholders, rolls: placeholderRolls, pins }),
     [placeholders, placeholderRolls, pins],

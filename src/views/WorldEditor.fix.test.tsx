@@ -3,6 +3,7 @@ import { screen, fireEvent, waitFor } from '@testing-library/react';
 import { toast } from 'react-toastify';
 import { benchEditorWorld, clickOpenBench, renderWorldEditorBench } from '@/test/worldEditorBench';
 
+import { phValues } from '@/test/placeholderValues';
 /**
  * Guards the Bench's quick fixes through the real editor.
  *
@@ -39,7 +40,7 @@ const WORLD = benchEditorWorld({
     id: 'e1', name: 'Maren', aliases: ['the visitor'], locations: ['harbor'],
     playerDescription: 'A trader.', aiDescription: 'Trades salt and rope.',
   }],
-  placeholders: [{ id: 'p1', name: 'Hue', values: ['red', 'blue'] }],
+  placeholders: [{ id: 'p1', name: 'Hue', values: phValues(['red', 'blue']) }],
 });
 
 // Both defects live in Advanced-only fields, which is where the Bench lists them and offers the repair.

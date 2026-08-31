@@ -1,13 +1,14 @@
 import { describe, it, expect } from 'vitest';
 import { resolvePlaceholders } from '@/lib/placeholders';
 import type { GameLocation, Placeholder, Trait, TraitGroup } from '@/types';
+import { phValues } from '@/test/placeholderValues';
 import {
   buildLens, describeBrokenPin, lensLocationOptions, lensPcOptions, lensStatOverrides, resolveLensText,
   seedLens, type LensWorld,
 } from './lens';
 
-const hairColor: Placeholder = { id: 'ph-hair', name: 'Hair Color', values: ['ash', 'copper', 'jet'] };
-const homeland: Placeholder = { id: 'ph-home', name: 'Homeland', values: ['the Reach'] };
+const hairColor: Placeholder = { id: 'ph-hair', name: 'Hair Color', values: phValues(['ash', 'copper', 'jet']) };
+const homeland: Placeholder = { id: 'ph-home', name: 'Homeland', values: phValues(['the Reach']) };
 
 const groups: TraitGroup[] = [
   { id: 'g-origin', name: 'Origin', parentId: null, exclusive: true },

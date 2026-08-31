@@ -11,7 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import PlaceholderField, { PlaceholderNameField } from '@/components/prompt/PlaceholderField';
 import { describePlaceholders, lonePlaceholderToken, placeholderValueLine } from '@/lib/placeholders';
 import { placeholderVocabulary } from '@/lib/chipVocabulary';
-import { traitConflicts, type TraitConflict } from '@/lib/traitEffects';
+import { traitConflicts, withPinnedValue, type TraitConflict } from '@/lib/traitEffects';
 import { useEditorMode } from '@/lib/editorMode';
 import { HelpButton } from '@/components/HelpButton';
 import type { Trait, StatChange, TraitStatToggle, TraitPlaceholderPin } from '@/types';
@@ -72,8 +72,10 @@ const TraitManager = ({ trait, onOpenTrait }: { trait: Trait; onOpenTrait: (id: 
 
   const pins = editingTrait.placeholderPins ?? [];
   const setPins = (next: TraitPlaceholderPin[]) => apply({ placeholderPins: next.length ? next : undefined });
-  const updatePin = (index: number, patch: Partial<TraitPlaceholderPin>) =>
-    setPins(pins.map((p, i) => (i === index ? { ...p, ...patch } : p)));
+  // The pin's text goes through the writer that names the value by id when the list carries it, so picking
+  // "Red" survives the author re-spelling it and typing a shade nobody rolls stays free text.
+  const setPinValue = (index: number, value: string) =>
+    setPins(pins.map((p, i) => (i === index ? withPinnedValue(p, value, placeholders) : p)));
   const pinVocab = useMemo(() => placeholderVocabulary(placeholders), [placeholders]);
   /** A value as the pin picker shows it. A value that is exactly one chip is a part, so it reads as the part
    *  it names — the same reading the Values field gives it, and the one an author picking a variant is
@@ -238,7 +240,12 @@ const TraitManager = ({ trait, onOpenTrait }: { trait: Trait; onOpenTrait: (id: 
         {pins.map((pin, index) => (
           <div key={index} className="space-y-1">
           <div className="flex space-x-2">
-            <Select value={pin.placeholderId} onValueChange={(v) => updatePin(index, { placeholderId: v })}>
+            {/* Re-aiming the pin drops the value id with it — the id named a value of the old placeholder. */}
+            <Select
+              value={pin.placeholderId}
+              onValueChange={(v) => setPins(pins.map((p, i) =>
+                (i === index ? withPinnedValue({ ...p, placeholderId: v }, p.value, placeholders) : p)))}
+            >
               <SelectTrigger>
                 <SelectValue placeholder="Select placeholder" />
               </SelectTrigger>
@@ -257,8 +264,8 @@ const TraitManager = ({ trait, onOpenTrait }: { trait: Trait; onOpenTrait: (id: 
                 single
                 openOnFocus
                 values={pin.value ? [pin.value] : []}
-                onChange={(vals) => updatePin(index, { value: vals[0] ?? '' })}
-                options={placeholders.find((p) => p.id === pin.placeholderId)?.values ?? []}
+                onChange={(vals) => setPinValue(index, vals[0] ?? '')}
+                options={placeholders.find((p) => p.id === pin.placeholderId)?.values.map((v) => v.text) ?? []}
                 describe={describeValue}
                 ariaLabel="Pinned value"
                 placeholder="Pinned value"

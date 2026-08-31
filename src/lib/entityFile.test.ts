@@ -3,6 +3,7 @@ import { buildEntityCardData, parseEntityCardData, ENTITY_FILE_KIND } from './en
 import { embedEntityCard, readEntityCard } from './entityCard';
 import type { Entity } from '@/types';
 
+import { phValues } from '@/test/placeholderValues';
 const entity: Entity = {
   id: 'orig-id',
   name: 'Wren',
@@ -62,8 +63,8 @@ describe('buildEntityCardData', () => {
   });
 
   it('bundles only the placeholders the entity actually uses, and reads them back on parse', () => {
-    const eye = { id: 'eye', name: 'Eye Color', values: ['Red', 'Blue'] };
-    const unused = { id: 'unused', name: 'Weather', values: ['Rain', 'Sun'] };
+    const eye = { id: 'eye', name: 'Eye Color', values: phValues(['Red', 'Blue']) };
+    const unused = { id: 'unused', name: 'Weather', values: phValues(['Rain', 'Sun']) };
     const withChip: Entity = { id: 'y', name: 'Guard', aiDescription: 'Eyes: {{ph:eye:world:p1}}.' };
     const card = buildEntityCardData(withChip, [eye, unused]);
     expect(card.placeholders).toEqual([eye]); // only the referenced one; `unused` excluded
@@ -74,9 +75,9 @@ describe('buildEntityCardData', () => {
   });
 
   it('bundles the placeholders a name or an alias uses, not only the descriptions', () => {
-    const town = { id: 'town', name: 'Town', values: ['Sedge', 'Marrow'] };
-    const beast = { id: 'beast', name: 'Beast', values: ['Wolf'] };
-    const unused = { id: 'unused', name: 'Weather', values: ['Rain'] };
+    const town = { id: 'town', name: 'Town', values: phValues(['Sedge', 'Marrow']) };
+    const beast = { id: 'beast', name: 'Beast', values: phValues(['Wolf']) };
+    const unused = { id: 'unused', name: 'Weather', values: phValues(['Rain']) };
     // Nothing here has a description — without the name and alias being scanned, the card would carry
     // no defs and its chips would arrive pointing at ids the receiving world never had.
     const named: Entity = {

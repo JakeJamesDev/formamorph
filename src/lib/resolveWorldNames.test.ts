@@ -1,14 +1,15 @@
 import { describe, it, expect } from 'vitest';
 import type { DictionaryEntry, Entity, GameLocation, PlayerStat, Stat, Trait, TraitGroup } from '@/types';
 import { encodePlaceholderToken, resolvePlaceholders } from './placeholders';
+import { phValues } from '@/test/placeholderValues';
 import {
   resolveEntityNames, resolveLocationNames, resolveStatNames, resolveTraitNames, resolveTraitGroupNames,
   resolveDictionaryEntryNames,
 } from './resolveWorldNames';
 
 // Real defs + tokens rather than a stub replacer, so these also pin the codec the editor writes.
-const KEEPER = { id: 'ph-keeper', name: 'Keeper', values: ['Vera'] };
-const TOWN = { id: 'ph-town', name: 'Town', values: ['Sedge', 'Marrow'] };
+const KEEPER = { id: 'ph-keeper', name: 'Keeper', values: phValues(['Vera']) };
+const TOWN = { id: 'ph-town', name: 'Town', values: phValues(['Sedge', 'Marrow']) };
 const PLACEHOLDERS = [KEEPER, TOWN];
 
 const tok = (id: string, placementId = 'p1', mode: 'world' | 'unique' = 'world') =>

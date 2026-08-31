@@ -5,6 +5,7 @@ import type { Dictionary } from '@/types';
 import { useDebouncedTriggerReport } from './useTriggerReport';
 import type { TriggerWorld } from './triggers';
 
+import { phValues } from '@/test/placeholderValues';
 const book: Dictionary = {
   id: 'book1',
   name: 'Sedge Lore',
@@ -94,7 +95,7 @@ describe('useDebouncedTriggerReport', () => {
     const pinned: TriggerWorld = {
       ...world,
       entities: [{ id: 'e1', name: '{{ph:p1:world:x}}' }],
-      placeholders: [{ id: 'p1', name: 'Alias', values: ['Maren', 'Vosk'] }],
+      placeholders: [{ id: 'p1', name: 'Alias', values: phValues(['Maren', 'Vosk']) }],
     };
     const { result, rerender } = renderHook(
       ({ pins }) => useDebouncedTriggerReport(pinned, 'Maren crosses the yard.', '', { pins, delayMs: 250 }),

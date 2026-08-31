@@ -4,6 +4,7 @@ import { describe, it, expect, beforeEach } from 'vitest';
 import DictionaryStorageService, { type StoredDictionaryRecord } from './DictionaryStorageService';
 import { encodePlaceholderToken } from '@/lib/placeholders';
 
+import { phValues } from '@/test/placeholderValues';
 const record = (id: string, name = 'Lore'): StoredDictionaryRecord => ({
   id, name, data: { id, name, entries: [] },
 });
@@ -124,7 +125,7 @@ describe('DictionaryStorageService', () => {
         name: 'Fen Cant',
         entries: [],
         description: `Words of the ${token}.`,
-        placeholders: [{ id: 'fen', name: 'fen', values: ['Sedge Fen'] }],
+        placeholders: [{ id: 'fen', name: 'fen', values: phValues(['Sedge Fen']) }],
       },
     });
 

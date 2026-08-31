@@ -8,6 +8,7 @@ import { PlaceholderStoreProvider, placeholderStore } from '@/contexts/Placehold
 import { decodePlaceholderToken, encodePlaceholderToken } from '@/lib/placeholders';
 import type { Placeholder } from '@/types';
 
+import { phValues } from '@/test/placeholderValues';
 /**
  * The `{` menu as an author drives it: filter, walk into a placeholder's parts, back out, insert the path
  * that walk took, and make a placeholder that does not exist yet. Lexical needs a real caret, and jsdom
@@ -18,11 +19,11 @@ import type { Placeholder } from '@/types';
 const chip = (id: string) => encodePlaceholderToken({ id, mode: 'world', placementId: `v-${id}` });
 
 const WORLD: Placeholder[] = [
-  { id: 'molly', name: 'Molly', values: [chip('white'), chip('asian')] },
-  { id: 'white', name: 'isWhite', roll: false, values: [chip('hair'), chip('eyes')] },
-  { id: 'asian', name: 'isAsian', roll: false, values: [chip('hair')] },
-  { id: 'hair', name: 'Hair', values: ['brown', 'black'] },
-  { id: 'eyes', name: 'Eyes', values: ['green', 'hazel'] },
+  { id: 'molly', name: 'Molly', values: phValues([chip('white'), chip('asian')]) },
+  { id: 'white', name: 'isWhite', roll: false, values: phValues([chip('hair'), chip('eyes')]) },
+  { id: 'asian', name: 'isAsian', roll: false, values: phValues([chip('hair')]) },
+  { id: 'hair', name: 'Hair', values: phValues(['brown', 'black']) },
+  { id: 'eyes', name: 'Eyes', values: phValues(['green', 'hazel']) },
 ];
 
 let world: Placeholder[];

@@ -298,8 +298,8 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
   // trait brings the rolled value back.
   const draftPins = useMemo(() => {
     const chosen = rawTraits.filter((t) => selectedTraits.includes(t.id));
-    return activePlaceholderPins(inAuthoredOrder(chosen, traitOrderIndex(rawTraits, rawTraitGroups)));
-  }, [selectedTraits, rawTraits, rawTraitGroups]);
+    return activePlaceholderPins(inAuthoredOrder(chosen, traitOrderIndex(rawTraits, rawTraitGroups)), placeholders);
+  }, [selectedTraits, rawTraits, rawTraitGroups, placeholders]);
   const { traits, traitGroups, stats, locations, resolvePH, resolveTraitText } = useResolvedAuthoredWorld(draftPins);
 
   const [showCodeModal, setShowCodeModal] = useState(false);

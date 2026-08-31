@@ -7,6 +7,7 @@ import type { Placeholder, Trait } from '@/types';
 import { EditorModeContext } from '@/lib/editorMode';
 import TraitManager from './TraitManager';
 
+import { phValueId, phValues } from '@/test/placeholderValues';
 // A trait pinning a hair color — the row the pin editor exists for.
 const sedgeBorn = {
   id: 't1', name: 'Sedge-Born', statChanges: [],
@@ -27,10 +28,10 @@ const chip = (id: string) => encodePlaceholderToken({ id, mode: 'world', placeme
 // whose two values are each a whole other placeholder, which is what a pin has to be able to name. The
 // variants are Objects, so what each one joins to is a soup and its name is the thing an author picks by.
 const WORLD: Placeholder[] = [
-  { id: 'p1', name: 'Hair Color', values: ['ash', 'copper'] },
-  { id: 'molly', name: 'Molly', values: [chip('iswhite'), chip('isasian'), `freckled ${chip('isasian')}`] },
-  { id: 'iswhite', name: 'isWhite', roll: false, values: ['fair skin', 'ash hair'] },
-  { id: 'isasian', name: 'isAsian', roll: false, values: ['tan skin', 'black hair'] },
+  { id: 'p1', name: 'Hair Color', values: phValues(['ash', 'copper']) },
+  { id: 'molly', name: 'Molly', values: phValues([chip('iswhite'), chip('isasian'), `freckled ${chip('isasian')}`]) },
+  { id: 'iswhite', name: 'isWhite', roll: false, values: phValues(['fair skin', 'ash hair']) },
+  { id: 'isasian', name: 'isAsian', roll: false, values: phValues(['tan skin', 'black hair']) },
 ];
 
 const store: { trait: Trait; writes: Trait[]; rerender: () => void } =
@@ -112,11 +113,12 @@ describe('the placeholder pin row', () => {
     expect(screen.getByRole('button', { name: 'copper' })).toBeInTheDocument();
   });
 
-  it('writes a picked suggestion straight through to the trait', async () => {
+  it('writes a picked suggestion through, naming the value it picked by id', async () => {
     renderManager();
     await userEvent.click(pinField());
     await userEvent.click(screen.getByRole('button', { name: 'ash' }));
-    expect(lastPins()).toEqual([{ placeholderId: 'p1', value: 'ash' }]);
+    // The id is what the pin follows, so re-spelling “ash” later moves the pin with it.
+    expect(lastPins()).toEqual([{ placeholderId: 'p1', value: 'ash', valueId: phValueId('ash') }]);
   });
 
   it('writes free text through unchanged, since a pin may name a value the list doesn’t carry', async () => {
@@ -124,6 +126,7 @@ describe('the placeholder pin row', () => {
     await userEvent.clear(pinField());
     await userEvent.type(pinField(), 'teal');
     expect(pinField().value).toBe('teal');
+    // No value spells it, so the pin stays the free text it is — no id to follow.
     expect(lastPins()).toEqual([{ placeholderId: 'p1', value: 'teal' }]);
   });
 
@@ -132,7 +135,7 @@ describe('the placeholder pin row', () => {
     await userEvent.clear(pinField());
     await userEvent.type(pinField(), 'as');
     await userEvent.tab();
-    expect(lastPins()).toEqual([{ placeholderId: 'p1', value: 'ash' }]);
+    expect(lastPins()).toEqual([{ placeholderId: 'p1', value: 'ash', valueId: phValueId('ash') }]);
   });
 
   it('offers a value that is one whole chip by the part it names, never as the token behind it', async () => {
@@ -158,7 +161,9 @@ describe('the placeholder pin row', () => {
     await userEvent.click(pinField());
     await userEvent.click(screen.getByRole('button', { name: 'isAsian' }));
     // The stored value is the chip — which is what resolution follows into isAsian.
-    expect(lastPins()).toEqual([{ placeholderId: 'molly', value: chip('isasian') }]);
+    expect(lastPins()).toEqual([{
+      placeholderId: 'molly', value: chip('isasian'), valueId: phValueId(chip('isasian')),
+    }]);
   });
 
   it('shows a pinned variant as a pill, leaving the field empty rather than full of token', async () => {

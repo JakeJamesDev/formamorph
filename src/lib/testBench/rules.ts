@@ -29,7 +29,7 @@ import {
 import { formatBytes, IMAGE_CAPS, type ImageCap } from '@/lib/imageOptim';
 import { clamp } from '@/lib/utils';
 import type {
-  DictionaryEntry, Entity, GameLocation, Placeholder, Stat, StatDescriptor, Trait, World,
+  DictionaryEntry, Entity, GameLocation, Placeholder, PlaceholderValue, Stat, StatDescriptor, Trait, World,
 } from '@/types';
 
 /**
@@ -460,7 +460,7 @@ const allChipTexts = (world: RuleWorld): Array<string | undefined> => [
   ...chipOwners(world).flatMap((owner) => owner.texts),
   // Values are chip-capable, so a structural child is placed by the parent that names it and by nothing
   // else. Reading it as unused would put a delete-it Fix on the parts a whole character is built from.
-  ...(world.placeholders ?? []).flatMap((ph) => ph.values ?? []),
+  ...(world.placeholders ?? []).flatMap((ph) => (ph.values ?? []).map((v) => v.text)),
   world.worldOverview?.description,
   ...(world.stats ?? []).flatMap((s) => [s.description, ...(s.descriptors ?? []).map((d) => d.description)]),
   ...(world.statUpdates ?? []).map((u) => u.prompt),
@@ -1134,7 +1134,7 @@ const entityNameInWildcardPool: Rule = {
     const nameKey = matchKey(describePlaceholders(entity.name ?? '', world.placeholders));
     if (!nameKey) return [];
     return (world.placeholders ?? [])
-      .filter((ph) => (ph.values ?? []).length >= 2 && (ph.values ?? []).some((value) => matchKey(value) === nameKey))
+      .filter((ph) => (ph.values ?? []).length >= 2 && (ph.values ?? []).some((v) => matchKey(v.text) === nameKey))
       .map((ph) => {
         const item = asItem(entity, world);
         return finding(
@@ -1341,16 +1341,17 @@ const traitGroupTooSmall: Rule = {
 
 /** The values a roll can actually land on. Every value benched falls back to a uniform draw
  *  (`weightedPick`), so an all-zero weight map benches nothing. */
-const drawableValues = (ph: Placeholder): string[] => {
+const drawableValues = (ph: Placeholder): PlaceholderValue[] => {
   const values = ph.values ?? [];
   const positive = values.filter((value) => placeholderWeight(ph, value) > 0);
   return positive.length > 0 ? positive : values;
 };
 
-/** The weight-map keys that name no value in the pool — each one a weight applying to nothing. */
+/** The weight-map keys naming no value in the pool — each one a weight applying to nothing. Keys are
+ *  value ids, so this is what a value the author deleted leaves behind. */
 const deadWeightKeys = (ph: Placeholder): string[] => {
-  const values = new Set(ph.values ?? []);
-  return Object.keys(ph.weights ?? {}).filter((key) => !values.has(key));
+  const ids = new Set((ph.values ?? []).map((v) => v.id));
+  return Object.keys(ph.weights ?? {}).filter((key) => !ids.has(key));
 };
 
 const placeholderWeightUnknownValue: Rule = {
@@ -1363,9 +1364,12 @@ const placeholderWeightUnknownValue: Rule = {
     const dead = deadWeightKeys(ph);
     if (dead.length === 0) return [];
     const item = namedItem(ph.id, ph.name, world);
+    // A dead key names a value id, which says nothing to an author, so the count carries the finding.
     return [finding(
       placeholderWeightUnknownValue,
-      `${quote(item.name)} weights ${quote(dead[0])}, which isn’t one of its values — the weight applies to nothing`,
+      dead.length === 1
+        ? `${quote(item.name)} weights a value it no longer has — that weight applies to nothing`
+        : `${quote(item.name)} weights ${dead.length} values it no longer has — those weights apply to nothing`,
       [item],
     )];
   }),
@@ -1395,7 +1399,7 @@ const wildcardSingleValue: Rule = {
       const item = namedItem(ph.id, ph.name, world);
       return finding(
         wildcardSingleValue,
-        `${quote(item.name)} benches every value but ${quote(drawableValues(ph)[0])} by weight, so every roll lands the same`,
+        `${quote(item.name)} benches every value but ${quote(drawableValues(ph)[0].text)} by weight, so every roll lands the same`,
         [item],
       );
     }),
@@ -1420,12 +1424,12 @@ const PROBE_ROUNDS = 8;
  */
 const probeRounds = (world: RuleWorld): number => {
   const placeholders = world.placeholders ?? [];
-  if (!placeholders.some((ph) => (ph.values ?? []).some((value) => hasPlaceholders(value ?? '')))) return 1;
+  if (!placeholders.some((ph) => (ph.values ?? []).some((v) => hasPlaceholders(v.text ?? '')))) return 1;
   return Math.min(PROBE_ROUNDS, Math.max(1, ...placeholders.map((ph) => (ph.values ?? []).length)));
 };
 
 const branchPick = (round: number): PlaceholderPick =>
-  (values) => values[Math.min(round, values.length - 1)];
+  (values) => values[Math.min(round, values.length - 1)].text;
 
 /**
  * `text` resolved once per branch round, with everything each walk reported. The real resolver runs it, so a
@@ -1496,7 +1500,7 @@ const placeholderDanglingReference: Rule = {
     const inValues = (world.placeholders ?? []).flatMap((ph) => {
       const item = namedItem(ph.id, ph.name, world);
       return (ph.values ?? [])
-        .flatMap(chipTokens)
+        .flatMap((v) => chipTokens(v.text))
         .filter((token) => gone(token.id) || drilledIntoNothing(token))
         .map(() => finding(
           placeholderDanglingReference,
@@ -1519,7 +1523,7 @@ const placeholderDanglingReference: Rule = {
 /** Every placeholder id one placeholder's values reach: a chip anywhere in a value, plus every explicit pick
  *  its path names. These are the edges a cycle can run along. */
 const valueReferences = (ph: Placeholder): string[] =>
-  (ph.values ?? []).flatMap(chipTokens).flatMap((token) =>
+  (ph.values ?? []).flatMap((v) => chipTokens(v.text)).flatMap((token) =>
     [token.id, ...(token.path ?? []).flatMap((segment) => (segment.kind === 'val' ? [segment.ref] : []))]);
 
 /** Each reference cycle among `placeholders`, as the ids standing on it. A tangle is reported once, by the

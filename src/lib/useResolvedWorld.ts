@@ -89,7 +89,7 @@ export function useResolvedAuthoredWorld(pins: Record<string, string> = NO_PINS)
   );
   const resolveTraitText = useCallback(
     (trait: Trait, text: string) =>
-      resolvePlaceholders(text, { placeholders, rolls, pins: traitScopedPins(trait, pins) }),
+      resolvePlaceholders(text, { placeholders, rolls, pins: traitScopedPins(trait, pins, placeholders) }),
     [placeholders, rolls, pins],
   );
 
@@ -110,7 +110,7 @@ export function useResolvedAuthoredWorld(pins: Record<string, string> = NO_PINS)
 const NO_PINS: Record<string, string> = {};
 
 export function useResolvedWorld(): ResolvedWorld {
-  const { traits: rawTraits, traitGroups: rawTraitGroups } = useGameData();
+  const { traits: rawTraits, traitGroups: rawTraitGroups, placeholders } = useGameData();
   const {
     playerStats: rawPlayerStats, viewStats: rawViewStats, runtimeDictionary: rawDictionary,
     currentLocation: storedLocation, playerTraits, disabledTraitIds,
@@ -120,8 +120,8 @@ export function useResolvedWorld(): ResolvedWorld {
   const traitPins = useMemo(() => {
     const off = new Set(disabledTraitIds);
     const active = inAuthoredOrder(refreshChosenTraits(playerTraits, rawTraits).filter((t) => !off.has(t.id)), traitOrder);
-    return activePlaceholderPins(active);
-  }, [playerTraits, disabledTraitIds, rawTraits, traitOrder]);
+    return activePlaceholderPins(active, placeholders);
+  }, [playerTraits, disabledTraitIds, rawTraits, traitOrder, placeholders]);
 
   const {
     entities, locations, connections, stats, traits, traitGroups, resolvePH, resolveWith, resolveTraitText,
