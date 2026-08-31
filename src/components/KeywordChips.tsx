@@ -6,7 +6,7 @@ import { commaSplitCandidate, splitPastedChips, replaceChipValue } from '@/compo
 import { EditableChip } from '@/components/EditableChip';
 import ChipInput from '@/components/prompt/ChipInput';
 import { usePlaceholderChipVocabulary } from '@/lib/chipVocabulary';
-import { hasPlaceholders, placeholderValueLine } from '@/lib/placeholders';
+import { hasPlaceholders, lonePlaceholderToken, placeholderValueLine } from '@/lib/placeholders';
 import { PLACEHOLDER_TRIGGER, placeholderHint } from '@/lib/placeholderInsert';
 import type { Placeholder } from '@/types';
 import PlaceholderText from '@/components/prompt/PlaceholderText';
@@ -22,8 +22,7 @@ import PlaceholderText from '@/components/prompt/PlaceholderText';
  *
  * Given `placeholders`, a tag may mix text and chips (an "Old \{Town\} keeper" alias): the entry field becomes a chip
  * editor with the same `{` typeahead as every other placeholder field, and a committed tag draws its chips
- * as pills (double-click to edit it in place). Omit the prop for lists that must stay literal — placeholder values themselves, since resolution
- * is single-pass and a chip inside one would never expand.
+ * as pills (double-click to edit it in place). Omit the prop for lists that must stay literal.
  */
 const NO_PLACEHOLDERS: Placeholder[] = [];
 const NO_MODIFIERS: never[] = [];
@@ -37,6 +36,7 @@ export function KeywordChips({
   chipSuffix,
   renderChip,
   placeholders,
+  lonePlaceholderAsPath = false,
 }: {
   keywords: string[];
   onChange: (keywords: string[]) => void;
@@ -44,6 +44,10 @@ export function KeywordChips({
   offerCommaSplit?: boolean;
   /** The world's placeholders, when tags may embed them. Absent ⇒ a plain literal tag list. */
   placeholders?: Placeholder[];
+  /** Label a tag that is *exactly* one chip with its full path name instead of what it resolves to. A lone
+   *  chip is structure in a placeholder's own value list — the part it holds — where in an alias it is
+   *  still prose. Chips inside a longer tag read as prose either way. */
+  lonePlaceholderAsPath?: boolean;
   /** Claims the single click/tap on a chip (rename moves to double-click). Pair with `renderChip` to hang
    *  a popover off it. */
   onChipClick?: (value: string) => void;
@@ -136,6 +140,14 @@ export function KeywordChips({
     setSplitOffer(null);
   };
 
+  /** What a committed tag shows, when the stored string isn't readable as-is. Undefined ⇒ the string itself. */
+  const chipLabel = (kw: string): ReactNode => {
+    const lone = lonePlaceholderAsPath ? lonePlaceholderToken(kw) : null;
+    if (lone) return vocab.label(lone);
+    if (hasPlaceholders(kw)) return <PlaceholderText text={kw} placeholders={placeholders ?? []} />;
+    return kw.includes('\n') ? placeholderValueLine(kw) : undefined;
+  };
+
   return (
     <div className="space-y-1">
       <div className="flex flex-wrap items-center gap-1 rounded-md border border-border bg-background/80 p-2">
@@ -155,9 +167,7 @@ export function KeywordChips({
                   sortable
                   // A value written in the multiline editor comes back as its first line — a chip row is a
                   // one-line surface, and a paragraph in one would wrap the whole box.
-                  label={hasPlaceholders(kw)
-                    ? <PlaceholderText text={kw} placeholders={placeholders ?? []} />
-                    : kw.includes('\n') ? placeholderValueLine(kw) : undefined}
+                  label={chipLabel(kw)}
                   placeholders={placeholders}
                   suffix={chipSuffix?.(kw)}
                   onActivate={onChipClick}

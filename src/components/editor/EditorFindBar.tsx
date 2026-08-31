@@ -11,7 +11,7 @@ import { Tip } from '@/components/ui/tooltip';
 import { cn } from '@/lib/utils';
 import { useIsMobile } from '@/lib/useIsMobile';
 import { WORLD_EDITOR_TABS } from '@/views/worldEditorTabs';
-import { encodePlaceholderToken } from '@/lib/placeholders';
+import { encodePlaceholderToken, newPlaceholder } from '@/lib/placeholders';
 import { randomUUID } from '@/lib/uuid';
 import { findMatches, replaceAll, spliceText } from '@/lib/worldSearch';
 import type { SearchMatch, SearchTarget } from '@/lib/worldSearch';
@@ -201,7 +201,7 @@ export default function EditorFindBar({
   useEffect(() => { if (notice) { const t = setTimeout(() => setNotice(null), 6000); return () => clearTimeout(t); } }, [notice]);
 
   const createPlaceholder = () => {
-    const placeholder: Placeholder = { id: randomUUID(), name: query.trim() || 'New Placeholder', values: [query] };
+    const placeholder = newPlaceholder(query.trim() || 'New Placeholder', [query]);
     onAddPlaceholder(placeholder);
     setChipId(placeholder.id);
     setPickerOpen(false);
