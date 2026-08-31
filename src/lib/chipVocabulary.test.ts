@@ -2,6 +2,7 @@ import { describe, it, expect } from 'vitest';
 import type { Placeholder } from '@/types';
 import { promptVocabulary, placeholderVocabulary } from './chipVocabulary';
 import { encodePlaceholderToken, decodePlaceholderToken } from './placeholders';
+import type { PlaceholderSegment } from './placeholders';
 
 const P = (id: string, values: string[]): Placeholder => ({ id, name: `name-${id}`, values });
 const tok = (id: string, mode: 'world' | 'unique', pid = 'p1') => encodePlaceholderToken({ id, mode, placementId: pid });
@@ -85,6 +86,80 @@ describe('placeholderVocabulary', () => {
     expect(a.placementId).not.toBe('palette');
     expect(a.placementId).not.toBe(b.placementId);
     expect(a.id).toBe('eye');
+  });
+});
+
+/**
+ * The two structural hooks the `{` typeahead drives: one level down from a chip, and minting a placeholder
+ * that does not exist yet. Both are optional on the vocabulary, so the static prompt family simply does not
+ * offer them and the menu shows neither affordance there.
+ */
+describe('placeholderVocabulary — drill and inline create', () => {
+  const val = (ref: string): PlaceholderSegment => ({ kind: 'val', ref });
+  const chip = (id: string) => encodePlaceholderToken({ id, mode: 'world', placementId: `v-${id}` });
+  const WORLD: Placeholder[] = [
+    { id: 'molly', name: 'Molly', values: [chip('white'), chip('asian')] },
+    { id: 'white', name: 'isWhite', roll: false, values: [chip('hair'), chip('eyes')] },
+    { id: 'asian', name: 'isAsian', roll: false, values: [chip('hair')] },
+    { id: 'hair', name: 'Hair', values: ['brown', 'black'] },
+    { id: 'eyes', name: 'Eyes', values: ['green'] },
+  ];
+  const v = placeholderVocabulary(WORLD);
+
+  it('offers a placeholder its parts, named by themselves rather than by the whole path', () => {
+    expect(v.drill?.(tok('molly', 'world')).map((r) => r.label)).toEqual(['isWhite', 'isAsian']);
+  });
+
+  it('drills one step deeper each time, so the row carries the path it stands for', () => {
+    const step = v.drill?.(tok('molly', 'world'))?.[0].token as string;
+    expect(decodePlaceholderToken(step)?.path).toEqual([val('white')]);
+    const deeper = v.drill?.(step)?.[0].token as string;
+    expect(decodePlaceholderToken(deeper)?.path).toEqual([val('white'), val('hair')]);
+    // The chip reads as the whole path, which is what keeps Molly's Hair apart from a root Hair.
+    expect(v.label(deeper)).toBe('Molly › isWhite › Hair');
+  });
+
+  it('keeps the row on the accent of the chip it drills, so a path reads as one chip', () => {
+    const row = v.drill?.(tok('molly', 'world'))?.[0];
+    expect(row?.color).toBe(v.color(tok('molly', 'world')));
+  });
+
+  it('offers nothing to drill into where a placeholder holds no parts', () => {
+    expect(v.drill?.(tok('hair', 'world'))).toEqual([]);
+    expect(v.drill?.(tok('ghost', 'world'))).toEqual([]);
+  });
+
+  it('keeps the mode and placement of the chip being drilled', () => {
+    const step = v.drill?.(tok('molly', 'unique', 'p9'))?.[0].token as string;
+    const d = decodePlaceholderToken(step)!;
+    expect(d.mode).toBe('unique');
+    expect(d.placementId).toBe('p9');
+  });
+
+  it('mints a born-Wildcard placeholder and hands back a token that names it', () => {
+    const made: Placeholder[] = [];
+    const authored = placeholderVocabulary(WORLD, { onCreate: (p) => made.push(p) });
+    const token = authored.create?.('Freckles') as string;
+    expect(made).toHaveLength(1);
+    expect(made[0]).toMatchObject({ name: 'Freckles', values: [], roll: true });
+    expect(decodePlaceholderToken(token)?.id).toBe(made[0].id);
+  });
+
+  it('gives each insertion of a new placeholder its own placement id', () => {
+    const authored = placeholderVocabulary(WORLD, { onCreate: () => {} });
+    const token = authored.create?.('Freckles') as string;
+    const a = decodePlaceholderToken(authored.freshInsertToken(token))!;
+    const b = decodePlaceholderToken(authored.freshInsertToken(token))!;
+    expect(a.placementId).not.toBe(b.placementId);
+  });
+
+  it('offers no create at all where nothing is bound to write the placeholder to', () => {
+    expect(v.create).toBeUndefined();
+  });
+
+  it('offers neither hook on the static prompt family', () => {
+    expect(promptVocabulary([]).drill).toBeUndefined();
+    expect(promptVocabulary([]).create).toBeUndefined();
   });
 });
 

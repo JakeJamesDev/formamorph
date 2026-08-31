@@ -649,6 +649,30 @@ export function placeholderChildren(
   return childChips(ph.values ?? [], new Map(placeholders.map((p) => [p.id, p])));
 }
 
+/**
+ * The parts one level under a chip, following the drill path it already carries — what a picker offers as
+ * the next step down. Matching a `val` by the target it names is the same step {@link walkSegs} takes, so a
+ * path built by clicking through this addresses what the resolver would walk to. A `slot` names no one
+ * target until a roll picks it, so a path holding one has nothing further to offer; nor does a part named
+ * twice appear twice.
+ */
+export function placeholderPathChildren(
+  token: PlaceholderToken,
+  placeholders: readonly Placeholder[],
+): Placeholder[] {
+  const byId = new Map(placeholders.map((p) => [p.id, p]));
+  let at = byId.get(token.id);
+  for (const seg of token.path ?? []) {
+    if (!at || seg.kind !== 'val') return [];
+    at = childChips(at.values ?? [], byId).find((c) => c.target.id === seg.ref)?.target;
+  }
+  if (!at) return [];
+  const seen = new Set<string>();
+  return childChips(at.values ?? [], byId)
+    .map((c) => c.target)
+    .filter((target) => !seen.has(target.id) && seen.add(target.id));
+}
+
 /** Where a placeholder's roll is stored under the current scope. */
 function rollKey(ph: Placeholder, ctx: ResolveCtx): string {
   if (ctx.scope === 'world') return ph.id;
