@@ -22,6 +22,9 @@ import {
   placeholderWeight,
   placeholderChances,
   isWeighted,
+  remintPlaceholderPlacements,
+  remintPlaceholdersDeep,
+  remintPlaceholderDef,
 } from './placeholders';
 
 const P = (id: string, values: string[]): Placeholder => ({ id, name: id, values });
@@ -969,5 +972,67 @@ describe('describePlaceholders on structured defs', () => {
   it('is deterministic, so the same structured text always reads the same', () => {
     const text = placed('molly', 'world', 'p1');
     expect(describePlaceholders(text, DEMO)).toBe(describePlaceholders(text, DEMO));
+  });
+});
+
+describe('remintPlaceholderPlacements', () => {
+  it('replaces the placement id and keeps placeholder id, mode, and path', () => {
+    const path: PlaceholderSegment[] = [{ kind: 'slot', name: 'Eyes' }];
+    const src = encodePlaceholderToken({ id: 'eye', mode: 'unique', placementId: 'p1', path });
+    const out = decodePlaceholderToken(remintPlaceholderPlacements(src))!;
+    expect(out.id).toBe('eye');
+    expect(out.mode).toBe('unique');
+    expect(out.path).toEqual(path);
+    expect(out.placementId).not.toBe('p1');
+  });
+
+  it('keeps placements shared within one mint map, apart across maps', () => {
+    const text = `${tok('eye', 'unique', 'p1')} and ${tok('hair', 'unique', 'p1')} but ${tok('eye', 'unique', 'p2')}`;
+    const minted = new Map<string, string>();
+    const [a, b, c] = [...remintPlaceholderPlacements(text, minted).matchAll(/\{\{ph:[^:]+:unique:([^:}]+)\}\}/g)]
+      .map((m) => m[1]);
+    expect(a).toBe(b); // p1 stays one placement within the copy
+    expect(a).not.toBe('p1'); // but cut loose from the source
+    expect(c).not.toBe(a); // p2 stays its own placement
+    const again = decodePlaceholderToken(remintPlaceholderPlacements(tok('eye', 'unique', 'p1')))!;
+    expect(again.placementId).not.toBe(a); // a fresh map mints fresh ids
+  });
+
+  it('leaves plain text and prompt tokens alone', () => {
+    expect(remintPlaceholderPlacements('no chips <STATS> here')).toBe('no chips <STATS> here');
+  });
+});
+
+describe('remintPlaceholdersDeep', () => {
+  it('re-mints strings across nested arrays and objects with one shared map', () => {
+    const record = {
+      name: tok('name', 'unique', 'p1'),
+      aliases: [tok('name', 'unique', 'p1'), 'plain'],
+      nested: { aiDescription: `sees ${tok('eye', 'unique', 'p9')}` },
+      count: 3,
+    };
+    const out = remintPlaceholdersDeep(record);
+    const pid = (t: string) => decodePlaceholderToken(t)!.placementId;
+    expect(pid(out.name)).toBe(pid(out.aliases[0])); // shared placement stays shared in the copy
+    expect(pid(out.name)).not.toBe('p1');
+    expect(out.aliases[1]).toBe('plain');
+    expect(out.nested.aiDescription).not.toContain(':p9}}');
+    expect(out.count).toBe(3);
+    expect(record.name).toContain(':p1}}'); // pure: the source is untouched
+  });
+});
+
+describe('remintPlaceholderDef', () => {
+  it('re-mints value chips and re-keys weights in step', () => {
+    const value = tok('name', 'unique', 'p1');
+    const ph: Placeholder = { id: 'char', name: 'Char', values: [value, 'plain'], weights: { [value]: 3, plain: 1 } };
+    const out = remintPlaceholderDef(ph);
+    expect(out.values[0]).not.toBe(value);
+    expect(out.weights).toEqual({ [out.values[0]]: 3, plain: 1 });
+    expect(placeholderWeight(out, out.values[0])).toBe(3);
+  });
+
+  it('leaves a weightless def without weights', () => {
+    expect(remintPlaceholderDef(P('eye', ['Green', 'Gray'])).weights).toBeUndefined();
   });
 });

@@ -7,6 +7,7 @@
 import { arrayMove } from '@dnd-kit/sortable';
 import { randomUUID } from "@/lib/uuid";
 import { clamp } from "@/lib/utils";
+import { remintPlaceholdersDeep } from "@/lib/placeholders";
 
 /** A nestable folder. `parentId` null = top-level. */
 export interface TreeGroup { id: string; name: string; parentId: string | null; order?: number }
@@ -109,14 +110,17 @@ export function duplicateNode<G extends TreeGroup, L extends TreeLeaf>(
     ? groups.find((g) => g.id === id)!.parentId ?? null
     : leaves.find((l) => l.id === id)!.groupId ?? null;
 
+  // One mint map across the whole subtree: placements the source shared internally stay shared with each
+  // other in the copy, but a Unique chip never keeps the source's roll.
+  const minted = new Map<string, string>();
   const clonedGroups: G[] = [...subtreeGroupIds].map((gid) => {
-    const copy = structuredClone(groups.find((g) => g.id === gid)!);
+    const copy = remintPlaceholdersDeep(structuredClone(groups.find((g) => g.id === gid)!), minted);
     copy.id = idMap.get(gid)!;
     copy.parentId = gid === id ? rootParent : idMap.get(copy.parentId!)!; // root keeps parent; rest remap
     return copy;
   });
   const clonedLeaves: L[] = subtreeLeafIds.map((lid) => {
-    const copy = structuredClone(leaves.find((l) => l.id === lid)!);
+    const copy = remintPlaceholdersDeep(structuredClone(leaves.find((l) => l.id === lid)!), minted);
     copy.id = idMap.get(lid)!;
     copy.groupId = isGroup ? idMap.get(copy.groupId!)! : rootParent;
     return copy;

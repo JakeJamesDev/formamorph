@@ -107,4 +107,13 @@ describe('duplicateEntryInBooks', () => {
     const books = [bk('b1', [e('a', 'after')])];
     expect(duplicateEntryInBooks(books, 'ghost').newId).toBeNull();
   });
+
+  it('re-mints placeholder chip placements, so the copy never shares the original Unique roll', () => {
+    const entry: DictionaryEntry = { ...e('a', 'after'), value: 'They serve {{ph:name:unique:p1}}.' };
+    const { books: out } = duplicateEntryInBooks([bk('b1', [entry])], 'a');
+    const copied = out[0].entries[1].value;
+    expect(copied).toMatch(/\{\{ph:name:unique:[^:}]+\}\}/);
+    expect(copied).not.toContain(':p1}}');
+    expect(out[0].entries[0].value).toContain(':p1}}'); // the original keeps its placement
+  });
 });

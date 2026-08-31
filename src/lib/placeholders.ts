@@ -183,6 +183,51 @@ export function collectUsedPlaceholders(texts: string[], available: Placeholder[
   return available.filter((p) => used.has(p.id));
 }
 
+/**
+ * Re-mint every chip's placement id — for text copied by a duplicate action or a paste, where the copy would
+ * otherwise share the source's Unique rolls forever. `minted` maps old id → new id, so one map passed across
+ * a whole copied record keeps its internally-shared placements shared with each other while cutting them
+ * loose from the source. Placeholder id, mode, and drill path are untouched.
+ */
+export function remintPlaceholderPlacements(text: string, minted: Map<string, string> = new Map()): string {
+  if (!text || !hasPlaceholders(text)) return text;
+  TOKEN_RE.lastIndex = 0;
+  return text.replace(TOKEN_RE, (_full, id: string, mode: string, placementId: string, path?: string) => {
+    let fresh = minted.get(placementId);
+    if (!fresh) {
+      fresh = randomUUID();
+      minted.set(placementId, fresh);
+    }
+    return `{{ph:${id}:${mode}:${fresh}${path ? `:${path}` : ''}}}`;
+  });
+}
+
+/** {@link remintPlaceholderPlacements} over every string in a plain record (a `structuredClone`d world item),
+ *  arrays and nested objects included. Pure. Not for placeholder defs — their `weights` are *keyed* by value
+ *  text, which a blind walk would leave pointing at the old tokens. */
+export function remintPlaceholdersDeep<T>(value: T, minted: Map<string, string> = new Map()): T {
+  // The three casts narrow back to T after a structure-preserving map; the shape never changes.
+  if (typeof value === 'string') return remintPlaceholderPlacements(value, minted) as unknown as T;
+  if (Array.isArray(value)) return value.map((v) => remintPlaceholdersDeep(v, minted)) as unknown as T;
+  if (value && typeof value === 'object') {
+    return Object.fromEntries(
+      Object.entries(value).map(([k, v]) => [k, remintPlaceholdersDeep(v, minted)]),
+    ) as unknown as T;
+  }
+  return value;
+}
+
+/** A duplicate-ready copy of a placeholder def: every value's chip placements re-minted, and `weights` —
+ *  keyed by value text — re-keyed in step so no weight silently detaches from its value. */
+export function remintPlaceholderDef(ph: Placeholder): Placeholder {
+  const minted = new Map<string, string>();
+  const values = (ph.values ?? []).map((v) => remintPlaceholderPlacements(v, minted));
+  const weights = ph.weights
+    ? Object.fromEntries(Object.entries(ph.weights).map(([v, w]) => [remintPlaceholderPlacements(v, minted), w]))
+    : undefined;
+  return { ...ph, values, ...(weights ? { weights } : {}) };
+}
+
 /** Rewrite chip tokens' placeholder ids via `idMap` — the chip's root, and the target of every explicit-pick
  *  segment in its drill path, which names its placeholder the same way the root does. Mode and placement id
  *  are untouched, and a token nothing in the map applies to comes back byte-identical. */
