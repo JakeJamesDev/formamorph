@@ -650,6 +650,97 @@ export function placeholderChildren(
 }
 
 /**
+ * How far a chip's drill path can be walked, and where it got to. A `val` step is followed the way
+ * {@link walkSegs} follows it; a `slot` names no one target until a roll picks it, so the walk stops in
+ * front of one — `depth` says how many segments it got through, which is the deepest ancestor a picker can
+ * still show. `null` only when the root itself is gone.
+ */
+function walkDeepest(
+  token: PlaceholderToken,
+  byId: Map<string, Placeholder>,
+): { at: Placeholder; depth: number } | null {
+  const root = byId.get(token.id);
+  if (!root) return null;
+  let at: Placeholder = root;
+  const path = token.path ?? [];
+  for (const [i, seg] of path.entries()) {
+    if (seg.kind !== 'val') return { at, depth: i };
+    const next = childChips(at.values ?? [], byId).find((c) => c.target.id === seg.ref)?.target;
+    if (!next) return { at, depth: i };
+    at = next;
+  }
+  return { at, depth: path.length };
+}
+
+/** The placeholder a chip's whole path lands on, or `undefined` where any segment names no one target. */
+function walkToPath(token: PlaceholderToken, byId: Map<string, Placeholder>): Placeholder | undefined {
+  const walk = walkDeepest(token, byId);
+  return walk && walk.depth === (token.path?.length ?? 0) ? walk.at : undefined;
+}
+
+/** What a placeholder is, in the words every surface uses for it. One value is a Variable whichever kind it
+ *  declares — the two coincide there — and past that `roll` decides. */
+export type PlaceholderKindNoun = 'Variable' | 'Wildcard' | 'Object';
+
+function kindNoun(ph: Placeholder): PlaceholderKindNoun {
+  if ((ph.values?.length ?? 0) === 1) return 'Variable';
+  return (ph.roll ?? true) ? 'Wildcard' : 'Object';
+}
+
+/** One level as a picker shows it. Its parts come from {@link placeholderPathChildren}; this adds what only
+ *  a picker says about them. */
+export interface PlaceholderLevel {
+  kind: PlaceholderKindNoun;
+  /** How many of the chip's path segments the walk got through — the level is that prefix, not the whole
+   *  path, wherever a segment named no one target. */
+  depth: number;
+  /** Names reachable through whichever value rolls. `partial` marks one some value cannot supply. */
+  slots: Array<{ name: string; partial: boolean }>;
+  /** Values that are not exactly one chip, so no path addresses them. */
+  plain: number;
+}
+
+/**
+ * Where a chip's path lands, read as a picker shows it. Slots come from the variants' own parts, because
+ * that is the route {@link walkSegs} takes when a name is no direct part: whichever value rolls is entered
+ * and the name tried inside it. A name missing from one value is marked, since the roll that lands there
+ * resolves to nothing. Only a placeholder that rolls has slots — an Object applies every value, so a name
+ * under it is a part, not a route.
+ *
+ * A path the walk cannot finish reads as the deepest ancestor it reached, which is the level that offered
+ * the segment it stopped on: re-picking a slot chip belongs where that slot was chosen.
+ */
+export function placeholderPathLevel(
+  token: PlaceholderToken,
+  placeholders: readonly Placeholder[],
+): PlaceholderLevel | null {
+  const byId = new Map(placeholders.map((p) => [p.id, p]));
+  const walk = walkDeepest(token, byId);
+  if (!walk) return null;
+  const { at, depth } = walk;
+  const values = at.values ?? [];
+  const slots = new Map<string, number>();
+  if (placeholderIsChoice(at)) {
+    for (const { target } of childChips(values, byId)) {
+      const seen = new Set<string>();
+      for (const { target: part } of childChips(target.values ?? [], byId)) {
+        if (seen.has(part.name)) continue;
+        seen.add(part.name);
+        slots.set(part.name, (slots.get(part.name) ?? 0) + 1);
+      }
+    }
+  }
+  return {
+    kind: kindNoun(at),
+    depth,
+    // Counted against every value, prose ones included: a value with no part of that name is a roll the
+    // slot misses on, whether it is another variant or a plain string.
+    slots: [...slots].map(([name, held]) => ({ name, partial: held < values.length })),
+    plain: values.filter((v) => !lonePlaceholderToken(v)).length,
+  };
+}
+
+/**
  * The parts one level under a chip, following the drill path it already carries — what a picker offers as
  * the next step down. Matching a `val` by the target it names is the same step {@link walkSegs} takes, so a
  * path built by clicking through this addresses what the resolver would walk to. A `slot` names no one
@@ -661,11 +752,7 @@ export function placeholderPathChildren(
   placeholders: readonly Placeholder[],
 ): Placeholder[] {
   const byId = new Map(placeholders.map((p) => [p.id, p]));
-  let at = byId.get(token.id);
-  for (const seg of token.path ?? []) {
-    if (!at || seg.kind !== 'val') return [];
-    at = childChips(at.values ?? [], byId).find((c) => c.target.id === seg.ref)?.target;
-  }
+  const at = walkToPath(token, byId);
   if (!at) return [];
   const seen = new Set<string>();
   return childChips(at.values ?? [], byId)

@@ -12,8 +12,34 @@ import {
 } from './promptVariables';
 import {
   parsePlaceholderText, decodePlaceholderToken, encodePlaceholderToken, placeholderValueSummary,
-  placeholderPathChildren, newPlaceholder,
+  placeholderPathChildren, placeholderPathLevel, newPlaceholder,
 } from './placeholders';
+import type { PlaceholderKindNoun, PlaceholderSegment } from './placeholders';
+
+/** One token a menu or picker offers, named for the reader. */
+export interface ChipRow {
+  token: string;
+  label: string;
+  color?: string;
+}
+
+/** A part reached through whichever value the level rolls, rather than by naming one. */
+export interface ChipSlot extends ChipRow {
+  /** Some value holds no part of this name, so a roll landing there resolves to nothing. */
+  partial: boolean;
+}
+
+/** What a picker says about the level a chip stands on, over and above its parts (which come from
+ *  {@link ChipVocabulary.drill}). */
+export interface ChipStructure {
+  /** Heading for the parts section, in the family's own nouns for what this level is. */
+  partsLabel: string;
+  /** The path walked to here, root first and ending at this level — each crumb the same chip cut back. */
+  trail: ChipRow[];
+  slots: ChipSlot[];
+  /** Values no path can address, because each is not exactly one token. */
+  plain: number;
+}
 
 /**
  * A chip vocabulary abstracts everything the Lexical chip editor needs to know about its tokens, so one
@@ -46,12 +72,18 @@ export interface ChipVocabulary {
   /** The token with its affixes replaced. Empty strings remove them. */
   setAffixes(token: string, pre: string, post: string): string;
   /** Toolbar items to insert. */
-  palette(): { token: string; label: string; color?: string }[];
+  palette(): ChipRow[];
   /** Prepare a palette token for a fresh insertion (placeholders re-mint their placement id). */
   freshInsertToken(token: string): string;
   /** The rows one level under this token — each the same chip drilled one segment deeper. Present only where
    *  the family has structure to walk; the static prompt variables have none. */
-  drill?(token: string): { token: string; label: string; color?: string }[];
+  drill?(token: string): ChipRow[];
+  /** Where this token stands and what else is reachable from there, for a picker that walks the structure.
+   *  `null` when the token names nothing. Present alongside {@link drill}. */
+  structure?(token: string): ChipStructure | null;
+  /** `token` re-aimed at what `at` names, keeping everything the placement itself decided. Re-picking moves
+   *  a chip rather than replacing it, so its mode and its roll survive the move. */
+  repoint?(token: string, at: string): string;
   /** Mint a new member of the family under this name and return a token to insert. Present only where the
    *  family is authored and a store is bound to write to. */
   create?(name: string): string;
@@ -126,6 +158,13 @@ const MISSING_NAME = '(missing)';
 // Reads a drill path as one name. Matches the separator the trait groups and the location canvas use.
 const PATH_SEPARATOR = ' › ';
 
+// What a level's parts are called, by what the level is. A Variable holds one value, so it holds one part.
+const PARTS_LABEL: Record<PlaceholderKindNoun, string> = {
+  Wildcard: 'Wildcard Variants',
+  Object: 'Object Parts',
+  Variable: 'Variable Part',
+};
+
 /**
  * A vocabulary with no token family at all: everything is literal text and the insert toolbar is empty.
  * For fields that render before any roll exists (the world description), where a `{{ph…}}` token would
@@ -161,6 +200,9 @@ export function placeholderVocabulary(
   } = {},
 ): ChipVocabulary {
   const byId = new Map(placeholders.map((p) => [p.id, p]));
+  /** What one path segment adds, named by itself: a slot is already a name, a val names what it picks. */
+  const segLabel = (seg: PlaceholderSegment) =>
+    (seg.kind === 'slot' ? seg.name : byId.get(seg.ref)?.name ?? MISSING_NAME);
   return {
     rename: onRename && ((token, next) => {
       const id = decodePlaceholderToken(token)?.id;
@@ -176,10 +218,8 @@ export function placeholderVocabulary(
       if (!d) return t;
       const root = byId.get(d.id)?.name ?? MISSING_NAME;
       if (!d.path?.length) return root;
-      // The whole path, so `Molly › Hair` and a root `Hair` never read alike. A slot segment is already a
-      // name; a val segment names the placeholder it picks.
-      return [root, ...d.path.map((s) => (s.kind === 'slot' ? s.name : byId.get(s.ref)?.name ?? MISSING_NAME))]
-        .join(PATH_SEPARATOR);
+      // The whole path, so `Molly › Hair` and a root `Hair` never read alike.
+      return [root, ...d.path.map(segLabel)].join(PATH_SEPARATOR);
     },
     // A chip in a field names its placeholder; what it will become goes in the tooltip, so the chip stays
     // one short word wide however many values there are.
@@ -227,6 +267,41 @@ export function placeholderVocabulary(
         label: child.name,
         color: placeholderColor(d.id),
       }));
+    },
+    // Everything a picker adds to `drill`: where the chip stands, what a roll can still route to, and how
+    // much of the level no path reaches.
+    structure: (t) => {
+      const d = decodePlaceholderToken(t);
+      const level = d && placeholderPathLevel(d, placeholders);
+      if (!d || !level) return null;
+      // Cut to what the walk could follow, so every crumb and every slot hangs off a level a picker can
+      // actually stand on. A chip aimed through a slot describes the level that slot was chosen from.
+      const path = (d.path ?? []).slice(0, level.depth);
+      const color = placeholderColor(d.id);
+      return {
+        partsLabel: PARTS_LABEL[level.kind],
+        trail: [{ token: encodePlaceholderToken({ ...d, path: [] }), label: byId.get(d.id)?.name ?? MISSING_NAME, color },
+          ...path.map((seg, i) => ({
+            token: encodePlaceholderToken({ ...d, path: path.slice(0, i + 1) }),
+            label: segLabel(seg),
+            color,
+          }))],
+        slots: level.slots.map((s) => ({
+          token: encodePlaceholderToken({ ...d, path: [...path, { kind: 'slot', name: s.name }] }),
+          label: s.name,
+          partial: s.partial,
+          color,
+        })),
+        plain: level.plain,
+      };
+    },
+    repoint: (t, at) => {
+      const from = decodePlaceholderToken(t);
+      const to = decodePlaceholderToken(at);
+      if (!from || !to) return t;
+      // The placement is the chip's own: its mode and the id its Unique roll is filed under both outlive a
+      // re-aim, so re-picking never silently re-rolls what the placement already drew.
+      return encodePlaceholderToken({ ...to, mode: from.mode, placementId: from.placementId });
     },
     create: onCreate && ((name) => {
       const made = newPlaceholder(name);

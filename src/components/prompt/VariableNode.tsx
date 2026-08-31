@@ -8,8 +8,10 @@ import {
 import { useLexicalComposerContext } from '@lexical/react/LexicalComposerContext';
 import { ChipRenameInput } from '@/components/Chip';
 import { TokenChip } from './TokenChip';
+import DrillPicker from './DrillPicker';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
+import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
 import { AFFIX_MAX_LENGTH, AFFIX_FORBIDDEN, isValidAffix } from '@/lib/promptVariables';
@@ -58,6 +60,9 @@ function VariableChip({ nodeKey, token }: { nodeKey: NodeKey; token: string }) {
   const vocab = useContext(ChipVocabularyContext);
   const [open, setOpen] = useState(false);
   const [renaming, setRenaming] = useState(false);
+  // The pop-out's second face. Closing it forgets the walk, so the next open starts from where the chip
+  // now points rather than from where the last one left off.
+  const [repicking, setRepicking] = useState(false);
   // A read-only editor (e.g. the Default preset) may still show the pop-out to view the chip's mode, but
   // can't change or remove it. Track editability so switching presets re-renders the chip accordingly.
   const [editable, setEditable] = useState(editor.isEditable());
@@ -72,6 +77,22 @@ function VariableChip({ nodeKey, token }: { nodeKey: NodeKey; token: string }) {
   const toggleOnCount = axes.filter((a) => a.toggle && selection[a.id] != null).length;
 
   const remove = () => editor.update(() => { $getNodeByKey(nodeKey)?.remove(); });
+
+  // A family with structure to walk can re-aim a placed chip; the static prompt variables have none, so the
+  // row is simply absent there. A chip whose placeholder is gone still offers it — re-pointing it is the fix.
+  const repickable = editable && known && !!vocab.structure && !!vocab.repoint;
+
+  /** Move the chip onto what the picker settled on, keeping what the placement itself decided. */
+  const repick = (picked: string) => {
+    editor.update(() => {
+      const node = $getNodeByKey(nodeKey);
+      if (!$isVariableNode(node)) return;
+      node.setToken(vocab.repoint?.(node.getToken(), picked) ?? picked);
+    });
+    setOpen(false);
+    // Closing by hand runs no `onOpenChange`, so the walk is forgotten here as well.
+    setRepicking(false);
+  };
 
   // Change one axis via the vocabulary, using the node's live token.
   const setAxis = (axisId: string, optionId: string | null) => {
@@ -121,6 +142,9 @@ function VariableChip({ nodeKey, token }: { nodeKey: NodeKey; token: string }) {
   // the pop-out the first click of the pair opened, so the two never fight over the chip.
   const renameable = editable && known && !!vocab.rename;
   const startRename = () => { setOpen(false); setRenaming(true); };
+  // The picker walks a list, and a wide switcher needs the room its options ask for; neither face reflows
+  // the other, since only one is up at a time.
+  const width = repicking ? 'w-72' : axes.some((a) => a.options.length >= 4) ? 'w-96' : 'w-64';
   if (renaming) {
     return (
       <ChipRenameInput
@@ -135,7 +159,7 @@ function VariableChip({ nodeKey, token }: { nodeKey: NodeKey; token: string }) {
   }
 
   return (
-    <Popover open={open} onOpenChange={setOpen}>
+    <Popover open={open} onOpenChange={(next) => { setOpen(next); if (!next) setRepicking(false); }}>
       <PopoverTrigger asChild>
         <TokenChip
           token={token}
@@ -148,94 +172,123 @@ function VariableChip({ nodeKey, token }: { nodeKey: NodeKey; token: string }) {
         />
       </PopoverTrigger>
       <PopoverContent
-        className={axes.some((a) => a.options.length >= 4) ? 'w-96' : 'w-64'}
+        className={width}
         align="start"
         // Selecting an option runs editor.update, which returns focus to the editor; without this that
         // focus-leave dismisses the pop-out, so you can't change two axes in a row. Clicking truly outside
         // (pointer-down-outside) and Escape still close it.
         onFocusOutside={(e) => e.preventDefault()}
       >
-        {axes.length ? (
-          <div className="space-y-3">
-            {axes.map((axis) => {
-              // Toggle axes render as a checkbox; the last one on is locked so a stats block is never nameless.
-              if (axis.toggle) {
-                const isOn = selection[axis.id] != null;
-                const onId = axis.options.find((o) => o.id != null)?.id ?? null;
-                const locked = isOn && toggleOnCount === 1;
-                return (
-                  <label key={axis.id} className={cn('flex items-start gap-2', (!editable || locked) && 'cursor-default')}>
-                    <Checkbox
-                      checked={isOn}
-                      disabled={!editable || locked}
-                      onCheckedChange={() => setAxis(axis.id, isOn ? null : onId)}
-                      className="mt-0.5"
-                    />
-                    <span>
-                      <span className="text-meta font-medium">{axis.label}</span>
-                      {axis.help && <p className="text-[11px] text-muted-foreground">{axis.help}</p>}
-                    </span>
-                  </label>
-                );
-              }
-              const active = selection[axis.id] ?? FULL;
-              return (
-                <div key={axis.id} className="space-y-2">
-                  {/* One heading per axis (its own label when multi-axis, else the chip name). */}
-                  <p className="text-meta font-medium">{axes.length > 1 ? axis.label : `${vocab.label(token)} mode`}</p>
-                  {/* `columns` wraps a long option list onto rows of that width, centered — so a final
-                      short row sits under the middle of the one above rather than hanging off the left. */}
-                  <ToggleGroup
-                    type="single"
-                    value={active}
-                    // A single ToggleGroup clears its value when the active item is clicked again; an axis
-                    // always has a mode, so an empty result is ignored rather than stored.
-                    onValueChange={(v) => { if (v) setAxis(axis.id, v === FULL ? null : v); }}
-                    className={cn('grid w-full', axis.columns && 'flex flex-wrap justify-center gap-1 h-auto')}
-                    style={axis.columns ? undefined : { gridTemplateColumns: `repeat(${axis.options.length}, minmax(0, 1fr))` }}
-                  >
-                    {axis.options.map((opt) => (
-                      <ToggleGroupItem
-                        key={opt.id ?? FULL}
-                        value={opt.id ?? FULL}
-                        disabled={!editable}
-                        className="text-meta px-1.5"
-                        style={axis.columns ? { flexBasis: `calc((100% - ${(axis.columns - 1) * 0.25}rem) / ${axis.columns})` } : undefined}
-                      >{opt.label}</ToggleGroupItem>
-                    ))}
-                  </ToggleGroup>
-                  {/* Help lines stacked in one cell so the pop-out doesn't reflow when switching modes. */}
-                  <div className="grid">
-                    {axis.options.map((opt) => (
-                      <p
-                        key={opt.id ?? FULL}
-                        className={cn(
-                          'col-start-1 row-start-1 text-[11px] text-muted-foreground',
-                          (opt.id ?? FULL) !== active && 'invisible',
-                        )}
-                      >
-                        {opt.help}
-                      </p>
-                    ))}
-                  </div>
-                </div>
-              );
-            })}
+        {repicking ? (
+          <div className="space-y-2">
+            <button
+              type="button"
+              onClick={() => setRepicking(false)}
+              className="flex items-center gap-1 rounded text-meta text-muted-foreground hover:text-foreground"
+            >
+              <span aria-hidden>‹</span>
+              Back
+            </button>
+            <DrillPicker vocab={vocab} token={token} onPick={repick} />
           </div>
         ) : (
-          !affixes && <p className="text-meta text-muted-foreground">No options for this variable.</p>
-        )}
-        {affixes && (
-          <div className={cn('space-y-2', axes.length && 'mt-4 pt-3 border-t')}>
-            <p className="text-meta font-medium">Prepend / Append</p>
-            <p className="text-[11px] text-muted-foreground">
-              Wraps the value, and vanishes with it. Spaces count — check Preview.
-            </p>
-            <div className="grid grid-cols-2 gap-2">
-              <AffixInput label="Prepend" value={affixes.pre} disabled={!editable} onChange={(v) => setAffix('pre', v)} />
-              <AffixInput label="Append" value={affixes.post} disabled={!editable} onChange={(v) => setAffix('post', v)} />
-            </div>
-          </div>
+          <>
+            {axes.length ? (
+              <div className="space-y-3">
+                {axes.map((axis) => {
+                  // Toggle axes render as a checkbox; the last one on is locked so a stats block is never nameless.
+                  if (axis.toggle) {
+                    const isOn = selection[axis.id] != null;
+                    const onId = axis.options.find((o) => o.id != null)?.id ?? null;
+                    const locked = isOn && toggleOnCount === 1;
+                    return (
+                      <label key={axis.id} className={cn('flex items-start gap-2', (!editable || locked) && 'cursor-default')}>
+                        <Checkbox
+                          checked={isOn}
+                          disabled={!editable || locked}
+                          onCheckedChange={() => setAxis(axis.id, isOn ? null : onId)}
+                          className="mt-0.5"
+                        />
+                        <span>
+                          <span className="text-meta font-medium">{axis.label}</span>
+                          {axis.help && <p className="text-[11px] text-muted-foreground">{axis.help}</p>}
+                        </span>
+                      </label>
+                    );
+                  }
+                  const active = selection[axis.id] ?? FULL;
+                  return (
+                    <div key={axis.id} className="space-y-2">
+                      {/* One heading per axis (its own label when multi-axis, else the chip name). */}
+                      <p className="text-meta font-medium">{axes.length > 1 ? axis.label : `${vocab.label(token)} mode`}</p>
+                      {/* `columns` wraps a long option list onto rows of that width, centered — so a final
+                          short row sits under the middle of the one above rather than hanging off the left. */}
+                      <ToggleGroup
+                        type="single"
+                        value={active}
+                        // A single ToggleGroup clears its value when the active item is clicked again; an axis
+                        // always has a mode, so an empty result is ignored rather than stored.
+                        onValueChange={(v) => { if (v) setAxis(axis.id, v === FULL ? null : v); }}
+                        className={cn('grid w-full', axis.columns && 'flex flex-wrap justify-center gap-1 h-auto')}
+                        style={axis.columns ? undefined : { gridTemplateColumns: `repeat(${axis.options.length}, minmax(0, 1fr))` }}
+                      >
+                        {axis.options.map((opt) => (
+                          <ToggleGroupItem
+                            key={opt.id ?? FULL}
+                            value={opt.id ?? FULL}
+                            disabled={!editable}
+                            className="text-meta px-1.5"
+                            style={axis.columns ? { flexBasis: `calc((100% - ${(axis.columns - 1) * 0.25}rem) / ${axis.columns})` } : undefined}
+                          >{opt.label}</ToggleGroupItem>
+                        ))}
+                      </ToggleGroup>
+                      {/* Help lines stacked in one cell so the pop-out doesn't reflow when switching modes. */}
+                      <div className="grid">
+                        {axis.options.map((opt) => (
+                          <p
+                            key={opt.id ?? FULL}
+                            className={cn(
+                              'col-start-1 row-start-1 text-[11px] text-muted-foreground',
+                              (opt.id ?? FULL) !== active && 'invisible',
+                            )}
+                          >
+                            {opt.help}
+                          </p>
+                        ))}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            ) : (
+              !affixes && !repickable && <p className="text-meta text-muted-foreground">No options for this variable.</p>
+            )}
+            {affixes && (
+              <div className={cn('space-y-2', axes.length && 'mt-4 pt-3 border-t')}>
+                <p className="text-meta font-medium">Prepend / Append</p>
+                <p className="text-[11px] text-muted-foreground">
+                  Wraps the value, and vanishes with it. Spaces count — check Preview.
+                </p>
+                <div className="grid grid-cols-2 gap-2">
+                  <AffixInput label="Prepend" value={affixes.pre} disabled={!editable} onChange={(v) => setAffix('pre', v)} />
+                  <AffixInput label="Append" value={affixes.post} disabled={!editable} onChange={(v) => setAffix('post', v)} />
+                </div>
+              </div>
+            )}
+            {repickable && (
+              // The chip's own pill already reads as the whole path, so the row is the one control and no
+              // readout of where it points.
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className={cn('h-7 w-full text-meta', (axes.length || affixes) && 'mt-4')}
+                onClick={() => setRepicking(true)}
+              >
+                Re-Pick…
+              </Button>
+            )}
+          </>
         )}
       </PopoverContent>
     </Popover>
