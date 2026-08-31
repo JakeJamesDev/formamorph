@@ -314,45 +314,66 @@ export type CanvasDrop =
  * asks it once when the drag comes to rest — one answer, so the highlight and the drop can never disagree.
  */
 export function dropTarget(
-  locations: GameLocation[],
+  world: DragWorld,
   id: string,
   position: { x: number; y: number },
 ): string | null {
-  const drag = measureDrag(locations, id, position);
+  const drag = measureDrag(asSession(world), id, position);
   return drag && landsIn(drag);
 }
 
 /**
- * A drag read as geometry: every box on the map, where the dragged location's center currently is, and which
- * box it started in. Measuring the map is the expensive half of judging a drop, so the two questions asked of
- * one drag — where it would land, and what that makes of the world — measure it once between them.
+ * A drag's frozen geometry: every box on the map as it stood when the drag began. Measuring the map is the
+ * expensive half of judging a drop, and a drag asks on every frame — so the canvas begins a session once at
+ * drag start and every frame reads it, which is also what makes the documented rule true by construction:
+ * a drop is judged against the map as it stood when the drag began.
  */
-interface DragGeometry {
+export interface CanvasDragSession {
   locations: GameLocation[];
-  id: string;
   rects: Map<string, CanvasRect>;
+  byId: Map<string, GameLocation>;
+}
+
+/** The map, measured once for a whole gesture. */
+export function beginCanvasDrag(locations: GameLocation[]): CanvasDragSession {
+  return {
+    locations,
+    rects: absoluteRects(buildLocationCanvas(locations, [])),
+    byId: new Map(locations.map((l) => [l.id, l])),
+  };
+}
+
+/** Every judging function takes either a running session or the bare world — the latter measures a one-shot
+ *  session of its own, so a single question needs no ceremony and a drag's frames share one measurement. */
+export type DragWorld = GameLocation[] | CanvasDragSession;
+
+const asSession = (world: DragWorld): CanvasDragSession =>
+  Array.isArray(world) ? beginCanvasDrag(world) : world;
+
+/** One dragged location read against a session: where its center currently is, and which box it started in. */
+interface DragGeometry {
+  session: CanvasDragSession;
+  id: string;
   center: { x: number; y: number };
   held: string | null;
   heldOrigin: { x: number; y: number };
 }
 
 function measureDrag(
-  locations: GameLocation[],
+  session: CanvasDragSession,
   id: string,
   position: { x: number; y: number },
 ): DragGeometry | null {
-  const target = locations.find((l) => l.id === id);
+  const target = session.byId.get(id);
   if (!target) return null;
-  const rects = absoluteRects(buildLocationCanvas(locations, []));
-  const self = rects.get(id);
+  const self = session.rects.get(id);
   if (!self) return null;
 
-  const held = holderOf(locations, target);
-  const heldOrigin = (held && rects.get(held)) || { x: 0, y: 0 };
+  const held = holderOf(session.locations, target);
+  const heldOrigin = (held && session.rects.get(held)) || { x: 0, y: 0 };
   return {
-    locations,
+    session,
     id,
-    rects,
     held,
     heldOrigin,
     center: {
@@ -368,10 +389,9 @@ function measureDrag(
  * containment test read against a different set of candidates, so they share one answer to differ from.
  */
 function innermostAt(
-  { locations, id, rects, center }: DragGeometry,
+  { session: { locations, byId, rects }, id, center }: DragGeometry,
   accepts: (loc: GameLocation) => boolean,
 ): string | null {
-  const byId = new Map(locations.map((l) => [l.id, l]));
   const depthOf = (loc: GameLocation) => {
     let depth = 0;
     for (let at = byId.get(loc.parentId ?? ""); at; at = byId.get(at.parentId ?? "")) depth += 1;
@@ -394,7 +414,7 @@ function innermostAt(
 
 /** The box a measured drag would come to rest in. A leaf is a name, not a container. */
 const landsIn = (drag: DragGeometry): string | null =>
-  innermostAt(drag, (loc) => drag.locations.some((l) => l.parentId === loc.id));
+  innermostAt(drag, (loc) => drag.session.locations.some((l) => l.parentId === loc.id));
 
 /**
  * The childless location a drag is currently over, which the canvas may arm after a dwell — the one gesture
@@ -405,12 +425,14 @@ const landsIn = (drag: DragGeometry): string | null =>
  * so none of those is ever offered, and no dwell can compose a cycle.
  */
 export function leafTarget(
-  locations: GameLocation[],
+  world: DragWorld,
   id: string,
   position: { x: number; y: number },
   carried: string[] = [],
 ): string | null {
-  const drag = measureDrag(locations, id, position);
+  const session = asSession(world);
+  const { locations } = session;
+  const drag = measureDrag(session, id, position);
   if (!drag) return null;
   return innermostAt(drag, (loc) => {
     if (locations.some((l) => l.parentId === loc.id)) return false; // a group already takes drops on contact
@@ -438,14 +460,16 @@ const armable = (locations: GameLocation[], id: string, armed: string | null | u
  * no place in what a drop *means* — so all that arrives here is which leaf, and the drop is read against it.
  */
 export function dropIntent(
-  locations: GameLocation[],
+  world: DragWorld,
   id: string,
   position: { x: number; y: number },
   armed?: string | null,
 ): CanvasDrop | null {
-  const drag = measureDrag(locations, id, position);
+  const session = asSession(world);
+  const drag = measureDrag(session, id, position);
   if (!drag) return null;
-  const { rects, held, heldOrigin } = drag;
+  const { rects, locations } = session;
+  const { held, heldOrigin } = drag;
 
   // An armed leaf outranks containment: it sits inside whatever box the drag is also over, so nesting into it
   // is the innermost answer, and it is the one the author watched light up.
@@ -485,17 +509,18 @@ export function applyCanvasDrop(locations: GameLocation[], drop: CanvasDrop): Ga
  * the ancestor carried it — so judging it again would read its old resting place as a fresh drop.
  */
 export function multiDropIntents(
-  locations: GameLocation[],
+  world: DragWorld,
   moves: { id: string; position: { x: number; y: number } }[],
   armed?: string | null,
 ): CanvasDrop[] {
+  const session = asSession(world);
   const carried = (id: string) =>
-    moves.some((other) => other.id !== id && isDescendantLocation(locations, other.id, id));
+    moves.some((other) => other.id !== id && isDescendantLocation(session.locations, other.id, id));
   // A leaf traveling in the drag is not a place to land: it is being moved, not aimed at.
   const into = armed && moves.some((move) => move.id === armed) ? null : armed;
   return moves
     .filter((move) => !carried(move.id))
-    .map((move) => dropIntent(locations, move.id, move.position, into))
+    .map((move) => dropIntent(session, move.id, move.position, into))
     .filter((drop): drop is CanvasDrop => drop !== null);
 }
 

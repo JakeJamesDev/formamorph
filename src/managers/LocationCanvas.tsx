@@ -32,10 +32,10 @@ import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import { describePlaceholders } from '@/lib/placeholders';
 import type { ConnectionDirection } from '@/lib/connectionEditing';
 import {
-  applyCanvasDrops, applyCanvasIntent, buildLocationCanvas, CANVAS_GRID, connectIntent, connectionEnds,
-  deleteIntent, directionIntent, directionOf, hintIntent, isStationaryClick, leafTarget, LONG_PRESS_MS,
-  multiDropIntents, TOUCH_SLOP, UNNAMED_LOCATION,
-  type CanvasIntent, type CanvasNodeData,
+  applyCanvasDrops, applyCanvasIntent, beginCanvasDrag, buildLocationCanvas, CANVAS_GRID, connectIntent,
+  connectionEnds, deleteIntent, directionIntent, directionOf, hintIntent, isStationaryClick, leafTarget,
+  LONG_PRESS_MS, multiDropIntents, TOUCH_SLOP, UNNAMED_LOCATION,
+  type CanvasDragSession, type CanvasIntent, type CanvasNodeData,
 } from '@/lib/locationCanvas';
 import {
   canvasMenuSections, type CanvasMenuItem, type CanvasMenuSection,
@@ -906,34 +906,48 @@ const CanvasInner = ({ selectedId, onSelect, session, fullscreen, onToggleFullsc
   // the boxes the drop then commits to, from the one answer rather than from two that agree by inspection.
   // A selection is judged a location at a time here exactly as it is on release, so a gesture carrying one
   // location into a box and another out of one says both things at once.
+  /** The map measured once at drag start; every frame and the release judge against it. The ref outlives the
+   *  frames without re-rendering, and `sessionFor` covers a frame arriving with no start seen. */
+  const dragSessionRef = useRef<CanvasDragSession | null>(null);
+  const sessionFor = useCallback(
+    () => dragSessionRef.current ?? beginCanvasDrag(locations),
+    [locations],
+  );
+  const handleDragStart = useCallback(() => {
+    dragSessionRef.current = beginCanvasDrag(locations);
+  }, [locations]);
+
   /** What the nodes a drag is carrying are asking the world to become — the one answer the highlight is drawn
    *  from and the drop is committed from, so the boxes an author watched light up are the boxes they get. */
-  const dropsFor = useCallback((moved: Node[]) => multiDropIntents(
-    locations, moved.map((n) => ({ id: n.id, position: n.position })), armedLeaf,
-  ), [locations, armedLeaf]);
+  const dropsFor = useCallback((session: CanvasDragSession, moved: Node[]) => multiDropIntents(
+    session, moved.map((n) => ({ id: n.id, position: n.position })), armedLeaf,
+  ), [armedLeaf]);
 
   const handleDrag = useCallback((_: unknown, node: Node, dragged: Node[]) => {
+    const session = sessionFor();
     const moved = dragged.length ? dragged : [node];
     // The leaf under the node the author is actually holding, never one traveling with it.
-    dwellOn(leafTarget(locations, node.id, node.position, moved.map((n) => n.id)));
-    const drops = dropsFor(moved);
+    dwellOn(leafTarget(session, node.id, node.position, moved.map((n) => n.id)));
+    const drops = dropsFor(session, moved);
     setDropInto({
       active: true,
       into: drops.map((drop) => drop.parentId).filter((id): id is string => id !== null),
       toTopLevel: drops.some((drop) => drop.kind === 'reparent' && drop.parentId === null),
     });
-  }, [locations, dropsFor, dwellOn]);
+  }, [sessionFor, dropsFor, dwellOn]);
 
   // A drag either moves a location or changes what holds it, and where it came to rest decides which — so
   // there is one gesture to learn, and the map edits the world's shape rather than only its arrangement.
   // A whole selection dragged at once is that one gesture, made of every node it carried.
   const handleDragStop = useCallback((_: unknown, node: Node, dragged: Node[]) => {
     setDropInto(IDLE);
-    const drops = dropsFor(dragged.length ? dragged : [node]);
+    const session = sessionFor();
+    dragSessionRef.current = null;
+    const drops = dropsFor(session, dragged.length ? dragged : [node]);
     dwellOn(null);
     // One edit however many locations the armed leaf just came to hold, so one press puts them all back.
     if (drops.length) commitLocations(applyCanvasDrops(locations, drops));
-  }, [locations, commitLocations, dropsFor, dwellOn]);
+  }, [locations, sessionFor, commitLocations, dropsFor, dwellOn]);
 
   // Reported by xyflow rather than tracked by us: the marquee and Shift-click both land here, so one reading
   // covers every way a selection can be composed.
@@ -1192,6 +1206,7 @@ const CanvasInner = ({ selectedId, onSelect, session, fullscreen, onToggleFullsc
         nodeTypes={nodeTypes}
         edgeTypes={edgeTypes}
         onNodesChange={onNodesChange}
+        onNodeDragStart={handleDragStart}
         onNodeDrag={handleDrag}
         onNodeDragStop={handleDragStop}
         onNodeClick={(_, node) => {

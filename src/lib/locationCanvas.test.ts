@@ -2,8 +2,8 @@ import { describe, it, expect } from "vitest";
 import {
   CANVAS_NODE_HEIGHT, CANVAS_NODE_WIDTH, GROUP_HEADER, GROUP_PADDING,
   applyCanvasDrop, buildLocationCanvas, connectIntent, connectionEnds, deleteIntent, directionIntent,
-  applyCanvasDrops, directionOf, dropIntent, dropTarget, hintIntent, isStationaryClick, isTravelClick,
-  multiDropIntents, leafTarget,
+  applyCanvasDrops, beginCanvasDrag, directionOf, dropIntent, dropTarget, hintIntent, isStationaryClick,
+  isTravelClick, multiDropIntents, leafTarget,
   TOUCH_SLOP,
   newLocationPosition, withCanvasPosition,
   type CanvasIntent,
@@ -770,5 +770,46 @@ describe("deleteIntent", () => {
     const gone = applied([conn], deleteIntent(conn));
     expect(gone).toEqual([]);
     expect(edgeIds([village, tavern, house], gone)).toEqual(["implicit:house>tavern", "implicit:tavern>house"]);
+  });
+});
+
+describe("beginCanvasDrag", () => {
+  // Village sits at (100, 50) holding Tavern; Shore stands apart — the dropIntent fixture, reused so the
+  // session's answers can be held against the bare-world path over geometry the suite already pins.
+  const placed: GameLocation[] = [
+    { id: "village", name: "Village", isStarting: true, canvasPosition: { x: 100, y: 50 } },
+    { id: "tavern", name: "Tavern", parentId: "village", canvasPosition: { x: GROUP_PADDING, y: GROUP_HEADER } },
+    { id: "shore", name: "Shore", canvasPosition: { x: 400, y: 0 } },
+  ];
+
+  it("answers every judging question exactly as the bare world does", () => {
+    const session = beginCanvasDrag(placed);
+    const sweep = [
+      { x: 150, y: 110 }, { x: 500, y: 300 }, { x: 60, y: 60 }, { x: 420, y: 20 }, { x: 4, y: 4 },
+    ];
+    for (const id of ["village", "tavern", "shore"]) {
+      for (const at of sweep) {
+        expect(dropTarget(session, id, at)).toEqual(dropTarget(placed, id, at));
+        expect(leafTarget(session, id, at)).toEqual(leafTarget(placed, id, at));
+        expect(dropIntent(session, id, at)).toEqual(dropIntent(placed, id, at));
+      }
+    }
+    expect(multiDropIntents(session, [
+      { id: "shore", position: { x: 150, y: 110 } },
+      { id: "tavern", position: { x: 500, y: 300 } },
+    ])).toEqual(multiDropIntents(placed, [
+      { id: "shore", position: { x: 150, y: 110 } },
+      { id: "tavern", position: { x: 500, y: 300 } },
+    ]));
+  });
+
+  it("keeps judging against the map as it stood when the drag began", () => {
+    const session = beginCanvasDrag(placed);
+    // The world edits mid-gesture: Village leaves for the far corner. The session still holds the map the
+    // author is looking at, so the drop lands in the box they watched light up.
+    const edited = placed.map((l) => (l.id === "village" ? { ...l, canvasPosition: { x: 900, y: 900 } } : l));
+    expect(dropIntent(edited, "shore", { x: 150, y: 110 })).toMatchObject({ kind: "move" });
+    expect(dropIntent(session, "shore", { x: 150, y: 110 }))
+      .toEqual({ kind: "reparent", id: "shore", parentId: "village", position: { x: 50, y: 60 } });
   });
 });
