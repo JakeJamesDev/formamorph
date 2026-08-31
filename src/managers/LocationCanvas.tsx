@@ -3,7 +3,7 @@ import {
   type RefObject,
 } from 'react';
 import {
-  Background, ControlButton, Controls, Handle, MiniMap, Panel,
+  Background, Handle, MiniMap, Panel,
   Position, ReactFlow, ReactFlowProvider, useConnection, useNodesState, useReactFlow, useStoreApi,
   type Edge, type Node, type NodeProps,
 } from '@xyflow/react';
@@ -53,6 +53,7 @@ import { searchLocations, type LocationMatch } from '@/lib/locationSearch';
 import { usePrefersReducedMotion } from '@/lib/usePrefersReducedMotion';
 import { cn } from '@/lib/utils';
 import type { Connection, GameLocation } from '@/types';
+import { CanvasControlButton, CanvasControls } from '@/components/CanvasControls';
 import { Tip } from '@/components/ui/tooltip';
 
 /**
@@ -1232,16 +1233,14 @@ const CanvasInner = ({ selectedId, onSelect, session, fullscreen, onToggleFullsc
         <Background className="!bg-background" color={gridVisible ? 'hsl(var(--border))' : 'transparent'} gap={CANVAS_GRID} />
         {/* The embedded canvas's whole chrome: the zoom controls, and the way to the big one. Everything
             heavier belongs to full screen, so the quick view stays a view. */}
-        <Controls showInteractive={false}>
-          {/* No tip: xyflow's ControlButton does not forward a ref, so it cannot be a tooltip trigger.
-              The name it announces is the part that mattered. */}
-          <ControlButton
+        <CanvasControls>
+          <CanvasControlButton
+            tip={fullscreen ? 'Exit Full Screen' : 'Edit Full Screen'}
             onClick={onToggleFullscreen}
-            aria-label={fullscreen ? 'Exit full screen' : 'Edit full screen'}
           >
             {fullscreen ? <Minimize2 /> : <Maximize2 />}
-          </ControlButton>
-        </Controls>
+          </CanvasControlButton>
+        </CanvasControls>
         <TopLevelDrop />
         {/* The window's own orientation aids and power tools. The pane is a view of a map the author can
             already take in; these are for the map that has grown past it. */}
