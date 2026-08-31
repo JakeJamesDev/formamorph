@@ -6,6 +6,7 @@ import { Progress } from "@/components/ui/progress";
 import IndeterminateProgress from "@/components/ui/indeterminate-progress";
 import { Globe, Columns2, RectangleVertical, Pencil, Trash2, X, Flag } from "lucide-react";
 import { ActionIcon } from "@/lib/actionIcons";
+import { THUMB_FRAME, thumbFit } from "@/lib/thumbAspect";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
 import { MarkdownRenderer } from "@/components/game/MarkdownRenderer";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
@@ -267,7 +268,8 @@ export function RemoteWorldDetailsModal({
                   <Tip tip={thumbSrc ? "Click to enlarge" : undefined} labelsChild={false}>
                     <div
                       className={cn(
-                        "relative w-full pt-[56.25%] rounded-lg overflow-hidden",
+                        "relative w-full rounded-lg overflow-hidden",
+                        THUMB_FRAME.landscape,
                         thumbSrc && "cursor-zoom-in",
                       )}
                       onClick={() => thumbSrc && openImageViewer(thumbSrc, world.name)}
@@ -277,9 +279,8 @@ export function RemoteWorldDetailsModal({
                           src={thumbSrc}
                           alt={world.name}
                           className={cn(
-                            "absolute top-0 left-0 w-full h-full object-cover",
-                            // Entity art is almost always a portrait; anchor it to the top so faces aren't cropped.
-                            kindOf(world) === 'entity' && "object-top",
+                            "absolute top-0 left-0 w-full h-full",
+                            thumbFit(kindOf(world) === 'entity' ? 'portrait' : 'landscape'),
                           )}
                         />
                       ) : (

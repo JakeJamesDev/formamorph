@@ -10,6 +10,8 @@ import UserService from "@/services/UserService";
 import WorldStorageService from "@/services/WorldStorageService";
 import type { ProfileCreation } from "@/types";
 import { Tip } from "@/components/ui/tooltip";
+import { cn } from "@/lib/utils";
+import { thumbFit } from "@/lib/thumbAspect";
 
 /** The icon each kind wears, matching the Community Creations header so the three read the same way. */
 const KIND_ICONS: Record<CatalogKind, typeof Earth> = {
@@ -146,7 +148,7 @@ export function UserCreationsTab({ userId, username, onOpenListing }: UserCreati
                     url={`${WorldStorageService.API_URL}/thumbnails/${item.thumbnailFile}`}
                     updatedAt={item.updatedAt}
                     alt={item.name}
-                    className="h-full w-full object-cover"
+                    className={cn('h-full w-full', thumbFit(item.kind === 'entity' ? 'portrait' : 'landscape'))}
                   />
                 )}
               </div>

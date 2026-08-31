@@ -22,6 +22,7 @@ import EventService from "@/services/EventService";
 import WorldStorageService from "@/services/WorldStorageService";
 import type { WorldRecord } from "@/components/WorldDetails";
 import type { ContestPlace, ServerEvent } from "@/types";
+import { THUMB_FRAME, thumbFit } from "@/lib/thumbAspect";
 
 /**
  * The whole catalog in one request, which is how the community browser reads it too.
@@ -283,17 +284,17 @@ export function PodiumDialog({ open, onOpenChange, contest, onSaved }: PodiumDia
                       place !== null && PLACE_PLATES[place],
                     )}
                   >
-                    <div className="relative aspect-video bg-muted">
+                    <div className={cn('relative bg-muted', THUMB_FRAME.landscape)}>
                       {entry.thumbnailFile ? (
                         <CachedThumbnail
                           file={entry.thumbnailFile}
                           url={`${WorldStorageService.API_URL}/thumbnails/${entry.thumbnailFile}`}
                           updatedAt={entry.updatedAt}
                           alt=""
-                          className="h-full w-full object-cover"
+                          className={cn('h-full w-full', thumbFit('landscape'))}
                         />
                       ) : entry.thumbnail ? (
-                        <img src={entry.thumbnail} alt="" className="h-full w-full object-cover" />
+                        <img src={entry.thumbnail} alt="" className={cn('h-full w-full', thumbFit('landscape'))} />
                       ) : null}
                       {entry.blocked && (
                         <span className="absolute left-1 top-1 rounded bg-background/90 px-1.5 py-0.5 text-meta font-semibold">

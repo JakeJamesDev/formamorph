@@ -10,6 +10,7 @@ import { LikeButton } from "@/components/community/LikeButton";
 import { WorldCardShell } from "@/components/WorldCardShell";
 import { type DownloadState } from "@/lib/downloadState";
 import { KIND_LABELS, kindOf } from "@/lib/catalogKinds";
+import { thumbFit } from "@/lib/thumbAspect";
 import { isQuarantined, quarantineDaysLeft, quarantineDeadline } from "@/lib/quarantine";
 import WorldStorageService from "@/services/WorldStorageService";
 import { UserAvatar } from "@/components/UserAvatar";
@@ -60,8 +61,7 @@ export function RemoteWorldCard({
   const worldId = world._id || world.id;
   // Player-facing noun for this listing's kind (World / Entity / Dictionary), for the download tooltips.
   const noun = KIND_LABELS[kindOf(world)].one.toLowerCase();
-  // Entity art is almost always a portrait; anchor it to the top so faces aren't cropped out by centering.
-  const thumbClass = cn("w-full h-full object-cover", kindOf(world) === 'entity' && "object-top");
+  const thumbClass = cn("w-full h-full", thumbFit(kindOf(world) === 'entity' ? 'portrait' : 'landscape'));
 
   // Whether to offer the moderation controls at all. What the server will actually allow is narrower —
   // staff moderate the room, not each other — and is checked per listing below.

@@ -5,12 +5,17 @@ import { cn } from '@/lib/utils';
 import { Tip } from '@/components/ui/tooltip';
 import { WorldCardShell } from '@/components/WorldCardShell';
 import type { LibraryGroup } from '@/lib/libraryOrganization';
+import { thumbFit, type ThumbAspect } from '@/lib/thumbAspect';
 
 /** How many member thumbnails the folder shows before it starts counting the rest. */
 const MOSAIC_CELLS = 4;
 
 /** The 2x2 mini-mosaic that makes a folder recognizable at a glance. */
-function GroupMosaic({ thumbnails, className }: { thumbnails: (string | undefined)[]; className?: string }) {
+function GroupMosaic({ thumbnails, aspect, className }: {
+  thumbnails: (string | undefined)[];
+  aspect: ThumbAspect;
+  className?: string;
+}) {
   const cells = Array.from({ length: MOSAIC_CELLS }, (_, i) => thumbnails[i]);
 
   return (
@@ -21,7 +26,7 @@ function GroupMosaic({ thumbnails, className }: { thumbnails: (string | undefine
             <img
               src={thumbnail}
               alt=""
-              className="h-full w-full object-cover object-top select-none pointer-events-none"
+              className={cn('h-full w-full select-none pointer-events-none', thumbFit(aspect))}
             />
           )}
         </div>
@@ -40,10 +45,12 @@ function GroupMosaic({ thumbnails, className }: { thumbnails: (string | undefine
  * @param presetName - The prompt preset this folder applies, when it carries one
  */
 export function LibraryGroupTile({
-  group, thumbnails, layout, fill, compact, presetName, onOpen,
+  group, thumbnails, aspect, layout, fill, compact, presetName, onOpen,
 }: {
   group: LibraryGroup;
   thumbnails: (string | undefined)[];
+  /** The shape of the member art, which is what the mosaic's crops anchor by. */
+  aspect: ThumbAspect;
   layout: 'grid' | 'detailed';
   fill?: boolean;
   compact?: boolean;
@@ -73,7 +80,7 @@ export function LibraryGroupTile({
         onClick={() => onOpen(group.id)}
         name={group.name}
         description={count}
-        thumbnail={<GroupMosaic thumbnails={thumbnails} className="h-full w-full" />}
+        thumbnail={<GroupMosaic thumbnails={thumbnails} aspect={aspect} className="h-full w-full" />}
       >
         {presetName && (
           <div className="mt-auto flex items-center gap-1 text-meta text-muted-foreground">
@@ -98,7 +105,7 @@ export function LibraryGroupTile({
       )}
       onClick={() => onOpen(group.id)}
     >
-      <GroupMosaic thumbnails={thumbnails} className="h-full w-full" />
+      <GroupMosaic thumbnails={thumbnails} aspect={aspect} className="h-full w-full" />
       {group.members.length > MOSAIC_CELLS && (
         <span className="absolute top-1 right-1 rounded bg-overlay/70 px-1.5 py-0.5 text-meta text-white">
           +{group.members.length - MOSAIC_CELLS}

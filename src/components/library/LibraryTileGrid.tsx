@@ -41,13 +41,11 @@ import {
   type SimResult,
 } from '@/lib/libraryOrganization';
 import type { LibraryTiles } from '@/lib/useLibraryTiles';
+import { THUMB_RATIO, thumbFit, type ThumbAspect } from '@/lib/thumbAspect';
 import { LibraryGroupTile } from '@/components/library/LibraryGroupTile';
 
 /** The scroll-viewport clamp alone; a grid drag moves in both axes, so no vertical-list clamp. */
 const GRID_MODIFIERS = [restrictToFirstScrollableAncestor];
-
-/** Tile shape per tab, as the width-to-height ratio of a medium tile. */
-const ASPECT = { landscape: 16 / 9, portrait: 2 / 3 };
 
 /** The grid's gutter, in pixels. Matches `gap-4`, which the tile grid sets in CSS. */
 const GAP = 16;
@@ -218,7 +216,7 @@ export function LibraryTileGrid<T>({
   idOf: (item: T) => string;
   tiles: LibraryTiles;
   layout: 'grid' | 'detailed';
-  aspect: 'landscape' | 'portrait';
+  aspect: ThumbAspect;
   /** The narrowest a medium tile may render, in px; the grid fits as many columns as that allows. */
   minMediumWidth: number;
   detailedColumnsClass: string;
@@ -303,7 +301,7 @@ export function LibraryTileGrid<T>({
   // Row height comes from the medium tile's ratio, so a medium tile is exactly the size it always was
   // and the half and double sizes fall out of it.
   const cellWidth = width > 0 ? (width - (baseCols - 1) * GAP) / baseCols : 0;
-  const cellHeight = cellWidth > 0 ? ((2 * cellWidth + GAP) / ASPECT[aspect] - GAP) / 2 : 0;
+  const cellHeight = cellWidth > 0 ? ((2 * cellWidth + GAP) / THUMB_RATIO[aspect] - GAP) / 2 : 0;
   const pitch = { x: cellWidth + GAP, y: cellHeight + GAP };
 
   // The slide, run before the browser paints the new cells: each moved tile is pushed back to where it
@@ -682,6 +680,7 @@ export function LibraryTileGrid<T>({
             {group ? (
               <LibraryGroupTile
                 group={group}
+                aspect={aspect}
                 thumbnails={group.members.map((memberId) => {
                   const member = byId.get(memberId);
                   return member ? thumbnailOf(member) : undefined;
@@ -729,12 +728,12 @@ export function LibraryTileGrid<T>({
               const member = byId.get(group.members[i] ?? '');
               const memberThumb = member ? thumbnailOf(member) : undefined;
               return memberThumb
-                ? <img key={i} src={memberThumb} alt="" className="h-full w-full object-cover" />
+                ? <img key={i} src={memberThumb} alt="" className={cn('h-full w-full', thumbFit(aspect))} />
                 : <div key={i} className="h-full w-full bg-muted" />;
             })}
           </div>
         ) : thumb
-          ? <img src={thumb} alt="" className="h-full w-full object-cover" />
+          ? <img src={thumb} alt="" className={cn('h-full w-full', thumbFit(aspect))} />
           : <div className="h-full w-full bg-muted" />}
       </div>
     );
