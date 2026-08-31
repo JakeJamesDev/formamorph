@@ -5,6 +5,7 @@ import { encodePlaceholderToken } from '@/lib/placeholders';
 import { renderRightPanel, statFixture, type PanelHarnessOptions } from '@/test/gamePanels';
 import type { Trait, TraitGroup } from '@/types';
 
+import { phValues } from '@/test/placeholderValues';
 // Same reason the panel harness gives: neither dependency runs in jsdom, and neither is what these cases
 // are about. RightPanel pulls them in through the shared module.
 vi.mock('@/views/VRMViewer', () => import('@/test/stubs/vrmViewer'));
@@ -364,7 +365,7 @@ describe('a trait row reveals what it does', () => {
     })];
     renderTraits(traits, [], ['t-sworn'], {
       stats: [statFixture(`${CHIP} Standing`, 50, { id: 'standing' })],
-      world: { placeholders: [{ id: 'ph-town', name: 'Town', values: ['Sedge', 'Marrow'] }] },
+      world: { placeholders: [{ id: 'ph-town', name: 'Town', values: phValues(['Sedge', 'Marrow']) }] },
       seed: (gameplay) => gameplay.setPlaceholderRolls({ world: { 'ph-town': 'Sedge' }, unique: {} }),
     });
     fireEvent.click(screen.getByRole('button', { name: /Sworn/ }));

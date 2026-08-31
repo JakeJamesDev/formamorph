@@ -8,11 +8,12 @@ import { defaultSystemPrompt, defaultNowLinePrompt } from '@/components/game/Gam
 import { encodePlaceholderToken } from '@/lib/placeholders';
 import type { Placeholder } from '@/types';
 
+import { phValues } from '@/test/placeholderValues';
 // The markdown toolbar maps a Lexical selection onto offsets in the flat token-string, runs the pure
 // transform, then maps the result back. A chip is one node but many characters, so that mapping is where
 // this can silently go wrong — these drive it through a real (headless) editor.
 
-const PLACEHOLDERS: Placeholder[] = [{ id: 'p1', name: 'threat', values: ['the Demon King'] }];
+const PLACEHOLDERS: Placeholder[] = [{ id: 'p1', name: 'threat', values: phValues(['the Demon King']) }];
 const TOKEN = encodePlaceholderToken({ id: 'p1', mode: 'world', placementId: 'x' });
 
 function makeEditor() {

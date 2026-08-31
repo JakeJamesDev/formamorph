@@ -4,6 +4,7 @@ import type { ReactNode } from 'react';
 import { GameDataProvider, useGameData } from './GameDataContext';
 import type { World } from '@/types';
 
+import { phValueId, phValues } from '@/test/placeholderValues';
 // The provider initializes IndexedDB storage on mount; stub it out so these tests exercise only
 // loadWorldData's normalization.
 vi.mock('../services/WorldStorageService', () => ({
@@ -394,12 +395,13 @@ describe('loadWorldData', () => {
 });
 
 describe('renaming a placeholder value', () => {
-  // Pins are stored as plain strings, so only the update path can connect a rename to the traits.
+  // A pin written before value ids existed holds a plain string, so only the update path can connect a
+  // rename to the traits.
   const worldWithPins = () => ({
     ...world('w', {}),
     placeholders: [
-      { id: 'hair', name: 'Hair Color', values: ['Red', 'Blue'] },
-      { id: 'eyes', name: 'Eye Color', values: ['Red'] },
+      { id: 'hair', name: 'Hair Color', values: phValues(['Red', 'Blue']) },
+      { id: 'eyes', name: 'Eye Color', values: phValues(['Red']) },
     ],
     traits: [
       { id: 't1', name: 'Ember', statChanges: [], placeholderPins: [{ placeholderId: 'hair', value: 'Red' }] },
@@ -412,7 +414,12 @@ describe('renaming a placeholder value', () => {
     act(() => { result.current.loadWorldData(worldWithPins()); });
 
     act(() => {
-      result.current.updatePlaceholder({ id: 'hair', name: 'Hair Color', values: ['Crimson', 'Blue'] });
+      // What the editor writes: the value keeps its id and only its text changes.
+      result.current.updatePlaceholder({
+        id: 'hair',
+        name: 'Hair Color',
+        values: [{ id: phValueId('Red'), text: 'Crimson' }, ...phValues(['Blue'])],
+      });
     });
 
     expect(result.current.traits[0].placeholderPins).toEqual([{ placeholderId: 'hair', value: 'Crimson' }]);
@@ -424,7 +431,11 @@ describe('renaming a placeholder value', () => {
     act(() => { result.current.loadWorldData(worldWithPins()); });
 
     act(() => {
-      result.current.phStore.updatePlaceholder({ id: 'hair', name: 'Hair Color', values: ['Crimson', 'Blue'] });
+      result.current.phStore.updatePlaceholder({
+        id: 'hair',
+        name: 'Hair Color',
+        values: [{ id: phValueId('Red'), text: 'Crimson' }, ...phValues(['Blue'])],
+      });
     });
 
     expect(result.current.traits[0].placeholderPins).toEqual([{ placeholderId: 'hair', value: 'Crimson' }]);

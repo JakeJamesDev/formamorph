@@ -126,7 +126,7 @@ export function buildLens(world: LensWorld, state: LensState): BenchLens {
     state,
     pc,
     location: (world.locations ?? []).find((l) => l.id === state.locationId) ?? null,
-    pins: activePlaceholderPins(active),
+    pins: activePlaceholderPins(active, world.placeholders ?? []),
     brokenPins: pc ? brokenPinsOf(pc, world.placeholders ?? []) : [],
     statEnabled: activeStatEnabled(world.stats ?? [], active),
   };

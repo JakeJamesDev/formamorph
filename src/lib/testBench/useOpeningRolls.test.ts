@@ -5,12 +5,13 @@ import { buildLens } from './lens';
 import type { OpeningWorld } from './opening';
 import { useOpeningRolls } from './useOpeningRolls';
 
+import { phValues } from '@/test/placeholderValues';
 const world = (systemPrompt: string): OpeningWorld => ({
   worldOverview: { name: 'W', description: '', systemPrompt } as WorldOverview,
   stats: [], locations: [], entities: [], traits: [], statUpdates: [], dictionaries: [],
   placeholders: [
-    { id: 'ph-a', name: 'A', values: ['x', 'y'] },
-    { id: 'ph-b', name: 'B', values: ['p', 'q'] },
+    { id: 'ph-a', name: 'A', values: phValues(['x', 'y']) },
+    { id: 'ph-b', name: 'B', values: phValues(['p', 'q']) },
   ],
 });
 

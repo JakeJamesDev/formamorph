@@ -574,7 +574,7 @@ const GameViewer = ({
         ...stats.map((s) => s.name),
         ...traits.map((t) => t.name),
         ...dictionary.flatMap((entry) => [entry.name ?? '', ...parseKeywords(entry)]),
-        ...placeholders.flatMap((p) => [p.name, ...p.values]),
+        ...placeholders.flatMap((p) => [p.name, ...p.values.map((v) => v.text)]),
         // The player's name lives in free-text notes, so every capitalized run there is off-limits.
         ...(playerNotes.match(/\b[A-Z][A-Za-z'’-]+/g) ?? []),
       ]),
@@ -3546,7 +3546,7 @@ const GameViewer = ({
         // A log line is frozen the moment it is written, and the traits just applied are not in state yet —
         // so resolve against the pins they are about to impose rather than the (empty) ones still in force.
         const authored = authoredLocations.find((l) => l.id === location.id) ?? location;
-        addLogEntry(`Starting in location: ${resolveWith(activePlaceholderPins(chosenList), authored.name)}`);
+        addLogEntry(`Starting in location: ${resolveWith(activePlaceholderPins(chosenList, placeholders), authored.name)}`);
       }
 
       // Seed the per-playthrough dictionary set: the entry-step selection, or the world's authored books
@@ -3573,13 +3573,14 @@ const GameViewer = ({
       // Pre-fill the editable opening cue so the player can shape the first turn before submitting it. The
       // world's own cue when it has one, resolved here (against the pins the traits above are about to
       // impose) so the player reads and edits plain prose, never raw chips.
-      setPlayerInput(resolveWith(activePlaceholderPins(chosenList), resolveOpeningCue(worldOverview)));
+      setPlayerInput(resolveWith(activePlaceholderPins(chosenList, placeholders), resolveOpeningCue(worldOverview)));
     }
   }, [
     initialSaveId,
     loadGame,
     initialTraits,
     initialLocationId,
+    placeholders,
     initialDictionaries,
     initialCharacters,
     dictionaries,

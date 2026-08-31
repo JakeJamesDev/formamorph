@@ -8,6 +8,7 @@ import { PlaceholderStoreProvider, placeholderStore } from '@/contexts/Placehold
 import { decodePlaceholderToken, encodePlaceholderToken } from '@/lib/placeholders';
 import type { Placeholder } from '@/types';
 
+import { phValues } from '@/test/placeholderValues';
 /**
  * Re-aiming a placed chip from its own pop-out: the picker opens on the path the chip already carries, and
  * whatever the author settles on moves that chip rather than replacing it. The two kinds of step read
@@ -18,11 +19,11 @@ import type { Placeholder } from '@/types';
 const chip = (id: string) => encodePlaceholderToken({ id, mode: 'world', placementId: `v-${id}` });
 
 const WORLD: Placeholder[] = [
-  { id: 'molly', name: 'Molly', values: [chip('white'), chip('asian')] },
-  { id: 'white', name: 'isWhite', roll: false, values: [chip('hair'), chip('eyes')] },
-  { id: 'asian', name: 'isAsian', roll: false, values: [chip('hair'), 'dark brown eyes'] },
-  { id: 'hair', name: 'Hair', values: ['brown', 'black'] },
-  { id: 'eyes', name: 'Eyes', values: ['green'] },
+  { id: 'molly', name: 'Molly', values: phValues([chip('white'), chip('asian')]) },
+  { id: 'white', name: 'isWhite', roll: false, values: phValues([chip('hair'), chip('eyes')]) },
+  { id: 'asian', name: 'isAsian', roll: false, values: phValues([chip('hair'), 'dark brown eyes']) },
+  { id: 'hair', name: 'Hair', values: phValues(['brown', 'black']) },
+  { id: 'eyes', name: 'Eyes', values: phValues(['green']) },
 ];
 
 /** One placed chip in a field, under a store an inline create can write to. */

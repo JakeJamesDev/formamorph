@@ -6,6 +6,7 @@ import type { Placeholder } from '@/types';
 import PlaceholderEditor from './PlaceholderEditor';
 import PlaceholderManager from './PlaceholderManager';
 
+import { phValueId, phValues } from '@/test/placeholderValues';
 const updatePlaceholder = vi.fn();
 const addPlaceholder = vi.fn();
 // The other placeholders in the same store — what a value's chips may point at. Set per test.
@@ -44,7 +45,7 @@ const PARA = 'A weathered lighthouse.\n\nIts beam sweeps the bay.';
 const ph = (over: Partial<Placeholder> = {}): Placeholder => ({
   id: 'p1',
   name: 'Scene',
-  values: ['Red', 'Blue'],
+  values: phValues(['Red', 'Blue']),
   ...over,
 });
 
@@ -60,6 +61,8 @@ const pickChip = (id: string, targetId: string) =>
 
 /** The whole placeholder the manager last wrote through. */
 const stored = () => updatePlaceholder.mock.calls.at(-1)?.at(-1) as Placeholder;
+/** Its value list as the author reads it. Use `stored().values` where the assertion is about identity. */
+const storedTexts = () => stored().values.map((v) => v.text);
 
 const styleToggle = () => screen.getByRole('radiogroup', { name: 'Value editor style' });
 const pickStyle = (name: 'Chips' | 'Multiline') =>
@@ -86,7 +89,7 @@ beforeEach(() => {
 describe('PlaceholderManager — chips vs multiline', () => {
   describe('which style opens', () => {
     it('opens in multiline when any value holds a newline', () => {
-      render(<PlaceholderManager placeholder={ph({ values: [PARA, 'Dusk'] })} />);
+      render(<PlaceholderManager placeholder={ph({ values: phValues([PARA, 'Dusk']) })} />);
       expect(within(styleToggle()).getByRole('radio', { name: 'Multiline' })).toBeChecked();
       expect(box(1)).toHaveValue(PARA);
     });
@@ -107,7 +110,7 @@ describe('PlaceholderManager — chips vs multiline', () => {
     });
 
     it('shows a multiline value in the chip row as its first line', () => {
-      render(<PlaceholderManager placeholder={ph({ values: [PARA, 'Dusk'] })} />);
+      render(<PlaceholderManager placeholder={ph({ values: phValues([PARA, 'Dusk']) })} />);
       pickStyle('Chips');
       expect(screen.getByText('A weathered lighthouse. …')).toBeInTheDocument();
       expect(screen.queryByText(/beam sweeps/)).not.toBeInTheDocument();
@@ -116,17 +119,17 @@ describe('PlaceholderManager — chips vs multiline', () => {
 
   describe('editing values', () => {
     it('stores a paragraph with its newlines, trimmed only at the ends', () => {
-      render(<PlaceholderManager placeholder={ph({ values: ['Red'] })} />);
+      render(<PlaceholderManager placeholder={ph({ values: phValues(['Red']) })} />);
       pickStyle('Multiline');
       type(1, `  \n${PARA}\n  `);
-      expect(stored().values).toEqual([PARA]);
+      expect(storedTexts()).toEqual([PARA]);
     });
 
     it('drops a value that has been emptied', () => {
       render(<PlaceholderManager placeholder={ph()} />);
       pickStyle('Multiline');
       type(1, '   ');
-      expect(stored().values).toEqual(['Blue']);
+      expect(storedTexts()).toEqual(['Blue']);
       // The box stays put — the author is mid-edit, not done with the slot.
       expect(box(1)).toHaveValue('   ');
     });
@@ -135,13 +138,13 @@ describe('PlaceholderManager — chips vs multiline', () => {
       render(<PlaceholderManager placeholder={ph()} />);
       pickStyle('Multiline');
       type(2, 'Red');
-      expect(stored().values).toEqual(['Red']);
+      expect(storedTexts()).toEqual(['Red']);
     });
 
     it('leaves a box alone when its own write comes back as the placeholder', () => {
       // The real parent feeds every write back down as the prop, so the panel sees its own edit arrive from
       // outside on the very next render. Text still being typed — trailing space, empty — must survive that.
-      const { rerender } = render(<PlaceholderManager placeholder={ph({ values: ['Red', 'Blue'] })} />);
+      const { rerender } = render(<PlaceholderManager placeholder={ph({ values: phValues(['Red', 'Blue']) })} />);
       pickStyle('Multiline');
       fireEvent.click(screen.getByRole('button', { name: 'Collapse value 2' }));
       type(1, 'Crimson ');
@@ -154,12 +157,12 @@ describe('PlaceholderManager — chips vs multiline', () => {
     it('re-reads a value list rewritten from outside, and does not paste the old one back', () => {
       // The find bar replaces inside placeholder values, through the same store, while this panel is open
       // on that placeholder. The boxes are the editing truth only for edits they made themselves.
-      const { rerender } = render(<PlaceholderManager placeholder={ph({ values: [PARA, 'Dusk'] })} />);
-      rerender(<PlaceholderManager placeholder={ph({ values: [PARA, 'Nightfall'] })} />);
+      const { rerender } = render(<PlaceholderManager placeholder={ph({ values: phValues([PARA, 'Dusk']) })} />);
+      rerender(<PlaceholderManager placeholder={ph({ values: phValues([PARA, 'Nightfall']) })} />);
       expect(box(2)).toHaveValue('Nightfall');
 
       type(1, 'Dawn');
-      expect(stored().values).toEqual(['Dawn', 'Nightfall']);
+      expect(storedTexts()).toEqual(['Dawn', 'Nightfall']);
     });
 
     it('adds a value with the Add Value button', () => {
@@ -167,14 +170,14 @@ describe('PlaceholderManager — chips vs multiline', () => {
       pickStyle('Multiline');
       fireEvent.click(screen.getByRole('button', { name: 'Add Value' }));
       type(3, 'Green');
-      expect(stored().values).toEqual(['Red', 'Blue', 'Green']);
+      expect(storedTexts()).toEqual(['Red', 'Blue', 'Green']);
     });
 
     it('deletes a value with its box’s remove button', () => {
       render(<PlaceholderManager placeholder={ph()} />);
       pickStyle('Multiline');
       fireEvent.click(screen.getByRole('button', { name: 'Remove value 1' }));
-      expect(stored().values).toEqual(['Blue']);
+      expect(storedTexts()).toEqual(['Blue']);
       expect(screen.queryByDisplayValue('Red')).not.toBeInTheDocument();
     });
   });
@@ -183,7 +186,7 @@ describe('PlaceholderManager — chips vs multiline', () => {
     const weight = (n: number) => screen.getByLabelText(`Draw weight for value ${n}`);
 
     it('offers no weight until there are two values to weigh', () => {
-      render(<PlaceholderManager placeholder={ph({ values: ['Red'] })} />);
+      render(<PlaceholderManager placeholder={ph({ values: phValues(['Red']) })} />);
       pickStyle('Multiline');
       expect(screen.queryByLabelText('Draw weight for value 1')).not.toBeInTheDocument();
       expect(screen.queryByText('100%')).not.toBeInTheDocument();
@@ -193,18 +196,30 @@ describe('PlaceholderManager — chips vs multiline', () => {
       render(<PlaceholderManager placeholder={ph()} />);
       pickStyle('Multiline');
       fireEvent.change(weight(1), { target: { value: '3' } });
-      expect(stored().weights).toEqual({ Red: 3 });
+      expect(stored().weights).toEqual({ [phValueId('Red')]: 3 });
       expect(screen.getByText('75%')).toBeInTheDocument();
       expect(screen.getByText('25%')).toBeInTheDocument();
     });
 
-    it('carries a weight across a rewrite of the value it belongs to', () => {
+    it('keeps a weight through a rename, with nothing carried across the edit', () => {
       render(<PlaceholderManager placeholder={ph()} />);
       pickStyle('Multiline');
       fireEvent.change(weight(1), { target: { value: '3' } });
       type(1, 'Crimson');
-      expect(stored().values).toEqual(['Crimson', 'Blue']);
-      expect(stored().weights).toEqual({ Crimson: 3 });
+      expect(storedTexts()).toEqual(['Crimson', 'Blue']);
+      // The value kept its id, so the weight map is untouched and the renamed value still weighs 3.
+      expect(stored().values[0].id).toBe(phValueId('Red'));
+      expect(stored().weights).toEqual({ [phValueId('Red')]: 3 });
+      expect(weight(1)).toHaveValue(3);
+    });
+
+    it('drops the weight of a value the author removed', () => {
+      render(<PlaceholderManager placeholder={ph()} />);
+      pickStyle('Multiline');
+      fireEvent.change(weight(1), { target: { value: '3' } });
+      fireEvent.click(screen.getByRole('button', { name: 'Remove value 1' }));
+      expect(storedTexts()).toEqual(['Blue']);
+      expect(stored().weights).toBeUndefined();
     });
   });
 
@@ -212,19 +227,19 @@ describe('PlaceholderManager — chips vs multiline', () => {
     const collapseAll = () => screen.getByRole('button', { name: /^(Collapse|Expand) all values$/ });
 
     it('collapses one card to its first line, leaving its controls live', () => {
-      render(<PlaceholderManager placeholder={ph({ values: [PARA, 'Dusk'] })} />);
+      render(<PlaceholderManager placeholder={ph({ values: phValues([PARA, 'Dusk']) })} />);
       fireEvent.click(screen.getByRole('button', { name: 'Collapse value 1' }));
       expect(screen.queryByLabelText('Value 1')).not.toBeInTheDocument();
       expect(screen.getByText('A weathered lighthouse. …')).toBeInTheDocument();
 
       fireEvent.change(screen.getByLabelText('Draw weight for value 1'), { target: { value: '2' } });
-      expect(stored().weights).toEqual({ [PARA]: 2 });
+      expect(stored().weights).toEqual({ [phValueId(PARA)]: 2 });
       fireEvent.click(screen.getByRole('button', { name: 'Expand value 1' }));
       expect(box(1)).toHaveValue(PARA);
     });
 
     it('takes every card down and back up in one press', () => {
-      render(<PlaceholderManager placeholder={ph({ values: [PARA, 'Dusk'] })} />);
+      render(<PlaceholderManager placeholder={ph({ values: phValues([PARA, 'Dusk']) })} />);
       fireEvent.click(collapseAll());
       expect(screen.queryByLabelText('Value 1')).not.toBeInTheDocument();
       expect(screen.queryByLabelText('Value 2')).not.toBeInTheDocument();
@@ -239,7 +254,7 @@ describe('PlaceholderManager — chips vs multiline', () => {
       expect(screen.queryByRole('button', { name: /all values$/ })).not.toBeInTheDocument();
       unmount();
 
-      render(<PlaceholderManager placeholder={ph({ values: [PARA] })} />);
+      render(<PlaceholderManager placeholder={ph({ values: phValues([PARA]) })} />);
       expect(screen.queryByRole('button', { name: /all values$/ })).not.toBeInTheDocument();
     });
   });
@@ -286,7 +301,7 @@ describe('PlaceholderManager — kind', () => {
   });
 
   it('stays offered at one value, where the two kinds coincide', () => {
-    render(<PlaceholderManager placeholder={ph({ values: ['Red'] })} />);
+    render(<PlaceholderManager placeholder={ph({ values: phValues(['Red']) })} />);
     expect(kindOption('Object')).toBeEnabled();
     pickKind('Object');
     expect(stored().roll).toBe(false);
@@ -294,19 +309,19 @@ describe('PlaceholderManager — kind', () => {
 
   describe('the state line', () => {
     it('reads Variable at one value, whichever kind is declared', () => {
-      const { rerender } = render(<PlaceholderManager placeholder={ph({ values: ['Red'] })} />);
+      const { rerender } = render(<PlaceholderManager placeholder={ph({ values: phValues(['Red']) })} />);
       expect(screen.getByText('A Variable: always resolves to its one value.')).toBeInTheDocument();
-      rerender(<PlaceholderManager placeholder={ph({ values: ['Red'], roll: false })} />);
+      rerender(<PlaceholderManager placeholder={ph({ values: phValues(['Red']), roll: false })} />);
       expect(screen.getByText('A Variable: always resolves to its one value.')).toBeInTheDocument();
     });
 
     it('counts the values a Wildcard picks between', () => {
-      render(<PlaceholderManager placeholder={ph({ values: ['Red', 'Blue', 'Green'] })} />);
+      render(<PlaceholderManager placeholder={ph({ values: phValues(['Red', 'Blue', 'Green']) })} />);
       expect(screen.getByText('Picks one of 3 values.')).toBeInTheDocument();
     });
 
     it('counts the values an Object shows together', () => {
-      render(<PlaceholderManager placeholder={ph({ values: ['Red', 'Blue', 'Green'], roll: false })} />);
+      render(<PlaceholderManager placeholder={ph({ values: phValues(['Red', 'Blue', 'Green']), roll: false })} />);
       expect(screen.getByText('Shows all 3 values.')).toBeInTheDocument();
     });
 
@@ -331,17 +346,17 @@ describe('PlaceholderManager — kind', () => {
  */
 describe('PlaceholderManager — chip values', () => {
   beforeEach(() => {
-    siblings = [ph(), { id: 'p2', name: 'Hair', values: ['Brown', 'Blonde'] }];
+    siblings = [ph(), { id: 'p2', name: 'Hair', values: phValues(['Brown', 'Blonde']) }];
   });
 
   it('draws a lone-chip value as its target, not as the token behind it', () => {
-    render(<PlaceholderManager placeholder={ph({ values: [chip('p2')] })} />);
+    render(<PlaceholderManager placeholder={ph({ values: phValues([chip('p2')]) })} />);
     expect(screen.getByText('Hair')).toBeInTheDocument();
     expect(screen.queryByText(/\{\{ph:/)).not.toBeInTheDocument();
   });
 
   it('wears its target’s accent, so a value that is a placeholder looks like one', () => {
-    render(<PlaceholderManager placeholder={ph({ values: [chip('p2'), 'Red'] })} />);
+    render(<PlaceholderManager placeholder={ph({ values: phValues([chip('p2'), 'Red']) })} />);
     // The accent itself comes from the vocabulary, so what is asserted is that the chip took one — and that
     // a literal value beside it did not.
     const chipped = screen.getByText('Hair').closest('[data-chip]') as HTMLElement;
@@ -350,13 +365,13 @@ describe('PlaceholderManager — chip values', () => {
   });
 
   it('draws a drilled chip as its whole path, so a part never reads like a root', () => {
-    render(<PlaceholderManager placeholder={ph({ values: [chip('p2', 'Color')] })} />);
+    render(<PlaceholderManager placeholder={ph({ values: phValues([chip('p2', 'Color')]) })} />);
     expect(screen.getByText('Hair › Color')).toBeInTheDocument();
   });
 
   it('names an explicit pick by the placeholder it selects, not by its id', () => {
-    siblings = [...siblings, { id: 'p3', name: 'Brown', values: ['brown'] }];
-    render(<PlaceholderManager placeholder={ph({ values: [pickChip('p2', 'p3')] })} />);
+    siblings = [...siblings, { id: 'p3', name: 'Brown', values: phValues(['brown']) }];
+    render(<PlaceholderManager placeholder={ph({ values: phValues([pickChip('p2', 'p3')]) })} />);
     expect(screen.getByText('Hair › Brown')).toBeInTheDocument();
   });
 
@@ -366,7 +381,7 @@ describe('PlaceholderManager — chip values', () => {
   });
 
   it('hands the multiline boxes the same placeholders to insert', () => {
-    render(<PlaceholderManager placeholder={ph({ values: ['Red'] })} />);
+    render(<PlaceholderManager placeholder={ph({ values: phValues(['Red']) })} />);
     pickStyle('Multiline');
     expect(box(1)).toHaveAttribute('data-palette', '2');
   });
@@ -374,7 +389,7 @@ describe('PlaceholderManager — chip values', () => {
   // The one-line summaries are plain text, so a chip in a value has nowhere to draw itself and would print
   // the token instead — the raw shape an author should never see.
   it('names the chip in a collapsed multiline card, rather than printing its token', () => {
-    render(<PlaceholderManager placeholder={ph({ values: [chip('p2'), 'Red'] })} />);
+    render(<PlaceholderManager placeholder={ph({ values: phValues([chip('p2'), 'Red']) })} />);
     pickStyle('Multiline');
     fireEvent.click(screen.getByRole('button', { name: 'Collapse value 1' }));
     expect(screen.getByText('Hair')).toBeInTheDocument();
@@ -382,7 +397,7 @@ describe('PlaceholderManager — chip values', () => {
   });
 
   it('names the chip in the draw-weight pop-out, rather than printing its token', () => {
-    render(<PlaceholderManager placeholder={ph({ values: [chip('p2'), 'Red'] })} />);
+    render(<PlaceholderManager placeholder={ph({ values: phValues([chip('p2'), 'Red']) })} />);
     fireEvent.click(screen.getByText('Hair'));
     // Two now: the chip itself, and the pop-out's title for the value it opened on.
     expect(screen.getAllByText('Hair')).toHaveLength(2);

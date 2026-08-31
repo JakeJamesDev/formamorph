@@ -1,6 +1,6 @@
 import { randomUUID } from "@/lib/uuid";
 import type { Dictionary, DictionaryEntry, Placeholder } from '@/types';
-import { APP_VERSION, WORLD_FILE_KIND, SAVE_FILE_KIND, migrateEntryKeys } from './version';
+import { APP_VERSION, WORLD_FILE_KIND, SAVE_FILE_KIND, migrateCarriedPlaceholders, migrateEntryKeys } from './version';
 import { convertLorebook } from './lorebookImport';
 import { collectUsedPlaceholders } from './placeholders';
 
@@ -69,7 +69,7 @@ export function parseDictionaryFile(raw: unknown): Dictionary {
     ...(typeof obj.thumbnail === 'string' && obj.thumbnail ? { thumbnail: obj.thumbnail } : {}),
     entries: entries.map((e) => migrateEntryKeys({ ...e, id: randomUUID() })),
     // Carried placeholder defs ride along; absorbed into World.placeholders when this book is added to a world.
-    ...(Array.isArray(obj.placeholders) ? { placeholders: obj.placeholders as Placeholder[] } : {}),
+    ...(Array.isArray(obj.placeholders) ? { placeholders: migrateCarriedPlaceholders(obj.placeholders) } : {}),
   };
 }
 

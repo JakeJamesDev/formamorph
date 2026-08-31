@@ -3,8 +3,9 @@ import { worldPublishPayload, entityPublishPayload, dictionaryPublishPayload, pu
 import type { World, Entity, Dictionary, Placeholder } from '@/types';
 import { encodePlaceholderToken } from './placeholders';
 
+import { phValues } from '@/test/placeholderValues';
 const chip = (id: string) => encodePlaceholderToken({ id, mode: 'world', placementId: 'p1' });
-const def = (id: string, values: string[]): Placeholder => ({ id, name: id, values });
+const def = (id: string, values: string[]): Placeholder => ({ id, name: id, values: phValues(values) });
 
 const world = (over = {}, rest = {}) => ({ worldOverview: { name: 'Sedge Landing', description: 'A marsh', thumbnail: 'data:1', ...over }, ...rest } as unknown as World);
 const entity = (over = {}) => ({ id: 'e1', name: 'Mara', ...over } as Entity);

@@ -3,6 +3,7 @@ import { entryVectorKey, selectSemanticLore, SEMANTIC_LORE_CAP, SEMANTIC_LORE_TH
 import type { DictionaryEntry, Placeholder } from '@/types';
 import { describeSemantic, semanticIndexKeys, traceSemantic } from './semantic';
 
+import { phValues } from '@/test/placeholderValues';
 /** A vector key is a hash of the entry's own text, so two fixtures that read alike really do share one
  *  cache slot — every entry here gets its own body so the index can tell them apart. */
 const entry = (over: Partial<DictionaryEntry> & { id: string }): DictionaryEntry => ({
@@ -24,7 +25,7 @@ const index = (pairs: Array<[DictionaryEntry, number]>) =>
   new Map(pairs.map(([e, score]) => [entryVectorKey(e), scoring(score)]));
 
 /** A single-valued Variable, which resolves to real text an author can be scored against. */
-const harbor = [{ id: 'p1', name: 'Harbor', type: 'variable', values: ['Sedge Landing'] }] as unknown as Placeholder[];
+const harbor = [{ id: 'p1', name: 'Harbor', type: 'variable', values: phValues(['Sedge Landing']) }] as unknown as Placeholder[];
 const CHIP = '{{ph:p1:world:x}}';
 
 describe('traceSemantic', () => {

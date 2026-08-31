@@ -1,5 +1,7 @@
 import { randomUUID } from "@/lib/uuid";
-import type { World, SaveObject, Stat, GameState, Trait, PlayerStat, Connection, GameLocation } from '@/types';
+import type {
+  World, SaveObject, Stat, GameState, Trait, PlayerStat, Connection, GameLocation, Placeholder, PlaceholderValue,
+} from '@/types';
 import { implicitPairs, pairKey } from './locationGraph';
 import { normalizeCustomVRM } from './worldImport';
 import { autoBindLegacyBodyStats } from './bodyMorphs';
@@ -254,6 +256,61 @@ function migrateDictionaryKeys(world: Record<string, unknown>): void {
 }
 
 /**
+ * Convert one placeholder's `values` from the legacy list of strings to the list of `{ id, text }` records,
+ * rekeying its weight map from value text to the id each text was minted under. Idempotent by element type:
+ * a value already carrying a record passes through with its id, so a second run is a no-op and a
+ * half-converted list (hand-edited world JSON) converts only the strings in it. A *text* key naming no value
+ * is dropped at the conversion — its key space is gone, so nothing could read it again — while an
+ * already-id-keyed map is left exactly as written, dead keys and all.
+ */
+function migratePlaceholderValues(ph: Record<string, unknown>): Record<string, unknown> {
+  if (!Array.isArray(ph.values)) return ph;
+  const isRecord = (v: unknown): v is PlaceholderValue =>
+    !!v && typeof v === 'object' && typeof (v as PlaceholderValue).id === 'string'
+    && typeof (v as PlaceholderValue).text === 'string';
+  // A list that is already all records has an already-id-keyed map, so there is nothing to convert — and
+  // rekeying it anyway would drop the weights naming no value, quietly repairing the exact condition the
+  // Bench's `placeholder-weight-unknown-value` rule exists to report.
+  if (ph.values.every(isRecord)) return ph;
+  const values: PlaceholderValue[] = ph.values.map((v) =>
+    (isRecord(v) ? v : { id: randomUUID(), text: typeof v === 'string' ? v : String(v ?? '') }));
+  const next: Record<string, unknown> = { ...ph, values };
+  const weights = ph.weights;
+  if (!weights || typeof weights !== 'object') return next;
+  // Keyed by text before, by id now. A text naming two values cannot exist — the editors collapse repeats —
+  // so the first match is the only match.
+  const byText = new Map(values.map((v) => [v.text, v.id]));
+  const live = new Set(values.map((v) => v.id));
+  const rekeyed: Record<string, number> = {};
+  for (const [key, w] of Object.entries(weights as Record<string, unknown>)) {
+    if (typeof w !== 'number') continue;
+    const id = live.has(key) ? key : byText.get(key);
+    if (id) rekeyed[id] = w;
+  }
+  if (Object.keys(rekeyed).length) next.weights = rekeyed;
+  else delete next.weights;
+  return next;
+}
+
+/**
+ * Give every placeholder's values their stable ids. Deliberately NOT version-gated, for the same reason as
+ * `foldDictionaryIntoBooks`: shipped 2.x worlds carry `version === APP_VERSION` yet predate the records.
+ */
+function migrateWorldPlaceholders(world: Record<string, unknown>): void {
+  if (!Array.isArray(world.placeholders)) return;
+  world.placeholders = world.placeholders.map((ph) =>
+    (ph && typeof ph === 'object' ? migratePlaceholderValues(ph as Record<string, unknown>) : ph));
+}
+
+/** {@link migratePlaceholderValues} over a carried def list — what an entity card or a dictionary file
+ *  brings with it, which never passes through `migrateWorld`. */
+export function migrateCarriedPlaceholders(raw: unknown): Placeholder[] {
+  if (!Array.isArray(raw)) return [];
+  return raw.map((ph) =>
+    (ph && typeof ph === 'object' ? migratePlaceholderValues(ph as Record<string, unknown>) : ph)) as Placeholder[];
+}
+
+/**
  * Retype a stat carrying the removed `list` type as a plain number. Upstream v1.1 defined the type but no
  * runtime path ever consumed it — its array `value` reached gameplay as `NaN` — so the items are dropped
  * and the stat starts at its floor. Idempotent; returns the same reference for anything already numeric.
@@ -269,7 +326,8 @@ function coerceLegacyListStats(stats: readonly Stat[]): Stat[] {
 /**
  * Bring an imported world up to the current format and stamp it with `APP_VERSION`. The dictionary→books
  * fold, the keyword-array migration, the entity-gallery fold, the entity-location flip, the
- * connection-record pair-merge and the start-flag rename run unconditionally (they aren't
+ * connection-record pair-merge, the start-flag rename and the placeholder value-record conversion run
+ * unconditionally (they aren't
  * version-gated — see `foldDictionaryIntoBooks`); the rest is skipped for a world already at `APP_VERSION`. Moves the legacy root `customPlayerVRM` bare data-URL into
  * `worldOverview.customPlayerVRM` as a `MediaAsset`, auto-binds legacy body stats to body morphs, and
  * renames v1.2 description keys on entities/locations/traits to the audience-based keys. Remaining field
@@ -285,6 +343,7 @@ export function migrateWorld(raw: unknown): World {
   flipEntityLocationMembership(world);
   migrateLocationConnections(world);
   migrateStartLocationFlag(world);
+  migrateWorldPlaceholders(world);
   if (world.version === APP_VERSION) return world as unknown as World;
 
   const overview = { ...((world.worldOverview as Record<string, unknown>) ?? {}) };

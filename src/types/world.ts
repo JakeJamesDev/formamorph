@@ -80,6 +80,9 @@ export interface TraitStatToggle {
 export interface TraitPlaceholderPin {
   placeholderId: string;
   value: string;
+  /** The pinned value's id, when the pin names one the placeholder carries. Preferred over `value`, so a
+   *  pin picked off the list follows the author re-spelling it. Absent for a value typed off the list. */
+  valueId?: string;
 }
 
 /** A folder grouping traits in the editor and the selection screen; nestable via `parentId`. */
@@ -378,15 +381,23 @@ export interface World {
   placeholders?: Placeholder[];
 }
 
+/** One authored value: a stable id and the author's text. The id is minted once and never changes, so a
+ *  draw weight or a trait pin keyed by it survives the author re-spelling the value; `text` is what
+ *  resolves and what the editor edits. Values stay unique by text within one placeholder. */
+export interface PlaceholderValue {
+  id: string;
+  text: string;
+}
+
 /** One author-defined placeholder. Empty `values` resolves to `""`; one value is a Variable, fixed whatever
  *  the kind says. `id` is stable — in-text chips reference it, so renaming `name` never breaks a chip. A
  *  value that is exactly one chip is a structural child, addressable by path from world text. */
 export interface Placeholder {
   id: string;
   name: string;
-  values: string[];
-  /** Relative draw weight per value; a value absent from the map weighs 1. Weight 0 benches a value without
-   *  deleting it. Absent map (or all-1 weights) = a uniform draw. */
+  values: PlaceholderValue[];
+  /** Relative draw weight per value id; a value absent from the map weighs 1. Weight 0 benches a value
+   *  without deleting it. Absent map (or all-1 weights) = a uniform draw. */
   weights?: Record<string, number>;
   /** The kind, as the author declared it: `true` ⇒ a Wildcard, one value drawn per playthrough; `false` ⇒
    *  an Object, whose whole placement joins every value with `", "`. Absent ⇒ inferred from the value count

@@ -3,6 +3,7 @@ import { worldUsesAdvancedFeatures } from './editorAdvancedData';
 import type { AdvancedDataInput } from './editorAdvancedData';
 import type { Dictionary, Entity, GameLocation, Stat, Trait, WorldOverview } from '@/types';
 
+import { phValues } from '@/test/placeholderValues';
 const overview = (over: Partial<WorldOverview> = {}): WorldOverview => ({
   name: 'Sedge Landing', description: '', author: '', thumbnail: null, bgm: null, systemPrompt: '',
   use3DModel: false, tags: [], ...over,
@@ -26,7 +27,7 @@ describe('worldUsesAdvancedFeatures', () => {
   });
 
   it('says yes about a placeholder, which has no Simple tab at all', () => {
-    expect(worldUsesAdvancedFeatures(plain({ placeholders: [{ id: 'p1', name: 'Hue', values: ['red'] }] }))).toBe(true);
+    expect(worldUsesAdvancedFeatures(plain({ placeholders: [{ id: 'p1', name: 'Hue', values: phValues(['red']) }] }))).toBe(true);
   });
 
   it('says yes about a muted book, and about an entry using an Advanced-only option', () => {

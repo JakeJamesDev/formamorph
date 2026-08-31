@@ -4,6 +4,7 @@ import { encodePlaceholderToken } from '@/lib/placeholders';
 import type { Placeholder } from '@/types';
 import PlaceholderText from './PlaceholderText';
 
+import { phValues } from '@/test/placeholderValues';
 // Through the real codec, never a hand-written token: a test that spells the wire format itself keeps
 // passing after that format moves.
 const chip = (id: string, at = '1') => encodePlaceholderToken({ id, mode: 'world', placementId: `v-${id}-${at}` });
@@ -11,7 +12,7 @@ const drilled = (id: string, ...refs: string[]) => encodePlaceholderToken({
   id, mode: 'world', placementId: 'p1', path: refs.map((ref) => ({ kind: 'val', ref })),
 });
 
-const P = (id: string, name: string, values: string[] = []): Placeholder => ({ id, name, values });
+const P = (id: string, name: string, values: string[] = []): Placeholder => ({ id, name, values: phValues(values) });
 
 // Molly holds two variants, each variant holds a Hair of its own. Hair is the name that exists twice, so a
 // pill that showed only the last step could not tell the two apart.

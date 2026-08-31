@@ -3,6 +3,7 @@ import { buildDictionaryContext, getActivatedDictionary, flattenEnabledBookEntri
 import { estimateTokens } from '@/lib/memoryUtils';
 import { entryVectorKey, SEMANTIC_LORE_CAP } from '@/lib/semanticDictionary';
 import type { Dictionary, DictionaryEntry, Entity, Placeholder } from '@/types';
+import { phValues } from '@/test/placeholderValues';
 import {
   buildTriggerReport, describeHitOrigin, describeNearMiss, describeRegion, joinHistory, otherHistoryHits,
   splitHistory, type TriggerWorld,
@@ -287,7 +288,7 @@ describe('buildTriggerReport — the rendered context', () => {
   });
 
   it('resolves the chips in an entry’s text as the editor describes them', () => {
-    const placeholders = [{ id: 'p1', name: 'Harbor', type: 'variable', values: ['Sedge Landing'] }] as unknown as Placeholder[];
+    const placeholders = [{ id: 'p1', name: 'Harbor', type: 'variable', values: phValues(['Sedge Landing']) }] as unknown as Placeholder[];
     const report = buildTriggerReport(
       world({
         dictionaries: [book([entry({ id: 'd1', name: 'Tides', key: ['tide'], value: 'The tide runs at {{ph:p1:world:x}}.' })])],
@@ -425,7 +426,7 @@ describe('buildTriggerReport — entities present', () => {
   });
 
   it('matches on a single-valued placeholder’s real text', () => {
-    const placeholders = [{ id: 'p1', name: 'Harbor', type: 'variable', values: ['Sedge Landing'] }] as unknown as Placeholder[];
+    const placeholders = [{ id: 'p1', name: 'Harbor', type: 'variable', values: phValues(['Sedge Landing']) }] as unknown as Placeholder[];
     const report = buildTriggerReport(
       world({ entities: [ent('e1', '{{ph:p1:world:x}}')], placeholders }),
       'Sedge Landing wakes slowly.',
@@ -435,7 +436,7 @@ describe('buildTriggerReport — entities present', () => {
 });
 
 describe('buildTriggerReport — under the lens PC', () => {
-  const placeholders = [{ id: 'p1', name: 'Alias', values: ['Maren', 'Vosk'] }] as unknown as Placeholder[];
+  const placeholders = [{ id: 'p1', name: 'Alias', values: phValues(['Maren', 'Vosk']) }] as unknown as Placeholder[];
   const pinned = world({
     entities: [ent('e1', '{{ph:p1:world:x}}')],
     dictionaries: [book([entry({ id: 'd1', name: 'The {{ph:p1:world:y}} Line', key: ['tide'], value: 'Of {{ph:p1:world:z}}.' })])],

@@ -1,5 +1,7 @@
 import { describe, it, expect } from 'vitest';
-import type { Stat, Trait, TraitGroup } from '@/types';
+import type { Placeholder, Stat, Trait, TraitGroup } from '@/types';
+import { phValues, phValueId } from '@/test/placeholderValues';
+import { reconcilePlaceholderValues } from './placeholders';
 import {
   traitOrderIndex,
   inAuthoredOrder,
@@ -12,6 +14,7 @@ import {
   refreshChosenTraits,
   renamedPlaceholderValues,
   repinRenamedValues,
+  withPinnedValue,
 } from './traitEffects';
 
 const T = (id: string, extra: Partial<Trait> = {}): Trait => ({
@@ -200,13 +203,16 @@ describe('collapseExclusiveDefaults', () => {
 
 describe('pins following a placeholder value rename', () => {
   const P = (placeholderId: string, value: string) => ({ placeholderId, value });
-  // The author-visible operation: an edit to one placeholder's value list, and what the world's traits
-  // pin afterwards. Composed here so the tests state behavior, not the shape of the intermediate pairs.
-  const afterEdit = (traits: Trait[], placeholderId: string, prev: string[], next: string[]) =>
-    repinRenamedValues(traits, placeholderId, renamedPlaceholderValues(prev, next));
+  // The author-visible operation: the editor's own edit to a value list, then the sweep the world runs over
+  // it. Composed here so the tests state behavior, not the shape of the intermediate pairs.
+  const afterEdit = (traits: Trait[], placeholderId: string, prev: string[], next: string[]) => {
+    const before = phValues(prev);
+    const after = reconcilePlaceholderValues(before, next);
+    return repinRenamedValues(traits, placeholderId, renamedPlaceholderValues(before, after));
+  };
   const pinsOf = (traits: Trait[]) => traits.map((t) => t.placeholderPins ?? []);
 
-  it('carries a pin onto the renamed value', () => {
+  it('carries a text-keyed pin onto the renamed value', () => {
     const traits = [T('t', { placeholderPins: [P('hair', 'Red')] })];
     expect(pinsOf(afterEdit(traits, 'hair', ['Red', 'Blue'], ['Crimson', 'Blue'])))
       .toEqual([[P('hair', 'Crimson')]]);
@@ -219,7 +225,7 @@ describe('pins following a placeholder value rename', () => {
 
   it('treats a delete plus an add as two edits, not a rename', () => {
     const traits = [T('t', { placeholderPins: [P('hair', 'Red')] })];
-    // Length changes, so nothing is claimed to have been renamed into anything.
+    // Each surviving value keeps its own id, so neither edit claims anything was renamed into anything.
     expect(afterEdit(traits, 'hair', ['Red', 'Blue'], ['Blue'])).toBe(traits);
     expect(afterEdit(traits, 'hair', ['Red', 'Blue'], ['Red', 'Blue', 'Green'])).toBe(traits);
   });
@@ -255,9 +261,38 @@ describe('pins following a placeholder value rename', () => {
     expect(pinsOf(traits)).toEqual([[P('hair', 'Crimson')]]);
   });
 
-  it('leaves a rename that still exists elsewhere in the list alone', () => {
-    // "Red" survives at another position, so the edit reads as adding a value, not renaming one.
-    const traits = [T('t', { placeholderPins: [P('hair', 'Red')] })];
-    expect(afterEdit(traits, 'hair', ['Red', 'Red'], ['Crimson', 'Red'])).toBe(traits);
+  it('leaves a pin naming its value by id alone — the id already follows the rename', () => {
+    const traits = [T('t', { placeholderPins: [{ ...P('hair', 'Red'), valueId: phValueId('Red') }] })];
+    expect(afterEdit(traits, 'hair', ['Red'], ['Crimson'])).toBe(traits);
+  });
+});
+
+describe('pins naming their value by id', () => {
+  const hair = (texts: string[]): Placeholder => ({ id: 'hair', name: 'Hair', values: phValues(texts) });
+
+  it('reads the value’s current text, so a rename moves the pin with it', () => {
+    const trait = T('t', { placeholderPins: [{ placeholderId: 'hair', value: 'Red', valueId: phValueId('Red') }] });
+    // The stored text is the pin as written; the list has since been re-spelled under the same id.
+    const renamed: Placeholder = { id: 'hair', name: 'Hair', values: [{ id: phValueId('Red'), text: 'Crimson' }] };
+    expect(activePlaceholderPins([trait], [renamed])).toEqual({ hair: 'Crimson' });
+  });
+
+  it('falls back to the written text when the id names nothing', () => {
+    const trait = T('t', { placeholderPins: [{ placeholderId: 'hair', value: 'Ash-Gray', valueId: 'v:gone' }] });
+    expect(activePlaceholderPins([trait], [hair(['Red'])])).toEqual({ hair: 'Ash-Gray' });
+  });
+
+  it('names a picked value by id and leaves a typed one free text', () => {
+    const pin = { placeholderId: 'hair', value: '' };
+    expect(withPinnedValue(pin, 'Red', [hair(['Red', 'Blue'])]))
+      .toEqual({ placeholderId: 'hair', value: 'Red', valueId: phValueId('Red') });
+    expect(withPinnedValue(pin, 'Ash-Gray', [hair(['Red', 'Blue'])]))
+      .toEqual({ placeholderId: 'hair', value: 'Ash-Gray' });
+  });
+
+  it('drops a stale id when the pin is retyped off the list', () => {
+    const pin = { placeholderId: 'hair', value: 'Red', valueId: phValueId('Red') };
+    expect(withPinnedValue(pin, 'Ash-Gray', [hair(['Red'])]))
+      .toEqual({ placeholderId: 'hair', value: 'Ash-Gray' });
   });
 });

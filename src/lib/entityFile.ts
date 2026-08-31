@@ -1,6 +1,6 @@
 import { randomUUID } from "@/lib/uuid";
 import type { Entity, Placeholder } from '@/types';
-import { APP_VERSION, WORLD_FILE_KIND, SAVE_FILE_KIND } from './version';
+import { APP_VERSION, WORLD_FILE_KIND, SAVE_FILE_KIND, migrateCarriedPlaceholders } from './version';
 import { DICTIONARY_FILE_KIND } from './dictionaryFile';
 import { collectUsedPlaceholders, describePlaceholders } from './placeholders';
 import type { Dictionary } from '@/types';
@@ -94,7 +94,7 @@ export function parseEntityCardData(raw: unknown): Entity {
     ...(typeof obj.imageTags === 'string' && obj.imageTags ? { imageTags: obj.imageTags } : {}),
     ...(extras.length ? { images: extras } : {}),
     // Carried placeholder defs ride along; absorbed into World.placeholders when this entity is added to a world.
-    ...(Array.isArray(obj.placeholders) ? { placeholders: obj.placeholders as Placeholder[] } : {}),
+    ...(Array.isArray(obj.placeholders) ? { placeholders: migrateCarriedPlaceholders(obj.placeholders) } : {}),
   };
 }
 

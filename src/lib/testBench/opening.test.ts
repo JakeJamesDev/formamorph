@@ -3,7 +3,9 @@ import { OPENING_SCENE_CUE } from '@/components/game/GamePrompts';
 import { estimateTokens } from '@/lib/memoryUtils';
 import { activeDescriptor } from '@/lib/statContext';
 import type { Entity, GameLocation, Stat, Trait, TraitGroup, WorldOverview } from '@/types';
+import type { PlaceholderPick } from '@/lib/placeholders';
 import { buildLens, type LensState } from './lens';
+import { phValueId, phValues } from '@/test/placeholderValues';
 import {
   buildOpening, EMPTY_OPENING, primeOpeningRolls, rerollOpeningRolls, type OpeningWorld,
 } from './opening';
@@ -80,9 +82,9 @@ const world = (over: Partial<OpeningWorld> = {}): OpeningWorld => ({
     ],
   }],
   placeholders: [
-    { id: 'ph-hair', name: 'Hair Color', values: ['ash', 'copper', 'jet'] },
-    { id: 'ph-coin', name: 'Coin Bird', values: ['gull', 'wren'], weights: { gull: 3, wren: 1 } },
-    { id: 'ph-gift', name: 'Gift', values: ['knife', 'ribbon', 'shell'] },
+    { id: 'ph-hair', name: 'Hair Color', values: phValues(['ash', 'copper', 'jet']) },
+    { id: 'ph-coin', name: 'Coin Bird', values: phValues(['gull', 'wren']), weights: { [phValueId('gull')]: 3, [phValueId('wren')]: 1 } },
+    { id: 'ph-gift', name: 'Gift', values: phValues(['knife', 'ribbon', 'shell']) },
   ],
   ...over,
 });
@@ -92,8 +94,8 @@ const lensAt = (w: OpeningWorld, state: Partial<LensState> = {}) =>
 
 // A deterministic chooser: always the first value, so a re-mint is observable against a `pick` that
 // chose the last.
-const pickFirst = (values: string[]) => values[0];
-const pickLast = (values: string[]) => values[values.length - 1];
+const pickFirst: PlaceholderPick = (values) => values[0].text;
+const pickLast: PlaceholderPick = (values) => values[values.length - 1].text;
 
 const openingFor = (w: OpeningWorld, pcTraitId: string | null = null) => {
   const rolls = primeOpeningRolls(w, {}, pickFirst);

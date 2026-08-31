@@ -6,7 +6,7 @@
 // author sets precedence by dragging rows in the editor rather than by learning a rule.
 
 import { buildTraitTree, flattenTraitTree } from './traitTree';
-import type { Stat, Trait, TraitGroup } from '@/types';
+import type { Placeholder, PlaceholderValue, Stat, Trait, TraitGroup, TraitPlaceholderPin } from '@/types';
 
 /** Trait id → its position in the authored tree, depth-first. Ids missing from the world sort last. */
 export function traitOrderIndex(traits: Trait[], groups: TraitGroup[]): Map<string, number> {
@@ -65,13 +65,28 @@ export function enabledStats<T extends { id: string }>(stats: T[], enabled: Reco
   return stats.filter((s) => enabled[s.id] !== false);
 }
 
-/** Placeholder id → the value the active traits force it to, later traits winning. Empty pins are ignored,
- *  so a half-filled editor row never blanks a placeholder. */
-export function activePlaceholderPins(activeInOrder: Trait[]): Record<string, string> {
+/**
+ * Placeholder id → the value the active traits force it to, later traits winning. Empty pins are ignored,
+ * so a half-filled editor row never blanks a placeholder.
+ *
+ * A pin naming a value by id reads that value's *current* text, so a pin picked off the list follows the
+ * author re-spelling it. A pin whose id names nothing — a value since deleted, or a typed pin that never
+ * had one — falls back to the text as written, which is what pinning a value off the list is for.
+ */
+export function activePlaceholderPins(
+  activeInOrder: Trait[],
+  placeholders: readonly Placeholder[] = [],
+): Record<string, string> {
+  const byId = new Map(placeholders.map((p) => [p.id, p]));
   const out: Record<string, string> = {};
   for (const t of activeInOrder) {
     for (const pin of t.placeholderPins ?? []) {
-      if (pin.placeholderId && pin.value) out[pin.placeholderId] = pin.value;
+      if (!pin.placeholderId) continue;
+      const named = pin.valueId
+        ? byId.get(pin.placeholderId)?.values?.find((v) => v.id === pin.valueId)?.text
+        : undefined;
+      const value = named ?? pin.value;
+      if (value) out[pin.placeholderId] = value;
     }
   }
   return out;
@@ -82,8 +97,12 @@ export function activePlaceholderPins(activeInOrder: Trait[]): Record<string, st
  *  advertises what picking the trait does, not what the current selection happens to have made true.
  *  Everything outside the card (stat bars, locations, narration) keeps the active pins. Returns `activePins`
  *  itself when the trait pins nothing, so pin-less traits keep resolver identity. */
-export function traitScopedPins(trait: Trait, activePins: Record<string, string>): Record<string, string> {
-  const own = activePlaceholderPins([trait]);
+export function traitScopedPins(
+  trait: Trait,
+  activePins: Record<string, string>,
+  placeholders: readonly Placeholder[] = [],
+): Record<string, string> {
+  const own = activePlaceholderPins([trait], placeholders);
   return Object.keys(own).length ? { ...activePins, ...own } : activePins;
 }
 
@@ -176,35 +195,52 @@ export function traitConflicts(
   };
 }
 
-/** One value-list edit that reads as a rename: the string that sat at a position, and what replaced it. */
+/**
+ * A pin rewritten to hold `value`, naming that value by id when the placeholder carries one spelling it
+ * exactly. Every surface that writes a pin's text goes through here, so a pin picked off the list follows a
+ * rename and a value typed off the list stays the free text it is.
+ */
+export function withPinnedValue(
+  pin: TraitPlaceholderPin,
+  value: string,
+  placeholders: readonly Placeholder[],
+): TraitPlaceholderPin {
+  const valueId = placeholders
+    .find((p) => p.id === pin.placeholderId)?.values?.find((v) => v.text === value)?.id;
+  const { valueId: _drop, ...rest } = pin;
+  return { ...rest, value, ...(valueId ? { valueId } : {}) };
+}
+
+/** One value-list edit that reads as a rename: the text a value held, and what replaced it. */
 export interface PlaceholderValueRename {
   from: string;
   to: string;
 }
 
 /**
- * The renames in an edit to a placeholder's value list. Same identity rule as the draw weights: a
- * same-length change is a rename or a reorder (chip edits keep their position), so a position whose value
- * changed is a rename — unless the old string still sits somewhere in the new list, which makes it a
- * reorder. A length change is an add or a delete and renames nothing.
+ * The renames in an edit to a placeholder's value list — a value whose id stayed and whose text changed.
+ * Nothing here is positional: a value's id is its identity, so a reorder renames nothing and a delete plus
+ * an add is two edits rather than one rename.
  */
-export function renamedPlaceholderValues(prev: string[], next: string[]): PlaceholderValueRename[] {
-  if (prev.length !== next.length) return [];
+export function renamedPlaceholderValues(
+  prev: readonly PlaceholderValue[],
+  next: readonly PlaceholderValue[],
+): PlaceholderValueRename[] {
+  const before = new Map(prev.map((v) => [v.id, v.text]));
   const out: PlaceholderValueRename[] = [];
-  next.forEach((to, i) => {
-    const from = prev[i];
-    if (!from || !to || from === to || next.includes(from)) return;
-    out.push({ from, to });
-  });
+  for (const v of next) {
+    const from = before.get(v.id);
+    if (from && v.text && from !== v.text) out.push({ from, to: v.text });
+  }
   return out;
 }
 
 /**
- * Carry every trait pin on one placeholder across that placeholder's renames, so a value the author
- * re-spells stays pinned instead of orphaning the pin on a string the placeholder no longer offers.
- * A pin holding anything else — another placeholder, a custom string the author typed off the list, a
- * half-filled row (no rename ever names the empty string) — is left exactly as written. Returns `traits`
- * itself when nothing matched.
+ * Carry every *text-keyed* trait pin on one placeholder across that placeholder's renames, so a pin
+ * written before value ids existed stays on its value instead of orphaning on a string the placeholder no
+ * longer offers. A pin naming its value by id needs nothing — it already follows the rename — and any
+ * other pin, including a custom string the author typed off the list, is left exactly as written. Returns
+ * `traits` itself when nothing matched.
  */
 export function repinRenamedValues(
   traits: Trait[],
@@ -219,7 +255,7 @@ export function repinRenamedValues(
     if (!pins?.length) return trait;
     let changed = false;
     const next = pins.map((pin) => {
-      if (pin.placeholderId !== placeholderId) return pin;
+      if (pin.placeholderId !== placeholderId || pin.valueId) return pin;
       const value = byOldValue.get(pin.value);
       if (value === undefined) return pin;
       changed = true;

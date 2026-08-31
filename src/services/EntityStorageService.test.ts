@@ -4,6 +4,7 @@ import { describe, it, expect, beforeEach } from 'vitest';
 import EntityStorageService, { type StoredEntityRecord } from './EntityStorageService';
 import { encodePlaceholderToken } from '@/lib/placeholders';
 
+import { phValues } from '@/test/placeholderValues';
 const record = (id: string, name = 'Mara'): StoredEntityRecord => ({ id, name, data: { id, name } });
 
 /** The shape the character editor saves with — id, name, data, and nothing else. */
@@ -119,7 +120,7 @@ describe('EntityStorageService', () => {
         id: 'e1',
         name: 'Mara',
         playerDescription: `Her ${token} eyes.`,
-        placeholders: [{ id: 'eye', name: 'eye', values: ['amber'] }],
+        placeholders: [{ id: 'eye', name: 'eye', values: phValues(['amber']) }],
       },
     });
 
@@ -137,7 +138,7 @@ describe('EntityStorageService', () => {
       data: {
         id: 'e2',
         name: `Keeper of ${token}`,
-        placeholders: [{ id: 'town', name: 'Town', values: ['Sedge', 'Marrow'] }],
+        placeholders: [{ id: 'town', name: 'Town', values: phValues(['Sedge', 'Marrow']) }],
       },
     });
 

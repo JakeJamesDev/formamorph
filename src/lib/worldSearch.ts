@@ -1,5 +1,6 @@
 import { OPENING_CUE_FIELD_KEY, setOpeningCue, storedOpeningCue } from '@/lib/openingCue';
 import { parsePlaceholderText } from '@/lib/placeholders';
+import { withPinnedValue } from '@/lib/traitEffects';
 import {
   setWorldPromptOverride, storedWorldPrompt, worldPromptFieldKey, WORLD_PROMPT_KINDS, WORLD_PROMPT_KIND_LABELS,
 } from '@/lib/worldPrompt';
@@ -228,7 +229,11 @@ export function collectSearchTargets(src: SearchSources): SearchTarget[] {
     add({ ...where, chipCapable: true }, 'aiDescription', 'AI-Facing Description', trait.aiDescription, (r, v) => ({ ...r, aiDescription: v }));
     trait.placeholderPins?.forEach((pin, i) => {
       add({ ...where, chipCapable: false }, `placeholderPins[${i}].value`, 'Pinned Value', pin.value,
-        (r, v) => ({ ...r, placeholderPins: r.placeholderPins?.map((x, j) => (j === i ? { ...x, value: v } : x)) }));
+        (r, v) => ({
+          ...r,
+          placeholderPins: r.placeholderPins?.map((x, j) =>
+            (j === i ? withPinnedValue(x, v, src.placeholders ?? []) : x)),
+        }));
     });
   });
   (src.traitGroups ?? []).forEach((group) => {
@@ -263,16 +268,13 @@ export function collectSearchTargets(src: SearchSources): SearchTarget[] {
     const where = { tab: 'placeholders', itemId: ph.id, itemLabel: untitled(ph.name, 'Placeholder'), chipCapable: false };
     const { add, addEach } = bind(`placeholder:${ph.id}`, ph, src.updatePlaceholder);
     add(where, 'name', 'Name', ph.name, (r, v) => ({ ...r, name: v }));
-    // `weights` is keyed by the value string, so an edited value carries its weight across or loses it.
-    addEach(where, 'values', 'Values', ph.values, (r, next) => {
-      if (!r.weights) return { ...r, values: next };
-      const carried: Record<string, number> = {};
-      next.forEach((value, i) => {
-        const weight = r.weights?.[r.values[i]];
-        if (weight !== undefined) carried[value] = weight;
-      });
-      return { ...r, values: next, weights: carried };
-    }, (r) => r.values);
+    // Each value edits its own text; the record's id stays, so its weight and its trait pins follow it and
+    // there is nothing to carry across.
+    // `?? []` throughout: hand-edited world JSON can omit the field the type calls required, and the scan
+    // runs in the editor's render, so a missing list has to be nothing to search rather than a blank editor.
+    addEach(where, 'values', 'Values', (ph.values ?? []).map((v) => v.text),
+      (r, next) => ({ ...r, values: (r.values ?? []).map((v, i) => ({ ...v, text: next[i] ?? v.text })) }),
+      (r) => (r.values ?? []).map((v) => v.text));
   });
 
   return targets;

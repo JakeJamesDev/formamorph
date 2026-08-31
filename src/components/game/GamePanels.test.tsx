@@ -8,6 +8,7 @@ import { readTurn, renderLeftPanel, renderMiddlePanel, renderRightPanel, statFix
 import { resetTtsPlayback, setTtsPlayback } from '@/test/stubs/ttsPlayback';
 import { lastVrmViewerProps, resetVrmViewerStub } from '@/test/stubs/vrmViewer';
 
+import { phValues } from '@/test/placeholderValues';
 // three.js needs a WebGL context and the TTS engine a Web Audio graph; jsdom has neither.
 vi.mock('@/views/VRMViewer', () => import('@/test/stubs/vrmViewer'));
 vi.mock('@/lib/useTtsPlayback', () => import('@/test/stubs/ttsPlayback'));
@@ -790,7 +791,7 @@ describe('MiddlePanel — the continue pseudo-choice', () => {
 describe('placeholder names reach the panels resolved', () => {
   // A one-value placeholder is a Variable: it resolves from its own value with no roll, so the assertion is
   // deterministic without seeding a save's rolls. The chip is the real stored token, not a stand-in.
-  const TOWN = { id: 'ph-town', name: 'Town', values: ['Sedge'] };
+  const TOWN = { id: 'ph-town', name: 'Town', values: phValues(['Sedge']) };
   const CHIP = encodePlaceholderToken({ id: 'ph-town', mode: 'world', placementId: 'p1' });
 
   it('renders a stat whose name holds a chip by its value, never the raw token', () => {
@@ -826,7 +827,7 @@ describe('placeholder names reach the panels resolved', () => {
   // A pin has to reach the panels, not just the pre-game pickers: stat deltas are matched by resolved name,
   // so a stat bar showing the roll while the AI is told the pinned name would silently stop matching.
   it('renders a stat name under the pin an active trait imposes, not the rolled value', () => {
-    const WILD = { id: 'ph-town', name: 'Town', values: ['Sedge', 'Marrow'] };
+    const WILD = { id: 'ph-town', name: 'Town', values: phValues(['Sedge', 'Marrow']) };
     const PINNER = {
       id: 't-sworn', name: 'Sworn', statChanges: [],
       placeholderPins: [{ placeholderId: 'ph-town', value: 'Marrow' }],
@@ -849,7 +850,7 @@ describe('placeholder names reach the panels resolved', () => {
   // card (here the stat bar) follows the winning active pin. This is the confusion it exists to remove —
   // "Native of X" flipping to the other trait's town the moment that one was ticked.
   it("keeps each pinning trait's own text on its own pin while the stat bar follows the winner", () => {
-    const WILD = { id: 'ph-town', name: 'Town', values: ['Sedge', 'Marrow'] };
+    const WILD = { id: 'ph-town', name: 'Town', values: phValues(['Sedge', 'Marrow']) };
     const NATIVE = {
       id: 't-native', name: `Native of ${CHIP}`, statChanges: [],
       playerDescription: `Home is ${encodePlaceholderToken({ id: 'ph-town', mode: 'world', placementId: 'p2' })}.`,
@@ -892,7 +893,7 @@ describe('placeholder names reach the panels resolved', () => {
   // Gameplay stores the whole location object, so the copy it holds froze how the name read on arrival.
   // Reading it back out of the resolved world is what lets a pin switched on later move it.
   it('re-reads the current location, so a pin switched on after arrival moves its name', () => {
-    const WILD = { id: 'ph-town', name: 'Town', values: ['Sedge', 'Marrow'] };
+    const WILD = { id: 'ph-town', name: 'Town', values: phValues(['Sedge', 'Marrow']) };
     const tok = (p: string) => encodePlaceholderToken({ id: 'ph-town', mode: 'world', placementId: p });
     const SWORN = {
       id: 't-sworn', name: 'Sworn', statChanges: [], playerToggle: true,

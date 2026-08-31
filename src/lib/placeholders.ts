@@ -1,12 +1,14 @@
 import { randomUUID } from "@/lib/uuid";
-import type { Placeholder, PlaceholderRolls } from '@/types';
+import type { Placeholder, PlaceholderRolls, PlaceholderValue } from '@/types';
 import type { PromptSegment } from './promptTemplate';
 
 /**
  * Placeholders — resolve author-defined named values embedded in world text as inline chips. A placeholder
  * either draws one value (a choice) or joins them all (a record); `roll` decides, and without it the value
- * count does — 1 value = a fixed Variable, 2+ = a random Wildcard. Values are chip-capable themselves, so a
- * value that is exactly one chip is a structural child a chip's drill path can address by name or by id.
+ * count does — 1 value = a fixed Variable, 2+ = a random Wildcard. A value carries a stable id beside the
+ * author's text, so weights and trait pins key by identity and a rename cannot orphan either. Values are
+ * chip-capable themselves, so a value whose text is exactly one chip is a structural child a chip's drill
+ * path can address by name or by id.
  * This module is the deterministic core: the in-text token codec and one pure recursive resolution pass
  * applied wherever authored text surfaces (player display + AI context). Rolling is lazy — the first
  * resolution of a choice mints and persists its value via `setRoll`; later ones reuse it.
@@ -16,9 +18,10 @@ import type { PromptSegment } from './promptTemplate';
 
 export type PlaceholderMode = 'world' | 'unique';
 
-/** Chooses one of a Wildcard's values. `weights` is the def's per-value weight map (see `placeholderWeight`);
- *  tests pass a deterministic chooser that ignores it. */
-export type PlaceholderPick = (values: string[], weights?: Record<string, number>) => string;
+/** Chooses one of a Wildcard's values and returns its text — which is what a roll stores. `weights` is the
+ *  def's map, keyed by value id (see `placeholderWeight`); tests pass a deterministic chooser that ignores
+ *  it. */
+export type PlaceholderPick = (values: PlaceholderValue[], weights?: Record<string, number>) => string;
 
 /**
  * One step of a chip's drill path under its root placeholder. `val` names an explicit pick by the target
@@ -92,6 +95,50 @@ export function hasPlaceholders(text: string): boolean {
   return TOKEN_RE.test(text);
 }
 
+/** A freshly minted value record. The id is the value's identity from here on — nothing re-mints it. */
+export function newPlaceholderValue(text: string): PlaceholderValue {
+  return { id: randomUUID(), text };
+}
+
+/**
+ * The value list a set of author-typed texts stands for, keeping each unchanged value's id. A text the
+ * previous list already held keeps its own record; the texts left over take the ids left over, in order, so
+ * an in-place rename keeps its weight and its pins; anything past that is a fresh value. This is the only
+ * place a value's identity is decided, which is why the editor no longer carries weights across an edit.
+ */
+export function reconcilePlaceholderValues(
+  prev: readonly PlaceholderValue[],
+  nextTexts: readonly string[],
+): PlaceholderValue[] {
+  const byText = new Map(prev.map((v) => [v.text, v]));
+  const kept = new Set<string>();
+  const matched = nextTexts.map((text) => {
+    const hit = byText.get(text);
+    if (!hit || kept.has(hit.id)) return null;
+    kept.add(hit.id);
+    return hit;
+  });
+  const spare = prev.filter((v) => !kept.has(v.id));
+  let take = 0;
+  return matched.map((hit, i) => {
+    if (hit) return hit;
+    const reused = spare[take++];
+    return reused ? { ...reused, text: nextTexts[i] } : newPlaceholderValue(nextTexts[i]);
+  });
+}
+
+/** Drop weights naming no value in `values` — what an edit that removes a value leaves behind. Returns
+ *  `undefined` for an empty result, since an absent map already means a uniform draw. */
+export function prunePlaceholderWeights(
+  weights: Record<string, number> | undefined,
+  values: readonly PlaceholderValue[],
+): Record<string, number> | undefined {
+  if (!weights) return undefined;
+  const live = new Set(values.map((v) => v.id));
+  const out = Object.fromEntries(Object.entries(weights).filter(([id]) => live.has(id)));
+  return Object.keys(out).length ? out : undefined;
+}
+
 /** The token string of a value that is *exactly* one chip — the shape that makes a value a structural child
  *  of the placeholder holding it. A chip with text around it composes into the value instead, and is not
  *  addressable. */
@@ -110,7 +157,7 @@ export function collectPlaceholderParts(placeholders: Placeholder[]): Map<string
   const parts = new Map<string, string[]>();
   for (const holder of placeholders) {
     for (const value of holder.values) {
-      const lone = lonePlaceholderToken(value);
+      const lone = lonePlaceholderToken(value.text);
       const id = lone ? decodePlaceholderToken(lone)?.id : undefined;
       if (!id || id === holder.id) continue;
       const holders = parts.get(id);
@@ -128,7 +175,7 @@ export function collectPlaceholderParts(placeholders: Placeholder[]): Map<string
  * Import and absorb do not — those carry the kind the exporting world declared.
  */
 export function newPlaceholder(name: string, values: string[] = []): Placeholder {
-  return { id: randomUUID(), name, values, roll: true };
+  return { id: randomUUID(), name, values: values.map(newPlaceholderValue), roll: true };
 }
 
 /** Split text into literal runs and placeholder-chip tokens (mirrors parsePromptTemplate for the `{{ph}}`
@@ -220,7 +267,7 @@ export function collectUsedPlaceholders(texts: string[], available: Placeholder[
     const id = queue.pop()!;
     if (used.has(id)) continue;
     used.add(id);
-    for (const value of byId.get(id)?.values ?? []) queue.push(...chipIdsIn(value));
+    for (const value of byId.get(id)?.values ?? []) queue.push(...chipIdsIn(value.text));
   }
   return available.filter((p) => used.has(p.id));
 }
@@ -245,8 +292,8 @@ export function remintPlaceholderPlacements(text: string, minted: Map<string, st
 }
 
 /** {@link remintPlaceholderPlacements} over every string in a plain record (a `structuredClone`d world item),
- *  arrays and nested objects included. Pure. Not for placeholder defs — their `weights` are *keyed* by value
- *  text, which a blind walk would leave pointing at the old tokens. */
+ *  arrays and nested objects included. Pure. Not for placeholder defs — a def's values carry ids of their
+ *  own, which a copy has to re-mint in step with its weight map. */
 export function remintPlaceholdersDeep<T>(value: T, minted: Map<string, string> = new Map()): T {
   // The three casts narrow back to T after a structure-preserving map; the shape never changes.
   if (typeof value === 'string') return remintPlaceholderPlacements(value, minted) as unknown as T;
@@ -259,15 +306,24 @@ export function remintPlaceholdersDeep<T>(value: T, minted: Map<string, string> 
   return value;
 }
 
-/** A duplicate-ready copy of a placeholder def: every value's chip placements re-minted, and `weights` —
- *  keyed by value text — re-keyed in step so no weight silently detaches from its value. */
+/** A duplicate-ready copy of a placeholder def: every value's chip placements re-minted, its values given
+ *  ids of their own (a copy's values are new values), and `weights` re-keyed in step so no weight silently
+ *  detaches from the value it was set on. */
 export function remintPlaceholderDef(ph: Placeholder): Placeholder {
   const minted = new Map<string, string>();
-  const values = (ph.values ?? []).map((v) => remintPlaceholderPlacements(v, minted));
+  const idMap = new Map<string, string>();
+  const values = (ph.values ?? []).map((v) => {
+    const fresh = newPlaceholderValue(remintPlaceholderPlacements(v.text, minted));
+    idMap.set(v.id, fresh.id);
+    return fresh;
+  });
   const weights = ph.weights
-    ? Object.fromEntries(Object.entries(ph.weights).map(([v, w]) => [remintPlaceholderPlacements(v, minted), w]))
+    ? Object.fromEntries(
+      Object.entries(ph.weights).flatMap(([id, w]) => (idMap.has(id) ? [[idMap.get(id)!, w] as const] : [])),
+    )
     : undefined;
-  return { ...ph, values, ...(weights ? { weights } : {}) };
+  const { weights: _old, ...rest } = ph;
+  return { ...rest, values, ...(weights && Object.keys(weights).length ? { weights } : {}) };
 }
 
 /** Rewrite chip tokens' placeholder ids via `idMap` — the chip's root, and the target of every explicit-pick
@@ -300,7 +356,7 @@ function inReferenceOrder(carried: Placeholder[]): Placeholder[] {
     if (done.has(p.id) || onStack.has(p.id)) return;
     onStack.add(p.id);
     for (const value of p.values ?? []) {
-      for (const id of chipIdsIn(value)) {
+      for (const id of chipIdsIn(value.text)) {
         const child = byId.get(id);
         if (child) visit(child);
       }
@@ -320,28 +376,32 @@ function inReferenceOrder(carried: Placeholder[]): Placeholder[] {
  * id) for the caller to remap tokens with.
  *
  * A carried def's values are remapped before they are compared, so a structured def matches the world's copy
- * on what its chips *mean* rather than on the ids the exporting world happened to give them.
+ * on what its chips *mean* rather than on the ids the exporting world happened to give them. Value ids ride
+ * along untouched: they are scoped to their own placeholder, so no host id can collide with one.
  */
 export function absorbPlaceholders(
   carried: Placeholder[],
   worldPlaceholders: Placeholder[],
 ): { toAdd: Placeholder[]; idMap: Record<string, string> } {
-  const sameValues = (a: string[], b: string[]) => a.length === b.length && a.every((v, i) => v === b[i]);
+  const sameValues = (a: PlaceholderValue[], b: PlaceholderValue[]) =>
+    a.length === b.length && a.every((v, i) => v.text === b[i].text);
   // Two defs sharing a name and values but weighted differently are different defs — matching on values
-  // alone would silently re-point the import's chips at the host world's distribution.
+  // alone would silently re-point the import's chips at the host world's distribution. Their value ids
+  // differ, so the comparison pairs by position, which `sameValues` has already lined up.
   const sameWeights = (a: Placeholder, b: Placeholder) =>
-    (a.values ?? []).every((v) => placeholderWeight(a, v) === placeholderWeight(b, v));
+    (a.values ?? []).every((v, i) => {
+      const other = (b.values ?? [])[i];
+      return !!other && placeholderWeight(a, v) === placeholderWeight(b, other);
+    });
   const toAdd: Placeholder[] = [];
   const idMap: Record<string, string> = {};
   // Match against the world's list plus anything added so far this pass (so two carried copies of the same def
   // collapse to one).
   const pool = [...worldPlaceholders];
   for (const c of inReferenceOrder(carried)) {
-    const values = (c.values ?? []).map((v) => remapPlaceholderIds(v, idMap));
-    // Weights are keyed by value text, so a remapped value takes its weight's key with it.
-    const weights = c.weights
-      ? Object.fromEntries(Object.entries(c.weights).map(([v, w]) => [remapPlaceholderIds(v, idMap), w]))
-      : undefined;
+    const values = (c.values ?? []).map((v) => ({ ...v, text: remapPlaceholderIds(v.text, idMap) }));
+    // Weights key by value id, which the remap leaves alone, so the map carries across as written.
+    const weights = c.weights;
     const resolved: Placeholder = { ...c, values, ...(weights ? { weights } : {}) };
     // Compared by what the flag does, not by whether it is written: a 2-value def with `roll: true` is the
     // same def as one that infers the same choice from its value count, and must not duplicate it.
@@ -460,13 +520,15 @@ function describePh(ph: Placeholder, segs: PlaceholderSegment[], ctx: DescribeCt
   // Same order resolution uses: a pin applies before the values are looked at, so a pin on an emptied
   // placeholder is still the author's word.
   const pinned = ctx.pins?.[ph.id];
-  const values = pinned != null ? [pinned] : ph.values ?? [];
+  // A pin is text the author typed, not a value of this placeholder, so it stands in under a name rather
+  // than an id. Nothing on this path reads the id — describing never weighs, and `childChips` reads text.
+  const values = pinned != null ? [{ id: 'pin', text: pinned }] : ph.values ?? [];
   if (!values.length) return '';
   const inner: DescribeCtx = { ...ctx, depth: ctx.depth + 1, seen: new Set(ctx.seen).add(ph.id) };
 
   if (!segs.length) {
     // Every surface reading this takes one line, so a paragraph value is clipped on both branches.
-    const described = values.map((v) => placeholderValueLine(describeText(v, inner)));
+    const described = values.map((v) => placeholderValueLine(describeText(v.text, inner)));
     // A pin names one value, so the placeholder reads as that value whatever its roll flag says.
     return pinned == null && placeholderIsChoice(ph)
       ? describeChoice(described)
@@ -503,7 +565,7 @@ export function placeholderValueLine(value: string): string {
  */
 export function placeholderValueSummary(ph: Placeholder, placeholders?: Placeholder[]): string {
   const values = (ph.values ?? [])
-    .map((v) => placeholderValueLine(placeholders ? describePlaceholders(v, placeholders) : v))
+    .map(({ text }) => placeholderValueLine(placeholders ? describePlaceholders(text, placeholders) : text))
     .filter((v) => v !== '');
   const shown = values.slice(0, 3).join('|');
   return values.length > 3 ? `${shown}|…` : shown;
@@ -551,8 +613,8 @@ export interface ResolveOptions {
 }
 
 /** A value's relative draw weight — 1 unless the author set one. Negatives are treated as 0 (benched). */
-export function placeholderWeight(ph: Placeholder, value: string): number {
-  const w = ph.weights?.[value];
+export function placeholderWeight(ph: Placeholder, value: PlaceholderValue): number {
+  const w = ph.weights?.[value.id];
   return typeof w === 'number' && Number.isFinite(w) ? Math.max(0, w) : 1;
 }
 
@@ -562,26 +624,27 @@ export function isWeighted(ph: Placeholder): boolean {
 }
 
 /**
- * Each value's chance of being drawn, as a percentage keyed by value. Mirrors {@link weightedPick} exactly,
- * including its all-zero fallback to a uniform draw, so the editor's reveal never disagrees with the roll.
+ * Each value's chance of being drawn, as a percentage keyed by value id. Mirrors {@link weightedPick}
+ * exactly, including its all-zero fallback to a uniform draw, so the editor's reveal never disagrees with
+ * the roll.
  */
 export function placeholderChances(ph: Placeholder): Record<string, number> {
   const out: Record<string, number> = {};
   const values = ph.values ?? [];
   const total = values.reduce((sum, v) => sum + placeholderWeight(ph, v), 0);
   for (const v of values) {
-    out[v] = total > 0 ? (placeholderWeight(ph, v) / total) * 100 : 100 / values.length;
+    out[v.id] = total > 0 ? (placeholderWeight(ph, v) / total) * 100 : 100 / values.length;
   }
   return out;
 }
 
 /** Draw a value honoring per-value weights. Weights that sum to 0 (every value benched) fall back to a
  *  uniform draw rather than resolving to nothing — an author zeroing everything still gets a value. */
-const weightedPick = (values: string[], weights?: Record<string, number>): string => {
-  const uniform = () => values[Math.floor(Math.random() * values.length)];
+const weightedPick = (values: PlaceholderValue[], weights?: Record<string, number>): string => {
+  const uniform = () => values[Math.floor(Math.random() * values.length)].text;
   if (!weights) return uniform();
   const w = values.map((v) => {
-    const n = weights[v];
+    const n = weights[v.id];
     return typeof n === 'number' && Number.isFinite(n) ? Math.max(0, n) : 1;
   });
   const total = w.reduce((a, b) => a + b, 0);
@@ -589,9 +652,9 @@ const weightedPick = (values: string[], weights?: Record<string, number>): strin
   let r = Math.random() * total;
   for (let i = 0; i < values.length; i++) {
     r -= w[i];
-    if (r < 0) return values[i];
+    if (r < 0) return values[i].text;
   }
-  return values[values.length - 1];
+  return values[values.length - 1].text;
 };
 
 /** How many levels the walk descends before it gives up and reports a `depth` finding. */
@@ -632,12 +695,12 @@ interface ResolveCtx {
 /** Every structural child in a value list: its lone-chip values, paired with the placeholder each one roots
  *  at. Shared by the resolve and describe walks, which disagree about rolls but not about structure. */
 function childChips(
-  values: string[],
+  values: PlaceholderValue[],
   byId: Map<string, Placeholder>,
 ): Array<{ token: PlaceholderToken; target: Placeholder }> {
   const out: Array<{ token: PlaceholderToken; target: Placeholder }> = [];
   for (const value of values) {
-    const raw = lonePlaceholderToken(value);
+    const raw = lonePlaceholderToken(value.text);
     const token = raw ? decodePlaceholderToken(raw) : null;
     const target = token ? byId.get(token.id) : undefined;
     if (token && target) out.push({ token, target });
@@ -746,7 +809,7 @@ export function placeholderPathLevel(
     // Counted against every value, prose ones included: a value with no part of that name is a roll the
     // slot misses on, whether it is another variant or a plain string.
     slots: [...slots].map(([name, held]) => ({ name, partial: held < values.length })),
-    plain: values.filter((v) => !lonePlaceholderToken(v)).length,
+    plain: values.filter((v) => !lonePlaceholderToken(v.text)).length,
   };
 }
 
@@ -809,7 +872,7 @@ function resolvePh(ph: Placeholder, ctx: ResolveCtx): string {
   const values = ph.values ?? [];
   if (!values.length) return '';
   if (placeholderIsChoice(ph)) return resolveValue(selectValue(ph, inner), inner);
-  return values.map((v) => resolveValue(v, inner)).filter((s) => s !== '').join(', ');
+  return values.map((v) => resolveValue(v.text, inner)).filter((s) => s !== '').join(', ');
 }
 
 /** Resolve one value's text: literal runs stay, and every chip inside it walks as an authored one. */

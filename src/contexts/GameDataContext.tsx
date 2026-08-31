@@ -185,8 +185,8 @@ function useProvideGameData() {
     setPlaceholders(prev => [...prev, newPlaceholder]);
   }, []);
 
-  // Renaming a value carries the trait pins that targeted it, so vocabulary cleanup is one field edit
-  // rather than a hunt through every trait. Pins are keyed by value string, so nothing else links them.
+  // Renaming a value carries the trait pins written before value ids existed, so vocabulary cleanup is one
+  // field edit rather than a hunt through every trait. A pin naming its value by id needs nothing.
   const updatePlaceholder = useCallback((updated: Placeholder) => {
     const before = placeholders.find(p => p.id === updated.id);
     setPlaceholders(prev => prev.map(p => (p.id === updated.id ? updated : p)));

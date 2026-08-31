@@ -4,7 +4,8 @@ import { promptVocabulary, placeholderVocabulary } from './chipVocabulary';
 import { encodePlaceholderToken, decodePlaceholderToken } from './placeholders';
 import type { PlaceholderSegment } from './placeholders';
 
-const P = (id: string, values: string[]): Placeholder => ({ id, name: `name-${id}`, values });
+import { phValues } from '@/test/placeholderValues';
+const P = (id: string, values: string[]): Placeholder => ({ id, name: `name-${id}`, values: phValues(values) });
 const tok = (id: string, mode: 'world' | 'unique', pid = 'p1') => encodePlaceholderToken({ id, mode, placementId: pid });
 
 describe('promptVocabulary (regression — the existing prompt family still works)', () => {
@@ -98,11 +99,11 @@ describe('placeholderVocabulary — drill and inline create', () => {
   const val = (ref: string): PlaceholderSegment => ({ kind: 'val', ref });
   const chip = (id: string) => encodePlaceholderToken({ id, mode: 'world', placementId: `v-${id}` });
   const WORLD: Placeholder[] = [
-    { id: 'molly', name: 'Molly', values: [chip('white'), chip('asian')] },
-    { id: 'white', name: 'isWhite', roll: false, values: [chip('hair'), chip('eyes')] },
-    { id: 'asian', name: 'isAsian', roll: false, values: [chip('hair')] },
-    { id: 'hair', name: 'Hair', values: ['brown', 'black'] },
-    { id: 'eyes', name: 'Eyes', values: ['green'] },
+    { id: 'molly', name: 'Molly', values: phValues([chip('white'), chip('asian')]) },
+    { id: 'white', name: 'isWhite', roll: false, values: phValues([chip('hair'), chip('eyes')]) },
+    { id: 'asian', name: 'isAsian', roll: false, values: phValues([chip('hair')]) },
+    { id: 'hair', name: 'Hair', values: phValues(['brown', 'black']) },
+    { id: 'eyes', name: 'Eyes', values: phValues(['green']) },
   ];
   const v = placeholderVocabulary(WORLD);
 
@@ -225,11 +226,11 @@ describe('placeholderVocabulary — structure', () => {
   const val = (ref: string): PlaceholderSegment => ({ kind: 'val', ref });
   const chip = (id: string) => encodePlaceholderToken({ id, mode: 'world', placementId: `v-${id}` });
   const WORLD: Placeholder[] = [
-    { id: 'molly', name: 'Molly', values: [chip('white'), chip('asian')] },
-    { id: 'white', name: 'isWhite', roll: false, values: [chip('hair'), chip('eyes')] },
-    { id: 'asian', name: 'isAsian', roll: false, values: [chip('hair')] },
-    { id: 'hair', name: 'Hair', values: ['brown', 'black'] },
-    { id: 'eyes', name: 'Eyes', values: ['green'] },
+    { id: 'molly', name: 'Molly', values: phValues([chip('white'), chip('asian')]) },
+    { id: 'white', name: 'isWhite', roll: false, values: phValues([chip('hair'), chip('eyes')]) },
+    { id: 'asian', name: 'isAsian', roll: false, values: phValues([chip('hair')]) },
+    { id: 'hair', name: 'Hair', values: phValues(['brown', 'black']) },
+    { id: 'eyes', name: 'Eyes', values: phValues(['green']) },
   ];
   const v = placeholderVocabulary(WORLD);
 

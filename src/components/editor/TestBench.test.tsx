@@ -14,6 +14,7 @@ import type {
 } from '@/lib/testBench/benchProps';
 import { TestBench, TestBenchButton } from './TestBench';
 
+import { phValues } from '@/test/placeholderValues';
 // The panel renders whatever the rule pass produced, so the fixture goes through the real engine rather
 // than hand-built groups — a row shape the rules can't actually emit would prove nothing. The base world
 // is structurally sound and described (a starting location, every entity placed with both descriptions,
@@ -218,7 +219,7 @@ describe('TestBench lens bar', () => {
       },
       { id: 't-reach', name: 'Reach-Born', groupId: 'g-origin', statChanges: [], order: 1 },
     ],
-    placeholders: [{ id: 'ph-hair', name: 'Hair Color', values: ['ash', 'copper'] }],
+    placeholders: [{ id: 'ph-hair', name: 'Hair Color', values: phValues(['ash', 'copper']) }],
   };
 
   // On a lens tab: Issues is the one instrument that reads nothing from the lens, so the bar isn't there.
@@ -549,12 +550,12 @@ describe('TestBench Opening instrument', () => {
         { id: 'd2', threshold: 100, description: 'Iron' },
       ],
     }],
-    placeholders: [{ id: 'ph-coin', name: 'Coin Bird', values: ['gull', 'wren'] }],
+    placeholders: [{ id: 'ph-coin', name: 'Coin Bird', values: phValues(['gull', 'wren']) }],
   };
   const openingData = () => buildOpening(
     openingWorld,
     buildLens(openingWorld, EMPTY_LENS),
-    primeOpeningRolls(openingWorld, {}, (values) => values[0]),
+    primeOpeningRolls(openingWorld, {}, (values) => values[0].text),
   );
   const renderOpening = () =>
     renderBench(openingWorld, { tab: 'opening', opening: { data: openingData() } });

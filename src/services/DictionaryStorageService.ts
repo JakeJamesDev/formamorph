@@ -1,5 +1,5 @@
 import { LibraryStore, type StoredRecord } from './LibraryStore';
-import { migrateEntryKeys } from '@/lib/version';
+import { migrateCarriedPlaceholders, migrateEntryKeys } from '@/lib/version';
 import { describePlaceholders } from '@/lib/placeholders';
 import type { Dictionary, DictionaryMetadata } from '@/types';
 
@@ -20,7 +20,10 @@ class DictionaryStorageService {
       name: record.name,
       // Display-only chip rendering: a library card has no world or rolls behind it, so the book's own
       // carried defs are all there is — same treatment its community listing gets.
-      description: describePlaceholders(record.data?.description ?? '', record.data?.placeholders) || undefined,
+      description: describePlaceholders(
+        record.data?.description ?? '',
+        migrateCarriedPlaceholders(record.data?.placeholders),
+      ) || undefined,
       thumbnail: record.data?.thumbnail ?? undefined,
       entryCount: record.data?.entries?.length ?? 0,
       tags: record.data?.tags ?? [],
@@ -53,7 +56,11 @@ class DictionaryStorageService {
    */
   async getDictionaryData(id: string): Promise<Dictionary> {
     const book = await this.store.getData(id);
-    return { ...book, entries: (book.entries ?? []).map(migrateEntryKeys) };
+    return {
+      ...book,
+      entries: (book.entries ?? []).map(migrateEntryKeys),
+      ...(book.placeholders ? { placeholders: migrateCarriedPlaceholders(book.placeholders) } : {}),
+    };
   }
 
   /** Upsert a dictionary by `id`; `createdAt` is sticky (stamped once), `lastAccessed` bumped each store. */

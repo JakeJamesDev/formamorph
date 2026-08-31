@@ -1,6 +1,7 @@
 import { describe, it, expect, vi } from 'vitest';
 import type { Placeholder, PlaceholderRolls } from '@/types';
-import type { PlaceholderFinding, PlaceholderSegment } from './placeholders';
+import type { PlaceholderFinding, PlaceholderPick, PlaceholderSegment } from './placeholders';
+import { phValueId, phValues } from '@/test/placeholderValues';
 import {
   resolvePlaceholders,
   encodePlaceholderToken,
@@ -29,9 +30,11 @@ import {
   remintPlaceholdersDeep,
   remintPlaceholderDef,
   newPlaceholder,
+  reconcilePlaceholderValues,
+  prunePlaceholderWeights,
 } from './placeholders';
 
-const P = (id: string, values: string[]): Placeholder => ({ id, name: id, values });
+const P = (id: string, values: string[]): Placeholder => ({ id, name: id, values: phValues(values) });
 const tok = (id: string, mode: 'world' | 'unique', pid: string) =>
   encodePlaceholderToken({ id, mode, placementId: pid });
 
@@ -44,7 +47,7 @@ function collector() {
   return { rolls, setRoll };
 }
 
-const first = (v: string[]) => v[0]; // deterministic pick
+const first: PlaceholderPick = (v) => v[0].text; // deterministic pick
 
 describe('placeholders token codec', () => {
   it('round-trips a token', () => {
@@ -171,7 +174,7 @@ describe('resolvePlaceholders', () => {
 
     it('absorbPlaceholders reuses a perfect (name+values) match and maps its id', () => {
       const world = [P('W1', ['Red', 'Blue'])]; // same name+values as the carried one, different id
-      const carried = [{ id: 'C1', name: 'W1', values: ['Red', 'Blue'] }];
+      const carried = [{ id: 'C1', name: 'W1', values: phValues(['Red', 'Blue']) }];
       const { toAdd, idMap } = absorbPlaceholders(carried, world);
       expect(toAdd).toEqual([]); // nothing added — perfect match
       expect(idMap).toEqual({ C1: 'W1' }); // token remaps to the existing world id
@@ -179,10 +182,10 @@ describe('resolvePlaceholders', () => {
 
     it('absorbPlaceholders adds a fresh-id def when there is no perfect match (same name, different values)', () => {
       const world = [P('eye', ['Red', 'Blue'])];
-      const carried = [{ id: 'C1', name: 'eye', values: ['Green', 'Gold'] }]; // same name, different values
+      const carried = [{ id: 'C1', name: 'eye', values: phValues(['Green', 'Gold']) }]; // same name, different values
       const { toAdd, idMap } = absorbPlaceholders(carried, world);
       expect(toAdd).toHaveLength(1);
-      expect(toAdd[0]).toMatchObject({ name: 'eye', values: ['Green', 'Gold'] });
+      expect(toAdd[0]).toMatchObject({ name: 'eye', values: phValues(['Green', 'Gold']) });
       expect(toAdd[0].id).not.toBe('C1'); // fresh id (collision-proof)
       expect(idMap.C1).toBe(toAdd[0].id);
     });
@@ -190,7 +193,7 @@ describe('resolvePlaceholders', () => {
     it('absorbPlaceholders reads a carried or world def that lost its values as an empty one', () => {
       // Imported bundles are hand-editable JSON too; a valueless def absorbs as an empty placeholder.
       const valueless = { id: 'C1', name: 'eye' } as Placeholder;
-      const { toAdd, idMap } = absorbPlaceholders([valueless], [{ id: 'W1', name: 'other', values: ['x'] } as Placeholder]);
+      const { toAdd, idMap } = absorbPlaceholders([valueless], [{ id: 'W1', name: 'other', values: phValues(['x']) } as Placeholder]);
       expect(toAdd).toHaveLength(1);
       expect(toAdd[0].values).toEqual([]);
       // And an empty carried def matches an empty world def rather than duplicating it.
@@ -201,8 +204,8 @@ describe('resolvePlaceholders', () => {
 
     it('absorbPlaceholders collapses two identical carried defs to one add', () => {
       const carried = [
-        { id: 'A', name: 'eye', values: ['Red'] },
-        { id: 'B', name: 'eye', values: ['Red'] },
+        { id: 'A', name: 'eye', values: phValues(['Red']) },
+        { id: 'B', name: 'eye', values: phValues(['Red']) },
       ];
       const { toAdd, idMap } = absorbPlaceholders(carried, []);
       expect(toAdd).toHaveLength(1); // second matches the first-added one
@@ -355,13 +358,21 @@ describe('resolvePlaceholders', () => {
 });
 
 describe('value weights', () => {
-  const W = (values: string[], weights?: Record<string, number>): Placeholder =>
-    ({ id: 'p', name: 'p', values, ...(weights ? { weights } : {}) });
+  // Weights key by value id, so a fixture's weight map is written against the ids `phValues` mints.
+  const W = (values: string[], weights?: Record<string, number>): Placeholder => ({
+    id: 'p',
+    name: 'p',
+    values: phValues(values),
+    ...(weights
+      ? { weights: Object.fromEntries(Object.entries(weights).map(([text, w]) => [phValueId(text), w])) }
+      : {}),
+  });
+  const valueOf = (ph: Placeholder, text: string) => ph.values.find((v) => v.text === text)!;
 
   it('defaults every value to weight 1 and treats a negative as benched', () => {
     const ph = W(['a', 'b'], { b: -5 });
-    expect(placeholderWeight(ph, 'a')).toBe(1);
-    expect(placeholderWeight(ph, 'b')).toBe(0);
+    expect(placeholderWeight(ph, valueOf(ph, 'a'))).toBe(1);
+    expect(placeholderWeight(ph, valueOf(ph, 'b'))).toBe(0);
   });
 
   it('only reports weighted once a value carries a non-default weight', () => {
@@ -372,15 +383,15 @@ describe('value weights', () => {
 
   it('turns weights into percentages that sum to 100', () => {
     const chances = placeholderChances(W(['a', 'b', 'c'], { a: 2 }));
-    expect(chances).toEqual({ a: 50, b: 25, c: 25 });
+    expect(chances).toEqual({ [phValueId('a')]: 50, [phValueId('b')]: 25, [phValueId('c')]: 25 });
   });
 
   it('shows a benched value at 0% while the rest split the pool', () => {
-    expect(placeholderChances(W(['a', 'b'], { b: 0 }))).toEqual({ a: 100, b: 0 });
+    expect(placeholderChances(W(['a', 'b'], { b: 0 }))).toEqual({ [phValueId('a')]: 100, [phValueId('b')]: 0 });
   });
 
   it('falls back to uniform when every value is benched, matching what the roll does', () => {
-    expect(placeholderChances(W(['a', 'b'], { a: 0, b: 0 }))).toEqual({ a: 50, b: 50 });
+    expect(placeholderChances(W(['a', 'b'], { a: 0, b: 0 }))).toEqual({ [phValueId('a')]: 50, [phValueId('b')]: 50 });
   });
 
   it('draws in proportion to the weights', () => {
@@ -411,20 +422,20 @@ describe('value weights', () => {
   });
 
   it('keeps differently-weighted defs apart when absorbing an import', () => {
-    const host = [{ id: 'h', name: 'Hair', values: ['red', 'brown'], weights: { red: 3 } }];
+    const host = [{ id: 'h', name: 'Hair', values: phValues(['red', 'brown']), weights: { [phValueId('red')]: 3 } }];
     const sameWeights = absorbPlaceholders(
-      [{ id: 'c', name: 'Hair', values: ['red', 'brown'], weights: { red: 3 } }],
+      [{ id: 'c', name: 'Hair', values: phValues(['red', 'brown']), weights: { [phValueId('red')]: 3 } }],
       host,
     );
     expect(sameWeights.toAdd).toEqual([]);
     expect(sameWeights.idMap.c).toBe('h');
 
     const differentWeights = absorbPlaceholders(
-      [{ id: 'c', name: 'Hair', values: ['red', 'brown'], weights: { red: 9 } }],
+      [{ id: 'c', name: 'Hair', values: phValues(['red', 'brown']), weights: { [phValueId('red')]: 9 } }],
       host,
     );
     expect(differentWeights.toAdd).toHaveLength(1);
-    expect(differentWeights.toAdd[0].weights).toEqual({ red: 9 });
+    expect(differentWeights.toAdd[0].weights).toEqual({ [phValueId('red')]: 9 });
     expect(differentWeights.idMap.c).not.toBe('h');
   });
 });
@@ -479,23 +490,23 @@ const placed = (id: string, mode: 'world' | 'unique', pid: string, ...path: Plac
 const DEMO: Placeholder[] = [
   {
     id: 'molly', name: 'Molly', roll: true,
-    values: [chip('iswhite'), chip('isasian')],
-    weights: { [chip('iswhite')]: 7, [chip('isasian')]: 3 },
+    values: phValues([chip('iswhite'), chip('isasian')]),
+    weights: { [phValueId(chip('iswhite'))]: 7, [phValueId(chip('isasian'))]: 3 },
   },
-  { id: 'iswhite', name: 'isWhite', roll: false, values: [chip('hair', val('brown')), chip('eyes'), chip('freckles')] },
-  { id: 'isasian', name: 'isAsian', roll: false, values: [chip('hair', val('black')), 'dark brown eyes'] },
+  { id: 'iswhite', name: 'isWhite', roll: false, values: phValues([chip('hair', val('brown')), chip('eyes'), chip('freckles')]) },
+  { id: 'isasian', name: 'isAsian', roll: false, values: phValues([chip('hair', val('black')), 'dark brown eyes']) },
   {
     id: 'hair', name: 'Hair', roll: true,
-    values: [chip('brown'), chip('blonde'), chip('black'), 'fiery red'],
-    weights: { 'fiery red': 0 },
+    values: phValues([chip('brown'), chip('blonde'), chip('black'), 'fiery red']),
+    weights: { [phValueId('fiery red')]: 0 },
   },
-  { id: 'brown', name: 'Brown', roll: true, values: ['chestnut', 'auburn', 'chocolate brown'] },
-  { id: 'blonde', name: 'Blonde', roll: true, values: ['golden blonde', 'platinum'] },
-  { id: 'black', name: 'Black', values: ['jet black'] },
-  { id: 'eyes', name: 'Eyes', roll: true, values: ['green', 'hazel', 'blue'] },
-  { id: 'freckles', name: 'Freckles', values: ['light freckles'] },
-  { id: 'town', name: 'Town', roll: true, values: ['Sedge Landing', 'Milbrook', 'Harrow Point'] },
-  { id: 'intro', name: 'Intro', values: [`A traveler from ${chip('town')} waves you over.`] },
+  { id: 'brown', name: 'Brown', roll: true, values: phValues(['chestnut', 'auburn', 'chocolate brown']) },
+  { id: 'blonde', name: 'Blonde', roll: true, values: phValues(['golden blonde', 'platinum']) },
+  { id: 'black', name: 'Black', values: phValues(['jet black']) },
+  { id: 'eyes', name: 'Eyes', roll: true, values: phValues(['green', 'hazel', 'blue']) },
+  { id: 'freckles', name: 'Freckles', values: phValues(['light freckles']) },
+  { id: 'town', name: 'Town', roll: true, values: phValues(['Sedge Landing', 'Milbrook', 'Harrow Point']) },
+  { id: 'intro', name: 'Intro', values: phValues([`A traveler from ${chip('town')} waves you over.`]) },
 ];
 
 /** Resolve against the demo world with a deterministic first-value pick, collecting rolls and findings. */
@@ -558,14 +569,14 @@ describe('choice vs record', () => {
   });
 
   it('lets `roll` override the inference in both directions', () => {
-    expect(placeholderIsChoice({ id: 'r', name: 'r', values: ['a', 'b'], roll: false })).toBe(false);
-    expect(placeholderIsChoice({ id: 'c', name: 'c', values: ['a'], roll: true })).toBe(false); // nothing to draw
+    expect(placeholderIsChoice({ id: 'r', name: 'r', values: phValues(['a', 'b']), roll: false })).toBe(false);
+    expect(placeholderIsChoice({ id: 'c', name: 'c', values: phValues(['a']), roll: true })).toBe(false); // nothing to draw
   });
 
   it('states the kind on a freshly authored placeholder rather than leaving it to be inferred', () => {
     // Every creation surface builds through this one factory, so no path can quietly leave the kind unsaid.
     expect(newPlaceholder('Hair')).toMatchObject({ name: 'Hair', values: [], roll: true });
-    expect(newPlaceholder('Hair', ['brown'])).toMatchObject({ values: ['brown'], roll: true });
+    expect(newPlaceholder('Hair', ['brown']).values.map((v) => v.text)).toEqual(['brown']);
     expect(newPlaceholder('a').id).not.toBe(newPlaceholder('a').id);
   });
 
@@ -744,8 +755,8 @@ describe('structural findings', () => {
 
   it('resolves a reference cycle to nothing instead of hanging', () => {
     const world: Placeholder[] = [
-      { id: 'a', name: 'A', values: [chip('b')] },
-      { id: 'b', name: 'B', values: [chip('a')] },
+      { id: 'a', name: 'A', values: phValues([chip('b')]) },
+      { id: 'b', name: 'B', values: phValues([chip('a')]) },
     ];
     const { out, findings } = finding(placed('a', 'world', 'p1'), world);
     expect(out).toBe('');
@@ -757,7 +768,7 @@ describe('structural findings', () => {
     const chain: Placeholder[] = Array.from({ length: depth }, (_, i) => ({
       id: `n${i}`,
       name: `N${i}`,
-      values: [i === depth - 1 ? 'end' : chip(`n${i + 1}`)],
+      values: phValues([i === depth - 1 ? 'end' : chip(`n${i + 1}`)]),
     }));
     const { out, findings } = finding(placed('n0', 'world', 'p1'), chain);
     expect(out).toBe('');
@@ -779,8 +790,8 @@ describe('structural findings', () => {
 
 describe('legacy parity', () => {
   const legacy: Placeholder[] = [
-    { id: 'eye', name: 'Eye', values: ['Red', 'Blue', 'Green'] },
-    { id: 'king', name: 'King', values: ['Aldric'] },
+    { id: 'eye', name: 'Eye', values: phValues(['Red', 'Blue', 'Green']) },
+    { id: 'king', name: 'King', values: phValues(['Aldric']) },
     { id: 'empty', name: 'Empty', values: [] },
   ];
   const text = `${tok('eye', 'world', 'p1')} / ${tok('eye', 'unique', 'p9')} / ${tok('king', 'world', 'p3')}`
@@ -849,8 +860,8 @@ describe('portability through value chips', () => {
 
   it('terminates on a reference cycle', () => {
     const cyclic: Placeholder[] = [
-      { id: 'a', name: 'A', values: [chip('b')] },
-      { id: 'b', name: 'B', values: [chip('a')] },
+      { id: 'a', name: 'A', values: phValues([chip('b')]) },
+      { id: 'b', name: 'B', values: phValues([chip('a')]) },
     ];
     expect(collectUsedPlaceholders([placed('a', 'world', 'p1')], cyclic).map((p) => p.id)).toEqual(['a', 'b']);
   });
@@ -872,11 +883,11 @@ describe('portability through value chips', () => {
     expect(toAdd).toHaveLength(carried.length);
     const added = Object.fromEntries(toAdd.map((p) => [p.name, p]));
     // Without the rewrite, Hair's value would still name the exporting world's Brown and dangle on import.
-    expect(added.Hair.values).toContain(
+    expect(added.Hair.values.map((v) => v.text)).toContain(
       encodePlaceholderToken({ id: added.Brown.id, mode: 'world', placementId: 'v-brown' }),
     );
-    // Weights are keyed by value text, so they have to move with the values they weight.
-    expect(Object.keys(added.Molly.weights ?? {})).toEqual(added.Molly.values);
+    // Weights key by value id, which the re-pointing leaves alone, so the map still names every value.
+    expect(Object.keys(added.Molly.weights ?? {})).toEqual(added.Molly.values.map((v) => v.id));
     expect(added.Molly.roll).toBe(true);
     expect(added.isWhite.roll).toBe(false);
   });
@@ -890,8 +901,8 @@ describe('portability through value chips', () => {
   });
 
   it('keeps two defs with the same values but different roll flags apart', () => {
-    const host: Placeholder[] = [{ id: 'h', name: 'Parts', values: ['a', 'b'], roll: false }];
-    const { toAdd, idMap } = absorbPlaceholders([{ id: 'c', name: 'Parts', values: ['a', 'b'], roll: true }], host);
+    const host: Placeholder[] = [{ id: 'h', name: 'Parts', values: phValues(['a', 'b']), roll: false }];
+    const { toAdd, idMap } = absorbPlaceholders([{ id: 'c', name: 'Parts', values: phValues(['a', 'b']), roll: true }], host);
     expect(toAdd).toHaveLength(1);
     expect(toAdd[0].roll).toBe(true);
     expect(idMap.c).not.toBe('h');
@@ -900,8 +911,8 @@ describe('portability through value chips', () => {
   it('still dedups a written roll flag against the same choice inferred from the value count', () => {
     // Two values with no flag already infer a choice, so `roll: true` says nothing new — matching on the
     // written flag rather than on what it does would add a second copy of a def the world already has.
-    const host: Placeholder[] = [{ id: 'h', name: 'Hair', values: ['red', 'black'] }];
-    const { toAdd, idMap } = absorbPlaceholders([{ id: 'c', name: 'Hair', values: ['red', 'black'], roll: true }], host);
+    const host: Placeholder[] = [{ id: 'h', name: 'Hair', values: phValues(['red', 'black']) }];
+    const { toAdd, idMap } = absorbPlaceholders([{ id: 'c', name: 'Hair', values: phValues(['red', 'black']), roll: true }], host);
     expect(toAdd).toEqual([]);
     expect(idMap.c).toBe('h');
   });
@@ -934,14 +945,14 @@ describe('collectPlaceholderParts', () => {
 
   it('names a holder once however many of its values point at the same part', () => {
     const world: Placeholder[] = [
-      { id: 'variant', name: 'Variant', values: [chip('hair', val('brown')), chip('hair', val('black'))] },
-      { id: 'hair', name: 'Hair', values: ['brown', 'black'] },
+      { id: 'variant', name: 'Variant', values: phValues([chip('hair', val('brown')), chip('hair', val('black'))]) },
+      { id: 'hair', name: 'Hair', values: phValues(['brown', 'black']) },
     ];
     expect(collectPlaceholderParts(world).get('hair')).toEqual(['variant']);
   });
 
   it('does not make a placeholder its own part', () => {
-    const cyclic: Placeholder[] = [{ id: 'a', name: 'A', values: [chip('a'), chip('b')] }];
+    const cyclic: Placeholder[] = [{ id: 'a', name: 'A', values: phValues([chip('a'), chip('b')]) }];
     expect(collectPlaceholderParts(cyclic).has('a')).toBe(false);
     expect(collectPlaceholderParts(cyclic).get('b')).toEqual(['a']);
   });
@@ -994,8 +1005,8 @@ describe('placeholderPathChildren', () => {
 
   it('names a part once however many values point at it', () => {
     const world: Placeholder[] = [
-      { id: 'variant', name: 'Variant', values: [chip('hair', val('brown')), chip('hair', val('black'))] },
-      { id: 'hair', name: 'Hair', values: ['brown', 'black'] },
+      { id: 'variant', name: 'Variant', values: phValues([chip('hair', val('brown')), chip('hair', val('black'))]) },
+      { id: 'hair', name: 'Hair', values: phValues(['brown', 'black']) },
     ];
     const rows = placeholderPathChildren({ id: 'variant', mode: 'world', placementId: 'p1' }, world);
     expect(rows.map((p) => p.name)).toEqual(['Hair']);
@@ -1020,7 +1031,7 @@ describe('placeholderPathLevel', () => {
   });
 
   it('reads a one-value placeholder as a Variable whichever kind it declares', () => {
-    const world: Placeholder[] = [{ id: 'a', name: 'A', roll: false, values: ['only'] }];
+    const world: Placeholder[] = [{ id: 'a', name: 'A', roll: false, values: phValues(['only']) }];
     expect(placeholderPathLevel({ id: 'a', mode: 'world', placementId: 'p1' }, world)?.kind).toBe('Variable');
   });
 
@@ -1032,10 +1043,10 @@ describe('placeholderPathLevel', () => {
   it('marks a slot partial when a plain value could roll in place of a variant', () => {
     // Both chip values hold Hair, but the third value is prose — the slot misses when it rolls.
     const world: Placeholder[] = [
-      { id: 'who', name: 'Who', values: [chip('a'), chip('b'), 'a stranger'] },
-      { id: 'a', name: 'A', roll: false, values: [chip('hair')] },
-      { id: 'b', name: 'B', roll: false, values: [chip('hair')] },
-      { id: 'hair', name: 'Hair', values: ['brown'] },
+      { id: 'who', name: 'Who', values: phValues([chip('a'), chip('b'), 'a stranger']) },
+      { id: 'a', name: 'A', roll: false, values: phValues([chip('hair')]) },
+      { id: 'b', name: 'B', roll: false, values: phValues([chip('hair')]) },
+      { id: 'hair', name: 'Hair', values: phValues(['brown']) },
     ];
     const got = placeholderPathLevel({ id: 'who', mode: 'world', placementId: 'p1' }, world);
     expect(got?.slots).toEqual([{ name: 'Hair', partial: true }]);
@@ -1094,7 +1105,7 @@ describe('author-time Preview of structured chips', () => {
     const shades = ['auburn', 'chestnut'];
     let i = 0;
     // Variant draws take the first value; the two Brown draws differ, which a shared roll would collapse.
-    const pick = (values: string[]) => (values[0].startsWith('{{ph') ? values[0] : shades[i++]);
+    const pick: PlaceholderPick = (values) => (values[0].text.startsWith('{{ph') ? values[0].text : shades[i++]);
     const out = buildPlaceholderPreview(`${a} ${b}`, DEMO, pick);
     expect(out[a]).toBe('auburn');
     expect(out[b]).toBe('chestnut');
@@ -1118,7 +1129,7 @@ describe('describePlaceholders on structured defs', () => {
   it('flattens a paragraph value in a joined record, the way it already does in a choice', () => {
     // An entity name, a library card and a read-only pill all read this, and each takes one line.
     const record: Placeholder[] = [
-      { id: 'scene', name: 'Scene', roll: false, values: ['A lighthouse.\n\nIts beam sweeps the bay.', 'Dusk'] },
+      { id: 'scene', name: 'Scene', roll: false, values: phValues(['A lighthouse.\n\nIts beam sweeps the bay.', 'Dusk']) },
     ];
     expect(describePlaceholders(placed('scene', 'world', 'p1'), record)).toBe('A lighthouse. …, Dusk');
   });
@@ -1143,22 +1154,22 @@ describe('describePlaceholders on structured defs', () => {
 
   it('stops at the depth cap rather than unfolding a whole character', () => {
     const chain: Placeholder[] = Array.from({ length: 6 }, (_, i) => ({
-      id: `n${i}`, name: `N${i}`, values: [i === 5 ? 'end' : chip(`n${i + 1}`)],
+      id: `n${i}`, name: `N${i}`, values: phValues([i === 5 ? 'end' : chip(`n${i + 1}`)]),
     }));
     expect(describePlaceholders(placed('n0', 'world', 'p1'), chain)).toBe('');
   });
 
   it('reads a reference cycle as nothing instead of looping', () => {
     const cyclic: Placeholder[] = [
-      { id: 'a', name: 'A', values: [chip('b')] },
-      { id: 'b', name: 'B', values: [chip('a')] },
+      { id: 'a', name: 'A', values: phValues([chip('b')]) },
+      { id: 'b', name: 'B', values: phValues([chip('a')]) },
     ];
     expect(describePlaceholders(placed('a', 'world', 'p1'), cyclic)).toBe('');
   });
 
   it('says a self-referencing def once, not once per level the cap allows', () => {
     // The depth cap alone would stop the walk but still print the value at every level it reached.
-    const selfRef: Placeholder[] = [{ id: 'a', name: 'A', values: ['scarred', chip('a')] }];
+    const selfRef: Placeholder[] = [{ id: 'a', name: 'A', values: phValues(['scarred', chip('a')]) }];
     expect(describePlaceholders(placed('a', 'world', 'p1'), selfRef)).toBe('scarred');
   });
 
@@ -1215,13 +1226,70 @@ describe('remintPlaceholdersDeep', () => {
   });
 });
 
+describe('reconcilePlaceholderValues', () => {
+  const texts = (values: ReturnType<typeof reconcilePlaceholderValues>) => values.map((v) => v.text);
+  const ids = (values: ReturnType<typeof reconcilePlaceholderValues>) => values.map((v) => v.id);
+
+  it('keeps a renamed value’s id, which is what lets its weight and its pins follow it', () => {
+    const prev = phValues(['Red', 'Blue']);
+    const next = reconcilePlaceholderValues(prev, ['Crimson', 'Blue']);
+    expect(texts(next)).toEqual(['Crimson', 'Blue']);
+    expect(ids(next)).toEqual([phValueId('Red'), phValueId('Blue')]);
+  });
+
+  it('keeps every id through a reorder, so a drag renames nothing', () => {
+    const next = reconcilePlaceholderValues(phValues(['Red', 'Blue']), ['Blue', 'Red']);
+    expect(ids(next)).toEqual([phValueId('Blue'), phValueId('Red')]);
+  });
+
+  it('mints an id for an added value and lets a removed one take its id away', () => {
+    const added = reconcilePlaceholderValues(phValues(['Red']), ['Red', 'Green']);
+    expect(added[0].id).toBe(phValueId('Red'));
+    expect(added[1].id).not.toBe(phValueId('Green')); // freshly minted, not the fixture's own scheme
+    const removed = reconcilePlaceholderValues(phValues(['Red', 'Blue']), ['Blue']);
+    expect(ids(removed)).toEqual([phValueId('Blue')]);
+  });
+
+  it('gives a value deleted and retyped a fresh id, since it is a different value', () => {
+    const gone = reconcilePlaceholderValues(phValues(['Red', 'Blue']), ['Blue']);
+    const back = reconcilePlaceholderValues(gone, ['Blue', 'Red']);
+    expect(back[1].id).not.toBe(phValueId('Red'));
+  });
+
+  it('reuses one id per value, so a repeat cannot smuggle a second reference to it', () => {
+    // Values stay unique by text; if a caller ever hands over one anyway, the second copy is its own value.
+    const next = reconcilePlaceholderValues(phValues(['Red']), ['Red', 'Red']);
+    expect(next[0].id).toBe(phValueId('Red'));
+    expect(next[1].id).not.toBe(next[0].id);
+  });
+});
+
+describe('prunePlaceholderWeights', () => {
+  it('drops the weights of values an edit removed and keeps the rest', () => {
+    const values = phValues(['Red', 'Blue']);
+    const weights = { [phValueId('Red')]: 3, [phValueId('Gone')]: 2 };
+    expect(prunePlaceholderWeights(weights, values)).toEqual({ [phValueId('Red')]: 3 });
+  });
+
+  it('returns nothing at all for an emptied map — absent already means a uniform draw', () => {
+    expect(prunePlaceholderWeights({ [phValueId('Gone')]: 2 }, phValues(['Red']))).toBeUndefined();
+    expect(prunePlaceholderWeights(undefined, phValues(['Red']))).toBeUndefined();
+  });
+});
+
 describe('remintPlaceholderDef', () => {
-  it('re-mints value chips and re-keys weights in step', () => {
+  it('re-mints value chips, value ids and weights in step', () => {
     const value = tok('name', 'unique', 'p1');
-    const ph: Placeholder = { id: 'char', name: 'Char', values: [value, 'plain'], weights: { [value]: 3, plain: 1 } };
+    const ph: Placeholder = {
+      id: 'char',
+      name: 'Char',
+      values: phValues([value, 'plain']),
+      weights: { [phValueId(value)]: 3, [phValueId('plain')]: 1 },
+    };
     const out = remintPlaceholderDef(ph);
-    expect(out.values[0]).not.toBe(value);
-    expect(out.weights).toEqual({ [out.values[0]]: 3, plain: 1 });
+    expect(out.values[0].text).not.toBe(value); // the placement id inside the chip is fresh
+    expect(out.values.map((v) => v.id)).not.toEqual(ph.values.map((v) => v.id));
+    expect(out.weights).toEqual({ [out.values[0].id]: 3, [out.values[1].id]: 1 });
     expect(placeholderWeight(out, out.values[0])).toBe(3);
   });
 

@@ -113,7 +113,7 @@ export const EMPTY_OPENING: OpeningData = {
 /** The pins every active trait imposes — the fresh game's, not just the lens PC's, because a default
  *  trait's pin binds every playthrough. */
 const openingPins = (world: OpeningWorld, lens: BenchLens): Record<string, string> =>
-  activePlaceholderPins(lensActiveTraits(world, lens));
+  activePlaceholderPins(lensActiveTraits(world, lens), world.placeholders ?? []);
 
 /**
  * Roll every wildcard placement a fresh game would prime, keeping whatever `existing` already holds — the
@@ -251,7 +251,7 @@ export function buildOpening(world: OpeningWorld, lens: BenchLens, rolls: Placeh
     return [{
       placeholderId: ph.id,
       name: ph.name || ph.id,
-      chances: ph.values.map((value) => ({ value, chance: chances[value] })),
+      chances: ph.values.map((value) => ({ value: value.text, chance: chances[value.id] })),
       ...(pinned != null ? { pinnedValue: pinned } : {}),
       ...(worldIds.has(ph.id) ? { worldValue: rolls.world?.[ph.id] } : {}),
       uniqueValues: uniquePlacements.flatMap((u) => {
@@ -259,7 +259,7 @@ export function buildOpening(world: OpeningWorld, lens: BenchLens, rolls: Placeh
         return value != null ? [value] : [];
       }),
       ...(uniquePlacements.length >= 2 && pinned == null
-        ? { collisionChance: collisionChance(ph.values.map((v) => chances[v] / 100), uniquePlacements.length) * 100 }
+        ? { collisionChance: collisionChance(ph.values.map((v) => chances[v.id] / 100), uniquePlacements.length) * 100 }
         : {}),
     }];
   });
