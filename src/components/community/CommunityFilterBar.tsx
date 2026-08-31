@@ -24,8 +24,12 @@ interface CommunityFilterBarProps {
   /** Whether the reader has an account — the Liked and Mine facets need one, so without it they're absent
    *  rather than shown as controls that can only ever return nothing. */
   signedIn: boolean;
-  /** Slotted in beside the filters: the separate Hidden popover, and the updates-first checkbox. */
+  /** Slotted in beside the filters: the separate Hidden popover. */
   children?: React.ReactNode;
+  /** Sits centered on the row rather than after the filters — the collapsed event chips. */
+  centered?: React.ReactNode;
+  /** Sits at the far end of the row: the updates-first checkbox. */
+  trailing?: React.ReactNode;
 }
 
 /**
@@ -38,12 +42,13 @@ interface CommunityFilterBarProps {
 export function CommunityFilterBar({
   authorFilter, setAuthorFilter, tagFilter, setTagFilter, tagMode, setTagMode,
   statusFilter, toggleStatus, clearFilters, allAuthors, allTags, signedIn, children,
+  centered, trailing,
 }: CommunityFilterBarProps) {
   const facets = availableFacets(signedIn);
   const activeCount = statusFilter.length + authorFilter.length + tagFilter.length;
 
-  return (
-    <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
+  const filters = (
+    <>
       <Popover>
         <PopoverTrigger asChild>
           <Button variant="outline" size="sm" className="shrink-0 gap-1">
@@ -163,6 +168,28 @@ export function CommunityFilterBar({
       )}
 
       {children}
+    </>
+  );
+
+  // Nothing to center, so the row is one wrapping line and `trailing` is pushed to the end by margin.
+  if (!centered) {
+    return (
+      <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
+        {filters}
+        {trailing && <div className="ml-auto shrink-0">{trailing}</div>}
+      </div>
+    );
+  }
+
+  // Three tracks so the middle one centers on the row itself, not on the space the sides happen to
+  // leave: two `1fr` tracks are equal by definition, so whatever sits between them lands on the middle
+  // of the row. The sides floor at their own min-content and the middle can shrink under its, so a long
+  // name in the middle gives way rather than crushing the controls it is centered between.
+  return (
+    <div className="grid grid-cols-[minmax(min-content,1fr)_minmax(0,auto)_minmax(min-content,1fr)] items-center gap-x-3">
+      <div className="flex flex-wrap items-center gap-x-3 gap-y-2 min-w-0">{filters}</div>
+      <div className="flex min-w-0 justify-center">{centered}</div>
+      <div className="flex min-w-0 justify-end">{trailing}</div>
     </div>
   );
 }

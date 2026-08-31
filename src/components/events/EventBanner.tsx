@@ -84,9 +84,9 @@ function EventBannerChip({ event, onClick }: { event: ServerEvent; onClick: () =
       className="inline-flex min-w-0 items-center gap-2 rounded-full border bg-card pl-3 pr-1.5 py-1 text-label font-medium shadow-sm hover:bg-accent transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset"
     >
       <Icon className={cn('h-4 w-4 shrink-0', contest ? 'text-warning' : 'text-info')} aria-hidden />
-      {/* Capped well short of the card's title: this rides a row of controls that were there first, so a
-          long event name gives way to them rather than pushing one onto a second line. */}
-      <span className="truncate max-w-[8rem]">{event.title}</span>
+      {/* No width cap: the chip centers in whatever its host row has left, so a name shortens only when
+          the controls beside it actually need the space, never on a row that has plenty. */}
+      <span className="truncate">{event.title}</span>
       {marker && (
         <span className={cn('rounded-full px-2 py-0.5 text-meta font-bold', contest ? 'bg-warning/20 text-warning' : 'bg-info/20 text-info')}>{marker}</span>
       )}
