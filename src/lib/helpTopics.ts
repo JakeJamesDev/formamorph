@@ -268,7 +268,7 @@ When two active traits switch the same stat, the one lower in the trait list win
 
 The pinned value doesn't have to come from the placeholder's own list: the box suggests the authored values, but anything you type is used as written, so a trait can force a value nobody else rolls.
 
-A value that is a chip pins that part — pin a Wildcard to the value holding *isAsian* and every chip of it takes that variant. The box shows each suggested value as what it will read as, not as the chip behind it, and pinning one keeps the chip.
+A value that is a chip pins that part — pin a Wildcard to the value holding *isAsian* and every chip of it takes that variant. The box names such a value after the part it holds, exactly as the Values list does, so you pick by the thing rather than by the words it joins to. A chip inside a longer value is prose, so that one reads as what it will resolve to.
 
 When two active traits pin the same placeholder, the one lower in the trait list wins — the row says so whenever that applies.`,
   },

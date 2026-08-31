@@ -24,12 +24,13 @@ const marshWed = {
 const chip = (id: string) => encodePlaceholderToken({ id, mode: 'world', placementId: `v-${id}` });
 
 // Hair Color is the flat placeholder the pin row was built for; Molly is the structured one — a Wildcard
-// whose two values are each a whole other placeholder, which is what a pin has to be able to name.
+// whose two values are each a whole other placeholder, which is what a pin has to be able to name. The
+// variants are Objects, so what each one joins to is a soup and its name is the thing an author picks by.
 const WORLD: Placeholder[] = [
   { id: 'p1', name: 'Hair Color', values: ['ash', 'copper'] },
-  { id: 'molly', name: 'Molly', values: [chip('iswhite'), chip('isasian')] },
-  { id: 'iswhite', name: 'isWhite', values: ['fair skin'] },
-  { id: 'isasian', name: 'isAsian', values: ['tan skin'] },
+  { id: 'molly', name: 'Molly', values: [chip('iswhite'), chip('isasian'), `freckled ${chip('isasian')}`] },
+  { id: 'iswhite', name: 'isWhite', roll: false, values: ['fair skin', 'ash hair'] },
+  { id: 'isasian', name: 'isAsian', roll: false, values: ['tan skin', 'black hair'] },
 ];
 
 const store: { trait: Trait; writes: Trait[]; rerender: () => void } =
@@ -134,19 +135,28 @@ describe('the placeholder pin row', () => {
     expect(lastPins()).toEqual([{ placeholderId: 'p1', value: 'ash' }]);
   });
 
-  it('offers a chip-bearing value as what it will read as, never as the token behind it', async () => {
+  it('offers a value that is one whole chip by the part it names, never as the token behind it', async () => {
     store.trait = { ...sedgeBorn, placeholderPins: [{ placeholderId: 'molly', value: '' }] };
     renderManager();
     await userEvent.click(pinField());
-    expect(screen.getByRole('button', { name: 'fair skin' })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'tan skin' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'isWhite' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'isAsian' })).toBeInTheDocument();
+    // What the variant joins to is a soup of its parts; its name is what an author pins by.
+    expect(screen.queryByRole('button', { name: 'tan skin, black hair' })).toBeNull();
   });
 
-  it('pins the variant itself when one is picked, not the words it reads as', async () => {
+  it('offers a chip inside longer text as what it will read as, since that value is prose', async () => {
     store.trait = { ...sedgeBorn, placeholderPins: [{ placeholderId: 'molly', value: '' }] };
     renderManager();
     await userEvent.click(pinField());
-    await userEvent.click(screen.getByRole('button', { name: 'tan skin' }));
+    expect(screen.getByRole('button', { name: 'freckled tan skin, black hair' })).toBeInTheDocument();
+  });
+
+  it('pins the variant itself when one is picked, not the name it reads as', async () => {
+    store.trait = { ...sedgeBorn, placeholderPins: [{ placeholderId: 'molly', value: '' }] };
+    renderManager();
+    await userEvent.click(pinField());
+    await userEvent.click(screen.getByRole('button', { name: 'isAsian' }));
     // The stored value is the chip — which is what resolution follows into isAsian.
     expect(lastPins()).toEqual([{ placeholderId: 'molly', value: chip('isasian') }]);
   });
@@ -155,9 +165,9 @@ describe('the placeholder pin row', () => {
     store.trait = { ...sedgeBorn, placeholderPins: [{ placeholderId: 'molly', value: chip('isasian') }] };
     renderManager();
     expect(pinField().value).toBe('');
-    expect(screen.getByText('tan skin')).toBeInTheDocument();
+    expect(screen.getByText('isAsian')).toBeInTheDocument();
     // Clearing the pill empties the pin without dropping its row, so a different value is one pick away.
-    await userEvent.click(screen.getByRole('button', { name: 'Remove tan skin' }));
+    await userEvent.click(screen.getByRole('button', { name: 'Remove isAsian' }));
     expect(lastPins()).toEqual([{ placeholderId: 'molly', value: '' }]);
   });
 
@@ -175,7 +185,7 @@ describe('the placeholder pin row', () => {
     renderManager();
     await userEvent.type(pinField(), 'teal');
     expect(lastPins()).toEqual([{ placeholderId: 'molly', value: 'teal' }]);
-    expect(screen.queryByText('tan skin')).toBeNull();
+    expect(screen.queryByText('isAsian')).toBeNull();
   });
 
   it('offers nothing where the pin names no placeholder yet, and still takes text', async () => {
