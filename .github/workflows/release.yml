@@ -15,6 +15,19 @@ on:
     tags:
       - 'v*'
   workflow_dispatch:
+    inputs:
+      itch_web:
+        description: 'Push the web build to itch.io (manual failsafe, e.g. for a pre-release)'
+        type: boolean
+        default: false
+      itch_desktop:
+        description: 'Push desktop builds to itch.io'
+        type: boolean
+        default: false
+      itch_hidden:
+        description: 'Pass --hidden to butler (first push to a NEW channel only; errors on existing channels)'
+        type: boolean
+        default: false
 
 jobs:
   build:
@@ -146,9 +159,65 @@ jobs:
       # AppImage is intentionally omitted — electron-builder already uploaded it (and its update metadata).
       - uses: softprops/action-gh-release@v3
         with:
+          # Any suffixed tag (v2.16.0-beta etc.) publishes as a pre-release; itch jobs below skip those.
+          prerelease: ${{ contains(github.ref_name, '-') }}
           body_path: notes.md
           files: |
             artifacts/*.dmg
             artifacts/*-win.zip
             artifacts/*-win.zip.sha512
             artifacts/formamorph-web-*.zip
+
+  # itch.io deployment via butler. Butler updates by CHANNEL, not filename: every push to a visible
+  # channel replaces the live build immediately. Full-release tags (no suffix) deploy automatically;
+  # pre-release tags (-beta) never do — push those by hand via workflow_dispatch on the tag's ref.
+  # Needs the BUTLER_API_KEY secret (itch.io → Settings → API keys, from an account with access to
+  # fierylion/formamorph). Versions are parsed from artifact filenames so they always match the build.
+  itch-web:
+    needs: web
+    runs-on: ubuntu-latest
+    if: >
+      (github.event_name == 'push' && !contains(github.ref_name, '-'))
+      || (github.event_name == 'workflow_dispatch' && inputs.itch_web)
+    steps:
+      - uses: actions/download-artifact@v8
+        with:
+          name: web
+      - uses: remarkablegames/setup-butler@v3
+      - name: Push web build to itch.io
+        env:
+          BUTLER_API_KEY: ${{ secrets.BUTLER_API_KEY }}
+          FLAGS: ${{ inputs.itch_hidden && '--hidden' || '' }}
+        run: |
+          set -euo pipefail
+          ZIP=$(ls formamorph-web-*.zip)
+          VER=${ZIP#formamorph-web-}; VER=${VER%.zip}
+          unzip -q "$ZIP" -d web
+          butler push web fierylion/formamorph:html5 --userversion "$VER" $FLAGS
+
+  # Desktop goes to itch only on major/minor releases (tag ends in .0), never on patches.
+  itch-desktop:
+    needs: build
+    runs-on: ubuntu-latest
+    if: >
+      (github.event_name == 'push' && !contains(github.ref_name, '-') && endsWith(github.ref_name, '.0'))
+      || (github.event_name == 'workflow_dispatch' && inputs.itch_desktop)
+    steps:
+      - uses: actions/download-artifact@v8
+        with:
+          pattern: desktop-*
+          merge-multiple: true
+      - uses: remarkablegames/setup-butler@v3
+      - name: Push desktop builds to itch.io
+        env:
+          BUTLER_API_KEY: ${{ secrets.BUTLER_API_KEY }}
+          FLAGS: ${{ inputs.itch_hidden && '--hidden' || '' }}
+        run: |
+          set -euo pipefail
+          WINZIP=$(ls Formamorph-*-win.zip)
+          VER=${WINZIP#Formamorph-}; VER=${VER%-win.zip}
+          # Windows ships unzipped (launcher at root) so butler can diff files between pushes.
+          unzip -q "$WINZIP" -d win
+          butler push win fierylion/formamorph:windows --userversion "$VER" $FLAGS
+          butler push "$(ls *.AppImage)" fierylion/formamorph:linux --userversion "$VER" $FLAGS
+          butler push "$(ls *.dmg)" fierylion/formamorph:mac --userversion "$VER" $FLAGS
