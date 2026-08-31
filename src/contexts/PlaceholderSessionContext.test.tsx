@@ -137,6 +137,18 @@ describe('PlaceholderSessionProvider', () => {
     expect(HAIR.values).toContain(h.rolls().world?.[HAIR.id]);
   });
 
+  it('rolls a Wildcard reached only through another placeholder’s value', () => {
+    // A value that is exactly one chip is a structural child, so the character's own roll is not the last
+    // one a render needs. A nested key priming misses is drawn again on every render.
+    const CHARACTER = { id: 'ph-char', name: 'Character', values: [tok(HAIR.id, 'v-hair')] };
+    const w = world([TOWN, HAIR, CHARACTER]);
+    w.entities[0].name = `${tok(CHARACTER.id, 'p3')} stranger`;
+    const h = mount();
+    h.loadWorld(w);
+    h.begin();
+    expect(HAIR.values).toContain(h.rolls().world?.[HAIR.id]);
+  });
+
   it('drops its rolls when the session ends, so the next entry draws again', () => {
     const h = mount();
     h.loadWorld();

@@ -147,9 +147,15 @@ export function rerollOpeningRolls(
       const owner = ownerOf(key);
       return owner != null && pins[owner] != null;
     }));
+  // A Unique roll under a nested chip is keyed by its placement chain, whose last step is the placeholder's
+  // own id; only a chain root is keyed by the bare placement id.
+  const uniqueOwner = (key: string) => {
+    const tail = key.slice(key.lastIndexOf('/') + 1);
+    return tail === key ? placementOwner.get(key) : tail;
+  };
   return primeRolls(world.placeholders ?? [], texts, {
     world: keep(previous.world, (id) => id),
-    unique: keep(previous.unique, (placementId) => placementOwner.get(placementId)),
+    unique: keep(previous.unique, uniqueOwner),
   }, pick);
 }
 

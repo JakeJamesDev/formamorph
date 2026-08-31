@@ -773,3 +773,201 @@ describe('legacy parity', () => {
     expect(c.rolls).toEqual({ world: { eye: 'Red' }, unique: { p9: 'Red' } });
   });
 });
+
+// --- slice 2: priming, Preview, describe, portability ---------------------------------------------------
+
+describe('eager priming through value chips', () => {
+  it('primes every key a nested render reads, so resolution stays a pure lookup', () => {
+    const text = `A woman waves you over: ${placed('molly', 'world', 'p1')}`;
+    const rolls = primeRolls(DEMO, [text], {}, first);
+    // Molly's variant, and the choices the drawn variant reaches: Brown (through the authored drill) and Eyes.
+    expect(rolls.world).toEqual({ molly: chip('iswhite'), brown: 'chestnut', eyes: 'green' });
+
+    const setRoll = vi.fn();
+    expect(resolvePlaceholders(text, { placeholders: DEMO, rolls, setRoll, pick: first }))
+      .toBe('A woman waves you over: chestnut, green, light freckles');
+    // The guard: a nested key priming missed would be drawn here — a different value on every render.
+    expect(setRoll).not.toHaveBeenCalled();
+  });
+
+  it('primes a Unique placement whole subtree under its chain', () => {
+    const rolls = primeRolls(DEMO, [placed('molly', 'unique', 'u1')], {}, first);
+    expect(rolls.unique).toEqual({ u1: chip('iswhite'), 'u1/brown': 'chestnut', 'u1/eyes': 'green' });
+    expect(rolls.world).toEqual({});
+  });
+
+  it('keeps a resumed save frozen variant and primes only what that variant reaches', () => {
+    const rolls = primeRolls(DEMO, [placed('molly', 'world', 'p1')], { world: { molly: chip('isasian') } }, first);
+    expect(rolls.world?.molly).toBe(chip('isasian'));
+    // isAsian describes its eyes as prose and drills hair to Black, a single-value def — nothing left to roll.
+    expect(rolls.world).toEqual({ molly: chip('isasian') });
+  });
+
+  it('primes a slot chip through the variant it routes to', () => {
+    const rolls = primeRolls(DEMO, [placed('molly', 'world', 'p1', slot('Eyes'))], {}, first);
+    expect(rolls.world).toEqual({ molly: chip('iswhite'), eyes: 'green' });
+  });
+});
+
+describe('portability through value chips', () => {
+  const structural = ['molly', 'iswhite', 'isasian', 'hair', 'brown', 'blonde', 'black', 'eyes', 'freckles'];
+
+  it('bundles every def a chip reaches through its values, not just the one it names', () => {
+    expect(collectUsedPlaceholders([placed('molly', 'world', 'p1')], DEMO).map((p) => p.id)).toEqual(structural);
+  });
+
+  it('leaves a def nothing reaches out of the bundle', () => {
+    expect(collectUsedPlaceholders([placed('town', 'world', 'p1')], DEMO).map((p) => p.id)).toEqual(['town']);
+  });
+
+  it('terminates on a reference cycle', () => {
+    const cyclic: Placeholder[] = [
+      { id: 'a', name: 'A', values: [chip('b')] },
+      { id: 'b', name: 'B', values: [chip('a')] },
+    ];
+    expect(collectUsedPlaceholders([placed('a', 'world', 'p1')], cyclic).map((p) => p.id)).toEqual(['a', 'b']);
+  });
+
+  it('remaps the ids inside a drill path as well as the chip root', () => {
+    const text = placed('molly', 'world', 'p1', val('iswhite'), slot('Hair'));
+    expect(remapPlaceholderIds(text, { molly: 'M2', iswhite: 'W2' }))
+      .toBe(placed('M2', 'world', 'p1', val('W2'), slot('Hair')));
+  });
+
+  it('leaves a token no mapping touches byte-identical', () => {
+    const text = placed('molly', 'world', 'p1', val('iswhite'), slot('a>b:c{d}e%f'));
+    expect(remapPlaceholderIds(text, { other: 'x' })).toBe(text);
+  });
+
+  it('re-points a carried structured def at the ids the host gave its parts', () => {
+    const carried = DEMO.filter((p) => structural.includes(p.id));
+    const { toAdd } = absorbPlaceholders(carried, []);
+    expect(toAdd).toHaveLength(carried.length);
+    const added = Object.fromEntries(toAdd.map((p) => [p.name, p]));
+    // Without the rewrite, Hair's value would still name the exporting world's Brown and dangle on import.
+    expect(added.Hair.values).toContain(
+      encodePlaceholderToken({ id: added.Brown.id, mode: 'world', placementId: 'v-brown' }),
+    );
+    // Weights are keyed by value text, so they have to move with the values they weight.
+    expect(Object.keys(added.Molly.weights ?? {})).toEqual(added.Molly.values);
+    expect(added.Molly.roll).toBe(true);
+    expect(added.isWhite.roll).toBe(false);
+  });
+
+  it('absorbs a structured bundle once, so re-importing it does not multiply the parts', () => {
+    const carried = DEMO.filter((p) => structural.includes(p.id));
+    const once = absorbPlaceholders(carried, []);
+    const twice = absorbPlaceholders(carried, once.toAdd);
+    expect(twice.toAdd).toEqual([]);
+    expect(twice.idMap).toEqual(once.idMap);
+  });
+
+  it('keeps two defs with the same values but different roll flags apart', () => {
+    const host: Placeholder[] = [{ id: 'h', name: 'Parts', values: ['a', 'b'], roll: false }];
+    const { toAdd, idMap } = absorbPlaceholders([{ id: 'c', name: 'Parts', values: ['a', 'b'], roll: true }], host);
+    expect(toAdd).toHaveLength(1);
+    expect(toAdd[0].roll).toBe(true);
+    expect(idMap.c).not.toBe('h');
+  });
+
+  it('still dedups a written roll flag against the same choice inferred from the value count', () => {
+    // Two values with no flag already infer a choice, so `roll: true` says nothing new — matching on the
+    // written flag rather than on what it does would add a second copy of a def the world already has.
+    const host: Placeholder[] = [{ id: 'h', name: 'Hair', values: ['red', 'black'] }];
+    const { toAdd, idMap } = absorbPlaceholders([{ id: 'c', name: 'Hair', values: ['red', 'black'], roll: true }], host);
+    expect(toAdd).toEqual([]);
+    expect(idMap.c).toBe('h');
+  });
+});
+
+describe('author-time Preview of structured chips', () => {
+  it('rolls a structured chip the way play does', () => {
+    const t = placed('molly', 'world', 'p1');
+    expect(buildPlaceholderPreview(t, DEMO, first)).toEqual({ [t]: 'chestnut, green, light freckles' });
+  });
+
+  it('routes two slot chips through one variant, exactly as a turn would', () => {
+    const hair = placed('molly', 'world', 'p1', slot('Hair'));
+    const eyes = placed('molly', 'world', 'p2', slot('Eyes'));
+    expect(buildPlaceholderPreview(`${hair} ${eyes}`, DEMO, first)).toEqual({ [hair]: 'chestnut', [eyes]: 'green' });
+  });
+
+  it('keeps Unique placements of one character apart', () => {
+    const a = placed('molly', 'unique', 'u1', slot('Hair'));
+    const b = placed('molly', 'unique', 'u2', slot('Hair'));
+    const shades = ['auburn', 'chestnut'];
+    let i = 0;
+    // Variant draws take the first value; the two Brown draws differ, which a shared roll would collapse.
+    const pick = (values: string[]) => (values[0].startsWith('{{ph') ? values[0] : shades[i++]);
+    const out = buildPlaceholderPreview(`${a} ${b}`, DEMO, pick);
+    expect(out[a]).toBe('auburn');
+    expect(out[b]).toBe('chestnut');
+  });
+
+  it('is deterministic under an injected picker', () => {
+    const text = `${placed('molly', 'world', 'p1')} ${placed('molly', 'unique', 'u1')} ${placed('town', 'world', 'p2')}`;
+    expect(buildPlaceholderPreview(text, DEMO, first)).toEqual(buildPlaceholderPreview(text, DEMO, first));
+  });
+});
+
+describe('describePlaceholders on structured defs', () => {
+  it('joins a record described parts', () => {
+    expect(describePlaceholders(placed('isasian', 'world', 'p1'), DEMO)).toBe('jet black, dark brown eyes');
+  });
+
+  it('shows a choice as its described options', () => {
+    expect(describePlaceholders(placed('eyes', 'world', 'p1'), DEMO)).toBe('{green|hazel|blue}');
+  });
+
+  it('flattens a paragraph value in a joined record, the way it already does in a choice', () => {
+    // An entity name, a library card and a read-only pill all read this, and each takes one line.
+    const record: Placeholder[] = [
+      { id: 'scene', name: 'Scene', roll: false, values: ['A lighthouse.\n\nIts beam sweeps the bay.', 'Dusk'] },
+    ];
+    expect(describePlaceholders(placed('scene', 'world', 'p1'), record)).toBe('A lighthouse. …, Dusk');
+  });
+
+  it('reads a slot path as the choice of what the variants offer', () => {
+    expect(describePlaceholders(placed('molly', 'world', 'p1', slot('Eyes')), DEMO)).toBe('{green|hazel|blue}');
+  });
+
+  it('follows an explicit pick to the branch it names', () => {
+    // Each branch reads as its own parts. Hair sits at the depth cap under Molly, so both stop before their
+    // shade — the point here is that the two picks describe different content, not the same options list.
+    expect(describePlaceholders(placed('molly', 'world', 'p1', val('isasian')), DEMO)).toBe('dark brown eyes');
+    expect(describePlaceholders(placed('molly', 'world', 'p1', val('iswhite')), DEMO))
+      .toBe('{green|hazel|blue}, light freckles');
+  });
+
+  it('shows a pinned variant instead of the options, and still nothing for a def the world lost', () => {
+    expect(describePlaceholders(placed('molly', 'world', 'p1'), DEMO, { molly: chip('isasian') }))
+      .toBe('dark brown eyes');
+    expect(describePlaceholders(placed('gone', 'world', 'p1'), DEMO, { gone: 'x' })).toBe('');
+  });
+
+  it('stops at the depth cap rather than unfolding a whole character', () => {
+    const chain: Placeholder[] = Array.from({ length: 6 }, (_, i) => ({
+      id: `n${i}`, name: `N${i}`, values: [i === 5 ? 'end' : chip(`n${i + 1}`)],
+    }));
+    expect(describePlaceholders(placed('n0', 'world', 'p1'), chain)).toBe('');
+  });
+
+  it('reads a reference cycle as nothing instead of looping', () => {
+    const cyclic: Placeholder[] = [
+      { id: 'a', name: 'A', values: [chip('b')] },
+      { id: 'b', name: 'B', values: [chip('a')] },
+    ];
+    expect(describePlaceholders(placed('a', 'world', 'p1'), cyclic)).toBe('');
+  });
+
+  it('says a self-referencing def once, not once per level the cap allows', () => {
+    // The depth cap alone would stop the walk but still print the value at every level it reached.
+    const selfRef: Placeholder[] = [{ id: 'a', name: 'A', values: ['scarred', chip('a')] }];
+    expect(describePlaceholders(placed('a', 'world', 'p1'), selfRef)).toBe('scarred');
+  });
+
+  it('is deterministic, so the same structured text always reads the same', () => {
+    const text = placed('molly', 'world', 'p1');
+    expect(describePlaceholders(text, DEMO)).toBe(describePlaceholders(text, DEMO));
+  });
+});
