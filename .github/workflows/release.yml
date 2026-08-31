@@ -24,6 +24,10 @@ on:
         description: 'Push desktop builds to itch.io'
         type: boolean
         default: false
+      cloudflare_web:
+        description: 'Push the web build to formamorph.ai (manual failsafe, e.g. for a pre-release)'
+        type: boolean
+        default: false
 
 jobs:
   build:
@@ -215,3 +219,100 @@ jobs:
           butler push win fierylion/formamorph:windows --userversion "$VER"
           butler push "$(ls *.AppImage)" fierylion/formamorph:linux --userversion "$VER"
           butler push "$(ls *.dmg)" fierylion/formamorph:mac --userversion "$VER"
+
+  # Cloudflare Pages deploy → https://formamorph.ai/play/. Same gate as itch-web: full-release tags deploy
+  # automatically, suffixed tags never do (push one by hand via workflow_dispatch on the tag's ref). The
+  # upload root is `out/` — the web build unpacked into out/play/, plus the tracked hosting/ config at the
+  # root. Needs the CLOUDFLARE_API_TOKEN (Pages Edit scope) and CLOUDFLARE_ACCOUNT_ID secrets.
+  cloudflare-web:
+    needs: web
+    runs-on: ubuntu-latest
+    if: >
+      (github.event_name == 'push' && !contains(github.ref_name, '-'))
+      || (github.event_name == 'workflow_dispatch' && inputs.cloudflare_web)
+    steps:
+      # Checked out for hosting/ only — every deployed byte comes from the web artifact.
+      - uses: actions/checkout@v7
+      - uses: actions/download-artifact@v8
+        with:
+          name: web
+          path: web-zip
+      - name: Assemble the upload root
+        run: |
+          set -euo pipefail
+          mkdir -p out/play
+          unzip -q "$(ls web-zip/formamorph-web-*.zip)" -d out/play
+          cp hosting/_redirects hosting/_headers out/
+          echo "$(find out -type f | wc -l) files, $(du -sh out | cut -f1) total"
+      # Pages rejects any file at or over 25 MiB, and the ONNX runtime wasm sits a few MiB under it. A
+      # dependency bump can cross the cap, so fail here instead of publishing a site missing one file.
+      - name: No file may reach the 25 MiB Pages cap
+        run: |
+          set -euo pipefail
+          LIMIT=$((25 * 1024 * 1024))
+          SIZES=$(find out -type f -printf '%s\t%p\n' | sort -rn)
+          echo "Largest files:"
+          head -5 <<< "$SIZES"
+          OVER=$(echo "$SIZES" | awk -F'\t' -v lim="$LIMIT" '$1 >= lim')
+          if [ -n "$OVER" ]; then
+            echo "::error::At or over Cloudflare Pages' 25 MiB per-file cap:"
+            echo "$OVER"
+            exit 1
+          fi
+      - name: Deploy to Cloudflare Pages
+        uses: cloudflare/wrangler-action@v4
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          # --branch is mandatory. A tag push has no branch, so without it Wrangler files a preview deploy
+          # that never reaches the custom domain. The value must match the project's production branch.
+          command: pages deploy out --project-name=formamorph --branch=main
+      # Armed by the CLOUDFLARE_CHECKS repository variable, which the setup wizard sets to 'true' once the
+      # dashboard side exists (custom domain on .ai, redirect rule on .com). Strict from that point on.
+      - name: Check the live site
+        if: vars.CLOUDFLARE_CHECKS == 'true'
+        run: |
+          # Actions runs this with `bash -e`, which would abort at the first unreachable URL and skip the
+          # rest. Every probe must report, so error-exit and pipefail are off and `fail` is the verdict.
+          set +e +o pipefail
+          set -u
+          fail=0
+          check() {
+            if [ "$2" = "$3" ]; then
+              echo "ok    $1 -> $3"
+            else
+              echo "::error::$1 — expected '$2', got '$3'"
+              fail=1
+            fi
+          }
+
+          # The deploy API returns before every edge node serves the new build.
+          for _ in 1 2 3 4 5 6; do
+            code=$(curl -sS --max-time 20 -o /dev/null -w '%{http_code}' https://formamorph.ai/play/) || code=000
+            [ "$code" = "200" ] && break
+            echo "waiting for /play/ (got $code)"
+            sleep 10
+          done
+          check "/play/ status" "200" "$code"
+
+          CT=$(curl -sSI --max-time 20 https://formamorph.ai/play/ | tr -d '\r' | awk 'tolower($1)=="content-type:"{print tolower($2)}' | cut -d';' -f1)
+          check "/play/ content-type" "text/html" "$CT"
+
+          check "/play redirect" "301 https://formamorph.ai/play/" "$(curl -sS --max-time 20 -o /dev/null -w '%{http_code} %{redirect_url}' https://formamorph.ai/play)"
+          check "/ redirect" "302 https://formamorph.ai/play/" "$(curl -sS --max-time 20 -o /dev/null -w '%{http_code} %{redirect_url}' https://formamorph.ai/)"
+          check ".com redirect" "301 https://formamorph.ai/play/" "$(curl -sS --max-time 20 -o /dev/null -w '%{http_code} %{redirect_url}' https://formamorph.com/play/)"
+
+          # Read the hashed name out of the deployed index.html so this follows every rebuild.
+          ASSET=$(grep -o 'assets/[A-Za-z0-9._-]*\.js' out/play/index.html | head -1)
+          if [ -z "$ASSET" ]; then
+            echo "::error::No hashed asset found in out/play/index.html"
+            fail=1
+          else
+            CC=$(curl -sSI --max-time 20 "https://formamorph.ai/play/$ASSET" | tr -d '\r' | sed -n 's/^[Cc]ache-[Cc]ontrol: //p')
+            case "$CC" in
+              *max-age=31536000*immutable*) echo "ok    $ASSET cache-control -> $CC" ;;
+              *) echo "::error::$ASSET cache-control — expected max-age=31536000 + immutable, got '$CC'"; fail=1 ;;
+            esac
+          fi
+
+          if [ "$fail" -ne 0 ]; then exit 1; fi

@@ -1,0 +1,12 @@
+# Cloudflare Pages response headers for the upload root.
+
+# Vite hashes every filename under assets/, so a year is safe and a new release changes the name.
+/play/assets/*
+  Cache-Control: public, max-age=31536000, immutable
+
+# The model and animation files keep their names across releases. A day, so a replacement reaches
+# players without a network round trip on every visit.
+/play/*.vrm
+  Cache-Control: public, max-age=86400
+/play/*.fbx
+  Cache-Control: public, max-age=86400
