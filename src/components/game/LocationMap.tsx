@@ -1,6 +1,6 @@
 import { createContext, useCallback, useContext, useMemo, useRef } from 'react';
 import {
-  Background, Controls, ReactFlow, type Edge, type Node, type NodeProps,
+  Background, ReactFlow, type Edge, type Node, type NodeProps,
 } from '@xyflow/react';
 import '@xyflow/react/dist/base.css';
 import { MapPin } from 'lucide-react';
@@ -10,6 +10,7 @@ import { useCanvasConnectionStyle } from '@/lib/canvasPrefs';
 import {
   buildLocationCanvas, CANVAS_GRID, isTravelClick, TOUCH_SLOP, UNNAMED_LOCATION, type TravelPress,
 } from '@/lib/locationCanvas';
+import { CanvasControls } from '@/components/CanvasControls';
 import { Tip } from '@/components/ui/tooltip';
 import { cn } from '@/lib/utils';
 import type { Connection, GameLocation } from '@/types';
@@ -169,7 +170,7 @@ const LocationMap = ({ locations, connections, currentLocationId, onTravel }: {
         >
           {/* The grid is an authoring aid — what a location snaps to. The player gets the plain ground. */}
           <Background className="!bg-background" color="transparent" gap={CANVAS_GRID} />
-          <Controls showInteractive={false} />
+          <CanvasControls />
         </ReactFlow>
       </TravelContext.Provider>
     </div>

@@ -865,8 +865,10 @@ b {
   background: hsl(var(--accent));
   color: hsl(var(--accent-foreground));
 }
+/* Every glyph in here is a lucide icon, which is stroked and not filled — xyflow's own solid ones left
+   with its built-in buttons (see CanvasControls). */
 .react-flow__controls-button svg {
-  fill: currentColor;
+  fill: none;
   max-width: 100%;
   max-height: 100%;
 }
