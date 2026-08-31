@@ -126,9 +126,13 @@ export function collectPlaceholderPlacements(texts: string[]): {
 }
 
 /**
- * Roll every Wildcard placement referenced across `texts`, keeping any `existing` rolls (so a loaded save's
- * frozen values are preserved). Only 2+-value placeholders roll — a Variable resolves from its single value,
- * and a missing/empty placeholder is skipped (resolves to ""). Pure: the caller persists the result.
+ * Roll every choice a fresh playthrough would reach across `texts`, keeping any `existing` rolls (so a loaded
+ * save's frozen values are preserved). Pure: the caller persists the result.
+ *
+ * Priming *is* a resolution pass with its minted rolls collected, rather than a second walk. Values are
+ * chip-capable, so a nested choice's key depends on the value its parent drew — only resolution knows which
+ * keys a render will read, and a key priming misses is a value that redraws on every render. Pins are
+ * deliberately absent: a pin masks a roll at resolve time, so the roll under it still has to be drawn.
  */
 export function primeRolls(
   placeholders: Placeholder[],
@@ -136,54 +140,100 @@ export function primeRolls(
   existing: PlaceholderRolls = {},
   pick: PlaceholderPick = weightedPick,
 ): PlaceholderRolls {
-  const byId = new Map(placeholders.map((p) => [p.id, p]));
-  // Module-wide: `values` is read as `?? []` — hand-edited world JSON can omit it, and a def without a
-  // list is an empty placeholder, not a crash.
-  const isWild = (id: string) => (byId.get(id)?.values?.length ?? 0) >= 2;
-  const roll = (id: string) => { const p = byId.get(id)!; return pick(p.values, p.weights); };
-  const { worldIds, unique } = collectPlaceholderPlacements(texts);
-
-  const world = { ...(existing.world ?? {}) };
-  for (const id of worldIds) {
-    if (isWild(id) && world[id] == null) world[id] = roll(id);
-  }
-  const uniqueRolls = { ...(existing.unique ?? {}) };
-  for (const { id, placementId } of unique) {
-    if (isWild(id) && uniqueRolls[placementId] == null) uniqueRolls[placementId] = roll(id);
-  }
-  return { world, unique: uniqueRolls };
+  const ctx = createResolveCtx({ placeholders, rolls: existing, pick });
+  for (const text of texts) if (text) resolveText(text, ctx);
+  return {
+    world: { ...(existing.world ?? {}), ...ctx.minted.world },
+    unique: { ...(existing.unique ?? {}), ...ctx.minted.unique },
+  };
 }
 
 // --- portability (export bundle / import absorb) ---------------------------------------------------------
 
-/** The subset of `available` defs actually referenced by chips in `texts` — what a standalone export bundles
- *  so its chips resolve elsewhere. Order follows `available`; each def appears at most once. */
+/** Every placeholder id one text's chips name: each chip's root, plus the target of any explicit-pick segment
+ *  in its drill path. A malformed token names nothing. */
+function chipIdsIn(text: string): string[] {
+  const ids: string[] = [];
+  if (!text || !hasPlaceholders(text)) return ids;
+  TOKEN_RE.lastIndex = 0;
+  for (const m of text.matchAll(TOKEN_RE)) {
+    const token = decodePlaceholderToken(m[0]);
+    if (!token) continue;
+    ids.push(token.id);
+    for (const seg of token.path ?? []) if (seg.kind === 'val') ids.push(seg.ref);
+  }
+  return ids;
+}
+
+/**
+ * The subset of `available` defs a standalone export has to bundle for `texts` to resolve elsewhere. Values
+ * are chip-capable, so this is the *transitive* closure: a character chip is useless without the defs its own
+ * values reach. Order follows `available`; each def appears at most once, and a reference cycle terminates.
+ */
 export function collectUsedPlaceholders(texts: string[], available: Placeholder[]): Placeholder[] {
+  const byId = new Map(available.map((p) => [p.id, p]));
   const used = new Set<string>();
-  for (const text of texts) {
-    if (!text) continue;
-    TOKEN_RE.lastIndex = 0;
-    for (const m of text.matchAll(TOKEN_RE)) used.add(m[1]);
+  const queue = texts.flatMap((text) => chipIdsIn(text));
+  while (queue.length) {
+    const id = queue.pop()!;
+    if (used.has(id)) continue;
+    used.add(id);
+    for (const value of byId.get(id)?.values ?? []) queue.push(...chipIdsIn(value));
   }
   return available.filter((p) => used.has(p.id));
 }
 
-/** Rewrite chip tokens' placeholder id via `idMap` (`{{ph:<old>:<mode>:<pid>}}` → new id; mode, placement id
- *  and drill path preserved). Ids absent from the map are left as-is. Used when absorbing an imported item's
- *  placeholders. */
+/** Rewrite chip tokens' placeholder ids via `idMap` — the chip's root, and the target of every explicit-pick
+ *  segment in its drill path, which names its placeholder the same way the root does. Mode and placement id
+ *  are untouched, and a token nothing in the map applies to comes back byte-identical. */
 export function remapPlaceholderIds(text: string, idMap: Record<string, string>): string {
   if (!text || !hasPlaceholders(text)) return text;
   TOKEN_RE.lastIndex = 0;
   return text.replace(TOKEN_RE, (full, id: string, mode: string, placementId: string, path?: string) => {
-    const next = idMap[id];
-    return next ? `{{ph:${next}:${mode}:${placementId}${path ? `:${path}` : ''}}}` : full;
+    const segs = path ? decodePlaceholderPath(path) : [];
+    if (!segs) return full; // an unreadable path is left exactly as the author's JSON has it
+    const moved = segs.map((s) => (s.kind === 'val' && idMap[s.ref] ? { kind: 'val' as const, ref: idMap[s.ref] } : s));
+    if (!idMap[id] && moved.every((s, i) => s === segs[i])) return full;
+    const tail = moved.length ? `:${encodePlaceholderPath(moved)}` : '';
+    return `{{ph:${idMap[id] ?? id}:${mode}:${placementId}${tail}}}`;
   });
 }
 
 /**
- * Merge an imported item's carried placeholder defs into a world's list. A **perfect match** (same name AND
- * values) reuses the existing def's id; anything else becomes a fresh-id def (collision-proof). Pure: returns
- * the defs to add and an id map (every carried id → its resolved world id) for the caller to remap tokens with.
+ * Carried defs ordered so each one comes after the defs its own values reference. A def whose values carry
+ * chips can only be compared against the world once those chips point at the world's ids, and that needs its
+ * children resolved first. A reference cycle keeps its authored order rather than looping.
+ */
+function inReferenceOrder(carried: Placeholder[]): Placeholder[] {
+  const byId = new Map(carried.map((p) => [p.id, p]));
+  const out: Placeholder[] = [];
+  const done = new Set<string>();
+  const onStack = new Set<string>();
+  const visit = (p: Placeholder) => {
+    if (done.has(p.id) || onStack.has(p.id)) return;
+    onStack.add(p.id);
+    for (const value of p.values ?? []) {
+      for (const id of chipIdsIn(value)) {
+        const child = byId.get(id);
+        if (child) visit(child);
+      }
+    }
+    onStack.delete(p.id);
+    done.add(p.id);
+    out.push(p);
+  };
+  for (const p of carried) visit(p);
+  return out;
+}
+
+/**
+ * Merge an imported item's carried placeholder defs into a world's list. A **perfect match** — same name,
+ * same values, same weights, same roll flag — reuses the existing def's id; anything else becomes a fresh-id
+ * def (collision-proof). Pure: returns the defs to add and an id map (every carried id → its resolved world
+ * id) for the caller to remap tokens with.
+ *
+ * A carried def's values are remapped before they are compared, so a structured def matches the world's copy
+ * on what its chips *mean* rather than on the ids the exporting world happened to give them.
  */
 export function absorbPlaceholders(
   carried: Placeholder[],
@@ -199,16 +249,28 @@ export function absorbPlaceholders(
   // Match against the world's list plus anything added so far this pass (so two carried copies of the same def
   // collapse to one).
   const pool = [...worldPlaceholders];
-  for (const c of carried) {
-    const match = pool.find((p) => p.name === c.name && sameValues(p.values ?? [], c.values ?? []) && sameWeights(p, c));
+  for (const c of inReferenceOrder(carried)) {
+    const values = (c.values ?? []).map((v) => remapPlaceholderIds(v, idMap));
+    // Weights are keyed by value text, so a remapped value takes its weight's key with it.
+    const weights = c.weights
+      ? Object.fromEntries(Object.entries(c.weights).map(([v, w]) => [remapPlaceholderIds(v, idMap), w]))
+      : undefined;
+    const resolved: Placeholder = { ...c, values, ...(weights ? { weights } : {}) };
+    // Compared by what the flag does, not by whether it is written: a 2-value def with `roll: true` is the
+    // same def as one that infers the same choice from its value count, and must not duplicate it.
+    const match = pool.find((p) => p.name === c.name
+      && sameValues(p.values ?? [], values)
+      && placeholderIsChoice(p) === placeholderIsChoice(resolved)
+      && sameWeights(resolved, p));
     if (match) {
       idMap[c.id] = match.id;
     } else {
       const fresh: Placeholder = {
         id: randomUUID(),
         name: c.name,
-        values: [...(c.values ?? [])],
-        ...(c.weights ? { weights: { ...c.weights } } : {}),
+        values,
+        ...(weights ? { weights } : {}),
+        ...(c.roll !== undefined ? { roll: c.roll } : {}),
       };
       toAdd.push(fresh);
       pool.push(fresh);
@@ -231,28 +293,26 @@ export function buildPlaceholderPreview(
 ): Record<string, string> {
   const out: Record<string, string> = {};
   if (!text || !hasPlaceholders(text)) return out;
-  // Roll once (respecting World/Unique) so shared World chips agree; then map each distinct token to its value.
-  const rolls = primeRolls(placeholders, [text], {}, pick);
-  const byId = new Map(placeholders.map((p) => [p.id, p]));
+  // One context across every token, so a structured chip resolves the way play resolves it and the sharing
+  // rules still hold: World chips of one placeholder agree, Unique placements stay apart. The rolls are
+  // minted into the context and thrown away with it — a preview never writes a save.
+  const ctx = createResolveCtx({ placeholders, rolls: {}, pick });
   TOKEN_RE.lastIndex = 0;
   for (const m of text.matchAll(TOKEN_RE)) {
-    const token = m[0];
-    if (token in out) continue;
-    const [, id, mode, placementId] = m;
-    const ph = byId.get(id);
-    if (!ph?.values?.length) { out[token] = ''; continue; }
-    if (ph.values.length === 1) { out[token] = ph.values[0]; continue; }
-    const scope: PlaceholderMode = mode === 'unique' ? 'unique' : 'world';
-    const key = scope === 'world' ? id : placementId;
-    out[token] = rolls[scope]?.[key] ?? '';
+    if (m[0] in out) continue;
+    out[m[0]] = resolveText(m[0], ctx);
   }
   return out;
 }
 
 /**
  * Display-only chip rendering for surfaces with no world or rolls behind them — a library card, a community
- * listing blurb. A Variable shows its value; a Wildcard shows its options as `{a|b}` (first 3, then `…`);
- * a chip whose def is missing or empty shows nothing. Never rolls, so the same text always reads the same.
+ * listing blurb. Mirrors the shape of {@link resolvePlaceholders} without ever drawing: a choice shows its
+ * options as `{a|b}` (first 3, then `…`), a record joins its values, and a chip whose def is missing or empty
+ * shows nothing. The same text always reads the same.
+ *
+ * Values are chip-capable, so this recurses — capped at {@link DESCRIBE_DEPTH_CAP} levels, because a card's
+ * blurb has to stay a blurb. Past the cap, and on a reference cycle, a chip reads as nothing.
  *
  * `pins` mask chips the way an active trait's do in {@link resolvePlaceholders}, in the same order: a chip
  * whose placeholder the world doesn't have still shows nothing, since play can't pin what it can't find.
@@ -264,16 +324,77 @@ export function describePlaceholders(
   pins?: Record<string, string>,
 ): string {
   if (!text || !hasPlaceholders(text)) return text;
-  const byId = new Map(placeholders.map((p) => [p.id, p]));
+  return describeText(text, { byId: new Map(placeholders.map((p) => [p.id, p])), pins, depth: 0, seen: new Set() });
+}
+
+/** How many levels of nested chips a describe pass walks. Deep enough to show a character's parts, shallow
+ *  enough that one chip cannot turn a card blurb into the whole world. */
+const DESCRIBE_DEPTH_CAP = 2;
+
+/** One describe pass. No rolls and no scope: nothing here draws, so a chip's mode and placement id do not
+ *  change what it reads. */
+interface DescribeCtx {
+  byId: Map<string, Placeholder>;
+  pins?: Record<string, string>;
+  depth: number;
+  seen: ReadonlySet<string>;
+}
+
+/** Describe every chip in a text, leaving its literal runs alone. */
+function describeText(text: string, ctx: DescribeCtx): string {
+  if (!text || !hasPlaceholders(text)) return text;
   TOKEN_RE.lastIndex = 0;
-  return text.replace(TOKEN_RE, (_full, id: string) => {
-    const ph = byId.get(id);
-    if (!ph) return '';
-    const pinned = pins?.[id];
-    if (pinned != null) return pinned;
-    if (!ph.values?.length) return '';
-    return ph.values.length === 1 ? ph.values[0] : `{${placeholderValueSummary(ph)}}`;
+  return text.replace(TOKEN_RE, (full) => {
+    const token = decodePlaceholderToken(full);
+    return token ? describeChip(token, ctx, []) : '';
   });
+}
+
+/** A set of candidate descriptions as one line: first three joined by `|` and braced, `…` for the rest. One
+ *  surviving candidate reads bare, since there is no choice left to show. */
+function describeChoice(candidates: string[]): string {
+  const shown = candidates.map(placeholderValueLine).filter((s) => s !== '');
+  if (shown.length <= 1) return shown[0] ?? '';
+  const head = shown.slice(0, 3).join('|');
+  return `{${shown.length > 3 ? `${head}|…` : head}}`;
+}
+
+/** Enter a chip: its own drill path first, then whatever the caller still has left to walk. */
+function describeChip(token: PlaceholderToken, ctx: DescribeCtx, tail: PlaceholderSegment[]): string {
+  const ph = ctx.byId.get(token.id);
+  if (!ph) return '';
+  return describePh(ph, [...(token.path ?? []), ...tail], ctx);
+}
+
+/** Describe a placeholder, optionally through a drill path. With no roll to route through, a slot that no
+ *  child answers directly reads as the choice of what each variant offers. */
+function describePh(ph: Placeholder, segs: PlaceholderSegment[], ctx: DescribeCtx): string {
+  if (ctx.depth > DESCRIBE_DEPTH_CAP || ctx.seen.has(ph.id)) return '';
+  // Same order resolution uses: a pin applies before the values are looked at, so a pin on an emptied
+  // placeholder is still the author's word.
+  const pinned = ctx.pins?.[ph.id];
+  const values = pinned != null ? [pinned] : ph.values ?? [];
+  if (!values.length) return '';
+  const inner: DescribeCtx = { ...ctx, depth: ctx.depth + 1, seen: new Set(ctx.seen).add(ph.id) };
+
+  if (!segs.length) {
+    // Every surface reading this takes one line, so a paragraph value is clipped on both branches.
+    const described = values.map((v) => placeholderValueLine(describeText(v, inner)));
+    // A pin names one value, so the placeholder reads as that value whatever its roll flag says.
+    return pinned == null && placeholderIsChoice(ph)
+      ? describeChoice(described)
+      : described.filter((s) => s !== '').join(', ');
+  }
+
+  const [seg, ...rest] = segs;
+  const children = childChips(values, ctx.byId);
+  if (seg.kind === 'val') {
+    const hit = children.find((c) => c.target.id === seg.ref);
+    return hit ? describeChip(hit.token, inner, rest) : '';
+  }
+  const direct = children.find((c) => c.target.name === seg.name);
+  if (direct) return describeChip(direct.token, inner, rest);
+  return describeChoice(children.map((c) => describeChip(c.token, inner, segs)));
 }
 
 /** One value as a single line — a paragraph-length value becomes its first line plus `…`. Every one-line
@@ -417,13 +538,17 @@ function loneChipToken(value: string): string | null {
   return m ? m[0] : null;
 }
 
-/** Every structural child of `ph`: its lone-chip values, paired with the placeholder each one roots at. */
-function childChips(ph: Placeholder, ctx: ResolveCtx): Array<{ token: PlaceholderToken; target: Placeholder }> {
+/** Every structural child in a value list: its lone-chip values, paired with the placeholder each one roots
+ *  at. Shared by the resolve and describe walks, which disagree about rolls but not about structure. */
+function childChips(
+  values: string[],
+  byId: Map<string, Placeholder>,
+): Array<{ token: PlaceholderToken; target: Placeholder }> {
   const out: Array<{ token: PlaceholderToken; target: Placeholder }> = [];
-  for (const value of ph.values ?? []) {
+  for (const value of values) {
     const raw = loneChipToken(value);
     const token = raw ? decodePlaceholderToken(raw) : null;
-    const target = token ? ctx.byId.get(token.id) : undefined;
+    const target = token ? byId.get(token.id) : undefined;
     if (token && target) out.push({ token, target });
   }
   return out;
@@ -529,7 +654,7 @@ function walkSegs(ph: Placeholder, segs: WalkSegment[], ctx: ResolveCtx): string
       }
       return intoChild(token, rest);
     }
-    const hit = childChips(ph, ctx).find((c) => c.target.id === seg.ref);
+    const hit = childChips(ph.values ?? [], ctx.byId).find((c) => c.target.id === seg.ref);
     if (!hit) {
       ctx.report({ kind: 'slot-miss', placeholderId: ph.id, asked: seg.ref });
       return '';
@@ -539,7 +664,7 @@ function walkSegs(ph: Placeholder, segs: WalkSegment[], ctx: ResolveCtx): string
 
   // A slot takes a child of this placeholder by name; failing that, a choice routes through whichever value
   // it drew and the same slot is tried inside that variant.
-  const direct = childChips(ph, ctx).find((c) => c.target.name === seg.name);
+  const direct = childChips(ph.values ?? [], ctx.byId).find((c) => c.target.name === seg.name);
   if (direct) return intoChild(direct.token, rest);
   if (placeholderIsChoice(ph)) {
     const raw = loneChipToken(selectValue(ph, next));
@@ -558,8 +683,14 @@ function walkSegs(ph: Placeholder, segs: WalkSegment[], ctx: ResolveCtx): string
  */
 export function resolvePlaceholders(text: string, opts: ResolveOptions): string {
   if (!text || !hasPlaceholders(text)) return text;
+  return resolveText(text, createResolveCtx(opts));
+}
+
+/** A fresh root context. Held across several texts by the priming and preview passes, so their `minted` rolls
+ *  accumulate and every text after the first reads what the ones before it drew. */
+function createResolveCtx(opts: ResolveOptions): ResolveCtx {
   const { placeholders, rolls, setRoll, pick = weightedPick, pins, onFinding } = opts;
-  const ctx: ResolveCtx = {
+  return {
     byId: new Map(placeholders.map((p) => [p.id, p])),
     rolls,
     minted: { world: {}, unique: {} },
@@ -573,7 +704,12 @@ export function resolvePlaceholders(text: string, opts: ResolveOptions): string 
     seen: new Set(),
     depth: 0,
   };
+}
 
+/** One text, resolved from a root context. Chips here are typed into world text, so their path segments are
+ *  pin-immune. */
+function resolveText(text: string, ctx: ResolveCtx): string {
+  if (!text || !hasPlaceholders(text)) return text;
   TOKEN_RE.lastIndex = 0;
   return text.replace(TOKEN_RE, (full, id: string) => {
     const token = decodePlaceholderToken(full);
@@ -581,6 +717,6 @@ export function resolvePlaceholders(text: string, opts: ResolveOptions): string 
       ctx.report({ kind: 'malformed', placeholderId: id });
       return '';
     }
-    return resolveChip(token, ctx, [], false); // typed in world text → its segments are pin-immune
+    return resolveChip(token, ctx, [], false);
   });
 }
