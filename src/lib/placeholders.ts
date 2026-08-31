@@ -101,6 +101,27 @@ export function lonePlaceholderToken(value: string): string | null {
 }
 
 /**
+ * Who holds each placeholder as a **part** — {@link lonePlaceholderToken} read across a whole set. Keyed by
+ * the part's id, valued by the ids holding it in list order; a holder is named once however many of its
+ * values point there, and a placeholder is never its own part. A chip *inside* a longer value composes into
+ * that value rather than becoming a part, so it names nobody here.
+ */
+export function collectPlaceholderParts(placeholders: Placeholder[]): Map<string, string[]> {
+  const parts = new Map<string, string[]>();
+  for (const holder of placeholders) {
+    for (const value of holder.values) {
+      const lone = lonePlaceholderToken(value);
+      const id = lone ? decodePlaceholderToken(lone)?.id : undefined;
+      if (!id || id === holder.id) continue;
+      const holders = parts.get(id);
+      if (!holders) parts.set(id, [holder.id]);
+      else if (!holders.includes(holder.id)) holders.push(holder.id);
+    }
+  }
+  return parts;
+}
+
+/**
  * A freshly authored placeholder. Born a Wildcard, stated rather than inferred: the flat workflow is
  * unchanged, and the kind is the author's from the first keystroke instead of shifting as the second value
  * lands. Every surface that creates one goes through here, so no path can quietly leave the kind unsaid.
