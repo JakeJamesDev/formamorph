@@ -2,6 +2,7 @@ import React, { forwardRef, type ReactNode } from 'react';
 import { Globe } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { MarkdownRenderer } from '@/components/game/MarkdownRenderer';
+import { THUMB_FRAME } from '@/lib/thumbAspect';
 
 interface WorldCardShellProps extends React.HTMLAttributes<HTMLDivElement> {
   /** The thumbnail image node (an `img`/`CachedThumbnail`); a `Globe` placeholder fills the area when absent. */
@@ -38,7 +39,7 @@ export const WorldCardShell = forwardRef<HTMLDivElement, WorldCardShellProps>(fu
       {...rest}
     >
       {cornerAction}
-      <div className="relative h-32 bg-muted rounded-t-lg overflow-hidden">
+      <div className={cn('relative bg-muted rounded-t-lg overflow-hidden', THUMB_FRAME.landscape)}>
         {thumbnailOverlay}
         {thumbnail ?? (
           <div className="w-full h-full flex items-center justify-center text-muted-foreground">

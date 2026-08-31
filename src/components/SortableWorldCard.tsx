@@ -6,6 +6,7 @@ import { cn } from "@/lib/utils";
 import { CardTags, type WorldRecord } from "@/components/WorldDetails";
 import { WorldCardShell } from "@/components/WorldCardShell";
 import { Tip } from "@/components/ui/tooltip";
+import { THUMB_FRAME, thumbFit, type ThumbAspect } from "@/lib/thumbAspect";
 
 /** A draggable local-world tile. The whole card is the drag handle; a small move distance is required to
  *  start a drag so a plain click still selects the world. `detailed` mirrors the community-browser card layout.
@@ -18,7 +19,7 @@ function SortableWorldCard({ world, onSelect, onDelete, layout, aspect = 'landsc
   onSelect?: (id: string) => void;
   onDelete: (id: string) => void;
   layout: 'grid' | 'detailed';
-  aspect?: 'landscape' | 'portrait';
+  aspect?: ThumbAspect;
   badge?: React.ReactNode;
   note?: React.ReactNode;
   /** Fill the tile the grid hands it, instead of taking its height from `aspect`. */
@@ -65,13 +66,7 @@ function SortableWorldCard({ world, onSelect, onDelete, layout, aspect = 'landsc
             <img
               src={world.thumbnail}
               alt={world.name}
-              // Character art is almost always a portrait, and this frame is landscape — anchored to the
-              // top so the crop takes the face rather than the middle of the torso. Same rule the
-              // community browser's cards use.
-              className={cn(
-                'w-full h-full object-cover select-none pointer-events-none',
-                aspect === 'portrait' && 'object-top',
-              )}
+              className={cn('w-full h-full select-none pointer-events-none', thumbFit(aspect))}
             />
           )
           : undefined}
@@ -103,7 +98,7 @@ function SortableWorldCard({ world, onSelect, onDelete, layout, aspect = 'landsc
     );
   const mediaSize = fill
     ? 'h-full w-full'
-    : cn('w-full', aspect === 'portrait' ? 'aspect-[2/3]' : 'h-48');
+    : cn('w-full', THUMB_FRAME[aspect]);
 
   const tile = (
     <div
@@ -126,13 +121,7 @@ function SortableWorldCard({ world, onSelect, onDelete, layout, aspect = 'landsc
         <img
           src={world.thumbnail}
           alt={world.name}
-          // Top-anchored for character art, as in the detailed card and the community browser: even a 2:3
-          // frame crops a portrait, and the face is the part worth keeping.
-          className={cn(
-            'object-cover select-none pointer-events-none',
-            mediaSize,
-            aspect === 'portrait' && 'object-top',
-          )}
+          className={cn('select-none pointer-events-none', mediaSize, thumbFit(aspect))}
         />
       ) : (
         <div className={cn(mediaSize, 'bg-muted')} />

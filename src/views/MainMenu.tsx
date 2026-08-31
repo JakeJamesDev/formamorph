@@ -22,6 +22,7 @@ import { ActionIcon } from '@/lib/actionIcons';
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { ImageZoomViewer } from "@/components/ImageZoomViewer";
 import { cn } from "@/lib/utils";
+import { THUMB_FRAME, thumbFit } from "@/lib/thumbAspect";
 import { usePersistentState, boolCodec } from "@/lib/usePersistentState";
 import {
   Dialog,
@@ -2068,13 +2069,13 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
               thumbnail={
                 <Tip tip="Click to enlarge" labelsChild={false}>
                   <div
-                    className="hidden sm:block relative w-full pt-[56.25%] cursor-zoom-in"
+                    className={cn('hidden sm:block relative w-full cursor-zoom-in', THUMB_FRAME.landscape)}
                     onClick={() => openImageViewer(selectedWorld?.thumbnail, selectedWorld?.name)}
                   >
                     <img
                       src={selectedWorld?.thumbnail}
                       alt={selectedWorld?.name}
-                      className="absolute top-0 left-0 w-full h-full object-cover rounded-lg"
+                      className={cn('absolute top-0 left-0 w-full h-full rounded-lg', thumbFit('landscape'))}
                     />
                   </div>
                 </Tip>
