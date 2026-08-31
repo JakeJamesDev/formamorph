@@ -23,7 +23,9 @@ export function LibraryWorldCard({ world, contests, layout, onSelect, fill, comp
   /** Trade the name strip for a tooltip, on the smallest tile size. */
   compact?: boolean;
 }) {
-  const placements = placementsBy(world, contests);
+  // A blank tile has no download link to match against the archive, so it is badged with nothing.
+  const loading = !!world.isLoading;
+  const placements = loading ? [] : placementsBy(world, contests);
 
   return (
     <SortableWorldCard
@@ -31,6 +33,7 @@ export function LibraryWorldCard({ world, contests, layout, onSelect, fill, comp
       layout={layout}
       fill={fill}
       compact={compact}
+      loading={loading}
       // The grid tile is all thumbnail, so the badge rides a plate over it; the detailed card has a body
       // to put the same line in. Only the overlay is guarded — that slot wraps whatever it is given in a
       // positioned box, and a box around nothing is still a box.

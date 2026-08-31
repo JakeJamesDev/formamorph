@@ -4,6 +4,7 @@ import { CSS } from "@dnd-kit/utilities";
 import { cn } from "@/lib/utils";
 import { CardTags, type WorldRecord } from "@/components/WorldDetails";
 import { OverlayTitle, TITLE_SCRIM, WorldCardShell } from "@/components/WorldCardShell";
+import { Skeleton } from "@/components/ui/skeleton";
 import { Tip } from "@/components/ui/tooltip";
 import { THUMB_FRAME, thumbFit, type ThumbAspect } from "@/lib/thumbAspect";
 
@@ -14,7 +15,7 @@ import { THUMB_FRAME, thumbFit, type ThumbAspect } from "@/lib/thumbAspect";
  *  the tile doesn't advertise a click it won't answer. `badge` overlays the grid thumbnail's top-left, and
  *  `note` is the same thing said as a line in the detailed layout, which has no thumbnail to overlay.
  *  Deleting lives in the tile's context menu (the grid owns it), so the card draws no delete control. */
-function SortableWorldCard({ world, onSelect, layout, aspect = 'landscape', badge, note, fill, compact }: {
+function SortableWorldCard({ world, onSelect, layout, aspect = 'landscape', badge, note, fill, compact, loading }: {
   world: WorldRecord;
   onSelect?: (id: string) => void;
   layout: 'grid' | 'detailed';
@@ -25,6 +26,8 @@ function SortableWorldCard({ world, onSelect, layout, aspect = 'landscape', badg
   fill?: boolean;
   /** Trade the name strip for a tooltip, so the smallest tile is thumbnail and nothing else. */
   compact?: boolean;
+  /** Draw this tile's own shape with its content still loading: shimmer where the card's parts go. */
+  loading?: boolean;
 }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } =
     // The tile board slides displaced tiles itself; dnd-kit's layout animation would stack a second
@@ -37,18 +40,23 @@ function SortableWorldCard({ world, onSelect, layout, aspect = 'landscape', badg
     opacity: isDragging ? 0.5 : 1,
     zIndex: isDragging ? 1 : undefined,
   };
+  // A blank tile answers nothing and goes nowhere: no click, and no drag, since a gesture that finished
+  // over an unnamed card would still commit a real arrangement.
+  const handlers = loading ? {} : { ...attributes, ...listeners };
+  const select = loading ? undefined : onSelect;
+
   // Detailed layout: the shared card shell (thumbnail on top, info beneath), draggable.
   if (layout === 'detailed') {
     return (
       <WorldCardShell
         ref={setNodeRef}
         style={style}
-        {...attributes}
-        {...listeners}
+        {...handlers}
         // content-visibility:auto lets the browser skip layout/paint for off-screen cards; the auto
         // intrinsic-size reserves space (remembered after first paint) so scrolling stays stable.
         frameClassName="h-full bg-card touch-pan-y [content-visibility:auto] [contain-intrinsic-size:auto_360px]"
-        onClick={() => onSelect?.(world.id)}
+        onClick={() => select?.(world.id)}
+        loading={loading}
         name={world.name}
         description={world.description}
         // Omitted rather than "By Unknown" when there is none: a character or a book in your own library
@@ -88,8 +96,7 @@ function SortableWorldCard({ world, onSelect, layout, aspect = 'landscape', badg
     <div
       ref={setNodeRef}
       style={style}
-      {...attributes}
-      {...listeners}
+      {...handlers}
       // content-visibility:auto skips layout/paint for off-screen tiles; the auto intrinsic-size reserves
       // their height (remembered after first paint) so the scroll frame doesn't jump. The reservation is
       // per-aspect: a 2:3 portrait stands about half again as tall as the landscape tile, and a single
@@ -97,11 +104,13 @@ function SortableWorldCard({ world, onSelect, layout, aspect = 'landscape', badg
       className={cn(
         'group relative rounded-lg overflow-hidden transition-opacity touch-pan-y',
         frameSize,
-        onSelect && 'cursor-pointer hover:opacity-90',
+        select && 'cursor-pointer hover:opacity-90',
       )}
-      onClick={() => onSelect?.(world.id)}
+      onClick={() => select?.(world.id)}
     >
-      {world.thumbnail ? (
+      {loading ? (
+        <Skeleton className={cn(mediaSize, 'rounded-none')} />
+      ) : world.thumbnail ? (
         <img
           src={world.thumbnail}
           alt={world.name}
@@ -113,7 +122,9 @@ function SortableWorldCard({ world, onSelect, layout, aspect = 'landscape', badg
       {badge && <div className="absolute top-1 left-1 z-10 max-w-[calc(100%-0.5rem)]">{badge}</div>}
       {!compact && (
         <div className={cn('absolute bottom-0 left-0 right-0 p-2 pt-8', TITLE_SCRIM)}>
-          <OverlayTitle name={world.name} />
+          {loading
+            ? <Skeleton className="h-6 w-2/5 bg-white/20" />
+            : <OverlayTitle name={world.name} />}
         </div>
       )}
     </div>
@@ -121,7 +132,7 @@ function SortableWorldCard({ world, onSelect, layout, aspect = 'landscape', badg
 
   // A small tile has no room for the name strip, so the name is a tip instead. `labelsChild` is off:
   // the tile is not a control.
-  return compact ? <Tip tip={world.name} labelsChild={false}>{tile}</Tip> : tile;
+  return compact && !loading ? <Tip tip={world.name} labelsChild={false}>{tile}</Tip> : tile;
 }
 
 export default SortableWorldCard;
