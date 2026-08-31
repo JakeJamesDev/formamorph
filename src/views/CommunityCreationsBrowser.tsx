@@ -54,6 +54,7 @@ import {
   DialogDescription,
 } from "@/components/ui/dialog";
 import { Skeleton } from "@/components/ui/skeleton";
+import { TITLE_SCRIM } from "@/components/WorldCardShell";
 import { Input } from "@/components/ui/input";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { useIsMobile } from "@/lib/useIsMobile";
@@ -819,7 +820,7 @@ const CommunityCreationsBrowser = ({
                 Array(4).fill(0).map((_, index) => (
                   <div key={index} className="relative w-full h-48 rounded-lg overflow-hidden">
                     <Skeleton className="w-full h-full" />
-                    <div className="absolute bottom-0 left-0 right-0 bg-overlay/50 p-2">
+                    <div className={cn('absolute bottom-0 left-0 right-0 p-2 pt-8', TITLE_SCRIM)}>
                       <Skeleton className="h-6 w-24" />
                     </div>
                   </div>

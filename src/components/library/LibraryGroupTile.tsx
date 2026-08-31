@@ -3,7 +3,7 @@ import { CSS } from '@dnd-kit/utilities';
 import { Folder, Sparkles } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Tip } from '@/components/ui/tooltip';
-import { WorldCardShell } from '@/components/WorldCardShell';
+import { TITLE_SCRIM, WorldCardShell } from '@/components/WorldCardShell';
 import type { LibraryGroup } from '@/lib/libraryOrganization';
 import { thumbFit, type ThumbAspect } from '@/lib/thumbAspect';
 
@@ -112,7 +112,7 @@ export function LibraryGroupTile({
         </span>
       )}
       {!compact && (
-        <div className="absolute bottom-0 left-0 right-0 bg-overlay/50 p-2 flex items-end gap-2">
+        <div className={cn('absolute bottom-0 left-0 right-0 p-2 pt-8 flex items-end gap-2', TITLE_SCRIM)}>
           <Folder className="h-5 w-5 shrink-0 text-white" />
           <h3 className="min-w-0 flex-1 break-words text-white font-semibold">{group.name}</h3>
           <span className="shrink-0 text-meta text-white/70">{group.members.length}</span>

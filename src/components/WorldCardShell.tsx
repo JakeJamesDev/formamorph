@@ -4,6 +4,9 @@ import { cn } from '@/lib/utils';
 import { MarkdownRenderer } from '@/components/game/MarkdownRenderer';
 import { THUMB_FRAME } from '@/lib/thumbAspect';
 
+/** The scrim behind a name laid over tile art: a smooth black fade, the same in both themes. */
+export const TITLE_SCRIM = 'bg-gradient-to-t from-black/80 via-black/40 to-transparent';
+
 interface WorldCardShellProps extends React.HTMLAttributes<HTMLDivElement> {
   /** The thumbnail image node (an `img`/`CachedThumbnail`); a `Globe` placeholder fills the area when absent. */
   thumbnail?: ReactNode;
@@ -22,10 +25,11 @@ interface WorldCardShellProps extends React.HTMLAttributes<HTMLDivElement> {
 }
 
 /**
- * The shared visual shell for a world card — frame, thumbnail area (with a `Globe` fallback), title,
- * description, and author — composed by both the local `SortableWorldCard` (detailed layout) and the
- * community `RemoteWorldCard`. Card-specific bits (drag vs. download/hide, counts, tags, footer actions) are
- * passed via slots/`children`, so the shared layout **and its themed colors live in exactly one place.**
+ * The shared visual shell for a world card — frame, thumbnail area (with a `Globe` fallback) carrying the
+ * title and author over a scrim, and the description beneath — composed by both the local
+ * `SortableWorldCard` (detailed layout) and the community `RemoteWorldCard`. Card-specific bits (drag vs.
+ * download/hide, counts, tags, footer actions) are passed via slots/`children`, so the shared layout
+ * **and its themed colors live in exactly one place.**
  * Forwards a ref + spreads the rest onto the frame so a caller can attach dnd-kit listeners / `onClick`.
  */
 export const WorldCardShell = forwardRef<HTMLDivElement, WorldCardShellProps>(function WorldCardShell(
@@ -46,13 +50,16 @@ export const WorldCardShell = forwardRef<HTMLDivElement, WorldCardShellProps>(fu
             <Globe className="h-12 w-12" />
           </div>
         )}
+        {/* The name and author live on the art, matching the grid tiles, so the text block stays short. */}
+        <div className={cn('absolute bottom-0 left-0 right-0 p-2 pt-8', TITLE_SCRIM)}>
+          <h3 className="font-semibold text-title text-white break-words">{name}</h3>
+          {author != null && <div className="text-meta text-white/85">{author}</div>}
+        </div>
       </div>
       <div className="p-4 flex flex-col flex-grow">
-        <h3 className="font-semibold text-title mb-1">{name}</h3>
         <div className="text-helper text-muted-foreground mb-2 max-h-20 overflow-hidden">
           <MarkdownRenderer text={description || 'No description available.'} />
         </div>
-        {author != null && <div className="text-meta text-muted-foreground mb-1">{author}</div>}
         {note}
         {children}
       </div>
