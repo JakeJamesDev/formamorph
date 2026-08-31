@@ -434,6 +434,9 @@ export interface PlaceholderFinding {
   placeholderId?: string;
   /** What the path asked for — a slot name, or a target id for an explicit pick. */
   asked?: string;
+  /** Which kind of segment asked, on a `slot-miss`. A `slot` routes by name and a `val` picks by id, so the
+   *  two miss for different reasons and the Bench has different things to say about them. */
+  segment?: PlaceholderSegment['kind'];
 }
 
 export interface ResolveOptions {
@@ -554,6 +557,18 @@ function childChips(
   return out;
 }
 
+/**
+ * A placeholder's structural children — the same lone-chip reading the resolver's own walk uses, so a
+ * diagnostic that talks about slots agrees with what routing actually does. A value with text around its
+ * chip composes into that value instead and is no child; a chip whose target is gone is no child either.
+ */
+export function placeholderChildren(
+  ph: Placeholder,
+  placeholders: readonly Placeholder[],
+): Array<{ token: PlaceholderToken; target: Placeholder }> {
+  return childChips(ph.values ?? [], new Map(placeholders.map((p) => [p.id, p])));
+}
+
 /** Where a placeholder's roll is stored under the current scope. */
 function rollKey(ph: Placeholder, ctx: ResolveCtx): string {
   if (ctx.scope === 'world') return ph.id;
@@ -649,14 +664,14 @@ function walkSegs(ph: Placeholder, segs: WalkSegment[], ctx: ResolveCtx): string
       const raw = loneChipToken(pinned);
       const token = raw ? decodePlaceholderToken(raw) : null;
       if (!token) {
-        ctx.report({ kind: 'slot-miss', placeholderId: ph.id, asked: seg.ref });
+        ctx.report({ kind: 'slot-miss', placeholderId: ph.id, asked: seg.ref, segment: 'val' });
         return '';
       }
       return intoChild(token, rest);
     }
     const hit = childChips(ph.values ?? [], ctx.byId).find((c) => c.target.id === seg.ref);
     if (!hit) {
-      ctx.report({ kind: 'slot-miss', placeholderId: ph.id, asked: seg.ref });
+      ctx.report({ kind: 'slot-miss', placeholderId: ph.id, asked: seg.ref, segment: 'val' });
       return '';
     }
     return intoChild(hit.token, rest);
@@ -671,7 +686,7 @@ function walkSegs(ph: Placeholder, segs: WalkSegment[], ctx: ResolveCtx): string
     const token = raw ? decodePlaceholderToken(raw) : null;
     if (token) return intoChild(token, segs);
   }
-  ctx.report({ kind: 'slot-miss', placeholderId: ph.id, asked: seg.name });
+  ctx.report({ kind: 'slot-miss', placeholderId: ph.id, asked: seg.name, segment: 'slot' });
   return '';
 }
 

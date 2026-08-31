@@ -589,7 +589,7 @@ describe('prototype walkthroughs', () => {
       rolls: { world: { molly: chip('isasian') } },
     });
     expect(out).toBe('Her  eyes narrow.');
-    expect(findings).toEqual([{ kind: 'slot-miss', placeholderId: 'isasian', asked: 'Eyes' }]);
+    expect(findings).toEqual([{ kind: 'slot-miss', placeholderId: 'isasian', asked: 'Eyes', segment: 'slot' }]);
   });
 
   it('4 — an authored drill pre-selects a branch while its leaves still roll', () => {
@@ -643,7 +643,7 @@ describe('prototype walkthroughs', () => {
       pins: { molly: chip('isasian') },
     });
     expect(out).toBe('You notice .');
-    expect(findings).toEqual([{ kind: 'slot-miss', placeholderId: 'isasian', asked: 'Freckles' }]);
+    expect(findings).toEqual([{ kind: 'slot-miss', placeholderId: 'isasian', asked: 'Freckles', segment: 'slot' }]);
     // The same chip is fine on the variant that has the child.
     expect(demo(`You notice ${placed('molly', 'world', 'p1', slot('Freckles'))}.`).out)
       .toBe('You notice light freckles.');
@@ -712,7 +712,7 @@ describe('structural findings', () => {
   it('reports an explicit pick no value satisfies', () => {
     const { out, findings } = finding(placed('molly', 'world', 'p1', val('freckles')), DEMO);
     expect(out).toBe('');
-    expect(findings).toEqual([{ kind: 'slot-miss', placeholderId: 'molly', asked: 'freckles' }]);
+    expect(findings).toEqual([{ kind: 'slot-miss', placeholderId: 'molly', asked: 'freckles', segment: 'val' }]);
   });
 
   it('resolves a reference cycle to nothing instead of hanging', () => {
