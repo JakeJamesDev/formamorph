@@ -1,0 +1,9 @@
+# Cloudflare Pages redirect rules for the upload root. Pages matches these before it looks for an
+# asset, so they beat its own directory handling.
+
+# The app's asset URLs are relative. Without the trailing slash the browser resolves them one level
+# too high and the page loads blank.
+/play    /play/    301
+
+# 302 on purpose. A landing page takes this root later, so no browser may pin it to the game.
+/        /play/    302
