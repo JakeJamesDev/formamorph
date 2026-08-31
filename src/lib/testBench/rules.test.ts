@@ -1487,6 +1487,16 @@ describe('structured placeholder rules', () => {
     expect(found[0].items.map((i) => i.id)).toEqual(['kit']);
   });
 
+  it('names the kind it actually found, since one value is a Variable however it is declared', () => {
+    // One value: a Variable, whatever `roll` says — calling it an Object would be the wrong word for it.
+    const one = only(placing(`She wears ${chip('kit')}.`,
+      [{ id: 'kit', name: 'Kit', values: [''], roll: false }]), 'placeholder-empty-record');
+    expect(one[0].message).toContain('is a Variable');
+    const many = only(placing(`She wears ${chip('kit')}.`,
+      [{ id: 'kit', name: 'Kit', values: ['', ''], roll: false }]), 'placeholder-empty-record');
+    expect(many[0].message).toContain('is an Object');
+  });
+
   it('leaves a choice alone — one blank option is a pool the author owns, not a broken join', () => {
     expect(only(placing(`She wears ${chip('kit')}.`,
       [{ id: 'kit', name: 'Kit', values: ['', 'a salt-stiff coat'] }]), 'placeholder-empty-record')).toEqual([]);

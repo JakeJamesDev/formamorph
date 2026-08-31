@@ -8,7 +8,8 @@
  */
 import {
   collectPlaceholderPlacements, decodePlaceholderToken, describePlaceholders, encodePlaceholderToken,
-  hasPlaceholders, parsePlaceholderText, placeholderChildren, placeholderIsChoice, placeholderWeight,
+  hasPlaceholders, parsePlaceholderText, placeholderChildren, placeholderIsChoice, placeholderKindNoun,
+  placeholderWeight,
   resolvePlaceholders,
   type PlaceholderFinding, type PlaceholderPick, type PlaceholderToken,
 } from '@/lib/placeholders';
@@ -1571,8 +1572,10 @@ const placeholderEmptyRecord: Rule = {
   severity: 'warning',
   section: 'placeholders',
   advanced: true,
+  // Both nouns can land here, so the count line names neither: an Object joins every value, and a Variable
+  // has the one. Each finding says which it is.
   summary: (count) => `${count} placeholders join their values into nothing, so a chip of one shows no text`,
-  // Only a record: a choice showing nothing is one empty value in a pool, which is the author's business.
+  // Never a Wildcard: one of those showing nothing is one empty value in a pool, which is the author's business.
   check: (world) => {
     const rounds = probeRounds(world);
     return (world.placeholders ?? [])
@@ -1587,7 +1590,9 @@ const placeholderEmptyRecord: Rule = {
         const item = namedItem(ph.id, ph.name, world);
         return [finding(
           placeholderEmptyRecord,
-          `${quote(item.name)} joins its values into nothing — a chip of it shows no text at all`,
+          placeholderKindNoun(ph) === 'Object'
+            ? `${quote(item.name)} is an Object whose values join into nothing — a chip of it shows no text at all`
+            : `${quote(item.name)} is a Variable whose one value reads as nothing — a chip of it shows no text at all`,
           [item],
         )];
       });

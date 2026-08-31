@@ -22,9 +22,12 @@ const NO_MODIFIERS: never[] = [];
  *   alphabetically — for ranked lists like the Danbooru tags.
  * - `editable`: double-click a chip to edit it in place (with autocomplete when `options` are present). Multi
  *   mode only.
+ * - `describe`: what a value reads as where its stored form isn't readable — a placeholder chip's token.
+ *   Suggestions are filtered, sorted and drawn through it, and in `single` mode a committed value it
+ *   rewrites is shown as a pill instead of as editable text. What gets committed is always the raw value.
  * - `ariaLabel`: names the input for a caller whose own `<Label>` has no control to point at.
  */
-export function TokenAutocomplete({ values, onChange, options, placeholder, ariaLabel, openOnFocus = false, reorderable = false, single = false, preserveOrder = false, editable = false }: {
+export function TokenAutocomplete({ values, onChange, options, placeholder, ariaLabel, openOnFocus = false, reorderable = false, single = false, preserveOrder = false, editable = false, describe }: {
   values: string[];
   onChange: (values: string[]) => void;
   options: string[];
@@ -35,6 +38,7 @@ export function TokenAutocomplete({ values, onChange, options, placeholder, aria
   single?: boolean;
   preserveOrder?: boolean;
   editable?: boolean;
+  describe?: (value: string) => string;
 }) {
   const [text, setText] = useState("");
   const [open, setOpen] = useState(false);
@@ -42,29 +46,36 @@ export function TokenAutocomplete({ values, onChange, options, placeholder, aria
 
   // In single mode the input reflects the one committed value; in multi mode it's the transient chip buffer.
   const query = single ? (values[0] ?? "") : text;
+  // A committed value the field can't show as text, drawn as a pill instead. Null in multi mode, where the
+  // chips already carry their own labels, and null without `describe`, which is what rewrites a value.
+  const described = single && values[0] && describe ? describe(values[0]) : null;
+  const pill = described && described !== values[0] ? described : null;
 
   const suggestions = useMemo(() => {
+    const show = (value: string) => describe?.(value) ?? value;
     const q = query.trim().toLowerCase();
     const selected = single ? new Set<string>() : new Set(values.map((v) => v.toLowerCase()));
     const available = options.filter((o) => !selected.has(o.toLowerCase()));
-    const all = () => available.slice().sort((a, b) => a.localeCompare(b)).slice(0, SUGGESTION_LIMIT);
+    const all = () => available.slice().sort((a, b) => show(a).localeCompare(show(b))).slice(0, SUGGESTION_LIMIT);
     if (!q) {
       // Empty field: only surface options when opening on focus is requested.
       return openOnFocus ? all() : [];
     }
+    // A committed value shown as a pill is not text to filter by, so the whole list stays on offer.
+    if (pill) return all();
     // A committed single value (exactly one option) shows the full list so you can switch selections.
     if (single && available.some((o) => o.toLowerCase() === q)) return all();
     const limit = openOnFocus ? SUGGESTION_LIMIT : 8;
     if (preserveOrder) return rankTagSuggestions(available, q, limit); // keep options (popularity) order
     return available
-      .filter((o) => o.toLowerCase().includes(q))
+      .filter((o) => show(o).toLowerCase().includes(q))
       .sort((a, b) => {
-        const aw = a.toLowerCase().startsWith(q) ? 0 : 1;
-        const bw = b.toLowerCase().startsWith(q) ? 0 : 1;
-        return aw - bw || a.localeCompare(b);
+        const aw = show(a).toLowerCase().startsWith(q) ? 0 : 1;
+        const bw = show(b).toLowerCase().startsWith(q) ? 0 : 1;
+        return aw - bw || show(a).localeCompare(show(b));
       })
       .slice(0, limit);
-  }, [query, options, values, openOnFocus, single, preserveOrder]);
+  }, [query, options, values, openOnFocus, single, preserveOrder, describe, pill]);
 
   /** Append values that aren't already present (case-insensitive); returns whether anything changed. */
   const addMany = (toAdd: string[]) => {
@@ -150,13 +161,18 @@ export function TokenAutocomplete({ values, onChange, options, placeholder, aria
     } else if (e.key === "ArrowUp") {
       e.preventDefault();
       setActive((a) => Math.max(a - 1, 0));
-    } else if (e.key === "Tab" && !e.shiftKey && open && suggestions[active] && query.trim()) {
+    } else if (e.key === "Tab" && !e.shiftKey && open && suggestions[active] && !pill && query.trim()) {
       // Tab accepts like Enter — but only once something is typed, so tabbing across the form past an
-      // openOnFocus field deposits nothing. Shift+Tab always just leaves.
+      // openOnFocus field deposits nothing. Shift+Tab always just leaves. Beside a pill the input is empty
+      // however full the value is, so the pill itself is what says nothing has been typed.
       e.preventDefault();
       commit(suggestions[active]);
     } else if (e.key === "Backspace" && !single && !text && values.length) {
       remove(values[values.length - 1]);
+    } else if (e.key === "Backspace" && pill) {
+      // The input beside a pill is always empty, so Backspace there clears the pill — the same gesture the
+      // chip row answers to.
+      onChange([]);
     } else if (e.key === "Escape") {
       setOpen(false);
     }
@@ -167,7 +183,8 @@ export function TokenAutocomplete({ values, onChange, options, placeholder, aria
       {/* Single mode matches the shadcn Input (h-10 px-3 text-label) so it lines up with sibling fields;
           multi mode keeps the tighter padding the chips need, but types at the same size — a hint a step
           smaller than every other field's read as a different kind of control. */}
-      <div className={`flex flex-wrap items-center gap-1 rounded-md border border-input bg-background min-w-[180px] ${single ? "px-3 h-10" : "px-2 py-1 min-h-10"}`}>
+      <div className={`flex flex-wrap items-center gap-1 rounded-md border border-input bg-background min-w-[180px] ${single && !pill ? "px-3 h-10" : "px-2 py-1 min-h-10"}`}>
+        {pill && <Chip label={pill} removeLabel={pill} onRemove={() => onChange([])} />}
         {!single && (reorderable ? (
           // Chips wrap in two dimensions inside a box that never scrolls, so no axis clamp and no auto-scroll.
           <EditorDndContext modifiers={NO_MODIFIERS} autoScroll={false} onDragEnd={handleDragEnd}>
@@ -177,7 +194,9 @@ export function TokenAutocomplete({ values, onChange, options, placeholder, aria
           </EditorDndContext>
         ) : values.map(renderChip))}
         <input
-          value={single ? query : text}
+          // Beside a pill the input starts empty: the first keystroke replaces the whole value, so a chip
+          // pin becomes a text pin visibly rather than by editing text that was never in the field.
+          value={pill ? "" : single ? query : text}
           onChange={(e) => (single ? handleSingleInput(e.target.value) : handleInput(e.target.value))}
           onKeyDown={onKeyDown}
           onPaste={handlePaste}
@@ -185,12 +204,12 @@ export function TokenAutocomplete({ values, onChange, options, placeholder, aria
           enterKeyHint="enter"
           onFocus={() => setOpen(true)}
           onBlur={() => setTimeout(() => setOpen(false), 100)}
-          placeholder={single ? placeholder : (values.length ? "" : placeholder)}
+          placeholder={(single ? !pill : !values.length) ? placeholder : ""}
           className={`flex-1 min-w-[80px] bg-transparent text-helper outline-none placeholder:text-muted-foreground ${single ? "" : "py-0.5"}`}
         />
       </div>
       {open && suggestions.length > 0 && (
-        <SuggestionList items={suggestions} active={active} onPick={commit} onHover={setActive} className="w-full min-w-[180px]" />
+        <SuggestionList items={suggestions} active={active} onPick={commit} onHover={setActive} label={describe} className="w-full min-w-[180px]" />
       )}
     </div>
   );
