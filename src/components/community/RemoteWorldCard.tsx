@@ -21,6 +21,9 @@ import { PlaceBadges } from "@/components/PlaceBadges";
 import type { TutorialEntry, TutorialNav } from "@/lib/tutorials";
 import type { ContestPlacement } from "@/lib/contests";
 
+/** "3 downloads" — the tip counts too, matching the like button's. */
+const counted = (n: number, noun: string) => `${n} ${noun}${n === 1 ? '' : 's'}`;
+
 interface RemoteWorldCardProps {
   world: WorldRecord;
   /** Contextual download state for this world (none / refresh / update). */
@@ -96,8 +99,8 @@ export function RemoteWorldCard({
   return (
     <WorldCardShell
       // Highlight worlds with an available update with the semantic info tint + ring.
+      // The shell's frame is a `group`, which the download and hide overlays fade in on.
       frameClassName={cn(
-        "group",
         dlState === 'update'
           ? "border-info bg-info/10 ring-1 ring-info"
           : "bg-card",
@@ -106,17 +109,40 @@ export function RemoteWorldCard({
       name={world.name}
       description={world.description}
       cornerAction={(
-        <Tip tip="Hide this world">
-          <button
-            onClick={(e) => { e.stopPropagation(); onHideWorld(worldId); }}
-            className="absolute top-1 right-1 z-10 p-1 rounded bg-overlay/50 text-white hover:bg-overlay/70"
-          >
-            <EyeOff className="h-4 w-4" />
-          </button>
-        </Tip>
+        /* Both actions fade in with the card hover, so an idle card is all art. Download sits beside
+           hide rather than centered on the thumbnail, where it covered the name once names started
+           expanding on the same hover. Icon reflects whether the world is new, current (refresh), or
+           has an update. */
+        <div className="absolute top-1 right-1 z-10 flex gap-1">
+          {downloadProgress === undefined && (
+            <Tip tip={dlState === 'update' ? "Update available — download the newer version" : dlState === 'refresh' ? `Re-download this ${noun}` : `Download this ${noun}`}>
+              <button
+                onClick={(e) => { e.stopPropagation(); onContextualDownload(world, dlState); }}
+                className="p-1 rounded bg-overlay/50 text-white hover:bg-overlay/70 opacity-0 pointer-events-none transition-opacity group-hover:opacity-100 group-hover:pointer-events-auto"
+                aria-label={dlState === 'update' ? "Update available" : dlState === 'refresh' ? `Re-download this ${noun}` : `Download this ${noun}`}
+              >
+                {dlState === 'update' ? (
+                  <ActionIcon.cloudUpdate className="h-5 w-5" />
+                ) : dlState === 'refresh' ? (
+                  <ActionIcon.cloudRefresh className="h-5 w-5" />
+                ) : (
+                  <ActionIcon.cloudDownload className="h-5 w-5" />
+                )}
+              </button>
+            </Tip>
+          )}
+          <Tip tip="Hide this world">
+            <button
+              onClick={(e) => { e.stopPropagation(); onHideWorld(worldId); }}
+              className="p-1 rounded bg-overlay/50 text-white hover:bg-overlay/70 opacity-0 pointer-events-none transition-opacity group-hover:opacity-100 group-hover:pointer-events-auto"
+            >
+              <EyeOff className="h-5 w-5" />
+            </button>
+          </Tip>
+        </div>
       )}
       thumbnailOverlay={downloadProgress !== undefined ? (
-        // Downloading: swap the button for a centered status bar. -1 ⇒ size unknown.
+        // Downloading: a centered status bar. -1 ⇒ size unknown.
         <div
           className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-10 w-3/4"
           onClick={(e) => e.stopPropagation()}
@@ -127,25 +153,7 @@ export function RemoteWorldCard({
             <Progress value={downloadProgress * 100} className="h-2" />
           )}
         </div>
-      ) : (
-        /* Contextual download — centered on the thumbnail, fades in on hover; same color as the hide
-           button, 2x size. Icon reflects whether the world is new, current (refresh), or has an update. */
-        <Tip tip={dlState === 'update' ? "Update available — download the newer version" : dlState === 'refresh' ? `Re-download this ${noun}` : `Download this ${noun}`}>
-          <button
-            onClick={(e) => { e.stopPropagation(); onContextualDownload(world, dlState); }}
-            className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-10 p-2 rounded bg-overlay/50 text-white hover:bg-overlay/70 opacity-0 pointer-events-none transition-opacity group-hover:opacity-100 group-hover:pointer-events-auto"
-            aria-label={dlState === 'update' ? "Update available" : dlState === 'refresh' ? `Re-download this ${noun}` : `Download this ${noun}`}
-          >
-            {dlState === 'update' ? (
-              <ActionIcon.cloudUpdate className="h-8 w-8" />
-            ) : dlState === 'refresh' ? (
-              <ActionIcon.cloudRefresh className="h-8 w-8" />
-            ) : (
-              <ActionIcon.cloudDownload className="h-8 w-8" />
-            )}
-          </button>
-        </Tip>
-      )}
+      ) : undefined}
       thumbnail={world.thumbnail_file ? (
         <CachedThumbnail
           file={world.thumbnail_file}
@@ -190,14 +198,14 @@ export function RemoteWorldCard({
         ) : (
           <span className="justify-self-start">{likeControl}</span>
         )}
-        {/* The number is the content and the tip only says what it counts, so it does not become the
-            name — that would hide the count from a reader. */}
-        <Tip tip="Downloads" labelsChild={false}>
+        {/* The number stays the content, not the accessible name — that would hide the count from
+            a reader. */}
+        <Tip tip={counted(world.downloads || 0, 'download')} labelsChild={false}>
           <span className="flex items-center gap-1 justify-self-center">
             <Download className="h-3 w-3" /> {world.downloads || 0}
           </span>
         </Tip>
-        <Tip tip="Comments" labelsChild={false}>
+        <Tip tip={counted(world.comment_count || 0, 'comment')} labelsChild={false}>
           <span className="flex items-center gap-1 justify-self-end">
             <MessageSquare className="h-3 w-3" /> {world.comment_count || 0}
           </span>

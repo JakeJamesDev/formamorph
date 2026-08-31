@@ -4,7 +4,7 @@ import { CSS } from "@dnd-kit/utilities";
 import { Trash2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { CardTags, type WorldRecord } from "@/components/WorldDetails";
-import { TITLE_SCRIM, WorldCardShell } from "@/components/WorldCardShell";
+import { OverlayTitle, TITLE_SCRIM, WorldCardShell } from "@/components/WorldCardShell";
 import { Tip } from "@/components/ui/tooltip";
 import { THUMB_FRAME, thumbFit, type ThumbAspect } from "@/lib/thumbAspect";
 
@@ -111,7 +111,7 @@ function SortableWorldCard({ world, onSelect, onDelete, layout, aspect = 'landsc
       // per-aspect: a 2:3 portrait stands about half again as tall as the landscape tile, and a single
       // figure for both would misreserve one of them on first paint.
       className={cn(
-        'relative rounded-lg overflow-hidden transition-opacity touch-pan-y',
+        'group relative rounded-lg overflow-hidden transition-opacity touch-pan-y',
         frameSize,
         onSelect && 'cursor-pointer hover:opacity-90',
       )}
@@ -140,7 +140,7 @@ function SortableWorldCard({ world, onSelect, onDelete, layout, aspect = 'landsc
         /* Flex row, not an absolute corner button: the trash keeps its own column so a long name wraps
            beside it instead of running underneath, and it bottom-aligns with the last line of the name. */
         <div className={cn('absolute bottom-0 left-0 right-0 p-2 pt-8 flex items-end gap-2', TITLE_SCRIM)}>
-          <h3 className="min-w-0 flex-1 break-words text-white font-semibold">{world.name}</h3>
+          <OverlayTitle name={world.name} className="min-w-0 flex-1" />
           <button
             className="shrink-0 p-1 text-destructive hover:text-destructive/80"
             onPointerDown={(e) => e.stopPropagation()}
