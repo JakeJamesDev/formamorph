@@ -31,9 +31,6 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { Skeleton } from "@/components/ui/skeleton";
-import { TITLE_SCRIM } from "@/components/WorldCardShell";
-import { ScrollArea } from "@/components/ui/scroll-area";
 import CharacterCustomization, { defaultCharacterData } from './CharacterCustomization';
 import { SettingsModal } from '../components/modals/SettingsModal';
 import { asSettingsTab, type SettingsTabId } from '../components/modals/settingsTabs';
@@ -410,6 +407,10 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
   const modelImportRef = useRef<HTMLInputElement | null>(null);
   const [worlds, setWorlds] = useState<WorldRecord[]>([]);
   const [isLoadingWorlds, setIsLoadingWorlds] = useState(true);
+  // One blank record per stored world, built from the id read that beats the metadata read to the screen.
+  // The ids and their order are the same ones the metadata arrives in, so the grid the player waits in
+  // front of is the grid they end up with: same tiles, same sizes, same folders, filled in where it stands.
+  const [skeletonWorlds, setSkeletonWorlds] = useState<WorldRecord[]>([]);
   // Local dictionary library (metadata only) shown on the Dictionaries tab.
   const [dictionaries, setDictionaries] = useState<DictionaryMetadata[]>([]);
   const [isLoadingDictionaries, setIsLoadingDictionaries] = useState(true);
@@ -648,8 +649,11 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
     const initializeWorlds = async () => {
       try {
         await WorldStorageService.initialize();
-        const existingWorlds = await WorldStorageService.getWorldMetadata();
-        const firstRun = existingWorlds.length === 0;
+        // Ids alone: this read only ever answered "is the library empty", and asking for the metadata
+        // deserialized every stored world to count them. It also arrives early enough to draw the grid.
+        const existingIds = await WorldStorageService.getWorldIds();
+        setSkeletonWorlds(existingIds.map((id) => ({ id, isLoading: true })));
+        const firstRun = existingIds.length === 0;
         const { failed, updated } = await WorldStorageService.loadDefaultWorlds(DEFAULT_WORLDS);
         if (firstRun) {
           if (failed.length === 0) toast.success("Loaded default worlds");
@@ -1347,7 +1351,10 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
 
   // Every library grid's tile arrangement — folders, sizes, and the order the two sit in. Device-local,
   // one record per tab, seeded from the flat card order the library kept before tiles.
-  const worldIds = useMemo(() => worlds.map((world) => world.id as string), [worlds]);
+  // The blanks stand in only until the metadata lands; `isLoadingWorlds` is what says which list is real,
+  // rather than the length, so a genuinely empty library still reaches its empty state.
+  const shownWorlds = isLoadingWorlds ? skeletonWorlds : worlds;
+  const worldIds = useMemo(() => shownWorlds.map((world) => world.id as string), [shownWorlds]);
   const entityIds = useMemo(() => entities.map((entity) => entity.id), [entities]);
   const dictionaryIds = useMemo(() => dictionaries.map((dictionary) => dictionary.id), [dictionaries]);
   const modelIds = useMemo(() => models.map((model) => model.id), [models]);
@@ -1737,22 +1744,12 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
           )}
           onDelete={setDictionaryToDelete}
         />
-      ) : isLoadingWorlds ? (
-        <ScrollArea className="flex-1 min-h-0 px-4">
-          <div className="grid grid-cols-[repeat(auto-fill,minmax(296px,1fr))] gap-4">
-            {Array(6).fill(0).map((_, index) => (
-              <div key={index} className="relative w-full h-48 rounded-lg overflow-hidden">
-                <Skeleton className="w-full h-full" />
-                <div className={cn('absolute bottom-0 left-0 right-0 p-2 pt-8', TITLE_SCRIM)}>
-                  <Skeleton className="h-6 w-24" />
-                </div>
-              </div>
-            ))}
-          </div>
-        </ScrollArea>
       ) : (
+        // One grid for both stages. A separate loading grid had to guess a layout, and guessed a fixed
+        // count at a fixed size — so it drifted the moment tiles could be resized or foldered. This one
+        // reads the same arrangement the loaded grid does, so there is nothing left to keep in step.
         <LibraryTileGrid
-          items={worlds}
+          items={shownWorlds}
           idOf={(world) => world.id as string}
           tiles={worldTiles}
           layout={layoutMode}
@@ -1790,7 +1787,9 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
               onSelect={handleWorldSelection}
             />
           )}
-          onDelete={setWorldToDelete}
+          // Withheld while the tiles are blank: the menu entry is the one that can't be taken back, and
+          // it would be aimed at a card with no name on it. The rest of the menu writes ids, which are real.
+          onDelete={isLoadingWorlds ? undefined : setWorldToDelete}
         />
       )}
 

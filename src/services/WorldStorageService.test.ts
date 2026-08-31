@@ -425,6 +425,61 @@ describe('linkWorldToListing', () => {
   });
 });
 
+/**
+ * The two reads the main menu waits on before it can draw anything.
+ *
+ * Both used to pull every stored record out of IndexedDB, which on a real library means deserializing
+ * a hundred megabytes of world payload to answer questions that never look at it: how many worlds are
+ * there, and are the three bundled ones current. These guards watch the store itself, because the
+ * return value is identical either way — only the cost differs, and only the store can see it.
+ */
+describe('what the launch reads actually touch', () => {
+  /** Counts each store method the code under test reaches for, whichever record it asks about. */
+  const watchStore = () => ({
+    getAll: vi.spyOn(IDBObjectStore.prototype, 'getAll'),
+    getAllKeys: vi.spyOn(IDBObjectStore.prototype, 'getAllKeys'),
+    get: vi.spyOn(IDBObjectStore.prototype, 'get'),
+  });
+
+  afterEach(async () => {
+    await WorldStorageService.deleteWorld('rampage').catch(() => {});
+    await WorldStorageService.deleteWorld('mine-1').catch(() => {});
+  });
+
+  it('reads ids off the key index, without deserializing one record', async () => {
+    await writeRaw({ id: 'mine-1', name: 'Mine', data: { worldOverview: {} } } as StoredWorldRecord);
+    const store = watchStore();
+
+    const ids = await WorldStorageService.getWorldIds();
+
+    expect(ids).toContain('mine-1');
+    // A `getAll().map(w => w.id)` returns the same array and costs the whole library to build it.
+    expect(store.getAllKeys).toHaveBeenCalled();
+    expect(store.getAll).not.toHaveBeenCalled();
+    expect(store.get).not.toHaveBeenCalled();
+  });
+
+  it('compares the bundled defaults without reading the worlds the player made', async () => {
+    await writeRaw({ id: 'mine-1', name: 'Mine', data: { worldOverview: {} } } as StoredWorldRecord);
+    const store = watchStore();
+
+    await WorldStorageService.loadDefaultWorlds([{ id: 'rampage', defaultName: 'Rampage' }]);
+
+    expect(store.getAll).not.toHaveBeenCalled();
+    const asked = store.get.mock.calls.map(([key]) => key);
+    expect(asked).toContain('rampage');
+    expect(asked).not.toContain('mine-1');
+  });
+
+  it('still seeds a default it has never stored, reading by id', async () => {
+    // The narrowed read must not turn "absent" into "present": a missing key returns undefined, and the
+    // seed path depends on telling that apart from a stored copy.
+    await WorldStorageService.loadDefaultWorlds([{ id: 'rampage', defaultName: 'Rampage' }]);
+
+    expect((await readRaw('rampage'))?.sourceHash).toEqual(expect.any(String));
+  });
+});
+
 describe('loadDefaultWorlds (content-hash refresh)', () => {
   // The real bundled world, hashed through the real `?raw` glob — the smallest one keeps the parse cheap.
   const seed = [{ id: 'rampage', defaultName: 'Rampage' }];

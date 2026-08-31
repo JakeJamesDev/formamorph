@@ -117,6 +117,20 @@ class WorldStorageService {
     }
   }
 
+  /**
+   * Every stored world's id, and nothing else.
+   *
+   * `getAllKeys` reads the key index, so no record is deserialized — the library's whole payload stays
+   * on disc. That is what lets the menu draw its real tile layout before a single world is loaded, and
+   * it is how a caller that only needs a count should ask for one.
+   */
+  async getWorldIds(): Promise<string[]> {
+    await this.ensureInitialized();
+    const transaction = this.db!.transaction([this.storeName], 'readonly');
+    const keys = await promisifyRequest(transaction.objectStore(this.storeName).getAllKeys());
+    return keys.map(String);
+  }
+
   /** List all stored worlds as lightweight metadata (no nested `data`), for menu/library rendering. */
   async getWorldMetadata(): Promise<WorldMetadata[]> {
     await this.ensureInitialized();
@@ -278,11 +292,16 @@ class WorldStorageService {
     await this.ensureInitialized();
     const deleted = readDeletedDefaultWorlds();
     defaultWorlds = defaultWorlds.filter((w) => !deleted.has(w.id));
-    // Full records (not getWorldMetadata) so we can read each stored copy's `sourceHash` and `dirty`.
+    // Full records (not getWorldMetadata) so we can read each stored copy's `sourceHash` and `dirty`,
+    // but fetched by id rather than as a whole-store read: only the bundled defaults are ever compared,
+    // so reading the player's own worlds here loaded a library's worth of payload to look at none of it.
     const transaction = this.db!.transaction([this.storeName], 'readonly');
-    const stored = await promisifyRequest(transaction.objectStore(this.storeName).getAll());
+    const store = transaction.objectStore(this.storeName);
+    const stored = await Promise.all(
+      defaultWorlds.map((w) => promisifyRequest(store.get(w.id))),
+    );
     const byId = new Map<string, { dirty?: boolean; sourceHash?: string }>(
-      stored.map((w) => [w.id, w]),
+      stored.filter(Boolean).map((w) => [w.id, w]),
     );
 
     const failed: string[] = [];

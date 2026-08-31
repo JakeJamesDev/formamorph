@@ -2,6 +2,7 @@ import React, { forwardRef, useLayoutEffect, useRef, useState, type ReactNode } 
 import { Globe } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { MarkdownRenderer } from '@/components/game/MarkdownRenderer';
+import { Skeleton } from '@/components/ui/skeleton';
 import { Tip } from '@/components/ui/tooltip';
 import { THUMB_FRAME } from '@/lib/thumbAspect';
 
@@ -93,6 +94,8 @@ interface WorldCardShellProps extends React.HTMLAttributes<HTMLDivElement> {
   note?: ReactNode;
   /** Surface/border variant classes for the frame (e.g. `bg-background`, the update highlight, `touch-none`). */
   frameClassName?: string;
+  /** Draw the card's own shape with its text and art still loading: shimmer in each region's place. */
+  loading?: boolean;
 }
 
 /**
@@ -104,7 +107,7 @@ interface WorldCardShellProps extends React.HTMLAttributes<HTMLDivElement> {
  * Forwards a ref + spreads the rest onto the frame so a caller can attach dnd-kit listeners / `onClick`.
  */
 export const WorldCardShell = forwardRef<HTMLDivElement, WorldCardShellProps>(function WorldCardShell(
-  { thumbnail, thumbnailOverlay, cornerAction, name, description, author, note, frameClassName, className, children, ...rest },
+  { thumbnail, thumbnailOverlay, cornerAction, name, description, author, note, frameClassName, className, loading, children, ...rest },
   ref,
 ) {
   return (
@@ -118,20 +121,24 @@ export const WorldCardShell = forwardRef<HTMLDivElement, WorldCardShellProps>(fu
           hovering the art, so mousing over the text block below changes nothing. */}
       <div className={cn('group relative bg-muted rounded-t-lg overflow-hidden', THUMB_FRAME.landscape)}>
         {thumbnailOverlay}
-        {thumbnail ?? (
+        {loading ? <Skeleton className="w-full h-full rounded-none" /> : thumbnail ?? (
           <div className="w-full h-full flex items-center justify-center text-muted-foreground">
             <Globe className="h-12 w-12" />
           </div>
         )}
         {/* The name and author live on the art, matching the grid tiles, so the text block stays short. */}
         <div className={cn('absolute bottom-0 left-0 right-0 p-2 pt-8', TITLE_SCRIM)}>
-          <OverlayTitle name={name} className="text-title" />
-          {author != null && <div className="text-meta text-white/85">{author}</div>}
+          {loading
+            ? <Skeleton className="h-6 w-2/5 bg-white/20" />
+            : <OverlayTitle name={name} className="text-title" />}
+          {!loading && author != null && <div className="text-meta text-white/85">{author}</div>}
         </div>
       </div>
       <div className="p-4 flex flex-col flex-grow">
         <div className="text-helper text-muted-foreground mb-2 max-h-20 overflow-hidden">
-          <MarkdownRenderer text={description || 'No description available.'} />
+          {loading
+            ? <div className="space-y-1.5"><Skeleton className="h-3 w-full" /><Skeleton className="h-3 w-4/5" /></div>
+            : <MarkdownRenderer text={description || 'No description available.'} />}
         </div>
         {note}
         {children}
