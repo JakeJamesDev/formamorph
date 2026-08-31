@@ -1,7 +1,6 @@
 import React from "react";
 import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import { Trash2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { CardTags, type WorldRecord } from "@/components/WorldDetails";
 import { OverlayTitle, TITLE_SCRIM, WorldCardShell } from "@/components/WorldCardShell";
@@ -13,11 +12,11 @@ import { THUMB_FRAME, thumbFit, type ThumbAspect } from "@/lib/thumbAspect";
  *  `aspect='portrait'` gives the grid image a tall 2:3 frame (for character portraits) instead of the short
  *  landscape default. Omit `onSelect` for a card with nothing to open — it drops the pointer cursor too, so
  *  the tile doesn't advertise a click it won't answer. `badge` overlays the grid thumbnail's top-left, and
- *  `note` is the same thing said as a line in the detailed layout, which has no thumbnail to overlay. */
-function SortableWorldCard({ world, onSelect, onDelete, layout, aspect = 'landscape', badge, note, fill, compact }: {
+ *  `note` is the same thing said as a line in the detailed layout, which has no thumbnail to overlay.
+ *  Deleting lives in the tile's context menu (the grid owns it), so the card draws no delete control. */
+function SortableWorldCard({ world, onSelect, layout, aspect = 'landscape', badge, note, fill, compact }: {
   world: WorldRecord;
   onSelect?: (id: string) => void;
-  onDelete: (id: string) => void;
   layout: 'grid' | 'detailed';
   aspect?: ThumbAspect;
   badge?: React.ReactNode;
@@ -38,12 +37,7 @@ function SortableWorldCard({ world, onSelect, onDelete, layout, aspect = 'landsc
     opacity: isDragging ? 0.5 : 1,
     zIndex: isDragging ? 1 : undefined,
   };
-  const handleDelete = (e: React.MouseEvent) => {
-    e.stopPropagation();
-    onDelete(world.id);
-  };
-
-  // Detailed layout: the shared card shell (thumbnail on top, info beneath), draggable, with a delete corner.
+  // Detailed layout: the shared card shell (thumbnail on top, info beneath), draggable.
   if (layout === 'detailed') {
     return (
       <WorldCardShell
@@ -70,16 +64,6 @@ function SortableWorldCard({ world, onSelect, onDelete, layout, aspect = 'landsc
             />
           )
           : undefined}
-        cornerAction={(
-          <button
-            className="absolute top-1 right-1 z-10 p-1 rounded bg-overlay/50 text-destructive hover:text-destructive/80"
-            onPointerDown={(e) => e.stopPropagation()}
-            onClick={handleDelete}
-            aria-label="Delete world"
-          >
-            <Trash2 className="h-5 w-5" />
-          </button>
-        )}
       >
         <div className="mt-auto" onClick={(e) => e.stopPropagation()}>
           <CardTags tags={world.tags || []} />
@@ -127,35 +111,16 @@ function SortableWorldCard({ world, onSelect, onDelete, layout, aspect = 'landsc
         <div className={cn(mediaSize, 'bg-muted')} />
       )}
       {badge && <div className="absolute top-1 left-1 z-10 max-w-[calc(100%-0.5rem)]">{badge}</div>}
-      {compact ? (
-        <button
-          className="absolute bottom-0.5 right-0.5 z-10 rounded bg-overlay/50 p-0.5 text-destructive hover:text-destructive/80"
-          onPointerDown={(e) => e.stopPropagation()}
-          onClick={handleDelete}
-          aria-label="Delete world"
-        >
-          <Trash2 className="h-4 w-4" />
-        </button>
-      ) : (
-        /* Flex row, not an absolute corner button: the trash keeps its own column so a long name wraps
-           beside it instead of running underneath, and it bottom-aligns with the last line of the name. */
-        <div className={cn('absolute bottom-0 left-0 right-0 p-2 pt-8 flex items-end gap-2', TITLE_SCRIM)}>
-          <OverlayTitle name={world.name} className="min-w-0 flex-1" />
-          <button
-            className="shrink-0 p-1 text-destructive hover:text-destructive/80"
-            onPointerDown={(e) => e.stopPropagation()}
-            onClick={handleDelete}
-            aria-label="Delete world"
-          >
-            <Trash2 className="h-5 w-5" />
-          </button>
+      {!compact && (
+        <div className={cn('absolute bottom-0 left-0 right-0 p-2 pt-8', TITLE_SCRIM)}>
+          <OverlayTitle name={world.name} />
         </div>
       )}
     </div>
   );
 
   // A small tile has no room for the name strip, so the name is a tip instead. `labelsChild` is off:
-  // the delete button inside already carries its own label, and the tile is not a control.
+  // the tile is not a control.
   return compact ? <Tip tip={world.name} labelsChild={false}>{tile}</Tip> : tile;
 }
 

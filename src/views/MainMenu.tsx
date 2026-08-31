@@ -1676,9 +1676,9 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
                 </Tip>
               ) : undefined}
               onSelect={setPreviewModelId}
-              onDelete={setModelToDelete}
             />
           )}
+          onDelete={setModelToDelete}
         />
       ) : cardType === 'entities' ? (
         <LibraryTileGrid
@@ -1705,9 +1705,9 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
               fill={fill}
               compact={compact}
               onSelect={setEditingEntityId}
-              onDelete={setEntityToDelete}
             />
           )}
+          onDelete={setEntityToDelete}
         />
       ) : cardType === 'dictionaries' ? (
         <LibraryTileGrid
@@ -1733,9 +1733,9 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
               fill={fill}
               compact={compact}
               onSelect={setEditingDictionaryId}
-              onDelete={setDictionaryToDelete}
             />
           )}
+          onDelete={setDictionaryToDelete}
         />
       ) : isLoadingWorlds ? (
         <ScrollArea className="flex-1 min-h-0 px-4">
@@ -1788,9 +1788,9 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
               fill={fill}
               compact={compact}
               onSelect={handleWorldSelection}
-              onDelete={setWorldToDelete}
             />
           )}
+          onDelete={setWorldToDelete}
         />
       )}
 
