@@ -340,6 +340,15 @@ describe('PlaceholderManager — chip values', () => {
     expect(screen.queryByText(/\{\{ph:/)).not.toBeInTheDocument();
   });
 
+  it('wears its target’s accent, so a value that is a placeholder looks like one', () => {
+    render(<PlaceholderManager placeholder={ph({ values: [chip('p2'), 'Red'] })} />);
+    // The accent itself comes from the vocabulary, so what is asserted is that the chip took one — and that
+    // a literal value beside it did not.
+    const chipped = screen.getByText('Hair').closest('[data-chip]') as HTMLElement;
+    expect(chipped.style.backgroundColor).not.toBe('');
+    expect((screen.getByText('Red').closest('[data-chip]') as HTMLElement).style.backgroundColor).toBe('');
+  });
+
   it('draws a drilled chip as its whole path, so a part never reads like a root', () => {
     render(<PlaceholderManager placeholder={ph({ values: [chip('p2', 'Color')] })} />);
     expect(screen.getByText('Hair › Color')).toBeInTheDocument();
