@@ -15,6 +15,7 @@ import { Input } from '@/components/ui/input';
 import { AFFIX_MAX_LENGTH, AFFIX_FORBIDDEN, isValidAffix } from '@/lib/promptVariables';
 import { cn } from '@/lib/utils';
 import { ChipVocabularyContext } from '@/lib/chipVocabulary';
+import { remintPlaceholderPlacements } from '@/lib/placeholders';
 
 /** Shared slot the dragged chip's node key is parked in on dragstart, so the editor's drop handler
  *  (in PromptField) knows which node to relocate. One ref per editor instance. */
@@ -266,7 +267,10 @@ export class VariableNode extends DecoratorNode<ReactNode> {
   updateDOM(): boolean { return false; }
 
   static importJSON(serialized: SerializedVariableNode): VariableNode {
-    return $createVariableNode(serialized.token);
+    // Only the clipboard deserializes through here (fields load via parsePlaceholderText, drags move live
+    // nodes), so this token is a pasted copy — a new placement. Re-mint so a Unique chip never shares the
+    // source's roll; prompt `<...>` tokens pass through unchanged.
+    return $createVariableNode(remintPlaceholderPlacements(serialized.token));
   }
   exportJSON(): SerializedVariableNode {
     return { type: 'variable', version: 1, token: this.__token };

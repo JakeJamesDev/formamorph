@@ -1,4 +1,5 @@
 import { randomUUID } from "@/lib/uuid";
+import { remintPlaceholdersDeep } from "@/lib/placeholders";
 import type { Dictionary, DictionaryEntry } from '@/types';
 
 /** Pure array move (no dnd-kit dependency, so these reducers stay unit-testable). */
@@ -84,7 +85,8 @@ export function duplicateEntryInBooks(books: Dictionary[], entryId: string): { b
   const next = books.map((b) => {
     const idx = b.entries.findIndex((e) => e.id === entryId);
     if (idx === -1) return b;
-    const copy: DictionaryEntry = { ...structuredClone(b.entries[idx]), id: randomUUID() };
+    // Re-mint chip placements: a copied Unique chip must not share the source entry's roll.
+    const copy: DictionaryEntry = { ...remintPlaceholdersDeep(structuredClone(b.entries[idx])), id: randomUUID() };
     copy.name = `${copy.name} (Copy)`;
     newId = copy.id;
     return { ...b, entries: [...b.entries.slice(0, idx + 1), copy, ...b.entries.slice(idx + 1)] };
