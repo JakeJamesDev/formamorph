@@ -1,9 +1,14 @@
 import { describe, it, expect, vi } from 'vitest';
 import type { Placeholder, PlaceholderRolls } from '@/types';
+import type { PlaceholderFinding, PlaceholderSegment } from './placeholders';
 import {
   resolvePlaceholders,
   encodePlaceholderToken,
   decodePlaceholderToken,
+  encodePlaceholderPath,
+  decodePlaceholderPath,
+  placeholderIsChoice,
+  PLACEHOLDER_DEPTH_CAP,
   hasPlaceholders,
   collectPlaceholderPlacements,
   primeRolls,
@@ -317,15 +322,15 @@ describe('resolvePlaceholders', () => {
     expect(placeholderChances(valueless)).toEqual({});
   });
 
-  it('does not expand a chip that appears inside a resolved value (no nesting)', () => {
+  it('expands a chip that appears inside a resolved value (values compose)', () => {
     const inner = tok('inner', 'world', 'p2');
     const { rolls, setRoll } = collector();
     const out = resolvePlaceholders(tok('outer', 'world', 'p1'), {
-      placeholders: [P('outer', [`X ${inner} Y`]), P('inner', ['SHOULD-NOT-APPEAR'])],
+      placeholders: [P('outer', [`X ${inner} Y`]), P('inner', ['deep'])],
       rolls,
       setRoll,
     });
-    expect(out).toBe(`X ${inner} Y`); // the inner token is left literal
+    expect(out).toBe('X deep Y');
   });
 });
 
@@ -426,5 +431,345 @@ describe('trait pins', () => {
   it('leaves a chip whose placeholder was deleted resolving to nothing', () => {
     expect(resolvePlaceholders(tok('gone', 'world', 'w1'), { placeholders: [ph], rolls: {}, pins: { gone: 'x' } }))
       .toBe('');
+  });
+});
+
+// --- structured placeholders -------------------------------------------------------------------------
+
+const val = (ref: string): PlaceholderSegment => ({ kind: 'val', ref });
+const slot = (name: string): PlaceholderSegment => ({ kind: 'slot', name });
+
+/** An authored chip sitting inside a value. World mode is the editor's default; the placement id is derived
+ *  so the fixture world is stable text. */
+const chip = (id: string, ...path: PlaceholderSegment[]) =>
+  encodePlaceholderToken({
+    id,
+    mode: 'world',
+    placementId: `v-${id}${path.length ? `-${path.map((s) => ('ref' in s ? s.ref : s.name)).join('-')}` : ''}`,
+    ...(path.length ? { path } : {}),
+  });
+
+/** A chip placed in world text: its path is typed, so pins never move it. */
+const placed = (id: string, mode: 'world' | 'unique', pid: string, ...path: PlaceholderSegment[]) =>
+  encodePlaceholderToken({ id, mode, placementId: pid, ...(path.length ? { path } : {}) });
+
+// The prototype's demo world, in the shipped shape: values are strings, and a value that is exactly one chip
+// is a structural child. The two variants are records, so they carry `roll: false` — without the flag their
+// value count would make them choices.
+const DEMO: Placeholder[] = [
+  {
+    id: 'molly', name: 'Molly', roll: true,
+    values: [chip('iswhite'), chip('isasian')],
+    weights: { [chip('iswhite')]: 7, [chip('isasian')]: 3 },
+  },
+  { id: 'iswhite', name: 'isWhite', roll: false, values: [chip('hair', val('brown')), chip('eyes'), chip('freckles')] },
+  { id: 'isasian', name: 'isAsian', roll: false, values: [chip('hair', val('black')), 'dark brown eyes'] },
+  {
+    id: 'hair', name: 'Hair', roll: true,
+    values: [chip('brown'), chip('blonde'), chip('black'), 'fiery red'],
+    weights: { 'fiery red': 0 },
+  },
+  { id: 'brown', name: 'Brown', roll: true, values: ['chestnut', 'auburn', 'chocolate brown'] },
+  { id: 'blonde', name: 'Blonde', roll: true, values: ['golden blonde', 'platinum'] },
+  { id: 'black', name: 'Black', values: ['jet black'] },
+  { id: 'eyes', name: 'Eyes', roll: true, values: ['green', 'hazel', 'blue'] },
+  { id: 'freckles', name: 'Freckles', values: ['light freckles'] },
+  { id: 'town', name: 'Town', roll: true, values: ['Sedge Landing', 'Milbrook', 'Harrow Point'] },
+  { id: 'intro', name: 'Intro', values: [`A traveler from ${chip('town')} waves you over.`] },
+];
+
+/** Resolve against the demo world with a deterministic first-value pick, collecting rolls and findings. */
+function demo(text: string, over: Partial<Parameters<typeof resolvePlaceholders>[1]> = {}) {
+  const { rolls, setRoll } = collector();
+  const findings: PlaceholderFinding[] = [];
+  const out = resolvePlaceholders(text, {
+    placeholders: DEMO,
+    rolls,
+    setRoll,
+    pick: first,
+    onFinding: (f) => findings.push(f),
+    ...over,
+  });
+  return { out, rolls, findings };
+}
+
+describe('token codec with drill paths', () => {
+  it('round-trips a path token and leaves a pathless one in the shipped form', () => {
+    const t = { id: 'molly', mode: 'unique' as const, placementId: 'p1', path: [val('iswhite'), slot('Hair')] };
+    const encoded = encodePlaceholderToken(t);
+    expect(encoded).toBe('{{ph:molly:unique:p1:viswhite>sHair}}');
+    expect(decodePlaceholderToken(encoded)).toEqual(t);
+    // A chip with no path encodes exactly as it always has — a never-edited world exports byte-identically.
+    expect(encodePlaceholderToken({ id: 'molly', mode: 'world', placementId: 'p1' })).toBe('{{ph:molly:world:p1}}');
+    expect(encodePlaceholderToken({ id: 'molly', mode: 'world', placementId: 'p1', path: [] })).toBe('{{ph:molly:world:p1}}');
+  });
+
+  it('escapes the characters the path grammar owns, so any slot name survives', () => {
+    const name = 'a>b:c{d}e%f';
+    const encoded = encodePlaceholderPath([slot(name)]);
+    expect(encoded).not.toContain('>');
+    expect(decodePlaceholderPath(encoded)).toEqual([slot(name)]);
+    const token = encodePlaceholderToken({ id: 'x', mode: 'world', placementId: 'p1', path: [slot(name)] });
+    expect(decodePlaceholderToken(token)?.path).toEqual([slot(name)]);
+    expect(hasPlaceholders(`hi ${token}`)).toBe(true);
+  });
+
+  it('rejects a path segment of an unknown kind', () => {
+    expect(decodePlaceholderPath('qbrown')).toBeNull();
+    expect(decodePlaceholderToken('{{ph:molly:world:p1:qbrown}}')).toBeNull();
+  });
+
+  it('parses a chip written before drill paths existed', () => {
+    expect(decodePlaceholderToken('{{ph:molly:world:p1}}')).toEqual({ id: 'molly', mode: 'world', placementId: 'p1' });
+  });
+
+  it('keeps the path when remapping ids for an import', () => {
+    const text = placed('molly', 'world', 'p1', val('iswhite'), slot('Hair'));
+    expect(remapPlaceholderIds(text, { molly: 'MOLLY2' }))
+      .toBe(placed('MOLLY2', 'world', 'p1', val('iswhite'), slot('Hair')));
+  });
+});
+
+describe('choice vs record', () => {
+  it('infers the shape from the value count when `roll` is absent — exactly today', () => {
+    expect(placeholderIsChoice(P('one', ['a']))).toBe(false);
+    expect(placeholderIsChoice(P('two', ['a', 'b']))).toBe(true);
+    expect(placeholderIsChoice(P('none', []))).toBe(false);
+  });
+
+  it('lets `roll` override the inference in both directions', () => {
+    expect(placeholderIsChoice({ id: 'r', name: 'r', values: ['a', 'b'], roll: false })).toBe(false);
+    expect(placeholderIsChoice({ id: 'c', name: 'c', values: ['a'], roll: true })).toBe(false); // nothing to draw
+  });
+
+  it('joins every value of a record with ", " and drops the empty ones', () => {
+    const { out } = demo(placed('iswhite', 'world', 'p1'));
+    expect(out).toBe('chestnut, green, light freckles');
+    const { out: asian } = demo(placed('isasian', 'world', 'p1'));
+    expect(asian).toBe('jet black, dark brown eyes');
+  });
+
+  it('leaves a record out of the rolls — only choices roll', () => {
+    const { rolls } = demo(placed('iswhite', 'world', 'p1'));
+    expect(rolls.world?.iswhite).toBeUndefined();
+    // Hair is a choice but its value here is the drilled chip {Hair › Brown}: the authored pre-selection
+    // names the branch, so Hair spends no roll. Brown and Eyes, reached without a drill, do.
+    expect(rolls.world).toEqual({ brown: 'chestnut', eyes: 'green' });
+  });
+});
+
+describe('prototype walkthroughs', () => {
+  it('1 — a chip inside a string value composes, and shares the World roll of a chip beside it', () => {
+    const { out, rolls } = demo(`${placed('intro', 'world', 'p1')} Welcome to ${placed('town', 'world', 'p2')}.`);
+    expect(out).toBe('A traveler from Sedge Landing waves you over. Welcome to Sedge Landing.');
+    expect(rolls.world?.town).toBe('Sedge Landing'); // one roll behind both mentions
+  });
+
+  it('2 — a whole character in one chip: the rolled variant joins all its details', () => {
+    const { out } = demo(`A woman waves you over: ${placed('molly', 'world', 'p1')}`);
+    expect(out).toBe('A woman waves you over: chestnut, green, light freckles');
+    // The other variant, forced by a frozen roll rather than a rigged world.
+    const { out: asian } = demo(`A woman waves you over: ${placed('molly', 'world', 'p1')}`, {
+      rolls: { world: { molly: chip('isasian') } },
+    });
+    expect(asian).toBe('A woman waves you over: jet black, dark brown eyes');
+  });
+
+  it('3 — two slot chips route through the same rolled variant', () => {
+    const text = `Her ${placed('molly', 'world', 'p1', slot('Hair'))} hair catches the light. `
+      + `Her ${placed('molly', 'world', 'p2', slot('Eyes'))} eyes narrow.`;
+    const { out, rolls } = demo(text);
+    expect(out).toBe('Her chestnut hair catches the light. Her green eyes narrow.');
+    expect(rolls.world?.molly).toBe(chip('iswhite')); // one variant roll behind both chips
+  });
+
+  it('3b — a slot the rolled variant cannot satisfy resolves to nothing and reports a miss', () => {
+    // isAsian describes its eyes as prose, so `Molly > Eyes` has no child to route to when it rolls.
+    const { out, findings } = demo(`Her ${placed('molly', 'world', 'p1', slot('Eyes'))} eyes narrow.`, {
+      rolls: { world: { molly: chip('isasian') } },
+    });
+    expect(out).toBe('Her  eyes narrow.');
+    expect(findings).toEqual([{ kind: 'slot-miss', placeholderId: 'isasian', asked: 'Eyes' }]);
+  });
+
+  it('4 — an authored drill pre-selects a branch while its leaves still roll', () => {
+    const { out } = demo(placed('molly', 'world', 'p1', val('iswhite'), slot('Hair')));
+    expect(out).toBe('chestnut');
+    // Every shade Brown can draw, and nothing from another branch.
+    const shades = new Set<string>();
+    for (let i = 0; i < 300; i++) {
+      shades.add(resolvePlaceholders(placed('molly', 'world', 'p1', val('iswhite'), slot('Hair')), {
+        placeholders: DEMO,
+        rolls: {},
+      }));
+    }
+    expect([...shades].sort()).toEqual(['auburn', 'chestnut', 'chocolate brown']);
+  });
+
+  it('5 — a pin masks the roll, beats an authored drill, and is never written back', () => {
+    const rolls: PlaceholderRolls = { world: { molly: chip('iswhite'), hair: chip('brown'), brown: 'chestnut' } };
+    const setRoll = vi.fn();
+    const text = placed('molly', 'world', 'p1');
+    const pinned = resolvePlaceholders(text, {
+      placeholders: DEMO,
+      rolls,
+      setRoll,
+      pick: first,
+      pins: { molly: chip('isasian'), hair: 'fiery red' },
+    });
+    // isAsian's hair value drills to Black; the Redhead pin overrides that authored pre-selection.
+    expect(pinned).toBe('fiery red, dark brown eyes');
+    expect(setRoll).not.toHaveBeenCalled();
+    expect(rolls).toEqual({ world: { molly: chip('iswhite'), hair: chip('brown'), brown: 'chestnut' } });
+    // Dropping both pins reveals the frozen roll untouched.
+    expect(resolvePlaceholders(text, { placeholders: DEMO, rolls, pick: first }))
+      .toBe('chestnut, green, light freckles');
+  });
+
+  it('5b — a benched value never rolls but is still reachable by a pin', () => {
+    for (let i = 0; i < 200; i++) {
+      const out = resolvePlaceholders(placed('hair', 'world', 'p1'), { placeholders: DEMO, rolls: {} });
+      expect(out).not.toBe('fiery red');
+    }
+    expect(resolvePlaceholders(placed('hair', 'world', 'p1'), {
+      placeholders: DEMO,
+      rolls: {},
+      pins: { hair: 'fiery red' },
+    })).toBe('fiery red');
+  });
+
+  it('6 — a slot missing from the pinned variant reports a finding rather than breaking play', () => {
+    const { out, findings } = demo(`You notice ${placed('molly', 'world', 'p1', slot('Freckles'))}.`, {
+      pins: { molly: chip('isasian') },
+    });
+    expect(out).toBe('You notice .');
+    expect(findings).toEqual([{ kind: 'slot-miss', placeholderId: 'isasian', asked: 'Freckles' }]);
+    // The same chip is fine on the variant that has the child.
+    expect(demo(`You notice ${placed('molly', 'world', 'p1', slot('Freckles'))}.`).out)
+      .toBe('You notice light freckles.');
+  });
+
+  it('7 — two Unique placements roll their whole subtrees apart', () => {
+    const text = `One: ${placed('molly', 'unique', 'u1')} The other: ${placed('molly', 'unique', 'u2')}`;
+    const { out, rolls } = demo(text, { rolls: { unique: { u1: chip('iswhite'), u2: chip('isasian') } } });
+    expect(out).toBe('One: chestnut, green, light freckles The other: jet black, dark brown eyes');
+    // Each placement keys its own subtree under its chain. Both variants came in frozen, so only what they
+    // reach mints here — u2 routes to Black and prose, neither of which draws.
+    expect(rolls.unique).toEqual({ 'u1/brown': 'chestnut', 'u1/eyes': 'green' });
+    expect(rolls.world).toBeUndefined(); // nothing under a Unique placement leaks into the shared World rolls
+  });
+
+  it('7c — two Unique placements of the SAME variant still differ leaf by leaf', () => {
+    const text = `One: ${placed('molly', 'unique', 'u1', slot('Hair'))} / ${placed('molly', 'unique', 'u2', slot('Hair'))}`;
+    const { out } = demo(text, {
+      rolls: {
+        unique: {
+          u1: chip('iswhite'), u2: chip('iswhite'),
+          'u1/brown': 'chestnut', 'u2/brown': 'auburn',
+        },
+      },
+    });
+    expect(out).toBe('One: chestnut / auburn');
+  });
+
+  it('7b — a World placement of the same character keeps its own shared rolls', () => {
+    const text = `${placed('molly', 'unique', 'u1')} / ${placed('molly', 'world', 'w1')}`;
+    const { rolls } = demo(text);
+    expect(rolls.unique?.u1).toBe(chip('iswhite'));
+    expect(rolls.world?.molly).toBe(chip('iswhite'));
+  });
+});
+
+describe('typed paths are pin-immune', () => {
+  it('follows the branch the text names even while a pin holds another', () => {
+    const { out } = demo(placed('molly', 'world', 'p1', val('iswhite'), slot('Hair')), {
+      pins: { molly: chip('isasian') },
+    });
+    expect(out).toBe('chestnut'); // the pin would have sent this down isAsian to jet black
+  });
+
+  it('still honors a pin on a placeholder the typed path lands on', () => {
+    const { out } = demo(placed('molly', 'world', 'p1', val('iswhite'), slot('Hair')), {
+      pins: { molly: chip('isasian'), hair: 'fiery red' },
+    });
+    expect(out).toBe('fiery red');
+  });
+});
+
+describe('structural findings', () => {
+  const finding = (text: string, placeholders: Placeholder[]) => {
+    const findings: PlaceholderFinding[] = [];
+    const out = resolvePlaceholders(text, { placeholders, rolls: {}, pick: first, onFinding: (f) => findings.push(f) });
+    return { out, findings };
+  };
+
+  it('reports a chip whose placeholder is gone', () => {
+    const { out, findings } = finding(placed('ghost', 'world', 'p1'), DEMO);
+    expect(out).toBe('');
+    expect(findings).toEqual([{ kind: 'dangling', asked: 'ghost' }]);
+  });
+
+  it('reports an explicit pick no value satisfies', () => {
+    const { out, findings } = finding(placed('molly', 'world', 'p1', val('freckles')), DEMO);
+    expect(out).toBe('');
+    expect(findings).toEqual([{ kind: 'slot-miss', placeholderId: 'molly', asked: 'freckles' }]);
+  });
+
+  it('resolves a reference cycle to nothing instead of hanging', () => {
+    const world: Placeholder[] = [
+      { id: 'a', name: 'A', values: [chip('b')] },
+      { id: 'b', name: 'B', values: [chip('a')] },
+    ];
+    const { out, findings } = finding(placed('a', 'world', 'p1'), world);
+    expect(out).toBe('');
+    expect(findings).toEqual([{ kind: 'cycle', placeholderId: 'a' }]);
+  });
+
+  it('stops a chain longer than the depth cap', () => {
+    const depth = PLACEHOLDER_DEPTH_CAP + 4;
+    const chain: Placeholder[] = Array.from({ length: depth }, (_, i) => ({
+      id: `n${i}`,
+      name: `N${i}`,
+      values: [i === depth - 1 ? 'end' : chip(`n${i + 1}`)],
+    }));
+    const { out, findings } = finding(placed('n0', 'world', 'p1'), chain);
+    expect(out).toBe('');
+    expect(findings.map((f) => f.kind)).toContain('depth');
+  });
+
+  it('names the placeholder when a hand-edited drill path will not parse', () => {
+    // Only hand-edited world JSON gets here: the editor cannot write an unknown segment kind.
+    const { out, findings } = finding('{{ph:molly:world:p1:qbrown}}', DEMO);
+    expect(out).toBe(''); // never leaks the raw token
+    expect(findings).toEqual([{ kind: 'malformed', placeholderId: 'molly' }]);
+  });
+
+  it('says nothing when everything resolves', () => {
+    const { findings } = finding(placed('molly', 'world', 'p1'), DEMO);
+    expect(findings).toEqual([]);
+  });
+});
+
+describe('legacy parity', () => {
+  const legacy: Placeholder[] = [
+    { id: 'eye', name: 'Eye', values: ['Red', 'Blue', 'Green'] },
+    { id: 'king', name: 'King', values: ['Aldric'] },
+    { id: 'empty', name: 'Empty', values: [] },
+  ];
+  const text = `${tok('eye', 'world', 'p1')} / ${tok('eye', 'unique', 'p9')} / ${tok('king', 'world', 'p3')}`
+    + ` / [${tok('empty', 'world', 'p4')}] / [${tok('gone', 'world', 'p5')}]`;
+
+  it('resolves a flat world with legacy rolls byte-identically', () => {
+    const rolls: PlaceholderRolls = { world: { eye: 'Green' }, unique: { p9: 'Blue' } };
+    const setRoll = vi.fn();
+    expect(resolvePlaceholders(text, { placeholders: legacy, rolls, setRoll, pick: first }))
+      .toBe('Green / Blue / Aldric / [] / []');
+    expect(setRoll).not.toHaveBeenCalled();
+  });
+
+  it('mints rolls under the keys a shipped save already uses', () => {
+    const c = collector();
+    resolvePlaceholders(text, { placeholders: legacy, rolls: c.rolls, setRoll: c.setRoll, pick: first });
+    expect(c.rolls).toEqual({ world: { eye: 'Red' }, unique: { p9: 'Red' } });
   });
 });
