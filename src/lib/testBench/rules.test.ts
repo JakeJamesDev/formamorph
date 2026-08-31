@@ -1,5 +1,7 @@
 import { describe, it, expect } from 'vitest';
-import type { Dictionary, DictionaryEntry, Entity, GameLocation, Stat, Trait, WorldOverview } from '@/types';
+import type {
+  Dictionary, DictionaryEntry, Entity, GameLocation, Placeholder, Stat, Trait, WorldOverview,
+} from '@/types';
 import { estimateTokens } from '@/lib/memoryUtils';
 import { IMAGE_CAPS } from '@/lib/imageOptim';
 import {
@@ -1364,6 +1366,168 @@ describe('placeholder pool rules', () => {
   });
 });
 
+describe('structured placeholder rules', () => {
+  const chip = (id: string, path?: string) => `{{ph:${id}:world:pl-${id}${path ? `:${path}` : ''}}}`;
+
+  // The parts a variant is built from. Two of each name, one per variant, so a slot path has something real
+  // to route to and the duplicate-name rule has two genuine candidates to confuse.
+  const parts: Placeholder[] = [
+    { id: 'hair-fen', name: 'Hair', values: ['flaxen'] },
+    { id: 'eyes-fen', name: 'Eyes', values: ['gray'] },
+    { id: 'hair-coast', name: 'Hair', values: ['black'] },
+    { id: 'eyes-coast', name: 'Eyes', values: ['dark'] },
+  ];
+
+  /** The prototype's rolled character: Molly draws one of two variants, each a record joining its own parts.
+   *  `coast` is the variant a test reaches into to author the one defect it is about. */
+  const character = (coast: string[] = [chip('hair-coast'), chip('eyes-coast')]): Placeholder[] => [
+    ...parts,
+    { id: 'fen', name: 'Fen-born', values: [chip('hair-fen'), chip('eyes-fen')], roll: false },
+    { id: 'coast', name: 'Coast-born', values: coast, roll: false },
+    { id: 'molly', name: 'Molly', values: [chip('fen'), chip('coast')] },
+  ];
+
+  /** A world placing `text` on a described resident — the placement that makes a path a *placed* path. */
+  const placing = (text: string, placeholders: Placeholder[]): RuleWorld => ({
+    ...world([{ id: 'e1', name: 'Maren', aiDescription: text }]),
+    placeholders,
+  });
+
+  const hairPath = `Her hair is ${chip('molly', 'sHair')}.`;
+  const eyesPath = `Her eyes are ${chip('molly', 'sEyes')}.`;
+
+  const STRUCTURED_RULES = [
+    'placeholder-slot-miss', 'placeholder-dangling-reference', 'placeholder-reference-cycle',
+    'placeholder-empty-record', 'placeholder-duplicate-slot',
+  ];
+
+  it('flags a slot the rolled variant cannot carry, even while the other variant can', () => {
+    // Coast-born lost its Eyes. One roll in two still reads correctly, which is exactly why a rule has to
+    // sweep the variants rather than resolve the world once and look at the result.
+    const found = only(placing(eyesPath, character([chip('hair-coast')])), 'placeholder-slot-miss');
+    expect(found).toHaveLength(1);
+    expect(found[0].severity).toBe('warning');
+    expect(found[0].section).toBe('placeholders');
+    expect(found[0].items.map((i) => i.id)).toEqual(['coast']);
+    expect(found[0].message).toContain('Coast-born');
+    expect(found[0].message).toContain('Eyes');
+    expect(only(placing(eyesPath, character()), 'placeholder-slot-miss')).toEqual([]);
+  });
+
+  it('says nothing about a slot no text places', () => {
+    // The gap is real, but nothing asks for it — the rule is about placed paths, not about tidiness.
+    expect(only(placing('Plainly dressed.', character([chip('hair-coast')])), 'placeholder-slot-miss')).toEqual([]);
+  });
+
+  it('flags a chip inside a value whose placeholder is gone, which no chip rule can see', () => {
+    const orphaned = placing(hairPath, character([chip('hair-coast'), chip('gone')]));
+    const found = only(orphaned, 'placeholder-dangling-reference');
+    expect(found).toHaveLength(1);
+    expect(found[0].severity).toBe('error');
+    expect(found[0].items.map((i) => i.id)).toEqual(['coast']);
+    // The shipped chip rule reads the root id of a chip in *world text*, so this reference is invisible to it.
+    expect(only(orphaned, 'chip-unknown-placeholder')).toEqual([]);
+    expect(only(placing(hairPath, character()), 'placeholder-dangling-reference')).toEqual([]);
+  });
+
+  it('flags a drill path picking a placeholder that is gone, and leaves the slot rule out of it', () => {
+    const drilled = placing(`Her hair is ${chip('molly', 'vgone>sHair')}.`, character());
+    const found = only(drilled, 'placeholder-dangling-reference');
+    expect(found).toHaveLength(1);
+    expect(found[0].items.map((i) => i.id)).toEqual(['e1']);
+    // The walk reports the same step as a miss; an explicit pick at nothing is a dead reference, not a
+    // variant coming up short, so only one of the two rules speaks.
+    expect(only(drilled, 'placeholder-slot-miss')).toEqual([]);
+  });
+
+  it('flags two placeholders referencing each other, once for the whole loop', () => {
+    const found = only(placing(`A ${chip('a')} thing.`, [
+      { id: 'a', name: 'Alpha', values: [chip('b')] },
+      { id: 'b', name: 'Beta', values: [chip('a')] },
+    ]), 'placeholder-reference-cycle');
+    expect(found).toHaveLength(1);
+    expect(found[0].severity).toBe('error');
+    expect(found[0].items.map((i) => i.id).sort()).toEqual(['a', 'b']);
+    expect(found[0].message).toContain('Alpha');
+    expect(found[0].message).toContain('Beta');
+  });
+
+  it('flags a placeholder whose own value points back at it', () => {
+    const found = only(placing(`A ${chip('a')} thing.`,
+      [{ id: 'a', name: 'Alpha', values: [chip('a')] }]), 'placeholder-reference-cycle');
+    expect(found).toHaveLength(1);
+    expect(found[0].message).toContain('references itself');
+  });
+
+  it('leaves a deep chain that never closes alone', () => {
+    expect(only(placing(`A ${chip('a')} thing.`, [
+      { id: 'a', name: 'Alpha', values: [chip('b')] },
+      { id: 'b', name: 'Beta', values: [chip('c')] },
+      { id: 'c', name: 'Gamma', values: ['salt-worn'] },
+    ]), 'placeholder-reference-cycle')).toEqual([]);
+  });
+
+  it('flags a record whose whole placement joins to nothing', () => {
+    const kit = (coat: string[]) => placing(`She wears ${chip('kit')}.`, [
+      { id: 'coat', name: 'Coat', values: coat },
+      { id: 'kit', name: 'Kit', values: [chip('coat')], roll: false },
+    ]);
+    const found = only(kit([]), 'placeholder-empty-record');
+    expect(found).toHaveLength(1);
+    expect(found[0].severity).toBe('warning');
+    expect(found[0].items.map((i) => i.id)).toEqual(['kit']);
+    // The part gets the value it was always meant to have, and the join has something to say again.
+    expect(only(kit(['a salt-stiff coat']), 'placeholder-empty-record')).toEqual([]);
+  });
+
+  it('flags a record of blank values, chips or no chips', () => {
+    const found = only(placing(`She wears ${chip('kit')}.`,
+      [{ id: 'kit', name: 'Kit', values: ['', ''], roll: false }]), 'placeholder-empty-record');
+    expect(found).toHaveLength(1);
+    expect(found[0].items.map((i) => i.id)).toEqual(['kit']);
+  });
+
+  it('leaves a choice alone — one blank option is a pool the author owns, not a broken join', () => {
+    expect(only(placing(`She wears ${chip('kit')}.`,
+      [{ id: 'kit', name: 'Kit', values: ['', 'a salt-stiff coat'] }]), 'placeholder-empty-record')).toEqual([]);
+  });
+
+  it('leaves a loop’s emptiness to the cycle rule rather than saying it twice', () => {
+    const cyclic = placing(`A ${chip('a')} thing.`, [
+      { id: 'a', name: 'Alpha', values: [chip('b')], roll: false },
+      { id: 'b', name: 'Beta', values: [chip('a')], roll: false },
+    ]);
+    expect(only(cyclic, 'placeholder-reference-cycle')).toHaveLength(1);
+    expect(only(cyclic, 'placeholder-empty-record')).toEqual([]);
+  });
+
+  it('flags two parts under one name, which a path can only ever reach the first of', () => {
+    const twinned = placing(hairPath, character([chip('hair-coast'), chip('hair-fen')]));
+    const found = only(twinned, 'placeholder-duplicate-slot');
+    expect(found).toHaveLength(1);
+    expect(found[0].severity).toBe('warning');
+    expect(found[0].items.map((i) => i.id)).toEqual(['coast']);
+    expect(found[0].message).toContain('Hair');
+    expect(only(placing(hairPath, character()), 'placeholder-duplicate-slot')).toEqual([]);
+  });
+
+  it('reads a part reached only through another placeholder’s value as used', () => {
+    // `placeholder-unused` deletes what it flags, so a structural child read as unused is a Fix button that
+    // guts the character it belongs to.
+    expect(only(placing(hairPath, character()), 'placeholder-unused')).toEqual([]);
+  });
+
+  it('says nothing at all about a structured world that resolves', () => {
+    const clean = placing(`${hairPath} ${eyesPath}`, character());
+    for (const ruleId of STRUCTURED_RULES) expect([ruleId, only(clean, ruleId)]).toEqual([ruleId, []]);
+  });
+
+  it('says nothing at all about a flat world, which is every world shipped before this', () => {
+    const flat = placing(`Fond of ${chip('vice')}.`, [{ id: 'vice', name: 'Vice', values: ['ale', 'dice'] }]);
+    for (const ruleId of STRUCTURED_RULES) expect([ruleId, only(flat, ruleId)]).toEqual([ruleId, []]);
+  });
+});
+
 describe('dictionary visibility rules', () => {
   const twoEntries = (first: Partial<DictionaryEntry>, second: Partial<DictionaryEntry>) => base({
     dictionaries: [book([
@@ -1939,6 +2103,11 @@ const RULE_SCOPE: Record<string, 'simple' | 'advanced'> = {
   'dictionary-secondary-without-primary': 'advanced',
   'entity-long-description-no-summary': 'advanced',
   'entity-name-in-wildcard-pool': 'advanced',
+  'placeholder-dangling-reference': 'advanced',
+  'placeholder-duplicate-slot': 'advanced',
+  'placeholder-empty-record': 'advanced',
+  'placeholder-reference-cycle': 'advanced',
+  'placeholder-slot-miss': 'advanced',
   'placeholder-unused': 'advanced',
   'placeholder-pinned-unused': 'advanced',
   'placeholder-weight-unknown-value': 'advanced',

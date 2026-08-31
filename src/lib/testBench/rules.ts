@@ -7,7 +7,10 @@
  * unambiguous it also carries a `fix`, which returns a new world rather than editing the one it was given.
  */
 import {
-  collectPlaceholderPlacements, describePlaceholders, hasPlaceholders, placeholderWeight,
+  collectPlaceholderPlacements, decodePlaceholderToken, describePlaceholders, encodePlaceholderToken,
+  hasPlaceholders, parsePlaceholderText, placeholderChildren, placeholderIsChoice, placeholderWeight,
+  resolvePlaceholders,
+  type PlaceholderFinding, type PlaceholderPick, type PlaceholderToken,
 } from '@/lib/placeholders';
 import { matchKey } from '@/lib/entityMatch';
 import { activeDescriptor } from '@/lib/statContext';
@@ -454,6 +457,9 @@ const chipNeverScanned: Rule = {
  *  that doesn't resolve would read as no mention at all and the placeholder under it would look disposable. */
 const allChipTexts = (world: RuleWorld): Array<string | undefined> => [
   ...chipOwners(world).flatMap((owner) => owner.texts),
+  // Values are chip-capable, so a structural child is placed by the parent that names it and by nothing
+  // else. Reading it as unused would put a delete-it Fix on the parts a whole character is built from.
+  ...(world.placeholders ?? []).flatMap((ph) => ph.values ?? []),
   world.worldOverview?.description,
   ...(world.stats ?? []).flatMap((s) => [s.description, ...(s.descriptors ?? []).map((d) => d.description)]),
   ...(world.statUpdates ?? []).map((u) => u.prompt),
@@ -1394,6 +1400,219 @@ const wildcardSingleValue: Rule = {
     }),
 };
 
+// ── Structured placeholders ───────────────────────────────────────────────────────────────────────────────
+
+/** Every chip in one text, decoded; a token too malformed to read is dropped, since nothing below can say
+ *  anything true about where it points. */
+const chipTokens = (text: string | undefined): PlaceholderToken[] =>
+  (text && hasPlaceholders(text) ? parsePlaceholderText(text) : [])
+    .flatMap((segment) => (segment.type === 'variable' ? [decodePlaceholderToken(segment.token)] : []))
+    .filter((token): token is PlaceholderToken => token !== null);
+
+/** How many branch rounds a probe walks at most. */
+const PROBE_ROUNDS = 8;
+
+/**
+ * Round *i* of a probe sends every choice to its *i*-th value. One playthrough only ever sees one variant,
+ * so a sweep is what turns "this roll works" into "every roll works" — and one round is enough for a world
+ * whose values carry no chips, where there is no branch to route through in the first place.
+ */
+const probeRounds = (world: RuleWorld): number => {
+  const placeholders = world.placeholders ?? [];
+  if (!placeholders.some((ph) => (ph.values ?? []).some((value) => hasPlaceholders(value ?? '')))) return 1;
+  return Math.min(PROBE_ROUNDS, Math.max(1, ...placeholders.map((ph) => (ph.values ?? []).length)));
+};
+
+const branchPick = (round: number): PlaceholderPick =>
+  (values) => values[Math.min(round, values.length - 1)];
+
+/**
+ * `text` resolved once per branch round, with everything each walk reported. The real resolver runs it, so a
+ * diagnostic can never drift from what play does. Rolls are absent and nothing persists: every round draws
+ * fresh, and the union describes what the world *can* do rather than what one playthrough did.
+ */
+const probeText = (
+  text: string, world: RuleWorld, rounds: number,
+): { findings: PlaceholderFinding[]; results: string[] } => {
+  const findings: PlaceholderFinding[] = [];
+  const results: string[] = [];
+  for (let round = 0; round < rounds; round++) {
+    results.push(resolvePlaceholders(text, {
+      placeholders: world.placeholders ?? [],
+      rolls: {},
+      pick: branchPick(round),
+      onFinding: (raised) => findings.push(raised),
+    }));
+  }
+  return { findings, results };
+};
+
+const placeholderSlotMiss: Rule = {
+  id: 'placeholder-slot-miss',
+  severity: 'warning',
+  section: 'placeholders',
+  advanced: true,
+  summary: (count) =>
+    `${count} placed paths name a part some variant doesn’t carry, so they resolve to nothing whenever it rolls`,
+  // Reported against the variant that came up short, not the chip that asked: one missing part strands every
+  // sentence pointing at it, and the repair is always in the placeholder, never in the text.
+  check: (world) => {
+    const rounds = probeRounds(world);
+    const misses = new Map<string, { placeholderId: string; asked: string }>();
+    for (const text of chipBearingTexts(world)) {
+      for (const raised of probeText(text, world, rounds).findings) {
+        if (raised.kind !== 'slot-miss' || raised.segment !== 'slot') continue;
+        const { placeholderId, asked } = raised;
+        if (!placeholderId || !asked) continue;
+        misses.set(`${placeholderId} ${asked}`, { placeholderId, asked });
+      }
+    }
+    return [...misses.values()].map(({ placeholderId, asked }) => {
+      const ph = (world.placeholders ?? []).find((p) => p.id === placeholderId);
+      const item = namedItem(placeholderId, ph?.name, world);
+      return finding(
+        placeholderSlotMiss,
+        `${quote(item.name)} carries no ${quote(asked)}, so a placed ${quote(asked)} path routed through it resolves to nothing`,
+        [item],
+      );
+    });
+  },
+};
+
+/** The two references `chip-unknown-placeholder` cannot see: it reads the root id of a chip in world text,
+ *  which leaves out every chip living inside a value and every explicit pick a drill path names. */
+const placeholderDanglingReference: Rule = {
+  id: 'placeholder-dangling-reference',
+  severity: 'error',
+  section: 'placeholders',
+  advanced: true,
+  summary: (count) => `${count} placeholder chips point at a placeholder that no longer exists`,
+  check: (world) => {
+    const known = new Set((world.placeholders ?? []).map((p) => p.id));
+    const gone = (id: string) => !known.has(id);
+    const drilledIntoNothing = (token: PlaceholderToken) =>
+      (token.path ?? []).some((segment) => segment.kind === 'val' && gone(segment.ref));
+    const inValues = (world.placeholders ?? []).flatMap((ph) => {
+      const item = namedItem(ph.id, ph.name, world);
+      return (ph.values ?? [])
+        .flatMap(chipTokens)
+        .filter((token) => gone(token.id) || drilledIntoNothing(token))
+        .map(() => finding(
+          placeholderDanglingReference,
+          `A value of ${quote(item.name)} points at a placeholder that no longer exists`,
+          [item],
+        ));
+    });
+    const inText = chipOwners(world).flatMap((owner) => owner.texts
+      .flatMap(chipTokens)
+      .filter(drilledIntoNothing)
+      .map(() => finding(
+        placeholderDanglingReference,
+        `${quote(owner.item.name)} drills into a placeholder that no longer exists`,
+        [owner.item],
+      )));
+    return [...inValues, ...inText];
+  },
+};
+
+/** Every placeholder id one placeholder's values reach: a chip anywhere in a value, plus every explicit pick
+ *  its path names. These are the edges a cycle can run along. */
+const valueReferences = (ph: Placeholder): string[] =>
+  (ph.values ?? []).flatMap(chipTokens).flatMap((token) =>
+    [token.id, ...(token.path ?? []).flatMap((segment) => (segment.kind === 'val' ? [segment.ref] : []))]);
+
+/** Each reference cycle among `placeholders`, as the ids standing on it. A tangle is reported once, by the
+ *  first ring found in it — the author untangles a knot, not one edge of it at a time. */
+const referenceCycles = (placeholders: Placeholder[]): string[][] => {
+  const edges = new Map(placeholders.map((ph) => [ph.id, valueReferences(ph)]));
+  const cycles = new Map<string, string[]>();
+  const settled = new Set<string>();
+  const stack: string[] = [];
+  const onStack = new Set<string>();
+  const walk = (id: string) => {
+    if (onStack.has(id)) {
+      const ring = stack.slice(stack.indexOf(id));
+      cycles.set([...ring].sort().join(' '), ring);
+      return;
+    }
+    if (settled.has(id) || !edges.has(id)) return;
+    stack.push(id);
+    onStack.add(id);
+    for (const next of edges.get(id) ?? []) walk(next);
+    stack.pop();
+    onStack.delete(id);
+    settled.add(id);
+  };
+  for (const ph of placeholders) walk(ph.id);
+  return [...cycles.values()];
+};
+
+const placeholderReferenceCycle: Rule = {
+  id: 'placeholder-reference-cycle',
+  severity: 'error',
+  section: 'placeholders',
+  advanced: true,
+  summary: (count) => `${count} placeholders reference themselves in a loop, so every chip of one shows nothing`,
+  check: (world) => {
+    const placeholders = world.placeholders ?? [];
+    const byId = new Map(placeholders.map((ph) => [ph.id, ph]));
+    return referenceCycles(placeholders).map((ring) => {
+      const items = ring.map((id) => namedItem(id, byId.get(id)?.name, world));
+      const loop = items.length === 1
+        ? `${quote(items[0].name)} references itself`
+        : `${listNames(items.map((i) => quote(i.name)))} reference each other in a loop`;
+      return finding(placeholderReferenceCycle, `${loop}, so every chip of them shows nothing`, items);
+    });
+  },
+};
+
+const placeholderEmptyRecord: Rule = {
+  id: 'placeholder-empty-record',
+  severity: 'warning',
+  section: 'placeholders',
+  advanced: true,
+  summary: (count) => `${count} placeholders join their values into nothing, so a chip of one shows no text`,
+  // Only a record: a choice showing nothing is one empty value in a pool, which is the author's business.
+  check: (world) => {
+    const rounds = probeRounds(world);
+    return (world.placeholders ?? [])
+      .filter((ph) => (ph.values ?? []).length > 0 && !placeholderIsChoice(ph))
+      .flatMap((ph) => {
+        const token = encodePlaceholderToken({ id: ph.id, mode: 'world', placementId: 'bench' });
+        const { findings: raised, results } = probeText(token, world, rounds);
+        // A cycle, a dead reference and an over-deep walk all empty the join as well, and each already has
+        // a rule saying so in the terms the author can act on.
+        if (raised.some((f) => f.kind === 'cycle' || f.kind === 'dangling' || f.kind === 'depth')) return [];
+        if (results.some((text) => text !== '')) return [];
+        const item = namedItem(ph.id, ph.name, world);
+        return [finding(
+          placeholderEmptyRecord,
+          `${quote(item.name)} joins its values into nothing — a chip of it shows no text at all`,
+          [item],
+        )];
+      });
+  },
+};
+
+const placeholderDuplicateSlot: Rule = {
+  id: 'placeholder-duplicate-slot',
+  severity: 'warning',
+  section: 'placeholders',
+  advanced: true,
+  summary: (count) => `${count} placeholders carry two parts under one name, so a path naming it always takes the first`,
+  check: (world) => (world.placeholders ?? []).flatMap((ph) => {
+    const names = placeholderChildren(ph, world.placeholders ?? []).map((child) => child.target.name);
+    const repeated = [...new Set(names.filter((name, i) => names.indexOf(name) !== i))];
+    if (repeated.length === 0) return [];
+    const item = namedItem(ph.id, ph.name, world);
+    return [finding(
+      placeholderDuplicateSlot,
+      `${quote(item.name)} carries ${listNames(repeated.map(quote))} more than once — a path naming it always takes the first, and the rest are unreachable`,
+      [item],
+    )];
+  }),
+};
+
 // ── Dictionary authoring, continued ───────────────────────────────────────────────────────────────────────
 
 const dictionaryKeywordSubstring: Rule = {
@@ -1598,6 +1817,8 @@ export const RULES: readonly Rule[] = [
   entityLongDescriptionNoSummary, aiSummaryHidesDescription, locationNoEntities,
   traitGroupMultipleDefaults, traitGroupTooSmall,
   placeholderWeightUnknownValue, wildcardSingleValue,
+  placeholderSlotMiss, placeholderDanglingReference, placeholderReferenceCycle, placeholderEmptyRecord,
+  placeholderDuplicateSlot,
   dictionaryKeywordSubstring, dictionaryDisabled,
   worldEmptySystemPrompt, worldNoReadme, worldOversizedImages, imageNotWebp, imageMislabeled,
 ];
