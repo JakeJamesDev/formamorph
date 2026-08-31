@@ -9,7 +9,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Trash2 } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import PlaceholderField, { PlaceholderNameField } from '@/components/prompt/PlaceholderField';
-import { describePlaceholders, placeholderValueLine } from '@/lib/placeholders';
+import { describePlaceholders, lonePlaceholderToken, placeholderValueLine } from '@/lib/placeholders';
 import { placeholderVocabulary } from '@/lib/chipVocabulary';
 import { traitConflicts, type TraitConflict } from '@/lib/traitEffects';
 import { useEditorMode } from '@/lib/editorMode';
@@ -75,12 +75,15 @@ const TraitManager = ({ trait, onOpenTrait }: { trait: Trait; onOpenTrait: (id: 
   const updatePin = (index: number, patch: Partial<TraitPlaceholderPin>) =>
     setPins(pins.map((p, i) => (i === index ? { ...p, ...patch } : p)));
   const pinVocab = useMemo(() => placeholderVocabulary(placeholders), [placeholders]);
-  /** A value as the pin picker shows it: a value holding chips reads as what it will resolve to, so pinning
-   *  a variant reads like what it does. One that would read as nothing — its target is gone, or holds no
-   *  values — falls back to the chip's own name, since a blank row is nothing to pick. What the pin stores
+  /** A value as the pin picker shows it. A value that is exactly one chip is a part, so it reads as the part
+   *  it names — the same reading the Values field gives it, and the one an author picking a variant is
+   *  after. A chip inside longer text is prose, so it reads as what it will resolve to. What the pin stores
    *  is the value itself either way. */
-  const describeValue = (value: string) =>
-    placeholderValueLine(describePlaceholders(value, placeholders)) || pinVocab.label(value);
+  const describeValue = (value: string) => {
+    const lone = lonePlaceholderToken(value);
+    if (lone) return pinVocab.label(lone);
+    return placeholderValueLine(describePlaceholders(value, placeholders)) || value;
+  };
 
   const { advanced } = useEditorMode();
 
