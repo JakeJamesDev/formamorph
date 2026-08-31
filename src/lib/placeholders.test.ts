@@ -13,6 +13,7 @@ import {
   collectPlaceholderPlacements,
   primeRolls,
   collectUsedPlaceholders,
+  collectPlaceholderParts,
   remapPlaceholderIds,
   absorbPlaceholders,
   buildPlaceholderPreview,
@@ -888,6 +889,46 @@ describe('portability through value chips', () => {
     const { toAdd, idMap } = absorbPlaceholders([{ id: 'c', name: 'Hair', values: ['red', 'black'], roll: true }], host);
     expect(toAdd).toEqual([]);
     expect(idMap.c).toBe('h');
+  });
+});
+
+/**
+ * Which placeholders are *parts* of others, and who holds each one. A value that is exactly one chip is the
+ * shape that makes a part; the same predicate the resolver addresses a drill path through. This is what the
+ * editor list filters and counts by, so what counts as held is asserted here rather than in the UI.
+ */
+describe('collectPlaceholderParts', () => {
+  const parts = () => collectPlaceholderParts(DEMO);
+
+  it('names every placeholder that holds a part', () => {
+    expect(parts().get('hair')).toEqual(['iswhite', 'isasian']);
+    expect(parts().get('iswhite')).toEqual(['molly']);
+    expect(parts().get('freckles')).toEqual(['iswhite']);
+  });
+
+  it('leaves a chip inside a longer value out — it composes, it is not held', () => {
+    // Intro's only value is prose with a Town chip in it. Town is a root an author places, not Intro's part.
+    expect(parts().has('town')).toBe(false);
+  });
+
+  it('leaves the roots nothing holds out entirely', () => {
+    expect([...parts().keys()].sort()).toEqual(
+      ['black', 'blonde', 'brown', 'eyes', 'freckles', 'hair', 'isasian', 'iswhite'],
+    );
+  });
+
+  it('names a holder once however many of its values point at the same part', () => {
+    const world: Placeholder[] = [
+      { id: 'variant', name: 'Variant', values: [chip('hair', val('brown')), chip('hair', val('black'))] },
+      { id: 'hair', name: 'Hair', values: ['brown', 'black'] },
+    ];
+    expect(collectPlaceholderParts(world).get('hair')).toEqual(['variant']);
+  });
+
+  it('does not make a placeholder its own part', () => {
+    const cyclic: Placeholder[] = [{ id: 'a', name: 'A', values: [chip('a'), chip('b')] }];
+    expect(collectPlaceholderParts(cyclic).has('a')).toBe(false);
+    expect(collectPlaceholderParts(cyclic).get('b')).toEqual(['a']);
   });
 });
 
