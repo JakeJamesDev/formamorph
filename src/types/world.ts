@@ -387,6 +387,10 @@ export interface Placeholder {
   /** Relative draw weight per value; a value absent from the map weighs 1. Weight 0 benches a value without
    *  deleting it. Absent map (or all-1 weights) = a uniform draw. */
   weights?: Record<string, number>;
+  /** `true` ⇒ a choice: one value is drawn per playthrough. `false` ⇒ a record: a whole placement joins
+   *  every value with `", "`. Absent ⇒ inferred from the value count (2+ draws), which is what every
+   *  authored placeholder does today. */
+  roll?: boolean;
 }
 
 /** Lightweight preview record used by the main-menu world grid. */

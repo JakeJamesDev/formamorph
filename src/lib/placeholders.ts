@@ -3,11 +3,13 @@ import type { Placeholder, PlaceholderRolls } from '@/types';
 import type { PromptSegment } from './promptTemplate';
 
 /**
- * Placeholders — resolve author-defined named values embedded in world text as inline chips. The type is
- * inferred from the placeholder's value count: 1 value = a fixed Variable, 2+ = a random Wildcard whose chips
- * carry a World/Unique mode. This module is the deterministic core: the in-text token codec and a single pure
- * resolution pass applied wherever authored text surfaces (player display + AI context). Rolling is lazy —
- * the first resolution of a Wildcard mints and persists its value via `setRoll`; later ones reuse it.
+ * Placeholders — resolve author-defined named values embedded in world text as inline chips. A placeholder
+ * either draws one value (a choice) or joins them all (a record); `roll` decides, and without it the value
+ * count does — 1 value = a fixed Variable, 2+ = a random Wildcard. Values are chip-capable themselves, so a
+ * value that is exactly one chip is a structural child a chip's drill path can address by name or by id.
+ * This module is the deterministic core: the in-text token codec and one pure recursive resolution pass
+ * applied wherever authored text surfaces (player display + AI context). Rolling is lazy — the first
+ * resolution of a choice mints and persists its value via `setRoll`; later ones reuse it.
  *
  * The name/token never reaches runtime — the resolved value is what both the player and the AI see.
  */
@@ -18,27 +20,67 @@ export type PlaceholderMode = 'world' | 'unique';
  *  tests pass a deterministic chooser that ignores it. */
 export type PlaceholderPick = (values: string[], weights?: Record<string, number>) => string;
 
-/** A decoded in-text chip: which placeholder, the roll mode, and the per-placement id (keys Unique rolls). */
+/**
+ * One step of a chip's drill path under its root placeholder. `val` names an explicit pick by the target
+ * placeholder's id — the value that is exactly that chip. `slot` names a target by name and routes through
+ * whichever value a choice placeholder drew, so two chips describing one rolled character agree.
+ */
+export type PlaceholderSegment =
+  | { kind: 'val'; ref: string }
+  | { kind: 'slot'; name: string };
+
+/** A decoded in-text chip: which placeholder, the roll mode, the per-placement id (keys Unique rolls), and
+ *  the optional drill path under the root. Every shipped token has no path. */
 export interface PlaceholderToken {
   id: string; // Placeholder.id
   mode: PlaceholderMode;
   placementId: string;
+  path?: PlaceholderSegment[];
 }
 
-// {{ph:<placeholderId>:<world|unique>:<placementId>}} — double-brace keeps it clear of prompt `<...>` tokens,
-// and ids are UUIDs (no colons), so `:` is a safe separator. Chips are inserted by the editor, not typed, so
-// a stray literal that happens to match still resolves to "" unless its id names a real placeholder.
-const TOKEN_RE = /\{\{ph:([^:{}]+):(world|unique):([^:{}]+)\}\}/g;
+// {{ph:<placeholderId>:<world|unique>:<placementId>[:<path>]}} — double-brace keeps it clear of prompt
+// `<...>` tokens, and ids are UUIDs (no colons), so `:` is a safe separator. Chips are inserted by the
+// editor, not typed, so a stray literal that happens to match still resolves to "" unless its id names a
+// real placeholder. The path group is optional, so a token written before this feature parses unchanged.
+const TOKEN_RE = /\{\{ph:([^:{}]+):(world|unique):([^:{}]+)(?::([^:{}]+))?\}\}/g;
+
+// Path grammar: segments joined by `>`, each `v<targetId>` (explicit pick) or `s<name>` (slot). Slot names
+// are author text, so the four characters the grammar owns are percent-escaped.
+const SEG_SEP = '>';
+const escapeSeg = (s: string) => s.replace(/[%:{}>]/g, (c) => `%${c.charCodeAt(0).toString(16).toUpperCase()}`);
+const unescapeSeg = (s: string) => s.replace(/%([0-9A-F]{2})/g, (_m, hex: string) => String.fromCharCode(parseInt(hex, 16)));
+
+/** Encode a drill path to its in-token form. An empty path encodes to `''` (no path segment in the token). */
+export function encodePlaceholderPath(path: PlaceholderSegment[]): string {
+  return path.map((s) => (s.kind === 'val' ? `v${escapeSeg(s.ref)}` : `s${escapeSeg(s.name)}`)).join(SEG_SEP);
+}
+
+/** Decode a path's token form, or `null` if any segment is malformed (an unknown kind prefix). */
+export function decodePlaceholderPath(raw: string): PlaceholderSegment[] | null {
+  const out: PlaceholderSegment[] = [];
+  for (const part of raw.split(SEG_SEP)) {
+    const body = unescapeSeg(part.slice(1));
+    if (part.startsWith('v')) out.push({ kind: 'val', ref: body });
+    else if (part.startsWith('s')) out.push({ kind: 'slot', name: body });
+    else return null;
+  }
+  return out;
+}
 
 /** Encode a chip placement to its stored token string. */
 export function encodePlaceholderToken(t: PlaceholderToken): string {
-  return `{{ph:${t.id}:${t.mode}:${t.placementId}}}`;
+  const path = t.path?.length ? `:${encodePlaceholderPath(t.path)}` : '';
+  return `{{ph:${t.id}:${t.mode}:${t.placementId}${path}}}`;
 }
 
 /** Decode a single token string, or `null` if it isn't a well-formed placeholder token. */
 export function decodePlaceholderToken(token: string): PlaceholderToken | null {
   const m = new RegExp(`^${TOKEN_RE.source}$`).exec(token);
-  return m ? { id: m[1], mode: m[2] as PlaceholderMode, placementId: m[3] } : null;
+  if (!m) return null;
+  const base = { id: m[1], mode: m[2] as PlaceholderMode, placementId: m[3] };
+  if (!m[4]) return base;
+  const path = decodePlaceholderPath(m[4]);
+  return path ? { ...base, path } : null;
 }
 
 /** True if `text` contains at least one placeholder chip (cheap pre-check to skip resolution work). */
@@ -126,14 +168,15 @@ export function collectUsedPlaceholders(texts: string[], available: Placeholder[
   return available.filter((p) => used.has(p.id));
 }
 
-/** Rewrite chip tokens' placeholder id via `idMap` (`{{ph:<old>:<mode>:<pid>}}` → new id; mode + placement id
- *  preserved). Ids absent from the map are left as-is. Used when absorbing an imported item's placeholders. */
+/** Rewrite chip tokens' placeholder id via `idMap` (`{{ph:<old>:<mode>:<pid>}}` → new id; mode, placement id
+ *  and drill path preserved). Ids absent from the map are left as-is. Used when absorbing an imported item's
+ *  placeholders. */
 export function remapPlaceholderIds(text: string, idMap: Record<string, string>): string {
   if (!text || !hasPlaceholders(text)) return text;
   TOKEN_RE.lastIndex = 0;
-  return text.replace(TOKEN_RE, (full, id: string, mode: string, placementId: string) => {
+  return text.replace(TOKEN_RE, (full, id: string, mode: string, placementId: string, path?: string) => {
     const next = idMap[id];
-    return next ? `{{ph:${next}:${mode}:${placementId}}}` : full;
+    return next ? `{{ph:${next}:${mode}:${placementId}${path ? `:${path}` : ''}}}` : full;
   });
 }
 
@@ -250,18 +293,42 @@ export function placeholderValueSummary(ph: Placeholder): string {
   return values.length > 3 ? `${shown}|…` : shown;
 }
 
+/** What went wrong on one step of a walk. Resolution always yields text — a finding is the diagnostic the
+ *  Test Bench reads, never a break in play. */
+export type PlaceholderFindingKind =
+  /** A placed path names a slot the value it routed through does not carry. */
+  | 'slot-miss'
+  /** A chip whose placeholder no longer exists. */
+  | 'dangling'
+  /** A chip whose drill path is not readable — only hand-edited world JSON produces one. */
+  | 'malformed'
+  /** A placeholder reached itself through its own values. */
+  | 'cycle'
+  /** The walk ran past {@link PLACEHOLDER_DEPTH_CAP} levels. */
+  | 'depth';
+
+export interface PlaceholderFinding {
+  kind: PlaceholderFindingKind;
+  /** The placeholder the walk stood on, when there was one. */
+  placeholderId?: string;
+  /** What the path asked for — a slot name, or a target id for an explicit pick. */
+  asked?: string;
+}
+
 export interface ResolveOptions {
   placeholders: Placeholder[];
   /** Frozen rolls for this playthrough. Not mutated — new rolls are reported via `setRoll`. */
   rolls: PlaceholderRolls;
-  /** Persist a freshly-minted Wildcard roll (`world` keyed by placeholder id, `unique` by placement id).
-   *  Omit in read-only/design-time contexts; then a not-yet-rolled Wildcard picks a value without persisting. */
+  /** Persist a freshly-minted roll (`world` keyed by placeholder id, `unique` by the placement chain).
+   *  Omit in read-only/design-time contexts; then a not-yet-rolled choice picks a value without persisting. */
   setRoll?: (scope: PlaceholderMode, key: string, value: string) => void;
   /** Injectable chooser (tests pass a deterministic pick). Defaults to a weighted random draw. */
   pick?: PlaceholderPick;
   /** Placeholder id → value forced by an active trait. Masks the roll for as long as the trait is on; the
    *  roll itself is never overwritten, so switching the trait off reveals it again. */
   pins?: Record<string, string>;
+  /** Called once per structural problem met while resolving. */
+  onFinding?: (finding: PlaceholderFinding) => void;
 }
 
 /** A value's relative draw weight — 1 unless the author set one. Negatives are treated as 0 (benched). */
@@ -308,39 +375,212 @@ const weightedPick = (values: string[], weights?: Record<string, number>): strin
   return values[values.length - 1];
 };
 
+/** How many levels the walk descends before it gives up and reports a `depth` finding. */
+export const PLACEHOLDER_DEPTH_CAP = 16;
+
+/** True if a placeholder draws one of its values rather than joining all of them. `roll` decides when the
+ *  author set it; otherwise the value count does, exactly as it always has. */
+export function placeholderIsChoice(ph: Placeholder): boolean {
+  return (ph.values?.length ?? 0) > 1 && (ph.roll ?? true);
+}
+
+/** A path segment as the walk carries it. `authored` marks a segment that came from a chip sitting inside a
+ *  value — an author's pre-selection, which a trait pin overrides. Segments typed into world text are not
+ *  authored, so they name the branch they say and no pin moves them. */
+type WalkSegment = PlaceholderSegment & { authored?: boolean };
+
+/** One resolution pass. `scope`/`chain` decide which rolls a placeholder reads: World shares a value per
+ *  placeholder id; Unique keys the whole subtree under the placement chain that led into it. */
+interface ResolveCtx {
+  byId: Map<string, Placeholder>;
+  rolls: PlaceholderRolls;
+  /** Rolls minted during THIS pass — so two chips sharing a key agree even before `setRoll`'s (async) state
+   *  update lands back in `rolls`. Shared by reference across the whole walk. */
+  minted: Record<PlaceholderMode, Record<string, string>>;
+  setRoll?: (scope: PlaceholderMode, key: string, value: string) => void;
+  pick: PlaceholderPick;
+  pins?: Record<string, string>;
+  report: (finding: PlaceholderFinding) => void;
+  scope: PlaceholderMode;
+  /** Placement chain keying Unique rolls; `''` under World. */
+  chain: string;
+  /** The placeholder whose Unique roll keeps the bare chain as its key — the chain's own root. */
+  chainRootId: string;
+  seen: ReadonlySet<string>;
+  depth: number;
+}
+
+/** The token string of a value that is *exactly* one chip — the shape that makes a value a structural child.
+ *  A chip with text around it composes into the value instead, and is not addressable. */
+function loneChipToken(value: string): string | null {
+  const m = new RegExp(`^${TOKEN_RE.source}$`).exec(value ?? '');
+  return m ? m[0] : null;
+}
+
+/** Every structural child of `ph`: its lone-chip values, paired with the placeholder each one roots at. */
+function childChips(ph: Placeholder, ctx: ResolveCtx): Array<{ token: PlaceholderToken; target: Placeholder }> {
+  const out: Array<{ token: PlaceholderToken; target: Placeholder }> = [];
+  for (const value of ph.values ?? []) {
+    const raw = loneChipToken(value);
+    const token = raw ? decodePlaceholderToken(raw) : null;
+    const target = token ? ctx.byId.get(token.id) : undefined;
+    if (token && target) out.push({ token, target });
+  }
+  return out;
+}
+
+/** Where a placeholder's roll is stored under the current scope. */
+function rollKey(ph: Placeholder, ctx: ResolveCtx): string {
+  if (ctx.scope === 'world') return ph.id;
+  // The chain's root keeps the bare placement id, so a save written before drill paths existed still reads.
+  return ph.id === ctx.chainRootId ? ctx.chain : `${ctx.chain}/${ph.id}`;
+}
+
+/** The value a choice placeholder shows: a pin masks it, else the frozen roll, else a fresh weighted draw. */
+function selectValue(ph: Placeholder, ctx: ResolveCtx): string {
+  const pinned = ctx.pins?.[ph.id];
+  if (pinned != null) return pinned;
+  const key = rollKey(ph, ctx);
+  const existing = ctx.rolls[ctx.scope]?.[key] ?? ctx.minted[ctx.scope][key];
+  if (existing != null) return existing;
+  const rolled = ctx.pick(ph.values, ph.weights);
+  ctx.minted[ctx.scope][key] = rolled;
+  ctx.setRoll?.(ctx.scope, key, rolled);
+  return rolled;
+}
+
+/** Resolve a whole placeholder: a choice shows one value, a record joins them all. */
+function resolvePh(ph: Placeholder, ctx: ResolveCtx): string {
+  if (ctx.depth > PLACEHOLDER_DEPTH_CAP) {
+    ctx.report({ kind: 'depth', placeholderId: ph.id });
+    return '';
+  }
+  if (ctx.seen.has(ph.id)) {
+    ctx.report({ kind: 'cycle', placeholderId: ph.id });
+    return '';
+  }
+  const inner: ResolveCtx = { ...ctx, seen: new Set(ctx.seen).add(ph.id), depth: ctx.depth + 1 };
+  // An active trait's pin masks every chip of this placeholder, Unique ones included — the intent is a fact
+  // about the character, not about one sentence. A broken pin still applies, so it is checked before the
+  // values are: a pin on an emptied placeholder is still the author's word.
+  const pinned = ctx.pins?.[ph.id];
+  if (pinned != null) return resolveValue(pinned, inner);
+  const values = ph.values ?? [];
+  if (!values.length) return '';
+  if (placeholderIsChoice(ph)) return resolveValue(selectValue(ph, inner), inner);
+  return values.map((v) => resolveValue(v, inner)).filter((s) => s !== '').join(', ');
+}
+
+/** Resolve one value's text: literal runs stay, and every chip inside it walks as an authored one. */
+function resolveValue(value: string, ctx: ResolveCtx): string {
+  if (!value || !hasPlaceholders(value)) return value;
+  TOKEN_RE.lastIndex = 0;
+  return value.replace(TOKEN_RE, (full, id: string) => {
+    const token = decodePlaceholderToken(full);
+    if (!token) {
+      ctx.report({ kind: 'malformed', placeholderId: id });
+      return '';
+    }
+    return resolveChip(token, ctx, [], true);
+  });
+}
+
+/** The context a chip's target resolves under. A Unique chip opens (or extends) a placement chain; every
+ *  other chip inherits, so a Unique placement's whole subtree rolls per placement. */
+function chipCtx(token: PlaceholderToken, ctx: ResolveCtx): ResolveCtx {
+  if (token.mode !== 'unique') return ctx;
+  const chain = ctx.chain ? `${ctx.chain}/${token.placementId}` : token.placementId;
+  return { ...ctx, scope: 'unique', chain, chainRootId: token.id };
+}
+
+/** Enter a chip: its own path drills first, then whatever the caller still has left to walk. */
+function resolveChip(token: PlaceholderToken, ctx: ResolveCtx, tail: WalkSegment[], authored: boolean): string {
+  const ph = ctx.byId.get(token.id);
+  if (!ph) {
+    ctx.report({ kind: 'dangling', asked: token.id });
+    return '';
+  }
+  const drill: WalkSegment[] = (token.path ?? []).map((s) => ({ ...s, authored }));
+  return walkSegs(ph, [...drill, ...tail], chipCtx(token, ctx));
+}
+
+/** Walk a drill path from `ph`. With nothing left to walk, the placeholder itself resolves. */
+function walkSegs(ph: Placeholder, segs: WalkSegment[], ctx: ResolveCtx): string {
+  if (ctx.depth > PLACEHOLDER_DEPTH_CAP) {
+    ctx.report({ kind: 'depth', placeholderId: ph.id });
+    return '';
+  }
+  if (!segs.length) return resolvePh(ph, ctx);
+  const [seg, ...rest] = segs;
+  const next: ResolveCtx = { ...ctx, depth: ctx.depth + 1 };
+  const intoChild = (token: PlaceholderToken, tail: WalkSegment[]) => resolveChip(token, next, tail, true);
+
+  if (seg.kind === 'val') {
+    // An authored drill is a pre-selection, so a pin overrides it; a path typed into world text names the
+    // branch it says and stays pin-immune.
+    const pinned = seg.authored ? ctx.pins?.[ph.id] : undefined;
+    if (pinned != null) {
+      if (!rest.length) return resolveValue(pinned, next);
+      const raw = loneChipToken(pinned);
+      const token = raw ? decodePlaceholderToken(raw) : null;
+      if (!token) {
+        ctx.report({ kind: 'slot-miss', placeholderId: ph.id, asked: seg.ref });
+        return '';
+      }
+      return intoChild(token, rest);
+    }
+    const hit = childChips(ph, ctx).find((c) => c.target.id === seg.ref);
+    if (!hit) {
+      ctx.report({ kind: 'slot-miss', placeholderId: ph.id, asked: seg.ref });
+      return '';
+    }
+    return intoChild(hit.token, rest);
+  }
+
+  // A slot takes a child of this placeholder by name; failing that, a choice routes through whichever value
+  // it drew and the same slot is tried inside that variant.
+  const direct = childChips(ph, ctx).find((c) => c.target.name === seg.name);
+  if (direct) return intoChild(direct.token, rest);
+  if (placeholderIsChoice(ph)) {
+    const raw = loneChipToken(selectValue(ph, next));
+    const token = raw ? decodePlaceholderToken(raw) : null;
+    if (token) return intoChild(token, segs);
+  }
+  ctx.report({ kind: 'slot-miss', placeholderId: ph.id, asked: seg.name });
+  return '';
+}
+
 /**
- * Replace every placeholder chip in `text` with its resolved value. Single pass — a resolved value is never
- * re-scanned, so nested chips are not expanded (v1: flat values only). A token whose placeholder is missing or
- * has no values resolves to "".
+ * Replace every placeholder chip in `text` with its resolved value. Values are themselves chip-capable, so
+ * this recurses: a chip inside a value composes into it, and a value that is exactly one chip is a
+ * structural child a path can address. A token whose placeholder is missing or has no values resolves to "",
+ * as do a cycle and an over-deep walk — each with a finding for the caller.
  */
 export function resolvePlaceholders(text: string, opts: ResolveOptions): string {
   if (!text || !hasPlaceholders(text)) return text;
-  const { placeholders, rolls, setRoll, pick = weightedPick, pins } = opts;
-  const byId = new Map(placeholders.map((p) => [p.id, p]));
-  // Rolls minted during THIS pass — so two chips sharing a key agree even before `setRoll`'s (async) state
-  // update lands back in `rolls`.
-  const minted: Record<PlaceholderMode, Record<string, string>> = { world: {}, unique: {} };
+  const { placeholders, rolls, setRoll, pick = weightedPick, pins, onFinding } = opts;
+  const ctx: ResolveCtx = {
+    byId: new Map(placeholders.map((p) => [p.id, p])),
+    rolls,
+    minted: { world: {}, unique: {} },
+    setRoll,
+    pick,
+    pins,
+    report: onFinding ?? (() => {}),
+    scope: 'world',
+    chain: '',
+    chainRootId: '',
+    seen: new Set(),
+    depth: 0,
+  };
 
   TOKEN_RE.lastIndex = 0;
-  return text.replace(TOKEN_RE, (_full, id: string, mode: string, placementId: string) => {
-    const ph = byId.get(id);
-    if (!ph) return ''; // missing → nothing
-    // An active trait's pin masks every chip of this placeholder, Unique ones included — the intent is a
-    // fact about the character, not about one sentence.
-    const pinned = pins?.[id];
-    if (pinned != null) return pinned;
-    if (!ph.values?.length) return ''; // empty → nothing
-    if (ph.values.length === 1) return ph.values[0]; // Variable (fixed)
-
-    // Wildcard: World shares one value per placeholder id; Unique rolls per placement id.
-    const scope: PlaceholderMode = mode === 'unique' ? 'unique' : 'world';
-    const key = scope === 'world' ? id : placementId;
-    const existing = rolls[scope]?.[key] ?? minted[scope][key];
-    if (existing != null) return existing;
-
-    const rolled = pick(ph.values, ph.weights);
-    minted[scope][key] = rolled;
-    setRoll?.(scope, key, rolled);
-    return rolled;
+  return text.replace(TOKEN_RE, (full, id: string) => {
+    const token = decodePlaceholderToken(full);
+    if (!token) {
+      ctx.report({ kind: 'malformed', placeholderId: id });
+      return '';
+    }
+    return resolveChip(token, ctx, [], false); // typed in world text → its segments are pin-immune
   });
 }
