@@ -18,14 +18,20 @@ export function pairKey(a: string, b: string): string {
 
 /** Every pair the containment tree links for free: parent↔child, and sibling↔sibling under a real parent. */
 export function implicitPairs(locations: GameLocation[]): [string, string][] {
-  const pairs = new Map<string, [string, string]>();
+  const byParent = new Map<string, GameLocation[]>();
   for (const loc of locations) {
     const parentId = loc.parentId ?? null;
     if (parentId === null) continue; // top-level locations share no parent, so they are not siblings
-    pairs.set(pairKey(loc.id, parentId), [loc.id, parentId]);
-    for (const sib of locations) {
-      if (sib.id !== loc.id && (sib.parentId ?? null) === parentId) {
-        pairs.set(pairKey(loc.id, sib.id), [loc.id, sib.id]);
+    const group = byParent.get(parentId);
+    if (group) group.push(loc);
+    else byParent.set(parentId, [loc]);
+  }
+  const pairs = new Map<string, [string, string]>();
+  for (const [parentId, children] of byParent) {
+    for (let i = 0; i < children.length; i++) {
+      pairs.set(pairKey(children[i].id, parentId), [children[i].id, parentId]);
+      for (let j = i + 1; j < children.length; j++) {
+        pairs.set(pairKey(children[i].id, children[j].id), [children[i].id, children[j].id]);
       }
     }
   }
@@ -77,12 +83,31 @@ export function effectiveDestinations(
  * is unreachable. Treating that as "no starts" would badge an entire ordinary world.
  */
 export function reachableFromStarts(locations: GameLocation[], connections: Connection[]): Set<string> {
+  // The whole graph's travel, gathered once before the walk: asking `effectiveDestinations` per visited
+  // location rebuilds the sibling mesh each time, which large grouped worlds cannot afford.
+  const authored = authoredPairs(connections);
+  const adjacency = new Map<string, string[]>();
+  const link = (from: string, to: string) => {
+    const out = adjacency.get(from);
+    if (out) out.push(to);
+    else adjacency.set(from, [to]);
+  };
+  for (const [a, b] of implicitPairs(locations)) {
+    if (authored.has(pairKey(a, b))) continue;
+    link(a, b);
+    link(b, a);
+  }
+  for (const connection of connections) {
+    link(connection.from, connection.to);
+    if (connection.twoWay) link(connection.to, connection.from);
+  }
+
   const flagged = locations.filter((l) => l.isStarting);
   const seen = new Set((flagged.length ? flagged : locations).map((l) => l.id));
   const queue = [...seen];
   while (queue.length) {
     const id = queue.shift()!;
-    for (const dest of effectiveDestinations(id, locations, connections).keys()) {
+    for (const dest of adjacency.get(id) ?? []) {
       if (!seen.has(dest)) {
         seen.add(dest);
         queue.push(dest);
