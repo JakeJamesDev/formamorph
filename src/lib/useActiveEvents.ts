@@ -30,6 +30,12 @@ interface ActiveEventsOptions {
    * notice a mid-session broadcast — the events poll nudges the unread badge along with itself.
    */
   onPoll?: () => void;
+  /**
+   * Whether to poll at all. Defaults to true. A surface that only shows events while it is open passes
+   * its own open state, so a mounted-but-hidden consumer costs no requests — this is the app's one
+   * polling interval, and a second permanent one would double it.
+   */
+  enabled?: boolean;
 }
 
 /**
@@ -41,7 +47,7 @@ interface ActiveEventsOptions {
  * failed read is logged and swallowed. A first read that fails leaves the list empty, so every surface
  * built on it simply doesn't appear.
  */
-export function useActiveEvents({ onPoll }: ActiveEventsOptions = {}): ServerEvent[] {
+export function useActiveEvents({ onPoll, enabled = true }: ActiveEventsOptions = {}): ServerEvent[] {
   const [events, setEvents] = useState<ServerEvent[]>([]);
   const devRoute = useDevRoute();
   const devFixture = import.meta.env.DEV && devRoute?.modal === 'eventAck';
@@ -70,7 +76,7 @@ export function useActiveEvents({ onPoll }: ActiveEventsOptions = {}): ServerEve
   }, []);
 
   useEffect(() => {
-    if (!COMMUNITY_ENABLED || devFixture) return;
+    if (!COMMUNITY_ENABLED || devFixture || !enabled) return;
 
     void refresh();
     pollers.add(refresh);
@@ -87,7 +93,7 @@ export function useActiveEvents({ onPoll }: ActiveEventsOptions = {}): ServerEve
       window.clearInterval(timer);
       window.removeEventListener('focus', onFocus);
     };
-  }, [refresh, devFixture]);
+  }, [refresh, devFixture, enabled]);
 
   // DEV: `#dev?modal=eventAck` serves a canned event instead of the network, so the banner and the
   // acknowledge modal are checkable offline and whether or not one is really running.

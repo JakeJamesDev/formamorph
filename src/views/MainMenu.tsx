@@ -72,7 +72,7 @@ import { withOptimizeProgress } from '@/lib/optimizeProgress';
 import { remoteWorldImages } from '@/lib/embedRemoteImages';
 import { warmCachedImages } from '@/lib/remoteImageCache';
 import { filesFrom, importSummaryToast } from '@/lib/importFiles';
-import CommunityCreationsBrowser from './CommunityCreationsBrowser';
+import CommunityBrowserHost from './CommunityBrowserHost';
 import { WorldDetailsColumn, DateTimeText, type WorldRecord } from "@/components/WorldDetails";
 import SortableWorldCard from "@/components/SortableWorldCard";
 import { PlaceBadges } from "@/components/PlaceBadges";
@@ -750,6 +750,18 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
   }, []);
 
   useEffect(() => { refreshEntities(); }, [refreshEntities]);
+
+  // A download lands in the browser's copy of the library, not this one, so the grids re-read on the way
+  // out — the same handoff the World Editor modal has. Nothing here updates mid-browse, and nothing needs
+  // to: the grids are behind a full-screen surface until this fires.
+  const handleCommunityBrowserOpenChange = useCallback((next: boolean) => {
+    setShowCommunityBrowser(next);
+    if (next) return;
+    setCommunityTab(undefined);
+    void refreshWorlds();
+    void refreshEntities();
+    void refreshDictionaries();
+  }, [refreshWorlds, refreshEntities, refreshDictionaries]);
 
   // Check if any stat has code
   const hasStatWithCode = (statsArray: Stat[]) => {
@@ -2585,24 +2597,15 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
             held={introActive}
           />
 
-          {/* Community Creations browser — see CommunityCreationsBrowser.tsx */}
-          <CommunityCreationsBrowser
+          {/* Community Creations. The host reads its own libraries, account and events from the services,
+              so all the menu hands it is where to open — see CommunityBrowserHost.tsx. */}
+          <CommunityBrowserHost
             open={showCommunityBrowser}
-            onOpenChange={(next) => { setShowCommunityBrowser(next); if (!next) setCommunityTab(undefined); }}
-            worlds={worlds}
-            setWorlds={setWorlds}
-            entities={entities}
-            dictionaries={dictionaries}
-            refreshEntities={refreshEntities}
-            refreshDictionaries={refreshDictionaries}
-            isAuthenticated={isAuthenticated}
-            currentUser={currentUser}
-            openImageViewer={openImageViewer}
+            onOpenChange={handleCommunityBrowserOpenChange}
+            presentation={devRoute?.modal === 'community' && devRoute.mode === 'page' ? 'page' : 'dialog'}
             initialTab={communityTab ?? (devRoute?.modal === 'community' ? asBrowseTab(devRoute.tab) : undefined)}
             openListing={pendingListing}
             onListingOpened={handleListingOpened}
-            events={activeEvents}
-            onOpenEvent={openEvent}
           />
         </>
       )}
