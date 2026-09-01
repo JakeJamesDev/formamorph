@@ -72,9 +72,56 @@ import { useTutorial } from "@/lib/tutorials";
 // Key string kept as-is so an existing user's saved preference survives the rename.
 const COMMUNITY_BROWSER_MODAL_COLLAPSED_KEY = 'FORMAMORPH_discoverModalCollapsed';
 
+/** How the browser is presented: the app's full-screen modal, or a page that is the whole surface. */
+export type BrowserPresentation = 'dialog' | 'page';
+
+/**
+ * The browser's outer shell.
+ *
+ * Both shells are the same full-screen flex column; only what holds it differs. The dialog is what the
+ * app has always raised, animation and Esc-to-close included. The page has no overlay and no dismissal
+ * of its own, for a surface where the browser is the only thing on screen.
+ *
+ * A module-level component rather than one built during render: a fresh identity per render would
+ * remount the whole browser and lose its state on every keystroke.
+ */
+const BrowserShell = ({ presentation, open, onOpenChange, children }: {
+  presentation: BrowserPresentation;
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  children: React.ReactNode;
+}) => {
+  if (presentation === 'page') {
+    if (!open) return null;
+    return (
+      <div className="fixed inset-0 z-50 flex flex-col bg-background">
+        {children}
+      </div>
+    );
+  }
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent aria-describedby={undefined}
+        hideClose
+        className="max-w-none w-screen h-dvh sm:max-w-none left-0 top-0 translate-x-0 translate-y-0 rounded-none sm:rounded-none p-0 gap-0 flex flex-col data-[state=open]:!slide-in-from-top-0 data-[state=open]:!slide-in-from-left-0 data-[state=closed]:!slide-out-to-top-0 data-[state=closed]:!slide-out-to-left-0"
+      >
+        {children}
+      </DialogContent>
+    </Dialog>
+  );
+};
+
+/** The page shell's title: Radix's `DialogTitle` only resolves inside a dialog, so the page brings its own. */
+const PageHeading = ({ className, children }: { className?: string; children: React.ReactNode }) => (
+  <h1 className={className}>{children}</h1>
+);
+
 interface CommunityCreationsBrowserProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  /** Which shell to raise. Defaults to the app's modal; `page` is for a surface that is only this. */
+  presentation?: BrowserPresentation;
   // Local world list (drives download-state) + setter (download/overwrite add or update local copies).
   worlds: WorldRecord[];
   setWorlds: React.Dispatch<React.SetStateAction<WorldRecord[]>>;
@@ -103,10 +150,13 @@ interface CommunityCreationsBrowserProps {
 // The Community Creations browser: browse/search/filter/sort the published catalog, view world details
 // and comments, and download/refresh/update copies to the local library.
 const CommunityCreationsBrowser = ({
-  open, onOpenChange, worlds, setWorlds, entities, dictionaries, refreshEntities, refreshDictionaries,
+  open, onOpenChange, presentation = 'dialog', worlds, setWorlds, entities, dictionaries,
+  refreshEntities, refreshDictionaries,
   isAuthenticated, currentUser, openImageViewer, initialTab, openListing, onListingOpened,
   events = [], onOpenEvent,
 }: CommunityCreationsBrowserProps) => {
+  // The header's title element, which differs per shell (see PageHeading).
+  const Heading = presentation === 'page' ? PageHeading : DialogTitle;
   // Catalog fetch/cache/sync (loads on open, refreshes in the background).
   const { remoteWorlds, setRemoteWorlds, isLoadingRemoteWorlds, isSyncingCatalog, catalogSettled, loadCatalog } = useCatalogSync(open);
   const [remoteWorldToDelete, setRemoteWorldToDelete] = useState<string | null>(null);
@@ -713,12 +763,8 @@ const CommunityCreationsBrowser = ({
         description={`You've edited your copy of "${dictionaryDownload.dirtyConfirm?.name ?? ''}". Downloading again replaces it with the published version, and your changes are lost.`}
         onConfirm={dictionaryDownload.confirmDirtyDownload}
       />
-      {/* Community Creations browser dialog */}
-      <Dialog open={open} onOpenChange={onOpenChange}>
-        <DialogContent aria-describedby={undefined}
-          hideClose
-          className="max-w-none w-screen h-dvh sm:max-w-none left-0 top-0 translate-x-0 translate-y-0 rounded-none sm:rounded-none p-0 gap-0 flex flex-col data-[state=open]:!slide-in-from-top-0 data-[state=open]:!slide-in-from-left-0 data-[state=closed]:!slide-out-to-top-0 data-[state=closed]:!slide-out-to-left-0"
-        >
+      {/* Community Creations browser, in whichever shell the host asked for */}
+      <BrowserShell presentation={presentation} open={open} onOpenChange={onOpenChange}>
           {/* The kind switcher lives in the header and its results below it, so one root spans both.
               `contents` on the root and each panel leaves the dialog's own flex column untouched. */}
           <Tabs value={browseTab} onValueChange={(v) => setBrowseTab(v as BrowseTab)} className="contents">
@@ -735,7 +781,7 @@ const CommunityCreationsBrowser = ({
                     <Button variant="ghost" size="icon" className="shrink-0" onClick={() => onOpenChange(false)} aria-label="Back">
                       <ArrowLeft className="h-5 w-5" />
                     </Button>
-                    <DialogTitle className="sr-only">Community Creations</DialogTitle>
+                    <Heading className="sr-only">Community Creations</Heading>
                     {searchControl}
                     {refreshControl}
                   </div>
@@ -766,7 +812,7 @@ const CommunityCreationsBrowser = ({
                   <Button variant="ghost" size="icon" className="shrink-0" onClick={() => onOpenChange(false)} aria-label="Back">
                     <ArrowLeft className="h-5 w-5" />
                   </Button>
-                  <DialogTitle className="flex items-center gap-2 whitespace-nowrap mr-2"><Globe className="h-4 w-4 shrink-0" /> Community Creations</DialogTitle>
+                  <Heading className="flex items-center gap-2 whitespace-nowrap mr-2"><Globe className="h-4 w-4 shrink-0" /> Community Creations</Heading>
                   {kindTabs}
                   {searchControl}
                   {quarantineControl}
@@ -888,8 +934,7 @@ const CommunityCreationsBrowser = ({
             )}
           </div>
           </Tabs>
-        </DialogContent>
-      </Dialog>
+      </BrowserShell>
 
       {/* Remote World Details Modal — details + comments live in the component */}
       <RemoteWorldDetailsModal

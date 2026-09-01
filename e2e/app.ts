@@ -3,7 +3,7 @@ import { TUTORIALS } from '../src/lib/tutorials';
 
 /** Dev-router surface installed by `src/lib/devRouter.ts` (DEV builds only). */
 interface DevRouter {
-  goto(view?: string, opts?: { modal?: string; tab?: string; subtab?: string; surface?: string; fixture?: string; fullscreen?: boolean }): void;
+  goto(view?: string, opts?: { modal?: string; tab?: string; subtab?: string; surface?: string; fixture?: string; mode?: string; fullscreen?: boolean }): void;
   listWorlds(): Promise<{ id: string; name: string }[]>;
   editWorld(id: string): Promise<void>;
 }
@@ -54,7 +54,7 @@ export async function openApp(
 export async function gotoDev(
   page: Page,
   view: string,
-  opts?: { modal?: string; tab?: string; subtab?: string; surface?: string; fixture?: string; fullscreen?: boolean },
+  opts?: { modal?: string; tab?: string; subtab?: string; surface?: string; fixture?: string; mode?: string; fullscreen?: boolean },
 ): Promise<void> {
   await page.evaluate(
     ([v, o]) => (window as unknown as { __fmDev: DevRouter }).__fmDev.goto(v as string, o as Parameters<DevRouter['goto']>[1]),

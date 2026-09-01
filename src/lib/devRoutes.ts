@@ -22,7 +22,9 @@ export type DevView = (typeof DEV_VIEWS)[number];
  *  `dictionaryEditor` are the *library* editors (MainMenu), distinct from the in-game `entity` modal; both
  *  open on a blank draft, so they're reachable without any stored data. `modelDetails` is the exception to
  *  that: a VRM preview has nothing to show without a stored model, so it opens the library's first model and
- *  does nothing on an empty library. `community` opens Community Creations from MainMenu. `memoryManager` is
+ *  does nothing on an empty library. `community` opens Community Creations from MainMenu,
+ *  in the modal the app raises; `mode=page` swaps it for the full-page shell a site entry would use.
+ *  `memoryManager` is
  *  in-game (GameViewer) and opens on an empty ledger before any turn has been summarized. `profile` opens
  *  the account dialog (Messages/Manage), `feedbackHub` the reader's side of bugs and suggestions, and
  *  `adminPanel` the admin tools (Users/Broadcasts). All three need a signed-in session, and `adminPanel`
