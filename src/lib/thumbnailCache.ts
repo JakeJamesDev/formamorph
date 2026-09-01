@@ -5,7 +5,7 @@
  * same-filename re-upload still invalidates. Complements (and outlives) the browser's 24h
  * HTTP cache on these images.
  */
-import { openDatabase, promisifyRequest } from './idb';
+import { clearStore, openDatabase, promisifyRequest } from './idb';
 
 const DB_NAME = 'FORMAMORPH_THUMBS_DB';
 const STORE_NAME = 'thumbnails';
@@ -77,3 +77,6 @@ export const pruneThumbs = async (maxEntries = MAX_ENTRIES): Promise<void> => {
     countReq.onerror = () => reject(countReq.error);
   });
 };
+
+/** Empty the thumbnail cache. */
+export const clearThumbs = async (): Promise<void> => clearStore(await openDB(), STORE_NAME);

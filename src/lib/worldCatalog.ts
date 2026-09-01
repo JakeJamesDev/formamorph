@@ -5,7 +5,7 @@
  * (~600 records × ~700 B) and the server returns all of it in one `?limit=1000` request, so we
  * refresh by replacing the whole set (which also reconciles new/updated/removed worlds + counts).
  */
-import { openDatabase, promisifyRequest } from './idb';
+import { clearStore, openDatabase, promisifyRequest } from './idb';
 
 const DB_NAME = 'FORMAMORPH_CATALOG_DB';
 const STORE_NAME = 'worlds';
@@ -45,3 +45,6 @@ export const replaceCatalog = async (worlds: CatalogWorld[]): Promise<void> => {
     tx.onerror = () => reject(tx.error);
   });
 };
+
+/** Empty the cached catalog. */
+export const clearCatalog = async (): Promise<void> => clearStore(await openDB(), STORE_NAME);

@@ -1,6 +1,7 @@
 import { renderHook, act, waitFor } from '@testing-library/react';
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { useCatalogSync } from './useCatalogSync';
+import { acceptAgeGate } from './ageGate';
 
 vi.mock('react-toastify', () => ({ toast: { error: vi.fn(), success: vi.fn(), info: vi.fn() } }));
 vi.mock('@/lib/featureFlags', () => ({ COMMUNITY_ENABLED: true }));
@@ -24,6 +25,10 @@ vi.mock('@/services/WorldStorageService', () => ({
 beforeEach(() => {
   cache.items = [];
   server.resolve = null;
+  // The catalog is a listing of what other players published, so the hook waits on the age attestation.
+  // Every case below is about what happens after that, so they arrive holding one.
+  localStorage.clear();
+  acceptAgeGate();
 });
 
 afterEach(() => {
@@ -73,5 +78,29 @@ describe('catalogSettled', () => {
     rerender({ open: false });
 
     expect(result.current.catalogSettled).toBe(false);
+  });
+});
+
+describe('the age gate', () => {
+  it('asks the server for nothing until the player has attested', async () => {
+    localStorage.clear();
+
+    const { result } = renderHook(() => useCatalogSync(true));
+
+    await waitFor(() => expect(result.current.isSyncingCatalog).toBe(false));
+    expect(server.resolve).toBeNull();
+    expect(result.current.remoteWorlds).toEqual([]);
+  });
+
+  it('syncs on the next open once they have', async () => {
+    localStorage.clear();
+    const { rerender } = renderHook(({ open }) => useCatalogSync(open), { initialProps: { open: true } });
+    expect(server.resolve).toBeNull();
+
+    acceptAgeGate();
+    rerender({ open: false });
+    rerender({ open: true });
+
+    await waitFor(() => expect(server.resolve).not.toBeNull());
   });
 });

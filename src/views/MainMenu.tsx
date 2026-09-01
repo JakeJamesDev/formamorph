@@ -111,6 +111,8 @@ import { PublishModal } from "@/components/menu/PublishModal";
 import { worldPublishPayload, entityPublishPayload, dictionaryPublishPayload, type PublishPayload } from "@/lib/publishPayload";
 import { BackupRestoreDialog } from "@/components/menu/BackupRestoreDialog";
 import { COMMUNITY_ENABLED } from "@/lib/featureFlags";
+import { useAgeGate } from "@/contexts/AgeGateContext";
+import { isAgeAttested } from "@/lib/ageGate";
 import { isStaff } from "@/lib/roles";
 import { Checkbox } from "@/components/ui/checkbox";
 import { useReadmeVisibility } from "@/lib/useReadmeVisibility";
@@ -320,12 +322,31 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
   // DEV dev-router: open Settings (or the Load menu) when the hash asks. Tree-shaken in prod.
   const devRoute = useDevRoute();
   const isMobile = useIsMobile();
+  // The age attestation every community surface waits on (see AgeGateContext).
+  const { attested, gateOpen, requireAttestation } = useAgeGate();
+
+  /**
+   * Open Community Creations, asking for the age attestation first.
+   *
+   * Every way in comes through here — the menu button, a contest poster's View Entries, a notification
+   * jumping to a listing, the dev router — so there is no side door past the gate. Declining simply
+   * leaves it shut, and the next attempt asks again.
+   */
+  const openCommunityBrowser = useCallback((tab?: BrowseTab) => {
+    requireAttestation({
+      onAccept: () => {
+        setCommunityTab(tab);
+        setShowCommunityBrowser(true);
+      },
+    });
+  }, [requireAttestation]);
+
   useEffect(() => {
     if (!import.meta.env.DEV) return;
     if (devRoute?.modal === 'settings') setShowSettings(true);
     if (devRoute?.modal === 'menu') setShowLoadDialog(true);
     if (devRoute?.modal === 'backup') setShowBackup(true);
-    if (devRoute?.modal === 'community') setShowCommunityBrowser(true);
+    if (devRoute?.modal === 'community') openCommunityBrowser();
     if (devRoute?.modal === 'profile') setShowProfileDialog(true);
     if (devRoute?.modal === 'feedbackHub') setShowFeedback(true);
     if (devRoute?.modal === 'adminPanel') setShowAdminPanel(true);
@@ -357,7 +378,7 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
     if (!devRoute?.modal && devRoute?.tab && (MAIN_MENU_CARD_TABS as readonly string[]).includes(devRoute.tab)) {
       setCardType(devRoute.tab as typeof cardType);
     }
-  }, [devRoute?.modal, devRoute?.tab]);
+  }, [devRoute?.modal, devRoute?.tab, openCommunityBrowser]);
 
   // DEV: open the World Editor on a *stored* world. The `worldEditor` modal route opens a blank draft, so
   // authoring an existing world otherwise means clicking through the library grid.
@@ -492,12 +513,16 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
   const handleNotificationsRead = useCallback(() => setFollowCountNonce((n) => n + 1), []);
   const handleBugsChange = useCallback(() => setBugCountNonce((n) => n + 1), []);
   const handleOpenListing = useCallback((listing: { id: string; kind: string }) => {
-    setShowProfileDialog(false);
-    setPendingListing(listing);
-    // A no-op when the request came from a profile opened inside the browser: it is already open, and the
-    // listing it was handed is what it reacts to either way.
-    setShowCommunityBrowser(true);
-  }, []);
+    requireAttestation({
+      onAccept: () => {
+        setShowProfileDialog(false);
+        setPendingListing(listing);
+        // A no-op when the request came from a profile opened inside the browser: it is already open, and
+        // the listing it was handed is what it reacts to either way.
+        setShowCommunityBrowser(true);
+      },
+    });
+  }, [requireAttestation]);
 
   // Lend the same jump to the profile dialog, which lives at the app root and cannot reach any of this.
   const { setListingOpener } = useUserProfile();
@@ -551,8 +576,12 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
 
   // Check authentication status on component mount (skipped when community features are disabled — the
   // hosted build never contacts the auth server).
+  //
+  // It also waits on the age attestation, which is what makes a held token harmless until the player has
+  // answered: nothing here runs, so the badge reads below it stay off, and a decline — which signs the
+  // token out — is never overtaken by a session this adopted first.
   useEffect(() => {
-    if (!COMMUNITY_ENABLED) return;
+    if (!COMMUNITY_ENABLED || !attested) return;
     const checkAuth = async () => {
       const isLoggedIn = AuthService.isAuthenticated();
       setIsAuthenticated(isLoggedIn);
@@ -586,7 +615,7 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
     };
 
     checkAuth();
-  }, []);
+  }, [attested]);
 
   // Reload the world grid from storage. Reused on mount and after the World Editor modal closes so the
   // grid reflects renames/edits/deletes without remounting MainMenu (mirrors refreshDictionaries/Entities).
@@ -1241,7 +1270,9 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
   // otherwise let the previous account's count land last.
   const unreadReadId = useRef(0);
   const refreshUnreadCount = useCallback(() => {
-    if (!COMMUNITY_ENABLED || !AuthService.isAuthenticated()) return;
+    // Read straight from the flag rather than from the context: the events poll holds this callback, and a
+    // new identity every time the attestation changed would restart the poll.
+    if (!COMMUNITY_ENABLED || !isAgeAttested() || !AuthService.isAuthenticated()) return;
     const read = (unreadReadId.current += 1);
 
     MessageService.fetchUnreadCount()
@@ -1295,9 +1326,8 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
 
   /** Take the player to where an event's content lives — the contest tab, for a contest. */
   const openEvent = useCallback((event: ServerEvent) => {
-    setCommunityTab(isContestEvent(event) ? 'contest' : undefined);
-    setShowCommunityBrowser(true);
-  }, []);
+    openCommunityBrowser(isContestEvent(event) ? 'contest' : undefined);
+  }, [openCommunityBrowser]);
 
   const banners = useEventBanners(activeEvents);
 
@@ -1403,7 +1433,7 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
       {COMMUNITY_ENABLED && (
         <GradientButton
           tone="indigo"
-          onClick={() => setShowCommunityBrowser(true)}
+          onClick={() => openCommunityBrowser()}
         >
           <Globe className="mr-2 h-4 w-4" /> Community Creations
         </GradientButton>
@@ -1850,7 +1880,10 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
               )}
               onClick={() => {
                 dismissMenuTutorial('main-menu-sign-in');
-                if (isAuthenticated) setShowProfileDialog(true); else setShowAuthDialog(true);
+                // An account is what unlocks profiles and comments, so signing up sits behind the same
+                // attestation the browser does. A player who already attested is not asked twice.
+                if (isAuthenticated) setShowProfileDialog(true);
+                else requireAttestation({ onAccept: () => setShowAuthDialog(true) });
               }}
               aria-label={
                 isAuthenticated
@@ -2594,7 +2627,7 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
             events={announceable}
             isAuthenticated={isAuthenticated}
             onOpenEvent={openEvent}
-            held={introActive}
+            held={introActive || gateOpen}
           />
 
           {/* Community Creations. The host reads its own libraries, account and events from the services,
