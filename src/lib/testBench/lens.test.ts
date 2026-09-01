@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { resolvePlaceholders } from '@/lib/placeholders';
+import { encodePlaceholderToken, resolvePlaceholders } from '@/lib/placeholders';
 import type { GameLocation, Placeholder, Trait, TraitGroup } from '@/types';
 import { phValues } from '@/test/placeholderValues';
 import {
@@ -196,5 +196,51 @@ describe('resolveLensText', () => {
       pick: () => 'jet',
     });
     expect(rolled).toBe('Her jet hair.');
+  });
+});
+
+describe('lens option names', () => {
+  const chipHair = encodePlaceholderToken({ id: 'ph-hair', mode: 'world', placementId: 'pl-1' });
+  const chipHome = encodePlaceholderToken({ id: 'ph-home', mode: 'world', placementId: 'pl-2' });
+
+  it('names a location as the editor describes it, never as its token', () => {
+    const w = world({ locations: [{ id: 'l1', name: `The ${chipHome} Market` }] });
+    expect(lensLocationOptions(w)[0].name).toBe('The the Reach Market');
+  });
+
+  it('names a location under the lens PC’s pins', () => {
+    const w = world({ locations: [{ id: 'l1', name: `${chipHair} Quarter` }] });
+    expect(lensLocationOptions(w)[0].name).toBe('{ash|copper|jet} Quarter');
+    expect(lensLocationOptions(w, { 'ph-hair': 'copper' })[0].name).toBe('copper Quarter');
+  });
+
+  it('names a PC under its own pins, and describes its group heading', () => {
+    const w = world({
+      traits: [{ ...traits[0], name: `${chipHair} Sedge-Born` }, ...traits.slice(1)],
+      traitGroups: [{ ...groups[0], name: `${chipHome} Origins` }, groups[1]],
+    });
+    const [sedge] = lensPcOptions(w);
+    expect(sedge.name).toBe('copper Sedge-Born');
+    expect(sedge.groupName).toBe('the Reach Origins');
+  });
+
+  it('falls back to the untitled label when a name resolves to nothing', () => {
+    const gone = encodePlaceholderToken({ id: 'ph-gone', mode: 'world', placementId: 'pl-3' });
+    expect(lensLocationOptions(world({ locations: [{ id: 'l1', name: gone }] }))[0].name).toBe('Untitled location');
+  });
+});
+
+describe('broken pin text', () => {
+  it('describes the chips in the pin’s value rather than printing their tokens', () => {
+    const chipHome = encodePlaceholderToken({ id: 'ph-home', mode: 'world', placementId: 'pl-2' });
+    const w = world({
+      traits: [
+        { ...traits[0], placeholderPins: [{ placeholderId: 'ph-gone', value: `${chipHome} born` }] },
+        ...traits.slice(1),
+      ],
+    });
+    const [pin] = buildLens(w, { pcTraitId: 't-sedge', locationId: null }).brokenPins;
+    expect(pin.value).toBe(`${chipHome} born`);
+    expect(describeBrokenPin(pin)).toContain('“the Reach born”');
   });
 });

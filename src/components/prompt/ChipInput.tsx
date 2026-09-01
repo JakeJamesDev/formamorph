@@ -228,10 +228,13 @@ function Surface({ placeholder, ariaLabel, className, multiline }: {
   );
 }
 
-const ChipInput = ({ value, onChange, vocabulary, placeholder, ariaLabel, className, readOnly = false, trigger = '{', onSubmit, onBlur, multiline = false, children, autoFocus = false, onCancel }: {
+const ChipInput = ({ value, onChange, vocabulary, placeholder, ariaLabel, className, readOnly = false, trigger = '{', onSubmit, onBlur, multiline = false, children, autoFocus = false, onCancel, ownerId }: {
   value: string;
   onChange: (v: string) => void;
   vocabulary: ChipVocabulary;
+  /** The placeholder whose own values this field adds to, told to the shared palette so it can leave out
+   *  anything that would loop back here. */
+  ownerId?: string;
   placeholder?: string;
   /** Names the editor for a screen reader — Lexical renders a `div`, so `<label htmlFor>` cannot reach it. */
   ariaLabel?: string;
@@ -277,7 +280,7 @@ const ChipInput = ({ value, onChange, vocabulary, placeholder, ariaLabel, classN
           {autoFocus && <AutoFocusPlugin />}
           {onCancel && <CancelPlugin onCancel={onCancel} />}
           <EditablePlugin readOnly={readOnly} />
-          <ChipInsertTargetPlugin vocab={vocabulary} />
+          <ChipInsertTargetPlugin vocab={vocabulary} ownerId={ownerId} />
           <ChipDragPlugin dragKey={dragKey} vocab={readOnly ? undefined : vocabulary} />
           {trigger && !readOnly && <ChipTypeaheadPlugin trigger={trigger} vocab={vocabulary} />}
           {children}

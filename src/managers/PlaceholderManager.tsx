@@ -1,5 +1,5 @@
-import { useEffect, useRef, useState } from 'react';
-import { ChevronDown, ChevronsDownUp, ChevronsUpDown, Eye, EyeOff, Plus, Trash2 } from 'lucide-react';
+import { useEffect, useMemo, useRef, useState, type CSSProperties } from 'react';
+import { ChevronDown, ChevronsDownUp, ChevronsUpDown, Dices, Eye, EyeOff, Plus, Trash2 } from 'lucide-react';
 import { useEditingDraft } from '@/lib/useEditingDraft';
 import { randomUUID } from '@/lib/uuid';
 import { Input } from '@/components/ui/input';
@@ -13,10 +13,12 @@ import PlaceholderField from '@/components/prompt/PlaceholderField';
 import { usePlaceholderStore } from '@/contexts/PlaceholderStoreContext';
 import { Chip } from '@/components/Chip';
 import {
-  placeholderWeight, placeholderChances, placeholderValueLine, parsePlaceholderText, isWeighted,
+  placeholderWeight, placeholderChances, placeholderValueLine, parsePlaceholderText,
   reconcilePlaceholderValues, prunePlaceholderWeights, pruneSharedWeights, mergePlaceholderWeights,
-  lonePlaceholderToken,
+  lonePlaceholderToken, drawPlaceholderOnce, placeholderIsChoice,
 } from '@/lib/placeholders';
+import { placeholderRowChance } from '@/lib/placeholderTree';
+import { accentAtChance, chanceChipStyle } from '@/lib/chanceColor';
 import { usePlaceholderChipVocabulary } from '@/lib/chipVocabulary';
 import { cn } from '@/lib/utils';
 import type { Placeholder, PlaceholderValue } from '@/types';
@@ -78,8 +80,11 @@ const sameValues = (a: string[], b: string[]) => a.length === b.length && a.ever
  * name, the kind and the values belong to the original and are locked; only the draw weights are the row's
  * own, and they are written as an override on the holder rather than onto the original.
  */
-const PlaceholderManager = ({ placeholder, share }: {
+const PlaceholderManager = ({ placeholder, rowId, share }: {
   placeholder: Placeholder;
+  /** The tree row this panel opens on — the chain of placeholder ids that reached it. What a nested value's
+   *  effective chance is read against; absent, the placeholder reads as top level. */
+  rowId?: string;
   /** Where this row's draw weights live, when the row is a shared one — see `sharedWeightSite`. */
   share?: { ownerId: string; key: string };
 }) => {
@@ -87,6 +92,8 @@ const PlaceholderManager = ({ placeholder, share }: {
   const { draft: editing, apply } = useEditingDraft(placeholder, updatePlaceholder);
   const [openValue, setOpenValue] = useState<string | null>(null);
   const [showChances, setShowChances] = useState(false);
+  // One sample draw, shown until the next click or until the values it drew from change. Never stored.
+  const [sample, setSample] = useState<string | null>(null);
   // A value the chip row can't hold decides the style on open; from there it is the author's pick.
   const [style, setStyle] = useState<ValueStyle>(
     () => (placeholder.values.some((v) => v.text.includes('\n')) ? 'multiline' : 'chips'),
@@ -123,11 +130,21 @@ const PlaceholderManager = ({ placeholder, share }: {
   const override = locked ? owner.sharedWeights?.[share.key] : undefined;
   // Deny-list: the row's map lies over the original's, so a value neither one names still weighs 1.
   const effective = mergePlaceholderWeights(editing.weights, override);
-  const weighted = isWeighted(editing, effective);
   const chances = placeholderChances(editing, effective);
   // Both value editors work in text — it is what the author types and what a chip is keyed by — while
   // weights and chances key by the value's id. This is the one crossing between the two.
   const byText = new Map(editing.values.map((v) => [v.text, v]));
+  // How likely this row is reached at all — the chance of every value walked to get here. What a nested
+  // value's own chance is multiplied by, so a 10% branch inside a 50% branch reads as the 5% it is.
+  const rowChance = useMemo(
+    () => (rowId ? placeholderRowChance(placeholders, rowId) : 100),
+    [placeholders, rowId],
+  );
+  // A value's chance of being drawn here. An Object applies every value, so each is certain.
+  const localChance = (value: string) =>
+    (placeholderIsChoice(editing) ? chances[byText.get(value)?.id ?? ''] ?? 0 : 100);
+  // A stale sample must never read as saved state: the moment the pool it drew from changes, it goes.
+  useEffect(() => setSample(null), [editing.values, editing.weights, override]);
   // An untouched placeholder reads as a Wildcard: that is what 2+ values already do, and what one value
   // does either way. Nothing is written until the author presses the selector.
   const kind: PlaceholderKind = (editing.roll ?? true) ? 'wildcard' : 'object';
@@ -182,6 +199,27 @@ const PlaceholderManager = ({ placeholder, share }: {
   };
   const pct = (v: string) => `${Math.round(chances[byText.get(v)?.id ?? ''] ?? 0)}%`;
 
+  /** The accent of a value that is exactly one chip of a placeholder that still exists — what makes it a
+   *  reference chip. A chip of a deleted placeholder reads as plain text, number and color alike. */
+  const referenceAccent = (value: string) => {
+    const lone = lonePlaceholderToken(value);
+    return lone ? vocab.color(lone) : undefined;
+  };
+  /** The chance a chip carries: a reference chip shows how likely its whole branch is — its own chance
+   *  under this row's — and a plain value its own, so the number and the color read the same figure. */
+  const chipChance = (value: string) =>
+    (referenceAccent(value) ? (localChance(value) * rowChance) / 100 : localChance(value));
+  const chipPct = (v: string) => `${Math.round(chipChance(v))}%`;
+
+  /** How a value chip wears its chance. A plain value runs the theme ramp; a reference chip keeps its
+   *  placeholder's accent, saturated by how likely the branch is. */
+  const chipStyle = (value: string): CSSProperties => {
+    const accent = referenceAccent(value);
+    return accent
+      ? { backgroundColor: accentAtChance(accent, chipChance(value)), color: '#000' }
+      : chanceChipStyle(chipChance(value));
+  };
+
   /** Every box edit lands here: the boxes are what the author sees, the value list is what they stand for. */
   const writeBoxes = (next: ValueBox[]) => {
     setBoxes(next);
@@ -205,13 +243,6 @@ const PlaceholderManager = ({ placeholder, share }: {
     });
 
   const anyOpen = boxes.some((b) => !collapsed.has(b.id));
-
-  /** A value that is exactly one chip *is* that placeholder, so it wears its accent — the same reading the
-   *  chip row takes of its own values. */
-  const valueColor = (value: string) => {
-    const lone = lonePlaceholderToken(value);
-    return lone ? vocab.color(lone) : undefined;
-  };
 
   /** The draw-weight pop-out, shared by the chip row and a shared row's read-only list — one anchor, one
    *  set of copy, whichever list is drawn. */
@@ -287,12 +318,41 @@ const PlaceholderManager = ({ placeholder, share }: {
         </ToggleGroup>
         <p className="text-helper text-muted-foreground">{state}</p>
       </div>
+      {/* One sample of what this placeholder produces, nested chips and all, without placing it anywhere.
+          Only where there is something to draw from — an empty placeholder would sample nothing. */}
+      {count > 0 && (
+        <div className="space-y-2">
+          <div className="flex items-center gap-2">
+            <Tip tip="Roll a sample of this placeholder" labelsChild={false}>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className="h-7 px-2 text-helper"
+                onClick={() => setSample(drawPlaceholderOnce(editing, placeholders, effective))}
+              >
+                <Dices className="mr-1 h-3.5 w-3.5" aria-hidden />
+                Roll
+              </Button>
+            </Tip>
+            {sample !== null && (
+              <p
+                role="status"
+                aria-label="Sample roll"
+                className="min-w-0 flex-1 whitespace-pre-wrap break-words rounded-md border bg-muted/30 px-2 py-1 text-label"
+              >
+                {sample || <span className="text-muted-foreground">(nothing)</span>}
+              </p>
+            )}
+          </div>
+        </div>
+      )}
       <div className="space-y-2">
         <div className="flex items-center gap-2">
           <Label>Values</Label>
-          {/* Only offered once a weight is non-default — with a uniform list there is nothing to reveal.
-              Chips only: the multiline boxes carry a chance apiece, so there is nothing left to reveal. */}
-          {style === 'chips' && weighted && count > 1 && (
+          {/* Chips carry their chance in color always; the eye adds the number. Chips only: the multiline
+              boxes carry a chance apiece, so there is nothing left to reveal. */}
+          {style === 'chips' && count > 1 && (
             <Tip tip={showChances ? 'Hide roll chances' : 'Show roll chances'}>
               <Button
                 type="button"
@@ -343,8 +403,8 @@ const PlaceholderManager = ({ placeholder, share }: {
           <SharedValues
             values={editing.values}
             line={valueLine}
-            color={valueColor}
-            suffix={showChances ? (v) => `(${pct(v)})` : undefined}
+            style={chipStyle}
+            suffix={showChances ? (v) => `(${chipPct(v)})` : undefined}
             register={(v, el) => { if (el) chipEls.current.set(v, el); else chipEls.current.delete(v); }}
             onOpen={kind === 'object' || count < 2 ? undefined : (v) => {
               anchor.current = chipEls.current.get(v) ?? null;
@@ -386,7 +446,8 @@ const PlaceholderManager = ({ placeholder, share }: {
               anchor.current = chipEls.current.get(v) ?? null;
               setOpenValue((prev) => (prev === v ? null : v));
             } : undefined}
-            chipSuffix={showChances ? (v) => `(${pct(v)})` : undefined}
+            chipSuffix={showChances ? (v) => `(${chipPct(v)})` : undefined}
+            chipStyle={chipStyle}
             // Every chip gets the same wrapper whether or not it is the open one, so its DOM node survives
             // the click that opens the pop-out.
             renderChip={(chip, v) => (
@@ -411,10 +472,11 @@ const PlaceholderManager = ({ placeholder, share }: {
  * belong to the original. A click still opens the draw-weight pop-out, which is the one thing this row owns;
  * an Object never draws, so it gets plain chips instead.
  */
-const SharedValues = ({ values, line, color, suffix, register, onOpen }: {
+const SharedValues = ({ values, line, style, suffix, register, onOpen }: {
   values: readonly PlaceholderValue[];
   line: (value: string) => string;
-  color: (value: string) => string | undefined;
+  /** Each chip's colors — its draw chance, worn the way the editable row wears it. */
+  style: (value: string) => CSSProperties;
   suffix?: (value: string) => string | undefined;
   /** Reports each chip's element, so the pop-out can hang off the one that was clicked. */
   register: (value: string, el: HTMLElement | null) => void;
@@ -425,12 +487,11 @@ const SharedValues = ({ values, line, color, suffix, register, onOpen }: {
     {values.length === 0 && <span className="text-helper text-muted-foreground">No values.</span>}
     {values.map((v) => {
       const label = line(v.text);
-      const tint = color(v.text);
       const chip = (
         <Chip
           label={suffix?.(v.text) ? <>{label} {suffix(v.text)}</> : label}
           removeLabel={label}
-          style={tint ? { backgroundColor: tint, color: '#000' } : undefined}
+          style={style(v.text)}
           tip={onOpen ? 'Click to set this row’s draw weight' : 'From the original'}
         />
       );

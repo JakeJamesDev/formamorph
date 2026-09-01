@@ -1,12 +1,20 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent, within } from '@testing-library/react';
-import type { ChipVocabulary } from '@/lib/chipVocabulary';
+import { placeholderAccent, type ChipVocabulary } from '@/lib/chipVocabulary';
+import { accentAtChance, chanceChipStyle } from '@/lib/chanceColor';
 import { encodePlaceholderToken } from '@/lib/placeholders';
 import type { Placeholder } from '@/types';
 import PlaceholderEditor from './PlaceholderEditor';
 import PlaceholderManager from './PlaceholderManager';
-
 import { phValueId, phValues } from '@/test/placeholderValues';
+
+/** A color as jsdom stores it once set inline — `hsl(…)` comes back as `rgb(…)`, a `var()` form verbatim. */
+const cssColor = (value: string) => {
+  const el = document.createElement('span');
+  el.style.backgroundColor = value;
+  return el.style.backgroundColor;
+};
+
 const updatePlaceholder = vi.fn();
 const addPlaceholder = vi.fn();
 // The other placeholders in the same store — what a value's chips may point at. Set per test.
@@ -357,11 +365,12 @@ describe('PlaceholderManager — chip values', () => {
 
   it('wears its target’s accent, so a value that is a placeholder looks like one', () => {
     render(<PlaceholderManager placeholder={ph({ values: phValues([chip('p2'), 'Red']) })} />);
-    // The accent itself comes from the vocabulary, so what is asserted is that the chip took one — and that
-    // a literal value beside it did not.
+    // The accent itself comes from the vocabulary, so what is asserted is that the chip took it — at the
+    // 50% its even split gives it — and that the literal value beside it took the theme ramp instead.
     const chipped = screen.getByText('Hair').closest('[data-chip]') as HTMLElement;
-    expect(chipped.style.backgroundColor).not.toBe('');
-    expect((screen.getByText('Red').closest('[data-chip]') as HTMLElement).style.backgroundColor).toBe('');
+    expect(chipped.style.backgroundColor).toBe(cssColor(accentAtChance(placeholderAccent('p2'), 50)));
+    expect((screen.getByText('Red').closest('[data-chip]') as HTMLElement).style.backgroundColor)
+      .toBe('hsl(var(--secondary))');
   });
 
   it('draws a drilled chip as its whole path, so a part never reads like a root', () => {
@@ -492,5 +501,103 @@ describe('PlaceholderManager — a shared row', () => {
 
     fireEvent.click(named('Scene')[1].querySelector('span.flex-grow') as HTMLElement);
     expect(screen.getByDisplayValue('Scene')).toBeEnabled();
+  });
+});
+
+/** Chips carry their draw chance in color at all times; the eye adds the number. A plain value runs the
+ *  theme ramp; a value that is another placeholder keeps that placeholder's hue and loses saturation as
+ *  the branch gets less likely — with the ancestors' chances multiplied in, so a nested chip reads as the
+ *  branch it really is. */
+describe('PlaceholderManager — chance coloring', () => {
+  const bg = (label: string) => (screen.getByText(label).closest('[data-chip]') as HTMLElement).style.backgroundColor;
+
+  it('colors a benched value muted, an even split as an ordinary chip, and a certain value primary', () => {
+    render(<PlaceholderManager placeholder={ph({ values: phValues(['Red', 'Blue']), weights: { [phValueId('Blue')]: 0 } })} />);
+    expect(bg('Red')).toBe(chanceChipStyle(100).backgroundColor);
+    expect(bg('Blue')).toBe(chanceChipStyle(0).backgroundColor);
+    render(<PlaceholderManager placeholder={ph({ id: 'even', values: phValues(['Ash', 'Jet']) })} />);
+    expect(bg('Ash')).toBe(chanceChipStyle(50).backgroundColor);
+  });
+
+  it('colors every value of an Object as certain — all of them apply', () => {
+    render(<PlaceholderManager placeholder={ph({ roll: false })} />);
+    expect(bg('Red')).toBe(chanceChipStyle(100).backgroundColor);
+  });
+
+  it('multiplies a reference chip’s chance by the row it sits in, and says so in the number', () => {
+    // Molly picks one of two variants; the Northern variant is one of two values holding Hair.
+    const hair: Placeholder = { id: 'hair', name: 'Hair', values: phValues(['Brown', 'Blonde']) };
+    const northern: Placeholder = { id: 'northern', name: 'Northern', values: phValues([chip('hair'), 'bald']) };
+    const molly: Placeholder = { id: 'molly', name: 'Molly', values: phValues([chip('northern'), 'Southern']) };
+    siblings = [molly, northern, hair];
+    render(<PlaceholderManager placeholder={northern} rowId="molly/northern" />);
+    // 50% of Northern's own draw, inside Molly's 50% branch.
+    expect(bg('Hair')).toBe(cssColor(accentAtChance(placeholderAccent('hair'), 25)));
+    fireEvent.click(screen.getByRole('button', { name: /Show roll chances/i }));
+    const chips = [...document.querySelectorAll('[data-chip]')].map((el) => el.textContent);
+    expect(chips).toContain('Hair (25%)');
+    // The plain value beside it shows its own chance — the ramp reads the placeholder's shape.
+    expect(chips).toContain('bald (50%)');
+  });
+
+  it('offers the eye whenever there is more than one value, weighted or not', () => {
+    render(<PlaceholderManager placeholder={ph()} />);
+    expect(screen.getByRole('button', { name: /Show roll chances/i })).toBeInTheDocument();
+  });
+
+  it('colors a shared row’s read-only chips the same way', () => {
+    const molly: Placeholder = { id: 'molly', name: 'Molly', values: phValues([chip('p1')]) };
+    siblings = [ph(), molly];
+    render(<PlaceholderManager placeholder={ph()} rowId="molly/p1" share={{ ownerId: 'molly', key: phValueId(chip('p1')) }} />);
+    expect(bg('Red')).toBe(chanceChipStyle(50).backgroundColor);
+  });
+});
+
+/** The dice: one sample of what the placeholder produces, nested chips resolved, drawn again on every
+ *  click and never stored. */
+describe('PlaceholderManager — the sample roll', () => {
+  const roll = () => screen.getByRole('button', { name: 'Roll' });
+
+  it('shows the result inline, with nested chips resolved to a real string', () => {
+    siblings = [ph(), { id: 'p2', name: 'Hair', values: phValues(['Brown']) }];
+    render(<PlaceholderManager placeholder={ph({ values: phValues([`${chip('p2')} hair`]) })} />);
+    fireEvent.click(roll());
+    expect(screen.getByRole('status', { name: 'Sample roll' })).toHaveTextContent('Brown hair');
+  });
+
+  it('draws again on each click', () => {
+    const values = phValues(['Red', 'Blue']);
+    render(<PlaceholderManager placeholder={ph({ values })} />);
+    const seen = new Set<string>();
+    for (let i = 0; i < 40 && seen.size < 2; i++) {
+      fireEvent.click(roll());
+      seen.add(screen.getByRole('status', { name: 'Sample roll' }).textContent ?? '');
+    }
+    expect(seen).toEqual(new Set(['Red', 'Blue']));
+  });
+
+  it('respects a benched value', () => {
+    render(<PlaceholderManager placeholder={ph({ weights: { [phValueId('Blue')]: 0 } })} />);
+    for (let i = 0; i < 20; i++) {
+      fireEvent.click(roll());
+      expect(screen.getByRole('status', { name: 'Sample roll' })).toHaveTextContent('Red');
+    }
+  });
+
+  it('is hidden with nothing to draw from, and persists nothing', () => {
+    render(<PlaceholderManager placeholder={ph({ values: [] })} />);
+    expect(screen.queryByRole('button', { name: 'Roll' })).not.toBeInTheDocument();
+    render(<PlaceholderManager placeholder={ph({ id: 'other' })} />);
+    fireEvent.click(roll());
+    expect(updatePlaceholder).not.toHaveBeenCalled();
+  });
+
+  it('drops the sample once the values change under it', () => {
+    render(<PlaceholderManager placeholder={ph()} />);
+    fireEvent.click(roll());
+    expect(screen.getByRole('status', { name: 'Sample roll' })).toBeInTheDocument();
+    pickStyle('Multiline');
+    type(1, 'Crimson');
+    expect(screen.queryByRole('status', { name: 'Sample roll' })).not.toBeInTheDocument();
   });
 });

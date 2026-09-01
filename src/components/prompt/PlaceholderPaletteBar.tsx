@@ -3,6 +3,8 @@ import { ChevronDown, ChevronRight } from 'lucide-react';
 import { CHIP_BASE, ChipRenameInput } from '@/components/Chip';
 import { Tip } from '@/components/ui/tooltip';
 import { usePlaceholderChipVocabulary } from '@/lib/chipVocabulary';
+import { decodePlaceholderToken } from '@/lib/placeholders';
+import { placeholderCycleExclusions } from '@/lib/placeholderTree';
 import { usePaletteCollapsed } from '@/lib/usePaletteCollapsed';
 import { cn } from '@/lib/utils';
 import type { Placeholder } from '@/types';
@@ -22,9 +24,20 @@ const PlaceholderPaletteBar = ({ placeholders, className }: {
   className?: string;
 }) => {
   const [collapsed, setCollapsed] = usePaletteCollapsed();
-  const { insert, undo } = useChipInsertTarget();
+  const { insert, undo, ownerId } = useChipInsertTarget();
   const vocab = usePlaceholderChipVocabulary(placeholders);
-  const items = useMemo(() => vocab.palette(), [vocab]);
+  const all = useMemo(() => vocab.palette(), [vocab]);
+  // While a placeholder's own value is the target, the chips that would loop back into it are left out —
+  // the placeholder itself and everything that already reaches it. The menu is filtered rather than the
+  // insert refused, so a loop cannot be authored from here at all.
+  const excluded = useMemo(
+    () => (ownerId ? placeholderCycleExclusions(placeholders, ownerId) : null),
+    [placeholders, ownerId],
+  );
+  const items = useMemo(
+    () => (excluded ? all.filter((item) => !excluded.has(decodePlaceholderToken(item.token)?.id ?? '')) : all),
+    [all, excluded],
+  );
   const [renaming, setRenaming] = useState<string | null>(null);
 
   // Inserting happens on mouse-down, so the first half of a double-click has already dropped a chip into the
@@ -36,8 +49,9 @@ const PlaceholderPaletteBar = ({ placeholders, className }: {
     setRenaming(token);
   };
 
-  // Nothing defined means nothing to insert; the strip would be a header explaining its own emptiness.
-  if (!items.length) return null;
+  // Nothing defined means nothing to insert; the strip would be a header explaining its own emptiness. A
+  // strip emptied only by the cycle filter stays, so the panel does not reflow as focus moves.
+  if (!all.length) return null;
 
   return (
     // Insertable placeholders, not a field's contents — the find bar must not offer one of these as the

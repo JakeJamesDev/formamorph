@@ -20,6 +20,8 @@ import {
   remapPlaceholderIds,
   absorbPlaceholders,
   buildPlaceholderPreview,
+  drawPlaceholderOnce,
+  reachablePlaceholderIds,
   describePlaceholders,
   placeholderValueSummary,
   placeholderValueLine,
@@ -1461,5 +1463,62 @@ describe('benched values in display', () => {
     const obj = { ...eye({ [phValueId('Blue')]: 0 }), roll: false };
     expect(placeholderValueSummary(obj)).toBe('Red|Blue');
     expect(describePlaceholders(tok('eye', 'world', 'p1'), [obj])).toBe('Red, Blue');
+  });
+});
+
+describe('drawPlaceholderOnce (the panel’s sample draw)', () => {
+  const hair = P('hair', ['brown', 'black']);
+  const molly = P('molly', [`${tok('hair', 'world', 'v1')} hair`, 'bald']);
+
+  it('resolves nested chips to a real final string, never a token', () => {
+    expect(drawPlaceholderOnce(molly, [molly, hair], undefined, first)).toBe('brown hair');
+  });
+
+  it('respects the weights handed in for the placeholder’s own draw', () => {
+    const benched = { [phValueId(`${tok('hair', 'world', 'v1')} hair`)]: 0 };
+    expect(drawPlaceholderOnce(molly, [molly, hair], benched)).toBe('bald');
+  });
+
+  it('draws by the placeholder as handed in, not by its stored copy', () => {
+    const edited = { ...molly, values: phValues(['edited']) };
+    expect(drawPlaceholderOnce(edited, [molly, hair])).toBe('edited');
+  });
+
+  it('draws again on every call and persists nothing', () => {
+    const picks = ['brown', 'black'];
+    let i = 0;
+    const pick: PlaceholderPick = () => picks[i++ % 2];
+    expect(drawPlaceholderOnce(hair, [hair], undefined, pick)).toBe('brown');
+    expect(drawPlaceholderOnce(hair, [hair], undefined, pick)).toBe('black');
+  });
+});
+
+describe('reachablePlaceholderIds', () => {
+  const hair = P('hair', ['brown']);
+  const eyes = P('eyes', ['blue']);
+  const molly = P('molly', [tok('hair', 'world', 'v1'), `${tok('eyes', 'world', 'v2')} eyed`]);
+  const town = P('town', ['Sedge']);
+
+  it('follows chips through values, lone or composed, and leaves the rest', () => {
+    expect(reachablePlaceholderIds(['molly'], [molly, hair, eyes, town])).toEqual(new Set(['molly', 'hair', 'eyes']));
+  });
+
+  it('terminates on a cycle', () => {
+    const a = P('a', [tok('b', 'world', 'v1')]);
+    const b = P('b', [tok('a', 'world', 'v2')]);
+    expect(reachablePlaceholderIds(['a'], [a, b])).toEqual(new Set(['a', 'b']));
+  });
+});
+
+describe('buildPlaceholderPreview over a shared store', () => {
+  it('reads rolls the store already holds and reports new ones into it', () => {
+    const c = collector();
+    const eye = P('eye', ['Red', 'Blue']);
+    const a = tok('eye', 'world', 'p1');
+    c.rolls.world = { eye: 'Blue' };
+    expect(buildPlaceholderPreview(a, [eye], first, c)).toEqual({ [a]: 'Blue' });
+    const b = tok('eye', 'unique', 'p2');
+    expect(buildPlaceholderPreview(b, [eye], first, c)).toEqual({ [b]: 'Red' });
+    expect(c.rolls.unique).toEqual({ p2: 'Red' });
   });
 });

@@ -15,7 +15,7 @@ import { useLexicalComposerContext } from '@lexical/react/LexicalComposerContext
 import {
   Bold, Italic, Strikethrough, Highlighter, Heading1, Heading2, Heading3, Heading4,
   List, ListOrdered, ListChecks, Link2, Image, Table, SquareCode, Minus, Subscript, Superscript,
-  Quote, Code, Undo2, Redo2, ChevronDown,
+  Quote, Code, Undo2, Redo2, ChevronDown, Dices,
   Maximize2, Minimize2, Columns2, Square,
 } from 'lucide-react';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
@@ -522,7 +522,7 @@ function MarkdownPreviewPane({ value, previewValues, vocab, scrollRef, onScroll 
  * With `markdown`, it also gains a formatting toolbar and its Preview renders markdown instead of tinting
  * chips — for author-facing prose fields (world description, readme) that the player reads as markdown.
  */
-const PromptField = ({ value, onChange, variables = [], vocabulary, previewValues, onPreviewOpen, markdown = false, resizable = false, placeholder, className, readOnly = false, ariaLabel, sampleData = false, onRequestEdit, readOnlyReason, onRequestFullscreen, fullscreen: fullscreenProp, insertTrigger, label, labelAside }: {
+const PromptField = ({ value, onChange, variables = [], vocabulary, previewValues, onReroll, insertOwnerId, markdown = false, resizable = false, placeholder, className, readOnly = false, ariaLabel, sampleData = false, onRequestEdit, readOnlyReason, onRequestFullscreen, fullscreen: fullscreenProp, insertTrigger, label, labelAside }: {
   value: string;
   onChange: (v: string) => void;
   /** Prompt-variable palette (used when no explicit `vocabulary` is given — the default prompt family). */
@@ -530,8 +530,12 @@ const PromptField = ({ value, onChange, variables = [], vocabulary, previewValue
   /** Override the token family (e.g. world placeholders). Defaults to the prompt vocabulary from `variables`. */
   vocabulary?: ChipVocabulary;
   previewValues?: Record<string, string>;
-  /** Fired when the Preview tab is opened — lets a caller re-derive `previewValues` (e.g. re-roll Wildcards). */
-  onPreviewOpen?: () => void;
+  /** Draw the chips in this field again. Given one, the chrome offers a Reroll button while the text holds
+   *  a chip — placeholder fields pass it, prompt fields have nothing to redraw. */
+  onReroll?: () => void;
+  /** The placeholder whose own values this field edits, told to the shared palette so it can leave out
+   *  anything that would loop back here. */
+  insertOwnerId?: string;
   /** The field's caption. Given one, the field owns it: a plain field puts it on the button row, and a
    *  markdown field keeps it on its own line and puts the formatting buttons on the button row instead —
    *  either way one row shorter than a caption stacked above the chrome. */
@@ -792,7 +796,7 @@ const PromptField = ({ value, onChange, variables = [], vocabulary, previewValue
       touchX.current = null;
       if (Math.abs(dx) < 60) return;
       const next = dx < 0 ? 'preview' : 'edit';
-      if (next !== tab) { setTab(next); if (next === 'preview') onPreviewOpen?.(); }
+      if (next !== tab) setTab(next);
     },
   } : {};
 
@@ -816,6 +820,19 @@ const PromptField = ({ value, onChange, variables = [], vocabulary, previewValue
         {label && !markdown && labelAside && (
           <>
             {labelAside}
+            <span className="mx-0.5 w-hairline self-stretch bg-border" />
+          </>
+        )}
+        {/* Redrawing is its own group, left of history: it changes what the Preview shows, never the text,
+            so it has no place among the edits undo walks back through. Only offered while there is a chip
+            to redraw. */}
+        {onReroll && hasChips && (
+          <>
+            <Tip tip="Reroll placeholders">
+              <button type="button" className={TOOLBAR_BTN} onClick={onReroll}>
+                <Dices className="h-4 w-4" />
+              </button>
+            </Tip>
             <span className="mx-0.5 w-hairline self-stretch bg-border" />
           </>
         )}
@@ -853,7 +870,7 @@ const PromptField = ({ value, onChange, variables = [], vocabulary, previewValue
       <div className="flex-1 min-w-0 flex flex-col">{previewSurface}</div>
     </div>
   ) : showTabs ? (
-    <Tabs value={tab} onValueChange={(v) => { setTab(v); if (v === 'preview') onPreviewOpen?.(); }} className={cn('flex flex-col flex-1 min-h-0', resizeClass)}>
+    <Tabs value={tab} onValueChange={setTab} className={cn('flex flex-col flex-1 min-h-0', resizeClass)}>
       {swipeable ? (
         // Dots, not tab buttons: the gesture is the control, and a full-width tab bar on mobile spends
         // height the editor just got back.
@@ -947,7 +964,7 @@ const PromptField = ({ value, onChange, variables = [], vocabulary, previewValue
         {insertTrigger && !readOnly && (
           <>
             <ChipTypeaheadPlugin trigger={insertTrigger} vocab={vocab} />
-            <ChipInsertTargetPlugin vocab={vocab} />
+            <ChipInsertTargetPlugin vocab={vocab} ownerId={insertOwnerId} />
           </>
         )}
       </PromptDragContext.Provider>

@@ -256,6 +256,7 @@ function BookRow({ book, collapsed, collapsedZones, selectedId, onToggleCollapse
   };
 }) {
   const { advanced } = useEditorMode();
+  const { placeholders } = usePlaceholderStore();
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: book.id });
   // Translate (not Transform): Transform bakes in a scale that resizes the dragged row to the target slot.
   const style = { transform: CSS.Translate.toString(transform), transition, opacity: isDragging ? 0.5 : 1, zIndex: isDragging ? 1 : undefined };
@@ -281,7 +282,7 @@ function BookRow({ book, collapsed, collapsedZones, selectedId, onToggleCollapse
         onToggleCollapse={() => onToggleCollapse(book.id)}
         collapseLabels={['Expand dictionary', 'Collapse dictionary']}
         checkbox={advanced ? { checked: book.enabled !== false, onChange: (v) => onToggleEnabled(book, v) } : undefined}
-        label={book.name}
+        label={<PlaceholderText text={book.name} placeholders={placeholders} />}
         labelClass="font-medium"
         meta={advanced ? `${enabledCount}/${book.entries.length}` : book.entries.length}
         metaTitle={advanced ? 'Enabled entries / total entries' : 'Entries'}

@@ -160,8 +160,9 @@ const PLACEHOLDER_MODE_AXIS: PromptVariantAxis = {
   ],
 };
 
-// Stable accent per placeholder id (so a chip keeps its color across the world).
-function placeholderColor(id: string): string {
+/** Stable accent per placeholder id, so a chip keeps its color across the world — and every surface that
+ *  draws one by id draws the same one. */
+export function placeholderAccent(id: string): string {
   let h = 0;
   for (let i = 0; i < id.length; i++) h = (h * 31 + id.charCodeAt(i)) >>> 0;
   return HIGHLIGHT_PALETTE[h % HIGHLIGHT_PALETTE.length];
@@ -257,7 +258,7 @@ export function placeholderVocabulary(
     variantLabel: (t) => (decodePlaceholderToken(t)?.mode === 'unique' ? 'Unique' : null),
     color: (t) => {
       const d = decodePlaceholderToken(t);
-      return d && byId.has(d.id) ? placeholderColor(d.id) : undefined;
+      return d && byId.has(d.id) ? placeholderAccent(d.id) : undefined;
     },
     axes: (t) => {
       const d = decodePlaceholderToken(t);
@@ -278,13 +279,13 @@ export function placeholderVocabulary(
       topLevelPlaceholders(placeholders).map((p) => ({
         token: encodePlaceholderToken({ id: p.id, mode: 'world', placementId: PALETTE_PID }),
         label: p.name,
-        color: placeholderColor(p.id),
+        color: placeholderAccent(p.id),
       })),
     allRows: () =>
       placeholders.map((p) => ({
         token: encodePlaceholderToken({ id: p.id, mode: 'world', placementId: PALETTE_PID }),
         label: qualifiedPlaceholderName(placeholders, p.id) ?? p.name,
-        color: placeholderColor(p.id),
+        color: placeholderAccent(p.id),
         owned: isOwnedPlaceholder(placeholders, p.id),
       })),
     freshInsertToken: (t) => {
@@ -299,7 +300,7 @@ export function placeholderVocabulary(
       return placeholderPathChildren(d, placeholders).map((child) => ({
         token: encodePlaceholderToken({ ...d, path: [...(d.path ?? []), { kind: 'val', ref: child.id }] }),
         label: child.name,
-        color: placeholderColor(d.id),
+        color: placeholderAccent(d.id),
       }));
     },
     // Everything a picker adds to `drill`: where the chip stands, what a roll can still route to, and how
@@ -311,7 +312,7 @@ export function placeholderVocabulary(
       // Cut to what the walk could follow, so every crumb and every slot hangs off a level a picker can
       // actually stand on. A chip aimed through a slot describes the level that slot was chosen from.
       const path = (d.path ?? []).slice(0, level.depth);
-      const color = placeholderColor(d.id);
+      const color = placeholderAccent(d.id);
       return {
         holdsLabel: HOLDS_LABEL[level.kind],
         trail: [{ token: encodePlaceholderToken({ ...d, path: [] }), label: byId.get(d.id)?.name ?? MISSING_NAME, color },

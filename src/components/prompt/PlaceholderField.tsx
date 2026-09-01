@@ -1,8 +1,9 @@
-import { useMemo, useState, type ReactNode } from 'react';
+import { useCallback, useMemo, type ReactNode } from 'react';
 import PromptField from './PromptField';
 import ChipInput from './ChipInput';
 import { usePlaceholderChipVocabulary } from '@/lib/chipVocabulary';
-import { buildPlaceholderPreview } from '@/lib/placeholders';
+import { directChipTargets } from '@/lib/placeholders';
+import { useEditorPreviewRolls } from '@/contexts/EditorPreviewRollsContext';
 import type { Placeholder } from '@/types';
 import { PLACEHOLDER_TRIGGER, placeholderHint } from '@/lib/placeholderInsert';
 
@@ -12,15 +13,16 @@ import { PLACEHOLDER_TRIGGER, placeholderHint } from '@/lib/placeholderInsert';
  * offers World | Unique (only once it has 2+ values). Stores the same token-string as the rest of the field.
  *
  * A Preview tab (from `PromptField`) swaps each chip for its author-time value — Variable → its value,
- * Wildcard → a random pick (World shared per placeholder, Unique per placement) — re-rolled each time the
- * tab is opened. The resolved text is tinted the chip's own color, like the prompt previews.
+ * Wildcard → a pick (World shared per placeholder, Unique per placement) — read from the editor's shared
+ * preview rolls, so every field shows the same value until the toolbar's Reroll draws again. The resolved
+ * text is tinted the chip's own color, like the prompt previews.
  */
 const PlaceholderField = ({ value, onChange, placeholders, ownerId, markdown = false, resizable = false, placeholder, className, readOnly = false, label, labelAside, ariaLabel }: {
   value: string;
   onChange: (v: string) => void;
   placeholders: Placeholder[];
   /** The placeholder whose own value list this field edits. A placeholder created from here is born owned
-   *  by it, and its owned rows read bare. */
+   *  by it, its owned rows read bare, and the palette leaves out anything that would loop back to it. */
   ownerId?: string;
   /** The field's caption, rendered by the field itself so it can share a row (see `PromptField`). */
   label?: ReactNode;
@@ -37,12 +39,12 @@ const PlaceholderField = ({ value, onChange, placeholders, ownerId, markdown = f
   ariaLabel?: string;
 }) => {
   const vocab = usePlaceholderChipVocabulary(placeholders, ownerId);
-  // Bumped on each Preview open to re-roll Wildcards.
-  const [rollNonce, setRollNonce] = useState(0);
-  const previewValues = useMemo(
-    () => buildPlaceholderPreview(value, placeholders),
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- rollNonce forces a fresh roll on each Preview open
-    [value, placeholders, rollNonce],
+  const rolls = useEditorPreviewRolls();
+  // Re-read on every reroll: the store's identity carries its version.
+  const previewValues = useMemo(() => rolls.preview(value, placeholders), [rolls, value, placeholders]);
+  const reroll = useCallback(
+    () => rolls.reroll(directChipTargets([value]), placeholders),
+    [rolls, value, placeholders],
   );
   // With no placeholders defined this is a plain text field: no values to preview with, so none are passed.
   // PromptField adds the per-field gate — even with values on offer, Preview disables until a chip is in
@@ -54,7 +56,8 @@ const PlaceholderField = ({ value, onChange, placeholders, ownerId, markdown = f
       onChange={onChange}
       vocabulary={vocab}
       previewValues={hasPlaceholders ? previewValues : undefined}
-      onPreviewOpen={hasPlaceholders ? () => setRollNonce((n) => n + 1) : undefined}
+      onReroll={hasPlaceholders ? reroll : undefined}
+      insertOwnerId={ownerId}
       label={label}
       labelAside={labelAside}
       markdown={markdown}

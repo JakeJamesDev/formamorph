@@ -54,6 +54,7 @@ const PlaceholderEditor = () => {
             <PlaceholderManager
               key={selection.row.id}
               placeholder={selection.row.placeholder}
+              rowId={selection.row.id}
               share={selection.share}
             />
           ) : (

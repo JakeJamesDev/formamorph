@@ -9,16 +9,21 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Trash2 } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import PlaceholderField, { PlaceholderNameField } from '@/components/prompt/PlaceholderField';
+import PlaceholderText from '@/components/prompt/PlaceholderText';
 import { describePlaceholders, lonePlaceholderToken, placeholderValueLine } from '@/lib/placeholders';
 import { placeholderVocabulary } from '@/lib/chipVocabulary';
 import { traitConflicts, withPinnedValue, type TraitConflict } from '@/lib/traitEffects';
 import { useEditorMode } from '@/lib/editorMode';
 import { HelpButton } from '@/components/HelpButton';
-import type { Trait, StatChange, TraitStatToggle, TraitPlaceholderPin } from '@/types';
+import type { Placeholder, Trait, StatChange, TraitStatToggle, TraitPlaceholderPin } from '@/types';
 
 /** Names another trait that claims the same target, and says which way the tie falls. Silent when nothing
  *  else claims it — the common case, where an extra line would just be noise. */
-const ConflictNote = ({ conflict, onOpen }: { conflict?: TraitConflict; onOpen: (id: string) => void }) => {
+const ConflictNote = ({ conflict, placeholders, onOpen }: {
+  conflict?: TraitConflict;
+  placeholders: Placeholder[];
+  onOpen: (id: string) => void;
+}) => {
   if (!conflict) return null;
   // The winner is whichever claimant sits lowest in the trait list; `others` is in authored order, so
   // when this trait loses, the last one is the one that beats it.
@@ -29,7 +34,7 @@ const ConflictNote = ({ conflict, onOpen }: { conflict?: TraitConflict; onOpen: 
       className="underline underline-offset-2 hover:text-foreground"
       onClick={() => onOpen(t.id)}
     >
-      {t.name}
+      <PlaceholderText text={t.name} placeholders={placeholders} />
     </button>
   );
   return (
@@ -222,7 +227,7 @@ const TraitManager = ({ trait, onOpenTrait }: { trait: Trait; onOpenTrait: (id: 
               <Trash2 className="h-4 w-4" />
             </Button>
           </div>
-          <ConflictNote conflict={conflicts.stats[toggle.statId]} onOpen={onOpenTrait} />
+          <ConflictNote conflict={conflicts.stats[toggle.statId]} placeholders={placeholders} onOpen={onOpenTrait} />
           </div>
         ))}
         <Button size="sm" onClick={() => setStatToggles([...statToggles, { statId: '', enabled: true }])}>
@@ -279,7 +284,7 @@ const TraitManager = ({ trait, onOpenTrait }: { trait: Trait; onOpenTrait: (id: 
               <Trash2 className="h-4 w-4" />
             </Button>
           </div>
-          <ConflictNote conflict={conflicts.placeholders[pin.placeholderId]} onOpen={onOpenTrait} />
+          <ConflictNote conflict={conflicts.placeholders[pin.placeholderId]} placeholders={placeholders} onOpen={onOpenTrait} />
           </div>
         ))}
         <Button size="sm" onClick={() => setPins([...pins, { placeholderId: '', value: '' }])}>Add Placeholder Pin</Button>

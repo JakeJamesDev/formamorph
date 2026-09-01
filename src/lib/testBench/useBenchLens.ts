@@ -50,7 +50,7 @@ export function useBenchLens(
   return {
     lens,
     pcOptions: useMemo(() => lensPcOptions(world), [world]),
-    locationOptions: useMemo(() => lensLocationOptions(world), [world]),
+    locationOptions: useMemo(() => lensLocationOptions(world, lens.pins), [world, lens.pins]),
     setPc: useCallback((pcTraitId: string | null) => apply({ ...state, pcTraitId }), [apply, state]),
     setLocation: useCallback((locationId: string | null) => apply({ ...state, locationId }), [apply, state]),
   };

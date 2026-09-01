@@ -4,7 +4,9 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { DictionaryStoreProvider, useDictionaryStoreState } from '@/contexts/DictionaryStoreContext';
 import { PlaceholderStoreProvider, placeholderStore } from '@/contexts/PlaceholderStoreContext';
 import DictionaryTree from './DictionaryTree';
-import type { Dictionary } from '@/types';
+import { encodePlaceholderToken } from '@/lib/placeholders';
+import { phValues } from '@/test/placeholderValues';
+import type { Dictionary, Placeholder } from '@/types';
 
 const book = (entryCount: number): Dictionary => ({
   id: 'b1',
@@ -14,11 +16,11 @@ const book = (entryCount: number): Dictionary => ({
 });
 
 /** The tree as its hosts mount it: real stores, and a real ScrollArea viewport for the virtualizer. */
-function Harness({ books }: { books: Dictionary[] }) {
+function Harness({ books, placeholders = [] }: { books: Dictionary[]; placeholders?: Placeholder[] }) {
   const store = useDictionaryStoreState(books);
   return (
     <DictionaryStoreProvider value={store}>
-      <PlaceholderStoreProvider value={placeholderStore([], () => {})}>
+      <PlaceholderStoreProvider value={placeholderStore(placeholders, () => {})}>
         <ScrollArea style={{ height: 400 }}>
           <DictionaryTree selectedId={null} onSelect={() => {}} />
         </ScrollArea>
@@ -69,5 +71,15 @@ describe('DictionaryTree — large books virtualize', () => {
   it('renders every row of a small book, as before', () => {
     render(<Harness books={[book(3)]} />);
     expect(renderedEntryRows()).toBe(3);
+  });
+});
+
+describe('DictionaryTree — a book named with a placeholder', () => {
+  it('shows the book’s name resolved, never as the token behind it', () => {
+    const town: Placeholder = { id: 'ph-town', name: 'Town', values: phValues(['Sedge', 'Marrow']) };
+    const named = { ...book(1), name: `${encodePlaceholderToken({ id: 'ph-town', mode: 'world', placementId: 'pl-1' })} Lore` };
+    render(<Harness books={[named]} placeholders={[town]} />);
+    expect(screen.getByText('Sedge|Marrow')).toBeInTheDocument();
+    expect(document.body.textContent).not.toContain('{{ph:');
   });
 });

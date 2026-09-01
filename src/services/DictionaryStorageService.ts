@@ -15,28 +15,29 @@ class DictionaryStorageService {
     storeName: 'dictionaries',
     noun: 'Dictionary',
     isValid: (dictionary) => Array.isArray(dictionary.entries),
-    toMetadata: (record) => ({
-      id: record.id,
-      name: record.name,
+    toMetadata: (record) => {
       // Display-only chip rendering: a library card has no world or rolls behind it, so the book's own
-      // carried defs are all there is — same treatment its community listing gets.
-      description: describePlaceholders(
-        record.data?.description ?? '',
-        migrateCarriedPlaceholders(record.data?.placeholders),
-      ) || undefined,
-      thumbnail: record.data?.thumbnail ?? undefined,
-      entryCount: record.data?.entries?.length ?? 0,
-      tags: record.data?.tags ?? [],
-      createdAt: record.createdAt,
-      lastAccessed: record.lastAccessed,
-      // The community link travels with the metadata: the library grid never shows it, but the download flow
-      // reads these to tell a fresh listing from one you already hold (see lib/downloadState).
-      sourceId: record.sourceId,
-      dirty: record.dirty,
-      editedAt: record.editedAt,
-      downloadedAt: record.downloadedAt,
-      sourceUpdatedAt: record.sourceUpdatedAt,
-    }),
+      // carried defs are all there is — same treatment its community listing gets. The name goes through
+      // it too, so the library grid and the add picker never print a token.
+      const placeholders = migrateCarriedPlaceholders(record.data?.placeholders);
+      return {
+        id: record.id,
+        name: describePlaceholders(record.name, placeholders),
+        description: describePlaceholders(record.data?.description ?? '', placeholders) || undefined,
+        thumbnail: record.data?.thumbnail ?? undefined,
+        entryCount: record.data?.entries?.length ?? 0,
+        tags: record.data?.tags ?? [],
+        createdAt: record.createdAt,
+        lastAccessed: record.lastAccessed,
+        // The community link travels with the metadata: the library grid never shows it, but the download
+        // flow reads these to tell a fresh listing from one you already hold (see lib/downloadState).
+        sourceId: record.sourceId,
+        dirty: record.dirty,
+        editedAt: record.editedAt,
+        downloadedAt: record.downloadedAt,
+        sourceUpdatedAt: record.sourceUpdatedAt,
+      };
+    },
   });
 
   /** Open the IndexedDB connection (idempotent). */

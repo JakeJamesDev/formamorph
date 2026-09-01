@@ -13,6 +13,7 @@ import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Slider } from '@/components/ui/slider';
 import { cn } from '@/lib/utils';
+import { placeholderAccent } from '@/lib/chipVocabulary';
 import { estimateTokens } from '@/lib/memoryUtils';
 import { activeDescriptor, statValueLabel } from '@/lib/statContext';
 import type { OpeningData, OpeningRollGroup, OpeningStat, OpeningTrait } from '@/lib/testBench/opening';
@@ -115,7 +116,21 @@ const RollRow = ({ group }: { group: OpeningRollGroup }) => (
       )}
     </div>
     <p className="mt-0.5 truncate text-meta text-muted-foreground">
-      {group.chances.map((c) => `${c.value} ${Math.round(c.chance)}%`).join(' · ')}
+      {group.chances.map((c, i) => (
+        <span key={i}>
+          {i > 0 && ' · '}
+          {/* An option that is another placeholder wears that placeholder's accent, as its chip does. */}
+          {c.reference ? (
+            <span
+              className="rounded px-1 font-medium"
+              style={{ backgroundColor: placeholderAccent(c.reference), color: '#000' }}
+            >
+              {c.value}
+            </span>
+          ) : c.value}
+          {` ${Math.round(c.chance)}%`}
+        </span>
+      ))}
       {group.uniqueValues.length > 1 && ` · ${group.uniqueValues.length} unique draws`}
     </p>
     {group.collisionChance != null && (

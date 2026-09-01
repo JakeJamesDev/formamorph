@@ -297,20 +297,33 @@ export function directChipTargets(texts: readonly string[]): Set<string> {
 }
 
 /**
- * The subset of `available` defs a standalone export has to bundle for `texts` to resolve elsewhere. Values
- * are chip-capable, so this is the *transitive* closure: a character chip is useless without the defs its own
- * values reach. Order follows `available`; each def appears at most once, and a reference cycle terminates.
+ * Every placeholder reachable from `ids` through values: the ids themselves, whatever their values' chips
+ * name, and so on down. Values are chip-capable, so this is the *transitive* closure — what a reroll has to
+ * redraw, and what a standalone export has to carry. A reference cycle terminates.
  */
-export function collectUsedPlaceholders(texts: string[], available: Placeholder[]): Placeholder[] {
-  const byId = new Map(available.map((p) => [p.id, p]));
+export function reachablePlaceholderIds(
+  ids: Iterable<string>,
+  placeholders: readonly Placeholder[],
+): Set<string> {
+  const byId = new Map(placeholders.map((p) => [p.id, p]));
   const used = new Set<string>();
-  const queue = texts.flatMap((text) => chipIdsIn(text));
+  const queue = [...ids];
   while (queue.length) {
     const id = queue.pop()!;
     if (used.has(id)) continue;
     used.add(id);
     for (const value of byId.get(id)?.values ?? []) queue.push(...chipIdsIn(value.text));
   }
+  return used;
+}
+
+/**
+ * The subset of `available` defs a standalone export has to bundle for `texts` to resolve elsewhere: a
+ * character chip is useless without the defs its own values reach. Order follows `available`; each def
+ * appears at most once.
+ */
+export function collectUsedPlaceholders(texts: string[], available: Placeholder[]): Placeholder[] {
+  const used = reachablePlaceholderIds(texts.flatMap((text) => chipIdsIn(text)), available);
   return available.filter((p) => used.has(p.id));
 }
 
@@ -513,19 +526,41 @@ export function buildPlaceholderPreview(
   text: string,
   placeholders: Placeholder[],
   pick: PlaceholderPick = weightedPick,
+  /** Rolls to read and report into, for a preview shared across fields. Absent, the draws are thrown away
+   *  with the pass — a preview never writes a save. */
+  store?: Pick<ResolveOptions, 'rolls' | 'setRoll'>,
 ): Record<string, string> {
   const out: Record<string, string> = {};
   if (!text || !hasPlaceholders(text)) return out;
   // One context across every token, so a structured chip resolves the way play resolves it and the sharing
-  // rules still hold: World chips of one placeholder agree, Unique placements stay apart. The rolls are
-  // minted into the context and thrown away with it — a preview never writes a save.
-  const ctx = createResolveCtx({ placeholders, rolls: {}, pick });
+  // rules still hold: World chips of one placeholder agree, Unique placements stay apart.
+  const ctx = createResolveCtx({ placeholders, rolls: store?.rolls ?? {}, setRoll: store?.setRoll, pick });
   TOKEN_RE.lastIndex = 0;
   for (const m of text.matchAll(TOKEN_RE)) {
     if (m[0] in out) continue;
     out[m[0]] = resolveText(m[0], ctx);
   }
   return out;
+}
+
+/**
+ * One throwaway draw of a whole placeholder, fully resolved — what a single roll of it reads as, nested
+ * chips and all. Nothing persists: the rolls minted on the way go with the pass. `weights` is the map the
+ * placeholder's own draw reads (a shared row's merged map); everything below it draws by its own.
+ */
+export function drawPlaceholderOnce(
+  ph: Placeholder,
+  placeholders: readonly Placeholder[],
+  weights?: Record<string, number>,
+  pick: PlaceholderPick = weightedPick,
+): string {
+  // The placeholder as handed in stands in for its stored copy, so an edit in flight draws as edited.
+  const list = placeholders.some((p) => p.id === ph.id)
+    ? placeholders.map((p) => (p.id === ph.id ? ph : p))
+    : [...placeholders, ph];
+  const rootPick: PlaceholderPick = (values, w) => pick(values, values === ph.values && weights ? weights : w);
+  const token = encodePlaceholderToken({ id: ph.id, mode: 'world', placementId: 'draw' });
+  return resolvePlaceholders(token, { placeholders: list, rolls: {}, pick: rootPick });
 }
 
 /**
@@ -754,7 +789,7 @@ export function drawablePlaceholderValues(
 
 /** Draw a value honoring per-value weights. Weights that sum to 0 (every value benched) fall back to a
  *  uniform draw rather than resolving to nothing — an author zeroing everything still gets a value. */
-const weightedPick = (values: PlaceholderValue[], weights?: Record<string, number>): string => {
+export const weightedPick = (values: PlaceholderValue[], weights?: Record<string, number>): string => {
   const uniform = () => values[Math.floor(Math.random() * values.length)].text;
   if (!weights) return uniform();
   const w = values.map((v) => {

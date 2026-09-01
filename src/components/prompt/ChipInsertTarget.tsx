@@ -47,14 +47,21 @@ interface TargetState {
    *  Lets a gesture that begins with a click undo that click's effect once it turns out to be something
    *  else (double-clicking a palette chip to rename it). */
   undo: (() => void) | null;
+  /** The placeholder whose own values the claimed field edits, when it is one — what a palette reads to
+   *  leave out the chips that would loop back into it. Null for a field outside any placeholder. */
+  ownerId: string | null;
   /** `root` is the field's editable element, used to tell focus moving *within* the field from focus
    *  leaving it for something that can't take a chip. */
-  claim: (key: symbol, fn: (paletteToken: string) => void, undo: () => void, root: HTMLElement | null) => void;
+  claim: (
+    key: symbol, fn: (paletteToken: string) => void, undo: () => void, root: HTMLElement | null, ownerId?: string,
+  ) => void;
   /** Drops the claim only if `key` still holds it, so a field unmounting can't steal focus from its successor. */
   release: (key: symbol) => void;
 }
 
-const ChipInsertTargetContext = createContext<TargetState>({ insert: null, undo: null, claim: () => {}, release: () => {} });
+const ChipInsertTargetContext = createContext<TargetState>({
+  insert: null, undo: null, ownerId: null, claim: () => {}, release: () => {},
+});
 
 export function useChipInsertTarget(): TargetState {
   return useContext(ChipInsertTargetContext);
@@ -62,14 +69,18 @@ export function useChipInsertTarget(): TargetState {
 
 /** Wraps a panel so every chip field inside it shares one insert target. */
 export function ChipInsertTargetProvider({ children }: { children: ReactNode }) {
-  const [target, setTarget] = useState<{ key: symbol; insert: (t: string) => void; undo: () => void } | null>(null);
+  const [target, setTarget] = useState<{
+    key: symbol; insert: (t: string) => void; undo: () => void; ownerId: string | null;
+  } | null>(null);
   const holder = useRef<symbol | null>(null);
   const holderRoot = useRef<HTMLElement | null>(null);
 
-  const claim = useCallback((key: symbol, insert: (t: string) => void, undo: () => void, root: HTMLElement | null) => {
+  const claim = useCallback((
+    key: symbol, insert: (t: string) => void, undo: () => void, root: HTMLElement | null, ownerId?: string,
+  ) => {
     holder.current = key;
     holderRoot.current = root;
-    setTarget({ key, insert, undo });
+    setTarget({ key, insert, undo, ownerId: ownerId ?? null });
   }, []);
 
   const release = useCallback((key: symbol) => {
@@ -105,7 +116,9 @@ export function ChipInsertTargetProvider({ children }: { children: ReactNode }) 
   }, []);
 
   const value = useMemo<TargetState>(
-    () => ({ insert: target?.insert ?? null, undo: target?.undo ?? null, claim, release }),
+    () => ({
+      insert: target?.insert ?? null, undo: target?.undo ?? null, ownerId: target?.ownerId ?? null, claim, release,
+    }),
     [target, claim, release],
   );
 
@@ -118,7 +131,11 @@ export function ChipInsertTargetProvider({ children }: { children: ReactNode }) 
  * makes the click land. The claim is dropped when the field unmounts, or when the provider sees focus land
  * in an ordinary text field that cannot hold a chip.
  */
-export function ChipInsertTargetPlugin({ vocab }: { vocab: ChipVocabulary }) {
+export function ChipInsertTargetPlugin({ vocab, ownerId }: {
+  vocab: ChipVocabulary;
+  /** See `TargetState.ownerId`. */
+  ownerId?: string;
+}) {
   const [editor] = useLexicalComposerContext();
   const { claim, release } = useChipInsertTarget();
   // Identity for this field instance, so a later unmount only clears a claim it still owns.
@@ -132,6 +149,7 @@ export function ChipInsertTargetPlugin({ vocab }: { vocab: ChipVocabulary }) {
       (token) => insertChipAtCaret(editor, vocabRef.current, token),
       () => editor.dispatchCommand(UNDO_COMMAND, undefined),
       editor.getRootElement(),
+      ownerId,
     );
     // A DOM focusin listener on the root rather than Lexical's FOCUS_COMMAND: the command is dispatched by
     // the text plugin's own handler and does not fire for every route into the field (a programmatic focus,
@@ -141,7 +159,7 @@ export function ChipInsertTargetPlugin({ vocab }: { vocab: ChipVocabulary }) {
       root?.addEventListener('focusin', take);
       if (root?.contains(document.activeElement)) take();
     });
-  }, [editor, claim, key]);
+  }, [editor, claim, key, ownerId]);
 
   useEffect(() => () => release(key), [release, key]);
 
