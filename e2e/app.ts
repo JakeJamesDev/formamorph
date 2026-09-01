@@ -1,5 +1,6 @@
 import type { Page } from '@playwright/test';
 import { TUTORIALS } from '../src/lib/tutorials';
+import { AGE_GATE_VERSION } from '../src/lib/ageGate';
 
 /** Dev-router surface installed by `src/lib/devRouter.ts` (DEV builds only). */
 interface DevRouter {
@@ -26,6 +27,13 @@ const BASE_SEED: Record<string, string> = {
   // Advanced, not the first-run Simple: Simple hides whole tabs and fields, and no spec here is
   // measuring what Simple hides. One that is should set it back.
   'formamorph.worldEditorMode': 'advanced',
+  // The age attestation pre-answered, read from the live version so a bumped one cannot quietly leave the
+  // gate standing in front of every community spec. It gates the catalog fetch itself rather than only the
+  // browser opening, so without this a spec reaches the browser and finds it empty. A spec measuring the
+  // gate clears this key through `openApp`'s `extra`.
+  FORMAMORPH_ageGate: JSON.stringify({
+    accepted: true, acceptanceVersion: AGE_GATE_VERSION, acceptedAt: '2026-01-01T00:00:00.000Z',
+  }),
 };
 
 /**
