@@ -9,6 +9,7 @@ import type { GLTF } from 'three/examples/jsm/loaders/GLTFLoader.js';
 import type { VRM, VRMHumanBoneName } from '@pixiv/three-vrm';
 import type { HairTypeDef } from '@/types';
 import { DEFAULT_AVATAR_URL } from '@/lib/defaultAvatar';
+import { resolveMorphAlias } from '@/lib/bodyMorphs';
 
 // VRM/MToon material: the base three Material plus the standard/MToon fields the color code touches.
 type VrmMaterial = THREE.Material & {
@@ -281,11 +282,13 @@ const VRMViewer = forwardRef<VRMViewerHandle, VRMViewerProps>(({
     let applied = false;
     node.traverse((obj) => {
       const mesh = obj as MorphMesh;
-      const index = mesh.morphTargetDictionary?.[morphTargetName];
-      if (index !== undefined && mesh.morphTargetInfluences) {
-        mesh.morphTargetInfluences[index] = value;
-        applied = true;
-      }
+      const dict = mesh.morphTargetDictionary;
+      if (!dict || !mesh.morphTargetInfluences) return;
+      // Resolve per primitive: a bound name from an older world/model maps onto this model's alias-mate.
+      const resolved = resolveMorphAlias(morphTargetName, (candidate) => candidate in dict);
+      if (resolved === null) return;
+      mesh.morphTargetInfluences[dict[resolved]] = value;
+      applied = true;
     });
     if (!applied) {
       console.warn(`Morph target "${morphTargetName}" not found under mesh "${meshName}".`);
