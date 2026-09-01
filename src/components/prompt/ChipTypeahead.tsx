@@ -11,6 +11,7 @@ import { useLexicalComposerContext } from '@lexical/react/LexicalComposerContext
 import { CHIP_BASE } from '@/components/Chip';
 import { cn } from '@/lib/utils';
 import { useWheelScroll } from '@/lib/useWheelScroll';
+import { PLACEHOLDER_PATH_SEPARATOR } from '@/lib/placeholders';
 import type { ChipVocabulary } from '@/lib/chipVocabulary';
 import { $createVariableNode } from './VariableNode';
 
@@ -21,25 +22,23 @@ import { $createVariableNode } from './VariableNode';
  * The menu only stays open while something matches, so a trigger character meant literally closes it as
  * soon as the following words rule every token out — typing prose never has to fight the menu.
  *
- * A vocabulary whose tokens hold parts (the placeholders) turns the menu into a drill: a row with parts
+ * A vocabulary whose tokens nest (the placeholders) turns the menu into a drill: a row holding others
  * offers `›`, and walking into one filters that level instead of the root. Enter anywhere down there
  * inserts the path it took to get there, so `Molly › Hair` is one keyboard run rather than a trip to the
- * placeholder list. A vocabulary that can mint a token offers to make what the filter names, for the case
- * where the part an author wants does not exist yet.
+ * placeholder list. Owned placeholders are private to their holder, so the root offers only what an author
+ * places directly; a vocabulary that can mint a token offers to make what the filter names, and inside a
+ * placeholder's own value field it says whose the new one will be.
  */
 
 /** How many characters may follow the trigger before it is read as ordinary prose rather than a query. */
 const MAX_QUERY = 32;
-
-/** Reads a drill breadcrumb as one name. Matches the separator the chip labels themselves use. */
-const PATH_SEPARATOR = ' › ';
 
 /** One offered token, plus whether walking into it would show anything. */
 interface Row {
   token: string;
   label: string;
   color?: string;
-  parts: boolean;
+  nests: boolean;
 }
 
 /** A level the menu has walked into: the chip it stands for, named by the row that opened it. */
@@ -155,7 +154,7 @@ export function ChipTypeaheadPlugin({ trigger, vocab }: {
       const source = level ? vocab.drill?.(level.token) ?? [] : vocab.palette();
       const rows = source
         .filter((r) => r.label.toLowerCase().includes(query.toLowerCase()))
-        .map((r) => ({ ...r, parts: (vocab.drill?.(r.token) ?? []).length > 0 }));
+        .map((r) => ({ ...r, nests: (vocab.drill?.(r.token) ?? []).length > 0 }));
       const offersCreate = !level && !!vocab.create && !!query.trim();
       // Nothing to offer and nothing to make means the trigger was meant literally, and the menu gets out
       // of the prose's way. Inside a level it waits instead: the author opened that on purpose, and a
@@ -219,7 +218,7 @@ export function ChipTypeaheadPlugin({ trigger, vocab }: {
     // Right walks into the highlighted row's parts; with nothing to walk into it stays the caret key it is.
     editor.registerCommand(KEY_ARROW_RIGHT_COMMAND, (e) => {
       const row = matchRef.current?.rows[indexRef.current];
-      if (!row?.parts || held(e)) return false;
+      if (!row?.nests || held(e)) return false;
       e?.preventDefault();
       walk([...pathRef.current, { token: row.token, label: row.label }]);
       return true;
@@ -257,7 +256,7 @@ export function ChipTypeaheadPlugin({ trigger, vocab }: {
     }, COMMAND_PRIORITY_HIGH),
   ), [editor, insert, create, walk, close]);
 
-  const breadcrumb = useMemo(() => path.map((l) => l.label).join(PATH_SEPARATOR), [path]);
+  const breadcrumb = useMemo(() => path.map((l) => l.label).join(PLACEHOLDER_PATH_SEPARATOR), [path]);
 
   if (!match) return null;
   const items = match.rows;
@@ -304,10 +303,10 @@ export function ChipTypeaheadPlugin({ trigger, vocab }: {
                 {item.label}
               </span>
             </button>
-            {item.parts && (
+            {item.nests && (
               <button
                 type="button"
-                aria-label={`Show ${item.label} Parts`}
+                aria-label={`Drill Into ${item.label}`}
                 onMouseDown={(e) => { e.preventDefault(); walk([...path, { token: item.token, label: item.label }]); }}
                 onMouseEnter={() => setIndex(i)}
                 className="shrink-0 px-1.5 py-1 text-label text-muted-foreground hover:text-foreground"
@@ -318,7 +317,7 @@ export function ChipTypeaheadPlugin({ trigger, vocab }: {
           </div>
         ))}
         {!items.length && !createName && (
-          <div className="px-1.5 py-1 text-helper text-muted-foreground">No parts match.</div>
+          <div className="px-1.5 py-1 text-helper text-muted-foreground">Nothing matches.</div>
         )}
       </div>
       {createName && (
@@ -333,7 +332,7 @@ export function ChipTypeaheadPlugin({ trigger, vocab }: {
           )}
         >
           <span aria-hidden>+</span>
-          <span className="truncate">{`New Placeholder "${createName}"`}</span>
+          <span className="truncate">{vocab.createLabel?.(createName) ?? `New Placeholder "${createName}"`}</span>
         </button>
       )}
     </div>,

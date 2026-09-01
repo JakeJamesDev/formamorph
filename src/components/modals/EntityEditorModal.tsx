@@ -9,6 +9,7 @@ import PlaceholderPaletteBar from '@/components/prompt/PlaceholderPaletteBar';
 import { describePlaceholders } from '@/lib/placeholders';
 import { ChipInsertTargetProvider } from '@/components/prompt/ChipInsertTarget';
 import { placeholderStore, PlaceholderStoreProvider } from '@/contexts/PlaceholderStoreContext';
+import { directChipTargets } from '@/lib/placeholders';
 import { exportEntityCard } from '@/lib/entityFile';
 import { downloadBlob } from '@/lib/downloadBlob';
 import { canonicalStringify } from '@/lib/canonicalStringify';
@@ -74,13 +75,26 @@ const EntityEditorModal = ({ entityId, draft, onClose, onPublish }: {
   };
 
   // Isolated placeholder store backed by the character's own `placeholders` field (empty ⇒ undefined).
-  const phStore = useMemo(() => placeholderStore(entity?.placeholders ?? [], (action: SetStateAction<Placeholder[]>) =>
-    setEntity((prev) => {
-      if (!prev) return prev;
-      const cur = prev.placeholders ?? [];
-      const next = typeof action === 'function' ? action(cur) : action;
-      return { ...prev, placeholders: next.length ? next : undefined };
-    })), [entity?.placeholders]);
+  // `placedIds` is the character's own chip-bearing fields, so a drag never takes a placeholder its
+  // description still names. It reads the entity through a ref rather than closing over it, so a keystroke
+  // in a description does not rebuild the store and, with it, every chip field's vocabulary.
+  const entityRef = useRef(entity);
+  entityRef.current = entity;
+  const phStore = useMemo(() => ({
+    ...placeholderStore(entity?.placeholders ?? [], (action: SetStateAction<Placeholder[]>) =>
+      setEntity((prev) => {
+        if (!prev) return prev;
+        const cur = prev.placeholders ?? [];
+        const next = typeof action === 'function' ? action(cur) : action;
+        return { ...prev, placeholders: next.length ? next : undefined };
+      })),
+    placedIds: () => {
+      const e = entityRef.current;
+      return directChipTargets([
+        e?.name, ...(e?.aliases ?? []), e?.playerDescription, e?.aiDescription, e?.aiSummary, e?.imageTags,
+      ].filter((t): t is string => !!t));
+    },
+  }), [entity?.placeholders]);
 
   // Returns whether the save succeeded, so a save-and-exit caller only closes on success.
   const handleSave = async (): Promise<boolean> => {

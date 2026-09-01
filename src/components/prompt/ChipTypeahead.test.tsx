@@ -103,8 +103,8 @@ describe('ChipTypeahead — drilling into a placeholder’s parts', () => {
   it('marks only the rows that have parts to walk into', async () => {
     render(<Harness />);
     await open();
-    expect(screen.getByLabelText('Show Molly Parts')).toBeInTheDocument();
-    expect(screen.queryByLabelText('Show Hair Parts')).not.toBeInTheDocument();
+    expect(screen.getByLabelText('Drill Into Molly')).toBeInTheDocument();
+    expect(screen.queryByLabelText('Drill Into Hair')).not.toBeInTheDocument();
   });
 
   it('walks into the highlighted row on ArrowRight and lists its parts', async () => {
@@ -198,7 +198,7 @@ describe('ChipTypeahead — drilling into a placeholder’s parts', () => {
   it('walks in by pointer too, so the keyboard path is not the only one', async () => {
     render(<Harness />);
     const user = await open('Molly');
-    await user.pointer({ keys: '[MouseLeft>]', target: screen.getByLabelText('Show Molly Parts') });
+    await user.pointer({ keys: '[MouseLeft>]', target: screen.getByLabelText('Drill Into Molly') });
     await waitFor(() => expect(offered()).toEqual(['isWhite', 'isAsian']));
     await user.pointer({ keys: '[MouseLeft>]', target: screen.getByLabelText('Back to All Placeholders') });
     await waitFor(() => expect(offered()).toContain('Hair'));
@@ -286,6 +286,90 @@ describe('ChipTypeahead — making a placeholder that is not there yet', () => {
     await user.keyboard('Freckles');
     await waitFor(() => expect(offered()).toEqual([]));
     expect(screen.queryByText(/New Placeholder/)).not.toBeInTheDocument();
-    expect(screen.getByText('No parts match.')).toBeInTheDocument();
+    expect(screen.getByText('Nothing matches.')).toBeInTheDocument();
+  });
+});
+
+/**
+ * Ownership decides what the root offers. An owned placeholder is private to its owner, so the menu lists
+ * only what an author places directly and reaches the rest by drilling — and a field that *is* a
+ * placeholder's value list makes what it mints belong there.
+ */
+describe('ChipTypeahead — owned placeholders', () => {
+  /** The same world with Molly's two variants taken privately. */
+  const OWNED = WORLD.map((p) => (p.id === 'white' || p.id === 'asian' ? { ...p, ownerId: 'molly' } : p));
+
+  /** The field itself, under the provider — the vocabulary reads the store from context, so the hook has to
+   *  run below the provider rather than in the component that renders it. */
+  function InMollyField({ value, onChange, placeholders }: {
+    value: string;
+    onChange: (v: string) => void;
+    placeholders: Placeholder[];
+  }) {
+    return (
+      <ChipInput
+        value={value}
+        onChange={onChange}
+        vocabulary={usePlaceholderChipVocabulary(placeholders, 'molly')}
+        ariaLabel="Name"
+      />
+    );
+  }
+
+  /** A field editing Molly's own value list — where a created placeholder is born owned by her. */
+  function InMollyHarness() {
+    const [placeholders, setPlaceholders] = useState<Placeholder[]>(world);
+    const [value, setValue] = useState('.');
+    return (
+      <PlaceholderStoreProvider value={placeholderStore(placeholders, setPlaceholders)}>
+        <InMollyField value={value} onChange={setValue} placeholders={placeholders} />
+        <div data-testid="value">{value}</div>
+        <div data-testid="names">{placeholders.map((p) => p.name).join(',')}</div>
+        <div data-testid="owners">{placeholders.map((p) => `${p.name}:${p.ownerId ?? '-'}`).join(',')}</div>
+      </PlaceholderStoreProvider>
+    );
+  }
+  const owners = () => screen.getByTestId('owners').textContent ?? '';
+
+  beforeEach(() => { world = OWNED.map((p) => ({ ...p })); });
+
+  it('leaves an owned placeholder out of the root', async () => {
+    render(<Harness />);
+    await open();
+    expect(offered()).toEqual(['Molly', 'Hair', 'Eyes']);
+  });
+
+  it('offers it one level down, under its owner', async () => {
+    render(<Harness />);
+    const user = await open();
+    await user.click(screen.getByLabelText('Drill Into Molly'));
+    await waitFor(() => expect(offered()).toEqual(['isWhite', 'isAsian']));
+  });
+
+  it('keeps it out even when the filter names it exactly', async () => {
+    // Typing the name is the one gesture that could smuggle an owned row back into the root.
+    render(<Harness />);
+    await open('isWhite');
+    expect(offered()).toEqual([]);
+  });
+
+  it('says whose a new placeholder will be, in a field that is one’s value list', async () => {
+    render(<InMollyHarness />);
+    await open('Southern');
+    expect(screen.getByTestId('chip-typeahead-create')).toHaveTextContent('New Placeholder "Southern" in Molly');
+  });
+
+  it('mints it owned by that placeholder', async () => {
+    render(<InMollyHarness />);
+    const user = await open('Southern');
+    await user.click(screen.getByTestId('chip-typeahead-create'));
+    await waitFor(() => expect(owners()).toContain('Southern:molly'));
+  });
+
+  it('mints a top-level one anywhere else, and says so', async () => {
+    render(<Harness />);
+    await open('Southern');
+    expect(screen.getByTestId('chip-typeahead-create')).toHaveTextContent('New Placeholder "Southern"');
+    expect(screen.getByTestId('chip-typeahead-create')).not.toHaveTextContent(' in ');
   });
 });

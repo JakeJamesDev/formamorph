@@ -36,6 +36,7 @@ export function KeywordChips({
   chipSuffix,
   renderChip,
   placeholders,
+  ownerId,
   lonePlaceholderAsPath = false,
 }: {
   keywords: string[];
@@ -44,6 +45,9 @@ export function KeywordChips({
   offerCommaSplit?: boolean;
   /** The world's placeholders, when tags may embed them. Absent ⇒ a plain literal tag list. */
   placeholders?: Placeholder[];
+  /** The placeholder whose own value list this is. A placeholder created from here is born owned by it,
+   *  and its owned rows read bare — the panel already says whose they are. */
+  ownerId?: string;
   /** Label a tag that is *exactly* one chip with its full path name instead of what it resolves to. A lone
    *  chip is structure in a placeholder's own value list — the part it holds — where in an alias it is
    *  still prose. Chips inside a longer tag read as prose either way. */
@@ -59,7 +63,7 @@ export function KeywordChips({
   const [inputValue, setInputValue] = useState('');
   const chipsEnabled = !!placeholders?.length;
   // A stable empty list, so a tag list with no placeholders doesn't rebuild its vocabulary every render.
-  const vocab = usePlaceholderChipVocabulary(placeholders ?? NO_PLACEHOLDERS);
+  const vocab = usePlaceholderChipVocabulary(placeholders ?? NO_PLACEHOLDERS, ownerId);
   // The last committed chip that reads like a comma-separated list, with the segments it would become.
   const [splitOffer, setSplitOffer] = useState<{ chip: string; parts: string[] } | null>(null);
   /** Append keywords that aren't already present; returns the resulting list. */

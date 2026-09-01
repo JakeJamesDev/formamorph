@@ -88,7 +88,7 @@ describe('DrillPicker — what a level offers', () => {
     const user = userEvent.setup();
     render(<Harness token={encodePlaceholderToken({ id: 'molly', mode: 'world', placementId: 'p1', path: [{ kind: 'val', ref: 'white' }] })} />);
     await openPicker(user, 'Molly › isWhite');
-    expect(within(picker()).getByText('Object Parts')).toBeInTheDocument();
+    expect(within(picker()).getByText('Object Values')).toBeInTheDocument();
     // An Object applies every value, so nothing routes through a roll and there are no slots to offer.
     expect(within(picker()).queryByText('Slots')).not.toBeInTheDocument();
   });
@@ -113,7 +113,7 @@ describe('DrillPicker — what a level offers', () => {
     const user = userEvent.setup();
     render(<Harness token={encodePlaceholderToken({ id: 'molly', mode: 'world', placementId: 'p1' })} />);
     await openPicker(user, 'Molly');
-    await user.type(within(picker()).getByLabelText('Filter Parts'), 'asian');
+    await user.type(within(picker()).getByLabelText('Filter Placeholders'), 'asian');
     expect(rowNames()).toEqual(['isAsian']);
   });
 });
@@ -142,7 +142,7 @@ describe('DrillPicker — re-picking a placed chip', () => {
     const user = userEvent.setup();
     render(<Harness token={encodePlaceholderToken({ id: 'molly', mode: 'world', placementId: 'p1' })} />);
     await openPicker(user, 'Molly');
-    await user.click(within(picker()).getByRole('button', { name: 'Show isWhite Parts' }));
+    await user.click(within(picker()).getByRole('button', { name: 'Drill Into isWhite' }));
     await user.click(within(picker()).getByRole('button', { name: 'Eyes' }));
     expect(decodePlaceholderToken(value())?.path).toEqual([
       { kind: 'val', ref: 'white' },
@@ -166,8 +166,8 @@ describe('DrillPicker — re-picking a placed chip', () => {
     const user = userEvent.setup();
     render(<Harness token={encodePlaceholderToken({ id: 'molly', mode: 'world', placementId: 'p1' })} />);
     await openPicker(user, 'Molly');
-    await user.type(within(picker()).getByLabelText('Filter Parts'), 'white');
-    await user.click(within(picker()).getByRole('button', { name: 'Show isWhite Parts' }));
+    await user.type(within(picker()).getByLabelText('Filter Placeholders'), 'white');
+    await user.click(within(picker()).getByRole('button', { name: 'Drill Into isWhite' }));
     expect(rowNames()).toEqual(['Hair', 'Eyes']);
   });
 
@@ -220,7 +220,7 @@ describe('DrillPicker — making a placeholder that is not there yet', () => {
     const user = userEvent.setup();
     render(<Harness token={encodePlaceholderToken({ id: 'molly', mode: 'world', placementId: 'p1' })} />);
     await openPicker(user, 'Molly');
-    await user.type(within(picker()).getByLabelText('Filter Parts'), 'Freckles');
+    await user.type(within(picker()).getByLabelText('Filter Placeholders'), 'Freckles');
     expect(screen.queryByTestId('drill-picker-create')).not.toBeInTheDocument();
   });
 
@@ -250,5 +250,98 @@ describe('DrillPicker — where re-pick is not on offer', () => {
     render(<ReadOnly />);
     await user.click(screen.getByText('Molly'));
     expect(screen.queryByRole('button', { name: 'Re-Pick…' })).not.toBeInTheDocument();
+  });
+});
+
+/**
+ * A placeholder another one owns is private to it. The picker still lists it — hiding a name the author
+ * already knows would make re-aiming a guessing game — but refuses to aim a chip there, and offers to
+ * promote it instead.
+ */
+describe('DrillPicker — an owned target', () => {
+  /** The same world with Molly's two variants taken privately. */
+  const OWNED: Placeholder[] = WORLD.map((p) =>
+    (p.id === 'white' || p.id === 'asian' ? { ...p, ownerId: 'molly' } : p));
+
+  function OwnedHarness() {
+    const [placeholders, setPlaceholders] = useState<Placeholder[]>(OWNED);
+    const [value, setValue] = useState(chip('hair'));
+    return (
+      <PlaceholderStoreProvider value={placeholderStore(placeholders, setPlaceholders)}>
+        <Field value={value} onChange={setValue} placeholders={placeholders} />
+        <div data-testid="value">{value}</div>
+        <div data-testid="owners">{placeholders.map((p) => `${p.name}:${p.ownerId ?? '-'}`).join(',')}</div>
+      </PlaceholderStoreProvider>
+    );
+  }
+  const owners = () => screen.getByTestId('owners').textContent ?? '';
+  /** The picker seeds on the level the chip stands at; every case here is about the root list. */
+  const toRoot = (user: ReturnType<typeof userEvent.setup>) =>
+    user.click(within(picker()).getByRole('button', { name: 'All Placeholders' }));
+
+  it('lists an owned placeholder at the root, named by its owner', async () => {
+    const user = userEvent.setup();
+    render(<OwnedHarness />);
+    await openPicker(user, 'Hair');
+    await toRoot(user);
+    // The row says it is owned right there, which is the only warning the author gets before the refusal.
+    expect(rowNames()).toEqual(['Molly', 'Molly › isWhiteowned', 'Molly › isAsianowned', 'Hair', 'Eyes']);
+  });
+
+  it('refuses to aim the chip there, and says whose it is', async () => {
+    const user = userEvent.setup();
+    render(<OwnedHarness />);
+    await openPicker(user, 'Hair');
+    await toRoot(user);
+    const before = value();
+    await user.click(within(picker()).getAllByTestId('drill-picker-row')[1]);
+    expect(screen.getByTestId('drill-picker-owned')).toHaveTextContent('belongs to another placeholder');
+    expect(value()).toBe(before);
+  });
+
+  it('offers the way through: promote it, then aim there', async () => {
+    const user = userEvent.setup();
+    render(<OwnedHarness />);
+    await openPicker(user, 'Hair');
+    await toRoot(user);
+    await user.click(within(picker()).getAllByTestId('drill-picker-row')[1]);
+    await user.click(screen.getByRole('button', { name: 'Promote And Use' }));
+    expect(owners()).toContain('isWhite:-');
+    expect(decodePlaceholderToken(value())?.id).toBe('white');
+  });
+
+  it('leaves the placeholder exactly where it was when the refusal is dismissed', async () => {
+    const user = userEvent.setup();
+    render(<OwnedHarness />);
+    await openPicker(user, 'Hair');
+    await toRoot(user);
+    await user.click(within(picker()).getAllByTestId('drill-picker-row')[1]);
+    await user.click(screen.getByRole('button', { name: 'Cancel' }));
+    expect(screen.queryByTestId('drill-picker-owned')).not.toBeInTheDocument();
+    expect(owners()).toContain('isWhite:molly');
+  });
+
+  it('drops the refusal when the filter moves the list out from under it', async () => {
+    // The panel names one row and its button writes to that row. Leaving it up over a list that no longer
+    // shows the row would promote something the author has stopped looking at.
+    const user = userEvent.setup();
+    render(<OwnedHarness />);
+    await openPicker(user, 'Hair');
+    await toRoot(user);
+    await user.click(within(picker()).getAllByTestId('drill-picker-row')[1]);
+    expect(screen.getByTestId('drill-picker-owned')).toBeInTheDocument();
+    await user.type(within(picker()).getByLabelText('Filter Placeholders'), 'Eyes');
+    expect(screen.queryByTestId('drill-picker-owned')).not.toBeInTheDocument();
+    expect(owners()).toContain('isWhite:molly');
+  });
+
+  it('still takes a drill step into the owner, which is how an owned row is meant to be reached', async () => {
+    const user = userEvent.setup();
+    render(<OwnedHarness />);
+    await openPicker(user, 'Hair');
+    await toRoot(user);
+    await user.click(within(picker()).getByRole('button', { name: 'Drill Into Molly' }));
+    await user.click(within(picker()).getAllByTestId('drill-picker-row')[0]);
+    expect(decodePlaceholderToken(value())?.path).toEqual([{ kind: 'val', ref: 'white' }]);
   });
 });

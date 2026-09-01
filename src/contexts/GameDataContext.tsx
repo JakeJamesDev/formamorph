@@ -7,6 +7,9 @@ import { dropLocationFromEntities } from '@/lib/entityPresence';
 import { dropLocationFromConnections } from '@/lib/locationGraph';
 import { newLocationPosition } from '@/lib/locationCanvas';
 import { renamedPlaceholderValues, repinRenamedValues } from '@/lib/traitEffects';
+import { directChipTargets } from '@/lib/placeholders';
+import { releasePlaceholderOwners, removePlaceholderCascade } from '@/lib/placeholderTree';
+import { chipBearingTexts } from '@/lib/testBench/rules';
 import { useDictionaryStoreState, DictionaryStoreProvider } from '@/contexts/DictionaryStoreContext';
 import { placeholderStore, PlaceholderStoreProvider } from '@/contexts/PlaceholderStoreContext';
 import type {
@@ -189,23 +192,17 @@ function useProvideGameData() {
   // field edit rather than a hunt through every trait. A pin naming its value by id needs nothing.
   const updatePlaceholder = useCallback((updated: Placeholder) => {
     const before = placeholders.find(p => p.id === updated.id);
-    setPlaceholders(prev => prev.map(p => (p.id === updated.id ? updated : p)));
+    // An edit that drops a chip value releases what it pointed at — see the scoped store, whose generic
+    // update path this replaces so the world's own pin sweep runs beside it.
+    setPlaceholders(prev => releasePlaceholderOwners(prev.map(p => (p.id === updated.id ? updated : p))));
     if (!before) return;
     const renames = renamedPlaceholderValues(before.values ?? [], updated.values ?? []);
     if (renames.length) setTraits(prev => repinRenamedValues(prev, updated.id, renames));
   }, [placeholders]);
 
   const removePlaceholder = useCallback((id: string) => {
-    setPlaceholders(prev => prev.filter(p => p.id !== id));
+    setPlaceholders(prev => removePlaceholderCascade(prev, id));
   }, []);
-
-  // The world's placeholders as a scoped store, so the same editing widgets can be reused elsewhere
-  // (the library editors) against an isolated store. The world's own update path replaces the generic
-  // one so the editing widgets get the pin sweep too; a library item has no traits and needs none.
-  const phStore = useMemo(
-    () => ({ ...placeholderStore(placeholders, setPlaceholders), updatePlaceholder }),
-    [placeholders, updatePlaceholder],
-  );
 
   const addTrait = useCallback((newTrait: Trait) => {
     setTraits(prevTraits => [...prevTraits, newTrait]);
@@ -363,6 +360,23 @@ function useProvideGameData() {
   const getWorldData = useCallback(
     () => buildWorldData(worldOverview, stats, locations, connections, entities, entityGroups, traits, traitGroups, statUpdates, dictionaries, placeholders),
     [worldOverview, stats, locations, connections, entities, entityGroups, traits, traitGroups, statUpdates, dictionaries, placeholders],
+  );
+
+  // The world's placeholders as a scoped store, so the same editing widgets can be reused elsewhere
+  // (the library editors) against an isolated store. The world's own update path replaces the generic
+  // one so the editing widgets get the pin sweep too; a library item has no traits and needs none.
+  // `placedIds` walks every chip-bearing field, so it is a thunk the placeholder tree calls on a drop
+  // rather than a memo the whole world recomputes on every keystroke. It reaches the world through a ref,
+  // so an edit anywhere else in it does not rebuild the store and, with it, every chip field's vocabulary.
+  const worldRef = useRef(getWorldData);
+  worldRef.current = getWorldData;
+  const phStore = useMemo(
+    () => ({
+      ...placeholderStore(placeholders, setPlaceholders),
+      updatePlaceholder,
+      placedIds: () => directChipTargets(chipBearingTexts(worldRef.current())),
+    }),
+    [placeholders, updatePlaceholder],
   );
 
   // Per-keystroke dirty check over image-heavy world data: canonicalStringify caches by identity, so an

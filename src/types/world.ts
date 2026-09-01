@@ -403,6 +403,11 @@ export interface Placeholder {
    *  an Object, whose whole placement joins every value with `", "`. Absent ⇒ inferred from the value count
    *  (2+ draws), which is how every placeholder authored before the selector existed reads. */
   roll?: boolean;
+  /** The placeholder this one belongs to: present ⇒ owned and private to it, absent ⇒ top level. Purely
+   *  organizational — it decides where the row sits and which insert surfaces offer it, and the resolver
+   *  never reads it. An owned placeholder is always also a chip value of its owner, so the owner dropping
+   *  that value releases it (see lib/placeholderTree). */
+  ownerId?: string;
 }
 
 /** Lightweight preview record used by the main-menu world grid. */

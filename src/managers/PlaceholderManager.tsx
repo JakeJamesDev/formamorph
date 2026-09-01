@@ -35,7 +35,7 @@ const KIND_INFO = `**Wildcard** randomizes — one of its values is picked, and 
 
 - With one value the two coincide: it is a **Variable**, and always resolves to that value.
 - A Wildcard chip in world text chooses **World** (one pick shared everywhere) or **Unique** (its own).
-- A value that is exactly one chip is a **part** of this placeholder, addressable as \`Name › Part\`.`;
+- A value that is exactly one chip nests that placeholder under this one, addressable as \`Owner › Name\`.`;
 
 /** One multiline box: its text as typed, under an id of its own so a box survives being emptied, renamed,
  *  or collapsed — none of which the value string it holds could key. */
@@ -90,7 +90,7 @@ const PlaceholderManager = ({ placeholder }: { placeholder: Placeholder }) => {
     const texts = placeholder.values.map((v) => v.text);
     setBoxes((prev) => (sameValues(boxValues(prev), texts) ? prev : toBoxes(placeholder.values)));
   }, [placeholder.values]);
-  const vocab = usePlaceholderChipVocabulary(placeholders);
+  const vocab = usePlaceholderChipVocabulary(placeholders, placeholder.id);
   /** One value as a line a plain-text surface can show: a chip in it is named rather than spelled out as
    *  the token behind it, which is what a value list holding chips would otherwise print. */
   const valueLine = (value: string) =>
@@ -244,6 +244,7 @@ const PlaceholderManager = ({ placeholder }: { placeholder: Placeholder }) => {
             boxes={boxes}
             collapsed={collapsed}
             placeholders={placeholders}
+            ownerId={placeholder.id}
             line={valueLine}
             weight={count > 1 ? weightOf : undefined}
             chance={pct}
@@ -260,6 +261,7 @@ const PlaceholderManager = ({ placeholder }: { placeholder: Placeholder }) => {
             keywords={editing.values.map((v) => v.text)}
             onChange={setValues}
             placeholders={placeholders}
+            ownerId={placeholder.id}
             // A value that is only a chip is a part of this placeholder, so it reads as the part it names
             // rather than as what that part will become.
             lonePlaceholderAsPath
@@ -322,11 +324,13 @@ const PlaceholderManager = ({ placeholder }: { placeholder: Placeholder }) => {
  *  collapses to its first line with its weight and remove still live, so a long list stays tunable while
  *  scannable. `weight` is omitted below two values — there is nothing to weigh against. */
 const MultilineValues = ({
-  boxes, collapsed, placeholders, line, weight, chance, onToggleCollapsed, onText, onWeight, onRemove, onAdd,
+  boxes, collapsed, placeholders, ownerId, line, weight, chance, onToggleCollapsed, onText, onWeight, onRemove, onAdd,
 }: {
   boxes: ValueBox[];
   collapsed: ReadonlySet<string>;
   placeholders: Placeholder[];
+  /** The placeholder these boxes are the values of — see `ownerId` on `PlaceholderField`. */
+  ownerId: string;
   /** One value as the collapsed card's summary line — see the manager's `valueLine`. */
   line: (value: string) => string;
   weight?: (value: string) => number;
@@ -397,6 +401,7 @@ const MultilineValues = ({
                 value={box.text}
                 onChange={(text) => onText(box.id, text)}
                 placeholders={placeholders}
+                ownerId={ownerId}
                 markdown
                 ariaLabel={`Value ${i + 1}`}
                 placeholder="Value text — markdown supported"

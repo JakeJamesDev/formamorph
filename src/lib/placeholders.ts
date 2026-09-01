@@ -95,6 +95,10 @@ export function hasPlaceholders(text: string): boolean {
   return TOKEN_RE.test(text);
 }
 
+/** Reads a chain of placeholder names as one name — a drill path, a breadcrumb, or a name qualified by its
+ *  owner. One separator serves all of them, and it matches the trait groups' and the location canvas'. */
+export const PLACEHOLDER_PATH_SEPARATOR = ' › ';
+
 /** A freshly minted value record. The id is the value's identity from here on — nothing re-mints it. */
 export function newPlaceholderValue(text: string): PlaceholderValue {
   return { id: randomUUID(), text };
@@ -252,6 +256,15 @@ function chipIdsIn(text: string): string[] {
     for (const seg of token.path ?? []) if (seg.kind === 'val') ids.push(seg.ref);
   }
   return ids;
+}
+
+/** Every placeholder the chips in `texts` name directly — each chip's root plus any explicit-pick target.
+ *  Deliberately not transitive: what one of those placeholders reaches through its own values is its
+ *  structure, not a placement of it. */
+export function directChipTargets(texts: readonly string[]): Set<string> {
+  const out = new Set<string>();
+  for (const text of texts) for (const id of chipIdsIn(text)) out.add(id);
+  return out;
 }
 
 /**

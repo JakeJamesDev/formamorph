@@ -12,6 +12,7 @@ import PlaceholderEditor from '@/managers/PlaceholderEditor';
 import PlaceholderPaletteBar from '@/components/prompt/PlaceholderPaletteBar';
 import { ChipInsertTargetProvider } from '@/components/prompt/ChipInsertTarget';
 import { placeholderStore, PlaceholderStoreProvider } from '@/contexts/PlaceholderStoreContext';
+import { directChipTargets } from '@/lib/placeholders';
 import { buildDictionaryFile } from '@/lib/dictionaryFile';
 import { downloadBlob } from '@/lib/downloadBlob';
 import { canonicalStringify } from '@/lib/canonicalStringify';
@@ -74,13 +75,24 @@ const DictionaryEditorModal = ({ dictionaryId, draft, onClose, onPublish }: {
   // The book's carried placeholders live on the sole book (index 0); its entries' chips resolve against them.
   const bookPlaceholders = useMemo(() => dictionaries[0]?.placeholders ?? [], [dictionaries]);
   // Isolated placeholder store backed by the sole book's `placeholders` field (empty ⇒ undefined).
-  const phStore = useMemo(() => placeholderStore(bookPlaceholders, (action: SetStateAction<Placeholder[]>) =>
-    setDictionaries((prev) => prev.map((b, i) => {
-      if (i !== 0) return b;
-      const cur = b.placeholders ?? [];
-      const next = typeof action === 'function' ? action(cur) : action;
-      return { ...b, placeholders: next.length ? next : undefined };
-    }))), [bookPlaceholders, setDictionaries]);
+  // `placedIds` is the book's own chip-bearing fields, so a drag never takes a placeholder an entry names.
+  // It reads the entries through a ref rather than closing over them, so a keystroke in an entry does not
+  // rebuild the store and, with it, every chip field's vocabulary.
+  const dictionariesRef = useRef(dictionaries);
+  dictionariesRef.current = dictionaries;
+  const phStore = useMemo(() => ({
+    ...placeholderStore(bookPlaceholders, (action: SetStateAction<Placeholder[]>) =>
+      setDictionaries((prev) => prev.map((b, i) => {
+        if (i !== 0) return b;
+        const cur = b.placeholders ?? [];
+        const next = typeof action === 'function' ? action(cur) : action;
+        return { ...b, placeholders: next.length ? next : undefined };
+      }))),
+    placedIds: () => directChipTargets(
+      dictionariesRef.current.flatMap((b) => b.entries).flatMap((e) =>
+        [e.name ?? '', ...(e.key ?? []), ...(e.secondaryKeys ?? []), e.value ?? '']),
+    ),
+  }), [bookPlaceholders, setDictionaries]);
 
   // Returns whether the save succeeded, so a save-and-exit caller only closes on success.
   const handleSave = async (): Promise<boolean> => {
