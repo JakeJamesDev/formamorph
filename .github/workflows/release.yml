@@ -276,43 +276,74 @@ jobs:
           # rest. Every probe must report, so error-exit and pipefail are off and `fail` is the verdict.
           set +e +o pipefail
           set -u
+
+          # Cloudflare answers the deploy API before every edge node serves the new build, and the `_redirects`
+          # rules land after the assets beside them do. Probing once is a coin flip: the first run of this step
+          # fired 429 ms after "Deployment complete" and read 522 on the two rule-only paths while the assets
+          # were already correct. So the whole battery retries, not just the readiness probe.
+          ATTEMPTS=8
+          DELAY=15
+          # Overridable so the same script can run against a local emulator; CI always uses the real hosts.
+          BASE_AI="${BASE_AI:-https://formamorph.ai}"
+          BASE_COM="${BASE_COM:-https://formamorph.com}"
+
+          # Read the hashed name out of the deployed index.html so this follows every rebuild. An empty result is
+          # a broken build rather than a slow edge, so it fails now instead of burning the retry budget.
+          ASSET=$(grep -o 'assets/[A-Za-z0-9._-]*[.]js' out/play/index.html | head -1)
+          if [ -z "$ASSET" ]; then
+            echo "::error::No hashed asset found in out/play/index.html"
+            exit 1
+          fi
+
+          REPORT=$(mktemp)
           fail=0
+
+          # Collects verdicts rather than printing them. A failure on a non-final attempt only means "not settled
+          # yet", and annotating it would flag a run that goes on to pass.
           check() {
             if [ "$2" = "$3" ]; then
-              echo "ok    $1 -> $3"
+              echo "ok    $1 -> $3" >> "$REPORT"
             else
-              echo "::error::$1 — expected '$2', got '$3'"
+              echo "FAIL  $1 - expected '$2', got '$3'" >> "$REPORT"
               fail=1
             fi
           }
 
-          # The deploy API returns before every edge node serves the new build.
-          for _ in 1 2 3 4 5 6; do
-            code=$(curl -sS --max-time 20 -o /dev/null -w '%{http_code}' https://formamorph.ai/play/) || code=000
-            [ "$code" = "200" ] && break
-            echo "waiting for /play/ (got $code)"
-            sleep 10
-          done
-          check "/play/ status" "200" "$code"
+          battery() {
+            fail=0
+            : > "$REPORT"
 
-          CT=$(curl -sSI --max-time 20 https://formamorph.ai/play/ | tr -d '\r' | awk 'tolower($1)=="content-type:"{print tolower($2)}' | cut -d';' -f1)
-          check "/play/ content-type" "text/html" "$CT"
+            check "/play/ status" "200" "$(curl -sS --max-time 20 -o /dev/null -w '%{http_code}' "$BASE_AI/play/")"
 
-          check "/play redirect" "301 https://formamorph.ai/play/" "$(curl -sS --max-time 20 -o /dev/null -w '%{http_code} %{redirect_url}' https://formamorph.ai/play)"
-          check "/ redirect" "302 https://formamorph.ai/play/" "$(curl -sS --max-time 20 -o /dev/null -w '%{http_code} %{redirect_url}' https://formamorph.ai/)"
-          check ".com redirect" "301 https://formamorph.ai/play/" "$(curl -sS --max-time 20 -o /dev/null -w '%{http_code} %{redirect_url}' https://formamorph.com/play/)"
+            CT=$(curl -sSI --max-time 20 "$BASE_AI/play/" | tr -d '\r' | awk 'tolower($1)=="content-type:"{print tolower($2)}' | cut -d';' -f1)
+            check "/play/ content-type" "text/html" "$CT"
 
-          # Read the hashed name out of the deployed index.html so this follows every rebuild.
-          ASSET=$(grep -o 'assets/[A-Za-z0-9._-]*\.js' out/play/index.html | head -1)
-          if [ -z "$ASSET" ]; then
-            echo "::error::No hashed asset found in out/play/index.html"
-            fail=1
-          else
-            CC=$(curl -sSI --max-time 20 "https://formamorph.ai/play/$ASSET" | tr -d '\r' | sed -n 's/^[Cc]ache-[Cc]ontrol: //p')
+            check "/play redirect" "301 $BASE_AI/play/" "$(curl -sS --max-time 20 -o /dev/null -w '%{http_code} %{redirect_url}' "$BASE_AI/play")"
+            check "/ redirect" "302 $BASE_AI/play/" "$(curl -sS --max-time 20 -o /dev/null -w '%{http_code} %{redirect_url}' "$BASE_AI/")"
+            check ".com redirect" "301 $BASE_AI/play/" "$(curl -sS --max-time 20 -o /dev/null -w '%{http_code} %{redirect_url}' "$BASE_COM/play/")"
+
+            CC=$(curl -sSI --max-time 20 "$BASE_AI/play/$ASSET" | tr -d '\r' | sed -n 's/^[Cc]ache-[Cc]ontrol: //p')
             case "$CC" in
-              *max-age=31536000*immutable*) echo "ok    $ASSET cache-control -> $CC" ;;
-              *) echo "::error::$ASSET cache-control — expected max-age=31536000 + immutable, got '$CC'"; fail=1 ;;
+              *max-age=31536000*immutable*) echo "ok    $ASSET cache-control -> $CC" >> "$REPORT" ;;
+              *) echo "FAIL  $ASSET cache-control - expected max-age=31536000 + immutable, got '$CC'" >> "$REPORT"; fail=1 ;;
             esac
-          fi
+          }
 
-          if [ "$fail" -ne 0 ]; then exit 1; fi
+          attempt=1
+          while [ "$attempt" -le "$ATTEMPTS" ]; do
+            battery
+            [ "$fail" -eq 0 ] && break
+            [ "$attempt" -eq "$ATTEMPTS" ] && break
+            echo "--- attempt $attempt/$ATTEMPTS: not settled, retrying in ${DELAY}s ---"
+            cat "$REPORT"
+            sleep "$DELAY"
+            attempt=$((attempt + 1))
+          done
+
+          cat "$REPORT"
+          if [ "$fail" -ne 0 ]; then
+            # Annotate only now that the verdict is final, so a run that settles late stays clean.
+            sed -n 's/^FAIL  /::error::/p' "$REPORT"
+            echo "::error::Live checks still failing after $ATTEMPTS attempts over $(( (ATTEMPTS - 1) * DELAY ))s."
+            exit 1
+          fi
