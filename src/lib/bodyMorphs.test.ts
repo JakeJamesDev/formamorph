@@ -7,6 +7,7 @@ import {
   boundMorphNamesExcluding,
   autoBindLegacyBodyStats,
   buildMorphGroups,
+  resolveMorphAlias,
 } from "./bodyMorphs";
 
 // Minimal Stat factory — only the fields these helpers read matter; the rest satisfy the type.
@@ -166,5 +167,33 @@ describe("autoBindLegacyBodyStats", () => {
     const out = autoBindLegacyBodyStats(stats);
     expect(out[0].morphBindings).toEqual([]);
     expect(out[0]).toBe(stats[0]); // unchanged reference
+  });
+});
+
+describe("resolveMorphAlias", () => {
+  const model = (names: string[]) => (candidate: string) => names.includes(candidate);
+
+  it("returns the exact name when the model exposes it", () => {
+    expect(resolveMorphAlias("Belly", model(["Belly", "Fat"]))).toBe("Belly");
+  });
+
+  it("prefers the exact name over a present alias-mate", () => {
+    expect(resolveMorphAlias("Belly", model(["Belly", "Waist"]))).toBe("Belly");
+  });
+
+  it("resolves an old world name onto the renamed model", () => {
+    expect(resolveMorphAlias("Belly", model(["Waist", "Bust", "Thickness"]))).toBe("Waist");
+    expect(resolveMorphAlias("Fat", model(["Waist", "Bust", "Thickness"]))).toBe("Thickness");
+    expect(resolveMorphAlias("Breasts", model(["Waist", "Bust", "Thickness"]))).toBe("Bust");
+  });
+
+  it("resolves a new world name onto an old model", () => {
+    expect(resolveMorphAlias("Waist", model(["Belly", "Breasts", "Fat"]))).toBe("Belly");
+    expect(resolveMorphAlias("Chest", model(["Belly", "Breasts", "Fat"]))).toBe("Breasts");
+  });
+
+  it("returns null when neither the name nor any alias-mate exists", () => {
+    expect(resolveMorphAlias("Belly", model(["B_Pear"]))).toBeNull();
+    expect(resolveMorphAlias("B_Pear", model(["Belly"]))).toBeNull();
   });
 });

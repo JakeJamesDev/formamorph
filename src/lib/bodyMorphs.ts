@@ -12,6 +12,24 @@ export const LEGACY_BODY_BINDINGS: Record<string, string[]> = {
   Breastsize: ["Breasts"],
 };
 
+/** Interchangeable shape-key names across avatar generations: the bundled alternate model uses the
+ *  first name in each group, older models and worlds use the rest. Resolution is bidirectional. */
+export const MORPH_ALIAS_GROUPS: readonly (readonly string[])[] = [
+  ["Waist", "Abdomen", "Belly"],
+  ["Thickness", "Weight", "Fat"],
+  ["Bust", "Chest", "Breasts"],
+];
+
+/**
+ * Resolve a bound morph name against the names a model actually exposes: the exact name when present,
+ * otherwise the first alias-mate that is. Null when neither exists.
+ */
+export function resolveMorphAlias(name: string, has: (candidate: string) => boolean): string | null {
+  if (has(name)) return name;
+  const group = MORPH_ALIAS_GROUPS.find((g) => g.includes(name));
+  return group?.find((candidate) => candidate !== name && has(candidate)) ?? null;
+}
+
 /**
  * Map a stat value to a morph influence, linearly across the stat's range. `refMax` is the scale
  * anchor — the authored max, so a max raised during play extends the morph past 1 instead of
