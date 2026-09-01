@@ -18,7 +18,7 @@ import {
   lonePlaceholderToken, drawPlaceholderOnce, placeholderIsChoice,
 } from '@/lib/placeholders';
 import { placeholderRowChance } from '@/lib/placeholderTree';
-import { accentAtChance, chanceChipStyle } from '@/lib/chanceColor';
+import { accentAtChance, chanceChipStyle, relativeChance } from '@/lib/chanceColor';
 import { usePlaceholderChipVocabulary } from '@/lib/chipVocabulary';
 import { cn } from '@/lib/utils';
 import type { Placeholder, PlaceholderValue } from '@/types';
@@ -211,13 +211,15 @@ const PlaceholderManager = ({ placeholder, rowId, share }: {
     (referenceAccent(value) ? (localChance(value) * rowChance) / 100 : localChance(value));
   const chipPct = (v: string) => `${Math.round(chipChance(v))}%`;
 
-  /** How a value chip wears its chance. A plain value runs the theme ramp; a reference chip keeps its
-   *  placeholder's accent, saturated by how likely the branch is. */
+  /** How a value chip wears its chance: relative to the strongest sibling, so color says which value is
+   *  favored while the number says how likely. Local chances suffice — the row factor is common to every
+   *  sibling, so it cancels out. A plain value fades toward the benched look; a reference chip keeps its
+   *  placeholder's accent and loses saturation. */
+  const localChances = editing.values.map((v) => localChance(v.text));
   const chipStyle = (value: string): CSSProperties => {
+    const rel = relativeChance(localChance(value), localChances);
     const accent = referenceAccent(value);
-    return accent
-      ? { backgroundColor: accentAtChance(accent, chipChance(value)), color: '#000' }
-      : chanceChipStyle(chipChance(value));
+    return accent ? accentAtChance(accent, rel) : chanceChipStyle(rel);
   };
 
   /** Every box edit lands here: the boxes are what the author sees, the value list is what they stand for. */
