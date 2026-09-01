@@ -234,10 +234,10 @@ describe('placeholderVocabulary — structure', () => {
   ];
   const v = placeholderVocabulary(WORLD);
 
-  it('heads the parts section with what the level is', () => {
-    expect(v.structure?.(tok('molly', 'world'))?.partsLabel).toBe('Wildcard Variants');
-    expect(v.structure?.(tok('white', 'world'))?.partsLabel).toBe('Object Parts');
-    expect(v.structure?.(tok('asian', 'world'))?.partsLabel).toBe('Variable Part');
+  it('heads the section of what it holds with what the level is', () => {
+    expect(v.structure?.(tok('molly', 'world'))?.holdsLabel).toBe('Wildcard Variants');
+    expect(v.structure?.(tok('white', 'world'))?.holdsLabel).toBe('Object Values');
+    expect(v.structure?.(tok('asian', 'world'))?.holdsLabel).toBe('Variable Value');
   });
 
   it('offers each slot as the same chip with the name appended to its path', () => {
@@ -282,7 +282,7 @@ describe('placeholderVocabulary — structure', () => {
     });
     const described = v.structure?.(slotChip);
     expect(described?.trail.map((c) => c.label)).toEqual(['Molly']);
-    expect(described?.partsLabel).toBe('Wildcard Variants');
+    expect(described?.holdsLabel).toBe('Wildcard Variants');
     // And the slots it offers hang off that level, not off the segment it could not follow.
     const hair = described?.slots.find((s) => s.label === 'Hair');
     expect(decodePlaceholderToken(hair?.token ?? '')?.path).toEqual([{ kind: 'slot', name: 'Hair' }]);
@@ -312,5 +312,75 @@ describe('placeholderVocabulary — repoint', () => {
 
   it('leaves the chip alone when either side is not a token of this family', () => {
     expect(v.repoint?.(tok('king', 'world'), '<LOCATION>')).toBe(tok('king', 'world'));
+  });
+});
+
+/**
+ * Ownership decides which surfaces offer a placeholder and how it reads away from its owner. All three are
+ * the vocabulary's job: the palette and the `{` menu root read `palette`, a picker that has to find a name
+ * reads `allRows`, and every chip label reads the owner chain.
+ */
+describe('placeholderVocabulary — ownership', () => {
+  const chip = (id: string) => encodePlaceholderToken({ id, mode: 'world', placementId: `v-${id}` });
+  // Molly owns Northern; Hair is shared, so it stays public.
+  const WORLD: Placeholder[] = [
+    { id: 'molly', name: 'Molly', values: phValues([chip('northern')]) },
+    { id: 'northern', name: 'Northern', ownerId: 'molly', values: phValues([chip('hair')]) },
+    { id: 'hair', name: 'Hair', values: phValues(['brown', 'black']) },
+    { id: 'town', name: 'Town', values: phValues(['Sedge Landing']) },
+  ];
+  const v = placeholderVocabulary(WORLD);
+
+  it('leaves an owned placeholder out of the palette', () => {
+    expect(v.palette().map((r) => r.label)).toEqual(['Molly', 'Hair', 'Town']);
+  });
+
+  it('still offers it one level down, under its owner', () => {
+    expect(v.drill?.(tok('molly', 'world')).map((r) => r.label)).toEqual(['Northern']);
+  });
+
+  it('lists it for a picker that has to find it by name, flagged and qualified', () => {
+    const northern = v.allRows?.().find((r) => r.label === 'Molly › Northern');
+    expect(northern?.owned).toBe(true);
+    expect(v.allRows?.().find((r) => r.label === 'Hair')?.owned).toBe(false);
+  });
+
+  it('qualifies an owned placeholder wherever its chip appears away from its owner', () => {
+    expect(v.label(tok('northern', 'world'))).toBe('Molly › Northern');
+    expect(v.label(tok('hair', 'world'))).toBe('Hair');
+  });
+
+  it('reads it bare inside its owner’s own panel, where the chain is already given', () => {
+    const inMolly = placeholderVocabulary(WORLD, { ownerId: 'molly' });
+    expect(inMolly.label(tok('northern', 'world'))).toBe('Northern');
+  });
+
+  it('mints a placeholder created from a value field owned by the placeholder it belongs to', () => {
+    const made: Placeholder[] = [];
+    const inMolly = placeholderVocabulary(WORLD, { onCreate: (p) => made.push(p), ownerId: 'molly' });
+    inMolly.create?.('Southern');
+    expect(made[0].ownerId).toBe('molly');
+    expect(inMolly.createLabel?.('Southern')).toBe('New Placeholder "Southern" in Molly');
+  });
+
+  it('mints a top-level placeholder anywhere else, and says so', () => {
+    const made: Placeholder[] = [];
+    const anywhere = placeholderVocabulary(WORLD, { onCreate: (p) => made.push(p) });
+    anywhere.create?.('Southern');
+    expect(made[0].ownerId).toBeUndefined();
+    expect(anywhere.createLabel?.('Southern')).toBe('New Placeholder "Southern"');
+  });
+
+  it('promotes by the token a picker was refused on', () => {
+    const promoted: string[] = [];
+    const authored = placeholderVocabulary(WORLD, { onPromote: (id) => promoted.push(id) });
+    const row = authored.allRows?.().find((r) => r.owned);
+    authored.promote?.(row!.token);
+    expect(promoted).toEqual(['northern']);
+  });
+
+  it('offers neither hook where nothing is bound to write to', () => {
+    expect(v.promote).toBeUndefined();
+    expect(promptVocabulary([]).allRows).toBeUndefined();
   });
 });

@@ -15,10 +15,13 @@ import { PLACEHOLDER_TRIGGER, placeholderHint } from '@/lib/placeholderInsert';
  * Wildcard → a random pick (World shared per placeholder, Unique per placement) — re-rolled each time the
  * tab is opened. The resolved text is tinted the chip's own color, like the prompt previews.
  */
-const PlaceholderField = ({ value, onChange, placeholders, markdown = false, resizable = false, placeholder, className, readOnly = false, label, labelAside, ariaLabel }: {
+const PlaceholderField = ({ value, onChange, placeholders, ownerId, markdown = false, resizable = false, placeholder, className, readOnly = false, label, labelAside, ariaLabel }: {
   value: string;
   onChange: (v: string) => void;
   placeholders: Placeholder[];
+  /** The placeholder whose own value list this field edits. A placeholder created from here is born owned
+   *  by it, and its owned rows read bare. */
+  ownerId?: string;
   /** The field's caption, rendered by the field itself so it can share a row (see `PromptField`). */
   label?: ReactNode;
   /** Rendered at the end of the caption's row. Needs `label`. */
@@ -33,7 +36,7 @@ const PlaceholderField = ({ value, onChange, placeholders, markdown = false, res
   /** Names the editor for assistive tech, for a field whose caption is not its own `label`. */
   ariaLabel?: string;
 }) => {
-  const vocab = usePlaceholderChipVocabulary(placeholders);
+  const vocab = usePlaceholderChipVocabulary(placeholders, ownerId);
   // Bumped on each Preview open to re-roll Wildcards.
   const [rollNonce, setRollNonce] = useState(0);
   const previewValues = useMemo(

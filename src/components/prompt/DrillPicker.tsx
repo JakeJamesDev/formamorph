@@ -1,6 +1,7 @@
 import { useState } from 'react';
-import { AlertTriangle } from 'lucide-react';
+import { AlertTriangle, Lock } from 'lucide-react';
 import { CHIP_BASE } from '@/components/Chip';
+import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useWheelScroll } from '@/lib/useWheelScroll';
 import { cn } from '@/lib/utils';
@@ -8,10 +9,14 @@ import type { ChipRow, ChipVocabulary } from '@/lib/chipVocabulary';
 
 /**
  * Re-aim a placed chip by walking what its family holds. Two kinds of step are on offer and they resolve
- * differently: a part names one branch and always takes it, while a slot names something by name and routes
- * through whichever value the level rolls — so a slot one value cannot supply is marked, because that roll
- * resolves to nothing. Values that are not a chip are addressable by nothing, and are counted rather than
- * listed.
+ * differently: an explicit pick names one branch and always takes it, while a slot names something by name
+ * and routes through whichever value the level rolls — so a slot one value cannot supply is marked, because
+ * that roll resolves to nothing. Values that are not a chip are addressable by nothing, and are counted
+ * rather than listed.
+ *
+ * The root lists every placeholder, owned ones included: hiding a name an author already knows would make
+ * re-aiming a guessing game. Aiming a chip at one another placeholder owns is refused instead, with the
+ * offer to promote it — a fork in the road rather than a wall.
  *
  * Opened from a chip's pop-out, seeded at the path that chip already carries: the level it stands on is what
  * the picker shows first, and its trail is the way back out.
@@ -19,9 +24,12 @@ import type { ChipRow, ChipVocabulary } from '@/lib/chipVocabulary';
 
 /** One offered row: the chip it stands for, and the walk it opens. A slot opens none — it names no one
  *  target until a roll picks it — so it comes with no `onDrill`. */
-function PickerRow({ row, marker, onPick, onDrill }: {
+function PickerRow({ row, marker, note, onPick, onDrill }: {
   row: ChipRow;
+  /** A warning about what this row would resolve to. */
   marker?: string;
+  /** A plain fact about the row, in the muted chrome — not a warning, so no triangle. */
+  note?: string;
   onPick: () => void;
   onDrill?: () => void;
 }) {
@@ -42,11 +50,17 @@ function PickerRow({ row, marker, onPick, onDrill }: {
             <span className="truncate">{marker}</span>
           </span>
         )}
+        {note && (
+          <span className="flex min-w-0 items-center gap-1 text-meta text-muted-foreground">
+            <Lock className="h-3 w-3 shrink-0" aria-hidden />
+            <span className="truncate">{note}</span>
+          </span>
+        )}
       </button>
       {onDrill && (
         <button
           type="button"
-          aria-label={`Show ${row.label} Parts`}
+          aria-label={`Drill Into ${row.label}`}
           onClick={onDrill}
           className="shrink-0 px-1.5 py-1 text-label text-muted-foreground hover:text-foreground"
         >
@@ -72,10 +86,13 @@ const DrillPicker = ({ vocab, token, onPick }: {
   const [filter, setFilter] = useState('');
   const scroller = useWheelScroll<HTMLDivElement>();
 
+  // The row a pick was refused on, kept so the offer to promote it can name it.
+  const [blocked, setBlocked] = useState<ChipRow | null>(null);
+
   const structure = at ? vocab.structure?.(at) ?? null : null;
-  const parts = at ? vocab.drill?.(at) ?? [] : vocab.palette();
+  const held = at ? vocab.drill?.(at) ?? [] : vocab.allRows?.() ?? vocab.palette();
   const match = (label: string) => label.toLowerCase().includes(filter.trim().toLowerCase());
-  const rows = parts.filter((r) => match(r.label));
+  const rows = held.filter((r) => match(r.label));
   const slots = (structure?.slots ?? []).filter((s) => match(s.label));
   // Offered at the root only, exactly as the `{` menu offers it: inside a level a new placeholder is no part
   // of that level, so aiming the chip at one would silently drop the path the author walked.
@@ -85,6 +102,20 @@ const DrillPicker = ({ vocab, token, onPick }: {
   const walk = (next: string | null) => {
     setAt(next);
     setFilter('');
+    setBlocked(null);
+  };
+
+  /** Aiming at an owned placeholder is refused: it belongs to one placeholder, and a chip from outside
+   *  would make "owned" describe a row three others use. */
+  const pick = (row: ChipRow) => {
+    if (row.owned && vocab.promote) setBlocked(row);
+    else onPick(row.token);
+  };
+
+  const promote = () => {
+    if (!blocked) return;
+    vocab.promote?.(blocked.token);
+    onPick(blocked.token);
   };
 
   const create = () => {
@@ -120,20 +151,21 @@ const DrillPicker = ({ vocab, token, onPick }: {
       </div>
       <Input
         value={filter}
-        onChange={(e) => setFilter(e.target.value)}
-        aria-label={at ? 'Filter Parts' : 'Filter Placeholders'}
+        onChange={(e) => { setFilter(e.target.value); setBlocked(null); }}
+        aria-label="Filter Placeholders"
         placeholder="Filter…"
         className="h-7 text-label"
       />
       <div ref={scroller} className="max-h-56 space-y-2 overflow-y-auto">
         {!!rows.length && (
           <div>
-            <p className="px-1.5 text-meta font-medium">{structure?.partsLabel ?? 'Placeholders'}</p>
+            <p className="px-1.5 text-meta font-medium">{structure?.holdsLabel ?? 'Placeholders'}</p>
             {rows.map((row) => (
               <PickerRow
                 key={row.token}
                 row={row}
-                onPick={() => onPick(row.token)}
+                note={row.owned ? 'owned' : undefined}
+                onPick={() => pick(row)}
                 onDrill={(vocab.drill?.(row.token) ?? []).length ? () => walk(row.token) : undefined}
               />
             ))}
@@ -154,13 +186,29 @@ const DrillPicker = ({ vocab, token, onPick }: {
           </div>
         )}
         {!rows.length && !slots.length && !newName && (
-          <p className="px-1.5 py-1 text-helper text-muted-foreground">No parts match.</p>
+          <p className="px-1.5 py-1 text-helper text-muted-foreground">Nothing matches.</p>
         )}
       </div>
       {!!structure?.plain && (
         <p className="px-1.5 text-meta text-muted-foreground">
           {structure.plain === 1 ? '1 plain value' : `${structure.plain} plain values`} — not addressable.
         </p>
+      )}
+      {blocked && (
+        <div data-testid="drill-picker-owned" className="space-y-1 rounded border border-border p-1.5">
+          <p className="flex items-center gap-1 text-meta text-muted-foreground">
+            <Lock className="h-3 w-3 shrink-0" aria-hidden />
+            <span className="truncate">{blocked.label} belongs to another placeholder.</span>
+          </p>
+          <div className="flex gap-1">
+            <Button type="button" size="sm" className="h-6 px-2 text-helper" onClick={promote}>
+              Promote And Use
+            </Button>
+            <Button type="button" size="sm" variant="ghost" className="h-6 px-2 text-helper" onClick={() => setBlocked(null)}>
+              Cancel
+            </Button>
+          </div>
+        </div>
       )}
       {!!newName && (
         <button
@@ -170,7 +218,7 @@ const DrillPicker = ({ vocab, token, onPick }: {
           className="flex w-full items-center gap-2 rounded border-t border-border px-1.5 py-1 text-left text-label hover:bg-accent"
         >
           <span aria-hidden>+</span>
-          <span className="truncate">{`New Placeholder "${newName}"`}</span>
+          <span className="truncate">{vocab.createLabel?.(newName) ?? `New Placeholder "${newName}"`}</span>
         </button>
       )}
     </div>

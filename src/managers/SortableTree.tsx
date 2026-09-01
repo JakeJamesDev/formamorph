@@ -8,7 +8,7 @@
 // depth-based nesting (see TraitTree history), which is why this passes `restrictYToScrollAncestor` rather
 // than taking the shared layer's vertical-list default.
 import { useState, type ReactNode } from 'react';
-import { EditorRow, EditorRowList } from '@/components/EditorRow';
+import { EditorRow, EditorRowList, type EditorRowAction } from '@/components/EditorRow';
 import { X, Copy } from 'lucide-react';
 import {
   pointerWithin, closestCenter,
@@ -45,6 +45,14 @@ export interface TreeRowSpec {
   label: ReactNode;
   /** Extra classes on the label span (e.g. 'font-medium' for group headers). */
   labelClass?: string;
+  /** Secondary text before the actions, such as a holder count. */
+  meta?: ReactNode;
+  /** Tooltip for {@link TreeRowSpec.meta}, which is usually too terse to read on its own. */
+  metaTitle?: string;
+  /** Actions ahead of duplicate and delete, for anything only this tree offers. */
+  actions?: EditorRowAction[];
+  /** What the delete action is called, where "Delete" is not what the row's own X does. */
+  removeTitle?: string;
   remove: () => void;
   duplicate: () => void;
 }
@@ -57,11 +65,17 @@ export interface SortableTreeAdapter<N extends { id: string; depth: number }> {
   projectDepth: (visible: N[], activeId: string, overId: string, offsetLeft: number) => number | null;
   /** Commit a drop. */
   onDrop: (activeId: string, overId: string, offsetLeft: number, collapsed: Set<string>) => void;
+  /** What `selectedId` and `onSelect` speak in, where a row is not itself the thing being selected — a
+   *  placeholder draws a row under every holder that shares it, and all of them are that one placeholder.
+   *  Defaults to the row's own id. */
+  selectionId?: (node: N) => string;
   rowSpec: (node: N) => TreeRowSpec;
 }
 
 interface RowProps {
   id: string;
+  /** What selecting this row reports — see `selectionId` on the adapter. */
+  selectId: string;
   depth: number;
   spec: TreeRowSpec;
   selected: boolean;
@@ -71,7 +85,7 @@ interface RowProps {
 }
 
 /** One flat row with a depth-based left indent. */
-function TreeRow({ id, depth, spec, selected, onSelect, isCollapsed, toggleCollapse }: RowProps) {
+function TreeRow({ id, selectId, depth, spec, selected, onSelect, isCollapsed, toggleCollapse }: RowProps) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id });
   // The dragged row's indent is shown via paddingLeft (projected depth), so pin its x-translate to 0 — it
   // slides vertically only while the pointer's horizontal delta drives depth. Sibling rows keep their full
@@ -91,7 +105,7 @@ function TreeRow({ id, depth, spec, selected, onSelect, isCollapsed, toggleColla
       gripProps={{ ...attributes, ...listeners }}
       gripTitle="Drag to reorder or nest"
       selected={selected}
-      onSelect={() => onSelect(id)}
+      onSelect={() => onSelect(selectId)}
       lead={spec.lead === 'none' ? undefined : spec.lead}
       collapsed={isCollapsed}
       onToggleCollapse={() => toggleCollapse(id)}
@@ -99,9 +113,12 @@ function TreeRow({ id, depth, spec, selected, onSelect, isCollapsed, toggleColla
       icon={spec.icon}
       label={spec.label}
       labelClass={spec.labelClass}
+      meta={spec.meta}
+      metaTitle={spec.metaTitle}
       actions={[
+        ...(spec.actions ?? []),
         { icon: <Copy className="h-4 w-4" />, title: 'Duplicate', onClick: spec.duplicate },
-        { icon: <X className="h-4 w-4" />, title: 'Delete', onClick: spec.remove },
+        { icon: <X className="h-4 w-4" />, title: spec.removeTitle ?? 'Delete', onClick: spec.remove },
       ]}
     />
   );
@@ -158,9 +175,10 @@ export function SortableTree<N extends { id: string; depth: number }>({ adapter,
           <TreeRow
             key={node.id}
             id={node.id}
+            selectId={adapter.selectionId?.(node) ?? node.id}
             depth={node.id === activeId && projectedDepth !== null ? projectedDepth : node.depth}
             spec={adapter.rowSpec(node)}
-            selected={selectedId === node.id}
+            selected={selectedId === (adapter.selectionId?.(node) ?? node.id)}
             onSelect={onSelect}
             isCollapsed={collapsed.has(node.id)}
             toggleCollapse={toggleCollapse}

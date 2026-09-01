@@ -1,4 +1,5 @@
 import { createContext, useContext, type Dispatch, type SetStateAction, type ReactNode } from 'react';
+import { releasePlaceholderOwners, removePlaceholderCascade } from '@/lib/placeholderTree';
 import type { Placeholder } from '@/types';
 
 /**
@@ -12,7 +13,12 @@ export interface PlaceholderStore {
   setPlaceholders: Dispatch<SetStateAction<Placeholder[]>>;
   addPlaceholder: (placeholder: Placeholder) => void;
   updatePlaceholder: (updated: Placeholder) => void;
+  /** Removes the placeholder and everything it owns — see `removePlaceholderCascade`. */
   removePlaceholder: (id: string) => void;
+  /** The ids chips place outside the placeholder list, read only when a drag has to decide whether it may
+   *  take a placeholder privately. A thunk, so the scan a world-sized answer needs is paid on the drop
+   *  rather than on every render. Omit where nothing outside the list can hold a chip. */
+  placedIds?: () => ReadonlySet<string>;
 }
 
 /** Build a {@link PlaceholderStore} over any `[value, setValue]` pair — the single source of the CRUD, so both
@@ -26,8 +32,11 @@ export function placeholderStore(
     placeholders,
     setPlaceholders,
     addPlaceholder: (p) => setPlaceholders((prev) => [...prev, p]),
-    updatePlaceholder: (u) => setPlaceholders((prev) => prev.map((p) => (p.id === u.id ? u : p))),
-    removePlaceholder: (id) => setPlaceholders((prev) => prev.filter((p) => p.id !== id)),
+    // An edit that drops a chip value releases what it pointed at: where a placeholder sits and what it
+    // belongs to can never disagree, and an edit is the only thing that can put them out of step.
+    updatePlaceholder: (u) =>
+      setPlaceholders((prev) => releasePlaceholderOwners(prev.map((p) => (p.id === u.id ? u : p)))),
+    removePlaceholder: (id) => setPlaceholders((prev) => removePlaceholderCascade(prev, id)),
   };
 }
 

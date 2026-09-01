@@ -11,16 +11,23 @@ import {
   type PromptVariable, type PromptVariantAxis,
 } from './promptVariables';
 import {
-  parsePlaceholderText, decodePlaceholderToken, encodePlaceholderToken, placeholderValueSummary,
-  placeholderPathChildren, placeholderPathLevel, newPlaceholder, describePlaceholders,
+  PLACEHOLDER_PATH_SEPARATOR, parsePlaceholderText, decodePlaceholderToken, encodePlaceholderToken,
+  placeholderValueSummary, placeholderPathChildren, placeholderPathLevel, newPlaceholder,
+  describePlaceholders,
 } from './placeholders';
 import type { PlaceholderKindNoun, PlaceholderSegment } from './placeholders';
+import {
+  isOwnedPlaceholder, promotePlaceholder, qualifiedPlaceholderName, topLevelPlaceholders,
+} from './placeholderTree';
 
 /** One token a menu or picker offers, named for the reader. */
 export interface ChipRow {
   token: string;
   label: string;
   color?: string;
+  /** The placeholder belongs to another one, so a chip cannot be aimed at it from outside its owner. Set
+   *  only where a surface offers owned rows at all (see {@link ChipVocabulary.allRows}). */
+  owned?: boolean;
 }
 
 /** A part reached through whichever value the level rolls, rather than by naming one. */
@@ -29,11 +36,11 @@ export interface ChipSlot extends ChipRow {
   partial: boolean;
 }
 
-/** What a picker says about the level a chip stands on, over and above its parts (which come from
+/** What a picker says about the level a chip stands on, over and above what it holds (which comes from
  *  {@link ChipVocabulary.drill}). */
 export interface ChipStructure {
-  /** Heading for the parts section, in the family's own nouns for what this level is. */
-  partsLabel: string;
+  /** Heading for the section of what this level holds, in the family's own nouns for what the level is. */
+  holdsLabel: string;
   /** The path walked to here, root first and ending at this level — each crumb the same chip cut back. */
   trail: ChipRow[];
   slots: ChipSlot[];
@@ -71,8 +78,12 @@ export interface ChipVocabulary {
   affixes(token: string): { pre: string; post: string } | null;
   /** The token with its affixes replaced. Empty strings remove them. */
   setAffixes(token: string, pre: string, post: string): string;
-  /** Toolbar items to insert. */
+  /** Toolbar items to insert. Owned members are left out — they belong to one placeholder and are reached
+   *  by drilling into it. */
   palette(): ChipRow[];
+  /** Every member the family has, owned ones included and flagged. For a picker that has to find a
+   *  placeholder by name before it can say why the chip cannot be aimed there. */
+  allRows?(): ChipRow[];
   /** Prepare a palette token for a fresh insertion (placeholders re-mint their placement id). */
   freshInsertToken(token: string): string;
   /** The rows one level under this token — each the same chip drilled one segment deeper. Present only where
@@ -87,6 +98,12 @@ export interface ChipVocabulary {
   /** Mint a new member of the family under this name and return a token to insert. Present only where the
    *  family is authored and a store is bound to write to. */
   create?(name: string): string;
+  /** How the create row reads for `name` here — the wording says who the new member will belong to when
+   *  the field being typed into is a placeholder's own value list. */
+  createLabel?(name: string): string;
+  /** Send an owned member back to the top level, so a chip can be aimed at it. Present alongside
+   *  {@link ChipVocabulary.allRows}. */
+  promote?(token: string): void;
   /** Rename what the chip stands for, everywhere it is used. Present only where the family is authored and
    *  a store is bound to write to — prompt variables are fixed, so they never offer it. */
   rename?(token: string, next: string): void;
@@ -156,13 +173,13 @@ const PALETTE_PID = 'palette';
 // What a chip reads as when the placeholder it names is gone. Displays only — resolution says `''`.
 const MISSING_NAME = '(missing)';
 // Reads a drill path as one name. Matches the separator the trait groups and the location canvas use.
-const PATH_SEPARATOR = ' › ';
+const PATH_SEPARATOR = PLACEHOLDER_PATH_SEPARATOR;
 
-// What a level's parts are called, by what the level is. A Variable holds one value, so it holds one part.
-const PARTS_LABEL: Record<PlaceholderKindNoun, string> = {
+// What a level holds, by what the level is. A Variable holds one value, so it heads one row.
+const HOLDS_LABEL: Record<PlaceholderKindNoun, string> = {
   Wildcard: 'Wildcard Variants',
-  Object: 'Object Parts',
-  Variable: 'Variable Part',
+  Object: 'Object Values',
+  Variable: 'Variable Value',
 };
 
 /**
@@ -192,11 +209,15 @@ export function plainVocabulary(): ChipVocabulary {
  *  has 2+ values (a single-value Variable has nothing to randomize). */
 export function placeholderVocabulary(
   placeholders: Placeholder[],
-  /** What the vocabulary may write back. Omit where placeholders are only being displayed — the chips are
-   *  then not renameable and the typeahead offers no inline create. */
-  { onRename, onCreate }: {
+  /** What the vocabulary may write back, and where its fields sit. Omit where placeholders are only being
+   *  displayed — the chips are then not renameable and the typeahead offers no inline create. */
+  { onRename, onCreate, onPromote, ownerId }: {
     onRename?: (placeholder: Placeholder) => void;
     onCreate?: (placeholder: Placeholder) => void;
+    onPromote?: (id: string) => void;
+    /** The placeholder whose own values these fields edit. A member created here is born owned by it, and
+     *  its owned rows read bare because the panel already says whose they are. */
+    ownerId?: string;
   } = {},
 ): ChipVocabulary {
   const byId = new Map(placeholders.map((p) => [p.id, p]));
@@ -216,7 +237,9 @@ export function placeholderVocabulary(
     label: (t) => {
       const d = decodePlaceholderToken(t);
       if (!d) return t;
-      const root = byId.get(d.id)?.name ?? MISSING_NAME;
+      // An owned placeholder carries its owner chain, so a chip in a location description reading `Hair`
+      // says which Hair. Inside its owner's own panel the chain is already given, and drops away.
+      const root = qualifiedPlaceholderName(placeholders, d.id, ownerId) ?? MISSING_NAME;
       if (!d.path?.length) return root;
       // The whole path, so `Molly › Hair` and a root `Hair` never read alike.
       return [root, ...d.path.map(segLabel)].join(PATH_SEPARATOR);
@@ -249,11 +272,20 @@ export function placeholderVocabulary(
     },
     affixes: () => null,
     setAffixes: (t: string) => t,
+    // Owned placeholders are private to one placeholder: they are reached by drilling into it, so the strip
+    // and an insert menu's root list only what an author actually places in world text.
     palette: () =>
-      placeholders.map((p) => ({
+      topLevelPlaceholders(placeholders).map((p) => ({
         token: encodePlaceholderToken({ id: p.id, mode: 'world', placementId: PALETTE_PID }),
         label: p.name,
         color: placeholderColor(p.id),
+      })),
+    allRows: () =>
+      placeholders.map((p) => ({
+        token: encodePlaceholderToken({ id: p.id, mode: 'world', placementId: PALETTE_PID }),
+        label: qualifiedPlaceholderName(placeholders, p.id) ?? p.name,
+        color: placeholderColor(p.id),
+        owned: isOwnedPlaceholder(placeholders, p.id),
       })),
     freshInsertToken: (t) => {
       const d = decodePlaceholderToken(t);
@@ -281,7 +313,7 @@ export function placeholderVocabulary(
       const path = (d.path ?? []).slice(0, level.depth);
       const color = placeholderColor(d.id);
       return {
-        partsLabel: PARTS_LABEL[level.kind],
+        holdsLabel: HOLDS_LABEL[level.kind],
         trail: [{ token: encodePlaceholderToken({ ...d, path: [] }), label: byId.get(d.id)?.name ?? MISSING_NAME, color },
           ...path.map((seg, i) => ({
             token: encodePlaceholderToken({ ...d, path: path.slice(0, i + 1) }),
@@ -305,10 +337,21 @@ export function placeholderVocabulary(
       // re-aim, so re-picking never silently re-rolls what the placement already drew.
       return encodePlaceholderToken({ ...to, mode: from.mode, placementId: from.placementId });
     },
+    // Created from inside a placeholder's own value field, a new one is born owned by it: building a
+    // character out of parts never has to leave the panel. The owner only sticks once the value holding it
+    // is exactly that chip, which is what committing the value makes it.
     create: onCreate && ((name) => {
-      const made = newPlaceholder(name);
+      const made = { ...newPlaceholder(name), ...(ownerId ? { ownerId } : {}) };
       onCreate(made);
       return encodePlaceholderToken({ id: made.id, mode: 'world', placementId: PALETTE_PID });
+    }),
+    createLabel: (name) => {
+      const owner = ownerId ? byId.get(ownerId)?.name : undefined;
+      return owner ? `New Placeholder "${name}" in ${owner}` : `New Placeholder "${name}"`;
+    },
+    promote: onPromote && ((token) => {
+      const id = decodePlaceholderToken(token)?.id;
+      if (id) onPromote(id);
     }),
   };
 }
@@ -320,13 +363,23 @@ export function placeholderVocabulary(
  * same in every field without each call site having to thread an updater down to its chips. Outside an
  * editor no store is bound, and the chips are simply not renameable.
  */
-export function usePlaceholderChipVocabulary(placeholders: Placeholder[]): ChipVocabulary {
+export function usePlaceholderChipVocabulary(
+  placeholders: Placeholder[],
+  /** The placeholder whose own value list this field edits, where it is one — see `ownerId` on
+   *  {@link placeholderVocabulary}. */
+  ownerId?: string,
+): ChipVocabulary {
   const store = usePlaceholderStoreOptional();
   const onRename = store?.updatePlaceholder;
   const onCreate = store?.addPlaceholder;
+  const setPlaceholders = store?.setPlaceholders;
+  const onPromote = useMemo(
+    () => setPlaceholders && ((id: string) => setPlaceholders((prev) => promotePlaceholder(prev, id))),
+    [setPlaceholders],
+  );
   return useMemo(
-    () => placeholderVocabulary(placeholders, { onRename, onCreate }),
-    [placeholders, onRename, onCreate],
+    () => placeholderVocabulary(placeholders, { onRename, onCreate, onPromote, ownerId }),
+    [placeholders, onRename, onCreate, onPromote, ownerId],
   );
 }
 
