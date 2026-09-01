@@ -1552,6 +1552,275 @@ describe('structured placeholder rules', () => {
   });
 });
 
+/**
+ * The conditions ownership and sharing create. Each is diagnosable only from world data — no gesture in the
+ * app reaches any of them, since the store releases a stale owner on every write and prunes an override map
+ * with the row it belonged to. A hand-edited file is what gets here.
+ */
+describe('placeholder ownership rules', () => {
+  const chip = (id: string) => `{{ph:${id}:world:pl-${id}}}`;
+
+  /** Molly holding one nested row. `ownerId` decides whether that row belongs to her or is a shared row
+   *  pointing at a top-level original; `holds` drops the value the ownership was ever written against.
+   *  Both placeholders are placed in world text, so no fixture leans on the unused rule for its silence. */
+  const nested = ({ ownerId, holds = true }: { ownerId?: string; holds?: boolean } = {}): RuleWorld => ({
+    ...world([{ id: 'e1', name: 'Maren', aiDescription: `She is ${chip('molly')}, and ${chip('north')}.` }]),
+    placeholders: [
+      {
+        id: 'molly', name: 'Molly', roll: false,
+        values: holds ? [{ id: 'v-north', text: chip('north') }] : phValues(['plainly dressed']),
+      },
+      { id: 'north', name: 'Northern', values: phValues(['pale', 'ash-blonde']), ...(ownerId ? { ownerId } : {}) },
+    ],
+  });
+
+  it('says nothing about a world whose ownership and sharing both hold together', () => {
+    // Owned, and shared: the two shapes the tree draws, each with nothing wrong with it.
+    expect(runRules(nested({ ownerId: 'molly' }))).toEqual([]);
+    expect(runRules(nested())).toEqual([]);
+  });
+
+  it('flags an owned placeholder whose owner does not exist', () => {
+    const found = only(nested({ ownerId: 'gone' }), 'placeholder-owner-orphan');
+    expect(found).toHaveLength(1);
+    expect(found[0].severity).toBe('warning');
+    expect(found[0].section).toBe('placeholders');
+    expect(found[0].items.map((i) => i.id)).toEqual(['north']);
+    expect(found[0].message).toBe(
+      '“Northern” belongs to a placeholder that no longer exists, so it sits at the top level instead');
+  });
+
+  it('flags an owned placeholder its owner no longer holds, naming both sides', () => {
+    const found = only(nested({ ownerId: 'molly', holds: false }), 'placeholder-owner-dropped');
+    expect(found).toHaveLength(1);
+    expect(found[0].severity).toBe('warning');
+    expect(found[0].items.map((i) => i.id)).toEqual(['north']);
+    expect(found[0].message).toBe(
+      '“Northern” says it belongs to “Molly”, which no longer holds it — so it sits at the top level instead');
+  });
+
+  it('keeps the two conditions apart — each fires on its own and stays out of the other', () => {
+    expect(only(nested({ ownerId: 'gone' }), 'placeholder-owner-dropped')).toEqual([]);
+    expect(only(nested({ ownerId: 'molly', holds: false }), 'placeholder-owner-orphan')).toEqual([]);
+  });
+
+  it('drops the dead owner reference as its fix, leaving the placeholder otherwise alone', () => {
+    for (const [ruleId, before] of [
+      ['placeholder-owner-orphan', nested({ ownerId: 'gone' })],
+      ['placeholder-owner-dropped', nested({ ownerId: 'molly', holds: false })],
+    ] as const) {
+      const north = applyRuleFix(before, ruleId).placeholders?.find((p) => p.id === 'north');
+      expect([ruleId, north && 'ownerId' in north]).toEqual([ruleId, false]);
+      expect([ruleId, north?.values]).toEqual([ruleId, phValues(['pale', 'ash-blonde'])]);
+    }
+  });
+
+  /** One broken world drawn twice: with its nested rows shared, which is how every world shipped before
+   *  ownership reads, and with them owned. Ownership is organizational and the resolver never reads it, so
+   *  the structural rules have to say the same thing about both. */
+  const broken = (owned: boolean): RuleWorld => {
+    const owns = (ownerId: string) => (owned ? { ownerId } : {});
+    return {
+      ...world([{
+        id: 'e1', name: 'Maren',
+        aiDescription: `Her hair is {{ph:molly:world:pl-a:sHair}}, and ${chip('loop')}.`,
+      }]),
+      placeholders: [
+        {
+          id: 'molly', name: 'Molly',
+          values: [{ id: 'v-north', text: chip('north') }, { id: 'v-south', text: chip('south') }],
+        },
+        { id: 'north', name: 'Northern', roll: false, values: [{ id: 'v-hair', text: chip('hair') }], ...owns('molly') },
+        { id: 'south', name: 'Southern', roll: false, values: [{ id: 'v-gone', text: chip('gone') }], ...owns('molly') },
+        { id: 'hair', name: 'Hair', values: phValues(['flaxen']), ...owns('north') },
+        { id: 'loop', name: 'Loop', values: [{ id: 'v-loop', text: chip('loop') }] },
+      ],
+    };
+  };
+
+  it('reads the slot-miss, dangling and cycle rules the same whether a row is owned or shared', () => {
+    const shape = (w: RuleWorld) =>
+      runRules(w).map((f) => `${f.ruleId}|${f.items.map((i) => i.id).join(',')}`).sort();
+    expect(shape(broken(true))).toEqual(shape(broken(false)));
+    // All three fire, so the agreement above is about findings rather than about two silent worlds.
+    expect(shape(broken(true))).toEqual([
+      'placeholder-dangling-reference|south', 'placeholder-reference-cycle|loop', 'placeholder-slot-miss|south',
+    ]);
+  });
+
+  it('gains the owner in the name once the row is owned, and nothing else', () => {
+    expect(only(broken(false), 'placeholder-slot-miss')[0].message).toContain('“Southern” carries no “Hair”');
+    expect(only(broken(true), 'placeholder-slot-miss')[0].message).toContain('“Molly › Southern” carries no “Hair”');
+  });
+
+  it('leaves the other rule’s finding standing — a fix repairs only what its row named', () => {
+    // Two stale references at once, one of each kind. The store's own release helper would clear both;
+    // a Fix button that quietly repaired a row the author never saw would be lying about its scope.
+    const both: RuleWorld = {
+      ...nested({ ownerId: 'gone' }),
+      placeholders: [
+        { id: 'molly', name: 'Molly', roll: false, values: phValues(['plainly dressed']) },
+        { id: 'north', name: 'Northern', values: phValues(['pale']), ownerId: 'gone' },
+        { id: 'south', name: 'Southern', values: phValues(['dark']), ownerId: 'molly' },
+      ],
+    };
+    const fixed = applyRuleFix(both, 'placeholder-owner-orphan');
+    expect(fixed.placeholders?.find((p) => p.id === 'north')?.ownerId).toBeUndefined();
+    expect(fixed.placeholders?.find((p) => p.id === 'south')?.ownerId).toBe('molly');
+  });
+});
+
+describe('shared row weight rules', () => {
+  const chip = (id: string) => `{{ph:${id}:world:pl-${id}}}`;
+
+  /** Molly sharing a top-level Eye Color, with her own weights laid over its pool. The chip value's id is
+   *  the override key, exactly as the panel writes it. */
+  const shared = (over: Record<string, number>, key = 'v-eyes'): RuleWorld => ({
+    ...world([{ id: 'e1', name: 'Maren', aiDescription: `Her eyes are ${chip('molly')}.` }]),
+    placeholders: [
+      { id: 'eyes', name: 'Eye Color', values: phValues(['blue', 'green', 'hazel']) },
+      {
+        id: 'molly', name: 'Molly', roll: false, values: [{ id: 'v-eyes', text: chip('eyes') }],
+        sharedWeights: { [key]: over },
+      },
+    ],
+  });
+
+  /** One level deeper: Molly shares Eye Color, which holds a Shade of its own. The key walks both. */
+  const deeper = (over: Record<string, number>, key = 'v-eyes/shade'): RuleWorld => ({
+    ...world([{ id: 'e1', name: 'Maren', aiDescription: `Her eyes are ${chip('molly')}.` }]),
+    placeholders: [
+      { id: 'shade', name: 'Shade', values: phValues(['pale', 'deep']) },
+      {
+        id: 'eyes', name: 'Eye Color', roll: false,
+        values: [{ id: 'v-shade', text: chip('shade') }, ...phValues(['blue'])],
+      },
+      {
+        id: 'molly', name: 'Molly', roll: false, values: [{ id: 'v-eyes', text: chip('eyes') }],
+        sharedWeights: { [key]: over },
+      },
+    ],
+  });
+
+  it('says nothing about an override that benches a value its original really carries', () => {
+    expect(runRules(shared({ [phValueId('blue')]: 0 }))).toEqual([]);
+    expect(runRules(deeper({ [phValueId('pale')]: 0 }))).toEqual([]);
+  });
+
+  it('flags a shared row weighting a value its original no longer carries', () => {
+    const found = only(shared({ [phValueId('blue')]: 0, [phValueId('grog')]: 3 }),
+      'placeholder-shared-weight-unknown-value');
+    expect(found).toHaveLength(1);
+    expect(found[0].severity).toBe('warning');
+    expect(found[0].section).toBe('placeholders');
+    // The override lives on the holder, so that is where Open lands and what the repair edits.
+    expect(found[0].items.map((i) => i.id)).toEqual(['molly']);
+    expect(found[0].message).toBe(
+      '“Molly” weights a value “Eye Color” no longer carries — that weight applies to nothing');
+  });
+
+  it('counts the dead weights when there is more than one', () => {
+    const found = only(shared({ [phValueId('grog')]: 3, [phValueId('mead')]: 1 }),
+      'placeholder-shared-weight-unknown-value');
+    expect(found[0].message).toBe(
+      '“Molly” weights 2 values “Eye Color” no longer carries — those weights apply to nothing');
+  });
+
+  it('names the original the key actually walks to, not the row it started from', () => {
+    const found = only(deeper({ [phValueId('grog')]: 0 }), 'placeholder-shared-weight-unknown-value');
+    expect(found).toHaveLength(1);
+    expect(found[0].message).toContain('“Shade”');
+    expect(found[0].message).not.toContain('“Eye Color”');
+  });
+
+  it('says nothing where the key’s own route is gone — a broken chip is the dangling rule’s finding', () => {
+    // Stated boundary: the override survives its row being cut only in a hand-edited file, and what it
+    // points through is already reported in the terms the author can act on.
+    expect(only(shared({ [phValueId('grog')]: 3 }, 'v-missing'),
+      'placeholder-shared-weight-unknown-value')).toEqual([]);
+    expect(only(deeper({ [phValueId('grog')]: 3 }, 'v-eyes/gone'),
+      'placeholder-shared-weight-unknown-value')).toEqual([]);
+  });
+
+  it('says nothing where the key walks into a placeholder the level above never held', () => {
+    // Shade is real and Eye Color is real, but Eye Color does not nest Shade, so no row ever opened this
+    // key. Following it anyway would weigh a pool this holder does not reach and report a defect in it.
+    const unheld: RuleWorld = {
+      ...world([{ id: 'e1', name: 'Maren', aiDescription: `Her eyes are ${chip('molly')}, ${chip('shade')}.` }]),
+      placeholders: [
+        { id: 'shade', name: 'Shade', values: phValues(['pale', 'deep']) },
+        { id: 'eyes', name: 'Eye Color', values: phValues(['blue', 'green']) },
+        {
+          id: 'molly', name: 'Molly', roll: false, values: [{ id: 'v-eyes', text: chip('eyes') }],
+          sharedWeights: { 'v-eyes/shade': { [phValueId('grog')]: 3 } },
+        },
+      ],
+    };
+    expect(only(unheld, 'placeholder-shared-weight-unknown-value')).toEqual([]);
+  });
+
+  it('leaves the original’s own weight map to the rule that already covers it', () => {
+    const w = shared({ [phValueId('blue')]: 0 });
+    const eyes = w.placeholders?.[0] as Placeholder;
+    const world2: RuleWorld = {
+      ...w,
+      placeholders: [{ ...eyes, weights: { [phValueId('grog')]: 2 } }, ...(w.placeholders ?? []).slice(1)],
+    };
+    expect(only(world2, 'placeholder-weight-unknown-value')).toHaveLength(1);
+    expect(only(world2, 'placeholder-shared-weight-unknown-value')).toEqual([]);
+  });
+
+  it('drops only the dead weights as its fix, keeping the bench the author meant', () => {
+    const fixed = applyRuleFix(shared({ [phValueId('blue')]: 0, [phValueId('grog')]: 3 }),
+      'placeholder-shared-weight-unknown-value');
+    expect(fixed.placeholders?.[1].sharedWeights).toEqual({ 'v-eyes': { [phValueId('blue')]: 0 } });
+  });
+
+  it('removes an emptied override map entirely — absent already means the original’s own odds', () => {
+    const fixed = applyRuleFix(shared({ [phValueId('grog')]: 3 }), 'placeholder-shared-weight-unknown-value');
+    const molly = fixed.placeholders?.[1];
+    expect(molly && 'sharedWeights' in molly).toBe(false);
+  });
+});
+
+/**
+ * A placeholder reads by its bare name at the top level and qualified with `›` under an owner, so a world
+ * carrying three rows named `Hair` says which Hair a finding is about. Every rule naming a placeholder goes
+ * through one helper, so a new rule cannot opt out of it.
+ */
+describe('placeholder names in findings', () => {
+  const chip = (id: string) => `{{ph:${id}:world:pl-${id}}}`;
+
+  const twins = (): RuleWorld => ({
+    ...world([{ id: 'e1', name: 'Maren', aiDescription: `She is ${chip('molly')}.` }]),
+    placeholders: [
+      { id: 'molly', name: 'Molly', roll: false, values: [{ id: 'v-hair', text: chip('hair') }] },
+      {
+        id: 'hair', name: 'Hair', ownerId: 'molly', values: phValues(['flaxen', 'peat-brown']),
+        weights: { [phValueId('gone')]: 2 },
+      },
+    ],
+  });
+
+  it('qualifies an owned placeholder by its owner', () => {
+    const found = only(twins(), 'placeholder-weight-unknown-value');
+    expect(found).toHaveLength(1);
+    expect(found[0].message).toContain('“Molly › Hair”');
+    // The item keeps the placeholder's own id, so Open still lands on the row rather than on its owner.
+    expect(found[0].items.map((i) => i.id)).toEqual(['hair']);
+  });
+
+  it('leaves a top-level placeholder bare, since nothing above it needs saying', () => {
+    const flat = twins();
+    const found = only({ ...flat, placeholders: (flat.placeholders ?? []).map((p) => {
+      const { ownerId: _owned, ...rest } = p;
+      return rest;
+    }) }, 'placeholder-weight-unknown-value');
+    expect(found[0].message).toContain('“Hair”');
+    expect(found[0].message).not.toContain('›');
+  });
+});
+
 describe('dictionary visibility rules', () => {
   const twoEntries = (first: Partial<DictionaryEntry>, second: Partial<DictionaryEntry>) => base({
     dictionaries: [book([
@@ -1916,6 +2185,30 @@ const FIX_FIXTURES: Record<string, RuleWorld> = {
     ...world([{ id: 'e1', name: 'Maren', aiDescription: 'Fond of {{ph:p1:world:pl1}}.' }]),
     placeholders: [{ id: 'p1', name: 'Vice', values: phValues(['ale', 'dice']), weights: { [phValueId('ale')]: 2, [phValueId('grog')]: 3 } }],
   },
+  // A shared row Molly benches a colour on, plus one the pool lost — the live bench has to survive the repair.
+  'placeholder-shared-weight-unknown-value': {
+    ...world([{ id: 'e1', name: 'Maren', aiDescription: 'Her eyes are {{ph:molly:world:pl1}}.' }]),
+    placeholders: [
+      { id: 'eyes', name: 'Eye Color', values: phValues(['blue', 'green', 'hazel']) },
+      {
+        id: 'molly', name: 'Molly', roll: false, values: [{ id: 'v-eyes', text: '{{ph:eyes:world:pl2}}' }],
+        sharedWeights: { 'v-eyes': { [phValueId('blue')]: 0, [phValueId('grog')]: 3 } },
+      },
+    ],
+  },
+  // An owner reference naming nothing at all, and one naming an owner that dropped the value it was written
+  // against. Only a hand-edited file reaches either; both repair to the top level the tree already draws.
+  'placeholder-owner-orphan': {
+    ...world([{ id: 'e1', name: 'Maren', aiDescription: 'She is {{ph:north:world:pl1}}.' }]),
+    placeholders: [{ id: 'north', name: 'Northern', values: phValues(['pale']), ownerId: 'gone' }],
+  },
+  'placeholder-owner-dropped': {
+    ...world([{ id: 'e1', name: 'Maren', aiDescription: 'She is {{ph:molly:world:pl1}}, and {{ph:north:world:pl2}}.' }]),
+    placeholders: [
+      { id: 'molly', name: 'Molly', roll: false, values: phValues(['plainly dressed']) },
+      { id: 'north', name: 'Northern', values: phValues(['pale']), ownerId: 'molly' },
+    ],
+  },
   // JPEG magic numbers under a PNG label — the fix rewrites the label to what the bytes say.
   'image-mislabeled': world([{ id: 'e1', name: 'Maren', images: ['data:image/png;base64,/9j/4AAQSkZJRgAB'] }]),
 };
@@ -2132,8 +2425,11 @@ const RULE_SCOPE: Record<string, 'simple' | 'advanced'> = {
   'placeholder-empty-record': 'advanced',
   'placeholder-reference-cycle': 'advanced',
   'placeholder-slot-miss': 'advanced',
+  'placeholder-owner-dropped': 'advanced',
+  'placeholder-owner-orphan': 'advanced',
   'placeholder-unused': 'advanced',
   'placeholder-pinned-unused': 'advanced',
+  'placeholder-shared-weight-unknown-value': 'advanced',
   'placeholder-weight-unknown-value': 'advanced',
   'stat-ai-lock-frozen': 'advanced',
   'stat-code-execution': 'advanced',
