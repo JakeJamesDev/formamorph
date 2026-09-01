@@ -8,11 +8,12 @@
  */
 import {
   collectPlaceholderPlacements, decodePlaceholderToken, describePlaceholders, encodePlaceholderToken,
-  hasPlaceholders, parsePlaceholderText, placeholderChildren, placeholderIsChoice, placeholderKindNoun,
-  placeholderWeight,
-  resolvePlaceholders,
+  hasPlaceholders, lonePlaceholderToken, parsePlaceholderText, placeholderChildren, placeholderIsChoice,
+  placeholderKindNoun, placeholderWeight,
+  resolvePlaceholders, SHARED_PATH_SEP,
   type PlaceholderFinding, type PlaceholderPick, type PlaceholderToken,
 } from '@/lib/placeholders';
+import { holdsAsChip, qualifiedPlaceholderName } from '@/lib/placeholderTree';
 import { matchKey } from '@/lib/entityMatch';
 import { activeDescriptor } from '@/lib/statContext';
 import {
@@ -284,6 +285,14 @@ const namedItem = (id: string, name: string | undefined, world: RuleWorld, secti
   ...(section ? { section } : {}),
 });
 
+/**
+ * A placeholder as a finding names it: bare at the top level, and qualified with `›` under an owner, so a
+ * world carrying three rows called `Hair` says which Hair. The item keeps the placeholder's own id, so Open
+ * still lands on the row rather than on whatever owns it.
+ */
+const placeholderItem = (id: string, world: RuleWorld, section?: FindingSection): FindingItem =>
+  namedItem(id, qualifiedPlaceholderName(world.placeholders ?? [], id) ?? undefined, world, section);
+
 /** An entry as its list labels it: the free name, else the first keyword. */
 const entryItem = (entry: DictionaryEntry, world: RuleWorld): FindingItem =>
   namedItem(entry.id, entry.name || entry.key?.[0], world);
@@ -489,7 +498,7 @@ const placeholderUnused: Rule = {
   check: (world) => unplacedPlaceholders(world)
     .filter(({ pinnedBy }) => pinnedBy.length === 0)
     .map(({ placeholder }) => {
-      const item = namedItem(placeholder.id, placeholder.name, world);
+      const item = placeholderItem(placeholder.id, world);
       return finding(placeholderUnused, `${quote(item.name)} is defined but never used`, [item]);
     }),
   fix: (world) => {
@@ -514,7 +523,7 @@ const placeholderPinnedUnused: Rule = {
     // A trait's chip carries every flagged placeholder it pins. The grouped row dedups items by id, so a
     // trait pinning two of them lands beside only the first — the label, not adjacency, says which is whose.
     const flaggedNames = new Map(flagged.map(({ placeholder }) =>
-      [placeholder.id, namedItem(placeholder.id, placeholder.name, world).name]));
+      [placeholder.id, placeholderItem(placeholder.id, world).name]));
     const traitItem = (t: Trait): FindingItem => {
       const pinned = (t.placeholderPins ?? [])
         .map((pin) => flaggedNames.get(pin.placeholderId))
@@ -523,7 +532,7 @@ const placeholderPinnedUnused: Rule = {
       return { ...base, name: `${base.name} (pins ${listNames(pinned.map(quote))})` };
     };
     return flagged.map(({ placeholder, pinnedBy }) => {
-      const item = namedItem(placeholder.id, placeholder.name, world);
+      const item = placeholderItem(placeholder.id, world);
       return finding(
         placeholderPinnedUnused,
         `${quote(item.name)} is pinned by ${listNames(pinnedBy.map((t) => namedItem(t.id, t.name, world).name))} but placed in no text — the pinned value never shows up`,
@@ -1140,7 +1149,7 @@ const entityNameInWildcardPool: Rule = {
         return finding(
           entityNameInWildcardPool,
           `${quote(item.name)} is also a value of the Wildcard ${quote(ph.name)} — a roll that lands on it reads as a mention of the entity`,
-          [item, namedItem(ph.id, ph.name, world, 'placeholders')],
+          [item, placeholderItem(ph.id, world, 'placeholders')],
         );
       });
   }),
@@ -1363,7 +1372,7 @@ const placeholderWeightUnknownValue: Rule = {
   check: (world) => (world.placeholders ?? []).flatMap((ph) => {
     const dead = deadWeightKeys(ph);
     if (dead.length === 0) return [];
-    const item = namedItem(ph.id, ph.name, world);
+    const item = placeholderItem(ph.id, world);
     // A dead key names a value id, which says nothing to an author, so the count carries the finding.
     return [finding(
       placeholderWeightUnknownValue,
@@ -1396,7 +1405,7 @@ const wildcardSingleValue: Rule = {
     // One authored value is a Variable, which is supposed to be fixed — only weights can strand a Wildcard.
     .filter((ph) => (ph.values ?? []).length >= 2 && drawableValues(ph).length === 1)
     .map((ph) => {
-      const item = namedItem(ph.id, ph.name, world);
+      const item = placeholderItem(ph.id, world);
       return finding(
         wildcardSingleValue,
         `${quote(item.name)} benches every value but ${quote(drawableValues(ph)[0].text)} by weight, so every roll lands the same`,
@@ -1458,8 +1467,8 @@ const placeholderSlotMiss: Rule = {
   section: 'placeholders',
   advanced: true,
   summary: (count) =>
-    `${count} placed paths name a part some variant doesn’t carry, so they resolve to nothing whenever it rolls`,
-  // Reported against the variant that came up short, not the chip that asked: one missing part strands every
+    `${count} placed paths name a slot some variant doesn’t carry, so they resolve to nothing whenever it rolls`,
+  // Reported against the variant that came up short, not the chip that asked: one missing slot strands every
   // sentence pointing at it, and the repair is always in the placeholder, never in the text.
   check: (world) => {
     const rounds = probeRounds(world);
@@ -1473,8 +1482,7 @@ const placeholderSlotMiss: Rule = {
       }
     }
     return [...misses.values()].map(({ placeholderId, asked }) => {
-      const ph = (world.placeholders ?? []).find((p) => p.id === placeholderId);
-      const item = namedItem(placeholderId, ph?.name, world);
+      const item = placeholderItem(placeholderId, world);
       return finding(
         placeholderSlotMiss,
         `${quote(item.name)} carries no ${quote(asked)}, so a placed ${quote(asked)} path routed through it resolves to nothing`,
@@ -1498,7 +1506,7 @@ const placeholderDanglingReference: Rule = {
     const drilledIntoNothing = (token: PlaceholderToken) =>
       (token.path ?? []).some((segment) => segment.kind === 'val' && gone(segment.ref));
     const inValues = (world.placeholders ?? []).flatMap((ph) => {
-      const item = namedItem(ph.id, ph.name, world);
+      const item = placeholderItem(ph.id, world);
       return (ph.values ?? [])
         .flatMap((v) => chipTokens(v.text))
         .filter((token) => gone(token.id) || drilledIntoNothing(token))
@@ -1560,9 +1568,8 @@ const placeholderReferenceCycle: Rule = {
   summary: (count) => `${count} placeholders reference themselves in a loop, so every chip of one shows nothing`,
   check: (world) => {
     const placeholders = world.placeholders ?? [];
-    const byId = new Map(placeholders.map((ph) => [ph.id, ph]));
     return referenceCycles(placeholders).map((ring) => {
-      const items = ring.map((id) => namedItem(id, byId.get(id)?.name, world));
+      const items = ring.map((id) => placeholderItem(id, world));
       const loop = items.length === 1
         ? `${quote(items[0].name)} references itself`
         : `${listNames(items.map((i) => quote(i.name)))} reference each other in a loop`;
@@ -1591,7 +1598,7 @@ const placeholderEmptyRecord: Rule = {
         // a rule saying so in the terms the author can act on.
         if (raised.some((f) => f.kind === 'cycle' || f.kind === 'dangling' || f.kind === 'depth')) return [];
         if (results.some((text) => text !== '')) return [];
-        const item = namedItem(ph.id, ph.name, world);
+        const item = placeholderItem(ph.id, world);
         return [finding(
           placeholderEmptyRecord,
           placeholderKindNoun(ph) === 'Object'
@@ -1608,18 +1615,162 @@ const placeholderDuplicateSlot: Rule = {
   severity: 'warning',
   section: 'placeholders',
   advanced: true,
-  summary: (count) => `${count} placeholders carry two parts under one name, so a path naming it always takes the first`,
+  summary: (count) => `${count} placeholders carry two slots under one name, so a path naming it always takes the first`,
   check: (world) => (world.placeholders ?? []).flatMap((ph) => {
     const names = placeholderChildren(ph, world.placeholders ?? []).map((child) => child.target.name);
     const repeated = [...new Set(names.filter((name, i) => names.indexOf(name) !== i))];
     if (repeated.length === 0) return [];
-    const item = namedItem(ph.id, ph.name, world);
+    const item = placeholderItem(ph.id, world);
     return [finding(
       placeholderDuplicateSlot,
       `${quote(item.name)} carries ${listNames(repeated.map(quote))} more than once — a path naming it always takes the first, and the rest are unreachable`,
       [item],
     )];
   }),
+};
+
+// ── Ownership and sharing ─────────────────────────────────────────────────────────────────────────────────
+//
+// Three conditions the app's own gestures cannot produce: the store releases a stale owner reference on
+// every write, and cutting a shared row prunes the override map with it. A hand-edited world is what gets
+// here, and none of it is visible anywhere else — an owner reference is data, and a dead override key
+// silently changes no odds at all.
+
+/**
+ * The original a shared row's override key names: the value holding the row's chip, then each placeholder
+ * the key walks below it. `null` where any step is gone — a key routing through nothing weights nothing,
+ * and the broken chip it routes through is already the dangling rule's finding.
+ */
+const sharedWeightOriginal = (
+  holder: Placeholder, byId: Map<string, Placeholder>, key: string,
+): Placeholder | null => {
+  const [valueId, ...under] = key.split(SHARED_PATH_SEP);
+  const value = (holder.values ?? []).find((v) => v.id === valueId);
+  const lone = value && lonePlaceholderToken(value.text);
+  let at = lone ? byId.get(decodePlaceholderToken(lone)?.id ?? '') : undefined;
+  for (const id of under) {
+    if (!at || !holdsAsChip(at, id)) return null;
+    at = byId.get(id);
+  }
+  return at ?? null;
+};
+
+/** Each of a holder's overrides that weights values its original no longer carries — the twin of
+ *  {@link deadWeightKeys} for a shared row, whose weights live on the holder rather than on the pool. */
+const deadSharedWeights = (
+  holder: Placeholder, byId: Map<string, Placeholder>,
+): Array<{ key: string; original: Placeholder; dead: string[] }> =>
+  Object.entries(holder.sharedWeights ?? {}).flatMap(([key, map]) => {
+    const original = sharedWeightOriginal(holder, byId, key);
+    if (!original) return [];
+    const ids = new Set((original.values ?? []).map((v) => v.id));
+    const dead = Object.keys(map).filter((id) => !ids.has(id));
+    return dead.length ? [{ key, original, dead }] : [];
+  });
+
+const placeholdersById = (world: RuleWorld) =>
+  new Map((world.placeholders ?? []).map((ph) => [ph.id, ph]));
+
+const placeholderSharedWeightUnknownValue: Rule = {
+  id: 'placeholder-shared-weight-unknown-value',
+  severity: 'warning',
+  section: 'placeholders',
+  advanced: true,
+  summary: (count) => `${count} shared rows weight values their original no longer carries`,
+  check: (world) => {
+    const byId = placeholdersById(world);
+    return (world.placeholders ?? []).flatMap((ph) => deadSharedWeights(ph, byId).map(({ original, dead }) => {
+      const item = placeholderItem(ph.id, world);
+      const from = quote(placeholderItem(original.id, world).name);
+      // Dead keys are value ids, which say nothing to an author, so the count carries the finding.
+      return finding(
+        placeholderSharedWeightUnknownValue,
+        dead.length === 1
+          ? `${quote(item.name)} weights a value ${from} no longer carries — that weight applies to nothing`
+          : `${quote(item.name)} weights ${dead.length} values ${from} no longer carries — those weights apply to nothing`,
+        [item],
+      );
+    }));
+  },
+  fix: (world) => {
+    const byId = placeholdersById(world);
+    return withSlice(world, 'placeholders', mapChanged(world.placeholders ?? [], (ph) => {
+      const dead = deadSharedWeights(ph, byId);
+      if (dead.length === 0) return ph;
+      const drop = new Map(dead.map((d) => [d.key, new Set(d.dead)]));
+      const kept = Object.entries(ph.sharedWeights ?? {}).flatMap(([key, map]) => {
+        const gone = drop.get(key);
+        if (!gone) return [[key, map] as const];
+        const live = Object.entries(map).filter(([id]) => !gone.has(id));
+        return live.length ? [[key, Object.fromEntries(live)] as const] : [];
+      });
+      // An override the repair empties goes entirely — absent already means the original's own odds.
+      if (kept.length === 0) {
+        const { sharedWeights: _dead, ...rest } = ph;
+        return rest;
+      }
+      return { ...ph, sharedWeights: Object.fromEntries(kept) };
+    }));
+  },
+};
+
+/** Every placeholder whose owner reference points at nothing that can hold it, split by which half is
+ *  wrong: the owner is not in the world at all, or it is and no longer holds the placeholder as a value. */
+const staleOwners = (world: RuleWorld, kind: 'orphan' | 'dropped'): Placeholder[] => {
+  const byId = placeholdersById(world);
+  return (world.placeholders ?? []).filter((ph) => {
+    if (ph.ownerId === undefined) return false;
+    const owner = byId.get(ph.ownerId);
+    return kind === 'orphan' ? !owner : !!owner && !holdsAsChip(owner, ph.id);
+  });
+};
+
+/** Clear the owner reference on exactly the placeholders the calling rule flagged — never on the other
+ *  rule's, so a Fix button repairs only the rows its own finding named. */
+const releaseOwners = (world: RuleWorld, kind: 'orphan' | 'dropped'): RuleWorld => {
+  const stale = new Set(staleOwners(world, kind).map((ph) => ph.id));
+  return withSlice(world, 'placeholders', mapChanged(world.placeholders ?? [], (ph) => {
+    if (!stale.has(ph.id)) return ph;
+    const { ownerId: _gone, ...rest } = ph;
+    return rest;
+  }));
+};
+
+const placeholderOwnerOrphan: Rule = {
+  id: 'placeholder-owner-orphan',
+  severity: 'warning',
+  section: 'placeholders',
+  advanced: true,
+  summary: (count) => `${count} placeholders belong to a placeholder that doesn’t exist`,
+  check: (world) => staleOwners(world, 'orphan').map((ph) => {
+    const item = placeholderItem(ph.id, world);
+    return finding(
+      placeholderOwnerOrphan,
+      `${quote(item.name)} belongs to a placeholder that no longer exists, so it sits at the top level instead`,
+      [item],
+    );
+  }),
+  // Dropping the reference states what the tree already draws; whose it should be instead is the author's
+  // call, made by dragging it there.
+  fix: (world) => releaseOwners(world, 'orphan'),
+};
+
+const placeholderOwnerDropped: Rule = {
+  id: 'placeholder-owner-dropped',
+  severity: 'warning',
+  section: 'placeholders',
+  advanced: true,
+  summary: (count) => `${count} owned placeholders are no longer held by the placeholder they belong to`,
+  check: (world) => staleOwners(world, 'dropped').map((ph) => {
+    const item = placeholderItem(ph.id, world);
+    const owner = quote(placeholderItem(ph.ownerId ?? '', world).name);
+    return finding(
+      placeholderOwnerDropped,
+      `${quote(item.name)} says it belongs to ${owner}, which no longer holds it — so it sits at the top level instead`,
+      [item],
+    );
+  }),
+  fix: (world) => releaseOwners(world, 'dropped'),
 };
 
 // ── Dictionary authoring, continued ───────────────────────────────────────────────────────────────────────
@@ -1828,6 +1979,7 @@ export const RULES: readonly Rule[] = [
   placeholderWeightUnknownValue, wildcardSingleValue,
   placeholderSlotMiss, placeholderDanglingReference, placeholderReferenceCycle, placeholderEmptyRecord,
   placeholderDuplicateSlot,
+  placeholderSharedWeightUnknownValue, placeholderOwnerOrphan, placeholderOwnerDropped,
   dictionaryKeywordSubstring, dictionaryDisabled,
   worldEmptySystemPrompt, worldNoReadme, worldOversizedImages, imageNotWebp, imageMislabeled,
 ];
