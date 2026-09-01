@@ -18,11 +18,12 @@ interface EventAckModalProps {
   /** Open the place the event's content lives — the contest tab, for a contest. */
   onOpenEvent?: (event: ServerEvent) => void;
   /**
-   * Hold the poster back while something else has the screen — the first-run intro animation.
+   * Hold the poster back while something else has the screen — the first-run intro animation, or the age
+   * gate, which has to be answered before anything community-run is shown at all.
    *
    * A poster that lands over the intro asks for attention before the menu it belongs to has arrived. It
-   * is a hold rather than a delay: with no intro playing there is nothing to wait for, so a returning
-   * player still gets it as soon as the menu is up.
+   * is a hold rather than a delay: with nothing else on screen there is nothing to wait for, so a
+   * returning player still gets it as soon as the menu is up.
    */
   held?: boolean;
 }

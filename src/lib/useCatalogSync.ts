@@ -3,6 +3,7 @@ import { toast } from "react-toastify";
 import WorldStorageService from "@/services/WorldStorageService";
 import { getCatalog, replaceCatalog } from "@/lib/worldCatalog";
 import { COMMUNITY_ENABLED } from "@/lib/featureFlags";
+import { isAgeAttested } from "@/lib/ageGate";
 import { type WorldRecord } from "@/components/WorldDetails";
 
 /**
@@ -51,9 +52,10 @@ export function useCatalogSync(open: boolean) {
     }
   };
 
-  // Load the world catalog when the community browser opens (never in the hosted build — no remote server).
+  // Load the world catalog when the community browser opens (never in the hosted build — no remote server,
+  // and never before the age gate is answered — the catalog is the listing of what other players wrote).
   useEffect(() => {
-    if (open && COMMUNITY_ENABLED) {
+    if (open && COMMUNITY_ENABLED && isAgeAttested()) {
       loadCatalog();
     } else if (!open) {
       // The next open must wait for its own refresh before a lookup miss means anything.

@@ -42,8 +42,10 @@ export type DevView = (typeof DEV_VIEWS)[number];
  *  reachable on a profile with nothing published and no event really running. `worldPrompts` opens
  *  MainMenu's read-only Custom Prompts viewer; with no world selected it renders a canned sample
  *  override, so it's reachable on an empty library. `aiContext` is in-game (GameViewer) and opens the
- *  AI Context inspector — empty before any turn, so pair it with `fixture=…` for real captured turns. */
-export const DEV_MODALS = ['settings', 'entity', 'export', 'menu', 'worldEditor', 'intro', 'avatar', 'backup', 'aiSetup', 'entityEditor', 'dictionaryEditor', 'modelDetails', 'community', 'memoryManager', 'profile', 'feedbackHub', 'adminPanel', 'editText', 'location', 'changelog', 'eventAck', 'publish', 'worldPrompts', 'aiContext'] as const;
+ *  AI Context inspector — empty before any turn, so pair it with `fixture=…` for real captured turns.
+ *  `ageGate` raises the community age attestation on demand, so its copy stays checkable on a profile
+ *  that has already accepted it. */
+export const DEV_MODALS = ['settings', 'entity', 'export', 'menu', 'worldEditor', 'intro', 'avatar', 'backup', 'aiSetup', 'entityEditor', 'dictionaryEditor', 'modelDetails', 'community', 'memoryManager', 'profile', 'feedbackHub', 'adminPanel', 'editText', 'location', 'changelog', 'eventAck', 'publish', 'worldPrompts', 'aiContext', 'ageGate'] as const;
 export type DevModal = (typeof DEV_MODALS)[number];
 
 /** Coverage ledger: tabbed surface → the sub-tabs the router can target (via `tab=…`). Kept in lockstep

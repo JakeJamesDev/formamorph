@@ -40,3 +40,13 @@ export function promisifyRequest<T>(request: IDBRequest<T>): Promise<T> {
     request.onerror = () => reject(request.error);
   });
 }
+
+/**
+ * Empty one object store.
+ *
+ * A transaction rather than a database delete: a delete is blocked by any connection still open, and
+ * anything holding one — a card mid-render, another tab — would leave the caller's purge silently undone.
+ */
+export async function clearStore(db: IDBDatabase, store: string): Promise<void> {
+  await promisifyRequest(db.transaction([store], 'readwrite').objectStore(store).clear());
+}

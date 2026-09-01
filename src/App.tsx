@@ -10,6 +10,7 @@ import { UserProfileProvider } from './contexts/UserProfileContext';
 import { SettingsProvider } from './contexts/SettingsContext';
 import { GameplayProvider } from './contexts/GameplayContext';
 import { PlaceholderSessionProvider, usePlaceholderSession } from './contexts/PlaceholderSessionContext';
+import { AgeGateProvider } from './contexts/AgeGateContext';
 import { LocalEngineManager } from './components/LocalEngineManager';
 import { IntroSequence } from './components/IntroSequence';
 import { TooltipProvider } from './components/ui/tooltip';
@@ -156,7 +157,11 @@ function App() {
               {/* One profile dialog for the whole app: names are clicked from inside other dialogs, and a
                   nested one would inherit their scroll lock and their width. */}
               <UserProfileProvider>
-                <AppViews />
+                {/* The age attestation that stands in front of every community surface. Above the view
+                    switch because it also answers at boot, before anything is opened. */}
+                <AgeGateProvider>
+                  <AppViews />
+                </AgeGateProvider>
               </UserProfileProvider>
             </PlaceholderSessionProvider>
           </GameDataProvider>
