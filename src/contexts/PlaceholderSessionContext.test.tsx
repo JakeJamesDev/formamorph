@@ -149,6 +149,23 @@ describe('PlaceholderSessionProvider', () => {
     expect(HAIR.values).toContain(h.rolls().world?.[HAIR.id]);
   });
 
+  it('rolls a Wildcard reached only through a trait’s pin', () => {
+    // A pin masks a roll with text of its own, and that text is chip-capable. A chip there is read whenever
+    // the trait is on, so its roll has to exist before the first render that shows it.
+    const w = world();
+    w.traits = [{
+      id: 't1', name: 'Charmed', statChanges: [],
+      placeholderPins: [{
+        placeholderId: TOWN.id,
+        value: `${encodePlaceholderToken({ id: HAIR.id, mode: 'unique', placementId: 'pin-1' })} Hollow`,
+      }],
+    }];
+    const h = mount();
+    h.loadWorld(w);
+    h.begin();
+    expect(HAIR.values).toContain(h.rolls().unique?.['pin-1']);
+  });
+
   it('drops its rolls when the session ends, so the next entry draws again', () => {
     const h = mount();
     h.loadWorld();

@@ -254,15 +254,18 @@ export function collectPlaceholderPlacements(texts: string[]): {
  * Priming *is* a resolution pass with its minted rolls collected, rather than a second walk. Values are
  * chip-capable, so a nested choice's key depends on the value its parent drew — only resolution knows which
  * keys a render will read, and a key priming misses is a value that redraws on every render. Pins are
- * deliberately absent: a pin masks a roll at resolve time, so the roll under it still has to be drawn.
+ * deliberately not applied: a pin masks a roll at resolve time, so the roll under it still has to be drawn.
+ * `pinTexts` (placeholder id → every text some trait pins it to) are walked *beside* each roll instead, under
+ * the same chain, so a pin's own chips are settled before the trait that lays it is switched on.
  */
 export function primeRolls(
   placeholders: Placeholder[],
   texts: string[],
   existing: PlaceholderRolls = {},
   pick: PlaceholderPick = weightedPick,
+  pinTexts?: Record<string, readonly string[]>,
 ): PlaceholderRolls {
-  const ctx = createResolveCtx({ placeholders, rolls: existing, pick });
+  const ctx = createResolveCtx({ placeholders, rolls: existing, pick, pinTexts });
   for (const text of texts) if (text) resolveText(text, ctx);
   return {
     world: { ...(existing.world ?? {}), ...ctx.minted.world },
@@ -831,6 +834,9 @@ interface ResolveCtx {
   setRoll?: (scope: PlaceholderMode, key: string, value: string) => void;
   pick: PlaceholderPick;
   pins?: Record<string, string>;
+  /** Priming only: every text some trait pins each placeholder to, walked beside its roll so the keys a
+   *  pin's chips read exist before the trait is on. */
+  pinTexts?: Record<string, readonly string[]>;
   report: (finding: PlaceholderFinding) => void;
   scope: PlaceholderMode;
   /** Placement chain keying Unique rolls; `''` under World. */
@@ -1047,6 +1053,15 @@ function selectValue(ph: Placeholder, ctx: ResolveCtx): string {
   return rolled;
 }
 
+/** The pin texts a priming pass walks beside `ph`'s roll; nothing outside priming. */
+const pinTextsFor = (ph: Placeholder, ctx: ResolveCtx): readonly string[] => ctx.pinTexts?.[ph.id] ?? [];
+
+/** The chip a pin's text is, when it is exactly one — the child a drill or slot walks into through the pin. */
+function pinChip(pin: string): PlaceholderToken | null {
+  const raw = lonePlaceholderToken(pin);
+  return raw ? decodePlaceholderToken(raw) : null;
+}
+
 /** Resolve a whole placeholder: a choice shows one value, a record joins them all. */
 function resolvePh(ph: Placeholder, ctx: ResolveCtx): string {
   if (ctx.depth > PLACEHOLDER_DEPTH_CAP) {
@@ -1065,6 +1080,8 @@ function resolvePh(ph: Placeholder, ctx: ResolveCtx): string {
   // A pin is text the author typed, not one of these values, so it crosses into nothing this row could
   // weight.
   if (pinned != null) return resolveValue(pinned, inner);
+  // Every pin a trait could lay over this placeholder reads under this same context once the trait is on.
+  for (const text of pinTextsFor(ph, ctx)) resolveValue(text, inner);
   const values = ph.values ?? [];
   if (!values.length) return '';
   if (placeholderIsChoice(ph)) {
@@ -1136,17 +1153,19 @@ function walkSegs(ph: Placeholder, segs: WalkSegment[], ctx: ResolveCtx): string
   if (seg.kind === 'val') {
     // An authored drill is a pre-selection, so a pin overrides it; a path typed into world text names the
     // branch it says and stays pin-immune.
+    const viaPin = (pin: string): string | null => {
+      if (!rest.length) return resolveValue(pin, next);
+      const token = pinChip(pin);
+      return token ? intoChild(token, rest) : null;
+    };
     const pinned = seg.authored ? ctx.pins?.[ph.id] : undefined;
     if (pinned != null) {
-      if (!rest.length) return resolveValue(pinned, next);
-      const raw = lonePlaceholderToken(pinned);
-      const token = raw ? decodePlaceholderToken(raw) : null;
-      if (!token) {
-        ctx.report({ kind: 'slot-miss', placeholderId: ph.id, asked: seg.ref, segment: 'val' });
-        return '';
-      }
-      return intoChild(token, rest);
+      const out = viaPin(pinned);
+      if (out != null) return out;
+      ctx.report({ kind: 'slot-miss', placeholderId: ph.id, asked: seg.ref, segment: 'val' });
+      return '';
     }
+    if (seg.authored) for (const text of pinTextsFor(ph, ctx)) viaPin(text);
     const hit = childChips(ph.values ?? [], ctx.byId).find((c) => c.target.id === seg.ref);
     if (!hit) {
       ctx.report({ kind: 'slot-miss', placeholderId: ph.id, asked: seg.ref, segment: 'val' });
@@ -1160,9 +1179,13 @@ function walkSegs(ph: Placeholder, segs: WalkSegment[], ctx: ResolveCtx): string
   const direct = childChips(ph.values ?? [], ctx.byId).find((c) => c.target.name === seg.name);
   if (direct) return intoChild(direct.token, rest, { holder: ph, value: direct.value });
   if (placeholderIsChoice(ph)) {
+    // A pin is what `selectValue` hands back while its trait is on, so the slot routes through it as well.
+    for (const text of pinTextsFor(ph, ctx)) {
+      const token = pinChip(text);
+      if (token) intoChild(token, segs);
+    }
     const drawn = selectValue(ph, next);
-    const raw = lonePlaceholderToken(drawn);
-    const token = raw ? decodePlaceholderToken(raw) : null;
+    const token = pinChip(drawn);
     if (token) return intoChild(token, segs, valueCrossing(ph, drawn));
   }
   ctx.report({ kind: 'slot-miss', placeholderId: ph.id, asked: seg.name, segment: 'slot' });
@@ -1182,8 +1205,9 @@ export function resolvePlaceholders(text: string, opts: ResolveOptions): string 
 
 /** A fresh root context. Held across several texts by the priming and preview passes, so their `minted` rolls
  *  accumulate and every text after the first reads what the ones before it drew. */
-function createResolveCtx(opts: ResolveOptions): ResolveCtx {
-  const { placeholders, rolls, setRoll, pick = weightedPick, pins, onFinding } = opts;
+// `pinTexts` stays off `ResolveOptions`: a render pass never walks pins it is not showing.
+function createResolveCtx(opts: ResolveOptions & Pick<ResolveCtx, 'pinTexts'>): ResolveCtx {
+  const { placeholders, rolls, setRoll, pick = weightedPick, pins, pinTexts, onFinding } = opts;
   return {
     byId: new Map(placeholders.map((p) => [p.id, p])),
     rolls,
@@ -1191,6 +1215,7 @@ function createResolveCtx(opts: ResolveOptions): ResolveCtx {
     setRoll,
     pick,
     pins,
+    pinTexts,
     report: onFinding ?? (() => {}),
     scope: 'world',
     chain: '',

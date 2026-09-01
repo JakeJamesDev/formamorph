@@ -92,6 +92,22 @@ export function activePlaceholderPins(
   return out;
 }
 
+/** Placeholder id → every text some trait pins it to, whichever traits end up active — what a priming
+ *  pass walks beside the rolls, since a pin's chips are read the moment its trait is on. */
+export function allPinTexts(
+  traits: readonly Trait[],
+  placeholders: readonly Placeholder[] = [],
+): Record<string, string[]> {
+  const out: Record<string, string[]> = {};
+  for (const trait of traits) {
+    for (const [id, text] of Object.entries(activePlaceholderPins([trait], placeholders))) {
+      const texts = (out[id] ??= []);
+      if (!texts.includes(text)) texts.push(text);
+    }
+  }
+  return out;
+}
+
 /** The pins for a trait's OWN text: its pins over the active ones. A pinning trait's card always reads its
  *  own value — "Sworn to Marrow" stays "Sworn to Marrow" whatever else is ticked — because the card
  *  advertises what picking the trait does, not what the current selection happens to have made true.

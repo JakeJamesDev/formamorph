@@ -357,3 +357,44 @@ describe('opening display of nested chips', () => {
     expect(opening.traits[0].pins).toEqual([{ placeholder: 'Look', value: 'ash tresses' }]);
   });
 });
+
+describe('a pin carrying a Unique chip', () => {
+  // ph-coin is placed in the system prompt; the default trait pins it to text carrying a Unique chip of
+  // ph-gift, a placement no world text holds. That chip is read on every render the pin shows.
+  const pinned = (): OpeningWorld => world({
+    entities: [entities[0]],
+    traits: [{
+      id: 't-charm', name: 'Charmed', isDefault: true, statChanges: [],
+      placeholderPins: [{ placeholderId: 'ph-coin', value: `${chip('ph-gift', 'unique', 'pin-u1')} charm` }],
+    }],
+  });
+
+  it('primes the chip, so every read of the instrument shows the same pinned text', () => {
+    const w = pinned();
+    const rolls = primeOpeningRolls(w, {}, pickFirst);
+    expect(rolls.unique?.['pin-u1']).toBe('knife');
+    for (let i = 0; i < 20; i++) {
+      expect(buildOpening(w, lensAt(w), rolls).traits[0].pins)
+        .toEqual([{ placeholder: 'Coin Bird', value: 'knife charm' }]);
+    }
+  });
+
+  it('rerolls the chip with the other unpinned wildcards', () => {
+    const w = pinned();
+    const after = rerollOpeningRolls(w, lensAt(w), primeOpeningRolls(w, {}, pickFirst), pickLast);
+    expect(after.unique?.['pin-u1']).toBe('shell');
+    expect(buildOpening(w, lensAt(w), after).traits[0].pins).toEqual([{ placeholder: 'Coin Bird', value: 'shell charm' }]);
+  });
+
+  it('keeps the chip’s frozen roll across a reroll while a second trait pins its placeholder', () => {
+    const w = pinned();
+    w.traits = [...w.traits!, {
+      id: 't-gift', name: 'Gifted', isDefault: true, statChanges: [],
+      placeholderPins: [{ placeholderId: 'ph-gift', value: 'coin' }],
+    }];
+    const before = primeOpeningRolls(w, {}, pickFirst);
+    expect(before.unique?.['pin-u1']).toBe('knife');
+    // Masked by the Gifted pin, so the reroll leaves it alone — the value the pin hides is not lost.
+    expect(rerollOpeningRolls(w, lensAt(w), before, pickLast).unique?.['pin-u1']).toBe('knife');
+  });
+});
