@@ -155,7 +155,8 @@ export function EditableChip({ value, onCommit, onRemove, sortable = false, getS
           // Translate (not Transform): Transform bakes in a scale that resizes the dragged chip to the target.
           transform: CSS.Translate.toString(transform),
           transition,
-          opacity: isDragging ? 0.5 : 1,
+          // A drag dims the chip; at rest it keeps whatever opacity the caller's style gave it.
+          opacity: isDragging ? 0.5 : style?.opacity,
           zIndex: isDragging ? 1 : undefined,
         } : undefined),
       }}

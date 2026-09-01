@@ -3,50 +3,61 @@ import { hexToHsl } from '@/lib/hslColor';
 import { clamp } from '@/lib/utils';
 
 /**
- * How a value chip wears its draw chance. Two mappings, one per kind of chip:
+ * How a value chip wears its draw chance. The chance is **relative**: a value's own chance against the
+ * strongest sibling of its placeholder, so an even split reads as a row of ordinary chips and only a
+ * value that is less likely than another fades. Two mappings, one per kind of chip:
  *
- * - A **plain-text** value runs a three-stop ramp over the theme's own tokens — muted at 0%, the secondary
- *   tone every chip already wears at 50%, primary at 100% — so a benched value reads as off, a certain one
- *   reads as fixed, and an even split looks like an ordinary chip. The stops are mixed in OKLab, and
- *   the foreground rides the matching foreground tokens, so the text keeps its contrast at every point.
+ * - A **plain-text** value at full is the secondary chip every chip already wears. Below full it mixes in
+ *   OKLab toward a **benched** look — muted background, muted-foreground text, reduced opacity. Background
+ *   mixes only surface tokens and text only foreground tokens, so the pair keeps its contrast the whole
+ *   way; the opacity is the visible cue, since muted and secondary share one tone in the shipped themes.
  * - A **reference** value keeps the identity hue every chip of that placeholder wears, with its saturation
- *   scaled by the chance: full color when certain, a neutral gray of the same lightness when it can never
- *   be drawn.
+ *   scaled by the relative chance. At 0 it snaps to the same benched look: a chip that can never be drawn
+ *   is a benched chip, whatever kind it is.
  *
  * Both are inline styles, which is how reference chips already carry their accent.
  */
 
-const STOPS = [
-  { backgroundColor: 'hsl(var(--muted))', color: 'hsl(var(--muted-foreground))' },
-  { backgroundColor: 'hsl(var(--secondary))', color: 'hsl(var(--secondary-foreground))' },
-  { backgroundColor: 'hsl(var(--primary))', color: 'hsl(var(--primary-foreground))' },
-] as const;
+export type ChanceStyle = Required<Pick<CSSProperties, 'backgroundColor' | 'color'>> & { opacity: number };
 
-export type ChanceStyle = Required<Pick<CSSProperties, 'backgroundColor' | 'color'>>;
+const FULL: ChanceStyle = {
+  backgroundColor: 'hsl(var(--secondary))', color: 'hsl(var(--secondary-foreground))', opacity: 1,
+};
+
+/** The look of a value that cannot be drawn, shared by both kinds of chip. */
+export const BENCHED: ChanceStyle = {
+  backgroundColor: 'hsl(var(--muted))', color: 'hsl(var(--muted-foreground))', opacity: 0.6,
+};
+
+/** A value's chance against the strongest value of its placeholder, 0–100. `chances` is the whole value list,
+ *  this value included. A benched value never sets the max, and a placeholder with nothing drawable reads 0
+ *  throughout. */
+export function relativeChance(chance: number, chances: readonly number[]): number {
+  const max = Math.max(0, ...chances);
+  if (max <= 0) return 0;
+  return clamp((chance / max) * 100, 0, 100);
+}
 
 const mix = (from: string, to: string, fromShare: number) =>
   `color-mix(in oklab, ${from} ${fromShare}%, ${to})`;
 
-/** The plain-text chip's colors for a draw chance in percent. Clamped to the ramp's ends. */
-export function chanceChipStyle(chance: number): ChanceStyle {
-  const t = clamp(chance, 0, 100) / 50;
-  const segment = Math.min(Math.floor(t), 1);
-  const along = t - segment;
-  const from = STOPS[segment];
-  const to = STOPS[segment + 1];
-  if (along === 0) return { ...from };
-  if (along === 1) return { ...to };
-  const share = Math.round((1 - along) * 100);
+/** The plain-text chip's look for a relative chance in percent. Clamped to the ramp's ends. */
+export function chanceChipStyle(rel: number): ChanceStyle {
+  const share = Math.round(clamp(rel, 0, 100));
+  if (share === 100) return { ...FULL };
+  if (share === 0) return { ...BENCHED };
   return {
-    backgroundColor: mix(from.backgroundColor, to.backgroundColor, share),
-    color: mix(from.color, to.color, share),
+    backgroundColor: mix(FULL.backgroundColor, BENCHED.backgroundColor, share),
+    color: mix(FULL.color, BENCHED.color, share),
+    opacity: BENCHED.opacity + ((FULL.opacity - BENCHED.opacity) * share) / 100,
   };
 }
 
-/** A placeholder's identity accent (`#rrggbb`) with its saturation scaled to a draw chance in percent —
- *  the full accent at 100, a neutral gray of the same lightness at 0. */
-export function accentAtChance(hex: string, chance: number): string {
+/** A reference chip's look: the placeholder's identity accent (`#rrggbb`) with its saturation scaled to a
+ *  relative chance in percent — the full accent at 100, the benched look at 0. */
+export function accentAtChance(hex: string, rel: number): ChanceStyle {
+  const share = clamp(rel, 0, 100);
+  if (share === 0) return { ...BENCHED };
   const { h, s, l } = hexToHsl(hex);
-  const scaled = Math.round((s * clamp(chance, 0, 100)) / 100);
-  return `hsl(${h}, ${scaled}%, ${l}%)`;
+  return { backgroundColor: `hsl(${h}, ${Math.round((s * share) / 100)}%, ${l}%)`, color: '#000', opacity: 1 };
 }

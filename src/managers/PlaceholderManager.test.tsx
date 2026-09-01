@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent, within } from '@testing-library/react';
 import { placeholderAccent, type ChipVocabulary } from '@/lib/chipVocabulary';
-import { accentAtChance, chanceChipStyle } from '@/lib/chanceColor';
+import { accentAtChance, BENCHED, chanceChipStyle, type ChanceStyle } from '@/lib/chanceColor';
 import { encodePlaceholderToken } from '@/lib/placeholders';
 import type { Placeholder } from '@/types';
 import PlaceholderEditor from './PlaceholderEditor';
@@ -365,10 +365,10 @@ describe('PlaceholderManager — chip values', () => {
 
   it('wears its target’s accent, so a value that is a placeholder looks like one', () => {
     render(<PlaceholderManager placeholder={ph({ values: phValues([chip('p2'), 'Red']) })} />);
-    // The accent itself comes from the vocabulary, so what is asserted is that the chip took it — at the
-    // 50% its even split gives it — and that the literal value beside it took the theme ramp instead.
+    // The accent itself comes from the vocabulary, so what is asserted is that the chip took it — at full,
+    // since an even split favors neither — and that the literal value beside it stayed a plain chip.
     const chipped = screen.getByText('Hair').closest('[data-chip]') as HTMLElement;
-    expect(chipped.style.backgroundColor).toBe(cssColor(accentAtChance(placeholderAccent('p2'), 50)));
+    expect(chipped.style.backgroundColor).toBe(cssColor(accentAtChance(placeholderAccent('p2'), 100).backgroundColor));
     expect((screen.getByText('Red').closest('[data-chip]') as HTMLElement).style.backgroundColor)
       .toBe('hsl(var(--secondary))');
   });
@@ -504,40 +504,74 @@ describe('PlaceholderManager — a shared row', () => {
   });
 });
 
-/** Chips carry their draw chance in color at all times; the eye adds the number. A plain value runs the
- *  theme ramp; a value that is another placeholder keeps that placeholder's hue and loses saturation as
- *  the branch gets less likely — with the ancestors' chances multiplied in, so a nested chip reads as the
- *  branch it really is. */
+/** Chips carry their draw chance in color at all times; the eye adds the number. The color is relative:
+ *  each value against the strongest sibling, so an even split is a row of ordinary chips and a value fades
+ *  only when another is favored over it. A plain value mixes toward the benched look; a value that is
+ *  another placeholder keeps that placeholder's hue and loses saturation, and at 0 both look the same. The
+ *  number stays the real chance, ancestors multiplied in, so a nested chip's figure reads as the branch it
+ *  really is. */
 describe('PlaceholderManager — chance coloring', () => {
-  const bg = (label: string) => (screen.getByText(label).closest('[data-chip]') as HTMLElement).style.backgroundColor;
-
-  it('colors a benched value muted, an even split as an ordinary chip, and a certain value primary', () => {
-    render(<PlaceholderManager placeholder={ph({ values: phValues(['Red', 'Blue']), weights: { [phValueId('Blue')]: 0 } })} />);
-    expect(bg('Red')).toBe(chanceChipStyle(100).backgroundColor);
-    expect(bg('Blue')).toBe(chanceChipStyle(0).backgroundColor);
-    render(<PlaceholderManager placeholder={ph({ id: 'even', values: phValues(['Ash', 'Jet']) })} />);
-    expect(bg('Ash')).toBe(chanceChipStyle(50).backgroundColor);
+  const chipOf = (label: string) => screen.getByText(label).closest('[data-chip]') as HTMLElement;
+  const bg = (label: string) => chipOf(label).style.backgroundColor;
+  const look = (label: string) => {
+    const { backgroundColor, color, opacity } = chipOf(label).style;
+    return { backgroundColor, color, opacity };
+  };
+  const css = (style: ChanceStyle) => ({
+    backgroundColor: cssColor(style.backgroundColor), color: cssColor(style.color), opacity: String(style.opacity),
   });
 
-  it('colors every value of an Object as certain — all of them apply', () => {
+  it('shows an even split as ordinary secondary chips, nothing faded', () => {
+    render(<PlaceholderManager placeholder={ph({ values: phValues(['Ash', 'Jet', 'Rust', 'Moss']) })} />);
+    for (const v of ['Ash', 'Jet', 'Rust', 'Moss']) expect(look(v)).toEqual(css(chanceChipStyle(100)));
+  });
+
+  it('fades the values a heavier sibling is favored over, at their share of its chance', () => {
+    render(<PlaceholderManager placeholder={ph({
+      values: phValues(['Ash', 'Jet', 'Rust', 'Moss']), weights: { [phValueId('Ash')]: 3 },
+    })} />);
+    expect(look('Ash')).toEqual(css(chanceChipStyle(100)));
+    for (const v of ['Jet', 'Rust', 'Moss']) expect(look(v)).toEqual(css(chanceChipStyle(100 / 3)));
+  });
+
+  it('benches a weight-0 value of either kind to one identical look', () => {
+    siblings = [ph(), { id: 'p2', name: 'Hair', values: phValues(['Brown', 'Blonde']) }];
+    render(<PlaceholderManager placeholder={ph({
+      values: phValues(['Red', 'Blue', chip('p2')]), weights: { [phValueId('Blue')]: 0, [phValueId(chip('p2'))]: 0 },
+    })} />);
+    expect(look('Red')).toEqual(css(chanceChipStyle(100)));
+    expect(look('Blue')).toEqual(css(BENCHED));
+    expect(look('Hair')).toEqual(css(BENCHED));
+  });
+
+  it('colors every value of an Object as full — all of them apply', () => {
     render(<PlaceholderManager placeholder={ph({ roll: false })} />);
     expect(bg('Red')).toBe(chanceChipStyle(100).backgroundColor);
   });
 
-  it('multiplies a reference chip’s chance by the row it sits in, and says so in the number', () => {
+  it('keeps a reference chip’s color relative to its siblings while its number carries the row it sits in', () => {
     // Molly picks one of two variants; the Northern variant is one of two values holding Hair.
     const hair: Placeholder = { id: 'hair', name: 'Hair', values: phValues(['Brown', 'Blonde']) };
     const northern: Placeholder = { id: 'northern', name: 'Northern', values: phValues([chip('hair'), 'bald']) };
     const molly: Placeholder = { id: 'molly', name: 'Molly', values: phValues([chip('northern'), 'Southern']) };
     siblings = [molly, northern, hair];
     render(<PlaceholderManager placeholder={northern} rowId="molly/northern" />);
-    // 50% of Northern's own draw, inside Molly's 50% branch.
-    expect(bg('Hair')).toBe(cssColor(accentAtChance(placeholderAccent('hair'), 25)));
+    // Hair and bald split Northern evenly, so neither is favored: the row's 50% is common to both.
+    expect(bg('Hair')).toBe(cssColor(accentAtChance(placeholderAccent('hair'), 100).backgroundColor));
     fireEvent.click(screen.getByRole('button', { name: /Show roll chances/i }));
     const chips = [...document.querySelectorAll('[data-chip]')].map((el) => el.textContent);
+    // 50% of Northern's own draw, inside Molly's 50% branch.
     expect(chips).toContain('Hair (25%)');
     // The plain value beside it shows its own chance — the ramp reads the placeholder's shape.
     expect(chips).toContain('bald (50%)');
+  });
+
+  it('desaturates a reference chip a sibling is favored over', () => {
+    siblings = [ph(), { id: 'p2', name: 'Hair', values: phValues(['Brown', 'Blonde']) }];
+    render(<PlaceholderManager placeholder={ph({
+      values: phValues(['Red', chip('p2')]), weights: { [phValueId('Red')]: 4 },
+    })} />);
+    expect(bg('Hair')).toBe(cssColor(accentAtChance(placeholderAccent('p2'), 25).backgroundColor));
   });
 
   it('offers the eye whenever there is more than one value, weighted or not', () => {
@@ -549,7 +583,7 @@ describe('PlaceholderManager — chance coloring', () => {
     const molly: Placeholder = { id: 'molly', name: 'Molly', values: phValues([chip('p1')]) };
     siblings = [ph(), molly];
     render(<PlaceholderManager placeholder={ph()} rowId="molly/p1" share={{ ownerId: 'molly', key: phValueId(chip('p1')) }} />);
-    expect(bg('Red')).toBe(chanceChipStyle(50).backgroundColor);
+    expect(bg('Red')).toBe(chanceChipStyle(100).backgroundColor);
   });
 });
 
