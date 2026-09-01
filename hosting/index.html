@@ -1,0 +1,236 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="dark">
+<title>Formamorph — an AI text RPG that brings your world to life</title>
+<meta name="description" content="An AI text RPG that brings your world to life. Create your own characters and locations, or play any of the hundreds the community has published. Runs in your browser or fully offline on your desktop, with any AI model you choose.">
+<link rel="canonical" href="https://formamorph.ai/">
+<link rel="icon" href="/site/icon.png" type="image/png">
+<link rel="apple-touch-icon" href="/site/icon.png">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="Formamorph">
+<meta property="og:url" content="https://formamorph.ai/">
+<meta property="og:title" content="Formamorph — an AI text RPG that brings your world to life">
+<meta property="og:description" content="Create your own characters and locations, or play any of the hundreds the community has published. Runs in your browser or fully offline on your desktop, with any AI model you choose.">
+<meta property="og:image" content="https://formamorph.ai/site/og.jpg">
+<meta property="og:image:type" content="image/jpeg">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="Formamorph — an AI text RPG that brings your world to life">
+<meta name="twitter:description" content="Create your own characters and locations, or play any of the hundreds the community has published. Runs in your browser or fully offline on your desktop, with any AI model you choose.">
+<meta name="twitter:image" content="https://formamorph.ai/site/og.jpg">
+<style>
+  :root { --bg:#0d0f12; --text:#e8eaed; --dim:#9aa0a8; --accent:#7ac47f; --line:#2a2e35; }
+  * { box-sizing:border-box; margin:0; }
+  body { background:var(--bg); color:var(--text); font:16px/1.55 system-ui,sans-serif;
+    -webkit-text-size-adjust:100%; }
+  a { color:inherit; }
+  :focus-visible { outline:2px solid var(--accent); outline-offset:2px; }
+
+  .btn { display:inline-flex; align-items:center; gap:.5em; padding:.8em 1.6em; border-radius:10px;
+    border:1px solid transparent; font-weight:600; text-decoration:none; cursor:pointer; font-size:1rem; }
+  .btn-play { background:var(--accent); color:#0c130d; font-size:1.15rem; }
+  .btn-play:hover { filter:brightness(1.1); }
+  .btn-ghost { border-color:#3a3f47; color:var(--text); }
+  .btn-ghost:hover { background:#ffffff14; }
+  .dl-row { display:flex; gap:.6rem; flex-wrap:wrap; justify-content:center; }
+  .dl-note { color:var(--dim); font-size:.85rem; }
+
+  /* Onion-skin gallery: a light stack under a dark stack the divider clips in from the right. */
+  .skin { position:relative; overflow:hidden; border-radius:12px; border:1px solid var(--line);
+    user-select:none; touch-action:none; aspect-ratio:16/9; background:#000; cursor:ew-resize; }
+  .skin img.lay { position:absolute; inset:0; width:100%; height:100%; display:block;
+    pointer-events:none; opacity:0; transition:opacity var(--fade,1.2s) ease; }
+  .skin img.lay.on { opacity:1; }
+  .skin .topwrap { position:absolute; inset:0; z-index:100; isolation:isolate;
+    clip-path:inset(0 0 0 var(--cut,50%)); pointer-events:none; }
+  .skin .bar { position:absolute; top:0; bottom:0; left:var(--cut,50%); width:2px; z-index:200;
+    background:var(--accent); box-shadow:0 0 12px #000c; }
+  .skin .knob { position:absolute; top:50%; left:var(--cut,50%); transform:translate(-50%,-50%); z-index:200;
+    background:var(--accent); color:#0c130d; border-radius:999px; padding:.25em .6em;
+    font-size:.75rem; font-weight:700; white-space:nowrap; }
+  .skin .tag { position:absolute; bottom:.6rem; z-index:200; font-size:.7rem; font-weight:700;
+    letter-spacing:.08em; text-transform:uppercase; padding:.25em .7em; border-radius:999px;
+    background:#000a; color:#fff; }
+  .skin .tag.l { left:.6rem; } .skin .tag.r { right:.6rem; }
+
+  .thumbs { display:flex; gap:.5rem; margin-top:.8rem; flex-wrap:wrap; justify-content:center; }
+  .thumbs button { border:2px solid transparent; border-radius:8px; padding:0; background:none;
+    cursor:pointer; color:inherit; font:inherit; }
+  .thumbs button[aria-pressed="true"] { border-color:var(--accent); }
+  .thumbs img { width:clamp(96px,28vw,148px); aspect-ratio:16/9; display:block; border-radius:6px; }
+  .thumbs .lbl { color:var(--dim); font-size:.72rem; padding:.2em 0 .4em; }
+
+  .hero { min-height:92vh; min-height:92svh; display:grid; place-items:center; text-align:center;
+    position:relative; overflow:hidden; }
+  .hero .bgimg { position:absolute; inset:-40px; background-position:center; background-size:cover;
+    filter:blur(6px) brightness(.35); }
+  .hero .in { position:relative; padding:2rem 1.25rem; max-width:780px; }
+  .hero img.logo { width:96px; height:96px; border-radius:20px; margin-bottom:1.2rem; }
+  h1 { font-size:clamp(2.2rem,9vw,3.4rem); letter-spacing:-.02em; }
+  .tagline { color:var(--dim); font-size:clamp(1.02rem,3.6vw,1.25rem); margin:.8rem 0 2rem; }
+  .cta { display:flex; gap:.8rem; justify-content:center; flex-wrap:wrap; }
+  section { max-width:1100px; margin:0 auto; padding:4rem 1.5rem; }
+  footer { text-align:center; color:var(--dim); padding:3rem 1rem; border-top:1px solid #22262d; }
+
+  @media (prefers-reduced-motion: reduce) {
+    .skin img.lay { transition:none; }
+  }
+</style>
+</head>
+<body>
+
+<div class="hero">
+  <div class="bgimg"></div>
+  <div class="in">
+    <img class="logo" src="/site/icon.png" width="256" height="256" alt="">
+    <h1>Formamorph</h1>
+    <p class="tagline">An AI text RPG that brings your world to life. Create your own characters and
+      locations or download any of the hundreds created by the community to explore.
+      Runs directly in your browser or fully offline on your desktop, with any AI
+      model you choose.</p>
+    <div class="cta">
+      <a class="btn btn-play" href="/play/">&#9654;&nbsp; Play in your browser</a>
+      <a class="btn btn-ghost" href="https://github.com/JakeJamesDev/formamorph/releases/latest">Download for desktop</a>
+    </div>
+    <p class="dl-note" style="margin-top:.9rem" data-dl-note></p>
+  </div>
+</div>
+
+<section><div data-gallery></div></section>
+
+<footer>
+  <div class="dl-row" style="margin-bottom:1.2rem" data-dl-buttons></div>
+  <a href="https://github.com/JakeJamesDev/formamorph">GitHub</a> &middot;
+  <a href="/play/">Play</a> &middot; &copy; 2026 Jake James
+</footer>
+
+<script>
+const PALETTES = ['graphite', 'purple', 'forest', 'rose', 'monochrome'];
+const SCREENS = [
+  { id: '01-library', label: 'Library' },
+  { id: '02-game', label: 'Play' },
+  { id: '03-world-details', label: 'World details' },
+  { id: '04-settings', label: 'Settings' },
+  { id: '05-avatar', label: 'Avatars' },
+];
+const FADE_MS = 1200;
+const HOLD_MS = 3500;
+const shot = (pal, theme, id) => `/site/shots/${pal}/${theme}/${id}.webp`;
+
+document.querySelector('.hero .bgimg').style.backgroundImage =
+  `url(${shot('graphite', 'dark', '01-library')})`;
+
+// One theme stack per side. The first palette of the first screen is eager; every other layer
+// waits, so a visitor who never scrolls to the gallery downloads two images instead of ten.
+function layers(theme, id, eager) {
+  return PALETTES.map((p, i) =>
+    `<img class="lay${i === 0 ? ' on' : ''}" alt="" src="${shot(p, theme, id)}"` +
+    (i === 0 && eager ? ' fetchpriority="high">' : ' loading="lazy" decoding="async">')).join('');
+}
+
+function makeSkin(id, eager) {
+  const el = document.createElement('div');
+  el.className = 'skin';
+  el.innerHTML =
+    layers('light', id, eager) +
+    `<div class="topwrap">${layers('dark', id, eager)}</div>` +
+    '<div class="bar"></div><div class="knob">&#9666; drag &#9656;</div>' +
+    '<span class="tag l">Light</span><span class="tag r">Dark</span>';
+
+  const move = (x) => {
+    const r = el.getBoundingClientRect();
+    el.style.setProperty('--cut', Math.max(2, Math.min(98, ((x - r.left) / r.width) * 100)) + '%');
+  };
+  el.addEventListener('pointerdown', (e) => { el.dragging = true; el.setPointerCapture(e.pointerId); move(e.clientX); });
+  el.addEventListener('pointermove', (e) => { if (e.buttons) move(e.clientX); });
+  el.addEventListener('pointerup', () => { el.dragging = false; });
+  el.addEventListener('lostpointercapture', () => { el.dragging = false; });
+
+  // Fade IN only: the covered layer stays fully opaque under the incoming one, so brightness never
+  // dips. A true cross-fade passes both layers through half opacity and reads as a desaturate.
+  let idx = 0;
+  let z = 10;
+  el.advance = () => {
+    const prev = idx;
+    idx = (idx + 1) % PALETTES.length;
+    for (const wrap of [el, el.querySelector('.topwrap')]) {
+      const imgs = wrap.querySelectorAll(':scope > img.lay');
+      imgs[idx].style.zIndex = ++z;
+      imgs[idx].classList.add('on');
+      // Release the covered layer only after the fade has fully landed.
+      setTimeout(() => { if (idx !== prev) imgs[prev].classList.remove('on'); }, FADE_MS + 200);
+    }
+  };
+  return el;
+}
+
+document.querySelectorAll('[data-gallery]').forEach((host) => {
+  const viewer = document.createElement('div');
+  const thumbs = document.createElement('div');
+  thumbs.className = 'thumbs';
+  // Rendered screens are kept, so switching back to one costs no second download.
+  const built = new Map();
+  let cur = SCREENS[0].id;
+
+  const render = () => {
+    if (!built.has(cur)) built.set(cur, makeSkin(cur, built.size === 0));
+    viewer.replaceChildren(built.get(cur));
+    thumbs.querySelectorAll('button').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.id === cur)));
+  };
+
+  for (const s of SCREENS) {
+    const b = document.createElement('button');
+    b.type = 'button';
+    b.dataset.id = s.id;
+    b.innerHTML = `<img src="/site/shots/thumbs/${s.id}.webp" alt="" loading="lazy" decoding="async">` +
+      `<div class="lbl">${s.label}</div>`;
+    b.onclick = () => { cur = s.id; render(); };
+    thumbs.appendChild(b);
+  }
+  host.append(viewer, thumbs);
+  render();
+
+  if (!matchMedia('(prefers-reduced-motion: reduce)').matches) {
+    setInterval(() => {
+      const el = built.get(cur);
+      if (el && !el.dragging) el.advance(); // two motions at once reads as flicker
+    }, HOLD_MS);
+  }
+});
+
+// Downloads resolve from the latest release. Any failure falls back to the releases page, so a
+// rate-limited visitor still gets a working button.
+const REPO = 'JakeJamesDev/formamorph';
+const RELEASES = `https://github.com/${REPO}/releases/latest`;
+fetch(`https://api.github.com/repos/${REPO}/releases/latest`)
+  .then((r) => (r.ok ? r.json() : null))
+  .catch(() => null)
+  .then((rel) => {
+    const rows = [
+      { label: 'Windows', match: /\.exe$|win.*\.zip$/i },
+      { label: 'Linux', match: /\.AppImage$/i },
+      { label: 'macOS', match: /\.dmg$/i },
+    ];
+    document.querySelectorAll('[data-dl-buttons]').forEach((host) => {
+      for (const row of rows) {
+        const asset = rel && rel.assets ? rel.assets.find((a) => row.match.test(a.name)) : null;
+        const a = document.createElement('a');
+        a.className = 'btn btn-ghost';
+        a.href = asset ? asset.browser_download_url : RELEASES;
+        a.textContent = row.label;
+        host.appendChild(a);
+      }
+    });
+    document.querySelectorAll('[data-dl-note]').forEach((el) => {
+      el.textContent = rel && rel.tag_name
+        ? `Desktop ${rel.tag_name} — free on GitHub`
+        : 'Desktop builds — free on GitHub';
+    });
+  });
+</script>
+</body>
+</html>

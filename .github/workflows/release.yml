@@ -28,9 +28,16 @@ on:
         description: 'Push the web build to formamorph.ai (manual failsafe, e.g. for a pre-release)'
         type: boolean
         default: false
+      site_only:
+        description: 'Redeploy formamorph.ai from hosting/ alone, keeping the latest RELEASED app build'
+        type: boolean
+        default: false
 
 jobs:
   build:
+    # A site-only redeploy ships no app code, so nothing is built and nothing is published. `publish`
+    # needs this job, so skipping here skips that too.
+    if: ${{ !inputs.site_only }}
     strategy:
       fail-fast: false
       matrix:
@@ -114,6 +121,8 @@ jobs:
           if-no-files-found: error
 
   web:
+    # Skipped on a site-only redeploy, which serves the already-released build instead.
+    if: ${{ !inputs.site_only }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
@@ -227,10 +236,14 @@ jobs:
           butler push "$(ls *.AppImage)" fierylion/formamorph:linux --userversion "$VER"
           butler push "$(ls *.dmg)" fierylion/formamorph:mac --userversion "$VER"
 
-  # Cloudflare Pages deploy → https://formamorph.ai/play/. Same gate as itch-web: full-release tags deploy
-  # automatically, suffixed tags never do (push one by hand via workflow_dispatch on the tag's ref). The
-  # upload root is `out/` — the web build unpacked into out/play/, plus the tracked hosting/ config at the
-  # root. Needs the CLOUDFLARE_API_TOKEN (Pages Edit scope) and CLOUDFLARE_ACCOUNT_ID secrets.
+  # Cloudflare Pages deploy → https://formamorph.ai. The upload root is `out/`: the app build unpacked
+  # into out/play/, plus everything tracked in hosting/ at the root — the landing page, its images, and
+  # the Pages config. Both deploy paths below hand that same assemble-guard-deploy-check sequence a
+  # different app build. Needs the CLOUDFLARE_API_TOKEN (Pages Edit scope) and CLOUDFLARE_ACCOUNT_ID
+  # secrets.
+  #
+  # Release path: same gate as itch-web — full-release tags deploy automatically, suffixed tags never do
+  # (push one by hand via workflow_dispatch on the tag's ref). Ships the build this run just made.
   cloudflare-web:
     needs: web
     runs-on: ubuntu-latest
@@ -238,119 +251,46 @@ jobs:
       (github.event_name == 'push' && !contains(github.ref_name, '-'))
       || (github.event_name == 'workflow_dispatch' && inputs.cloudflare_web)
     steps:
-      # Checked out for hosting/ only — every deployed byte comes from the web artifact.
+      # Checked out for hosting/ and the shared action — every /play/ byte comes from the web artifact.
       - uses: actions/checkout@v7
       - uses: actions/download-artifact@v8
         with:
           name: web
           path: web-zip
-      - name: Assemble the upload root
-        run: |
-          set -euo pipefail
-          mkdir -p out/play
-          unzip -q "$(ls web-zip/formamorph-web-*.zip)" -d out/play
-          cp hosting/_redirects hosting/_headers out/
-          echo "$(find out -type f | wc -l) files, $(du -sh out | cut -f1) total"
-      # Pages rejects any file at or over 25 MiB, and the ONNX runtime wasm sits a few MiB under it. A
-      # dependency bump can cross the cap, so fail here instead of publishing a site missing one file.
-      - name: No file may reach the 25 MiB Pages cap
-        run: |
-          set -euo pipefail
-          LIMIT=$((25 * 1024 * 1024))
-          SIZES=$(find out -type f -printf '%s\t%p\n' | sort -rn)
-          echo "Largest files:"
-          head -5 <<< "$SIZES"
-          OVER=$(echo "$SIZES" | awk -F'\t' -v lim="$LIMIT" '$1 >= lim')
-          if [ -n "$OVER" ]; then
-            echo "::error::At or over Cloudflare Pages' 25 MiB per-file cap:"
-            echo "$OVER"
-            exit 1
-          fi
-      - name: Deploy to Cloudflare Pages
-        uses: cloudflare/wrangler-action@v4
+      - id: zip
+        run: echo "path=$(ls web-zip/formamorph-web-*.zip)" >> "$GITHUB_OUTPUT"
+      - uses: ./.github/actions/deploy-site
         with:
-          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-          # --branch is mandatory. A tag push has no branch, so without it Wrangler files a preview deploy
-          # that never reaches the custom domain. The value must match the project's production branch.
-          command: pages deploy out --project-name=formamorph --branch=main
-      # Armed by the CLOUDFLARE_CHECKS repository variable, which the setup wizard sets to 'true' once the
-      # dashboard side exists (custom domain on .ai, redirect rule on .com). Strict from that point on.
-      - name: Check the live site
-        if: vars.CLOUDFLARE_CHECKS == 'true'
+          web-zip: ${{ steps.zip.outputs.path }}
+          api-token: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          account-id: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          run-checks: ${{ vars.CLOUDFLARE_CHECKS }}
+
+  # Site path: redeploy hosting/ against the app build from the latest RELEASE, so a landing-page edit
+  # reaches formamorph.ai without cutting a release and without shipping unreleased app code. The
+  # `formamorph-web-<version>.zip` asset it downloads exists on every release, and the tag-version guard
+  # in the build job is what keeps that name predictable.
+  cloudflare-site:
+    runs-on: ubuntu-latest
+    if: ${{ github.event_name == 'workflow_dispatch' && inputs.site_only }}
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v7
+      - name: Fetch the latest released web build
+        id: zip
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          # Actions runs this with `bash -e`, which would abort at the first unreachable URL and skip the
-          # rest. Every probe must report, so error-exit and pipefail are off and `fail` is the verdict.
-          set +e +o pipefail
-          set -u
-
-          # Cloudflare answers the deploy API before every edge node serves the new build, and the `_redirects`
-          # rules land after the assets beside them do. Probing once is a coin flip: the first run of this step
-          # fired 429 ms after "Deployment complete" and read 522 on the two rule-only paths while the assets
-          # were already correct. So the whole battery retries, not just the readiness probe.
-          ATTEMPTS=8
-          DELAY=15
-          # Overridable so the same script can run against a local emulator; CI always uses the real hosts.
-          BASE_AI="${BASE_AI:-https://formamorph.ai}"
-          BASE_COM="${BASE_COM:-https://formamorph.com}"
-
-          # Read the hashed name out of the deployed index.html so this follows every rebuild. An empty result is
-          # a broken build rather than a slow edge, so it fails now instead of burning the retry budget.
-          ASSET=$(grep -o 'assets/[A-Za-z0-9._-]*[.]js' out/play/index.html | head -1)
-          if [ -z "$ASSET" ]; then
-            echo "::error::No hashed asset found in out/play/index.html"
-            exit 1
-          fi
-
-          REPORT=$(mktemp)
-          fail=0
-
-          # Collects verdicts rather than printing them. A failure on a non-final attempt only means "not settled
-          # yet", and annotating it would flag a run that goes on to pass.
-          check() {
-            if [ "$2" = "$3" ]; then
-              echo "ok    $1 -> $3" >> "$REPORT"
-            else
-              echo "FAIL  $1 - expected '$2', got '$3'" >> "$REPORT"
-              fail=1
-            fi
-          }
-
-          battery() {
-            fail=0
-            : > "$REPORT"
-
-            check "/play/ status" "200" "$(curl -sS --max-time 20 -o /dev/null -w '%{http_code}' "$BASE_AI/play/")"
-
-            CT=$(curl -sSI --max-time 20 "$BASE_AI/play/" | tr -d '\r' | awk 'tolower($1)=="content-type:"{print tolower($2)}' | cut -d';' -f1)
-            check "/play/ content-type" "text/html" "$CT"
-
-            check "/play redirect" "301 $BASE_AI/play/" "$(curl -sS --max-time 20 -o /dev/null -w '%{http_code} %{redirect_url}' "$BASE_AI/play")"
-            check "/ redirect" "302 $BASE_AI/play/" "$(curl -sS --max-time 20 -o /dev/null -w '%{http_code} %{redirect_url}' "$BASE_AI/")"
-            check ".com redirect" "301 $BASE_AI/play/" "$(curl -sS --max-time 20 -o /dev/null -w '%{http_code} %{redirect_url}' "$BASE_COM/play/")"
-
-            CC=$(curl -sSI --max-time 20 "$BASE_AI/play/$ASSET" | tr -d '\r' | sed -n 's/^[Cc]ache-[Cc]ontrol: //p')
-            case "$CC" in
-              *max-age=31536000*immutable*) echo "ok    $ASSET cache-control -> $CC" >> "$REPORT" ;;
-              *) echo "FAIL  $ASSET cache-control - expected max-age=31536000 + immutable, got '$CC'" >> "$REPORT"; fail=1 ;;
-            esac
-          }
-
-          attempt=1
-          while [ "$attempt" -le "$ATTEMPTS" ]; do
-            battery
-            [ "$fail" -eq 0 ] && break
-            [ "$attempt" -eq "$ATTEMPTS" ] && break
-            echo "--- attempt $attempt/$ATTEMPTS: not settled, retrying in ${DELAY}s ---"
-            cat "$REPORT"
-            sleep "$DELAY"
-            attempt=$((attempt + 1))
-          done
-
-          cat "$REPORT"
-          if [ "$fail" -ne 0 ]; then
-            # Annotate only now that the verdict is final, so a run that settles late stays clean.
-            sed -n 's/^FAIL  /::error::/p' "$REPORT"
-            echo "::error::Live checks still failing after $ATTEMPTS attempts over $(( (ATTEMPTS - 1) * DELAY ))s."
-            exit 1
-          fi
+          set -euo pipefail
+          # `releases/latest` skips drafts and pre-releases, so a beta never becomes what /play/ serves.
+          TAG=$(gh api "repos/$GITHUB_REPOSITORY/releases/latest" --jq .tag_name)
+          echo "Pairing the site with the app from $TAG"
+          gh release download "$TAG" --repo "$GITHUB_REPOSITORY" --pattern 'formamorph-web-*.zip' --dir web-zip
+          echo "path=$(ls web-zip/formamorph-web-*.zip)" >> "$GITHUB_OUTPUT"
+      - uses: ./.github/actions/deploy-site
+        with:
+          web-zip: ${{ steps.zip.outputs.path }}
+          api-token: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          account-id: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          run-checks: ${{ vars.CLOUDFLARE_CHECKS }}

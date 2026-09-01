@@ -1,0 +1,74 @@
+name: 'Deploy formamorph.ai'
+description: >
+  Assemble the Cloudflare Pages upload root from the tracked site and one app build, guard the
+  per-file size cap, deploy, and check the live contract. Shared by the release path (which passes
+  the build it just made) and the site-only path (which passes the latest released build).
+
+inputs:
+  web-zip:
+    description: 'Path to the formamorph-web-<version>.zip holding the app build to serve at /play/.'
+    required: true
+  api-token:
+    description: 'Cloudflare API token with the Pages Edit scope.'
+    required: true
+  account-id:
+    description: 'Cloudflare account ID.'
+    required: true
+  run-checks:
+    description: 'The literal string true arms the post-deploy live checks.'
+    required: false
+    default: 'false'
+
+runs:
+  using: composite
+  steps:
+    # Every byte under /play/ comes from the zip; everything else comes from the tracked hosting dir,
+    # which is the site's source of truth — landing page, config, and images alike.
+    - name: Assemble the upload root
+      shell: bash
+      # Through the environment rather than inline `${{ }}`, so the path is data to the shell.
+      env:
+        WEB_ZIP: ${{ inputs.web-zip }}
+      run: |
+        set -euo pipefail
+        rm -rf out
+        mkdir -p out/play
+        unzip -q "$WEB_ZIP" -d out/play
+        cp -r hosting/. out/
+        echo "app:  $(find out/play -type f | wc -l) files"
+        echo "site: $(find out -type f -not -path 'out/play/*' | wc -l) files"
+        echo "$(find out -type f | wc -l) files, $(du -sh out | cut -f1) total"
+
+    # Pages rejects any file at or over 25 MiB, and the ONNX runtime wasm sits a few MiB under it. A
+    # dependency bump can cross the cap, so fail here instead of publishing a site missing one file.
+    - name: No file may reach the 25 MiB Pages cap
+      shell: bash
+      run: |
+        set -euo pipefail
+        LIMIT=$((25 * 1024 * 1024))
+        SIZES=$(find out -type f -printf '%s\t%p\n' | sort -rn)
+        echo "Largest files:"
+        head -5 <<< "$SIZES"
+        OVER=$(echo "$SIZES" | awk -F'\t' -v lim="$LIMIT" '$1 >= lim')
+        if [ -n "$OVER" ]; then
+          echo "::error::At or over Cloudflare Pages' 25 MiB per-file cap:"
+          echo "$OVER"
+          exit 1
+        fi
+
+    - name: Deploy to Cloudflare Pages
+      uses: cloudflare/wrangler-action@v4
+      with:
+        apiToken: ${{ inputs.api-token }}
+        accountId: ${{ inputs.account-id }}
+        # --branch is mandatory. A tag push has no branch, so without it Wrangler files a preview deploy
+        # that never reaches the custom domain. The value must match the project's production branch.
+        command: pages deploy out --project-name=formamorph --branch=main
+
+    # Armed by the CLOUDFLARE_CHECKS repository variable, which the setup wizard sets to 'true' once the
+    # dashboard side exists (custom domain on .ai, redirect rule on .com). Strict from that point on.
+    - name: Check the live site
+      if: inputs.run-checks == 'true'
+      shell: bash
+      # Called through bash so a missing executable bit on the script never matters.
+      run: bash scripts/checkLiveSite.sh

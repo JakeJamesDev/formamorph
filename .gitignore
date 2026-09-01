@@ -10,6 +10,8 @@ lerna-debug.log*
 node_modules
 dist
 dist-ssr
+# The Cloudflare Pages upload root the deploy assembles locally.
+out
 coverage
 release
 docs-api
