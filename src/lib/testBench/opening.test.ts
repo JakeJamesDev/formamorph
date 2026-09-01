@@ -317,3 +317,43 @@ describe('safety', () => {
     expect(EMPTY_OPENING.totalTokens).toBe(0);
   });
 });
+
+describe('opening display of nested chips', () => {
+  // A wildcard whose first value is a chip of Hair Color: the roll that lands on it draws the hair beneath.
+  const nested = (): OpeningWorld => world({
+    worldOverview: {
+      name: 'Sedge Landing', description: '',
+      systemPrompt: `Look: ${chip('ph-look', 'world', 'pl-l1')}. Hair: ${chip('ph-hair', 'world', 'pl-h1')}.`,
+    } as WorldOverview,
+    placeholders: [
+      { id: 'ph-hair', name: 'Hair Color', values: phValues(['ash', 'copper', 'jet']) },
+      { id: 'ph-look', name: 'Look', values: phValues([chip('ph-hair', 'world', 'v-1'), 'bald', `bald as ${chip('ph-hair', 'world', 'v-2')}`]) },
+    ],
+    entities: [],
+  });
+
+  it('shows a drawn value resolved, never as the token it stores', () => {
+    const look = openingFor(nested()).rolls.find((r) => r.placeholderId === 'ph-look');
+    expect(look?.worldValue).toBe('ash');
+  });
+
+  it('labels an un-drawn reference option by the placeholder it names, marked as a reference', () => {
+    const look = openingFor(nested()).rolls.find((r) => r.placeholderId === 'ph-look');
+    expect(look?.chances.map((c) => ({ ...c, chance: Math.round(c.chance) }))).toEqual([
+      { value: 'Hair Color', chance: 33, reference: 'ph-hair' },
+      { value: 'bald', chance: 33 },
+      { value: 'bald as {ash|copper|jet}', chance: 33 },
+    ]);
+  });
+
+  it('resolves a pinned value and a trait’s pin line through the same rolls', () => {
+    const w = nested();
+    w.traits = [{
+      id: 't-look', name: 'Looker', isDefault: true, statChanges: [],
+      placeholderPins: [{ placeholderId: 'ph-look', value: `${chip('ph-hair', 'world', 'v-3')} tresses` }],
+    }];
+    const opening = openingFor(w);
+    expect(opening.rolls.find((r) => r.placeholderId === 'ph-look')?.pinnedValue).toBe('ash tresses');
+    expect(opening.traits[0].pins).toEqual([{ placeholder: 'Look', value: 'ash tresses' }]);
+  });
+});

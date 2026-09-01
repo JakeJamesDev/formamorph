@@ -11,8 +11,9 @@ import DictionaryManager from '@/managers/DictionaryManager';
 import PlaceholderEditor from '@/managers/PlaceholderEditor';
 import PlaceholderPaletteBar from '@/components/prompt/PlaceholderPaletteBar';
 import { ChipInsertTargetProvider } from '@/components/prompt/ChipInsertTarget';
+import { EditorPreviewRollsProvider } from '@/contexts/EditorPreviewRollsContext';
 import { placeholderStore, PlaceholderStoreProvider } from '@/contexts/PlaceholderStoreContext';
-import { directChipTargets } from '@/lib/placeholders';
+import { describePlaceholders, directChipTargets } from '@/lib/placeholders';
 import { buildDictionaryFile } from '@/lib/dictionaryFile';
 import { downloadBlob } from '@/lib/downloadBlob';
 import { canonicalStringify } from '@/lib/canonicalStringify';
@@ -121,63 +122,74 @@ const DictionaryEditorModal = ({ dictionaryId, draft, onClose, onPublish }: {
     const current = dictionaries[0];
     if (!current) return;
     const blob = new Blob([JSON.stringify(buildDictionaryFile(current), null, 2)], { type: 'application/json' });
-    downloadBlob(blob, `${current.name || 'Dictionary'}.json`);
+    // A chip in the name would otherwise put a raw placement id in the filename.
+    downloadBlob(blob, `${describePlaceholders(current.name, current.placeholders) || 'Dictionary'}.json`);
   };
 
   return (
-    <EditorModalShell
-      open={isOpen}
-      title={book?.name || 'Dictionary'}
-      contentClassName="max-w-[1100px] w-[95vw] h-[85dvh] flex flex-col p-0 gap-0 overflow-hidden"
-      loading={!book}
-      tabs={TABS}
-      tab={tab}
-      onTabChange={(v) => setTab(v as DictionaryTab)}
-      hasUnsavedChanges={hasUnsavedChanges}
-      onSave={handleSave}
-      onClose={onClose}
-      onExport={handleExport}
-      onPublish={onPublish ? () => { if (dictionaries[0]) onPublish(dictionaries[0]); } : undefined}
-    >
-      <DictionaryStoreProvider value={store}>
-        {tab === 'overview' ? (
-          <ScrollArea className="flex-1 min-h-0">
-            <div className="p-4">
-              {dictionaries[0] && <DictionaryOverviewManager book={dictionaries[0]} />}
-            </div>
-          </ScrollArea>
-        ) : tab === 'placeholders' ? (
-          <PlaceholderStoreProvider value={phStore}>
-            <PlaceholderEditor />
-          </PlaceholderStoreProvider>
-        ) : (
-          <ListDetail
-            showDetail={!!(selectedBook || selectedEntry)}
-            onBack={() => setSelectedId(null)}
-            backLabel="Dictionary"
-            list={
-              <div className="p-2">
-                <DictionaryTree selectedId={selectedId} onSelect={setSelectedId} />
-              </div>
-            }
-            detail={
+    <EditorPreviewRollsProvider>
+      <EditorModalShell
+        open={isOpen}
+        // A library book has no world behind it, so its own carried defs render the chips — the same
+        // treatment its card and its listing get.
+        title={describePlaceholders(dictionaries[0]?.name ?? book?.name ?? '', dictionaries[0]?.placeholders) || 'Dictionary'}
+        contentClassName="max-w-[1100px] w-[95vw] h-[85dvh] flex flex-col p-0 gap-0 overflow-hidden"
+        loading={!book}
+        tabs={TABS}
+        tab={tab}
+        onTabChange={(v) => setTab(v as DictionaryTab)}
+        hasUnsavedChanges={hasUnsavedChanges}
+        onSave={handleSave}
+        onClose={onClose}
+        onExport={handleExport}
+        onPublish={onPublish ? () => { if (dictionaries[0]) onPublish(dictionaries[0]); } : undefined}
+      >
+        <DictionaryStoreProvider value={store}>
+          {tab === 'overview' ? (
+            <ScrollArea className="flex-1 min-h-0">
               <div className="p-4">
-                {selectedBook ? (
-                  <DictionaryBookManager key={selectedBook.id} book={selectedBook} />
-                ) : selectedEntry ? (
-                  <ChipInsertTargetProvider>
-                    <PlaceholderPaletteBar placeholders={bookPlaceholders} />
-                    <DictionaryManager key={selectedEntry.id} entry={selectedEntry} placeholders={bookPlaceholders} />
-                  </ChipInsertTargetProvider>
-                ) : (
-                  <p className="text-helper text-muted-foreground">Select the dictionary or an entry to edit it.</p>
-                )}
+                {dictionaries[0] && <DictionaryOverviewManager book={dictionaries[0]} />}
               </div>
-            }
-          />
-        )}
-      </DictionaryStoreProvider>
-    </EditorModalShell>
+            </ScrollArea>
+          ) : tab === 'placeholders' ? (
+            <PlaceholderStoreProvider value={phStore}>
+              {/* The same palette an entry gets, over the value fields: a value is a chip field too. */}
+              <ChipInsertTargetProvider>
+                <div className="flex min-h-0 flex-1 flex-col">
+                  <PlaceholderPaletteBar placeholders={bookPlaceholders} className="mx-0 mb-0 px-4" />
+                  <PlaceholderEditor />
+                </div>
+              </ChipInsertTargetProvider>
+            </PlaceholderStoreProvider>
+          ) : (
+            <ListDetail
+              showDetail={!!(selectedBook || selectedEntry)}
+              onBack={() => setSelectedId(null)}
+              backLabel="Dictionary"
+              list={
+                <div className="p-2">
+                  <DictionaryTree selectedId={selectedId} onSelect={setSelectedId} />
+                </div>
+              }
+              detail={
+                <div className="p-4">
+                  {selectedBook ? (
+                    <DictionaryBookManager key={selectedBook.id} book={selectedBook} />
+                  ) : selectedEntry ? (
+                    <ChipInsertTargetProvider>
+                      <PlaceholderPaletteBar placeholders={bookPlaceholders} />
+                      <DictionaryManager key={selectedEntry.id} entry={selectedEntry} placeholders={bookPlaceholders} />
+                    </ChipInsertTargetProvider>
+                  ) : (
+                    <p className="text-helper text-muted-foreground">Select the dictionary or an entry to edit it.</p>
+                  )}
+                </div>
+              }
+            />
+          )}
+        </DictionaryStoreProvider>
+      </EditorModalShell>
+    </EditorPreviewRollsProvider>
   );
 };
 

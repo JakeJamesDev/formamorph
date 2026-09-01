@@ -41,7 +41,10 @@ export interface LensOption {
  *  the field is for, and play applies it verbatim. */
 export interface BrokenPin {
   placeholderId: string;
+  /** What play applies, verbatim. */
   value: string;
+  /** The value as a sentence shows it — its own chips described, since a pin's text is chip-capable. */
+  shown: string;
 }
 
 /** The lens resolved against a world: who and where, and everything that follows from the PC. */
@@ -57,9 +60,14 @@ export interface BenchLens {
   statEnabled: Record<string, boolean>;
 }
 
-/** The traits an author can test as: every member of an exclusive group, in authored order. A trait outside
- *  one isn't a character — it is an option a character may also have — so it never appears here. */
+/**
+ * The traits an author can test as: every member of an exclusive group, in authored order. A trait outside
+ * one isn't a character — it is an option a character may also have — so it never appears here. Names are
+ * read as the rest of the Bench reads chip-bearing text; a trait's own name resolves under its own pins,
+ * the way its card does, and a group heading has no pins to read under.
+ */
 export function lensPcOptions(world: LensWorld): LensOption[] {
+  const placeholders = world.placeholders ?? [];
   const exclusive = new Map(
     (world.traitGroups ?? []).filter((g) => g.exclusive).map((g) => [g.id, g.name]),
   );
@@ -68,14 +76,19 @@ export function lensPcOptions(world: LensWorld): LensOption[] {
   const members = (world.traits ?? []).filter((t) => t.groupId != null && exclusive.has(t.groupId));
   return inAuthoredOrder(members, order).map((t) => ({
     id: t.id,
-    name: t.name || 'Untitled trait',
-    groupName: exclusive.get(t.groupId as string) || 'Traits',
+    name: resolveLensText(t.name, placeholders, activePlaceholderPins([t], placeholders)) || 'Untitled trait',
+    groupName: resolveLensText(exclusive.get(t.groupId as string) ?? '', placeholders, {}) || 'Traits',
   }));
 }
 
-/** Everywhere the author can stand, in authored order. */
-export function lensLocationOptions(world: LensWorld): LensOption[] {
-  return (world.locations ?? []).map((l) => ({ id: l.id, name: l.name || 'Untitled location' }));
+/** Everywhere the author can stand, in authored order, named under the lens PC's `pins` — what the prompt
+ *  would carry for that character. */
+export function lensLocationOptions(world: LensWorld, pins: Record<string, string> = {}): LensOption[] {
+  const placeholders = world.placeholders ?? [];
+  return (world.locations ?? []).map((l) => ({
+    id: l.id,
+    name: resolveLensText(l.name, placeholders, pins) || 'Untitled location',
+  }));
 }
 
 /** Where a fresh lens points: the location the author already has open in the editor, else the one a
@@ -114,7 +127,11 @@ function brokenPinsOf(trait: Trait, placeholders: Placeholder[]): BrokenPin[] {
   const known = new Set(placeholders.map((p) => p.id));
   return (trait.placeholderPins ?? [])
     .filter((pin) => pin.placeholderId && pin.value && !known.has(pin.placeholderId))
-    .map((pin) => ({ placeholderId: pin.placeholderId, value: pin.value }));
+    .map((pin) => ({
+      placeholderId: pin.placeholderId,
+      value: pin.value,
+      shown: describePlaceholders(pin.value, placeholders),
+    }));
 }
 
 /** The lens as every instrument reads it. A PC the world no longer has resolves to none rather than to a
@@ -169,7 +186,7 @@ const quote = (text: string) => `“${text}”`;
 /** A broken pin as the sentence under the selector reads. Names the value it claims to force, since
  *  "broken" alone sends the author looking for which end of the pin moved. */
 export function describeBrokenPin(pin: BrokenPin): string {
-  return `Pins a placeholder that doesn’t exist, so ${quote(pin.value)} is never applied.`;
+  return `Pins a placeholder that doesn’t exist, so ${quote(pin.shown)} is never applied.`;
 }
 
 /**

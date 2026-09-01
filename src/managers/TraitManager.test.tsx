@@ -34,13 +34,13 @@ const WORLD: Placeholder[] = [
   { id: 'isasian', name: 'isAsian', roll: false, values: phValues(['tan skin', 'black hair']) },
 ];
 
-const store: { trait: Trait; writes: Trait[]; rerender: () => void } =
-  { trait: sedgeBorn, writes: [], rerender: () => {} };
+const store: { trait: Trait; rival: Trait; writes: Trait[]; rerender: () => void } =
+  { trait: sedgeBorn, rival: marshWed, writes: [], rerender: () => {} };
 
 vi.mock('@/contexts/GameDataContext', () => ({
   useGameData: () => ({
     stats: [],
-    traits: [store.trait, marshWed],
+    traits: [store.trait, store.rival],
     traitGroups: [],
     placeholders: WORLD,
     updateTrait: (next: Trait) => {
@@ -76,6 +76,7 @@ const lastPins = () => store.writes[store.writes.length - 1].placeholderPins;
 
 beforeEach(() => {
   store.trait = { ...sedgeBorn, placeholderPins: [{ placeholderId: 'p1', value: 'copper' }] };
+  store.rival = marshWed;
   store.writes = [];
   onOpenTrait.mockClear();
 });
@@ -100,6 +101,15 @@ describe('the conflict note', () => {
     expect(links).toHaveLength(2);
     await userEvent.click(links[0]);
     expect(onOpenTrait).toHaveBeenCalledWith('t2');
+  });
+
+  it('shows a rival’s name resolved, never as the token behind it', () => {
+    store.rival = { ...marshWed, name: `${chip('p1')} Kin` };
+    renderManager();
+    const note = screen.getByText(/The lowest in the trait list wins/);
+    expect(note.textContent).not.toContain('{{ph:');
+    // The pill previews the placeholder's values, the way every read-only row does.
+    expect(note.textContent).toContain('ash|copper Kin');
   });
 });
 

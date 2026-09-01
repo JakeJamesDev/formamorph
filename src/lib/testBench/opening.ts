@@ -19,7 +19,8 @@ import { DEFAULT_MAX_TOKENS } from '@/contexts/settingsDefaults';
 import { authoredPreviewValues } from '@/lib/authoredPreviewValues';
 import { estimateTokens } from '@/lib/memoryUtils';
 import {
-  collectPlaceholderPlacements, placeholderChances, primeRolls, resolvePlaceholders,
+  collectPlaceholderPlacements, decodePlaceholderToken, describePlaceholders, lonePlaceholderToken,
+  placeholderChances, primeRolls, resolvePlaceholders,
   type PlaceholderPick,
 } from '@/lib/placeholders';
 import { resolveOpeningCue } from '@/lib/openingCue';
@@ -69,12 +70,24 @@ export interface OpeningTrait {
   toggles: { stat: string; enabled: boolean }[];
 }
 
+/** One option in a wildcard's pool, as the row prints it. A value that is exactly one chip of another
+ *  placeholder is not drawn until the roll lands on it, so it reads as that placeholder's name — marked, so
+ *  the row can draw it in that placeholder's color — rather than as text invented for a branch that did
+ *  not fire. */
+export interface OpeningPoolOption {
+  value: string;
+  /** Chance of being drawn, as a percentage. */
+  chance: number;
+  /** The placeholder this option references, when it is one. */
+  reference?: string;
+}
+
 /** One wildcard a fresh game rolls: its draws, each value's true odds, and the repeat risk. */
 export interface OpeningRollGroup {
   placeholderId: string;
   name: string;
-  /** Each value's chance of being drawn, in value order, as percentages. */
-  chances: { value: string; chance: number }[];
+  /** Each value's chance of being drawn, in value order. */
+  chances: OpeningPoolOption[];
   /** An active trait's pin masking every chip of this placeholder — then the rolls below never show. */
   pinnedValue?: string;
   /** The one shared roll World-mode chips read. */
@@ -231,14 +244,25 @@ export function buildOpening(world: OpeningWorld, lens: BenchLens, rolls: Placeh
     id: trait.id,
     name: resolveLensText(trait.name, placeholders, pins),
     isPc: trait.id === lens.pc?.id,
+    // A pin's text is chip-capable, so it reads through the same rolls as everything else here.
     pins: (trait.placeholderPins ?? [])
       .filter((pin) => pin.placeholderId && pin.value)
-      .map((pin) => ({ placeholder: placeholderName.get(pin.placeholderId) ?? pin.placeholderId, value: pin.value })),
+      .map((pin) => ({ placeholder: placeholderName.get(pin.placeholderId) ?? pin.placeholderId, value: resolve(pin.value) })),
     toggles: (trait.statToggles ?? []).map((toggle) => ({
       stat: statName.get(toggle.statId) ?? toggle.statId,
       enabled: toggle.enabled,
     })),
   }));
+
+  // A pool option as the row prints it. Only the drawn value resolves; an option the roll passed over reads
+  // as the placeholder it references, or as its own text described, so no branch shows invented text.
+  const poolOption = (text: string, chance: number): OpeningPoolOption => {
+    const lone = lonePlaceholderToken(text);
+    const ref = lone ? decodePlaceholderToken(lone)?.id : undefined;
+    const target = ref ? placeholderName.get(ref) : undefined;
+    if (ref && target) return { value: target, chance, reference: ref };
+    return { value: describePlaceholders(text, placeholders), chance };
+  };
 
   // The wildcards a fresh game rolls, in placeholder order: every placement the priming pass covers.
   const { worldIds, unique } = collectPlaceholderPlacements(chipBearingTexts(world));
@@ -248,15 +272,17 @@ export function buildOpening(world: OpeningWorld, lens: BenchLens, rolls: Placeh
     if (!worldIds.has(ph.id) && uniquePlacements.length === 0) return [];
     const chances = placeholderChances(ph);
     const pinned = pins[ph.id];
+    const worldValue = rolls.world?.[ph.id];
+    // A stored roll is the value's own text, chips and all; what the row shows is what play would show.
     return [{
       placeholderId: ph.id,
       name: ph.name || ph.id,
-      chances: ph.values.map((value) => ({ value: value.text, chance: chances[value.id] })),
-      ...(pinned != null ? { pinnedValue: pinned } : {}),
-      ...(worldIds.has(ph.id) ? { worldValue: rolls.world?.[ph.id] } : {}),
+      chances: ph.values.map((value) => poolOption(value.text, chances[value.id])),
+      ...(pinned != null ? { pinnedValue: resolve(pinned) } : {}),
+      ...(worldIds.has(ph.id) ? { worldValue: worldValue != null ? resolve(worldValue) : undefined } : {}),
       uniqueValues: uniquePlacements.flatMap((u) => {
         const value = rolls.unique?.[u.placementId];
-        return value != null ? [value] : [];
+        return value != null ? [resolve(value)] : [];
       }),
       ...(uniquePlacements.length >= 2 && pinned == null
         ? { collisionChance: collisionChance(ph.values.map((v) => chances[v.id] / 100), uniquePlacements.length) * 100 }

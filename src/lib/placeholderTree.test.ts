@@ -1,10 +1,11 @@
 import { describe, it, expect } from 'vitest';
 import { encodePlaceholderToken } from './placeholders';
-import { phValues } from '@/test/placeholderValues';
+import { phValueId, phValues } from '@/test/placeholderValues';
 import type { Placeholder } from '@/types';
 import {
   applyPlaceholderDrop, dropTakesOwnership, holderOf, isOwnedPlaceholder, ownedDescendants,
-  placeholderOwnerPath, placeholderRows, placeholderUsedBy, promotePlaceholder,
+  placeholderCycleExclusions, placeholderOwnerPath, placeholderRowChance, placeholderRows,
+  placeholderUsedBy, promotePlaceholder,
   qualifiedPlaceholderName, releasePlaceholderOwners, removeChipValueFrom, removeCollapsedPlaceholderRows,
   removePlaceholderCascade, sharedWeightSite, topLevelPlaceholders,
 } from './placeholderTree';
@@ -435,5 +436,62 @@ describe('sharedWeightSite', () => {
 
   it('reports nothing for a row whose path names a placeholder that is gone', () => {
     expect(sharedWeightSite(FLAT, 'molly/ghost')).toBeNull();
+  });
+});
+
+describe('placeholderRowChance', () => {
+  it('reads 100 at the top level, where a row is always reached', () => {
+    expect(placeholderRowChance(FLAT, 'molly')).toBe(100);
+  });
+
+  it('multiplies the chance of every value walked to reach a nested row', () => {
+    // Molly picks one of two variants; each variant has one value, so Hair under either is certain.
+    expect(placeholderRowChance(FLAT, 'molly/northern')).toBe(50);
+    expect(placeholderRowChance(FLAT, 'molly/northern/hair')).toBe(50);
+    // Southern holds two values, so its hair is a 50% branch inside a 50% branch.
+    expect(placeholderRowChance(FLAT, 'molly/southern/hair')).toBe(25);
+  });
+
+  it('crosses an Object for free — every value of it applies', () => {
+    const asObject = FLAT.map((p) => (p.id === 'molly' ? { ...p, roll: false } : p));
+    expect(placeholderRowChance(asObject, 'molly/southern/hair')).toBe(50);
+  });
+
+  it('reads a holder’s own weights', () => {
+    const weighted = FLAT.map((p) => (p.id === 'molly'
+      ? { ...p, weights: { [phValueId(chip('northern'))]: 3, [phValueId(chip('southern'))]: 1 } }
+      : p));
+    expect(placeholderRowChance(weighted, 'molly/northern')).toBe(75);
+  });
+
+  it('reads the shared row’s override where one is in force, as the panel does', () => {
+    // Under Molly, Southern's own row is benched off its second value: hair becomes the only draw.
+    const overridden = FLAT.map((p) => (p.id === 'molly'
+      ? { ...p, sharedWeights: { [phValueId(chip('southern'))]: { [phValueId('dark brown eyes')]: 0 } } }
+      : p));
+    expect(placeholderRowChance(overridden, 'molly/southern/hair')).toBe(50);
+  });
+
+  it('stops at a step that names a placeholder that is gone', () => {
+    expect(placeholderRowChance(FLAT, 'molly/ghost/hair')).toBe(100);
+  });
+});
+
+describe('placeholderCycleExclusions', () => {
+  it('excludes the placeholder itself', () => {
+    expect([...placeholderCycleExclusions(FLAT, 'town')]).toEqual(['town']);
+  });
+
+  it('excludes everything that reaches it, however far up', () => {
+    expect(placeholderCycleExclusions(FLAT, 'hair')).toEqual(new Set(['hair', 'northern', 'southern', 'molly']));
+  });
+
+  it('counts a chip composed into prose, which resolution also walks', () => {
+    const composed = [...FLAT, P('sign', 'Sign', [`Welcome to ${chip('town')}`])];
+    expect(placeholderCycleExclusions(composed, 'town')).toEqual(new Set(['town', 'sign']));
+  });
+
+  it('leaves siblings and unrelated placeholders alone', () => {
+    expect(placeholderCycleExclusions(FLAT, 'molly')).toEqual(new Set(['molly']));
   });
 });

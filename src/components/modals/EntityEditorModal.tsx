@@ -8,6 +8,7 @@ import PlaceholderEditor from '@/managers/PlaceholderEditor';
 import PlaceholderPaletteBar from '@/components/prompt/PlaceholderPaletteBar';
 import { describePlaceholders } from '@/lib/placeholders';
 import { ChipInsertTargetProvider } from '@/components/prompt/ChipInsertTarget';
+import { EditorPreviewRollsProvider } from '@/contexts/EditorPreviewRollsContext';
 import { placeholderStore, PlaceholderStoreProvider } from '@/contexts/PlaceholderStoreContext';
 import { directChipTargets } from '@/lib/placeholders';
 import { exportEntityCard } from '@/lib/entityFile';
@@ -128,43 +129,51 @@ const EntityEditorModal = ({ entityId, draft, onClose, onPublish }: {
   };
 
   return (
-    <EditorModalShell
-      open={isOpen}
-      // A library character has no world behind it, so its own carried defs render the chips — the same
-      // treatment its card and its listing get.
-      title={describePlaceholders(entity?.name ?? '', entity?.placeholders) || 'Character'}
-      contentClassName="max-w-[800px] w-[95vw] h-[85dvh] flex flex-col p-0 gap-0 overflow-hidden"
-      loading={!entity}
-      tabs={TABS}
-      tab={tab}
-      onTabChange={(v) => setTab(v as EntityTab)}
-      hasUnsavedChanges={hasUnsavedChanges}
-      onSave={handleSave}
-      onClose={onClose}
-      onExport={handleExport}
-      onPublish={onPublish && entity ? () => onPublish(entity) : undefined}
-    >
-      {entity && tab === 'overview' ? (
-        <ScrollArea className="flex-1 min-h-0">
-          <div className="p-4">
-            <TagsField values={entity.tags} onChange={(tags) => handleChange('tags', tags)} />
-          </div>
-        </ScrollArea>
-      ) : entity && tab === 'entity' ? (
-        <ScrollArea className="flex-1 min-h-0">
-          <div className="p-4">
+    <EditorPreviewRollsProvider>
+      <EditorModalShell
+        open={isOpen}
+        // A library character has no world behind it, so its own carried defs render the chips — the same
+        // treatment its card and its listing get.
+        title={describePlaceholders(entity?.name ?? '', entity?.placeholders) || 'Character'}
+        contentClassName="max-w-[800px] w-[95vw] h-[85dvh] flex flex-col p-0 gap-0 overflow-hidden"
+        loading={!entity}
+        tabs={TABS}
+        tab={tab}
+        onTabChange={(v) => setTab(v as EntityTab)}
+        hasUnsavedChanges={hasUnsavedChanges}
+        onSave={handleSave}
+        onClose={onClose}
+        onExport={handleExport}
+        onPublish={onPublish && entity ? () => onPublish(entity) : undefined}
+      >
+        {entity && tab === 'overview' ? (
+          <ScrollArea className="flex-1 min-h-0">
+            <div className="p-4">
+              <TagsField values={entity.tags} onChange={(tags) => handleChange('tags', tags)} />
+            </div>
+          </ScrollArea>
+        ) : entity && tab === 'entity' ? (
+          <ScrollArea className="flex-1 min-h-0">
+            <div className="p-4">
+              <ChipInsertTargetProvider>
+                <PlaceholderPaletteBar placeholders={entity.placeholders ?? []} />
+                <EntityFields value={entity} onChange={handleChange} placeholders={entity.placeholders ?? []} />
+              </ChipInsertTargetProvider>
+            </div>
+          </ScrollArea>
+        ) : (
+          <PlaceholderStoreProvider value={phStore}>
+            {/* The same palette the Character tab gets, over the value fields: a value is a chip field too. */}
             <ChipInsertTargetProvider>
-              <PlaceholderPaletteBar placeholders={entity.placeholders ?? []} />
-              <EntityFields value={entity} onChange={handleChange} placeholders={entity.placeholders ?? []} />
+              <div className="flex min-h-0 flex-1 flex-col">
+                <PlaceholderPaletteBar placeholders={entity?.placeholders ?? []} className="mx-0 mb-0 px-4" />
+                <PlaceholderEditor />
+              </div>
             </ChipInsertTargetProvider>
-          </div>
-        </ScrollArea>
-      ) : (
-        <PlaceholderStoreProvider value={phStore}>
-          <PlaceholderEditor />
-        </PlaceholderStoreProvider>
-      )}
-    </EditorModalShell>
+          </PlaceholderStoreProvider>
+        )}
+      </EditorModalShell>
+    </EditorPreviewRollsProvider>
   );
 };
 

@@ -12,8 +12,8 @@ import { randomUUID } from '@/lib/uuid';
 import { clamp } from '@/lib/utils';
 import {
   PLACEHOLDER_PATH_SEPARATOR, SHARED_PATH_SEP, collectPlaceholderParts, decodePlaceholderToken,
-  encodePlaceholderToken, lonePlaceholderToken, newPlaceholderValue, parsePlaceholderText,
-  pruneSharedWeights,
+  directChipTargets, encodePlaceholderToken, lonePlaceholderToken, mergePlaceholderWeights,
+  newPlaceholderValue, parsePlaceholderText, placeholderChances, placeholderIsChoice, pruneSharedWeights,
 } from './placeholders';
 import type { Placeholder, PlaceholderValue } from '@/types';
 
@@ -84,6 +84,59 @@ export function sharedWeightSite(
     site = { ownerId: holder.id, key: value.id };
   }
   return site;
+}
+
+/**
+ * How likely the row at `rowId` is to be reached at all, as a percentage: the chance of every value walked
+ * to get there, multiplied down the chain. A top-level row is always reached, so it reads 100. Crossing an
+ * Object costs nothing — it applies every value — and crossing a Wildcard costs the chance of the value
+ * holding the next step, under the weights in force for that row: the holder's own, or the shared row's
+ * override laid over them, exactly as the panel reveals them.
+ */
+export function placeholderRowChance(placeholders: readonly Placeholder[], rowId: string): number {
+  const ids = rowId.split(ROW_SEP);
+  const byId = new Map(placeholders.map((p) => [p.id, p]));
+  let chance = 100;
+  for (let i = 1; i < ids.length; i++) {
+    const holder = byId.get(ids[i - 1]);
+    const target = byId.get(ids[i]);
+    if (!holder || !target) break;
+    if (!placeholderIsChoice(holder)) continue;
+    const site = sharedWeightSite(placeholders, ids.slice(0, i).join(ROW_SEP));
+    const override = site ? byId.get(site.ownerId)?.sharedWeights?.[site.key] : undefined;
+    const chances = placeholderChances(holder, mergePlaceholderWeights(holder.weights, override));
+    const value = chipValueHolding(holder, target.id);
+    chance *= (value ? chances[value.id] ?? 0 : 0) / 100;
+  }
+  return chance;
+}
+
+/**
+ * What a palette leaves out while a value of `id` is being edited: the placeholder itself and everything
+ * that reaches it through a value, however far up. A chip of any of those, placed here, would close a loop
+ * the resolver could only report. Every chip counts, composed into prose or standing alone — resolution
+ * walks both.
+ */
+export function placeholderCycleExclusions(placeholders: readonly Placeholder[], id: string): Set<string> {
+  const holders = new Map<string, string[]>();
+  for (const holder of placeholders) {
+    for (const target of directChipTargets((holder.values ?? []).map((v) => v.text))) {
+      const list = holders.get(target);
+      if (list) list.push(holder.id);
+      else holders.set(target, [holder.id]);
+    }
+  }
+  const out = new Set<string>([id]);
+  const queue = [id];
+  while (queue.length) {
+    for (const holder of holders.get(queue.pop()!) ?? []) {
+      if (!out.has(holder)) {
+        out.add(holder);
+        queue.push(holder);
+      }
+    }
+  }
+  return out;
 }
 
 /**

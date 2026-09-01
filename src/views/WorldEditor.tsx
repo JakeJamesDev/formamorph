@@ -55,6 +55,7 @@ import WorldDetailsManager from '../managers/WorldDetailsManager';
 import DictionaryManager from '../managers/DictionaryManager';
 import PlaceholderPaletteBar from '@/components/prompt/PlaceholderPaletteBar';
 import { ChipInsertTargetProvider } from '@/components/prompt/ChipInsertTarget';
+import { EditorPreviewRollsProvider } from '@/contexts/EditorPreviewRollsContext';
 import PlaceholderManager from '../managers/PlaceholderManager';
 import PlaceholderList from '../managers/PlaceholderList';
 import DictionaryTree from '../managers/DictionaryTree';
@@ -265,7 +266,8 @@ const WorldEditorInner = ({ onClose, embedded = false, backButton }: {
   const exportDictionary = (book: Dictionary) => {
     // Bundle the world placeholders this book's entries use, so its chips resolve after import elsewhere.
     const jsonData = JSON.stringify(buildDictionaryFile(book, placeholders), null, 2);
-    downloadBlob(new Blob([jsonData], { type: 'application/json' }), `${book.name || 'Dictionary'}.json`);
+    // A chip in the name would otherwise put a raw placement id in the filename.
+    downloadBlob(new Blob([jsonData], { type: 'application/json' }), `${describePlaceholders(book.name, placeholders) || 'Dictionary'}.json`);
   };
 
   // Export one entity as a shareable WebP character card (its portrait carrying the text fields).
@@ -486,7 +488,7 @@ const WorldEditorInner = ({ onClose, embedded = false, backButton }: {
     activeTab === 'overview' ? { label: 'Export World', disabled: false, onClick: () => { exportCurrentWorld(); } }
     : activeTab === 'entities' && advanced ? { label: `Export ${selectedItem ? describePlaceholders(selectedItem.name, placeholders) : 'Entity'}`, disabled: !selectedItem, onClick: () => { if (selectedItem) exportEntity(selectedItem as Entity); } }
     : activeTab === 'dictionary' && advanced
-      ? { label: `Export ${selectedBook?.name ?? 'Dictionary'}`, disabled: !selectedBook, onClick: () => { if (selectedBook) exportDictionary(selectedBook); } }
+      ? { label: `Export ${(selectedBook && describePlaceholders(selectedBook.name, placeholders)) || 'Dictionary'}`, disabled: !selectedBook, onClick: () => { if (selectedBook) exportDictionary(selectedBook); } }
     : null;
   // "Add" opens the add-from-library picker (characters on Entities, books on Dictionary).
   const showImport = activeTab === 'entities' || activeTab === 'dictionary';
@@ -608,9 +610,9 @@ const WorldEditorInner = ({ onClose, embedded = false, backButton }: {
   const detailContent = (
     <ChipInsertTargetProvider>
     <div className="p-3">
-      {/* One palette for the whole panel. Not on the Placeholders tab itself: a placeholder's own values
-          are plain text, since a chip inside one would never be expanded (resolution is single-pass). */}
-      {advanced && activeTab !== "placeholders" && (
+      {/* One palette for the whole panel, the Placeholders tab included: a value is a chip field like any
+          other, and the palette leaves out whatever would loop back into the value being edited. */}
+      {advanced && (
         <PlaceholderPaletteBar placeholders={placeholders} className="-mx-3 -mt-3 mb-3 px-3" />
       )}
       {activeTab === "overview" && (
@@ -652,6 +654,7 @@ const WorldEditorInner = ({ onClose, embedded = false, backButton }: {
         <PlaceholderManager
           key={selectedPlaceholder.row.id}
           placeholder={selectedPlaceholder.row.placeholder}
+          rowId={selectedPlaceholder.row.id}
           share={selectedPlaceholder.share}
         />
       )}
@@ -1030,7 +1033,11 @@ const WorldEditor = (props: Parameters<typeof WorldEditorInner>[0]) => {
   }
   return (
     <EditorModeProvider forcedMode={forcedMode} forcedNonce={nonce.current}>
-      <WorldEditorInner {...props} />
+      {/* One set of preview rolls for the whole editor, so every field's Preview shows one value per
+          placeholder until a Reroll draws again. Editor state only — a save never sees it. */}
+      <EditorPreviewRollsProvider>
+        <WorldEditorInner {...props} />
+      </EditorPreviewRollsProvider>
     </EditorModeProvider>
   );
 };

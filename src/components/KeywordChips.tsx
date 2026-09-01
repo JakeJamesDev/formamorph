@@ -1,4 +1,4 @@
-import { useState, type ChangeEvent, type ClipboardEvent, type KeyboardEvent, type ReactNode } from 'react';
+import { useState, type ChangeEvent, type ClipboardEvent, type CSSProperties, type KeyboardEvent, type ReactNode } from 'react';
 import { type DragEndEvent } from '@dnd-kit/core';
 import { arrayMove, rectSortingStrategy } from '@dnd-kit/sortable';
 import { EditorDndContext, StableSortableContext } from '@/components/dnd/EditorDndContext';
@@ -34,6 +34,7 @@ export function KeywordChips({
   offerCommaSplit = true,
   onChipClick,
   chipSuffix,
+  chipStyle,
   renderChip,
   placeholders,
   ownerId,
@@ -57,6 +58,9 @@ export function KeywordChips({
   onChipClick?: (value: string) => void;
   /** Trailing decoration inside the chip, e.g. a rolled percentage. */
   chipSuffix?: (value: string) => string | undefined;
+  /** The host's own colors for a chip — a draw chance's tone, say. Given, it replaces the default accent
+   *  rule (a tag that is exactly one chip wears that placeholder's color). */
+  chipStyle?: (value: string) => CSSProperties | undefined;
   /** Wrap each rendered chip — the host's hook for anchoring per-chip UI. */
   renderChip?: (chip: ReactNode, value: string) => ReactNode;
 }) {
@@ -154,10 +158,13 @@ export function KeywordChips({
 
   /** A tag that is nothing but a chip wears that placeholder's accent: it *is* the placeholder, so it reads
    *  as one rather than as a literal string that happens to be spelled like one. A chip inside a longer tag
-   *  is prose, and the pill it already draws inside the neutral chip carries the accent instead. */
-  const chipColor = (kw: string): string | undefined => {
+   *  is prose, and the pill it already draws inside the neutral chip carries the accent instead. The same
+   *  accent-with-black-text recipe every other placeholder chip wears. */
+  const chipStyleOf = (kw: string): CSSProperties | undefined => {
+    if (chipStyle) return chipStyle(kw);
     const lone = lonePlaceholderAsPath ? lonePlaceholderToken(kw) : null;
-    return lone ? vocab.color(lone) : undefined;
+    const color = lone ? vocab.color(lone) : undefined;
+    return color ? { backgroundColor: color, color: '#000' } : undefined;
   };
 
   return (
@@ -180,7 +187,7 @@ export function KeywordChips({
                   // A value written in the multiline editor comes back as its first line — a chip row is a
                   // one-line surface, and a paragraph in one would wrap the whole box.
                   label={chipLabel(kw)}
-                  color={chipColor(kw)}
+                  style={chipStyleOf(kw)}
                   placeholders={placeholders}
                   suffix={chipSuffix?.(kw)}
                   onActivate={onChipClick}
@@ -201,6 +208,7 @@ export function KeywordChips({
             value={inputValue}
             onChange={(v) => { setInputValue(v); setSplitOffer(null); }}
             vocabulary={vocab}
+            ownerId={ownerId}
             trigger={PLACEHOLDER_TRIGGER}
             onSubmit={() => { addKeyword(inputValue); setInputValue(''); }}
             onBlur={() => { if (inputValue.trim()) { addKeyword(inputValue); setInputValue(''); } }}
