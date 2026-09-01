@@ -240,6 +240,56 @@ describe('placeholderTree', () => {
       expect(next).toBe(FLAT);
     });
 
+    /** Molly shares two top-level rows nobody else holds, benching a value on each and one level under
+     *  Hair. Nothing else reaches either, so a drop under Molly is free to take one privately. */
+    const benched = () => {
+      const molly = P('molly', 'Molly', [chip('hair'), chip('eyes')]);
+      const [hairValue, eyesValue] = molly.values;
+      const world: Placeholder[] = [
+        {
+          ...molly,
+          sharedWeights: {
+            [hairValue.id]: { w: 0 },
+            [`${hairValue.id}/shade`]: { w: 0 },
+            [eyesValue.id]: { w: 0 },
+          },
+        },
+        P('hair', 'Hair', ['brown', 'black']),
+        P('eyes', 'Eyes', ['grey', 'green']),
+      ];
+      return { world, hairValue, eyesValue };
+    };
+
+    it('drops the weights a shared row carried when the drop takes it privately', () => {
+      // An owned row opens no shared site (`nextShare` in lib/placeholders), so Hair's bench would apply
+      // to nothing and still export with the world. Every key under it goes for the same reason. Eyes is
+      // no part of this gesture, so its bench has to survive it.
+      const { world, eyesValue } = benched();
+      const next = applyPlaceholderDrop(world, [], 'hair', 'molly/eyes', 0, INDENT);
+      expect(ownerOf(next, 'hair')).toBe('molly');
+      expect(next.find((p) => p.id === 'molly')!.sharedWeights).toEqual({ [eyesValue.id]: { w: 0 } });
+    });
+
+    it('drops the override map entirely when the row taken carried all of it', () => {
+      const { world, hairValue } = benched();
+      const only = world.map((p) => (p.id === 'molly'
+        ? { ...p, sharedWeights: { [hairValue.id]: { w: 0 } } } : p));
+      const molly = applyPlaceholderDrop(only, [], 'hair', 'molly/eyes', 0, INDENT)
+        .find((p) => p.id === 'molly');
+      // Absent already means the original's own odds, so an emptied map is a field nothing reads.
+      expect(molly && 'sharedWeights' in molly).toBe(false);
+    });
+
+    it('keeps a shared row’s weights when the drop only reorders it', () => {
+      // The row stays shared, so the bench on it still applies — dropping it here would lose an authored
+      // decision to a gesture that said nothing about ownership.
+      const { world } = benched();
+      const next = applyPlaceholderDrop(world, [], 'molly/eyes', 'molly/hair', 0, INDENT);
+      expect(ownerOf(next, 'eyes')).toBeNull();
+      expect(next.find((p) => p.id === 'molly')!.sharedWeights)
+        .toEqual(world.find((p) => p.id === 'molly')!.sharedWeights);
+    });
+
     it('never mutates what it was given', () => {
       const before = JSON.stringify(FLAT);
       applyPlaceholderDrop(FLAT, [], 'town', 'molly/northern', INDENT, INDENT);
