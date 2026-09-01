@@ -849,6 +849,46 @@ describe('eager priming through value chips', () => {
     const rolls = primeRolls(DEMO, [placed('molly', 'world', 'p1', slot('Eyes'))], {}, first);
     expect(rolls.world).toEqual({ molly: chip('iswhite'), eyes: 'green' });
   });
+
+  it('primes what a trait’s pin reaches, under the chain the pin masks', () => {
+    // The save froze the Asian variant; a trait pins Molly to the white one, whose Brown and Eyes a render
+    // then reads under u1. Those keys exist only if priming walked the pin beside the roll.
+    const text = placed('molly', 'unique', 'u1');
+    const pins = { molly: chip('iswhite') };
+    const rolls = primeRolls(DEMO, [text], { unique: { u1: chip('isasian') } }, first, { molly: [chip('iswhite')] });
+    expect(rolls.unique).toEqual({ u1: chip('isasian'), 'u1/brown': 'chestnut', 'u1/eyes': 'green' });
+
+    const setRoll = vi.fn();
+    expect(resolvePlaceholders(text, { placeholders: DEMO, rolls, setRoll, pick: first, pins }))
+      .toBe('chestnut, green, light freckles');
+    expect(setRoll).not.toHaveBeenCalled();
+  });
+
+  it('primes a pin that beats an authored drill', () => {
+    // isWhite drills Hair to Brown; a trait pinning Hair to Blonde takes that drill's place wherever it sits.
+    const text = placed('molly', 'unique', 'u1');
+    const pins = { hair: chip('blonde') };
+    const rolls = primeRolls(DEMO, [text], {}, first, { hair: [chip('blonde')] });
+    expect(rolls.unique?.['u1/blonde']).toBe('golden blonde');
+
+    const setRoll = vi.fn();
+    expect(resolvePlaceholders(text, { placeholders: DEMO, rolls, setRoll, pick: first, pins }))
+      .toBe('golden blonde, green, light freckles');
+    expect(setRoll).not.toHaveBeenCalled();
+  });
+
+  it('primes a slot that routes through a pinned variant', () => {
+    // `Molly › Eyes` routes through whichever variant Molly shows. The save froze isAsian, which has no Eyes
+    // part; a trait pinning Molly to isWhite makes the slot land on Eyes, whose roll a render then reads.
+    const text = placed('molly', 'unique', 'u1', slot('Eyes'));
+    const pins = { molly: chip('iswhite') };
+    const rolls = primeRolls(DEMO, [text], { unique: { u1: chip('isasian') } }, first, { molly: [chip('iswhite')] });
+    expect(rolls.unique?.['u1/eyes']).toBe('green');
+
+    const setRoll = vi.fn();
+    expect(resolvePlaceholders(text, { placeholders: DEMO, rolls, setRoll, pick: first, pins })).toBe('green');
+    expect(setRoll).not.toHaveBeenCalled();
+  });
 });
 
 describe('portability through value chips', () => {

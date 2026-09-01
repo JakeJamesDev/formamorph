@@ -27,7 +27,7 @@ import { resolveOpeningCue } from '@/lib/openingCue';
 import { NONE_PLACEHOLDER } from '@/lib/promptFallbacks';
 import { renderPromptTemplate } from '@/lib/promptTemplate';
 import { activeDescriptor } from '@/lib/statContext';
-import { activePlaceholderPins, activeStatEnabled, enabledStats } from '@/lib/traitEffects';
+import { activePlaceholderPins, activeStatEnabled, allPinTexts, enabledStats } from '@/lib/traitEffects';
 import { acquireTrait, seedStatBases, type TraitRuntimeState } from '@/lib/traitRuntime';
 import { buildNarrationPrompt } from '@/lib/turnPipeline/narrationPrompt';
 import { startingLocations } from '@/lib/startingLocation';
@@ -128,16 +128,20 @@ export const EMPTY_OPENING: OpeningData = {
 const openingPins = (world: OpeningWorld, lens: BenchLens): Record<string, string> =>
   activePlaceholderPins(lensActiveTraits(world, lens), world.placeholders ?? []);
 
+/** Every text any trait pins a placeholder to — walked beside the rolls, exactly as Enter World walks them. */
+const openingPinTexts = (world: OpeningWorld): Record<string, string[]> =>
+  allPinTexts(world.traits ?? [], world.placeholders ?? []);
+
 /**
  * Roll every wildcard placement a fresh game would prime, keeping whatever `existing` already holds — the
- * exact pass Enter World runs, over the same field list.
+ * exact pass Enter World runs, over the same field list and the same pins.
  */
 export function primeOpeningRolls(
   world: OpeningWorld,
   existing: PlaceholderRolls = {},
   pick?: PlaceholderPick,
 ): PlaceholderRolls {
-  return primeRolls(world.placeholders ?? [], chipBearingTexts(world), existing, pick);
+  return primeRolls(world.placeholders ?? [], chipBearingTexts(world), existing, pick, openingPinTexts(world));
 }
 
 /**
@@ -153,7 +157,9 @@ export function rerollOpeningRolls(
 ): PlaceholderRolls {
   const pins = openingPins(world, lens);
   const texts = chipBearingTexts(world);
-  const { unique } = collectPlaceholderPlacements(texts);
+  const pinTexts = openingPinTexts(world);
+  // A pin's own chips are placements too, so a pinned one keeps its roll like any other.
+  const { unique } = collectPlaceholderPlacements([...texts, ...Object.values(pinTexts).flat()]);
   const placementOwner = new Map(unique.map((u) => [u.placementId, u.id]));
   const keep = (entries: Record<string, string> | undefined, ownerOf: (key: string) => string | undefined) =>
     Object.fromEntries(Object.entries(entries ?? {}).filter(([key]) => {
@@ -169,7 +175,7 @@ export function rerollOpeningRolls(
   return primeRolls(world.placeholders ?? [], texts, {
     world: keep(previous.world, (id) => id),
     unique: keep(previous.unique, uniqueOwner),
-  }, pick);
+  }, pick, pinTexts);
 }
 
 /** Chance that `draws` independent picks over `chances` (fractions summing to 1) repeat a value:

@@ -1,6 +1,7 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { useGameData } from './GameDataContext';
-import { primeRolls } from '@/lib/placeholders';
+import { primeRolls, weightedPick } from '@/lib/placeholders';
+import { allPinTexts } from '@/lib/traitEffects';
 import type { PlaceholderRolls } from '@/types';
 
 /**
@@ -74,7 +75,8 @@ export function PlaceholderSessionProvider({ children }: { children: ReactNode }
 
   // Eager priming: roll every Wildcard placement across the world's authored text once the session opens,
   // so resolution stays a pure lookup everywhere else. Names are primed alongside descriptions — a name
-  // resolved from an unprimed roll would draw a new value on every render.
+  // resolved from an unprimed roll would draw a new value on every render. Trait pins are chip-capable and
+  // read the moment their trait is on, so their chips are primed too, whichever traits get picked.
   useEffect(() => {
     if (!sessionActive || placeholders.length === 0) return;
     const texts = [
@@ -94,7 +96,7 @@ export function PlaceholderSessionProvider({ children }: { children: ReactNode }
     // this effect depends on `rolls` so a save restoring mid-session gets its missing placements primed —
     // without the identity guard those two facts are a render loop.
     setRolls((prev) => {
-      const next = primeRolls(placeholders, texts, prev);
+      const next = primeRolls(placeholders, texts, prev, weightedPick, allPinTexts(traits, placeholders));
       return sameRolls(prev, next) ? prev : next;
     });
   }, [sessionActive, rolls, placeholders, entities, locations, dictionaries, stats, traits, traitGroups, worldOverview]);
