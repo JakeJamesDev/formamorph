@@ -3,6 +3,12 @@
   <head>
     <meta charset="UTF-8" />
     <link rel="icon" type="image/png" href="/icon.png" />
+    <!-- iOS ignores alpha on a home-screen icon and composites it onto black, so this one is pre-flattened. -->
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+    <link rel="manifest" href="/manifest.json" />
+    <!-- Appearance defaults to the OS, which the manifest's single theme_color cannot follow. These override it. -->
+    <meta name="theme-color" content="#F6F7F8" media="(prefers-color-scheme: light)" />
+    <meta name="theme-color" content="#16181D" media="(prefers-color-scheme: dark)" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, interactive-widget=resizes-content" />
     <title>Formamorph</title>
   </head>

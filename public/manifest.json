@@ -1,0 +1,16 @@
+{
+  "name": "Formamorph",
+  "short_name": "Formamorph",
+  "description": "An AI text RPG that brings your world to life. Create your own characters and locations, or play any of the hundreds the community has published.",
+  "lang": "en",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#16181D",
+  "theme_color": "#16181D",
+  "categories": ["games", "entertainment"],
+  "icons": [
+    { "src": "./icon-192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "./icon.png", "sizes": "512x512", "type": "image/png" }
+  ]
+}
