@@ -304,6 +304,22 @@ export function dropTakesOwnership(
   return !placeholders.some((p) => p.id !== holderId && p.id !== id && holdsAsChip(p, id));
 }
 
+/**
+ * Drop the draw weights a holder set on the row it has just taken privately. An owned row opens no shared
+ * site (see `nextShare` in lib/placeholders), so the override and every key extending it would apply to
+ * nothing and still travel with the placeholder on export. Only this row's keys go: the holder's other
+ * shared rows are no part of the gesture.
+ */
+function withoutSharedWeightsFor(holder: Placeholder, targetId: string): Placeholder {
+  const value = chipValueHolding(holder, targetId);
+  if (!value || !holder.sharedWeights) return holder;
+  const kept = Object.entries(holder.sharedWeights).filter(([key]) => key.split(ROW_SEP)[0] !== value.id);
+  if (kept.length === Object.keys(holder.sharedWeights).length) return holder;
+  const { sharedWeights: _taken, ...rest } = holder;
+  // An emptied map goes entirely — absent already means the original's own odds.
+  return kept.length ? { ...rest, sharedWeights: Object.fromEntries(kept) } : rest;
+}
+
 /** Drop the owner reference, leaving the rest of the placeholder alone. */
 function released(placeholder: Placeholder): Placeholder {
   if (placeholder.ownerId === undefined) return placeholder;
@@ -456,7 +472,12 @@ export function applyPlaceholderDrop(
   // A row dragged inside the holder it already sits in is being reordered, not re-homed: taking ownership
   // here would turn a shared row private on a gesture that said nothing about ownership.
   if (holderId !== active.holderId && dropTakesOwnership(placeholders, targetId, holderId, context)) {
-    next = next.map((p) => (p.id === targetId ? { ...p, ownerId: holderId } : p));
+    next = next.map((p) => {
+      if (p.id === targetId) return { ...p, ownerId: holderId };
+      // The holder may already have been sharing this row and weighting it there; taking it privately
+      // leaves those weights applying to nothing.
+      return p.id === holderId ? withoutSharedWeightsFor(p, targetId) : p;
+    });
   }
   return next.map((p) => (p.id === holderId ? orderChipValues(p, orderUnder(parentRowId)) : p));
 }
