@@ -14,6 +14,13 @@ const PORT = Number(process.env.E2E_PORT ?? 5183);
 const BASE_URL = `http://localhost:${PORT}`;
 
 /**
+ * The formamorph.ai landing page is static files under `hosting/`, not part of the app bundle, so it
+ * gets a server of its own. `landing.spec.ts` navigates to this absolute URL rather than the baseURL.
+ */
+const SITE_PORT = Number(process.env.E2E_SITE_PORT ?? 5185);
+export const SITE_URL = `http://localhost:${SITE_PORT}`;
+
+/**
  * A local FormamorphServer for the specs that need one (`contest-entry.spec.ts`). Handed to the dev
  * server as its API base, because the app reads that at start-up and the default in `.env` is the live
  * workshop — a run without the override would publish to production. Unset, those specs skip.
@@ -46,16 +53,26 @@ export default defineConfig({
       use: { ...devices['Desktop Chrome'], viewport: { width: 375, height: 812 }, hasTouch: true, isMobile: false },
     },
   ],
-  webServer: {
-    // Its own port, so a run never fights the dev servers on 5180-5182 (see `.claude/launch.json`).
-    command: `npm run dev -- --port ${PORT} --strictPort`,
-    url: BASE_URL,
-    // Never reuse when an API base is named: an already-running server was started against a different
-    // one, and pointing the app at the wrong API is exactly what must not happen silently.
-    reuseExistingServer: !process.env.CI && !API_URL,
-    env: API_URL ? { ...process.env, VITE_API_URL_DEV: API_URL } as Record<string, string> : undefined,
-    timeout: 120_000,
-    stdout: 'ignore',
-    stderr: 'pipe',
-  },
+  webServer: [
+    {
+      // Its own port, so a run never fights the dev servers on 5180-5182 (see `.claude/launch.json`).
+      command: `npm run dev -- --port ${PORT} --strictPort`,
+      url: BASE_URL,
+      // Never reuse when an API base is named: an already-running server was started against a different
+      // one, and pointing the app at the wrong API is exactly what must not happen silently.
+      reuseExistingServer: !process.env.CI && !API_URL,
+      env: API_URL ? { ...process.env, VITE_API_URL_DEV: API_URL } as Record<string, string> : undefined,
+      timeout: 120_000,
+      stdout: 'ignore',
+      stderr: 'pipe',
+    },
+    {
+      command: `node scripts/serveSite.mjs --root hosting --port ${SITE_PORT}`,
+      url: SITE_URL,
+      reuseExistingServer: !process.env.CI,
+      timeout: 30_000,
+      stdout: 'ignore',
+      stderr: 'pipe',
+    },
+  ],
 });

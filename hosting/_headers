@@ -10,3 +10,9 @@
   Cache-Control: public, max-age=86400
 /play/*.fbx
   Cache-Control: public, max-age=86400
+
+# The site's own images and icons. They are not content-hashed, so a day rather than a year: a
+# recapture reaches visitors on their next day without a round trip on every visit. The site's HTML
+# is deliberately not listed, so Pages keeps revalidating it and a page edit is live immediately.
+/site/*
+  Cache-Control: public, max-age=86400
