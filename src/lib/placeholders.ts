@@ -131,6 +131,35 @@ export function reconcilePlaceholderValues(
   });
 }
 
+/** Joins a shared row's chip value to the placeholder ids walked below it, making one override key. Ids are
+ *  UUIDs, so nothing can carry one itself. */
+export const SHARED_PATH_SEP = '/';
+
+/** The weights in force for a placeholder reached through a shared row: the original's own map with the
+ *  row's override laid over it. Deny-list — a value in neither weighs 1, so a value added to the original
+ *  afterwards rolls under the row too. */
+export function mergePlaceholderWeights(
+  own: Record<string, number> | undefined,
+  override: Record<string, number> | undefined,
+): Record<string, number> | undefined {
+  return override ? { ...own, ...override } : own;
+}
+
+/** Drop override entries whose chip value is gone — what removing a shared row leaves behind. Only the key's
+ *  first segment is checked: the rest names placeholders, whose own deletion is already reported as a
+ *  dangling reference rather than silently repaired. */
+export function pruneSharedWeights(
+  sharedWeights: Record<string, Record<string, number>> | undefined,
+  values: readonly PlaceholderValue[],
+): Record<string, Record<string, number>> | undefined {
+  if (!sharedWeights) return undefined;
+  const live = new Set(values.map((v) => v.id));
+  const out = Object.fromEntries(
+    Object.entries(sharedWeights).filter(([key]) => live.has(key.split(SHARED_PATH_SEP)[0])),
+  );
+  return Object.keys(out).length ? out : undefined;
+}
+
 /** Drop weights naming no value in `values` — what an edit that removes a value leaves behind. Returns
  *  `undefined` for an empty result, since an absent map already means a uniform draw. */
 export function prunePlaceholderWeights(
@@ -320,8 +349,8 @@ export function remintPlaceholdersDeep<T>(value: T, minted: Map<string, string> 
 }
 
 /** A duplicate-ready copy of a placeholder def: every value's chip placements re-minted, its values given
- *  ids of their own (a copy's values are new values), and `weights` re-keyed in step so no weight silently
- *  detaches from the value it was set on. */
+ *  ids of their own (a copy's values are new values), and `weights` plus the shared-row overrides re-keyed
+ *  in step so no weight silently detaches from the value it was set on. */
 export function remintPlaceholderDef(ph: Placeholder): Placeholder {
   const minted = new Map<string, string>();
   const idMap = new Map<string, string>();
@@ -335,8 +364,22 @@ export function remintPlaceholderDef(ph: Placeholder): Placeholder {
       Object.entries(ph.weights).flatMap(([id, w]) => (idMap.has(id) ? [[idMap.get(id)!, w] as const] : [])),
     )
     : undefined;
-  const { weights: _old, ...rest } = ph;
-  return { ...rest, values, ...(weights && Object.keys(weights).length ? { weights } : {}) };
+  // Only the key's first segment names one of these values; the rest names placeholders the copy still
+  // points at, so those ride along as written.
+  const sharedWeights = ph.sharedWeights
+    ? Object.fromEntries(Object.entries(ph.sharedWeights).flatMap(([key, map]) => {
+      const [root, ...under] = key.split(SHARED_PATH_SEP);
+      const fresh = idMap.get(root);
+      return fresh ? [[[fresh, ...under].join(SHARED_PATH_SEP), map] as const] : [];
+    }))
+    : undefined;
+  const { weights: _old, sharedWeights: _oldShared, ...rest } = ph;
+  return {
+    ...rest,
+    values,
+    ...(weights && Object.keys(weights).length ? { weights } : {}),
+    ...(sharedWeights && Object.keys(sharedWeights).length ? { sharedWeights } : {}),
+  };
 }
 
 /** Rewrite chip tokens' placeholder ids via `idMap` — the chip's root, and the target of every explicit-pick
@@ -406,6 +449,14 @@ export function absorbPlaceholders(
       const other = (b.values ?? [])[i];
       return !!other && placeholderWeight(a, v) === placeholderWeight(b, other);
     });
+  // Shared-row overrides make two otherwise identical defs behave differently, so they part the same way
+  // weights do. Their keys are already remapped when this runs, so the comparison is like for like.
+  const sameMap = (x: Record<string, number> = {}, y: Record<string, number> = {}) =>
+    [...new Set([...Object.keys(x), ...Object.keys(y)])].every((k) => (x[k] ?? 1) === (y[k] ?? 1));
+  const sameShared = (a: Placeholder, b: Placeholder) => {
+    const [x, y] = [a.sharedWeights ?? {}, b.sharedWeights ?? {}];
+    return [...new Set([...Object.keys(x), ...Object.keys(y)])].every((k) => sameMap(x[k], y[k]));
+  };
   const toAdd: Placeholder[] = [];
   const idMap: Record<string, string> = {};
   // Match against the world's list plus anything added so far this pass (so two carried copies of the same def
@@ -413,15 +464,26 @@ export function absorbPlaceholders(
   const pool = [...worldPlaceholders];
   for (const c of inReferenceOrder(carried)) {
     const values = (c.values ?? []).map((v) => ({ ...v, text: remapPlaceholderIds(v.text, idMap) }));
-    // Weights key by value id, which the remap leaves alone, so the map carries across as written.
+    // Weights key by value id, which the remap leaves alone, so the map carries across as written. An
+    // override key opens on a value id too, but every segment below it names a placeholder, which the
+    // children-first order has already resolved.
     const weights = c.weights;
-    const resolved: Placeholder = { ...c, values, ...(weights ? { weights } : {}) };
+    const sharedWeights = c.sharedWeights && Object.fromEntries(
+      Object.entries(c.sharedWeights).map(([key, map]) => {
+        const [root, ...under] = key.split(SHARED_PATH_SEP);
+        return [[root, ...under.map((id) => idMap[id] ?? id)].join(SHARED_PATH_SEP), map] as const;
+      }),
+    );
+    const resolved: Placeholder = {
+      ...c, values, ...(weights ? { weights } : {}), ...(sharedWeights ? { sharedWeights } : {}),
+    };
     // Compared by what the flag does, not by whether it is written: a 2-value def with `roll: true` is the
     // same def as one that infers the same choice from its value count, and must not duplicate it.
     const match = pool.find((p) => p.name === c.name
       && sameValues(p.values ?? [], values)
       && placeholderIsChoice(p) === placeholderIsChoice(resolved)
-      && sameWeights(resolved, p));
+      && sameWeights(resolved, p)
+      && sameShared(resolved, p));
     if (match) {
       idMap[c.id] = match.id;
     } else {
@@ -430,6 +492,7 @@ export function absorbPlaceholders(
         name: c.name,
         values,
         ...(weights ? { weights } : {}),
+        ...(sharedWeights ? { sharedWeights } : {}),
         ...(c.roll !== undefined ? { roll: c.roll } : {}),
       };
       toAdd.push(fresh);
@@ -496,17 +559,21 @@ const DESCRIBE_DEPTH_CAP = 2;
 interface DescribeCtx {
   byId: Map<string, Placeholder>;
   pins?: Record<string, string>;
+  /** The shared row this pass is inside — what decides which values read as benched here. */
+  share?: ShareCtx;
   depth: number;
   seen: ReadonlySet<string>;
 }
 
-/** Describe every chip in a text, leaving its literal runs alone. */
-function describeText(text: string, ctx: DescribeCtx): string {
+/** Describe every chip in a text, leaving its literal runs alone. A chip that is the whole text nests a row
+ *  and carries the crossing; one with prose around it does not. */
+function describeText(text: string, ctx: DescribeCtx, crossing?: Crossing): string {
   if (!text || !hasPlaceholders(text)) return text;
+  const lone = crossing ? lonePlaceholderToken(text) : null;
   TOKEN_RE.lastIndex = 0;
   return text.replace(TOKEN_RE, (full) => {
     const token = decodePlaceholderToken(full);
-    return token ? describeChip(token, ctx, []) : '';
+    return token ? describeChip(token, ctx, [], full === lone ? crossing : undefined) : '';
   });
 }
 
@@ -520,10 +587,13 @@ function describeChoice(candidates: string[]): string {
 }
 
 /** Enter a chip: its own drill path first, then whatever the caller still has left to walk. */
-function describeChip(token: PlaceholderToken, ctx: DescribeCtx, tail: PlaceholderSegment[]): string {
+function describeChip(
+  token: PlaceholderToken, ctx: DescribeCtx, tail: PlaceholderSegment[], crossing?: Crossing,
+): string {
   const ph = ctx.byId.get(token.id);
   if (!ph) return '';
-  return describePh(ph, [...(token.path ?? []), ...tail], ctx);
+  const share = nextShare(ctx.share, crossing, ph);
+  return describePh(ph, [...(token.path ?? []), ...tail], share === ctx.share ? ctx : { ...ctx, share });
 }
 
 /** Describe a placeholder, optionally through a drill path. With no roll to route through, a slot that no
@@ -538,10 +608,16 @@ function describePh(ph: Placeholder, segs: PlaceholderSegment[], ctx: DescribeCt
   const values = pinned != null ? [{ id: 'pin', text: pinned }] : ph.values ?? [];
   if (!values.length) return '';
   const inner: DescribeCtx = { ...ctx, depth: ctx.depth + 1, seen: new Set(ctx.seen).add(ph.id) };
+  /** Only a lone-chip value nests a row, and only the pass over the placeholder's own values crosses one. */
+  const crossing = (value: PlaceholderValue): Crossing =>
+    (pinned == null ? { holder: ph, value } : undefined);
 
   if (!segs.length) {
+    // A benched value can never be drawn, so it is left out of what this advertises — under the active
+    // shared row's weights, which are the ones a draw here would read.
+    const shown = pinned == null ? drawablePlaceholderValues(ph, weightsUnder(ph, ctx.share)) : values;
     // Every surface reading this takes one line, so a paragraph value is clipped on both branches.
-    const described = values.map((v) => placeholderValueLine(describeText(v.text, inner)));
+    const described = shown.map((v) => placeholderValueLine(describeText(v.text, inner, crossing(v))));
     // A pin names one value, so the placeholder reads as that value whatever its roll flag says.
     return pinned == null && placeholderIsChoice(ph)
       ? describeChoice(described)
@@ -552,11 +628,11 @@ function describePh(ph: Placeholder, segs: PlaceholderSegment[], ctx: DescribeCt
   const children = childChips(values, ctx.byId);
   if (seg.kind === 'val') {
     const hit = children.find((c) => c.target.id === seg.ref);
-    return hit ? describeChip(hit.token, inner, rest) : '';
+    return hit ? describeChip(hit.token, inner, rest, crossing(hit.value)) : '';
   }
   const direct = children.find((c) => c.target.name === seg.name);
-  if (direct) return describeChip(direct.token, inner, rest);
-  return describeChoice(children.map((c) => describeChip(c.token, inner, segs)));
+  if (direct) return describeChip(direct.token, inner, rest, crossing(direct.value));
+  return describeChoice(children.map((c) => describeChip(c.token, inner, segs, crossing(c.value))));
 }
 
 /** One value as a single line — a paragraph-length value becomes its first line plus `…`. Every one-line
@@ -574,10 +650,11 @@ export function placeholderValueLine(value: string): string {
  *
  * Values are chip-capable, so pass `placeholders` wherever the list is at hand: a value holding a chip then
  * reads as what that chip will become rather than as the token behind it, and a value that would read as
- * nothing is left out instead of leaving a bare `|` in the line.
+ * nothing is left out instead of leaving a bare `|` in the line. So is a value benched to zero, which no
+ * draw can land on.
  */
 export function placeholderValueSummary(ph: Placeholder, placeholders?: Placeholder[]): string {
-  const values = (ph.values ?? [])
+  const values = drawablePlaceholderValues(ph)
     .map(({ text }) => placeholderValueLine(placeholders ? describePlaceholders(text, placeholders) : text))
     .filter((v) => v !== '');
   const shown = values.slice(0, 3).join('|');
@@ -625,15 +702,23 @@ export interface ResolveOptions {
   onFinding?: (finding: PlaceholderFinding) => void;
 }
 
-/** A value's relative draw weight — 1 unless the author set one. Negatives are treated as 0 (benched). */
-export function placeholderWeight(ph: Placeholder, value: PlaceholderValue): number {
-  const w = ph.weights?.[value.id];
+/**
+ * A value's relative draw weight — 1 unless the author set one. Negatives are treated as 0 (benched).
+ *
+ * `weights` is the map in force, which is the placeholder's own everywhere except under a shared row: there
+ * it is the merged map (see {@link mergePlaceholderWeights}), so one helper serves both.
+ */
+export function placeholderWeight(
+  ph: Placeholder, value: PlaceholderValue, weights: Record<string, number> | undefined = ph.weights,
+): number {
+  const w = weights?.[value.id];
   return typeof w === 'number' && Number.isFinite(w) ? Math.max(0, w) : 1;
 }
 
 /** True if any value carries a non-default weight — what gates the editor's percentage reveal. */
-export function isWeighted(ph: Placeholder): boolean {
-  return (ph.values ?? []).some((v) => placeholderWeight(ph, v) !== 1);
+export function isWeighted(ph: Placeholder, weights?: Record<string, number>): boolean {
+  const map = weights ?? ph.weights;
+  return (ph.values ?? []).some((v) => placeholderWeight(ph, v, map) !== 1);
 }
 
 /**
@@ -641,14 +726,30 @@ export function isWeighted(ph: Placeholder): boolean {
  * exactly, including its all-zero fallback to a uniform draw, so the editor's reveal never disagrees with
  * the roll.
  */
-export function placeholderChances(ph: Placeholder): Record<string, number> {
+export function placeholderChances(ph: Placeholder, weights?: Record<string, number>): Record<string, number> {
+  const map = weights ?? ph.weights;
   const out: Record<string, number> = {};
   const values = ph.values ?? [];
-  const total = values.reduce((sum, v) => sum + placeholderWeight(ph, v), 0);
+  const total = values.reduce((sum, v) => sum + placeholderWeight(ph, v, map), 0);
   for (const v of values) {
-    out[v.id] = total > 0 ? (placeholderWeight(ph, v) / total) * 100 : 100 / values.length;
+    out[v.id] = total > 0 ? (placeholderWeight(ph, v, map) / total) * 100 : 100 / values.length;
   }
   return out;
+}
+
+/**
+ * The values a display surface may show: everything a draw could actually land on. A benched value is left
+ * out, since a preview must never advertise what can never happen; every value benched is the uniform
+ * fallback {@link weightedPick} takes, so the list comes back whole rather than empty. An Object joins all
+ * of its values and never draws, so nothing is held back from one.
+ */
+export function drawablePlaceholderValues(
+  ph: Placeholder, weights?: Record<string, number>,
+): PlaceholderValue[] {
+  const values = ph.values ?? [];
+  if (!placeholderIsChoice(ph)) return values;
+  const live = values.filter((v) => placeholderWeight(ph, v, weights ?? ph.weights) > 0);
+  return live.length ? live : values;
 }
 
 /** Draw a value honoring per-value weights. Weights that sum to 0 (every value benched) fall back to a
@@ -701,24 +802,69 @@ interface ResolveCtx {
   chain: string;
   /** The placeholder whose Unique roll keeps the bare chain as its key — the chain's own root. */
   chainRootId: string;
+  /** The shared row this walk is inside, whose override the draw reads. Absent outside one. */
+  share?: ShareCtx;
   seen: ReadonlySet<string>;
   depth: number;
 }
 
 /** Every structural child in a value list: its lone-chip values, paired with the placeholder each one roots
- *  at. Shared by the resolve and describe walks, which disagree about rolls but not about structure. */
+ *  at. Shared by the resolve and describe walks, which disagree about rolls but not about structure. The
+ *  value comes back too — it is what a shared row's override is keyed by. */
 function childChips(
   values: PlaceholderValue[],
   byId: Map<string, Placeholder>,
-): Array<{ token: PlaceholderToken; target: Placeholder }> {
-  const out: Array<{ token: PlaceholderToken; target: Placeholder }> = [];
+): Array<{ value: PlaceholderValue; token: PlaceholderToken; target: Placeholder }> {
+  const out: Array<{ value: PlaceholderValue; token: PlaceholderToken; target: Placeholder }> = [];
   for (const value of values) {
     const raw = lonePlaceholderToken(value.text);
     const token = raw ? decodePlaceholderToken(raw) : null;
     const target = token ? byId.get(token.id) : undefined;
-    if (token && target) out.push({ token, target });
+    if (token && target) out.push({ value, token, target });
   }
   return out;
+}
+
+/**
+ * How a walk entered a chip: the value it sat in and the placeholder holding that value, when the value was
+ * exactly that chip. Absent for a chip typed into world text or composed into a longer value — neither
+ * nests a row, so neither can carry an override.
+ */
+type Crossing = { holder: Placeholder; value: PlaceholderValue } | undefined;
+
+/** The shared row a walk is inside: the placeholder whose override map applies, and the key under it. */
+interface ShareCtx {
+  owner: Placeholder;
+  key: string;
+}
+
+/** The value a holder holds `targetId` through, as the tree draws it: the first of its values that is
+ *  exactly a chip of it. A holder naming one target twice still draws one row, so every crossing into that
+ *  target has to key by the same value the row was authored against. */
+function rowValueId(holder: Placeholder, targetId: string): string | undefined {
+  for (const value of holder.values ?? []) {
+    const raw = lonePlaceholderToken(value.text);
+    if (raw && decodePlaceholderToken(raw)?.id === targetId) return value.id;
+  }
+  return undefined;
+}
+
+/**
+ * The shared row in force after crossing into `target`. A row opens where a holder reaches a placeholder it
+ * does not own — that is exactly the row the list draws with the link icon — and every level below extends
+ * its key, the same shape as the placement chain a Unique roll is keyed by. Crossing anything that nests no
+ * row leaves the shared row behind, since no key below it could be authored.
+ */
+function nextShare(share: ShareCtx | undefined, crossing: Crossing, target: Placeholder): ShareCtx | undefined {
+  if (!crossing) return undefined;
+  if (share) return { owner: share.owner, key: `${share.key}${SHARED_PATH_SEP}${target.id}` };
+  if (target.ownerId === crossing.holder.id) return undefined;
+  return { owner: crossing.holder, key: rowValueId(crossing.holder, target.id) ?? crossing.value.id };
+}
+
+/** The weights a placeholder draws by right now: its own, with the active shared row's override over them. */
+function weightsUnder(ph: Placeholder, share: ShareCtx | undefined): Record<string, number> | undefined {
+  return mergePlaceholderWeights(ph.weights, share?.owner.sharedWeights?.[share.key]);
 }
 
 /**
@@ -860,7 +1006,7 @@ function selectValue(ph: Placeholder, ctx: ResolveCtx): string {
   const key = rollKey(ph, ctx);
   const existing = ctx.rolls[ctx.scope]?.[key] ?? ctx.minted[ctx.scope][key];
   if (existing != null) return existing;
-  const rolled = ctx.pick(ph.values, ph.weights);
+  const rolled = ctx.pick(ph.values, weightsUnder(ph, ctx.share));
   ctx.minted[ctx.scope][key] = rolled;
   ctx.setRoll?.(ctx.scope, key, rolled);
   return rolled;
@@ -881,16 +1027,31 @@ function resolvePh(ph: Placeholder, ctx: ResolveCtx): string {
   // about the character, not about one sentence. A broken pin still applies, so it is checked before the
   // values are: a pin on an emptied placeholder is still the author's word.
   const pinned = ctx.pins?.[ph.id];
+  // A pin is text the author typed, not one of these values, so it crosses into nothing this row could
+  // weight.
   if (pinned != null) return resolveValue(pinned, inner);
   const values = ph.values ?? [];
   if (!values.length) return '';
-  if (placeholderIsChoice(ph)) return resolveValue(selectValue(ph, inner), inner);
-  return values.map((v) => resolveValue(v.text, inner)).filter((s) => s !== '').join(', ');
+  if (placeholderIsChoice(ph)) {
+    const drawn = selectValue(ph, inner);
+    return resolveValue(drawn, inner, valueCrossing(ph, drawn));
+  }
+  return values.map((v) => resolveValue(v.text, inner, { holder: ph, value: v }))
+    .filter((s) => s !== '').join(', ');
 }
 
-/** Resolve one value's text: literal runs stay, and every chip inside it walks as an authored one. */
-function resolveValue(value: string, ctx: ResolveCtx): string {
+/** Where a drawn text sits in its placeholder's own list — values are unique by text, so one lookup names
+ *  the value the roll landed on. Nothing for a pin, which is not a value of this placeholder. */
+function valueCrossing(ph: Placeholder, text: string): Crossing {
+  const value = (ph.values ?? []).find((v) => v.text === text);
+  return value ? { holder: ph, value } : undefined;
+}
+
+/** Resolve one value's text: literal runs stay, and every chip inside it walks as an authored one. A chip
+ *  that is the whole text nests a row, so it carries the crossing; one with prose around it does not. */
+function resolveValue(value: string, ctx: ResolveCtx, crossing?: Crossing): string {
   if (!value || !hasPlaceholders(value)) return value;
+  const lone = crossing ? lonePlaceholderToken(value) : null;
   TOKEN_RE.lastIndex = 0;
   return value.replace(TOKEN_RE, (full, id: string) => {
     const token = decodePlaceholderToken(full);
@@ -898,7 +1059,7 @@ function resolveValue(value: string, ctx: ResolveCtx): string {
       ctx.report({ kind: 'malformed', placeholderId: id });
       return '';
     }
-    return resolveChip(token, ctx, [], true);
+    return resolveChip(token, ctx, [], true, full === lone ? crossing : undefined);
   });
 }
 
@@ -911,14 +1072,18 @@ function chipCtx(token: PlaceholderToken, ctx: ResolveCtx): ResolveCtx {
 }
 
 /** Enter a chip: its own path drills first, then whatever the caller still has left to walk. */
-function resolveChip(token: PlaceholderToken, ctx: ResolveCtx, tail: WalkSegment[], authored: boolean): string {
+function resolveChip(
+  token: PlaceholderToken, ctx: ResolveCtx, tail: WalkSegment[], authored: boolean, crossing?: Crossing,
+): string {
   const ph = ctx.byId.get(token.id);
   if (!ph) {
     ctx.report({ kind: 'dangling', asked: token.id });
     return '';
   }
   const drill: WalkSegment[] = (token.path ?? []).map((s) => ({ ...s, authored }));
-  return walkSegs(ph, [...drill, ...tail], chipCtx(token, ctx));
+  const inner = chipCtx(token, ctx);
+  const share = nextShare(ctx.share, crossing, ph);
+  return walkSegs(ph, [...drill, ...tail], share === inner.share ? inner : { ...inner, share });
 }
 
 /** Walk a drill path from `ph`. With nothing left to walk, the placeholder itself resolves. */
@@ -930,7 +1095,8 @@ function walkSegs(ph: Placeholder, segs: WalkSegment[], ctx: ResolveCtx): string
   if (!segs.length) return resolvePh(ph, ctx);
   const [seg, ...rest] = segs;
   const next: ResolveCtx = { ...ctx, depth: ctx.depth + 1 };
-  const intoChild = (token: PlaceholderToken, tail: WalkSegment[]) => resolveChip(token, next, tail, true);
+  const intoChild = (token: PlaceholderToken, tail: WalkSegment[], crossing?: Crossing) =>
+    resolveChip(token, next, tail, true, crossing);
 
   if (seg.kind === 'val') {
     // An authored drill is a pre-selection, so a pin overrides it; a path typed into world text names the
@@ -951,17 +1117,18 @@ function walkSegs(ph: Placeholder, segs: WalkSegment[], ctx: ResolveCtx): string
       ctx.report({ kind: 'slot-miss', placeholderId: ph.id, asked: seg.ref, segment: 'val' });
       return '';
     }
-    return intoChild(hit.token, rest);
+    return intoChild(hit.token, rest, { holder: ph, value: hit.value });
   }
 
   // A slot takes a child of this placeholder by name; failing that, a choice routes through whichever value
   // it drew and the same slot is tried inside that variant.
   const direct = childChips(ph.values ?? [], ctx.byId).find((c) => c.target.name === seg.name);
-  if (direct) return intoChild(direct.token, rest);
+  if (direct) return intoChild(direct.token, rest, { holder: ph, value: direct.value });
   if (placeholderIsChoice(ph)) {
-    const raw = lonePlaceholderToken(selectValue(ph, next));
+    const drawn = selectValue(ph, next);
+    const raw = lonePlaceholderToken(drawn);
     const token = raw ? decodePlaceholderToken(raw) : null;
-    if (token) return intoChild(token, segs);
+    if (token) return intoChild(token, segs, valueCrossing(ph, drawn));
   }
   ctx.report({ kind: 'slot-miss', placeholderId: ph.id, asked: seg.name, segment: 'slot' });
   return '';

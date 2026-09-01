@@ -11,13 +11,15 @@ import { arrayMove } from '@dnd-kit/sortable';
 import { randomUUID } from '@/lib/uuid';
 import { clamp } from '@/lib/utils';
 import {
-  PLACEHOLDER_PATH_SEPARATOR, collectPlaceholderParts, decodePlaceholderToken, encodePlaceholderToken,
-  lonePlaceholderToken, newPlaceholderValue, parsePlaceholderText,
+  PLACEHOLDER_PATH_SEPARATOR, SHARED_PATH_SEP, collectPlaceholderParts, decodePlaceholderToken,
+  encodePlaceholderToken, lonePlaceholderToken, newPlaceholderValue, parsePlaceholderText,
+  pruneSharedWeights,
 } from './placeholders';
 import type { Placeholder, PlaceholderValue } from '@/types';
 
-/** Joins the placeholder ids a row's path walked through. Ids are UUIDs, so nothing can carry one itself. */
-const ROW_SEP = '/';
+/** Joins the placeholder ids a row's path walked through — the same separator an override key is built
+ *  with, because a key is a row's path relative to its shared row. */
+const ROW_SEP = SHARED_PATH_SEP;
 
 /** The placeholder a value points at when the value is *exactly* one chip, or null for anything else. */
 function chipTargetId(text: string): string | null {
@@ -45,6 +47,43 @@ function chipTargetsOf(holder: Placeholder): string[] {
 /** True if `holder` holds `id` as one whole value — the shape that puts `id`'s row underneath it. */
 export function holdsAsChip(holder: Placeholder, id: string): boolean {
   return chipTargetsOf(holder).includes(id);
+}
+
+/** The value a holder holds `id` through — the first mention, matching the one row {@link placeholderRows}
+ *  draws for it. */
+function chipValueHolding(holder: Placeholder, id: string): PlaceholderValue | undefined {
+  return (holder.values ?? []).find((v) => chipTargetId(v.text) === id);
+}
+
+/**
+ * Where a row's draw weights are written: the placeholder holding the outermost shared row above it, and
+ * the key under that row — its chip value's id, then the id of every placeholder walked below. `null` where
+ * no shared row encloses the path, whose weights are the placeholder's own.
+ *
+ * This is the authoring half of the rule the resolver walks (see `nextShare` in lib/placeholders): a row
+ * opens a site where its holder does not own it, and every level below extends the same key. The two must
+ * agree, or a bench set in the panel would apply to a different draw than the one it names.
+ */
+export function sharedWeightSite(
+  placeholders: readonly Placeholder[], rowId: string,
+): { ownerId: string; key: string } | null {
+  const ids = rowId.split(ROW_SEP);
+  const byId = new Map(placeholders.map((p) => [p.id, p]));
+  let site: { ownerId: string; key: string } | null = null;
+  for (let i = 1; i < ids.length; i++) {
+    const holder = byId.get(ids[i - 1]);
+    const target = byId.get(ids[i]);
+    if (!holder || !target) return null;
+    if (site) {
+      site = { ownerId: site.ownerId, key: `${site.key}${ROW_SEP}${target.id}` };
+      continue;
+    }
+    if (target.ownerId === holder.id) continue;
+    const value = chipValueHolding(holder, target.id);
+    if (!value) return null;
+    site = { ownerId: holder.id, key: value.id };
+  }
+  return site;
 }
 
 /**
@@ -142,6 +181,24 @@ export function placeholderRows(placeholders: readonly Placeholder[]): Placehold
   };
   for (const placeholder of topLevelPlaceholders(placeholders)) walk(placeholder, null, null, 0, new Set());
   return out;
+}
+
+/**
+ * The row a selection names, and where that row's draw weights are written. Selection speaks in **row ids**,
+ * because one shared placeholder draws a row under every holder and each of those rows weights it
+ * differently. A bare placeholder id still resolves — to that placeholder's first row — so anything naming a
+ * placeholder rather than a row (a fresh duplicate, the jump to a shared row's original) still opens a panel.
+ *
+ * Both hosts of the placeholder panel read it through here: the World Editor's own tab, and the standalone
+ * editor the library modals mount.
+ */
+export function placeholderSelection(
+  placeholders: readonly Placeholder[], selectedId: string | null,
+): { row: PlaceholderTreeRow; share?: { ownerId: string; key: string } } | null {
+  if (!selectedId) return null;
+  const rows = placeholderRows(placeholders);
+  const row = rows.find((r) => r.id === selectedId) ?? rows.find((r) => r.placeholder.id === selectedId);
+  return row ? { row, share: sharedWeightSite(placeholders, row.id) ?? undefined } : null;
 }
 
 /** Drop every row that descends from any id in `ids` (collapsed rows, the dragged subtree). */
@@ -307,8 +364,14 @@ export function removePlaceholderCascade(placeholders: Placeholder[], id: string
 export function removeChipValueFrom(
   placeholders: Placeholder[], holderId: string, targetId: string,
 ): Placeholder[] {
-  return placeholders.map((p) =>
-    (p.id === holderId ? { ...p, values: p.values.filter((v) => chipTargetId(v.text) !== targetId) } : p));
+  return placeholders.map((p) => {
+    if (p.id !== holderId) return p;
+    const { sharedWeights: held, ...rest } = p;
+    const values = p.values.filter((v) => chipTargetId(v.text) !== targetId);
+    // The row is gone, so the weights it carried have nothing left to apply to.
+    const sharedWeights = pruneSharedWeights(held, values);
+    return { ...rest, values, ...(sharedWeights ? { sharedWeights } : {}) };
+  });
 }
 
 /** Rewrite a holder's chip values so they read in `order`, leaving every other value exactly where it is.

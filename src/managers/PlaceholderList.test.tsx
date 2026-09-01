@@ -7,7 +7,7 @@ import { phValues } from '@/test/placeholderValues';
 import type { Placeholder } from '@/types';
 import PlaceholderList from './PlaceholderList';
 import type { SortableTreeAdapter } from './SortableTree';
-import type { PlaceholderTreeRow } from '@/lib/placeholderTree';
+import { placeholderRows, type PlaceholderTreeRow } from '@/lib/placeholderTree';
 
 // The real tree, with the adapter it hands the scaffold tapped. dnd-kit's pointer path needs layout jsdom
 // does not have, so a drag is played by calling that seam directly — the tree still renders, so everything
@@ -98,6 +98,20 @@ describe('PlaceholderList — the tree', () => {
     render(<Harness initial={WORLD} />);
     fireEvent.click(screen.getAllByRole('button', { name: 'Open Hair' })[0]);
     expect(select).toHaveBeenCalledWith('hair');
+  });
+
+  // Selection speaks in row ids, so a duplicate has to name a row that exists — otherwise the copy lands in
+  // the list with nothing open beside it.
+  it('selects a row the tree actually draws after a duplicate', () => {
+    render(<Harness initial={WORLD} />);
+    const selectedRow = () => placeholderRows(stored).find((r) => r.id === select.mock.calls.at(-1)?.[0]);
+
+    fireEvent.click(within(rows()[1]).getByRole('button', { name: 'Duplicate' })); // Northern, owned
+    expect(selectedRow()?.placeholder.name).toBe('Northern (Copy)');
+
+    select.mockClear();
+    fireEvent.click(within(rows()[2]).getByRole('button', { name: 'Duplicate' })); // Hair, a shared row
+    expect(selectedRow()?.placeholder.name).toBe('Hair (Copy)');
   });
 
   it('counts holders on the original only', () => {

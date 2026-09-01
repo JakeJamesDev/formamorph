@@ -40,7 +40,8 @@ const PlaceholderList = ({ selectedId, onSelect }: { selectedId: string | null; 
     if (holderId === null) removePlaceholder(id);
     else setPlaceholders((prev) =>
       releasePlaceholderOwners(removeChipValueFrom(removePlaceholderCascade(prev, id), holderId, id)));
-    if (selectedId === id) onSelect(null);
+    // Selection speaks in row ids, and every row this placeholder reached goes with it.
+    if (selectedId?.split('/').includes(id)) onSelect(null);
   };
 
   const askRemove = (node: PlaceholderTreeRow) => {
@@ -63,7 +64,9 @@ const PlaceholderList = ({ selectedId, onSelect }: { selectedId: string | null; 
       // Re-mint value-chip placements so the copy never shares a nested Unique roll with the original.
       const source = prev[i];
       const copy = { ...remintPlaceholderDef(source), id: randomUUID(), name: `${source.name} (Copy)` };
-      onSelect(copy.id);
+      // Selection speaks in row ids. Only a copy that stays owned lands under the row it came from; a copy
+      // of a shared row belongs to nobody, so its row is a top-level one named by its id alone.
+      onSelect(copy.ownerId && row.parentId ? `${row.parentId}/${copy.id}` : copy.id);
       const next = [...prev.slice(0, i + 1), copy, ...prev.slice(i + 1)];
       // A copy of an owned row belongs where the original does, which only holds once its owner holds it.
       const ownerId = copy.ownerId;
@@ -92,9 +95,6 @@ const PlaceholderList = ({ selectedId, onSelect }: { selectedId: string | null; 
       );
       if (next !== placeholders) setPlaceholders(next);
     },
-    // A shared placeholder draws a row under every holder that references it, and all of them are the one
-    // placeholder the editor panel opens.
-    selectionId: (node) => node.placeholder.id,
     rowSpec: (node) => {
       const { placeholder, shared, holderId } = node;
       // "Used by" belongs on the original, where the author reads it before dragging: it says whether the

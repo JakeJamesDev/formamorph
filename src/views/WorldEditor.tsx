@@ -67,6 +67,7 @@ import AddDictionaryModal from '@/components/modals/AddDictionaryModal';
 import AddEntityModal from '@/components/modals/AddEntityModal';
 import { exportEntityCard } from '@/lib/entityFile';
 import { absorbPlaceholders, remapPlaceholderIds, describePlaceholders, newPlaceholder } from '@/lib/placeholders';
+import { placeholderSelection } from '@/lib/placeholderTree';
 import { type DragEndEvent } from '@dnd-kit/core';
 import { arrayMove, verticalListSortingStrategy } from '@dnd-kit/sortable';
 import { EditorDndContext, StableSortableContext } from '@/components/dnd/EditorDndContext';
@@ -472,7 +473,12 @@ const WorldEditorInner = ({ onClose, embedded = false, backButton }: {
   // Dictionary tab: selection is either a book or one of its entries (the right panel branches on which).
   const selectedBook = dictionaries.find(b => b.id === selectedItemId);
   const selectedEntry = dictionaries.flatMap(b => b.entries).find(e => e.id === selectedItemId);
-  const selectedPlaceholder = placeholders.find(p => p.id === selectedItemId);
+  // Placeholders tab: selection is a *row*, since one shared placeholder draws a row under every holder and
+  // each of those weights it differently. Memoized because resolving one walks the whole tree, and this
+  // component re-renders on every keystroke in any panel.
+  const selectedPlaceholder = useMemo(
+    () => placeholderSelection(placeholders, selectedItemId), [placeholders, selectedItemId],
+  );
 
   // Contextual footer actions. Simple authoring is bringing a character or lorebook in from your library;
   // handing one out is an Advanced move, so Entities/Dictionary offer Add in both modes, Export in Advanced.
@@ -643,7 +649,11 @@ const WorldEditorInner = ({ onClose, embedded = false, backButton }: {
         <StatUpdatesManager key={selectedItem.id} statUpdate={selectedItem as StatUpdate} />
       )}
       {activeTab === "placeholders" && selectedPlaceholder && (
-        <PlaceholderManager key={selectedPlaceholder.id} placeholder={selectedPlaceholder} />
+        <PlaceholderManager
+          key={selectedPlaceholder.row.id}
+          placeholder={selectedPlaceholder.row.placeholder}
+          share={selectedPlaceholder.share}
+        />
       )}
     </div>
     </ChipInsertTargetProvider>

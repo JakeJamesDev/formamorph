@@ -6,7 +6,7 @@ import {
   applyPlaceholderDrop, dropTakesOwnership, holderOf, isOwnedPlaceholder, ownedDescendants,
   placeholderOwnerPath, placeholderRows, placeholderUsedBy, promotePlaceholder,
   qualifiedPlaceholderName, releasePlaceholderOwners, removeChipValueFrom, removeCollapsedPlaceholderRows,
-  removePlaceholderCascade, topLevelPlaceholders,
+  removePlaceholderCascade, sharedWeightSite, topLevelPlaceholders,
 } from './placeholderTree';
 
 // Through the real codec, never a hand-written token: a test that spells the wire format itself keeps
@@ -313,6 +313,15 @@ describe('placeholderTree', () => {
       expect(next.find((p) => p.id === 'southern')!.values.map((v) => v.text)).toEqual(['dark brown eyes']);
     });
 
+    it('takes the weights that row carried with it, and leaves the others', () => {
+      const kept = FLAT.find((p) => p.id === 'molly')!.values[1].id; // Southern, which stays
+      const world = FLAT.map((p) => (p.id === 'molly' ? {
+        ...p, sharedWeights: { [p.values[0].id]: { w: 0 }, [kept]: { w: 0 } },
+      } : p));
+      expect(removeChipValueFrom(world, 'molly', 'northern').find((p) => p.id === 'molly')!.sharedWeights)
+        .toEqual({ [kept]: { w: 0 } });
+    });
+
     it('leaves a shared original standing and its rows dangling', () => {
       // Southern's Hair is a reference. Deleting Northern must not cascade into it.
       const next = removePlaceholderCascade(OWNED, 'southern');
@@ -324,5 +333,57 @@ describe('placeholderTree', () => {
   it('keys a row by the path that reached it, so one placeholder can sit in two boxes', () => {
     expect(rowId(FLAT, 'molly/northern/hair')).toBe('molly/northern/hair');
     expect(rowId(FLAT, 'molly/southern/hair')).toBe('molly/southern/hair');
+  });
+});
+
+/**
+ * Where a row's draw weights are written. A row nothing shares writes the placeholder's own map; a row under
+ * a shared one writes an override on whoever holds that shared row. The rule has to be the one the resolver
+ * walks, or the panel and the roll would disagree about which weight applies.
+ */
+describe('sharedWeightSite', () => {
+  /** The value id the holder holds the target through — the first segment of every override key. */
+  const via = (placeholders: Placeholder[], holderId: string, targetId: string) =>
+    placeholders.find((p) => p.id === holderId)!.values.find((v) => v.text.includes(targetId))!.id;
+
+  it('reports nothing for a top-level row, whose weights are its own', () => {
+    expect(sharedWeightSite(FLAT, 'molly')).toBeNull();
+  });
+
+  it('reports nothing for an owned row, which is edited directly', () => {
+    expect(sharedWeightSite(OWNED, 'molly/northern')).toBeNull();
+  });
+
+  it('names the holder and the chip value for a shared row', () => {
+    expect(sharedWeightSite(FLAT, 'molly/northern')).toEqual({
+      ownerId: 'molly', key: via(FLAT, 'molly', 'northern'),
+    });
+  });
+
+  it('gives two holders of one original two sites, so a bench in one leaves the other alone', () => {
+    expect(sharedWeightSite(FLAT, 'northern/hair')?.ownerId).toBe('northern');
+    expect(sharedWeightSite(FLAT, 'southern/hair')?.ownerId).toBe('southern');
+  });
+
+  it('extends the outermost shared row key with the ids walked below it', () => {
+    expect(sharedWeightSite(FLAT, 'molly/northern/hair')).toEqual({
+      ownerId: 'molly', key: `${via(FLAT, 'molly', 'northern')}/hair`,
+    });
+  });
+
+  it('opens the site at the first shared crossing, walking past the owned ones above it', () => {
+    // Northern belongs to Molly, so nothing opens there; its Hair is shared, and that is where it opens.
+    const world = [
+      P('molly', 'Molly', [chip('northern')]),
+      P('northern', 'Northern', [chip('hair')], 'molly'),
+      P('hair', 'Hair', ['brown', 'black']),
+    ];
+    expect(sharedWeightSite(world, 'molly/northern/hair')).toEqual({
+      ownerId: 'northern', key: via(world, 'northern', 'hair'),
+    });
+  });
+
+  it('reports nothing for a row whose path names a placeholder that is gone', () => {
+    expect(sharedWeightSite(FLAT, 'molly/ghost')).toBeNull();
   });
 });

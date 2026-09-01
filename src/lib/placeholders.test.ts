@@ -32,6 +32,8 @@ import {
   newPlaceholder,
   reconcilePlaceholderValues,
   prunePlaceholderWeights,
+  pruneSharedWeights,
+  mergePlaceholderWeights,
 } from './placeholders';
 
 const P = (id: string, values: string[]): Placeholder => ({ id, name: id, values: phValues(values) });
@@ -1295,5 +1297,169 @@ describe('remintPlaceholderDef', () => {
 
   it('leaves a weightless def without weights', () => {
     expect(remintPlaceholderDef(P('eye', ['Green', 'Gray'])).weights).toBeUndefined();
+  });
+});
+
+/**
+ * A shared row — a placeholder held as a value of something that does not own it — draws with weights of
+ * its own. They live on the holder, keyed by the value holding the chip plus the ids walked below it, and
+ * lie over the original's own map rather than replacing it: a value in neither weighs 1, so a value the
+ * author adds to the original afterwards rolls in every shared row.
+ */
+describe('shared-row weight overrides', () => {
+  const EYES = chip('eyes');
+  const LOOK = chip('look');
+
+  /** Deterministic, and unlike `first` it reads the weights it was handed — which is the point here. */
+  const firstDrawable: PlaceholderPick = (values, weights) =>
+    (values.find((v) => (weights?.[v.id] ?? 1) > 0) ?? values[0]).text;
+
+  /** One resolution, with rolls of its own: two calls draw independently, the way two playthroughs do. */
+  const draw = (text: string, placeholders: Placeholder[]) => {
+    const { rolls, setRoll } = collector();
+    return resolvePlaceholders(text, { placeholders, rolls, setRoll, pick: firstDrawable });
+  };
+
+  const eyes = (values: string[]): Placeholder => ({ id: 'eyes', name: 'Eyes', roll: true, values: phValues(values) });
+  /** Molly holds Eyes without owning it, so her row for it is a shared one. */
+  const molly = (shared?: Record<string, Record<string, number>>): Placeholder => ({
+    id: 'molly', name: 'Molly', roll: false, values: phValues([EYES]),
+    ...(shared ? { sharedWeights: shared } : {}),
+  });
+
+  it('benches a value under the shared row while the original still rolls it', () => {
+    const world = [
+      molly({ [phValueId(EYES)]: { [phValueId('green')]: 0 } }),
+      eyes(['green', 'hazel']),
+    ];
+    expect(draw(placed('molly', 'world', 'p1'), world)).toBe('hazel');
+    expect(draw(placed('eyes', 'world', 'p2'), world)).toBe('green');
+  });
+
+  it('rolls a value added to the original afterwards, because the override is a deny-list', () => {
+    const held = { [phValueId(EYES)]: { [phValueId('green')]: 0, [phValueId('hazel')]: 0 } };
+    // Everything the override names is benched, so the value it does not name is the only one left.
+    expect(draw(placed('molly', 'world', 'p1'), [molly(held), eyes(['green', 'hazel', 'amber'])]))
+      .toBe('amber');
+  });
+
+  it('applies a deeper override at its own level, keyed by the ids walked under the row', () => {
+    const world = [
+      {
+        id: 'molly', name: 'Molly', roll: false, values: phValues([LOOK]),
+        sharedWeights: { [`${phValueId(LOOK)}/eyes`]: { [phValueId('green')]: 0 } },
+      },
+      { id: 'look', name: 'Look', roll: false, values: phValues([EYES]) },
+      eyes(['green', 'hazel']),
+    ];
+    expect(draw(placed('molly', 'world', 'p1'), world)).toBe('hazel');
+    expect(draw(placed('look', 'world', 'p2'), world)).toBe('green');
+  });
+
+  it('leaves an owned row to the placeholder itself, so no override opens on it', () => {
+    // Northern belongs to Molly, so Molly's panel for it is the unlocked one that writes its own weights.
+    const world = [
+      {
+        id: 'molly', name: 'Molly', roll: false, values: phValues([chip('northern')]),
+        sharedWeights: { [phValueId(chip('northern'))]: { [phValueId('green')]: 0 } },
+      },
+      { id: 'northern', name: 'Northern', ownerId: 'molly', roll: true, values: phValues(['green', 'hazel']) },
+    ];
+    expect(draw(placed('molly', 'world', 'p1'), world)).toBe('green');
+  });
+
+  it('drops the row at a chip composed into a longer value, which nests nothing to weight', () => {
+    const world = [
+      {
+        id: 'molly', name: 'Molly', roll: false, values: phValues([`eyes of ${EYES}`]),
+        sharedWeights: { [phValueId(`eyes of ${EYES}`)]: { [phValueId('green')]: 0 } },
+      },
+      eyes(['green', 'hazel']),
+    ];
+    expect(draw(placed('molly', 'world', 'p1'), world)).toBe('eyes of green');
+  });
+
+  it('keys every crossing by the value the row was authored against, not the one walked', () => {
+    // Two values of Molly point at Eyes. The tree draws one row for it, so the panel writes one key — and
+    // the second value has to read that key too, or half of Molly ignores the bench.
+    const A = encodePlaceholderToken({ id: 'eyes', mode: 'unique', placementId: 'a' });
+    const B = encodePlaceholderToken({ id: 'eyes', mode: 'unique', placementId: 'b' });
+    const world = [
+      { id: 'molly', name: 'Molly', roll: false, values: phValues([A, B]),
+        sharedWeights: { [phValueId(A)]: { [phValueId('green')]: 0 } } },
+      eyes(['green', 'hazel']),
+    ];
+    expect(draw(placed('molly', 'world', 'p1'), world)).toBe('hazel, hazel');
+  });
+
+  it('lays the override over the original rather than replacing its map', () => {
+    const world = [
+      molly({ [phValueId(EYES)]: { [phValueId('hazel')]: 0 } }),
+      { ...eyes(['green', 'hazel', 'amber']), weights: { [phValueId('green')]: 0 } },
+    ];
+    // Green stays benched by the original, hazel by the row: amber is what is left.
+    expect(draw(placed('molly', 'world', 'p1'), world)).toBe('amber');
+  });
+
+  it('reads the merged map for chances and for weightedness', () => {
+    const ph = eyes(['green', 'hazel']);
+    const merged = mergePlaceholderWeights(ph.weights, { [phValueId('green')]: 0 });
+    expect(isWeighted(ph)).toBe(false);
+    expect(isWeighted(ph, merged)).toBe(true);
+    expect(placeholderChances(ph, merged)).toEqual({ [phValueId('green')]: 0, [phValueId('hazel')]: 100 });
+  });
+
+  it('carries the overrides through a duplicate, re-keyed to the copy own values', () => {
+    const source = molly({ [phValueId(EYES)]: { [phValueId('green')]: 0 } });
+    const copy = remintPlaceholderDef(source);
+    expect(copy.sharedWeights).toEqual({ [copy.values[0].id]: { [phValueId('green')]: 0 } });
+  });
+
+  it('drops an override whose value the author removed', () => {
+    const shared = { [phValueId(EYES)]: { [phValueId('green')]: 0 }, [phValueId('gone')]: { x: 0 } };
+    expect(pruneSharedWeights(shared, phValues([EYES])))
+      .toEqual({ [phValueId(EYES)]: { [phValueId('green')]: 0 } });
+    expect(pruneSharedWeights({ [phValueId('gone')]: { x: 0 } }, phValues([EYES]))).toBeUndefined();
+  });
+});
+
+/**
+ * A benched value can never be drawn, so no display surface may advertise it. The exception is a list where
+ * everything is benched: the roll falls back to a uniform draw there, and so does what is shown.
+ */
+describe('benched values in display', () => {
+  const eye = (weights: Record<string, number>): Placeholder =>
+    ({ id: 'eye', name: 'Eye', roll: true, values: phValues(['Red', 'Blue']), weights });
+
+  it('leaves a benched value out of the tooltip and the read-only pill', () => {
+    expect(placeholderValueSummary(eye({ [phValueId('Blue')]: 0 }))).toBe('Red');
+  });
+
+  it('leaves a benched value out of the describe pass', () => {
+    expect(describePlaceholders(tok('eye', 'world', 'p1'), [eye({ [phValueId('Blue')]: 0 })])).toBe('Red');
+  });
+
+  it('leaves a shared row benched value out of the describe pass too', () => {
+    const world: Placeholder[] = [
+      {
+        id: 'molly', name: 'Molly', roll: false, values: phValues([chip('eye')]),
+        sharedWeights: { [phValueId(chip('eye'))]: { [phValueId('Blue')]: 0 } },
+      },
+      { id: 'eye', name: 'Eye', roll: true, values: phValues(['Red', 'Blue']) },
+    ];
+    expect(describePlaceholders(tok('molly', 'world', 'p1'), world)).toBe('Red');
+    expect(describePlaceholders(tok('eye', 'world', 'p2'), world)).toBe('{Red|Blue}');
+  });
+
+  it('shows every value when they are all benched, matching the uniform fallback of the roll', () => {
+    const all = eye({ [phValueId('Red')]: 0, [phValueId('Blue')]: 0 });
+    expect(placeholderValueSummary(all)).toBe('Red|Blue');
+    expect(describePlaceholders(tok('eye', 'world', 'p1'), [all])).toBe('{Red|Blue}');
+  });
+
+  it('keeps every value of an Object, which joins them all and never draws', () => {
+    const obj = { ...eye({ [phValueId('Blue')]: 0 }), roll: false };
+    expect(placeholderValueSummary(obj)).toBe('Red|Blue');
+    expect(describePlaceholders(tok('eye', 'world', 'p1'), [obj])).toBe('Red, Blue');
   });
 });
