@@ -11,9 +11,11 @@ import { KeywordChips } from '@/components/KeywordChips';
 import { HintInfo } from '@/components/SettingsRows';
 import PlaceholderField from '@/components/prompt/PlaceholderField';
 import { usePlaceholderStore } from '@/contexts/PlaceholderStoreContext';
+import { Chip } from '@/components/Chip';
 import {
   placeholderWeight, placeholderChances, placeholderValueLine, parsePlaceholderText, isWeighted,
-  reconcilePlaceholderValues, prunePlaceholderWeights,
+  reconcilePlaceholderValues, prunePlaceholderWeights, pruneSharedWeights, mergePlaceholderWeights,
+  lonePlaceholderToken,
 } from '@/lib/placeholders';
 import { usePlaceholderChipVocabulary } from '@/lib/chipVocabulary';
 import { cn } from '@/lib/utils';
@@ -64,13 +66,23 @@ const boxValues = (boxes: ValueBox[]): string[] => {
 
 const sameValues = (a: string[], b: string[]) => a.length === b.length && a.every((v, i) => v === b[i]);
 
-/** Right-panel editor for a placeholder: what kind of thing it is, its name, and its values. The kind
- *  selector declares Wildcard or Object explicitly; an untouched placeholder shows the kind its value count
- *  already implies, so no shipped world needs migrating. Values are edited either as chips (short values:
- *  click one for its draw weight, the eye reveals every chance) or as one markdown box per value
- *  (paragraph-length values), and either way they may hold placeholder chips of their own. Writes back
- *  through the scoped `PlaceholderStore` (the world's, or the library item's isolated store). */
-const PlaceholderManager = ({ placeholder }: { placeholder: Placeholder }) => {
+/**
+ * Right-panel editor for a placeholder: what kind of thing it is, its name, and its values. The kind
+ * selector declares Wildcard or Object explicitly; an untouched placeholder shows the kind its value count
+ * already implies, so no shipped world needs migrating. Values are edited either as chips (short values:
+ * click one for its draw weight, the eye reveals every chance) or as one markdown box per value
+ * (paragraph-length values), and either way they may hold placeholder chips of their own. Writes back
+ * through the scoped `PlaceholderStore` (the world's, or the library item's isolated store).
+ *
+ * The same panel serves a **shared row** — a placeholder held by something that does not own it. There the
+ * name, the kind and the values belong to the original and are locked; only the draw weights are the row's
+ * own, and they are written as an override on the holder rather than onto the original.
+ */
+const PlaceholderManager = ({ placeholder, share }: {
+  placeholder: Placeholder;
+  /** Where this row's draw weights live, when the row is a shared one — see `sharedWeightSite`. */
+  share?: { ownerId: string; key: string };
+}) => {
   const { placeholders, updatePlaceholder } = usePlaceholderStore();
   const { draft: editing, apply } = useEditingDraft(placeholder, updatePlaceholder);
   const [openValue, setOpenValue] = useState<string | null>(null);
@@ -104,8 +116,15 @@ const PlaceholderManager = ({ placeholder }: { placeholder: Placeholder }) => {
   const anchor = useRef<HTMLElement | null>(null);
 
   const count = editing.values.length;
-  const weighted = isWeighted(editing);
-  const chances = placeholderChances(editing);
+  // A shared row whose holder went missing is no row at all, so the panel falls back to the plain editor
+  // rather than writing an override into nothing.
+  const owner = share ? placeholders.find((p) => p.id === share.ownerId) : undefined;
+  const locked = !!share && !!owner;
+  const override = locked ? owner.sharedWeights?.[share.key] : undefined;
+  // Deny-list: the row's map lies over the original's, so a value neither one names still weighs 1.
+  const effective = mergePlaceholderWeights(editing.weights, override);
+  const weighted = isWeighted(editing, effective);
+  const chances = placeholderChances(editing, effective);
   // Both value editors work in text — it is what the author types and what a chip is keyed by — while
   // weights and chances key by the value's id. This is the one crossing between the two.
   const byText = new Map(editing.values.map((v) => [v.text, v]));
@@ -125,21 +144,41 @@ const PlaceholderManager = ({ placeholder }: { placeholder: Placeholder }) => {
   // an edit dropped need clearing out.
   const setValues = (texts: string[]) => {
     const values = reconcilePlaceholderValues(editing.values, texts);
-    apply({ values, weights: prunePlaceholderWeights(editing.weights, values) });
+    apply({
+      values,
+      weights: prunePlaceholderWeights(editing.weights, values),
+      // A dropped value takes the shared row it held, and with it the weights that row carried.
+      sharedWeights: pruneSharedWeights(editing.sharedWeights, values),
+    });
+  };
+
+  /** Write the row's own weight for a value, as an override on the holder. A weight matching what the
+   *  original already draws by is written as nothing, so the row goes back to following it. */
+  const setSharedWeight = (value: PlaceholderValue, weight: number) => {
+    if (!locked) return;
+    const map = { ...(override ?? {}) };
+    if (weight === placeholderWeight(editing, value)) delete map[value.id];
+    else map[value.id] = weight;
+    const { sharedWeights: held, ...rest } = owner;
+    const next = { ...(held ?? {}) };
+    if (Object.keys(map).length) next[share.key] = map;
+    else delete next[share.key];
+    updatePlaceholder({ ...rest, ...(Object.keys(next).length ? { sharedWeights: next } : {}) });
   };
 
   const setWeight = (value: string, weight: number) => {
-    const id = byText.get(value)?.id;
-    if (!id) return;
+    const v = byText.get(value);
+    if (!v) return;
+    if (locked) return setSharedWeight(v, weight);
     const weights = { ...(editing.weights ?? {}) };
-    if (weight === 1) delete weights[id];
-    else weights[id] = weight;
+    if (weight === 1) delete weights[v.id];
+    else weights[v.id] = weight;
     apply({ weights: Object.keys(weights).length ? weights : undefined });
   };
 
   const weightOf = (value: string) => {
     const v = byText.get(value);
-    return v ? placeholderWeight(editing, v) : 1;
+    return v ? placeholderWeight(editing, v, effective) : 1;
   };
   const pct = (v: string) => `${Math.round(chances[byText.get(v)?.id ?? ''] ?? 0)}%`;
 
@@ -167,11 +206,66 @@ const PlaceholderManager = ({ placeholder }: { placeholder: Placeholder }) => {
 
   const anyOpen = boxes.some((b) => !collapsed.has(b.id));
 
+  /** A value that is exactly one chip *is* that placeholder, so it wears its accent — the same reading the
+   *  chip row takes of its own values. */
+  const valueColor = (value: string) => {
+    const lone = lonePlaceholderToken(value);
+    return lone ? vocab.color(lone) : undefined;
+  };
+
+  /** The draw-weight pop-out, shared by the chip row and a shared row's read-only list — one anchor, one
+   *  set of copy, whichever list is drawn. */
+  const weightPopover = (
+    <PopoverContent
+      className="w-60 space-y-2"
+      align="start"
+      // The open chip closes itself on click. Letting the dismiss fire as well would close it on the
+      // press and reopen it on the release, which is why clicking it again appeared to do nothing.
+      onPointerDownOutside={(e) => {
+        if (openValue !== null && chipEls.current.get(openValue)?.contains(e.target as Node)) e.preventDefault();
+      }}
+    >
+      {openValue !== null && (
+        <>
+          <p className="truncate text-label font-medium">{valueLine(openValue)}</p>
+          <Label className="text-meta text-muted-foreground">Draw Weight</Label>
+          <Input
+            type="number"
+            min={0}
+            step={1}
+            autoFocus
+            aria-label="Draw weight"
+            value={weightOf(openValue)}
+            onChange={(e) => setWeight(openValue, Math.max(0, Math.round(Number(e.target.value) || 0)))}
+          />
+          <p className="text-meta text-muted-foreground">
+            {(chances[byText.get(openValue)?.id ?? ''] ?? 0) === 0
+              ? 'Benched — never rolled, but kept in the list.'
+              : `Rolls ${pct(openValue)} of the time. Weights are relative: 2 is twice as likely as 1.`}
+          </p>
+        </>
+      )}
+    </PopoverContent>
+  );
+
   return (
     <div className="space-y-4">
+      {locked && (
+        <p className="rounded-md border border-dashed px-2 py-1.5 text-helper text-muted-foreground">
+          Shared row. The name, the kind and the values come from the original.{' '}
+          {kind === 'object'
+            ? 'An Object applies every value and never draws, so there is nothing to weigh here.'
+            : 'The draw weights are this row’s own — benching a value here changes nothing anywhere else.'}
+        </p>
+      )}
       <div className="space-y-2">
         <Label>Name</Label>
-        <Input value={editing.name} onChange={(e) => apply({ name: e.target.value })} placeholder="e.g. Eye Color" />
+        <Input
+          value={editing.name}
+          onChange={(e) => apply({ name: e.target.value })}
+          disabled={locked}
+          placeholder="e.g. Eye Color"
+        />
       </div>
       <div className="space-y-2">
         <div className="flex items-center gap-2">
@@ -181,6 +275,7 @@ const PlaceholderManager = ({ placeholder }: { placeholder: Placeholder }) => {
         <ToggleGroup
           type="single"
           value={kind}
+          disabled={locked}
           // Clicking the item already on clears a single ToggleGroup's value. A placeholder is always one
           // kind or the other, so an empty result is ignored rather than written back.
           onValueChange={(v) => { if (v) apply({ roll: v === 'wildcard' }); }}
@@ -212,7 +307,7 @@ const PlaceholderManager = ({ placeholder }: { placeholder: Placeholder }) => {
             </Tip>
           )}
           <div className="ml-auto flex items-center gap-1">
-            {style === 'multiline' && boxes.length > 1 && (
+            {!locked && style === 'multiline' && boxes.length > 1 && (
               <Tip tip={anyOpen ? 'Collapse all values' : 'Expand all values'}>
                 <Button
                   type="button"
@@ -225,6 +320,8 @@ const PlaceholderManager = ({ placeholder }: { placeholder: Placeholder }) => {
                 </Button>
               </Tip>
             )}
+            {/* A shared row edits no text, so the two text editors have nothing to choose between. */}
+            {!locked && (
             <ToggleGroup
               type="single"
               value={style}
@@ -237,9 +334,26 @@ const PlaceholderManager = ({ placeholder }: { placeholder: Placeholder }) => {
               <ToggleGroupItem value="chips" className="h-6 px-2 text-helper">Chips</ToggleGroupItem>
               <ToggleGroupItem value="multiline" className="h-6 px-2 text-helper">Multiline</ToggleGroupItem>
             </ToggleGroup>
+            )}
           </div>
         </div>
-        {style === 'multiline' ? (
+        {locked ? (
+        <Popover open={openValue !== null} onOpenChange={(o) => !o && setOpenValue(null)}>
+          <PopoverAnchor virtualRef={anchor} />
+          <SharedValues
+            values={editing.values}
+            line={valueLine}
+            color={valueColor}
+            suffix={showChances ? (v) => `(${pct(v)})` : undefined}
+            register={(v, el) => { if (el) chipEls.current.set(v, el); else chipEls.current.delete(v); }}
+            onOpen={kind === 'object' || count < 2 ? undefined : (v) => {
+              anchor.current = chipEls.current.get(v) ?? null;
+              setOpenValue((prev) => (prev === v ? null : v));
+            }}
+          />
+          {weightPopover}
+        </Popover>
+        ) : style === 'multiline' ? (
           <MultilineValues
             boxes={boxes}
             collapsed={collapsed}
@@ -284,41 +398,59 @@ const PlaceholderManager = ({ placeholder }: { placeholder: Placeholder }) => {
               </span>
             )}
           />
-          <PopoverContent
-            className="w-60 space-y-2"
-            align="start"
-            // The open chip closes itself on click. Letting the dismiss fire as well would close it on the
-            // press and reopen it on the release, which is why clicking it again appeared to do nothing.
-            onPointerDownOutside={(e) => {
-              if (openValue !== null && chipEls.current.get(openValue)?.contains(e.target as Node)) e.preventDefault();
-            }}
-          >
-            {openValue !== null && (
-              <>
-                <p className="truncate text-label font-medium">{valueLine(openValue)}</p>
-                <Label className="text-meta text-muted-foreground">Draw Weight</Label>
-                <Input
-                  type="number"
-                  min={0}
-                  step={1}
-                  autoFocus
-                  value={weightOf(openValue)}
-                  onChange={(e) => setWeight(openValue, Math.max(0, Math.round(Number(e.target.value) || 0)))}
-                />
-                <p className="text-meta text-muted-foreground">
-                  {(chances[openValue] ?? 0) === 0
-                    ? 'Benched — never rolled, but kept in the list.'
-                    : `Rolls ${pct(openValue)} of the time. Weights are relative: 2 is twice as likely as 1.`}
-                </p>
-              </>
-            )}
-          </PopoverContent>
+          {weightPopover}
         </Popover>
         )}
       </div>
     </div>
   );
 };
+
+/**
+ * A shared row's value list: the same chips, with nothing to type into and nothing to remove — the values
+ * belong to the original. A click still opens the draw-weight pop-out, which is the one thing this row owns;
+ * an Object never draws, so it gets plain chips instead.
+ */
+const SharedValues = ({ values, line, color, suffix, register, onOpen }: {
+  values: readonly PlaceholderValue[];
+  line: (value: string) => string;
+  color: (value: string) => string | undefined;
+  suffix?: (value: string) => string | undefined;
+  /** Reports each chip's element, so the pop-out can hang off the one that was clicked. */
+  register: (value: string, el: HTMLElement | null) => void;
+  /** Omitted where there is no weight to set — an Object, or a list too short to weigh. */
+  onOpen?: (value: string) => void;
+}) => (
+  <div className="flex flex-wrap items-center gap-1 rounded-md border border-border bg-background/80 p-2">
+    {values.length === 0 && <span className="text-helper text-muted-foreground">No values.</span>}
+    {values.map((v) => {
+      const label = line(v.text);
+      const tint = color(v.text);
+      const chip = (
+        <Chip
+          label={suffix?.(v.text) ? <>{label} {suffix(v.text)}</> : label}
+          removeLabel={label}
+          style={tint ? { backgroundColor: tint, color: '#000' } : undefined}
+          tip={onOpen ? 'Click to set this row’s draw weight' : 'From the original'}
+        />
+      );
+      return onOpen ? (
+        <button
+          key={v.id}
+          type="button"
+          ref={(el) => register(v.text, el)}
+          className="inline-flex"
+          aria-label={`Draw weight for ${label}`}
+          onClick={() => onOpen(v.text)}
+        >
+          {chip}
+        </button>
+      ) : (
+        <span key={v.id} className="inline-flex">{chip}</span>
+      );
+    })}
+  </div>
+);
 
 /** The multiline style: one bordered card per value, each holding the markdown field the readme uses. A card
  *  collapses to its first line with its weight and remove still live, so a long list stays tunable while

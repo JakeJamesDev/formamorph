@@ -404,3 +404,93 @@ describe('PlaceholderManager — chip values', () => {
     expect(screen.queryByText(/\{\{ph:/)).not.toBeInTheDocument();
   });
 });
+
+/**
+ * A shared row opens this same panel with the name, the kind and the values locked — they belong to the
+ * original — and the draw weights live. Those weights are written as an override on the holder, so benching
+ * a value for one character leaves the original, and every other holder, exactly as they were.
+ */
+describe('PlaceholderManager — a shared row', () => {
+  /** Molly holds the placeholder under test without owning it, which is what makes the row a shared one. */
+  const holder = (over: Partial<Placeholder> = {}): Placeholder => ({
+    id: 'h1', name: 'Molly', roll: false, values: phValues([chip('p1')]), ...over,
+  });
+  const site = { ownerId: 'h1', key: phValueId(chip('p1')) };
+  const shared = (over: Partial<Placeholder> = {}) =>
+    render(<PlaceholderManager placeholder={ph(over)} share={site} />);
+  const weightChip = (label: string) => screen.getByRole('button', { name: `Draw weight for ${label}` });
+  const setWeight = (n: number) => fireEvent.change(screen.getByLabelText('Draw weight'), { target: { value: String(n) } });
+
+  beforeEach(() => { siblings = [holder(), ph()]; });
+
+  it('locks the name, the kind and the value list', () => {
+    shared();
+    expect(screen.getByDisplayValue('Scene')).toBeDisabled();
+    expect(kindOption('Object')).toBeDisabled();
+    expect(screen.queryByRole('textbox', { name: 'Add keyword' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('radiogroup', { name: 'Value editor style' })).not.toBeInTheDocument();
+    expect(screen.getByText(/values come from the original/i)).toBeInTheDocument();
+  });
+
+  it('writes the weight onto the holder, and never onto the original', () => {
+    shared();
+    fireEvent.click(weightChip('Red'));
+    setWeight(0);
+    expect(stored().id).toBe('h1');
+    expect(stored().sharedWeights).toEqual({ [site.key]: { [phValueId('Red')]: 0 } });
+    expect(stored().values.map((v) => v.text)).toEqual([chip('p1')]); // the holder is otherwise untouched
+  });
+
+  it('drops the override when the weight goes back to what the original draws by', () => {
+    siblings = [holder({ sharedWeights: { [site.key]: { [phValueId('Red')]: 0 } } }), ph()];
+    shared();
+    fireEvent.click(weightChip('Red'));
+    setWeight(1);
+    expect(stored().sharedWeights).toBeUndefined();
+  });
+
+  it('reads the merged weights, so the revealed chance belongs to this row', () => {
+    siblings = [holder({ sharedWeights: { [site.key]: { [phValueId('Red')]: 0 } } }), ph()];
+    shared();
+    fireEvent.click(screen.getByRole('button', { name: /Show roll chances/i }));
+    expect(weightChip('Red')).toHaveTextContent('(0%)');
+    expect(weightChip('Blue')).toHaveTextContent('(100%)');
+  });
+
+  it('keeps a benched value in the list, which is the only way back off the bench', () => {
+    siblings = [holder({ sharedWeights: { [site.key]: { [phValueId('Red')]: 0 } } }), ph()];
+    shared();
+    expect(weightChip('Red')).toBeInTheDocument();
+  });
+
+  it('offers no weight on a shared Object, and says why', () => {
+    shared({ roll: false });
+    expect(screen.queryByRole('button', { name: /Draw weight for/ })).not.toBeInTheDocument();
+    expect(screen.getByText(/never draws/i)).toBeInTheDocument();
+  });
+
+  it('falls back to the plain editor when the holder is gone', () => {
+    siblings = [ph()];
+    shared();
+    expect(screen.getByDisplayValue('Scene')).toBeEnabled();
+    expect(screen.getByRole('textbox', { name: 'Add keyword' })).toBeInTheDocument();
+  });
+
+  // The wiring: the list selects rows, and which row it is decides whether the panel locks. Both rows here
+  // are the one placeholder, so a panel keyed by the placeholder alone could not tell them apart.
+  it('locks the nested row and leaves the original unlocked, from the list', () => {
+    render(<PlaceholderEditor />);
+    const rows = screen.getAllByRole('button', { name: 'Duplicate' })
+      .map((b) => b.parentElement as HTMLElement);
+    const named = (name: string) =>
+      rows.filter((r) => r.querySelector('span.flex-grow')?.textContent === name);
+    // Molly, then Scene under her, then Scene at the top level.
+    expect(named('Scene')).toHaveLength(2);
+
+    fireEvent.click(named('Scene')[0].querySelector('span.flex-grow') as HTMLElement);
+    expect(screen.getByDisplayValue('Scene')).toBeDisabled();
+
+    fireEvent.click(named('Scene')[1].querySelector('span.flex-grow') as HTMLElement);
+    expect(screen.getByDisplayValue('Scene')).toBeEnabled();
+  });
+});

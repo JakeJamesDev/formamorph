@@ -408,6 +408,11 @@ export interface Placeholder {
    *  never reads it. An owned placeholder is always also a chip value of its owner, so the owner dropping
    *  that value releases it (see lib/placeholderTree). */
   ownerId?: string;
+  /** Draw weights this placeholder sets on the shared rows it reaches, laid over each original's own map.
+   *  The outer key is the id of the value holding the shared chip, plus the id of every placeholder walked
+   *  below it, joined with `/`; the inner map keys by value id like `weights`. Deny-list: a value in
+   *  neither map weighs 1, so a value added to the original later rolls here too. */
+  sharedWeights?: Record<string, Record<string, number>>;
 }
 
 /** Lightweight preview record used by the main-menu world grid. */
