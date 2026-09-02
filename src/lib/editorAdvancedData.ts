@@ -1,6 +1,6 @@
 /**
  * Detects whether a world holds anything Simple mode hides, so the World Editor can say so beside the
- * mode switch. Mirrors the hidden surfaces in `docs-internal/world-editor-simple-mode.md`: the two
+ * mode switch. Mirrors the hidden surfaces in `docs-internal/designs/world-editor-simple-mode.md`: the two
  * hidden tabs, and every Advanced-only field.
  */
 import { hasValue } from './editorMode';

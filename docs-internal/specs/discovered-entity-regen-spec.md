@@ -61,7 +61,7 @@ appearance passages until a budget of ~8 passages / ~3k tokens is hit. Log nothi
   plus one new label for the supplemental section (exported, same parrot-cleaning contract).
 - Response cleaning: `cleanDiscoveredDescription` as-is, extended to also cut from the new label.
 - **Prompt-surface note:** the regen user message is new AI-call text → it falls under
-  `docs-internal/prompt-writing-guide.md`; probe the format (does the supplemental block help or
+  `docs-internal/notes/prompt-writing-guide.md`; probe the format (does the supplemental block help or
   distract a 12B?) before shipping the prompt wording as final.
 
 ## EntityModal UX

@@ -225,7 +225,7 @@ describe('the default now-line template', () => {
   });
 });
 
-// ── Chip affixes (docs-internal/chip-affixes-design.md) ──────────────────────────────────────────────
+// ── Chip affixes (docs-internal/designs/chip-affixes-design.md) ──────────────────────────────────────────────
 // Tests 1, 2 and 6 of the spec's gate are the load-bearing ones: they guard the round-trip, the
 // unchanged rendering of every shipped prompt, and survival through a style downcast.
 

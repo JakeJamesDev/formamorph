@@ -6,7 +6,7 @@
  * are blind to a character the narrator has just invented, so it never becomes a participant, never
  * reaches `selectDueDiscovery`, and never becomes known — discovery required already having been
  * discovered. Measured on a real session: a doctor who speaks on 23 of 50 turns was invisible on
- * every one. Design and measurements: docs-internal/narrator-character-discovery-spec.md.
+ * every one. Design and measurements: docs-internal/specs/narrator-character-discovery-spec.md.
  *
  * Capitalization-dependent by nature, and fails CLOSED — unusual or non-English capitalization
  * yields no candidates, which is exactly the pre-feature behavior.

@@ -397,7 +397,7 @@ moment in seven is being dropped on the tier most players actually hit.
 
 Worth its own workstream rather than a footnote — and note the gate itself was set when the
 measurements informing it were underpowered, so "raise recall" and "the gate is miscalibrated" are
-both live hypotheses. `docs-internal/prompt-writing-guide.md` has the current done-bar.
+both live hypotheses. `docs-internal/notes/prompt-writing-guide.md` has the current done-bar.
 
 ---
 
