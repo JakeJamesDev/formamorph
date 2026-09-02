@@ -335,11 +335,11 @@ Deeper stalling fix is the planner (thinking modes) — out of scope for the raw
 - **Structured state the model can read** — the standing answer to both possessions items above and
   the C1 vague-inventory read: they drift because what's true about a character or a possession
   exists only as prose the model re-infers each turn. A general inventory system was **rejected** as
-  the wrong frame (§1 of [world-authoring-feature-notes.md](docs-internal/notes/world-authoring-feature-notes.md));
+  the wrong frame (§1 of [world-authoring-feature-notes.md](docs-internal/notes/world-authoring-feature/notes.md));
   the live direction is **per-entity runtime fields**, tracked there, not here — it's a product
   feature with an export-shape decision attached, not a narration-quality fix. What belongs on this
   list is only the cheap prompt-side half above. Background on the dead end:
-  [list-stat-removal.md](docs-internal/notes/list-stat-removal.md).
+  [list-stat-removal.md](docs-internal/notes/list-stat-removal/notes.md).
 - **Wine→beer drift** (close.json T1→T11) — minor world-fact continuity, single instance.
 - **Structural rut**: most turns end with a question/demand from the NPC; reads engaged early,
   mechanical by T30. Needs a measurement before any prompt work.

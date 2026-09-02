@@ -130,7 +130,7 @@ export const defaultRecapUserPrompt = `Recap the story so far.`;
 // returns to an old scene, that turn's full narration rides as the answer to this question, directly
 // after the recap. The wording must mark the scene as PAST — position reads as time to small models,
 // and an unframed vivid old scene can overrule the recap's later facts (a character who has since
-// died acts alive again). Framing + guards: docs-internal/notes/semantic-memory-roadmap.md step 2;
+// died acts alive again). Framing + guards: docs-internal/notes/semantic-memory-roadmap/notes.md step 2;
 // rehydrate-probe.mjs is the evidence bar for any wording change.
 export const defaultRehydrateUserPrompt = `Recall in full the earlier moment my next action returns to. This scene already happened; everything in the recap since then still stands.`;
 
@@ -312,7 +312,7 @@ export const defaultSummaryPrompt = `You are recording what one turn of an inter
 // 0.95 must-recall on the de-correlated fixture; known trade-off: Cydonia keeps a standing-pretense
 // entry only under the concrete-example arm ('stateful7', 1.00). The example holds ~two lessons max —
 // a third keep ('genericex2') broke the cloud gate. History: milestone-select-probe.mjs arm comments +
-// docs-internal/designs/milestone-memory-design.md.
+// docs-internal/designs/milestone-memory/design.md.
 export const defaultMilestonePrompt = `You are the memory keeper of an interactive story. You are given the story's remembered moments as a numbered list, oldest first. Keep an entry only if someone in the story would bring it up again or act on it: a promise or debt still open, a threat or wound that persists, a thing gained and kept, a favor done or a slight given that changes how one character sees another, a secret learned, a role or pretense being played, or the player's own stated errand - who they say they are and where they are bound. Drop what no one would ever speak of again - passing movement, small talk, and any moment whose outcome a later entry already carries. When unsure whether something still matters, let it go.
 
 Example of the reasoning, with placeholder entries standing for any story:
@@ -422,7 +422,7 @@ export const defaultNowLinePrompt = `Now you are at <LOCATION|name><LOCATION|par
 // The clock pass (requestType 'timePassed'): run silently after the narration to measure how much
 // in-world time the turn consumed. It asks for the DELTA, never the resulting date — a small model can
 // judge "how long did that take" but cannot do calendar arithmetic, and the two-stage change-detection
-// shape is what the roleplay trackers converged on (docs-internal/designs/time-system-design.md §2a). It reads
+// shape is what the roleplay trackers converged on (docs-internal/designs/time-system/design.md §2a). It reads
 // the narration, not just the action, because a timeskip ("three weeks later") only ever lives there —
 // hence the clause giving stated time precedence over the model's own estimate.
 export const defaultTimePassedPrompt = `You measure how much time passes in a story. You are given what the character did and what happened next.

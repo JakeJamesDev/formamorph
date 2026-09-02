@@ -3,7 +3,7 @@
  *
  * Simple thins the editor for new authors: it hides the Placeholders and Dictionary tabs, the
  * placeholder palette bar, the group-creating `+` popover, the library import pickers, and the
- * advanced fields listed in `docs-internal/designs/world-editor-simple-mode.md`. Simple means simple: a hidden
+ * advanced fields listed in `docs-internal/designs/world-editor-simple-mode/design.md`. Simple means simple: a hidden
  * field stays hidden whether or not it holds a value, and the header icon says when this world has
  * something out of sight.
  *

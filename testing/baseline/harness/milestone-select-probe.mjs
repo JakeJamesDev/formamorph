@@ -1,6 +1,6 @@
 // Milestone-select probe — measures the milestone-memory selector prompt against the hand-labeled
 // fixture (milestone-fixture.json). Per story, the model gets the numbered digest list and replies with
-// keep-indices; we score against labels. See docs-internal/designs/milestone-memory-design.md.
+// keep-indices; we score against labels. See docs-internal/designs/milestone-memory/design.md.
 //
 // Fixture tiers (v2 reframe — keep = "someone would bring it up again or act on it"):
 //   must   — must-keep. Recall gate >= 0.90; every miss printed verbatim (the expensive error).

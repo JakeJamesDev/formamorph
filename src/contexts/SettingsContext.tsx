@@ -393,12 +393,12 @@ function useProvideSettings() {
   // EXPERIMENTAL in-world time labels: each remembered moment carries when it happened ("Day 3, evening —
   // two days ago") and the recap's now-line states the present, so the model reads when before what.
   // Default off — it changes the digest band's text, which needs probe evidence before defaulting on
-  // (docs-internal/designs/time-system-design.md, phase 1).
+  // (docs-internal/designs/time-system/design.md, phase 1).
   const [timeContext, setTimeContext] = usePersistentState<boolean>(`${APP_ID}_timeContext`, false, boolCodec);
   // EXPERIMENTAL measured clock: a silent post-narration pass measures how much in-world time the turn
   // consumed, instead of the flat hour per action the game has always charged. Default off — it adds a
   // request to every turn, and the measurement needs probe evidence before defaulting on
-  // (docs-internal/designs/time-system-design.md, phase 2).
+  // (docs-internal/designs/time-system/design.md, phase 2).
   const [aiClock, setAiClock] = usePersistentState<boolean>(`${APP_ID}_aiClock`, false, boolCodec);
   // Fire the post-narration aux requests (choices + stat updates + location router) concurrently instead of
   // one after another. Default on: ~29% faster turns on a parallel-capable endpoint (LM Studio "Parallel",
