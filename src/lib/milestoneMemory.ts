@@ -5,7 +5,7 @@ import type { BandTurn } from './turnBanding';
  * long-term history. The selector's reply is a keep-index list over the numbered digests; code maps the
  * indices back to turn ids and assembles the survivors verbatim. A malformed reply resolves to null,
  * which callers treat as keep-everything (fail-safe, never fail-drop). Player pins override the
- * selection in both directions. Design: docs-internal/milestone-memory-design.md.
+ * selection in both directions. Design: docs-internal/designs/milestone-memory-design.md.
  */
 
 /** How many summarized turns past the verbatim floor ride unfiltered before the milestone band begins.

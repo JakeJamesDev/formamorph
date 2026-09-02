@@ -101,7 +101,7 @@ New `AIRequestType: 'timePassed'`. Runs post-narration, alongside the existing c
 | Zero | legitimate | A single line of dialogue costs nothing. No anti-freeze guard; the player can edit. |
 | Override | player-editable per turn | Universal in prior art. Surfaces in the Log panel, which already renders `[3d 4h]`. |
 
-Draft prompt (probe before trusting; follows [prompt-writing-guide](docs-internal/prompt-writing-guide.md) — positive contract, no parrotable values):
+Draft prompt (probe before trusting; follows [prompt-writing-guide](docs-internal/notes/prompt-writing-guide.md) — positive contract, no parrotable values):
 
 > **System:** You measure how much time a scene takes. Read what the character did and what happened, then answer with the elapsed in-world time as a single value: a number followed by `m` (minutes), `h` (hours), `d` (days), or `w` (weeks). A brief exchange takes minutes. A journey, a meal, or a night's rest takes hours. When the text states that time passed, use what it states. Answer with the value alone and nothing else.
 
@@ -206,7 +206,7 @@ Note that the **world** calendar was never needed: sourcing `startHour` from the
 
 ## 7. Probe plan
 
-Per the [prompt-writing-guide](docs-internal/prompt-writing-guide.md) done-bar — both tiers (cloud default endpoint 12 runs/arm, Cydonia 2–3), before/after metrics, other-metric regression check.
+Per the [prompt-writing-guide](docs-internal/notes/prompt-writing-guide.md) done-bar — both tiers (cloud default endpoint 12 runs/arm, Cydonia 2–3), before/after metrics, other-metric regression check.
 
 **A — RUN 2026-07-26.** `time-delta-probe.mjs` over `time-delta-cases.json` (8 cases, temp 0).
 

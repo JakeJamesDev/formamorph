@@ -1,4 +1,4 @@
-// TIME-DELTA probe (Probe A of docs-internal/time-system-design.md) — can the model actually measure how
+// TIME-DELTA probe (Probe A of docs-internal/designs/time-system-design.md) — can the model actually measure how
 // much in-world time a turn consumed? This is the gate for phase 2's clock pass ('timePassed').
 //
 // Each case in ../time-delta-cases.json is a real-shaped (action, narration) pair with a ground-truth

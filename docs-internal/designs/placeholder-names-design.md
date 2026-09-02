@@ -1,6 +1,6 @@
 # Placeholders in Names — Design Memo
 
-Extension of the Placeholders feature (`docs-internal/placeholders-design.md`): placeholder chips become legal inside **name fields**, not just description/prompt text. Spec agreed 2026-08-06; **shipped**. Several display decisions were reversed in review — the **What shipped** section below is the authority, not the spec that precedes it.
+Extension of the Placeholders feature (`docs-internal/designs/placeholders-design.md`): placeholder chips become legal inside **name fields**, not just description/prompt text. Spec agreed 2026-08-06; **shipped**. Several display decisions were reversed in review — the **What shipped** section below is the authority, not the spec that precedes it.
 
 ## Scope — the seven name surfaces
 
@@ -88,7 +88,7 @@ listings. A pill cannot go in any of them.
 
 **The pre-game pickers left that row.** Rolls now open with the world session rather than at game start, so
 the trait and starting-location screens resolve like gameplay does — see
-`docs-internal/placeholder-session-design.md`.
+`docs-internal/designs/placeholder-session-design.md`.
 
 A placeholder whose definition was deleted renders a red `?` pill in the editor, and resolves to `""`
 everywhere else.

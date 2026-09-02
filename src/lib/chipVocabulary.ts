@@ -123,7 +123,7 @@ export interface ChipVocabulary {
   /** The token with one axis changed. */
   setAxis(token: string, axisId: string, optionId: string | null): string;
   /** The placement's prefix/suffix, or null when this chip doesn't take them (it renders a block, not a
-   *  phrase). See docs-internal/chip-affixes-design.md. */
+   *  phrase). See docs-internal/designs/chip-affixes-design.md. */
   affixes(token: string): { pre: string; post: string } | null;
   /** The token with its affixes replaced. Empty strings remove them. */
   setAffixes(token: string, pre: string, post: string): string;

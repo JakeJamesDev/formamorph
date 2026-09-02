@@ -1,5 +1,5 @@
 // OPENING-TIME probe — should the opening-time pass be allowed to say "unstated", or be forced to pick a
-// daypart? This is the one open question in the game-start clock design (docs-internal/time-system-design.md):
+// daypart? This is the one open question in the game-start clock design (docs-internal/designs/time-system-design.md):
 // everything else about it is settled, and the answer decides the shipped prompt.
 //
 // The pass runs once at game start, AFTER the opening narration and with <TIME> suppressed, and its answer
