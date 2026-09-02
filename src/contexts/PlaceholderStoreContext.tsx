@@ -1,5 +1,5 @@
 import { createContext, useContext, type Dispatch, type SetStateAction, type ReactNode } from 'react';
-import type { PlaceholderHome } from '@/lib/placeholderHomes';
+import type { PlaceholderHome, PlaceholderHomesWorld, PlaceholderOwners, PlaceholderSlices } from '@/lib/placeholderHomes';
 import { releasePlaceholderOwners, removePlaceholderCascade } from '@/lib/placeholderTree';
 import type { Placeholder } from '@/types';
 
@@ -22,6 +22,17 @@ export interface PlaceholderStore {
    *  take a placeholder privately. A thunk, so the scan a world-sized answer needs is paid on the drop
    *  rather than on every render. Omit where nothing outside the list can hold a chip. */
   placedIds?: () => ReadonlySet<string>;
+  /** Who owns each scoped placeholder, for the surfaces that read a chip as `Molly.Eyes`. Absent on a store
+   *  bound to one list, where nothing is scoped. */
+  owners?: PlaceholderOwners;
+  /** The world's lists, for the tab that draws an owner node per entity or book and moves records between
+   *  them. Absent on a store bound to one list. */
+  lists?: PlaceholderHomesWorld;
+  /** Write every list at once — what a drop that moves a record between owners needs. */
+  setLists?: (next: PlaceholderSlices) => void;
+  /** The one list this store edits when it is bound to an owner's own section rather than the whole tab:
+   *  the list draws only that owner's rows and a create lands there. Reads still see every placeholder. */
+  scope?: PlaceholderHome;
 }
 
 /** Build a {@link PlaceholderStore} over any `[value, setValue]` pair — the single source of the CRUD, so both

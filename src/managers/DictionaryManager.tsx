@@ -18,7 +18,13 @@ function CheckRow({ label, checked, onChange }: { label: string; checked: boolea
   );
 }
 
-const DictionaryManager = ({ entry, placeholders = [] }: { entry: DictionaryEntry; placeholders?: Placeholder[] }) => {
+const DictionaryManager = ({ entry, placeholders = [], ownerId }: {
+  entry: DictionaryEntry;
+  placeholders?: Placeholder[];
+  /** The book this entry belongs to, as the owner of its fields — see `ownerId` on `PlaceholderField`.
+   *  World Editor only; a library book owns everything it carries. */
+  ownerId?: string;
+}) => {
   const { updateDictionaryEntry } = useDictionaryStore();
   const { draft: editingEntry, setField: handleChange } = useEditingDraft<DictionaryEntry>(entry, updateDictionaryEntry);
   const { advanced } = useEditorMode();
@@ -59,6 +65,7 @@ const DictionaryManager = ({ entry, placeholders = [] }: { entry: DictionaryEntr
           value={editingEntry.name ?? ''}
           onChange={(v) => handleChange('name', v)}
           placeholders={placeholders}
+          ownerId={ownerId}
           placeholder="e.g. Hostile Forces"
           ariaLabel="Name"
         />
@@ -69,7 +76,7 @@ const DictionaryManager = ({ entry, placeholders = [] }: { entry: DictionaryEntr
       </div>
       <div className="space-y-2">
         <Label>Trigger Keywords (Key)</Label>
-        <KeywordChips keywords={keywords} onChange={(key) => handleChange('key', key)} placeholders={chipPlaceholders} offerCommaSplit={!editingEntry.useRegex} />
+        <KeywordChips keywords={keywords} onChange={(key) => handleChange('key', key)} placeholders={chipPlaceholders} ownerId={ownerId} offerCommaSplit={!editingEntry.useRegex} />
         <p className="text-meta text-muted-foreground">
           Type a keyword and press Enter to add it. Tap (or double-click) to edit, drag to reorder, click the × to remove.
           The value below is injected into the AI prompt only when one of these appears in play.
@@ -99,7 +106,7 @@ const DictionaryManager = ({ entry, placeholders = [] }: { entry: DictionaryEntr
         {advanced && (
         <div className="space-y-1">
           <Label className="text-meta text-muted-foreground">Secondary Keywords</Label>
-          <KeywordChips keywords={secondaryKeywords} onChange={handleSecondaryChange} placeholders={chipPlaceholders} placeholder="e.g. red" offerCommaSplit={!editingEntry.useRegex} />
+          <KeywordChips keywords={secondaryKeywords} onChange={handleSecondaryChange} placeholders={chipPlaceholders} ownerId={ownerId} placeholder="e.g. red" offerCommaSplit={!editingEntry.useRegex} />
           <div className="flex flex-wrap gap-x-4 gap-y-1 pt-1">
             <CheckRow label="Require all" checked={!!editingEntry.secondaryAll} onChange={(v) => handleChange('secondaryAll', v)} />
             <CheckRow label="Exclude (activate when absent)" checked={!!editingEntry.secondaryExclude} onChange={(v) => handleChange('secondaryExclude', v)} />
@@ -113,6 +120,7 @@ const DictionaryManager = ({ entry, placeholders = [] }: { entry: DictionaryEntr
         value={editingEntry.value || ''}
         onChange={(v) => handleChange('value', v)}
         placeholders={placeholders}
+        ownerId={ownerId}
         resizable
       />
     </div>

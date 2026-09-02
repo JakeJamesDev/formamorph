@@ -674,7 +674,7 @@ const CanvasInner = ({ selectedId, onSelect, session, fullscreen, onToggleFullsc
   fullscreen: boolean;
   onToggleFullscreen: () => void;
 }) => {
-  const { locations, setLocations, connections, setConnections, placeholders, placementLetters } = useGameData();
+  const { locations, setLocations, connections, setConnections, placeholders, placementLetters, placeholderOwners } = useGameData();
   const {
     selectedIdsRef, lastSyncedRef, reportSelection, wake, historyRef, selectedConnectionId,
     setSelectedConnectionId,
@@ -744,8 +744,8 @@ const CanvasInner = ({ selectedId, onSelect, session, fullscreen, onToggleFullsc
   // One reading of a location's name, for the map, the inspector's header and the search box alike: what the
   // author sees written on a box is what they search for and what an arrow's panel calls it.
   const resolveName = useCallback(
-    (location: GameLocation) => labelPlaceholders(location.name, placeholders, placementLetters) || UNNAMED_LOCATION,
-    [placeholders, placementLetters],
+    (location: GameLocation) => labelPlaceholders(location.name, placeholders, placementLetters, placeholderOwners) || UNNAMED_LOCATION,
+    [placeholders, placementLetters, placeholderOwners],
   );
 
   const nameOf = useCallback(

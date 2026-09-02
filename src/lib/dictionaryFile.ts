@@ -2,7 +2,7 @@ import { randomUUID } from "@/lib/uuid";
 import type { Dictionary, DictionaryEntry, Placeholder } from '@/types';
 import { APP_VERSION, WORLD_FILE_KIND, SAVE_FILE_KIND, migrateCarriedPlaceholders, migrateEntryKeys } from './version';
 import { convertLorebook } from './lorebookImport';
-import { collectUsedPlaceholders } from './placeholders';
+import { carriedPlaceholders, sharedPlaceholdersUsed } from './placeholderHomes';
 
 /** Discriminator identifying a standalone one-book dictionary file (vs. a world or save file). */
 export const DICTIONARY_FILE_KIND = 'dictionary' as const;
@@ -19,15 +19,21 @@ export interface DictionaryFile {
   /** Cover art, inline. Absent when the book has none, which is what keeps a text-only book text-sized. */
   thumbnail?: string;
   entries: DictionaryEntry[];
-  /** Placeholder defs used by this book's entries, so their chips resolve after import (see lib/placeholders). */
+  /** The book's own placeholder defs, as they are (see lib/placeholders). A file with no
+   *  `sharedPlaceholders` carries everything its entries use here, and reads it all as owned. */
   placeholders?: Placeholder[];
+  /** The shared defs the book's entries and its own placeholders reach, so they resolve after import. */
+  sharedPlaceholders?: Placeholder[];
 }
 
 /** Serialize one book to the standalone file shape, stamped with the current app version. `available` is the
- *  placeholder pool to resolve the book's used chips from — the world's list, or the book's own carried defs. */
-export function buildDictionaryFile(book: Dictionary, available: Placeholder[] = book.placeholders ?? []): DictionaryFile {
-  const used = collectUsedPlaceholders(
+ *  placeholder pool to resolve the book's used chips from — the world's combined list, or the book's own
+ *  carried pool. */
+export function buildDictionaryFile(book: Dictionary, available: Placeholder[] = carriedPlaceholders(book)): DictionaryFile {
+  const owned = book.placeholders ?? [];
+  const shared = sharedPlaceholdersUsed(
     book.entries.flatMap((e) => [e.name ?? '', ...(e.key ?? []), ...(e.secondaryKeys ?? []), e.value ?? '']),
+    owned,
     available,
   );
   return {
@@ -39,7 +45,8 @@ export function buildDictionaryFile(book: Dictionary, available: Placeholder[] =
     ...(book.tags?.length ? { tags: book.tags } : {}),
     ...(book.thumbnail ? { thumbnail: book.thumbnail } : {}),
     entries: book.entries,
-    ...(used.length ? { placeholders: used } : {}),
+    ...(owned.length ? { placeholders: owned } : {}),
+    ...(shared.length ? { sharedPlaceholders: shared } : {}),
   };
 }
 
@@ -68,8 +75,10 @@ export function parseDictionaryFile(raw: unknown): Dictionary {
     ...(tags.length ? { tags } : {}),
     ...(typeof obj.thumbnail === 'string' && obj.thumbnail ? { thumbnail: obj.thumbnail } : {}),
     entries: entries.map((e) => migrateEntryKeys({ ...e, id: randomUUID() })),
-    // Carried placeholder defs ride along; absorbed into World.placeholders when this book is added to a world.
+    // Carried defs ride along: the owned ones stay the book's when it is added to a world, the shared ones
+    // merge into the world's list (see `adoptBookPlaceholders`).
     ...(Array.isArray(obj.placeholders) ? { placeholders: migrateCarriedPlaceholders(obj.placeholders) } : {}),
+    ...(Array.isArray(obj.sharedPlaceholders) ? { sharedPlaceholders: migrateCarriedPlaceholders(obj.sharedPlaceholders) } : {}),
   };
 }
 

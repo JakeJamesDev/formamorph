@@ -1,7 +1,9 @@
 import { randomUUID } from '@/lib/uuid';
 import { buildTree, flattenTree } from './groupTree';
-import { remapPlaceholderIds, remintPlaceholderDef, SHARED_PATH_SEP } from './placeholders';
-import { holderOf } from './placeholderTree';
+import {
+  absorbPlaceholders, collectUsedPlaceholders, remapPlaceholderIds, remintPlaceholderDef, SHARED_PATH_SEP,
+} from './placeholders';
+import { holderOf, ownedDescendants } from './placeholderTree';
 import type { Dictionary, DictionaryEntry, Entity, EntityGroup, Placeholder } from '@/types';
 
 /**
@@ -32,10 +34,27 @@ export interface PlaceholderSlices {
   dictionaries: Dictionary[];
 }
 
+/** The entity or book a scoped placeholder belongs to, as a name surface reads it: `Molly.Eyes`. */
+export interface PlaceholderOwnerRef {
+  kind: 'entity' | 'dictionary';
+  id: string;
+  name: string;
+}
+
+/** Placeholder id → its owner, for every scoped placeholder a world has. A shared one has no entry. */
+export type PlaceholderOwners = ReadonlyMap<string, PlaceholderOwnerRef>;
+
+export const NO_OWNERS: PlaceholderOwners = new Map();
+
 const WORLD: PlaceholderHome = { kind: 'world' };
 const EMPTY: Placeholder[] = [];
 
+/** True when two homes name the same list. */
+export const sameHome = (a: PlaceholderHome, b: PlaceholderHome): boolean =>
+  a.kind === b.kind && (a.kind === 'world' || b.kind === 'world' || a.ownerId === b.ownerId);
+
 const cache = new WeakMap<PlaceholderHomesWorld, { deps: unknown[]; result: Placeholder[] }>();
+const ownersCache = new WeakMap<PlaceholderHomesWorld, { deps: unknown[]; result: PlaceholderOwners }>();
 
 /** True when both lists hold the same items, by identity, in the same order. */
 export function sameElements<T>(a: readonly T[], b: readonly T[]): boolean {
@@ -65,6 +84,91 @@ export function allPlaceholders(world: PlaceholderHomesWorld): Placeholder[] {
   const result = scoped.length ? [...(world.placeholders ?? []), ...scoped] : world.placeholders ?? EMPTY;
   cache.set(world, { deps, result });
   return result;
+}
+
+/**
+ * Who owns each scoped placeholder. The same world object answers with the same map while its entities and
+ * books are unchanged, and a world with nothing scoped answers with the one shared empty map.
+ */
+export function placeholderOwners(world: PlaceholderHomesWorld): PlaceholderOwners {
+  const deps = [world.entities, world.dictionaries];
+  const hit = ownersCache.get(world);
+  if (hit && hit.deps.every((d, i) => d === deps[i])) return hit.result;
+  const map = new Map<string, PlaceholderOwnerRef>();
+  for (const e of world.entities ?? []) for (const p of e.placeholders ?? []) map.set(p.id, { kind: 'entity', id: e.id, name: e.name });
+  for (const b of world.dictionaries ?? []) for (const p of b.placeholders ?? []) map.set(p.id, { kind: 'dictionary', id: b.id, name: b.name });
+  const result = map.size ? map : NO_OWNERS;
+  ownersCache.set(world, { deps, result });
+  return result;
+}
+
+/** True when two owner maps say the same thing — what lets a memo keep its instance across a keystroke. */
+export function sameOwners(a: PlaceholderOwners, b: PlaceholderOwners): boolean {
+  if (a === b) return true;
+  if (a.size !== b.size) return false;
+  for (const [id, owner] of a) {
+    const other = b.get(id);
+    if (!other || other.kind !== owner.kind || other.id !== owner.id || other.name !== owner.name) return false;
+  }
+  return true;
+}
+
+/** The list a home names; empty for an owner the world does not have. */
+export function placeholderList(world: PlaceholderHomesWorld, home: PlaceholderHome): Placeholder[] {
+  if (home.kind === 'world') return world.placeholders ?? EMPTY;
+  const owners: readonly PlaceholderOwner[] | undefined = home.kind === 'entity' ? world.entities : world.dictionaries;
+  return owners?.find((o) => o.id === home.ownerId)?.placeholders ?? EMPTY;
+}
+
+/** An off-world item's whole pool: the defs it owns, then the shared ones it carries for its chips. */
+export function carriedPlaceholders(item: { placeholders?: Placeholder[]; sharedPlaceholders?: Placeholder[] }): Placeholder[] {
+  const owned = item.placeholders ?? EMPTY;
+  return item.sharedPlaceholders?.length ? [...owned, ...item.sharedPlaceholders] : owned;
+}
+
+/** Placeholder id → the list holding it, for every placeholder the world has. */
+export function placeholderHomeIndex(world: PlaceholderHomesWorld): ReadonlyMap<string, PlaceholderHome> {
+  const out = new Map<string, PlaceholderHome>();
+  for (const p of world.placeholders ?? []) out.set(p.id, WORLD);
+  for (const e of world.entities ?? []) for (const p of e.placeholders ?? []) out.set(p.id, { kind: 'entity', ownerId: e.id });
+  for (const b of world.dictionaries ?? []) for (const p of b.placeholders ?? []) out.set(p.id, { kind: 'dictionary', ownerId: b.id });
+  return out;
+}
+
+/** The entity or book `id` names, as an owner reference; undefined when the world has neither. */
+export function placeholderOwnerRef(world: PlaceholderHomesWorld, id: string): PlaceholderOwnerRef | undefined {
+  const entity = world.entities?.find((e) => e.id === id);
+  if (entity) return { kind: 'entity', id: entity.id, name: entity.name };
+  const book = world.dictionaries?.find((b) => b.id === id);
+  return book ? { kind: 'dictionary', id: book.id, name: book.name } : undefined;
+}
+
+/** Split a whole pool written back to an off-world item into the lists it was read from: an id the item
+ *  carried as shared stays shared, so it stays shared on export; everything else is the item's own. */
+export function splitCarriedPlaceholders<T extends { placeholders?: Placeholder[]; sharedPlaceholders?: Placeholder[] }>(
+  item: T, next: Placeholder[],
+): T {
+  const sharedIds = new Set((item.sharedPlaceholders ?? []).map((p) => p.id));
+  const owned = next.filter((p) => !sharedIds.has(p.id));
+  const shared = next.filter((p) => sharedIds.has(p.id));
+  const { placeholders: _owned, sharedPlaceholders: _shared, ...rest } = item;
+  // The spread keeps every other field, so the shape is T again; only the two lists moved.
+  return {
+    ...rest,
+    ...(owned.length ? { placeholders: owned } : {}),
+    ...(shared.length ? { sharedPlaceholders: shared } : {}),
+  } as T;
+}
+
+/** The shared defs an off-world export has to carry beside `owned`: everything `texts` and the owned
+ *  values reach in `available` that is not the item's own. */
+export function sharedPlaceholdersUsed(texts: string[], owned: readonly Placeholder[], available: Placeholder[]): Placeholder[] {
+  const ownedIds = new Set(owned.map((p) => p.id));
+  const reached = collectUsedPlaceholders(
+    [...texts, ...owned.flatMap((p) => (p.values ?? []).map((v) => v.text))],
+    available,
+  );
+  return reached.filter((p) => !ownedIds.has(p.id));
 }
 
 /** The list holding `id`, or null when no list does. */
@@ -116,8 +220,9 @@ export function placeholderHomeFor(
 
 /**
  * Route a whole combined list back to the lists that hold each id, keeping the combined order within each.
- * An id no list holds yet lands on the world list. An owned placeholder follows its holder: where a row
- * sits and what it belongs to live in one list, so a drop that makes one placeholder a part of another
+ * An id no list holds yet lands beside the record before it (a duplicate is inserted right after its
+ * source), or on the world list when nothing precedes it. An owned placeholder follows its holder: where a
+ * row sits and what it belongs to live in one list, so a drop that makes one placeholder a part of another
  * moves it beside the holder. Every unchanged slice keeps its identity.
  */
 export function scatterPlaceholders(world: PlaceholderHomesWorld, combined: readonly Placeholder[]): PlaceholderSlices {
@@ -126,10 +231,10 @@ export function scatterPlaceholders(world: PlaceholderHomesWorld, combined: read
   for (const e of world.entities ?? []) for (const p of e.placeholders ?? []) homeOf.set(p.id, { kind: 'entity', ownerId: e.id });
   for (const b of world.dictionaries ?? []) for (const p of b.placeholders ?? []) homeOf.set(p.id, { kind: 'dictionary', ownerId: b.id });
   const byId = new Map(combined.map((p) => [p.id, p]));
-  const resolve = (p: Placeholder, seen: Set<string>): PlaceholderHome => {
+  const resolve = (p: Placeholder, seen: Set<string>, fallback: PlaceholderHome): PlaceholderHome => {
     const holderId = holderOf(combined, p);
     const holder = holderId && !seen.has(holderId) ? byId.get(holderId) : undefined;
-    return holder ? resolve(holder, seen.add(p.id)) : homeOf.get(p.id) ?? WORLD;
+    return holder ? resolve(holder, seen.add(p.id), fallback) : homeOf.get(p.id) ?? fallback;
   };
 
   const worldList: Placeholder[] = [];
@@ -139,8 +244,10 @@ export function scatterPlaceholders(world: PlaceholderHomesWorld, combined: read
     const list = lists.get(ownerId);
     if (list) list.push(p); else lists.set(ownerId, [p]);
   };
+  let previous: PlaceholderHome = WORLD;
   for (const p of combined) {
-    const home = resolve(p, new Set());
+    const home = resolve(p, new Set(), previous);
+    previous = home;
     if (home.kind === 'world') worldList.push(p);
     else if (home.kind === 'entity') push(entityLists, home.ownerId, p);
     else push(bookLists, home.ownerId, p);
@@ -193,6 +300,66 @@ export function withoutPlaceholders(world: PlaceholderHomesWorld, ids: ReadonlyS
 }
 
 /**
+ * Move one placeholder into the list `home` names, id kept, so no chip re-aims. What it owns goes with it
+ * (an owned row lives beside its holder), and the moved one is released from any holder of its own: its
+ * holder keeps the value, which now draws it as a shared row. A move to the list it already lives in, of an
+ * id no list holds, or to an owner the world lacks changes nothing; unchanged slices keep identity.
+ */
+export function movePlaceholderHome(world: PlaceholderHomesWorld, id: string, home: PlaceholderHome): PlaceholderSlices {
+  const current: PlaceholderSlices = {
+    placeholders: world.placeholders ?? EMPTY, entities: world.entities ?? [], dictionaries: world.dictionaries ?? [],
+  };
+  const from = placeholderHome(world, id);
+  if (!from || sameHome(from, home)) return current;
+  const known = home.kind === 'world'
+    || (home.kind === 'entity' ? current.entities : current.dictionaries).some((o) => o.id === home.ownerId);
+  if (!known) return current;
+  const all = allPlaceholders(world);
+  const record = all.find((p) => p.id === id);
+  if (!record) return current;
+  const { ownerId: _released, ...root } = record;
+  const moving = [root, ...ownedDescendants(all, id)];
+  const stripped = withoutPlaceholders(world, new Set(moving.map((p) => p.id)));
+  if (home.kind === 'world') return { ...stripped, placeholders: [...stripped.placeholders, ...moving] };
+  const append = <T extends PlaceholderOwner>(owners: T[]) =>
+    mapOwnerLists(owners, (o, list) => (o.id === home.ownerId ? [...list, ...moving] : list));
+  return home.kind === 'entity'
+    ? { ...stripped, entities: append(stripped.entities) }
+    : { ...stripped, dictionaries: append(stripped.dictionaries) };
+}
+
+/** Every slice with the list `home` names replaced by `list`. Unchanged slices keep identity. */
+export function withPlaceholderList(world: PlaceholderHomesWorld, home: PlaceholderHome, list: Placeholder[]): PlaceholderSlices {
+  const current: PlaceholderSlices = {
+    placeholders: world.placeholders ?? EMPTY, entities: world.entities ?? [], dictionaries: world.dictionaries ?? [],
+  };
+  if (home.kind === 'world') return sameElements(current.placeholders, list) ? current : { ...current, placeholders: list };
+  const swap = <T extends PlaceholderOwner>(owners: T[]) => mapOwnerLists(owners, (o, before) => (o.id === home.ownerId ? list : before));
+  return home.kind === 'entity'
+    ? { ...current, entities: swap(current.entities) }
+    : { ...current, dictionaries: swap(current.dictionaries) };
+}
+
+/** The def with every reference in it re-aimed through `idMap`: a chip in a value, its `ownerId`, and the
+ *  segments of a shared-weight key below the root (the root is one of the def's own value ids). A chip at
+ *  something the map does not name is left as written. */
+export function remapPlaceholderRefs(p: Placeholder, idMap: Record<string, string>): Placeholder {
+  const values = (p.values ?? []).map((v) => ({ ...v, text: remapPlaceholderIds(v.text, idMap) }));
+  const sharedWeights = p.sharedWeights && Object.fromEntries(
+    Object.entries(p.sharedWeights).map(([key, map]) => {
+      const [root, ...under] = key.split(SHARED_PATH_SEP);
+      return [[root, ...under.map((id) => idMap[id] ?? id)].join(SHARED_PATH_SEP), map] as const;
+    }),
+  );
+  return {
+    ...p,
+    values,
+    ...(p.ownerId ? { ownerId: idMap[p.ownerId] ?? p.ownerId } : {}),
+    ...(sharedWeights ? { sharedWeights } : {}),
+  };
+}
+
+/**
  * A copy of a scoped list for a duplicated owner: every def gets a fresh id, its values fresh ids and
  * placements (see `remintPlaceholderDef`), and every reference inside the list (a chip in a value, an
  * `ownerId`, a shared-weight key) is re-aimed at the new ids. A chip at something outside the list is left
@@ -201,25 +368,52 @@ export function withoutPlaceholders(world: PlaceholderHomesWorld, ids: ReadonlyS
 export function remintScopedPlaceholders(list: readonly Placeholder[]): { placeholders: Placeholder[]; idMap: Record<string, string> } {
   const idMap: Record<string, string> = {};
   for (const p of list) idMap[p.id] = randomUUID();
-  const placeholders = list.map((p) => {
-    const minted = remintPlaceholderDef(p);
-    const values = minted.values.map((v) => ({ ...v, text: remapPlaceholderIds(v.text, idMap) }));
-    // Only the segments below the root name placeholders; the root is one of this def's own value ids.
-    const sharedWeights = minted.sharedWeights && Object.fromEntries(
-      Object.entries(minted.sharedWeights).map(([key, map]) => {
-        const [root, ...under] = key.split(SHARED_PATH_SEP);
-        return [[root, ...under.map((id) => idMap[id] ?? id)].join(SHARED_PATH_SEP), map] as const;
-      }),
-    );
-    return {
-      ...minted,
-      id: idMap[p.id],
-      values,
-      ...(p.ownerId ? { ownerId: idMap[p.ownerId] ?? p.ownerId } : {}),
-      ...(sharedWeights ? { sharedWeights } : {}),
-    };
-  });
+  const placeholders = list.map((p) => ({ ...remapPlaceholderRefs(remintPlaceholderDef(p), idMap), id: idMap[p.id] }));
   return { placeholders, idMap };
+}
+
+/** What adopting an off-world item into a world produces: the item as the world keeps it, and the shared
+ *  defs the world has to gain for the item's chips to resolve. */
+interface Adopted<T> {
+  item: T;
+  toAdd: Placeholder[];
+  /** Every carried id → the id it resolves to in this world, for the item's own texts. */
+  idMap: Record<string, string>;
+}
+
+/**
+ * Bring a card's or file's placeholders into a world. The owned defs stay owned under fresh ids (the same
+ * card added twice must not share ids); the carried shared defs merge with the world's shared list by name
+ * and values, as `absorbPlaceholders` decides, or join it as fresh defs. A card with no `sharedPlaceholders`
+ * carries owned defs only, so nothing of it merges.
+ */
+function adoptCarried<T extends { placeholders?: Placeholder[]; sharedPlaceholders?: Placeholder[] }>(
+  item: T, worldShared: readonly Placeholder[],
+): Adopted<T> {
+  const owned = item.placeholders ?? EMPTY;
+  const shared = item.sharedPlaceholders ?? EMPTY;
+  if (!owned.length && !shared.length) return { item, toAdd: [], idMap: {} };
+  const minted = remintScopedPlaceholders(owned);
+  // A shared def may hold an owned one as a value; it compares against the world by what its chips mean.
+  const carried = shared.map((p) => remapPlaceholderRefs(p, minted.idMap));
+  const { toAdd, idMap: sharedMap } = absorbPlaceholders(carried, [...worldShared]);
+  const placeholders = minted.placeholders.map((p) => remapPlaceholderRefs(p, sharedMap));
+  const { placeholders: _owned, sharedPlaceholders: _shared, ...rest } = item;
+  // The spread keeps every other field, so the shape is T again; only the two carried lists moved.
+  const adopted = (placeholders.length ? { ...rest, placeholders } : rest) as T;
+  return { item: adopted, toAdd, idMap: { ...minted.idMap, ...sharedMap } };
+}
+
+/** {@link adoptCarried} for a character card, with its chips re-aimed. */
+export function adoptEntityPlaceholders(entity: Entity, worldShared: readonly Placeholder[]): { entity: Entity; toAdd: Placeholder[] } {
+  const { item, toAdd, idMap } = adoptCarried(entity, worldShared);
+  return { entity: item === entity ? entity : remapEntityChips(item, idMap), toAdd };
+}
+
+/** {@link adoptCarried} for a dictionary file, with its entries' chips re-aimed. */
+export function adoptBookPlaceholders(book: Dictionary, worldShared: readonly Placeholder[]): { book: Dictionary; toAdd: Placeholder[] } {
+  const { item, toAdd, idMap } = adoptCarried(book, worldShared);
+  return { book: item === book ? book : remapBookChips(item, idMap), toAdd };
 }
 
 const remapText = (text: string | undefined, idMap: Record<string, string>) => (text ? remapPlaceholderIds(text, idMap) : text);

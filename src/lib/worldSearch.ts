@@ -2,6 +2,7 @@ import { OPENING_CUE_FIELD_KEY, setOpeningCue, storedOpeningCue } from '@/lib/op
 import { decodePlaceholderToken, describePlaceholders, parsePlaceholderText } from '@/lib/placeholders';
 import { qualifiedPlaceholderName } from '@/lib/placeholderTree';
 import { labelPlaceholders, worldPlacementLetters, type PlacementLetters } from '@/lib/placementLetters';
+import { placeholderOwners, type PlaceholderOwners } from '@/lib/placeholderHomes';
 import { withPinnedValue } from '@/lib/traitEffects';
 import {
   setWorldPromptOverride, storedWorldPrompt, worldPromptFieldKey, WORLD_PROMPT_KINDS, WORLD_PROMPT_KIND_LABELS,
@@ -78,6 +79,8 @@ export interface SearchMatch {
 export interface ChipSearch {
   placeholders: Placeholder[];
   letters: PlacementLetters;
+  /** Who owns each scoped placeholder, so a chip answers to `Molly.Eyes` as the lists print it. */
+  owners?: PlaceholderOwners;
 }
 
 /** The collections and updaters a scan needs — GameDataContext's shape, narrowed to what search touches. */
@@ -121,8 +124,9 @@ export function collectSearchTargets(src: SearchSources): SearchTarget[] {
   const targets: SearchTarget[] = [];
   // An item is named in the results line the way its tree row names it: a chip by its placement label.
   const letters = worldPlacementLetters(src);
+  const owners = placeholderOwners(src);
   const labeled = (name: string | undefined, fallback: string) =>
-    untitled(labelPlaceholders(name ?? '', src.placeholders ?? [], letters), fallback);
+    untitled(labelPlaceholders(name ?? '', src.placeholders ?? [], letters, owners), fallback);
 
   type Where = Pick<SearchTarget, 'tab' | 'itemId' | 'itemLabel' | 'chipCapable'>;
 
@@ -322,7 +326,7 @@ function chipReadings(token: string, chips: ChipSearch, byId: Map<string, Placeh
   const ph = byId.get(decoded.id);
   if (!ph) return decoded.label ? [decoded.label] : [];
   return [
-    labelPlaceholders(token, chips.placeholders, chips.letters),
+    labelPlaceholders(token, chips.placeholders, chips.letters, chips.owners),
     qualifiedPlaceholderName(chips.placeholders, decoded.id) ?? ph.name,
     ...(ph.values ?? []).map((v) => describePlaceholders(v.text, chips.placeholders)),
   ];

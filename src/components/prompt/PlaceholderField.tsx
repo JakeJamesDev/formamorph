@@ -21,8 +21,10 @@ const PlaceholderField = ({ value, onChange, placeholders, ownerId, markdown = f
   value: string;
   onChange: (v: string) => void;
   placeholders: Placeholder[];
-  /** The placeholder whose own value list this field edits. A placeholder created from here is born owned
-   *  by it, its owned rows read bare, and the palette leaves out anything that would loop back to it. */
+  /** Whose field this is. For a placeholder's own value list: a placeholder created from here is born
+   *  owned by it, its owned rows read bare, and the palette leaves out anything that would loop back to it.
+   *  For an entity's or book's field: its scoped placeholders read bare and come first, and one created
+   *  from here lands in its list. */
   ownerId?: string;
   /** The field's caption, rendered by the field itself so it can share a row (see `PromptField`). */
   label?: ReactNode;
@@ -81,16 +83,18 @@ export default PlaceholderField;
  * With no placeholders defined this is a plain text box: the vocabulary has nothing to offer, so the hint
  * and the menu both stay away.
  */
-export const PlaceholderNameField = ({ value, onChange, placeholders, placeholder, ariaLabel, className, readOnly = false }: {
+export const PlaceholderNameField = ({ value, onChange, placeholders, ownerId, placeholder, ariaLabel, className, readOnly = false }: {
   value: string;
   onChange: (v: string) => void;
   placeholders: Placeholder[];
+  /** The entity or book whose field this is — see `ownerId` on `PlaceholderField`. */
+  ownerId?: string;
   placeholder?: string;
   ariaLabel?: string;
   className?: string;
   readOnly?: boolean;
 }) => {
-  const vocab = usePlaceholderChipVocabulary(placeholders);
+  const vocab = usePlaceholderChipVocabulary(placeholders, ownerId);
   const enabled = placeholders.length > 0 && !readOnly;
   return (
     <ChipInput

@@ -7,7 +7,7 @@ import {
   decodePlaceholderToken, hasPlaceholders, lonePlaceholderToken, parsePlaceholderText, PLACEHOLDER_PATH_SEPARATOR,
 } from './placeholders';
 import type { PlaceholderSegment, PlaceholderToken } from './placeholders';
-import { allPlaceholders } from './placeholderHomes';
+import { allPlaceholders, type PlaceholderOwners } from './placeholderHomes';
 import { qualifiedPlaceholderName } from './placeholderTree';
 import { inAuthoredOrder, traitOrderIndex } from './traitEffects';
 
@@ -142,40 +142,78 @@ export function placementDisplayName(token: PlaceholderToken, name: string, lett
   return `${name} (${letters.get(token.placementId) ?? UNLETTERED})`;
 }
 
+/** What joins an owner's name to a scoped placeholder's: `Molly.Eyes`. */
+export const OWNER_NAME_SEPARATOR = '.';
+
+/** How a chip name is read: whose surface reads it, and who owns what. */
+export interface ChipNameOptions {
+  /** Whose surface the name is read on: a placeholder (its own value list) or an entity or book (its
+   *  fields). Drops the owner chain a placeholder's own panel already gives, and the owner prefix of a
+   *  placeholder scoped to that owner, or to the owner of that placeholder. */
+  relativeTo?: string | null;
+  missing?: string;
+  /** Who owns each scoped placeholder, so a chip aimed at one reads `Molly.Eyes` away from Molly. Absent,
+   *  nothing is prefixed. */
+  owners?: PlaceholderOwners;
+  /** The document's letters, for an owner whose own name holds a Unique chip. */
+  letters?: PlacementLetters;
+}
+
 /**
- * A chip's name as every surface spells it: the qualified root, then each path step, so `Molly › Hair` and a
- * root `Hair` never read alike. `null` when the root placeholder is gone; a gone step reads as `missing`.
- * `relativeTo` drops the owner chain a surface already gives (a placeholder's own panel).
+ * The `Molly.` an owner puts before its scoped placeholder's name, or `''` where the placeholder is shared,
+ * no owner index is given, or the surface reading it belongs to that owner already (`relativeTo` is the
+ * owner, or a placeholder of the owner's). The owner's own name is read by the plain rule, so a chip in
+ * it never prefixes itself.
+ */
+export function ownerPrefix(
+  id: string, placeholders: readonly Placeholder[],
+  { relativeTo, owners, letters = EMPTY_LETTERS }: Pick<ChipNameOptions, 'relativeTo' | 'owners' | 'letters'> = {},
+): string {
+  const owner = owners?.get(id);
+  if (!owner) return '';
+  if (relativeTo && (owner.id === relativeTo || owners?.get(relativeTo)?.id === owner.id)) return '';
+  return `${labelPlaceholders(owner.name, placeholders, letters)}${OWNER_NAME_SEPARATOR}`;
+}
+
+/**
+ * A chip's name as every surface spells it: the owner prefix where one applies, the qualified root, then
+ * each path step, so `Molly › Hair` and a root `Hair` never read alike. `null` when the root placeholder is
+ * gone; a gone step reads as `missing`.
  */
 export function chipPathName(
   token: PlaceholderToken,
   placeholders: readonly Placeholder[],
-  { relativeTo, missing = MISSING }: { relativeTo?: string | null; missing?: string } = {},
+  { relativeTo, missing = MISSING, owners, letters }: ChipNameOptions = {},
 ): string | null {
   const root = qualifiedPlaceholderName(placeholders, token.id, relativeTo);
   if (root == null) return null;
   const segLabel = (seg: PlaceholderSegment) =>
     (seg.kind === 'slot' ? seg.name : placeholders.find((p) => p.id === seg.ref)?.name ?? missing);
-  return [root, ...(token.path ?? []).map(segLabel)].join(PLACEHOLDER_PATH_SEPARATOR);
+  const prefix = ownerPrefix(token.id, placeholders, { relativeTo, owners, letters });
+  return [`${prefix}${root}`, ...(token.path ?? []).map(segLabel)].join(PLACEHOLDER_PATH_SEPARATOR);
 }
 
 /**
  * Authored text with every chip replaced by what it is called, for the plain-text surfaces that show a name:
  * dropdowns, the canvas, modal titles, filenames, cards and listings. A chip that is the whole text reads
  * bare — `Town Name (A)` — and one inside prose keeps braces so the name stays visibly a chip:
- * `The {Town Name (A)} Inn`. A chip whose placeholder is gone reads `?`, plus its label if it has one.
+ * `The {Town Name (A)} Inn`. A chip whose placeholder is gone reads `?`, plus its label if it has one. With
+ * `owners`, a chip aimed at a scoped placeholder reads `Molly.Eyes`: a plain-text surface has no field to
+ * be inside of.
  *
  * Deliberately never draws or describes values: a row shows what a thing is called, and its values live in
  * the tooltip. Text with no chips costs one regex test.
  */
-export function labelPlaceholders(text: string, placeholders: Placeholder[] = [], letters: PlacementLetters = EMPTY_LETTERS): string {
+export function labelPlaceholders(
+  text: string, placeholders: readonly Placeholder[] = [], letters: PlacementLetters = EMPTY_LETTERS, owners?: PlaceholderOwners,
+): string {
   if (!text || !hasPlaceholders(text)) return text;
   const lone = lonePlaceholderToken(text);
   return parsePlaceholderText(text).map((seg) => {
     if (seg.type === 'text') return seg.value;
     const token = decodePlaceholderToken(seg.token);
     if (!token) return '';
-    const name = chipPathName(token, placeholders);
+    const name = chipPathName(token, placeholders, { owners, letters });
     const shown = name == null
       ? (token.label ? `${MISSING} ${token.label}` : MISSING)
       : placementDisplayName(token, name, letters);
@@ -185,12 +223,12 @@ export function labelPlaceholders(text: string, placeholders: Placeholder[] = []
 
 /** The placeholder names behind the chips in `text`, so a search for a placeholder finds a chip that reads
  *  as its author label. Gone placeholders contribute nothing. */
-export function chipPlaceholderNames(text: string, placeholders: Placeholder[]): string[] {
+export function chipPlaceholderNames(text: string, placeholders: Placeholder[], owners?: PlaceholderOwners): string[] {
   if (!text || !hasPlaceholders(text)) return [];
   return parsePlaceholderText(text).flatMap((seg) => {
     if (seg.type === 'text') return [];
     const token = decodePlaceholderToken(seg.token);
-    const name = token && chipPathName(token, placeholders);
+    const name = token && chipPathName(token, placeholders, { owners });
     return name == null ? [] : [name];
   });
 }

@@ -1,5 +1,6 @@
 import { LibraryStore, type StoredRecord } from './LibraryStore';
 import { migrateCarriedPlaceholders, migrateEntryKeys } from '@/lib/version';
+import { carriedPlaceholders } from '@/lib/placeholderHomes';
 import { describePlaceholders } from '@/lib/placeholders';
 import { dictionaryPlacementLetters, EMPTY_LETTERS, labelPlaceholders } from '@/lib/placementLetters';
 import type { Dictionary, DictionaryMetadata } from '@/types';
@@ -20,7 +21,10 @@ class DictionaryStorageService {
       // Display-only chip rendering: a library card has no world or rolls behind it, so the book's own
       // carried defs are all there is — same treatment its community listing gets. The name goes through
       // it too, so the library grid and the add picker never print a token.
-      const placeholders = migrateCarriedPlaceholders(record.data?.placeholders);
+      const placeholders = carriedPlaceholders({
+        placeholders: migrateCarriedPlaceholders(record.data?.placeholders),
+        sharedPlaceholders: migrateCarriedPlaceholders(record.data?.sharedPlaceholders),
+      });
       return {
         id: record.id,
         name: labelPlaceholders(record.name, placeholders, record.data ? dictionaryPlacementLetters(record.data) : EMPTY_LETTERS),
@@ -62,6 +66,7 @@ class DictionaryStorageService {
       ...book,
       entries: (book.entries ?? []).map(migrateEntryKeys),
       ...(book.placeholders ? { placeholders: migrateCarriedPlaceholders(book.placeholders) } : {}),
+      ...(book.sharedPlaceholders ? { sharedPlaceholders: migrateCarriedPlaceholders(book.sharedPlaceholders) } : {}),
     };
   }
 

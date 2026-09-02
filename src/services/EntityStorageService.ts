@@ -3,6 +3,7 @@ import { primaryImage } from '@/lib/entityImages';
 import { describePlaceholders } from '@/lib/placeholders';
 import { EMPTY_LETTERS, entityPlacementLetters, labelPlaceholders } from '@/lib/placementLetters';
 import { migrateCarriedPlaceholders } from '@/lib/version';
+import { carriedPlaceholders } from '@/lib/placeholderHomes';
 import type { Entity, EntityMetadata } from '@/types';
 
 /** A locally-stored character ("entity") plus its library timestamps, and (via `StoredRecord`) the
@@ -21,7 +22,10 @@ class EntityStorageService {
     // through it too: a card titled with a chip would otherwise read as a raw placement id. Converted once
     // per record, since both fields read the same defs and the whole library runs this on every render.
     toMetadata: (record) => {
-      const placeholders = migrateCarriedPlaceholders(record.data?.placeholders);
+      const placeholders = carriedPlaceholders({
+        placeholders: migrateCarriedPlaceholders(record.data?.placeholders),
+        sharedPlaceholders: migrateCarriedPlaceholders(record.data?.sharedPlaceholders),
+      });
       return {
         id: record.id,
         name: labelPlaceholders(record.name, placeholders, record.data ? entityPlacementLetters(record.data) : EMPTY_LETTERS),
@@ -56,9 +60,11 @@ class EntityStorageService {
    *  the editor and add-to-world both go through. */
   async getEntityData(id: string): Promise<Entity> {
     const entity = await this.store.getData(id);
-    return entity.placeholders
-      ? { ...entity, placeholders: migrateCarriedPlaceholders(entity.placeholders) }
-      : entity;
+    return {
+      ...entity,
+      ...(entity.placeholders ? { placeholders: migrateCarriedPlaceholders(entity.placeholders) } : {}),
+      ...(entity.sharedPlaceholders ? { sharedPlaceholders: migrateCarriedPlaceholders(entity.sharedPlaceholders) } : {}),
+    };
   }
 
   /** Upsert a character by `id`; `createdAt` is sticky (stamped once), `lastAccessed` bumped each store. */

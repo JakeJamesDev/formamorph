@@ -2,7 +2,10 @@ import { randomUUID } from "@/lib/uuid";
 import { createContext, useMemo } from 'react';
 import { usePlaceholderStoreOptional } from '@/contexts/PlaceholderStoreContext';
 import { usePlacementLetters } from '@/contexts/PlacementLettersContext';
-import { chipPathName, EMPTY_LETTERS, placementDisplayName, type PlacementLetters } from './placementLetters';
+import { chipPathName, EMPTY_LETTERS, labelPlaceholders, ownerPrefix, placementDisplayName, type PlacementLetters } from './placementLetters';
+import {
+  placeholderOwnerRef, type PlaceholderHome, type PlaceholderHomesWorld, type PlaceholderOwnerRef, type PlaceholderOwners,
+} from './placeholderHomes';
 import type { Placeholder } from '@/types';
 import type { PromptSegment } from './promptTemplate';
 import { parsePromptTemplate } from './promptTemplate';
@@ -221,13 +224,21 @@ export function placeholderVocabulary(
   placeholders: Placeholder[],
   /** What the vocabulary may write back, and where its fields sit. Omit where placeholders are only being
    *  displayed — the chips are then not renameable and the typeahead offers no inline create. */
-  { onRename, onCreate, onPromote, ownerId, letters = EMPTY_LETTERS }: {
+  { onRename, onCreate, onPromote, ownerId, owners, scope: scopeOwner, letters = EMPTY_LETTERS }: {
     onRename?: (placeholder: Placeholder) => void;
-    onCreate?: (placeholder: Placeholder) => void;
+    /** `home` names the list a member made inside an entity's or book's fields lands in. */
+    onCreate?: (placeholder: Placeholder, home?: PlaceholderHome) => void;
     onPromote?: (id: string) => void;
-    /** The placeholder whose own values these fields edit. A member created here is born owned by it, and
-     *  its owned rows read bare because the panel already says whose they are. */
+    /** Whose fields these are: a placeholder (its own value list) or an entity or book (its fields). A
+     *  member created in a placeholder's values is born owned by it, and its owned rows read bare because
+     *  the panel already says whose they are; one created in an entity's or book's fields lands in that
+     *  owner's list, and the owner's scoped placeholders read bare and are offered first. */
     ownerId?: string;
+    /** Who owns each scoped placeholder, so a chip aimed at one reads `Molly.Eyes` away from Molly. */
+    owners?: PlaceholderOwners;
+    /** The entity or book `ownerId` names, when it names one. An owner that owns nothing yet has no entry
+     *  in `owners`, so the fields say who they belong to outright. */
+    scope?: PlaceholderOwnerRef;
     /** The document's placement letters, so a Unique chip reads `Name (A)`. Absent, it reads `Name (Unique)`. */
     letters?: PlacementLetters;
   } = {},
@@ -236,13 +247,19 @@ export function placeholderVocabulary(
   /** What one path segment adds, named by itself: a slot is already a name, a val names what it picks. */
   const segLabel = (seg: PlaceholderSegment) =>
     (seg.kind === 'slot' ? seg.name : byId.get(seg.ref)?.name ?? MISSING_NAME);
+  // The entity or book these fields belong to, when they belong to one: named outright, or through the
+  // placeholder whose values are being edited.
+  const scope = scopeOwner ?? (ownerId ? owners?.get(ownerId) : undefined);
+  const prefixFor = (id: string) => ownerPrefix(id, placeholders, { relativeTo: ownerId, owners, letters });
   // An owned placeholder carries its owner chain, so a chip in a location description reading `Hair` says
-  // which Hair. Inside its owner's own panel the chain is already given, and drops away.
+  // which Hair. Inside its owner's own panel the chain is already given, and drops away. A scoped one
+  // carries its entity's or book's name the same way, and drops it inside that owner's fields.
   const vocabLabel = (t: string) => {
     const d = decodePlaceholderToken(t);
     if (!d) return t;
-    return chipPathName(d, placeholders, { relativeTo: ownerId, missing: MISSING_NAME }) ?? MISSING_NAME;
+    return chipPathName(d, placeholders, { relativeTo: ownerId, missing: MISSING_NAME, owners, letters }) ?? MISSING_NAME;
   };
+  const paletteToken = (p: Placeholder) => encodePlaceholderToken({ id: p.id, mode: 'world', placementId: PALETTE_PID });
   return {
     rename: onRename && ((token, next) => {
       const id = decodePlaceholderToken(token)?.id;
@@ -306,17 +323,23 @@ export function placeholderVocabulary(
       return encodePlaceholderToken(label ? { ...rest, label } : rest);
     },
     // Owned placeholders are private to one placeholder: they are reached by drilling into it, so the strip
-    // and an insert menu's root list only what an author actually places in world text.
-    palette: () =>
-      topLevelPlaceholders(placeholders).map((p) => ({
-        token: encodePlaceholderToken({ id: p.id, mode: 'world', placementId: PALETTE_PID }),
-        label: p.name,
+    // and an insert menu's root list only what an author actually places in world text. Inside an owner's
+    // fields its own scoped placeholders come first; the combined list already reads shared ones before
+    // every other owner's.
+    palette: () => {
+      const rows = topLevelPlaceholders(placeholders).map((p) => ({
+        token: paletteToken(p),
+        label: `${prefixFor(p.id)}${p.name}`,
         color: placeholderAccent(p.id),
-      })),
+      }));
+      if (!scope) return rows;
+      const mine = (row: ChipRow) => owners?.get(decodePlaceholderToken(row.token)?.id ?? '')?.id === scope.id;
+      return [...rows.filter(mine), ...rows.filter((row) => !mine(row))];
+    },
     allRows: () =>
       placeholders.map((p) => ({
-        token: encodePlaceholderToken({ id: p.id, mode: 'world', placementId: PALETTE_PID }),
-        label: qualifiedPlaceholderName(placeholders, p.id) ?? p.name,
+        token: paletteToken(p),
+        label: `${prefixFor(p.id)}${qualifiedPlaceholderName(placeholders, p.id) ?? p.name}`,
         color: placeholderAccent(p.id),
         owned: isOwnedPlaceholder(placeholders, p.id),
       })),
@@ -372,14 +395,19 @@ export function placeholderVocabulary(
     },
     // Created from inside a placeholder's own value field, a new one is born owned by it: building a
     // character out of parts never has to leave the panel. The owner only sticks once the value holding it
-    // is exactly that chip, which is what committing the value makes it.
+    // is exactly that chip, which is what committing the value makes it. Created inside an entity's or
+    // book's fields, it lands in that owner's list.
     create: onCreate && ((name) => {
-      const made = { ...newPlaceholder(name), ...(ownerId ? { ownerId } : {}) };
-      onCreate(made);
-      return encodePlaceholderToken({ id: made.id, mode: 'world', placementId: PALETTE_PID });
+      const holder = ownerId && byId.has(ownerId) ? ownerId : undefined;
+      const made = { ...newPlaceholder(name), ...(holder ? { ownerId: holder } : {}) };
+      const home: PlaceholderHome | undefined = !holder && scope ? { kind: scope.kind, ownerId: scope.id } : undefined;
+      onCreate(made, home);
+      return paletteToken(made);
     }),
     createLabel: (name) => {
-      const owner = ownerId ? byId.get(ownerId)?.name : undefined;
+      const owner = ownerId && byId.has(ownerId)
+        ? byId.get(ownerId)?.name
+        : scope && labelPlaceholders(scope.name, placeholders, letters);
       return owner ? `New Placeholder "${name}" in ${owner}` : `New Placeholder "${name}"`;
     },
     promote: onPromote && ((token) => {
@@ -387,6 +415,16 @@ export function placeholderVocabulary(
       if (id) onPromote(id);
     }),
   };
+}
+
+/** The entity or book `ownerId` names in `lists`, kept by identity while its id and name hold, so a
+ *  keystroke elsewhere in the world does not rebuild every chip field's vocabulary. */
+export function useOwnerScope(lists: PlaceholderHomesWorld | undefined, ownerId: string | undefined): PlaceholderOwnerRef | undefined {
+  const found = lists && ownerId ? placeholderOwnerRef(lists, ownerId) : undefined;
+  const kind = found?.kind;
+  const id = found?.id;
+  const name = found?.name;
+  return useMemo(() => (kind && id && name !== undefined ? { kind, id, name } : undefined), [kind, id, name]);
 }
 
 /**
@@ -398,22 +436,25 @@ export function placeholderVocabulary(
  */
 export function usePlaceholderChipVocabulary(
   placeholders: Placeholder[],
-  /** The placeholder whose own value list this field edits, where it is one — see `ownerId` on
-   *  {@link placeholderVocabulary}. */
+  /** Whose fields these are — a placeholder's own value list, or an entity's or book's fields — see
+   *  `ownerId` on {@link placeholderVocabulary}. */
   ownerId?: string,
 ): ChipVocabulary {
   const store = usePlaceholderStoreOptional();
   const letters = usePlacementLetters();
   const onRename = store?.updatePlaceholder;
   const onCreate = store?.addPlaceholder;
+  const owners = store?.owners;
+  const lists = store?.lists;
   const setPlaceholders = store?.setPlaceholders;
   const onPromote = useMemo(
     () => setPlaceholders && ((id: string) => setPlaceholders((prev) => promotePlaceholder(prev, id))),
     [setPlaceholders],
   );
+  const scope = useOwnerScope(lists, ownerId);
   return useMemo(
-    () => placeholderVocabulary(placeholders, { onRename, onCreate, onPromote, ownerId, letters }),
-    [placeholders, onRename, onCreate, onPromote, ownerId, letters],
+    () => placeholderVocabulary(placeholders, { onRename, onCreate, onPromote, ownerId, owners, scope, letters }),
+    [placeholders, onRename, onCreate, onPromote, ownerId, owners, scope, letters],
   );
 }
 

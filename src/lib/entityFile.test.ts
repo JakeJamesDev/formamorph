@@ -62,15 +62,16 @@ describe('buildEntityCardData', () => {
     expect(buildEntityCardData({ id: 'q', name: 'Y', aliases: [] })).not.toHaveProperty('aliases');
   });
 
-  it('bundles only the placeholders the entity actually uses, and reads them back on parse', () => {
+  it('bundles only the shared placeholders the entity actually uses, and reads them back on parse', () => {
     const eye = { id: 'eye', name: 'Eye Color', values: phValues(['Red', 'Blue']) };
     const unused = { id: 'unused', name: 'Weather', values: phValues(['Rain', 'Sun']) };
     const withChip: Entity = { id: 'y', name: 'Guard', aiDescription: 'Eyes: {{ph:eye:world:p1}}.' };
     const card = buildEntityCardData(withChip, [eye, unused]);
-    expect(card.placeholders).toEqual([eye]); // only the referenced one; `unused` excluded
+    expect(card.sharedPlaceholders).toEqual([eye]); // only the referenced one; `unused` excluded
+    expect(card).not.toHaveProperty('placeholders'); // nothing of its own
     // Round-trips onto the parsed entity (which mints a fresh entity id but keeps the carried defs verbatim).
     const parsed = parseEntityCardData(card);
-    expect(parsed.placeholders).toEqual([eye]);
+    expect(parsed.sharedPlaceholders).toEqual([eye]);
     expect(parsed.aiDescription).toContain('{{ph:eye:world:p1}}');
   });
 
@@ -86,8 +87,33 @@ describe('buildEntityCardData', () => {
       aliases: ['the {{ph:beast:world:p2}}'],
     };
     const card = buildEntityCardData(named, [town, beast, unused]);
-    expect(card.placeholders).toEqual([town, beast]);
+    expect(card.sharedPlaceholders).toEqual([town, beast]);
     expect(parseEntityCardData(card).name).toContain('{{ph:town:world:p1}}');
+  });
+
+  it('writes the entity’s own placeholders as they are, and the shared defs they and its chips reach', () => {
+    const weather = { id: 'weather', name: 'Weather', values: phValues(['Rain', 'Sun']) };
+    const unused = { id: 'unused', name: 'Season', values: phValues(['Spring']) };
+    // Eyes is Molly's own and never placed in her text; its value reaches the shared Weather.
+    const eyes = { id: 'eyes', name: 'Eyes', values: phValues(['{{ph:weather:world:v1}} gray']) };
+    const molly: Entity = { id: 'm', name: 'Molly', imageTags: 'woman, {{ph:unused:world:p3}}', placeholders: [eyes] };
+    const card = buildEntityCardData(molly, [weather, unused, eyes]);
+    expect(card.placeholders).toEqual([eyes]);
+    expect(card.sharedPlaceholders).toEqual([weather, unused]);
+    const parsed = parseEntityCardData(card);
+    expect(parsed.placeholders).toEqual([eyes]);
+    expect(parsed.sharedPlaceholders).toEqual([weather, unused]);
+    // A card written before the split reads its placeholders as owned.
+    expect(parseEntityCardData({ formamorphKind: 'entity', name: 'Old', placeholders: [weather] }).placeholders).toEqual([weather]);
+  });
+
+  it('reads a library entity’s own pool, owned then shared, when no world pool is given', () => {
+    const weather = { id: 'weather', name: 'Weather', values: phValues(['Rain']) };
+    const eyes = { id: 'eyes', name: 'Eyes', values: phValues(['gray']) };
+    const stored: Entity = { id: 's', name: '{{ph:weather:world:p1}}', placeholders: [eyes], sharedPlaceholders: [weather] };
+    const card = buildEntityCardData(stored);
+    expect(card.placeholders).toEqual([eyes]);
+    expect(card.sharedPlaceholders).toEqual([weather]);
   });
 });
 

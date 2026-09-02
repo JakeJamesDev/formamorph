@@ -56,6 +56,8 @@ interface ImageTagsFieldProps {
   /** The world's (or the standalone item's) placeholders, so a tag can be one. None simply means no chip
    *  is ever drawn — the field is the same either way. */
   placeholders?: Placeholder[];
+  /** The entity or location whose tags these are — see `ownerId` on `PlaceholderField`. */
+  ownerId?: string;
 }
 
 /** The big frame the gallery shows its picture in. A character is drawn portrait, a place landscape — the
@@ -155,7 +157,7 @@ const AddTile = ({ htmlFor, selected, onSelect, onUrl, onFiles, allowFiles }: {
  * chosen, since that is simply the first. Tag generation acts on the subject as a whole rather than on any one
  * slot; a generated picture fills a free slot, and asks which one it replaces when there is none.
  */
-const ImageTagsField = ({ label, images, onImagesChange, slots = 1, embeddedLimit = slots, imageId, cap, description, kind, tags, onTagsChange, placeholders = [] }: ImageTagsFieldProps) => {
+const ImageTagsField = ({ label, images, onImagesChange, slots = 1, embeddedLimit = slots, imageId, cap, description, kind, tags, onTagsChange, placeholders = [], ownerId }: ImageTagsFieldProps) => {
   // SD prompt pulled from an uploaded image, pending the user's OK to use it as Image Tags.
   const [pendingPrompt, setPendingPrompt] = useState<string | null>(null);
   // A generated picture with nowhere free to go, held while the user picks the slot it replaces.
@@ -391,6 +393,7 @@ const ImageTagsField = ({ label, images, onImagesChange, slots = 1, embeddedLimi
           value={tags || ''}
           onChange={onTagsChange}
           placeholders={placeholders}
+          ownerId={ownerId}
           placeholder="booru tags, comma separated"
           aside={<AiGenerateButton mode="tags" kind={kind} source={description} onChange={onTagsChange} />}
         />

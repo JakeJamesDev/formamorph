@@ -16,7 +16,7 @@ import { useEditorMode } from '@/lib/editorMode';
 import type { GameLocation } from '@/types';
 
 const LocationManager = ({ location }: { location: GameLocation }) => {
-  const { updateLocation, entities, updateEntity, entityGroups, placeholders, placementLetters } = useGameData();
+  const { updateLocation, entities, updateEntity, entityGroups, placeholders, placementLetters, placeholderOwners } = useGameData();
   const { draft: editingLocation, setField: handleChange } = useEditingDraft(location, updateLocation);
   const { advanced } = useEditorMode();
 
@@ -109,7 +109,7 @@ const LocationManager = ({ location }: { location: GameLocation }) => {
         <Label>Entities</Label>
         <MultiSelect
           key={editingLocation.id}
-          options={entitiesInTreeOrder(entityGroups, entities).map((e) => ({ label: labelPlaceholders(e.name, placeholders, placementLetters), value: e.id }))}
+          options={entitiesInTreeOrder(entityGroups, entities).map((e) => ({ label: labelPlaceholders(e.name, placeholders, placementLetters, placeholderOwners), value: e.id }))}
           defaultValue={presentIds}
           onValueChange={handleEntitiesChange}
           placeholder="Select entities"

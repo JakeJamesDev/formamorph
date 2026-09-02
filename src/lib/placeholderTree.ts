@@ -157,9 +157,10 @@ export function isOwnedPlaceholder(placeholders: readonly Placeholder[], id: str
   return !!placeholder && holderOf(placeholders, placeholder) !== null;
 }
 
-/** The placeholders an author places directly: everything nothing else owns. */
-export function topLevelPlaceholders(placeholders: readonly Placeholder[]): Placeholder[] {
-  return placeholders.filter((p) => holderOf(placeholders, p) === null);
+/** The placeholders an author places directly: everything nothing else owns. `all` is where holders are
+ *  looked up when `placeholders` is one list of a larger world (an entity's own, beside the world's). */
+export function topLevelPlaceholders(placeholders: readonly Placeholder[], all: readonly Placeholder[] = placeholders): Placeholder[] {
+  return placeholders.filter((p) => holderOf(all, p) === null);
 }
 
 /** The owner chain above a placeholder, outermost first. Empty at the top level. */
@@ -216,14 +217,16 @@ export interface PlaceholderTreeRow {
 /**
  * The whole tree as the rows a list draws: depth-first, top-level placeholders in array order and each
  * holder's nested rows in its own value order. A cycle draws its row and stops there rather than recursing,
- * so a world that references itself still opens.
+ * so a world that references itself still opens. `all` is where a chip's target and a row's holder are
+ * looked up when `placeholders` is one list of a larger world, so a scoped list still draws the shared
+ * placeholder one of its values holds.
  */
-export function placeholderRows(placeholders: readonly Placeholder[]): PlaceholderTreeRow[] {
-  const byId = new Map(placeholders.map((p) => [p.id, p]));
+export function placeholderRows(placeholders: readonly Placeholder[], all: readonly Placeholder[] = placeholders): PlaceholderTreeRow[] {
+  const byId = new Map(all.map((p) => [p.id, p]));
   const out: PlaceholderTreeRow[] = [];
   const walk = (placeholder: Placeholder, parentId: string | null, holderId: string | null, depth: number, seen: ReadonlySet<string>) => {
     const id = parentId === null ? placeholder.id : `${parentId}${ROW_SEP}${placeholder.id}`;
-    const owner = holderOf(placeholders, placeholder);
+    const owner = holderOf(all, placeholder);
     out.push({ id, parentId, depth, placeholder, holderId, shared: holderId !== null && owner !== holderId });
     if (seen.has(placeholder.id)) return;
     const next = new Set([...seen, placeholder.id]);
@@ -232,7 +235,7 @@ export function placeholderRows(placeholders: readonly Placeholder[]): Placehold
       if (target) walk(target, id, placeholder.id, depth + 1, next);
     }
   };
-  for (const placeholder of topLevelPlaceholders(placeholders)) walk(placeholder, null, null, 0, new Set());
+  for (const placeholder of topLevelPlaceholders(placeholders, all)) walk(placeholder, null, null, 0, new Set());
   return out;
 }
 
@@ -255,11 +258,11 @@ export function placeholderSelection(
 }
 
 /** Drop every row that descends from any id in `ids` (collapsed rows, the dragged subtree). */
-export function removeCollapsedPlaceholderRows(
-  rows: PlaceholderTreeRow[], ids: Iterable<string>,
-): PlaceholderTreeRow[] {
+export function removeCollapsedPlaceholderRows<N extends { id: string; parentId: string | null }>(
+  rows: N[], ids: Iterable<string>,
+): N[] {
   const exclude = new Set(ids);
-  const out: PlaceholderTreeRow[] = [];
+  const out: N[] = [];
   for (const row of rows) {
     if (row.parentId !== null && exclude.has(row.parentId)) {
       exclude.add(row.id);
@@ -292,8 +295,8 @@ export function placeholderUsedBy(
 }
 
 /** Projected drop `{depth, parentId}` for the active row, given the pointer's horizontal drag offset. */
-export function getPlaceholderDropProjection(
-  rows: PlaceholderTreeRow[], activeId: string, overId: string,
+export function getPlaceholderDropProjection<N extends { id: string; parentId: string | null; depth: number }>(
+  rows: N[], activeId: string, overId: string,
   dragOffset: number, indentationWidth: number,
 ): { depth: number; parentId: string | null } {
   const overIndex = rows.findIndex((i) => i.id === overId);
@@ -326,6 +329,9 @@ export function getPlaceholderDropProjection(
 export interface PlaceholderDropContext {
   /** Placeholder ids a chip places outside the placeholder list — world text, an entity description. */
   placedIds?: ReadonlySet<string>;
+  /** Every placeholder the world has, when the list being dropped into is one list of several: a holder in
+   *  another list still reaches a placeholder, and a shared row still names one. Defaults to the list. */
+  all?: readonly Placeholder[];
 }
 
 /** Every placeholder id a chip reaches from inside a value that is *not* exactly one chip. Those chips
@@ -486,7 +492,7 @@ export function applyPlaceholderDrop(
   activeId: string, overId: string, dragOffset: number, indentationWidth: number,
   context: PlaceholderDropContext = {},
 ): Placeholder[] {
-  const full = placeholderRows(placeholders);
+  const full = placeholderRows(placeholders, context.all);
   const visible = removeCollapsedPlaceholderRows(full, [...collapsedIds, activeId]);
   if (!visible.some((i) => i.id === overId) || !visible.some((i) => i.id === activeId)) return placeholders;
 
@@ -502,21 +508,43 @@ export function applyPlaceholderDrop(
   // it inside itself.
   if (parentRow?.id.split(ROW_SEP).includes(active.placeholder.id)) return placeholders;
 
-  const holderId = parentRow?.placeholder.id ?? null;
-  const targetId = active.placeholder.id;
-
   // Sibling order comes from the flat list moved the way the drop moves it, exactly as the location tree
   // reads it: whichever rows end up under a parent, in the order they end up there.
   const reParented = full.map((i) => (i.id === activeId ? { ...i, parentId: parentRowId } : i));
   const moved = arrayMove(reParented, activeIndex, overIndex);
-  const orderUnder = (parent: string | null) =>
-    moved.filter((i) => i.parentId === parent).map((i) => i.placeholder.id);
+  const siblingOrder = moved.filter((i) => i.parentId === parentRowId).map((i) => i.placeholder.id);
 
+  return commitPlaceholderDrop(placeholders, {
+    targetId: active.placeholder.id, activeHolderId: active.holderId, holderId: parentRow?.placeholder.id ?? null, siblingOrder,
+  }, context);
+}
+
+/** A drop resolved to what the list has to do: which placeholder lands where, beside what. */
+export interface PlaceholderDropPlan {
+  /** The dragged placeholder. */
+  targetId: string;
+  /** The placeholder holding the dragged row before the drop, or null at the top level. */
+  activeHolderId: string | null;
+  /** The placeholder the row lands under, or null for the top level. */
+  holderId: string | null;
+  /** Every placeholder id under the new holder (or at the top level) after the drop, in order. */
+  siblingOrder: readonly string[];
+}
+
+/**
+ * Apply a resolved drop to one list — the second half of {@link applyPlaceholderDrop}, for a caller that
+ * projected the drop over a larger tree (the world tab, whose rows span several lists). Never mutates.
+ */
+export function commitPlaceholderDrop(
+  placeholders: Placeholder[], { targetId, activeHolderId, holderId, siblingOrder }: PlaceholderDropPlan,
+  context: PlaceholderDropContext = {},
+): Placeholder[] {
+  const all = context.all ?? placeholders;
   let next = placeholders.map((p) => ({ ...p }));
 
   if (holderId === null) {
     next = next.map((p) => (p.id === targetId ? released(p) : p));
-    return orderTopLevel(next, orderUnder(null));
+    return orderTopLevel(next, siblingOrder);
   }
 
   const holder = next.find((p) => p.id === holderId);
@@ -524,7 +552,7 @@ export function applyPlaceholderDrop(
   if (!holdsAsChip(holder, targetId)) holder.values = [...(holder.values ?? []), chipValueFor(targetId)];
   // A row dragged inside the holder it already sits in is being reordered, not re-homed: taking ownership
   // here would turn a shared row private on a gesture that said nothing about ownership.
-  if (holderId !== active.holderId && dropTakesOwnership(placeholders, targetId, holderId, context)) {
+  if (holderId !== activeHolderId && dropTakesOwnership(all, targetId, holderId, context)) {
     next = next.map((p) => {
       if (p.id === targetId) return { ...p, ownerId: holderId };
       // The holder may already have been sharing this row and weighting it there; taking it privately
@@ -532,5 +560,5 @@ export function applyPlaceholderDrop(
       return p.id === holderId ? withoutSharedWeightsFor(p, targetId) : p;
     });
   }
-  return next.map((p) => (p.id === holderId ? orderChipValues(p, orderUnder(parentRowId)) : p));
+  return next.map((p) => (p.id === holderId ? orderChipValues(p, siblingOrder) : p));
 }

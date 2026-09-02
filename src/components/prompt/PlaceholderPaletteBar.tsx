@@ -19,14 +19,19 @@ import { CHIP_DRAG_MIME } from './ChipDrag';
  * Clicking a chip inserts it into the field that last held focus (see ChipInsertTarget) — clicking the
  * strip necessarily blurs that field, which is exactly why the claim outlives the blur.
  */
-const PlaceholderPaletteBar = ({ placeholders, className }: {
+const PlaceholderPaletteBar = ({ placeholders, scopeId, className }: {
   placeholders: Placeholder[];
+  /** The entity or book whose panel the strip sits over, so its own scoped placeholders come first and
+   *  read bare while every other owner's read `Owner.Name`. */
+  scopeId?: string;
   className?: string;
 }) => {
   const [collapsed, setCollapsed] = usePaletteCollapsed();
   const { insert, undo, ownerId } = useChipInsertTarget();
-  const vocab = usePlaceholderChipVocabulary(placeholders);
+  const vocab = usePlaceholderChipVocabulary(placeholders, scopeId);
   const all = useMemo(() => vocab.palette(), [vocab]);
+  // A rename edits the placeholder's own name; the chip may read it under an owner prefix.
+  const bareName = (token: string) => placeholders.find((p) => p.id === decodePlaceholderToken(token)?.id)?.name ?? '';
   // While a placeholder's own value is the target, the chips that would loop back into it are left out —
   // the placeholder itself and everything that already reaches it. The menu is filtered rather than the
   // insert refused, so a loop cannot be authored from here at all.
@@ -73,7 +78,7 @@ const PlaceholderPaletteBar = ({ placeholders, className }: {
             {items.map((item) => (renaming === item.token ? (
               <ChipRenameInput
                 key={item.token}
-                value={item.label}
+                value={bareName(item.token)}
                 ariaLabel={`Rename ${item.label}`}
                 style={{ backgroundColor: item.color, color: '#000' }}
                 onCommit={(next) => { setRenaming(null); vocab.rename?.(item.token, next); }}

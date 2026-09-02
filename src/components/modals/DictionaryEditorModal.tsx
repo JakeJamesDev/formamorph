@@ -14,6 +14,7 @@ import { ChipInsertTargetProvider } from '@/components/prompt/ChipInsertTarget';
 import { EditorPreviewRollsProvider } from '@/contexts/EditorPreviewRollsContext';
 import { placeholderStore, PlaceholderStoreProvider } from '@/contexts/PlaceholderStoreContext';
 import { directChipTargets } from '@/lib/placeholders';
+import { carriedPlaceholders, splitCarriedPlaceholders } from '@/lib/placeholderHomes';
 import { dictionaryPlacementLetters, EMPTY_LETTERS, labelPlaceholders } from '@/lib/placementLetters';
 import { PlacementLettersProvider } from '@/contexts/PlacementLettersContext';
 import { buildDictionaryFile } from '@/lib/dictionaryFile';
@@ -75,8 +76,9 @@ const DictionaryEditorModal = ({ dictionaryId, draft, onClose, onPublish }: {
   const hasUnsavedChanges = book != null && canonicalStringify(dictionaries, stringifyCache.current) !== baselineRef.current;
   const selectedBook = dictionaries.find((b) => b.id === selectedId);
   const selectedEntry = dictionaries.flatMap((b) => b.entries).find((e) => e.id === selectedId);
-  // The book's carried placeholders live on the sole book (index 0); its entries' chips resolve against them.
-  const bookPlaceholders = useMemo(() => dictionaries[0]?.placeholders ?? [], [dictionaries]);
+  // The book's carried placeholders live on the sole book (index 0): its own defs plus the shared ones it
+  // carries from the world it was exported from. Its entries' chips resolve against both.
+  const bookPlaceholders = useMemo(() => (dictionaries[0] ? carriedPlaceholders(dictionaries[0]) : []), [dictionaries]);
   // Isolated placeholder store backed by the sole book's `placeholders` field (empty ⇒ undefined).
   // `placedIds` is the book's own chip-bearing fields, so a drag never takes a placeholder an entry names.
   // It reads the entries through a ref rather than closing over them, so a keystroke in an entry does not
@@ -87,9 +89,8 @@ const DictionaryEditorModal = ({ dictionaryId, draft, onClose, onPublish }: {
     ...placeholderStore(bookPlaceholders, (action: SetStateAction<Placeholder[]>) =>
       setDictionaries((prev) => prev.map((b, i) => {
         if (i !== 0) return b;
-        const cur = b.placeholders ?? [];
-        const next = typeof action === 'function' ? action(cur) : action;
-        return { ...b, placeholders: next.length ? next : undefined };
+        const cur = carriedPlaceholders(b);
+        return splitCarriedPlaceholders(b, typeof action === 'function' ? action(cur) : action);
       }))),
     placedIds: () => directChipTargets(
       dictionariesRef.current.flatMap((b) => b.entries).flatMap((e) =>
@@ -131,7 +132,7 @@ const DictionaryEditorModal = ({ dictionaryId, draft, onClose, onPublish }: {
     if (!current) return;
     const blob = new Blob([JSON.stringify(buildDictionaryFile(current), null, 2)], { type: 'application/json' });
     // A chip in the name would otherwise put a raw placement id in the filename.
-    downloadBlob(blob, `${labelPlaceholders(current.name, current.placeholders, letters) || 'Dictionary'}.json`);
+    downloadBlob(blob, `${labelPlaceholders(current.name, bookPlaceholders, letters) || 'Dictionary'}.json`);
   };
 
   return (
@@ -141,7 +142,7 @@ const DictionaryEditorModal = ({ dictionaryId, draft, onClose, onPublish }: {
         open={isOpen}
         // A library book has no world behind it, so its own carried defs render the chips — the same
         // treatment its card and its listing get.
-        title={labelPlaceholders(dictionaries[0]?.name ?? book?.name ?? '', dictionaries[0]?.placeholders, letters) || 'Dictionary'}
+        title={labelPlaceholders(dictionaries[0]?.name ?? book?.name ?? '', bookPlaceholders, letters) || 'Dictionary'}
         contentClassName="max-w-[1100px] w-[95vw] h-[85dvh] flex flex-col p-0 gap-0 overflow-hidden"
         loading={!book}
         tabs={TABS}

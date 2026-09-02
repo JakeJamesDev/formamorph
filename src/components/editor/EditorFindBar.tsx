@@ -16,6 +16,7 @@ import { randomUUID } from '@/lib/uuid';
 import { findMatches, replaceAll, spliceText } from '@/lib/worldSearch';
 import type { SearchMatch, SearchTarget } from '@/lib/worldSearch';
 import type { PlacementLetters } from '@/lib/placementLetters';
+import type { PlaceholderOwners } from '@/lib/placeholderHomes';
 import type { Placeholder } from '@/types';
 
 /**
@@ -31,6 +32,8 @@ interface EditorFindBarProps {
   placeholders: Placeholder[];
   /** The document's placement letters, so a chip answers a search by the name it shows. */
   placementLetters: PlacementLetters;
+  /** Who owns each scoped placeholder, so a chip answers to `Molly.Eyes` as the lists print it. */
+  placeholderOwners?: PlaceholderOwners;
   /** Placeholder-replace mode follows the Placeholders tab in hiding from Simple mode. */
   allowPlaceholderReplace: boolean;
   /** Open with the replace row expanded (Ctrl+H). */
@@ -115,7 +118,7 @@ function ModeSwap({ onClick, label, last, children }: {
 }
 
 export default function EditorFindBar({
-  targets, placeholders, placementLetters, allowPlaceholderReplace, startWithReplace, onNavigate, onAddPlaceholder, onClose,
+  targets, placeholders, placementLetters, placeholderOwners, allowPlaceholderReplace, startWithReplace, onNavigate, onAddPlaceholder, onClose,
 }: EditorFindBarProps) {
   const [query, setQuery] = useState('');
   const [debounced, setDebounced] = useState('');
@@ -141,8 +144,8 @@ export default function EditorFindBar({
 
   const options = useMemo(() => ({ matchCase, wholeWord }), [matchCase, wholeWord]);
   const matches = useMemo(
-    () => findMatches(targets, debounced, options, { placeholders, letters: placementLetters }),
-    [targets, debounced, options, placeholders, placementLetters],
+    () => findMatches(targets, debounced, options, { placeholders, letters: placementLetters, owners: placeholderOwners }),
+    [targets, debounced, options, placeholders, placementLetters, placeholderOwners],
   );
 
   // A replace shortens or lengthens the list under the cursor; clamping keeps the counter honest.

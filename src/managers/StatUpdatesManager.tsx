@@ -12,7 +12,7 @@ import { labelPlaceholders } from '@/lib/placementLetters';
 import { Tip } from "@/components/ui/tooltip";
 
 const StatUpdatesManager = ({ statUpdate }: { statUpdate: StatUpdate }) => {
-  const { stats, updateStatUpdate, placeholders, placementLetters } = useGameData();
+  const { stats, updateStatUpdate, placeholders, placementLetters, placeholderOwners } = useGameData();
   const { draft: editingStatUpdate, setField: handleChange } = useEditingDraft(statUpdate, updateStatUpdate);
 
   const handleStatToggle = (statName: string) => {
@@ -71,7 +71,7 @@ const StatUpdatesManager = ({ statUpdate }: { statUpdate: StatUpdate }) => {
                 onCheckedChange={() => handleStatToggle(stat.name)}
               />
               {/* Label only — the checkbox still keys off the raw `stat.name`, which is what gets stored. */}
-              <label htmlFor={`stat-${stat.id}`} className="cursor-pointer">{labelPlaceholders(stat.name, placeholders, placementLetters)}</label>
+              <label htmlFor={`stat-${stat.id}`} className="cursor-pointer">{labelPlaceholders(stat.name, placeholders, placementLetters, placeholderOwners)}</label>
             </div>
           ))}
         </ScrollArea>

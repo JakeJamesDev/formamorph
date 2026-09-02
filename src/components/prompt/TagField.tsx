@@ -16,11 +16,13 @@ import TagChipField from './TagChipField';
  * row, a panel with its own heading) leaves it off and passes `ariaLabel` instead; the buttons then sit
  * alone on the line above the field.
  */
-const TagField = ({ label, value, onChange, placeholders = [], placeholder, ariaLabel, aside, className }: {
+const TagField = ({ label, value, onChange, placeholders = [], ownerId, placeholder, ariaLabel, aside, className }: {
   label?: string;
   value: string;
   onChange: (v: string) => void;
   placeholders?: Placeholder[];
+  /** The entity or location whose field this is — see `ownerId` on `PlaceholderField`. */
+  ownerId?: string;
   placeholder?: string;
   /** Names the field when no visible `label` is drawn. */
   ariaLabel?: string;
@@ -44,6 +46,7 @@ const TagField = ({ label, value, onChange, placeholders = [], placeholder, aria
         value={value}
         onChange={onChange}
         placeholders={placeholders}
+        ownerId={ownerId}
         placeholder={placeholder}
         ariaLabel={ariaLabel ?? label}
         className={className}

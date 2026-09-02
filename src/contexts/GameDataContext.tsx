@@ -9,7 +9,8 @@ import { newLocationPosition } from '@/lib/locationCanvas';
 import { renamedPlaceholderValues, repinRenamedValues } from '@/lib/traitEffects';
 import { directChipTargets } from '@/lib/placeholders';
 import {
-  allPlaceholders, mapListHolding, placeholderHomeFor, sameElements, scatterPlaceholders, type PlaceholderHome,
+  allPlaceholders, mapListHolding, placeholderHomeFor, placeholderOwners, sameElements, sameOwners, scatterPlaceholders,
+  type PlaceholderHome, type PlaceholderSlices,
 } from '@/lib/placeholderHomes';
 import { releasePlaceholderOwners, removePlaceholderCascade } from '@/lib/placeholderTree';
 import { chipBearingTexts } from '@/lib/testBench/rules';
@@ -352,13 +353,19 @@ function useProvideGameData() {
   // Every reader takes one list: the world's shared placeholders, then each entity's own in tree order,
   // then each book's. Kept by identity while no placeholder object changed, so a keystroke in an entity's
   // description does not rebuild every chip field's vocabulary.
-  const combined = useMemo(
-    () => allPlaceholders({ placeholders: worldPlaceholders, entities, entityGroups, dictionaries }),
+  const lists = useMemo(
+    () => ({ placeholders: worldPlaceholders, entities, entityGroups, dictionaries }),
     [worldPlaceholders, entities, entityGroups, dictionaries],
   );
+  const combined = useMemo(() => allPlaceholders(lists), [lists]);
   const combinedRef = useRef(combined);
   if (!sameElements(combinedRef.current, combined)) combinedRef.current = combined;
   const placeholders = combinedRef.current;
+  // Who owns each scoped placeholder, kept by identity while no owner or name changed, for the same reason.
+  const owners = useMemo(() => placeholderOwners(lists), [lists]);
+  const ownersRef = useRef(owners);
+  if (!sameOwners(ownersRef.current, owners)) ownersRef.current = owners;
+  const placeholderOwnerIndex = ownersRef.current;
 
   // The current world through a ref, so a write can route by the lists as they stand without the
   // callbacks below rebuilding on every edit and, with them, every chip field's vocabulary.
@@ -401,17 +408,23 @@ function useProvideGameData() {
     writeListHolding(id, list => removePlaceholderCascade(list, id));
   }, [writeListHolding]);
 
+  // Every list at once — a drop on the Placeholders tab that moves a record between owners. Only the
+  // slices that changed are written.
+  const setPlaceholderLists = useCallback((next: PlaceholderSlices) => {
+    const world = worldRef.current();
+    if (next.placeholders !== world.placeholders) setWorldPlaceholders(next.placeholders);
+    if (next.entities !== world.entities) setEntities(next.entities);
+    if (next.dictionaries !== world.dictionaries) setDictionaries(next.dictionaries);
+  }, [setDictionaries]);
+
   // A whole-list write (a drag, a promote) is scattered back to the lists that hold each id.
   const setPlaceholders = useCallback((action: SetStateAction<Placeholder[]>) => {
     const world = worldRef.current();
     const current = allPlaceholders(world);
     const next = typeof action === 'function' ? action(current) : action;
     if (next === current) return;
-    const routed = scatterPlaceholders(world, next);
-    if (routed.placeholders !== world.placeholders) setWorldPlaceholders(routed.placeholders);
-    if (routed.entities !== world.entities) setEntities(routed.entities);
-    if (routed.dictionaries !== world.dictionaries) setDictionaries(routed.dictionaries);
-  }, [setDictionaries]);
+    setPlaceholderLists(scatterPlaceholders(world, next));
+  }, [setPlaceholderLists]);
 
   // The world's placeholders as a scoped store, so the same editing widgets can be reused elsewhere
   // (the library editors) against an isolated store. The world's own update path replaces the generic
@@ -422,8 +435,9 @@ function useProvideGameData() {
     () => ({
       placeholders, setPlaceholders, addPlaceholder, updatePlaceholder, removePlaceholder,
       placedIds: () => directChipTargets(chipBearingTexts(worldRef.current())),
+      owners: placeholderOwnerIndex, lists, setLists: setPlaceholderLists,
     }),
-    [placeholders, setPlaceholders, addPlaceholder, updatePlaceholder, removePlaceholder],
+    [placeholders, setPlaceholders, addPlaceholder, updatePlaceholder, removePlaceholder, placeholderOwnerIndex, lists, setPlaceholderLists],
   );
 
   // The document's placement letters, rewalked on every edit and kept by identity while nothing changed,
@@ -565,6 +579,8 @@ function useProvideGameData() {
     phStore,
     // Placement id → letter for every Unique chip in the world, for the surfaces that print a name as text.
     placementLetters,
+    // Placeholder id → the entity or book that owns it, for the surfaces that read a chip as `Molly.Eyes`.
+    placeholderOwners: placeholderOwnerIndex,
   };
 
   return value;

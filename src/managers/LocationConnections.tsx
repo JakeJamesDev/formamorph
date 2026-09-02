@@ -40,12 +40,12 @@ const DIRECTION_ICONS: Record<ConnectionDirection, typeof ArrowRight> = {
  * one-way orientations rather than hiding a flip behind a second gesture.
  */
 const LocationConnections = ({ location }: { location: GameLocation }) => {
-  const { locations, connections, addConnection, updateConnection, removeConnection, placeholders, placementLetters } = useGameData();
+  const { locations, connections, addConnection, updateConnection, removeConnection, placeholders, placementLetters, placeholderOwners } = useGameData();
   const [target, setTarget] = useState('');
 
   const nameOf = (id: string) => {
     const found = locations.find((l) => l.id === id);
-    return found ? labelPlaceholders(found.name, placeholders, placementLetters) : 'Unknown Location';
+    return found ? labelPlaceholders(found.name, placeholders, placementLetters, placeholderOwners) : 'Unknown Location';
   };
 
   const views = useMemo(() => connectionsAt(location.id, connections), [location.id, connections]);
@@ -117,7 +117,7 @@ const LocationConnections = ({ location }: { location: GameLocation }) => {
           </SelectTrigger>
           <SelectContent>
             {targets.map((l) => (
-              <SelectItem key={l.id} value={l.id}>{labelPlaceholders(l.name, placeholders, placementLetters)}</SelectItem>
+              <SelectItem key={l.id} value={l.id}>{labelPlaceholders(l.name, placeholders, placementLetters, placeholderOwners)}</SelectItem>
             ))}
           </SelectContent>
         </Select>

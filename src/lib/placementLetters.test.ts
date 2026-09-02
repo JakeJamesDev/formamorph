@@ -218,3 +218,34 @@ describe('the walk over placeholders an entity or a book carries', () => {
     expect(letters.get('b1')).toBe('C');
   });
 });
+
+describe('owner-qualified names', () => {
+  // Eyes and Iris belong to Molly, Mane to Tam; Town is shared. Molly's own name is a chip.
+  const owners = new Map([
+    ['eye', { kind: 'entity' as const, id: 'molly', name: `Molly of ${chip('town', 'm1', 'world')}` }],
+    ['iris', { kind: 'entity' as const, id: 'molly', name: 'Molly' }],
+    ['mane', { kind: 'entity' as const, id: 'tam', name: 'Tam' }],
+  ]);
+  const placeholders = [TOWN, EYE, P('iris', 'Iris', ['dark']), P('mane', 'Mane', ['red'])];
+  const eye = decodePlaceholderToken(chip('eye', 'e1', 'world'))!;
+
+  it('prefixes a scoped placeholder with its owner away from the owner, and reads its owner’s own chips by name', () => {
+    expect(chipPathName(eye, placeholders, { owners })).toBe('Molly of {Town Name}.Eye');
+    expect(chipPathName(decodePlaceholderToken(chip('town', 't', 'world'))!, placeholders, { owners })).toBe('Town Name');
+  });
+
+  it('reads bare inside the owner’s own fields, and inside a placeholder of the same owner', () => {
+    expect(chipPathName(eye, placeholders, { owners, relativeTo: 'molly' })).toBe('Eye');
+    expect(chipPathName(eye, placeholders, { owners, relativeTo: 'iris' })).toBe('Eye');
+    expect(chipPathName(eye, placeholders, { owners, relativeTo: 'tam' })).toBe('Molly of {Town Name}.Eye');
+  });
+
+  it('carries the prefix through the plain-text label and the search names', () => {
+    const letters = placementLetters([chip('eye', 'e1')]);
+    expect(labelPlaceholders(`${chip('eye', 'e1')} and ${chip('mane', 'x', 'world')}`, placeholders, letters, owners))
+      .toBe('{Molly of {Town Name}.Eye (A)} and {Tam.Mane}');
+    expect(chipPlaceholderNames(chip('mane', 'x', 'world'), placeholders, owners)).toEqual(['Tam.Mane']);
+    // Without an owner index, nothing is prefixed.
+    expect(labelPlaceholders(chip('mane', 'x', 'world'), placeholders)).toBe('Mane');
+  });
+});
