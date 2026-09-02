@@ -91,3 +91,28 @@ describe('the red ? treatment', () => {
     expect(screen.queryByText('?')).toBeNull();
   });
 });
+
+/** Where the text names something rather than offering it — a section heading — a pill in the placeholder's
+ *  own accent reads as a chip waiting to be dropped into a field. `neutral` is how that surface asks for a
+ *  muted one instead, without giving up the pill. */
+describe('the neutral pill', () => {
+  it('drops the accent for a muted tint, and keeps it by default', () => {
+    const { rerender } = render(<PlaceholderText text={chip('town')} placeholders={WORLD} />);
+    expect(screen.getByText('Town').style.backgroundColor).not.toBe('');
+
+    rerender(<PlaceholderText text={chip('town')} placeholders={WORLD} neutral />);
+    const muted = screen.getByText('Town');
+    expect(muted.style.backgroundColor).toBe('');
+    expect(muted).toHaveClass('bg-muted-foreground/20');
+  });
+
+  it('still reads as the placeholder it names', () => {
+    render(<PlaceholderText text={`Ma ${chip('town')}`} placeholders={WORLD} neutral />);
+    expect(screen.getByText('Town')).toHaveAttribute('data-chip-token');
+  });
+
+  it('leaves a broken chip’s red mark alone, since that one is a warning and not an offer', () => {
+    render(<PlaceholderText text={chip('vanished')} placeholders={WORLD} neutral />);
+    expect(screen.getByText('?')).toHaveClass('text-destructive');
+  });
+});

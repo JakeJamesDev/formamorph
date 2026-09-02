@@ -10,7 +10,7 @@ import { cn } from '@/lib/utils';
 import type { Placeholder } from '@/types';
 import { useChipInsertTarget } from './ChipInsertTarget';
 import { CHIP_DRAG_MIME } from './ChipDrag';
-import OwnerHeadingChip from './OwnerHeadingChip';
+import OwnerHeading from './OwnerHeading';
 
 /**
  * One palette of the world's placeholders for a whole editor panel, rather than an insert row on every
@@ -90,7 +90,7 @@ const PlaceholderPaletteBar = ({ placeholders, scopeId, className }: {
               {opens && i > 0 && <span aria-hidden className="mx-0.5 h-4 w-px self-center bg-border" />}
               {opens && item.heading && (
                 item.headingKind === 'owner' && item.ownerKind ? (
-                  <OwnerHeadingChip kind={item.ownerKind} name={item.ownerName ?? item.heading} placeholders={placeholders} />
+                  <OwnerHeading kind={item.ownerKind} name={item.ownerName ?? item.heading} placeholders={placeholders} />
                 ) : (
                   <span className="text-meta text-muted-foreground">{item.heading}</span>
                 )
