@@ -768,14 +768,14 @@ describe('PlaceholderManager — the sample roll', () => {
     const { unmount } = render(<PlaceholderManager placeholder={ph({ values: phValues([chip('p-eyes')]) })} />);
     fireEvent.click(roll());
     await userEvent.hover(within(screen.getByRole('status', { name: 'Sample roll' })).getByText('Green'));
-    await waitFor(() => expect(screen.getAllByText('Molly.Eyes').length).toBeGreaterThan(0));
+    await waitFor(() => expect(screen.getAllByText('Molly › Eyes').length).toBeGreaterThan(0));
     unmount();
     // Molly's own Hair drawing Molly's Eyes: the panel already says whose it is, so the tip reads bare.
     render(<PlaceholderManager placeholder={{ ...hair, values: phValues([chip('p-eyes')]) }} />);
     fireEvent.click(roll());
     await userEvent.hover(within(screen.getByRole('status', { name: 'Sample roll' })).getByText('Green'));
     await waitFor(() => expect(screen.getAllByText('Eyes').length).toBeGreaterThan(0));
-    expect(screen.queryByText('Molly.Eyes')).toBeNull();
+    expect(screen.queryByText('Molly › Eyes')).toBeNull();
   });
 
   it('draws again on each click', () => {

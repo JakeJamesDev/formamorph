@@ -330,6 +330,24 @@ describe('findMatches — chips', () => {
     expect(chipHits(findMatches(targets, 'harrow', LOOSE, chips))).toEqual([first, second]);
   });
 
+  it('takes a dot, a space, or a chevron for the separator an owned chip reads with', () => {
+    const mood: Placeholder = { id: 'ph-mood', name: 'Mood', values: phValues(['sour']) };
+    const chip = encodePlaceholderToken({ id: 'ph-mood', mode: 'world', placementId: 'pl-9' });
+    const { src } = sources({ entities: [entity({ name: '', aiDescription: `She is ${chip}.` })] });
+    const chips = {
+      placeholders: [mood],
+      letters: placementLetters([]),
+      owners: new Map([['ph-mood', { kind: 'entity' as const, id: 'keeper', name: 'Keeper' }]]),
+    };
+    const targets = collectSearchTargets(src);
+    for (const query of ['keeper.mood', 'keeper mood', 'keeper>mood', 'keeper › mood', 'mood']) {
+      expect(chipHits(findMatches(targets, query, LOOSE, chips)), query).toEqual([chip]);
+    }
+    expect(chipHits(findMatches(targets, 'fen › mood', LOOSE, chips))).toEqual([]);
+    // Folding is for the chip's reading only: prose still reads exactly as it is stored.
+    expect(findMatches(targets, 'she.is', LOOSE, chips)).toHaveLength(0);
+  });
+
   it('spans the whole token and interleaves with text hits by position', () => {
     const { targets, chips } = setup();
     const hits = findMatches(targets, 'n', LOOSE, chips).filter((m) => m.target.value === stored);

@@ -98,7 +98,7 @@ describe('PlaceholderPaletteBar sections', () => {
         </ChipInsertTargetProvider>
       </PlaceholderStoreProvider>,
     );
-    expect(strip()).toEqual(['Town', '[Body]', 'Hair', '[Body › Face]', 'Skin', '[Gear]', 'Sword', '[Molly]', 'Molly.Eyes']);
+    expect(strip()).toEqual(['Town', '[Body]', 'Hair', '[Body › Face]', 'Skin', '[Gear]', 'Sword', '[Molly]', 'Eyes']);
   });
 
   it('hides a heading whose every chip the cycle filter removed', () => {
@@ -110,6 +110,6 @@ describe('PlaceholderPaletteBar sections', () => {
         </ChipInsertTargetProvider>
       </PlaceholderStoreProvider>,
     );
-    expect(strip()).toEqual(['Town', '[Body]', 'Hair', '[Gear]', 'Sword', '[Molly]', 'Molly.Eyes']);
+    expect(strip()).toEqual(['Town', '[Body]', 'Hair', '[Gear]', 'Sword', '[Molly]', 'Eyes']);
   });
 });
