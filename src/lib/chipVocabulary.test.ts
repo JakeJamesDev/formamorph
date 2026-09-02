@@ -579,7 +579,10 @@ describe('placeholderVocabulary — scoped placeholders', () => {
     const fen = { kind: 'dictionary' as const, id: 'fen', name: 'Fen' };
     expect(placeholderVocabulary(WORLD, { owners }).palette().map((r) => r.label)).toEqual(['Town', 'Eyes', 'Iris', 'Mane']);
     expect(placeholderVocabulary(WORLD, { owners, ownerId: 'molly', scope: molly }).palette().map((r) => r.label)).toEqual(['Eyes', 'Iris', 'Town', 'Mane']);
-    expect(placeholderVocabulary(WORLD, { owners, ownerId: 'fen', scope: fen }).allRows?.().map((r) => r.label)).toEqual(['Town', 'Molly › Eyes', 'Molly › Iris', 'Mane']);
+    // A picker's own root list comes sectioned the same way, so the drill picker heads its rows like
+    // every other surface: Fen's own first, then the loose ones, then Molly's, each bare under its heading.
+    expect(placeholderVocabulary(WORLD, { owners, ownerId: 'fen', scope: fen }).allRows?.().map((r) => [r.label, r.heading]))
+      .toEqual([['Mane', 'Fen'], ['Town', undefined], ['Eyes', 'Molly'], ['Iris', 'Molly']]);
   });
 
   it('creates a placeholder inside an owner’s fields in that owner’s list, named for it', () => {
