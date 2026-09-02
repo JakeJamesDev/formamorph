@@ -27,7 +27,7 @@ class DictionaryStorageService {
       });
       return {
         id: record.id,
-        name: labelPlaceholders(record.name, placeholders, record.data ? dictionaryPlacementLetters(record.data) : EMPTY_LETTERS),
+        name: labelPlaceholders(record.name, placeholders, { letters: record.data ? dictionaryPlacementLetters(record.data) : EMPTY_LETTERS }),
         description: describePlaceholders(record.data?.description ?? '', placeholders) || undefined,
         thumbnail: record.data?.thumbnail ?? undefined,
         entryCount: record.data?.entries?.length ?? 0,

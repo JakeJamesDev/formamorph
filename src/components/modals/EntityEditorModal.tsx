@@ -129,7 +129,7 @@ const EntityEditorModal = ({ entityId, draft, onClose, onPublish }: {
     try {
       const blob = await exportEntityCard(entity);
       // A chip in the name would otherwise put a raw placement id in the filename.
-      downloadBlob(blob, `${labelPlaceholders(entity.name, pool, letters) || 'Character'}.webp`);
+      downloadBlob(blob, `${labelPlaceholders(entity.name, pool, { letters }) || 'Character'}.webp`);
     } catch (error) {
       toast.error((error as Error).message);
     }
@@ -142,7 +142,7 @@ const EntityEditorModal = ({ entityId, draft, onClose, onPublish }: {
         open={isOpen}
         // A library character has no world behind it, so its own carried defs render the chips — the same
         // treatment its card and its listing get.
-        title={labelPlaceholders(entity?.name ?? '', pool, letters) || 'Character'}
+        title={labelPlaceholders(entity?.name ?? '', pool, { letters }) || 'Character'}
         contentClassName="max-w-[800px] w-[95vw] h-[85dvh] flex flex-col p-0 gap-0 overflow-hidden"
         loading={!entity}
         tabs={TABS}

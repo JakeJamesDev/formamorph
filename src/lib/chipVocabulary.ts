@@ -350,7 +350,7 @@ export function placeholderVocabulary(
         const owner = owners?.get(p.id);
         const folder = owner ? undefined : folderRank.get(placeholderGroupOf(groups ?? [], p) ?? '');
         if (owner && !ownerRank.has(owner.id)) ownerRank.set(owner.id, folders.length + 1 + ownerRank.size);
-        const heading = owner ? labelPlaceholders(owner.name, placeholders, letters) : folder?.heading;
+        const heading = owner ? labelPlaceholders(owner.name, placeholders, { letters }) : folder?.heading;
         const row: ChipRow = {
           token: paletteToken(p),
           label: `${prefixFor(p.id)}${p.name}`,
@@ -433,7 +433,7 @@ export function placeholderVocabulary(
     createLabel: (name) => {
       const owner = ownerId && byId.has(ownerId)
         ? byId.get(ownerId)?.name
-        : scope && labelPlaceholders(scope.name, placeholders, letters);
+        : scope && labelPlaceholders(scope.name, placeholders, { letters });
       return owner ? `New Placeholder "${name}" in ${owner}` : `New Placeholder "${name}"`;
     },
     promote: onPromote && ((token) => {

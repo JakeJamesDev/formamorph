@@ -191,21 +191,21 @@ describe('labelPlaceholders', () => {
   const letters = placementLetters([chip('town', 't1'), chip('town', 't2'), chip('eye', 'e1', 'unique', 'Left')]);
 
   it('reads a lone chip bare and an embedded one braced', () => {
-    expect(labelPlaceholders(chip('town', 't2'), placeholders, letters)).toBe('Town Name (B)');
-    expect(labelPlaceholders(`The ${chip('town', 't1')} Inn`, placeholders, letters)).toBe('The {Town Name (A)} Inn');
+    expect(labelPlaceholders(chip('town', 't2'), placeholders, { letters })).toBe('Town Name (B)');
+    expect(labelPlaceholders(`The ${chip('town', 't1')} Inn`, placeholders, { letters })).toBe('The {Town Name (A)} Inn');
   });
 
   it('shows a World chip by name, with no letter', () => {
-    expect(labelPlaceholders(chip('town', 'w1', 'world'), placeholders, letters)).toBe('Town Name');
+    expect(labelPlaceholders(chip('town', 'w1', 'world'), placeholders, { letters })).toBe('Town Name');
   });
 
   it('shows the author label where one is set', () => {
-    expect(labelPlaceholders(chip('eye', 'e1', 'unique', 'Left'), placeholders, letters)).toBe('Left');
+    expect(labelPlaceholders(chip('eye', 'e1', 'unique', 'Left'), placeholders, { letters })).toBe('Left');
   });
 
   it('marks a chip whose placeholder is gone with ?, carrying its label', () => {
-    expect(labelPlaceholders(chip('gone', 'g1'), placeholders, letters)).toBe('?');
-    expect(labelPlaceholders(chip('gone', 'g1', 'unique', 'Rival'), placeholders, letters)).toBe('? Rival');
+    expect(labelPlaceholders(chip('gone', 'g1'), placeholders, { letters })).toBe('?');
+    expect(labelPlaceholders(chip('gone', 'g1', 'unique', 'Rival'), placeholders, { letters })).toBe('? Rival');
   });
 
   it('reads a drilled chip as its whole path', () => {
@@ -216,8 +216,8 @@ describe('labelPlaceholders', () => {
   });
 
   it('leaves text with no chips alone', () => {
-    expect(labelPlaceholders('plain', placeholders, letters)).toBe('plain');
-    expect(labelPlaceholders('', placeholders, letters)).toBe('');
+    expect(labelPlaceholders('plain', placeholders, { letters })).toBe('plain');
+    expect(labelPlaceholders('', placeholders, { letters })).toBe('');
   });
 });
 
@@ -259,9 +259,9 @@ describe('owner-qualified names', () => {
 
   it('carries the prefix through the plain-text label and the search names', () => {
     const letters = placementLetters([chip('eye', 'e1')]);
-    expect(labelPlaceholders(`${chip('eye', 'e1')} and ${chip('mane', 'x', 'world')}`, placeholders, letters, owners))
+    expect(labelPlaceholders(`${chip('eye', 'e1')} and ${chip('mane', 'x', 'world')}`, placeholders, { letters, owners }))
       .toBe('{Molly of {Town Name}.Eye (A)} and {Tam.Mane}');
-    expect(chipPlaceholderNames(chip('mane', 'x', 'world'), placeholders, owners)).toEqual(['Tam.Mane']);
+    expect(chipPlaceholderNames(chip('mane', 'x', 'world'), placeholders, { owners })).toEqual(['Tam.Mane']);
     // Without an owner index, nothing is prefixed.
     expect(labelPlaceholders(chip('mane', 'x', 'world'), placeholders)).toBe('Mane');
   });

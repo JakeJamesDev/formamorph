@@ -531,7 +531,7 @@ export function allPinRows(world: PinEditorWorld): PinRow[] {
  *  `Region = Northern`. */
 function labeler(world: PinEditorWorld) {
   const { placeholders, placeholderOwners: owners, placementLetters: letters } = world;
-  const text = (s: string) => labelPlaceholders(s, placeholders, letters, owners);
+  const text = (s: string) => labelPlaceholders(s, placeholders, { letters, owners });
   return {
     text,
     band: (stat: Stat, band: StatDescriptor) =>

@@ -139,7 +139,7 @@ const TraitManager = ({ trait, onOpenTrait }: { trait: Trait; onOpenTrait: (id: 
               <SelectContent>
                 {stats.map((stat) => (
                   <SelectItem key={stat.id} value={stat.id}>
-                    {labelPlaceholders(stat.name, placeholders, placementLetters, placeholderOwners)}
+                    {labelPlaceholders(stat.name, placeholders, { letters: placementLetters, owners: placeholderOwners })}
                   </SelectItem>
                 ))}
               </SelectContent>
@@ -190,7 +190,7 @@ const TraitManager = ({ trait, onOpenTrait }: { trait: Trait; onOpenTrait: (id: 
               </SelectTrigger>
               <SelectContent>
                 {stats.map((stat) => (
-                  <SelectItem key={stat.id} value={stat.id}>{labelPlaceholders(stat.name, placeholders, placementLetters, placeholderOwners)}</SelectItem>
+                  <SelectItem key={stat.id} value={stat.id}>{labelPlaceholders(stat.name, placeholders, { letters: placementLetters, owners: placeholderOwners })}</SelectItem>
                 ))}
               </SelectContent>
             </Select>

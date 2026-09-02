@@ -134,7 +134,7 @@ export const StatDescriptorsSection = ({
   const { placeholders, placementLetters, placeholderOwners } = world;
   const { advanced } = useEditorMode();
   // The bar and the tips are text surfaces: a chip reads there by its name and letter, as it does in a row.
-  const chipText = (text: string) => labelPlaceholders(text, placeholders, placementLetters, placeholderOwners);
+  const chipText = (text: string) => labelPlaceholders(text, placeholders, { letters: placementLetters, owners: placeholderOwners });
   const min = statMin(stat);
   const max = statMax(stat);
   const range = max - min;

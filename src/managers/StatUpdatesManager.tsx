@@ -71,7 +71,7 @@ const StatUpdatesManager = ({ statUpdate }: { statUpdate: StatUpdate }) => {
                 onCheckedChange={() => handleStatToggle(stat.name)}
               />
               {/* Label only — the checkbox still keys off the raw `stat.name`, which is what gets stored. */}
-              <label htmlFor={`stat-${stat.id}`} className="cursor-pointer">{labelPlaceholders(stat.name, placeholders, placementLetters, placeholderOwners)}</label>
+              <label htmlFor={`stat-${stat.id}`} className="cursor-pointer">{labelPlaceholders(stat.name, placeholders, { letters: placementLetters, owners: placeholderOwners })}</label>
             </div>
           ))}
         </ScrollArea>

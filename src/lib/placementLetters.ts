@@ -175,7 +175,7 @@ export function ownerPrefix(
   const owner = owners?.get(id);
   if (!owner) return '';
   if (relativeTo && (owner.id === relativeTo || owners?.get(relativeTo)?.id === owner.id)) return '';
-  return `${labelPlaceholders(owner.name, placeholders, letters)}${OWNER_NAME_SEPARATOR}`;
+  return `${labelPlaceholders(owner.name, placeholders, { letters })}${OWNER_NAME_SEPARATOR}`;
 }
 
 /** A placeholder as a plain-text list names it: its owner prefix and its qualified name, chips read by
@@ -186,7 +186,7 @@ export function placeholderDisplayName(
 ): string {
   const qualified = qualifiedPlaceholderName(placeholders, id, relativeTo);
   if (qualified == null) return MISSING;
-  return `${ownerPrefix(id, placeholders, { relativeTo, owners, letters })}${labelPlaceholders(qualified, placeholders, letters, owners)}`;
+  return `${ownerPrefix(id, placeholders, { relativeTo, owners, letters })}${labelPlaceholders(qualified, placeholders, { letters, owners })}`;
 }
 
 /**
@@ -219,15 +219,16 @@ export function chipPathName(
  * the tooltip. Text with no chips costs one regex test.
  */
 export function labelPlaceholders(
-  text: string, placeholders: readonly Placeholder[] = [], letters: PlacementLetters = EMPTY_LETTERS, owners?: PlaceholderOwners,
+  text: string, placeholders: readonly Placeholder[] = [], options: ChipNameOptions = {},
 ): string {
   if (!text || !hasPlaceholders(text)) return text;
+  const letters = options.letters ?? EMPTY_LETTERS;
   const lone = lonePlaceholderToken(text);
   return parsePlaceholderText(text).map((seg) => {
     if (seg.type === 'text') return seg.value;
     const token = decodePlaceholderToken(seg.token);
     if (!token) return '';
-    const name = chipPathName(token, placeholders, { owners, letters });
+    const name = chipPathName(token, placeholders, options);
     const shown = name == null
       ? (token.label ? `${MISSING} ${token.label}` : MISSING)
       : placementDisplayName(token, name, letters);
@@ -237,12 +238,14 @@ export function labelPlaceholders(
 
 /** The placeholder names behind the chips in `text`, so a search for a placeholder finds a chip that reads
  *  as its author label. Gone placeholders contribute nothing. */
-export function chipPlaceholderNames(text: string, placeholders: Placeholder[], owners?: PlaceholderOwners): string[] {
+export function chipPlaceholderNames(
+  text: string, placeholders: readonly Placeholder[], options: ChipNameOptions = {},
+): string[] {
   if (!text || !hasPlaceholders(text)) return [];
   return parsePlaceholderText(text).flatMap((seg) => {
     if (seg.type === 'text') return [];
     const token = decodePlaceholderToken(seg.token);
-    const name = token && chipPathName(token, placeholders, { owners });
+    const name = token && chipPathName(token, placeholders, options);
     return name == null ? [] : [name];
   });
 }

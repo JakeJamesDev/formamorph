@@ -114,7 +114,7 @@ const LocationManager = ({ location }: { location: GameLocation }) => {
         <Label>Entities</Label>
         <MultiSelect
           key={editingLocation.id}
-          options={entitiesInTreeOrder(entityGroups, entities).map((e) => ({ label: labelPlaceholders(e.name, placeholders, placementLetters, placeholderOwners), value: e.id }))}
+          options={entitiesInTreeOrder(entityGroups, entities).map((e) => ({ label: labelPlaceholders(e.name, placeholders, { letters: placementLetters, owners: placeholderOwners }), value: e.id }))}
           defaultValue={presentIds}
           onValueChange={handleEntitiesChange}
           placeholder="Select entities"
