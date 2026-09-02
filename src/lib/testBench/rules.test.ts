@@ -1509,6 +1509,48 @@ describe('placeholder pin rules', () => {
     });
   });
 
+  describe('a value pinning its own placeholder', () => {
+    /** Region's `Northern` pins whatever `pins` says; Region is placed, so no unplaced rule speaks about it. */
+    const region = (pins: PlaceholderPin[]): RuleWorld => ({
+      ...world([{ id: 'e1', name: 'Maren', aiDescription: 'Of {{ph:p1:world:pl1}} and {{ph:p2:world:pl2}}.' }]),
+      placeholders: [hue, { id: 'p2', name: 'Region', values: [{ id: 'v-n', text: 'Northern', pins }] }],
+    });
+
+    it('names the value and the placeholder it belongs to', () => {
+      const found = only(region([{ placeholderId: 'p2', value: 'Northern' }]), 'placeholder-pin-self');
+      expect(found).toHaveLength(1);
+      expect(found[0].severity).toBe('error');
+      expect(found[0].message).toBe(
+        '“Region = Northern” pins “Region”, the placeholder that value belongs to — a value cannot hold its own placeholder, so the pin applies nothing',
+      );
+      expect(found[0].items.map((i) => i.id)).toEqual(['p2']);
+    });
+
+    it('stays quiet for a value pinning another placeholder, and for a two-step loop the cycle rule owns', () => {
+      expect(only(region([{ placeholderId: 'p1', value: 'red' }]), 'placeholder-pin-self')).toEqual([]);
+      const twoStep: RuleWorld = {
+        ...region([{ placeholderId: 'p1', value: 'red' }]),
+        placeholders: [
+          { id: 'p1', name: 'Hue', values: [{ id: 'v-r', text: 'red', pins: [{ placeholderId: 'p2', value: 'Northern' }] }] },
+          { id: 'p2', name: 'Region', values: [{ id: 'v-n', text: 'Northern', pins: [{ placeholderId: 'p1', value: 'red' }] }] },
+        ],
+      };
+      expect(only(twoStep, 'placeholder-pin-self')).toEqual([]);
+    });
+
+    it('fixes by removing the self-pin and leaving every other pin on the value', () => {
+      const w = region([{ placeholderId: 'p2', value: 'Northern' }, { placeholderId: 'p1', value: 'red' }]);
+      const fixed = applyRuleFix(w, 'placeholder-pin-self');
+      expect(fixed.placeholders?.[1].values[0].pins).toEqual([{ placeholderId: 'p1', value: 'red' }]);
+      expect(only(fixed, 'placeholder-pin-self')).toEqual([]);
+      // A value left with no pin at all stores none.
+      const bare = applyRuleFix(region([{ placeholderId: 'p2', value: 'Northern' }]), 'placeholder-pin-self');
+      expect(bare.placeholders?.[1].values[0]).not.toHaveProperty('pins');
+      // Hue carried no self-pin, so its record is the one the author wrote.
+      expect(bare.placeholders?.[0]).toBe(w.placeholders?.[0]);
+    });
+  });
+
   it('re-links a dead id to the value spelled the same, else drops the id and keeps the text, on every source', () => {
     const relink = { placeholderId: 'p1', value: 'red', valueId: 'v:gone' };
     const orphan = { placeholderId: 'p1', value: 'crimson', valueId: 'v:gone-too' };
@@ -2386,6 +2428,16 @@ const FIX_FIXTURES: Record<string, RuleWorld> = {
     ...world([{ id: 'e1', name: 'Maren', aiDescription: 'Fond of {{ph:p1:world:pl1}}.' }]),
     placeholders: [{ id: 'p1', name: 'Vice', values: phValues(['ale', 'dice']), weights: { [phValueId('ale')]: 2, [phValueId('grog')]: 3 } }],
   },
+  // A value holding its own placeholder beside one it may legitimately hold: only the first goes.
+  'placeholder-pin-self': {
+    ...world([{ id: 'e1', name: 'Maren', aiDescription: 'Fond of {{ph:p1:world:pl1}} and {{ph:p2:world:pl2}}.' }]),
+    placeholders: [
+      { id: 'p1', name: 'Vice', values: phValues(['ale', 'dice']) },
+      { id: 'p2', name: 'Region', values: [{ id: 'v-n', text: 'Northern', pins: [
+        { placeholderId: 'p2', value: 'Northern' }, { placeholderId: 'p1', value: 'ale' },
+      ] }] },
+    ],
+  },
   // One pin still spelled like a live value, one whose value is gone for good — the fix re-links the first
   // and lets the second stand as the free text play already applies.
   'placeholder-pin-unknown-value': {
@@ -2639,6 +2691,7 @@ const RULE_SCOPE: Record<string, 'simple' | 'advanced'> = {
   'placeholder-pin-broken': 'advanced',
   'placeholder-pin-conflict': 'advanced',
   'placeholder-pin-cycle': 'advanced',
+  'placeholder-pin-self': 'advanced',
   'placeholder-pin-unknown-value': 'advanced',
   'placeholder-unused': 'advanced',
   'placeholder-pinned-unused': 'advanced',
