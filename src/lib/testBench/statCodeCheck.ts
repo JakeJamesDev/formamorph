@@ -8,6 +8,7 @@
  * sorts exactly like a static finding.
  */
 import { executeStatCode } from '@/lib/statCodeExecutor';
+import { allPlaceholders } from '@/lib/placeholderHomes';
 import { labelPlaceholders, worldPlacementLetters } from '@/lib/placementLetters';
 import { STAT_CODE_EXECUTION, type Finding, type RuleWorld } from './rules';
 import type { Stat } from '@/types';
@@ -41,7 +42,7 @@ export async function checkStatCode(world: RuleWorld): Promise<Finding[]> {
   const results = await Promise.all(coded.map(async (stat) => {
     const { error, kind } = await executeStatCode(stat.code ?? '', stats, stat);
     if (!error) return null;
-    const name = labelPlaceholders(stat.name ?? '', world.placeholders, letters).trim() || 'Untitled';
+    const name = labelPlaceholders(stat.name ?? '', allPlaceholders(world), letters).trim() || 'Untitled';
     return {
       ruleId: STAT_CODE_EXECUTION.id,
       severity: STAT_CODE_EXECUTION.severity,

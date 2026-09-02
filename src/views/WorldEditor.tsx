@@ -67,7 +67,8 @@ import { parseJsonText, terminateWorker as terminateJsonWorker } from '@/lib/jso
 import AddDictionaryModal from '@/components/modals/AddDictionaryModal';
 import AddEntityModal from '@/components/modals/AddEntityModal';
 import { exportEntityCard } from '@/lib/entityFile';
-import { absorbPlaceholders, remapPlaceholderIds, describePlaceholders, newPlaceholder } from '@/lib/placeholders';
+import { absorbPlaceholders, describePlaceholders, newPlaceholder } from '@/lib/placeholders';
+import { remapBookChips, remapEntityChips } from '@/lib/placeholderHomes';
 import { chipPlaceholderNames, labelPlaceholders } from '@/lib/placementLetters';
 import { placeholderSelection } from '@/lib/placeholderTree';
 import { type DragEndEvent } from '@dnd-kit/core';
@@ -293,33 +294,14 @@ const WorldEditorInner = ({ onClose, embedded = false, backButton }: {
   const absorbEntityPlaceholders = (entity: Entity): Entity => {
     if (!entity.placeholders?.length) return entity;
     const { toAdd, idMap } = absorbPlaceholders(entity.placeholders, placeholders);
-    toAdd.forEach(addPlaceholder);
-    const remap = (t?: string) => (t ? remapPlaceholderIds(t, idMap) : t);
-    return {
-      ...entity,
-      name: remap(entity.name) ?? entity.name,
-      aliases: entity.aliases?.map((a) => remapPlaceholderIds(a, idMap)),
-      playerDescription: remap(entity.playerDescription),
-      aiDescription: remap(entity.aiDescription),
-      aiSummary: remap(entity.aiSummary),
-      placeholders: undefined,
-    };
+    toAdd.forEach((p) => addPlaceholder(p));
+    return { ...remapEntityChips(entity, idMap), placeholders: undefined };
   };
   const absorbDictionaryPlaceholders = (book: Dictionary): Dictionary => {
     if (!book.placeholders?.length) return book;
     const { toAdd, idMap } = absorbPlaceholders(book.placeholders, placeholders);
-    toAdd.forEach(addPlaceholder);
-    return {
-      ...book,
-      entries: book.entries.map((e) => ({
-        ...e,
-        name: e.name ? remapPlaceholderIds(e.name, idMap) : e.name,
-        key: e.key?.map((k) => remapPlaceholderIds(k, idMap)) ?? e.key,
-        secondaryKeys: e.secondaryKeys?.map((k) => remapPlaceholderIds(k, idMap)),
-        value: e.value ? remapPlaceholderIds(e.value, idMap) : e.value,
-      })),
-      placeholders: undefined,
-    };
+    toAdd.forEach((p) => addPlaceholder(p));
+    return { ...remapBookChips(book, idMap), placeholders: undefined };
   };
 
   const saveWorld = async () => {

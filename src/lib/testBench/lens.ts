@@ -9,6 +9,7 @@
  * Pure and world-shaped: nothing here reads storage or React, and nothing writes the world.
  */
 import { describePlaceholders } from '@/lib/placeholders';
+import { allPlaceholders } from '@/lib/placeholderHomes';
 import { labelPlaceholders, worldPlacementLetters } from '@/lib/placementLetters';
 import {
   activePlaceholderPins, activeStatEnabled, exclusiveSiblings, inAuthoredOrder, traitOrderIndex,
@@ -20,7 +21,7 @@ import type { RuleWorld } from './rules';
  *  letter the pickers' chips the way the editor letters them — entities come first in that walk. */
 export type LensWorld =
   Pick<RuleWorld, 'traits' | 'traitGroups' | 'locations' | 'placeholders' | 'stats'>
-  & Partial<Pick<RuleWorld, 'entities' | 'dictionaries' | 'worldOverview'>>;
+  & Partial<Pick<RuleWorld, 'entities' | 'entityGroups' | 'dictionaries' | 'worldOverview'>>;
 
 /** What the author picked, as the two ids it comes down to. Both nullable: no PC is a real setting (the
  *  world as anyone would meet it), and a world with no locations has nowhere to stand. */
@@ -71,7 +72,7 @@ export interface BenchLens {
  * so the picker and the list agree on what a character is called.
  */
 export function lensPcOptions(world: LensWorld): LensOption[] {
-  const placeholders = world.placeholders ?? [];
+  const placeholders = allPlaceholders(world);
   const exclusive = new Map(
     (world.traitGroups ?? []).filter((g) => g.exclusive).map((g) => [g.id, g.name]),
   );
@@ -88,7 +89,7 @@ export function lensPcOptions(world: LensWorld): LensOption[] {
 
 /** Everywhere the author can stand, in authored order, named as the editor's own list names it. */
 export function lensLocationOptions(world: LensWorld): LensOption[] {
-  const placeholders = world.placeholders ?? [];
+  const placeholders = allPlaceholders(world);
   const letters = worldPlacementLetters(world);
   return (world.locations ?? []).map((l) => ({
     id: l.id,
@@ -148,8 +149,8 @@ export function buildLens(world: LensWorld, state: LensState): BenchLens {
     state,
     pc,
     location: (world.locations ?? []).find((l) => l.id === state.locationId) ?? null,
-    pins: activePlaceholderPins(active, world.placeholders ?? []),
-    brokenPins: pc ? brokenPinsOf(pc, world.placeholders ?? []) : [],
+    pins: activePlaceholderPins(active, allPlaceholders(world)),
+    brokenPins: pc ? brokenPinsOf(pc, allPlaceholders(world)) : [],
     statEnabled: activeStatEnabled(world.stats ?? [], active),
   };
 }

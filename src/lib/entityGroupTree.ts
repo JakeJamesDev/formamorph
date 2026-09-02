@@ -7,6 +7,7 @@ import {
   removeChildrenOf as removeChildrenOfGeneric, isDescendantGroup as isDescendantGroupGeneric,
   type GroupTreeNode, type FlatTreeNode,
 } from './groupTree';
+import { duplicateEntityPlaceholders } from './placeholderHomes';
 import type { Entity, EntityGroup } from '@/types';
 
 export type EntityTreeNode = GroupTreeNode<EntityGroup, Entity>;
@@ -39,12 +40,16 @@ export const getEntityDropProjection = (
 ): { depth: number; parentId: string | null } =>
   getDropProjection(items, activeId, overId, dragOffset, indentationWidth);
 
-/** Deep-duplicate an entity or a whole group subtree, inserting the copy right after the original. */
+/** Deep-duplicate an entity or a whole group subtree, inserting the copy right after the original. A copy
+ *  with placeholders of its own gets fresh ones, its chips re-aimed at them, so the two never share a def. */
 export function duplicateEntityNode(
   groups: EntityGroup[], entities: Entity[], id: string,
 ): { groups: EntityGroup[]; entities: Entity[]; newId: string } {
   const r = duplicateNode(groups, entities, id);
-  return { groups: r.groups, entities: r.leaves, newId: r.newId };
+  if (r.leaves === entities) return { groups: r.groups, entities, newId: r.newId };
+  const original = new Set(entities.map((e) => e.id));
+  const leaves = r.leaves.map((e) => (original.has(e.id) ? e : duplicateEntityPlaceholders(e)));
+  return { groups: r.groups, entities: leaves, newId: r.newId };
 }
 
 /** Resolve a drag into new groups/entities arrays (re-parent + reindex). Illegal/unfound moves are no-ops. */

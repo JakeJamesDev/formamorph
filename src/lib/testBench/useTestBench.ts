@@ -75,7 +75,7 @@ export function useTestBench({
   const {
     worldId, worldOverview, getWorldData, worldMetadata, updateWorldOverview,
     setStats, setLocations, setConnections, setEntities, setEntityGroups,
-    setTraits, setTraitGroups, setStatUpdates, setDictionaries, setPlaceholders,
+    setTraits, setTraitGroups, setStatUpdates, setDictionaries, setWorldPlaceholders,
   } = useGameData();
 
   const [benchOpen, setBenchOpen] = useState(false);
@@ -255,10 +255,10 @@ export function useTestBench({
     if (after.traitGroups !== before.traitGroups) setTraitGroups(after.traitGroups ?? []);
     if (after.statUpdates !== before.statUpdates) setStatUpdates(after.statUpdates);
     if (after.dictionaries !== before.dictionaries) setDictionaries(after.dictionaries);
-    if (after.placeholders !== before.placeholders) setPlaceholders(after.placeholders ?? []);
+    if (after.placeholders !== before.placeholders) setWorldPlaceholders(after.placeholders ?? []);
     noteFirstDownloadEdit();
   }, [updateWorldOverview, setStats, setLocations, setConnections, setEntities,
-      setEntityGroups, setTraits, setTraitGroups, setStatUpdates, setDictionaries, setPlaceholders,
+      setEntityGroups, setTraits, setTraitGroups, setStatUpdates, setDictionaries, setWorldPlaceholders,
       noteFirstDownloadEdit]);
   // The image conversion is the one repair the pure pass can't carry — it decodes and re-encodes every
   // convertible picture. So it runs like the stat-code check: one at a time, and a result about a world the

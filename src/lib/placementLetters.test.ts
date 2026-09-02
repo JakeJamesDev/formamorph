@@ -203,3 +203,18 @@ describe('labelPlaceholders', () => {
     expect(labelPlaceholders('', placeholders, letters)).toBe('');
   });
 });
+
+describe('the walk over placeholders an entity or a book carries', () => {
+  // A Unique chip inside a scoped placeholder's value counts like any other: after the world's own values,
+  // entities before books, so its letter sits where the combined list puts the row.
+  it('letters scoped values after the world list, entities first, then books', () => {
+    const letters = worldPlacementLetters({
+      placeholders: [P('own', 'Own', [chip('eye', 'w1')])],
+      dictionaries: [{ id: 'b', name: 'B', entries: [], placeholders: [P('lore', 'Lore', [chip('eye', 'b1')])] }],
+      entities: [{ id: 'e', name: 'Molly', placeholders: [P('eyes', 'Eyes', [chip('eye', 'e1')])] }],
+    });
+    expect(letters.get('w1')).toBe('A');
+    expect(letters.get('e1')).toBe('B');
+    expect(letters.get('b1')).toBe('C');
+  });
+});

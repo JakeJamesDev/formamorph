@@ -15,6 +15,7 @@ import {
 } from '@/lib/placeholders';
 import { labelPlaceholders, worldPlacementLetters, type PlacementLetters } from '@/lib/placementLetters';
 import { holdsAsChip, qualifiedPlaceholderName } from '@/lib/placeholderTree';
+import { allPlaceholders, mapAllPlaceholders, withoutPlaceholders, type PlaceholderSlices } from '@/lib/placeholderHomes';
 import { matchKey } from '@/lib/entityMatch';
 import { activeDescriptor } from '@/lib/statContext';
 import {
@@ -127,6 +128,19 @@ const withSlice = <K extends keyof RuleWorld>(world: RuleWorld, key: K, value: R
   value === world[key] || (world[key] === undefined && Array.isArray(value) && value.length === 0)
     ? world : { ...world, [key]: value };
 
+/** `world` carrying the three placeholder-bearing slices, each through `withSlice`. */
+const withPlaceholderSlices = (world: RuleWorld, next: PlaceholderSlices): RuleWorld =>
+  withSlice(withSlice(withSlice(world, 'placeholders', next.placeholders), 'entities', next.entities), 'dictionaries', next.dictionaries);
+
+/** The world with `fn` applied to every placeholder, whichever list holds it — the world's own, an
+ *  entity's or a book's — so a fix repairs exactly what its check reported. */
+const withMappedPlaceholders = (world: RuleWorld, fn: (ph: Placeholder) => Placeholder): RuleWorld =>
+  withPlaceholderSlices(world, mapAllPlaceholders(world, fn));
+
+/** The world with the given placeholders removed from whichever list holds them. */
+const withoutDeadPlaceholders = (world: RuleWorld, ids: ReadonlySet<string>): RuleWorld =>
+  withPlaceholderSlices(world, withoutPlaceholders(world, ids));
+
 /** "a, b and c" — how a finding names the handful of items it covers. */
 const listNames = (names: string[]): string =>
   names.length <= 1 ? (names[0] ?? '') : `${names.slice(0, -1).join(', ')} and ${names[names.length - 1]}`;
@@ -147,17 +161,17 @@ const lettersOf = (world: RuleWorld): PlacementLetters => {
  *  own list. */
 const asItem = (entity: Entity, world: RuleWorld): FindingItem => ({
   id: entity.id,
-  name: labelPlaceholders(entity.name ?? '', world.placeholders, lettersOf(world)) || 'Untitled',
+  name: labelPlaceholders(entity.name ?? '', allPlaceholders(world), lettersOf(world)) || 'Untitled',
 });
 
 /** An entity's written forms — its name and aliases, chips resolved, blanks dropped. */
 const writtenForms = (entity: Entity, world: RuleWorld): string[] =>
   [entity.name, ...(entity.aliases ?? [])]
-    .map((text) => describePlaceholders(text ?? '', world.placeholders).trim())
+    .map((text) => describePlaceholders(text ?? '', allPlaceholders(world)).trim())
     .filter(Boolean);
 
 const aliasesOf = (entity: Entity, world: RuleWorld): string[] =>
-  (entity.aliases ?? []).map((a) => describePlaceholders(a ?? '', world.placeholders).trim()).filter(Boolean);
+  (entity.aliases ?? []).map((a) => describePlaceholders(a ?? '', allPlaceholders(world)).trim()).filter(Boolean);
 
 // An alias phrase led by an article. Alias matching is case-sensitive, so "the visitor" misses every
 // sentence-initial "The visitor" and vice versa — the article is the whole defect.
@@ -268,7 +282,7 @@ const aliasSelfDuplicate: Rule = {
   advanced: true,
   summary: (count) => `${count} aliases repeat their own entity’s name, which already matches on its own`,
   check: (world) => (world.entities ?? []).flatMap((entity) => {
-    const name = describePlaceholders(entity.name ?? '', world.placeholders);
+    const name = describePlaceholders(entity.name ?? '', allPlaceholders(world));
     return aliasesOf(entity, world)
       // An articled alias of an articled name is the article rule's: its fix strips to a bare form the
       // name can't match on its own, where deleting the alias would drop that coverage.
@@ -281,11 +295,11 @@ const aliasSelfDuplicate: Rule = {
       ));
   }),
   fix: (world) => withSlice(world, 'entities', mapChanged(world.entities ?? [], (entity) => {
-    const name = describePlaceholders(entity.name ?? '', world.placeholders);
+    const name = describePlaceholders(entity.name ?? '', allPlaceholders(world));
     const aliases = entity.aliases;
     if (!aliases?.length) return entity;
     const next = aliases.filter((alias) => {
-      const text = describePlaceholders(alias ?? '', world.placeholders).trim();
+      const text = describePlaceholders(alias ?? '', allPlaceholders(world)).trim();
       return LEADING_ARTICLE.test(text) || !nameCoversAlias(name, text);
     });
     return next.length === aliases.length ? entity : { ...entity, aliases: next };
@@ -295,7 +309,7 @@ const aliasSelfDuplicate: Rule = {
 /** A non-entity item, chips labeled like the editor's own lists label them. */
 const namedItem = (id: string, name: string | undefined, world: RuleWorld, section?: FindingSection): FindingItem => ({
   id,
-  name: labelPlaceholders(name ?? '', world.placeholders, lettersOf(world)).trim() || 'Untitled',
+  name: labelPlaceholders(name ?? '', allPlaceholders(world), lettersOf(world)).trim() || 'Untitled',
   ...(section ? { section } : {}),
 });
 
@@ -305,7 +319,7 @@ const namedItem = (id: string, name: string | undefined, world: RuleWorld, secti
  * still lands on the row rather than on whatever owns it.
  */
 const placeholderItem = (id: string, world: RuleWorld, section?: FindingSection): FindingItem =>
-  namedItem(id, qualifiedPlaceholderName(world.placeholders ?? [], id) ?? undefined, world, section);
+  namedItem(id, qualifiedPlaceholderName(allPlaceholders(world), id) ?? undefined, world, section);
 
 /** An entry as its list labels it: the free name, else the first keyword. */
 const entryItem = (entry: DictionaryEntry, world: RuleWorld): FindingItem =>
@@ -374,7 +388,7 @@ const traitPinInvalid: Rule = {
   // Only the placeholder has to exist. Pinning a value its list doesn't carry is the feature — a trait
   // forcing a shade nobody else rolls — and play applies it verbatim.
   check: (world) => {
-    const known = new Set((world.placeholders ?? []).map((p) => p.id));
+    const known = new Set(allPlaceholders(world).map((p) => p.id));
     return (world.traits ?? []).flatMap((trait) =>
       (trait.placeholderPins ?? [])
         .filter((pin) => !known.has(pin.placeholderId))
@@ -445,7 +459,7 @@ const chipUnknownPlaceholder: Rule = {
   advanced: true,
   summary: (count) => `${count} items contain chips pointing at placeholders that don’t exist`,
   check: (world) => {
-    const known = new Set((world.placeholders ?? []).map((p) => p.id));
+    const known = new Set(allPlaceholders(world).map((p) => p.id));
     return chipOwners(world)
       .filter((owner) => [...chipIds(owner.texts)].some((id) => !known.has(id)))
       .map((owner) => finding(
@@ -483,7 +497,7 @@ const allChipTexts = (world: RuleWorld): Array<string | undefined> => [
   ...chipOwners(world).flatMap((owner) => owner.texts),
   // Values are chip-capable, so a structural child is placed by the parent that names it and by nothing
   // else. Reading it as unused would put a delete-it Fix on the parts a whole character is built from.
-  ...(world.placeholders ?? []).flatMap((ph) => (ph.values ?? []).map((v) => v.text)),
+  ...allPlaceholders(world).flatMap((ph) => (ph.values ?? []).map((v) => v.text)),
   world.worldOverview?.description,
   ...(world.stats ?? []).flatMap((s) => [s.description, ...(s.descriptors ?? []).map((d) => d.description)]),
   ...(world.statUpdates ?? []).map((u) => u.prompt),
@@ -494,7 +508,7 @@ const allChipTexts = (world: RuleWorld): Array<string | undefined> => [
  *  exactly partition "unplaced", and the delete-fix can never orphan a pin. */
 const unplacedPlaceholders = (world: RuleWorld): Array<{ placeholder: Placeholder; pinnedBy: Trait[] }> => {
   const placed = chipIds(allChipTexts(world));
-  return (world.placeholders ?? [])
+  return allPlaceholders(world)
     .filter((p) => !placed.has(p.id))
     .map((placeholder) => ({
       placeholder,
@@ -520,7 +534,7 @@ const placeholderUnused: Rule = {
       .filter(({ pinnedBy }) => pinnedBy.length === 0)
       .map(({ placeholder }) => placeholder.id));
     if (dead.size === 0) return world;
-    return withSlice(world, 'placeholders', (world.placeholders ?? []).filter((p) => !dead.has(p.id)));
+    return withoutDeadPlaceholders(world, dead);
   },
 };
 
@@ -584,7 +598,7 @@ const statCodeUnknownStat: Rule = {
   check: (world) => {
     // Code compares against runtime names, where chips have resolved — so both spellings are valid targets.
     const stats = world.stats ?? [];
-    const known = new Set(stats.flatMap((s) => [s.name, describePlaceholders(s.name ?? '', world.placeholders)]));
+    const known = new Set(stats.flatMap((s) => [s.name, describePlaceholders(s.name ?? '', allPlaceholders(world))]));
     return stats.flatMap((stat) => {
       if (!stat.code) return [];
       const item = namedItem(stat.id, stat.name, world);
@@ -997,7 +1011,7 @@ const codeReadsSelf = (stat: Stat, world: RuleWorld): boolean => {
     ? new RegExp(`["'\`]${stat.id.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}["'\`]`)
     : undefined;
   if (/\bcurrentStatId\b/.test(code) || quotedId?.test(code)) return true;
-  const names = new Set([stat.name, describePlaceholders(stat.name ?? '', world.placeholders)]);
+  const names = new Set([stat.name, describePlaceholders(stat.name ?? '', allPlaceholders(world))]);
   return statNamesInCode(code).some((name) => names.has(name));
 };
 
@@ -1102,7 +1116,7 @@ const statUpdateUnknownStat: Rule = {
   check: (world) => {
     // Updates target runtime names, where chips have resolved — so both spellings are valid targets.
     const known = new Set((world.stats ?? []).flatMap(
-      (s) => [s.name, describePlaceholders(s.name ?? '', world.placeholders)],
+      (s) => [s.name, describePlaceholders(s.name ?? '', allPlaceholders(world))],
     ));
     return (world.statUpdates ?? []).flatMap((update) => {
       const item = namedItem(update.id, update.name, world);
@@ -1129,7 +1143,7 @@ const aliasLowercaseNoTwin: Rule = {
     `${count} lowercase multi-word aliases have no capitalized twin — alias matching is case-sensitive, so they miss wherever the text capitalizes them`,
   check: (world) => (world.entities ?? []).flatMap((entity) => {
     const aliases = aliasesOf(entity, world);
-    const name = describePlaceholders(entity.name ?? '', world.placeholders);
+    const name = describePlaceholders(entity.name ?? '', allPlaceholders(world));
     return aliases
       // The leading article is the sharper diagnosis; once its fix strips it, this rule picks the alias up.
       .filter((alias) => !LEADING_ARTICLE.test(alias))
@@ -1154,9 +1168,9 @@ const entityNameInWildcardPool: Rule = {
   advanced: true,
   summary: (count) => `${count} entity names double as Wildcard values, so a roll can impersonate the entity`,
   check: (world) => (world.entities ?? []).flatMap((entity) => {
-    const nameKey = matchKey(describePlaceholders(entity.name ?? '', world.placeholders));
+    const nameKey = matchKey(describePlaceholders(entity.name ?? '', allPlaceholders(world)));
     if (!nameKey) return [];
-    return (world.placeholders ?? [])
+    return allPlaceholders(world)
       .filter((ph) => (ph.values ?? []).length >= 2 && (ph.values ?? []).some((v) => matchKey(v.text) === nameKey))
       .map((ph) => {
         const item = asItem(entity, world);
@@ -1237,7 +1251,7 @@ const summaryOwners = (world: RuleWorld): SummaryOwner[] => [
 /** A field's cost as the prompt will actually pay it — chips resolved first, the same way AI Context
  *  estimates, so chip syntax can neither push a short description over a bound nor hide a bloated summary. */
 const resolvedTokens = (text: string | undefined, world: RuleWorld): number =>
-  estimateTokens(describePlaceholders(text ?? '', world.placeholders).length);
+  estimateTokens(describePlaceholders(text ?? '', allPlaceholders(world)).length);
 
 // Long enough that serving the full text on every turn is a real cost to a small model's budget — the
 // summary field exists exactly to shorten these.
@@ -1383,7 +1397,7 @@ const placeholderWeightUnknownValue: Rule = {
   section: 'placeholders',
   advanced: true,
   summary: (count) => `${count} placeholders weight values their pool doesn’t contain`,
-  check: (world) => (world.placeholders ?? []).flatMap((ph) => {
+  check: (world) => allPlaceholders(world).flatMap((ph) => {
     const dead = deadWeightKeys(ph);
     if (dead.length === 0) return [];
     const item = placeholderItem(ph.id, world);
@@ -1396,7 +1410,7 @@ const placeholderWeightUnknownValue: Rule = {
       [item],
     )];
   }),
-  fix: (world) => withSlice(world, 'placeholders', mapChanged(world.placeholders ?? [], (ph) => {
+  fix: (world) => withMappedPlaceholders(world, (ph) => {
     const dead = new Set(deadWeightKeys(ph));
     if (dead.size === 0) return ph;
     const weights = Object.fromEntries(Object.entries(ph.weights ?? {}).filter(([key]) => !dead.has(key)));
@@ -1406,7 +1420,7 @@ const placeholderWeightUnknownValue: Rule = {
       return rest;
     }
     return { ...ph, weights };
-  })),
+  }),
 };
 
 const wildcardSingleValue: Rule = {
@@ -1415,7 +1429,7 @@ const wildcardSingleValue: Rule = {
   section: 'placeholders',
   advanced: true,
   summary: (count) => `${count} Wildcards can only ever draw one value, so they never vary`,
-  check: (world) => (world.placeholders ?? [])
+  check: (world) => allPlaceholders(world)
     // One authored value is a Variable, which is supposed to be fixed — only weights can strand a Wildcard.
     .filter((ph) => (ph.values ?? []).length >= 2 && drawableValues(ph).length === 1)
     .map((ph) => {
@@ -1446,7 +1460,7 @@ const PROBE_ROUNDS = 8;
  * whose values carry no chips, where there is no branch to route through in the first place.
  */
 const probeRounds = (world: RuleWorld): number => {
-  const placeholders = world.placeholders ?? [];
+  const placeholders = allPlaceholders(world);
   if (!placeholders.some((ph) => (ph.values ?? []).some((v) => hasPlaceholders(v.text ?? '')))) return 1;
   return Math.min(PROBE_ROUNDS, Math.max(1, ...placeholders.map((ph) => (ph.values ?? []).length)));
 };
@@ -1466,7 +1480,7 @@ const probeText = (
   const results: string[] = [];
   for (let round = 0; round < rounds; round++) {
     results.push(resolvePlaceholders(text, {
-      placeholders: world.placeholders ?? [],
+      placeholders: allPlaceholders(world),
       rolls: {},
       pick: branchPick(round),
       onFinding: (raised) => findings.push(raised),
@@ -1515,11 +1529,11 @@ const placeholderDanglingReference: Rule = {
   advanced: true,
   summary: (count) => `${count} placeholder chips point at a placeholder that no longer exists`,
   check: (world) => {
-    const known = new Set((world.placeholders ?? []).map((p) => p.id));
+    const known = new Set(allPlaceholders(world).map((p) => p.id));
     const gone = (id: string) => !known.has(id);
     const drilledIntoNothing = (token: PlaceholderToken) =>
       (token.path ?? []).some((segment) => segment.kind === 'val' && gone(segment.ref));
-    const inValues = (world.placeholders ?? []).flatMap((ph) => {
+    const inValues = allPlaceholders(world).flatMap((ph) => {
       const item = placeholderItem(ph.id, world);
       return (ph.values ?? [])
         .flatMap((v) => chipTokens(v.text))
@@ -1581,7 +1595,7 @@ const placeholderReferenceCycle: Rule = {
   advanced: true,
   summary: (count) => `${count} placeholders reference themselves in a loop, so every chip of one shows nothing`,
   check: (world) => {
-    const placeholders = world.placeholders ?? [];
+    const placeholders = allPlaceholders(world);
     return referenceCycles(placeholders).map((ring) => {
       const items = ring.map((id) => placeholderItem(id, world));
       const loop = items.length === 1
@@ -1603,7 +1617,7 @@ const placeholderEmptyRecord: Rule = {
   // Never a Wildcard: one of those showing nothing is one empty value in a pool, which is the author's business.
   check: (world) => {
     const rounds = probeRounds(world);
-    return (world.placeholders ?? [])
+    return allPlaceholders(world)
       .filter((ph) => (ph.values ?? []).length > 0 && !placeholderIsChoice(ph))
       .flatMap((ph) => {
         const token = encodePlaceholderToken({ id: ph.id, mode: 'world', placementId: 'bench' });
@@ -1630,8 +1644,8 @@ const placeholderDuplicateSlot: Rule = {
   section: 'placeholders',
   advanced: true,
   summary: (count) => `${count} placeholders carry two slots under one name, so a path naming it always takes the first`,
-  check: (world) => (world.placeholders ?? []).flatMap((ph) => {
-    const names = placeholderChildren(ph, world.placeholders ?? []).map((child) => child.target.name);
+  check: (world) => allPlaceholders(world).flatMap((ph) => {
+    const names = placeholderChildren(ph, allPlaceholders(world)).map((child) => child.target.name);
     const repeated = [...new Set(names.filter((name, i) => names.indexOf(name) !== i))];
     if (repeated.length === 0) return [];
     const item = placeholderItem(ph.id, world);
@@ -1683,7 +1697,7 @@ const deadSharedWeights = (
   });
 
 const placeholdersById = (world: RuleWorld) =>
-  new Map((world.placeholders ?? []).map((ph) => [ph.id, ph]));
+  new Map(allPlaceholders(world).map((ph) => [ph.id, ph]));
 
 const placeholderSharedWeightUnknownValue: Rule = {
   id: 'placeholder-shared-weight-unknown-value',
@@ -1693,7 +1707,7 @@ const placeholderSharedWeightUnknownValue: Rule = {
   summary: (count) => `${count} shared rows weight values their original no longer carries`,
   check: (world) => {
     const byId = placeholdersById(world);
-    return (world.placeholders ?? []).flatMap((ph) => deadSharedWeights(ph, byId).map(({ original, dead }) => {
+    return allPlaceholders(world).flatMap((ph) => deadSharedWeights(ph, byId).map(({ original, dead }) => {
       const item = placeholderItem(ph.id, world);
       const from = quote(placeholderItem(original.id, world).name);
       // Dead keys are value ids, which say nothing to an author, so the count carries the finding.
@@ -1708,7 +1722,7 @@ const placeholderSharedWeightUnknownValue: Rule = {
   },
   fix: (world) => {
     const byId = placeholdersById(world);
-    return withSlice(world, 'placeholders', mapChanged(world.placeholders ?? [], (ph) => {
+    return withMappedPlaceholders(world, (ph) => {
       const dead = deadSharedWeights(ph, byId);
       if (dead.length === 0) return ph;
       const drop = new Map(dead.map((d) => [d.key, new Set(d.dead)]));
@@ -1724,7 +1738,7 @@ const placeholderSharedWeightUnknownValue: Rule = {
         return rest;
       }
       return { ...ph, sharedWeights: Object.fromEntries(kept) };
-    }));
+    });
   },
 };
 
@@ -1732,7 +1746,7 @@ const placeholderSharedWeightUnknownValue: Rule = {
  *  wrong: the owner is not in the world at all, or it is and no longer holds the placeholder as a value. */
 const staleOwners = (world: RuleWorld, kind: 'orphan' | 'dropped'): Placeholder[] => {
   const byId = placeholdersById(world);
-  return (world.placeholders ?? []).filter((ph) => {
+  return allPlaceholders(world).filter((ph) => {
     if (ph.ownerId === undefined) return false;
     const owner = byId.get(ph.ownerId);
     return kind === 'orphan' ? !owner : !!owner && !holdsAsChip(owner, ph.id);
@@ -1743,11 +1757,11 @@ const staleOwners = (world: RuleWorld, kind: 'orphan' | 'dropped'): Placeholder[
  *  rule's, so a Fix button repairs only the rows its own finding named. */
 const releaseOwners = (world: RuleWorld, kind: 'orphan' | 'dropped'): RuleWorld => {
   const stale = new Set(staleOwners(world, kind).map((ph) => ph.id));
-  return withSlice(world, 'placeholders', mapChanged(world.placeholders ?? [], (ph) => {
+  return withMappedPlaceholders(world, (ph) => {
     if (!stale.has(ph.id)) return ph;
     const { ownerId: _gone, ...rest } = ph;
     return rest;
-  }));
+  });
 };
 
 const placeholderOwnerOrphan: Rule = {
@@ -1858,7 +1872,7 @@ const dictionaryDisabled: Rule = {
 /** The world as a finding names it — for rules whose subject has no list row of its own. */
 const worldItem = (world: RuleWorld): FindingItem => ({
   id: 'overview',
-  name: describePlaceholders(world.worldOverview?.name ?? '', world.placeholders).trim() || 'This World',
+  name: describePlaceholders(world.worldOverview?.name ?? '', allPlaceholders(world)).trim() || 'This World',
 });
 
 const worldEmptySystemPrompt: Rule = {

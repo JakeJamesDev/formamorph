@@ -15,6 +15,7 @@
  * Pure and world-shaped: no React, no storage, no world mutation.
  */
 import { defaultNarrationUserPrompt, defaultSystemPrompt } from '@/components/game/GamePrompts';
+import { allPlaceholders } from '@/lib/placeholderHomes';
 import { DEFAULT_MAX_TOKENS } from '@/contexts/settingsDefaults';
 import { authoredPreviewValues } from '@/lib/authoredPreviewValues';
 import { estimateTokens } from '@/lib/memoryUtils';
@@ -126,11 +127,11 @@ export const EMPTY_OPENING: OpeningData = {
 /** The pins every active trait imposes — the fresh game's, not just the lens PC's, because a default
  *  trait's pin binds every playthrough. */
 const openingPins = (world: OpeningWorld, lens: BenchLens): Record<string, string> =>
-  activePlaceholderPins(lensActiveTraits(world, lens), world.placeholders ?? []);
+  activePlaceholderPins(lensActiveTraits(world, lens), allPlaceholders(world));
 
 /** Every text any trait pins a placeholder to — walked beside the rolls, exactly as Enter World walks them. */
 const openingPinTexts = (world: OpeningWorld): Record<string, string[]> =>
-  allPinTexts(world.traits ?? [], world.placeholders ?? []);
+  allPinTexts(world.traits ?? [], allPlaceholders(world));
 
 /**
  * Roll every wildcard placement a fresh game would prime, keeping whatever `existing` already holds — the
@@ -141,7 +142,7 @@ export function primeOpeningRolls(
   existing: PlaceholderRolls = {},
   pick?: PlaceholderPick,
 ): PlaceholderRolls {
-  return primeRolls(world.placeholders ?? [], chipBearingTexts(world), existing, pick, openingPinTexts(world));
+  return primeRolls(allPlaceholders(world), chipBearingTexts(world), existing, pick, openingPinTexts(world));
 }
 
 /**
@@ -172,7 +173,7 @@ export function rerollOpeningRolls(
     const tail = key.slice(key.lastIndexOf('/') + 1);
     return tail === key ? placementOwner.get(key) : tail;
   };
-  return primeRolls(world.placeholders ?? [], texts, {
+  return primeRolls(allPlaceholders(world), texts, {
     world: keep(previous.world, (id) => id),
     unique: keep(previous.unique, uniqueOwner),
   }, pick, pinTexts);
@@ -210,7 +211,7 @@ function settleOpeningStats(world: OpeningWorld, active: Trait[]): { settled: Pl
  * a fresh game always begins at the world's starting location, wherever the lens is standing.
  */
 export function buildOpening(world: OpeningWorld, lens: BenchLens, rolls: PlaceholderRolls): OpeningData {
-  const placeholders = world.placeholders ?? [];
+  const placeholders = allPlaceholders(world);
   const locations = world.locations ?? [];
   const active = lensActiveTraits(world, lens);
   const pins = openingPins(world, lens);

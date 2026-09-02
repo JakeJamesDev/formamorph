@@ -6,6 +6,7 @@
  * part play has no reason to compute: why an entry that *didn't* fire didn't, phrased as something an
  * author can act on.
  */
+import { allPlaceholders } from '@/lib/placeholderHomes';
 import {
   buildDictionaryContext, explainActivation, historyForEntry, invalidRegexKeys, matchHits, matchRuleOf,
   parseKeywords,
@@ -20,7 +21,7 @@ import type { RuleWorld } from './rules';
 import { traceSemantic, type EntrySemantic, type SemanticInput } from './semantic';
 
 /** The slices of the authored world the tracer reads. */
-export type TriggerWorld = Pick<RuleWorld, 'entities' | 'dictionaries' | 'placeholders'>;
+export type TriggerWorld = Pick<RuleWorld, 'entities' | 'entityGroups' | 'dictionaries' | 'placeholders'>;
 
 /** The lens PC's placeholder pins — placeholder id → the value that character forces. */
 type Pins = Record<string, string>;
@@ -282,7 +283,7 @@ export function buildTriggerReport(
   sceneText: string,
   opts: { history?: string[]; semantic?: SemanticInput; pins?: Pins } = {},
 ): TriggerReport {
-  const placeholders = world.placeholders ?? [];
+  const placeholders = allPlaceholders(world);
   const pins = opts.pins ?? NO_PINS;
   const historyCount = (opts.history ?? []).length;
   const entities = findEntityMatches(

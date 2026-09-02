@@ -1,6 +1,7 @@
 import type { World, Entity, Dictionary } from '@/types';
 import type { CatalogKind } from '@/lib/catalogKinds';
 import { describePlaceholders } from '@/lib/placeholders';
+import { allPlaceholders } from '@/lib/placeholderHomes';
 import { entityPlacementLetters, labelPlaceholders } from '@/lib/placementLetters';
 import { primaryImage } from '@/lib/entityImages';
 
@@ -40,7 +41,7 @@ export function worldPublishPayload(world: World): PublishPayload {
   return {
     kind: 'world',
     name: overview.name || 'Untitled World',
-    description: describePlaceholders(overview.description || '', world.placeholders),
+    description: describePlaceholders(overview.description || '', allPlaceholders(world)),
     thumbnail: overview.thumbnail || undefined,
     contentData: { ...world, worldOverview: { ...overview, tags: overview.tags ?? [] } },
     tags: overview.tags ?? [],

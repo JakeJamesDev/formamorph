@@ -5,6 +5,7 @@ import { openDatabase, promisifyRequest } from '@/lib/idb';
 import { migrateCarriedPlaceholders, migrateWorld } from '@/lib/version';
 import { contentHash } from '@/lib/contentHash';
 import { describePlaceholders } from '@/lib/placeholders';
+import { allPlaceholders } from '@/lib/placeholderHomes';
 import { readDeletedDefaultWorlds, tombstoneDefaultWorld, type DefaultWorldSeed } from '@/lib/defaultWorlds';
 import { changelogOf, type ChangelogDraft, type ChangelogEntry } from '@/lib/listingChangelog';
 import type { WorldMetadata } from '@/types';
@@ -144,7 +145,7 @@ class WorldStorageService {
       // since a library card has no playthrough whose rolls it could read.
       // Stored records never pass through `migrateWorld`, so their defs take the value-record conversion
       // here — the same read-boundary treatment the dictionary library gives its keyword arrays.
-      description: describePlaceholders(world.description ?? '', migrateCarriedPlaceholders(world.data?.placeholders)),
+      description: describePlaceholders(world.description ?? '', allPlaceholders({ ...world.data, placeholders: migrateCarriedPlaceholders(world.data?.placeholders) })),
       author: world.author || '',
       // A remote (http) thumbnail can't render offline and is blocked cross-origin by the server's CORP
       // header, so prefer the world's own embedded thumbnail (base64) when the stored one is a URL. New
