@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import {
   $getSelection, $isRangeSelection, $isTextNode, $createRangeSelection, $setSelection,
@@ -12,7 +12,7 @@ import { CHIP_BASE } from '@/components/Chip';
 import { cn } from '@/lib/utils';
 import { useWheelScroll } from '@/lib/useWheelScroll';
 import { PLACEHOLDER_PATH_SEPARATOR } from '@/lib/placeholders';
-import type { ChipVocabulary } from '@/lib/chipVocabulary';
+import { chipSectionOpens, type ChipVocabulary } from '@/lib/chipVocabulary';
 import { $createVariableNode } from './VariableNode';
 
 /**
@@ -38,6 +38,8 @@ interface Row {
   token: string;
   label: string;
   color?: string;
+  /** The section the root menu lists it under, drawn where it changes — see `ChipRow.heading`. */
+  heading?: string;
   nests: boolean;
 }
 
@@ -289,8 +291,15 @@ export function ChipTypeaheadPlugin({ trigger, vocab }: {
         </button>
       )}
       <div ref={scroller} className="max-h-56 overflow-y-auto">
-        {items.map((item, i) => (
-          <div key={item.token} className={cn('flex items-center rounded', i === index && 'bg-accent')}>
+        {items.map((item, i) => {
+          const opens = chipSectionOpens(items, i);
+          return (
+          <Fragment key={item.token}>
+          {opens && item.heading && (
+            <div className="px-1.5 pb-0.5 pt-1.5 text-meta text-muted-foreground">{item.heading}</div>
+          )}
+          {opens && i > 0 && !item.heading && <div className="my-1 border-t border-border" />}
+          <div className={cn('flex items-center rounded', i === index && 'bg-accent')}>
             <button
               type="button"
               data-testid="chip-typeahead-row"
@@ -315,7 +324,9 @@ export function ChipTypeaheadPlugin({ trigger, vocab }: {
               </button>
             )}
           </div>
-        ))}
+          </Fragment>
+          );
+        })}
         {!items.length && !createName && (
           <div className="px-1.5 py-1 text-helper text-muted-foreground">Nothing matches.</div>
         )}

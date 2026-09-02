@@ -107,6 +107,16 @@ describe('buildEntityCardData', () => {
     expect(parseEntityCardData({ formamorphKind: 'entity', name: 'Old', placeholders: [weather] }).placeholders).toEqual([weather]);
   });
 
+  it('drops the folder reference from every def it carries — folders are the world’s', () => {
+    const weather = { id: 'weather', name: 'Weather', values: phValues(['Rain']), groupId: 'sky' };
+    const eyes = { id: 'eyes', name: 'Eyes', values: phValues(['gray']), groupId: 'body' };
+    const molly: Entity = { id: 'm', name: '{{ph:weather:world:p1}}', placeholders: [eyes] };
+    const card = buildEntityCardData(molly, [weather, eyes]);
+    expect(card.placeholders?.[0]).not.toHaveProperty('groupId');
+    expect(card.sharedPlaceholders?.[0]).not.toHaveProperty('groupId');
+    expect(card.sharedPlaceholders?.[0].id).toBe('weather');
+  });
+
   it('reads a library entity’s own pool, owned then shared, when no world pool is given', () => {
     const weather = { id: 'weather', name: 'Weather', values: phValues(['Rain']) };
     const eyes = { id: 'eyes', name: 'Eyes', values: phValues(['gray']) };

@@ -63,6 +63,7 @@ export interface StoredWorldRecord {
     dictionary?: unknown[]; // legacy v1.2.0 flat form (read-only; folded to `dictionaries` on load)
     dictionaries?: unknown[]; // v2.x books
     placeholders?: unknown[]; // v2.x author-defined variables/wildcards
+    placeholderGroups?: unknown[]; // editor folders over the shared placeholders
   };
 }
 

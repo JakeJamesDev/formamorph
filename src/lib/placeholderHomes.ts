@@ -4,7 +4,7 @@ import {
   absorbPlaceholders, collectUsedPlaceholders, remapPlaceholderIds, remintPlaceholderDef, SHARED_PATH_SEP,
 } from './placeholders';
 import { holderOf, ownedDescendants } from './placeholderTree';
-import type { Dictionary, DictionaryEntry, Entity, EntityGroup, Placeholder } from '@/types';
+import type { Dictionary, DictionaryEntry, Entity, EntityGroup, Placeholder, PlaceholderGroup } from '@/types';
 
 /**
  * Where a placeholder lives. A world keeps three kinds of list: its own shared placeholders, and the ones
@@ -22,16 +22,20 @@ export interface PlaceholderHomesWorld {
   entities?: Entity[];
   entityGroups?: EntityGroup[];
   dictionaries?: Dictionary[];
+  /** The folders the tab and the chip menus sort the shared placeholders by. */
+  placeholderGroups?: PlaceholderGroup[];
 }
 
 /** A record that carries a placeholder list of its own. */
 type PlaceholderOwner = { id: string; placeholders?: Placeholder[] };
 
-/** The three lists a write can land on, as the slices a caller writes back. */
+/** The three lists a write can land on, as the slices a caller writes back. A drop that moved a folder
+ *  carries the folders too; absent, they are untouched. */
 export interface PlaceholderSlices {
   placeholders: Placeholder[];
   entities: Entity[];
   dictionaries: Dictionary[];
+  placeholderGroups?: PlaceholderGroup[];
 }
 
 /** The entity or book a scoped placeholder belongs to, as a name surface reads it: `Molly.Eyes`. */
@@ -317,7 +321,8 @@ export function movePlaceholderHome(world: PlaceholderHomesWorld, id: string, ho
   const all = allPlaceholders(world);
   const record = all.find((p) => p.id === id);
   if (!record) return current;
-  const { ownerId: _released, ...root } = record;
+  // A folder is the world list's own, so a record leaving that list leaves its folder too.
+  const { ownerId: _released, groupId: _ungrouped, ...root } = record;
   const moving = [root, ...ownedDescendants(all, id)];
   const stripped = withoutPlaceholders(world, new Set(moving.map((p) => p.id)));
   if (home.kind === 'world') return { ...stripped, placeholders: [...stripped.placeholders, ...moving] };

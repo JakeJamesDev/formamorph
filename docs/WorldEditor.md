@@ -486,6 +486,10 @@ Placeholders resolve **both** in what the AI reads and in what the player sees, 
 
 > ⚠️ **The World Description is the exception.** It's shown in the library *before* a playthrough exists, so there are no rolls to resolve yet — that field takes no chips at all.
 
+### Groups
+
+Folders for the shared list, like the ones on the Entities tab. In Advanced mode the **+** offers **Add Group**; drag a placeholder under a folder to file it, and drag a folder under another to nest it. The palette strip and the `{` menu list the loose placeholders first, then each folder under its name. Groups are editor-only: they **never reach the AI**, a character card or dictionary file leaves them behind, and a placeholder that belongs to an entity or dictionary stays under its owner rather than in a folder.
+
 ### Getting started
 
 Define the placeholder here, then place its chip from any field that offers them. Reach for a Wildcard when you want variety, a Variable when you want one editable fact in many places.

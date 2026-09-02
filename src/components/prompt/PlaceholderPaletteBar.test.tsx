@@ -4,6 +4,8 @@ import { useEffect } from 'react';
 import PlaceholderPaletteBar from './PlaceholderPaletteBar';
 import { ChipInsertTargetProvider, useChipInsertTarget } from './ChipInsertTarget';
 import { encodePlaceholderToken } from '@/lib/placeholders';
+import { allPlaceholders, placeholderOwners } from '@/lib/placeholderHomes';
+import { PlaceholderStoreProvider, placeholderStore } from '@/contexts/PlaceholderStoreContext';
 import { phValues } from '@/test/placeholderValues';
 import type { Placeholder } from '@/types';
 
@@ -57,5 +59,57 @@ describe('PlaceholderPaletteBar cycle filter', () => {
     );
     expect(screen.getByRole('button', { name: /Placeholders/ })).toBeInTheDocument();
     expect(names()).toEqual([]);
+  });
+});
+
+/**
+ * The strip in sections: the loose shared chips first under no heading, then each folder in tree order
+ * under its path, then each owner's under its name. A heading is drawn off the first chip under it, so a
+ * section the cycle filter empties shows no heading at all.
+ */
+describe('PlaceholderPaletteBar sections', () => {
+  const groups = [
+    { id: 'body', name: 'Body', parentId: null }, { id: 'face', name: 'Face', parentId: 'body' }, { id: 'gear', name: 'Gear', parentId: null },
+  ];
+  const shared: Placeholder[] = [
+    { id: 'skin', name: 'Skin', values: phValues(['pale']), groupId: 'face' },
+    { id: 'town', name: 'Town', values: phValues(['Sedge']) },
+    { id: 'sword', name: 'Sword', values: phValues(['iron']), groupId: 'gear' },
+    { id: 'hair', name: 'Hair', values: phValues(['red']), groupId: 'body' },
+  ];
+  const eyes: Placeholder = { id: 'eyes', name: 'Eyes', values: phValues(['gray']) };
+  const lists = {
+    placeholders: shared, placeholderGroups: groups, dictionaries: [],
+    entities: [{ id: 'molly', name: 'Molly', placeholders: [eyes] }],
+  };
+  const all = allPlaceholders(lists);
+  const store = { ...placeholderStore(all, () => {}), lists, owners: placeholderOwners(lists) };
+  /** Headings and chips in strip order, a heading in brackets. */
+  const strip = () => [...document.querySelectorAll('[data-editor-find-skip] span.text-meta, [data-editor-find-skip] button')]
+    .map((el) => (el.tagName === 'SPAN' ? `[${el.textContent}]` : el.textContent))
+    .filter((t) => t && t !== 'Placeholders');
+
+  it('heads each folder in tree order and each owner by name, loose chips first', () => {
+    render(
+      <PlaceholderStoreProvider value={store}>
+        <ChipInsertTargetProvider>
+          <Claimer />
+          <PlaceholderPaletteBar placeholders={all} />
+        </ChipInsertTargetProvider>
+      </PlaceholderStoreProvider>,
+    );
+    expect(strip()).toEqual(['Town', '[Body]', 'Hair', '[Body › Face]', 'Skin', '[Gear]', 'Sword', '[Molly]', 'Molly.Eyes']);
+  });
+
+  it('hides a heading whose every chip the cycle filter removed', () => {
+    render(
+      <PlaceholderStoreProvider value={store}>
+        <ChipInsertTargetProvider>
+          <Claimer ownerId="skin" />
+          <PlaceholderPaletteBar placeholders={all} />
+        </ChipInsertTargetProvider>
+      </PlaceholderStoreProvider>,
+    );
+    expect(strip()).toEqual(['Town', '[Body]', 'Hair', '[Gear]', 'Sword', '[Molly]', 'Molly.Eyes']);
   });
 });

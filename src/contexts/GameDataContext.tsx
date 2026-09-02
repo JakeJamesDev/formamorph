@@ -31,6 +31,7 @@ import type {
   Connection,
   Dictionary,
   Placeholder,
+  PlaceholderGroup,
   World,
 } from '@/types';
 
@@ -51,8 +52,9 @@ function buildWorldData(
   statUpdates: StatUpdate[],
   dictionaries: Dictionary[],
   placeholders: Placeholder[],
+  placeholderGroups: PlaceholderGroup[],
 ): Omit<World, 'id' | 'version'> {
-  return { worldOverview: overview, stats, locations, connections, entities, entityGroups, traits, traitGroups, statUpdates, dictionaries, placeholders };
+  return { worldOverview: overview, stats, locations, connections, entities, entityGroups, traits, traitGroups, statUpdates, dictionaries, placeholders, placeholderGroups };
 }
 
 function useProvideGameData() {
@@ -73,6 +75,8 @@ function useProvideGameData() {
   const [connections, setConnections] = useState<Connection[]>([]);
   const [entities, setEntities] = useState<Entity[]>([]);
   const [entityGroups, setEntityGroups] = useState<EntityGroup[]>([]);
+  // Editor folders over the world's shared placeholders. Read by the Placeholders tab and the chip menus.
+  const [placeholderGroups, setPlaceholderGroups] = useState<PlaceholderGroup[]>([]);
   const [traits, setTraits] = useState<Trait[]>([]);
   const [traitGroups, setTraitGroups] = useState<TraitGroup[]>([]);
   const [statUpdates, setStatUpdates] = useState<StatUpdate[]>([]);
@@ -324,6 +328,7 @@ function useProvideGameData() {
     const nextDictionaries = Array.isArray(worldData.dictionaries) && worldData.dictionaries.length
       ? worldData.dictionaries : [makeDefaultBook()];
     const nextPlaceholders = Array.isArray(worldData.placeholders) ? worldData.placeholders : [];
+    const nextPlaceholderGroups = Array.isArray(worldData.placeholderGroups) ? worldData.placeholderGroups : [];
     setWorldId(worldData.id);
     setStats(nextStats);
     setLocations(nextLocations);
@@ -335,10 +340,11 @@ function useProvideGameData() {
     setStatUpdates(nextStatUpdates);
     setDictionaries(nextDictionaries);
     setWorldPlaceholders(nextPlaceholders);
+    setPlaceholderGroups(nextPlaceholderGroups);
 
     // Baseline for dirty detection: a freshly loaded world has no pending changes.
     setSavedSnapshot(JSON.stringify(buildWorldData(
-      normalizedOverview, nextStats, nextLocations, nextConnections, nextEntities, nextEntityGroups, nextTraits, nextTraitGroups, nextStatUpdates, nextDictionaries, nextPlaceholders,
+      normalizedOverview, nextStats, nextLocations, nextConnections, nextEntities, nextEntityGroups, nextTraits, nextTraitGroups, nextStatUpdates, nextDictionaries, nextPlaceholders, nextPlaceholderGroups,
     )));
 
     return { world: worldData, isDefault };
@@ -346,16 +352,16 @@ function useProvideGameData() {
 
   // The current editor state as a canonical world payload; the one source consumers serialize/save/export from.
   const getWorldData = useCallback(
-    () => buildWorldData(worldOverview, stats, locations, connections, entities, entityGroups, traits, traitGroups, statUpdates, dictionaries, worldPlaceholders),
-    [worldOverview, stats, locations, connections, entities, entityGroups, traits, traitGroups, statUpdates, dictionaries, worldPlaceholders],
+    () => buildWorldData(worldOverview, stats, locations, connections, entities, entityGroups, traits, traitGroups, statUpdates, dictionaries, worldPlaceholders, placeholderGroups),
+    [worldOverview, stats, locations, connections, entities, entityGroups, traits, traitGroups, statUpdates, dictionaries, worldPlaceholders, placeholderGroups],
   );
 
   // Every reader takes one list: the world's shared placeholders, then each entity's own in tree order,
   // then each book's. Kept by identity while no placeholder object changed, so a keystroke in an entity's
   // description does not rebuild every chip field's vocabulary.
   const lists = useMemo(
-    () => ({ placeholders: worldPlaceholders, entities, entityGroups, dictionaries }),
-    [worldPlaceholders, entities, entityGroups, dictionaries],
+    () => ({ placeholders: worldPlaceholders, entities, entityGroups, dictionaries, placeholderGroups }),
+    [worldPlaceholders, entities, entityGroups, dictionaries, placeholderGroups],
   );
   const combined = useMemo(() => allPlaceholders(lists), [lists]);
   const combinedRef = useRef(combined);
@@ -415,7 +421,18 @@ function useProvideGameData() {
     if (next.placeholders !== world.placeholders) setWorldPlaceholders(next.placeholders);
     if (next.entities !== world.entities) setEntities(next.entities);
     if (next.dictionaries !== world.dictionaries) setDictionaries(next.dictionaries);
+    if (next.placeholderGroups && next.placeholderGroups !== world.placeholderGroups) setPlaceholderGroups(next.placeholderGroups);
   }, [setDictionaries]);
+
+  const addPlaceholderGroup = useCallback((group: PlaceholderGroup) => {
+    setPlaceholderGroups(prev => [...prev, group]);
+  }, []);
+
+  // A folder's delete goes through the placeholder store (`setLists`), beside the drops that move folders,
+  // so there is no separate context path for it.
+  const updatePlaceholderGroup = useCallback((updated: PlaceholderGroup) => {
+    setPlaceholderGroups(prev => prev.map(group => (group.id === updated.id ? updated : group)));
+  }, []);
 
   // A whole-list write (a drag, a promote) is scattered back to the lists that hold each id.
   const setPlaceholders = useCallback((action: SetStateAction<Placeholder[]>) => {
@@ -558,6 +575,10 @@ function useProvideGameData() {
     addPlaceholder,
     updatePlaceholder,
     removePlaceholder,
+    placeholderGroups,
+    addPlaceholderGroup,
+    updatePlaceholderGroup,
+    setPlaceholderGroups,
     setStats,
     setLocations,
     setConnections,

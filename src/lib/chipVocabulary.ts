@@ -24,15 +24,27 @@ import type { PlaceholderKindNoun, PlaceholderSegment } from './placeholders';
 import {
   isOwnedPlaceholder, promotePlaceholder, qualifiedPlaceholderName, topLevelPlaceholders,
 } from './placeholderTree';
+import { placeholderGroupOf, placeholderGroupsInTreeOrder } from './placeholderGroups';
+import type { PlaceholderGroup } from '@/types';
 
 /** One token a menu or picker offers, named for the reader. */
 export interface ChipRow {
   token: string;
   label: string;
   color?: string;
+  /** The section this row sits under — a folder's path or an owner's name. Rows sharing a heading sit
+   *  together, so a surface draws the heading once, where it changes; absent for a loose row. */
+  heading?: string;
   /** The placeholder belongs to another one, so a chip cannot be aimed at it from outside its owner. Set
    *  only where a surface offers owned rows at all (see {@link ChipVocabulary.allRows}). */
   owned?: boolean;
+}
+
+/** True where row `i` starts a new section of a sectioned list: the first row, or one whose heading
+ *  differs from the row before it. A surface draws a heading (or a rule, for a loose run after a headed
+ *  one) exactly there, so a section the filter emptied never shows a heading. */
+export function chipSectionOpens(rows: readonly Pick<ChipRow, 'heading'>[], i: number): boolean {
+  return i === 0 || rows[i - 1].heading !== rows[i].heading;
 }
 
 /** A part reached through whichever value the level rolls, rather than by naming one. */
@@ -224,7 +236,7 @@ export function placeholderVocabulary(
   placeholders: Placeholder[],
   /** What the vocabulary may write back, and where its fields sit. Omit where placeholders are only being
    *  displayed — the chips are then not renameable and the typeahead offers no inline create. */
-  { onRename, onCreate, onPromote, ownerId, owners, scope: scopeOwner, letters = EMPTY_LETTERS }: {
+  { onRename, onCreate, onPromote, ownerId, owners, scope: scopeOwner, groups, letters = EMPTY_LETTERS }: {
     onRename?: (placeholder: Placeholder) => void;
     /** `home` names the list a member made inside an entity's or book's fields lands in. */
     onCreate?: (placeholder: Placeholder, home?: PlaceholderHome) => void;
@@ -239,6 +251,9 @@ export function placeholderVocabulary(
     /** The entity or book `ownerId` names, when it names one. An owner that owns nothing yet has no entry
      *  in `owners`, so the fields say who they belong to outright. */
     scope?: PlaceholderOwnerRef;
+    /** The world's placeholder folders, so the palette and the `{` menu head a folder's placeholders with
+     *  its name. Absent, or where nothing is grouped, every shared row is loose. */
+    groups?: PlaceholderGroup[];
     /** The document's placement letters, so a Unique chip reads `Name (A)`. Absent, it reads `Name (Unique)`. */
     letters?: PlacementLetters;
   } = {},
@@ -323,18 +338,29 @@ export function placeholderVocabulary(
       return encodePlaceholderToken(label ? { ...rest, label } : rest);
     },
     // Owned placeholders are private to one placeholder: they are reached by drilling into it, so the strip
-    // and an insert menu's root list only what an author actually places in world text. Inside an owner's
-    // fields its own scoped placeholders come first; the combined list already reads shared ones before
-    // every other owner's.
+    // and an insert menu's root list only what an author actually places in world text. The rows come in
+    // sections: the loose shared placeholders first under no heading, then each folder in tree order under
+    // its path, then each owner's scoped placeholders under the owner's name. Inside an owner's fields its
+    // own section comes first.
     palette: () => {
-      const rows = topLevelPlaceholders(placeholders).map((p) => ({
-        token: paletteToken(p),
-        label: `${prefixFor(p.id)}${p.name}`,
-        color: placeholderAccent(p.id),
-      }));
-      if (!scope) return rows;
-      const mine = (row: ChipRow) => owners?.get(decodePlaceholderToken(row.token)?.id ?? '')?.id === scope.id;
-      return [...rows.filter(mine), ...rows.filter((row) => !mine(row))];
+      const folders = placeholderGroupsInTreeOrder(groups ?? []);
+      const folderRank = new Map(folders.map((f, i) => [f.group.id, { rank: i + 1, heading: f.heading }]));
+      const ownerRank = new Map<string, number>();
+      const rows = topLevelPlaceholders(placeholders).map((p) => {
+        const owner = owners?.get(p.id);
+        const folder = owner ? undefined : folderRank.get(placeholderGroupOf(groups ?? [], p) ?? '');
+        if (owner && !ownerRank.has(owner.id)) ownerRank.set(owner.id, folders.length + 1 + ownerRank.size);
+        const heading = owner ? labelPlaceholders(owner.name, placeholders, letters) : folder?.heading;
+        const row: ChipRow = {
+          token: paletteToken(p),
+          label: `${prefixFor(p.id)}${p.name}`,
+          color: placeholderAccent(p.id),
+          ...(heading ? { heading } : {}),
+        };
+        return { row, rank: (owner ? ownerRank.get(owner.id) : folder?.rank) ?? 0, mine: !!scope && owner?.id === scope.id };
+      });
+      // A stable sort: within a section, rows keep the list's own order.
+      return rows.sort((a, b) => Number(b.mine) - Number(a.mine) || a.rank - b.rank).map((r) => r.row);
     },
     allRows: () =>
       placeholders.map((p) => ({
@@ -446,6 +472,7 @@ export function usePlaceholderChipVocabulary(
   const onCreate = store?.addPlaceholder;
   const owners = store?.owners;
   const lists = store?.lists;
+  const groups = lists?.placeholderGroups;
   const setPlaceholders = store?.setPlaceholders;
   const onPromote = useMemo(
     () => setPlaceholders && ((id: string) => setPlaceholders((prev) => promotePlaceholder(prev, id))),
@@ -453,8 +480,8 @@ export function usePlaceholderChipVocabulary(
   );
   const scope = useOwnerScope(lists, ownerId);
   return useMemo(
-    () => placeholderVocabulary(placeholders, { onRename, onCreate, onPromote, ownerId, owners, scope, letters }),
-    [placeholders, onRename, onCreate, onPromote, ownerId, owners, scope, letters],
+    () => placeholderVocabulary(placeholders, { onRename, onCreate, onPromote, ownerId, owners, scope, groups, letters }),
+    [placeholders, onRename, onCreate, onPromote, ownerId, owners, scope, groups, letters],
   );
 }
 

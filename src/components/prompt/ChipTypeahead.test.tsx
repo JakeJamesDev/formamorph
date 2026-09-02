@@ -1,6 +1,6 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { describe, it, expect, beforeEach } from 'vitest';
-import { render, screen, waitFor } from '@testing-library/react';
+import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import ChipInput from './ChipInput';
 import { usePlaceholderChipVocabulary } from '@/lib/chipVocabulary';
@@ -92,6 +92,38 @@ function insertedPath(): string[] {
 }
 
 beforeEach(() => { world = WORLD.map((p) => ({ ...p })); });
+
+/** The field over a world store that carries folders, so the root menu comes sectioned. */
+function GroupedHarness() {
+  const [placeholders, setPlaceholders] = useState<Placeholder[]>(() =>
+    world.map((p) => (p.id === 'hair' ? { ...p, groupId: 'looks' } : p)));
+  const [value, setValue] = useState('.');
+  const store = useMemo(() => ({
+    ...placeholderStore(placeholders, setPlaceholders),
+    lists: { placeholders, entities: [], dictionaries: [], placeholderGroups: [{ id: 'looks', name: 'Looks', parentId: null }] },
+  }), [placeholders]);
+  return (
+    <PlaceholderStoreProvider value={store}>
+      <Field value={value} onChange={setValue} placeholders={placeholders} />
+    </PlaceholderStoreProvider>
+  );
+}
+
+describe('ChipTypeahead — folders', () => {
+  it('heads a folder’s rows with its name at the root, after the loose rows', async () => {
+    render(<GroupedHarness />);
+    await open();
+    expect(offered()).toEqual(['Molly', 'isWhite', 'isAsian', 'Eyes', 'Hair']);
+    expect(within(menu()!).getByText('Looks')).toBeInTheDocument();
+  });
+
+  it('shows no heading once the filter leaves nothing under it', async () => {
+    render(<GroupedHarness />);
+    await open('Mol');
+    expect(offered()).toEqual(['Molly']);
+    expect(within(menu()!).queryByText('Looks')).not.toBeInTheDocument();
+  });
+});
 
 describe('ChipTypeahead — drilling into a placeholder’s parts', () => {
   it('offers the world’s placeholders, filtered by what is typed', async () => {

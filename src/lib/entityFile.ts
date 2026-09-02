@@ -4,6 +4,7 @@ import { APP_VERSION, WORLD_FILE_KIND, SAVE_FILE_KIND, migrateCarriedPlaceholder
 import { DICTIONARY_FILE_KIND } from './dictionaryFile';
 import { describePlaceholders } from './placeholders';
 import { carriedPlaceholders, sharedPlaceholdersUsed } from './placeholderHomes';
+import { portablePlaceholders } from './placeholderGroups';
 import type { Dictionary } from '@/types';
 import { embedEntityCard, readEntityCard } from './entityCard';
 import { readTavernCard } from './tavernCard';
@@ -42,13 +43,14 @@ export interface EntityCardData {
  *  `available` is the placeholder pool to resolve the entity's used chips from — the world's combined list
  *  for a world entity, or the entity's own carried pool for a library one. */
 export function buildEntityCardData(entity: Entity, available: Placeholder[] = carriedPlaceholders(entity)): EntityCardData {
-  const owned = entity.placeholders ?? [];
-  const shared = sharedPlaceholdersUsed(
+  // Folders are the world's: a def leaves its folder reference behind.
+  const owned = portablePlaceholders(entity.placeholders ?? []);
+  const shared = portablePlaceholders(sharedPlaceholdersUsed(
     [entity.name, ...(entity.aliases ?? []), entity.playerDescription, entity.aiDescription, entity.aiSummary, entity.imageTags]
       .filter((t): t is string => !!t),
     owned,
     available,
-  );
+  ));
   const extras = entityImages(entity).slice(1);
   return {
     formamorphKind: ENTITY_FILE_KIND,

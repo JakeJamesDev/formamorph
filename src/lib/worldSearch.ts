@@ -8,7 +8,7 @@ import {
   setWorldPromptOverride, storedWorldPrompt, worldPromptFieldKey, WORLD_PROMPT_KINDS, WORLD_PROMPT_KIND_LABELS,
 } from '@/lib/worldPrompt';
 import type {
-  Dictionary, Entity, EntityGroup, GameLocation, Placeholder, Stat, Trait, TraitGroup, WorldOverview,
+  Dictionary, Entity, EntityGroup, GameLocation, Placeholder, PlaceholderGroup, Stat, Trait, TraitGroup, WorldOverview,
 } from '@/types';
 
 /**
@@ -104,6 +104,9 @@ export interface SearchSources {
   updateDictionary: (book: Dictionary) => void;
   updateDictionaryEntry: (entry: DictionaryEntryWithBook) => void;
   updatePlaceholder: (placeholder: Placeholder) => void;
+  /** The folders on the Placeholders tab, when the host has them. */
+  placeholderGroups?: PlaceholderGroup[];
+  updatePlaceholderGroup?: (group: PlaceholderGroup) => void;
 }
 
 /** `updateDictionaryEntry` matches by entry id across books, so the entry alone is the whole argument. */
@@ -297,6 +300,14 @@ export function collectSearchTargets(src: SearchSources): SearchTarget[] {
       (r, next) => ({ ...r, values: (r.values ?? []).map((v, i) => ({ ...v, text: next[i] ?? v.text })) }),
       (r) => (r.values ?? []).map((v) => v.text));
   });
+  const updatePlaceholderGroup = src.updatePlaceholderGroup;
+  if (updatePlaceholderGroup) {
+    (src.placeholderGroups ?? []).forEach((group) => {
+      const where = { tab: 'placeholders', itemId: group.id, itemLabel: labeled(group.name, 'Group') };
+      const { add } = bind(`placeholderGroup:${group.id}`, group, updatePlaceholderGroup);
+      add({ ...where, chipCapable: false }, 'name', 'Group Name', group.name, (r, v) => ({ ...r, name: v }));
+    });
+  }
 
   return targets;
 }

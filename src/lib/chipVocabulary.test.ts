@@ -492,6 +492,34 @@ describe('placeholderVocabulary — scoped placeholders', () => {
     expect(placeholderVocabulary(WORLD, { owners, ownerId: 'iris' }).label(tok('eyes', 'world'))).toBe('Eyes');
   });
 
+  it('sections the palette: loose rows first, then each folder in tree order, then each owner', () => {
+    const groups = [
+      { id: 'body', name: 'Body', parentId: null }, { id: 'face', name: 'Face', parentId: 'body' }, { id: 'gear', name: 'Gear', parentId: null },
+    ];
+    const world: Placeholder[] = [
+      { ...P('skin', ['pale']), groupId: 'face' },
+      P('town', ['Sedge']),
+      { ...P('sword', ['iron']), groupId: 'gear' },
+      { ...P('hair', ['red']), groupId: 'body' },
+      // A folder that is gone reads as loose.
+      { ...P('lost', ['x']), groupId: 'gone' },
+      P('eyes', ['gray']),
+    ];
+    const molly = { kind: 'entity' as const, id: 'molly', name: 'Molly' };
+    const sectioned = new Map([['eyes', molly]]);
+    expect(placeholderVocabulary(world, { owners: sectioned, groups }).palette().map((r) => [r.label, r.heading])).toEqual([
+      ['name-town', undefined], ['name-lost', undefined],
+      ['name-hair', 'Body'], ['name-skin', 'Body › Face'], ['name-sword', 'Gear'],
+      ['Molly.name-eyes', 'Molly'],
+    ]);
+    // Inside Molly's fields her own section leads, still under her name.
+    const inside = placeholderVocabulary(world, { owners: sectioned, groups, ownerId: 'molly', scope: molly }).palette();
+    expect(inside.map((r) => r.label)).toEqual(['name-eyes', 'name-town', 'name-lost', 'name-hair', 'name-skin', 'name-sword']);
+    expect(inside[0].heading).toBe('Molly');
+    // With no folders bound, nothing is headed and the order is the list's own.
+    expect(placeholderVocabulary(world).palette().every((r) => r.heading === undefined)).toBe(true);
+  });
+
   it('lists the field owner’s scoped placeholders first, then the shared ones, then the rest as Owner.Name', () => {
     const molly = { kind: 'entity' as const, id: 'molly', name: 'Molly' };
     const fen = { kind: 'dictionary' as const, id: 'fen', name: 'Fen' };
