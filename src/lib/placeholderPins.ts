@@ -290,14 +290,6 @@ export function hasDeadValueId(pin: PlaceholderPin, ph: Placeholder | undefined)
   return !!ph && !!pin.valueId && !(ph.values ?? []).some((v) => v.id === pin.valueId);
 }
 
-/** `pin` following the list again: re-aimed at the value spelled exactly as its text when the placeholder
- *  has one, else left as the free text it already reads as. */
-export function relinkedPin(pin: PlaceholderPin, ph: Placeholder): PlaceholderPin {
-  const { valueId: _dead, ...rest } = pin;
-  const match = (ph.values ?? []).find((v) => v.text === pin.value);
-  return match ? { ...rest, valueId: match.id } : rest;
-}
-
 // ---- The editor's view: every pin aimed at one placeholder, and who wins among them ----
 
 /** Where a pin lives. Enough to find the row again and, for a source with a name, to open it. */

@@ -1,7 +1,8 @@
 import { randomUUID } from '@/lib/uuid';
 import { buildTree, flattenTree } from './groupTree';
 import {
-  absorbPlaceholders, collectUsedPlaceholders, remapPlaceholderIds, remintPlaceholderDef, SHARED_PATH_SEP,
+  absorbPlaceholders, collectUsedPlaceholders, remapPlaceholderIds, remapValuePins, remintPlaceholderDef,
+  SHARED_PATH_SEP,
 } from './placeholders';
 import { holderOf, ownedDescendants } from './placeholderTree';
 import type { Dictionary, DictionaryEntry, Entity, EntityGroup, Placeholder, PlaceholderGroup } from '@/types';
@@ -165,12 +166,14 @@ export function splitCarriedPlaceholders<T extends { placeholders?: Placeholder[
 }
 
 /** The shared defs an off-world export has to carry beside `owned`: everything `texts` and the owned
- *  values reach in `available` that is not the item's own. */
+ *  values reach in `available` that is not the item's own — through their chips, and through the
+ *  placeholders their pins hold, which no chip need place. */
 export function sharedPlaceholdersUsed(texts: string[], owned: readonly Placeholder[], available: Placeholder[]): Placeholder[] {
   const ownedIds = new Set(owned.map((p) => p.id));
   const reached = collectUsedPlaceholders(
     [...texts, ...owned.flatMap((p) => (p.values ?? []).map((v) => v.text))],
     available,
+    owned.flatMap((p) => (p.values ?? []).flatMap((v) => (v.pins ?? []).map((pin) => pin.placeholderId))),
   );
   return reached.filter((p) => !ownedIds.has(p.id));
 }
@@ -347,7 +350,8 @@ export function withPlaceholderList(world: PlaceholderHomesWorld, home: Placehol
 
 /** The def with every reference in it re-aimed through `idMap`: a chip in a value, its `ownerId`, and the
  *  segments of a shared-weight key below the root (the root is one of the def's own value ids). A chip at
- *  something the map does not name is left as written. */
+ *  something the map does not name is left as written. Value pins are settled by `remapValuePins`, which
+ *  needs the new target's values and so runs once the whole list exists. */
 export function remapPlaceholderRefs(p: Placeholder, idMap: Record<string, string>): Placeholder {
   const values = (p.values ?? []).map((v) => ({ ...v, text: remapPlaceholderIds(v.text, idMap) }));
   const sharedWeights = p.sharedWeights && Object.fromEntries(
@@ -367,14 +371,15 @@ export function remapPlaceholderRefs(p: Placeholder, idMap: Record<string, strin
 /**
  * A copy of a scoped list for a duplicated owner: every def gets a fresh id, its values fresh ids and
  * placements (see `remintPlaceholderDef`), and every reference inside the list (a chip in a value, an
- * `ownerId`, a shared-weight key) is re-aimed at the new ids. A chip at something outside the list is left
- * as written. `idMap` is old id → new id, for the owner's own texts.
+ * `ownerId`, a shared-weight key, a value pin) is re-aimed at the new ids. A reference to something outside
+ * the list is left as written, so a pin at a shared placeholder still holds it. `idMap` is old id → new id,
+ * for the owner's own texts.
  */
 export function remintScopedPlaceholders(list: readonly Placeholder[]): { placeholders: Placeholder[]; idMap: Record<string, string> } {
   const idMap: Record<string, string> = {};
   for (const p of list) idMap[p.id] = randomUUID();
-  const placeholders = list.map((p) => ({ ...remapPlaceholderRefs(remintPlaceholderDef(p), idMap), id: idMap[p.id] }));
-  return { placeholders, idMap };
+  const copied = list.map((p) => ({ ...remapPlaceholderRefs(remintPlaceholderDef(p), idMap), id: idMap[p.id] }));
+  return { placeholders: remapValuePins(copied, idMap, copied), idMap };
 }
 
 /** What adopting an off-world item into a world produces: the item as the world keeps it, and the shared
@@ -399,14 +404,22 @@ function adoptCarried<T extends { placeholders?: Placeholder[]; sharedPlaceholde
   const shared = item.sharedPlaceholders ?? EMPTY;
   if (!owned.length && !shared.length) return { item, toAdd: [], idMap: {} };
   const minted = remintScopedPlaceholders(owned);
-  // A shared def may hold an owned one as a value; it compares against the world by what its chips mean.
-  const carried = shared.map((p) => remapPlaceholderRefs(p, minted.idMap));
+  // A shared def may hold an owned one as a value or a pin; it compares against the world by what its
+  // chips mean.
+  const carried = remapValuePins(
+    shared.map((p) => remapPlaceholderRefs(p, minted.idMap)), minted.idMap, minted.placeholders,
+  );
   const { toAdd, idMap: sharedMap } = absorbPlaceholders(carried, [...worldShared]);
-  const placeholders = minted.placeholders.map((p) => remapPlaceholderRefs(p, sharedMap));
+  const aimed = minted.placeholders.map((p) => remapPlaceholderRefs(p, sharedMap));
+  // Every def a pin may name once the item is in: the item's own, the world's shared list, and the shared
+  // defs joining it. A pin at anything else has no target here, so it goes rather than dangle.
+  const pool = [...aimed, ...worldShared, ...toAdd];
+  const placeholders = remapValuePins(aimed, sharedMap, pool, true);
+  const added = remapValuePins(toAdd, sharedMap, pool, true);
   const { placeholders: _owned, sharedPlaceholders: _shared, ...rest } = item;
   // The spread keeps every other field, so the shape is T again; only the two carried lists moved.
   const adopted = (placeholders.length ? { ...rest, placeholders } : rest) as T;
-  return { item: adopted, toAdd, idMap: { ...minted.idMap, ...sharedMap } };
+  return { item: adopted, toAdd: added, idMap: { ...minted.idMap, ...sharedMap } };
 }
 
 /** {@link adoptCarried} for a character card, with its chips re-aimed. */

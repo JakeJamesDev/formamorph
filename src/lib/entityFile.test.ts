@@ -107,6 +107,21 @@ describe('buildEntityCardData', () => {
     expect(parseEntityCardData({ formamorphKind: 'entity', name: 'Old', placeholders: [weather] }).placeholders).toEqual([weather]);
   });
 
+  it('carries a shared def only a pin reaches, so the pin still resolves after import', () => {
+    const weather = { id: 'weather', name: 'Weather', values: phValues(['Rain', 'Sun']) };
+    const unused = { id: 'unused', name: 'Season', values: phValues(['Spring']) };
+    const mood = {
+      id: 'mood',
+      name: 'Mood',
+      values: [{ id: 'v:wild', text: 'wild', pins: [{ placeholderId: 'weather', value: 'Rain' }] }],
+    };
+    // Nothing Molly writes places Weather; only Mood's pin reaches it.
+    const molly: Entity = { id: 'm', name: 'Molly', placeholders: [mood] };
+    const card = buildEntityCardData(molly, [weather, unused, mood]);
+    expect(card.sharedPlaceholders).toEqual([weather]);
+    expect(card.placeholders?.[0].values[0].pins).toEqual([{ placeholderId: 'weather', value: 'Rain' }]);
+  });
+
   it('drops the folder reference from every def it carries — folders are the world’s', () => {
     const weather = { id: 'weather', name: 'Weather', values: phValues(['Rain']), groupId: 'sky' };
     const eyes = { id: 'eyes', name: 'Eyes', values: phValues(['gray']), groupId: 'body' };
