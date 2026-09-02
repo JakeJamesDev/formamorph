@@ -9,6 +9,7 @@ import {
   encodePlaceholderPath,
   decodePlaceholderPath,
   placeholderIsChoice,
+  placeholderRandomizes,
   PLACEHOLDER_DEPTH_CAP,
   hasPlaceholders,
   collectPlaceholderPlacements,
@@ -121,6 +122,53 @@ describe('resolvePlaceholders', () => {
     });
     expect(out).toBe('Red / Blue');
     expect(rolls.unique).toEqual({ p1: 'Red', p2: 'Blue' }); // keyed by placement id
+  });
+
+  // A one-value Variable never draws itself, but its value is a template: Unique on it rolls the wildcards
+  // inside per placement, so two placements name two taverns.
+  it('Unique on a one-value Variable rolls the wildcards in its template per placement', () => {
+    const { rolls, setRoll } = collector();
+    const picks = ['Rusty', 'Anchor', 'Gilded', 'Lantern'];
+    let i = 0;
+    const tavern = P('tavern', [`The ${tok('adj', 'world', 'a1')} ${tok('noun', 'world', 'n1')}`]);
+    const out = resolvePlaceholders(`${tok('tavern', 'unique', 'p1')} / ${tok('tavern', 'unique', 'p2')}`, {
+      placeholders: [tavern, P('adj', ['Rusty', 'Gilded']), P('noun', ['Anchor', 'Lantern'])],
+      rolls,
+      setRoll,
+      pick: () => picks[i++],
+    });
+    expect(out).toBe('The Rusty Anchor / The Gilded Lantern');
+    // The nested draws key under each placement's chain, never under the shared World rolls.
+    expect(rolls.unique).toEqual({ 'p1/adj': 'Rusty', 'p1/noun': 'Anchor', 'p2/adj': 'Gilded', 'p2/noun': 'Lantern' });
+    expect(rolls.world).toBeUndefined();
+  });
+
+  describe('placeholderRandomizes', () => {
+    const wild = P('adj', ['Rusty', 'Gilded']);
+    const plain = P('king', ['Aldric']);
+    const template = P('tavern', [`The ${tok('adj', 'world', 'a1')} Anchor`]);
+    const object: Placeholder = { ...P('menu', ['Ale', 'Stew']), roll: false };
+    const composed: Placeholder = { ...P('sign', [`Tonight: ${tok('tavern', 'world', 't1')}`]), roll: false };
+
+    it('is true for a Wildcard and for anything that reaches one through its values', () => {
+      const all = [wild, plain, template, object, composed];
+      expect(placeholderRandomizes(all, 'adj')).toBe(true);
+      expect(placeholderRandomizes(all, 'tavern')).toBe(true); // a chip composed into prose counts
+      expect(placeholderRandomizes(all, 'sign')).toBe(true); // two levels down
+    });
+
+    it('is false for a plain Variable, a plain Object, and an unknown id', () => {
+      const all = [wild, plain, object];
+      expect(placeholderRandomizes(all, 'king')).toBe(false);
+      expect(placeholderRandomizes(all, 'menu')).toBe(false);
+      expect(placeholderRandomizes(all, 'ghost')).toBe(false);
+    });
+
+    it('terminates on a reference cycle with no wildcard in it', () => {
+      const a: Placeholder = { ...P('a', [tok('b', 'world', 'p1')]), roll: false };
+      const b: Placeholder = { ...P('b', [tok('a', 'world', 'p2')]), roll: false };
+      expect(placeholderRandomizes([a, b], 'a')).toBe(false);
+    });
   });
 
   it('reuses a frozen roll instead of re-rolling (playthrough stays consistent)', () => {

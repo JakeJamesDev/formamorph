@@ -57,10 +57,25 @@ describe('placeholderVocabulary', () => {
     expect(placeholderVocabulary([P('blank', [])]).hint?.(tok('blank', 'world'))).toBe('no values');
   });
 
-  it('shows the World/Unique axis only for a Wildcard (2+ values)', () => {
+  it('shows the World/Unique axis only where resolving the chip can draw', () => {
     expect(v.axes(tok('eye', 'world'))).toHaveLength(1); // 3 values → Wildcard
-    expect(v.axes(tok('king', 'world'))).toHaveLength(0); // 1 value → Variable, no axis
+    expect(v.axes(tok('king', 'world'))).toHaveLength(0); // 1 plain value → Variable, no axis
     expect(v.axes(tok('ghost', 'world'))).toHaveLength(0); // missing → none
+
+    // A one-value Variable whose value is a template of wildcards rolls them, so it picks World or Unique.
+    // An Object never draws on its own; only a wildcard somewhere under it earns the picker.
+    const nested = placeholderVocabulary([
+      P('adj', ['Rusty', 'Gilded']),
+      P('noun', ['Anchor', 'Lantern']),
+      { ...P('tavern', [`The ${tok('adj', 'world')} ${tok('noun', 'world')}`]), roll: false },
+      { ...P('menu', ['Ale', 'Stew']), roll: false },
+      { ...P('board', [tok('menu', 'world'), 'Bread']), roll: false },
+      { ...P('sign', [`Tonight: ${tok('board', 'world')}`, `Today: ${tok('tavern', 'world')}`]), roll: false },
+    ]);
+    expect(nested.axes(tok('tavern', 'world'))).toHaveLength(1); // template of two wildcards
+    expect(nested.axes(tok('menu', 'world'))).toHaveLength(0); // two plain values, Object
+    expect(nested.axes(tok('board', 'world'))).toHaveLength(0); // nests only an Object
+    expect(nested.axes(tok('sign', 'world'))).toHaveLength(1); // reaches a wildcard two levels down
   });
 
   it('reflects and flips the mode', () => {

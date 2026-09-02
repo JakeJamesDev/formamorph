@@ -13,7 +13,7 @@ import {
 import {
   PLACEHOLDER_PATH_SEPARATOR, parsePlaceholderText, decodePlaceholderToken, encodePlaceholderToken,
   placeholderValueSummary, placeholderPathChildren, placeholderPathLevel, newPlaceholder,
-  describePlaceholders,
+  describePlaceholders, placeholderRandomizes,
 } from './placeholders';
 import type { PlaceholderKindNoun, PlaceholderSegment } from './placeholders';
 import {
@@ -260,10 +260,11 @@ export function placeholderVocabulary(
       const d = decodePlaceholderToken(t);
       return d && byId.has(d.id) ? placeholderAccent(d.id) : undefined;
     },
+    // World | Unique only where a roll can differ per placement: a Wildcard, or anything whose values reach
+    // one. A plain Object applies every value and never draws, so the picker would change nothing.
     axes: (t) => {
       const d = decodePlaceholderToken(t);
-      const ph = d && byId.get(d.id);
-      return ph && ph.values.length >= 2 ? [PLACEHOLDER_MODE_AXIS] : [];
+      return d && placeholderRandomizes(placeholders, d.id) ? [PLACEHOLDER_MODE_AXIS] : [];
     },
     selection: (t) => ({ mode: decodePlaceholderToken(t)?.mode === 'unique' ? 'unique' : null }),
     setAxis: (t, axisId, optionId) => {
