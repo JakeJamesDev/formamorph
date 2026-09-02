@@ -261,3 +261,27 @@ describe('clearing an account’s likes', () => {
     expect(screen.getByText('Sedge Landing')).toBeTruthy();
   });
 });
+
+describe('moving on to the next account', () => {
+  it('opens on Creations again, and reads nothing until Likes is asked for', async () => {
+    // The dialog is re-pointed rather than remounted, so a tab left open would carry to the next person
+    // and fetch their likes without anybody asking for them.
+    signedInAs('admin');
+    const fetchLikes = vi.spyOn(UserService, 'fetchLikesGiven')
+      .mockResolvedValue({ total: 1, rows: [like()] });
+
+    const { rerender } = show();
+    await openLikes();
+    await waitFor(() => expect(fetchLikes).toHaveBeenCalledWith('u1'));
+
+    rerender(
+      <UserProfileContext.Provider value={{ openProfile, setListingOpener: () => {} }}>
+        <UserProfileDialog userId="u2" onOpenChange={() => {}} />
+      </UserProfileContext.Provider>
+    );
+
+    await waitFor(() =>
+      expect(screen.getByRole('tab', { name: 'Creations' })).toHaveAttribute('aria-selected', 'true'));
+    expect(fetchLikes).toHaveBeenCalledTimes(1);
+  });
+});

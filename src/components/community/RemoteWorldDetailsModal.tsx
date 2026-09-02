@@ -227,10 +227,18 @@ export function RemoteWorldDetailsModal({
   // own listing, and nothing on screen tells anybody else it exists.
   const canSeeLikers = isStaff(currentUser);
 
-  // DEV: `#dev?modal=likers` lands on the likers list without clicking through the catalog first.
+  // The modal outlives the listing it is showing — it stays mounted while the catalog is browsed — so a
+  // likers list left open would reopen itself over whichever listing came next, unasked.
+  const listingKey = world ? String(world._id || world.id) : null;
+  useEffect(() => {
+    setShowLikers(false);
+  }, [open, listingKey]);
+
+  // DEV: `#dev?modal=likers` lands on the likers list without clicking through the catalog first. Runs
+  // after the reset above, which is what keeps the route working rather than being undone by it.
   useEffect(() => {
     if (import.meta.env.DEV && open && openLikersOnMount && canSeeLikers) setShowLikers(true);
-  }, [open, openLikersOnMount, canSeeLikers]);
+  }, [open, listingKey, openLikersOnMount, canSeeLikers]);
 
   /** Whether the reader wrote this comment. Only they may rewrite it, with no deadline on it. */
   const isOwnComment = (comment: WorldRecord) =>
