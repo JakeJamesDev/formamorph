@@ -33,11 +33,14 @@ const MissingChip = ({ label, className }: { label?: string; className?: string 
  *
  * Text with no chips renders as plain text and costs one regex test, so this is safe to use for every row.
  */
-const PlaceholderText = ({ text, placeholders, className }: {
+const PlaceholderText = ({ text, placeholders, className, neutral }: {
   text: string;
   placeholders: readonly Placeholder[];
   /** Applied to each pill, e.g. to shrink them inside an already-small chip. */
   className?: string;
+  /** Drop the per-placeholder accent for a muted pill. For text that names something rather than offering
+   *  it — a section heading — where a colored pill would read as a chip waiting to be placed. */
+  neutral?: boolean;
 }) => {
   const letters = usePlacementLetters();
   const vocab = useMemo(() => placeholderVocabulary(placeholders, { letters }), [placeholders, letters]);
@@ -68,8 +71,8 @@ const PlaceholderText = ({ text, placeholders, className }: {
               // Carries its token like the in-field chip does, so a find-bar hit on a chip in a keyword or
               // alias list can be ringed the way one in a prose field is.
               {...{ [CHIP_TOKEN_ATTR]: chipTokenKey(seg.token) }}
-              className={cn('mx-0.5 rounded px-1 text-[0.85em] font-medium', className)}
-              style={{ backgroundColor: vocab.color(seg.token), color: '#000' }}
+              className={cn('mx-0.5 rounded px-1 text-[0.85em] font-medium', neutral && 'bg-muted-foreground/20', className)}
+              style={neutral ? undefined : { backgroundColor: vocab.color(seg.token), color: '#000' }}
             >
               {vocab.display?.(seg.token) ?? name}
             </span>

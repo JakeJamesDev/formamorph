@@ -143,8 +143,9 @@ describe('PlaceholderPaletteBar toggle', () => {
   });
 });
 
-/** An owner heads its section with a neutral chip: its kind's icon, and its name read as a name reads
- *  everywhere else, so an owner named with a chip shows that chip nested inside the heading. */
+/** An owner heads its section as quiet text with its kind's icon — never as a chip, since a heading is not
+ *  something to place. An owner named with a placeholder shows that placeholder as a pill, in a neutral
+ *  tint rather than its own accent, for the same reason. */
 describe('PlaceholderPaletteBar owner headings', () => {
   const eyes: Placeholder = { id: 'eyes', name: 'Eyes', values: phValues(['gray']) };
   const mount = (ownerName: string, kind: 'entities' | 'dictionaries' = 'entities') => {
@@ -181,10 +182,23 @@ describe('PlaceholderPaletteBar owner headings', () => {
     expect(icon.parentElement).toHaveTextContent('Lore');
   });
 
+  it('wears no surface of its own, so nothing in it looks placeable', () => {
+    mount('Molly');
+    const heading = screen.getByRole('img', { name: 'Entity' }).parentElement!;
+    // The same quiet text a folder heading is, telling the two apart by the icon alone.
+    expect(heading).toHaveClass('text-meta', 'text-muted-foreground');
+    expect([...heading.classList].filter((c) => c.startsWith('bg-') || c === 'border')).toEqual([]);
+  });
+
   it('nests an owner’s own chip inside the heading rather than spelling it out', () => {
     mount(`Ma ${chip('town')}`);
     const heading = screen.getByRole('img', { name: 'Entity' }).parentElement!;
-    expect(heading.querySelector('[data-chip-token]')).toHaveTextContent('Town');
+    const pill = heading.querySelector<HTMLElement>('[data-chip-token]')!;
+    expect(pill).toHaveTextContent('Town');
+    // Neutral, not the placeholder's accent: in a heading an accented pill reads as one to drop in a field.
+    expect(pill.style.backgroundColor).toBe('');
+    const placeable = screen.getByRole('button', { name: 'Town' });
+    expect(placeable.style.backgroundColor).not.toBe('');
   });
 
   it('leaves a folder heading as quiet text', () => {
