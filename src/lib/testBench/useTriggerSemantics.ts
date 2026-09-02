@@ -7,6 +7,7 @@
  * opened and no text is embedded.
  */
 import { useEffect, useMemo, useState } from 'react';
+import { allPlaceholders } from '@/lib/placeholderHomes';
 import { getVectors } from '@/lib/embeddingCache';
 import { embedTexts, isEmbeddingModelReady, loadEmbeddingModel } from '@/lib/embeddingWorkerClient';
 import { semanticIndexKeys, type SemanticInput } from './semantic';
@@ -49,7 +50,7 @@ export function useTriggerSemantics(
   // a closed tab it isn't computed at all — hashing a whole dictionary per keystroke to answer a question
   // nobody is asking is the kind of background cost this instrument exists to expose.
   const indexKey = useMemo(
-    () => (active ? semanticIndexKeys(scannedEntries(world), world.placeholders ?? []).join(KEY_SEP) : ''),
+    () => (active ? semanticIndexKeys(scannedEntries(world), allPlaceholders(world)).join(KEY_SEP) : ''),
     [active, world],
   );
   const keys = useMemo(() => (indexKey ? indexKey.split(KEY_SEP) : []), [indexKey]);

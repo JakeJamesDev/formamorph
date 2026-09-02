@@ -969,3 +969,24 @@ describe('the action input grows in flow, not over the panel', () => {
     expect(wrap.style.height).toBe('40px');
   });
 });
+
+describe('a placeholder an entity carries resolves in play', () => {
+  it('resolves a chip in a location at a placeholder that lives on an entity', () => {
+    // A one-value placeholder is a Variable, so no roll is needed for the assertion to be deterministic.
+    const EYES = { id: 'ph-eyes', name: 'Eyes', values: phValues(['amber']) };
+    const chip = encodePlaceholderToken({ id: 'ph-eyes', mode: 'world', placementId: 'p9' });
+    const HERE = { id: 'l1', name: `The ${chip} Room`, isStarting: true };
+    const { container } = renderRightPanel({}, {
+      turns: TURNS,
+      stats: STATS,
+      world: { entities: [{ id: 'molly', name: 'Molly', placeholders: [EYES] }], locations: [HERE] },
+      seed: (gameplay) => {
+        gameplay.setCurrentLocation(HERE);
+        gameplay.setActiveTab('location');
+      },
+    });
+
+    expect(screen.getByText(/Current Location: The amber Room/)).toBeInTheDocument();
+    expect(container.textContent).not.toContain('{{ph:');
+  });
+});

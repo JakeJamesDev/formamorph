@@ -2508,3 +2508,31 @@ describe('the rule registry', () => {
     expect(FIX_FIXTURES['image-not-webp']).toBeUndefined();
   });
 });
+
+describe('placeholders an entity carries', () => {
+  const eyes = { id: 'p-eyes', name: 'Eyes', values: phValues(['amber']) };
+  const molly = (name: string, ph: Placeholder = eyes): Entity => ({ ...resident, id: 'molly', name, placeholders: [ph] });
+
+  it('reads a scoped placeholder, so a chip at it is known and the placeholder counts as used', () => {
+    const w = base({ entities: [resident, molly('Molly {{ph:p-eyes:world:pl1}}')] });
+    expect(only(w, 'chip-unknown-placeholder')).toEqual([]);
+    expect(only(w, 'placeholder-unused')).toEqual([]);
+  });
+
+  it('flags an unused scoped placeholder, and the fix removes it from the entity rather than the world', () => {
+    const w = base({ entities: [resident, molly('Molly')] });
+    expect(only(w, 'placeholder-unused')[0]?.items.map((i) => i.id)).toEqual(['p-eyes']);
+    const fixed = applyRuleFix(w, 'placeholder-unused');
+    expect(fixed.entities.find((e) => e.id === 'molly')?.placeholders).toBeUndefined();
+    expect(fixed.placeholders).toBe(w.placeholders);
+    expect(only(fixed, 'placeholder-unused')).toEqual([]);
+  });
+
+  it('repairs a dead weight on a scoped placeholder where it lives', () => {
+    const w = base({ entities: [resident, molly('Molly {{ph:p-eyes:world:pl1}}', { ...eyes, weights: { 'v:gone': 2 } })] });
+    expect(only(w, 'placeholder-weight-unknown-value')).toHaveLength(1);
+    const fixed = applyRuleFix(w, 'placeholder-weight-unknown-value');
+    expect(fixed.entities.find((e) => e.id === 'molly')?.placeholders?.[0].weights).toBeUndefined();
+    expect(fixed.placeholders).toBe(w.placeholders);
+  });
+});

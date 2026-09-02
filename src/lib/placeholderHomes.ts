@@ -1,0 +1,269 @@
+import { randomUUID } from '@/lib/uuid';
+import { buildTree, flattenTree } from './groupTree';
+import { remapPlaceholderIds, remintPlaceholderDef, SHARED_PATH_SEP } from './placeholders';
+import { holderOf } from './placeholderTree';
+import type { Dictionary, DictionaryEntry, Entity, EntityGroup, Placeholder } from '@/types';
+
+/**
+ * Where a placeholder lives. A world keeps three kinds of list: its own shared placeholders, and the ones
+ * an entity or a dictionary book carries as its own. Every reader sees one combined view; a write goes to
+ * the list that holds the id.
+ */
+export type PlaceholderHome =
+  | { kind: 'world' }
+  | { kind: 'entity'; ownerId: string }
+  | { kind: 'dictionary'; ownerId: string };
+
+/** The world slices the combined view reads. Each is optional: world JSON is hand-editable. */
+export interface PlaceholderHomesWorld {
+  placeholders?: Placeholder[];
+  entities?: Entity[];
+  entityGroups?: EntityGroup[];
+  dictionaries?: Dictionary[];
+}
+
+/** A record that carries a placeholder list of its own. */
+type PlaceholderOwner = { id: string; placeholders?: Placeholder[] };
+
+/** The three lists a write can land on, as the slices a caller writes back. */
+export interface PlaceholderSlices {
+  placeholders: Placeholder[];
+  entities: Entity[];
+  dictionaries: Dictionary[];
+}
+
+const WORLD: PlaceholderHome = { kind: 'world' };
+const EMPTY: Placeholder[] = [];
+
+const cache = new WeakMap<PlaceholderHomesWorld, { deps: unknown[]; result: Placeholder[] }>();
+
+/** True when both lists hold the same items, by identity, in the same order. */
+export function sameElements<T>(a: readonly T[], b: readonly T[]): boolean {
+  return a === b || (a.length === b.length && a.every((p, i) => p === b[i]));
+}
+
+/** Entities as the Entities tab orders them, walked through the generic tree so this module and the
+ *  entity tree never import each other. */
+const entitiesInTreeOrder = (groups: EntityGroup[], entities: Entity[]): Entity[] =>
+  flattenTree(buildTree(groups, entities)).flatMap((n) => (n.leaf ? [n.leaf] : []));
+
+/**
+ * Every placeholder a world can resolve: the world's own list, then each entity's in tree order, then each
+ * book's in book order. The same world object answers with the same array while its slices are unchanged,
+ * and a world where nothing but the world list carries placeholders answers with that list itself.
+ */
+export function allPlaceholders(world: PlaceholderHomesWorld): Placeholder[] {
+  const deps = [world.placeholders, world.entities, world.entityGroups, world.dictionaries];
+  const hit = cache.get(world);
+  if (hit && hit.deps.every((d, i) => d === deps[i])) return hit.result;
+  const carries = (owners: readonly PlaceholderOwner[] = []) => owners.some((o) => o.placeholders?.length);
+  // The tree walk is only worth building once something outside the world list carries a placeholder.
+  const scoped = !carries(world.entities) && !carries(world.dictionaries) ? [] : [
+    ...entitiesInTreeOrder(world.entityGroups ?? [], world.entities ?? []).flatMap((e) => e.placeholders ?? []),
+    ...(world.dictionaries ?? []).flatMap((b) => b.placeholders ?? []),
+  ];
+  const result = scoped.length ? [...(world.placeholders ?? []), ...scoped] : world.placeholders ?? EMPTY;
+  cache.set(world, { deps, result });
+  return result;
+}
+
+/** The list holding `id`, or null when no list does. */
+export function placeholderHome(world: PlaceholderHomesWorld, id: string): PlaceholderHome | null {
+  if ((world.placeholders ?? []).some((p) => p.id === id)) return WORLD;
+  const entity = (world.entities ?? []).find((e) => (e.placeholders ?? []).some((p) => p.id === id));
+  if (entity) return { kind: 'entity', ownerId: entity.id };
+  const book = (world.dictionaries ?? []).find((b) => (b.placeholders ?? []).some((p) => p.id === id));
+  if (book) return { kind: 'dictionary', ownerId: book.id };
+  return null;
+}
+
+/** The record with `list` as its placeholders; an empty list drops the field rather than leaving `[]`. */
+function withList<T extends PlaceholderOwner>(record: T, list: Placeholder[]): T {
+  const { placeholders: _drop, ...rest } = record;
+  // The spread keeps every other field, so the shape is T again; only the key set moved.
+  return (list.length ? { ...rest, placeholders: list } : rest) as T;
+}
+
+/** `owners` with each record's list replaced by `next(owner, list)`. A record whose list comes back the
+ *  same keeps its identity, and so does the array when no record changed. */
+function mapOwnerLists<T extends PlaceholderOwner>(
+  owners: T[], next: (owner: T, list: Placeholder[]) => Placeholder[],
+): T[] {
+  let changed = false;
+  const mapped = owners.map((owner) => {
+    const before = owner.placeholders ?? EMPTY;
+    const after = next(owner, before);
+    if (after === before || sameElements(before, after)) return owner;
+    changed = true;
+    return withList(owner, after);
+  });
+  return changed ? mapped : owners;
+}
+
+/**
+ * Where a create lands: the home the caller names; else, for a placeholder born owned (a part typed into a
+ * holder's value), the list its holder lives in; else the world list. A named owner the world no longer
+ * has falls back to the world list rather than dropping the placeholder.
+ */
+export function placeholderHomeFor(
+  world: PlaceholderHomesWorld, placeholder: Placeholder, home?: PlaceholderHome,
+): PlaceholderHome {
+  const known = (h: PlaceholderHome) => h.kind === 'world'
+    || (h.kind === 'entity' ? world.entities : world.dictionaries)?.some((o) => o.id === h.ownerId);
+  if (home && known(home)) return home;
+  return (placeholder.ownerId && placeholderHome(world, placeholder.ownerId)) || WORLD;
+}
+
+/**
+ * Route a whole combined list back to the lists that hold each id, keeping the combined order within each.
+ * An id no list holds yet lands on the world list. An owned placeholder follows its holder: where a row
+ * sits and what it belongs to live in one list, so a drop that makes one placeholder a part of another
+ * moves it beside the holder. Every unchanged slice keeps its identity.
+ */
+export function scatterPlaceholders(world: PlaceholderHomesWorld, combined: readonly Placeholder[]): PlaceholderSlices {
+  const homeOf = new Map<string, PlaceholderHome>();
+  for (const p of world.placeholders ?? []) homeOf.set(p.id, WORLD);
+  for (const e of world.entities ?? []) for (const p of e.placeholders ?? []) homeOf.set(p.id, { kind: 'entity', ownerId: e.id });
+  for (const b of world.dictionaries ?? []) for (const p of b.placeholders ?? []) homeOf.set(p.id, { kind: 'dictionary', ownerId: b.id });
+  const byId = new Map(combined.map((p) => [p.id, p]));
+  const resolve = (p: Placeholder, seen: Set<string>): PlaceholderHome => {
+    const holderId = holderOf(combined, p);
+    const holder = holderId && !seen.has(holderId) ? byId.get(holderId) : undefined;
+    return holder ? resolve(holder, seen.add(p.id)) : homeOf.get(p.id) ?? WORLD;
+  };
+
+  const worldList: Placeholder[] = [];
+  const entityLists = new Map<string, Placeholder[]>();
+  const bookLists = new Map<string, Placeholder[]>();
+  const push = (lists: Map<string, Placeholder[]>, ownerId: string, p: Placeholder) => {
+    const list = lists.get(ownerId);
+    if (list) list.push(p); else lists.set(ownerId, [p]);
+  };
+  for (const p of combined) {
+    const home = resolve(p, new Set());
+    if (home.kind === 'world') worldList.push(p);
+    else if (home.kind === 'entity') push(entityLists, home.ownerId, p);
+    else push(bookLists, home.ownerId, p);
+  }
+  const current = world.placeholders ?? EMPTY;
+  return {
+    placeholders: sameElements(current, worldList) ? current : worldList,
+    entities: mapOwnerLists(world.entities ?? [], (e) => entityLists.get(e.id) ?? EMPTY),
+    dictionaries: mapOwnerLists(world.dictionaries ?? [], (b) => bookLists.get(b.id) ?? EMPTY),
+  };
+}
+
+/**
+ * Apply `change` to the list of whichever owner holds `id`. Returns `owners` itself when no owner holds
+ * the id or the change returns the list untouched, so a setter can bail out of a render.
+ */
+export function mapListHolding<T extends PlaceholderOwner>(
+  owners: T[], id: string, change: (list: Placeholder[]) => Placeholder[],
+): T[] {
+  const index = owners.findIndex((o) => (o.placeholders ?? []).some((p) => p.id === id));
+  if (index === -1) return owners;
+  const before = owners[index].placeholders ?? EMPTY;
+  const after = change(before);
+  if (after === before) return owners;
+  return owners.map((o, i) => (i === index ? withList(o, after) : o));
+}
+
+/** Every slice with `change` applied to each placeholder, whichever list holds it. A list where no
+ *  placeholder changed keeps its identity, and so does the record and array around it. */
+export function mapAllPlaceholders(world: PlaceholderHomesWorld, change: (placeholder: Placeholder) => Placeholder): PlaceholderSlices {
+  const mapList = (list: Placeholder[]) => {
+    const next = list.map(change);
+    return sameElements(list, next) ? list : next;
+  };
+  return {
+    placeholders: mapList(world.placeholders ?? EMPTY),
+    entities: mapOwnerLists(world.entities ?? [], (_o, list) => mapList(list)),
+    dictionaries: mapOwnerLists(world.dictionaries ?? [], (_o, list) => mapList(list)),
+  };
+}
+
+/** Every slice with the given ids removed from whichever list holds them. Unchanged slices keep identity. */
+export function withoutPlaceholders(world: PlaceholderHomesWorld, ids: ReadonlySet<string>): PlaceholderSlices {
+  const keep = (list: Placeholder[]) => (list.some((p) => ids.has(p.id)) ? list.filter((p) => !ids.has(p.id)) : list);
+  return {
+    placeholders: keep(world.placeholders ?? EMPTY),
+    entities: mapOwnerLists(world.entities ?? [], (_o, list) => keep(list)),
+    dictionaries: mapOwnerLists(world.dictionaries ?? [], (_o, list) => keep(list)),
+  };
+}
+
+/**
+ * A copy of a scoped list for a duplicated owner: every def gets a fresh id, its values fresh ids and
+ * placements (see `remintPlaceholderDef`), and every reference inside the list (a chip in a value, an
+ * `ownerId`, a shared-weight key) is re-aimed at the new ids. A chip at something outside the list is left
+ * as written. `idMap` is old id → new id, for the owner's own texts.
+ */
+export function remintScopedPlaceholders(list: readonly Placeholder[]): { placeholders: Placeholder[]; idMap: Record<string, string> } {
+  const idMap: Record<string, string> = {};
+  for (const p of list) idMap[p.id] = randomUUID();
+  const placeholders = list.map((p) => {
+    const minted = remintPlaceholderDef(p);
+    const values = minted.values.map((v) => ({ ...v, text: remapPlaceholderIds(v.text, idMap) }));
+    // Only the segments below the root name placeholders; the root is one of this def's own value ids.
+    const sharedWeights = minted.sharedWeights && Object.fromEntries(
+      Object.entries(minted.sharedWeights).map(([key, map]) => {
+        const [root, ...under] = key.split(SHARED_PATH_SEP);
+        return [[root, ...under.map((id) => idMap[id] ?? id)].join(SHARED_PATH_SEP), map] as const;
+      }),
+    );
+    return {
+      ...minted,
+      id: idMap[p.id],
+      values,
+      ...(p.ownerId ? { ownerId: idMap[p.ownerId] ?? p.ownerId } : {}),
+      ...(sharedWeights ? { sharedWeights } : {}),
+    };
+  });
+  return { placeholders, idMap };
+}
+
+const remapText = (text: string | undefined, idMap: Record<string, string>) => (text ? remapPlaceholderIds(text, idMap) : text);
+const remapTexts = (texts: string[] | undefined, idMap: Record<string, string>) => texts?.map((t) => remapPlaceholderIds(t, idMap));
+const sameTexts = (a: string[] | undefined, b: string[] | undefined) => a === b || (!!a && !!b && sameElements(a, b));
+
+/** The entity with every chip in its own fields re-aimed through `idMap`; the same object when nothing maps. */
+export function remapEntityChips(entity: Entity, idMap: Record<string, string>): Entity {
+  const next: Entity = {
+    ...entity,
+    name: remapText(entity.name, idMap) ?? entity.name,
+    ...(entity.aliases ? { aliases: remapTexts(entity.aliases, idMap) } : {}),
+    ...(entity.playerDescription !== undefined ? { playerDescription: remapText(entity.playerDescription, idMap) } : {}),
+    ...(entity.aiDescription !== undefined ? { aiDescription: remapText(entity.aiDescription, idMap) } : {}),
+    ...(entity.aiSummary !== undefined ? { aiSummary: remapText(entity.aiSummary, idMap) } : {}),
+    ...(entity.imageTags !== undefined ? { imageTags: remapText(entity.imageTags, idMap) } : {}),
+  };
+  const same = next.name === entity.name && sameTexts(next.aliases, entity.aliases)
+    && next.playerDescription === entity.playerDescription && next.aiDescription === entity.aiDescription
+    && next.aiSummary === entity.aiSummary && next.imageTags === entity.imageTags;
+  return same ? entity : next;
+}
+
+/** The book with every chip in its entries re-aimed through `idMap`; the same object when nothing maps. */
+export function remapBookChips(book: Dictionary, idMap: Record<string, string>): Dictionary {
+  let changed = false;
+  const entries = book.entries.map((e): DictionaryEntry => {
+    const next: DictionaryEntry = {
+      ...e,
+      ...(e.name !== undefined ? { name: remapText(e.name, idMap) } : {}),
+      ...(e.key ? { key: remapTexts(e.key, idMap) } : {}),
+      ...(e.secondaryKeys ? { secondaryKeys: remapTexts(e.secondaryKeys, idMap) } : {}),
+      ...(e.value !== undefined ? { value: remapText(e.value, idMap) } : {}),
+    };
+    const same = next.name === e.name && sameTexts(next.key, e.key) && sameTexts(next.secondaryKeys, e.secondaryKeys) && next.value === e.value;
+    if (!same) changed = true;
+    return same ? e : next;
+  });
+  return changed ? { ...book, entries } : book;
+}
+
+/** A duplicated entity with placeholders of its own: fresh defs, and its chips pointed at the copies. */
+export function duplicateEntityPlaceholders(entity: Entity): Entity {
+  if (!entity.placeholders?.length) return entity;
+  const { placeholders, idMap } = remintScopedPlaceholders(entity.placeholders);
+  return remapEntityChips({ ...entity, placeholders }, idMap);
+}

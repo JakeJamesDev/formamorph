@@ -7,6 +7,7 @@ import {
   decodePlaceholderToken, hasPlaceholders, lonePlaceholderToken, parsePlaceholderText, PLACEHOLDER_PATH_SEPARATOR,
 } from './placeholders';
 import type { PlaceholderSegment, PlaceholderToken } from './placeholders';
+import { allPlaceholders } from './placeholderHomes';
 import { qualifiedPlaceholderName } from './placeholderTree';
 import { inAuthoredOrder, traitOrderIndex } from './traitEffects';
 
@@ -105,7 +106,7 @@ export function worldPlacementTexts(world: PlacementWorld): string[] {
     ...(world.stats ?? []).map((s) => s.name).filter(Boolean),
     ...(world.dictionaries ?? []).flatMap(entryTexts),
     ...present([ov?.systemPrompt, ov?.readme, ov?.introReadme, ov?.openingCue]),
-    ...valueTexts(world.placeholders),
+    ...valueTexts(allPlaceholders(world)),
   ];
 }
 

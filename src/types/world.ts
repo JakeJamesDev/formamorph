@@ -161,9 +161,10 @@ export interface Entity {
   groupId?: string | null;
   /** Sibling order among entities sharing the same group; editor-only, never sent to the AI. */
   order?: number;
-  /** Placeholder defs this standalone/library item carries so its `{{ph…}}` chips resolve after import
-   *  (see lib/placeholders). Populated only off-world (export bundle / library); absent while the entity
-   *  lives in a world, where `World.placeholders` is authoritative — it's absorbed there on import. */
+  /** Placeholders of this entity's own. In a world they are live: every reader sees them beside
+   *  `World.placeholders` through the combined view (see lib/placeholderHomes), and they go with the
+   *  entity when it is deleted or duplicated. Off-world (export bundle / library) they are the defs the
+   *  item carries so its `{{ph…}}` chips resolve after import. */
   placeholders?: Placeholder[];
 }
 
@@ -296,8 +297,9 @@ export interface Dictionary {
   /** Cover art for the listing. Decorative only; a book with none publishes with the server's stand-in. */
   thumbnail?: Base64Data | null;
   entries: DictionaryEntry[];
-  /** Placeholder defs this standalone/library book carries so its entries' `{{ph…}}` chips resolve after
-   *  import (see lib/placeholders). Off-world only; absorbed into `World.placeholders` on import to a world. */
+  /** Placeholders of this book's own. In a world they are live beside `World.placeholders` through the
+   *  combined view (see lib/placeholderHomes) and go with the book when it is deleted. Off-world
+   *  (export file / library) they are the defs the book carries so its entries' chips resolve after import. */
   placeholders?: Placeholder[];
 }
 

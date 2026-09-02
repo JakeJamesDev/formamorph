@@ -15,6 +15,7 @@
  * Pure and world-shaped: no React, no storage, no world mutation.
  */
 import { buildDictionaryContext, flattenEnabledBookEntries } from '@/lib/dictionaryUtils';
+import { allPlaceholders } from '@/lib/placeholderHomes';
 import { entityIdsAt } from '@/lib/entityPresence';
 import {
   buildDestinationsContext, buildEntityContext, buildLocationContext, buildParentLocationContext,
@@ -195,7 +196,7 @@ export function buildAiContext(world: AiContextWorld, lens: BenchLens): AiContex
   const locations = world.locations ?? [];
   const connections = world.connections ?? [];
   const entities = world.entities ?? [];
-  const placeholders = world.placeholders ?? [];
+  const placeholders = allPlaceholders(world);
   const location = lens.location;
   const resolve = (text: string) => resolveLensText(text, placeholders, lens.pins);
 

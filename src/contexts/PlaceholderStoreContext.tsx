@@ -1,17 +1,20 @@
 import { createContext, useContext, type Dispatch, type SetStateAction, type ReactNode } from 'react';
+import type { PlaceholderHome } from '@/lib/placeholderHomes';
 import { releasePlaceholderOwners, removePlaceholderCascade } from '@/lib/placeholderTree';
 import type { Placeholder } from '@/types';
 
 /**
  * The placeholder CRUD the placeholder-editing widgets need, scoped to whatever list is being edited.
  * Decouples `PlaceholderList`/`PlaceholderManager`/`PlaceholderEditor` from any specific global store: the
- * World Editor binds this to the current world's placeholders; a standalone library item binds it to an
- * isolated adapter over the placeholders it carries.
+ * World Editor binds this to the current world's combined view, routing each write to the list that holds
+ * the id; a standalone library item binds it to an isolated adapter over the placeholders it carries.
  */
 export interface PlaceholderStore {
   placeholders: Placeholder[];
   setPlaceholders: Dispatch<SetStateAction<Placeholder[]>>;
-  addPlaceholder: (placeholder: Placeholder) => void;
+  /** Add to the list `home` names; absent, the store's own default list (the world's shared one). A store
+   *  bound to a single list ignores it. */
+  addPlaceholder: (placeholder: Placeholder, home?: PlaceholderHome) => void;
   updatePlaceholder: (updated: Placeholder) => void;
   /** Removes the placeholder and everything it owns — see `removePlaceholderCascade`. */
   removePlaceholder: (id: string) => void;

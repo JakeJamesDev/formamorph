@@ -9,10 +9,12 @@ import { buildDictionaryContext, flattenEnabledBookEntries } from './dictionaryU
 import { buildTraitContext } from './traitTree';
 import { resolveStartingLocation } from './startingLocation';
 import { resolvePlaceholders } from './placeholders';
+import { allPlaceholders } from './placeholderHomes';
 import { variableForToken, variableVariantIds, withVariant, decodeVariant, tokenVariant } from './promptVariables';
 import { NONE_PLACEHOLDER } from './promptFallbacks';
 import type {
-  Connection, Dictionary, Entity, GameLocation, Placeholder, PlayerStat, Stat, Trait, TraitGroup, WorldOverview,
+  Connection, Dictionary, Entity, EntityGroup, GameLocation, Placeholder, PlayerStat, Stat, Trait, TraitGroup,
+  WorldOverview,
 } from '@/types';
 
 const STATS_VARIABLE = variableForToken('<STATS DESCRIPTION>')!;
@@ -28,6 +30,7 @@ export interface AuthoredWorld {
   locations: GameLocation[];
   connections?: Connection[];
   entities: Entity[];
+  entityGroups?: EntityGroup[];
   traits: Trait[];
   traitGroups?: TraitGroup[];
   dictionaries?: Dictionary[];
@@ -66,8 +69,9 @@ export function authoredPreviewValues(
   // world JSON can still arrive without one, and a preview should read empty rather than fail.
   const {
     worldOverview, stats = [], locations = [], connections = [], entities = [], traits = [],
-    traitGroups = [], dictionaries = [], placeholders = [],
+    traitGroups = [], dictionaries = [],
   } = world;
+  const placeholders = allPlaceholders(world);
   // A world with no locations yet previews as "nowhere" rather than failing — the builders all take null.
   const loc = options.location !== undefined ? options.location : resolveStartingLocation(locations, null) ?? null;
   // Preview-only: chips resolve against a fresh roll, since a world has no playthrough whose rolls could
