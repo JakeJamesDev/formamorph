@@ -5,6 +5,7 @@ import { placeholderAccent, type ChipVocabulary } from '@/lib/chipVocabulary';
 import { accentAtChance, BENCHED, chanceChipStyle, type ChanceStyle } from '@/lib/chanceColor';
 import { encodePlaceholderToken } from '@/lib/placeholders';
 import { tintMarkStyle } from '@/lib/previewTint';
+import { EditorModeContext } from '@/lib/editorMode';
 import type { Placeholder } from '@/types';
 import PlaceholderEditor from './PlaceholderEditor';
 import PlaceholderManager from './PlaceholderManager';
@@ -30,6 +31,24 @@ vi.mock('@/contexts/PlaceholderStoreContext', () => ({
     removePlaceholder: vi.fn(),
   }),
   usePlaceholderStoreOptional: () => null,
+}));
+// Radix Select never opens its listbox in jsdom, so the pin rows' placeholder picker stands in as a native
+// select — the options stay genuinely under test.
+vi.mock('@/components/ui/select', () => ({
+  Select: ({ value, onValueChange, children }: {
+    value: string; onValueChange: (v: string) => void; children: React.ReactNode;
+  }) => (
+    <select aria-label="Select placeholder" value={value} onChange={(e) => onValueChange(e.target.value)}>
+      <option value="" />
+      {children}
+    </select>
+  ),
+  SelectTrigger: () => null,
+  SelectValue: () => null,
+  SelectContent: ({ children }: { children: React.ReactNode }) => <>{children}</>,
+  SelectItem: ({ value, children }: { value: string; children: React.ReactNode }) => (
+    <option value={value}>{children}</option>
+  ),
 }));
 // The value boxes are Lexical editors, which jsdom can't drive. Stubbed to a real controlled textarea, so
 // the typing these tests do — newlines included — is genuine right up to the manager's own seam. The
@@ -741,5 +760,57 @@ describe('PlaceholderManager — the sample roll', () => {
     pickStyle('Multiline');
     type(1, 'Crimson');
     expect(screen.queryByRole('status', { name: 'Sample roll' })).not.toBeInTheDocument();
+  });
+});
+
+/** The pin button on each value chip: what other placeholders read as while this one reads as that value. */
+describe('PlaceholderManager — value pins', () => {
+  const WEATHER: Placeholder = { id: 'p2', name: 'Weather', values: phValues(['fog', 'sun']) };
+  /** Red pinning Weather to fog; Blue pinning nothing. */
+  const pinned = (pins = [{ placeholderId: 'p2', value: 'fog' }]) => {
+    const values = phValues(['Red', 'Blue']);
+    const scene = ph({ values: [{ ...values[0], pins }, values[1]] });
+    siblings = [scene, WEATHER];
+    return scene;
+  };
+  const pinButton = (value: string) => screen.getByRole('button', { name: `Pins for ${value}` });
+
+  it('counts the value’s pins on the badge, and opens them in a popover', async () => {
+    render(<PlaceholderManager placeholder={pinned()} />);
+    expect(pinButton('Red').textContent).toBe('1');
+    expect(pinButton('Blue').textContent).toBe('');
+    await userEvent.click(pinButton('Red'));
+    expect(screen.getByRole('textbox', { name: 'Pinned value' })).toHaveValue('fog');
+  });
+
+  it('writes the popover’s rows onto that value, by id, and leaves the others alone', async () => {
+    render(<PlaceholderManager placeholder={pinned()} />);
+    await userEvent.click(pinButton('Red'));
+    await userEvent.click(screen.getByRole('textbox', { name: 'Pinned value' }));
+    await userEvent.click(screen.getByRole('button', { name: 'sun' }));
+    expect(stored().values.map((v) => v.pins)).toEqual([
+      [{ placeholderId: 'p2', value: 'sun', valueId: phValueId('sun') }],
+      undefined,
+    ]);
+    // Emptying the list drops the field rather than leaving an empty array behind.
+    await userEvent.click(screen.getByRole('button', { name: 'Remove pin' }));
+    expect(stored().values[0].pins).toBeUndefined();
+  });
+
+  it('refuses a pin on the value’s own placeholder: not offered, and noted where one is stored', async () => {
+    render(<PlaceholderManager placeholder={pinned([{ placeholderId: 'p1', value: 'Blue' }])} />);
+    await userEvent.click(pinButton('Red'));
+    expect(screen.getByText('A value cannot pin its own placeholder.')).toBeInTheDocument();
+    const options = within(screen.getByRole('combobox', { name: 'Select placeholder' })).getAllByRole('option');
+    expect(options.map((o) => o.textContent)).toEqual(['', 'Weather']);
+  });
+
+  it('shows no pin button in Simple mode', () => {
+    render(
+      <EditorModeContext.Provider value={{ mode: 'simple', advanced: false, setMode: () => {} }}>
+        <PlaceholderManager placeholder={pinned()} />
+      </EditorModeContext.Provider>,
+    );
+    expect(screen.queryByRole('button', { name: /^Pins for/ })).toBeNull();
   });
 });

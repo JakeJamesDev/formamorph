@@ -2,7 +2,9 @@ import { describe, it, expect, vi } from 'vitest';
 import type { GameLocation, Placeholder, PlaceholderPin, Trait } from '@/types';
 import { phValues } from '@/test/placeholderValues';
 import { decodePlaceholderToken } from './placeholders';
-import { activePlaceholderPins, allPinTexts, collectPins, valuePinRollChips, type PinnableStat } from './placeholderPins';
+import {
+  activePlaceholderPins, allPinTexts, collectPins, pinConflict, pinsTargeting, valuePinRollChips, type PinnableStat,
+} from './placeholderPins';
 
 const P = (id: string, values: string[]): Placeholder => ({ id, name: id, values: phValues(values) });
 const pin = (placeholderId: string, value: string, valueId?: string): PlaceholderPin =>
@@ -223,5 +225,123 @@ describe('activePlaceholderPins — the trait-only collector still reads the sam
     const early = trait('early', [pin('hair', 'brown')]);
     const late = trait('late', [pin('hair', 'red')]);
     expect(activePlaceholderPins([early, late])).toEqual({ hair: 'red' });
+  });
+});
+
+type EditorWorld = Parameters<typeof pinsTargeting>[0];
+
+describe('pinsTargeting — every pin on one placeholder, from any source', () => {
+  const world = {
+    traits: [trait('sworn', [pin('town', 'Marrow')]), trait('kin', [pin('hair', 'ash')])],
+    traitGroups: [],
+    locations: [location('fen', [pin('town', 'Fen Town')])],
+    stats: [{ ...stat('hunger', 50, [{ threshold: 20, pins: [pin('town', 'Hollow')] }]), name: 'Hunger', type: 'number' }],
+    placeholders: [
+      P('town', ['Marrow', 'Fen Town']),
+      pinner('region', [['Northern', [pin('town', 'Snowfall')]], ['Southern', []]]),
+      P('hair', ['ash']),
+    ],
+  } as unknown as EditorWorld;
+
+  it('walks trait, location, band and value pins, in precedence order, each labeled by its source', () => {
+    const rows = pinsTargeting(world, 'town');
+    expect(rows.map((r) => r.label)).toEqual(['Hunger ≤ 20', 'Location: fen', 'Trait: sworn', 'region = Northern']);
+    expect(rows.map((r) => r.source)).toEqual([
+      { kind: 'descriptor', statId: 'hunger', descriptorId: 'hunger-b0' },
+      { kind: 'location', id: 'fen' },
+      { kind: 'trait', id: 'sworn' },
+      { kind: 'value', placeholderId: 'region', valueId: 'v:Northern' },
+    ]);
+    expect(rows.map((r) => r.pin.value)).toEqual(['Hollow', 'Fen Town', 'Marrow', 'Snowfall']);
+  });
+
+  it('leaves out pins aimed elsewhere', () => {
+    expect(pinsTargeting(world, 'hair').map((r) => r.label)).toEqual(['Trait: kin']);
+  });
+
+  it('marks a percent threshold as one', () => {
+    const percent = { ...world, stats: [{ ...world.stats![0], thresholdUnit: 'percent' }] } as EditorWorld;
+    expect(pinsTargeting(percent, 'town')[0].label).toBe('Hunger ≤ 20%');
+  });
+});
+
+describe('pinConflict — who else pins it, and who wins', () => {
+  const T = (id: string, extra: Partial<Trait> = {}) => trait(id, [pin('town', id)], extra);
+  const base = {
+    traits: [T('above'), T('below')],
+    traitGroups: [],
+    locations: [location('fen', [pin('town', 'Fen')]), location('moor', [pin('town', 'Moor')])],
+    stats: [
+      { ...stat('thirst', 50, [{ threshold: 20, pins: [pin('town', 'T1')] }]), name: 'Thirst' },
+      { ...stat('hunger', 50, [{ threshold: 20, pins: [pin('town', 'H1')] }, { threshold: 60, pins: [pin('town', 'H2')] }]), name: 'Hunger' },
+    ],
+    placeholders: [
+      P('town', ['Marrow']),
+      pinner('region', [['North', [pin('town', 'N')]], ['South', [pin('town', 'S')]]]),
+      pinner('season', [['Snow', [pin('town', 'Sn')]]]),
+    ],
+  } as unknown as EditorWorld;
+
+  it('returns null when nothing else pins the placeholder', () => {
+    const lone = { ...base, traits: [T('only')], locations: [], stats: [], placeholders: [P('town', ['Marrow'])] };
+    expect(pinConflict(lone, 'town', { kind: 'trait', id: 'only' })).toBeNull();
+  });
+
+  it('ranks a band over a location, a location over a trait, and a trait over a value pin', () => {
+    const fromTrait = pinConflict(base, 'town', { kind: 'trait', id: 'below' })!;
+    expect(fromTrait.winner?.label).toBe('Hunger ≤ 60');
+    expect(fromTrait.rule).toBe('kind');
+    const fromLocation = pinConflict(base, 'town', { kind: 'location', id: 'fen' })!;
+    expect(fromLocation.winner?.label).toBe('Hunger ≤ 60');
+    const fromValue = pinConflict(base, 'town', { kind: 'value', placeholderId: 'region', valueId: 'v:North' })!;
+    expect(fromValue.winner?.label).toBe('Hunger ≤ 60');
+    // Nothing outranks a band, and Hunger sits below Thirst in the stat list, so Hunger's band wins.
+    const fromBand = pinConflict(base, 'town', { kind: 'descriptor', statId: 'hunger', descriptorId: 'hunger-b1' })!;
+    expect(fromBand.winner).toBeNull();
+    // Its nearest rival is Thirst's band, so what decided it was the order of the stat list.
+    expect(fromBand.rule).toBe('order');
+    expect(fromBand.rivals.map((r) => r.label)).toEqual(['Thirst ≤ 20', 'Location: fen', 'Location: moor', 'Trait: above', 'Trait: below', 'region = North', 'region = South', 'season = Snow']);
+    const fromThirst = pinConflict(base, 'town', { kind: 'descriptor', statId: 'thirst', descriptorId: 'thirst-b0' })!;
+    expect(fromThirst.winner?.label).toBe('Hunger ≤ 60');
+    expect(fromThirst.rule).toBe('order');
+  });
+
+  it('lets the trait lowest in the list win among traits, and says the rule was order', () => {
+    const traitsOnly = { ...base, locations: [], stats: [], placeholders: [P('town', ['Marrow'])] };
+    const above = pinConflict(traitsOnly, 'town', { kind: 'trait', id: 'above' })!;
+    expect(above.rivals.map((r) => r.label)).toEqual(['Trait: below']);
+    expect(above.winner?.label).toBe('Trait: below');
+    expect(above.rule).toBe('order');
+    expect(pinConflict(traitsOnly, 'town', { kind: 'trait', id: 'below' })!.winner).toBeNull();
+  });
+
+  it('never pits a source against one it can never share a turn with', () => {
+    // Two locations, two bands of one stat, two values of one Wildcard: only one of each is ever in force.
+    const fen = pinConflict(base, 'town', { kind: 'location', id: 'fen' })!;
+    expect(fen.rivals.map((r) => r.label)).not.toContain('Location: moor');
+    const band = pinConflict(base, 'town', { kind: 'descriptor', statId: 'hunger', descriptorId: 'hunger-b0' })!;
+    expect(band.rivals.map((r) => r.label)).not.toContain('Hunger ≤ 60');
+    expect(band.rivals.map((r) => r.label)).toContain('Thirst ≤ 20');
+    const north = pinConflict(base, 'town', { kind: 'value', placeholderId: 'region', valueId: 'v:North' })!;
+    expect(north.rivals.map((r) => r.label)).not.toContain('region = South');
+    expect(north.rivals.map((r) => r.label)).toContain('season = Snow');
+    // Exclusive trait siblings likewise.
+    const exclusive = {
+      ...base, locations: [], stats: [], placeholders: [P('town', ['Marrow'])],
+      traits: [T('above', { groupId: 'g' }), T('below', { groupId: 'g' })],
+      traitGroups: [{ id: 'g', name: 'Hair', parentId: null, exclusive: true }],
+    } as unknown as EditorWorld;
+    expect(pinConflict(exclusive, 'town', { kind: 'trait', id: 'above' })).toBeNull();
+  });
+
+  it('pits every value of an Object against its siblings, the later one winning', () => {
+    const object = {
+      ...base, traits: [], locations: [], stats: [],
+      placeholders: [P('town', ['Marrow']), { ...pinner('kit', [['Boots', [pin('town', 'B')]], ['Cloak', [pin('town', 'C')]]]), roll: false }],
+    } as unknown as EditorWorld;
+    const boots = pinConflict(object, 'town', { kind: 'value', placeholderId: 'kit', valueId: 'v:Boots' })!;
+    expect(boots.rivals.map((r) => r.label)).toEqual(['kit = Cloak']);
+    expect(boots.winner?.label).toBe('kit = Cloak');
+    expect(pinConflict(object, 'town', { kind: 'value', placeholderId: 'kit', valueId: 'v:Cloak' })!.winner).toBeNull();
   });
 });

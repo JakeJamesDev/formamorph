@@ -623,6 +623,11 @@ export const useGameData = () => {
   return context;
 };
 
+/** The same store, or null outside a `GameDataProvider` — for a widget the library's editors mount with
+ *  no world behind it. */
+// eslint-disable-next-line react-refresh/only-export-components
+export const useGameDataOptional = () => useContext(GameDataContext);
+
 /** Provides the world-editor data store (see `useGameData`); on mount it initializes storage and loads
  *  the world-metadata list. */
 export const GameDataProvider = ({ children }: { children: ReactNode }) => {

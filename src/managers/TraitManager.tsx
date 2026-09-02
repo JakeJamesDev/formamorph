@@ -1,8 +1,6 @@
-import { useMemo } from 'react';
 import { useGameData } from '@/contexts/GameDataContext';
 import { useEditingDraft } from '@/lib/useEditingDraft';
 import { Input } from "@/components/ui/input";
-import { TokenAutocomplete } from '@/components/TokenAutocomplete';
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -10,14 +8,12 @@ import { Trash2 } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import PlaceholderField, { PlaceholderNameField } from '@/components/prompt/PlaceholderField';
 import PlaceholderText from '@/components/prompt/PlaceholderText';
-import { describePlaceholders, lonePlaceholderToken, placeholderValueLine } from '@/lib/placeholders';
+import { PlaceholderPinRows } from '@/components/editor/PlaceholderPinRows';
 import { labelPlaceholders } from '@/lib/placementLetters';
-import { placeholderVocabulary } from '@/lib/chipVocabulary';
-import { withPinnedValue } from '@/lib/placeholderPins';
 import { traitConflicts, type TraitConflict } from '@/lib/traitEffects';
 import { useEditorMode } from '@/lib/editorMode';
 import { HelpButton } from '@/components/HelpButton';
-import type { Placeholder, Trait, StatChange, TraitStatToggle, TraitPlaceholderPin } from '@/types';
+import type { Placeholder, PlaceholderPin, Trait, StatChange, TraitStatToggle } from '@/types';
 
 /** Names another trait that claims the same target, and says which way the tie falls. Silent when nothing
  *  else claims it — the common case, where an extra line would just be noise. */
@@ -49,7 +45,8 @@ const ConflictNote = ({ conflict, placeholders, onOpen }: {
 };
 
 const TraitManager = ({ trait, onOpenTrait }: { trait: Trait; onOpenTrait: (id: string) => void }) => {
-  const { updateTrait, stats, placeholders, placementLetters, placeholderOwners, traits, traitGroups } = useGameData();
+  const world = useGameData();
+  const { updateTrait, stats, placeholders, placementLetters, placeholderOwners, traits, traitGroups } = world;
   const { draft: editingTrait, apply, setField: handleChange } = useEditingDraft<Trait>(trait, updateTrait);
 
   const handleStatChangeAdd = () => {
@@ -78,21 +75,7 @@ const TraitManager = ({ trait, onOpenTrait }: { trait: Trait; onOpenTrait: (id: 
   const conflicts = traitConflicts(editingTrait, traits, traitGroups);
 
   const pins = editingTrait.placeholderPins ?? [];
-  const setPins = (next: TraitPlaceholderPin[]) => apply({ placeholderPins: next.length ? next : undefined });
-  // The pin's text goes through the writer that names the value by id when the list carries it, so picking
-  // "Red" survives the author re-spelling it and typing a shade nobody rolls stays free text.
-  const setPinValue = (index: number, value: string) =>
-    setPins(pins.map((p, i) => (i === index ? withPinnedValue(p, value, placeholders) : p)));
-  const pinVocab = useMemo(() => placeholderVocabulary(placeholders), [placeholders]);
-  /** A value as the pin picker shows it. A value that is exactly one chip is a part, so it reads as the part
-   *  it names — the same reading the Values field gives it, and the one an author picking a variant is
-   *  after. A chip inside longer text is prose, so it reads as what it will resolve to. What the pin stores
-   *  is the value itself either way. */
-  const describeValue = (value: string) => {
-    const lone = lonePlaceholderToken(value);
-    if (lone) return pinVocab.label(lone);
-    return placeholderValueLine(describePlaceholders(value, placeholders)) || value;
-  };
+  const setPins = (next: PlaceholderPin[]) => apply({ placeholderPins: next.length ? next : undefined });
 
   const { advanced } = useEditorMode();
 
@@ -244,52 +227,14 @@ const TraitManager = ({ trait, onOpenTrait }: { trait: Trait; onOpenTrait: (id: 
           <Label>Placeholder Pins</Label>
           <HelpButton topicId="worldEditor.placeholderPins" className="h-6 w-6" />
         </div>
-        {pins.map((pin, index) => (
-          <div key={index} className="space-y-1">
-          <div className="flex space-x-2">
-            {/* Re-aiming the pin drops the value id with it — the id named a value of the old placeholder. */}
-            <Select
-              value={pin.placeholderId}
-              onValueChange={(v) => setPins(pins.map((p, i) =>
-                (i === index ? withPinnedValue({ ...p, placeholderId: v }, p.value, placeholders) : p)))}
-            >
-              <SelectTrigger>
-                <SelectValue placeholder="Select placeholder" />
-              </SelectTrigger>
-              <SelectContent>
-                {placeholders.map((p) => (
-                  <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            {/* Free text with the placeholder's authored values suggested — a trait may pin a value the
-                list doesn't carry (a "Redhead" trait naming a shade nobody else rolls). */}
-            {/* w-full to match the SelectTrigger beside it — equal flex bases split the row in half,
-                exactly as the plain Input this replaced did. */}
-            <div className="w-full min-w-0">
-              <TokenAutocomplete
-                single
-                openOnFocus
-                values={pin.value ? [pin.value] : []}
-                onChange={(vals) => setPinValue(index, vals[0] ?? '')}
-                options={placeholders.find((p) => p.id === pin.placeholderId)?.values.map((v) => v.text) ?? []}
-                describe={describeValue}
-                ariaLabel="Pinned value"
-                placeholder="Pinned value"
-              />
-            </div>
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={() => setPins(pins.filter((_, i) => i !== index))}
-            >
-              <Trash2 className="h-4 w-4" />
-            </Button>
-          </div>
-          <ConflictNote conflict={conflicts.placeholders[pin.placeholderId]} placeholders={placeholders} onOpen={onOpenTrait} />
-          </div>
-        ))}
-        <Button size="sm" onClick={() => setPins([...pins, { placeholderId: '', value: '' }])}>Add Placeholder Pin</Button>
+        <PlaceholderPinRows
+          pins={pins}
+          onChange={setPins}
+          source={{ kind: 'trait', id: editingTrait.id }}
+          world={world}
+          placeholders={placeholders}
+          onOpenTrait={onOpenTrait}
+        />
       </div>
       )}
     </div>

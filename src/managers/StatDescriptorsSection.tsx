@@ -13,21 +13,26 @@ import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import { PlaceholderNameField } from '@/components/prompt/PlaceholderField';
+import { PinPopoverButton } from '@/components/editor/PinPopoverButton';
 import { useGameData } from '@/contexts/GameDataContext';
+import { useEditorMode } from '@/lib/editorMode';
 import { labelPlaceholders } from '@/lib/placementLetters';
 import { activeDescriptor } from '@/lib/statContext';
 import {
   convertDescriptorUnits, descriptorSpans, startCaptionLeft, statMax, statMin, statStartValue,
   thresholdInputWidthRem, thresholdTagInsetRem, thresholdUnitOf, thresholdUnitTag, uncoveredSpan,
 } from '@/lib/statDescriptorGeometry';
-import type { Stat, StatDescriptor, ThresholdUnit } from '@/types';
+import type { PlaceholderPin, Stat, StatDescriptor, ThresholdUnit } from '@/types';
 import { Tip } from '@/components/ui/tooltip';
+
+/** What one descriptor field can be written to: its threshold, its text, or its pin list. */
+export type DescriptorFieldValue = string | number | PlaceholderPin[] | undefined;
 
 export interface StatDescriptorsSectionProps {
   stat: Partial<Stat>;
   newDescriptor: { threshold: number | string; description: string };
   setNewDescriptor: (next: { threshold: number | string; description: string }) => void;
-  onDescriptorChange: (index: number, field: string, value: string | number) => void;
+  onDescriptorChange: (index: number, field: string, value: DescriptorFieldValue) => void;
   onDescriptorBlur: () => void;
   onAddDescriptor: () => void;
   onRemoveDescriptor: (id: string | number) => void;
@@ -125,7 +130,9 @@ export const StatDescriptorsSection = ({
   stat, newDescriptor, setNewDescriptor, onDescriptorChange, onDescriptorBlur, onAddDescriptor,
   onRemoveDescriptor, onUnitChange,
 }: StatDescriptorsSectionProps) => {
-  const { placeholders, placementLetters, placeholderOwners } = useGameData();
+  const world = useGameData();
+  const { placeholders, placementLetters, placeholderOwners } = world;
+  const { advanced } = useEditorMode();
   // The bar and the tips are text surfaces: a chip reads there by its name and letter, as it does in a row.
   const chipText = (text: string) => labelPlaceholders(text, placeholders, placementLetters, placeholderOwners);
   const min = statMin(stat);
@@ -219,6 +226,16 @@ export const StatDescriptorsSection = ({
                   ariaLabel="Description"
                 />
               </div>
+              {advanced && (
+                <PinPopoverButton
+                  pins={descriptor.placeholderPins ?? []}
+                  onChange={(next) => onDescriptorChange(index, 'placeholderPins', next.length ? next : undefined)}
+                  source={{ kind: 'descriptor', statId: stat.id ?? '', descriptorId: descriptor.id }}
+                  world={world}
+                  placeholders={placeholders}
+                  label={`Pins for ${chipText(descriptor.description) || 'descriptor'}`}
+                />
+              )}
               <Button variant="ghost" size="icon" onClick={() => onRemoveDescriptor(descriptor.id)}>
                 <Trash2 className="h-4 w-4" />
               </Button>

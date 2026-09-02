@@ -163,23 +163,23 @@ describe('conflict detection', () => {
   });
 
   it('does not flag exclusive siblings, which can never both be active', () => {
-    const red = T('red', { name: 'Redhead', groupId: 'excl', order: 0, placeholderPins: [{ placeholderId: 'hair', value: 'red' }] });
-    const raven = T('raven', { name: 'Raven', groupId: 'excl', order: 1, placeholderPins: [{ placeholderId: 'hair', value: 'black' }] });
-    expect(traitConflicts(red, [red, raven], groups).placeholders.hair).toBeUndefined();
+    const red = T('red', { name: 'Redhead', groupId: 'excl', order: 0, statToggles: [{ statId: 'sun', enabled: false }] });
+    const raven = T('raven', { name: 'Raven', groupId: 'excl', order: 1, statToggles: [{ statId: 'sun', enabled: true }] });
+    expect(traitConflicts(red, [red, raven], groups).stats.sun).toBeUndefined();
   });
 
   it('still flags a rival outside the exclusive group', () => {
-    const red = T('red', { name: 'Redhead', groupId: 'excl', order: 0, placeholderPins: [{ placeholderId: 'hair', value: 'red' }] });
-    const raven = T('raven', { name: 'Raven', groupId: 'excl', order: 1, placeholderPins: [{ placeholderId: 'hair', value: 'black' }] });
-    const dyed = T('dyed', { name: 'Dyed', groupId: 'plain', order: 0, placeholderPins: [{ placeholderId: 'hair', value: 'green' }] });
-    expect(traitConflicts(red, [red, raven, dyed], groups).placeholders.hair)
+    const red = T('red', { name: 'Redhead', groupId: 'excl', order: 0, statToggles: [{ statId: 'sun', enabled: false }] });
+    const raven = T('raven', { name: 'Raven', groupId: 'excl', order: 1, statToggles: [{ statId: 'sun', enabled: true }] });
+    const dyed = T('dyed', { name: 'Dyed', groupId: 'plain', order: 0, statToggles: [{ statId: 'sun', enabled: true }] });
+    expect(traitConflicts(red, [red, raven, dyed], groups).stats.sun)
       .toEqual({ others: [{ id: 'dyed', name: 'Dyed' }], winsHere: false });
   });
 
   it('ignores half-filled rows rather than reporting a conflict on the empty id', () => {
     const a = T('a', { name: 'A', statToggles: [{ statId: '', enabled: true }] });
     const b = T('b', { name: 'B', statToggles: [{ statId: '', enabled: false }] });
-    expect(traitConflicts(a, [a, b], [])).toEqual({ stats: {}, placeholders: {} });
+    expect(traitConflicts(a, [a, b], [])).toEqual({ stats: {} });
   });
 });
 

@@ -178,6 +178,16 @@ export function ownerPrefix(
   return `${labelPlaceholders(owner.name, placeholders, letters)}${OWNER_NAME_SEPARATOR}`;
 }
 
+/** A placeholder as a plain-text list names it: its owner prefix and its qualified name, chips read by
+ *  name — `Molly.Eyes`, `Molly › Northern`, or `?` for one the world no longer has. */
+export function placeholderDisplayName(
+  id: string, placeholders: readonly Placeholder[], letters: PlacementLetters = EMPTY_LETTERS, owners?: PlaceholderOwners,
+): string {
+  const qualified = qualifiedPlaceholderName(placeholders, id);
+  if (qualified == null) return MISSING;
+  return `${ownerPrefix(id, placeholders, { owners, letters })}${labelPlaceholders(qualified, placeholders, letters, owners)}`;
+}
+
 /**
  * A chip's name as every surface spells it: the owner prefix where one applies, the qualified root, then
  * each path step, so `Molly › Hair` and a root `Hair` never read alike. `null` when the root placeholder is

@@ -22,8 +22,11 @@ import { accentAtChance, chanceChipStyle, relativeChance } from '@/lib/chanceCol
 import { placeholderAccent, usePlaceholderChipVocabulary } from '@/lib/chipVocabulary';
 import { TINT_MARK_CLASS, tintMarkStyle } from '@/lib/previewTint';
 import { cn } from '@/lib/utils';
-import type { Placeholder, PlaceholderValue } from '@/types';
+import type { Placeholder, PlaceholderPin, PlaceholderValue } from '@/types';
 import { Tip } from '@/components/ui/tooltip';
+import { PinPopoverButton } from '@/components/editor/PinPopoverButton';
+import { useGameDataOptional } from '@/contexts/GameDataContext';
+import { useEditorMode } from '@/lib/editorMode';
 
 /** Which of the two value-editing styles a placeholder is being edited in. Session-only — nothing about it
  *  is stored, so a placeholder is re-read on every open rather than remembered. */
@@ -167,6 +170,14 @@ const PlaceholderManager = ({ placeholder, rowId, share }: {
           : kind === 'wildcard'
           ? `Picks one of ${count} values.`
           : `Shows all ${count} values.`;
+
+  // The world behind the editor, when there is one: what a value's pin rows read rivals from. The library's
+  // editors mount this with no world, and there the pins still write but no note can name a rival.
+  const world = useGameDataOptional();
+  const { advanced } = useEditorMode();
+  const setValuePins = (value: PlaceholderValue, pins: PlaceholderPin[]) => apply({
+    values: editing.values.map((v) => (v.id === value.id ? { ...v, pins: pins.length ? pins : undefined } : v)),
+  });
 
   // A value keeps its id across a rename, so its weight follows it with nothing to carry. Only the values
   // an edit dropped need clearing out.
@@ -489,6 +500,23 @@ const PlaceholderManager = ({ placeholder, rowId, share }: {
                 {chip}
               </span>
             )}
+            // A value's own pins: what other placeholders read as while this one reads as that value. A
+            // value cannot pin its own placeholder, so this one is left out of the picker.
+            chipAside={advanced ? (v) => {
+              const value = byText.get(v);
+              if (!value) return null;
+              return (
+                <PinPopoverButton
+                  pins={value.pins ?? []}
+                  onChange={(next) => setValuePins(value, next)}
+                  source={{ kind: 'value', placeholderId: editing.id, valueId: value.id }}
+                  world={world}
+                  placeholders={placeholders}
+                  excludeId={editing.id}
+                  label={`Pins for ${valueLine(v)}`}
+                />
+              );
+            } : undefined}
           />
           {weightPopover}
         </Popover>
