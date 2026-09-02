@@ -399,3 +399,35 @@ describe('placeholderVocabulary — ownership', () => {
     expect(promptVocabulary([]).allRows).toBeUndefined();
   });
 });
+
+describe('placeholder vocabulary — placement labels', () => {
+  const v = placeholderVocabulary([P('eye', ['blue', 'green'])]);
+
+  it('offers a label only on a Unique chip', () => {
+    expect(v.placementLabel?.(tok('eye', 'world'))).toBeNull();
+    expect(v.placementLabel?.(tok('eye', 'unique'))).toBe('');
+    expect(v.placementLabel?.('<STATS>')).toBeNull();
+  });
+
+  it('writes the label into the token and clears it on empty', () => {
+    const labeled = v.setPlacementLabel!(tok('eye', 'unique'), 'Left');
+    expect(decodePlaceholderToken(labeled)?.label).toBe('Left');
+    expect(v.placementLabel?.(labeled)).toBe('Left');
+    expect(decodePlaceholderToken(v.setPlacementLabel!(labeled, ''))).toEqual({ id: 'eye', mode: 'unique', placementId: 'p1' });
+  });
+
+  it('keeps the label in the token across Unique → World → Unique', () => {
+    const labeled = v.setPlacementLabel!(tok('eye', 'unique'), 'Left');
+    const world = v.setAxis(labeled, 'mode', null);
+    expect(v.placementLabel?.(world)).toBeNull();
+    expect(decodePlaceholderToken(world)?.label).toBe('Left');
+    expect(v.placementLabel?.(v.setAxis(world, 'mode', 'unique'))).toBe('Left');
+  });
+
+  it('keeps the label when the chip is re-aimed', () => {
+    const two = placeholderVocabulary([P('eye', ['blue', 'green']), P('hair', ['red', 'black'])]);
+    const labeled = two.setPlacementLabel!(tok('eye', 'unique', 'p7'), 'Left');
+    const moved = two.repoint!(labeled, tok('hair', 'world', 'palette'));
+    expect(decodePlaceholderToken(moved)).toEqual({ id: 'hair', mode: 'unique', placementId: 'p7', label: 'Left' });
+  });
+});

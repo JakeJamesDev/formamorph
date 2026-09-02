@@ -32,27 +32,32 @@ export type PlaceholderSegment =
   | { kind: 'val'; ref: string }
   | { kind: 'slot'; name: string };
 
-/** A decoded in-text chip: which placeholder, the roll mode, the per-placement id (keys Unique rolls), and
- *  the optional drill path under the root. Every shipped token has no path. */
+/** A decoded in-text chip: which placeholder, the roll mode, the per-placement id (keys Unique rolls), the
+ *  optional drill path under the root, and the optional author label that names this placement on editor
+ *  surfaces. Resolution and describe never read the label. */
 export interface PlaceholderToken {
   id: string; // Placeholder.id
   mode: PlaceholderMode;
   placementId: string;
   path?: PlaceholderSegment[];
+  label?: string;
 }
 
-// {{ph:<placeholderId>:<world|unique>:<placementId>[:<path>]}} — double-brace keeps it clear of prompt
-// `<...>` tokens, and ids are UUIDs (no colons), so `:` is a safe separator. Chips are inserted by the
-// editor, not typed, so a stray literal that happens to match still resolves to "" unless its id names a
-// real placeholder. The path group is optional, so a token written before this feature parses unchanged.
-const TOKEN_RE = /\{\{ph:([^:{}]+):(world|unique):([^:{}]+)(?::([^:{}]+))?\}\}/g;
+// {{ph:<placeholderId>:<world|unique>:<placementId>[:<path>][:=<label>]}} — double-brace keeps it clear of
+// prompt `<...>` tokens, and ids are UUIDs (no colons), so `:` is a safe separator. Chips are inserted by
+// the editor, not typed, so a stray literal that happens to match still resolves to "" unless its id names
+// a real placeholder. The path and label groups are optional, so a token written before either feature
+// parses unchanged. A path segment starts with its kind letter, never `=`, which is what tells the two
+// trailing groups apart when only one is present.
+const TOKEN_RE = /\{\{ph:([^:{}]+):(world|unique):([^:{}]+)(?::([^:{}=][^:{}]*))?(?::=([^:{}]*))?\}\}/g;
 // The same token with nothing around it: "is this string one whole chip?". Built once — both readers of it
 // run per value on render paths. Ungreedy of state: no `g`, so `exec` never carries a `lastIndex`.
 const WHOLE_TOKEN_RE = new RegExp(`^${TOKEN_RE.source}$`);
 
 // Path grammar: segments joined by `>`, each `v<targetId>` (explicit pick) or `s<name>` (slot). Slot names
-// are author text, so the four characters the grammar owns are percent-escaped.
+// and placement labels are author text, so the four characters the grammar owns are percent-escaped.
 const SEG_SEP = '>';
+const LABEL_PREFIX = ':=';
 const escapeSeg = (s: string) => s.replace(/[%:{}>]/g, (c) => `%${c.charCodeAt(0).toString(16).toUpperCase()}`);
 const unescapeSeg = (s: string) => s.replace(/%([0-9A-F]{2})/g, (_m, hex: string) => String.fromCharCode(parseInt(hex, 16)));
 
@@ -73,17 +78,23 @@ export function decodePlaceholderPath(raw: string): PlaceholderSegment[] | null 
   return out;
 }
 
+/** The optional tail of a token from its already-encoded path and label segments. Either may be absent, and
+ *  an empty one is the same as none. */
+const tokenTail = (path?: string, label?: string) =>
+  `${path ? `:${path}` : ''}${label ? `${LABEL_PREFIX}${label}` : ''}`;
+
 /** Encode a chip placement to its stored token string. */
 export function encodePlaceholderToken(t: PlaceholderToken): string {
-  const path = t.path?.length ? `:${encodePlaceholderPath(t.path)}` : '';
-  return `{{ph:${t.id}:${t.mode}:${t.placementId}${path}}}`;
+  const tail = tokenTail(t.path?.length ? encodePlaceholderPath(t.path) : '', t.label && escapeSeg(t.label));
+  return `{{ph:${t.id}:${t.mode}:${t.placementId}${tail}}}`;
 }
 
 /** Decode a single token string, or `null` if it isn't a well-formed placeholder token. */
 export function decodePlaceholderToken(token: string): PlaceholderToken | null {
   const m = WHOLE_TOKEN_RE.exec(token);
   if (!m) return null;
-  const base = { id: m[1], mode: m[2] as PlaceholderMode, placementId: m[3] };
+  const base: PlaceholderToken = { id: m[1], mode: m[2] as PlaceholderMode, placementId: m[3] };
+  if (m[5]) base.label = unescapeSeg(m[5]);
   if (!m[4]) return base;
   const path = decodePlaceholderPath(m[4]);
   return path ? { ...base, path } : null;
@@ -334,18 +345,18 @@ export function collectUsedPlaceholders(texts: string[], available: Placeholder[
  * Re-mint every chip's placement id — for text copied by a duplicate action or a paste, where the copy would
  * otherwise share the source's Unique rolls forever. `minted` maps old id → new id, so one map passed across
  * a whole copied record keeps its internally-shared placements shared with each other while cutting them
- * loose from the source. Placeholder id, mode, and drill path are untouched.
+ * loose from the source. Placeholder id, mode, drill path and label are untouched.
  */
 export function remintPlaceholderPlacements(text: string, minted: Map<string, string> = new Map()): string {
   if (!text || !hasPlaceholders(text)) return text;
   TOKEN_RE.lastIndex = 0;
-  return text.replace(TOKEN_RE, (_full, id: string, mode: string, placementId: string, path?: string) => {
+  return text.replace(TOKEN_RE, (_full, id: string, mode: string, placementId: string, path?: string, label?: string) => {
     let fresh = minted.get(placementId);
     if (!fresh) {
       fresh = randomUUID();
       minted.set(placementId, fresh);
     }
-    return `{{ph:${id}:${mode}:${fresh}${path ? `:${path}` : ''}}}`;
+    return `{{ph:${id}:${mode}:${fresh}${tokenTail(path, label)}}}`;
   });
 }
 
@@ -399,17 +410,17 @@ export function remintPlaceholderDef(ph: Placeholder): Placeholder {
 }
 
 /** Rewrite chip tokens' placeholder ids via `idMap` — the chip's root, and the target of every explicit-pick
- *  segment in its drill path, which names its placeholder the same way the root does. Mode and placement id
- *  are untouched, and a token nothing in the map applies to comes back byte-identical. */
+ *  segment in its drill path, which names its placeholder the same way the root does. Mode, placement id
+ *  and label are untouched, and a token nothing in the map applies to comes back byte-identical. */
 export function remapPlaceholderIds(text: string, idMap: Record<string, string>): string {
   if (!text || !hasPlaceholders(text)) return text;
   TOKEN_RE.lastIndex = 0;
-  return text.replace(TOKEN_RE, (full, id: string, mode: string, placementId: string, path?: string) => {
+  return text.replace(TOKEN_RE, (full, id: string, mode: string, placementId: string, path?: string, label?: string) => {
     const segs = path ? decodePlaceholderPath(path) : [];
     if (!segs) return full; // an unreadable path is left exactly as the author's JSON has it
     const moved = segs.map((s) => (s.kind === 'val' && idMap[s.ref] ? { kind: 'val' as const, ref: idMap[s.ref] } : s));
     if (!idMap[id] && moved.every((s, i) => s === segs[i])) return full;
-    const tail = moved.length ? `:${encodePlaceholderPath(moved)}` : '';
+    const tail = tokenTail(moved.length ? encodePlaceholderPath(moved) : '', label);
     return `{{ph:${idMap[id] ?? id}:${mode}:${placementId}${tail}}}`;
   });
 }

@@ -2,7 +2,7 @@
    Lexical VariableNode class with its $create/$is helpers and the shared drag context; they're one unit. */
 import { createContext, useContext, useState, useEffect, type ReactNode, type DragEvent } from 'react';
 import {
-  DecoratorNode, $getNodeByKey,
+  DecoratorNode, $getNodeByKey, SKIP_DOM_SELECTION_TAG,
   type LexicalNode, type NodeKey, type SerializedLexicalNode, type Spread,
 } from 'lexical';
 import { useLexicalComposerContext } from '@lexical/react/LexicalComposerContext';
@@ -73,6 +73,7 @@ function VariableChip({ nodeKey, token }: { nodeKey: NodeKey; token: string }) {
   const axes = known ? vocab.axes(token) : [];
   const selection = known ? vocab.selection(token) : {};
   const affixes = known ? vocab.affixes(token) : null;
+  const placementLabel = known ? vocab.placementLabel?.(token) ?? null : null;
   // How many toggle (checkbox) axes are on — used to lock the last one so at least one piece stays selected.
   const toggleOnCount = axes.filter((a) => a.toggle && selection[a.id] != null).length;
 
@@ -115,6 +116,18 @@ function VariableChip({ nodeKey, token }: { nodeKey: NodeKey; token: string }) {
       const current = vocab.affixes(node.getToken()) ?? { pre: '', post: '' };
       node.setToken(vocab.setAffixes(node.getToken(), ...(which === 'pre' ? [value, current.post] : [current.pre, value]) as [string, string]));
     });
+  };
+
+  // Written straight through to the token like an affix: the label is the placement's own and travels with
+  // it. Read from the node's live token, so a mode switch in the same pop-out never clobbers it. The commit
+  // is tagged so Lexical leaves the DOM selection alone: the caret is in the pop-out's input, not the field.
+  const setPlacementLabel = (value: string) => {
+    if (!editable || placementLabel == null) return;
+    editor.update(() => {
+      const node = $getNodeByKey(nodeKey);
+      if (!$isVariableNode(node)) return;
+      node.setToken(vocab.setPlacementLabel?.(node.getToken(), value) ?? node.getToken());
+    }, { tag: SKIP_DOM_SELECTION_TAG });
   };
 
   const handleDragStart = (e: DragEvent) => {
@@ -261,10 +274,26 @@ function VariableChip({ nodeKey, token }: { nodeKey: NodeKey; token: string }) {
                 })}
               </div>
             ) : (
-              !affixes && !repickable && <p className="text-meta text-muted-foreground">No options for this variable.</p>
+              !affixes && !repickable && placementLabel == null
+                && <p className="text-meta text-muted-foreground">No options for this variable.</p>
+            )}
+            {placementLabel != null && (
+              <div className={cn('space-y-2', axes.length && 'mt-4 pt-3 border-t')}>
+                <p className="text-meta font-medium">Label</p>
+                <p className="text-[11px] text-muted-foreground">
+                  Tells this placement apart from others on the same placeholder. Travels with the chip.
+                </p>
+                <Input
+                  aria-label="Label"
+                  value={placementLabel}
+                  disabled={!editable}
+                  onChange={(e) => setPlacementLabel(e.target.value)}
+                  className="h-7 text-meta"
+                />
+              </div>
             )}
             {affixes && (
-              <div className={cn('space-y-2', axes.length && 'mt-4 pt-3 border-t')}>
+              <div className={cn('space-y-2', (axes.length || placementLabel != null) && 'mt-4 pt-3 border-t')}>
                 <p className="text-meta font-medium">Prepend / Append</p>
                 <p className="text-[11px] text-muted-foreground">
                   Wraps the value, and vanishes with it. Spaces count — check Preview.
@@ -282,7 +311,7 @@ function VariableChip({ nodeKey, token }: { nodeKey: NodeKey; token: string }) {
                 type="button"
                 variant="outline"
                 size="sm"
-                className={cn('h-7 w-full text-meta', (axes.length || affixes) && 'mt-4')}
+                className={cn('h-7 w-full text-meta', (axes.length || affixes || placementLabel != null) && 'mt-4')}
                 onClick={() => setRepicking(true)}
               >
                 Re-Pick…

@@ -1610,3 +1610,48 @@ describe('buildPlaceholderPreview over a shared store', () => {
     expect(c.rolls.unique).toEqual({ p2: 'Red' });
   });
 });
+
+describe('token codec with placement labels', () => {
+  const GRAMMAR = 'Old %Tom: {the} >inn= v1';
+
+  it('round-trips a label with every grammar character, with and without a path', () => {
+    const bare = { id: 'eye', mode: 'unique' as const, placementId: 'p1', label: GRAMMAR };
+    expect(decodePlaceholderToken(encodePlaceholderToken(bare))).toEqual(bare);
+    const path: PlaceholderSegment[] = [{ kind: 'slot', name: 'Eyes' }, { kind: 'val', ref: 'blue' }];
+    const pathed = { ...bare, path };
+    expect(decodePlaceholderToken(encodePlaceholderToken(pathed))).toEqual(pathed);
+  });
+
+  it('parses a token without a label as today', () => {
+    const t = { id: 'eye', mode: 'world' as const, placementId: 'p1' };
+    const decoded = decodePlaceholderToken(encodePlaceholderToken(t))!;
+    expect(decoded).toEqual(t);
+    expect('label' in decoded).toBe(false);
+    expect(encodePlaceholderToken({ ...t, label: '' })).toBe(encodePlaceholderToken(t));
+  });
+
+  it('keeps the label through re-mint and id remap', () => {
+    const src = encodePlaceholderToken({ id: 'eye', mode: 'unique', placementId: 'p1', label: GRAMMAR });
+    const minted = decodePlaceholderToken(remintPlaceholderPlacements(src))!;
+    expect(minted.label).toBe(GRAMMAR);
+    expect(minted.placementId).not.toBe('p1');
+    const moved = decodePlaceholderToken(remapPlaceholderIds(src, { eye: 'eye2' }))!;
+    expect(moved).toEqual({ id: 'eye2', mode: 'unique', placementId: 'p1', label: GRAMMAR });
+    const withPath = encodePlaceholderToken({
+      id: 'eye', mode: 'unique', placementId: 'p1', path: [{ kind: 'val', ref: 'blue' }], label: 'A',
+    });
+    expect(decodePlaceholderToken(remapPlaceholderIds(withPath, { blue: 'teal' }))).toEqual({
+      id: 'eye', mode: 'unique', placementId: 'p1', path: [{ kind: 'val', ref: 'teal' }], label: 'A',
+    });
+  });
+
+  it('resolves and describes a labeled chip exactly like an unlabeled one', () => {
+    const defs = [P('eye', ['blue'])];
+    const plain = tok('eye', 'unique', 'p1');
+    const labeled = encodePlaceholderToken({ id: 'eye', mode: 'unique', placementId: 'p1', label: 'Left' });
+    const { rolls, setRoll } = collector();
+    const opts = { placeholders: defs, rolls, setRoll, pick: first };
+    expect(resolvePlaceholders(labeled, opts)).toBe(resolvePlaceholders(plain, opts));
+    expect(describePlaceholders(labeled, defs)).toBe(describePlaceholders(plain, defs));
+  });
+});
