@@ -42,6 +42,7 @@ import LocationManager from '../managers/LocationManager';
 import TraitManager from '../managers/TraitManager';
 import GroupManager from '../managers/GroupManager';
 import EntityGroupManager from '../managers/EntityGroupManager';
+import PlaceholderGroupManager from '../managers/PlaceholderGroupManager';
 import TraitTree from '../managers/TraitTree';
 import LocationTree from '../managers/LocationTree';
 import LocationCanvas from '../managers/LocationCanvas';
@@ -100,11 +101,11 @@ const WorldEditorInner = ({ onClose, embedded = false, backButton }: {
     updateWorldOverview, worldId, worldOverview,
     loadWorldData, getWorldData,
     stats, locations, entities, entityGroups, traits, traitGroups, statUpdates, dictionaries, placeholders, placementLetters,
-    worldPlaceholders, placeholderOwners,
+    worldPlaceholders, placeholderOwners, placeholderGroups,
     addStat, addLocation, addEntity, addTrait, addStatUpdate, addDictionary,
-    addTraitGroup, addEntityGroup, addPlaceholder,
+    addTraitGroup, addEntityGroup, addPlaceholder, addPlaceholderGroup,
     updateStat, updateEntity, updateEntityGroup, updateLocation, updateTrait, updateTraitGroup,
-    updateDictionary, updateDictionaryEntry, updatePlaceholder,
+    updateDictionary, updateDictionaryEntry, updatePlaceholder, updatePlaceholderGroup,
     removeStat, removeEntity, removeTrait, removeStatUpdate,
     setStats, setLocations, setEntities, setTraits, setTraitGroups, setStatUpdates,
     isWorldDirty, saveWorld: saveWorldCtx, discardChanges
@@ -206,13 +207,14 @@ const WorldEditorInner = ({ onClose, embedded = false, backButton }: {
     if (!findOpen) return [];
     const reachable = new Set<string>(visibleTabs.map((t) => t.value));
     return collectSearchTargets({
-      worldOverview, stats, entities, entityGroups, locations, traits, traitGroups, dictionaries, placeholders,
+      worldOverview, stats, entities, entityGroups, locations, traits, traitGroups, dictionaries, placeholders, placeholderGroups,
       updateWorldOverview, updateStat, updateEntity, updateEntityGroup, updateLocation, updateTrait,
-      updateTraitGroup, updateDictionary, updateDictionaryEntry, updatePlaceholder,
+      updateTraitGroup, updateDictionary, updateDictionaryEntry, updatePlaceholder, updatePlaceholderGroup,
     }).filter((t) => reachable.has(t.tab));
   }, [findOpen, visibleTabs, worldOverview, stats, entities, entityGroups, locations, traits, traitGroups,
-      dictionaries, placeholders, updateWorldOverview, updateStat, updateEntity, updateEntityGroup,
-      updateLocation, updateTrait, updateTraitGroup, updateDictionary, updateDictionaryEntry, updatePlaceholder]);
+      dictionaries, placeholders, placeholderGroups, updateWorldOverview, updateStat, updateEntity, updateEntityGroup,
+      updateLocation, updateTrait, updateTraitGroup, updateDictionary, updateDictionaryEntry, updatePlaceholder,
+      updatePlaceholderGroup]);
   // A fresh object per navigation, not the bare key: a panel with its own tabs has to re-open the right one
   // even when two consecutive hits sit in the same field and the author flipped tabs between them.
   const [findField, setFindField] = useState<{ fieldKey: string } | null>(null);
@@ -396,6 +398,14 @@ const WorldEditorInner = ({ onClose, embedded = false, backButton }: {
     setSelectedItemId(p.id);
   };
 
+  // New placeholder folders append at the root; the author drags shared placeholders into them.
+  const handleAddPlaceholderGroup = () => {
+    const id = randomUUID();
+    addPlaceholderGroup({ id, name: searchTerm.trim() || 'New Group', parentId: null, order: placeholderGroups.filter(g => g.parentId === null).length });
+    setSearchTerm('');
+    setSelectedItemId(id);
+  };
+
   // New traits/groups append at the root; the author drags them into folders. Order = root sibling count.
   const rootSiblingCount = () =>
     traits.filter(t => (t.groupId ?? null) === null).length +
@@ -479,6 +489,7 @@ const WorldEditorInner = ({ onClose, embedded = false, backButton }: {
     const ownerId = selectedItemId ? ownerIdOfNode(selectedItemId) : null;
     return ownerId ? placeholderOwnerRef({ entities, dictionaries }, ownerId) ?? null : null;
   }, [selectedItemId, entities, dictionaries]);
+  const selectedPlaceholderGroup = placeholderGroups.find(g => g.id === selectedItemId);
   const selectedPlaceholder = useMemo(
     () => placeholderSelection(placeholders, selectedItemId), [placeholders, selectedItemId],
   );
@@ -660,6 +671,9 @@ const WorldEditorInner = ({ onClose, embedded = false, backButton }: {
       {activeTab === "statUpdates" && selectedItem && (
         <StatUpdatesManager key={selectedItem.id} statUpdate={selectedItem as StatUpdate} />
       )}
+      {activeTab === "placeholders" && selectedPlaceholderGroup && (
+        <PlaceholderGroupManager key={selectedPlaceholderGroup.id} group={selectedPlaceholderGroup} />
+      )}
       {activeTab === "placeholders" && selectedPlaceholderOwner && (
         <PlaceholderOwnerPanel
           owner={selectedPlaceholderOwner}
@@ -667,7 +681,7 @@ const WorldEditorInner = ({ onClose, embedded = false, backButton }: {
           onOpen={() => navigateToBenchItem(selectedPlaceholderOwner.kind === 'entity' ? 'entities' : 'dictionary', selectedPlaceholderOwner.id)}
         />
       )}
-      {activeTab === "placeholders" && selectedPlaceholder && (
+      {activeTab === "placeholders" && !selectedPlaceholderGroup && selectedPlaceholder && (
         <PlaceholderManager
           key={selectedPlaceholder.row.id}
           placeholder={selectedPlaceholder.row.placeholder}
@@ -768,9 +782,14 @@ const WorldEditorInner = ({ onClose, embedded = false, backButton }: {
   ));
   // The active tab's help topic, when it has copy yet — drives the `?` beside the search box.
   const helpTopicId = worldEditorTopicId(activeTab);
+  // The tabs whose list is a folder tree offer Add Group beside Add <item> in Advanced mode.
+  const grouped = activeTab === "traits" || activeTab === "entities" || activeTab === "placeholders";
+  const addGroupHere = activeTab === "entities" ? handleAddEntityGroup : activeTab === "placeholders" ? handleAddPlaceholderGroup : handleAddGroup;
+  const addItemHere = activeTab === "entities" ? addItem : activeTab === "placeholders" ? handleAddPlaceholder : handleAddTrait;
+  const addItemLabel = activeTab === "entities" ? "Add Entity" : activeTab === "placeholders" ? "Add Placeholder" : "Add Trait";
   const addSearchBar = activeTab !== "overview" && (
     <div className="flex items-center space-x-2 flex-shrink-0 mt-4">
-      {advanced && (activeTab === "traits" || activeTab === "entities") ? (
+      {advanced && grouped ? (
         <Popover open={addMenuOpen} onOpenChange={setAddMenuOpen}>
           <PopoverTrigger asChild>
             <Button size="icon" className="h-9 w-9 shrink-0">
@@ -781,16 +800,16 @@ const WorldEditorInner = ({ onClose, embedded = false, backButton }: {
             <button
               type="button"
               className="flex w-full items-center gap-2 rounded-sm px-2 py-1.5 text-label hover:bg-accent"
-              onClick={() => { (activeTab === "entities" ? handleAddEntityGroup : handleAddGroup)(); setAddMenuOpen(false); }}
+              onClick={() => { addGroupHere(); setAddMenuOpen(false); }}
             >
               <FolderPlus className="h-4 w-4" /> Add Group
             </button>
             <button
               type="button"
               className="flex w-full items-center gap-2 rounded-sm px-2 py-1.5 text-label hover:bg-accent"
-              onClick={() => { (activeTab === "entities" ? addItem : handleAddTrait)(); setAddMenuOpen(false); }}
+              onClick={() => { addItemHere(); setAddMenuOpen(false); }}
             >
-              <FilePlus className="h-4 w-4" /> {activeTab === "entities" ? "Add Entity" : "Add Trait"}
+              <FilePlus className="h-4 w-4" /> {addItemLabel}
             </button>
           </PopoverContent>
         </Popover>

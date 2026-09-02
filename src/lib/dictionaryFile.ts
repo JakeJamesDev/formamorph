@@ -3,6 +3,7 @@ import type { Dictionary, DictionaryEntry, Placeholder } from '@/types';
 import { APP_VERSION, WORLD_FILE_KIND, SAVE_FILE_KIND, migrateCarriedPlaceholders, migrateEntryKeys } from './version';
 import { convertLorebook } from './lorebookImport';
 import { carriedPlaceholders, sharedPlaceholdersUsed } from './placeholderHomes';
+import { portablePlaceholders } from './placeholderGroups';
 
 /** Discriminator identifying a standalone one-book dictionary file (vs. a world or save file). */
 export const DICTIONARY_FILE_KIND = 'dictionary' as const;
@@ -30,12 +31,13 @@ export interface DictionaryFile {
  *  placeholder pool to resolve the book's used chips from — the world's combined list, or the book's own
  *  carried pool. */
 export function buildDictionaryFile(book: Dictionary, available: Placeholder[] = carriedPlaceholders(book)): DictionaryFile {
-  const owned = book.placeholders ?? [];
-  const shared = sharedPlaceholdersUsed(
+  // Folders are the world's: a def leaves its folder reference behind.
+  const owned = portablePlaceholders(book.placeholders ?? []);
+  const shared = portablePlaceholders(sharedPlaceholdersUsed(
     book.entries.flatMap((e) => [e.name ?? '', ...(e.key ?? []), ...(e.secondaryKeys ?? []), e.value ?? '']),
     owned,
     available,
-  );
+  ));
   return {
     formamorphKind: DICTIONARY_FILE_KIND,
     version: APP_VERSION,

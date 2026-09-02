@@ -15,6 +15,7 @@ import {
   directChipTargets, encodePlaceholderToken, lonePlaceholderToken, mergePlaceholderWeights,
   newPlaceholderValue, parsePlaceholderText, placeholderChances, placeholderIsChoice, pruneSharedWeights,
 } from './placeholders';
+import { withPlaceholderGroup } from './placeholderGroups';
 import type { Placeholder, PlaceholderValue } from '@/types';
 
 /** Joins the placeholder ids a row's path walked through — the same separator an override key is built
@@ -529,6 +530,10 @@ export interface PlaceholderDropPlan {
   holderId: string | null;
   /** Every placeholder id under the new holder (or at the top level) after the drop, in order. */
   siblingOrder: readonly string[];
+  /** The editor folder a top-level landing puts the placeholder in: a group id, null for none, absent to
+   *  leave its folder alone. Read only when `holderId` is null; a placeholder taken privately loses its
+   *  folder either way, since only a shared, top-level one is ever grouped. */
+  groupId?: string | null;
 }
 
 /**
@@ -536,14 +541,14 @@ export interface PlaceholderDropPlan {
  * projected the drop over a larger tree (the world tab, whose rows span several lists). Never mutates.
  */
 export function commitPlaceholderDrop(
-  placeholders: Placeholder[], { targetId, activeHolderId, holderId, siblingOrder }: PlaceholderDropPlan,
+  placeholders: Placeholder[], { targetId, activeHolderId, holderId, siblingOrder, groupId }: PlaceholderDropPlan,
   context: PlaceholderDropContext = {},
 ): Placeholder[] {
   const all = context.all ?? placeholders;
   let next = placeholders.map((p) => ({ ...p }));
 
   if (holderId === null) {
-    next = next.map((p) => (p.id === targetId ? released(p) : p));
+    next = next.map((p) => (p.id === targetId ? (groupId === undefined ? released(p) : withPlaceholderGroup(released(p), groupId)) : p));
     return orderTopLevel(next, siblingOrder);
   }
 
@@ -554,7 +559,7 @@ export function commitPlaceholderDrop(
   // here would turn a shared row private on a gesture that said nothing about ownership.
   if (holderId !== activeHolderId && dropTakesOwnership(all, targetId, holderId, context)) {
     next = next.map((p) => {
-      if (p.id === targetId) return { ...p, ownerId: holderId };
+      if (p.id === targetId) return { ...withPlaceholderGroup(p, null), ownerId: holderId };
       // The holder may already have been sharing this row and weighting it there; taking it privately
       // leaves those weights applying to nothing.
       return p.id === holderId ? withoutSharedWeightsFor(p, targetId) : p;

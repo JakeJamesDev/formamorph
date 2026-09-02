@@ -4,7 +4,8 @@ import { act, render, screen, fireEvent, within } from '@testing-library/react';
 import { encodePlaceholderToken } from '@/lib/placeholders';
 import { PlaceholderStoreProvider, placeholderStore } from '@/contexts/PlaceholderStoreContext';
 import { phValues } from '@/test/placeholderValues';
-import type { Placeholder } from '@/types';
+import type { Placeholder, PlaceholderGroup } from '@/types';
+import type { PlaceholderSlices } from '@/lib/placeholderHomes';
 import PlaceholderList from './PlaceholderList';
 import type { SortableTreeAdapter } from './SortableTree';
 import { placeholderRows, type PlaceholderTreeRow } from '@/lib/placeholderTree';
@@ -198,5 +199,69 @@ describe('PlaceholderList — the tree', () => {
     render(<Harness initial={[]} />);
     expect(screen.queryByRole('button', { name: 'Duplicate' })).not.toBeInTheDocument();
     expect(screen.getByText(/placeholders/i)).toBeInTheDocument();
+  });
+});
+
+/** The list over a whole world's lists, folders included, as the World Editor mounts it. */
+let storedGroups: PlaceholderGroup[] = [];
+function WorldHarness({ initial, groups }: { initial: Placeholder[]; groups: PlaceholderGroup[] }) {
+  const [lists, setLists] = useState<PlaceholderSlices>({ placeholders: initial, entities: [], dictionaries: [], placeholderGroups: groups });
+  stored = lists.placeholders;
+  storedGroups = lists.placeholderGroups ?? [];
+  const store = useMemo(() => ({
+    ...placeholderStore(lists.placeholders, (action) => setLists((prev) => ({
+      ...prev, placeholders: typeof action === 'function' ? action(prev.placeholders) : action,
+    }))),
+    placedIds: () => new Set<string>(),
+    lists,
+    // A drop that moved nothing but folders hands the lists back with only the folders changed.
+    setLists: (next: PlaceholderSlices) => setLists((prev) => ({ ...next, placeholderGroups: next.placeholderGroups ?? prev.placeholderGroups })),
+  }), [lists]);
+  return (
+    <PlaceholderStoreProvider value={store}>
+      <PlaceholderList selectedId={null} onSelect={select} />
+    </PlaceholderStoreProvider>
+  );
+}
+
+describe('PlaceholderList — folders over the shared list', () => {
+  const GROUPS: PlaceholderGroup[] = [{ id: 'body', name: 'Body', parentId: null }];
+  const GROUPED: Placeholder[] = [{ ...P('hair', 'Hair', ['brown']), groupId: 'body' }, P('town', 'Town', ['Sedge'])];
+
+  it('draws a folder row above the loose rows, with its placeholders beneath it', () => {
+    render(<WorldHarness initial={GROUPED} groups={GROUPS} />);
+    // A folder offers no duplicate, so it is found by the collapse it does offer.
+    const folder = screen.getByRole('button', { name: 'Collapse group' }).closest('[style]') as HTMLElement;
+    expect(folder.textContent).toContain('Body');
+    expect(rowNames()).toEqual(['Hair', 'Town']);
+    expect(indent(row('Hair'))).not.toBe(indent(row('Town')));
+  });
+
+  it('deletes a folder and lifts what it held to the loose rows', () => {
+    render(<WorldHarness initial={GROUPED} groups={GROUPS} />);
+    const folder = screen.getByRole('button', { name: 'Collapse group' }).parentElement as HTMLElement;
+    fireEvent.click(within(folder).getByRole('button', { name: 'Delete' }));
+    expect(storedGroups).toEqual([]);
+    expect(stored.find((p) => p.id === 'hair')).not.toHaveProperty('groupId');
+    expect(screen.queryByRole('button', { name: 'Collapse group' })).not.toBeInTheDocument();
+  });
+
+  it('shows no indent projection for a landing the drop would refuse', () => {
+    const groups: PlaceholderGroup[] = [...GROUPS, { id: 'gear', name: 'Gear', parentId: null }];
+    render(<WorldHarness initial={GROUPED} groups={groups} />);
+    const visible = adapter!.getVisible(new Set());
+    // Gear over Town, one indent in: under a row, which a folder cannot land in.
+    expect(adapter!.projectDepth(visible, 'gear', 'town', 24)).toBeNull();
+    // Gear over Body at the same depth: a legal reorder, so the indicator stays.
+    expect(adapter!.projectDepth(visible, 'gear', 'body', 0)).toBe(0);
+  });
+
+  it('writes the folder move the pure module resolved', () => {
+    const groups: PlaceholderGroup[] = [...GROUPS, { id: 'gear', name: 'Gear', parentId: null }];
+    render(<WorldHarness initial={GROUPED} groups={groups} />);
+    // Gear dragged onto Body at the same depth: it takes Body's place at the front.
+    act(() => adapter!.onDrop('gear', 'body', 0, new Set()));
+    expect(storedGroups.map((g) => [g.id, g.order])).toEqual([['body', 1], ['gear', 0]]);
+    expect(stored).toBe(GROUPED);
   });
 });

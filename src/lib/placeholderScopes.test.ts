@@ -3,7 +3,8 @@ import { encodePlaceholderToken } from './placeholders';
 import { phValues } from '@/test/placeholderValues';
 import type { Dictionary, Entity, Placeholder } from '@/types';
 import {
-  applyScopedPlaceholderDrop, ownerIdOfNode, ownerNodeId, placeholderTreeNodes, type PlaceholderTreeNode,
+  applyScopedPlaceholderDrop, ownerIdOfNode, ownerNodeId, placeholderDropAllowed, placeholderTreeNodes,
+  type PlaceholderTreeNode,
 } from './placeholderScopes';
 
 // Through the real codec, never a hand-written token.
@@ -27,6 +28,7 @@ const book = (placeholders: Placeholder[] = [LORE]): Dictionary =>
 /** Rows as `depth:name`, an owner node in brackets, so a failure reads as the shape an author would see. */
 const shape = (nodes: PlaceholderTreeNode[]) => nodes.map((n) => {
   const pad = '  '.repeat(n.depth);
+  if (n.kind === 'group') return `${pad}<${n.group.name}>`;
   return n.kind === 'owner' ? `${pad}[${n.owner.name}]` : `${pad}${n.placeholder.name}${n.shared ? ' *' : ''}`;
 });
 
@@ -145,5 +147,133 @@ describe('applyScopedPlaceholderDrop', () => {
   it('refuses to drag an owner node, or to drop onto a row that is collapsed away', () => {
     expect(drop(world(), ownerNodeId('molly'), 'town', 0)).toBeNull();
     expect(applyScopedPlaceholderDrop(world(), [ownerNodeId('molly')], 'town', 'eyes', INDENT, INDENT)).toBeNull();
+  });
+});
+
+/**
+ * Folders over the shared list. A folder holds folders and shared rows, drawn above the loose rows; a
+ * scoped placeholder stays with its owner and cannot be dropped into one.
+ */
+describe('placeholderTreeNodes with groups', () => {
+  const G = (id: string, name: string, parentId: string | null = null, order?: number) =>
+    ({ id, name, parentId, ...(order !== undefined ? { order } : {}) });
+  const HAIR = { ...P('hair', 'Hair', ['red', 'black']), groupId: 'body' };
+  const SKIN = { ...P('skin', 'Skin', ['pale']), groupId: 'face' };
+  const grouped = () => ({
+    placeholders: [TOWN, HAIR, SKIN],
+    placeholderGroups: [G('body', 'Body'), G('face', 'Face', 'body')],
+    entities: [molly(), tam()],
+    entityGroups: [],
+    dictionaries: [book([])],
+  });
+  const shapeG = (nodes: PlaceholderTreeNode[]) => nodes.map((n) => {
+    const pad = '  '.repeat(n.depth);
+    if (n.kind === 'group') return `${pad}<${n.group.name}>`;
+    return n.kind === 'owner' ? `${pad}[${n.owner.name}]` : `${pad}${n.placeholder.name}${n.shared ? ' *' : ''}`;
+  });
+
+  it('draws folders first, nested, each holding its subfolders then its rows, then the loose rows, then owners', () => {
+    expect(shapeG(placeholderTreeNodes(grouped()))).toEqual([
+      '<Body>', '  <Face>', '    Skin', '  Hair', 'Town', '[Molly]', '  Eyes',
+    ]);
+    const nodes = placeholderTreeNodes(grouped());
+    const skin = nodes.find((n) => n.kind === 'placeholder' && n.placeholder.id === 'skin');
+    expect(skin?.parentId).toBe('face');
+    expect(skin?.home).toEqual({ kind: 'world' });
+  });
+
+  it('orders sibling folders by `order` and reads a dangling folder reference as loose', () => {
+    const w = {
+      ...grouped(),
+      placeholders: [TOWN, { ...HAIR, groupId: 'gone' }, { ...SKIN, groupId: 'b' }],
+      placeholderGroups: [G('a', 'A', null, 1), G('b', 'B', null, 0)],
+    };
+    expect(shapeG(placeholderTreeNodes(w))).toEqual(['<B>', '  Skin', '<A>', 'Town', 'Hair', '[Molly]', '  Eyes']);
+  });
+
+  it('still draws a shared row a grouped placeholder holds beneath it', () => {
+    const w = { ...grouped(), placeholders: [TOWN, { ...HAIR, values: phValues([chip('town')]) }, SKIN] };
+    expect(shapeG(placeholderTreeNodes(w))).toEqual([
+      '<Body>', '  <Face>', '    Skin', '  Hair', '    Town *', 'Town', '[Molly]', '  Eyes',
+    ]);
+  });
+
+  describe('applyScopedPlaceholderDrop', () => {
+    const drop = (w: ReturnType<typeof grouped>, active: string, over: string, offset: number) =>
+      applyScopedPlaceholderDrop(w, [], active, over, offset, INDENT);
+
+    it('puts a loose shared row dropped under a folder into that folder, at the top level', () => {
+      const next = drop(grouped(), 'town', 'hair', 0);
+      expect(next).not.toBeNull();
+      expect(next!.placeholderGroups).toBeUndefined();
+      expect(next!.placeholders.find((p) => p.id === 'town')?.groupId).toBe('body');
+      expect(shapeG(placeholderTreeNodes({ ...grouped(), ...next! }))).toEqual([
+        '<Body>', '  <Face>', '    Skin', '  Town', '  Hair', '[Molly]', '  Eyes',
+      ]);
+    });
+
+    it('drops the folder reference when a grouped row is dragged out to the loose rows', () => {
+      const next = drop(grouped(), 'hair', 'town', 0);
+      expect(next!.placeholders.find((p) => p.id === 'hair')).not.toHaveProperty('groupId');
+    });
+
+    it('refuses to drop a scoped placeholder into a folder', () => {
+      // Eyes is Molly's; dragged up beside Hair at Body's depth.
+      expect(drop(grouped(), 'eyes', 'hair', 0)).toBeNull();
+    });
+
+    it('drops the folder reference when a grouped row is scoped to an owner', () => {
+      const next = drop(grouped(), 'hair', ownerNodeId('molly'), INDENT);
+      expect(next!.placeholders.map((p) => p.id)).toEqual(['town', 'skin']);
+      const moved = next!.entities[0].placeholders?.find((p) => p.id === 'hair');
+      expect(moved).toBeDefined();
+      expect(moved).not.toHaveProperty('groupId');
+    });
+
+    it('nests a grouped row under a holder and takes it privately, folder reference gone', () => {
+      const w = { ...grouped(), placeholders: [TOWN, HAIR, SKIN, P('look', 'Look', ['plain'])] };
+      // Hair dragged under Look, one level in.
+      const next = drop(w, 'hair', 'look', INDENT);
+      const hair = next!.placeholders.find((p) => p.id === 'hair');
+      expect(hair?.ownerId).toBe('look');
+      expect(hair).not.toHaveProperty('groupId');
+    });
+
+    it('moves a folder under another folder and reorders siblings', () => {
+      const w = { ...grouped(), placeholderGroups: [G('body', 'Body'), G('face', 'Face', 'body'), G('gear', 'Gear')] };
+      // Gear dragged above Body at the root: it becomes the first root folder.
+      const next = drop(w, 'gear', 'body', 0);
+      expect(next!.placeholderGroups?.map((g) => [g.id, g.parentId, g.order])).toEqual([
+        ['body', null, 1], ['face', 'body', undefined], ['gear', null, 0],
+      ]);
+      expect(next!.placeholders).toBe(w.placeholders);
+      // Face dragged one level out, to the root, after Body.
+      const out = drop(w, 'face', 'gear', -INDENT);
+      expect(out!.placeholderGroups?.find((g) => g.id === 'face')?.parentId).toBeNull();
+    });
+
+    it('answers the drag indicator with the same rules as the drop', () => {
+      const w = { ...grouped(), placeholderGroups: [G('body', 'Body'), G('face', 'Face', 'body'), G('gear', 'Gear')] };
+      const nodes = placeholderTreeNodes(w);
+      const allowed = (active: string, parent: string | null) => placeholderDropAllowed(w, nodes, active, parent);
+      expect(allowed('town', 'body')).toBe(true);
+      expect(allowed('eyes', 'body')).toBe(false);
+      expect(allowed('gear', 'body')).toBe(true);
+      expect(allowed('gear', 'town')).toBe(false);
+      expect(allowed('gear', ownerNodeId('molly'))).toBe(false);
+      expect(allowed('body', 'face')).toBe(false);
+      expect(allowed(ownerNodeId('molly'), null)).toBe(false);
+      expect(allowed('town', 'missing')).toBe(false);
+    });
+
+    it('refuses a folder dropped under a row, under an owner node, or into its own subfolder', () => {
+      const w = { ...grouped(), placeholderGroups: [G('body', 'Body'), G('face', 'Face', 'body'), G('gear', 'Gear')] };
+      // Under Town's depth + 1: Town is a row.
+      expect(drop(w, 'gear', 'town', INDENT)).toBeNull();
+      // Under Molly's owner node.
+      expect(drop(w, 'gear', ownerNodeId('molly'), INDENT)).toBeNull();
+      // Body into Face, its own child.
+      expect(drop(w, 'body', 'skin', 0)).toBeNull();
+    });
   });
 });

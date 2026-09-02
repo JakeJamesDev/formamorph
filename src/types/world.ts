@@ -376,6 +376,8 @@ export interface World {
   entities: Entity[];
   /** Editor-only folders organizing entities (name only; not reflected to the AI). */
   entityGroups?: EntityGroup[];
+  /** Editor-only folders organizing the world's shared placeholders on the Placeholders tab. */
+  placeholderGroups?: PlaceholderGroup[];
   traits: Trait[];
   /** Folders organizing traits in the editor and selection screen. */
   traitGroups?: TraitGroup[];
@@ -421,6 +423,21 @@ export interface Placeholder {
    *  below it, joined with `/`; the inner map keys by value id like `weights`. Deny-list: a value in
    *  neither map weighs 1, so a value added to the original later rolls here too. */
   sharedWeights?: Record<string, Record<string, number>>;
+  /** The editor folder this placeholder sits in on the Placeholders tab; null/absent = ungrouped. Only a
+   *  shared placeholder is grouped: a scoped one sits under its entity or book, an owned one under its
+   *  holder. Editor-only, never sent to the AI, and dropped from card and dictionary exports. */
+  groupId?: string | null;
+}
+
+/** An editor-only folder for organizing shared placeholders, nestable via `parentId`. Just a name — never
+ *  sent to the AI. Mirrors `EntityGroup`. */
+export interface PlaceholderGroup {
+  id: string;
+  name: string;
+  /** null = top-level; otherwise the parent group's id. */
+  parentId: string | null;
+  /** Sibling order among groups sharing the same parent. */
+  order?: number;
 }
 
 /** Lightweight preview record used by the main-menu world grid. */

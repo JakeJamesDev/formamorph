@@ -49,6 +49,15 @@ describe('a dictionary file’s placeholders', () => {
     expect(parsed.sharedPlaceholders).toEqual([weather]);
   });
 
+  it('drops the folder reference from every def it carries — folders are the world’s', () => {
+    const grouped = { ...weather, groupId: 'sky' };
+    const b = book({ placeholders: [{ ...lore, groupId: 'tales' }], entries: [{ id: 'e1', name: 'Fen', key: ['fen'], value: '{{ph:weather:world:p1}}' }] });
+    const file = buildDictionaryFile(b, [grouped, lore]);
+    expect(file.placeholders?.[0]).not.toHaveProperty('groupId');
+    expect(file.sharedPlaceholders?.[0]).not.toHaveProperty('groupId');
+    expect(file.sharedPlaceholders?.map((p) => p.id)).toEqual(['weather']);
+  });
+
   it('carries only the shared defs a book with nothing of its own uses, and reads an old file as owned', () => {
     const b = book({ entries: [{ id: 'e1', name: 'Fen', key: ['fen'], value: '{{ph:weather:world:p1}}' }] });
     const file = buildDictionaryFile(b, [weather, unused]);

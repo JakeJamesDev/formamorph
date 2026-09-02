@@ -1,8 +1,8 @@
-import { useMemo, useState } from 'react';
+import { Fragment, useMemo, useState } from 'react';
 import { ChevronDown, ChevronRight } from 'lucide-react';
 import { CHIP_BASE, ChipRenameInput } from '@/components/Chip';
 import { Tip } from '@/components/ui/tooltip';
-import { usePlaceholderChipVocabulary } from '@/lib/chipVocabulary';
+import { chipSectionOpens, usePlaceholderChipVocabulary } from '@/lib/chipVocabulary';
 import { decodePlaceholderToken } from '@/lib/placeholders';
 import { placeholderCycleExclusions } from '@/lib/placeholderTree';
 import { usePaletteCollapsed } from '@/lib/usePaletteCollapsed';
@@ -75,9 +75,18 @@ const PlaceholderPaletteBar = ({ placeholders, scopeId, className }: {
         </button>
         {!collapsed && (
           <div className="flex min-w-0 flex-1 flex-wrap items-center gap-1">
-            {items.map((item) => (renaming === item.token ? (
+            {/* The rows come sectioned — loose, then each folder, then each owner. A section opens with its
+                heading, and a rule keeps a heading from claiming the loose chips after it. */}
+            {items.map((item, i) => {
+              const opens = chipSectionOpens(items, i);
+              return (
+              <Fragment key={item.token}>
+              {opens && i > 0 && <span aria-hidden className="mx-0.5 h-4 w-px self-center bg-border" />}
+              {opens && item.heading && (
+                <span className="text-meta text-muted-foreground">{item.heading}</span>
+              )}
+              {renaming === item.token ? (
               <ChipRenameInput
-                key={item.token}
                 value={bareName(item.token)}
                 ariaLabel={`Rename ${item.label}`}
                 style={{ backgroundColor: item.color, color: '#000' }}
@@ -86,7 +95,6 @@ const PlaceholderPaletteBar = ({ placeholders, scopeId, className }: {
               />
             ) : (
               <Tip
-                key={item.token}
                 tip={insert ? `Insert ${item.label}, or drag it into a field` : `Drag ${item.label} into a field, or click into one first`}
                 labelsChild={false}
               >
@@ -117,7 +125,10 @@ const PlaceholderPaletteBar = ({ placeholders, scopeId, className }: {
                   {item.label}
                 </button>
               </Tip>
-            )))}
+            )}
+              </Fragment>
+              );
+            })}
           </div>
         )}
       </div>
