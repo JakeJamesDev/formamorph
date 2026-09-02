@@ -323,6 +323,26 @@ describe('PlaceholderManager — kind', () => {
       expect(screen.getByText('A Variable: always resolves to its one value.')).toBeInTheDocument();
     });
 
+    // A one-value Variable whose value nests wildcards is not a constant: the chips roll, so the line says
+    // so and points at the World | Unique choice its chip now offers. Nesting only a plain Variable is not.
+    it('reads a one-value Variable holding wildcard chips as a template that rolls', () => {
+      const chip = (id: string) => encodePlaceholderToken({ id, mode: 'world', placementId: `pl-${id}` });
+      siblings = [
+        { id: 'adj', name: 'Adjective', values: phValues(['Rusty', 'Gilded']) },
+        { id: 'noun', name: 'Noun', values: phValues(['Anchor', 'Lantern']) },
+        { id: 'king', name: 'King', values: phValues(['Aldric']) },
+      ];
+      const { rerender } = render(
+        <PlaceholderManager placeholder={ph({ values: phValues([`The ${chip('adj')} ${chip('noun')}`]) })} />,
+      );
+      expect(screen.getByText(
+        'A Variable: its one value is a template. It rolls its chips, and picks World or Unique like a Wildcard.',
+      )).toBeInTheDocument();
+      rerender(<PlaceholderManager placeholder={ph({ values: phValues([`King ${chip('king')}`]) })} />);
+      expect(screen.getByText('A Variable: always resolves to its one value.')).toBeInTheDocument();
+      siblings = [];
+    });
+
     it('counts the values a Wildcard picks between', () => {
       render(<PlaceholderManager placeholder={ph({ values: phValues(['Red', 'Blue', 'Green']) })} />);
       expect(screen.getByText('Picks one of 3 values.')).toBeInTheDocument();

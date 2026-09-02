@@ -15,7 +15,7 @@ import { Chip } from '@/components/Chip';
 import {
   placeholderWeight, placeholderChances, placeholderValueLine, parsePlaceholderText,
   reconcilePlaceholderValues, prunePlaceholderWeights, pruneSharedWeights, mergePlaceholderWeights,
-  lonePlaceholderToken, drawPlaceholderOnce, placeholderIsChoice,
+  lonePlaceholderToken, drawPlaceholderOnce, placeholderIsChoice, placeholderRandomizes,
 } from '@/lib/placeholders';
 import { placeholderRowChance } from '@/lib/placeholderTree';
 import { accentAtChance, chanceChipStyle, relativeChance } from '@/lib/chanceColor';
@@ -38,7 +38,8 @@ const KIND_INFO = `**Wildcard** randomizes — one of its values is picked, and 
 **Object** holds — all of its values apply, joined together wherever it is placed.
 
 - With one value the two coincide: it is a **Variable**, and always resolves to that value.
-- A Wildcard chip in world text chooses **World** (one pick shared everywhere) or **Unique** (its own).
+- A Variable whose one value holds Wildcard chips is a template: it rolls those chips, and picks World or Unique like a Wildcard.
+- A chip that can roll chooses **World** (one pick shared everywhere) or **Unique** (its own).
 - A value that is exactly one chip nests that placeholder under this one, addressable as \`Owner › Name\`.`;
 
 /** One multiline box: its text as typed, under an id of its own so a box survives being emptied, renamed,
@@ -150,12 +151,19 @@ const PlaceholderManager = ({ placeholder, rowId, share }: {
   const kind: PlaceholderKind = (editing.roll ?? true) ? 'wildcard' : 'object';
   // Only a placeholder that draws has weights worth showing; an Object applies every value.
   const weighable = placeholderIsChoice(editing);
+  // A one-value Variable whose value holds wildcard chips still rolls — the chips do — so its chip offers
+  // World | Unique like a Wildcard's. Read against the draft, so a chip just typed in flips the line at once.
+  const rollingVariable = count === 1 && placeholderRandomizes(
+    [editing, ...placeholders.filter((p) => p.id !== editing.id)], editing.id,
+  );
   const state =
     count === 0
       ? 'No values yet — this resolves to nothing.'
-      : count === 1
-        ? 'A Variable: always resolves to its one value.'
-        : kind === 'wildcard'
+      : rollingVariable
+        ? 'A Variable: its one value is a template. It rolls its chips, and picks World or Unique like a Wildcard.'
+        : count === 1
+          ? 'A Variable: always resolves to its one value.'
+          : kind === 'wildcard'
           ? `Picks one of ${count} values.`
           : `Shows all ${count} values.`;
 

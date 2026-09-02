@@ -818,6 +818,21 @@ export function placeholderIsChoice(ph: Placeholder): boolean {
   return (ph.values?.length ?? 0) > 1 && (ph.roll ?? true);
 }
 
+/**
+ * True if resolving `id` can draw at all: it is a Wildcard itself, or a chip in one of its values reaches
+ * one, however deep. A one-value Variable holding wildcard chips is a template that rolls them, so it earns
+ * the World | Unique picker the same as a Wildcard; a plain Object never draws and gets none. Composed and
+ * lone chips both count, exactly as resolution walks them. A reference cycle terminates.
+ */
+export function placeholderRandomizes(placeholders: readonly Placeholder[], id: string): boolean {
+  const byId = new Map(placeholders.map((p) => [p.id, p]));
+  for (const reached of reachablePlaceholderIds([id], placeholders)) {
+    const ph = byId.get(reached);
+    if (ph && placeholderIsChoice(ph)) return true;
+  }
+  return false;
+}
+
 /** A path segment as the walk carries it. `authored` marks a segment that came from a chip sitting inside a
  *  value — an author's pre-selection, which a trait pin overrides. Segments typed into world text are not
  *  authored, so they name the branch they say and no pin moves them. */
