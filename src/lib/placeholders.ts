@@ -336,10 +336,10 @@ export function reachablePlaceholderIds(
 }
 
 /**
- * The subset of `available` defs a standalone export has to bundle for `texts` to resolve elsewhere: a
- * character chip is useless without the defs its own values reach, and a value pin is useless without the
- * placeholder it holds, so the walk follows both. `also` seeds it with defs the export carries whatever
- * places them. Order follows `available`; each def appears at most once.
+ * The subset of `available` a standalone export has to bundle for `texts` to resolve elsewhere: a chip is
+ * useless without the placeholders its own values reach, and a value pin is useless without the placeholder
+ * it holds, so the walk follows both. `also` seeds it with the records the export carries whatever places
+ * them. Order follows `available`; each def appears at most once.
  */
 export function collectUsedPlaceholders(
   texts: string[], available: Placeholder[], also: Iterable<string> = [],
@@ -633,7 +633,9 @@ function drawWithValuePins<T>(opts: ResolveOptions, walk: (ctx: ResolveCtx) => T
   }
 }
 
-function sameMap(a: Record<string, string>, b: Record<string, string>): boolean {
+/** True when two plain string records hold the same keys with the same values — what a roll set and a pin
+ *  set are both compared by. */
+export function sameMap(a: Record<string, string>, b: Record<string, string>): boolean {
   const keys = Object.keys(a);
   return keys.length === Object.keys(b).length && keys.every((k) => a[k] === b[k]);
 }
@@ -693,7 +695,7 @@ export function drawPlaceholderSpans(
  */
 export function describePlaceholders(
   text: string,
-  placeholders: Placeholder[] = [],
+  placeholders: readonly Placeholder[] = [],
   pins?: Record<string, string>,
 ): string {
   if (!text || !hasPlaceholders(text)) return text;
@@ -803,7 +805,7 @@ export function placeholderValueLine(value: string): string {
  * nothing is left out instead of leaving a bare `|` in the line. So is a value benched to zero, which no
  * draw can land on.
  */
-export function placeholderValueSummary(ph: Placeholder, placeholders?: Placeholder[]): string {
+export function placeholderValueSummary(ph: Placeholder, placeholders?: readonly Placeholder[]): string {
   const values = drawablePlaceholderValues(ph)
     .map(({ text }) => placeholderValueLine(placeholders ? describePlaceholders(text, placeholders) : text))
     .filter((v) => v !== '');

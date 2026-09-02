@@ -10,7 +10,7 @@ import { buildTraitTree, flattenTraitTree } from './traitTree';
 import type { PlaceholderValue, Stat, Trait, TraitGroup } from '@/types';
 
 /** Trait id → its position in the authored tree, depth-first. Ids missing from the world sort last. */
-export function traitOrderIndex(traits: Trait[], groups: TraitGroup[]): Map<string, number> {
+export function traitOrderIndex(traits: readonly Trait[], groups: readonly TraitGroup[]): Map<string, number> {
   const map = new Map<string, number>();
   flattenTraitTree(buildTraitTree(groups, traits)).forEach((node, i) => {
     if (node.leaf) map.set(node.leaf.id, i);
@@ -19,7 +19,7 @@ export function traitOrderIndex(traits: Trait[], groups: TraitGroup[]): Map<stri
 }
 
 /** Sort a set of active traits into authored order, so "last wins" means the same thing everywhere. */
-export function inAuthoredOrder(active: Trait[], order: Map<string, number>): Trait[] {
+export function inAuthoredOrder(active: readonly Trait[], order: ReadonlyMap<string, number>): Trait[] {
   return [...active].sort(
     (a, b) => (order.get(a.id) ?? Number.MAX_SAFE_INTEGER) - (order.get(b.id) ?? Number.MAX_SAFE_INTEGER),
   );
@@ -71,7 +71,7 @@ export function enabledStats<T extends { id: string }>(stats: T[], enabled: Reco
  * most one active trait, so enabling a member retires its active siblings. Nesting doesn't cascade — only
  * traits sitting directly in the same group compete.
  */
-export function exclusiveSiblings(trait: Trait, traits: Trait[], groups: TraitGroup[]): string[] {
+export function exclusiveSiblings(trait: Trait, traits: readonly Trait[], groups: readonly TraitGroup[]): string[] {
   const groupId = trait.groupId ?? null;
   if (groupId === null) return [];
   if (!groups.find((g) => g.id === groupId)?.exclusive) return [];

@@ -18,7 +18,7 @@ export function PinValueField({ pin, placeholders, onChange }: {
   placeholders: readonly Placeholder[];
   onChange: (next: PlaceholderPin) => void;
 }) {
-  const pinVocab = useMemo(() => placeholderVocabulary([...placeholders]), [placeholders]);
+  const pinVocab = useMemo(() => placeholderVocabulary(placeholders), [placeholders]);
   /** A value as the box shows it. A value that is exactly one chip is a part, so it reads as the part it
    *  names — the same reading the Values field gives it, and the one an author picking a variant is after.
    *  A chip inside longer text is prose, so it reads as what it will resolve to. What the pin stores is the
@@ -26,7 +26,7 @@ export function PinValueField({ pin, placeholders, onChange }: {
   const describeValue = (value: string) => {
     const lone = lonePlaceholderToken(value);
     if (lone) return pinVocab.label(lone);
-    return placeholderValueLine(describePlaceholders(value, [...placeholders])) || value;
+    return placeholderValueLine(describePlaceholders(value, placeholders)) || value;
   };
   return (
     // w-full to match the SelectTrigger beside it — equal flex bases split the row in half.

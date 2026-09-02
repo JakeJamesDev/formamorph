@@ -31,10 +31,10 @@ export interface EntityCardData {
   /** Gallery slots past the first, as data-URLs. The primary is the card's own pixels, so only these need
    *  carrying in the text — which is also why a multi-picture card is a much bigger file. */
   extraImages?: string[];
-  /** The entity's own placeholder defs, as they are (see lib/placeholders). A card with no
+  /** The entity's own placeholders, as they are (see lib/placeholders). A card with no
    *  `sharedPlaceholders` carries everything its chips use here, and reads it all as owned. */
   placeholders?: Placeholder[];
-  /** The shared defs the entity's chips and its own placeholders reach, so they resolve after import. */
+  /** The shared placeholders the entity's chips and its own reach, so they resolve after import. */
   sharedPlaceholders?: Placeholder[];
 }
 
@@ -102,7 +102,7 @@ export function parseEntityCardData(raw: unknown): Entity {
     ...(tags.length ? { tags } : {}),
     ...(typeof obj.imageTags === 'string' && obj.imageTags ? { imageTags: obj.imageTags } : {}),
     ...(extras.length ? { images: extras } : {}),
-    // Carried defs ride along: the owned ones stay the entity's when it is added to a world, the shared
+    // Carried placeholders ride along: the owned ones stay the entity's when it is added to a world, the shared
     // ones merge into the world's list (see `adoptEntityPlaceholders`).
     ...(Array.isArray(obj.placeholders) ? { placeholders: migrateCarriedPlaceholders(obj.placeholders) } : {}),
     ...(Array.isArray(obj.sharedPlaceholders) ? { sharedPlaceholders: migrateCarriedPlaceholders(obj.sharedPlaceholders) } : {}),

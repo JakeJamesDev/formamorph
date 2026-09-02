@@ -88,9 +88,6 @@ export interface PlaceholderPin {
   valueId?: string;
 }
 
-/** The same pin shape, under the name the trait editor reads it by. */
-export type TraitPlaceholderPin = PlaceholderPin;
-
 /** A folder grouping traits in the editor and the selection screen; nestable via `parentId`. */
 export interface TraitGroup {
   id: string;
@@ -172,7 +169,7 @@ export interface Entity {
    *  entity when it is deleted or duplicated. Off-world (export bundle / library) they stay the entity's
    *  own, and an import keeps them so under fresh ids. */
   placeholders?: Placeholder[];
-  /** Off-world only: the shared defs this entity's chips use, so they resolve after import. An import
+  /** Off-world only: the shared placeholders this entity's chips use, so they resolve after import. An import
    *  merges them into the world's shared list by name and values and clears the field. */
   sharedPlaceholders?: Placeholder[];
 }
@@ -313,7 +310,7 @@ export interface Dictionary {
    *  combined view (see lib/placeholderHomes) and go with the book when it is deleted. Off-world
    *  (export file / library) they stay the book's own, and an import keeps them so under fresh ids. */
   placeholders?: Placeholder[];
-  /** Off-world only: the shared defs this book's entries use, so they resolve after import. An import
+  /** Off-world only: the shared placeholders this book's entries use, so they resolve after import. An import
    *  merges them into the world's shared list by name and values and clears the field. */
   sharedPlaceholders?: Placeholder[];
 }
