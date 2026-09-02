@@ -15,8 +15,8 @@ import {
 } from '@/lib/placeholders';
 import { labelPlaceholders, worldPlacementLetters, type PlacementLetters } from '@/lib/placementLetters';
 import {
-  allPinRows, collectPins, hasDeadValueId, indexPlaceholders, pinConflict, valuePinners,
-  type PinEditorWorld, type PinFinding, type PinRow,
+  allPinRows, collectPins, hasDeadValueId, indexPlaceholders, pinConflict, pinSourceOwnerId, valuePinners,
+  type PinEditorWorld, type PinFinding, type PinRow, type PinSourceKind,
 } from '@/lib/placeholderPins';
 import { holdsAsChip, qualifiedPlaceholderName } from '@/lib/placeholderTree';
 import {
@@ -406,15 +406,21 @@ const pinRowsOf = (world: RuleWorld): PinRow[] => {
   return rows;
 };
 
+/** Which tab a pin source's finding item opens on, and whether the item reads by the source's own name or
+ *  by the label every pin surface gives the row. One row per kind, beside the source table's own. */
+const PIN_SOURCE_TABS: Record<PinSourceKind, { section: FindingSection; byLabel?: boolean }> = {
+  trait: { section: 'traits' },
+  location: { section: 'locations' },
+  descriptor: { section: 'stats', byLabel: true },
+  value: { section: 'placeholders', byLabel: true },
+};
+
 /** A pin's source as a finding item: the trait or location by its name, a band or a value by the label
  *  every pin surface gives it, each opening on the tab that holds the source. */
 const pinSourceItem = (row: PinRow, world: RuleWorld): FindingItem => {
-  switch (row.source.kind) {
-    case 'trait': return namedItem(row.source.id, row.name, world, 'traits');
-    case 'location': return namedItem(row.source.id, row.name, world, 'locations');
-    case 'descriptor': return { id: row.source.statId, name: row.label, section: 'stats' };
-    case 'value': return { id: row.source.placeholderId, name: row.label, section: 'placeholders' };
-  }
+  const { section, byLabel } = PIN_SOURCE_TABS[row.source.kind];
+  const id = pinSourceOwnerId(row.source);
+  return byLabel ? { id, name: row.label, section } : namedItem(id, row.name, world, section);
 };
 
 const placeholderPinBroken: Rule = {
