@@ -3,7 +3,8 @@ import { useGameData } from '@/contexts/GameDataContext';
 import { useGameplay } from '@/contexts/GameplayContext';
 import { usePlaceholderSession } from '@/contexts/PlaceholderSessionContext';
 import { resolvePlaceholders } from '@/lib/placeholders';
-import { activePlaceholderPins, inAuthoredOrder, refreshChosenTraits, traitOrderIndex, traitScopedPins } from '@/lib/traitEffects';
+import { collectPins, traitScopedPins } from '@/lib/placeholderPins';
+import { inAuthoredOrder, refreshChosenTraits, traitOrderIndex } from '@/lib/traitEffects';
 import {
   resolveEntityNames, resolveLocationNames, resolveStatNames, resolveTraitNames, resolveTraitGroupNames,
   resolveDictionaryEntryNames,
@@ -23,10 +24,11 @@ import type {
  * the authored values with their chips still in them; that is only correct for roll priming, which has to
  * see the chips it is rolling for.
  *
- * Pins are derived from the *authored* traits on purpose: trait order and the active set are decided by id,
- * so they can be known before resolution exists — which breaks the cycle, since the pins those traits carry
- * are an input to resolution itself. Live pins, not the paged-back turn's: stat deltas are keyed by resolved
- * name in the live turn, so a name resolved with a past turn's pins would stop matching them.
+ * Pins are derived from the *authored* world on purpose: the active traits, the current location and each
+ * stat's band are decided by id and by number, so they can be known before resolution exists — which breaks
+ * the cycle, since the pins those sources carry are an input to resolution itself. Live pins, not the
+ * paged-back turn's: stat deltas are keyed by resolved name in the live turn, so a name resolved with a past
+ * turn's pins would stop matching them.
  */
 export interface ResolvedWorld {
   entities: Entity[];
@@ -45,7 +47,9 @@ export interface ResolvedWorld {
   playerStats: PlayerStat[];
   viewStats: PlayerStat[];
   traitOrder: ReturnType<typeof traitOrderIndex>;
-  traitPins: ReturnType<typeof activePlaceholderPins>;
+  /** Every pin in force: the active traits', the current location's, and each live stat's band's, with
+   *  value pins settled underneath. */
+  pins: Record<string, string>;
   /** Resolve any authored string with the same rolls and pins these collections used. */
   resolvePH: (text: string) => string;
   /** Resolve with pins not yet in state — for a string written in the same pass that applies the traits
@@ -110,22 +114,29 @@ export function useResolvedAuthoredWorld(pins: Record<string, string> = NO_PINS)
 const NO_PINS: Record<string, string> = {};
 
 export function useResolvedWorld(): ResolvedWorld {
-  const { traits: rawTraits, traitGroups: rawTraitGroups, placeholders } = useGameData();
+  const { traits: rawTraits, traitGroups: rawTraitGroups, locations: rawLocations, placeholders } = useGameData();
+  const { rolls } = usePlaceholderSession();
   const {
     playerStats: rawPlayerStats, viewStats: rawViewStats, runtimeDictionary: rawDictionary,
     currentLocation: storedLocation, playerTraits, disabledTraitIds,
   } = useGameplay();
 
   const traitOrder = useMemo(() => traitOrderIndex(rawTraits, rawTraitGroups), [rawTraits, rawTraitGroups]);
-  const traitPins = useMemo(() => {
-    const off = new Set(disabledTraitIds);
-    const active = inAuthoredOrder(refreshChosenTraits(playerTraits, rawTraits).filter((t) => !off.has(t.id)), traitOrder);
-    return activePlaceholderPins(active, placeholders);
-  }, [playerTraits, disabledTraitIds, rawTraits, traitOrder, placeholders]);
+  // The location by id and the stats by number: both are state, so a move or a stat crossing a band
+  // re-collects here and every name below follows.
+  const storedLocationId = storedLocation?.id;
+  const pins = useMemo(() => collectPins({
+    traits: inAuthoredOrder(refreshChosenTraits(playerTraits, rawTraits), traitOrder),
+    disabledTraitIds,
+    location: rawLocations.find((l) => l.id === storedLocationId),
+    stats: rawPlayerStats,
+    placeholders,
+    rolls,
+  }), [playerTraits, disabledTraitIds, rawTraits, traitOrder, rawLocations, storedLocationId, rawPlayerStats, placeholders, rolls]);
 
   const {
     entities, locations, connections, stats, traits, traitGroups, resolvePH, resolveWith, resolveTraitText,
-  } = useResolvedAuthoredWorld(traitPins);
+  } = useResolvedAuthoredWorld(pins);
 
   // Every write to gameplay's `currentLocation` is a member of `locations`, so its id is the durable part —
   // the object it stored is a snapshot of how the name read on arrival. Falls back to the stored copy for a
@@ -144,6 +155,6 @@ export function useResolvedWorld(): ResolvedWorld {
 
   return {
     entities, locations, connections, stats, traits, traitGroups, dictionary, currentLocation,
-    playerStats, viewStats, traitOrder, traitPins, resolvePH, resolveWith, resolveTraitText,
+    playerStats, viewStats, traitOrder, pins, resolvePH, resolveWith, resolveTraitText,
   };
 }

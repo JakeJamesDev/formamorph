@@ -20,6 +20,8 @@ export interface StatDescriptor {
   id: string | number;
   threshold: number;
   description: string;
+  /** Placeholders held at a fixed value while the stat sits in this band. */
+  placeholderPins?: PlaceholderPin[];
 }
 
 /** What a descriptor threshold's number means: the stat's own units, or a percentage of min→max. */
@@ -76,14 +78,18 @@ export interface TraitStatToggle {
   enabled: boolean;
 }
 
-/** A placeholder this trait forces to a fixed value while active, masking that playthrough's roll. */
-export interface TraitPlaceholderPin {
+/** A placeholder its source forces to a fixed value while the source is active, masking that playthrough's
+ *  roll. The one shape every source carries: a trait, a location, a stat descriptor, a placeholder value. */
+export interface PlaceholderPin {
   placeholderId: string;
   value: string;
   /** The pinned value's id, when the pin names one the placeholder carries. Preferred over `value`, so a
    *  pin picked off the list follows the author re-spelling it. Absent for a value typed off the list. */
   valueId?: string;
 }
+
+/** The same pin shape, under the name the trait editor reads it by. */
+export type TraitPlaceholderPin = PlaceholderPin;
 
 /** A folder grouping traits in the editor and the selection screen; nestable via `parentId`. */
 export interface TraitGroup {
@@ -121,7 +127,7 @@ export interface Trait {
   /** Stats forced on or off while this trait is active. */
   statToggles?: TraitStatToggle[];
   /** Placeholders held at a fixed value while this trait is active. */
-  placeholderPins?: TraitPlaceholderPin[];
+  placeholderPins?: PlaceholderPin[];
 }
 
 /** A character or object in the world, with separate player-facing and AI-facing descriptions plus optional media. */
@@ -207,6 +213,9 @@ export interface GameLocation {
    *  nested, as the canvas reads a child's position. Editor-only: never sent to the AI. Absent means the
    *  canvas lays it out itself. */
   canvasPosition?: { x: number; y: number };
+  /** Placeholders held at a fixed value while the player is here. Released on leaving; a child location
+   *  inherits nothing through `parentId`. */
+  placeholderPins?: PlaceholderPin[];
 }
 
 /**
@@ -397,6 +406,9 @@ export interface World {
 export interface PlaceholderValue {
   id: string;
   text: string;
+  /** Placeholders held at a fixed value while this placeholder's effective world value is this one: its
+   *  roll, or whatever pin masks it. Sits below every other pin source. */
+  pins?: PlaceholderPin[];
 }
 
 /** One author-defined placeholder. Empty `values` resolves to `""`; one value is a Variable, fixed whatever

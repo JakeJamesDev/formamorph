@@ -7,15 +7,14 @@ import {
   inAuthoredOrder,
   activeStatEnabled,
   enabledStats,
-  activePlaceholderPins,
   exclusiveSiblings,
   traitConflicts,
   collapseExclusiveDefaults,
   refreshChosenTraits,
   renamedPlaceholderValues,
   repinRenamedValues,
-  withPinnedValue,
 } from './traitEffects';
+import { activePlaceholderPins, withPinnedValue } from './placeholderPins';
 
 const T = (id: string, extra: Partial<Trait> = {}): Trait => ({
   id, name: id, statChanges: [], ...extra,

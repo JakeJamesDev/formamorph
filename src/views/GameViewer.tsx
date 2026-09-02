@@ -146,10 +146,11 @@ import { useDeferredSnapshot } from "../lib/useDeferredSnapshot";
 import { statMorphMap } from "../lib/bodyMorphs";
 import {
   inAuthoredOrder, refreshChosenTraits, activeStatEnabled, enabledStats,
-  activePlaceholderPins,
 } from "../lib/traitEffects";
+import { collectPins } from "../lib/placeholderPins";
+import { usePlaceholderSession } from "../contexts/PlaceholderSessionContext";
 import {
-  acquireTrait, seedStatBases, setTraitEnabled, type TraitRuntimeState,
+  acquireTrait, seedNewGameStats, setTraitEnabled, type TraitRuntimeState,
 } from "../lib/traitRuntime";
 import { parseKeywords, locateMatches, type EntryActivation, type MatchHit, type MatchRule } from "../lib/dictionaryUtils";
 import { highlightSegments, HIGHLIGHT_PALETTE, type HighlightRule, type HighlightSegment } from "../lib/highlightUtils";
@@ -536,6 +537,8 @@ const GameViewer = ({
     entities, locations, stats, traits, traitGroups, dictionary, playerStats, viewStats,
     currentLocation, traitOrder, resolvePH, resolveWith, resolveTraitText,
   } = useResolvedWorld();
+  // The session's rolls, for the one pass that collects pins before they are in state (the init effect).
+  const { rolls: sessionRolls } = usePlaceholderSession();
 
   // --- Active traits and what they switch on ------------------------------------------------------------
   // A chosen trait the player has switched off contributes nothing: no AI text, no stat toggle, no pin. Its
@@ -3511,12 +3514,7 @@ const GameViewer = ({
       // Seeded from the AUTHORED stats, chips and all: names resolve on the way out of state, never in, so
       // a resolved name written in here would freeze whatever pins happened to be active at game start and
       // no later pin could ever move it.
-      const seeded = seedStatBases(
-        authoredStats.map((stat) => {
-          const value = stat.value || stat.min || 0;
-          return { ...stat, value, starting: stat.starting ?? value };
-        }),
-      );
+      const seeded = seedNewGameStats(authoredStats);
 
       // Authored order, not click order: stat changes apply in sequence, so a deterministic order is what
       // makes two players who picked the same traits end up with the same stats. Authored traits for the
@@ -3541,12 +3539,17 @@ const GameViewer = ({
 
       // Use the player's chosen starting location, else a random starting point (fallback: any location).
       const location = resolveStartingLocation(locations, initialLocationId);
-      if (location) {
+      const authoredLocation = location ? authoredLocations.find((l) => l.id === location.id) ?? location : null;
+      // The pins the game opens under, from every source: the traits just applied, the starting location
+      // and the bands the post-trait stats fall in. None of it is in state yet, so anything written in this
+      // pass resolves against these rather than the (empty) pins still in force.
+      const openingPins = collectPins({
+        traits: chosenList, location: authoredLocation, stats: seedState.stats, placeholders, rolls: sessionRolls,
+      });
+      if (location && authoredLocation) {
         changeLocation(location);
-        // A log line is frozen the moment it is written, and the traits just applied are not in state yet —
-        // so resolve against the pins they are about to impose rather than the (empty) ones still in force.
-        const authored = authoredLocations.find((l) => l.id === location.id) ?? location;
-        addLogEntry(`Starting in location: ${resolveWith(activePlaceholderPins(chosenList, placeholders), authored.name)}`);
+        // A log line is frozen the moment it is written.
+        addLogEntry(`Starting in location: ${resolveWith(openingPins, authoredLocation.name)}`);
       }
 
       // Seed the per-playthrough dictionary set: the entry-step selection, or the world's authored books
@@ -3573,7 +3576,7 @@ const GameViewer = ({
       // Pre-fill the editable opening cue so the player can shape the first turn before submitting it. The
       // world's own cue when it has one, resolved here (against the pins the traits above are about to
       // impose) so the player reads and edits plain prose, never raw chips.
-      setPlayerInput(resolveWith(activePlaceholderPins(chosenList, placeholders), resolveOpeningCue(worldOverview)));
+      setPlayerInput(resolveWith(openingPins, resolveOpeningCue(worldOverview)));
     }
   }, [
     initialSaveId,
@@ -3581,6 +3584,7 @@ const GameViewer = ({
     initialTraits,
     initialLocationId,
     placeholders,
+    sessionRolls,
     initialDictionaries,
     initialCharacters,
     dictionaries,

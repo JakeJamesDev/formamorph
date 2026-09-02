@@ -1,7 +1,7 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { useGameData } from './GameDataContext';
 import { primeRolls, weightedPick } from '@/lib/placeholders';
-import { allPinTexts } from '@/lib/traitEffects';
+import { allPinTexts, valuePinRollChips } from '@/lib/placeholderPins';
 import type { PlaceholderRolls } from '@/types';
 
 /**
@@ -95,8 +95,11 @@ export function PlaceholderSessionProvider({ children }: { children: ReactNode }
     // Keep the previous object when nothing new was rolled. `primeRolls` always returns a fresh object, and
     // this effect depends on `rolls` so a save restoring mid-session gets its missing placements primed —
     // without the identity guard those two facts are a render loop.
+    // A placeholder whose values pin something reads its own world roll, so it gets one whether or not any
+    // text places it.
+    const pinTexts = allPinTexts({ traits, locations, stats, placeholders });
     setRolls((prev) => {
-      const next = primeRolls(placeholders, texts, prev, weightedPick, allPinTexts(traits, placeholders));
+      const next = primeRolls(placeholders, [...texts, ...valuePinRollChips(placeholders)], prev, weightedPick, pinTexts);
       return sameRolls(prev, next) ? prev : next;
     });
   }, [sessionActive, rolls, placeholders, entities, locations, dictionaries, stats, traits, traitGroups, worldOverview]);

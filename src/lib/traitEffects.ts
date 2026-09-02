@@ -1,12 +1,13 @@
-// What an active trait does beyond its stat changes: switching stats on or off, and pinning placeholders to
-// a fixed value. Both are overlays computed fresh from the active set every render — nothing is baked into
-// the world or the save, so switching a trait off simply removes its contribution.
+// What an active trait does beyond its stat changes: switching stats on or off, and which traits are active
+// in which order. Overlays computed fresh from the active set every render — nothing is baked into the
+// world or the save, so switching a trait off simply removes its contribution. The pins a trait lays are
+// collected in lib/placeholderPins, beside the other pin sources.
 //
 // Two traits may target the same stat or placeholder. The later one in the authored trait tree wins, so an
 // author sets precedence by dragging rows in the editor rather than by learning a rule.
 
 import { buildTraitTree, flattenTraitTree } from './traitTree';
-import type { Placeholder, PlaceholderValue, Stat, Trait, TraitGroup, TraitPlaceholderPin } from '@/types';
+import type { PlaceholderValue, Stat, Trait, TraitGroup } from '@/types';
 
 /** Trait id → its position in the authored tree, depth-first. Ids missing from the world sort last. */
 export function traitOrderIndex(traits: Trait[], groups: TraitGroup[]): Map<string, number> {
@@ -47,8 +48,8 @@ export function refreshChosenTraits(chosen: Trait[], authored: Trait[]): Trait[]
  * `enabled: false`; each active trait's `statToggles` then override that, later traits winning.
  */
 export function activeStatEnabled(
-  stats: Array<Pick<Stat, 'id' | 'enabled'>>,
-  activeInOrder: Trait[],
+  stats: ReadonlyArray<Pick<Stat, 'id' | 'enabled'>>,
+  activeInOrder: readonly Trait[],
 ): Record<string, boolean> {
   const out: Record<string, boolean> = {};
   for (const s of stats) out[s.id] = s.enabled !== false;
@@ -63,63 +64,6 @@ export function activeStatEnabled(
 /** Only the stats that are currently live — what the player panel, the AI context, regen and stat code see. */
 export function enabledStats<T extends { id: string }>(stats: T[], enabled: Record<string, boolean>): T[] {
   return stats.filter((s) => enabled[s.id] !== false);
-}
-
-/**
- * Placeholder id → the value the active traits force it to, later traits winning. Empty pins are ignored,
- * so a half-filled editor row never blanks a placeholder.
- *
- * A pin naming a value by id reads that value's *current* text, so a pin picked off the list follows the
- * author re-spelling it. A pin whose id names nothing — a value since deleted, or a typed pin that never
- * had one — falls back to the text as written, which is what pinning a value off the list is for.
- */
-export function activePlaceholderPins(
-  activeInOrder: Trait[],
-  placeholders: readonly Placeholder[] = [],
-): Record<string, string> {
-  const byId = new Map(placeholders.map((p) => [p.id, p]));
-  const out: Record<string, string> = {};
-  for (const t of activeInOrder) {
-    for (const pin of t.placeholderPins ?? []) {
-      if (!pin.placeholderId) continue;
-      const named = pin.valueId
-        ? byId.get(pin.placeholderId)?.values?.find((v) => v.id === pin.valueId)?.text
-        : undefined;
-      const value = named ?? pin.value;
-      if (value) out[pin.placeholderId] = value;
-    }
-  }
-  return out;
-}
-
-/** Placeholder id → every text some trait pins it to, whichever traits end up active — what a priming
- *  pass walks beside the rolls, since a pin's chips are read the moment its trait is on. */
-export function allPinTexts(
-  traits: readonly Trait[],
-  placeholders: readonly Placeholder[] = [],
-): Record<string, string[]> {
-  const out: Record<string, string[]> = {};
-  for (const trait of traits) {
-    for (const [id, text] of Object.entries(activePlaceholderPins([trait], placeholders))) {
-      const texts = (out[id] ??= []);
-      if (!texts.includes(text)) texts.push(text);
-    }
-  }
-  return out;
-}
-
-/** The pins for a trait's OWN text: its pins over the active ones. A pinning trait's card always reads its
- *  own value — "Sworn to Marrow" stays "Sworn to Marrow" whatever else is ticked — because the card
- *  advertises what picking the trait does, not what the current selection happens to have made true.
- *  Everything outside the card (stat bars, locations, narration) keeps the active pins. Returns `activePins`
- *  itself when the trait pins nothing, so pin-less traits keep resolver identity. */
-export function traitScopedPins(
-  trait: Trait,
-  activePins: Record<string, string>,
-  placeholders: readonly Placeholder[] = [],
-): Record<string, string> {
-  const own = activePlaceholderPins([trait], placeholders);
-  return Object.keys(own).length ? { ...activePins, ...own } : activePins;
 }
 
 /**
@@ -209,22 +153,6 @@ export function traitConflicts(
       (t) => (t.placeholderPins ?? []).map((p) => p.placeholderId),
     ),
   };
-}
-
-/**
- * A pin rewritten to hold `value`, naming that value by id when the placeholder carries one spelling it
- * exactly. Every surface that writes a pin's text goes through here, so a pin picked off the list follows a
- * rename and a value typed off the list stays the free text it is.
- */
-export function withPinnedValue(
-  pin: TraitPlaceholderPin,
-  value: string,
-  placeholders: readonly Placeholder[],
-): TraitPlaceholderPin {
-  const valueId = placeholders
-    .find((p) => p.id === pin.placeholderId)?.values?.find((v) => v.text === value)?.id;
-  const { valueId: _drop, ...rest } = pin;
-  return { ...rest, value, ...(valueId ? { valueId } : {}) };
 }
 
 /** One value-list edit that reads as a rename: the text a value held, and what replaced it. */

@@ -83,6 +83,26 @@ export function deriveEffectiveStats(stats: PlayerStat[], active: readonly Trait
   });
 }
 
+/**
+ * The stats a fresh playthrough opens with, before any trait: the authored defaults, each with its live
+ * value and its game-start baseline (`starting`) settled so the opening turn's deltas read from the world
+ * value rather than 0/min. Authored, chips and all — names resolve on the way out of state, never in.
+ */
+export function seedNewGameStats(authored: readonly Stat[]): PlayerStat[] {
+  return seedStatBases(authored.map((stat) => {
+    const value = stat.value || stat.min || 0;
+    return { ...stat, value, starting: stat.starting ?? value };
+  }));
+}
+
+/** The stats a fresh playthrough holds once `chosenInOrder` have applied — the fold Enter World runs,
+ *  for a picker that needs the numbers before the game exists. */
+export function startingStatsWith(authored: readonly Stat[], chosenInOrder: readonly Trait[], world: TraitWorld): PlayerStat[] {
+  let state: TraitRuntimeState = { stats: seedNewGameStats(authored), traits: [], disabledTraitIds: [], appliedValues: {} };
+  for (const trait of chosenInOrder) state = acquireTrait(state, trait, world).state;
+  return state.stats;
+}
+
 /** Seed a fresh playthrough's bases from the authored bounds. */
 export function seedStatBases(stats: PlayerStat[]): PlayerStat[] {
   return stats.map((stat) => ({

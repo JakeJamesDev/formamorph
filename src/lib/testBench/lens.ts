@@ -11,9 +11,8 @@
 import { describePlaceholders } from '@/lib/placeholders';
 import { allPlaceholders } from '@/lib/placeholderHomes';
 import { labelPlaceholders, worldPlacementLetters } from '@/lib/placementLetters';
-import {
-  activePlaceholderPins, activeStatEnabled, exclusiveSiblings, inAuthoredOrder, traitOrderIndex,
-} from '@/lib/traitEffects';
+import { activePlaceholderPins } from '@/lib/placeholderPins';
+import { activeStatEnabled, exclusiveSiblings, inAuthoredOrder, traitOrderIndex } from '@/lib/traitEffects';
 import type { GameLocation, Placeholder, Trait } from '@/types';
 import type { RuleWorld } from './rules';
 

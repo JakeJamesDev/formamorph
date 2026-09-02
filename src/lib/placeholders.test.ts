@@ -1582,6 +1582,64 @@ describe('drawPlaceholderOnce (the panel’s sample draw)', () => {
   });
 });
 
+/** A drawn value's pins apply inside the same draw, so the Roll field and the Preview tab read the way play
+ *  would once that value is the roll. */
+describe('author draws apply the drawn values’ pins', () => {
+  const town = P('town', ['Sedge', 'Marrow']);
+  const region: Placeholder = {
+    id: 'region', name: 'region',
+    values: [
+      { id: 'v:Northern', text: 'Northern', pins: [{ placeholderId: 'town', value: 'Marrow' }] },
+      { id: 'v:Southern', text: 'Southern' },
+    ],
+  };
+  const text = `${tok('region', 'world', 'v1')} of ${tok('town', 'world', 'v2')}`;
+  const molly = P('molly', [text]);
+
+  it('shows the pinned text for the placeholder a drawn value pins', () => {
+    expect(drawPlaceholderOnce(molly, [molly, region, town], undefined, first)).toBe('Northern of Marrow');
+  });
+
+  it('reads the pin whichever chip the text puts first, as play would', () => {
+    const townFirst = P('molly', [`${tok('town', 'world', 'v2')} in ${tok('region', 'world', 'v1')}`]);
+    expect(drawPlaceholderOnce(townFirst, [townFirst, region, town], undefined, first)).toBe('Marrow in Northern');
+    const t = `${tok('town', 'world', 'v2')} in ${tok('region', 'world', 'v1')}`;
+    expect(buildPlaceholderPreview(t, [region, town], first)).toEqual({
+      [tok('town', 'world', 'v2')]: 'Marrow',
+      [tok('region', 'world', 'v1')]: 'Northern',
+    });
+  });
+
+  it('keeps the pinned span tagged with the pinned placeholder, for its color', () => {
+    expect(drawPlaceholderSpans(molly, [molly, region, town], undefined, first)).toEqual([
+      { text: 'Northern', placeholderId: 'region' },
+      { text: ' of ' },
+      { text: 'Marrow', placeholderId: 'town' },
+    ]);
+  });
+
+  it('reads a pin naming its value by id at that value’s current text', () => {
+    const byId: Placeholder = {
+      ...region,
+      values: [{ id: 'v:Northern', text: 'Northern', pins: [{ placeholderId: 'town', value: 'stale', valueId: 'v:Marrow' }] }],
+    };
+    expect(drawPlaceholderOnce(molly, [molly, byId, town], undefined, first)).toBe('Northern of Marrow');
+  });
+
+  it('applies them in the Preview tab’s map too', () => {
+    expect(buildPlaceholderPreview(text, [region, town], first)).toEqual({
+      [tok('region', 'world', 'v1')]: 'Northern',
+      [tok('town', 'world', 'v2')]: 'Marrow',
+    });
+  });
+
+  it('leaves play resolution to the pins it is handed — value pins are collected before, not during', () => {
+    const rolls = { world: { region: 'Northern', town: 'Sedge' }, unique: {} };
+    expect(resolvePlaceholders(text, { placeholders: [region, town], rolls })).toBe('Northern of Sedge');
+    expect(resolvePlaceholders(text, { placeholders: [region, town], rolls, pins: { town: 'Marrow' } })).toBe('Northern of Marrow');
+  });
+});
+
 /** The Roll field's structured draw: one span per direct chip of the drawn value, literal text plain. */
 describe('drawPlaceholderSpans', () => {
   const hair = P('hair', ['brown', 'black']);
