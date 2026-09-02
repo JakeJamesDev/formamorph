@@ -22,6 +22,7 @@ import {
   absorbPlaceholders,
   buildPlaceholderPreview,
   drawPlaceholderOnce,
+  drawPlaceholderSpans,
   reachablePlaceholderIds,
   describePlaceholders,
   placeholderValueSummary,
@@ -1578,6 +1579,65 @@ describe('drawPlaceholderOnce (the panel’s sample draw)', () => {
     const pick: PlaceholderPick = () => picks[i++ % 2];
     expect(drawPlaceholderOnce(hair, [hair], undefined, pick)).toBe('brown');
     expect(drawPlaceholderOnce(hair, [hair], undefined, pick)).toBe('black');
+  });
+});
+
+/** The Roll field's structured draw: one span per direct chip of the drawn value, literal text plain. */
+describe('drawPlaceholderSpans', () => {
+  const hair = P('hair', ['brown', 'black']);
+  const eyes = P('eyes', ['green']);
+  const gone = P('gone', []);
+  const molly = P('molly', [`${tok('hair', 'world', 'v1')}, ${tok('eyes', 'world', 'v2')}`]);
+
+  it('tags each direct chip with its placeholder and leaves the literal between them plain', () => {
+    expect(drawPlaceholderSpans(molly, [molly, hair, eyes], undefined, first)).toEqual([
+      { text: 'brown', placeholderId: 'hair' },
+      { text: ', ' },
+      { text: 'green', placeholderId: 'eyes' },
+    ]);
+  });
+
+  it('reads a lone-chip value as one tagged span, nested chips folded into it', () => {
+    const northern = P('northern', [`${tok('hair', 'world', 'v1')} hair`]);
+    const region = P('region', [tok('northern', 'world', 'v3')]);
+    expect(drawPlaceholderSpans(region, [region, northern, hair], undefined, first))
+      .toEqual([{ text: 'brown hair', placeholderId: 'northern' }]);
+  });
+
+  it('reads a plain value as one plain span', () => {
+    expect(drawPlaceholderSpans(hair, [hair], undefined, first)).toEqual([{ text: 'brown' }]);
+  });
+
+  it('drops a chip that resolves to nothing, so no empty span is rendered', () => {
+    const holder = P('holder', [`${tok('gone', 'world', 'v1')}x${tok('hair', 'world', 'v2')}`]);
+    expect(drawPlaceholderSpans(holder, [holder, gone, hair], undefined, first))
+      .toEqual([{ text: 'x' }, { text: 'brown', placeholderId: 'hair' }]);
+    expect(drawPlaceholderSpans(gone, [gone])).toEqual([]);
+  });
+
+  it('joins an Object’s values with the literal separator, tagging each chip value', () => {
+    const obj = { ...P('obj', [tok('hair', 'world', 'v1'), 'plain', tok('gone', 'world', 'v2')]), roll: false };
+    expect(drawPlaceholderSpans(obj, [obj, hair, gone], undefined, first)).toEqual([
+      { text: 'brown', placeholderId: 'hair' },
+      { text: ', ' },
+      { text: 'plain' },
+    ]);
+  });
+
+  it('joins to exactly what drawPlaceholderOnce draws for the same pick', () => {
+    // Last value each time: the tagged branch of the holder, the last color of hair.
+    const last: PlaceholderPick = (v) => v[v.length - 1].text;
+    const bench = { ...molly, values: phValues(['bald', `${tok('hair', 'world', 'v1')} hair`]) };
+    const spans = drawPlaceholderSpans(bench, [bench, hair], undefined, last);
+    const once = drawPlaceholderOnce(bench, [bench, hair], undefined, last);
+    expect(spans.map((s) => s.text).join('')).toBe(once);
+    expect(once).toBe('black hair');
+  });
+
+  it('respects the weights handed in for the placeholder’s own draw', () => {
+    const bench = { ...molly, values: phValues([`${tok('hair', 'world', 'v1')} hair`, 'bald']) };
+    const benched = { [phValueId(`${tok('hair', 'world', 'v1')} hair`)]: 0 };
+    expect(drawPlaceholderSpans(bench, [bench, hair], benched)).toEqual([{ text: 'bald' }]);
   });
 });
 

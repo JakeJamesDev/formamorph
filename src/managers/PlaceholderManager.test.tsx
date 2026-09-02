@@ -1,8 +1,10 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, fireEvent, within } from '@testing-library/react';
+import { render, screen, fireEvent, within, waitFor } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { placeholderAccent, type ChipVocabulary } from '@/lib/chipVocabulary';
 import { accentAtChance, BENCHED, chanceChipStyle, type ChanceStyle } from '@/lib/chanceColor';
 import { encodePlaceholderToken } from '@/lib/placeholders';
+import { tintMarkStyle } from '@/lib/previewTint';
 import type { Placeholder } from '@/types';
 import PlaceholderEditor from './PlaceholderEditor';
 import PlaceholderManager from './PlaceholderManager';
@@ -684,6 +686,25 @@ describe('PlaceholderManager — the sample roll', () => {
     render(<PlaceholderManager placeholder={ph({ values: phValues([`${chip('p2')} hair`]) })} />);
     fireEvent.click(roll());
     expect(screen.getByRole('status', { name: 'Sample roll' })).toHaveTextContent('Brown hair');
+  });
+
+  it('paints each direct chip’s run in its placeholder’s accent, named in the tip, literal text plain', async () => {
+    siblings = [ph(), { id: 'p2', name: 'Hair', values: phValues(['Brown']) }, { id: 'p3', name: 'Eyes', values: phValues(['Green']) }];
+    render(<PlaceholderManager placeholder={ph({ values: phValues([`${chip('p2')} and ${chip('p3')}`]) })} />);
+    fireEvent.click(roll());
+    const status = screen.getByRole('status', { name: 'Sample roll' });
+    expect(status).toHaveTextContent('Brown and Green');
+    const marks = within(status).getAllByText(/Brown|Green/, { selector: 'mark' });
+    expect(marks.map((m) => m.textContent)).toEqual(['Brown', 'Green']);
+    expect(marks[0].style.backgroundColor).toBe(cssColor(String(tintMarkStyle(placeholderAccent('p2'))?.backgroundColor)));
+    expect(marks[1].style.backgroundColor).toBe(cssColor(String(tintMarkStyle(placeholderAccent('p3'))?.backgroundColor)));
+    expect(within(status).queryByText('and', { selector: 'mark' })).not.toBeInTheDocument();
+    // The tip names the placeholder; the run itself keeps the drawn text as its only content. The value
+    // chip row already spells the name once, so the tip is the one more the hover adds.
+    const named = screen.getAllByText('Eyes').length;
+    await userEvent.hover(marks[1]);
+    await waitFor(() => expect(screen.getAllByText('Eyes')).toHaveLength(named + 1));
+    expect(within(status).queryByText('Eyes')).toBeNull();
   });
 
   it('draws again on each click', () => {
