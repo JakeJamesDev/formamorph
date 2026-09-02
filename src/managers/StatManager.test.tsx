@@ -171,7 +171,7 @@ describe('the descriptor pin button', () => {
     expect(low.textContent).toBe('1');
     expect(screen.getByRole('button', { name: 'Pins for stocked' }).textContent).toBe('');
     await userEvent.click(low);
-    expect(screen.getByRole('textbox', { name: 'Pinned value' })).toHaveValue('Sedge');
+    expect(screen.getByRole('textbox', { name: 'Pinned Value' })).toHaveValue('Sedge');
   });
 
   it('writes the popover’s rows onto that descriptor, and nothing else', async () => {
@@ -179,7 +179,7 @@ describe('the descriptor pin button', () => {
     renderManager();
     await userEvent.click(screen.getByRole('button', { name: 'Pins for low' }));
     // A value picked off the list lands on this descriptor's pin, named by id.
-    await userEvent.click(screen.getByRole('textbox', { name: 'Pinned value' }));
+    await userEvent.click(screen.getByRole('textbox', { name: 'Pinned Value' }));
     await userEvent.click(screen.getByRole('button', { name: 'Marrow' }));
     expect(store.writes.at(-1)!.descriptors[0].placeholderPins)
       .toEqual([{ placeholderId: TOWN.id, value: 'Marrow', valueId: phValueId('Marrow') }]);
@@ -190,8 +190,8 @@ describe('the descriptor pin button', () => {
     ]);
     expect(last[1].placeholderPins).toBeUndefined();
     // Emptying the list drops the field rather than leaving an empty array behind.
-    await userEvent.click(screen.getAllByRole('button', { name: 'Remove pin' })[1]);
-    await userEvent.click(screen.getByRole('button', { name: 'Remove pin' }));
+    await userEvent.click(screen.getAllByRole('button', { name: 'Remove Pin' })[1]);
+    await userEvent.click(screen.getByRole('button', { name: 'Remove Pin' }));
     expect(store.writes.at(-1)!.descriptors[0].placeholderPins).toBeUndefined();
   });
 

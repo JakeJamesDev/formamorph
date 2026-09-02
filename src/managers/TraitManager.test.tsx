@@ -72,7 +72,7 @@ const renderManager = () => render(
   </EditorModeContext.Provider>,
 );
 
-const pinField = () => screen.getByRole('textbox', { name: 'Pinned value' }) as HTMLInputElement;
+const pinField = () => screen.getByRole('textbox', { name: 'Pinned Value' }) as HTMLInputElement;
 const lastPins = () => store.writes[store.writes.length - 1].placeholderPins;
 
 beforeEach(() => {

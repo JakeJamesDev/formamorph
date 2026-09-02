@@ -25,6 +25,7 @@ import { cn } from '@/lib/utils';
 import type { Placeholder, PlaceholderPin, PlaceholderValue } from '@/types';
 import { Tip } from '@/components/ui/tooltip';
 import { PinPopoverButton } from '@/components/editor/PinPopoverButton';
+import { PlaceholderPinsSection } from '@/components/editor/PlaceholderPinsSection';
 import { useGameDataOptional } from '@/contexts/GameDataContext';
 import { useEditorMode } from '@/lib/editorMode';
 
@@ -522,6 +523,9 @@ const PlaceholderManager = ({ placeholder, rowId, share }: {
         </Popover>
         )}
       </div>
+      {/* Every pin aimed at this placeholder, gathered from its four sources. The library's editors have no
+          world to gather from, so they show none. */}
+      {advanced && world && <PlaceholderPinsSection world={world} placeholder={editing} />}
     </div>
   );
 };
