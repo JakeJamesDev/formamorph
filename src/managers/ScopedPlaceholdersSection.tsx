@@ -23,12 +23,11 @@ const ScopedPlaceholdersSection = ({ kind, ownerId }: { kind: 'entity' | 'dictio
   const home = useMemo((): PlaceholderHome => ({ kind, ownerId }), [kind, ownerId]);
   const scoped = useMemo(() => (store?.lists ? scopedStore(store, home) : null), [store, home]);
   if (!advanced || !scoped) return null;
-  const noun = kind === 'entity' ? 'entity' : 'dictionary';
   return (
     <div className="space-y-2">
       <Label>Placeholders</Label>
       <p className="text-helper text-muted-foreground">
-        Placeholders of this {noun}&apos;s own. Elsewhere in the world they read as {'{'}Name{OWNER_NAME_SEPARATOR}Placeholder{'}'}.
+        Placeholders of this {kind}&apos;s own. Elsewhere in the world they read as {'{'}Name{OWNER_NAME_SEPARATOR}Placeholder{'}'}.
       </p>
       <div className="flex h-[26rem] flex-col overflow-hidden rounded-md border">
         <PlaceholderStoreProvider value={scoped}>

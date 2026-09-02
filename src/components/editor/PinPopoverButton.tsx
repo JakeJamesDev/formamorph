@@ -16,11 +16,11 @@ import type { Placeholder, PlaceholderPin } from '@/types';
  * palette never inserts into a field behind an open pin popover.
  */
 export function PinPopoverButton({ pins, onChange, source, world, placeholders, excludeId, label }: {
-  pins: PlaceholderPin[];
+  pins: readonly PlaceholderPin[];
   onChange: (next: PlaceholderPin[]) => void;
   source: PinSourceRef;
   world: PinEditorWorld | null;
-  placeholders: Placeholder[];
+  placeholders: readonly Placeholder[];
   excludeId?: string;
   /** The button's accessible name, naming the row it belongs to. */
   label: string;

@@ -32,13 +32,13 @@ export interface FlatTreeNode<G extends TreeGroup, L extends TreeLeaf> {
  * at a group id that doesn't exist. Orphan-referenced items surface at the root rather than vanishing — a
  * dangling reference (missing `entityGroups`, deleted group) must never make an item unreachable.
  */
-function effectiveParent(ref: string | null | undefined, knownGroupIds: Set<string>): string | null {
+function effectiveParent(ref: string | null | undefined, knownGroupIds: ReadonlySet<string>): string | null {
   return ref != null && knownGroupIds.has(ref) ? ref : null;
 }
 
 /** Direct children (subgroups + leaves) of `parentId`, ordered by `order` (falling back to array index). */
 function childrenOf<G extends TreeGroup, L extends TreeLeaf>(
-  groups: G[], leaves: L[], parentId: string | null, knownGroupIds: Set<string>,
+  groups: readonly G[], leaves: readonly L[], parentId: string | null, knownGroupIds: ReadonlySet<string>,
 ): GroupTreeNode<G, L>[] {
   const entries: { node: GroupTreeNode<G, L>; sort: number }[] = [];
   groups.forEach((g, i) => {
@@ -55,7 +55,7 @@ function childrenOf<G extends TreeGroup, L extends TreeLeaf>(
 }
 
 /** Build the full ordered tree of top-level nodes, each group carrying its recursive children. */
-export function buildTree<G extends TreeGroup, L extends TreeLeaf>(groups: G[], leaves: L[]): GroupTreeNode<G, L>[] {
+export function buildTree<G extends TreeGroup, L extends TreeLeaf>(groups: readonly G[], leaves: readonly L[]): GroupTreeNode<G, L>[] {
   const knownGroupIds = new Set(groups.map((g) => g.id));
   const build = (parentId: string | null): GroupTreeNode<G, L>[] =>
     childrenOf(groups, leaves, parentId, knownGroupIds).map((node) =>

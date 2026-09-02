@@ -14,7 +14,7 @@ export type TraitTreeNode = GroupTreeNode<TraitGroup, Trait>;
 export type FlatTraitNode = FlatTreeNode<TraitGroup, Trait>;
 
 /** Build the full ordered tree of top-level nodes, each group carrying its recursive children. */
-export const buildTraitTree = (groups: TraitGroup[], traits: Trait[]): TraitTreeNode[] =>
+export const buildTraitTree = (groups: readonly TraitGroup[], traits: readonly Trait[]): TraitTreeNode[] =>
   buildTree(groups, traits);
 
 /** True if `candidateId` is `ancestorId` itself or nested anywhere beneath it — guards illegal moves. */

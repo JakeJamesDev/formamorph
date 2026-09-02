@@ -83,7 +83,7 @@ const EntityEditorModal = ({ entityId, draft, onClose, onPublish }: {
   // in a description does not rebuild the store and, with it, every chip field's vocabulary.
   const entityRef = useRef(entity);
   entityRef.current = entity;
-  // The pool is the character's own defs plus the shared ones it carries from the world it was exported
+  // The pool is the entity's own placeholders plus the shared ones it carries from the world it was exported
   // from; a write splits the list back the same way, so a carried shared def stays shared on export.
   const pool = useMemo(() => (entity ? carriedPlaceholders(entity) : []), [entity]);
   const phStore = useMemo(() => ({

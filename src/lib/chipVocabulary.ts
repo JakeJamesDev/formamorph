@@ -233,7 +233,7 @@ export function plainVocabulary(): ChipVocabulary {
 /** Vocabulary backed by a world's placeholders. A chip's World/Unique axis only appears once the placeholder
  *  has 2+ values (a single-value Variable has nothing to randomize). */
 export function placeholderVocabulary(
-  placeholders: Placeholder[],
+  placeholders: readonly Placeholder[],
   /** What the vocabulary may write back, and where its fields sit. Omit where placeholders are only being
    *  displayed — the chips are then not renameable and the typeahead offers no inline create. */
   { onRename, onCreate, onPromote, ownerId, owners, scope: scopeOwner, groups, letters = EMPTY_LETTERS }: {

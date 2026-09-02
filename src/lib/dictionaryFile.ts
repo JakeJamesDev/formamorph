@@ -20,10 +20,10 @@ export interface DictionaryFile {
   /** Cover art, inline. Absent when the book has none, which is what keeps a text-only book text-sized. */
   thumbnail?: string;
   entries: DictionaryEntry[];
-  /** The book's own placeholder defs, as they are (see lib/placeholders). A file with no
+  /** The book's own placeholders, as they are (see lib/placeholders). A file with no
    *  `sharedPlaceholders` carries everything its entries use here, and reads it all as owned. */
   placeholders?: Placeholder[];
-  /** The shared defs the book's entries and its own placeholders reach, so they resolve after import. */
+  /** The shared placeholders the book's entries and its own reach, so they resolve after import. */
   sharedPlaceholders?: Placeholder[];
 }
 
@@ -77,7 +77,7 @@ export function parseDictionaryFile(raw: unknown): Dictionary {
     ...(tags.length ? { tags } : {}),
     ...(typeof obj.thumbnail === 'string' && obj.thumbnail ? { thumbnail: obj.thumbnail } : {}),
     entries: entries.map((e) => migrateEntryKeys({ ...e, id: randomUUID() })),
-    // Carried defs ride along: the owned ones stay the book's when it is added to a world, the shared ones
+    // Carried placeholders ride along: the owned ones stay the book's when it is added to a world, the shared
     // merge into the world's list (see `adoptBookPlaceholders`).
     ...(Array.isArray(obj.placeholders) ? { placeholders: migrateCarriedPlaceholders(obj.placeholders) } : {}),
     ...(Array.isArray(obj.sharedPlaceholders) ? { sharedPlaceholders: migrateCarriedPlaceholders(obj.sharedPlaceholders) } : {}),

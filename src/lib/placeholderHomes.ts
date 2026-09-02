@@ -125,7 +125,7 @@ export function placeholderList(world: PlaceholderHomesWorld, home: PlaceholderH
   return owners?.find((o) => o.id === home.ownerId)?.placeholders ?? EMPTY;
 }
 
-/** An off-world item's whole pool: the defs it owns, then the shared ones it carries for its chips. */
+/** An off-world item's whole pool: the placeholders it owns, then the shared ones it carries for its chips. */
 export function carriedPlaceholders(item: { placeholders?: Placeholder[]; sharedPlaceholders?: Placeholder[] }): Placeholder[] {
   const owned = item.placeholders ?? EMPTY;
   return item.sharedPlaceholders?.length ? [...owned, ...item.sharedPlaceholders] : owned;
@@ -165,7 +165,7 @@ export function splitCarriedPlaceholders<T extends { placeholders?: Placeholder[
   } as T;
 }
 
-/** The shared defs an off-world export has to carry beside `owned`: everything `texts` and the owned
+/** The shared placeholders an off-world export has to carry beside `owned`: everything `texts` and the owned
  *  values reach in `available` that is not the item's own — through their chips, and through the
  *  placeholders their pins hold, which no chip need place. */
 export function sharedPlaceholdersUsed(texts: string[], owned: readonly Placeholder[], available: Placeholder[]): Placeholder[] {
@@ -383,7 +383,7 @@ export function remintScopedPlaceholders(list: readonly Placeholder[]): { placeh
 }
 
 /** What adopting an off-world item into a world produces: the item as the world keeps it, and the shared
- *  defs the world has to gain for the item's chips to resolve. */
+ *  placeholders the world has to gain for the item's chips to resolve. */
 interface Adopted<T> {
   item: T;
   toAdd: Placeholder[];
@@ -392,10 +392,10 @@ interface Adopted<T> {
 }
 
 /**
- * Bring a card's or file's placeholders into a world. The owned defs stay owned under fresh ids (the same
- * card added twice must not share ids); the carried shared defs merge with the world's shared list by name
- * and values, as `absorbPlaceholders` decides, or join it as fresh defs. A card with no `sharedPlaceholders`
- * carries owned defs only, so nothing of it merges.
+ * Bring a card's or file's placeholders into a world. The owned ones stay owned under fresh ids (the same
+ * card added twice must not share ids); the carried shared ones merge with the world's shared list by name
+ * and values, as `absorbPlaceholders` decides, or join it as fresh records. A card with no
+ * `sharedPlaceholders` carries owned ones only, so nothing of it merges.
  */
 function adoptCarried<T extends { placeholders?: Placeholder[]; sharedPlaceholders?: Placeholder[] }>(
   item: T, worldShared: readonly Placeholder[],
@@ -412,7 +412,7 @@ function adoptCarried<T extends { placeholders?: Placeholder[]; sharedPlaceholde
   const { toAdd, idMap: sharedMap } = absorbPlaceholders(carried, [...worldShared]);
   const aimed = minted.placeholders.map((p) => remapPlaceholderRefs(p, sharedMap));
   // Every def a pin may name once the item is in: the item's own, the world's shared list, and the shared
-  // defs joining it. A pin at anything else has no target here, so it goes rather than dangle.
+  // ones joining it. A pin at anything else has no target here, so it goes rather than dangle.
   const pool = [...aimed, ...worldShared, ...toAdd];
   const placeholders = remapValuePins(aimed, sharedMap, pool, true);
   const added = remapValuePins(toAdd, sharedMap, pool, true);
@@ -473,7 +473,7 @@ export function remapBookChips(book: Dictionary, idMap: Record<string, string>):
   return changed ? { ...book, entries } : book;
 }
 
-/** A duplicated entity with placeholders of its own: fresh defs, and its chips pointed at the copies. */
+/** A duplicated entity with placeholders of its own: fresh records, and its chips pointed at the copies. */
 export function duplicateEntityPlaceholders(entity: Entity): Entity {
   if (!entity.placeholders?.length) return entity;
   const { placeholders, idMap } = remintScopedPlaceholders(entity.placeholders);

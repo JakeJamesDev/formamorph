@@ -13,7 +13,7 @@ import type { Placeholder, PlaceholderPin } from '@/types';
  * the popover a row sits in belong to the host.
  */
 export function PlaceholderPinRows({ pins, onChange, source, world, placeholders, excludeId, onOpenTrait }: {
-  pins: PlaceholderPin[];
+  pins: readonly PlaceholderPin[];
   onChange: (next: PlaceholderPin[]) => void;
   /** The source these pins live on: what the note leaves out of its rivals. */
   source: PinSourceRef;
@@ -21,7 +21,7 @@ export function PlaceholderPinRows({ pins, onChange, source, world, placeholders
    *  world behind the editor (a library modal). */
   world: PinEditorWorld | null;
   /** What the picker offers: the world's combined view, or a library item's own list. */
-  placeholders: Placeholder[];
+  placeholders: readonly Placeholder[];
   /** Left out of the picker, and refused with a note when a stored pin names it: a value cannot pin the
    *  placeholder it belongs to. */
   excludeId?: string;

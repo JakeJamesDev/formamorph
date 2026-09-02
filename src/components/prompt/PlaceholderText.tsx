@@ -35,7 +35,7 @@ const MissingChip = ({ label, className }: { label?: string; className?: string 
  */
 const PlaceholderText = ({ text, placeholders, className }: {
   text: string;
-  placeholders: Placeholder[];
+  placeholders: readonly Placeholder[];
   /** Applied to each pill, e.g. to shrink them inside an already-small chip. */
   className?: string;
 }) => {

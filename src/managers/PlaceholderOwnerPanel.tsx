@@ -15,7 +15,6 @@ const PlaceholderOwnerPanel = ({ owner, placeholders, onOpen }: {
   placeholders: Placeholder[];
   onOpen: () => void;
 }) => {
-  const noun = owner.kind === 'entity' ? 'entity' : 'dictionary';
   return (
     <div className="space-y-3">
       <div className="flex items-center gap-2 text-label font-medium">
@@ -23,13 +22,13 @@ const PlaceholderOwnerPanel = ({ owner, placeholders, onOpen }: {
         <PlaceholderText text={owner.name} placeholders={placeholders} />
       </div>
       <p className="text-helper text-muted-foreground">
-        These placeholders belong to this {noun}. Elsewhere in the world they read as{' '}
+        These placeholders belong to this {owner.kind}. Elsewhere in the world they read as{' '}
         <PlaceholderText text={owner.name} placeholders={placeholders} />{OWNER_NAME_SEPARATOR}Name. Drag one to the top of the
-        list to share it with the whole world, or drag a shared one here to make it this {noun}&apos;s own.
+        list to share it with the whole world, or drag a shared one here to make it this {owner.kind}&apos;s own.
       </p>
       <Button variant="outline" size="sm" onClick={onOpen}>
         <ExternalLink className="mr-2 h-4 w-4" />
-        Open {noun === 'entity' ? 'Entity' : 'Dictionary'}
+        Open {owner.kind === 'entity' ? 'Entity' : 'Dictionary'}
       </Button>
     </div>
   );

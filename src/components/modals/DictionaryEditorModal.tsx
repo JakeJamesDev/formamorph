@@ -76,7 +76,7 @@ const DictionaryEditorModal = ({ dictionaryId, draft, onClose, onPublish }: {
   const hasUnsavedChanges = book != null && canonicalStringify(dictionaries, stringifyCache.current) !== baselineRef.current;
   const selectedBook = dictionaries.find((b) => b.id === selectedId);
   const selectedEntry = dictionaries.flatMap((b) => b.entries).find((e) => e.id === selectedId);
-  // The book's carried placeholders live on the sole book (index 0): its own defs plus the shared ones it
+  // The book's carried placeholders live on the sole book (index 0): its own plus the shared ones it
   // carries from the world it was exported from. Its entries' chips resolve against both.
   const bookPlaceholders = useMemo(() => (dictionaries[0] ? carriedPlaceholders(dictionaries[0]) : []), [dictionaries]);
   // Isolated placeholder store backed by the sole book's `placeholders` field (empty ⇒ undefined).

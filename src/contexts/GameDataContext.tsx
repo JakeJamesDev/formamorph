@@ -379,7 +379,7 @@ function useProvideGameData() {
   worldRef.current = getWorldData;
 
   // The home is decided once, purely; the append itself is a functional update on that one slice, so a
-  // burst of creates (an import absorbing several defs) never reads a stale world.
+  // burst of creates (an import absorbing several placeholders) never reads a stale world.
   const addPlaceholder = useCallback((newPlaceholder: Placeholder, home?: PlaceholderHome) => {
     const target = placeholderHomeFor(worldRef.current(), newPlaceholder, home);
     if (target.kind === 'world') {

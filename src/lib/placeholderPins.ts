@@ -8,7 +8,7 @@
 import type {
   GameLocation, Placeholder, PlaceholderPin, PlaceholderRolls, PlaceholderValue, Stat, StatDescriptor, Trait, TraitGroup,
 } from '@/types';
-import { encodePlaceholderToken, pinText, placeholderIsChoice, placeholderValueLine } from './placeholders';
+import { encodePlaceholderToken, pinText, placeholderIsChoice, placeholderValueLine, sameMap } from './placeholders';
 import type { PlaceholderOwners } from './placeholderHomes';
 import { labelPlaceholders, placeholderDisplayName, type PlacementLetters } from './placementLetters';
 import { activeDescriptor } from './statContext';
@@ -188,8 +188,8 @@ function settleValuePins(
       }
     }
     const next = { ...laid, ...layered };
-    if (samePins(next, prev)) return { pins: prev, layers };
-    const repeat = seen.findIndex((s) => samePins(s, next));
+    if (sameMap(next, prev)) return { pins: prev, layers };
+    const repeat = seen.findIndex((s) => sameMap(s, next));
     if (repeat >= 0) {
       const states = [...seen.slice(repeat), next];
       const placeholderIds = [...new Set(states.slice(1).flatMap((s, i) => differingKeys(s, states[i])))].sort();
@@ -204,11 +204,6 @@ function settleValuePins(
     prev = next;
     prevLayers = layers;
   }
-}
-
-function samePins(a: Record<string, string>, b: Record<string, string>): boolean {
-  const keys = Object.keys(a);
-  return keys.length === Object.keys(b).length && keys.every((k) => a[k] === b[k]);
 }
 
 function differingKeys(a: Record<string, string>, b: Record<string, string>): string[] {
@@ -363,7 +358,7 @@ export function allPinRows(world: PinEditorWorld): PinRow[] {
   for (const location of locations) {
     push({ kind: 'location', id: location.id }, location.placeholderPins, location.name, `Location: ${name.text(location.name)}`);
   }
-  for (const trait of inAuthoredOrder([...traits], traitOrderIndex([...traits], [...traitGroups]))) {
+  for (const trait of inAuthoredOrder(traits, traitOrderIndex(traits, traitGroups))) {
     push({ kind: 'trait', id: trait.id }, trait.placeholderPins, trait.name, `Trait: ${name.text(trait.name)}`);
   }
   for (const ph of placeholders) {
@@ -413,7 +408,7 @@ export function pinConflict(world: PinEditorWorld, placeholderId: string, source
   const exclusive = new Set<string>();
   if (source.kind === 'trait') {
     const trait = traits.find((t) => t.id === source.id);
-    if (trait) for (const id of exclusiveSiblings(trait, [...traits], [...traitGroups])) exclusive.add(id);
+    if (trait) for (const id of exclusiveSiblings(trait, traits, traitGroups)) exclusive.add(id);
   }
   const sourcePlaceholder = source.kind === 'value' ? placeholders.find((p) => p.id === source.placeholderId) : undefined;
   const neverTogether = (r: PinRow): boolean => {
@@ -430,7 +425,7 @@ export function pinConflict(world: PinEditorWorld, placeholderId: string, source
   if (!rivals.length) return null;
 
   // Within a kind, the later in its list lays its pin last and so wins — the same order `collectPins` walks.
-  const traitOrder = traitOrderIndex([...traits], [...traitGroups]);
+  const traitOrder = traitOrderIndex(traits, traitGroups);
   const statIndex = new Map(stats.map((s, i) => [s.id, i]));
   const phIndex = new Map(placeholders.map((p, i) => [p.id, i]));
   const bandIndex = (s: Extract<PinSourceRef, { kind: 'descriptor' }>) =>
@@ -575,7 +570,7 @@ export function pinSourcesOfKind(world: PinEditorWorld, kind: PinSourceKind, pla
   const name = labeler(world);
   switch (kind) {
     case 'trait':
-      return inAuthoredOrder([...traits], traitOrderIndex([...traits], [...traitGroups]))
+      return inAuthoredOrder(traits, traitOrderIndex(traits, traitGroups))
         .map((t) => ({ source: { kind, id: t.id }, label: name.text(t.name) }));
     case 'location':
       return locations.map((l) => ({ source: { kind, id: l.id }, label: name.text(l.name) }));

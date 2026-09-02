@@ -3,12 +3,11 @@ import { pinConflict, type PinEditorWorld, type PinRow, type PinSourceKind, type
 
 const KIND_RULE = 'A stat band outranks a location, a location a trait, and a trait a value pin';
 /** The tie-break inside one kind, phrased for the kind being edited. Two locations are never in force
- *  together, so that entry is never reached; it is here so the record is total. */
-const ORDER_RULE: Record<PinSourceKind, string> = {
+ *  together, so a location never reaches this and has no entry. */
+const ORDER_RULE: Partial<Record<PinSourceKind, string>> = {
   trait: 'The lowest in the trait list wins',
   descriptor: 'The lowest stat in the list wins',
   value: 'The lowest in the placeholder list wins',
-  location: 'The lowest in the location list wins',
 };
 const SELF: Record<PinSourceKind, string> = {
   trait: 'this trait', location: 'this location', descriptor: 'this band', value: 'this value',
@@ -29,7 +28,7 @@ export function PinConflictNote({ world, placeholderId, source, onOpenTrait }: {
 }) {
   const conflict = world && placeholderId ? pinConflict(world, placeholderId, source) : null;
   if (!conflict || !world) return null;
-  const placeholders = [...world.placeholders];
+  const { placeholders } = world;
   const name = (row: PinRow) => {
     const text = <PlaceholderText text={row.name} placeholders={placeholders} />;
     switch (row.source.kind) {
@@ -47,7 +46,7 @@ export function PinConflictNote({ world, placeholderId, source, onOpenTrait }: {
       default: return row.label;
     }
   };
-  const rule = conflict.rule === 'kind' ? KIND_RULE : ORDER_RULE[source.kind];
+  const rule = (conflict.rule === 'order' && ORDER_RULE[source.kind]) || KIND_RULE;
   return (
     <p className="text-meta text-muted-foreground pl-1">
       Also pinned by {conflict.rivals.map((r, i) => (
