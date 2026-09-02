@@ -9,14 +9,18 @@
  * Pure and world-shaped: nothing here reads storage or React, and nothing writes the world.
  */
 import { describePlaceholders } from '@/lib/placeholders';
+import { labelPlaceholders, worldPlacementLetters } from '@/lib/placementLetters';
 import {
   activePlaceholderPins, activeStatEnabled, exclusiveSiblings, inAuthoredOrder, traitOrderIndex,
 } from '@/lib/traitEffects';
 import type { GameLocation, Placeholder, Trait } from '@/types';
 import type { RuleWorld } from './rules';
 
-/** The slices of the authored world the lens reads. */
-export type LensWorld = Pick<RuleWorld, 'traits' | 'traitGroups' | 'locations' | 'placeholders' | 'stats'>;
+/** The slices of the authored world the lens reads. The rest of the document is optional and read only to
+ *  letter the pickers' chips the way the editor letters them — entities come first in that walk. */
+export type LensWorld =
+  Pick<RuleWorld, 'traits' | 'traitGroups' | 'locations' | 'placeholders' | 'stats'>
+  & Partial<Pick<RuleWorld, 'entities' | 'dictionaries' | 'worldOverview'>>;
 
 /** What the author picked, as the two ids it comes down to. Both nullable: no PC is a real setting (the
  *  world as anyone would meet it), and a world with no locations has nowhere to stand. */
@@ -62,9 +66,9 @@ export interface BenchLens {
 
 /**
  * The traits an author can test as: every member of an exclusive group, in authored order. A trait outside
- * one isn't a character — it is an option a character may also have — so it never appears here. Names are
- * read as the rest of the Bench reads chip-bearing text; a trait's own name resolves under its own pins,
- * the way its card does, and a group heading has no pins to read under.
+ * one isn't a character — it is an option a character may also have — so it never appears here. Names
+ * read as the editor's own trait list reads them: a chip by its placement label, never by a roll or a pin,
+ * so the picker and the list agree on what a character is called.
  */
 export function lensPcOptions(world: LensWorld): LensOption[] {
   const placeholders = world.placeholders ?? [];
@@ -74,20 +78,21 @@ export function lensPcOptions(world: LensWorld): LensOption[] {
   if (exclusive.size === 0) return [];
   const order = traitOrderIndex(world.traits ?? [], world.traitGroups ?? []);
   const members = (world.traits ?? []).filter((t) => t.groupId != null && exclusive.has(t.groupId));
+  const letters = worldPlacementLetters(world);
   return inAuthoredOrder(members, order).map((t) => ({
     id: t.id,
-    name: resolveLensText(t.name, placeholders, activePlaceholderPins([t], placeholders)) || 'Untitled trait',
-    groupName: resolveLensText(exclusive.get(t.groupId as string) ?? '', placeholders, {}) || 'Traits',
+    name: labelPlaceholders(t.name, placeholders, letters) || 'Untitled trait',
+    groupName: labelPlaceholders(exclusive.get(t.groupId as string) ?? '', placeholders, letters) || 'Traits',
   }));
 }
 
-/** Everywhere the author can stand, in authored order, named under the lens PC's `pins` — what the prompt
- *  would carry for that character. */
-export function lensLocationOptions(world: LensWorld, pins: Record<string, string> = {}): LensOption[] {
+/** Everywhere the author can stand, in authored order, named as the editor's own list names it. */
+export function lensLocationOptions(world: LensWorld): LensOption[] {
   const placeholders = world.placeholders ?? [];
+  const letters = worldPlacementLetters(world);
   return (world.locations ?? []).map((l) => ({
     id: l.id,
-    name: resolveLensText(l.name, placeholders, pins) || 'Untitled location',
+    name: labelPlaceholders(l.name, placeholders, letters) || 'Untitled location',
   }));
 }
 

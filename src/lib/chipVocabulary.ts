@@ -1,6 +1,8 @@
 import { randomUUID } from "@/lib/uuid";
 import { createContext, useMemo } from 'react';
 import { usePlaceholderStoreOptional } from '@/contexts/PlaceholderStoreContext';
+import { usePlacementLetters } from '@/contexts/PlacementLettersContext';
+import { chipPathName, EMPTY_LETTERS, placementDisplayName, type PlacementLetters } from './placementLetters';
 import type { Placeholder } from '@/types';
 import type { PromptSegment } from './promptTemplate';
 import { parsePromptTemplate } from './promptTemplate';
@@ -11,7 +13,7 @@ import {
   type PromptVariable, type PromptVariantAxis,
 } from './promptVariables';
 import {
-  PLACEHOLDER_PATH_SEPARATOR, parsePlaceholderText, decodePlaceholderToken, encodePlaceholderToken,
+  parsePlaceholderText, decodePlaceholderToken, encodePlaceholderToken,
   placeholderValueSummary, placeholderPathChildren, placeholderPathLevel, newPlaceholder,
   describePlaceholders, placeholderRandomizes,
 } from './placeholders';
@@ -58,10 +60,14 @@ export interface ChipVocabulary {
   parse(text: string): PromptSegment[];
   /** True if the token is a well-formed member of this family (renders as a chip). */
   isKnown(token: string): boolean;
-  /** Friendly chip label. */
+  /** Friendly chip label: what the token stands for, bare. Rename edits this; the remove button is named
+   *  by it. */
   label(token: string): string;
-  /** Extra detail for the chip's tooltip — a placeholder chip names itself and puts its values here.
-   *  Undefined when the label already says everything. */
+  /** What the chip reads as on the surface, where that differs from the label — a placement's own name or
+   *  letter. Absent, the chip shows the label plus its {@link variantLabel} in parens. */
+  display?(token: string): string;
+  /** Extra detail for the chip's tooltip — a placeholder chip names itself and puts its mode and values
+   *  here. Undefined when the label already says everything. */
   hint?(token: string): string | undefined;
   /** The active non-default mode label shown in parens on the chip, or null. */
   variantLabel(token: string): string | null;
@@ -178,8 +184,6 @@ const PALETTE_PID = 'palette';
 
 // What a chip reads as when the placeholder it names is gone. Displays only — resolution says `''`.
 const MISSING_NAME = '(missing)';
-// Reads a drill path as one name. Matches the separator the trait groups and the location canvas use.
-const PATH_SEPARATOR = PLACEHOLDER_PATH_SEPARATOR;
 
 // What a level holds, by what the level is. A Variable holds one value, so it heads one row.
 const HOLDS_LABEL: Record<PlaceholderKindNoun, string> = {
@@ -217,19 +221,28 @@ export function placeholderVocabulary(
   placeholders: Placeholder[],
   /** What the vocabulary may write back, and where its fields sit. Omit where placeholders are only being
    *  displayed — the chips are then not renameable and the typeahead offers no inline create. */
-  { onRename, onCreate, onPromote, ownerId }: {
+  { onRename, onCreate, onPromote, ownerId, letters = EMPTY_LETTERS }: {
     onRename?: (placeholder: Placeholder) => void;
     onCreate?: (placeholder: Placeholder) => void;
     onPromote?: (id: string) => void;
     /** The placeholder whose own values these fields edit. A member created here is born owned by it, and
      *  its owned rows read bare because the panel already says whose they are. */
     ownerId?: string;
+    /** The document's placement letters, so a Unique chip reads `Name (A)`. Absent, it reads `Name (Unique)`. */
+    letters?: PlacementLetters;
   } = {},
 ): ChipVocabulary {
   const byId = new Map(placeholders.map((p) => [p.id, p]));
   /** What one path segment adds, named by itself: a slot is already a name, a val names what it picks. */
   const segLabel = (seg: PlaceholderSegment) =>
     (seg.kind === 'slot' ? seg.name : byId.get(seg.ref)?.name ?? MISSING_NAME);
+  // An owned placeholder carries its owner chain, so a chip in a location description reading `Hair` says
+  // which Hair. Inside its owner's own panel the chain is already given, and drops away.
+  const vocabLabel = (t: string) => {
+    const d = decodePlaceholderToken(t);
+    if (!d) return t;
+    return chipPathName(d, placeholders, { relativeTo: ownerId, missing: MISSING_NAME }) ?? MISSING_NAME;
+  };
   return {
     rename: onRename && ((token, next) => {
       const id = decodePlaceholderToken(token)?.id;
@@ -240,25 +253,27 @@ export function placeholderVocabulary(
     }),
     parse: parsePlaceholderText,
     isKnown: (t) => decodePlaceholderToken(t) != null,
-    label: (t) => {
+    label: vocabLabel,
+    // A placement reads as its own name: the author's label, or the placeholder's name with its letter. A
+    // chip whose placeholder is gone keeps the label beside the missing mark, since the label is the one
+    // thing left that says what it was for.
+    display: (t) => {
       const d = decodePlaceholderToken(t);
       if (!d) return t;
-      // An owned placeholder carries its owner chain, so a chip in a location description reading `Hair`
-      // says which Hair. Inside its owner's own panel the chain is already given, and drops away.
-      const root = qualifiedPlaceholderName(placeholders, d.id, ownerId) ?? MISSING_NAME;
-      if (!d.path?.length) return root;
-      // The whole path, so `Molly › Hair` and a root `Hair` never read alike.
-      return [root, ...d.path.map(segLabel)].join(PATH_SEPARATOR);
+      if (!byId.has(d.id)) return d.label ? `${MISSING_NAME} ${d.label}` : MISSING_NAME;
+      return placementDisplayName(d, vocabLabel(t), letters);
     },
-    // A chip in a field names its placeholder; what it will become goes in the tooltip, so the chip stays
-    // one short word wide however many values there are.
+    // A chip in a field names its placement; the placeholder's mode and what it will become go in the
+    // tooltip, so the chip stays one short word wide however many values there are.
     hint: (t) => {
       const d = decodePlaceholderToken(t);
       const ph = d && byId.get(d.id);
       if (!ph) return undefined;
       // A path chip stands for the part it names, so it previews that part rather than the root's own pool.
-      if (d.path?.length) return describePlaceholders(t, placeholders) || 'no values';
-      return placeholderValueSummary(ph, placeholders) || 'no values';
+      const values = d.path?.length
+        ? describePlaceholders(t, placeholders) || 'no values'
+        : placeholderValueSummary(ph, placeholders) || 'no values';
+      return `${d.mode === 'unique' ? 'Unique' : 'World'} · ${values}`;
     },
     variantLabel: (t) => (decodePlaceholderToken(t)?.mode === 'unique' ? 'Unique' : null),
     color: (t) => {
@@ -388,6 +403,7 @@ export function usePlaceholderChipVocabulary(
   ownerId?: string,
 ): ChipVocabulary {
   const store = usePlaceholderStoreOptional();
+  const letters = usePlacementLetters();
   const onRename = store?.updatePlaceholder;
   const onCreate = store?.addPlaceholder;
   const setPlaceholders = store?.setPlaceholders;
@@ -396,8 +412,8 @@ export function usePlaceholderChipVocabulary(
     [setPlaceholders],
   );
   return useMemo(
-    () => placeholderVocabulary(placeholders, { onRename, onCreate, onPromote, ownerId }),
-    [placeholders, onRename, onCreate, onPromote, ownerId],
+    () => placeholderVocabulary(placeholders, { onRename, onCreate, onPromote, ownerId, letters }),
+    [placeholders, onRename, onCreate, onPromote, ownerId, letters],
   );
 }
 

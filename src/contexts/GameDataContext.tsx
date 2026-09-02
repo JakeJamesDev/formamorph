@@ -12,6 +12,8 @@ import { releasePlaceholderOwners, removePlaceholderCascade } from '@/lib/placeh
 import { chipBearingTexts } from '@/lib/testBench/rules';
 import { useDictionaryStoreState, DictionaryStoreProvider } from '@/contexts/DictionaryStoreContext';
 import { placeholderStore, PlaceholderStoreProvider } from '@/contexts/PlaceholderStoreContext';
+import { PlacementLettersProvider, useStablePlacementLetters } from '@/contexts/PlacementLettersContext';
+import { worldPlacementLetters } from '@/lib/placementLetters';
 import type {
   WorldMetadata,
   WorldOverview,
@@ -379,6 +381,13 @@ function useProvideGameData() {
     [placeholders, updatePlaceholder],
   );
 
+  // The document's placement letters, rewalked on every edit and kept by identity while nothing changed,
+  // so a keystroke that adds no chip leaves every chip field's vocabulary alone.
+  const placementLetters = useStablePlacementLetters(useMemo(
+    () => worldPlacementLetters({ entities, entityGroups, locations, traits, traitGroups, stats, dictionaries, worldOverview, placeholders }),
+    [entities, entityGroups, locations, traits, traitGroups, stats, dictionaries, worldOverview, placeholders],
+  ));
+
   // Per-keystroke dirty check over image-heavy world data: canonicalStringify caches by identity, so an
   // edit re-serializes only that record and its ancestors and the base64 elsewhere is left alone.
   //
@@ -507,6 +516,8 @@ function useProvideGameData() {
     dictStore,
     // Likewise for placeholders, so the same editing widgets bind to the world's placeholders.
     phStore,
+    // Placement id → letter for every Unique chip in the world, for the surfaces that print a name as text.
+    placementLetters,
   };
 
   return value;
@@ -537,7 +548,9 @@ export const GameDataProvider = ({ children }: { children: ReactNode }) => {
     <GameDataContext.Provider value={value}>
       <DictionaryStoreProvider value={value.dictStore}>
         <PlaceholderStoreProvider value={value.phStore}>
-          {children}
+          <PlacementLettersProvider letters={value.placementLetters}>
+            {children}
+          </PlacementLettersProvider>
         </PlaceholderStoreProvider>
       </DictionaryStoreProvider>
     </GameDataContext.Provider>

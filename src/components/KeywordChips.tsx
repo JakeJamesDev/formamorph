@@ -151,7 +151,7 @@ export function KeywordChips({
   /** What a committed tag shows, when the stored string isn't readable as-is. Undefined ⇒ the string itself. */
   const chipLabel = (kw: string): ReactNode => {
     const lone = lonePlaceholderAsPath ? lonePlaceholderToken(kw) : null;
-    if (lone) return vocab.label(lone);
+    if (lone) return vocab.display?.(lone) ?? vocab.label(lone);
     if (hasPlaceholders(kw)) return <PlaceholderText text={kw} placeholders={placeholders ?? []} />;
     return kw.includes('\n') ? placeholderValueLine(kw) : undefined;
   };

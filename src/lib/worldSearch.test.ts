@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { encodePlaceholderToken } from '@/lib/placeholders';
+import { placementLetters } from '@/lib/placementLetters';
 import { collectSearchTargets, findMatches, replaceAll, spliceText } from '@/lib/worldSearch';
 import type { SearchSources, SearchTarget } from '@/lib/worldSearch';
 import type { Dictionary, Entity, GameLocation, Placeholder, Stat, Trait, WorldOverview } from '@/types';
@@ -277,6 +278,79 @@ describe('findMatches', () => {
   it('finds nothing for an empty query', () => {
     const { src } = sources({ entities: [entity({ aiDescription: 'fen' })] });
     expect(findMatches(collectSearchTargets(src), '', LOOSE)).toHaveLength(0);
+  });
+});
+
+describe('findMatches — chips', () => {
+  const town: Placeholder = { id: 'ph-town', name: 'Town Name', values: phValues(['Sedge Landing', 'Harrow']) };
+  const unique = (placementId: string, label?: string) =>
+    encodePlaceholderToken({ id: 'ph-town', mode: 'unique', placementId, ...(label ? { label } : {}) });
+  const first = unique('pl-1');
+  const second = unique('pl-2', 'Hometown');
+  const stored = `The ${second} inn`;
+  const setup = () => {
+    const { src } = sources({
+      entities: [entity({ name: first, aiDescription: stored })],
+      placeholders: [town],
+    });
+    const targets = collectSearchTargets(src);
+    const chips = { placeholders: [town], letters: placementLetters([first, stored]) };
+    return { targets, chips };
+  };
+
+  // The placeholder's own name and values are text targets of their own, so only the chip hits are counted.
+  const chipHits = (matches: ReturnType<typeof findMatches>) => matches.filter((m) => m.chip).map((m) => m.chip);
+
+  it('names a chip-named item in the results line by its placement label, never by its token', () => {
+    const { targets } = setup();
+    expect(targets.find((t) => t.fieldKey === 'name')?.itemLabel).toBe('Town Name (A)');
+  });
+
+  it('matches a chip by its placeholder name, its letter label and its author label', () => {
+    const { targets, chips } = setup();
+    expect(chipHits(findMatches(targets, 'town name', LOOSE, chips))).toEqual([first, second]);
+    expect(chipHits(findMatches(targets, '(A)', LOOSE, chips))).toEqual([first]);
+    expect(chipHits(findMatches(targets, 'hometown', LOOSE, chips))).toEqual([second]);
+  });
+
+  it('matches a chip by any of its values', () => {
+    const { targets, chips } = setup();
+    expect(chipHits(findMatches(targets, 'harrow', LOOSE, chips))).toEqual([first, second]);
+  });
+
+  it('spans the whole token and interleaves with text hits by position', () => {
+    const { targets, chips } = setup();
+    const hits = findMatches(targets, 'n', LOOSE, chips).filter((m) => m.target.value === stored);
+    // "The " has no n; the chip comes next, then the "n" in "inn".
+    expect(hits.map((m) => m.chip ?? stored.slice(m.start, m.end))).toEqual([second, 'n', 'n']);
+    const chipHit = hits[0];
+    expect(stored.slice(chipHit.start, chipHit.end)).toBe(second);
+  });
+
+  it('still never reads a token as text, and reads no chip at all without the chip context', () => {
+    const { targets, chips } = setup();
+    expect(findMatches(targets, 'ph-town', LOOSE, chips)).toHaveLength(0);
+    expect(chipHits(findMatches(targets, 'town name', LOOSE))).toEqual([]);
+  });
+
+  it('honors whole word against a chip reading', () => {
+    const { targets, chips } = setup();
+    expect(chipHits(findMatches(targets, 'harr', { matchCase: false, wholeWord: true }, chips))).toEqual([]);
+    expect(chipHits(findMatches(targets, 'harrow', { matchCase: false, wholeWord: true }, chips))).toEqual([first, second]);
+  });
+
+  it('answers to a label even when the placeholder is gone', () => {
+    const { src } = sources({ entities: [entity({ name: second })] });
+    const chips = { placeholders: [], letters: placementLetters([]) };
+    expect(findMatches(collectSearchTargets(src), 'hometown', LOOSE, chips)).toHaveLength(1);
+  });
+
+  it('is left alone by replaceAll, and counted', () => {
+    const { targets, chips } = setup();
+    const matches = findMatches(targets, 'n', LOOSE, chips).filter((m) => m.target.value === stored);
+    const summary = replaceAll(matches, () => 'N');
+    expect(summary.chips).toBe(1);
+    expect(summary.replaced).toBe(2);
   });
 });
 

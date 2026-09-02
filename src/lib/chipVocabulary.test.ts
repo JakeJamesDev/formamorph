@@ -3,6 +3,7 @@ import type { Placeholder } from '@/types';
 import { promptVocabulary, placeholderVocabulary } from './chipVocabulary';
 import { encodePlaceholderToken, decodePlaceholderToken } from './placeholders';
 import type { PlaceholderSegment } from './placeholders';
+import { placementLetters } from './placementLetters';
 
 import { phValues } from '@/test/placeholderValues';
 const P = (id: string, values: string[]): Placeholder => ({ id, name: `name-${id}`, values: phValues(values) });
@@ -51,10 +52,10 @@ describe('placeholderVocabulary', () => {
 
   // The chip stays one word wide however long the value list is; what it becomes goes in the tooltip.
   it('hints what a chip will become, without widening the chip', () => {
-    expect(v.hint?.(tok('eye', 'world'))).toBe('Red|Blue|Green');
-    expect(v.hint?.(tok('king', 'world'))).toBe('Aldric');
+    expect(v.hint?.(tok('eye', 'world'))).toBe('World · Red|Blue|Green');
+    expect(v.hint?.(tok('king', 'world'))).toBe('World · Aldric');
     expect(v.hint?.(tok('ghost', 'world'))).toBeUndefined(); // nothing to say about a deleted one
-    expect(placeholderVocabulary([P('blank', [])]).hint?.(tok('blank', 'world'))).toBe('no values');
+    expect(placeholderVocabulary([P('blank', [])]).hint?.(tok('blank', 'world'))).toBe('World · no values');
   });
 
   it('shows the World/Unique axis only where resolving the chip can draw', () => {
@@ -139,7 +140,7 @@ describe('placeholderVocabulary — drill and inline create', () => {
     const step = v.drill?.(tok('molly', 'world'))?.[0].token as string;
     const deeper = v.drill?.(step)?.[0].token as string;
     // Molly's own pool is the two variants; this chip stands for isWhite's Hair, so that is what it previews.
-    expect(v.hint?.(deeper)).toBe('{brown|black}');
+    expect(v.hint?.(deeper)).toBe('World · {brown|black}');
   });
 
   it('reads a value that holds a chip as what that chip becomes, never as the token behind it', () => {
@@ -397,6 +398,38 @@ describe('placeholderVocabulary — ownership', () => {
   it('offers neither hook where nothing is bound to write to', () => {
     expect(v.promote).toBeUndefined();
     expect(promptVocabulary([]).allRows).toBeUndefined();
+  });
+});
+
+describe('placeholder vocabulary — what a chip reads as', () => {
+  const placeholders = [P('eye', ['blue', 'green'])];
+  const first = tok('eye', 'unique', 'p1');
+  const second = tok('eye', 'unique', 'p2');
+  const letters = placementLetters([first, second]);
+  const v = placeholderVocabulary(placeholders, { letters });
+
+  it('shows a World chip by name and a Unique chip with its letter, keeping the bare label for rename', () => {
+    expect(v.display?.(tok('eye', 'world'))).toBe('name-eye');
+    expect(v.display?.(second)).toBe('name-eye (B)');
+    expect(v.label(second)).toBe('name-eye');
+  });
+
+  it('reads Name (Unique) where no index letters the placement', () => {
+    expect(placeholderVocabulary(placeholders).display?.(first)).toBe('name-eye (Unique)');
+    expect(v.display?.(tok('eye', 'unique', 'elsewhere'))).toBe('name-eye (Unique)');
+  });
+
+  it('shows the author label over the default, and keeps it beside a missing mark', () => {
+    const labeled = v.setPlacementLabel!(second, 'Left');
+    expect(v.display?.(labeled)).toBe('Left');
+    expect(v.display?.(v.setPlacementLabel!(tok('ghost', 'unique'), 'Rival'))).toBe('(missing) Rival');
+    expect(v.display?.(tok('ghost', 'unique'))).toBe('(missing)');
+  });
+
+  it('puts the mode, then the values, in the hint', () => {
+    expect(v.hint?.(tok('eye', 'world'))).toBe('World · blue|green');
+    expect(v.hint?.(second)).toBe('Unique · blue|green');
+    expect(placeholderVocabulary([P('empty', [])]).hint?.(tok('empty', 'world'))).toBe('World · no values');
   });
 });
 

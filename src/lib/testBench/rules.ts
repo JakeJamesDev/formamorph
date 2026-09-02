@@ -13,6 +13,7 @@ import {
   resolvePlaceholders, SHARED_PATH_SEP,
   type PlaceholderFinding, type PlaceholderPick, type PlaceholderToken,
 } from '@/lib/placeholders';
+import { labelPlaceholders, worldPlacementLetters, type PlacementLetters } from '@/lib/placementLetters';
 import { holdsAsChip, qualifiedPlaceholderName } from '@/lib/placeholderTree';
 import { matchKey } from '@/lib/entityMatch';
 import { activeDescriptor } from '@/lib/statContext';
@@ -130,10 +131,23 @@ const withSlice = <K extends keyof RuleWorld>(world: RuleWorld, key: K, value: R
 const listNames = (names: string[]): string =>
   names.length <= 1 ? (names[0] ?? '') : `${names.slice(0, -1).join(', ')} and ${names[names.length - 1]}`;
 
-/** An entity as a finding names it: chips resolved, so the row reads like the editor's own list. */
+/** The world's placement letters, walked once per world object: a pass names dozens of items, and every
+ *  one reads its chips through this. */
+const lettersByWorld = new WeakMap<RuleWorld, PlacementLetters>();
+const lettersOf = (world: RuleWorld): PlacementLetters => {
+  let letters = lettersByWorld.get(world);
+  if (!letters) {
+    letters = worldPlacementLetters(world);
+    lettersByWorld.set(world, letters);
+  }
+  return letters;
+};
+
+/** An entity as a finding names it: chips by their placement labels, so the row reads like the editor's
+ *  own list. */
 const asItem = (entity: Entity, world: RuleWorld): FindingItem => ({
   id: entity.id,
-  name: describePlaceholders(entity.name ?? '', world.placeholders) || 'Untitled',
+  name: labelPlaceholders(entity.name ?? '', world.placeholders, lettersOf(world)) || 'Untitled',
 });
 
 /** An entity's written forms — its name and aliases, chips resolved, blanks dropped. */
@@ -278,10 +292,10 @@ const aliasSelfDuplicate: Rule = {
   })),
 };
 
-/** A non-entity item, chips resolved like the editor's own lists resolve them. */
+/** A non-entity item, chips labeled like the editor's own lists label them. */
 const namedItem = (id: string, name: string | undefined, world: RuleWorld, section?: FindingSection): FindingItem => ({
   id,
-  name: describePlaceholders(name ?? '', world.placeholders).trim() || 'Untitled',
+  name: labelPlaceholders(name ?? '', world.placeholders, lettersOf(world)).trim() || 'Untitled',
   ...(section ? { section } : {}),
 });
 

@@ -28,7 +28,7 @@ import { Drawer, DrawerContent, DrawerTitle } from '@/components/ui/drawer';
 import type { FindingSection } from '@/lib/testBench/rules';
 import { useTestBench } from '@/lib/testBench/useTestBench';
 import { collectSearchTargets, type SearchMatch } from '@/lib/worldSearch';
-import { revealEditorMatch, clearEditorMatch, revealSelectedRow } from '@/lib/editorFieldFocus';
+import { revealEditorMatch, revealEditorChip, clearEditorMatch, revealSelectedRow } from '@/lib/editorFieldFocus';
 import { Panel, PanelGroup, PanelResizeHandle } from 'react-resizable-panels';
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { ListDetail } from "@/components/ui/list-detail";
@@ -68,6 +68,7 @@ import AddDictionaryModal from '@/components/modals/AddDictionaryModal';
 import AddEntityModal from '@/components/modals/AddEntityModal';
 import { exportEntityCard } from '@/lib/entityFile';
 import { absorbPlaceholders, remapPlaceholderIds, describePlaceholders, newPlaceholder } from '@/lib/placeholders';
+import { chipPlaceholderNames, labelPlaceholders } from '@/lib/placementLetters';
 import { placeholderSelection } from '@/lib/placeholderTree';
 import { type DragEndEvent } from '@dnd-kit/core';
 import { arrayMove, verticalListSortingStrategy } from '@dnd-kit/sortable';
@@ -95,7 +96,7 @@ const WorldEditorInner = ({ onClose, embedded = false, backButton }: {
   const {
     updateWorldOverview, worldId, worldOverview,
     loadWorldData, getWorldData,
-    stats, locations, entities, entityGroups, traits, traitGroups, statUpdates, dictionaries, placeholders,
+    stats, locations, entities, entityGroups, traits, traitGroups, statUpdates, dictionaries, placeholders, placementLetters,
     addStat, addLocation, addEntity, addTrait, addStatUpdate, addDictionary,
     addTraitGroup, addEntityGroup, addPlaceholder,
     updateStat, updateEntity, updateEntityGroup, updateLocation, updateTrait, updateTraitGroup,
@@ -228,7 +229,14 @@ const WorldEditorInner = ({ onClose, embedded = false, backButton }: {
       inChipList: match.target.inChipList,
     };
     setTimeout(() => {
-      revealEditorMatch(editorRootRef.current, hit);
+      // A chip hit rings the chip itself; a text hit marks the field holding it. The field marker is
+      // dropped first either way, so a chip hit never leaves the previous field's ring behind.
+      if (match.chip) {
+        clearEditorMatch();
+        revealEditorChip(match.chip);
+      } else {
+        revealEditorMatch(editorRootRef.current, hit);
+      }
       // The list is the other half of "go to this hit": without it the detail pane jumps and the tree
       // stays wherever it was, with the selected row off screen.
       revealSelectedRow(editorRootRef.current);
@@ -267,14 +275,14 @@ const WorldEditorInner = ({ onClose, embedded = false, backButton }: {
     // Bundle the world placeholders this book's entries use, so its chips resolve after import elsewhere.
     const jsonData = JSON.stringify(buildDictionaryFile(book, placeholders), null, 2);
     // A chip in the name would otherwise put a raw placement id in the filename.
-    downloadBlob(new Blob([jsonData], { type: 'application/json' }), `${describePlaceholders(book.name, placeholders) || 'Dictionary'}.json`);
+    downloadBlob(new Blob([jsonData], { type: 'application/json' }), `${labelPlaceholders(book.name, placeholders, placementLetters) || 'Dictionary'}.json`);
   };
 
   // Export one entity as a shareable WebP character card (its portrait carrying the text fields).
   const exportEntity = async (entity: Entity) => {
     try {
       // The card's own data keeps the chips; only the filename is flattened, since a placement id is not a name.
-      downloadBlob(await exportEntityCard(entity, placeholders), `${describePlaceholders(entity.name, placeholders) || 'Character'}.webp`);
+      downloadBlob(await exportEntityCard(entity, placeholders), `${labelPlaceholders(entity.name, placeholders, placementLetters) || 'Character'}.webp`);
     } catch (error) {
       toast.error((error as Error).message);
     }
@@ -459,12 +467,15 @@ const WorldEditorInner = ({ onClose, embedded = false, backButton }: {
       activeTab === "traits" ? traits :
       activeTab === "statUpdates" ? statUpdates : [];
 
-    // Search what the author reads. A name holding a chip is stored as a token, so matching the raw value
-    // would mean typing a UUID to find it.
-    return itemsToFilter.filter(item =>
-      describePlaceholders(item.name, placeholders).toLowerCase().includes(searchTerm.toLowerCase())
-    );
-  }, [activeTab, stats, entities, locations, traits, statUpdates, searchTerm, placeholders]);
+    // Search what the author reads: the row's label, the placeholders behind its chips, and their values.
+    // A name holding a chip is stored as a token, so matching the raw value would mean typing a UUID.
+    const needle = searchTerm.toLowerCase();
+    const hit = (text: string) => text.toLowerCase().includes(needle);
+    return itemsToFilter.filter((item) =>
+      hit(labelPlaceholders(item.name, placeholders, placementLetters))
+      || chipPlaceholderNames(item.name, placeholders).some(hit)
+      || hit(describePlaceholders(item.name, placeholders)));
+  }, [activeTab, stats, entities, locations, traits, statUpdates, searchTerm, placeholders, placementLetters]);
 
   const selectedItem = filteredItems.find(item => item.id === selectedItemId);
   // Traits tab can select either a trait or a group (the right panel branches on which).
@@ -486,9 +497,9 @@ const WorldEditorInner = ({ onClose, embedded = false, backButton }: {
   // handing one out is an Advanced move, so Entities/Dictionary offer Add in both modes, Export in Advanced.
   const exportContext =
     activeTab === 'overview' ? { label: 'Export World', disabled: false, onClick: () => { exportCurrentWorld(); } }
-    : activeTab === 'entities' && advanced ? { label: `Export ${selectedItem ? describePlaceholders(selectedItem.name, placeholders) : 'Entity'}`, disabled: !selectedItem, onClick: () => { if (selectedItem) exportEntity(selectedItem as Entity); } }
+    : activeTab === 'entities' && advanced ? { label: `Export ${selectedItem ? labelPlaceholders(selectedItem.name, placeholders, placementLetters) : 'Entity'}`, disabled: !selectedItem, onClick: () => { if (selectedItem) exportEntity(selectedItem as Entity); } }
     : activeTab === 'dictionary' && advanced
-      ? { label: `Export ${(selectedBook && describePlaceholders(selectedBook.name, placeholders)) || 'Dictionary'}`, disabled: !selectedBook, onClick: () => { if (selectedBook) exportDictionary(selectedBook); } }
+      ? { label: `Export ${(selectedBook && labelPlaceholders(selectedBook.name, placeholders, placementLetters)) || 'Dictionary'}`, disabled: !selectedBook, onClick: () => { if (selectedBook) exportDictionary(selectedBook); } }
     : null;
   // "Add" opens the add-from-library picker (characters on Entities, books on Dictionary).
   const showImport = activeTab === 'entities' || activeTab === 'dictionary';
@@ -881,6 +892,7 @@ const WorldEditorInner = ({ onClose, embedded = false, backButton }: {
           <EditorFindBar
             targets={searchTargets}
             placeholders={placeholders}
+            placementLetters={placementLetters}
             // Follows the Placeholders tab, which Simple mode hides.
             allowPlaceholderReplace={advanced}
             startWithReplace={findWithReplace}

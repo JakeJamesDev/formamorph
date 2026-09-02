@@ -1,6 +1,7 @@
 import { LibraryStore, type StoredRecord } from './LibraryStore';
 import { migrateCarriedPlaceholders, migrateEntryKeys } from '@/lib/version';
 import { describePlaceholders } from '@/lib/placeholders';
+import { dictionaryPlacementLetters, EMPTY_LETTERS, labelPlaceholders } from '@/lib/placementLetters';
 import type { Dictionary, DictionaryMetadata } from '@/types';
 
 /** A locally-stored dictionary ("book") plus its library timestamps, and (via `StoredRecord`) the
@@ -22,7 +23,7 @@ class DictionaryStorageService {
       const placeholders = migrateCarriedPlaceholders(record.data?.placeholders);
       return {
         id: record.id,
-        name: describePlaceholders(record.name, placeholders),
+        name: labelPlaceholders(record.name, placeholders, record.data ? dictionaryPlacementLetters(record.data) : EMPTY_LETTERS),
         description: describePlaceholders(record.data?.description ?? '', placeholders) || undefined,
         thumbnail: record.data?.thumbnail ?? undefined,
         entryCount: record.data?.entries?.length ?? 0,

@@ -75,11 +75,11 @@ describe('DictionaryTree — large books virtualize', () => {
 });
 
 describe('DictionaryTree — a book named with a placeholder', () => {
-  it('shows the book’s name resolved, never as the token behind it', () => {
+  it('shows the book’s name by its chip, never as the token behind it', () => {
     const town: Placeholder = { id: 'ph-town', name: 'Town', values: phValues(['Sedge', 'Marrow']) };
     const named = { ...book(1), name: `${encodePlaceholderToken({ id: 'ph-town', mode: 'world', placementId: 'pl-1' })} Lore` };
     render(<Harness books={[named]} placeholders={[town]} />);
-    expect(screen.getByText('Sedge|Marrow')).toBeInTheDocument();
+    expect(screen.getByText('Town')).toBeInTheDocument();
     expect(document.body.textContent).not.toContain('{{ph:');
   });
 });

@@ -203,30 +203,35 @@ describe('lens option names', () => {
   const chipHair = encodePlaceholderToken({ id: 'ph-hair', mode: 'world', placementId: 'pl-1' });
   const chipHome = encodePlaceholderToken({ id: 'ph-home', mode: 'world', placementId: 'pl-2' });
 
-  it('names a location as the editor describes it, never as its token', () => {
+  const uniqueHome = (placementId: string) => encodePlaceholderToken({ id: 'ph-home', mode: 'unique', placementId });
+
+  it('names a location by its chip, never by its token or by a value', () => {
     const w = world({ locations: [{ id: 'l1', name: `The ${chipHome} Market` }] });
-    expect(lensLocationOptions(w)[0].name).toBe('The the Reach Market');
+    expect(lensLocationOptions(w)[0].name).toBe('The {Homeland} Market');
   });
 
-  it('names a location under the lens PC’s pins', () => {
-    const w = world({ locations: [{ id: 'l1', name: `${chipHair} Quarter` }] });
-    expect(lensLocationOptions(w)[0].name).toBe('{ash|copper|jet} Quarter');
-    expect(lensLocationOptions(w, { 'ph-hair': 'copper' })[0].name).toBe('copper Quarter');
+  it('letters two Unique placements the way the editor list does, entities first', () => {
+    const w = world({
+      entities: [{ id: 'e1', name: uniqueHome('pl-e') }],
+      locations: [{ id: 'l1', name: uniqueHome('pl-l') }],
+    });
+    expect(lensLocationOptions(w)[0].name).toBe('Homeland (B)');
   });
 
-  it('names a PC under its own pins, and describes its group heading', () => {
+  it('names a PC by its chip rather than under its own pins, and labels its group heading', () => {
     const w = world({
       traits: [{ ...traits[0], name: `${chipHair} Sedge-Born` }, ...traits.slice(1)],
       traitGroups: [{ ...groups[0], name: `${chipHome} Origins` }, groups[1]],
     });
     const [sedge] = lensPcOptions(w);
-    expect(sedge.name).toBe('copper Sedge-Born');
-    expect(sedge.groupName).toBe('the Reach Origins');
+    expect(sedge.name).toBe('{Hair Color} Sedge-Born');
+    expect(sedge.groupName).toBe('{Homeland} Origins');
   });
 
-  it('falls back to the untitled label when a name resolves to nothing', () => {
+  it('marks a chip whose placeholder is gone, as the editor list does, rather than reading as untitled', () => {
     const gone = encodePlaceholderToken({ id: 'ph-gone', mode: 'world', placementId: 'pl-3' });
-    expect(lensLocationOptions(world({ locations: [{ id: 'l1', name: gone }] }))[0].name).toBe('Untitled location');
+    expect(lensLocationOptions(world({ locations: [{ id: 'l1', name: gone }] }))[0].name).toBe('?');
+    expect(lensLocationOptions(world({ locations: [{ id: 'l1', name: '' }] }))[0].name).toBe('Untitled location');
   });
 });
 

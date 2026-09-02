@@ -462,6 +462,16 @@ A **Wildcard** chip chooses how its roll is shared, per placement:
 
 A **Variable** ignores this — it's the same single value no matter what.
 
+### How a placed chip reads
+
+| Chip | Reads as | Example |
+|---|---|---|
+| **World** | The placeholder's name | `Town Name` |
+| **Unique** | The name plus a letter, one sequence per placeholder | `Town Name (A)`, `Town Name (B)` … `Town Name (AA)` |
+| **Labeled** | The label typed in the chip's pop-out | `Hometown` |
+
+The letters follow the order things sit in the world: entities first, as the Entities tree lists them, then locations, traits, stats, dictionaries, the world's own prompt fields, and the placeholders' own values. Remove the first placement and the next one becomes **(A)** — nothing is stored, so a letter tells two placements apart but never names one for good. Give a placement a **Label** in its pop-out when you want a name that stays. Hover any chip or pill to see the placeholder's name, its mode and its values. A chip inside longer text keeps its braces everywhere the name is printed as plain text: `The {Tavern Name (A)} Inn`.
+
 ### The roll is frozen for the playthrough
 
 > 💡 A Wildcard rolls **once, when a game begins**, and the result is stored in that save. The stranger with gray eyes on turn one still has them on turn ninety, and reloading the save changes nothing. A new game rolls fresh.

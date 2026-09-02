@@ -15,6 +15,7 @@ import { encodePlaceholderToken, newPlaceholder } from '@/lib/placeholders';
 import { randomUUID } from '@/lib/uuid';
 import { findMatches, replaceAll, spliceText } from '@/lib/worldSearch';
 import type { SearchMatch, SearchTarget } from '@/lib/worldSearch';
+import type { PlacementLetters } from '@/lib/placementLetters';
 import type { Placeholder } from '@/types';
 
 /**
@@ -28,6 +29,8 @@ import type { Placeholder } from '@/types';
 interface EditorFindBarProps {
   targets: SearchTarget[];
   placeholders: Placeholder[];
+  /** The document's placement letters, so a chip answers a search by the name it shows. */
+  placementLetters: PlacementLetters;
   /** Placeholder-replace mode follows the Placeholders tab in hiding from Simple mode. */
   allowPlaceholderReplace: boolean;
   /** Open with the replace row expanded (Ctrl+H). */
@@ -112,7 +115,7 @@ function ModeSwap({ onClick, label, last, children }: {
 }
 
 export default function EditorFindBar({
-  targets, placeholders, allowPlaceholderReplace, startWithReplace, onNavigate, onAddPlaceholder, onClose,
+  targets, placeholders, placementLetters, allowPlaceholderReplace, startWithReplace, onNavigate, onAddPlaceholder, onClose,
 }: EditorFindBarProps) {
   const [query, setQuery] = useState('');
   const [debounced, setDebounced] = useState('');
@@ -138,8 +141,8 @@ export default function EditorFindBar({
 
   const options = useMemo(() => ({ matchCase, wholeWord }), [matchCase, wholeWord]);
   const matches = useMemo(
-    () => findMatches(targets, debounced, options),
-    [targets, debounced, options],
+    () => findMatches(targets, debounced, options, { placeholders, letters: placementLetters }),
+    [targets, debounced, options, placeholders, placementLetters],
   );
 
   // A replace shortens or lengthens the list under the cursor; clamping keeps the counter honest.
@@ -179,6 +182,12 @@ export default function EditorFindBar({
 
   const replaceCurrent = () => {
     if (!current) return;
+    if (current.chip) {
+      // The hit is a chip. Text cannot stand in for one; its pop-out is where it changes.
+      setNotice('That match is a chip — change it from its pop-out. Skipped.');
+      step(1);
+      return;
+    }
     const insert = insertFor(current.target);
     if (insert === null) {
       // Stepping past in silence reads as a dead button, and with a single match nothing moves at all.
@@ -196,7 +205,10 @@ export default function EditorFindBar({
     const skipped = summary.skipped
       ? ` ${summary.skipped} skipped in ${summary.skippedFields.length} field${summary.skippedFields.length === 1 ? '' : 's'} that can't hold a chip.`
       : '';
-    setNotice(`Replaced ${summary.replaced} match${summary.replaced === 1 ? '' : 'es'} across ${summary.fields} field${summary.fields === 1 ? '' : 's'}.${skipped}`);
+    const chips = summary.chips
+      ? ` ${summary.chips} chip${summary.chips === 1 ? '' : 's'} left as ${summary.chips === 1 ? 'it is' : 'they are'} — a chip changes from its pop-out.`
+      : '';
+    setNotice(`Replaced ${summary.replaced} match${summary.replaced === 1 ? '' : 'es'} across ${summary.fields} field${summary.fields === 1 ? '' : 's'}.${skipped}${chips}`);
   };
   useEffect(() => { if (notice) { const t = setTimeout(() => setNotice(null), 6000); return () => clearTimeout(t); } }, [notice]);
 
