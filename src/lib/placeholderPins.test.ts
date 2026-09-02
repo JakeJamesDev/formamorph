@@ -3,8 +3,8 @@ import type { GameLocation, Placeholder, PlaceholderPin, Trait } from '@/types';
 import { phValues } from '@/test/placeholderValues';
 import { decodePlaceholderToken } from './placeholders';
 import {
-  activePlaceholderPins, addPinAt, allPinTexts, collectPins, pinConflict, pinSourceKey, pinSourcesOfKind, pinsTargeting,
-  removePinAt, updatePinAt, valuePinRollChips, type PinnableStat,
+  activePlaceholderPins, addPinAt, allPinTexts, collectPinLayers, collectPins, pinConflict, pinSourceKey, pinSourcesOfKind,
+  pinsTargeting, removePinAt, updatePinAt, valuePinRollChips, type PinnableStat,
 } from './placeholderPins';
 
 const P = (id: string, values: string[]): Placeholder => ({ id, name: id, values: phValues(values) });
@@ -63,6 +63,48 @@ describe('collectPins — precedence across the four sources', () => {
   it('drops a disabled trait’s pins', () => {
     expect(collectPins({ traits: [sworn], disabledTraitIds: ['sworn'], placeholders: [town] })).toEqual({});
     expect(collectPins({ traits: [sworn], disabledTraitIds: [], placeholders: [town] })).toEqual({ town: 'Marrow' });
+  });
+});
+
+describe('collectPinLayers — every pin laid, and the one in force marked', () => {
+  const town = P('town', ['Sedge', 'Marrow', 'Fen', 'Ash', 'Moor']);
+  const region = pinner('region', [['Northern', [pin('town', 'Moor')]]]);
+  const placeholders = [town, region];
+  const rolls = { world: { region: 'Northern' }, unique: {} };
+  const sworn = trait('sworn', [pin('town', 'Marrow')]);
+  const fen = location('fen', [pin('town', 'Fen')]);
+  const hunger = stat('hunger', 20, [{ threshold: 30, pins: [pin('town', 'Ash')] }]);
+
+  it('lays every source in play’s order and marks only the descriptor’s pin as in force', () => {
+    const { pins, layers } = collectPinLayers({ traits: [sworn], location: fen, stats: [hunger], placeholders, rolls });
+    expect(pins).toEqual({ town: 'Ash' });
+    expect(layers.map((l) => [l.source, l.value, l.wins])).toEqual([
+      [{ kind: 'trait', id: 'sworn' }, 'Marrow', false],
+      [{ kind: 'location', id: 'fen' }, 'Fen', false],
+      [{ kind: 'descriptor', statId: 'hunger', descriptorId: 'hunger-b0' }, 'Ash', true],
+      [{ kind: 'value', placeholderId: 'region', valueId: 'v:Northern' }, 'Moor', false],
+    ]);
+  });
+
+  it('hands the win to the value pin once nothing above it claims the placeholder', () => {
+    const { layers } = collectPinLayers({ traits: [], placeholders, rolls });
+    expect(layers).toEqual([{
+      source: { kind: 'value', placeholderId: 'region', valueId: 'v:Northern' },
+      pin: region.values[0].pins![0], placeholderId: 'town', value: 'Moor', wins: true,
+    }]);
+  });
+
+  it('marks the later of two traits, matching what collectPins returns', () => {
+    const native = trait('native', [pin('town', 'Sedge')]);
+    const { pins, layers } = collectPinLayers({ traits: [native, sworn], placeholders: [town] });
+    expect(pins).toEqual(collectPins({ traits: [native, sworn], placeholders: [town] }));
+    expect(layers.map((l) => [l.source.kind === 'trait' && l.source.id, l.wins])).toEqual([['native', false], ['sworn', true]]);
+  });
+
+  it('carries the pin as stored, so a broken pin is a layer too', () => {
+    const broken = pin('gone', 'red');
+    const { layers } = collectPinLayers({ traits: [trait('t', [broken])], placeholders: [town] });
+    expect(layers).toEqual([{ source: { kind: 'trait', id: 't' }, pin: broken, placeholderId: 'gone', value: 'red', wins: true }]);
   });
 });
 
@@ -183,7 +225,10 @@ describe('collectPins — value pins to a fixed point', () => {
     const onFinding = vi.fn();
     const out = collectPins({ traits: [], placeholders: [a, b], rolls, onFinding });
     expect(onFinding).toHaveBeenCalledTimes(1);
-    expect(onFinding.mock.calls[0][0]).toEqual({ kind: 'value-pin-cycle', placeholderIds: ['a', 'b'] });
+    // The loop as the Bench reports it: the two states the walk flips between, each as what a and b read as.
+    expect(onFinding.mock.calls[0][0]).toEqual({
+      kind: 'value-pin-cycle', placeholderIds: ['a', 'b'], loop: [{ a: 'a2', b: 'b2' }, { a: 'a1', b: 'b1' }],
+    });
     // Stopped on the state the walk stood on when it saw the repeat — the second pass's, not the first's.
     expect(out).toEqual({ b: 'b1', a: 'a1' });
   });

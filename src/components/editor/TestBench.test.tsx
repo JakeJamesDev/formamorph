@@ -328,19 +328,19 @@ describe('TestBench lens bar', () => {
 
   it('says so when the PC pins a placeholder the world no longer has', () => {
     renderPinned('ph-gone', 'teal');
-    expect(screen.getByText(/Pins a placeholder that doesn’t exist, so “teal” is never applied/))
+    expect(screen.getByText(/“Trait: .+” pins a placeholder that doesn’t exist, so “teal” is never applied/))
       .toBeInTheDocument();
   });
 
   // Pinning off-list is the feature — play applies it verbatim, so the lens reads the same as playing it.
   it('is silent about a pin naming a value the placeholder does not offer', () => {
     renderPinned('ph-hair', 'teal');
-    expect(screen.queryByText(/Pins a placeholder/)).toBeNull();
+    expect(screen.queryByText(/pins a placeholder/i)).toBeNull();
   });
 
   it('is silent about pins the world honors', () => {
     renderLens({ pcTraitId: 't-sedge', locationId: null });
-    expect(screen.queryByText(/Pins a placeholder/)).toBeNull();
+    expect(screen.queryByText(/pins a placeholder/i)).toBeNull();
   });
 
   it('names the stats the PC switches away from the world’s defaults', () => {

@@ -217,6 +217,57 @@ describe('opening rolls', () => {
     expect(openingFor(world()).rolls.find((r) => r.placeholderId === 'ph-coin')?.pinnedValue).toBe('wren');
   });
 
+  // The fresh game opens at the starting location with its stats settled, so those two sources pin too.
+  const pinnedStart = (): OpeningWorld => world({
+    locations: [{ ...locations[0], placeholderPins: [{ placeholderId: 'ph-hair', value: 'jet' }] }, locations[1]],
+    stats: [
+      { ...stats[0], descriptors: [
+        { id: 'd1', threshold: 25, description: 'Shaky' },
+        { id: 'd2', threshold: 50, description: 'Steady', placeholderPins: [{ placeholderId: 'ph-coin', value: 'gull' }] },
+        { id: 'd3', threshold: 100, description: 'Iron' },
+      ] },
+      ...stats.slice(1),
+    ],
+  });
+
+  it('pins through the starting location, over the PC’s own pin', () => {
+    const hair = (pc: string | null) => openingFor(pinnedStart(), pc).rolls.find((r) => r.placeholderId === 'ph-hair');
+    expect(hair(null)?.pinnedValue).toBe('jet');
+    expect(hair('t-reach')?.pinnedValue).toBe('jet');
+  });
+
+  it('pins through the band the settled starting value lands in, over the default trait’s pin', () => {
+    // Nerve starts at 40, inside Steady (≤ 50), whose pin outranks Fen Blood's.
+    expect(openingFor(pinnedStart()).rolls.find((r) => r.placeholderId === 'ph-coin')?.pinnedValue).toBe('gull');
+    // Reach-Born raises Nerve's max, not its start, so the band holds; Sedge-Born's world is unchanged too.
+    expect(openingFor(pinnedStart(), 't-reach').rolls.find((r) => r.placeholderId === 'ph-coin')?.pinnedValue).toBe('gull');
+  });
+
+  it('keeps the roll under a location pin on reroll, like the roll under a trait pin', () => {
+    const w = pinnedStart();
+    const before = primeOpeningRolls(w, {}, pickFirst);
+    const after = rerollOpeningRolls(w, lensAt(w), before, pickLast);
+    expect(after.world?.['ph-hair']).toBe('ash');
+    expect(after.unique).toEqual({ 'pl-g1': 'shell', 'pl-g2': 'shell' });
+  });
+
+  it('draws a fresh value for a placeholder a value pin held, once the reroll moves the pinner off that value', () => {
+    const w = world({
+      worldOverview: { name: 'Sedge Landing', description: '', systemPrompt: `Town: ${chip('ph-town', 'world', 'pl-t')}.` } as WorldOverview,
+      placeholders: [
+        { id: 'ph-town', name: 'Town', values: phValues(['Sedge', 'Marrow']) },
+        { id: 'ph-region', name: 'Region', values: [
+          { id: 'v:North', text: 'North', pins: [{ placeholderId: 'ph-town', value: 'Marrow' }] }, { id: 'v:South', text: 'South' },
+        ] },
+      ],
+    });
+    const before = primeOpeningRolls(w, {}, pickFirst);
+    expect(buildOpening(w, lensAt(w), before).rolls.find((r) => r.placeholderId === 'ph-town')?.pinnedValue).toBe('Marrow');
+    // Region rerolls to South, which pins nothing, so Town's roll is drawn fresh rather than kept from under a pin that is gone.
+    const after = rerollOpeningRolls(w, lensAt(w), before, pickLast);
+    expect(after.world).toEqual({ 'ph-town': 'Marrow', 'ph-region': 'South' });
+  });
+
   it('rerolls only the unpinned placeholders', () => {
     const w = world();
     const before = primeOpeningRolls(w, {}, pickFirst);

@@ -9,13 +9,19 @@
 import {
   collectPlaceholderPlacements, decodePlaceholderToken, describePlaceholders, encodePlaceholderToken,
   hasPlaceholders, lonePlaceholderToken, parsePlaceholderText, placeholderChildren, placeholderIsChoice,
-  placeholderKindNoun, placeholderWeight,
+  placeholderKindNoun, placeholderWeight, pinText,
   resolvePlaceholders, SHARED_PATH_SEP,
   type PlaceholderFinding, type PlaceholderPick, type PlaceholderToken,
 } from '@/lib/placeholders';
 import { labelPlaceholders, worldPlacementLetters, type PlacementLetters } from '@/lib/placementLetters';
+import {
+  allPinRows, collectPins, hasDeadValueId, indexPlaceholders, pinConflict, relinkedPin, valuePinners,
+  type PinEditorWorld, type PinFinding, type PinRow,
+} from '@/lib/placeholderPins';
 import { holdsAsChip, qualifiedPlaceholderName } from '@/lib/placeholderTree';
-import { allPlaceholders, mapAllPlaceholders, withoutPlaceholders, type PlaceholderSlices } from '@/lib/placeholderHomes';
+import {
+  allPlaceholders, mapAllPlaceholders, placeholderOwners, withoutPlaceholders, type PlaceholderSlices,
+} from '@/lib/placeholderHomes';
 import { matchKey } from '@/lib/entityMatch';
 import { activeDescriptor } from '@/lib/statContext';
 import {
@@ -32,7 +38,7 @@ import {
 import { formatBytes, IMAGE_CAPS, type ImageCap } from '@/lib/imageOptim';
 import { clamp } from '@/lib/utils';
 import type {
-  DictionaryEntry, Entity, GameLocation, Placeholder, PlaceholderValue, Stat, StatDescriptor, Trait, World,
+  DictionaryEntry, Entity, GameLocation, Placeholder, PlaceholderPin, PlaceholderValue, Stat, StatDescriptor, Trait, World,
 } from '@/types';
 
 /**
@@ -379,24 +385,250 @@ const traitToggleMissingStat: Rule = {
   },
 };
 
-const traitPinInvalid: Rule = {
-  id: 'trait-pin-invalid',
+// ── Placeholder pins, from every source ────────────────────────────────────────────────────────────────────
+
+/** The world as the pin editors read it, so a finding labels a source exactly as its editor does. */
+const pinEditorWorld = (world: RuleWorld): PinEditorWorld => ({
+  traits: world.traits ?? [], traitGroups: world.traitGroups ?? [], locations: world.locations ?? [],
+  stats: world.stats ?? [], placeholders: allPlaceholders(world),
+  placeholderOwners: placeholderOwners(world), placementLetters: lettersOf(world),
+});
+
+/** Every pin in the world, walked once per world object — four rules read the same list. A fresh Add
+ *  Placeholder Pin row names no placeholder yet, so it is an edit in progress rather than a pin to check. */
+const pinRowsByWorld = new WeakMap<RuleWorld, PinRow[]>();
+const pinRowsOf = (world: RuleWorld): PinRow[] => {
+  let rows = pinRowsByWorld.get(world);
+  if (!rows) {
+    rows = allPinRows(pinEditorWorld(world)).filter((row) => row.pin.placeholderId);
+    pinRowsByWorld.set(world, rows);
+  }
+  return rows;
+};
+
+/** A pin's source as a finding item: the trait or location by its name, a band or a value by the label
+ *  every pin surface gives it, each opening on the tab that holds the source. */
+const pinSourceItem = (row: PinRow, world: RuleWorld): FindingItem => {
+  switch (row.source.kind) {
+    case 'trait': return namedItem(row.source.id, row.name, world, 'traits');
+    case 'location': return namedItem(row.source.id, row.name, world, 'locations');
+    case 'descriptor': return { id: row.source.statId, name: row.label, section: 'stats' };
+    case 'value': return { id: row.source.placeholderId, name: row.label, section: 'placeholders' };
+  }
+};
+
+const placeholderPinBroken: Rule = {
+  id: 'placeholder-pin-broken',
   severity: 'error',
-  section: 'traits',
+  section: 'placeholders',
   advanced: true,
-  summary: (count) => `${count} trait placeholder pins name a placeholder that doesn’t exist`,
-  // Only the placeholder has to exist. Pinning a value its list doesn't carry is the feature — a trait
+  summary: (count) => `${count} placeholder pins name a placeholder that doesn’t exist`,
+  // Only the placeholder has to exist. Pinning a value its list doesn't carry is the feature — a source
   // forcing a shade nobody else rolls — and play applies it verbatim.
   check: (world) => {
     const known = new Set(allPlaceholders(world).map((p) => p.id));
-    return (world.traits ?? []).flatMap((trait) =>
-      (trait.placeholderPins ?? [])
-        .filter((pin) => !known.has(pin.placeholderId))
-        .map(() => {
-          const item = namedItem(trait.id, trait.name, world);
-          return finding(traitPinInvalid, `${quote(item.name)} pins a placeholder that doesn’t exist`, [item]);
-        }),
-    );
+    return pinRowsOf(world)
+      .filter((row) => !known.has(row.pin.placeholderId))
+      .map((row) => finding(
+        placeholderPinBroken, `${quote(row.label)} pins a placeholder that doesn’t exist`, [pinSourceItem(row, world)],
+      ));
+  },
+};
+
+/** A holder's pin list under `field` rewritten by `fn`; the holder itself when no pin changed. */
+const withMappedPinList = <T extends { [P in K]?: PlaceholderPin[] }, K extends 'placeholderPins' | 'pins'>(
+  holder: T, field: K, fn: (pin: PlaceholderPin) => PlaceholderPin,
+): T => {
+  const pins = holder[field];
+  if (!pins?.length) return holder;
+  const next = mapChanged(pins, fn);
+  return next === pins ? holder : { ...holder, [field]: next };
+};
+
+/** The world with `fn` applied to every pin on every source, only the records holding a changed pin
+ *  rebuilt — so a fix over pins repairs exactly the rows its check reported. */
+const withMappedPins = (world: RuleWorld, fn: (pin: PlaceholderPin) => PlaceholderPin): RuleWorld => {
+  const traits = mapChanged(world.traits ?? [], (t) => withMappedPinList(t, 'placeholderPins', fn));
+  const locations = mapChanged(world.locations ?? [], (l) => withMappedPinList(l, 'placeholderPins', fn));
+  const stats = mapChanged(world.stats ?? [], (s) => {
+    if (!s.descriptors?.length) return s;
+    const descriptors = mapChanged(s.descriptors, (d) => withMappedPinList(d, 'placeholderPins', fn));
+    return descriptors === s.descriptors ? s : { ...s, descriptors };
+  });
+  const withValues = withMappedPlaceholders(world, (ph) => {
+    if (!ph.values?.length) return ph;
+    const values = mapChanged(ph.values, (v) => withMappedPinList(v, 'pins', fn));
+    return values === ph.values ? ph : { ...ph, values };
+  });
+  return withSlice(withSlice(withSlice(withValues, 'traits', traits), 'locations', locations), 'stats', stats);
+};
+
+const placeholderPinUnknownValue: Rule = {
+  id: 'placeholder-pin-unknown-value',
+  severity: 'warning',
+  section: 'placeholders',
+  advanced: true,
+  summary: (count) => `${count} placeholder pins name a value their placeholder no longer has`,
+  check: (world) => {
+    const placeholders = allPlaceholders(world);
+    const byId = indexPlaceholders(placeholders);
+    return pinRowsOf(world)
+      .filter((row) => hasDeadValueId(row.pin, byId.get(row.pin.placeholderId)))
+      .map((row) => {
+        const target = placeholderItem(row.pin.placeholderId, world);
+        const applies = row.pin.value
+          ? `${quote(describePlaceholders(row.pin.value, placeholders))} is forced as written`
+          : 'the pin applies nothing';
+        return finding(
+          placeholderPinUnknownValue,
+          `${quote(row.label)} pins ${quote(target.name)} to a value it no longer has — ${applies}`,
+          [pinSourceItem(row, world), target],
+        );
+      });
+  },
+  fix: (world) => {
+    const byId = indexPlaceholders(allPlaceholders(world));
+    return withMappedPins(world, (pin) => {
+      const ph = byId.get(pin.placeholderId);
+      return ph && hasDeadValueId(pin, ph) ? relinkedPin(pin, ph) : pin;
+    });
+  },
+};
+
+const placeholderPinConflict: Rule = {
+  id: 'placeholder-pin-conflict',
+  severity: 'info',
+  section: 'placeholders',
+  advanced: true,
+  summary: (count) => `${count} placeholders are pinned by more than one source that can be in force at once`,
+  // The editors' own conflict note decides who competes: pins that can never be in force together (two
+  // locations, two bands of one stat, two values of one Wildcard, exclusive trait siblings) are no contest,
+  // and pins forcing the same text disagree about nothing.
+  check: (world) => {
+    const editor = pinEditorWorld(world);
+    const byId = indexPlaceholders(editor.placeholders);
+    const rows = pinRowsOf(world);
+    const targets = [...new Set(rows.map((row) => row.pin.placeholderId))].filter((id) => byId.has(id));
+    return targets.flatMap((id) => {
+      const contested = rows
+        .filter((row) => row.pin.placeholderId === id)
+        .map((row) => ({ row, conflict: pinConflict(editor, id, row.source) }))
+        .filter((entry) => entry.conflict !== null);
+      const texts = new Set(contested.map((entry) => pinText(entry.row.pin, byId)));
+      if (contested.length < 2 || texts.size < 2) return [];
+      // A row no rival beats is a winner; two exclusive siblings can both be one, each over the same rival.
+      const winners = contested.filter((entry) => entry.conflict?.winner === null).map((entry) => quote(entry.row.label));
+      const verdict = winners.length === 1
+        ? `${winners[0]} wins whenever it is in force`
+        : `${winners.slice(0, -1).join(', ')} or ${winners[winners.length - 1]} wins, whichever is in force`;
+      const target = placeholderItem(id, world);
+      return [finding(
+        placeholderPinConflict,
+        `${quote(target.name)} is pinned by ${listNames(contested.map((entry) => quote(entry.row.label)))} — ${verdict}`,
+        [target, ...contested.map((entry) => pinSourceItem(entry.row, world))],
+      )];
+    });
+  },
+};
+
+/** The strongly connected parts of a directed graph that hold a cycle: two or more nodes reaching each
+ *  other, or one node reaching itself. Tarjan's walk, nodes in the order `edges` lists them. */
+const cyclicComponents = (edges: ReadonlyMap<string, readonly string[]>): string[][] => {
+  const index = new Map<string, number>();
+  const low = new Map<string, number>();
+  const onStack = new Set<string>();
+  const stack: string[] = [];
+  const out: string[][] = [];
+  let next = 0;
+  const visit = (node: string): void => {
+    index.set(node, next);
+    low.set(node, next);
+    next += 1;
+    stack.push(node);
+    onStack.add(node);
+    for (const to of edges.get(node) ?? []) {
+      if (!index.has(to)) {
+        visit(to);
+        low.set(node, Math.min(low.get(node) ?? 0, low.get(to) ?? 0));
+      } else if (onStack.has(to)) {
+        low.set(node, Math.min(low.get(node) ?? 0, index.get(to) ?? 0));
+      }
+    }
+    if (low.get(node) !== index.get(node)) return;
+    const members: string[] = [];
+    for (;;) {
+      const popped = stack.pop() as string;
+      onStack.delete(popped);
+      members.push(popped);
+      if (popped === node) break;
+    }
+    if (members.length > 1 || (edges.get(node) ?? []).includes(node)) out.push(members.reverse());
+  };
+  for (const node of edges.keys()) if (!index.has(node)) visit(node);
+  return out;
+};
+
+/** Every way `choices` can roll, in value order, at most `cap` of them: the placeholders read as their
+ *  texts, one combination per record. One empty record when there is nothing to roll. */
+const rollCombos = (choices: readonly Placeholder[], cap: number): Array<Record<string, string>> => {
+  const out: Array<Record<string, string>> = [];
+  const pick = new Array<number>(choices.length).fill(0);
+  for (;;) {
+    out.push(Object.fromEntries(choices.map((ph, i) => [ph.id, ph.values[pick[i]].text])));
+    if (out.length >= cap) return out;
+    let i = choices.length - 1;
+    while (i >= 0 && pick[i] === choices[i].values.length - 1) {
+      pick[i] = 0;
+      i -= 1;
+    }
+    if (i < 0) return out;
+    pick[i] += 1;
+  }
+};
+
+/** How many roll combinations one loop of value-pinning placeholders is probed under, at most. Four
+ *  eight-value Wildcards pinning each other is the ceiling; a bigger loop is probed in value order up to it. */
+const CYCLE_PROBE_CAP = 4096;
+
+const placeholderPinCycle: Rule = {
+  id: 'placeholder-pin-cycle',
+  severity: 'error',
+  section: 'placeholders',
+  advanced: true,
+  summary: (count) => `${count} sets of value pins flip each other forever`,
+  // The game's own collector decides: each loop of placeholders whose values pin each other is settled
+  // under every roll it can start from, and the first roll that never settles is the finding. Pins from
+  // traits, locations and bands only fix a value in place, so they are left out — they can end a loop,
+  // never start one.
+  check: (world) => {
+    const placeholders = allPlaceholders(world);
+    const byId = indexPlaceholders(placeholders);
+    const pinnerIds = new Set(valuePinners(placeholders).map((p) => p.id));
+    const edges = new Map([...pinnerIds].map((id) => [id, [...new Set(
+      (byId.get(id)?.values ?? []).flatMap((v) => (v.pins ?? []).map((pin) => pin.placeholderId).filter((to) => pinnerIds.has(to))),
+    )]]));
+    const name = (id: string) => placeholderItem(id, world).name;
+    const readAs = (state: Record<string, string>, ids: string[]) =>
+      ids.map((id) => `${name(id)} = ${describePlaceholders(state[id] ?? '', placeholders) || '(nothing)'}`).join(', ');
+    const reported = new Set<string>();
+    return cyclicComponents(edges).flatMap((members) => {
+      const choices = members.map((id) => byId.get(id) as Placeholder).filter((p) => placeholderIsChoice(p) && p.values.length >= 2);
+      for (const rolled of rollCombos(choices, CYCLE_PROBE_CAP)) {
+        let hit: PinFinding | undefined;
+        collectPins({ traits: [], placeholders, rolls: { world: rolled, unique: {} }, onFinding: (f) => { hit ??= f; } });
+        if (!hit) continue;
+        const ids = hit.placeholderIds;
+        if (reported.has(ids.join('|'))) return [];
+        reported.add(ids.join('|'));
+        const start = readAs(rolled, ids.filter((id) => id in rolled));
+        return [finding(
+          placeholderPinCycle,
+          `${listNames(ids.map((id) => quote(name(id))))} pin each other in a loop: ${start ? `rolled ${start}, they` : 'they'} flip to ${hit.loop.map((s) => readAs(s, ids)).join(', then ')}, and round again`,
+          ids.map((id) => placeholderItem(id, world)),
+        )];
+      }
+      return [];
+    });
   },
 };
 
@@ -1974,7 +2206,7 @@ const imageMislabeled: Rule = {
 /** Every rule the Bench runs, in catalog order. Display order comes from severity, not this list. */
 export const RULES: readonly Rule[] = [
   aliasLeadingArticle, entityMatchCollision, aliasSelfDuplicate,
-  entityLocationOrphan, traitToggleMissingStat, traitPinInvalid,
+  entityLocationOrphan, traitToggleMissingStat, placeholderPinBroken,
   chipUnknownPlaceholder, placeholderUnused, placeholderPinnedUnused, statCodeUnknownStat,
   entrySecondaryWithoutPrimary, entryInert, entryRegexInvalid,
   noStartingLocation, legacyStartLocation, entityNowhere, statDisabledForever,
@@ -1987,6 +2219,7 @@ export const RULES: readonly Rule[] = [
   entityLongDescriptionNoSummary, aiSummaryHidesDescription, locationNoEntities,
   traitGroupMultipleDefaults, traitGroupTooSmall,
   placeholderWeightUnknownValue, wildcardSingleValue,
+  placeholderPinUnknownValue, placeholderPinConflict, placeholderPinCycle,
   placeholderSlotMiss, placeholderDanglingReference, placeholderReferenceCycle, placeholderEmptyRecord,
   placeholderDuplicateSlot,
   placeholderSharedWeightUnknownValue, placeholderOwnerOrphan, placeholderOwnerDropped,
