@@ -1,9 +1,10 @@
 import { describe, it, expect } from 'vitest';
 import type { Placeholder } from '@/types';
-import { promptVocabulary, placeholderVocabulary } from './chipVocabulary';
+import { promptVocabulary, placeholderVocabulary, chipRowMatches, chipSectionOpens } from './chipVocabulary';
 import { encodePlaceholderToken, decodePlaceholderToken } from './placeholders';
 import type { PlaceholderSegment } from './placeholders';
 import { placementLetters } from './placementLetters';
+import type { PlaceholderOwnerRef } from './placeholderHomes';
 
 import { phValues } from '@/test/placeholderValues';
 const P = (id: string, values: string[]): Placeholder => ({ id, name: `name-${id}`, values: phValues(values) });
@@ -481,13 +482,13 @@ describe('placeholderVocabulary — scoped placeholders', () => {
 
   it('labels a scoped chip Owner.Name outside its owner and bare inside', () => {
     const outside = placeholderVocabulary(WORLD, { owners });
-    expect(outside.label(tok('eyes', 'world'))).toBe('Molly.Eyes');
-    expect(outside.display?.(tok('eyes', 'unique'))).toBe('Molly.Eyes (Unique)');
+    expect(outside.label(tok('eyes', 'world'))).toBe('Molly › Eyes');
+    expect(outside.display?.(tok('eyes', 'unique'))).toBe('Molly › Eyes (Unique)');
     expect(outside.label(tok('town', 'world'))).toBe('Town');
     const molly = { kind: 'entity' as const, id: 'molly', name: 'Molly' };
     const inside = placeholderVocabulary(WORLD, { owners, ownerId: 'molly', scope: molly });
     expect(inside.label(tok('eyes', 'world'))).toBe('Eyes');
-    expect(inside.label(tok('mane', 'world'))).toBe('Fen.Mane');
+    expect(inside.label(tok('mane', 'world'))).toBe('Fen › Mane');
     // A field of one of Molly's own placeholders is inside Molly too.
     expect(placeholderVocabulary(WORLD, { owners, ownerId: 'iris' }).label(tok('eyes', 'world'))).toBe('Eyes');
   });
@@ -510,7 +511,7 @@ describe('placeholderVocabulary — scoped placeholders', () => {
     expect(placeholderVocabulary(world, { owners: sectioned, groups }).palette().map((r) => [r.label, r.heading])).toEqual([
       ['name-town', undefined], ['name-lost', undefined],
       ['name-hair', 'Body'], ['name-skin', 'Body › Face'], ['name-sword', 'Gear'],
-      ['Molly.name-eyes', 'Molly'],
+      ['name-eyes', 'Molly'],
     ]);
     // Inside Molly's fields her own section leads, still under her name.
     const inside = placeholderVocabulary(world, { owners: sectioned, groups, ownerId: 'molly', scope: molly }).palette();
@@ -520,12 +521,65 @@ describe('placeholderVocabulary — scoped placeholders', () => {
     expect(placeholderVocabulary(world).palette().every((r) => r.heading === undefined)).toBe(true);
   });
 
+  it('says what each heading names, so a folder draws as text and an owner as its own chip', () => {
+    const groups = [{ id: 'gear', name: 'Gear', parentId: null }];
+    const world: Placeholder[] = [{ ...P('sword', ['iron']), groupId: 'gear' }, P('eyes', ['gray']), P('mane', ['red'])];
+    // An owner named with a chip reaches the heading whole, so the surface can render the chip nested.
+    const keeper = { kind: 'entity' as const, id: 'keeper', name: 'Keeper {{ph:town:world:p1}}' };
+    const fen = { kind: 'dictionary' as const, id: 'fen', name: 'Fen' };
+    const rows = placeholderVocabulary(world, {
+      owners: new Map<string, PlaceholderOwnerRef>([['eyes', keeper], ['mane', fen]]),
+      groups,
+    }).palette();
+    const byLabel = new Map(rows.map((r) => [r.label, r]));
+    expect(byLabel.get('name-sword')).toMatchObject({ heading: 'Gear', headingKind: 'folder' });
+    expect(byLabel.get('name-sword')?.ownerId).toBeUndefined();
+    expect(byLabel.get('name-eyes')).toMatchObject({
+      headingKind: 'owner', ownerKind: 'entity', ownerId: 'keeper', ownerName: 'Keeper {{ph:town:world:p1}}',
+    });
+    expect(byLabel.get('name-mane')).toMatchObject({ headingKind: 'owner', ownerKind: 'dictionary', ownerId: 'fen', ownerName: 'Fen' });
+  });
+
+  it('parts two owners that share a name, since their rows read bare under the heading', () => {
+    const world: Placeholder[] = [P('mood', ['sour']), P('tone', ['flat'])];
+    const rows = placeholderVocabulary(world, {
+      owners: new Map<string, PlaceholderOwnerRef>([
+        ['mood', { kind: 'entity', id: 'k1', name: 'Keeper' }],
+        ['tone', { kind: 'entity', id: 'k2', name: 'Keeper' }],
+      ]),
+    }).palette();
+    expect(rows.map((r) => [r.label, r.heading, r.ownerId])).toEqual([
+      ['name-mood', 'Keeper', 'k1'], ['name-tone', 'Keeper', 'k2'],
+    ]);
+    // Both sections open, so the second Keeper's rows are not drawn under the first one's heading.
+    expect([chipSectionOpens(rows, 0), chipSectionOpens(rows, 1)]).toEqual([true, true]);
+  });
+
+  it('matches a query that spells the separator with a dot, a space, or a chevron', () => {
+    const world: Placeholder[] = [{ id: 'mood', name: 'Mood', values: phValues(['sour']) }];
+    const [row] = placeholderVocabulary(world, {
+      owners: new Map([['mood', { kind: 'entity' as const, id: 'keeper', name: 'Keeper' }]]),
+    }).palette();
+    // The row reads bare under its owner, and still answers to the whole path however it is typed.
+    expect(row.label).toBe('Mood');
+    for (const query of ['keeper.mood', 'keeper mood', 'keeper>mood', 'keeper › mood', 'Keeper › Mood', 'mood']) {
+      expect(chipRowMatches(row, query), query).toBe(true);
+    }
+    for (const query of ['keeper.eyes', 'keepermood', 'fen › mood']) {
+      expect(chipRowMatches(row, query), query).toBe(false);
+    }
+    // A loose row has no owner to fold in, so the separator query finds nothing.
+    const [loose] = placeholderVocabulary(world).palette();
+    expect(chipRowMatches(loose, 'keeper › mood')).toBe(false);
+    expect(chipRowMatches(loose, 'mood')).toBe(true);
+  });
+
   it('lists the field owner’s scoped placeholders first, then the shared ones, then the rest as Owner.Name', () => {
     const molly = { kind: 'entity' as const, id: 'molly', name: 'Molly' };
     const fen = { kind: 'dictionary' as const, id: 'fen', name: 'Fen' };
-    expect(placeholderVocabulary(WORLD, { owners }).palette().map((r) => r.label)).toEqual(['Town', 'Molly.Eyes', 'Molly.Iris', 'Fen.Mane']);
-    expect(placeholderVocabulary(WORLD, { owners, ownerId: 'molly', scope: molly }).palette().map((r) => r.label)).toEqual(['Eyes', 'Iris', 'Town', 'Fen.Mane']);
-    expect(placeholderVocabulary(WORLD, { owners, ownerId: 'fen', scope: fen }).allRows?.().map((r) => r.label)).toEqual(['Town', 'Molly.Eyes', 'Molly.Iris', 'Mane']);
+    expect(placeholderVocabulary(WORLD, { owners }).palette().map((r) => r.label)).toEqual(['Town', 'Eyes', 'Iris', 'Mane']);
+    expect(placeholderVocabulary(WORLD, { owners, ownerId: 'molly', scope: molly }).palette().map((r) => r.label)).toEqual(['Eyes', 'Iris', 'Town', 'Mane']);
+    expect(placeholderVocabulary(WORLD, { owners, ownerId: 'fen', scope: fen }).allRows?.().map((r) => r.label)).toEqual(['Town', 'Molly › Eyes', 'Molly › Iris', 'Mane']);
   });
 
   it('creates a placeholder inside an owner’s fields in that owner’s list, named for it', () => {
@@ -549,6 +603,6 @@ describe('placeholderVocabulary — scoped placeholders', () => {
     expect(v.createLabel?.('Scar')).toBe('New Placeholder "Scar" in Tam');
     v.create?.('Scar');
     expect(made[0][1]).toEqual({ kind: 'entity', ownerId: 'tam' });
-    expect(v.palette().map((r) => r.label)).toEqual(['Town', 'Molly.Eyes', 'Molly.Iris', 'Fen.Mane']);
+    expect(v.palette().map((r) => r.label)).toEqual(['Town', 'Eyes', 'Iris', 'Mane']);
   });
 });

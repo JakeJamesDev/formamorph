@@ -2,7 +2,10 @@ import { randomUUID } from "@/lib/uuid";
 import { createContext, useMemo } from 'react';
 import { usePlaceholderStoreOptional } from '@/contexts/PlaceholderStoreContext';
 import { usePlacementLetters } from '@/contexts/PlacementLettersContext';
-import { chipPathName, EMPTY_LETTERS, labelPlaceholders, ownerPrefix, placementDisplayName, type PlacementLetters } from './placementLetters';
+import {
+  chipPathName, EMPTY_LETTERS, foldSeparators, labelPlaceholders, ownerPrefix, OWNER_NAME_SEPARATOR,
+  placementDisplayName, type PlacementLetters,
+} from './placementLetters';
 import {
   placeholderOwnerRef, type PlaceholderHome, type PlaceholderHomesWorld, type PlaceholderOwnerRef, type PlaceholderOwners,
 } from './placeholderHomes';
@@ -35,6 +38,16 @@ export interface ChipRow {
   /** The section this row sits under — a folder's path or an owner's name. Rows sharing a heading sit
    *  together, so a surface draws the heading once, where it changes; absent for a loose row. */
   heading?: string;
+  /** What the heading names, so a surface draws a folder as quiet text and an owner as a chip. */
+  headingKind?: 'folder' | 'owner';
+  /** Which kind of owner heads the section, for the icon that says so. Owner headings only. */
+  ownerKind?: PlaceholderOwnerRef['kind'];
+  /** The entity or book the section belongs to. Owner headings only. */
+  ownerId?: string;
+  /** The owner's name as authored, chips and all, so a heading renders an owner named with a chip the
+   *  way that owner reads everywhere else. Owner headings only; `heading` is the flattened reading the
+   *  same name folds to. */
+  ownerName?: string;
   /** The placeholder belongs to another one, so a chip cannot be aimed at it from outside its owner. Set
    *  only where a surface offers owned rows at all (see {@link ChipVocabulary.allRows}). */
   owned?: boolean;
@@ -43,8 +56,23 @@ export interface ChipRow {
 /** True where row `i` starts a new section of a sectioned list: the first row, or one whose heading
  *  differs from the row before it. A surface draws a heading (or a rule, for a loose run after a headed
  *  one) exactly there, so a section the filter emptied never shows a heading. */
-export function chipSectionOpens(rows: readonly Pick<ChipRow, 'heading'>[], i: number): boolean {
-  return i === 0 || rows[i - 1].heading !== rows[i].heading;
+export function chipSectionOpens(rows: readonly Pick<ChipRow, 'heading' | 'ownerId'>[], i: number): boolean {
+  if (i === 0) return true;
+  // Two owners may share a name, and their rows read bare under it, so the owner itself is what parts
+  // the sections — a shared name would otherwise hide one entity's rows under the other's heading.
+  return rows[i - 1].heading !== rows[i].heading || rows[i - 1].ownerId !== rows[i].ownerId;
+}
+
+/** How a row reads as one path: its owner's heading and its bare name rejoined, so a row that shows as
+ *  `Mood` under Keeper still answers to the `Keeper › Mood` an author types. */
+function rowReading(row: Pick<ChipRow, 'label' | 'heading' | 'headingKind'>): string {
+  return row.headingKind === 'owner' && row.heading ? `${row.heading}${OWNER_NAME_SEPARATOR}${row.label}` : row.label;
+}
+
+/** True where a row answers to a typed query, matching case-insensitively and taking a typed `.`, space,
+ *  or `>` for the separator the label spells `›`. */
+export function chipRowMatches(row: Pick<ChipRow, 'label' | 'heading' | 'headingKind'>, query: string): boolean {
+  return foldSeparators(rowReading(row).toLowerCase()).includes(foldSeparators(query.toLowerCase()));
 }
 
 /** A part reached through whichever value the level rolls, rather than by naming one. */
@@ -246,7 +274,7 @@ export function placeholderVocabulary(
      *  the panel already says whose they are; one created in an entity's or book's fields lands in that
      *  owner's list, and the owner's scoped placeholders read bare and are offered first. */
     ownerId?: string;
-    /** Who owns each scoped placeholder, so a chip aimed at one reads `Molly.Eyes` away from Molly. */
+    /** Who owns each scoped placeholder, so a chip aimed at one reads `Molly › Eyes` away from Molly. */
     owners?: PlaceholderOwners;
     /** The entity or book `ownerId` names, when it names one. An owner that owns nothing yet has no entry
      *  in `owners`, so the fields say who they belong to outright. */
@@ -353,9 +381,14 @@ export function placeholderVocabulary(
         const heading = owner ? labelPlaceholders(owner.name, placeholders, { letters }) : folder?.heading;
         const row: ChipRow = {
           token: paletteToken(p),
-          label: `${prefixFor(p.id)}${p.name}`,
+          // Under its owner's heading a row reads bare: the heading already says whose it is, so a
+          // section of ten does not repeat the owner's name ten times.
+          label: owner ? p.name : `${prefixFor(p.id)}${p.name}`,
           color: placeholderAccent(p.id),
           ...(heading ? { heading } : {}),
+          ...(owner
+            ? { headingKind: 'owner' as const, ownerKind: owner.kind, ownerId: owner.id, ownerName: owner.name }
+            : heading ? { headingKind: 'folder' as const } : {}),
         };
         return { row, rank: (owner ? ownerRank.get(owner.id) : folder?.rank) ?? 0, mine: !!scope && owner?.id === scope.id };
       });

@@ -1,7 +1,7 @@
 import { OPENING_CUE_FIELD_KEY, setOpeningCue, storedOpeningCue } from '@/lib/openingCue';
 import { decodePlaceholderToken, describePlaceholders, parsePlaceholderText } from '@/lib/placeholders';
 import { qualifiedPlaceholderName } from '@/lib/placeholderTree';
-import { labelPlaceholders, worldPlacementLetters, type PlacementLetters } from '@/lib/placementLetters';
+import { foldSeparators, labelPlaceholders, worldPlacementLetters, type PlacementLetters } from '@/lib/placementLetters';
 import { placeholderOwners, type PlaceholderOwners } from '@/lib/placeholderHomes';
 import { withPinnedValue } from '@/lib/placeholderPins';
 import {
@@ -363,7 +363,11 @@ export function findMatches(targets: SearchTarget[], query: string, opts: Search
         offset += segment.value.length;
         continue;
       }
-      if (chips && chipReadings(segment.token, chips, byId).some((reading) => hitsIn(reading, needle, opts).length > 0)) {
+      // A chip is matched on its reading, not on its text, so the query may spell the separator any way
+      // a keyboard allows. Folding both sides changes their length, which is why only the boolean is
+      // taken from it — the hit spans the whole token either way.
+      if (chips && chipReadings(segment.token, chips, byId)
+        .some((reading) => hitsIn(foldSeparators(reading), foldSeparators(needle), opts).length > 0)) {
         matches.push({ target, start: offset, end: offset + segment.token.length, chip: segment.token });
       }
       offset += segment.token.length;

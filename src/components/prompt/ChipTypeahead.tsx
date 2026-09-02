@@ -12,7 +12,7 @@ import { CHIP_BASE } from '@/components/Chip';
 import { cn } from '@/lib/utils';
 import { useWheelScroll } from '@/lib/useWheelScroll';
 import { PLACEHOLDER_PATH_SEPARATOR } from '@/lib/placeholders';
-import { chipSectionOpens, type ChipVocabulary } from '@/lib/chipVocabulary';
+import { chipRowMatches, chipSectionOpens, type ChipVocabulary } from '@/lib/chipVocabulary';
 import { $createVariableNode } from './VariableNode';
 
 /**
@@ -155,7 +155,7 @@ export function ChipTypeaheadPlugin({ trigger, vocab }: {
       const level = pathRef.current[pathRef.current.length - 1];
       const source = level ? vocab.drill?.(level.token) ?? [] : vocab.palette();
       const rows = source
-        .filter((r) => r.label.toLowerCase().includes(query.toLowerCase()))
+        .filter((r) => chipRowMatches(r, query))
         .map((r) => ({ ...r, nests: (vocab.drill?.(r.token) ?? []).length > 0 }));
       const offersCreate = !level && !!vocab.create && !!query.trim();
       // Nothing to offer and nothing to make means the trigger was meant literally, and the menu gets out

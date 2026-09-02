@@ -145,8 +145,21 @@ export function placementDisplayName(token: PlaceholderToken, name: string, lett
   return `${name} (${letters.get(token.placementId) ?? UNLETTERED})`;
 }
 
-/** What joins an owner's name to a scoped placeholder's: `Molly.Eyes`. */
-export const OWNER_NAME_SEPARATOR = '.';
+/** What joins an owner's name to a scoped placeholder's: `Molly › Eyes`. One mark for every nesting, so
+ *  it is the path separator itself and not a second glyph an author has to learn. */
+export const OWNER_NAME_SEPARATOR = PLACEHOLDER_PATH_SEPARATOR;
+
+/** Every mark a query may spell a separator with, plus the runs of space around one. */
+const SEPARATOR_RUN = /[.>›\s]+/g;
+
+/**
+ * `text` with every separator run folded to one bare `›`, so a query typed `keeper.mood`,
+ * `keeper mood`, or `keeper>mood` matches a label that reads `Keeper › Mood`. Case is left alone, and
+ * the fold changes length, so it answers whether a reading holds a query and never where.
+ */
+export function foldSeparators(text: string): string {
+  return text.replace(SEPARATOR_RUN, OWNER_NAME_SEPARATOR.trim());
+}
 
 /** How a chip name is read: whose surface reads it, and who owns what. */
 export interface ChipNameOptions {
@@ -155,7 +168,7 @@ export interface ChipNameOptions {
    *  placeholder scoped to that owner, or to the owner of that placeholder. */
   relativeTo?: string | null;
   missing?: string;
-  /** Who owns each scoped placeholder, so a chip aimed at one reads `Molly.Eyes` away from Molly. Absent,
+  /** Who owns each scoped placeholder, so a chip aimed at one reads `Molly › Eyes` away from Molly. Absent,
    *  nothing is prefixed. */
   owners?: PlaceholderOwners;
   /** The document's letters, for an owner whose own name holds a Unique chip. */
@@ -163,7 +176,7 @@ export interface ChipNameOptions {
 }
 
 /**
- * The `Molly.` an owner puts before its scoped placeholder's name, or `''` where the placeholder is shared,
+ * The `Molly › ` an owner puts before its scoped placeholder's name, or `''` where the placeholder is shared,
  * no owner index is given, or the surface reading it belongs to that owner already (`relativeTo` is the
  * owner, or a placeholder of the owner's). The owner's own name is read by the plain rule, so a chip in
  * it never prefixes itself.
@@ -179,7 +192,7 @@ export function ownerPrefix(
 }
 
 /** A placeholder as a plain-text list names it: its owner prefix and its qualified name, chips read by
- *  name — `Molly.Eyes`, `Molly › Northern`, or `?` for one the world no longer has. `relativeTo` drops
+ *  name — `Molly › Eyes`, `Molly › Northern`, or `?` for one the world no longer has. `relativeTo` drops
  *  what the reading surface already supplies, so Molly's own panel reads `Eyes`. */
 export function placeholderDisplayName(
   id: string, placeholders: readonly Placeholder[], { relativeTo, owners, letters }: ChipNameOptions = {},
@@ -212,7 +225,7 @@ export function chipPathName(
  * dropdowns, the canvas, modal titles, filenames, cards and listings. A chip that is the whole text reads
  * bare — `Town Name (A)` — and one inside prose keeps braces so the name stays visibly a chip:
  * `The {Town Name (A)} Inn`. A chip whose placeholder is gone reads `?`, plus its label if it has one. With
- * `owners`, a chip aimed at a scoped placeholder reads `Molly.Eyes`: a plain-text surface has no field to
+ * `owners`, a chip aimed at a scoped placeholder reads `Molly › Eyes`: a plain-text surface has no field to
  * be inside of.
  *
  * Deliberately never draws or describes values: a row shows what a thing is called, and its values live in
