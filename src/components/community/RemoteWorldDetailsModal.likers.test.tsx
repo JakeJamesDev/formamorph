@@ -140,3 +140,59 @@ describe('opening the likers list', () => {
     expect(likersProps.last).toBeNull();
   });
 });
+
+describe('the list does not follow the reader to the next listing', () => {
+  it('closes when the details modal closes, so the next listing opens without it', async () => {
+    const { rerender } = show({ currentUser: account('a1', 'admin') });
+
+    fireEvent.click(await screen.findByRole('button', { name: /Show who liked this/ }));
+    await waitFor(() => expect(screen.getByTestId('likers')).toBeTruthy());
+
+    const props = {
+      onOpenChange: () => {},
+      collapsed: false,
+      onToggleCollapsed: () => {},
+      isAuthenticated: true,
+      openImageViewer: () => {},
+      downloadStateForWorld: () => 'none' as const,
+      downloadProgress: {},
+      onContextualDownload: () => {},
+      currentUser: account('a1', 'admin'),
+      onLike: async () => {},
+    };
+
+    // Closed, then reopened on a different listing — the way a reader moves through the catalog.
+    rerender(<RemoteWorldDetailsModal open={false} world={world()} {...props} />);
+    rerender(<RemoteWorldDetailsModal open world={world({ id: 'w2', _id: 'w2', name: 'Harrow Court' })} {...props} />);
+
+    await screen.findByText('Harrow Court');
+    expect(screen.queryByTestId('likers')).toBeNull();
+  });
+
+  it('closes when the reader is moved straight to another listing', async () => {
+    const { rerender } = show({ currentUser: account('a1', 'admin') });
+
+    fireEvent.click(await screen.findByRole('button', { name: /Show who liked this/ }));
+    await waitFor(() => expect(screen.getByTestId('likers')).toBeTruthy());
+
+    rerender(
+      <RemoteWorldDetailsModal
+        open
+        onOpenChange={() => {}}
+        world={world({ id: 'w2', _id: 'w2', name: 'Harrow Court' })}
+        collapsed={false}
+        onToggleCollapsed={() => {}}
+        isAuthenticated
+        openImageViewer={() => {}}
+        downloadStateForWorld={() => 'none'}
+        downloadProgress={{}}
+        onContextualDownload={() => {}}
+        currentUser={account('a1', 'admin')}
+        onLike={async () => {}}
+      />
+    );
+
+    await screen.findByText('Harrow Court');
+    expect(screen.queryByTestId('likers')).toBeNull();
+  });
+});

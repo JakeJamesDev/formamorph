@@ -44,9 +44,10 @@ export function UserProfileDialog({ userId, onOpenChange, fallbackUsername, onOp
   const [reporting, setReporting] = useState(false);
   // Which half of the staff view is on show. Ordinary readers never see the strip that sets it.
   const [tab, setTab] = useState<'creations' | 'likes'>('creations');
-  // Whether Likes has ever been opened. The list is a moderation read, so it is not fetched for every
-  // profile a staff member happens to click.
-  const [likesOpened, setLikesOpened] = useState(false);
+  // Which account Likes has been opened for. Held as the id rather than as a flag reset on change: the
+  // dialog is re-pointed rather than remounted, and a flag would leave one render of the new account's
+  // tab already mounted — long enough for its own effect to read their likes unasked.
+  const [likesOpenedFor, setLikesOpenedFor] = useState<string | null>(null);
 
   const me = AuthService.getCurrentUser();
   const myId = String(me?.id ?? '');
@@ -98,6 +99,9 @@ export function UserProfileDialog({ userId, onOpenChange, fallbackUsername, onOp
   // Clearing them is a further step up the ladder, checked against this account rather than against staff
   // in general — the profile carries the role, so this is honest before the server answers.
   const canClearLikes = canModerate(me, profile ? { id: profile.id, accountType: profile.role ?? 'normal' } : null);
+  // Whether this account's likes have been asked for, and which tab that leaves on show.
+  const likesOpened = userId !== null && likesOpenedFor === userId;
+  const activeTab = likesOpened ? tab : 'creations';
 
   return (
     <Dialog open={userId !== null} onOpenChange={onOpenChange}>
@@ -160,10 +164,10 @@ export function UserProfileDialog({ userId, onOpenChange, fallbackUsername, onOp
             the bar and nobody else pays for it. */}
         {canSeeLikes ? (
           <Tabs
-            value={tab}
+            value={activeTab}
             onValueChange={(value) => {
               setTab(value as 'creations' | 'likes');
-              if (value === 'likes') setLikesOpened(true);
+              if (value === 'likes') setLikesOpenedFor(userId);
             }}
           >
             <TabsList className="grid w-full grid-cols-2">
