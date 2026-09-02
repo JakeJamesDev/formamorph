@@ -45,7 +45,7 @@ const LocationConnections = ({ location }: { location: GameLocation }) => {
 
   const nameOf = (id: string) => {
     const found = locations.find((l) => l.id === id);
-    return found ? labelPlaceholders(found.name, placeholders, placementLetters, placeholderOwners) : 'Unknown Location';
+    return found ? labelPlaceholders(found.name, placeholders, { letters: placementLetters, owners: placeholderOwners }) : 'Unknown Location';
   };
 
   const views = useMemo(() => connectionsAt(location.id, connections), [location.id, connections]);
@@ -117,7 +117,7 @@ const LocationConnections = ({ location }: { location: GameLocation }) => {
           </SelectTrigger>
           <SelectContent>
             {targets.map((l) => (
-              <SelectItem key={l.id} value={l.id}>{labelPlaceholders(l.name, placeholders, placementLetters, placeholderOwners)}</SelectItem>
+              <SelectItem key={l.id} value={l.id}>{labelPlaceholders(l.name, placeholders, { letters: placementLetters, owners: placeholderOwners })}</SelectItem>
             ))}
           </SelectContent>
         </Select>

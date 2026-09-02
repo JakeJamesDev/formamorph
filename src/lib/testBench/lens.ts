@@ -91,8 +91,8 @@ export function lensPcOptions(world: LensWorld): LensOption[] {
   const letters = worldPlacementLetters(world);
   return inAuthoredOrder(members, order).map((t) => ({
     id: t.id,
-    name: labelPlaceholders(t.name, placeholders, letters) || 'Untitled trait',
-    groupName: labelPlaceholders(exclusive.get(t.groupId as string) ?? '', placeholders, letters) || 'Traits',
+    name: labelPlaceholders(t.name, placeholders, { letters }) || 'Untitled trait',
+    groupName: labelPlaceholders(exclusive.get(t.groupId as string) ?? '', placeholders, { letters }) || 'Traits',
   }));
 }
 
@@ -102,7 +102,7 @@ export function lensLocationOptions(world: LensWorld): LensOption[] {
   const letters = worldPlacementLetters(world);
   return (world.locations ?? []).map((l) => ({
     id: l.id,
-    name: labelPlaceholders(l.name, placeholders, letters) || 'Untitled location',
+    name: labelPlaceholders(l.name, placeholders, { letters }) || 'Untitled location',
   }));
 }
 

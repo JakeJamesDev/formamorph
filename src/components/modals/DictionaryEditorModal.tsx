@@ -132,7 +132,7 @@ const DictionaryEditorModal = ({ dictionaryId, draft, onClose, onPublish }: {
     if (!current) return;
     const blob = new Blob([JSON.stringify(buildDictionaryFile(current), null, 2)], { type: 'application/json' });
     // A chip in the name would otherwise put a raw placement id in the filename.
-    downloadBlob(blob, `${labelPlaceholders(current.name, bookPlaceholders, letters) || 'Dictionary'}.json`);
+    downloadBlob(blob, `${labelPlaceholders(current.name, bookPlaceholders, { letters }) || 'Dictionary'}.json`);
   };
 
   return (
@@ -142,7 +142,7 @@ const DictionaryEditorModal = ({ dictionaryId, draft, onClose, onPublish }: {
         open={isOpen}
         // A library book has no world behind it, so its own carried defs render the chips — the same
         // treatment its card and its listing get.
-        title={labelPlaceholders(dictionaries[0]?.name ?? book?.name ?? '', bookPlaceholders, letters) || 'Dictionary'}
+        title={labelPlaceholders(dictionaries[0]?.name ?? book?.name ?? '', bookPlaceholders, { letters }) || 'Dictionary'}
         contentClassName="max-w-[1100px] w-[95vw] h-[85dvh] flex flex-col p-0 gap-0 overflow-hidden"
         loading={!book}
         tabs={TABS}

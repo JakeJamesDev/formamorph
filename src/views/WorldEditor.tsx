@@ -282,14 +282,14 @@ const WorldEditorInner = ({ onClose, embedded = false, backButton }: {
     // resolve after import elsewhere.
     const jsonData = JSON.stringify(buildDictionaryFile(book, placeholders), null, 2);
     // A chip in the name would otherwise put a raw placement id in the filename.
-    downloadBlob(new Blob([jsonData], { type: 'application/json' }), `${labelPlaceholders(book.name, placeholders, placementLetters, placeholderOwners) || 'Dictionary'}.json`);
+    downloadBlob(new Blob([jsonData], { type: 'application/json' }), `${labelPlaceholders(book.name, placeholders, { letters: placementLetters, owners: placeholderOwners }) || 'Dictionary'}.json`);
   };
 
   // Export one entity as a shareable WebP character card (its portrait carrying the text fields).
   const exportEntity = async (entity: Entity) => {
     try {
       // The card's own data keeps the chips; only the filename is flattened, since a placement id is not a name.
-      downloadBlob(await exportEntityCard(entity, placeholders), `${labelPlaceholders(entity.name, placeholders, placementLetters, placeholderOwners) || 'Character'}.webp`);
+      downloadBlob(await exportEntityCard(entity, placeholders), `${labelPlaceholders(entity.name, placeholders, { letters: placementLetters, owners: placeholderOwners }) || 'Character'}.webp`);
     } catch (error) {
       toast.error((error as Error).message);
     }
@@ -466,8 +466,8 @@ const WorldEditorInner = ({ onClose, embedded = false, backButton }: {
     const needle = searchTerm.toLowerCase();
     const hit = (text: string) => text.toLowerCase().includes(needle);
     return itemsToFilter.filter((item) =>
-      hit(labelPlaceholders(item.name, placeholders, placementLetters, placeholderOwners))
-      || chipPlaceholderNames(item.name, placeholders, placeholderOwners).some(hit)
+      hit(labelPlaceholders(item.name, placeholders, { letters: placementLetters, owners: placeholderOwners }))
+      || chipPlaceholderNames(item.name, placeholders, { owners: placeholderOwners }).some(hit)
       || hit(describePlaceholders(item.name, placeholders)));
   }, [activeTab, stats, entities, locations, traits, statUpdates, searchTerm, placeholders, placementLetters, placeholderOwners]);
 
@@ -506,9 +506,9 @@ const WorldEditorInner = ({ onClose, embedded = false, backButton }: {
   // handing one out is an Advanced move, so Entities/Dictionary offer Add in both modes, Export in Advanced.
   const exportContext =
     activeTab === 'overview' ? { label: 'Export World', disabled: false, onClick: () => { exportCurrentWorld(); } }
-    : activeTab === 'entities' && advanced ? { label: `Export ${selectedItem ? labelPlaceholders(selectedItem.name, placeholders, placementLetters, placeholderOwners) : 'Entity'}`, disabled: !selectedItem, onClick: () => { if (selectedItem) exportEntity(selectedItem as Entity); } }
+    : activeTab === 'entities' && advanced ? { label: `Export ${selectedItem ? labelPlaceholders(selectedItem.name, placeholders, { letters: placementLetters, owners: placeholderOwners }) : 'Entity'}`, disabled: !selectedItem, onClick: () => { if (selectedItem) exportEntity(selectedItem as Entity); } }
     : activeTab === 'dictionary' && advanced
-      ? { label: `Export ${(selectedBook && labelPlaceholders(selectedBook.name, placeholders, placementLetters, placeholderOwners)) || 'Dictionary'}`, disabled: !selectedBook, onClick: () => { if (selectedBook) exportDictionary(selectedBook); } }
+      ? { label: `Export ${(selectedBook && labelPlaceholders(selectedBook.name, placeholders, { letters: placementLetters, owners: placeholderOwners })) || 'Dictionary'}`, disabled: !selectedBook, onClick: () => { if (selectedBook) exportDictionary(selectedBook); } }
     : null;
   // "Add" opens the add-from-library picker (characters on Entities, books on Dictionary).
   const showImport = activeTab === 'entities' || activeTab === 'dictionary';

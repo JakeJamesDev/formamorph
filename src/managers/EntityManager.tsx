@@ -35,7 +35,7 @@ const EntityManager = ({ entity }: { entity: Entity }) => {
         ownerId={entity.id}
         // Read as the tree it is, so the picker presents the hierarchy the way the game's own list does.
         locationOptions={locationRows(locations).map(({ location, depth }) => ({
-          label: labelPlaceholders(location.name, placeholders, placementLetters, placeholderOwners),
+          label: labelPlaceholders(location.name, placeholders, { letters: placementLetters, owners: placeholderOwners }),
           value: location.id,
           depth,
         }))}

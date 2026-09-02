@@ -129,7 +129,7 @@ export function collectSearchTargets(src: SearchSources): SearchTarget[] {
   const letters = worldPlacementLetters(src);
   const owners = placeholderOwners(src);
   const labeled = (name: string | undefined, fallback: string) =>
-    untitled(labelPlaceholders(name ?? '', src.placeholders ?? [], letters, owners), fallback);
+    untitled(labelPlaceholders(name ?? '', src.placeholders ?? [], { letters, owners }), fallback);
 
   type Where = Pick<SearchTarget, 'tab' | 'itemId' | 'itemLabel' | 'chipCapable'>;
 
@@ -337,7 +337,7 @@ function chipReadings(token: string, chips: ChipSearch, byId: Map<string, Placeh
   const ph = byId.get(decoded.id);
   if (!ph) return decoded.label ? [decoded.label] : [];
   return [
-    labelPlaceholders(token, chips.placeholders, chips.letters, chips.owners),
+    labelPlaceholders(token, chips.placeholders, { letters: chips.letters, owners: chips.owners }),
     qualifiedPlaceholderName(chips.placeholders, decoded.id) ?? ph.name,
     ...(ph.values ?? []).map((v) => describePlaceholders(v.text, chips.placeholders)),
   ];

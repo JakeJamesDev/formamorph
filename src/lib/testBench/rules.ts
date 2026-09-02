@@ -167,7 +167,7 @@ const lettersOf = (world: RuleWorld): PlacementLetters => {
  *  own list. */
 const asItem = (entity: Entity, world: RuleWorld): FindingItem => ({
   id: entity.id,
-  name: labelPlaceholders(entity.name ?? '', allPlaceholders(world), lettersOf(world)) || 'Untitled',
+  name: labelPlaceholders(entity.name ?? '', allPlaceholders(world), { letters: lettersOf(world) }) || 'Untitled',
 });
 
 /** An entity's written forms — its name and aliases, chips resolved, blanks dropped. */
@@ -315,7 +315,7 @@ const aliasSelfDuplicate: Rule = {
 /** A non-entity item, chips labeled like the editor's own lists label them. */
 const namedItem = (id: string, name: string | undefined, world: RuleWorld, section?: FindingSection): FindingItem => ({
   id,
-  name: labelPlaceholders(name ?? '', allPlaceholders(world), lettersOf(world)).trim() || 'Untitled',
+  name: labelPlaceholders(name ?? '', allPlaceholders(world), { letters: lettersOf(world) }).trim() || 'Untitled',
   ...(section ? { section } : {}),
 });
 

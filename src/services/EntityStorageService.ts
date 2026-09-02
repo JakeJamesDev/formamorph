@@ -28,7 +28,7 @@ class EntityStorageService {
       });
       return {
         id: record.id,
-        name: labelPlaceholders(record.name, placeholders, record.data ? entityPlacementLetters(record.data) : EMPTY_LETTERS),
+        name: labelPlaceholders(record.name, placeholders, { letters: record.data ? entityPlacementLetters(record.data) : EMPTY_LETTERS }),
         description: describePlaceholders(record.data?.playerDescription ?? '', placeholders) || undefined,
         image: primaryImage(record.data),
         tags: record.data?.tags ?? [],

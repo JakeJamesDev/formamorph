@@ -59,7 +59,7 @@ export function worldPublishPayload(world: World): PublishPayload {
 export function entityPublishPayload(entity: Entity): PublishPayload {
   return {
     kind: 'entity',
-    name: labelPlaceholders(entity.name, entity.placeholders, entityPlacementLetters(entity)) || 'Unnamed Character',
+    name: labelPlaceholders(entity.name, entity.placeholders, { letters: entityPlacementLetters(entity) }) || 'Unnamed Character',
     description: describePlaceholders(entity.playerDescription || entity.aiSummary || '', entity.placeholders),
     thumbnail: primaryImage(entity), // optional; the server supplies stand-in art
     contentData: entity,
