@@ -148,6 +148,8 @@ const PlaceholderManager = ({ placeholder, rowId, share }: {
   // An untouched placeholder reads as a Wildcard: that is what 2+ values already do, and what one value
   // does either way. Nothing is written until the author presses the selector.
   const kind: PlaceholderKind = (editing.roll ?? true) ? 'wildcard' : 'object';
+  // Only a placeholder that draws has weights worth showing; an Object applies every value.
+  const weighable = placeholderIsChoice(editing);
   const state =
     count === 0
       ? 'No values yet — this resolves to nothing.'
@@ -311,7 +313,12 @@ const PlaceholderManager = ({ placeholder, rowId, share }: {
           disabled={locked}
           // Clicking the item already on clears a single ToggleGroup's value. A placeholder is always one
           // kind or the other, so an empty result is ignored rather than written back.
-          onValueChange={(v) => { if (v) apply({ roll: v === 'wildcard' }); }}
+          onValueChange={(v) => {
+            if (!v) return;
+            apply({ roll: v === 'wildcard' });
+            // An Object has no eye to turn the numbers back off and no chip to close the pop-out from.
+            if (v === 'object') { setOpenValue(null); setShowChances(false); }
+          }}
           aria-label="Placeholder kind"
           className="h-8"
         >
@@ -354,7 +361,7 @@ const PlaceholderManager = ({ placeholder, rowId, share }: {
           <Label>Values</Label>
           {/* Chips carry their chance in color always; the eye adds the number. Chips only: the multiline
               boxes carry a chance apiece, so there is nothing left to reveal. */}
-          {style === 'chips' && count > 1 && (
+          {style === 'chips' && weighable && (
             <Tip tip={showChances ? 'Hide roll chances' : 'Show roll chances'}>
               <Button
                 type="button"
@@ -408,10 +415,10 @@ const PlaceholderManager = ({ placeholder, rowId, share }: {
             style={chipStyle}
             suffix={showChances ? (v) => `(${chipPct(v)})` : undefined}
             register={(v, el) => { if (el) chipEls.current.set(v, el); else chipEls.current.delete(v); }}
-            onOpen={kind === 'object' || count < 2 ? undefined : (v) => {
+            onOpen={weighable ? (v) => {
               anchor.current = chipEls.current.get(v) ?? null;
               setOpenValue((prev) => (prev === v ? null : v));
-            }}
+            } : undefined}
           />
           {weightPopover}
         </Popover>
@@ -422,7 +429,7 @@ const PlaceholderManager = ({ placeholder, rowId, share }: {
             placeholders={placeholders}
             ownerId={placeholder.id}
             line={valueLine}
-            weight={count > 1 ? weightOf : undefined}
+            weight={weighable ? weightOf : undefined}
             chance={pct}
             onToggleCollapsed={toggleCollapsed}
             onText={(id, text) => writeBoxes(boxes.map((b) => (b.id === id ? { ...b, text } : b)))}
@@ -444,7 +451,7 @@ const PlaceholderManager = ({ placeholder, rowId, share }: {
             placeholder="e.g. Red — press Enter for each"
             // Toggles, like the placeholder chips' own pop-out: without this, clicking the open chip
             // re-opened it and the only way out was clicking somewhere else entirely.
-            onChipClick={count > 1 ? (v) => {
+            onChipClick={weighable ? (v) => {
               anchor.current = chipEls.current.get(v) ?? null;
               setOpenValue((prev) => (prev === v ? null : v));
             } : undefined}
@@ -517,7 +524,8 @@ const SharedValues = ({ values, line, style, suffix, register, onOpen }: {
 
 /** The multiline style: one bordered card per value, each holding the markdown field the readme uses. A card
  *  collapses to its first line with its weight and remove still live, so a long list stays tunable while
- *  scannable. `weight` is omitted below two values — there is nothing to weigh against. */
+ *  scannable. `weight` is omitted when nothing is drawn — one value, or an Object — and the chance goes
+ *  with it. */
 const MultilineValues = ({
   boxes, collapsed, placeholders, ownerId, line, weight, chance, onToggleCollapsed, onText, onWeight, onRemove, onAdd,
 }: {
