@@ -38,24 +38,54 @@ export function LikeButton({ likes, liked, onToggle, onOpenLikers, size = 'sm', 
   const body = <><Heart className={iconClass} /> {likes}</>;
   const label = `${likes} ${likes === 1 ? 'like' : 'likes'}`;
 
-  // For staff the count is a way in rather than a rating: it opens who is behind it. Takes precedence
-  // over the heart, so the same element is one control or the other and never both.
+  const toggle = async () => {
+    if (!onToggle) return;
+
+    setIsBusy(true);
+    try {
+      await onToggle(!liked);
+    } catch (error) {
+      toast.error((error as Error).message || 'Failed to change that');
+    } finally {
+      setIsBusy(false);
+    }
+  };
+
+  // Staff get the split every social app uses: the heart is still theirs to press, and the number beside
+  // it opens who is behind it. Two controls rather than one, so checking a suspicious count never costs a
+  // moderator the ability to like the thing they came to check.
   if (onOpenLikers) {
     return (
-      <Tip tip="See who liked this">
-        <button
-          type="button"
-          // These sit inside cards that are themselves clickable.
-          onClick={(e) => { e.stopPropagation(); onOpenLikers(); }}
-          aria-label={`Show who liked this — ${label}`}
-          className={cn(
-            'flex items-center gap-1 rounded-sm underline underline-offset-2 decoration-dotted transition-colors hover:text-like focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring',
-            className
-          )}
-        >
-          {body}
-        </button>
-      </Tip>
+      <span className={cn('flex items-center gap-1', className)}>
+        {onToggle ? (
+          <Tip tip={liked ? 'You like this' : 'Like this'}>
+            <button
+              type="button"
+              // These sit inside cards that are themselves clickable.
+              onClick={(e) => { e.stopPropagation(); toggle(); }}
+              disabled={isBusy}
+              aria-pressed={Boolean(liked)}
+              aria-label={liked ? `Unlike — ${label}` : `Like — ${label}`}
+              className="flex items-center rounded-sm transition-colors hover:text-like focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:opacity-60"
+            >
+              <Heart className={iconClass} />
+            </button>
+          </Tip>
+        ) : (
+          <Heart className={iconClass} aria-hidden />
+        )}
+
+        <Tip tip="See who liked this">
+          <button
+            type="button"
+            onClick={(e) => { e.stopPropagation(); onOpenLikers(); }}
+            aria-label={`Show who liked this — ${label}`}
+            className="rounded-sm tabular-nums underline underline-offset-2 decoration-dotted transition-colors hover:text-like focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+          >
+            {likes}
+          </button>
+        </Tip>
+      </span>
     );
   }
 
@@ -67,17 +97,6 @@ export function LikeButton({ likes, liked, onToggle, onOpenLikers, size = 'sm', 
       </Tip>
     );
   }
-
-  const toggle = async () => {
-    setIsBusy(true);
-    try {
-      await onToggle(!liked);
-    } catch (error) {
-      toast.error((error as Error).message || 'Failed to change that');
-    } finally {
-      setIsBusy(false);
-    }
-  };
 
   return (
     <Tip tip={liked ? 'You like this' : 'Like this'}>

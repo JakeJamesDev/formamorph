@@ -107,6 +107,32 @@ describe('who is told the likers exist', () => {
     expect(await screen.findByRole('button', { name: 'Show who liked this — 3 likes' })).toBeTruthy();
   });
 
+  it('leaves a moderator the heart as well, so checking a count does not cost them the like', async () => {
+    show({ currentUser: account('m1', 'mod') });
+
+    expect(await screen.findByRole('button', { name: 'Like — 3 likes' })).toBeTruthy();
+    expect(screen.getByRole('button', { name: /Show who liked this/ })).toBeTruthy();
+  });
+
+  it('keeps the heart working for staff, and does not open the list from it', async () => {
+    const onLike = vi.fn().mockResolvedValue(undefined);
+
+    show({ currentUser: account('m1', 'mod'), onLike });
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Like — 3 likes' }));
+
+    await waitFor(() => expect(onLike).toHaveBeenCalledWith(expect.objectContaining({ id: 'w1' }), true));
+    expect(screen.queryByTestId('likers')).toBeNull();
+  });
+
+  it('gives an admin on their own listing the number without a heart, since the server refuses the like', async () => {
+    // The author of this listing, who is also staff: no toggle to offer, but the list is still theirs.
+    show({ currentUser: account('author-1', 'admin') });
+
+    expect(await screen.findByRole('button', { name: /Show who liked this/ })).toBeTruthy();
+    expect(screen.queryByRole('button', { name: /^Like —/ })).toBeNull();
+  });
+
   it('offers it to an admin on a quarantined listing, so hiding it does not hide the evidence', async () => {
     show({
       currentUser: account('a1', 'admin'),
