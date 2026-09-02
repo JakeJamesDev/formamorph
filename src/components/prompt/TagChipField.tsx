@@ -9,7 +9,8 @@ import { useLexicalComposerContext } from '@lexical/react/LexicalComposerContext
 import { SuggestionList } from '@/components/SuggestionList';
 import { useDanbooruTags } from '@/lib/useDanbooruTags';
 import { rankTagSuggestions, activeTagToken, needsTrailingSeparator } from '@/lib/tagSuggest';
-import { placeholderVocabulary, type ChipVocabulary } from '@/lib/chipVocabulary';
+import { placeholderVocabulary, useOwnerScope, type ChipVocabulary } from '@/lib/chipVocabulary';
+import { usePlaceholderStoreOptional } from '@/contexts/PlaceholderStoreContext';
 import { PLACEHOLDER_TRIGGER, placeholderHint } from '@/lib/placeholderInsert';
 import { cn } from '@/lib/utils';
 import type { Placeholder } from '@/types';
@@ -146,15 +147,24 @@ function DanbooruTagPlugin({ parse }: { parse: ChipVocabulary['parse'] }) {
 // multi-line ones rather than like a name field: three rows to start, top-aligned, resizable by the corner.
 const TAG_FIELD_CLASS = 'min-h-20 items-start resize-y overflow-auto';
 
-const TagChipField = ({ value, onChange, placeholders, placeholder, ariaLabel, className }: {
+const TagChipField = ({ value, onChange, placeholders, ownerId, placeholder, ariaLabel, className }: {
   value: string;
   onChange: (v: string) => void;
   placeholders: Placeholder[];
+  /** The entity or location whose field this is — see `ownerId` on `PlaceholderField`. */
+  ownerId?: string;
   placeholder?: string;
   ariaLabel?: string;
   className?: string;
 }) => {
-  const vocab = useMemo(() => placeholderVocabulary(placeholders), [placeholders]);
+  // Display-only: the tag field neither renames nor creates, so it reads the store for owners alone.
+  const store = usePlaceholderStoreOptional();
+  const owners = store?.owners;
+  const scope = useOwnerScope(store?.lists, ownerId);
+  const vocab = useMemo(
+    () => placeholderVocabulary(placeholders, { ownerId, owners, scope }),
+    [placeholders, ownerId, owners, scope],
+  );
   return (
     <ChipInput
       value={value}

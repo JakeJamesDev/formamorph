@@ -48,7 +48,7 @@ const ConflictNote = ({ conflict, placeholders, onOpen }: {
 };
 
 const TraitManager = ({ trait, onOpenTrait }: { trait: Trait; onOpenTrait: (id: string) => void }) => {
-  const { updateTrait, stats, placeholders, placementLetters, traits, traitGroups } = useGameData();
+  const { updateTrait, stats, placeholders, placementLetters, placeholderOwners, traits, traitGroups } = useGameData();
   const { draft: editingTrait, apply, setField: handleChange } = useEditingDraft<Trait>(trait, updateTrait);
 
   const handleStatChangeAdd = () => {
@@ -155,7 +155,7 @@ const TraitManager = ({ trait, onOpenTrait }: { trait: Trait; onOpenTrait: (id: 
               <SelectContent>
                 {stats.map((stat) => (
                   <SelectItem key={stat.id} value={stat.id}>
-                    {labelPlaceholders(stat.name, placeholders, placementLetters)}
+                    {labelPlaceholders(stat.name, placeholders, placementLetters, placeholderOwners)}
                   </SelectItem>
                 ))}
               </SelectContent>
@@ -206,7 +206,7 @@ const TraitManager = ({ trait, onOpenTrait }: { trait: Trait; onOpenTrait: (id: 
               </SelectTrigger>
               <SelectContent>
                 {stats.map((stat) => (
-                  <SelectItem key={stat.id} value={stat.id}>{labelPlaceholders(stat.name, placeholders, placementLetters)}</SelectItem>
+                  <SelectItem key={stat.id} value={stat.id}>{labelPlaceholders(stat.name, placeholders, placementLetters, placeholderOwners)}</SelectItem>
                 ))}
               </SelectContent>
             </Select>

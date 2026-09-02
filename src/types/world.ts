@@ -163,9 +163,12 @@ export interface Entity {
   order?: number;
   /** Placeholders of this entity's own. In a world they are live: every reader sees them beside
    *  `World.placeholders` through the combined view (see lib/placeholderHomes), and they go with the
-   *  entity when it is deleted or duplicated. Off-world (export bundle / library) they are the defs the
-   *  item carries so its `{{ph…}}` chips resolve after import. */
+   *  entity when it is deleted or duplicated. Off-world (export bundle / library) they stay the entity's
+   *  own, and an import keeps them so under fresh ids. */
   placeholders?: Placeholder[];
+  /** Off-world only: the shared defs this entity's chips use, so they resolve after import. An import
+   *  merges them into the world's shared list by name and values and clears the field. */
+  sharedPlaceholders?: Placeholder[];
 }
 
 /** An editor-only folder for organizing entities, nestable via `parentId`. Just a name — never sent to the
@@ -299,8 +302,11 @@ export interface Dictionary {
   entries: DictionaryEntry[];
   /** Placeholders of this book's own. In a world they are live beside `World.placeholders` through the
    *  combined view (see lib/placeholderHomes) and go with the book when it is deleted. Off-world
-   *  (export file / library) they are the defs the book carries so its entries' chips resolve after import. */
+   *  (export file / library) they stay the book's own, and an import keeps them so under fresh ids. */
   placeholders?: Placeholder[];
+  /** Off-world only: the shared defs this book's entries use, so they resolve after import. An import
+   *  merges them into the world's shared list by name and values and clears the field. */
+  sharedPlaceholders?: Placeholder[];
 }
 
 /**

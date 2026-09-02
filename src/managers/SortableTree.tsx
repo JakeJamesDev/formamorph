@@ -53,8 +53,13 @@ export interface TreeRowSpec {
   actions?: EditorRowAction[];
   /** What the delete action is called, where "Delete" is not what the row's own X does. */
   removeTitle?: string;
-  remove: () => void;
-  duplicate: () => void;
+  /** Absent on a fixed row, which offers no delete. */
+  remove?: () => void;
+  /** Absent on a fixed row, which offers no duplicate. */
+  duplicate?: () => void;
+  /** The row is derived from something else (an owner node read off an entity): it cannot be dragged, and
+   *  rows may still be dropped beside or under it. */
+  fixed?: boolean;
 }
 
 /** What a specific tree plugs into the shared scaffold. */
@@ -86,7 +91,7 @@ interface RowProps {
 
 /** One flat row with a depth-based left indent. */
 function TreeRow({ id, selectId, depth, spec, selected, onSelect, isCollapsed, toggleCollapse }: RowProps) {
-  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id });
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id, disabled: spec.fixed });
   // The dragged row's indent is shown via paddingLeft (projected depth), so pin its x-translate to 0 — it
   // slides vertically only while the pointer's horizontal delta drives depth. Sibling rows keep their full
   // transform (the reorder shift animation).
@@ -102,7 +107,8 @@ function TreeRow({ id, selectId, depth, spec, selected, onSelect, isCollapsed, t
       setNodeRef={setNodeRef}
       style={style}
       depth={depth}
-      gripProps={{ ...attributes, ...listeners }}
+      gripProps={spec.fixed ? undefined : { ...attributes, ...listeners }}
+      grip={!spec.fixed}
       gripTitle="Drag to reorder or nest"
       selected={selected}
       onSelect={() => onSelect(selectId)}
@@ -117,8 +123,8 @@ function TreeRow({ id, selectId, depth, spec, selected, onSelect, isCollapsed, t
       metaTitle={spec.metaTitle}
       actions={[
         ...(spec.actions ?? []),
-        { icon: <Copy className="h-4 w-4" />, title: 'Duplicate', onClick: spec.duplicate },
-        { icon: <X className="h-4 w-4" />, title: spec.removeTitle ?? 'Delete', onClick: spec.remove },
+        ...(spec.duplicate ? [{ icon: <Copy className="h-4 w-4" />, title: 'Duplicate', onClick: spec.duplicate }] : []),
+        ...(spec.remove ? [{ icon: <X className="h-4 w-4" />, title: spec.removeTitle ?? 'Delete', onClick: spec.remove }] : []),
       ]}
     />
   );

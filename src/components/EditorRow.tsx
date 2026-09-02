@@ -39,6 +39,8 @@ export interface EditorRowProps {
   gripProps?: HTMLAttributes<HTMLElement>;
   /** Each surface words its drag affordance differently (reorder / nest / move between books). */
   gripTitle?: string;
+  /** `false` reserves the grip's slot without drawing one, for a row that cannot be dragged. */
+  grip?: boolean;
 
   selected: boolean;
   onSelect: () => void;
@@ -80,6 +82,7 @@ export function EditorRow({
   depth = 0,
   gripProps,
   gripTitle = 'Drag to reorder',
+  grip = true,
   selected,
   onSelect,
   lead,
@@ -127,15 +130,19 @@ export function EditorRow({
         <span className="w-4 shrink-0" aria-hidden="true" />
       ) : null}
       {/* The grip takes its tab stop from the caller's drag attributes, so it is already reachable. */}
-      <Tip tip={gripTitle}>
-        <span
-          {...gripProps}
-          onClick={(e) => e.stopPropagation()}
-          className={cn('shrink-0 cursor-grab touch-none px-1', chrome)}
-        >
-          <GripVertical className="h-4 w-4" />
-        </span>
-      </Tip>
+      {grip ? (
+        <Tip tip={gripTitle}>
+          <span
+            {...gripProps}
+            onClick={(e) => e.stopPropagation()}
+            className={cn('shrink-0 cursor-grab touch-none px-1', chrome)}
+          >
+            <GripVertical className="h-4 w-4" />
+          </span>
+        </Tip>
+      ) : (
+        <span className="w-6 shrink-0" aria-hidden="true" />
+      )}
       {checkbox && (
         <Tip tip={checkbox.checked ? 'Enabled — click to disable' : 'Disabled — click to enable'}>
           <Checkbox

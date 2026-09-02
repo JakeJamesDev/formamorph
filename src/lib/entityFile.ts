@@ -2,7 +2,8 @@ import { randomUUID } from "@/lib/uuid";
 import type { Entity, Placeholder } from '@/types';
 import { APP_VERSION, WORLD_FILE_KIND, SAVE_FILE_KIND, migrateCarriedPlaceholders } from './version';
 import { DICTIONARY_FILE_KIND } from './dictionaryFile';
-import { collectUsedPlaceholders, describePlaceholders } from './placeholders';
+import { describePlaceholders } from './placeholders';
+import { carriedPlaceholders, sharedPlaceholdersUsed } from './placeholderHomes';
 import type { Dictionary } from '@/types';
 import { embedEntityCard, readEntityCard } from './entityCard';
 import { readTavernCard } from './tavernCard';
@@ -29,18 +30,23 @@ export interface EntityCardData {
   /** Gallery slots past the first, as data-URLs. The primary is the card's own pixels, so only these need
    *  carrying in the text — which is also why a multi-picture card is a much bigger file. */
   extraImages?: string[];
-  /** Placeholder defs used by this entity's chips, so they resolve after import (see lib/placeholders). */
+  /** The entity's own placeholder defs, as they are (see lib/placeholders). A card with no
+   *  `sharedPlaceholders` carries everything its chips use here, and reads it all as owned. */
   placeholders?: Placeholder[];
+  /** The shared defs the entity's chips and its own placeholders reach, so they resolve after import. */
+  sharedPlaceholders?: Placeholder[];
 }
 
 /** The card's text fields, stamped with the current app version. `model`/`sound` are intentionally dropped;
  *  of the gallery only the slots past the primary are carried, the primary being the card's own pixels.
- *  `available` is the placeholder pool to resolve the entity's used chips from — the world's list
- *  for a world entity, or the entity's own carried `placeholders` for a library one. */
-export function buildEntityCardData(entity: Entity, available: Placeholder[] = entity.placeholders ?? []): EntityCardData {
-  const used = collectUsedPlaceholders(
-    [entity.name, ...(entity.aliases ?? []), entity.playerDescription, entity.aiDescription, entity.aiSummary]
+ *  `available` is the placeholder pool to resolve the entity's used chips from — the world's combined list
+ *  for a world entity, or the entity's own carried pool for a library one. */
+export function buildEntityCardData(entity: Entity, available: Placeholder[] = carriedPlaceholders(entity)): EntityCardData {
+  const owned = entity.placeholders ?? [];
+  const shared = sharedPlaceholdersUsed(
+    [entity.name, ...(entity.aliases ?? []), entity.playerDescription, entity.aiDescription, entity.aiSummary, entity.imageTags]
       .filter((t): t is string => !!t),
+    owned,
     available,
   );
   const extras = entityImages(entity).slice(1);
@@ -56,7 +62,8 @@ export function buildEntityCardData(entity: Entity, available: Placeholder[] = e
     ...(entity.tags?.length ? { tags: entity.tags } : {}),
     ...(entity.imageTags ? { imageTags: entity.imageTags } : {}),
     ...(extras.length ? { extraImages: extras } : {}),
-    ...(used.length ? { placeholders: used } : {}),
+    ...(owned.length ? { placeholders: owned } : {}),
+    ...(shared.length ? { sharedPlaceholders: shared } : {}),
   };
 }
 
@@ -93,8 +100,10 @@ export function parseEntityCardData(raw: unknown): Entity {
     ...(tags.length ? { tags } : {}),
     ...(typeof obj.imageTags === 'string' && obj.imageTags ? { imageTags: obj.imageTags } : {}),
     ...(extras.length ? { images: extras } : {}),
-    // Carried placeholder defs ride along; absorbed into World.placeholders when this entity is added to a world.
+    // Carried defs ride along: the owned ones stay the entity's when it is added to a world, the shared
+    // ones merge into the world's list (see `adoptEntityPlaceholders`).
     ...(Array.isArray(obj.placeholders) ? { placeholders: migrateCarriedPlaceholders(obj.placeholders) } : {}),
+    ...(Array.isArray(obj.sharedPlaceholders) ? { sharedPlaceholders: migrateCarriedPlaceholders(obj.sharedPlaceholders) } : {}),
   };
 }
 
@@ -126,7 +135,7 @@ async function placeholderPortrait(name: string): Promise<string> {
 export async function exportEntityCard(entity: Entity, available?: Placeholder[]): Promise<Blob> {
   // The generated portrait draws initials from the name, so a chip left raw is baked into the shipped image.
   let imageUrl = primaryImage(entity)
-    || (await placeholderPortrait(describePlaceholders(entity.name, available ?? entity.placeholders) || 'Character'));
+    || (await placeholderPortrait(describePlaceholders(entity.name, available ?? carriedPlaceholders(entity)) || 'Character'));
   // A card is its pixels, so a linked portrait has to be downloaded here. Deliberately not falling back to
   // the generated placeholder: shipping a card with the wrong face is worse than a failure the author can act on.
   if (isRemoteImage(imageUrl)) imageUrl = await fetchAsDataUrl(imageUrl, IMAGE_CAPS.entity);

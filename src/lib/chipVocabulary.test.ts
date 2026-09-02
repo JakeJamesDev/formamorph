@@ -464,3 +464,63 @@ describe('placeholder vocabulary — placement labels', () => {
     expect(decodePlaceholderToken(moved)).toEqual({ id: 'hair', mode: 'unique', placementId: 'p7', label: 'Left' });
   });
 });
+
+describe('placeholderVocabulary — scoped placeholders', () => {
+  // Town is shared; Eyes and Iris are Molly's; Mane is Tam's. The combined list reads shared first.
+  const WORLD: Placeholder[] = [
+    { id: 'town', name: 'Town', values: phValues(['Sedge']) },
+    { id: 'eyes', name: 'Eyes', values: phValues(['amber']) },
+    { id: 'iris', name: 'Iris', values: phValues(['dark']) },
+    { id: 'mane', name: 'Mane', values: phValues(['red']) },
+  ];
+  const owners = new Map([
+    ['eyes', { kind: 'entity' as const, id: 'molly', name: 'Molly' }],
+    ['iris', { kind: 'entity' as const, id: 'molly', name: 'Molly' }],
+    ['mane', { kind: 'dictionary' as const, id: 'fen', name: 'Fen' }],
+  ]);
+
+  it('labels a scoped chip Owner.Name outside its owner and bare inside', () => {
+    const outside = placeholderVocabulary(WORLD, { owners });
+    expect(outside.label(tok('eyes', 'world'))).toBe('Molly.Eyes');
+    expect(outside.display?.(tok('eyes', 'unique'))).toBe('Molly.Eyes (Unique)');
+    expect(outside.label(tok('town', 'world'))).toBe('Town');
+    const molly = { kind: 'entity' as const, id: 'molly', name: 'Molly' };
+    const inside = placeholderVocabulary(WORLD, { owners, ownerId: 'molly', scope: molly });
+    expect(inside.label(tok('eyes', 'world'))).toBe('Eyes');
+    expect(inside.label(tok('mane', 'world'))).toBe('Fen.Mane');
+    // A field of one of Molly's own placeholders is inside Molly too.
+    expect(placeholderVocabulary(WORLD, { owners, ownerId: 'iris' }).label(tok('eyes', 'world'))).toBe('Eyes');
+  });
+
+  it('lists the field owner’s scoped placeholders first, then the shared ones, then the rest as Owner.Name', () => {
+    const molly = { kind: 'entity' as const, id: 'molly', name: 'Molly' };
+    const fen = { kind: 'dictionary' as const, id: 'fen', name: 'Fen' };
+    expect(placeholderVocabulary(WORLD, { owners }).palette().map((r) => r.label)).toEqual(['Town', 'Molly.Eyes', 'Molly.Iris', 'Fen.Mane']);
+    expect(placeholderVocabulary(WORLD, { owners, ownerId: 'molly', scope: molly }).palette().map((r) => r.label)).toEqual(['Eyes', 'Iris', 'Town', 'Fen.Mane']);
+    expect(placeholderVocabulary(WORLD, { owners, ownerId: 'fen', scope: fen }).allRows?.().map((r) => r.label)).toEqual(['Town', 'Molly.Eyes', 'Molly.Iris', 'Mane']);
+  });
+
+  it('creates a placeholder inside an owner’s fields in that owner’s list, named for it', () => {
+    const made: [Placeholder, unknown][] = [];
+    const molly = { kind: 'entity' as const, id: 'molly', name: 'Molly' };
+    const v = placeholderVocabulary(WORLD, { owners, ownerId: 'molly', scope: molly, onCreate: (p, home) => made.push([p, home]) });
+    expect(v.createLabel?.('Freckles')).toBe('New Placeholder "Freckles" in Molly');
+    v.create?.('Freckles');
+    expect(made[0][0]).not.toHaveProperty('ownerId');
+    expect(made[0][1]).toEqual({ kind: 'entity', ownerId: 'molly' });
+    // Outside any owner, and for a placeholder's own value field, the create lands where it always has.
+    const shared: [Placeholder, unknown][] = [];
+    placeholderVocabulary(WORLD, { owners, onCreate: (p, home) => shared.push([p, home]) }).create?.('Loose');
+    expect(shared[0][1]).toBeUndefined();
+  });
+
+  it('scopes a create to an owner that owns nothing yet, since the owner index cannot name it', () => {
+    const made: [Placeholder, unknown][] = [];
+    const tam = { kind: 'entity' as const, id: 'tam', name: 'Tam' };
+    const v = placeholderVocabulary(WORLD, { owners, ownerId: 'tam', scope: tam, onCreate: (p, home) => made.push([p, home]) });
+    expect(v.createLabel?.('Scar')).toBe('New Placeholder "Scar" in Tam');
+    v.create?.('Scar');
+    expect(made[0][1]).toEqual({ kind: 'entity', ownerId: 'tam' });
+    expect(v.palette().map((r) => r.label)).toEqual(['Town', 'Molly.Eyes', 'Molly.Iris', 'Fen.Mane']);
+  });
+});

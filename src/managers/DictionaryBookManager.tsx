@@ -5,6 +5,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Checkbox } from '@/components/ui/checkbox';
 import { useEditorMode } from '@/lib/editorMode';
 import type { Dictionary } from '@/types';
+import ScopedPlaceholdersSection from './ScopedPlaceholdersSection';
 
 /** Right-panel editor for a selected book (dictionary): rename + enable toggle. Entry editing is the
  *  DictionaryManager's job; add/delete entries from the tree on the left.
@@ -44,6 +45,7 @@ const DictionaryBookManager = ({ book }: { book: Dictionary }) => {
         (left) to add one, then select an entry to edit it.
         {advanced && ' Disabling mutes every entry in this book at once.'}
       </p>
+      <ScopedPlaceholdersSection kind="dictionary" ownerId={book.id} />
     </div>
   );
 };

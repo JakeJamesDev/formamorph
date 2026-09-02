@@ -12,6 +12,7 @@ import { ChipInsertTargetProvider } from '@/components/prompt/ChipInsertTarget';
 import { EditorPreviewRollsProvider } from '@/contexts/EditorPreviewRollsContext';
 import { placeholderStore, PlaceholderStoreProvider } from '@/contexts/PlaceholderStoreContext';
 import { directChipTargets } from '@/lib/placeholders';
+import { carriedPlaceholders, splitCarriedPlaceholders } from '@/lib/placeholderHomes';
 import { exportEntityCard } from '@/lib/entityFile';
 import { downloadBlob } from '@/lib/downloadBlob';
 import { canonicalStringify } from '@/lib/canonicalStringify';
@@ -82,13 +83,15 @@ const EntityEditorModal = ({ entityId, draft, onClose, onPublish }: {
   // in a description does not rebuild the store and, with it, every chip field's vocabulary.
   const entityRef = useRef(entity);
   entityRef.current = entity;
+  // The pool is the character's own defs plus the shared ones it carries from the world it was exported
+  // from; a write splits the list back the same way, so a carried shared def stays shared on export.
+  const pool = useMemo(() => (entity ? carriedPlaceholders(entity) : []), [entity]);
   const phStore = useMemo(() => ({
-    ...placeholderStore(entity?.placeholders ?? [], (action: SetStateAction<Placeholder[]>) =>
+    ...placeholderStore(pool, (action: SetStateAction<Placeholder[]>) =>
       setEntity((prev) => {
         if (!prev) return prev;
-        const cur = prev.placeholders ?? [];
-        const next = typeof action === 'function' ? action(cur) : action;
-        return { ...prev, placeholders: next.length ? next : undefined };
+        const cur = carriedPlaceholders(prev);
+        return splitCarriedPlaceholders(prev, typeof action === 'function' ? action(cur) : action);
       })),
     placedIds: () => {
       const e = entityRef.current;
@@ -96,7 +99,7 @@ const EntityEditorModal = ({ entityId, draft, onClose, onPublish }: {
         e?.name, ...(e?.aliases ?? []), e?.playerDescription, e?.aiDescription, e?.aiSummary, e?.imageTags,
       ].filter((t): t is string => !!t));
     },
-  }), [entity?.placeholders]);
+  }), [pool]);
 
   // A library character is its own document: its Unique chips letter from a walk of its fields alone.
   const letters = useMemo(() => (entity ? entityPlacementLetters(entity) : EMPTY_LETTERS), [entity]);
@@ -126,7 +129,7 @@ const EntityEditorModal = ({ entityId, draft, onClose, onPublish }: {
     try {
       const blob = await exportEntityCard(entity);
       // A chip in the name would otherwise put a raw placement id in the filename.
-      downloadBlob(blob, `${labelPlaceholders(entity.name, entity.placeholders, letters) || 'Character'}.webp`);
+      downloadBlob(blob, `${labelPlaceholders(entity.name, pool, letters) || 'Character'}.webp`);
     } catch (error) {
       toast.error((error as Error).message);
     }
@@ -139,7 +142,7 @@ const EntityEditorModal = ({ entityId, draft, onClose, onPublish }: {
         open={isOpen}
         // A library character has no world behind it, so its own carried defs render the chips — the same
         // treatment its card and its listing get.
-        title={labelPlaceholders(entity?.name ?? '', entity?.placeholders, letters) || 'Character'}
+        title={labelPlaceholders(entity?.name ?? '', pool, letters) || 'Character'}
         contentClassName="max-w-[800px] w-[95vw] h-[85dvh] flex flex-col p-0 gap-0 overflow-hidden"
         loading={!entity}
         tabs={TABS}
@@ -161,8 +164,8 @@ const EntityEditorModal = ({ entityId, draft, onClose, onPublish }: {
           <ScrollArea className="flex-1 min-h-0">
             <div className="p-4">
               <ChipInsertTargetProvider>
-                <PlaceholderPaletteBar placeholders={entity.placeholders ?? []} />
-                <EntityFields value={entity} onChange={handleChange} placeholders={entity.placeholders ?? []} />
+                <PlaceholderPaletteBar placeholders={pool} />
+                <EntityFields value={entity} onChange={handleChange} placeholders={pool} />
               </ChipInsertTargetProvider>
             </div>
           </ScrollArea>
@@ -171,7 +174,7 @@ const EntityEditorModal = ({ entityId, draft, onClose, onPublish }: {
             {/* The same palette the Character tab gets, over the value fields: a value is a chip field too. */}
             <ChipInsertTargetProvider>
               <div className="flex min-h-0 flex-1 flex-col">
-                <PlaceholderPaletteBar placeholders={entity?.placeholders ?? []} className="mx-0 mb-0 px-4" />
+                <PlaceholderPaletteBar placeholders={pool} className="mx-0 mb-0 px-4" />
                 <PlaceholderEditor />
               </div>
             </ChipInsertTargetProvider>

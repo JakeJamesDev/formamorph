@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { buildDictionaryFile, parseDictionaryFile, parseDictionaryImport, DICTIONARY_FILE_KIND } from './dictionaryFile';
 import { APP_VERSION } from './version';
+import { phValues } from '@/test/placeholderValues';
 import type { Dictionary } from '@/types';
 
 const book = (over: Partial<Dictionary> = {}): Dictionary => ({
@@ -30,6 +31,32 @@ describe('buildDictionaryFile', () => {
   it('carries a description only when present, and round-trips it', () => {
     expect('description' in buildDictionaryFile(book())).toBe(false);
     expect(parseDictionaryFile(buildDictionaryFile(book({ description: 'notes' }))).description).toBe('notes');
+  });
+});
+
+describe('a dictionary file’s placeholders', () => {
+  const weather = { id: 'weather', name: 'Weather', values: phValues(['Rain', 'Sun']) };
+  const unused = { id: 'unused', name: 'Season', values: phValues(['Spring']) };
+  const lore = { id: 'lore', name: 'Lore', values: phValues(['{{ph:weather:world:v1}} tales']) };
+
+  it('writes the book’s own placeholders as they are, and the shared defs its entries and they reach', () => {
+    const b = book({ placeholders: [lore], entries: [{ id: 'e1', name: 'Fen', key: ['fen'], value: 'It rains {{ph:weather:world:p1}}.' }] });
+    const file = buildDictionaryFile(b, [weather, unused, lore]);
+    expect(file.placeholders).toEqual([lore]);
+    expect(file.sharedPlaceholders).toEqual([weather]);
+    const parsed = parseDictionaryFile(file);
+    expect(parsed.placeholders).toEqual([lore]);
+    expect(parsed.sharedPlaceholders).toEqual([weather]);
+  });
+
+  it('carries only the shared defs a book with nothing of its own uses, and reads an old file as owned', () => {
+    const b = book({ entries: [{ id: 'e1', name: 'Fen', key: ['fen'], value: '{{ph:weather:world:p1}}' }] });
+    const file = buildDictionaryFile(b, [weather, unused]);
+    expect(file).not.toHaveProperty('placeholders');
+    expect(file.sharedPlaceholders).toEqual([weather]);
+    const old = parseDictionaryFile({ formamorphKind: 'dictionary', name: 'Old', entries: [], placeholders: [weather] });
+    expect(old.placeholders).toEqual([weather]);
+    expect(old).not.toHaveProperty('sharedPlaceholders');
   });
 });
 
