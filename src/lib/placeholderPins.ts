@@ -296,6 +296,9 @@ export type PinSourceRef =
 
 export type PinSourceKind = PinSourceRef['kind'];
 
+/** The ref shape one kind speaks in. */
+type SourceOf<K extends PinSourceKind> = Extract<PinSourceRef, { kind: K }>;
+
 /** One pin as the editor lists it. */
 export interface PinRow {
   source: PinSourceRef;
@@ -320,16 +323,193 @@ export interface PinEditorWorld {
   placementLetters?: PlacementLetters;
 }
 
+type PinList = readonly PlaceholderPin[];
+/** What a write does to a source's pin list; null leaves the world untouched. */
+type PinListChange = (pins: PinList) => PinList | null;
+
+/** One source of one kind, with everything the surfaces read off it. */
+interface PinSourceEntry<K extends PinSourceKind> {
+  source: SourceOf<K>;
+  /** The source's own authored name, chips kept. */
+  name: string;
+  /** The row as a plain-text surface reads it. */
+  label: string;
+  /** How the Add picker lists it — a band adds its description. */
+  option: string;
+  pins?: PinList;
+}
+
+/**
+ * Everything one kind of pin source contributes. A new source is a row here plus its own editor: the
+ * collector, the Bench's rules and the Pins section read this rather than switching on the kind.
+ * Declaration order in {@link PIN_SOURCE_KINDS} is the precedence between kinds, and a source's position
+ * in `sources` is the precedence within one — later lays last, so later wins.
+ */
+interface PinSourceSpec<K extends PinSourceKind> {
+  /** What the Add picker calls this kind. */
+  label: string;
+  /** What the picker says where the world holds none of them. */
+  empty: string;
+  /** Every source of this kind, in the order its list is authored. */
+  sources(world: PinEditorWorld): PinSourceEntry<K>[];
+  /** One source as a string — a Select value, a React key. Distinct for distinct refs. */
+  key(source: SourceOf<K>): string;
+  same(a: SourceOf<K>, b: SourceOf<K>): boolean;
+  /** True when two sources of this kind can never be in force at once, so neither is the other's rival. */
+  neverTogether(world: PinEditorWorld, a: SourceOf<K>, b: SourceOf<K>): boolean;
+  /** The record the source sits on — what a finding opens, and what a write is handed back on. */
+  ownerId(source: SourceOf<K>): string;
+  /** The world with this source's pin list rewritten. The same world when the source is not there or the
+   *  change declined; otherwise only the record on the path to the list is a new object. */
+  write<W extends PinEditorWorld>(world: W, source: SourceOf<K>, change: PinListChange): W;
+}
+
+const PIN_SOURCE_KINDS: { [K in PinSourceKind]: PinSourceSpec<K> } = {
+  descriptor: {
+    label: 'Stat Descriptor',
+    empty: 'No stat descriptors to pin from.',
+    sources(world) {
+      const name = labeler(world);
+      return (world.stats ?? []).flatMap((stat) => (stat.descriptors ?? []).map((band) => {
+        const label = name.band(stat, band);
+        return {
+          source: { kind: 'descriptor' as const, statId: stat.id, descriptorId: band.id },
+          name: stat.name,
+          label,
+          option: band.description ? `${label}: ${name.text(band.description)}` : label,
+          pins: band.placeholderPins,
+        };
+      }));
+    },
+    key: (s) => `descriptor:${s.statId}:${JSON.stringify(s.descriptorId)}`,
+    same: (a, b) => a.statId === b.statId && a.descriptorId === b.descriptorId,
+    // One stat sits in one band at a time.
+    neverTogether: (_world, a, b) => a.statId === b.statId,
+    ownerId: (s) => s.statId,
+    write: (world, source, change) => {
+      const stats = mapOne(world.stats, (s) => s.id === source.statId, (s) => {
+        const descriptors = mapOne(s.descriptors, (d) => d.id === source.descriptorId, (d) => rewritten(d, 'placeholderPins', change));
+        return descriptors ? { ...s, descriptors } : null;
+      });
+      return stats ? { ...world, stats } : world;
+    },
+  },
+  location: {
+    label: 'Location',
+    empty: 'No locations to pin from.',
+    sources(world) {
+      const name = labeler(world);
+      return (world.locations ?? []).map((location) => ({
+        source: { kind: 'location' as const, id: location.id },
+        name: location.name,
+        label: `Location: ${name.text(location.name)}`,
+        option: name.text(location.name),
+        pins: location.placeholderPins,
+      }));
+    },
+    key: (s) => `location:${s.id}`,
+    same: (a, b) => a.id === b.id,
+    // The player stands in one place.
+    neverTogether: () => true,
+    ownerId: (s) => s.id,
+    write: (world, source, change) => {
+      const locations = mapOne(world.locations, (l) => l.id === source.id, (l) => rewritten(l, 'placeholderPins', change));
+      return locations ? { ...world, locations } : world;
+    },
+  },
+  trait: {
+    label: 'Trait',
+    empty: 'No traits to pin from.',
+    sources(world) {
+      const name = labeler(world);
+      const { traits = [], traitGroups = [] } = world;
+      return inAuthoredOrder(traits, traitOrderIndex(traits, traitGroups)).map((trait) => ({
+        source: { kind: 'trait' as const, id: trait.id },
+        name: trait.name,
+        label: `Trait: ${name.text(trait.name)}`,
+        option: name.text(trait.name),
+        pins: trait.placeholderPins,
+      }));
+    },
+    key: (s) => `trait:${s.id}`,
+    same: (a, b) => a.id === b.id,
+    neverTogether: (world, a, b) => {
+      const trait = (world.traits ?? []).find((t) => t.id === a.id);
+      return !!trait && exclusiveSiblings(trait, world.traits ?? [], world.traitGroups ?? []).includes(b.id);
+    },
+    ownerId: (s) => s.id,
+    write: (world, source, change) => {
+      const traits = mapOne(world.traits, (t) => t.id === source.id, (t) => rewritten(t, 'placeholderPins', change));
+      return traits ? { ...world, traits } : world;
+    },
+  },
+  value: {
+    label: 'Placeholder Value',
+    empty: 'No other placeholder values to pin from.',
+    sources(world) {
+      const name = labeler(world);
+      return world.placeholders.flatMap((ph) => (ph.values ?? []).map((value) => {
+        const label = name.value(ph, value);
+        return {
+          source: { kind: 'value' as const, placeholderId: ph.id, valueId: value.id },
+          name: ph.name,
+          label,
+          option: label,
+          pins: value.pins,
+        };
+      }));
+    },
+    key: (s) => `value:${s.placeholderId}:${s.valueId}`,
+    same: (a, b) => a.placeholderId === b.placeholderId && a.valueId === b.valueId,
+    // A Wildcard reads as one of its values; an Object holds them all, so those two can both be in force.
+    neverTogether: (world, a, b) => {
+      if (a.placeholderId !== b.placeholderId) return false;
+      const ph = world.placeholders.find((p) => p.id === a.placeholderId);
+      return !!ph && placeholderIsChoice(ph);
+    },
+    ownerId: (s) => s.placeholderId,
+    write: (world, source, change) => {
+      const placeholders = mapOne(world.placeholders, (p) => p.id === source.placeholderId, (p) => {
+        const values = mapOne(p.values, (v) => v.id === source.valueId, (v) => rewritten(v, 'pins', change));
+        return values ? { ...p, values } : null;
+      });
+      return placeholders ? { ...world, placeholders } : world;
+    },
+  },
+};
+
+/** Kinds strongest first — the order {@link PIN_SOURCE_KINDS} declares them in. */
+const KINDS_BY_RANK = Object.keys(PIN_SOURCE_KINDS) as PinSourceKind[];
+
 /** Lower is stronger: a descriptor, then a location, then a trait, then a value pin. */
-const KIND_RANK: Record<PinSourceKind, number> = { descriptor: 0, location: 1, trait: 2, value: 3 };
+const KIND_RANK = Object.fromEntries(KINDS_BY_RANK.map((kind, i) => [kind, i])) as Record<PinSourceKind, number>;
+
+/** The row for a ref's kind. The kind is a union at every call site, so the widening the switches used to
+ *  spell out happens here, once; each spec's own methods are written against its own ref shape. */
+const specOf = (source: PinSourceRef): PinSourceSpec<PinSourceKind> =>
+  PIN_SOURCE_KINDS[source.kind] as PinSourceSpec<PinSourceKind>;
+
+const specFor = (kind: PinSourceKind): PinSourceSpec<PinSourceKind> =>
+  PIN_SOURCE_KINDS[kind] as PinSourceSpec<PinSourceKind>;
+
+/** The kinds a pin can be written on, strongest first — what the Add picker lists. */
+export const PIN_KINDS: ReadonlyArray<{ kind: PinSourceKind; label: string; empty: string }> =
+  KINDS_BY_RANK.map((kind) => ({ kind, label: specFor(kind).label, empty: specFor(kind).empty }));
 
 export function sameSource(a: PinSourceRef, b: PinSourceRef): boolean {
-  if (a.kind !== b.kind) return false;
-  switch (a.kind) {
-    case 'trait': case 'location': return a.id === (b as typeof a).id;
-    case 'descriptor': return a.statId === (b as typeof a).statId && a.descriptorId === (b as typeof a).descriptorId;
-    case 'value': return a.placeholderId === (b as typeof a).placeholderId && a.valueId === (b as typeof a).valueId;
-  }
+  return a.kind === b.kind && specOf(a).same(a, b);
+}
+
+/** A source ref as one string — a Select value, a React key. Distinct for distinct refs, band ids of
+ *  either type included. */
+export function pinSourceKey(source: PinSourceRef): string {
+  return specOf(source).key(source);
+}
+
+/** The record a pin sits on: the trait, the location, the stat, the placeholder. What a finding opens and
+ *  what a write hands back. */
+export function pinSourceOwnerId(source: PinSourceRef): string {
+  return specOf(source).ownerId(source);
 }
 
 /**
@@ -343,30 +523,8 @@ export function pinsTargeting(world: PinEditorWorld, placeholderId: string): Pin
 /** Every pin every source carries, strongest kind first and in authored order within a kind — what a pass
  *  over the whole world reads, empty and broken rows included. */
 export function allPinRows(world: PinEditorWorld): PinRow[] {
-  const { traits = [], traitGroups = [], locations = [], stats = [], placeholders } = world;
-  const name = labeler(world);
-  const rows: PinRow[] = [];
-  const push = (source: PinSourceRef, pins: readonly PlaceholderPin[] | undefined, name: string, label: string) => {
-    for (const pin of pins ?? []) rows.push({ source, pin, name, label });
-  };
-
-  for (const stat of stats) {
-    for (const band of stat.descriptors ?? []) {
-      push({ kind: 'descriptor', statId: stat.id, descriptorId: band.id }, band.placeholderPins, stat.name, name.band(stat, band));
-    }
-  }
-  for (const location of locations) {
-    push({ kind: 'location', id: location.id }, location.placeholderPins, location.name, `Location: ${name.text(location.name)}`);
-  }
-  for (const trait of inAuthoredOrder(traits, traitOrderIndex(traits, traitGroups))) {
-    push({ kind: 'trait', id: trait.id }, trait.placeholderPins, trait.name, `Trait: ${name.text(trait.name)}`);
-  }
-  for (const ph of placeholders) {
-    for (const value of ph.values ?? []) {
-      push({ kind: 'value', placeholderId: ph.id, valueId: value.id }, value.pins, ph.name, name.value(ph, value));
-    }
-  }
-  return rows;
+  return KINDS_BY_RANK.flatMap((kind) => specFor(kind).sources(world).flatMap((entry) =>
+    (entry.pins ?? []).map((pin): PinRow => ({ source: entry.source, pin, name: entry.name, label: entry.label }))));
 }
 
 /** The spellings every pin surface shares: chips labeled, a band as `Hunger ≤ 20`, a value as
@@ -401,46 +559,22 @@ export interface PinConflict {
  * exclusive trait siblings. Null when nothing else can claim the placeholder.
  */
 export function pinConflict(world: PinEditorWorld, placeholderId: string, source: PinSourceRef): PinConflict | null {
-  const { traits = [], traitGroups = [], stats = [], placeholders } = world;
   const rows = pinsTargeting(world, placeholderId);
   const self = rows.find((r) => sameSource(r.source, source)) ?? null;
-
-  const exclusive = new Set<string>();
-  if (source.kind === 'trait') {
-    const trait = traits.find((t) => t.id === source.id);
-    if (trait) for (const id of exclusiveSiblings(trait, traits, traitGroups)) exclusive.add(id);
-  }
-  const sourcePlaceholder = source.kind === 'value' ? placeholders.find((p) => p.id === source.placeholderId) : undefined;
-  const neverTogether = (r: PinRow): boolean => {
-    const s = r.source;
-    if (s.kind !== source.kind) return false;
-    switch (s.kind) {
-      case 'location': return true;
-      case 'trait': return exclusive.has(s.id);
-      case 'descriptor': return s.statId === (source as typeof s).statId;
-      case 'value': return s.placeholderId === (source as typeof s).placeholderId && !!sourcePlaceholder && placeholderIsChoice(sourcePlaceholder);
-    }
-  };
-  const rivals = rows.filter((r) => !sameSource(r.source, source) && !neverTogether(r));
+  const rivals = rows.filter((r) => !sameSource(r.source, source)
+    && !(r.source.kind === source.kind && specOf(source).neverTogether(world, source, r.source)));
   if (!rivals.length) return null;
 
-  // Within a kind, the later in its list lays its pin last and so wins — the same order `collectPins` walks.
-  const traitOrder = traitOrderIndex(traits, traitGroups);
-  const statIndex = new Map(stats.map((s, i) => [s.id, i]));
-  const phIndex = new Map(placeholders.map((p, i) => [p.id, i]));
-  const bandIndex = (s: Extract<PinSourceRef, { kind: 'descriptor' }>) =>
-    (stats.find((st) => st.id === s.statId)?.descriptors ?? []).findIndex((d) => d.id === s.descriptorId);
-  const valueIndex = (s: Extract<PinSourceRef, { kind: 'value' }>) =>
-    (placeholders.find((p) => p.id === s.placeholderId)?.values ?? []).findIndex((v) => v.id === s.valueId);
-  // Rows of one holder are spread by a stride, so a later holder outranks every row of an earlier one.
-  const STRIDE = 1e6;
+  // Within a kind, the later in its list lays its pin last and so wins — the same order `collectPins`
+  // walks. Only rows of one kind are ever compared this way, so each kind's index is built when needed.
+  const indexes = new Map<PinSourceKind, ReadonlyMap<string, number>>();
   const inKind = (s: PinSourceRef): number => {
-    switch (s.kind) {
-      case 'trait': return traitOrder.get(s.id) ?? -1;
-      case 'descriptor': return (statIndex.get(s.statId) ?? -1) * STRIDE + bandIndex(s);
-      case 'value': return (phIndex.get(s.placeholderId) ?? -1) * STRIDE + valueIndex(s);
-      case 'location': return 0;
+    let index = indexes.get(s.kind);
+    if (!index) {
+      index = new Map(specFor(s.kind).sources(world).map((entry, i) => [pinSourceKey(entry.source), i]));
+      indexes.set(s.kind, index);
     }
+    return index.get(pinSourceKey(s)) ?? -1;
   };
   const beats = (a: PinSourceRef, b: PinSourceRef): boolean =>
     KIND_RANK[a.kind] !== KIND_RANK[b.kind] ? KIND_RANK[a.kind] < KIND_RANK[b.kind] : inKind(a) > inKind(b);
@@ -469,20 +603,6 @@ function indexOfPin(pins: PinList, pin: PlaceholderPin): number {
   return byRef >= 0 ? byRef : pins.findIndex((p) => samePin(p, pin));
 }
 
-/** A source ref as one string — a Select value, a React key. Distinct for distinct refs, band ids of
- *  either type included. */
-export function pinSourceKey(source: PinSourceRef): string {
-  switch (source.kind) {
-    case 'trait': case 'location': return `${source.kind}:${source.id}`;
-    case 'descriptor': return `descriptor:${source.statId}:${JSON.stringify(source.descriptorId)}`;
-    case 'value': return `value:${source.placeholderId}:${source.valueId}`;
-  }
-}
-
-type PinList = readonly PlaceholderPin[];
-/** What a write does to a source's pin list; null leaves the world untouched. */
-type PinListChange = (pins: PinList) => PinList | null;
-
 /** `holder` with its pin list under `field` rewritten; an emptied list is dropped, so a source that pins
  *  nothing stores nothing. Null when the change declined. */
 function rewritten<T extends { [P in K]?: PlaceholderPin[] }, K extends 'placeholderPins' | 'pins'>(
@@ -503,44 +623,15 @@ function mapOne<T>(list: readonly T[] | undefined, match: (item: T) => boolean, 
   return next ? list.map((item, j) => (j === i ? next : item)) : null;
 }
 
-/** The world with `source`'s pin list rewritten. The same world back when the source is not there or the
- *  change declined; otherwise only the record on the path to the list is a new object. */
-function writePinsAt<W extends PinEditorWorld>(world: W, source: PinSourceRef, change: PinListChange): W {
-  switch (source.kind) {
-    case 'trait': {
-      const traits = mapOne(world.traits, (t) => t.id === source.id, (t) => rewritten(t, 'placeholderPins', change));
-      return traits ? { ...world, traits } : world;
-    }
-    case 'location': {
-      const locations = mapOne(world.locations, (l) => l.id === source.id, (l) => rewritten(l, 'placeholderPins', change));
-      return locations ? { ...world, locations } : world;
-    }
-    case 'descriptor': {
-      const stats = mapOne(world.stats, (s) => s.id === source.statId, (s) => {
-        const descriptors = mapOne(s.descriptors, (d) => d.id === source.descriptorId, (d) => rewritten(d, 'placeholderPins', change));
-        return descriptors ? { ...s, descriptors } : null;
-      });
-      return stats ? { ...world, stats } : world;
-    }
-    case 'value': {
-      const placeholders = mapOne(world.placeholders, (p) => p.id === source.placeholderId, (p) => {
-        const values = mapOne(p.values, (v) => v.id === source.valueId, (v) => rewritten(v, 'pins', change));
-        return values ? { ...p, values } : null;
-      });
-      return placeholders ? { ...world, placeholders } : world;
-    }
-  }
-}
-
 /** The world with `pin` appended to `source`'s list. */
 export function addPinAt<W extends PinEditorWorld>(world: W, source: PinSourceRef, pin: PlaceholderPin): W {
-  return writePinsAt(world, source, (pins) => [...pins, pin]);
+  return specOf(source).write(world, source, (pins) => [...pins, pin]);
 }
 
 /** The world with the row on `source` that reads as `pin` replaced by `next`. A source may carry several
  *  pins on one placeholder, so the pin itself picks the row. */
 export function updatePinAt<W extends PinEditorWorld>(world: W, source: PinSourceRef, pin: PlaceholderPin, next: PlaceholderPin): W {
-  return writePinsAt(world, source, (pins) => {
+  return specOf(source).write(world, source, (pins) => {
     const i = indexOfPin(pins, pin);
     return i < 0 ? null : pins.map((p, j) => (j === i ? next : p));
   });
@@ -548,7 +639,7 @@ export function updatePinAt<W extends PinEditorWorld>(world: W, source: PinSourc
 
 /** The world with the row on `source` that reads as `pin` removed. */
 export function removePinAt<W extends PinEditorWorld>(world: W, source: PinSourceRef, pin: PlaceholderPin): W {
-  return writePinsAt(world, source, (pins) => {
+  return specOf(source).write(world, source, (pins) => {
     const i = indexOfPin(pins, pin);
     return i < 0 ? null : pins.filter((_, j) => j !== i);
   });
@@ -566,23 +657,7 @@ export interface PinSourceOption {
  * values are left out — a value cannot pin its own placeholder.
  */
 export function pinSourcesOfKind(world: PinEditorWorld, kind: PinSourceKind, placeholderId: string): PinSourceOption[] {
-  const { traits = [], traitGroups = [], locations = [], stats = [], placeholders } = world;
-  const name = labeler(world);
-  switch (kind) {
-    case 'trait':
-      return inAuthoredOrder(traits, traitOrderIndex(traits, traitGroups))
-        .map((t) => ({ source: { kind, id: t.id }, label: name.text(t.name) }));
-    case 'location':
-      return locations.map((l) => ({ source: { kind, id: l.id }, label: name.text(l.name) }));
-    case 'descriptor':
-      return stats.flatMap((stat) => (stat.descriptors ?? []).map((band) => ({
-        source: { kind, statId: stat.id, descriptorId: band.id },
-        label: band.description ? `${name.band(stat, band)}: ${name.text(band.description)}` : name.band(stat, band),
-      })));
-    case 'value':
-      return placeholders.filter((p) => p.id !== placeholderId).flatMap((ph) => (ph.values ?? []).map((value) => ({
-        source: { kind, placeholderId: ph.id, valueId: value.id },
-        label: name.value(ph, value),
-      })));
-  }
+  return specFor(kind).sources(world)
+    .filter((entry) => !(entry.source.kind === 'value' && entry.source.placeholderId === placeholderId))
+    .map((entry) => ({ source: entry.source, label: entry.option }));
 }

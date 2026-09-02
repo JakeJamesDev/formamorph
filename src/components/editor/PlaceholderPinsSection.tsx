@@ -7,7 +7,8 @@ import { HelpButton } from '@/components/HelpButton';
 import { PinConflictNote } from '@/components/editor/PinConflictNote';
 import { PinValueField } from '@/components/editor/PinValueField';
 import {
-  addPinAt, pinSourceKey, pinSourcesOfKind, pinsTargeting, removePinAt, sameSource, updatePinAt,
+  addPinAt, PIN_KINDS, pinSourceKey, pinSourceOwnerId, pinSourcesOfKind, pinsTargeting, removePinAt,
+  sameSource, updatePinAt,
   type PinEditorWorld, type PinRow, type PinSourceKind, type PinSourceRef,
 } from '@/lib/placeholderPins';
 import type { GameLocation, Placeholder, PlaceholderPin, Stat, Trait } from '@/types';
@@ -20,19 +21,6 @@ export interface PinsWorld extends PinEditorWorld {
   updateStat: (stat: Stat) => void;
   updatePlaceholder: (placeholder: Placeholder) => void;
 }
-
-const KINDS: ReadonlyArray<{ kind: PinSourceKind; label: string }> = [
-  { kind: 'trait', label: 'Trait' },
-  { kind: 'location', label: 'Location' },
-  { kind: 'descriptor', label: 'Stat Descriptor' },
-  { kind: 'value', label: 'Placeholder Value' },
-];
-const NONE_OF_KIND: Record<PinSourceKind, string> = {
-  trait: 'No traits to pin from.',
-  location: 'No locations to pin from.',
-  descriptor: 'No stat descriptors to pin from.',
-  value: 'No other placeholder values to pin from.',
-};
 
 /**
  * Every pin aimed at one placeholder, from any source, as one list: strongest kind first, each row naming
@@ -51,17 +39,18 @@ export function PlaceholderPinsSection({ world, placeholder }: {
   const rows = useMemo(() => pinsTargeting(world, placeholder.id), [world, placeholder.id]);
   const options = (kind: PinSourceKind) => pinSourcesOfKind(world, kind, placeholder.id);
 
+  /** Where a rewritten source of each kind goes back to — one row, so a new source is a row and not a
+   *  case. The id is the record the pin sits on, which the source table already names. */
+  const writeBack: Record<PinSourceKind, (next: PinEditorWorld, id: string) => void> = {
+    trait: (next, id) => { const t = next.traits?.find((x) => x.id === id); if (t) world.updateTrait(t); },
+    location: (next, id) => { const l = next.locations?.find((x) => x.id === id); if (l) world.updateLocation(l); },
+    descriptor: (next, id) => { const s = next.stats?.find((x) => x.id === id); if (s) world.updateStat(s); },
+    value: (next, id) => { const p = next.placeholders.find((x) => x.id === id); if (p) world.updatePlaceholder(p); },
+  };
   /** Hand each source that `next` rewrote back to its writer. `next` carries every change at once, so a
    *  source written twice lands the same record twice, which is harmless. */
   const commit = (next: PinEditorWorld, ...sources: PinSourceRef[]) => {
-    for (const source of sources) {
-      switch (source.kind) {
-        case 'trait': { const t = next.traits?.find((x) => x.id === source.id); if (t) world.updateTrait(t); break; }
-        case 'location': { const l = next.locations?.find((x) => x.id === source.id); if (l) world.updateLocation(l); break; }
-        case 'descriptor': { const s = next.stats?.find((x) => x.id === source.statId); if (s) world.updateStat(s); break; }
-        case 'value': { const p = next.placeholders.find((x) => x.id === source.placeholderId); if (p) world.updatePlaceholder(p); break; }
-      }
-    }
+    for (const source of sources) writeBack[source.kind](next, pinSourceOwnerId(source));
   };
   const setPin = (row: PinRow, next: PlaceholderPin) => commit(updatePinAt(world, row.source, row.pin, next), row.source);
   const remove = (row: PinRow) => commit(removePinAt(world, row.source, row.pin), row.source);
@@ -121,7 +110,7 @@ export function PlaceholderPinsSection({ world, placeholder }: {
                 <SelectValue placeholder="Kind of source" />
               </SelectTrigger>
               <SelectContent>
-                {KINDS.map((k) => <SelectItem key={k.kind} value={k.kind}>{k.label}</SelectItem>)}
+                {PIN_KINDS.map((k) => <SelectItem key={k.kind} value={k.kind}>{k.label}</SelectItem>)}
               </SelectContent>
             </Select>
             {draft.kind && (
@@ -144,7 +133,7 @@ export function PlaceholderPinsSection({ world, placeholder }: {
             </Button>
           </div>
           {draft.kind && draftOptions.length === 0 && (
-            <p className="text-meta text-muted-foreground pl-1">{NONE_OF_KIND[draft.kind]}</p>
+            <p className="text-meta text-muted-foreground pl-1">{PIN_KINDS.find((k) => k.kind === draft.kind)?.empty}</p>
           )}
         </div>
       )}
