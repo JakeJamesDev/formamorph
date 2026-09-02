@@ -4,7 +4,7 @@ import { vectorKey, cosineSimilarity } from './memoryRelevance';
 /**
  * Semantic rehydration selection: which old turns come back verbatim because the current action
  * returns to them. Selection is embedding-based (the turn's digest vector stands for the turn) with
- * the two guards that define this feature (docs-internal/notes/semantic-memory-roadmap.md step 2):
+ * the two guards that define this feature (docs-internal/notes/semantic-memory-roadmap/notes.md step 2):
  *   1. Near-duplicate penalty — a candidate too similar to an already-chosen turn OR to a recent
  *      floor turn is skipped. Raw similarity maximally favors the repeated charged turns that caused
  *      the charged-scene freeze; the penalty is what makes similarity safe to use here.

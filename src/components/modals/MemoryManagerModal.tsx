@@ -21,7 +21,7 @@ import { cn } from '@/lib/utils';
  *
  * Every change is an override (lib/memoryOverrides) — the AI's original summary is never destroyed, so
  * "revert to original" and "restore" always have something to go back to. Design:
- * docs-internal/designs/memory-editing-design.md.
+ * docs-internal/designs/memory-editing/design.md.
  */
 
 /** Character count past which the counter warns. A digest runs ~40 words; well past that a memory starts

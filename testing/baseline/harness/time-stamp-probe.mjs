@@ -1,4 +1,4 @@
-// TIME-STAMP probe (Probe B + C of docs-internal/designs/time-system-design.md) — does stamping each digest with
+// TIME-STAMP probe (Probe B + C of docs-internal/designs/time-system/design.md) — does stamping each digest with
 // when it happened give the model usable time, and does it cost anything in the narration?
 //
 // Two arms over a REAL session dump's digests:

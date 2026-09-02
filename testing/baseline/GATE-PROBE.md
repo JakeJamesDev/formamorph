@@ -2,7 +2,7 @@
 
 Tests the **RP-finetune-only catalog policy**: do genuine RP finetunes actually beat general decensored
 writers for Formamorph, on the same base? And measures how much of any advantage is our *prompts* vs the
-*models*. See the upstream reasoning in [`../../docs-internal/notes/model-research.md`](../../docs-internal/notes/model-research.md).
+*models*. See the upstream reasoning in [`../../docs-internal/notes/model-research/notes.md`](../../docs-internal/notes/model-research/notes.md).
 
 ## The matrix — 3 controlled pairs, base held constant
 

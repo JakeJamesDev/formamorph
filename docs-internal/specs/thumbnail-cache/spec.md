@@ -2,7 +2,7 @@
 
 Status: ready-for-agent
 
-Server side: the FormamorphServer repo, `docs-internal/specs/catalog-freshness-spec.md`. Build that first; the third part here depends on it.
+Server side: the FormamorphServer repo, `docs-internal/specs/catalog-freshness/spec.md`. Build that first; the third part here depends on it.
 
 ## Problem Statement
 

@@ -1257,7 +1257,7 @@ const GameViewer = ({
       // the player's standing notes. Probed on real failure turns (now-line-probe.mjs): removed the
       // scene-reset / roleplay-identity-inversion class entirely; without it the recap reads as backstory.
       // In-world time (experimental): each remembered moment is stamped with when it happened — the recap
-      // otherwise reads as an undated chronicle (docs-internal/designs/time-system-design.md).
+      // otherwise reads as an undated chronicle (docs-internal/designs/time-system/design.md).
       const stamp = timeContext ? buildStamper({ nowHours: gameTime, hoursAt: hoursByPosition(turns), calendar }) : undefined;
       // Assembled from the same context values every other prompt uses: each chip carries its own wording
       // in its affixes and disappears with its value, so any combination still reads as a sentence.

@@ -2,7 +2,7 @@ import type { BandTurn } from './turnBanding';
 
 /**
  * The player's memory override layer: rewrites, deletions and hand-written memories, applied on top of
- * the AI's digests. Design: docs-internal/designs/memory-editing-design.md.
+ * the AI's digests. Design: docs-internal/designs/memory-editing/design.md.
  *
  * The AI's original is never destroyed — `summary` on the turn stays exactly as the digest wrote it and
  * every override lives in its own map, keyed by turn id like `memoryPins`. Clearing an override restores

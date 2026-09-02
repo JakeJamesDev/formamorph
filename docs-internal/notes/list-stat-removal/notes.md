@@ -1,6 +1,6 @@
 # The `list` stat type — investigation and removal
 
-**Status:** removed 2026-08-05. This is the evidence record, not a proposal. The live direction for the problem it was reaching at is **per-entity runtime fields** — see §1 of [world-authoring-feature-notes.md](docs-internal/notes/world-authoring-feature-notes.md).
+**Status:** removed 2026-08-05. This is the evidence record, not a proposal. The live direction for the problem it was reaching at is **per-entity runtime fields** — see §1 of [world-authoring-feature-notes.md](docs-internal/notes/world-authoring-feature/notes.md).
 
 ---
 

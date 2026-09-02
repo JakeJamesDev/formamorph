@@ -6,7 +6,7 @@ Notes from rebuilding **Centaur Breeder** into a reference world (see `worlds-wi
 
 ## 1. Tracking many similar characters — the list-stat replacement
 
-**Rejected:** list stats. The spun-off investigation found them barely implemented, incompatible with every option stats currently carry, and a dead end. Removed from the codebase 2026-08-05; evidence and migration in [list-stat-removal.md](docs-internal/notes/list-stat-removal.md).
+**Rejected:** list stats. The spun-off investigation found them barely implemented, incompatible with every option stats currently carry, and a dead end. Removed from the codebase 2026-08-05; evidence and migration in [list-stat-removal.md](docs-internal/notes/list-stat-removal/notes.md).
 
 **Also rejected:** a general inventory system. Wrong frame — a mare is a *character*, not a possession. Modeling the herd as items imports the wrong verbs (acquire, drop, stack, count) and none of the right ones.
 

@@ -96,7 +96,7 @@ export const RANKED_RECENT_IMMUNE = 2;
  *  this, so a challenger must be meaningfully better to evict it rather than merely luckier. Without
  *  it the band is re-drawn from scratch every turn against a fresh action vector — measured at 57%
  *  of the free slots replaced per turn across a real 50-turn export, which is churn, not memory
- *  (docs-internal/notes/long-session-recall-findings.md item 1a). At the 40-turn relevance half-life this
+ *  (docs-internal/notes/long-session-recall-findings/notes.md item 1a). At the 40-turn relevance half-life this
  *  margin is worth ~13 turns of age advantage. Tunable: the value wants real-session churn numbers,
  *  not a probe. */
 export const STICKY_BONUS = 1.25;

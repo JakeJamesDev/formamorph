@@ -8,7 +8,7 @@
  *
  * Pure and React-free. The clock's *source* is deliberately not here: callers hand in a `hoursAt`
  * resolver, so the flat hour-per-turn the game advances today and a measured per-turn delta later are
- * the same seam. Design: docs-internal/designs/time-system-design.md.
+ * the same seam. Design: docs-internal/designs/time-system/design.md.
  */
 
 /** The story's time frame. Not authored anywhere yet — every field falls back to its default. */

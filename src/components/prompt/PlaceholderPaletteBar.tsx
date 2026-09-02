@@ -10,6 +10,7 @@ import { cn } from '@/lib/utils';
 import type { Placeholder } from '@/types';
 import { useChipInsertTarget } from './ChipInsertTarget';
 import { CHIP_DRAG_MIME } from './ChipDrag';
+import OwnerHeadingChip from './OwnerHeadingChip';
 
 /**
  * One palette of the world's placeholders for a whole editor panel, rather than an insert row on every
@@ -63,16 +64,21 @@ const PlaceholderPaletteBar = ({ placeholders, scopeId, className }: {
     // place a hit on a placeholder's name lives.
     <div data-editor-find-skip className={cn('sticky top-0 z-10 -mx-1 mb-2 border-b bg-background/95 px-1 py-1.5 backdrop-blur', className)}>
       <div className="flex items-start gap-2">
-        <button
-          type="button"
-          onClick={() => setCollapsed(!collapsed)}
-          aria-expanded={!collapsed}
-          className="flex flex-shrink-0 items-center gap-1 rounded px-1 py-0.5 text-meta text-muted-foreground hover:bg-accent hover:text-foreground"
-        >
-          {collapsed ? <ChevronRight className="h-3.5 w-3.5" /> : <ChevronDown className="h-3.5 w-3.5" />}
-          Placeholders
-          {collapsed && <span className="text-[10px] opacity-70">({items.length})</span>}
-        </button>
+        {/* Open, the toggle is the chevron alone: the strip's first slot is worth more as a chip than as a
+            word, and the tooltip and the accessible name still carry it. Closed, the word comes back with
+            the count, because a folded strip has nothing else left to say what it holds. */}
+        <Tip tip="Placeholders" labelsChild={false}>
+          <button
+            type="button"
+            onClick={() => setCollapsed(!collapsed)}
+            aria-expanded={!collapsed}
+            aria-label="Placeholders"
+            className="flex flex-shrink-0 items-center gap-1 rounded px-1 py-0.5 text-meta text-muted-foreground hover:bg-accent hover:text-foreground"
+          >
+            {collapsed ? <ChevronRight className="h-3.5 w-3.5" /> : <ChevronDown className="h-3.5 w-3.5" />}
+            {collapsed && <>Placeholders<span className="text-[10px] opacity-70"> ({items.length})</span></>}
+          </button>
+        </Tip>
         {!collapsed && (
           <div className="flex min-w-0 flex-1 flex-wrap items-center gap-1">
             {/* The rows come sectioned — loose, then each folder, then each owner. A section opens with its
@@ -83,7 +89,11 @@ const PlaceholderPaletteBar = ({ placeholders, scopeId, className }: {
               <Fragment key={item.token}>
               {opens && i > 0 && <span aria-hidden className="mx-0.5 h-4 w-px self-center bg-border" />}
               {opens && item.heading && (
-                <span className="text-meta text-muted-foreground">{item.heading}</span>
+                item.headingKind === 'owner' && item.ownerKind ? (
+                  <OwnerHeadingChip kind={item.ownerKind} name={item.ownerName ?? item.heading} placeholders={placeholders} />
+                ) : (
+                  <span className="text-meta text-muted-foreground">{item.heading}</span>
+                )
               )}
               {renaming === item.token ? (
               <ChipRenameInput

@@ -40,7 +40,7 @@ export interface PromptVariable {
   variants?: PromptVariant[]; // single-axis pop-out modes; first entry is the default/full form
   axes?: PromptVariantAxis[]; // multi-axis pop-out (takes precedence over `variants`)
   /** Offers the prefix/suffix fields: this chip renders one short value that can sit inside a sentence,
-   *  rather than a multi-line block. See docs-internal/designs/chip-affixes-design.md. */
+   *  rather than a multi-line block. See docs-internal/designs/chip-affixes/design.md. */
   affixable?: boolean;
 }
 
@@ -274,7 +274,7 @@ export const ALL_VARIANT_IDS: string[] = [
  * Affixes are the connective words around a chip used inside a sentence ("Now you are at X, inside Y"),
  * and they render only when the chip has a value — see `renderPromptTemplate`. They live in the token
  * rather than a side table because a preset is a plain string that gets copied, shared and style-downcast,
- * so the wording has to travel with it. Design: docs-internal/designs/chip-affixes-design.md.
+ * so the wording has to travel with it. Design: docs-internal/designs/chip-affixes/design.md.
  *
  * Quotes delimit the affix, which keeps leading/trailing spaces visible in the raw text and makes `>` and
  * `|` harmless inside one. `"` is therefore the single character an affix cannot contain — one banned
