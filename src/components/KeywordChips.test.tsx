@@ -150,4 +150,27 @@ describe('KeywordChips', () => {
       expect(screen.getByLabelText('Edit Dusk')).toBeInTheDocument();
     });
   });
+
+  describe('the per-chip aside', () => {
+    it('draws one after each chip', () => {
+      render(<KeywordChips keywords={['a', 'b']} onChange={vi.fn()} chipAside={(v) => <button type="button">pin {v}</button>} />);
+      expect(screen.getByRole('button', { name: 'pin a' })).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: 'pin b' })).toBeInTheDocument();
+    });
+
+    it('sits beside the host’s chip wrapper, never inside it', () => {
+      render(
+        <KeywordChips
+          keywords={['a']}
+          onChange={vi.fn()}
+          renderChip={(chip) => <span data-testid="wrap">{chip}</span>}
+          chipAside={(v) => <button type="button">pin {v}</button>}
+        />,
+      );
+      const wrap = screen.getByTestId('wrap');
+      const pin = screen.getByRole('button', { name: 'pin a' });
+      expect(wrap).not.toContainElement(pin);
+      expect(wrap.parentElement).toContainElement(pin);
+    });
+  });
 });

@@ -3,7 +3,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { encodePlaceholderToken } from '@/lib/placeholders';
-import type { Placeholder, Trait } from '@/types';
+import type { GameLocation, Placeholder, Trait } from '@/types';
 import { EditorModeContext } from '@/lib/editorMode';
 import TraitManager from './TraitManager';
 
@@ -34,14 +34,15 @@ const WORLD: Placeholder[] = [
   { id: 'isasian', name: 'isAsian', roll: false, values: phValues(['tan skin', 'black hair']) },
 ];
 
-const store: { trait: Trait; rival: Trait; writes: Trait[]; rerender: () => void } =
-  { trait: sedgeBorn, rival: marshWed, writes: [], rerender: () => {} };
+const store: { trait: Trait; rival: Trait; locations: GameLocation[]; writes: Trait[]; rerender: () => void } =
+  { trait: sedgeBorn, rival: marshWed, locations: [], writes: [], rerender: () => {} };
 
 vi.mock('@/contexts/GameDataContext', () => ({
   useGameData: () => ({
     stats: [],
     traits: [store.trait, store.rival],
     traitGroups: [],
+    locations: store.locations,
     placeholders: WORLD,
     updateTrait: (next: Trait) => {
       store.writes.push(next);
@@ -77,6 +78,7 @@ const lastPins = () => store.writes[store.writes.length - 1].placeholderPins;
 beforeEach(() => {
   store.trait = { ...sedgeBorn, placeholderPins: [{ placeholderId: 'p1', value: 'copper' }] };
   store.rival = marshWed;
+  store.locations = [];
   store.writes = [];
   onOpenTrait.mockClear();
 });
@@ -101,6 +103,15 @@ describe('the conflict note', () => {
     expect(links).toHaveLength(2);
     await userEvent.click(links[0]);
     expect(onOpenTrait).toHaveBeenCalledWith('t2');
+  });
+
+  it('names a location pinning the same placeholder ahead of the rival trait, and says it outranks both', () => {
+    store.locations = [{ id: 'fen', name: 'The Fen', placeholderPins: [{ placeholderId: 'p1', value: 'ash' }] } as GameLocation];
+    renderManager();
+    const note = screen.getByText(/Also pinned by/);
+    expect(note.textContent).toBe(
+      'Also pinned by the location The Fen, the trait Marsh-Wed. A stat band outranks a location, a location a trait, and a trait a value pin: the location The Fen.',
+    );
   });
 
   it('shows a rival’s name by its chip, never as the token behind it', () => {

@@ -5,7 +5,7 @@ import userEvent from '@testing-library/user-event';
 import type { Placeholder, Stat } from '@/types';
 import { EditorModeContext } from '@/lib/editorMode';
 import { encodePlaceholderToken } from '@/lib/placeholders';
-import { phValues } from '@/test/placeholderValues';
+import { phValueId, phValues } from '@/test/placeholderValues';
 import StatManager from './StatManager';
 
 // Ten rockets banded in the stat's own units — the case the unit toggle exists for.
@@ -148,5 +148,60 @@ describe('the stat text fields', () => {
     expect(Array.from(chipFields).map((el) => (el as HTMLInputElement).value))
       .toEqual(['Rockets', '', 'low', 'stocked', 'full', '']);
     expect(screen.getByLabelText('New Description')).toHaveAttribute('data-chip-field');
+  });
+});
+
+describe('the descriptor pin button', () => {
+  const TOWN: Placeholder = { id: 'ph-town', name: 'Town Name', values: phValues(['Sedge', 'Marrow']) };
+  const pinned = () => {
+    store.placeholders = [TOWN];
+    store.stat = {
+      ...store.stat,
+      descriptors: [
+        { id: 'd1', threshold: 3, description: 'low', placeholderPins: [{ placeholderId: TOWN.id, value: 'Sedge' }] },
+        { id: 'd2', threshold: 6, description: 'stocked' },
+      ],
+    };
+  };
+
+  it('counts the row’s pins on the badge, and opens them in a popover', async () => {
+    pinned();
+    renderManager();
+    const low = screen.getByRole('button', { name: 'Pins for low' });
+    expect(low.textContent).toBe('1');
+    expect(screen.getByRole('button', { name: 'Pins for stocked' }).textContent).toBe('');
+    await userEvent.click(low);
+    expect(screen.getByRole('textbox', { name: 'Pinned value' })).toHaveValue('Sedge');
+  });
+
+  it('writes the popover’s rows onto that descriptor, and nothing else', async () => {
+    pinned();
+    renderManager();
+    await userEvent.click(screen.getByRole('button', { name: 'Pins for low' }));
+    // A value picked off the list lands on this descriptor's pin, named by id.
+    await userEvent.click(screen.getByRole('textbox', { name: 'Pinned value' }));
+    await userEvent.click(screen.getByRole('button', { name: 'Marrow' }));
+    expect(store.writes.at(-1)!.descriptors[0].placeholderPins)
+      .toEqual([{ placeholderId: TOWN.id, value: 'Marrow', valueId: phValueId('Marrow') }]);
+    await userEvent.click(screen.getByRole('button', { name: 'Add Placeholder Pin' }));
+    const last = store.writes.at(-1)!.descriptors;
+    expect(last[0].placeholderPins).toEqual([
+      { placeholderId: TOWN.id, value: 'Marrow', valueId: phValueId('Marrow') }, { placeholderId: '', value: '' },
+    ]);
+    expect(last[1].placeholderPins).toBeUndefined();
+    // Emptying the list drops the field rather than leaving an empty array behind.
+    await userEvent.click(screen.getAllByRole('button', { name: 'Remove pin' })[1]);
+    await userEvent.click(screen.getByRole('button', { name: 'Remove pin' }));
+    expect(store.writes.at(-1)!.descriptors[0].placeholderPins).toBeUndefined();
+  });
+
+  it('shows no pin button in Simple mode, pins or no pins', () => {
+    pinned();
+    render(
+      <EditorModeContext.Provider value={{ mode: 'simple', advanced: false, setMode: () => {} }}>
+        <Harness />
+      </EditorModeContext.Provider>,
+    );
+    expect(screen.queryByRole('button', { name: /^Pins for/ })).toBeNull();
   });
 });

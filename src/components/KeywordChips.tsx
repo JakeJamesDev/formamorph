@@ -36,6 +36,7 @@ export function KeywordChips({
   chipSuffix,
   chipStyle,
   renderChip,
+  chipAside,
   placeholders,
   ownerId,
   lonePlaceholderAsPath = false,
@@ -63,6 +64,9 @@ export function KeywordChips({
   chipStyle?: (value: string) => CSSProperties | undefined;
   /** Wrap each rendered chip — the host's hook for anchoring per-chip UI. */
   renderChip?: (chip: ReactNode, value: string) => ReactNode;
+  /** A control drawn right after each chip, outside the chip and outside the `renderChip` wrapper (a pin
+   *  button). */
+  chipAside?: (value: string) => ReactNode;
 }) {
   const [inputValue, setInputValue] = useState('');
   const chipsEnabled = !!placeholders?.length;
@@ -195,7 +199,16 @@ export function KeywordChips({
                   onCommit={(next) => { onChange(replaceChipValue(keywords, kw, next)); setSplitOffer(null); }}
                 />
               );
-              return renderChip ? <span key={kw}>{renderChip(chip, kw)}</span> : chip;
+              const aside = chipAside?.(kw);
+              if (!renderChip && !aside) return chip;
+              // The aside sits beside the host's wrapper, never inside it: the wrapper is what a host anchors
+              // a chip popover to, and a control inside it would count as part of the chip.
+              return (
+                <span key={kw} className={aside ? 'inline-flex items-center' : undefined}>
+                  {renderChip ? renderChip(chip, kw) : chip}
+                  {aside}
+                </span>
+              );
             })}
           </StableSortableContext>
         </EditorDndContext>

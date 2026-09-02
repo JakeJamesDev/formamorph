@@ -112,47 +112,33 @@ export interface TraitConflict {
 }
 
 /**
- * For one trait, the targets another trait also claims — what the editor shows as a precedence note.
+ * For one trait, the stats another trait also switches — what the editor shows as a precedence note.
+ * Placeholder pins have their own note, read across every source by `pinConflict`.
  *
  * Traits that can never be active together are not a conflict, so exclusive siblings are excluded: a group
- * of mutually exclusive hair traits all pinning Hair Color is the intended shape, not a mistake.
+ * of mutually exclusive traits all switching one stat is the intended shape, not a mistake.
  */
 export function traitConflicts(
   trait: Trait,
   traits: Trait[],
   groups: TraitGroup[],
-): { stats: Record<string, TraitConflict>; placeholders: Record<string, TraitConflict> } {
+): { stats: Record<string, TraitConflict> } {
   const order = traitOrderIndex(traits, groups);
   const impossible = new Set(exclusiveSiblings(trait, traits, groups));
   const rivals = traits.filter((t) => t.id !== trait.id && !impossible.has(t.id));
   const rank = (t: Trait) => order.get(t.id) ?? Number.MAX_SAFE_INTEGER;
+  const claims = (t: Trait) => (t.statToggles ?? []).map((s) => s.statId);
 
-  const collect = (
-    mine: string[],
-    claims: (t: Trait) => string[],
-  ): Record<string, TraitConflict> => {
-    const out: Record<string, TraitConflict> = {};
-    for (const id of mine) {
-      const others = inAuthoredOrder(rivals.filter((t) => claims(t).includes(id)), order);
-      if (!others.length) continue;
-      out[id] = {
-        others: others.map((t) => ({ id: t.id, name: t.name })),
-        winsHere: others.every((t) => rank(t) < rank(trait)),
-      };
-    }
-    return out;
-  };
-
-  return {
-    stats: collect(
-      (trait.statToggles ?? []).map((s) => s.statId).filter(Boolean),
-      (t) => (t.statToggles ?? []).map((s) => s.statId),
-    ),
-    placeholders: collect(
-      (trait.placeholderPins ?? []).map((p) => p.placeholderId).filter(Boolean),
-      (t) => (t.placeholderPins ?? []).map((p) => p.placeholderId),
-    ),
-  };
+  const stats: Record<string, TraitConflict> = {};
+  for (const id of claims(trait).filter(Boolean)) {
+    const others = inAuthoredOrder(rivals.filter((t) => claims(t).includes(id)), order);
+    if (!others.length) continue;
+    stats[id] = {
+      others: others.map((t) => ({ id: t.id, name: t.name })),
+      winsHere: others.every((t) => rank(t) < rank(trait)),
+    };
+  }
+  return { stats };
 }
 
 /** One value-list edit that reads as a rename: the text a value held, and what replaced it. */

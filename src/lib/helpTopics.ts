@@ -270,7 +270,15 @@ The pinned value doesn't have to come from the placeholder's own list: the box s
 
 A value that is a chip pins that part — pin a Wildcard to the value holding *isAsian* and every chip of it takes that variant. The box names such a value after the part it holds, exactly as the Values list does, so you pick by the thing rather than by the words it joins to. A chip inside a longer value is prose, so that one reads as what it will resolve to.
 
-When two active traits pin the same placeholder, the one lower in the trait list wins — the row says so whenever that applies.`,
+When two active traits pin the same placeholder, the one lower in the trait list wins — the row says so whenever that applies. A location's pin outranks a trait's, and a stat band's outranks both; a placeholder value's pin sits under all three.`,
+  },
+  'worldEditor.locationPins': {
+    title: 'Placeholder Pins',
+    body: `Holds a placeholder at a fixed value while the player is here — the *Fen* pinning Weather to *fog*. The pin releases the moment the player leaves, and the playthrough's own roll shows through again. A sub-location does not inherit its parent's pins.
+
+The pinned value doesn't have to come from the placeholder's own list: the box suggests the authored values, but anything you type is used as written.
+
+A stat band's pin outranks a location's; a location's outranks a trait's and a placeholder value's. Two locations never compete, since only one is current at a time. The row says who wins whenever another source pins the same placeholder.`,
   },
   'worldEditor.placeholders': {
     title: 'Placeholders',

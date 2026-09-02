@@ -5,11 +5,13 @@
 // Precedence: descriptor > location > trait > value pin. Within traits the later one in the authored tree
 // wins; within one location or one band the later row wins.
 
-import type { GameLocation, Placeholder, PlaceholderPin, PlaceholderRolls, Stat, Trait } from '@/types';
-import { encodePlaceholderToken, pinText, placeholderIsChoice } from './placeholders';
+import type { GameLocation, Placeholder, PlaceholderPin, PlaceholderRolls, Stat, Trait, TraitGroup } from '@/types';
+import { encodePlaceholderToken, pinText, placeholderIsChoice, placeholderValueLine } from './placeholders';
+import type { PlaceholderOwners } from './placeholderHomes';
+import { labelPlaceholders, placeholderDisplayName, type PlacementLetters } from './placementLetters';
 import { activeDescriptor } from './statContext';
-import type { BandedStat } from './statDescriptorGeometry';
-import { activeStatEnabled } from './traitEffects';
+import { thresholdUnitOf, type BandedStat } from './statDescriptorGeometry';
+import { activeStatEnabled, exclusiveSiblings, inAuthoredOrder, traitOrderIndex } from './traitEffects';
 
 /** A stat as the descriptor source reads it: its bands and the value that picks one, plus the id and
  *  enabled flag that gate them. A live `PlayerStat` is one; so is an authored stat given its start value. */
@@ -215,4 +217,156 @@ export function withPinnedValue(
     .find((p) => p.id === pin.placeholderId)?.values?.find((v) => v.text === value)?.id;
   const { valueId: _drop, ...rest } = pin;
   return { ...rest, value, ...(valueId ? { valueId } : {}) };
+}
+
+// ---- The editor's view: every pin aimed at one placeholder, and who wins among them ----
+
+/** Where a pin lives. Enough to find the row again and, for a source with a name, to open it. */
+export type PinSourceRef =
+  | { kind: 'trait'; id: string }
+  | { kind: 'location'; id: string }
+  | { kind: 'descriptor'; statId: string; descriptorId: string | number }
+  | { kind: 'value'; placeholderId: string; valueId: string };
+
+export type PinSourceKind = PinSourceRef['kind'];
+
+/** One pin as the editor lists it. */
+export interface PinRow {
+  source: PinSourceRef;
+  pin: PlaceholderPin;
+  /** The source's authored name, chips kept, for a surface that draws them: a trait's or location's own
+   *  name, a band's stat, a value's placeholder. */
+  name: string;
+  /** The row as a plain-text surface reads it: `Trait: Sworn`, `Location: Fen`, `Hunger ≤ 20`,
+   *  `Region = Northern`. */
+  label: string;
+}
+
+/** The world as the pin editors read it. Only `placeholders` is required; a mock or a partial world may
+ *  carry any subset of the rest. */
+export interface PinEditorWorld {
+  traits?: readonly Trait[];
+  traitGroups?: readonly TraitGroup[];
+  locations?: readonly GameLocation[];
+  stats?: readonly Stat[];
+  placeholders: readonly Placeholder[];
+  placeholderOwners?: PlaceholderOwners;
+  placementLetters?: PlacementLetters;
+}
+
+/** Lower is stronger: a descriptor, then a location, then a trait, then a value pin. */
+const KIND_RANK: Record<PinSourceKind, number> = { descriptor: 0, location: 1, trait: 2, value: 3 };
+
+export function sameSource(a: PinSourceRef, b: PinSourceRef): boolean {
+  if (a.kind !== b.kind) return false;
+  switch (a.kind) {
+    case 'trait': case 'location': return a.id === (b as typeof a).id;
+    case 'descriptor': return a.statId === (b as typeof a).statId && a.descriptorId === (b as typeof a).descriptorId;
+    case 'value': return a.placeholderId === (b as typeof a).placeholderId && a.valueId === (b as typeof a).valueId;
+  }
+}
+
+/**
+ * Every pin any source aims at `placeholderId`, strongest kind first and in authored order within a kind.
+ * The rows are read-only views; the pin itself still lives on its source.
+ */
+export function pinsTargeting(world: PinEditorWorld, placeholderId: string): PinRow[] {
+  const { traits = [], traitGroups = [], locations = [], stats = [], placeholders, placeholderOwners: owners, placementLetters: letters } = world;
+  const text = (s: string) => labelPlaceholders(s, placeholders, letters, owners);
+  const rows: PinRow[] = [];
+  const push = (source: PinSourceRef, pins: readonly PlaceholderPin[] | undefined, name: string, label: string) => {
+    for (const pin of pins ?? []) if (pin.placeholderId === placeholderId) rows.push({ source, pin, name, label });
+  };
+
+  for (const stat of stats) {
+    const percent = thresholdUnitOf(stat) === 'percent' ? '%' : '';
+    for (const band of stat.descriptors ?? []) {
+      push({ kind: 'descriptor', statId: stat.id, descriptorId: band.id }, band.placeholderPins, stat.name, `${text(stat.name)} ≤ ${band.threshold}${percent}`);
+    }
+  }
+  for (const location of locations) {
+    push({ kind: 'location', id: location.id }, location.placeholderPins, location.name, `Location: ${text(location.name)}`);
+  }
+  for (const trait of inAuthoredOrder([...traits], traitOrderIndex([...traits], [...traitGroups]))) {
+    push({ kind: 'trait', id: trait.id }, trait.placeholderPins, trait.name, `Trait: ${text(trait.name)}`);
+  }
+  for (const ph of placeholders) {
+    const phName = placeholderDisplayName(ph.id, placeholders, letters, owners);
+    for (const value of ph.values ?? []) {
+      push({ kind: 'value', placeholderId: ph.id, valueId: value.id }, value.pins, ph.name, `${phName} = ${placeholderValueLine(text(value.text))}`);
+    }
+  }
+  return rows;
+}
+
+/** What a pin editor says under a row: the other pins that can be in force beside this source, and the one
+ *  the precedence rules pick. */
+export interface PinConflict {
+  /** Strongest kind first. */
+  rivals: PinRow[];
+  /** The rival that wins, or null when the source being edited does. */
+  winner: PinRow | null;
+  /** How it was decided: by kind (a band outranks a location, a location a trait, a trait a value pin), or
+   *  by order within one kind (the lowest in its list wins). */
+  rule: 'kind' | 'order';
+}
+
+/**
+ * The competition for `placeholderId` as seen from `source`. Pins that can never be in force together are
+ * no competition and are left out: two locations, two bands of one stat, two values of one Wildcard,
+ * exclusive trait siblings. Null when nothing else can claim the placeholder.
+ */
+export function pinConflict(world: PinEditorWorld, placeholderId: string, source: PinSourceRef): PinConflict | null {
+  const { traits = [], traitGroups = [], stats = [], placeholders } = world;
+  const rows = pinsTargeting(world, placeholderId);
+  const self = rows.find((r) => sameSource(r.source, source)) ?? null;
+
+  const exclusive = new Set<string>();
+  if (source.kind === 'trait') {
+    const trait = traits.find((t) => t.id === source.id);
+    if (trait) for (const id of exclusiveSiblings(trait, [...traits], [...traitGroups])) exclusive.add(id);
+  }
+  const sourcePlaceholder = source.kind === 'value' ? placeholders.find((p) => p.id === source.placeholderId) : undefined;
+  const neverTogether = (r: PinRow): boolean => {
+    const s = r.source;
+    if (s.kind !== source.kind) return false;
+    switch (s.kind) {
+      case 'location': return true;
+      case 'trait': return exclusive.has(s.id);
+      case 'descriptor': return s.statId === (source as typeof s).statId;
+      case 'value': return s.placeholderId === (source as typeof s).placeholderId && !!sourcePlaceholder && placeholderIsChoice(sourcePlaceholder);
+    }
+  };
+  const rivals = rows.filter((r) => !sameSource(r.source, source) && !neverTogether(r));
+  if (!rivals.length) return null;
+
+  // Within a kind, the later in its list lays its pin last and so wins — the same order `collectPins` walks.
+  const traitOrder = traitOrderIndex([...traits], [...traitGroups]);
+  const statIndex = new Map(stats.map((s, i) => [s.id, i]));
+  const phIndex = new Map(placeholders.map((p, i) => [p.id, i]));
+  const bandIndex = (s: Extract<PinSourceRef, { kind: 'descriptor' }>) =>
+    (stats.find((st) => st.id === s.statId)?.descriptors ?? []).findIndex((d) => d.id === s.descriptorId);
+  const valueIndex = (s: Extract<PinSourceRef, { kind: 'value' }>) =>
+    (placeholders.find((p) => p.id === s.placeholderId)?.values ?? []).findIndex((v) => v.id === s.valueId);
+  // Rows of one holder are spread by a stride, so a later holder outranks every row of an earlier one.
+  const STRIDE = 1e6;
+  const inKind = (s: PinSourceRef): number => {
+    switch (s.kind) {
+      case 'trait': return traitOrder.get(s.id) ?? -1;
+      case 'descriptor': return (statIndex.get(s.statId) ?? -1) * STRIDE + bandIndex(s);
+      case 'value': return (phIndex.get(s.placeholderId) ?? -1) * STRIDE + valueIndex(s);
+      case 'location': return 0;
+    }
+  };
+  const beats = (a: PinSourceRef, b: PinSourceRef): boolean =>
+    KIND_RANK[a.kind] !== KIND_RANK[b.kind] ? KIND_RANK[a.kind] < KIND_RANK[b.kind] : inKind(a) > inKind(b);
+
+  let strongest = rivals[0];
+  for (const r of rivals.slice(1)) if (beats(r.source, strongest.source)) strongest = r;
+  const winner = beats(strongest.source, self?.source ?? source) ? strongest : null;
+  // The rule is read from the source's side: what decided between the winner and the source, or, when the
+  // source wins, between it and the strongest rival.
+  const loser = winner ? source : strongest.source;
+  const rule = (winner?.source ?? source).kind === loser.kind ? 'order' : 'kind';
+  return { rivals, winner, rule };
 }

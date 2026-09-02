@@ -24,7 +24,7 @@ import { useBodyMorphSources } from "@/lib/useBodyMorphNames";
 import { boundMorphNamesExcluding, buildMorphGroups } from "@/lib/bodyMorphs";
 import { clamp } from "@/lib/utils";
 import { useEditorMode } from '@/lib/editorMode';
-import { StatDescriptorsSection } from './StatDescriptorsSection';
+import { StatDescriptorsSection, type DescriptorFieldValue } from './StatDescriptorsSection';
 import type { Stat, StatDescriptor, StatType, ThresholdUnit } from "@/types";
 
 /** The stat being edited — a loose, partial Stat while fields are filled in. */
@@ -99,7 +99,7 @@ const StatManager = ({ stat }: { stat: Stat }) => {
   const sortDescriptors = (descriptors: StatDescriptor[]) =>
     [...descriptors].sort((a, b) => Number(a.threshold) - Number(b.threshold));
 
-  const handleDescriptorChange = (index: number, field: string, value: string | number) => {
+  const handleDescriptorChange = (index: number, field: string, value: DescriptorFieldValue) => {
     const updatedDescriptors = [...(editingStat.descriptors || [])];
     updatedDescriptors[index] = {
       ...updatedDescriptors[index],
