@@ -44,3 +44,40 @@ describe('worldCatalog', () => {
     expect(out.map((w) => w.id)).toEqual(['a']);
   });
 });
+
+describe('the freshness tag', () => {
+  it('answers none before a catalog has ever been stored', async () => {
+    expect(await catalog.getCatalogTag()).toBeNull();
+  });
+
+  it('stores the tag beside the rows it describes', async () => {
+    await catalog.replaceCatalog([{ id: 'a' }], { tag: 'W/"abc"', reader: '42' });
+
+    expect(await catalog.getCatalogTag()).toEqual({ tag: 'W/"abc"', reader: '42' });
+    expect((await catalog.getCatalog()).map((w) => w.id)).toEqual(['a']);
+  });
+
+  it('replaces the old tag along with the rows', async () => {
+    await catalog.replaceCatalog([{ id: 'a' }], { tag: 'W/"old"', reader: '' });
+    await catalog.replaceCatalog([{ id: 'b' }], { tag: 'W/"new"', reader: '' });
+
+    expect(await catalog.getCatalogTag()).toEqual({ tag: 'W/"new"', reader: '' });
+  });
+
+  it('drops the tag when rows are stored without one, so it never describes a snapshot it did not come with', async () => {
+    await catalog.replaceCatalog([{ id: 'a' }], { tag: 'W/"abc"', reader: '' });
+
+    await catalog.replaceCatalog([{ id: 'b' }]);
+
+    expect(await catalog.getCatalogTag()).toBeNull();
+  });
+
+  it('forgets the tag when the catalog is emptied', async () => {
+    await catalog.replaceCatalog([{ id: 'a' }], { tag: 'W/"abc"', reader: '' });
+
+    await catalog.clearCatalog();
+
+    expect(await catalog.getCatalogTag()).toBeNull();
+    expect(await catalog.getCatalog()).toEqual([]);
+  });
+});

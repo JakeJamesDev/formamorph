@@ -27,6 +27,7 @@ import { usePersistentState, boolCodec } from "@/lib/usePersistentState";
 import { CHIP_BASE } from "@/components/Chip";
 import { useCatalogSync } from "@/lib/useCatalogSync";
 import { replaceCatalog, type CatalogWorld } from "@/lib/worldCatalog";
+import { useThumbnailPreload } from "@/lib/useCachedThumbnail";
 import { useContestWithdrawal } from "@/lib/useContestWithdrawal";
 import { useDownloadCoordinator } from "@/lib/useDownloadCoordinator";
 import { useLibraryDownload } from "@/lib/useLibraryDownload";
@@ -349,6 +350,13 @@ const CommunityCreationsBrowser = ({
     currentUser?.id ? String(currentUser.id) : undefined,
     browseTab === 'contest' ? contestOrder : undefined,
   );
+
+  // One read for the whole page's stored thumbnails, so a page of seen cards paints together rather
+  // than opening a database read per card.
+  useThumbnailPreload(pagedRemoteWorlds.map((w) => ({
+    file: w.thumbnail_file as string | null | undefined,
+    updatedAt: w.updated_at as string | null | undefined,
+  })));
 
   /** Whether anything is narrowing the grid — what tells an empty result from an empty catalog. */
   const anyFilterApplied = Boolean(searchQuery) || activeFilterCount > 0;

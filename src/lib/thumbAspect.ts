@@ -13,6 +13,15 @@ export const THUMB_RATIO: Record<ThumbAspect, number> = {
   portrait: 2 / 3,
 };
 
+/**
+ * Width and height attributes for an `img`, so the browser reserves the right box before the picture
+ * arrives and a grid of loading thumbnails does not shift as they land.
+ */
+export const THUMB_INTRINSIC: Record<ThumbAspect, { width: number; height: number }> = {
+  landscape: { width: 640, height: 360 },
+  portrait: { width: 480, height: 720 },
+};
+
 /** The same frames as classes, for surfaces that size in CSS. */
 export const THUMB_FRAME: Record<ThumbAspect, string> = {
   landscape: 'aspect-video',

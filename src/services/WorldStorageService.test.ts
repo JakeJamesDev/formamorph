@@ -737,3 +737,74 @@ describe('the listing changelog', () => {
     expect(init.method).toBe('DELETE');
   });
 });
+
+describe('fetchCatalog', () => {
+  /** A response with headers, so the tag the server sets is readable the way a real one is. */
+  const catalogRes = (body: unknown, status = 200, etag?: string): Response =>
+    ({
+      ok: status >= 200 && status < 300,
+      status,
+      headers: new Headers(etag ? { ETag: etag } : {}),
+      json: async () => body,
+    } as unknown as Response);
+
+  it('sends no conditional header and no cache bypass without a tag', async () => {
+    vi.mocked(fetch).mockResolvedValue(catalogRes({ data: [{ id: 'w1' }] }));
+
+    await WorldStorageService.fetchCatalog();
+
+    const [, init] = vi.mocked(fetch).mock.calls[0] as [string, RequestInit];
+    expect((init.headers as Record<string, string>)['If-None-Match']).toBeUndefined();
+    expect(init.cache).toBeUndefined();
+  });
+
+  it('sends the tag and bypasses the browser cache, so a 304 reaches the app', async () => {
+    vi.mocked(fetch).mockResolvedValue(catalogRes(null, 304));
+
+    await WorldStorageService.fetchCatalog('W/"abc"');
+
+    const [, init] = vi.mocked(fetch).mock.calls[0] as [string, RequestInit];
+    expect((init.headers as Record<string, string>)['If-None-Match']).toBe('W/"abc"');
+    // Not 'reload': that sends Cache-Control: no-cache, which the server answers 200 to whatever the
+    // tag says, so the conditional request would be off with nothing to show for it.
+    expect(init.cache).toBe('no-store');
+  });
+
+  it('answers unchanged on a 304 rather than throwing', async () => {
+    vi.mocked(fetch).mockResolvedValue(catalogRes(null, 304));
+
+    expect(await WorldStorageService.fetchCatalog('W/"abc"')).toEqual({ status: 'unchanged' });
+  });
+
+  it('answers fresh with the rows and the tag the response carries', async () => {
+    vi.mocked(fetch).mockResolvedValue(catalogRes({ data: [{ id: 'w1' }] }, 200, 'W/"new"'));
+
+    expect(await WorldStorageService.fetchCatalog()).toEqual({
+      status: 'fresh', data: [{ id: 'w1' }], tag: 'W/"new"',
+    });
+  });
+
+  it('answers fresh with no tag when the server exposes none', async () => {
+    vi.mocked(fetch).mockResolvedValue(catalogRes({ data: [{ id: 'w1' }] }));
+
+    expect(await WorldStorageService.fetchCatalog()).toEqual({
+      status: 'fresh', data: [{ id: 'w1' }], tag: null,
+    });
+  });
+
+  it('asks for every kind in one request', async () => {
+    vi.mocked(fetch).mockResolvedValue(catalogRes({ data: [] }));
+
+    await WorldStorageService.fetchCatalog();
+
+    const url = vi.mocked(fetch).mock.calls[0][0] as string;
+    expect(url).toContain('limit=1000');
+    expect(url).toContain('kind=all');
+  });
+
+  it('answers with the error rather than throwing when the request fails', async () => {
+    vi.mocked(fetch).mockRejectedValue(new Error('offline'));
+
+    expect(await WorldStorageService.fetchCatalog()).toEqual({ status: 'error', error: 'offline' });
+  });
+});
