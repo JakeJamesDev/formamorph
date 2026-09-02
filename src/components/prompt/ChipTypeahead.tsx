@@ -12,7 +12,8 @@ import { CHIP_BASE } from '@/components/Chip';
 import { cn } from '@/lib/utils';
 import { useWheelScroll } from '@/lib/useWheelScroll';
 import { PLACEHOLDER_PATH_SEPARATOR } from '@/lib/placeholders';
-import { chipRowMatches, chipSectionOpens, type ChipVocabulary } from '@/lib/chipVocabulary';
+import { chipRowMatches, chipSectionOpens, type ChipRow, type ChipVocabulary } from '@/lib/chipVocabulary';
+import ChipRowHeading from './ChipRowHeading';
 import { $createVariableNode } from './VariableNode';
 
 /**
@@ -34,12 +35,7 @@ import { $createVariableNode } from './VariableNode';
 const MAX_QUERY = 32;
 
 /** One offered token, plus whether walking into it would show anything. */
-interface Row {
-  token: string;
-  label: string;
-  color?: string;
-  /** The section the root menu lists it under, drawn where it changes — see `ChipRow.heading`. */
-  heading?: string;
+interface Row extends ChipRow {
   nests: boolean;
 }
 
@@ -296,7 +292,7 @@ export function ChipTypeaheadPlugin({ trigger, vocab }: {
           return (
           <Fragment key={item.token}>
           {opens && item.heading && (
-            <div className="px-1.5 pb-0.5 pt-1.5 text-meta text-muted-foreground">{item.heading}</div>
+            <div className="px-1.5 pb-0.5 pt-1.5"><ChipRowHeading row={item} /></div>
           )}
           {opens && i > 0 && !item.heading && <div className="my-1 border-t border-border" />}
           <div className={cn('flex items-center rounded', i === index && 'bg-accent')}>

@@ -303,6 +303,40 @@ export function placeholderVocabulary(
     return chipPathName(d, placeholders, { relativeTo: ownerId, missing: MISSING_NAME, owners, letters }) ?? MISSING_NAME;
   };
   const paletteToken = (p: Placeholder) => encodePlaceholderToken({ id: p.id, mode: 'world', placementId: PALETTE_PID });
+  /**
+   * `list` as the sectioned rows every placeholder-choosing surface draws: the loose shared ones first
+   * under no heading, then each folder in tree order under its path, then each owner's under the owner's
+   * name. Inside an owner's fields its own section comes first. `name` reads one row, told whether an
+   * owner's heading already says whose it is.
+   */
+  const sectionedRows = (
+    list: readonly Placeholder[],
+    name: (placeholder: Placeholder, underOwner: boolean) => string,
+    extra?: (placeholder: Placeholder) => Pick<ChipRow, 'owned'>,
+  ): ChipRow[] => {
+    const folders = placeholderGroupsInTreeOrder(groups ?? []);
+    const folderRank = new Map(folders.map((f, i) => [f.group.id, { rank: i + 1, heading: f.heading }]));
+    const ownerRank = new Map<string, number>();
+    const rows = list.map((p) => {
+      const owner = owners?.get(p.id);
+      const folder = owner ? undefined : folderRank.get(placeholderGroupOf(groups ?? [], p) ?? '');
+      if (owner && !ownerRank.has(owner.id)) ownerRank.set(owner.id, folders.length + 1 + ownerRank.size);
+      const heading = owner ? labelPlaceholders(owner.name, placeholders, { letters }) : folder?.heading;
+      const row: ChipRow = {
+        token: paletteToken(p),
+        label: name(p, !!owner),
+        color: placeholderAccent(p.id),
+        ...(heading ? { heading } : {}),
+        ...(owner
+          ? { headingKind: 'owner' as const, ownerKind: owner.kind, ownerId: owner.id, ownerName: owner.name }
+          : heading ? { headingKind: 'folder' as const } : {}),
+        ...extra?.(p),
+      };
+      return { row, rank: (owner ? ownerRank.get(owner.id) : folder?.rank) ?? 0, mine: !!scope && owner?.id === scope.id };
+    });
+    // A stable sort: within a section, rows keep the list's own order.
+    return rows.sort((a, b) => Number(b.mine) - Number(a.mine) || a.rank - b.rank).map((r) => r.row);
+  };
   return {
     rename: onRename && ((token, next) => {
       const id = decodePlaceholderToken(token)?.id;
@@ -370,38 +404,22 @@ export function placeholderVocabulary(
     // sections: the loose shared placeholders first under no heading, then each folder in tree order under
     // its path, then each owner's scoped placeholders under the owner's name. Inside an owner's fields its
     // own section comes first.
-    palette: () => {
-      const folders = placeholderGroupsInTreeOrder(groups ?? []);
-      const folderRank = new Map(folders.map((f, i) => [f.group.id, { rank: i + 1, heading: f.heading }]));
-      const ownerRank = new Map<string, number>();
-      const rows = topLevelPlaceholders(placeholders).map((p) => {
-        const owner = owners?.get(p.id);
-        const folder = owner ? undefined : folderRank.get(placeholderGroupOf(groups ?? [], p) ?? '');
-        if (owner && !ownerRank.has(owner.id)) ownerRank.set(owner.id, folders.length + 1 + ownerRank.size);
-        const heading = owner ? labelPlaceholders(owner.name, placeholders, { letters }) : folder?.heading;
-        const row: ChipRow = {
-          token: paletteToken(p),
-          // Under its owner's heading a row reads bare: the heading already says whose it is, so a
-          // section of ten does not repeat the owner's name ten times.
-          label: owner ? p.name : `${prefixFor(p.id)}${p.name}`,
-          color: placeholderAccent(p.id),
-          ...(heading ? { heading } : {}),
-          ...(owner
-            ? { headingKind: 'owner' as const, ownerKind: owner.kind, ownerId: owner.id, ownerName: owner.name }
-            : heading ? { headingKind: 'folder' as const } : {}),
-        };
-        return { row, rank: (owner ? ownerRank.get(owner.id) : folder?.rank) ?? 0, mine: !!scope && owner?.id === scope.id };
-      });
-      // A stable sort: within a section, rows keep the list's own order.
-      return rows.sort((a, b) => Number(b.mine) - Number(a.mine) || a.rank - b.rank).map((r) => r.row);
-    },
-    allRows: () =>
-      placeholders.map((p) => ({
-        token: paletteToken(p),
-        label: `${prefixFor(p.id)}${qualifiedPlaceholderName(placeholders, p.id) ?? p.name}`,
-        color: placeholderAccent(p.id),
-        owned: isOwnedPlaceholder(placeholders, p.id),
-      })),
+    // Under its owner's heading a row reads bare: the heading already says whose it is, so a section of
+    // ten does not repeat the owner's name ten times.
+    palette: () => sectionedRows(
+      topLevelPlaceholders(placeholders),
+      (p, underOwner) => (underOwner ? p.name : `${prefixFor(p.id)}${p.name}`),
+    ),
+    // The same sections, plus what one placeholder owns — a picker looking a name up needs the owned rows
+    // too, and each keeps the holder chain that tells it from a root of the same name.
+    allRows: () => sectionedRows(
+      placeholders,
+      (p, underOwner) => {
+        const qualified = qualifiedPlaceholderName(placeholders, p.id) ?? p.name;
+        return underOwner ? qualified : `${prefixFor(p.id)}${qualified}`;
+      },
+      (p) => ({ owned: isOwnedPlaceholder(placeholders, p.id) }),
+    ),
     freshInsertToken: (t) => {
       const d = decodePlaceholderToken(t);
       return d ? encodePlaceholderToken({ ...d, placementId: randomUUID() }) : t;

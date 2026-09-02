@@ -5,6 +5,7 @@ import userEvent from '@testing-library/user-event';
 import ChipInput from './ChipInput';
 import { usePlaceholderChipVocabulary } from '@/lib/chipVocabulary';
 import { PlaceholderStoreProvider, placeholderStore } from '@/contexts/PlaceholderStoreContext';
+import { allPlaceholders, placeholderOwners } from '@/lib/placeholderHomes';
 import { decodePlaceholderToken, encodePlaceholderToken } from '@/lib/placeholders';
 import type { Placeholder } from '@/types';
 
@@ -403,5 +404,84 @@ describe('ChipTypeahead — owned placeholders', () => {
     await open('Southern');
     expect(screen.getByTestId('chip-typeahead-create')).toHaveTextContent('New Placeholder "Southern"');
     expect(screen.getByTestId('chip-typeahead-create')).not.toHaveTextContent(' in ');
+  });
+});
+
+/**
+ * A section of an entity's or a book's own placeholders is headed by that owner, exactly as the palette
+ * bar heads it: quiet text with the owner's icon, wearing no chip of its own, and the rows under it bare.
+ * The whole path is still what the author types to find one.
+ */
+describe('ChipTypeahead — owner headings', () => {
+  const mood: Placeholder = { id: 'mood', name: 'Mood', values: phValues(['sour']) };
+  const town: Placeholder = { id: 'town', name: 'Town', values: phValues(['Sedge']) };
+
+  /** The field over a world whose entity or book carries Mood, with the owner named as authored. */
+  function OwnedHarness({ ownerName, kind = 'entities' }: { ownerName: string; kind?: 'entities' | 'dictionaries' }) {
+    const [value, setValue] = useState('.');
+    const lists = useMemo(() => ({
+      placeholders: [town], placeholderGroups: [], entities: [], dictionaries: [],
+      [kind]: [{ id: 'keeper', name: ownerName, placeholders: [mood] }],
+    }), [ownerName, kind]);
+    const all = useMemo(() => allPlaceholders(lists), [lists]);
+    const store = useMemo(() => ({ ...placeholderStore(all, () => {}), lists, owners: placeholderOwners(lists) }), [all, lists]);
+    return (
+      <PlaceholderStoreProvider value={store}>
+        <Field value={value} onChange={setValue} placeholders={all} />
+      </PlaceholderStoreProvider>
+    );
+  }
+
+  const heading = (name: string) => screen.getByRole('img', { name }).parentElement!;
+
+  it('heads the owner’s rows with its name and the entity icon, and reads them bare', async () => {
+    render(<OwnedHarness ownerName="Keeper" />);
+    await open();
+    // The name is what a reader hears; the shape is what an author sees. Both, or a swapped icon passes.
+    expect(screen.getByRole('img', { name: 'Entity' })).toHaveClass('lucide-user');
+    expect(heading('Entity')).toHaveTextContent('Keeper');
+    expect(offered()).toEqual(['Town', 'Mood']);
+  });
+
+  it('carries the book icon for a dictionary owner', async () => {
+    render(<OwnedHarness ownerName="Fen" kind="dictionaries" />);
+    await open();
+    expect(screen.getByRole('img', { name: 'Dictionary' })).toHaveClass('lucide-book-open');
+    expect(heading('Dictionary')).toHaveTextContent('Fen');
+  });
+
+  it('wears no chip surface, so a heading never looks like something to insert', async () => {
+    render(<OwnedHarness ownerName="Keeper" />);
+    await open();
+    const head = heading('Entity');
+    expect(head).toHaveClass('text-meta', 'text-muted-foreground');
+    expect([...head.classList].filter((c) => c.startsWith('bg-') || c === 'border')).toEqual([]);
+  });
+
+  it('draws an owner named with a placeholder as a neutral pill, not the accent the row wears', async () => {
+    render(<OwnedHarness ownerName={`Ma ${chip('town')}`} />);
+    await open();
+    const pill = heading('Entity').querySelector<HTMLElement>('[data-chip-token]')!;
+    expect(pill).toHaveTextContent('Town');
+    // Accented, it would read as a chip waiting to be inserted — which the row below it actually is.
+    expect(pill.style.backgroundColor).toBe('');
+    const row = screen.getAllByTestId('chip-typeahead-row').find((b) => b.textContent === 'Town')!;
+    expect(row.querySelector<HTMLElement>('span')!.style.backgroundColor).not.toBe('');
+  });
+
+  it('finds a bare row by its whole path, however the author spells the separator', async () => {
+    for (const query of ['keeper.mood', 'keeper mood', 'keeper>mood', 'keeper › mood']) {
+      const view = render(<OwnedHarness ownerName="Keeper" />);
+      await open(query);
+      expect(offered(), query).toEqual(['Mood']);
+      view.unmount();
+    }
+  });
+
+  it('leaves a folder heading as text, which is what tells it from an owner’s', async () => {
+    render(<GroupedHarness />);
+    await open();
+    expect(within(menu()!).getByText('Looks')).toBeInTheDocument();
+    expect(screen.queryByRole('img', { name: 'Entity' })).not.toBeInTheDocument();
   });
 });

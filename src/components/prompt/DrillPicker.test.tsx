@@ -5,6 +5,7 @@ import userEvent from '@testing-library/user-event';
 import ChipInput from './ChipInput';
 import { usePlaceholderChipVocabulary } from '@/lib/chipVocabulary';
 import { PlaceholderStoreProvider, placeholderStore } from '@/contexts/PlaceholderStoreContext';
+import { allPlaceholders, placeholderOwners } from '@/lib/placeholderHomes';
 import { decodePlaceholderToken, encodePlaceholderToken } from '@/lib/placeholders';
 import type { Placeholder } from '@/types';
 
@@ -343,5 +344,115 @@ describe('DrillPicker — an owned target', () => {
     await user.click(within(picker()).getByRole('button', { name: 'Drill Into Molly' }));
     await user.click(within(picker()).getAllByTestId('drill-picker-row')[0]);
     expect(decodePlaceholderToken(value())?.path).toEqual([{ kind: 'val', ref: 'white' }]);
+  });
+});
+
+/**
+ * The root list is sectioned like every other placeholder surface: an entity's or a book's own rows sit
+ * under a heading of quiet text and that owner's icon, and read bare because the heading says whose they
+ * are. The whole path is still what the author types to find one.
+ */
+describe('DrillPicker — owner headings', () => {
+  const mood: Placeholder = { id: 'mood', name: 'Mood', values: phValues(['sour']) };
+  const town: Placeholder = { id: 'town', name: 'Town', values: phValues(['Sedge']) };
+
+  /** A placed Town chip in a world whose entity or book carries Mood, the owner named as authored. */
+  function mount(ownerName: string, kind: 'entities' | 'dictionaries' = 'entities') {
+    const lists = {
+      placeholders: [town], placeholderGroups: [], entities: [], dictionaries: [],
+      [kind]: [{ id: 'keeper', name: ownerName, placeholders: [mood] }],
+    };
+    const all = allPlaceholders(lists);
+    const store = { ...placeholderStore(all, () => {}), lists, owners: placeholderOwners(lists) };
+    function OwnedHarness() {
+      const [text, setText] = useState(chip('town'));
+      return (
+        <PlaceholderStoreProvider value={store}>
+          <Field value={text} onChange={setText} placeholders={all} />
+          <div data-testid="value">{text}</div>
+        </PlaceholderStoreProvider>
+      );
+    }
+    render(<OwnedHarness />);
+  }
+
+  const heading = (name: string) => within(picker()).getByRole('img', { name }).parentElement!;
+  /** Open the placed chip's picker and back out to the whole world, which is the sectioned list. */
+  async function toRoot(user: ReturnType<typeof userEvent.setup>) {
+    await openPicker(user, 'Town');
+    await user.click(within(picker()).getByRole('button', { name: 'All Placeholders' }));
+  }
+
+  it('heads the owner’s rows with its name and the entity icon, and reads them bare', async () => {
+    const user = userEvent.setup();
+    mount('Keeper');
+    await toRoot(user);
+    // The name is what a reader hears; the shape is what an author sees. Both, or a swapped icon passes.
+    expect(within(picker()).getByRole('img', { name: 'Entity' })).toHaveClass('lucide-user');
+    expect(heading('Entity')).toHaveTextContent('Keeper');
+    expect(rowNames()).toEqual(['Town', 'Mood']);
+  });
+
+  it('carries the book icon for a dictionary owner', async () => {
+    const user = userEvent.setup();
+    mount('Fen', 'dictionaries');
+    await toRoot(user);
+    expect(within(picker()).getByRole('img', { name: 'Dictionary' })).toHaveClass('lucide-book-open');
+    expect(heading('Dictionary')).toHaveTextContent('Fen');
+  });
+
+  it('wears no chip surface, so a heading never looks like something to pick', async () => {
+    const user = userEvent.setup();
+    mount('Keeper');
+    await toRoot(user);
+    const head = heading('Entity');
+    expect(head).toHaveClass('text-meta', 'text-muted-foreground');
+    expect([...head.classList].filter((c) => c.startsWith('bg-') || c === 'border')).toEqual([]);
+  });
+
+  it('draws an owner named with a placeholder as a neutral pill, not the accent the row wears', async () => {
+    const user = userEvent.setup();
+    mount(`Ma ${chip('town')}`);
+    await toRoot(user);
+    const pill = heading('Entity').querySelector<HTMLElement>('[data-chip-token]')!;
+    expect(pill).toHaveTextContent('Town');
+    // Accented, it would read as a row to aim the chip at — which the row below it actually is.
+    expect(pill.style.backgroundColor).toBe('');
+    const row = within(picker()).getAllByTestId('drill-picker-row').find((b) => b.textContent === 'Town')!;
+    expect(row.querySelector<HTMLElement>('span')!.style.backgroundColor).not.toBe('');
+  });
+
+  it('finds a bare row by its whole path, however the author spells the separator', async () => {
+    const user = userEvent.setup();
+    mount('Keeper');
+    await toRoot(user);
+    const box = within(picker()).getByLabelText('Filter Placeholders');
+    for (const query of ['keeper.mood', 'keeper mood', 'keeper>mood', 'keeper › mood']) {
+      await user.clear(box);
+      await user.type(box, query);
+      expect(rowNames(), query).toEqual(['Mood']);
+    }
+  });
+
+  it('leaves a folder heading as text, which is what tells it from an owner’s', async () => {
+    const user = userEvent.setup();
+    const lists = {
+      placeholders: [town, { ...mood, groupId: 'looks' }],
+      placeholderGroups: [{ id: 'looks', name: 'Looks', parentId: null }], entities: [], dictionaries: [],
+    };
+    const all = allPlaceholders(lists);
+    const store = { ...placeholderStore(all, () => {}), lists, owners: placeholderOwners(lists) };
+    function Foldered() {
+      const [text, setText] = useState(chip('town'));
+      return (
+        <PlaceholderStoreProvider value={store}>
+          <Field value={text} onChange={setText} placeholders={all} />
+        </PlaceholderStoreProvider>
+      );
+    }
+    render(<Foldered />);
+    await toRoot(user);
+    expect(within(picker()).getByText('Looks')).toBeInTheDocument();
+    expect(within(picker()).queryByRole('img', { name: 'Entity' })).not.toBeInTheDocument();
   });
 });

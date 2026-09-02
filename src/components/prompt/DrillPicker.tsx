@@ -1,11 +1,12 @@
-import { useState } from 'react';
+import { Fragment, useState } from 'react';
 import { AlertTriangle, Lock } from 'lucide-react';
 import { CHIP_BASE } from '@/components/Chip';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useWheelScroll } from '@/lib/useWheelScroll';
 import { cn } from '@/lib/utils';
-import type { ChipRow, ChipVocabulary } from '@/lib/chipVocabulary';
+import { chipRowMatches, chipSectionOpens, type ChipRow, type ChipVocabulary } from '@/lib/chipVocabulary';
+import ChipRowHeading from './ChipRowHeading';
 
 /**
  * Re-aim a placed chip by walking what its family holds. Two kinds of step are on offer and they resolve
@@ -91,9 +92,11 @@ const DrillPicker = ({ vocab, token, onPick }: {
 
   const structure = at ? vocab.structure?.(at) ?? null : null;
   const held = at ? vocab.drill?.(at) ?? [] : vocab.allRows?.() ?? vocab.palette();
-  const match = (label: string) => label.toLowerCase().includes(filter.trim().toLowerCase());
-  const rows = held.filter((r) => match(r.label));
-  const slots = (structure?.slots ?? []).filter((s) => match(s.label));
+  // A row reading bare under its owner's heading still answers to the whole `Keeper › Mood`, spelled with
+  // whichever separator the author's keyboard has.
+  const query = filter.trim();
+  const rows = held.filter((r) => chipRowMatches(r, query));
+  const slots = (structure?.slots ?? []).filter((s) => chipRowMatches(s, query));
   // Offered at the root only, exactly as the `{` menu offers it: inside a level a new placeholder is no part
   // of that level, so aiming the chip at one would silently drop the path the author walked.
   const newName = vocab.create && !at ? filter.trim() : '';
@@ -160,14 +163,21 @@ const DrillPicker = ({ vocab, token, onPick }: {
         {!!rows.length && (
           <div>
             <p className="px-1.5 text-meta font-medium">{structure?.holdsLabel ?? 'Placeholders'}</p>
-            {rows.map((row) => (
-              <PickerRow
-                key={row.token}
-                row={row}
-                note={row.owned ? 'owned' : undefined}
-                onPick={() => pick(row)}
-                onDrill={(vocab.drill?.(row.token) ?? []).length ? () => walk(row.token) : undefined}
-              />
+            {/* The root comes sectioned — loose, then each folder, then each owner. A heading is drawn off
+                the first row under it, so a section the filter emptied shows none. A level's own rows carry
+                no heading, and this draws nothing for them. */}
+            {rows.map((row, i) => (
+              <Fragment key={row.token}>
+                {chipSectionOpens(rows, i) && row.heading && (
+                  <div className="px-1.5 pb-0.5 pt-1.5"><ChipRowHeading row={row} /></div>
+                )}
+                <PickerRow
+                  row={row}
+                  note={row.owned ? 'owned' : undefined}
+                  onPick={() => pick(row)}
+                  onDrill={(vocab.drill?.(row.token) ?? []).length ? () => walk(row.token) : undefined}
+                />
+              </Fragment>
             ))}
           </div>
         )}
