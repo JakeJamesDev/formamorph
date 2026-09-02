@@ -292,6 +292,7 @@ export function PodiumDialog({ open, onOpenChange, contest, onSaved }: PodiumDia
                           updatedAt={entry.updatedAt}
                           alt=""
                           className={cn('h-full w-full', thumbFit('landscape'))}
+                          aspect="landscape"
                         />
                       ) : entry.thumbnail ? (
                         <img src={entry.thumbnail} alt="" className={cn('h-full w-full', thumbFit('landscape'))} />

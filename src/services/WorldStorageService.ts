@@ -10,6 +10,15 @@ import { readDeletedDefaultWorlds, tombstoneDefaultWorld, type DefaultWorldSeed 
 import { changelogOf, type ChangelogDraft, type ChangelogEntry } from '@/lib/listingChangelog';
 import type { LikerRow, WorldMetadata } from '@/types';
 
+/**
+ * What a conditional catalog fetch answers with: a fresh snapshot and the tag to store beside it, the
+ * word that the local copy still stands, or the error that stopped the request.
+ */
+export type CatalogFetch =
+  | { status: 'fresh'; data: unknown[]; tag: string | null }
+  | { status: 'unchanged' }
+  | { status: 'error'; error: string };
+
 /** The publish refused because this author already has an entry in the contest. */
 export const CONTEST_ALREADY_ENTERED = 'CONTEST_ALREADY_ENTERED';
 
@@ -423,6 +432,42 @@ class WorldStorageService {
     // Deleting a default is permanent: without this the next seed pass sees it missing and re-creates it.
     // A no-op for any non-default id.
     tombstoneDefaultWorld(worldId);
+  }
+
+  /**
+   * Fetch the whole community catalog, conditionally.
+   *
+   * Given the tag the local copy was fetched with, the request carries `If-None-Match` and bypasses the
+   * browser's own HTTP cache, so a `304` reaches the caller rather than being answered as a `200` from
+   * store. A server that answers no tag at all leaves the caller storing none, and the next open asks
+   * unconditionally — which is exactly what shipped before. The bypass has to leave the request's own
+   * cache headers alone; see the comment on it.
+   *
+   * @param tag - The tag the stored catalog carries, when there is one worth sending back
+   * @returns The rows and the new tag, the word that nothing changed, or the error that stopped it
+   */
+  async fetchCatalog(tag?: string | null): Promise<CatalogFetch> {
+    try {
+      const headers: Record<string, string> = {};
+      if (AuthService.isAuthenticated()) {
+        headers['Authorization'] = `Bearer ${AuthService.token}`;
+      }
+      // `no-store` and not `reload`: `reload` sends `Cache-Control: no-cache`, which the server reads
+      // as an end-to-end reload and answers `200` with the whole body however well the tag matches.
+      const init: RequestInit = tag
+        ? { headers: { ...headers, 'If-None-Match': tag }, cache: 'no-store' }
+        : { headers };
+
+      const response = await fetch(`${this.API_URL}/worlds?page=1&limit=1000&kind=all`, init);
+      if (response.status === 304) return { status: 'unchanged' };
+      if (!response.ok) throw new Error('Failed to fetch worlds');
+
+      const body = await response.json();
+      return { status: 'fresh', data: body.data || [], tag: response.headers.get('ETag') };
+    } catch (error) {
+      console.error('Error fetching the world catalog:', error);
+      return { status: 'error', error: (error as Error).message };
+    }
   }
 
   /** Fetch a page of community worlds with optional search/sort; `ownedOnly` switches to the caller's own

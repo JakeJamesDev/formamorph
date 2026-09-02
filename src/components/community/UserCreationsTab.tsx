@@ -149,6 +149,7 @@ export function UserCreationsTab({ userId, username, onOpenListing }: UserCreati
                     updatedAt={item.updatedAt}
                     alt={item.name}
                     className={cn('h-full w-full', thumbFit(item.kind === 'entity' ? 'portrait' : 'landscape'))}
+                    aspect={item.kind === 'entity' ? 'portrait' : 'landscape'}
                   />
                 )}
               </div>

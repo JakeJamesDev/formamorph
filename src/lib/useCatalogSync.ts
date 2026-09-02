@@ -1,10 +1,18 @@
 import { useState, useEffect } from "react";
 import { toast } from "react-toastify";
 import WorldStorageService from "@/services/WorldStorageService";
-import { getCatalog, replaceCatalog } from "@/lib/worldCatalog";
+import AuthService from "@/services/AuthService";
+import { getCatalog, getCatalogTag, replaceCatalog } from "@/lib/worldCatalog";
 import { COMMUNITY_ENABLED } from "@/lib/featureFlags";
 import { isAgeAttested } from "@/lib/ageGate";
 import { type WorldRecord } from "@/components/WorldDetails";
+import { type CatalogWorld } from "@/lib/worldCatalog";
+
+/** Who the catalog in hand belongs to: a signed-in reader's id, or the empty string for anonymous. */
+const currentReader = (): string => {
+  const id = AuthService.currentUser?.id;
+  return AuthService.isAuthenticated() && id != null ? String(id) : '';
+};
 
 /**
  * Owns the community catalog: the cached list of published items plus its loading/syncing flags.
@@ -33,15 +41,25 @@ export function useCatalogSync(open: boolean) {
         setIsLoadingRemoteWorlds(true);
       }
       setIsSyncingCatalog(true);
+
+      // The tag is only worth sending back while the same reader is asking: liked marks and the
+      // listings a reader can see are their own, so another reader's tag would name another reader's
+      // catalog. A forced refresh sends none — it is asking for the list again on purpose.
+      const reader = currentReader();
+      const stored = cached.length ? await getCatalogTag() : null;
+      const tag = !force && stored && stored.reader === reader ? stored.tag : null;
+
       // One request returns the entire catalog, every kind; replace the cache wholesale (which also drops
       // anything removed server-side).
-      const result = await WorldStorageService.fetchRemoteWorlds(1, 1000, '', false, false, '', 'desc', 'all');
-      if (result.success && Array.isArray(result.data)) {
-        setRemoteWorlds(result.data);
-        await replaceCatalog(result.data);
-      } else if (!cached.length) {
+      const result = await WorldStorageService.fetchCatalog(tag);
+      if (result.status === 'fresh') {
+        setRemoteWorlds(result.data as WorldRecord[]);
+        await replaceCatalog(result.data as CatalogWorld[], result.tag ? { tag: result.tag, reader } : null);
+      } else if (result.status === 'error' && !cached.length) {
         toast.error(result.error || 'Failed to fetch worlds');
       }
+      // 'unchanged': the rows already rendered are the answer. Nothing is written, and the tag beside
+      // them still describes them.
     } catch (error) {
       console.error('Error loading world catalog:', error);
     } finally {
