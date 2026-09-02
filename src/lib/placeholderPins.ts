@@ -5,7 +5,9 @@
 // Precedence: descriptor > location > trait > value pin. Within traits the later one in the authored tree
 // wins; within one location or one band the later row wins.
 
-import type { GameLocation, Placeholder, PlaceholderPin, PlaceholderRolls, Stat, Trait, TraitGroup } from '@/types';
+import type {
+  GameLocation, Placeholder, PlaceholderPin, PlaceholderRolls, PlaceholderValue, Stat, StatDescriptor, Trait, TraitGroup,
+} from '@/types';
 import { encodePlaceholderToken, pinText, placeholderIsChoice, placeholderValueLine } from './placeholders';
 import type { PlaceholderOwners } from './placeholderHomes';
 import { labelPlaceholders, placeholderDisplayName, type PlacementLetters } from './placementLetters';
@@ -271,32 +273,44 @@ export function sameSource(a: PinSourceRef, b: PinSourceRef): boolean {
  * The rows are read-only views; the pin itself still lives on its source.
  */
 export function pinsTargeting(world: PinEditorWorld, placeholderId: string): PinRow[] {
-  const { traits = [], traitGroups = [], locations = [], stats = [], placeholders, placeholderOwners: owners, placementLetters: letters } = world;
-  const text = (s: string) => labelPlaceholders(s, placeholders, letters, owners);
+  const { traits = [], traitGroups = [], locations = [], stats = [], placeholders } = world;
+  const name = labeler(world);
   const rows: PinRow[] = [];
   const push = (source: PinSourceRef, pins: readonly PlaceholderPin[] | undefined, name: string, label: string) => {
     for (const pin of pins ?? []) if (pin.placeholderId === placeholderId) rows.push({ source, pin, name, label });
   };
 
   for (const stat of stats) {
-    const percent = thresholdUnitOf(stat) === 'percent' ? '%' : '';
     for (const band of stat.descriptors ?? []) {
-      push({ kind: 'descriptor', statId: stat.id, descriptorId: band.id }, band.placeholderPins, stat.name, `${text(stat.name)} ≤ ${band.threshold}${percent}`);
+      push({ kind: 'descriptor', statId: stat.id, descriptorId: band.id }, band.placeholderPins, stat.name, name.band(stat, band));
     }
   }
   for (const location of locations) {
-    push({ kind: 'location', id: location.id }, location.placeholderPins, location.name, `Location: ${text(location.name)}`);
+    push({ kind: 'location', id: location.id }, location.placeholderPins, location.name, `Location: ${name.text(location.name)}`);
   }
   for (const trait of inAuthoredOrder([...traits], traitOrderIndex([...traits], [...traitGroups]))) {
-    push({ kind: 'trait', id: trait.id }, trait.placeholderPins, trait.name, `Trait: ${text(trait.name)}`);
+    push({ kind: 'trait', id: trait.id }, trait.placeholderPins, trait.name, `Trait: ${name.text(trait.name)}`);
   }
   for (const ph of placeholders) {
-    const phName = placeholderDisplayName(ph.id, placeholders, letters, owners);
     for (const value of ph.values ?? []) {
-      push({ kind: 'value', placeholderId: ph.id, valueId: value.id }, value.pins, ph.name, `${phName} = ${placeholderValueLine(text(value.text))}`);
+      push({ kind: 'value', placeholderId: ph.id, valueId: value.id }, value.pins, ph.name, name.value(ph, value));
     }
   }
   return rows;
+}
+
+/** The spellings every pin surface shares: chips labeled, a band as `Hunger ≤ 20`, a value as
+ *  `Region = Northern`. */
+function labeler(world: PinEditorWorld) {
+  const { placeholders, placeholderOwners: owners, placementLetters: letters } = world;
+  const text = (s: string) => labelPlaceholders(s, placeholders, letters, owners);
+  return {
+    text,
+    band: (stat: Stat, band: StatDescriptor) =>
+      `${text(stat.name)} ≤ ${band.threshold}${thresholdUnitOf(stat) === 'percent' ? '%' : ''}`,
+    value: (ph: Placeholder, value: PlaceholderValue) =>
+      `${placeholderDisplayName(ph.id, placeholders, letters, owners)} = ${placeholderValueLine(text(value.text))}`,
+  };
 }
 
 /** What a pin editor says under a row: the other pins that can be in force beside this source, and the one
@@ -369,4 +383,136 @@ export function pinConflict(world: PinEditorWorld, placeholderId: string, source
   const loser = winner ? source : strongest.source;
   const rule = (winner?.source ?? source).kind === loser.kind ? 'order' : 'kind';
   return { rivals, winner, rule };
+}
+
+// ---- Writing a pin back to its source ----
+
+/** Two pins are the same row when they aim one placeholder at one value, id and all. */
+export function samePin(a: PlaceholderPin, b: PlaceholderPin): boolean {
+  return a.placeholderId === b.placeholderId && a.value === b.value && a.valueId === b.valueId;
+}
+
+/** Where `pin` sits in `pins`: the object itself when the list holds it — a `PinRow` hands back the stored
+ *  pin, so two fresh empty pins on one source stay two rows — else the first reading the same. */
+function indexOfPin(pins: PinList, pin: PlaceholderPin): number {
+  const byRef = pins.indexOf(pin);
+  return byRef >= 0 ? byRef : pins.findIndex((p) => samePin(p, pin));
+}
+
+/** A source ref as one string — a Select value, a React key. Distinct for distinct refs, band ids of
+ *  either type included. */
+export function pinSourceKey(source: PinSourceRef): string {
+  switch (source.kind) {
+    case 'trait': case 'location': return `${source.kind}:${source.id}`;
+    case 'descriptor': return `descriptor:${source.statId}:${JSON.stringify(source.descriptorId)}`;
+    case 'value': return `value:${source.placeholderId}:${source.valueId}`;
+  }
+}
+
+type PinList = readonly PlaceholderPin[];
+/** What a write does to a source's pin list; null leaves the world untouched. */
+type PinListChange = (pins: PinList) => PinList | null;
+
+/** `holder` with its pin list under `field` rewritten; an emptied list is dropped, so a source that pins
+ *  nothing stores nothing. Null when the change declined. */
+function rewritten<T extends { [P in K]?: PlaceholderPin[] }, K extends 'placeholderPins' | 'pins'>(
+  holder: T, field: K, change: PinListChange,
+): T | null {
+  const next = change(holder[field] ?? []);
+  if (!next) return null;
+  const { [field]: _drop, ...rest } = holder;
+  return { ...rest, ...(next.length ? { [field]: [...next] } : {}) } as T;
+}
+
+/** `list` with the one item `match` picks replaced by `change`'s result; null when nothing matched or the
+ *  change declined, so the caller can hand back the record it was given. */
+function mapOne<T>(list: readonly T[] | undefined, match: (item: T) => boolean, change: (item: T) => T | null): T[] | null {
+  const i = list?.findIndex(match) ?? -1;
+  if (!list || i < 0) return null;
+  const next = change(list[i]);
+  return next ? list.map((item, j) => (j === i ? next : item)) : null;
+}
+
+/** The world with `source`'s pin list rewritten. The same world back when the source is not there or the
+ *  change declined; otherwise only the record on the path to the list is a new object. */
+function writePinsAt<W extends PinEditorWorld>(world: W, source: PinSourceRef, change: PinListChange): W {
+  switch (source.kind) {
+    case 'trait': {
+      const traits = mapOne(world.traits, (t) => t.id === source.id, (t) => rewritten(t, 'placeholderPins', change));
+      return traits ? { ...world, traits } : world;
+    }
+    case 'location': {
+      const locations = mapOne(world.locations, (l) => l.id === source.id, (l) => rewritten(l, 'placeholderPins', change));
+      return locations ? { ...world, locations } : world;
+    }
+    case 'descriptor': {
+      const stats = mapOne(world.stats, (s) => s.id === source.statId, (s) => {
+        const descriptors = mapOne(s.descriptors, (d) => d.id === source.descriptorId, (d) => rewritten(d, 'placeholderPins', change));
+        return descriptors ? { ...s, descriptors } : null;
+      });
+      return stats ? { ...world, stats } : world;
+    }
+    case 'value': {
+      const placeholders = mapOne(world.placeholders, (p) => p.id === source.placeholderId, (p) => {
+        const values = mapOne(p.values, (v) => v.id === source.valueId, (v) => rewritten(v, 'pins', change));
+        return values ? { ...p, values } : null;
+      });
+      return placeholders ? { ...world, placeholders } : world;
+    }
+  }
+}
+
+/** The world with `pin` appended to `source`'s list. */
+export function addPinAt<W extends PinEditorWorld>(world: W, source: PinSourceRef, pin: PlaceholderPin): W {
+  return writePinsAt(world, source, (pins) => [...pins, pin]);
+}
+
+/** The world with the row on `source` that reads as `pin` replaced by `next`. A source may carry several
+ *  pins on one placeholder, so the pin itself picks the row. */
+export function updatePinAt<W extends PinEditorWorld>(world: W, source: PinSourceRef, pin: PlaceholderPin, next: PlaceholderPin): W {
+  return writePinsAt(world, source, (pins) => {
+    const i = indexOfPin(pins, pin);
+    return i < 0 ? null : pins.map((p, j) => (j === i ? next : p));
+  });
+}
+
+/** The world with the row on `source` that reads as `pin` removed. */
+export function removePinAt<W extends PinEditorWorld>(world: W, source: PinSourceRef, pin: PlaceholderPin): W {
+  return writePinsAt(world, source, (pins) => {
+    const i = indexOfPin(pins, pin);
+    return i < 0 ? null : pins.filter((_, j) => j !== i);
+  });
+}
+
+/** One source a pin can be written on, as the add and re-aim pickers list it. */
+export interface PinSourceOption {
+  source: PinSourceRef;
+  label: string;
+}
+
+/**
+ * Every source of `kind` a pin on `placeholderId` may live on, in the order its list is authored: a trait or
+ * location by name, a band as `Hunger ≤ 20: Starving`, a value as `Region = Northern`. The placeholder's own
+ * values are left out — a value cannot pin its own placeholder.
+ */
+export function pinSourcesOfKind(world: PinEditorWorld, kind: PinSourceKind, placeholderId: string): PinSourceOption[] {
+  const { traits = [], traitGroups = [], locations = [], stats = [], placeholders } = world;
+  const name = labeler(world);
+  switch (kind) {
+    case 'trait':
+      return inAuthoredOrder([...traits], traitOrderIndex([...traits], [...traitGroups]))
+        .map((t) => ({ source: { kind, id: t.id }, label: name.text(t.name) }));
+    case 'location':
+      return locations.map((l) => ({ source: { kind, id: l.id }, label: name.text(l.name) }));
+    case 'descriptor':
+      return stats.flatMap((stat) => (stat.descriptors ?? []).map((band) => ({
+        source: { kind, statId: stat.id, descriptorId: band.id },
+        label: band.description ? `${name.band(stat, band)}: ${name.text(band.description)}` : name.band(stat, band),
+      })));
+    case 'value':
+      return placeholders.filter((p) => p.id !== placeholderId).flatMap((ph) => (ph.values ?? []).map((value) => ({
+        source: { kind, placeholderId: ph.id, valueId: value.id },
+        label: name.value(ph, value),
+      })));
+  }
 }

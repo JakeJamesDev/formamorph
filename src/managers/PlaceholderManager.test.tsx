@@ -1,4 +1,5 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { useState } from 'react';
 import { render, screen, fireEvent, within, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { placeholderAccent, type ChipVocabulary } from '@/lib/chipVocabulary';
@@ -6,7 +7,8 @@ import { accentAtChance, BENCHED, chanceChipStyle, type ChanceStyle } from '@/li
 import { encodePlaceholderToken } from '@/lib/placeholders';
 import { tintMarkStyle } from '@/lib/previewTint';
 import { EditorModeContext } from '@/lib/editorMode';
-import type { Placeholder } from '@/types';
+import type { GameLocation, Placeholder, Stat, Trait, TraitGroup } from '@/types';
+import type { PinsWorld } from '@/components/editor/PlaceholderPinsSection';
 import PlaceholderEditor from './PlaceholderEditor';
 import PlaceholderManager from './PlaceholderManager';
 import { phValueId, phValues } from '@/test/placeholderValues';
@@ -32,24 +34,44 @@ vi.mock('@/contexts/PlaceholderStoreContext', () => ({
   }),
   usePlaceholderStoreOptional: () => null,
 }));
-// Radix Select never opens its listbox in jsdom, so the pin rows' placeholder picker stands in as a native
-// select — the options stay genuinely under test.
-vi.mock('@/components/ui/select', () => ({
-  Select: ({ value, onValueChange, children }: {
-    value: string; onValueChange: (v: string) => void; children: React.ReactNode;
-  }) => (
-    <select aria-label="Select placeholder" value={value} onChange={(e) => onValueChange(e.target.value)}>
-      <option value="" />
-      {children}
-    </select>
-  ),
-  SelectTrigger: () => null,
-  SelectValue: () => null,
-  SelectContent: ({ children }: { children: React.ReactNode }) => <>{children}</>,
-  SelectItem: ({ value, children }: { value: string; children: React.ReactNode }) => (
-    <option value={value}>{children}</option>
-  ),
+// The world behind the editor, as the Pins section reads it. Null, the default, is a library modal: an
+// editor with no world at all.
+interface TestWorld {
+  traits: Trait[]; traitGroups: TraitGroup[]; locations: GameLocation[]; stats: Stat[]; placeholders: Placeholder[];
+}
+let gameData: PinsWorld | null = null;
+/** The world as the host last rendered it — what a test reads a write back from. */
+let latest: TestWorld;
+vi.mock('@/contexts/GameDataContext', () => ({
+  useGameDataOptional: () => gameData,
 }));
+// Radix Select never opens its listbox in jsdom, so every picker stands in as a native select — the options
+// stay genuinely under test. The trigger's own aria-label names the select; a trigger with none is the pin
+// rows' placeholder picker.
+vi.mock('@/components/ui/select', async () => {
+  const { Children, isValidElement } = await import('react');
+  const SelectTrigger = (_props: { 'aria-label'?: string; children?: React.ReactNode }) => null;
+  return {
+    Select: ({ value, onValueChange, children }: {
+      value: string; onValueChange: (v: string) => void; children: React.ReactNode;
+    }) => {
+      const trigger = Children.toArray(children).find((c) => isValidElement(c) && c.type === SelectTrigger);
+      const label = (isValidElement<{ 'aria-label'?: string }>(trigger) && trigger.props['aria-label']) || 'Select placeholder';
+      return (
+        <select aria-label={label} value={value} onChange={(e) => onValueChange(e.target.value)}>
+          <option value="" />
+          {children}
+        </select>
+      );
+    },
+    SelectTrigger,
+    SelectValue: () => null,
+    SelectContent: ({ children }: { children: React.ReactNode }) => <>{children}</>,
+    SelectItem: ({ value, children }: { value: string; children: React.ReactNode }) => (
+      <option value={value}>{children}</option>
+    ),
+  };
+});
 // The value boxes are Lexical editors, which jsdom can't drive. Stubbed to a real controlled textarea, so
 // the typing these tests do — newlines included — is genuine right up to the manager's own seam. The
 // vocabulary it was handed is reported as an attribute: the chips themselves are out of jsdom's reach, so
@@ -780,20 +802,20 @@ describe('PlaceholderManager — value pins', () => {
     expect(pinButton('Red').textContent).toBe('1');
     expect(pinButton('Blue').textContent).toBe('');
     await userEvent.click(pinButton('Red'));
-    expect(screen.getByRole('textbox', { name: 'Pinned value' })).toHaveValue('fog');
+    expect(screen.getByRole('textbox', { name: 'Pinned Value' })).toHaveValue('fog');
   });
 
   it('writes the popover’s rows onto that value, by id, and leaves the others alone', async () => {
     render(<PlaceholderManager placeholder={pinned()} />);
     await userEvent.click(pinButton('Red'));
-    await userEvent.click(screen.getByRole('textbox', { name: 'Pinned value' }));
+    await userEvent.click(screen.getByRole('textbox', { name: 'Pinned Value' }));
     await userEvent.click(screen.getByRole('button', { name: 'sun' }));
     expect(stored().values.map((v) => v.pins)).toEqual([
       [{ placeholderId: 'p2', value: 'sun', valueId: phValueId('sun') }],
       undefined,
     ]);
     // Emptying the list drops the field rather than leaving an empty array behind.
-    await userEvent.click(screen.getByRole('button', { name: 'Remove pin' }));
+    await userEvent.click(screen.getByRole('button', { name: 'Remove Pin' }));
     expect(stored().values[0].pins).toBeUndefined();
   });
 
@@ -812,5 +834,123 @@ describe('PlaceholderManager — value pins', () => {
       </EditorModeContext.Provider>,
     );
     expect(screen.queryByRole('button', { name: /^Pins for/ })).toBeNull();
+  });
+});
+
+/**
+ * The Pins section: every pin aimed at this placeholder from any source, edited in place and written back
+ * to the source that holds it. The world is React state here, so what a write lands is what the next
+ * render lists.
+ */
+describe('PlaceholderManager — the Pins section', () => {
+  const TOWN = ph({ id: 'town', name: 'Town', values: phValues(['Marrow', 'Fen Town']) });
+  const sworn: Trait = { id: 'sworn', name: 'Sworn', statChanges: [], placeholderPins: [{ placeholderId: 'town', value: 'Marrow' }] };
+  const fen: GameLocation = { id: 'fen', name: 'The Fen' };
+  const moor: GameLocation = { id: 'moor', name: 'The Moor' };
+  const hunger: Stat = {
+    id: 'hunger', name: 'Hunger', type: 'number', description: '', min: 0, max: 100, regen: 0, starting: 50,
+    descriptors: [{ id: 'b0', threshold: 20, description: 'Starving', placeholderPins: [{ placeholderId: 'town', value: 'Hollow' }] }],
+  };
+  const REGION: Placeholder = {
+    id: 'region', name: 'Region',
+    values: [{ id: 'v-north', text: 'Northern', pins: [{ placeholderId: 'town', value: 'Snowfall' }] }, { id: 'v-south', text: 'Southern' }],
+  };
+  const base = (): TestWorld => ({
+    traits: [sworn], traitGroups: [], locations: [fen, moor], stats: [hunger], placeholders: [TOWN, REGION],
+  });
+
+  /** The world editor's store, reduced to what the section reads and writes. */
+  const Host = ({ initial }: { initial: TestWorld }) => {
+    const [state, setState] = useState(initial);
+    const swap = <T extends { id: string }>(list: T[], item: T) => list.map((x) => (x.id === item.id ? item : x));
+    latest = state;
+    gameData = {
+      ...state,
+      updateTrait: (t) => setState((w) => ({ ...w, traits: swap(w.traits, t) })),
+      updateLocation: (l) => setState((w) => ({ ...w, locations: swap(w.locations, l) })),
+      updateStat: (s) => setState((w) => ({ ...w, stats: swap(w.stats, s) })),
+      updatePlaceholder: (p) => setState((w) => ({ ...w, placeholders: swap(w.placeholders, p) })),
+    };
+    return <PlaceholderManager placeholder={TOWN} />;
+  };
+  const world = () => latest;
+  const sources = () => screen.getAllByRole('combobox', { name: 'Pin Source' }) as HTMLSelectElement[];
+  const values = () => screen.getAllByRole('textbox', { name: 'Pinned Value' }) as HTMLInputElement[];
+  const location = (id: string) => world().locations.find((l) => l.id === id)!;
+
+  beforeEach(() => {
+    siblings = [TOWN, REGION];
+  });
+  afterEach(() => {
+    gameData = null;
+  });
+
+  it('lists every pin on this placeholder, strongest source first, each row naming its source', () => {
+    render(<Host initial={base()} />);
+    expect(values().map((v) => v.value)).toEqual(['Hollow', 'Marrow', 'Snowfall']);
+    expect(sources().map((s) => s.selectedOptions[0].textContent)).toEqual(['Hunger ≤ 20: Starving', 'Sworn', 'Region = Northern']);
+    // Each row says who else claims the placeholder and which one the rules pick.
+    expect(screen.getAllByText(/Also pinned by/).length).toBe(3);
+  });
+
+  it('adds a location pin — kind, then source — and the pin lands on that location', async () => {
+    render(<Host initial={base()} />);
+    await userEvent.click(screen.getByRole('button', { name: 'Add Pin' }));
+    await userEvent.selectOptions(screen.getByRole('combobox', { name: 'Pin Kind' }), 'Location');
+    const picker = screen.getByRole('combobox', { name: 'New Pin Source' });
+    expect(within(picker).getAllByRole('option').map((o) => o.textContent)).toEqual(['', 'The Fen', 'The Moor']);
+    await userEvent.selectOptions(picker, 'The Fen');
+    expect(location('fen').placeholderPins).toEqual([{ placeholderId: 'town', value: '' }]);
+    // The draft is spent; the new row sits in its precedence slot, under the band and over the trait.
+    expect(screen.queryByRole('combobox', { name: 'Pin Kind' })).toBeNull();
+    expect(values().map((v) => v.value)).toEqual(['Hollow', '', 'Marrow', 'Snowfall']);
+  });
+
+  it('edits a pin’s value in place, naming the value by id when the list carries it', () => {
+    render(<Host initial={{ ...base(), locations: [{ ...fen, placeholderPins: [{ placeholderId: 'town', value: '' }] }, moor] }} />);
+    fireEvent.change(values()[1], { target: { value: 'Fen Town' } });
+    expect(location('fen').placeholderPins).toEqual([{ placeholderId: 'town', value: 'Fen Town', valueId: phValueId('Fen Town') }]);
+    // Nothing else moved.
+    expect(world().traits[0].placeholderPins).toEqual(sworn.placeholderPins);
+  });
+
+  it('re-aims a pin at another source of the same kind, carrying the pin across', async () => {
+    const pin = { placeholderId: 'town', value: 'Fen Town', valueId: phValueId('Fen Town') };
+    render(<Host initial={{ ...base(), locations: [{ ...fen, placeholderPins: [pin] }, moor] }} />);
+    await userEvent.selectOptions(sources()[1], 'The Moor');
+    expect(location('fen').placeholderPins).toBeUndefined();
+    expect(location('moor').placeholderPins).toEqual([pin]);
+    expect(sources()[1].selectedOptions[0].textContent).toBe('The Moor');
+  });
+
+  it('removes a pin from its source', async () => {
+    render(<Host initial={{ ...base(), locations: [{ ...fen, placeholderPins: [{ placeholderId: 'town', value: 'Fen Town' }] }, moor] }} />);
+    await userEvent.click(screen.getAllByRole('button', { name: 'Remove Pin' })[1]);
+    expect(location('fen').placeholderPins).toBeUndefined();
+    expect(values().map((v) => v.value)).toEqual(['Hollow', 'Marrow', 'Snowfall']);
+  });
+
+  it('offers a value picker that leaves this placeholder’s own values out', async () => {
+    render(<Host initial={base()} />);
+    await userEvent.click(screen.getByRole('button', { name: 'Add Pin' }));
+    await userEvent.selectOptions(screen.getByRole('combobox', { name: 'Pin Kind' }), 'Placeholder Value');
+    const picker = screen.getByRole('combobox', { name: 'New Pin Source' });
+    expect(within(picker).getAllByRole('option').map((o) => o.textContent)).toEqual(['', 'Region = Northern', 'Region = Southern']);
+  });
+
+  it('is hidden in Simple mode', () => {
+    render(
+      <EditorModeContext.Provider value={{ mode: 'simple', advanced: false, setMode: () => {} }}>
+        <Host initial={base()} />
+      </EditorModeContext.Provider>,
+    );
+    expect(screen.queryByText('Placeholder Pins')).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Add Pin' })).toBeNull();
+  });
+
+  it('is hidden where there is no world behind the editor, as in a library modal', () => {
+    render(<PlaceholderManager placeholder={TOWN} />);
+    expect(screen.queryByText('Placeholder Pins')).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Add Pin' })).toBeNull();
   });
 });

@@ -82,7 +82,7 @@ const renderManager = (mode: 'simple' | 'advanced' = 'advanced') => render(
   </EditorModeContext.Provider>,
 );
 
-const pinField = () => screen.getByRole('textbox', { name: 'Pinned value' }) as HTMLInputElement;
+const pinField = () => screen.getByRole('textbox', { name: 'Pinned Value' }) as HTMLInputElement;
 const lastPins = () => store.writes[store.writes.length - 1].placeholderPins;
 
 beforeEach(() => {
@@ -118,7 +118,7 @@ describe('the location pin section', () => {
   it('removes a pin', async () => {
     store.location = { ...fen, placeholderPins: [{ placeholderId: 'p1', value: 'Hollow' }] };
     renderManager();
-    await userEvent.click(screen.getByRole('button', { name: 'Remove pin' }));
+    await userEvent.click(screen.getByRole('button', { name: 'Remove Pin' }));
     expect(lastPins()).toBeUndefined();
   });
 
@@ -126,6 +126,6 @@ describe('the location pin section', () => {
     store.location = { ...fen, placeholderPins: [{ placeholderId: 'p1', value: 'Hollow' }] };
     renderManager('simple');
     expect(screen.queryByText('Placeholder Pins')).toBeNull();
-    expect(screen.queryByRole('textbox', { name: 'Pinned value' })).toBeNull();
+    expect(screen.queryByRole('textbox', { name: 'Pinned Value' })).toBeNull();
   });
 });

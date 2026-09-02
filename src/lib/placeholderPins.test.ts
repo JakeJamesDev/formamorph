@@ -3,7 +3,8 @@ import type { GameLocation, Placeholder, PlaceholderPin, Trait } from '@/types';
 import { phValues } from '@/test/placeholderValues';
 import { decodePlaceholderToken } from './placeholders';
 import {
-  activePlaceholderPins, allPinTexts, collectPins, pinConflict, pinsTargeting, valuePinRollChips, type PinnableStat,
+  activePlaceholderPins, addPinAt, allPinTexts, collectPins, pinConflict, pinSourceKey, pinSourcesOfKind, pinsTargeting,
+  removePinAt, updatePinAt, valuePinRollChips, type PinnableStat,
 } from './placeholderPins';
 
 const P = (id: string, values: string[]): Placeholder => ({ id, name: id, values: phValues(values) });
@@ -343,5 +344,132 @@ describe('pinConflict — who else pins it, and who wins', () => {
     expect(boots.rivals.map((r) => r.label)).toEqual(['kit = Cloak']);
     expect(boots.winner?.label).toBe('kit = Cloak');
     expect(pinConflict(object, 'town', { kind: 'value', placeholderId: 'kit', valueId: 'v:Cloak' })!.winner).toBeNull();
+  });
+});
+
+describe('pin write-back — add, update and remove on the source a row names', () => {
+  const world = {
+    traits: [trait('sworn', [pin('town', 'Marrow'), pin('town', 'Hollow')]), trait('kin', [])],
+    traitGroups: [],
+    locations: [location('fen', [pin('town', 'Fen Town')]), location('moor', [])],
+    stats: [{ ...stat('hunger', 50, [{ threshold: 20, pins: [pin('town', 'Hollow')] }, { threshold: 60, pins: [] }]), name: 'Hunger', type: 'number' }],
+    placeholders: [
+      P('town', ['Marrow', 'Fen Town']),
+      pinner('region', [['Northern', [pin('town', 'Snowfall')]], ['Southern', []]]),
+    ],
+  } as unknown as EditorWorld;
+  const marrow = pin('town', 'Marrow');
+
+  it('appends a pin to a trait, a location, a band and a value, touching nothing else', () => {
+    const next = addPinAt(
+      addPinAt(
+        addPinAt(
+          addPinAt(world, { kind: 'trait', id: 'kin' }, marrow),
+          { kind: 'location', id: 'moor' }, marrow,
+        ),
+        { kind: 'descriptor', statId: 'hunger', descriptorId: 'hunger-b1' }, marrow,
+      ),
+      { kind: 'value', placeholderId: 'region', valueId: 'v:Southern' }, marrow,
+    );
+    expect(next.traits![1].placeholderPins).toEqual([marrow]);
+    expect(next.locations![1].placeholderPins).toEqual([marrow]);
+    expect(next.stats![0].descriptors[1].placeholderPins).toEqual([marrow]);
+    expect(next.placeholders[1].values[1].pins).toEqual([marrow]);
+    // The untouched records keep their identity, so a write costs one re-render per source and no more.
+    expect(next.traits![0]).toBe(world.traits![0]);
+    expect(next.locations![0]).toBe(world.locations![0]);
+    expect(next.stats![0].descriptors[0]).toBe(world.stats![0].descriptors[0]);
+    expect(next.placeholders[0]).toBe(world.placeholders[0]);
+    expect(world.traits![1].placeholderPins).toEqual([]);
+  });
+
+  it('replaces the one row the pin picks, on a source carrying several pins for one placeholder', () => {
+    const next = updatePinAt(world, { kind: 'trait', id: 'sworn' }, pin('town', 'Hollow'), pin('town', 'Snowfall'));
+    expect(next.traits![0].placeholderPins).toEqual([marrow, pin('town', 'Snowfall')]);
+  });
+
+  it('removes the row the pin picks, and drops the list with its last pin', () => {
+    const one = removePinAt(world, { kind: 'trait', id: 'sworn' }, marrow);
+    expect(one.traits![0].placeholderPins).toEqual([pin('town', 'Hollow')]);
+    const none = removePinAt(one, { kind: 'trait', id: 'sworn' }, pin('town', 'Hollow'));
+    expect(none.traits![0].placeholderPins).toBeUndefined();
+    expect(removePinAt(world, { kind: 'location', id: 'fen' }, pin('town', 'Fen Town')).locations![0].placeholderPins).toBeUndefined();
+    expect(removePinAt(world, { kind: 'descriptor', statId: 'hunger', descriptorId: 'hunger-b0' }, pin('town', 'Hollow'))
+      .stats![0].descriptors[0].placeholderPins).toBeUndefined();
+    expect(removePinAt(world, { kind: 'value', placeholderId: 'region', valueId: 'v:Northern' }, pin('town', 'Snowfall'))
+      .placeholders[1].values[0].pins).toBeUndefined();
+  });
+
+  it('tells pins apart by value id, so two rows spelling one text stay distinct', () => {
+    const byId = pin('town', 'Marrow', 'v:Marrow');
+    const both = addPinAt(world, { kind: 'trait', id: 'kin' }, byId);
+    const next = removePinAt(addPinAt(both, { kind: 'trait', id: 'kin' }, marrow), { kind: 'trait', id: 'kin' }, marrow);
+    expect(next.traits![1].placeholderPins).toEqual([byId]);
+  });
+
+  it('returns the world itself when the source or the row is not there', () => {
+    expect(removePinAt(world, { kind: 'trait', id: 'nobody' }, marrow)).toBe(world);
+    expect(removePinAt(world, { kind: 'trait', id: 'kin' }, marrow)).toBe(world);
+    expect(updatePinAt(world, { kind: 'location', id: 'nowhere' }, marrow, marrow)).toBe(world);
+    expect(addPinAt(world, { kind: 'descriptor', statId: 'hunger', descriptorId: 'no-band' }, marrow)).toBe(world);
+  });
+
+  it('writes back through every row pinsTargeting lists, landing on that row’s source', () => {
+    const rows = pinsTargeting(world, 'town');
+    expect(rows.map((r) => r.source.kind)).toEqual(['descriptor', 'location', 'trait', 'trait', 'value']);
+    let next = world;
+    for (const row of rows) next = updatePinAt(next, row.source, row.pin, pin('town', `via ${row.source.kind}`));
+    expect(pinsTargeting(next, 'town').map((r) => [r.source.kind, r.pin.value])).toEqual([
+      ['descriptor', 'via descriptor'], ['location', 'via location'], ['trait', 'via trait'], ['trait', 'via trait'], ['value', 'via value'],
+    ]);
+    for (const row of pinsTargeting(next, 'town')) next = removePinAt(next, row.source, row.pin);
+    expect(pinsTargeting(next, 'town')).toEqual([]);
+  });
+
+  it('keeps two identical rows apart when handed the stored pin, as a row is', () => {
+    const twice = addPinAt(addPinAt(world, { kind: 'location', id: 'moor' }, pin('town', '')), { kind: 'location', id: 'moor' }, pin('town', ''));
+    const rows = pinsTargeting(twice, 'town').filter((r) => r.source.kind === 'location' && r.source.id === 'moor');
+    expect(rows).toHaveLength(2);
+    const next = updatePinAt(twice, rows[1].source, rows[1].pin, pin('town', 'Moorside'));
+    expect(next.locations![1].placeholderPins).toEqual([pin('town', ''), pin('town', 'Moorside')]);
+    expect(removePinAt(next, rows[0].source, rows[0].pin).locations![1].placeholderPins).toEqual([pin('town', 'Moorside')]);
+  });
+});
+
+describe('pinSourcesOfKind — what the add and re-aim pickers offer', () => {
+  const world = {
+    traits: [trait('kin', []), trait('sworn', [])],
+    traitGroups: [],
+    locations: [location('fen', []), location('moor', [])],
+    stats: [{
+      ...stat('hunger', 50, [{ threshold: 20, pins: [] }, { threshold: 60, pins: [] }]),
+      name: 'Hunger', type: 'number',
+    }],
+    placeholders: [P('town', ['Marrow']), pinner('region', [['Northern', []], ['Southern', []]])],
+  } as unknown as EditorWorld;
+  world.stats![0].descriptors[0].description = 'Starving';
+  world.stats![0].descriptors[1].description = '';
+
+  it('lists traits, locations, bands and values under the labels the pickers show', () => {
+    expect(pinSourcesOfKind(world, 'trait', 'town').map((s) => s.label)).toEqual(['kin', 'sworn']);
+    expect(pinSourcesOfKind(world, 'location', 'town').map((s) => s.label)).toEqual(['fen', 'moor']);
+    expect(pinSourcesOfKind(world, 'descriptor', 'town').map((s) => s.label)).toEqual(['Hunger ≤ 20: Starving', 'Hunger ≤ 60']);
+    expect(pinSourcesOfKind(world, 'value', 'town').map((s) => s.label)).toEqual(['region = Northern', 'region = Southern']);
+    expect(pinSourcesOfKind(world, 'descriptor', 'town').map((s) => s.source)).toEqual([
+      { kind: 'descriptor', statId: 'hunger', descriptorId: 'hunger-b0' },
+      { kind: 'descriptor', statId: 'hunger', descriptorId: 'hunger-b1' },
+    ]);
+  });
+
+  it('leaves the placeholder’s own values out, since a value cannot pin its own placeholder', () => {
+    expect(pinSourcesOfKind(world, 'value', 'region').map((s) => s.label)).toEqual(['town = Marrow']);
+  });
+
+  it('keys every source distinctly, band ids included', () => {
+    const keys = (['trait', 'location', 'descriptor', 'value'] as const)
+      .flatMap((kind) => pinSourcesOfKind(world, kind, 'town').map((s) => pinSourceKey(s.source)));
+    expect(new Set(keys).size).toBe(keys.length);
+    expect(pinSourceKey({ kind: 'descriptor', statId: 'hunger', descriptorId: 1 }))
+      .not.toBe(pinSourceKey({ kind: 'descriptor', statId: 'hunger', descriptorId: '1x' }));
   });
 });

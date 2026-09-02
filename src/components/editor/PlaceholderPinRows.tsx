@@ -1,11 +1,8 @@
-import { useMemo } from 'react';
 import { Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { TokenAutocomplete } from '@/components/TokenAutocomplete';
 import { PinConflictNote } from '@/components/editor/PinConflictNote';
-import { placeholderVocabulary } from '@/lib/chipVocabulary';
-import { describePlaceholders, lonePlaceholderToken, placeholderValueLine } from '@/lib/placeholders';
+import { PinValueField } from '@/components/editor/PinValueField';
 import { withPinnedValue, type PinEditorWorld, type PinSourceRef } from '@/lib/placeholderPins';
 import { placeholderDisplayName } from '@/lib/placementLetters';
 import type { Placeholder, PlaceholderPin } from '@/types';
@@ -30,19 +27,7 @@ export function PlaceholderPinRows({ pins, onChange, source, world, placeholders
   excludeId?: string;
   onOpenTrait?: (id: string) => void;
 }) {
-  // The pin's text goes through the writer that names the value by id when the list carries it, so picking
-  // "Red" survives the author re-spelling it and typing a shade nobody rolls stays free text.
   const setPin = (index: number, next: PlaceholderPin) => onChange(pins.map((p, i) => (i === index ? next : p)));
-  const pinVocab = useMemo(() => placeholderVocabulary(placeholders), [placeholders]);
-  /** A value as the pin picker shows it. A value that is exactly one chip is a part, so it reads as the part
-   *  it names — the same reading the Values field gives it, and the one an author picking a variant is
-   *  after. A chip inside longer text is prose, so it reads as what it will resolve to. What the pin stores
-   *  is the value itself either way. */
-  const describeValue = (value: string) => {
-    const lone = lonePlaceholderToken(value);
-    if (lone) return pinVocab.label(lone);
-    return placeholderValueLine(describePlaceholders(value, placeholders)) || value;
-  };
   const displayName = (id: string) =>
     placeholderDisplayName(id, placeholders, world?.placementLetters, world?.placeholderOwners);
   const offered = excludeId ? placeholders.filter((p) => p.id !== excludeId) : placeholders;
@@ -66,25 +51,11 @@ export function PlaceholderPinRows({ pins, onChange, source, world, placeholders
                 ))}
               </SelectContent>
             </Select>
-            {/* Free text with the placeholder's authored values suggested — a source may pin a value the
-                list doesn't carry (a "Redhead" trait naming a shade nobody else rolls). */}
-            {/* w-full to match the SelectTrigger beside it — equal flex bases split the row in half. */}
-            <div className="w-full min-w-0">
-              <TokenAutocomplete
-                single
-                openOnFocus
-                values={pin.value ? [pin.value] : []}
-                onChange={(vals) => setPin(index, withPinnedValue(pin, vals[0] ?? '', placeholders))}
-                options={placeholders.find((p) => p.id === pin.placeholderId)?.values.map((v) => v.text) ?? []}
-                describe={describeValue}
-                ariaLabel="Pinned value"
-                placeholder="Pinned value"
-              />
-            </div>
+            <PinValueField pin={pin} placeholders={placeholders} onChange={(next) => setPin(index, next)} />
             <Button
               variant="ghost"
               size="icon"
-              aria-label="Remove pin"
+              aria-label="Remove Pin"
               onClick={() => onChange(pins.filter((_, i) => i !== index))}
             >
               <Trash2 className="h-4 w-4" />

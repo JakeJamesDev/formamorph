@@ -280,6 +280,14 @@ The pinned value doesn't have to come from the placeholder's own list: the box s
 
 A stat band's pin outranks a location's; a location's outranks a trait's and a placeholder value's. Two locations never compete, since only one is current at a time. The row says who wins whenever another source pins the same placeholder.`,
   },
+  'worldEditor.pinsOnPlaceholder': {
+    title: 'Placeholder Pins',
+    body: `Every pin aimed at this placeholder, from any source: a trait, a location, a stat band, or another placeholder's value. The pins live on those sources — this list only gathers them — so a change here is a change on that trait, location, stat or placeholder, and shows there too.
+
+Rows sit in the order the game settles them: a stat band outranks a location, a location a trait, and a trait a placeholder value. Within one kind the lower in its own list wins, and each row says who else claims the placeholder and which one the rules pick.
+
+**Add Pin** picks the kind of source, then the source, and writes an empty pin there for you to fill in. A row's first box re-aims its pin at another source of the same kind; the value box suggests this placeholder's values, but anything you type is used as written.`,
+  },
   'worldEditor.placeholders': {
     title: 'Placeholders',
     wikiPage: 'WorldEditor',
