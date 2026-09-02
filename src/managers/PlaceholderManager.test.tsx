@@ -415,6 +415,64 @@ describe('PlaceholderManager — chip values', () => {
 });
 
 /**
+ * An Object applies every value together and never draws, so nothing about it is worth weighing: the chip
+ * pop-out, the box stepper and the eye all go. Roll stays — an Object that nests wildcards still gives a
+ * useful sample — and the Wildcard kind brings all three back.
+ */
+describe('PlaceholderManager — an Object', () => {
+  const three = () => phValues(['Red', 'Blue', 'Green']);
+  const eye = () => screen.queryByRole('button', { name: /roll chances/i });
+  const stepper = () => screen.queryByLabelText('Draw weight for value 1');
+  const popOut = () => screen.queryByLabelText('Draw weight');
+
+  it('opens no weight pop-out on a chip click', () => {
+    render(<PlaceholderManager placeholder={ph({ roll: false, values: three() })} />);
+    fireEvent.click(screen.getByText('Red'));
+    expect(popOut()).not.toBeInTheDocument();
+  });
+
+  it('shows no stepper in the box view', () => {
+    render(<PlaceholderManager placeholder={ph({ roll: false, values: three() })} />);
+    pickStyle('Multiline');
+    expect(box(3)).toBeInTheDocument();
+    expect(stepper()).not.toBeInTheDocument();
+  });
+
+  it('offers no eye, and keeps Roll', () => {
+    render(<PlaceholderManager placeholder={ph({ roll: false, values: three() })} />);
+    expect(eye()).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Roll' })).toBeInTheDocument();
+  });
+
+  it('gets all three back the moment it is declared a Wildcard', () => {
+    render(<PlaceholderManager placeholder={ph({ roll: false, values: three() })} />);
+    pickKind('Wildcard');
+    expect(eye()).toBeInTheDocument();
+    fireEvent.click(screen.getByText('Red'));
+    expect(popOut()).toBeInTheDocument();
+    pickStyle('Multiline');
+    expect(stepper()).toBeInTheDocument();
+  });
+
+  it('takes the revealed numbers down with the eye when a Wildcard is declared an Object', () => {
+    render(<PlaceholderManager placeholder={ph({ values: three() })} />);
+    fireEvent.click(screen.getByRole('button', { name: /Show roll chances/i }));
+    expect(screen.getByText(/^Red/)).toHaveTextContent('(33%)');
+    pickKind('Object');
+    expect(eye()).not.toBeInTheDocument();
+    expect(screen.getByText(/^Red/)).not.toHaveTextContent('%');
+  });
+
+  it('closes an open weight pop-out when a Wildcard is declared an Object', () => {
+    render(<PlaceholderManager placeholder={ph({ values: three() })} />);
+    fireEvent.click(screen.getByText('Red'));
+    expect(popOut()).toBeInTheDocument();
+    pickKind('Object');
+    expect(popOut()).not.toBeInTheDocument();
+  });
+});
+
+/**
  * A shared row opens this same panel with the name, the kind and the values locked — they belong to the
  * original — and the draw weights live. Those weights are written as an override on the holder, so benching
  * a value for one character leaves the original, and every other holder, exactly as they were.
