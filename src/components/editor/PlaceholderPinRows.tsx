@@ -29,7 +29,7 @@ export function PlaceholderPinRows({ pins, onChange, source, world, placeholders
 }) {
   const setPin = (index: number, next: PlaceholderPin) => onChange(pins.map((p, i) => (i === index ? next : p)));
   const displayName = (id: string) =>
-    placeholderDisplayName(id, placeholders, world?.placementLetters, world?.placeholderOwners);
+    placeholderDisplayName(id, placeholders, { letters: world?.placementLetters, owners: world?.placeholderOwners });
   const offered = excludeId ? placeholders.filter((p) => p.id !== excludeId) : placeholders;
 
   return (

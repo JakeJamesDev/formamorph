@@ -95,3 +95,45 @@ export interface FeedItem {
     role?: string | null;
   };
 }
+
+/**
+ * One account that liked a listing, as the likers list shows it.
+ *
+ * Staff-only: the room sees a count, and who is behind it is the moderation surface's business alone.
+ * Carries the signup and the like together so the list can say how old the account was at the moment —
+ * a cluster of accounts made minutes before they liked is the whole thing this list exists to find.
+ */
+export interface LikerRow {
+  id: string;
+  username: string;
+  /** Their profile image, or null when they have none. Root-relative; see `serverAssetSrc`. */
+  avatarUrl: string | null;
+  /** Their account status, in the same words the user table's pill uses. */
+  status: string | null;
+  /** When the account was created, as a server timestamp — see `lib/serverDate`. */
+  createdAt: string;
+  /** When they liked, as a server timestamp. The list is newest-first by this. */
+  likedAt: string;
+  /** The gap between the two, as the server counted it. Absent on a server that predates the field. */
+  accountAgeAtLikeSeconds?: number;
+  /**
+   * Their staff role, when the server sends one.
+   *
+   * Absent today, so the client cannot mirror the staff ladder on a staff liker and the server's refusal
+   * is what the reader sees instead. A one-line server follow-up closes that; until then a row with no
+   * role is treated as an ordinary account.
+   */
+  role?: string | null;
+}
+
+/** One listing an account has liked, as the profile's Likes tab lists it. Staff-only, like `LikerRow`. */
+export interface LikeGiven {
+  id: string;
+  name: string;
+  authorId: string | null;
+  authorUsername: string | null;
+  /** Whether the listing is currently hidden from the catalog. A like on a hidden listing still counts. */
+  quarantined: boolean;
+  /** When they liked, as a server timestamp. The list is newest-first by this. */
+  likedAt: string;
+}

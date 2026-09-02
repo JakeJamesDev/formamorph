@@ -9,6 +9,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
 import { UserAvatar } from "@/components/UserAvatar";
 import { RoleBadge } from "@/components/RoleBadge";
+import { StatusPill } from "@/components/StatusPill";
 import { ASSIGNABLE_ROLES, ROLE_LABELS, canModerate, isAdmin, roleOf, type Role } from "@/lib/roles";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { MessageComposerDialog, type ComposerTarget } from "@/components/menu/MessageComposerDialog";
@@ -479,14 +480,6 @@ export function ManageUsersTab({ active }: ManageUsersTabProps) {
                     // Get the user ID (server uses _id)
                     const userId = user._id || user.id;
 
-                    // Determine status badge color
-                    let statusBadgeClass = "bg-success/10 text-success";
-                    if (user.status === "suspended") {
-                      statusBadgeClass = "bg-destructive/10 text-destructive";
-                    } else if (user.status === "pending") {
-                      statusBadgeClass = "bg-warning/10 text-warning";
-                    }
-
                     return (
                       <tr key={userId}>
                         <td className="px-4 py-4">
@@ -539,9 +532,7 @@ export function ManageUsersTab({ active }: ManageUsersTabProps) {
                           )}
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
-                          <span className={`px-2 inline-flex text-meta leading-5 font-semibold rounded-full ${statusBadgeClass}`}>
-                            {user.status || "active"}
-                          </span>
+                          <StatusPill status={user.status as string | null | undefined} />
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
                           {/* Only an answer given against the current wording counts, so someone whose

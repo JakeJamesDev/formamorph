@@ -127,6 +127,8 @@ const type = (n: number, text: string) => fireEvent.change(box(n), { target: { v
 beforeEach(() => {
   updatePlaceholder.mockClear();
   addPlaceholder.mockClear();
+  // No world behind the editor unless a test mounts one — the library modal's case, and the default.
+  gameData = null;
   // The placeholder being edited is itself in the store, always — so the values field is never the
   // literal-only form. A test that needs targets to point at adds them.
   siblings = [ph()];
@@ -748,6 +750,34 @@ describe('PlaceholderManager — the sample roll', () => {
     expect(within(status).queryByText('Eyes')).toBeNull();
   });
 
+  it('names a scoped producer the way the palette does, and drops the owner inside that owner’s own row', async () => {
+    const eyes: Placeholder = { id: 'p-eyes', name: 'Eyes', values: phValues(['Green']) };
+    const hair: Placeholder = { id: 'p-hair', name: 'Hair', values: phValues(['Brown']) };
+    siblings = [ph(), eyes, hair];
+    // Both belong to Molly; the world's own Scene is edited first, so the tip carries her name.
+    // Nothing here writes back; the tip only needs the owner index.
+    const noWrite = { updateTrait: () => {}, updateLocation: () => {}, updateStat: () => {}, updatePlaceholder: () => {} };
+    gameData = {
+      ...noWrite,
+      placeholders: siblings,
+      placeholderOwners: new Map([
+        ['p-eyes', { kind: 'entity' as const, id: 'molly', name: 'Molly' }],
+        ['p-hair', { kind: 'entity' as const, id: 'molly', name: 'Molly' }],
+      ]),
+    };
+    const { unmount } = render(<PlaceholderManager placeholder={ph({ values: phValues([chip('p-eyes')]) })} />);
+    fireEvent.click(roll());
+    await userEvent.hover(within(screen.getByRole('status', { name: 'Sample roll' })).getByText('Green'));
+    await waitFor(() => expect(screen.getAllByText('Molly.Eyes').length).toBeGreaterThan(0));
+    unmount();
+    // Molly's own Hair drawing Molly's Eyes: the panel already says whose it is, so the tip reads bare.
+    render(<PlaceholderManager placeholder={{ ...hair, values: phValues([chip('p-eyes')]) }} />);
+    fireEvent.click(roll());
+    await userEvent.hover(within(screen.getByRole('status', { name: 'Sample roll' })).getByText('Green'));
+    await waitFor(() => expect(screen.getAllByText('Eyes').length).toBeGreaterThan(0));
+    expect(screen.queryByText('Molly.Eyes')).toBeNull();
+  });
+
   it('draws again on each click', () => {
     const values = phValues(['Red', 'Blue']);
     render(<PlaceholderManager placeholder={ph({ values })} />);
@@ -834,6 +864,24 @@ describe('PlaceholderManager — value pins', () => {
       </EditorModeContext.Provider>,
     );
     expect(screen.queryByRole('button', { name: /^Pins for/ })).toBeNull();
+  });
+
+  it('offers the same button and the same popover in the multiline style', async () => {
+    render(<PlaceholderManager placeholder={pinned()} />);
+    pickStyle('Multiline');
+    expect(pinButton('Red').textContent).toBe('1');
+    expect(pinButton('Blue').textContent).toBe('');
+    await userEvent.click(pinButton('Red'));
+    expect(screen.getByRole('textbox', { name: 'Pinned Value' })).toHaveValue('fog');
+  });
+
+  it('carries the pin button on a value holding newlines, which only the multiline style can edit', () => {
+    const para = 'A long value.\n\nWith a second paragraph.';
+    const scene = ph({ values: [{ id: 'v-para', text: para, pins: [{ placeholderId: 'p2', value: 'fog' }] }] });
+    siblings = [scene, WEATHER];
+    render(<PlaceholderManager placeholder={scene} />);
+    expect(within(styleToggle()).getByRole('radio', { name: 'Multiline' })).toBeChecked();
+    expect(pinButton('A long value. …').textContent).toBe('1');
   });
 });
 

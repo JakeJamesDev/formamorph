@@ -145,6 +145,8 @@ interface CommunityCreationsBrowserProps {
   events?: ServerEvent[];
   /** Open the place an event's content lives — the contest tab, for a contest. */
   onOpenEvent?: (event: ServerEvent) => void;
+  /** DEV only: open the first listing's details and raise its likers list, for the dev route. */
+  openLikersOnMount?: boolean;
 }
 
 // The Community Creations browser: browse/search/filter/sort the published catalog, view world details
@@ -153,7 +155,7 @@ const CommunityCreationsBrowser = ({
   open, onOpenChange, presentation = 'dialog', worlds, setWorlds, entities, dictionaries,
   refreshEntities, refreshDictionaries,
   isAuthenticated, currentUser, openImageViewer, initialTab, openListing, onListingOpened,
-  events = [], onOpenEvent,
+  events = [], onOpenEvent, openLikersOnMount = false,
 }: CommunityCreationsBrowserProps) => {
   // The header's title element, which differs per shell (see PageHeading).
   const Heading = presentation === 'page' ? PageHeading : DialogTitle;
@@ -477,6 +479,19 @@ const CommunityCreationsBrowser = ({
       : prev));
   };
 
+  /**
+   * Take a corrected like count from a staff removal.
+   *
+   * The same two patches a like makes, minus the reader's own state: removing somebody else's like says
+   * nothing about whether this reader liked it.
+   */
+  const handleLikesChanged = (world: WorldRecord, likes: number) => {
+    const worldId = String(world._id || world.id);
+
+    setRemoteWorlds((prev) => prev.map((w) => ((w._id || w.id) === worldId ? { ...w, likes } : w)));
+    setSelectedRemoteWorld((prev) => (prev && (prev._id || prev.id) === worldId ? { ...prev, likes } : prev));
+  };
+
   const handleRelease = async (world: WorldRecord) => {
     const worldId = String(world._id || world.id);
     const noun = KIND_LABELS[kindOf(world)].one;
@@ -526,6 +541,17 @@ const CommunityCreationsBrowser = ({
 
     onListingOpened?.();
   }, [open, openListing, catalogSettled, remoteWorlds, onListingOpened]);
+
+  // DEV: `#dev?modal=likers` lands on the likers list of whichever listing the catalog puts first, the
+  // same way `modal=modelDetails` opens the library's first model. Does nothing on an empty catalog.
+  useEffect(() => {
+    if (!import.meta.env.DEV || !open || !openLikersOnMount) return;
+    const first = remoteWorlds[0];
+    if (!first || selectedRemoteWorld) return;
+
+    setSelectedRemoteWorld(first);
+    setShowRemoteWorldDetailsModal(true);
+  }, [open, openLikersOnMount, remoteWorlds, selectedRemoteWorld]);
 
   // Header control fragments — reused across the mobile (collapsible) and desktop (inline) header layouts.
   // Mirrors the local library's tabs (MainMenu's `cardType`) so the same three kinds read the same way
@@ -950,6 +976,8 @@ const CommunityCreationsBrowser = ({
         onContextualDownload={handleCardDownload}
         currentUser={currentUser}
         onLike={handleLike}
+        onLikesChanged={handleLikesChanged}
+        openLikersOnMount={openLikersOnMount}
         contests={contests}
       />
 

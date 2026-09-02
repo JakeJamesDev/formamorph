@@ -2,7 +2,10 @@ import { render, screen, cleanup, fireEvent, waitFor } from '@testing-library/re
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { AuditLogTab } from './AuditLogTab';
 import AuditService from '@/services/AuditService';
-import { describeAuditEntry, auditActorName, auditPredicate, actionFilterValue, ANY_ACTION } from '@/lib/auditPresentation';
+import {
+  describeAuditEntry, auditActorName, auditPredicate, actionFilterValue, ANY_ACTION,
+  AUDIT_ACTION_LABELS, AUDIT_ACTION_OPTIONS, AUDIT_ACTION_STYLES,
+} from '@/lib/auditPresentation';
 import { RoleBadge } from '@/components/RoleBadge';
 import { AUDIT_ACTIONS, type AuditEntry } from '@/types';
 
@@ -328,11 +331,46 @@ describe('what each entry reads as', () => {
       .toBe('root-admin dismissed the reports about “Sedge Landing” by trouble');
   });
 
+  it('names whose like was removed, and what it was on', () => {
+    expect(line({ action: 'like_removed', target: { kind: 'world', name: 'Sedge Landing' } }))
+      .toBe('root-admin removed a like by trouble on “Sedge Landing”');
+  });
+
+  it('says how many likes a clear took, from the snippet', () => {
+    expect(line({ action: 'likes_cleared', snippet: '12 likes' }))
+      .toBe('root-admin cleared 12 likes given by trouble');
+    expect(line({ action: 'likes_cleared', snippet: '1 like' }))
+      .toBe('root-admin cleared 1 like given by trouble');
+  });
+
+  it('still reads when a clear kept no count', () => {
+    // An entry recorded before the snippet carried a number still has to say what happened.
+    expect(line({ action: 'likes_cleared', snippet: null }))
+      .toBe('root-admin cleared every like given by trouble');
+  });
+
   it('has a sentence for every action the client knows', () => {
     // The fallback exists for a server newer than this build; a listed action reaching it is drift.
     for (const action of AUDIT_ACTIONS) {
       expect(auditPredicate(entry({ action })), action).not.toContain('does not recognize');
     }
+  });
+});
+
+describe('every action is presentable', () => {
+  // The three tables and the filter are separate objects keyed by action; a new action added to one and
+  // forgotten in another shows up as a missing label, an unstyled pill or an option nobody can pick.
+  it('has a label, a pill style and a filter option for every action', () => {
+    for (const action of AUDIT_ACTIONS) {
+      expect(AUDIT_ACTION_LABELS[action], action).toBeTruthy();
+      expect(AUDIT_ACTION_STYLES[action], action).toBeTruthy();
+      expect(AUDIT_ACTION_OPTIONS.some((option) => option.value === action), action).toBe(true);
+    }
+  });
+
+  it('offers the two like corrections in the filter, by their labels', () => {
+    expect(AUDIT_ACTION_OPTIONS).toContainEqual({ value: 'like_removed', label: 'Like removed' });
+    expect(AUDIT_ACTION_OPTIONS).toContainEqual({ value: 'likes_cleared', label: 'Likes cleared' });
   });
 });
 

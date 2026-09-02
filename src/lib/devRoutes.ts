@@ -44,8 +44,11 @@ export type DevView = (typeof DEV_VIEWS)[number];
  *  override, so it's reachable on an empty library. `aiContext` is in-game (GameViewer) and opens the
  *  AI Context inspector — empty before any turn, so pair it with `fixture=…` for real captured turns.
  *  `ageGate` raises the community age attestation on demand, so its copy stays checkable on a profile
- *  that has already accepted it. */
-export const DEV_MODALS = ['settings', 'entity', 'export', 'menu', 'worldEditor', 'intro', 'avatar', 'backup', 'aiSetup', 'entityEditor', 'dictionaryEditor', 'modelDetails', 'community', 'memoryManager', 'profile', 'feedbackHub', 'adminPanel', 'editText', 'location', 'changelog', 'eventAck', 'publish', 'worldPrompts', 'aiContext', 'ageGate'] as const;
+ *  that has already accepted it. `likers` opens Community Creations, its first listing's details, and the
+ *  staff-only likers list on top — the same "first row in the library" trick `modelDetails` uses, since
+ *  the list has nothing to show without a real listing. It needs a staff session and does nothing
+ *  otherwise. */
+export const DEV_MODALS = ['settings', 'entity', 'export', 'menu', 'worldEditor', 'intro', 'avatar', 'backup', 'aiSetup', 'entityEditor', 'dictionaryEditor', 'modelDetails', 'community', 'memoryManager', 'profile', 'feedbackHub', 'adminPanel', 'editText', 'location', 'changelog', 'eventAck', 'publish', 'worldPrompts', 'aiContext', 'ageGate', 'likers'] as const;
 export type DevModal = (typeof DEV_MODALS)[number];
 
 /** Coverage ledger: tabbed surface → the sub-tabs the router can target (via `tab=…`). Kept in lockstep

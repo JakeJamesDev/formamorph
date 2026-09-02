@@ -32,6 +32,14 @@ _Avoid_: box, container
 The travel a location gets for free from containment — its parent, children, and siblings — without any authored Connection.
 _Avoid_: tree edges, default connections
 
+**Like**:
+One account's revocable mark on a listing. The room sees only the count; staff see the Likers behind it and can remove one.
+_Avoid_: vote, favorite, star
+
+**Liker**:
+The account behind one Like, as the staff list shows it — with how old the account was at the moment it liked.
+_Avoid_: fan, voter
+
 **Listing Changelog**:
 The author-maintained update history on a published listing (any kind) — a date-sorted list of Changelog Entries, newest first. Listing metadata, not world content: it never travels with downloads or exports, and editing it never marks the listing as updated.
 _Avoid_: changelog (unqualified — that's the app's own changelog), version history
@@ -103,3 +111,29 @@ _Avoid_: user text, prompt segment
 **Context Run**:
 A stretch of a message the app assembled rather than the player writing — injected world data, condensed memories, a recalled scene, an earlier turn, the typed action. Muted beneath the Authored Runs, each explained in the player's own words.
 _Avoid_: filler, scaffolding
+
+### Placeholders
+
+**Placeholder**:
+An author-defined named value with a list of values, placed into world text as Chips. Its kind is a Wildcard (one value drawn per playthrough) or an Object (every value shown); a single value makes it a Variable either way.
+_Avoid_: variable (unqualified), template, macro
+
+**Chip**:
+One placement of a Placeholder inside authored text, carrying its own mode (World or Unique) and, optionally, a path into the Placeholder's Parts.
+_Avoid_: token (internal only), tag, insert
+
+**Roll**:
+The value a playthrough draws for a Wildcard, made once at Enter World and kept for that playthrough. World Chips share one Roll per Placeholder; each Unique Chip draws its own.
+_Avoid_: random value, draw (the act only), selection
+
+**Pin**:
+A source holding a Placeholder at one fixed value while the source is active: a trait that is on, the current location, the stat band a stat sits in, or a Placeholder value that is the effective value of its Placeholder. A Pin masks the Roll underneath and never replaces it, so the Roll returns when the source goes off. A stat band outranks a location, a location a trait, a trait a value Pin.
+_Avoid_: override, lock, fixed value
+
+**Placeholder Set**:
+The read side of a list of Placeholders, bound once to whichever list a text is read against: a world's, or the list an off-world entity or dictionary carries. It answers what a text describes at design time and, given a playthrough's Rolls, what it resolves to.
+_Avoid_: placeholder list, defs, vocabulary (that is the editor's chip menu)
+
+**Placeholder Store**:
+The write side of the same list: the editing operations the placeholder widgets need, bound to whichever list is being edited.
+_Avoid_: placeholder context, editor state

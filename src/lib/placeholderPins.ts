@@ -384,7 +384,7 @@ function labeler(world: PinEditorWorld) {
     band: (stat: Stat, band: StatDescriptor) =>
       `${text(stat.name)} ≤ ${band.threshold}${thresholdUnitOf(stat) === 'percent' ? '%' : ''}`,
     value: (ph: Placeholder, value: PlaceholderValue) =>
-      `${placeholderDisplayName(ph.id, placeholders, letters, owners)} = ${placeholderValueLine(text(value.text))}`,
+      `${placeholderDisplayName(ph.id, placeholders, { letters, owners })} = ${placeholderValueLine(text(value.text))}`,
   };
 }
 

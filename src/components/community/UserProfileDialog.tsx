@@ -8,11 +8,14 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
 import { UserAvatar } from "@/components/UserAvatar";
 import { RoleBadge } from "@/components/RoleBadge";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { UserCreationsTab } from "@/components/community/UserCreationsTab";
+import { UserLikesTab } from "@/components/community/UserLikesTab";
 import { ReportDialog } from "@/components/community/ReportDialog";
 import { useReportsEnabled } from "@/lib/useReportsEnabled";
 import { ProfileStats } from "@/components/community/ProfileStats";
 import { parseServerDate } from "@/lib/serverDate";
+import { canModerate, isStaff } from "@/lib/roles";
 import UserService from "@/services/UserService";
 import AuthService from "@/services/AuthService";
 import type { PublicProfile } from "@/types";
@@ -39,8 +42,14 @@ export function UserProfileDialog({ userId, onOpenChange, fallbackUsername, onOp
   const [isLoading, setIsLoading] = useState(false);
   const [isFollowBusy, setIsFollowBusy] = useState(false);
   const [reporting, setReporting] = useState(false);
+  // Which half of the staff view is on show. Ordinary readers never see the strip that sets it.
+  const [tab, setTab] = useState<'creations' | 'likes'>('creations');
+  // Whether Likes has ever been opened. The list is a moderation read, so it is not fetched for every
+  // profile a staff member happens to click.
+  const [likesOpened, setLikesOpened] = useState(false);
 
-  const myId = String(AuthService.getCurrentUser()?.id ?? '');
+  const me = AuthService.getCurrentUser();
+  const myId = String(me?.id ?? '');
   // Signed-out visitors and servers without the feature get no control at all.
   const reportsEnabled = useReportsEnabled(Boolean(myId));
 
@@ -84,6 +93,11 @@ export function UserProfileDialog({ userId, onOpenChange, fallbackUsername, onOp
   };
   // The name from wherever they were clicked, so the dialog never opens blank.
   const name = profile?.username ?? fallbackUsername ?? null;
+  // What somebody liked is a moderation surface: the tab is staff-only, and nothing hints at it otherwise.
+  const canSeeLikes = isStaff(me);
+  // Clearing them is a further step up the ladder, checked against this account rather than against staff
+  // in general — the profile carries the role, so this is honest before the server answers.
+  const canClearLikes = canModerate(me, profile ? { id: profile.id, accountType: profile.role ?? 'normal' } : null);
 
   return (
     <Dialog open={userId !== null} onOpenChange={onOpenChange}>
@@ -142,8 +156,42 @@ export function UserProfileDialog({ userId, onOpenChange, fallbackUsername, onOp
         </div>
 
         {/* Straight under the header rather than behind a tab: there is only one thing to show, and a bar
-            with a single trigger on it costs a row of the dialog to say so. */}
-        <UserCreationsTab userId={userId} username={name} onOpenListing={onOpenListing} />
+            with a single trigger on it costs a row of the dialog to say so. Staff have two, so they get
+            the bar and nobody else pays for it. */}
+        {canSeeLikes ? (
+          <Tabs
+            value={tab}
+            onValueChange={(value) => {
+              setTab(value as 'creations' | 'likes');
+              if (value === 'likes') setLikesOpened(true);
+            }}
+          >
+            <TabsList className="grid w-full grid-cols-2">
+              <TabsTrigger value="creations">Creations</TabsTrigger>
+              <TabsTrigger value="likes">Likes</TabsTrigger>
+            </TabsList>
+
+            <TabsContent value="creations">
+              <UserCreationsTab userId={userId} username={name} onOpenListing={onOpenListing} />
+            </TabsContent>
+
+            {/* Mounted only once the tab has been opened, so the fetch follows the click rather than
+                every staff member who looks somebody up — and kept mounted from then on, so switching
+                back to Creations and returning does not read the list a second time. */}
+            <TabsContent value="likes" forceMount={likesOpened ? true : undefined}>
+              {likesOpened && (
+                <UserLikesTab
+                  userId={userId}
+                  username={name}
+                  canModerateAccount={canClearLikes}
+                  onOpenListing={onOpenListing}
+                />
+              )}
+            </TabsContent>
+          </Tabs>
+        ) : (
+          <UserCreationsTab userId={userId} username={name} onOpenListing={onOpenListing} />
+        )}
 
         {/* Under their work rather than beside their name: an offensive image or username is the reason
             this exists, and both are already on screen above. */}
