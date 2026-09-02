@@ -122,7 +122,9 @@ row moves.
 ## Walked live (2026-08-08)
 
 The three lifecycle cases tests alone cannot fully close, against the stress world
-`testing/baseline/placeholder-stress.json` — 8 placeholders, 56 chips, 13 traits, 13 pins. Import it, or
+`testing/baseline/placeholder-stress.json` — 12 shared placeholders in 3 folders, 3 scoped to an entity
+and a book, 80 chips, 14 traits, and pins from all four sources (14 trait, 2 location, 1 descriptor band,
+7 value). Import it, or
 regenerate with `node testing/baseline/harness/build-placeholder-stress.mjs testing/baseline/placeholder-stress.json`;
 its readme is the hand-test checklist.
 

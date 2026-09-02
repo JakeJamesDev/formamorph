@@ -13,45 +13,111 @@
     ],
     "customPlayerVRM": null,
     "systemPrompt": "You are narrating a short scene in {{ph:ph-town-0000-0000-0000-000000000001:world:place-0001}} during {{ph:ph-seas-0000-0000-0000-000000000006:world:place-0002}}. Two sentences, no more.",
-    "readme": "# Stress test\n\n## The setup screens are the new part\n\nRolls now happen when you press **Enter World**, not when the story starts. So every screen below should read real names — never a braced list of options, never raw token text.\n\n### 1. Pins that rename other things — tick these and watch\n\n| Trait | Pins | Watch it change |\n|---|---|---|\n| **Redhead** | HairColor → `red` | its own description, and the Keeper's image tags |\n| **Sedge Native** | Town → `Sedge` | the trait *below* it, both location names, the **stat name**, and a dictionary trigger |\n| **Marrow Native** | Town → `Marrow` | same targets, opposite value — they are an exclusive pair, so only one can hold |\n| **Winter Child** | Season → `Winter` | the trait-group heading and the system prompt preview |\n| **Ironblood** | Metal → `Iron` | the Warden's name, and the *Unique* chips on the two strays — a pin is per-placeholder, so it must flatten both |\n\nUntick any of them and the **rolled** value must come back. A pin masks; it never overwrites.\n\n### 2. Competing pins — later trait wins\n\n**Sedge Native** and **Marrow Native** are an exclusive group, so they cannot both hold. **Tarnished** and **Ironblood** are *not* exclusive and both pin Metal — tick both and the one later in authored order must win, consistently, on every surface at once.\n\n### 3. Pin edge cases\n\n- **Sigil Bearer** pins a **Variable** (one value). The pin must still beat it.\n- **Offworlder** pins Town to `Ashfall` — a value **not in the placeholder's list**. Authoring lets you; it should just apply.\n- **Nihilist** pins the empty-valued placeholder to `something`, so a name that resolved to nothing now resolves to something.\n- **Hollow** pins a **deleted** placeholder. Should be inert, not a crash.\n- **Bonded** is on by default and pins HairColor — so the very first render of the picker must already show the pinned value, never a rolled one that flips a frame later.\n\n### 4. Re-roll / stickiness\n\nSeason has 8 values and Metal has 6. Note them on the trait screen, then:\n\n- **Back** through the steps — values must not move.\n- **Abort** out and re-enter — they *should* re-roll (that is the design).\n- Reach the game — the stat panel and story text must show the **same** values the pickers did.\n- Save, exit, load — the save's values must come back, not fresh ones.\n\n### 5. In play\n\nThe four **player-toggleable** traits (Redhead, Ironblood, Tarnished, Winter Child) can be switched in the Traits tab mid-game. Every pinned name should follow live — stat bars included, since stat deltas are matched by resolved name.\n\n### 6. Editor\n\nNames hold chips as coloured pills showing values; inside a field being edited the chip shows the placeholder **name**. `Ghost Alias` and the `Hollow` trait point at a deleted placeholder — red `?`. Drag from the strip at the top of the panel, or type `{`."
+    "readme": "# Stress test\n\n## Scopes, folders and the other three pin sources\n\nOpen the **Placeholders** tab in Advanced mode. It draws one tree over every list the world keeps.\n\n### 1. Folders and owners\n\n- **The World**, **People** and the nested **People › Body** are folders over the *shared* list. Drag a shared row into one, drag it back out. `Empty`, `Sigil`, `Kit` and `Omen` sit loose beneath them.\n- Under the folders sit the **owner nodes** — one for the Keeper, one for the Lore book. Those rows are read off the entity and the book: they cannot be renamed, deleted or dragged.\n- `Mood` and `Eyes` belong to the Keeper; `Rumor` belongs to Lore. Inside their owner's own fields they read bare. Anywhere else they carry the owner's name — and the Keeper's name holds a chip itself, so the prefix has to resolve too.\n- Drag `Eyes` to the top of the list to share it with the world, then drag it back onto the Keeper. The id is kept both ways, so nothing placed anywhere has to re-aim.\n- The Keeper's panel and the Lore book's panel each carry the same Placeholders section, bound to their own list.\n\n### 2. Structural children and a shared row\n\n- `Beast`'s first value is *one chip* of `Wolf`, so Wolf is a **child**: it sits under Beast on the tab, and a chip can address `Beast › Wolf`.\n- Press **Roll** on Beast a few times. Each run one of the value's own chips produced is tinted in that placeholder's colour with its name in the tip; the literal `Bear` and `Boar` stay plain.\n- `Collar` holds `Metal` as a **shared row**. Open Collar, then the Metal row beneath it: the name, the kind and the values are locked — they are the original's — while the weights are Collar's own. `Lead` is benched there and nowhere else.\n\n### 3. The four pin sources, and who wins\n\nPrecedence is **stat band > location > trait > value pin**. Every one of them claims `Metal`:\n\n| Source | Where | Pins Metal to |\n|---|---|---|\n| Stat band | `Temper` under 30 | `Tin` |\n| Location | Standing on **Metal Row** | `Silver` |\n| Trait | **Ironblood** / **Tarnished** | `Iron` / `Copper` |\n| Value | `Season` rolling `Deepwinter` | `Iron` |\n\nOpen `Metal` and read its **Placeholder Pins** section: every one of those rows, strongest first, each naming the trait, location, band or value it lives on. Change a value there, re-aim a row at another source of the same kind, or remove it — the write lands on the source, not on Metal.\n\n- **Chains.** `Season` rolling `Frostfall` pins `Town` to `Marrow`. Value pins settle to a fixed point, so one roll can move three placeholders.\n- **An Object holds every value at once.** `Kit` is an Object, so *both* of its value pins are in force together and the conflict note must not call them rivals that cannot meet.\n- **Multiline values pin too.** `Omen`'s values hold newlines, so its panel opens in the multiline editor. Each card carries the same pin button the chip row has.\n\n### 4. Chips in stat text\n\n`{Town} Standing` and `{Metal} Temper` hold chips in their **name**, their **description** and every **descriptor band**. Move Temper across 30 and the band text and its pin flip together.\n\n### 5. What the Test Bench should say\n\n- `Sigil`'s one value pins **its own placeholder** — an error, with a Fix that removes the pin.\n- **Faded** pins a HairColor value id that is gone — a warning, with a Fix that re-links by text.\n- **Hollow** pins a deleted placeholder — a broken-pin error.\n- Metal is pinned by four sources at once — an info row naming them and the winner.\n\n### 6. Export and back\n\nExport the Keeper as a character card and import it into a fresh world. Her `Mood` and `Eyes` come back as hers under new ids, `Mood`'s pin at `Season` re-aims at whatever the new world matched, and `Season` rides along in the card even though no chip of hers places it — only the pin reaches it.\n\n## The setup screens are the older part\n\nRolls now happen when you press **Enter World**, not when the story starts. So every screen below should read real names — never a braced list of options, never raw token text.\n\n### 1. Pins that rename other things — tick these and watch\n\n| Trait | Pins | Watch it change |\n|---|---|---|\n| **Redhead** | HairColor → `red` | its own description, and the Keeper's image tags |\n| **Sedge Native** | Town → `Sedge` | the trait *below* it, both location names, the **stat name**, and a dictionary trigger |\n| **Marrow Native** | Town → `Marrow` | same targets, opposite value — they are an exclusive pair, so only one can hold |\n| **Winter Child** | Season → `Winter` | the trait-group heading and the system prompt preview |\n| **Ironblood** | Metal → `Iron` | the Warden's name, and the *Unique* chips on the two strays — a pin is per-placeholder, so it must flatten both |\n\nUntick any of them and the **rolled** value must come back. A pin masks; it never overwrites.\n\n### 2. Competing pins — later trait wins\n\n**Sedge Native** and **Marrow Native** are an exclusive group, so they cannot both hold. **Tarnished** and **Ironblood** are *not* exclusive and both pin Metal — tick both and the one later in authored order must win, consistently, on every surface at once.\n\n### 3. Pin edge cases\n\n- **Sigil Bearer** pins a **Variable** (one value). The pin must still beat it.\n- **Offworlder** pins Town to `Ashfall` — a value **not in the placeholder's list**. Authoring lets you; it should just apply.\n- **Nihilist** pins the empty-valued placeholder to `something`, so a name that resolved to nothing now resolves to something.\n- **Hollow** pins a **deleted** placeholder. Should be inert, not a crash.\n- **Bonded** is on by default and pins HairColor — so the very first render of the picker must already show the pinned value, never a rolled one that flips a frame later.\n\n### 4. Re-roll / stickiness\n\nSeason has 8 values and Metal has 6. Note them on the trait screen, then:\n\n- **Back** through the steps — values must not move.\n- **Abort** out and re-enter — they *should* re-roll (that is the design).\n- Reach the game — the stat panel and story text must show the **same** values the pickers did.\n- Save, exit, load — the save's values must come back, not fresh ones.\n\n### 5. In play\n\nThe four **player-toggleable** traits (Redhead, Ironblood, Tarnished, Winter Child) can be switched in the Traits tab mid-game. Every pinned name should follow live — stat bars included, since stat deltas are matched by resolved name.\n\n### 6. Editor\n\nNames hold chips as coloured pills showing values; inside a field being edited the chip shows the placeholder **name**. `Ghost Alias` and the `Hollow` trait point at a deleted placeholder — red `?`. Drag from the strip at the top of the panel, or type `{`."
   },
+  "placeholderGroups": [
+    {
+      "id": "phg-world",
+      "name": "The World",
+      "parentId": null,
+      "order": 0
+    },
+    {
+      "id": "phg-people",
+      "name": "People",
+      "parentId": null,
+      "order": 1
+    },
+    {
+      "id": "phg-body",
+      "name": "Body",
+      "parentId": "phg-people",
+      "order": 0
+    }
+  ],
   "placeholders": [
     {
       "id": "ph-town-0000-0000-0000-000000000001",
       "name": "Town",
+      "groupId": "phg-world",
       "values": [
-        "Sedge",
-        "Marrow"
+        {
+          "id": "v-town-sedge",
+          "text": "Sedge"
+        },
+        {
+          "id": "v-town-marrow",
+          "text": "Marrow"
+        }
       ]
     },
     {
       "id": "ph-keep-0000-0000-0000-000000000002",
       "name": "Keeper",
+      "groupId": "phg-people",
       "values": [
-        "Vera"
+        {
+          "id": "v-keeper-vera",
+          "text": "Vera"
+        }
       ]
     },
     {
       "id": "ph-beast-000-0000-0000-000000000003",
       "name": "Beast",
+      "groupId": "phg-world",
       "values": [
-        "Wolf",
-        "Bear",
-        "Boar"
+        {
+          "id": "v-beast-wolf",
+          "text": "{{ph:ph-wolf-0000-0000-0000-000000000009:world:place-0003}}"
+        },
+        {
+          "id": "v-beast-bear",
+          "text": "Bear"
+        },
+        {
+          "id": "v-beast-boar",
+          "text": "Boar"
+        }
       ],
       "weights": {
-        "Wolf": 3,
-        "Bear": 1,
-        "Boar": 1
+        "v-beast-wolf": 3,
+        "v-beast-bear": 1,
+        "v-beast-boar": 1
       }
+    },
+    {
+      "id": "ph-wolf-0000-0000-0000-000000000009",
+      "name": "Wolf",
+      "ownerId": "ph-beast-000-0000-0000-000000000003",
+      "values": [
+        {
+          "id": "v-wolf-grey-wolf",
+          "text": "grey wolf"
+        },
+        {
+          "id": "v-wolf-black-wolf",
+          "text": "black wolf"
+        }
+      ]
     },
     {
       "id": "ph-hair-0000-0000-0000-000000000004",
       "name": "HairColor",
+      "groupId": "phg-body",
       "values": [
-        "blonde",
-        "red",
-        "black"
+        {
+          "id": "v-hair-blonde",
+          "text": "blonde"
+        },
+        {
+          "id": "v-hair-red",
+          "text": "red"
+        },
+        {
+          "id": "v-hair-black",
+          "text": "black"
+        }
       ]
     },
     {
@@ -62,34 +128,174 @@
     {
       "id": "ph-seas-0000-0000-0000-000000000006",
       "name": "Season",
+      "groupId": "phg-world",
       "values": [
-        "Thaw",
-        "Bloom",
-        "High Summer",
-        "Turning",
-        "Frostfall",
-        "Deepwinter",
-        "Longnight",
-        "Firstlight"
+        {
+          "id": "v-season-thaw",
+          "text": "Thaw"
+        },
+        {
+          "id": "v-season-bloom",
+          "text": "Bloom"
+        },
+        {
+          "id": "v-season-high-summer",
+          "text": "High Summer"
+        },
+        {
+          "id": "v-season-turning",
+          "text": "Turning"
+        },
+        {
+          "id": "v-season-frostfall",
+          "text": "Frostfall",
+          "pins": [
+            {
+              "placeholderId": "ph-town-0000-0000-0000-000000000001",
+              "value": "Marrow",
+              "valueId": "v-town-marrow"
+            }
+          ]
+        },
+        {
+          "id": "v-season-deepwinter",
+          "text": "Deepwinter",
+          "pins": [
+            {
+              "placeholderId": "ph-metal-000-0000-0000-000000000007",
+              "value": "Iron",
+              "valueId": "v-metal-iron"
+            }
+          ]
+        },
+        {
+          "id": "v-season-longnight",
+          "text": "Longnight"
+        },
+        {
+          "id": "v-season-firstlight",
+          "text": "Firstlight"
+        }
       ]
     },
     {
       "id": "ph-metal-000-0000-0000-000000000007",
       "name": "Metal",
+      "groupId": "phg-world",
       "values": [
-        "Iron",
-        "Copper",
-        "Silver",
-        "Tin",
-        "Brass",
-        "Lead"
+        {
+          "id": "v-metal-iron",
+          "text": "Iron"
+        },
+        {
+          "id": "v-metal-copper",
+          "text": "Copper"
+        },
+        {
+          "id": "v-metal-silver",
+          "text": "Silver"
+        },
+        {
+          "id": "v-metal-tin",
+          "text": "Tin"
+        },
+        {
+          "id": "v-metal-brass",
+          "text": "Brass"
+        },
+        {
+          "id": "v-metal-lead",
+          "text": "Lead"
+        }
       ]
     },
     {
       "id": "ph-sigil-000-0000-0000-000000000008",
       "name": "Sigil",
       "values": [
-        "Hawk"
+        {
+          "id": "v-sigil-hawk",
+          "text": "Hawk",
+          "pins": [
+            {
+              "placeholderId": "ph-sigil-000-0000-0000-000000000008",
+              "value": "Owl"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "ph-collar-00-0000-0000-000000000010",
+      "name": "Collar",
+      "groupId": "phg-world",
+      "values": [
+        {
+          "id": "v-collar-metal",
+          "text": "{{ph:ph-metal-000-0000-0000-000000000007:world:place-0004}}"
+        },
+        {
+          "id": "v-collar-rope",
+          "text": "rope"
+        },
+        {
+          "id": "v-collar-nothing",
+          "text": "nothing"
+        }
+      ],
+      "sharedWeights": {
+        "v-collar-metal": {
+          "v-metal-lead": 0
+        }
+      }
+    },
+    {
+      "id": "ph-omen-0000-0000-0000-000000000011",
+      "name": "Omen",
+      "values": [
+        {
+          "id": "v-omen-birds",
+          "text": "Birds turn back over the water.\n\nNobody says what that means, but the nets stay in.",
+          "pins": [
+            {
+              "placeholderId": "ph-beast-000-0000-0000-000000000003",
+              "value": "Boar",
+              "valueId": "v-beast-boar"
+            }
+          ]
+        },
+        {
+          "id": "v-omen-salt",
+          "text": "Salt crusts the door frames by morning.\n\nThe smiths call it a good week for iron."
+        }
+      ]
+    },
+    {
+      "id": "ph-kit-00000-0000-0000-000000000012",
+      "name": "Kit",
+      "roll": false,
+      "values": [
+        {
+          "id": "v-kit-knife",
+          "text": "a knife",
+          "pins": [
+            {
+              "placeholderId": "ph-metal-000-0000-0000-000000000007",
+              "value": "Steel"
+            }
+          ]
+        },
+        {
+          "id": "v-kit-rope",
+          "text": "a coil of rope",
+          "pins": [
+            {
+              "placeholderId": "ph-hair-0000-0000-0000-000000000004",
+              "value": "black",
+              "valueId": "v-hair-black"
+            }
+          ]
+        }
       ]
     }
   ],
@@ -102,9 +308,25 @@
       "min": 0,
       "max": 100,
       "regen": 0,
-      "descriptors": [],
-      "name": "{{ph:ph-town-0000-0000-0000-000000000001:world:place-0003}} Standing",
-      "description": "Stat NAME holds a chip. Tick a Native trait and this bar must rename itself."
+      "name": "{{ph:ph-town-0000-0000-0000-000000000001:world:place-0005}} Standing",
+      "description": "How {{ph:ph-town-0000-0000-0000-000000000001:world:place-0006}} sees you. Stat NAME and description both hold chips.",
+      "descriptors": [
+        {
+          "id": "standing-low",
+          "threshold": 30,
+          "description": "A stranger in {{ph:ph-town-0000-0000-0000-000000000001:world:place-0007}}."
+        },
+        {
+          "id": "standing-mid",
+          "threshold": 70,
+          "description": "Known by sight in {{ph:ph-town-0000-0000-0000-000000000001:world:place-0008}}."
+        },
+        {
+          "id": "standing-high",
+          "threshold": 100,
+          "description": "{{ph:ph-town-0000-0000-0000-000000000001:world:place-0009}} counts you its own."
+        }
+      ]
     },
     {
       "id": "temper",
@@ -114,9 +336,32 @@
       "min": 0,
       "max": 100,
       "regen": 0,
-      "descriptors": [],
-      "name": "{{ph:ph-metal-000-0000-0000-000000000007:world:place-0004}} Temper",
-      "description": "A second pinned stat name, so two pins can be seen disagreeing independently."
+      "name": "{{ph:ph-metal-000-0000-0000-000000000007:world:place-0010}} Temper",
+      "description": "A second pinned stat name, so two pins can be seen disagreeing independently. Reads as {{ph:ph-metal-000-0000-0000-000000000007:world:place-0011}}.",
+      "descriptors": [
+        {
+          "id": "temper-low",
+          "threshold": 30,
+          "description": "Brittle as {{ph:ph-metal-000-0000-0000-000000000007:world:place-0012}}.",
+          "placeholderPins": [
+            {
+              "placeholderId": "ph-metal-000-0000-0000-000000000007",
+              "value": "Tin",
+              "valueId": "v-metal-tin"
+            }
+          ]
+        },
+        {
+          "id": "temper-mid",
+          "threshold": 70,
+          "description": "Worked, but not yet {{ph:ph-metal-000-0000-0000-000000000007:world:place-0013}}."
+        },
+        {
+          "id": "temper-high",
+          "threshold": 100,
+          "description": "Tempered {{ph:ph-metal-000-0000-0000-000000000007:world:place-0014}}."
+        }
+      ]
     },
     {
       "id": "health",
@@ -137,7 +382,7 @@
       "parentId": null,
       "order": 0,
       "exclusive": true,
-      "name": "{{ph:ph-town-0000-0000-0000-000000000001:world:place-0005}} Origins",
+      "name": "{{ph:ph-town-0000-0000-0000-000000000001:world:place-0015}} Origins",
       "playerDescription": "Exclusive: at most one. Both members pin Town, to opposite values.",
       "aiDescription": ""
     },
@@ -145,7 +390,7 @@
       "id": "grp-body",
       "parentId": null,
       "order": 1,
-      "name": "Marks of {{ph:ph-seas-0000-0000-0000-000000000006:world:place-0006}}",
+      "name": "Marks of {{ph:ph-seas-0000-0000-0000-000000000006:world:place-0016}}",
       "playerDescription": "A GROUP name holding a chip — pinning Season must rename this heading.",
       "aiDescription": ""
     },
@@ -153,7 +398,7 @@
       "id": "grp-blood",
       "parentId": "grp-body",
       "order": 0,
-      "name": "{{ph:ph-metal-000-0000-0000-000000000007:world:place-0007}} Blood",
+      "name": "{{ph:ph-metal-000-0000-0000-000000000007:world:place-0017}} Blood",
       "playerDescription": "A nested group whose name holds a chip. Two members both pin Metal, non-exclusively.",
       "aiDescription": ""
     },
@@ -171,8 +416,8 @@
       "id": "tr-sedge",
       "groupId": "grp-origin",
       "order": 0,
-      "name": "Native of {{ph:ph-town-0000-0000-0000-000000000001:world:place-0008}}",
-      "playerDescription": "You grew up in {{ph:ph-town-0000-0000-0000-000000000001:world:place-0009}}. Ticking this must rename the trait below, both locations, and a stat.",
+      "name": "Native of {{ph:ph-town-0000-0000-0000-000000000001:world:place-0018}}",
+      "playerDescription": "You grew up in {{ph:ph-town-0000-0000-0000-000000000001:world:place-0019}}. Ticking this must rename the trait below, both locations, and a stat.",
       "aiDescription": "The player is a native of Sedge.",
       "statChanges": [
         {
@@ -192,8 +437,8 @@
       "id": "tr-marrow",
       "groupId": "grp-origin",
       "order": 1,
-      "name": "Sworn to {{ph:ph-town-0000-0000-0000-000000000001:world:place-0010}}",
-      "playerDescription": "Your oath binds you to {{ph:ph-town-0000-0000-0000-000000000001:world:place-0011}}.",
+      "name": "Sworn to {{ph:ph-town-0000-0000-0000-000000000001:world:place-0020}}",
+      "playerDescription": "Your oath binds you to {{ph:ph-town-0000-0000-0000-000000000001:world:place-0021}}.",
       "aiDescription": "The player is sworn to Marrow.",
       "statChanges": [
         {
@@ -215,7 +460,7 @@
       "order": 0,
       "playerToggle": true,
       "name": "Redhead",
-      "playerDescription": "Your hair is {{ph:ph-hair-0000-0000-0000-000000000004:world:place-0012}}.",
+      "playerDescription": "Your hair is {{ph:ph-hair-0000-0000-0000-000000000004:world:place-0022}}.",
       "aiDescription": "The player has red hair.",
       "statChanges": [],
       "placeholderPins": [
@@ -231,7 +476,7 @@
       "order": 1,
       "isDefault": true,
       "name": "Bonded",
-      "playerDescription": "A default-on pin. Hair reads {{ph:ph-hair-0000-0000-0000-000000000004:world:place-0013}} before you touch anything.",
+      "playerDescription": "A default-on pin. Hair reads {{ph:ph-hair-0000-0000-0000-000000000004:world:place-0023}} before you touch anything.",
       "aiDescription": "The player is bonded.",
       "statChanges": [],
       "placeholderPins": [
@@ -246,8 +491,8 @@
       "groupId": "grp-body",
       "order": 2,
       "playerToggle": true,
-      "name": "Child of {{ph:ph-seas-0000-0000-0000-000000000006:world:place-0014}}",
-      "playerDescription": "Born in {{ph:ph-seas-0000-0000-0000-000000000006:world:place-0015}}. Pins the season that names this trait AND its group heading.",
+      "name": "Child of {{ph:ph-seas-0000-0000-0000-000000000006:world:place-0024}}",
+      "playerDescription": "Born in {{ph:ph-seas-0000-0000-0000-000000000006:world:place-0025}}. Pins the season that names this trait AND its group heading.",
       "aiDescription": "The player was born in winter.",
       "statChanges": [],
       "placeholderPins": [
@@ -262,7 +507,7 @@
       "groupId": "grp-blood",
       "order": 0,
       "playerToggle": true,
-      "name": "{{ph:ph-metal-000-0000-0000-000000000007:world:place-0016}} Tarnished",
+      "name": "{{ph:ph-metal-000-0000-0000-000000000007:world:place-0026}} Tarnished",
       "playerDescription": "Pins Metal to Copper. Tick this AND Ironblood — the later one must win everywhere at once.",
       "aiDescription": "The player is tarnished.",
       "statChanges": [],
@@ -299,8 +544,8 @@
       "id": "tr-sigil",
       "groupId": "grp-odd",
       "order": 0,
-      "name": "Bearer of the {{ph:ph-sigil-000-0000-0000-000000000008:world:place-0017}}",
-      "playerDescription": "Pins a Variable (one value). {{ph:ph-sigil-000-0000-0000-000000000008:world:place-0018}} must read Owl, not Hawk.",
+      "name": "Bearer of the {{ph:ph-sigil-000-0000-0000-000000000008:world:place-0027}}",
+      "playerDescription": "Pins a Variable (one value). {{ph:ph-sigil-000-0000-0000-000000000008:world:place-0028}} must read Owl, not Hawk.",
       "aiDescription": "The player bears the owl sigil.",
       "statChanges": [],
       "placeholderPins": [
@@ -315,7 +560,7 @@
       "groupId": "grp-odd",
       "order": 1,
       "name": "Offworlder",
-      "playerDescription": "Pins Town to a value that is not in its list. {{ph:ph-town-0000-0000-0000-000000000001:world:place-0019}} should read Ashfall anyway.",
+      "playerDescription": "Pins Town to a value that is not in its list. {{ph:ph-town-0000-0000-0000-000000000001:world:place-0029}} should read Ashfall anyway.",
       "aiDescription": "The player is from elsewhere.",
       "statChanges": [],
       "placeholderPins": [
@@ -329,7 +574,7 @@
       "id": "tr-nihilist",
       "groupId": "grp-odd",
       "order": 2,
-      "name": "The {{ph:ph-empty-000-0000-0000-000000000005:world:place-0020}} Truth",
+      "name": "The {{ph:ph-empty-000-0000-0000-000000000005:world:place-0030}} Truth",
       "playerDescription": "Pins the empty placeholder, so a name that resolved to nothing now resolves to \"Void\".",
       "aiDescription": "The player believes in nothing.",
       "statChanges": [],
@@ -344,7 +589,7 @@
       "id": "tr-hollow",
       "groupId": "grp-odd",
       "order": 3,
-      "name": "Hollow {{ph:ph-deleted-00-0000-0000-000000000099:world:place-ghost-21}}",
+      "name": "Hollow {{ph:ph-deleted-00-0000-0000-000000000099:world:place-ghost-31}}",
       "playerDescription": "Pins a placeholder that no longer exists, and its own name holds one. Inert, not fatal.",
       "aiDescription": "The player is hollow.",
       "statChanges": [],
@@ -360,7 +605,7 @@
       "groupId": "grp-odd",
       "order": 4,
       "name": "Half-Written",
-      "playerDescription": "Carries two incomplete pin rows. {{ph:ph-town-0000-0000-0000-000000000001:world:place-0022}} must still read its rolled value.",
+      "playerDescription": "Carries two incomplete pin rows. {{ph:ph-town-0000-0000-0000-000000000001:world:place-0032}} must still read its rolled value.",
       "aiDescription": "The player is incomplete.",
       "statChanges": [],
       "placeholderPins": [
@@ -375,9 +620,26 @@
       ]
     },
     {
+      "id": "tr-stale",
+      "groupId": "grp-odd",
+      "order": 5,
+      "playerToggle": true,
+      "name": "Faded",
+      "playerDescription": "Its pin names a value that is gone, so {{ph:ph-hair-0000-0000-0000-000000000004:world:place-0033}} falls back to the text as written.",
+      "aiDescription": "The player is faded.",
+      "statChanges": [],
+      "placeholderPins": [
+        {
+          "placeholderId": "ph-hair-0000-0000-0000-000000000004",
+          "value": "blonde",
+          "valueId": "v-hair-DELETED"
+        }
+      ]
+    },
+    {
       "id": "tr-plain",
       "groupId": null,
-      "order": 5,
+      "order": 6,
       "name": "Unremarkable",
       "playerDescription": "No chips, no pins — the control.",
       "aiDescription": "Nothing special.",
@@ -388,35 +650,42 @@
     {
       "id": "loc-square",
       "isStarting": true,
-      "name": "{{ph:ph-town-0000-0000-0000-000000000001:world:place-0023}} Square",
-      "playerDescription": "The market square, quiet in {{ph:ph-seas-0000-0000-0000-000000000006:world:place-0024}}. Tick a Native trait and this name must change with the other one.",
+      "name": "{{ph:ph-town-0000-0000-0000-000000000001:world:place-0034}} Square",
+      "playerDescription": "The market square, quiet in {{ph:ph-seas-0000-0000-0000-000000000006:world:place-0035}}. Tick a Native trait and this name must change with the other one. The innkeeper crosses it {{ph:ph-mood-0000-0000-0000-000000000013:world:place-0036}}.",
       "aiDescription": "A busy market square at the centre of town.",
       "aiSummary": "The market square.",
       "connections": [
-        "{{ph:ph-town-0000-0000-0000-000000000001:world:place-0025}} Docks",
-        "{{ph:ph-metal-000-0000-0000-000000000007:world:place-0026}} Row"
+        "{{ph:ph-town-0000-0000-0000-000000000001:world:place-0037}} Docks",
+        "{{ph:ph-metal-000-0000-0000-000000000007:world:place-0038}} Row"
       ],
       "entities": [
         "ent-keeper"
       ],
-      "imageTags": "outdoors, market, {{ph:ph-seas-0000-0000-0000-000000000006:world:place-0027}}",
+      "imageTags": "outdoors, market, {{ph:ph-seas-0000-0000-0000-000000000006:world:place-0039}}",
       "backgroundImage": null,
       "ambientSound": null
     },
     {
       "id": "loc-docks",
       "isStarting": true,
-      "name": "{{ph:ph-town-0000-0000-0000-000000000001:world:place-0028}} Docks",
-      "playerDescription": "Wet boards and rope. The second starting location, so the picker step appears.",
+      "name": "{{ph:ph-town-0000-0000-0000-000000000001:world:place-0040}} Docks",
+      "playerDescription": "Wet boards and rope. The second starting location, so the picker step appears. While you stand here the strays read as {{ph:ph-beast-000-0000-0000-000000000003:world:place-0041}}.",
       "aiDescription": "A working dock.",
       "aiSummary": "The docks.",
       "connections": [
-        "{{ph:ph-town-0000-0000-0000-000000000001:world:place-0029}} Square"
+        "{{ph:ph-town-0000-0000-0000-000000000001:world:place-0042}} Square"
       ],
       "entities": [
         "ent-warden",
         "ent-stray-a",
         "ent-stray-b"
+      ],
+      "placeholderPins": [
+        {
+          "placeholderId": "ph-beast-000-0000-0000-000000000003",
+          "value": "Boar",
+          "valueId": "v-beast-boar"
+        }
       ],
       "backgroundImage": null,
       "ambientSound": null
@@ -424,14 +693,21 @@
     {
       "id": "loc-row",
       "isStarting": false,
-      "name": "{{ph:ph-metal-000-0000-0000-000000000007:world:place-0030}} Row",
-      "playerDescription": "Reached by a connection whose name a trait can rename mid-game. It must stay reachable.",
+      "name": "{{ph:ph-metal-000-0000-0000-000000000007:world:place-0043}} Row",
+      "playerDescription": "Reached by a connection whose name a trait can rename mid-game. It must stay reachable. Standing here pins {{ph:ph-metal-000-0000-0000-000000000007:world:place-0044}} over any trait.\n\n{{ph:ph-omen-0000-0000-0000-000000000011:world:place-0045}}",
       "aiDescription": "A street of smiths.",
       "aiSummary": "The smiths' row.",
       "connections": [
-        "{{ph:ph-town-0000-0000-0000-000000000001:world:place-0031}} Square"
+        "{{ph:ph-town-0000-0000-0000-000000000001:world:place-0046}} Square"
       ],
       "entities": [],
+      "placeholderPins": [
+        {
+          "placeholderId": "ph-metal-000-0000-0000-000000000007",
+          "value": "Silver",
+          "valueId": "v-metal-silver"
+        }
+      ],
       "backgroundImage": null,
       "ambientSound": null
     }
@@ -440,41 +716,86 @@
     {
       "id": "ent-keeper",
       "type": "character",
-      "name": "Keeper {{ph:ph-keep-0000-0000-0000-000000000002:world:place-0032}}",
+      "name": "Keeper {{ph:ph-keep-0000-0000-0000-000000000002:world:place-0047}}",
       "aliases": [
         "barkeep",
-        "the {{ph:ph-town-0000-0000-0000-000000000001:world:place-0033}} keeper",
-        "{{ph:ph-seas-0000-0000-0000-000000000006:world:place-0034}} widow",
-        "friend of {{ph:ph-deleted-00-0000-0000-000000000099:world:place-ghost-35}}"
+        "the {{ph:ph-town-0000-0000-0000-000000000001:world:place-0048}} keeper",
+        "{{ph:ph-seas-0000-0000-0000-000000000006:world:place-0049}} widow",
+        "friend of {{ph:ph-deleted-00-0000-0000-000000000099:world:place-ghost-50}}"
       ],
-      "playerDescription": "She runs the inn on {{ph:ph-town-0000-0000-0000-000000000001:world:place-0036}} Square, and has since {{ph:ph-seas-0000-0000-0000-000000000006:world:place-0037}}.",
-      "aiDescription": "A calm innkeeper who knows everyone.",
+      "playerDescription": "She runs the inn on {{ph:ph-town-0000-0000-0000-000000000001:world:place-0051}} Square, and has since {{ph:ph-seas-0000-0000-0000-000000000006:world:place-0052}}. Tonight she is {{ph:ph-mood-0000-0000-0000-000000000013:world:place-0053}}, {{ph:ph-eyes-0000-0000-0000-000000000014:world:place-0054}} over the counter.",
+      "aiDescription": "A calm innkeeper who knows everyone. Her manner reads {{ph:ph-mood-0000-0000-0000-000000000013:world:place-0055}}.",
       "aiSummary": "The innkeeper.",
-      "imageTags": "1girl, solo, {{ph:ph-hair-0000-0000-0000-000000000004:world:place-0038}} hair, apron, tavern",
-      "image": null
+      "imageTags": "1girl, solo, {{ph:ph-hair-0000-0000-0000-000000000004:world:place-0056}} hair, {{ph:ph-eyes-0000-0000-0000-000000000014:world:place-0057}}, apron, tavern",
+      "image": null,
+      "placeholders": [
+        {
+          "id": "ph-mood-0000-0000-0000-000000000013",
+          "name": "Mood",
+          "values": [
+            {
+              "id": "v-mood-warm",
+              "text": "warm",
+              "pins": [
+                {
+                  "placeholderId": "ph-seas-0000-0000-0000-000000000006",
+                  "value": "Bloom",
+                  "valueId": "v-season-bloom"
+                }
+              ]
+            },
+            {
+              "id": "v-mood-wary",
+              "text": "wary"
+            },
+            {
+              "id": "v-mood-brisk",
+              "text": "brisk"
+            }
+          ]
+        },
+        {
+          "id": "ph-eyes-0000-0000-0000-000000000014",
+          "name": "Eyes",
+          "values": [
+            {
+              "id": "v-eyes-grey-eyed",
+              "text": "grey-eyed"
+            },
+            {
+              "id": "v-eyes-green-eyed",
+              "text": "green-eyed"
+            },
+            {
+              "id": "v-eyes-amber-eyed",
+              "text": "amber-eyed"
+            }
+          ]
+        }
+      ]
     },
     {
       "id": "ent-warden",
       "type": "character",
-      "name": "{{ph:ph-metal-000-0000-0000-000000000007:world:place-0039}} Warden of {{ph:ph-town-0000-0000-0000-000000000001:world:place-0040}}",
+      "name": "{{ph:ph-metal-000-0000-0000-000000000007:world:place-0058}} Warden of {{ph:ph-town-0000-0000-0000-000000000001:world:place-0059}}",
       "aliases": [
         "the warden",
-        "{{ph:ph-metal-000-0000-0000-000000000007:world:place-0041}} warden"
+        "{{ph:ph-metal-000-0000-0000-000000000007:world:place-0060}} warden"
       ],
-      "playerDescription": "Two World chips in one name — both pinnable, independently.",
+      "playerDescription": "Two World chips in one name — both pinnable, independently. He carries {{ph:ph-kit-00000-0000-0000-000000000012:world:place-0061}}.",
       "aiDescription": "The dock warden.",
       "aiSummary": "The warden.",
-      "imageTags": "1boy, armor, {{ph:ph-metal-000-0000-0000-000000000007:world:place-0042}}",
+      "imageTags": "1boy, armor, {{ph:ph-metal-000-0000-0000-000000000007:world:place-0062}}",
       "image": null
     },
     {
       "id": "ent-stray-a",
       "type": "creature",
-      "name": "Stray {{ph:ph-beast-000-0000-0000-000000000003:unique:place-0043}}",
+      "name": "Stray {{ph:ph-beast-000-0000-0000-000000000003:unique:place-0063}}",
       "aliases": [
-        "the {{ph:ph-beast-000-0000-0000-000000000003:unique:place-0044}}"
+        "the {{ph:ph-beast-000-0000-0000-000000000003:unique:place-0064}}"
       ],
-      "playerDescription": "Unique mode: rolls its own value. Its collar is {{ph:ph-metal-000-0000-0000-000000000007:unique:place-0045}}.",
+      "playerDescription": "Unique mode: rolls its own value. Its collar is {{ph:ph-collar-00-0000-0000-000000000010:world:place-0065}}, the {{ph:ph-metal-000-0000-0000-000000000007:unique:place-0066}} kind.",
       "aiDescription": "A wary animal near the docks.",
       "aiSummary": "A stray animal.",
       "image": null
@@ -482,11 +803,11 @@
     {
       "id": "ent-stray-b",
       "type": "creature",
-      "name": "Second {{ph:ph-beast-000-0000-0000-000000000003:unique:place-0046}}",
+      "name": "Second {{ph:ph-beast-000-0000-0000-000000000003:unique:place-0067}}",
       "aliases": [
-        "the other {{ph:ph-beast-000-0000-0000-000000000003:unique:place-0047}}"
+        "the other {{ph:ph-beast-000-0000-0000-000000000003:unique:place-0068}}"
       ],
-      "playerDescription": "A different Unique roll of the same wildcard. Its collar is {{ph:ph-metal-000-0000-0000-000000000007:unique:place-0048}} — pin Metal and BOTH collars must flatten.",
+      "playerDescription": "A different Unique roll of the same wildcard. Its collar is {{ph:ph-metal-000-0000-0000-000000000007:unique:place-0069}} — pin Metal and BOTH collars must flatten.",
       "aiDescription": "A second wary animal.",
       "aiSummary": "Another stray.",
       "image": null
@@ -494,7 +815,7 @@
     {
       "id": "ent-nameless",
       "type": "object",
-      "name": "{{ph:ph-empty-000-0000-0000-000000000005:world:place-0049}}",
+      "name": "{{ph:ph-empty-000-0000-0000-000000000005:world:place-0070}}",
       "aliases": [],
       "playerDescription": "Its name resolves to nothing until the Nihilist trait pins the empty placeholder.",
       "aiDescription": "An unnamed thing.",
@@ -507,41 +828,61 @@
       "id": "book-lore",
       "name": "Lore",
       "enabled": true,
-      "description": "Entries named and triggered by chips.",
+      "description": "Entries named and triggered by chips. This week the talk is {{ph:ph-rumor-000-0000-0000-000000000015:world:place-0071}}.",
+      "placeholders": [
+        {
+          "id": "ph-rumor-000-0000-0000-000000000015",
+          "name": "Rumor",
+          "values": [
+            {
+              "id": "v-rumor-a-wreck-on-the-bar",
+              "text": "a wreck on the bar"
+            },
+            {
+              "id": "v-rumor-a-debt-called-in",
+              "text": "a debt called in"
+            },
+            {
+              "id": "v-rumor-a-stranger-asking-after-the-keeper",
+              "text": "a stranger asking after the keeper"
+            }
+          ]
+        }
+      ],
       "entries": [
         {
           "id": "ent-watch",
           "enabled": true,
           "constant": false,
           "position": "before",
-          "name": "{{ph:ph-town-0000-0000-0000-000000000001:world:place-0050}} Watch",
+          "name": "{{ph:ph-town-0000-0000-0000-000000000001:world:place-0072}} Watch",
           "key": [
-            "{{ph:ph-town-0000-0000-0000-000000000001:world:place-0051}} Watch",
+            "{{ph:ph-town-0000-0000-0000-000000000001:world:place-0073}} Watch",
             "watchmen"
           ],
           "secondaryKeys": [
-            "{{ph:ph-keep-0000-0000-0000-000000000002:world:place-0052}}"
+            "{{ph:ph-keep-0000-0000-0000-000000000002:world:place-0074}}"
           ],
-          "value": "The town watch keeps the peace, and answers to the harbour master."
+          "value": "The town watch keeps the peace, and answers to the harbour master. The talk on the quay is {{ph:ph-rumor-000-0000-0000-000000000015:world:place-0075}}."
         },
         {
           "id": "ent-forge",
           "enabled": true,
           "constant": false,
           "position": "before",
-          "name": "{{ph:ph-metal-000-0000-0000-000000000007:world:place-0053}} Forge",
+          "name": "{{ph:ph-metal-000-0000-0000-000000000007:world:place-0076}} Forge",
           "key": [
-            "{{ph:ph-metal-000-0000-0000-000000000007:world:place-0054}} Row",
-            "{{ph:ph-metal-000-0000-0000-000000000007:world:place-0055}} Forge"
+            "{{ph:ph-metal-000-0000-0000-000000000007:world:place-0077}} Row",
+            "{{ph:ph-metal-000-0000-0000-000000000007:world:place-0078}} Forge"
           ],
-          "value": "The forge on the row works the metal the town is known for."
+          "value": "The forge on the row works the metal the town is known for. The keeper sends apprentices over when she is {{ph:ph-mood-0000-0000-0000-000000000013:world:place-0079}}."
         },
         {
           "id": "ent-empty",
           "enabled": true,
           "constant": false,
           "position": "before",
-          "name": "Nothing: {{ph:ph-empty-000-0000-0000-000000000005:world:place-0056}}",
+          "name": "Nothing: {{ph:ph-empty-000-0000-0000-000000000005:world:place-0080}}",
           "key": [
             "nothing"
           ],
