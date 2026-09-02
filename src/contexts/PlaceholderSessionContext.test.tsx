@@ -103,6 +103,24 @@ describe('PlaceholderSessionProvider', () => {
     expect(TOWN.values).toContain(h.rolls().unique?.['cue-1']);
   });
 
+  it('rolls a Wildcard that appears only in a stat description or descriptor', () => {
+    // Both texts reach the player and the AI resolved, so a chip only they carry has to be primed too.
+    const w = world();
+    w.stats = [{
+      id: 's1', name: 'Favor', type: 'number', min: 0, max: 100, regen: 0,
+      description: `Standing in ${encodePlaceholderToken({ id: TOWN.id, mode: 'unique', placementId: 'meaning-1' })}`,
+      descriptors: [{
+        id: 'b1', threshold: 50,
+        description: `Shunned in ${encodePlaceholderToken({ id: TOWN.id, mode: 'unique', placementId: 'band-1' })}`,
+      }],
+    }];
+    const h = mount();
+    h.loadWorld(w);
+    h.begin();
+    expect(TOWN.values).toContain(h.rolls().unique?.['meaning-1']);
+    expect(TOWN.values).toContain(h.rolls().unique?.['band-1']);
+  });
+
   it('keeps its rolls when the session is reopened on the way into the game view', () => {
     const h = mount();
     h.loadWorld();

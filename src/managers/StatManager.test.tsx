@@ -2,8 +2,10 @@ import { useState } from 'react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import type { Stat } from '@/types';
+import type { Placeholder, Stat } from '@/types';
 import { EditorModeContext } from '@/lib/editorMode';
+import { encodePlaceholderToken } from '@/lib/placeholders';
+import { phValues } from '@/test/placeholderValues';
 import StatManager from './StatManager';
 
 // Ten rockets banded in the stat's own units — the case the unit toggle exists for.
@@ -16,12 +18,16 @@ const rockets = {
   ],
 } as unknown as Stat;
 
-const store: { stat: Stat; writes: Stat[]; rerender: () => void } = { stat: rockets, writes: [], rerender: () => {} };
+const store: { stat: Stat; placeholders: Placeholder[]; writes: Stat[]; rerender: () => void } = {
+  stat: rockets, placeholders: [], writes: [], rerender: () => {},
+};
 
 vi.mock('@/contexts/GameDataContext', () => ({
   useGameData: () => ({
     stats: [store.stat],
-    placeholders: [],
+    placeholders: store.placeholders,
+    placementLetters: new Map(),
+    placeholderOwners: new Map(),
     updateStat: (next: Stat) => {
       store.writes.push(next);
       store.stat = next;
@@ -31,7 +37,9 @@ vi.mock('@/contexts/GameDataContext', () => ({
 }));
 // Neither the chip field nor the morph picker is under test; both pull in editors this test has no use for.
 vi.mock('@/components/prompt/PlaceholderField', () => ({
-  PlaceholderNameField: (props: { value: string }) => <input readOnly value={props.value} />,
+  PlaceholderNameField: (props: { value: string; ariaLabel?: string }) => (
+    <input readOnly value={props.value} aria-label={props.ariaLabel} data-chip-field="" />
+  ),
 }));
 vi.mock('@/lib/useBodyMorphNames', () => ({ useBodyMorphSources: () => ({ sources: [], loading: false, load: () => {} }) }));
 
@@ -50,6 +58,7 @@ const renderManager = () => render(
 
 beforeEach(() => {
   store.stat = { ...rockets, descriptors: rockets.descriptors.map((d) => ({ ...d })) };
+  store.placeholders = [];
   store.writes = [];
 });
 
@@ -119,5 +128,25 @@ describe('the coverage bar', () => {
     store.stat = { ...store.stat, thresholdUnit: 'percent' };
     renderManager();
     expect(segments()).toEqual([['low', false], ['stocked', false], ['full', false], ['no status', true]]);
+  });
+
+  it('reads a chip in a band by its placeholder name', () => {
+    const TOWN: Placeholder = { id: 'ph-town', name: 'Town Name', values: phValues(['Sedge', 'Marrow']) };
+    store.placeholders = [TOWN];
+    const chip = encodePlaceholderToken({ id: TOWN.id, mode: 'world', placementId: 'p1' });
+    store.stat = { ...store.stat, descriptors: [{ id: 'd1', threshold: 10, description: `Far from ${chip}` }] };
+    renderManager();
+    expect(segments()).toEqual([['Far from {Town Name}', true]]);
+    expect(screen.getByLabelText('Threshold for Far from {Town Name}')).toBeInTheDocument();
+  });
+});
+
+describe('the stat text fields', () => {
+  it('offers the chip field for the description and for every descriptor row, the new one included', () => {
+    renderManager();
+    const chipFields = document.querySelectorAll('[data-chip-field]');
+    expect(Array.from(chipFields).map((el) => (el as HTMLInputElement).value))
+      .toEqual(['Rockets', '', 'low', 'stocked', 'full', '']);
+    expect(screen.getByLabelText('New Description')).toHaveAttribute('data-chip-field');
   });
 });

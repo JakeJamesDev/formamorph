@@ -1,4 +1,4 @@
-import type { DictionaryEntry, Entity, GameLocation, Trait, TraitGroup } from '@/types';
+import type { DictionaryEntry, Entity, GameLocation, StatDescriptor, Trait, TraitGroup } from '@/types';
 import { hasPlaceholders } from './placeholders';
 
 /**
@@ -53,11 +53,23 @@ export function resolveLocationNames(locations: GameLocation[], resolve: Resolve
 }
 
 /** Generic over the stat shape: the authored `Stat` and the save's `PlayerStat` both carry the same name,
- *  and both have to resolve it — the AI's deltas are matched against one and applied to the other. */
-export function resolveStatNames<T extends { name: string }>(stats: T[], resolve: ResolveText): T[] {
+ *  and both have to resolve it — the AI's deltas are matched against one and applied to the other. The
+ *  description and each descriptor resolve alongside: the AI reads them as the stat's meaning and status,
+ *  and the player reads the active band under the bar. */
+export function resolveStatNames<T extends { name: string; description?: string; descriptors?: StatDescriptor[] }>(
+  stats: T[],
+  resolve: ResolveText,
+): T[] {
   return mapPreservingIdentity(stats, (s) => {
     const name = one(s.name, resolve);
-    return name === s.name ? s : { ...s, name: name ?? '' };
+    const description = one(s.description, resolve);
+    const descriptors = s.descriptors && mapPreservingIdentity(s.descriptors, (d) => {
+      const text = one(d.description, resolve);
+      return text === d.description ? d : { ...d, description: text ?? '' };
+    });
+    return name === s.name && description === s.description && descriptors === s.descriptors
+      ? s
+      : { ...s, name: name ?? '', description, descriptors };
   });
 }
 

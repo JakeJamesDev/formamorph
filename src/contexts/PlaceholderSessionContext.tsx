@@ -88,7 +88,7 @@ export function PlaceholderSessionProvider({ children }: { children: ReactNode }
       ...entities.flatMap((e) => [e.name, ...(e.aliases ?? []), e.playerDescription, e.aiDescription, e.aiSummary, e.imageTags]),
       ...locations.flatMap((l) => [l.name, l.playerDescription, l.aiDescription, l.aiSummary, l.description, l.imageTags]),
       ...dictionaries.flatMap((b) => b.entries.flatMap((en) => [en.name, ...(en.key ?? []), ...(en.secondaryKeys ?? []), en.value])),
-      ...stats.map((s) => s.name),
+      ...stats.flatMap((s) => [s.name, s.description, ...(s.descriptors ?? []).map((d) => d.description)]),
       ...traits.flatMap((t) => [t.name, t.playerDescription, t.aiDescription]),
       ...traitGroups.flatMap((g) => [g.name, g.playerDescription, g.aiDescription]),
     ].filter((t): t is string => !!t);

@@ -312,32 +312,25 @@ describe('reference-integrity rules', () => {
     expect(found[0].items[0]).toMatchObject({ id: 'overview', section: 'overview' });
   });
 
-  it('flags a chip in a stat description even when its placeholder exists — nothing resolves it there', () => {
-    const described = (description: string) => ({
-      // The placeholder earns its place in a field that does resolve, so removing the stat's chip leaves a
-      // world with nothing else wrong with it.
-      ...world([{ id: 'e1', name: 'Maren', aiDescription: 'Fond of {{ph:p1:world:pl1}}.' }]),
+  it('reads a chip in a stat description or descriptor as a placement, since both fields resolve', () => {
+    const w = base({
       placeholders: [{ id: 'p1', name: 'Vice', values: phValues(['ale']) }],
-      stats: [stat({ id: 's1', name: 'Vigor', description })],
+      // Threshold at Max so this fixture is banding-clean — the chips are the only thing to read.
+      stats: [stat({
+        id: 's1', name: 'Vigor', description: 'Craving for {{ph:p1:world:pl1}}.',
+        descriptors: [{ id: 1, threshold: 100, description: 'Weak from {{ph:p1:world:pl2}}.' }],
+      })],
     });
-    const found = only(described('Craving for {{ph:p1:world:pl1}}.'), 'chip-never-scanned');
-    expect(found).toHaveLength(1);
-    expect(found[0].severity).toBe('error');
-    expect(found[0].items.map((i) => i.id)).toEqual(['s1']);
-    expect(runRules(described('Craving for ale.'))).toEqual([]);
+    expect(runRules(w)).toEqual([]);
   });
 
-  it('flags a chip in a stat descriptor', () => {
-    const described = (description: string) => ({
-      ...world([{ id: 'e1', name: 'Maren', aiDescription: 'Fond of {{ph:p1:world:pl1}}.' }]),
-      placeholders: [{ id: 'p1', name: 'Vice', values: phValues(['ale']) }],
-      // Threshold at Max so this fixture is banding-clean — the defect under test is the chip alone.
-      stats: [stat({ id: 's1', name: 'Vigor', descriptors: [{ id: 1, threshold: 100, description }] })],
+  it('flags a chip in stat text that points at a placeholder that does not exist', () => {
+    const w = base({
+      stats: [stat({ id: 's1', name: 'Vigor', descriptors: [{ id: 1, threshold: 100, description: 'Weak from {{ph:gone:world:pl1}}.' }] })],
     });
-    const found = only(described('Weak from {{ph:p1:world:pl1}}.'), 'chip-never-scanned');
+    const found = only(w, 'chip-unknown-placeholder');
     expect(found).toHaveLength(1);
-    expect(found[0].message).toContain('descriptors');
-    expect(runRules(described('Weak from ale.'))).toEqual([]);
+    expect(found[0].items.map((i) => i.id)).toEqual(['s1']);
   });
 
   it('flags stat code looking up a stat name that doesn’t exist, in either comparison direction', () => {
@@ -851,15 +844,12 @@ describe('the unused-placeholder rule', () => {
     }), 'placeholder-unused')).toEqual([]);
   });
 
-  it('counts a chip parked where it never resolves as a use — the chip is the problem, not the placeholder', () => {
-    // A chip in a stat description is its own error; reading it as "no mention" would offer to delete the
-    // placeholder underneath it and turn that error into a broken reference.
+  it('counts a chip in a stat description as a use', () => {
     const w = base({
       placeholders: [{ id: 'p1', name: 'Vice', values: phValues(['ale']) }],
       stats: [stat({ id: 's1', name: 'Vigor', description: 'Craving for {{ph:p1:world:pl1}}.' })],
     });
     expect(only(w, 'placeholder-unused')).toEqual([]);
-    expect(only(w, 'chip-never-scanned')).toHaveLength(1);
   });
 
   it('counts a chip in the world blurb as a use', () => {
@@ -2095,8 +2085,7 @@ const STRIPPED = {
 describe('a world whose “required” arrays are absent', () => {
   it('diagnoses it rather than throwing on it', () => {
     const ids = new Set(runRules(STRIPPED).map((f) => f.ruleId));
-    // The chip parked in a stat description is a finding; the descriptors the stat never carried are not.
-    expect(ids).toContain('chip-never-scanned');
+    // The descriptors the stat never carried are not a finding.
     expect(ids).not.toContain('stat-start-no-descriptor');
   });
 
@@ -2414,7 +2403,6 @@ const RULE_SCOPE: Record<string, 'simple' | 'advanced'> = {
   'alias-lowercase-no-twin': 'advanced',
   'alias-self-duplicate': 'advanced',
   'ai-summary-hides-description': 'advanced',
-  'chip-never-scanned': 'advanced',
   'chip-unknown-placeholder': 'advanced',
   'dictionary-disabled': 'advanced',
   'dictionary-regex-invalid': 'advanced',

@@ -174,9 +174,11 @@ const StatManager = ({ stat }: { stat: Stat }) => {
       </div>
       <div className="space-y-2">
         <Label>Description</Label>
-        <Input
+        <PlaceholderNameField
           value={editingStat.description || ""}
-          onChange={(e) => handleChange("description", e.target.value)}
+          onChange={(v) => handleChange("description", v)}
+          placeholders={placeholders}
+          ariaLabel="Description"
         />
       </div>
       {advanced && (

@@ -12,6 +12,9 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
+import { PlaceholderNameField } from '@/components/prompt/PlaceholderField';
+import { useGameData } from '@/contexts/GameDataContext';
+import { labelPlaceholders } from '@/lib/placementLetters';
 import { activeDescriptor } from '@/lib/statContext';
 import {
   convertDescriptorUnits, descriptorSpans, startCaptionLeft, statMax, statMin, statStartValue,
@@ -122,6 +125,9 @@ export const StatDescriptorsSection = ({
   stat, newDescriptor, setNewDescriptor, onDescriptorChange, onDescriptorBlur, onAddDescriptor,
   onRemoveDescriptor, onUnitChange,
 }: StatDescriptorsSectionProps) => {
+  const { placeholders, placementLetters, placeholderOwners } = useGameData();
+  // The bar and the tips are text surfaces: a chip reads there by its name and letter, as it does in a row.
+  const chipText = (text: string) => labelPlaceholders(text, placeholders, placementLetters, placeholderOwners);
   const min = statMin(stat);
   const max = statMax(stat);
   const range = max - min;
@@ -173,10 +179,10 @@ export const StatDescriptorsSection = ({
             {spans.map((span, i) => (
               <BarSegment
                 key={span.id}
-                text={span.description}
+                text={chipText(span.description)}
                 width={width(span.from, span.to)}
                 className={`${BAND_TINTS[i % BAND_TINTS.length]} text-primary-foreground${span.id === startBand?.id ? ' font-semibold' : ''}`}
-                tip={`${span.from} – ${span.to}: ${span.description}`}
+                tip={`${span.from} – ${span.to}: ${chipText(span.description)}`}
               />
             ))}
             {gap && (
@@ -200,16 +206,19 @@ export const StatDescriptorsSection = ({
               <UnitInput
                 value={descriptor.threshold}
                 unit={tag}
-                ariaLabel={`Threshold for ${descriptor.description || 'descriptor'}`}
+                ariaLabel={`Threshold for ${chipText(descriptor.description) || 'descriptor'}`}
                 onChange={(v) => onDescriptorChange(index, 'threshold', Number(v))}
                 onBlur={onDescriptorBlur}
               />
-              <Input
-                value={descriptor.description}
-                onChange={(e) => onDescriptorChange(index, 'description', e.target.value)}
-                placeholder="Description"
-                className="flex-grow"
-              />
+              <div className="flex-grow">
+                <PlaceholderNameField
+                  value={descriptor.description}
+                  onChange={(v) => onDescriptorChange(index, 'description', v)}
+                  placeholders={placeholders}
+                  placeholder="Description"
+                  ariaLabel="Description"
+                />
+              </div>
               <Button variant="ghost" size="icon" onClick={() => onRemoveDescriptor(descriptor.id)}>
                 <Trash2 className="h-4 w-4" />
               </Button>
@@ -231,12 +240,15 @@ export const StatDescriptorsSection = ({
           ariaLabel="New threshold"
           onChange={(v) => setNewDescriptor({ ...newDescriptor, threshold: v === '' ? '' : Number(v) })}
         />
-        <Input
-          value={newDescriptor.description}
-          onChange={(e) => setNewDescriptor({ ...newDescriptor, description: e.target.value })}
-          placeholder="New Description"
-          className="flex-grow"
-        />
+        <div className="flex-grow">
+          <PlaceholderNameField
+            value={newDescriptor.description}
+            onChange={(v) => setNewDescriptor({ ...newDescriptor, description: v })}
+            placeholders={placeholders}
+            placeholder="New Description"
+            ariaLabel="New Description"
+          />
+        </div>
         <Tip tip="Add Descriptor">
           <Button onClick={onAddDescriptor} size="icon" className="h-9 w-9 shrink-0"><Plus className="h-4 w-4" /></Button>
         </Tip>

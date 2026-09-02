@@ -9,6 +9,7 @@ import {
 import type { PlaceholderSegment, PlaceholderToken } from './placeholders';
 import { allPlaceholders, type PlaceholderOwners } from './placeholderHomes';
 import { qualifiedPlaceholderName } from './placeholderTree';
+import { sortedDescriptors } from './statDescriptorGeometry';
 import { inAuthoredOrder, traitOrderIndex } from './traitEffects';
 
 /**
@@ -86,6 +87,8 @@ export interface PlacementWorld {
 const entityTexts = (e: Entity) => present([e.name, ...(e.aliases ?? []), e.playerDescription, e.aiDescription, e.aiSummary, e.imageTags]);
 const locationTexts = (l: GameLocation) => present([l.name, l.playerDescription, l.aiDescription, l.aiSummary, l.description, l.imageTags]);
 const traitTexts = (t: Trait | TraitGroup) => present([t.name, t.playerDescription, t.aiDescription]);
+/** Bands run by threshold, the order the player meets them in, whatever order the author listed them. */
+const statTexts = (s: Stat) => present([s.name, s.description, ...sortedDescriptors(s).map((d) => d.description)]);
 const entryTexts = (b: Dictionary) => (b.entries ?? []).flatMap((en) => present([en.name, ...(en.key ?? []), ...(en.secondaryKeys ?? []), en.value]));
 const valueTexts = (placeholders: Placeholder[] | undefined) => (placeholders ?? []).flatMap((p) => (p.values ?? []).map((v) => v.text));
 
@@ -103,7 +106,7 @@ export function worldPlacementTexts(world: PlacementWorld): string[] {
     ...locationRows(world.locations ?? []).flatMap((row) => locationTexts(row.location)),
     ...inAuthoredOrder(traits, traitOrderIndex(traits, world.traitGroups ?? [])).flatMap(traitTexts),
     ...(world.traitGroups ?? []).flatMap(traitTexts),
-    ...(world.stats ?? []).map((s) => s.name).filter(Boolean),
+    ...(world.stats ?? []).flatMap(statTexts),
     ...(world.dictionaries ?? []).flatMap(entryTexts),
     ...present([ov?.systemPrompt, ov?.readme, ov?.introReadme, ov?.openingCue]),
     ...valueTexts(allPlaceholders(world)),

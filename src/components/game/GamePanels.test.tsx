@@ -806,6 +806,19 @@ describe('placeholder names reach the panels resolved', () => {
     expect(container.textContent).not.toContain('{{ph:');
   });
 
+  it('renders a descriptor that holds a chip by its value under the stat bar', () => {
+    const { container } = renderRightPanel({}, {
+      turns: TURNS,
+      stats: [statFixture('Standing', 20, {
+        descriptors: [{ id: 'b-low', threshold: 30, description: `Shunned in ${CHIP}` }],
+      })],
+      world: { placeholders: [TOWN] },
+    });
+
+    expect(descriptorLine('Standing')).toHaveTextContent('Shunned in Sedge');
+    expect(container.textContent).not.toContain('{{ph:');
+  });
+
   it('renders a trait whose name holds a chip by its value', () => {
     const { container } = renderRightPanel({}, {
       turns: TURNS,

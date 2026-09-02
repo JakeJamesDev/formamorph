@@ -92,6 +92,18 @@ describe('collectSearchTargets', () => {
     expect(collectSearchTargets(src).some((t) => t.value.includes('return value'))).toBe(false);
   });
 
+  it('lets a stat description and each descriptor take a chip', () => {
+    const { src } = sources({
+      stats: [{
+        id: 's1', name: 'Vigor', type: 'number', description: 'Stamina', min: 0, max: 100, regen: 0,
+        descriptors: [{ id: 'b1', threshold: 30, description: 'Winded' }],
+      } as Stat],
+    });
+    const targets = collectSearchTargets(src);
+    expect(targetFor(targets, 'description')).toMatchObject({ value: 'Stamina', chipCapable: true });
+    expect(targetFor(targets, 'descriptors[0].description')).toMatchObject({ value: 'Winded', chipCapable: true });
+  });
+
   it('gives each element of a string-array field its own target', () => {
     const { src } = sources({ entities: [entity({ aliases: ['the Sparrow', 'Mira of Sedge'] })] });
     const targets = collectSearchTargets(src);
