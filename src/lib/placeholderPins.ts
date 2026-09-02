@@ -24,6 +24,9 @@ export interface PinFinding {
   /** Value pins that flip each other without settling; the ids are the placeholders caught in the loop. */
   kind: 'value-pin-cycle';
   placeholderIds: string[];
+  /** The states the walk cycles through, in order: each one the value every looping placeholder reads as,
+   *  ending on the state that repeated the first. */
+  loop: Record<string, string>[];
 }
 
 /** Everything a pin collection reads. Only `traits` and `placeholders` are always present. */
@@ -32,7 +35,7 @@ export interface PinSources {
   traits: readonly Trait[];
   disabledTraitIds?: readonly string[];
   /** Where the player is; absent or null before a location is picked. */
-  location?: Pick<GameLocation, 'placeholderPins'> | null;
+  location?: Pick<GameLocation, 'id' | 'placeholderPins'> | null;
   /** The stats with their current values; each one's band is what pins. */
   stats?: readonly PinnableStat[];
   placeholders: readonly Placeholder[];
@@ -41,18 +44,49 @@ export interface PinSources {
   onFinding?: (finding: PinFinding) => void;
 }
 
-const indexPlaceholders = (placeholders: readonly Placeholder[]) => new Map(placeholders.map((p) => [p.id, p]));
+/** Placeholder id → placeholder, the lookup every pin reader needs. */
+export const indexPlaceholders = (placeholders: readonly Placeholder[]): Map<string, Placeholder> =>
+  new Map(placeholders.map((p) => [p.id, p]));
 
-/** Lay one source's pins over `out`, later rows winning. */
+/** The placeholders whose values pin something — the only ones a value-pin pass or a loop check reads. */
+export const valuePinners = (placeholders: readonly Placeholder[]): Placeholder[] =>
+  placeholders.filter((p) => (p.values ?? []).some((v) => v.pins?.length));
+
+/** One pin as a collection laid it: where it came from, what it forced, and whether it is the pin in
+ *  force on its placeholder once every source has had its say. */
+export interface PinLayer {
+  source: PinSourceRef;
+  /** The stored pin, so a surface can find its row again. */
+  pin: PlaceholderPin;
+  placeholderId: string;
+  /** The text laid — the named value's current text, else the pin's own. */
+  value: string;
+  wins: boolean;
+}
+
+/** Lay one source's pins over `out`, later rows winning; each lay is also pushed on `trace` when given. */
 function layPins(
   out: Record<string, string>,
   pins: readonly PlaceholderPin[] | undefined,
   byId: ReadonlyMap<string, Placeholder>,
+  trace?: { layers: PinLayer[]; source: PinSourceRef },
 ): void {
   for (const pin of pins ?? []) {
     const text = pinText(pin, byId);
-    if (text) out[pin.placeholderId] = text;
+    if (!text) continue;
+    out[pin.placeholderId] = text;
+    trace?.layers.push({ source: trace.source, pin, placeholderId: pin.placeholderId, value: text, wins: false });
   }
+}
+
+/** `layers` with `wins` set on the last lay per placeholder among those `pins` actually holds — the one
+ *  whose text play reads. Layers under a key another kind claimed stay losers. */
+function markWinners(layers: PinLayer[], pins: Record<string, string>, claimed: ReadonlySet<string>): PinLayer[] {
+  const last = new Map<string, number>();
+  layers.forEach((layer, i) => {
+    if (!claimed.has(layer.placeholderId) && pins[layer.placeholderId] === layer.value) last.set(layer.placeholderId, i);
+  });
+  return layers.map((layer, i) => (last.get(layer.placeholderId) === i ? { ...layer, wins: true } : layer));
 }
 
 /**
@@ -77,20 +111,37 @@ export function activePlaceholderPins(
  * value another placeholder reads as, so this repeats until a pass changes nothing.
  */
 export function collectPins(src: PinSources): Record<string, string> {
+  return collectPinLayers(src).pins;
+}
+
+/**
+ * `collectPins` with its working shown: every pin any active source laid, in the order play lays them, and
+ * which one each placeholder ends up reading. The lens and the Bench's rules read the layers; play reads
+ * the record. One walk produces both, so the two can never disagree about who wins.
+ */
+export function collectPinLayers(src: PinSources): { pins: Record<string, string>; layers: PinLayer[] } {
   const { traits, disabledTraitIds = [], location, stats = [], placeholders, rolls, onFinding } = src;
   const byId = indexPlaceholders(placeholders);
   const off = new Set(disabledTraitIds);
   const active = traits.filter((t) => !off.has(t.id));
 
   const layered: Record<string, string> = {};
-  for (const t of active) layPins(layered, t.placeholderPins, byId);
-  layPins(layered, location?.placeholderPins, byId);
+  const layers: PinLayer[] = [];
+  const laidBy = (source: PinSourceRef) => ({ layers, source });
+  for (const t of active) layPins(layered, t.placeholderPins, byId, laidBy({ kind: 'trait', id: t.id }));
+  if (location) layPins(layered, location.placeholderPins, byId, laidBy({ kind: 'location', id: location.id }));
   const enabled = activeStatEnabled(stats, active);
   for (const stat of stats) {
     if (enabled[stat.id] === false) continue;
-    layPins(layered, activeDescriptor(stat, stat.value)?.placeholderPins, byId);
+    const band = activeDescriptor(stat, stat.value);
+    if (band) layPins(layered, band.placeholderPins, byId, laidBy({ kind: 'descriptor', statId: stat.id, descriptorId: band.id }));
   }
-  return settleValuePins(layered, placeholders, byId, rolls, onFinding);
+  const settled = settleValuePins(layered, placeholders, byId, rolls, onFinding);
+  const claimed = new Set(Object.keys(layered));
+  return {
+    pins: settled.pins,
+    layers: [...markWinners(layers, layered, new Set()), ...markWinners(settled.layers, settled.pins, claimed)],
+  };
 }
 
 /** The value a placeholder holds at world scope under `pins`: the pin on it, else its roll, else its sole
@@ -115,14 +166,16 @@ function settleValuePins(
   byId: ReadonlyMap<string, Placeholder>,
   rolls: PlaceholderRolls | undefined,
   onFinding?: (finding: PinFinding) => void,
-): Record<string, string> {
-  const pinners = placeholders.filter((p) => (p.values ?? []).some((v) => v.pins?.length));
-  if (!pinners.length) return layered;
+): { pins: Record<string, string>; layers: PinLayer[] } {
+  const pinners = valuePinners(placeholders);
+  if (!pinners.length) return { pins: layered, layers: [] };
 
   const seen: Record<string, string>[] = [layered];
   let prev = layered;
+  let prevLayers: PinLayer[] = [];
   for (;;) {
     const laid: Record<string, string> = {};
+    const layers: PinLayer[] = [];
     for (const ph of pinners) {
       const values = ph.values ?? [];
       const pinsOn = { ...prev, ...laid, ...layered };
@@ -130,16 +183,26 @@ function settleValuePins(
       const held = placeholderIsChoice(ph)
         ? values.filter((v) => v.text === effectiveValue(ph, pinsOn, rolls))
         : values;
-      for (const v of held) layPins(laid, v.pins, byId);
+      for (const v of held) {
+        layPins(laid, v.pins, byId, { layers, source: { kind: 'value', placeholderId: ph.id, valueId: v.id } });
+      }
     }
     const next = { ...laid, ...layered };
-    if (samePins(next, prev)) return prev;
-    if (seen.some((s) => samePins(s, next))) {
-      onFinding?.({ kind: 'value-pin-cycle', placeholderIds: differingKeys(next, prev) });
-      return prev;
+    if (samePins(next, prev)) return { pins: prev, layers };
+    const repeat = seen.findIndex((s) => samePins(s, next));
+    if (repeat >= 0) {
+      const states = [...seen.slice(repeat), next];
+      const placeholderIds = [...new Set(states.slice(1).flatMap((s, i) => differingKeys(s, states[i])))].sort();
+      const readAs = (state: Record<string, string>) => Object.fromEntries(placeholderIds.map((id) => {
+        const ph = byId.get(id);
+        return [id, (ph ? effectiveValue(ph, state, rolls) : state[id] ?? rolls?.world?.[id]) ?? ''];
+      }));
+      onFinding?.({ kind: 'value-pin-cycle', placeholderIds, loop: states.slice(0, -1).map(readAs) });
+      return { pins: prev, layers: prevLayers };
     }
     seen.push(next);
     prev = next;
+    prevLayers = layers;
   }
 }
 
@@ -221,6 +284,20 @@ export function withPinnedValue(
   return { ...rest, value, ...(valueId ? { valueId } : {}) };
 }
 
+/** Whether `pin` names its value by an id `ph` no longer carries — what deleting the value leaves behind.
+ *  Play falls back to the pin's text, so the pin still forces something; it just stopped following the list. */
+export function hasDeadValueId(pin: PlaceholderPin, ph: Placeholder | undefined): boolean {
+  return !!ph && !!pin.valueId && !(ph.values ?? []).some((v) => v.id === pin.valueId);
+}
+
+/** `pin` following the list again: re-aimed at the value spelled exactly as its text when the placeholder
+ *  has one, else left as the free text it already reads as. */
+export function relinkedPin(pin: PlaceholderPin, ph: Placeholder): PlaceholderPin {
+  const { valueId: _dead, ...rest } = pin;
+  const match = (ph.values ?? []).find((v) => v.text === pin.value);
+  return match ? { ...rest, valueId: match.id } : rest;
+}
+
 // ---- The editor's view: every pin aimed at one placeholder, and who wins among them ----
 
 /** Where a pin lives. Enough to find the row again and, for a source with a name, to open it. */
@@ -273,11 +350,17 @@ export function sameSource(a: PinSourceRef, b: PinSourceRef): boolean {
  * The rows are read-only views; the pin itself still lives on its source.
  */
 export function pinsTargeting(world: PinEditorWorld, placeholderId: string): PinRow[] {
+  return allPinRows(world).filter((row) => row.pin.placeholderId === placeholderId);
+}
+
+/** Every pin every source carries, strongest kind first and in authored order within a kind — what a pass
+ *  over the whole world reads, empty and broken rows included. */
+export function allPinRows(world: PinEditorWorld): PinRow[] {
   const { traits = [], traitGroups = [], locations = [], stats = [], placeholders } = world;
   const name = labeler(world);
   const rows: PinRow[] = [];
   const push = (source: PinSourceRef, pins: readonly PlaceholderPin[] | undefined, name: string, label: string) => {
-    for (const pin of pins ?? []) if (pin.placeholderId === placeholderId) rows.push({ source, pin, name, label });
+    for (const pin of pins ?? []) rows.push({ source, pin, name, label });
   };
 
   for (const stat of stats) {

@@ -122,9 +122,70 @@ describe('buildLens', () => {
   });
 });
 
+describe('pins from every source', () => {
+  // The market pins hair to jet; Nerve at its start of 5 sits in the ≤ 10 band, which pins hair to ash.
+  const layered = (over: Partial<LensWorld> = {}): LensWorld => world({
+    locations: [{ ...locations[0], placeholderPins: [{ placeholderId: 'ph-hair', value: 'jet' }] }, locations[1]],
+    stats: [
+      { id: 's-tide', name: 'Tide Sense', type: 'number', value: 0, enabled: false },
+      {
+        id: 's-nerve', name: 'Nerve', type: 'number', value: 5, min: 0, max: 100,
+        descriptors: [{ id: 'd-low', threshold: 10, description: 'Rattled', placeholderPins: [{ placeholderId: 'ph-hair', value: 'ash' }] }],
+      },
+    ] as LensWorld['stats'],
+    ...over,
+  });
+
+  it('layers the PC, the location and the starting band, and marks the band’s pin as the one in force', () => {
+    const lens = buildLens(layered(), { pcTraitId: 't-sedge', locationId: 'loc-market' });
+    expect(lens.pins).toEqual({ 'ph-hair': 'ash' });
+    expect(lens.pinLayers.map((l) => [l.label, l.value, l.wins])).toEqual([
+      ['Trait: Sedge-Born', 'copper', false],
+      ['Location: The Long Market', 'jet', false],
+      ['Nerve ≤ 10', 'ash', true],
+    ]);
+  });
+
+  it('lets the location win once the lens stands where the band no longer applies', () => {
+    const calm = layered({
+      stats: [{ id: 's-nerve', name: 'Nerve', type: 'number', value: 50, min: 0, max: 100, descriptors: [
+        { id: 'd-low', threshold: 10, description: 'Rattled', placeholderPins: [{ placeholderId: 'ph-hair', value: 'ash' }] },
+      ] }] as LensWorld['stats'],
+    });
+    const lens = buildLens(calm, { pcTraitId: 't-sedge', locationId: 'loc-market' });
+    expect(lens.pins).toEqual({ 'ph-hair': 'jet' });
+    expect(lens.pinLayers.find((l) => l.wins)?.label).toBe('Location: The Long Market');
+  });
+
+  it('reads the band the PC’s own stat changes land the start in, as a fresh game would', () => {
+    const shaken = layered({
+      traits: [{ ...traits[0], statChanges: [{ statId: 's-nerve', value: 40, type: 'starting' }] }, ...traits.slice(1)],
+      stats: [{ id: 's-nerve', name: 'Nerve', type: 'number', value: 5, min: 0, max: 100, descriptors: [
+        { id: 'd-low', threshold: 10, description: 'Rattled', placeholderPins: [{ placeholderId: 'ph-hair', value: 'ash' }] },
+      ] }] as LensWorld['stats'],
+    });
+    // 5 + 40 = 45 leaves the ≤ 10 band, so the band pins nothing and the PC's own pin stands.
+    expect(buildLens(shaken, { pcTraitId: 't-sedge', locationId: null }).pins).toEqual({ 'ph-hair': 'copper' });
+  });
+
+  it('applies a default trait’s pin with no PC picked, since every playthrough carries it', () => {
+    const w = world({ traits: [...traits, { id: 't-fen', name: 'Fen Blood', isDefault: true, statChanges: [],
+      placeholderPins: [{ placeholderId: 'ph-home', value: 'the Fen' }] }] });
+    expect(buildLens(w, { pcTraitId: null, locationId: null }).pins).toEqual({ 'ph-home': 'the Fen' });
+  });
+});
+
 describe('broken pins', () => {
   const pinning = (value: string, placeholderId = 'ph-hair'): LensWorld => world({
     traits: [{ ...traits[0], placeholderPins: [{ placeholderId, value }] }, ...traits.slice(1)],
+  });
+
+  it('surfaces a broken pin on the lens location, naming the source', () => {
+    const w = world({ locations: [{ ...locations[0], placeholderPins: [{ placeholderId: 'ph-gone', value: 'jet' }] }, locations[1]] });
+    const [broken] = buildLens(w, { pcTraitId: null, locationId: 'loc-market' }).brokenPins;
+    expect(broken).toMatchObject({ placeholderId: 'ph-gone', value: 'jet', source: 'Location: The Long Market' });
+    expect(describeBrokenPin(broken)).toBe('“Location: The Long Market” pins a placeholder that doesn’t exist, so “jet” is never applied.');
+    expect(buildLens(w, { pcTraitId: null, locationId: 'loc-harbor' }).brokenPins).toEqual([]);
   });
 
   it('says nothing about a pin the placeholder offers', () => {

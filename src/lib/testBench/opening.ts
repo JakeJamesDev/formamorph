@@ -28,7 +28,7 @@ import { resolveOpeningCue } from '@/lib/openingCue';
 import { NONE_PLACEHOLDER } from '@/lib/promptFallbacks';
 import { renderPromptTemplate } from '@/lib/promptTemplate';
 import { activeDescriptor } from '@/lib/statContext';
-import { activePlaceholderPins, allPinTexts, valuePinRollChips } from '@/lib/placeholderPins';
+import { allPinTexts, collectPins, valuePinRollChips } from '@/lib/placeholderPins';
 import { activeStatEnabled, enabledStats } from '@/lib/traitEffects';
 import { acquireTrait, seedStatBases, type TraitRuntimeState } from '@/lib/traitRuntime';
 import { buildNarrationPrompt } from '@/lib/turnPipeline/narrationPrompt';
@@ -125,10 +125,32 @@ export const EMPTY_OPENING: OpeningData = {
   stats: [], disabledStats: [], traits: [], rolls: [], system: '', user: '', totalTokens: 0,
 };
 
-/** The pins every active trait imposes — the fresh game's, not just the lens PC's, because a default
- *  trait's pin binds every playthrough. */
-const openingPins = (world: OpeningWorld, lens: BenchLens): Record<string, string> =>
-  activePlaceholderPins(lensActiveTraits(world, lens), allPlaceholders(world));
+/** What a fresh game as the lens PC stands on at turn one: the traits in force, the stats they settle, and
+ *  the starting location — the three sources the opening pins come from. */
+interface OpeningStart {
+  active: Trait[];
+  settled: PlayerStat[];
+  seeded: PlayerStat[];
+  /** The random pool play draws the start from, shown deterministically as its first member. */
+  pool: GameLocation[];
+  location: GameLocation | null;
+}
+
+function openingStart(world: OpeningWorld, lens: BenchLens): OpeningStart {
+  const active = lensActiveTraits(world, lens);
+  const locations = world.locations ?? [];
+  const flagged = startingLocations(locations);
+  const pool = flagged.length > 0 ? flagged : locations;
+  return { active, ...settleOpeningStats(world, active), pool, location: pool[0] ?? null };
+}
+
+/** The pins the fresh game opens under, from every source — the active traits (a default trait's pin binds
+ *  every playthrough, not just the lens PC's), the starting location, the band each settled stat lands in,
+ *  and the value pins those and `rolls` settle — through the same collector Enter World runs. */
+const openingPins = (world: OpeningWorld, start: OpeningStart, rolls: PlaceholderRolls): Record<string, string> =>
+  collectPins({
+    traits: start.active, location: start.location, stats: start.settled, placeholders: allPlaceholders(world), rolls,
+  });
 
 /** Every text any source pins a placeholder to — walked beside the rolls, exactly as Enter World walks them. */
 const openingPinTexts = (world: OpeningWorld): Record<string, string[]> =>
@@ -160,8 +182,11 @@ export function rerollOpeningRolls(
   previous: PlaceholderRolls,
   pick?: PlaceholderPick,
 ): PlaceholderRolls {
-  const pins = openingPins(world, lens);
-  const texts = chipBearingTexts(world);
+  // Rolls are what is being redrawn, so a pin that only holds because of a roll is no reason to keep one;
+  // value pins count here only where a source above them, or a sole value, fixes the pinner.
+  const pins = openingPins(world, openingStart(world, lens), {});
+  const placeholders = allPlaceholders(world);
+  const texts = [...chipBearingTexts(world), ...valuePinRollChips(placeholders)];
   const pinTexts = openingPinTexts(world);
   // A pin's own chips are placements too, so a pinned one keeps its roll like any other.
   const { unique } = collectPlaceholderPlacements([...texts, ...Object.values(pinTexts).flat()]);
@@ -177,7 +202,7 @@ export function rerollOpeningRolls(
     const tail = key.slice(key.lastIndexOf('/') + 1);
     return tail === key ? placementOwner.get(key) : tail;
   };
-  return primeRolls(allPlaceholders(world), texts, {
+  return primeRolls(placeholders, texts, {
     world: keep(previous.world, (id) => id),
     unique: keep(previous.unique, uniqueOwner),
   }, pick, pinTexts);
@@ -216,17 +241,11 @@ function settleOpeningStats(world: OpeningWorld, active: Trait[]): { settled: Pl
  */
 export function buildOpening(world: OpeningWorld, lens: BenchLens, rolls: PlaceholderRolls): OpeningData {
   const placeholders = allPlaceholders(world);
-  const locations = world.locations ?? [];
-  const active = lensActiveTraits(world, lens);
-  const pins = openingPins(world, lens);
+  const start = openingStart(world, lens);
+  const { active, settled, seeded, pool, location } = start;
+  const pins = openingPins(world, start, rolls);
   const resolve = (text: string) => resolvePlaceholders(text, { placeholders, rolls, pins });
 
-  // The random pool play draws the start from; shown deterministically as its first member.
-  const flagged = startingLocations(locations);
-  const pool = flagged.length > 0 ? flagged : locations;
-  const location = pool[0] ?? null;
-
-  const { settled, seeded } = settleOpeningStats(world, active);
   const seededValue = new Map(seeded.map((stat) => [stat.id, stat.value]));
   const enabled = activeStatEnabled(world.stats ?? [], active);
   const liveStats = enabledStats(settled, enabled);
