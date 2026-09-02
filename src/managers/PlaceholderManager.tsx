@@ -15,11 +15,12 @@ import { Chip } from '@/components/Chip';
 import {
   placeholderWeight, placeholderChances, placeholderValueLine, parsePlaceholderText,
   reconcilePlaceholderValues, prunePlaceholderWeights, pruneSharedWeights, mergePlaceholderWeights,
-  lonePlaceholderToken, drawPlaceholderOnce, placeholderIsChoice, placeholderRandomizes,
+  lonePlaceholderToken, drawPlaceholderSpans, placeholderIsChoice, placeholderRandomizes, type PlaceholderSpan,
 } from '@/lib/placeholders';
-import { placeholderRowChance } from '@/lib/placeholderTree';
+import { placeholderRowChance, qualifiedPlaceholderName } from '@/lib/placeholderTree';
 import { accentAtChance, chanceChipStyle, relativeChance } from '@/lib/chanceColor';
-import { usePlaceholderChipVocabulary } from '@/lib/chipVocabulary';
+import { placeholderAccent, usePlaceholderChipVocabulary } from '@/lib/chipVocabulary';
+import { TINT_MARK_CLASS, tintMarkStyle } from '@/lib/previewTint';
 import { cn } from '@/lib/utils';
 import type { Placeholder, PlaceholderValue } from '@/types';
 import { Tip } from '@/components/ui/tooltip';
@@ -94,7 +95,7 @@ const PlaceholderManager = ({ placeholder, rowId, share }: {
   const [openValue, setOpenValue] = useState<string | null>(null);
   const [showChances, setShowChances] = useState(false);
   // One sample draw, shown until the next click or until the values it drew from change. Never stored.
-  const [sample, setSample] = useState<string | null>(null);
+  const [sample, setSample] = useState<PlaceholderSpan[] | null>(null);
   // A value the chip row can't hold decides the style on open; from there it is the author's pick.
   const [style, setStyle] = useState<ValueStyle>(
     () => (placeholder.values.some((v) => v.text.includes('\n')) ? 'multiline' : 'chips'),
@@ -346,7 +347,7 @@ const PlaceholderManager = ({ placeholder, rowId, share }: {
                 variant="outline"
                 size="sm"
                 className="h-7 px-2 text-helper"
-                onClick={() => setSample(drawPlaceholderOnce(editing, placeholders, effective))}
+                onClick={() => setSample(drawPlaceholderSpans(editing, placeholders, effective))}
               >
                 <Dices className="mr-1 h-3.5 w-3.5" aria-hidden />
                 Roll
@@ -358,7 +359,20 @@ const PlaceholderManager = ({ placeholder, rowId, share }: {
                 aria-label="Sample roll"
                 className="min-w-0 flex-1 whitespace-pre-wrap break-words rounded-md border bg-muted/30 px-2 py-1 text-label"
               >
-                {sample || <span className="text-muted-foreground">(nothing)</span>}
+                {/* Each direct chip's run reads in its placeholder's tint, the same mark the Preview pane
+                    paints, so the field says which placeholder produced which words. */}
+                {sample.length
+                  ? sample.map((span, i) =>
+                    span.placeholderId ? (
+                      <Tip key={i} tip={qualifiedPlaceholderName(placeholders, span.placeholderId, editing.id)} labelsChild={false}>
+                        <mark className={TINT_MARK_CLASS} style={tintMarkStyle(placeholderAccent(span.placeholderId))}>
+                          {span.text}
+                        </mark>
+                      </Tip>
+                    ) : (
+                      <span key={i}>{span.text}</span>
+                    ))
+                  : <span className="text-muted-foreground">(nothing)</span>}
               </p>
             )}
           </div>

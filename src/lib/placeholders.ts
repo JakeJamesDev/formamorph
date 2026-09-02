@@ -568,13 +568,33 @@ export function drawPlaceholderOnce(
   weights?: Record<string, number>,
   pick: PlaceholderPick = weightedPick,
 ): string {
+  return joinSpans(drawPlaceholderSpans(ph, placeholders, weights, pick));
+}
+
+/** One run of a drawn value: literal text of the value, or what one of its direct chips resolved to, tagged
+ *  with that chip's placeholder. A lone-chip value is one tagged span; nested chips are not distinguished. */
+export interface PlaceholderSpan {
+  text: string;
+  placeholderId?: string;
+}
+
+/**
+ * {@link drawPlaceholderOnce} in spans, for the Roll field to paint each chip's run in its placeholder's
+ * color. The same draw split at the drawn value's own chips: the joined spans are exactly the string form.
+ */
+export function drawPlaceholderSpans(
+  ph: Placeholder,
+  placeholders: readonly Placeholder[],
+  weights?: Record<string, number>,
+  pick: PlaceholderPick = weightedPick,
+): PlaceholderSpan[] {
   // The placeholder as handed in stands in for its stored copy, so an edit in flight draws as edited.
   const list = placeholders.some((p) => p.id === ph.id)
     ? placeholders.map((p) => (p.id === ph.id ? ph : p))
     : [...placeholders, ph];
   const rootPick: PlaceholderPick = (values, w) => pick(values, values === ph.values && weights ? weights : w);
-  const token = encodePlaceholderToken({ id: ph.id, mode: 'world', placementId: 'draw' });
-  return resolvePlaceholders(token, { placeholders: list, rolls: {}, pick: rootPick });
+  // Starts at the placeholder itself: a root World chip of it would resolve to the same thing.
+  return phSpans(ph, createResolveCtx({ placeholders: list, rolls: {}, pick: rootPick }));
 }
 
 /**
@@ -1090,13 +1110,21 @@ function pinChip(pin: string): PlaceholderToken | null {
 
 /** Resolve a whole placeholder: a choice shows one value, a record joins them all. */
 function resolvePh(ph: Placeholder, ctx: ResolveCtx): string {
+  return joinSpans(phSpans(ph, ctx));
+}
+
+const joinSpans = (spans: readonly PlaceholderSpan[]): string => spans.map((s) => s.text).join('');
+
+/** {@link resolvePh} in spans: what the placeholder reads as, split at its own direct chips. Empty spans are
+ *  dropped, so a chip that resolves to nothing leaves no trace. */
+function phSpans(ph: Placeholder, ctx: ResolveCtx): PlaceholderSpan[] {
   if (ctx.depth > PLACEHOLDER_DEPTH_CAP) {
     ctx.report({ kind: 'depth', placeholderId: ph.id });
-    return '';
+    return [];
   }
   if (ctx.seen.has(ph.id)) {
     ctx.report({ kind: 'cycle', placeholderId: ph.id });
-    return '';
+    return [];
   }
   const inner: ResolveCtx = { ...ctx, seen: new Set(ctx.seen).add(ph.id), depth: ctx.depth + 1 };
   // An active trait's pin masks every chip of this placeholder, Unique ones included — the intent is a fact
@@ -1105,17 +1133,23 @@ function resolvePh(ph: Placeholder, ctx: ResolveCtx): string {
   const pinned = ctx.pins?.[ph.id];
   // A pin is text the author typed, not one of these values, so it crosses into nothing this row could
   // weight.
-  if (pinned != null) return resolveValue(pinned, inner);
+  if (pinned != null) return valueSpans(pinned, inner);
   // Every pin a trait could lay over this placeholder reads under this same context once the trait is on.
-  for (const text of pinTextsFor(ph, ctx)) resolveValue(text, inner);
+  for (const text of pinTextsFor(ph, ctx)) valueSpans(text, inner);
   const values = ph.values ?? [];
-  if (!values.length) return '';
+  if (!values.length) return [];
   if (placeholderIsChoice(ph)) {
     const drawn = selectValue(ph, inner);
-    return resolveValue(drawn, inner, valueCrossing(ph, drawn));
+    return valueSpans(drawn, inner, valueCrossing(ph, drawn));
   }
-  return values.map((v) => resolveValue(v.text, inner, { holder: ph, value: v }))
-    .filter((s) => s !== '').join(', ');
+  const out: PlaceholderSpan[] = [];
+  for (const v of values) {
+    const spans = valueSpans(v.text, inner, { holder: ph, value: v });
+    if (!spans.length) continue;
+    if (out.length) out.push({ text: ', ' });
+    out.push(...spans);
+  }
+  return out;
 }
 
 /** Where a drawn text sits in its placeholder's own list — values are unique by text, so one lookup names
@@ -1128,17 +1162,35 @@ function valueCrossing(ph: Placeholder, text: string): Crossing {
 /** Resolve one value's text: literal runs stay, and every chip inside it walks as an authored one. A chip
  *  that is the whole text nests a row, so it carries the crossing; one with prose around it does not. */
 function resolveValue(value: string, ctx: ResolveCtx, crossing?: Crossing): string {
-  if (!value || !hasPlaceholders(value)) return value;
+  return joinSpans(valueSpans(value, ctx, crossing));
+}
+
+/** {@link resolveValue} in spans: a literal run is a plain span, a chip is one span tagged with its
+ *  placeholder, whatever it resolved through underneath. Empty spans are dropped. */
+function valueSpans(value: string, ctx: ResolveCtx, crossing?: Crossing): PlaceholderSpan[] {
+  if (!value) return [];
+  if (!hasPlaceholders(value)) return [{ text: value }];
   const lone = crossing ? lonePlaceholderToken(value) : null;
-  TOKEN_RE.lastIndex = 0;
-  return value.replace(TOKEN_RE, (full, id: string) => {
-    const token = decodePlaceholderToken(full);
-    if (!token) {
-      ctx.report({ kind: 'malformed', placeholderId: id });
-      return '';
+  const out: PlaceholderSpan[] = [];
+  for (const seg of parsePlaceholderText(value)) {
+    if (seg.type === 'text') {
+      out.push({ text: seg.value });
+      continue;
     }
-    return resolveChip(token, ctx, [], true, full === lone ? crossing : undefined);
-  });
+    const token = decodePlaceholderToken(seg.token);
+    if (!token) {
+      ctx.report({ kind: 'malformed', placeholderId: tokenPlaceholderId(seg.token) });
+      continue;
+    }
+    const text = resolveChip(token, ctx, [], true, seg.token === lone ? crossing : undefined);
+    if (text !== '') out.push({ text, placeholderId: token.id });
+  }
+  return out;
+}
+
+/** The placeholder id a matched token names. Its path may fail to decode; the id group never does. */
+function tokenPlaceholderId(raw: string): string {
+  return WHOLE_TOKEN_RE.exec(raw)?.[1] ?? '';
 }
 
 /** The context a chip's target resolves under. A Unique chip opens (or extends) a placement chain; every
