@@ -78,6 +78,11 @@ export interface ChipVocabulary {
   affixes(token: string): { pre: string; post: string } | null;
   /** The token with its affixes replaced. Empty strings remove them. */
   setAffixes(token: string, pre: string, post: string): string;
+  /** The author's name for this one placement (`''` when unset), or null while the chip cannot take one.
+   *  Only a Unique placeholder chip takes one: a World chip is every other World chip of its placeholder. */
+  placementLabel?(token: string): string | null;
+  /** The token with its placement label replaced. An empty string removes it. */
+  setPlacementLabel?(token: string, label: string): string;
   /** Toolbar items to insert. Owned members are left out — they belong to one placeholder and are reached
    *  by drilling into it. */
   palette(): ChipRow[];
@@ -274,6 +279,17 @@ export function placeholderVocabulary(
     },
     affixes: () => null,
     setAffixes: (t: string) => t,
+    placementLabel: (t) => {
+      const d = decodePlaceholderToken(t);
+      return d?.mode === 'unique' ? d.label ?? '' : null;
+    },
+    // Written whatever the mode, so a label set while Unique rides through World and back.
+    setPlacementLabel: (t, label) => {
+      const d = decodePlaceholderToken(t);
+      if (!d) return t;
+      const { label: _old, ...rest } = d;
+      return encodePlaceholderToken(label ? { ...rest, label } : rest);
+    },
     // Owned placeholders are private to one placeholder: they are reached by drilling into it, so the strip
     // and an insert menu's root list only what an author actually places in world text.
     palette: () =>
@@ -337,7 +353,7 @@ export function placeholderVocabulary(
       if (!from || !to) return t;
       // The placement is the chip's own: its mode and the id its Unique roll is filed under both outlive a
       // re-aim, so re-picking never silently re-rolls what the placement already drew.
-      return encodePlaceholderToken({ ...to, mode: from.mode, placementId: from.placementId });
+      return encodePlaceholderToken({ ...to, mode: from.mode, placementId: from.placementId, label: from.label });
     },
     // Created from inside a placeholder's own value field, a new one is born owned by it: building a
     // character out of parts never has to leave the panel. The owner only sticks once the value holding it
