@@ -23,6 +23,8 @@ export interface CommunityBrowserHostProps {
   openListing?: { id: string; kind: string } | null;
   /** Fired once that listing has been opened, or found to be gone, so the caller can clear its request. */
   onListingOpened?: () => void;
+  /** DEV only: open the first listing's details and raise its likers list, for the dev route. */
+  openLikersOnMount?: boolean;
 }
 
 /**
@@ -43,6 +45,7 @@ export interface CommunityBrowserHostProps {
  */
 export const CommunityBrowserHost = ({
   open, onOpenChange, presentation = 'dialog', initialTab, openListing, onListingOpened,
+  openLikersOnMount = false,
 }: CommunityBrowserHostProps) => {
   // The three local libraries, each driving its tab's download state.
   const [worlds, setWorlds] = useState<WorldRecord[]>([]);
@@ -167,6 +170,7 @@ export const CommunityBrowserHost = ({
         initialTab={eventTab ?? initialTab}
         openListing={openListing}
         onListingOpened={onListingOpened}
+        openLikersOnMount={openLikersOnMount}
         events={events}
         onOpenEvent={openEvent}
       />

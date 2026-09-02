@@ -26,6 +26,8 @@ export const AUDIT_ACTION_LABELS: Record<AuditAction, string> = {
   entry_withdrawn: 'Entry withdrawn',
   report_actioned: 'Report actioned',
   report_dismissed: 'Report dismissed',
+  like_removed: 'Like removed',
+  likes_cleared: 'Likes cleared',
 };
 
 /** The tint each action carries, so a scan down the list separates removals from the rest. */
@@ -55,6 +57,8 @@ export const AUDIT_ACTION_STYLES: Record<AuditAction, string> = {
   // A decision, not a removal: what was actually done to the content is logged by the act itself.
   report_actioned: 'bg-warning/10 text-warning',
   report_dismissed: 'bg-muted text-muted-foreground',
+  like_removed: 'bg-destructive/10 text-destructive',
+  likes_cleared: 'bg-destructive/10 text-destructive',
 };
 
 /** The filter's options, in the order the server declares them. */
@@ -195,6 +199,19 @@ export function auditPredicate(entry: AuditEntry): string {
       return `acted on the reports${name ? ` about “${name}”` : ''}${target ? ` by ${target}` : ''}`;
     case 'report_dismissed':
       return `dismissed the reports${name ? ` about “${name}”` : ''}${target ? ` by ${target}` : ''}`;
+    // Whose like it was, and on what. The listing is the target, so the account it came from is the
+    // target user — the reverse of a deletion, where the account owns the thing that went.
+    case 'like_removed':
+      return target
+        ? `removed a like by ${target} on ${name ? `“${name}”` : `a ${noun ?? 'listing'}`}`
+        : `removed a like on ${name ? `“${name}”` : `a ${noun ?? 'listing'}`}`;
+    // How many went is the whole size of the action, and the snippet is where the server puts it.
+    case 'likes_cleared': {
+      const count = entry.snippet ? Number(entry.snippet.match(/\d+/)?.[0]) : Number.NaN;
+      const many = Number.isFinite(count) ? `${count} ${count === 1 ? 'like' : 'likes'}` : 'every like';
+
+      return `cleared ${many} given by ${target || 'an account'}`;
+    }
     // Unreachable while the switch covers `AuditAction`; kept for a server newer than this build.
     default: {
       const unhandled: never = entry.action;

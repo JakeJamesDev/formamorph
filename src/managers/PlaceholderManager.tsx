@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState, type CSSProperties } from 'react';
+import { useEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode } from 'react';
 import { ChevronDown, ChevronsDownUp, ChevronsUpDown, Dices, Eye, EyeOff, Plus, Trash2 } from 'lucide-react';
 import { useEditingDraft } from '@/lib/useEditingDraft';
 import { randomUUID } from '@/lib/uuid';
@@ -17,7 +17,8 @@ import {
   reconcilePlaceholderValues, prunePlaceholderWeights, pruneSharedWeights, mergePlaceholderWeights,
   lonePlaceholderToken, drawPlaceholderSpans, placeholderIsChoice, placeholderRandomizes, type PlaceholderSpan,
 } from '@/lib/placeholders';
-import { placeholderRowChance, qualifiedPlaceholderName } from '@/lib/placeholderTree';
+import { placeholderRowChance } from '@/lib/placeholderTree';
+import { placeholderDisplayName } from '@/lib/placementLetters';
 import { accentAtChance, chanceChipStyle, relativeChance } from '@/lib/chanceColor';
 import { placeholderAccent, usePlaceholderChipVocabulary } from '@/lib/chipVocabulary';
 import { TINT_MARK_CLASS, tintMarkStyle } from '@/lib/previewTint';
@@ -176,9 +177,32 @@ const PlaceholderManager = ({ placeholder, rowId, share }: {
   // editors mount this with no world, and there the pins still write but no note can name a rival.
   const world = useGameDataOptional();
   const { advanced } = useEditorMode();
+  /** A Roll span's producer, named the way the palette and the letters name it: `Molly.Eyes` away from
+   *  Molly, bare `Eyes` on Molly's own placeholder. */
+  const spanName = (id: string) => placeholderDisplayName(id, placeholders, {
+    relativeTo: editing.id, owners: world?.placeholderOwners, letters: world?.placementLetters,
+  });
   const setValuePins = (value: PlaceholderValue, pins: PlaceholderPin[]) => apply({
     values: editing.values.map((v) => (v.id === value.id ? { ...v, pins: pins.length ? pins : undefined } : v)),
   });
+  /** A value's own pins: what other placeholders read as while this one reads as that value. A value
+   *  cannot pin its own placeholder, so this one is left out of the picker. Both value editors mount the
+   *  same button, so a placeholder whose values hold newlines pins from its value like any other. */
+  const valuePins = (v: string) => {
+    const value = byText.get(v);
+    if (!value) return null;
+    return (
+      <PinPopoverButton
+        pins={value.pins ?? []}
+        onChange={(next) => setValuePins(value, next)}
+        source={{ kind: 'value', placeholderId: editing.id, valueId: value.id }}
+        world={world}
+        placeholders={placeholders}
+        excludeId={editing.id}
+        label={`Pins for ${valueLine(v)}`}
+      />
+    );
+  };
 
   // A value keeps its id across a rename, so its weight follows it with nothing to carry. Only the values
   // an edit dropped need clearing out.
@@ -376,7 +400,7 @@ const PlaceholderManager = ({ placeholder, rowId, share }: {
                 {sample.length
                   ? sample.map((span, i) =>
                     span.placeholderId ? (
-                      <Tip key={i} tip={qualifiedPlaceholderName(placeholders, span.placeholderId, editing.id)} labelsChild={false}>
+                      <Tip key={i} tip={spanName(span.placeholderId)} labelsChild={false}>
                         <mark className={TINT_MARK_CLASS} style={tintMarkStyle(placeholderAccent(span.placeholderId))}>
                           {span.text}
                         </mark>
@@ -465,6 +489,7 @@ const PlaceholderManager = ({ placeholder, rowId, share }: {
             line={valueLine}
             weight={weighable ? weightOf : undefined}
             chance={pct}
+            aside={advanced ? valuePins : undefined}
             onToggleCollapsed={toggleCollapsed}
             onText={(id, text) => writeBoxes(boxes.map((b) => (b.id === id ? { ...b, text } : b)))}
             onWeight={setWeight}
@@ -501,23 +526,7 @@ const PlaceholderManager = ({ placeholder, rowId, share }: {
                 {chip}
               </span>
             )}
-            // A value's own pins: what other placeholders read as while this one reads as that value. A
-            // value cannot pin its own placeholder, so this one is left out of the picker.
-            chipAside={advanced ? (v) => {
-              const value = byText.get(v);
-              if (!value) return null;
-              return (
-                <PinPopoverButton
-                  pins={value.pins ?? []}
-                  onChange={(next) => setValuePins(value, next)}
-                  source={{ kind: 'value', placeholderId: editing.id, valueId: value.id }}
-                  world={world}
-                  placeholders={placeholders}
-                  excludeId={editing.id}
-                  label={`Pins for ${valueLine(v)}`}
-                />
-              );
-            } : undefined}
+            chipAside={advanced ? valuePins : undefined}
           />
           {weightPopover}
         </Popover>
@@ -581,7 +590,7 @@ const SharedValues = ({ values, line, style, suffix, register, onOpen }: {
  *  scannable. `weight` is omitted when nothing is drawn — one value, or an Object — and the chance goes
  *  with it. */
 const MultilineValues = ({
-  boxes, collapsed, placeholders, ownerId, line, weight, chance, onToggleCollapsed, onText, onWeight, onRemove, onAdd,
+  boxes, collapsed, placeholders, ownerId, line, weight, chance, aside, onToggleCollapsed, onText, onWeight, onRemove, onAdd,
 }: {
   boxes: ValueBox[];
   collapsed: ReadonlySet<string>;
@@ -592,6 +601,9 @@ const MultilineValues = ({
   line: (value: string) => string;
   weight?: (value: string) => number;
   chance: (value: string) => string;
+  /** What rides in a card's header beside the weight — the pin button the chip row carries. Omitted where
+   *  there is nothing to offer, which is Simple mode. */
+  aside?: (value: string) => ReactNode;
   onToggleCollapsed: (id: string) => void;
   onText: (id: string, text: string) => void;
   onWeight: (value: string, weight: number) => void;
@@ -638,6 +650,7 @@ const MultilineValues = ({
                   <span className="w-10 text-right text-meta text-muted-foreground">{chance(value)}</span>
                 </>
               )}
+              {value && aside?.(value)}
               <Tip tip="Remove value" labelsChild={false}>
                 <Button
                   type="button"

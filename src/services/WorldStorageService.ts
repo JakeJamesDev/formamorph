@@ -8,7 +8,7 @@ import { describePlaceholders } from '@/lib/placeholders';
 import { allPlaceholders } from '@/lib/placeholderHomes';
 import { readDeletedDefaultWorlds, tombstoneDefaultWorld, type DefaultWorldSeed } from '@/lib/defaultWorlds';
 import { changelogOf, type ChangelogDraft, type ChangelogEntry } from '@/lib/listingChangelog';
-import type { WorldMetadata } from '@/types';
+import type { LikerRow, WorldMetadata } from '@/types';
 
 /** The publish refused because this author already has an entry in the contest. */
 export const CONTEST_ALREADY_ENTERED = 'CONTEST_ALREADY_ENTERED';
@@ -850,6 +850,51 @@ class WorldStorageService {
       if (body.code) failure.code = body.code;
       throw failure;
     }
+  }
+
+  /**
+   * Who liked a listing, newest like first. Staff only.
+   *
+   * Answers with the full count as well as the rows, which the server caps: a listing with more likes
+   * than the cap is exactly the one worth looking at, and a list that quietly stopped short would say
+   * the opposite of what it means.
+   *
+   * @param worldId - The listing's server id
+   * @returns The full like count, and as many likers as the server will send
+   */
+  async fetchLikers(worldId: string): Promise<{ total: number; rows: LikerRow[] }> {
+    const response = await fetch(`${this.API_URL}/worlds/${worldId}/likes`, {
+      headers: { 'Authorization': `Bearer ${AuthService.token}` },
+    });
+
+    const body = await response.json().catch(() => ({}));
+    if (!response.ok) throw new Error(body.error || body.message || 'Failed to load who liked this');
+
+    const data = body.data as { total?: number; rows?: LikerRow[] } | undefined;
+
+    return { total: Number(data?.total) || 0, rows: data?.rows ?? [] };
+  }
+
+  /**
+   * Take one account's like off a listing. Staff only.
+   *
+   * Answers with the new count for the same reason liking does: the number on the card behind the
+   * dialog has to move with the row that left the list.
+   *
+   * @param worldId - The listing's server id
+   * @param userId - Whose like to remove
+   * @returns The listing's new like count
+   */
+  async removeLike(worldId: string, userId: string): Promise<number> {
+    const response = await fetch(
+      `${this.API_URL}/worlds/${worldId}/likes/${encodeURIComponent(userId)}`,
+      { method: 'DELETE', headers: { 'Authorization': `Bearer ${AuthService.token}` } }
+    );
+
+    const body = await response.json().catch(() => ({}));
+    if (!response.ok) throw new Error(body.error || body.message || 'Failed to remove that like');
+
+    return Number((body.data as { likes?: number } | undefined)?.likes) || 0;
   }
 }
 

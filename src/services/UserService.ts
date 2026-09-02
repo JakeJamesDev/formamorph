@@ -1,4 +1,4 @@
-import type { FeedItem, FollowedUser, ProfileCreation, PublicProfile } from '@/types';
+import type { FeedItem, FollowedUser, LikeGiven, ProfileCreation, PublicProfile } from '@/types';
 import { kindOf } from '@/lib/catalogKinds';
 import AuthService from '@/services/AuthService';
 
@@ -182,6 +182,49 @@ class UserService {
     const body = await response.json().catch(() => ({}));
 
     return Number(body?.unread) || 0;
+  }
+
+  /**
+   * What one account has liked, newest first. Staff only.
+   *
+   * The count comes back beside the rows, which the server caps: an account with more likes than the
+   * cap is exactly the one worth looking at, so the number has to be the real one.
+   *
+   * @param userId - Whose likes to list
+   * @returns The full count, and as many liked listings as the server will send
+   */
+  async fetchLikesGiven(userId: string): Promise<{ total: number; rows: LikeGiven[] }> {
+    const response = await fetch(`${this.apiUrl}/users/${encodeURIComponent(userId)}/likes`, {
+      headers: this.authHeaders(),
+    });
+    const body = await this.unwrap<{ data: { total?: number; rows?: LikeGiven[] } }>(
+      response,
+      'Failed to load what they liked'
+    );
+
+    return { total: Number(body.data?.total) || 0, rows: body.data?.rows ?? [] };
+  }
+
+  /**
+   * Take back every like one account has given. Staff only.
+   *
+   * One action rather than a row at a time: the reason to reach for it is a throwaway account whose
+   * whole footprint is the problem, and removing forty likes by hand is how half of them get left.
+   *
+   * @param userId - Whose likes to clear
+   * @returns How many were removed
+   */
+  async clearLikesGiven(userId: string): Promise<number> {
+    const response = await fetch(`${this.apiUrl}/users/${encodeURIComponent(userId)}/likes`, {
+      method: 'DELETE',
+      headers: this.authHeaders(),
+    });
+    const body = await this.unwrap<{ data: { removed?: number } }>(
+      response,
+      'Failed to clear their likes'
+    );
+
+    return Number(body.data?.removed) || 0;
   }
 }
 

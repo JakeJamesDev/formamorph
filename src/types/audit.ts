@@ -23,6 +23,8 @@ export const AUDIT_ACTIONS = [
   'entry_withdrawn',
   'report_actioned',
   'report_dismissed',
+  'like_removed',
+  'likes_cleared',
 ] as const;
 export type AuditAction = (typeof AUDIT_ACTIONS)[number];
 

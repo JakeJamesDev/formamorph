@@ -12,7 +12,7 @@ import { MarkdownRenderer } from "@/components/game/MarkdownRenderer";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import PromptField from "@/components/prompt/PromptField";
 import { plainVocabulary } from "@/lib/chipVocabulary";
-import { canModerate } from "@/lib/roles";
+import { canModerate, isStaff } from "@/lib/roles";
 import { cn } from "@/lib/utils";
 import { useCachedThumbnail } from "@/lib/useCachedThumbnail";
 import { WorldDetailsColumn, DateTimeText, splitColumnClasses, type WorldRecord } from "@/components/WorldDetails";
@@ -23,6 +23,7 @@ import WorldStorageService from "@/services/WorldStorageService";
 import { UserAvatar } from "@/components/UserAvatar";
 import { UserName } from "@/components/UserName";
 import { LikeButton } from "@/components/community/LikeButton";
+import { LikersDialog } from "@/components/community/LikersDialog";
 import { ReportDialog, type ReportTarget } from "@/components/community/ReportDialog";
 import { useReportsEnabled } from "@/lib/useReportsEnabled";
 import { ChangelogPanel } from "@/components/community/ChangelogPanel";
@@ -51,6 +52,10 @@ interface RemoteWorldDetailsModalProps {
   onLike?: (world: WorldRecord, liked: boolean) => Promise<void>;
   /** The contest archive the browser already fetched, so a placement is badged here as on its card. */
   contests?: ServerEvent[];
+  /** Records a new like count after a staff removal, so the card behind this modal agrees. */
+  onLikesChanged?: (world: WorldRecord, likes: number) => void;
+  /** DEV only: raise the likers dialog as soon as the modal opens, for the dev route. */
+  openLikersOnMount?: boolean;
 }
 
 /** The same cap a feedback comment carries, so the two comment boxes hold the same amount. */
@@ -64,7 +69,7 @@ const COMMENTS_PAGE = 20;
 export function RemoteWorldDetailsModal({
   open, onOpenChange, world, collapsed, onToggleCollapsed,
   isAuthenticated, openImageViewer, downloadStateForWorld, downloadProgress, onContextualDownload,
-  currentUser, onLike, contests = [],
+  currentUser, onLike, contests = [], onLikesChanged, openLikersOnMount = false,
 }: RemoteWorldDetailsModalProps) {
   const [comments, setComments] = useState<WorldRecord[]>([]);
   const [commentsTotal, setCommentsTotal] = useState(0);
@@ -85,6 +90,8 @@ export function RemoteWorldDetailsModal({
   // What the report dialog is aimed at, or null when it is closed. One dialog for both the listing and
   // any comment on it — they differ only in what they point at.
   const [reportTarget, setReportTarget] = useState<ReportTarget | null>(null);
+  // Whether the likers list is up. Staff only; nothing else can raise it.
+  const [showLikers, setShowLikers] = useState(false);
 
   // Off entirely for a signed-out reader and against a server without the feature, so no surface here
   // ever offers an action that would be refused.
@@ -216,6 +223,15 @@ export function RemoteWorldDetailsModal({
     (world.author.id === currentUser.id || world.author.username === currentUser.username)
   );
 
+  // Who liked something is a moderation surface, not a social one: an author does not get it on their
+  // own listing, and nothing on screen tells anybody else it exists.
+  const canSeeLikers = isStaff(currentUser);
+
+  // DEV: `#dev?modal=likers` lands on the likers list without clicking through the catalog first.
+  useEffect(() => {
+    if (import.meta.env.DEV && open && openLikersOnMount && canSeeLikers) setShowLikers(true);
+  }, [open, openLikersOnMount, canSeeLikers]);
+
   /** Whether the reader wrote this comment. Only they may rewrite it, with no deadline on it. */
   const isOwnComment = (comment: WorldRecord) =>
     Boolean(currentUser && comment.author?.id && comment.author.id === currentUser.id);
@@ -341,6 +357,9 @@ export function RemoteWorldDetailsModal({
                         size="md"
                         // Static on your own listing, which the server refuses.
                         onToggle={onLike && isAuthenticated && !isOwnListing ? (next) => onLike(world, next) : undefined}
+                        // Staff read the count as a way into who is behind it; everybody else keeps the
+                        // heart, and nothing on screen says a list exists.
+                        onOpenLikers={canSeeLikers ? () => setShowLikers(true) : undefined}
                       />
                     </div>
 
@@ -548,6 +567,17 @@ export function RemoteWorldDetailsModal({
           onOpenChange={(isOpen) => { if (!isOpen) setReportTarget(null); }}
           target={reportTarget}
         />
+
+        {canSeeLikers && (
+          <LikersDialog
+            open={showLikers}
+            onOpenChange={setShowLikers}
+            listingId={world ? String(world._id || world.id) : null}
+            listingName={world?.name}
+            currentUser={currentUser}
+            onLikesChanged={(likes) => { if (world) onLikesChanged?.(world, likes); }}
+          />
+        )}
 
         <ConfirmDialog
           open={!!pendingDelete}

@@ -179,13 +179,14 @@ export function ownerPrefix(
 }
 
 /** A placeholder as a plain-text list names it: its owner prefix and its qualified name, chips read by
- *  name — `Molly.Eyes`, `Molly › Northern`, or `?` for one the world no longer has. */
+ *  name — `Molly.Eyes`, `Molly › Northern`, or `?` for one the world no longer has. `relativeTo` drops
+ *  what the reading surface already supplies, so Molly's own panel reads `Eyes`. */
 export function placeholderDisplayName(
-  id: string, placeholders: readonly Placeholder[], letters: PlacementLetters = EMPTY_LETTERS, owners?: PlaceholderOwners,
+  id: string, placeholders: readonly Placeholder[], { relativeTo, owners, letters }: ChipNameOptions = {},
 ): string {
-  const qualified = qualifiedPlaceholderName(placeholders, id);
+  const qualified = qualifiedPlaceholderName(placeholders, id, relativeTo);
   if (qualified == null) return MISSING;
-  return `${ownerPrefix(id, placeholders, { owners, letters })}${labelPlaceholders(qualified, placeholders, letters, owners)}`;
+  return `${ownerPrefix(id, placeholders, { relativeTo, owners, letters })}${labelPlaceholders(qualified, placeholders, letters, owners)}`;
 }
 
 /**
