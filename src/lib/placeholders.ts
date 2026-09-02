@@ -1,5 +1,5 @@
 import { randomUUID } from "@/lib/uuid";
-import type { Placeholder, PlaceholderRolls, PlaceholderValue } from '@/types';
+import type { Placeholder, PlaceholderPin, PlaceholderRolls, PlaceholderValue } from '@/types';
 import type { PromptSegment } from './promptTemplate';
 
 /**
@@ -544,17 +544,49 @@ export function buildPlaceholderPreview(
    *  with the pass — a preview never writes a save. */
   store?: Pick<ResolveOptions, 'rolls' | 'setRoll'>,
 ): Record<string, string> {
-  const out: Record<string, string> = {};
-  if (!text || !hasPlaceholders(text)) return out;
+  if (!text || !hasPlaceholders(text)) return {};
   // One context across every token, so a structured chip resolves the way play resolves it and the sharing
   // rules still hold: World chips of one placeholder agree, Unique placements stay apart.
-  const ctx = createResolveCtx({ placeholders, rolls: store?.rolls ?? {}, setRoll: store?.setRoll, pick });
-  TOKEN_RE.lastIndex = 0;
-  for (const m of text.matchAll(TOKEN_RE)) {
-    if (m[0] in out) continue;
-    out[m[0]] = resolveText(m[0], ctx);
+  return drawWithValuePins({ placeholders, rolls: store?.rolls ?? {}, setRoll: store?.setRoll, pick }, (ctx) => {
+    const out: Record<string, string> = {};
+    TOKEN_RE.lastIndex = 0;
+    for (const m of text.matchAll(TOKEN_RE)) {
+      if (m[0] in out) continue;
+      out[m[0]] = resolveText(m[0], ctx);
+    }
+    return out;
+  });
+}
+
+/** How many walks an author draw makes to read its own pins. A walk can only lay a pin its predecessor
+ *  did not through a chip a pin's text carries, so a chain this long is already an authoring oddity. */
+const DRAW_PIN_WALKS = 4;
+
+/**
+ * An author draw that reads its own pins: walk once, then walk again over the same rolls with the pins the
+ * drawn values laid, until a walk lays nothing new. A chip placed before the value that pins it then
+ * reads pinned as well — the way play reads it once the collection has settled — instead of depending on
+ * which chip the text happened to put first.
+ */
+function drawWithValuePins<T>(opts: ResolveOptions, walk: (ctx: ResolveCtx) => T): T {
+  const drawPins: Record<string, string> = {};
+  let rolls = opts.rolls;
+  for (let pass = 1; ; pass++) {
+    const before = { ...drawPins };
+    const ctx = createResolveCtx({ ...opts, rolls, drawPins });
+    const out = walk(ctx);
+    if (pass >= DRAW_PIN_WALKS || sameMap(before, drawPins)) return out;
+    // The next walk reads what this one drew, so the draw is the same draw with more of it pinned.
+    rolls = {
+      world: { ...(rolls.world ?? {}), ...ctx.minted.world },
+      unique: { ...(rolls.unique ?? {}), ...ctx.minted.unique },
+    };
   }
-  return out;
+}
+
+function sameMap(a: Record<string, string>, b: Record<string, string>): boolean {
+  const keys = Object.keys(a);
+  return keys.length === Object.keys(b).length && keys.every((k) => a[k] === b[k]);
 }
 
 /**
@@ -594,7 +626,7 @@ export function drawPlaceholderSpans(
     : [...placeholders, ph];
   const rootPick: PlaceholderPick = (values, w) => pick(values, values === ph.values && weights ? weights : w);
   // Starts at the placeholder itself: a root World chip of it would resolve to the same thing.
-  return phSpans(ph, createResolveCtx({ placeholders: list, rolls: {}, pick: rootPick }));
+  return drawWithValuePins({ placeholders: list, rolls: {}, pick: rootPick }, (ctx) => phSpans(ph, ctx));
 }
 
 /**
@@ -883,6 +915,9 @@ interface ResolveCtx {
   /** Priming only: every text some trait pins each placeholder to, walked beside its roll so the keys a
    *  pin's chips read exist before the trait is on. */
   pinTexts?: Record<string, readonly string[]>;
+  /** Author draws only: the pins the values drawn so far in this pass lay, under `pins`. Shared by reference
+   *  across the whole walk, so a chip resolved after the pinning value reads the pinned text. */
+  drawPins?: Record<string, string>;
   report: (finding: PlaceholderFinding) => void;
   scope: PlaceholderMode;
   /** Placement chain keying Unique rolls; `''` under World. */
@@ -1086,9 +1121,31 @@ function rollKey(ph: Placeholder, ctx: ResolveCtx): string {
   return ph.id === ctx.chainRootId ? ctx.chain : `${ctx.chain}/${ph.id}`;
 }
 
+/** The pin on a placeholder in this walk: the caller's, else one a value drawn earlier in the pass laid. */
+function pinOn(id: string, ctx: ResolveCtx): string | undefined {
+  return ctx.pins?.[id] ?? ctx.drawPins?.[id];
+}
+
+/** In an author draw, lay the pins of a value this placeholder holds at world scope. Play never gets here:
+ *  its value pins are settled into `pins` before resolution starts (lib/placeholderPins). */
+function layDrawPins(ph: Placeholder, text: string, ctx: ResolveCtx): void {
+  if (!ctx.drawPins || ctx.scope !== 'world') return;
+  const value = (ph.values ?? []).find((v) => v.text === text);
+  for (const pin of value?.pins ?? []) {
+    const pinned = pinText(pin, ctx.byId);
+    if (pinned) ctx.drawPins[pin.placeholderId] = pinned;
+  }
+}
+
 /** The value a choice placeholder shows: a pin masks it, else the frozen roll, else a fresh weighted draw. */
 function selectValue(ph: Placeholder, ctx: ResolveCtx): string {
-  const pinned = ctx.pins?.[ph.id];
+  const chosen = chooseValue(ph, ctx);
+  layDrawPins(ph, chosen, ctx);
+  return chosen;
+}
+
+function chooseValue(ph: Placeholder, ctx: ResolveCtx): string {
+  const pinned = pinOn(ph.id, ctx);
   if (pinned != null) return pinned;
   const key = rollKey(ph, ctx);
   const existing = ctx.rolls[ctx.scope]?.[key] ?? ctx.minted[ctx.scope][key];
@@ -1101,6 +1158,22 @@ function selectValue(ph: Placeholder, ctx: ResolveCtx): string {
 
 /** The pin texts a priming pass walks beside `ph`'s roll; nothing outside priming. */
 const pinTextsFor = (ph: Placeholder, ctx: ResolveCtx): readonly string[] => ctx.pinTexts?.[ph.id] ?? [];
+
+/**
+ * The text one pin holds its placeholder to, or undefined for a pin that pins nothing.
+ *
+ * A pin naming a value by id reads that value's *current* text, so a pin picked off the list follows the
+ * author re-spelling it. A pin whose id names nothing — a value since deleted, or a typed pin that never
+ * had one — falls back to the text as written, which is what pinning a value off the list is for. An empty
+ * text is a half-filled editor row, never a blank pin.
+ */
+export function pinText(pin: PlaceholderPin, byId: ReadonlyMap<string, Placeholder>): string | undefined {
+  if (!pin.placeholderId) return undefined;
+  const named = pin.valueId
+    ? byId.get(pin.placeholderId)?.values?.find((v) => v.id === pin.valueId)?.text
+    : undefined;
+  return (named ?? pin.value) || undefined;
+}
 
 /** The chip a pin's text is, when it is exactly one — the child a drill or slot walks into through the pin. */
 function pinChip(pin: string): PlaceholderToken | null {
@@ -1130,7 +1203,7 @@ function phSpans(ph: Placeholder, ctx: ResolveCtx): PlaceholderSpan[] {
   // An active trait's pin masks every chip of this placeholder, Unique ones included — the intent is a fact
   // about the character, not about one sentence. A broken pin still applies, so it is checked before the
   // values are: a pin on an emptied placeholder is still the author's word.
-  const pinned = ctx.pins?.[ph.id];
+  const pinned = pinOn(ph.id, ctx);
   // A pin is text the author typed, not one of these values, so it crosses into nothing this row could
   // weight.
   if (pinned != null) return valueSpans(pinned, inner);
@@ -1144,6 +1217,8 @@ function phSpans(ph: Placeholder, ctx: ResolveCtx): PlaceholderSpan[] {
   }
   const out: PlaceholderSpan[] = [];
   for (const v of values) {
+    // An Object holds every value at once, so each one's pins are laid as the walk reaches it.
+    layDrawPins(ph, v.text, inner);
     const spans = valueSpans(v.text, inner, { holder: ph, value: v });
     if (!spans.length) continue;
     if (out.length) out.push({ text: ', ' });
@@ -1236,7 +1311,7 @@ function walkSegs(ph: Placeholder, segs: WalkSegment[], ctx: ResolveCtx): string
       const token = pinChip(pin);
       return token ? intoChild(token, rest) : null;
     };
-    const pinned = seg.authored ? ctx.pins?.[ph.id] : undefined;
+    const pinned = seg.authored ? pinOn(ph.id, ctx) : undefined;
     if (pinned != null) {
       const out = viaPin(pinned);
       if (out != null) return out;
@@ -1283,9 +1358,10 @@ export function resolvePlaceholders(text: string, opts: ResolveOptions): string 
 
 /** A fresh root context. Held across several texts by the priming and preview passes, so their `minted` rolls
  *  accumulate and every text after the first reads what the ones before it drew. */
-// `pinTexts` stays off `ResolveOptions`: a render pass never walks pins it is not showing.
-function createResolveCtx(opts: ResolveOptions & Pick<ResolveCtx, 'pinTexts'>): ResolveCtx {
-  const { placeholders, rolls, setRoll, pick = weightedPick, pins, pinTexts, onFinding } = opts;
+// `pinTexts` and `drawPins` stay off `ResolveOptions`: a render pass never walks pins it is not showing,
+// and never lays pins the collection did not hand it.
+function createResolveCtx(opts: ResolveOptions & Pick<ResolveCtx, 'pinTexts' | 'drawPins'>): ResolveCtx {
+  const { placeholders, rolls, setRoll, pick = weightedPick, pins, pinTexts, drawPins, onFinding } = opts;
   return {
     byId: new Map(placeholders.map((p) => [p.id, p])),
     rolls,
@@ -1294,6 +1370,7 @@ function createResolveCtx(opts: ResolveOptions & Pick<ResolveCtx, 'pinTexts'>): 
     pick,
     pins,
     pinTexts,
+    drawPins,
     report: onFinding ?? (() => {}),
     scope: 'world',
     chain: '',

@@ -3,7 +3,7 @@ import { decodePlaceholderToken, describePlaceholders, parsePlaceholderText } fr
 import { qualifiedPlaceholderName } from '@/lib/placeholderTree';
 import { labelPlaceholders, worldPlacementLetters, type PlacementLetters } from '@/lib/placementLetters';
 import { placeholderOwners, type PlaceholderOwners } from '@/lib/placeholderHomes';
-import { withPinnedValue } from '@/lib/traitEffects';
+import { withPinnedValue } from '@/lib/placeholderPins';
 import {
   setWorldPromptOverride, storedWorldPrompt, worldPromptFieldKey, WORLD_PROMPT_KINDS, WORLD_PROMPT_KIND_LABELS,
 } from '@/lib/worldPrompt';

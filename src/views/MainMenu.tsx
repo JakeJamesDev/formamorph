@@ -4,7 +4,9 @@ import React, { useState, useRef, useEffect, useCallback, useMemo } from 'react'
 import { useGameData } from '../contexts/GameDataContext';
 import { usePlaceholderSession } from '../contexts/PlaceholderSessionContext';
 import { useResolvedAuthoredWorld } from '@/lib/useResolvedWorld';
-import { activePlaceholderPins, inAuthoredOrder, traitOrderIndex } from '@/lib/traitEffects';
+import { inAuthoredOrder, traitOrderIndex } from '@/lib/traitEffects';
+import { collectPins } from '@/lib/placeholderPins';
+import { startingStatsWith } from '@/lib/traitRuntime';
 import { useUserProfile } from '../contexts/userProfileStore';
 import { useDevRoute, registerDevHook } from '../lib/devRouter';
 import { MAIN_MENU_CARD_TABS, type MainMenuCardTab } from './mainMenuTabs';
@@ -214,10 +216,10 @@ const WorldNotice = ({ tone, icon: Icon, children, actionLabel, actionIcon: Acti
 
 const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = false }: MainMenuProps) => {
   const {
-    traits: rawTraits, traitGroups: rawTraitGroups, stats: rawStats, placeholders, loadWorldData,
-    dictionaries: worldBooks, getWorldData,
+    traits: rawTraits, traitGroups: rawTraitGroups, stats: rawStats, locations: rawLocations, placeholders,
+    loadWorldData, dictionaries: worldBooks, getWorldData,
   } = useGameData();
-  const { beginSession, endSession } = usePlaceholderSession();
+  const { beginSession, endSession, rolls } = usePlaceholderSession();
   const { showReadme, setShowReadme } = useReadmeVisibility();
   const { applyWorldPrompt, setApplyWorldPrompt } = useWorldPromptOptOut();
   const { worldPreset, setWorldPreset } = useWorldPromptPresets();
@@ -294,14 +296,23 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
   // The library characters chosen at the entry step to place in the starting location; null = none/skipped.
   const [selectedCharacters, setSelectedCharacters] = useState<Entity[] | null>(null);
 
-  // The pins the *draft* trait selection would impose. A trait can pin a placeholder, and the trait picker is
-  // where traits are chosen — so these screens resolve against the boxes ticked so far, and a pinned name
-  // changes the moment its trait is ticked. Pins mask the roll rather than replacing it, so unticking the
-  // trait brings the rolled value back.
+  // The pins the *draft* selection would impose: the traits ticked so far, the starting location picked, and
+  // the bands the starting stats fall in once those traits have applied — so these screens resolve the way
+  // the game will open, and a pinned name changes the moment its source is picked. Pins mask the roll
+  // rather than replacing it, so unticking the trait brings the rolled value back.
   const draftPins = useMemo(() => {
-    const chosen = rawTraits.filter((t) => selectedTraits.includes(t.id));
-    return activePlaceholderPins(inAuthoredOrder(chosen, traitOrderIndex(rawTraits, rawTraitGroups)), placeholders);
-  }, [selectedTraits, rawTraits, rawTraitGroups, placeholders]);
+    const chosen = inAuthoredOrder(
+      rawTraits.filter((t) => selectedTraits.includes(t.id)), traitOrderIndex(rawTraits, rawTraitGroups),
+    );
+    const starting = startingStatsWith(rawStats, chosen, { traits: rawTraits, groups: rawTraitGroups });
+    return collectPins({
+      traits: chosen,
+      location: rawLocations.find((l) => l.id === selectedLocationId),
+      stats: starting,
+      placeholders,
+      rolls,
+    });
+  }, [selectedTraits, selectedLocationId, rawTraits, rawTraitGroups, rawStats, rawLocations, placeholders, rolls]);
   const { traits, traitGroups, stats, locations, resolvePH, resolveTraitText } = useResolvedAuthoredWorld(draftPins);
 
   const [showCodeModal, setShowCodeModal] = useState(false);

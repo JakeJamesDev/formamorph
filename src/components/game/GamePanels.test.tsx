@@ -935,6 +935,55 @@ describe('placeholder names reach the panels resolved', () => {
   });
 });
 
+describe('pins from the location and the stat bands reach the panels', () => {
+  const WILD = { id: 'ph-town', name: 'Town', values: phValues(['Sedge', 'Marrow']) };
+  const CHIP = encodePlaceholderToken({ id: 'ph-town', mode: 'world', placementId: 'p1' });
+  const STANDING = statFixture(`${CHIP} Standing`, 50, { id: 'standing' });
+  const ROLLS = { world: { 'ph-town': 'Sedge' }, unique: {} };
+
+  it('holds a location’s pin while the player is there and releases it on the next location', () => {
+    const FEN = { id: 'l-fen', name: 'Fen', placeholderPins: [{ placeholderId: 'ph-town', value: 'Marrow' }] };
+    const ROAD = { id: 'l-road', name: 'Road' };
+    const view = renderRightPanel({}, {
+      turns: TURNS,
+      stats: [STANDING],
+      world: { placeholders: [WILD], locations: [FEN, ROAD] },
+      seed: (gameplay) => {
+        gameplay.setPlaceholderRolls(ROLLS);
+        gameplay.setCurrentLocation(FEN);
+      },
+    });
+
+    expect(screen.getByText('Marrow Standing')).toBeInTheDocument();
+
+    act(() => { view.gameplay().setCurrentLocation(ROAD); });
+    expect(screen.getByText('Sedge Standing')).toBeInTheDocument();
+    // The pin masked the roll; it never wrote it.
+    expect(view.gameplay().placeholderRolls.world?.['ph-town']).toBe('Sedge');
+  });
+
+  it('flips a descriptor’s pin on and off as the stat crosses the band’s threshold', () => {
+    const vigor = (value: number) => statFixture('Vigor', value, {
+      descriptors: [{ id: 'b-low', threshold: 30, description: 'Winded', placeholderPins: [{ placeholderId: 'ph-town', value: 'Marrow' }] }],
+    });
+    const view = renderRightPanel({}, {
+      turns: TURNS,
+      stats: [STANDING, vigor(20)],
+      world: { placeholders: [WILD] },
+      seed: (gameplay) => { gameplay.setPlaceholderRolls(ROLLS); },
+    });
+
+    expect(screen.getByText('Marrow Standing')).toBeInTheDocument();
+
+    act(() => { view.gameplay().setPlayerStats([STANDING, vigor(80)]); });
+    expect(screen.getByText('Sedge Standing')).toBeInTheDocument();
+    expect(view.gameplay().placeholderRolls.world?.['ph-town']).toBe('Sedge');
+
+    act(() => { view.gameplay().setPlayerStats([STANDING, vigor(10)]); });
+    expect(screen.getByText('Marrow Standing')).toBeInTheDocument();
+  });
+});
+
 describe('the action input grows in flow, not over the panel', () => {
   /** Fake the content height jsdom never computes, so the grow path has something to measure. */
   const withScrollHeight = (px: number, run: () => void) => {
