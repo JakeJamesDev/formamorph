@@ -64,7 +64,7 @@ With no piece selected, the line is just the stat's name.
 |---|---|
 | **Name** | Also how the AI refers to the stat, and how stat changes are matched back to it. |
 | **Type** | **Number** (a range you set) or **Percentage** (pinned 0–100, shown everywhere as `N%`). Everything below works the same for both. (List exists in the data format but isn't currently offered.) |
-| **Description** | What the stat represents. Sent to the AI when the chip's **Meaning** piece is on. |
+| **Description** | What the stat represents. Sent to the AI when the chip's **Meaning** piece is on. Takes placeholder chips. |
 | **Min** / **Max** | The range. Values are always clamped to it. A percentage stat locks these at 0 / 100 and hides Max — you set only its **Initial Value (%)**. |
 | **Initial Value** | Where the stat starts. Ignored when the stat has code. |
 | **Regen** | Added to the value once per turn, then clamped. Positive heals over time; negative bleeds. |
@@ -72,7 +72,7 @@ With no piece selected, the line is just the stat's name.
 
 ### Stat Descriptors
 
-Descriptors turn a number into a word — `Winded`, `Exhausted` — which is what the AI receives when the chip's **Status** piece is on.
+Descriptors turn a number into a word — `Winded`, `Exhausted` — which is what the AI receives when the chip's **Status** piece is on. A descriptor takes placeholder chips too, so a band can name the rolled town or the rolled rival.
 
 Each has a **threshold** and a **Description**. A coverage bar above the rows draws every band's real extent across Min→Max, marks where the stat starts, and shows the range above your top band in red — the range where the AI is told no status at all. Each row says what it covers underneath it.
 
@@ -481,6 +481,7 @@ The letters follow the order things sit in the world: entities first, as the Ent
 Placeholders resolve **both** in what the AI reads and in what the player sees, in any field with the chip picker:
 
 - entity, location and dictionary descriptions
+- stat descriptions and descriptors
 - the readme
 - the system prompt addition
 

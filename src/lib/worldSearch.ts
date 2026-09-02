@@ -208,9 +208,9 @@ export function collectSearchTargets(src: SearchSources): SearchTarget[] {
     const where = { tab: 'stats', itemId: stat.id, itemLabel: labeled(stat.name, 'Stat') };
     const { add } = bind(`stat:${stat.id}`, stat, src.updateStat);
     add({ ...where, chipCapable: true }, 'name', 'Name', stat.name, (r, v) => ({ ...r, name: v }));
-    add({ ...where, chipCapable: false }, 'description', 'Description', stat.description, (r, v) => ({ ...r, description: v }));
+    add({ ...where, chipCapable: true }, 'description', 'Description', stat.description, (r, v) => ({ ...r, description: v }));
     stat.descriptors?.forEach((d, i) => {
-      add({ ...where, chipCapable: false }, `descriptors[${i}].description`, 'Descriptor', d.description,
+      add({ ...where, chipCapable: true }, `descriptors[${i}].description`, 'Descriptor', d.description,
         (r, v) => ({ ...r, descriptors: (r.descriptors ?? []).map((x, j) => (j === i ? { ...x, description: v } : x)) }));
     });
   });

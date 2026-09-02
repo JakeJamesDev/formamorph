@@ -2,6 +2,7 @@ import { describe, it, expect } from 'vitest';
 import type { DictionaryEntry, Entity, GameLocation, PlayerStat, Stat, Trait, TraitGroup } from '@/types';
 import { encodePlaceholderToken, resolvePlaceholders } from './placeholders';
 import { phValues } from '@/test/placeholderValues';
+import { buildStatContext } from './statContext';
 import {
   resolveEntityNames, resolveLocationNames, resolveStatNames, resolveTraitNames, resolveTraitGroupNames,
   resolveDictionaryEntryNames,
@@ -49,6 +50,42 @@ describe('resolveWorldNames', () => {
     expect(live.name).toBe("Vera's Favor");
     // Everything but the name survives — these objects are written straight back into the save.
     expect(live.value).toBe(3);
+  });
+
+  // The stat text the AI and the player both read: the meaning line and each band's word.
+  const banded = {
+    id: 's1', name: 'Favor', type: 'number', min: 0, max: 100, regen: 0,
+    description: `Standing with ${tok(KEEPER.id, 'p20')}`,
+    descriptors: [
+      { id: 'b1', threshold: 30, description: `Shunned in ${tok(TOWN.id, 'p21')}` },
+      { id: 'b2', threshold: 70, description: 'Tolerated' },
+    ],
+  } as Stat;
+
+  it('resolves a stat description and every descriptor, for both shapes', () => {
+    const [stat] = resolveStatNames([banded], resolve);
+    expect(stat.description).toBe('Standing with Vera');
+    expect(stat.descriptors.map((d) => d.description)).toEqual(['Shunned in Sedge', 'Tolerated']);
+    // Thresholds and ids survive: the band lookup keys on them.
+    expect(stat.descriptors.map((d) => d.threshold)).toEqual([30, 70]);
+    const [live] = resolveStatNames([{ ...banded, value: 20 }] as PlayerStat[], resolve);
+    expect(live.descriptors[0].description).toBe('Shunned in Sedge');
+    expect(live.value).toBe(20);
+  });
+
+  it('hands the AI the resolved meaning and status through buildStatContext', () => {
+    const live = resolveStatNames([{ ...banded, value: 20 }] as PlayerStat[], resolve);
+    expect(buildStatContext(live, { values: false, status: true, meaning: true }))
+      .toBe('Favor: Shunned in Sedge — Standing with Vera');
+  });
+
+  it('keeps every untouched descriptor when only one holds a chip', () => {
+    const [stat] = resolveStatNames([banded], resolve);
+    expect(stat).not.toBe(banded);
+    expect(stat.descriptors[1]).toBe(banded.descriptors[1]);
+    const plainBands = { ...banded, description: 'Standing', descriptors: [banded.descriptors[1]] } as Stat;
+    expect(resolveStatNames([plainBands], resolve)).toEqual([plainBands]);
+    expect(resolveStatNames([plainBands], resolve)[0]).toBe(plainBands);
   });
 
   it('resolves trait and trait-group names', () => {

@@ -82,14 +82,31 @@ describe('the document walk', () => {
       locations: [{ id: 'l', name: 'loc', aiSummary: 'loc-ais' }],
       traits: [{ id: 't', name: 'trait', statChanges: [] }],
       traitGroups: [{ id: 'g', name: 'group', parentId: null }],
-      stats: [{ id: 's', name: 'stat', type: 'number', description: '', min: 0, max: 1, regen: 0, descriptors: [] }],
+      stats: [{
+        id: 's', name: 'stat', type: 'number', description: 'stat-desc', min: 0, max: 1, regen: 0,
+        // Listed high band first: the walk runs bands by threshold, the order the player meets them in.
+        descriptors: [{ id: 'hi', threshold: 1, description: 'band-hi' }, { id: 'lo', threshold: 0, description: 'band-lo' }],
+      }],
       dictionaries: [{ id: 'd', name: 'book', entries: [{ id: 'en', name: 'entry', key: ['k1'], value: 'val' }] }],
       worldOverview: { systemPrompt: 'sys' } as never,
       placeholders: [P('p', 'ph', ['value'])],
     });
     expect(texts).toEqual([
-      'ent', 'ent-alias', 'ent-pd', 'loc', 'loc-ais', 'trait', 'group', 'stat', 'entry', 'k1', 'val', 'sys', 'value',
+      'ent', 'ent-alias', 'ent-pd', 'loc', 'loc-ais', 'trait', 'group', 'stat', 'stat-desc', 'band-lo', 'band-hi',
+      'entry', 'k1', 'val', 'sys', 'value',
     ]);
+  });
+
+  it('letters a Unique chip in a descriptor after the one in the stat name', () => {
+    const letters = worldPlacementLetters({
+      stats: [{
+        id: 's', name: chip('town', 's-name'), type: 'number', description: '', min: 0, max: 1, regen: 0,
+        descriptors: [{ id: 'b', threshold: 1, description: `Far from ${chip('town', 's-band')}` }],
+      }],
+      placeholders: [TOWN],
+    });
+    expect(letters.get('s-name')).toBe('A');
+    expect(letters.get('s-band')).toBe('B');
   });
 
   it('reads a world whose collections are absent without throwing', () => {

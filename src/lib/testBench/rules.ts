@@ -428,7 +428,10 @@ const chipOwners = (world: RuleWorld): ChipOwner[] => [
     item: { ...entryItem(entry, world), section: 'dictionary' as const },
     texts: [entry.name, ...(entry.key ?? []), ...(entry.secondaryKeys ?? []), entry.value],
   })),
-  ...(world.stats ?? []).map((s) => ({ item: namedItem(s.id, s.name, world, 'stats'), texts: [s.name] })),
+  ...(world.stats ?? []).map((s) => ({
+    item: namedItem(s.id, s.name, world, 'stats'),
+    texts: [s.name, s.description, ...(s.descriptors ?? []).map((d) => d.description)],
+  })),
   ...(world.traits ?? []).map((t) => ({
     item: namedItem(t.id, t.name, world, 'traits'),
     texts: [t.name, t.playerDescription, t.aiDescription],
@@ -470,26 +473,6 @@ const chipUnknownPlaceholder: Rule = {
   },
 };
 
-const chipNeverScanned: Rule = {
-  id: 'chip-never-scanned',
-  severity: 'error',
-  section: 'stats',
-  advanced: true,
-  summary: (count) => `${count} stats carry chips in fields placeholders never resolve — they’ll read as raw text`,
-  check: (world) => (world.stats ?? []).flatMap((stat) => {
-    const item = namedItem(stat.id, stat.name, world);
-    const spots: string[] = [];
-    if (stat.description && hasPlaceholders(stat.description)) spots.push('description');
-    if ((stat.descriptors ?? []).some((d) => d.description && hasPlaceholders(d.description))) spots.push('descriptors');
-    if (spots.length === 0) return [];
-    return [finding(
-      chipNeverScanned,
-      `${quote(item.name)} has a chip in its ${spots.join(' and ')} — placeholders never resolve there, so it’ll read as raw text`,
-      [item],
-    )];
-  }),
-};
-
 /** Every text in the world a chip token can sit in — deliberately wider than `chipOwners`, which lists only
  *  the fields the resolver scans. "Never used" has to mean unmentioned *anywhere*, or a chip parked somewhere
  *  that doesn't resolve would read as no mention at all and the placeholder under it would look disposable. */
@@ -499,7 +482,6 @@ const allChipTexts = (world: RuleWorld): Array<string | undefined> => [
   // else. Reading it as unused would put a delete-it Fix on the parts a whole character is built from.
   ...allPlaceholders(world).flatMap((ph) => (ph.values ?? []).map((v) => v.text)),
   world.worldOverview?.description,
-  ...(world.stats ?? []).flatMap((s) => [s.description, ...(s.descriptors ?? []).map((d) => d.description)]),
   ...(world.statUpdates ?? []).map((u) => u.prompt),
 ];
 
@@ -1993,7 +1975,7 @@ const imageMislabeled: Rule = {
 export const RULES: readonly Rule[] = [
   aliasLeadingArticle, entityMatchCollision, aliasSelfDuplicate,
   entityLocationOrphan, traitToggleMissingStat, traitPinInvalid,
-  chipUnknownPlaceholder, chipNeverScanned, placeholderUnused, placeholderPinnedUnused, statCodeUnknownStat,
+  chipUnknownPlaceholder, placeholderUnused, placeholderPinnedUnused, statCodeUnknownStat,
   entrySecondaryWithoutPrimary, entryInert, entryRegexInvalid,
   noStartingLocation, legacyStartLocation, entityNowhere, statDisabledForever,
   statStartingOutOfRange, statStartNoDescriptor, statDescriptorDuplicateThreshold, statDescriptorOutOfRange,
