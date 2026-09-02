@@ -6,7 +6,8 @@ import EntityFields from '@/managers/EntityFields';
 import { TagsField } from '@/components/TagsField';
 import PlaceholderEditor from '@/managers/PlaceholderEditor';
 import PlaceholderPaletteBar from '@/components/prompt/PlaceholderPaletteBar';
-import { describePlaceholders } from '@/lib/placeholders';
+import { EMPTY_LETTERS, entityPlacementLetters, labelPlaceholders } from '@/lib/placementLetters';
+import { PlacementLettersProvider } from '@/contexts/PlacementLettersContext';
 import { ChipInsertTargetProvider } from '@/components/prompt/ChipInsertTarget';
 import { EditorPreviewRollsProvider } from '@/contexts/EditorPreviewRollsContext';
 import { placeholderStore, PlaceholderStoreProvider } from '@/contexts/PlaceholderStoreContext';
@@ -97,6 +98,9 @@ const EntityEditorModal = ({ entityId, draft, onClose, onPublish }: {
     },
   }), [entity?.placeholders]);
 
+  // A library character is its own document: its Unique chips letter from a walk of its fields alone.
+  const letters = useMemo(() => (entity ? entityPlacementLetters(entity) : EMPTY_LETTERS), [entity]);
+
   // Returns whether the save succeeded, so a save-and-exit caller only closes on success.
   const handleSave = async (): Promise<boolean> => {
     if (!entity) return true;
@@ -122,7 +126,7 @@ const EntityEditorModal = ({ entityId, draft, onClose, onPublish }: {
     try {
       const blob = await exportEntityCard(entity);
       // A chip in the name would otherwise put a raw placement id in the filename.
-      downloadBlob(blob, `${describePlaceholders(entity.name, entity.placeholders) || 'Character'}.webp`);
+      downloadBlob(blob, `${labelPlaceholders(entity.name, entity.placeholders, letters) || 'Character'}.webp`);
     } catch (error) {
       toast.error((error as Error).message);
     }
@@ -130,11 +134,12 @@ const EntityEditorModal = ({ entityId, draft, onClose, onPublish }: {
 
   return (
     <EditorPreviewRollsProvider>
+    <PlacementLettersProvider letters={letters}>
       <EditorModalShell
         open={isOpen}
         // A library character has no world behind it, so its own carried defs render the chips — the same
         // treatment its card and its listing get.
-        title={describePlaceholders(entity?.name ?? '', entity?.placeholders) || 'Character'}
+        title={labelPlaceholders(entity?.name ?? '', entity?.placeholders, letters) || 'Character'}
         contentClassName="max-w-[800px] w-[95vw] h-[85dvh] flex flex-col p-0 gap-0 overflow-hidden"
         loading={!entity}
         tabs={TABS}
@@ -173,6 +178,7 @@ const EntityEditorModal = ({ entityId, draft, onClose, onPublish }: {
           </PlaceholderStoreProvider>
         )}
       </EditorModalShell>
+    </PlacementLettersProvider>
     </EditorPreviewRollsProvider>
   );
 };

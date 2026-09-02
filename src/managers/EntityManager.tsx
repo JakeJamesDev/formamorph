@@ -3,11 +3,11 @@ import EntityFields from './EntityFields';
 import { useEditingDraft } from '@/lib/useEditingDraft';
 import { withEntityLocations } from '@/lib/entityPresence';
 import type { Entity } from '@/types';
-import { describePlaceholders } from '@/lib/placeholders';
+import { labelPlaceholders } from '@/lib/placementLetters';
 import { locationRows } from '@/lib/locationTree';
 
 const EntityManager = ({ entity }: { entity: Entity }) => {
-  const { updateEntity, locations, placeholders } = useGameData();
+  const { updateEntity, locations, placeholders, placementLetters } = useGameData();
   const { draft: editingEntity, setDraft, setField: handleChange } = useEditingDraft<Entity>(entity, updateEntity);
 
   // Membership is the entity's own field, so the picker reads and writes it directly. Locations the world
@@ -32,7 +32,7 @@ const EntityManager = ({ entity }: { entity: Entity }) => {
       placeholders={placeholders}
       // Read as the tree it is, so the picker presents the hierarchy the way the game's own list does.
       locationOptions={locationRows(locations).map(({ location, depth }) => ({
-        label: describePlaceholders(location.name, placeholders),
+        label: labelPlaceholders(location.name, placeholders, placementLetters),
         value: location.id,
         depth,
       }))}

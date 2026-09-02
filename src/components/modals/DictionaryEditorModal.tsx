@@ -13,7 +13,9 @@ import PlaceholderPaletteBar from '@/components/prompt/PlaceholderPaletteBar';
 import { ChipInsertTargetProvider } from '@/components/prompt/ChipInsertTarget';
 import { EditorPreviewRollsProvider } from '@/contexts/EditorPreviewRollsContext';
 import { placeholderStore, PlaceholderStoreProvider } from '@/contexts/PlaceholderStoreContext';
-import { describePlaceholders, directChipTargets } from '@/lib/placeholders';
+import { directChipTargets } from '@/lib/placeholders';
+import { dictionaryPlacementLetters, EMPTY_LETTERS, labelPlaceholders } from '@/lib/placementLetters';
+import { PlacementLettersProvider } from '@/contexts/PlacementLettersContext';
 import { buildDictionaryFile } from '@/lib/dictionaryFile';
 import { downloadBlob } from '@/lib/downloadBlob';
 import { canonicalStringify } from '@/lib/canonicalStringify';
@@ -95,6 +97,12 @@ const DictionaryEditorModal = ({ dictionaryId, draft, onClose, onPublish }: {
     ),
   }), [bookPlaceholders, setDictionaries]);
 
+  // A library book is its own document: its Unique chips letter from a walk of its entries alone.
+  const letters = useMemo(
+    () => (dictionaries[0] ? dictionaryPlacementLetters(dictionaries[0]) : EMPTY_LETTERS),
+    [dictionaries],
+  );
+
   // Returns whether the save succeeded, so a save-and-exit caller only closes on success.
   const handleSave = async (): Promise<boolean> => {
     const current = dictionaries[0];
@@ -123,16 +131,17 @@ const DictionaryEditorModal = ({ dictionaryId, draft, onClose, onPublish }: {
     if (!current) return;
     const blob = new Blob([JSON.stringify(buildDictionaryFile(current), null, 2)], { type: 'application/json' });
     // A chip in the name would otherwise put a raw placement id in the filename.
-    downloadBlob(blob, `${describePlaceholders(current.name, current.placeholders) || 'Dictionary'}.json`);
+    downloadBlob(blob, `${labelPlaceholders(current.name, current.placeholders, letters) || 'Dictionary'}.json`);
   };
 
   return (
     <EditorPreviewRollsProvider>
+    <PlacementLettersProvider letters={letters}>
       <EditorModalShell
         open={isOpen}
         // A library book has no world behind it, so its own carried defs render the chips — the same
         // treatment its card and its listing get.
-        title={describePlaceholders(dictionaries[0]?.name ?? book?.name ?? '', dictionaries[0]?.placeholders) || 'Dictionary'}
+        title={labelPlaceholders(dictionaries[0]?.name ?? book?.name ?? '', dictionaries[0]?.placeholders, letters) || 'Dictionary'}
         contentClassName="max-w-[1100px] w-[95vw] h-[85dvh] flex flex-col p-0 gap-0 overflow-hidden"
         loading={!book}
         tabs={TABS}
@@ -189,6 +198,7 @@ const DictionaryEditorModal = ({ dictionaryId, draft, onClose, onPublish }: {
           )}
         </DictionaryStoreProvider>
       </EditorModalShell>
+    </PlacementLettersProvider>
     </EditorPreviewRollsProvider>
   );
 };

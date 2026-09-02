@@ -47,7 +47,7 @@ export const TokenChip = forwardRef<HTMLSpanElement, TokenChipProps>(function To
       className={className ?? 'inline-block align-baseline'}
     >
       <Chip
-        label={variantLabel ? `${name} (${variantLabel})` : name}
+        label={vocab.display?.(token) ?? (variantLabel ? `${name} (${variantLabel})` : name)}
         removeLabel={name}
         tip={tip ?? (hint ? `${name} — ${hint}` : undefined)}
         onRemove={onRemove}

@@ -338,13 +338,13 @@ const CHIP_RING_MS = 1600;
  *
  * Searched from the document rather than from a panel, because full screen re-parents the whole Prompts
  * panel into an overlay — a root captured before the jump no longer contains the editor. Being inside a
- * Lexical editor is what makes it the right chip: the anatomy draws chips of its own, outside one.
+ * Lexical editor, or inside a chip-list entry (a keyword or alias holding a placeholder pill), is what makes
+ * it the right chip: the anatomy draws chips of its own, outside either, and so do the editor's trees.
  */
 export function revealEditorChip(token: string, attempt = 0): void {
   if (!token) return;
-  const chip = document.querySelector<HTMLElement>(
-    `[data-lexical-editor] [${CHIP_TOKEN_ATTR}="${CSS.escape(token)}"]`,
-  );
+  const attr = `[${CHIP_TOKEN_ATTR}="${CSS.escape(token)}"]`;
+  const chip = document.querySelector<HTMLElement>(`[data-lexical-editor] ${attr}, [data-chip] ${attr}`);
   if (!chip) {
     if (attempt < RETRY_LIMIT) setTimeout(() => revealEditorChip(token, attempt + 1), RETRY_MS);
     return;

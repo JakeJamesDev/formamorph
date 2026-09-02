@@ -103,13 +103,13 @@ describe('the conflict note', () => {
     expect(onOpenTrait).toHaveBeenCalledWith('t2');
   });
 
-  it('shows a rival’s name resolved, never as the token behind it', () => {
+  it('shows a rival’s name by its chip, never as the token behind it', () => {
     store.rival = { ...marshWed, name: `${chip('p1')} Kin` };
     renderManager();
     const note = screen.getByText(/The lowest in the trait list wins/);
     expect(note.textContent).not.toContain('{{ph:');
-    // The pill previews the placeholder's values, the way every read-only row does.
-    expect(note.textContent).toContain('ash|copper Kin');
+    // The pill reads as the placement's name, the way every read-only row does.
+    expect(note.textContent).toContain('Hair Color Kin');
   });
 });
 

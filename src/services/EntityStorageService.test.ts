@@ -143,8 +143,8 @@ describe('EntityStorageService', () => {
     });
 
     const meta = (await EntityStorageService.getEntityMetadata()).find((m) => m.id === 'e2');
-    // A Wildcard has no roll off-world, so it reads as its options — the same treatment the blurb gets.
-    expect(meta?.name).toBe('Keeper of {Sedge|Marrow}');
+    // A name reads by its chip, braced inside prose, the way every editor surface prints a name.
+    expect(meta?.name).toBe('Keeper of {Town}');
     // The stored record keeps the real token; only the display metadata is flattened.
     expect((await readRaw('e2'))?.name).toContain('{{ph:town:');
   });

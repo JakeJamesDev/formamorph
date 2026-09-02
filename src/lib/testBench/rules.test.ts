@@ -165,8 +165,9 @@ describe('alias hygiene rules', () => {
     ]))).toEqual([]);
   });
 
-  it('reads placeholder chips as the text they stand for', () => {
+  it('compares placeholder chips as the text they stand for, and names them as the list does', () => {
     // A name written as a chip has to be compared as its resolved value, or an authored collision hides.
+    // The finding then names the entity the way the editor's list labels it: by the chip, not by a value.
     const chip = '{{ph:p1:world:Visitor}}';
     const findings = runRules({
       ...world([
@@ -177,7 +178,7 @@ describe('alias hygiene rules', () => {
     });
     const collision = findings.filter((f) => f.ruleId === 'entity-match-collision');
     expect(collision).toHaveLength(1);
-    expect(collision[0].items.map((i) => i.name)).toEqual(['Maren', 'Maren']);
+    expect(collision[0].items.map((i) => i.name)).toEqual(['Visitor', 'Maren']);
   });
 });
 
@@ -2129,9 +2130,9 @@ describe('a world whose “required” arrays are absent', () => {
       placeholders: [{ id: 'p1', name: 'Hue' }],
     } as unknown as RuleWorld;
     const found = only(chipNamed, 'alias-leading-article');
-    // The chip resolves to nothing, so the entity reads as Untitled rather than taking the pass down.
+    // The chip has no values, and the entity still reads by its chip's name rather than taking the pass down.
     expect(found).toHaveLength(1);
-    expect(found[0].items[0].name).toBe('Untitled');
+    expect(found[0].items[0].name).toBe('Hue');
   });
 
   it('diagnoses a world carrying no collections at all', () => {
