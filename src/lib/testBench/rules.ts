@@ -632,6 +632,41 @@ const placeholderPinCycle: Rule = {
   },
 };
 
+/** True when `pin` holds the placeholder whose value carries it. */
+const isSelfPin = (pin: PlaceholderPin, ph: Placeholder): boolean => pin.placeholderId === ph.id;
+
+const placeholderPinSelf: Rule = {
+  id: 'placeholder-pin-self',
+  severity: 'error',
+  section: 'placeholders',
+  advanced: true,
+  summary: (count) => `${count} placeholder values pin the placeholder they belong to`,
+  // Direct self-pin only. A value pinning a placeholder that pins back is a loop, which the cycle rule
+  // reports in the terms that loop needs.
+  check: (world) => {
+    return pinRowsOf(world)
+      .filter((row) => row.source.kind === 'value' && row.source.placeholderId === row.pin.placeholderId)
+      .map((row) => {
+        const target = placeholderItem(row.pin.placeholderId, world);
+        return finding(
+          placeholderPinSelf,
+          `${quote(row.label)} pins ${quote(target.name)}, the placeholder that value belongs to — a value cannot hold its own placeholder, so the pin applies nothing`,
+          [target],
+        );
+      });
+  },
+  fix: (world) => withMappedPlaceholders(world, (ph) => {
+    if (!ph.values?.length) return ph;
+    const values = mapChanged(ph.values, (v) => {
+      if (!v.pins?.some((pin) => isSelfPin(pin, ph))) return v;
+      const pins = v.pins.filter((pin) => !isSelfPin(pin, ph));
+      const { pins: _drop, ...rest } = v;
+      return pins.length ? { ...rest, pins } : rest;
+    });
+    return values === ph.values ? ph : { ...ph, values };
+  }),
+};
+
 /** One owner of chip-bearing text: the finding item it maps to, and every field of it chips resolve in.
  *  The field list mirrors the gameplay priming pass (PlaceholderSessionContext) — the ground truth for
  *  where a chip actually works. */
@@ -2219,7 +2254,7 @@ export const RULES: readonly Rule[] = [
   entityLongDescriptionNoSummary, aiSummaryHidesDescription, locationNoEntities,
   traitGroupMultipleDefaults, traitGroupTooSmall,
   placeholderWeightUnknownValue, wildcardSingleValue,
-  placeholderPinUnknownValue, placeholderPinConflict, placeholderPinCycle,
+  placeholderPinUnknownValue, placeholderPinConflict, placeholderPinCycle, placeholderPinSelf,
   placeholderSlotMiss, placeholderDanglingReference, placeholderReferenceCycle, placeholderEmptyRecord,
   placeholderDuplicateSlot,
   placeholderSharedWeightUnknownValue, placeholderOwnerOrphan, placeholderOwnerDropped,
