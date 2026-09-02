@@ -179,6 +179,36 @@ describe('remintScopedPlaceholders', () => {
   it('leaves an empty list empty', () => {
     expect(remintScopedPlaceholders([])).toEqual({ placeholders: [], idMap: {} });
   });
+
+  it('carries each value’s pins, re-aimed at the copy and re-bound to the copy’s value ids', () => {
+    const eyes = P('eyes', 'Eyes', ['amber', 'gray']);
+    const mood = {
+      id: 'mood',
+      name: 'Mood',
+      values: [
+        { id: 'v:calm', text: 'calm' },
+        { id: 'v:wild', text: 'wild', pins: [{ placeholderId: 'eyes', value: 'gray', valueId: eyes.values[1].id }] },
+      ],
+    };
+    const { placeholders } = remintScopedPlaceholders([eyes, mood]);
+    const [eyes2, mood2] = placeholders;
+    const pin = mood2.values[1].pins?.[0];
+    expect(pin?.placeholderId).toBe(eyes2.id);
+    expect(pin?.valueId).toBe(eyes2.values[1].id);
+    expect(pin?.value).toBe('gray');
+    // The original keeps its own pin.
+    expect(mood.values[1].pins?.[0].placeholderId).toBe('eyes');
+  });
+
+  it('leaves a pin at a placeholder outside the list exactly as written, id and all', () => {
+    const mood = {
+      id: 'mood',
+      name: 'Mood',
+      values: [{ id: 'v:wild', text: 'wild', pins: [{ placeholderId: 'shared', value: 'rain', valueId: 'v:rain' }] }],
+    };
+    const { placeholders } = remintScopedPlaceholders([mood]);
+    expect(placeholders[0].values[0].pins).toEqual([{ placeholderId: 'shared', value: 'rain', valueId: 'v:rain' }]);
+  });
 });
 
 describe('duplicateEntityPlaceholders', () => {
@@ -200,6 +230,19 @@ describe('duplicateEntityPlaceholders', () => {
     }
     // The source is untouched.
     expect(src.placeholders?.[0].id).toBe('eyes');
+  });
+
+  it('keeps the pins on the copy’s own values, aimed at the copy', () => {
+    const src = molly({
+      placeholders: [
+        P('eyes', 'Eyes', ['amber', 'gray']),
+        { id: 'mood', name: 'Mood', values: [{ id: 'v:wild', text: 'wild', pins: [{ placeholderId: 'eyes', value: 'gray' }] }] },
+      ],
+    });
+    const copy = duplicateEntityPlaceholders(src);
+    const [eyes2, mood2] = copy.placeholders ?? [];
+    expect(mood2.values[0].pins?.[0].placeholderId).toBe(eyes2.id);
+    expect(mood2.values[0].pins?.[0].valueId).toBe(eyes2.values[1].id);
   });
 
   it('leaves an entity with nothing scoped as it is', () => {
@@ -355,6 +398,39 @@ describe('adoptEntityPlaceholders', () => {
     expect(toAdd[0].id).not.toBe('shared');
     expect(toAdd[0].name).toBe('Weather');
     expect(chipIds(entity.placeholders?.[0].values[0].text ?? '')).toEqual([toAdd[0].id]);
+  });
+
+  it('re-aims an owned value’s pin at the shared def the world matched it to, re-binding the value id', () => {
+    const worldWeather = P('w-weather', 'Weather', ['Rain', 'Sun']);
+    const card: Entity = {
+      id: 'card',
+      name: 'Molly',
+      placeholders: [{
+        id: 'mood',
+        name: 'Mood',
+        values: [{ id: 'v:wild', text: 'wild', pins: [{ placeholderId: 'shared', value: 'Sun', valueId: 'c:sun' }] }],
+      }],
+      sharedPlaceholders: [P('shared', 'Weather', ['Rain', 'Sun'])],
+    };
+    const { entity, toAdd } = adoptEntityPlaceholders(card, [worldWeather]);
+    expect(toAdd).toEqual([]);
+    const pin = entity.placeholders?.[0].values[0].pins?.[0];
+    expect(pin?.placeholderId).toBe('w-weather');
+    expect(pin?.valueId).toBe(worldWeather.values[1].id);
+  });
+
+  it('drops a pin whose placeholder is on neither the card nor the world', () => {
+    const card: Entity = {
+      id: 'card',
+      name: 'Molly',
+      placeholders: [{
+        id: 'mood',
+        name: 'Mood',
+        values: [{ id: 'v:wild', text: 'wild', pins: [{ placeholderId: 'ghost', value: 'gone' }] }],
+      }],
+    };
+    const { entity } = adoptEntityPlaceholders(card, [P('w-weather', 'Weather', ['Rain'])]);
+    expect(entity.placeholders?.[0].values[0]).not.toHaveProperty('pins');
   });
 
   it('reads a card written before shared defs were split as all owned, and leaves a plain entity alone', () => {

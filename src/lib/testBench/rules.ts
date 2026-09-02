@@ -9,13 +9,13 @@
 import {
   collectPlaceholderPlacements, decodePlaceholderToken, describePlaceholders, encodePlaceholderToken,
   hasPlaceholders, lonePlaceholderToken, parsePlaceholderText, placeholderChildren, placeholderIsChoice,
-  placeholderKindNoun, placeholderWeight, pinText,
+  placeholderKindNoun, placeholderWeight, pinText, relinkedPin,
   resolvePlaceholders, SHARED_PATH_SEP,
   type PlaceholderFinding, type PlaceholderPick, type PlaceholderToken,
 } from '@/lib/placeholders';
 import { labelPlaceholders, worldPlacementLetters, type PlacementLetters } from '@/lib/placementLetters';
 import {
-  allPinRows, collectPins, hasDeadValueId, indexPlaceholders, pinConflict, relinkedPin, valuePinners,
+  allPinRows, collectPins, hasDeadValueId, indexPlaceholders, pinConflict, valuePinners,
   type PinEditorWorld, type PinFinding, type PinRow,
 } from '@/lib/placeholderPins';
 import { holdsAsChip, qualifiedPlaceholderName } from '@/lib/placeholderTree';

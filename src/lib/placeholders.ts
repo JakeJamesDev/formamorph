@@ -318,6 +318,7 @@ export function directChipTargets(texts: readonly string[]): Set<string> {
 export function reachablePlaceholderIds(
   ids: Iterable<string>,
   placeholders: readonly Placeholder[],
+  { throughPins = false }: { throughPins?: boolean } = {},
 ): Set<string> {
   const byId = new Map(placeholders.map((p) => [p.id, p]));
   const used = new Set<string>();
@@ -326,18 +327,26 @@ export function reachablePlaceholderIds(
     const id = queue.pop()!;
     if (used.has(id)) continue;
     used.add(id);
-    for (const value of byId.get(id)?.values ?? []) queue.push(...chipIdsIn(value.text));
+    for (const value of byId.get(id)?.values ?? []) {
+      queue.push(...chipIdsIn(value.text));
+      if (throughPins) for (const pin of value.pins ?? []) queue.push(pin.placeholderId);
+    }
   }
   return used;
 }
 
 /**
  * The subset of `available` defs a standalone export has to bundle for `texts` to resolve elsewhere: a
- * character chip is useless without the defs its own values reach. Order follows `available`; each def
- * appears at most once.
+ * character chip is useless without the defs its own values reach, and a value pin is useless without the
+ * placeholder it holds, so the walk follows both. `also` seeds it with defs the export carries whatever
+ * places them. Order follows `available`; each def appears at most once.
  */
-export function collectUsedPlaceholders(texts: string[], available: Placeholder[]): Placeholder[] {
-  const used = reachablePlaceholderIds(texts.flatMap((text) => chipIdsIn(text)), available);
+export function collectUsedPlaceholders(
+  texts: string[], available: Placeholder[], also: Iterable<string> = [],
+): Placeholder[] {
+  const used = reachablePlaceholderIds(
+    [...texts.flatMap((text) => chipIdsIn(text)), ...also], available, { throughPins: true },
+  );
   return available.filter((p) => used.has(p.id));
 }
 
@@ -382,7 +391,8 @@ export function remintPlaceholderDef(ph: Placeholder): Placeholder {
   const minted = new Map<string, string>();
   const idMap = new Map<string, string>();
   const values = (ph.values ?? []).map((v) => {
-    const fresh = newPlaceholderValue(remintPlaceholderPlacements(v.text, minted));
+    // The pins ride along as written; `remapValuePins` re-aims them once the whole copy exists.
+    const fresh = { ...newPlaceholderValue(remintPlaceholderPlacements(v.text, minted)), ...(v.pins ? { pins: v.pins } : {}) };
     idMap.set(v.id, fresh.id);
     return fresh;
   });
@@ -407,6 +417,45 @@ export function remintPlaceholderDef(ph: Placeholder): Placeholder {
     ...(weights && Object.keys(weights).length ? { weights } : {}),
     ...(sharedWeights && Object.keys(sharedWeights).length ? { sharedWeights } : {}),
   };
+}
+
+/**
+ * Every value pin in `list` settled against a copy or an import: a pin at a placeholder `idMap` renames
+ * follows the rename, and its `valueId` re-binds by value text against the new target in `available` —
+ * the stored id named a value of the original, so nothing else can carry it across. A pin the map does not
+ * name keeps its id, so a pin that follows a rename still does. With `dropUnknown`, a pin whose target
+ * `available` does not hold goes, which is what an import wants: nothing left pointing at an id this world
+ * lacks. Records with no pins keep their identity.
+ */
+export function remapValuePins(
+  list: readonly Placeholder[],
+  idMap: Record<string, string>,
+  available: readonly Placeholder[],
+  dropUnknown = false,
+): Placeholder[] {
+  const byId = new Map(available.map((p) => [p.id, p]));
+  const settle = (pin: PlaceholderPin): PlaceholderPin | null => {
+    const to = idMap[pin.placeholderId] ?? pin.placeholderId;
+    const target = byId.get(to);
+    if (dropUnknown && !target) return null;
+    if (to === pin.placeholderId) return pin;
+    const aimed = { ...pin, placeholderId: to };
+    if (target) return relinkedPin(aimed, target);
+    const { valueId: _stale, ...rest } = aimed;
+    return rest;
+  };
+  return list.map((ph) => {
+    if (!(ph.values ?? []).some((v) => v.pins?.length)) return ph;
+    return {
+      ...ph,
+      values: ph.values.map((v) => {
+        if (!v.pins?.length) return v;
+        const pins = v.pins.map(settle).filter((p): p is PlaceholderPin => p !== null);
+        const { pins: _old, ...rest } = v;
+        return pins.length ? { ...rest, pins } : rest;
+      }),
+    };
+  });
 }
 
 /** Rewrite chip tokens' placeholder ids via `idMap` — the chip's root, and the target of every explicit-pick
@@ -1173,6 +1222,14 @@ export function pinText(pin: PlaceholderPin, byId: ReadonlyMap<string, Placehold
     ? byId.get(pin.placeholderId)?.values?.find((v) => v.id === pin.valueId)?.text
     : undefined;
   return (named ?? pin.value) || undefined;
+}
+
+/** `pin` following the list again: re-aimed at the value spelled exactly as its text when the placeholder
+ *  has one, else left as the free text it already reads as. */
+export function relinkedPin(pin: PlaceholderPin, ph: Placeholder): PlaceholderPin {
+  const { valueId: _dead, ...rest } = pin;
+  const match = (ph.values ?? []).find((v) => v.text === pin.value);
+  return match ? { ...rest, valueId: match.id } : rest;
 }
 
 /** The chip a pin's text is, when it is exactly one — the child a drill or slot walks into through the pin. */
