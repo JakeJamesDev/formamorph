@@ -432,6 +432,15 @@ describe('PlaceholderManager — chip values', () => {
     expect(screen.getAllByText('Hair')).toHaveLength(2);
     expect(screen.queryByText(/\{\{ph:/)).not.toBeInTheDocument();
   });
+
+  it('removes a value from its × without opening the weight pop-out over the gone chip', () => {
+    render(<PlaceholderManager placeholder={ph({ values: phValues(['Red', 'Blue', 'Green']) })} />);
+    fireEvent.click(screen.getByRole('button', { name: 'Remove Red' }));
+    expect(screen.queryByText('Red')).not.toBeInTheDocument();
+    // The × sits inside the chip whose click opens the pop-out; a remove that also opened it left the
+    // pop-out anchored to nothing, in the corner of the screen.
+    expect(screen.queryByLabelText('Draw weight')).not.toBeInTheDocument();
+  });
 });
 
 /**

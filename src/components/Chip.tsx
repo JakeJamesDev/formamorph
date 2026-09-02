@@ -90,7 +90,9 @@ export function Chip({ label, removeLabel, onRemove, className, innerRef, style,
           <button
             type="button"
             onPointerDown={(e) => e.stopPropagation()}
-            onClick={() => onRemove(name)}
+            // The click stops here too: the chip around it opens a pop-out on click, and a pop-out opened
+            // by the click that removed its anchor lands in the corner of the screen.
+            onClick={(e) => { e.stopPropagation(); onRemove(name); }}
             className="hover:text-destructive"
             aria-label={`Remove ${name}`}
           >
