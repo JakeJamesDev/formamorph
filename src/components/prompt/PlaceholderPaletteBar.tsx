@@ -23,7 +23,7 @@ import ChipRowHeading from './ChipRowHeading';
 const PlaceholderPaletteBar = ({ placeholders, scopeId, className }: {
   placeholders: Placeholder[];
   /** The entity or book whose panel the strip sits over, so its own scoped placeholders come first and
-   *  read bare while every other owner's read `Owner.Name`. */
+   *  read bare while every other owner's read `Owner › Name`. */
   scopeId?: string;
   className?: string;
 }) => {

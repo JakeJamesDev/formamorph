@@ -600,7 +600,7 @@ function useProvideGameData() {
     phStore,
     // Placement id → letter for every Unique chip in the world, for the surfaces that print a name as text.
     placementLetters,
-    // Placeholder id → the entity or book that owns it, for the surfaces that read a chip as `Molly.Eyes`.
+    // Placeholder id → the entity or book that owns it, for the surfaces that read a chip as `Molly › Eyes`.
     placeholderOwners: placeholderOwnerIndex,
   };
 

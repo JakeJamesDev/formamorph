@@ -39,7 +39,7 @@ export interface PlaceholderSlices {
   placeholderGroups?: PlaceholderGroup[];
 }
 
-/** The entity or book a scoped placeholder belongs to, as a name surface reads it: `Molly.Eyes`. */
+/** The entity or book a scoped placeholder belongs to, as a name surface reads it: `Molly › Eyes`. */
 export interface PlaceholderOwnerRef {
   kind: 'entity' | 'dictionary';
   id: string;

@@ -79,7 +79,7 @@ export interface SearchMatch {
 export interface ChipSearch {
   placeholders: Placeholder[];
   letters: PlacementLetters;
-  /** Who owns each scoped placeholder, so a chip answers to `Molly.Eyes` as the lists print it. */
+  /** Who owns each scoped placeholder, so a chip answers to `Molly › Eyes` as the lists print it. */
   owners?: PlaceholderOwners;
 }
 

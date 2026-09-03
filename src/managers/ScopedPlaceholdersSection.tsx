@@ -14,7 +14,7 @@ const scopedStore = (store: PlaceholderStore, scope: PlaceholderHome): Placehold
 /**
  * The Placeholders section of an entity or dictionary panel: the same editor the Placeholders tab and the
  * library modals mount, bound to this one owner's list. A placeholder made here belongs to the owner and
- * reads `Owner.Name` everywhere else in the world. Advanced mode only, like the tab itself, and only
+ * reads `Owner › Name` everywhere else in the world. Advanced mode only, like the tab itself, and only
  * where a world store is bound — a library modal has its own Placeholders tab instead.
  */
 const ScopedPlaceholdersSection = ({ kind, ownerId }: { kind: 'entity' | 'dictionary'; ownerId: string }) => {

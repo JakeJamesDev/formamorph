@@ -33,7 +33,7 @@ interface EditorFindBarProps {
   placeholders: Placeholder[];
   /** The document's placement letters, so a chip answers a search by the name it shows. */
   placementLetters: PlacementLetters;
-  /** Who owns each scoped placeholder, so a chip answers to `Molly.Eyes` as the lists print it. */
+  /** Who owns each scoped placeholder, so a chip answers to `Molly › Eyes` as the lists print it. */
   placeholderOwners?: PlaceholderOwners;
   /** The world's placeholder folders, so the picker heads a folder's rows with its path. */
   placeholderGroups?: readonly PlaceholderGroup[];
