@@ -1,10 +1,12 @@
+import { useMemo } from 'react';
 import { Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { PinConflictNote } from '@/components/editor/PinConflictNote';
 import { PinValueField } from '@/components/editor/PinValueField';
+import { PlaceholderSectionList } from '@/components/editor/PlaceholderSectionList';
+import { placeholderVocabulary } from '@/lib/chipVocabulary';
+import { decodePlaceholderToken } from '@/lib/placeholders';
 import { withPinnedValue, type PinEditorWorld, type PinSourceRef } from '@/lib/placeholderPins';
-import { placeholderDisplayName } from '@/lib/placementLetters';
 import type { Placeholder, PlaceholderPin } from '@/types';
 
 /**
@@ -28,9 +30,17 @@ export function PlaceholderPinRows({ pins, onChange, source, world, placeholders
   onOpenTrait?: (id: string) => void;
 }) {
   const setPin = (index: number, next: PlaceholderPin) => onChange(pins.map((p, i) => (i === index ? next : p)));
-  const displayName = (id: string) =>
-    placeholderDisplayName(id, placeholders, { letters: world?.placementLetters, owners: world?.placeholderOwners });
-  const offered = excludeId ? placeholders.filter((p) => p.id !== excludeId) : placeholders;
+  // The same sectioned rows every other placeholder picker draws. `allRows`, not `palette`: a pin may name a
+  // placeholder another one owns, and each of those keeps the holder chain that tells it from a root of the
+  // same name. Every row reads its whole path, whichever surface the rows are drawn on.
+  const owners = world?.placeholderOwners;
+  const groups = world?.placeholderGroups;
+  const letters = world?.placementLetters;
+  const rows = useMemo(() => {
+    const vocab = placeholderVocabulary(placeholders, { owners, groups, letters });
+    const all = vocab.allRows?.() ?? vocab.palette();
+    return excludeId ? all.filter((row) => decodePlaceholderToken(row.token)?.id !== excludeId) : all;
+  }, [placeholders, excludeId, owners, groups, letters]);
 
   return (
     <div className="space-y-2">
@@ -38,19 +48,13 @@ export function PlaceholderPinRows({ pins, onChange, source, world, placeholders
         <div key={index} className="space-y-1">
           <div className="flex space-x-2">
             {/* Re-aiming the pin drops the value id with it — the id named a value of the old placeholder. */}
-            <Select
-              value={pin.placeholderId}
-              onValueChange={(v) => setPin(index, withPinnedValue({ ...pin, placeholderId: v }, pin.value, placeholders))}
-            >
-              <SelectTrigger>
-                <SelectValue placeholder="Select placeholder" />
-              </SelectTrigger>
-              <SelectContent>
-                {offered.map((p) => (
-                  <SelectItem key={p.id} value={p.id}>{displayName(p.id)}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <PlaceholderSectionList
+              rows={rows}
+              selectedId={pin.placeholderId}
+              onSelect={(id) => setPin(index, withPinnedValue({ ...pin, placeholderId: id }, pin.value, placeholders))}
+              placeholders={placeholders}
+              className="min-w-0 px-3"
+            />
             <PinValueField pin={pin} placeholders={placeholders} onChange={(next) => setPin(index, next)} />
             <Button
               variant="ghost"
