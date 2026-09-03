@@ -22,7 +22,7 @@ export interface PlaceholderStore {
    *  take a placeholder privately. A thunk, so the scan a world-sized answer needs is paid on the drop
    *  rather than on every render. Omit where nothing outside the list can hold a chip. */
   placedIds?: () => ReadonlySet<string>;
-  /** Who owns each scoped placeholder, for the surfaces that read a chip as `Molly.Eyes`. Absent on a store
+  /** Who owns each scoped placeholder, for the surfaces that read a chip as `Molly › Eyes`. Absent on a store
    *  bound to one list, where nothing is scoped. */
   owners?: PlaceholderOwners;
   /** The world's lists, for the tab that draws an owner node per entity or book and moves records between

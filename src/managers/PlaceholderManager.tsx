@@ -177,7 +177,7 @@ const PlaceholderManager = ({ placeholder, rowId, share }: {
   // editors mount this with no world, and there the pins still write but no note can name a rival.
   const world = useGameDataOptional();
   const { advanced } = useEditorMode();
-  /** A Roll span's producer, named the way the palette and the letters name it: `Molly.Eyes` away from
+  /** A Roll span's producer, named the way the palette and the letters name it: `Molly › Eyes` away from
    *  Molly, bare `Eyes` on Molly's own placeholder. */
   const spanName = (id: string) => placeholderDisplayName(id, placeholders, {
     relativeTo: editing.id, owners: world?.placeholderOwners, letters: world?.placementLetters,

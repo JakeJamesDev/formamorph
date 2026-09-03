@@ -480,7 +480,7 @@ describe('placeholderVocabulary — scoped placeholders', () => {
     ['mane', { kind: 'dictionary' as const, id: 'fen', name: 'Fen' }],
   ]);
 
-  it('labels a scoped chip Owner.Name outside its owner and bare inside', () => {
+  it('labels a scoped chip Owner › Name outside its owner and bare inside', () => {
     const outside = placeholderVocabulary(WORLD, { owners });
     expect(outside.label(tok('eyes', 'world'))).toBe('Molly › Eyes');
     expect(outside.display?.(tok('eyes', 'unique'))).toBe('Molly › Eyes (Unique)');
@@ -574,7 +574,7 @@ describe('placeholderVocabulary — scoped placeholders', () => {
     expect(chipRowMatches(loose, 'mood')).toBe(true);
   });
 
-  it('lists the field owner’s scoped placeholders first, then the shared ones, then the rest as Owner.Name', () => {
+  it('lists the field owner’s scoped placeholders first, then the shared ones, then the rest as Owner › Name', () => {
     const molly = { kind: 'entity' as const, id: 'molly', name: 'Molly' };
     const fen = { kind: 'dictionary' as const, id: 'fen', name: 'Fen' };
     expect(placeholderVocabulary(WORLD, { owners }).palette().map((r) => r.label)).toEqual(['Town', 'Eyes', 'Iris', 'Mane']);
