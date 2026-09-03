@@ -6,7 +6,8 @@
 // wins; within one location or one band the later row wins.
 
 import type {
-  GameLocation, Placeholder, PlaceholderPin, PlaceholderRolls, PlaceholderValue, Stat, StatDescriptor, Trait, TraitGroup,
+  GameLocation, Placeholder, PlaceholderGroup, PlaceholderPin, PlaceholderRolls, PlaceholderValue, Stat, StatDescriptor,
+  Trait, TraitGroup,
 } from '@/types';
 import { encodePlaceholderToken, pinText, placeholderIsChoice, placeholderValueLine, sameMap } from './placeholders';
 import type { PlaceholderOwners } from './placeholderHomes';
@@ -320,6 +321,8 @@ export interface PinEditorWorld {
   stats?: readonly Stat[];
   placeholders: readonly Placeholder[];
   placeholderOwners?: PlaceholderOwners;
+  /** The world's placeholder folders, so a pin picker heads its rows the way every other picker does. */
+  placeholderGroups?: readonly PlaceholderGroup[];
   placementLetters?: PlacementLetters;
 }
 

@@ -64,15 +64,16 @@ export function chipSectionOpens(rows: readonly Pick<ChipRow, 'heading' | 'owner
 }
 
 /** How a row reads as one path: its owner's heading and its bare name rejoined, so a row that shows as
- *  `Mood` under Keeper still answers to the `Keeper › Mood` an author types. */
-function rowReading(row: Pick<ChipRow, 'label' | 'heading' | 'headingKind'>): string {
+ *  `Mood` under Keeper still answers to the `Keeper › Mood` an author types, and a closed picker shows
+ *  the whole path of what it settled on. */
+export function chipRowPath(row: Pick<ChipRow, 'label' | 'heading' | 'headingKind'>): string {
   return row.headingKind === 'owner' && row.heading ? `${row.heading}${OWNER_NAME_SEPARATOR}${row.label}` : row.label;
 }
 
 /** True where a row answers to a typed query, matching case-insensitively and taking a typed `.`, space,
  *  or `>` for the separator the label spells `›`. */
 export function chipRowMatches(row: Pick<ChipRow, 'label' | 'heading' | 'headingKind'>, query: string): boolean {
-  return foldSeparators(rowReading(row).toLowerCase()).includes(foldSeparators(query.toLowerCase()));
+  return foldSeparators(chipRowPath(row).toLowerCase()).includes(foldSeparators(query.toLowerCase()));
 }
 
 /** A part reached through whichever value the level rolls, rather than by naming one. */
@@ -281,7 +282,7 @@ export function placeholderVocabulary(
     scope?: PlaceholderOwnerRef;
     /** The world's placeholder folders, so the palette and the `{` menu head a folder's placeholders with
      *  its name. Absent, or where nothing is grouped, every shared row is loose. */
-    groups?: PlaceholderGroup[];
+    groups?: readonly PlaceholderGroup[];
     /** The document's placement letters, so a Unique chip reads `Name (A)`. Absent, it reads `Name (Unique)`. */
     letters?: PlacementLetters;
   } = {},

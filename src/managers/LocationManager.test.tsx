@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen } from '@testing-library/react';
+import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import type { GameLocation, Placeholder, Trait } from '@/types';
 import { EditorModeContext } from '@/lib/editorMode';
@@ -17,7 +17,10 @@ const sworn = {
 const WORLD: Placeholder[] = [
   { id: 'p1', name: 'Town', values: phValues(['Marrow', 'Hollow']) },
   { id: 'p2', name: 'Weather', values: phValues(['fog']) },
+  // The Keeper's own: what a pin picker has to head with its owner and read back as a whole path.
+  { id: 'p3', name: 'Mood', values: phValues(['sour']) },
 ];
+const OWNERS = new Map([['p3', { kind: 'entity' as const, id: 'keeper', name: 'Keeper' }]]);
 
 const store: { location: GameLocation; writes: GameLocation[]; rerender: () => void } =
   { location: fen, writes: [], rerender: () => {} };
@@ -32,7 +35,7 @@ vi.mock('@/contexts/GameDataContext', () => ({
     stats: [],
     placeholders: WORLD,
     placementLetters: new Map(),
-    placeholderOwners: new Map(),
+    placeholderOwners: OWNERS,
     updateEntity: vi.fn(),
     updateLocation: (next: GameLocation) => {
       store.writes.push(next);
@@ -40,23 +43,6 @@ vi.mock('@/contexts/GameDataContext', () => ({
       store.rerender();
     },
   }),
-}));
-// Radix Select never opens its listbox in jsdom, so the placeholder picker stands in as a native select.
-vi.mock('@/components/ui/select', () => ({
-  Select: ({ value, onValueChange, children }: {
-    value: string; onValueChange: (v: string) => void; children: React.ReactNode;
-  }) => (
-    <select aria-label="Select placeholder" value={value} onChange={(e) => onValueChange(e.target.value)}>
-      <option value="" />
-      {children}
-    </select>
-  ),
-  SelectTrigger: () => null,
-  SelectValue: () => null,
-  SelectContent: ({ children }: { children: React.ReactNode }) => <>{children}</>,
-  SelectItem: ({ value, children }: { value: string; children: React.ReactNode }) => (
-    <option value={value}>{children}</option>
-  ),
 }));
 // The pin section is what is under test; the rest of the panel pulls in editors and pickers it has no use for.
 vi.mock('@/components/prompt/PlaceholderField', () => ({
@@ -100,10 +86,22 @@ describe('the location pin section', () => {
     renderManager();
     await userEvent.click(screen.getByRole('button', { name: 'Add Placeholder Pin' }));
     expect(lastPins()).toEqual([{ placeholderId: '', value: '' }]);
-    await userEvent.selectOptions(screen.getByRole('combobox', { name: 'Select placeholder' }), 'p2');
+    await userEvent.click(screen.getByRole('button', { name: 'Select placeholder' }));
+    await userEvent.click(screen.getByRole('button', { name: 'Weather' }));
     await userEvent.click(pinField());
     await userEvent.click(screen.getByRole('button', { name: 'fog' }));
     expect(lastPins()).toEqual([{ placeholderId: 'p2', value: 'fog', valueId: phValueId('fog') }]);
+  });
+
+  it('heads an owner’s section and reads the pick back as its whole path', async () => {
+    renderManager();
+    await userEvent.click(screen.getByRole('button', { name: 'Add Placeholder Pin' }));
+    await userEvent.click(screen.getByRole('button', { name: 'Select placeholder' }));
+    // Under the Keeper's heading the row is bare; closed, the trigger has to say whose Mood it is.
+    await userEvent.click(screen.getByRole('button', { name: 'Mood' }));
+    const trigger = screen.getByRole('button', { name: /Mood/ });
+    expect(trigger).toHaveTextContent('Keeper › Mood');
+    expect(within(trigger).getByRole('img', { name: 'Entity' })).toBeInTheDocument();
   });
 
   it('names a trait pinning the same placeholder and says the location wins', () => {

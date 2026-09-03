@@ -45,9 +45,8 @@ let latest: TestWorld;
 vi.mock('@/contexts/GameDataContext', () => ({
   useGameDataOptional: () => gameData,
 }));
-// Radix Select never opens its listbox in jsdom, so every picker stands in as a native select — the options
-// stay genuinely under test. The trigger's own aria-label names the select; a trigger with none is the pin
-// rows' placeholder picker.
+// Radix Select never opens its listbox in jsdom, so the Pins section's source pickers stand in as native
+// selects — the options stay genuinely under test. The trigger's own aria-label names the select.
 vi.mock('@/components/ui/select', async () => {
   const { Children, isValidElement } = await import('react');
   const SelectTrigger = (_props: { 'aria-label'?: string; children?: React.ReactNode }) => null;
@@ -853,8 +852,8 @@ describe('PlaceholderManager — value pins', () => {
     render(<PlaceholderManager placeholder={pinned([{ placeholderId: 'p1', value: 'Blue' }])} />);
     await userEvent.click(pinButton('Red'));
     expect(screen.getByText('A value cannot pin its own placeholder.')).toBeInTheDocument();
-    const options = within(screen.getByRole('combobox', { name: 'Select placeholder' })).getAllByRole('option');
-    expect(options.map((o) => o.textContent)).toEqual(['', 'Weather']);
+    await userEvent.click(screen.getByRole('button', { name: 'Select placeholder' }));
+    expect(screen.getAllByTestId('placeholder-section-row').map((r) => r.textContent)).toEqual(['Weather']);
   });
 
   it('shows no pin button in Simple mode', () => {
