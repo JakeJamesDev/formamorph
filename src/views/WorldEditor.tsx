@@ -919,6 +919,7 @@ const WorldEditorInner = ({ onClose, embedded = false, backButton }: {
             placeholders={placeholders}
             placementLetters={placementLetters}
             placeholderOwners={placeholderOwners}
+            placeholderGroups={placeholderGroups}
             // Follows the Placeholders tab, which Simple mode hides.
             allowPlaceholderReplace={advanced}
             startWithReplace={findWithReplace}

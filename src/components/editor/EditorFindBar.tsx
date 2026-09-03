@@ -2,22 +2,23 @@ import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } fro
 import { CaseSensitive, ChevronDown, ChevronRight, ChevronUp, Crosshair, Plus, Replace, ReplaceAll, Type, WholeWord, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription,
   AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import { Tip } from '@/components/ui/tooltip';
+import { PlaceholderSectionList } from '@/components/editor/PlaceholderSectionList';
 import { cn } from '@/lib/utils';
 import { useIsMobile } from '@/lib/useIsMobile';
 import { WORLD_EDITOR_TABS } from '@/views/worldEditorTabs';
-import { encodePlaceholderToken, newPlaceholder } from '@/lib/placeholders';
+import { placeholderVocabulary } from '@/lib/chipVocabulary';
+import { decodePlaceholderToken, encodePlaceholderToken, newPlaceholder } from '@/lib/placeholders';
 import { randomUUID } from '@/lib/uuid';
 import { findMatches, replaceAll, spliceText } from '@/lib/worldSearch';
 import type { SearchMatch, SearchTarget } from '@/lib/worldSearch';
 import type { PlacementLetters } from '@/lib/placementLetters';
 import type { PlaceholderOwners } from '@/lib/placeholderHomes';
-import type { Placeholder } from '@/types';
+import type { Placeholder, PlaceholderGroup } from '@/types';
 
 /**
  * The World Editor's find & replace bar — a floating strip over the editor content, opened from the header
@@ -34,6 +35,8 @@ interface EditorFindBarProps {
   placementLetters: PlacementLetters;
   /** Who owns each scoped placeholder, so a chip answers to `Molly.Eyes` as the lists print it. */
   placeholderOwners?: PlaceholderOwners;
+  /** The world's placeholder folders, so the picker heads a folder's rows with its path. */
+  placeholderGroups?: readonly PlaceholderGroup[];
   /** Placeholder-replace mode follows the Placeholders tab in hiding from Simple mode. */
   allowPlaceholderReplace: boolean;
   /** Open with the replace row expanded (Ctrl+H). */
@@ -118,7 +121,7 @@ function ModeSwap({ onClick, label, last, children }: {
 }
 
 export default function EditorFindBar({
-  targets, placeholders, placementLetters, placeholderOwners, allowPlaceholderReplace, startWithReplace, onNavigate, onAddPlaceholder, onClose,
+  targets, placeholders, placementLetters, placeholderOwners, placeholderGroups, allowPlaceholderReplace, startWithReplace, onNavigate, onAddPlaceholder, onClose,
 }: EditorFindBarProps) {
   const [query, setQuery] = useState('');
   const [debounced, setDebounced] = useState('');
@@ -129,7 +132,6 @@ export default function EditorFindBar({
   const [mode, setMode] = useState<'text' | 'placeholder'>('text');
   const [replaceText, setReplaceText] = useState('');
   const [chipId, setChipId] = useState<string | null>(null);
-  const [pickerOpen, setPickerOpen] = useState(false);
   const [confirmAll, setConfirmAll] = useState(false);
   const [notice, setNotice] = useState<string | null>(null);
   const searchRef = useRef<HTMLInputElement>(null);
@@ -171,8 +173,20 @@ export default function EditorFindBar({
     setIndex((i) => (i + delta + matches.length) % matches.length);
   }, [matches.length]);
 
-  const chip = placeholders.find((p) => p.id === chipId) ?? null;
   const placeholderMode = allowPlaceholderReplace && mode === 'placeholder';
+  // The palette's own rows, sectioned as every other picker draws them. `palette`, not `allRows`: a
+  // replacement drops a chip into ordinary world text, which is exactly what the insert strip offers, and a
+  // member another placeholder owns is reached by drilling into that owner rather than aimed at from outside.
+  const pickerRows = useMemo(
+    () => placeholderVocabulary(placeholders, { owners: placeholderOwners, groups: placeholderGroups, letters: placementLetters }).palette(),
+    [placeholders, placeholderOwners, placeholderGroups, placementLetters],
+  );
+  // Read back off the rows, not the world's whole list: the picker shows a pick it can find a row for, and a
+  // pick it cannot — one the author has since filed inside another placeholder — must stop Replace too,
+  // rather than leaving the button live under a trigger that reads as empty.
+  const chip = pickerRows.some((row) => decodePlaceholderToken(row.token)?.id === chipId)
+    ? placeholders.find((p) => p.id === chipId) ?? null
+    : null;
   const canReplace = matches.length > 0 && (!placeholderMode || chip !== null);
 
   /** What one occurrence becomes in `target` — null when the field can't hold it. */
@@ -219,7 +233,6 @@ export default function EditorFindBar({
     const placeholder = newPlaceholder(query.trim() || 'New Placeholder', [query]);
     onAddPlaceholder(placeholder);
     setChipId(placeholder.id);
-    setPickerOpen(false);
   };
 
   const onKeyDown = (event: React.KeyboardEvent) => {
@@ -297,41 +310,32 @@ export default function EditorFindBar({
             <span aria-hidden />
             <FieldWithTrailing>
               {placeholderMode ? (
-                <Popover open={pickerOpen} onOpenChange={setPickerOpen}>
-                  <PopoverTrigger asChild>
-                    {/* Muted until one is picked, so an empty picker doesn't read like a name already sitting
-                        in the box — the same way a placeholder attribute reads against real input. */}
+                <PlaceholderSectionList
+                  rows={pickerRows}
+                  selectedId={chipId ?? ''}
+                  onSelect={setChipId}
+                  placeholders={placeholders}
+                  empty="Choose Placeholder"
+                  trigger={(content) => (
                     <Button
                       variant="outline"
                       size="sm"
-                      className={cn('h-8 w-full justify-start font-normal focus-visible:ring-0', allowPlaceholderReplace && 'pr-10', !chip && 'text-muted-foreground')}
+                      className={cn('h-8 w-full justify-start font-normal focus-visible:ring-0', allowPlaceholderReplace && 'pr-10')}
                     >
-                      {chip ? chip.name : 'Choose Placeholder'}
+                      {content}
                     </Button>
-                  </PopoverTrigger>
-                  <PopoverContent align="start" className="w-64 p-1">
-                    <div className="max-h-56 overflow-y-auto">
-                      {placeholders.map((p) => (
-                        <button
-                          key={p.id}
-                          type="button"
-                          className="flex w-full items-center rounded-sm px-2 py-1.5 text-left text-label hover:bg-accent"
-                          onClick={() => { setChipId(p.id); setPickerOpen(false); }}
-                        >
-                          {p.name}
-                        </button>
-                      ))}
-                    </div>
+                  )}
+                  footer={(close) => (
                     <button
                       type="button"
                       className="mt-1 flex w-full items-center gap-2 rounded-sm border-t px-2 py-1.5 text-label hover:bg-accent"
-                      onClick={createPlaceholder}
+                      onClick={() => { createPlaceholder(); close(); }}
                     >
                       <Plus className="h-4 w-4" />
                       Create “{query.trim() || 'New Placeholder'}”
                     </button>
-                  </PopoverContent>
-                </Popover>
+                  )}
+                />
               ) : (
                 <Input
                   value={replaceText}
