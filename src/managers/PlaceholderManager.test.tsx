@@ -489,7 +489,7 @@ describe('PlaceholderManager — chip values', () => {
 
 /**
  * An Object applies every value together and never draws, so nothing about it is worth weighing: the chip
- * pop-out, the box stepper and the eye all go. Roll stays — an Object that nests wildcards still gives a
+ * pop-out, the box stepper and the eye all go. Preview stays — an Object that nests wildcards still gives a
  * useful sample — and the Wildcard kind brings all three back.
  */
 describe('PlaceholderManager — an Object', () => {
@@ -511,10 +511,10 @@ describe('PlaceholderManager — an Object', () => {
     expect(stepper()).not.toBeInTheDocument();
   });
 
-  it('offers no eye, and keeps Roll', () => {
+  it('offers no eye, and keeps Preview', () => {
     render(<PlaceholderManager placeholder={ph({ roll: false, values: three() })} />);
     expect(eye()).not.toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Roll' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Preview' })).toBeInTheDocument();
   });
 
   it('gets all three back the moment it is declared a Wildcard', () => {
@@ -720,21 +720,27 @@ describe('PlaceholderManager — chance coloring', () => {
 
 /** The dice: one sample of what the placeholder produces, nested chips resolved, drawn again on every
  *  click and never stored. */
-describe('PlaceholderManager — the sample roll', () => {
-  const roll = () => screen.getByRole('button', { name: 'Roll' });
+describe('PlaceholderManager — the preview sample', () => {
+  const preview = () => screen.getByRole('button', { name: 'Preview' });
 
   it('shows the result inline, with nested chips resolved to a real string', () => {
     siblings = [ph(), { id: 'p2', name: 'Hair', values: phValues(['Brown']) }];
     render(<PlaceholderManager placeholder={ph({ values: phValues([`${chip('p2')} hair`]) })} />);
-    fireEvent.click(roll());
-    expect(screen.getByRole('status', { name: 'Sample roll' })).toHaveTextContent('Brown hair');
+    fireEvent.click(preview());
+    expect(screen.getByRole('status', { name: 'Sample preview' })).toHaveTextContent('Brown hair');
+  });
+
+  it('names itself Preview, and says on hover that the sample is only a look', async () => {
+    render(<PlaceholderManager placeholder={ph()} />);
+    await userEvent.hover(preview());
+    await waitFor(() => expect(screen.getByText('Preview a sample of this placeholder')).toBeInTheDocument());
   });
 
   it('paints each direct chip’s run in its placeholder’s accent, named in the tip, literal text plain', async () => {
     siblings = [ph(), { id: 'p2', name: 'Hair', values: phValues(['Brown']) }, { id: 'p3', name: 'Eyes', values: phValues(['Green']) }];
     render(<PlaceholderManager placeholder={ph({ values: phValues([`${chip('p2')} and ${chip('p3')}`]) })} />);
-    fireEvent.click(roll());
-    const status = screen.getByRole('status', { name: 'Sample roll' });
+    fireEvent.click(preview());
+    const status = screen.getByRole('status', { name: 'Sample preview' });
     expect(status).toHaveTextContent('Brown and Green');
     const marks = within(status).getAllByText(/Brown|Green/, { selector: 'mark' });
     expect(marks.map((m) => m.textContent)).toEqual(['Brown', 'Green']);
@@ -765,14 +771,14 @@ describe('PlaceholderManager — the sample roll', () => {
       ]),
     };
     const { unmount } = render(<PlaceholderManager placeholder={ph({ values: phValues([chip('p-eyes')]) })} />);
-    fireEvent.click(roll());
-    await userEvent.hover(within(screen.getByRole('status', { name: 'Sample roll' })).getByText('Green'));
+    fireEvent.click(preview());
+    await userEvent.hover(within(screen.getByRole('status', { name: 'Sample preview' })).getByText('Green'));
     await waitFor(() => expect(screen.getAllByText('Molly › Eyes').length).toBeGreaterThan(0));
     unmount();
     // Molly's own Hair drawing Molly's Eyes: the panel already says whose it is, so the tip reads bare.
     render(<PlaceholderManager placeholder={{ ...hair, values: phValues([chip('p-eyes')]) }} />);
-    fireEvent.click(roll());
-    await userEvent.hover(within(screen.getByRole('status', { name: 'Sample roll' })).getByText('Green'));
+    fireEvent.click(preview());
+    await userEvent.hover(within(screen.getByRole('status', { name: 'Sample preview' })).getByText('Green'));
     await waitFor(() => expect(screen.getAllByText('Eyes').length).toBeGreaterThan(0));
     expect(screen.queryByText('Molly › Eyes')).toBeNull();
   });
@@ -782,8 +788,8 @@ describe('PlaceholderManager — the sample roll', () => {
     render(<PlaceholderManager placeholder={ph({ values })} />);
     const seen = new Set<string>();
     for (let i = 0; i < 40 && seen.size < 2; i++) {
-      fireEvent.click(roll());
-      seen.add(screen.getByRole('status', { name: 'Sample roll' }).textContent ?? '');
+      fireEvent.click(preview());
+      seen.add(screen.getByRole('status', { name: 'Sample preview' }).textContent ?? '');
     }
     expect(seen).toEqual(new Set(['Red', 'Blue']));
   });
@@ -791,26 +797,26 @@ describe('PlaceholderManager — the sample roll', () => {
   it('respects a benched value', () => {
     render(<PlaceholderManager placeholder={ph({ weights: { [phValueId('Blue')]: 0 } })} />);
     for (let i = 0; i < 20; i++) {
-      fireEvent.click(roll());
-      expect(screen.getByRole('status', { name: 'Sample roll' })).toHaveTextContent('Red');
+      fireEvent.click(preview());
+      expect(screen.getByRole('status', { name: 'Sample preview' })).toHaveTextContent('Red');
     }
   });
 
   it('is hidden with nothing to draw from, and persists nothing', () => {
     render(<PlaceholderManager placeholder={ph({ values: [] })} />);
-    expect(screen.queryByRole('button', { name: 'Roll' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Preview' })).not.toBeInTheDocument();
     render(<PlaceholderManager placeholder={ph({ id: 'other' })} />);
-    fireEvent.click(roll());
+    fireEvent.click(preview());
     expect(updatePlaceholder).not.toHaveBeenCalled();
   });
 
   it('drops the sample once the values change under it', () => {
     render(<PlaceholderManager placeholder={ph()} />);
-    fireEvent.click(roll());
-    expect(screen.getByRole('status', { name: 'Sample roll' })).toBeInTheDocument();
+    fireEvent.click(preview());
+    expect(screen.getByRole('status', { name: 'Sample preview' })).toBeInTheDocument();
     pickStyle('Multiline');
     type(1, 'Crimson');
-    expect(screen.queryByRole('status', { name: 'Sample roll' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('status', { name: 'Sample preview' })).not.toBeInTheDocument();
   });
 });
 

@@ -377,7 +377,7 @@ const PlaceholderManager = ({ placeholder, rowId, share }: {
       {count > 0 && (
         <div className="space-y-2">
           <div className="flex items-center gap-2">
-            <Tip tip="Roll a sample of this placeholder" labelsChild={false}>
+            <Tip tip="Preview a sample of this placeholder" labelsChild={false}>
               <Button
                 type="button"
                 variant="outline"
@@ -386,13 +386,13 @@ const PlaceholderManager = ({ placeholder, rowId, share }: {
                 onClick={() => setSample(drawPlaceholderSpans(editing, placeholders, effective))}
               >
                 <Dices className="mr-1 h-3.5 w-3.5" aria-hidden />
-                Roll
+                Preview
               </Button>
             </Tip>
             {sample !== null && (
               <p
                 role="status"
-                aria-label="Sample roll"
+                aria-label="Sample preview"
                 className="min-w-0 flex-1 whitespace-pre-wrap break-words rounded-md border bg-muted/30 px-2 py-1 text-label"
               >
                 {/* Each direct chip's run reads in its placeholder's tint, the same mark the Preview pane
