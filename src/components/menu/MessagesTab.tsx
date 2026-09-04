@@ -23,6 +23,8 @@ interface MessagesTabProps {
 /** Notices from the administrators. Read-only: there is no reply channel, by design. */
 export function MessagesTab({ active, onUnreadChange }: MessagesTabProps) {
   const [messages, setMessages] = useState<InboxMessage[]>([]);
+  const messagesRef = useRef(messages);
+  messagesRef.current = messages;
   const [isLoading, setIsLoading] = useState(false);
   const [loadError, setLoadError] = useState('');
   const [expandedId, setExpandedId] = useState<string | null>(null);
@@ -74,11 +76,11 @@ export function MessagesTab({ active, onUnreadChange }: MessagesTabProps) {
 
     try {
       await MessageService.markRead(message.id);
-      setMessages((prev) => {
-        const next = prev.map((m) => (m.id === message.id ? { ...m, readAt: new Date().toISOString() } : m));
-        publishUnread(next);
-        return next;
-      });
+      // Outside the updater: React replays updaters during render, and the host's setter must not run there.
+      // Read through the ref, because the list may have moved while the mark was in flight.
+      const next = messagesRef.current.map((m) => (m.id === message.id ? { ...m, readAt: new Date().toISOString() } : m));
+      setMessages(next);
+      publishUnread(next);
     } catch (error) {
       console.error('Failed to mark message read:', error);
     }
