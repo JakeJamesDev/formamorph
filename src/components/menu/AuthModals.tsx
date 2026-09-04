@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import { toast } from "react-toastify";
-import { AlertTriangle, Key, LogOut } from "lucide-react";
+import { AlertTriangle, Key, LogOut, Trash2 } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -20,6 +20,7 @@ import { NotificationsTab } from "@/components/menu/NotificationsTab";
 import { TermsTab } from "@/components/menu/TermsTab";
 import { PolicyDialog } from "@/components/menu/PolicyDialog";
 import { usePrivacyPolicy } from "@/contexts/PrivacyPolicyContext";
+import { useAccountDeletion } from "@/contexts/AccountDeletionContext";
 import PolicyService from "@/services/PolicyService";
 import AuthService from "@/services/AuthService";
 import UserService from "@/services/UserService";
@@ -142,6 +143,10 @@ export function AuthModals({
   // server whether this account already has.
   const { checkNow: checkPrivacyPolicy } = usePrivacyPolicy();
 
+  // Ending the account, and the notice that signing in has just called such an ending off. Both live
+  // above the menu, because the privacy prompt raises the same flow from over the top of every screen.
+  const { startDeletion, noticeCancelled } = useAccountDeletion();
+
   const resetAuthForms = () => {
     setUsername('');
     setPassword('');
@@ -172,11 +177,14 @@ export function AuthModals({
     }
 
     try {
-      await AuthService.login(username, password);
+      const { deletionCancelled } = await AuthService.login(username, password);
       onAuthenticated();
       setShowAuthDialog(false);
       resetAuthForms();
       toast.success('Logged in successfully');
+      // Signing in is what cancels a pending deletion, and the server does it without being asked. The
+      // account may not remember asking, so it is said out loud rather than left to be noticed.
+      if (deletionCancelled) noticeCancelled();
       // After the dialog closes, so the prompt is not raised behind it. An account that has already
       // accepted sees nothing.
       void checkPrivacyPolicy();
@@ -217,11 +225,14 @@ export function AuthModals({
     // The policy is read and answered before the account exists, so declining leaves nothing behind.
     // A read that fails is not a reason to refuse a signup: the account is created, and the signed-in
     // prompt asks at the first refused request instead.
+    setSignupBusy(true);
     let policy: PublicPrivacyPolicy | null = null;
     try {
       policy = await PolicyService.fetchPublicPrivacyPolicy();
     } catch (error) {
       console.error('Failed to read the privacy policy before signup:', error);
+    } finally {
+      setSignupBusy(false);
     }
 
     if (policy) {
@@ -229,10 +240,12 @@ export function AuthModals({
       return;
     }
 
-    await createAccount();
+    // No policy to answer, so the account is made here and reported exactly as the answered path
+    // reports it.
+    if (await createAccount()) finishSignup();
   };
 
-  /** Register, and report it the same way whichever path arrived here. */
+  /** Register, and report a refusal the same way whichever path arrived here. */
   const createAccount = async (): Promise<boolean> => {
     try {
       await AuthService.register(username, password);
@@ -241,6 +254,16 @@ export function AuthModals({
       setAuthError((error as Error).message || 'Registration failed');
       return false;
     }
+  };
+
+  /** Hand the new session to the parent and close up. Both signup paths end here, so neither can
+   *  quietly skip a step the other takes. */
+  const finishSignup = () => {
+    setSignupPolicy(null);
+    onAuthenticated();
+    setShowAuthDialog(false);
+    resetAuthForms();
+    toast.success('Registered successfully');
   };
 
   /**
@@ -271,11 +294,7 @@ export function AuthModals({
         }
       }
 
-      setSignupPolicy(null);
-      onAuthenticated();
-      setShowAuthDialog(false);
-      resetAuthForms();
-      toast.success('Registered successfully');
+      finishSignup();
     } finally {
       setSignupBusy(false);
     }
@@ -370,6 +389,7 @@ export function AuthModals({
 
             <Button
               onClick={authMode === 'login' ? handleLogin : handleRegister}
+              disabled={signupBusy}
               className="sm:order-2"
             >
               {authMode === 'login' ? 'Login' : 'Register'}
@@ -410,6 +430,11 @@ export function AuthModals({
                 </Button>
                 <Button variant="destructive" size="sm" onClick={onLogout}>
                   <LogOut className="mr-2 h-4 w-4" /> Logout
+                </Button>
+                {/* Shown to a suspended account too: the flow's first step is where it learns that the
+                    team does this one, rather than a control that is missing without explanation. */}
+                <Button variant="ghost" size="sm" className="text-destructive" onClick={startDeletion}>
+                  <Trash2 className="mr-2 h-4 w-4" /> Delete Account
                 </Button>
               </div>
             </div>

@@ -42,10 +42,9 @@ describe('register validation (rejects before any network call)', () => {
 });
 
 describe('login', () => {
-  it('stores token + user and returns true on success', async () => {
+  it('stores token + user on success', async () => {
     vi.mocked(fetch).mockResolvedValue(res({ token: 'tok', user: { username: 'bob' } }));
-    const ok = await AuthService.login('bob', 'pw');
-    expect(ok).toBe(true);
+    await AuthService.login('bob', 'pw');
     expect(AuthService.token).toBe('tok');
     expect(AuthService.getCurrentUser()).toEqual({ username: 'bob' });
     expect(localStorage.getItem('authToken')).toBe('tok');
@@ -55,6 +54,71 @@ describe('login', () => {
     vi.mocked(fetch).mockResolvedValue(res({ message: 'Bad creds' }, false, 401));
     await expect(AuthService.login('bob', 'pw')).rejects.toThrow('Bad creds');
     expect(AuthService.token).toBeNull();
+  });
+
+  it('reports a deletion the sign-in cancelled', async () => {
+    // The server clears a pending request when the account signs in, and says so in the reply. The
+    // user may not remember asking, so the flag has to survive as far as the caller.
+    vi.mocked(fetch).mockResolvedValue(
+      res({ token: 'tok', user: { username: 'bob' }, deletionCancelled: true }),
+    );
+
+    expect(await AuthService.login('bob', 'pw')).toEqual({ deletionCancelled: true });
+  });
+
+  it('reports no cancellation on an ordinary sign-in', async () => {
+    vi.mocked(fetch).mockResolvedValue(res({ token: 'tok', user: { username: 'bob' } }));
+
+    expect(await AuthService.login('bob', 'pw')).toEqual({ deletionCancelled: false });
+  });
+});
+
+describe('requestAccountDeletion', () => {
+  it('sends the password and the content choice', async () => {
+    AuthService.token = 'tok';
+    vi.mocked(fetch).mockResolvedValue(res({ success: true, deletionScheduledFor: '2026-09-10T12:00:00.000Z' }));
+
+    const due = await AuthService.requestAccountDeletion('hunter2', true);
+
+    expect(due).toBe('2026-09-10T12:00:00.000Z');
+    const [url, init] = vi.mocked(fetch).mock.calls[0] as [string, RequestInit];
+    expect(url).toMatch(/\/auth\/delete-account$/);
+    expect(JSON.parse(String(init.body))).toEqual({ password: 'hunter2', deleteContent: true });
+  });
+
+  it('carries a false content choice rather than omitting it', async () => {
+    // The server refuses a body without the boolean, so "keep my work" cannot ride on an absent field.
+    AuthService.token = 'tok';
+    vi.mocked(fetch).mockResolvedValue(res({ success: true, deletionScheduledFor: '2026-09-10T12:00:00.000Z' }));
+
+    await AuthService.requestAccountDeletion('hunter2', false);
+
+    const [, init] = vi.mocked(fetch).mock.calls[0] as [string, RequestInit];
+    expect(JSON.parse(String(init.body))).toEqual({ password: 'hunter2', deleteContent: false });
+  });
+
+  it('throws the server message when the password is wrong', async () => {
+    AuthService.token = 'tok';
+    vi.mocked(fetch).mockResolvedValue(res({ error: 'Password is incorrect' }, false, 401));
+
+    await expect(AuthService.requestAccountDeletion('nope', true)).rejects.toThrow('Password is incorrect');
+    // The session survives a wrong password: the flow keeps the user where they are to try again.
+    expect(AuthService.token).toBe('tok');
+  });
+
+  it('throws the server message when the account is suspended', async () => {
+    AuthService.token = 'tok';
+    vi.mocked(fetch).mockResolvedValue(
+      res({ error: 'A suspended account cannot be deleted from here.' }, false, 403),
+    );
+
+    await expect(AuthService.requestAccountDeletion('hunter2', true)).rejects.toThrow(/suspended/);
+  });
+
+  it('makes no request without a token', async () => {
+    AuthService.token = null;
+    await expect(AuthService.requestAccountDeletion('hunter2', true)).rejects.toThrow(/Not authenticated/);
+    expect(fetch).not.toHaveBeenCalled();
   });
 });
 

@@ -2,13 +2,18 @@ import { render, screen, fireEvent, cleanup, waitFor } from '@testing-library/re
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { AuthModals } from './AuthModals';
 import { PrivacyPolicyProvider } from '@/contexts/PrivacyPolicyContext';
+import { AccountDeletionProvider } from '@/contexts/AccountDeletionContext';
 import { AgeGateProvider } from '@/contexts/AgeGateContext';
 import { acceptAgeGate } from '@/lib/ageGate';
 import PolicyService from '@/services/PolicyService';
 import AuthService from '@/services/AuthService';
 import type { PolicyState } from '@/types';
 
-vi.mock('react-toastify', () => ({ toast: { error: vi.fn(), success: vi.fn(), warn: vi.fn(), info: vi.fn() } }));
+import { toast } from 'react-toastify';
+
+vi.mock('react-toastify', () => ({
+  toast: { error: vi.fn(), success: vi.fn(), warn: vi.fn(), info: vi.fn() },
+}));
 vi.mock('./MessagesTab', () => ({ MessagesTab: () => <div /> }));
 vi.mock('./TermsTab', () => ({ TermsTab: () => <div /> }));
 vi.mock('./NotificationsTab', () => ({ NotificationsTab: () => <div /> }));
@@ -21,6 +26,7 @@ const NOTHING: PolicyState = { uploadGate: null, tagNotice: null, privacyPolicy:
 const renderAuth = (over: Record<string, unknown> = {}) =>
   render(
     <AgeGateProvider>
+    <AccountDeletionProvider>
     <PrivacyPolicyProvider>
       <AuthModals
         showAuthDialog
@@ -33,6 +39,7 @@ const renderAuth = (over: Record<string, unknown> = {}) =>
         {...over}
       />
     </PrivacyPolicyProvider>
+    </AccountDeletionProvider>
     </AgeGateProvider>,
   );
 
@@ -141,13 +148,54 @@ describe('the Privacy Policy at signup', () => {
     vi.spyOn(PolicyService, 'fetchPublicPrivacyPolicy').mockResolvedValue(null);
     const register = vi.spyOn(AuthService, 'register').mockResolvedValue(true);
     const accept = vi.spyOn(PolicyService, 'acceptPrivacyPolicy').mockResolvedValue();
+    const onAuthenticated = vi.fn();
+    const setShowAuthDialog = vi.fn();
 
-    renderAuth();
+    renderAuth({ onAuthenticated, setShowAuthDialog });
     await submitRegistration();
 
     await waitFor(() => expect(register).toHaveBeenCalledTimes(1));
     expect(screen.queryByText(POLICY.body)).toBeNull();
     expect(accept).not.toHaveBeenCalled();
+
+    // This is how the policy ships, so it is the path most people take. It has to report the new
+    // session exactly as the answered path does, or the account exists behind a dialog that never
+    // closed and a header that still offers Login.
+    await waitFor(() => expect(onAuthenticated).toHaveBeenCalledTimes(1));
+    expect(setShowAuthDialog).toHaveBeenCalledWith(false);
+    expect(toast.success).toHaveBeenCalledWith('Registered successfully');
+  });
+
+  it('reports the new session the same way when the policy was accepted', async () => {
+    vi.spyOn(PolicyService, 'fetchPublicPrivacyPolicy').mockResolvedValue(POLICY);
+    vi.spyOn(AuthService, 'register').mockResolvedValue(true);
+    vi.spyOn(PolicyService, 'acceptPrivacyPolicy').mockResolvedValue();
+    const onAuthenticated = vi.fn();
+    const setShowAuthDialog = vi.fn();
+
+    renderAuth({ onAuthenticated, setShowAuthDialog });
+    await submitRegistration();
+    fireEvent.click(await screen.findByRole('button', { name: 'Accept and Create Account' }));
+
+    // The pair of these two cases is the point: neither route may quietly skip a step the other takes.
+    await waitFor(() => expect(onAuthenticated).toHaveBeenCalledTimes(1));
+    expect(setShowAuthDialog).toHaveBeenCalledWith(false);
+    expect(toast.success).toHaveBeenCalledWith('Registered successfully');
+  });
+
+  it('treats a policy switched off mid-signup as nothing outstanding', async () => {
+    vi.spyOn(PolicyService, 'fetchPublicPrivacyPolicy').mockResolvedValue(POLICY);
+    vi.spyOn(AuthService, 'register').mockResolvedValue(true);
+    // What the server answers once the row is disabled: there is nothing to accept.
+    const accept = vi.spyOn(PolicyService, 'acceptPrivacyPolicy').mockResolvedValue();
+
+    renderAuth();
+    await submitRegistration();
+    fireEvent.click(await screen.findByRole('button', { name: 'Accept and Create Account' }));
+
+    await waitFor(() => expect(accept).toHaveBeenCalledTimes(1));
+    // No retry, and no warning that an answer never landed.
+    expect(toast.warn).not.toHaveBeenCalled();
   });
 
   it('still creates the account when the policy cannot be read', async () => {
@@ -164,7 +212,12 @@ describe('the Privacy Policy at signup', () => {
 
 describe('the Privacy Policy at sign-in', () => {
   it('prompts an existing account that has not accepted', async () => {
-    vi.spyOn(AuthService, 'login').mockImplementation(async () => { AuthService.token = 'token-abc'; return true; });
+    // The real sign-in over a stubbed `fetch`, rather than a stubbed `login`: this case is about what
+    // happens after a session is established, so the round trip that establishes one should be real.
+    vi.stubGlobal('fetch', vi.fn(async () => new Response(
+      JSON.stringify({ token: 'token-abc', user: { id: 'u1', username: 'regular' } }),
+      { status: 200, headers: { 'Content-Type': 'application/json' } },
+    )));
     vi.spyOn(PolicyService, 'fetchPolicies')
       .mockResolvedValue({ ...NOTHING, privacyPolicy: { ...POLICY, tags: [], accepted: false } });
 
@@ -175,5 +228,37 @@ describe('the Privacy Policy at sign-in', () => {
 
     expect(await screen.findByText(POLICY.body)).toBeTruthy();
     expect(screen.getByRole('button', { name: 'Sign Out' })).toBeTruthy();
+    vi.unstubAllGlobals();
+  });
+});
+
+describe('a deletion the sign-in called off', () => {
+  /** Sign in for real over a stubbed server, with whatever the login reply should carry. */
+  const signIn = async (reply: Record<string, unknown>) => {
+    vi.stubGlobal('fetch', vi.fn(async () => new Response(
+      JSON.stringify({ token: 'token-abc', user: { id: 'u1', username: 'regular' }, ...reply }),
+      { status: 200, headers: { 'Content-Type': 'application/json' } },
+    )));
+    vi.spyOn(PolicyService, 'fetchPolicies').mockResolvedValue(NOTHING);
+
+    renderAuth();
+    fireEvent.change(screen.getByPlaceholderText('Enter your username'), { target: { value: 'regular' } });
+    fireEvent.change(screen.getByPlaceholderText('Enter your password'), { target: { value: 'hunter2!' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Login' }));
+  };
+
+  it('says so, because the server cancelled it without being asked', async () => {
+    await signIn({ deletionCancelled: true });
+
+    expect(await screen.findByText('Your account deletion was cancelled.')).toBeTruthy();
+    vi.unstubAllGlobals();
+  });
+
+  it('says nothing on an ordinary sign-in', async () => {
+    await signIn({});
+
+    await waitFor(() => expect(toast.success).toHaveBeenCalledWith('Logged in successfully'));
+    expect(screen.queryByText('Your account deletion was cancelled.')).toBeNull();
+    vi.unstubAllGlobals();
   });
 });

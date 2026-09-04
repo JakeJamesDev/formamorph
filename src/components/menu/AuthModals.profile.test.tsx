@@ -2,6 +2,7 @@ import { render, screen, fireEvent, cleanup, waitFor } from '@testing-library/re
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { AuthModals } from './AuthModals';
 import { PrivacyPolicyProvider } from '@/contexts/PrivacyPolicyContext';
+import { AccountDeletionProvider } from '@/contexts/AccountDeletionContext';
 import { AgeGateProvider } from '@/contexts/AgeGateContext';
 import { acceptAgeGate } from '@/lib/ageGate';
 import PolicyService from '@/services/PolicyService';
@@ -40,6 +41,7 @@ const user = (over: Record<string, unknown> = {}) => ({
 const renderProfile = (over: Record<string, unknown> = {}) =>
   render(
     <AgeGateProvider>
+    <AccountDeletionProvider>
     <PrivacyPolicyProvider>
     <AuthModals
       showAuthDialog={false}
@@ -52,6 +54,7 @@ const renderProfile = (over: Record<string, unknown> = {}) =>
       {...over}
     />
     </PrivacyPolicyProvider>
+    </AccountDeletionProvider>
     </AgeGateProvider>
   );
 
@@ -67,6 +70,7 @@ beforeEach(() => {
 afterEach(() => {
   cleanup();
   vi.restoreAllMocks();
+  AuthService.currentUser = null;
 });
 
 describe('the profile shell', () => {
@@ -83,6 +87,32 @@ describe('the profile shell', () => {
 
     expect(await screen.findByRole('button', { name: /Change Password/ })).toBeTruthy();
     expect(screen.getByRole('button', { name: /Logout/ })).toBeTruthy();
+  });
+
+  it('opens the deletion flow from the header, without sending anything', async () => {
+    const sent = vi.spyOn(AuthService, 'requestAccountDeletion');
+    renderProfile();
+
+    fireEvent.click(await screen.findByRole('button', { name: /Delete Account/ }));
+
+    // The first step, which is an explanation rather than a question.
+    expect(await screen.findByText(/erased seven days from now/i)).toBeTruthy();
+    expect(sent).not.toHaveBeenCalled();
+  });
+
+  it('sends a suspended account to Feedback rather than hiding the control', async () => {
+    // Hiding it would leave a suspended account with no way to learn the path exists.
+    const sent = vi.spyOn(AuthService, 'requestAccountDeletion');
+    // The flow stands above this dialog and reads the session rather than the dialog's own prop, so
+    // the suspension has to be on the session for it to see one.
+    AuthService.currentUser = { username: 'finder', status: 'suspended' };
+    renderProfile({ currentUser: user({ status: 'suspended' }) });
+
+    fireEvent.click(await screen.findByRole('button', { name: /Delete Account/ }));
+
+    expect(await screen.findByText(/cannot be deleted from here/i)).toBeTruthy();
+    expect(screen.queryByLabelText('Password')).toBeNull();
+    expect(sent).not.toHaveBeenCalled();
   });
 
   it('logs out from the header button', async () => {
@@ -168,6 +198,7 @@ describe('landing on a tab while already open', () => {
     // an already-open dialog silently left the reader wherever they were.
     const { rerender } = render(
       <AgeGateProvider>
+    <AccountDeletionProvider>
     <PrivacyPolicyProvider>
       <AuthModals
         showAuthDialog={false}
@@ -180,12 +211,14 @@ describe('landing on a tab while already open', () => {
         initialTab="messages"
       />
       </PrivacyPolicyProvider>
+    </AccountDeletionProvider>
       </AgeGateProvider>
     );
     await screen.findByTestId('messages');
 
     rerender(
       <AgeGateProvider>
+    <AccountDeletionProvider>
     <PrivacyPolicyProvider>
       <AuthModals
         showAuthDialog={false}
@@ -198,6 +231,7 @@ describe('landing on a tab while already open', () => {
         initialTab="notifications"
       />
       </PrivacyPolicyProvider>
+    </AccountDeletionProvider>
       </AgeGateProvider>
     );
 

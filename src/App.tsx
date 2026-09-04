@@ -12,6 +12,7 @@ import { GameplayProvider } from './contexts/GameplayContext';
 import { PlaceholderSessionProvider, usePlaceholderSession } from './contexts/PlaceholderSessionContext';
 import { AgeGateProvider } from './contexts/AgeGateContext';
 import { PrivacyPolicyProvider } from './contexts/PrivacyPolicyContext';
+import { AccountDeletionProvider } from './contexts/AccountDeletionContext';
 import { LocalEngineManager } from './components/LocalEngineManager';
 import { IntroSequence } from './components/IntroSequence';
 import { TooltipProvider } from './components/ui/tooltip';
@@ -163,9 +164,13 @@ function App() {
                 <AgeGateProvider>
                   {/* Inside the age gate: both raise a blocking dialog, and the attestation is the one
                       that decides whether the community server is talked to at all. */}
-                  <PrivacyPolicyProvider>
-                    <AppViews />
-                  </PrivacyPolicyProvider>
+                  {/* Outside the privacy prompt, which raises the deletion flow from its third button —
+                      and so needs the flow mounted above it. */}
+                  <AccountDeletionProvider>
+                    <PrivacyPolicyProvider>
+                      <AppViews />
+                    </PrivacyPolicyProvider>
+                  </AccountDeletionProvider>
                 </AgeGateProvider>
               </UserProfileProvider>
             </PlaceholderSessionProvider>
