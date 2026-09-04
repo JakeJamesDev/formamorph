@@ -126,6 +126,25 @@ export interface LikerRow {
   role?: string | null;
 }
 
+/**
+ * One liker with the Signals behind their like read across, as the audit shows them.
+ *
+ * The plain row already says how old the account was when it liked. These two fields say the other half:
+ * whether this account acted from the same address as other likers, and whether it acted from the
+ * author's. Evidence for a person to weigh — a household shares an address too.
+ */
+export interface LikerAuditRow extends LikerRow {
+  /**
+   * Which set of likers sharing an address this one belongs to, or null when it shares with nobody.
+   *
+   * A number rather than a name, and only meaningful within one response: it says which rows go
+   * together, not which group this is across listings or across reads.
+   */
+  groupId: number | null;
+  /** Whether this account acted from an address the listing's author also acted from. */
+  linkedToAuthor: boolean;
+}
+
 /** One listing an account has liked, as the profile's Likes tab lists it. Staff-only, like `LikerRow`. */
 export interface LikeGiven {
   id: string;

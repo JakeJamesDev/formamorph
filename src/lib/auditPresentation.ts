@@ -217,10 +217,18 @@ export function auditPredicate(entry: AuditEntry): string {
     }
     // A look, not an act. It is logged because linkage data is the one record that says where a person
     // was, so reading it is accountable too.
-    case 'signals_viewed':
+    case 'signals_viewed': {
+      // Two reads share the action: the accounts linked to one account, and the likes on one listing.
+      // What was looked at is what separates them, so the target's kind is what the sentence turns on.
+      const kind = entry.target?.kind;
+      if (kind && kind !== 'account') {
+        return `audited the likes on ${name ? `“${name}”` : `a ${KIND_NOUNS[kind] ?? kind}`}${target ? ` by ${target}` : ''}`;
+      }
+
       return target
         ? `viewed the accounts linked to ${target}`
         : 'viewed the accounts linked to their own account';
+    }
     // Unreachable while the switch covers `AuditAction`; kept for a server newer than this build.
     default: {
       const unhandled: never = entry.action;

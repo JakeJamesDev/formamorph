@@ -8,7 +8,7 @@ import { describePlaceholders } from '@/lib/placeholders';
 import { allPlaceholders } from '@/lib/placeholderHomes';
 import { readDeletedDefaultWorlds, tombstoneDefaultWorld, type DefaultWorldSeed } from '@/lib/defaultWorlds';
 import { changelogOf, type ChangelogDraft, type ChangelogEntry } from '@/lib/listingChangelog';
-import type { LikerRow, WorldMetadata } from '@/types';
+import type { LikerAuditRow, LikerRow, WorldMetadata } from '@/types';
 
 /**
  * What a conditional catalog fetch answers with: a fresh snapshot and the tag to store beside it, the
@@ -910,6 +910,28 @@ class WorldStorageService {
     if (!response.ok) throw new Error(body.error || body.message || 'Failed to load who liked this');
 
     const data = body.data as { total?: number; rows?: LikerRow[] } | undefined;
+
+    return { total: Number(data?.total) || 0, rows: data?.rows ?? [] };
+  }
+
+  /**
+   * The same likers with the network Signals behind them read across. Staff only.
+   *
+   * Asked for only when somebody opens the audit, never with the list: the server writes an audit row
+   * per call, so counting the likes on a listing would otherwise file a look at everyone who gave one.
+   *
+   * @param worldId - The listing's server id
+   * @returns The full like count, and the rows with their group and author link
+   */
+  async fetchLikersAudit(worldId: string): Promise<{ total: number; rows: LikerAuditRow[] }> {
+    const response = await fetch(`${this.API_URL}/worlds/${worldId}/likes/audit`, {
+      headers: { 'Authorization': `Bearer ${AuthService.token}` },
+    });
+
+    const body = await response.json().catch(() => ({}));
+    if (!response.ok) throw new Error(body.error || body.message || 'Failed to audit these likes');
+
+    const data = body.data as { total?: number; rows?: LikerAuditRow[] } | undefined;
 
     return { total: Number(data?.total) || 0, rows: data?.rows ?? [] };
   }

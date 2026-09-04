@@ -362,6 +362,15 @@ describe('what each entry reads as', () => {
       .toBe('root-admin viewed the accounts linked to their own account');
   });
 
+  it('separates a look at a listing’s likes from a look at an account', () => {
+    // One action covers both reads. What was looked at is the only thing that tells them apart, so the
+    // sentence turns on the target's kind rather than on a second action name.
+    expect(line({ action: 'signals_viewed', target: { kind: 'world', name: 'Sedge Landing' } }))
+      .toBe('root-admin audited the likes on “Sedge Landing” by trouble');
+    expect(line({ action: 'signals_viewed', targetUser: null, target: { kind: 'world', name: null } }))
+      .toBe('root-admin audited the likes on a world');
+  });
+
   it('has a sentence for every action the client knows', () => {
     // The fallback exists for a server newer than this build; a listed action reaching it is drift.
     for (const action of AUDIT_ACTIONS) {
