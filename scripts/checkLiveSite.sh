@@ -81,6 +81,16 @@ battery() {
     *) echo "FAIL  / names Formamorph - the served root does not mention it" >> "$REPORT"; fail=1 ;;
   esac
   check_glob "$SITE_ASSET cache-control" "*max-age=86400*" "$(cache_control "$BASE_AI$SITE_ASSET")"
+
+  # The privacy policy. Collection on the server is only lawful once this page is public, so the deploy
+  # that publishes it has to prove it, not assume it. Redirects are followed: the page is a directory
+  # index, and whether Pages answers /privacy directly or sends it to /privacy/ is Cloudflare's call.
+  check "/privacy status" "200" "$(curl -sSL --max-time 20 -o /dev/null -w '%{http_code}' "$BASE_AI/privacy")"
+  PRIVACY_BODY=$(curl -sSL --max-time 20 "$BASE_AI/privacy")
+  case "$PRIVACY_BODY" in
+    *"Privacy Policy"*) echo "ok    /privacy serves the policy" >> "$REPORT" ;;
+    *) echo "FAIL  /privacy serves the policy - the served page does not name it" >> "$REPORT"; fail=1 ;;
+  esac
 }
 
 attempt=1
