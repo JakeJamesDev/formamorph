@@ -321,7 +321,15 @@ class AuthService {
     localStorage.removeItem(this.tokenKey);
     localStorage.removeItem(this.userKey);
     // After the state is cleared, so a listener that reads `isAuthenticated()` sees the session gone.
-    this.sessionEndedListeners.forEach((listener) => listener());
+    // Each is isolated: signing out has already happened by this point, and one subscriber throwing
+    // must not strand the others or escape into a caller — `logout()` also runs inside the 401 path.
+    this.sessionEndedListeners.forEach((listener) => {
+      try {
+        listener();
+      } catch (error) {
+        console.error('A session-ended listener failed:', error);
+      }
+    });
   }
 }
 
