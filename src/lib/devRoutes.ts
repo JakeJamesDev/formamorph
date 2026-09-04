@@ -52,8 +52,10 @@ export type DevView = (typeof DEV_VIEWS)[number];
  *  without the sample the prompt would have nothing to render before the cutover.
  *  `deleteAccount` opens the account-deletion flow at its first step, and `deletionCancelled` the notice
  *  a sign-in raises when it calls a pending deletion off. Neither is reachable by clicking without an
- *  account in the matching state — one needs a real password, the other a request already standing. */
-export const DEV_MODALS = ['settings', 'entity', 'export', 'menu', 'worldEditor', 'intro', 'avatar', 'backup', 'aiSetup', 'entityEditor', 'dictionaryEditor', 'modelDetails', 'community', 'memoryManager', 'profile', 'feedbackHub', 'adminPanel', 'editText', 'location', 'changelog', 'eventAck', 'publish', 'worldPrompts', 'aiContext', 'ageGate', 'likers', 'privacyPolicy', 'deleteAccount', 'deletionCancelled'] as const;
+ *  account in the matching state — one needs a real password, the other a request already standing.
+ *  `updateRequired` raises the Update Dialog on a canned refusal, since the real one needs a server route
+ *  whose minimum version is above the running build. */
+export const DEV_MODALS = ['settings', 'entity', 'export', 'menu', 'worldEditor', 'intro', 'avatar', 'backup', 'aiSetup', 'entityEditor', 'dictionaryEditor', 'modelDetails', 'community', 'memoryManager', 'profile', 'feedbackHub', 'adminPanel', 'editText', 'location', 'changelog', 'eventAck', 'publish', 'worldPrompts', 'aiContext', 'ageGate', 'likers', 'privacyPolicy', 'deleteAccount', 'deletionCancelled', 'updateRequired'] as const;
 export type DevModal = (typeof DEV_MODALS)[number];
 
 /** Coverage ledger: tabbed surface → the sub-tabs the router can target (via `tab=…`). Kept in lockstep
