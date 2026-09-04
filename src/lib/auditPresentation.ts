@@ -28,6 +28,7 @@ export const AUDIT_ACTION_LABELS: Record<AuditAction, string> = {
   report_dismissed: 'Report dismissed',
   like_removed: 'Like removed',
   likes_cleared: 'Likes cleared',
+  signals_viewed: 'Linked accounts viewed',
 };
 
 /** The tint each action carries, so a scan down the list separates removals from the rest. */
@@ -59,6 +60,8 @@ export const AUDIT_ACTION_STYLES: Record<AuditAction, string> = {
   report_dismissed: 'bg-muted text-muted-foreground',
   like_removed: 'bg-destructive/10 text-destructive',
   likes_cleared: 'bg-destructive/10 text-destructive',
+  // Nothing was done to anybody — somebody looked. Tinted as the neutral entry it is.
+  signals_viewed: 'bg-muted text-muted-foreground',
 };
 
 /** The filter's options, in the order the server declares them. */
@@ -212,6 +215,12 @@ export function auditPredicate(entry: AuditEntry): string {
 
       return `cleared ${many} given by ${target || 'an account'}`;
     }
+    // A look, not an act. It is logged because linkage data is the one record that says where a person
+    // was, so reading it is accountable too.
+    case 'signals_viewed':
+      return target
+        ? `viewed the accounts linked to ${target}`
+        : 'viewed the accounts linked to their own account';
     // Unreachable while the switch covers `AuditAction`; kept for a server newer than this build.
     default: {
       const unhandled: never = entry.action;

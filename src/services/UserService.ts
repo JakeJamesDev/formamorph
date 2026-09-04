@@ -1,4 +1,4 @@
-import type { FeedItem, FollowedUser, LikeGiven, ProfileCreation, PublicProfile } from '@/types';
+import type { FeedItem, FollowedUser, LikeGiven, LinkedAccount, ProfileCreation, PublicProfile } from '@/types';
 import { kindOf } from '@/lib/catalogKinds';
 import AuthService from '@/services/AuthService';
 
@@ -203,6 +203,27 @@ class UserService {
     );
 
     return { total: Number(body.data?.total) || 0, rows: body.data?.rows ?? [] };
+  }
+
+  /**
+   * Which other accounts have acted from one of this account's network addresses. Staff only.
+   *
+   * Asked for one row at a time, never for a table of them: reading it is written to the audit log, and
+   * opening Manage Users would otherwise file a look at every account on the page.
+   *
+   * @param userId - Whose links to read
+   * @returns The linked accounts, the newest match first
+   */
+  async fetchLinkedAccounts(userId: string): Promise<LinkedAccount[]> {
+    const response = await fetch(`${this.apiUrl}/users/${encodeURIComponent(userId)}/linked`, {
+      headers: this.authHeaders(),
+    });
+    const body = await this.unwrap<{ data: { accounts?: LinkedAccount[] } }>(
+      response,
+      'Failed to load their linked accounts'
+    );
+
+    return body.data?.accounts ?? [];
   }
 
   /**

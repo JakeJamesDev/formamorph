@@ -137,3 +137,32 @@ export interface LikeGiven {
   /** When they liked, as a server timestamp. The list is newest-first by this. */
   likedAt: string;
 }
+
+/** One recorded moment behind a link: what an account did, when, and from which browser family. */
+export interface LinkedMoment {
+  /** `signup`, `login`, `like`, `publish`, `comment` or `follow`. */
+  event: string;
+  /** When it happened, as a server timestamp — see `lib/serverDate`. */
+  at: string;
+  /** The coarse `Browser/OS` the request arrived with, or `Other/Other`. */
+  browserFamily: string;
+}
+
+/** Another account that acted from one of a subject's network addresses, with both sides of the link.
+ *  Staff-only, and evidence for a person rather than a verdict — nothing acts on it. */
+export interface LinkedAccount {
+  id: string;
+  username: string;
+  /** Their account status, in the same words the user table's pill uses. */
+  status: string | null;
+  /** When the account was created, as a server timestamp — see `lib/serverDate`. */
+  createdAt: string;
+  /** What they did from the shared address, newest first. Capped by the server. */
+  events: LinkedMoment[];
+  /** How many moments are on their side in all, so a capped list can say what it left out. */
+  eventsTotal: number;
+  /** What the subject did from the same address, newest first. Capped the same way. */
+  subjectEvents: LinkedMoment[];
+  /** How many moments are on the subject's side in all. */
+  subjectEventsTotal: number;
+}

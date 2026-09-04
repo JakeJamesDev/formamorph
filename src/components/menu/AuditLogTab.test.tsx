@@ -349,6 +349,19 @@ describe('what each entry reads as', () => {
       .toBe('root-admin cleared every like given by trouble');
   });
 
+  it('names who looked at whose linked accounts', () => {
+    // Reading linkage data is the one act in here that says where a person was. The log's job is to name
+    // the pair, so the line has to be about two people even though nothing was done to either.
+    expect(line({ action: 'signals_viewed', target: { kind: 'account', name: 'trouble' } }))
+      .toBe('root-admin viewed the accounts linked to trouble');
+  });
+
+  it('still reads when staff looked at their own linked accounts', () => {
+    // The log leaves the target off when it is the actor, as it does for a cleared like.
+    expect(line({ action: 'signals_viewed', targetUser: null, target: { kind: 'account', name: 'root-admin' } }))
+      .toBe('root-admin viewed the accounts linked to their own account');
+  });
+
   it('has a sentence for every action the client knows', () => {
     // The fallback exists for a server newer than this build; a listed action reaching it is drift.
     for (const action of AUDIT_ACTIONS) {

@@ -2,7 +2,8 @@ import { render, screen, fireEvent, cleanup, waitFor, act } from '@testing-libra
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { ManageUsersTab } from './ManageUsersTab';
 import MessageService from '@/services/MessageService';
-import type { SentMessage } from '@/types';
+import UserService from '@/services/UserService';
+import type { LinkedAccount, SentMessage } from '@/types';
 
 vi.mock('react-toastify', () => ({ toast: { error: vi.fn(), success: vi.fn(), info: vi.fn() } }));
 
@@ -21,8 +22,14 @@ vi.mock('./SentMessagesDialog', () => ({
   SentMessagesDialog: (props: Record<string, unknown>) => { dialogProps.history = props; return null; },
 }));
 
+// Who is signed in, so a test can drop to an ordinary account and check what disappears. Reset to the
+// administrator every test, since most of this table is only there for one.
+const viewer = vi.hoisted(() => ({
+  current: { id: 'a1', username: 'root-admin', accountType: 'admin' } as Record<string, unknown>,
+}));
+
 vi.mock('@/services/AuthService', () => ({
-  default: { token: 'test-token', getCurrentUser: () => ({ id: 'a1', username: 'root-admin', accountType: 'admin' }) },
+  default: { token: 'test-token', getCurrentUser: () => viewer.current },
 }));
 
 vi.mock('@/services/WorldStorageService', () => ({
@@ -67,6 +74,7 @@ const stubFetch = (rows: Record<string, unknown>[]) =>
 const lastQuery = () => new URLSearchParams(userQueries[userQueries.length - 1].split('?')[1]);
 
 beforeEach(() => {
+  viewer.current = { id: 'a1', username: 'root-admin', accountType: 'admin' };
   dialogProps.history = null;
   dialogProps.composer = null;
   userQueries = [];
@@ -612,5 +620,116 @@ describe('the role column', () => {
     await screen.findByText('someone');
 
     expect(screen.getByRole('button', { name: 'Suspend' })).toBeTruthy();
+  });
+});
+
+/**
+ * Linked accounts — which other accounts have acted from one of this one's network addresses.
+ *
+ * The behavior that matters is when the question is asked, not only what comes back: the server writes
+ * an audit row for every read, so the table must ask for one row at a time and only when a staff member
+ * opens it. A count fetched for the whole page would file a look at ten people nobody looked at.
+ */
+describe('linked accounts', () => {
+  const linkedAccount = (over: Partial<LinkedAccount> = {}): LinkedAccount => ({
+    id: 'u2',
+    username: 'other_one',
+    status: 'normal',
+    createdAt: '2026-09-01T10:00:00.000Z',
+    events: [{ event: 'like', at: '2026-09-03T10:00:00.000Z', browserFamily: 'Chrome/Windows' }],
+    eventsTotal: 1,
+    subjectEvents: [{ event: 'login', at: '2026-09-03T09:00:00.000Z', browserFamily: 'Chrome/Windows' }],
+    subjectEventsTotal: 1,
+    ...over,
+  });
+
+  /** Render one row and open its linked accounts, with the server's answer stubbed. */
+  const openLinked = async (accounts: LinkedAccount[]) => {
+    stubFetch([userRow({ id: 'u1', username: 'alice', status: 'normal' })]);
+    const fetchLinked = vi.spyOn(UserService, 'fetchLinkedAccounts').mockResolvedValue(accounts);
+
+    render(<ManageUsersTab active />);
+    await screen.findByText('alice');
+    fireEvent.click(screen.getByRole('button', { name: 'Linked accounts for alice' }));
+
+    return fetchLinked;
+  };
+
+  it('asks the server only once the row is opened', async () => {
+    stubFetch([userRow({ id: 'u1', username: 'alice', status: 'normal' })]);
+    const fetchLinked = vi.spyOn(UserService, 'fetchLinkedAccounts').mockResolvedValue([linkedAccount()]);
+
+    render(<ManageUsersTab active />);
+    await screen.findByText('alice');
+
+    // The table draws ten rows; asking for all ten would put ten looks nobody took into the log.
+    expect(fetchLinked).not.toHaveBeenCalled();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Linked accounts for alice' }));
+
+    await waitFor(() => expect(fetchLinked).toHaveBeenCalledWith('u1'));
+  });
+
+  it('lists each match with what both sides did', async () => {
+    await openLinked([linkedAccount()]);
+
+    expect(await screen.findByRole('button', { name: 'Find other_one in the table' })).toBeTruthy();
+    expect(screen.getByText('like')).toBeTruthy();
+    expect(screen.getByText('login')).toBeTruthy();
+    expect(screen.getByText('They did')).toBeTruthy();
+    expect(screen.getByText('This account did')).toBeTruthy();
+  });
+
+  it('says how many moments a capped side is holding back', async () => {
+    await openLinked([linkedAccount({ eventsTotal: 24 })]);
+
+    expect(await screen.findByText('and 23 more')).toBeTruthy();
+  });
+
+  it('shows the count on the row once it has been asked for', async () => {
+    await openLinked([linkedAccount(), linkedAccount({ id: 'u3', username: 'third_one' })]);
+
+    expect((await screen.findByRole('button', { name: 'Linked accounts for alice' })).textContent)
+      .toContain('Linked (2)');
+  });
+
+  it('shows a zero and nothing to expand when nobody is linked', async () => {
+    // Asserted on `aria-expanded` rather than on the absence of the panel's text: an empty list renders
+    // nothing visible either way, so only the control itself can say there is nothing behind it.
+    await openLinked([]);
+
+    const control = screen.getByRole('button', { name: 'Linked accounts for alice' });
+    await waitFor(() => expect(control.textContent).toContain('Linked (0)'));
+    expect(control.getAttribute('aria-expanded')).toBe('false');
+  });
+
+  it('asks again on every open, because every look belongs in the log', async () => {
+    const fetchLinked = await openLinked([linkedAccount()]);
+    await screen.findByRole('button', { name: 'Find other_one in the table' });
+
+    fireEvent.click(screen.getByRole('button', { name: 'Linked accounts for alice' }));
+    await waitFor(() => expect(screen.queryByText('They did')).toBeNull());
+    fireEvent.click(screen.getByRole('button', { name: 'Linked accounts for alice' }));
+
+    await waitFor(() => expect(fetchLinked).toHaveBeenCalledTimes(2));
+  });
+
+  it('finds a linked account in the table when its name is clicked', async () => {
+    // The panel reports; the row is what a staff member acts from, so the name goes to the row.
+    await openLinked([linkedAccount()]);
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Find other_one in the table' }));
+
+    await waitFor(() => expect(lastQuery().get('search')).toBe('other_one'));
+  });
+
+  it('is not offered to an account that is not staff', async () => {
+    viewer.current = { id: 'n1', username: 'ordinary', accountType: 'normal' };
+    stubFetch([userRow({ id: 'u1', username: 'alice', status: 'normal' })]);
+
+    render(<ManageUsersTab active />);
+    await screen.findByText('alice');
+
+    expect(screen.queryByRole('button', { name: 'Linked accounts for alice' })).toBeNull();
   });
 });
