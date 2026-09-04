@@ -4,7 +4,8 @@
 published world's payload stays small. Remote images render as-is during play; the bytes are fetched
 and embedded only at the moments where a file has to be self-contained.
 
-**Status:** SHIPPED — 240f15f (links), 3d48acc (offline button). Kept as the design record.
+Status: done
+Status note: 240f15f (links), 3d48acc (offline button). Kept as the design record.
 
 ---
 

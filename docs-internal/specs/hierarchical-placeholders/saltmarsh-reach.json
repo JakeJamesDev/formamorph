@@ -1,0 +1,803 @@
+{
+  "id": "saltmarsh-reach",
+  "worldOverview": {
+    "name": "Saltmarsh Reach (placeholder fixture)",
+    "description": "A hierarchical-placeholder torture test. Two characters built entirely out of owned and shared placeholders, one eye-colour pool the whole cast draws from with its own bench per character, places whose names and attributes are placeholders, and a corner of deliberately broken ones.",
+    "author": "fixture",
+    "thumbnail": null,
+    "bgm": null,
+    "systemPrompt": "Narrate the Reach plainly. Keep to what a person standing there could see and hear.",
+    "use3DModel": false,
+    "tags": [
+      "fixture"
+    ],
+    "readme": "## Saltmarsh Reach\n\nEverything with a name in this world is a placeholder. Molly is a Wildcard of three variants she **owns**; each of those owns its own Hair and **shares** one Eye Color pool with the other two, benching what does not suit it.\n\nWhat rolled this run: {{ph:town:world:pl-town-32}}, and at the quay, {{ph:tavern:world:pl-tavern-33}}."
+  },
+  "stats": [],
+  "statUpdates": [],
+  "dictionaries": [],
+  "traitGroups": [],
+  "traits": [
+    {
+      "id": "t-northern",
+      "name": "Northern Blood",
+      "playerDescription": "You grew up above the frost line.",
+      "statChanges": [],
+      "playerToggle": true,
+      "placeholderPins": [
+        {
+          "placeholderId": "molly",
+          "value": "{{ph:north:world:pl-north-34}}",
+          "valueId": "molly-v1"
+        }
+      ]
+    },
+    {
+      "id": "t-fen",
+      "name": "Fen-Born",
+      "playerDescription": "The marsh raised you, and it shows.",
+      "statChanges": [],
+      "playerToggle": true,
+      "placeholderPins": [
+        {
+          "placeholderId": "molly",
+          "value": "{{ph:fen:world:pl-fen-35}}",
+          "valueId": "molly-v3"
+        }
+      ]
+    },
+    {
+      "id": "t-redhead",
+      "name": "Redhead",
+      "playerDescription": "A shade nobody in the Reach rolls.",
+      "statChanges": [],
+      "playerToggle": true,
+      "placeholderPins": [
+        {
+          "placeholderId": "hair-north",
+          "value": "copper"
+        },
+        {
+          "placeholderId": "eyes",
+          "value": "pale grey",
+          "valueId": "eyes-v1"
+        }
+      ]
+    },
+    {
+      "id": "t-homely",
+      "name": "Homely",
+      "playerDescription": "You know exactly one town.",
+      "statChanges": [],
+      "playerToggle": true,
+      "placeholderPins": [
+        {
+          "placeholderId": "town",
+          "value": "Bellmoor",
+          "valueId": "town-v3"
+        }
+      ]
+    }
+  ],
+  "locations": [
+    {
+      "id": "loc-quay",
+      "name": "{{ph:town:world:pl-town-36}}",
+      "isStarting": true,
+      "playerDescription": "The quay at {{ph:town:world:pl-town-37}}. The air is {{ph:market-air:world:pl-market-air-38}}.",
+      "aiDescription": "A working quay in the town of {{ph:town:world:pl-town-39}}. It smells of {{ph:market-air:world:pl-market-air-40:sMarket Smell}}. {{ph:tavern:world:pl-tavern-41}} sits at the landward end."
+    },
+    {
+      "id": "loc-tavern",
+      "name": "{{ph:tavern:world:pl-tavern-42}}",
+      "parentId": "loc-quay",
+      "playerDescription": "Low beams, a peat fire, and {{ph:harl:world:pl-harl-43}} behind the bar.",
+      "aiDescription": "The taproom of {{ph:tavern:world:pl-tavern-44}}, the only inn in {{ph:town:world:pl-town-45}}."
+    },
+    {
+      "id": "loc-market",
+      "name": "The Fish Market",
+      "parentId": "loc-quay",
+      "playerDescription": "{{ph:market-air:world:pl-market-air-46}}, all of it at once.",
+      "aiDescription": "The market square. {{ph:omen:world:pl-omen-47}}"
+    }
+  ],
+  "entities": [
+    {
+      "id": "e-molly",
+      "name": "Molly",
+      "aliases": [
+        "{{ph:molly:world:pl-molly-48:sHair}} Molly"
+      ],
+      "locations": [
+        "loc-quay"
+      ],
+      "playerDescription": "Molly is {{ph:molly:world:pl-molly-49}}.\n\nHer hair is {{ph:molly:world:pl-molly-50:sHair}} and her eyes are {{ph:molly:world:pl-molly-51:sEye Color}}.\n\nShe is {{ph:molly:world:pl-molly-52:sBuild}} — {{ph:molly:world:pl-molly-53:sBuild>sHeight}} and {{ph:molly:world:pl-molly-54:sBuild>sFrame}}.",
+      "aiDescription": "{{ph:molly:world:pl-molly-55}}. The northern one specifically would be {{ph:molly:world:pl-molly-56:vnorth}}, whose hair is {{ph:molly:world:pl-molly-57:vnorth>vhair-north}}. Freckles, if she has any: {{ph:molly:world:pl-molly-58:sFreckles}}."
+    },
+    {
+      "id": "e-harl",
+      "name": "Harl",
+      "locations": [
+        "loc-tavern"
+      ],
+      "playerDescription": "The keeper of {{ph:tavern:world:pl-tavern-59}}. Tonight he is {{ph:harl:world:pl-harl-60}}.",
+      "aiDescription": "Harl speaks with {{ph:harl:world:pl-harl-61:sVoice}}. Two of him: {{ph:harl:unique:uq-harl-62}} and {{ph:harl:unique:uq-harl-63}}."
+    },
+    {
+      "id": "e-broken",
+      "name": "Broken On Purpose",
+      "locations": [
+        "loc-market"
+      ],
+      "playerDescription": "Dangling root: {{ph:deleted-on-purpose:world:pl-deleted-on-purpose-64}}, inside {{ph:broken-dangling:world:pl-broken-dangling-65}}\n\nDangling mid-path: {{ph:molly:world:pl-molly-66:vdeleted-on-purpose>vhair-north}}\n\nCycle: {{ph:broken-cycle:world:pl-broken-cycle-67}}\n\nEmpty Object: {{ph:broken-empty:world:pl-broken-empty-68}}\n\nSlot nothing carries: {{ph:molly:world:pl-molly-69:sTail}}\n\nStale ownership: {{ph:broken-orphan:world:pl-broken-orphan-70}} and {{ph:broken-released:world:pl-broken-released-71}}, held by {{ph:broken-holder:world:pl-broken-holder-72}}.",
+      "aiDescription": "The corner of the world where every Test Bench rule has something to find."
+    }
+  ],
+  "placeholders": [
+    {
+      "id": "molly",
+      "name": "Molly",
+      "values": [
+        {
+          "id": "molly-v1",
+          "text": "{{ph:north:world:pl-north-1}}"
+        },
+        {
+          "id": "molly-v2",
+          "text": "{{ph:south:world:pl-south-2}}"
+        },
+        {
+          "id": "molly-v3",
+          "text": "{{ph:fen:world:pl-fen-3}}"
+        }
+      ],
+      "roll": true
+    },
+    {
+      "id": "north",
+      "name": "Northern",
+      "values": [
+        {
+          "id": "north-v1",
+          "text": "{{ph:hair-north:world:pl-hair-north-4}}"
+        },
+        {
+          "id": "north-v2",
+          "text": "{{ph:eyes:world:pl-eyes-5}}"
+        },
+        {
+          "id": "north-v3",
+          "text": "{{ph:build-lean:world:pl-build-lean-6}}"
+        },
+        {
+          "id": "north-v4",
+          "text": "{{ph:freckles:world:pl-freckles-7}}"
+        }
+      ],
+      "roll": false,
+      "ownerId": "molly",
+      "sharedWeights": {
+        "north-v2": {
+          "eyes-v3": 0,
+          "eyes-v8": 0
+        },
+        "north-v3/height-lean": {
+          "height-lean-v2": 0
+        }
+      }
+    },
+    {
+      "id": "south",
+      "name": "Southern",
+      "values": [
+        {
+          "id": "south-v1",
+          "text": "{{ph:hair-south:world:pl-hair-south-8}}"
+        },
+        {
+          "id": "south-v2",
+          "text": "{{ph:eyes:world:pl-eyes-9}}"
+        },
+        {
+          "id": "south-v3",
+          "text": "{{ph:build-broad:world:pl-build-broad-10}}"
+        }
+      ],
+      "roll": false,
+      "ownerId": "molly"
+    },
+    {
+      "id": "fen",
+      "name": "Fen-Born",
+      "values": [
+        {
+          "id": "fen-v1",
+          "text": "{{ph:hair-fen:world:pl-hair-fen-11}}"
+        },
+        {
+          "id": "fen-v2",
+          "text": "{{ph:eyes:world:pl-eyes-12}}"
+        },
+        {
+          "id": "fen-v3",
+          "text": "{{ph:build-lean:world:pl-build-lean-13}}"
+        },
+        {
+          "id": "fen-v4",
+          "text": "webbing between her fingers"
+        }
+      ],
+      "roll": false,
+      "ownerId": "molly",
+      "sharedWeights": {
+        "fen-v2": {
+          "eyes-v2": 0,
+          "eyes-v7": 0
+        }
+      }
+    },
+    {
+      "id": "hair-north",
+      "name": "Hair",
+      "values": [
+        {
+          "id": "hair-north-v1",
+          "text": "ash-blonde"
+        },
+        {
+          "id": "hair-north-v2",
+          "text": "flaxen"
+        },
+        {
+          "id": "hair-north-v3",
+          "text": "near-white"
+        }
+      ],
+      "roll": true,
+      "ownerId": "north"
+    },
+    {
+      "id": "hair-south",
+      "name": "Hair",
+      "values": [
+        {
+          "id": "hair-south-v1",
+          "text": "jet black"
+        },
+        {
+          "id": "hair-south-v2",
+          "text": "raven-dark"
+        },
+        {
+          "id": "hair-south-v3",
+          "text": "coal-dark"
+        }
+      ],
+      "roll": true,
+      "ownerId": "south"
+    },
+    {
+      "id": "hair-fen",
+      "name": "Hair",
+      "values": [
+        {
+          "id": "hair-fen-v1",
+          "text": "peat-brown"
+        },
+        {
+          "id": "hair-fen-v2",
+          "text": "reed-gold"
+        }
+      ],
+      "roll": true,
+      "ownerId": "fen"
+    },
+    {
+      "id": "eyes",
+      "name": "Eye Color",
+      "values": [
+        {
+          "id": "eyes-v1",
+          "text": "pale grey"
+        },
+        {
+          "id": "eyes-v2",
+          "text": "ice blue"
+        },
+        {
+          "id": "eyes-v3",
+          "text": "dark amber"
+        },
+        {
+          "id": "eyes-v4",
+          "text": "near-black"
+        },
+        {
+          "id": "eyes-v5",
+          "text": "moss green"
+        },
+        {
+          "id": "eyes-v6",
+          "text": "hazel"
+        },
+        {
+          "id": "eyes-v7",
+          "text": "storm blue"
+        },
+        {
+          "id": "eyes-v8",
+          "text": "copper-brown"
+        },
+        {
+          "id": "eyes-v9",
+          "text": "sea green"
+        },
+        {
+          "id": "eyes-v10",
+          "text": "washed-out blue"
+        }
+      ],
+      "roll": true
+    },
+    {
+      "id": "build-lean",
+      "name": "Build",
+      "values": [
+        {
+          "id": "build-lean-v1",
+          "text": "{{ph:height-lean:world:pl-height-lean-14}}"
+        },
+        {
+          "id": "build-lean-v2",
+          "text": "{{ph:frame-lean:world:pl-frame-lean-15}}"
+        }
+      ],
+      "roll": false
+    },
+    {
+      "id": "height-lean",
+      "name": "Height",
+      "values": [
+        {
+          "id": "height-lean-v1",
+          "text": "tall"
+        },
+        {
+          "id": "height-lean-v2",
+          "text": "rangy"
+        },
+        {
+          "id": "height-lean-v3",
+          "text": "long-limbed"
+        }
+      ],
+      "roll": true,
+      "ownerId": "build-lean"
+    },
+    {
+      "id": "frame-lean",
+      "name": "Frame",
+      "values": [
+        {
+          "id": "frame-lean-v1",
+          "text": "lean"
+        },
+        {
+          "id": "frame-lean-v2",
+          "text": "wiry"
+        }
+      ],
+      "roll": true,
+      "ownerId": "build-lean"
+    },
+    {
+      "id": "build-broad",
+      "name": "Build",
+      "values": [
+        {
+          "id": "build-broad-v1",
+          "text": "{{ph:height-short:world:pl-height-short-16}}"
+        },
+        {
+          "id": "build-broad-v2",
+          "text": "{{ph:frame-broad:world:pl-frame-broad-17}}"
+        }
+      ],
+      "roll": false,
+      "ownerId": "south"
+    },
+    {
+      "id": "height-short",
+      "name": "Height",
+      "values": [
+        {
+          "id": "height-short-v1",
+          "text": "short"
+        },
+        {
+          "id": "height-short-v2",
+          "text": "compact"
+        }
+      ],
+      "roll": true,
+      "ownerId": "build-broad"
+    },
+    {
+      "id": "frame-broad",
+      "name": "Frame",
+      "values": [
+        {
+          "id": "frame-broad-v1",
+          "text": "broad"
+        },
+        {
+          "id": "frame-broad-v2",
+          "text": "heavy-shouldered"
+        }
+      ],
+      "roll": true,
+      "ownerId": "build-broad"
+    },
+    {
+      "id": "freckles",
+      "name": "Freckles",
+      "values": [
+        {
+          "id": "freckles-v1",
+          "text": "a scattering of freckles"
+        },
+        {
+          "id": "freckles-v2",
+          "text": "sun-freckled cheeks"
+        }
+      ],
+      "roll": true,
+      "ownerId": "north"
+    },
+    {
+      "id": "harl",
+      "name": "Harl",
+      "values": [
+        {
+          "id": "harl-v1",
+          "text": "{{ph:harl-sober:world:pl-harl-sober-18}}"
+        },
+        {
+          "id": "harl-v2",
+          "text": "{{ph:harl-drunk:world:pl-harl-drunk-19}}"
+        }
+      ],
+      "roll": true
+    },
+    {
+      "id": "harl-sober",
+      "name": "Sober",
+      "values": [
+        {
+          "id": "harl-sober-v1",
+          "text": "{{ph:harl-voice:world:pl-harl-voice-20}}"
+        },
+        {
+          "id": "harl-sober-v2",
+          "text": "hands that never stop moving"
+        }
+      ],
+      "roll": false,
+      "ownerId": "harl"
+    },
+    {
+      "id": "harl-drunk",
+      "name": "Drunk",
+      "values": [
+        {
+          "id": "harl-drunk-v1",
+          "text": "{{ph:harl-voice:world:pl-harl-voice-21}}"
+        },
+        {
+          "id": "harl-drunk-v2",
+          "text": "a list to starboard"
+        }
+      ],
+      "roll": false,
+      "ownerId": "harl",
+      "sharedWeights": {
+        "harl-drunk-v1": {
+          "harl-voice-v3": 0
+        }
+      }
+    },
+    {
+      "id": "harl-voice",
+      "name": "Voice",
+      "values": [
+        {
+          "id": "harl-voice-v1",
+          "text": "a wet rasp"
+        },
+        {
+          "id": "harl-voice-v2",
+          "text": "a bellow"
+        },
+        {
+          "id": "harl-voice-v3",
+          "text": "a confiding murmur"
+        }
+      ],
+      "roll": true
+    },
+    {
+      "id": "town",
+      "name": "Town Name",
+      "values": [
+        {
+          "id": "town-v1",
+          "text": "Sedge Landing"
+        },
+        {
+          "id": "town-v2",
+          "text": "Harrow"
+        },
+        {
+          "id": "town-v3",
+          "text": "Bellmoor"
+        },
+        {
+          "id": "town-v4",
+          "text": "Wick"
+        }
+      ],
+      "roll": true,
+      "weights": {
+        "town-v1": 4,
+        "town-v2": 2,
+        "town-v3": 1,
+        "town-v4": 1
+      }
+    },
+    {
+      "id": "tavern",
+      "name": "Tavern Name",
+      "values": [
+        {
+          "id": "tavern-v1",
+          "text": "The {{ph:tavern-adj:world:pl-tavern-adj-22}} {{ph:tavern-noun:world:pl-tavern-noun-23}}"
+        }
+      ],
+      "roll": true
+    },
+    {
+      "id": "tavern-adj",
+      "name": "Tavern Adjective",
+      "values": [
+        {
+          "id": "tavern-adj-v1",
+          "text": "Drowned"
+        },
+        {
+          "id": "tavern-adj-v2",
+          "text": "Gilded"
+        },
+        {
+          "id": "tavern-adj-v3",
+          "text": "Salt-Worn"
+        },
+        {
+          "id": "tavern-adj-v4",
+          "text": "Crooked"
+        }
+      ],
+      "roll": true
+    },
+    {
+      "id": "tavern-noun",
+      "name": "Tavern Noun",
+      "values": [
+        {
+          "id": "tavern-noun-v1",
+          "text": "Hare"
+        },
+        {
+          "id": "tavern-noun-v2",
+          "text": "Anchor"
+        },
+        {
+          "id": "tavern-noun-v3",
+          "text": "Lantern"
+        },
+        {
+          "id": "tavern-noun-v4",
+          "text": "Sparrow"
+        }
+      ],
+      "roll": true
+    },
+    {
+      "id": "market-air",
+      "name": "Market Air",
+      "values": [
+        {
+          "id": "market-air-v1",
+          "text": "{{ph:market-smell:world:pl-market-smell-24}}"
+        },
+        {
+          "id": "market-air-v2",
+          "text": "{{ph:market-sound:world:pl-market-sound-25}}"
+        }
+      ],
+      "roll": false
+    },
+    {
+      "id": "market-smell",
+      "name": "Market Smell",
+      "values": [
+        {
+          "id": "market-smell-v1",
+          "text": "fish guts and brine"
+        },
+        {
+          "id": "market-smell-v2",
+          "text": "wet wool"
+        },
+        {
+          "id": "market-smell-v3",
+          "text": "tar and hot rope"
+        }
+      ],
+      "roll": true,
+      "ownerId": "market-air"
+    },
+    {
+      "id": "market-sound",
+      "name": "Market Sound",
+      "values": [
+        {
+          "id": "market-sound-v1",
+          "text": "gulls arguing overhead"
+        },
+        {
+          "id": "market-sound-v2",
+          "text": "a hawker’s bell"
+        },
+        {
+          "id": "market-sound-v3",
+          "text": "cart wheels on wet stone"
+        }
+      ],
+      "roll": true,
+      "ownerId": "market-air"
+    },
+    {
+      "id": "omen",
+      "name": "Omen",
+      "values": [
+        {
+          "id": "omen-v1",
+          "text": "The tide came in wrong today.\n\nIt left a line of dead crabs along the quay, all facing inland, and nobody will say what that means."
+        },
+        {
+          "id": "omen-v2",
+          "text": "A gull dropped a ring on the steps of the customs house.\n\nIt is still there. Nobody has touched it."
+        }
+      ],
+      "roll": true
+    },
+    {
+      "id": "broken-dangling",
+      "name": "Broken — Dangling",
+      "values": [
+        {
+          "id": "broken-dangling-v1",
+          "text": "{{ph:deleted-on-purpose:world:pl-deleted-on-purpose-26}}"
+        },
+        {
+          "id": "broken-dangling-v2",
+          "text": "this half is fine"
+        }
+      ],
+      "roll": true
+    },
+    {
+      "id": "broken-cycle",
+      "name": "Broken — Cycle",
+      "values": [
+        {
+          "id": "broken-cycle-v1",
+          "text": "{{ph:broken-cycle-b:world:pl-broken-cycle-b-27}}"
+        }
+      ],
+      "roll": false
+    },
+    {
+      "id": "broken-cycle-b",
+      "name": "Broken — Cycle B",
+      "values": [
+        {
+          "id": "broken-cycle-b-v1",
+          "text": "{{ph:broken-cycle:world:pl-broken-cycle-28}}"
+        }
+      ],
+      "roll": false
+    },
+    {
+      "id": "broken-empty",
+      "name": "Broken — Empty Object",
+      "values": [
+        {
+          "id": "broken-empty-v1",
+          "text": "{{ph:broken-void:world:pl-broken-void-29}}"
+        },
+        {
+          "id": "broken-empty-v2",
+          "text": "{{ph:broken-void:world:pl-broken-void-30}}"
+        }
+      ],
+      "roll": false
+    },
+    {
+      "id": "broken-void",
+      "name": "Broken — No Values",
+      "values": [],
+      "roll": true
+    },
+    {
+      "id": "broken-orphan",
+      "name": "Broken — No Owner",
+      "values": [
+        {
+          "id": "broken-orphan-v1",
+          "text": "it reads as top level"
+        }
+      ],
+      "roll": true,
+      "ownerId": "deleted-on-purpose"
+    },
+    {
+      "id": "broken-pool",
+      "name": "Broken — Pool",
+      "values": [
+        {
+          "id": "broken-pool-v1",
+          "text": "still here"
+        },
+        {
+          "id": "broken-pool-v2",
+          "text": "also still here"
+        }
+      ],
+      "roll": true
+    },
+    {
+      "id": "broken-holder",
+      "name": "Broken — Holder",
+      "values": [
+        {
+          "id": "broken-holder-v1",
+          "text": "{{ph:broken-pool:world:pl-broken-pool-31}}"
+        },
+        {
+          "id": "broken-holder-v2",
+          "text": "nothing points at Broken — Released"
+        }
+      ],
+      "roll": false,
+      "sharedWeights": {
+        "broken-holder-v1": {
+          "broken-pool-v9": 0
+        }
+      }
+    },
+    {
+      "id": "broken-released",
+      "name": "Broken — Released",
+      "values": [
+        {
+          "id": "broken-released-v1",
+          "text": "its owner dropped it"
+        }
+      ],
+      "roll": true,
+      "ownerId": "broken-holder"
+    }
+  ]
+}

@@ -1,5 +1,7 @@
 # Image Widget Polish — Spec
 
+Status: done
+
 Three changes to the entity/location image widget: **drag-and-drop**, **one gallery pane instead of stacked dropzones**, and a **progress overlay while images are converted**.
 
 Decided in interview; this doc is the agreed shape before any code is written.

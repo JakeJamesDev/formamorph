@@ -1,0 +1,389 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>PROTOTYPE — Content Reports demo</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<style>
+  :root { --accent: #6d5ae0; --ink: #23222b; --muted: #7a7887; --line: #e6e4ef; --bg: #faf9fd; --card: #ffffff; --bad: #c0392b; --good: #1e8a4c; }
+  * { box-sizing: border-box; }
+  body { margin: 0; font-family: "Segoe UI", system-ui, sans-serif; color: var(--ink); background: var(--bg); line-height: 1.45; }
+  .wrap { max-width: 1100px; margin: 0 auto; padding: 28px 20px 80px; }
+  h1 { font-size: 22px; margin: 0 0 4px; }
+  h1 .tag { font-size: 11px; font-weight: 700; letter-spacing: .08em; color: var(--accent); border: 1px solid var(--accent); border-radius: 4px; padding: 2px 6px; vertical-align: 3px; margin-right: 8px; }
+  .intro { color: var(--muted); font-size: 14px; max-width: 72ch; margin-bottom: 20px; }
+  h2 { font-size: 13px; text-transform: uppercase; letter-spacing: .07em; color: var(--muted); margin: 0 0 10px; }
+  .cols { display: grid; grid-template-columns: 1.1fr 1.2fr 1fr; gap: 14px; align-items: start; }
+  @media (max-width: 900px) { .cols { grid-template-columns: 1fr; } }
+  .card { background: var(--card); border: 1px solid var(--line); border-radius: 10px; padding: 14px 16px; }
+  .item { border: 1px solid var(--line); border-radius: 8px; padding: 8px 10px; margin-bottom: 8px; font-size: 13px; }
+  .item .name { font-weight: 600; }
+  .item .sub { color: var(--muted); font-size: 12px; }
+  .pill { display: inline-block; font-size: 11px; font-weight: 600; border-radius: 999px; padding: 1px 8px; margin-left: 6px; vertical-align: 1px; }
+  .pill.gone { background: #fdecea; color: var(--bad); }
+  .pill.quar { background: #fff4e0; color: #a86500; }
+  .pill.staff { background: #ece9fb; color: var(--accent); }
+  .pill.open { background: #e7f4ec; color: var(--good); }
+  .pill.count { background: var(--accent); color: #fff; }
+  .pill.flag { background: #fdecea; color: var(--bad); }
+  .report-line { font-size: 12px; color: var(--muted); margin: 3px 0 0 2px; }
+  .inbox-user { margin-bottom: 12px; }
+  .inbox-user .who { font-weight: 600; font-size: 13px; }
+  .msg { background: #f4f2fb; border-radius: 8px; padding: 7px 10px; font-size: 12.5px; margin-top: 5px; }
+  .msg .note { color: var(--muted); font-style: italic; }
+  .empty { color: var(--muted); font-size: 12.5px; font-style: italic; }
+  .event { margin: 18px 0; padding: 10px 14px; background: #f1eefc; border-left: 3px solid var(--accent); border-radius: 0 8px 8px 0; font-size: 13.5px; min-height: 20px; }
+  .event.err { background: #fdecea; border-left-color: var(--bad); }
+  button { font: inherit; font-size: 13px; border: 1px solid var(--line); background: var(--card); color: var(--ink); border-radius: 8px; padding: 6px 12px; cursor: pointer; }
+  button:hover:not(:disabled) { border-color: var(--accent); color: var(--accent); }
+  button:disabled { opacity: .45; cursor: default; }
+  button.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+  button.primary:hover:not(:disabled) { color: #fff; opacity: .92; }
+  select, input[type=text] { font: inherit; font-size: 13px; border: 1px solid var(--line); border-radius: 8px; padding: 6px 8px; background: var(--card); color: var(--ink); }
+  .controls { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-top: 22px; }
+  @media (max-width: 900px) { .controls { grid-template-columns: 1fr; } }
+  .row { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-bottom: 10px; }
+  .row label { font-size: 12.5px; color: var(--muted); }
+  .tabs { display: flex; flex-wrap: wrap; gap: 6px; margin: 26px 0 0; }
+  .tabs button.active { background: var(--accent); border-color: var(--accent); color: #fff; }
+  .scenario { margin-top: 12px; }
+  .scenario p { font-size: 13.5px; max-width: 78ch; }
+  .steps { display: flex; flex-direction: column; gap: 8px; margin-top: 12px; max-width: 620px; }
+  .steps button { text-align: left; padding: 9px 14px; }
+  .steps button.done { border-color: var(--good); color: var(--good); background: #f3faf6; }
+  .footer-note { margin-top: 34px; color: var(--muted); font-size: 12px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1><span class="tag">PROTOTYPE</span>Content Reports — feel the flow</h1>
+  <p class="intro">
+    <strong>The question this answers:</strong> does the report lifecycle feel right? One-shot tickets
+    (no threads) · one open report per person per thing · the staff queue groups reports by the reported
+    thing and one resolution closes the whole group · every reporter gets an automatic inbox message
+    (outcome + optional staff note, never the specific action) · content removed by its own author keeps
+    its reports open · reports on staff-made content are visible to all staff but only resolvable by
+    someone who outranks the author. Press buttons, watch all three panels.
+  </p>
+
+  <div id="event" class="event">Pick a walkthrough below, or free-play with the controls.</div>
+
+  <div class="cols">
+    <div class="card"><h2>Community content</h2><div id="content"></div></div>
+    <div class="card"><h2>Staff report queue <span id="badge"></span></h2><div id="queue"></div></div>
+    <div class="card"><h2>Player inboxes</h2><div id="inboxes"></div></div>
+  </div>
+
+  <div class="controls">
+    <div class="card">
+      <h2>A player reports something</h2>
+      <div class="row">
+        <label>Reporter</label>
+        <select id="fpReporter"></select>
+        <label>Thing</label>
+        <select id="fpTarget"></select>
+      </div>
+      <div class="row">
+        <label>Reason</label>
+        <select id="fpCategory"></select>
+        <button class="primary" id="fpReport">File the report</button>
+      </div>
+      <div class="row">
+        <button id="fpAuthorDelete">Author deletes their own reported thing</button>
+      </div>
+    </div>
+    <div class="card">
+      <h2>Staff work the queue</h2>
+      <div class="row">
+        <label>Acting staff</label>
+        <select id="fpStaff"></select>
+        <label>Group</label>
+        <select id="fpGroup"></select>
+      </div>
+      <div class="row">
+        <button id="fpQuarantine">Quarantine it</button>
+        <button id="fpDelete">Take it down</button>
+        <button id="fpAvatar">Remove profile image</button>
+      </div>
+      <div class="row">
+        <input type="text" id="fpNote" placeholder="Optional note to the reporters…" size="26">
+        <button class="primary" id="fpActioned">Resolve — action taken</button>
+        <button id="fpDismissed">Resolve — no violation</button>
+      </div>
+      <div class="row"><button id="fpReset">↺ Reset everything</button></div>
+    </div>
+  </div>
+
+  <div class="tabs" id="tabs"></div>
+  <div class="scenario card" id="scenario" style="display:none"></div>
+
+  <p class="footer-note">Throwaway prototype for the Content Reports design session — not production code.
+  The rules module inside it (<code>ReportModel</code>) mirrors the agreed design and is the liftable part.</p>
+</div>
+
+<script>
+/* ============================================================
+   ReportModel — the pure, liftable rules module.
+   No DOM in here. (state, action) in, { state, event } out.
+   ============================================================ */
+const ReportModel = (() => {
+  const CATEGORIES = ['Illegal content', 'Hate or harassment', 'Spam or scam', 'Stolen content', 'Malicious content or links', 'Other'];
+
+  // Mirrors the server's rule: staff moderate the room, not each other; admins outrank non-admin staff.
+  const isStaff = (u) => u.role !== 'player';
+  const canModerate = (actor, targetAuthor) => {
+    if (!isStaff(actor)) return false;
+    if (!targetAuthor || !isStaff(targetAuthor)) return true;
+    return actor.role === 'admin' && targetAuthor.role !== 'admin';
+  };
+
+  const initialState = () => ({
+    users: {
+      ash:   { id: 'ash',   name: 'Ash',   role: 'player' },
+      brook: { id: 'brook', name: 'Brook', role: 'player' },
+      casey: { id: 'casey', name: 'Casey', role: 'player' },
+      riley: { id: 'riley', name: 'Riley', role: 'mod' },
+      morgan:{ id: 'morgan',name: 'Morgan',role: 'mod' },
+      avery: { id: 'avery', name: 'Avery', role: 'admin' }
+    },
+    content: {
+      L1: { id: 'L1', kind: 'listing "Sunken Halls"',            authorId: 'casey', removed: false, removedBy: null, quarantined: false },
+      L2: { id: 'L2', kind: 'listing "Gilded Spire"',            authorId: 'riley', removed: false, removedBy: null, quarantined: false },
+      C1: { id: 'C1', kind: 'comment "check out sketchy.link"',  authorId: 'casey', removed: false, removedBy: null, quarantined: false },
+      P1: { id: 'P1', kind: "Casey's profile image",             authorId: 'casey', removed: false, removedBy: null, quarantined: false }
+    },
+    reports: [],   // { id, reporterId, targetId, snapshot, category, status:'open'|'resolved', outcome, targetGone }
+    inboxes: { ash: [], brook: [], casey: [], riley: [] },
+    nextId: 1
+  });
+
+  const clone = (s) => JSON.parse(JSON.stringify(s));
+
+  function submitReport(state, reporterId, targetId, category) {
+    const s = clone(state);
+    const reporter = s.users[reporterId], target = s.content[targetId];
+    const dup = s.reports.find(r => r.reporterId === reporterId && r.targetId === targetId && r.status === 'open');
+    if (dup) return { state, event: { err: true, text: `${reporter.name} already has an open report on that — "You have already reported this. It is pending review."` } };
+    if (target.removed) return { state, event: { err: true, text: `That content is gone from the catalog — nothing to report.` } };
+    s.reports.push({
+      id: 'R' + s.nextId++, reporterId, targetId,
+      snapshot: { kind: target.kind, authorName: s.users[target.authorId].name },
+      category, status: 'open', outcome: null, targetGone: false
+    });
+    return { state: s, event: { text: `${reporter.name} reported the ${target.kind} (${category}). It joins the staff queue.` } };
+  }
+
+  function authorRemoves(state, targetId) {
+    const s = clone(state);
+    const target = s.content[targetId];
+    if (target.removed) return { state, event: { err: true, text: `Already gone.` } };
+    target.removed = true; target.removedBy = 'author';
+    let flagged = 0;
+    s.reports.forEach(r => { if (r.targetId === targetId && r.status === 'open') { r.targetGone = true; flagged++; } });
+    return { state: s, event: { text: `${s.users[target.authorId].name} deleted their own ${target.kind}.` + (flagged ? ` ${flagged} open report(s) stay in the queue, flagged "content removed by author" — the snapshot keeps what was reported.` : '') } };
+  }
+
+  function staffAct(state, staffId, targetId, action) {
+    const s = clone(state);
+    const staff = s.users[staffId], target = s.content[targetId];
+    const author = s.users[target.authorId];
+    if (!canModerate(staff, author)) return { state, event: { err: true, text: `${staff.name} (${staff.role}) cannot moderate ${author.name} (${author.role}) — staff moderate the room, not each other.` } };
+    if (action === 'quarantine') { target.quarantined = true; return { state: s, event: { text: `${staff.name} quarantined the ${target.kind} — hidden from the public, visible to its author and staff. (Existing tool; the author gets the usual quarantine notice.)` } }; }
+    if (action === 'delete')     { target.removed = true; target.removedBy = 'staff'; return { state: s, event: { text: `${staff.name} took down the ${target.kind}. (Existing tool; the author gets the usual takedown notice.)` } }; }
+    if (action === 'avatar')     { target.removed = true; target.removedBy = 'staff'; return { state: s, event: { text: `${staff.name} removed the profile image. (Existing tool — confirm dialog, audit entry, "explain why" message offer.)` } }; }
+  }
+
+  function resolveTarget(state, staffId, targetId, outcome, note) {
+    const s = clone(state);
+    const staff = s.users[staffId], target = s.content[targetId];
+    const author = s.users[target.authorId];
+    const open = s.reports.filter(r => r.targetId === targetId && r.status === 'open');
+    if (!open.length) return { state, event: { err: true, text: `No open reports on that.` } };
+    if (!canModerate(staff, author)) return { state, event: { err: true, text: `${staff.name} (${staff.role}) cannot resolve reports on ${author.name}'s (${author.role}) content — only someone who outranks the author can. The group stays visible to all staff.` } };
+    open.forEach(r => {
+      r.status = 'resolved'; r.outcome = outcome;
+      const line = outcome === 'actioned'
+        ? `Your report on the ${r.snapshot.kind} was reviewed — action was taken.`
+        : `Your report on the ${r.snapshot.kind} was reviewed — no violation was found.`;
+      s.inboxes[r.reporterId].push({ text: line, note: note || null });
+    });
+    return { state: s, event: { text: `${staff.name} resolved the group (${outcome === 'actioned' ? 'action taken' : 'no violation'}) — ${open.length} report(s) closed, ${open.length} inbox message(s) sent. The specific action is never named to reporters.` } };
+  }
+
+  const openQueue = (state) => {
+    const groups = {};
+    state.reports.filter(r => r.status === 'open').forEach(r => (groups[r.targetId] = groups[r.targetId] || []).push(r));
+    return groups;
+  };
+
+  return { CATEGORIES, initialState, submitReport, authorRemoves, staffAct, resolveTarget, openQueue, canModerate };
+})();
+
+/* ============================================================
+   Page shell — throwaway. Renders state, wires buttons.
+   ============================================================ */
+let state = ReportModel.initialState();
+let lastEvent = null;
+
+function dispatch(fn, ...args) {
+  const r = fn(state, ...args);
+  state = r.state; lastEvent = r.event;
+  render();
+}
+
+const $ = (id) => document.getElementById(id);
+const esc = (t) => t.replace(/&/g, '&amp;').replace(/</g, '&lt;');
+
+function render() {
+  // event line
+  const ev = $('event');
+  ev.className = 'event' + (lastEvent && lastEvent.err ? ' err' : '');
+  ev.textContent = lastEvent ? lastEvent.text : 'Pick a walkthrough below, or free-play with the controls.';
+
+  // content panel
+  $('content').innerHTML = Object.values(state.content).map(c => {
+    const author = state.users[c.authorId];
+    return `<div class="item"><span class="name">${esc(c.kind)}</span>
+      ${author.role !== 'player' ? '<span class="pill staff">by staff</span>' : ''}
+      ${c.quarantined ? '<span class="pill quar">quarantined</span>' : ''}
+      ${c.removed ? `<span class="pill gone">${c.removedBy === 'author' ? 'deleted by author' : 'removed by staff'}</span>` : ''}
+      <div class="sub">by ${author.name}${author.role !== 'player' ? ` (${author.role})` : ''}</div></div>`;
+  }).join('');
+
+  // queue panel (grouped)
+  const groups = ReportModel.openQueue(state);
+  const openCount = Object.values(groups).reduce((n, g) => n + g.length, 0);
+  $('badge').innerHTML = openCount ? `<span class="pill count">${openCount} open</span>` : '';
+  $('queue').innerHTML = Object.keys(groups).length ? Object.entries(groups).map(([tid, reports]) => {
+    const c = state.content[tid];
+    const author = state.users[c.authorId];
+    return `<div class="item"><span class="name">${esc(c.kind)}</span>
+      <span class="pill open">${reports.length} report${reports.length > 1 ? 's' : ''}</span>
+      ${author.role !== 'player' ? '<span class="pill staff">author is staff → admin resolves</span>' : ''}
+      ${reports.some(r => r.targetGone) ? '<span class="pill flag">content removed by author</span>' : ''}
+      ${reports.map(r => `<div class="report-line">• ${state.users[r.reporterId].name}: ${r.category}</div>`).join('')}
+    </div>`;
+  }).join('') : '<div class="empty">No open reports. Staff see no badge.</div>';
+
+  // inboxes
+  $('inboxes').innerHTML = Object.entries(state.inboxes).map(([uid, msgs]) => `
+    <div class="inbox-user"><span class="who">${state.users[uid].name}</span>
+    ${msgs.length ? msgs.map(m => `<div class="msg">${esc(m.text)}${m.note ? `<div class="note">Staff note: ${esc(m.note)}</div>` : ''}</div>`).join('') : ' <span class="empty">— empty</span>'}
+    </div>`).join('');
+
+  renderFreePlayOptions();
+  renderScenario();
+}
+
+function renderFreePlayOptions() {
+  const keep = (sel, html) => { const v = sel.value; sel.innerHTML = html; if ([...sel.options].some(o => o.value === v)) sel.value = v; };
+  keep($('fpReporter'), ['ash', 'brook', 'casey'].map(id => `<option value="${id}">${state.users[id].name}</option>`).join(''));
+  keep($('fpTarget'), Object.values(state.content).map(c => `<option value="${c.id}">${esc(c.kind)}</option>`).join(''));
+  keep($('fpCategory'), ReportModel.CATEGORIES.map(c => `<option>${c}</option>`).join(''));
+  keep($('fpStaff'), ['morgan', 'avery'].map(id => `<option value="${id}">${state.users[id].name} (${state.users[id].role})</option>`).join(''));
+  keep($('fpGroup'), Object.values(state.content).map(c => `<option value="${c.id}">${esc(c.kind)}</option>`).join(''));
+}
+
+$('fpReport').onclick = () => dispatch(ReportModel.submitReport, $('fpReporter').value, $('fpTarget').value, $('fpCategory').value);
+$('fpAuthorDelete').onclick = () => dispatch(ReportModel.authorRemoves, $('fpTarget').value);
+$('fpQuarantine').onclick = () => dispatch(ReportModel.staffAct, $('fpStaff').value, $('fpGroup').value, 'quarantine');
+$('fpDelete').onclick = () => dispatch(ReportModel.staffAct, $('fpStaff').value, $('fpGroup').value, 'delete');
+$('fpAvatar').onclick = () => dispatch(ReportModel.staffAct, $('fpStaff').value, $('fpGroup').value, 'avatar');
+$('fpActioned').onclick = () => dispatch(ReportModel.resolveTarget, $('fpStaff').value, $('fpGroup').value, 'actioned', $('fpNote').value.trim());
+$('fpDismissed').onclick = () => dispatch(ReportModel.resolveTarget, $('fpStaff').value, $('fpGroup').value, 'dismissed', $('fpNote').value.trim());
+$('fpReset').onclick = () => { state = ReportModel.initialState(); lastEvent = { text: 'Fresh start.' }; render(); };
+
+/* ---------- Guided walkthroughs ---------- */
+const SCENARIOS = [
+  {
+    title: '1 · Happy path',
+    blurb: 'Ash reports a listing, a mod quarantines it and resolves the report. Watch: the queue badge appears, then Ash\'s inbox gets exactly one templated message that never names the action.',
+    steps: [
+      { label: 'Ash reports "Sunken Halls" — Hate or harassment', run: () => dispatch(ReportModel.submitReport, 'ash', 'L1', 'Hate or harassment') },
+      { label: 'Morgan (mod) quarantines the listing', run: () => dispatch(ReportModel.staffAct, 'morgan', 'L1', 'quarantine') },
+      { label: 'Morgan resolves the group — action taken', run: () => dispatch(ReportModel.resolveTarget, 'morgan', 'L1', 'actioned', '') }
+    ]
+  },
+  {
+    title: '2 · Pile-on',
+    blurb: 'Two players report the same listing for different reasons. Watch: the queue shows ONE group with both reasons listed, and one resolution closes both reports — each reporter gets their own inbox message.',
+    steps: [
+      { label: 'Ash reports "Sunken Halls" — Spam or scam', run: () => dispatch(ReportModel.submitReport, 'ash', 'L1', 'Spam or scam') },
+      { label: 'Brook reports "Sunken Halls" — Stolen content', run: () => dispatch(ReportModel.submitReport, 'brook', 'L1', 'Stolen content') },
+      { label: 'Avery resolves the group once — action taken, with a note', run: () => dispatch(ReportModel.resolveTarget, 'avery', 'L1', 'actioned', 'Thanks — the listing has been dealt with.') }
+    ]
+  },
+  {
+    title: '3 · Duplicate guard',
+    blurb: 'Ash reports the same listing twice while the first is open — rejected. After staff resolve it, reporting again is allowed (the content may have changed, or a new violation appeared).',
+    steps: [
+      { label: 'Ash reports "Sunken Halls" — Other', run: () => dispatch(ReportModel.submitReport, 'ash', 'L1', 'Other') },
+      { label: 'Ash tries to report it AGAIN — should be refused', run: () => dispatch(ReportModel.submitReport, 'ash', 'L1', 'Spam or scam') },
+      { label: 'Morgan resolves — no violation found', run: () => dispatch(ReportModel.resolveTarget, 'morgan', 'L1', 'dismissed', '') },
+      { label: 'Ash reports it again — now allowed', run: () => dispatch(ReportModel.submitReport, 'ash', 'L1', 'Spam or scam') }
+    ]
+  },
+  {
+    title: '4 · Vanishing target',
+    blurb: 'A comment gets reported, then its author deletes it themselves. Watch: the report does NOT close — it stays open flagged "content removed by author", with the snapshot intact, so staff can still act on the account and close the loop.',
+    steps: [
+      { label: 'Brook reports the comment — Malicious content or links', run: () => dispatch(ReportModel.submitReport, 'brook', 'C1', 'Malicious content or links') },
+      { label: 'Casey deletes their own comment', run: () => dispatch(ReportModel.authorRemoves, 'C1') },
+      { label: 'Morgan resolves — action taken, with a note', run: () => dispatch(ReportModel.resolveTarget, 'morgan', 'C1', 'actioned', 'The author removed it; we have noted the account.') }
+    ]
+  },
+  {
+    title: '5 · Reported content by staff',
+    blurb: 'A mod\'s own listing gets reported. Watch: every staff member sees the group (flagged), but Morgan — also a mod — is refused when resolving. Only Avery (admin) outranks the author.',
+    steps: [
+      { label: 'Ash reports "Gilded Spire" (by Riley, a mod) — Illegal content', run: () => dispatch(ReportModel.submitReport, 'ash', 'L2', 'Illegal content') },
+      { label: 'Morgan (mod) tries to resolve — should be refused', run: () => dispatch(ReportModel.resolveTarget, 'morgan', 'L2', 'dismissed', '') },
+      { label: 'Avery (admin) resolves — no violation found', run: () => dispatch(ReportModel.resolveTarget, 'avery', 'L2', 'dismissed', '') }
+    ]
+  },
+  {
+    title: '6 · Profile image',
+    blurb: 'The third target type: Ash reports Casey\'s profile image. Staff open the profile from the queue, use the existing remove-image tool, and resolve. Casey gets the existing "explain why" flow; Ash gets the report outcome.',
+    steps: [
+      { label: "Ash reports Casey's profile image — Other", run: () => dispatch(ReportModel.submitReport, 'ash', 'P1', 'Other') },
+      { label: 'Avery removes the profile image (existing tool)', run: () => dispatch(ReportModel.staffAct, 'avery', 'P1', 'avatar') },
+      { label: 'Avery resolves — action taken', run: () => dispatch(ReportModel.resolveTarget, 'avery', 'P1', 'actioned', '') }
+    ]
+  }
+];
+
+let activeScenario = null, scenarioStep = 0;
+
+$('tabs').innerHTML = SCENARIOS.map((s, i) => `<button data-i="${i}">${s.title}</button>`).join('');
+$('tabs').onclick = (e) => {
+  const b = e.target.closest('button'); if (!b) return;
+  activeScenario = +b.dataset.i; scenarioStep = 0;
+  state = ReportModel.initialState();
+  lastEvent = { text: `Walkthrough started: ${SCENARIOS[activeScenario].title}. State reset — press the steps in order.` };
+  render();
+};
+
+function renderScenario() {
+  [...$('tabs').children].forEach((b, i) => b.classList.toggle('active', i === activeScenario));
+  const box = $('scenario');
+  if (activeScenario === null) { box.style.display = 'none'; return; }
+  const sc = SCENARIOS[activeScenario];
+  box.style.display = '';
+  box.innerHTML = `<h2>${sc.title}</h2><p>${sc.blurb}</p><div class="steps">` +
+    sc.steps.map((st, i) =>
+      `<button data-step="${i}" ${i !== scenarioStep ? 'disabled' : ''} class="${i < scenarioStep ? 'done' : ''}">${i < scenarioStep ? '✓ ' : (i + 1) + '. '}${st.label}</button>`
+    ).join('') +
+    (scenarioStep >= sc.steps.length ? `<div class="empty">Walkthrough complete — free-play from here, or pick another tab.</div>` : '') +
+    `</div>`;
+  box.querySelectorAll('button[data-step]').forEach(b => b.onclick = () => {
+    const i = +b.dataset.step;
+    sc.steps[i].run();
+    scenarioStep = i + 1;
+    render();
+  });
+}
+
+render();
+</script>
+</body>
+</html>

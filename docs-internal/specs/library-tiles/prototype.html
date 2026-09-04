@@ -1,0 +1,484 @@
+<!doctype html>
+<!-- PROTOTYPE — throwaway. Answers: does the library tile/group design feel right? -->
+<!-- Not production code. Real spec: .scratch/library-tiles/spec.md -->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>PROTOTYPE — Library Tiles &amp; Groups</title>
+<style>
+  :root {
+    --bg: #0f1115; --panel: #161a22; --panel2: #1d2330; --border: #2a3242;
+    --text: #e6e9f0; --muted: #8b93a7; --accent: #7c5cff; --accent2: #22c3a6;
+    --cell-w: 110px; --gap: 8px;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: var(--bg); color: var(--text); font: 14px/1.45 system-ui, "Segoe UI", sans-serif; padding: 16px 20px 60px; }
+  button { font: inherit; color: inherit; background: var(--panel2); border: 1px solid var(--border); border-radius: 8px; padding: 5px 12px; cursor: pointer; }
+  button:hover { border-color: var(--accent); }
+  select { font: inherit; color: inherit; background: var(--panel2); border: 1px solid var(--border); border-radius: 8px; padding: 4px 8px; }
+
+  .topbar { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-bottom: 14px; }
+  .badge { background: #5c2b2b; color: #ffb4b4; border: 1px solid #7a3a3a; border-radius: 6px; padding: 2px 8px; font-size: 11px; letter-spacing: .06em; }
+  .tabs { display: flex; gap: 4px; background: var(--panel); border: 1px solid var(--border); border-radius: 10px; padding: 3px; }
+  .tabs button { border: none; background: transparent; border-radius: 7px; color: var(--muted); }
+  .tabs button.active { background: var(--panel2); color: var(--text); }
+  .spacer { flex: 1; }
+  .hint { color: var(--muted); font-size: 12px; }
+
+  .trythis { background: var(--panel); border: 1px solid var(--border); border-radius: 10px; padding: 10px 14px; margin-bottom: 14px; max-width: 760px; }
+  .trythis ol { margin-left: 18px; }
+  .trythis li { margin: 2px 0; color: var(--muted); }
+  .trythis li b { color: var(--text); font-weight: 600; }
+
+  .folderbar { display: flex; align-items: center; gap: 10px; margin-bottom: 12px; }
+  .folderbar h2 { font-size: 17px; padding: 2px 6px; border-radius: 6px; outline: none; }
+  .folderbar h2:focus { background: var(--panel2); box-shadow: 0 0 0 1px var(--accent); }
+  .folderbar .sub { color: var(--muted); font-size: 12px; }
+
+  .grid { display: grid; grid-template-columns: repeat(auto-fill, var(--cell-w)); grid-auto-rows: var(--cell-h); gap: var(--gap); }
+
+  .tile { position: relative; border-radius: 12px; overflow: hidden; cursor: grab; user-select: none;
+          border: 1px solid var(--border); background: var(--panel2); touch-action: none; }
+  .tile.sz-s { grid-column: span 1; grid-row: span 1; }
+  .tile.sz-m { grid-column: span 2; grid-row: span 2; }
+  .tile.sz-l { grid-column: span 4; grid-row: span 4; }
+  .tile .thumb { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; font-size: 30px; }
+  .tile.sz-s .thumb { font-size: 18px; }
+  .tile.sz-l .thumb { font-size: 52px; }
+  .tile .name { position: absolute; left: 0; right: 0; bottom: 0; padding: 18px 10px 7px; font-weight: 600; font-size: 13px;
+                background: linear-gradient(transparent, rgba(0,0,0,.75)); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .tile.sz-l .name { font-size: 15px; }
+  .tile.sz-s .name { display: none; }
+  .tile.dragging { opacity: .35; }
+  .tile.drop-into { outline: 3px solid var(--accent2); outline-offset: -3px; }
+  .tile.drop-before::before, .tile.drop-after::after {
+    content: ""; position: absolute; top: 4px; bottom: 4px; width: 4px; border-radius: 2px; background: var(--accent); z-index: 3; }
+  .tile.drop-before::before { left: -7px; }
+  .tile.drop-after::after { right: -7px; }
+  .tile.drop-above::before, .tile.drop-below::after {
+    content: ""; position: absolute; left: 4px; right: 4px; height: 4px; border-radius: 2px; background: var(--accent); z-index: 3; }
+  .tile.drop-above::before { top: -7px; }
+  .tile.drop-below::after { bottom: -7px; }
+
+  #dropOut { display: none; background: var(--panel2); border: 1px dashed var(--border); border-radius: 8px;
+             padding: 5px 14px; color: var(--muted); font-size: 12px; }
+  #dropOut.armed { display: inline-block; }
+  #dropOut.hot { border-color: var(--accent2); color: var(--accent2); background: rgba(34,195,166,.12); }
+
+  .tile.folder .mosaic { position: absolute; inset: 0; display: grid; grid-template: 1fr 1fr / 1fr 1fr; gap: 3px; padding: 8px; background: var(--panel); }
+  .tile.folder .mosaic > div { border-radius: 6px; display: flex; align-items: center; justify-content: center; font-size: 15px; overflow: hidden; }
+  .tile.sz-s.folder .mosaic { padding: 4px; gap: 2px; }
+  .tile.sz-s.folder .mosaic > div { font-size: 9px; border-radius: 3px; }
+  .tile.sz-l.folder .mosaic > div { font-size: 26px; }
+  .tile.folder .more { position: absolute; top: 6px; right: 6px; background: rgba(0,0,0,.6); border-radius: 6px; padding: 1px 6px; font-size: 11px; z-index: 2; }
+  .tile.folder .gearline { position: absolute; top: 6px; left: 6px; background: rgba(0,0,0,.6); border-radius: 6px; padding: 1px 6px; font-size: 11px; z-index: 2; color: var(--accent2); }
+
+  #ghost { position: fixed; pointer-events: none; z-index: 50; opacity: .85; transform: translate(-50%, -50%) scale(.92);
+           border-radius: 12px; overflow: hidden; box-shadow: 0 12px 30px rgba(0,0,0,.5); display: none; }
+
+  #menu { position: fixed; z-index: 60; background: var(--panel); border: 1px solid var(--border); border-radius: 10px;
+          min-width: 210px; padding: 5px; display: none; box-shadow: 0 12px 30px rgba(0,0,0,.5); }
+  #menu .head { padding: 6px 10px 4px; color: var(--muted); font-size: 11px; text-transform: uppercase; letter-spacing: .05em; }
+  #menu .eff { padding: 2px 10px 6px; font-size: 12px; color: var(--accent2); }
+  #menu .item { display: flex; justify-content: space-between; gap: 12px; padding: 6px 10px; border-radius: 7px; cursor: pointer; }
+  #menu .item:hover { background: var(--panel2); }
+  #menu .item .mark { color: var(--accent); }
+  #menu hr { border: none; border-top: 1px solid var(--border); margin: 5px 4px; }
+  #menu .danger { color: #ff8f8f; }
+
+  #tooltip { position: fixed; z-index: 70; background: var(--panel); border: 1px solid var(--border); border-radius: 8px;
+             padding: 5px 10px; font-size: 12px; display: none; pointer-events: none; box-shadow: 0 6px 18px rgba(0,0,0,.45); }
+
+  #inspector { position: fixed; right: 0; top: 0; bottom: 0; width: 340px; background: var(--panel); border-left: 1px solid var(--border);
+               padding: 14px; overflow: auto; display: none; z-index: 40; }
+  #inspector pre { font-size: 11px; color: var(--muted); white-space: pre-wrap; }
+</style>
+</head>
+<body>
+  <div class="topbar">
+    <span class="badge">PROTOTYPE — THROWAWAY</span>
+    <div class="tabs" id="tabs"></div>
+    <label class="hint" id="globalPresetWrap">Global preset:
+      <select id="globalPreset"></select>
+    </label>
+    <div class="spacer"></div>
+    <button id="btnTry">Try This</button>
+    <button id="btnState">State</button>
+    <button id="btnReset">Reset</button>
+  </div>
+
+  <div class="trythis" id="trythis" style="display:none">
+    <ol>
+      <li><b>Resize:</b> right-click a tile → Small / Medium / Large. Consecutive small tiles stack in columns; four fill one medium slot. Drop on a small tile's top/bottom edge to stack.</li>
+      <li><b>Group by drag:</b> drag a tile onto the <i>center</i> of another → a folder forms. Edges = reorder instead.</li>
+      <li><b>Enter a folder:</b> click it. Rename by clicking the title. Reorder and resize inside. Back returns.</li>
+      <li><b>Ungroup:</b> inside a folder, drag a tile onto the header ("Drop here to move out"), or right-click → Remove from Group. Disband via right-click on the folder tile.</li>
+      <li><b>Prompts (Worlds tab):</b> right-click a folder → Group Prompt. Right-click a member world → the "Effective" line shows pin &gt; group &gt; global. Pin one world to see it win.</li>
+      <li><b>Small-tile names</b> appear as a tooltip on hover. Switch to Entities for portrait tiles.</li>
+    </ol>
+  </div>
+
+  <div class="folderbar" id="folderbar" style="display:none">
+    <button id="btnBack">← Back</button>
+    <h2 id="folderName" contenteditable="true" spellcheck="false"></h2>
+    <span class="sub" id="folderSub"></span>
+    <span id="dropOut">⤴ Drop here to move out of the group</span>
+  </div>
+
+  <div class="grid" id="grid"></div>
+
+  <div id="ghost"></div>
+  <div id="menu"></div>
+  <div id="tooltip"></div>
+  <div id="inspector"><pre id="inspectorPre"></pre></div>
+
+<script>
+"use strict";
+// ---------- data ----------
+const PRESETS = { __global__: "(follow global)", def: "Default", cozy: "Cozy Narrator", grim: "Grimdark", comedy: "Comedy Night" };
+const PALETTES = [
+  ["#7c5cff","#22c3a6"],["#ff6b6b","#ffa94d"],["#4dabf7","#9775fa"],["#51cf66","#94d82d"],
+  ["#f783ac","#da77f2"],["#ffd43b","#ff922b"],["#63e6be","#4dabf7"],["#e8590c","#c2255c"],
+  ["#845ef7","#5c7cfa"],["#20c997","#12b886"],["#fa5252","#e64980"],["#a9e34b","#38d9a9"],
+];
+const WORLD_NAMES = ["Sedge Landing","Veilwood","Sugarscape","Rampage City","Drone Fields","Slime Kingdom","Moth Court","Iron Bazaar","Glass Tundra","Honey Vault","Red Meridian","Fog Harbor"];
+const ENTITY_NAMES = ["Synthia","Moro","Captain Vex","Aunt Beetle","The Curator","Pip","Warden Oak","Nyx","Doc Fizz","Marrow"];
+const EMOJI = ["🌲","🏙️","🍬","🛸","🫠","🦋","⚙️","🧊","🍯","🌋","🌫️","🗝️","🧪","🎭","🐌","🪐"];
+
+function seedTab(names, aspect) {
+  const items = {}, order = [];
+  names.forEach((n, i) => {
+    const id = "it" + i;
+    items[id] = { name: n, pal: PALETTES[i % PALETTES.length], emoji: EMOJI[i % EMOJI.length], pin: null };
+    order.push(id);
+  });
+  return { items, order, groups: {}, sizes: {}, aspect, nextGroup: 1 };
+}
+function freshState() {
+  return {
+    tab: "worlds",
+    globalPreset: "def",
+    view: null, // group id when inside a folder
+    tabs: { worlds: seedTab(WORLD_NAMES, 1.5), entities: seedTab(ENTITY_NAMES, 2/3) },
+  };
+}
+let S = freshState();
+const T = () => S.tabs[S.tab];
+
+// ---------- pure-ish ops (mirror the planned module) ----------
+function isGroup(id) { return id.startsWith("g"); }
+function listOf(container) { return container ? T().groups[container].members : T().order; }
+function removeFromList(list, id) { const i = list.indexOf(id); if (i >= 0) list.splice(i, 1); }
+function insertRelative(list, id, targetId, after) {
+  removeFromList(list, id);
+  let i = list.indexOf(targetId); if (i < 0) i = list.length - (after ? 1 : 0);
+  list.splice(i + (after ? 1 : 0), 0, id);
+}
+function createGroupFromDrop(dragId, targetId) {
+  if (isGroup(dragId)) return; // no nesting
+  const t = T(), gid = "g" + t.nextGroup++;
+  t.groups[gid] = { name: "New Group", members: [targetId, dragId], settings: {} };
+  t.order.splice(t.order.indexOf(targetId), 1, gid);
+  removeFromList(t.order, dragId);
+  t.sizes[gid] = t.sizes[targetId] || "m";
+}
+function addToGroup(id, gid) {
+  if (isGroup(id)) return;
+  removeFromList(T().order, id);
+  for (const g of Object.values(T().groups)) removeFromList(g.members, id);
+  T().groups[gid].members.push(id);
+}
+function removeFromGroup(id, gid) {
+  const g = T().groups[gid];
+  removeFromList(g.members, id);
+  T().order.push(id);
+  if (g.members.length === 0) disband(gid);
+}
+function disband(gid) {
+  const t = T(), g = t.groups[gid];
+  const at = t.order.indexOf(gid);
+  t.order.splice(at < 0 ? t.order.length : at, 1, ...g.members);
+  delete t.groups[gid]; delete t.sizes[gid];
+  if (S.view === gid) S.view = null;
+}
+function effectivePreset(id) {
+  const it = T().items[id];
+  if (it.pin && it.pin !== "__global__") return { preset: it.pin, src: "world pin" };
+  const g = Object.entries(T().groups).find(([, g]) => g.members.includes(id));
+  if (g && g[1].settings.preset) return { preset: g[1].settings.preset, src: "group “" + g[1].name + "”" };
+  return { preset: S.globalPreset, src: "global" };
+}
+
+// ---------- rendering ----------
+const grid = document.getElementById("grid");
+const CELL_W = 110, GAP = 8;
+function cellH() { const mw = 2 * CELL_W + GAP; return Math.round((mw / T().aspect - GAP) / 2); }
+
+// Explicit packer: first-fit from the order list; runs of consecutive small
+// tiles stack column-first (2 deep = one medium slot height).
+const SPAN = { s: 1, m: 2, l: 4 };
+function computeLayout(list, cols) {
+  const occ = [];
+  const free = (r, c) => !(occ[r] && occ[r][c]);
+  const fits = (r, c, s) => {
+    if (c + s > cols) return false;
+    for (let i = r; i < r + s; i++) for (let j = c; j < c + s; j++) if (!free(i, j)) return false;
+    return true;
+  };
+  const mark = (r, c, s) => { for (let i = r; i < r + s; i++) { occ[i] = occ[i] || []; for (let j = c; j < c + s; j++) occ[i][j] = true; } };
+  const firstFit = s => { for (let r = 0; ; r++) for (let c = 0; c <= cols - s; c++) if (fits(r, c, s)) return [r, c]; };
+  const pos = {};
+  let run = null; // {r0, c, depth} — current small-tile run
+  for (const id of list) {
+    const s = SPAN[T().sizes[id] || "m"];
+    if (s === 1) {
+      let r, c;
+      if (run && run.depth < 2 && fits(run.r0 + run.depth, run.c, 1)) {
+        r = run.r0 + run.depth; c = run.c; run.depth++;
+      } else if (run && fits(run.r0, run.c + 1, 1)) {
+        r = run.r0; c = run.c + 1; run = { r0: run.r0, c, depth: 1 };
+      } else {
+        [r, c] = firstFit(1); run = { r0: r, c, depth: 1 };
+      }
+      pos[id] = [r, c, 1]; mark(r, c, 1);
+    } else {
+      run = null;
+      const [r, c] = firstFit(s);
+      pos[id] = [r, c, s]; mark(r, c, s);
+    }
+  }
+  return pos;
+}
+
+function thumbHTML(id) {
+  const it = T().items[id];
+  return `<div class="thumb" style="background:linear-gradient(135deg, ${it.pal[0]}, ${it.pal[1]})">${it.emoji}</div>`;
+}
+function tileHTML(id) {
+  const size = T().sizes[id] || "m";
+  if (isGroup(id)) {
+    const g = T().groups[id];
+    const cells = g.members.slice(0, 4).map(m => {
+      const it = T().items[m];
+      return `<div style="background:linear-gradient(135deg, ${it.pal[0]}, ${it.pal[1]})">${it.emoji}</div>`;
+    });
+    while (cells.length < 4) cells.push(`<div style="background:var(--panel2)"></div>`);
+    const more = g.members.length > 4 ? `<span class="more">+${g.members.length - 4}</span>` : "";
+    const gear = (S.tab === "worlds" && g.settings.preset) ? `<span class="gearline">✦ ${PRESETS[g.settings.preset]}</span>` : "";
+    return `<div class="tile folder sz-${size}" data-id="${id}" data-name="${g.name}">
+      <div class="mosaic">${cells.join("")}</div>${more}${gear}
+      <div class="name">📁 ${g.name}</div></div>`;
+  }
+  return `<div class="tile sz-${size}" data-id="${id}" data-name="${T().items[id].name}">
+    ${thumbHTML(id)}<div class="name">${T().items[id].name}</div></div>`;
+}
+function render() {
+  document.documentElement.style.setProperty("--cell-h", cellH() + "px");
+  const inFolder = S.view && T().groups[S.view];
+  document.getElementById("folderbar").style.display = inFolder ? "flex" : "none";
+  document.getElementById("globalPresetWrap").style.display = S.tab === "worlds" ? "" : "none";
+  if (inFolder) {
+    const g = T().groups[S.view];
+    const fn = document.getElementById("folderName");
+    if (fn.textContent !== g.name) fn.textContent = g.name;
+    document.getElementById("folderSub").textContent =
+      g.members.length + " items" + (S.tab === "worlds" && g.settings.preset ? " · group prompt: " + PRESETS[g.settings.preset] : "");
+  }
+  const list = inFolder ? T().groups[S.view].members : T().order;
+  grid.innerHTML = list.map(tileHTML).join("");
+  const cols = Math.max(4, Math.floor((grid.clientWidth + GAP) / (CELL_W + GAP)));
+  const pos = computeLayout(list, cols);
+  for (const [id, [r, c, s]] of Object.entries(pos)) {
+    const el = grid.querySelector(`[data-id="${id}"]`);
+    el.style.gridRow = (r + 1) + " / span " + s;
+    el.style.gridColumn = (c + 1) + " / span " + s;
+  }
+  document.querySelectorAll("#tabs button").forEach(b => b.classList.toggle("active", b.dataset.tab === S.tab));
+  document.getElementById("inspectorPre").textContent = JSON.stringify(S.tabs[S.tab], null, 2);
+}
+
+// ---------- tabs / toolbar ----------
+const tabsEl = document.getElementById("tabs");
+tabsEl.innerHTML = `<button data-tab="worlds">Worlds</button><button data-tab="entities">Entities</button>`;
+tabsEl.addEventListener("click", e => { const b = e.target.closest("button"); if (b) { S.tab = b.dataset.tab; S.view = null; render(); } });
+const gp = document.getElementById("globalPreset");
+gp.innerHTML = Object.entries(PRESETS).filter(([k]) => k !== "__global__").map(([k, v]) => `<option value="${k}">${v}</option>`).join("");
+gp.addEventListener("change", () => { S.globalPreset = gp.value; render(); });
+document.getElementById("btnReset").addEventListener("click", () => { S = freshState(); gp.value = S.globalPreset; render(); });
+document.getElementById("btnTry").addEventListener("click", () => {
+  const t = document.getElementById("trythis"); t.style.display = t.style.display === "none" ? "" : "none"; });
+document.getElementById("btnState").addEventListener("click", () => {
+  const i = document.getElementById("inspector"); i.style.display = i.style.display === "none" || !i.style.display ? "block" : "none"; });
+document.getElementById("btnBack").addEventListener("click", () => { S.view = null; render(); });
+const folderName = document.getElementById("folderName");
+folderName.addEventListener("blur", () => {
+  if (S.view && T().groups[S.view]) { T().groups[S.view].name = folderName.textContent.trim() || "New Group"; render(); } });
+folderName.addEventListener("keydown", e => { if (e.key === "Enter") { e.preventDefault(); folderName.blur(); } });
+
+// ---------- pointer drag (custom, not HTML5 DnD) ----------
+const ghost = document.getElementById("ghost");
+let drag = null; // {id, started, sx, sy, target, zone}
+grid.addEventListener("pointerdown", e => {
+  if (e.button !== 0) return;
+  const tile = e.target.closest(".tile"); if (!tile) return;
+  drag = { id: tile.dataset.id, started: false, sx: e.clientX, sy: e.clientY, target: null, zone: null };
+});
+window.addEventListener("pointermove", e => {
+  if (!drag) return;
+  if (!drag.started) {
+    if (Math.hypot(e.clientX - drag.sx, e.clientY - drag.sy) < 6) return;
+    drag.started = true;
+    const src = grid.querySelector(`[data-id="${drag.id}"]`);
+    ghost.innerHTML = src.outerHTML; ghost.firstElementChild.classList.remove("dragging");
+    ghost.style.width = src.offsetWidth + "px"; ghost.style.height = src.offsetHeight + "px";
+    ghost.firstElementChild.style.width = "100%"; ghost.firstElementChild.style.height = "100%";
+    ghost.style.display = "block";
+    src.classList.add("dragging");
+    hideTooltip();
+  }
+  ghost.style.left = e.clientX + "px"; ghost.style.top = e.clientY + "px";
+  clearDropMarks();
+  drag.target = null; drag.zone = null;
+  if (S.view) document.getElementById("dropOut").classList.add("armed");
+  const el = document.elementFromPoint(e.clientX, e.clientY);
+  if (S.view && el && el.closest("#folderbar")) {
+    drag.zone = "out"; drag.target = "__out__";
+    document.getElementById("dropOut").classList.add("hot");
+    return;
+  }
+  const over = el && el.closest(".tile");
+  if (!over || over.dataset.id === drag.id) return;
+  const r = over.getBoundingClientRect();
+  const cx = (e.clientX - r.left) / r.width, cy = (e.clientY - r.top) / r.height;
+  const canGroup = !S.view && !isGroup(drag.id) && (cx > 0.3 && cx < 0.7 && cy > 0.3 && cy < 0.7);
+  drag.target = over.dataset.id;
+  if (canGroup) { drag.zone = "into"; over.classList.add("drop-into"); }
+  else if (over.classList.contains("sz-s")) {
+    drag.zone = cy < 0.5 ? "before" : "after";
+    over.classList.add(drag.zone === "before" ? "drop-above" : "drop-below");
+  } else { drag.zone = cx < 0.5 ? "before" : "after"; over.classList.add("drop-" + drag.zone); }
+});
+window.addEventListener("pointerup", () => {
+  if (!drag) return;
+  const { id, started, target, zone } = drag;
+  clearDropMarks(); ghost.style.display = "none"; drag = null;
+  if (!started) return;
+  const src = grid.querySelector(`[data-id="${id}"]`); if (src) src.classList.remove("dragging");
+  document.getElementById("dropOut").classList.remove("armed", "hot");
+  if (!target) { render(); return; }
+  if (zone === "out") { removeFromGroup(id, S.view); }
+  else if (zone === "into") { isGroup(target) ? addToGroup(id, target) : createGroupFromDrop(id, target); }
+  else { insertRelative(listOf(S.view), id, target, zone === "after"); }
+  render();
+});
+function clearDropMarks() {
+  grid.querySelectorAll(".drop-into,.drop-before,.drop-after,.drop-above,.drop-below").forEach(el =>
+    el.classList.remove("drop-into", "drop-before", "drop-after", "drop-above", "drop-below"));
+  document.getElementById("dropOut").classList.remove("hot");
+}
+
+// click = open folder (only when not dragging)
+grid.addEventListener("click", e => {
+  const tile = e.target.closest(".tile");
+  if (tile && isGroup(tile.dataset.id) && !S.view) { S.view = tile.dataset.id; render(); }
+});
+
+// ---------- context menu ----------
+const menu = document.getElementById("menu");
+function menuItem(label, fn, opts = {}) {
+  const div = document.createElement("div");
+  div.className = "item" + (opts.danger ? " danger" : "");
+  div.innerHTML = `<span>${label}</span><span class="mark">${opts.mark ? "✓" : ""}</span>`;
+  div.addEventListener("click", () => { fn(); hideMenu(); render(); });
+  menu.appendChild(div);
+}
+function menuHead(text) { const d = document.createElement("div"); d.className = "head"; d.textContent = text; menu.appendChild(d); }
+function menuRule() { menu.appendChild(document.createElement("hr")); }
+grid.addEventListener("contextmenu", e => {
+  const tile = e.target.closest(".tile"); if (!tile) return;
+  e.preventDefault();
+  const id = tile.dataset.id;
+  menu.innerHTML = "";
+  menuHead(tile.dataset.name);
+  if (S.tab === "worlds" && !isGroup(id)) {
+    const eff = effectivePreset(id);
+    const d = document.createElement("div"); d.className = "eff";
+    d.textContent = `Effective prompt: ${PRESETS[eff.preset]} (${eff.src})`; menu.appendChild(d);
+  }
+  menuHead("Size");
+  [["s", "Small"], ["m", "Medium"], ["l", "Large"]].forEach(([v, l]) =>
+    menuItem(l, () => { T().sizes[id] = v; }, { mark: (T().sizes[id] || "m") === v }));
+  if (isGroup(id)) {
+    if (S.tab === "worlds") {
+      menuRule(); menuHead("Group Prompt");
+      const g = T().groups[id];
+      menuItem("(none — members follow global)", () => { delete g.settings.preset; }, { mark: !g.settings.preset });
+      for (const [k, v] of Object.entries(PRESETS)) if (k !== "__global__")
+        menuItem(v, () => { g.settings.preset = k; }, { mark: g.settings.preset === k });
+    }
+    menuRule();
+    menuItem("Open", () => { S.view = id; });
+    menuItem("Disband Group (keep items)", () => disband(id), { danger: true });
+  } else {
+    menuRule();
+    if (S.view) menuItem("Remove from Group", () => removeFromGroup(id, S.view));
+    else {
+      const gids = Object.keys(T().groups);
+      if (gids.length) { menuHead("Add to Group"); gids.forEach(g => menuItem("📁 " + T().groups[g].name, () => addToGroup(id, g))); }
+      menuItem("Add to New Group", () => { createGroupFromDrop(id, id); }); // degenerate: single-member group
+    }
+    if (S.tab === "worlds") {
+      menuRule(); menuHead("Pin Prompt (world wins)");
+      const it = T().items[id];
+      menuItem("(follow group / global)", () => { it.pin = null; }, { mark: !it.pin });
+      for (const [k, v] of Object.entries(PRESETS)) if (k !== "__global__")
+        menuItem(v, () => { it.pin = k; }, { mark: it.pin === k });
+    }
+  }
+  menu.style.display = "block";
+  const mw = menu.offsetWidth, mh = menu.offsetHeight;
+  menu.style.left = Math.min(e.clientX, innerWidth - mw - 8) + "px";
+  menu.style.top = Math.min(e.clientY, innerHeight - mh - 8) + "px";
+});
+function hideMenu() { menu.style.display = "none"; }
+window.addEventListener("pointerdown", e => { if (!menu.contains(e.target)) hideMenu(); });
+window.addEventListener("keydown", e => { if (e.key === "Escape") hideMenu(); });
+
+// fix the degenerate single-member group: replace target with itself cleanly
+const _createGroupFromDrop = createGroupFromDrop;
+createGroupFromDrop = function (dragId, targetId) {
+  if (dragId === targetId) {
+    const t = T(), gid = "g" + t.nextGroup++;
+    t.groups[gid] = { name: "New Group", members: [dragId], settings: {} };
+    t.order.splice(t.order.indexOf(dragId), 1, gid);
+    t.sizes[gid] = t.sizes[dragId] || "m";
+    return;
+  }
+  _createGroupFromDrop(dragId, targetId);
+};
+
+// ---------- tooltip (small tiles + folders) ----------
+const tooltip = document.getElementById("tooltip");
+let tipTimer = null;
+grid.addEventListener("pointerover", e => {
+  const tile = e.target.closest(".tile"); if (!tile || (drag && drag.started)) return;
+  if (!tile.classList.contains("sz-s")) return; // only small tiles need the name tip
+  clearTimeout(tipTimer);
+  tipTimer = setTimeout(() => {
+    const r = tile.getBoundingClientRect();
+    tooltip.textContent = tile.dataset.name;
+    tooltip.style.display = "block";
+    tooltip.style.left = r.left + r.width / 2 - tooltip.offsetWidth / 2 + "px";
+    tooltip.style.top = r.top - tooltip.offsetHeight - 6 + "px";
+  }, 350);
+});
+grid.addEventListener("pointerout", hideTooltip);
+function hideTooltip() { clearTimeout(tipTimer); tooltip.style.display = "none"; }
+
+// expose for poking
+window.proto = { get S() { return S; }, render, createGroupFromDrop, addToGroup, removeFromGroup, disband, effectivePreset, computeLayout };
+window.addEventListener("resize", render);
+render();
+</script>
+</body>
+</html>

@@ -1,0 +1,876 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>PROTOTYPE — Mixed-Size Tile Drag (Player Preview)</title>
+<style>
+  :root {
+    --bg: #14161a; --panel: #1d2026; --line: #2c3038; --text: #e8eaed; --dim: #9aa0a8;
+    --accent: #e8a33d; --ok: #4cc38a; --bad: #e5534b;
+    --cell: 44px; --gap: 6px;
+  }
+  * { box-sizing: border-box; margin: 0; }
+  body { background: var(--bg); color: var(--text); font: 14px/1.5 system-ui, sans-serif; padding: 28px; }
+  h1 { font-size: 20px; margin-bottom: 4px; }
+  h1 .tag { color: var(--bad); font-size: 12px; border: 1px solid var(--bad); border-radius: 4px; padding: 1px 6px; vertical-align: middle; margin-left: 8px; }
+  .question { color: var(--dim); max-width: 980px; margin-bottom: 20px; }
+  .question b { color: var(--text); }
+
+  .tabs { display: flex; gap: 6px; margin-bottom: 10px; flex-wrap: wrap; }
+  .tabs button { background: var(--panel); color: var(--dim); border: 1px solid var(--line); border-radius: 6px; padding: 6px 12px; cursor: pointer; font: inherit; }
+  .tabs button.active { color: var(--text); border-color: var(--accent); }
+  .scenario { background: var(--panel); border: 1px solid var(--line); border-radius: 8px; padding: 14px 16px; max-width: 980px; margin-bottom: 20px; }
+  .scenario p { color: var(--dim); margin-bottom: 8px; }
+  .scenario p b { color: var(--text); }
+  .scenario button { background: var(--accent); color: #14161a; border: 0; border-radius: 6px; padding: 6px 14px; font: inherit; font-weight: 600; cursor: pointer; }
+
+  .boards { display: flex; gap: 32px; flex-wrap: wrap; }
+  .side { flex: 0 0 auto; }
+  .side h2 { font-size: 15px; margin-bottom: 2px; }
+  .side .sub { color: var(--dim); font-size: 12px; margin-bottom: 10px; max-width: 400px; min-height: 54px; }
+  .board { position: relative; background: var(--panel); border: 1px solid var(--line); border-radius: 10px; }
+
+  .tile { position: absolute; border-radius: 8px; display: flex; align-items: flex-end; padding: 6px 8px;
+    font-size: 12px; font-weight: 600; color: #14161a; cursor: grab; user-select: none;
+    transition: top .15s ease, left .15s ease, width .15s ease, height .15s ease, transform .15s ease; }
+  .tile.hidden { visibility: hidden; }
+  .outline { position: absolute; border: 2px dashed var(--ok); border-radius: 8px; pointer-events: none;
+    z-index: 5; transition: top .15s ease, left .15s ease; }
+  .outline.bad { border-color: var(--bad); }
+  /* Debug boards only: while a drag runs, multi-cell tiles reveal the unit cells they are made of. */
+  .board.debug.dragging .tile.multi { background-image:
+    repeating-linear-gradient(to right, transparent 0 var(--cell), rgba(20,22,26,.55) var(--cell) calc(var(--cell) + var(--gap))),
+    repeating-linear-gradient(to bottom, transparent 0 var(--cell), rgba(20,22,26,.55) var(--cell) calc(var(--cell) + var(--gap))); }
+  /* One claimed unit cell, streaming to the cell it would trade into if it were ungrouped. */
+  .cellghost { position: absolute; width: var(--cell); height: var(--cell); border-radius: 4px;
+    opacity: .45; pointer-events: none; z-index: 4;
+    transition: top .5s ease, left .5s ease, opacity .5s ease; }
+  #ghost { position: fixed; opacity: .5; pointer-events: none; z-index: 10; border-radius: 8px;
+    display: flex; align-items: flex-end; padding: 6px 8px; font-size: 12px; font-weight: 600; color: #14161a; }
+
+  /* Variant "Pressure": a bar charges along the top of a swept tile as consent builds. */
+  .tile.pressure::before { content: ''; position: absolute; left: 6px; top: 5px; height: 4px;
+    border-radius: 2px; background: rgba(20,22,26,.85);
+    width: calc((100% - 12px) * var(--pressure, 0)); transition: width .15s ease; }
+  .tile.pressure.stuck::before { background: var(--bad); }
+  .tile.groupTarget { box-shadow: inset 0 0 0 3px var(--accent); }
+
+  /* Floating variant switcher — deliberately not part of the design being judged. */
+  #switcher { position: fixed; left: 50%; bottom: 18px; transform: translateX(-50%);
+    background: #0c0d10; border: 1px solid var(--accent); border-radius: 999px;
+    padding: 6px 10px; display: flex; gap: 8px; align-items: center; z-index: 20;
+    box-shadow: 0 4px 16px rgba(0,0,0,.5); }
+  #switcher button { background: none; border: 0; color: var(--accent); font: inherit; cursor: pointer; padding: 2px 6px; }
+  #switcher span { font-size: 12px; color: var(--text); min-width: 140px; text-align: center; }
+
+  .status { margin-top: 10px; max-width: 400px; }
+  .status .event { min-height: 40px; font-size: 13px; color: var(--text); }
+  .status .moved { color: var(--accent); font-weight: 600; }
+  .status .blockedline { color: var(--bad); }
+  .chips { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 8px; }
+  .chip { background: var(--bg); border: 1px solid var(--line); border-radius: 4px; padding: 1px 6px; font-size: 11px; color: var(--dim); }
+
+  .controls { margin: 18px 0 10px; display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+  .controls button { background: var(--panel); color: var(--text); border: 1px solid var(--line); border-radius: 6px; padding: 6px 12px; cursor: pointer; font: inherit; }
+  .controls .hint { color: var(--dim); font-size: 12px; }
+  .basis { color: var(--dim); font-size: 12px; display: flex; gap: 10px; align-items: center; }
+
+  /* Shown until the module script boots; if it never does, this is why. */
+  #servernote { color: var(--bad); border: 1px solid var(--bad); border-radius: 6px;
+    padding: 8px 12px; max-width: 980px; margin-bottom: 16px; }
+  #servernote code { color: var(--text); }
+</style>
+</head>
+<body>
+
+<h1>Mixed-Size Tile Drag <span class="tag">PROTOTYPE — throwaway</span></h1>
+<div id="servernote">
+  This page imports the app's real simulation, so it needs the dev server:
+  <code>npm run dev</code>, then open
+  <code>http://localhost:5180/.scratch/mixed-size-drag/prototype.html</code>.
+  Opened from a plain file, nothing below will respond.
+</div>
+<p class="question">
+  <b>Verdict so far:</b> D — the cell simulation — won the algorithm bake-off (A, B, and C are parked in the
+  file). <b>New question: what should the player see while dragging?</b> The debug board keeps showing the
+  machinery: unit cells, ghost cells, sweep percentages. The Player Preview board runs the <b>exact same
+  simulation</b> but hides all of it — flip between three treatments with the floating switcher (or the
+  ← / → keys) and feel which one reads best mid-drag. Same start, same gesture on both boards.
+  Double-click a tile to cycle its size.
+</p>
+
+<div class="tabs" id="tabs"></div>
+<div class="scenario" id="scenario"></div>
+
+<div class="controls">
+  <button id="reset">Reset All Boards</button>
+  <!-- C is parked; its vote-basis control goes with it.
+  <label class="basis">Vote basis (C only):
+    <label><input type="radio" name="basis" value="resident" checked> half of the resident tile</label>
+    <label><input type="radio" name="basis" value="smaller" > half of the smaller tile</label>
+  </label>
+  -->
+  <label class="basis">Group consent:
+    <label><input type="radio" name="consent" value="half" checked> half its cells claimed</label>
+    <label><input type="radio" name="consent" value="full"> all its cells claimed</label>
+  </label>
+  <label class="basis">Growth that no longer fits:
+    <label><input type="radio" name="resize" value="app"> first free block (old)</label>
+    <label><input type="radio" name="resize" value="nearest"> nearest free block</label>
+    <label><input type="radio" name="resize" value="push" checked> grow in place, neighbors make way (shipped)</label>
+  </label>
+  <span class="hint">Esc cancels a drag. Double-click cycles a tile's size.</span>
+</div>
+
+<div class="boards">
+  <!-- A (order + packer) and B (shove + gravity) are parked. Restore them by uncommenting these
+       sides and adding 'A'/'B' back to BOARDS below; their logic is still in the script.
+  <div class="side">
+    <h2>A — Order + Packer</h2>
+    <div class="sub">One ordered list. The drag picks the insertion point whose packed layout lands the tile nearest your hand. The packer backfills every hole.</div>
+    <div class="board" id="boardA"></div>
+    <div class="status"><div class="event" id="eventA">Drag a tile.</div><div class="chips" id="chipsA"></div></div>
+  </div>
+  <div class="side">
+    <h2>B — Stored Positions + Shove</h2>
+    <div class="sub">Each tile keeps a (row, col). Your footprint claims cells; a resident past the vote threshold gets shoved down, under it the spot is blocked. Gravity compacts everything upward.</div>
+    <div class="board" id="boardB"></div>
+    <div class="status"><div class="event" id="eventB">Drag a tile.</div><div class="chips" id="chipsB"></div></div>
+  </div>
+  -->
+  <!-- C (swap or nothing) is parked too — D won. Restore like A and B.
+  <div class="side">
+    <h2>C — Swap Or Nothing</h2>
+    <div class="sub">Same votes as B, but a displaced tile swaps into the slot you left, and when it has nowhere to swap to, the move is blocked. A drag never touches an uninvolved tile. No gravity: holes stay until you fill them.</div>
+    <div class="board" id="boardC"></div>
+    <div class="status"><div class="event" id="eventC">Drag a tile.</div><div class="chips" id="chipsC"></div></div>
+  </div>
+  -->
+  <div class="side">
+    <h2>D — Cell Simulation (Debug Reference)</h2>
+    <div class="sub">What is really happening: the ungrouped board simulated through your whole gesture. Every cell your footprint travels over dodges behind you, backtracking reverses it, and a tile consents once enough of its cells have been swept. Ghost cells and sweep percentages show the machinery raw.</div>
+    <div class="board debug" id="boardD"></div>
+    <div class="status"><div class="event" id="eventD">Drag a tile.</div><div class="chips" id="chipsD"></div></div>
+  </div>
+  <div class="side">
+    <h2>Player Preview</h2>
+    <div class="sub">The same simulation, dressed for a player — no cells, no percentages. Cycle the treatments with the floating bar (or ← / →): <b>Quiet Slide</b> shows nothing until a tile truly moves. <b>Pressure</b> charges a bar across a swept tile as consent builds. <b>Give Way</b> leans the swept tile toward where it will go. The status line speaks player language. <b>Grouping:</b> park on a tile the drag cannot move and hold — after a beat it rings, and the release folds the carried tile into it. A tile that can make way always moves instead.</div>
+    <div class="board" id="boardU"></div>
+    <div class="status"><div class="event" id="eventU">Drag a tile.</div><div class="chips" id="chipsU"></div></div>
+  </div>
+</div>
+
+<div id="switcher">
+  <button id="uxPrev" title="Previous treatment">◀</button>
+  <span id="uxLabel"></span>
+  <button id="uxNext" title="Next treatment">▶</button>
+</div>
+
+<script type="module">
+/* ── Pure logic module. The packer and the D sim are the SHIPPED ones, imported straight from the
+   app through the dev server — parity is definitional, there is no copy to drift. Only the parked
+   algorithms A-C and their helpers stay local: they were never lifted into the app. ── */
+import { createCellSim as shippedCellSim } from '/src/lib/libraryOrganization/cellSim.ts';
+import { packTiles, TILE_SPAN } from '/src/lib/libraryOrganization/packer.ts';
+import { collapseBoard } from '/src/lib/libraryOrganization/placements.ts';
+
+document.getElementById('servernote').remove();
+
+const Proto = (() => {
+  const SPAN = TILE_SPAN;
+
+  /* A: try every insertion index, pack each, keep the one landing nearest the wanted anchor. */
+  function previewA(order, sizes, cols, draggedId, want) {
+    const rest = order.filter((id) => id !== draggedId);
+    let best = null;
+    for (let i = 0; i <= rest.length; i++) {
+      const cand = rest.slice(0, i).concat([draggedId], rest.slice(i));
+      const packed = packTiles(cand, sizes, cols);
+      const spot = packed.find((p) => p.id === draggedId);
+      const score = Math.abs(spot.row - want.row) + Math.abs(spot.col - want.col);
+      if (!best || score < best.score) best = { score, order: cand, packed, index: i };
+    }
+    return best;
+  }
+
+  const overlap = (a, b) => {
+    const w = Math.max(0, Math.min(a.col + a.span, b.col + b.span) - Math.max(a.col, b.col));
+    const h = Math.max(0, Math.min(a.row + a.span, b.row + b.span) - Math.max(a.row, b.row));
+    return w * h;
+  };
+
+  /* The vote: pin the dragged footprint, sort every overlapped resident into displaced or blocker. */
+  function votes(tiles, draggedId, want, cols, basis) {
+    const dragged = tiles.find((t) => t.id === draggedId);
+    const span = dragged.span;
+    const pinned = {
+      id: draggedId, span,
+      row: Math.max(0, want.row),
+      col: Math.min(Math.max(0, want.col), cols - span),
+    };
+    const others = tiles.filter((t) => t.id !== draggedId);
+    const displaced = [], blockers = [];
+    for (const t of others) {
+      const inter = overlap(pinned, t);
+      if (!inter) continue;
+      const denom = basis === 'smaller'
+        ? Math.min(t.span * t.span, span * span)
+        : t.span * t.span;
+      if (inter >= denom / 2) displaced.push(t.id);
+      else blockers.push({ id: t.id, pct: Math.round((100 * inter) / (t.span * t.span)) });
+    }
+    return { dragged, pinned, others, displaced, blockers };
+  }
+
+  /* B: displaced residents get shoved down, then gravity compacts everything upward. */
+  function previewB(tiles, draggedId, want, cols, basis) {
+    const { pinned, others, displaced, blockers } = votes(tiles, draggedId, want, cols, basis);
+    if (blockers.length) return { blocked: true, blockers, pinned };
+    return { blocked: false, pinned, displaced, tiles: settle(others, pinned, cols, true) };
+  }
+
+  /* C: a displaced resident swaps into the slot the drag left. A drag only ever moves the carried
+     tile and tiles trading into its old slot — when a conflicting tile has nowhere to swap to, the
+     move is blocked rather than shoving it. No gravity, holes persist. */
+  function previewC(tiles, draggedId, want, cols, basis) {
+    const { dragged, pinned, others, displaced, blockers } = votes(tiles, draggedId, want, cols, basis);
+    if (blockers.length) return { blocked: true, blockers, pinned };
+
+    const placed = [{ ...pinned }, ...others.filter((t) => !displaced.includes(t.id)).map((t) => ({ ...t }))];
+    const swapped = [];
+    for (const id of displaced) {
+      const t = { ...others.find((o) => o.id === id) };
+      // First fit anywhere inside the slot the drag left, so several small tiles displaced by one
+      // large tile pool into its footprint. A tile bigger than the slot tries the anchor alone.
+      let spot = null;
+      for (let r = dragged.row; r + t.span <= dragged.row + dragged.span && !spot; r++)
+        for (let c = dragged.col; c + t.span <= dragged.col + dragged.span && !spot; c++) {
+          const cand = { ...t, row: r, col: c };
+          if (!placed.some((p) => overlap(p, cand))) spot = cand;
+        }
+      if (!spot && t.span > dragged.span) {
+        const cand = { ...t, row: dragged.row, col: Math.min(dragged.col, cols - t.span) };
+        if (!placed.some((p) => overlap(p, cand))) spot = cand;
+      }
+      if (!spot) return { blocked: true, noSwap: id, pinned };
+      placed.push(spot);
+      swapped.push(id);
+    }
+    return { blocked: false, pinned, swapped, tiles: placed };
+  }
+
+  /* D: the shipped simulation, verbatim — the algorithm lives in cellSim.ts now. This wrapper
+     maps the page's consent radio onto the numeric threshold and folds the sim's debug readout
+     (ghost cells, resistance, blocker percentage) into the shape the boards below draw. */
+  function createCellSim(tiles, draggedId, cols, consent) {
+    const need = consent === 'full' ? 1 : 0.5;
+    const sim = shippedCellSim(tiles, draggedId, cols, need);
+    return {
+      advance(want) {
+        const res = sim.advance(want);
+        const { ghosts, resisting } = sim.inspect();
+        const sweptOf = (id) => resisting.find((r) => r.id === id)?.swept ?? 0;
+        return {
+          ...res,
+          need,
+          ghosts,
+          resisting: resisting.map((r) => ({ id: r.id, frac: r.swept, dr: r.lean.row, dc: r.lean.col })),
+          blocker: res.blocker && { ...res.blocker, pct: Math.round(100 * sweptOf(res.blocker.id)) },
+        };
+      },
+    };
+  }
+
+  /* Everyone but the pinned tile flows: pushed down out of collisions; compacted upward if asked. */
+  function settle(others, pinned, cols, compact) {
+    const placed = pinned ? [{ ...pinned }] : [];
+    const reading = others.slice().sort((a, b) => a.row - b.row || a.col - b.col);
+    for (const t of reading) {
+      const next = { ...t, col: Math.min(t.col, cols - t.span) };
+      while (placed.some((p) => overlap(p, next))) next.row++;
+      placed.push(next);
+    }
+    let changed = compact, guard = 0;
+    while (changed && guard++ < 30) {
+      changed = false;
+      for (const t of placed) {
+        if (pinned && t.id === pinned.id) continue;
+        while (t.row > 0 && !placed.some((p) => p !== t && overlap(p, { ...t, row: t.row - 1 }))) {
+          t.row--; changed = true;
+        }
+      }
+    }
+    return placed;
+  }
+
+  return { SPAN, packTiles, previewA, previewB, previewC, createCellSim, settle, overlap };
+})();
+
+/* ── Page shell. Throwaway. ── */
+const CELL = 44, GAP = 6, PITCH = CELL + GAP, COLS = 8, PAD = 10;
+const NEXT_SIZE = { small: 'medium', medium: 'large', large: 'small' };
+// A, B, and C are parked: add them back here and uncomment their markup to revive them.
+// U is the Player Preview — same sim as D, player-facing rendering.
+const BOARDS = ['D', 'U'];
+
+const CATALOG = {
+  Atlas:   { size: 'large',  color: '#d9a05b' },
+  Beacon:  { size: 'medium', color: '#7fb6d9' },
+  Cinder:  { size: 'medium', color: '#d97f7f' },
+  Drift:   { size: 'small',  color: '#8fd97f' },
+  Ember:   { size: 'small',  color: '#d9c47f' },
+  Flint:   { size: 'small',  color: '#b39fd9' },
+  Gale:    { size: 'small',  color: '#7fd9c9' },
+  Harbor:  { size: 'medium', color: '#d99fc4' },
+  Iris:    { size: 'small',  color: '#9fb3d9' },
+  Juniper: { size: 'medium', color: '#a8d97f' },
+};
+const SEED_ORDER = Object.keys(CATALOG);
+
+const SCENARIOS = [
+  {
+    name: 'Free Play',
+    text: 'Both boards start from the same arrangement and run the same simulation. Drag on the debug board to see the machinery; repeat the gesture on the Player Preview and flip treatments to judge how each one reads.',
+    order: SEED_ORDER,
+  },
+  {
+    name: 'The Corner Poke',
+    text: 'Drag <b>Iris</b> (small) onto a corner cell of <b>Atlas</b> (large) and stop there. One swept cell out of sixteen is not consent — D refuses and says how far short the sweep fell. Now keep going: drag Iris up the whole column, then the next column. Watch the percentage climb on the debug board — then do it again on the Player Preview: Pressure shows the climb as a charging bar, Give Way shows it as a lean, Quiet Slide hides it entirely.',
+    order: SEED_ORDER,
+  },
+  {
+    name: 'Sweep Through A Group',
+    text: 'Drag a small tile straight through a medium tile, entering one side and leaving the other. Passing through sweeps half its cells — consent — and it hops behind you, just as two smalls would trade in the flat grid. Back the gesture up before consent and the ghosts walk home: the simulation reverses.',
+    order: SEED_ORDER,
+  },
+  {
+    name: 'Carry The Large',
+    text: 'Drag <b>Atlas</b> (large) down onto the block of small tiles. Its wide footprint sweeps each small it covers, and every swept small dodges behind the trailing edge — stacking into the space Atlas is vacating, in the order you passed them. Release anywhere: whatever really dodged stays, and anything that never consented never moved.',
+    order: SEED_ORDER,
+  },
+  {
+    name: 'Leave A Hole',
+    text: 'Pick up <b>Beacon</b> (medium, top row) and carry it to an empty area at the bottom. Its old slot stays empty on both boards — neither ever repacks on its own, and a drag into open space moves exactly zero other tiles. Holes are yours: they persist until a later drag or trade happens to fill them.',
+    order: ['Beacon', 'Atlas', 'Cinder', 'Harbor', 'Juniper', 'Drift', 'Ember', 'Flint', 'Gale', 'Iris'],
+  },
+];
+
+let sizes, orderA, stored = { B: null, C: null, D: null, U: null }, basis = 'resident', consentD = 'half';
+const els = Object.fromEntries(BOARDS.map((b) => [b, new Map()]));
+
+function seed(order) {
+  sizes = Object.fromEntries(Object.entries(CATALOG).map(([id, v]) => [id, v.size]));
+  orderA = order.slice();
+  for (const board of BOARDS) {
+    stored[board] = Proto.packTiles(order, sizes, COLS).map((t) => ({ ...t }));
+    els[board].forEach((el) => el.remove());
+    els[board].clear();
+    setEvent(board, 'Drag a tile.', '');
+    render(board, stored[board]);
+  }
+}
+
+const layoutA = () => Proto.packTiles(orderA, sizes, COLS);
+const layoutOf = (board) => (board === 'A' ? layoutA() : stored[board]);
+
+function px(t) {
+  return {
+    left: PAD + t.col * PITCH,
+    top: PAD + t.row * PITCH,
+    size: t.span * CELL + (t.span - 1) * GAP,
+  };
+}
+
+function render(board, layout) {
+  const host = document.getElementById('board' + board);
+  const rows = Math.max(8, layout.reduce((m, t) => Math.max(m, t.row + t.span), 0) + 1);
+  host.style.width = PAD * 2 + COLS * PITCH - GAP + 'px';
+  host.style.height = PAD * 2 + rows * PITCH - GAP + 'px';
+  for (const t of layout) {
+    let el = els[board].get(t.id);
+    if (!el) {
+      el = document.createElement('div');
+      el.className = 'tile';
+      el.textContent = t.id;
+      // Color only — the background shorthand would inline background-image:none and beat the
+      // .dragging cell-grid overlay.
+      el.style.backgroundColor = CATALOG[t.id].color;
+      el.dataset.id = t.id;
+      el.dataset.board = board;
+      host.appendChild(el);
+      els[board].set(t.id, el);
+    }
+    const p = px(t);
+    el.style.left = p.left + 'px';
+    el.style.top = p.top + 'px';
+    el.style.width = p.size + 'px';
+    el.style.height = p.size + 'px';
+    el.classList.toggle('multi', t.span > 1);
+  }
+  renderChips(board, layout);
+}
+
+function renderChips(board, layout) {
+  const chips = document.getElementById('chips' + board);
+  const sorted = layout.slice().sort((a, b) => a.row - b.row || a.col - b.col);
+  chips.innerHTML = sorted.map((t) => `<span class="chip">${t.id} (${t.row},${t.col})</span>`).join('');
+}
+
+function setEvent(board, text, cls) {
+  const el = document.getElementById('event' + board);
+  el.innerHTML = text;
+  el.className = 'event ' + (cls || '');
+}
+
+function movedCount(before, after, draggedId) {
+  const map = new Map(before.map((t) => [t.id, t]));
+  return after.filter((t) => {
+    if (t.id === draggedId) return false;
+    const b = map.get(t.id);
+    return b && (b.row !== t.row || b.col !== t.col);
+  }).length;
+}
+
+/* ── Drag handling ── */
+let drag = null;
+const ghost = document.createElement('div');
+ghost.id = 'ghost';
+document.body.appendChild(ghost);
+ghost.style.display = 'none';
+const outline = {};
+for (const board of BOARDS) {
+  const el = document.createElement('div');
+  el.className = 'outline';
+  el.style.display = 'none';
+  document.getElementById('board' + board).appendChild(el);
+  outline[board] = el;
+}
+
+document.addEventListener('pointerdown', (e) => {
+  const tile = e.target.closest('.tile');
+  if (!tile) return;
+  drag = {
+    board: tile.dataset.board, id: tile.dataset.id, started: false,
+    startX: e.clientX, startY: e.clientY,
+    grabDX: e.clientX - tile.getBoundingClientRect().left,
+    grabDY: e.clientY - tile.getBoundingClientRect().top,
+    lastAnchor: null,
+  };
+});
+
+document.addEventListener('pointermove', (e) => {
+  if (!drag) return;
+  if (!drag.started) {
+    if (Math.hypot(e.clientX - drag.startX, e.clientY - drag.startY) < 5) return;
+    startDrag();
+  }
+  const gLeft = e.clientX - drag.grabDX, gTop = e.clientY - drag.grabDY;
+  ghost.style.left = gLeft + 'px';
+  ghost.style.top = gTop + 'px';
+  const host = document.getElementById('board' + drag.board).getBoundingClientRect();
+  // C may refuse a size change the other boards took, so the span comes from this board's own state.
+  const span = drag.board === 'A'
+    ? Proto.SPAN[sizes[drag.id]]
+    : stored[drag.board].find((t) => t.id === drag.id).span;
+  const want = {
+    col: Math.min(Math.max(0, Math.round((gLeft - host.left - PAD) / PITCH)), COLS - span),
+    row: Math.max(0, Math.round((gTop - host.top - PAD) / PITCH)),
+  };
+  const key = want.row + ':' + want.col;
+  if (key !== drag.lastAnchor) {
+    drag.lastAnchor = key;
+    preview(want);
+  }
+  // Arming re-reads on every move: the pointer can cross onto a tile while the claim stays put.
+  if (drag.board === 'U' && drag.lastRes) {
+    updateArmingU(drag.lastRes, {
+      row: Math.floor((e.clientY - host.top - PAD) / PITCH),
+      col: Math.floor((e.clientX - host.left - PAD) / PITCH),
+    });
+  }
+});
+
+function startDrag() {
+  drag.started = true;
+  const el = els[drag.board].get(drag.id);
+  const r = el.getBoundingClientRect();
+  ghost.textContent = drag.id;
+  ghost.style.background = CATALOG[drag.id].color;
+  ghost.style.width = r.width + 'px';
+  ghost.style.height = r.height + 'px';
+  ghost.style.display = 'flex';
+  el.classList.add('hidden');
+  drag.before = layoutOf(drag.board).map((t) => ({ ...t }));
+  drag.beforeOrder = orderA.slice();
+  drag.valid = drag.board === 'A' ? null : layoutOf(drag.board).map((t) => ({ ...t }));
+  if (drag.board === 'D' || drag.board === 'U')
+    drag.sim = Proto.createCellSim(stored[drag.board], drag.id, COLS, consentD);
+  document.getElementById('board' + drag.board).classList.add('dragging');
+}
+
+/* The shadow board's displaced cells, drawn as persistent ghosts. Each ghost is one unit cell the
+   gesture has pushed out of a tile that has not consented yet; it slides as the sim updates and
+   disappears when its cell returns home or its tile snaps to a new spot. */
+const ghostEls = new Map();
+function renderGhosts(board, ghosts) {
+  const host = document.getElementById('board' + board);
+  const seen = new Set();
+  for (const gc of ghosts) {
+    seen.add(gc.key);
+    let g = ghostEls.get(gc.key);
+    if (!g) {
+      g = document.createElement('div');
+      g.className = 'cellghost';
+      g.style.background = CATALOG[gc.id].color;
+      host.appendChild(g);
+      ghostEls.set(gc.key, g);
+    }
+    g.style.left = PAD + gc.col * PITCH + 'px';
+    g.style.top = PAD + gc.row * PITCH + 'px';
+  }
+  for (const [key, g] of ghostEls) {
+    if (!seen.has(key)) { g.remove(); ghostEls.delete(key); }
+  }
+}
+function clearGhosts() {
+  ghostEls.forEach((g) => g.remove());
+  ghostEls.clear();
+}
+
+/* ── Player Preview treatments. All three read the same sim result. ──
+   0 Quiet Slide: nothing shows on a swept tile until it truly moves; the outline is the only signal.
+   1 Pressure:    a bar charges across a swept tile as consent builds; red when it is stuck.
+   2 Give Way:    a swept tile leans toward where it will go, further the more you sweep it. */
+const UX_VARIANTS = ['Quiet Slide', 'Pressure', 'Give Way'];
+let uxVariant = 0;
+
+function applyFx(board, res) {
+  const byId = new Map(res.resisting.map((r) => [r.id, r]));
+  for (const [tid, el] of els[board]) {
+    const r = uxVariant === 0 ? null : byId.get(tid);
+    if (!r) {
+      el.classList.remove('pressure', 'stuck');
+      el.style.removeProperty('--pressure');
+      el.style.transform = '';
+      continue;
+    }
+    const p = Math.min(1, r.frac / res.need);
+    el.classList.toggle('stuck', r.frac >= res.need);
+    if (uxVariant === 1) {
+      el.classList.add('pressure');
+      el.style.setProperty('--pressure', p);
+      el.style.transform = '';
+    } else {
+      el.classList.remove('pressure');
+      const len = Math.hypot(r.dr, r.dc) || 1;
+      const lean = 0.3 * PITCH * p;
+      el.style.transform =
+        `translate(${((r.dc / len) * lean).toFixed(1)}px, ${((r.dr / len) * lean).toFixed(1)}px)`;
+    }
+  }
+}
+
+/* ── Grouping (shipped gesture, U only). Arms when the standing tile under the pointer — or, failing
+   that, under the middle of the claim — has been held for the dwell; a tile that dodges away stops
+   being the candidate the moment it moves, so grouping never overrides moving. ── */
+const GROUP_HOLD_MS = 300;
+
+function groupCandidateU(res, pointer) {
+  const standingAt = (row, col) => {
+    const t = res.tiles.find((t) =>
+      t.row <= row && row < t.row + t.span && t.col <= col && col < t.col + t.span);
+    return t ? t.id : null;
+  };
+  const center = Math.floor(res.pinned.span / 2);
+  return (pointer && standingAt(pointer.row, pointer.col))
+    ?? standingAt(res.pinned.row + center, res.pinned.col + center);
+}
+
+function disarmU() {
+  if (!drag) return;
+  if (drag.holdTimer) { clearTimeout(drag.holdTimer); drag.holdTimer = null; }
+  drag.holdTarget = null;
+  if (drag.armed) {
+    els.U.get(drag.armed)?.classList.remove('groupTarget');
+    drag.armed = null;
+  }
+}
+
+function updateArmingU(res, pointer) {
+  const candidate = groupCandidateU(res, pointer);
+  if (candidate === (drag.holdTarget ?? drag.armed)) return;
+  disarmU();
+  if (!candidate) return;
+  drag.holdTarget = candidate;
+  drag.holdTimer = setTimeout(() => {
+    if (!drag || drag.board !== 'U') return;
+    drag.holdTimer = null;
+    drag.holdTarget = null;
+    drag.armed = candidate;
+    els.U.get(candidate).classList.add('groupTarget');
+    setEvent('U', `Release to group ${drag.id} with <span class="moved">${candidate}</span>.`);
+  }, GROUP_HOLD_MS);
+}
+
+function clearFx(board) {
+  els[board].forEach((el) => {
+    el.classList.remove('pressure', 'stuck');
+    el.style.removeProperty('--pressure');
+    el.style.transform = '';
+  });
+}
+
+function preview(want) {
+  const { board, id } = drag;
+  if (board === 'A') {
+    const res = Proto.previewA(orderA, sizes, COLS, id, want);
+    drag.previewOrder = res.order;
+    render('A', res.packed);
+    placeOutline('A', res.packed.find((p) => p.id === id), false);
+    setEvent('A', `Insertion index ${res.index} — <span class="moved">${movedCount(drag.before, res.packed, id)} tiles moved</span> from where they started.`);
+    return;
+  }
+  if (board === 'D') {
+    const res = drag.sim.advance(want);
+    renderGhosts(board, res.ghosts);
+    if (res.blocked) {
+      // The dodges the sim has committed still show; only the claim itself is illegal here.
+      render(board, [...res.tiles, ...drag.valid.filter((t) => t.id === id)]);
+      placeOutline(board, res.pinned, true);
+      const why = res.blocker.consented
+        ? `${res.blocker.id} consents (${res.blocker.pct}% swept) but has no valid spot to move to`
+        : `only ${res.blocker.pct}% of ${res.blocker.id}'s cells are swept — not enough to move the whole group`;
+      setEvent(board, `Blocked — ${why}.`, 'blockedline');
+    } else {
+      const config = [...res.tiles, { id, span: res.pinned.span, row: res.pinned.row, col: res.pinned.col }];
+      drag.valid = config;
+      render(board, config);
+      placeOutline(board, res.pinned, false);
+      const moved = movedCount(drag.before, config, id);
+      const detail = res.moved.length ? ` Traded: ${res.moved.join(', ')}.` : '';
+      setEvent(board, `Claimed (${res.pinned.row},${res.pinned.col}) — <span class="moved">${moved} tiles moved</span>.${detail}`);
+    }
+    return;
+  }
+  if (board === 'U') {
+    /* No outline on the player board — the app removed it, and the hole the carried tile's hidden
+       element leaves in the live board is the landing signal now. */
+    const res = drag.sim.advance(want);
+    applyFx(board, res);
+    if (res.blocked) {
+      render(board, [...res.tiles, ...drag.valid.filter((t) => t.id === id)]);
+      setEvent(board, res.blocker.consented
+        ? `${res.blocker.id} has nowhere to go.`
+        : `${res.blocker.id} is holding its ground.`, 'blockedline');
+    } else {
+      const config = [...res.tiles, { id, span: res.pinned.span, row: res.pinned.row, col: res.pinned.col }];
+      drag.valid = config;
+      render(board, config);
+      setEvent(board, res.moved.length
+        ? `<span class="moved">${res.moved.join(' and ')} ${res.moved.length > 1 ? 'make' : 'makes'} way.</span>`
+        : 'Drop here.');
+    }
+    drag.lastRes = res;
+    return;
+  }
+  const res = (board === 'B' ? Proto.previewB : Proto.previewC)(stored[board], id, want, COLS, basis);
+  if (res.blocked) {
+    render(board, drag.valid);
+    placeOutline(board, res.pinned, true);
+    const why = res.noSwap
+      ? `${res.noSwap} has nowhere to go`
+      : `${res.blockers[0].id} is only ${res.blockers[0].pct}% covered, so it will not budge`;
+    setEvent(board, `Blocked — ${why}.`, 'blockedline');
+    return;
+  }
+  drag.valid = res.tiles;
+  render(board, res.tiles);
+  placeOutline(board, res.pinned, false);
+  const moved = movedCount(drag.before, res.tiles, id);
+  let detail = '';
+  if (board === 'B' && res.displaced.length) detail = ` Displaced: ${res.displaced.join(', ')}.`;
+  if (board === 'C' && res.swapped.length) detail = ` Swapped: ${res.swapped.join(', ')}.`;
+  setEvent(board, `Claimed (${res.pinned.row},${res.pinned.col}) — <span class="moved">${moved} tiles moved</span>.${detail}`);
+}
+
+function placeOutline(board, spot, bad) {
+  const el = outline[board];
+  const p = px(spot);
+  el.style.display = 'block';
+  el.style.left = p.left + 'px';
+  el.style.top = p.top + 'px';
+  el.style.width = p.size + 'px';
+  el.style.height = p.size + 'px';
+  el.classList.toggle('bad', !!bad);
+}
+
+document.addEventListener('pointerup', () => {
+  if (!drag) return;
+  if (drag.started) {
+    if (drag.board === 'A') {
+      if (drag.previewOrder) orderA = drag.previewOrder;
+      render('A', layoutA());
+    } else if (drag.board === 'U' && drag.armed) {
+      // The group drop: the dodges stand, and the carried tile leaves the board for the folder the
+      // real app would mint where the target stands. Its element goes with it.
+      const target = drag.armed;
+      const carried = drag.id;
+      stored.U = collapseBoard(drag.valid.filter((t) => t.id !== carried));
+      endDrag();
+      els.U.get(carried).remove();
+      els.U.delete(carried);
+      render('U', stored.U);
+      setEvent('U', `<span class="moved">${carried} grouped with ${target}.</span> On the real board they now share a folder standing where ${target} stands.`);
+      drag = null;
+      return;
+    } else {
+      // The shipped tidying: a release folds away any row or column the gesture left dead.
+      stored[drag.board] = collapseBoard(drag.valid);
+      render(drag.board, stored[drag.board]);
+    }
+    endDrag();
+  }
+  drag = null;
+});
+
+document.addEventListener('keydown', (e) => {
+  if (e.key !== 'Escape' || !drag || !drag.started) return;
+  if (drag.board === 'A') { orderA = drag.beforeOrder; render('A', layoutA()); }
+  else { stored[drag.board] = drag.before; render(drag.board, drag.before); }
+  setEvent(drag.board, 'Canceled — back to where it was.');
+  endDrag();
+  drag = null;
+});
+
+function endDrag() {
+  ghost.style.display = 'none';
+  outline[drag.board].style.display = 'none';
+  els[drag.board].get(drag.id).classList.remove('hidden');
+  document.getElementById('board' + drag.board).classList.remove('dragging');
+  clearGhosts();
+  if (drag.board === 'U') { disarmU(); clearFx('U'); }
+}
+
+/* ── Resize lab. Double-click cycles a tile's size; the radio picks how growth treats the board.
+   Every strategy keeps a shrink anchored and folds dead lines afterwards; they differ only on a
+   growth that no longer fits where it stands. The event line counts how many tiles moved, so the
+   blast radius is a number on every resize rather than a feeling. ── */
+let resizeMode = 'push';
+
+/** True when `cand` is on the board and lands on none of `placed`. */
+const fitsAmong = (placed, cand) =>
+  cand.row >= 0 && cand.col >= 0 && cand.col + cand.span <= COLS
+  && !placed.some((t) => Proto.overlap(t, cand));
+
+/** The fitting spot with the best score; scanning is row-major, so a scoreless scan is first-fit. */
+function bestSpot(placed, tile, score) {
+  const limit = placed.reduce((m, t) => Math.max(m, t.row + t.span), 0) + tile.span;
+  let best = null;
+  for (let row = 0; row <= limit; row++)
+    for (let col = 0; col <= COLS - tile.span; col++) {
+      const cand = { ...tile, row, col };
+      if (!fitsAmong(placed, cand)) continue;
+      const s = score(row, col);
+      if (!best || s < best.s) best = { s, cand };
+    }
+  return best.cand;
+}
+
+const nearTo = (tile) => (row, col) => (row - tile.row) ** 2 + (col - tile.col) ** 2;
+
+const RESIZE_STRATEGIES = {
+  /* What the app ships today: keep the anchor when the grown footprint is free, else the first
+     free block in reading order — which can throw the tile clear across the board. */
+  app: (others, grown) =>
+    [...others, fitsAmong(others, grown) ? grown : bestSpot(others, grown, () => 0)],
+  /* Keep the anchor when free, else the nearest free block: the tile stays in its neighborhood. */
+  nearest: (others, grown) =>
+    [...others, fitsAmong(others, grown) ? grown : bestSpot(others, grown, nearTo(grown))],
+  /* Grow in place, always; whoever the bigger footprint lands on moves to their own nearest free
+     block instead, closest casualties first. */
+  push: (others, grown) => {
+    const placed = [grown, ...others.filter((t) => !Proto.overlap(t, grown))];
+    const bumped = others.filter((t) => Proto.overlap(t, grown))
+      .sort((a, b) => nearTo(grown)(a.row, a.col) - nearTo(grown)(b.row, b.col));
+    for (const t of bumped) placed.push(bestSpot(placed, t, nearTo(t)));
+    return placed;
+  },
+};
+
+const SIZE_OF_SPAN = { 1: 'small', 2: 'medium', 4: 'large' };
+document.addEventListener('dblclick', (e) => {
+  const tile = e.target.closest('.tile');
+  if (!tile) return;
+  const id = tile.dataset.id;
+  const current = stored[tile.dataset.board].find((x) => x.id === id).span;
+  const size = NEXT_SIZE[SIZE_OF_SPAN[current]];
+  const span = Proto.SPAN[size];
+  for (const board of BOARDS) {
+    const before = stored[board];
+    const old = before.find((x) => x.id === id);
+    const grown = { ...old, span, col: Math.min(old.col, COLS - span) };
+    const others = before.filter((x) => x.id !== id);
+    const next = span <= old.span
+      ? [...others, grown]
+      : RESIZE_STRATEGIES[resizeMode](others, grown);
+    stored[board] = collapseBoard(next);
+    render(board, stored[board]);
+    const after = stored[board].find((x) => x.id === id);
+    const fate = after.row === old.row && after.col === old.col ? 'in place' : 'relocated';
+    const moved = movedCount(before, stored[board], id);
+    setEvent(board, `${id} is now ${size}, ${fate} — <span class="moved">${moved} other tile${moved === 1 ? '' : 's'} moved</span>.`);
+  }
+});
+document.querySelectorAll('input[name=resize]').forEach((r) => {
+  r.onchange = () => { resizeMode = r.value; };
+});
+
+/* ── Tabs, controls ── */
+const tabsEl = document.getElementById('tabs');
+const scenarioEl = document.getElementById('scenario');
+SCENARIOS.forEach((s, i) => {
+  const b = document.createElement('button');
+  b.textContent = s.name;
+  b.onclick = () => selectScenario(i);
+  tabsEl.appendChild(b);
+});
+function selectScenario(i) {
+  [...tabsEl.children].forEach((b, j) => b.classList.toggle('active', i === j));
+  const s = SCENARIOS[i];
+  scenarioEl.innerHTML = `<p>${s.text}</p>`;
+  const b = document.createElement('button');
+  b.textContent = 'Set Up All Boards';
+  b.onclick = () => seed(s.order);
+  scenarioEl.appendChild(b);
+  seed(s.order);
+}
+document.getElementById('reset').onclick = () => seed(SEED_ORDER);
+document.querySelectorAll('input[name=basis]').forEach((r) => {
+  r.onchange = () => { basis = r.value; };
+});
+document.querySelectorAll('input[name=consent]').forEach((r) => {
+  r.onchange = () => { consentD = r.value; };
+});
+
+/* ── Variant switcher: arrows, ← / → keys, and a shareable #ux= hash. ── */
+function setVariant(i) {
+  uxVariant = (i + UX_VARIANTS.length) % UX_VARIANTS.length;
+  if (location.protocol !== 'data:') location.hash = 'ux=' + uxVariant;
+  document.getElementById('uxLabel').textContent =
+    (uxVariant + 1) + ' of ' + UX_VARIANTS.length + ' — ' + UX_VARIANTS[uxVariant];
+  clearFx('U');
+}
+document.getElementById('uxPrev').onclick = () => setVariant(uxVariant - 1);
+document.getElementById('uxNext').onclick = () => setVariant(uxVariant + 1);
+document.addEventListener('keydown', (e) => {
+  if (e.key !== 'ArrowLeft' && e.key !== 'ArrowRight') return;
+  const a = document.activeElement;
+  if (a && /^(INPUT|TEXTAREA)$/.test(a.tagName)) return;
+  setVariant(uxVariant + (e.key === 'ArrowRight' ? 1 : -1));
+});
+
+selectScenario(0);
+setVariant(parseInt((location.hash.match(/ux=(\d)/) || [])[1] || '0', 10));
+</script>
+</body>
+</html>

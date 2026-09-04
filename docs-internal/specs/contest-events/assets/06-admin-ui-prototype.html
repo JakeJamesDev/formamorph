@@ -1,0 +1,1012 @@
+<!--
+  PROTOTYPE - throwaway. Answers issue 06: staff/admin contest-event surfaces.
+  Three screens (Events tab list / create-edit form / winner pick), 3 variants each,
+  switched from the floating bar (or arrow keys). The form screen's variants are the
+  three candidate answers to the "announcement events vs broadcast composer" fog item.
+  Role toggle (admin/staff) shows the gating split: CRUD is admin-only, winner pick is
+  any staff (per issue 03/04 contracts). Styling mirrors src/index.css tokens +
+  tailwind.config.js type roles; chrome mirrors AdminPanelDialog / BroadcastsTab.
+-->
+<title>Contest Admin Surfaces</title>
+<style>
+  html {
+    color-scheme: light;
+    --background: 0 0% 100%;
+    --foreground: 222.2 84% 4.9%;
+    --card: 210 40% 97%;
+    --card-foreground: 222.2 84% 4.9%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 222.2 84% 4.9%;
+    --primary: 180 47.4% 75%;
+    --primary-foreground: 180 47.4% 11.2%;
+    --secondary: 210 40% 96.1%;
+    --secondary-foreground: 222.2 47.4% 11.2%;
+    --muted: 210 40% 96.1%;
+    --muted-foreground: 215.4 16.3% 46.9%;
+    --accent: 210 40% 96.1%;
+    --accent-foreground: 222.2 47.4% 11.2%;
+    --destructive: 0 84.2% 60.2%;
+    --success: 142 71% 40%;
+    --warning: 45 93% 50%;
+    --warning-foreground: 38 92% 12%;
+    --info: 217 84% 56%;
+    --info-foreground: 210 40% 98%;
+    --overlay: 0 0% 0%;
+    --border: 214.3 31.8% 91.4%;
+    --input: 214.3 31.8% 91.4%;
+    --ring: 222.2 84% 4.9%;
+    --radius: 0.5rem;
+  }
+  html.dark {
+    color-scheme: dark;
+    --background: 222.2 84% 4.9%;
+    --foreground: 210 40% 98%;
+    --card: 222 40% 9%;
+    --card-foreground: 210 40% 98%;
+    --popover: 222.2 84% 4.9%;
+    --popover-foreground: 210 40% 98%;
+    --primary: 180 40% 85%;
+    --primary-foreground: 180 47.4% 11.2%;
+    --secondary: 217.2 32.6% 17.5%;
+    --secondary-foreground: 210 40% 98%;
+    --muted: 217.2 32.6% 17.5%;
+    --muted-foreground: 215 20.2% 65.1%;
+    --accent: 217.2 32.6% 17.5%;
+    --accent-foreground: 210 40% 98%;
+    --destructive: 0 72% 58%;
+    --success: 142 65% 45%;
+    --warning: 45 93% 55%;
+    --warning-foreground: 38 92% 12%;
+    --info: 217 84% 60%;
+    --info-foreground: 210 40% 98%;
+    --border: 217.2 32.6% 17.5%;
+    --input: 217.2 32.6% 17.5%;
+    --ring: 212.7 26.8% 83.9%;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { height: 100%; }
+  body {
+    font-family: ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+    background: hsl(var(--muted));
+    color: hsl(var(--foreground));
+    font-size: 16px;
+    overflow: hidden;
+  }
+  svg { flex-shrink: 0; }
+
+  /* ---- type roles (tailwind.config.js) ---- */
+  .t-display { font-size: 1.5rem;   line-height: 2rem;    }
+  .t-heading { font-size: 1.25rem;  line-height: 1.75rem; }
+  .t-title   { font-size: 1.125rem; line-height: 1.75rem; }
+  .t-body    { font-size: 1rem;     line-height: 1.5rem;  }
+  .t-label   { font-size: 0.875rem; line-height: 1.25rem; }
+  .t-meta    { font-size: 0.75rem;  line-height: 1rem;    }
+  .fw-med  { font-weight: 500; }
+  .fw-semi { font-weight: 600; }
+  .muted { color: hsl(var(--muted-foreground)); }
+
+  /* ---- frame ---- */
+  #frameWrap { position: fixed; inset: 0; display: flex; align-items: center; justify-content: center; }
+  #app {
+    width: 100%; height: 100%;
+    background: hsl(var(--muted));
+    position: relative; overflow: hidden;
+    display: flex; flex-direction: column;
+  }
+  body.mobile #frameWrap { padding: 12px 0 96px; }
+  body.mobile #app {
+    width: 390px; height: min(760px, calc(100vh - 120px));
+    border: 6px solid hsl(var(--foreground) / 0.8);
+    border-radius: 24px;
+    box-shadow: 0 20px 60px hsl(var(--overlay) / 0.35);
+  }
+
+  /* ---- shadcn-ish primitives ---- */
+  .btn {
+    display: inline-flex; align-items: center; justify-content: center; gap: 0.5rem;
+    border-radius: calc(var(--radius) - 2px);
+    font-size: 0.875rem; line-height: 1.25rem; font-weight: 500;
+    height: 2.25rem; padding: 0 1rem;
+    border: 1px solid transparent; background: transparent; color: inherit;
+    cursor: pointer; white-space: nowrap; font-family: inherit;
+  }
+  .btn:focus-visible { outline: 2px solid hsl(var(--ring)); outline-offset: 1px; }
+  .btn-primary { background: hsl(var(--primary)); color: hsl(var(--primary-foreground)); }
+  .btn-primary:hover { background: hsl(var(--primary) / 0.9); }
+  .btn-outline { border-color: hsl(var(--input)); background: hsl(var(--background)); }
+  .btn-outline:hover { background: hsl(var(--accent)); color: hsl(var(--accent-foreground)); }
+  .btn-ghost:hover { background: hsl(var(--accent)); color: hsl(var(--accent-foreground)); }
+  .btn-destructive { color: hsl(var(--destructive)); }
+  .btn-destructive:hover { background: hsl(var(--destructive) / 0.1); }
+  .btn-sm { height: 2rem; padding: 0 0.75rem; }
+  .btn-xs { height: 1.6rem; padding: 0 0.6rem; font-size: 0.75rem; }
+  .btn[disabled] { opacity: 0.5; cursor: not-allowed; }
+
+  .tabs-list {
+    display: grid; gap: 2px;
+    background: hsl(var(--muted)); border-radius: calc(var(--radius) - 2px);
+    padding: 4px; width: 100%;
+  }
+  .tab {
+    display: inline-flex; align-items: center; justify-content: center; gap: 0.4rem;
+    border: none; background: transparent; color: hsl(var(--muted-foreground));
+    font: inherit; font-size: 0.875rem; font-weight: 500; line-height: 1.25rem;
+    padding: 0.25rem 0.5rem; border-radius: calc(var(--radius) - 4px);
+    cursor: default; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
+  .tab.active { background: hsl(var(--background)); color: hsl(var(--foreground)); box-shadow: 0 1px 2px hsl(var(--overlay) / 0.1); }
+
+  .input, .textarea, .selectbox {
+    width: 100%;
+    padding: 0.4rem 0.75rem;
+    border: 1px solid hsl(var(--input)); border-radius: calc(var(--radius) - 2px);
+    background: hsl(var(--background)); color: hsl(var(--foreground));
+    font: inherit; font-size: 0.875rem; line-height: 1.25rem;
+  }
+  .input { height: 2.25rem; }
+  .textarea { min-height: 4.5rem; resize: vertical; }
+  .selectbox { height: 2.25rem; display: flex; align-items: center; justify-content: space-between; gap: 0.5rem; cursor: default; }
+  .field { display: flex; flex-direction: column; gap: 0.3rem; }
+  .field label { font-size: 0.875rem; font-weight: 500; line-height: 1.25rem; }
+  .field .hint { font-size: 0.75rem; line-height: 1rem; color: hsl(var(--muted-foreground)); }
+  .field-row { display: flex; gap: 0.75rem; }
+  .field-row .field { flex: 1; }
+  body.mobile .field-row { flex-direction: column; }
+
+  .badge {
+    display: inline-flex; align-items: center; gap: 0.3rem;
+    border-radius: 9999px; padding: 0.1rem 0.6rem;
+    font-size: 0.75rem; line-height: 1rem; font-weight: 600; white-space: nowrap;
+  }
+  .badge-active    { background: hsl(var(--success) / 0.15); color: hsl(var(--success)); }
+  .badge-judging   { background: hsl(var(--warning) / 0.2);  color: hsl(var(--warning-foreground)); }
+  html.dark .badge-judging { color: hsl(var(--warning)); }
+  .badge-scheduled { background: hsl(var(--info) / 0.15);    color: hsl(var(--info)); }
+  .badge-ended     { background: hsl(var(--muted));          color: hsl(var(--muted-foreground)); }
+  .badge-cancelled { background: hsl(var(--destructive) / 0.12); color: hsl(var(--destructive)); }
+  .badge-type {
+    background: hsl(var(--secondary)); color: hsl(var(--secondary-foreground));
+    font-weight: 500;
+  }
+
+  .switch {
+    width: 2.25rem; height: 1.25rem; border-radius: 9999px;
+    background: hsl(var(--input)); position: relative; flex-shrink: 0; transition: background 0.15s;
+    cursor: pointer;
+  }
+  .switch::after {
+    content: ''; position: absolute; top: 2px; left: 2px;
+    width: 1rem; height: 1rem; border-radius: 9999px; background: hsl(var(--background));
+    box-shadow: 0 1px 2px hsl(var(--overlay) / 0.3); transition: left 0.15s;
+  }
+  .switch.on { background: hsl(var(--primary)); }
+  .switch.on::after { left: calc(100% - 1.125rem); }
+
+  .radio {
+    width: 1rem; height: 1rem; flex-shrink: 0; border-radius: 9999px;
+    border: 1px solid hsl(var(--foreground) / 0.6);
+    display: inline-flex; align-items: center; justify-content: center;
+  }
+  .radio.checked::after { content: ''; width: 0.5rem; height: 0.5rem; border-radius: 9999px; background: hsl(var(--foreground)); }
+
+  .seg { display: inline-flex; background: hsl(var(--muted)); border-radius: calc(var(--radius) - 2px); padding: 3px; gap: 2px; }
+  .seg button {
+    border: none; background: transparent; color: hsl(var(--muted-foreground));
+    font: inherit; font-size: 0.875rem; font-weight: 500;
+    padding: 0.2rem 0.7rem; border-radius: calc(var(--radius) - 4px); cursor: pointer;
+  }
+  .seg button.on { background: hsl(var(--background)); color: hsl(var(--foreground)); box-shadow: 0 1px 2px hsl(var(--overlay) / 0.1); }
+
+  /* ---- admin dialog chrome (AdminPanelDialog replica) ---- */
+  .backdrop {
+    position: absolute; inset: 0; background: hsl(var(--overlay) / 0.8);
+    display: flex; align-items: center; justify-content: center; padding: 1.25rem;
+  }
+  body.mobile .backdrop { padding: 0.5rem; }
+  .admin-dialog {
+    background: hsl(var(--background)); color: hsl(var(--foreground));
+    border: 1px solid hsl(var(--border)); border-radius: var(--radius);
+    box-shadow: 0 10px 40px hsl(var(--overlay) / 0.4);
+    width: 100%; max-width: 900px; height: 92%;
+    display: flex; flex-direction: column; overflow: hidden;
+    padding: 1.5rem;
+    gap: 0.9rem;
+  }
+  body.mobile .admin-dialog { padding: 1rem; height: 96%; }
+  .admin-title { display: flex; align-items: center; gap: 0.5rem; font-size: 1.125rem; line-height: 1.75rem; font-weight: 600; flex-shrink: 0; }
+  .admin-body { flex: 1; min-height: 0; overflow-y: auto; padding: 0 4px; }
+
+  /* ---- events list bits ---- */
+  .event-row {
+    display: flex; align-items: center; gap: 0.75rem;
+    border: 1px solid hsl(var(--border)); border-radius: calc(var(--radius) - 2px);
+    background: hsl(var(--card)); color: hsl(var(--card-foreground));
+    padding: 0.6rem 0.85rem; margin-bottom: 0.5rem;
+  }
+  .event-row.cancelled { opacity: 0.6; }
+  .event-row .grow { flex: 1; min-width: 0; }
+  .event-row .name { font-size: 0.875rem; font-weight: 600; line-height: 1.25rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .event-row .sub { font-size: 0.75rem; line-height: 1rem; color: hsl(var(--muted-foreground)); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .event-row .actions { display: flex; gap: 0.25rem; flex-shrink: 0; }
+  body.mobile .event-row { flex-wrap: wrap; }
+  body.mobile .event-row .actions { width: 100%; justify-content: flex-end; }
+
+  .section-h {
+    display: flex; align-items: center; gap: 0.5rem;
+    font-size: 0.75rem; line-height: 1rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.04em;
+    color: hsl(var(--muted-foreground));
+    margin: 1.1rem 0 0.5rem;
+  }
+  .section-h:first-child { margin-top: 0; }
+
+  .active-card {
+    border: 1px solid hsl(var(--warning) / 0.5); border-radius: var(--radius);
+    background: hsl(var(--warning) / 0.07);
+    padding: 0.9rem 1rem; margin-bottom: 0.5rem;
+    display: flex; flex-direction: column; gap: 0.6rem;
+  }
+  .active-card .toprow { display: flex; align-items: center; gap: 0.6rem; flex-wrap: wrap; }
+  .active-card .stats { display: flex; gap: 1.1rem; font-size: 0.75rem; color: hsl(var(--muted-foreground)); flex-wrap: wrap; }
+  .active-card .stats span { display: inline-flex; align-items: center; gap: 0.3rem; }
+
+  /* master-detail (list C) */
+  .md-wrap { display: flex; gap: 0.75rem; height: 100%; min-height: 0; }
+  .md-list { width: 250px; flex-shrink: 0; overflow-y: auto; display: flex; flex-direction: column; gap: 0.35rem; }
+  body.mobile .md-wrap { flex-direction: column; }
+  body.mobile .md-list { width: 100%; max-height: 38%; }
+  .md-item {
+    text-align: left; border: 1px solid transparent; background: transparent; color: inherit;
+    font: inherit; border-radius: calc(var(--radius) - 2px);
+    padding: 0.5rem 0.65rem; cursor: pointer;
+    display: flex; flex-direction: column; gap: 0.15rem;
+  }
+  .md-item:hover { background: hsl(var(--accent)); }
+  .md-item.sel { background: hsl(var(--card)); border-color: hsl(var(--border)); }
+  .md-item .name { font-size: 0.875rem; font-weight: 600; line-height: 1.25rem; }
+  .md-item.cancelled { opacity: 0.55; }
+  .md-detail {
+    flex: 1; min-width: 0; overflow-y: auto;
+    border: 1px solid hsl(var(--border)); border-radius: var(--radius);
+    background: hsl(var(--card)); padding: 1rem 1.1rem;
+    display: flex; flex-direction: column; gap: 0.75rem;
+  }
+  .md-detail .kv { display: flex; flex-direction: column; gap: 0.2rem; }
+  .md-detail .kv .k { font-size: 0.75rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.04em; color: hsl(var(--muted-foreground)); }
+  .md-detail .kv .v { font-size: 0.875rem; line-height: 1.25rem; }
+
+  /* ---- overlay dialogs (form / winner) ---- */
+  .over {
+    position: absolute; inset: 0; background: hsl(var(--overlay) / 0.55);
+    display: flex; align-items: center; justify-content: center; padding: 1rem; z-index: 40;
+  }
+  .over-dialog {
+    background: hsl(var(--background)); color: hsl(var(--foreground));
+    border: 1px solid hsl(var(--border)); border-radius: var(--radius);
+    box-shadow: 0 10px 40px hsl(var(--overlay) / 0.4);
+    width: 100%; max-width: 560px; max-height: 94%;
+    display: flex; flex-direction: column; overflow: hidden;
+  }
+  .over-dialog.wide { max-width: 720px; }
+  .over-head { padding: 1.25rem 1.5rem 0.75rem; flex-shrink: 0; }
+  .over-body { padding: 0 1.5rem; overflow-y: auto; display: flex; flex-direction: column; gap: 0.85rem; }
+  .over-foot { padding: 1rem 1.5rem 1.25rem; display: flex; justify-content: flex-end; gap: 0.5rem; flex-shrink: 0; }
+  body.mobile .over-head, body.mobile .over-foot { padding-left: 1rem; padding-right: 1rem; }
+  body.mobile .over-body { padding: 0 1rem; }
+
+  .callout {
+    border: 1px solid hsl(var(--border)); border-radius: calc(var(--radius) - 2px);
+    background: hsl(var(--muted) / 0.5);
+    padding: 0.6rem 0.8rem; font-size: 0.75rem; line-height: 1.1rem;
+    color: hsl(var(--muted-foreground));
+    display: flex; gap: 0.5rem; align-items: flex-start;
+  }
+  .callout svg { margin-top: 1px; }
+
+  .bpreview {
+    border: 1px dashed hsl(var(--info) / 0.6); border-radius: calc(var(--radius) - 2px);
+    background: hsl(var(--info) / 0.06);
+    padding: 0.7rem 0.85rem;
+    display: flex; flex-direction: column; gap: 0.3rem;
+  }
+  .bpreview .from { font-size: 0.75rem; color: hsl(var(--muted-foreground)); display: flex; align-items: center; gap: 0.35rem; }
+  .bpreview .subj { font-size: 0.875rem; font-weight: 600; }
+  .bpreview .bod { font-size: 0.875rem; line-height: 1.3rem; color: hsl(var(--foreground) / 0.85); }
+
+  /* split button (form C) */
+  .split { display: inline-flex; position: relative; }
+  .split .main { border-radius: calc(var(--radius) - 2px) 0 0 calc(var(--radius) - 2px); }
+  .split .arrow { border-radius: 0 calc(var(--radius) - 2px) calc(var(--radius) - 2px) 0; border-left: 1px solid hsl(var(--primary-foreground) / 0.25); width: 2rem; padding: 0; }
+  .split-menu {
+    position: absolute; right: 0; top: calc(100% + 4px); z-index: 30;
+    background: hsl(var(--popover)); color: hsl(var(--popover-foreground));
+    border: 1px solid hsl(var(--border)); border-radius: calc(var(--radius) - 2px);
+    box-shadow: 0 6px 24px hsl(var(--overlay) / 0.25);
+    display: flex; flex-direction: column; padding: 4px; min-width: 190px;
+  }
+  .split-menu button {
+    display: flex; align-items: center; gap: 0.5rem; text-align: left;
+    border: none; background: transparent; color: inherit; font: inherit; font-size: 0.875rem;
+    padding: 0.4rem 0.6rem; border-radius: calc(var(--radius) - 4px); cursor: pointer;
+  }
+  .split-menu button:hover { background: hsl(var(--accent)); }
+
+  /* ---- winner pick bits ---- */
+  .entry-grid { display: grid; gap: 0.75rem; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); }
+  body.mobile .entry-grid { grid-template-columns: 1fr 1fr; gap: 0.5rem; }
+  .entry-card {
+    border: 1px solid hsl(var(--border)); border-radius: var(--radius);
+    background: hsl(var(--card)); color: hsl(var(--card-foreground));
+    overflow: hidden; display: flex; flex-direction: column; position: relative;
+    cursor: pointer; text-align: left; font: inherit; padding: 0;
+  }
+  .entry-card:hover { border-color: hsl(var(--foreground) / 0.35); }
+  .entry-card.sel { outline: 2px solid hsl(var(--warning)); outline-offset: 1px; }
+  .entry-card.blocked { cursor: not-allowed; opacity: 0.65; }
+  .entry-card.blocked:hover { border-color: hsl(var(--border)); }
+  .entry-thumb { height: 4.6rem; display: flex; align-items: flex-end; color: white; }
+  .entry-thumb .name {
+    width: 100%; padding: 0.3rem 0.5rem;
+    background: hsl(var(--overlay) / 0.5);
+    font-size: 0.75rem; font-weight: 600; line-height: 1rem;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
+  .entry-body { padding: 0.4rem 0.5rem; display: flex; flex-direction: column; gap: 0.25rem; }
+  .entry-meta { display: flex; gap: 0.7rem; font-size: 0.7rem; color: hsl(var(--muted-foreground)); }
+  .entry-meta span { display: inline-flex; align-items: center; gap: 0.2rem; }
+  .blocked-tag {
+    position: absolute; top: 0.35rem; right: 0.35rem; z-index: 2;
+    background: hsl(var(--background) / 0.9); color: hsl(var(--muted-foreground));
+    border: 1px solid hsl(var(--border));
+    border-radius: 9999px; padding: 0.05rem 0.5rem; font-size: 0.65rem; font-weight: 600;
+  }
+
+  .jt { width: 100%; border-collapse: collapse; font-size: 0.875rem; }
+  .jt th {
+    text-align: left; font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.04em;
+    color: hsl(var(--muted-foreground)); font-weight: 600;
+    padding: 0.35rem 0.6rem; border-bottom: 1px solid hsl(var(--border));
+    white-space: nowrap;
+  }
+  .jt td { padding: 0.45rem 0.6rem; border-bottom: 1px solid hsl(var(--border) / 0.6); white-space: nowrap; }
+  .jt td.grow { white-space: normal; }
+  .jt tr.blocked td { opacity: 0.55; }
+  .jt tr.sel td { background: hsl(var(--warning) / 0.1); }
+  .jt .num { text-align: right; color: hsl(var(--muted-foreground)); font-variant-numeric: tabular-nums; }
+
+  .wizard-steps { display: flex; align-items: center; gap: 0.5rem; font-size: 0.75rem; color: hsl(var(--muted-foreground)); }
+  .wizard-steps .step { display: inline-flex; align-items: center; gap: 0.35rem; font-weight: 600; }
+  .wizard-steps .step .dot {
+    width: 1.15rem; height: 1.15rem; border-radius: 9999px;
+    display: inline-flex; align-items: center; justify-content: center;
+    background: hsl(var(--muted)); font-size: 0.7rem;
+  }
+  .wizard-steps .step.on { color: hsl(var(--foreground)); }
+  .wizard-steps .step.on .dot { background: hsl(var(--primary)); color: hsl(var(--primary-foreground)); }
+
+  .winner-hero {
+    display: flex; align-items: center; gap: 0.85rem;
+    border: 1px solid hsl(var(--warning) / 0.5); border-radius: var(--radius);
+    background: hsl(var(--warning) / 0.08); padding: 0.8rem 1rem;
+  }
+  .winner-hero .thumbmini { width: 3.4rem; height: 3.4rem; border-radius: calc(var(--radius) - 2px); flex-shrink: 0; }
+
+  /* ---- prototype control bar (deliberately not app-styled) ---- */
+  #protoBar {
+    position: fixed; left: 50%; bottom: 14px; transform: translateX(-50%); z-index: 100;
+    background: #16161d; color: #f4f4f6;
+    border: 1px solid #3a3a46; border-radius: 14px;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+    padding: 8px 12px; display: flex; align-items: center; gap: 10px; flex-wrap: wrap; justify-content: center;
+    font-size: 12px; max-width: min(96vw, 980px);
+  }
+  #protoBar .group { display: flex; align-items: center; gap: 4px; }
+  #protoBar .sep { width: 1px; height: 22px; background: #3a3a46; }
+  #protoBar button {
+    background: transparent; color: #c9c9d4; border: 1px solid transparent;
+    border-radius: 8px; padding: 4px 9px; font: inherit; cursor: pointer; white-space: nowrap;
+  }
+  #protoBar button:hover { background: #26262f; }
+  #protoBar button.on { background: #f4f4f6; color: #16161d; font-weight: 600; }
+  #protoBar .variant-label { min-width: 190px; text-align: center; font-weight: 600; color: #f4f4f6; }
+</style>
+<script>
+  document.documentElement.classList.toggle('dark',
+    window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches);
+</script>
+
+<div id="frameWrap"><div id="app"></div></div>
+<div id="protoBar"></div>
+
+<script>
+(function () {
+  'use strict';
+
+  /* ---------- icons (lucide) ---------- */
+  function ic(name, size, cls) {
+    size = size || 16;
+    var paths = {
+      shield: '<path d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z"/>',
+      trophy: '<path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6"/><path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18"/><path d="M4 22h16"/><path d="M10 14.66V17c0 .55-.47.98-.97 1.21C7.85 18.75 7 20.24 7 22"/><path d="M14 14.66V17c0 .55.47.98.97 1.21C16.15 18.75 17 20.24 17 22"/><path d="M18 2H6v7a6 6 0 0 0 12 0V2Z"/>',
+      megaphone: '<path d="m3 11 18-5v12L3 14v-3z"/><path d="M11.6 16.8a3 3 0 1 1-5.8-1.6"/>',
+      calendar: '<path d="M8 2v4"/><path d="M16 2v4"/><rect width="18" height="18" x="3" y="4" rx="2"/><path d="M3 10h18"/>',
+      clock: '<circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>',
+      plus: '<path d="M5 12h14"/><path d="M12 5v14"/>',
+      pencil: '<path d="M21.174 6.812a1 1 0 0 0-3.986-3.987L3.842 16.174a2 2 0 0 0-.5.83l-1.321 4.352a.5.5 0 0 0 .623.622l4.353-1.32a2 2 0 0 0 .83-.497z"/>',
+      x: '<path d="M18 6 6 18"/><path d="m6 6 12 12"/>',
+      check: '<path d="M20 6 9 17l-5-5"/>',
+      ban: '<circle cx="12" cy="12" r="10"/><path d="m4.9 4.9 14.2 14.2"/>',
+      alert: '<circle cx="12" cy="12" r="10"/><line x1="12" x2="12" y1="8" y2="12"/><line x1="12" x2="12.01" y1="16" y2="16"/>',
+      info: '<circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/>',
+      heart: '<path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z"/>',
+      download: '<path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" x2="12" y1="15" y2="3"/>',
+      comment: '<path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>',
+      users: '<path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/>',
+      send: '<path d="M14.536 21.686a.5.5 0 0 0 .937-.024l6.5-19a.496.496 0 0 0-.635-.635l-19 6.5a.5.5 0 0 0-.024.937l7.93 3.18a2 2 0 0 1 1.112 1.11z"/><path d="m21.854 2.147-10.94 10.939"/>',
+      eye: '<path d="M2.062 12.348a1 1 0 0 1 0-.696 10.75 10.75 0 0 1 19.876 0 1 1 0 0 1 0 .696 10.75 10.75 0 0 1-19.876 0"/><circle cx="12" cy="12" r="3"/>',
+      chevD: '<path d="m6 9 6 6 6-6"/>',
+      chevL: '<path d="m15 18-6-6 6-6"/>',
+      back: '<path d="m12 19-7-7 7-7"/><path d="M19 12H5"/>'
+    };
+    return '<svg class="' + (cls || '') + '" width="' + size + '" height="' + size + '" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' + paths[name] + '</svg>';
+  }
+
+  /* ---------- fixture data ---------- */
+  /* Status derives from timestamps per contract 03; here it's just stamped on the fixture. */
+  var EVENTS = [
+    { id: 'e1', type: 'contest', status: 'judging',
+      title: 'Summer Isles Worldbuilding Contest',
+      banner: 'Build a world among the Summer Isles — enter by Sep 1!',
+      window: 'Aug 14 – Sep 1', sub: 'Ended Sep 1 · 12 entries · no winner yet' },
+    { id: 'e2', type: 'announcement', status: 'active',
+      title: '2.1 Update Preview',
+      banner: 'The 2.1 update lands next week — see what’s coming.',
+      window: 'Aug 18 – Aug 25', sub: 'Ends Aug 25' },
+    { id: 'e3', type: 'contest', status: 'scheduled',
+      title: 'Autumn Hauntings Contest',
+      banner: 'Something stirs in the leaves. Entries open Oct 1.',
+      window: 'Oct 1 – Oct 21', sub: 'Starts Oct 1 · staff only until then' },
+    { id: 'e4', type: 'contest', status: 'ended',
+      title: 'Spring Thaw Story Jam',
+      banner: '', window: 'Mar 2 – Mar 20',
+      sub: 'Winner: The Meltwater Court by fen' },
+    { id: 'e5', type: 'announcement', status: 'ended',
+      title: 'Welcome to Community Creations',
+      banner: '', window: 'Jul 1 – Jul 8', sub: 'Ended Jul 8' },
+    { id: 'e6', type: 'announcement', status: 'cancelled',
+      title: 'Midsummer Screenshot Week',
+      banner: '', window: 'Jul 18 – Jul 25', sub: 'Cancelled Jul 20' }
+  ];
+  var STATUS_META = {
+    active:    { label: 'Active',    cls: 'badge-active' },
+    judging:   { label: 'Judging',   cls: 'badge-judging' },
+    scheduled: { label: 'Scheduled', cls: 'badge-scheduled' },
+    ended:     { label: 'Ended',     cls: 'badge-ended' },
+    cancelled: { label: 'Cancelled', cls: 'badge-cancelled' }
+  };
+
+  var HUES = [200, 265, 20, 150, 330, 45, 180, 90, 240, 310, 60, 120];
+  /* [name, author, likes, downloads, comments, blocked-reason] — 'you' = picker-authored, per 04. */
+  var ENTRIES = [
+    ['Pearl of the Undertow', 'mirelle', 41, 128, 9, null],
+    ['Isle of Standing Rain', 'veya', 27, 90, 6, null],
+    ['Lantern Reef', 'suneater', 22, 73, 7, null],
+    ['Sunken Bell Atoll', 'quietfen', 19, 66, 5, null],
+    ['Wrecklight Cays', 'anemone', 17, 58, 3, null],
+    ['The Brine Orchard', 'oleander', 15, 51, 4, null],
+    ['Salt-Bright Reaches', 'you', 12, 44, 3, 'Your entry'],
+    ['The Drift Market', 'perch', 11, 40, 2, null],
+    ['Ninth Wave Shoals', 'tam', 9, 37, 0, 'Quarantined'],
+    ['The Gull Roads', 'harrow', 8, 31, 2, null],
+    ['Hollow Lagoon', 'greel', 6, 19, 1, null],
+    ['Cormorant Keep', 'brack', 5, 22, 1, null]
+  ];
+
+  /* ---------- state ---------- */
+  var state = {
+    screen: 'list',                        // list | form | winner
+    variant: { list: 'B', form: 'A', winner: 'A' },   // defaults = picked variants
+    role: 'admin',                         // admin | staff
+    mdSel: 'e1',                           // list C selected event
+    formType: 'contest',                   // form A type toggle
+    composerEvent: true,                   // form B "also show as event" switch
+    splitOpen: false,                      // form C split-button menu
+    winSel: null,                          // selected entry index
+    winStep: 1,                            // winner B wizard step
+    confirmOpen: false,                    // winner C confirm overlay
+    picked: false                          // winner chosen (all winner variants)
+  };
+  var VARIANT_NAMES = {
+    list:   { A: 'Broadcasts twin (flat list)', B: 'Grouped by state ✓', C: 'Master-detail' },
+    form:   { A: 'One event form, type tabs ✓', B: 'Announcements ride the composer', C: 'Two sibling forms' },
+    winner: { A: 'Gallery dialog ✓', B: 'Two-step wizard', C: 'Judging table in-tab' }
+  };
+  var SCREENS = [
+    ['list', 'Events Tab'],
+    ['form', 'Create Form'],
+    ['winner', 'Winner Pick']
+  ];
+
+  var isAdmin = function () { return state.role === 'admin'; };
+
+  /* ---------- shared fragments ---------- */
+  function badge(status) {
+    var m = STATUS_META[status];
+    return '<span class="badge ' + m.cls + '">' + m.label + '</span>';
+  }
+  function typeBadge(type) {
+    return '<span class="badge badge-type">' + ic(type === 'contest' ? 'trophy' : 'megaphone', 11) + (type === 'contest' ? 'Contest' : 'Announcement') + '</span>';
+  }
+
+  function adminChrome(activeTab, inner) {
+    var admin = isAdmin();
+    var tabs = admin
+      ? [['users', 'Users'], ['broadcasts', 'Broadcasts'], ['policies', 'Policies'], ['events', 'Events'], ['feedback', 'Feedback'], ['log', 'Log']]
+      : [['users', 'Users'], ['events', 'Events'], ['feedback', 'Feedback'], ['log', 'Log']];
+    var strip = tabs.map(function (t) {
+      return '<div class="tab' + (t[0] === activeTab ? ' active' : '') + '">' + t[1] + '</div>';
+    }).join('');
+    return '<div class="backdrop"><div class="admin-dialog">' +
+      '<div class="admin-title">' + ic('shield', 16) + ' Admin Panel</div>' +
+      '<div class="tabs-list" style="grid-template-columns: repeat(' + tabs.length + ', 1fr)">' + strip + '</div>' +
+      '<div class="admin-body">' + inner + '</div>' +
+    '</div></div>';
+  }
+
+  function rowActions(ev) {
+    var a = [];
+    var admin = isAdmin();
+    if (ev.status === 'judging') {
+      a.push('<button class="btn btn-xs btn-primary" data-act="goWinner">' + ic('trophy', 12) + 'Pick Winner</button>');
+    }
+    if (admin && (ev.status === 'active' || ev.status === 'judging' || ev.status === 'scheduled')) {
+      a.push('<button class="btn btn-xs btn-outline">' + ic('pencil', 12) + 'Edit</button>');
+    }
+    if (admin && (ev.status === 'active' || ev.status === 'judging')) {
+      a.push('<button class="btn btn-xs btn-destructive">' + ic('ban', 12) + 'Cancel</button>');
+    }
+    if (admin && ev.status === 'scheduled') {
+      a.push('<button class="btn btn-xs btn-destructive">' + ic('x', 12) + 'Delete</button>');
+    }
+    return a.join('');
+  }
+
+  function eventRow(ev) {
+    return '<div class="event-row' + (ev.status === 'cancelled' ? ' cancelled' : '') + '">' +
+      '<div class="grow">' +
+        '<div class="name">' + ev.title + '</div>' +
+        '<div class="sub">' + ev.window + ' · ' + ev.sub + '</div>' +
+      '</div>' +
+      typeBadge(ev.type) + badge(ev.status) +
+      '<div class="actions">' + rowActions(ev) + '</div>' +
+    '</div>';
+  }
+
+  function newEventButton() {
+    if (!isAdmin()) return '';
+    if (state.variant.form === 'C') {
+      return '<div class="split">' +
+        '<button class="btn btn-sm btn-primary main" data-act="goForm">' + ic('trophy', 14) + 'New Contest</button>' +
+        '<button class="btn btn-sm btn-primary arrow" data-act="splitToggle" aria-label="More event types">' + ic('chevD', 14) + '</button>' +
+        (state.splitOpen
+          ? '<div class="split-menu">' +
+              '<button data-act="goForm">' + ic('trophy', 14) + 'New Contest</button>' +
+              '<button data-act="goForm">' + ic('megaphone', 14) + 'New Announcement</button>' +
+            '</div>'
+          : '') +
+      '</div>';
+    }
+    return '<button class="btn btn-sm btn-primary" data-act="goForm">' + ic('plus', 14) + 'New Event</button>';
+  }
+
+  function listHelper() {
+    return isAdmin()
+      ? 'Timed events shown to every player. Starting one posts its pinned announcement automatically.'
+      : 'Timed events shown to every player. Moderators can pick contest winners; creating and editing events is an administrator’s.';
+  }
+
+  /* ---------- screen: events list ---------- */
+  function listA() {
+    var rows = EVENTS.filter(function (ev) { return isAdmin() || ev.status !== 'cancelled'; })
+      .map(eventRow).join('');
+    return adminChrome('events',
+      '<div style="padding: 1rem 0 0.5rem; display:flex; align-items:center; justify-content:space-between; gap:1rem;">' +
+        '<p class="t-label muted" style="flex:1">' + listHelper() + '</p>' + newEventButton() +
+      '</div>' + rows);
+  }
+
+  function listB() {
+    var now = EVENTS.filter(function (ev) { return ev.status === 'active' || ev.status === 'judging'; });
+    var sched = EVENTS.filter(function (ev) { return ev.status === 'scheduled'; });
+    var past = EVENTS.filter(function (ev) { return ev.status === 'ended' || (isAdmin() && ev.status === 'cancelled'); });
+    var nowCards = now.map(function (ev) {
+      var stats = ev.type === 'contest'
+        ? '<span>' + ic('users', 12) + '12 entries</span><span>' + ic('clock', 12) + 'Ended Sep 1</span><span>' + ic('trophy', 12) + 'No winner yet</span>'
+        : '<span>' + ic('clock', 12) + 'Ends Aug 25</span><span>' + ic('eye', 12) + 'Banner live</span>';
+      return '<div class="active-card">' +
+        '<div class="toprow">' +
+          '<span class="t-label fw-semi" style="flex:1; min-width: 10rem;">' + ev.title + '</span>' +
+          typeBadge(ev.type) + badge(ev.status) +
+        '</div>' +
+        '<div class="stats">' + stats + '</div>' +
+        '<div style="display:flex; gap:0.35rem; flex-wrap:wrap;">' + rowActions(ev) + '</div>' +
+      '</div>';
+    }).join('');
+    return adminChrome('events',
+      '<div style="padding: 1rem 0 0.25rem; display:flex; align-items:center; justify-content:space-between; gap:1rem;">' +
+        '<p class="t-label muted" style="flex:1">' + listHelper() + '</p>' + newEventButton() +
+      '</div>' +
+      '<div class="section-h">' + ic('clock', 12) + 'Happening Now</div>' + nowCards +
+      '<div class="section-h">' + ic('calendar', 12) + 'Scheduled</div>' + sched.map(eventRow).join('') +
+      '<div class="section-h">' + ic('check', 12) + 'Past</div>' + past.map(eventRow).join(''));
+  }
+
+  function listC() {
+    var visible = EVENTS.filter(function (ev) { return isAdmin() || ev.status !== 'cancelled'; });
+    var sel = EVENTS.filter(function (ev) { return ev.id === state.mdSel; })[0] || visible[0];
+    var items = visible.map(function (ev) {
+      return '<button class="md-item' + (ev.id === sel.id ? ' sel' : '') + (ev.status === 'cancelled' ? ' cancelled' : '') + '" data-md="' + ev.id + '">' +
+        '<span class="name">' + ev.title + '</span>' +
+        '<span style="display:flex; gap:0.3rem;">' + typeBadge(ev.type) + badge(ev.status) + '</span>' +
+      '</button>';
+    }).join('');
+    var detail =
+      '<div style="display:flex; align-items:center; gap:0.6rem; flex-wrap:wrap;">' +
+        '<span class="t-title fw-semi" style="flex:1; min-width: 10rem;">' + sel.title + '</span>' +
+        typeBadge(sel.type) + badge(sel.status) +
+      '</div>' +
+      '<div class="kv"><span class="k">Window</span><span class="v">' + sel.window + ' · ' + sel.sub + '</span></div>' +
+      (sel.banner ? '<div class="kv"><span class="k">Banner</span><span class="v">' + sel.banner + '</span></div>' : '') +
+      '<div class="kv"><span class="k">Modal Body</span><span class="v muted">Lorem body text shown in the acknowledge modal when the event starts…</span></div>' +
+      (sel.type === 'contest'
+        ? '<div class="kv"><span class="k">Rules</span><span class="v muted">One entry per creator · editable until the deadline · staff pick the winner…</span></div>'
+        : '') +
+      '<div style="display:flex; gap:0.4rem; flex-wrap:wrap; margin-top:auto;">' + rowActions(sel) + '</div>';
+    return adminChrome('events',
+      '<div style="display:flex; flex-direction:column; height:100%; padding-top:1rem; gap:0.75rem;">' +
+        '<div style="display:flex; align-items:center; justify-content:space-between; gap:1rem;">' +
+          '<p class="t-label muted" style="flex:1">' + listHelper() + '</p>' + newEventButton() +
+        '</div>' +
+        '<div class="md-wrap" style="flex:1; min-height:0;"><div class="md-list">' + items + '</div>' +
+        '<div class="md-detail">' + detail + '</div></div>' +
+      '</div>');
+  }
+
+  /* ---------- screen: create form ---------- */
+  function autoBroadcastCallout() {
+    return '<div class="callout">' + ic('megaphone', 13) +
+      '<span>Starting posts a pinned announcement to everyone automatically, from the event’s title and banner. You can polish its wording afterward under Broadcasts.</span></div>';
+  }
+
+  function windowFields() {
+    return '<div class="field-row">' +
+      '<div class="field"><label>Starts</label><input class="input" value="2026-10-01 12:00" readonly>' +
+        '<span class="hint">Locked once the event starts.</span></div>' +
+      '<div class="field"><label>Ends</label><input class="input" value="2026-10-21 12:00" readonly></div>' +
+    '</div>';
+  }
+
+  function formA() {
+    var isContest = state.formType === 'contest';
+    var form =
+      '<div class="over"><div class="over-dialog">' +
+        '<div class="over-head"><div class="t-title fw-semi">New Event</div>' +
+          '<p class="t-meta muted" style="margin-top:2px;">A timed banner and announcement every player sees.</p></div>' +
+        '<div class="over-body">' +
+          /* Type picker formatted like the Feedback tab's sub-tabs: full-width two-column strip. */
+          '<div class="tabs-list" style="grid-template-columns: 1fr 1fr;">' +
+            '<button class="tab' + (isContest ? ' active' : '') + '" style="cursor:pointer;" data-act="ftype" data-v="contest">' + ic('trophy', 13) + ' Contest</button>' +
+            '<button class="tab' + (!isContest ? ' active' : '') + '" style="cursor:pointer;" data-act="ftype" data-v="announcement">' + ic('megaphone', 13) + ' Announcement</button>' +
+          '</div>' +
+          '<div class="field"><label>Title</label><input class="input" value="' + (isContest ? 'Autumn Hauntings Contest' : '2.1 Update Preview') + '" readonly></div>' +
+          '<div class="field"><label>Banner Text</label><input class="input" value="' + (isContest ? 'Something stirs in the leaves. Entries open Oct 1.' : 'The 2.1 update lands next week — see what’s coming.') + '" readonly>' +
+            '<span class="hint">One line, shown on the main menu while the event runs.</span></div>' +
+          '<div class="field"><label>Details</label><textarea class="textarea" readonly>Shown in the announcement players acknowledge when the event begins.</textarea></div>' +
+          (isContest
+            ? '<div class="field"><label>Rules</label><textarea class="textarea" readonly>One entry per creator, submitted at publish. Entries lock at the deadline until a winner is picked.</textarea>' +
+              '<span class="hint">Shown on the contest tab. Only contests have rules.</span></div>'
+            : '') +
+          windowFields() +
+          autoBroadcastCallout() +
+        '</div>' +
+        '<div class="over-foot"><button class="btn btn-outline">Cancel</button>' +
+          '<button class="btn btn-primary">' + ic('plus', 14) + 'Create Event</button></div>' +
+      '</div></div>';
+    return adminChrome('events', '<p class="t-label muted" style="padding-top:1rem;">' + listHelper() + '</p>') + form;
+  }
+
+  function formB() {
+    var on = state.composerEvent;
+    var form =
+      '<div class="over"><div class="over-dialog">' +
+        '<div class="over-head"><div class="t-title fw-semi">New Broadcast</div>' +
+          '<p class="t-meta muted" style="margin-top:2px;">To everyone.</p></div>' +
+        '<div class="over-body">' +
+          '<div class="field"><label>Subject</label><input class="input" value="2.1 Update Preview" readonly></div>' +
+          '<div class="field"><label>Message</label><textarea class="textarea" readonly>The 2.1 update lands next week. New editor tools, faster narration, and the community contest calendar.</textarea></div>' +
+          '<div class="field-row">' +
+            '<div class="field"><label>Severity</label><div class="seg">' +
+              '<button class="on">Info</button><button>Warning</button><button>Urgent</button></div></div>' +
+            '<div class="field"><label>Send As</label><div class="seg">' +
+              '<button class="on">Formamorph Team</button><button>admin</button></div></div>' +
+          '</div>' +
+          '<div style="border:1px solid hsl(var(--border)); border-radius: calc(var(--radius) - 2px); padding: 0.7rem 0.85rem; display:flex; flex-direction:column; gap:0.7rem;">' +
+            '<div style="display:flex; align-items:center; gap:0.6rem; cursor:pointer;" data-act="composerEvent">' +
+              '<div class="switch' + (on ? ' on' : '') + '"></div>' +
+              '<div><div class="t-label fw-med">Also Show as a Timed Event</div>' +
+              '<div class="t-meta muted">Adds a main-menu banner for the window below, pinned until it ends.</div></div>' +
+            '</div>' +
+            (on
+              ? '<div class="field"><label>Banner Text</label><input class="input" value="The 2.1 update lands next week — see what’s coming." readonly></div>' + windowFields()
+              : '') +
+          '</div>' +
+          '<div class="callout">' + ic('info', 13) +
+            '<span>Contests are created from the Events tab — this switch only covers plain announcements.</span></div>' +
+        '</div>' +
+        '<div class="over-foot"><button class="btn btn-outline">Cancel</button>' +
+          '<button class="btn btn-primary">' + ic('send', 14) + 'Send</button></div>' +
+      '</div></div>';
+    return adminChrome('broadcasts',
+      '<div style="padding: 1rem 0 0.5rem; display:flex; align-items:center; justify-content:space-between; gap:1rem;">' +
+        '<p class="t-label muted" style="flex:1">Messages sent to every account. Pinned ones also reach accounts created later.</p>' +
+        '<button class="btn btn-sm btn-primary">' + ic('megaphone', 14) + 'New Broadcast</button>' +
+      '</div>') + form;
+  }
+
+  function formC() {
+    var form =
+      '<div class="over"><div class="over-dialog">' +
+        '<div class="over-head"><div class="t-title fw-semi" style="display:flex; align-items:center; gap:0.5rem;">' + ic('megaphone', 16) + 'New Announcement</div>' +
+          '<p class="t-meta muted" style="margin-top:2px;">A banner and one-time notice for every player. No entries, no rules.</p></div>' +
+        '<div class="over-body">' +
+          '<div class="field"><label>Title</label><input class="input" value="2.1 Update Preview" readonly></div>' +
+          '<div class="field"><label>Banner Text</label><input class="input" value="The 2.1 update lands next week — see what’s coming." readonly></div>' +
+          '<div class="field"><label>Details</label><textarea class="textarea" readonly>New editor tools, faster narration, and the community contest calendar.</textarea></div>' +
+          windowFields() +
+          autoBroadcastCallout() +
+        '</div>' +
+        '<div class="over-foot"><button class="btn btn-outline">Cancel</button>' +
+          '<button class="btn btn-primary">' + ic('plus', 14) + 'Create Announcement</button></div>' +
+      '</div></div>';
+    return adminChrome('events',
+      '<div style="padding: 1rem 0 0.5rem; display:flex; align-items:center; justify-content:space-between; gap:1rem;">' +
+        '<p class="t-label muted" style="flex:1">' + listHelper() + '</p>' +
+        '<div class="split">' +
+          '<button class="btn btn-sm btn-primary main">' + ic('trophy', 14) + 'New Contest</button>' +
+          '<button class="btn btn-sm btn-primary arrow">' + ic('chevD', 14) + '</button>' +
+        '</div>' +
+      '</div>' +
+      '<p class="t-meta muted">(The split button’s menu offers New Announcement — this slim form is what it opens. The contest form is variant A’s, minus the type picker.)</p>') + form;
+  }
+
+  /* ---------- screen: winner pick ---------- */
+  function bPreview(name, author) {
+    return '<div class="bpreview">' +
+      '<div class="from">' + ic('megaphone', 12) + 'Will be sent to everyone · from Formamorph Team · dismissible</div>' +
+      '<div class="subj">🏆 Winner — Summer Isles Worldbuilding Contest</div>' +
+      '<div class="bod">The winning world is “' + name + '” by ' + author + '. Congratulations — and thank you to all 12 entrants! The winner now wears its badge in Community Creations.</div>' +
+      '<div class="from">' + ic('pencil', 12) + 'You can edit the wording afterward under Broadcasts.</div>' +
+    '</div>';
+  }
+
+  function pickedView(closeLabel) {
+    var e = ENTRIES[state.winSel === null ? 0 : state.winSel];
+    return '<div style="display:flex; flex-direction:column; gap:0.85rem; padding: 0.5rem 0 1rem;">' +
+      '<div class="winner-hero">' +
+        '<div class="thumbmini" style="background:linear-gradient(160deg,hsl(' + HUES[state.winSel % HUES.length] + ' 45% 45%),hsl(' + (HUES[state.winSel % HUES.length] + 40) + ' 55% 25%))"></div>' +
+        '<div style="flex:1; min-width:0;">' +
+          '<div class="t-label fw-semi" style="display:flex; align-items:center; gap:0.4rem;">' + ic('trophy', 14) + e[0] + '</div>' +
+          '<div class="t-meta muted">by ' + e[1] + ' · winner recorded · announcement sent</div>' +
+        '</div>' +
+      '</div>' +
+      '<p class="t-meta muted">The contest is now archived: the banner is gone, entries unlocked, and the winner wears its badge in Community Creations.</p>' +
+      '<div><button class="btn btn-sm btn-outline" data-act="resetPick">' + ic('back', 13) + closeLabel + '</button></div>' +
+    '</div>';
+  }
+
+  function winnerA() {
+    if (state.picked) return adminChrome('events', pickedView('Reset Demo'));
+    var sel = state.winSel;
+    var cards = ENTRIES.map(function (e, i) {
+      var blocked = !!e[5];
+      return '<button class="entry-card' + (blocked ? ' blocked' : '') + (sel === i && !blocked ? ' sel' : '') + '"' +
+        (blocked ? '' : ' data-pick="' + i + '"') + '>' +
+        (blocked ? '<span class="blocked-tag">' + e[5] + '</span>' : '') +
+        '<div class="entry-thumb" style="background:linear-gradient(160deg,hsl(' + HUES[i % HUES.length] + ' 45% 45%),hsl(' + (HUES[i % HUES.length] + 40) + ' 55% 25%))">' +
+          '<div class="name">' + e[0] + '</div></div>' +
+        '<div class="entry-body">' +
+          '<div class="t-meta muted">by ' + e[1] + '</div>' +
+          '<div class="entry-meta"><span>' + ic('heart', 11) + e[2] + '</span><span>' + ic('download', 11) + e[3] + '</span><span>' + ic('comment', 11) + e[4] + '</span></div>' +
+        '</div></button>';
+    }).join('');
+    var dialog =
+      '<div class="over"><div class="over-dialog wide">' +
+        '<div class="over-head"><div class="t-title fw-semi" style="display:flex; align-items:center; gap:0.5rem;">' + ic('trophy', 16) + 'Pick Winner — Summer Isles</div>' +
+          '<p class="t-meta muted" style="margin-top:2px;">12 entries. Your own entry and quarantined worlds can’t be picked.</p></div>' +
+        '<div class="over-body">' +
+          '<div class="entry-grid">' + cards + '</div>' +
+          (sel !== null ? bPreview(ENTRIES[sel][0], ENTRIES[sel][1]) : '') +
+        '</div>' +
+        '<div class="over-foot">' +
+          '<button class="btn btn-outline">Cancel</button>' +
+          '<button class="btn btn-primary" ' + (sel === null ? 'disabled' : 'data-act="confirmPick"') + '>' + ic('trophy', 14) + 'Announce Winner</button>' +
+        '</div>' +
+      '</div></div>';
+    return adminChrome('events', '<p class="t-label muted" style="padding-top:1rem;">' + listHelper() + '</p>') + dialog;
+  }
+
+  function winnerB() {
+    if (state.picked) return adminChrome('events', pickedView('Reset Demo'));
+    var sel = state.winSel;
+    var steps =
+      '<div class="wizard-steps">' +
+        '<span class="step' + (state.winStep === 1 ? ' on' : '') + '"><span class="dot">1</span>Choose Entry</span>' +
+        ic('chevD', 12, '') +
+        '<span class="step' + (state.winStep === 2 ? ' on' : '') + '"><span class="dot">2</span>Review &amp; Announce</span>' +
+      '</div>';
+    var body, foot;
+    if (state.winStep === 1) {
+      var rows = ENTRIES.map(function (e, i) {
+        var blocked = !!e[5];
+        return '<tr class="' + (blocked ? 'blocked' : '') + (sel === i && !blocked ? ' sel' : '') + '"' + (blocked ? '' : ' data-pick="' + i + '" style="cursor:pointer;"') + '>' +
+          '<td><span class="radio' + (sel === i && !blocked ? ' checked' : '') + '"></span></td>' +
+          '<td class="grow"><span class="fw-med">' + e[0] + '</span>' + (blocked ? ' <span class="t-meta muted">— ' + e[5] + '</span>' : '') + '</td>' +
+          '<td>' + e[1] + '</td>' +
+          '<td class="num">' + e[2] + '</td><td class="num">' + e[3] + '</td><td class="num">' + e[4] + '</td>' +
+        '</tr>';
+      }).join('');
+      body = '<table class="jt"><thead><tr><th></th><th>Entry</th><th>Author</th><th>♥</th><th>⤓</th><th>💬</th></tr></thead><tbody>' + rows + '</tbody></table>';
+      foot = '<button class="btn btn-outline">Cancel</button>' +
+        '<button class="btn btn-primary" ' + (sel === null ? 'disabled' : 'data-act="wizNext"') + '>Next</button>';
+    } else {
+      var e = ENTRIES[sel];
+      body =
+        '<div class="winner-hero">' +
+          '<div class="thumbmini" style="background:linear-gradient(160deg,hsl(' + HUES[sel % HUES.length] + ' 45% 45%),hsl(' + (HUES[sel % HUES.length] + 40) + ' 55% 25%))"></div>' +
+          '<div style="flex:1; min-width:0;">' +
+            '<div class="t-label fw-semi">' + e[0] + '</div>' +
+            '<div class="t-meta muted">by ' + e[1] + ' · ' + e[2] + ' likes · ' + e[3] + ' downloads</div>' +
+          '</div>' +
+        '</div>' + bPreview(e[0], e[1]) +
+        '<div class="callout">' + ic('alert', 13) + '<span>This announces to everyone and can’t be re-picked. The record survives even if the world is later deleted.</span></div>';
+      foot = '<button class="btn btn-outline" data-act="wizBack">' + ic('chevL', 13) + 'Back</button>' +
+        '<button class="btn btn-primary" data-act="confirmPick">' + ic('trophy', 14) + 'Announce Winner</button>';
+    }
+    var dialog =
+      '<div class="over"><div class="over-dialog wide">' +
+        '<div class="over-head"><div class="t-title fw-semi" style="display:flex; align-items:center; gap:0.5rem;">' + ic('trophy', 16) + 'Pick Winner — Summer Isles</div>' +
+          '<div style="margin-top:0.5rem;">' + steps + '</div></div>' +
+        '<div class="over-body">' + body + '</div>' +
+        '<div class="over-foot">' + foot + '</div>' +
+      '</div></div>';
+    return adminChrome('events', '<p class="t-label muted" style="padding-top:1rem;">' + listHelper() + '</p>') + dialog;
+  }
+
+  function winnerC() {
+    if (state.picked) return adminChrome('events', pickedView('Reset Demo'));
+    var sel = state.winSel;
+    var rows = ENTRIES.map(function (e, i) {
+      var blocked = !!e[5];
+      return '<tr class="' + (blocked ? 'blocked' : '') + '">' +
+        '<td class="grow"><span class="fw-med">' + e[0] + '</span>' + (blocked ? ' <span class="t-meta muted">— ' + e[5] + '</span>' : '') + '</td>' +
+        '<td>' + e[1] + '</td>' +
+        '<td class="num">' + e[2] + '</td><td class="num">' + e[3] + '</td>' +
+        '<td>' + (blocked ? '' : '<button class="btn btn-xs btn-outline" data-pickc="' + i + '">' + ic('trophy', 11) + 'Pick</button>') + '</td>' +
+      '</tr>';
+    }).join('');
+    var confirm = '';
+    if (state.confirmOpen && sel !== null) {
+      var e = ENTRIES[sel];
+      confirm =
+        '<div class="over"><div class="over-dialog">' +
+          '<div class="over-head"><div class="t-title fw-semi">Announce “' + e[0] + '” as Winner?</div></div>' +
+          '<div class="over-body">' + bPreview(e[0], e[1]) + '</div>' +
+          '<div class="over-foot">' +
+            '<button class="btn btn-outline" data-act="closeConfirm">Cancel</button>' +
+            '<button class="btn btn-primary" data-act="confirmPick">' + ic('trophy', 14) + 'Announce Winner</button>' +
+          '</div>' +
+        '</div></div>';
+    }
+    return adminChrome('events',
+      '<div style="padding-top:1rem; display:flex; flex-direction:column; gap:0.75rem;">' +
+        '<div class="active-card">' +
+          '<div class="toprow">' +
+            '<span class="t-label fw-semi" style="flex:1; min-width:10rem;">Summer Isles Worldbuilding Contest</span>' +
+            typeBadge('contest') + badge('judging') +
+          '</div>' +
+          '<div class="stats"><span>' + ic('clock', 12) + 'Ended Sep 1</span><span>' + ic('users', 12) + '12 entries, sorted by likes</span></div>' +
+        '</div>' +
+        '<table class="jt"><thead><tr><th>Entry</th><th>Author</th><th>♥</th><th>⤓</th><th></th></tr></thead><tbody>' + rows + '</tbody></table>' +
+      '</div>') + confirm;
+  }
+
+  /* ---------- proto bar ---------- */
+  function protoBar() {
+    var bar = document.getElementById('protoBar');
+    var screenBtns = SCREENS.map(function (s) {
+      return '<button data-screen="' + s[0] + '" class="' + (state.screen === s[0] ? 'on' : '') + '">' + s[1] + '</button>';
+    }).join('');
+    var v = state.variant[state.screen];
+    var sub = '';
+    if (state.screen !== 'form') {
+      sub = '<div class="sep"></div><div class="group">' +
+        ['admin', 'staff'].map(function (r) {
+          return '<button data-role="' + r + '" class="' + (state.role === r ? 'on' : '') + '">' + r + '</button>';
+        }).join('') + '</div>';
+    }
+    bar.innerHTML =
+      '<div class="group">' + screenBtns + '</div>' +
+      '<div class="sep"></div>' +
+      '<div class="group">' +
+        '<button data-cycle="-1" aria-label="Previous variant">←</button>' +
+        '<span class="variant-label">' + v + ' — ' + VARIANT_NAMES[state.screen][v] + '</span>' +
+        '<button data-cycle="1" aria-label="Next variant">→</button>' +
+      '</div>' + sub +
+      '<div class="sep"></div>' +
+      '<div class="group">' +
+        '<button data-toggle="theme">' + (document.documentElement.classList.contains('dark') ? 'Light' : 'Dark') + '</button>' +
+        '<button data-toggle="mobile" class="' + (document.body.classList.contains('mobile') ? 'on' : '') + '">Mobile</button>' +
+      '</div>';
+  }
+
+  /* ---------- render + events ---------- */
+  function render() {
+    var app = document.getElementById('app');
+    var v = state.variant[state.screen];
+    if (state.screen === 'list') app.innerHTML = v === 'A' ? listA() : v === 'B' ? listB() : listC();
+    else if (state.screen === 'form') app.innerHTML = v === 'A' ? formA() : v === 'B' ? formB() : formC();
+    else app.innerHTML = v === 'A' ? winnerA() : v === 'B' ? winnerB() : winnerC();
+    protoBar();
+  }
+
+  document.getElementById('protoBar').addEventListener('click', function (ev) {
+    var b = ev.target.closest('button');
+    if (!b) return;
+    if (b.dataset.screen) state.screen = b.dataset.screen;
+    else if (b.dataset.cycle) {
+      var keys = ['A', 'B', 'C'];
+      var cur = keys.indexOf(state.variant[state.screen]);
+      state.variant[state.screen] = keys[(cur + Number(b.dataset.cycle) + 3) % 3];
+    }
+    else if (b.dataset.role) state.role = b.dataset.role;
+    else if (b.dataset.toggle === 'theme') document.documentElement.classList.toggle('dark');
+    else if (b.dataset.toggle === 'mobile') document.body.classList.toggle('mobile');
+    render();
+  });
+
+  document.getElementById('app').addEventListener('click', function (ev) {
+    var pick = ev.target.closest('[data-pick]');
+    if (pick) { state.winSel = Number(pick.dataset.pick); render(); return; }
+    var pickc = ev.target.closest('[data-pickc]');
+    if (pickc) { state.winSel = Number(pickc.dataset.pickc); state.confirmOpen = true; render(); return; }
+    var md = ev.target.closest('[data-md]');
+    if (md) { state.mdSel = md.dataset.md; render(); return; }
+    var el = ev.target.closest('[data-act]');
+    if (!el) { if (state.splitOpen) { state.splitOpen = false; render(); } return; }
+    var act = el.dataset.act;
+    if (act === 'goWinner') { state.screen = 'winner'; }
+    else if (act === 'goForm') { state.screen = 'form'; state.splitOpen = false; }
+    else if (act === 'splitToggle') { state.splitOpen = !state.splitOpen; }
+    else if (act === 'ftype') { state.formType = el.dataset.v; }
+    else if (act === 'composerEvent') { state.composerEvent = !state.composerEvent; }
+    else if (act === 'wizNext') { state.winStep = 2; }
+    else if (act === 'wizBack') { state.winStep = 1; }
+    else if (act === 'confirmPick') { state.picked = true; state.confirmOpen = false; }
+    else if (act === 'closeConfirm') { state.confirmOpen = false; }
+    else if (act === 'resetPick') { state.picked = false; state.winSel = null; state.winStep = 1; state.confirmOpen = false; state.screen = 'list'; }
+    render();
+  });
+
+  document.addEventListener('keydown', function (ev) {
+    if (/INPUT|TEXTAREA/.test(ev.target.tagName) || ev.target.isContentEditable) return;
+    if (ev.key === 'ArrowLeft' || ev.key === 'ArrowRight') {
+      var keys = ['A', 'B', 'C'];
+      var cur = keys.indexOf(state.variant[state.screen]);
+      state.variant[state.screen] = keys[(cur + (ev.key === 'ArrowRight' ? 1 : -1) + 3) % 3];
+      render();
+    }
+  });
+
+  render();
+})();
+</script>

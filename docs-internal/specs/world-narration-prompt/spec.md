@@ -1,6 +1,7 @@
 # Per-World Narration Prompt — Spec
 
-**Status: SPECED (2026-08-05), not yet built.** First prerequisite of the parked chat world (see `chat-world-st-parity.md`). All decisions below are user-confirmed.
+Status: ready-for-agent
+Status note: (2026-08-05), not yet built. First prerequisite of the parked chat world (see chat-world-st-parity.md). All decisions below are user-confirmed.
 
 ## Goal
 

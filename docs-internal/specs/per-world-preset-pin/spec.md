@@ -1,6 +1,7 @@
 # Per-World Prompt Preset Pin — Spec
 
-**Status: SPECED (2026-08-06), not yet built.** Follows the per-world narration prompt (`world-narration-prompt-spec.md`, shipped). All decisions below are user-confirmed.
+Status: ready-for-agent
+Status note: (2026-08-06), not yet built. Follows the per-world narration prompt (world-narration-prompt-spec.md, shipped). All decisions below are user-confirmed.
 
 ## Goal
 
