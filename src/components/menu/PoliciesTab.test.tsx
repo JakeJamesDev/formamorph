@@ -16,10 +16,11 @@ const policy = (over: Partial<AdminPolicy> = {}): AdminPolicy => ({
   ...over,
 });
 
-const stubPolicies = (over: { uploadGate?: AdminPolicy; tagNotice?: AdminPolicy } = {}) =>
+const stubPolicies = (over: { uploadGate?: AdminPolicy; tagNotice?: AdminPolicy; privacyPolicy?: AdminPolicy } = {}) =>
   vi.spyOn(PolicyService, 'fetchForAdmin').mockResolvedValue({
     uploadGate: over.uploadGate ?? policy(),
     tagNotice: over.tagNotice ?? policy({ title: 'Tagged Content', tags: ['isekai'] }),
+    privacyPolicy: over.privacyPolicy ?? policy({ title: 'Privacy Policy' }),
   });
 
 /** Radix tab triggers activate on mousedown, not on a bare click. */
@@ -33,6 +34,63 @@ beforeEach(() => {
 afterEach(() => {
   cleanup();
   vi.restoreAllMocks();
+});
+
+describe('the Privacy Policy editor', () => {
+  it('has its own tab, its own text, and no tag field', async () => {
+    stubPolicies();
+
+    render(<PoliciesTab active />);
+    await screen.findByRole('heading', { name: 'Upload Gate' });
+    selectTab('Privacy Policy');
+
+    expect(await screen.findByLabelText('Privacy Policy body')).toBeTruthy();
+    // Only the tag notice is matched against a publish's tags; this policy applies to everyone.
+    expect(screen.queryByLabelText('Tags')).toBeNull();
+  });
+
+  it('saves against its own policy id', async () => {
+    stubPolicies();
+    const save = vi.spyOn(PolicyService, 'save').mockResolvedValue(policy({ title: 'Privacy Policy' }));
+
+    render(<PoliciesTab active />);
+    await screen.findByRole('heading', { name: 'Upload Gate' });
+    selectTab('Privacy Policy');
+    await screen.findByLabelText('Privacy Policy body');
+    fireEvent.click(screen.getByRole('button', { name: /Save/ }));
+
+    await waitFor(() => expect(save).toHaveBeenCalledWith('privacy_policy', expect.anything()));
+  });
+
+  it('keeps its re-accept box apart from the upload gate’s', async () => {
+    stubPolicies();
+    const save = vi.spyOn(PolicyService, 'save').mockResolvedValue(policy({ title: 'Privacy Policy' }));
+
+    render(<PoliciesTab active />);
+    await screen.findByRole('heading', { name: 'Upload Gate' });
+
+    // Tick the gate's box, then save the other policy: one shared flag would re-prompt everyone for a
+    // policy whose wording nobody touched.
+    fireEvent.click(screen.getByRole('checkbox', { name: /Require everyone to accept again/ }));
+    selectTab('Privacy Policy');
+    await screen.findByLabelText('Privacy Policy body');
+    fireEvent.click(screen.getByRole('button', { name: /Save/ }));
+
+    await waitFor(() => expect(save).toHaveBeenCalled());
+    expect(save).toHaveBeenCalledWith('privacy_policy', expect.objectContaining({ requireReaccept: false }));
+  });
+
+  it('allows a body far longer than a popup, because it is a legal document', async () => {
+    stubPolicies();
+
+    render(<PoliciesTab active />);
+    await screen.findByRole('heading', { name: 'Upload Gate' });
+    selectTab('Privacy Policy');
+    await screen.findByLabelText('Privacy Policy body');
+
+    // The server seeds this row at over six thousand characters; the shared 4000 cap would refuse it.
+    expect(screen.getByText(/\/ 20000$/)).toBeTruthy();
+  });
 });
 
 describe('the body field', () => {
@@ -108,7 +166,7 @@ describe('the policy sub-tabs', () => {
     const gate = new Promise<void>((resolve) => { release = resolve; });
     vi.spyOn(PolicyService, 'fetchForAdmin').mockImplementation(async () => {
       await gate;
-      return { uploadGate: policy(), tagNotice: policy() };
+      return { uploadGate: policy(), tagNotice: policy(), privacyPolicy: policy() };
     });
 
     render(<PoliciesTab active />);

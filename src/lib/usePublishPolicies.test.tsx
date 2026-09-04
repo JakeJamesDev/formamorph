@@ -7,6 +7,7 @@ import type { PolicyState } from '@/types';
 const gateState = (title: string): PolicyState => ({
   uploadGate: { title, body: 'Be excellent.', tags: [], accepted: false },
   tagNotice: null,
+  privacyPolicy: null,
 });
 
 /** A fetch whose replies are released by hand, so two reads can be put in flight and landed out of order. */

@@ -11,6 +11,7 @@ import { SettingsProvider } from './contexts/SettingsContext';
 import { GameplayProvider } from './contexts/GameplayContext';
 import { PlaceholderSessionProvider, usePlaceholderSession } from './contexts/PlaceholderSessionContext';
 import { AgeGateProvider } from './contexts/AgeGateContext';
+import { PrivacyPolicyProvider } from './contexts/PrivacyPolicyContext';
 import { LocalEngineManager } from './components/LocalEngineManager';
 import { IntroSequence } from './components/IntroSequence';
 import { TooltipProvider } from './components/ui/tooltip';
@@ -160,7 +161,11 @@ function App() {
                 {/* The age attestation that stands in front of every community surface. Above the view
                     switch because it also answers at boot, before anything is opened. */}
                 <AgeGateProvider>
-                  <AppViews />
+                  {/* Inside the age gate: both raise a blocking dialog, and the attestation is the one
+                      that decides whether the community server is talked to at all. */}
+                  <PrivacyPolicyProvider>
+                    <AppViews />
+                  </PrivacyPolicyProvider>
                 </AgeGateProvider>
               </UserProfileProvider>
             </PlaceholderSessionProvider>

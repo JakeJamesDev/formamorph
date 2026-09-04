@@ -31,7 +31,7 @@ const payload: PublishPayload = { kind: 'world', name: 'Sedge Landing', descript
 
 const listing = (id: string, name: string): WorldRecord => ({ _id: id, name, downloads: 0 });
 
-const NO_POLICIES: PolicyState = { uploadGate: null, tagNotice: null };
+const NO_POLICIES: PolicyState = { uploadGate: null, tagNotice: null, privacyPolicy: null };
 
 const entryRow = (): ChangelogEntry => ({
   id: 'e1',

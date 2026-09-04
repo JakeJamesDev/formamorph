@@ -7,15 +7,28 @@ export interface PolicyPopup {
   tags: string[];
 }
 
-/** The upload gate, plus whether this user has already accepted the current version of it. */
-export interface UploadGateState extends PolicyPopup {
+/** A policy the reader answers, plus whether they have accepted the version now in force. */
+export interface AnswerablePolicy extends PolicyPopup {
   accepted: boolean;
 }
+
+/** The upload gate. Named apart from the privacy policy because only this one governs publishing. */
+export type UploadGateState = AnswerablePolicy;
 
 /** What the publish flow needs. Either popup is null when no admin has authored and enabled it. */
 export interface PolicyState {
   uploadGate: UploadGateState | null;
   tagNotice: PolicyPopup | null;
+  /** Null while the policy is switched off, which is how it ships — nothing to prompt for, and the
+   *  server refuses nothing either. `tags` rides along as an empty list and means nothing here. */
+  privacyPolicy: AnswerablePolicy | null;
+}
+
+/** The Privacy Policy as a stranger reads it: the text alone, with no answer to report. Registration
+ *  shows it before the account exists, so this is the one policy read that carries no acceptance. */
+export interface PublicPrivacyPolicy {
+  title: string;
+  body: string;
 }
 
 /** A policy as the admin editor sees it, including a disabled or half-written draft. */
@@ -29,13 +42,14 @@ export interface AdminPolicy {
   updatedAt: string | null;
 }
 
-/** Both policies, for the admin editor. */
+/** Every policy, for the admin editor. Never null: an unwritten row reads as an empty draft. */
 export interface AdminPolicies {
   uploadGate: AdminPolicy;
   tagNotice: AdminPolicy;
+  privacyPolicy: AdminPolicy;
 }
 
-/** An authoring payload. `requireReaccept` applies to the upload gate only. */
+/** An authoring payload. `requireReaccept` applies to the policies a user answers. */
 export interface SavePolicyInput {
   enabled: boolean;
   title: string;
@@ -44,5 +58,5 @@ export interface SavePolicyInput {
   requireReaccept?: boolean;
 }
 
-/** Which policy is being written; the server knows exactly these two. */
-export type PolicyId = 'upload_gate' | 'tag_notice';
+/** Which policy is being written; the server knows exactly these three. */
+export type PolicyId = 'upload_gate' | 'tag_notice' | 'privacy_policy';
