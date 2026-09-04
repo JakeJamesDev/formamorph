@@ -1,0 +1,283 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>PROTOTYPE — Location Graph model</title>
+<style>
+  :root { --bg:#15161a; --panel:#1d1f25; --line:#33363f; --text:#e8e6e0; --dim:#9a9890; --accent:#e0a94a; --implicit:#5c6270; --bad:#d05c5c; --good:#6fbf8a; }
+  * { box-sizing:border-box; }
+  body { margin:0; padding:32px 40px 64px; background:var(--bg); color:var(--text); font:15px/1.55 "Segoe UI",system-ui,sans-serif; }
+  h1 { font-size:22px; margin:0 0 4px; } h2 { font-size:17px; margin:36px 0 10px; }
+  .tag { display:inline-block; background:var(--bad); color:#fff; font-size:11px; font-weight:700; letter-spacing:.08em; padding:2px 8px; border-radius:4px; vertical-align:3px; }
+  .intro { color:var(--dim); max-width:78ch; margin:8px 0 24px; }
+  .intro b { color:var(--text); }
+  svg { background:var(--panel); border:1px solid var(--line); border-radius:12px; display:block; max-width:100%; }
+  .legend { display:flex; flex-wrap:wrap; gap:22px; margin:12px 2px 0; color:var(--dim); font-size:13px; align-items:center; }
+  .legend svg { background:none; border:none; display:inline; vertical-align:middle; }
+  table { border-collapse:collapse; width:100%; max-width:1100px; font-size:14px; }
+  th,td { border:1px solid var(--line); padding:7px 12px; text-align:left; vertical-align:top; }
+  th { background:var(--panel); font-weight:600; }
+  td.loc { white-space:nowrap; font-weight:600; }
+  .oneway { color:var(--accent); }
+  .note { color:var(--dim); font-size:13px; }
+  pre { background:var(--panel); border:1px solid var(--line); border-radius:8px; padding:14px 18px; font:13px/1.6 Consolas,monospace; max-width:1100px; overflow-x:auto; }
+  .cases { display:grid; grid-template-columns:repeat(auto-fit,minmax(300px,1fr)); gap:14px; max-width:1100px; }
+  .case { background:var(--panel); border:1px solid var(--line); border-radius:10px; padding:14px 16px; }
+  .case b { color:var(--accent); }
+  .case p { margin:6px 0 0; color:var(--dim); font-size:13.5px; }
+</style>
+</head>
+<body>
+<h1>Location Graph — model prototype <span class="tag">PROTOTYPE · THROWAWAY</span></h1>
+<p class="intro">
+<b>The question this answers:</b> do the settled Connection rules produce the navigable world we expect?
+Rules encoded: locations keep free <b>implicit navigation</b> (parent + children + siblings — top-level
+locations are <i>not</i> siblings of each other); an authored <b>Connection</b> between a pair
+<b>replaces</b> that pair's implicit link; Connections are one-way or two-way with an optional AI travel
+hint; unreachability is checked by following the directed graph from every starting location.
+Everything below — the canvas <i>and</i> the tables — is computed from one pure rules module, not drawn by hand.
+</p>
+
+<h2>1 · The canvas (as the editor would show it)</h2>
+<div id="canvas"></div>
+<div class="legend" id="legend"></div>
+
+<h2>2 · Effective destinations per location (computed)</h2>
+<div id="table"></div>
+
+<h2>3 · What the AI prompt sees — the destinations chip</h2>
+<div id="prompts"></div>
+
+<h2>4 · The four teaching cases in this demo world</h2>
+<div class="cases">
+  <div class="case"><b>Override:</b> Market → Player's House ("hole in the fence")
+    <p>Market and the House are siblings, so they'd connect both ways for free. The authored one-way
+    Connection replaces that pair's implicit link — you can slip through the fence, but getting back
+    means going around through the Village or Tavern.</p></div>
+  <div class="case"><b>Portal loop:</b> Cave → Moon Sanctum → Village
+    <p>Two one-way Connections between unrelated trees. From the Sanctum the Cave is simply never
+    offered — no prompt text forbids it; the candidate list just doesn't contain it.</p></div>
+  <div class="case"><b>Plain link:</b> Village ⇆ Forest ("along the muddy trail")
+    <p>A two-way Connection joining two top-level regions that would otherwise be islands. One record,
+    both directions, one shared travel hint.</p></div>
+  <div class="case"><b>Unreachable:</b> Abandoned Shrine
+    <p>It has an outgoing Connection to the Forest but nothing leads <i>to</i> it from any starting
+    location, so the canvas badges it. (The author probably meant a two-way link — or a secret.)</p></div>
+</div>
+
+<script>
+/* ---------------------------------------------------------------------------
+ * PURE RULES MODULE — the liftable bit. No DOM below this comment's section.
+ * ------------------------------------------------------------------------- */
+const Rules = (() => {
+  const pairKey = (a, b) => [a, b].sort().join("|");
+
+  /** Implicit pairs: parent<->child, and sibling<->sibling under a real (non-null) parent. */
+  function implicitPairs(locations) {
+    const pairs = new Map(); // key -> [a,b]
+    for (const loc of locations) {
+      const p = loc.parentId ?? null;
+      if (p === null) continue;
+      pairs.set(pairKey(loc.id, p), [loc.id, p]);
+      for (const sib of locations)
+        if (sib.id !== loc.id && (sib.parentId ?? null) === p)
+          pairs.set(pairKey(loc.id, sib.id), [loc.id, sib.id]);
+    }
+    return [...pairs.values()];
+  }
+
+  /** Pairs whose implicit link is replaced by an authored Connection (either direction). */
+  function overriddenPairs(locations, connections) {
+    const authored = new Set(connections.map((c) => pairKey(c.from, c.to)));
+    return implicitPairs(locations).filter(([a, b]) => authored.has(pairKey(a, b)));
+  }
+
+  /** Effective destination ids from `id`: surviving implicit neighbors + authored outgoing. */
+  function effectiveDestinations(id, locations, connections) {
+    const authored = new Set(connections.map((c) => pairKey(c.from, c.to)));
+    const out = new Map(); // destId -> { via: 'implicit'|'connection', conn? }
+    for (const [a, b] of implicitPairs(locations)) {
+      if (authored.has(pairKey(a, b))) continue;
+      if (a === id) out.set(b, { via: "implicit" });
+      if (b === id) out.set(a, { via: "implicit" });
+    }
+    for (const c of connections) {
+      if (c.from === id) out.set(c.to, { via: "connection", conn: c });
+      else if (c.twoWay && c.to === id) out.set(c.from, { via: "connection", conn: c });
+    }
+    return out;
+  }
+
+  /** Ids reachable from any starting location, following direction. */
+  function reachableFromStarts(locations, connections) {
+    const seen = new Set(locations.filter((l) => l.isStarting).map((l) => l.id));
+    const queue = [...seen];
+    while (queue.length) {
+      const id = queue.shift();
+      for (const dest of effectiveDestinations(id, locations, connections).keys())
+        if (!seen.has(dest)) { seen.add(dest); queue.push(dest); }
+    }
+    return seen;
+  }
+
+  /** One destination line as the `<LOCATION|destinations>` chip would render it. */
+  function destinationLine(loc, conn) {
+    const base = loc.aiSummary ? `${loc.name}: ${loc.aiSummary}` : loc.name;
+    return conn?.aiHint ? `${base} — via ${conn.aiHint}` : base;
+  }
+
+  return { implicitPairs, overriddenPairs, effectiveDestinations, reachableFromStarts, destinationLine, pairKey };
+})();
+
+/* ---------------------------------------------------------------------------
+ * DEMO WORLD (data only)
+ * ------------------------------------------------------------------------- */
+const locations = [
+  { id: "village", name: "Village",         parentId: null,      isStarting: true,  aiSummary: "A muddy riverside settlement." },
+  { id: "tavern",  name: "Tavern",          parentId: "village", aiSummary: "Smoky common room, always loud." },
+  { id: "cellar",  name: "Cellar",          parentId: "tavern",  aiSummary: "Barrels, damp stone, one candle." },
+  { id: "house",   name: "Player's House",  parentId: "village", aiSummary: "Your small home by the fence." },
+  { id: "market",  name: "Market",          parentId: "village", aiSummary: "Stalls, shouting, fish smell." },
+  { id: "forest",  name: "Forest",          parentId: null,      aiSummary: "Dense pinewood, easy to get lost." },
+  { id: "cave",    name: "Cave",            parentId: "forest",  aiSummary: "A cold mouth in the hillside." },
+  { id: "sanctum", name: "Moon Sanctum",    parentId: null,      aiSummary: "A silver hall beyond the veil." },
+  { id: "shrine",  name: "Abandoned Shrine",parentId: null,      aiSummary: "Overgrown stones, long forgotten." },
+];
+const connections = [
+  { id: "c1", from: "village", to: "forest",  twoWay: true,  aiHint: "along the muddy trail" },
+  { id: "c2", from: "market",  to: "house",   twoWay: false, aiHint: "through the hole in the fence" },
+  { id: "c3", from: "cave",    to: "sanctum", twoWay: false, aiHint: "step through the shimmering portal" },
+  { id: "c4", from: "sanctum", to: "village", twoWay: false, aiHint: "the return portal by the well" },
+  { id: "c5", from: "shrine",  to: "forest",  twoWay: false, aiHint: null },
+];
+const byId = Object.fromEntries(locations.map((l) => [l.id, l]));
+
+/* ---------------------------------------------------------------------------
+ * THROWAWAY PAGE — renders the canvas + tables from the module's output.
+ * ------------------------------------------------------------------------- */
+const reachable = Rules.reachableFromStarts(locations, connections);
+const overridden = new Set(Rules.overriddenPairs(locations, connections).map(([a, b]) => Rules.pairKey(a, b)));
+
+// Hand-placed layout. Groups are containment; a group's title bar is its location's anchor.
+const W = 1150, H = 620;
+const groups = {
+  village: { x: 40,  y: 60,  w: 540, h: 520 },
+  tavern:  { x: 70,  y: 130, w: 210, h: 240 },
+  forest:  { x: 660, y: 60,  w: 260, h: 240 },
+};
+const nodes = { // plain locations: x,y = top-left of node box
+  cellar:  { x: 110, y: 250, w: 130 },
+  house:   { x: 360, y: 170, w: 170 },
+  market:  { x: 360, y: 420, w: 130 },
+  cave:    { x: 700, y: 180, w: 110 },
+  sanctum: { x: 960, y: 150, w: 150 },
+  shrine:  { x: 700, y: 430, w: 180 },
+};
+const NODE_H = 46, TITLE_H = 34;
+function anchorRect(id) {
+  // Whole group box, not the title bar — edges meet the nearest border, so they don't converge on the header.
+  if (groups[id]) return { ...groups[id] };
+  const n = nodes[id]; return { x: n.x, y: n.y, w: n.w, h: NODE_H };
+}
+function center(r) { return { x: r.x + r.w / 2, y: r.y + r.h / 2 }; }
+function borderPoint(r, toward) { // intersection of center->toward ray with rect border
+  const c = center(r), dx = toward.x - c.x, dy = toward.y - c.y;
+  const sx = dx !== 0 ? (r.w / 2) / Math.abs(dx) : Infinity;
+  const sy = dy !== 0 ? (r.h / 2) / Math.abs(dy) : Infinity;
+  const s = Math.min(sx, sy);
+  return { x: c.x + dx * s, y: c.y + dy * s };
+}
+function edgePath(a, b) {
+  const ra = anchorRect(a), rb = anchorRect(b);
+  const p1 = borderPoint(ra, center(rb)), p2 = borderPoint(rb, center(ra));
+  return { p1, p2 };
+}
+const esc = (s) => s.replace(/&/g, "&amp;").replace(/</g, "&lt;");
+
+let svg = "";
+// groups first (background), inner groups after outer
+for (const [id, g] of Object.entries(groups)) {
+  const bad = !reachable.has(id);
+  svg += `<rect x="${g.x}" y="${g.y}" width="${g.w}" height="${g.h}" rx="10" fill="#22242c" stroke="var(--line)"/>
+    <rect x="${g.x}" y="${g.y}" width="${g.w}" height="${TITLE_H}" rx="10" fill="#2b2e38" stroke="var(--line)"/>
+    <text x="${g.x + 12}" y="${g.y + 22}" fill="var(--text)" font-size="14" font-weight="600">${esc(byId[id].name)}${byId[id].isStarting ? " ★ start" : ""}${bad ? " ⚠" : ""}</text>`;
+}
+// edges (drawn from the module's implicit pairs + the authored list).
+// Parent<->child pairs draw NOTHING: containment itself means they connect; only exceptions get ink.
+const isParentChild = (a, b) => (byId[a].parentId ?? null) === b || (byId[b].parentId ?? null) === a;
+// One arrow per travelable direction: count the arrows, not the arrowheads.
+function offsets(p1, p2, d) {
+  const len = Math.hypot(p2.x - p1.x, p2.y - p1.y) || 1;
+  return { ox: -(p2.y - p1.y) / len * d, oy: (p2.x - p1.x) / len * d };
+}
+for (const [a, b] of Rules.implicitPairs(locations)) {
+  if (isParentChild(a, b)) continue;                        // containment box already says it
+  if (overridden.has(Rules.pairKey(a, b))) continue;        // replaced — the Connection's arrows stand in its place
+  const { p1, p2 } = edgePath(a, b);
+  const { ox, oy } = offsets(p1, p2, 3);
+  const dash = `stroke="var(--implicit)" stroke-width="1.3" stroke-dasharray="5 5" opacity="0.8" marker-end="url(#arrI)"`;
+  svg += `<line x1="${p1.x + ox}" y1="${p1.y + oy}" x2="${p2.x + ox}" y2="${p2.y + oy}" ${dash}/>
+          <line x1="${p2.x - ox}" y1="${p2.y - oy}" x2="${p1.x - ox}" y2="${p1.y - oy}" ${dash}/>`;
+}
+for (const c of connections) {
+  const { p1, p2 } = edgePath(c.from, c.to);
+  const { ox, oy } = offsets(p1, p2, c.twoWay ? 4 : 0);
+  const solid = `stroke="var(--accent)" stroke-width="2" marker-end="url(#arrE)"`;
+  svg += `<line x1="${p1.x + ox}" y1="${p1.y + oy}" x2="${p2.x + ox}" y2="${p2.y + oy}" ${solid}/>`;
+  if (c.twoWay)
+    svg += `<line x1="${p2.x - ox}" y1="${p2.y - oy}" x2="${p1.x - ox}" y2="${p1.y - oy}" ${solid}/>`;
+  if (c.aiHint) {
+    const m = { x: (p1.x + p2.x) / 2, y: (p1.y + p2.y) / 2 - 10 };
+    svg += `<text x="${m.x}" y="${m.y}" fill="var(--accent)" font-size="11.5" text-anchor="middle" opacity="0.9">${esc(c.aiHint)}</text>`;
+  }
+}
+// plain nodes on top
+for (const [id, n] of Object.entries(nodes)) {
+  const bad = !reachable.has(id);
+  svg += `<rect x="${n.x}" y="${n.y}" width="${n.w}" height="${NODE_H}" rx="8" fill="#2b2e38" stroke="${bad ? "var(--bad)" : "var(--line)"}" stroke-width="${bad ? 2 : 1}"/>
+    <text x="${n.x + n.w / 2}" y="${n.y + 28}" fill="var(--text)" font-size="13.5" text-anchor="middle">${esc(byId[id].name)}${bad ? " ⚠" : ""}</text>`;
+}
+document.getElementById("canvas").innerHTML = `
+<svg viewBox="0 0 ${W} ${H}" width="${W}">
+  <defs>
+    <marker id="arrE" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="var(--accent)"/></marker>
+    <marker id="arrI" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="var(--implicit)"/></marker>
+  </defs>${svg}</svg>`;
+document.getElementById("legend").innerHTML = `
+  <span><svg width="38" height="14"><line x1="0" y1="4" x2="32" y2="4" stroke="var(--implicit)" stroke-width="1.3" stroke-dasharray="5 5"/><path d="M32,1 L38,4 L32,7 z" fill="var(--implicit)"/><line x1="38" y1="10" x2="6" y2="10" stroke="var(--implicit)" stroke-width="1.3" stroke-dasharray="5 5"/><path d="M6,7 L0,10 L6,13 z" fill="var(--implicit)"/></svg> implicit sibling travel (free, both ways)</span>
+  <span><svg width="38" height="14"><line x1="0" y1="4" x2="32" y2="4" stroke="var(--accent)" stroke-width="2"/><path d="M32,0.5 L38,4 L32,7.5 z" fill="var(--accent)"/><line x1="38" y1="10" x2="6" y2="10" stroke="var(--accent)" stroke-width="2"/><path d="M6,6.5 L0,10 L6,13.5 z" fill="var(--accent)"/></svg> authored Connection — one arrow per travelable direction</span>
+  <span style="color:var(--bad)">⚠ unreachable from any start</span>
+  <span>boxes = containment; being inside a box IS the free travel to/from it — no line drawn</span>`;
+
+// destinations table
+let rows = "";
+for (const loc of locations) {
+  const dests = Rules.effectiveDestinations(loc.id, locations, connections);
+  const parts = [...dests.entries()].map(([id, info]) => {
+    const oneWayOut = info.via === "connection" && !info.conn.twoWay;
+    return info.via === "implicit"
+      ? esc(byId[id].name)
+      : `<span class="oneway">${esc(byId[id].name)}${oneWayOut ? " (one-way)" : ""}</span>`;
+  });
+  rows += `<tr><td class="loc">${esc(loc.name)}${loc.isStarting ? " ★" : ""}${reachable.has(loc.id) ? "" : " ⚠"}</td>
+    <td>${parts.join(" · ") || '<span class="note">nowhere — stranded</span>'}</td></tr>`;
+}
+document.getElementById("table").innerHTML = `
+  <table><tr><th>You are at…</th><th>You can go to… <span class="note">(gray = implicit · gold = via Connection)</span></th></tr>${rows}</table>
+  <p class="note">Check the asymmetries: Market lists Player's House, but Player's House does not list Market.
+  Moon Sanctum lists only Village. Nothing lists Abandoned Shrine.</p>`;
+
+// prompt previews
+const chip = (id) => [...Rules.effectiveDestinations(id, locations, connections).entries()]
+  .map(([d, info]) => Rules.destinationLine(byId[d], info.conn)).join("\n");
+document.getElementById("prompts").innerHTML = `
+  <p class="note">The chip lists candidates only — no direction talk, no "you cannot go back"; a one-way
+  return simply never appears. Travel hints ride the destination line.</p>
+  <pre>&lt;LOCATION|destinations&gt; at <b>Cave</b>:\n${esc(chip("cave"))}</pre>
+  <pre>&lt;LOCATION|destinations&gt; at <b>Moon Sanctum</b>:\n${esc(chip("sanctum"))}</pre>
+  <pre>&lt;LOCATION|destinations&gt; at <b>Player's House</b>:\n${esc(chip("house"))}</pre>`;
+</script>
+</body>
+</html>

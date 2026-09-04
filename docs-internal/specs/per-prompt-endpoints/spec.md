@@ -4,7 +4,8 @@ Let each AI prompt kind send its request to a different text-endpoint preset. A 
 flexibility feature: any of the 15 `AIRequestType` kinds can be pinned to any preset (including
 the built-in Default), while unpinned kinds keep following the globally active preset.
 
-Status: **designed, not built**. Decisions below were aligned in the 2026-08-07 interview.
+Status: ready-for-agent
+Status note: not built. Decisions below were aligned in the 2026-08-07 interview.
 
 ## Decisions (settled)
 

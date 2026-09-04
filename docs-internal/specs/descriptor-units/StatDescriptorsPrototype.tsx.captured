@@ -1,0 +1,490 @@
+/**
+ * PROTOTYPE — THROWAWAY. Three variants of the Stat Descriptors section, rendered in place of the real
+ * one inside StatManager when the page URL carries `?variant=A|B|C` (DEV builds only). Switch with the
+ * floating pill or ←/→. Delete this file once a variant wins.
+ *
+ * All coverage labels assume RAW-VALUE thresholds (the proposed semantics), not the engine's current
+ * percent reading — the question is what the editor should look like, not what the engine does today.
+ */
+import { useEffect, useLayoutEffect, useRef, useState } from 'react';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Button } from '@/components/ui/button';
+import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
+import { Trash2, ChevronLeft, ChevronRight, AlertTriangle } from 'lucide-react';
+import type { Stat, StatDescriptor } from '@/types';
+
+export interface DescriptorSectionProps {
+  editingStat: Partial<Stat>;
+  newDescriptor: { threshold: number | string; description: string };
+  setNewDescriptor: (next: { threshold: number | string; description: string }) => void;
+  onDescriptorChange: (index: number, field: string, value: string | number) => void;
+  /** Replace the whole list in one write — per-index writes in a loop lose all but the last. */
+  onDescriptorsReplace: (descriptors: StatDescriptor[]) => void;
+  onDescriptorBlur: () => void;
+  onAddDescriptor: () => void;
+  onRemoveDescriptor: (id: string | number) => void;
+}
+
+const VARIANTS = ['A', 'B', 'C', 'D'] as const;
+type VariantKey = (typeof VARIANTS)[number];
+const VARIANT_NAMES: Record<VariantKey, string> = {
+  A: 'Unit suffix + coverage captions',
+  B: 'Coverage bar',
+  C: 'Range rows',
+  D: 'Bar + captions + units toggle',
+};
+
+/** The active variant from `?variant=`, or null when the prototype is dormant. */
+export function usePrototypeVariant(): [VariantKey | null, (v: VariantKey) => void] {
+  const [variant, setVariant] = useState<VariantKey | null>(() => {
+    if (!import.meta.env.DEV) return null;
+    const raw = new URLSearchParams(window.location.search).get('variant')?.toUpperCase();
+    return (VARIANTS as readonly string[]).includes(raw ?? '') ? (raw as VariantKey) : null;
+  });
+  const set = (v: VariantKey) => {
+    setVariant(v);
+    const url = new URL(window.location.href);
+    url.searchParams.set('variant', v);
+    window.history.replaceState(null, '', url);
+  };
+  return [variant, set];
+}
+
+interface Band { from: number; to: number; description: string }
+
+/** Sorted bands under the raw reading: band i covers (previous threshold → its own], first from min. */
+const bands = (stat: Partial<Stat>): Band[] => {
+  const min = stat.min ?? 0;
+  const sorted = [...(stat.descriptors ?? [])].sort((a, b) => a.threshold - b.threshold);
+  let from = min;
+  return sorted.map((d) => {
+    const band = { from, to: d.threshold, description: d.description };
+    from = d.threshold;
+    return band;
+  });
+};
+
+const startValue = (stat: Partial<Stat>): number =>
+  typeof stat.starting === 'number' ? stat.starting
+    : typeof stat.value === 'number' ? stat.value : stat.min ?? 0;
+
+/** The zone above the top band, or null when the bands reach max. */
+const uncovered = (stat: Partial<Stat>): { from: number; to: number } | null => {
+  const max = stat.max ?? 100;
+  const all = bands(stat);
+  const top = all[all.length - 1];
+  if (!top || top.to >= max) return null;
+  return { from: top.to, to: max };
+};
+
+const unitLabel = (stat: Partial<Stat>): string => (stat.type === 'percentage' ? '%' : `of ${stat.max ?? 100}`);
+
+/** A threshold input with a permanent unit tag inside its right edge — never a vanishing placeholder. */
+const UnitInput = ({ value, unit, onChange, onBlur, placeholder, wide }: {
+  value: number | string; unit: string; placeholder?: string; wide?: boolean;
+  onChange: (v: string) => void; onBlur?: () => void;
+}) => (
+  <div className={`relative ${wide ? 'w-32' : 'w-28'} flex-shrink-0`}>
+    <Input
+      type="number"
+      value={value}
+      onChange={(e) => onChange(e.target.value)}
+      onBlur={onBlur}
+      placeholder={placeholder}
+      className="pr-12 [appearance:textfield] [&::-webkit-inner-spin-button]:hidden [&::-webkit-outer-spin-button]:hidden"
+    />
+    <span className="pointer-events-none absolute inset-y-0 right-2.5 flex items-center text-helper text-muted-foreground">
+      {unit}
+    </span>
+  </div>
+);
+
+const AddRow = ({ props, unit }: { props: DescriptorSectionProps; unit: string }) => (
+  <div className="flex items-center space-x-2">
+    <UnitInput
+      value={props.newDescriptor.threshold}
+      unit={unit}
+      placeholder="Up to"
+      onChange={(v) => props.setNewDescriptor({ ...props.newDescriptor, threshold: v === '' ? '' : Number(v) })}
+    />
+    <Input
+      value={props.newDescriptor.description}
+      onChange={(e) => props.setNewDescriptor({ ...props.newDescriptor, description: e.target.value })}
+      placeholder="New Description"
+      className="flex-grow"
+    />
+    <Button onClick={props.onAddDescriptor}>Add</Button>
+  </div>
+);
+
+const UncoveredNote = ({ stat }: { stat: Partial<Stat> }) => {
+  const gap = uncovered(stat);
+  if (!gap) return null;
+  const start = startValue(stat);
+  const startsThere = start > gap.from && start <= gap.to;
+  return (
+    <p className="flex items-center gap-1.5 text-helper text-warning-foreground text-muted-foreground">
+      <AlertTriangle className="h-3.5 w-3.5 text-amber-500 flex-shrink-0" />
+      <span>
+        {gap.from} – {gap.to} has no descriptor — the AI is told no status there
+        {startsThere ? ` (the stat starts at ${start})` : ''}.
+      </span>
+    </p>
+  );
+};
+
+// ── Variant A — today's rows, plus a unit tag and a coverage caption under each row ──────────────────────
+
+const VariantA = (props: DescriptorSectionProps) => {
+  const stat = props.editingStat;
+  const spans = bands(stat);
+  const sorted = [...(stat.descriptors ?? [])].sort((a, b) => a.threshold - b.threshold);
+  return (
+    <div className="space-y-2">
+      {sorted.map((descriptor, index) => (
+        <div key={descriptor.id}>
+          <div className="flex items-center space-x-2">
+            <UnitInput
+              value={descriptor.threshold}
+              unit={unitLabel(stat)}
+              onChange={(v) => props.onDescriptorChange(index, 'threshold', Number(v))}
+              onBlur={props.onDescriptorBlur}
+            />
+            <Input
+              value={descriptor.description}
+              onChange={(e) => props.onDescriptorChange(index, 'description', e.target.value)}
+              placeholder="Description"
+              className="flex-grow"
+            />
+            <Button variant="ghost" size="icon" onClick={() => props.onRemoveDescriptor(descriptor.id)}>
+              <Trash2 className="h-4 w-4" />
+            </Button>
+          </div>
+          <p className="ml-1 mt-0.5 text-helper text-muted-foreground">
+            covers {spans[index]?.from} – {spans[index]?.to}
+          </p>
+        </div>
+      ))}
+      <UncoveredNote stat={stat} />
+      <AddRow props={props} unit={unitLabel(stat)} />
+    </div>
+  );
+};
+
+// ── Variant B — a coverage strip across min→max is the primary explanation; rows stay compact ────────────
+
+const BAND_TINTS = ['bg-primary/30', 'bg-primary/50', 'bg-primary/70', 'bg-primary/85', 'bg-primary'];
+
+const VariantB = (props: DescriptorSectionProps) => {
+  const stat = props.editingStat;
+  const min = stat.min ?? 0;
+  const max = stat.max ?? 100;
+  const range = max - min || 1;
+  const spans = bands(stat);
+  const gap = uncovered(stat);
+  const start = startValue(stat);
+  const sorted = [...(stat.descriptors ?? [])].sort((a, b) => a.threshold - b.threshold);
+  const pct = (v: number) => `${((v - min) / range) * 100}%`;
+  return (
+    <div className="space-y-2">
+      <div className="relative mb-4">
+        <div className="flex h-7 w-full overflow-hidden rounded-md border border-border">
+          {spans.map((band, i) => (
+            <div
+              key={i}
+              className={`${BAND_TINTS[i % BAND_TINTS.length]} flex items-center justify-center overflow-hidden whitespace-nowrap text-helper text-primary-foreground`}
+              style={{ width: `${((band.to - band.from) / range) * 100}%` }}
+              title={`${band.from} – ${band.to}: ${band.description}`}
+            >
+              {band.description}
+            </div>
+          ))}
+          {gap && (
+            <div
+              className="flex items-center justify-center overflow-hidden whitespace-nowrap bg-destructive/15 text-helper text-destructive"
+              style={{ width: `${((gap.to - gap.from) / range) * 100}%` }}
+              title={`${gap.from} – ${gap.to}: no status`}
+            >
+              no status
+            </div>
+          )}
+        </div>
+        {/* Start marker: a tick under the strip at the starting value. */}
+        <div className="absolute -bottom-3.5 flex -translate-x-1/2 flex-col items-center" style={{ left: pct(start) }}>
+          <div className="h-2 w-0.5 bg-foreground" />
+          <span className="text-helper text-muted-foreground leading-none">starts at {start}</span>
+        </div>
+      </div>
+      {sorted.map((descriptor, index) => (
+        <div key={descriptor.id} className="flex items-center space-x-2">
+          <UnitInput
+            value={descriptor.threshold}
+            unit={unitLabel(stat)}
+            onChange={(v) => props.onDescriptorChange(index, 'threshold', Number(v))}
+            onBlur={props.onDescriptorBlur}
+          />
+          <Input
+            value={descriptor.description}
+            onChange={(e) => props.onDescriptorChange(index, 'description', e.target.value)}
+            placeholder="Description"
+            className="flex-grow"
+          />
+          <Button variant="ghost" size="icon" onClick={() => props.onRemoveDescriptor(descriptor.id)}>
+            <Trash2 className="h-4 w-4" />
+          </Button>
+        </div>
+      ))}
+      <AddRow props={props} unit={unitLabel(stat)} />
+    </div>
+  );
+};
+
+// ── Variant C — the row IS the range: fixed lower bound, editable upper bound, then the description ──────
+
+const VariantC = (props: DescriptorSectionProps) => {
+  const stat = props.editingStat;
+  const spans = bands(stat);
+  const gap = uncovered(stat);
+  const sorted = [...(stat.descriptors ?? [])].sort((a, b) => a.threshold - b.threshold);
+  return (
+    <div className="space-y-2">
+      {sorted.map((descriptor: StatDescriptor, index) => (
+        <div key={descriptor.id} className="flex items-center space-x-2">
+          <span className="w-12 flex-shrink-0 text-right text-sm text-muted-foreground tabular-nums">
+            {spans[index]?.from} –
+          </span>
+          <UnitInput
+            value={descriptor.threshold}
+            unit={unitLabel(stat)}
+            onChange={(v) => props.onDescriptorChange(index, 'threshold', Number(v))}
+            onBlur={props.onDescriptorBlur}
+          />
+          <span className="text-muted-foreground">→</span>
+          <Input
+            value={descriptor.description}
+            onChange={(e) => props.onDescriptorChange(index, 'description', e.target.value)}
+            placeholder="Description"
+            className="flex-grow"
+          />
+          <Button variant="ghost" size="icon" onClick={() => props.onRemoveDescriptor(descriptor.id)}>
+            <Trash2 className="h-4 w-4" />
+          </Button>
+        </div>
+      ))}
+      {gap && (
+        <div className="flex items-center space-x-2 opacity-70">
+          <span className="w-12 flex-shrink-0 text-right text-sm text-muted-foreground tabular-nums">
+            {gap.from} –
+          </span>
+          <span className="w-24 flex-shrink-0 text-sm text-muted-foreground tabular-nums pl-3">{gap.to}</span>
+          <span className="text-muted-foreground">→</span>
+          <span className="flex-grow text-sm italic text-muted-foreground">
+            no status — the AI is told nothing in this range
+          </span>
+        </div>
+      )}
+      <AddRow props={props} unit={unitLabel(stat)} />
+    </div>
+  );
+};
+
+// ── Variant D — the chosen merge (B's bar + A's captions) plus a per-stat units toggle ───────────────────
+// `%` mode stores thresholds as percentages of min→max (bands rescale when the range changes); raw mode
+// stores them in the stat's own units (bands stay put). Toggling converts in place, so nothing moves at
+// the moment you switch. Shipped for real, the mode is one optional field on the stat.
+
+const round2 = (n: number) => Math.round(n * 100) / 100;
+
+// Shipped for real, the unit mode is a field on the stat. The prototype keeps it here, keyed by stat id,
+// because the editor remounts this section on draft writes and useState alone would forget the mode.
+const unitModeStore = new Map<string, boolean>();
+
+/** A bar band whose label wraps to two lines and steps its font down (12→8px) until the text fits. */
+const BarSegment = ({ text, width, className, title }: {
+  text: string; width: string; className: string; title: string;
+}) => {
+  const boxRef = useRef<HTMLDivElement>(null);
+  useLayoutEffect(() => {
+    const box = boxRef.current;
+    const span = box?.firstElementChild as HTMLElement | null;
+    if (!box || !span) return;
+    let size = 12;
+    box.style.fontSize = `${size}px`;
+    while (size > 8 && (span.scrollHeight > span.clientHeight + 1 || span.scrollWidth > span.clientWidth + 1)) {
+      size -= 1;
+      box.style.fontSize = `${size}px`;
+    }
+  }, [text, width]);
+  return (
+    <div
+      ref={boxRef}
+      className={`flex items-center justify-center overflow-hidden px-1 text-center leading-tight ${className}`}
+      style={{ width }}
+      title={title}
+    >
+      <span className="line-clamp-2">{text}</span>
+    </div>
+  );
+};
+
+const VariantD = (props: DescriptorSectionProps) => {
+  const stat = props.editingStat;
+  const statKey = stat.id ?? 'draft';
+  const [percentMode, setPercentModeState] = useState(unitModeStore.get(statKey) ?? false);
+  const setPercentMode = (v: boolean) => {
+    unitModeStore.set(statKey, v);
+    setPercentModeState(v);
+  };
+  const min = stat.min ?? 0;
+  const max = stat.max ?? 100;
+  const range = max - min || 1;
+  // A stored threshold's position as a raw value, under the current mode.
+  const toRaw = (t: number) => (percentMode ? round2(min + (t / 100) * range) : t);
+  const sorted = [...(stat.descriptors ?? [])].sort((a, b) => a.threshold - b.threshold);
+  const spans = sorted.map((d, i) => ({
+    from: i === 0 ? min : toRaw(sorted[i - 1].threshold),
+    to: toRaw(d.threshold),
+    description: d.description,
+  }));
+  const top = spans[spans.length - 1];
+  const gap = top && top.to < max ? { from: top.to, to: max } : null;
+  const start = startValue(stat);
+  const pct = (v: number) => `${((v - min) / range) * 100}%`;
+  const unit = percentMode ? '%' : unitLabel(stat);
+
+  const switchMode = (next: boolean) => {
+    if (next === percentMode) return;
+    // Convert every stored threshold in one write so the bands cover exactly what they covered before.
+    props.onDescriptorsReplace((stat.descriptors ?? []).map((d) => {
+      const raw = toRaw(d.threshold);
+      return { ...d, threshold: next ? round2(((raw - min) / range) * 100) : raw };
+    }));
+    setPercentMode(next);
+  };
+
+  return (
+    <div className="space-y-2">
+      <div className="flex items-center justify-end gap-2 -mt-8 mb-2">
+        <span className="text-helper text-muted-foreground">Thresholds in</span>
+        <ToggleGroup
+          type="single"
+          value={percentMode ? 'percent' : 'units'}
+          onValueChange={(v) => { if (v) switchMode(v === 'percent'); }}
+          aria-label="Threshold units"
+        >
+          <ToggleGroupItem value="units" className="h-7 px-2 text-helper">Raw Unit</ToggleGroupItem>
+          <ToggleGroupItem value="percent" className="h-7 px-2 text-helper">% of Max</ToggleGroupItem>
+        </ToggleGroup>
+      </div>
+      {/* Bottom clearance is padding, not margin: inside a space-y container the space-y rule pins every
+          child's margin-bottom to 0 at higher specificity, so an mb-* here silently loses. */}
+      <div className="relative pb-8">
+        <div className="flex h-9 w-full overflow-hidden rounded-md border border-border">
+          {spans.map((band, i) => (
+            <BarSegment
+              key={i}
+              text={band.description}
+              width={`${((band.to - band.from) / range) * 100}%`}
+              className={`${BAND_TINTS[i % BAND_TINTS.length]} text-primary-foreground`}
+              title={`${band.from} – ${band.to}: ${band.description}`}
+            />
+          ))}
+          {gap && (
+            <BarSegment
+              text="no status"
+              width={`${((gap.to - gap.from) / range) * 100}%`}
+              className="bg-destructive/15 text-destructive"
+              title={`${gap.from} – ${gap.to}: no status`}
+            />
+          )}
+        </div>
+        <div
+          className="absolute top-9 flex -translate-x-1/2 flex-col items-center"
+          style={{ left: `clamp(2.5rem, ${pct(start)}, calc(100% - 2.5rem))` }}
+        >
+          <div className="h-2 w-0.5 bg-foreground" />
+          <span className="text-helper text-muted-foreground leading-none whitespace-nowrap">starts at {start}</span>
+        </div>
+      </div>
+      {sorted.map((descriptor, index) => (
+        <div key={descriptor.id}>
+          <div className="flex items-center space-x-2">
+            <UnitInput
+              value={descriptor.threshold}
+              unit={unit}
+              onChange={(v) => props.onDescriptorChange(index, 'threshold', Number(v))}
+              onBlur={props.onDescriptorBlur}
+            />
+            <Input
+              value={descriptor.description}
+              onChange={(e) => props.onDescriptorChange(index, 'description', e.target.value)}
+              placeholder="Description"
+              className="flex-grow"
+            />
+            <Button variant="ghost" size="icon" onClick={() => props.onRemoveDescriptor(descriptor.id)}>
+              <Trash2 className="h-4 w-4" />
+            </Button>
+          </div>
+          <p className="ml-1 mt-0.5 text-helper text-muted-foreground">
+            covers {spans[index]?.from} – {spans[index]?.to}{percentMode ? ` ${unitLabel(stat)}` : ''}
+          </p>
+        </div>
+      ))}
+      {gap && (
+        <p className="flex items-center gap-1.5 text-helper text-muted-foreground">
+          <AlertTriangle className="h-3.5 w-3.5 text-amber-500 flex-shrink-0" />
+          <span>
+            {gap.from} – {gap.to} has no descriptor — the AI is told no status there
+            {start > gap.from && start <= gap.to ? ` (the stat starts at ${start})` : ''}.
+          </span>
+        </p>
+      )}
+      <AddRow props={props} unit={unit} />
+    </div>
+  );
+};
+
+// ── Switcher + section entry point ───────────────────────────────────────────────────────────────────────
+
+const Switcher = ({ current, set }: { current: VariantKey; set: (v: VariantKey) => void }) => {
+  const cycle = (dir: 1 | -1) =>
+    set(VARIANTS[(VARIANTS.indexOf(current) + dir + VARIANTS.length) % VARIANTS.length]);
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      const target = e.target as HTMLElement | null;
+      if (target && (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable)) return;
+      if (e.key === 'ArrowLeft') cycle(-1);
+      if (e.key === 'ArrowRight') cycle(1);
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  });
+  return (
+    <div className="fixed bottom-4 left-1/2 z-[200] flex -translate-x-1/2 items-center gap-2 rounded-full border border-border bg-background/95 px-3 py-1.5 shadow-lg">
+      <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => cycle(-1)}>
+        <ChevronLeft className="h-4 w-4" />
+      </Button>
+      <span className="text-sm whitespace-nowrap">
+        {current} — {VARIANT_NAMES[current]}
+      </span>
+      <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => cycle(1)}>
+        <ChevronRight className="h-4 w-4" />
+      </Button>
+    </div>
+  );
+};
+
+/** The whole prototyped section, switcher included. Mounted by StatManager only when a variant is active. */
+export const DescriptorSectionPrototype = (props: DescriptorSectionProps & {
+  variant: VariantKey; setVariant: (v: VariantKey) => void;
+}) => (
+  <div className="space-y-2">
+    <Label>Stat Descriptors</Label>
+    {props.variant === 'A' && <VariantA {...props} />}
+    {props.variant === 'B' && <VariantB {...props} />}
+    {props.variant === 'C' && <VariantC {...props} />}
+    {props.variant === 'D' && <VariantD {...props} />}
+    <Switcher current={props.variant} set={props.setVariant} />
+  </div>
+);

@@ -1,6 +1,7 @@
 # Prompt Editor Polish — Spec
 
-**Status: SPECED (2026-08-06), not yet built.** Second follow-up to the split view (`prompt-editor-split-spec.md`, `prompt-editor-rail-spec.md`), from the first round of real use of the rail + samples. Four fixes, agreed in discussion; build order **2 → 4 → 1 → 3** (the value-pool refactor first since caret-follow builds on the preview it feeds; the fullscreen ownership refactor last, it touches the most structure).
+Status: ready-for-agent
+Status note: (2026-08-06), not yet built. Second follow-up to the split view (prompt-editor-split-spec.md, prompt-editor-rail-spec.md), from the first round of real use of the rail + samples. Four fixes, agreed in discussion; build order 2 → 4 → 1 → 3 (the value-pool refactor first since caret-follow builds on the preview it feeds; the fullscreen ownership refactor last, it touches the most structure).
 
 ## 1. Rail group headers read as dead items
 

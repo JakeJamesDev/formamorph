@@ -1,6 +1,7 @@
 # Prompt Editor Rail, Read-Only UX & Sample Preview — Spec
 
-**Status: SPECED (2026-08-06), not yet built.** Follow-up to the shipped split view (`prompt-editor-split-spec.md`), closing the three gaps found on first real use: no rail (B3 was shelved but the B2 mockup had implied one), built-in presets read as broken in fullscreen, and Preview/split being inert outside a game.
+Status: ready-for-agent
+Status note: (2026-08-06), not yet built. Follow-up to the shipped split view (prompt-editor-split-spec.md), closing the three gaps found on first real use: no rail (B3 was shelved but the B2 mockup had implied one), built-in presets read as broken in fullscreen, and Preview/split being inert outside a game.
 
 ## Decisions (interviewed & confirmed)
 

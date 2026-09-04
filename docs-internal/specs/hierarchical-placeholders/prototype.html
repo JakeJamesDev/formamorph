@@ -1,0 +1,751 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>PROTOTYPE — Hierarchical Placeholders</title>
+<style>
+  :root {
+    --bg: #0f1115; --panel: #171a21; --panel2: #1d212b; --border: #2a2f3a;
+    --text: #e6e9ef; --dim: #9aa3b2; --accent: #7c5cff; --accent2: #b3a1ff;
+    --chip: #2b2450; --chipb: #4b3fa0; --warn: #e0a33b; --err: #e05b5b; --ok: #4fc38a;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--text);
+    font: 14px/1.5 "Segoe UI", system-ui, sans-serif; }
+  .wrap { max-width: 1200px; margin: 0 auto; padding: 24px; }
+  h1 { font-size: 20px; margin: 0 0 4px; }
+  h2 { font-size: 13px; text-transform: uppercase; letter-spacing: .08em; color: var(--dim); margin: 0 0 10px; }
+  .intro { color: var(--dim); max-width: 70ch; margin-bottom: 20px; }
+  .intro b { color: var(--text); }
+  .cols { display: grid; grid-template-columns: 340px 1fr 290px; gap: 16px; align-items: start; }
+  .panel { background: var(--panel); border: 1px solid var(--border); border-radius: 10px; padding: 14px; }
+  .panel + .panel { margin-top: 16px; }
+
+  /* list/tree */
+  .tree ul { list-style: none; margin: 0; padding-left: 18px; }
+  .tree > ul { padding-left: 0; }
+  .tree li { margin: 1px 0; }
+  .node-row { display: flex; align-items: center; gap: 6px; padding: 2px 6px; border-radius: 6px; cursor: pointer; }
+  .node-row:hover { background: var(--panel2); }
+  .node-row.sel { background: #262b4a; }
+  .twisty { width: 14px; color: var(--dim); flex: none; text-align: center; cursor: pointer; }
+  .nname { font-weight: 600; }
+  .vrow { color: var(--dim); font-size: 13px; }
+  .vrow .pill { font-size: 12px; padding: 0 8px; }
+  .badge { font-size: 10px; padding: 0 6px; border-radius: 8px; border: 1px solid var(--border); color: var(--dim); flex: none; }
+  .badge.roll { color: var(--accent2); border-color: var(--chipb); }
+  .badge.w0 { color: var(--err); }
+
+  /* node detail */
+  .detail label { display: block; color: var(--dim); font-size: 11px; margin: 10px 0 2px; text-transform: uppercase; letter-spacing: .06em; }
+  .detail .val { background: var(--panel2); border: 1px solid var(--border); border-radius: 6px; padding: 5px 8px; margin: 3px 0; display: flex; justify-content: space-between; gap: 8px; align-items: baseline; }
+  .detail .val .w { color: var(--dim); font-size: 11px; flex: none; }
+  .toggle { display: inline-flex; align-items: center; gap: 8px; cursor: pointer; user-select: none; }
+  .toggle input { accent-color: var(--accent); }
+
+  /* field */
+  .fieldbox { background: var(--panel2); border: 1px solid var(--border); border-radius: 8px; padding: 10px; min-height: 64px; }
+  .pill { display: inline-flex; align-items: center; gap: 4px; background: var(--chip); border: 1px solid var(--chipb);
+    color: var(--accent2); border-radius: 999px; padding: 1px 9px; margin: 1px 2px; cursor: pointer; font-size: 13px; white-space: nowrap; }
+  .pill .mode { font-size: 10px; color: var(--dim); }
+  .pill:hover { border-color: var(--accent); }
+  .pill.static { cursor: default; }
+  .inputrow { display: flex; gap: 8px; margin-top: 8px; }
+  .inputrow input { flex: 1; background: var(--panel2); border: 1px solid var(--border); border-radius: 6px;
+    color: var(--text); padding: 7px 10px; font: inherit; }
+  .inputrow input:focus { outline: none; border-color: var(--accent); }
+  button { background: var(--panel2); color: var(--text); border: 1px solid var(--border); border-radius: 6px;
+    padding: 6px 12px; font: inherit; cursor: pointer; }
+  button:hover { border-color: var(--accent); }
+  button.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+  button:disabled { opacity: .4; cursor: default; }
+  .hint { color: var(--dim); font-size: 12px; margin-top: 6px; }
+
+  /* picker + popout */
+  .layer { position: absolute; z-index: 30; background: var(--panel); border: 1px solid var(--chipb);
+    border-radius: 10px; box-shadow: 0 8px 30px rgba(0,0,0,.5); padding: 10px; width: 300px; }
+  .crumbs { display: flex; flex-wrap: wrap; gap: 4px; align-items: center; color: var(--dim); font-size: 12px; margin-bottom: 8px; }
+  .crumbs .cr { cursor: pointer; color: var(--accent2); }
+  .pickrow { display: flex; align-items: center; gap: 8px; padding: 5px 8px; border-radius: 6px; cursor: pointer; }
+  .pickrow:hover { background: var(--panel2); }
+  .pickrow .drill { margin-left: auto; color: var(--dim); padding: 0 6px; border-radius: 4px; }
+  .pickrow .drill:hover { color: var(--accent2); background: #262b4a; }
+  .picksec { font-size: 10px; text-transform: uppercase; letter-spacing: .08em; color: var(--dim); margin: 8px 4px 2px; }
+  .pickwarn { color: var(--warn); font-size: 11px; }
+  .picknote { color: var(--dim); font-style: italic; font-size: 12px; padding: 2px 8px; }
+  .layer .insert { width: 100%; margin-top: 8px; }
+  .radio { display: flex; gap: 12px; margin: 6px 0; }
+
+  /* state */
+  .kv { display: flex; justify-content: space-between; gap: 8px; padding: 2px 0; border-bottom: 1px dashed var(--border); font-size: 13px; }
+  .kv:last-child { border-bottom: 0; }
+  .kv .k { color: var(--dim); }
+  .out { background: var(--panel2); border: 1px solid var(--border); border-left: 3px solid var(--accent);
+    border-radius: 6px; padding: 10px 12px; white-space: pre-wrap; min-height: 40px; }
+  .finding { color: var(--warn); font-size: 12px; padding: 4px 8px; background: #2a2413; border: 1px solid #4a3f1e; border-radius: 6px; margin-top: 6px; }
+  .none { color: var(--dim); font-style: italic; font-size: 12px; }
+
+  /* walkthroughs */
+  .tabs { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 10px; }
+  .tab { padding: 5px 12px; border-radius: 999px; border: 1px solid var(--border); cursor: pointer; font-size: 13px; color: var(--dim); }
+  .tab.on { background: var(--accent); border-color: var(--accent); color: #fff; }
+  .steps { display: flex; flex-direction: column; gap: 6px; margin-top: 10px; }
+  .step { display: flex; gap: 10px; align-items: baseline; }
+  .step button { flex: none; min-width: 180px; text-align: left; }
+  .step.done button { border-color: var(--ok); color: var(--ok); }
+  .step .why { color: var(--dim); font-size: 12px; }
+  .blurb { color: var(--dim); font-size: 13px; max-width: 75ch; }
+  .openq { border-left: 3px solid var(--warn); padding: 6px 10px; background: #221d10; border-radius: 6px; margin-top: 8px; font-size: 12px; color: #d8c9a0; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>Hierarchical Placeholders — interactive prototype (v2, values model)</h1>
+  <p class="intro"><b>The question:</b> does the settled model feel right in use? A placeholder is still
+  <b>Name + Values</b>. Every value is text that accepts chips. A value that is <b>exactly one chip</b> is a
+  structural child — that is what makes <b>Molly › Hair</b> addressable. Chips <b>inside</b> a string just
+  render. A Roll toggle picks one value; off = record, whole placement joins every value. Poke the free-play
+  controls or run the walkthroughs. In-memory; reload to reset. <b>Throwaway file; the resolver inside is
+  the draft for the real one.</b></p>
+
+  <div class="panel" id="walkPanel">
+    <h2>Guided Walkthroughs</h2>
+    <div class="tabs" id="tabs"></div>
+    <div class="blurb" id="blurb"></div>
+    <div id="openq"></div>
+    <div class="steps" id="steps"></div>
+  </div>
+  <br>
+
+  <div class="cols">
+    <div>
+      <div class="panel tree">
+        <h2>Placeholders (world list)</h2>
+        <div id="tree"></div>
+      </div>
+      <div class="panel detail" id="detail">
+        <h2>Selected Placeholder</h2>
+        <div class="none">Click one in the list.</div>
+      </div>
+    </div>
+
+    <div>
+      <div class="panel">
+        <h2>World Text (chip field)</h2>
+        <div class="fieldbox" id="field"></div>
+        <div class="inputrow">
+          <input id="typer" placeholder='Type text… press { to insert a placeholder' autocomplete="off">
+          <button id="clearField">Clear</button>
+        </div>
+        <div class="hint">Press <b>{</b> to open the picker. Click a placed chip to change its mode, re-pick, or remove it.</div>
+      </div>
+      <div class="panel">
+        <h2>Resolved Output <span style="float:right"><button id="reroll" class="primary">Reroll World</button></span></h2>
+        <div class="out" id="out"></div>
+        <div id="findings"></div>
+      </div>
+      <div class="panel">
+        <h2>Traits (pins)</h2>
+        <label class="toggle"><input type="checkbox" id="tAsian"> Asian Heritage — pins <b>&nbsp;Molly → isAsian</b></label><br>
+        <label class="toggle"><input type="checkbox" id="tRed"> Redhead — pins <b>&nbsp;Hair → "fiery red"</b> (a benched 0%-weight value)</label>
+      </div>
+    </div>
+
+    <div>
+      <div class="panel">
+        <h2>World Rolls</h2>
+        <div id="rollsW"></div>
+      </div>
+      <div class="panel">
+        <h2>Unique Rolls</h2>
+        <div id="rollsU"></div>
+      </div>
+      <div class="panel">
+        <h2>Active Pins</h2>
+        <div id="pinsView"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+'use strict';
+/* ============================================================
+   PURE MODULE — draft resolver, values model.
+   Placeholder: { id, name, roll?, weights?: {valueIndex:number}, values: Value[] }
+   Value: array of parts: {t:'s', v:string} | {t:'c', segs:Seg[]}
+   Seg: {kind:'ph', key} (first only) | {kind:'val', ref} (explicit pick) | {kind:'slot', name}
+   A value whose parts are a single 'c' part = a structural child (addressable).
+   ============================================================ */
+
+const DEPTH_CAP = 16;
+
+function loneChip(value) { return value.length === 1 && value[0].t === 'c' ? value[0] : null; }
+function chipTarget(chip, byId) { return byId.get(chip.segs[0].key) ?? null; } // first seg is always the root ph
+
+function weightOf(ph, idx) {
+  const w = ph.weights?.[idx];
+  return typeof w === 'number' && isFinite(w) ? Math.max(0, w) : 1;
+}
+
+function weightedPickIdx(ph, rng) {
+  const ws = ph.values.map((_, i) => weightOf(ph, i));
+  const total = ws.reduce((a, b) => a + b, 0);
+  if (total <= 0) return Math.floor(rng() * ph.values.length); // all benched -> uniform fallback
+  let r = rng() * total;
+  for (let i = 0; i < ws.length; i++) { r -= ws[i]; if (r < 0) return i; }
+  return ws.length - 1;
+}
+
+/* ctx: { byId, rolls (mutable ns: {phId -> valueIndex}), pins {phId -> valueIndex},
+         rng, seen:Set, depth, findings:[] } */
+
+function selectValueIdx(ph, ctx) {
+  const pinned = ctx.pins[ph.id];               // OPEN QUESTION: pin beats an authored drill (pre-selection)
+  if (pinned != null && ph.values[pinned]) return pinned;
+  let idx = ctx.rolls[ph.id];
+  if (idx == null || !ph.values[idx]) { idx = weightedPickIdx(ph, ctx.rng); ctx.rolls[ph.id] = idx; }
+  return idx;
+}
+
+function resolvePh(ph, ctx) {
+  if (ctx.depth > DEPTH_CAP || ctx.seen.has(ph.id)) { ctx.findings.push('Cycle/depth at "' + ph.name + '"'); return ''; }
+  const inner = { ...ctx, seen: new Set(ctx.seen).add(ph.id), depth: ctx.depth + 1 };
+  if (!ph.values.length) return '';
+  if (ph.roll && ph.values.length > 1) return resolveValue(ph.values[selectValueIdx(ph, inner)], inner);
+  // record (or single value): join every value
+  return ph.values.map(v => resolveValue(v, inner)).filter(s => s !== '').join(', ');
+}
+
+function resolveValue(value, ctx) {
+  // every chip inside a value is authored — its drill yields to pins; typed field chips do not
+  return value.map(p => p.t === 's' ? p.v : resolveSegs(p.segs, ctx, [], true)).join('');
+}
+
+/* Resolve a chip path. First seg names the root placeholder; later segs pick explicit values
+   ('val', by target ph id) or slots ('slot', by target ph name — routes through the roll). */
+function resolveSegs(segs, ctx, extra = [], authored = false) {
+  const ph = ctx.byId.get(segs[0].key);
+  if (!ph) { ctx.findings.push('Dangling reference'); return ''; }
+  let tail = segs.slice(1);
+  if (authored) tail = tail.map(s => ({ ...s, authored: true }));
+  return walkSegs(ph, [...tail, ...extra], ctx);
+}
+
+function walkSegs(ph, segs, ctx) {
+  if (ctx.depth > DEPTH_CAP) { ctx.findings.push('Depth cap in path'); return ''; }
+  if (!segs.length) return resolvePh(ph, ctx);
+  const [seg, ...rest] = segs;
+  const next = { ...ctx, depth: ctx.depth + 1 };
+  const intoChip = (chip, tail) => { // continue through a lone-chip value; its own drill counts as authored
+    const target = chipTarget(chip, ctx.byId);
+    if (!target) { ctx.findings.push('Dangling reference'); return ''; }
+    const drill = chip.segs.slice(1).map(s => ({ ...s, authored: true }));
+    return walkSegs(target, [...drill, ...tail], next);
+  };
+  if (seg.kind === 'val') {
+    // OPEN QUESTION: an authored drill ({Hair › Brown} as a value) yields to a pin; a typed
+    // explicit path from world text does not.
+    if (seg.authored && ctx.pins[ph.id] != null) {
+      const pv = ph.values[ctx.pins[ph.id]];
+      const c = loneChip(pv);
+      if (!rest.length) return resolveValue(pv, next);
+      if (c) return intoChip(c, rest);
+      ctx.findings.push('Slot miss: pinned value of "' + ph.name + '" is plain text');
+      return '';
+    }
+    const hit = ph.values.map(loneChip).find(c => c && chipTarget(c, ctx.byId)?.id === seg.ref);
+    if (!hit) { ctx.findings.push('Path miss: "' + ph.name + '" has no value → ' + seg.ref); return ''; }
+    return intoChip(hit, rest);
+  }
+  // slot: direct lone-chip value by target name first, else route through the roll
+  const direct = ph.values.map(loneChip).find(c => c && chipTarget(c, ctx.byId)?.name === seg.name);
+  if (direct) return intoChip(direct, rest);
+  if (ph.roll && ph.values.length > 1) {
+    const chosen = ph.values[selectValueIdx(ph, next)];
+    const chip = loneChip(chosen);
+    if (chip) return intoChip(chip, segs); // retry the same slot inside the rolled variant
+    ctx.findings.push('Slot miss: rolled value of "' + ph.name + '" is plain text, no slot "' + seg.name + '"');
+    return '';
+  }
+  ctx.findings.push('Slot miss: "' + seg.name + '" not found under "' + ph.name + '"');
+  return '';
+}
+
+/* ============================================================
+   DEMO WORLD — everything lives in the flat world list (refs only).
+   ============================================================ */
+const chip = (...ids) => ({ t: 'c', segs: ids.map((k, i) => i === 0 ? { kind: 'ph', key: k } : { kind: 'val', ref: k }) });
+const str = (v) => ({ t: 's', v });
+
+const ROOTS = [
+  { id: 'molly', name: 'Molly', roll: true, weights: { 0: 7, 1: 3 }, values: [
+    [chip('iswhite')], [chip('isasian')] ] },
+  { id: 'iswhite', name: 'isWhite', values: [
+    [chip('hair', 'brown')], [chip('eyes')], [chip('freckles')] ] },
+  { id: 'isasian', name: 'isAsian', values: [
+    [chip('hair', 'black')], [str('dark brown eyes')] ] },
+  { id: 'hair', name: 'Hair', roll: true, weights: { 3: 0 }, values: [
+    [chip('brown')], [chip('blonde')], [chip('black')], [str('fiery red')] ] },
+  { id: 'brown', name: 'Brown', roll: true, values: [ [str('chestnut')], [str('auburn')], [str('chocolate brown')] ] },
+  { id: 'blonde', name: 'Blonde', roll: true, values: [ [str('golden blonde')], [str('platinum')] ] },
+  { id: 'black', name: 'Black', values: [ [str('jet black')] ] },
+  { id: 'eyes', name: 'Eyes', roll: true, values: [ [str('green')], [str('hazel')], [str('blue')] ] },
+  { id: 'freckles', name: 'Freckles', values: [ [str('light freckles')] ] },
+  { id: 'town', name: 'Town', roll: true, values: [ [str('Sedge Landing')], [str('Milbrook')], [str('Harrow Point')] ] },
+  { id: 'intro', name: 'Intro', values: [ [str('A traveler from '), chip('town'), str(' waves you over.')] ] },
+];
+const BY_ID = new Map(ROOTS.map(p => [p.id, p]));
+
+/* ============================================================
+   PAGE STATE (throwaway shell)
+   ============================================================ */
+const S = {
+  rollsWorld: {},            // phId -> valueIndex
+  rollsUnique: {},           // placementId -> { phId -> valueIndex }
+  pins: {},                  // phId -> valueIndex
+  parts: [],                 // {t:'text',v} | {t:'chip', segs, mode, pid}
+  selected: null,
+  expanded: new Set(['molly', 'iswhite', 'hair']),
+};
+let pidCounter = 0;
+
+function makeCtx(ns) {
+  return { byId: BY_ID, rolls: ns, pins: S.pins, rng: Math.random, seen: new Set(), depth: 0, findings: [] };
+}
+
+function resolveField() {
+  const findings = [];
+  let out = '';
+  for (const p of S.parts) {
+    if (p.t === 'text') { out += p.v; continue; }
+    const ns = p.mode === 'unique' ? (S.rollsUnique[p.pid] ??= {}) : S.rollsWorld;
+    const ctx = makeCtx(ns);
+    out += resolveSegs(p.segs, ctx);
+    findings.push(...ctx.findings);
+  }
+  return { out, findings };
+}
+
+/* ============================================================
+   RENDERING
+   ============================================================ */
+const $ = (id) => document.getElementById(id);
+
+function segLabel(seg) {
+  if (seg.kind === 'ph') return BY_ID.get(seg.key)?.name ?? '?';
+  if (seg.kind === 'val') return BY_ID.get(seg.ref)?.name ?? '?';
+  return seg.name;
+}
+function pathLabel(segs) { return segs.map(segLabel).join(' › '); }
+
+function valuePreview(value) { // short display of one value
+  return value.map(p => p.t === 's' ? p.v : '{' + pathLabel(p.segs) + '}').join('');
+}
+
+function renderTree() {
+  const box = $('tree'); box.innerHTML = '';
+  const ul = document.createElement('ul');
+  for (const ph of ROOTS) {
+    const li = document.createElement('li');
+    const row = document.createElement('div');
+    row.className = 'node-row' + (S.selected === ph ? ' sel' : '');
+    const tw = document.createElement('span'); tw.className = 'twisty';
+    tw.textContent = ph.values.length ? (S.expanded.has(ph.id) ? '▾' : '▸') : '·';
+    tw.onclick = (e) => { e.stopPropagation();
+      S.expanded.has(ph.id) ? S.expanded.delete(ph.id) : S.expanded.add(ph.id); renderTree(); };
+    row.appendChild(tw);
+    const nm = document.createElement('span'); nm.className = 'nname'; nm.textContent = ph.name; row.appendChild(nm);
+    if (ph.roll) { const b = document.createElement('span'); b.className = 'badge roll'; b.textContent = 'rolls'; row.appendChild(b); }
+    row.onclick = () => { S.selected = ph; renderAll(); };
+    li.appendChild(row);
+    if (S.expanded.has(ph.id)) {
+      const kids = document.createElement('ul');
+      ph.values.forEach((v, i) => {
+        const kli = document.createElement('li');
+        const krow = document.createElement('div'); krow.className = 'node-row vrow';
+        const c = loneChip(v);
+        if (c) {
+          const pill = document.createElement('span'); pill.className = 'pill static';
+          pill.textContent = pathLabel(c.segs);
+          krow.appendChild(pill);
+          krow.onclick = () => { S.selected = chipTarget(c, BY_ID); renderAll(); };
+        } else {
+          krow.textContent = '“' + valuePreview(v) + '”';
+        }
+        if (weightOf(ph, i) === 0 && ph.roll) { const b = document.createElement('span'); b.className = 'badge w0'; b.textContent = '0%'; krow.appendChild(b); }
+        kli.appendChild(krow); kids.appendChild(kli);
+      });
+      li.appendChild(kids);
+    }
+    ul.appendChild(li);
+  }
+  box.appendChild(ul);
+}
+
+function renderDetail() {
+  const d = $('detail');
+  const ph = S.selected;
+  if (!ph) { d.innerHTML = '<h2>Selected Placeholder</h2><div class="none">Click one in the list.</div>'; return; }
+  const rows = ph.values.map((v, i) => {
+    const c = loneChip(v);
+    const body = c
+      ? '<span class="pill static">' + pathLabel(c.segs) + '</span> <span class="none">← addressable child</span>'
+      : valuePreview(v);
+    const w = ph.roll && ph.values.length > 1 ? '<span class="w">weight ' + weightOf(ph, i) + '</span>' : '';
+    return '<div class="val"><span>' + body + '</span>' + w + '</div>';
+  }).join('') || '<div class="none">no values — resolves to nothing</div>';
+  d.innerHTML = '<h2>Selected Placeholder</h2>'
+    + '<label>Name</label><div class="val">' + ph.name + '</div>'
+    + '<label>Roll</label><label class="toggle"><input type="checkbox" id="rollT" ' + (ph.roll ? 'checked' : '') + '> '
+    + (ph.roll ? 'On — picks one value' : 'Off — record, whole placement joins all values') + '</label>'
+    + '<label>Values (chips allowed — a lone chip is a child)</label>' + rows;
+  const t = document.getElementById('rollT');
+  if (t) t.onchange = () => { ph.roll = t.checked; renderAll(); };
+}
+
+function renderField() {
+  const f = $('field'); f.innerHTML = '';
+  if (!S.parts.length) { f.innerHTML = '<span class="none">empty — type below, press { for a chip</span>'; }
+  S.parts.forEach((p, i) => {
+    if (p.t === 'text') { f.appendChild(document.createTextNode(p.v)); return; }
+    const pill = document.createElement('span');
+    pill.className = 'pill';
+    pill.innerHTML = pathLabel(p.segs) + ' <span class="mode">' + (p.mode === 'unique' ? 'U' : 'W') + '</span>';
+    pill.onclick = (e) => { e.stopPropagation(); openPopout(pill, i); };
+    f.appendChild(pill);
+  });
+}
+
+function renderState() {
+  const { out, findings } = resolveField();
+  $('out').textContent = out || '';
+  if (!out) $('out').innerHTML = '<span class="none">place something in the field above</span>';
+  $('findings').innerHTML = findings.map(f => '<div class="finding">⚠ Test Bench: ' + f + '</div>').join('');
+
+  const rollLine = (ns) => Object.entries(ns).map(([pid, idx]) => {
+    const ph = BY_ID.get(pid);
+    const v = ph?.values[idx];
+    return '<div class="kv"><span class="k">' + (ph?.name ?? pid) + '</span><span>' + (v ? valuePreview(v) : idx) + '</span></div>';
+  }).join('');
+  $('rollsW').innerHTML = rollLine(S.rollsWorld) || '<div class="none">nothing rolled yet</div>';
+  $('rollsU').innerHTML = Object.entries(S.rollsUnique).map(([pid, ns]) =>
+    '<div class="kv"><span class="k">placement ' + pid + '</span><span></span></div>' + rollLine(ns)
+  ).join('') || '<div class="none">no unique placements rolled</div>';
+  $('pinsView').innerHTML = Object.entries(S.pins).map(([pid, idx]) => {
+    const ph = BY_ID.get(pid);
+    return '<div class="kv"><span class="k">' + (ph?.name ?? pid) + '</span><span>→ ' + valuePreview(ph.values[idx]) + '</span></div>';
+  }).join('') || '<div class="none">no active pins</div>';
+}
+
+function renderAll() { renderTree(); renderDetail(); renderField(); renderState(); }
+
+/* ============================================================
+   PICKER (the { typeahead) + CHIP POPOUT
+   Structure is derived: a placeholder's children are its lone-chip values.
+   ============================================================ */
+let layerEl = null;
+function closeLayer() { if (layerEl) { layerEl.remove(); layerEl = null; } }
+document.addEventListener('click', () => closeLayer());
+
+function childrenOf(ph) { // lone-chip values -> [{chip, target}]
+  return ph.values.map(loneChip).filter(Boolean)
+    .map(c => ({ chip: c, target: chipTarget(c, BY_ID) })).filter(x => x.target);
+}
+function slotNamesOf(ph) { // union of the variants' child names (choice nodes only)
+  const names = new Map();
+  const variants = ph.values.map(loneChip).filter(Boolean).map(c => chipTarget(c, BY_ID)).filter(Boolean);
+  for (const v of variants) {
+    const seen = new Set();
+    for (const { target } of childrenOf(v)) {
+      if (!seen.has(target.name)) { seen.add(target.name); names.set(target.name, (names.get(target.name) ?? 0) + 1); }
+    }
+  }
+  return { names, variantCount: ph.values.length };
+}
+
+function targetOfPath(segs) { // the placeholder a picker path currently points at
+  let ph = BY_ID.get(segs[0].key);
+  for (const seg of segs.slice(1)) {
+    if (!ph) return null;
+    if (seg.kind === 'val') ph = BY_ID.get(seg.ref);
+    else { const hit = childrenOf(ph).find(x => x.target.name === seg.name); ph = hit?.target ?? null; }
+  }
+  return ph;
+}
+
+function openPicker(anchor, onInsert, replaceIdx) {
+  closeLayer();
+  const layer = document.createElement('div');
+  layer.className = 'layer';
+  layer.onclick = (e) => e.stopPropagation();
+  document.body.appendChild(layer);
+  const r = anchor.getBoundingClientRect();
+  layer.style.left = Math.min(r.left, window.innerWidth - 320) + window.scrollX + 'px';
+  layer.style.top = r.bottom + 6 + window.scrollY + 'px';
+  layerEl = layer;
+
+  let path = []; // segs
+  let filter = '';
+
+  const rowEl = (label, sub, canDrill, pick, drill) => {
+    const row = document.createElement('div'); row.className = 'pickrow';
+    row.innerHTML = '<span>' + label + '</span>' + (sub ? ' <span class="pickwarn">' + sub + '</span>' : '');
+    row.onclick = pick;
+    if (canDrill) {
+      const d = document.createElement('span'); d.className = 'drill'; d.textContent = '›';
+      d.onclick = (e) => { e.stopPropagation(); drill(); };
+      row.appendChild(d);
+    }
+    return row;
+  };
+
+  const render = () => {
+    layer.innerHTML = '';
+    const crumbs = document.createElement('div'); crumbs.className = 'crumbs';
+    crumbs.innerHTML = '<span class="cr" data-i="-1">{…</span>' + path.map((s, i) =>
+      ' › <span class="cr" data-i="' + i + '">' + segLabel(s) + '</span>').join('');
+    crumbs.querySelectorAll('.cr').forEach(el => el.onclick = () => { path = path.slice(0, +el.dataset.i + 1); filter = ''; render(); });
+    layer.appendChild(crumbs);
+
+    const inp = document.createElement('input');
+    inp.placeholder = 'filter…'; inp.value = filter;
+    inp.style.cssText = 'width:100%;background:var(--panel2);border:1px solid var(--border);border-radius:6px;color:var(--text);padding:5px 8px;font:inherit;margin-bottom:6px';
+    inp.oninput = () => { filter = inp.value; renderRows(); };
+    layer.appendChild(inp);
+
+    const rows = document.createElement('div'); layer.appendChild(rows);
+    const renderRows = () => {
+      rows.innerHTML = '';
+      const commit = (segs) => { onInsert(segs, replaceIdx); closeLayer(); };
+      const flt = (s) => s.toLowerCase().includes(filter.toLowerCase());
+      if (!path.length) {
+        for (const ph of ROOTS.filter(x => flt(x.name))) {
+          rows.appendChild(rowEl(ph.name, null, childrenOf(ph).length > 0,
+            () => commit([{ kind: 'ph', key: ph.id }]),
+            () => { path = [{ kind: 'ph', key: ph.id }]; filter = ''; render(); }));
+        }
+        return;
+      }
+      const ph = targetOfPath(path);
+      if (!ph) return;
+      const kids = childrenOf(ph).filter(x => flt(x.target.name));
+      if (kids.length) {
+        const h = document.createElement('div'); h.className = 'picksec';
+        h.textContent = ph.roll ? 'variants (explicit path)' : 'children'; rows.appendChild(h);
+        for (const { target } of kids) {
+          rows.appendChild(rowEl(target.name, null, childrenOf(target).length > 0,
+            () => commit([...path, { kind: 'val', ref: target.id }]),
+            () => { path = [...path, { kind: 'val', ref: target.id }]; filter = ''; render(); }));
+        }
+      }
+      if (ph.roll) {
+        const { names, variantCount } = slotNamesOf(ph);
+        const slotRows = [...names.entries()].filter(([n]) => flt(n));
+        if (slotRows.length) {
+          const h = document.createElement('div'); h.className = 'picksec'; h.textContent = 'slots — via whichever value rolls'; rows.appendChild(h);
+          for (const [n, cnt] of slotRows) {
+            rows.appendChild(rowEl(n, cnt < variantCount ? '⚠ not in all values' : null, false,
+              () => commit([...path, { kind: 'slot', name: n }]), null));
+          }
+        }
+      }
+      const plain = ph.values.length - ph.values.map(loneChip).filter(Boolean).length;
+      if (plain > 0) {
+        const note = document.createElement('div'); note.className = 'picknote';
+        note.textContent = plain + ' plain value(s) — not addressable'; rows.appendChild(note);
+      }
+    };
+    renderRows();
+
+    if (path.length) {
+      const btn = document.createElement('button'); btn.className = 'primary insert';
+      btn.textContent = 'Insert {' + pathLabel(path) + '}';
+      btn.onclick = () => { onInsert(path, replaceIdx); closeLayer(); };
+      layer.appendChild(btn);
+    }
+    inp.focus();
+  };
+  render();
+}
+
+function openPopout(anchor, idx) {
+  closeLayer();
+  const p = S.parts[idx];
+  const layer = document.createElement('div'); layer.className = 'layer';
+  layer.onclick = (e) => e.stopPropagation();
+  document.body.appendChild(layer);
+  const r = anchor.getBoundingClientRect();
+  layer.style.left = Math.min(r.left, window.innerWidth - 320) + window.scrollX + 'px';
+  layer.style.top = r.bottom + 6 + window.scrollY + 'px';
+  layerEl = layer;
+  layer.innerHTML = '<div class="crumbs">{' + pathLabel(p.segs) + '}</div>'
+    + '<div class="radio">'
+    + '<label class="toggle"><input type="radio" name="m" value="world" ' + (p.mode === 'world' ? 'checked' : '') + '> World — shared roll</label>'
+    + '<label class="toggle"><input type="radio" name="m" value="unique" ' + (p.mode === 'unique' ? 'checked' : '') + '> Unique — own roll</label>'
+    + '</div>';
+  layer.querySelectorAll('input[name=m]').forEach(el => el.onchange = () => { p.mode = el.value; renderAll(); });
+  const row = document.createElement('div'); row.style.cssText = 'display:flex;gap:8px;margin-top:8px';
+  const reroll = document.createElement('button'); reroll.textContent = 'Reroll This Placement';
+  reroll.onclick = () => { if (p.mode === 'unique') delete S.rollsUnique[p.pid]; else S.rollsWorld = {}; renderAll(); };
+  const repick = document.createElement('button'); repick.textContent = 'Re-pick…';
+  repick.onclick = () => openPicker(anchor, (segs, i) => { S.parts[i] = { ...S.parts[i], segs }; renderAll(); }, idx);
+  const rm = document.createElement('button'); rm.textContent = 'Remove';
+  rm.onclick = () => { S.parts.splice(idx, 1); closeLayer(); renderAll(); };
+  row.append(reroll, repick, rm); layer.appendChild(row);
+}
+
+/* ============================================================
+   FIELD INPUT + FREE PLAY
+   ============================================================ */
+function insertChip(segs, mode = 'world') {
+  S.parts.push({ t: 'chip', segs, mode, pid: 'p' + (++pidCounter) });
+  renderAll();
+}
+function insertText(v) {
+  const last = S.parts[S.parts.length - 1];
+  if (last && last.t === 'text') last.v += v; else S.parts.push({ t: 'text', v });
+  renderAll();
+}
+
+const typer = $('typer');
+typer.addEventListener('keydown', (e) => {
+  if (e.key === '{') {
+    e.preventDefault();
+    if (typer.value) { insertText(typer.value); typer.value = ''; }
+    openPicker(typer, (segs) => { insertChip(segs); typer.focus(); });
+  } else if (e.key === 'Enter' && typer.value) {
+    insertText(typer.value); typer.value = '';
+  }
+});
+typer.addEventListener('input', () => { // fallback: IMEs/synthetic input that skip keydown
+  if (typer.value.endsWith('{')) {
+    const before = typer.value.slice(0, -1);
+    typer.value = '';
+    if (before) insertText(before);
+    openPicker(typer, (segs) => { insertChip(segs); typer.focus(); });
+  }
+});
+$('clearField').onclick = () => { S.parts = []; renderAll(); };
+$('reroll').onclick = () => { S.rollsWorld = {}; S.rollsUnique = {}; renderAll(); };
+$('tAsian').onchange = (e) => { if (e.target.checked) S.pins.molly = 1; else delete S.pins.molly; renderAll(); };
+$('tRed').onchange = (e) => { if (e.target.checked) S.pins.hair = 3; else delete S.pins.hair; renderAll(); };
+
+/* ============================================================
+   WALKTHROUGHS
+   ============================================================ */
+function resetState() {
+  S.rollsWorld = {}; S.rollsUnique = {}; S.pins = {}; S.parts = [];
+  $('tAsian').checked = false; $('tRed').checked = false;
+  closeLayer(); renderAll();
+}
+const seg = (kind, v) => kind === 'ph' ? { kind, key: v } : kind === 'val' ? { kind, ref: v } : { kind, name: v };
+
+const WALKS = [
+  { title: '1 · Today still works',
+    blurb: 'A flat Wildcard is a roll-on placeholder whose values are plain strings — unchanged. And a value can carry chips inside a string: Intro is a single-value placeholder whose value embeds {Town}. Both share Town’s World roll.',
+    steps: [
+      ['Place {Intro}', () => { insertChip([seg('ph', 'intro')]); },
+        'One value, so it just renders — with the Town chip inside it resolved.'],
+      ['Place {Town} too', () => { insertText(' Welcome to '); insertChip([seg('ph', 'town')]); insertText('.'); },
+        'Same World roll as the one inside Intro — they agree.'],
+      ['Reroll World', () => { S.rollsWorld = {}; renderAll(); },
+        'A new playthrough, a new town — both mentions move together.'],
+    ]},
+  { title: '2 · A whole character in one chip',
+    blurb: 'Molly rolls (70% isWhite / 30% isAsian). Each variant is a record — roll off — so whole placement joins all its values with commas: chips expand, plain strings render as-is. Want prose instead? Write the record as one prose value with chips inside it.',
+    steps: [
+      ['Place {Molly}', () => { insertText('A woman waves you over: '); insertChip([seg('ph', 'molly')]); },
+        'isWhite → “<hair shade>, <eye color>, light freckles”; isAsian → “jet black, dark brown eyes”.'],
+      ['Reroll World', () => { S.rollsWorld = {}; renderAll(); },
+        'Click repeatedly — roughly 7-in-10 give isWhite.'],
+    ]},
+  { title: '3 · Slot paths correlate',
+    blurb: 'A lone-chip value is an addressable child, and a slot path names one (Hair) without naming the variant. It routes through whichever value rolled — separate sentences always describe the same Molly.',
+    steps: [
+      ['Place {Molly › Hair}', () => { insertText('Her '); insertChip([seg('ph', 'molly'), seg('slot', 'Hair')]); insertText(' hair catches the light. '); },
+        'isWhite routes to Brown shades, isAsian to jet black.'],
+      ['Place {Molly › Eyes}', () => { insertText('Her '); insertChip([seg('ph', 'molly'), seg('slot', 'Eyes')]); insertText(' eyes narrow.'); },
+        'Same variant, same character… but check what isAsian does — its eyes are a plain value, not a chip. Slot miss!'],
+      ['Reroll World', () => { S.rollsWorld = {}; renderAll(); },
+        'Both chips move together while isWhite is rolled.'],
+    ],
+    openq: 'NOTE — isAsian’s “dark brown eyes” is a plain string value, so {Molly › Eyes} misses when isAsian rolls (⚠ finding below the output). Addressable structure requires lone-chip values; prose values are invisible to paths. Working as designed — confirm it feels right.'},
+  { title: '4 · Drilled chips as values',
+    blurb: 'isWhite’s hair value is the chip {Hair › Brown} — a drilled chip used as a value. The drill acts as an authored pre-selection: the Brown branch always, while Brown still rolls its shade. An explicit path from world text bypasses Molly’s roll entirely.',
+    steps: [
+      ['Place {Molly › isWhite › Hair}', () => { insertChip([seg('ph', 'molly'), seg('val', 'iswhite'), seg('slot', 'Hair')]); },
+        'Always Brown’s branch; the shade varies.'],
+      ['Reroll World', () => { S.rollsWorld = {}; renderAll(); },
+        'chestnut / auburn / chocolate brown — never blonde or black.'],
+    ]},
+  { title: '5 · Pins & benched values',
+    blurb: 'Traits pin a placeholder to one of its values — the same mechanism as today. Asian Heritage pins Molly → isAsian. Redhead pins Hair → "fiery red", a 0%-weight value that never rolls on its own. Toggling off reveals the frozen roll. OPEN QUESTION below.',
+    steps: [
+      ['Place {Molly}', () => { insertText('A woman waves you over: '); insertChip([seg('ph', 'molly')]); },
+        'Whatever the roll says.'],
+      ['Toggle Asian Heritage on', () => { $('tAsian').checked = true; S.pins.molly = 1; renderAll(); },
+        'Output flips to the isAsian record; the roll is masked, not overwritten.'],
+      ['Toggle Redhead on', () => { $('tRed').checked = true; S.pins.hair = 3; renderAll(); },
+        'Hair goes fiery red — even though isAsian’s value drills to Black. Pin beats the authored drill. Is that right?'],
+      ['Toggle both off', () => { $('tAsian').checked = false; $('tRed').checked = false; S.pins = {}; renderAll(); },
+        'The frozen roll comes back untouched.'],
+    ],
+    openq: 'OPEN QUESTION — precedence: this prototype makes a trait pin beat an authored drilled chip (pin > drill > roll). The reverse argument: {Hair › Black} is isAsian’s definition and should win over a generic Redhead pin. Feel it in step 3 and pick.'},
+  { title: '6 · Slot miss → Test Bench',
+    blurb: 'Freckles exists on isWhite only. The picker warns when a slot is not in all values; if the other value rolls, resolution yields nothing and a Test Bench finding appears under the output.',
+    steps: [
+      ['Place {Molly › Freckles}', () => { insertText('You notice '); insertChip([seg('ph', 'molly'), seg('slot', 'Freckles')]); insertText('.'); },
+        'Fine when isWhite rolled; empty + a ⚠ finding when isAsian rolled.'],
+      ['Pin isAsian to force the miss', () => { $('tAsian').checked = true; S.pins.molly = 1; renderAll(); },
+        'The finding appears — in the real app this is a Test Bench rule, not new UI.'],
+      ['Unpin', () => { $('tAsian').checked = false; delete S.pins.molly; renderAll(); }, ''],
+    ]},
+  { title: '7 · Unique strangers',
+    blurb: 'A Unique chip rolls its entire subtree per placement. Two Unique Mollys are two different women in one paragraph; a World chip elsewhere still tracks the shared Molly.',
+    steps: [
+      ['Place two Unique {Molly}s', () => {
+          insertText('Two women argue by the well. One: ');
+          insertChip([seg('ph', 'molly')], 'unique');
+          insertText(' The other: ');
+          insertChip([seg('ph', 'molly')], 'unique');
+        },
+        'Each placement rolls independently — check the Unique Rolls panel.'],
+      ['Reroll World', () => { S.rollsWorld = {}; renderAll(); },
+        'Unique placements keep their own rolls; only World rolls clear. (Use the chip popout to reroll one placement.)'],
+    ]},
+];
+
+let walkIdx = 0, stepIdx = 0;
+function renderWalk() {
+  const tabs = $('tabs'); tabs.innerHTML = '';
+  WALKS.forEach((w, i) => {
+    const t = document.createElement('div');
+    t.className = 'tab' + (i === walkIdx ? ' on' : '');
+    t.textContent = w.title;
+    t.onclick = () => { walkIdx = i; stepIdx = 0; resetState(); renderWalk(); };
+    tabs.appendChild(t);
+  });
+  const w = WALKS[walkIdx];
+  $('blurb').textContent = w.blurb;
+  $('openq').innerHTML = w.openq ? '<div class="openq">' + w.openq + '</div>' : '';
+  const steps = $('steps'); steps.innerHTML = '';
+  w.steps.forEach(([label, run, why], i) => {
+    const row = document.createElement('div');
+    row.className = 'step' + (i < stepIdx ? ' done' : '');
+    const b = document.createElement('button');
+    b.textContent = (i < stepIdx ? '✓ ' : '') + label;
+    b.disabled = i > stepIdx;
+    b.onclick = () => { run(); if (i === stepIdx) stepIdx++; renderWalk(); };
+    row.appendChild(b);
+    const s = document.createElement('span'); s.className = 'why'; s.textContent = why; row.appendChild(s);
+    steps.appendChild(row);
+  });
+}
+
+renderWalk();
+renderAll();
+</script>
+</body>
+</html>

@@ -1,5 +1,7 @@
 # World Editor Search & Replace — Spec
 
+Status: done
+
 Find any text across every authored field in the World Editor, step through matches in place, and replace with text **or a Placeholder chip**. Interviewed and agreed 2026-08-09; **built the same day** — this doc is now the record of what shipped.
 
 **Where it lives:** [worldSearch.ts](src/lib/worldSearch.ts) (inventory + matcher, pure) · [EditorFindBar.tsx](src/components/editor/EditorFindBar.tsx) (the bar) · [PlaceholderSectionList.tsx](src/components/editor/PlaceholderSectionList.tsx) (the replacement picker, shared with the Pins dropdown) · [editorFieldFocus.ts](src/lib/editorFieldFocus.ts) (locate, scroll, mark) · wiring in [WorldEditor.tsx](src/views/WorldEditor.tsx) · tests in [worldSearch.test.ts](src/lib/worldSearch.test.ts) and [EditorFindBar.test.tsx](src/components/editor/EditorFindBar.test.tsx).

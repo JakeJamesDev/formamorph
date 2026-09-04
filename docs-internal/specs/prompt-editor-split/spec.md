@@ -1,6 +1,7 @@
 # Prompt Editor Split View (B2 + S2 + M2) — Spec
 
-**Status: SPECED (2026-08-06), not yet built.** The chosen slice of the prompt-editor UX exploration (mockups: the "Prompt Editor UX Options" artifact; measurements in that page's baseline notes). All decisions below are user-confirmed.
+Status: ready-for-agent
+Status note: (2026-08-06), not yet built. The chosen slice of the prompt-editor UX exploration (mockups: the "Prompt Editor UX Options" artifact; measurements in that page's baseline notes). All decisions below are user-confirmed.
 
 ## Goal
 

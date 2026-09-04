@@ -1,5 +1,7 @@
 # Stat Code Templates — design spec
 
+Status: done
+
 Templates for the Dynamic Value Calculation sandbox: a shipped built-in set plus a user-created
 local library, applied through parameterized fill-in forms.
 

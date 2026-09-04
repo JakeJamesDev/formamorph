@@ -1,0 +1,941 @@
+<!--
+  PROTOTYPE - throwaway. Answers issue 05: player-facing contest-event surfaces.
+  Four screens (Main Menu banner / CC Contest tab / Publish toggle / Acknowledge modal),
+  3 variants each, switched from the floating bar (or arrow keys). Standalone mock rather
+  than in-app variants: none of the feature exists in code yet and the issue asks for a
+  cheap asset to react to. Styling mirrors src/index.css tokens + tailwind.config.js type roles.
+-->
+<title>Contest Player Surfaces</title>
+<style>
+  html {
+    color-scheme: light;
+    --background: 0 0% 100%;
+    --foreground: 222.2 84% 4.9%;
+    --card: 210 40% 97%;
+    --card-foreground: 222.2 84% 4.9%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 222.2 84% 4.9%;
+    --primary: 180 47.4% 75%;
+    --primary-foreground: 180 47.4% 11.2%;
+    --secondary: 210 40% 96.1%;
+    --secondary-foreground: 222.2 47.4% 11.2%;
+    --muted: 210 40% 96.1%;
+    --muted-foreground: 215.4 16.3% 46.9%;
+    --accent: 210 40% 96.1%;
+    --accent-foreground: 222.2 47.4% 11.2%;
+    --destructive: 0 84.2% 60.2%;
+    --success: 142 71% 40%;
+    --warning: 45 93% 50%;
+    --warning-foreground: 38 92% 12%;
+    --info: 217 84% 56%;
+    --info-foreground: 210 40% 98%;
+    --like: 340 75% 55%;
+    --overlay: 0 0% 0%;
+    --border: 214.3 31.8% 91.4%;
+    --input: 214.3 31.8% 91.4%;
+    --ring: 222.2 84% 4.9%;
+    --radius: 0.5rem;
+  }
+  html.dark {
+    color-scheme: dark;
+    --background: 222.2 84% 4.9%;
+    --foreground: 210 40% 98%;
+    --card: 222 40% 9%;
+    --card-foreground: 210 40% 98%;
+    --popover: 222.2 84% 4.9%;
+    --popover-foreground: 210 40% 98%;
+    --primary: 180 40% 85%;
+    --primary-foreground: 180 47.4% 11.2%;
+    --secondary: 217.2 32.6% 17.5%;
+    --secondary-foreground: 210 40% 98%;
+    --muted: 217.2 32.6% 17.5%;
+    --muted-foreground: 215 20.2% 65.1%;
+    --accent: 217.2 32.6% 17.5%;
+    --accent-foreground: 210 40% 98%;
+    --destructive: 0 72% 58%;
+    --success: 142 65% 45%;
+    --warning: 45 93% 55%;
+    --warning-foreground: 38 92% 12%;
+    --info: 217 84% 60%;
+    --info-foreground: 210 40% 98%;
+    --border: 217.2 32.6% 17.5%;
+    --input: 217.2 32.6% 17.5%;
+    --ring: 212.7 26.8% 83.9%;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { height: 100%; }
+  body {
+    font-family: ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+    background: hsl(var(--muted));
+    color: hsl(var(--foreground));
+    font-size: 16px;
+    overflow: hidden;
+  }
+  svg { flex-shrink: 0; }
+
+  /* ---- type roles (tailwind.config.js) ---- */
+  .t-display { font-size: 1.5rem;   line-height: 2rem;    }
+  .t-heading { font-size: 1.25rem;  line-height: 1.75rem; }
+  .t-title   { font-size: 1.125rem; line-height: 1.75rem; }
+  .t-body    { font-size: 1rem;     line-height: 1.5rem;  }
+  .t-label   { font-size: 0.875rem; line-height: 1.25rem; }
+  .t-meta    { font-size: 0.75rem;  line-height: 1rem;    }
+  .fw-med  { font-weight: 500; }
+  .fw-semi { font-weight: 600; }
+  .muted { color: hsl(var(--muted-foreground)); }
+
+  /* ---- frame: fills viewport normally; becomes a phone frame in mobile mode ---- */
+  #frameWrap { position: fixed; inset: 0; display: flex; align-items: center; justify-content: center; }
+  #app {
+    width: 100%; height: 100%;
+    background: hsl(var(--background));
+    position: relative; overflow: hidden;
+    display: flex; flex-direction: column;
+  }
+  body.mobile #frameWrap { padding: 12px 0 96px; }
+  body.mobile #app {
+    width: 390px; height: min(760px, calc(100vh - 120px));
+    border: 6px solid hsl(var(--foreground) / 0.8);
+    border-radius: 24px;
+    box-shadow: 0 20px 60px hsl(var(--overlay) / 0.35);
+  }
+
+  /* ---- shadcn-ish primitives ---- */
+  .btn {
+    display: inline-flex; align-items: center; justify-content: center; gap: 0.5rem;
+    border-radius: calc(var(--radius) - 2px);
+    font-size: 0.875rem; line-height: 1.25rem; font-weight: 500;
+    height: 2.25rem; padding: 0 1rem;
+    border: 1px solid transparent; background: transparent; color: inherit;
+    cursor: pointer; white-space: nowrap; font-family: inherit;
+  }
+  .btn:focus-visible { outline: 2px solid hsl(var(--ring)); outline-offset: 1px; }
+  .btn-primary { background: hsl(var(--primary)); color: hsl(var(--primary-foreground)); }
+  .btn-primary:hover { background: hsl(var(--primary) / 0.9); }
+  .btn-outline { border-color: hsl(var(--input)); background: hsl(var(--background)); }
+  .btn-outline:hover { background: hsl(var(--accent)); color: hsl(var(--accent-foreground)); }
+  .btn-ghost:hover { background: hsl(var(--accent)); color: hsl(var(--accent-foreground)); }
+  .btn-sm { height: 2rem; padding: 0 0.75rem; }
+  .btn-icon { width: 2.25rem; padding: 0; }
+
+  .tabs-list {
+    display: inline-flex; align-items: center; gap: 2px;
+    background: hsl(var(--muted)); border-radius: calc(var(--radius) - 2px);
+    padding: 4px;
+  }
+  .tab {
+    display: inline-flex; align-items: center; gap: 0.4rem;
+    border: none; background: transparent; color: hsl(var(--muted-foreground));
+    font: inherit; font-size: 0.875rem; font-weight: 500; line-height: 1.25rem;
+    padding: 0.25rem 0.75rem; border-radius: calc(var(--radius) - 4px);
+    cursor: pointer;
+  }
+  .tab.active { background: hsl(var(--background)); color: hsl(var(--foreground)); box-shadow: 0 1px 2px hsl(var(--overlay) / 0.1); }
+
+  .input {
+    display: flex; align-items: center; gap: 0.5rem;
+    height: 2.25rem; padding: 0 0.75rem;
+    border: 1px solid hsl(var(--input)); border-radius: calc(var(--radius) - 2px);
+    background: hsl(var(--background)); color: hsl(var(--muted-foreground));
+    font-size: 0.875rem;
+  }
+
+  .badge {
+    display: inline-flex; align-items: center; gap: 0.3rem;
+    border-radius: 9999px; padding: 0.1rem 0.6rem;
+    font-size: 0.75rem; line-height: 1rem; font-weight: 600;
+  }
+
+  .checkbox, .radio {
+    width: 1rem; height: 1rem; flex-shrink: 0;
+    border: 1px solid hsl(var(--foreground) / 0.6);
+    display: inline-flex; align-items: center; justify-content: center;
+  }
+  .checkbox { border-radius: 3px; margin-top: 2px; }
+  .radio { border-radius: 9999px; }
+  .checkbox.checked { background: hsl(var(--primary)); border-color: hsl(var(--primary)); color: hsl(var(--primary-foreground)); }
+  .radio.checked::after { content: ''; width: 0.5rem; height: 0.5rem; border-radius: 9999px; background: hsl(var(--foreground)); }
+
+  .switch {
+    width: 2.25rem; height: 1.25rem; border-radius: 9999px;
+    background: hsl(var(--input)); position: relative; flex-shrink: 0; transition: background 0.15s;
+  }
+  .switch::after {
+    content: ''; position: absolute; top: 2px; left: 2px;
+    width: 1rem; height: 1rem; border-radius: 9999px; background: hsl(var(--background));
+    box-shadow: 0 1px 2px hsl(var(--overlay) / 0.3); transition: left 0.15s;
+  }
+  .switch.on { background: hsl(var(--primary)); }
+  .switch.on::after { left: calc(100% - 1.125rem); }
+
+  .dialog-overlay {
+    position: absolute; inset: 0; background: hsl(var(--overlay) / 0.8);
+    display: flex; align-items: center; justify-content: center; padding: 1rem; z-index: 40;
+  }
+  .dialog {
+    background: hsl(var(--background)); color: hsl(var(--foreground));
+    border: 1px solid hsl(var(--border)); border-radius: var(--radius);
+    box-shadow: 0 10px 40px hsl(var(--overlay) / 0.4);
+    width: 100%; max-width: 500px; max-height: 85%;
+    display: flex; flex-direction: column; overflow: hidden;
+  }
+  .dialog-pad { padding: 1.5rem; }
+
+  /* ---- world/entry cards ---- */
+  .entry-grid { display: grid; gap: 1rem; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); }
+  body.mobile .entry-grid { grid-template-columns: 1fr 1fr; gap: 0.75rem; }
+  .entry-card {
+    border: 1px solid hsl(var(--border)); border-radius: var(--radius);
+    background: hsl(var(--card)); color: hsl(var(--card-foreground));
+    overflow: hidden; display: flex; flex-direction: column; position: relative;
+  }
+  .entry-thumb {
+    height: 7rem; display: flex; align-items: flex-end; position: relative;
+    color: white;
+  }
+  body.mobile .entry-thumb { height: 5rem; }
+  .entry-thumb .name {
+    width: 100%; padding: 0.4rem 0.6rem;
+    background: hsl(var(--overlay) / 0.5);
+    font-size: 0.875rem; font-weight: 600; line-height: 1.25rem;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
+  .entry-body { padding: 0.5rem 0.6rem; display: flex; flex-direction: column; gap: 0.35rem; }
+  .entry-meta { display: flex; justify-content: space-between; align-items: center; font-size: 0.75rem; color: hsl(var(--muted-foreground)); }
+  .entry-meta span { display: inline-flex; align-items: center; gap: 0.25rem; }
+  .winner-ring { outline: 2px solid hsl(var(--warning)); outline-offset: 1px; }
+  .winner-ribbon {
+    position: absolute; top: 0.5rem; left: 0.5rem; z-index: 2;
+    background: hsl(var(--warning)); color: hsl(var(--warning-foreground));
+    border-radius: 9999px; padding: 0.15rem 0.6rem;
+    font-size: 0.75rem; font-weight: 700; display: inline-flex; align-items: center; gap: 0.3rem;
+    box-shadow: 0 1px 4px hsl(var(--overlay) / 0.4);
+  }
+
+  /* ---- main menu replica ---- */
+  .menu-screen { display: flex; flex-direction: column; height: 100%; padding-top: 4.5rem; position: relative; }
+  .menu-topbar {
+    position: absolute; top: 0; left: 0; right: 0; z-index: 10;
+    display: flex; align-items: center; gap: 0.5rem; padding: 1rem;
+  }
+  .menu-topbar .side { flex: 1; display: flex; align-items: center; }
+  .menu-topbar .side.right { justify-content: flex-end; gap: 0.5rem; }
+  .menu-actions { display: flex; gap: 1rem; }
+  .menu-scroll { flex: 1; min-height: 0; overflow-y: auto; padding: 0.5rem 1.5rem 1rem; max-width: 1200px; margin: 0 auto; width: 100%; }
+  .menu-footer {
+    flex-shrink: 0; display: flex; align-items: center; justify-content: space-between;
+    padding: 0.6rem 1rem; border-top: 1px solid hsl(var(--border));
+    font-size: 0.75rem; color: hsl(var(--muted-foreground));
+  }
+  .profile-circle {
+    width: 2rem; height: 2rem; border-radius: 9999px;
+    background: hsl(var(--secondary)); color: hsl(var(--secondary-foreground));
+    display: inline-flex; align-items: center; justify-content: center; font-weight: 600; font-size: 0.75rem;
+    position: relative;
+  }
+  .unread-dot { position: absolute; top: -2px; right: -2px; width: 0.6rem; height: 0.6rem; border-radius: 9999px; background: hsl(var(--info)); border: 2px solid hsl(var(--background)); }
+
+  /* ---- banner variants ---- */
+  .banner-strip {
+    flex-shrink: 0; margin: 0 1rem 0.75rem;
+    display: flex; align-items: center; gap: 0.6rem;
+    border: 1px solid hsl(var(--info) / 0.35); border-left: 3px solid hsl(var(--info));
+    background: hsl(var(--info) / 0.1); color: hsl(var(--foreground));
+    border-radius: calc(var(--radius) - 2px);
+    padding: 0.45rem 0.75rem; font-size: 0.875rem; line-height: 1.25rem;
+    cursor: pointer;
+  }
+  .banner-strip .grow { flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .banner-card {
+    flex-shrink: 0; margin: 0 1rem 0.75rem;
+    border: 1px solid hsl(var(--border)); border-radius: var(--radius);
+    background: hsl(var(--card));
+    padding: 0.85rem 1rem;
+    display: flex; align-items: center; gap: 1rem;
+  }
+  body.mobile .banner-card { flex-direction: column; align-items: stretch; gap: 0.6rem; }
+  .banner-card .icon-well {
+    width: 2.75rem; height: 2.75rem; border-radius: var(--radius);
+    background: hsl(var(--warning) / 0.15); color: hsl(var(--warning));
+    display: flex; align-items: center; justify-content: center;
+  }
+  body.mobile .banner-card .icon-well { display: none; }
+  .banner-chip-row { flex-shrink: 0; display: flex; justify-content: flex-end; padding: 0 1rem 0.5rem; }
+  .banner-chip {
+    display: inline-flex; align-items: center; gap: 0.5rem;
+    border: 1px solid hsl(var(--border)); border-radius: 9999px;
+    background: hsl(var(--card)); box-shadow: 0 2px 8px hsl(var(--overlay) / 0.12);
+    padding: 0.3rem 0.4rem 0.3rem 0.75rem;
+    font-size: 0.875rem; font-weight: 500; cursor: pointer;
+  }
+  .banner-chip .count {
+    background: hsl(var(--warning) / 0.18); color: hsl(var(--warning-foreground));
+    border-radius: 9999px; padding: 0.1rem 0.5rem; font-size: 0.75rem; font-weight: 700;
+  }
+  html.dark .banner-chip .count { color: hsl(var(--warning)); }
+
+  /* ---- community browser replica ---- */
+  .cc-screen { display: flex; flex-direction: column; height: 100%; }
+  .cc-header { flex-shrink: 0; border-bottom: 1px solid hsl(var(--border)); padding: 1rem 1.5rem; display: flex; flex-direction: column; gap: 0.75rem; }
+  body.mobile .cc-header { padding: 0.75rem 1rem; }
+  .cc-header-row { display: flex; align-items: center; gap: 0.75rem; flex-wrap: wrap; }
+  .cc-title { display: inline-flex; align-items: center; gap: 0.5rem; font-size: 1.125rem; font-weight: 600; white-space: nowrap; }
+  .cc-scroll { flex: 1; min-height: 0; overflow-y: auto; }
+  .cc-footer { flex-shrink: 0; border-top: 1px solid hsl(var(--border)); padding: 0.6rem 1.5rem; display: flex; justify-content: center; gap: 0.4rem; font-size: 0.875rem; color: hsl(var(--muted-foreground)); }
+
+  .contest-hero {
+    margin: 1rem 1.5rem 0; padding: 1.25rem 1.5rem;
+    border: 1px solid hsl(var(--border)); border-radius: var(--radius);
+    background: linear-gradient(135deg, hsl(var(--card)), hsl(var(--warning) / 0.08));
+    display: flex; flex-direction: column; gap: 0.6rem;
+  }
+  body.mobile .contest-hero { margin: 0.75rem 1rem 0; padding: 1rem; }
+  .contest-rail-layout { display: flex; gap: 1rem; padding: 1rem 1.5rem; align-items: flex-start; }
+  body.mobile .contest-rail-layout { flex-direction: column; padding: 0.75rem 1rem; }
+  .contest-rail {
+    width: 260px; flex-shrink: 0; position: sticky; top: 0;
+    border: 1px solid hsl(var(--border)); border-radius: var(--radius);
+    background: hsl(var(--card)); padding: 1rem;
+    display: flex; flex-direction: column; gap: 0.75rem;
+  }
+  body.mobile .contest-rail { width: 100%; position: static; }
+  .contest-bar {
+    margin: 0.75rem 1.5rem 0; padding: 0.5rem 0.85rem;
+    display: flex; align-items: center; gap: 0.6rem;
+    border: 1px solid hsl(var(--border)); border-radius: calc(var(--radius) - 2px);
+    background: hsl(var(--card)); font-size: 0.875rem;
+  }
+  body.mobile .contest-bar { margin: 0.75rem 1rem 0; flex-wrap: wrap; }
+  .date-pill {
+    display: inline-flex; align-items: center; gap: 0.35rem;
+    background: hsl(var(--secondary)); color: hsl(var(--secondary-foreground));
+    border-radius: 9999px; padding: 0.15rem 0.65rem; font-size: 0.75rem; font-weight: 600;
+  }
+  .rules-list { display: flex; flex-direction: column; gap: 0.3rem; font-size: 0.875rem; line-height: 1.25rem; color: hsl(var(--muted-foreground)); }
+  .rules-list li { list-style: none; display: flex; gap: 0.45rem; align-items: flex-start; }
+  .rules-list svg { margin-top: 3px; color: hsl(var(--success)); }
+
+  .winner-spotlight {
+    margin: 1rem 1.5rem 0; padding: 1rem 1.25rem;
+    border: 1px solid hsl(var(--warning) / 0.5); border-radius: var(--radius);
+    background: hsl(var(--warning) / 0.1);
+    display: flex; align-items: center; gap: 0.85rem;
+  }
+  body.mobile .winner-spotlight { margin: 0.75rem 1rem 0; }
+
+  /* ---- ack modal variants ---- */
+  .ack-poster-hero {
+    padding: 2rem 1.5rem 1.25rem; text-align: center; color: white;
+    background:
+      radial-gradient(120% 90% at 50% 0%, hsl(var(--info) / 0.85), hsl(222 47% 20%) 75%);
+    display: flex; flex-direction: column; align-items: center; gap: 0.6rem;
+  }
+  .ack-sheet {
+    position: absolute; z-index: 40;
+    background: hsl(var(--background)); border: 1px solid hsl(var(--border));
+    box-shadow: 0 -8px 30px hsl(var(--overlay) / 0.25);
+    display: flex; flex-direction: column; gap: 0.6rem; padding: 1rem 1.25rem;
+  }
+  .ack-sheet.desktop { right: 1rem; bottom: 1rem; width: 380px; border-radius: var(--radius); box-shadow: 0 8px 30px hsl(var(--overlay) / 0.3); }
+  .ack-sheet.mobilepos { left: 0; right: 0; bottom: 0; border-radius: var(--radius) var(--radius) 0 0; }
+
+  /* ---- publish modal bits ---- */
+  .pub-option { display: flex; align-items: flex-start; gap: 0.5rem; padding: 0.5rem; border-radius: calc(var(--radius) - 2px); cursor: pointer; }
+  .pub-option:hover { background: hsl(var(--accent)); }
+  .contest-optin {
+    border: 1px solid hsl(var(--warning) / 0.45); border-radius: var(--radius);
+    background: hsl(var(--warning) / 0.08); padding: 0.75rem 0.85rem;
+    display: flex; align-items: center; gap: 0.75rem;
+  }
+
+  /* ---- prototype control bar (deliberately not app-styled) ---- */
+  #protoBar {
+    position: fixed; left: 50%; bottom: 14px; transform: translateX(-50%); z-index: 100;
+    background: #16161d; color: #f4f4f6;
+    border: 1px solid #3a3a46; border-radius: 14px;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+    padding: 8px 12px; display: flex; align-items: center; gap: 10px; flex-wrap: wrap; justify-content: center;
+    font-size: 12px; max-width: min(96vw, 980px);
+  }
+  #protoBar .group { display: flex; align-items: center; gap: 4px; }
+  #protoBar .sep { width: 1px; height: 22px; background: #3a3a46; }
+  #protoBar button {
+    background: transparent; color: #c9c9d4; border: 1px solid transparent;
+    border-radius: 8px; padding: 4px 9px; font: inherit; cursor: pointer; white-space: nowrap;
+  }
+  #protoBar button:hover { background: #26262f; }
+  #protoBar button.on { background: #f4f4f6; color: #16161d; font-weight: 600; }
+  #protoBar .variant-label { min-width: 150px; text-align: center; font-weight: 600; color: #f4f4f6; }
+  #protoBar .hint { color: #808090; }
+</style>
+<script>
+  document.documentElement.classList.toggle('dark',
+    window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches);
+</script>
+
+<div id="frameWrap"><div id="app"></div></div>
+<div id="protoBar"></div>
+
+<script>
+(function () {
+  'use strict';
+
+  /* ---------- icons (lucide) ---------- */
+  function ic(name, size, cls) {
+    size = size || 16;
+    var paths = {
+      trophy: '<path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6"/><path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18"/><path d="M4 22h16"/><path d="M10 14.66V17c0 .55-.47.98-.97 1.21C7.85 18.75 7 20.24 7 22"/><path d="M14 14.66V17c0 .55.47.98.97 1.21C16.15 18.75 17 20.24 17 22"/><path d="M18 2H6v7a6 6 0 0 0 12 0V2Z"/>',
+      globe: '<circle cx="12" cy="12" r="10"/><path d="M12 2a14.5 14.5 0 0 0 0 20 14.5 14.5 0 0 0 0-20"/><path d="M2 12h20"/>',
+      earth: '<circle cx="12" cy="12" r="10"/><path d="M12 2a14.5 14.5 0 0 0 0 20 14.5 14.5 0 0 0 0-20"/><path d="M2 12h20"/>',
+      user: '<path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/>',
+      book: '<path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/>',
+      search: '<circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/>',
+      settings: '<path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/>',
+      back: '<path d="m12 19-7-7 7-7"/><path d="M19 12H5"/>',
+      chevR: '<path d="m9 18 6-6-6-6"/>',
+      chevD: '<path d="m6 9 6 6 6-6"/>',
+      x: '<path d="M18 6 6 18"/><path d="m6 6 12 12"/>',
+      check: '<path d="M20 6 9 17l-5-5"/>',
+      heart: '<path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z"/>',
+      download: '<path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" x2="12" y1="15" y2="3"/>',
+      comment: '<path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>',
+      clock: '<circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>',
+      calendar: '<path d="M8 2v4"/><path d="M16 2v4"/><rect width="18" height="18" x="3" y="4" rx="2"/><path d="M3 10h18"/>',
+      grid: '<rect width="7" height="7" x="3" y="3" rx="1"/><rect width="7" height="7" x="14" y="3" rx="1"/><rect width="7" height="7" x="14" y="14" rx="1"/><rect width="7" height="7" x="3" y="14" rx="1"/>',
+      rows: '<rect width="18" height="7" x="3" y="3" rx="1"/><rect width="18" height="7" x="3" y="14" rx="1"/>',
+      menu: '<line x1="4" x2="20" y1="6" y2="6"/><line x1="4" x2="20" y1="12" y2="12"/><line x1="4" x2="20" y1="18" y2="18"/>',
+      sliders: '<line x1="21" x2="14" y1="4" y2="4"/><line x1="10" x2="3" y1="4" y2="4"/><line x1="21" x2="12" y1="12" y2="12"/><line x1="8" x2="3" y1="12" y2="12"/><line x1="21" x2="16" y1="20" y2="20"/><line x1="12" x2="3" y1="20" y2="20"/><line x1="14" x2="14" y1="2" y2="6"/><line x1="8" x2="8" y1="10" y2="14"/><line x1="16" x2="16" y1="18" y2="22"/>',
+      refresh: '<path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"/><path d="M21 3v5h-5"/><path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"/><path d="M8 16H3v5"/>',
+      shuffle: '<path d="M2 18h1.4c1.3 0 2.5-.6 3.3-1.7l6.1-8.6c.7-1.1 2-1.7 3.3-1.7H22"/><path d="m18 2 4 4-4 4"/><path d="M2 6h1.9c1.5 0 2.9.9 3.6 2.2"/><path d="M22 18h-5.9c-1.3 0-2.6-.7-3.3-1.8l-.5-.8"/><path d="m18 14 4 4-4 4"/>',
+      megaphone: '<path d="m3 11 18-5v12L3 14v-3z"/><path d="M11.6 16.8a3 3 0 1 1-5.8-1.6"/>'
+    };
+    return '<svg class="' + (cls || '') + '" width="' + size + '" height="' + size + '" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' + paths[name] + '</svg>';
+  }
+
+  /* ---------- fixture data ---------- */
+  var CONTEST = {
+    title: 'Summer Isles Worldbuilding Contest',
+    blurb: 'Build a world set among the Summer Isles — sun, salt, and something beneath the waves.',
+    start: 'Aug 14', end: 'Sep 1', countdown: 'Ends in 12 days',
+    rules: [
+      'One entry per creator, submitted when you publish a world.',
+      'Entries stay editable until Sep 1, then lock until a winner is picked.',
+      'Staff pick the winner; the result is announced to everyone.',
+      'The winning world gets a badge and a featured spot.'
+    ]
+  };
+  var WINNER = { name: 'Pearl of the Undertow', author: 'mirelle' };
+  var HUES = [200, 265, 20, 150, 330, 45, 180, 90, 240, 310, 60, 120];
+  var ENTRIES = [
+    ['Pearl of the Undertow', 'mirelle', 41, 128, 9],
+    ['Salt-Bright Reaches', 'you', 12, 44, 3],
+    ['The Gull Roads', 'harrow', 8, 31, 2],
+    ['Sunken Bell Atoll', 'quietfen', 19, 66, 5],
+    ['Cormorant Keep', 'brack', 5, 22, 1],
+    ['Isle of Standing Rain', 'veya', 27, 90, 6],
+    ['The Brine Orchard', 'oleander', 15, 51, 4],
+    ['Ninth Wave Shoals', 'tam', 9, 37, 0],
+    ['Lantern Reef', 'suneater', 22, 73, 7],
+    ['The Drift Market', 'perch', 11, 40, 2],
+    ['Hollow Lagoon', 'greel', 6, 19, 1],
+    ['Wrecklight Cays', 'anemone', 17, 58, 3]
+  ];
+  var LOCAL_WORLDS = ['Sedge Landing', 'Hollow Vale', 'The Amber Waste', 'Nightjar Coast', 'Glasswing Vale', 'Old Ferrous', 'Mirrormarsh', 'The Pale Steps'];
+
+  /* ---------- state ---------- */
+  var state = {
+    screen: 'menu',                        // menu | community | publish | ack
+    variant: { menu: 'B', community: 'C', publish: 'B', ack: 'B' },   // defaults = picked variants
+    contestState: 'live',                  // live | winner | archive
+    ackPhase: 'start',                     // start | end
+    pubChecked: true,
+    rulesOpen: false,
+    bannerDismissed: false                 // banner B dismisses into the named chip
+  };
+  var VARIANT_NAMES = {
+    menu:      { A: 'Strip banner', B: 'Card banner ✓ (Dismiss → chip)', C: 'Floating chip' },
+    community: { A: 'Hero header', B: 'Info rail', C: 'Slim bar + rules dialog ✓' },
+    publish:   { A: 'Checkbox row', B: 'Opt-in card + switch ✓', C: 'Third publish option' },
+    ack:       { A: 'Standard dialog', B: 'Poster dialog ✓', C: 'Corner sheet (non-blocking)' }
+  };
+  var SCREENS = [
+    ['menu', 'Main Menu'],
+    ['community', 'Contest Tab'],
+    ['publish', 'Publish'],
+    ['ack', 'Ack Modal']
+  ];
+
+  var isMobile = function () { return document.body.classList.contains('mobile'); };
+
+  /* ---------- shared fragments ---------- */
+  function thumb(name, hue) {
+    return '<div class="entry-thumb" style="background:linear-gradient(160deg,hsl(' + hue + ' 45% 45%),hsl(' + (hue + 40) + ' 55% 25%))">' +
+      '<div class="name">' + name + '</div></div>';
+  }
+
+  function entryCard(e, i, isWinner, showBadges) {
+    var cls = 'entry-card' + (isWinner ? ' winner-ring' : '');
+    var ribbon = isWinner ? '<div class="winner-ribbon">' + ic('trophy', 12) + 'Winner</div>' : '';
+    return '<div class="' + cls + '">' + ribbon + thumb(e[0], HUES[i % HUES.length]) +
+      '<div class="entry-body">' +
+        '<div class="t-meta muted">by ' + e[1] + '</div>' +
+        '<div class="entry-meta">' +
+          '<span>' + ic('heart', 12) + e[2] + '</span>' +
+          '<span>' + ic('download', 12) + e[3] + '</span>' +
+          '<span>' + ic('comment', 12) + e[4] + '</span>' +
+        '</div>' +
+      '</div></div>';
+  }
+
+  function shuffled(arr) {
+    var a = arr.slice();
+    for (var i = a.length - 1; i > 0; i--) {
+      var j = Math.floor(Math.random() * (i + 1));
+      var t = a[i]; a[i] = a[j]; a[j] = t;
+    }
+    return a;
+  }
+
+  function bannerChip(winner) {
+    // The chip names the contest; clicking it opens the contest tab.
+    return '<div class="banner-chip-row"><div class="banner-chip" role="button" tabindex="0" data-act="openContest">' +
+      ic('trophy', 15) +
+      '<span>' + CONTEST.title + '</span>' +
+      '<span class="count">' + (winner ? 'Winner' : '12d') + '</span>' +
+      '</div></div>';
+  }
+
+  function bannerHTML(variant, compact) {
+    var live = state.contestState !== 'archive';
+    if (!live) return '';   // banner only shows while an event is active
+    var winner = state.contestState === 'winner';
+    if (variant === 'B' && state.bannerDismissed) return bannerChip(winner);
+    var line = winner
+      ? 'Winner announced: “' + WINNER.name + '” by ' + WINNER.author
+      : CONTEST.title + ' is open — enter until ' + CONTEST.end;
+    if (variant === 'A') {
+      return '<div class="banner-strip" role="button" tabindex="0">' +
+        ic('trophy', 16) +
+        '<span class="grow"><span class="fw-semi">' + (winner ? 'Contest results' : 'Contest') + ':</span> ' + line + '</span>' +
+        (winner ? '' : '<span class="badge" style="background:hsl(var(--info)/0.15);color:hsl(var(--info))">' + CONTEST.countdown + '</span>') +
+        ic('chevR', 16) +
+        '</div>';
+    }
+    if (variant === 'B') {
+      return '<div class="banner-card">' +
+        '<div class="icon-well">' + ic('trophy', 22) + '</div>' +
+        '<div style="flex:1;min-width:0">' +
+          '<div class="t-label fw-semi">' + CONTEST.title + '</div>' +
+          '<div class="t-meta muted">' + (winner ? 'Winner announced — ' + WINNER.name + ' by ' + WINNER.author : CONTEST.start + ' – ' + CONTEST.end + ' · ' + CONTEST.blurb) + '</div>' +
+        '</div>' +
+        '<div style="display:flex;gap:0.5rem">' +
+          '<button class="btn btn-outline btn-sm" data-act="dismissBanner">Dismiss</button>' +
+          '<button class="btn btn-primary btn-sm" data-act="openContest">View entries</button>' +
+        '</div></div>';
+    }
+    // C — floating chip
+    return bannerChip(winner);
+  }
+
+  /* ---------- main menu ---------- */
+  function menuTopbar() {
+    if (isMobile()) {
+      return '<div class="menu-topbar">' +
+        '<div class="side"></div>' +
+        '<button class="btn btn-primary btn-icon" aria-label="Menu">' + ic('menu', 18) + '</button>' +
+        '<div class="side right"><button class="btn btn-ghost btn-icon">' + ic('settings', 18) + '</button></div>' +
+      '</div>';
+    }
+    return '<div class="menu-topbar">' +
+      '<div class="side"><div class="tabs-list">' +
+        '<button class="tab active">' + ic('earth', 15) + ' Worlds</button>' +
+        '<button class="tab">' + ic('user', 15) + ' Entities</button>' +
+        '<button class="tab">' + ic('book', 15) + ' Dictionaries</button>' +
+      '</div></div>' +
+      '<div class="menu-actions">' +
+        '<button class="btn btn-primary">Create World</button>' +
+        '<button class="btn btn-outline">Import</button>' +
+        '<button class="btn btn-outline">' + ic('globe', 15) + ' Community Creations</button>' +
+      '</div>' +
+      '<div class="side right">' +
+        '<div class="tabs-list"><button class="tab active">' + ic('grid', 15) + '</button><button class="tab">' + ic('rows', 15) + '</button></div>' +
+        '<button class="btn btn-ghost btn-icon">' + ic('settings', 18) + '</button>' +
+      '</div></div>';
+  }
+
+  function menuScreen() {
+    var cards = LOCAL_WORLDS.map(function (n, i) {
+      return '<div class="entry-card">' + thumb(n, HUES[(i + 4) % HUES.length]) +
+        '<div class="entry-body"><div class="t-meta muted">Local world</div></div></div>';
+    }).join('');
+    return '<div class="menu-screen">' +
+      menuTopbar() +
+      bannerHTML(state.variant.menu) +
+      '<div class="menu-scroll"><div class="entry-grid">' + cards + '</div></div>' +
+      '<div class="menu-footer">' +
+        '<div class="profile-circle">JJ<div class="unread-dot"></div></div>' +
+        '<span>v2.0.3</span>' +
+      '</div></div>';
+  }
+
+  /* ---------- community browser / contest tab ---------- */
+  function kindTabs() {
+    var iconOnly = isMobile();
+    function t(label, icon, active) {
+      return '<button class="tab' + (active ? ' active' : '') + '">' + ic(icon, 15) +
+        (iconOnly ? '' : ' ' + label) + '</button>';
+    }
+    return '<div class="tabs-list">' +
+      t('Worlds', 'earth', false) + t('Entities', 'user', false) + t('Dictionaries', 'book', false) +
+      t(state.contestState === 'archive' ? 'Contests' : 'Contest', 'trophy', true) +
+      '</div>';
+  }
+
+  function contestStatusLine() {
+    if (state.contestState === 'winner') return 'Winner announced · entries unlocked';
+    if (state.contestState === 'archive') return 'Ended Sep 1 · archived';
+    return CONTEST.countdown;
+  }
+
+  function contestHeaderHero() {
+    var s = state.contestState;
+    var rules = '<ul class="rules-list">' + CONTEST.rules.map(function (r) {
+      return '<li>' + ic('check', 13) + r + '</li>';
+    }).join('') + '</ul>';
+    var statusBadge = s === 'live'
+      ? '<span class="badge" style="background:hsl(var(--success)/0.15);color:hsl(var(--success))">' + ic('clock', 12) + CONTEST.countdown + '</span>'
+      : s === 'winner'
+        ? '<span class="badge" style="background:hsl(var(--warning)/0.18);color:hsl(var(--warning-foreground))">' + ic('trophy', 12) + 'Winner announced</span>'
+        : '<span class="badge" style="background:hsl(var(--muted));color:hsl(var(--muted-foreground))">Archived</span>';
+    return '<div class="contest-hero">' +
+      '<div style="display:flex;align-items:center;gap:0.75rem;flex-wrap:wrap">' +
+        '<span class="t-heading fw-semi" style="display:inline-flex;align-items:center;gap:0.5rem">' + ic('trophy', 20) + CONTEST.title + '</span>' + statusBadge +
+      '</div>' +
+      '<div style="display:flex;gap:0.5rem;flex-wrap:wrap"><span class="date-pill">' + ic('calendar', 12) + CONTEST.start + ' – ' + CONTEST.end + '</span>' +
+        '<span class="date-pill">' + ENTRIES.length + ' entries</span></div>' +
+      '<p class="t-label muted" style="max-width:60ch">' + CONTEST.blurb + '</p>' +
+      rules +
+      '</div>';
+  }
+
+  function contestRail() {
+    var s = state.contestState;
+    var winnerBlock = s === 'winner'
+      ? '<div style="border-top:1px solid hsl(var(--border));padding-top:0.75rem;display:flex;flex-direction:column;gap:0.3rem">' +
+          '<span class="badge" style="background:hsl(var(--warning)/0.18);color:hsl(var(--warning-foreground));align-self:flex-start">' + ic('trophy', 12) + 'Winner</span>' +
+          '<span class="t-label fw-semi">' + WINNER.name + '</span><span class="t-meta muted">by ' + WINNER.author + '</span></div>'
+      : '';
+    return '<div class="contest-rail">' +
+      '<div class="t-title fw-semi" style="display:flex;align-items:center;gap:0.5rem">' + ic('trophy', 18) + CONTEST.title + '</div>' +
+      '<span class="date-pill" style="align-self:flex-start">' + ic('calendar', 12) + CONTEST.start + ' – ' + CONTEST.end + '</span>' +
+      '<div class="t-meta muted">' + contestStatusLine() + '</div>' +
+      '<p class="t-label muted">' + CONTEST.blurb + '</p>' +
+      '<ul class="rules-list">' + CONTEST.rules.map(function (r) { return '<li>' + ic('check', 13) + r + '</li>'; }).join('') + '</ul>' +
+      winnerBlock +
+      (s === 'live' ? '<button class="btn btn-primary btn-sm">Enter a world</button>' : '') +
+      '</div>';
+  }
+
+  function contestBar() {
+    return '<div class="contest-bar">' +
+      ic('trophy', 16) +
+      '<span class="fw-semi">' + CONTEST.title + '</span>' +
+      '<span class="muted t-meta">' + contestStatusLine() + '</span>' +
+      '<span style="flex:1"></span>' +
+      '<button class="btn btn-outline btn-sm" data-act="rules">Rules</button>' +
+      '</div>';
+  }
+
+  function communityScreen() {
+    var v = state.variant.community;
+    var s = state.contestState;
+    var order = s === 'live' ? shuffled(ENTRIES) : ENTRIES.slice().sort(function (a, b) { return b[2] - a[2]; });
+    if (s !== 'live') {
+      // winner first once picked
+      order = order.filter(function (e) { return e[0] !== WINNER.name; });
+      order.unshift(ENTRIES[0]);
+    }
+    var grid = '<div class="entry-grid" style="padding:1rem 1.5rem">' + order.map(function (e, i) {
+      return entryCard(e, ENTRIES.indexOf(e), s !== 'live' && e[0] === WINNER.name);
+    }).join('') + '</div>';
+
+    // No shuffle note anywhere: the per-visit shuffle is implementation knowledge, not player-facing copy.
+    var body;
+    if (v === 'A') {
+      body = contestHeaderHero() + grid;
+    } else if (v === 'B') {
+      body = '<div class="contest-rail-layout">' + contestRail() +
+        '<div style="flex:1;min-width:0">' +
+        '<div class="entry-grid">' + order.map(function (e) {
+          return entryCard(e, ENTRIES.indexOf(e), s !== 'live' && e[0] === WINNER.name);
+        }).join('') + '</div></div></div>';
+    } else {
+      var spotlight = s !== 'live'
+        ? '<div class="winner-spotlight">' + ic('trophy', 26) +
+          '<div style="flex:1"><div class="t-label fw-semi">' + WINNER.name + '</div>' +
+          '<div class="t-meta muted">by ' + WINNER.author + ' · picked by staff ' + (s === 'archive' ? '· contest archived' : '') + '</div></div>' +
+          '<button class="btn btn-outline btn-sm">View world</button></div>'
+        : '';
+      body = contestBar() + spotlight + grid;
+    }
+
+    var rulesDialog = state.rulesOpen
+      ? '<div class="dialog-overlay" data-act="closeRules"><div class="dialog" style="max-width:420px"><div class="dialog-pad" style="display:flex;flex-direction:column;gap:0.75rem">' +
+        '<div class="t-title fw-semi" style="display:flex;align-items:center;gap:0.5rem">' + ic('trophy', 18) + 'Contest rules</div>' +
+        '<span class="date-pill" style="align-self:flex-start">' + ic('calendar', 12) + CONTEST.start + ' – ' + CONTEST.end + '</span>' +
+        '<p class="t-label muted">' + CONTEST.blurb + '</p>' +
+        '<ul class="rules-list">' + CONTEST.rules.map(function (r) { return '<li>' + ic('check', 13) + r + '</li>'; }).join('') + '</ul>' +
+        '<button class="btn btn-outline" data-act="closeRules" style="align-self:flex-end">Close</button>' +
+        '</div></div></div>'
+      : '';
+
+    var headerBanner = v !== 'B' && s === 'live' ? '' : '';  // banner lives on menu; CC gets the tab itself
+
+    return '<div class="cc-screen">' +
+      '<div class="cc-header">' +
+        '<div class="cc-header-row">' +
+          '<button class="btn btn-ghost btn-icon">' + ic('back', 18) + '</button>' +
+          (isMobile() ? '' : '<span class="cc-title">' + ic('globe', 16) + ' Community Creations</span>') +
+          kindTabs() +
+          '<div class="input" style="flex:1;min-width:120px">' + ic('search', 14) + '<span>Search entries…</span></div>' +
+          (isMobile()
+            ? '<button class="btn btn-outline btn-sm">' + ic('sliders', 14) + '</button>'
+            : '<button class="btn btn-ghost btn-icon">' + ic('refresh', 16) + '</button>') +
+        '</div>' +
+      '</div>' + headerBanner +
+      '<div class="cc-scroll">' + body + '<div style="height:1rem"></div></div>' +
+      '<div class="cc-footer"><span>Page 1 of 1</span></div>' +
+      rulesDialog +
+      '</div>';
+  }
+
+  /* ---------- publish modal ---------- */
+  function publishScreen() {
+    var v = state.variant.publish;
+    var checked = state.pubChecked;
+
+    var contestBits;
+    if (v === 'A') {
+      contestBits =
+        '<div style="border-top:1px solid hsl(var(--border));margin-top:1rem;padding-top:1rem;display:flex;flex-direction:column;gap:0.35rem">' +
+          '<label class="pub-option" data-act="togglePub" style="align-items:flex-start">' +
+            '<span class="checkbox' + (checked ? ' checked' : '') + '">' + (checked ? ic('check', 12) : '') + '</span>' +
+            '<span style="display:flex;flex-direction:column;gap:0.15rem">' +
+              '<span class="t-label fw-med" style="display:inline-flex;align-items:center;gap:0.4rem">' + ic('trophy', 14) + 'Enter into the ' + CONTEST.title + '</span>' +
+              '<span class="t-meta muted">One entry per creator. You can edit it until ' + CONTEST.end + '; then it locks until the winner is picked.</span>' +
+            '</span>' +
+          '</label>' +
+        '</div>';
+    } else if (v === 'B') {
+      contestBits =
+        '<div class="contest-optin" data-act="togglePub" style="margin-top:1rem;cursor:pointer">' +
+          ic('trophy', 20) +
+          '<div style="flex:1;min-width:0">' +
+            '<div class="t-label fw-semi">' + CONTEST.title + '</div>' +
+            '<div class="t-meta muted">Enter this world · closes ' + CONTEST.end + ' · one entry per creator</div>' +
+          '</div>' +
+          '<div class="switch' + (checked ? ' on' : '') + '"></div>' +
+        '</div>';
+    } else {
+      contestBits = '';   // folded into the radio list below
+    }
+
+    var radioC = v === 'C'
+      ? '<label class="pub-option" data-act="togglePub">' +
+          '<span class="radio' + (checked ? ' checked' : '') + '" style="margin-top:2px"></span>' +
+          '<span style="display:flex;flex-direction:column;gap:0.15rem">' +
+            '<span class="t-label" style="display:inline-flex;align-items:center;gap:0.4rem">Publish as new world ' +
+              '<span class="badge" style="background:hsl(var(--warning)/0.18);color:hsl(var(--warning-foreground))">' + ic('trophy', 11) + 'contest entry</span></span>' +
+            '<span class="t-meta muted">Enters the ' + CONTEST.title + '. Editable until ' + CONTEST.end + ', then locked.</span>' +
+          '</span>' +
+        '</label>'
+      : '';
+
+    return '<div class="menu-screen" aria-hidden="true">' + menuTopbar() + bannerHTML(state.variant.menu) +
+      '<div class="menu-scroll" style="filter:blur(1px);opacity:0.6"><div class="entry-grid">' +
+        LOCAL_WORLDS.slice(0, 4).map(function (n, i) { return '<div class="entry-card">' + thumb(n, HUES[i]) + '</div>'; }).join('') +
+      '</div></div></div>' +
+      '<div class="dialog-overlay"><div class="dialog">' +
+        '<div class="dialog-pad" style="padding-bottom:0.5rem">' +
+          '<div class="t-title fw-semi">Publish World</div>' +
+          '<div class="t-label muted">Publish your world to share it with other players.</div>' +
+        '</div>' +
+        '<div style="flex:1;min-height:0;overflow-y:auto;padding:1rem 1.5rem">' +
+          '<div class="t-label fw-med" style="margin-bottom:0.5rem">Select Publish Option</div>' +
+          '<label class="pub-option"><span class="radio' + (v === 'C' && !checked ? ' checked' : v !== 'C' ? ' checked' : '') + '" style="margin-top:2px"></span>' +
+            '<span class="t-label">Publish as new world</span></label>' +
+          radioC +
+          '<div class="t-label fw-med" style="margin:0.75rem 0 0.25rem">Or update existing world:</div>' +
+          '<label class="pub-option"><span class="radio" style="margin-top:2px"></span>' +
+            '<span class="t-label muted">Salt-Bright Reaches (a1f09, 44 downloads)</span></label>' +
+          contestBits +
+        '</div>' +
+        '<div class="dialog-pad" style="display:flex;justify-content:flex-end;gap:0.5rem;border-top:1px solid hsl(var(--border));padding-top:1rem">' +
+          '<button class="btn btn-outline">Cancel</button>' +
+          '<button class="btn btn-primary">' + ((v !== 'C' && checked) || (v === 'C' && checked) ? 'Publish & Enter' : 'Publish') + '</button>' +
+        '</div>' +
+      '</div></div>';
+  }
+
+  /* ---------- acknowledge modal ---------- */
+  function ackCopy() {
+    if (state.ackPhase === 'start') {
+      return {
+        eyebrow: 'A contest has started',
+        title: CONTEST.title,
+        line: CONTEST.blurb + ' Enter by publishing a world before ' + CONTEST.end + '.',
+        cta: 'View contest', dismiss: 'Got it'
+      };
+    }
+    return {
+      eyebrow: 'Winner announced',
+      title: '“' + WINNER.name + '” by ' + WINNER.author,
+      line: 'The ' + CONTEST.title + ' has ended. Thanks to all 12 creators who entered — entries are unlocked again.',
+      cta: 'See the winner', dismiss: 'Got it'
+    };
+  }
+
+  function ackScreen() {
+    var v = state.variant.ack;
+    var c = ackCopy();
+    var backdrop = '<div class="menu-screen" aria-hidden="true">' + menuTopbar() + bannerHTML(state.variant.menu) +
+      '<div class="menu-scroll" style="filter:blur(1px);opacity:0.6"><div class="entry-grid">' +
+      LOCAL_WORLDS.slice(0, 4).map(function (n, i) { return '<div class="entry-card">' + thumb(n, HUES[i]) + '</div>'; }).join('') +
+      '</div></div></div>';
+
+    if (v === 'A') {
+      return backdrop + '<div class="dialog-overlay"><div class="dialog" style="max-width:440px"><div class="dialog-pad" style="display:flex;flex-direction:column;gap:0.75rem">' +
+        '<div style="display:flex;align-items:center;gap:0.6rem">' +
+          '<span style="width:2.25rem;height:2.25rem;border-radius:9999px;background:hsl(var(--info)/0.15);color:hsl(var(--info));display:inline-flex;align-items:center;justify-content:center">' + ic(state.ackPhase === 'start' ? 'megaphone' : 'trophy', 18) + '</span>' +
+          '<span class="t-meta fw-semi muted" style="text-transform:uppercase;letter-spacing:0.06em">' + c.eyebrow + '</span>' +
+        '</div>' +
+        '<div class="t-title fw-semi">' + c.title + '</div>' +
+        '<p class="t-label muted">' + c.line + '</p>' +
+        '<span class="date-pill" style="align-self:flex-start">' + ic('calendar', 12) + CONTEST.start + ' – ' + CONTEST.end + '</span>' +
+        '<div style="display:flex;justify-content:flex-end;gap:0.5rem;margin-top:0.5rem">' +
+          '<button class="btn btn-outline">' + c.cta + '</button>' +
+          '<button class="btn btn-primary">' + c.dismiss + '</button>' +
+        '</div></div></div></div>';
+    }
+    if (v === 'B') {
+      return backdrop + '<div class="dialog-overlay"><div class="dialog" style="max-width:460px">' +
+        '<div class="ack-poster-hero">' + ic('trophy', 40) +
+          '<div class="t-meta fw-semi" style="text-transform:uppercase;letter-spacing:0.08em;opacity:0.85">' + c.eyebrow + '</div>' +
+          '<div class="t-display fw-semi" style="text-wrap:balance">' + c.title + '</div>' +
+          '<div style="display:flex;gap:0.5rem;justify-content:center">' +
+            '<span class="date-pill" style="background:rgba(255,255,255,0.15);color:white">' + ic('calendar', 12) + CONTEST.start + ' – ' + CONTEST.end + '</span>' +
+            (state.ackPhase === 'start' ? '<span class="date-pill" style="background:rgba(255,255,255,0.15);color:white">' + ic('clock', 12) + CONTEST.countdown + '</span>' : '') +
+          '</div>' +
+        '</div>' +
+        '<div class="dialog-pad" style="display:flex;flex-direction:column;gap:0.85rem">' +
+          '<p class="t-label muted">' + c.line + '</p>' +
+          '<div style="display:flex;justify-content:flex-end;gap:0.5rem">' +
+            '<button class="btn btn-outline">' + c.cta + '</button>' +
+            '<button class="btn btn-primary">' + c.dismiss + '</button>' +
+          '</div>' +
+        '</div></div></div>';
+    }
+    // C — non-blocking corner sheet / bottom sheet on mobile
+    var pos = isMobile() ? 'mobilepos' : 'desktop';
+    return backdrop.replace('filter:blur(1px);opacity:0.6', '') +
+      '<div class="ack-sheet ' + pos + '">' +
+        '<div style="display:flex;align-items:center;gap:0.5rem">' + ic(state.ackPhase === 'start' ? 'megaphone' : 'trophy', 16) +
+          '<span class="t-label fw-semi" style="flex:1">' + c.eyebrow + '</span>' +
+          '<button class="btn btn-ghost btn-icon" style="height:1.6rem;width:1.6rem" aria-label="Dismiss">' + ic('x', 14) + '</button>' +
+        '</div>' +
+        '<div class="t-label fw-med">' + c.title + '</div>' +
+        '<p class="t-meta muted">' + c.line + '</p>' +
+        '<div style="display:flex;gap:0.5rem;justify-content:flex-end">' +
+          '<button class="btn btn-outline btn-sm">' + c.cta + '</button>' +
+          '<button class="btn btn-primary btn-sm">' + c.dismiss + '</button>' +
+        '</div>' +
+      '</div>';
+  }
+
+  /* ---------- prototype bar ---------- */
+  function protoBar() {
+    var bar = document.getElementById('protoBar');
+    var screenBtns = SCREENS.map(function (s) {
+      return '<button data-screen="' + s[0] + '" class="' + (state.screen === s[0] ? 'on' : '') + '">' + s[1] + '</button>';
+    }).join('');
+    var v = state.variant[state.screen];
+    var sub = '';
+    if (state.screen === 'community' || state.screen === 'menu') {
+      sub = '<div class="sep"></div><div class="group">' +
+        ['live', 'winner', 'archive'].map(function (s) {
+          return '<button data-cstate="' + s + '" class="' + (state.contestState === s ? 'on' : '') + '">' + s + '</button>';
+        }).join('') + '</div>';
+    }
+    if (state.screen === 'ack') {
+      sub = '<div class="sep"></div><div class="group">' +
+        '<button data-phase="start" class="' + (state.ackPhase === 'start' ? 'on' : '') + '">start</button>' +
+        '<button data-phase="end" class="' + (state.ackPhase === 'end' ? 'on' : '') + '">end</button></div>';
+    }
+    bar.innerHTML =
+      '<div class="group">' + screenBtns + '</div>' +
+      '<div class="sep"></div>' +
+      '<div class="group">' +
+        '<button data-cycle="-1" aria-label="Previous variant">←</button>' +
+        '<span class="variant-label">' + v + ' — ' + VARIANT_NAMES[state.screen][v] + '</span>' +
+        '<button data-cycle="1" aria-label="Next variant">→</button>' +
+      '</div>' + sub +
+      '<div class="sep"></div>' +
+      '<div class="group">' +
+        '<button data-toggle="theme">' + (document.documentElement.classList.contains('dark') ? 'Light' : 'Dark') + '</button>' +
+        '<button data-toggle="mobile" class="' + (isMobile() ? 'on' : '') + '">Mobile</button>' +
+      '</div>';
+  }
+
+  /* ---------- render + events ---------- */
+  function render() {
+    var app = document.getElementById('app');
+    if (state.screen === 'menu') app.innerHTML = menuScreen();
+    else if (state.screen === 'community') app.innerHTML = communityScreen();
+    else if (state.screen === 'publish') app.innerHTML = publishScreen();
+    else app.innerHTML = ackScreen();
+    protoBar();
+  }
+
+  document.getElementById('protoBar').addEventListener('click', function (ev) {
+    var b = ev.target.closest('button');
+    if (!b) return;
+    if (b.dataset.screen) state.screen = b.dataset.screen;
+    else if (b.dataset.cycle) {
+      var keys = ['A', 'B', 'C'];
+      var cur = keys.indexOf(state.variant[state.screen]);
+      state.variant[state.screen] = keys[(cur + Number(b.dataset.cycle) + 3) % 3];
+    }
+    else if (b.dataset.cstate) state.contestState = b.dataset.cstate;
+    else if (b.dataset.phase) state.ackPhase = b.dataset.phase;
+    else if (b.dataset.toggle === 'theme') document.documentElement.classList.toggle('dark');
+    else if (b.dataset.toggle === 'mobile') document.body.classList.toggle('mobile');
+    render();
+  });
+
+  document.getElementById('app').addEventListener('click', function (ev) {
+    var el = ev.target.closest('[data-act]');
+    if (!el) return;
+    var act = el.dataset.act;
+    if (act === 'togglePub') { state.pubChecked = !state.pubChecked; render(); }
+    else if (act === 'dismissBanner') { state.bannerDismissed = true; render(); }
+    else if (act === 'openContest') { state.screen = 'community'; render(); }
+    else if (act === 'rules') { state.rulesOpen = true; render(); }
+    else if (act === 'closeRules') {
+      if (ev.target === el || ev.target.closest('button')) { state.rulesOpen = false; render(); }
+    }
+  });
+
+  document.addEventListener('keydown', function (ev) {
+    if (/INPUT|TEXTAREA/.test(ev.target.tagName) || ev.target.isContentEditable) return;
+    if (ev.key === 'ArrowLeft' || ev.key === 'ArrowRight') {
+      var keys = ['A', 'B', 'C'];
+      var cur = keys.indexOf(state.variant[state.screen]);
+      state.variant[state.screen] = keys[(cur + (ev.key === 'ArrowRight' ? 1 : -1) + 3) % 3];
+      render();
+    }
+  });
+
+  render();
+})();
+</script>

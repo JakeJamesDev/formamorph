@@ -1,5 +1,7 @@
 # Discovered-Entity Description: Regenerate + Manual Edit — Spec
 
+Status: done
+
 Runtime-discovered characters (AI-invented, materialized via `runtimeCharacters.ts`) get exactly one
 generated description at discovery time, built from only the single passage they first appeared in.
 By the time a playthrough is 30 turns deep that description is stale, and if the first roll was bad

@@ -1,5 +1,7 @@
 # Spec — discovering narrator-invented characters without an AI call
 
+Status: done
+
 Item 4c of [long-session-recall-findings](long-session-recall-findings.md).
 **✅ SHIPPED.** Implementation: [characterCandidates.ts](src/lib/characterCandidates.ts) +
 `GameViewer` wiring + the settings split + the entity-panel delete flow. This document is the

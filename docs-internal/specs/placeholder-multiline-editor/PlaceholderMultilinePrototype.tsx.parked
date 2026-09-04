@@ -1,0 +1,340 @@
+/**
+ * PROTOTYPE — THROWAWAY. Do not ship.
+ *
+ * Three variants of the multiline placeholder-values editor, mounted inside PlaceholderManager when the
+ * page URL carries `?variant=A|B|C` (dev builds only). A floating bottom bar cycles variants. All edits
+ * land in local state seeded from the real placeholder — the store is never written.
+ *
+ * Question under test: what should the multiline view look like — box chrome, weight placement, density?
+ *   A — Stacked cards: one bordered card per value, weight + delete in the card header.
+ *   B — Accordion: collapsed one-line rows, one value expands into a full editor at a time.
+ *   C — Ledger: one continuous frame, dense divider-separated rows, weight in a left gutter.
+ */
+import { useEffect, useState } from 'react';
+import { ChevronDown, ChevronLeft, ChevronRight, ChevronsDownUp, ChevronsUpDown, Plus, Trash2, Wand2 } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
+import PromptField from '@/components/prompt/PromptField';
+import { cn } from '@/lib/utils';
+import type { Placeholder } from '@/types';
+
+const VARIANTS = ['A', 'B', 'C'] as const;
+type Variant = (typeof VARIANTS)[number];
+const VARIANT_NAMES: Record<Variant, string> = { A: 'Stacked cards', B: 'Accordion', C: 'Ledger' };
+
+/** Reads/writes `?variant=` on the page URL. Null (prototype off) when absent or in prod builds. */
+export function usePrototypeVariant(): [Variant | null, (v: Variant) => void] {
+  const [variant, setState] = useState<Variant | null>(() => {
+    if (!import.meta.env.DEV) return null;
+    const raw = new URLSearchParams(window.location.search).get('variant');
+    return VARIANTS.includes(raw as Variant) ? (raw as Variant) : null;
+  });
+  const setVariant = (v: Variant) => {
+    const url = new URL(window.location.href);
+    url.searchParams.set('variant', v);
+    window.history.replaceState(null, '', url);
+    setState(v);
+  };
+  return [variant, setVariant];
+}
+
+interface Entry {
+  id: string;
+  text: string;
+  weight: number;
+}
+
+const SAMPLE_VALUES = [
+  'A **weathered lighthouse** on the cliff.\n\nIts beam sweeps the bay every twelve seconds, and the keeper:\n- has not been seen in weeks\n- leaves supply lists nailed to the door',
+  'The market square at dawn — *empty stalls*, wet cobbles, one cart already unloading.',
+  'A narrow canal district where:\n\n1. every bridge has a toll\n2. every toll has a loophole\n3. every loophole is someone\'s livelihood',
+];
+
+const firstLine = (text: string) => {
+  const line = text.split('\n', 1)[0];
+  return text.includes('\n') ? `${line} …` : line;
+};
+
+interface VariantProps {
+  entries: Entry[];
+  showWeights: boolean;
+  chance: (e: Entry) => string;
+  onText: (id: string, text: string) => void;
+  onWeight: (id: string, weight: number) => void;
+  onDelete: (id: string) => void;
+  onAdd: () => void;
+  /** Card collapse state, owned by the shell so the header's Collapse All can drive it (variant A only). */
+  collapsed?: Set<string>;
+  onToggleCollapsed?: (id: string) => void;
+}
+
+const WeightInput = ({ entry, onWeight, className }: { entry: Entry; onWeight: VariantProps['onWeight']; className?: string }) => (
+  <Input
+    type="number"
+    min={0}
+    step={1}
+    value={entry.weight}
+    onChange={(e) => onWeight(entry.id, Math.max(0, Math.round(Number(e.target.value) || 0)))}
+    className={cn('h-6 w-14 px-1.5 text-helper', className)}
+    aria-label="Draw weight"
+    title="Draw weight"
+  />
+);
+
+/** A — one bordered card per value; weight + delete live in the card's header row. Each card collapses
+ *  independently to a first-line summary; the header stays put so weights are tunable while collapsed. */
+const VariantCards = ({ entries, showWeights, chance, onText, onWeight, onDelete, onAdd, collapsed, onToggleCollapsed }: VariantProps) => {
+  const toggle = onToggleCollapsed ?? (() => {});
+  return (
+    <div className="space-y-3">
+      {entries.map((entry, i) => {
+        const open = !collapsed?.has(entry.id);
+        return (
+          <div key={entry.id} className="rounded-md border bg-card">
+            <div className={cn('flex items-center gap-2 px-2 py-1.5', open && 'border-b')}>
+              <button
+                type="button"
+                className="flex min-w-0 flex-1 items-center gap-1.5 text-left"
+                aria-expanded={open}
+                aria-label={open ? `Collapse value ${i + 1}` : `Expand value ${i + 1}`}
+                onClick={() => toggle(entry.id)}
+              >
+                <ChevronDown className={cn('h-3.5 w-3.5 shrink-0 text-muted-foreground transition-transform', !open && '-rotate-90')} />
+                <span className="shrink-0 text-helper font-medium text-muted-foreground">Value {i + 1}</span>
+                {!open && (
+                  <span className="min-w-0 truncate text-helper text-muted-foreground/70">
+                    {firstLine(entry.text) || 'Empty value'}
+                  </span>
+                )}
+              </button>
+              <div className="ml-auto flex shrink-0 items-center gap-2">
+                {showWeights && (
+                  <>
+                    <WeightInput entry={entry} onWeight={onWeight} />
+                    <span className="w-10 text-right text-meta text-muted-foreground">{chance(entry)}</span>
+                  </>
+                )}
+                <Button type="button" variant="ghost" size="icon" className="h-6 w-6" aria-label="Remove value" onClick={() => onDelete(entry.id)}>
+                  <Trash2 className="h-3.5 w-3.5" />
+                </Button>
+              </div>
+            </div>
+            {open && (
+              <div className="p-2">
+                <PromptField value={entry.text} onChange={(v) => onText(entry.id, v)} markdown ariaLabel={`Value ${i + 1}`} placeholder="Value text — markdown supported" />
+              </div>
+            )}
+          </div>
+        );
+      })}
+      <Button type="button" variant="outline" size="sm" className="w-full" onClick={onAdd}>
+        <Plus className="mr-1 h-3.5 w-3.5" /> Add Value
+      </Button>
+    </div>
+  );
+};
+
+/** B — collapsed one-line rows; clicking a row expands it into the full editor, one at a time. */
+const VariantAccordion = ({ entries, showWeights, chance, onText, onWeight, onDelete, onAdd }: VariantProps) => {
+  const [openId, setOpenId] = useState<string | null>(entries[0]?.id ?? null);
+  return (
+    <div className="rounded-md border">
+      {entries.map((entry, i) => {
+        const open = entry.id === openId;
+        return (
+          <div key={entry.id} className={cn(i > 0 && 'border-t')}>
+            <button
+              type="button"
+              className="flex w-full items-center gap-2 px-3 py-2 text-left hover:bg-muted/50"
+              onClick={() => setOpenId(open ? null : entry.id)}
+            >
+              <ChevronDown className={cn('h-3.5 w-3.5 shrink-0 text-muted-foreground transition-transform', !open && '-rotate-90')} />
+              <span className="min-w-0 flex-1 truncate text-label">{firstLine(entry.text) || <span className="text-muted-foreground">Empty value</span>}</span>
+              {showWeights && <span className="shrink-0 text-meta text-muted-foreground">{chance(entry)}</span>}
+            </button>
+            {open && (
+              <div className="space-y-2 border-t bg-muted/20 p-2">
+                <PromptField value={entry.text} onChange={(v) => onText(entry.id, v)} markdown ariaLabel={`Value ${i + 1}`} placeholder="Value text — markdown supported" />
+                <div className="flex items-center gap-2">
+                  {showWeights && (
+                    <>
+                      <Label className="text-meta text-muted-foreground">Draw Weight</Label>
+                      <WeightInput entry={entry} onWeight={onWeight} />
+                    </>
+                  )}
+                  <Button type="button" variant="ghost" size="sm" className="ml-auto h-6 px-2 text-helper text-destructive" onClick={() => onDelete(entry.id)}>
+                    <Trash2 className="mr-1 h-3 w-3" /> Remove
+                  </Button>
+                </div>
+              </div>
+            )}
+          </div>
+        );
+      })}
+      <div className={cn(entries.length > 0 && 'border-t')}>
+        <Button type="button" variant="ghost" size="sm" className="w-full justify-start rounded-none px-3 text-helper" onClick={onAdd}>
+          <Plus className="mr-1 h-3.5 w-3.5" /> Add Value
+        </Button>
+      </div>
+    </div>
+  );
+};
+
+/** C — one continuous frame; dense rows split by dividers, weight stacked in a narrow left gutter. */
+const VariantLedger = ({ entries, showWeights, chance, onText, onWeight, onDelete, onAdd }: VariantProps) => (
+  <div className="divide-y rounded-md border">
+    {entries.map((entry, i) => (
+      <div key={entry.id} className="flex gap-2 p-2">
+        <div className="flex w-14 shrink-0 flex-col items-center gap-1 pt-1">
+          <span className="text-meta text-muted-foreground">#{i + 1}</span>
+          {showWeights && (
+            <>
+              <WeightInput entry={entry} onWeight={onWeight} className="w-12" />
+              <span className="text-meta text-muted-foreground">{chance(entry)}</span>
+            </>
+          )}
+          <Button type="button" variant="ghost" size="icon" className="h-6 w-6" aria-label="Remove value" onClick={() => onDelete(entry.id)}>
+            <Trash2 className="h-3 w-3" />
+          </Button>
+        </div>
+        <div className="min-w-0 flex-1">
+          <PromptField value={entry.text} onChange={(v) => onText(entry.id, v)} markdown ariaLabel={`Value ${i + 1}`} placeholder="Value text — markdown supported" />
+        </div>
+      </div>
+    ))}
+    <Button type="button" variant="ghost" size="sm" className="w-full justify-start rounded-none px-3 text-helper" onClick={onAdd}>
+      <Plus className="mr-1 h-3.5 w-3.5" /> Add Value
+    </Button>
+  </div>
+);
+
+const VARIANT_COMPONENTS: Record<Variant, (p: VariantProps) => JSX.Element> = {
+  A: VariantCards,
+  B: VariantAccordion,
+  C: VariantLedger,
+};
+
+/** Replaces PlaceholderManager's values section while the prototype is active. Local state only. */
+export const PlaceholderMultilinePrototype = ({ placeholder, variant, onVariantChange }: {
+  placeholder: Placeholder;
+  variant: Variant;
+  onVariantChange: (v: Variant) => void;
+}) => {
+  const [entries, setEntries] = useState<Entry[]>(() =>
+    placeholder.values.map((text) => ({ id: crypto.randomUUID(), text, weight: placeholder.weights?.[text] ?? 1 })),
+  );
+  // Auto-detect: any newline opens in multiline, else chips.
+  const [mode, setMode] = useState<'chips' | 'multiline'>(() =>
+    placeholder.values.some((v) => v.includes('\n')) ? 'multiline' : 'chips',
+  );
+  const [collapsed, setCollapsed] = useState<Set<string>>(new Set());
+  const onToggleCollapsed = (id: string) =>
+    setCollapsed((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  const anyOpen = entries.some((e) => !collapsed.has(e.id));
+
+  const showWeights = entries.length > 1;
+  const total = entries.reduce((s, e) => s + e.weight, 0);
+  const chance = (e: Entry) => (total === 0 ? '0%' : `${Math.round((e.weight / total) * 100)}%`);
+
+  const onText = (id: string, text: string) => setEntries((es) => es.map((e) => (e.id === id ? { ...e, text } : e)));
+  const onWeight = (id: string, weight: number) => setEntries((es) => es.map((e) => (e.id === id ? { ...e, weight } : e)));
+  const onDelete = (id: string) => setEntries((es) => es.filter((e) => e.id !== id));
+  const onAdd = () => setEntries((es) => [...es, { id: crypto.randomUUID(), text: '', weight: 1 }]);
+
+  const Body = VARIANT_COMPONENTS[variant];
+
+  return (
+    <div className="space-y-2">
+      <div className="flex items-center gap-2">
+        <Label>Values</Label>
+        <span className="rounded bg-amber-500/20 px-1.5 text-meta text-amber-600 dark:text-amber-400">prototype — edits not saved</span>
+        <div className="ml-auto flex items-center gap-1">
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon"
+            className="h-6 w-6"
+            title="Seed demo multiline values"
+            aria-label="Seed demo multiline values"
+            onClick={() => setEntries(SAMPLE_VALUES.map((text) => ({ id: crypto.randomUUID(), text, weight: 1 })))}
+          >
+            <Wand2 className="h-3.5 w-3.5" />
+          </Button>
+          {mode === 'multiline' && variant === 'A' && entries.length > 1 && (
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon"
+              className="h-6 w-6"
+              title={anyOpen ? 'Collapse all values' : 'Expand all values'}
+              aria-label={anyOpen ? 'Collapse all values' : 'Expand all values'}
+              onClick={() => setCollapsed(anyOpen ? new Set(entries.map((e) => e.id)) : new Set())}
+            >
+              {anyOpen ? <ChevronsDownUp className="h-3.5 w-3.5" /> : <ChevronsUpDown className="h-3.5 w-3.5" />}
+            </Button>
+          )}
+          <ToggleGroup
+            type="single"
+            value={mode}
+            onValueChange={(v) => { if (v) setMode(v as 'chips' | 'multiline'); }}
+            aria-label="Value editor style"
+            className="h-8"
+          >
+            <ToggleGroupItem value="chips" className="h-6 px-2 text-helper">Chips</ToggleGroupItem>
+            <ToggleGroupItem value="multiline" className="h-6 px-2 text-helper">Multiline</ToggleGroupItem>
+          </ToggleGroup>
+        </div>
+      </div>
+      {mode === 'chips' ? (
+        // Static stand-in for today's chip view: truncated first-line chips, no editing.
+        <div className="flex min-h-9 flex-wrap items-center gap-1.5 rounded-md border border-input bg-background px-2 py-1.5">
+          {entries.map((e) => (
+            <span key={e.id} className="max-w-48 truncate rounded-full bg-secondary px-2.5 py-0.5 text-label text-secondary-foreground">
+              {firstLine(e.text)}
+            </span>
+          ))}
+          <span className="text-label text-muted-foreground">chip view unchanged — flip to Multiline</span>
+        </div>
+      ) : (
+        <Body entries={entries} showWeights={showWeights} chance={chance} onText={onText} onWeight={onWeight} onDelete={onDelete} onAdd={onAdd} collapsed={collapsed} onToggleCollapsed={onToggleCollapsed} />
+      )}
+      <PrototypeSwitcher variant={variant} onVariantChange={onVariantChange} />
+    </div>
+  );
+};
+
+/** Floating bottom-center bar: ← B — Accordion →. Arrow keys cycle unless a field is focused. */
+const PrototypeSwitcher = ({ variant, onVariantChange }: { variant: Variant; onVariantChange: (v: Variant) => void }) => {
+  const cycle = (dir: 1 | -1) => {
+    const i = VARIANTS.indexOf(variant);
+    onVariantChange(VARIANTS[(i + dir + VARIANTS.length) % VARIANTS.length]);
+  };
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      const t = e.target as HTMLElement;
+      if (t.closest('input, textarea, [contenteditable="true"]')) return;
+      if (e.key === 'ArrowLeft') cycle(-1);
+      if (e.key === 'ArrowRight') cycle(1);
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  });
+  return (
+    <div className="fixed bottom-4 left-1/2 z-[100] flex -translate-x-1/2 items-center gap-1 rounded-full bg-foreground px-2 py-1 text-background shadow-lg">
+      <button type="button" className="rounded-full p-1 hover:bg-background/20" aria-label="Previous variant" onClick={() => cycle(-1)}>
+        <ChevronLeft className="h-4 w-4" />
+      </button>
+      <span className="min-w-32 text-center text-helper font-medium">{variant} — {VARIANT_NAMES[variant]}</span>
+      <button type="button" className="rounded-full p-1 hover:bg-background/20" aria-label="Next variant" onClick={() => cycle(1)}>
+        <ChevronRight className="h-4 w-4" />
+      </button>
+    </div>
+  );
+};
