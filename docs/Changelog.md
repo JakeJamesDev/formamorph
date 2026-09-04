@@ -14,6 +14,11 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
 
 ### Minor Changes
 
+#### ➕ Added
+
+- **⚙️ Backend**
+  - **Admin Panel → Users now shows staff which other accounts have acted from the same network address as an account, so a ring of accounts made to vote for itself is visible rather than guessed at.** The server has kept a ninety-day record of this since the last release, and nothing in the app has ever put a screen behind it. Every row in **Admin Panel → Users** now has a **Linked** button. Opening one asks the server about that account alone and comes back with the number, and with the accounts behind it: each match shows the name, its status, how old the account is, and what *both* sides did from the shared address — the signups, sign-ins, likes, publishes, comments and follows, each with its time and the browser family it arrived from. Four accounts made minutes apart from one place read very differently from two people in one house, and telling those apart is the whole point: nothing here acts on anybody. Clicking a linked name searches the table for it, which is where suspending and clearing likes already live. Nothing is asked for until a row is opened, because every read is written to the admin log as **Linked accounts viewed**, naming who looked at whom — the log has its own filter for it, and looking is accountable the same way acting is. The control is staff-only, and a match older than ninety days is gone from it exactly as it is gone from the record.
+
 #### 🐛 Fixed
 
 - **👤 User-facing**

@@ -25,6 +25,7 @@ export const AUDIT_ACTIONS = [
   'report_dismissed',
   'like_removed',
   'likes_cleared',
+  'signals_viewed',
 ] as const;
 export type AuditAction = (typeof AUDIT_ACTIONS)[number];
 
