@@ -67,3 +67,8 @@ test-results/
 playwright-report/
 .playwright/
 _shots/
+
+# Android signing material never enters the repo; the keystore lives outside it (see scripts/android-signing-wizard.sh).
+*.p12
+*.jks
+*.keystore

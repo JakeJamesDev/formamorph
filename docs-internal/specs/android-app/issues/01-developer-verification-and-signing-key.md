@@ -18,3 +18,7 @@ Maintainer work. Nothing in code depends on it, but no public APK ships before b
 - The verification status in the console reads verified.
 - The keystore and its passwords exist in the password manager.
 - The four secrets exist on the repository.
+
+## Comments
+
+**2026-09-04.** Wizard run to stage 4. Keystore at `C:/Users/benny/formamorph-android-signing/formamorph-release.p12` (Git Bash shows it as `/home/benny/...`), backed up in LastPass as base64 in a Secure Note. The wizard skipped the secrets because the shell's `gh` was logged in as a different account than the repo owner; the four secrets were then set by hand and the user reports them present (agent could not list them: session token lacks the secrets scope). Still open: Play Console verification outcome, and stage 5 (app registration) after the first signed APK. Open question from the same day: whether to switch to the Android Developer Console so the legal name is not shown on Google Play.
