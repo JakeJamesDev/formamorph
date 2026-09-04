@@ -12,6 +12,7 @@ import DictionaryStorageService from '@/services/DictionaryStorageService';
 import { buildInitialSelection, finalizeSelection, type DictionarySelectionItem } from '@/lib/dictionarySelection';
 import type { Dictionary, DictionaryMetadata } from '@/types';
 import { Tip } from '@/components/ui/tooltip';
+import { useBackStop } from '@/hooks/useBackStop';
 
 /** One draggable dictionary row: grip (leftmost) + enabled checkbox + name + description + entry count. */
 function SelectionRow({ item, onToggle }: {
@@ -97,6 +98,9 @@ const DictionarySelectionModal = ({
   /** Label for the confirm button — names the next step in the flow (e.g. "Avatar", "Start"). */
   confirmLabel?: string;
 }) => {
+  // This card is not a Radix layer, so the Android back button cannot see it; it steps back the way the Back
+  // button does, and leaves the flow from its first step.
+  useBackStop(onBack ?? onAbort);
   const [items, setItems] = useState<DictionarySelectionItem[]>(
     () => buildInitialSelection(worldBooks, libraryMeta),
   );
@@ -135,7 +139,7 @@ const DictionarySelectionModal = ({
   };
 
   return (
-    <Card className="fixed inset-0 m-auto w-[95%] max-w-[600px] h-[90dvh] max-h-[800px] z-50">
+    <Card className="fixed inset-x-0 top-[env(safe-area-inset-top)] bottom-[env(safe-area-inset-bottom)] m-auto w-[95%] max-w-[600px] h-[calc(90dvh-env(safe-area-inset-top)-env(safe-area-inset-bottom))] max-h-[800px] z-50">
       <CardContent className="p-3 sm:p-6 h-full flex flex-col">
         <h2 className="text-title sm:text-heading font-semibold mb-1">Choose Dictionaries</h2>
         <p className="text-meta sm:text-helper text-muted-foreground mb-3">

@@ -158,7 +158,7 @@ const CharacterCustomization = ({ onCharacterCustomized, onBack, onAbort }: {
   }
 
   return (
-    <div className="flex app-viewport">
+    <div className="flex app-viewport pt-[env(safe-area-inset-top)]">
       {viewer}
       <Card className="w-1/3 m-4 flex flex-col overflow-hidden">
         <ScrollArea className="flex-1 min-h-0">

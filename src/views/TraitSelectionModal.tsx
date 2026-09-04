@@ -6,6 +6,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import type { Trait, TraitGroup, Stat } from "@/types";
+import { useBackStop } from "@/hooks/useBackStop";
 
 const GENERAL = 'general';
 
@@ -94,6 +95,9 @@ const TraitSelectionModal = ({
   }, [traitGroups, traits, hasUngrouped]);
 
   const [index, setIndex] = useState(0);
+  // These cards are not Radix layers, so the Android back button cannot see them; it steps back the way the
+  // Back button does, and leaves the flow from its first step.
+  useBackStop(() => (index > 0 ? setIndex((i) => i - 1) : (onBack ?? onAbort)()));
   const current = stops[Math.min(index, stops.length - 1)];
 
   // Defensive: the parent skips this modal entirely when the world has no traits.
@@ -172,7 +176,7 @@ const TraitSelectionModal = ({
   const next = () => (isLast ? onConfirm() : setIndex((i) => i + 1));
 
   return (
-    <Card className="fixed inset-0 m-auto w-[95%] max-w-[600px] h-[90dvh] max-h-[800px] z-50">
+    <Card className="fixed inset-x-0 top-[env(safe-area-inset-top)] bottom-[env(safe-area-inset-bottom)] m-auto w-[95%] max-w-[600px] h-[calc(90dvh-env(safe-area-inset-top)-env(safe-area-inset-bottom))] max-h-[800px] z-50">
       <CardContent className="p-3 sm:p-6 h-full flex flex-col">
         <h2 className="text-title sm:text-heading font-semibold mb-3">Select Starting Traits</h2>
 

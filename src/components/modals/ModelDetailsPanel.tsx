@@ -6,6 +6,7 @@ import VRMViewer from '@/views/VRMViewer';
 import { MobileControlsDrawer } from '@/components/MobileControlsDrawer';
 import { useVrmCustomization } from '@/lib/useVrmCustomization';
 import { useIsMobile } from '@/lib/useIsMobile';
+import { useBackStop } from '@/hooks/useBackStop';
 import { formatBytes } from '@/lib/imageOptim';
 import type { VrmLicense } from '@/types';
 import { Tip } from '@/components/ui/tooltip';
@@ -75,6 +76,8 @@ export function ModelDetailsPanel({ open, name, url, license, size, failed = fal
   // actually respond here.
   const { setCaps, vrmViewerRef, viewerProps, controls } = useVrmCustomization();
   const isMobile = useIsMobile();
+  // The mobile overlay is not a Radix layer, so the Android back button cannot see it and closes it here.
+  useBackStop(isMobile && open ? onClose : undefined);
 
   const authors = license?.authors?.length ? license.authors.join(', ') : null;
 
