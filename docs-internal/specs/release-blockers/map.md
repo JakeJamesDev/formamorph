@@ -13,7 +13,7 @@ Everything in `issues/` is closed, so nothing on this list stands between the cu
 ## Notes
 
 - This is a **standing list**, not a one-off effort: entries land here whenever something is called a blocker, and leave when it's fixed. It does not close.
-- Anything here blocks a release regardless of which effort it came from. Cross-link to the owning `.scratch/<effort>/` map when one exists.
+- Anything here blocks a release regardless of which effort it came from. Cross-link to the owning `docs-internal/specs/<effort>/` map when one exists.
 - Ticket format follows `docs/agents/issue-tracker.md` — `Status:` line per `docs/agents/triage-labels.md`, answer appended under `## Answer` on resolve.
 
 ## Decisions so far

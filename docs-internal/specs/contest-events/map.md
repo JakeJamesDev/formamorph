@@ -6,7 +6,7 @@ Label: wayfinder:map
 
 ## Destination
 
-A build-ready spec in `.scratch/contest-events/spec.md` plus sliced implementation tickets — covering the generic server-events layer (server + client), contest entry publishing, the Community Creations contest tab, and the admin surface — every design decision made, ready for build sessions on both repos (formamorph + FormamorphServer).
+A build-ready spec in `docs-internal/specs/contest-events/spec.md` plus sliced implementation tickets — covering the generic server-events layer (server + client), contest entry publishing, the Community Creations contest tab, and the admin surface — every design decision made, ready for build sessions on both repos (formamorph + FormamorphServer).
 
 ## Notes
 

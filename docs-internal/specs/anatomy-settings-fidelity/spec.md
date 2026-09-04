@@ -2,7 +2,7 @@
 
 Status: ready-for-agent
 
-*Follow-up to the Request Anatomy feature (`.scratch/anatomy-view/`). The shipped Settings anatomy view
+*Follow-up to the Request Anatomy feature (`docs-internal/specs/anatomy-view/`). The shipped Settings anatomy view
 pins every generation setting — Thinking mode, section style, markdown output, paragraph limit, language,
 memory settings, the in-world clock — while the sibling Preview panes in the same modal read the live
 values, and the modal itself already hides editor surfaces under exactly the conditions the pins ignore.*

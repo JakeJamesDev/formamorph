@@ -3,8 +3,8 @@
 Status: done
 Status note: 2026-09-02, ten tickets under issues/01–10; all ten resolved.
 
-Six asks, grilled into one plan. Builds on `.scratch/placeholder-ux-polish/spec.md`,
-`followup-spec.md` and `.scratch/hierarchical-placeholders/ownership-spec.md`.
+Six asks, grilled into one plan. Builds on `docs-internal/specs/placeholder-ux-polish/spec.md`,
+`followup-spec.md` and `docs-internal/specs/hierarchical-placeholders/ownership-spec.md`.
 
 ## Problem Statement
 

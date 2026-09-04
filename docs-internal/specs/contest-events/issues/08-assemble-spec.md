@@ -6,7 +6,7 @@ Blocked by: 03, 04, 05, 06, 07
 
 ## Question
 
-The destination: fold every resolved decision into `.scratch/contest-events/spec.md` (client + server, with a HANDOFF section for FieryLion covering compatibility and rollback) and slice implementation tickets under `issues/` per the issue-tracker conventions. The map closes when this resolves.
+The destination: fold every resolved decision into `docs-internal/specs/contest-events/spec.md` (client + server, with a HANDOFF section for FieryLion covering compatibility and rollback) and slice implementation tickets under `issues/` per the issue-tracker conventions. The map closes when this resolves.
 
 ## Answer
 

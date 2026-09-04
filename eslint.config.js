@@ -30,7 +30,7 @@ const noRawTextSize = [
 
 export default tseslint.config(
   // 'out' is the Cloudflare Pages upload root the deploy assembles: a copy of dist beside the site.
-  // '.scratch' holds specs and throwaway work, including vendored third-party source to test against.
+  // '.scratch' is throwaway work, including vendored third-party source to test against.
   { ignores: ['dist', 'out', 'coverage', 'release', 'electron', 'docs-api', '.scratch'] },
   {
     files: ['*.config.js'],

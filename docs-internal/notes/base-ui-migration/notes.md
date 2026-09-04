@@ -1,6 +1,6 @@
 # Radix → Base UI migration research
 
-Research snapshot from **2026-08-29**, gathered live (npm, shadcn changelog, Base UI docs). The themed-tooltip work (`.scratch/themed-tooltips/`) already ships the first Base UI component; this doc covers migrating the rest. Read this before starting — don't re-fetch what's here. Re-verify only the ⏳ items and current versions.
+Research snapshot from **2026-08-29**, gathered live (npm, shadcn changelog, Base UI docs). The themed-tooltip work (`docs-internal/specs/themed-tooltips/`) already ships the first Base UI component; this doc covers migrating the rest. Read this before starting — don't re-fetch what's here. Re-verify only the ⏳ items and current versions.
 
 ## Ecosystem state (as of Aug 2026)
 
@@ -67,7 +67,7 @@ Every one of these was found via a real bug under Radix. Each needs a fresh chec
 
 ## Recommended sequencing
 
-1. Tooltip ships first on Base UI (done via `.scratch/themed-tooltips/` — provider + `render`-prop pattern proven, no parity to verify).
+1. Tooltip ships first on Base UI (done via `docs-internal/specs/themed-tooltips/` — provider + `render`-prop pattern proven, no parity to verify).
 2. Migrate component-by-component with shadcn's skills migration: one commit per component, visual/behavior parity verified per piece (both themes, real viewport), gotcha list checked where relevant.
 3. Order by blast radius: leaf display components (separator, progress, label) → form controls → popups (popover, select, menus) → dialogs last.
 4. Sweep app-code `data-[state` selectors and `asChild` per component as it migrates, not globally.

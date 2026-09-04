@@ -1,8 +1,8 @@
 # Placeholder Polish 2 — Owner Names, Owner Headings, Preview, Shared Pickers
 
 Status: done
-Grilled 2026-09-02. Builds on `.scratch/placeholder-scopes/spec.md` (owners, groups, pins) and
-`.scratch/placeholder-ux-polish/spec.md`.
+Grilled 2026-09-02. Builds on `docs-internal/specs/placeholder-scopes/spec.md` (owners, groups, pins) and
+`docs-internal/specs/placeholder-ux-polish/spec.md`.
 
 ## Problem Statement
 

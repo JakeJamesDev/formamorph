@@ -106,7 +106,7 @@ Every one of those is a rule a linter can hold. None was visible in the editor.
 1. **Activation tester** — unlocks confident authoring of the two systems that are currently guesswork
 2. **World Doctor lint** — catches the exact class of bug that survived into a finished world twice
 
-   *Items 1–2 (plus location/start inspectors) are now one specced feature — the Test Bench, `.scratch/test-bench/spec.md`.*
+   *Items 1–2 (plus location/start inspectors) are now one specced feature — the Test Bench, `docs-internal/specs/test-bench/spec.md`.*
 3. **`connections` editor field** — smallest of the dead features, data already renders
 4. **Per-entity runtime fields** (§1) — the real answer to the herd problem; needs a version decision first
 5. **Trait-gated content** — the one structural gap the world genuinely wanted

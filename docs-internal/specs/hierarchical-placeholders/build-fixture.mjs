@@ -1,6 +1,6 @@
 // Writes the Saltmarsh Reach fixture world: a torture test for hierarchical placeholders — ownership,
 // shared rows, per-row draw weights, and a corner of deliberately broken references. Run with
-// `node .scratch/hierarchical-placeholders/build-fixture.mjs`; import the JSON it writes through the
+// `node docs-internal/specs/hierarchical-placeholders/build-fixture.mjs`; import the JSON it writes through the
 // library's Import World button.
 //
 // What is in here on purpose, and what each thing is for:

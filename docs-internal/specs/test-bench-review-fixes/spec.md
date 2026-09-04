@@ -2,7 +2,7 @@
 
 Status: done
 
-Follow-up to the Test Bench feature (`.scratch/test-bench/`), closing every finding from the
+Follow-up to the Test Bench feature (`docs-internal/specs/test-bench/`), closing every finding from the
 2026-08-17 two-axis review of `cac7be5...HEAD`. Governing ADR:
 `docs/adr/0005-test-bench-shows-computation-never-model-judgment.md` — every addition here is
 deterministic computation; nothing calls a model.
@@ -65,7 +65,7 @@ of the Bench orchestration into a single hook, and sweep the convention breaches
   parent-reference orphan is the one Error). The catalog to implement is: every Appendix A rule
   absent from the registry today, plus ticket 02's three deferred reference checks (location parent
   orphans, Connection endpoint orphans, stat-update stat-name references). Appendix A of
-  `.scratch/test-bench/spec.md` is the source of truth for wording and severity; do not
+  `docs-internal/specs/test-bench/spec.md` is the source of truth for wording and severity; do not
   re-derive rules from this list's shorthand.
 - **All comparisons reuse the established primitives**: name/alias matching through the shared
   match key (case-fold + singularize), placeholder text through the placeholder describer, keyword
