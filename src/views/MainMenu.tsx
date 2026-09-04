@@ -1394,13 +1394,19 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
     return () => { current = false; };
   }, [isAuthenticated, followCountNonce]);
 
-  // Handle logout
-  const handleLogout = () => {
-    AuthService.logout();
+  // Signing out is raised from more than this screen's button — the privacy prompt ends the session
+  // too, and so does a 401 answering any request — so the identity follows the service rather than only
+  // the one handler that used to clear it.
+  useEffect(() => AuthService.onSessionEnded(() => {
     setIsAuthenticated(false);
     setCurrentUser(null);
     setShowProfileDialog(false);
     setUnreadMessages(0);
+  }), []);
+
+  // Handle logout
+  const handleLogout = () => {
+    AuthService.logout();
     toast.success('Logged out successfully');
   };
 

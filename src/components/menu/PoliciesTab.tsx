@@ -19,6 +19,10 @@ import type { AdminPolicies, AdminPolicy, PolicyId } from "@/types";
 const TITLE_MAX = 120;
 const BODY_MAX = 4000;
 
+/** The Privacy Policy's own ceiling, matching the server's. It is a legal document rather than a
+ *  paragraph, and the seeded row alone is longer than the shared cap. */
+const PRIVACY_BODY_MAX = 20000;
+
 interface PoliciesTabProps {
   /** Whether the tab is visible; the drafts only load while it is. */
   active: boolean;
@@ -38,14 +42,17 @@ interface PolicyEditorProps {
   saving: boolean;
   /** Tag notice only: the list of tags that trigger it. */
   showTags?: boolean;
-  /** Upload gate only: makes every existing acceptance stale on save. */
+  /** Answered policies only: makes every existing acceptance stale on save. */
   reaccept?: boolean;
   onReacceptChange?: (value: boolean) => void;
+  /** How long a body this policy accepts; the Privacy Policy is allowed far more than a popup. */
+  bodyMax?: number;
 }
 
 /** One authored popup: the enable switch, its text, and whatever extra control its kind needs. */
 function PolicyEditor({
   heading, description, draft, onChange, onSave, saving, showTags, reaccept, onReacceptChange,
+  bodyMax = BODY_MAX,
 }: PolicyEditorProps) {
   const idBase = heading.replace(/\s+/g, '-').toLowerCase();
   // The world editor's tag options, so the notice is written against the same vocabulary authors tag with.
@@ -88,12 +95,12 @@ function PolicyEditor({
       <div className="space-y-2">
         <div className="flex items-baseline justify-between">
           <span className="text-label font-medium">Body</span>
-          <span className="text-meta text-muted-foreground">{draft.body.length} / {BODY_MAX}</span>
+          <span className="text-meta text-muted-foreground">{draft.body.length} / {bodyMax}</span>
         </div>
         {/* Readers see this rendered, so it is authored the same way the world editor's prose is. */}
         <PromptField
           value={draft.body}
-          onChange={(body) => onChange({ ...draft, body: body.slice(0, BODY_MAX) })}
+          onChange={(body) => onChange({ ...draft, body: body.slice(0, bodyMax) })}
           vocabulary={plainVocab}
           markdown
           ariaLabel={`${heading} body`}
@@ -155,9 +162,12 @@ export function PoliciesTab({ active, initialTab = 'uploadGate' }: PoliciesTabPr
   const [tab, setTab] = useState<PoliciesSubTab>(initialTab);
   const [gate, setGate] = useState<AdminPolicy>(EMPTY);
   const [notice, setNotice] = useState<AdminPolicy>(EMPTY);
+  const [privacy, setPrivacy] = useState<AdminPolicy>(EMPTY);
   const [isLoading, setIsLoading] = useState(false);
   const [savingId, setSavingId] = useState<PolicyId | null>(null);
+  // One per answered policy: ticking the gate's box must not silently re-prompt everyone for the other.
   const [reaccept, setReaccept] = useState(false);
+  const [privacyReaccept, setPrivacyReaccept] = useState(false);
   const [confirmResetAll, setConfirmResetAll] = useState(false);
 
   const load = useCallback(async () => {
@@ -166,6 +176,7 @@ export function PoliciesTab({ active, initialTab = 'uploadGate' }: PoliciesTabPr
       const data: AdminPolicies = await PolicyService.fetchForAdmin();
       setGate(data.uploadGate);
       setNotice(data.tagNotice);
+      setPrivacy(data.privacyPolicy);
     } catch (error) {
       toast.error((error as Error).message || 'Failed to load policies');
     } finally {
@@ -180,18 +191,26 @@ export function PoliciesTab({ active, initialTab = 'uploadGate' }: PoliciesTabPr
   const save = async (id: PolicyId, draft: AdminPolicy) => {
     setSavingId(id);
     try {
+      const reacceptFor: Partial<Record<PolicyId, boolean>> = {
+        upload_gate: reaccept,
+        privacy_policy: privacyReaccept,
+      };
+
       const saved = await PolicyService.save(id, {
         enabled: draft.enabled,
         title: draft.title,
         body: draft.body,
         tags: draft.tags,
-        ...(id === 'upload_gate' ? { requireReaccept: reaccept } : {}),
+        ...(id in reacceptFor ? { requireReaccept: reacceptFor[id] } : {}),
       });
 
+      // One-shot in both cases: leaving it ticked would silently re-prompt everyone on the next typo fix.
       if (id === 'upload_gate') {
         setGate(saved);
-        // One-shot: leaving it ticked would silently re-prompt everyone on the next typo fix.
         setReaccept(false);
+      } else if (id === 'privacy_policy') {
+        setPrivacy(saved);
+        setPrivacyReaccept(false);
       } else {
         setNotice(saved);
       }
@@ -218,9 +237,10 @@ export function PoliciesTab({ active, initialTab = 'uploadGate' }: PoliciesTabPr
     <div className="py-4 min-w-0">
       <Tabs value={tab} onValueChange={(value) => setTab(value as PoliciesSubTab)} className="w-full min-w-0">
         {/* The strip stays put through the load — only the panel below it is still arriving. */}
-        <TabsList className="grid w-full grid-cols-2">
+        <TabsList className="grid w-full grid-cols-3">
           <TabsTrigger value="uploadGate">Upload Gate</TabsTrigger>
           <TabsTrigger value="tagNotice">Tag Notice</TabsTrigger>
+          <TabsTrigger value="privacyPolicy">Privacy Policy</TabsTrigger>
         </TabsList>
 
         {isLoading ? (
@@ -267,6 +287,20 @@ export function PoliciesTab({ active, initialTab = 'uploadGate' }: PoliciesTabPr
             onSave={() => save('tag_notice', notice)}
             saving={savingId === 'tag_notice'}
             showTags
+          />
+        </TabsContent>
+
+        <TabsContent value="privacyPolicy" className="pt-4">
+          <PolicyEditor
+            heading="Privacy Policy"
+            description="Shown at signup and once at the next sign-in. While it is enabled the server refuses every signed-in action from an account that has not accepted it."
+            draft={privacy}
+            onChange={setPrivacy}
+            onSave={() => save('privacy_policy', privacy)}
+            saving={savingId === 'privacy_policy'}
+            reaccept={privacyReaccept}
+            onReacceptChange={setPrivacyReaccept}
+            bodyMax={PRIVACY_BODY_MAX}
           />
         </TabsContent>
         </>

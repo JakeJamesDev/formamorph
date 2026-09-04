@@ -22,14 +22,16 @@ const payload: PublishPayload = {
 const GATE: PolicyState = {
   uploadGate: { title: 'Contributor terms', body: 'Be excellent.', tags: [], accepted: false },
   tagNotice: null,
+  privacyPolicy: null,
 };
 
 const NOTICE: PolicyState = {
   uploadGate: null,
   tagNotice: { title: 'Tagged content', body: 'Take care.', tags: ['mature'] },
+  privacyPolicy: null,
 };
 
-const NOTHING: PolicyState = { uploadGate: null, tagNotice: null };
+const NOTHING: PolicyState = { uploadGate: null, tagNotice: null, privacyPolicy: null };
 
 const stubPolicies = (state: PolicyState) =>
   vi.spyOn(PolicyService, 'fetchPolicies').mockResolvedValue(state);
@@ -311,7 +313,7 @@ describe('the tag notice', () => {
 
 describe('both popups at once', () => {
   it('asks for the terms first, then the tag notice', async () => {
-    stubPolicies({ uploadGate: GATE.uploadGate, tagNotice: NOTICE.tagNotice });
+    stubPolicies({ uploadGate: GATE.uploadGate, tagNotice: NOTICE.tagNotice, privacyPolicy: null });
     vi.spyOn(PolicyService, 'acceptUploadGate').mockResolvedValue();
     vi.spyOn(PolicyService, 'matchTags').mockResolvedValue(['mature']);
     const publish = vi.spyOn(WorldStorageService, 'publishItem').mockResolvedValue({});
@@ -332,7 +334,7 @@ describe('both popups at once', () => {
 
   it('leaves the acceptance standing when the tag notice is cancelled', async () => {
     // Agreeing to the terms and going through with this upload are separate outcomes.
-    stubPolicies({ uploadGate: GATE.uploadGate, tagNotice: NOTICE.tagNotice });
+    stubPolicies({ uploadGate: GATE.uploadGate, tagNotice: NOTICE.tagNotice, privacyPolicy: null });
     const accept = vi.spyOn(PolicyService, 'acceptUploadGate').mockResolvedValue();
     vi.spyOn(PolicyService, 'matchTags').mockResolvedValue(['mature']);
     const publish = vi.spyOn(WorldStorageService, 'publishItem').mockResolvedValue({});

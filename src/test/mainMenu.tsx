@@ -9,6 +9,7 @@ import { GameDataProvider } from '@/contexts/GameDataContext';
 import { PlaceholderSessionProvider } from '@/contexts/PlaceholderSessionContext';
 import { UserProfileProvider } from '@/contexts/UserProfileContext';
 import { AgeGateProvider } from '@/contexts/AgeGateContext';
+import { PrivacyPolicyProvider } from '@/contexts/PrivacyPolicyContext';
 import MainMenu from '@/views/MainMenu';
 
 /**
@@ -27,6 +28,7 @@ export function renderMainMenu(props: Partial<React.ComponentProps<typeof MainMe
             <PlaceholderSessionProvider>
               <UserProfileProvider>
                 <AgeGateProvider>
+                  <PrivacyPolicyProvider>
                   <MainMenu
                     onStartGame={() => {}}
                     onLoadSaveGame={() => {}}
@@ -34,6 +36,7 @@ export function renderMainMenu(props: Partial<React.ComponentProps<typeof MainMe
                     introActive={false}
                     {...props}
                   />
+                  </PrivacyPolicyProvider>
                 </AgeGateProvider>
               </UserProfileProvider>
             </PlaceholderSessionProvider>

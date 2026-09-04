@@ -8,6 +8,10 @@ class AuthService {
   userKey: string;
   token: string | null;
   currentUser: AuthUser | null;
+  /** Told whenever the held session ends, so a surface keeping its own copy of the identity can drop it.
+   *  Signing out is raised from more than one place now — the profile dialog, the privacy prompt, and a
+   *  401 answering any request — and only this service sees all three. */
+  private sessionEndedListeners = new Set<() => void>();
 
   constructor() {
     // Use different API URL based on environment
@@ -32,6 +36,12 @@ class AuthService {
 
   getCurrentUser() {
     return this.currentUser;
+  }
+
+  /** Listen for the session ending. Returns the unsubscribe. */
+  onSessionEnded(listener: () => void): () => void {
+    this.sessionEndedListeners.add(listener);
+    return () => { this.sessionEndedListeners.delete(listener); };
   }
 
   /** Authenticate, persist the token, then adopt or fetch the user profile; rethrows on failure. */
@@ -310,6 +320,8 @@ class AuthService {
     this.currentUser = null;
     localStorage.removeItem(this.tokenKey);
     localStorage.removeItem(this.userKey);
+    // After the state is cleared, so a listener that reads `isAuthenticated()` sees the session gone.
+    this.sessionEndedListeners.forEach((listener) => listener());
   }
 }
 

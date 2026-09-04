@@ -1,5 +1,7 @@
 import AuthService from './AuthService';
-import type { AdminPolicies, AdminPolicy, PolicyId, PolicyState, SavePolicyInput } from '@/types';
+import type {
+  AdminPolicies, AdminPolicy, PolicyId, PolicyState, PublicPrivacyPolicy, SavePolicyInput,
+} from '@/types';
 
 /** Server error envelope: this API answers with `error`, older handlers elsewhere read `message`. */
 interface ErrorBody {
@@ -10,11 +12,17 @@ interface ErrorBody {
 /** The code the server returns when a publish is refused for want of an accepted gate. */
 export const TERMS_REQUIRED = 'TERMS_REQUIRED';
 
+/** The code the server returns when any request is refused for want of an accepted Privacy Policy. */
+export const PRIVACY_REQUIRED = 'PRIVACY_REQUIRED';
+
 /**
- * Authored publish-time popups: the blocking upload gate, and the advisory tag notice.
+ * The server's authored policies: the publish-time upload gate and tag notice, and the Privacy Policy
+ * that stands in front of every authenticated route.
  *
- * The gate is enforced by the server — this only decides what to show and when. A failure to read policy
- * state is therefore never a reason to block publishing: the client fails open and lets the server refuse.
+ * All three are enforced by the server — this only decides what to show and when. A failure to read
+ * policy state is therefore never a reason to block publishing: the client fails open and lets the
+ * server refuse. The Privacy Policy is the one exception to reading with a token, because registration
+ * shows it before the account exists.
  */
 class PolicyService {
   private get apiUrl() {
@@ -89,6 +97,54 @@ class PolicyService {
     });
 
     await this.unwrap(response, 'Failed to reset the terms');
+  }
+
+  /**
+   * The Privacy Policy's text alone, for a reader with no account yet.
+   *
+   * The only policy read that sends no token: registration shows the policy before the account exists.
+   * Null when the server has none switched on, which is the state it ships in — a caller that finds
+   * nothing here has nothing to ask, and the server is refusing nothing either.
+   */
+  async fetchPublicPrivacyPolicy(): Promise<PublicPrivacyPolicy | null> {
+    const response = await fetch(`${this.apiUrl}/policies/privacy-policy`);
+    if (response.status === 404) return null;
+
+    const body = await this.unwrap<{ privacyPolicy: PublicPrivacyPolicy }>(response, 'Failed to load the privacy policy');
+    return body.privacyPolicy;
+  }
+
+  /** Record that the current user accepts the Privacy Policy as it stands. */
+  async acceptPrivacyPolicy(): Promise<void> {
+    const response = await fetch(`${this.apiUrl}/policies/privacy-policy/accept`, {
+      method: 'POST',
+      headers: this.authHeaders(),
+    });
+
+    await this.unwrap(response, 'Failed to record your acceptance');
+  }
+
+  /** Record a refusal of the Privacy Policy. Enforces nothing on its own — an unanswered policy already
+   *  refuses every authenticated route — but it tells an admin they were asked and said no. */
+  async declinePrivacyPolicy(): Promise<void> {
+    const response = await fetch(`${this.apiUrl}/policies/privacy-policy/decline`, {
+      method: 'POST',
+      headers: this.authHeaders(),
+    });
+
+    await this.unwrap(response, 'Failed to record your answer');
+  }
+
+  /** Require the Privacy Policy to be accepted again — by one user, or by everyone when `userId` is
+   *  omitted. Everyone is a version bump, so it re-prompts every account at its next request. */
+  async resetPrivacyPolicy(userId?: string): Promise<void> {
+    const response = await fetch(`${this.apiUrl}/policies/privacy-policy/reset`, {
+      method: 'POST',
+      headers: this.authHeaders(true),
+      body: JSON.stringify(userId ? { userId } : {}),
+    });
+
+    await this.unwrap(response, 'Failed to reset the privacy policy');
   }
 
   /** Which of these tags the tag notice covers. Empty when the notice is off or nothing matches. */

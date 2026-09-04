@@ -1,6 +1,9 @@
 import { render, screen, fireEvent, cleanup, waitFor } from '@testing-library/react';
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { AuthModals } from './AuthModals';
+import { PrivacyPolicyProvider } from '@/contexts/PrivacyPolicyContext';
+import { AgeGateProvider } from '@/contexts/AgeGateContext';
+import { acceptAgeGate } from '@/lib/ageGate';
 import PolicyService from '@/services/PolicyService';
 import AuthService from '@/services/AuthService';
 import type { PolicyState } from '@/types';
@@ -20,9 +23,10 @@ vi.mock('@/services/UserService', () => ({
 const WITH_GATE: PolicyState = {
   uploadGate: { title: 'Contributor Terms', body: 'Be excellent.', tags: [], accepted: false },
   tagNotice: null,
+  privacyPolicy: null,
 };
 
-const NO_GATE: PolicyState = { uploadGate: null, tagNotice: null };
+const NO_GATE: PolicyState = { uploadGate: null, tagNotice: null, privacyPolicy: null };
 
 const user = (over: Record<string, unknown> = {}) => ({
   username: 'finder',
@@ -31,8 +35,12 @@ const user = (over: Record<string, unknown> = {}) => ({
   ...over,
 }) as unknown as WorldRecord;
 
+// The real provider, because the dialog reads the privacy prompt from it. It asks the same
+// `fetchPolicies` this file already stubs, and finds no policy in it.
 const renderProfile = (over: Record<string, unknown> = {}) =>
   render(
+    <AgeGateProvider>
+    <PrivacyPolicyProvider>
     <AuthModals
       showAuthDialog={false}
       setShowAuthDialog={() => {}}
@@ -43,10 +51,15 @@ const renderProfile = (over: Record<string, unknown> = {}) =>
       onLogout={() => {}}
       {...over}
     />
+    </PrivacyPolicyProvider>
+    </AgeGateProvider>
   );
 
 beforeEach(() => {
   localStorage.clear();
+  // The privacy prompt reads nothing until the age gate is answered, and the app never reaches this
+  // dialog before it is.
+  acceptAgeGate();
   vi.spyOn(console, 'error').mockImplementation(() => {});
   vi.spyOn(PolicyService, 'fetchPolicies').mockResolvedValue(NO_GATE);
 });
@@ -154,6 +167,8 @@ describe('landing on a tab while already open', () => {
     // The dev-router points at a tab by changing this prop. Applying it only on open meant a `goto` at
     // an already-open dialog silently left the reader wherever they were.
     const { rerender } = render(
+      <AgeGateProvider>
+    <PrivacyPolicyProvider>
       <AuthModals
         showAuthDialog={false}
         setShowAuthDialog={() => {}}
@@ -164,10 +179,14 @@ describe('landing on a tab while already open', () => {
         onLogout={() => {}}
         initialTab="messages"
       />
+      </PrivacyPolicyProvider>
+      </AgeGateProvider>
     );
     await screen.findByTestId('messages');
 
     rerender(
+      <AgeGateProvider>
+    <PrivacyPolicyProvider>
       <AuthModals
         showAuthDialog={false}
         setShowAuthDialog={() => {}}
@@ -178,6 +197,8 @@ describe('landing on a tab while already open', () => {
         onLogout={() => {}}
         initialTab="notifications"
       />
+      </PrivacyPolicyProvider>
+      </AgeGateProvider>
     );
 
     expect(await screen.findByTestId('notifications')).toBeTruthy();

@@ -23,7 +23,7 @@ const contest = (over: Partial<ServerEvent> = {}): ServerEvent =>
 const listing = (id: string, name: string, over: Partial<WorldRecord> = {}): WorldRecord =>
   ({ _id: id, name, downloads: 0, ...over });
 
-const NO_POLICIES: PolicyState = { uploadGate: null, tagNotice: null };
+const NO_POLICIES: PolicyState = { uploadGate: null, tagNotice: null, privacyPolicy: null };
 
 const view = (
   props: {
@@ -179,6 +179,7 @@ describe('what the switch sends', () => {
     vi.mocked(PolicyService.fetchPolicies).mockResolvedValue({
       uploadGate: { title: 'Contributor terms', body: 'Be excellent.', tags: [], accepted: true },
       tagNotice: null,
+      privacyPolicy: null,
     });
 
     view();

@@ -14,6 +14,7 @@ vi.mock('@/components/game/MarkdownRenderer', () => ({
 const state = (accepted: boolean): PolicyState => ({
   uploadGate: { title: 'Contributor Terms', body: 'Be excellent.', tags: [], accepted },
   tagNotice: null,
+  privacyPolicy: null,
 });
 
 const stubGate = (accepted: boolean) =>
@@ -150,7 +151,7 @@ describe('after accepting', () => {
 
 describe('when there is nothing to show', () => {
   it('says so rather than rendering an empty panel', async () => {
-    vi.spyOn(PolicyService, 'fetchPolicies').mockResolvedValue({ uploadGate: null, tagNotice: null });
+    vi.spyOn(PolicyService, 'fetchPolicies').mockResolvedValue({ uploadGate: null, tagNotice: null, privacyPolicy: null });
 
     render(<TermsTab active />);
 

@@ -47,8 +47,10 @@ export type DevView = (typeof DEV_VIEWS)[number];
  *  that has already accepted it. `likers` opens Community Creations, its first listing's details, and the
  *  staff-only likers list on top — the same "first row in the library" trick `modelDetails` uses, since
  *  the list has nothing to show without a real listing. It needs a staff session and does nothing
- *  otherwise. */
-export const DEV_MODALS = ['settings', 'entity', 'export', 'menu', 'worldEditor', 'intro', 'avatar', 'backup', 'aiSetup', 'entityEditor', 'dictionaryEditor', 'modelDetails', 'community', 'memoryManager', 'profile', 'feedbackHub', 'adminPanel', 'editText', 'location', 'changelog', 'eventAck', 'publish', 'worldPrompts', 'aiContext', 'ageGate', 'likers'] as const;
+ *  otherwise. `privacyPolicy` raises the sign-in privacy prompt on canned text
+ *  (`devPrivacySample.ts`), because the real policy is a server row that ships switched off —
+ *  without the sample the prompt would have nothing to render before the cutover. */
+export const DEV_MODALS = ['settings', 'entity', 'export', 'menu', 'worldEditor', 'intro', 'avatar', 'backup', 'aiSetup', 'entityEditor', 'dictionaryEditor', 'modelDetails', 'community', 'memoryManager', 'profile', 'feedbackHub', 'adminPanel', 'editText', 'location', 'changelog', 'eventAck', 'publish', 'worldPrompts', 'aiContext', 'ageGate', 'likers', 'privacyPolicy'] as const;
 export type DevModal = (typeof DEV_MODALS)[number];
 
 /** Coverage ledger: tabbed surface → the sub-tabs the router can target (via `tab=…`). Kept in lockstep
@@ -83,7 +85,7 @@ export const DEV_MODAL_TABS = {
   // disabled and has nothing to land on, so adding one here is part of building it.
   worldEditorBench: ['issues', 'triggers', 'aiContext', 'opening'],
   // Admin Panel → Policies has a second level, one sub-tab per authored popup, reached with `subtab=…`.
-  adminPanelPolicies: ['uploadGate', 'tagNotice'],
+  adminPanelPolicies: ['uploadGate', 'tagNotice', 'privacyPolicy'],
   // Admin Panel → Feedback uses the same `subtab=…` slot, one per branch.
   adminPanelFeedback: ['bugs', 'suggestions'],
   // The acknowledge poster renders one of an event's two phases; `tab=…` picks which the canned event is at.
