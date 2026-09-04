@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  A player can point the app at a model server on their own machine or LAN, which speaks plain http.
+  Android matches these entries by exact hostname or by DNS suffix, so a private address range cannot be
+  written here at all: 192.168.x.y is a prefix, and suffix matching reads the other way. Permitting
+  cleartext is therefore all-or-nothing here, and the app's own endpoint check is what bounds it to
+  loopback and the RFC 1918 ranges.
+
+  The one bound this file can express is the opposite one, and it is the bound that matters most: the
+  community server is never reached over http, whatever a setting says.
+-->
+<network-security-config>
+    <base-config cleartextTrafficPermitted="true">
+        <trust-anchors>
+            <certificates src="system" />
+        </trust-anchors>
+    </base-config>
+    <domain-config cleartextTrafficPermitted="false">
+        <domain includeSubdomains="true">formamorph.ai</domain>
+    </domain-config>
+</network-security-config>

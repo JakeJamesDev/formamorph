@@ -13,8 +13,9 @@ export default defineConfig({
   define: {
     __APP_VERSION__: JSON.stringify(pkg.version),
     // Build-type class, set per target by the release workflow (FORMAMORPH_BUILD): 'portable' | 'installed'
-    // | 'web'. Empty (a local build) is treated as 'dev'. Purely a label — the desktop userData redirect
-    // keys off the runtime PORTABLE_EXECUTABLE_DIR/APPIMAGE vars, not this.
+    // | 'web' | 'android'. Empty (a local build) is treated as 'dev'. Mostly a label — the desktop userData
+    // redirect keys off the runtime PORTABLE_EXECUTABLE_DIR/APPIMAGE vars, not this — but 'android' also
+    // decides the platform the client header reports, because the desktop bridge is absent in the WebView.
     __BUILD_TARGET__: JSON.stringify(process.env.FORMAMORPH_BUILD ?? ''),
   },
   resolve: {

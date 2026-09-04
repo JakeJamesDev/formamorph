@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  The launch window's background, shown while the WebView loads. A window background is stretched to
+  fill the screen, so the icon has to be its own centered layer: a bitmap on its own would be distorted
+  by every aspect ratio the plain square art does not match.
+-->
+<layer-list xmlns:android="http://schemas.android.com/apk/res/android">
+    <item android:drawable="@color/ic_launcher_background" />
+    <item>
+        <bitmap
+            android:src="@drawable/splash_icon"
+            android:gravity="center" />
+    </item>
+</layer-list>
