@@ -70,6 +70,6 @@ Good tests here assert external behavior at the seams below — what text resolv
 
 ## Further Notes
 
-- The sibling feature spec at `.scratch/world-custom-prompts/` is the closest precedent; this feature deliberately copies its editor UX (pre-filled template, first-edit-stores, Reset, toggle-keeps-text) while staying outside its storage object and opt-out.
+- The sibling feature spec at `docs-internal/specs/world-custom-prompts/` is the closest precedent; this feature deliberately copies its editor UX (pre-filled template, first-edit-stores, Reset, toggle-keeps-text) while staying outside its storage object and opt-out.
 - The opening action's journey is subtle: the pre-filled text is submitted as the player's action, history stores it (or the legacy sentinel), and the real opening text also lives in a session ref used by page-1 regeneration. The helper must be the single source for "what is this world's opening cue" so those paths can't drift.
 - Placeholder resolution at pre-fill time means the *stored* world text keeps its chips; only the input-box copy is resolved. Wildcards therefore re-roll on each fresh Start Game, consistent with placeholder semantics elsewhere.

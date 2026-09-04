@@ -28,7 +28,7 @@ Nine probes, up from six. `/` changed from `302 -> /play/` to `200` + `text/html
 
 ### Evidence
 
-A local Pages emulator (`.scratch/landing-page/work/pages-emulator.mjs`) built on Cloudflare's own `parseHeaders` / `parseRedirects` / `generateRulesMatcher` (workers-sdk `main` @ `90b1d08`), serving the real assembled `out/` — 462 app files from a fresh `npm run build` plus the 60 site files.
+A local Pages emulator (`docs-internal/specs/landing-page/work/pages-emulator.mjs`) built on Cloudflare's own `parseHeaders` / `parseRedirects` / `generateRulesMatcher` (workers-sdk `main` @ `90b1d08`), serving the real assembled `out/` — 462 app files from a fresh `npm run build` plus the 60 site files.
 
 | Claim | How it was checked | Result |
 | --- | --- | --- |

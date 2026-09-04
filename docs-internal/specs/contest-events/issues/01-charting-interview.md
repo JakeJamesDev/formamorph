@@ -12,7 +12,7 @@ Name the destination and settle the top-level scope of the Server Events & Conte
 Four AskUserQuestion rounds, 2026-08-20:
 
 **Round 1 — destination & scope**
-- Destination: **spec ready to build** in `.scratch/contest-events/` — decisions + sliced tickets; building is follow-on work.
+- Destination: **spec ready to build** in `docs-internal/specs/contest-events/` — decisions + sliced tickets; building is follow-on work.
 - Generality: **typed events, contest first** — generic `events` table (type, start/end, message); contest behavior keys off `type: 'contest'`.
 - Event admin: **in-app admin UI** (Contests/Events tab in AdminPanelDialog territory), staff-gated.
 - Judging: **staff pick + announcement** is in scope.

@@ -1,7 +1,7 @@
 // PROTOTYPE — tight element shots of the settings modal, both themes.
 import { chromium } from '@playwright/test';
 const BASE = 'http://localhost:5180';
-const OUT = '.scratch/landing-page/prototype/shots';
+const OUT = 'docs-internal/specs/landing-page/prototype/shots';
 const browser = await chromium.launch();
 for (const scheme of ['light', 'dark']) {
   const ctx = await browser.newContext({ viewport: { width: 1920, height: 1080 }, colorScheme: scheme });

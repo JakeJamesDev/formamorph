@@ -2,7 +2,7 @@
 
 Status: done
 
-Follow-up to `.scratch/novelai-provider/spec.md`, from the two-axis code review of the shipped provider and the grilling session that ruled on each finding. Five fixes; three declined findings are recorded under Out of Scope so they aren't re-raised.
+Follow-up to `docs-internal/specs/novelai-provider/spec.md`, from the two-axis code review of the shipped provider and the grilling session that ruled on each finding. Five fixes; three declined findings are recorded under Out of Scope so they aren't re-raised.
 
 ## Problem Statement
 

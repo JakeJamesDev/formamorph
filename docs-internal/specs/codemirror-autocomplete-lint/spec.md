@@ -3,7 +3,7 @@
 Status: done
 Status note: verified shipped in the 2026-08 status sweep (changelog/code evidence)
 
-Follow-up to `.scratch/codemirror-stat-code/spec.md` (shipped). CodeMirror 6 is already mounted in the stat-code field; this adds the two follow-ups its Out of Scope section named, which share one input: the exact sandbox surface.
+Follow-up to `docs-internal/specs/codemirror-stat-code/spec.md` (shipped). CodeMirror 6 is already mounted in the stat-code field; this adds the two follow-ups its Out of Scope section named, which share one input: the exact sandbox surface.
 
 ## Problem Statement
 

@@ -5,7 +5,7 @@ Spec: ../spec.md
 
 ## Task
 
-Translate the finalized prototype (variant A, `.scratch/landing-page/prototype/landing-a.html`) into
+Translate the finalized prototype (variant A, `docs-internal/specs/landing-page/prototype/landing-a.html`) into
 production files under `hosting/`.
 
 - `hosting/index.html` — hero over blurred library art, the settled three-sentence tagline verbatim,

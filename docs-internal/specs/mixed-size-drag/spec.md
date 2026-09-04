@@ -43,7 +43,7 @@ Arrangements become position-based: each tile keeps a (row, column) home per gri
 
 ## Implementation Decisions
 
-- **Winner**: algorithm D (cell simulation) with the Quiet Slide presentation, chosen from the prototype at `.scratch/mixed-size-drag/prototype.html`. The Pressure and Give Way treatments stay parked in the prototype.
+- **Winner**: algorithm D (cell simulation) with the Quiet Slide presentation, chosen from the prototype at `docs-internal/specs/mixed-size-drag/prototype.html`. The Pressure and Give Way treatments stay parked in the prototype.
 - **Pure simulation module** in the library-organization module family, lifted from the prototype. Contract (from the prototype, trimmed to the decision):
   - A sim is created per gesture from the tiles' homes, the dragged id, the column count, and the consent threshold.
   - `advance(want)` unit-steps the dragged footprint to the wanted anchor. Per unit step, cells on the leading edge hop to the freed trailing edge, guarded so no two cells occupy one spot. Backtracking runs the same steps in reverse.
@@ -80,5 +80,5 @@ Arrangements become position-based: each tile keeps a (row, column) home per gri
 
 ## Further Notes
 
-- The prototype at `.scratch/mixed-size-drag/prototype.html` is the primary source: its pure module holds the reference cell-sim implementation, and its debug board demonstrates every behavior named above. Verified interactions: 25% → 50% consent accumulation through a medium tile; ghost stacking then a two-row relocation while climbing a large tile; backtracking walking the sim home; blocked release committing the rest.
+- The prototype at `docs-internal/specs/mixed-size-drag/prototype.html` is the primary source: its pure module holds the reference cell-sim implementation, and its debug board demonstrates every behavior named above. Verified interactions: 25% → 50% consent accumulation through a medium tile; ghost stacking then a two-row relocation while climbing a large tile; backtracking walking the sim home; blocked release committing the rest.
 - The mobile-viewport behavior interacts with the packer's clamp of tiles wider than the grid; a large tile on a very narrow width clamps at seed time, which the per-width placement map then owns.

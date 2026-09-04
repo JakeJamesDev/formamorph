@@ -2,7 +2,7 @@
 
 Status: ready-for-agent
 
-Server side: the FormamorphServer repo, `.scratch/like-moderation/spec.md`, already implemented.
+Server side: the FormamorphServer repo, `docs-internal/specs/like-moderation/spec.md`, already implemented.
 
 ## Problem Statement
 
