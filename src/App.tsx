@@ -13,6 +13,7 @@ import { PlaceholderSessionProvider, usePlaceholderSession } from './contexts/Pl
 import { AgeGateProvider } from './contexts/AgeGateContext';
 import { PrivacyPolicyProvider } from './contexts/PrivacyPolicyContext';
 import { AccountDeletionProvider } from './contexts/AccountDeletionContext';
+import { UpdateRequiredGate } from './components/modals/UpdateRequiredDialog';
 import { LocalEngineManager } from './components/LocalEngineManager';
 import { IntroSequence } from './components/IntroSequence';
 import { TooltipProvider } from './components/ui/tooltip';
@@ -168,6 +169,10 @@ function App() {
                       and so needs the flow mounted above it. */}
                   <AccountDeletionProvider>
                     <PrivacyPolicyProvider>
+                      {/* Beside the privacy prompt, and before the views: a route can refuse a request
+                          made from either screen, and sibling effects run in order — so the header this
+                          installs is on `fetch` before any screen's mount effect asks for anything. */}
+                      <UpdateRequiredGate />
                       <AppViews />
                     </PrivacyPolicyProvider>
                   </AccountDeletionProvider>

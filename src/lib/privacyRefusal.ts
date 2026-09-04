@@ -1,15 +1,9 @@
 import { PRIVACY_REQUIRED } from '@/services/PolicyService';
+import { urlOf } from '@/lib/fetchTarget';
 
 /** What a refused request answers with; only `code` decides anything here. */
 interface RefusalBody {
   code?: string;
-}
-
-/** The URL a `fetch` argument names, in whichever of its three forms the caller used. */
-function urlOf(input: RequestInfo | URL): string {
-  if (typeof input === 'string') return input;
-  if (input instanceof URL) return input.href;
-  return input.url;
 }
 
 /**

@@ -1,4 +1,4 @@
-**Last updated: 3 September 2026**
+**Last updated: 4 September 2026**
 
 This policy says what Formamorph stores about you, why, for how long, and who else handles it. It covers the community server: accounts, published worlds, comments, likes, follows, and feedback. It does not cover your play. The game runs on your device, and nothing about a playthrough reaches us.
 
@@ -23,6 +23,8 @@ You must be **at least 18 years old**, and of legal age to view adult content wh
 **Timestamps.** Everything above records when it happened. Your account records when you created it, when it last changed, and when you last opened your notification feed.
 
 **Moderation records.** When staff act on an account or a listing, the audit log records who acted, on whom, what they removed, and when. It keeps usernames.
+
+**Your app version.** Every request carries which version of Formamorph you run and which build it is: browser, Windows, Linux, macOS, or Android. The server uses it to tell you when a feature needs a newer version than the one you have. It is written to the request log with the rest of the request line.
 
 ## The Signal
 
