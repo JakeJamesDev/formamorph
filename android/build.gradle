@@ -9,6 +9,9 @@ buildscript {
     dependencies {
         classpath 'com.android.tools.build:gradle:8.13.0'
         classpath 'com.google.gms:google-services:4.4.4'
+        // The update plugin is Kotlin; the Capacitor template ships Java only. Pinned here rather than in
+        // variables.gradle, which this block is evaluated before.
+        classpath 'org.jetbrains.kotlin:kotlin-gradle-plugin:2.4.10'
 
         // NOTE: Do not place your application dependencies here; they belong
         // in the individual module build.gradle files

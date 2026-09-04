@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { parseReleases, buildRecentChangelog, checkForUpdate, type GithubRelease } from './UpdateService';
+import { parseReleases, buildRecentChangelog, checkForUpdate, androidAssets, type GithubRelease } from './UpdateService';
 
 const rel = (tag: string, prerelease = false, draft = false, body = ''): GithubRelease => ({
   tag_name: tag,
@@ -150,5 +150,36 @@ describe('checkForUpdate', () => {
     const res = await checkForUpdate('stable', '2.1.0');
     expect(res.success).toBe(false);
     expect(res.error).toContain('503');
+  });
+});
+
+describe('androidAssets', () => {
+  const asset = (name: string) => ({ name, browser_download_url: `https://dl.test/${name}`, size: 1 });
+
+  it('pairs the APK with its checksum sidecar', () => {
+    const release = {
+      ...rel('v2.17.0'),
+      assets: [asset('Formamorph-win.exe'), asset('Formamorph-android.apk'), asset('Formamorph-android.apk.sha512')],
+    };
+
+    expect(androidAssets(release)).toEqual({
+      url: 'https://dl.test/Formamorph-android.apk',
+      sha512Url: 'https://dl.test/Formamorph-android.apk.sha512',
+    });
+  });
+
+  it('finds nothing in a release cut before the Android build existed', () => {
+    expect(androidAssets({ ...rel('v2.16.0'), assets: [asset('Formamorph-win.exe')] })).toBeNull();
+  });
+
+  it('refuses an APK whose sidecar is missing', () => {
+    // Half an upload is not installable: the plugin verifies the checksum before it hands anything over.
+    const release = { ...rel('v2.17.0'), assets: [asset('Formamorph-android.apk')] };
+
+    expect(androidAssets(release)).toBeNull();
+  });
+
+  it('finds nothing when there is no release at all', () => {
+    expect(androidAssets(undefined)).toBeNull();
   });
 });

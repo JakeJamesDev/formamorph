@@ -10,7 +10,8 @@ import { Tip } from '@/components/ui/tooltip';
 
 /** Web footer version: there's no self-update, but clicking still shows the latest release's notes. Fetches
  *  lazily on first open (never on load / on a timer, unlike the desktop checker) and links to the full wiki
- *  changelog. Mounted only on the web build; desktop uses UpdateVersionControl. */
+ *  changelog. Mounted only where no update bridge exists; every build that can install one uses
+ *  UpdateVersionControl instead. */
 export function WebVersionChangelog() {
   const [open, setOpen] = useState(false);
   const [changelog, setChangelog] = useState<string | null>(null); // null until first fetch resolves
