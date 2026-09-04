@@ -54,8 +54,9 @@ export type DevView = (typeof DEV_VIEWS)[number];
  *  a sign-in raises when it calls a pending deletion off. Neither is reachable by clicking without an
  *  account in the matching state — one needs a real password, the other a request already standing.
  *  `updateRequired` raises the Update Dialog on a canned refusal, since the real one needs a server route
- *  whose minimum version is above the running build. */
-export const DEV_MODALS = ['settings', 'entity', 'export', 'menu', 'worldEditor', 'intro', 'avatar', 'backup', 'aiSetup', 'entityEditor', 'dictionaryEditor', 'modelDetails', 'community', 'memoryManager', 'profile', 'feedbackHub', 'adminPanel', 'editText', 'location', 'changelog', 'eventAck', 'publish', 'worldPrompts', 'aiContext', 'ageGate', 'likers', 'privacyPolicy', 'deleteAccount', 'deletionCancelled', 'updateRequired'] as const;
+ *  whose minimum version is above the running build. `exitApp` raises the Android exit prompt, which on a
+ *  phone only the hardware back button reaches. */
+export const DEV_MODALS = ['settings', 'entity', 'export', 'menu', 'worldEditor', 'intro', 'avatar', 'backup', 'aiSetup', 'entityEditor', 'dictionaryEditor', 'modelDetails', 'community', 'memoryManager', 'profile', 'feedbackHub', 'adminPanel', 'editText', 'location', 'changelog', 'eventAck', 'publish', 'worldPrompts', 'aiContext', 'ageGate', 'likers', 'privacyPolicy', 'deleteAccount', 'deletionCancelled', 'updateRequired', 'exitApp'] as const;
 export type DevModal = (typeof DEV_MODALS)[number];
 
 /** Coverage ledger: tabbed surface → the sub-tabs the router can target (via `tab=…`). Kept in lockstep

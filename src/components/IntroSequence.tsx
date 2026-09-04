@@ -1,5 +1,6 @@
 import { useEffect, useRef } from 'react';
 import { INTRO_FONT_BASE64, INTRO_FONT_FAMILY } from '@/lib/introFont';
+import { useBackStop } from '@/hooks/useBackStop';
 
 /**
  * First-run welcome animation: a field of gooey blobs popcorns in, magnetizes into place, and merges into
@@ -28,6 +29,10 @@ export function IntroSequence({
   const caretRef = useRef<HTMLSpanElement>(null);
   const doneRef = useRef(onComplete);
   doneRef.current = onComplete;
+
+  // The intro covers the menu without being a modal, so the Android back button would otherwise offer to
+  // close the app over it. It is not skippable, so it takes the press and does nothing with it.
+  useBackStop(() => {});
 
   useEffect(() => {
     const root = rootRef.current;

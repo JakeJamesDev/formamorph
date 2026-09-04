@@ -14,6 +14,7 @@ import { useGameplay } from '../../contexts/GameplayContext';
 import { useClosingSnapshot } from '@/lib/useClosingSnapshot';
 import { sceneImageWeight } from '@/lib/sceneImages';
 import { formatBytes } from '@/lib/imageOptim';
+import { EXIT_TO_MENU_PROMPT } from '@/lib/leavePrompts';
 import type { WorldOverview, SaveRecord } from "@/types";
 
 export const MenuModal = ({ onSettingsClick, onReportBug, onSave, onLoad, worldOverview, worldId, onExitToMenu, onEditWorld, onShowAiContext }: {
@@ -142,9 +143,9 @@ export const MenuModal = ({ onSettingsClick, onReportBug, onSave, onLoad, worldO
       <ConfirmDialog
         open={showExitConfirm}
         onOpenChange={setShowExitConfirm}
-        title="Exit to Main Menu"
+        title={EXIT_TO_MENU_PROMPT.title}
         icon={<DoorOpen className="h-4 w-4" />}
-        description="Are you sure you want to exit to the main menu? Any unsaved progress will be lost."
+        description={EXIT_TO_MENU_PROMPT.description}
         onConfirm={onExitToMenu}
       />
 
