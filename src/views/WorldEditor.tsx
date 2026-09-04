@@ -33,6 +33,7 @@ import { Panel, PanelGroup, PanelResizeHandle } from 'react-resizable-panels';
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { ListDetail } from "@/components/ui/list-detail";
 import { useIsMobile } from "@/lib/useIsMobile";
+import { useBackStop } from "@/hooks/useBackStop";
 import { toast } from 'react-toastify';
 import { ThemedToastContainer } from '@/components/ThemedToastContainer';
 import 'react-toastify/dist/ReactToastify.css';
@@ -251,6 +252,10 @@ const WorldEditorInner = ({ onClose, embedded = false, backButton }: {
   useEffect(() => clearEditorMatch, []);
   const isMobile = useIsMobile();
   const [showExitPrompt, setShowExitPrompt] = useState(false);
+  // Leaving asks about unsaved edits first. The dialog around the editor refuses Escape so nothing bypasses
+  // that prompt; the Android back button reaches this step instead.
+  const requestClose = useCallback(() => (isWorldDirty ? setShowExitPrompt(true) : onClose()), [isWorldDirty, onClose]);
+  useBackStop(requestClose, editorRootRef);
   const [addMenuOpen, setAddMenuOpen] = useState(false);
   const [showAddDictionary, setShowAddDictionary] = useState(false);
   const [showAddEntity, setShowAddEntity] = useState(false);
@@ -701,7 +706,7 @@ const WorldEditorInner = ({ onClose, embedded = false, backButton }: {
   const headerBar = (
     <div className="flex items-center gap-4">
       {showBackButton && (
-        <Button variant="ghost" size="icon" onClick={() => (isWorldDirty ? setShowExitPrompt(true) : onClose())}>
+        <Button variant="ghost" size="icon" onClick={requestClose}>
           <ArrowLeft className="h-4 w-4" />
         </Button>
       )}

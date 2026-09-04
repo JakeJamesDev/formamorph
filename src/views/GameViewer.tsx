@@ -3950,7 +3950,7 @@ const GameViewer = ({
 
   return (
     <div
-      className={`flex ${isMobile ? "flex-col" : "p-4"} app-viewport isolate text-label md:text-body bg-background overflow-hidden`}
+      className={`flex ${isMobile ? "flex-col pt-[env(safe-area-inset-top)] pb-[env(safe-area-inset-bottom)]" : "p-4"} app-viewport isolate text-label md:text-body bg-background overflow-hidden`}
     >
       {locationBackground && (
         <LocationBackdrop

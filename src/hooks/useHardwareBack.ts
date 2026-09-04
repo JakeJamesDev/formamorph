@@ -41,15 +41,20 @@ export function useHardwareBack(options: HardwareBackOptions): void {
   useEffect(() => {
     const pending = App.addListener('backButton', () => {
       const { viewHistory, onGoBack, onConfirmExit } = latest.current;
-      const modalOpen = document.querySelector(OPEN_LAYER_SELECTOR) !== null;
+      // Portals append in opening order, so the last open layer in the document is the topmost.
+      const layers = document.querySelectorAll(OPEN_LAYER_SELECTOR);
+      const topLayer = layers[layers.length - 1];
       const stops = backStops();
-      switch (resolveBackAction({ modalOpen, subScreens: stops.length, viewHistory })) {
+      const innermost = stops[stops.length - 1];
+      const stopElement = innermost?.within?.current;
+      const stopInsideLayer = topLayer !== undefined && stopElement != null && topLayer.contains(stopElement);
+      switch (resolveBackAction({ modalOpen: topLayer !== undefined, subScreens: stops.length, stopInsideLayer, viewHistory })) {
         case 'close-modal':
           closeTopLayer();
           break;
         case 'go-back':
           // The innermost sub-screen answers first; the view itself only once none is left.
-          if (stops.length > 0) stops[stops.length - 1]();
+          if (innermost) innermost.run();
           else onGoBack();
           break;
         case 'confirm-exit':

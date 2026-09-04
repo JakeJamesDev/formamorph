@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { act, render, screen, fireEvent } from '@testing-library/react';
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from './ui/dialog';
+import { useRef } from 'react';
 import { useBackStop } from '@/hooks/useBackStop';
 
 // Stand-in for the Capacitor App plugin: the listeners the app registered, and the exits it asked for.
@@ -39,6 +40,21 @@ import { AndroidBackHandler } from './AndroidBackHandler';
 function SubScreen({ onBack }: { onBack?: () => void }) {
   useBackStop(onBack);
   return <div>Avatar</div>;
+}
+
+/** A dialog that refuses Escape and answers the back button with its own guarded exit — the World Editor. */
+function GuardedDialog({ onBack }: { onBack: () => void }) {
+  const root = useRef<HTMLDivElement>(null);
+  useBackStop(onBack, root);
+  return (
+    <Dialog defaultOpen>
+      <DialogContent onEscapeKeyDown={(e) => e.preventDefault()}>
+        <DialogTitle>World Editor</DialogTitle>
+        <DialogDescription>A layer whose exit is guarded.</DialogDescription>
+        <div ref={root}>Editor</div>
+      </DialogContent>
+    </Dialog>
+  );
 }
 
 /** What the phone's back button does: every listener the app registered fires. */
@@ -250,5 +266,47 @@ describe('AndroidBackHandler', () => {
     pressBack();
 
     expect(onGoBack).toHaveBeenCalledTimes(1);
+  });
+
+  it("runs a layer's own back step when the layer refuses Escape", async () => {
+    const onGoBack = vi.fn();
+    const leaveEditor = vi.fn();
+    render(
+      <>
+        <GuardedDialog onBack={leaveEditor} />
+        <AndroidBackHandler viewHistory={['mainMenu']} onGoBack={onGoBack} />
+      </>,
+    );
+    await vi.waitFor(() => expect(bridge.listeners).toHaveLength(1));
+
+    pressBack();
+
+    expect(leaveEditor).toHaveBeenCalledTimes(1);
+    expect(onGoBack).not.toHaveBeenCalled();
+    expect(screen.getByText('World Editor')).toBeInTheDocument();
+    expect(screen.queryByText('Close Formamorph')).not.toBeInTheDocument();
+  });
+
+  it("dismisses a dialog raised over a guarded layer before it runs that layer's back step", async () => {
+    const leaveEditor = vi.fn();
+    render(
+      <>
+        <GuardedDialog onBack={leaveEditor} />
+        <Dialog defaultOpen>
+          <DialogContent>
+            <DialogTitle>Edit Entity</DialogTitle>
+            <DialogDescription>A dialog raised from inside the editor.</DialogDescription>
+          </DialogContent>
+        </Dialog>
+        <AndroidBackHandler viewHistory={['mainMenu']} onGoBack={vi.fn()} />
+      </>,
+    );
+    await vi.waitFor(() => expect(bridge.listeners).toHaveLength(1));
+
+    pressBack();
+
+    expect(screen.queryByText('Edit Entity')).not.toBeInTheDocument();
+    expect(leaveEditor).not.toHaveBeenCalled();
+    expect(screen.getByText('World Editor')).toBeInTheDocument();
   });
 });

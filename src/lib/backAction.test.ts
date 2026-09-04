@@ -34,6 +34,16 @@ describe('resolveBackAction', () => {
       expected: 'confirm-exit',
     },
     {
+      name: "runs the open layer's own back step instead of dismissing it",
+      state: { modalOpen: true, subScreens: 1, stopInsideLayer: true, viewHistory: ['mainMenu'] },
+      expected: 'go-back',
+    },
+    {
+      name: "dismisses a layer raised over a sub-screen before it runs the sub-screen's back step",
+      state: { modalOpen: true, subScreens: 1, stopInsideLayer: false, viewHistory: ['mainMenu'] },
+      expected: 'close-modal',
+    },
+    {
       name: 'leaves a full-screen sub-screen before it leaves the view it fills',
       state: { modalOpen: false, subScreens: 1, viewHistory: ['mainMenu'] },
       expected: 'go-back',

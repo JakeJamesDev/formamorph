@@ -59,6 +59,7 @@ import { TITLE_SCRIM } from "@/components/WorldCardShell";
 import { Input } from "@/components/ui/input";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { useIsMobile } from "@/lib/useIsMobile";
+import { useBackStop } from "@/hooks/useBackStop";
 import WorldStorageService from '../services/WorldStorageService';
 import AuthService from '../services/AuthService';
 import { getDownloadState, type DownloadState } from '@/lib/downloadState';
@@ -92,10 +93,12 @@ const BrowserShell = ({ presentation, open, onOpenChange, children }: {
   onOpenChange: (open: boolean) => void;
   children: React.ReactNode;
 }) => {
+  // The page presentation is not a Radix layer, so the Android back button cannot see it and closes it here.
+  useBackStop(presentation === 'page' && open ? () => onOpenChange(false) : undefined);
   if (presentation === 'page') {
     if (!open) return null;
     return (
-      <div className="fixed inset-0 z-50 flex flex-col bg-background">
+      <div className="fixed inset-0 z-50 flex flex-col bg-background pt-[env(safe-area-inset-top)] pb-[env(safe-area-inset-bottom)]">
         {children}
       </div>
     );
@@ -105,7 +108,7 @@ const BrowserShell = ({ presentation, open, onOpenChange, children }: {
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent aria-describedby={undefined}
         hideClose
-        className="max-w-none w-screen h-dvh sm:max-w-none left-0 top-0 translate-x-0 translate-y-0 rounded-none sm:rounded-none p-0 gap-0 flex flex-col data-[state=open]:!slide-in-from-top-0 data-[state=open]:!slide-in-from-left-0 data-[state=closed]:!slide-out-to-top-0 data-[state=closed]:!slide-out-to-left-0"
+        className="max-w-none w-screen h-dvh sm:max-w-none left-0 top-0 translate-x-0 translate-y-0 rounded-none sm:rounded-none p-0 pt-[env(safe-area-inset-top)] pb-[env(safe-area-inset-bottom)] gap-0 flex flex-col data-[state=open]:!slide-in-from-top-0 data-[state=open]:!slide-in-from-left-0 data-[state=closed]:!slide-out-to-top-0 data-[state=closed]:!slide-out-to-left-0"
       >
         {children}
       </DialogContent>

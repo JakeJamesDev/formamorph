@@ -11,16 +11,20 @@ export interface BackButtonState {
   modalOpen: boolean;
   /** Screens that fill a view without being a modal or a view of their own, such as the avatar editor. */
   subScreens: number;
+  /** The innermost sub-screen lives inside the topmost layer, so its back step is that layer's own. */
+  stopInsideLayer?: boolean;
   /** Views entered so far, oldest first. The last one is on screen. */
   viewHistory: readonly string[];
 }
 
 /**
  * A layer over the view takes the press before the view does, and the view takes it before the app
- * does. Only the first screen of a run has nothing left to fall back to, so only it asks to exit.
+ * does. A layer that carries its own back step (the World Editor's guarded exit) runs that step rather
+ * than being dismissed. Only the first screen of a run has nothing left to fall back to, so only it
+ * asks to exit.
  */
-export function resolveBackAction({ modalOpen, subScreens, viewHistory }: BackButtonState): BackAction {
-  if (modalOpen) return 'close-modal';
+export function resolveBackAction({ modalOpen, subScreens, stopInsideLayer, viewHistory }: BackButtonState): BackAction {
+  if (modalOpen && !(stopInsideLayer && subScreens > 0)) return 'close-modal';
   return subScreens > 0 || viewHistory.length > 1 ? 'go-back' : 'confirm-exit';
 }
 

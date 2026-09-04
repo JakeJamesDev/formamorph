@@ -7,6 +7,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { User } from 'lucide-react';
 import EntityStorageService from '@/services/EntityStorageService';
 import type { Entity, EntityMetadata } from '@/types';
+import { useBackStop } from '@/hooks/useBackStop';
 
 /**
  * Post-location step: choose which of the player's library characters join this playthrough. The chosen
@@ -23,6 +24,9 @@ const CharacterSelectionModal = ({ libraryMeta, onConfirm, onAbort, onBack, conf
   /** Label for the confirm button — names the next step in the flow (e.g. "Dictionaries", "Start"). */
   confirmLabel?: string;
 }) => {
+  // This card is not a Radix layer, so the Android back button cannot see it; it steps back the way the Back
+  // button does, and leaves the flow from its first step.
+  useBackStop(onBack ?? onAbort);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [resolving, setResolving] = useState(false);
 
@@ -51,7 +55,7 @@ const CharacterSelectionModal = ({ libraryMeta, onConfirm, onAbort, onBack, conf
   };
 
   return (
-    <Card className="fixed inset-0 m-auto w-[95%] max-w-[600px] h-[90dvh] max-h-[800px] z-50">
+    <Card className="fixed inset-x-0 top-[env(safe-area-inset-top)] bottom-[env(safe-area-inset-bottom)] m-auto w-[95%] max-w-[600px] h-[calc(90dvh-env(safe-area-inset-top)-env(safe-area-inset-bottom))] max-h-[800px] z-50">
       <CardContent className="p-3 sm:p-6 h-full flex flex-col">
         <h2 className="text-title sm:text-heading font-semibold mb-1">Choose Characters</h2>
         <p className="text-meta sm:text-helper text-muted-foreground mb-3">
