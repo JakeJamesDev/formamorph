@@ -1,11 +1,11 @@
 // Build signature baked at release time. Do not edit by hand.
 
 /** Build-type class baked at build time (see vite.config.js `define` / FORMAMORPH_BUILD):
- *  'portable' | 'installed' | 'web'; '' for a local/dev build. */
+ *  'portable' | 'installed' | 'web' | 'android'; '' for a local/dev build. */
 export const BUILD_TARGET = __BUILD_TARGET__;
 
 /** Short tag for the version footer: '' for the web build (shown bare), otherwise the class —
- *  'portable' / 'installed', or 'dev' for a local build. */
+ *  'portable' / 'installed' / 'android', or 'dev' for a local build. */
 export const BUILD_TAG = BUILD_TARGET === 'web' ? '' : (BUILD_TARGET || 'dev');
 
 declare global {

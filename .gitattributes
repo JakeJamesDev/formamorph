@@ -9,3 +9,6 @@
 *.vrm binary
 *.fbx binary
 *.gguf binary
+
+# The Gradle wrapper's Windows launcher is read by cmd.exe, which wants CRLF.
+android/gradlew.bat text eol=crlf

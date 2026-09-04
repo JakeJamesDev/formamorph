@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- The app's dark plate, behind the adaptive launcher icon and the splash. Matches the web manifest. -->
+    <color name="ic_launcher_background">#16181D</color>
+</resources>
