@@ -16,6 +16,9 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
 
 #### 🐛 Fixed
 
+- **👤 User-facing**
+  - **Publishing a world, character, or book with a large thumbnail is faster, because the upload carries one copy fewer of the image.** Every publish and every listing update repeated the thumbnail, name, and description in a preview field the server never read back. That field is gone, so an upload whose size is mostly its thumbnail is about a third smaller.
+
 - **🛠️ Developer tooling**
   - **Opening a message in the Messages tab no longer logs a React render-phase warning.** Marking a message read updated the menu's unread badge from inside a state updater, which React replays during render. The badge is now updated after the list is, and the warning is gone.
 

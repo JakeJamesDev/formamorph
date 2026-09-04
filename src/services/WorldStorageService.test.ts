@@ -160,6 +160,11 @@ describe('publishItem', () => {
     kind: 'world' as const, name: 'N', description: 'D', thumbnail: 't', contentData: { a: 1 }, ...over,
   });
 
+  // Every field the request is allowed to carry for `payload({ tags: ['fantasy'] })`, and nothing else.
+  const wholeBody = {
+    name: 'N', description: 'D', thumbnail: 't', contentData: { a: 1 }, kind: 'world', tags: ['fantasy'],
+  };
+
   it('throws when not authenticated', async () => {
     await expect(WorldStorageService.publishItem(payload())).rejects.toThrow(/logged in/);
   });
@@ -197,14 +202,39 @@ describe('publishItem', () => {
     expect(listing).toEqual({ id: 'created', updated_at: '2026-01-02 03:04:05' });
   });
 
-  it('mirrors the list fields into previewData, never the content', async () => {
+  it('sends each list field once, so the thumbnail is not repeated in a preview copy', async () => {
     AuthService.token = 'tok';
     vi.mocked(fetch).mockResolvedValue(res({ id: 'created' }));
 
-    await WorldStorageService.publishItem(payload());
+    await WorldStorageService.publishItem(payload({ tags: ['fantasy'] }));
 
     const body = JSON.parse(vi.mocked(fetch).mock.calls[0][1]?.body as string);
-    expect(body.previewData).toEqual({ name: 'N', description: 'D', thumbnail: 't' });
+    expect(body).toEqual(wholeBody);
+  });
+
+  it('sends the same body when updating, so a re-publish carries the thumbnail once too', async () => {
+    AuthService.token = 'tok';
+    vi.mocked(fetch).mockResolvedValue(res({ id: 'w99' }));
+
+    await WorldStorageService.publishItem(payload({ tags: ['fantasy'] }), 'w99');
+
+    const [url, init] = vi.mocked(fetch).mock.calls[0];
+    expect(init?.method).toBe('PUT');
+    expect(url as string).toContain('/worlds/w99');
+    expect(JSON.parse(init?.body as string)).toEqual(wholeBody);
+  });
+
+  it('carries the contest entry when given one, and omits it when not', async () => {
+    AuthService.token = 'tok';
+    vi.mocked(fetch).mockResolvedValue(res({ id: 'created' }));
+
+    await WorldStorageService.publishItem(payload(), null, 'ev1');
+    await WorldStorageService.publishItem(payload());
+
+    const entered = JSON.parse(vi.mocked(fetch).mock.calls[0][1]?.body as string);
+    const plain = JSON.parse(vi.mocked(fetch).mock.calls[1][1]?.body as string);
+    expect(entered.contestEventId).toBe('ev1');
+    expect(plain).not.toHaveProperty('contestEventId');
   });
 });
 
