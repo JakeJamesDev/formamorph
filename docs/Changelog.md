@@ -12,6 +12,13 @@ Each release groups changes as **Major** / **Minor**, then **Added** / **Removed
 
 _Unreleased — new work accumulates here until it earns a version bump. The next batch will pin its own version; `package.json` reads **2.16.0** (just released below)._
 
+### Minor Changes
+
+#### 🐛 Fixed
+
+- **🛠️ Developer tooling**
+  - **Opening a message in the Messages tab no longer logs a React render-phase warning.** Marking a message read updated the menu's unread badge from inside a state updater, which React replays during render. The badge is now updated after the list is, and the warning is gone.
+
 ---
 
 <details>
