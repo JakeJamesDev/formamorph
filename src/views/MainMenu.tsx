@@ -60,7 +60,7 @@ import ModelStorageService from '../services/ModelStorageService';
 import AuthService from '../services/AuthService';
 import type { World, Stat, CharacterData, Dictionary, DictionaryMetadata, Entity, EntityMetadata, ModelMetadata, ServerEvent, WorldOverview } from '@/types';
 import { migrateWorld } from '@/lib/version';
-import { isDesktop } from '@/lib/imageGen/desktop';
+import { updateBridge } from '@/lib/updates/updateBridge';
 import { useIsMobile } from '@/lib/useIsMobile';
 import { UpdateVersionControl } from '@/components/menu/UpdateVersionControl';
 import { WebVersionChangelog } from '@/components/menu/WebVersionChangelog';
@@ -334,6 +334,9 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
   // DEV dev-router: open Settings (or the Load menu) when the hash asks. Tree-shaken in prod.
   const devRoute = useDevRoute();
   const isMobile = useIsMobile();
+  // Whether this build can install an update. The Android app is always "mobile", so its version line has
+  // to stay in the footer rather than collapsing into the ⋯ menu — an update offer nobody opens is no offer.
+  const canUpdate = updateBridge() !== null;
   // The age attestation every community surface waits on (see AgeGateContext).
   const { attested, gateOpen, requireAttestation } = useAgeGate();
 
@@ -1983,7 +1986,7 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
               </TooltipPortal>
             </Tooltip>
           )}
-          {!isMobile && (isDesktop() ? <UpdateVersionControl /> : <WebVersionChangelog />)}
+          {canUpdate ? <UpdateVersionControl /> : !isMobile && <WebVersionChangelog />}
         </div>
 
         {/* Center: copyright + origin credit (original is MIT — see THIRD-PARTY-NOTICES / legal/). The
@@ -2026,7 +2029,7 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
                 </button>
               </PopoverTrigger>
               <PopoverContent align="end" side="top" className="w-56 flex flex-col gap-1">
-                {isDesktop() ? <UpdateVersionControl /> : <WebVersionChangelog />}
+                {!canUpdate && <WebVersionChangelog />}
                 <a
                   href="https://www.patreon.com/JakeJamesNSFW"
                   target="_blank"

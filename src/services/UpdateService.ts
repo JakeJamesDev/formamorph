@@ -29,6 +29,15 @@ export interface GithubRelease {
   published_at: string;
 }
 
+/** The Android release asset. The name carries no version, so the GitHub "latest" redirect can point at it. */
+export const ANDROID_ASSET_NAME = 'Formamorph-android.apk';
+
+/** Where a release's Android files live. The Android plugin never reads GitHub, so it is handed both. */
+export interface AndroidDownloadUrls {
+  url: string;
+  sha512Url: string;
+}
+
 export interface UpdateCheckResult {
   available: boolean;
   latestVersion?: string;
@@ -169,6 +178,15 @@ export function parseReleases(
   const latestVersion = latest.tag_name;
   const changelog = buildRecentChangelog(eligible, currentVersion);
   return { available: isNewer(latestVersion, currentVersion), latestVersion, changelog, release: latest };
+}
+
+/** The APK and its checksum sidecar in a release, or null when the release carries neither — a release cut
+ *  before the Android build existed, or one whose Android job failed. Pure. */
+export function androidAssets(release?: GithubRelease): AndroidDownloadUrls | null {
+  const apk = release?.assets.find((a) => a.name === ANDROID_ASSET_NAME);
+  const sidecar = release?.assets.find((a) => a.name === `${ANDROID_ASSET_NAME}.sha512`);
+  if (!apk || !sidecar) return null;
+  return { url: apk.browser_download_url, sha512Url: sidecar.browser_download_url };
 }
 
 /** Check GitHub for an update on `channel`. Never rejects. */
