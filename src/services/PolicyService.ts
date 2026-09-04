@@ -114,12 +114,20 @@ class PolicyService {
     return body.privacyPolicy;
   }
 
-  /** Record that the current user accepts the Privacy Policy as it stands. */
+  /**
+   * Record that the current user accepts the Privacy Policy as it stands.
+   *
+   * A 404 answers that the policy is switched off, which means there is nothing outstanding rather
+   * than that the acceptance failed — an admin who disables it mid-signup must not leave the new
+   * account being told its answer never landed.
+   */
   async acceptPrivacyPolicy(): Promise<void> {
     const response = await fetch(`${this.apiUrl}/policies/privacy-policy/accept`, {
       method: 'POST',
       headers: this.authHeaders(),
     });
+
+    if (response.status === 404) return;
 
     await this.unwrap(response, 'Failed to record your acceptance');
   }
@@ -133,18 +141,6 @@ class PolicyService {
     });
 
     await this.unwrap(response, 'Failed to record your answer');
-  }
-
-  /** Require the Privacy Policy to be accepted again — by one user, or by everyone when `userId` is
-   *  omitted. Everyone is a version bump, so it re-prompts every account at its next request. */
-  async resetPrivacyPolicy(userId?: string): Promise<void> {
-    const response = await fetch(`${this.apiUrl}/policies/privacy-policy/reset`, {
-      method: 'POST',
-      headers: this.authHeaders(true),
-      body: JSON.stringify(userId ? { userId } : {}),
-    });
-
-    await this.unwrap(response, 'Failed to reset the privacy policy');
   }
 
   /** Which of these tags the tag notice covers. Empty when the notice is off or nothing matches. */
