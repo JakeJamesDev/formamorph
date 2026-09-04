@@ -170,3 +170,14 @@ test.describe('landing page', () => {
     await expect(page.locator('.skin')).toBeVisible();
   });
 });
+
+test.describe('privacy policy page', () => {
+  // Content, not behavior: the page is static HTML with no script. What can actually break is the
+  // path — it lives at `privacy/index.html` so that `/privacy` resolves the same way here as it does
+  // on Pages, and a move to `privacy.html` would 404 locally while still working in production.
+  test('/privacy serves the policy', async ({ page }) => {
+    const response = await page.goto(`${SITE_URL}/privacy`);
+    expect(response?.status()).toBe(200);
+    await expect(page.getByRole('heading', { level: 1, name: 'Privacy Policy' })).toBeVisible();
+  });
+});
