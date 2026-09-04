@@ -1,6 +1,6 @@
 # Spec: Stop sending preview data on publish (client)
 
-Status: ready-for-agent
+Status: ready-for-human
 
 Server side: the FormamorphServer repo, `docs-internal/specs/drop-preview-data/spec.md`. Build that first. This half can ship before or after it, because the server ignores the field either way, but building it second lets the change be checked against a live server.
 

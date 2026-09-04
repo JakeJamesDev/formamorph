@@ -834,12 +834,6 @@ class WorldStorageService {
           name: payload.name,
           description: payload.description,
           thumbnail: payload.thumbnail,
-          // The catalog card reads previewData; it mirrors the list fields, never the content.
-          previewData: {
-            name: payload.name,
-            description: payload.description,
-            thumbnail: payload.thumbnail
-          },
           contentData: payload.contentData,
           kind: payload.kind,
           // Sent top-level because only a world keeps a copy inside its content, where the server looks
