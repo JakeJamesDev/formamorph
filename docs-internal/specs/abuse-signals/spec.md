@@ -1,6 +1,7 @@
 # Abuse Signals, Privacy Policy, and Account Deletion
 
 Status: ready-for-agent
+Status note: 01–06 done (2026-09-04); 07 cutover is ready-for-human; next agent ticket is 08, then 09
 
 Staff can see when several accounts come from one place; every user is told so in a privacy policy they accept at signup or next login; and any user can delete their own account. Designed in a grilling session on 2026-09-03, prompted by a contest-vote ring caught the same day.
 
