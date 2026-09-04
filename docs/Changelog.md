@@ -33,6 +33,7 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
 #### 🐛 Fixed
 
 - **👤 User-facing**
+  - **A tile's right-click or long-press menu closes on a click anywhere else without that click reaching what is under it, and on a touch screen it opens for a normally held finger and gives way when that finger drags on.** Clicking or tapping outside the menu of a library tile, or of a location on the map, closes the menu and does nothing more, as native menus do: the button or tile under that click no longer reacts. On a touch screen, holding a tile opens its menu even when the finger drifts a little, as every real finger does, and moving the finger while it is still down closes the menu and carries the tile, the way a home-screen icon behaves.
   - **Publishing a world, character, or book with a large thumbnail is faster, because the upload carries one copy fewer of the image.** Every publish and every listing update repeated the thumbnail, name, and description in a preview field the server never read back. That field is gone, so an upload whose size is mostly its thumbnail is about a third smaller.
 
 - **🛠️ Developer tooling**
