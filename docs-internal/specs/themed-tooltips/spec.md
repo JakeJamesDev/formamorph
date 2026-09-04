@@ -1,6 +1,7 @@
 # Themed Tooltips on Base UI
 
-Status: ready-for-agent
+Status: done
+Status note: all five tickets shipped; in the changelog under Hover tips
 
 ## Problem Statement
 
