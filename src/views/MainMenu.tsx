@@ -114,6 +114,7 @@ import { worldPublishPayload, entityPublishPayload, dictionaryPublishPayload, ty
 import { BackupRestoreDialog } from "@/components/menu/BackupRestoreDialog";
 import { COMMUNITY_ENABLED } from "@/lib/featureFlags";
 import { useAgeGate } from "@/contexts/AgeGateContext";
+import { useAccountDeletion } from "@/contexts/AccountDeletionContext";
 import { isAgeAttested } from "@/lib/ageGate";
 import { isStaff } from "@/lib/roles";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -544,6 +545,15 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
 
     return () => setListingOpener(null);
   }, [setListingOpener, handleOpenListing]);
+
+  // The same lending for Feedback: a suspended account is told to ask there, and the deletion flow that
+  // tells it stands above this screen. Withdrawn on unmount, so the step offers no button it cannot honor.
+  const { setFeedbackOpener } = useAccountDeletion();
+  useEffect(() => {
+    setFeedbackOpener(() => setShowFeedback(true));
+
+    return () => setFeedbackOpener(null);
+  }, [setFeedbackOpener]);
 
   const openImageViewer = (src: string | undefined, alt: string | undefined) => {
     if (!src) return;

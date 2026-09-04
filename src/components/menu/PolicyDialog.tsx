@@ -17,7 +17,11 @@ interface PolicyDialogProps {
   cancelLabel: string;
   onConfirm: () => void;
   onCancel: () => void;
-  /** Disables both buttons while the acceptance is being recorded. */
+  /** A third answer, set apart from the other two. The Privacy Policy prompt's way out of the account
+   *  entirely; absent everywhere else, which leaves the usual two buttons. */
+  extraLabel?: string;
+  onExtra?: () => void;
+  /** Disables every button while the acceptance is being recorded. */
   busy?: boolean;
 }
 
@@ -28,7 +32,7 @@ interface PolicyDialogProps {
  * stray click should not read as either one.
  */
 export function PolicyDialog({
-  open, title, body, confirmLabel, cancelLabel, onConfirm, onCancel, busy = false,
+  open, title, body, confirmLabel, cancelLabel, onConfirm, onCancel, extraLabel, onExtra, busy = false,
 }: PolicyDialogProps) {
   return (
     <Dialog open={open}>
@@ -49,6 +53,13 @@ export function PolicyDialog({
         </div>
 
         <DialogFooter className="flex-col-reverse sm:flex-row gap-2">
+          {/* Pushed away from the other two: it is the one answer that cannot be taken back by
+              clicking again. */}
+          {extraLabel && onExtra && (
+            <Button variant="ghost" className="sm:mr-auto text-destructive" onClick={onExtra} disabled={busy}>
+              {extraLabel}
+            </Button>
+          )}
           <Button variant="outline" onClick={onCancel} disabled={busy}>
             {cancelLabel}
           </Button>

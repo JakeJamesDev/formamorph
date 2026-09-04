@@ -10,6 +10,7 @@ import { PlaceholderSessionProvider } from '@/contexts/PlaceholderSessionContext
 import { UserProfileProvider } from '@/contexts/UserProfileContext';
 import { AgeGateProvider } from '@/contexts/AgeGateContext';
 import { PrivacyPolicyProvider } from '@/contexts/PrivacyPolicyContext';
+import { AccountDeletionProvider } from '@/contexts/AccountDeletionContext';
 import MainMenu from '@/views/MainMenu';
 
 /**
@@ -28,6 +29,7 @@ export function renderMainMenu(props: Partial<React.ComponentProps<typeof MainMe
             <PlaceholderSessionProvider>
               <UserProfileProvider>
                 <AgeGateProvider>
+                  <AccountDeletionProvider>
                   <PrivacyPolicyProvider>
                   <MainMenu
                     onStartGame={() => {}}
@@ -37,6 +39,7 @@ export function renderMainMenu(props: Partial<React.ComponentProps<typeof MainMe
                     {...props}
                   />
                   </PrivacyPolicyProvider>
+                  </AccountDeletionProvider>
                 </AgeGateProvider>
               </UserProfileProvider>
             </PlaceholderSessionProvider>

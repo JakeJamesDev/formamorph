@@ -4,6 +4,7 @@ import { useGameData } from "../contexts/GameDataContext";
 import { useSettings } from "@/contexts/SettingsContext";
 import { useSettingsOpenRequest } from "@/lib/useSettingsOpenRequest";
 import { useGameplay } from "@/contexts/GameplayContext";
+import { useAccountDeletion } from "@/contexts/AccountDeletionContext";
 import { processStatCode } from "@/contexts/GameplayContextUtils";
 import { usesStatClock, type StatClock } from "@/lib/statCodeExecutor";
 import { Button } from "@/components/ui/button";
@@ -746,6 +747,16 @@ const GameViewer = ({
   // Filing needs an account, so the in-game entry point is only offered to someone signed in.
   const [showBugReport, setShowBugReport] = useState(false);
   const canReportBug = COMMUNITY_ENABLED && Boolean(AuthService.token);
+
+  // Lend that composer to the account-deletion flow, which stands above this screen and tells a
+  // suspended account to ask the team here. The Privacy Policy prompt can raise the flow mid-game, so
+  // without this the step names Feedback on a screen with no way to reach it.
+  const { setFeedbackOpener } = useAccountDeletion();
+  useEffect(() => {
+    setFeedbackOpener(() => setShowBugReport(true));
+
+    return () => setFeedbackOpener(null);
+  }, [setFeedbackOpener]);
   const [settingsTab, setSettingsTab] = useState<SettingsTabId | undefined>(undefined);
   const [settingsEndpointTab, setSettingsEndpointTab] = useState<string | undefined>(undefined);
   // Where a click on a highlighted run in the AI-context viewer sends Settings: the prompt that owns the

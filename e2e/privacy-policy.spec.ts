@@ -167,4 +167,41 @@ test.describe('the Privacy Policy at sign-in', () => {
     await expect(page.getByRole('button', { name: 'Login' })).toBeVisible();
     await expect(page.getByRole('button', { name: /^User Profile/ })).toHaveCount(0);
   });
+
+  test('opens the deletion flow from the prompt, over the top of it', async ({ page }) => {
+    // The third answer. An account that will not accept the policy still needs the way out, and this
+    // is the one screen it can be offered from — the menu behind is unreachable until the policy is
+    // answered.
+    await stubEverythingElse(page);
+    await stubPolicyState(page, () => false);
+    await page.route('**/auth/login', (route) => route.fulfill({ json: { token: 'e2e-token', user: ACCOUNT } }));
+
+    await openApp(page);
+
+    await page.getByRole('button', { name: 'Login' }).click();
+    const auth = page.getByRole('dialog').filter({ has: page.getByText('Enter your credentials') });
+    await auth.getByLabel('Username').fill(ACCOUNT.username);
+    await auth.getByLabel('Password', { exact: true }).fill('hunter2!');
+    await auth.getByRole('button', { name: 'Login', exact: true }).click();
+
+    const prompt = page.getByRole('dialog').filter({ hasText: POLICY.body });
+    await expect(prompt).toBeVisible();
+
+    await prompt.getByRole('button', { name: 'Delete My Account' }).click();
+
+    // The flow's first step, above the prompt rather than instead of it.
+    const flow = page.getByRole('dialog').filter({ hasText: 'erased seven days from now' });
+    await expect(flow).toBeVisible();
+
+    // Backing out lands on the question still owed, rather than on a screen that answered it. Asserted
+    // by leaving and coming back: while the flow is on top, the prompt is out of the accessibility tree
+    // and cannot be found by role at all.
+    await flow.getByRole('button', { name: 'Cancel' }).click();
+
+    await expect(flow).toBeHidden();
+    await expect(prompt).toBeVisible();
+    await expect(prompt.getByRole('button', { name: 'Accept' })).toBeVisible();
+    // Still signed in: nothing about opening the flow ended the session.
+    await expect(page.getByRole('button', { name: 'Login' })).toHaveCount(0);
+  });
 });

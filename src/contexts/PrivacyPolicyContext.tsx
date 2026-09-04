@@ -4,6 +4,7 @@ import { PolicyDialog } from '@/components/menu/PolicyDialog';
 import { COMMUNITY_ENABLED } from '@/lib/featureFlags';
 import { useAgeGate } from '@/contexts/AgeGateContext';
 import { watchPrivacyRefusals } from '@/lib/privacyRefusal';
+import { useAccountDeletion } from '@/contexts/AccountDeletionContext';
 import { useDevRoute } from '@/lib/devRouter';
 import { DEV_PRIVACY_SAMPLE } from '@/lib/devPrivacySample';
 import AuthService from '@/services/AuthService';
@@ -31,23 +32,34 @@ const PrivacyPolicyContext = createContext<PrivacyPolicyValue | null>(null);
  * token keeps reading the community server whether or not anybody opened anything, which is the reading
  * the attestation exists to stop.
  *
- * There are two ways out and both are buttons. Accepting records the answer and closes. Signing out ends
- * the session and does nothing else — the account stays exactly as it was, free to sign in and accept
- * later. Ticket 06 adds the third button.
+ * There are three ways out and all of them are buttons. Accepting records the answer and closes. Signing
+ * out ends the session and does nothing else — the account stays exactly as it was, free to sign in and
+ * accept later. Deleting the account opens the deletion flow over this prompt, because an account that
+ * will not accept the policy still needs a way to leave.
  */
 export function PrivacyPolicyProvider({ children }: { children: ReactNode }) {
   const [policy, setPolicy] = useState<AnswerablePolicy | null>(null);
   const [busy, setBusy] = useState(false);
   const devRoute = useDevRoute();
+  const { startDeletion } = useAccountDeletion();
   const { attested } = useAgeGate();
 
-  // One read at a time. The refusal watch fires per refused request, and a screen that makes several at
-  // once would otherwise start a read for each of them.
+  // One read at a time: the refusal watch fires per refused request, and a screen that makes several at
+  // once would otherwise start a read for each. A request arriving mid-read is remembered rather than
+  // dropped — the one that matters is often exactly the one that raced an already-stale read.
   const reading = useRef(false);
+  const again = useRef(false);
 
   const checkNow = useCallback(async () => {
     if (!COMMUNITY_ENABLED || !attested || !AuthService.isAuthenticated()) return;
-    if (reading.current) return;
+
+    // Re-entry, not a queue: this is what keeps a refused read of the policies route itself from
+    // looping. The remembered pass runs after the current one returns, never inside it.
+    if (reading.current) {
+      again.current = true;
+      return;
+    }
+
     reading.current = true;
 
     try {
@@ -63,7 +75,17 @@ export function PrivacyPolicyProvider({ children }: { children: ReactNode }) {
     } finally {
       reading.current = false;
     }
+
+    if (again.current) {
+      again.current = false;
+      await checkNowRef.current();
+    }
   }, [attested]);
+
+  // The repeat pass calls through a ref so the callback does not have to name itself, which would
+  // make its identity change on every render and reinstall the fetch watch with it.
+  const checkNowRef = useRef(checkNow);
+  checkNowRef.current = checkNow;
 
   // The boot pass runs once, on the first render where the player has attested — which is the mount
   // itself for a returning player, and the moment they answer for a new one. In StrictMode the effect
@@ -111,6 +133,9 @@ export function PrivacyPolicyProvider({ children }: { children: ReactNode }) {
   const signOut = useCallback(() => {
     setPolicy(null);
     AuthService.logout();
+    // The header's own sign-out says so; this one follows a dialog the player did not open, so saying
+    // nothing would leave them on a signed-out menu with no account of how they got there.
+    toast.info('Signed out. Your account is unchanged — accept the policy next time to carry on.');
   }, []);
 
   const value = useMemo(() => ({ promptOpen: policy !== null, checkNow }), [policy, checkNow]);
@@ -127,6 +152,9 @@ export function PrivacyPolicyProvider({ children }: { children: ReactNode }) {
           cancelLabel="Sign Out"
           onConfirm={() => { void accept(); }}
           onCancel={signOut}
+          // Left open behind the flow: backing out of the deletion returns to the answer still owed.
+          extraLabel="Delete My Account"
+          onExtra={startDeletion}
           busy={busy}
         />
       )}

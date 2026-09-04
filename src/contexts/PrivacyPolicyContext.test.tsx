@@ -1,13 +1,18 @@
 import { render, screen, cleanup, waitFor } from '@testing-library/react';
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { PrivacyPolicyProvider } from '@/contexts/PrivacyPolicyContext';
+import { AccountDeletionProvider } from '@/contexts/AccountDeletionContext';
 import { AgeGateProvider } from '@/contexts/AgeGateContext';
 import { acceptAgeGate } from '@/lib/ageGate';
 import PolicyService from '@/services/PolicyService';
 import AuthService from '@/services/AuthService';
 import type { PolicyState } from '@/types';
 
-vi.mock('react-toastify', () => ({ toast: { error: vi.fn(), success: vi.fn(), warn: vi.fn() } }));
+import { toast } from 'react-toastify';
+
+vi.mock('react-toastify', () => ({
+  toast: { error: vi.fn(), success: vi.fn(), warn: vi.fn(), info: vi.fn() },
+}));
 
 const POLICY = { title: 'Privacy Policy', body: 'We keep a hash of your address for 90 days.', tags: [] };
 
@@ -22,9 +27,14 @@ const state = (over: Partial<PolicyState> = {}): PolicyState => ({
 const signedIn = () => { AuthService.token = 'token-abc'; };
 
 // Under the age gate, as the app mounts it. Nothing is read from the community server until the
-// player has attested, so every case here answers that first.
+// player has attested, so every case here answers that first. The deletion provider is above it for
+// the same reason the app puts it there: the prompt's third button opens the flow it owns.
 const mount = () => render(
-  <AgeGateProvider><PrivacyPolicyProvider><div>app</div></PrivacyPolicyProvider></AgeGateProvider>,
+  <AgeGateProvider>
+    <AccountDeletionProvider>
+      <PrivacyPolicyProvider><div>app</div></PrivacyPolicyProvider>
+    </AccountDeletionProvider>
+  </AgeGateProvider>,
 );
 
 beforeEach(() => {
@@ -137,9 +147,11 @@ describe('answering the prompt', () => {
     // The account is left exactly as it was, free to sign in and accept later.
     expect(accept).not.toHaveBeenCalled();
     expect(decline).not.toHaveBeenCalled();
+    // Said out loud: this sign-out follows a dialog the player did not open.
+    expect(toast.info).toHaveBeenCalledWith(expect.stringContaining('Signed out'));
   });
 
-  it('offers no way out but its two buttons', async () => {
+  it('offers no way out but its three buttons', async () => {
     mount();
     await screen.findByText(POLICY.title);
 
@@ -147,6 +159,22 @@ describe('answering the prompt', () => {
     expect(dialog.querySelector('button[aria-label="Close"]')).toBeNull();
     expect(screen.getByRole('button', { name: 'Accept' })).toBeTruthy();
     expect(screen.getByRole('button', { name: 'Sign Out' })).toBeTruthy();
+    expect(screen.getByRole('button', { name: 'Delete My Account' })).toBeTruthy();
+  });
+
+  it('opens the deletion flow over the prompt, answering nothing on the way', async () => {
+    const accept = vi.spyOn(PolicyService, 'acceptPrivacyPolicy').mockResolvedValue();
+    const decline = vi.spyOn(PolicyService, 'declinePrivacyPolicy').mockResolvedValue();
+    mount();
+
+    (await screen.findByRole('button', { name: 'Delete My Account' })).click();
+
+    expect(await screen.findByText(/erased seven days from now/i)).toBeTruthy();
+    // The policy is still owed. Backing out of the deletion has to land back on the question.
+    expect(screen.getByText(POLICY.title)).toBeTruthy();
+    expect(accept).not.toHaveBeenCalled();
+    expect(decline).not.toHaveBeenCalled();
+    expect(AuthService.logout).not.toHaveBeenCalled();
   });
 });
 

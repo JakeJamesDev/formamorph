@@ -1,5 +1,11 @@
 import type { AuthUser } from '@/types';
 
+/** What a sign-in tells the caller beyond the session it establishes. */
+export interface LoginResult {
+  /** The sign-in found a pending account deletion and called it off. Worth saying out loud. */
+  deletionCancelled: boolean;
+}
+
 /** Singleton holding the auth token and current user, mirrored to `localStorage`. Default-exported as
  *  one shared instance; the constructor rehydrates both from storage (tolerating a corrupt user blob). */
 class AuthService {
@@ -44,8 +50,9 @@ class AuthService {
     return () => { this.sessionEndedListeners.delete(listener); };
   }
 
-  /** Authenticate, persist the token, then adopt or fetch the user profile; rethrows on failure. */
-  async login(username: string, password: string) {
+  /** Authenticate, persist the token, then adopt or fetch the user profile; rethrows on failure.
+   *  Reports whether the sign-in cancelled a pending deletion, which is the only place that is said. */
+  async login(username: string, password: string): Promise<LoginResult> {
     try {
       const response = await fetch(`${this.API_URL}/auth/login`, {
         method: 'POST',
@@ -72,7 +79,7 @@ class AuthService {
         await this.fetchUserProfile();
       }
 
-      return true;
+      return { deletionCancelled: data.deletionCancelled === true };
     } catch (error) {
       console.error('Login error:', error);
       throw error;
@@ -229,6 +236,40 @@ class AuthService {
       console.error('Change password error:', error);
       throw error;
     }
+  }
+
+  /**
+   * Ask for this account to be erased once the grace period runs out.
+   *
+   * The password goes with the request because the session alone is not enough to end an account — a
+   * stolen token must not be able to. Nothing changes until the window closes, and signing in before
+   * then calls the whole thing off.
+   *
+   * @param password - The account's own password, re-entered
+   * @param deleteContent - Whether published listings and comments go too. The server refuses a body
+   *   without it, so there is no default here either
+   * @returns When the erasure runs, as an ISO timestamp
+   */
+  async requestAccountDeletion(password: string, deleteContent: boolean): Promise<string> {
+    if (!this.token) throw new Error('Not authenticated');
+
+    const response = await fetch(`${this.API_URL}/auth/delete-account`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${this.token}`
+      },
+      body: JSON.stringify({ password, deleteContent })
+    });
+
+    const data = await response.json().catch(() => ({}));
+    if (!response.ok) {
+      // A wrong password and a suspended account both answer here, and both sentences are worth
+      // showing verbatim: they are the two things the user has to act on.
+      throw new Error(data.error || data.message || 'Failed to request the deletion');
+    }
+
+    return data.deletionScheduledFor as string;
   }
 
   /**
