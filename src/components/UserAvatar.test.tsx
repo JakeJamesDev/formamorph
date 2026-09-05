@@ -2,9 +2,7 @@ import { render, screen, cleanup, fireEvent } from '@testing-library/react';
 import { describe, it, expect, afterEach, vi } from 'vitest';
 import { UserAvatar } from './UserAvatar';
 
-vi.mock('@/services/WorldStorageService', () => ({
-  default: { API_URL: 'https://server.test/api' },
-}));
+vi.mock('@/lib/apiBase', () => ({ API_BASE_URL: 'https://server.test/api' }));
 
 afterEach(cleanup);
 

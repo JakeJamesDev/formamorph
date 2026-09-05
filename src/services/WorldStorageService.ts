@@ -1,5 +1,6 @@
 import AuthService from './AuthService';
 import type { CatalogKindQuery } from '@/lib/catalogKinds';
+import { API_BASE_URL } from '@/lib/apiBase';
 import type { PublishPayload } from '@/lib/publishPayload';
 import { openDatabase, promisifyRequest } from '@/lib/idb';
 import { migrateCarriedPlaceholders, migrateWorld } from '@/lib/version';
@@ -106,10 +107,7 @@ class WorldStorageService {
     this.dbName = 'worldsDB';
     this.storeName = 'worlds';
     this.db = null;
-    // Use different API URL based on environment
-    this.API_URL = import.meta.env.MODE === 'production'
-      ? import.meta.env.VITE_API_URL_PROD
-      : import.meta.env.VITE_API_URL_DEV;
+    this.API_URL = API_BASE_URL;
     // No eager open: every operation awaits `ensureInitialized` first, so opening here only adds an
     // import-time IndexedDB touch — which throws an unhandled rejection in test files that import this
     // module without a fake IndexedDB. Lazy init matches ModelStorageService.

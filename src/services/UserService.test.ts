@@ -78,3 +78,58 @@ describe('reading a profile', () => {
     await expect(UserService.fetchProfile('nope')).rejects.toThrow('User not found');
   });
 });
+
+describe('reading a profile by name', () => {
+  /** A refusal the way the server sends one. */
+  const refuse = (status: number, error: string) =>
+    vi.spyOn(globalThis, 'fetch').mockResolvedValue(
+      new Response(JSON.stringify({ success: false, error }), {
+        status,
+        headers: { 'Content-Type': 'application/json' },
+      })
+    );
+
+  it('asks the by-name endpoint, escaping the name it was given', async () => {
+    signedIn(null);
+    respondWith({ id: 'u1', username: 'wren hallow', followers: 0 });
+
+    await UserService.fetchProfileByUsername('wren hallow');
+
+    const [url] = vi.mocked(globalThis.fetch).mock.calls[0];
+    expect(String(url)).toContain('/users/by-username/wren%20hallow/profile');
+  });
+
+  it('sends the reader’s token, so their own follow state comes back', async () => {
+    signedIn('t0ken');
+    respondWith({ id: 'u1', username: 'wren_hallow', followers: 3, following: true });
+
+    const result = await UserService.fetchProfileByUsername('wren_hallow');
+
+    expect(sentAuth()).toBe('Bearer t0ken');
+    expect(result?.following).toBe(true);
+  });
+
+  it('coerces the counts the same way the by-id read does', async () => {
+    signedIn(null);
+    respondWith({ id: 'u1', username: 'wren_hallow' });
+
+    const result = await UserService.fetchProfileByUsername('wren_hallow');
+
+    expect(result).toMatchObject({ followers: 0, likes: 0, downloads: 0 });
+  });
+
+  it('answers null for a name nobody has, rather than throwing', async () => {
+    // The page draws a not-found for this, which is a different screen from a server that broke.
+    signedIn(null);
+    refuse(404, 'User not found');
+
+    await expect(UserService.fetchProfileByUsername('nobody')).resolves.toBeNull();
+  });
+
+  it('still throws when the server actually broke', async () => {
+    signedIn(null);
+    refuse(500, 'Server error');
+
+    await expect(UserService.fetchProfileByUsername('wren_hallow')).rejects.toThrow('Server error');
+  });
+});

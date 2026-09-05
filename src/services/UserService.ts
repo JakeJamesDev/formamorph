@@ -1,5 +1,6 @@
 import type { FeedItem, FollowedUser, LikeGiven, LinkedAccount, ProfileCreation, PublicProfile } from '@/types';
 import { kindOf } from '@/lib/catalogKinds';
+import { API_BASE_URL } from '@/lib/apiBase';
 import AuthService from '@/services/AuthService';
 
 /**
@@ -33,9 +34,7 @@ class UserService {
   private apiUrl: string;
 
   constructor() {
-    this.apiUrl = import.meta.env.MODE === 'production'
-      ? import.meta.env.VITE_API_URL_PROD
-      : import.meta.env.VITE_API_URL_DEV;
+    this.apiUrl = API_BASE_URL;
   }
 
   /** Where a profile's avatar resolves against. */
@@ -57,24 +56,49 @@ class UserService {
     const response = await fetch(`${this.apiUrl}/users/${encodeURIComponent(userId)}/profile`, {
       headers: this.authHeaders(),
     });
-    const body = await response.json().catch(() => ({}));
+    const body = await this.unwrap<{ data: PublicProfile }>(response, 'Failed to load this profile');
 
-    if (!response.ok || !body?.success) {
-      throw new Error(body?.error || 'Failed to load this profile');
-    }
+    return this.withCounts(body.data);
+  }
 
-    const profile = body.data as PublicProfile;
-
-    // The three counts are read straight onto the screen, so they are coerced here rather than defaulted
-    // at each of the two places that draw them. A server that predates them sends none — the client can
-    // reach people before the server it talks to is updated — and a missing number would render as an
-    // icon beside nothing.
+  /**
+   * A profile whose three counts are numbers.
+   *
+   * They are read straight onto the screen, so they are coerced once here rather than defaulted at each
+   * place that draws them. A server that predates them sends none — the client can reach people before
+   * the server it talks to is updated — and a missing number would render as an icon beside nothing.
+   */
+  private withCounts(profile: PublicProfile): PublicProfile {
     return {
       ...profile,
       followers: Number(profile.followers) || 0,
       likes: Number(profile.likes) || 0,
       downloads: Number(profile.downloads) || 0,
     };
+  }
+
+  /**
+   * Read one account's public profile by the name in a shared link.
+   *
+   * The site's profile URL carries a username, not the UUID every other profile call takes, so this is
+   * the one read that starts from a name. A name nobody has answers null rather than throwing: so does a
+   * suspended account, which the endpoint refuses identically on purpose — a page that said "suspended"
+   * would be a way to ask the server who is suspended.
+   *
+   * @param username - The name out of the address bar
+   * @returns Their public profile, or null when there is no profile to show
+   */
+  async fetchProfileByUsername(username: string): Promise<PublicProfile | null> {
+    const response = await fetch(
+      `${this.apiUrl}/users/by-username/${encodeURIComponent(username)}/profile`,
+      { headers: this.authHeaders() }
+    );
+
+    if (response.status === 404) return null;
+
+    const body = await this.unwrap<{ data: PublicProfile }>(response, 'Failed to load this profile');
+
+    return this.withCounts(body.data);
   }
 
   /**

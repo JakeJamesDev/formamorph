@@ -9,6 +9,29 @@ import { useEffect, useState } from 'react';
  * own Back.
  */
 
+/** A profile path and the name in it. The name runs to the next slash, so nothing nested matches. */
+const PROFILE_PATH = /^\/u\/([^/]+)$/;
+
+/**
+ * The username in a `/u/<name>` path, or null when the path is not one.
+ *
+ * Decoded, because the address bar holds the escaped form and every use of it — the fetch, the heading —
+ * wants the name as it was typed.
+ *
+ * @param pathname - The path, already normalized
+ */
+export function profileUsername(pathname: string): string | null {
+  const name = PROFILE_PATH.exec(pathname)?.[1];
+  if (!name) return null;
+
+  try {
+    return decodeURIComponent(name) || null;
+  } catch {
+    // A lone `%` is not a name anybody has; the caller draws its not-found for it.
+    return null;
+  }
+}
+
 /** Where the reader is: the path that picks the page, and the query that configures it. */
 export interface SiteLocation {
   pathname: string;
