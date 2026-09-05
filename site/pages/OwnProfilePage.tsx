@@ -1,10 +1,11 @@
 import { useEffect } from 'react';
 import AuthService from '@/services/AuthService';
 import { leaveTo } from '../leaveSite';
+import { signInTo } from '../nextPath';
 import { SiteLayout } from '../components/SiteLayout';
 
 /** Where `/profile` sends a reader who has no session: sign in, then come back here. */
-const SIGN_IN = '/login?next=%2Fprofile';
+const SIGN_IN = signInTo('/profile');
 
 /**
  * `/profile` — the link a player can follow without knowing how their own name is spelled in a URL.

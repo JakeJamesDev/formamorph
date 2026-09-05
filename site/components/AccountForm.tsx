@@ -49,13 +49,15 @@ interface FieldProps {
   autoFocus?: boolean;
   /** One line under the box, stating the rule before the reader can break it. */
   hint?: string;
+  /** A suspended account is refused every write, so its boxes are shown but inert. */
+  disabled?: boolean;
   value: string;
   onChange: (value: string) => void;
 }
 
 /** One labelled box, with its rule under it. */
 export function Field({
-  id, label, type = 'text', autoComplete, autoFocus, hint, value, onChange,
+  id, label, type = 'text', autoComplete, autoFocus, hint, disabled, value, onChange,
 }: FieldProps) {
   return (
     <div className="space-y-2">
@@ -66,6 +68,7 @@ export function Field({
         type={type}
         autoComplete={autoComplete}
         autoFocus={autoFocus}
+        disabled={disabled}
         value={value}
         onChange={(event) => onChange(event.target.value)}
       />

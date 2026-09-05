@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { safeNextPath } from './nextPath';
+import { safeNextPath, signInTo } from './nextPath';
 
 describe('safeNextPath', () => {
   it('keeps a same-origin absolute path', () => {
@@ -40,5 +40,22 @@ describe('safeNextPath', () => {
 
   it('honors a caller-supplied fallback', () => {
     expect(safeNextPath('https://evil.test', '/account')).toBe('/account');
+  });
+});
+
+describe('sending a reader to sign in and back', () => {
+  it('escapes the return path, so it survives the filter on the way back', () => {
+    // The trap this closes: a hand-written `?next=/account` arrives with a bare slash, and a page that
+    // gets that wrong loses the return path silently — the reader lands on the landing page instead.
+    expect(signInTo('/account')).toBe('/login?next=%2Faccount');
+    expect(safeNextPath(new URLSearchParams(signInTo('/account').split('?')[1]).get('next')))
+      .toBe('/account');
+  });
+
+  it('round-trips a path that carries its own query', () => {
+    const round = (path: string) =>
+      safeNextPath(new URLSearchParams(signInTo(path).split('?')[1]).get('next'));
+
+    expect(round('/u/wren?tab=worlds')).toBe('/u/wren?tab=worlds');
   });
 });

@@ -1,5 +1,6 @@
 import { vi } from 'vitest';
 import AuthService from '@/services/AuthService';
+import type { AuthUser } from '@/types';
 
 /** Minimal fetch Response stub — the same shape AuthService's own tests use. */
 export const res = (body: unknown, ok = true, status = 200): Response =>
@@ -19,4 +20,19 @@ export const resetAccountPage = (url: string) => {
   at(url);
   vi.stubGlobal('fetch', vi.fn());
   vi.spyOn(console, 'error').mockImplementation(() => {});
+};
+
+/**
+ * Hold a signed-in session, the way AuthService leaves one behind after a sign-in on either surface.
+ *
+ * The stored keys and the singleton's own fields are both set: the singleton reads storage in its
+ * constructor and on writes from other tabs, and a test triggers neither.
+ *
+ * @param user - The cached user. `status: 'suspended'` is how a suspended account arrives
+ */
+export const signIn = (user: AuthUser) => {
+  localStorage.setItem(AuthService.tokenKey, 'tok');
+  localStorage.setItem(AuthService.userKey, JSON.stringify(user));
+  AuthService.token = 'tok';
+  AuthService.currentUser = user;
 };

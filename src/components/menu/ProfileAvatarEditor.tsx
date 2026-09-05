@@ -1,5 +1,4 @@
 import { useRef, useState } from "react";
-import { toast } from "react-toastify";
 import { Camera, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { UserAvatar } from "@/components/UserAvatar";
@@ -14,6 +13,11 @@ interface ProfileAvatarEditorProps {
   avatarUrl: string | null | undefined;
   /** Fired after a successful change, with the new URL (or null once removed). */
   onChanged: (avatarUrl: string | null) => void;
+  /**
+   * Say what happened. The game floats a toast; the account page writes a line under the control, and
+   * has no toast container to float one into. So the channel comes from above rather than from here.
+   */
+  notify: (message: string, kind: 'success' | 'error') => void;
   /** A suspended account writes nothing, so the controls are shown but inert. */
   disabled?: boolean;
 }
@@ -24,7 +28,7 @@ interface ProfileAvatarEditorProps {
  * The picture is the button: clicking it picks a file, which is where a reader looks first. The remove
  * control is separate and only present when there is something to remove.
  */
-export function ProfileAvatarEditor({ username, avatarUrl, onChanged, disabled = false }: ProfileAvatarEditorProps) {
+export function ProfileAvatarEditor({ username, avatarUrl, onChanged, notify, disabled = false }: ProfileAvatarEditorProps) {
   const input = useRef<HTMLInputElement>(null);
   const [picked, setPicked] = useState<File | null>(null);
   const [cropping, setCropping] = useState(false);
@@ -37,7 +41,7 @@ export function ProfileAvatarEditor({ username, avatarUrl, onChanged, disabled =
     if (!file) return;
 
     if (file.size > MAX_AVATAR_UPLOAD_BYTES) {
-      toast.error(`That image is larger than ${Math.round(MAX_AVATAR_UPLOAD_BYTES / 1024 / 1024)}MB`);
+      notify(`That image is larger than ${Math.round(MAX_AVATAR_UPLOAD_BYTES / 1024 / 1024)}MB`, 'error');
       return;
     }
 
@@ -52,9 +56,9 @@ export function ProfileAvatarEditor({ username, avatarUrl, onChanged, disabled =
       onChanged(url);
       setCropping(false);
       setPicked(null);
-      toast.success('Profile image updated');
+      notify('Profile image updated', 'success');
     } catch (error) {
-      toast.error((error as Error).message || 'Failed to save the profile image');
+      notify((error as Error).message || 'Failed to save the profile image', 'error');
     } finally {
       setBusy(false);
     }
@@ -65,9 +69,9 @@ export function ProfileAvatarEditor({ username, avatarUrl, onChanged, disabled =
     try {
       await AuthService.removeAvatar();
       onChanged(null);
-      toast.success('Profile image removed');
+      notify('Profile image removed', 'success');
     } catch (error) {
-      toast.error((error as Error).message || 'Failed to remove the profile image');
+      notify((error as Error).message || 'Failed to remove the profile image', 'error');
     } finally {
       setBusy(false);
     }
@@ -119,6 +123,7 @@ export function ProfileAvatarEditor({ username, avatarUrl, onChanged, disabled =
         onOpenChange={(open) => { setCropping(open); if (!open) setPicked(null); }}
         file={picked}
         onCropped={save}
+        onError={(message) => notify(message, 'error')}
         busy={busy}
       />
     </div>

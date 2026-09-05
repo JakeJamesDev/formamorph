@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { readdirSync, readFileSync, statSync } from 'node:fs';
 import { join, resolve } from 'node:path';
+import { DIRECTORIES, FILES } from '../tailwind.site.content.cjs';
 
 /**
  * The account pages must not pull the game in.
@@ -22,6 +23,8 @@ const ALLOWED = [
   '@/components/community/AgeGateDialog',
   '@/components/community/ProfileStats',
   '@/components/community/UserCreationsTab',
+  '@/components/menu/DeleteAccountDialog',
+  '@/components/menu/ProfileAvatarEditor',
   '@/lib/ageGate',
   '@/lib/apiBase',
   '@/lib/serverDate',
@@ -130,6 +133,24 @@ describe('the site entry stays out of the game bundle', () => {
 
     expect(reached.has('@/lib/catalogKinds')).toBe(true);
     expect(reached.get('@/lib/catalogKinds')).toContain('→');
+  });
+
+  it('has every file it reaches in the stylesheet’s scan, so nothing reused comes out unstyled', () => {
+    // The quietest failure on this boundary. A reused control whose file Tailwind never scanned still
+    // renders, still type-checks and still passes its tests — it is simply missing the classes it
+    // asked for, so an avatar's `h-16 w-16` circle comes out a `w-16` oval. Nothing else catches it.
+    const root = resolve(SITE, '..');
+    const scanned = (path: string) =>
+      FILES.includes(path) || DIRECTORIES.some((directory) => path.startsWith(directory));
+
+    const unscanned = [...reachableFromSite().keys()]
+      .map((specifier) => resolveApp(specifier))
+      .filter((file): file is string => !!file)
+      // Forward slashes, because the lists are written the way the Tailwind globs are.
+      .map((file) => file.slice(root.length + 1).replace(/\\/g, '/'))
+      .filter((path) => !scanned(path));
+
+    expect(unscanned).toEqual([]);
   });
 
   it('has an allow list that really is a list, not everything under src', () => {
