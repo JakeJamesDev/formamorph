@@ -15,6 +15,19 @@ const AUTHORITY_START = /^\/[/\\]/;
  * @param raw - The value read out of the query string, already decoded
  * @param fallback - Where to send a reader when the value is refused
  */
+/**
+ * The sign-in page, told where to send the reader back to.
+ *
+ * One place that builds it, because the encoding is the part that goes wrong: a page writing its own
+ * `?next=` by hand has to remember to escape the slash, and a path that arrives unescaped is refused
+ * by the filter above and silently becomes the landing page.
+ *
+ * @param returnTo - An absolute path on this site to come back to
+ */
+export function signInTo(returnTo: string): string {
+  return `/login?next=${encodeURIComponent(returnTo)}`;
+}
+
 export function safeNextPath(raw: string | null | undefined, fallback = '/'): string {
   if (!raw) return fallback;
 

@@ -413,6 +413,7 @@ export function AuthModals({
                 username={currentUser?.username as string | undefined}
                 avatarUrl={avatarUrl}
                 onChanged={(url) => { setAvatarUrl(url); onAvatarChanged?.(url); }}
+                notify={(message, kind) => toast[kind](message)}
                 disabled={isSuspended}
               />
               <div className="min-w-0 space-y-1">

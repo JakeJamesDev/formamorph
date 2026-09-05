@@ -3,7 +3,6 @@ import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { ProfileAvatarEditor } from './ProfileAvatarEditor';
 import AuthService from '@/services/AuthService';
 
-vi.mock('react-toastify', () => ({ toast: { error: vi.fn(), success: vi.fn(), info: vi.fn() } }));
 vi.mock('@/lib/apiBase', () => ({ API_BASE_URL: 'https://server.test/api' }));
 
 // The crop dialog decodes a real image, which jsdom cannot do; its own geometry is tested directly.
@@ -24,6 +23,7 @@ const show = (over: Record<string, unknown> = {}) =>
       username="wren_hallow"
       avatarUrl={null}
       onChanged={() => {}}
+      notify={() => {}}
       {...over}
     />
   );
@@ -151,5 +151,58 @@ describe('removing it', () => {
 
     await waitFor(() => expect(screen.getByLabelText('Remove your profile image')).toBeTruthy());
     expect(onChanged).not.toHaveBeenCalled();
+  });
+});
+
+describe('how it says what happened', () => {
+  // The editor is mounted in two places that report to the reader in different ways: the game floats a
+  // toast, the account page writes a line under the control. So it is handed a reporter rather than
+  // reaching for one, and this is what proves it uses the one it was given.
+  it('reports a success through the reporter it was handed', async () => {
+    vi.spyOn(AuthService, 'setAvatar').mockResolvedValue('/api/avatars/new.webp');
+    const notify = vi.fn();
+    show({ notify });
+
+    pick(file());
+    fireEvent.click(screen.getByText('Fake Crop'));
+
+    await waitFor(() => expect(notify).toHaveBeenCalledWith('Profile image updated', 'success'));
+  });
+
+  it('reports a refusal verbatim, so a suspension reads as itself', async () => {
+    vi.spyOn(AuthService, 'setAvatar').mockRejectedValue(new Error('Your account has been suspended'));
+    const notify = vi.fn();
+    show({ notify });
+
+    pick(file());
+    fireEvent.click(screen.getByText('Fake Crop'));
+
+    await waitFor(() => expect(notify).toHaveBeenCalledWith('Your account has been suspended', 'error'));
+  });
+
+  it('reports a file turned away for its size, which never reaches the server', () => {
+    const notify = vi.fn();
+    show({ notify });
+
+    pick(file('huge.png', 11 * 1024 * 1024));
+
+    expect(notify).toHaveBeenCalledWith(expect.stringContaining('larger than'), 'error');
+  });
+
+  it('reports a removal both ways', async () => {
+    const notify = vi.fn();
+    vi.spyOn(AuthService, 'removeAvatar').mockResolvedValue(undefined);
+    show({ avatarUrl: '/api/avatars/abc.webp', notify });
+
+    fireEvent.click(screen.getByLabelText('Remove your profile image'));
+    await waitFor(() => expect(notify).toHaveBeenCalledWith('Profile image removed', 'success'));
+
+    cleanup();
+    notify.mockClear();
+    vi.spyOn(AuthService, 'removeAvatar').mockRejectedValue(new Error('nope'));
+    show({ avatarUrl: '/api/avatars/abc.webp', notify });
+
+    fireEvent.click(screen.getByLabelText('Remove your profile image'));
+    await waitFor(() => expect(notify).toHaveBeenCalledWith('nope', 'error'));
   });
 });

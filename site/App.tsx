@@ -1,4 +1,5 @@
 import { useEffect } from 'react';
+import { AccountPage } from './pages/AccountPage';
 import { LoginPage } from './pages/LoginPage';
 import { NotFoundPage } from './pages/NotFoundPage';
 import { OwnProfilePage } from './pages/OwnProfilePage';
@@ -11,6 +12,7 @@ const ROUTES = {
   '/login': { title: 'Sign In · Formamorph', page: LoginPage },
   '/register': { title: 'Create Account · Formamorph', page: RegisterPage },
   '/profile': { title: 'Your Profile · Formamorph', page: OwnProfilePage },
+  '/account': { title: 'Your Account · Formamorph', page: AccountPage },
 } as const;
 
 /** A trailing slash is the same route. Live, the hosting rules redirect it away before the page loads;

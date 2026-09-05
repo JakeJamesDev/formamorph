@@ -103,8 +103,13 @@ export function DeleteAccountDialog({ open, onClose, suspended, onOpenFeedback }
           <>
             <div className="space-y-2 py-2 text-label">
               <p>Your account is suspended, so it cannot be deleted from here.</p>
+              {/* Named differently where there is no button to press. The site mounts this dialog with
+                  no Feedback hub to open, and pointing at a control that is not on screen reads as a
+                  missing button rather than as a different place to go. */}
               <p className="text-muted-foreground">
-                Ask through Feedback and the team will handle it.
+                {onOpenFeedback
+                  ? 'Ask through Feedback and the team will handle it.'
+                  : 'Ask through Feedback in the game and the team will handle it.'}
               </p>
             </div>
 

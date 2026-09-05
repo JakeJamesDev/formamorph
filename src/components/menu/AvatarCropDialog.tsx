@@ -1,5 +1,4 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { toast } from "react-toastify";
 import { ImagePlus, ZoomIn, ZoomOut } from "lucide-react";
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter,
@@ -20,6 +19,8 @@ interface AvatarCropDialogProps {
   file: File | null;
   /** Hands back the cropped image as a `data:` URI, ready to send. */
   onCropped: (image: string) => void;
+  /** Says a picture could not be read or drawn. Where that is said differs per surface. */
+  onError: (message: string) => void;
   /** Disables the buttons while the upload is in flight. */
   busy?: boolean;
 }
@@ -30,12 +31,17 @@ interface AvatarCropDialogProps {
  * The preview is the crop rather than a picture of it: what the circle shows is exactly what is saved,
  * at the same proportions, so there is nothing to discover after pressing Save.
  */
-export function AvatarCropDialog({ open, onOpenChange, file, onCropped, busy = false }: AvatarCropDialogProps) {
+export function AvatarCropDialog({ open, onOpenChange, file, onCropped, onError, busy = false }: AvatarCropDialogProps) {
   const [image, setImage] = useState<HTMLImageElement | null>(null);
   const [transform, setTransform] = useState<CropTransform>(IDENTITY_CROP);
   const [loading, setLoading] = useState(false);
   // Where the pointer went down, and where the crop was at that moment.
   const drag = useRef<{ x: number; y: number; from: CropTransform } | null>(null);
+  // Held rather than depended on: every caller writes the reporter inline, so depending on it would
+  // decode the picture again each time the surface above happened to re-render. Everything here
+  // reports through `report.current`, so there is one channel rather than one per call site.
+  const report = useRef(onError);
+  useEffect(() => { report.current = onError; });
 
   const apply = useCallback((next: CropTransform) => {
     if (!image) return;
@@ -67,7 +73,7 @@ export function AvatarCropDialog({ open, onOpenChange, file, onCropped, busy = f
       })
       .catch((error: Error) => {
         if (cancelled) return;
-        toast.error(error.message);
+        report.current(error.message);
         onOpenChange(false);
       })
       .finally(() => { if (!cancelled) setLoading(false); });
@@ -116,7 +122,7 @@ export function AvatarCropDialog({ open, onOpenChange, file, onCropped, busy = f
     try {
       onCropped(renderCrop(image, transform, FRAME));
     } catch (error) {
-      toast.error((error as Error).message || 'That image could not be prepared');
+      report.current((error as Error).message || 'That image could not be prepared');
     }
   };
 
