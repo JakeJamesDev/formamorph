@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import {
   DragOverlay,
+  getScrollableAncestors,
   MouseSensor,
   TouchSensor,
   useSensor,
@@ -270,6 +271,15 @@ export function LibraryTileGrid<T>({
   // computed against, and which cell of its own footprint the player grabbed.
   const preTilesRef = useRef<PackedTile[]>([]);
   const carriedRef = useRef<{ id: string; grabCell: TilePlacement } | null>(null);
+  // The ghost's geometry: how far into the tile the press landed, its box, and the scroll viewport the
+  // overlay is clamped to — so the ghost's corner can be read from the pointer without the DOM.
+  const ghostRef = useRef<{
+    grab: { x: number; y: number };
+    size: { width: number; height: number };
+    bounds: DOMRect | null;
+  } | null>(null);
+  // The tile just let go of. It stands in its cell on the commit paint; the slide leaves it there.
+  const releasedRef = useRef<string | null>(null);
   // The pointer's latest reading, which is what a release commits — armed or not, so a drag too quick
   // to have rested still lands on the spot under the hand. `keyRef` is what the rest is waiting out.
   const readingRef = useRef<GestureReading | null>(null);
@@ -333,6 +343,8 @@ export function LibraryTileGrid<T>({
     paintedRef.current = layout === 'grid' && measured
       ? { columns: baseCols, places: live, spans }
       : null;
+    const released = releasedRef.current;
+    if (!activeId) releasedRef.current = null;
     if (!before || !measured || before.columns !== baseCols) return;
 
     // Each moved tile is pushed back to where it was — and a resized one back to the size it was —
@@ -341,7 +353,7 @@ export function LibraryTileGrid<T>({
     for (const [id, at] of Object.entries(live)) {
       const node = tileNodes.current.get(id);
       const was = before.places[id];
-      if (!node || !was || id === activeId) continue;
+      if (!node || !was || id === activeId || id === released) continue;
       const dx = (was.col - at.col) * pitch.x;
       const dy = (was.row - at.row) * pitch.y;
       const from = before.spans[id] ?? spans[id];
@@ -416,7 +428,26 @@ export function LibraryTileGrid<T>({
     const x = (at.x - box.left + GAP / 2) / pitch.x;
     const y = (at.y - box.top + GAP / 2) / pitch.y;
     if (x < 0 || y < 0) return null;
-    return { pointer: { x, y }, cell: { row: Math.floor(y), col: Math.floor(x) } };
+    return { pointer: { x, y }, cell: { row: Math.floor(y), col: Math.floor(x) }, box };
+  };
+
+  /**
+   * The ghost's top-left corner in base cells: the pointer less the press offset, held inside the
+   * scroll viewport exactly as the overlay's modifier holds the ghost. Computed rather than read off
+   * the overlay, which is drawn a move behind the pointer.
+   */
+  const ghostOn = (box: DOMRect) => {
+    const ghost = ghostRef.current;
+    const at = pointRef.current;
+    if (!ghost || !at) return undefined;
+    let left = at.x - ghost.grab.x;
+    let top = at.y - ghost.grab.y;
+    const { bounds, size } = ghost;
+    if (bounds) {
+      left = Math.min(Math.max(left, bounds.left), bounds.right - size.width);
+      top = Math.min(Math.max(top, bounds.top), bounds.bottom - size.height);
+    }
+    return { x: (left - box.left) / pitch.x, y: (top - box.top) / pitch.y };
   };
 
   /** Stop the rest countdown and put the board back to what it was drawing before anything armed. */
@@ -455,6 +486,7 @@ export function LibraryTileGrid<T>({
       grabCell: carried.grabCell,
       pointerCell: read.cell,
       pointer: read.pointer,
+      ghost: ghostOn(read.box),
       share: sliceFor(carried.id),
     });
     readingRef.current = reading;
@@ -534,6 +566,8 @@ export function LibraryTileGrid<T>({
     drawnRef.current = null;
     preTilesRef.current = [];
     carriedRef.current = null;
+    ghostRef.current = null;
+    releasedRef.current = null;
     readingRef.current = null;
     keyRef.current = null;
     setDrawn(null);
@@ -549,6 +583,7 @@ export function LibraryTileGrid<T>({
       const reading = readingRef.current;
       const id = String(event.active.id);
       resetDrag();
+      releasedRef.current = id;
       if (!reading || reading.blocked) return;
 
       if (reading.intent === 'folder' && reading.target) {
@@ -597,6 +632,16 @@ export function LibraryTileGrid<T>({
 
     // Seeded from the press, because the first reading can arrive before the tracker is listening.
     pointRef.current = { x: pressed.x, y: pressed.y };
+
+    const tileNode = tileNodes.current.get(id);
+    const tileBox = tileNode?.getBoundingClientRect();
+    if (tileNode && tileBox) {
+      ghostRef.current = {
+        grab: { x: pressed.x - tileBox.left, y: pressed.y - tileBox.top },
+        size: { width: tileBox.width, height: tileBox.height },
+        bounds: getScrollableAncestors(tileNode)[0]?.getBoundingClientRect() ?? null,
+      };
+    }
 
     // Which cell of its own footprint the player took hold of. It only decides where an open-space
     // drop lands: over a target the reader snaps the footprint and the grab offset drops out.
