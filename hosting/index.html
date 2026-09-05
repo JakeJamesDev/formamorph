@@ -212,25 +212,28 @@ fetch(`https://api.github.com/repos/${REPO}/releases/latest`)
   .then((r) => (r.ok ? r.json() : null))
   .catch(() => null)
   .then((rel) => {
+    // The Android asset carries no version in its name, so its link is the latest-release redirect
+    // and needs no API lookup.
     const rows = [
       { label: 'Windows', match: /\.exe$|win.*\.zip$/i },
       { label: 'Linux', match: /\.AppImage$/i },
       { label: 'macOS', match: /\.dmg$/i },
+      { label: 'Android', href: `${RELEASES}/download/Formamorph-android.apk` },
     ];
     document.querySelectorAll('[data-dl-buttons]').forEach((host) => {
       for (const row of rows) {
-        const asset = rel && rel.assets ? rel.assets.find((a) => row.match.test(a.name)) : null;
+        const asset = rel && rel.assets && row.match ? rel.assets.find((a) => row.match.test(a.name)) : null;
         const a = document.createElement('a');
         a.className = 'btn btn-ghost';
-        a.href = asset ? asset.browser_download_url : RELEASES;
+        a.href = row.href || (asset ? asset.browser_download_url : RELEASES);
         a.textContent = row.label;
         host.appendChild(a);
       }
     });
     document.querySelectorAll('[data-dl-note]').forEach((el) => {
       el.textContent = rel && rel.tag_name
-        ? `Desktop ${rel.tag_name} — free on GitHub`
-        : 'Desktop builds — free on GitHub';
+        ? `Desktop and Android ${rel.tag_name} — free on GitHub`
+        : 'Desktop and Android builds — free on GitHub';
     });
   });
 </script>

@@ -1,6 +1,7 @@
 # 08 — CI Android job, release assets, itch channel, landing page button
 
-Status: ready-for-agent
+Status: ready-for-human
+Status note: CI and Gradle are done and locally proven with a throwaway key. Left for a human: tag a pre-release and run the phone check in the acceptance list.
 Type: task
 Blocked by: 04, 05
 Spec: ../spec.md (Implementation Decisions › The Update Bridge › asset naming; Build and release)
