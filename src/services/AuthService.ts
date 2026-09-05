@@ -7,6 +7,27 @@ export interface LoginResult {
   deletionCancelled: boolean;
 }
 
+/** What writing or re-mailing an address leaves behind. */
+export interface EmailOutcome {
+  /** Whether the address on file is proven. */
+  emailVerified: boolean;
+  /** Whether the verification mail went out. Delivery runs through somebody else's service, so an
+   *  address can be saved and the mail still not sent; the caller offers another try. */
+  mailSent: boolean;
+}
+
+/** How opening a verification link ended. A dead link is an expected outcome rather than a failure, so
+ *  it comes back instead of being thrown: the page has a different thing to say for each. */
+export type VerifyEmailResult =
+  | { verified: true; email: string | null }
+  | {
+      verified: false;
+      /** The server refused the link itself — expired, or already used. False when the request never
+       *  reached an answer, which is a different sentence and a different next step. */
+      spent: boolean;
+      message: string;
+    };
+
 /** Singleton holding the auth token and current user, mirrored to `localStorage`. Default-exported as
  *  one shared instance; the constructor rehydrates both from storage (tolerating a corrupt user blob)
  *  and then follows the `storage` event, so a sign-in or sign-out in another tab reaches this one. */
@@ -183,8 +204,11 @@ class AuthService {
       });
 
       if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.message || 'Registration failed');
+        // This API answers refusals in `error`. A taken name and a taken address are two sentences with
+        // two different fixes — pick another name, or recover the account holding the address — so both
+        // are shown verbatim rather than collapsing into one generic failure.
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.error || errorData.message || 'Registration failed');
       }
 
       const data = await response.json();
@@ -303,6 +327,140 @@ class AuthService {
       console.error('Change password error:', error);
       throw error;
     }
+  }
+
+  /**
+   * Set or replace the address on the signed-in account.
+   *
+   * The account record the server answers with is adopted whole, so the address and its verified state
+   * are read back from the one place every surface already reads the identity from.
+   *
+   * @param email - The address to write. An empty one is refused by the server; removing an address is
+   *   not offered at all
+   * @returns Whether the address is proven, and whether the verification mail went out
+   */
+  async setEmail(email: string): Promise<EmailOutcome> {
+    if (!this.token) throw new Error('Not authenticated');
+
+    const response = await fetch(`${this.API_URL}/auth/email`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${this.token}`
+      },
+      body: JSON.stringify({ email })
+    });
+
+    const data = await response.json().catch(() => ({}));
+    if (!response.ok) {
+      // A taken address and a spent mail budget both land here, and each sentence is the one thing the
+      // reader has to act on.
+      throw new Error(data.error || data.message || 'Failed to save the email address');
+    }
+
+    if (data.user) this.adoptUser(data.user as AuthUser);
+
+    return { emailVerified: data.user?.emailVerified === true, mailSent: data.mailSent === true };
+  }
+
+  /**
+   * The address on file and whether it is proven, read fresh from the server.
+   *
+   * Deliberately does not write the cached account, which `fetchUserProfile` replaces wholesale: a read
+   * started on arrival can land after the reader has changed something else on the page, and putting
+   * the old record back would undo it. Answers null when there is no session or the read fails, which
+   * both mean "keep showing what the cached account said".
+   */
+  async fetchEmailState(): Promise<{ email: string | null; emailVerified: boolean } | null> {
+    if (!this.token) return null;
+
+    try {
+      const response = await fetch(`${this.API_URL}/auth/me`, {
+        headers: { 'Authorization': `Bearer ${this.token}` }
+      });
+      if (!response.ok) return null;
+
+      const data = await response.json();
+      const user = data.user ?? data;
+
+      return {
+        email: (user.email as string | null | undefined) ?? null,
+        emailVerified: user.emailVerified === true
+      };
+    } catch (error) {
+      console.error('Could not read the account email state:', (error as Error).message);
+      return null;
+    }
+  }
+
+  /** Ask for the verification mail again, for one that never arrived. */
+  async resendVerification(): Promise<EmailOutcome> {
+    if (!this.token) throw new Error('Not authenticated');
+
+    const response = await fetch(`${this.API_URL}/auth/resend-verification`, {
+      method: 'POST',
+      headers: { 'Authorization': `Bearer ${this.token}` }
+    });
+
+    const data = await response.json().catch(() => ({}));
+    if (!response.ok) {
+      throw new Error(data.error || data.message || 'Failed to send the verification email');
+    }
+
+    return { emailVerified: data.emailVerified === true, mailSent: data.mailSent === true };
+  }
+
+  /**
+   * Prove an address by handing back the token out of the mail.
+   *
+   * Unauthenticated, because the link is opened wherever the mail was read and that is often not the
+   * device holding the session. The token is the credential.
+   *
+   * @param token - The `token` query value off the verification link
+   */
+  async verifyEmail(token: string): Promise<VerifyEmailResult> {
+    let response: Response;
+    try {
+      response = await fetch(`${this.API_URL}/auth/verify-email`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ token })
+      });
+    } catch (error) {
+      // Caught rather than thrown on, so a page can tell "the link is dead" from "we never asked".
+      return {
+        verified: false,
+        spent: false,
+        message: (error as Error).message || 'Could not reach the server'
+      };
+    }
+
+    const data = await response.json().catch(() => ({}));
+    if (!response.ok) {
+      return {
+        verified: false,
+        spent: data.code === 'TOKEN_INVALID',
+        message: data.error || data.message || 'That verification link could not be used'
+      };
+    }
+
+    // A session held on this device stops saying the address is unproven — but only when the session is
+    // the one the link belongs to. A mail opened in a browser signed in as somebody else would
+    // otherwise stamp that account's record with an address it does not hold. Folded, because the
+    // server's unique index folds too.
+    const held = (this.currentUser?.email as string | null | undefined) ?? null;
+    const proven = (data.email as string | null | undefined) ?? null;
+    if (this.currentUser && held && proven && held.toLowerCase() === proven.toLowerCase()) {
+      this.adoptUser({ ...this.currentUser, emailVerified: true });
+    }
+
+    return { verified: true, email: (data.email as string | null) ?? null };
+  }
+
+  /** Write a fresh account record into the cached user, so every surface reading it follows. */
+  private adoptUser(user: AuthUser) {
+    this.currentUser = user;
+    localStorage.setItem(this.userKey, JSON.stringify(user));
   }
 
   /**

@@ -3,38 +3,15 @@ import { AlertTriangle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { DeleteAccountDialog } from '@/components/menu/DeleteAccountDialog';
 import { ProfileAvatarEditor } from '@/components/menu/ProfileAvatarEditor';
-import { cn } from '@/lib/utils';
 import AuthService from '@/services/AuthService';
 import { Field } from '../components/AccountForm';
+import { NoteLine, type Note } from '../components/NoteLine';
 import { SiteLayout } from '../components/SiteLayout';
 import { leaveTo } from '../leaveSite';
 import { signInTo } from '../nextPath';
 
 /** Where a reader with no session goes, and what brings them back here afterwards. */
 const SIGN_IN = signInTo('/account');
-
-/** How the last thing the reader did went. Null before they have done anything. */
-type Note = { kind: 'success' | 'error'; text: string } | null;
-
-/**
- * The line under a control saying how it went.
- *
- * The site has no toast container — the game's one is themed from a provider this entry deliberately
- * does not mount — so every answer is written where the control is, which is where the reader is
- * already looking.
- */
-function NoteLine({ note }: { note: Note }) {
-  if (!note) return null;
-
-  return (
-    <p
-      role={note.kind === 'error' ? 'alert' : 'status'}
-      className={cn('text-helper', note.kind === 'error' ? 'text-destructive' : 'text-muted-foreground')}
-    >
-      {note.text}
-    </p>
-  );
-}
 
 function Section({ title, children }: { title: string; children: ReactNode }) {
   return (
@@ -65,6 +42,160 @@ function AvatarSection({ username, suspended }: { username: string | null; suspe
         disabled={suspended}
       />
       <NoteLine note={note} />
+    </Section>
+  );
+}
+
+/** The address on file and whether it is proven, as the cached account currently says. */
+const readEmail = () => {
+  const user = AuthService.getCurrentUser();
+  return {
+    // Cast because `AuthUser` types everything past `username` as `unknown`; the server sends a string
+    // or null.
+    address: (user?.email as string | null | undefined) ?? null,
+    verified: user?.emailVerified === true,
+  };
+};
+
+/**
+ * The address password reset runs on: what is on file, whether it is proven, and the two ways to move
+ * it forward.
+ *
+ * Setting an address is what asks for the mail, so there is no separate send button — only a resend for
+ * one that never arrived.
+ */
+function EmailSection({ suspended }: { suspended: boolean }) {
+  const [account, setAccount] = useState(readEmail);
+  const [typed, setTyped] = useState(() => readEmail().address ?? '');
+  const [note, setNote] = useState<Note>(null);
+  const [busy, setBusy] = useState<'save' | 'resend' | null>(null);
+
+  // The cached account can predate emails entirely: a session held since before the field existed
+  // carries neither the address nor its state, and would render as "none on file" for somebody who has
+  // one. One read of the account on arrival settles it.
+  useEffect(() => {
+    let cancelled = false;
+
+    void AuthService.fetchEmailState().then((fresh) => {
+      // Null is a read that could not answer. The cached account is still on screen, and every write
+      // below answers for itself, so there is nothing to say.
+      if (cancelled || !fresh) return;
+
+      setAccount({ address: fresh.email, verified: fresh.emailVerified });
+      // Only fills an untouched box, so a read that lands late cannot overwrite what is being typed.
+      setTyped((held) => held || fresh.email || '');
+    });
+
+    return () => { cancelled = true; };
+  }, []);
+
+  const save = async (event: FormEvent) => {
+    event.preventDefault();
+    setNote(null);
+
+    const address = typed.trim();
+    if (!address) {
+      setNote({ kind: 'error', text: 'Enter an email address' });
+      return;
+    }
+    if (!AuthService.isValidEmail(address)) {
+      setNote({ kind: 'error', text: 'Enter a valid email address' });
+      return;
+    }
+
+    setBusy('save');
+    try {
+      const { emailVerified, mailSent } = await AuthService.setEmail(address);
+      // Read back from the adopted account rather than from what was typed: the server decides what is
+      // stored, and this section is what the rest of the page believes about it.
+      setAccount(readEmail());
+
+      if (emailVerified) {
+        setNote({ kind: 'success', text: 'That address is already saved and verified.' });
+      } else if (mailSent) {
+        setNote({ kind: 'success', text: `Verification email sent to ${address}. Open the link in it to finish.` });
+      } else {
+        // Saved either way, so the sentence says so before it says what failed.
+        setNote({ kind: 'error', text: 'Address saved, but the verification email could not be sent. Try Resend in a moment.' });
+      }
+    } catch (failure) {
+      setNote({ kind: 'error', text: (failure as Error).message || 'Failed to save the email address' });
+    } finally {
+      setBusy(null);
+    }
+  };
+
+  const resend = async () => {
+    setNote(null);
+    setBusy('resend');
+    try {
+      const { emailVerified, mailSent } = await AuthService.resendVerification();
+      setAccount((held) => ({ ...held, verified: emailVerified }));
+
+      if (emailVerified) {
+        setNote({ kind: 'success', text: 'Your email address is already verified.' });
+      } else if (mailSent) {
+        setNote({ kind: 'success', text: 'Verification email sent. Open the link in it to finish.' });
+      } else {
+        setNote({ kind: 'error', text: 'The verification email could not be sent. Try again in a moment.' });
+      }
+    } catch (failure) {
+      setNote({ kind: 'error', text: (failure as Error).message || 'Failed to send the verification email' });
+    } finally {
+      setBusy(null);
+    }
+  };
+
+  return (
+    <Section title="Email">
+      {/* Not a live region: what changes here is announced by the note under the control, and a second
+          region saying the same thing twice is worse than none. */}
+      <p className="text-helper text-muted-foreground">
+        {account.address ? (
+          <>
+            On file: <span className="text-foreground">{account.address}</span>.{' '}
+            {account.verified ? 'Verified.' : 'Not verified yet.'}
+          </>
+        ) : (
+          'No email address on file. Add one so you can reset your password.'
+        )}
+      </p>
+
+      {suspended && (
+        <p className="text-helper text-muted-foreground">
+          Your email address can&rsquo;t be changed while your account is suspended.
+        </p>
+      )}
+
+      <form onSubmit={(event) => { void save(event); }} noValidate className="space-y-4">
+        <Field
+          id="email"
+          label="Email Address"
+          type="email"
+          autoComplete="email"
+          disabled={suspended}
+          hint="Changing your address means confirming the new one."
+          value={typed}
+          onChange={setTyped}
+        />
+        <NoteLine note={note} />
+        <div className="flex flex-wrap gap-2">
+          <Button type="submit" disabled={busy !== null || suspended}>
+            {busy === 'save' ? 'Saving…' : 'Save Email'}
+          </Button>
+          {/* Only where it can do something: there is an address, and it is still unproven. */}
+          {account.address && !account.verified && (
+            <Button
+              type="button"
+              variant="outline"
+              disabled={busy !== null || suspended}
+              onClick={() => { void resend(); }}
+            >
+              {busy === 'resend' ? 'Sending…' : 'Resend Verification Email'}
+            </Button>
+          )}
+        </div>
+      </form>
     </Section>
   );
 }
@@ -219,6 +350,7 @@ export function AccountPage() {
 
       <div className="space-y-8">
         <AvatarSection username={user?.username ?? null} suspended={suspended} />
+        <EmailSection suspended={suspended} />
         <PasswordSection suspended={suspended} />
         <DeleteSection suspended={suspended} open={deleting} onOpenChange={setDeleting} />
       </div>

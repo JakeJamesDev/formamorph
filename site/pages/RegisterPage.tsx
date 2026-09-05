@@ -10,6 +10,7 @@ export function RegisterPage() {
   const { next, carry } = useNextPath();
 
   const [username, setUsername] = useState('');
+  const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [error, setError] = useState('');
@@ -36,7 +37,7 @@ export function RegisterPage() {
 
     setBusy(true);
     try {
-      await AuthService.register(username, password);
+      await AuthService.register(username, password, email.trim());
       leaveTo(next);
     } catch (failure) {
       setError((failure as Error).message || 'Registration failed');
@@ -65,6 +66,17 @@ export function RegisterPage() {
           hint="3 to 20 characters."
           value={username}
           onChange={setUsername}
+        />
+        {/* Optional, and the account works without one. It is what password reset needs, so what the
+            hint states is what it buys rather than that it may be left blank. */}
+        <Field
+          id="email"
+          label="Email (Optional)"
+          type="email"
+          autoComplete="email"
+          hint="Lets you reset your password. We send one message to confirm it."
+          value={email}
+          onChange={setEmail}
         />
         <Field
           id="password"

@@ -5,6 +5,7 @@ import { NotFoundPage } from './pages/NotFoundPage';
 import { OwnProfilePage } from './pages/OwnProfilePage';
 import { ProfilePage } from './pages/ProfilePage';
 import { RegisterPage } from './pages/RegisterPage';
+import { VerifyEmailPage } from './pages/VerifyEmailPage';
 import { profileUsername, useSiteLocation } from './router';
 
 /** Every fixed path this entry serves, and the tab title that goes with it. */
@@ -13,6 +14,7 @@ const ROUTES = {
   '/register': { title: 'Create Account · Formamorph', page: RegisterPage },
   '/profile': { title: 'Your Profile · Formamorph', page: OwnProfilePage },
   '/account': { title: 'Your Account · Formamorph', page: AccountPage },
+  '/verify-email': { title: 'Verify Email · Formamorph', page: VerifyEmailPage },
 } as const;
 
 /** A trailing slash is the same route. Live, the hosting rules redirect it away before the page loads;

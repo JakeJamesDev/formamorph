@@ -130,6 +130,8 @@ export function AuthModals({
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
+  // Optional at signup, and never asked for at sign-in. It is what password reset runs on.
+  const [email, setEmail] = useState('');
   const [currentPassword, setCurrentPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
 
@@ -151,6 +153,7 @@ export function AuthModals({
     setUsername('');
     setPassword('');
     setConfirmPassword('');
+    setEmail('');
     setCurrentPassword('');
     setNewPassword('');
     setAuthError('');
@@ -222,6 +225,13 @@ export function AuthModals({
       return;
     }
 
+    // Checked here as well as in AuthService, because the policy step runs between the two. Left to the
+    // service, a mistyped address would be found only after the reader had read and accepted a policy.
+    if (email.trim() && !AuthService.isValidEmail(email.trim())) {
+      setAuthError('Invalid email format');
+      return;
+    }
+
     // The policy is read and answered before the account exists, so declining leaves nothing behind.
     // A read that fails is not a reason to refuse a signup: the account is created, and the signed-in
     // prompt asks at the first refused request instead.
@@ -248,7 +258,7 @@ export function AuthModals({
   /** Register, and report a refusal the same way whichever path arrived here. */
   const createAccount = async (): Promise<boolean> => {
     try {
-      await AuthService.register(username, password);
+      await AuthService.register(username, password, email.trim());
       return true;
     } catch (error) {
       setAuthError((error as Error).message || 'Registration failed');
@@ -365,16 +375,35 @@ export function AuthModals({
             </div>
 
             {authMode === 'register' && (
-              <div className="space-y-2">
-                <label htmlFor="confirmPassword" className="text-label font-medium">Confirm Password</label>
-                <Input
-                  id="confirmPassword"
-                  type="password"
-                  value={confirmPassword}
-                  onChange={(e) => setConfirmPassword(e.target.value)}
-                  placeholder="Confirm your password"
-                />
-              </div>
+              <>
+                <div className="space-y-2">
+                  <label htmlFor="confirmPassword" className="text-label font-medium">Confirm Password</label>
+                  <Input
+                    id="confirmPassword"
+                    type="password"
+                    value={confirmPassword}
+                    onChange={(e) => setConfirmPassword(e.target.value)}
+                    placeholder="Confirm your password"
+                  />
+                </div>
+
+                {/* Last, and only in register mode, so switching between the two modes never moves a
+                    box the reader is already typing in. */}
+                <div className="space-y-2">
+                  <label htmlFor="email" className="text-label font-medium">Email (Optional)</label>
+                  <Input
+                    id="email"
+                    type="email"
+                    autoComplete="email"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    placeholder="you@example.com"
+                  />
+                  <p className="text-meta text-muted-foreground">
+                    Lets you reset your password. We send one message to confirm it.
+                  </p>
+                </div>
+              </>
             )}
           </div>
 
