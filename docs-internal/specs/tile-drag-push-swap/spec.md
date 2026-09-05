@@ -19,12 +19,18 @@ Mirror an Android home screen:
 
 Nothing moves until the hand has rested. Every preview is computed from the pre-drag board, so leaving a spot undoes it.
 
+### Folder vs move
+
+The pointer picks the target tile, and the footprint anchors from the pointer's cell (offset by the grabbed cell), so the tile under the pointer is always under the footprint.
+
+A line runs from the pickup home's center to the target's center. A plane perpendicular to it cuts the target so the far slice covers a set share of the target's extent along the line (default 50%). Pointer in the far slice after the rest = push or swap. Pointer anywhere else on the target = folder, shown as a ring on the target. A folder tile as the target means add to folder; folders never nest.
+
 ## Prototype
 
-`prototype.html` (needs the dev server on 5180). Left board runs the shipped sim; right board runs the proposal. Controls: rest delay, live vs release preview, push distance.
+`prototype.html` (needs the dev server on 5180). Left board runs the shipped sim; right board runs the proposal. Controls: rest delay, live vs release preview, push distance, move-slice share, and a line-and-plane guide overlay. Folders are simulated as a highlight only.
 
 ## Open Questions
 
 - **Push distance.** One carried span blocks when the target tile is bigger than the carried one. Push-until-clear blocks when the row has no slack at the edge. Should a bigger target swap instead?
-- **Grouping gesture.** Shipped drag-to-group arms on a rest over an immovable tile. The new design uses the same rest to push or swap, so grouping needs a new trigger.
+- **Slice share.** 50% by default; the slider is there to feel out touch targets.
 - **Rest delay and preview mode.** Values to feel out in the prototype.
