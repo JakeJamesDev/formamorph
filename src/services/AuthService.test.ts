@@ -200,3 +200,134 @@ describe('logout', () => {
     expect(localStorage.getItem('authToken')).toBeNull();
   });
 });
+
+describe('cross-tab session sync', () => {
+  /** What the browser delivers to the *other* tabs after a write. jsdom fires none of its own. */
+  const foreignWrite = (key: string | null, newValue: string | null) => {
+    window.dispatchEvent(new StorageEvent('storage', { key, newValue }));
+  };
+
+  it('adopts a session another tab signed into', () => {
+    const adopted = vi.fn();
+    const unsubscribe = AuthService.onSessionAdopted(adopted);
+
+    localStorage.setItem('authToken', 'tok');
+    localStorage.setItem('currentUser', JSON.stringify({ username: 'bob' }));
+    foreignWrite('authToken', 'tok');
+
+    expect(AuthService.isAuthenticated()).toBe(true);
+    expect(AuthService.getCurrentUser()).toEqual({ username: 'bob' });
+    expect(adopted).toHaveBeenCalledTimes(1);
+    unsubscribe();
+  });
+
+  it('ends the session when another tab removes the token', () => {
+    AuthService.token = 'tok';
+    AuthService.currentUser = { username: 'bob' };
+    const ended = vi.fn();
+    const unsubscribe = AuthService.onSessionEnded(ended);
+
+    localStorage.removeItem('authToken');
+    localStorage.removeItem('currentUser');
+    foreignWrite('authToken', null);
+
+    expect(AuthService.isAuthenticated()).toBe(false);
+    expect(AuthService.getCurrentUser()).toBeNull();
+    expect(ended).toHaveBeenCalledTimes(1);
+    unsubscribe();
+  });
+
+  it('ends the session when another tab clears storage wholesale', () => {
+    // `localStorage.clear()` arrives as one event with a null key rather than one event per key.
+    AuthService.token = 'tok';
+    AuthService.currentUser = { username: 'bob' };
+    const ended = vi.fn();
+    const unsubscribe = AuthService.onSessionEnded(ended);
+
+    localStorage.clear();
+    foreignWrite(null, null);
+
+    expect(AuthService.isAuthenticated()).toBe(false);
+    expect(ended).toHaveBeenCalledTimes(1);
+    unsubscribe();
+  });
+
+  it('signs in on a corrupt user blob rather than throwing', () => {
+    // The token is what authenticates; an unreadable DTO costs the display name, not the session.
+    const adopted = vi.fn();
+    const unsubscribe = AuthService.onSessionAdopted(adopted);
+
+    localStorage.setItem('authToken', 'tok');
+    localStorage.setItem('currentUser', '{not json');
+    foreignWrite('currentUser', '{not json');
+
+    expect(AuthService.isAuthenticated()).toBe(true);
+    expect(AuthService.getCurrentUser()).toBeNull();
+    expect(adopted).toHaveBeenCalledTimes(1);
+    unsubscribe();
+  });
+
+  it('ignores a write to any other key', () => {
+    const adopted = vi.fn();
+    const ended = vi.fn();
+    const unsubscribeAdopted = AuthService.onSessionAdopted(adopted);
+    const unsubscribeEnded = AuthService.onSessionEnded(ended);
+
+    localStorage.setItem('authToken', 'tok');
+    foreignWrite('FORMAMORPH_introSeen', 'true');
+
+    expect(AuthService.isAuthenticated()).toBe(false);
+    expect(adopted).not.toHaveBeenCalled();
+    expect(ended).not.toHaveBeenCalled();
+    unsubscribeAdopted();
+    unsubscribeEnded();
+  });
+
+  it('says nothing when the stored session is the one already held', () => {
+    // The other tab wrote something else about the same session — an avatar swap re-writes the user
+    // blob. Re-announcing an unchanged session would re-run every subscriber's profile fetch.
+    AuthService.token = 'tok';
+    AuthService.currentUser = { username: 'bob' };
+    localStorage.setItem('authToken', 'tok');
+    localStorage.setItem('currentUser', JSON.stringify({ username: 'bob' }));
+    const adopted = vi.fn();
+    const unsubscribe = AuthService.onSessionAdopted(adopted);
+
+    foreignWrite('currentUser', JSON.stringify({ username: 'bob' }));
+
+    expect(adopted).not.toHaveBeenCalled();
+    unsubscribe();
+  });
+
+  it('keeps the other listeners when one throws', () => {
+    const first = vi.fn(() => { throw new Error('boom'); });
+    const second = vi.fn();
+    const unsubscribeFirst = AuthService.onSessionAdopted(first);
+    const unsubscribeSecond = AuthService.onSessionAdopted(second);
+
+    localStorage.setItem('authToken', 'tok');
+    foreignWrite('authToken', 'tok');
+
+    expect(second).toHaveBeenCalledTimes(1);
+    unsubscribeFirst();
+    unsubscribeSecond();
+  });
+});
+
+describe('a browser that refuses site data', () => {
+  it('reads a foreign write as no session rather than throwing out of the handler', () => {
+    // Private modes and blocked-site-data settings throw on the read itself. This runs inside a
+    // `storage` listener, where a throw reaches nobody and takes the rest of the handler with it.
+    AuthService.token = 'tok';
+    AuthService.currentUser = { username: 'bob' };
+    const ended = vi.fn();
+    const unsubscribe = AuthService.onSessionEnded(ended);
+    vi.spyOn(Storage.prototype, 'getItem').mockImplementation(() => { throw new Error('denied'); });
+
+    expect(() => window.dispatchEvent(new StorageEvent('storage', { key: 'authToken' }))).not.toThrow();
+
+    expect(AuthService.isAuthenticated()).toBe(false);
+    expect(ended).toHaveBeenCalledTimes(1);
+    unsubscribe();
+  });
+});

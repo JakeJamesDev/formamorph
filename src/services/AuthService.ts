@@ -7,7 +7,8 @@ export interface LoginResult {
 }
 
 /** Singleton holding the auth token and current user, mirrored to `localStorage`. Default-exported as
- *  one shared instance; the constructor rehydrates both from storage (tolerating a corrupt user blob). */
+ *  one shared instance; the constructor rehydrates both from storage (tolerating a corrupt user blob)
+ *  and then follows the `storage` event, so a sign-in or sign-out in another tab reaches this one. */
 class AuthService {
   API_URL: string;
   tokenKey: string;
@@ -18,6 +19,10 @@ class AuthService {
    *  Signing out is raised from more than one place now — the profile dialog, the privacy prompt, and a
    *  401 answering any request — and only this service sees all three. */
   private sessionEndedListeners = new Set<() => void>();
+  /** Told when another tab hands this one a signed-in session, so a surface holding its own copy of the
+   *  identity can pick it up. The site pages and the game are separate builds on one origin, so a sign-in
+   *  on either reaches the other only through the `storage` event below. */
+  private sessionAdoptedListeners = new Set<() => void>();
 
   constructor() {
     // Use different API URL based on environment
@@ -26,13 +31,71 @@ class AuthService {
       : import.meta.env.VITE_API_URL_DEV;
     this.tokenKey = 'authToken';
     this.userKey = 'currentUser';
-    this.token = localStorage.getItem(this.tokenKey);
-    // Guard against a corrupted value: an unguarded JSON.parse here would throw during construction.
-    try {
-      this.currentUser = JSON.parse(localStorage.getItem(this.userKey) || 'null');
-    } catch {
-      this.currentUser = null;
+    const stored = this.readStoredSession();
+    this.token = stored.token;
+    this.currentUser = stored.user;
+
+    // Never removed: the singleton lives as long as the document does.
+    if (typeof window !== 'undefined') {
+      window.addEventListener('storage', this.handleStorage);
     }
+  }
+
+  /** The token and user as `localStorage` currently holds them, tolerating a corrupt user blob. */
+  private readStoredSession(): { token: string | null; user: AuthUser | null } {
+    // A browser set to refuse site data throws on the read rather than answering null, and an unreadable
+    // user blob throws on the parse. Unguarded, either would throw during construction and again on
+    // every foreign write — inside an event handler, where nothing would catch it.
+    try {
+      const token = localStorage.getItem(this.tokenKey);
+      let user: AuthUser | null = null;
+      try {
+        user = JSON.parse(localStorage.getItem(this.userKey) || 'null');
+      } catch {
+        user = null;
+      }
+      return { token, user };
+    } catch {
+      return { token: null, user: null };
+    }
+  }
+
+  /**
+   * Follow a sign-in or sign-out another tab performed.
+   *
+   * The `storage` event fires only in the other tabs, which is the whole case: signing in at `/login`
+   * has to reach an open `/play/`, and signing out at either has to reach the other. The write itself
+   * is already done by the time this runs, so the stored values are read back rather than taken from
+   * the event — one event carries one key, and the session is two.
+   */
+  private handleStorage = (event: StorageEvent) => {
+    // A null key is `localStorage.clear()`, which takes the session with it.
+    if (event.key !== null && event.key !== this.tokenKey && event.key !== this.userKey) return;
+
+    const { token, user } = this.readStoredSession();
+    const unchanged = token === this.token
+      && JSON.stringify(user ?? null) === JSON.stringify(this.currentUser ?? null);
+    if (unchanged) return;
+
+    const wasAuthenticated = !!this.token;
+    this.token = token;
+    this.currentUser = user;
+
+    // A foreign sign-out reaches the same listeners a local one does: every surface that drops an
+    // identity is already subscribed there, and the two cases want the same thing done.
+    if (wasAuthenticated && !token) this.notify(this.sessionEndedListeners);
+    if (token) this.notify(this.sessionAdoptedListeners);
+  };
+
+  /** Run every listener, isolating each: one throwing must not strand the others or escape the caller. */
+  private notify(listeners: Set<() => void>) {
+    listeners.forEach((listener) => {
+      try {
+        listener();
+      } catch (error) {
+        console.error('A session listener failed:', error);
+      }
+    });
   }
 
   /** Whether a token is held (presence check only — does not validate it against the server). */
@@ -48,6 +111,12 @@ class AuthService {
   onSessionEnded(listener: () => void): () => void {
     this.sessionEndedListeners.add(listener);
     return () => { this.sessionEndedListeners.delete(listener); };
+  }
+
+  /** Listen for another tab handing this one a signed-in session. Returns the unsubscribe. */
+  onSessionAdopted(listener: () => void): () => void {
+    this.sessionAdoptedListeners.add(listener);
+    return () => { this.sessionAdoptedListeners.delete(listener); };
   }
 
   /** Authenticate, persist the token, then adopt or fetch the user profile; rethrows on failure.
@@ -362,15 +431,7 @@ class AuthService {
     localStorage.removeItem(this.tokenKey);
     localStorage.removeItem(this.userKey);
     // After the state is cleared, so a listener that reads `isAuthenticated()` sees the session gone.
-    // Each is isolated: signing out has already happened by this point, and one subscriber throwing
-    // must not strand the others or escape into a caller — `logout()` also runs inside the 401 path.
-    this.sessionEndedListeners.forEach((listener) => {
-      try {
-        listener();
-      } catch (error) {
-        console.error('A session-ended listener failed:', error);
-      }
-    });
+    this.notify(this.sessionEndedListeners);
   }
 }
 

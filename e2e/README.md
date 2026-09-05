@@ -124,6 +124,15 @@ phone's width with no horizontal overflow, the register page and the not-found f
 > tolerance is three channels, because the tokens the shadcn primitives read are whole-number HSL and
 > cannot land on an arbitrary hex. Putting the app's own dark background back turns it red.
 
+[session-sync.spec.ts](e2e/session-sync.spec.ts) — the app following a session another tab established:
+a sign-in elsewhere reaches the open main menu with no second navigation, and a logout in one tab reaches
+the other. Two pages in one context, because the `storage` event only ever fires in the *other* documents.
+
+> **Two ports are two origins.** Live, the writer is `formamorph.ai/login` and the reader is
+> `formamorph.ai/play/`, one origin and one `localStorage`. Under the runner the site entry is on 5186 and
+> the app on 5183, so a second app page stands in for the site — the same substitution
+> [landing.spec.ts](e2e/landing.spec.ts) makes with `/privacy`, where the site half is covered.
+
 ## The contest flow needs a server
 
 [contest-entry.spec.ts](e2e/contest-entry.spec.ts) publishes a world into a running contest and finds it
