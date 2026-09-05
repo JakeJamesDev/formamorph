@@ -1,3 +1,4 @@
+import { API_BASE_URL } from '@/lib/apiBase';
 import type { AuthUser } from '@/types';
 
 /** What a sign-in tells the caller beyond the session it establishes. */
@@ -25,10 +26,7 @@ class AuthService {
   private sessionAdoptedListeners = new Set<() => void>();
 
   constructor() {
-    // Use different API URL based on environment
-    this.API_URL = import.meta.env.MODE === 'production'
-      ? import.meta.env.VITE_API_URL_PROD
-      : import.meta.env.VITE_API_URL_DEV;
+    this.API_URL = API_BASE_URL;
     this.tokenKey = 'authToken';
     this.userKey = 'currentUser';
     const stored = this.readStoredSession();

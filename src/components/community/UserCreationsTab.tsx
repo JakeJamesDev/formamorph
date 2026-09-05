@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { BookOpen, Download, Earth, EyeOff, MessageSquare, User } from "lucide-react";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -7,7 +7,7 @@ import { CachedThumbnail } from "@/lib/useCachedThumbnail";
 import { LikeButton } from "@/components/community/LikeButton";
 import { CATALOG_KINDS, KIND_LABELS, type CatalogKind } from "@/lib/catalogKinds";
 import UserService from "@/services/UserService";
-import WorldStorageService from "@/services/WorldStorageService";
+import { API_BASE_URL } from "@/lib/apiBase";
 import type { ProfileCreation } from "@/types";
 import { Tip } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
@@ -20,6 +20,13 @@ const KIND_ICONS: Record<CatalogKind, typeof Earth> = {
   dictionary: BookOpen,
 };
 
+/** The list's own box: a fixed scroller in a dialog, nothing at all on a page. */
+function ListFrame({ layout, children }: { layout: 'dialog' | 'page'; children: ReactNode }) {
+  if (layout === 'page') return <>{children}</>;
+
+  return <ScrollArea className="h-[15.5rem]">{children}</ScrollArea>;
+}
+
 interface UserCreationsTabProps {
   /** Whose work to list. Null fetches nothing. */
   userId: string | null;
@@ -27,6 +34,13 @@ interface UserCreationsTabProps {
   username: string | null;
   /** Opens a listing in Community Creations. Absent leaves the rows as plain text. */
   onOpenListing?: (listing: { id: string; kind: string }) => void;
+  /**
+   * How much room the list has.
+   *
+   * In a dialog it is capped and scrolls, so one prolific author cannot stretch a popup to the height of
+   * the window. On a page the list is what the reader came for, so it runs at its natural length.
+   */
+  layout?: 'dialog' | 'page';
 }
 
 /**
@@ -35,7 +49,7 @@ interface UserCreationsTabProps {
  * Fetched as one list of every kind and split here: three requests would be three round trips to draw the
  * same rows, and the counts on the filter need the whole set regardless.
  */
-export function UserCreationsTab({ userId, username, onOpenListing }: UserCreationsTabProps) {
+export function UserCreationsTab({ userId, username, onOpenListing, layout = 'dialog' }: UserCreationsTabProps) {
   const [creations, setCreations] = useState<ProfileCreation[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
@@ -131,21 +145,25 @@ export function UserCreationsTab({ userId, username, onOpenListing }: UserCreati
         </ToggleGroup>
       </div>
 
-      {/* Capped rather than grown: the dialog is a popup, and a prolific author would otherwise stretch it
-          to the height of the window every time somebody clicked their name. */}
-      <ScrollArea className="h-[15.5rem]">
+      {/* Capped rather than grown in a dialog: it is a popup, and a prolific author would otherwise
+          stretch it to the height of the window every time somebody clicked their name. A page has the
+          room, so it lets the list run and scrolls with everything else. */}
+      <ListFrame layout={layout}>
         {/* A column under the filter above it rather than edge-to-edge: the rows are short, and letting
-            them run the full width of the dialog left the counts stranded away from the names. */}
-        {/* The matching half of the scroll viewport's own right-hand scrollbar gutter, which would
-            otherwise leave this column sitting left of the filter above it. */}
-        <ul className="mx-auto w-full max-w-[22rem] space-y-2 pl-[11px]">
+            them run the full width of the dialog left the counts stranded away from the names. The
+            left pad is the matching half of the scroll viewport's own right-hand scrollbar gutter, and
+            belongs only where that gutter is. */}
+        <ul className={cn(
+          'mx-auto w-full space-y-2',
+          layout === 'dialog' ? 'max-w-[22rem] pl-[11px]' : 'max-w-[26rem]'
+        )}>
           {shown.map((item) => (
             <li key={item.id} className="flex items-center gap-2 rounded-md border p-2 min-w-0">
               <div className="h-10 w-10 shrink-0 overflow-hidden rounded bg-muted">
                 {item.thumbnailFile && (
                   <CachedThumbnail
                     file={item.thumbnailFile}
-                    url={`${WorldStorageService.API_URL}/thumbnails/${item.thumbnailFile}`}
+                    url={`${API_BASE_URL}/thumbnails/${item.thumbnailFile}`}
                     updatedAt={item.updatedAt}
                     alt={item.name}
                     className={cn('h-full w-full', thumbFit(item.kind === 'entity' ? 'portrait' : 'landscape'))}
@@ -192,7 +210,7 @@ export function UserCreationsTab({ userId, username, onOpenListing }: UserCreati
             </li>
           ))}
         </ul>
-      </ScrollArea>
+      </ListFrame>
     </div>
   );
 }

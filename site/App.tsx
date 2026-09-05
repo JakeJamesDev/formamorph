@@ -1,13 +1,16 @@
 import { useEffect } from 'react';
 import { LoginPage } from './pages/LoginPage';
 import { NotFoundPage } from './pages/NotFoundPage';
+import { OwnProfilePage } from './pages/OwnProfilePage';
+import { ProfilePage } from './pages/ProfilePage';
 import { RegisterPage } from './pages/RegisterPage';
-import { useSiteLocation } from './router';
+import { profileUsername, useSiteLocation } from './router';
 
-/** Every path this entry serves, and the tab title that goes with it. */
+/** Every fixed path this entry serves, and the tab title that goes with it. */
 const ROUTES = {
   '/login': { title: 'Sign In · Formamorph', page: LoginPage },
   '/register': { title: 'Create Account · Formamorph', page: RegisterPage },
+  '/profile': { title: 'Your Profile · Formamorph', page: OwnProfilePage },
 } as const;
 
 /** A trailing slash is the same route. Live, the hosting rules redirect it away before the page loads;
@@ -17,13 +20,23 @@ const normalize = (pathname: string) =>
 
 export function App() {
   const { pathname } = useSiteLocation();
-  const route = ROUTES[normalize(pathname) as keyof typeof ROUTES];
+  const path = normalize(pathname);
 
-  // The document is one file for every route, so its title is set here rather than in the markup.
+  const fixed = ROUTES[path as keyof typeof ROUTES];
+  const username = fixed ? null : profileUsername(path);
+
+  // The document is one file for every route, so its title is set here rather than in the markup. A
+  // profile is the exception: it names an account that may turn out not to exist, so it titles itself
+  // once the server has answered and this leaves it the plain name until then.
   useEffect(() => {
-    document.title = route?.title ?? 'Formamorph';
-  }, [route]);
+    document.title = fixed?.title ?? 'Formamorph';
+  }, [fixed]);
 
-  const Page = route?.page ?? NotFoundPage;
-  return <Page />;
+  if (fixed) {
+    const Page = fixed.page;
+    return <Page />;
+  }
+  if (username) return <ProfilePage username={username} />;
+
+  return <NotFoundPage />;
 }

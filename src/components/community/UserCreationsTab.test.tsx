@@ -4,7 +4,7 @@ import { UserCreationsTab } from './UserCreationsTab';
 import UserService from '@/services/UserService';
 import type { ProfileCreation } from '@/types';
 
-vi.mock('@/services/WorldStorageService', () => ({ default: { API_URL: 'https://server.test/api' } }));
+vi.mock('@/lib/apiBase', () => ({ API_BASE_URL: 'https://server.test/api' }));
 // The thumbnail cache is IndexedDB-backed; the rows here are about what the list says, not what it draws.
 vi.mock('@/lib/useCachedThumbnail', () => ({
   CachedThumbnail: ({ alt }: { alt: string }) => <img alt={alt} src="thumb" />,
@@ -174,5 +174,30 @@ describe('a quarantined listing', () => {
     await screen.findByText('Sedge Landing');
 
     expect(screen.queryByText('Hidden')).toBeNull();
+  });
+});
+
+describe('how much room the list is given', () => {
+  /** The capped scroller, found by the cap itself — the whole of what the two layouts differ by. */
+  const scroller = (root: HTMLElement) => root.querySelector('[class*="h-[15.5rem]"]');
+
+  it('scrolls inside a fixed box in a dialog, which is a popup with a height to keep', async () => {
+    listing([creation()]);
+    const { container } = render(<UserCreationsTab userId="u1" username="wren_hallow" />);
+
+    await screen.findByText('Sedge Landing');
+    expect(scroller(container)).not.toBeNull();
+  });
+
+  it('runs at its natural length on a page, where the list is what the reader came for', async () => {
+    listing([creation()]);
+    const { container } = render(
+      <UserCreationsTab userId="u1" username="wren_hallow" layout="page" />
+    );
+
+    await screen.findByText('Sedge Landing');
+    expect(scroller(container)).toBeNull();
+    // The pad that offsets the scroller's gutter goes with it, or the column sits off-center.
+    expect(container.querySelector('[class*="pl-[11px]"]')).toBeNull();
   });
 });

@@ -5,7 +5,7 @@ import UserService from '@/services/UserService';
 import type { FeedItem, FollowedUser } from '@/types';
 
 vi.mock('react-toastify', () => ({ toast: { error: vi.fn(), success: vi.fn(), info: vi.fn() } }));
-vi.mock('@/services/WorldStorageService', () => ({ default: { API_URL: 'https://server.test/api' } }));
+vi.mock('@/lib/apiBase', () => ({ API_BASE_URL: 'https://server.test/api' }));
 
 const item = (over: Partial<FeedItem> = {}): FeedItem => ({
   id: 'w1',

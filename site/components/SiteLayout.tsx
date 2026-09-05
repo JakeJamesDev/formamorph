@@ -1,19 +1,28 @@
 import type { ReactNode } from 'react';
+import { cn } from '@/lib/utils';
 
 interface SiteLayoutProps {
-  /** Sits above the panel, in the landing page's heading size. */
-  title: string;
+  /** Sits above the panel, in the landing page's heading size. Absent leaves the panel to head itself. */
+  title?: string;
   /** One line under the title. */
   subtitle?: string;
+  /** A form is read down one column; a profile is a page. */
+  width?: 'form' | 'page';
   children: ReactNode;
 }
+
+/** How wide the column runs. A form stays at a comfortable reading measure whatever the window does. */
+const WIDTHS = {
+  form: 'max-w-[420px]',
+  page: 'max-w-[640px]',
+} as const;
 
 /**
  * The frame every account page shares: the landing page's mark on top, its footer underneath, and a
  * narrow card between them. The landing page is one static file with no build step, so its look is
  * matched here rather than imported.
  */
-export function SiteLayout({ title, subtitle, children }: SiteLayoutProps) {
+export function SiteLayout({ title, subtitle, width = 'form', children }: SiteLayoutProps) {
   return (
     <div className="flex min-h-[100dvh] flex-col">
       <header className="border-b border-border">
@@ -26,10 +35,12 @@ export function SiteLayout({ title, subtitle, children }: SiteLayoutProps) {
       </header>
 
       <main className="mx-auto flex w-full max-w-[1100px] flex-1 items-start justify-center px-6 py-12">
-        <div className="w-full max-w-[420px]">
-          <h1 className="text-display font-semibold tracking-tight">{title}</h1>
+        <div className={cn('w-full', WIDTHS[width])}>
+          {title && <h1 className="text-display font-semibold tracking-tight">{title}</h1>}
           {subtitle && <p className="mt-2 text-body text-muted-foreground">{subtitle}</p>}
-          <div className="mt-6 rounded-xl border border-border bg-card p-6">{children}</div>
+          <div className={cn('rounded-xl border border-border bg-card p-6', title && 'mt-6')}>
+            {children}
+          </div>
         </div>
       </main>
 

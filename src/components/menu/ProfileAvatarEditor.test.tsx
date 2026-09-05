@@ -4,7 +4,7 @@ import { ProfileAvatarEditor } from './ProfileAvatarEditor';
 import AuthService from '@/services/AuthService';
 
 vi.mock('react-toastify', () => ({ toast: { error: vi.fn(), success: vi.fn(), info: vi.fn() } }));
-vi.mock('@/services/WorldStorageService', () => ({ default: { API_URL: 'https://server.test/api' } }));
+vi.mock('@/lib/apiBase', () => ({ API_BASE_URL: 'https://server.test/api' }));
 
 // The crop dialog decodes a real image, which jsdom cannot do; its own geometry is tested directly.
 vi.mock('./AvatarCropDialog', () => ({

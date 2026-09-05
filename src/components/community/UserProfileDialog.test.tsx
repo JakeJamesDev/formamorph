@@ -4,7 +4,7 @@ import { UserProfileDialog } from './UserProfileDialog';
 import UserService from '@/services/UserService';
 import AuthService from '@/services/AuthService';
 
-vi.mock('@/services/WorldStorageService', () => ({ default: { API_URL: 'https://server.test/api' } }));
+vi.mock('@/lib/apiBase', () => ({ API_BASE_URL: 'https://server.test/api' }));
 vi.mock('react-toastify', () => ({ toast: { error: vi.fn(), success: vi.fn(), info: vi.fn() } }));
 
 /** Sign in as somebody, so the follow control has a reader to be offered to. */

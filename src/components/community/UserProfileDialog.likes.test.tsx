@@ -7,7 +7,7 @@ import UserService from '@/services/UserService';
 import AuthService from '@/services/AuthService';
 import type { LikeGiven } from '@/types';
 
-vi.mock('@/services/WorldStorageService', () => ({ default: { API_URL: 'https://server.test/api' } }));
+vi.mock('@/lib/apiBase', () => ({ API_BASE_URL: 'https://server.test/api' }));
 vi.mock('react-toastify', () => ({ toast: { error: vi.fn(), success: vi.fn(), info: vi.fn() } }));
 
 /** Sign in as somebody with a role, so the staff gate has a reader to judge. */
