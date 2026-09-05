@@ -1,8 +1,9 @@
 name: 'Deploy formamorph.ai'
 description: >
-  Assemble the Cloudflare Pages upload root from the tracked site and one app build, guard the
-  per-file size cap, deploy, and check the live contract. Shared by the release path (which passes
-  the build it just made) and the site-only path (which passes the latest released build).
+  Assemble the Cloudflare Pages upload root from the tracked site, the account-pages entry it builds
+  here, and one app build; guard the per-file size cap, deploy, and check the live contract. Shared by
+  the release path (which passes the build it just made) and the site-only path (which passes the
+  latest released build).
 
 inputs:
   web-zip:
@@ -22,8 +23,23 @@ inputs:
 runs:
   using: composite
   steps:
-    # Every byte under /play/ comes from the zip; everything else comes from the tracked hosting dir,
-    # which is the site's source of truth — landing page, config, and images alike.
+    # Built here, from the checked-out source, rather than shipped in the app artifact. The site-only
+    # path pairs this run's pages with an app build from the latest release, so a page edit has to reach
+    # the deploy without a release — and that build's zip predates it.
+    - uses: actions/setup-node@v7
+      with:
+        node-version-file: '.nvmrc'
+        cache: npm
+    - name: Build the account pages
+      shell: bash
+      run: |
+        set -euo pipefail
+        npm ci
+        npm run build:site
+
+    # Every byte under /play/ comes from the zip and every byte under /site-app/ from the entry built
+    # above; everything else comes from the tracked hosting dir, which is the site's source of truth —
+    # landing page, config, and images alike.
     - name: Assemble the upload root
       shell: bash
       # Through the environment rather than inline `${{ }}`, so the path is data to the shell.
@@ -32,11 +48,13 @@ runs:
       run: |
         set -euo pipefail
         rm -rf out
-        mkdir -p out/play
+        mkdir -p out/play out/site-app
         unzip -q "$WEB_ZIP" -d out/play
         cp -r hosting/. out/
-        echo "app:  $(find out/play -type f | wc -l) files"
-        echo "site: $(find out -type f -not -path 'out/play/*' | wc -l) files"
+        cp -r site-dist/. out/site-app/
+        echo "app:   $(find out/play -type f | wc -l) files"
+        echo "pages: $(find out/site-app -type f | wc -l) files"
+        echo "site:  $(find out -type f -not -path 'out/play/*' -not -path 'out/site-app/*' | wc -l) files"
         echo "$(find out -type f | wc -l) files, $(du -sh out | cut -f1) total"
 
     # Pages rejects any file at or over 25 MiB, and the ONNX runtime wasm sits a few MiB under it. A

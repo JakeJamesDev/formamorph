@@ -21,5 +21,5 @@
       "@/*": ["./src/*"]
     }
   },
-  "include": ["src", "e2e", "playwright.config.ts", "capacitor.config.ts"]
+  "include": ["src", "site", "e2e", "playwright.config.ts", "capacitor.config.ts"]
 }

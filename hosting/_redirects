@@ -4,3 +4,24 @@
 # The app's asset URLs are relative. Without the trailing slash the browser resolves them one level
 # too high and the page loads blank.
 /play    /play/    301
+
+# The account pages are one document with client-side routing, which the deploy lays down at
+# /site-app/. Each route is rewritten onto it — status 200, not a redirect — so the address bar keeps
+# the path the page reads. Rewrites are same-site only, which is all these are.
+/login             /site-app/index.html    200
+/register          /site-app/index.html    200
+/account           /site-app/index.html    200
+/profile           /site-app/index.html    200
+/reset-password    /site-app/index.html    200
+/verify-email      /site-app/index.html    200
+/u/*               /site-app/index.html    200
+
+# The same paths with a trailing slash. Pages matches this file before it looks for an asset, so
+# without these a typed /login/ 404s at the edge and never reaches the page. One canonical URL each,
+# so the slashed form redirects rather than serving a second copy. /u/* already covers /u/name/.
+/login/            /login                  301
+/register/         /register               301
+/account/          /account                301
+/profile/          /profile                301
+/reset-password/   /reset-password         301
+/verify-email/     /verify-email           301

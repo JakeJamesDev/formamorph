@@ -10,7 +10,9 @@
   },
   "scripts": {
     "dev": "vite",
+    "dev:site": "vite --config vite.site.config.js",
     "build": "vite build",
+    "build:site": "vite build --config vite.site.config.js",
     "lint": "eslint .",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",

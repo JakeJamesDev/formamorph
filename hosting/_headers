@@ -4,6 +4,11 @@
 /play/assets/*
   Cache-Control: public, max-age=31536000, immutable
 
+# The account pages' own bundle, hashed the same way. Its HTML is deliberately not listed: it is served
+# through a rewrite, so the request path is /login rather than a path under /site-app/.
+/site-app/assets/*
+  Cache-Control: public, max-age=31536000, immutable
+
 # The model and animation files keep their names across releases. A day, so a replacement reaches
 # players without a network round trip on every visit.
 /play/*.vrm

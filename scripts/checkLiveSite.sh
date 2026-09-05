@@ -82,6 +82,17 @@ battery() {
   esac
   check_glob "$SITE_ASSET cache-control" "*max-age=86400*" "$(cache_control "$BASE_AI$SITE_ASSET")"
 
+  # The account pages. /login is served by a rewrite onto /site-app/index.html, so this proves the
+  # entry's build reached the upload root AND that the rule fired. The body check is what tells the two
+  # apart: a missing rule would serve the landing page here, which is also HTML and also 200.
+  check "/login status" "200" "$(curl -sS --max-time 20 -o /dev/null -w '%{http_code}' "$BASE_AI/login")"
+  check "/login content-type" "text/html" "$(content_type "$BASE_AI/login")"
+  LOGIN_BODY=$(curl -sS --max-time 20 "$BASE_AI/login")
+  case "$LOGIN_BODY" in
+    *'id="root"'*) echo "ok    /login serves the account entry" >> "$REPORT" ;;
+    *) echo "FAIL  /login serves the account entry - the served page is not it" >> "$REPORT"; fail=1 ;;
+  esac
+
   # The privacy policy. Collection on the server is only lawful once this page is public, so the deploy
   # that publishes it has to prove it, not assume it. Redirects are followed: the page is a directory
   # index, and whether Pages answers /privacy directly or sends it to /privacy/ is Cloudflare's call.

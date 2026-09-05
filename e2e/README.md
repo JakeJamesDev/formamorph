@@ -23,6 +23,10 @@ npm run test:e2e:install
 The runner starts its own dev server on **5183** (`--strictPort`), so it never fights the servers on
 5180–5182. An already-running one on 5183 is reused; set `E2E_PORT` to move it.
 
+Two more servers come up beside it, because the site is not the app: **5185** serves `hosting/`
+statically for the landing page (`E2E_SITE_PORT`), and **5186** runs the account pages' own Vite entry
+(`E2E_PAGES_PORT`). Specs against either navigate to an absolute URL rather than the baseURL.
+
 ## What belongs here
 
 Only failures that a browser can see and jsdom structurally cannot:
@@ -111,6 +115,14 @@ Two caveats worth knowing:
   Setting `scrollTop` from a script leaves exactly one chevron mounted and reproduces nothing;
   `mouse.wheel` reproduces the reflow (the list jumped 334 → 358px before the fix). Any future scroll
   spec has to use real input.
+
+[site-pages.spec.ts](e2e/site-pages.spec.ts) — the formamorph.ai account pages: the login page inside a
+phone's width with no horizontal overflow, the register page and the not-found fallback, and the palette.
+
+> **The palette guard reads the landing page, not a copy.** It opens `hosting/index.html` on 5185, reads
+> `--bg` and `--accent` off it, and compares those to the computed ground and button fill on 5186. The
+> tolerance is three channels, because the tokens the shadcn primitives read are whole-number HSL and
+> cannot land on an arbitrary hex. Putting the app's own dark background back turns it red.
 
 ## The contest flow needs a server
 
