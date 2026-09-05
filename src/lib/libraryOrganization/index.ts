@@ -9,4 +9,5 @@ export * from './operations';
 export * from './packer';
 export * from './placements';
 export * from './cellSim';
+export * from './gestureReader';
 export * from './codec';
