@@ -1,0 +1,620 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>PROTOTYPE — Tile Drag: Cell Sim vs Push / Swap</title>
+<style>
+  :root {
+    --bg: #14161a; --panel: #1d2026; --line: #2c3038; --text: #e8eaed; --dim: #9aa0a8;
+    --accent: #e8a33d; --ok: #4cc38a; --bad: #e5534b;
+    --cell: 44px; --gap: 6px;
+  }
+  * { box-sizing: border-box; margin: 0; }
+  body { background: var(--bg); color: var(--text); font: 14px/1.5 system-ui, sans-serif; padding: 28px; }
+  h1 { font-size: 20px; margin-bottom: 4px; }
+  h1 .tag { color: var(--bad); font-size: 12px; border: 1px solid var(--bad); border-radius: 4px; padding: 1px 6px; vertical-align: middle; margin-left: 8px; }
+  .question { color: var(--dim); max-width: 980px; margin-bottom: 20px; }
+  .question b { color: var(--text); }
+
+  .tabs { display: flex; gap: 6px; margin-bottom: 10px; flex-wrap: wrap; }
+  .tabs button { background: var(--panel); color: var(--dim); border: 1px solid var(--line); border-radius: 6px; padding: 6px 12px; cursor: pointer; font: inherit; }
+  .tabs button.active { color: var(--text); border-color: var(--accent); }
+  .scenario { background: var(--panel); border: 1px solid var(--line); border-radius: 8px; padding: 14px 16px; max-width: 980px; margin-bottom: 20px; }
+  .scenario p { color: var(--dim); margin-bottom: 8px; }
+  .scenario p b { color: var(--text); }
+  .scenario button { background: var(--accent); color: #14161a; border: 0; border-radius: 6px; padding: 6px 14px; font: inherit; font-weight: 600; cursor: pointer; }
+
+  .boards { display: flex; gap: 32px; flex-wrap: wrap; }
+  .side { flex: 0 0 auto; }
+  .side h2 { font-size: 15px; margin-bottom: 2px; }
+  .side .sub { color: var(--dim); font-size: 12px; margin-bottom: 10px; max-width: 410px; min-height: 90px; }
+  .side .sub b { color: var(--text); }
+  .board { position: relative; background: var(--panel); border: 1px solid var(--line); border-radius: 10px; }
+
+  .tile { position: absolute; border-radius: 8px; display: flex; align-items: flex-end; padding: 6px 8px;
+    font-size: 12px; font-weight: 600; color: #14161a; cursor: grab; user-select: none;
+    transition: top .15s ease, left .15s ease, width .15s ease, height .15s ease; }
+  .tile.hidden { visibility: hidden; }
+  .tile.groupTarget { box-shadow: inset 0 0 0 3px var(--accent); }
+  .outline { position: absolute; border: 2px dashed var(--ok); border-radius: 8px; pointer-events: none;
+    z-index: 5; transition: top .15s ease, left .15s ease; }
+  .outline.bad { border-color: var(--bad); }
+  .outline.waiting { border-color: var(--dim); }
+  #ghost { position: fixed; opacity: .5; pointer-events: none; z-index: 10; border-radius: 8px;
+    display: flex; align-items: flex-end; padding: 6px 8px; font-size: 12px; font-weight: 600; color: #14161a; }
+
+  .status { margin-top: 10px; max-width: 410px; }
+  .status .event { min-height: 40px; font-size: 13px; color: var(--text); }
+  .status .moved { color: var(--accent); font-weight: 600; }
+  .status .blockedline { color: var(--bad); }
+  .chips { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 8px; }
+  .chip { background: var(--bg); border: 1px solid var(--line); border-radius: 4px; padding: 1px 6px; font-size: 11px; color: var(--dim); }
+
+  .controls { margin: 18px 0 10px; display: flex; gap: 14px; align-items: center; flex-wrap: wrap; }
+  .controls button { background: var(--panel); color: var(--text); border: 1px solid var(--line); border-radius: 6px; padding: 6px 12px; cursor: pointer; font: inherit; }
+  .controls .hint { color: var(--dim); font-size: 12px; }
+  .knob { color: var(--dim); font-size: 12px; display: flex; gap: 8px; align-items: center; }
+  .knob output { color: var(--text); min-width: 46px; }
+
+  #servernote { color: var(--bad); border: 1px solid var(--bad); border-radius: 6px;
+    padding: 8px 12px; max-width: 980px; margin-bottom: 16px; }
+  #servernote code { color: var(--text); }
+</style>
+</head>
+<body>
+
+<h1>Tile Drag: Cell Sim vs Push / Swap <span class="tag">PROTOTYPE — throwaway</span></h1>
+<div id="servernote">
+  This page imports the app's real simulation, so it needs the dev server:
+  <code>npm run dev -- --port 5180</code>, then open
+  <code>http://localhost:5180/docs-internal/specs/tile-drag-push-swap/prototype.html</code>.
+  Opened from a plain file, nothing below will respond.
+</div>
+<p class="question">
+  <b>The pivot:</b> today a tile dodges the moment the carried footprint sweeps it, so the board reflows
+  under the hand on every cell of travel. The new design mirrors an Android home screen. Nothing moves
+  until the hand has <b>rested</b> on a spot. A rest on the <b>same row or the same column</b> as the pickup
+  <b>pushes</b> the tiles between the two spots back toward the hole, far enough to clear. A rest on a <b>different row and
+  column</b> <b>swaps</b> the tile under the hand into the hole. Every preview is computed from the
+  pre-drag board, so leaving a spot undoes what it did. Left board is what ships; right board is the
+  proposal. Same seed, same gesture. Double-click a tile to cycle its size.
+</p>
+
+<div class="tabs" id="tabs"></div>
+<div class="scenario" id="scenario"></div>
+
+<div class="controls">
+  <button id="reset">Reset Both Boards</button>
+  <label class="knob">Rest before a move:
+    <input type="range" id="dwell" min="0" max="600" step="50" value="250">
+    <output id="dwellOut">250 ms</output>
+  </label>
+  <label class="knob">Preview:
+    <label><input type="radio" name="previewMode" value="live" checked> tiles move live after the rest</label>
+    <label><input type="radio" name="previewMode" value="release"> outline only, tiles move on release</label>
+  </label>
+  <label class="knob">Push distance:
+    <label><input type="radio" name="pushRule" value="span" checked> one carried span</label>
+    <label><input type="radio" name="pushRule" value="clear"> until the target is clear</label>
+  </label>
+  <span class="hint">Esc cancels a drag.</span>
+</div>
+
+<div class="boards">
+  <div class="side">
+    <h2>Current — Cell Simulation (shipped)</h2>
+    <div class="sub">The board runs the shipped sim through the whole gesture. Every cell the footprint sweeps dodges behind the trailing edge at once; a bigger tile hops once half its cells are swept. The carried tile's hole is the only landing signal. <b>Grouping:</b> rest on a tile the drag cannot move and it rings after a beat; release folds the carried tile into it.</div>
+    <div class="board" id="boardS"></div>
+    <div class="status"><div class="event" id="eventS">Drag a tile.</div><div class="chips" id="chipsS"></div></div>
+  </div>
+  <div class="side">
+    <h2>New — Push / Swap (Android home)</h2>
+    <div class="sub">The outline follows the hand and turns gray while it waits for the rest. After the rest: <b>same row or column</b> pushes every tile between pickup and target toward the hole, by one carried span, or until the target is clear (radio above). <b>Different row and column</b> swaps the tiles under the target into the hole, shape and offset intact. A push or swap that would land off the board or on a bystander is <b>blocked</b> (red); release there snaps the tile home. An open spot moves nothing else.</div>
+    <div class="board" id="boardN"></div>
+    <div class="status"><div class="event" id="eventN">Drag a tile.</div><div class="chips" id="chipsN"></div></div>
+  </div>
+</div>
+
+<script type="module">
+/* The shipped sim and packer come straight from the app through the dev server, so the left board
+   cannot drift from what ships. The Push / Swap rule on the right is local: it is the proposal. */
+import { createCellSim } from '/src/lib/libraryOrganization/cellSim.ts';
+import { packTiles, TILE_SPAN } from '/src/lib/libraryOrganization/packer.ts';
+import { collapseBoard } from '/src/lib/libraryOrganization/placements.ts';
+
+document.getElementById('servernote').remove();
+
+const CELL = 44, GAP = 6, PITCH = CELL + GAP, COLS = 8, PAD = 10;
+const BOARDS = ['S', 'N'];
+const NEXT_SIZE = { small: 'medium', medium: 'large', large: 'small' };
+const SIZE_OF_SPAN = { 1: 'small', 2: 'medium', 4: 'large' };
+
+const CATALOG = {
+  Atlas:   { size: 'large',  color: '#d9a05b' },
+  Beacon:  { size: 'medium', color: '#7fb6d9' },
+  Cinder:  { size: 'medium', color: '#d97f7f' },
+  Drift:   { size: 'small',  color: '#8fd97f' },
+  Ember:   { size: 'small',  color: '#d9c47f' },
+  Flint:   { size: 'small',  color: '#b39fd9' },
+  Gale:    { size: 'small',  color: '#7fd9c9' },
+  Harbor:  { size: 'medium', color: '#d99fc4' },
+  Iris:    { size: 'small',  color: '#9fb3d9' },
+  Juniper: { size: 'medium', color: '#a8d97f' },
+};
+const SEED_ORDER = Object.keys(CATALOG);
+/* Hand-placed boards: the packer lays small runs column-first, which hides the row and column cases. */
+const T = (id, row, col) => ({ id, row, col, span: TILE_SPAN[CATALOG[id].size] });
+const ROW_BOARD = [
+  T('Drift', 0, 0), T('Ember', 0, 1), T('Flint', 0, 2), T('Gale', 0, 3), T('Iris', 0, 4), T('Beacon', 0, 5),
+  T('Cinder', 2, 0), T('Harbor', 2, 2), T('Juniper', 2, 4), T('Atlas', 4, 0),
+];
+const COLUMN_BOARD = [
+  T('Drift', 0, 0), T('Ember', 1, 0), T('Flint', 2, 0), T('Gale', 3, 0), T('Iris', 4, 0),
+  T('Beacon', 0, 2), T('Cinder', 0, 4), T('Harbor', 2, 2), T('Juniper', 2, 4), T('Atlas', 4, 2),
+];
+const LARGE_BOARD = [
+  T('Atlas', 0, 0), T('Beacon', 0, 4), T('Cinder', 0, 6),
+  T('Drift', 2, 4), T('Ember', 2, 5), T('Flint', 3, 4), T('Gale', 3, 5), T('Harbor', 2, 6),
+  T('Juniper', 4, 0), T('Iris', 4, 4),
+];
+
+const SCENARIOS = [
+  {
+    name: 'Free Play',
+    text: 'Both boards start from the same arrangement. Drag anything on the left to feel the shipped dodge; repeat the gesture on the right and watch it wait, then push or swap.',
+    order: SEED_ORDER,
+  },
+  {
+    name: 'Same Row Push',
+    text: 'The top row is five smalls and a medium. Drag <b>Drift</b> right and rest it on <b>Gale</b>. Left: Ember, Flint, and Gale each dodged the instant they were swept. Right: nothing moves until the rest, then all three slide one cell left in one motion, like an Android icon row. Rest on the near corner of <b>Beacon</b> (medium) instead and flip the push-distance radio: one carried span cannot clear a two-cell tile, so it blocks; pushing until clear moves the row two cells, which shoves Ember off the board, so it blocks too. Open question: which refusal reads as fair, or should a bigger target swap instead?',
+    layout: ROW_BOARD,
+  },
+  {
+    name: 'Same Column Push',
+    text: 'The left column is five smalls. Drag <b>Drift</b> straight down and rest it on <b>Gale</b>. Right: Ember, Flint, and Gale push up one cell together. Then try <b>Beacon</b> (medium, top) down onto <b>Harbor</b>: Harbor pushes up whole into the slot Beacon left. Try <b>Cinder</b> down onto the top of <b>Atlas</b>: the large would push up two cells and is blocked by Juniper.',
+    layout: COLUMN_BOARD,
+  },
+  {
+    name: 'Diagonal Swap',
+    text: 'Drag <b>Ember</b> (row 2) down and left onto <b>Iris</b>. Left: whatever the footprint swept on the way already dodged. Right: after the rest, Iris swaps into the hole Ember left; nothing on the path was touched. Now rest <b>Drift</b> on a corner of <b>Juniper</b> (medium): Juniper tries to swap whole into a one-cell hole beside Atlas and is blocked.',
+    layout: LARGE_BOARD,
+  },
+  {
+    name: 'Large Onto Smalls',
+    text: 'Drag <b>Atlas</b> (large) right along its row and rest it at the far edge. Same row: everything in the band, the four smalls and three mediums, pushes left by one large span. Then drag Atlas down and right onto the block of smalls (different row and column): the smalls, Harbor, and Iris all swap into the block Atlas left, offsets intact, so they read as one swapped unit.',
+    layout: LARGE_BOARD,
+  },
+  {
+    name: 'Leave A Hole',
+    text: 'Pick up <b>Beacon</b> (medium, top row) and carry it to open space at the bottom. Both boards leave its old slot empty. Neither repacks; a release still folds away any fully dead row or column, as shipped.',
+    order: ['Beacon', 'Atlas', 'Cinder', 'Harbor', 'Juniper', 'Drift', 'Ember', 'Flint', 'Gale', 'Iris'],
+  },
+];
+
+/* ── Push / Swap rule (the proposal). Pure over the pre-drag board. ── */
+const overlap = (a, b) =>
+  a.row < b.row + (b.spanR ?? b.span) && b.row < a.row + (a.spanR ?? a.span)
+  && a.col < b.col + (b.spanC ?? b.span) && b.col < a.col + (a.spanC ?? a.span);
+
+function previewPushSwap(tiles, draggedId, want, cols) {
+  const dragged = tiles.find((t) => t.id === draggedId);
+  const span = dragged.span;
+  const pinned = {
+    id: draggedId, span,
+    row: Math.max(0, want.row),
+    col: Math.min(Math.max(0, want.col), cols - span),
+  };
+  const others = tiles.filter((t) => t.id !== draggedId);
+  const home = pinned.row === dragged.row && pinned.col === dragged.col;
+  if (home) return { blocked: false, pinned, tiles: others, moved: [], kind: 'home' };
+  const hit = others.filter((t) => overlap(pinned, t));
+  if (!hit.length) return { blocked: false, pinned, tiles: others, moved: [], kind: 'open' };
+
+  const sameRow = pinned.row === dragged.row, sameCol = pinned.col === dragged.col;
+  let movers, vec, kind;
+  if (sameRow || sameCol) {
+    kind = 'push';
+    // The band: everything between the pickup footprint and the target footprint, both included.
+    const band = {
+      row: Math.min(dragged.row, pinned.row), col: Math.min(dragged.col, pinned.col),
+      spanR: Math.abs(pinned.row - dragged.row) + span, spanC: Math.abs(pinned.col - dragged.col) + span,
+    };
+    movers = others.filter((t) => overlap(band, t));
+    // Push by one carried span (the Android icon rule), or far enough that nothing in the band still
+    // sits under the carried tile (a small on a medium's corner pushes the row two cells). The radio
+    // picks; both block in some layouts, and the prototype exists to feel which block is fairer.
+    const axis = sameRow ? 'col' : 'row';
+    const forward = pinned[axis] > dragged[axis];
+    let dist = span;
+    if (pushRule === 'clear') {
+      for (const t of hit) {
+        const need = forward ? (t[axis] + t.span) - pinned[axis] : (pinned[axis] + span) - t[axis];
+        dist = Math.max(dist, need);
+      }
+    }
+    vec = { row: 0, col: 0 };
+    vec[axis] = forward ? -dist : dist;
+  } else {
+    kind = 'swap';
+    movers = hit;
+    vec = { row: dragged.row - pinned.row, col: dragged.col - pinned.col };
+  }
+  const stay = others.filter((t) => !movers.includes(t));
+  const moved = movers.map((t) => ({ ...t, row: t.row + vec.row, col: t.col + vec.col }));
+  for (const m of moved) {
+    if (m.row < 0 || m.col < 0 || m.col + m.span > cols)
+      return { blocked: true, pinned, kind, why: `${m.id} would leave the board` };
+    if (overlap(m, pinned))
+      return { blocked: true, pinned, kind, why: `${m.id} would still sit under ${draggedId}` };
+    const bystander = stay.find((s) => overlap(s, m));
+    if (bystander)
+      return { blocked: true, pinned, kind, why: `${m.id} would land on ${bystander.id}` };
+  }
+  return { blocked: false, pinned, tiles: [...stay, ...moved], moved: moved.map((m) => m.id), kind };
+}
+
+/* ── Page shell ── */
+let sizes, stored = { S: null, N: null };
+const els = Object.fromEntries(BOARDS.map((b) => [b, new Map()]));
+
+function seed(scenario) {
+  sizes = Object.fromEntries(Object.entries(CATALOG).map(([id, v]) => [id, v.size]));
+  const start = scenario.layout ?? packTiles(scenario.order, sizes, COLS);
+  for (const board of BOARDS) {
+    stored[board] = start.map((t) => ({ ...t }));
+    els[board].forEach((el) => el.remove());
+    els[board].clear();
+    setEvent(board, 'Drag a tile.', '');
+    render(board, stored[board]);
+  }
+}
+
+function px(t) {
+  return { left: PAD + t.col * PITCH, top: PAD + t.row * PITCH, size: t.span * CELL + (t.span - 1) * GAP };
+}
+
+function render(board, layout) {
+  const host = document.getElementById('board' + board);
+  const rows = Math.max(8, layout.reduce((m, t) => Math.max(m, t.row + t.span), 0) + 1);
+  host.style.width = PAD * 2 + COLS * PITCH - GAP + 'px';
+  host.style.height = PAD * 2 + rows * PITCH - GAP + 'px';
+  for (const t of layout) {
+    let el = els[board].get(t.id);
+    if (!el) {
+      el = document.createElement('div');
+      el.className = 'tile';
+      el.textContent = t.id;
+      el.style.backgroundColor = CATALOG[t.id].color;
+      el.dataset.id = t.id;
+      el.dataset.board = board;
+      host.appendChild(el);
+      els[board].set(t.id, el);
+    }
+    const p = px(t);
+    el.style.left = p.left + 'px';
+    el.style.top = p.top + 'px';
+    el.style.width = p.size + 'px';
+    el.style.height = p.size + 'px';
+  }
+  const chips = document.getElementById('chips' + board);
+  const sorted = layout.slice().sort((a, b) => a.row - b.row || a.col - b.col);
+  chips.innerHTML = sorted.map((t) => `<span class="chip">${t.id} (${t.row},${t.col})</span>`).join('');
+}
+
+function setEvent(board, text, cls) {
+  const el = document.getElementById('event' + board);
+  el.innerHTML = text;
+  el.className = 'event ' + (cls || '');
+}
+
+function movedCount(before, after, draggedId) {
+  const map = new Map(before.map((t) => [t.id, t]));
+  return after.filter((t) => {
+    if (t.id === draggedId) return false;
+    const b = map.get(t.id);
+    return b && (b.row !== t.row || b.col !== t.col);
+  }).length;
+}
+
+/* ── Drag handling ── */
+let drag = null;
+let dwellMs = 250, previewMode = 'live', pushRule = 'span';
+const ghost = document.createElement('div');
+ghost.id = 'ghost';
+ghost.style.display = 'none';
+document.body.appendChild(ghost);
+const outline = {};
+for (const board of BOARDS) {
+  const el = document.createElement('div');
+  el.className = 'outline';
+  el.style.display = 'none';
+  document.getElementById('board' + board).appendChild(el);
+  outline[board] = el;
+}
+
+document.addEventListener('pointerdown', (e) => {
+  const tile = e.target.closest('.tile');
+  if (!tile) return;
+  const r = tile.getBoundingClientRect();
+  drag = {
+    board: tile.dataset.board, id: tile.dataset.id, started: false,
+    startX: e.clientX, startY: e.clientY,
+    grabDX: e.clientX - r.left, grabDY: e.clientY - r.top,
+    lastAnchor: null, want: null, restTimer: null,
+  };
+});
+
+document.addEventListener('pointermove', (e) => {
+  if (!drag) return;
+  if (!drag.started) {
+    if (Math.hypot(e.clientX - drag.startX, e.clientY - drag.startY) < 5) return;
+    startDrag();
+  }
+  const gLeft = e.clientX - drag.grabDX, gTop = e.clientY - drag.grabDY;
+  ghost.style.left = gLeft + 'px';
+  ghost.style.top = gTop + 'px';
+  const host = document.getElementById('board' + drag.board).getBoundingClientRect();
+  const span = stored[drag.board].find((t) => t.id === drag.id).span;
+  const want = {
+    col: Math.min(Math.max(0, Math.round((gLeft - host.left - PAD) / PITCH)), COLS - span),
+    row: Math.max(0, Math.round((gTop - host.top - PAD) / PITCH)),
+  };
+  const key = want.row + ':' + want.col;
+  if (key !== drag.lastAnchor) {
+    drag.lastAnchor = key;
+    drag.want = want;
+    if (drag.board === 'S') previewShipped(want);
+    else scheduleNew(want);
+  }
+  if (drag.board === 'S' && drag.lastRes) {
+    updateArming(drag.lastRes, {
+      row: Math.floor((e.clientY - host.top - PAD) / PITCH),
+      col: Math.floor((e.clientX - host.left - PAD) / PITCH),
+    });
+  }
+});
+
+function startDrag() {
+  drag.started = true;
+  const el = els[drag.board].get(drag.id);
+  const r = el.getBoundingClientRect();
+  ghost.textContent = drag.id;
+  ghost.style.background = CATALOG[drag.id].color;
+  ghost.style.width = r.width + 'px';
+  ghost.style.height = r.height + 'px';
+  ghost.style.display = 'flex';
+  el.classList.add('hidden');
+  drag.before = stored[drag.board].map((t) => ({ ...t }));
+  drag.valid = drag.before.map((t) => ({ ...t }));
+  if (drag.board === 'S') drag.sim = createCellSim(stored.S, drag.id, COLS);
+}
+
+/* ── Shipped board: the sim advances on every anchor change. ── */
+function previewShipped(want) {
+  const id = drag.id;
+  const res = drag.sim.advance(want);
+  if (res.blocked) {
+    render('S', [...res.tiles, ...drag.valid.filter((t) => t.id === id)]);
+    setEvent('S', res.blocker.consented
+      ? `${res.blocker.id} has nowhere to go.`
+      : `${res.blocker.id} is holding its ground.`, 'blockedline');
+  } else {
+    const config = [...res.tiles, { id, span: res.pinned.span, row: res.pinned.row, col: res.pinned.col }];
+    drag.valid = config;
+    render('S', config);
+    setEvent('S', res.moved.length
+      ? `<span class="moved">${res.moved.join(' and ')} ${res.moved.length > 1 ? 'make' : 'makes'} way.</span>`
+      : 'Drop here.');
+  }
+  drag.lastRes = res;
+}
+
+/* Shipped grouping gesture: rest on a tile the drag cannot move. */
+const GROUP_HOLD_MS = 300;
+function groupCandidate(res, pointer) {
+  const standingAt = (row, col) => {
+    const t = res.tiles.find((t) => t.row <= row && row < t.row + t.span && t.col <= col && col < t.col + t.span);
+    return t ? t.id : null;
+  };
+  const center = Math.floor(res.pinned.span / 2);
+  return (pointer && standingAt(pointer.row, pointer.col))
+    ?? standingAt(res.pinned.row + center, res.pinned.col + center);
+}
+function disarm() {
+  if (!drag) return;
+  if (drag.holdTimer) { clearTimeout(drag.holdTimer); drag.holdTimer = null; }
+  drag.holdTarget = null;
+  if (drag.armed) { els.S.get(drag.armed)?.classList.remove('groupTarget'); drag.armed = null; }
+}
+function updateArming(res, pointer) {
+  const candidate = groupCandidate(res, pointer);
+  if (candidate === (drag.holdTarget ?? drag.armed)) return;
+  disarm();
+  if (!candidate) return;
+  drag.holdTarget = candidate;
+  drag.holdTimer = setTimeout(() => {
+    if (!drag || drag.board !== 'S') return;
+    drag.holdTimer = null;
+    drag.holdTarget = null;
+    drag.armed = candidate;
+    els.S.get(candidate).classList.add('groupTarget');
+    setEvent('S', `Release to group ${drag.id} with <span class="moved">${candidate}</span>.`);
+  }, GROUP_HOLD_MS);
+}
+
+/* ── New board: the outline follows at once; tiles wait for the rest. ── */
+function scheduleNew(want) {
+  if (drag.restTimer) { clearTimeout(drag.restTimer); drag.restTimer = null; }
+  const res = previewPushSwap(drag.before, drag.id, want, COLS);
+  placeOutline('N', res.pinned, res.blocked ? 'bad' : 'waiting');
+  setEvent('N', res.blocked ? `Blocked — ${res.why}.` : 'Resting…', res.blocked ? 'blockedline' : '');
+  const apply = () => { drag.restTimer = null; applyNew(res); };
+  if (dwellMs === 0) apply();
+  else drag.restTimer = setTimeout(apply, dwellMs);
+}
+
+function applyNew(res) {
+  const id = drag.id;
+  if (res.blocked) {
+    placeOutline('N', res.pinned, 'bad');
+    render('N', drag.before);
+    setEvent('N', `Blocked — ${res.why}. Release here and ${id} snaps home.`, 'blockedline');
+    return;
+  }
+  const config = [...res.tiles, { id, span: res.pinned.span, row: res.pinned.row, col: res.pinned.col }];
+  placeOutline('N', res.pinned, '');
+  if (previewMode === 'live') render('N', config);
+  else render('N', drag.before);
+  const say = {
+    home: 'Back where it started.',
+    open: 'Open spot — nothing else moves.',
+    push: `Same ${res.pinned.row === drag.before.find((t) => t.id === id).row ? 'row' : 'column'} — <span class="moved">${res.moved.join(', ')} push${res.moved.length > 1 ? '' : 'es'} toward the hole.</span>`,
+    swap: `Different row and column — <span class="moved">${res.moved.join(', ')} swap${res.moved.length > 1 ? '' : 's'} into the hole.</span>`,
+  }[res.kind];
+  setEvent('N', say + (previewMode === 'release' ? ' (moves on release)' : ''));
+}
+
+function placeOutline(board, spot, state) {
+  const el = outline[board];
+  const p = px(spot);
+  el.style.display = 'block';
+  el.style.left = p.left + 'px';
+  el.style.top = p.top + 'px';
+  el.style.width = p.size + 'px';
+  el.style.height = p.size + 'px';
+  el.classList.toggle('bad', state === 'bad');
+  el.classList.toggle('waiting', state === 'waiting');
+}
+
+document.addEventListener('pointerup', () => {
+  if (!drag) return;
+  if (drag.started) {
+    if (drag.board === 'S' && drag.armed) {
+      const target = drag.armed, carried = drag.id;
+      stored.S = collapseBoard(drag.valid.filter((t) => t.id !== carried));
+      endDrag();
+      els.S.get(carried).remove();
+      els.S.delete(carried);
+      render('S', stored.S);
+      setEvent('S', `<span class="moved">${carried} grouped with ${target}.</span>`);
+      drag = null;
+      return;
+    }
+    if (drag.board === 'S') {
+      stored.S = collapseBoard(drag.valid);
+      render('S', stored.S);
+    } else {
+      // Release commits the spot under the hand, rest or no rest; a blocked spot snaps the tile home.
+      const res = drag.want ? previewPushSwap(drag.before, drag.id, drag.want, COLS) : null;
+      const before = drag.before;
+      if (res && !res.blocked) {
+        const config = [...res.tiles, { id: drag.id, span: res.pinned.span, row: res.pinned.row, col: res.pinned.col }];
+        stored.N = collapseBoard(config);
+        const moved = movedCount(before, stored.N, drag.id);
+        setEvent('N', `Dropped — <span class="moved">${moved} other tile${moved === 1 ? '' : 's'} moved</span>.`);
+      } else {
+        stored.N = before;
+        setEvent('N', res ? `Blocked — ${res.why}. ${drag.id} snapped home.` : 'Back where it started.', res ? 'blockedline' : '');
+      }
+      render('N', stored.N);
+    }
+    endDrag();
+  }
+  drag = null;
+});
+
+document.addEventListener('keydown', (e) => {
+  if (e.key !== 'Escape' || !drag || !drag.started) return;
+  stored[drag.board] = drag.before;
+  render(drag.board, drag.before);
+  setEvent(drag.board, 'Canceled — back to where it was.');
+  endDrag();
+  drag = null;
+});
+
+function endDrag() {
+  ghost.style.display = 'none';
+  outline[drag.board].style.display = 'none';
+  els[drag.board].get(drag.id).classList.remove('hidden');
+  if (drag.restTimer) clearTimeout(drag.restTimer);
+  if (drag.board === 'S') disarm();
+}
+
+/* ── Resize: double-click cycles a tile's size with the shipped grow-in-place rule. ── */
+const fitsAmong = (placed, cand) =>
+  cand.row >= 0 && cand.col >= 0 && cand.col + cand.span <= COLS && !placed.some((t) => overlap(t, cand));
+function bestSpot(placed, tile, score) {
+  const limit = placed.reduce((m, t) => Math.max(m, t.row + t.span), 0) + tile.span;
+  let best = null;
+  for (let row = 0; row <= limit; row++)
+    for (let col = 0; col <= COLS - tile.span; col++) {
+      const cand = { ...tile, row, col };
+      if (!fitsAmong(placed, cand)) continue;
+      const s = score(row, col);
+      if (!best || s < best.s) best = { s, cand };
+    }
+  return best.cand;
+}
+const nearTo = (tile) => (row, col) => (row - tile.row) ** 2 + (col - tile.col) ** 2;
+function growInPlace(others, grown) {
+  const placed = [grown, ...others.filter((t) => !overlap(t, grown))];
+  const bumped = others.filter((t) => overlap(t, grown))
+    .sort((a, b) => nearTo(grown)(a.row, a.col) - nearTo(grown)(b.row, b.col));
+  for (const t of bumped) placed.push(bestSpot(placed, t, nearTo(t)));
+  return placed;
+}
+document.addEventListener('dblclick', (e) => {
+  const tile = e.target.closest('.tile');
+  if (!tile) return;
+  const id = tile.dataset.id;
+  const current = stored[tile.dataset.board].find((x) => x.id === id).span;
+  const size = NEXT_SIZE[SIZE_OF_SPAN[current]];
+  const span = TILE_SPAN[size];
+  for (const board of BOARDS) {
+    const before = stored[board];
+    const old = before.find((x) => x.id === id);
+    const grown = { ...old, span, col: Math.min(old.col, COLS - span) };
+    const others = before.filter((x) => x.id !== id);
+    stored[board] = collapseBoard(span <= old.span ? [...others, grown] : growInPlace(others, grown));
+    render(board, stored[board]);
+    const moved = movedCount(before, stored[board], id);
+    setEvent(board, `${id} is now ${size} — <span class="moved">${moved} other tile${moved === 1 ? '' : 's'} moved</span>.`);
+  }
+});
+
+/* ── Tabs, controls ── */
+const tabsEl = document.getElementById('tabs');
+const scenarioEl = document.getElementById('scenario');
+SCENARIOS.forEach((s, i) => {
+  const b = document.createElement('button');
+  b.textContent = s.name;
+  b.onclick = () => selectScenario(i);
+  tabsEl.appendChild(b);
+});
+function selectScenario(i) {
+  [...tabsEl.children].forEach((b, j) => b.classList.toggle('active', i === j));
+  const s = SCENARIOS[i];
+  scenarioEl.innerHTML = `<p>${s.text}</p>`;
+  const b = document.createElement('button');
+  b.textContent = 'Set Up Both Boards';
+  b.onclick = () => seed(s);
+  scenarioEl.appendChild(b);
+  seed(s);
+}
+document.getElementById('reset').onclick = () => seed(SCENARIOS[0]);
+const dwellEl = document.getElementById('dwell');
+dwellEl.oninput = () => {
+  dwellMs = Number(dwellEl.value);
+  document.getElementById('dwellOut').textContent = dwellMs + ' ms';
+};
+document.querySelectorAll('input[name=pushRule]').forEach((r) => {
+  r.onchange = () => { pushRule = r.value; };
+});
+document.querySelectorAll('input[name=previewMode]').forEach((r) => {
+  r.onchange = () => { previewMode = r.value; };
+});
+
+selectScenario(0);
+</script>
+</body>
+</html>
