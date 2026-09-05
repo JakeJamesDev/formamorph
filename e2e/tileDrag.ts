@@ -454,3 +454,50 @@ export function startTransformSampler(page: Page): Promise<void> {
 export function maxTransformSeen(page: Page): Promise<number> {
   return page.evaluate(() => Math.round((window as unknown as { __shiftMax: number }).__shiftMax));
 }
+
+/**
+ * Carry one tile with a finger: press, hold still until the touch sensor lets go of the scroll, travel,
+ * rest, and lift.
+ *
+ * Dispatched through the browser's own input pipeline rather than synthesized in the page, because a
+ * scripted `TouchEvent` is untrusted and the board reads the real one. The still press is the gesture's
+ * own: the touch sensor waits 200ms with the finger within a few pixels, which is what tells a drag
+ * apart from a scroll.
+ */
+export async function touchDrag(
+  page: Page,
+  start: { x: number; y: number },
+  target: { x: number; y: number },
+  options: {
+    steps?: number;
+    hold?: number;
+    aim?: 'center' | 'near' | 'far';
+    reach?: number;
+    /** Runs once the finger has arrived and rested, just before it lifts. */
+    onHeld?: () => Promise<void>;
+  } = {},
+): Promise<void> {
+  const { steps = 12, hold = 600, aim, reach, onHeld } = options;
+  const end = aimAt(start, target, aim, reach);
+  const cdp = await page.context().newCDPSession(page);
+  const point = (x: number, y: number) => [{ x, y, radiusX: 1, radiusY: 1, force: 1 }];
+  const send = (type: 'touchStart' | 'touchMove' | 'touchEnd', at?: { x: number; y: number }) =>
+    cdp.send('Input.dispatchTouchEvent', {
+      type,
+      touchPoints: at ? point(at.x, at.y) : [],
+    });
+
+  await send('touchStart', start);
+  await page.waitForTimeout(300);
+  for (let i = 1; i <= steps; i++) {
+    await send('touchMove', {
+      x: start.x + ((end.x - start.x) * i) / steps,
+      y: start.y + ((end.y - start.y) * i) / steps,
+    });
+  }
+  await page.waitForTimeout(hold);
+  await onHeld?.();
+  await send('touchEnd');
+  await page.waitForTimeout(300);
+  await cdp.detach();
+}
