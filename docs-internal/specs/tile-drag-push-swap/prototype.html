@@ -36,6 +36,11 @@
     transition: top .15s ease, left .15s ease, width .15s ease, height .15s ease; }
   .tile.hidden { visibility: hidden; }
   .tile.groupTarget { box-shadow: inset 0 0 0 3px var(--accent); }
+  .tile.folderWait { box-shadow: inset 0 0 0 2px var(--dim); }
+  .guide { position: absolute; inset: 0; pointer-events: none; z-index: 6; overflow: visible; }
+  .guide .slice { fill: var(--accent); fill-opacity: .28; stroke: var(--accent); stroke-width: 1.5; }
+  .guide .line { stroke: var(--text); stroke-width: 1.5; stroke-dasharray: 4 4; }
+  .guide .dot { fill: var(--text); }
   .outline { position: absolute; border: 2px dashed var(--ok); border-radius: 8px; pointer-events: none;
     z-index: 5; transition: top .15s ease, left .15s ease; }
   .outline.bad { border-color: var(--bad); }
@@ -76,8 +81,11 @@
   until the hand has <b>rested</b> on a spot. A rest on the <b>same row or the same column</b> as the pickup
   <b>pushes</b> the tiles between the two spots back toward the hole, far enough to clear. A rest on a <b>different row and
   column</b> <b>swaps</b> the tile under the hand into the hole. Every preview is computed from the
-  pre-drag board, so leaving a spot undoes what it did. Left board is what ships; right board is the
-  proposal. Same seed, same gesture. Double-click a tile to cycle its size.
+  pre-drag board, so leaving a spot undoes what it did. <b>Folder vs move:</b> the pointer picks the
+  target tile. A line runs from the pickup's center to the target's center; a plane perpendicular to it
+  cuts the target so the far slice covers a set share of it. Pointer in the far slice = move; anywhere
+  else on the target = folder (shown as a highlight, not a real folder). Left board is what ships;
+  right board is the proposal. Same seed, same gesture. Double-click a tile to cycle its size.
 </p>
 
 <div class="tabs" id="tabs"></div>
@@ -93,6 +101,11 @@
     <label><input type="radio" name="previewMode" value="live" checked> tiles move live after the rest</label>
     <label><input type="radio" name="previewMode" value="release"> outline only, tiles move on release</label>
   </label>
+  <label class="knob">Move slice of the target:
+    <input type="range" id="slice" min="10" max="90" step="5" value="50">
+    <output id="sliceOut">50%</output>
+  </label>
+  <label class="knob"><input type="checkbox" id="guideToggle" checked> show line and plane</label>
   <label class="knob">Push distance:
     <label><input type="radio" name="pushRule" value="span" checked> one carried span</label>
     <label><input type="radio" name="pushRule" value="clear"> until the target is clear</label>
@@ -109,7 +122,7 @@
   </div>
   <div class="side">
     <h2>New — Push / Swap (Android home)</h2>
-    <div class="sub">The outline follows the hand and turns gray while it waits for the rest. After the rest: <b>same row or column</b> pushes every tile between pickup and target toward the hole, by one carried span, or until the target is clear (radio above). <b>Different row and column</b> swaps the tiles under the target into the hole, shape and offset intact. A push or swap that would land off the board or on a bystander is <b>blocked</b> (red); release there snaps the tile home. An open spot moves nothing else.</div>
+    <div class="sub">The outline follows the hand and turns gray while it waits for the rest. After the rest: <b>same row or column</b> pushes every tile between pickup and target toward the hole, by one carried span, or until the target is clear (radio above). <b>Different row and column</b> swaps the tiles under the target into the hole, shape and offset intact. A push or swap that would land off the board or on a bystander is <b>blocked</b> (red); release there snaps the tile home. An open spot moves nothing else. <b>Folder:</b> the footprint follows the pointer's cell, and the pointer decides: past the plane is a move, short of it rests into a folder ring on the target.</div>
     <div class="board" id="boardN"></div>
     <div class="status"><div class="event" id="eventN">Drag a tile.</div><div class="chips" id="chipsN"></div></div>
   </div>
@@ -183,6 +196,11 @@ const SCENARIOS = [
     name: 'Large Onto Smalls',
     text: 'Drag <b>Atlas</b> (large) right along its row and rest it at the far edge. Same row: everything in the band, the four smalls and three mediums, pushes left by one large span. Then drag Atlas down and right onto the block of smalls (different row and column): the smalls, Harbor, and Iris all swap into the block Atlas left, offsets intact, so they read as one swapped unit.',
     layout: LARGE_BOARD,
+  },
+  {
+    name: 'Folder Or Move',
+    text: 'Drag <b>Drift</b> onto <b>Gale</b> slowly and watch the guide: a dashed line from the pickup to Gale, and the far slice of Gale filled. Rest with the pointer in the slice and the row pushes; rest short of it and Gale rings for a folder. Drag <b>Flint</b> straight down onto <b>Harbor</b> (medium): the plane is nearly horizontal, so its bottom half moves and its top half folders. Approach <b>Juniper</b> diagonally: the slice becomes a far corner wedge. The slice slider changes how much of the target counts as a move.',
+    layout: ROW_BOARD,
   },
   {
     name: 'Leave A Hole',
@@ -318,11 +336,14 @@ function movedCount(before, after, draggedId) {
 
 /* ── Drag handling ── */
 let drag = null;
-let dwellMs = 250, previewMode = 'live', pushRule = 'span';
+let dwellMs = 250, previewMode = 'live', pushRule = 'span', sliceFrac = 0.5, showGuide = true;
 const ghost = document.createElement('div');
 ghost.id = 'ghost';
 ghost.style.display = 'none';
 document.body.appendChild(ghost);
+const guide = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+guide.setAttribute('class', 'guide');
+document.getElementById('boardN').appendChild(guide);
 const outline = {};
 for (const board of BOARDS) {
   const el = document.createElement('div');
@@ -355,6 +376,26 @@ document.addEventListener('pointermove', (e) => {
   ghost.style.top = gTop + 'px';
   const host = document.getElementById('board' + drag.board).getBoundingClientRect();
   const span = stored[drag.board].find((t) => t.id === drag.id).span;
+  if (drag.board === 'N') {
+    // The pointer's cell anchors the footprint (offset by the grabbed cell), so the tile under the
+    // pointer is always under the footprint and the plane test and the move agree.
+    const p = { x: (e.clientX - host.left - PAD) / PITCH, y: (e.clientY - host.top - PAD) / PITCH };
+    const cell = { row: Math.max(0, Math.floor(p.y)), col: Math.min(COLS - 1, Math.max(0, Math.floor(p.x))) };
+    const want = {
+      row: Math.max(0, cell.row - drag.grabCell.row),
+      col: Math.min(Math.max(0, cell.col - drag.grabCell.col), COLS - span),
+    };
+    const read = readIntent(cell, p);
+    drawGuide(read);
+    const key = `${want.row}:${want.col}:${read.target ? read.target.id : '-'}:${read.intent}`;
+    if (key !== drag.lastAnchor) {
+      drag.lastAnchor = key;
+      drag.want = want;
+      drag.read = read;
+      scheduleNew(want, read);
+    }
+    return;
+  }
   const want = {
     col: Math.min(Math.max(0, Math.round((gLeft - host.left - PAD) / PITCH)), COLS - span),
     row: Math.max(0, Math.round((gTop - host.top - PAD) / PITCH)),
@@ -386,6 +427,11 @@ function startDrag() {
   el.classList.add('hidden');
   drag.before = stored[drag.board].map((t) => ({ ...t }));
   drag.valid = drag.before.map((t) => ({ ...t }));
+  const span = drag.before.find((t) => t.id === drag.id).span;
+  drag.grabCell = {
+    row: Math.min(span - 1, Math.floor(drag.grabDY / PITCH)),
+    col: Math.min(span - 1, Math.floor(drag.grabDX / PITCH)),
+  };
   if (drag.board === 'S') drag.sim = createCellSim(stored.S, drag.id, COLS);
 }
 
@@ -442,12 +488,88 @@ function updateArming(res, pointer) {
   }, GROUP_HOLD_MS);
 }
 
-/* ── New board: the outline follows at once; tiles wait for the rest. ── */
-function scheduleNew(want) {
+/* ── Folder vs move. The pointer picks the target tile. A line runs from the pickup's center to the
+   target's center; the plane perpendicular to it cuts the target so the far slice covers `sliceFrac`
+   of the target's extent along the line. Pointer in the far slice = move, else folder. ── */
+function readIntent(cell, p) {
+  const home = drag.before.find((t) => t.id === drag.id);
+  const target = drag.before.find((t) => t.id !== drag.id
+    && t.row <= cell.row && cell.row < t.row + t.span && t.col <= cell.col && cell.col < t.col + t.span) || null;
+  if (!target) return { target: null, intent: 'move' };
+  const o = { x: home.col + home.span / 2, y: home.row + home.span / 2 };
+  const c = { x: target.col + target.span / 2, y: target.row + target.span / 2 };
+  let dx = c.x - o.x, dy = c.y - o.y;
+  const len = Math.hypot(dx, dy) || 1;
+  dx /= len; dy /= len;
+  const h = (target.span / 2) * (Math.abs(dx) + Math.abs(dy));
+  const thr = h * (1 - 2 * sliceFrac);
+  const s = (p.x - c.x) * dx + (p.y - c.y) * dy;
+  return { target, intent: s >= thr ? 'move' : 'folder', o, c, d: { x: dx, y: dy }, thr };
+}
+
+/* The far slice as a polygon: the target's square clipped to the half-plane past the threshold. */
+function farSlice(read) {
+  const { target: t, c, d, thr } = read;
+  const corners = [
+    { x: t.col, y: t.row }, { x: t.col + t.span, y: t.row },
+    { x: t.col + t.span, y: t.row + t.span }, { x: t.col, y: t.row + t.span },
+  ];
+  const side = (q) => (q.x - c.x) * d.x + (q.y - c.y) * d.y - thr;
+  const out = [];
+  for (let i = 0; i < corners.length; i++) {
+    const a = corners[i], b = corners[(i + 1) % corners.length];
+    const sa = side(a), sb = side(b);
+    if (sa >= 0) out.push(a);
+    if ((sa >= 0) !== (sb >= 0)) {
+      const k = sa / (sa - sb);
+      out.push({ x: a.x + (b.x - a.x) * k, y: a.y + (b.y - a.y) * k });
+    }
+  }
+  return out;
+}
+
+const toPx = (v) => PAD + v * PITCH - GAP / 2;
+function drawGuide(read) {
+  guide.innerHTML = '';
+  if (!showGuide || !read.target) return;
+  const ns = 'http://www.w3.org/2000/svg';
+  const poly = document.createElementNS(ns, 'polygon');
+  poly.setAttribute('class', 'slice');
+  poly.setAttribute('points', farSlice(read).map((q) => `${toPx(q.x)},${toPx(q.y)}`).join(' '));
+  const line = document.createElementNS(ns, 'line');
+  line.setAttribute('class', 'line');
+  line.setAttribute('x1', toPx(read.o.x)); line.setAttribute('y1', toPx(read.o.y));
+  line.setAttribute('x2', toPx(read.c.x)); line.setAttribute('y2', toPx(read.c.y));
+  const dot = document.createElementNS(ns, 'circle');
+  dot.setAttribute('class', 'dot');
+  dot.setAttribute('cx', toPx(read.o.x)); dot.setAttribute('cy', toPx(read.o.y)); dot.setAttribute('r', 3);
+  guide.append(poly, line, dot);
+}
+
+function clearFolderFx() {
+  els.N.forEach((el) => el.classList.remove('groupTarget', 'folderWait'));
+}
+
+/* ── New board: the outline follows at once; tiles (or the folder ring) wait for the rest. ── */
+function scheduleNew(want, read) {
   if (drag.restTimer) { clearTimeout(drag.restTimer); drag.restTimer = null; }
+  clearFolderFx();
+  if (read.intent === 'folder') {
+    outline.N.style.display = 'none';
+    render('N', drag.before);
+    els.N.get(read.target.id).classList.add('folderWait');
+    setEvent('N', `Resting… short of the plane, so a folder with ${read.target.id}.`);
+    const arm = () => {
+      drag.restTimer = null;
+      els.N.get(read.target.id).classList.replace('folderWait', 'groupTarget');
+      setEvent('N', `Release to group ${drag.id} with <span class="moved">${read.target.id}</span>.`);
+    };
+    if (dwellMs === 0) arm(); else drag.restTimer = setTimeout(arm, dwellMs);
+    return;
+  }
   const res = previewPushSwap(drag.before, drag.id, want, COLS);
   placeOutline('N', res.pinned, res.blocked ? 'bad' : 'waiting');
-  setEvent('N', res.blocked ? `Blocked — ${res.why}.` : 'Resting…', res.blocked ? 'blockedline' : '');
+  setEvent('N', res.blocked ? `Blocked — ${res.why}.` : (read.target ? 'Resting… past the plane, so a move.' : 'Resting…'), res.blocked ? 'blockedline' : '');
   const apply = () => { drag.restTimer = null; applyNew(res); };
   if (dwellMs === 0) apply();
   else drag.restTimer = setTimeout(apply, dwellMs);
@@ -503,6 +625,12 @@ document.addEventListener('pointerup', () => {
     if (drag.board === 'S') {
       stored.S = collapseBoard(drag.valid);
       render('S', stored.S);
+    } else if (drag.read && drag.read.intent === 'folder') {
+      // Simulated: the real board would mint a folder where the target stands.
+      const target = drag.read.target.id;
+      stored.N = drag.before;
+      render('N', stored.N);
+      setEvent('N', `<span class="moved">${drag.id} grouped with ${target}.</span> Simulated — the real board mints a folder where ${target} stands.`);
     } else {
       // Release commits the spot under the hand, rest or no rest; a blocked spot snaps the tile home.
       const res = drag.want ? previewPushSwap(drag.before, drag.id, drag.want, COLS) : null;
@@ -538,6 +666,7 @@ function endDrag() {
   els[drag.board].get(drag.id).classList.remove('hidden');
   if (drag.restTimer) clearTimeout(drag.restTimer);
   if (drag.board === 'S') disarm();
+  if (drag.board === 'N') { clearFolderFx(); guide.innerHTML = ''; }
 }
 
 /* ── Resize: double-click cycles a tile's size with the shipped grow-in-place rule. ── */
@@ -607,6 +736,12 @@ dwellEl.oninput = () => {
   dwellMs = Number(dwellEl.value);
   document.getElementById('dwellOut').textContent = dwellMs + ' ms';
 };
+const sliceEl = document.getElementById('slice');
+sliceEl.oninput = () => {
+  sliceFrac = Number(sliceEl.value) / 100;
+  document.getElementById('sliceOut').textContent = sliceEl.value + '%';
+};
+document.getElementById('guideToggle').onchange = (e) => { showGuide = e.target.checked; };
 document.querySelectorAll('input[name=pushRule]').forEach((r) => {
   r.onchange = () => { pushRule = r.value; };
 });
