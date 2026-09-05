@@ -103,7 +103,9 @@ const ContextMenuContent = React.forwardRef<
       )}
       onPointerDownOutside={(event) => {
         onPointerDownOutside?.(event)
-        if (!event.defaultPrevented) swallowNextClick()
+        // Only a primary press ends in a click. A right-click outside closes this menu and opens the next
+        // one in the same press, and the click it would swallow is the author's first pick from that menu.
+        if (!event.defaultPrevented && event.detail.originalEvent.button === 0) swallowNextClick()
       }}
       {...props}
     />

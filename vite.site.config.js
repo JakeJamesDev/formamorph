@@ -46,6 +46,11 @@ export default defineConfig(({ command }) => ({
       ],
     },
   },
+  server: {
+    // Same seam as the game config: the e2e runner sets BASELINE_NO_WATCH so a save elsewhere in the tree
+    // cannot reload the page under a running spec.
+    ...(process.env.BASELINE_NO_WATCH ? { hmr: false, watch: null } : {}),
+  },
   build: {
     outDir: path.resolve(__dirname, 'site-dist'),
     emptyOutDir: true,

@@ -4,13 +4,15 @@ import { ContextMenu, ContextMenuContent, ContextMenuItem, ContextMenuTrigger } 
 
 // jsdom has no PointerEvent, so testing-library falls back to a plain Event and drops the pointer fields.
 // A MouseEvent carries the coordinates; the pointer type rides on top of it.
-function pointer(type: string, init: { pointerType: string; clientX: number; clientY: number }) {
-  const event = new MouseEvent(type, { bubbles: true, cancelable: true, clientX: init.clientX, clientY: init.clientY });
+function pointer(type: string, init: { pointerType: string; clientX: number; clientY: number; button?: number }) {
+  const event = new MouseEvent(type, {
+    bubbles: true, cancelable: true, clientX: init.clientX, clientY: init.clientY, button: init.button ?? 0,
+  });
   Object.defineProperty(event, 'pointerType', { value: init.pointerType });
   return event;
 }
 
-function Menu({ onOutsideClick }: { onOutsideClick?: () => void } = {}) {
+function Menu({ onOutsideClick, onSelect }: { onOutsideClick?: () => void; onSelect?: () => void } = {}) {
   return (
     <>
     <button onClick={onOutsideClick}>Elsewhere</button>
@@ -19,7 +21,7 @@ function Menu({ onOutsideClick }: { onOutsideClick?: () => void } = {}) {
         <div>Tile</div>
       </ContextMenuTrigger>
       <ContextMenuContent>
-        <ContextMenuItem>Rename</ContextMenuItem>
+        <ContextMenuItem onSelect={onSelect}>Rename</ContextMenuItem>
       </ContextMenuContent>
     </ContextMenu>
     </>
@@ -137,5 +139,24 @@ describe('ContextMenu on touch', () => {
     fireEvent(elsewhere, pointer('pointerdown', { pointerType: 'mouse', clientX: 300, clientY: 300 }));
     fireEvent.click(elsewhere);
     expect(onOutsideClick).toHaveBeenCalledTimes(1);
+  });
+
+  it('lets a right-click elsewhere move the menu, and the first pick from the moved menu lands', () => {
+    const onSelect = vi.fn();
+    render(<Menu onSelect={onSelect} />);
+    const tile = screen.getByText('Tile');
+    fireEvent.contextMenu(tile, { clientX: 100, clientY: 100 });
+    settle();
+    expect(screen.getByRole('menu')).toBeInTheDocument();
+
+    // The right button's press closes the menu; its contextmenu opens the next one. No click follows a
+    // right button, so there is nothing of this press left to swallow.
+    fireEvent(tile, pointer('pointerdown', { pointerType: 'mouse', clientX: 300, clientY: 300, button: 2 }));
+    fireEvent.contextMenu(tile, { clientX: 300, clientY: 300 });
+    settle();
+    expect(screen.getByRole('menu')).toBeInTheDocument();
+
+    fireEvent.click(screen.getByText('Rename'));
+    expect(onSelect).toHaveBeenCalledTimes(1);
   });
 });
