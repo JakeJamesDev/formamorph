@@ -44,7 +44,7 @@ export function AccountForm({
 interface FieldProps {
   id: string;
   label: string;
-  type?: 'text' | 'password';
+  type?: 'text' | 'password' | 'email';
   autoComplete: string;
   autoFocus?: boolean;
   /** One line under the box, stating the rule before the reader can break it. */

@@ -331,3 +331,183 @@ describe('a browser that refuses site data', () => {
     unsubscribe();
   });
 });
+
+describe('registration refusals', () => {
+  it('shows the taken-address sentence rather than a generic failure', async () => {
+    // The server answers refusals in `error`. Read from `message` alone, a taken address and a taken
+    // name both came out as "Registration failed", which points at neither fix.
+    vi.mocked(fetch).mockResolvedValue(
+      res({ code: 'EMAIL_TAKEN', error: 'That email address is already registered' }, false, 409));
+
+    await expect(AuthService.register('alice', 'password', 'a@b.co'))
+      .rejects.toThrow('That email address is already registered');
+  });
+
+  it('shows the taken-name sentence too', async () => {
+    vi.mocked(fetch).mockResolvedValue(res({ error: 'Username already exists' }, false, 400));
+
+    await expect(AuthService.register('alice', 'password')).rejects.toThrow('Username already exists');
+  });
+
+  it('sends the address only when one was typed', async () => {
+    vi.mocked(fetch).mockResolvedValue(res({ token: 'tok', user: { username: 'alice' } }));
+
+    await AuthService.register('alice', 'password');
+
+    const body = JSON.parse(String((vi.mocked(fetch).mock.calls[0][1] as RequestInit).body));
+    expect('email' in body).toBe(false);
+  });
+});
+
+describe('setEmail', () => {
+  it('sends the address and adopts the account the server answers with', async () => {
+    AuthService.token = 'tok';
+    vi.mocked(fetch).mockResolvedValue(res({
+      success: true,
+      user: { username: 'alice', email: 'a@b.co', emailVerified: false },
+      mailSent: true,
+    }));
+
+    const outcome = await AuthService.setEmail('a@b.co');
+
+    const [url, init] = vi.mocked(fetch).mock.calls[0];
+    expect(String(url)).toMatch(/\/auth\/email$/);
+    expect(JSON.parse(String((init as RequestInit).body))).toEqual({ email: 'a@b.co' });
+    expect(outcome).toEqual({ emailVerified: false, mailSent: true });
+    // Adopted into storage as well, because the account page and an open /play/ read it from there.
+    expect(JSON.parse(localStorage.getItem('currentUser') as string).email).toBe('a@b.co');
+  });
+
+  it('throws the server sentence when the address is taken', async () => {
+    AuthService.token = 'tok';
+    vi.mocked(fetch).mockResolvedValue(
+      res({ code: 'EMAIL_TAKEN', error: 'That email address is already registered' }, false, 409));
+
+    await expect(AuthService.setEmail('a@b.co')).rejects.toThrow('That email address is already registered');
+    // The refusal changed nothing, so the cached account must not have moved either.
+    expect(localStorage.getItem('currentUser')).toBeNull();
+  });
+
+  it('refuses without a session rather than calling the server', async () => {
+    await expect(AuthService.setEmail('a@b.co')).rejects.toThrow('Not authenticated');
+    expect(fetch).not.toHaveBeenCalled();
+  });
+});
+
+describe('resendVerification', () => {
+  it('reports that the mail went', async () => {
+    AuthService.token = 'tok';
+    vi.mocked(fetch).mockResolvedValue(res({ success: true, emailVerified: false, mailSent: true }));
+
+    expect(await AuthService.resendVerification()).toEqual({ emailVerified: false, mailSent: true });
+  });
+
+  it('reports an address that needed no mail', async () => {
+    AuthService.token = 'tok';
+    vi.mocked(fetch).mockResolvedValue(res({ success: true, emailVerified: true, mailSent: false }));
+
+    expect(await AuthService.resendVerification()).toEqual({ emailVerified: true, mailSent: false });
+  });
+
+  it('throws the limiter sentence, which is the whole point of the limiter', async () => {
+    AuthService.token = 'tok';
+    vi.mocked(fetch).mockResolvedValue(
+      res({ error: 'Too many verification mails asked for. Try again later.' }, false, 429));
+
+    await expect(AuthService.resendVerification()).rejects.toThrow(/Too many verification mails/);
+  });
+});
+
+describe('fetchEmailState', () => {
+  it('reads the address and its state off the account', async () => {
+    AuthService.token = 'tok';
+    vi.mocked(fetch).mockResolvedValue(
+      res({ success: true, user: { username: 'alice', email: 'a@b.co', emailVerified: true } }));
+
+    expect(await AuthService.fetchEmailState()).toEqual({ email: 'a@b.co', emailVerified: true });
+  });
+
+  it('leaves the cached account alone, so a late read cannot undo a change made since', async () => {
+    // `fetchUserProfile` replaces the whole record. A read started on arrival that lands after the
+    // reader has removed their avatar would put the old avatar back, which is why this one is separate.
+    AuthService.token = 'tok';
+    AuthService.currentUser = { username: 'alice', avatarUrl: null };
+    localStorage.setItem('currentUser', JSON.stringify(AuthService.currentUser));
+    vi.mocked(fetch).mockResolvedValue(res({
+      success: true,
+      user: { username: 'alice', avatarUrl: '/api/avatars/old.webp', email: 'a@b.co' },
+    }));
+
+    await AuthService.fetchEmailState();
+
+    expect(AuthService.getCurrentUser()).toEqual({ username: 'alice', avatarUrl: null });
+    expect(JSON.parse(localStorage.getItem('currentUser') as string).avatarUrl).toBeNull();
+  });
+
+  it('answers null rather than throwing when the read fails', async () => {
+    AuthService.token = 'tok';
+    vi.mocked(fetch).mockRejectedValue(new Error('Failed to fetch'));
+
+    expect(await AuthService.fetchEmailState()).toBeNull();
+  });
+
+  it('asks nothing without a session', async () => {
+    expect(await AuthService.fetchEmailState()).toBeNull();
+    expect(fetch).not.toHaveBeenCalled();
+  });
+});
+
+describe('verifyEmail', () => {
+  it('confirms the address and marks a session on this device proven', async () => {
+    AuthService.token = 'tok';
+    AuthService.currentUser = { username: 'alice', email: 'a@b.co', emailVerified: false };
+    vi.mocked(fetch).mockResolvedValue(res({ success: true, email: 'a@b.co', emailVerified: true }));
+
+    expect(await AuthService.verifyEmail('t0ken')).toEqual({ verified: true, email: 'a@b.co' });
+    expect(AuthService.getCurrentUser()?.emailVerified).toBe(true);
+  });
+
+  it('leaves a session belonging to somebody else alone', async () => {
+    // A shared computer: the mail is opened in a browser signed in as another account. Stamping that
+    // account's record would claim it holds an address it does not.
+    AuthService.token = 'tok';
+    AuthService.currentUser = { username: 'bob', email: 'bob@b.co', emailVerified: false };
+    vi.mocked(fetch).mockResolvedValue(res({ success: true, email: 'a@b.co', emailVerified: true }));
+
+    expect(await AuthService.verifyEmail('t0ken')).toEqual({ verified: true, email: 'a@b.co' });
+    expect(AuthService.getCurrentUser()).toEqual({
+      username: 'bob', email: 'bob@b.co', emailVerified: false,
+    });
+  });
+
+  it('works with no session, because the mail is read wherever it is read', async () => {
+    vi.mocked(fetch).mockResolvedValue(res({ success: true, email: 'a@b.co', emailVerified: true }));
+
+    expect(await AuthService.verifyEmail('t0ken')).toEqual({ verified: true, email: 'a@b.co' });
+    const [, init] = vi.mocked(fetch).mock.calls[0];
+    expect((init as RequestInit).headers).not.toHaveProperty('Authorization');
+  });
+
+  it('calls a spent link spent, rather than throwing', async () => {
+    vi.mocked(fetch).mockResolvedValue(res({
+      code: 'TOKEN_INVALID',
+      error: 'That verification link has expired or has already been used',
+    }, false, 400));
+
+    const outcome = await AuthService.verifyEmail('t0ken');
+
+    expect(outcome).toEqual({
+      verified: false,
+      spent: true,
+      message: 'That verification link has expired or has already been used',
+    });
+  });
+
+  it('separates a server that never answered from a link that is dead', async () => {
+    // The page offers a fresh mail for a spent link and a retry for an outage. One flag decides which,
+    // so an outage must never read as spent.
+    vi.mocked(fetch).mockRejectedValue(new Error('Failed to fetch'));
+
+    expect(await AuthService.verifyEmail('t0ken')).toMatchObject({ verified: false, spent: false });
+  });
+});
