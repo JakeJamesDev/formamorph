@@ -8,6 +8,7 @@ import {
   type DragEndEvent,
   type DragMoveEvent,
   type DragOverEvent,
+  type DragStartEvent,
 } from '@dnd-kit/core';
 import { restrictToFirstScrollableAncestor } from '@dnd-kit/modifiers';
 import { arrayMove, type SortingStrategy } from '@dnd-kit/sortable';
@@ -30,15 +31,16 @@ import {
   ContextMenuTrigger,
 } from '@/components/ui/context-menu';
 import {
-  createCellSim,
+  readGesture,
   resolvePlacements,
   rowMajor,
   spanAt,
-  type CellAnchor,
-  type CellSim,
+  SLICE_SHARE,
+  type GestureReading,
   type LibraryTileSize,
+  type PackedTile,
   type PlacementMap,
-  type SimResult,
+  type TilePlacement,
 } from '@/lib/libraryOrganization';
 import type { LibraryTiles } from '@/lib/useLibraryTiles';
 import { THUMB_RATIO, thumbFit, type ThumbAspect } from '@/lib/thumbAspect';
@@ -105,27 +107,38 @@ function useMeasuredWidth(): [
   return [measure, width, node];
 }
 
-/** The dragged tile's footprint while a gesture runs, which is what keeps the grid tall enough. */
+/** The spot the carried tile currently reads onto, which is what keeps the grid tall enough. */
 interface Claim {
   row: number;
   col: number;
   span: number;
 }
 
-/** One cell key, so an anchor that has not changed costs nothing. */
-const anchorKey = (row: number, col: number) => `${row}:${col}`;
-
 /** How long a displaced tile takes to reach its new cell. Matches the sortable rows elsewhere. */
 const SLIDE_MS = 200;
 
-/** ms the carried tile must hold over a standing tile before a release means group rather than move. */
-const GROUP_HOLD_MS = 300;
+/** ms one reading must hold still before the board acts on it. */
+const REST_MS = 250;
 
-/** The board a sim result describes: every tile's home, the dragged one included. */
-const boardOf = (result: SimResult): PlacementMap => ({
-  ...Object.fromEntries(result.tiles.map((tile) => [tile.id, { row: tile.row, col: tile.col }])),
-  [result.pinned.id]: { row: result.pinned.row, col: result.pinned.col },
-});
+/** What an armed reading is drawing: the board a release would leave, its ring, its refusal. */
+interface Preview {
+  /** The board to draw, or null to keep drawing the pre-drag one. */
+  board: PlacementMap | null;
+  /** The tile a release would folder into. */
+  folderTarget: string | null;
+  blocked: boolean;
+}
+
+/** Nothing armed. A constant, so re-clearing an already clear preview costs no render. */
+const NOTHING_ARMED: Preview = { board: null, folderTarget: null, blocked: false };
+
+/** The board a reading describes: every tile's home, the carried one included. */
+const boardOf = (tiles: PackedTile[]): PlacementMap =>
+  Object.fromEntries(tiles.map((tile) => [tile.id, { row: tile.row, col: tile.col }]));
+
+/** One reading in a word, so a pointer move that means the same thing does not restart the rest. */
+const readingKey = (reading: GestureReading): string =>
+  `${reading.anchor.row}:${reading.anchor.col}:${reading.target?.id ?? ''}:${reading.intent}`;
 
 /** True when two boards put every tile in the same cell. */
 const samePlaces = (a: PlacementMap, b: PlacementMap): boolean => {
@@ -188,9 +201,10 @@ function FolderHeader({ name, settings, onBack, onRename }: {
  * detailed layout keeps uniform cards and shows folders as cards among them. Clicking a folder swaps the
  * grid for that folder's members, with a header that renames it in place.
  *
- * A drag moves a tile, and moving always wins. Only when the carried tile holds over a tile this
- * gesture cannot move does a group drop arm — the release then folds the carried tile into the one it
- * was held over. Everything else about folders stays in the context menu.
+ * A drag reads like an Android home screen: nothing moves while the hand travels, and a rest of
+ * {@link REST_MS} arms whatever the pointer is reading. A rest past the middle of a tile moves —
+ * a shared row or column pushes, anything else swaps — and a rest short of it folders the carried tile
+ * into the target instead. Everything else about folders stays in the context menu.
  *
  * @param items - Everything the tab holds; the arrangement decides which of them the grid draws
  * @param idOf - The library id of one item, which is what the arrangement is keyed by
@@ -234,12 +248,12 @@ export function LibraryTileGrid<T>({
   onDelete?: (id: string) => void;
 }) {
   const [openGroupId, setOpenGroupId] = useState<string | null>(null);
-  // The drag in progress. The grid layout draws the LIVE board the cell simulation reports, so every
-  // dodge the gesture has earned is on screen before the player lets go. The detailed layout has no
-  // cells to simulate, so it keeps the flat list's own live reorder.
+  // The drag in progress. The grid layout draws the pre-drag board until a reading has rested, and the
+  // armed reading's board after — so the only movement on screen is one the player waited for. The
+  // detailed layout has no cells to read, so it keeps the flat list's own live reorder.
   const [activeId, setActiveId] = useState<string | null>(null);
   const [drawn, setDrawn] = useState<string[] | null>(null);
-  const [board, setBoard] = useState<PlacementMap | null>(null);
+  const [preview, setPreview] = useState<Preview>(NOTHING_ARMED);
   const [claim, setClaim] = useState<Claim | null>(null);
   // The tile elements and the board they were last painted at, which is what a slide is measured from.
   // The column count rides along, because a cell only means a distance on the board it was read from;
@@ -252,23 +266,19 @@ export function LibraryTileGrid<T>({
   } | null>(null);
   const [overlaySize, setOverlaySize] = useState<{ width: number; height: number } | null>(null);
   const drawnRef = useRef<string[] | null>(null);
-  // One simulation per gesture: the sweep it accumulates is that gesture's own history.
-  const simRef = useRef<CellSim | null>(null);
-  const anchorRef = useRef<string | null>(null);
-  // The last board the gesture could legally leave behind. A release over a blocked spot commits this
-  // one rather than the illegal claim, so the dodges stand and the tile in the way is untouched.
-  const validRef = useRef<PlacementMap | null>(null);
-  // The tile a release would group the carried one into. Armed only after the carried tile has held
-  // over a tile that stands its ground for GROUP_HOLD_MS; the ref mirrors the state for the handlers,
-  // and holdRef is the countdown toward arming.
-  const [groupTarget, setGroupTarget] = useState<string | null>(null);
-  const groupTargetRef = useRef<string | null>(null);
-  const holdRef = useRef<{ target: string; timer: number } | null>(null);
-  // The last board the sim reported, so the arming read can run on pointer moves that changed no cell.
-  const resultRef = useRef<SimResult | null>(null);
-  // The scroll viewport and its offsets at drag start: event deltas already carry the scroll since
-  // then, and the grid's rect has shifted by the same amount, so the pointer read must back one out.
-  const scrollBaseRef = useRef<{ el: HTMLElement; left: number; top: number } | null>(null);
+  // The gesture's fixed facts: the board as it stood when the drag began, which every reading is
+  // computed against, and which cell of its own footprint the player grabbed.
+  const preTilesRef = useRef<PackedTile[]>([]);
+  const carriedRef = useRef<{ id: string; grabCell: TilePlacement } | null>(null);
+  // The pointer's latest reading, which is what a release commits — armed or not, so a drag too quick
+  // to have rested still lands on the spot under the hand. `keyRef` is what the rest is waiting out.
+  const readingRef = useRef<GestureReading | null>(null);
+  const keyRef = useRef<string | null>(null);
+  const restRef = useRef<number | null>(null);
+  // Where the pointer actually is. dnd-kit's own delta is the MODIFIED translate, so the carried
+  // tile's clamp to the scroll viewport bleeds into it: near the bottom of a list the read stops
+  // short of the hand and every far-side rest reads as a near-side one. The pointer is never clamped.
+  const pointRef = useRef<{ x: number; y: number } | null>(null);
   const [measureGrid, width, gridNode] = useMeasuredWidth();
 
   const openGroup = openGroupId ? tiles.group(openGroupId) : undefined;
@@ -300,8 +310,8 @@ export function LibraryTileGrid<T>({
   );
 
   // The board on screen right now. While a grid drag runs this IS the preview: tiles hold real cells at
-  // every moment, and dnd-kit's layout animations slide them when those cells change.
-  const live = board ?? homes;
+  // every moment, and the slide effect below animates them when those cells change.
+  const live = preview.board ?? homes;
   const drawnIds = layout === 'grid' ? rowMajor(live, renderedIds) : drawn ?? renderedIds;
 
   // Row height comes from the medium tile's ratio, so a medium tile is exactly the size it always was
@@ -389,112 +399,110 @@ export function LibraryTileGrid<T>({
     setDrawnBoth(arrayMove(current, from, to));
   };
 
-  /** The cell the carried tile's top-left corner is currently over, in this grid's own coordinates. */
-  const wantedAnchor = (event: DragMoveEvent | DragOverEvent) => {
-    const grid = gridNode.current;
-    const rect = event.active.rect.current.translated;
-    if (!grid || !rect || cellWidth <= 0 || cellHeight <= 0) return null;
-    const box = grid.getBoundingClientRect();
-    return {
-      row: Math.round((rect.top - box.top) / (cellHeight + GAP)),
-      col: Math.round((rect.left - box.left) / (cellWidth + GAP)),
-    };
-  };
-
-  /** Stop any countdown and stand down an armed group target. */
-  const disarmGroup = () => {
-    if (holdRef.current) {
-      clearTimeout(holdRef.current.timer);
-      holdRef.current = null;
-    }
-    if (groupTargetRef.current) {
-      groupTargetRef.current = null;
-      setGroupTarget(null);
-    }
-  };
-
-  /** The cell the pointer itself is on, from the press point plus how far the drag has come. */
-  const pointerCell = (event: DragMoveEvent | DragOverEvent): CellAnchor | null => {
-    const grid = gridNode.current;
-    const pressed = getEventCoordinates(event.activatorEvent);
-    if (!grid || !pressed || cellWidth <= 0 || cellHeight <= 0) return null;
-    const box = grid.getBoundingClientRect();
-    const base = scrollBaseRef.current;
-    const scrollX = base ? base.el.scrollLeft - base.left : 0;
-    const scrollY = base ? base.el.scrollTop - base.top : 0;
-    const x = pressed.x + event.delta.x - scrollX - box.left;
-    const y = pressed.y + event.delta.y - scrollY - box.top;
-    if (x < 0 || y < 0) return null;
-    return { row: Math.floor(y / (cellHeight + GAP)), col: Math.floor(x / (cellWidth + GAP)) };
-  };
-
   /**
-   * The tile a release right now could mean grouping into: the one standing under the pointer, or
-   * failing that under the middle of the claim — the finger says the intent, the footprint backs it
-   * up. A tile that could make way already has — the sim moves whatever consents on the same
-   * advance — so a tile still standing there is one this gesture cannot move. Folders never nest, so a
-   * carried folder has no candidate, and neither does a drag inside a folder view.
-   */
-  const groupCandidate = (result: SimResult, pointer: CellAnchor | null): string | null => {
-    if (openGroupId || tiles.group(result.pinned.id)) return null;
-    const standingAt = (row: number, col: number) => result.tiles.find((tile) =>
-      tile.row <= row && row < tile.row + tile.span
-      && tile.col <= col && col < tile.col + tile.span)?.id ?? null;
-    const center = Math.floor(result.pinned.span / 2);
-    return (pointer && standingAt(pointer.row, pointer.col))
-      ?? standingAt(result.pinned.row + center, result.pinned.col + center);
-  };
-
-  /**
-   * Grouping never overrides moving: it arms only after the carried tile has held over the same
-   * standing tile for GROUP_HOLD_MS. Passing across a tile changes the candidate and resets the
-   * countdown, and a tile that dodges away stops being the candidate the moment it moves.
-   */
-  const updateArming = (result: SimResult, pointer: CellAnchor | null) => {
-    const candidate = groupCandidate(result, pointer);
-    if (candidate === (holdRef.current?.target ?? groupTargetRef.current)) return;
-    disarmGroup();
-    if (!candidate) return;
-    holdRef.current = {
-      target: candidate,
-      timer: window.setTimeout(() => {
-        holdRef.current = null;
-        groupTargetRef.current = candidate;
-        setGroupTarget(candidate);
-      }, GROUP_HOLD_MS),
-    };
-  };
-
-  /**
-   * The per-move reading, for the grid layout: step the gesture's simulation to the cell the tile is
-   * over and draw whatever board that leaves. Cells the footprint sweeps dodge behind it at once, and a
-   * whole group follows only once the gesture has swept half of it, so a big tile clipped at the corner
-   * simply stands there.
+   * Where the pointer sits on the board, in base cells.
    *
-   * A blocked claim still draws the dodges that really happened; only the claim itself is refused, and
-   * the release then commits the last board the gesture could legally leave.
+   * The grid's own box carries the scroll, so a point on the screen and that box are the whole reading:
+   * the board sliding under a still hand moves the reading with it, as it should. Half the gutter is
+   * counted into the cell on each side of it, so a tile's own middle reads as its middle — otherwise
+   * the gutters pile up on one side and the reading drifts a fraction of a cell per column, which is
+   * enough to put a rest on a tile's center in the wrong half of it.
    */
-  const simulateDrag = (event: DragMoveEvent | DragOverEvent) => {
-    const sim = simRef.current;
-    const want = sim && wantedAnchor(event);
-    if (!sim || !want) return;
-
-    const key = anchorKey(want.row, want.col);
-    if (key !== anchorRef.current) {
-      anchorRef.current = key;
-      const result = sim.advance(want);
-      resultRef.current = result;
-      const next = boardOf(result);
-      setClaim(result.pinned);
-      setBoard(next);
-      // A blocked board is drawn — the dodges it holds really happened — but never remembered, so the
-      // release falls back to the last one the gesture could legally have left behind.
-      if (!result.blocked) validRef.current = next;
-    }
-    // Re-read on every move, not just anchor changes: the pointer can cross onto a tile — and change
-    // what a release would mean — while the claim itself has not moved a cell.
-    if (resultRef.current) updateArming(resultRef.current, pointerCell(event));
+  const pointerOn = () => {
+    const grid = gridNode.current;
+    const at = pointRef.current;
+    if (!grid || !at || cellWidth <= 0 || cellHeight <= 0) return null;
+    const box = grid.getBoundingClientRect();
+    const x = (at.x - box.left + GAP / 2) / pitch.x;
+    const y = (at.y - box.top + GAP / 2) / pitch.y;
+    if (x < 0 || y < 0) return null;
+    return { pointer: { x, y }, cell: { row: Math.floor(y), col: Math.floor(x) } };
   };
+
+  /** Stop the rest countdown and put the board back to what it was drawing before anything armed. */
+  const disarm = () => {
+    if (restRef.current !== null) {
+      clearTimeout(restRef.current);
+      restRef.current = null;
+    }
+    setPreview(NOTHING_ARMED);
+  };
+
+  /**
+   * Folders never nest, and a folder's own view holds no folders to make. Where neither can happen the
+   * reader is handed a far slice that covers the whole target, so every rest on it reads as a move.
+   */
+  const sliceFor = (carriedId: string) =>
+    (openGroupId || tiles.group(carriedId) ? 1 : SLICE_SHARE);
+
+  /**
+   * The per-move reading, for the grid layout: what the pointer means against the board as it stood
+   * when the drag began. Nothing is drawn from it yet — a reading has to hold still for {@link REST_MS}
+   * before the board acts on it, so travel across the board moves nothing at all.
+   *
+   * The claim follows the reading rather than the rest, because it only keeps the grid tall enough to
+   * point into: a spot the player cannot reach is a spot they cannot rest on.
+   */
+  const readDrag = () => {
+    const carried = carriedRef.current;
+    const read = carried && pointerOn();
+    if (!carried || !read) return;
+
+    const reading = readGesture({
+      tiles: preTilesRef.current,
+      carriedId: carried.id,
+      columns: baseCols,
+      grabCell: carried.grabCell,
+      pointerCell: read.cell,
+      pointer: read.pointer,
+      share: sliceFor(carried.id),
+    });
+    readingRef.current = reading;
+    const key = readingKey(reading);
+    if (key === keyRef.current) return;
+    keyRef.current = key;
+    setClaim({ ...reading.anchor, span: spanOf(carried.id) });
+    disarm();
+    restRef.current = window.setTimeout(() => {
+      restRef.current = null;
+      setPreview({
+        // A blocked reading and a folder reading both leave the board alone: one because it cannot
+        // happen, the other because grouping is not a rearrangement.
+        board: reading.blocked || reading.intent === 'folder' ? null : boardOf(reading.tiles),
+        folderTarget: reading.intent === 'folder' ? reading.target?.id ?? null : null,
+        blocked: reading.blocked,
+      });
+    }, REST_MS);
+  };
+
+  const readRef = useRef(readDrag);
+  useEffect(() => { readRef.current = readDrag; });
+
+  /**
+   * The pointer itself drives the reading, on the same two streams dnd-kit's sensors read.
+   *
+   * dnd-kit's own move event carries the MODIFIED translate, so the carried tile's clamp to the scroll
+   * viewport does two things to it: it shifts the position, and once the clamp bites the event stops
+   * firing entirely — the drag goes deaf exactly where a player is reaching for the last row.
+   * `pointermove` is no good either, because the browser coalesces those to the frame and a reading
+   * would run several moves behind the hand. dnd-kit's event is still wired up alongside this, because
+   * a list scrolling under a still hand moves the board without moving the pointer.
+   */
+  useEffect(() => {
+    if (!activeId || layout !== 'grid') return;
+    const track = (event: Event) => {
+      const at = getEventCoordinates(event as MouseEvent | TouchEvent);
+      if (!at) return;
+      pointRef.current = at;
+      readRef.current();
+    };
+    window.addEventListener('mousemove', track, { capture: true, passive: true });
+    window.addEventListener('touchmove', track, { capture: true, passive: true });
+    return () => {
+      window.removeEventListener('mousemove', track, { capture: true });
+      window.removeEventListener('touchmove', track, { capture: true });
+    };
+  }, [activeId, layout]);
 
   /**
    * The per-move reading for the detailed layout, which has no cells to simulate. Crossing onto a card
@@ -515,21 +523,20 @@ export function LibraryTileGrid<T>({
       const initial = event.active.rect.current.initial;
       if (initial) setOverlaySize({ width: initial.width, height: initial.height });
     }
-    if (layout === 'grid') simulateDrag(event);
+    if (layout === 'grid') readDrag();
     else slideAside(event);
   };
 
   const resetDrag = () => {
-    disarmGroup();
-    resultRef.current = null;
-    scrollBaseRef.current = null;
+    disarm();
+    pointRef.current = null;
     settledRef.current = null;
     drawnRef.current = null;
-    simRef.current = null;
-    anchorRef.current = null;
-    validRef.current = null;
+    preTilesRef.current = [];
+    carriedRef.current = null;
+    readingRef.current = null;
+    keyRef.current = null;
     setDrawn(null);
-    setBoard(null);
     setClaim(null);
     setActiveId(null);
     setOverlaySize(null);
@@ -537,20 +544,22 @@ export function LibraryTileGrid<T>({
 
   const handleDragEnd = (event: DragEndEvent) => {
     if (layout === 'grid') {
-      // The last board the gesture could legally leave. Every dodge that really happened is in it, and a
-      // claim that was refused simply never landed.
-      const target = groupTargetRef.current;
-      const settled = validRef.current;
+      // The reading under the hand at the moment of release, armed or not: a drag too quick to have
+      // rested still lands where it was let go. A blocked reading commits nothing at all.
+      const reading = readingRef.current;
+      const id = String(event.active.id);
       resetDrag();
-      if (settled && !samePlaces(settled, homes)) {
-        tiles.commitPlacements(baseCols, settled, renderedIds, openGroupId);
-      }
-      // An armed release groups on top of the settled board: the dodges stand, and the carried tile
-      // folds into the tile it was held over rather than landing anywhere.
-      if (target) {
-        const id = String(event.active.id);
+      if (!reading || reading.blocked) return;
+
+      if (reading.intent === 'folder' && reading.target) {
+        const target = reading.target.id;
         if (tiles.group(target)) tiles.addTo(id, target);
         else tiles.groupWith(id, target);
+        return;
+      }
+      const settled = boardOf(reading.tiles);
+      if (!samePlaces(settled, homes)) {
+        tiles.commitPlacements(baseCols, settled, renderedIds, openGroupId);
       }
       return;
     }
@@ -571,8 +580,8 @@ export function LibraryTileGrid<T>({
     if (!sameIds(order, renderedIds)) tiles.commitOrder(order, openGroupId);
   };
 
-  const handleDragStart = ({ active }: { active: { id: string | number } }) => {
-    const id = String(active.id);
+  const handleDragStart = (event: DragStartEvent) => {
+    const id = String(event.active.id);
     resetDrag();
     setActiveId(id);
     if (layout !== 'grid') {
@@ -580,26 +589,31 @@ export function LibraryTileGrid<T>({
       setDrawn(drawnRef.current);
       return;
     }
-    if (!homes[id]) return;
 
-    simRef.current = createCellSim(
-      renderedIds
-        .filter((tileId) => homes[tileId])
-        .map((tileId) => ({ id: tileId, ...homes[tileId], span: spanOf(tileId) })),
+    const home = homes[id];
+    const grid = gridNode.current;
+    const pressed = getEventCoordinates(event.activatorEvent);
+    if (!home || !grid || !pressed || cellWidth <= 0 || cellHeight <= 0) return;
+
+    // Seeded from the press, because the first reading can arrive before the tracker is listening.
+    pointRef.current = { x: pressed.x, y: pressed.y };
+
+    // Which cell of its own footprint the player took hold of. It only decides where an open-space
+    // drop lands: over a target the reader snaps the footprint and the grab offset drops out.
+    const box = grid.getBoundingClientRect();
+    const span = spanOf(id);
+    const inside = (cell: number) => Math.min(Math.max(0, cell), span - 1);
+    carriedRef.current = {
       id,
-      baseCols,
-    );
-    // Seeded with a no-move advance, so the arming read is live from the first pointer move rather
-    // than from the first anchor change.
-    resultRef.current = simRef.current.advance(homes[id]);
-    const scroller = gridNode.current?.closest('[data-radix-scroll-area-viewport]');
-    scrollBaseRef.current = scroller instanceof HTMLElement
-      ? { el: scroller, left: scroller.scrollLeft, top: scroller.scrollTop }
-      : null;
-    validRef.current = homes;
-    anchorRef.current = anchorKey(homes[id].row, homes[id].col);
-    setBoard(homes);
-    setClaim({ ...homes[id], span: spanOf(id) });
+      grabCell: {
+        row: inside(Math.floor((pressed.y - box.top + GAP / 2) / pitch.y) - home.row),
+        col: inside(Math.floor((pressed.x - box.left + GAP / 2) / pitch.x) - home.col),
+      },
+    };
+    preTilesRef.current = renderedIds
+      .filter((tileId) => homes[tileId])
+      .map((tileId) => ({ id: tileId, ...homes[tileId], span: spanOf(tileId) }));
+    setClaim({ ...home, span });
   };
 
   /** The context menu for one tile: its size, then whatever grouping applies to it. */
@@ -696,7 +710,7 @@ export function LibraryTileGrid<T>({
               else tileNodes.current.delete(id);
             }}
             style={style}
-            data-group-target={id === groupTarget ? '' : undefined}
+            data-group-target={id === preview.folderTarget ? '' : undefined}
             className={cn(
               'relative min-w-0',
               layout === 'detailed' && 'h-full',
@@ -708,7 +722,7 @@ export function LibraryTileGrid<T>({
           >
             {/* Inner highlight, per the app standard — an outer ring clips against neighbors. Drawn as
                 an overlay because an inset ring on the wrapper itself would paint behind the card. */}
-            {id === groupTarget && (
+            {id === preview.folderTarget && (
               <div className="pointer-events-none absolute inset-0 z-10 rounded-lg ring-2 ring-inset ring-primary" />
             )}
             {group ? (
@@ -748,14 +762,18 @@ export function LibraryTileGrid<T>({
    * this is a plain clone rather than a second render of the card.
    *
    * Half opacity, and nothing else: the flat grid carried the card itself at exactly this, with no
-   * shadow or ring under the hand.
+   * shadow or ring under the hand. The one exception is a spot that cannot take the tile, which says so
+   * under the hand rather than waiting for the release to do nothing.
    */
   const overlayContent = (id: string) => {
     const group = tiles.group(id);
     const item = byId.get(id);
     const thumb = item ? thumbnailOf(item) : undefined;
     return (
-      <div className="h-full w-full overflow-hidden rounded-lg bg-card opacity-50">
+      <div className={cn(
+        'h-full w-full overflow-hidden rounded-lg bg-card opacity-50',
+        preview.blocked && 'ring-2 ring-inset ring-destructive',
+      )}>
         {group ? (
           <div className="grid h-full w-full grid-cols-2 grid-rows-2 gap-px">
             {Array.from({ length: 4 }, (_, i) => {
@@ -819,7 +837,11 @@ export function LibraryTileGrid<T>({
           flash. On release the overlay vanishes and the tile stands in its slot, same paint. */}
       <DragOverlay dropAnimation={null}>
         {activeId && overlaySize && (
-          <div style={overlaySize} className="pointer-events-none">
+          <div
+            style={overlaySize}
+            className="pointer-events-none"
+            data-drag-blocked={preview.blocked ? '' : undefined}
+          >
             {overlayContent(activeId)}
           </div>
         )}

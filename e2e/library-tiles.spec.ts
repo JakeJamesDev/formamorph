@@ -158,7 +158,7 @@ test.describe('tile sizes', () => {
       .poll(async () => (await tiles(page).first().boundingBox())!.width)
       .toBeLessThan(medium);
 
-    await dragTile(page, 2, 0);
+    await dragTile(page, 2, 0, { aim: 'far' });
 
     // Sizing and ordering are independent features: a large tile takes the slot a medium one would.
     expect(await tileOrder(page)).toEqual([names[2], names[0], names[1], ...names.slice(3)]);
