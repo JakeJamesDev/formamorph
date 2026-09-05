@@ -23,6 +23,11 @@ export interface GestureInput {
   pointerCell: TilePlacement;
   /** Where the pointer sits within that cell, for the move-versus-folder split. */
   pointer: BoardPoint;
+  /**
+   * The carried footprint's top-left corner as the player sees it, in base cells. Over open board it
+   * decides the landing cell; without it the pointer cell minus the grabbed cell stands in.
+   */
+  ghost?: BoardPoint;
   /** Share of the target the far slice covers. Defaults to {@link SLICE_SHARE}. */
   share?: number;
 }
@@ -141,15 +146,26 @@ function applyMove(
   };
 }
 
-const clampAnchor = (anchor: TilePlacement, span: number, columns: number): TilePlacement => ({
-  row: Math.max(0, anchor.row),
+/** Rows the board stood tall before the drag, the carried tile counted. */
+const boardRows = (tiles: PackedTile[]): number =>
+  tiles.reduce((rows, tile) => Math.max(rows, tile.row + tile.span), 0);
+
+/**
+ * Keep the footprint on the board sideways, and no further down than the row right below it: a tile
+ * can start a new band under the board, never a band under that.
+ */
+const clampAnchor = (
+  anchor: TilePlacement, span: number, columns: number, rows: number,
+): TilePlacement => ({
+  row: Math.min(Math.max(0, anchor.row), rows),
   col: Math.min(Math.max(0, anchor.col), columns - span),
 });
 
 /**
  * Where the carried footprint lands.
  *
- * Over open board it follows the pointer, offset by the cell the player grabbed. Over a target the
+ * Over open board it is the nearest cell to the ghost's corner, or the pointer cell offset by the
+ * grabbed cell when no ghost is given. Over a target the
  * grab offset drops out and size fixes the range instead: a bigger carried tile has to contain the
  * target, a smaller one has to sit inside it, equal sizes take its cells. Spots in that range are
  * tried nearest the pickup first, so a big tile settles back toward home, and the first whose move
@@ -161,15 +177,16 @@ function snapAnchor(
   target: PackedTile | null,
   grabCell: TilePlacement,
   pointerCell: TilePlacement,
+  ghost: BoardPoint | undefined,
   columns: number,
+  rows: number,
 ): TilePlacement {
   const span = carried.span;
   if (!target) {
-    return clampAnchor(
-      { row: pointerCell.row - grabCell.row, col: pointerCell.col - grabCell.col },
-      span,
-      columns,
-    );
+    const open = ghost
+      ? { row: Math.round(ghost.y), col: Math.round(ghost.x) }
+      : { row: pointerCell.row - grabCell.row, col: pointerCell.col - grabCell.col };
+    return clampAnchor(open, span, columns, rows);
   }
 
   const range = (start: number, extent: number): [number, number] => {
@@ -181,7 +198,7 @@ function snapAnchor(
   const candidates: TilePlacement[] = [];
   for (let row = firstRow; row <= lastRow; row++) {
     for (let col = firstCol; col <= lastCol; col++) {
-      const spot = clampAnchor({ row, col }, span, columns);
+      const spot = clampAnchor({ row, col }, span, columns, rows);
       if (!candidates.some((seen) => seen.row === spot.row && seen.col === spot.col)) {
         candidates.push(spot);
       }
@@ -240,7 +257,8 @@ export function readGesture(input: GestureInput): GestureReading {
   const target = others.find((tile) => covers(tile, input.pointerCell)) ?? null;
   const intent = readIntent(carried, target, input.pointer, input.share ?? SLICE_SHARE);
   const anchor = snapAnchor(
-    others, carried, target, input.grabCell, input.pointerCell, columns,
+    others, carried, target, input.grabCell, input.pointerCell, input.ghost, columns,
+    boardRows(input.tiles),
   );
   const outcome = intent === 'folder'
     ? { tiles: others, moved: [], blocked: false, reason: null }

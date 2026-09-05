@@ -176,7 +176,8 @@ describe('readGesture — anchor', () => {
   });
 
   it('follows the pointer cell minus the grabbed cell over open board', () => {
-    const tiles = board([['c', 0, 0, 2], ['t', 0, 2, 2]]);
+    // `deep` keeps the board six rows tall, so row 4 is on it.
+    const tiles = board([['c', 0, 0, 2], ['t', 0, 2, 2], ['deep', 4, 6, 2]]);
 
     const reading = readGesture({
       tiles, carriedId: 'c', columns: 8, grabCell: grab(1, 1), ...from(5.5, 5.5),
@@ -259,7 +260,7 @@ describe('readGesture — move', () => {
   });
 
   it('moves nothing when the footprint lands on open cells', () => {
-    const tiles = board([['c', 0, 0, 2], ['t', 0, 2, 2]]);
+    const tiles = board([['c', 0, 0, 2], ['t', 0, 2, 2], ['deep', 4, 6, 2]]);
 
     const reading = readGesture({
       tiles, carriedId: 'c', columns: 8, grabCell: grab(0, 0), ...from(4.5, 4.5),
@@ -330,5 +331,49 @@ describe('readGesture — blocked', () => {
     expect(reading.blocked).toBe(true);
     expect(reading.reason).toBe('big would still sit under c');
     expect(at(reading, 'big')).toEqual([0, 0]);
+  });
+});
+
+describe('readGesture — open board', () => {
+  const tiles = board([['c', 0, 0, 2], ['t', 0, 2, 2], ['b', 2, 0, 2]]);
+
+  it('lands on the cell nearest the ghost corner, not the cell under the pointer', () => {
+    // Grabbed by its far corner: the pointer sits in column 5 while the ghost's corner is at 3.6.
+    const reading = readGesture({
+      tiles, carriedId: 'c', columns: 8, grabCell: grab(1, 1), ...from(5.6, 3.6),
+      ghost: { x: 3.6, y: 1.6 },
+    });
+
+    expect(reading.anchor).toEqual({ row: 2, col: 4 });
+    expect(reading.moved).toEqual([]);
+    expectSound(reading, 8);
+  });
+
+  it('rounds the ghost down while its corner sits short of the next cell', () => {
+    const reading = readGesture({
+      tiles, carriedId: 'c', columns: 8, grabCell: grab(0, 0), ...from(4.4, 2.4),
+      ghost: { x: 4.4, y: 2.4 },
+    });
+
+    expect(reading.anchor).toEqual({ row: 2, col: 4 });
+  });
+
+  it('goes no further down than the row right below the board', () => {
+    const reading = readGesture({
+      tiles, carriedId: 'c', columns: 8, grabCell: grab(0, 0), ...from(0.5, 30.5),
+      ghost: { x: 0.2, y: 30.2 },
+    });
+
+    expect(reading.anchor).toEqual({ row: 4, col: 0 });
+    expect(reading.blocked).toBe(false);
+    expectSound(reading, 8);
+  });
+
+  it('caps the pointer reading the same way without a ghost', () => {
+    const reading = readGesture({
+      tiles, carriedId: 'c', columns: 8, grabCell: grab(0, 0), ...from(0.5, 30.5),
+    });
+
+    expect(reading.anchor).toEqual({ row: 4, col: 0 });
   });
 });

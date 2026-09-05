@@ -209,6 +209,67 @@ test.describe('mixed-size tile drag', () => {
     await page.getByRole('heading', { name: 'New Group' }).click();
     expect(await tileOrder(page)).toEqual([names[0], names[1]]);
   });
+
+  test('a drag below the board stops one band under it, and the board stops growing', async ({ page }) => {
+    // Tall enough that three rows below the last tile are still on screen, so nothing auto-scrolls.
+    await page.setViewportSize({ width: 1100, height: 1200 });
+    await openLibrary(page);
+    const names = await tileOrder(page);
+    const before = await boardCells(page);
+    const carried = names[names.length - 1];
+    const boardRows = Math.max(...Object.values(before).map((cell) => cell.row + cell.span));
+    const span = before[carried].span;
+
+    let rowsWhileHeld = 0;
+    await dragTileToCell(page, carried, { row: boardRows + 3, col: before[carried].col }, {
+      onHeld: async () => {
+        rowsWhileHeld = await page.evaluate(() => {
+          const grid = document.querySelector('[data-radix-scroll-area-viewport] div.grid') as HTMLElement;
+          return getComputedStyle(grid).gridTemplateRows.split(' ').length;
+        });
+      },
+    });
+
+    // The claim reaches the band right below the board and no further, however low the hand goes.
+    expect(rowsWhileHeld).toBe(boardRows + span);
+    expect((await boardCells(page))[carried].row).toBe(boardRows);
+  });
+
+  test('an open-space drop lands where the ghost corner is, not where the pointer is', async ({ page }) => {
+    await page.setViewportSize({ width: 1100, height: 1200 });
+    await openLibrary(page);
+    const names = await tileOrder(page);
+    const before = await boardCells(page);
+    const carried = names[names.length - 1];
+    const home = before[carried];
+
+    // Grabbed just inside its corner and carried 1.6 rows down: the ghost's corner is nearest the
+    // second row, while the pointer itself has only crossed into the first.
+    const pitch = await gridPitch(page);
+    const start = {
+      x: pitch.left + home.col * pitch.x + pitch.x * 0.15,
+      y: pitch.top + home.row * pitch.y + pitch.y * 0.15,
+    };
+    await dragBetween(page, start, { x: start.x, y: start.y + pitch.y * 1.6 });
+
+    expect((await boardCells(page))[carried]).toEqual({ ...home, row: home.row + 2 });
+  });
+
+  test('a tile let go over open space stands in its cell at once, with no slide', async ({ page }) => {
+    await openLibrary(page);
+    const names = await tileOrder(page);
+    const before = await boardCells(page);
+    const carried = names[names.length - 1];
+
+    // Sampled from before the press through the release: over open space nothing is displaced, so any
+    // push by a transform is the released tile itself sliding home-to-cell across the commit.
+    await startTransformSampler(page);
+    await dragTileToCell(page, carried, { row: before[carried].row + 2, col: before[carried].col }, { hold: 0 });
+    await page.waitForTimeout(300);
+
+    expect((await boardCells(page))[carried].row).toBe(before[carried].row + 2);
+    expect(await maxTransformSeen(page)).toBe(0);
+  });
 });
 
 test.describe('the board fills the width it has', () => {
