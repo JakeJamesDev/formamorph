@@ -1,6 +1,18 @@
 apply plugin: 'com.android.application'
 apply plugin: 'kotlin-android'
 
+// One version string across every platform: package.json's, which the release workflow's guard keeps
+// equal to the tag. The version code packs it as major * 1,000,000 + minor * 1,000 + patch. A
+// pre-release suffix is dropped, so a beta shares its stable version's code and Android takes the
+// stable build over it as a reinstall.
+def packageVersion = new groovy.json.JsonSlurper().parse(file('../../package.json')).version as String
+def versionParts = packageVersion.tokenize('-')[0].tokenize('.').collect { it.toInteger() }
+def packageVersionCode = versionParts[0] * 1000000 + versionParts[1] * 1000 + versionParts[2]
+
+// Release signing comes from the environment the release workflow sets. Without it the release build
+// stays unsigned, which suits a local check and can never install on a phone.
+def keystorePath = System.getenv('ANDROID_KEYSTORE_PATH')
+
 android {
     namespace = "ai.formamorph.app"
     compileSdk = rootProject.ext.compileSdkVersion
@@ -8,8 +20,8 @@ android {
         applicationId "ai.formamorph.app"
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
-        versionCode 1
-        versionName "1.0"
+        versionCode packageVersionCode
+        versionName packageVersion
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
         aaptOptions {
              // Files and dirs to omit from the packaged assets dir, modified to accommodate modern web apps.
@@ -17,10 +29,22 @@ android {
             ignoreAssetsPattern = '!.svn:!.git:!.ds_store:!*.scc:.*:!CVS:!thumbs.db:!picasa.ini:!*~'
         }
     }
+    signingConfigs {
+        release {
+            if (keystorePath) {
+                storeFile file(keystorePath)
+                storeType 'PKCS12'
+                storePassword System.getenv('ANDROID_KEYSTORE_PASSWORD')
+                keyAlias System.getenv('ANDROID_KEY_ALIAS')
+                keyPassword System.getenv('ANDROID_KEY_PASSWORD')
+            }
+        }
+    }
     buildTypes {
         release {
             minifyEnabled false
             proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
+            signingConfig keystorePath ? signingConfigs.release : null
         }
     }
 }

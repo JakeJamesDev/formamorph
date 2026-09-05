@@ -151,8 +151,78 @@ jobs:
           path: formamorph-web-*.zip
           if-no-files-found: error
 
+  # The Android APK: the same web build with the `android` build class, wrapped by Capacitor and signed
+  # from the four ANDROID_* secrets that scripts/android-signing-wizard.sh sets. The asset name carries
+  # no version so the landing page can link the GitHub latest redirect; the release tag carries it.
+  android:
+    if: ${{ !inputs.site_only }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: '.nvmrc'
+          cache: npm
+      - name: Tag must match package.json version
+        if: startsWith(github.ref, 'refs/tags/')
+        run: |
+          PKG="v$(node -p "require('./package.json').version")"
+          if [ "$PKG" != "$GITHUB_REF_NAME" ]; then
+            echo "::error::Tag '$GITHUB_REF_NAME' must equal 'v<package.json version>' ('$PKG'). Bump package.json, commit, then tag."
+            exit 1
+          fi
+      # Capacitor 8 compiles against Java 21; `cache: gradle` keys on the wrapper and lockfiles.
+      - uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: '21'
+          cache: gradle
+      - uses: android-actions/setup-android@v4
+      - run: npm ci
+      # Releases ship the alternate avatar. The tracked default stays on the Pages dev build and local dev.
+      - name: Swap in the release avatar
+        run: cp build-assets/alternate-avatar.vrm public/default-avatar.vrm
+      # buildAndroid.mjs sets FORMAMORPH_BUILD=android before the Vite build; sync copies dist/ into the
+      # native project and regenerates its plugin list.
+      - name: Build the web app with the android build class
+        run: node scripts/buildAndroid.mjs
+      - run: npx cap sync android
+      # The keystore never touches the checkout: it is decoded into the runner's temp dir and the Gradle
+      # signing config reads it from ANDROID_KEYSTORE_PATH. An empty secret fails here, not on a phone.
+      - name: Decode the signing keystore
+        env:
+          ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+        run: |
+          set -euo pipefail
+          if [ -z "$ANDROID_KEYSTORE_BASE64" ]; then
+            echo "::error::ANDROID_KEYSTORE_BASE64 is not set. Run scripts/android-signing-wizard.sh to set the four ANDROID_* secrets."
+            exit 1
+          fi
+          KEYSTORE="$RUNNER_TEMP/formamorph-release.p12"
+          printf '%s' "$ANDROID_KEYSTORE_BASE64" | base64 -d > "$KEYSTORE"
+          echo "ANDROID_KEYSTORE_PATH=$KEYSTORE" >> "$GITHUB_ENV"
+      - name: Build and sign the release APK
+        env:
+          ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+        run: cd android && ./gradlew assembleRelease --no-daemon --console=plain
+      # Gradle names an unsigned build app-release-unsigned.apk, so this copy fails if signing did not happen.
+      # The sidecar holds the bare hex digest, the same shape as the Windows app zip's.
+      - name: Name the release asset and write its checksum
+        run: |
+          set -euo pipefail
+          mkdir -p release-android
+          cp android/app/build/outputs/apk/release/app-release.apk release-android/Formamorph-android.apk
+          cd release-android && sha512sum Formamorph-android.apk | cut -d' ' -f1 > Formamorph-android.apk.sha512
+      - uses: actions/upload-artifact@v7
+        with:
+          name: android
+          path: release-android/*
+          if-no-files-found: error
+
   publish:
-    needs: [build, web]
+    needs: [build, web, android]
     runs-on: ubuntu-latest
     if: startsWith(github.ref, 'refs/tags/')
     permissions:
@@ -183,6 +253,8 @@ jobs:
             artifacts/*-win.zip
             artifacts/*-win.zip.sha512
             artifacts/formamorph-web-*.zip
+            artifacts/Formamorph-android.apk
+            artifacts/Formamorph-android.apk.sha512
 
   # itch.io deployment via butler. Butler updates by CHANNEL, not filename: every push to a visible
   # channel replaces the live build immediately. Full-release tags (no suffix) deploy automatically;
@@ -210,9 +282,9 @@ jobs:
           unzip -q "$ZIP" -d web
           butler push web fierylion/formamorph:html5 --userversion "$VER"
 
-  # Desktop goes to itch only on major/minor releases (tag ends in .0), never on patches.
+  # Desktop and Android go to itch only on major/minor releases (tag ends in .0), never on patches.
   itch-desktop:
-    needs: build
+    needs: [build, android]
     runs-on: ubuntu-latest
     if: >
       (github.event_name == 'push' && !contains(github.ref_name, '-') && endsWith(github.ref_name, '.0'))
@@ -222,8 +294,11 @@ jobs:
         with:
           pattern: desktop-*
           merge-multiple: true
+      - uses: actions/download-artifact@v8
+        with:
+          name: android
       - uses: remarkablegames/setup-butler@v3
-      - name: Push desktop builds to itch.io
+      - name: Push desktop and Android builds to itch.io
         env:
           BUTLER_API_KEY: ${{ secrets.BUTLER_API_KEY }}
         run: |
@@ -235,6 +310,7 @@ jobs:
           butler push win fierylion/formamorph:windows --userversion "$VER"
           butler push "$(ls *.AppImage)" fierylion/formamorph:linux --userversion "$VER"
           butler push "$(ls *.dmg)" fierylion/formamorph:mac --userversion "$VER"
+          butler push Formamorph-android.apk fierylion/formamorph:android --userversion "$VER"
 
   # Cloudflare Pages deploy → https://formamorph.ai. The upload root is `out/`: the app build unpacked
   # into out/play/, plus everything tracked in hosting/ at the root — the landing page, its images, and
