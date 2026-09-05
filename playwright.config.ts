@@ -21,6 +21,13 @@ const SITE_PORT = Number(process.env.E2E_SITE_PORT ?? 5185);
 export const SITE_URL = `http://localhost:${SITE_PORT}`;
 
 /**
+ * The account pages are the site's second Vite entry, so they get a dev server of their own. It serves
+ * `hosting/` as its public directory, which is how `/site/icon.png` resolves the way it does live.
+ */
+const PAGES_PORT = Number(process.env.E2E_PAGES_PORT ?? 5186);
+export const PAGES_URL = `http://localhost:${PAGES_PORT}`;
+
+/**
  * A local FormamorphServer for the specs that need one (`contest-entry.spec.ts`). Handed to the dev
  * server as its API base, because the app reads that at start-up and the default in `.env` is the live
  * workshop — a run without the override would publish to production. Unset, those specs skip.
@@ -71,6 +78,15 @@ export default defineConfig({
       url: SITE_URL,
       reuseExistingServer: !process.env.CI,
       timeout: 30_000,
+      stdout: 'ignore',
+      stderr: 'pipe',
+    },
+    {
+      command: `npm run dev:site -- --port ${PAGES_PORT} --strictPort`,
+      // A route rather than the root: the entry answers every path, and this is the one the specs use.
+      url: `${PAGES_URL}/login`,
+      reuseExistingServer: !process.env.CI,
+      timeout: 120_000,
       stdout: 'ignore',
       stderr: 'pipe',
     },
