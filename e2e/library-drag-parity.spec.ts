@@ -1,7 +1,9 @@
 import { test, expect, type Page } from '@playwright/test';
 import {
+  aimAt,
   carriedCopies,
   copySamples,
+  dragBetween,
   dragTile,
   intermediates,
   now,
@@ -45,11 +47,12 @@ function rings(page: Page): Promise<number> {
 }
 
 test.describe('library drag parity', () => {
-  test('R1/R2 — the displaced tile starts moving at once, and slides there', async ({ page }) => {
+  test('R1/R2 — the displaced tile starts moving once the hand rests, and slides there', async ({ page }) => {
     await openLibrary(page);
     const names = await tileOrder(page);
     const from = await tileCenter(page, 0);
-    const to = await tileCenter(page, 1);
+    // The far half of the neighbor, so the rest means move; its near half is R10's gesture.
+    const to = aimAt(from, await tileCenter(page, 1), 'far');
     const step = Math.hypot(to.x - from.x, to.y - from.y);
     const unit = { x: (to.x - from.x) / step, y: (to.y - from.y) / step };
 
@@ -66,17 +69,18 @@ test.describe('library drag parity', () => {
 
     const crossed = await now(page);
     await page.mouse.move(to.x, to.y, { steps: 4 });
-    await page.waitForTimeout(700);
+    await page.waitForTimeout(900);
     const recorded = await tileSamples(page);
     await page.mouse.up();
 
     const travel = travelOf(recorded, names[1]);
     const moved = travel.find(({ t, d }) => t >= crossed && d > step * 0.2);
     expect(moved, 'the displaced tile never moved').toBeDefined();
-    // R1: the slide-aside is the answer to the crossing, not to a timer that ran afterwards. The board
-    // used to wait 150ms before reading a hover at all, which is exactly what this number refuses.
-    expect(moved!.t - crossed).toBeLessThan(120);
-    // R2: several distinct in-between positions. A tile that jumped its slot reports none.
+    // R1 CHANGED from the flat grid, which answered the crossing inside 120ms. The board now waits for
+    // the hand to rest: travel moves nothing, and the push arms one rest delay after the pointer stops.
+    expect(moved!.t - crossed, 'the board moved before the hand rested').toBeGreaterThanOrEqual(200);
+    expect(moved!.t - crossed, 'the rest never armed').toBeLessThan(700);
+    // R2 unchanged: several distinct in-between positions. A tile that jumped its slot reports none.
     expect(intermediates(recorded, names[1], step)).toBeGreaterThanOrEqual(2);
   });
 
@@ -84,7 +88,7 @@ test.describe('library drag parity', () => {
     await openLibrary(page);
     const names = await tileOrder(page);
 
-    await dragTile(page, 2, 0);
+    await dragTile(page, 2, 0, { aim: 'far' });
 
     // The carried tile takes the slot; everything it passed shifts one place along.
     expect(await tileOrder(page)).toEqual([names[2], names[0], names[1], ...names.slice(3)]);
@@ -127,7 +131,7 @@ test.describe('library drag parity', () => {
     await openLibrary(page);
     const names = await tileOrder(page);
 
-    await dragTile(page, 1, 0);
+    await dragTile(page, 1, 0, { aim: 'far' });
     expect((await tileOrder(page))[0]).toBe(names[1]);
 
     // The far end, scrolled to first: dragging across a scroll boundary is a different measurement, and
@@ -136,7 +140,7 @@ test.describe('library drag parity', () => {
     await tiles(page).nth(last).scrollIntoViewIfNeeded();
     await page.waitForTimeout(200);
     const before = await tileOrder(page);
-    await dragTile(page, last - 1, last);
+    await dragTile(page, last - 1, last, { aim: 'far' });
     const after = await tileOrder(page);
     expect(after[last]).toBe(before[last - 1]);
   });
@@ -145,16 +149,19 @@ test.describe('library drag parity', () => {
     await openLibrary(page);
     const names = await tileOrder(page);
 
-    await dragTile(page, 2, 0, { steps: 3, hold: 0 });
+    await dragTile(page, 2, 0, { steps: 3, hold: 0, aim: 'far' });
     const flicked = await tileOrder(page);
 
-    // Put the board back by carrying the same tile home, rather than reloading: the order persists, so a
-    // reload would start the second half from the result of the first.
-    await dragTile(page, 0, 2);
+    // Put the board back by carrying tiles home, rather than reloading: the order persists, so a reload
+    // would start the second half from the result of the first. Two short carries rather than the one
+    // long carry back, because on the phone board the far end sits inside the list's auto-scroll band,
+    // and a rest there is a rest on a board still moving under the hand.
+    await dragTile(page, 1, 0, { aim: 'far' });
+    await dragTile(page, 2, 1, { aim: 'far' });
     expect(await tileOrder(page)).toEqual(names);
 
     // The same gesture again, slowly enough to rest on every tile it crosses.
-    await dragTile(page, 2, 0, { steps: 20, interval: 40, hold: 800 });
+    await dragTile(page, 2, 0, { steps: 20, interval: 40, hold: 800, aim: 'far' });
 
     expect(await tileOrder(page)).toEqual(flicked);
   });
@@ -163,7 +170,7 @@ test.describe('library drag parity', () => {
     await openLibrary(page);
     const names = await tileOrder(page);
 
-    await dragTile(page, 2, 0);
+    await dragTile(page, 2, 0, { aim: 'far' });
     const reordered = await tileOrder(page);
     expect(reordered).not.toEqual(names);
 
@@ -210,19 +217,27 @@ test.describe('library drag parity', () => {
     expect(await scroller.evaluate((el) => el.scrollTop)).toBeGreaterThan(top);
   });
 
-  test('R10 — parking on a tile and waiting still only moves the tile', async ({ page }) => {
+  test('R10 — which half of the tile is parked on decides group versus move', async ({ page }) => {
     await openLibrary(page);
     const names = await tileOrder(page);
+    const from = await tileCenter(page, 0);
+    const to = await tileCenter(page, 1);
     let ringsWhileParked = -1;
 
-    // The exact gesture that used to fold two tiles into a folder: dead center, held well past any
-    // dwell a timer could have wanted.
-    await dragTile(page, 0, 1, { hold: 1400, onHeld: async () => { ringsWhileParked = await rings(page); } });
+    // CHANGED from the flat grid, where a park could only ever move. The half of the target facing the
+    // carried tile now means "fold these two together", and a ring says so before the release. The far
+    // half still only moves, which R3 measures on this same pair of tiles.
+    await dragBetween(page, from, to, {
+      aim: 'near',
+      hold: 700,
+      onHeld: async () => { ringsWhileParked = await rings(page); },
+    });
 
-    expect(ringsWhileParked).toBe(0);
-    await expect(folders(page)).toHaveCount(0);
-    await expect(tiles(page)).toHaveCount(names.length);
-    expect(await tileOrder(page)).toEqual([names[1], names[0], ...names.slice(2)]);
+    expect(ringsWhileParked, 'the near side drew no ring').toBe(1);
+    await expect(folders(page)).toHaveCount(1);
+    await page.getByRole('heading', { name: 'New Group' }).click();
+    // The folder holds the tile it grew from first, then the one that was carried into it.
+    expect(await tileOrder(page)).toEqual([names[1], names[0]]);
   });
 
   test('R11 — one translucent copy of the carried tile, and no ghost left behind', async ({ page }) => {
@@ -231,6 +246,7 @@ test.describe('library drag parity', () => {
     let copies: number[] = [];
 
     await dragTile(page, 0, 1, {
+      aim: 'far',
       hold: 500,
       onHeld: async () => { copies = await carriedCopies(page, names[0]); },
     });
@@ -245,17 +261,16 @@ test.describe('library drag parity', () => {
     await openLibrary(page);
     const names = await tileOrder(page);
     const box = (await tiles(page).nth(0).boundingBox())!;
-    const to = await tileCenter(page, 1);
+    const grab = { x: box.x + box.width * 0.2, y: box.y + box.height * 0.2 };
+    const to = aimAt(grab, await tileCenter(page, 1), 'far');
 
     // Grabbed near a corner, not the center: the carried tile keeps its grab point under the pointer,
     // so at release it sits offset from the slot it will land in — the misalignment a real hand
     // produces, and the one that exposes any settle animation between the two positions.
-    await page.mouse.move(box.x + box.width * 0.2, box.y + box.height * 0.2);
+    await page.mouse.move(grab.x, grab.y);
     await page.mouse.down();
-    await page.mouse.move(box.x + box.width * 0.2 + 12, box.y + box.height * 0.2);
-    // Long enough for any mid-drag slide (200ms) to finish, short enough that the park cannot arm the
-    // tile board's group drop — the offset grab leaves the claim on a neighbor that cannot dodge, and
-    // holding that past the group dwell is the grouping gesture now.
+    await page.mouse.move(grab.x + 12, grab.y);
+    // Released on the target's far half, so the reading under the hand is a move however long it holds.
     await page.mouse.move(to.x, to.y, { steps: 10 });
     await page.waitForTimeout(100);
     await startCopySampler(page, names[0]);
@@ -286,7 +301,7 @@ test.describe('library drag parity', () => {
 
     // Neighbors, not the ends: a detailed card is tall enough that the phone shows barely two of them,
     // and a drag that has to auto-scroll first is a different measurement than this one.
-    await dragTile(page, 1, 0);
+    await dragTile(page, 1, 0, { aim: 'far' });
 
     expect(await tileOrder(page)).toEqual([names[1], names[0], ...names.slice(2)]);
     await expect(folders(page)).toHaveCount(0);
