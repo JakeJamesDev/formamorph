@@ -59,6 +59,19 @@ export function AgeGateProvider({ children }: { children: ReactNode }) {
     setPendingRequest({ onDecline: () => AuthService.logout() });
   }, []);
 
+  // A session signed into in another tab arrives after boot, so the boot pass above cannot ask for it.
+  // It gets the same treatment: an unattested device is asked now, because the adopted token is what
+  // keeps the community server in the conversation, and a decline signs it back out.
+  useEffect(() => AuthService.onSessionAdopted(() => {
+    if (!COMMUNITY_ENABLED || isAgeAttested()) return;
+    // Folded into whatever is already waiting rather than replacing it: a gate raised by the browser
+    // carries the callback that opens it, and dropping that would leave an accepted gate opening
+    // nothing. The session still has to go on a decline, so both declines run.
+    setPendingRequest((waiting) => waiting
+      ? { ...waiting, onDecline: () => { waiting.onDecline?.(); AuthService.logout(); } }
+      : { onDecline: () => AuthService.logout() });
+  }), []);
+
   // DEV: `#dev?modal=ageGate` raises the gate on demand, so its copy is checkable after accepting once.
   useEffect(() => {
     if (import.meta.env.DEV && COMMUNITY_ENABLED && devRoute?.modal === 'ageGate') setPendingRequest({});

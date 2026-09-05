@@ -476,6 +476,9 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
   const [currentUser, setCurrentUser] = useState<WorldRecord | null>(null);
   const [showAuthDialog, setShowAuthDialog] = useState(false);
   const [showProfileDialog, setShowProfileDialog] = useState(false);
+  // Bumped when another tab signs in, so the identity below is re-read rather than left as this tab
+  // found it. Signing in on formamorph.ai writes the same storage keys this build reads.
+  const [adoptedSessionNonce, setAdoptedSessionNonce] = useState(0);
 
   // The two footer circles explain themselves, and only ever one of them is on screen: the profile circle
   // offers an account while signed out, the feedback circle appears once there is one.
@@ -641,7 +644,7 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
     };
 
     checkAuth();
-  }, [attested]);
+  }, [attested, adoptedSessionNonce]);
 
   // Reload the world grid from storage. Reused on mount and after the World Editor modal closes so the
   // grid reflects renames/edits/deletes without remounting MainMenu (mirrors refreshDictionaries/Entities).
@@ -1415,6 +1418,13 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
     setCurrentUser(null);
     setShowProfileDialog(false);
     setUnreadMessages(0);
+  }), []);
+
+  // Signing in is raised from more than this screen's dialog too: /login on the site writes the same
+  // session, and this tab has to show it without a reload. The check above does the adopting — it is
+  // already the one path that waits on the age attestation and refreshes the profile.
+  useEffect(() => AuthService.onSessionAdopted(() => {
+    setAdoptedSessionNonce((nonce) => nonce + 1);
   }), []);
 
   // Handle logout
