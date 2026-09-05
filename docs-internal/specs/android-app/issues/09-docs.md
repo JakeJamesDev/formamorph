@@ -1,6 +1,7 @@
 # 09 — Docs: Install on Android
 
-Status: ready-for-agent
+Status: ready-for-human
+Status note: Page written and linked; every claim checked against the code. The wiki render itself is only provable after merge.
 Type: task
 Blocked by: 08
 Spec: ../spec.md (User Stories › Getting the app; Further Notes)
