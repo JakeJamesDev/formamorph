@@ -122,7 +122,7 @@
   </div>
   <div class="side">
     <h2>New — Push / Swap (Android home)</h2>
-    <div class="sub">The outline follows the hand and turns gray while it waits for the rest. After the rest: <b>same row or column</b> pushes every tile between pickup and target toward the hole, by one carried span, or until the target is clear (radio above). <b>Different row and column</b> swaps the tiles under the target into the hole, shape and offset intact. A push or swap that would land off the board or on a bystander is <b>blocked</b> (red); release there snaps the tile home. An open spot moves nothing else. <b>Folder:</b> the footprint follows the pointer's cell, and the pointer decides: past the plane is a move, short of it rests into a folder ring on the target.</div>
+    <div class="sub">The outline follows the hand and turns gray while it waits for the rest. After the rest: <b>same row or column</b> pushes every tile between pickup and target toward the hole, by one carried span, or until the target is clear (radio above). <b>Different row and column</b> swaps the tiles under the target into the hole, shape and offset intact. A push or swap that would land off the board or on a bystander is <b>blocked</b> (red); release there snaps the tile home. An open spot moves nothing else. <b>Folder:</b> the pointer names the target and the footprint snaps to it (equal sizes take its cells; a bigger carried tile must contain it; a smaller one sits inside it). Past the plane is a move, short of it rests into a folder ring.</div>
     <div class="board" id="boardN"></div>
     <div class="status"><div class="event" id="eventN">Drag a tile.</div><div class="chips" id="chipsN"></div></div>
   </div>
@@ -381,11 +381,8 @@ document.addEventListener('pointermove', (e) => {
     // pointer is always under the footprint and the plane test and the move agree.
     const p = { x: (e.clientX - host.left - PAD) / PITCH, y: (e.clientY - host.top - PAD) / PITCH };
     const cell = { row: Math.max(0, Math.floor(p.y)), col: Math.min(COLS - 1, Math.max(0, Math.floor(p.x))) };
-    const want = {
-      row: Math.max(0, cell.row - drag.grabCell.row),
-      col: Math.min(Math.max(0, cell.col - drag.grabCell.col), COLS - span),
-    };
     const read = readIntent(cell, p);
+    const want = snapAnchor(cell, span, read.target);
     drawGuide(read);
     const key = `${want.row}:${want.col}:${read.target ? read.target.id : '-'}:${read.intent}`;
     if (key !== drag.lastAnchor) {
@@ -505,6 +502,28 @@ function readIntent(cell, p) {
   const thr = h * (1 - 2 * sliceFrac);
   const s = (p.x - c.x) * dx + (p.y - c.y) * dy;
   return { target, intent: s >= thr ? 'move' : 'folder', o, c, d: { x: dx, y: dy }, thr };
+}
+
+/* Where the footprint lands. In open space it follows the pointer cell minus the grabbed cell. Over a
+   target it snaps to that target: equal sizes take its exact cells; a bigger carried tile keeps its grab
+   offset but must contain the target; a smaller one must sit inside the target. One clamp covers all. */
+function snapAnchor(cell, span, target) {
+  const free = { row: cell.row - drag.grabCell.row, col: cell.col - drag.grabCell.col };
+  const clampBoard = (a) => ({
+    row: Math.max(0, a.row),
+    col: Math.min(Math.max(0, a.col), COLS - span),
+  });
+  if (!target) return clampBoard(free);
+  const range = (t0, tspan) => {
+    const a = t0 + tspan - span, b = t0;
+    return [Math.min(a, b), Math.max(a, b)];
+  };
+  const [r0, r1] = range(target.row, target.span);
+  const [c0, c1] = range(target.col, target.span);
+  return clampBoard({
+    row: Math.min(Math.max(free.row, r0), r1),
+    col: Math.min(Math.max(free.col, c0), c1),
+  });
 }
 
 /* The far slice as a polygon: the target's square clipped to the half-plane past the threshold. */
