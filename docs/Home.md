@@ -17,6 +17,7 @@ Formamorph runs entirely in the browser and talks to any **OpenAI-compatible** c
 
 | Page | What's inside |
 |---|---|
+| 📱 **[Install on Android](Install-on-Android)** | Getting the app on your phone — the download, Android's prompts, and how it updates itself |
 | 🧠 **[Story Memory](Memory)** | How a long story is remembered, and how to pin, edit or write its memories yourself |
 | 🎭 **[Entities in Play](Entities)** | Who the story tracks as present — including the characters it invents mid-scene, and how to remove one it got wrong |
 | ✍️ **[Text Formatting](TextFormatting)** | Every piece of Markdown the app renders, including `==highlights==` and their color keys |

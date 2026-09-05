@@ -3,6 +3,7 @@
 - [🏠 Home](Home)
 
 **Playing**
+- [📱 Install on Android](Install-on-Android)
 - [🧠 Story Memory](Memory)
 - [🎭 Entities in Play](Entities)
 

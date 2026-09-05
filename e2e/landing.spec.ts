@@ -26,6 +26,9 @@ const RELEASE = {
 };
 
 const API = 'https://api.github.com/repos/JakeJamesDev/formamorph/releases/latest';
+const LATEST = 'https://github.com/JakeJamesDev/formamorph/releases/latest';
+/** The APK's name carries no version, so its link is the latest redirect rather than an API asset. */
+const APK = `${LATEST}/download/Formamorph-android.apk`;
 
 /** Opacity of every light-stack layer, in palette order. */
 const opacities = (page: Page) =>
@@ -138,23 +141,29 @@ test.describe('landing page', () => {
     await page.route(API, (route) => route.fulfill({ json: RELEASE }));
     await page.goto(SITE_URL);
     const links = page.locator('[data-dl-buttons] a');
-    await expect(links).toHaveCount(3);
+    await expect(links).toHaveCount(4);
     await expect(links.nth(0)).toHaveAttribute('href', 'https://example.test/win.zip');
     await expect(links.nth(1)).toHaveAttribute('href', 'https://example.test/linux.AppImage');
     await expect(links.nth(2)).toHaveAttribute('href', 'https://example.test/mac.dmg');
+    await expect(links.nth(3)).toHaveAttribute('href', APK);
     await expect(page.locator('[data-dl-note]')).toContainText('v9.9.9');
+    // A sideloaded APK raises questions the other three do not, so the guide sits beside the button.
+    await expect(page.getByRole('link', { name: 'how to install it' }))
+      .toHaveAttribute('href', 'https://github.com/JakeJamesDev/formamorph/wiki/Install-on-Android');
   });
 
   test('download buttons fall back to the releases page when the API fails', async ({ page }) => {
     await page.route(API, (route) => route.abort('failed'));
     await page.goto(SITE_URL);
     const links = page.locator('[data-dl-buttons] a');
-    await expect(links).toHaveCount(3);
+    await expect(links).toHaveCount(4);
     for (const i of [0, 1, 2]) {
-      await expect(links.nth(i)).toHaveAttribute(
-        'href', 'https://github.com/JakeJamesDev/formamorph/releases/latest');
+      await expect(links.nth(i)).toHaveAttribute('href', LATEST);
     }
-    await expect(page.locator('[data-dl-note]')).toHaveText('Desktop builds — free on GitHub');
+    // Android needs no API lookup, so a dead API costs it nothing.
+    await expect(links.nth(3)).toHaveAttribute('href', APK);
+    await expect(page.locator('[data-dl-note]'))
+      .toHaveText('Desktop and Android builds — free on GitHub');
   });
 
   test('the page fits its viewport', async ({ page }) => {
