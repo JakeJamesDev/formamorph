@@ -23,7 +23,9 @@
 <meta name="twitter:description" content="Create your own characters and locations, or play any of the hundreds the community has published. Runs in your browser or fully offline on your desktop, with any AI model you choose.">
 <meta name="twitter:image" content="https://formamorph.ai/site/og.jpg">
 <style>
-  :root { --bg:#0d0f12; --text:#e8eaed; --dim:#9aa0a8; --accent:#7ac47f; --line:#2a2e35; }
+  :root { --bg:#0d0f12; --text:#e8eaed; --dim:#9aa0a8; --accent:#7ac47f; --line:#2a2e35;
+    /* The outline and the lift a quiet control gets. Shared by every one of them. */
+    --edge:#3a3f47; --lift:#ffffff14; }
   * { box-sizing:border-box; margin:0; }
   body { background:var(--bg); color:var(--text); font:16px/1.55 system-ui,sans-serif;
     -webkit-text-size-adjust:100%; }
@@ -34,8 +36,8 @@
     border:1px solid transparent; font-weight:600; text-decoration:none; cursor:pointer; font-size:1rem; }
   .btn-play { background:var(--accent); color:#0c130d; font-size:1.15rem; }
   .btn-play:hover { filter:brightness(1.1); }
-  .btn-ghost { border-color:#3a3f47; color:var(--text); }
-  .btn-ghost:hover { background:#ffffff14; }
+  .btn-ghost { border-color:var(--edge); color:var(--text); }
+  .btn-ghost:hover { background:var(--lift); }
   .dl-row { display:flex; gap:.6rem; flex-wrap:wrap; justify-content:center; }
   .dl-note { color:var(--dim); font-size:.85rem; }
 
@@ -64,6 +66,21 @@
   .thumbs img { width:clamp(96px,28vw,148px); aspect-ratio:16/9; display:block; border-radius:6px; }
   .thumbs .lbl { color:var(--dim); font-size:.72rem; padding:.2em 0 .4em; }
 
+  /* Over the hero rather than above it: the hero is the whole first screen and a bar of its own would
+     push the logo down without giving the page anything. */
+  .topbar { position:absolute; top:0; left:0; right:0; z-index:10;
+    display:flex; justify-content:flex-end; padding:1rem 1.25rem; }
+  .acct { display:inline-flex; align-items:center; gap:.45em; padding:.4em .85em; border-radius:999px;
+    border:1px solid var(--edge); background:#0d0f12b3; color:var(--text); font-weight:600;
+    font-size:.95rem; text-decoration:none; }
+  .acct:hover { background:var(--lift); }
+  /* Signed in the control is the face alone, so the pill shrinks to it — but no smaller than a
+     comfortable target, which is what holds it near the signed-out pill's height. */
+  .acct.face { padding:.25em; }
+  .acct-icon { width:20px; height:20px; display:block; }
+  .acct.face .acct-icon { width:26px; height:26px; }
+  .acct-avatar { width:30px; height:30px; border-radius:999px; object-fit:cover; display:block; }
+
   .hero { min-height:92vh; min-height:92svh; display:grid; place-items:center; text-align:center;
     position:relative; overflow:hidden; }
   .hero .bgimg { position:absolute; inset:-40px; background-position:center; background-size:cover;
@@ -82,6 +99,19 @@
 </style>
 </head>
 <body>
+
+<!-- Signed out is the markup, not a render: a visitor whose browser never runs the module below still
+     gets a working Sign In. The script swaps in the avatar when a session is held. -->
+<header class="topbar">
+  <a class="acct" data-account href="/login?next=/">
+    <span>Sign In</span>
+    <svg class="acct-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"
+         stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+      <circle cx="12" cy="8.5" r="3.5"></circle>
+      <path d="M5 20a7 7 0 0 1 14 0"></path>
+    </svg>
+  </a>
+</header>
 
 <div class="hero">
   <div class="bgimg"></div>
@@ -242,6 +272,43 @@ fetch(`https://api.github.com/repos/${REPO}/releases/latest`)
         : 'Desktop and Android builds — free on GitHub';
     });
   });
+</script>
+
+<script type="module">
+// The header's account control. The session is read through the shared module rather than out of
+// localStorage here, so this page and the account pages never disagree about the keys.
+import { readSession, watchSession, avatarSrc } from '/session.js';
+
+const control = document.querySelector('[data-account]');
+// Both pieces of the signed-out control, detached and kept so every later state is built from them:
+// the label is put back or left out, and the icon is cloned wherever a face is missing.
+const labelNode = control.querySelector('span');
+const iconTemplate = control.querySelector('svg');
+
+function render(session) {
+  control.href = session ? `/u/${encodeURIComponent(session.username)}` : '/login?next=/';
+  control.classList.toggle('face', !!session);
+  // Signed out the label names the link. Signed in there is no text, so the name is said here.
+  if (session) control.setAttribute('aria-label', `${session.username} — your profile`);
+  else control.removeAttribute('aria-label');
+
+  const src = session ? avatarSrc(session.avatarUrl) : null;
+  if (!src) {
+    control.replaceChildren(...(session ? [] : [labelNode]), iconTemplate.cloneNode(true));
+    return;
+  }
+
+  const img = document.createElement('img');
+  img.className = 'acct-avatar';
+  img.alt = '';
+  // A dead URL would otherwise leave a torn-page glyph where a face belongs.
+  img.addEventListener('error', () => control.replaceChildren(iconTemplate.cloneNode(true)));
+  img.src = src;
+  control.replaceChildren(img);
+}
+
+render(readSession());
+watchSession(render);
 </script>
 </body>
 </html>
