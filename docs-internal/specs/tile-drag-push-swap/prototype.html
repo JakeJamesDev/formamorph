@@ -122,7 +122,7 @@
   </div>
   <div class="side">
     <h2>New — Push / Swap (Android home)</h2>
-    <div class="sub">The outline follows the hand and turns gray while it waits for the rest. After the rest: <b>same row or column</b> pushes every tile between pickup and target toward the hole, by one carried span, or until the target is clear (radio above). <b>Different row and column</b> swaps the tiles under the target into the hole, shape and offset intact. A push or swap that would land off the board or on a bystander is <b>blocked</b> (red); release there snaps the tile home. An open spot moves nothing else. <b>Folder:</b> the pointer names the target and the footprint snaps to it (equal sizes take its cells; a bigger carried tile must contain it; a smaller one sits inside it). Past the plane is a move, short of it rests into a folder ring.</div>
+    <div class="sub">The outline follows the hand and turns gray while it waits for the rest. After the rest: <b>same row or column</b> pushes every tile between pickup and target toward the hole, by one carried span, or until the target is clear (radio above). <b>Different row and column</b> swaps the tiles under the target into the hole, shape and offset intact. A push or swap that would land off the board or on a bystander is <b>blocked</b> (red); release there snaps the tile home. An open spot moves nothing else. <b>Folder:</b> the pointer names the target and the footprint snaps to it (equal sizes take its cells; a bigger carried tile must contain it; a smaller one sits inside it), biased toward the pickup home and skipping placements that would block. Past the plane is a move, short of it rests into a folder ring.</div>
     <div class="board" id="boardN"></div>
     <div class="status"><div class="event" id="eventN">Drag a tile.</div><div class="chips" id="chipsN"></div></div>
   </div>
@@ -505,25 +505,32 @@ function readIntent(cell, p) {
 }
 
 /* Where the footprint lands. In open space it follows the pointer cell minus the grabbed cell. Over a
-   target it snaps to that target: equal sizes take its exact cells; a bigger carried tile keeps its grab
-   offset but must contain the target; a smaller one must sit inside the target. One clamp covers all. */
+   target the anchor range is fixed by size (a bigger carried tile must contain the target, a smaller
+   one must sit inside it, equal sizes take its cells) and the grab offset drops out: candidates in
+   that range are tried nearest the pickup home first, and the first that is not blocked wins. If all
+   block, the nearest stands and shows as blocked. */
 function snapAnchor(cell, span, target) {
-  const free = { row: cell.row - drag.grabCell.row, col: cell.col - drag.grabCell.col };
   const clampBoard = (a) => ({
     row: Math.max(0, a.row),
     col: Math.min(Math.max(0, a.col), COLS - span),
   });
-  if (!target) return clampBoard(free);
+  if (!target) return clampBoard({ row: cell.row - drag.grabCell.row, col: cell.col - drag.grabCell.col });
+  const home = drag.before.find((t) => t.id === drag.id);
   const range = (t0, tspan) => {
     const a = t0 + tspan - span, b = t0;
     return [Math.min(a, b), Math.max(a, b)];
   };
   const [r0, r1] = range(target.row, target.span);
   const [c0, c1] = range(target.col, target.span);
-  return clampBoard({
-    row: Math.min(Math.max(free.row, r0), r1),
-    col: Math.min(Math.max(free.col, c0), c1),
-  });
+  const candidates = [];
+  for (let row = r0; row <= r1; row++)
+    for (let col = c0; col <= c1; col++) {
+      const a = clampBoard({ row, col });
+      if (!candidates.some((q) => q.row === a.row && q.col === a.col)) candidates.push(a);
+    }
+  const dist = (a) => (a.row - home.row) ** 2 + (a.col - home.col) ** 2;
+  candidates.sort((a, b) => dist(a) - dist(b));
+  return candidates.find((a) => !previewPushSwap(drag.before, drag.id, a, COLS).blocked) ?? candidates[0];
 }
 
 /* The far slice as a polygon: the target's square clipped to the half-plane past the threshold. */
@@ -769,6 +776,8 @@ document.querySelectorAll('input[name=previewMode]').forEach((r) => {
 });
 
 selectScenario(0);
+// Debug handle for driving the page from a console or a script.
+window.__proto = { previewPushSwap, board: () => stored.N, cols: COLS };
 </script>
 </body>
 </html>

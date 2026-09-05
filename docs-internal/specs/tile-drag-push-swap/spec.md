@@ -21,7 +21,7 @@ Nothing moves until the hand has rested. Every preview is computed from the pre-
 
 ### Folder vs move
 
-The pointer picks the target tile, and the footprint snaps to that target: equal sizes take the target's exact cells; a bigger carried tile keeps its grab offset but must contain the target; a smaller one sits inside the target at the pointer's cell. In open space the footprint follows the pointer's cell minus the grabbed cell.
+The pointer picks the target tile, and the footprint snaps to that target: equal sizes take the target's exact cells; a bigger carried tile must contain the target; a smaller one sits inside it. Within that range the anchor nearest the pickup home wins, skipping placements that would block. The grab offset only matters in open space, where the footprint follows the pointer's cell minus the grabbed cell.
 
 A line runs from the pickup home's center to the target's center. A plane perpendicular to it cuts the target so the far slice covers a set share of the target's extent along the line (default 50%). Pointer in the far slice after the rest = push or swap. Pointer anywhere else on the target = folder, shown as a ring on the target. A folder tile as the target means add to folder; folders never nest.
 
