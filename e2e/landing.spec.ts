@@ -180,6 +180,80 @@ test.describe('landing page', () => {
   });
 });
 
+/**
+ * The header's account control. It reads `localStorage` the app writes and follows the `storage`
+ * event, and neither is provable from a rendered tree: the event only ever fires in a *different*
+ * document, so the second test drives two real pages in one context.
+ */
+test.describe('landing header account control', () => {
+  const AVATAR = '/api/avatars/9f2c.webp';
+  const control = (page: Page) => page.locator('[data-account]');
+
+  /** Sign in before the page loads, the way a reader arriving with a held session does. */
+  const holding = (page: Page, user: Record<string, unknown>) =>
+    page.addInitScript(([held]) => {
+      localStorage.setItem('authToken', 'tok');
+      localStorage.setItem('currentUser', JSON.stringify(held));
+    }, [user]);
+
+  /** The stored avatar loads from the API host, which no test run can reach. */
+  const serveAvatar = (page: Page) =>
+    page.route(`https://api.formamorph.ai${AVATAR}`, (route) =>
+      route.fulfill({ path: 'hosting/site/icon.png', contentType: 'image/png' }));
+
+  test('signed out it offers Sign In with a person icon', async ({ page }) => {
+    await page.goto(SITE_URL);
+
+    const link = page.getByRole('link', { name: 'Sign In' });
+    await expect(link).toBeVisible();
+    await expect(link).toHaveAttribute('href', '/login?next=/');
+    await expect(control(page).locator('svg')).toBeVisible();
+    await expect(control(page).locator('img')).toHaveCount(0);
+  });
+
+  test('signed in it is the avatar, linking to the profile', async ({ page }) => {
+    await serveAvatar(page);
+    await holding(page, { username: 'rowan', avatarUrl: AVATAR });
+    await page.goto(SITE_URL);
+
+    await expect(control(page)).toHaveAttribute('href', '/u/rowan');
+    await expect(page.getByText('Sign In')).toHaveCount(0);
+    const avatar = control(page).locator('img');
+    await expect(avatar).toBeVisible();
+    // A real decode, not just an attribute: a wrong origin would render an empty box.
+    expect(await avatar.evaluate((i: HTMLImageElement) => i.naturalWidth)).toBeGreaterThan(0);
+  });
+
+  test('signed in with no avatar it falls back to the person icon', async ({ page }) => {
+    await holding(page, { username: 'rowan' });
+    await page.goto(SITE_URL);
+
+    await expect(control(page)).toHaveAttribute('href', '/u/rowan');
+    await expect(control(page).locator('svg')).toBeVisible();
+    await expect(page.getByText('Sign In')).toHaveCount(0);
+  });
+
+  // The test's own context rather than a fresh one, so the pages carry the project's viewport: a
+  // `browser.newContext()` here would run the phone project at desktop size and prove it twice.
+  test('a sign-in in another tab reaches an open landing page', async ({ context }) => {
+    const landing = await context.newPage();
+    const other = await context.newPage();
+    await landing.goto(SITE_URL);
+    // Any other document on the origin stands in for /login and /play/, which are the real writers.
+    await other.goto(`${SITE_URL}/privacy`);
+
+    await other.evaluate(() => {
+      localStorage.setItem('authToken', 'tok');
+      localStorage.setItem('currentUser', JSON.stringify({ username: 'rowan' }));
+    });
+    await expect(control(landing)).toHaveAttribute('href', '/u/rowan');
+
+    await other.evaluate(() => localStorage.clear());
+    await expect(control(landing)).toHaveAttribute('href', '/login?next=/');
+    await expect(landing.getByRole('link', { name: 'Sign In' })).toBeVisible();
+  });
+});
+
 test.describe('privacy policy page', () => {
   // Content, not behavior: the page is static HTML with no script. What can actually break is the
   // path — it lives at `privacy/index.html` so that `/privacy` resolves the same way here as it does

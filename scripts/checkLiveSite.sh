@@ -82,6 +82,12 @@ battery() {
   esac
   check_glob "$SITE_ASSET cache-control" "*max-age=86400*" "$(cache_control "$BASE_AI$SITE_ASSET")"
 
+  # The header's account control imports this module. A 404, or a type a browser refuses to run as a
+  # module, leaves a signed-in reader looking at Sign In — and the landing page still serves 200, so
+  # nothing else here would notice.
+  check "/session.js status" "200" "$(curl -sS --max-time 20 -o /dev/null -w '%{http_code}' "$BASE_AI/session.js")"
+  check_glob "/session.js content-type" "*javascript*" "$(content_type "$BASE_AI/session.js")"
+
   # The account pages. /login is served by a rewrite onto /site-app/index.html, so this proves the
   # entry's build reached the upload root AND that the rule fired. The body check is what tells the two
   # apart: a missing rule would serve the landing page here, which is also HTML and also 200.
