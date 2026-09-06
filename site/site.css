@@ -2,23 +2,49 @@
 @tailwind components;
 @tailwind utilities;
 
-/* The landing page's palette, expressed as the token names the shadcn primitives already read, so a
-   Button or an Input rendered here comes out in the site's colors rather than the game's. The landing
-   page is dark only, so these are the whole palette — there is no light block to fall back to.
-   Source values: hosting/index.html — bg #0d0f12, text #e8eaed, dim #9aa0a8, accent #7ac47f,
-   line #2a2e35. */
+/* The landing palette in the token names the shared primitives read. */
 @layer base {
   :root {
-    color-scheme: dark;
+    color-scheme: light;
     --app-font: system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
-    /* The per-font tuning the type scale multiplies by. The site ships no font picker, so these stay
-       at the untuned baseline the app's own defaults use. */
     --fm-weight-semibold: 600;
     --fm-weight-bold: 700;
     --fm-line-height: 1;
     --fm-letter-spacing: 0em;
     letter-spacing: var(--fm-letter-spacing);
 
+    --background: 90 13% 97%;
+    --foreground: 135 14% 11%;
+    --card: 0 0% 100%;
+    --card-foreground: 135 14% 11%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 135 14% 11%;
+    --primary: 126 37% 36%;
+    --primary-foreground: 120 20% 98%;
+    --secondary: 120 10% 92%;
+    --secondary-foreground: 135 14% 11%;
+    --muted: 120 10% 92%;
+    --muted-foreground: 131 6% 39%;
+    --accent: 120 10% 92%;
+    --accent-foreground: 135 14% 11%;
+    --destructive: 0 72% 48%;
+    --destructive-foreground: 210 40% 98%;
+    --destructive-fill: 0 72% 42%;
+    --success: 142 65% 35%;
+    --success-foreground: 210 40% 98%;
+    --warning: 45 93% 45%;
+    --warning-foreground: 38 92% 12%;
+    --info: 217 84% 48%;
+    --info-foreground: 210 40% 98%;
+    --overlay: 0 0% 0%;
+    --border: 120 10% 85%;
+    --input: 120 10% 85%;
+    --ring: 126 37% 36%;
+    --radius: 0.625rem;
+  }
+
+  .dark {
+    color-scheme: dark;
     --background: 216 16% 6%;
     --foreground: 216 12% 92%;
     --card: 216 15% 9%;
@@ -35,7 +61,7 @@
     --accent-foreground: 216 12% 92%;
     --destructive: 0 72% 58%;
     --destructive-foreground: 210 40% 98%;
-    --destructive-fill: 0 62.8% 30.6%;
+    --destructive-fill: 0 63% 31%;
     --success: 142 65% 45%;
     --success-foreground: 210 40% 98%;
     --warning: 45 93% 55%;
@@ -46,10 +72,18 @@
     --border: 218 12% 19%;
     --input: 218 12% 19%;
     --ring: 124 39% 62%;
-    --radius: 0.625rem;
   }
 
   body {
     @apply bg-background text-foreground;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    scroll-behavior: auto !important;
+    animation-duration: 0s !important;
+    animation-delay: 0s !important;
+    transition-duration: 0s !important;
   }
 }

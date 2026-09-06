@@ -3,7 +3,8 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<meta name="color-scheme" content="dark">
+<meta name="color-scheme" content="light dark">
+<script src="/theme.js"></script>
 <title>Formamorph — an AI text RPG that brings your world to life</title>
 <meta name="description" content="An AI text RPG that brings your world to life. Create your own characters and locations, or play any of the hundreds the community has published. Runs in your browser or fully offline on your desktop, with any AI model you choose.">
 <link rel="canonical" href="https://formamorph.ai/">
@@ -23,9 +24,14 @@
 <meta name="twitter:description" content="Create your own characters and locations, or play any of the hundreds the community has published. Runs in your browser or fully offline on your desktop, with any AI model you choose.">
 <meta name="twitter:image" content="https://formamorph.ai/site/og.jpg">
 <style>
-  :root { --bg:#0d0f12; --text:#e8eaed; --dim:#9aa0a8; --accent:#7ac47f; --line:#2a2e35;
-    /* The outline and the lift a quiet control gets. Shared by every one of them. */
-    --edge:#3a3f47; --lift:#ffffff14; }
+  :root { color-scheme:light; --bg:#f7f8f6; --text:#18201a; --dim:#5f6a61; --accent:#3a7e41;
+    --accent-ink:#fff; --line:#d7ddd7; --edge:#b9c2b9; --lift:#0000000a;
+    --account-bg:#f7f8f6e8; --notice-bg:#eaf4eb; --notice-border:#3a7e4173;
+    --surface-shadow:#0000001f; --hero-opacity:.22; --hero-filter:blur(6px) saturate(.7); }
+  .dark { color-scheme:dark; --bg:#0d0f12; --text:#e8eaed; --dim:#9aa0a8; --accent:#7ac47f;
+    --accent-ink:#0c130d; --line:#2a2e35; --edge:#3a3f47; --lift:#ffffff14;
+    --account-bg:#0d0f12b3; --notice-bg:#142018; --notice-border:#7ac47f73;
+    --surface-shadow:#0000004d; --hero-opacity:1; --hero-filter:blur(6px) brightness(.35); }
   * { box-sizing:border-box; margin:0; }
   body { background:var(--bg); color:var(--text); font:16px/1.55 system-ui,sans-serif;
     -webkit-text-size-adjust:100%; }
@@ -34,7 +40,7 @@
 
   .btn { display:inline-flex; align-items:center; gap:.5em; padding:.8em 1.6em; border-radius:10px;
     border:1px solid transparent; font-weight:600; text-decoration:none; cursor:pointer; font-size:1rem; }
-  .btn-play { background:var(--accent); color:#0c130d; font-size:1.15rem; }
+  .btn-play { background:var(--accent); color:var(--accent-ink); font-size:1.15rem; }
   .btn-play:hover { filter:brightness(1.1); }
   .btn-ghost { border-color:var(--edge); color:var(--text); }
   .btn-ghost:hover { background:var(--lift); }
@@ -71,7 +77,7 @@
   .topbar { position:absolute; top:0; left:0; right:0; z-index:10;
     display:flex; justify-content:flex-end; padding:1rem 1.25rem; }
   .acct { display:inline-flex; align-items:center; gap:.45em; padding:.4em .85em; border-radius:999px;
-    border:1px solid var(--edge); background:#0d0f12b3; color:var(--text); font-weight:600;
+    border:1px solid var(--edge); background:var(--account-bg); color:var(--text); font-weight:600;
     font-size:.95rem; text-decoration:none; }
   .acct:hover { background:var(--lift); }
   /* Signed in the control is the face alone, so the pill shrinks to it — but no smaller than a
@@ -81,22 +87,22 @@
   .acct.face .acct-icon { width:26px; height:26px; }
   .acct-avatar { width:30px; height:30px; border-radius:999px; object-fit:cover; display:block; }
   .session-notice { position:fixed; z-index:3; top:4.5rem; left:50%; transform:translateX(-50%);
-    width:min(560px,calc(100% - 2rem)); padding:.85rem 1rem; border:1px solid rgba(122,196,127,.45);
-    border-radius:10px; background:#142018; box-shadow:0 12px 30px rgba(0,0,0,.3); }
+    width:min(560px,calc(100% - 2rem)); padding:.85rem 1rem; border:1px solid var(--notice-border);
+    border-radius:10px; background:var(--notice-bg); box-shadow:0 12px 30px var(--surface-shadow); }
   .session-notice strong { display:block; margin-bottom:.2rem; }
   .session-notice span { color:var(--dim); }
 
   .hero { min-height:92vh; min-height:92svh; display:grid; place-items:center; text-align:center;
-    position:relative; overflow:hidden; }
+    position:relative; overflow:hidden; background:var(--bg); }
   .hero .bgimg { position:absolute; inset:-40px; background-position:center; background-size:cover;
-    filter:blur(6px) brightness(.35); }
+    filter:var(--hero-filter); opacity:var(--hero-opacity); }
   .hero .in { position:relative; padding:2rem 1.25rem; max-width:780px; }
   .hero img.logo { width:96px; height:96px; border-radius:20px; margin-bottom:1.2rem; }
   h1 { font-size:clamp(2.2rem,9vw,3.4rem); letter-spacing:-.02em; }
   .tagline { color:var(--dim); font-size:clamp(1.02rem,3.6vw,1.25rem); margin:.8rem 0 2rem; }
   .cta { display:flex; gap:.8rem; justify-content:center; flex-wrap:wrap; }
   section { max-width:1100px; margin:0 auto; padding:4rem 1.5rem; }
-  footer { text-align:center; color:var(--dim); padding:3rem 1rem; border-top:1px solid #22262d; }
+  footer { text-align:center; color:var(--dim); padding:3rem 1rem; border-top:1px solid var(--line); }
 
   @media (prefers-reduced-motion: reduce) {
     .skin img.lay { transition:none; }
