@@ -61,6 +61,9 @@ export function LoginPage() {
           value={password}
           onChange={setPassword}
         />
+        <p className="text-right text-helper">
+          <a className="text-primary hover:underline" href="/reset-password">Forgot password?</a>
+        </p>
       </AccountForm>
     </SiteLayout>
   );

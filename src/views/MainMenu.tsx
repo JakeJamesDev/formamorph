@@ -365,6 +365,7 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
     // The likers list hangs off a listing's details, so this route opens the catalog and lands there.
     if (devRoute?.modal === 'likers') openCommunityBrowser();
     if (devRoute?.modal === 'profile') setShowProfileDialog(true);
+    if (devRoute?.modal === 'auth') setShowAuthDialog(true);
     if (devRoute?.modal === 'feedbackHub') setShowFeedback(true);
     if (devRoute?.modal === 'adminPanel') setShowAdminPanel(true);
     if (devRoute?.modal === 'worldEditor') setShowWorldEditor(true);

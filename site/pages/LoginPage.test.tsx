@@ -83,4 +83,11 @@ describe('LoginPage', () => {
     expect(screen.getByRole('link', { name: 'Create one' }))
       .toHaveAttribute('href', '/register?next=%2Faccount');
   });
+
+  it('offers password recovery', () => {
+    render(<LoginPage />);
+
+    expect(screen.getByRole('link', { name: 'Forgot password?' }))
+      .toHaveAttribute('href', '/reset-password');
+  });
 });

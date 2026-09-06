@@ -374,6 +374,19 @@ export function AuthModals({
               />
             </div>
 
+            {authMode === 'login' && (
+              <p className="text-right text-helper">
+                <a
+                  href="https://formamorph.ai/reset-password"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-primary hover:underline"
+                >
+                  Forgot password?
+                </a>
+              </p>
+            )}
+
             {authMode === 'register' && (
               <>
                 <div className="space-y-2">
