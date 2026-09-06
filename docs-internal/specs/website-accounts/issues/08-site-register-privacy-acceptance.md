@@ -1,6 +1,7 @@
 # 08 — Privacy Policy acceptance on the site register page
 
 Status: needs-triage
+Status note: Still unimplemented. Resolve the recovery flow and presentation; redirecting to the game conflicts with this ticket's current done-state.
 Spec: ../spec.md
 
 **What to build:** Registering on `formamorph.ai/register` should answer the Privacy Policy the way registering in the game does, so a site-made account can use the server straight away.
@@ -21,6 +22,8 @@ Nothing is lost and nothing is wrong in the data — the account is simply half-
 on the page that made it.
 
 ## What to decide first
+
+**Audit — 2026-09-06:** `RegisterPage` still registers and immediately follows `next`; it never fetches or accepts the policy. The alternatives below are not equivalent: sending the player to `/play/` requires an explicit scope change because the done-state requires use without opening the game. An in-site flow should also cover existing sessions whose policy acceptance is missing or outdated, so retry does not require creating another account. Server refusal behavior must be checked against the current server checkout.
 
 - [ ] Render the policy on the site, or send the new account to `/play/` with a line saying the policy is
       waiting there. The first needs a markdown renderer light enough for the site bundle; `unified` +

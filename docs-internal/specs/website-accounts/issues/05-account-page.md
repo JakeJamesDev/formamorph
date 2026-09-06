@@ -1,6 +1,7 @@
 # 05 — Account page: password, avatar, delete
 
 Status: ready-for-human
+Status note: Password/avatar/delete and email sections implemented; review stage. Site navigation, sign-out, and deletion-cancellation notice remain in ticket 09.
 Spec: ../spec.md
 
 **What to build:** A signed-in player opens `/account`, changes their password, uploads a new avatar, or deletes the account with password confirmation. Signed-out visitors are sent to sign in and come back.
@@ -16,18 +17,18 @@ Spec: ../spec.md
 ## Comments
 
 **Done, and looked at live.** `/account` is a fourth fixed route on the site entry, at
-[AccountPage.tsx](site/pages/AccountPage.tsx), with 15 jsdom tests beside it.
+[AccountPage.tsx](../../../../site/pages/AccountPage.tsx), with 15 jsdom tests beside it.
 
 ### What was reused rather than rewritten
 
 The ticket asks the actions to "match the app's rules and copy". The surest way to match copy is to be
 the same component, so the page mounts the game's own
-[DeleteAccountDialog.tsx](src/components/menu/DeleteAccountDialog.tsx) and
-[ProfileAvatarEditor.tsx](src/components/menu/ProfileAvatarEditor.tsx) — the seven days, the choice
+[DeleteAccountDialog.tsx](../../../../src/components/menu/DeleteAccountDialog.tsx) and
+[ProfileAvatarEditor.tsx](../../../../src/components/menu/ProfileAvatarEditor.tsx) — the seven days, the choice
 about published work, the password step, and the crop circle are one implementation, not two that have
 to be kept saying the same thing. Only the change-password form is written here, because the app's is a
 dialog and this is a section of a page; its copy and its two rules are lifted from
-[AuthModals.tsx](src/components/menu/AuthModals.tsx).
+[AuthModals.tsx](../../../../src/components/menu/AuthModals.tsx).
 
 ### The one seam that reuse cost
 
@@ -57,9 +58,9 @@ because `ProfilePage` passed its avatar sizing inline — and the failure is sil
 type-checks and passes its tests, it is simply missing the classes it asked for. An avatar's
 `h-16 w-16` circle came out a `w-16` oval.
 
-The list now lives in [tailwind.site.content.cjs](tailwind.site.content.cjs) (apart from the config so a
+The list now lives in [tailwind.site.content.cjs](../../../../tailwind.site.content.cjs) (apart from the config so a
 test can read it — the configs are CommonJS inside an ESM package, which Vitest cannot import), and
-[bundleBoundary.test.ts](site/bundleBoundary.test.ts) gained a sixth test that walks the site's imports
+[bundleBoundary.test.ts](../../../../site/bundleBoundary.test.ts) gained a sixth test that walks the site's imports
 and fails when a reachable file is not in the scan. Proven to bite by dropping `UserAvatar` from the
 list.
 
@@ -79,9 +80,9 @@ Against a throwaway mock API, at 1024×1000 and at 375×812:
 
 ### Deliberately not done
 
-- **Email.** Ticket 06 owns it.
-- **Sign out.** The page has no sign-out button. The header control from ticket 02 already has one, and
-  a second one here would be a second thing to keep in step.
+- **Email.** Ticket 06 owns it and is now implemented.
+- **Sign out.** The page has no sign-out button, and neither does the landing header or `SiteLayout`.
+  The earlier claim that ticket 02 supplied one was incorrect. [Ticket 09](09-site-account-controls.md) tracks this gap and the missing normal navigation into `/account`.
 - **Followers, messages, published work.** Those are the public profile's, at `/u/<name>`.
 
 ### Noted in passing, not fixed
@@ -106,7 +107,7 @@ Both axes ran against the working tree. Findings acted on:
 - **The suspension rule was said in one place, not two.** The game says it at the page level *and*
   again by the password boxes. The page now does both.
 - **The sign-in return path was a third hand-encoded copy.** `signInTo(path)` in
-  [nextPath.ts](site/nextPath.ts) owns the encoding; `/account` and `/profile` both call it, with a
+  [nextPath.ts](../../../../site/nextPath.ts) owns the encoding; `/account` and `/profile` both call it, with a
   round-trip test through `safeNextPath`.
 - **Avatar removal was tested only at the component.** It is an action on this page, so it has a
   page-level test that the shared record is cleared.

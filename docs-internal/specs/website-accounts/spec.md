@@ -1,9 +1,12 @@
 # Spec: Website accounts — sign in from formamorph.ai, in sync with the app
 
-Status: ready-for-agent
+Status: needs-triage
+Status note: Client tickets 01–06 have implementations; cross-tab acceptance coverage, reset, privacy acceptance, site account controls, and theme scope remain open. See [the current inventory](inventory.md).
 Server twin: `FormamorphServer/docs-internal/specs/website-accounts/spec.md`
 
 ## Problem Statement
+
+This describes the starting problem. Current implementation and remaining work are tracked in [the inventory](inventory.md); historical ticket comments are not deployment evidence.
 
 The only way to sign in is inside the game at `/play/`. The landing page at `formamorph.ai` knows nothing about accounts: no sign-in control, no profile a creator can share, no account settings outside the game menu. A player who forgets a password has no recovery path at all, because the server has never sent an email. Emails were never collected, so the column sits empty.
 

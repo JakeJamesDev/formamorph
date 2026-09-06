@@ -1,11 +1,12 @@
 # 04 — Public profile and not-found
 
 Status: ready-for-human
+Status note: Client and server ticket 05 are implemented; real deployed-profile verification remains open.
 Spec: ../spec.md
 
 **What to build:** A creator shares `formamorph.ai/u/<username>`. Visitors see the avatar, username, stats, and creations the in-app profile shows, after the age attestation. `/profile` sends a signed-in player to their own page.
 
-**Blocked by:** 01. Now also blocked on the server twin `FormamorphServer/docs-internal/specs/website-accounts/issues/05-public-profile-by-username.md`, which this session filed — see the comment below.
+**Dependencies:** Client 01 and [server 05](../../../../../FormamorphServer/docs-internal/specs/website-accounts/issues/05-public-profile-by-username.md) are implemented. Deployment verification remains open.
 
 - [x] `/u/<username>` mirrors the in-app profile dialog's content using the same community services. Creation cards are display only.
 - [x] `/profile` redirects to the own profile, or to `/login?next=/profile` when signed out.
@@ -14,6 +15,10 @@ Spec: ../spec.md
 - [x] jsdom tests: gate before render, one answer skips the gate, not-found for unknown and suspended, redirect when signed out.
 
 ## Comments
+
+### Audit — 2026-09-06
+
+The client calls `GET /api/users/by-username/:username/profile` through `UserService.fetchProfileByUsername`. Server commit `36bd871` implements that route; the old endpoint-missing blocker is resolved. Verify a real found profile before closing integration. Server 05 records exact-case precedence and oldest visible match for ambiguous folded names, plus an outstanding disclosure gap through the existing ID endpoint. Review those notes; the mocked client 404 cannot establish the full suspension contract. The original comments below record the implementation session's evidence only.
 
 **The client is done; the endpoint it calls is not.** Every profile call the server has takes a UUID —
 `GET /api/users/:id/profile` reads `User.findById`, so a username misses and 404s — and the profile DTO
