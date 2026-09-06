@@ -135,3 +135,14 @@ describe('the optional address at signup', () => {
     expect((screen.getByPlaceholderText('you@example.com') as HTMLInputElement).value).toBe('');
   });
 });
+
+describe('password recovery from the app', () => {
+  it('opens the site reset page through the external-link path', () => {
+    renderAuth();
+
+    const link = screen.getByRole('link', { name: 'Forgot password?' });
+    expect(link).toHaveAttribute('href', 'https://formamorph.ai/reset-password');
+    expect(link).toHaveAttribute('target', '_blank');
+    expect(link).toHaveAttribute('rel', 'noopener noreferrer');
+  });
+});

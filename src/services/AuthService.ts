@@ -28,6 +28,11 @@ export type VerifyEmailResult =
       message: string;
     };
 
+/** How consuming a password-reset token ended. */
+export type PasswordResetResult =
+  | { reset: true }
+  | { reset: false; message: string };
+
 /** Singleton holding the auth token and current user, mirrored to `localStorage`. Default-exported as
  *  one shared instance; the constructor rehydrates both from storage (tolerating a corrupt user blob)
  *  and then follows the `storage` event, so a sign-in or sign-out in another tab reaches this one. */
@@ -327,6 +332,42 @@ class AuthService {
       console.error('Change password error:', error);
       throw error;
     }
+  }
+
+  /** Ask for a password-reset mail by username or email. */
+  async requestPasswordReset(account: string): Promise<void> {
+    const response = await fetch(`${this.API_URL}/auth/request-password-reset`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ account })
+    });
+
+    const data = await response.json().catch(() => ({}));
+    if (!response.ok) {
+      throw new Error(data.error || data.message || 'Failed to request a password reset');
+    }
+  }
+
+  /** Replace the password named by a reset token. */
+  async resetPassword(token: string, newPassword: string): Promise<PasswordResetResult> {
+    const response = await fetch(`${this.API_URL}/auth/reset-password`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ token, newPassword })
+    });
+
+    const data = await response.json().catch(() => ({}));
+    if (!response.ok) {
+      if (data.code === 'TOKEN_INVALID') {
+        return {
+          reset: false,
+          message: data.error || data.message || 'That password reset link could not be used'
+        };
+      }
+      throw new Error(data.error || data.message || 'Failed to reset the password');
+    }
+
+    return { reset: true };
   }
 
   /**
