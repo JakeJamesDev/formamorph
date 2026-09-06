@@ -1,6 +1,7 @@
 # Spec: Age gate for community content
 
-Status: ready-for-agent
+Status: done
+Status note: Implemented in da55ab6f on 2026-09-01 and released in 2.16.0. This spec records the original app gate; later website scope and service-layer enforcement follow-ups do not reopen it.
 
 ## Problem Statement
 
