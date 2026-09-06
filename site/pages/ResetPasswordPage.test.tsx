@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { render, screen } from '@testing-library/react';
+import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { ResetPasswordPage } from './ResetPasswordPage';
 import { at, res, resetAccountPage } from '../test/support';
@@ -82,7 +82,9 @@ describe('using a password-reset link', () => {
     await user.click(screen.getByRole('button', { name: 'Reset Password' }));
 
     expect(await screen.findByRole('status')).toHaveTextContent('Your password has been reset.');
-    expect(screen.getByRole('link', { name: 'Sign In' })).toHaveAttribute('href', '/login');
+    const nextStep = screen.getByText(/with your new password/).closest('p');
+    expect(nextStep).not.toBeNull();
+    expect(within(nextStep!).getByRole('link', { name: 'Sign In' })).toHaveAttribute('href', '/login');
     const [, init] = vi.mocked(fetch).mock.calls[0];
     expect(JSON.parse(String((init as RequestInit).body)))
       .toEqual({ token: 't0ken', newPassword: 'new-secret' });

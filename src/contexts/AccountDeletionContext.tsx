@@ -10,6 +10,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { DeleteAccountDialog } from '@/components/menu/DeleteAccountDialog';
 import { useDevRoute } from '@/lib/devRouter';
+import { clearDeletionCancellation, hasDeletionCancellation } from '@/lib/deletionCancellation';
 import AuthService from '@/services/AuthService';
 
 interface AccountDeletionValue {
@@ -36,7 +37,7 @@ const AccountDeletionContext = createContext<AccountDeletionValue | null>(null);
  */
 export function AccountDeletionProvider({ children }: { children: ReactNode }) {
   const [flowOpen, setFlowOpen] = useState(false);
-  const [cancelledOpen, setCancelledOpen] = useState(false);
+  const [cancelledOpen, setCancelledOpen] = useState(hasDeletionCancellation);
   // Lent by whoever owns the Feedback dialog, which is mounted far below this. Held in state rather
   // than a ref so the step re-renders into a working button the moment it arrives.
   const [feedbackOpener, setFeedbackOpener] = useState<(() => void) | null>(null);
@@ -44,6 +45,10 @@ export function AccountDeletionProvider({ children }: { children: ReactNode }) {
 
   const startDeletion = useCallback(() => setFlowOpen(true), []);
   const noticeCancelled = useCallback(() => setCancelledOpen(true), []);
+
+  useEffect(() => {
+    if (cancelledOpen) clearDeletionCancellation();
+  }, [cancelledOpen]);
 
   // A function stored in state has to be set through a callback, or React reads the function itself as
   // an updater and calls it.
