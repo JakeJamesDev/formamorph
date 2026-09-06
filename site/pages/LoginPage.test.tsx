@@ -1,9 +1,11 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
-import { render, screen, waitFor } from '@testing-library/react';
+import { cleanup, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { LoginPage } from './LoginPage';
 import { leaveTo } from '../leaveSite';
 import { at, res, resetAccountPage } from '../test/support';
+import { SiteLayout } from '../components/SiteLayout';
+import { StrictMode } from 'react';
 
 // jsdom implements no navigation, so where a finished sign-in sent the reader is only observable
 // through this seam.
@@ -64,6 +66,27 @@ describe('LoginPage', () => {
     await signIn();
 
     await waitFor(() => expect(leaveTo).toHaveBeenCalledWith('/account'));
+  });
+
+  it('carries a canceled-deletion notice through the safe return, then shows it once', async () => {
+    at('/login?next=%2Faccount');
+    vi.mocked(fetch).mockResolvedValue(res({
+      token: 'tok',
+      user: { username: 'alice' },
+      deletionCancelled: true,
+    }));
+    const login = render(<LoginPage />);
+
+    await signIn();
+    await waitFor(() => expect(leaveTo).toHaveBeenCalledWith('/account'));
+
+    login.unmount();
+    render(<StrictMode><SiteLayout><p>Account destination</p></SiteLayout></StrictMode>);
+    expect(screen.getByRole('status')).toHaveTextContent('Account deletion canceled');
+
+    cleanup();
+    render(<SiteLayout><p>Another page</p></SiteLayout>);
+    expect(screen.queryByRole('status')).toBeNull();
   });
 
   it('ignores a return path pointing off this site', async () => {

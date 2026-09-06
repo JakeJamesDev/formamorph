@@ -1,7 +1,7 @@
 # 09 — Site account navigation and sign-out
 
-Status: needs-triage
-Status note: Missing behavior confirmed in the client; choose the control placement before implementation.
+Status: ready-for-human
+Status note: Shared header controls, cross-tab session updates, cancellation notices, and browser coverage are implemented and verified.
 Spec: [Website accounts](../spec.md), stories 4, 10, 11, and 19.
 
 **Dependencies:** Tickets 01, 02, and 05 are implemented. Coordinate browser coverage with ticket 03.
@@ -18,9 +18,9 @@ Choose where account settings and sign-out live on the site. Preserve the specif
 
 ## Done when
 
-- [ ] A signed-in visitor can reach account settings from the landing/profile flow.
-- [ ] A site control signs out through the shared session, updates the local UI, and signs out open app/landing tabs.
-- [ ] The site session control follows foreign sign-in/sign-out and avatar updates.
-- [ ] A login that cancels pending deletion tells the player and preserves the safe return path.
-- [ ] Browser tests cover the actual controls at desktop and phone sizes; ticket 03 covers both cross-surface logout directions.
-- [ ] Four gates and live UI verification pass; no world/save export change.
+- [x] A signed-in visitor can reach account settings from the landing/profile flow.
+- [x] A site control signs out through the shared session, updates the local UI, and signs out open app/landing tabs.
+- [x] The site session control follows foreign sign-in/sign-out and avatar updates.
+- [x] A login that cancels pending deletion tells the player and preserves the safe return path.
+- [x] Browser tests cover the actual controls at desktop and phone sizes; ticket 03 covers both cross-surface logout directions.
+- [x] Four gates and live UI verification pass; no world/save export change.

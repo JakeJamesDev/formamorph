@@ -14,6 +14,9 @@ export const TOKEN_KEY = 'authToken';
 /** Where the signed-in user's DTO is held, as JSON. */
 export const USER_KEY = 'currentUser';
 
+/** The one-navigation notice a site login leaves for its destination. */
+export const DELETION_CANCELLATION_KEY = 'FORMAMORPH_deletionCancellation';
+
 /**
  * Where a stored avatar loads from. The tracked site is the production site, so this is the production
  * API's origin — the same host `VITE_API_URL_PROD` names, without its `/api` suffix, because the paths
@@ -94,4 +97,15 @@ export function watchSession(onChange) {
 export function avatarSrc(avatarUrl) {
   if (!avatarUrl) return null;
   return avatarUrl.startsWith('/') ? `${API_ORIGIN}${avatarUrl}` : avatarUrl;
+}
+
+/** Read and clear a pending account-deletion cancellation notice. */
+export function takeDeletionCancellation() {
+  try {
+    if (sessionStorage.getItem(DELETION_CANCELLATION_KEY) !== 'true') return false;
+    sessionStorage.removeItem(DELETION_CANCELLATION_KEY);
+    return true;
+  } catch {
+    return false;
+  }
 }

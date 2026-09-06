@@ -50,6 +50,8 @@ class AuthService {
    *  identity can pick it up. The site pages and the game are separate builds on one origin, so a sign-in
    *  on either reaches the other only through the `storage` event below. */
   private sessionAdoptedListeners = new Set<() => void>();
+  /** Told whenever the held identity changes, including local writes and foreign avatar updates. */
+  private sessionChangedListeners = new Set<() => void>();
 
   constructor() {
     this.API_URL = API_BASE_URL;
@@ -104,6 +106,7 @@ class AuthService {
     const wasAuthenticated = !!this.token;
     this.token = token;
     this.currentUser = user;
+    this.notify(this.sessionChangedListeners);
 
     // A foreign sign-out reaches the same listeners a local one does: every surface that drops an
     // identity is already subscribed there, and the two cases want the same thing done.
@@ -143,6 +146,12 @@ class AuthService {
     return () => { this.sessionAdoptedListeners.delete(listener); };
   }
 
+  /** Listen for any local or foreign change to the held session. Returns the unsubscribe. */
+  onSessionChanged(listener: () => void): () => void {
+    this.sessionChangedListeners.add(listener);
+    return () => { this.sessionChangedListeners.delete(listener); };
+  }
+
   /** Authenticate, persist the token, then adopt or fetch the user profile; rethrows on failure.
    *  Reports whether the sign-in cancelled a pending deletion, which is the only place that is said. */
   async login(username: string, password: string): Promise<LoginResult> {
@@ -165,8 +174,7 @@ class AuthService {
 
       // If the login response includes user data, store it
       if (data.user) {
-        this.currentUser = data.user;
-        localStorage.setItem(this.userKey, JSON.stringify(data.user));
+        this.adoptUser(data.user);
       } else {
         // Otherwise, fetch user profile
         await this.fetchUserProfile();
@@ -223,8 +231,7 @@ class AuthService {
 
       // If the registration response includes user data, store it
       if (data.user) {
-        this.currentUser = data.user;
-        localStorage.setItem(this.userKey, JSON.stringify(data.user));
+        this.adoptUser(data.user);
       } else {
         // Otherwise, fetch user profile
         await this.fetchUserProfile();
@@ -232,8 +239,7 @@ class AuthService {
 
       // If we still don't have a username, create a basic user object with the username
       if (!this.currentUser || !this.currentUser.username) {
-        this.currentUser = { username };
-        localStorage.setItem(this.userKey, JSON.stringify(this.currentUser));
+        this.adoptUser({ username });
       }
 
       return true;
@@ -277,8 +283,7 @@ class AuthService {
         userObject.username = this.currentUser.username;
       }
 
-      this.currentUser = userObject;
-      localStorage.setItem(this.userKey, JSON.stringify(userObject));
+      this.adoptUser(userObject);
 
       return userObject;
     } catch (error) {
@@ -288,7 +293,7 @@ class AuthService {
       if (!this.currentUser || !this.currentUser.username) {
         const storedUser = JSON.parse(localStorage.getItem(this.userKey) || 'null');
         if (storedUser && storedUser.username) {
-          this.currentUser = storedUser;
+          this.adoptUser(storedUser);
         }
       }
 
@@ -502,6 +507,7 @@ class AuthService {
   private adoptUser(user: AuthUser) {
     this.currentUser = user;
     localStorage.setItem(this.userKey, JSON.stringify(user));
+    this.notify(this.sessionChangedListeners);
   }
 
   /**
@@ -610,9 +616,7 @@ class AuthService {
   /** Write an avatar URL into the cached user, so the header changes without a round trip. */
   applyAvatar(avatarUrl: string | null) {
     if (!this.currentUser) return;
-
-    this.currentUser = { ...this.currentUser, avatarUrl };
-    localStorage.setItem(this.userKey, JSON.stringify(this.currentUser));
+    this.adoptUser({ ...this.currentUser, avatarUrl });
   }
 
   /** Loose format check for the optional registration email. */
@@ -623,10 +627,12 @@ class AuthService {
 
   /** Clear the token and user from memory and `localStorage`; also invoked on a `401` from the server. */
   logout() {
+    const changed = !!this.token || this.currentUser !== null;
     this.token = null;
     this.currentUser = null;
     localStorage.removeItem(this.tokenKey);
     localStorage.removeItem(this.userKey);
+    if (changed) this.notify(this.sessionChangedListeners);
     // After the state is cleared, so a listener that reads `isAuthenticated()` sees the session gone.
     this.notify(this.sessionEndedListeners);
   }

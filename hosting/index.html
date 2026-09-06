@@ -80,6 +80,11 @@
   .acct-icon { width:20px; height:20px; display:block; }
   .acct.face .acct-icon { width:26px; height:26px; }
   .acct-avatar { width:30px; height:30px; border-radius:999px; object-fit:cover; display:block; }
+  .session-notice { position:fixed; z-index:3; top:4.5rem; left:50%; transform:translateX(-50%);
+    width:min(560px,calc(100% - 2rem)); padding:.85rem 1rem; border:1px solid rgba(122,196,127,.45);
+    border-radius:10px; background:#142018; box-shadow:0 12px 30px rgba(0,0,0,.3); }
+  .session-notice strong { display:block; margin-bottom:.2rem; }
+  .session-notice span { color:var(--dim); }
 
   .hero { min-height:92vh; min-height:92svh; display:grid; place-items:center; text-align:center;
     position:relative; overflow:hidden; }
@@ -112,6 +117,11 @@
     </svg>
   </a>
 </header>
+
+<div class="session-notice" data-deletion-notice role="status" hidden>
+  <strong>Account deletion canceled</strong>
+  <span>Signing in called it off. Your account and everything in it are still here.</span>
+</div>
 
 <div class="hero">
   <div class="bgimg"></div>
@@ -277,7 +287,7 @@ fetch(`https://api.github.com/repos/${REPO}/releases/latest`)
 <script type="module">
 // The header's account control. The session is read through the shared module rather than out of
 // localStorage here, so this page and the account pages never disagree about the keys.
-import { readSession, watchSession, avatarSrc } from '/session.js';
+import { readSession, watchSession, avatarSrc, takeDeletionCancellation } from '/session.js';
 
 const control = document.querySelector('[data-account]');
 // Both pieces of the signed-out control, detached and kept so every later state is built from them:
@@ -309,6 +319,10 @@ function render(session) {
 
 render(readSession());
 watchSession(render);
+
+if (takeDeletionCancellation()) {
+  document.querySelector('[data-deletion-notice]').hidden = false;
+}
 </script>
 </body>
 </html>

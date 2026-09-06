@@ -5,9 +5,22 @@ import path from 'path'
 import { readFileSync } from 'fs'
 
 const pkg = JSON.parse(readFileSync(path.resolve(__dirname, 'package.json'), 'utf-8'))
+const syncAppOrigin = process.env.E2E_SYNC_APP_ORIGIN
+
+const directSyncAppModules = {
+  name: 'direct-sync-app-modules',
+  enforce: 'post',
+  transformIndexHtml(html) {
+    if (!syncAppOrigin) return html
+    return html.replace(/src="(\/play\/(?:@vite\/client|src\/main\.tsx))"/g, `src="${syncAppOrigin}$1"`)
+  },
+}
 
 export default defineConfig({
-  plugins: [react()],
+  plugins: [react(), directSyncAppModules],
+  ...(process.env.E2E_SYNC_APP
+    ? { cacheDir: path.resolve(__dirname, 'node_modules/.vite-sync-app') }
+    : {}),
   base: './',
   // Expose the package.json version to the app (single source of truth for the app/world/save stamp).
   define: {

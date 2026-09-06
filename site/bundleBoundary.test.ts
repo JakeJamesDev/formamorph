@@ -28,6 +28,7 @@ const ALLOWED = [
   '@/components/menu/ProfileAvatarEditor',
   '@/lib/ageGate',
   '@/lib/apiBase',
+  '@/lib/deletionCancellation',
   '@/lib/serverDate',
   '@/lib/utils',
   '@/types',
