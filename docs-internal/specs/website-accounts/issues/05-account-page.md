@@ -34,8 +34,8 @@ dialog and this is a section of a page; its copy and its two rules are lifted fr
 
 Both reused controls reported through `react-toastify`. The site mounts no toast container, and it
 should not: the game's is `ThemedToastContainer`, which reads a `ThemeProvider` the site deliberately
-does not mount — the site is dark-only, and mounting the provider would write the app's own
-`vite-ui-theme` key from a page that has no theme picker.
+does not mount. Ticket 10 instead added a read-only resolver, so the site follows the app's
+`vite-ui-theme` choice without gaining a theme setter of its own.
 
 So the reporting channel is now a prop. `ProfileAvatarEditor` takes `notify(message, kind)` and
 `AvatarCropDialog` takes `onError(message)`; the game passes a toast reporter, the site passes a setter

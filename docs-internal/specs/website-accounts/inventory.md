@@ -15,7 +15,7 @@ Audited September 6, 2026 against the client at `1f6f2fcc` and server at `36bd87
 | [07 — Password reset](issues/07-password-reset-pages.md) | Ready to implement | Request/token pages, AuthService methods, Forgot links in both login surfaces, desktop/Android external opening, tests. Server contract exists. |
 | [08 — Privacy acceptance](issues/08-site-register-privacy-acceptance.md) | Needs triage | In-site acceptance and recoverable retry, including sessions with missing/outdated acceptance. Sending users to the game conflicts with the current done-state. |
 | [09 — Account controls](issues/09-site-account-controls.md) | New; needs triage | Reach settings from the profile flow, sign out on the site, follow session updates, and show deletion-cancellation feedback. Choose placement. |
-| [10 — Theme scope](issues/10-site-theme-scope.md) | New; needs triage | Resolve the spec's light/dark promise against the deliberate dark-only implementation; verify reduced motion independently. |
+| [10 — Theme scope](issues/10-site-theme-scope.md) | Implemented; review | Retained both themes; browser coverage verifies coordinated landing/account palettes, phone layout, read-only preference handling, and reduced motion. Live deployment remains unverified. |
 
 `ready-for-human` on implemented tickets means review remains, following the implementation protocol. Status notes distinguish those from server deployment work that actually needs human execution.
 

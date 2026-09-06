@@ -28,6 +28,42 @@ const landingPalette = async (page: Page) => {
  */
 
 test.describe('site pages', () => {
+  test('the light account pages match the landing page without rewriting system mode', async ({ page }) => {
+    await page.emulateMedia({ colorScheme: 'light' });
+    await page.addInitScript(() => localStorage.setItem('vite-ui-theme', 'system'));
+    const landing = await landingPalette(page);
+    expect(channels(landing.bg).every((channel) => channel > 230)).toBe(true);
+
+    await page.goto(`${PAGES_URL}/login`);
+    await expect(page.locator('html')).toHaveClass(/\blight\b/);
+    const ground = await page.evaluate(() => getComputedStyle(document.body).backgroundColor);
+    const button = await page.getByRole('button', { name: 'Sign In' })
+      .evaluate((node) => getComputedStyle(node).backgroundColor);
+
+    for (const [got, want] of [[ground, landing.bg], [button, landing.accent]] as const) {
+      const [r, g, b] = channels(got);
+      const [wr, wg, wb] = channels(want);
+      expect(Math.max(Math.abs(r - wr), Math.abs(g - wg), Math.abs(b - wb))).toBeLessThanOrEqual(3);
+    }
+    expect(await page.evaluate(() => ({
+      overflow: document.documentElement.scrollWidth - document.documentElement.clientWidth,
+      stored: localStorage.getItem('vite-ui-theme'),
+    }))).toEqual({ overflow: 0, stored: 'system' });
+
+    for (const [path, heading] of [
+      ['/register', 'Create Account'],
+      ['/reset-password', 'Reset Password'],
+      ['/nothing-here', 'Page Not Found'],
+    ] as const) {
+      await page.goto(`${PAGES_URL}${path}`);
+      await expect(page.locator('html')).toHaveClass(/\blight\b/);
+      await expect(page.getByRole('heading', { name: heading })).toBeVisible();
+      await expect(page.locator('header').getByRole('link', { name: 'Sign In', exact: true })).toBeVisible();
+      expect(await page.evaluate(() =>
+        document.documentElement.scrollWidth - document.documentElement.clientWidth)).toBe(0);
+    }
+  });
+
   test('the login page lays out inside the viewport', async ({ page }) => {
     await page.goto(`${PAGES_URL}/login`);
 
@@ -42,11 +78,13 @@ test.describe('site pages', () => {
     expect(overflow).toBe(0);
   });
 
-  test('the controls wear the landing page palette, not the game one', async ({ page }, testInfo) => {
-    test.skip(testInfo.project.name !== 'desktop', 'the palette does not vary by viewport');
+  test('the dark controls wear the landing page palette, not the game one', async ({ page }) => {
+    await page.addInitScript(() => localStorage.setItem('vite-ui-theme', 'dark'));
     const landing = await landingPalette(page);
+    expect(channels(landing.bg).every((channel) => channel < 40)).toBe(true);
 
     await page.goto(`${PAGES_URL}/login`);
+    await expect(page.locator('html')).toHaveClass(/\bdark\b/);
     const ground = await page.evaluate(() => getComputedStyle(document.body).backgroundColor);
     const button = await page.getByRole('button', { name: 'Sign In' })
       .evaluate((node) => getComputedStyle(node).backgroundColor);
@@ -61,6 +99,42 @@ test.describe('site pages', () => {
       expect(Math.max(Math.abs(r - wr), Math.abs(g - wg), Math.abs(b - wb)),
         `${got} against the landing page's ${want.trim()}`).toBeLessThanOrEqual(3);
     }
+    expect(await page.evaluate(() =>
+      document.documentElement.scrollWidth - document.documentElement.clientWidth)).toBe(0);
+
+    for (const [path, heading] of [
+      ['/register', 'Create Account'],
+      ['/reset-password', 'Reset Password'],
+      ['/nothing-here', 'Page Not Found'],
+    ] as const) {
+      await page.goto(`${PAGES_URL}${path}`);
+      await expect(page.locator('html')).toHaveClass(/\bdark\b/);
+      await expect(page.getByRole('heading', { name: heading })).toBeVisible();
+      await expect(page.locator('header').getByRole('link', { name: 'Sign In', exact: true })).toBeVisible();
+      expect(await page.evaluate(() =>
+        document.documentElement.scrollWidth - document.documentElement.clientWidth)).toBe(0);
+    }
+  });
+
+  test('reduced motion removes animation from an account dialog', async ({ page }) => {
+    await page.emulateMedia({ reducedMotion: 'reduce' });
+    await page.addInitScript(() => {
+      localStorage.setItem('authToken', 'held-token');
+      localStorage.setItem('currentUser', JSON.stringify({ username: 'rowan' }));
+    });
+    await page.route('**/auth/me', (route) => route.fulfill({
+      json: { success: true, user: { username: 'rowan', email: null, emailVerified: false } },
+    }));
+    await page.goto(`${PAGES_URL}/account`);
+    await expect(page.getByRole('heading', { name: 'Your Account' })).toBeVisible();
+
+    await page.getByRole('button', { name: 'Delete Account' }).click();
+    const dialog = page.getByRole('dialog');
+    await expect(dialog).toBeVisible();
+    expect(await dialog.evaluate((node) => ({
+      animationDuration: getComputedStyle(node).animationDuration,
+      transitionDuration: getComputedStyle(node).transitionDuration,
+    }))).toEqual({ animationDuration: '0s', transitionDuration: '0s' });
   });
 
   test('the register page is reachable and its own page', async ({ page }) => {

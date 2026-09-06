@@ -23,7 +23,7 @@ Spec: ../spec.md
 
 `site/App.tsx` now serves `/account`, `/profile`, `/u/<username>`, and `/verify-email` as well as login/register. Only `/reset-password` remains unimplemented among the specified routes (ticket 07). The five-placeholder note below describes the original delivery, not the current tree. The deploy action builds `site-dist` and layers it at `/site-app/` on both deploy paths; deployment itself has not been verified in this audit.
 
-Login still discards `deletionCancelled`; the follow-up belongs to [ticket 09](09-site-account-controls.md). Dark-only styling is an unresolved spec discrepancy tracked in [ticket 10](10-site-theme-scope.md).
+Login still discards `deletionCancelled`; the follow-up belongs to [ticket 09](09-site-account-controls.md). Ticket 10 retained and implemented coordinated light/dark styling for the landing and account pages.
 
 **Deferred, deliberately — recorded so none of these reads as an oversight.**
 
@@ -32,9 +32,8 @@ Login still discards `deletionCancelled`; the follow-up belongs to [ticket 09](0
   pulls Streamdown and Shiki — megabytes with no business in a login page. An account made on the site
   works but is refused by the server (`PRIVACY_REQUIRED`) until its owner opens `/play/` and accepts
   there. Written up as ticket 08.
-- **The site pages are dark only**, matching the landing page, which has no light mode. The parent spec's
-  story 41 wants both themes; giving the account pages a light mode while the landing page stays dark
-  would make the two disagree. Revisit when the landing page gains one.
+- **Theme work was deferred from this ticket.** Ticket 10 later added the coordinated landing/account
+  palettes and the read-only resolver that follows the app's choice.
 - **Five of the seven rewritten routes serve a 200 "Page Not Found" until their tickets land** —
   `/account`, `/profile`, `/reset-password`, `/verify-email` and `/u/*`. The checklist asks for all seven
   rules now, so this is the specified state, not a bug.

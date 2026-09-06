@@ -34,6 +34,52 @@ const APK = `${LATEST}/download/Formamorph-android.apk`;
 const opacities = (page: Page) =>
   page.$$eval('.skin > img.lay', (imgs) => imgs.map((i) => Number(getComputedStyle(i).opacity)));
 
+test.describe('site theme', () => {
+  test('the landing page follows the held light preference without rewriting it', async ({ page }) => {
+    await page.emulateMedia({ colorScheme: 'dark' });
+    await page.addInitScript(() => localStorage.setItem('vite-ui-theme', 'light'));
+    await page.goto(SITE_URL);
+
+    await expect(page.locator('html')).toHaveClass(/\blight\b/);
+    expect(await page.evaluate(() => ({
+      colorScheme: getComputedStyle(document.documentElement).colorScheme,
+      stored: localStorage.getItem('vite-ui-theme'),
+    }))).toEqual({ colorScheme: 'light', stored: 'light' });
+  });
+
+  test('the landing page follows the OS when no preference is held', async ({ page }) => {
+    await page.emulateMedia({ colorScheme: 'light' });
+    await page.goto(SITE_URL);
+
+    await expect(page.locator('html')).toHaveClass(/\blight\b/);
+    expect(await page.evaluate(() => localStorage.getItem('vite-ui-theme'))).toBeNull();
+  });
+
+  test('an open landing page follows an OS scheme change in system mode', async ({ page }) => {
+    await page.emulateMedia({ colorScheme: 'light' });
+    await page.addInitScript(() => localStorage.setItem('vite-ui-theme', 'system'));
+    await page.goto(SITE_URL);
+
+    await page.emulateMedia({ colorScheme: 'dark' });
+
+    await expect(page.locator('html')).toHaveClass(/\bdark\b/);
+    expect(await page.evaluate(() => localStorage.getItem('vite-ui-theme'))).toBe('system');
+  });
+
+  test('an open landing page follows a preference changed in another tab', async ({ context }) => {
+    const landing = await context.newPage();
+    const app = await context.newPage();
+    await landing.addInitScript(() => localStorage.setItem('vite-ui-theme', 'light'));
+    await landing.goto(SITE_URL);
+    await app.goto(`${SITE_URL}/privacy`);
+
+    await app.evaluate(() => localStorage.setItem('vite-ui-theme', 'dark'));
+
+    await expect(landing.locator('html')).toHaveClass(/\bdark\b/);
+  });
+
+});
+
 test.describe('landing page', () => {
   test('gallery renders both theme stacks with only the first palette showing', async ({ page }) => {
     await page.goto(SITE_URL);

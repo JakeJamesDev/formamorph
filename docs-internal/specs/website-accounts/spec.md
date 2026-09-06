@@ -1,7 +1,7 @@
 # Spec: Website accounts — sign in from formamorph.ai, in sync with the app
 
 Status: needs-triage
-Status note: Client tickets 01–06 have implementations; cross-tab acceptance coverage, reset, privacy acceptance, site account controls, and theme scope remain open. See [the current inventory](inventory.md).
+Status note: Theme scope is retained and implemented in ticket 10; other client, deployment, and review work remains. See [the current inventory](inventory.md).
 Server twin: `FormamorphServer/docs-internal/specs/website-accounts/spec.md`
 
 ## Problem Statement
@@ -73,7 +73,7 @@ On the server, email becomes a real field: unique, verifiable, and the channel f
 - **Routes:** `/login`, `/register`, `/account`, `/profile` (redirects to own `/u/<username>`), `/u/<username>`, `/reset-password` (request form, and the new-password form when a token is in the URL), `/verify-email` (consumes a token). Routing is client-side under one entry; the hosting redirects gain the rules that serve that entry for these paths.
 - **The site entry builds to its own ignored output directory**, never into the tracked hosting directory. The deploy action layers three things: the tracked hosting directory, the site entry's build, and the app build under `/play/`. The `site_only` dispatch builds the site entry; it still skips the app build.
 - **The site entry uses an absolute base** so nested routes such as `/u/<username>` resolve assets. The app keeps its relative base.
-- **Style:** the landing page's fonts, colors, header, and footer. Shadcn primitives are restyled to match; the in-game look is not used.
+- **Style:** the landing page's fonts, colors, header, and footer. Shadcn primitives are restyled to match; the in-game look is not used. The landing and account pages read the app's `vite-ui-theme` choice without writing it, fall back to the operating-system scheme for `system` or no choice, and follow later storage or system changes while open.
 - **Landing header control:** signed out shows "Sign In" and a person icon, top right. Signed in shows the avatar alone, linking to the profile. The landing page reads the session with the same small vanilla module the site entry ships, so the static page needs no React.
 - **Return path:** login and register accept `?next=`, accept only same-origin absolute paths, and default to `/`.
 - **Public profile** mirrors the in-app profile dialog's content and the same community endpoints. Creation cards are display only. Unknown and suspended users render the same not-found page.
@@ -110,7 +110,7 @@ A good test drives the seam an outside caller uses and asserts the observable re
 - **The mail transport is the one new seam.** Tests inject the capture transport and assert on the captured message, including the link.
 - **AuthService** gains unit tests for the storage listener: a foreign write of the token key signs in, a removal signs out, and the subscriber is notified. Prior art: the existing AuthService test file.
 - **Site pages** render in jsdom with the real provider stack the way the main menu tests do: redirect without a session, not-found for an unknown user, age gate before a profile, the `?next=` filter.
-- **Playwright** covers the landing header states against the static site server the landing tests already use, and cross-tab sync with two pages in one context: sign in on the site page, assert the app page shows the signed-in menu without a reload, and the reverse for sign-out.
+- **Playwright** covers the landing header states against the static site server the landing tests already use, cross-tab session sync with two pages in one context, and matching light/dark landing and account palettes at desktop and phone widths without a site page writing the app's preference. Reduced motion is checked independently with an emulated media preference.
 - **Live check:** the deploy's live checks gain a probe that the site entry's routes serve HTML.
 
 ## Out of Scope

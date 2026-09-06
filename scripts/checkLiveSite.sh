@@ -87,6 +87,8 @@ battery() {
   # nothing else here would notice.
   check "/session.js status" "200" "$(curl -sS --max-time 20 -o /dev/null -w '%{http_code}' "$BASE_AI/session.js")"
   check_glob "/session.js content-type" "*javascript*" "$(content_type "$BASE_AI/session.js")"
+  check "/theme.js status" "200" "$(curl -sS --max-time 20 -o /dev/null -w '%{http_code}' "$BASE_AI/theme.js")"
+  check_glob "/theme.js content-type" "*javascript*" "$(content_type "$BASE_AI/theme.js")"
 
   # The account pages. /login is served by a rewrite onto /site-app/index.html, so this proves the
   # entry's build reached the upload root AND that the rule fired. The body check is what tells the two
