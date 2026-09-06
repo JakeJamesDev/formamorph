@@ -16,6 +16,7 @@ const SITE = resolve(__dirname);
 /** What `site/` may reach for inside `src/`. Everything here is a leaf the game does not drag along. */
 const ALLOWED = [
   '@/services/AuthService',
+  '@/services/PolicyService',
   '@/services/UserService',
   '@/components/ui/',
   '@/components/UserAvatar',

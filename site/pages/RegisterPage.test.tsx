@@ -1,9 +1,10 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
+import { StrictMode } from 'react';
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { RegisterPage } from './RegisterPage';
 import { leaveTo } from '../leaveSite';
-import { at, res, resetAccountPage } from '../test/support';
+import { at, res, resetAccountPage, signIn } from '../test/support';
 
 vi.mock('../leaveSite', () => ({ leaveTo: vi.fn() }));
 
@@ -24,11 +25,111 @@ const fillIn = async (username: string, password: string, confirm = password, em
   await user.click(screen.getByRole('button', { name: 'Create Account' }));
 };
 
-/** The body of the one request that went out. */
-const sentBody = () =>
-  JSON.parse(String((vi.mocked(fetch).mock.calls[0][1] as RequestInit).body));
+/** The registration body, apart from any policy request around it. */
+const sentBody = () => {
+  const call = vi.mocked(fetch).mock.calls.find(([url]) => String(url).endsWith('/auth/register'));
+  return JSON.parse(String((call?.[1] as RequestInit | undefined)?.body));
+};
 
 describe('RegisterPage', () => {
+  it('accepts the current privacy policy before the new account leaves the page', async () => {
+    vi.mocked(fetch)
+      .mockResolvedValueOnce(res({
+        privacyPolicy: {
+          title: 'Privacy Policy',
+          body: 'We store your **account name**.',
+        },
+      }))
+      .mockResolvedValueOnce(res({ token: 'tok', user: { username: 'alice' } }))
+      .mockResolvedValueOnce(res({ success: true, accepted: true }));
+    render(<RegisterPage />);
+
+    await fillIn('alice', 'hunter22');
+
+    expect(await screen.findByRole('heading', { name: 'Privacy Policy' })).toBeInTheDocument();
+    expect(screen.getByText('account name')).toHaveProperty('tagName', 'STRONG');
+    expect(localStorage.getItem('authToken')).toBeNull();
+    expect(fetch).toHaveBeenCalledTimes(1);
+    expect(leaveTo).not.toHaveBeenCalled();
+
+    await userEvent.click(screen.getByRole('button', { name: 'Accept and Create Account' }));
+
+    await waitFor(() => expect(leaveTo).toHaveBeenCalledWith('/'));
+    expect(vi.mocked(fetch).mock.calls.map(([url]) => String(url))).toEqual([
+      expect.stringMatching(/\/policies\/privacy-policy$/),
+      expect.stringMatching(/\/auth\/register$/),
+      expect.stringMatching(/\/policies\/privacy-policy\/accept$/),
+    ]);
+    expect(vi.mocked(fetch).mock.calls[2][1]).toMatchObject({
+      method: 'POST',
+      headers: { Authorization: 'Bearer tok' },
+    });
+  });
+
+  it('keeps a created account on the policy when acceptance fails, then retries only the answer', async () => {
+    vi.mocked(fetch)
+      .mockResolvedValueOnce(res({
+        privacyPolicy: { title: 'Privacy Policy', body: 'What we store.' },
+      }))
+      .mockResolvedValueOnce(res({ token: 'tok', user: { username: 'alice' } }))
+      .mockResolvedValueOnce(res({ error: 'upstream unavailable' }, false, 503))
+      .mockResolvedValueOnce(res({ success: true, accepted: true }));
+    render(<RegisterPage />);
+
+    await fillIn('alice', 'hunter22');
+    await userEvent.click(await screen.findByRole('button', { name: 'Accept and Create Account' }));
+
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      'Your account was created, but recording your acceptance failed. Try again.',
+    );
+    expect(localStorage.getItem('authToken')).toBe('tok');
+    expect(screen.getByRole('heading', { name: 'Privacy Policy' })).toBeInTheDocument();
+    expect(leaveTo).not.toHaveBeenCalled();
+
+    await userEvent.click(screen.getByRole('button', { name: 'Accept' }));
+
+    await waitFor(() => expect(leaveTo).toHaveBeenCalledWith('/'));
+    const urls = vi.mocked(fetch).mock.calls.map(([url]) => String(url));
+    expect(urls.filter((url) => url.endsWith('/auth/register'))).toHaveLength(1);
+    expect(urls.filter((url) => url.endsWith('/policies/privacy-policy/accept'))).toHaveLength(2);
+  });
+
+  it('asks an existing signed-in account for an outdated policy answer', async () => {
+    signIn({ username: 'alice' });
+    vi.mocked(fetch)
+      .mockResolvedValueOnce(res({
+        privacyPolicy: {
+          title: 'Updated Privacy Policy',
+          body: 'The current terms.',
+          tags: [],
+          accepted: false,
+        },
+      }))
+      .mockResolvedValueOnce(res({ success: true, accepted: true }));
+
+    render(<RegisterPage />);
+
+    expect(await screen.findByRole('heading', { name: 'Updated Privacy Policy' })).toBeInTheDocument();
+    expect(screen.queryByLabelText('Username')).not.toBeInTheDocument();
+    await userEvent.click(screen.getByRole('button', { name: 'Accept' }));
+
+    await waitFor(() => expect(leaveTo).toHaveBeenCalledWith('/'));
+    expect(vi.mocked(fetch).mock.calls.map(([url]) => String(url))).toEqual([
+      expect.stringMatching(/\/policies$/),
+      expect.stringMatching(/\/policies\/privacy-policy\/accept$/),
+    ]);
+  });
+
+  it('checks an existing account only once under the site entry StrictMode', async () => {
+    signIn({ username: 'alice' });
+    vi.mocked(fetch).mockResolvedValue(res({ privacyPolicy: null }));
+
+    render(<StrictMode><RegisterPage /></StrictMode>);
+
+    await waitFor(() => expect(leaveTo).toHaveBeenCalledWith('/'));
+    expect(fetch).toHaveBeenCalledTimes(1);
+  });
+
   it('stores the session under the keys the game reads', async () => {
     vi.mocked(fetch).mockResolvedValue(res({ token: 'tok', user: { username: 'alice' } }));
     render(<RegisterPage />);
@@ -60,9 +161,8 @@ describe('RegisterPage', () => {
     expect(fetch).not.toHaveBeenCalled();
   });
 
-  // The length rules live in AuthService, which refuses before the network call. The page only has to
-  // show what it throws — so this is the guard that the two are really wired together.
-  it('shows the length rule AuthService refuses on, without asking the server', async () => {
+  // Keep the site's pre-policy checks aligned with the AuthService request boundary.
+  it('shows the username length rule before loading the policy', async () => {
     render(<RegisterPage />);
 
     await fillIn('ab', 'hunter22');
@@ -72,7 +172,7 @@ describe('RegisterPage', () => {
     expect(fetch).not.toHaveBeenCalled();
   });
 
-  it('shows the password rule AuthService refuses on, without asking the server', async () => {
+  it('shows the password length rule before loading the policy', async () => {
     render(<RegisterPage />);
 
     await fillIn('alice', 'short');

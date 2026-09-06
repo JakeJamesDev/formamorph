@@ -50,6 +50,7 @@ const FILES = [
   'src/lib/useResetOnOpen.ts',
   'src/lib/utils.ts',
   'src/services/AuthService.ts',
+  'src/services/PolicyService.ts',
   'src/services/UserService.ts',
   'src/types/index.ts',
 ]
