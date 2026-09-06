@@ -1,18 +1,26 @@
 # 03 — Live cross-tab session sync
 
-Status: ready-for-human
+Status: ready-for-agent
+Status note: Service/app synchronization implemented; required site-to-app browser coverage remains open. Site-initiated sign-out depends on ticket 09.
 Spec: ../spec.md
 
 **What to build:** Signing in on the site signs in an open `/play/` tab at once. Signing out on either side signs out both. No reload anywhere.
 
-**Blocked by:** 01.
+**Blocked by:** 09 for site-initiated sign-out coverage. Ticket 01 is implemented; the same-origin test setup and site-login/app-logout cases can proceed.
 
 - [x] AuthService listens to the `storage` event for its two keys, updates in-memory state, and notifies subscribers. Logout clears both keys.
 - [x] The app's main menu follows AuthService state, including the age-gate check on adoption.
 - [x] AuthService unit tests: a foreign write signs in, a removal signs out, the subscriber is notified, a corrupt user blob is tolerated.
-- [x] Playwright, two pages in one context: sign in on the site page, the app page shows the signed-in menu without reload; sign out in the app, the site page shows signed out.
+- [ ] Playwright, two pages in one context: sign in on the site page, the app page shows the signed-in menu without reload; sign out in the app, the site page shows signed out.
+- [ ] Sign out through the site's control and assert the open app and landing header follow without reload.
 
 ## Comments
+
+### Audit — 2026-09-06
+
+Reopened the browser checkbox: `e2e/session-sync.spec.ts` opens two app pages and injects storage for sign-in. It does not submit the real site login form. Serve/proxy the actual site and `/play/` under one test origin and exercise both logout directions. Use a document marker that disappears on reload; comparing navigation-entry counts does not prove that the document survived, since a reload creates a new performance timeline.
+
+`AccountPage` now listens for session end and leaves for `/`, but `SiteLayout` has no session control and the landing header only links to the public profile. The service tests passing does not close these end-to-end acceptance cases.
 
 **Done.** AuthService follows the `storage` event for `authToken` and `currentUser`, re-reads both keys
 (one event carries one key, the session is two), and stays quiet when the stored session is the one it

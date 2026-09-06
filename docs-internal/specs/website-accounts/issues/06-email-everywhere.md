@@ -1,11 +1,12 @@
 # 06 — Email everywhere
 
 Status: ready-for-human
+Status note: Client and server 01/02 implemented; review stage. Production deployment and real mail delivery still need verification.
 Spec: ../spec.md
 
 **What to build:** A player adds an optional email when registering on the site or in the app. On `/account` they set or replace it, see whether it is verified, and resend the mail. The link in the mail lands on `/verify-email` and confirms the address.
 
-**Blocked by:** 05; server ticket 02.
+**Dependencies:** Client 05 and server 02 are implemented. Live delivery is tracked by [server 04](../../../../../FormamorphServer/docs-internal/specs/website-accounts/issues/04-deploy-mail-to-the-box.md).
 
 - [x] Optional email field on the site register page and the app's register modal, with the taken-email error shown.
 - [x] Email section on `/account`: current address, verified state, set or replace, resend.

@@ -1,6 +1,7 @@
 # 01 — Site entry with login and register
 
 Status: ready-for-human
+Status note: Implemented; review stage. Privacy acceptance is ticket 08; theme scope is ticket 10. Current route coverage is recorded below.
 Spec: ../spec.md
 
 **What to build:** A visitor opens `formamorph.ai/login`, signs in, and lands back where they came from. `/register` creates an account the same way. The pages look like the landing page and ship through both deploy paths.
@@ -17,6 +18,12 @@ Spec: ../spec.md
 - [x] Four gates green; no export-shape change.
 
 ## Comments
+
+### Audit — 2026-09-06
+
+`site/App.tsx` now serves `/account`, `/profile`, `/u/<username>`, and `/verify-email` as well as login/register. Only `/reset-password` remains unimplemented among the specified routes (ticket 07). The five-placeholder note below describes the original delivery, not the current tree. The deploy action builds `site-dist` and layers it at `/site-app/` on both deploy paths; deployment itself has not been verified in this audit.
+
+Login still discards `deletionCancelled`; the follow-up belongs to [ticket 09](09-site-account-controls.md). Dark-only styling is an unresolved spec discrepancy tracked in [ticket 10](10-site-theme-scope.md).
 
 **Deferred, deliberately — recorded so none of these reads as an oversight.**
 

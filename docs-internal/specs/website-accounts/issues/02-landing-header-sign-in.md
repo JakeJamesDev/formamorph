@@ -1,13 +1,14 @@
 # 02 — Landing header sign-in control
 
 Status: ready-for-human
+Status note: Implemented; review stage. The landing control links to a profile and has no sign-out action. Site account navigation/sign-out is ticket 09.
 Spec: ../spec.md
 
 **What to build:** The landing page header shows "Sign In" with a person icon at top right. A signed-in player sees their avatar instead, linking to their profile.
 
 **Blocked by:** 01.
 
-- [x] The static landing page reads the shared session keys through the small vanilla module the site entry ships. No React on the landing page.
+- [x] The static landing page reads the shared session keys through tracked `hosting/session.js`. No React on the landing page; key/API parity is guarded by tests rather than a shared import.
 - [x] Signed out: Sign In plus person icon, linking to `/login?next=/`. Signed in: avatar only, linking to `/u/<username>`. Falls back to the person icon when no avatar is set.
 - [x] Follows the `storage` event, so a sign-in in another tab updates the header.
 - [x] Playwright on the static site server: both states, both viewports.
