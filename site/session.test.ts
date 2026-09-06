@@ -1,8 +1,11 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import AuthService from '@/services/AuthService';
 import { serverAssetSrc } from '@/lib/serverAssets';
-import { TOKEN_KEY, USER_KEY, API_ORIGIN, readSession, watchSession, avatarSrc }
+import { TOKEN_KEY, USER_KEY, API_ORIGIN, DELETION_CANCELLATION_KEY, readSession, watchSession, avatarSrc,
+  takeDeletionCancellation }
   from '../hosting/session.js';
+import { DELETION_CANCELLATION_KEY as APP_DELETION_CANCELLATION_KEY, recordDeletionCancellation }
+  from '@/lib/deletionCancellation';
 
 /**
  * The vanilla session module the landing page reads through.
@@ -25,6 +28,20 @@ const fromAnotherTab = (key: string | null, newValue: string | null = null) =>
 
 beforeEach(() => {
   localStorage.clear();
+  sessionStorage.clear();
+});
+
+describe('the canceled-deletion handoff', () => {
+  it('uses the same key as the account pages', () => {
+    expect(DELETION_CANCELLATION_KEY).toBe(APP_DELETION_CANCELLATION_KEY);
+  });
+
+  it('shows the account-page signal once on the static landing page', () => {
+    recordDeletionCancellation();
+
+    expect(takeDeletionCancellation()).toBe(true);
+    expect(takeDeletionCancellation()).toBe(false);
+  });
 });
 
 describe('the keys the landing page shares with the app', () => {

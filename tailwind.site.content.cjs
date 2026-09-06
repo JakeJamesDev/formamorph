@@ -41,6 +41,7 @@ const FILES = [
   'src/lib/avatar.ts',
   'src/lib/avatarCrop.ts',
   'src/lib/catalogKinds.ts',
+  'src/lib/deletionCancellation.ts',
   'src/lib/numberInputWheel.ts',
   'src/lib/roles.ts',
   'src/lib/serverAssets.ts',

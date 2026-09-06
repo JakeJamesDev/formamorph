@@ -27,6 +27,10 @@ export const SITE_URL = `http://localhost:${SITE_PORT}`;
 const PAGES_PORT = Number(process.env.E2E_PAGES_PORT ?? 5186);
 export const PAGES_URL = `http://localhost:${PAGES_PORT}`;
 
+/** A second app server mounted below the pages origin for real cross-surface storage-event tests. */
+const SYNC_APP_PORT = Number(process.env.E2E_SYNC_APP_PORT ?? 5187);
+const SYNC_APP_URL = `http://localhost:${SYNC_APP_PORT}`;
+
 /**
  * A local FormamorphServer for the specs that need one (`contest-entry.spec.ts`). Handed to the dev
  * server as its API base, because the app reads that at start-up and the default in `.env` is the live
@@ -96,11 +100,20 @@ export default defineConfig({
       stderr: 'pipe',
     },
     {
+      command: `npm run dev -- --port ${SYNC_APP_PORT} --strictPort --base /play/`,
+      url: `${SYNC_APP_URL}/play/`,
+      reuseExistingServer: !process.env.CI,
+      env: { ...VITE_ENV, E2E_SYNC_APP: '1' },
+      timeout: 120_000,
+      stdout: 'ignore',
+      stderr: 'pipe',
+    },
+    {
       command: `npm run dev:site -- --port ${PAGES_PORT} --strictPort`,
       // A route rather than the root: the entry answers every path, and this is the one the specs use.
       url: `${PAGES_URL}/login`,
       reuseExistingServer: !process.env.CI,
-      env: VITE_ENV,
+      env: { ...VITE_ENV, E2E_APP_PROXY_URL: SYNC_APP_URL },
       timeout: 120_000,
       stdout: 'ignore',
       stderr: 'pipe',

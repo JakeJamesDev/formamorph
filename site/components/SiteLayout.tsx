@@ -1,5 +1,7 @@
-import type { ReactNode } from 'react';
+import { useEffect, useState, type ReactNode } from 'react';
 import { cn } from '@/lib/utils';
+import { clearDeletionCancellation, hasDeletionCancellation } from '@/lib/deletionCancellation';
+import { SiteAccountControls } from './SiteAccountControls';
 
 interface SiteLayoutProps {
   /** Sits above the panel, in the landing page's heading size. Absent leaves the panel to head itself. */
@@ -23,19 +25,35 @@ const WIDTHS = {
  * matched here rather than imported.
  */
 export function SiteLayout({ title, subtitle, width = 'form', children }: SiteLayoutProps) {
+  const [deletionCanceled] = useState(hasDeletionCancellation);
+
+  // Cleared after render so React's development double-render cannot consume it before it is visible.
+  useEffect(() => {
+    if (deletionCanceled) clearDeletionCancellation();
+  }, [deletionCanceled]);
+
   return (
     <div className="flex min-h-[100dvh] flex-col">
       <header className="border-b border-border">
-        <div className="mx-auto flex max-w-[1100px] items-center gap-3 px-6 py-4">
+        <div className="mx-auto flex max-w-[1100px] flex-wrap items-center justify-between gap-4 px-6 py-4">
           <a href="/" className="flex items-center gap-3 no-underline">
             <img src="/site/icon.png" width={32} height={32} alt="" className="rounded-lg" />
             <span className="text-title font-semibold tracking-tight">Formamorph</span>
           </a>
+          <SiteAccountControls />
         </div>
       </header>
 
       <main className="mx-auto flex w-full max-w-[1100px] flex-1 items-start justify-center px-6 py-12">
         <div className={cn('w-full', WIDTHS[width])}>
+          {deletionCanceled && (
+            <div role="status" className="mb-6 rounded-lg border border-primary/40 bg-primary/10 p-4 text-label">
+              <p className="font-semibold text-foreground">Account deletion canceled</p>
+              <p className="mt-1 text-muted-foreground">
+                Signing in called it off. Your account and everything in it are still here.
+              </p>
+            </div>
+          )}
           {title && <h1 className="text-display font-semibold tracking-tight">{title}</h1>}
           {subtitle && <p className="mt-2 text-body text-muted-foreground">{subtitle}</p>}
           <div className={cn('rounded-xl border border-border bg-card p-6', title && 'mt-6')}>

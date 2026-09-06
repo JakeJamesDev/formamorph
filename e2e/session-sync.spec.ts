@@ -1,15 +1,15 @@
 import { test, expect, type Page } from '@playwright/test';
 import { openApp } from './app';
+import { PAGES_URL } from '../playwright.config';
 
 /**
  * The app following a session another tab established.
  *
  * `localStorage` is shared across an origin but the `storage` event only ever fires in the *other*
  * documents, so nothing here is provable from a rendered tree — it takes two real pages in one context.
- * Live, the writer is `formamorph.ai/login` and the reader is `formamorph.ai/play/`. Under the runner
- * they are two different dev servers on two ports, which is two origins and therefore two separate
- * `localStorage`s, so a second app page stands in for the site the way `landing.spec.ts` uses `/privacy`
- * to stand in for both. The site half of the same mechanism is covered there.
+ * The site-pages server proxies a second app dev server below `/play/`, matching production's shared
+ * origin so the real login and logout controls can prove both cross-surface directions without reloads.
+ * The smaller app-to-app cases remain direct listener checks.
  */
 
 const HELD = { username: 'rowan' };
@@ -68,5 +68,36 @@ test.describe('a session from another tab', () => {
 
     await expect(account(app)).toHaveAttribute('aria-label', 'Login');
     await expect(account(other)).toHaveAttribute('aria-label', 'Login');
+  });
+
+  test('site sign-in reaches the app and app sign-out reaches the site without reloads', async ({ context }, testInfo) => {
+    test.skip(testInfo.project.name !== 'desktop', 'storage events do not vary by viewport');
+    await context.route('**/auth/login', (route) => route.fulfill({
+      json: { token: 'shared-token', user: HELD },
+    }));
+    await context.route('**/auth/me', (route) => route.fulfill({ json: HELD }));
+    const app = await context.newPage();
+    const site = await context.newPage();
+    await openApp(app, {}, { url: `${PAGES_URL}/play/` });
+    await site.goto(`${PAGES_URL}/login`);
+    await app.evaluate(() => Object.assign(window, { __documentMarker: 'app-alive' }));
+
+    await site.getByLabel('Username').fill('rowan');
+    await site.getByLabel('Password').fill('hunter22');
+    await site.getByRole('button', { name: 'Sign In' }).click();
+
+    await expect(site.getByRole('link', { name: 'Profile' })).toBeVisible();
+    await expect(account(app)).toHaveAttribute('aria-label', /^User Profile/);
+    expect(await app.evaluate(() => (window as Window & { __documentMarker?: string }).__documentMarker))
+      .toBe('app-alive');
+    await site.evaluate(() => Object.assign(window, { __documentMarker: 'site-alive' }));
+
+    await account(app).click();
+    await app.getByRole('button', { name: 'Logout' }).click();
+
+    await expect(account(app)).toHaveAttribute('aria-label', 'Login');
+    await expect(site.getByRole('link', { name: 'Sign In' })).toBeVisible();
+    expect(await site.evaluate(() => (window as Window & { __documentMarker?: string }).__documentMarker))
+      .toBe('site-alive');
   });
 });

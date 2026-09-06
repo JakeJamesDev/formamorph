@@ -16,6 +16,7 @@ export const at = (url: string) => window.history.replaceState(null, '', url);
  */
 export const resetAccountPage = (url: string) => {
   localStorage.clear();
+  sessionStorage.clear();
   AuthService.logout();
   at(url);
   vi.stubGlobal('fetch', vi.fn());

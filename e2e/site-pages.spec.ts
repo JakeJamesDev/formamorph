@@ -1,5 +1,6 @@
 import { test, expect, type Page } from '@playwright/test';
 import { PAGES_URL, SITE_URL } from '../playwright.config';
+import { openApp } from './app';
 
 /** `#rrggbb` or `rgb(r, g, b)` as three numbers. */
 const channels = (color: string): [number, number, number] => {
@@ -74,5 +75,105 @@ test.describe('site pages', () => {
     await page.goto(`${PAGES_URL}/nothing-here`);
 
     await expect(page.getByRole('heading', { name: 'Page Not Found' })).toBeVisible();
+  });
+
+  test('the signed-in account controls stay visible and usable', async ({ page }) => {
+    await page.addInitScript(() => {
+      localStorage.setItem('authToken', 'held-token');
+      localStorage.setItem('currentUser', JSON.stringify({ username: 'rowan' }));
+    });
+    await page.goto(`${PAGES_URL}/login`);
+
+    await expect(page.getByRole('link', { name: 'Profile' })).toHaveAttribute('href', '/u/rowan');
+    await expect(page.getByRole('link', { name: 'Account Settings' })).toHaveAttribute('href', '/account');
+    await expect(page.getByRole('button', { name: 'Sign Out' })).toBeVisible();
+    expect(await page.evaluate(() =>
+      document.documentElement.scrollWidth - document.documentElement.clientWidth)).toBe(0);
+
+    await page.getByRole('button', { name: 'Sign Out' }).click();
+
+    await expect(page.getByRole('link', { name: 'Sign In' })).toBeVisible();
+    expect(await page.evaluate(() => localStorage.getItem('authToken'))).toBeNull();
+  });
+
+  test('a canceled deletion is announced after the safe return', async ({ page }, testInfo) => {
+    test.skip(testInfo.project.name !== 'desktop', 'the one-time message does not vary by viewport');
+    await page.route('**/auth/login', (route) => route.fulfill({
+      json: {
+        token: 'fresh-token',
+        user: { username: 'rowan' },
+        deletionCancelled: true,
+      },
+    }));
+    await page.route('**/auth/me', (route) => route.fulfill({
+      json: { user: { username: 'rowan', email: null, emailVerified: false } },
+    }));
+    await page.goto(`${PAGES_URL}/login?next=%2Faccount`);
+
+    await page.getByLabel('Username').fill('rowan');
+    await page.getByLabel('Password').fill('hunter22');
+    await page.getByRole('button', { name: 'Sign In' }).click();
+
+    await expect(page).toHaveURL(`${PAGES_URL}/account`);
+    await expect(page.getByRole('status')).toContainText('Account deletion canceled');
+  });
+
+  test('an open site page follows foreign session and avatar changes', async ({ context }, testInfo) => {
+    test.skip(testInfo.project.name !== 'desktop', 'storage events do not vary by viewport');
+    await context.route('**/auth/login', (route) => route.fulfill({
+      json: { token: 'foreign-token', user: { username: 'rowan' } },
+    }));
+    await context.route('https://api.formamorph.ai/api/avatars/new.webp', (route) => route.fulfill({
+      contentType: 'image/svg+xml',
+      body: '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"/>',
+    }));
+    const reader = await context.newPage();
+    const writer = await context.newPage();
+    await reader.goto(`${PAGES_URL}/login`);
+    await writer.goto(`${PAGES_URL}/login`);
+    await expect(reader.getByRole('link', { name: 'Sign In' })).toBeVisible();
+
+    await writer.getByLabel('Username').fill('rowan');
+    await writer.getByLabel('Password').fill('hunter22');
+    await writer.getByRole('button', { name: 'Sign In' }).click();
+    await expect(writer.getByRole('link', { name: 'Profile' })).toBeVisible();
+    await expect(reader.getByRole('link', { name: 'Profile' })).toHaveAttribute('href', '/u/rowan');
+
+    await writer.evaluate(() => localStorage.setItem('currentUser', JSON.stringify({
+      username: 'rowan',
+      avatarUrl: '/api/avatars/new.webp',
+    })));
+    await expect(reader.getByRole('link', { name: 'Profile' }).locator('img'))
+      .toHaveAttribute('src', 'https://api.formamorph.ai/api/avatars/new.webp');
+
+    await reader.getByRole('button', { name: 'Sign Out' }).click();
+    await expect(writer.getByRole('link', { name: 'Sign In' })).toBeVisible();
+  });
+
+  test('site sign-out reaches the open app and landing page without reloads', async ({ context }, testInfo) => {
+    test.skip(testInfo.project.name !== 'desktop', 'storage events do not vary by viewport');
+    await context.route('**/auth/me', (route) => route.fulfill({ json: { username: 'rowan' } }));
+    const app = await context.newPage();
+    const site = await context.newPage();
+    const landing = await context.newPage();
+    const held = { authToken: 'shared-token', currentUser: { username: 'rowan' } };
+    await openApp(app, held, { url: `${PAGES_URL}/play/` });
+    await site.goto(`${PAGES_URL}/account`);
+    await landing.goto(`${PAGES_URL}/landing/`);
+
+    const appAccount = app.locator('button[aria-label="Login"], button[aria-label^="User Profile"]');
+    await expect(appAccount).toHaveAttribute('aria-label', /^User Profile/);
+    await expect(landing.locator('[data-account]')).toHaveAttribute('href', '/u/rowan');
+    await app.evaluate(() => Object.assign(window, { __documentMarker: 'app-alive' }));
+    await landing.evaluate(() => Object.assign(window, { __documentMarker: 'landing-alive' }));
+
+    await site.getByRole('button', { name: 'Sign Out' }).click();
+
+    await expect(appAccount).toHaveAttribute('aria-label', 'Login');
+    await expect(landing.locator('[data-account]')).toHaveAttribute('href', '/login?next=/');
+    expect(await app.evaluate(() => (window as Window & { __documentMarker?: string }).__documentMarker))
+      .toBe('app-alive');
+    expect(await landing.evaluate(() => (window as Window & { __documentMarker?: string }).__documentMarker))
+      .toBe('landing-alive');
   });
 });

@@ -4,6 +4,7 @@ import { AccountForm, Field } from '../components/AccountForm';
 import { SiteLayout } from '../components/SiteLayout';
 import { leaveTo } from '../leaveSite';
 import { useNextPath } from '../useNextPath';
+import { recordDeletionCancellation } from '@/lib/deletionCancellation';
 
 /** Sign in on the site. The session it stores is the one `/play/` reads, because both are one origin. */
 export function LoginPage() {
@@ -24,7 +25,8 @@ export function LoginPage() {
 
     setBusy(true);
     try {
-      await AuthService.login(username, password);
+      const result = await AuthService.login(username, password);
+      if (result.deletionCancelled) recordDeletionCancellation();
       leaveTo(next);
     } catch (failure) {
       setError((failure as Error).message || 'Login failed');
