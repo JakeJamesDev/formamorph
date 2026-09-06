@@ -7,6 +7,17 @@ import path from 'path'
 import { readFileSync } from 'fs'
 
 const pkg = JSON.parse(readFileSync(path.resolve(__dirname, 'package.json'), 'utf-8'))
+const appProxy = process.env.E2E_APP_PROXY_URL
+
+const landingPreview = {
+  name: 'landing-preview',
+  configureServer(server) {
+    server.middlewares.use('/landing/', (_request, response) => {
+      response.setHeader('Content-Type', 'text/html; charset=utf-8')
+      response.end(readFileSync(path.resolve(__dirname, 'hosting/index.html'), 'utf-8'))
+    })
+  },
+}
 
 /**
  * The formamorph.ai account pages: a second entry, separate from the game bundle.
@@ -17,8 +28,11 @@ const pkg = JSON.parse(readFileSync(path.resolve(__dirname, 'package.json'), 'ut
  * rewrites the account routes onto its index.html.
  */
 export default defineConfig(({ command }) => ({
-  plugins: [react()],
+  plugins: [react(), landingPreview],
   root: 'site',
+  cacheDir: path.resolve(__dirname, 'node_modules/.vite-site'),
+  // The shared API endpoints live beside both Vite configs, not under the site entry's root.
+  envDir: path.resolve(__dirname),
   // Absolute for the build, because a nested route such as /u/<username> is served the same index.html
   // and a relative asset URL would resolve one level too deep. The dev server keeps '/' so the routes
   // are reachable at the paths they ship at.
@@ -50,6 +64,7 @@ export default defineConfig(({ command }) => ({
     // Same seam as the game config: the e2e runner sets BASELINE_NO_WATCH so a save elsewhere in the tree
     // cannot reload the page under a running spec.
     ...(process.env.BASELINE_NO_WATCH ? { hmr: false, watch: null } : {}),
+    ...(appProxy ? { proxy: { '/play': { target: appProxy, changeOrigin: true, ws: true } } } : {}),
   },
   build: {
     outDir: path.resolve(__dirname, 'site-dist'),

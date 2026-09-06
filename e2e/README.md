@@ -117,21 +117,19 @@ Two caveats worth knowing:
   spec has to use real input.
 
 [site-pages.spec.ts](e2e/site-pages.spec.ts) — the formamorph.ai account pages: the login page inside a
-phone's width with no horizontal overflow, the register page and the not-found fallback, and the palette.
+phone's width with no horizontal overflow, the register page and the not-found fallback, the palette,
+the shared Profile / Account Settings / Sign Out header at desktop and phone sizes, the one-time canceled
+deletion notice, session/avatar sync, and site sign-out reaching open app and landing pages without reloads.
 
 > **The palette guard reads the landing page, not a copy.** It opens `hosting/index.html` on 5185, reads
 > `--bg` and `--accent` off it, and compares those to the computed ground and button fill on 5186. The
 > tolerance is three channels, because the tokens the shadcn primitives read are whole-number HSL and
 > cannot land on an arbitrary hex. Putting the app's own dark background back turns it red.
 
-[session-sync.spec.ts](e2e/session-sync.spec.ts) — the app following a session another tab established:
-a sign-in elsewhere reaches the open main menu with no second navigation, and a logout in one tab reaches
-the other. Two pages in one context, because the `storage` event only ever fires in the *other* documents.
-
-> **Two ports are two origins.** Live, the writer is `formamorph.ai/login` and the reader is
-> `formamorph.ai/play/`, one origin and one `localStorage`. Under the runner the site entry is on 5186 and
-> the app on 5183, so a second app page stands in for the site — the same substitution
-> [landing.spec.ts](e2e/landing.spec.ts) makes with `/privacy`, where the site half is covered.
+[session-sync.spec.ts](e2e/session-sync.spec.ts) — live cross-surface sessions: a real site sign-in reaches
+the open app without a reload, app sign-out reaches the site, and smaller app-to-app cases directly guard
+the storage listeners. The site-pages server proxies a second app below `/play/`, so every page shares the
+same test origin and `localStorage` just as it does on formamorph.ai.
 
 ## The contest flow needs a server
 

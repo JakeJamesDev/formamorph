@@ -43,7 +43,7 @@ const BASE_SEED: Record<string, string> = {
 export async function openApp(
   page: Page,
   extra: Record<string, unknown> = {},
-  opts: { liveEvents?: boolean } = {},
+  opts: { liveEvents?: boolean; url?: string } = {},
 ): Promise<void> {
   const seed = { ...BASE_SEED } as Record<string, string>;
   for (const [k, v] of Object.entries(extra)) seed[k] = typeof v === 'string' ? v : JSON.stringify(v);
@@ -54,7 +54,7 @@ export async function openApp(
   await page.addInitScript((s: Record<string, string>) => {
     for (const [k, v] of Object.entries(s)) localStorage.setItem(k, v);
   }, seed);
-  await page.goto('/');
+  await page.goto(opts.url ?? '/');
   await page.waitForFunction(() => '__fmDev' in window);
 }
 

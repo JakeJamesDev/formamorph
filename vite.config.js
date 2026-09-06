@@ -8,6 +8,9 @@ const pkg = JSON.parse(readFileSync(path.resolve(__dirname, 'package.json'), 'ut
 
 export default defineConfig({
   plugins: [react()],
+  ...(process.env.E2E_SYNC_APP
+    ? { cacheDir: path.resolve(__dirname, 'node_modules/.vite-sync-app') }
+    : {}),
   base: './',
   // Expose the package.json version to the app (single source of truth for the app/world/save stamp).
   define: {
