@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { LogOut } from 'lucide-react';
 import { UserAvatar } from '@/components/UserAvatar';
 import { Button } from '@/components/ui/button';
 import AuthService from '@/services/AuthService';
@@ -56,9 +57,10 @@ export function SiteAccountControls() {
         type="button"
         variant="ghost"
         size="sm"
-        className="h-auto px-0 py-1 hover:bg-transparent hover:text-primary"
+        className="h-auto gap-2 border-transparent px-0 py-1 hover:bg-transparent hover:text-primary"
         onClick={() => AuthService.logout()}
       >
+        <LogOut className="h-4 w-4" aria-hidden="true" />
         Sign Out
       </Button>
     </nav>
