@@ -16,24 +16,24 @@ on:
       - 'v*'
   workflow_dispatch:
     inputs:
-      android_only:
-        description: 'Build a signed Android APK for device testing without publishing'
-        type: boolean
-        default: false
-      itch_web:
-        description: 'Push the web build to itch.io (manual failsafe, e.g. for a pre-release)'
-        type: boolean
-        default: false
-      itch_desktop:
-        description: 'Push desktop builds to itch.io'
+      site_only:
+        description: 'Redeploy Website - Update formamorph.ai while keeping the latest released game'
         type: boolean
         default: false
       cloudflare_web:
-        description: 'Push the web build to formamorph.ai (manual failsafe, e.g. for a pre-release)'
+        description: 'Deploy Web Game - Build and publish the game to formamorph.ai'
         type: boolean
         default: false
-      site_only:
-        description: 'Redeploy formamorph.ai from hosting/ alone, keeping the latest RELEASED app build'
+      itch_web:
+        description: 'Deploy itch.io Web - Build and publish the browser game to itch.io'
+        type: boolean
+        default: false
+      itch_desktop:
+        description: 'Deploy itch.io Apps - Build and publish desktop and Android apps to itch.io'
+        type: boolean
+        default: false
+      android_only:
+        description: 'Build Android APK - Create a signed app for device testing without publishing'
         type: boolean
         default: false
 
