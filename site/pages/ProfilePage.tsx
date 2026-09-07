@@ -9,6 +9,7 @@ import UserService from '@/services/UserService';
 import type { PublicProfile } from '@/types';
 import { SiteAgeGate } from '../components/SiteAgeGate';
 import { SiteLayout } from '../components/SiteLayout';
+import { communityListingPath } from '../communityListing';
 import { NotFoundPage } from './NotFoundPage';
 
 /** What the page is doing while it is not yet showing somebody. */
@@ -104,8 +105,17 @@ function ProfileBody({ username }: { username: string }) {
         {profile && <ProfileStats profile={profile} className="justify-center" />}
       </div>
 
-      {/* Display only: opening a listing means opening the game at it, and no such link exists. */}
-      {profile && <UserCreationsTab userId={profile.id} username={profile.username} layout="page" />}
+      {profile && (
+        <UserCreationsTab
+          userId={profile.id}
+          username={profile.username}
+          listingHref={(listing) => communityListingPath({
+            id: listing.id,
+            kind: listing.kind,
+          })}
+          layout="page"
+        />
+      )}
     </SiteLayout>
   );
 }

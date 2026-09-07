@@ -39,7 +39,7 @@ const PROFILE = {
  *
  * @param profile - The profile body, or null for the 404 an unknown *and* a suspended name both get
  */
-const serverHas = (profile: unknown | null) => {
+const serverHas = (profile: unknown | null, creations: unknown[] = []) => {
   vi.mocked(fetch).mockImplementation((input) => {
     const url = String(input);
     if (url.includes('/by-username/')) {
@@ -48,7 +48,7 @@ const serverHas = (profile: unknown | null) => {
         : res({ success: false, error: 'User not found' }, false, 404));
     }
 
-    return Promise.resolve(res({ success: true, data: [] }));
+    return Promise.resolve(res({ success: true, data: creations }));
   });
 };
 
@@ -458,5 +458,16 @@ describe('what a profile shows', () => {
       const asked = vi.mocked(fetch).mock.calls.map(([url]) => String(url));
       expect(asked.some((url) => url.includes('/users/u1/worlds'))).toBe(true);
     });
+  });
+
+  it('links each public creation to its shareable community destination', async () => {
+    serverHas(PROFILE, [{
+      id: 'world / 1', kind: 'world', name: 'Sedge Landing', likes: 2, downloads: 3, commentCount: 4,
+      thumbnailFile: null, updatedAt: '2026-09-07T00:00:00.000Z', quarantined: false,
+    }]);
+    render(<ProfilePage username="wren_hallow" />);
+
+    expect(await screen.findByRole('link', { name: 'Sedge Landing' }))
+      .toHaveAttribute('href', '/community/world/world%20%2F%201');
   });
 });

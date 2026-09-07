@@ -26,6 +26,12 @@ export interface CommunityBrowserHostProps {
   openListing?: { id: string; kind: string } | null;
   /** Fired once that listing has been opened, or found to be gone, so the caller can clear its request. */
   onListingOpened?: () => void;
+  /** A website-controlled destination; an explicit null closes the visible selection. */
+  listing?: { id: string; kind: string } | null;
+  /** Reports a card, direct destination, or details close to a website router. */
+  onListingChange?: (listing: { id: string; kind: string } | null) => void;
+  /** Reports a destination only after the catalog has resolved without it. */
+  onListingUnavailable?: (listing: { id: string; kind: string }) => void;
   /** DEV only: open the first listing's details and raise its likers list, for the dev route. */
   openLikersOnMount?: boolean;
 }
@@ -48,6 +54,7 @@ export interface CommunityBrowserHostProps {
  */
 export const CommunityBrowserHost = ({
   open, onOpenChange, presentation = 'dialog', capabilities = APP_COMMUNITY_CAPABILITIES, initialTab, openListing, onListingOpened,
+  listing, onListingChange, onListingUnavailable,
   openLikersOnMount = false,
 }: CommunityBrowserHostProps) => {
   // The three local libraries, each driving its tab's download state.
@@ -176,6 +183,9 @@ export const CommunityBrowserHost = ({
         initialTab={eventTab ?? initialTab}
         openListing={openListing}
         onListingOpened={onListingOpened}
+        listing={listing}
+        onListingChange={onListingChange}
+        onListingUnavailable={onListingUnavailable}
         openLikersOnMount={openLikersOnMount}
         events={events}
         onOpenEvent={openEvent}
