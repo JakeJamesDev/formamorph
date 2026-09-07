@@ -156,7 +156,7 @@ const TAB_TO_REQUEST: Record<string, AIRequestType> = {
 };
 
 /** One custom-sampler override row: a checkbox that enables the override, a slider, and a value readout that
- *  shows "Endpoint default" while off when the sampler is omitted (a non-pinned prompt on a custom endpoint).
+ *  shows the resolved endpoint state while off when the sampler is omitted (a non-pinned prompt on a custom endpoint).
  *  On reveals the stored custom value, which persists across toggling and is sent to any endpoint. */
 interface SamplerControlProps {
   id: string;
@@ -168,6 +168,8 @@ interface SamplerControlProps {
   value: number;
   /** The value shown when off, or undefined when the prompt omits the sampler (endpoint decides). */
   defaultValue: number | undefined;
+  /** The endpoint state to show when an omitted sampler has no prompt or local-engine value. */
+  fallbackLabel?: 'Endpoint Default' | 'Endpoint Override';
   min: number;
   max: number;
   step: number;
@@ -176,7 +178,7 @@ interface SamplerControlProps {
   onCustomChange: (custom: boolean) => void;
   onValueChange: (value: number) => void;
 }
-function SamplerControl({ id, label, hint, info, custom, value, defaultValue, min, max, step, disabled, onCustomChange, onValueChange }: SamplerControlProps) {
+function SamplerControl({ id, label, hint, info, custom, value, defaultValue, fallbackLabel = 'Endpoint Default', min, max, step, disabled, onCustomChange, onValueChange }: SamplerControlProps) {
   const omitsWhenOff = defaultValue === undefined;
   const shown = custom ? value : (defaultValue ?? value);
   return (
@@ -201,7 +203,7 @@ function SamplerControl({ id, label, hint, info, custom, value, defaultValue, mi
           onValueChange={(v) => onValueChange(v[0])}
         />
         <span className="w-28 text-right text-label tabular-nums">
-          {custom || !omitsWhenOff ? shown.toFixed(2) : <span className="text-muted-foreground not-italic">Endpoint default</span>}
+          {custom || !omitsWhenOff ? shown.toFixed(2) : <span className="text-muted-foreground not-italic">{fallbackLabel}</span>}
         </span>
       </div>
     </div>
@@ -1161,7 +1163,7 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, initialTab,
 
   // Per-prompt samplers for the active tab. Off shows the kind's default (read-only); on shows the stored
   // custom value (seeded to the default on first enable). A default of `undefined` means the prompt omits the
-  // sampler (a non-pinned prompt on a custom endpoint) — the panel then shows "Endpoint default".
+  // sampler (a non-pinned prompt on a custom endpoint) — the panel names its endpoint state.
   const activeKind = TAB_TO_REQUEST[activePromptTab] ?? 'narration';
   const activeSamplers = promptSamplers[activeKind];
   // Endpoint routing for this prompt. A pin naming a preset that no longer exists shows as Use Active Endpoint —
@@ -1196,6 +1198,7 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, initialTab,
       custom: activeSamplers?.temperature?.custom ?? false,
       value: activeSamplers?.temperature?.value ?? defaultPromptSampler(activeKind, 'temperature', genTemperature, promptLocalEngine) ?? genTemperature,
       defaultValue: defaultPromptSampler(activeKind, 'temperature', genTemperature, promptLocalEngine),
+      fallbackLabel: promptTarget.samplerOverrides.temperature.enabled ? 'Endpoint Override' : 'Endpoint Default',
       onCustomChange: (c) => setPromptSamplerCustom(activeKind, 'temperature', c),
       onValueChange: (v) => setPromptSamplerValue(activeKind, 'temperature', v),
     },
@@ -1207,6 +1210,7 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, initialTab,
       custom: activeSamplers?.repetitionPenalty?.custom ?? false,
       value: activeSamplers?.repetitionPenalty?.value ?? defaultPromptSampler(activeKind, 'repetitionPenalty', genRepetitionPenalty, promptLocalEngine) ?? genRepetitionPenalty,
       defaultValue: defaultPromptSampler(activeKind, 'repetitionPenalty', genRepetitionPenalty, promptLocalEngine),
+      fallbackLabel: promptTarget.samplerOverrides.repetitionPenalty.enabled ? 'Endpoint Override' : 'Endpoint Default',
       onCustomChange: (c) => setPromptSamplerCustom(activeKind, 'repetitionPenalty', c),
       onValueChange: (v) => setPromptSamplerValue(activeKind, 'repetitionPenalty', v),
     },
@@ -2023,7 +2027,7 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, initialTab,
                       onChange={(e) => setMaxTokens(numInput(e.target.value, 1))}
                       disabled={localModelActive || !maxOutputOverrideEnabled}
                     />
-                    {!maxOutputOverrideEnabled && <span className="text-helper text-muted-foreground">Endpoint default</span>}
+                    {!maxOutputOverrideEnabled && <span className="text-helper text-muted-foreground">Endpoint Default</span>}
                   </div>
                 </div>
               </Row>
