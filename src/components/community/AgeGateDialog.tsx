@@ -13,6 +13,9 @@ interface AgeGateDialogProps {
   open: boolean;
   onAccept: () => void;
   onDecline: () => void;
+  busy?: boolean;
+  error?: string | null;
+  acceptLabel?: string;
 }
 
 /**
@@ -24,7 +27,14 @@ interface AgeGateDialogProps {
  * The copy is versioned in `ageGate.ts`. Changing what a player is agreeing to means raising
  * `AGE_GATE_VERSION` in the same edit, so everyone is asked again against the new wording.
  */
-export function AgeGateDialog({ open, onAccept, onDecline }: AgeGateDialogProps) {
+export function AgeGateDialog({
+  open,
+  onAccept,
+  onDecline,
+  busy = false,
+  error = null,
+  acceptLabel = 'Accept',
+}: AgeGateDialogProps) {
   return (
     <Dialog open={open}>
       <DialogContent
@@ -54,9 +64,11 @@ export function AgeGateDialog({ open, onAccept, onDecline }: AgeGateDialogProps)
           stay yours.
         </p>
 
+        {error && <p role="alert" className="text-helper text-destructive">{error}</p>}
+
         <DialogFooter className="flex-col-reverse sm:flex-row gap-2">
-          <Button variant="outline" onClick={onDecline}>Decline</Button>
-          <Button onClick={onAccept}>Accept</Button>
+          <Button variant="outline" onClick={onDecline} disabled={busy}>Decline</Button>
+          <Button onClick={onAccept} disabled={busy}>{acceptLabel}</Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>
