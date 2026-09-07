@@ -32,6 +32,8 @@ export default defineConfig({
     __BUILD_TARGET__: JSON.stringify(process.env.FORMAMORPH_BUILD ?? ''),
   },
   resolve: {
+    // Modal menus and dialogs must share the body pointer-lock registry.
+    dedupe: ['@radix-ui/react-dismissable-layer'],
     alias: {
       '@': path.resolve(__dirname, './src'),
     },
