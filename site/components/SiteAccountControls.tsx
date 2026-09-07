@@ -3,6 +3,8 @@ import { UserAvatar } from '@/components/UserAvatar';
 import { Button } from '@/components/ui/button';
 import AuthService from '@/services/AuthService';
 import type { AuthUser } from '@/types';
+import { withAgeGateAuthentication } from '@/lib/ageGateAuthentication';
+import { useSiteAgeGateAuthentication } from '../ageGateAuthenticationContext';
 
 interface SiteSession {
   authenticated: boolean;
@@ -17,12 +19,17 @@ const readSession = (): SiteSession => ({
 /** The account links shared by every React site page. */
 export function SiteAccountControls() {
   const [session, setSession] = useState(readSession);
+  const authentication = useSiteAgeGateAuthentication();
 
   useEffect(() => AuthService.onSessionChanged(() => setSession(readSession())), []);
 
   if (!session.authenticated) {
     return (
-      <a href="/login" className="text-label font-medium text-primary hover:underline">
+      <a
+        href={withAgeGateAuthentication('/login', authentication.flow)}
+        onClick={authentication.continueAuthentication}
+        className="text-label font-medium text-primary hover:underline"
+      >
         Sign In
       </a>
     );

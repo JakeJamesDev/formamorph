@@ -338,7 +338,7 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
   // to stay in the footer rather than collapsing into the ⋯ menu — an update offer nobody opens is no offer.
   const canUpdate = updateBridge() !== null;
   // The age attestation every community surface waits on (see AgeGateContext).
-  const { attested, gateOpen, requireAttestation } = useAgeGate();
+  const { attested, gateOpen, requireAttestation, requireAuthentication } = useAgeGate();
 
   /**
    * Open Community Creations, asking for the age attestation first.
@@ -1926,7 +1926,7 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
                 // An account is what unlocks profiles and comments, so signing up sits behind the same
                 // attestation the browser does. A player who already attested is not asked twice.
                 if (isAuthenticated) setShowProfileDialog(true);
-                else requireAttestation({ onAccept: () => setShowAuthDialog(true) });
+                else requireAuthentication({ onAccept: () => setShowAuthDialog(true) });
               }}
               aria-label={
                 isAuthenticated

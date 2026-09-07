@@ -42,7 +42,7 @@ export function PrivacyPolicyProvider({ children }: { children: ReactNode }) {
   const [busy, setBusy] = useState(false);
   const devRoute = useDevRoute();
   const { startDeletion } = useAccountDeletion();
-  const { attested } = useAgeGate();
+  const { attested, authenticationPrivacyResolved } = useAgeGate();
 
   // One read at a time: the refusal watch fires per refused request, and a screen that makes several at
   // once would otherwise start a read for each. A request arriving mid-read is remembered rather than
@@ -120,13 +120,14 @@ export function PrivacyPolicyProvider({ children }: { children: ReactNode }) {
     try {
       await PolicyService.acceptPrivacyPolicy();
       setPolicy(null);
+      authenticationPrivacyResolved();
     } catch (error) {
       // Left open on failure: closing it would strand the account, still refused, with nothing on screen.
       toast.error((error as Error).message || 'Failed to record your acceptance');
     } finally {
       setBusy(false);
     }
-  }, []);
+  }, [authenticationPrivacyResolved]);
 
   // Ends the session and nothing else. The account keeps everything it had, including the chance to
   // accept at the next sign-in.

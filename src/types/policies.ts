@@ -60,3 +60,14 @@ export interface SavePolicyInput {
 
 /** Which policy is being written; the server knows exactly these three. */
 export type PolicyId = 'upload_gate' | 'tag_notice' | 'privacy_policy';
+
+/** One explicit warning answer carried only through the authentication flow that displayed it. */
+export interface AgeGateAuthenticationFlow {
+  id: string;
+  acceptanceVersion: number;
+}
+
+/** A carried warning answer pinned to the account produced by its authentication flow. */
+export interface BoundAgeGateAuthentication extends AgeGateAuthenticationFlow {
+  accountKey: string;
+}

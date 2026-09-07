@@ -1,9 +1,18 @@
-import { useEffect, useState, type ReactNode } from 'react';
+import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import { AgeGateDialog } from '@/components/community/AgeGateDialog';
 import { Button } from '@/components/ui/button';
 import { AGE_GATE_VERSION, acceptAgeGate, isAgeAttested } from '@/lib/ageGate';
+import {
+  beginAgeGateAuthentication,
+  cancelAgeGateAuthentication,
+} from '@/lib/ageGateAuthentication';
+import type { AgeGateAuthenticationFlow } from '@/types';
 import AgeGateService from '@/services/AgeGateService';
 import AuthService from '@/services/AuthService';
+import {
+  SiteAgeGateAuthenticationContext,
+  useAgeGateAuthenticationHandoff,
+} from '../ageGateAuthenticationContext';
 import { leaveTo } from '../leaveSite';
 import { SiteLayout } from './SiteLayout';
 
@@ -30,8 +39,20 @@ export function SiteAgeGate({ children }: { children: ReactNode }) {
   const [writeError, setWriteError] = useState<string | null>(null);
   const [readError, setReadError] = useState<string | null>(null);
   const [readAttempt, setReadAttempt] = useState(0);
+  const [authenticationFlow, setAuthenticationFlow] = useState<AgeGateAuthenticationFlow | null>(null);
+  const continueAuthentication = useAgeGateAuthenticationHandoff(authenticationFlow);
+  const authentication = useMemo(
+    () => ({ flow: authenticationFlow, continueAuthentication }),
+    [authenticationFlow, continueAuthentication],
+  );
 
-  useEffect(() => AuthService.onSessionChanged(() => setSessionToken(AuthService.token)), []);
+  useEffect(() => AuthService.onSessionChanged(() => {
+    setSessionToken(AuthService.token);
+    setAuthenticationFlow((flow) => {
+      if (flow) cancelAgeGateAuthentication(flow);
+      return null;
+    });
+  }), []);
 
   useEffect(() => {
     setSaving(false);
@@ -72,7 +93,13 @@ export function SiteAgeGate({ children }: { children: ReactNode }) {
     return () => { current = false; };
   }, [readAttempt, sessionToken]);
 
-  if (state === 'accepted') return <>{children}</>;
+  if (state === 'accepted') {
+    return (
+      <SiteAgeGateAuthenticationContext.Provider value={authentication}>
+        {children}
+      </SiteAgeGateAuthenticationContext.Provider>
+    );
+  }
   if (state === 'checking') return null;
   if (state === 'failed') {
     return (
@@ -88,6 +115,7 @@ export function SiteAgeGate({ children }: { children: ReactNode }) {
   const accept = async () => {
     if (!sessionToken) {
       acceptAgeGate();
+      setAuthenticationFlow(beginAgeGateAuthentication());
       setState('accepted');
       return;
     }
