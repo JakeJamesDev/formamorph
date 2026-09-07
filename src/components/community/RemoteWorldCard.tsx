@@ -170,7 +170,7 @@ export function RemoteWorldCard({
         <span className="inline-flex items-center gap-1.5 min-w-0">
           <UserAvatar username={world.author?.username} avatarUrl={world.author?.avatarUrl} size="xs" />
           <Tip
-            tip={world.author?.username ? `Hide all worlds by ${world.author.username}` : undefined}
+            tip={world.author?.username && onHideAuthor ? `Hide all worlds by ${world.author.username}` : undefined}
             labelsChild={false}
           >
             <span

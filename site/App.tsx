@@ -9,8 +9,7 @@ import { ResetPasswordPage } from './pages/ResetPasswordPage';
 import { VerifyEmailPage } from './pages/VerifyEmailPage';
 import { profileUsername, useSiteLocation } from './router';
 
-// Community brings its own browser and game-adjacent dependencies. It must not enter lightweight
-// account routes merely because they share this route entry.
+// Community stays out of lightweight account routes until its own chunk is requested.
 const CommunityPage = lazy(async () => {
   const module = await import('./pages/CommunityPage');
   return { default: module.CommunityPage };
