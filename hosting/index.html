@@ -72,21 +72,6 @@
   .thumbs img { width:clamp(96px,28vw,148px); aspect-ratio:16/9; display:block; border-radius:6px; }
   .thumbs .lbl { color:var(--dim); font-size:.72rem; padding:.2em 0 .4em; }
 
-  /* Over the hero rather than above it: the hero is the whole first screen and a bar of its own would
-     push the logo down without giving the page anything. */
-  .topbar { position:absolute; top:0; left:0; right:0; z-index:10;
-    display:flex; justify-content:flex-end; gap:.75rem; align-items:center; padding:1rem 1.25rem; }
-  .community-link { color:var(--text); font-weight:600; text-decoration:none; }
-  .community-link:hover { color:var(--accent); }
-  .acct { display:inline-flex; align-items:center; justify-content:center; gap:.45em; height:42px; padding:0 .85em; border-radius:999px;
-    border:1px solid var(--edge); background:var(--account-bg); color:var(--text); font-weight:600;
-    font-size:1.05rem; text-decoration:none; }
-  .acct:hover { background:var(--lift); }
-  /* Both session states share one control height. */
-  .acct.face { width:42px; padding:0; }
-  .acct-icon { width:22px; height:22px; display:block; }
-  .acct.face .acct-icon { width:26px; height:26px; }
-  .acct-avatar { width:30px; height:30px; border-radius:999px; object-fit:cover; display:block; }
   .session-notice { position:fixed; z-index:3; top:4.5rem; left:50%; transform:translateX(-50%);
     width:min(560px,calc(100% - 2rem)); padding:.85rem 1rem; border:1px solid var(--notice-border);
     border-radius:10px; background:var(--notice-bg); box-shadow:0 12px 30px var(--surface-shadow); }
@@ -109,22 +94,18 @@
     .skin img.lay { transition:none; }
   }
 </style>
+<link rel="stylesheet" href="/site-header.css">
 </head>
 <body>
 
-<!-- Signed out is the markup, not a render: a visitor whose browser never runs the module below still
-     gets a working Sign In. The script swaps in the avatar when a session is held. -->
-<header class="topbar">
-  <a class="community-link" href="/community">Community</a>
-  <a class="acct" data-account href="/login?next=/">
-    <span>Sign In</span>
-    <svg class="acct-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"
-         stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-      <circle cx="12" cy="8.5" r="3.5"></circle>
-      <path d="M5 20a7 7 0 0 1 14 0"></path>
-    </svg>
-  </a>
-</header>
+<!-- Navigation stays available before the shared header loads. -->
+<div data-site-header>
+  <header class="fm-site-header"><div class="fm-header-inner">
+    <a class="fm-brand" href="/"><img src="/site/icon.png" width="32" height="32" alt=""><span>Formamorph</span></a>
+    <nav class="fm-primary-nav" aria-label="Main navigation"><a href="/community">Community</a></nav>
+    <div class="fm-account"><a class="fm-sign-in" href="/login?next=/">Sign In</a></div>
+  </div></header>
+</div>
 
 <div class="session-notice" data-deletion-notice role="status" hidden>
   <strong>Account deletion canceled</strong>
@@ -292,45 +273,6 @@ fetch(`https://api.github.com/repos/${REPO}/releases/latest`)
   });
 </script>
 
-<script type="module">
-// The header's account control. The session is read through the shared module rather than out of
-// localStorage here, so this page and the account pages never disagree about the keys.
-import { readSession, watchSession, avatarSrc, takeDeletionCancellation } from '/session.js';
-
-const control = document.querySelector('[data-account]');
-// Both pieces of the signed-out control, detached and kept so every later state is built from them:
-// the label is put back or left out, and the icon is cloned wherever a face is missing.
-const labelNode = control.querySelector('span');
-const iconTemplate = control.querySelector('svg');
-
-function render(session) {
-  control.href = session ? `/u/${encodeURIComponent(session.username)}` : '/login?next=/';
-  control.classList.toggle('face', !!session);
-  // Signed out the label names the link. Signed in there is no text, so the name is said here.
-  if (session) control.setAttribute('aria-label', `${session.username} — your profile`);
-  else control.removeAttribute('aria-label');
-
-  const src = session ? avatarSrc(session.avatarUrl) : null;
-  if (!src) {
-    control.replaceChildren(...(session ? [] : [labelNode]), iconTemplate.cloneNode(true));
-    return;
-  }
-
-  const img = document.createElement('img');
-  img.className = 'acct-avatar';
-  img.alt = '';
-  // A dead URL would otherwise leave a torn-page glyph where a face belongs.
-  img.addEventListener('error', () => control.replaceChildren(iconTemplate.cloneNode(true)));
-  img.src = src;
-  control.replaceChildren(img);
-}
-
-render(readSession());
-watchSession(render);
-
-if (takeDeletionCancellation()) {
-  document.querySelector('[data-deletion-notice]').hidden = false;
-}
-</script>
+<script type="module" src="/site-app/header.js"></script>
 </body>
 </html>

@@ -1,6 +1,7 @@
 import { test, expect, type Page } from '@playwright/test';
 import { PAGES_URL, SITE_URL } from '../playwright.config';
 import { openApp } from './app';
+import { AGE_GATE_VERSION } from '../src/lib/ageGate';
 
 /** `#rrggbb` or `rgb(r, g, b)` as three numbers. */
 const channels = (color: string): [number, number, number] => {
@@ -151,13 +152,14 @@ test.describe('site pages', () => {
     await expect(page.getByRole('heading', { name: 'Page Not Found' })).toBeVisible();
   });
 
-  test('the signed-in account controls stay visible and usable', async ({ page }) => {
+  test('the signed-in account controls open from the avatar and remain usable', async ({ page }) => {
     await page.addInitScript(() => {
       localStorage.setItem('authToken', 'held-token');
       localStorage.setItem('currentUser', JSON.stringify({ username: 'rowan' }));
     });
     await page.goto(`${PAGES_URL}/login`);
 
+    await page.getByRole('button', { name: 'Account menu' }).click();
     await expect(page.getByRole('link', { name: 'Profile' })).toHaveAttribute('href', '/u/rowan');
     await expect(page.getByRole('link', { name: 'Account Settings' })).toHaveAttribute('href', '/account');
     await expect(page.getByRole('button', { name: 'Sign Out' })).toBeVisible();
@@ -210,14 +212,15 @@ test.describe('site pages', () => {
     await writer.getByLabel('Username').fill('rowan');
     await writer.getByLabel('Password').fill('hunter22');
     await writer.getByRole('button', { name: 'Sign In' }).click();
-    await expect(writer.getByRole('link', { name: 'Profile' })).toBeVisible();
+    await expect(writer.getByRole('button', { name: 'Account menu' })).toBeVisible();
+    await reader.getByRole('button', { name: 'Account menu' }).click();
     await expect(reader.getByRole('link', { name: 'Profile' })).toHaveAttribute('href', '/u/rowan');
 
     await writer.evaluate(() => localStorage.setItem('currentUser', JSON.stringify({
       username: 'rowan',
       avatarUrl: '/api/avatars/new.webp',
     })));
-    await expect(reader.getByRole('link', { name: 'Profile' }).locator('img'))
+    await expect(reader.getByRole('button', { name: 'Account menu' }).locator('img'))
       .toHaveAttribute('src', 'https://api.formamorph.ai/api/avatars/new.webp');
 
     await reader.getByRole('button', { name: 'Sign Out' }).click();
@@ -227,6 +230,11 @@ test.describe('site pages', () => {
   test('site sign-out reaches the open app and landing page without reloads', async ({ context }, testInfo) => {
     test.skip(testInfo.project.name !== 'desktop', 'storage events do not vary by viewport');
     await context.route('**/auth/me', (route) => route.fulfill({ json: { username: 'rowan' } }));
+    // The held test account needs its authenticated startup responses from the same fixture server.
+    await context.route('**/policies/age-gate', (route) => route.fulfill({
+      json: { accepted: true, requiredVersion: AGE_GATE_VERSION, acceptedAt: '2026-01-01T00:00:00.000Z' },
+    }));
+    await context.route('**/messages/unread-count', (route) => route.fulfill({ json: { unread: 0, topSeverity: null } }));
     const app = await context.newPage();
     const site = await context.newPage();
     const landing = await context.newPage();
@@ -237,10 +245,11 @@ test.describe('site pages', () => {
 
     const appAccount = app.locator('button[aria-label="Login"], button[aria-label^="User Profile"]');
     await expect(appAccount).toHaveAttribute('aria-label', /^User Profile/);
-    await expect(landing.locator('[data-account]')).toHaveAttribute('href', '/u/rowan');
+    await expect(landing.getByRole('button', { name: 'Account menu' })).toBeVisible();
     await app.evaluate(() => Object.assign(window, { __documentMarker: 'app-alive' }));
     await landing.evaluate(() => Object.assign(window, { __documentMarker: 'landing-alive' }));
 
+    await site.getByRole('button', { name: 'Account menu' }).click();
     await site.getByRole('button', { name: 'Sign Out' }).click();
 
     await expect(appAccount).toHaveAttribute('aria-label', 'Login');

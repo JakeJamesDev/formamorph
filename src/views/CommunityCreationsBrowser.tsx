@@ -39,7 +39,7 @@ import type { Entity, Dictionary, EntityMetadata, DictionaryMetadata, ServerEven
 import { EventBanner, EventBannerChips } from "@/components/events/EventBanner";
 import { useEventBanners } from "@/components/events/useEventBanners";
 import { useClosingSnapshot } from "@/lib/useClosingSnapshot";
-import { useCommunityBrowserFilters } from "@/lib/useCommunityBrowserFilters";
+import { useCommunityBrowserFilters, type CommunityFilterPreferences } from "@/lib/useCommunityBrowserFilters";
 import { MessageComposerDialog } from "@/components/menu/MessageComposerDialog";
 import { takedownTargetFor, takedownTemplate, type TakedownTarget } from "@/lib/takedownNotice";
 import {
@@ -147,6 +147,8 @@ interface CommunityCreationsBrowserProps {
   presentation?: BrowserPresentation;
   /** The actions the shell is allowed to expose. */
   capabilities?: CommunityBrowserCapabilities;
+  /** Preference scope and first-visit sort for this surface. */
+  filterPreferences?: CommunityFilterPreferences;
   // Local world list (drives download-state) + setter (download/overwrite add or update local copies).
   worlds: WorldRecord[];
   setWorlds: React.Dispatch<React.SetStateAction<WorldRecord[]>>;
@@ -187,7 +189,7 @@ interface CommunityCreationsBrowserProps {
 // The Community Creations browser: browse/search/filter/sort the published catalog, view world details
 // and comments, and download/refresh/update copies to the local library.
 const CommunityCreationsBrowser = ({
-  open, onOpenChange, presentation = 'dialog', capabilities = APP_COMMUNITY_CAPABILITIES, worlds, setWorlds, entities, dictionaries,
+  open, onOpenChange, presentation = 'dialog', capabilities = APP_COMMUNITY_CAPABILITIES, filterPreferences, worlds, setWorlds, entities, dictionaries,
   refreshEntities, refreshDictionaries,
   isAuthenticated, currentUser, onGuestLike, openImageViewer, initialTab, openListing, onListingOpened, listing: controlledListing,
   onListingChange, onListingUnavailable, detailsAction,
@@ -387,6 +389,7 @@ const CommunityCreationsBrowser = ({
     catalogInView, downloadStateForRecord, open, browseTab,
     currentUser?.id ? String(currentUser.id) : undefined,
     browseTab === 'contest' ? contestOrder : undefined,
+    filterPreferences,
   );
 
   // One read for the whole page's stored thumbnails, so a page of seen cards paints together rather

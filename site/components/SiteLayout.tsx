@@ -1,7 +1,7 @@
 import { useEffect, useState, type ReactNode } from 'react';
 import { cn } from '@/lib/utils';
 import { clearDeletionCancellation, hasDeletionCancellation } from '@/lib/deletionCancellation';
-import { SiteAccountControls } from './SiteAccountControls';
+import { SiteHeader } from './SiteHeader';
 
 interface SiteLayoutProps {
   /** Sits above the panel, in the landing page's heading size. Absent leaves the panel to head itself. */
@@ -21,11 +21,7 @@ const WIDTHS = {
   page: 'max-w-[640px]',
 } as const;
 
-/**
- * The frame every account page shares: the landing page's mark on top, its footer underneath, and a
- * narrow card between them. The landing page is one static file with no build step, so its look is
- * matched here rather than imported.
- */
+/** Shared website frame with a content column and footer. */
 export function SiteLayout({ title, subtitle, width = 'form', surface = false, children }: SiteLayoutProps) {
   const [deletionCanceled] = useState(hasDeletionCancellation);
 
@@ -36,18 +32,7 @@ export function SiteLayout({ title, subtitle, width = 'form', surface = false, c
 
   return (
     <div className="flex min-h-[100dvh] flex-col">
-      <header className="border-b border-border">
-        <div className="mx-auto flex max-w-[1100px] flex-wrap items-center justify-between gap-4 px-6 py-4">
-          <a href="/" className="flex items-center gap-3 no-underline">
-            <img src="/site/icon.png" width={32} height={32} alt="" className="rounded-lg" />
-            <span className="text-title font-semibold tracking-tight">Formamorph</span>
-          </a>
-          <div className="flex items-center gap-4">
-            <a href="/community" className="font-medium hover:text-primary">Community</a>
-            <SiteAccountControls />
-          </div>
-        </div>
-      </header>
+      <SiteHeader />
 
       <main className={cn(
         'flex w-full flex-1',

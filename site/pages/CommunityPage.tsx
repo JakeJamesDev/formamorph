@@ -68,6 +68,7 @@ export function CommunityPage() {
           open
           onOpenChange={(open) => { if (!open) leaveTo('/'); }}
           presentation="embedded"
+          filterPreferences={{ storageKey: 'FORMAMORPH_websiteCommunityFilters', defaultSortField: 'likes' }}
           capabilities={WEBSITE_COMMUNITY_CAPABILITIES}
           listing={unavailable ? null : listing}
           onListingChange={setListing}

@@ -1,3 +1,4 @@
+import type { CommunityFilterPreferences } from '@/lib/useCommunityBrowserFilters';
 import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
 import CommunityCreationsBrowser, { type BrowserPresentation, type CommunityListing } from './CommunityCreationsBrowser';
 import { APP_COMMUNITY_CAPABILITIES, type CommunityBrowserCapabilities } from '@/lib/communityBrowserCapabilities';
@@ -20,6 +21,8 @@ export interface CommunityBrowserHostProps {
   presentation?: BrowserPresentation;
   /** Actions this host may expose. Defaults to the complete in-app surface. */
   capabilities?: CommunityBrowserCapabilities;
+  /** Preference scope and first-visit sort for this surface. */
+  filterPreferences?: CommunityFilterPreferences;
   /** The tab to open on — the dev-router's, or the one an event banner asked for. */
   initialTab?: BrowseTab;
   /** A listing to open the details for, arriving from somewhere else — a notification feed row. */
@@ -57,7 +60,7 @@ export interface CommunityBrowserHostProps {
  * coordinator's own optimistic writes, entities and dictionaries through the refreshers below.
  */
 export const CommunityBrowserHost = ({
-  open, onOpenChange, presentation = 'dialog', capabilities = APP_COMMUNITY_CAPABILITIES, initialTab, openListing, onListingOpened,
+  open, onOpenChange, presentation = 'dialog', capabilities = APP_COMMUNITY_CAPABILITIES, filterPreferences, initialTab, openListing, onListingOpened,
   listing, onListingChange, onListingUnavailable, onGuestLike,
   detailsAction,
   openLikersOnMount = false,
@@ -194,6 +197,7 @@ export const CommunityBrowserHost = ({
         onOpenChange={onOpenChange}
         presentation={presentation}
         capabilities={capabilities}
+        filterPreferences={filterPreferences}
         worlds={worlds}
         setWorlds={setWorlds}
         entities={entities}

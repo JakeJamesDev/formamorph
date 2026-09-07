@@ -14,6 +14,12 @@ const PORTRAIT_PAGE_SIZE = 10; // …except a flat count in portrait orientation
 
 const FILTERS_KEY = 'FORMAMORPH_communityFilters';
 
+/** The host's preference namespace and first-visit sort. */
+export interface CommunityFilterPreferences {
+  storageKey: string;
+  defaultSortField: 'updated_at' | 'likes';
+}
+
 /** Columns the responsive grid renders at width `w` — mirrors the Tailwind sm/md/lg/xl breakpoints
  *  on the grid class so the page size matches what's actually visible. */
 const gridColumns = (w: number): number =>
@@ -33,28 +39,28 @@ interface TabFilters {
   sortUpdatesFirst: boolean; // float listings with an update to the front
 }
 
-const emptyFilters = (): TabFilters => ({
+const emptyFilters = (sortField = 'updated_at'): TabFilters => ({
   authorFilter: [],
   tagFilter: [],
   tagMode: 'any',
   statusFilter: [],
-  sortField: 'updated_at',
+  sortField,
   sortOrder: 'desc',
   sortUpdatesFirst: true,
 });
 
-const emptyByTab = (): Record<BrowseTab, TabFilters> =>
-  Object.fromEntries(BROWSE_TABS.map((t) => [t, emptyFilters()])) as Record<BrowseTab, TabFilters>;
+const emptyByTab = (defaultSortField: string): Record<BrowseTab, TabFilters> =>
+  Object.fromEntries(BROWSE_TABS.map((t) => [t, emptyFilters(defaultSortField)])) as Record<BrowseTab, TabFilters>;
 
 const stringList = (value: unknown): string[] =>
   Array.isArray(value) ? value.map((v) => String(v)).filter(Boolean) : [];
 
 /** Rebuild the stored settings field by field, so a hand-edited or outdated key can only ever lose
  *  settings rather than seed the pipeline with a shape it doesn't understand. */
-function readStoredFilters(): Record<BrowseTab, TabFilters> {
-  const out = emptyByTab();
+function readStoredFilters(storageKey: string, defaultSortField: string): Record<BrowseTab, TabFilters> {
+  const out = emptyByTab(defaultSortField);
   try {
-    const raw = JSON.parse(localStorage.getItem(FILTERS_KEY) || '{}');
+    const raw = JSON.parse(localStorage.getItem(storageKey) || '{}');
     if (!raw || typeof raw !== 'object') return out;
     for (const tab of BROWSE_TABS) {
       const saved = (raw as Record<string, unknown>)[tab];
@@ -67,7 +73,7 @@ function readStoredFilters(): Record<BrowseTab, TabFilters> {
         statusFilter: stringList(s.statusFilter)
           .map(asStatusFacet)
           .filter((f): f is StatusFacet => f !== null),
-        sortField: typeof s.sortField === 'string' ? s.sortField : 'updated_at',
+        sortField: typeof s.sortField === 'string' ? s.sortField : defaultSortField,
         sortOrder: s.sortOrder === 'asc' ? 'asc' : 'desc',
         sortUpdatesFirst: s.sortUpdatesFirst !== false,
       };
@@ -103,16 +109,19 @@ export function useCommunityBrowserFilters(
   tab: BrowseTab = 'world',
   viewerId?: string,
   order?: (list: WorldRecord[]) => WorldRecord[],
+  preferences?: CommunityFilterPreferences,
 ) {
+  const storageKey = preferences?.storageKey ?? FILTERS_KEY;
+  const defaultSortField = preferences?.defaultSortField ?? 'updated_at';
   const kind = catalogKindOfTab(tab);
   const [searchQuery, setSearchQuery] = useState('');
-  const [filtersByTab, setFiltersByTab] = useState<Record<BrowseTab, TabFilters>>(readStoredFilters);
+  const [filtersByTab, setFiltersByTab] = useState<Record<BrowseTab, TabFilters>>(() => readStoredFilters(storageKey, defaultSortField));
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(DEFAULT_PAGE_SIZE);
 
   useEffect(() => {
-    localStorage.setItem(FILTERS_KEY, JSON.stringify(filtersByTab));
-  }, [filtersByTab]);
+    localStorage.setItem(storageKey, JSON.stringify(filtersByTab));
+  }, [filtersByTab, storageKey]);
 
   const filters = filtersByTab[tab] ?? emptyFilters();
 

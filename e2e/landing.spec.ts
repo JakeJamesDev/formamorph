@@ -257,12 +257,14 @@ test.describe('landing header account control', () => {
     await expect(control(page).locator('img')).toHaveCount(0);
   });
 
-  test('signed in it is the avatar, linking to the profile', async ({ page }) => {
+  test('signed in the avatar opens a menu linking to the profile', async ({ page }) => {
     await serveAvatar(page);
     await holding(page, { username: 'rowan', avatarUrl: AVATAR });
     await page.goto(SITE_URL);
 
-    await expect(control(page)).toHaveAttribute('href', '/u/rowan');
+    await expect(control(page)).toHaveAttribute('aria-label', 'Account menu');
+    await control(page).click();
+    await expect(page.getByRole('link', { name: 'Profile', exact: true })).toHaveAttribute('href', '/u/rowan');
     await expect(page.getByText('Sign In')).toHaveCount(0);
     const avatar = control(page).locator('img');
     await expect(avatar).toBeVisible();
@@ -270,12 +272,14 @@ test.describe('landing header account control', () => {
     expect(await avatar.evaluate((i: HTMLImageElement) => i.naturalWidth)).toBeGreaterThan(0);
   });
 
-  test('signed in with no avatar it falls back to the person icon', async ({ page }) => {
+  test('signed in with no avatar it falls back to the shared initial', async ({ page }) => {
     await holding(page, { username: 'rowan' });
     await page.goto(SITE_URL);
 
-    await expect(control(page)).toHaveAttribute('href', '/u/rowan');
-    await expect(control(page).locator('svg')).toBeVisible();
+    await expect(control(page)).toHaveAttribute('aria-label', 'Account menu');
+    await control(page).click();
+    await expect(page.getByRole('link', { name: 'Profile', exact: true })).toHaveAttribute('href', '/u/rowan');
+    await expect(control(page)).toHaveText('R');
     await expect(page.getByText('Sign In')).toHaveCount(0);
   });
 
@@ -292,7 +296,9 @@ test.describe('landing header account control', () => {
       localStorage.setItem('authToken', 'tok');
       localStorage.setItem('currentUser', JSON.stringify({ username: 'rowan' }));
     });
-    await expect(control(landing)).toHaveAttribute('href', '/u/rowan');
+    await expect(control(landing)).toHaveAttribute('aria-label', 'Account menu');
+    await control(landing).click();
+    await expect(landing.getByRole('link', { name: 'Profile', exact: true })).toHaveAttribute('href', '/u/rowan');
 
     await other.evaluate(() => localStorage.clear());
     await expect(control(landing)).toHaveAttribute('href', '/login?next=/');

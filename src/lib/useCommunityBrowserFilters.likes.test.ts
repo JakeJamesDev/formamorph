@@ -51,6 +51,23 @@ afterEach(() => {
 });
 
 describe('sorting by likes', () => {
+  it('starts website visits by likes without overwriting app preferences, and remembers a chosen sort', () => {
+    const app = renderHook(() => useCommunityBrowserFilters(catalog, () => 'none', true));
+    expect(app.result.current.filteredRemoteWorlds.map(w => w.name)).toEqual(['Quiet', 'Liked', 'Loved']);
+    const savedApp = localStorage.getItem('FORMAMORPH_communityFilters');
+    app.unmount();
+    const preferences = { storageKey: 'website-filters', defaultSortField: 'likes' as const };
+    const useWebsite = () => useCommunityBrowserFilters(catalog, () => 'none', true, 'world', undefined, undefined, preferences);
+    const first = renderHook(useWebsite);
+    expect(first.result.current.filteredRemoteWorlds.map(w => w.name)).toEqual(['Loved', 'Liked', 'Quiet']);
+    act(() => first.result.current.setSortField('updated_at'));
+    expect(first.result.current.filteredRemoteWorlds.map(w => w.name)).toEqual(['Quiet', 'Liked', 'Loved']);
+    first.unmount();
+    const returning = renderHook(useWebsite);
+    expect(returning.result.current.sortField).toBe('updated_at');
+    expect(localStorage.getItem('FORMAMORPH_communityFilters')).toBe(savedApp);
+  });
+
   it('puts the most liked first', () => {
     expect(order('likes', 'desc')).toEqual(['Loved', 'Liked', 'Quiet']);
   });

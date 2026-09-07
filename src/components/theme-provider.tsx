@@ -24,7 +24,10 @@ export function ThemeProvider({
   storageKey?: string
 }) {
   const [theme, setTheme] = useState<Theme>(
-    () => (localStorage.getItem(storageKey) as Theme) || defaultTheme
+    () => {
+      try { return (localStorage.getItem(storageKey) as Theme) || defaultTheme }
+      catch { return defaultTheme }
+    }
   )
   const [resolvedTheme, setResolvedTheme] = useState<ResolvedTheme>(() =>
     theme === "system" ? (window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light") : theme
@@ -50,11 +53,21 @@ export function ThemeProvider({
     apply(theme)
   }, [theme])
 
+  useEffect(() => {
+    const onStorage = (event: StorageEvent) => {
+      if (event.key !== storageKey && event.key !== null) return
+      const value = event.newValue
+      setTheme(value === "light" || value === "dark" || value === "system" ? value : defaultTheme)
+    }
+    window.addEventListener("storage", onStorage)
+    return () => window.removeEventListener("storage", onStorage)
+  }, [storageKey, defaultTheme])
+
   const value = {
     theme,
     resolvedTheme,
     setTheme: (theme: Theme) => {
-      localStorage.setItem(storageKey, theme)
+      try { localStorage.setItem(storageKey, theme) } catch { /* Apply even when storage is unavailable. */ }
       setTheme(theme)
     },
   }

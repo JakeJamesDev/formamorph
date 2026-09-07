@@ -14,6 +14,7 @@ const arg = (name, fallback) => {
 };
 
 const ROOT = arg('root', 'hosting');
+const SITE_APP_ROOT = arg('site-app', 'site-dist');
 const PORT = Number(arg('port', process.env.E2E_SITE_PORT ?? 5185));
 
 const TYPES = {
@@ -32,7 +33,9 @@ const TYPES = {
 createServer(async (req, res) => {
   const path = decodeURIComponent(new URL(req.url, 'http://localhost').pathname);
   // normalize collapses any ../ before the join, so a request cannot escape the root.
-  let file = join(ROOT, normalize(path));
+  let file = path.startsWith('/site-app/')
+    ? join(SITE_APP_ROOT, normalize('/' + path.slice('/site-app/'.length)))
+    : join(ROOT, normalize(path));
   try {
     if ((await stat(file)).isDirectory()) file = join(file, 'index.html');
     const info = await stat(file);
