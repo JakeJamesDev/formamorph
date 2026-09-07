@@ -288,6 +288,11 @@ Runs one extra request per participant. Edit its prompt under **Prompts → Diar
     label: 'Max Output Tokens',
     description: 'Caps how long each reply may run.',
   },
+  endpointTemperature: { label: 'Temperature', description: 'Overrides this endpoint’s temperature.' },
+  endpointRepetitionPenalty: { label: 'Repetition Penalty', description: 'Overrides this endpoint’s repetition penalty.' },
+  endpointTopP: { label: 'Top-p', description: 'Overrides this endpoint’s Top-p setting.' },
+  endpointTopK: { label: 'Top-k', description: 'Overrides this endpoint’s Top-k setting.' },
+  endpointMinP: { label: 'Min-p', description: 'Overrides this endpoint’s Min-p setting.' },
 
   // ── Endpoints · Image ───────────────────────────────────────────────────────
   enableImageGeneration: {

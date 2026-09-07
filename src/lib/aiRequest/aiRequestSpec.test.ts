@@ -3,25 +3,32 @@ import {
   buildAiRequestSpec, buildRequestBody,
   type AiCall, type AiEndpointTarget, type AiSettingsSnapshot,
 } from './aiRequestSpec';
+import { defaultEndpointSamplerOverrides } from '@/lib/endpointSamplers';
+import { resolvePromptEndpoint, type ActiveEndpointState } from '@/lib/promptEndpoints';
+import { DEFAULT_TEXT_ENDPOINT_VALUES, type TextEndpointPresetStore } from '@/lib/textEndpointPresets';
 
 /** The engine kinds the body splits on. LM Studio differs from a generic OpenAI-compatible endpoint only in
  *  what it accepts, which the spec expresses as the probed effort list — two targets, not two code paths. */
 const localEngine = (over: Partial<AiEndpointTarget> = {}): AiEndpointTarget => ({
+  endpointId: 'builtin-engine',
   url: 'http://127.0.0.1:8080/v1/chat/completions',
   apiToken: 'engine-token',
   model: 'bundled.gguf',
   maxTokens: 1000,
   localEngine: true,
+  samplerOverrides: defaultEndpointSamplerOverrides(),
   supportedReasoningEfforts: null,
   ...over,
 });
 
 const external = (over: Partial<AiEndpointTarget> = {}): AiEndpointTarget => ({
+  endpointId: 'cloud',
   url: 'https://api.example.com/v1/chat/completions',
   apiToken: 'cloud-token',
   model: 'big-24b',
   maxTokens: 800,
   localEngine: false,
+  samplerOverrides: defaultEndpointSamplerOverrides(),
   supportedReasoningEfforts: ['none', 'low', 'medium', 'high'],
   ...over,
 });
@@ -85,6 +92,65 @@ describe('temperature and penalty — pinned, global, custom, omitted', () => {
     expect(body).not.toHaveProperty('repeat_penalty');
   });
 
+  it('sends only the enabled sampler overrides from its external target', () => {
+    const target = external({
+      samplerOverrides: {
+        temperature: { enabled: true, value: 0 },
+        repetitionPenalty: { enabled: true, value: 1.18 },
+        topP: { enabled: false, value: 0.91 },
+        topK: { enabled: true, value: 64 },
+        minP: { enabled: true, value: 0 },
+      },
+    });
+
+    const body = buildRequestBody(snapshot(target), call());
+
+    expect(body).toMatchObject({
+      temperature: 0,
+      repetition_penalty: 1.18,
+      repeat_penalty: 1.18,
+      top_k: 64,
+      min_p: 0,
+    });
+    expect(body).not.toHaveProperty('top_p');
+  });
+
+  it('uses the routed endpoint sampler rather than the globally active endpoint', () => {
+    const routedValues = {
+      ...DEFAULT_TEXT_ENDPOINT_VALUES,
+      endpoint: 'https://routed.example/v1',
+      apiToken: 'routed-token',
+      model: 'routed-model',
+      samplerOverrides: { ...defaultEndpointSamplerOverrides(), temperature: { enabled: true, value: 0 } },
+    };
+    const store: TextEndpointPresetStore = {
+      activeId: 'active',
+      presets: [
+        { id: 'active', name: 'Active', values: { ...DEFAULT_TEXT_ENDPOINT_VALUES, samplerOverrides: defaultEndpointSamplerOverrides() } },
+        { id: 'routed', name: 'Routed', values: routedValues },
+      ],
+    };
+    const active: ActiveEndpointState = {
+      activeId: 'active', values: store.presets[0].values, isBuiltIn: false, localEngine: false,
+      maxTokens: 800, engineMaxTokens: 512, engineModelId: '',
+    };
+    const resolved = resolvePromptEndpoint('narration', { narration: 'routed' }, store, active);
+    const target = external({
+      endpointId: resolved.endpointId,
+      url: `${resolved.endpoint}/chat/completions`,
+      apiToken: resolved.apiToken,
+      model: resolved.model,
+      maxTokens: resolved.maxTokens,
+      samplerOverrides: resolved.samplerOverrides,
+    });
+
+    const spec = buildAiRequestSpec(snapshot(target), call());
+
+    expect(spec.target.endpointId).toBe('routed');
+    expect(spec.body.temperature).toBe(0);
+    expect(spec.samplerSources.temperature).toBe('endpoint');
+  });
+
   it.each([
     ['summary', 0],
     ['statUpdates', 0.2],
@@ -114,6 +180,26 @@ describe('temperature and penalty — pinned, global, custom, omitted', () => {
   it('falls back to the pin when custom is stored but switched off', () => {
     const snap = snapshot(external(), { promptSamplers: { summary: { temperature: { custom: false, value: 0.77 } } } });
     expect(buildRequestBody(snap, call({ requestType: 'summary' }))).toMatchObject({ temperature: 0 });
+  });
+
+  it('keeps a built-in prompt pin ahead of an enabled endpoint override', () => {
+    const target = external({ samplerOverrides: {
+      ...defaultEndpointSamplerOverrides(),
+      temperature: { enabled: true, value: 1.4 },
+    } });
+
+    expect(buildRequestBody(snapshot(target), call({ requestType: 'summary' })).temperature).toBe(0);
+  });
+
+  it('keeps a custom prompt sampler ahead of an enabled endpoint override', () => {
+    const target = external({ samplerOverrides: {
+      ...defaultEndpointSamplerOverrides(),
+      repetitionPenalty: { enabled: true, value: 1.35 },
+    } });
+    const snap = snapshot(target, { promptSamplers: { narration: { repetitionPenalty: { custom: true, value: 1.02 } } } });
+
+    expect(buildAiRequestSpec(snap, call()).samplerSources.repetitionPenalty).toBe('prompt');
+    expect(buildRequestBody(snap, call()).repetition_penalty).toBe(1.02);
   });
 });
 

@@ -9,11 +9,12 @@ import {
   BUILTIN_ENGINE_PRESET_ID, BUILTIN_ENGINE_VALUES,
   type TextEndpointPresetStore,
 } from './textEndpointPresets';
+import { defaultEndpointSamplerOverrides } from './endpointSamplers';
 
 const userPreset = {
   id: 'p1',
   name: 'Cydonia',
-  values: { endpoint: 'http://localhost:1234/v1', apiToken: 'tok', model: 'cydonia', contextWindowOverride: 8192, maxTokens: 700 },
+  values: { endpoint: 'http://localhost:1234/v1', apiToken: 'tok', model: 'cydonia', contextWindowOverride: 8192, maxTokens: 700, samplerOverrides: defaultEndpointSamplerOverrides() },
 };
 
 const store: TextEndpointPresetStore = { activeId: 'p1', presets: [userPreset] };

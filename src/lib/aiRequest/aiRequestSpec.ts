@@ -6,15 +6,20 @@ import {
   type PromptReasoning, type ReasoningEffortField,
 } from '@/lib/reasoningEffort';
 import { resolvePromptSampler, type PromptSamplerMap } from '@/lib/promptSamplers';
+import type { EndpointSampler, EndpointSamplerOverrides } from '@/lib/endpointSamplers';
 
 /** Everything about the endpoint one call resolved to. The probe/cache state producing it stays outside. */
 export interface AiEndpointTarget {
+  /** Stable endpoint-configuration identity, including the hosted Default. */
+  endpointId: string;
   url: string;
   apiToken: string;
   model: string;
   maxTokens: number;
   /** Send the desktop bundled engine's body shape (top_p/top_k/min_p, token-budget reasoning). */
   localEngine: boolean;
+  /** Per-endpoint sampler switches and remembered values. The engine ignores these. */
+  samplerOverrides: EndpointSamplerOverrides;
   /** Effort literals this target accepts, or null when unprobed — an unprobed target is sent none. */
   supportedReasoningEfforts: readonly ReasoningEffortField[] | null;
 }
@@ -73,6 +78,8 @@ export interface AiRequestSpec {
   body: AiRequestBody;
   target: AiEndpointTarget;
   requestType: AIRequestType;
+  /** Where every emitted sampler value came from, retained for targeted rejection handling. */
+  samplerSources: Partial<Record<EndpointSampler, 'prompt' | 'prompt-pin' | 'endpoint' | 'local-engine'>>;
 }
 
 /** The `/no_think` soft switch (Qwen-style) applies to every request type, so a reasoning model's scratchpad
@@ -82,14 +89,40 @@ function resolveSystemPrompt(systemPrompt: string, disableThinking: boolean): st
 }
 
 /** The samplers actually sent for one call. `undefined` means omit the field so the endpoint's own value applies. */
-function resolveSamplers(
+interface ResolvedSampler {
+  value: number | undefined;
+  source?: 'prompt' | 'prompt-pin' | 'endpoint' | 'local-engine';
+}
+
+function resolveSampler(
   snapshot: AiSettingsSnapshot,
   requestType: AIRequestType,
   localEngine: boolean,
-): { temperature: number | undefined; repetitionPenalty: number | undefined } {
+  target: AiEndpointTarget,
+  sampler: 'temperature' | 'repetitionPenalty',
+): ResolvedSampler {
+  const setting = snapshot.promptSamplers[requestType]?.[sampler];
+  if (setting?.custom) return { value: setting.value, source: 'prompt' };
+
+  const globalValue = sampler === 'temperature' ? snapshot.genTemperature : snapshot.genRepetitionPenalty;
+  const promptValue = resolvePromptSampler(requestType, sampler, {}, globalValue, localEngine);
+  if (promptValue !== undefined) return {
+    value: promptValue,
+    source: localEngine ? 'local-engine' : 'prompt-pin',
+  };
+
+  const endpoint = target.samplerOverrides[sampler];
+  return endpoint.enabled ? { value: endpoint.value, source: 'endpoint' } : { value: undefined };
+}
+
+function resolveSamplers(
+  snapshot: AiSettingsSnapshot,
+  requestType: AIRequestType,
+  target: AiEndpointTarget,
+): { temperature: ResolvedSampler; repetitionPenalty: ResolvedSampler } {
   return {
-    temperature: resolvePromptSampler(requestType, 'temperature', snapshot.promptSamplers, snapshot.genTemperature, localEngine),
-    repetitionPenalty: resolvePromptSampler(requestType, 'repetitionPenalty', snapshot.promptSamplers, snapshot.genRepetitionPenalty, localEngine),
+    temperature: resolveSampler(snapshot, requestType, target.localEngine, target, 'temperature'),
+    repetitionPenalty: resolveSampler(snapshot, requestType, target.localEngine, target, 'repetitionPenalty'),
   };
 }
 
@@ -109,16 +142,23 @@ function bodyForTarget(snapshot: AiSettingsSnapshot, call: AiCall, target: AiEnd
   const { requestType } = call;
   const localEngine = target.localEngine;
   const maxTokens = call.maxTokensOverride ?? target.maxTokens;
-  const { temperature, repetitionPenalty } = resolveSamplers(snapshot, requestType, localEngine);
+  const { temperature, repetitionPenalty } = resolveSamplers(snapshot, requestType, target);
+  const externalOverrides = target.samplerOverrides;
 
   return {
     model: target.model,
     messages: buildMessages(snapshot, call),
     max_tokens: maxTokens,
     stream: true,
-    ...(localEngine && { top_p: snapshot.genTopP, top_k: snapshot.genTopK, min_p: snapshot.genMinP }),
-    ...(temperature !== undefined && { temperature }),
-    ...(repetitionPenalty !== undefined && { repetition_penalty: repetitionPenalty, repeat_penalty: repetitionPenalty }),
+    ...(localEngine
+      ? { top_p: snapshot.genTopP, top_k: snapshot.genTopK, min_p: snapshot.genMinP }
+      : {
+          ...(externalOverrides.topP.enabled && { top_p: externalOverrides.topP.value }),
+          ...(externalOverrides.topK.enabled && { top_k: externalOverrides.topK.value }),
+          ...(externalOverrides.minP.enabled && { min_p: externalOverrides.minP.value }),
+        }),
+    ...(temperature.value !== undefined && { temperature: temperature.value }),
+    ...(repetitionPenalty.value !== undefined && { repetition_penalty: repetitionPenalty.value, repeat_penalty: repetitionPenalty.value }),
     ...(localEngine
       ? reasoningBudgetBody(snapshot.thinkingMode, requestType, snapshot.promptReasoningBudget, maxTokens)
       : snapshot.reasoningEngaged
@@ -144,11 +184,23 @@ function buildMessages(snapshot: AiSettingsSnapshot, call: AiCall): ChatMessage[
 /** Resolves endpoint, samplers and reasoning into one ready-to-send request. */
 export function buildAiRequestSpec(snapshot: AiSettingsSnapshot, call: AiCall): AiRequestSpec {
   const target = snapshot.resolveTarget(call.requestType);
+  const samplers = resolveSamplers(snapshot, call.requestType, target);
   return {
     url: target.url,
     headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${target.apiToken}` },
     body: bodyForTarget(snapshot, call, target),
     target,
     requestType: call.requestType,
+    samplerSources: {
+      ...(samplers.temperature.source && { temperature: samplers.temperature.source }),
+      ...(samplers.repetitionPenalty.source && { repetitionPenalty: samplers.repetitionPenalty.source }),
+      ...(target.localEngine
+        ? { topP: 'local-engine' as const, topK: 'local-engine' as const, minP: 'local-engine' as const }
+        : {
+            ...(target.samplerOverrides.topP.enabled && { topP: 'endpoint' as const }),
+            ...(target.samplerOverrides.topK.enabled && { topK: 'endpoint' as const }),
+            ...(target.samplerOverrides.minP.enabled && { minP: 'endpoint' as const }),
+          }),
+    },
   };
 }
