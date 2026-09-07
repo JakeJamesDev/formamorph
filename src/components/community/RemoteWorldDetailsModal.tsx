@@ -33,6 +33,7 @@ import { PlaceBadges } from "@/components/PlaceBadges";
 import { placementsBy } from "@/lib/contests";
 import { Tip } from "@/components/ui/tooltip";
 import type { ServerEvent } from "@/types";
+import type { CommunityBrowserCapabilities } from '@/lib/communityBrowserCapabilities';
 
 interface RemoteWorldDetailsModalProps {
   open: boolean;
@@ -47,13 +48,7 @@ interface RemoteWorldDetailsModalProps {
   downloadProgress: Record<string, number>;
   onContextualDownload?: (world: WorldRecord, state: DownloadState) => void;
   /** Which mutable app actions this shell exposes. */
-  capabilities?: {
-    localLibrary: boolean;
-    likes: boolean;
-    comments: boolean;
-    moderation: boolean;
-    reports: boolean;
-  };
+  capabilities?: Pick<CommunityBrowserCapabilities, 'localLibrary' | 'likes' | 'comments' | 'moderation' | 'reports'>;
   /** Who is reading, so the heart is a control only for somebody who could press it. */
   currentUser?: WorldRecord | null;
   /** Records a like. Absent leaves the heart a plain count. */
@@ -72,13 +67,17 @@ const COMMENT_MAX = 4000;
 /** How many more comments each "Load more" adds to the window on screen. */
 const COMMENTS_PAGE = 20;
 
+const APP_DETAILS_CAPABILITIES: Pick<CommunityBrowserCapabilities, 'localLibrary' | 'likes' | 'comments' | 'moderation' | 'reports'> = {
+  localLibrary: true, likes: true, comments: true, moderation: true, reports: true,
+};
+
 /** The remote-world details modal: metadata + download action (left) and comments (right). Owns its own
  *  comment state/paging; download state is supplied by the parent's download coordinator via props. */
 export function RemoteWorldDetailsModal({
   open, onOpenChange, world, collapsed, onToggleCollapsed,
   isAuthenticated, openImageViewer, downloadStateForWorld, downloadProgress, onContextualDownload,
   currentUser, onLike, contests = [], onLikesChanged, openLikersOnMount = false,
-  capabilities = { localLibrary: true, likes: true, comments: true, moderation: true, reports: true },
+  capabilities = APP_DETAILS_CAPABILITIES,
 }: RemoteWorldDetailsModalProps) {
   const [comments, setComments] = useState<WorldRecord[]>([]);
   const [commentsTotal, setCommentsTotal] = useState(0);
