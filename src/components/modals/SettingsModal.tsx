@@ -765,6 +765,7 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, initialTab,
     narrationLineHeight,
     setNarrationLineHeight
   } = useSettings();
+  const sharedEndpointActive = activeTextEndpointPresetIsBuiltIn && !localModelActive;
   const { theme, setTheme } = useTheme();
   const desktop = isDesktop();
   const [connectionGuideOpen, setConnectionGuideOpen] = useState(false);
@@ -921,13 +922,15 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, initialTab,
   // Guidance follows the player's own settings and is real either way; only the world-state tokens are
   // stand-ins, which is what the badge speaks to.
   const usingSampleValues = !previewValues;
+  // Both preview surfaces describe narration, so use the exact cap its request resolves to.
+  const narrationPreviewMaxTokens = resolveEndpointForKind('narration').maxTokens;
   // Memoized because the Anatomy hub keys its whole assembly on this pool (see `hubSettings`).
   const effectivePreviewValues = useMemo(
     () => composePreviewValues(
-      { paragraphLimit, maxTokens: maxOutputOverrideEnabled ? maxTokens : undefined, markdownOutput, sectionStyle: activeSectionStyle, limitActiveCharacters, activeCharacterLimit, language },
+      { paragraphLimit, maxTokens: narrationPreviewMaxTokens, markdownOutput, sectionStyle: activeSectionStyle, limitActiveCharacters, activeCharacterLimit, language },
       previewValues,
     ),
-    [paragraphLimit, maxTokens, maxOutputOverrideEnabled, markdownOutput, activeSectionStyle, limitActiveCharacters, activeCharacterLimit, language, previewValues],
+    [paragraphLimit, narrationPreviewMaxTokens, markdownOutput, activeSectionStyle, limitActiveCharacters, activeCharacterLimit, language, previewValues],
   );
   // The choices prompt's language chip names itself in the directive, so its preview says "choices" where
   // the pool's default says "narration".
@@ -1081,10 +1084,10 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, initialTab,
   // them would redo that for every unrelated state change in the modal.
   const hubSettings = useMemo(() => ({
     thinkingMode, sectionStyle: activeSectionStyle, markdownOutput, paragraphLimit,
-    language, maxTokens, memoryDigests, semanticMemory, semanticRehydration, timeContext,
+    language, maxTokens: narrationPreviewMaxTokens, memoryDigests, semanticMemory, semanticRehydration, timeContext,
     locationAutoApply,
   }), [
-    thinkingMode, activeSectionStyle, markdownOutput, paragraphLimit, language, maxTokens,
+    thinkingMode, activeSectionStyle, markdownOutput, paragraphLimit, language, narrationPreviewMaxTokens,
     memoryDigests, semanticMemory, semanticRehydration, timeContext, locationAutoApply,
   ]);
 
@@ -2014,7 +2017,7 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, initialTab,
                     <Checkbox
                       id="maxTokensEnabled"
                       checked={maxOutputOverrideEnabled}
-                      disabled={localModelActive}
+                      disabled={sharedEndpointActive}
                       onCheckedChange={(checked) => setMaxOutputOverrideEnabled(checked === true)}
                     />
                     <label htmlFor="maxTokensEnabled" className="text-label">Override endpoint limit</label>
@@ -2025,9 +2028,9 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, initialTab,
                       type="number"
                       value={maxTokens}
                       onChange={(e) => setMaxTokens(numInput(e.target.value, 1))}
-                      disabled={localModelActive || !maxOutputOverrideEnabled}
+                      disabled={sharedEndpointActive || !maxOutputOverrideEnabled}
                     />
-                    {!maxOutputOverrideEnabled && <span className="text-helper text-muted-foreground">Endpoint Default</span>}
+                    {!maxOutputOverrideEnabled && <span className="text-helper text-muted-foreground">No Limit</span>}
                   </div>
                 </div>
               </Row>

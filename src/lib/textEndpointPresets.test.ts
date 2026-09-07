@@ -44,7 +44,7 @@ describe('presetStoreFromEnv', () => {
 });
 
 describe('store operations', () => {
-  it('migrates legacy output caps as enabled, including hosted Default, without losing their values', () => {
+  it('migrates legacy user output caps as enabled but keeps the hosted Default cap fixed', () => {
     const legacy = textEndpointPresetCodec.parse(JSON.stringify({
       activeId: 'legacy',
       presets: [{ id: 'legacy', name: 'Legacy', values: { endpoint: 'https://legacy.test/v1', maxTokens: 2048 } }],
@@ -52,7 +52,10 @@ describe('store operations', () => {
     }));
 
     expect(valuesForId(legacy, 'legacy').maxOutputOverride).toEqual({ enabled: true, value: 2048 });
-    expect(valuesForId(legacy, DEFAULT_TEXT_PRESET_ID).maxOutputOverride).toEqual({ enabled: true, value: 1024 });
+    expect(valuesForId(legacy, DEFAULT_TEXT_PRESET_ID).maxOutputOverride).toEqual(DEFAULT_TEXT_ENDPOINT_VALUES.maxOutputOverride);
+
+    const unchangedDefault = updateMaxOutputOverride(legacy, DEFAULT_TEXT_PRESET_ID, { enabled: false, value: 2048 });
+    expect(unchangedDefault).toBe(legacy);
 
     const disabled = updateMaxOutputOverride(legacy, 'legacy', { enabled: false, value: 2048 });
     expect(valuesForId(disabled, 'legacy').maxOutputOverride).toEqual({ enabled: false, value: 2048 });

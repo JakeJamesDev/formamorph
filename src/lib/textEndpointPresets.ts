@@ -38,7 +38,7 @@ export interface TextEndpointPresetStore {
   presets: TextEndpointPreset[];
   /** Tuning for the virtual hosted Default, whose connection fields remain immutable. */
   defaultSamplerOverrides?: EndpointSamplerOverrides;
-  /** Output-limit tuning for the virtual hosted Default. */
+  /** Legacy shared-endpoint value retained but ignored for the fixed cap. */
   defaultMaxOutputOverride?: EndpointMaxOutputOverride;
 }
 
@@ -187,7 +187,6 @@ export function valuesForId(store: TextEndpointPresetStore, id: string): TextEnd
   if (id === DEFAULT_TEXT_PRESET_ID) return {
     ...DEFAULT_TEXT_ENDPOINT_VALUES,
     samplerOverrides: coerceEndpointSamplerOverrides(store.defaultSamplerOverrides),
-    maxOutputOverride: coerceEndpointMaxOutputOverride(store.defaultMaxOutputOverride),
   };
   const preset = store.presets.find((p) => p.id === id);
   return preset ? {
@@ -257,14 +256,13 @@ export function updateSamplerOverride(
   };
 }
 
-/** Change an external endpoint's remembered output limit and whether it reaches requests. */
+/** Change a user endpoint's output limit without changing its remembered number. */
 export function updateMaxOutputOverride(
   store: TextEndpointPresetStore,
   id: string,
   override: EndpointMaxOutputOverride,
 ): TextEndpointPresetStore {
-  if (id === BUILTIN_ENGINE_PRESET_ID) return store;
-  if (id === DEFAULT_TEXT_PRESET_ID) return { ...store, defaultMaxOutputOverride: override };
+  if (id === BUILTIN_ENGINE_PRESET_ID || id === DEFAULT_TEXT_PRESET_ID) return store;
   return {
     ...store,
     presets: store.presets.map((preset) => (preset.id === id

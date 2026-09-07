@@ -267,24 +267,29 @@ describe('SettingsContext: endpoint sampler overrides', () => {
     expect(result.current.resolveEndpointForKind('narration').maxTokens).toBeUndefined();
   });
 
-  it('retains a disabled output value and restores it for the actual target, including hosted Default', () => {
+  it('keeps the hosted Default output cap fixed while user endpoints can omit or restore theirs', () => {
     const { result } = renderHook(() => useSettings(), { wrapper });
-
-    expect(result.current.resolveEndpointForKind('narration').maxTokens).toBe(900);
-    act(() => result.current.setMaxOutputOverrideEnabled(false));
-    expect(result.current.maxTokens).toBe(900);
-    expect(result.current.resolveEndpointForKind('narration').maxTokens).toBeUndefined();
+    const sharedCap = DEFAULT_TEXT_ENDPOINT_VALUES.maxOutputOverride.value;
 
     act(() => result.current.selectTextEndpointPreset('default'));
+    expect(result.current.resolveEndpointForKind('narration').maxTokens).toBe(sharedCap);
     act(() => {
-      result.current.setMaxTokens(1024);
+      result.current.setMaxTokens(2048);
       result.current.setMaxOutputOverrideEnabled(false);
     });
-    expect(result.current.maxTokens).toBe(1024);
+    expect(result.current.maxTokens).toBe(sharedCap);
+    expect(result.current.resolveEndpointForKind('narration').maxTokens).toBe(sharedCap);
+
+    act(() => result.current.addTextEndpointPreset('Custom'));
+    act(() => {
+      result.current.setMaxTokens(2048);
+      result.current.setMaxOutputOverrideEnabled(false);
+    });
+    expect(result.current.maxTokens).toBe(2048);
     expect(result.current.resolveEndpointForKind('narration').maxTokens).toBeUndefined();
 
     act(() => result.current.setMaxOutputOverrideEnabled(true));
-    expect(result.current.resolveEndpointForKind('narration').maxTokens).toBe(1024);
+    expect(result.current.resolveEndpointForKind('narration').maxTokens).toBe(2048);
   });
 });
 

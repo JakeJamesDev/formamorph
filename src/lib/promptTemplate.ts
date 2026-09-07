@@ -91,6 +91,7 @@ export function promptTemplatePieces(
       text: resolved,
       source: labels.source,
       chip: key,
+      preserveWhenEmpty: true,
       ...(labels.tokens?.[key] ? { contextLabel: labels.tokens[key] } : {}),
     };
   });

@@ -19,7 +19,7 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
 - **👤 User-facing**
   - **Text Endpoints:**
     - **Each endpoint now has independent sampler switches.** Hosted Default and user-created endpoints can each override Temperature, Repetition Penalty, Top-p, Top-k, and Min-p; disabled settings keep their value while leaving that choice to the endpoint, and prompt-specific tuning still takes priority.
-    - **An endpoint can now leave Max Output to its server.** The endpoint-level switch remembers its number while off, omits the cap and its narration reserve or length guidance, and keeps short internal calls capped for their own jobs.
+    - **User endpoints can now omit Max Output.** Turning its switch off shows **No Limit**, omits `max_tokens`, and keeps prompt previews aligned with the request; the endpoint may still stop generation under its own rules. Formamorph also removes its own context reservation and response-length guidance, while short internal calls keep their own caps. The shared endpoint's intentional limit stays fixed.
     - **A rejected endpoint override now turns itself off without losing its value.** Formamorph names the rejected setting and server error, preserves every other endpoint's controls, and leaves retrying to you.
     - **Prompt sampler fallbacks now name the endpoint behavior they use.** A prompt without a local sampler setting distinguishes **Endpoint Default** from an enabled **Endpoint Override**, and endpoint fallbacks use the same capitalization.
   - **Android App:**
