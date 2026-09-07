@@ -14,7 +14,7 @@ import { defaultEndpointSamplerOverrides } from './endpointSamplers';
 const userPreset = {
   id: 'p1',
   name: 'Cydonia',
-  values: { endpoint: 'http://localhost:1234/v1', apiToken: 'tok', model: 'cydonia', contextWindowOverride: 8192, maxTokens: 700, samplerOverrides: defaultEndpointSamplerOverrides() },
+  values: { endpoint: 'http://localhost:1234/v1', apiToken: 'tok', model: 'cydonia', contextWindowOverride: 8192, maxOutputOverride: { enabled: true, value: 700 }, samplerOverrides: defaultEndpointSamplerOverrides() },
 };
 
 const store: TextEndpointPresetStore = { activeId: 'p1', presets: [userPreset] };
@@ -74,7 +74,7 @@ describe('resolvePromptEndpoint', () => {
     const builtInActive: ActiveEndpointState = {
       activeId: DEFAULT_TEXT_PRESET_ID,
       values: DEFAULT_TEXT_ENDPOINT_VALUES, isBuiltIn: true, localEngine: false,
-      maxTokens: DEFAULT_TEXT_ENDPOINT_VALUES.maxTokens, engineMaxTokens: 512, engineModelId: 'my-loaded.gguf',
+      maxTokens: DEFAULT_TEXT_ENDPOINT_VALUES.maxOutputOverride.value, engineMaxTokens: 512, engineModelId: 'my-loaded.gguf',
     };
     const r = resolvePromptEndpoint('statUpdates', { statUpdates: 'p1' }, store, builtInActive);
     expect(r.endpoint).toBe(userPreset.values.endpoint);
@@ -92,7 +92,7 @@ describe('resolvePromptEndpoint', () => {
     };
     const r = resolvePromptEndpoint('choices', { choices: 'old' }, sparse, active);
     expect(r.endpoint).toBe('http://x/v1');
-    expect(r.maxTokens).toBe(DEFAULT_TEXT_ENDPOINT_VALUES.maxTokens);
+    expect(r.maxTokens).toBe(DEFAULT_TEXT_ENDPOINT_VALUES.maxOutputOverride.value);
   });
 
   // `localEngine` is a property of the resolved target, not a global mode — that is the whole reason one

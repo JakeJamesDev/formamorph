@@ -23,7 +23,7 @@ export interface ResolvedPromptEndpoint {
   endpoint: string;
   apiToken: string;
   model: string;
-  maxTokens: number;
+  maxTokens: number | undefined;
   samplerOverrides: EndpointSamplerOverrides;
   /** Manual context-window override on the resolved preset; null = detect or fall back. */
   contextWindowOverride: number | null;
@@ -41,7 +41,7 @@ export interface ActiveEndpointState {
   isBuiltIn: boolean;
   localEngine: boolean;
   /** The active max-output cap, which honors the desktop engine's separate local cap. */
-  maxTokens: number;
+  maxTokens: number | undefined;
   /** The bundled engine's own output cap, used whenever the engine is the resolved target. */
   engineMaxTokens: number;
   /** The GGUF the engine currently has loaded, or '' when it isn't running. The engine serves whatever is
@@ -121,7 +121,7 @@ export function resolvePromptEndpoint(
     endpoint: values.endpoint,
     apiToken: values.apiToken,
     model: values.model,
-    maxTokens: values.maxTokens,
+    maxTokens: values.maxOutputOverride.enabled ? values.maxOutputOverride.value : undefined,
     samplerOverrides: values.samplerOverrides,
     contextWindowOverride: values.contextWindowOverride,
     isBuiltIn: routed === DEFAULT_TEXT_PRESET_ID,

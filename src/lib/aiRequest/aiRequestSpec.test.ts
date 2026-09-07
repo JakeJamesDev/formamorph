@@ -344,7 +344,22 @@ describe('the whole spec', () => {
   });
 
   it('prefers a max-token override to the target cap', () => {
-    expect(buildAiRequestSpec(snapshot(external()), call({ maxTokensOverride: 120 })).body.max_tokens).toBe(120);
+    const spec = buildAiRequestSpec(snapshot(external()), call({ maxTokensOverride: 120 }));
+    expect(spec.body.max_tokens).toBe(120);
+    expect(spec.maxTokensSource).toBe('internal');
+  });
+
+  it('attributes an endpoint output cap to its resolved target', () => {
+    expect(buildAiRequestSpec(snapshot(external()), call()).maxTokensSource).toBe('endpoint');
+  });
+
+  it('omits an inactive endpoint output cap but keeps an explicit internal cap', () => {
+    const inactive = snapshot(external({ maxTokens: undefined }));
+
+    expect(buildAiRequestSpec(inactive, call()).body).not.toHaveProperty('max_tokens');
+    const internal = buildAiRequestSpec(inactive, call({ maxTokensOverride: 120 }));
+    expect(internal.body.max_tokens).toBe(120);
+    expect(internal.maxTokensSource).toBe('internal');
   });
 
   it('routes each kind to its own resolved target', () => {

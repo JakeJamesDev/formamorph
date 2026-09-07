@@ -1236,7 +1236,8 @@ const GameViewer = ({
   // The planner resolves its own below, since routing may point the two at very differently-sized models.
   const narrationEndpoint = useMemo(() => resolveEndpointForKind('narration'), [resolveEndpointForKind]);
   const contextWindow = narrationEndpoint.contextWindow;
-  const maxTokens = narrationEndpoint.maxTokens;
+  const narrationMaxTokens = narrationEndpoint.maxTokens;
+  const maxTokens = narrationMaxTokens ?? 0;
 
   const getTrimmedMessageHistory = useCallback((promptTokens = 0, action = "", relevanceScores: Map<string, number> | null = null, actionVec: Float32Array | null = null, liveRecall = false) => {
     const turns = parseEffectiveTurns(fullMessageHistory);
@@ -1910,7 +1911,7 @@ const GameViewer = ({
           embedVectors: embedVectorsRef.current,
           language,
           paragraphLimit,
-          maxTokens,
+          maxTokens: narrationMaxTokens,
           markdownOutput,
           sectionStyle: activeSectionStyle,
           resolvePH,

@@ -1,6 +1,6 @@
 # 02: Make Endpoint Max Output Optional
 
-Status: ready-for-agent
+Status: in-progress
 
 **Parent:** [Endpoint Generation Overrides](../spec.md)
 

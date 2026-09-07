@@ -50,8 +50,8 @@ export interface AnatomyPreviewSettings {
   markdownOutput: boolean;
   paragraphLimit: ParagraphLimit;
   language: string;
-  /** The reply cap the length guidance is sized against. */
-  maxTokens: number;
+  /** The reply cap the length guidance is sized against; absent lets the endpoint decide. */
+  maxTokens: number | undefined;
   memoryDigests: boolean;
   semanticMemory: boolean;
   semanticRehydration: boolean;
@@ -377,7 +377,8 @@ function narrationBand(
   const stamp: BandStamp | undefined = settings.timeContext
     ? buildStamper({ nowHours: FIXTURE_ELAPSED_HOURS, hoursAt: hoursByPosition(turns) })
     : undefined;
-  const contextWindow = PREVIEW_HEADROOM + estimateTokens(prompt.length) + settings.maxTokens;
+  const outputReserve = settings.maxTokens ?? 0;
+  const contextWindow = PREVIEW_HEADROOM + estimateTokens(prompt.length) + outputReserve;
 
   // Condensing is what creates the band, so the recap toggle is a verbatim floor wide enough to swallow
   // every turn — the same thing a short game does — rather than a flag the assembly doesn't have.
@@ -385,7 +386,7 @@ function narrationBand(
     turns,
     contextWindow,
     promptTokens: estimateTokens(prompt.length),
-    maxTokens: settings.maxTokens,
+    maxTokens: outputReserve,
     verbatimFloor: recap ? 1 : FIXTURE_TURNS.length,
     keywords: [],
     actionEntities: [],

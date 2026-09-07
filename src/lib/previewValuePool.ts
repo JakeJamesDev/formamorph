@@ -216,7 +216,7 @@ export const SAMPLE_PREVIEW_VALUES: Record<string, string> = Object.fromEntries(
 /** Settings the derived layer reads. Exactly the inputs the real guidance functions take. */
 export interface DerivedPreviewSettings {
   paragraphLimit: ParagraphLimit;
-  maxTokens: number;
+  maxTokens: number | undefined;
   markdownOutput: boolean;
   sectionStyle: SectionStyle;
   limitActiveCharacters: boolean;
@@ -240,7 +240,7 @@ export function languagePreviewValue(surface: LanguageSurface, language: string)
  */
 export function derivedPreviewValues(s: DerivedPreviewSettings): Record<string, string> {
   return {
-    '<LENGTH GUIDANCE>': lengthGuidance(s.paragraphLimit, s.maxTokens),
+    '<LENGTH GUIDANCE>': s.maxTokens === undefined ? '' : lengthGuidance(s.paragraphLimit, s.maxTokens),
     '<MARKDOWN GUIDANCE>': restyle(markdownGuidance(s.markdownOutput), s.sectionStyle),
     '<ACTIVE CHARACTER GUIDANCE>': activeCharacterGuidance(s.limitActiveCharacters, s.activeCharacterLimit),
     ...languagePreviewValue('narration', s.language),
