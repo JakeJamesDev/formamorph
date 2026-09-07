@@ -30,10 +30,6 @@ Linked stats
 
 
 
-JSExecutor: simple logic run after AI stat update, input/output stat values only
-- input: dict of stats
-- outputL ditct of stats
-
 simple fastapi server:
 - cache the metadata of each world created, use static links for all uploaded assets
 - only auth is password (store hash)
