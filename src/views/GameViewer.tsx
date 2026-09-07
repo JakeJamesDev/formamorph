@@ -81,8 +81,8 @@ import { entityIdsAt } from "../lib/entityPresence";
 import { selectRegenSource, buildRegenContext, buildRegenUserMessage, REGEN_LABELS } from "../lib/discoveredRegen";
 import { outputReserve, trimToLastSentence } from "../lib/outputLength";
 import { buildAiRequestSpec, type AiSettingsSnapshot } from "../lib/aiRequest/aiRequestSpec";
-import { streamAiRequest, AiStreamError, ABORTED_FINISH_REASON, DEFAULT_REASONING_THROTTLE_MS } from "../lib/aiRequest/aiStream";
-import { rejectedEndpointOverride, rejectedEndpointOverrideLabel } from "../lib/aiRequest/rejectedOverride";
+import { streamAiRequest, ABORTED_FINISH_REASON, DEFAULT_REASONING_THROTTLE_MS } from "../lib/aiRequest/aiStream";
+import { surfaceRejectedEndpointOverride } from "../lib/aiRequest/rejectedOverrideNotice";
 import { splitSentenceSegments } from "../lib/ttsChunks";
 import { selectDueDigests, applyDigest, applyImportance, parseTurnContent, recentParticipants, selectDueDiaries, pendingDiaryNames, applyDiary, collectCharacterDiary } from "../lib/turnDigest";
 import { buildTraitContext } from "../lib/traitTree";
@@ -2724,17 +2724,8 @@ const GameViewer = ({
       // No AbortError case: the stream turns both the fetch rejection and the read rejection into a
       // graceful `done`, so a user stop lands on the aborted branch above and never reaches here.
       console.error("Error in makeAIRequest:", error);
-      const rejectedOverride = rejectedEndpointOverride(error, spec);
-      if (rejectedOverride) disableEndpointOverride(spec.target.endpointId, rejectedOverride);
+      const rejectedOverride = surfaceRejectedEndpointOverride(error, spec, target.presetName, disableEndpointOverride);
       if (rejectedOverride) {
-        const serverMessage = error instanceof AiStreamError ? error.serverError?.message : undefined;
-        toast.error(
-          <div className="flex flex-col items-start gap-1">
-            <span>{serverMessage ?? 'The server rejected this request.'}</span>
-            <span>{rejectedEndpointOverrideLabel(rejectedOverride)} override disabled for {target.presetName}.</span>
-          </div>,
-          { position: "top-right", autoClose: 8000, closeOnClick: false, pauseOnHover: true, draggable: true },
-        );
         // A persisted settings change must explain itself even when the caller otherwise suppresses failures.
         if (silent) throw error;
       } else if (silent) {
