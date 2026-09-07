@@ -23,14 +23,27 @@ const answer = (body: unknown) => new Response(JSON.stringify(body), {
   headers: { 'Content-Type': 'application/json' },
 });
 
+let accountAccepted = true;
+let requested: string[] = [];
+
 beforeEach(() => {
   localStorage.clear();
   AuthService.token = null;
   AuthService.currentUser = null;
   attest();
+  accountAccepted = true;
+  requested = [];
 
   vi.stubGlobal('fetch', vi.fn(async (input: RequestInfo | URL) => {
     const url = String(input instanceof Request ? input.url : input);
+    requested.push(url);
+    if (url.endsWith('/policies/age-gate')) {
+      return answer({ accepted: accountAccepted, requiredVersion: AGE_GATE_VERSION, acceptedAt: null });
+    }
+    if (url.endsWith('/policies/age-gate/accept')) {
+      accountAccepted = true;
+      return answer({ accepted: true, requiredVersion: AGE_GATE_VERSION, acceptedAt: new Date().toISOString() });
+    }
     if (url.endsWith('/auth/me')) return answer({ username: 'bob' });
     return answer({ data: [] });
   }));
@@ -90,6 +103,7 @@ describe('the main menu and a session from another tab', () => {
 
   it('asks the age gate before adopting a session on an unattested device', async () => {
     localStorage.removeItem('FORMAMORPH_ageGate');
+    accountAccepted = false;
     renderMainMenu();
     await screen.findByRole('button', { name: 'Login' });
 
@@ -105,6 +119,7 @@ describe('the main menu and a session from another tab', () => {
 
   it('adopts the session once the age gate is accepted', async () => {
     localStorage.removeItem('FORMAMORPH_ageGate');
+    accountAccepted = false;
     renderMainMenu();
     await screen.findByRole('button', { name: 'Login' });
 
@@ -117,6 +132,7 @@ describe('the main menu and a session from another tab', () => {
 
   it('signs the adopted session back out when the age gate is declined', async () => {
     localStorage.removeItem('FORMAMORPH_ageGate');
+    accountAccepted = false;
     renderMainMenu();
     await screen.findByRole('button', { name: 'Login' });
 
@@ -139,24 +155,24 @@ describe('a session arriving while the age gate already stands', () => {
     renderMainMenu();
     await screen.findByRole('button', { name: 'Login' });
     openCommunity();
-    const gate = await screen.findByRole('dialog', { name: /Adult Content Ahead/ });
 
     signInElsewhere();
-    fireEvent.click(within(gate).getByRole('button', { name: 'Accept' }));
 
-    // The browser is what the player asked for; the session is what arrived while they were asked.
+    // The browser is what the player asked for; its callback survives while the arriving account restores.
     await screen.findByRole('dialog', { name: /Community Creations/ });
     await waitFor(() => expect(screen.getByRole('button', { name: /^User Profile/, hidden: true })).toBeTruthy());
   });
 
   it('signs the arrived session out when that gate is declined', async () => {
     localStorage.removeItem('FORMAMORPH_ageGate');
+    accountAccepted = false;
     renderMainMenu();
     await screen.findByRole('button', { name: 'Login' });
     openCommunity();
-    const gate = await screen.findByRole('dialog', { name: /Adult Content Ahead/ });
 
     signInElsewhere();
+    await waitFor(() => expect(requested.some((url) => url.endsWith('/policies/age-gate'))).toBe(true));
+    const gate = await screen.findByRole('dialog', { name: /Adult Content Ahead/ });
     fireEvent.click(within(gate).getByRole('button', { name: 'Decline' }));
 
     await waitFor(() => expect(AuthService.isAuthenticated()).toBe(false));
