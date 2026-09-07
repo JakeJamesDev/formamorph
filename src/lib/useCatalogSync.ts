@@ -71,11 +71,12 @@ export function useCatalogSync(open: boolean, readerKey = currentReader()) {
     } catch (error) {
       if (isCurrent()) console.error('Error loading world catalog:', error);
     } finally {
-      if (!isCurrent()) return;
-      setIsLoadingRemoteWorlds(false);
-      setIsSyncingCatalog(false);
-      // Success or failure, an attempt finished: misses may now be trusted.
-      setCatalogSettled(true);
+      if (isCurrent()) {
+        setIsLoadingRemoteWorlds(false);
+        setIsSyncingCatalog(false);
+        // Success or failure, an attempt finished: misses may now be trusted.
+        setCatalogSettled(true);
+      }
     }
   };
 
