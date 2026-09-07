@@ -3,6 +3,7 @@ import { renderHook, act, waitFor } from '@testing-library/react';
 import type { ReactNode } from 'react';
 import { SettingsProvider, useSettings } from './SettingsContext';
 import { textEndpointPresetCodec, DEFAULT_TEXT_ENDPOINT_VALUES, BUILTIN_ENGINE_PRESET_ID, type TextEndpointPresetStore } from '@/lib/textEndpointPresets';
+import { defaultEndpointSamplerOverrides } from '@/lib/endpointSamplers';
 import { presetStoreCodec, type PromptPresetStore } from '@/lib/promptPresets';
 
 // The provider probes endpoints for reasoning support; keep the network out of it. `detectSupported…` is
@@ -45,11 +46,11 @@ function seedEndpoints() {
   const store: TextEndpointPresetStore = {
     activeId: 'big',
     presets: [
-      { id: 'big', name: 'Big Model', values: { endpoint: 'http://big.test/v1', apiToken: 'big-key', model: 'big-24b', contextWindowOverride: 16384, maxTokens: 900 } },
-      { id: 'small', name: 'Small Model', values: { endpoint: 'http://small.test/v1', apiToken: 'small-key', model: 'small-1b', contextWindowOverride: 4096, maxTokens: 200 } },
+      { id: 'big', name: 'Big Model', values: { endpoint: 'http://big.test/v1', apiToken: 'big-key', model: 'big-24b', contextWindowOverride: 16384, maxTokens: 900, samplerOverrides: defaultEndpointSamplerOverrides() } },
+      { id: 'small', name: 'Small Model', values: { endpoint: 'http://small.test/v1', apiToken: 'small-key', model: 'small-1b', contextWindowOverride: 4096, maxTokens: 200, samplerOverrides: defaultEndpointSamplerOverrides() } },
       // Distinctive id for the export/import leak checks: ordinary words like "small" occur in the shipped
       // prompt text a shared preset legitimately carries, so a substring probe needs something unmistakable.
-      { id: SENTINEL_ID, name: 'Sentinel', values: { endpoint: 'http://sentinel.test/v1', apiToken: '', model: 'sentinel-m', contextWindowOverride: 2048, maxTokens: 100 } },
+      { id: SENTINEL_ID, name: 'Sentinel', values: { endpoint: 'http://sentinel.test/v1', apiToken: '', model: 'sentinel-m', contextWindowOverride: 2048, maxTokens: 100, samplerOverrides: defaultEndpointSamplerOverrides() } },
     ],
   };
   localStorage.setItem(ENDPOINTS_KEY, textEndpointPresetCodec.serialize(store));
@@ -207,8 +208,8 @@ describe('SettingsContext: per-prompt endpoint routing', () => {
     const store: TextEndpointPresetStore = {
       activeId: 'big',
       presets: [
-        { id: 'big', name: 'Big Model', values: { endpoint: 'http://big.test/v1', apiToken: 'big-key', model: 'big-24b', contextWindowOverride: 16384, maxTokens: 900 } },
-        { id: 'unprobed', name: 'Unprobed', values: { endpoint: 'http://new.test/v1', apiToken: '', model: 'new-8b', contextWindowOverride: null, maxTokens: 500 } },
+        { id: 'big', name: 'Big Model', values: { endpoint: 'http://big.test/v1', apiToken: 'big-key', model: 'big-24b', contextWindowOverride: 16384, maxTokens: 900, samplerOverrides: defaultEndpointSamplerOverrides() } },
+        { id: 'unprobed', name: 'Unprobed', values: { endpoint: 'http://new.test/v1', apiToken: '', model: 'new-8b', contextWindowOverride: null, maxTokens: 500, samplerOverrides: defaultEndpointSamplerOverrides() } },
       ],
     };
     localStorage.setItem(ENDPOINTS_KEY, textEndpointPresetCodec.serialize(store));
@@ -225,6 +226,44 @@ describe('SettingsContext: per-prompt endpoint routing', () => {
     expect(routedProbes).toHaveLength(1);
     // The capability probe rides the same lazy path, keyed to the routed target.
     expect(detectEfforts.mock.calls.some((c) => String(c[0]).includes('new.test'))).toBe(true);
+  });
+});
+
+describe('SettingsContext: endpoint sampler overrides', () => {
+  beforeEach(() => {
+    localStorage.clear();
+    seedEndpoints();
+    seedPromptPresets();
+  });
+
+  it('keeps sampler switches and values isolated by endpoint, including hosted Default', () => {
+    const { result } = renderHook(() => useSettings(), { wrapper });
+
+    expect(result.current.endpointSamplerOverrides.temperature.enabled).toBe(false);
+    act(() => {
+      result.current.setEndpointSamplerValue('temperature', 0);
+      result.current.setEndpointSamplerEnabled('temperature', true);
+    });
+    expect(result.current.endpointSamplerOverrides.temperature).toEqual({ enabled: true, value: 0 });
+
+    act(() => result.current.selectTextEndpointPreset('small'));
+    expect(result.current.endpointSamplerOverrides.temperature.enabled).toBe(false);
+
+    act(() => result.current.selectTextEndpointPreset('default'));
+    act(() => result.current.setEndpointSamplerEnabled('topK', true));
+    expect(result.current.endpointSamplerOverrides.topK.enabled).toBe(true);
+
+    act(() => result.current.selectTextEndpointPreset('big'));
+    expect(result.current.endpointSamplerOverrides.temperature).toEqual({ enabled: true, value: 0 });
+  });
+
+  it('starts a copied endpoint with every sampler override disabled', () => {
+    const { result } = renderHook(() => useSettings(), { wrapper });
+    act(() => result.current.setEndpointSamplerEnabled('minP', true));
+
+    act(() => result.current.addTextEndpointPreset('Copy'));
+
+    expect(Object.values(result.current.endpointSamplerOverrides).every((override) => !override.enabled)).toBe(true);
   });
 });
 
@@ -260,7 +299,7 @@ describe('SettingsContext: the bundled engine as an endpoint', () => {
     localStorage.setItem('FORMAMORPH_useCustomEndpoint', 'true');
     localStorage.setItem(ENDPOINTS_KEY, textEndpointPresetCodec.serialize({
       activeId: 'small',
-      presets: [{ id: 'small', name: 'Small Model', values: { endpoint: 'http://small.test/v1', apiToken: '', model: 'small-1b', contextWindowOverride: 4096, maxTokens: 200 } }],
+      presets: [{ id: 'small', name: 'Small Model', values: { endpoint: 'http://small.test/v1', apiToken: '', model: 'small-1b', contextWindowOverride: 4096, maxTokens: 200, samplerOverrides: defaultEndpointSamplerOverrides() } }],
     }));
 
     const { result } = renderHook(() => useSettings(), { wrapper });

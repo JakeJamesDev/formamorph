@@ -536,6 +536,9 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, initialTab,
     setModelName,
     maxTokens,
     setMaxTokens,
+    endpointSamplerOverrides,
+    setEndpointSamplerEnabled,
+    setEndpointSamplerValue,
     contextWindow,
     contextWindowOverride,
     setContextWindowOverride,
@@ -1206,6 +1209,29 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, initialTab,
       onValueChange: (v) => setPromptSamplerValue(activeKind, 'repetitionPenalty', v),
     },
   ];
+  const endpointSamplerControls: SamplerControlProps[] = ([
+    ['Temperature', 'endpointTemperature', 'temperature', 0, 2, 0.05],
+    ['Repetition Penalty', 'endpointRepetitionPenalty', 'repetitionPenalty', 1, 1.5, 0.02],
+    ['Top-p', 'endpointTopP', 'topP', 0, 1, 0.05],
+    ['Top-k', 'endpointTopK', 'topK', 0, 100, 1],
+    ['Min-p', 'endpointMinP', 'minP', 0, 0.5, 0.01],
+  ] as const).map(([_label, id, sampler, min, max, step]) => {
+    const key = sampler as keyof typeof endpointSamplerOverrides;
+    const copy = SETTINGS_COPY[id as keyof typeof SETTINGS_COPY];
+    return {
+      id,
+      label: copy.label,
+      hint: copy.description ?? '',
+      min,
+      max,
+      step,
+      custom: endpointSamplerOverrides[key].enabled,
+      value: endpointSamplerOverrides[key].value,
+      defaultValue: undefined,
+      onCustomChange: (enabled: boolean) => setEndpointSamplerEnabled(key, enabled),
+      onValueChange: (value: number) => setEndpointSamplerValue(key, value),
+    };
+  });
   // Per-prompt Native Reasoning override — only for the controllable prompts and only under Native mode
   // (guided modes force no reasoning, so an override there is meaningless). Engine-split: the local engine
   // caps the thought segment by a token budget; external endpoints take the coarse effort level. Exactly one
@@ -1986,6 +2012,14 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, initialTab,
                   className={activeTextEndpointPresetIsBuiltIn ? 'opacity-60 cursor-not-allowed' : undefined}
                 />
               </Row>
+              <Section title="Sampling">
+                <p className="text-helper text-muted-foreground">
+                  Per-prompt settings and built-in prompt values take priority over Temperature and Repetition Penalty. Leave a switch off to send no endpoint override.
+                </p>
+                <div className="grid gap-4 pt-3">
+                  {endpointSamplerControls.map((control) => <SamplerControl key={control.id} {...control} />)}
+                </div>
+              </Section>
               </>)}
               <div className="flex justify-start">
                 <ConfirmDialog

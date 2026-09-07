@@ -2,8 +2,9 @@ import { describe, it, expect } from 'vitest';
 import {
   presetStoreFromEnv, activeValues, isBuiltInActive, setActive, addPreset, renamePreset,
   deletePreset, resetPreset, updateValue, emptyStore, DEFAULT_TEXT_ENDPOINT_VALUES, DEFAULT_TEXT_PRESET_ID,
-  type TextEndpointValues,
+  updateSamplerOverride, valuesForId, textEndpointPresetCodec, type TextEndpointValues,
 } from './textEndpointPresets';
+import { defaultEndpointSamplerOverrides } from './endpointSamplers';
 
 const customValues: TextEndpointValues = {
   endpoint: 'https://my.host/v1',
@@ -11,6 +12,7 @@ const customValues: TextEndpointValues = {
   model: 'my-model',
   contextWindowOverride: 16000,
   maxTokens: 2048,
+  samplerOverrides: defaultEndpointSamplerOverrides(),
 };
 
 describe('presetStoreFromEnv', () => {
@@ -40,6 +42,20 @@ describe('presetStoreFromEnv', () => {
 });
 
 describe('store operations', () => {
+  it('keeps disabled sampler values per endpoint, including the hosted Default', () => {
+    const hosted = updateSamplerOverride(emptyStore, DEFAULT_TEXT_PRESET_ID, 'temperature', { enabled: true, value: 0 });
+    const custom = updateSamplerOverride(
+      addPreset(emptyStore, 'p1', 'Custom', customValues),
+      'p1',
+      'topK',
+      { enabled: true, value: 64 },
+    );
+
+    expect(valuesForId(hosted, DEFAULT_TEXT_PRESET_ID).samplerOverrides.temperature).toEqual({ enabled: true, value: 0 });
+    expect(valuesForId(custom, 'p1').samplerOverrides.topK).toEqual({ enabled: true, value: 64 });
+    expect(valuesForId(custom, 'p1').samplerOverrides.temperature.enabled).toBe(false);
+  });
+
   it('the empty store resolves to the read-only Default built-in', () => {
     expect(isBuiltInActive(emptyStore)).toBe(true);
     expect(activeValues(emptyStore)).toEqual(DEFAULT_TEXT_ENDPOINT_VALUES);
@@ -75,11 +91,15 @@ describe('store operations', () => {
   });
 
   it('deleting the active preset falls back to the Default built-in', () => {
-    const store = addPreset(emptyStore, 'p1', 'Custom', customValues);
+    const hosted = updateSamplerOverride(emptyStore, DEFAULT_TEXT_PRESET_ID, 'temperature', { enabled: true, value: 0 });
+    const store = addPreset(hosted, 'p1', 'Custom', customValues);
     const deleted = deletePreset(store, 'p1');
     expect(deleted.activeId).toBe(DEFAULT_TEXT_PRESET_ID);
     expect(isBuiltInActive(deleted)).toBe(true);
     expect(deleted.presets).toHaveLength(0);
+    expect(valuesForId(deleted, DEFAULT_TEXT_PRESET_ID).samplerOverrides.temperature).toEqual({ enabled: true, value: 0 });
+    const reloaded = textEndpointPresetCodec.parse(textEndpointPresetCodec.serialize(deleted));
+    expect(valuesForId(reloaded, DEFAULT_TEXT_PRESET_ID).samplerOverrides.temperature).toEqual({ enabled: true, value: 0 });
   });
 
   it('a ghost active id (missing preset) resolves to the Default built-in', () => {
