@@ -90,7 +90,7 @@ battery() {
   check "/theme.js status" "200" "$(curl -sS --max-time 20 -o /dev/null -w '%{http_code}' "$BASE_AI/theme.js")"
   check_glob "/theme.js content-type" "*javascript*" "$(content_type "$BASE_AI/theme.js")"
 
-  # The account pages. /login is served by a rewrite onto /site-app/index.html, so this proves the
+  # The account pages. /login is served by a rewrite onto /site-app/, so this proves the
   # entry's build reached the upload root AND that the rule fired. The body check is what tells the two
   # apart: a missing rule would serve the landing page here, which is also HTML and also 200.
   check "/login status" "200" "$(curl -sS --max-time 20 -o /dev/null -w '%{http_code}' "$BASE_AI/login")"
