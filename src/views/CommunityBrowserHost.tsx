@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
 import CommunityCreationsBrowser, { type BrowserPresentation, type CommunityListing } from './CommunityCreationsBrowser';
 import { APP_COMMUNITY_CAPABILITIES, type CommunityBrowserCapabilities } from '@/lib/communityBrowserCapabilities';
 import { ImageZoomViewer } from '@/components/ImageZoomViewer';
@@ -32,6 +32,8 @@ export interface CommunityBrowserHostProps {
   onListingChange?: (listing: CommunityListing | null) => void;
   /** Reports a destination only after the catalog has resolved without it. */
   onListingUnavailable?: (listing: CommunityListing) => void;
+  /** A read-only action shown in this surface's selected listing details. */
+  detailsAction?: ReactNode;
   /** Starts an authentication flow when a guest chooses to Like a listing. */
   onGuestLike?: (world: WorldRecord) => void;
   /** DEV only: open the first listing's details and raise its likers list, for the dev route. */
@@ -57,6 +59,7 @@ export interface CommunityBrowserHostProps {
 export const CommunityBrowserHost = ({
   open, onOpenChange, presentation = 'dialog', capabilities = APP_COMMUNITY_CAPABILITIES, initialTab, openListing, onListingOpened,
   listing, onListingChange, onListingUnavailable, onGuestLike,
+  detailsAction,
   openLikersOnMount = false,
 }: CommunityBrowserHostProps) => {
   // The three local libraries, each driving its tab's download state.
@@ -207,6 +210,7 @@ export const CommunityBrowserHost = ({
         listing={listing}
         onListingChange={onListingChange}
         onListingUnavailable={onListingUnavailable}
+        detailsAction={detailsAction}
         openLikersOnMount={openLikersOnMount}
         events={events}
         onOpenEvent={openEvent}

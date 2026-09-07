@@ -7,6 +7,7 @@ import { leaveTo } from '../leaveSite';
 import { signInTo } from '../nextPath';
 import { SiteAgeGate } from '../components/SiteAgeGate';
 import { SiteLayout } from '../components/SiteLayout';
+import { CommunityOpenInAppLink } from '../components/CommunityOpenInAppLink';
 import {
   communityListingPath,
   communityListingTarget,
@@ -72,6 +73,7 @@ export function CommunityPage() {
           onListingChange={setListing}
           onListingUnavailable={() => setUnavailable(true)}
           onGuestLike={signInToLike}
+          detailsAction={listing && !unavailable ? <CommunityOpenInAppLink listing={listing} /> : undefined}
         />
       </SiteLayout>
     </SiteAgeGate>

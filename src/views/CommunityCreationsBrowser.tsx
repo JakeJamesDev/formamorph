@@ -174,6 +174,8 @@ interface CommunityCreationsBrowserProps {
   onListingChange?: (listing: CommunityListing | null) => void;
   /** Reports a destination only after the catalog has resolved without it. */
   onListingUnavailable?: (listing: CommunityListing) => void;
+  /** A read-only action shown in this surface's selected listing details. */
+  detailsAction?: React.ReactNode;
   /** Running community events, announced in the header the same way the main menu announces them. */
   events?: ServerEvent[];
   /** Open the place an event's content lives — the contest tab, for a contest. */
@@ -188,6 +190,7 @@ const CommunityCreationsBrowser = ({
   open, onOpenChange, presentation = 'dialog', capabilities = APP_COMMUNITY_CAPABILITIES, worlds, setWorlds, entities, dictionaries,
   refreshEntities, refreshDictionaries,
   isAuthenticated, currentUser, onGuestLike, openImageViewer, initialTab, openListing, onListingOpened, listing: controlledListing,
+  onListingChange, onListingUnavailable, detailsAction,
   events = [], onOpenEvent, openLikersOnMount = false,
 }: CommunityCreationsBrowserProps) => {
   // The header's title element, which differs per shell (see PageHeading).
@@ -1044,6 +1047,7 @@ const CommunityCreationsBrowser = ({
         openLikersOnMount={openLikersOnMount}
         contests={contests}
         capabilities={capabilities}
+        detailsAction={detailsAction}
       />
 
       {/* Refresh/Update decision: download a separate copy vs overwrite an existing local copy */}

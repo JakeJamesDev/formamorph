@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, useRef } from "react";
+import { useState, useEffect, useMemo, useRef, type ReactNode } from "react";
 import { toast } from "react-toastify";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
@@ -62,6 +62,8 @@ interface RemoteWorldDetailsModalProps {
   onLikesChanged?: (world: WorldRecord, likes: number) => void;
   /** DEV only: raise the likers dialog as soon as the modal opens, for the dev route. */
   openLikersOnMount?: boolean;
+  /** A read-only action supplied by the surface that opened this listing. */
+  detailsAction?: ReactNode;
 }
 
 /** The same cap a feedback comment carries, so the two comment boxes hold the same amount. */
@@ -81,6 +83,7 @@ export function RemoteWorldDetailsModal({
   isAuthenticated, openImageViewer, downloadStateForWorld, downloadProgress, onContextualDownload, onDeviceDownload,
   currentUser, onLike, onGuestLike, contests = [], onLikesChanged, openLikersOnMount = false,
   capabilities = APP_DETAILS_CAPABILITIES,
+  detailsAction,
 }: RemoteWorldDetailsModalProps) {
   const [comments, setComments] = useState<WorldRecord[]>([]);
   const [commentsTotal, setCommentsTotal] = useState(0);
@@ -270,21 +273,24 @@ export function RemoteWorldDetailsModal({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent aria-describedby={undefined} className={cn("h-[85dvh] flex flex-col", collapsed ? "sm:max-w-[600px]" : "sm:max-w-[1200px]")}>
         <DialogHeader className="shrink-0">
-          <DialogTitle className="flex items-center gap-2">
-            {/* `leading-normal` overrides DialogTitle's `leading-none`, whose one-em line box crops
-                descenders under `truncate`'s overflow clip. Fits the row's existing height. */}
-            <span className="truncate leading-normal">{world?.name || 'World Details'}</span>
+          <div className="flex items-center gap-2">
+            <DialogTitle className="min-w-0 flex-1">
+              {/* `leading-normal` overrides DialogTitle's `leading-none`, whose one-em line box crops
+                  descenders under `truncate`'s overflow clip. Fits the row's existing height. */}
+              <span className="truncate leading-normal">{world?.name || 'World Details'}</span>
+            </DialogTitle>
+            {detailsAction && <div className="shrink-0">{detailsAction}</div>}
             <Tip tip={collapsed ? "Expand to two columns" : "Collapse to single column"}>
               <Button
                 variant="ghost"
                 size="icon"
-                className="ml-auto mr-8 shrink-0 hidden md:inline-flex"
+                className="mr-8 shrink-0 hidden md:inline-flex"
                 onClick={onToggleCollapsed}
               >
                 {collapsed ? <Columns2 className="h-4 w-4" /> : <RectangleVertical className="h-4 w-4" />}
               </Button>
             </Tip>
-          </DialogTitle>
+          </div>
           {/* Under the title, as on the card: opening a winning card must not lose what the card said. */}
           {world && <PlaceBadges placements={placementsBy(world, contests)} className="mr-8" />}
         </DialogHeader>

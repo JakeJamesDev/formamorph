@@ -215,6 +215,8 @@ export function AgeGateProvider({ children }: { children: ReactNode }) {
       request.onAccept?.();
       return;
     }
+    // The provider's boot effect reads this before React applies this state update.
+    pendingRequestRef.current = request;
     setPendingRequest(request);
     if (state === 'idle') setState('prompt');
   }, [state]);
@@ -230,6 +232,7 @@ export function AgeGateProvider({ children }: { children: ReactNode }) {
       request.onAccept?.();
       return;
     }
+    pendingRequestRef.current = request;
     setPendingRequest(request);
     if (state === 'idle') setState('prompt');
   }, [state]);
