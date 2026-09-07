@@ -95,8 +95,8 @@ export function isCrossOriginEmbed(win: FrameWindow | undefined = globalThis.win
  * probe must hold — the probe can't tell a permission denial from a server that's off, so the other two
  * carry the inference.
  *
- * No policy-introspection input by design: measured in Chrome 148, `featurePolicy.allowsFeature(
- * 'local-network-access')` answers `false` exactly as it does for a name that doesn't exist and warns
+ * No policy-introspection input by design: measured in Chrome 148, `featurePolicy.allowsFeature('local-network-access')`
+ * answers `false` exactly as it does for a name that doesn't exist and warns
  * to the console every call, and `document.permissionsPolicy` is unimplemented. Re-measure before
  * reaching for it again.
  */
