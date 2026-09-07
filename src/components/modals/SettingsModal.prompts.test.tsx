@@ -1,8 +1,9 @@
 // Storage is real (in-memory): SettingsProvider and the modal both read it on mount.
 import 'fake-indexeddb/auto';
 import { describe, it, expect, beforeEach, vi } from 'vitest';
+import { useEffect, useRef } from 'react';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
-import { SettingsProvider } from '@/contexts/SettingsContext';
+import { SettingsProvider, useSettings } from '@/contexts/SettingsContext';
 import { ThemeProvider } from '@/components/theme-provider';
 import { SettingsModal } from './SettingsModal';
 import { SURFACE_LABELS, HUB_LABEL } from '@/lib/promptGroups';
@@ -31,6 +32,15 @@ const openPrompts = (props: { initialPromptTab?: string; initialPromptSurface?: 
     </ThemeProvider>,
   );
 
+const openEndpoints = () =>
+  render(
+    <ThemeProvider>
+      <SettingsProvider>
+        <SettingsModal isOpen onOpenChange={() => {}} forcedMode="advanced" initialTab="endpoints" />
+      </SettingsProvider>
+    </ThemeProvider>,
+  );
+
 /** The rail's own row for a prompt or an editor — a button, unlike the anatomy's region headings. */
 const railRow = (name: string) => screen.getAllByRole('button', { name }).at(-1)!;
 
@@ -39,6 +49,21 @@ const onHub = () => screen.queryByText('one block, sent first, sets the rules') 
 
 /** The System editor is the only surface that shows the prompt's one-line description. */
 const onSystemEditor = () => screen.queryByText(/Writes the story itself/) !== null;
+
+function EnableTemperatureOverride() {
+  const { setEndpointSamplerEnabled } = useSettings();
+  const enabled = useRef(false);
+  useEffect(() => {
+    if (!enabled.current) {
+      enabled.current = true;
+      setEndpointSamplerEnabled('temperature', true);
+    }
+  }, [setEndpointSamplerEnabled]);
+  return null;
+}
+
+const temperatureReadout = () => document.getElementById('customTemp')!.closest('.space-y-2')!;
+const endpointTemperatureReadout = () => document.getElementById('endpointTemperature')!.closest('.space-y-2')!;
 
 beforeEach(() => localStorage.clear());
 
@@ -72,6 +97,35 @@ describe('Settings → Prompts landing', () => {
     fireEvent.click(railRow('Narration'));
     expect(onHub()).toBe(true);
     expect(onSystemEditor()).toBe(false);
+  });
+});
+
+describe('Settings → Prompts endpoint sampler fallback', () => {
+  it('calls an omitted sampler Endpoint Default when its routed endpoint has no override', () => {
+    openPrompts({ initialPromptSurface: 'options' });
+
+    expect(temperatureReadout()).toHaveTextContent('Endpoint Default');
+  });
+
+  it('calls an omitted sampler Endpoint Override when its routed endpoint supplies it', async () => {
+    render(
+      <ThemeProvider>
+        <SettingsProvider>
+          <EnableTemperatureOverride />
+          <SettingsModal isOpen onOpenChange={() => {}} forcedMode="advanced" initialTab="prompts" initialPromptSurface="options" />
+        </SettingsProvider>
+      </ThemeProvider>,
+    );
+
+    await waitFor(() => expect(temperatureReadout()).toHaveTextContent('Endpoint Override'));
+  });
+});
+
+describe('Settings → Endpoints sampler fallback', () => {
+  it('uses Endpoint Default capitalization while its sampler override is off', () => {
+    openEndpoints();
+
+    expect(endpointTemperatureReadout()).toHaveTextContent('Endpoint Default');
   });
 });
 
