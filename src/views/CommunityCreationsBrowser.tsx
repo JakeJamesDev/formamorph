@@ -158,6 +158,8 @@ interface CommunityCreationsBrowserProps {
   refreshDictionaries: () => void;
   isAuthenticated: boolean;
   currentUser: WorldRecord | null;
+  /** Starts authentication instead of mutating when a guest presses Like. */
+  onGuestLike?: (world: WorldRecord) => void;
   openImageViewer: (src: string | undefined, alt: string | undefined) => void;
   /** The tab to open on — the dev-router's (`#dev?modal=community&tab=entity`), or Contest when an
    *  event banner sent the player here. */
@@ -185,14 +187,14 @@ interface CommunityCreationsBrowserProps {
 const CommunityCreationsBrowser = ({
   open, onOpenChange, presentation = 'dialog', capabilities = APP_COMMUNITY_CAPABILITIES, worlds, setWorlds, entities, dictionaries,
   refreshEntities, refreshDictionaries,
-  isAuthenticated, currentUser, openImageViewer, initialTab, openListing, onListingOpened, listing: controlledListing,
-  onListingChange, onListingUnavailable,
+  isAuthenticated, currentUser, onGuestLike, openImageViewer, initialTab, openListing, onListingOpened, listing: controlledListing,
   events = [], onOpenEvent, openLikersOnMount = false,
 }: CommunityCreationsBrowserProps) => {
   // The header's title element, which differs per shell (see PageHeading).
   const Heading = presentation === 'dialog' ? DialogTitle : PageHeading;
   // Catalog fetch/cache/sync (loads on open, refreshes in the background).
-  const { remoteWorlds, setRemoteWorlds, isLoadingRemoteWorlds, isSyncingCatalog, catalogSettled, loadCatalog } = useCatalogSync(open);
+  const catalogReader = isAuthenticated ? String(currentUser?.id ?? AuthService.token ?? '') : '';
+  const { remoteWorlds, setRemoteWorlds, isLoadingRemoteWorlds, isSyncingCatalog, catalogSettled, loadCatalog } = useCatalogSync(open, catalogReader);
   const [remoteWorldToDelete, setRemoteWorldToDelete] = useState<string | null>(null);
   // Set once someone else's item has been deleted, offering to tell its author why. The takedown itself
   // has already landed — declining leaves it removed and simply unexplained, as suspending does.
@@ -983,6 +985,7 @@ const CommunityCreationsBrowser = ({
                       onDeviceDownload={capabilities.deviceDownloads ? deviceDownload.download : undefined}
                       onDelete={capabilities.authorManagement ? setRemoteWorldToDelete : undefined}
                       onLike={capabilities.likes ? handleLike : undefined}
+                      onGuestLike={capabilities.likes ? onGuestLike : undefined}
                       onQuarantine={capabilities.moderation ? setQuarantining : undefined}
                       onRelease={capabilities.moderation ? handleRelease : undefined}
                       placements={placementsBy(world, contests)}
@@ -1036,6 +1039,7 @@ const CommunityCreationsBrowser = ({
         onDeviceDownload={capabilities.deviceDownloads ? deviceDownload.download : undefined}
         currentUser={currentUser}
         onLike={handleLike}
+        onGuestLike={capabilities.likes ? onGuestLike : undefined}
         onLikesChanged={handleLikesChanged}
         openLikersOnMount={openLikersOnMount}
         contests={contests}

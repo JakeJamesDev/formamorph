@@ -212,6 +212,53 @@ describe('the freshness tag', () => {
     await waitFor(() => expect(server.calls).toBe(1));
     expect(server.sentTag).toBeNull();
   });
+
+  it('clears the previous reader\'s liked marks and force-refreshes when the account changes', async () => {
+    const stale = { ...world, liked: true };
+    cache.items = [stale];
+    cache.tag = { tag: 'W/"first"', reader: 'first' };
+    auth.user = { id: 'first' };
+    const { result, rerender } = renderHook(
+      ({ readerKey }) => useCatalogSync(true, readerKey),
+      { initialProps: { readerKey: 'first' } },
+    );
+    await waitFor(() => expect(server.resolve).not.toBeNull());
+    await act(async () => server.resolve?.({ status: 'fresh', data: [stale], tag: 'W/"first"' }));
+    expect(result.current.remoteWorlds).toEqual([stale]);
+
+    auth.user = { id: 'second' };
+    rerender({ readerKey: 'second' });
+
+    await waitFor(() => expect(server.calls).toBe(2));
+    expect(result.current.remoteWorlds).toEqual([]);
+    expect(server.sentTag).toBeNull();
+
+    await act(async () => server.resolve?.({ status: 'fresh', data: [{ ...world, liked: false }], tag: 'W/"second"' }));
+    expect(result.current.remoteWorlds).toEqual([{ ...world, liked: false }]);
+  });
+
+  it('ignores a previous reader\'s response after the next reader has started loading', async () => {
+    auth.user = { id: 'first' };
+    const { result, rerender } = renderHook(
+      ({ readerKey }) => useCatalogSync(true, readerKey),
+      { initialProps: { readerKey: 'first' } },
+    );
+    await waitFor(() => expect(server.resolve).not.toBeNull());
+    const resolveFirst = server.resolve!;
+
+    auth.user = { id: 'second' };
+    rerender({ readerKey: 'second' });
+
+    await waitFor(() => expect(server.calls).toBe(2));
+    const resolveSecond = server.resolve!;
+    await act(async () => resolveFirst({ status: 'fresh', data: [{ ...world, liked: true }], tag: 'W/"first"' }));
+
+    expect(result.current.remoteWorlds).toEqual([]);
+    expect(cache.replace).not.toHaveBeenCalled();
+
+    await act(async () => resolveSecond({ status: 'fresh', data: [{ ...world, liked: false }], tag: 'W/"second"' }));
+    expect(result.current.remoteWorlds).toEqual([{ ...world, liked: false }]);
+  });
 });
 
 describe('the age gate', () => {

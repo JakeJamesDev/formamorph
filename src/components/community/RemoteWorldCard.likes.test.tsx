@@ -98,6 +98,18 @@ describe('who can press it', () => {
     expect(heart().textContent).toContain('3');
   });
 
+  it('lets a guest start authentication without sending a Like', async () => {
+    const onLike = vi.fn();
+    const onGuestLike = vi.fn();
+    const record = world();
+    show(record, { onLike, onGuestLike, isAuthenticated: false, currentUser: null });
+
+    fireEvent.click(screen.getByRole('button', { name: /Like —/ }));
+
+    await waitFor(() => expect(onGuestLike).toHaveBeenCalledWith(record));
+    expect(onLike).not.toHaveBeenCalled();
+  });
+
   it('is a plain count on your own listing', () => {
     // Otherwise the number says how much somebody has published rather than how many people liked it.
     show(world(), { onLike: vi.fn(), currentUser: { id: 'u1', username: 'wren_hallow' } });

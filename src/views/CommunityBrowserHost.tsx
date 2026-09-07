@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import CommunityCreationsBrowser, { type BrowserPresentation, type CommunityListing } from './CommunityCreationsBrowser';
 import { APP_COMMUNITY_CAPABILITIES, type CommunityBrowserCapabilities } from '@/lib/communityBrowserCapabilities';
 import { ImageZoomViewer } from '@/components/ImageZoomViewer';
@@ -32,6 +32,8 @@ export interface CommunityBrowserHostProps {
   onListingChange?: (listing: CommunityListing | null) => void;
   /** Reports a destination only after the catalog has resolved without it. */
   onListingUnavailable?: (listing: CommunityListing) => void;
+  /** Starts an authentication flow when a guest chooses to Like a listing. */
+  onGuestLike?: (world: WorldRecord) => void;
   /** DEV only: open the first listing's details and raise its likers list, for the dev route. */
   openLikersOnMount?: boolean;
 }
@@ -54,7 +56,7 @@ export interface CommunityBrowserHostProps {
  */
 export const CommunityBrowserHost = ({
   open, onOpenChange, presentation = 'dialog', capabilities = APP_COMMUNITY_CAPABILITIES, initialTab, openListing, onListingOpened,
-  listing, onListingChange, onListingUnavailable,
+  listing, onListingChange, onListingUnavailable, onGuestLike,
   openLikersOnMount = false,
 }: CommunityBrowserHostProps) => {
   // The three local libraries, each driving its tab's download state.
@@ -63,8 +65,11 @@ export const CommunityBrowserHost = ({
   const [dictionaries, setDictionaries] = useState<DictionaryMetadata[]>([]);
 
   // The signed-in account, which likes, comments, publishing and the moderation controls all read.
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
-  const [currentUser, setCurrentUser] = useState<WorldRecord | null>(null);
+  const [isAuthenticated, setIsAuthenticated] = useState(() => AuthService.isAuthenticated());
+  const [currentUser, setCurrentUser] = useState<WorldRecord | null>(
+    () => AuthService.getCurrentUser() as WorldRecord | null,
+  );
+  const authIdentity = useRef(`${AuthService.token ?? ''}:${AuthService.getCurrentUser()?.id ?? ''}`);
 
   // The shared pan/zoom viewer the details modal's thumbnails open into.
   const [imageViewerOpen, setImageViewerOpen] = useState(false);
@@ -143,6 +148,21 @@ export const CommunityBrowserHost = ({
     void refreshAuth();
   }, [open, capabilities.localLibrary, refreshWorlds, refreshEntities, refreshDictionaries, refreshAuth]);
 
+  // The website and game share one origin but are separate documents. A profile refresh also announces
+  // itself, so only a changed credential or account starts another profile read.
+  useEffect(() => {
+    if (!open) return;
+    return AuthService.onSessionChanged(() => {
+      const nextIdentity = `${AuthService.token ?? ''}:${AuthService.getCurrentUser()?.id ?? ''}`;
+      if (nextIdentity === authIdentity.current) {
+        setCurrentUser(AuthService.getCurrentUser() as WorldRecord | null);
+        return;
+      }
+      authIdentity.current = nextIdentity;
+      void refreshAuth();
+    });
+  }, [open, refreshAuth]);
+
   // Dropped on close so a tab an event asked for doesn't outlive the visit it was asked for in.
   useEffect(() => {
     if (!open) setEventTab(undefined);
@@ -179,6 +199,7 @@ export const CommunityBrowserHost = ({
         refreshDictionaries={refreshDictionaries}
         isAuthenticated={isAuthenticated}
         currentUser={currentUser}
+        onGuestLike={onGuestLike}
         openImageViewer={openImageViewer}
         initialTab={eventTab ?? initialTab}
         openListing={openListing}

@@ -24,12 +24,12 @@ export const APP_COMMUNITY_CAPABILITIES: CommunityBrowserCapabilities = {
   reports: true,
 };
 
-/** The website catalog stays read-only until its action slices land. */
+/** The website catalog permits downloads and Likes; other mutations stay in the game. */
 export const WEBSITE_COMMUNITY_CAPABILITIES: CommunityBrowserCapabilities = {
   localLibrary: false,
   deviceDownloads: true,
   hiddenFilters: false,
-  likes: false,
+  likes: true,
   comments: false,
   authorManagement: false,
   moderation: false,

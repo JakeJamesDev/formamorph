@@ -6,8 +6,11 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { CommunityPage } from './CommunityPage';
 import { resetAccountPage } from '../test/support';
 
+const { leaveTo } = vi.hoisted(() => ({ leaveTo: vi.fn() }));
+
 vi.mock('react-toastify', () => ({ toast: { error: vi.fn(), success: vi.fn(), info: vi.fn() } }));
 vi.mock('@/services/EventService', () => ({ default: { fetchActive: vi.fn(async () => []), fetchList: vi.fn(async () => []) } }));
+vi.mock('../leaveSite', () => ({ leaveTo }));
 
 const catalog = vi.hoisted(() => ({ items: [] as Record<string, unknown>[] }));
 
@@ -72,5 +75,16 @@ describe('creation links through the rendered website community route', () => {
 
     expect(await screen.findByRole('alert')).toHaveTextContent('This creation is no longer available.');
     expect(screen.queryByRole('dialog', { name: 'Sedge Landing' })).not.toBeInTheDocument();
+  });
+
+  it('keeps a guest Like on a direct detail in that category through sign-in', async () => {
+    const user = userEvent.setup();
+    resetAccountPage('/community/entity/entity-1');
+    render(<CommunityPage />);
+    await user.click(screen.getByRole('button', { name: 'Accept' }));
+
+    await user.click(await screen.findByRole('button', { name: 'Like — 0 likes' }));
+
+    expect(leaveTo).toHaveBeenCalledWith('/login?next=%2Fcommunity%2Fentity%2Fentity-1');
   });
 });
