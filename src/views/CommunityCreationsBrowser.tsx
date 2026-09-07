@@ -79,6 +79,12 @@ const COMMUNITY_BROWSER_MODAL_COLLAPSED_KEY = 'FORMAMORPH_discoverModalCollapsed
 /** How the browser is presented: the app's full-screen modal, or a page that is the whole surface. */
 export type BrowserPresentation = 'dialog' | 'page' | 'embedded';
 
+/** A published creation controlled by an external caller such as the website router. */
+export interface CommunityListing {
+  id: string;
+  kind: CatalogKind;
+}
+
 /**
  * Controls the actions a shell may expose without forking the shared browser.
  *
@@ -161,11 +167,11 @@ interface CommunityCreationsBrowserProps {
   /** Fired once that listing has been opened, or found to be gone, so the host can clear its request. */
   onListingOpened?: () => void;
   /** A website-controlled destination; an explicit null closes the visible selection. */
-  listing?: { id: string; kind: string } | null;
+  listing?: CommunityListing | null;
   /** Reports a card, direct destination, or details close to a website router. */
-  onListingChange?: (listing: { id: string; kind: string } | null) => void;
+  onListingChange?: (listing: CommunityListing | null) => void;
   /** Reports a destination only after the catalog has resolved without it. */
-  onListingUnavailable?: (listing: { id: string; kind: string }) => void;
+  onListingUnavailable?: (listing: CommunityListing) => void;
   /** Running community events, announced in the header the same way the main menu announces them. */
   events?: ServerEvent[];
   /** Open the place an event's content lives — the contest tab, for a contest. */
@@ -582,7 +588,7 @@ const CommunityCreationsBrowser = ({
     } else {
       // Deleted or quarantined between the feed being read and the row being clicked.
       toast.info('That listing is no longer in Community Creations');
-      if (controlledListing !== undefined) onListingUnavailable?.(requestedListing);
+      if (controlledListing) onListingUnavailable?.(controlledListing);
     }
 
     onListingOpened?.();

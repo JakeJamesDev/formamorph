@@ -4,6 +4,7 @@ import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { toast } from 'react-toastify';
 import CommunityCreationsBrowser from './CommunityCreationsBrowser';
 import type { WorldRecord } from '@/components/WorldDetails';
+import type { CommunityListing } from './CommunityCreationsBrowser';
 
 vi.mock('react-toastify', () => ({ toast: { error: vi.fn(), success: vi.fn(), info: vi.fn() } }));
 
@@ -60,7 +61,7 @@ const reader = { id: 'u1', username: 'reader', accountType: 'normal' } as unknow
 
 const renderBrowser = (over: {
   open?: boolean;
-  listing?: { id: string; kind: string } | null;
+  listing?: CommunityListing | null;
   onListingChange?: (listing: { id: string; kind: string } | null) => void;
   onListingOpened?: () => void;
 } = {}) => {

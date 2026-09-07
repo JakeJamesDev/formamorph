@@ -27,7 +27,10 @@ export function communityListingTarget(pathname: string): CommunityListingTarget
     const id = decodeURIComponent(match[2]);
     if (!id) return { status: 'invalid' };
 
-    return { status: 'listing', listing: { kind: match[1] as CommunityListing['kind'], id } };
+    const kind = match[1];
+    if (kind !== 'world' && kind !== 'entity' && kind !== 'dictionary') return { status: 'invalid' };
+
+    return { status: 'listing', listing: { kind, id } };
   } catch {
     return { status: 'invalid' };
   }

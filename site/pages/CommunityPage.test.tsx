@@ -1,11 +1,12 @@
-import { act, render, screen } from '@testing-library/react';
+import { act, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import type { CommunityBrowserHostProps } from '@/views/CommunityBrowserHost';
 import { CommunityPage } from './CommunityPage';
 import { resetAccountPage } from '../test/support';
 
 const { host } = vi.hoisted(() => ({
-  host: vi.fn(() => <div data-testid="community-host">Community browser</div>),
+  host: vi.fn((_props: CommunityBrowserHostProps) => <div data-testid="community-host">Community browser</div>),
 }));
 
 vi.mock('@/views/CommunityBrowserHost', () => ({ default: host }));
@@ -75,9 +76,30 @@ describe('the website community route', () => {
     await user.click(screen.getByRole('button', { name: 'Accept' }));
     await screen.findByTestId('community-host');
 
-    const [props] = host.mock.calls.at(-1) as unknown as [{ onListingChange: (listing: { id: string; kind: string }) => void }];
-    act(() => props.onListingChange({ id: 'w / 1', kind: 'world' }));
+    const props = host.mock.calls.at(-1)?.[0];
+    const onListingChange = props?.onListingChange;
+    if (!onListingChange) throw new Error('The community host did not receive its listing callback.');
+    act(() => onListingChange({ id: 'w / 1', kind: 'world' }));
 
     expect(window.location.pathname).toBe('/community/world/w%20%2F%201');
+  });
+
+  it('keeps the visible selection in step with browser Back and Forward', async () => {
+    const user = userEvent.setup();
+    render(<CommunityPage />);
+    await user.click(screen.getByRole('button', { name: 'Accept' }));
+    await screen.findByTestId('community-host');
+
+    const props = host.mock.calls.at(-1)?.[0];
+    const onListingChange = props?.onListingChange;
+    if (!onListingChange) throw new Error('The community host did not receive its listing callback.');
+    act(() => onListingChange({ id: 'w1', kind: 'world' }));
+
+    await waitFor(() => expect(window.location.pathname).toBe('/community/world/w1'));
+    act(() => window.history.back());
+    await waitFor(() => expect(host.mock.calls.at(-1)?.[0]?.listing).toBeNull());
+
+    act(() => window.history.forward());
+    await waitFor(() => expect(host.mock.calls.at(-1)?.[0]?.listing).toEqual({ id: 'w1', kind: 'world' }));
   });
 });

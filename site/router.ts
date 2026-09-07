@@ -43,6 +43,12 @@ const currentLocation = (): SiteLocation => ({
   search: window.location.search,
 });
 
+/** Updates the address bar and tells lightweight site routes to read the new location. */
+export function navigateSite(path: string): void {
+  window.history.pushState(null, '', path);
+  window.dispatchEvent(new PopStateEvent('popstate'));
+}
+
 /** The current location, re-read on Back. */
 export function useSiteLocation(): SiteLocation {
   const [location, setLocation] = useState(currentLocation);

@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
-import CommunityCreationsBrowser, { type BrowserPresentation } from './CommunityCreationsBrowser';
+import CommunityCreationsBrowser, { type BrowserPresentation, type CommunityListing } from './CommunityCreationsBrowser';
 import { APP_COMMUNITY_CAPABILITIES, type CommunityBrowserCapabilities } from '@/lib/communityBrowserCapabilities';
 import { ImageZoomViewer } from '@/components/ImageZoomViewer';
 import { useActiveEvents } from '@/lib/useActiveEvents';
@@ -27,11 +27,11 @@ export interface CommunityBrowserHostProps {
   /** Fired once that listing has been opened, or found to be gone, so the caller can clear its request. */
   onListingOpened?: () => void;
   /** A website-controlled destination; an explicit null closes the visible selection. */
-  listing?: { id: string; kind: string } | null;
+  listing?: CommunityListing | null;
   /** Reports a card, direct destination, or details close to a website router. */
-  onListingChange?: (listing: { id: string; kind: string } | null) => void;
+  onListingChange?: (listing: CommunityListing | null) => void;
   /** Reports a destination only after the catalog has resolved without it. */
-  onListingUnavailable?: (listing: { id: string; kind: string }) => void;
+  onListingUnavailable?: (listing: CommunityListing) => void;
   /** DEV only: open the first listing's details and raise its likers list, for the dev route. */
   openLikersOnMount?: boolean;
 }
