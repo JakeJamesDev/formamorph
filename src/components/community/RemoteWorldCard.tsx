@@ -42,6 +42,8 @@ interface RemoteWorldCardProps {
   onDelete?: (worldId: string) => void;
   /** Records a like. Absent leaves the heart a plain count. */
   onLike?: (world: WorldRecord, liked: boolean) => Promise<void>;
+  /** Starts authentication for a guest Like without mutating the listing. */
+  onGuestLike?: (world: WorldRecord) => void;
   /** Opens the quarantine dialog. Admin surfaces only. */
   onQuarantine?: (world: WorldRecord) => void;
   /** Lifts a quarantine. Admin surfaces only. */
@@ -59,7 +61,7 @@ interface RemoteWorldCardProps {
  *  description, author, counts, tags, and (for owners/admins) a delete control. */
 export function RemoteWorldCard({
   world, downloadState: dlState, downloadProgress, isAuthenticated, currentUser,
-  onView, onHideWorld, onHideAuthor, onHideTag, onContextualDownload, onDeviceDownload, onDelete, onLike, onQuarantine, onRelease,
+  onView, onHideWorld, onHideAuthor, onHideTag, onContextualDownload, onDeviceDownload, onDelete, onLike, onGuestLike, onQuarantine, onRelease,
   placements = [], onWithdraw, likeTutorial, likeTutorialNav,
 }: RemoteWorldCardProps) {
   // Get the world ID (server uses _id)
@@ -95,7 +97,9 @@ export function RemoteWorldCard({
       liked={world.liked}
       // Static on your own listing, which the server refuses: liking it would make the count say how much
       // somebody has published rather than how many people liked it.
-      onToggle={onLike && isAuthenticated && !isOwnedByUser ? (next) => onLike(world, next) : undefined}
+      onToggle={onLike && isAuthenticated && !isOwnedByUser
+        ? (next) => onLike(world, next)
+        : !isAuthenticated && onGuestLike ? async () => { onGuestLike(world); } : undefined}
     />
   );
 

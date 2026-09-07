@@ -192,6 +192,19 @@ describe('the community browser host', () => {
     expect(await screen.findByRole('button', { name: 'Re-download this world' })).toBeInTheDocument();
   });
 
+  it('does not refresh the account until the browser opens', async () => {
+    signIn('normal');
+    const refreshProfile = vi.spyOn(AuthService, 'fetchUserProfile').mockResolvedValue(
+      { id: 'u1', username: 'reader', accountType: 'normal' },
+    );
+
+    const { rerender } = render(<CommunityBrowserHost open={false} onOpenChange={() => {}} />);
+    expect(refreshProfile).not.toHaveBeenCalled();
+
+    rerender(<CommunityBrowserHost open onOpenChange={() => {}} />);
+    await waitFor(() => expect(refreshProfile).toHaveBeenCalledTimes(1));
+  });
+
   it('takes the signed-in account from the auth service, so moderation follows the real role', async () => {
     catalog.items = [listing()];
     signIn('admin');

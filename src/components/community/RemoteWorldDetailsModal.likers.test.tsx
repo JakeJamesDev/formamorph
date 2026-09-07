@@ -101,6 +101,17 @@ describe('who is told the likers exist', () => {
     expect(screen.getByText('3')).toBeTruthy();
   });
 
+  it('lets a guest start authentication without sending a Like', async () => {
+    const onLike = vi.fn();
+    const onGuestLike = vi.fn();
+    show({ currentUser: null, isAuthenticated: false, onLike, onGuestLike });
+
+    fireEvent.click(await screen.findByRole('button', { name: /Like — 3 likes/ }));
+
+    await waitFor(() => expect(onGuestLike).toHaveBeenCalledWith(expect.objectContaining({ id: 'w1' })));
+    expect(onLike).not.toHaveBeenCalled();
+  });
+
   it('offers it to a moderator, naming what it opens', async () => {
     show({ currentUser: account('m1', 'mod') });
 

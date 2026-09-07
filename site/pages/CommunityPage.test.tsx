@@ -10,7 +10,8 @@ const { host } = vi.hoisted(() => ({
 }));
 
 vi.mock('@/views/CommunityBrowserHost', () => ({ default: host }));
-vi.mock('../leaveSite', () => ({ leaveTo: vi.fn() }));
+const { leaveTo } = vi.hoisted(() => ({ leaveTo: vi.fn() }));
+vi.mock('../leaveSite', () => ({ leaveTo }));
 
 beforeEach(() => {
   resetAccountPage('/community');
@@ -37,7 +38,7 @@ describe('the website community route', () => {
       presentation: 'embedded',
       capabilities: expect.objectContaining({
         localLibrary: false,
-        likes: false,
+        likes: true,
         comments: false,
         moderation: false,
       }),
@@ -82,6 +83,19 @@ describe('the website community route', () => {
     act(() => onListingChange({ id: 'w / 1', kind: 'world' }));
 
     expect(window.location.pathname).toBe('/community/world/w%20%2F%201');
+  });
+
+  it('sends a guest to sign in with the exact creation as a safe return destination', async () => {
+    const user = userEvent.setup();
+    render(<CommunityPage />);
+    await user.click(screen.getByRole('button', { name: 'Accept' }));
+    await screen.findByTestId('community-host');
+
+    const onGuestLike = host.mock.calls.at(-1)?.[0]?.onGuestLike;
+    if (!onGuestLike) throw new Error('The community host did not receive its guest Like callback.');
+    act(() => onGuestLike({ id: 'e / 1', kind: 'entity' }));
+
+    expect(leaveTo).toHaveBeenCalledWith('/login?next=%2Fcommunity%2Fentity%2Fe%2520%252F%25201');
   });
 
   it('keeps the visible selection in step with browser Back and Forward', async () => {

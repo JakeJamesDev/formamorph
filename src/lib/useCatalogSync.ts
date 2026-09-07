@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { toast } from "react-toastify";
 import WorldStorageService from "@/services/WorldStorageService";
 import AuthService from "@/services/AuthService";
@@ -24,17 +24,24 @@ const currentReader = (): string => {
  * search and pagination already work here. Records cached before kinds existed have no `kind` field;
  * `kindOf` reads those as worlds, so a stale cache renders correctly until the refresh lands.
  */
-export function useCatalogSync(open: boolean) {
+export function useCatalogSync(open: boolean, readerKey = currentReader()) {
   const [remoteWorlds, setRemoteWorlds] = useState<WorldRecord[]>([]);
   const [isLoadingRemoteWorlds, setIsLoadingRemoteWorlds] = useState(false);
   const [isSyncingCatalog, setIsSyncingCatalog] = useState(false);
   // Whether a refresh attempt has finished during this open. Until then the list in hand is at best
   // last visit's snapshot, so a lookup miss (e.g. a listing named by a notification) proves nothing.
   const [catalogSettled, setCatalogSettled] = useState(false);
+  const lastReaderKey = useRef(readerKey);
+  const requestGeneration = useRef(0);
 
   const loadCatalog = async (force = false) => {
+    const request = ++requestGeneration.current;
+    const reader = currentReader();
+    const isCurrent = () => requestGeneration.current === request && currentReader() === reader;
+
     try {
       const cached = await getCatalog();
+      if (!isCurrent()) return;
       if (cached.length && !force) {
         setRemoteWorlds(cached);
       } else {
@@ -45,13 +52,14 @@ export function useCatalogSync(open: boolean) {
       // The tag is only worth sending back while the same reader is asking: liked marks and the
       // listings a reader can see are their own, so another reader's tag would name another reader's
       // catalog. A forced refresh sends none — it is asking for the list again on purpose.
-      const reader = currentReader();
       const stored = cached.length ? await getCatalogTag() : null;
+      if (!isCurrent()) return;
       const tag = !force && stored && stored.reader === reader ? stored.tag : null;
 
       // One request returns the entire catalog, every kind; replace the cache wholesale (which also drops
       // anything removed server-side).
       const result = await WorldStorageService.fetchCatalog(tag);
+      if (!isCurrent()) return;
       if (result.status === 'fresh') {
         setRemoteWorlds(result.data as WorldRecord[]);
         await replaceCatalog(result.data as CatalogWorld[], result.tag ? { tag: result.tag, reader } : null);
@@ -61,8 +69,9 @@ export function useCatalogSync(open: boolean) {
       // 'unchanged': the rows already rendered are the answer. Nothing is written, and the tag beside
       // them still describes them.
     } catch (error) {
-      console.error('Error loading world catalog:', error);
+      if (isCurrent()) console.error('Error loading world catalog:', error);
     } finally {
+      if (!isCurrent()) return;
       setIsLoadingRemoteWorlds(false);
       setIsSyncingCatalog(false);
       // Success or failure, an attempt finished: misses may now be trusted.
@@ -74,12 +83,17 @@ export function useCatalogSync(open: boolean) {
   // and never before the age gate is answered — the catalog is the listing of what other players wrote).
   useEffect(() => {
     if (open && COMMUNITY_ENABLED && isAgeAttested()) {
-      loadCatalog();
+      const readerChanged = lastReaderKey.current !== readerKey;
+      lastReaderKey.current = readerKey;
+      // A liked mark belongs to its reader. Do not show the old reader's catalog while the forced
+      // request that replaces it is in flight.
+      if (readerChanged) setRemoteWorlds([]);
+      void loadCatalog(readerChanged);
     } else if (!open) {
       // The next open must wait for its own refresh before a lookup miss means anything.
       setCatalogSettled(false);
     }
-  }, [open]);
+  }, [open, readerKey]);
 
   return { remoteWorlds, setRemoteWorlds, isLoadingRemoteWorlds, isSyncingCatalog, catalogSettled, loadCatalog };
 }

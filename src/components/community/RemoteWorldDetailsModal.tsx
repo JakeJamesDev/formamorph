@@ -54,6 +54,8 @@ interface RemoteWorldDetailsModalProps {
   currentUser?: WorldRecord | null;
   /** Records a like. Absent leaves the heart a plain count. */
   onLike?: (world: WorldRecord, liked: boolean) => Promise<void>;
+  /** Starts authentication for a guest Like without mutating the listing. */
+  onGuestLike?: (world: WorldRecord) => void;
   /** The contest archive the browser already fetched, so a placement is badged here as on its card. */
   contests?: ServerEvent[];
   /** Records a new like count after a staff removal, so the card behind this modal agrees. */
@@ -77,7 +79,7 @@ const APP_DETAILS_CAPABILITIES: Pick<CommunityBrowserCapabilities, 'localLibrary
 export function RemoteWorldDetailsModal({
   open, onOpenChange, world, collapsed, onToggleCollapsed,
   isAuthenticated, openImageViewer, downloadStateForWorld, downloadProgress, onContextualDownload, onDeviceDownload,
-  currentUser, onLike, contests = [], onLikesChanged, openLikersOnMount = false,
+  currentUser, onLike, onGuestLike, contests = [], onLikesChanged, openLikersOnMount = false,
   capabilities = APP_DETAILS_CAPABILITIES,
 }: RemoteWorldDetailsModalProps) {
   const [comments, setComments] = useState<WorldRecord[]>([]);
@@ -104,7 +106,7 @@ export function RemoteWorldDetailsModal({
 
   // Off entirely for a signed-out reader and against a server without the feature, so no surface here
   // ever offers an action that would be refused.
-  const reportFeatureEnabled = useReportsEnabled(isAuthenticated);
+  const reportFeatureEnabled = useReportsEnabled(isAuthenticated && open);
   const reportsEnabled = capabilities.reports && reportFeatureEnabled;
 
   const plainVocab = useMemo(() => plainVocabulary(), []);
@@ -378,7 +380,9 @@ export function RemoteWorldDetailsModal({
                         liked={world.liked}
                         size="md"
                         // Static on your own listing, which the server refuses.
-                        onToggle={capabilities.likes && onLike && isAuthenticated && !isOwnListing ? (next) => onLike(world, next) : undefined}
+                        onToggle={capabilities.likes && onLike && isAuthenticated && !isOwnListing
+                          ? (next) => onLike(world, next)
+                          : capabilities.likes && !isAuthenticated && onGuestLike ? async () => { onGuestLike(world); } : undefined}
                         // Staff read the count as a way into who is behind it; everybody else keeps the
                         // heart, and nothing on screen says a list exists.
                         onOpenLikers={canSeeLikers ? () => setShowLikers(true) : undefined}

@@ -1,6 +1,6 @@
 # 04: Like creations on the website
 
-Status: ready-for-agent
+Status: ready-for-human
 Blocked by: 02 — Share and open individual creations
 
 Parent: [Website community spec](../spec.md)

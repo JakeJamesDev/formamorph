@@ -1,7 +1,10 @@
 import { useCallback, useEffect, useState } from 'react';
 import CommunityBrowserHost from '@/views/CommunityBrowserHost';
 import { WEBSITE_COMMUNITY_CAPABILITIES } from '@/lib/communityBrowserCapabilities';
+import { kindOf } from '@/lib/catalogKinds';
+import type { WorldRecord } from '@/components/WorldDetails';
 import { leaveTo } from '../leaveSite';
+import { signInTo } from '../nextPath';
 import { SiteAgeGate } from '../components/SiteAgeGate';
 import { SiteLayout } from '../components/SiteLayout';
 import {
@@ -33,6 +36,13 @@ export function CommunityPage() {
     navigateSite(listing ? communityListingPath(listing) : '/community');
   }, [target]);
 
+  const signInToLike = useCallback((world: WorldRecord) => {
+    leaveTo(signInTo(communityListingPath({
+      id: String(world._id || world.id),
+      kind: kindOf(world),
+    })));
+  }, []);
+
   if (target.status === 'invalid') {
     return (
       <SiteAgeGate>
@@ -61,6 +71,7 @@ export function CommunityPage() {
           listing={unavailable ? null : listing}
           onListingChange={setListing}
           onListingUnavailable={() => setUnavailable(true)}
+          onGuestLike={signInToLike}
         />
       </SiteLayout>
     </SiteAgeGate>
