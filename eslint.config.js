@@ -5,7 +5,6 @@ import reactHooks from 'eslint-plugin-react-hooks'
 import reactRefresh from 'eslint-plugin-react-refresh'
 import tseslint from 'typescript-eslint'
 import tsdoc from 'eslint-plugin-tsdoc'
-import { TYPOGRAPHY_LEGACY } from './eslint.typography-legacy.js'
 import { composedForwardRefRule } from './eslint.composed-forwardref.js'
 import { noNativeTitleRule } from './eslint.no-native-title.js'
 
@@ -83,11 +82,8 @@ export default tseslint.config(
     },
   },
   {
-    // The primitives are tokenized too, so nothing is exempt: sizes live in tailwind.config.js alone,
-    // and retuning a role reaches every control. TYPOGRAPHY_LEGACY is the not-yet-swept remainder and
-    // only ever shrinks; it is empty.
+    // The primitives are tokenized too, so nothing is exempt: sizes live in tailwind.config.js alone.
     files: ['src/**/*.tsx'],
-    ignores: [...TYPOGRAPHY_LEGACY],
     rules: { 'no-restricted-syntax': noRawTextSize },
   },
   {
