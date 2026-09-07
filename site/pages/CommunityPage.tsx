@@ -10,7 +10,7 @@ import {
   type CommunityListing,
   type CommunityListingTarget,
 } from '../communityListing';
-import { useSiteLocation } from '../router';
+import { navigateSite, useSiteLocation } from '../router';
 
 /** The public, read-only community catalog. The warning gate stays outside the host so it cannot fetch early. */
 export function CommunityPage() {
@@ -23,17 +23,14 @@ export function CommunityPage() {
     setUnavailable(false);
   }, [pathname]);
 
-  const setListing = useCallback((next: { id: string; kind: string } | null) => {
-    const listing = next ? { id: next.id, kind: next.kind as CommunityListing['kind'] } : null;
+  const setListing = useCallback((listing: CommunityListing | null) => {
     if (target.status === 'listing'
       && listing
       && target.listing.id === listing.id
       && target.listing.kind === listing.kind) return;
     if (target.status === 'catalog' && !listing) return;
 
-    window.history.pushState(null, '', listing ? communityListingPath(listing) : '/community');
-    setTarget(listing ? { status: 'listing', listing } : { status: 'catalog' });
-    setUnavailable(false);
+    navigateSite(listing ? communityListingPath(listing) : '/community');
   }, [target]);
 
   if (target.status === 'invalid') {
