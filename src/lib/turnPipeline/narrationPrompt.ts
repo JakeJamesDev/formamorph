@@ -54,7 +54,7 @@ export interface NarrationPromptInput {
   embedVectors: Map<string, Float32Array>;
   language: string;
   paragraphLimit: ParagraphLimit;
-  maxTokens: number;
+  maxTokens: number | undefined;
   markdownOutput: boolean;
   sectionStyle: SectionStyle;
   /** Placeholder resolution, which depends on this playthrough's rolled values. */
@@ -120,7 +120,7 @@ export function buildNarrationPrompt(input: NarrationPromptInput): NarrationProm
   // chip on an English game — leaves no dangling blank lines behind it.
   const rendered = trimEndTiled(renderPromptTemplateRuns(template, {
     ...ctx,
-    "<LENGTH GUIDANCE>": lengthGuidance(paragraphLimit, maxTokens),
+    "<LENGTH GUIDANCE>": maxTokens === undefined ? '' : lengthGuidance(paragraphLimit, maxTokens),
     "<MARKDOWN GUIDANCE>": restyle(markdownGuidance(markdownOutput), sectionStyle),
     "<DICTIONARY>": resolvePH(buildDictionaryContext(afterEntries, false)) || NONE_PLACEHOLDER,
     "<DICTIONARY|before>": resolvePH(buildDictionaryContext(beforeEntries, false)) || NONE_PLACEHOLDER,

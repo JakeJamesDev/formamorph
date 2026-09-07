@@ -39,6 +39,16 @@ const base = (over: Partial<NarrationPromptInput> = {}): NarrationPromptInput =>
 });
 
 describe('buildNarrationPrompt', () => {
+  it('removes derived length guidance when the endpoint supplies no output cap', () => {
+    const { prompt } = buildNarrationPrompt(base({
+      template: 'Describe the scene.\n\n<LENGTH GUIDANCE>',
+      paragraphLimit: 'auto',
+      maxTokens: undefined,
+    }));
+
+    expect(prompt).toBe('Describe the scene.');
+  });
+
   it('renders a fixed input to a byte-identical prompt', () => {
     const input = base({
       template:

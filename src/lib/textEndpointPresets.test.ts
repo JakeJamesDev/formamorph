@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest';
 import {
   presetStoreFromEnv, activeValues, isBuiltInActive, setActive, addPreset, renamePreset,
   deletePreset, resetPreset, updateValue, emptyStore, DEFAULT_TEXT_ENDPOINT_VALUES, DEFAULT_TEXT_PRESET_ID,
-  updateSamplerOverride, valuesForId, textEndpointPresetCodec, type TextEndpointValues,
+  updateSamplerOverride, updateMaxOutputOverride, valuesForId, textEndpointPresetCodec, type TextEndpointValues,
 } from './textEndpointPresets';
 import { defaultEndpointSamplerOverrides } from './endpointSamplers';
 
@@ -11,7 +11,7 @@ const customValues: TextEndpointValues = {
   apiToken: 'sk-abc',
   model: 'my-model',
   contextWindowOverride: 16000,
-  maxTokens: 2048,
+  maxOutputOverride: { enabled: true, value: 2048 },
   samplerOverrides: defaultEndpointSamplerOverrides(),
 };
 
@@ -36,12 +36,25 @@ describe('presetStoreFromEnv', () => {
     const v = store!.presets[0].values;
     expect(v.model).toBe('gpt-x');
     expect(v.contextWindowOverride).toBe(8000);
-    expect(v.maxTokens).toBe(DEFAULT_TEXT_ENDPOINT_VALUES.maxTokens); // wrong type falls back to default
+    expect(v.maxOutputOverride.value).toBe(DEFAULT_TEXT_ENDPOINT_VALUES.maxOutputOverride.value); // wrong type falls back to default
     expect(v.endpoint).toBe(DEFAULT_TEXT_ENDPOINT_VALUES.endpoint); // unspecified → default
   });
 });
 
 describe('store operations', () => {
+  it('migrates legacy output caps as enabled, including hosted Default, without losing their values', () => {
+    const legacy = textEndpointPresetCodec.parse(JSON.stringify({
+      activeId: 'legacy',
+      presets: [{ id: 'legacy', name: 'Legacy', values: { endpoint: 'https://legacy.test/v1', maxTokens: 2048 } }],
+      defaultMaxTokens: 1024,
+    }));
+
+    expect(valuesForId(legacy, 'legacy').maxOutputOverride).toEqual({ enabled: true, value: 2048 });
+    expect(valuesForId(legacy, DEFAULT_TEXT_PRESET_ID).maxOutputOverride).toEqual({ enabled: true, value: 1024 });
+
+    const disabled = updateMaxOutputOverride(legacy, 'legacy', { enabled: false, value: 2048 });
+    expect(valuesForId(disabled, 'legacy').maxOutputOverride).toEqual({ enabled: false, value: 2048 });
+  });
   it('keeps disabled sampler values per endpoint, including the hosted Default', () => {
     const hosted = updateSamplerOverride(emptyStore, DEFAULT_TEXT_PRESET_ID, 'temperature', { enabled: true, value: 0 });
     const custom = updateSamplerOverride(
@@ -71,7 +84,7 @@ describe('store operations', () => {
     const store = addPreset(emptyStore, 'p1', 'Custom', customValues);
     expect(store.activeId).toBe('p1');
     expect(isBuiltInActive(store)).toBe(false);
-    expect(activeValues(store)).toEqual(customValues);
+    expect(activeValues(store)).toEqual({ ...customValues, maxOutputOverride: customValues.maxOutputOverride });
 
     const edited = updateValue(store, 'model', 'other-model');
     expect(activeValues(edited).model).toBe('other-model');
@@ -111,6 +124,6 @@ describe('store operations', () => {
   it('layers a partial stored preset over the defaults so missing keys fall back', () => {
     const store = { activeId: 'p1', presets: [{ id: 'p1', name: 'Partial', values: { endpoint: 'https://x/v1' } as TextEndpointValues }] };
     expect(activeValues(store).endpoint).toBe('https://x/v1');
-    expect(activeValues(store).maxTokens).toBe(DEFAULT_TEXT_ENDPOINT_VALUES.maxTokens);
+    expect(activeValues(store).maxOutputOverride).toEqual(DEFAULT_TEXT_ENDPOINT_VALUES.maxOutputOverride);
   });
 });

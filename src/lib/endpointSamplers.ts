@@ -4,6 +4,7 @@ import {
   DEFAULT_GEN_TEMPERATURE,
   DEFAULT_GEN_TOP_K,
   DEFAULT_GEN_TOP_P,
+  DEFAULT_MAX_TOKENS,
 } from '@/contexts/settingsDefaults';
 
 export const ENDPOINT_SAMPLERS = ['temperature', 'repetitionPenalty', 'topP', 'topK', 'minP'] as const;
@@ -13,6 +14,9 @@ export interface EndpointSamplerOverride {
   enabled: boolean;
   value: number;
 }
+
+/** A separately persisted output limit: unlike sampler overrides, internal calls can supersede it. */
+export type EndpointMaxOutputOverride = EndpointSamplerOverride;
 
 export type EndpointSamplerOverrides = Record<EndpointSampler, EndpointSamplerOverride>;
 
@@ -44,4 +48,14 @@ export function coerceEndpointSamplerOverrides(raw: unknown): EndpointSamplerOve
       value: typeof record.value === 'number' && Number.isFinite(record.value) ? record.value : defaults[sampler].value,
     }];
   })) as EndpointSamplerOverrides;
+}
+
+/** Existing endpoint caps stay enabled when this switch is first introduced. */
+export function coerceEndpointMaxOutputOverride(raw: unknown, legacyValue = DEFAULT_MAX_TOKENS): EndpointMaxOutputOverride {
+  if (!raw || typeof raw !== 'object') return { enabled: true, value: legacyValue };
+  const record = raw as Record<string, unknown>;
+  return {
+    enabled: record.enabled !== false,
+    value: typeof record.value === 'number' && Number.isFinite(record.value) ? record.value : legacyValue,
+  };
 }

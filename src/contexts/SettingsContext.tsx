@@ -20,6 +20,7 @@ import {
   isEngineActive as isTextEngineActive, setActive as textSetActive,
   addPreset as textAddPreset, renamePreset as textRenamePreset, deletePreset as textDeletePreset,
   resetPreset as textResetPreset, updateValue as textUpdateValue, updateSamplerOverride as textUpdateSamplerOverride,
+  updateMaxOutputOverride as textUpdateMaxOutputOverride,
   type TextEndpointPresetStore, type TextEndpointValues, type TextEndpointValueKey,
 } from '../lib/textEndpointPresets';
 import type { EndpointSampler } from '../lib/endpointSamplers';
@@ -134,7 +135,7 @@ function seedTextPresetStore(): TextEndpointPresetStore {
     model: get('modelName') ?? DEFAULT_MODEL_NAME,
     contextWindowOverride:
       overrideRaw === null || overrideRaw === '' || !Number.isFinite(parseInt(overrideRaw)) ? null : parseInt(overrideRaw),
-    maxTokens: maxRaw === null ? DEFAULT_MAX_TOKENS : parseInt(maxRaw) || DEFAULT_MAX_TOKENS,
+    maxOutputOverride: { enabled: true, value: maxRaw === null ? DEFAULT_MAX_TOKENS : parseInt(maxRaw) || DEFAULT_MAX_TOKENS },
     samplerOverrides: DEFAULT_TEXT_ENDPOINT_VALUES.samplerOverrides,
   };
   // Endpoints compare normalized: a legacy install stashed the built-in as a full chat-completions URL, and
@@ -451,12 +452,24 @@ function useProvideSettings() {
       setTextPresetStore((s) => textUpdateValue(s, key, value)),
     [setTextPresetStore],
   );
-  const { endpoint: endpointUrl, apiToken, model: modelName, contextWindowOverride, maxTokens } = textValues;
+  const { endpoint: endpointUrl, apiToken, model: modelName, contextWindowOverride, maxOutputOverride } = textValues;
+  const maxTokens = maxOutputOverride.value;
   const setEndpointUrl = useMemo(() => patchText('endpoint'), [patchText]);
   const setApiToken = useMemo(() => patchText('apiToken'), [patchText]);
   const setModelName = useMemo(() => patchText('model'), [patchText]);
   const setContextWindowOverride = useMemo(() => patchText('contextWindowOverride'), [patchText]);
-  const setMaxTokens = useMemo(() => patchText('maxTokens'), [patchText]);
+  const setMaxTokens = useCallback((value: number) => {
+    setTextPresetStore((store) => {
+      const current = textActiveValues(store).maxOutputOverride;
+      return textUpdateMaxOutputOverride(store, store.activeId, { ...current, value });
+    });
+  }, [setTextPresetStore]);
+  const setMaxOutputOverrideEnabled = useCallback((enabled: boolean) => {
+    setTextPresetStore((store) => {
+      const current = textActiveValues(store).maxOutputOverride;
+      return textUpdateMaxOutputOverride(store, store.activeId, { ...current, enabled });
+    });
+  }, [setTextPresetStore]);
   const setEndpointSampler = useCallback((sampler: EndpointSampler, patch: { enabled?: boolean; value?: number }) => {
     setTextPresetStore((store) => {
       const current = textActiveValues(store).samplerOverrides[sampler];
@@ -520,7 +533,7 @@ function useProvideSettings() {
   const engineState = useLocalLlmStatus();
   // Honor the desktop local engine's own cap when it's active; otherwise the active endpoint preset's cap
   // (the Default preset holds DEFAULT_MAX_TOKENS, so a Default selection matches the shared-endpoint cap).
-  const activeMaxTokens = localModelActive ? localMaxTokens : maxTokens;
+  const activeMaxTokens = localModelActive ? localMaxTokens : maxOutputOverride.enabled ? maxTokens : undefined;
 
   // Generation sampling for the local model — sent while the local engine is active.
   const [genTemperature, setGenTemperature] = usePersistentState<number>(`${APP_ID}_genTemperature`, DEFAULT_GEN_TEMPERATURE, floatCodec);
@@ -942,6 +955,7 @@ function useProvideSettings() {
       const source = textActiveValues(s);
       return textAddPreset(s, id, name, {
         ...source,
+        maxOutputOverride: { ...source.maxOutputOverride, enabled: false },
         samplerOverrides: Object.fromEntries(
           Object.entries(source.samplerOverrides).map(([sampler, override]) => [sampler, { ...override, enabled: false }]),
         ) as typeof source.samplerOverrides,
@@ -1261,6 +1275,8 @@ function useProvideSettings() {
     setModelName,
     maxTokens,
     setMaxTokens,
+    maxOutputOverrideEnabled: maxOutputOverride.enabled,
+    setMaxOutputOverrideEnabled,
     endpointSamplerOverrides: textValues.samplerOverrides,
     setEndpointSamplerEnabled,
     setEndpointSamplerValue,

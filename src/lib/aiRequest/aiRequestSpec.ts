@@ -15,7 +15,7 @@ export interface AiEndpointTarget {
   url: string;
   apiToken: string;
   model: string;
-  maxTokens: number;
+  maxTokens: number | undefined;
   /** Send the desktop bundled engine's body shape (top_p/top_k/min_p, token-budget reasoning). */
   localEngine: boolean;
   /** Per-endpoint sampler switches and remembered values. The engine ignores these. */
@@ -58,7 +58,7 @@ export interface AiCall {
 export interface AiRequestBody {
   model: string;
   messages: ChatMessage[];
-  max_tokens: number;
+  max_tokens?: number;
   stream: true;
   top_p?: number;
   top_k?: number;
@@ -80,6 +80,8 @@ export interface AiRequestSpec {
   requestType: AIRequestType;
   /** Where every emitted sampler value came from, retained for targeted rejection handling. */
   samplerSources: Partial<Record<EndpointSampler, 'prompt' | 'prompt-pin' | 'endpoint' | 'local-engine'>>;
+  /** Origin of an emitted output cap, kept apart from the sampler provenance. */
+  maxTokensSource?: 'internal' | 'endpoint' | 'local-engine';
 }
 
 /** The `/no_think` soft switch (Qwen-style) applies to every request type, so a reasoning model's scratchpad
@@ -148,7 +150,7 @@ function bodyForTarget(snapshot: AiSettingsSnapshot, call: AiCall, target: AiEnd
   return {
     model: target.model,
     messages: buildMessages(snapshot, call),
-    max_tokens: maxTokens,
+    ...(maxTokens !== undefined && { max_tokens: maxTokens }),
     stream: true,
     ...(localEngine
       ? { top_p: snapshot.genTopP, top_k: snapshot.genTopK, min_p: snapshot.genMinP }
@@ -160,7 +162,7 @@ function bodyForTarget(snapshot: AiSettingsSnapshot, call: AiCall, target: AiEnd
     ...(temperature.value !== undefined && { temperature: temperature.value }),
     ...(repetitionPenalty.value !== undefined && { repetition_penalty: repetitionPenalty.value, repeat_penalty: repetitionPenalty.value }),
     ...(localEngine
-      ? reasoningBudgetBody(snapshot.thinkingMode, requestType, snapshot.promptReasoningBudget, maxTokens)
+      ? reasoningBudgetBody(snapshot.thinkingMode, requestType, snapshot.promptReasoningBudget, maxTokens ?? 0)
       : snapshot.reasoningEngaged
         ? reasoningEffortBody(
             snapshot.thinkingMode,
@@ -191,6 +193,11 @@ export function buildAiRequestSpec(snapshot: AiSettingsSnapshot, call: AiCall): 
     body: bodyForTarget(snapshot, call, target),
     target,
     requestType: call.requestType,
+    ...(call.maxTokensOverride !== null && call.maxTokensOverride !== undefined
+      ? { maxTokensSource: 'internal' as const }
+      : target.maxTokens !== undefined
+        ? { maxTokensSource: target.localEngine ? 'local-engine' as const : 'endpoint' as const }
+        : {}),
     samplerSources: {
       ...(samplers.temperature.source && { temperature: samplers.temperature.source }),
       ...(samplers.repetitionPenalty.source && { repetitionPenalty: samplers.repetitionPenalty.source }),

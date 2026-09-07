@@ -536,6 +536,8 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, initialTab,
     setModelName,
     maxTokens,
     setMaxTokens,
+    maxOutputOverrideEnabled,
+    setMaxOutputOverrideEnabled,
     endpointSamplerOverrides,
     setEndpointSamplerEnabled,
     setEndpointSamplerValue,
@@ -920,10 +922,10 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, initialTab,
   // Memoized because the Anatomy hub keys its whole assembly on this pool (see `hubSettings`).
   const effectivePreviewValues = useMemo(
     () => composePreviewValues(
-      { paragraphLimit, maxTokens, markdownOutput, sectionStyle: activeSectionStyle, limitActiveCharacters, activeCharacterLimit, language },
+      { paragraphLimit, maxTokens: maxOutputOverrideEnabled ? maxTokens : undefined, markdownOutput, sectionStyle: activeSectionStyle, limitActiveCharacters, activeCharacterLimit, language },
       previewValues,
     ),
-    [paragraphLimit, maxTokens, markdownOutput, activeSectionStyle, limitActiveCharacters, activeCharacterLimit, language, previewValues],
+    [paragraphLimit, maxTokens, maxOutputOverrideEnabled, markdownOutput, activeSectionStyle, limitActiveCharacters, activeCharacterLimit, language, previewValues],
   );
   // The choices prompt's language chip names itself in the directive, so its preview says "choices" where
   // the pool's default says "narration".
@@ -2003,14 +2005,27 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, initialTab,
                 </div>
               </Row>
               <Row htmlFor="maxTokens" {...rowCopy('maxOutputTokens')}>
-                <Input
-                  id="maxTokens"
-                  type="number"
-                  value={maxTokens}
-                  onChange={(e) => setMaxTokens(numInput(e.target.value, 1))}
-                  readOnly={activeTextEndpointPresetIsBuiltIn}
-                  className={activeTextEndpointPresetIsBuiltIn ? 'opacity-60 cursor-not-allowed' : undefined}
-                />
+                <div className="space-y-2">
+                  <div className="flex items-center gap-2">
+                    <Checkbox
+                      id="maxTokensEnabled"
+                      checked={maxOutputOverrideEnabled}
+                      disabled={localModelActive}
+                      onCheckedChange={(checked) => setMaxOutputOverrideEnabled(checked === true)}
+                    />
+                    <label htmlFor="maxTokensEnabled" className="text-label">Override endpoint limit</label>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <Input
+                      id="maxTokens"
+                      type="number"
+                      value={maxTokens}
+                      onChange={(e) => setMaxTokens(numInput(e.target.value, 1))}
+                      disabled={localModelActive || !maxOutputOverrideEnabled}
+                    />
+                    {!maxOutputOverrideEnabled && <span className="text-helper text-muted-foreground">Endpoint default</span>}
+                  </div>
+                </div>
               </Row>
               <Section title="Sampling">
                 <p className="text-helper text-muted-foreground">
