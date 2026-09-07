@@ -1,10 +1,14 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { StrictMode } from 'react';
-import { render, screen, waitFor } from '@testing-library/react';
+import { act, cleanup, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { RegisterPage } from './RegisterPage';
+import { LoginPage } from './LoginPage';
+import { ProfilePage } from './ProfilePage';
 import { leaveTo } from '../leaveSite';
 import { at, res, resetAccountPage, signIn } from '../test/support';
+import { AGE_GATE_VERSION } from '@/lib/ageGate';
+import AuthService from '@/services/AuthService';
 
 vi.mock('../leaveSite', () => ({ leaveTo: vi.fn() }));
 
@@ -32,6 +36,167 @@ const sentBody = () => {
 };
 
 describe('RegisterPage', () => {
+  it('carries the warning answer through account creation after the Privacy Policy step', async () => {
+    at('/u/alice');
+    vi.mocked(fetch).mockImplementation((input) => Promise.resolve(
+      String(input).includes('/by-username/')
+        ? res({
+          success: true,
+          data: {
+            id: 'u1',
+            username: 'alice',
+            avatarUrl: null,
+            createdAt: '2026-01-02T00:00:00.000Z',
+            role: 'normal',
+            followers: 0,
+            likes: 0,
+            downloads: 0,
+          },
+        })
+        : res({ success: true, data: [] }),
+    ));
+    render(<ProfilePage username="alice" />);
+    await userEvent.setup().click(screen.getByRole('button', { name: 'Accept' }));
+    const loginHref = screen.getByRole('link', { name: 'Sign In' }).getAttribute('href');
+
+    cleanup();
+    at(loginHref!);
+    render(<LoginPage />);
+    const registerHref = screen.getByRole('link', { name: 'Create one' }).getAttribute('href');
+    expect(registerHref).toMatch(/^\/register\?contentWarningFlow=/);
+
+    cleanup();
+    at(registerHref!);
+    vi.mocked(fetch).mockReset();
+    vi.mocked(fetch)
+      .mockResolvedValueOnce(res({
+        privacyPolicy: { title: 'Privacy Policy', body: 'What we store.' },
+      }))
+      .mockResolvedValueOnce(res({ token: 'tok', user: { id: 'u1', username: 'alice' } }))
+      .mockResolvedValueOnce(res({ success: true, accepted: true }))
+      .mockResolvedValueOnce(res({ accepted: false, requiredVersion: AGE_GATE_VERSION, acceptedAt: null }))
+      .mockResolvedValueOnce(res({
+        accepted: true,
+        requiredVersion: AGE_GATE_VERSION,
+        acceptedAt: '2026-09-06T12:00:00.000Z',
+      }));
+    render(<RegisterPage />);
+    expect(screen.getByRole('link', { name: 'Sign in' })).toHaveAttribute('href', loginHref);
+
+    await fillIn('alice', 'hunter22');
+    await userEvent.click(await screen.findByRole('button', { name: 'Accept and Create Account' }));
+
+    await waitFor(() => expect(leaveTo).toHaveBeenCalledWith('/'));
+    expect(vi.mocked(fetch).mock.calls.map(([url]) => String(url))).toEqual([
+      expect.stringMatching(/\/policies\/privacy-policy$/),
+      expect.stringMatching(/\/auth\/register$/),
+      expect.stringMatching(/\/policies\/privacy-policy\/accept$/),
+      expect.stringMatching(/\/policies\/age-gate$/),
+      expect.stringMatching(/\/policies\/age-gate\/accept$/),
+    ]);
+  });
+
+  it('cannot bind the pending answer to an account adopted while Privacy is being accepted', async () => {
+    at('/u/alice');
+    vi.mocked(fetch).mockImplementation((input) => Promise.resolve(
+      String(input).includes('/by-username/')
+        ? res({
+          success: true,
+          data: {
+            id: 'u1', username: 'alice', avatarUrl: null,
+            createdAt: '2026-01-02T00:00:00.000Z', role: 'normal',
+            followers: 0, likes: 0, downloads: 0,
+          },
+        })
+        : res({ success: true, data: [] }),
+    ));
+    render(<ProfilePage username="alice" />);
+    await userEvent.setup().click(screen.getByRole('button', { name: 'Accept' }));
+    const loginHref = screen.getByRole('link', { name: 'Sign In' }).getAttribute('href');
+    cleanup();
+    at(loginHref!);
+    render(<LoginPage />);
+    const registerHref = screen.getByRole('link', { name: 'Create one' }).getAttribute('href');
+    cleanup();
+    at(registerHref!);
+
+    let finishPrivacy: (response: Response) => void = () => {};
+    vi.mocked(fetch).mockReset();
+    vi.mocked(fetch)
+      .mockResolvedValueOnce(res({ privacyPolicy: { title: 'Privacy Policy', body: 'What we store.' } }))
+      .mockResolvedValueOnce(res({ token: 'created-token', user: { id: 'u1', username: 'alice' } }))
+      .mockImplementationOnce(() => new Promise<Response>((resolve) => { finishPrivacy = resolve; }));
+    render(<RegisterPage />);
+
+    await fillIn('alice', 'hunter22');
+    await userEvent.click(await screen.findByRole('button', { name: 'Accept and Create Account' }));
+    await waitFor(() => expect(AuthService.token).toBe('created-token'));
+
+    localStorage.setItem(AuthService.tokenKey, 'other-token');
+    localStorage.setItem(AuthService.userKey, JSON.stringify({ id: 'u2', username: 'other' }));
+    window.dispatchEvent(new StorageEvent('storage', {
+      key: AuthService.tokenKey,
+      newValue: 'other-token',
+    }));
+    await act(async () => finishPrivacy(res({ success: true, accepted: true })));
+
+    expect(leaveTo).not.toHaveBeenCalled();
+    expect(vi.mocked(fetch).mock.calls.some(([url]) => String(url).includes('/policies/age-gate')))
+      .toBe(false);
+  });
+
+  it('retries only the warning persistence after the account has been created', async () => {
+    at('/u/alice');
+    vi.mocked(fetch).mockImplementation((input) => Promise.resolve(
+      String(input).includes('/by-username/')
+        ? res({
+          success: true,
+          data: {
+            id: 'u1', username: 'alice', avatarUrl: null,
+            createdAt: '2026-01-02T00:00:00.000Z', role: 'normal',
+            followers: 0, likes: 0, downloads: 0,
+          },
+        })
+        : res({ success: true, data: [] }),
+    ));
+    render(<ProfilePage username="alice" />);
+    await userEvent.setup().click(screen.getByRole('button', { name: 'Accept' }));
+    const loginHref = screen.getByRole('link', { name: 'Sign In' }).getAttribute('href');
+    cleanup();
+    at(loginHref!);
+    render(<LoginPage />);
+    const registerHref = screen.getByRole('link', { name: 'Create one' }).getAttribute('href');
+    cleanup();
+    at(registerHref!);
+
+    vi.mocked(fetch).mockReset();
+    vi.mocked(fetch)
+      .mockResolvedValueOnce(res({}, false, 404))
+      .mockResolvedValueOnce(res({ token: 'tok', user: { id: 'u1', username: 'alice' } }))
+      .mockResolvedValueOnce(res({ accepted: false, requiredVersion: AGE_GATE_VERSION, acceptedAt: null }))
+      .mockResolvedValueOnce(res({ error: 'Could not save your answer' }, false, 503))
+      .mockResolvedValueOnce(res({ accepted: false, requiredVersion: AGE_GATE_VERSION, acceptedAt: null }))
+      .mockResolvedValueOnce(res({
+        accepted: true,
+        requiredVersion: AGE_GATE_VERSION,
+        acceptedAt: '2026-09-06T12:00:00.000Z',
+      }));
+    render(<RegisterPage />);
+
+    await fillIn('alice', 'hunter22');
+
+    expect(await screen.findByRole('alert')).toHaveTextContent('Could not save your answer');
+    expect(screen.getByRole('heading', { name: 'Finish Account Setup' })).toBeInTheDocument();
+    expect(leaveTo).not.toHaveBeenCalled();
+    await userEvent.setup().click(screen.getByRole('button', { name: 'Retry' }));
+
+    await waitFor(() => expect(leaveTo).toHaveBeenCalledWith('/'));
+    const urls = vi.mocked(fetch).mock.calls.map(([url]) => String(url));
+    expect(urls.filter((url) => url.endsWith('/auth/register'))).toHaveLength(1);
+    expect(urls.filter((url) => url.endsWith('/policies/age-gate'))).toHaveLength(2);
+    expect(urls.filter((url) => url.endsWith('/policies/age-gate/accept'))).toHaveLength(2);
+  });
+
   it('accepts the current privacy policy before the new account leaves the page', async () => {
     vi.mocked(fetch)
       .mockResolvedValueOnce(res({

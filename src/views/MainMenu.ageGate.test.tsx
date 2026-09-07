@@ -34,6 +34,10 @@ let running: unknown[] = [];
 let accountAccepted = false;
 let readAccount: () => Promise<Response>;
 let failedWrites = 0;
+let failedLogins = 0;
+let privacyPolicy: { title: string; body: string } | null = null;
+let acceptPrivacy: () => Promise<Response>;
+let accountPrivacyPending = false;
 
 /** What was asked of the community server — anything else (assets, the update check) is not its business. */
 const serverCalls = () => requested.filter((url) => url.startsWith(AuthService.API_URL));
@@ -52,8 +56,13 @@ beforeEach(() => {
   running = [];
   accountAccepted = false;
   failedWrites = 0;
+  failedLogins = 0;
+  privacyPolicy = null;
+  accountPrivacyPending = false;
+  acceptPrivacy = () => Promise.resolve(answer({ success: true, accepted: true }));
   readAccount = () => Promise.resolve(answer({ accepted: accountAccepted, requiredVersion: AGE_GATE_VERSION, acceptedAt: null }));
   localStorage.clear();
+  sessionStorage.clear();
   AuthService.token = null;
   AuthService.currentUser = null;
 
@@ -70,6 +79,33 @@ beforeEach(() => {
       }
       accountAccepted = true;
       return answer({ accepted: true, requiredVersion: AGE_GATE_VERSION, acceptedAt: new Date().toISOString() });
+    }
+    if (url.endsWith('/auth/login')) {
+      if (failedLogins > 0) {
+        failedLogins -= 1;
+        return new Response(JSON.stringify({ message: 'Invalid credentials' }), { status: 401 });
+      }
+      return answer({ token: 'signed-token', user: { id: 'u1', username: 'alice' } });
+    }
+    if (url.endsWith('/auth/register')) {
+      return answer({ token: 'registered-token', user: { id: 'u1', username: 'alice' } });
+    }
+    if (url.endsWith('/policies/privacy-policy/accept')) {
+      return acceptPrivacy();
+    }
+    if (url.endsWith('/policies/privacy-policy')) {
+      return privacyPolicy
+        ? answer({ privacyPolicy })
+        : new Response(JSON.stringify({}), { status: 404 });
+    }
+    if (url.endsWith('/policies')) {
+      return answer({
+        uploadGate: null,
+        tagNotice: null,
+        privacyPolicy: accountPrivacyPending && privacyPolicy
+          ? { ...privacyPolicy, tags: [], accepted: false }
+          : null,
+      });
     }
     if (url.startsWith(`${AuthService.API_URL}/events/active`)) return answer({ data: running });
     return answer({ data: [] });
@@ -92,6 +128,12 @@ const withStoredSession = () => {
 const openCommunity = () => fireEvent.click(screen.getByRole('button', { name: /Community Creations/ }));
 const gate = () => screen.queryByRole('dialog', { name: /Adult Content Ahead/ });
 const browser = () => screen.queryByRole('dialog', { name: /Community Creations/ });
+
+const submitLogin = () => {
+  fireEvent.change(screen.getByPlaceholderText('Enter your username'), { target: { value: 'alice' } });
+  fireEvent.change(screen.getByPlaceholderText('Enter your password'), { target: { value: 'hunter22' } });
+  fireEvent.click(screen.getByRole('button', { name: 'Login' }));
+};
 
 describe('the account lookup at boot', () => {
   it('asks the server for nothing but the acceptance lookup and announcements while a held session has not answered', async () => {
@@ -301,6 +343,227 @@ describe('the age gate in front of signing in', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Login' }));
 
     expect(gate()).not.toBeInTheDocument();
+  });
+
+  it('records the answer made for this login and continues without asking twice', async () => {
+    renderMainMenu();
+    fireEvent.click(screen.getByRole('button', { name: 'Login' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Accept' }));
+    submitLogin();
+
+    await waitFor(() => expect(accountAccepted).toBe(true));
+    expect(gate()).not.toBeInTheDocument();
+    expect(AuthService.isAuthenticated()).toBe(true);
+    expect(requested.filter((url) => url.endsWith('/auth/login'))).toHaveLength(1);
+    expect(requested.filter((url) => url.endsWith('/policies/age-gate/accept'))).toHaveLength(1);
+    await waitFor(() => expect(requested.some((url) => url.endsWith('/policies'))).toBe(true));
+    const accountOrder = requested.filter((url) => /\/auth\/login$|\/policies(?:\/age-gate(?:\/accept)?)?$/.test(url));
+    expect(accountOrder).toEqual([
+      expect.stringMatching(/\/auth\/login$/),
+      expect.stringMatching(/\/policies\/age-gate$/),
+      expect.stringMatching(/\/policies\/age-gate\/accept$/),
+      expect.stringMatching(/\/policies$/),
+    ]);
+
+    cleanup();
+    requested = [];
+    localStorage.removeItem(STORAGE_KEY);
+    renderMainMenu();
+    await waitFor(() => expect(requested.some(isAcceptanceLookup)).toBe(true));
+    expect(gate()).not.toBeInTheDocument();
+  });
+
+  it('keeps an in-page login flow when session storage is unavailable', async () => {
+    const setItem = Storage.prototype.setItem;
+    vi.spyOn(Storage.prototype, 'setItem').mockImplementation(function (this: Storage, key, value) {
+      if (this === window.sessionStorage) {
+        throw new DOMException('Storage is unavailable', 'SecurityError');
+      }
+      setItem.call(this, key, value);
+    });
+    renderMainMenu();
+    fireEvent.click(screen.getByRole('button', { name: 'Login' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Accept' }));
+    submitLogin();
+
+    await waitFor(() => expect(accountAccepted).toBe(true));
+    expect(requested.filter((url) => url.endsWith('/policies/age-gate/accept'))).toHaveLength(1);
+  });
+
+  it('keeps the explicit answer through a failed login retry', async () => {
+    failedLogins = 1;
+    renderMainMenu();
+    fireEvent.click(screen.getByRole('button', { name: 'Login' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Accept' }));
+    submitLogin();
+
+    expect(await screen.findByText('Invalid credentials')).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Login' }));
+
+    await waitFor(() => expect(accountAccepted).toBe(true));
+    expect(requested.filter((url) => url.endsWith('/auth/login'))).toHaveLength(2);
+    expect(requested.filter((url) => url.endsWith('/policies/age-gate/accept'))).toHaveLength(1);
+  });
+
+  it('retries persistence after login without submitting the credentials again', async () => {
+    failedWrites = 1;
+    renderMainMenu();
+    fireEvent.click(screen.getByRole('button', { name: 'Login' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Accept' }));
+    submitLogin();
+
+    expect(await screen.findByRole('alert')).toHaveTextContent('Could not save your answer');
+    fireEvent.click(screen.getByRole('button', { name: 'Retry' }));
+
+    await waitFor(() => expect(accountAccepted).toBe(true));
+    expect(requested.filter((url) => url.endsWith('/auth/login'))).toHaveLength(1);
+    expect(requested.filter((url) => url.endsWith('/policies/age-gate/accept'))).toHaveLength(2);
+  });
+
+  it('does not upload an older local answer when this login showed no warning', async () => {
+    acceptAgeGate();
+    renderMainMenu();
+    fireEvent.click(screen.getByRole('button', { name: 'Login' }));
+    submitLogin();
+
+    expect(await screen.findByRole('dialog', { name: /Adult Content Ahead/ })).toBeInTheDocument();
+    expect(requested.filter((url) => url.endsWith('/policies/age-gate/accept'))).toHaveLength(0);
+  });
+
+  it('drops an explicit answer when the login dialog is canceled', async () => {
+    renderMainMenu();
+    fireEvent.click(screen.getByRole('button', { name: 'Login' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Accept' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Close' }));
+
+    await act(async () => { await AuthService.login('alice', 'hunter22'); });
+
+    expect(await screen.findByRole('dialog', { name: /Adult Content Ahead/ })).toBeInTheDocument();
+    expect(requested.filter((url) => url.endsWith('/policies/age-gate/accept'))).toHaveLength(0);
+  });
+
+  it('cannot finish the login callback for an account replaced during persistence', async () => {
+    let resolveFirst: (response: Response) => void = () => {};
+    let reads = 0;
+    readAccount = () => {
+      reads += 1;
+      return reads === 1
+        ? new Promise<Response>((resolve) => { resolveFirst = resolve; })
+        : Promise.resolve(answer({ accepted: false, requiredVersion: AGE_GATE_VERSION, acceptedAt: null }));
+    };
+    renderMainMenu();
+    fireEvent.click(screen.getByRole('button', { name: 'Login' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Accept' }));
+    submitLogin();
+    await waitFor(() => expect(reads).toBe(1));
+
+    localStorage.setItem(AuthService.tokenKey, 'other-token');
+    localStorage.setItem(AuthService.userKey, JSON.stringify({ id: 'u2', username: 'other' }));
+    fireEvent(window, new StorageEvent('storage', {
+      key: AuthService.tokenKey,
+      newValue: 'other-token',
+    }));
+    await waitFor(() => expect(reads).toBe(2));
+    await act(async () => resolveFirst(answer({
+      accepted: false,
+      requiredVersion: AGE_GATE_VERSION,
+      acceptedAt: null,
+    })));
+
+    expect(gate()).toBeInTheDocument();
+    expect(requested.filter((url) => url.endsWith('/policies/age-gate/accept'))).toHaveLength(0);
+  });
+
+  it('records the same explicit answer after creating an account', async () => {
+    renderMainMenu();
+    fireEvent.click(screen.getByRole('button', { name: 'Login' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Accept' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Create Account' }));
+    fireEvent.change(screen.getByPlaceholderText('Enter your username'), { target: { value: 'alice' } });
+    fireEvent.change(screen.getByPlaceholderText('Enter your password'), { target: { value: 'hunter22' } });
+    fireEvent.change(screen.getByPlaceholderText('Confirm your password'), { target: { value: 'hunter22' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Register' }));
+
+    await waitFor(() => expect(accountAccepted).toBe(true));
+    expect(requested.filter((url) => url.endsWith('/auth/register'))).toHaveLength(1);
+    expect(requested.filter((url) => url.endsWith('/policies/age-gate/accept'))).toHaveLength(1);
+  });
+
+  it('does not carry a signup answer into an account adopted while Privacy is being accepted', async () => {
+    privacyPolicy = { title: 'Privacy Policy', body: 'What we store.' };
+    let finishPrivacy: (response: Response) => void = () => {};
+    acceptPrivacy = () => new Promise<Response>((resolve) => { finishPrivacy = resolve; });
+    renderMainMenu();
+    fireEvent.click(screen.getByRole('button', { name: 'Login' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Accept' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Create Account' }));
+    fireEvent.change(screen.getByPlaceholderText('Enter your username'), { target: { value: 'alice' } });
+    fireEvent.change(screen.getByPlaceholderText('Enter your password'), { target: { value: 'hunter22' } });
+    fireEvent.change(screen.getByPlaceholderText('Confirm your password'), { target: { value: 'hunter22' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Register' }));
+    fireEvent.click(await screen.findByRole('button', { name: 'Accept and Create Account' }));
+    await waitFor(() => expect(AuthService.token).toBe('registered-token'));
+
+    localStorage.setItem(AuthService.tokenKey, 'other-token');
+    localStorage.setItem(AuthService.userKey, JSON.stringify({ id: 'u2', username: 'other' }));
+    fireEvent(window, new StorageEvent('storage', {
+      key: AuthService.tokenKey,
+      newValue: 'other-token',
+    }));
+    await act(async () => finishPrivacy(answer({ success: true, accepted: true })));
+
+    await waitFor(() => expect(gate()).toBeInTheDocument());
+    expect(requested.filter((url) => url.endsWith('/policies/age-gate/accept'))).toHaveLength(0);
+  });
+
+  it('does not check a new account warning answer before Privacy finishes', async () => {
+    acceptAgeGate();
+    privacyPolicy = { title: 'Privacy Policy', body: 'What we store.' };
+    let finishPrivacy: (response: Response) => void = () => {};
+    acceptPrivacy = () => new Promise<Response>((resolve) => { finishPrivacy = resolve; });
+    renderMainMenu();
+    fireEvent.click(screen.getByRole('button', { name: 'Login' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Create Account' }));
+    fireEvent.change(screen.getByPlaceholderText('Enter your username'), { target: { value: 'alice' } });
+    fireEvent.change(screen.getByPlaceholderText('Enter your password'), { target: { value: 'hunter22' } });
+    fireEvent.change(screen.getByPlaceholderText('Confirm your password'), { target: { value: 'hunter22' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Register' }));
+    fireEvent.click(await screen.findByRole('button', { name: 'Accept and Create Account' }));
+    await waitFor(() => expect(AuthService.token).toBe('registered-token'));
+
+    expect(requested.filter((url) => url.endsWith('/policies/age-gate'))).toHaveLength(0);
+
+    await act(async () => finishPrivacy(answer({ success: true, accepted: true })));
+    expect(await screen.findByRole('dialog', { name: /Adult Content Ahead/ })).toBeInTheDocument();
+  });
+
+  it('finishes Privacy recovery before retrying the carried warning answer', async () => {
+    privacyPolicy = { title: 'Privacy Policy', body: 'What we store.' };
+    accountPrivacyPending = true;
+    let privacyWrites = 0;
+    acceptPrivacy = () => {
+      privacyWrites += 1;
+      if (privacyWrites <= 2) return Promise.reject(new Error('Privacy save failed'));
+      accountPrivacyPending = false;
+      return Promise.resolve(answer({ success: true, accepted: true }));
+    };
+    renderMainMenu();
+    fireEvent.click(screen.getByRole('button', { name: 'Login' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Accept' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Create Account' }));
+    fireEvent.change(screen.getByPlaceholderText('Enter your username'), { target: { value: 'alice' } });
+    fireEvent.change(screen.getByPlaceholderText('Enter your password'), { target: { value: 'hunter22' } });
+    fireEvent.change(screen.getByPlaceholderText('Confirm your password'), { target: { value: 'hunter22' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Register' }));
+    fireEvent.click(await screen.findByRole('button', { name: 'Accept and Create Account' }));
+
+    expect(await screen.findByRole('button', { name: 'Sign Out' })).toBeInTheDocument();
+    expect(gate()).not.toBeInTheDocument();
+    expect(requested.filter((url) => url.endsWith('/policies/age-gate'))).toHaveLength(0);
+
+    fireEvent.click(screen.getByRole('button', { name: 'Accept' }));
+    await waitFor(() => expect(accountAccepted).toBe(true));
+    expect(requested.filter((url) => url.endsWith('/policies/age-gate/accept'))).toHaveLength(1);
   });
 });
 

@@ -20,6 +20,7 @@ import { NotificationsTab } from "@/components/menu/NotificationsTab";
 import { TermsTab } from "@/components/menu/TermsTab";
 import { PolicyDialog } from "@/components/menu/PolicyDialog";
 import { usePrivacyPolicy } from "@/contexts/PrivacyPolicyContext";
+import { useAgeGate } from "@/contexts/AgeGateContext";
 import { useAccountDeletion } from "@/contexts/AccountDeletionContext";
 import PolicyService from "@/services/PolicyService";
 import AuthService from "@/services/AuthService";
@@ -144,6 +145,7 @@ export function AuthModals({
   // The signed-in prompt. Registration answers the policy on its own, but a sign-in has to ask the
   // server whether this account already has.
   const { checkNow: checkPrivacyPolicy } = usePrivacyPolicy();
+  const { authenticationSucceeded, authenticationAbandoned } = useAgeGate();
 
   // Ending the account, and the notice that signing in has just called such an ending off. Both live
   // above the menu, because the privacy prompt raises the same flow from over the top of every screen.
@@ -182,15 +184,13 @@ export function AuthModals({
     try {
       const { deletionCancelled } = await AuthService.login(username, password);
       onAuthenticated();
+      authenticationSucceeded(() => { void checkPrivacyPolicy(); });
       setShowAuthDialog(false);
       resetAuthForms();
       toast.success('Logged in successfully');
       // Signing in is what cancels a pending deletion, and the server does it without being asked. The
       // account may not remember asking, so it is said out loud rather than left to be noticed.
       if (deletionCancelled) noticeCancelled();
-      // After the dialog closes, so the prompt is not raised behind it. An account that has already
-      // accepted sees nothing.
-      void checkPrivacyPolicy();
     } catch (error) {
       setAuthError((error as Error).message || 'Login failed');
     }
@@ -259,6 +259,7 @@ export function AuthModals({
   const createAccount = async (): Promise<boolean> => {
     try {
       await AuthService.register(username, password, email.trim());
+      authenticationSucceeded();
       return true;
     } catch (error) {
       setAuthError((error as Error).message || 'Registration failed');
@@ -268,9 +269,10 @@ export function AuthModals({
 
   /** Hand the new session to the parent and close up. Both signup paths end here, so neither can
    *  quietly skip a step the other takes. */
-  const finishSignup = () => {
+  const finishSignup = (resolveAgeGate = true) => {
     setSignupPolicy(null);
     onAuthenticated();
+    if (resolveAgeGate) authenticationSucceeded(() => { void checkPrivacyPolicy(); });
     setShowAuthDialog(false);
     resetAuthForms();
     toast.success('Registered successfully');
@@ -286,6 +288,7 @@ export function AuthModals({
    */
   const acceptAtSignup = async () => {
     setSignupBusy(true);
+    let privacyAccepted = true;
     try {
       if (!await createAccount()) {
         setSignupPolicy(null);
@@ -300,11 +303,12 @@ export function AuthModals({
         } catch (error) {
           console.error('Failed to record the privacy acceptance after signup:', error);
           toast.warn('Your account was created, but recording your acceptance failed. You will be asked again.');
+          privacyAccepted = false;
           void checkPrivacyPolicy();
         }
       }
 
-      finishSignup();
+      finishSignup(privacyAccepted);
     } finally {
       setSignupBusy(false);
     }
@@ -335,7 +339,13 @@ export function AuthModals({
 
   return (
     <>
-      <Dialog open={showAuthDialog} onOpenChange={setShowAuthDialog}>
+      <Dialog
+        open={showAuthDialog}
+        onOpenChange={(open) => {
+          if (!open) authenticationAbandoned();
+          setShowAuthDialog(open);
+        }}
+      >
         <DialogContent className="sm:max-w-[425px]">
           <DialogHeader>
             <DialogTitle>{authMode === 'login' ? 'Login' : 'Register'}</DialogTitle>

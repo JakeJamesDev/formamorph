@@ -37,6 +37,7 @@ const FILES = [
   'src/components/menu/DeleteAccountDialog.tsx',
   'src/components/menu/ProfileAvatarEditor.tsx',
   'src/lib/ageGate.ts',
+  'src/lib/ageGateAuthentication.ts',
   'src/lib/apiBase.ts',
   'src/lib/avatar.ts',
   'src/lib/avatarCrop.ts',

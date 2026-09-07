@@ -8,6 +8,16 @@ import { SiteMarkdown } from '../components/SiteMarkdown';
 import { SiteLayout } from '../components/SiteLayout';
 import { leaveTo } from '../leaveSite';
 import { useNextPath } from '../useNextPath';
+import { useAgeGateAuthenticationHandoff } from '../ageGateAuthenticationContext';
+import {
+  AgeGateAuthenticationChangedError,
+  bindAgeGateAuthentication,
+  cancelAgeGateAuthentication,
+  completeAgeGateAuthentication,
+  readAgeGateAuthentication,
+  withAgeGateAuthentication,
+} from '@/lib/ageGateAuthentication';
+import type { BoundAgeGateAuthentication } from '@/types';
 
 /** Create an account on the site. Same rules as the game's own register form, and the same session. */
 export function RegisterPage() {
@@ -24,6 +34,44 @@ export function RegisterPage() {
   const [checking, setChecking] = useState(startedSignedIn);
   const [policy, setPolicy] = useState<PublicPrivacyPolicy | null>(null);
   const checkedExisting = useRef(false);
+  const [authenticationFlow] = useState(() => startedSignedIn ? null : readAgeGateAuthentication());
+  const continueAuthentication = useAgeGateAuthenticationHandoff(authenticationFlow);
+  const boundAgeGateAuthenticationRef = useRef<BoundAgeGateAuthentication | null>(null);
+  const [pendingAgeGateCompletion, setPendingAgeGateCompletion] =
+    useState<BoundAgeGateAuthentication | null>(null);
+
+  const bindPendingAgeGateAnswer = useCallback(() => {
+    if (!authenticationFlow) return null;
+    const bound = boundAgeGateAuthenticationRef.current ?? bindAgeGateAuthentication(authenticationFlow);
+    boundAgeGateAuthenticationRef.current = bound;
+    return bound;
+  }, [authenticationFlow]);
+
+  const persistAgeGateAnswer = useCallback(async (flow: BoundAgeGateAuthentication) => {
+    setBusy(true);
+    setError('');
+    try {
+      await completeAgeGateAuthentication(flow);
+      setPendingAgeGateCompletion(null);
+      leaveTo(next);
+    } catch (failure) {
+      if (failure instanceof AgeGateAuthenticationChangedError) setPendingAgeGateCompletion(null);
+      setError((failure as Error).message || 'Failed to record your content-warning answer');
+    } finally {
+      setBusy(false);
+    }
+  }, [next]);
+
+  const finishAuthentication = useCallback(async () => {
+    if (!authenticationFlow) {
+      leaveTo(next);
+      return;
+    }
+    const flow = bindPendingAgeGateAnswer();
+    if (!flow) return;
+    setPendingAgeGateCompletion(flow);
+    await persistAgeGateAnswer(flow);
+  }, [authenticationFlow, bindPendingAgeGateAnswer, next, persistAgeGateAnswer]);
 
   const checkAccountPolicy = useCallback(async () => {
     setChecking(true);
@@ -34,14 +82,14 @@ export function RegisterPage() {
       if (pending && !pending.accepted) {
         setPolicy({ title: pending.title, body: pending.body });
       } else {
-        leaveTo(next);
+        await finishAuthentication();
       }
     } catch (failure) {
       setError((failure as Error).message || 'Could not load the privacy policy');
     } finally {
       setChecking(false);
     }
-  }, [next]);
+  }, [finishAuthentication]);
 
   useEffect(() => {
     if (!startedSignedIn || checkedExisting.current) return;
@@ -96,8 +144,9 @@ export function RegisterPage() {
 
       await AuthService.register(username, password, email.trim());
       setAccountCreated(true);
+      bindPendingAgeGateAnswer();
       if (policyReadFailed) await checkAccountPolicy();
-      else leaveTo(next);
+      else await finishAuthentication();
     } catch (failure) {
       setError((failure as Error).message || 'Registration failed');
     } finally {
@@ -114,6 +163,7 @@ export function RegisterPage() {
       try {
         await AuthService.register(username, password, email.trim());
         setAccountCreated(true);
+        bindPendingAgeGateAnswer();
       } catch (failure) {
         setPolicy(null);
         setError((failure as Error).message || 'Registration failed');
@@ -124,7 +174,8 @@ export function RegisterPage() {
 
     try {
       await PolicyService.acceptPrivacyPolicy();
-      leaveTo(next);
+      setPolicy(null);
+      await finishAuthentication();
     } catch (failure) {
       setError(creating
         ? 'Your account was created, but recording your acceptance failed. Try again.'
@@ -138,6 +189,9 @@ export function RegisterPage() {
     setPolicy(null);
     setError('');
     if (accountCreated) {
+      const flow = boundAgeGateAuthenticationRef.current ?? authenticationFlow;
+      if (flow) cancelAgeGateAuthentication(flow);
+      boundAgeGateAuthenticationRef.current = null;
       AuthService.logout();
       setAccountCreated(false);
     }
@@ -167,16 +221,29 @@ export function RegisterPage() {
   }
 
   if (accountCreated) {
+    const finishingAgeGate = pendingAgeGateCompletion !== null;
     return (
       <SiteLayout title="Finish Account Setup">
         <p className="text-body text-muted-foreground">
-          {checking ? 'Checking your account…' : 'Your account is signed in, but its privacy answer could not be checked.'}
+          {checking
+            ? 'Checking your account…'
+            : finishingAgeGate
+              ? 'Your account is ready. Save the content-warning answer to continue.'
+              : 'Your account is signed in, but its privacy answer could not be checked.'}
         </p>
         {error && <p role="alert" className="mt-4 text-helper text-destructive">{error}</p>}
         {!checking && (
           <div className="mt-6 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
             <Button variant="outline" onClick={leavePolicy}>Sign Out</Button>
-            <Button onClick={() => { void checkAccountPolicy(); }}>Try Again</Button>
+            <Button
+              onClick={() => {
+                if (pendingAgeGateCompletion) void persistAgeGateAnswer(pendingAgeGateCompletion);
+                else void checkAccountPolicy();
+              }}
+              disabled={busy}
+            >
+              {busy ? 'Saving…' : finishingAgeGate ? 'Retry' : 'Try Again'}
+            </Button>
           </div>
         )}
       </SiteLayout>
@@ -193,7 +260,11 @@ export function RegisterPage() {
         busyLabel="Creating Account…"
         footer={<>
           Already have an account?{' '}
-          <a className="text-primary hover:underline" href={`/login${carry}`}>Sign in</a>
+          <a
+            className="text-primary hover:underline"
+            href={withAgeGateAuthentication(`/login${carry}`, authenticationFlow)}
+            onClick={continueAuthentication}
+          >Sign in</a>
         </>}
       >
         <Field

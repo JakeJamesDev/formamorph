@@ -4,7 +4,21 @@ import { AccountForm, Field } from '../components/AccountForm';
 import { SiteLayout } from '../components/SiteLayout';
 import { leaveTo } from '../leaveSite';
 import { useNextPath } from '../useNextPath';
+import { useAgeGateAuthenticationHandoff } from '../ageGateAuthenticationContext';
 import { recordDeletionCancellation } from '@/lib/deletionCancellation';
+import {
+  AgeGateAuthenticationChangedError,
+  bindAgeGateAuthentication,
+  completeAgeGateAuthentication,
+  readAgeGateAuthentication,
+  withAgeGateAuthentication,
+} from '@/lib/ageGateAuthentication';
+import type { BoundAgeGateAuthentication } from '@/types';
+
+interface PendingCompletion {
+  flow: BoundAgeGateAuthentication;
+  deletionCancelled: boolean;
+}
 
 /** Sign in on the site. The session it stores is the one `/play/` reads, because both are one origin. */
 export function LoginPage() {
@@ -14,6 +28,29 @@ export function LoginPage() {
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
+  const [authenticationFlow] = useState(readAgeGateAuthentication);
+  const continueAuthentication = useAgeGateAuthenticationHandoff(authenticationFlow);
+  const [pendingCompletion, setPendingCompletion] = useState<PendingCompletion | null>(null);
+
+  const finish = (deletionCancelled: boolean) => {
+    if (deletionCancelled) recordDeletionCancellation();
+    leaveTo(next);
+  };
+
+  const persistAnswer = async (pending: PendingCompletion) => {
+    setBusy(true);
+    setError('');
+    try {
+      await completeAgeGateAuthentication(pending.flow);
+      setPendingCompletion(null);
+      finish(pending.deletionCancelled);
+    } catch (failure) {
+      if (failure instanceof AgeGateAuthenticationChangedError) setPendingCompletion(null);
+      setError((failure as Error).message || 'Failed to record your content-warning answer');
+    } finally {
+      setBusy(false);
+    }
+  };
 
   const submit = async () => {
     setError('');
@@ -26,10 +63,20 @@ export function LoginPage() {
     setBusy(true);
     try {
       const result = await AuthService.login(username, password);
-      if (result.deletionCancelled) recordDeletionCancellation();
-      leaveTo(next);
+      if (!authenticationFlow) {
+        finish(result.deletionCancelled);
+        return;
+      }
+
+      const pending = {
+        flow: bindAgeGateAuthentication(authenticationFlow),
+        deletionCancelled: result.deletionCancelled,
+      };
+      setPendingCompletion(pending);
+      await persistAnswer(pending);
     } catch (failure) {
       setError((failure as Error).message || 'Login failed');
+    } finally {
       setBusy(false);
     }
   };
@@ -37,14 +84,21 @@ export function LoginPage() {
   return (
     <SiteLayout title="Sign In" subtitle="Your Formamorph account works here and in the game.">
       <AccountForm
-        onSubmit={() => { void submit(); }}
+        onSubmit={() => {
+          if (pendingCompletion) void persistAnswer(pendingCompletion);
+          else void submit();
+        }}
         error={error}
         busy={busy}
-        submitLabel="Sign In"
-        busyLabel="Signing In…"
+        submitLabel={pendingCompletion ? 'Retry' : 'Sign In'}
+        busyLabel={pendingCompletion ? 'Saving…' : 'Signing In…'}
         footer={<>
           No account yet?{' '}
-          <a className="text-primary hover:underline" href={`/register${carry}`}>Create one</a>
+          <a
+            className="text-primary hover:underline"
+            href={withAgeGateAuthentication(`/register${carry}`, authenticationFlow)}
+            onClick={continueAuthentication}
+          >Create one</a>
         </>}
       >
         <Field
