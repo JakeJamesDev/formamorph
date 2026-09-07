@@ -2,13 +2,13 @@
  * Whether this device has attested to being old enough for user-generated community content.
  *
  * The record is shaped like the server's policy acceptances — accepted, the version of the copy that was
- * accepted, and when — so a later server-side `age_gate` policy adopts this as its local mirror instead
- * of migrating it. Raising {@link AGE_GATE_VERSION} therefore re-prompts everyone, the same way an admin
- * resetting the upload gate does.
+ * accepted, and when — so the account-backed `age_gate` policy can use it as its local mirror. Raising
+ * {@link AGE_GATE_VERSION} therefore re-prompts everyone, the same way an admin resetting the upload
+ * gate does.
  *
- * Device-local rather than per-account, like the event acknowledgments: the attestation travels with the
- * app, so it works signed out and a wiped profile correctly asks again. Writes are try/catch'd because
- * private-mode browsers throw on `setItem`; a failed write just means the gate returns next launch.
+ * This store remains the authority for guests and a device mirror for signed-in accounts. Writes are
+ * try/catch'd because private-mode browsers throw on `setItem`; a failed write means the gate returns
+ * next launch.
  */
 
 const STORAGE_KEY = 'FORMAMORPH_ageGate';
@@ -60,4 +60,3 @@ export function acceptAgeGate(): void {
     /* private mode — this device attests again next session */
   }
 }
-
