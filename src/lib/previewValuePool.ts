@@ -240,7 +240,7 @@ export function languagePreviewValue(surface: LanguageSurface, language: string)
  */
 export function derivedPreviewValues(s: DerivedPreviewSettings): Record<string, string> {
   return {
-    '<LENGTH GUIDANCE>': s.maxTokens === undefined ? '' : lengthGuidance(s.paragraphLimit, s.maxTokens),
+    '<LENGTH GUIDANCE>': lengthGuidance(s.paragraphLimit, s.maxTokens),
     '<MARKDOWN GUIDANCE>': restyle(markdownGuidance(s.markdownOutput), s.sectionStyle),
     '<ACTIVE CHARACTER GUIDANCE>': activeCharacterGuidance(s.limitActiveCharacters, s.activeCharacterLimit),
     ...languagePreviewValue('narration', s.language),

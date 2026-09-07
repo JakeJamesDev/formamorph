@@ -79,7 +79,7 @@ import { selectRelevantDiary } from "../lib/semanticDiary";
 import { selectDueDiscovery, materializeDiscoveredEntity, discoveredAsEntities, cleanDiscoveredDescription, pruneDiscoveredToHistory, INITIAL_SOURCE_TURN_ID } from "../lib/runtimeCharacters";
 import { entityIdsAt } from "../lib/entityPresence";
 import { selectRegenSource, buildRegenContext, buildRegenUserMessage, REGEN_LABELS } from "../lib/discoveredRegen";
-import { trimToLastSentence } from "../lib/outputLength";
+import { outputReserve, trimToLastSentence } from "../lib/outputLength";
 import { buildAiRequestSpec, type AiSettingsSnapshot } from "../lib/aiRequest/aiRequestSpec";
 import { streamAiRequest, ABORTED_FINISH_REASON, DEFAULT_REASONING_THROTTLE_MS } from "../lib/aiRequest/aiStream";
 import { splitSentenceSegments } from "../lib/ttsChunks";
@@ -1237,7 +1237,7 @@ const GameViewer = ({
   const narrationEndpoint = useMemo(() => resolveEndpointForKind('narration'), [resolveEndpointForKind]);
   const contextWindow = narrationEndpoint.contextWindow;
   const narrationMaxTokens = narrationEndpoint.maxTokens;
-  const maxTokens = narrationMaxTokens ?? 0;
+  const maxTokens = outputReserve(narrationMaxTokens);
 
   const getTrimmedMessageHistory = useCallback((promptTokens = 0, action = "", relevanceScores: Map<string, number> | null = null, actionVec: Float32Array | null = null, liveRecall = false) => {
     const turns = parseEffectiveTurns(fullMessageHistory);

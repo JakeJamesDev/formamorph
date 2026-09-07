@@ -14,8 +14,14 @@ export function paragraphsForTokens(maxTokens: number): number {
   return Math.max(1, n);
 }
 
+/** The context-window portion reserved for a capped response. */
+export function outputReserve(maxTokens: number | undefined): number {
+  return maxTokens ?? 0;
+}
+
 /** The length directive injected into the game-text prompt for the chosen mode. */
-export function lengthGuidance(mode: ParagraphLimit, maxTokens: number): string {
+export function lengthGuidance(mode: ParagraphLimit, maxTokens: number | undefined): string {
+  if (maxTokens === undefined) return '';
   if (mode === 'single') return 'Write a single paragraph.';
   if (mode === 'auto') {
     const n = paragraphsForTokens(maxTokens);

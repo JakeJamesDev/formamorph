@@ -2,6 +2,7 @@ import { describe, it, expect } from 'vitest';
 import {
   paragraphsForTokens,
   lengthGuidance,
+  outputReserve,
   trimToLastSentence,
 } from './outputLength';
 
@@ -19,6 +20,11 @@ describe('paragraphsForTokens', () => {
 });
 
 describe('lengthGuidance', () => {
+  it('returns empty without an endpoint output cap', () => {
+    expect(lengthGuidance('auto', undefined)).toBe('');
+    expect(lengthGuidance('single', undefined)).toBe('');
+  });
+
   it('returns empty for none', () => {
     expect(lengthGuidance('none', 1024)).toBe('');
   });
@@ -36,6 +42,13 @@ describe('lengthGuidance', () => {
   it('collapses auto to a single paragraph when the budget only allows one', () => {
     // Convergence contract: a tiny budget makes auto produce the same directive as single mode.
     expect(lengthGuidance('auto', 40)).toBe(lengthGuidance('single', 40));
+  });
+});
+
+describe('outputReserve', () => {
+  it('reserves no context when the endpoint owns the output limit', () => {
+    expect(outputReserve(undefined)).toBe(0);
+    expect(outputReserve(512)).toBe(512);
   });
 });
 

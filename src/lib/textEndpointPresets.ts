@@ -107,6 +107,12 @@ function coerceValues(rec: Record<string, unknown>): TextEndpointValues {
   };
 }
 
+/** Environment presets seed a fresh configuration, so they retain values but never activate overrides. */
+function coerceFreshValues(rec: Record<string, unknown>): TextEndpointValues {
+  const values = coerceValues(rec);
+  return { ...values, maxOutputOverride: { ...values.maxOutputOverride, enabled: false } };
+}
+
 /**
  * Build a store from the VITE_DEFAULT_TEXT_PRESETS env var — a JSON array of `{ name, ...partial values }`
  * entries, each layered over the built-in defaults (so a preset need only list what differs). Returns null
@@ -129,7 +135,7 @@ export function presetStoreFromEnv(
     const rec = item as Record<string, unknown>;
     const name = typeof rec.name === 'string' ? rec.name.trim() : '';
     if (!name) continue;
-    presets.push({ id: randomUUID(), name, values: coerceValues(rec) });
+    presets.push({ id: randomUUID(), name, values: coerceFreshValues(rec) });
   }
   if (presets.length === 0) return null;
   return { activeId: presets[0].id, presets };
