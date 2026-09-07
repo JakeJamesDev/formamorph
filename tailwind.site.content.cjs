@@ -56,6 +56,7 @@ const COMMUNITY_FILES = [
 const FILES = [
   'src/components/RoleBadge.tsx',
   'src/components/UserAvatar.tsx',
+  'src/components/theme-provider.tsx',
   'src/components/community/AgeGateDialog.tsx',
   'src/components/community/LikeButton.tsx',
   'src/components/community/ProfileStats.tsx',

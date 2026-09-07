@@ -3,8 +3,9 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<meta name="color-scheme" content="dark">
+<meta name="color-scheme" content="light dark">
 <title>Privacy Policy — Formamorph</title>
+<script src="/theme.js"></script>
 <meta name="description" content="What Formamorph stores about you, why, for how long, and who else handles it.">
 <link rel="canonical" href="https://formamorph.ai/privacy">
 <link rel="icon" href="/site/icon.png" type="image/png">
@@ -23,18 +24,13 @@
 <meta name="twitter:description" content="What Formamorph stores about you, why, for how long, and who else handles it.">
 <meta name="twitter:image" content="https://formamorph.ai/site/og.jpg">
 <style>
-  /* The landing page's palette and type, so the two read as one site. This page carries no script. */
-  :root { --bg:#0d0f12; --text:#e8eaed; --dim:#9aa0a8; --accent:#7ac47f; --line:#2a2e35; }
+  :root { color-scheme:light; --bg:#f7f8f6; --text:#18201a; --dim:#5f6a61; --accent:#3a7e41; --line:#d7ddd7; --lift:#0000000a; }
+  :root.dark { color-scheme:dark; --bg:#0d0f12; --text:#e8eaed; --dim:#9aa0a8; --accent:#7ac47f; --line:#2a2e35; --lift:#ffffff12; }
   * { box-sizing:border-box; margin:0; }
   body { background:var(--bg); color:var(--text); font:16px/1.65 system-ui,sans-serif;
     -webkit-text-size-adjust:100%; }
   a { color:var(--accent); }
   :focus-visible { outline:2px solid var(--accent); outline-offset:2px; }
-
-  header { border-bottom:1px solid var(--line); }
-  header .in { max-width:44rem; margin:0 auto; padding:1.1rem 1.5rem; display:flex; align-items:center; gap:.7rem; }
-  header img { width:32px; height:32px; border-radius:8px; }
-  header a { color:var(--text); text-decoration:none; font-weight:600; }
 
   main { max-width:44rem; margin:0 auto; padding:3rem 1.5rem 4rem; }
   h1 { font-size:clamp(1.9rem,7vw,2.6rem); letter-spacing:-.02em; margin-bottom:.4rem; }
@@ -42,23 +38,26 @@
   p, ul { margin:0 0 1rem; }
   ul { padding-left:1.3rem; }
   li { margin-bottom:.4rem; }
-  strong { color:#fff; }
+  strong { color:var(--text); }
   /* Long tokens wrap rather than push the page wide on a phone. */
-  code { background:#ffffff12; border-radius:5px; padding:.1em .4em; font-size:.9em; overflow-wrap:anywhere; }
+  code { background:var(--lift); border-radius:5px; padding:.1em .4em; font-size:.9em; overflow-wrap:anywhere; }
   .stamp { color:var(--dim); font-size:.9rem; margin-bottom:2rem; }
 
-  footer { text-align:center; color:var(--dim); padding:3rem 1rem; border-top:1px solid #22262d; }
+  footer { text-align:center; color:var(--dim); padding:3rem 1rem; border-top:1px solid var(--line); }
   footer a { color:inherit; }
 </style>
+<link rel="stylesheet" href="/site-header.css">
+
 </head>
 <body>
 
-<header>
-  <div class="in">
-    <img src="/site/icon.png" width="256" height="256" alt="">
-    <a href="/">Formamorph</a>
-  </div>
-</header>
+<div data-site-header>
+  <header class="fm-site-header"><div class="fm-header-inner">
+    <a class="fm-brand" href="/"><img src="/site/icon.png" width="32" height="32" alt=""><span>Formamorph</span></a>
+    <nav class="fm-primary-nav" aria-label="Main navigation"><a href="/community">Community</a></nav>
+    <div class="fm-account"><a class="fm-sign-in" href="/login?next=/">Sign In</a></div>
+  </div></header>
+</div>
 
 <main>
   <h1>Privacy Policy</h1>
@@ -179,5 +178,6 @@
   <a href="/">Home</a> &middot; &copy; 2026 Jake James
 </footer>
 
+<script type="module" src="/site-app/header.js"></script>
 </body>
 </html>

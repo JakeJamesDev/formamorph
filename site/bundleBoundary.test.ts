@@ -22,6 +22,7 @@ const ALLOWED = [
   '@/services/UserService',
   '@/components/ui/',
   '@/components/UserAvatar',
+  '@/components/theme-provider',
   '@/components/RoleBadge',
   '@/components/community/AgeGateDialog',
   '@/components/community/ProfileStats',

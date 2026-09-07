@@ -1,0 +1,47 @@
+/* Shared by every website entry, independent of Tailwind's reset. */
+:root { --fm-panel:#fff; --fm-raised:#eef1ed; --fm-text:#202622; --fm-muted:#667068; --fm-line:#d9ded8; --fm-accent:#3a7e41; }
+:root.dark { --fm-panel:#202326; --fm-raised:#272b2e; --fm-text:#e5e7e9; --fm-muted:#a4a9ae; --fm-line:#363b40; --fm-accent:#89c98d; }
+.fm-site-header, .fm-account-menu { color:var(--fm-text); font:400 14px/1.5 system-ui,sans-serif; text-align:left; }
+.fm-site-header *, .fm-account-menu * { box-sizing:border-box; }
+.fm-site-header a, .fm-account-menu a { color:inherit; text-decoration:none; }
+.fm-site-header button, .fm-account-menu button { font:inherit; color:inherit; cursor:pointer; margin:0; }
+.fm-site-header { height:64px; background:var(--fm-panel); border-bottom:1px solid var(--fm-line); position:relative; z-index:20; }
+.fm-header-inner { height:100%; display:flex; align-items:center; gap:32px; padding:0 28px; }
+.fm-brand { display:flex; align-items:center; gap:10px; flex-shrink:0; font-size:18px; font-weight:650; letter-spacing:-.4px; }
+.fm-brand img { display:block; width:32px; height:32px; border-radius:8px; }
+.fm-primary-nav { border-left:1px solid var(--fm-line); padding-left:28px; height:32px; display:flex; gap:26px; }
+.fm-primary-nav a { display:flex; align-items:center; position:relative; font-size:15px; font-weight:550; color:var(--fm-muted); white-space:nowrap; }
+.fm-primary-nav a::after { content:''; position:absolute; left:0; right:0; bottom:-16px; height:2px; background:transparent; }
+.fm-primary-nav a:hover { color:var(--fm-text); }
+.fm-primary-nav a:hover::after { background:var(--fm-muted); }
+.fm-primary-nav a[aria-current=page] { color:var(--fm-text); }
+.fm-primary-nav a[aria-current=page]::after { background:var(--fm-accent); }
+.fm-account { margin-left:auto; flex-shrink:0; }
+.fm-avatar-button { display:flex; align-items:center; justify-content:center; width:44px; height:44px; padding:0; border:1px solid var(--fm-line); border-radius:50%; background:var(--fm-raised); }
+.fm-avatar-button .fm-site-avatar { display:inline-flex; align-items:center; justify-content:center; flex-shrink:0; width:34px; height:34px; border-radius:50%; object-fit:cover; font-size:14px; font-weight:600; line-height:1; color:white; }
+.fm-sign-in { display:flex; align-items:center; justify-content:center; gap:8px; min-height:44px; font-weight:550; }
+.fm-sign-in svg { width:19px; height:19px; }
+.fm-account-menu { width:280px; max-width:calc(100vw - 24px); padding:6px; border:1px solid var(--fm-line); border-radius:10px; background:var(--fm-raised); box-shadow:0 12px 30px #0003; z-index:50; outline:none; }
+.fm-account-links { display:flex; flex-direction:column; }
+.fm-menu-item { display:flex; align-items:center; gap:12px; width:100%; min-height:42px; padding:9px 12px; border:0; border-radius:5px; background:transparent; font-weight:500; text-align:left; }
+.fm-menu-item svg { width:19px; height:19px; stroke-width:1.7; }
+.fm-menu-item:hover, .fm-menu-item:focus-visible, .fm-avatar-button:hover { background:var(--fm-line); }
+.fm-account-menu hr { height:0; border:0; border-top:1px solid var(--fm-line); margin:5px 6px; }
+.fm-theme-row { padding:8px 12px; display:flex; flex-direction:column; gap:8px; }
+.fm-theme-row > span { color:var(--fm-muted); font-size:12px; font-weight:500; }
+.fm-theme-toggle { display:flex; padding:3px; border:1px solid var(--fm-line); border-radius:7px; background:var(--fm-panel); }
+.fm-theme-toggle button { display:flex; align-items:center; justify-content:center; gap:7px; flex:1; min-height:32px; border:1px solid transparent; border-radius:4px; background:transparent; color:var(--fm-muted); }
+.fm-theme-toggle button[aria-pressed=true] { background:var(--fm-raised); border-color:var(--fm-line); color:var(--fm-text); }
+.fm-theme-toggle svg { width:16px; height:16px; }
+.fm-site-header :focus-visible, .fm-account-menu :focus-visible { outline:2px solid var(--fm-accent); outline-offset:2px; }
+@media (max-width:480px) {
+  .fm-header-inner { padding:0 14px; gap:18px; }
+  .fm-brand { font-size:16px; gap:8px; }
+  .fm-brand img { width:27px; height:27px; }
+  .fm-primary-nav { border:0; padding:0; }
+  .fm-primary-nav a { font-size:14px; }
+  .fm-sign-in { gap:4px; font-size:13px; }
+}
+@media (max-width:359px) { .fm-header-inner { gap:10px; padding:0 10px; } .fm-brand { font-size:14px; } .fm-brand img { width:24px; height:24px; } }
+
+.fm-account-menu .fm-menu-item { font-weight:500; }

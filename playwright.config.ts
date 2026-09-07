@@ -92,10 +92,10 @@ export default defineConfig({
       stderr: 'pipe',
     },
     {
-      command: `node scripts/serveSite.mjs --root hosting --port ${SITE_PORT}`,
+      command: `npm run build:site && node scripts/serveSite.mjs --root hosting --port ${SITE_PORT}`,
       url: SITE_URL,
       reuseExistingServer: !process.env.CI,
-      timeout: 30_000,
+      timeout: 60_000,
       stdout: 'ignore',
       stderr: 'pipe',
     },

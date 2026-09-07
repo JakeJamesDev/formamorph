@@ -12,9 +12,20 @@ const appProxy = process.env.E2E_APP_PROXY_URL
 const landingPreview = {
   name: 'landing-preview',
   configureServer(server) {
-    server.middlewares.use('/landing/', (_request, response) => {
-      response.setHeader('Content-Type', 'text/html; charset=utf-8')
-      response.end(readFileSync(path.resolve(__dirname, 'hosting/index.html'), 'utf-8'))
+    server.middlewares.use((request, _response, next) => {
+      if (request.url === '/site-app/header.js') request.url = '/header.tsx'
+      next()
+    })
+    server.middlewares.use(async (request, response, next) => {
+      const pathname = request.url?.split('?')[0]
+      const file = pathname === '/landing/' ? 'hosting/index.html'
+        : pathname === '/privacy' || pathname === '/privacy/' ? 'hosting/privacy/index.html' : null
+      if (!file) return next()
+      try {
+        const html = await server.transformIndexHtml(request.url, readFileSync(path.resolve(__dirname, file), 'utf-8'))
+        response.setHeader('Content-Type', 'text/html; charset=utf-8')
+        response.end(html)
+      } catch (error) { next(error) }
     })
   },
 }
@@ -69,6 +80,10 @@ export default defineConfig(({ command }) => ({
   build: {
     outDir: path.resolve(__dirname, 'site-dist'),
     emptyOutDir: true,
+    rollupOptions: {
+      input: { main: path.resolve(__dirname, 'site/index.html'), header: path.resolve(__dirname, 'site/header.tsx') },
+      output: { entryFileNames: chunk => chunk.name === 'header' ? 'header.js' : 'assets/[name]-[hash].js' },
+    },
   },
   // The lazy community route reaches the shared image worker. A code-split site build must emit that
   // worker as an ES module; Vite's IIFE default cannot coexist with the route chunk.

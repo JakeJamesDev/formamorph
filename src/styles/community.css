@@ -1,0 +1,6 @@
+@layer base {
+  :root {
+    /* Likes keep the same color across app and website themes. */
+    --like: 340 75% 55%;
+  }
+}

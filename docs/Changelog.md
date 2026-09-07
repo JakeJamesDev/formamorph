@@ -12,6 +12,19 @@ Each release groups changes as **Major** / **Minor**, then **Added** / **Removed
 
 _Unreleased — new work accumulates here until it earns a version bump. The next batch will pin its own version; `package.json` reads **2.17.0** (just released below)._
 
+### Minor Changes
+
+#### ➕ Added
+
+- **👤 User-facing**
+  - **Every website page shares a compact header with underlined Community navigation and an avatar menu for Profile, Account Settings, appearance, and Sign Out.** Light, Dark, and System use the same theme setting as the app and follow changes in other tabs.
+  - **The website Community catalog starts with the most-liked creations first.** Visitors can change the sort, and website browsing preferences stay separate from the app.
+
+#### 🔧 Fixed
+
+- **👤 User-facing**
+  - **Website community Likes highlight on hover and fill the heart when liked.** The website and app share the Like control and its color token.
+
 ---
 
 <details>
