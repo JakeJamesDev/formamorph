@@ -1,7 +1,7 @@
 # 10 — Device checklist before the first public APK
 
 Status: ready-for-human
-Status note: Run sheet written 2026-09-04. Needs a phone and two pre-release tags; every blocker is done.
+Status note: Signed-device verification is pending. An Android-only workflow run can produce the first test APK; update checks still need two published pre-releases.
 Type: task
 Blocked by: 01, 02, 03, 05, 06, 07, 08, 09
 Spec: ../spec.md (Testing Decisions › Native plugin, install, CI)
@@ -26,12 +26,21 @@ Run on a real phone against a pre-release tag. Tick every line before the first 
 
 ## Run sheet
 
-Every blocker is done as of 2026-09-04. The lines above need a phone, so this section prepares the run. Each step names the checklist lines it ticks. The order matters: the tamper test must come before the good download, and the Version Requirement test needs a newer release to hand to Update.
+The lines above need a phone. The tamper test must come before the good download, and the Version Requirement test needs a newer release to hand to Update.
+
+### Local setup verified September 7
+
+- Release key: [formamorph-release.p12](C:/Users/benny/formamorph-android-signing/formamorph-release.p12). Password and backup are in LastPass; see [signing setup](01-developer-verification-and-signing-key.md#comments).
+- Saved signing directory and alias: [.formamorph-android-signing.env](C:/Users/benny/.formamorph-android-signing.env). This file does not contain the password.
+- Android SDK: [Sdk](C:/Users/benny/AppData/Local/Android/Sdk), including build-tools and [adb.exe](C:/Users/benny/AppData/Local/Android/Sdk/platform-tools/adb.exe).
+- Java 21: [Temurin JDK](<C:/Program Files/Eclipse Adoptium/jdk-21.0.11.10-hotspot>).
+- Device: Pixel 6 Pro, visible and authorized through wireless ADB.
+- After pushing the workflow changes, **Actions → Release → Run workflow → android_only** builds and verifies the signed APK as the `android` artifact without publishing. Leave the other inputs off. Use that APK for installation and gameplay checks; it does not replace the published update tests below.
 
 ### Before the phone
 
 1. **Secrets.** The four `ANDROID_*` secrets are set by hand (ticket 01). A missing one fails the Android job at "Decode the signing keystore", not on the phone.
-2. **First pre-release.** Set `package.json` `version` to `2.17.0-beta.1`, commit, tag `v2.17.0-beta.1`, push the tag in GitHub Desktop. The tag must equal `v<version>` or the build fails fast. The notes step has no released section for a beta and falls back to the In-Progress bucket; that is expected.
+2. **First pre-release.** Set `package.json` `version` to `2.17.0-beta.1`, commit, tag `v2.17.0-beta.1`, push the tag in GitHub Desktop. The tag must equal `v<version>` or the build fails fast. Prepare the matching released changelog section if the beta needs detailed notes; without it, the extractor emits only the maintenance fallback.
 3. **Confirm the pre-release.** The GitHub release is marked pre-release and carries `Formamorph-android.apk` and `Formamorph-android.apk.sha512`. In the Actions run, `itch-web` and `itch-desktop` show as skipped. That is the pre-release half of the last checklist line.
 
 ### On the phone, first install
