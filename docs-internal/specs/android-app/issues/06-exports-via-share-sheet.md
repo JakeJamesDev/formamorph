@@ -1,4 +1,4 @@
-# 06 — Exports via the share sheet
+# 06 — Exports via Save As
 
 Status: ready-for-human
 Type: task
@@ -7,18 +7,28 @@ Spec: ../spec.md (Implementation Decisions › Exports on Android)
 
 ## Task
 
-- Add the Capacitor Filesystem and Share plugins at live latest versions.
-- In the single download helper: when the Android bridge exists, write the blob to the cache directory and open the share sheet with the file; otherwise keep the anchor path. Callers unchanged.
+- Use Capacitor Filesystem for staging and a native document-picker plugin for Save As.
+- In the single download helper: when the Android bridge exists, stage the blob in a unique cache file and open Save As; copy to the chosen destination and clean up staging; otherwise keep the anchor path. Callers unchanged.
 - Confirm imports (world, save, card, VRM) work through the normal file input on the phone.
 - Changelog In-Progress entry, 👤 bucket.
 
 ## Acceptance
 
-- One test file covering the anchor path and the share path with a fake bridge.
-- On the phone: world JSON, a save, and a character card each open the share sheet and arrive intact in Files.
+- One test file covering the anchor path and the Save As path with a fake bridge.
+- On the phone: world JSON, a save, and a character card each open Save As, save to Downloads, and reimport intact. Cancellation stays quiet.
 - Four gates green.
 
-## Comments
+## Current verification
+
+The September 7 phone check found that the share sheet had no save-to-storage target. Save As replaces it using `ACTION_CREATE_DOCUMENT`, with the export filename and MIME type supplied to Android. Native tests cover exact bytes, source confinement, and write failures; bridge tests cover staging, errors, and cleanup. A new signed APK still needs the phone round trip in ticket 10.
+
+- Bridge: 10 tests passed in 5.29 seconds; 100% lines and branches in `downloadBlob.ts`.
+- Native: 4 export tests passed; final native tests and unsigned APK build completed in 9.26 seconds after Android sync (19.83 seconds). `ExportFiles.kt` has 100% line and branch coverage. The picker plugin has 0% JVM coverage and awaits device verification.
+- Mutation checks: bypassing Save As failed 5 bridge tests (4.83 seconds); removing source confinement failed the native boundary test (2.85 seconds). Both sources were restored exactly and their tests passed again.
+- Final gates all exited 0: typecheck (16.75 seconds), lint (13.81 seconds), full suite (55.46 seconds; 8,463 passed, 3 skipped), and web build (18.36 seconds). The MainMenu teardown errors are resolved by the separate handoff work.
+- Code graph updated. Export payload shapes and app version are unchanged.
+
+## Earlier implementation notes
 
 **2026-09-04 — implemented.** `src/lib/downloadBlob.ts` now branches on `Capacitor.isNativePlatform()`:
 it stages the blob in `Directory.Cache` as base64 and calls `Share.share({ files: [uri] })`, and keeps the

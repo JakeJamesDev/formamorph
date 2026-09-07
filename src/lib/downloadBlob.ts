@@ -1,10 +1,12 @@
-import { Capacitor } from '@capacitor/core';
+import { Capacitor, registerPlugin } from '@capacitor/core';
 import { Directory, Filesystem } from '@capacitor/filesystem';
-import { Share } from '@capacitor/share';
 import { toast } from 'react-toastify';
 
-/** Android rejects a dismissed chooser like a failure, and this message is the only signal it gives. */
-const SHARE_DISMISSED = 'Share canceled';
+interface FileExportPlugin {
+  save(options: { uri: string; filename: string; mimeType: string }): Promise<void>;
+}
+
+const FileExport = registerPlugin<FileExportPlugin>('FormamorphFileExport');
 
 /**
  * Trigger a browser file download of an existing `href` (a regular URL or a `data:` URL) saved as
@@ -30,32 +32,35 @@ async function toBase64(blob: Blob): Promise<string> {
   return dataUrl.slice(dataUrl.indexOf(',') + 1);
 }
 
-/**
- * Stage `blob` in the app's cache directory and hand that file to the Android share sheet. The cache
- * is the one place the app writes without a storage permission, and the manifest's file provider
- * exposes it to the app the player picks. A separator in the name would read as a directory, so the
- * whole name becomes one path segment.
- */
-async function shareFile(blob: Blob, filename: string): Promise<void> {
+/** Stage each export separately while the native Save As picker is open. */
+async function saveFile(blob: Blob, filename: string): Promise<void> {
+  const path = `exports/${crypto.randomUUID()}`;
   const { uri } = await Filesystem.writeFile({
-    path: filename.replace(/[/\\]/g, '-'),
+    path,
     data: await toBase64(blob),
     directory: Directory.Cache,
+    recursive: true,
   });
-  await Share.share({ title: filename, files: [uri] });
+  try {
+    await FileExport.save({
+      uri,
+      filename: filename.replace(/[/\\]/g, '-'),
+      mimeType: blob.type || 'application/octet-stream',
+    });
+  } finally {
+    await Filesystem.deleteFile({ path, directory: Directory.Cache }).catch((error: unknown) => {
+      console.warn('Could not remove the temporary export:', error);
+    });
+  }
 }
 
-/**
- * Save `blob` as `filename`: the share sheet in the Android app, an anchor download everywhere else.
- * The Android WebView has no download manager, so the sheet is how a file leaves the app at all.
- */
+/** Save a file through Android's Save As picker or a browser download. */
 export function downloadBlob(blob: Blob, filename: string): void {
   if (Capacitor.isNativePlatform()) {
-    shareFile(blob, filename).catch((error: unknown) => {
-      if ((error as Error).message === SHARE_DISMISSED) return;
+    saveFile(blob, filename).catch((error: unknown) => {
       // The plugin's own text names its internals, so the player gets ours and the log keeps the reason.
-      console.error('Failed to share an export:', error);
-      toast.error(`Could not share ${filename}.`);
+      console.error('Failed to save an export:', error);
+      toast.error(`Could not save ${filename}.`);
     });
     return;
   }

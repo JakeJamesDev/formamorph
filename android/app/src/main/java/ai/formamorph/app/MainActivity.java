@@ -9,6 +9,7 @@ public class MainActivity extends BridgeActivity {
     public void onCreate(Bundle savedInstanceState) {
         // Capacitor reads the registry while it builds the bridge, so this has to come first.
         registerPlugin(UpdatePlugin.class);
+        registerPlugin(FileExportPlugin.class);
         super.onCreate(savedInstanceState);
     }
 }

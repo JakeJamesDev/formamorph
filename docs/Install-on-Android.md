@@ -69,11 +69,11 @@ The update dialog has a **Release channel** selector. Set it to **Pre-release** 
 
 ---
 
-## 📤 Exports open the share sheet
+## 📤 Save exports to a folder
 
-An Android WebView has no download manager, so exporting on the phone opens Android's **share sheet** instead of dropping a file in a Downloads folder. That covers worlds, saves, backups, dictionaries, presets, stat-code packs, character cards, avatars, stories, and AI-context dumps.
+Exporting on the phone opens Android's **Save As** picker. Choose a folder, such as **Downloads**, check the filename, and tap **Save**. That covers worlds, saves, backups, dictionaries, presets, stat-code packs, character cards, avatars, stories, and AI-context dumps.
 
-Pick where the file goes — Files, Drive, a chat app, anywhere that accepts a file. Dismissing the sheet cancels the export quietly, with no error to clear.
+The file stays in the location you choose, ready to reopen or copy elsewhere. Canceling the picker leaves without saving or showing an error.
 
 **Importing needs no new steps.** A world, save, character card, or VRM comes in through the normal file picker, the same as on desktop.
 
