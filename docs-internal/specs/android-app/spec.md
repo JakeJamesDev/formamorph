@@ -18,7 +18,7 @@ Updates reuse the desktop flow. The footer checks GitHub Releases, shows Update 
 
 Every platform gains a **Version Requirement**: each API request carries the client version and platform, and any route can answer that it needs a newer client. The client shows one **Update Dialog** naming the feature and the version required, with a button that runs the platform's update flow. Nothing else is blocked. A player on an old build keeps playing, keeps using local endpoints, and only meets the dialog on the one feature that outgrew their build.
 
-Exports on Android open the share sheet. The hardware back button closes a modal, then goes back a view, then asks before leaving the app.
+Exports on Android open the system Save As picker. The hardware back button closes a modal, then goes back a view, then asks before leaving the app.
 
 ## User Stories
 
@@ -45,9 +45,9 @@ Exports on Android open the share sheet. The hardware back button closes a modal
 
 ### Exporting and importing
 
-16. As an Android player, I want exporting a world to open the share sheet, so that I can send it to Files, Drive, or a friend.
-17. As an Android player, I want exporting a save to open the share sheet, so that backups work on the phone.
-18. As an Android player, I want exporting a character card to open the share sheet, so that cards reach other apps as images.
+16. As an Android player, I want exporting a world to open Save As, so that I can save it to a folder on my phone.
+17. As an Android player, I want exporting a save to open Save As, so that backups work on the phone.
+18. As an Android player, I want exporting a character card to open Save As, so that I can keep its image file.
 19. As an Android player, I want importing a world, save, card, or VRM to use the normal file picker, so that imports need no new steps.
 20. As a desktop or web player, I want exports to keep working exactly as today, so that the Android path changes nothing for me.
 
@@ -96,7 +96,7 @@ Exports on Android open the share sheet. The hardware back button closes a modal
 - The APK contains the same web build as the desktop release, including the release avatar swap. The build class baked into the footer is `android`.
 - Minimum Android version is Capacitor's default, Android 7.
 - A network security config allows cleartext only to localhost and RFC 1918 ranges. Public endpoints stay https.
-- The manifest declares the install-packages permission and nothing else beyond Capacitor's defaults. No storage permission: exports use the share sheet from the app's cache directory.
+- The manifest declares the install-packages permission and nothing else beyond Capacitor's defaults. No storage permission: exports use the system document picker to select a writable destination.
 - Local-engine gating stays as it is. The desktop check remains false on Android, so the engine, model catalog, and desktop-only settings never show.
 - Orientation is unlocked. The mobile keyboard handling already in the web build applies unchanged.
 
@@ -122,7 +122,7 @@ Exports on Android open the share sheet. The hardware back button closes a modal
 
 ### Exports on Android
 
-- The single download helper checks for the Android bridge. On Android it writes the blob to the cache directory and opens the share sheet with that file. Everywhere else it keeps the anchor download. All callers are unchanged.
+- The single download helper checks for the Android bridge. On Android it stages each blob in a unique cache file and opens ACTION_CREATE_DOCUMENT with its filename and MIME type. The native plugin streams the bytes into the selected destination; completion, cancellation, and errors release the staged file. Everywhere else it keeps the anchor download. All callers are unchanged.
 
 ### The back button
 
@@ -142,10 +142,10 @@ A good test drives the seam from outside and asserts what a player or the server
 - **Client identity wrapper.** Stub `fetch`. Assert the header on API requests and its absence elsewhere, the callback on a 426 with the code, no callback on other 426s or other bases, and that the response body is still readable by the caller. Prior art: the privacy-refusal watcher's tests.
 - **Update bridge accessor and hook.** A fake bridge object. Assert the accessor picks desktop, then Android, then none; assert the hook resumes at downloaded when the pending version matches and drives download and apply through the bridge. Prior art: the update reducer tests and the update checker's existing coverage.
 - **Update Dialog.** Render with a fake bridge and without. Assert the feature and version text, that Update calls the bridge or reloads, and that two refusals for one feature open one dialog. Prior art: the Privacy Policy prompt tests.
-- **Export helper.** Assert the anchor path with no bridge and the share path with a fake Android bridge. One file covers both.
+- **Export helper.** Assert the anchor path with no bridge and the Save As path with a fake Android bridge. One file covers both.
 - **Back handler.** Pure function table: modal open, nested view, main menu. Assert the action per state.
 - **Server.** In the server repo: a route with a minimum answers 426 with the body shape for an older client, passes a newer one, treats a missing header as zero, and leaves ungated routes alone.
-- **Native plugin, install, CI.** No unit tests. Ticket 10 is a device checklist run on a real phone before the first tagged release: first install from the browser, the install-from-this-app setting, download progress, checksum failure on a tampered file, the install sheet, relaunch on the new version, data intact, beta channel, offline check, share sheet for each export kind, back button in each state.
+- **Native plugin, install, CI.** Native export tests cover byte preservation, source confinement, and write errors. Ticket 10 is a device checklist run on a real phone before the first tagged release: first install from the browser, the install-from-this-app setting, download progress, checksum failure on a tampered file, the install sheet, relaunch on the new version, data intact, beta channel, offline check, Save As and reimport for each export kind, back button in each state.
 
 ## Out of Scope
 

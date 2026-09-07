@@ -1,7 +1,7 @@
 # 10 — Device checklist before the first public APK
 
 Status: ready-for-human
-Status note: GitHub signing, an ADB update, and phone import passed September 7. Export is a release blocker: the share sheet provides no save-to-storage action on the Pixel. Gameplay and published update checks remain pending.
+Status note: GitHub signing, an ADB update, and phone import passed September 7. The tested APK opens a share sheet with no save-to-storage action on the Pixel. The Save As replacement needs a new signed build and phone verification before release. Gameplay and published update checks remain pending.
 Type: task
 Blocked by: 01, 02, 03, 05, 06, 07, 08, 09
 Spec: ../spec.md (Testing Decisions › Native plugin, install, CI)
@@ -20,7 +20,7 @@ Run on a real phone against a pre-release tag. Tick every line before the first 
 - [ ] First apply opens the unknown-sources setting; second apply opens the install sheet.
 - [ ] Relaunch on the new version with saves, worlds, and settings intact.
 - [ ] Version Requirement: a staff-set minimum on one route shows the Update Dialog naming that feature; everything else works; Update runs the download.
-- [ ] Share sheet: world, save, character card each arrive intact in Files.
+- [ ] Save As: world, save, character card each save to Downloads and reimport intact; cancel closes quietly.
 - [ ] Back: closes a modal, returns to the main menu, asks before exit.
 - [ ] itch android channel updated on a stable tag; skipped on the pre-release.
 
@@ -85,7 +85,7 @@ The lines above need a phone. The tamper test must come before the good download
 
 ### Remaining lines
 
-16. Export a world, a save, and a character card. Each opens the share sheet; save each to Files and reopen it there. Also try the VRM picker once: `accept=".vrm,.glb"` may offer nothing selectable in the system picker (ticket 06 comment). → **Share sheet**.
+16. Export a world, a save, and a character card. Each opens Save As; choose Downloads, save, then reimport and verify the content. Cancel another export and confirm no error appears. Also try the VRM picker once: `accept=".vrm,.glb"` may offer nothing selectable in the system picker (ticket 06 comment). → **Save As**.
 17. Back with a dialog open closes the dialog. Back in a game asks before leaving. Back on the main menu asks before exit. → **Back**.
 18. The stable half of the last line is ticked on the first stable tag: `itch-desktop` runs only on a tag ending in `.0`, so `v2.17.0` updates the itch android channel and a patch tag does not.
 
