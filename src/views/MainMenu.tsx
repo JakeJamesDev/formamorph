@@ -220,6 +220,11 @@ const WorldNotice = ({ tone, icon: Icon, children, actionLabel, actionIcon: Acti
 );
 
 const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = false }: MainMenuProps) => {
+  const isMountedRef = useRef(true);
+  useEffect(() => {
+    isMountedRef.current = true;
+    return () => { isMountedRef.current = false; };
+  }, []);
   const {
     traits: rawTraits, traitGroups: rawTraitGroups, stats: rawStats, locations: rawLocations, placeholders,
     loadWorldData, dictionaries: worldBooks, getWorldData,
@@ -662,7 +667,7 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
         isLoading: false,
         defaultName: DEFAULT_WORLDS.find(dw => dw.id === world.id)?.defaultName || world.name
       }));
-      setWorlds(mapped);
+      if (isMountedRef.current) setWorlds(mapped);
       // Returned as well as set: a caller that has to re-derive something from the fresh list can't read it
       // back out of state in the same tick.
       return mapped;
@@ -670,7 +675,7 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
       console.error('Error loading worlds:', error);
       return [];
     } finally {
-      setIsLoadingWorlds(false);
+      if (isMountedRef.current) setIsLoadingWorlds(false);
     }
   }, []);
 
@@ -715,9 +720,11 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
         // Ids alone: this read only ever answered "is the library empty", and asking for the metadata
         // deserialized every stored world to count them. It also arrives early enough to draw the grid.
         const existingIds = await WorldStorageService.getWorldIds();
+        if (!isMountedRef.current) return;
         setSkeletonWorlds(existingIds.map((id) => ({ id, isLoading: true })));
         const firstRun = existingIds.length === 0;
         const { failed, updated } = await WorldStorageService.loadDefaultWorlds(DEFAULT_WORLDS);
+        if (!isMountedRef.current) return;
         if (firstRun) {
           if (failed.length === 0) toast.success("Loaded default worlds");
           else if (failed.length < DEFAULT_WORLDS.length) toast.error(`Some default worlds failed to load: ${failed.join(", ")}`);
