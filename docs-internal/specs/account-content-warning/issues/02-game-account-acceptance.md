@@ -1,6 +1,6 @@
 # 02: Share Account Acceptance with the Game
 
-Status: ready-for-agent
+Status: ready-for-human
 Blocked by: 01
 Parent: [Account-Synced Content Warning Acceptance](../spec.md)
 

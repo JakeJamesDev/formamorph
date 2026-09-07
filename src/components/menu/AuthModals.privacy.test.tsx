@@ -4,7 +4,8 @@ import { AuthModals } from './AuthModals';
 import { PrivacyPolicyProvider } from '@/contexts/PrivacyPolicyContext';
 import { AccountDeletionProvider } from '@/contexts/AccountDeletionContext';
 import { AgeGateProvider } from '@/contexts/AgeGateContext';
-import { acceptAgeGate } from '@/lib/ageGate';
+import { AGE_GATE_VERSION, acceptAgeGate } from '@/lib/ageGate';
+import AgeGateService from '@/services/AgeGateService';
 import PolicyService from '@/services/PolicyService';
 import AuthService from '@/services/AuthService';
 import type { PolicyState } from '@/types';
@@ -56,6 +57,7 @@ beforeEach(() => {
   localStorage.clear();
   acceptAgeGate();
   vi.spyOn(console, 'error').mockImplementation(() => {});
+  vi.spyOn(AgeGateService, 'read').mockResolvedValue({ accepted: true, requiredVersion: AGE_GATE_VERSION, acceptedAt: null });
   vi.spyOn(PolicyService, 'fetchPolicies').mockResolvedValue(NOTHING);
   AuthService.token = null;
 });
