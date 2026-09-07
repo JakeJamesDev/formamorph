@@ -47,12 +47,15 @@ describe('the rendered website community route', () => {
 
     await user.click(screen.getByRole('button', { name: 'Accept' }));
     expect(await screen.findByText('Sedge Landing')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Download world' })).toBeInTheDocument();
 
     await user.click(screen.getByRole('tab', { name: /entities/i }));
     expect(await screen.findByText('River Warden')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Download entity' })).toBeInTheDocument();
 
     await user.click(screen.getByRole('tab', { name: /dictionaries/i }));
     expect(await screen.findByText('Harbor Terms')).toBeInTheDocument();
-    expect(screen.queryByRole('button', { name: /download/i })).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Download dictionary' })).toBeInTheDocument();
   });
+
 });

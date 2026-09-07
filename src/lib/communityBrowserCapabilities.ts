@@ -1,6 +1,7 @@
 /** The actions a Community Creations shell may expose. */
 export interface CommunityBrowserCapabilities {
   localLibrary: boolean;
+  deviceDownloads: boolean;
   hiddenFilters: boolean;
   likes: boolean;
   comments: boolean;
@@ -13,6 +14,7 @@ export interface CommunityBrowserCapabilities {
 /** The complete browser game surface. */
 export const APP_COMMUNITY_CAPABILITIES: CommunityBrowserCapabilities = {
   localLibrary: true,
+  deviceDownloads: false,
   hiddenFilters: true,
   likes: true,
   comments: true,
@@ -25,6 +27,7 @@ export const APP_COMMUNITY_CAPABILITIES: CommunityBrowserCapabilities = {
 /** The website catalog stays read-only until its action slices land. */
 export const WEBSITE_COMMUNITY_CAPABILITIES: CommunityBrowserCapabilities = {
   localLibrary: false,
+  deviceDownloads: true,
   hiddenFilters: false,
   likes: false,
   comments: false,
