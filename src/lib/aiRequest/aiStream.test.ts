@@ -140,6 +140,22 @@ describe('streamAiRequest', () => {
       .rejects.toBeInstanceOf(AiStreamError);
   });
 
+  it('carries a structured server rejection through the stream boundary', async () => {
+    const rejected = new Response(JSON.stringify({
+      error: { message: 'top_p is not supported', type: 'invalid_request_error', param: 'top_p' },
+    }), { status: 400, headers: { 'Content-Type': 'application/json' } });
+
+    await expect(collect(streamAiRequest(spec, { fetchImpl: fetchOf(rejected) }))).rejects.toMatchObject({
+      kind: 'http',
+      status: 400,
+      serverError: {
+        message: 'top_p is not supported',
+        parameter: 'top_p',
+        type: 'invalid_request_error',
+      },
+    });
+  });
+
   it('throws a typed no-body error when the response has no stream', async () => {
     await expect(collect(streamAiRequest(spec, { fetchImpl: fetchOf(streamingResponse([], { body: false })) })))
       .rejects.toMatchObject({ kind: 'no-body' });

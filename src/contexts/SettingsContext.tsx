@@ -17,6 +17,7 @@ import {
   textEndpointPresetCodec, emptyStore as emptyTextStore, presetStoreFromEnv as textPresetStoreFromEnv,
   DEFAULT_TEXT_PRESET_ID, DEFAULT_TEXT_ENDPOINT_VALUES, BUILTIN_ENGINE_PRESET_ID, builtinTextPresets,
   activeValues as textActiveValues, isBuiltInActive as isTextBuiltInActive,
+  valuesForId as textValuesForId,
   isEngineActive as isTextEngineActive, setActive as textSetActive,
   addPreset as textAddPreset, renamePreset as textRenamePreset, deletePreset as textDeletePreset,
   resetPreset as textResetPreset, updateValue as textUpdateValue, updateSamplerOverride as textUpdateSamplerOverride,
@@ -24,6 +25,7 @@ import {
   type TextEndpointPresetStore, type TextEndpointValues, type TextEndpointValueKey,
 } from '../lib/textEndpointPresets';
 import type { EndpointSampler } from '../lib/endpointSamplers';
+import type { RejectedEndpointOverride } from '../lib/aiRequest/rejectedOverride';
 import { fetchContextLength } from '../lib/contextLength';
 import { normalizeEndpointUrl } from '../lib/endpointUrl';
 import { registerDevHook } from '../lib/devRouter';
@@ -484,6 +486,18 @@ function useProvideSettings() {
     (sampler: EndpointSampler, value: number) => setEndpointSampler(sampler, { value }),
     [setEndpointSampler],
   );
+  /** Disable the captured request target's rejected override without changing its remembered value. */
+  const disableEndpointOverride = useCallback((id: string, override: RejectedEndpointOverride) => {
+    setTextPresetStore((store) => {
+      if (id !== DEFAULT_TEXT_PRESET_ID && !store.presets.some((preset) => preset.id === id)) return store;
+      if (override === 'maxOutput') {
+        const current = textValuesForId(store, id).maxOutputOverride;
+        return textUpdateMaxOutputOverride(store, id, { ...current, enabled: false });
+      }
+      const current = textValuesForId(store, id).samplerOverrides[override];
+      return textUpdateSamplerOverride(store, id, override, { ...current, enabled: false });
+    });
+  }, [setTextPresetStore]);
   const textIsBuiltInActive = isTextBuiltInActive(textPresetStore);
 
   // The bundled engine is an endpoint preset now, not a mode, so "am I on my own endpoint" is simply
@@ -1280,6 +1294,7 @@ function useProvideSettings() {
     endpointSamplerOverrides: textValues.samplerOverrides,
     setEndpointSamplerEnabled,
     setEndpointSamplerValue,
+    disableEndpointOverride,
     localMaxTokens,
     setLocalMaxTokens,
     engineWanted,

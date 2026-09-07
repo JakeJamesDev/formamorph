@@ -1,6 +1,6 @@
 # 03: Disable Explicitly Rejected Endpoint Overrides
 
-Status: ready-for-agent
+Status: ready-for-human
 
 **Parent:** [Endpoint Generation Overrides](../spec.md)
 
