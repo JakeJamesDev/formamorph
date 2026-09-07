@@ -1,7 +1,7 @@
 # 10 — Device checklist before the first public APK
 
 Status: ready-for-human
-Status note: Signed-device verification is pending. An Android-only workflow run can produce the first test APK; update checks still need two published pre-releases.
+Status note: GitHub signing, an ADB update, and phone import passed September 7. Export is a release blocker: the share sheet provides no save-to-storage action on the Pixel. Gameplay and published update checks remain pending.
 Type: task
 Blocked by: 01, 02, 03, 05, 06, 07, 08, 09
 Spec: ../spec.md (Testing Decisions › Native plugin, install, CI)
@@ -25,6 +25,17 @@ Run on a real phone against a pre-release tag. Tick every line before the first 
 - [ ] itch android channel updated on a stable tag; skipped on the pre-release.
 
 ## Run sheet
+
+### Verified GitHub build and install
+
+[Android-only run 34141651709](https://github.com/JakeJamesDev/formamorph/actions/runs/34141651709) succeeded on September 7 at commit `e34eb163`.
+
+- All four CI gates passed: 8,443 tests passed, 3 skipped; test step 322 seconds (Vitest 320.56 seconds).
+- Android release compiled and signed; APK signature verification passed in GitHub and locally, and its SHA-512 matched the downloaded sidecar.
+- The signing certificate matched the installed app. `adb install -r` returned `Success` on the Pixel 6 Pro without clearing app data; installed version remains `2.16.0` / `2016000`.
+- GitHub publication, desktop/web builds, and all deployment jobs were skipped.
+- This verifies signing and an ADB update, not browser installation prompts, saved-data integrity, gameplay, or the in-app updater. Those require the device checks above.
+- Phone feedback: importing works. Export opens the share sheet, but the available targets do not include saving to storage. Export needs a direct file-save flow before release; the existing share-sheet acceptance item does not cover that requirement.
 
 The lines above need a phone. The tamper test must come before the good download, and the Version Requirement test needs a newer release to hand to Update.
 
