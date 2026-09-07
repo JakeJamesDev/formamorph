@@ -116,6 +116,10 @@ import { COMMUNITY_ENABLED } from "@/lib/featureFlags";
 import { useAgeGate } from "@/contexts/AgeGateContext";
 import { useAccountDeletion } from "@/contexts/AccountDeletionContext";
 import { isAgeAttested } from "@/lib/ageGate";
+import {
+  consumeCommunityListingHandoff,
+  readCommunityListingHandoff,
+} from '@/lib/communityListingHandoff';
 import { isStaff } from "@/lib/roles";
 import { Checkbox } from "@/components/ui/checkbox";
 import { useReadmeVisibility } from "@/lib/useReadmeVisibility";
@@ -1353,6 +1357,24 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
   // Which Community Creations tab to open on. Set when an event banner sends the player to its content;
   // cleared as the browser closes, so the next plain visit lands on the catalog again.
   const [communityTab, setCommunityTab] = useState<BrowseTab | undefined>(undefined);
+  // Read once: after an accepted deep link has opened, ordinary browser visits must not replay it.
+  const [externalListing, setExternalListing] = useState(() => readCommunityListingHandoff(window.location.search));
+
+  useEffect(() => {
+    if (!externalListing) return;
+
+    requireAttestation({
+      onAccept: () => {
+        setCommunityTab(externalListing.kind);
+        setPendingListing(externalListing);
+        setShowCommunityBrowser(true);
+        setExternalListing(null);
+        consumeCommunityListingHandoff();
+      },
+      // The address remains shareable after a decline, while this visit returns to the ordinary menu.
+      onDecline: () => setExternalListing(null),
+    });
+  }, [externalListing, requireAttestation]);
 
   /** Take the player to where an event's content lives — the contest tab, for a contest. */
   const openEvent = useCallback((event: ServerEvent) => {

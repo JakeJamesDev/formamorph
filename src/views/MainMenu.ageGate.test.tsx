@@ -38,6 +38,7 @@ let failedLogins = 0;
 let privacyPolicy: { title: string; body: string } | null = null;
 let acceptPrivacy: () => Promise<Response>;
 let accountPrivacyPending = false;
+let catalog: Record<string, unknown>[] = [];
 
 /** What was asked of the community server — anything else (assets, the update check) is not its business. */
 const serverCalls = () => requested.filter((url) => url.startsWith(AuthService.API_URL));
@@ -59,6 +60,8 @@ beforeEach(() => {
   failedLogins = 0;
   privacyPolicy = null;
   accountPrivacyPending = false;
+  catalog = [];
+  window.history.replaceState(null, '', '/');
   acceptPrivacy = () => Promise.resolve(answer({ success: true, accepted: true }));
   readAccount = () => Promise.resolve(answer({ accepted: accountAccepted, requiredVersion: AGE_GATE_VERSION, acceptedAt: null }));
   localStorage.clear();
@@ -108,6 +111,7 @@ beforeEach(() => {
       });
     }
     if (url.startsWith(`${AuthService.API_URL}/events/active`)) return answer({ data: running });
+    if (url.includes('/worlds?page=1&limit=1000&kind=all')) return answer({ data: catalog });
     return answer({ data: [] });
   }));
   vi.spyOn(console, 'error').mockImplementation(() => {});
@@ -236,6 +240,41 @@ describe('the account lookup at boot', () => {
 });
 
 describe('the age gate in front of Community Creations', () => {
+  it('opens an external listing only after acceptance and consumes its target', async () => {
+    catalog = [{
+      id: 'w1', _id: 'w1', kind: 'world', name: 'Sedge Landing', description: '', tags: [],
+      author: { id: 'author-1', username: 'rowan' },
+    }];
+    window.history.replaceState(null, '', '/play/?communityListingId=w1&communityListingKind=world');
+    renderMainMenu();
+
+    expect(await screen.findByRole('dialog', { name: /Adult Content Ahead/ })).toBeInTheDocument();
+    expect(browser()).not.toBeInTheDocument();
+    await waitFor(() => expect(serverCalls().length).toBeGreaterThan(0));
+    expect(serverCalls().filter((url) => !isExempt(url))).toEqual([]);
+
+    fireEvent.click(screen.getByRole('button', { name: 'Accept' }));
+
+    expect(await screen.findByRole('dialog', { name: 'Sedge Landing' })).toBeInTheDocument();
+    expect(window.location.search).toBe('');
+  });
+
+  it('returns to the ordinary menu when an external target is malformed or declined', async () => {
+    window.history.replaceState(null, '', '/play/?communityListingId=%20&communityListingKind=contest');
+    renderMainMenu();
+
+    expect(gate()).not.toBeInTheDocument();
+    expect(browser()).not.toBeInTheDocument();
+
+    cleanup();
+    window.history.replaceState(null, '', '/play/?communityListingId=w1&communityListingKind=world');
+    renderMainMenu();
+    fireEvent.click(await screen.findByRole('button', { name: 'Decline' }));
+
+    expect(gate()).not.toBeInTheDocument();
+    expect(browser()).not.toBeInTheDocument();
+  });
+
   it('asks before the browser opens, and nothing user-written is fetched while it waits', async () => {
     renderMainMenu();
     openCommunity();
