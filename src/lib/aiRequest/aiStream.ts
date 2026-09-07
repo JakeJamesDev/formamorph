@@ -4,17 +4,54 @@ import type { AiRequestBody, AiRequestSpec } from './aiRequestSpec';
  *  frame is skipped so the rest of the stream still arrives. */
 export type AiStreamErrorKind = 'http' | 'no-body' | 'parse';
 
+/** Structured detail an endpoint returned with an HTTP failure, when it supplied an OpenAI-style error body. */
+export interface AiServerError {
+  message?: string;
+  parameter?: string;
+  type?: string;
+  code?: string;
+}
+
 export class AiStreamError extends Error {
   readonly kind: AiStreamErrorKind;
   readonly status?: number;
   readonly response?: Response;
+  readonly serverError?: AiServerError;
 
-  constructor(kind: AiStreamErrorKind, message: string, detail?: { status?: number; response?: Response; cause?: unknown }) {
+  constructor(kind: AiStreamErrorKind, message: string, detail?: { status?: number; response?: Response; serverError?: AiServerError; cause?: unknown }) {
     super(message, { cause: detail?.cause });
     this.name = 'AiStreamError';
     this.kind = kind;
     this.status = detail?.status;
     this.response = detail?.response;
+    this.serverError = detail?.serverError;
+  }
+}
+
+function recordOf(value: unknown): Record<string, unknown> | null {
+  return value !== null && typeof value === 'object' && !Array.isArray(value)
+    ? value as Record<string, unknown>
+    : null;
+}
+
+/** Read a structured OpenAI-compatible error body without turning malformed or empty failure bodies into errors. */
+async function readServerError(response: Response): Promise<AiServerError | undefined> {
+  if (typeof response.text !== 'function') return undefined;
+  try {
+    const raw = await response.text();
+    if (!raw.trim()) return undefined;
+    const payload = recordOf(JSON.parse(raw));
+    const error = recordOf(payload?.error) ?? payload;
+    if (!error) return undefined;
+    const message = typeof error.message === 'string' ? error.message : undefined;
+    const parameter = typeof error.param === 'string'
+      ? error.param
+      : typeof error.parameter === 'string' ? error.parameter : undefined;
+    const type = typeof error.type === 'string' ? error.type : undefined;
+    const code = typeof error.code === 'string' ? error.code : undefined;
+    return message || parameter || type || code ? { message, parameter, type, code } : undefined;
+  } catch {
+    return undefined;
   }
 }
 
@@ -135,7 +172,11 @@ export async function* streamAiRequest(spec: AiRequestSpec, options: AiStreamOpt
     throw error;
   }
 
-  if (!response.ok) throw new AiStreamError('http', `HTTP ${response.status}`, { status: response.status, response });
+  if (!response.ok) throw new AiStreamError('http', `HTTP ${response.status}`, {
+    status: response.status,
+    response,
+    serverError: await readServerError(response),
+  });
   if (!response.body) throw new AiStreamError('no-body', 'Response has no body to stream');
 
   yield { type: 'debug', debug: { kind: 'response', status: response.status, openedAt: now() } };

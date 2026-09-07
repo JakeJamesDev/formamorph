@@ -81,7 +81,8 @@ import { entityIdsAt } from "../lib/entityPresence";
 import { selectRegenSource, buildRegenContext, buildRegenUserMessage, REGEN_LABELS } from "../lib/discoveredRegen";
 import { outputReserve, trimToLastSentence } from "../lib/outputLength";
 import { buildAiRequestSpec, type AiSettingsSnapshot } from "../lib/aiRequest/aiRequestSpec";
-import { streamAiRequest, ABORTED_FINISH_REASON, DEFAULT_REASONING_THROTTLE_MS } from "../lib/aiRequest/aiStream";
+import { streamAiRequest, AiStreamError, ABORTED_FINISH_REASON, DEFAULT_REASONING_THROTTLE_MS } from "../lib/aiRequest/aiStream";
+import { rejectedEndpointOverride, rejectedEndpointOverrideLabel } from "../lib/aiRequest/rejectedOverride";
 import { splitSentenceSegments } from "../lib/ttsChunks";
 import { selectDueDigests, applyDigest, applyImportance, parseTurnContent, recentParticipants, selectDueDiaries, pendingDiaryNames, applyDiary, collectCharacterDiary } from "../lib/turnDigest";
 import { buildTraitContext } from "../lib/traitTree";
@@ -371,6 +372,7 @@ const GameViewer = ({
     // Per-prompt endpoint routing: every AI call resolves its own target, so a prompt pinned to another
     // preset sends there. An unpinned prompt resolves to the active endpoint, i.e. the values above.
     resolveEndpointForKind,
+    disableEndpointOverride,
     disableThinking,
     genTemperature,
     genTopP,
@@ -2722,12 +2724,26 @@ const GameViewer = ({
       // No AbortError case: the stream turns both the fetch rejection and the read rejection into a
       // graceful `done`, so a user stop lands on the aborted branch above and never reaches here.
       console.error("Error in makeAIRequest:", error);
-      // A failed silent request (the digest) is non-fatal — let the drainer swallow it without a toast.
-      if (silent) throw error;
-      // A network failure (server off / wrong URL / CORS disabled) is opaque and unactionable from the
-      // generic toast — offer the connection guide instead. The turn knows this already showed, because it
-      // knows the failed request wasn't silent.
-      if (isLikelyConnectionError(error)) {
+      const rejectedOverride = rejectedEndpointOverride(error, spec);
+      if (rejectedOverride) disableEndpointOverride(spec.target.endpointId, rejectedOverride);
+      if (rejectedOverride) {
+        const serverMessage = error instanceof AiStreamError ? error.serverError?.message : undefined;
+        toast.error(
+          <div className="flex flex-col items-start gap-1">
+            <span>{serverMessage ?? 'The server rejected this request.'}</span>
+            <span>{rejectedEndpointOverrideLabel(rejectedOverride)} override disabled for {target.presetName}.</span>
+          </div>,
+          { position: "top-right", autoClose: 8000, closeOnClick: false, pauseOnHover: true, draggable: true },
+        );
+        // A persisted settings change must explain itself even when the caller otherwise suppresses failures.
+        if (silent) throw error;
+      } else if (silent) {
+        // A failed silent request (the digest) is non-fatal — let the drainer swallow it without a toast.
+        throw error;
+      } else if (isLikelyConnectionError(error)) {
+        // A network failure (server off / wrong URL / CORS disabled) is opaque and unactionable from the
+        // generic toast — offer the connection guide instead. The turn knows this already showed, because it
+        // knows the failed request wasn't silent.
         toast.error(
           <div className="flex flex-col items-start gap-1">
             <span>Couldn&apos;t reach your AI server.</span>
