@@ -16,6 +16,10 @@ on:
       - 'v*'
   workflow_dispatch:
     inputs:
+      android_only:
+        description: 'Build a signed Android APK for device testing without publishing'
+        type: boolean
+        default: false
       itch_web:
         description: 'Push the web build to itch.io (manual failsafe, e.g. for a pre-release)'
         type: boolean
@@ -34,10 +38,15 @@ on:
         default: false
 
 jobs:
+  check:
+    if: ${{ !inputs.site_only }}
+    uses: ./.github/workflows/ci.yml
+
   build:
+    needs: check
     # A site-only redeploy ships no app code, so nothing is built and nothing is published. `publish`
     # needs this job, so skipping here skips that too.
-    if: ${{ !inputs.site_only }}
+    if: ${{ !inputs.site_only && !inputs.android_only }}
     strategy:
       fail-fast: false
       matrix:
@@ -121,8 +130,9 @@ jobs:
           if-no-files-found: error
 
   web:
+    needs: check
     # Skipped on a site-only redeploy, which serves the already-released build instead.
-    if: ${{ !inputs.site_only }}
+    if: ${{ !inputs.site_only && !inputs.android_only }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
@@ -155,6 +165,7 @@ jobs:
   # from the four ANDROID_* secrets that scripts/android-signing-wizard.sh sets. The asset name carries
   # no version so the landing page can link the GitHub latest redirect; the release tag carries it.
   android:
+    needs: check
     if: ${{ !inputs.site_only }}
     runs-on: ubuntu-latest
     steps:
@@ -207,6 +218,11 @@ jobs:
           ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
           ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
         run: cd android && ./gradlew assembleRelease --no-daemon --console=plain
+      - name: Verify the APK signature
+        run: |
+          set -euo pipefail
+          APKSIGNER=$(find "$ANDROID_HOME/build-tools" -name apksigner -type f | sort -V | tail -1)
+          "$APKSIGNER" verify --verbose --print-certs android/app/build/outputs/apk/release/app-release.apk
       # Gradle names an unsigned build app-release-unsigned.apk, so this copy fails if signing did not happen.
       # The sidecar holds the bare hex digest, the same shape as the Windows app zip's.
       - name: Name the release asset and write its checksum
@@ -262,11 +278,13 @@ jobs:
   # Needs the BUTLER_API_KEY secret (itch.io → Settings → API keys, from an account with access to
   # fierylion/formamorph). Versions are parsed from artifact filenames so they always match the build.
   itch-web:
-    needs: web
+    needs: [web, publish]
     runs-on: ubuntu-latest
     if: >
-      (github.event_name == 'push' && !contains(github.ref_name, '-'))
-      || (github.event_name == 'workflow_dispatch' && inputs.itch_web)
+      !cancelled() && needs.web.result == 'success' &&
+      ((github.event_name == 'push' && needs.publish.result == 'success' && !contains(github.ref_name, '-'))
+      || (github.event_name == 'workflow_dispatch' && inputs.itch_web &&
+      (needs.publish.result == 'success' || (github.ref_type != 'tag' && needs.publish.result == 'skipped'))))
     steps:
       - uses: actions/download-artifact@v8
         with:
@@ -284,11 +302,13 @@ jobs:
 
   # Desktop and Android go to itch only on major/minor releases (tag ends in .0), never on patches.
   itch-desktop:
-    needs: [build, android]
+    needs: [build, android, publish]
     runs-on: ubuntu-latest
     if: >
-      (github.event_name == 'push' && !contains(github.ref_name, '-') && endsWith(github.ref_name, '.0'))
-      || (github.event_name == 'workflow_dispatch' && inputs.itch_desktop)
+      !cancelled() && needs.build.result == 'success' && needs.android.result == 'success' &&
+      ((github.event_name == 'push' && needs.publish.result == 'success' && !contains(github.ref_name, '-') && endsWith(github.ref_name, '.0'))
+      || (github.event_name == 'workflow_dispatch' && inputs.itch_desktop &&
+      (needs.publish.result == 'success' || (github.ref_type != 'tag' && needs.publish.result == 'skipped'))))
     steps:
       - uses: actions/download-artifact@v8
         with:
@@ -321,11 +341,13 @@ jobs:
   # Release path: same gate as itch-web — full-release tags deploy automatically, suffixed tags never do
   # (push one by hand via workflow_dispatch on the tag's ref). Ships the build this run just made.
   cloudflare-web:
-    needs: web
+    needs: [web, publish]
     runs-on: ubuntu-latest
     if: >
-      (github.event_name == 'push' && !contains(github.ref_name, '-'))
-      || (github.event_name == 'workflow_dispatch' && inputs.cloudflare_web)
+      !cancelled() && needs.web.result == 'success' &&
+      ((github.event_name == 'push' && needs.publish.result == 'success' && !contains(github.ref_name, '-'))
+      || (github.event_name == 'workflow_dispatch' && inputs.cloudflare_web &&
+      (needs.publish.result == 'success' || (github.ref_type != 'tag' && needs.publish.result == 'skipped'))))
     steps:
       # Checked out for hosting/ and the shared action — every /play/ byte comes from the web artifact.
       - uses: actions/checkout@v7
@@ -348,7 +370,7 @@ jobs:
   # in the build job is what keeps that name predictable.
   cloudflare-site:
     runs-on: ubuntu-latest
-    if: ${{ github.event_name == 'workflow_dispatch' && inputs.site_only }}
+    if: ${{ github.event_name == 'workflow_dispatch' && inputs.site_only && !inputs.android_only }}
     permissions:
       contents: read
     steps:
