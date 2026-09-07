@@ -188,6 +188,26 @@ describe('whether the switch is there at all', () => {
   });
 });
 
+describe('device downloads', () => {
+  it('uses the website device action instead of a local-library download', () => {
+    const onDeviceDownload = vi.fn();
+    const onContextualDownload = vi.fn();
+
+    show({
+      capabilities: {
+        localLibrary: false, deviceDownloads: true, likes: false, comments: false, moderation: false, reports: false,
+      },
+      onDeviceDownload,
+      onContextualDownload,
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: 'Download World' }));
+
+    expect(onDeviceDownload).toHaveBeenCalledWith(expect.objectContaining({ id: 'w1' }));
+    expect(onContextualDownload).not.toHaveBeenCalled();
+  });
+});
+
 describe('which panel opens first', () => {
   it('opens on the changelog for a reader whose copy is out of date', async () => {
     serveChangelog([entry()]);

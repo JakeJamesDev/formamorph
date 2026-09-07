@@ -31,6 +31,7 @@ import { useThumbnailPreload } from "@/lib/useCachedThumbnail";
 import { useContestWithdrawal } from "@/lib/useContestWithdrawal";
 import { useDownloadCoordinator } from "@/lib/useDownloadCoordinator";
 import { useLibraryDownload } from "@/lib/useLibraryDownload";
+import { useDeviceDownload } from "@/lib/useDeviceDownload";
 import { useDownscalePrompt } from "@/lib/useDownscalePrompt";
 import EntityStorageService from "@/services/EntityStorageService";
 import DictionaryStorageService from "@/services/DictionaryStorageService";
@@ -244,6 +245,7 @@ const CommunityCreationsBrowser = ({
     },
     refresh: refreshDictionaries,
   });
+  const deviceDownload = useDeviceDownload();
 
   const downloadFor = (kind: CatalogKind) => (kind === 'entity' ? entityDownload : dictionaryDownload);
 
@@ -264,6 +266,7 @@ const CommunityCreationsBrowser = ({
     ...downloadProgress,
     ...entityDownload.downloadProgress,
     ...dictionaryDownload.downloadProgress,
+    ...deviceDownload.downloadProgress,
   };
 
   const handleCardDownload = (record: WorldRecord, state: DownloadState) => {
@@ -971,6 +974,7 @@ const CommunityCreationsBrowser = ({
                       onHideAuthor={capabilities.hiddenFilters ? hideRemoteAuthor : undefined}
                       onHideTag={capabilities.hiddenFilters ? hideRemoteTag : undefined}
                       onContextualDownload={capabilities.localLibrary ? handleCardDownload : undefined}
+                      onDeviceDownload={capabilities.deviceDownloads ? deviceDownload.download : undefined}
                       onDelete={capabilities.authorManagement ? setRemoteWorldToDelete : undefined}
                       onLike={capabilities.likes ? handleLike : undefined}
                       onQuarantine={capabilities.moderation ? setQuarantining : undefined}
@@ -1022,7 +1026,8 @@ const CommunityCreationsBrowser = ({
         openImageViewer={openImageViewer}
         downloadStateForWorld={downloadStateForRecord}
         downloadProgress={allDownloadProgress}
-        onContextualDownload={handleCardDownload}
+        onContextualDownload={capabilities.localLibrary ? handleCardDownload : undefined}
+        onDeviceDownload={capabilities.deviceDownloads ? deviceDownload.download : undefined}
         currentUser={currentUser}
         onLike={handleLike}
         onLikesChanged={handleLikesChanged}

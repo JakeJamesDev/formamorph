@@ -11,9 +11,8 @@ import {
 } from '@/components/ui/dialog';
 import type { World } from '@/types';
 import { downloadBlob } from './downloadBlob';
-import { serializeJsonBlob } from './jsonFileWorkerUtils';
-import { APP_VERSION, WORLD_FILE_KIND } from './version';
 import { embedWorldRemoteImages, remoteWorldImages } from './embedRemoteImages';
+import { serializeWorldFile } from './worldFile';
 
 /** The world queued behind the linked-images choice, with the filename its download will use. */
 interface PendingExport {
@@ -32,11 +31,8 @@ export function useWorldExport(promptWorld: (world: World) => Promise<World | nu
   const [embedding, setEmbedding] = useState<{ done: number; total: number } | null>(null);
 
   const writeWorldFile = useCallback(async (world: World, filename: string) => {
-    const { id: _id, ...worldFields } = world;
-    // Both callers hand over a world already migrated to the current shape, so the export stamps this version.
-    const worldData = { formamorphKind: WORLD_FILE_KIND, ...worldFields, version: APP_VERSION };
     // Serialized off-thread: a world's embedded base64 images make this stringify a multi-second main-thread stall.
-    downloadBlob(await serializeJsonBlob(worldData, 2), `${filename}.json`);
+    downloadBlob(await serializeWorldFile(world), `${filename}.json`);
   }, []);
 
   /** "Download and embed": fetch every linked image into the exported copy, then report what failed. */

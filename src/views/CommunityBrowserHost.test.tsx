@@ -280,12 +280,13 @@ describe('the page presentation', () => {
     expect(screen.queryByText('Community Creations')).not.toBeInTheDocument();
   });
 
-  it('keeps website browsing read-only and out of the local library', async () => {
+  it('offers a device file without exposing the local-library download flow', async () => {
     catalog.items = [listing()];
 
     renderHost({ presentation: 'embedded', capabilities: WEBSITE_COMMUNITY_CAPABILITIES });
 
     expect(await screen.findByText('Sedge Landing')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Download world' })).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Download this world' })).not.toBeInTheDocument();
     expect(screen.queryByLabelText('Hide this world')).not.toBeInTheDocument();
   });

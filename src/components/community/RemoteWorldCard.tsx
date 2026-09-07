@@ -37,6 +37,8 @@ interface RemoteWorldCardProps {
   onHideAuthor?: (username: string) => void;
   onHideTag?: (tag: string) => void;
   onContextualDownload?: (world: WorldRecord, state: DownloadState) => void;
+  /** Saves an importable file to the visitor's device rather than the local library. */
+  onDeviceDownload?: (world: WorldRecord) => void;
   onDelete?: (worldId: string) => void;
   /** Records a like. Absent leaves the heart a plain count. */
   onLike?: (world: WorldRecord, liked: boolean) => Promise<void>;
@@ -57,7 +59,7 @@ interface RemoteWorldCardProps {
  *  description, author, counts, tags, and (for owners/admins) a delete control. */
 export function RemoteWorldCard({
   world, downloadState: dlState, downloadProgress, isAuthenticated, currentUser,
-  onView, onHideWorld, onHideAuthor, onHideTag, onContextualDownload, onDelete, onLike, onQuarantine, onRelease,
+  onView, onHideWorld, onHideAuthor, onHideTag, onContextualDownload, onDeviceDownload, onDelete, onLike, onQuarantine, onRelease,
   placements = [], onWithdraw, likeTutorial, likeTutorialNav,
 }: RemoteWorldCardProps) {
   // Get the world ID (server uses _id)
@@ -146,6 +148,15 @@ export function RemoteWorldCard({
               ) : (
                 <ActionIcon.cloudDownload className="h-5 w-5" />
               )}
+            </button>
+          </Tip>}
+          {!onContextualDownload && onDeviceDownload && <Tip tip={`Download this ${noun}`}>
+            <button
+              onClick={(e) => { e.stopPropagation(); onDeviceDownload(world); }}
+              className="p-1 rounded bg-overlay/50 text-white hover:bg-overlay/70 opacity-0 pointer-events-none transition-opacity group-hover:opacity-100 group-hover:pointer-events-auto"
+              aria-label={`Download ${noun}`}
+            >
+              <ActionIcon.cloudDownload className="h-5 w-5" />
             </button>
           </Tip>}
         </div>

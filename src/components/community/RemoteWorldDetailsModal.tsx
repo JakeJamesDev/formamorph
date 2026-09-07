@@ -47,8 +47,9 @@ interface RemoteWorldDetailsModalProps {
   downloadStateForWorld: (world: WorldRecord) => DownloadState;
   downloadProgress: Record<string, number>;
   onContextualDownload?: (world: WorldRecord, state: DownloadState) => void;
+  onDeviceDownload?: (world: WorldRecord) => void;
   /** Which mutable app actions this shell exposes. */
-  capabilities?: Pick<CommunityBrowserCapabilities, 'localLibrary' | 'likes' | 'comments' | 'moderation' | 'reports'>;
+  capabilities?: Pick<CommunityBrowserCapabilities, 'localLibrary' | 'deviceDownloads' | 'likes' | 'comments' | 'moderation' | 'reports'>;
   /** Who is reading, so the heart is a control only for somebody who could press it. */
   currentUser?: WorldRecord | null;
   /** Records a like. Absent leaves the heart a plain count. */
@@ -67,15 +68,15 @@ const COMMENT_MAX = 4000;
 /** How many more comments each "Load more" adds to the window on screen. */
 const COMMENTS_PAGE = 20;
 
-const APP_DETAILS_CAPABILITIES: Pick<CommunityBrowserCapabilities, 'localLibrary' | 'likes' | 'comments' | 'moderation' | 'reports'> = {
-  localLibrary: true, likes: true, comments: true, moderation: true, reports: true,
+const APP_DETAILS_CAPABILITIES: Pick<CommunityBrowserCapabilities, 'localLibrary' | 'deviceDownloads' | 'likes' | 'comments' | 'moderation' | 'reports'> = {
+  localLibrary: true, deviceDownloads: false, likes: true, comments: true, moderation: true, reports: true,
 };
 
 /** The remote-world details modal: metadata + download action (left) and comments (right). Owns its own
  *  comment state/paging; download state is supplied by the parent's download coordinator via props. */
 export function RemoteWorldDetailsModal({
   open, onOpenChange, world, collapsed, onToggleCollapsed,
-  isAuthenticated, openImageViewer, downloadStateForWorld, downloadProgress, onContextualDownload,
+  isAuthenticated, openImageViewer, downloadStateForWorld, downloadProgress, onContextualDownload, onDeviceDownload,
   currentUser, onLike, contests = [], onLikesChanged, openLikersOnMount = false,
   capabilities = APP_DETAILS_CAPABILITIES,
 }: RemoteWorldDetailsModalProps) {
@@ -329,7 +330,7 @@ export function RemoteWorldDetailsModal({
                   const dlState = downloadStateForWorld(world);
                   const progress = downloadProgress[world._id || world.id];
                   // While downloading, swap the button for a status bar (-1 ⇒ size unknown).
-                  if (capabilities.localLibrary && progress !== undefined) {
+                  if ((capabilities.localLibrary || capabilities.deviceDownloads) && progress !== undefined) {
                     return progress < 0
                       ? <IndeterminateProgress />
                       : <Progress value={progress * 100} className="h-2" />;
@@ -346,6 +347,10 @@ export function RemoteWorldDetailsModal({
                       onClick={() => onContextualDownload(world, dlState)}
                     >
                       <Icon className="mr-2 h-4 w-4" /> {label}
+                    </WorldActionButton>
+                  ) : capabilities.deviceDownloads && onDeviceDownload ? (
+                    <WorldActionButton tone="sky" onClick={() => onDeviceDownload(world)}>
+                      <ActionIcon.cloudDownload className="mr-2 h-4 w-4" /> Download {noun}
                     </WorldActionButton>
                   ) : null;
                 })()}
