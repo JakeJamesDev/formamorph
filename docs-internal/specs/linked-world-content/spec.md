@@ -97,6 +97,28 @@ The Add Entity / Add Dictionary picker lets the author select library content, r
 
 After confirmation, unresolved world Placeholder references open the reference-resolution step below. When every reference already has a valid connection, no additional step is needed. Library selection and file import share the linked-versus-independent choice; choosing an existing library item does not create another library copy.
 
+### Export/import portability
+
+Keep the importer's choices separate from the exporter's local relationships. Exported association metadata describes compatibility and source provenance; it does not itself establish an active link on another installation.
+
+#### Entity and dictionary files
+
+- Export the component's own content and its world associations, without bundling the associated worlds.
+- On import, offer compatible worlds already installed locally. When online, offer associated published worlds that can be found on the server for optional download.
+- Let the importer select which worlds, if any, to download or link. Multiple associations remain independent choices; the exporter cannot require the importer to select them.
+- Permit standalone import with no world selected. Offline import still offers installed compatible worlds; unavailable server information leaves associations unresolved without preventing import.
+- World links are created only after the importer chooses them. A recorded compatibility association alone is not an active local link. Apply the agreed world Placeholder connection flow when adding the component to a chosen world.
+
+#### World files
+
+- Bundle complete entity and dictionary content in the world's existing native entity/dictionary collections, as though those components were included directly. Do not make an older importer fetch external content to reconstruct the world.
+- Add metadata identifying the linked components and their source relationships. A newer importer offers to place marked components into the local library and establish links with the importer's permission. Without that permission, the bundled world content remains available as embedded content.
+- Import the bundled content as the installed version. Reconnecting to a published source must not silently replace it with newer server content; that requires the ordinary update-review flow.
+- Offline import remains usable from the bundle. Relationships that cannot currently be verified do not prevent importing the embedded content; unresolved verification is not confirmation that a required source has been deleted.
+- Target backward compatibility by preserving the existing native content shape and adding relationship metadata. Verify representative older importers accept the extra metadata and import the bundled content normally before claiming compatibility.
+
+This changes the export shape through additive relationship metadata. Exact fields, source-to-local identity mapping, version changes, and any migration remain unapproved implementation contracts. No version bump or migration is authorized by this design decision.
+
 ### World Placeholder reference resolution
 
 A linked component names the world Placeholder it needs, while each receiving world supplies the value. Resolve the reference once when linking rather than relying on a raw brace expression or matching independently created IDs.
@@ -271,6 +293,12 @@ When publishing a world with components, retain successful component publication
 59. As a player, I want successful operations retained and failed items retryable, so that a partial failure does not discard completed work or damage prior installed content.
 60. As a player, I want unavailable optional content to remain usable with its source association intact, so that its disappearance does not block my world or silently unlink my content.
 
+61. As a component importer, I want associated worlds offered individually without being bundled or automatically downloaded, so that I decide which worlds to install or link.
+62. As an offline user, I want component and world files to import their included content without requiring server verification, so that import remains useful without a connection.
+63. As a world importer, I want complete bundled entities and dictionaries with optional library placement and linking, so that I can use the world independently or retain its reusable relationships.
+64. As a user reconnecting imported content, I want the bundled version preserved until I approve an update, so that linking does not silently replace the content I imported.
+65. As a user of an older importer, I want bundled world content in its ordinary native collections, so that relationship metadata does not prevent normal import when that importer tolerates the added fields.
+
 ## Implementation Decisions
 
 ### Agreed behavioral constraints
@@ -281,7 +309,7 @@ When publishing a world with components, retain successful component publication
 - Track enough information to recognize competing edits and offer a meaningful comparison. Exact revision and conflict contracts remain open.
 - Keep gameplay state separate from authored world data. No gameplay write-back to the authored world.
 - Preserve entity-owned location membership. Cross-world location references need an explicit mapping contract; this proposal does not reverse ownership.
-- Persistent published relationships require serialization and API design. No field names, endpoint shapes, storage layout, version bump, or migration has been approved by this checkpoint.
+- Export/import behavior is settled in the portability section: component files carry associations without worlds; world files bundle native content plus relationship metadata; importers choose active links. No field names, endpoint shapes, storage layout, version bump, or migration has been approved by this checkpoint.
 
 ### Proposed implementation boundary — not yet reviewed
 
@@ -345,6 +373,13 @@ Keep remote authorship enforcement at the catalog mutation boundary. Local UI re
 | Optional source is unavailable | Initial world download is not blocked. |
 | Component references world-owned Placeholders | Suggest a match; let the author choose existing or create new; retain the connection and world-specific values across updates. |
 | World Placeholder connection is missing or broken | Surface a reference issue with the choose-existing/create-new repair flow. |
+| Export an entity/dictionary associated with several worlds | Include the component and association metadata, not the worlds' content. |
+| Import a component with world associations | Offer installed compatible worlds and available online counterparts individually; create only chosen links/downloads; standalone import remains possible. |
+| Import a bundled world with library placement declined | All embedded entities/dictionaries remain usable without creating library copies or active library links. |
+| Import a bundled world with library placement/linking allowed | Create the permitted library relationships while preserving the bundled content as the installed version. |
+| Reconnect imported content to a newer published source | Do not replace imported content before ordinary update review and confirmation. |
+| Import offline | Use included content and installed-world choices; lack of server verification does not block standalone or bundled import. |
+| Open a new world export with an older importer | Verify normal native content import despite added metadata; do not infer compatibility from the intended file shape alone. |
 
 ## Out of Scope
 
@@ -371,7 +406,7 @@ These are recorded for continued design work, not answered by prototype behavior
 8. **Local relationships:** the already-linked action opens the library item rather than creating duplicates. Define in-flight repeated clicks, intentional duplicate names, reconnecting independent copies, and whether deleting a local library item should also stop published-source tracking on its world copies.
 9. **Missing-source checks:** checks are user-initiated, with no automatic open/launch/background checks. Installed optional-source loss is nonblocking and retains its association. Define confirmed inaccessible versus temporary failure and restoration after re-publication.
 10. **World-specific references:** the world Placeholder connection/repair flow is settled above; matching ambiguity, nested paths, validation gates, entity location membership, and other cross-world references still need contracts.
-11. **Portability:** specify how downloaded/file-exported worlds and components carry source links, local replacements, and installed content. Reimport and relinking behavior was not settled; the earlier local-only export proposal was superseded by published dependencies.
+11. **Portability contracts:** component associations, bundled native world content, importer-controlled linking, offline import, and preserving imported content until update approval are settled above. Define metadata fields, collision/deduplication handling, local replacement provenance, and the exact import-review controls. Verify older-importer compatibility rather than assuming unknown fields are tolerated.
 12. **Selection:** define how linked library/world copies appear in the pre-game entity/dictionary pickers so the same content is not accidentally activated twice.
 13. **Validation:** review the proposed testing boundaries and unresolved decisions, then create scoped implementation tickets. This checkpoint must not be treated as AFK-ready.
 
@@ -422,3 +457,4 @@ The demo uses fixed sample actors/content and simplified revision counters. It o
 - Remaining-decisions round 3: add-on review decisions wait for Save Changes. Failed optional downloads do not hold up a complete world; successful component publications remain while required failures are retried before world publication. Library updates review all affected worlds together, protecting each local replacement. Removed local compatibility links become pending removals on the next Publish.
 - Remaining-decisions round 4: keep staged review rows visible with Pending change and Discard Changes; stage Mark reviewed too. Comparisons show changed fields first, with unchanged content expandable and dictionary entries grouped by change. Missing optional sources preserve content and tracking without blocking play. Dependencies first published with a world default Unlisted. Manage Add-ons lives on published-world actions, while repairs are reachable contextually and through the editor issue list in both modes.
 - The author confirmed the UI checkpoint covering these four rounds. Remaining edge cases and implementation contracts stay open; this confirmation does not authorize implementation or make the spec AFK-ready.
+- Portability decision: entity/dictionary files carry component content and world associations without bundling worlds; importers choose compatible installed worlds or optional server downloads. World files bundle content in native collections with additive relationship metadata and optional library placement/linking on import. Preserve imported content until update approval, support offline import, and verify older-importer compatibility. Exact schema/version/migration decisions remain open.
