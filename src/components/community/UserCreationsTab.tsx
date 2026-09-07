@@ -33,7 +33,9 @@ interface UserCreationsTabProps {
   /** Their name, for the empty line — a profile that says "they" about somebody named is colder. */
   username: string | null;
   /** Opens a listing in Community Creations. Absent leaves the rows as plain text. */
-  onOpenListing?: (listing: { id: string; kind: string }) => void;
+  onOpenListing?: (listing: { id: string; kind: CatalogKind }) => void;
+  /** A public destination for a listing. Takes precedence over the in-app opener. */
+  listingHref?: (listing: { id: string; kind: CatalogKind }) => string;
   /**
    * How much room the list has.
    *
@@ -49,7 +51,7 @@ interface UserCreationsTabProps {
  * Fetched as one list of every kind and split here: three requests would be three round trips to draw the
  * same rows, and the counts on the filter need the whole set regardless.
  */
-export function UserCreationsTab({ userId, username, onOpenListing, layout = 'dialog' }: UserCreationsTabProps) {
+export function UserCreationsTab({ userId, username, onOpenListing, listingHref, layout = 'dialog' }: UserCreationsTabProps) {
   const [creations, setCreations] = useState<ProfileCreation[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
@@ -173,7 +175,14 @@ export function UserCreationsTab({ userId, username, onOpenListing, layout = 'di
               </div>
 
               <div className="min-w-0 flex-1 text-left">
-                {onOpenListing ? (
+                {listingHref ? (
+                  <a
+                    href={listingHref({ id: item.id, kind: item.kind })}
+                    className="block w-full truncate text-left text-label font-medium underline-offset-2 hover:underline focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring rounded-sm"
+                  >
+                    {item.name}
+                  </a>
+                ) : onOpenListing ? (
                   <button
                     type="button"
                     onClick={() => onOpenListing({ id: item.id, kind: item.kind })}

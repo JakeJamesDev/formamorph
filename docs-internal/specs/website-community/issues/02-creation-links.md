@@ -1,6 +1,6 @@
 # 02: Share and open individual creations
 
-Status: ready-for-agent
+Status: ready-for-human
 Blocked by: 01 — Browse community creations on the website
 
 Parent: [Website community spec](../spec.md)

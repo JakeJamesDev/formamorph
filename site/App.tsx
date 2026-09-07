@@ -33,7 +33,7 @@ const normalize = (pathname: string) =>
 export function App() {
   const { pathname } = useSiteLocation();
   const path = normalize(pathname);
-  const community = path === '/community';
+  const community = path === '/community' || path.startsWith('/community/');
 
   const fixed = ROUTES[path as keyof typeof ROUTES];
   const username = fixed ? null : profileUsername(path);

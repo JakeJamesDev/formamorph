@@ -159,6 +159,12 @@ interface CommunityCreationsBrowserProps {
   openListing?: { id: string; kind: string } | null;
   /** Fired once that listing has been opened, or found to be gone, so the host can clear its request. */
   onListingOpened?: () => void;
+  /** A website-controlled destination; an explicit null closes the visible selection. */
+  listing?: { id: string; kind: string } | null;
+  /** Reports a card, direct destination, or details close to a website router. */
+  onListingChange?: (listing: { id: string; kind: string } | null) => void;
+  /** Reports a destination only after the catalog has resolved without it. */
+  onListingUnavailable?: (listing: { id: string; kind: string }) => void;
   /** Running community events, announced in the header the same way the main menu announces them. */
   events?: ServerEvent[];
   /** Open the place an event's content lives — the contest tab, for a contest. */
@@ -172,7 +178,8 @@ interface CommunityCreationsBrowserProps {
 const CommunityCreationsBrowser = ({
   open, onOpenChange, presentation = 'dialog', capabilities = APP_COMMUNITY_CAPABILITIES, worlds, setWorlds, entities, dictionaries,
   refreshEntities, refreshDictionaries,
-  isAuthenticated, currentUser, openImageViewer, initialTab, openListing, onListingOpened,
+  isAuthenticated, currentUser, openImageViewer, initialTab, openListing, onListingOpened, listing: controlledListing,
+  onListingChange, onListingUnavailable,
   events = [], onOpenEvent, openLikersOnMount = false,
 }: CommunityCreationsBrowserProps) => {
   // The header's title element, which differs per shell (see PageHeading).
@@ -536,6 +543,7 @@ const CommunityCreationsBrowser = ({
   const handleViewRemoteWorldDetails = (world: WorldRecord) => {
     setSelectedRemoteWorld(world);
     setShowRemoteWorldDetailsModal(true);
+    onListingChange?.({ id: String(world._id || world.id), kind: kindOf(world) });
   };
 
   // A listing named from outside — a notification feed row. The catalog is one request for every kind, so
@@ -548,24 +556,34 @@ const CommunityCreationsBrowser = ({
       if (openListing) onListingOpened?.();
       return;
     }
-    if (!openListing) return;
+    const requestedListing = controlledListing === undefined ? openListing : controlledListing;
+    if (!requestedListing) {
+      if (controlledListing === null) {
+        setSelectedRemoteWorld(null);
+        setShowRemoteWorldDetailsModal(false);
+      }
+      return;
+    }
 
-    const found = remoteWorlds.find((w) => (w._id || w.id) === openListing.id);
+    const found = remoteWorlds.find((w) =>
+      (w._id || w.id) === requestedListing.id && kindOf(w) === requestedListing.kind);
     if (found) {
       setBrowseTab(kindOf(found));
       // Set directly rather than through the click handler, which is rebuilt every render and would
       // make this effect chase its own identity.
       setSelectedRemoteWorld(found);
       setShowRemoteWorldDetailsModal(true);
+      onListingChange?.({ id: String(found._id || found.id), kind: kindOf(found) });
     } else if (!catalogSettled) {
       return;
     } else {
       // Deleted or quarantined between the feed being read and the row being clicked.
       toast.info('That listing is no longer in Community Creations');
+      if (controlledListing !== undefined) onListingUnavailable?.(requestedListing);
     }
 
     onListingOpened?.();
-  }, [open, openListing, catalogSettled, remoteWorlds, onListingOpened]);
+  }, [open, openListing, controlledListing, catalogSettled, remoteWorlds, onListingOpened, onListingChange, onListingUnavailable]);
 
   // DEV: `#dev?modal=likers` lands on the likers list of whichever listing the catalog puts first, the
   // same way `modal=modelDetails` opens the library's first model. Does nothing on an empty catalog.
@@ -990,7 +1008,13 @@ const CommunityCreationsBrowser = ({
       {/* Remote World Details Modal — details + comments live in the component */}
       <RemoteWorldDetailsModal
         open={showRemoteWorldDetailsModal}
-        onOpenChange={setShowRemoteWorldDetailsModal}
+        onOpenChange={(detailsOpen) => {
+          setShowRemoteWorldDetailsModal(detailsOpen);
+          if (!detailsOpen && controlledListing !== undefined) {
+            setSelectedRemoteWorld(null);
+            onListingChange?.(null);
+          }
+        }}
         world={selectedRemoteWorld}
         collapsed={communityBrowserModalCollapsed}
         onToggleCollapsed={toggleCommunityBrowserModalCollapsed}
