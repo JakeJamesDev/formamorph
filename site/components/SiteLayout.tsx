@@ -10,6 +10,8 @@ interface SiteLayoutProps {
   subtitle?: string;
   /** A form is read down one column; a profile is a page. */
   width?: 'form' | 'page';
+  /** A full-width surface that owns the main area below the shared website header. */
+  surface?: boolean;
   children: ReactNode;
 }
 
@@ -24,7 +26,7 @@ const WIDTHS = {
  * narrow card between them. The landing page is one static file with no build step, so its look is
  * matched here rather than imported.
  */
-export function SiteLayout({ title, subtitle, width = 'form', children }: SiteLayoutProps) {
+export function SiteLayout({ title, subtitle, width = 'form', surface = false, children }: SiteLayoutProps) {
   const [deletionCanceled] = useState(hasDeletionCancellation);
 
   // Cleared after render so React's development double-render cannot consume it before it is visible.
@@ -40,12 +42,18 @@ export function SiteLayout({ title, subtitle, width = 'form', children }: SiteLa
             <img src="/site/icon.png" width={32} height={32} alt="" className="rounded-lg" />
             <span className="text-title font-semibold tracking-tight">Formamorph</span>
           </a>
-          <SiteAccountControls />
+          <div className="flex items-center gap-4">
+            <a href="/community" className="font-medium hover:text-primary">Community</a>
+            <SiteAccountControls />
+          </div>
         </div>
       </header>
 
-      <main className="mx-auto flex w-full max-w-[1100px] flex-1 items-start justify-center px-6 py-12">
-        <div className={cn('w-full', WIDTHS[width])}>
+      <main className={cn(
+        'flex w-full flex-1',
+        surface ? 'min-h-0 flex-col' : 'mx-auto max-w-[1100px] items-start justify-center px-6 py-12',
+      )}>
+        <div className={cn('w-full', surface ? 'flex min-h-0 flex-1 flex-col' : WIDTHS[width])}>
           {deletionCanceled && (
             <div role="status" className="mb-6 rounded-lg border border-primary/40 bg-primary/10 p-4 text-label">
               <p className="font-semibold text-foreground">Account deletion canceled</p>
@@ -54,11 +62,13 @@ export function SiteLayout({ title, subtitle, width = 'form', children }: SiteLa
               </p>
             </div>
           )}
-          {title && <h1 className="text-display font-semibold tracking-tight">{title}</h1>}
-          {subtitle && <p className="mt-2 text-body text-muted-foreground">{subtitle}</p>}
-          <div className={cn('rounded-xl border border-border bg-card p-6', title && 'mt-6')}>
-            {children}
-          </div>
+          {surface ? children : <>
+            {title && <h1 className="text-display font-semibold tracking-tight">{title}</h1>}
+            {subtitle && <p className="mt-2 text-body text-muted-foreground">{subtitle}</p>}
+            <div className={cn('rounded-xl border border-border bg-card p-6', title && 'mt-6')}>
+              {children}
+            </div>
+          </>}
         </div>
       </main>
 

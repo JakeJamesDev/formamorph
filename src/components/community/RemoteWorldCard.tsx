@@ -33,11 +33,11 @@ interface RemoteWorldCardProps {
   isAuthenticated: boolean;
   currentUser: WorldRecord | null;
   onView: (world: WorldRecord) => void;
-  onHideWorld: (worldId: string) => void;
-  onHideAuthor: (username: string) => void;
-  onHideTag: (tag: string) => void;
-  onContextualDownload: (world: WorldRecord, state: DownloadState) => void;
-  onDelete: (worldId: string) => void;
+  onHideWorld?: (worldId: string) => void;
+  onHideAuthor?: (username: string) => void;
+  onHideTag?: (tag: string) => void;
+  onContextualDownload?: (world: WorldRecord, state: DownloadState) => void;
+  onDelete?: (worldId: string) => void;
   /** Records a like. Absent leaves the heart a plain count. */
   onLike?: (world: WorldRecord, liked: boolean) => Promise<void>;
   /** Opens the quarantine dialog. Admin surfaces only. */
@@ -125,17 +125,17 @@ export function RemoteWorldCard({
            cluster with download — the primary action — in the corner, clear of names expanding at
            the bottom. Icon reflects whether the world is new, current (refresh), or has an update. */
         <div className="absolute top-1 right-1 z-10 flex gap-1">
-          <Tip tip="Hide this world">
+          {onHideWorld && <Tip tip="Hide this world">
             <button
               onClick={(e) => { e.stopPropagation(); onHideWorld(worldId); }}
               className="p-1 rounded bg-overlay/50 text-white hover:bg-overlay/70 opacity-0 pointer-events-none transition-opacity group-hover:opacity-100 group-hover:pointer-events-auto"
             >
               <EyeOff className="h-5 w-5" />
             </button>
-          </Tip>
-          <Tip tip={dlState === 'update' ? "Update available — download the newer version" : dlState === 'refresh' ? `Re-download this ${noun}` : `Download this ${noun}`}>
+          </Tip>}
+          {onContextualDownload && <Tip tip={dlState === 'update' ? "Update available — download the newer version" : dlState === 'refresh' ? `Re-download this ${noun}` : `Download this ${noun}`}>
             <button
-              onClick={(e) => { e.stopPropagation(); onContextualDownload(world, dlState); }}
+              onClick={(e) => { e.stopPropagation(); onContextualDownload?.(world, dlState); }}
               className="p-1 rounded bg-overlay/50 text-white hover:bg-overlay/70 opacity-0 pointer-events-none transition-opacity group-hover:opacity-100 group-hover:pointer-events-auto"
               aria-label={dlState === 'update' ? "Update available" : dlState === 'refresh' ? `Re-download this ${noun}` : `Download this ${noun}`}
             >
@@ -147,7 +147,7 @@ export function RemoteWorldCard({
                 <ActionIcon.cloudDownload className="h-5 w-5" />
               )}
             </button>
-          </Tip>
+          </Tip>}
         </div>
       )}
       thumbnail={world.thumbnail_file ? (
@@ -174,8 +174,8 @@ export function RemoteWorldCard({
             labelsChild={false}
           >
             <span
-              onClick={(e) => { e.stopPropagation(); if (world.author?.username) onHideAuthor(world.author.username); }}
-              className={world.author?.username ? "cursor-pointer hover:line-through truncate" : "truncate"}
+              onClick={(e) => { e.stopPropagation(); if (world.author?.username) onHideAuthor?.(world.author.username); }}
+              className={world.author?.username && onHideAuthor ? "cursor-pointer hover:line-through truncate" : "truncate"}
             >
               By {world.author?.username || "Unknown"}
             </span>
@@ -233,7 +233,7 @@ export function RemoteWorldCard({
         </div>
       )}
 
-      {(isOwnedByUser || mayModerate) && (
+      {(onDelete && (isOwnedByUser || mayModerate)) && (
         <div className="mt-auto pt-1 flex justify-end gap-1">
           {/* Leaving a contest is not deleting anything, so it reads as the trophy coming off rather than
               as a destructive control — and it is only ever on the author's own entry. */}
@@ -273,7 +273,7 @@ export function RemoteWorldCard({
           )}
           <button
             className="p-1 text-destructive hover:text-destructive/80"
-            onClick={(e) => { e.stopPropagation(); onDelete(worldId); }}
+            onClick={(e) => { e.stopPropagation(); onDelete?.(worldId); }}
             aria-label="Delete world"
           >
             <Trash2 className="h-5 w-5" />

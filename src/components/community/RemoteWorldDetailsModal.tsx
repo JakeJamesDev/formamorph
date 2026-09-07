@@ -45,7 +45,15 @@ interface RemoteWorldDetailsModalProps {
   openImageViewer: (src: string | undefined, alt: string | undefined) => void;
   downloadStateForWorld: (world: WorldRecord) => DownloadState;
   downloadProgress: Record<string, number>;
-  onContextualDownload: (world: WorldRecord, state: DownloadState) => void;
+  onContextualDownload?: (world: WorldRecord, state: DownloadState) => void;
+  /** Which mutable app actions this shell exposes. */
+  capabilities?: {
+    localLibrary: boolean;
+    likes: boolean;
+    comments: boolean;
+    moderation: boolean;
+    reports: boolean;
+  };
   /** Who is reading, so the heart is a control only for somebody who could press it. */
   currentUser?: WorldRecord | null;
   /** Records a like. Absent leaves the heart a plain count. */
@@ -70,6 +78,7 @@ export function RemoteWorldDetailsModal({
   open, onOpenChange, world, collapsed, onToggleCollapsed,
   isAuthenticated, openImageViewer, downloadStateForWorld, downloadProgress, onContextualDownload,
   currentUser, onLike, contests = [], onLikesChanged, openLikersOnMount = false,
+  capabilities = { localLibrary: true, likes: true, comments: true, moderation: true, reports: true },
 }: RemoteWorldDetailsModalProps) {
   const [comments, setComments] = useState<WorldRecord[]>([]);
   const [commentsTotal, setCommentsTotal] = useState(0);
@@ -95,7 +104,8 @@ export function RemoteWorldDetailsModal({
 
   // Off entirely for a signed-out reader and against a server without the feature, so no surface here
   // ever offers an action that would be refused.
-  const reportsEnabled = useReportsEnabled(isAuthenticated);
+  const reportFeatureEnabled = useReportsEnabled(isAuthenticated);
+  const reportsEnabled = capabilities.reports && reportFeatureEnabled;
 
   const plainVocab = useMemo(() => plainVocabulary(), []);
 
@@ -225,7 +235,7 @@ export function RemoteWorldDetailsModal({
 
   // Who liked something is a moderation surface, not a social one: an author does not get it on their
   // own listing, and nothing on screen tells anybody else it exists.
-  const canSeeLikers = isStaff(currentUser);
+  const canSeeLikers = capabilities.moderation && isStaff(currentUser);
 
   // The modal outlives the listing it is showing — it stays mounted while the catalog is browsed — so a
   // likers list left open would reopen itself over whichever listing came next, unasked.
@@ -320,7 +330,7 @@ export function RemoteWorldDetailsModal({
                   const dlState = downloadStateForWorld(world);
                   const progress = downloadProgress[world._id || world.id];
                   // While downloading, swap the button for a status bar (-1 ⇒ size unknown).
-                  if (progress !== undefined) {
+                  if (capabilities.localLibrary && progress !== undefined) {
                     return progress < 0
                       ? <IndeterminateProgress />
                       : <Progress value={progress * 100} className="h-2" />;
@@ -331,14 +341,14 @@ export function RemoteWorldDetailsModal({
                     : dlState === 'refresh'
                       ? [ActionIcon.cloudRefresh, `Re-download ${noun}`] as const
                       : [ActionIcon.cloudDownload, `Download ${noun}`] as const;
-                  return (
+                  return capabilities.localLibrary && onContextualDownload ? (
                     <WorldActionButton
                       tone="sky"
                       onClick={() => onContextualDownload(world, dlState)}
                     >
                       <Icon className="mr-2 h-4 w-4" /> {label}
                     </WorldActionButton>
-                  );
+                  ) : null;
                 })()}
                 meta={
                   <div className="grid grid-cols-2 gap-4">
@@ -364,7 +374,7 @@ export function RemoteWorldDetailsModal({
                         liked={world.liked}
                         size="md"
                         // Static on your own listing, which the server refuses.
-                        onToggle={onLike && isAuthenticated && !isOwnListing ? (next) => onLike(world, next) : undefined}
+                        onToggle={capabilities.likes && onLike && isAuthenticated && !isOwnListing ? (next) => onLike(world, next) : undefined}
                         // Staff read the count as a way into who is behind it; everybody else keeps the
                         // heart, and nothing on screen says a list exists.
                         onOpenLikers={canSeeLikers ? () => setShowLikers(true) : undefined}
@@ -436,7 +446,7 @@ export function RemoteWorldDetailsModal({
                 <>
               <h3 className="text-helper font-semibold text-muted-foreground">Comments ({commentsTotal})</h3>
 
-              {isAuthenticated ? (
+              {capabilities.comments && isAuthenticated ? (
                 <div className="space-y-2 min-w-0">
                   <PromptField
                     value={commentText}
@@ -460,7 +470,9 @@ export function RemoteWorldDetailsModal({
                   </div>
                 </div>
               ) : (
-                <p className="text-helper text-muted-foreground">Log in to leave a comment.</p>
+                <p className="text-helper text-muted-foreground">
+                  {capabilities.comments ? 'Log in to leave a comment.' : 'Comments are read-only on the website.'}
+                </p>
               )}
 
               <div className="space-y-3">
@@ -475,7 +487,7 @@ export function RemoteWorldDetailsModal({
                         {c.created_at ? formatServerDateTime(c.created_at) : ''}
                         {/* Said plainly, so a reader can tell a comment changed after the replies to it. */}
                         {c.edited_at && <span className="italic">· edited</span>}
-                        {editingId !== c.id && (isOwnComment(c) || mayDelete(c) || (reportsEnabled && !isOwnComment(c))) && (
+                        {capabilities.comments && editingId !== c.id && (isOwnComment(c) || mayDelete(c) || (reportsEnabled && !isOwnComment(c))) && (
                           <span className="flex items-center">
                             {/* Per comment rather than per thread: an abusive reply under a listing that
                                 is otherwise fine is the case this exists for. */}
@@ -524,7 +536,7 @@ export function RemoteWorldDetailsModal({
                       </span>
                     </div>
 
-                    {editingId === c.id ? (
+                    {capabilities.comments && editingId === c.id ? (
                       <div className="mt-2 space-y-2 min-w-0">
                         <PromptField
                           value={editDraft}
@@ -570,11 +582,11 @@ export function RemoteWorldDetailsModal({
           </div>
         )}
 
-        <ReportDialog
+        {capabilities.reports && <ReportDialog
           open={reportTarget !== null}
           onOpenChange={(isOpen) => { if (!isOpen) setReportTarget(null); }}
           target={reportTarget}
-        />
+        />}
 
         {canSeeLikers && (
           <LikersDialog
@@ -587,7 +599,7 @@ export function RemoteWorldDetailsModal({
           />
         )}
 
-        <ConfirmDialog
+        {capabilities.comments && <ConfirmDialog
           open={!!pendingDelete}
           onOpenChange={(isOpen) => { if (!isOpen) setPendingDelete(null); }}
           title="Delete this comment?"
@@ -598,7 +610,7 @@ export function RemoteWorldDetailsModal({
             if (commentId) void handleDeleteComment(commentId);
           }}
           onCancel={() => setPendingDelete(null)}
-        />
+        />}
       </DialogContent>
     </Dialog>
   );

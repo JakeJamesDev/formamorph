@@ -24,6 +24,7 @@ describe('the shared site account controls', () => {
   it('offers sign in when there is no session', () => {
     renderPage();
 
+    expect(screen.getByRole('link', { name: 'Community' })).toHaveAttribute('href', '/community');
     expect(screen.getByRole('link', { name: 'Sign In' })).toHaveAttribute('href', '/login');
     expect(screen.queryByRole('button', { name: 'Sign Out' })).toBeNull();
   });

@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { lazy, Suspense, useEffect } from 'react';
 import { AccountPage } from './pages/AccountPage';
 import { LoginPage } from './pages/LoginPage';
 import { NotFoundPage } from './pages/NotFoundPage';
@@ -8,6 +8,13 @@ import { RegisterPage } from './pages/RegisterPage';
 import { ResetPasswordPage } from './pages/ResetPasswordPage';
 import { VerifyEmailPage } from './pages/VerifyEmailPage';
 import { profileUsername, useSiteLocation } from './router';
+
+// Community brings its own browser and game-adjacent dependencies. It must not enter lightweight
+// account routes merely because they share this route entry.
+const CommunityPage = lazy(async () => {
+  const module = await import('./pages/CommunityPage');
+  return { default: module.CommunityPage };
+});
 
 /** Every fixed path this entry serves, and the tab title that goes with it. */
 const ROUTES = {
@@ -27,6 +34,7 @@ const normalize = (pathname: string) =>
 export function App() {
   const { pathname } = useSiteLocation();
   const path = normalize(pathname);
+  const community = path === '/community';
 
   const fixed = ROUTES[path as keyof typeof ROUTES];
   const username = fixed ? null : profileUsername(path);
@@ -35,8 +43,10 @@ export function App() {
   // profile is the exception: it names an account that may turn out not to exist, so it titles itself
   // once the server has answered and this leaves it the plain name until then.
   useEffect(() => {
-    document.title = fixed?.title ?? 'Formamorph';
-  }, [fixed]);
+    document.title = community ? 'Community Creations · Formamorph' : fixed?.title ?? 'Formamorph';
+  }, [community, fixed]);
+
+  if (community) return <Suspense fallback={null}><CommunityPage /></Suspense>;
 
   if (fixed) {
     const Page = fixed.page;

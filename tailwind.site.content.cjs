@@ -18,6 +18,33 @@
 const DIRECTORIES = [
   'site/',
   'src/components/ui/',
+  // The community page is lazy, but it reuses the browser's component family as one route chunk.
+  'src/components/community/',
+]
+
+const COMMUNITY_FILES = [
+  'src/views/CommunityBrowserHost.tsx',
+  'src/views/CommunityCreationsBrowser.tsx',
+  'src/components/ImageZoomViewer.tsx',
+  'src/components/WorldDetails.tsx',
+  'src/components/ConfirmDialog.tsx',
+  'src/components/TokenAutocomplete.tsx',
+  'src/components/Chip.tsx',
+  'src/lib/useContestWithdrawal.tsx',
+  'src/components/events/EventBanner.tsx',
+  'src/components/menu/MessageComposerDialog.tsx',
+  'src/components/WorldCardShell.tsx',
+  'src/components/TutorialPopover.tsx',
+  'src/components/game/MarkdownRenderer.tsx',
+  'src/components/prompt/PromptField.tsx',
+  'src/components/UserName.tsx',
+  'src/components/WorldActionButton.tsx',
+  'src/components/PlaceBadges.tsx',
+  'src/lib/previewTint.ts',
+  'src/components/events/EventPosterBand.tsx',
+  'src/components/FullscreenShell.tsx',
+  'src/components/StatusPill.tsx',
+  'src/components/GradientButton.tsx',
 ]
 
 /**
@@ -56,11 +83,13 @@ const FILES = [
   'src/services/PolicyService.ts',
   'src/services/UserService.ts',
   'src/types/index.ts',
+  ...COMMUNITY_FILES,
 ]
 
 module.exports = {
   DIRECTORIES,
   FILES,
+  COMMUNITY_FILES,
   /** The two lists as Tailwind wants them. */
   content: [
     ...DIRECTORIES.map((directory) => `./${directory}**/*.{js,jsx,ts,tsx}`),

@@ -1,6 +1,6 @@
 # 01: Browse community creations on the website
 
-Status: ready-for-agent
+Status: ready-for-human
 Blocked by: None (can start immediately)
 
 Parent: [Website community spec](../spec.md)
