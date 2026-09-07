@@ -76,14 +76,13 @@
      push the logo down without giving the page anything. */
   .topbar { position:absolute; top:0; left:0; right:0; z-index:10;
     display:flex; justify-content:flex-end; padding:1rem 1.25rem; }
-  .acct { display:inline-flex; align-items:center; gap:.45em; padding:.4em .85em; border-radius:999px;
+  .acct { display:inline-flex; align-items:center; justify-content:center; gap:.45em; height:42px; padding:0 .85em; border-radius:999px;
     border:1px solid var(--edge); background:var(--account-bg); color:var(--text); font-weight:600;
-    font-size:1.425rem; text-decoration:none; }
+    font-size:1.05rem; text-decoration:none; }
   .acct:hover { background:var(--lift); }
-  /* Signed in the control is the face alone, so the pill shrinks to it — but no smaller than a
-     comfortable target, which is what holds it near the signed-out pill's height. */
-  .acct.face { padding:.25em; font-size:.95rem; }
-  .acct-icon { width:30px; height:30px; display:block; }
+  /* Both session states share one control height. */
+  .acct.face { width:42px; padding:0; }
+  .acct-icon { width:22px; height:22px; display:block; }
   .acct.face .acct-icon { width:26px; height:26px; }
   .acct-avatar { width:30px; height:30px; border-radius:999px; object-fit:cover; display:block; }
   .session-notice { position:fixed; z-index:3; top:4.5rem; left:50%; transform:translateX(-50%);
