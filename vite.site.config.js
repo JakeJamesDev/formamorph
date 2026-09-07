@@ -70,4 +70,9 @@ export default defineConfig(({ command }) => ({
     outDir: path.resolve(__dirname, 'site-dist'),
     emptyOutDir: true,
   },
+  // The lazy community route reaches the shared image worker. A code-split site build must emit that
+  // worker as an ES module; Vite's IIFE default cannot coexist with the route chunk.
+  worker: {
+    format: 'es',
+  },
 }))

@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import CommunityCreationsBrowser, { type BrowserPresentation } from './CommunityCreationsBrowser';
+import { APP_COMMUNITY_CAPABILITIES, type CommunityBrowserCapabilities } from '@/lib/communityBrowserCapabilities';
 import { ImageZoomViewer } from '@/components/ImageZoomViewer';
 import { useActiveEvents } from '@/lib/useActiveEvents';
 import { isContestEvent } from '@/lib/serverEvents';
@@ -17,6 +18,8 @@ export interface CommunityBrowserHostProps {
   onOpenChange: (open: boolean) => void;
   /** Which shell the browser is raised in. Defaults to the app's full-screen modal. */
   presentation?: BrowserPresentation;
+  /** Actions this host may expose. Defaults to the complete in-app surface. */
+  capabilities?: CommunityBrowserCapabilities;
   /** The tab to open on — the dev-router's, or the one an event banner asked for. */
   initialTab?: BrowseTab;
   /** A listing to open the details for, arriving from somewhere else — a notification feed row. */
@@ -44,7 +47,7 @@ export interface CommunityBrowserHostProps {
  * coordinator's own optimistic writes, entities and dictionaries through the refreshers below.
  */
 export const CommunityBrowserHost = ({
-  open, onOpenChange, presentation = 'dialog', initialTab, openListing, onListingOpened,
+  open, onOpenChange, presentation = 'dialog', capabilities = APP_COMMUNITY_CAPABILITIES, initialTab, openListing, onListingOpened,
   openLikersOnMount = false,
 }: CommunityBrowserHostProps) => {
   // The three local libraries, each driving its tab's download state.
@@ -125,11 +128,13 @@ export const CommunityBrowserHost = ({
 
   useEffect(() => {
     if (!open) return;
-    void refreshWorlds();
-    void refreshEntities();
-    void refreshDictionaries();
+    if (capabilities.localLibrary) {
+      void refreshWorlds();
+      void refreshEntities();
+      void refreshDictionaries();
+    }
     void refreshAuth();
-  }, [open, refreshWorlds, refreshEntities, refreshDictionaries, refreshAuth]);
+  }, [open, capabilities.localLibrary, refreshWorlds, refreshEntities, refreshDictionaries, refreshAuth]);
 
   // Dropped on close so a tab an event asked for doesn't outlive the visit it was asked for in.
   useEffect(() => {
@@ -158,6 +163,7 @@ export const CommunityBrowserHost = ({
         open={open}
         onOpenChange={onOpenChange}
         presentation={presentation}
+        capabilities={capabilities}
         worlds={worlds}
         setWorlds={setWorlds}
         entities={entities}

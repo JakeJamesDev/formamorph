@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { render, screen, fireEvent, cleanup, waitFor } from '@testing-library/react';
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import CommunityBrowserHost from './CommunityBrowserHost';
+import { WEBSITE_COMMUNITY_CAPABILITIES } from '@/lib/communityBrowserCapabilities';
 import WorldStorageService from '@/services/WorldStorageService';
 import EntityStorageService from '@/services/EntityStorageService';
 import AuthService from '@/services/AuthService';
@@ -277,5 +278,15 @@ describe('the page presentation', () => {
     render(<CommunityBrowserHost open={false} onOpenChange={() => {}} presentation="page" />);
 
     expect(screen.queryByText('Community Creations')).not.toBeInTheDocument();
+  });
+
+  it('keeps website browsing read-only and out of the local library', async () => {
+    catalog.items = [listing()];
+
+    renderHost({ presentation: 'embedded', capabilities: WEBSITE_COMMUNITY_CAPABILITIES });
+
+    expect(await screen.findByText('Sedge Landing')).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Download this world' })).not.toBeInTheDocument();
+    expect(screen.queryByLabelText('Hide this world')).not.toBeInTheDocument();
   });
 });

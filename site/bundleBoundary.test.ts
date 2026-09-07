@@ -12,6 +12,7 @@ import { DIRECTORIES, FILES } from '../tailwind.site.content.cjs';
  */
 
 const SITE = resolve(__dirname);
+const COMMUNITY_PAGE = resolve(SITE, 'pages', 'CommunityPage.tsx');
 
 /** What `site/` may reach for inside `src/`. Everything here is a leaf the game does not drag along. */
 const ALLOWED = [
@@ -60,6 +61,9 @@ const sourceFiles = (dir: string): string[] =>
     return /\.tsx?$/.test(name) && !/\.test\.tsx?$/.test(name) ? [path] : [];
   });
 
+/** The community page is lazy by design; this boundary protects the account entry chunk, not its route chunk. */
+const accountSourceFiles = () => sourceFiles(SITE).filter((path) => path !== COMMUNITY_PAGE);
+
 /** Where an `@/...` specifier's file actually is, or null when it resolves to nothing readable. */
 const resolveApp = (specifier: string): string | null => {
   const base = resolve(SITE, '..', 'src', specifier.slice('@/'.length));
@@ -73,12 +77,12 @@ const resolveApp = (specifier: string): string | null => {
 };
 
 /** Every `@/...` specifier reachable from the site files, following each one into the next. */
-const reachableFromSite = (): Map<string, string> => {
+const reachableFrom = (roots = accountSourceFiles()): Map<string, string> => {
   // The specifier, and the site file or app module that first named it — so a failure says the route in.
   const seen = new Map<string, string>();
   const queue: { specifier: string; via: string }[] = [];
 
-  for (const path of sourceFiles(SITE)) {
+  for (const path of roots) {
     const from = path.slice(SITE.length + 1);
     for (const specifier of appImports(readFileSync(path, 'utf-8'))) queue.push({ specifier, via: from });
   }
@@ -98,9 +102,11 @@ const reachableFromSite = (): Map<string, string> => {
   return seen;
 };
 
+const reachableFromSite = () => reachableFrom();
+
 describe('the site entry stays out of the game bundle', () => {
   it('imports only the leaves it is allowed to', () => {
-    const strays = sourceFiles(SITE).flatMap((path) =>
+    const strays = accountSourceFiles().flatMap((path) =>
       appImports(readFileSync(path, 'utf-8'))
         .filter((specifier) => !ALLOWED.some((prefix) => specifier.startsWith(prefix)))
         .map((specifier) => `${path.slice(SITE.length + 1)} → ${specifier}`));
@@ -131,7 +137,7 @@ describe('the site entry stays out of the game bundle', () => {
     const reached = reachableFromSite();
 
     // Nothing under `site/` names this one; it is reached only through a leaf that does.
-    const named = sourceFiles(SITE).flatMap((path) => appImports(readFileSync(path, 'utf-8')));
+    const named = accountSourceFiles().flatMap((path) => appImports(readFileSync(path, 'utf-8')));
     expect(named).not.toContain('@/lib/catalogKinds');
 
     expect(reached.has('@/lib/catalogKinds')).toBe(true);
@@ -156,10 +162,34 @@ describe('the site entry stays out of the game bundle', () => {
     expect(unscanned).toEqual([]);
   });
 
+  it('scans every shared component the lazy community route reaches', () => {
+    const root = resolve(SITE, '..');
+    const scanned = (path: string) =>
+      FILES.includes(path) || DIRECTORIES.some((directory) => path.startsWith(directory));
+
+    const unscanned = [...reachableFrom([COMMUNITY_PAGE]).keys()]
+      .map((specifier) => resolveApp(specifier))
+      .filter((file): file is string => !!file)
+      // A behavior-only dependency does not add CSS. Scan every component that declares utility classes;
+      // the rest remain in the route chunk without inflating the site stylesheet.
+      .filter((file) => /(?:className|class)\s*[:=]/.test(readFileSync(file, 'utf-8')))
+      .map((file) => file.slice(root.length + 1).replace(/\\/g, '/'))
+      .filter((path) => !scanned(path));
+
+    expect(unscanned).toEqual([]);
+  });
+
   it('has an allow list that really is a list, not everything under src', () => {
     // A guard that allowed '@/' would pass forever. This is what stops the list being widened to
     // nothing by a later edit.
     expect(ALLOWED).not.toContain('@/');
     expect(ALLOWED.every((prefix) => prefix.length > '@/x'.length)).toBe(true);
+  });
+
+  it('keeps the community route behind a lazy import', () => {
+    const app = readFileSync(resolve(SITE, 'App.tsx'), 'utf-8');
+
+    expect(app).toContain("import('./pages/CommunityPage')");
+    expect(app).not.toMatch(/from ['"]\.\/pages\/CommunityPage['"]/);
   });
 });

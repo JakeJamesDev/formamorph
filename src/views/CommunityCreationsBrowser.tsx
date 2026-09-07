@@ -60,6 +60,7 @@ import { Input } from "@/components/ui/input";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { useIsMobile } from "@/lib/useIsMobile";
 import { useBackStop } from "@/hooks/useBackStop";
+import { APP_COMMUNITY_CAPABILITIES, type CommunityBrowserCapabilities } from '@/lib/communityBrowserCapabilities';
 import WorldStorageService from '../services/WorldStorageService';
 import AuthService from '../services/AuthService';
 import { getDownloadState, type DownloadState } from '@/lib/downloadState';
@@ -75,7 +76,14 @@ import { useTutorial } from "@/lib/tutorials";
 const COMMUNITY_BROWSER_MODAL_COLLAPSED_KEY = 'FORMAMORPH_discoverModalCollapsed';
 
 /** How the browser is presented: the app's full-screen modal, or a page that is the whole surface. */
-export type BrowserPresentation = 'dialog' | 'page';
+export type BrowserPresentation = 'dialog' | 'page' | 'embedded';
+
+/**
+ * Controls the actions a shell may expose without forking the shared browser.
+ *
+ * The app keeps every action; the website begins as a read-only catalog while its download and
+ * account interaction slices land separately.
+ */
 
 /**
  * The browser's outer shell.
@@ -93,8 +101,8 @@ const BrowserShell = ({ presentation, open, onOpenChange, children }: {
   onOpenChange: (open: boolean) => void;
   children: React.ReactNode;
 }) => {
-  // The page presentation is not a Radix layer, so the Android back button cannot see it and closes it here.
-  useBackStop(presentation === 'page' && open ? () => onOpenChange(false) : undefined);
+  // The page presentations are not Radix layers, so the Android back button cannot see them and closes them here.
+  useBackStop(presentation !== 'dialog' && open ? () => onOpenChange(false) : undefined);
   if (presentation === 'page') {
     if (!open) return null;
     return (
@@ -102,6 +110,10 @@ const BrowserShell = ({ presentation, open, onOpenChange, children }: {
         {children}
       </div>
     );
+  }
+  if (presentation === 'embedded') {
+    if (!open) return null;
+    return <div className="flex min-h-0 flex-1 flex-col bg-background">{children}</div>;
   }
 
   return (
@@ -126,6 +138,8 @@ interface CommunityCreationsBrowserProps {
   onOpenChange: (open: boolean) => void;
   /** Which shell to raise. Defaults to the app's modal; `page` is for a surface that is only this. */
   presentation?: BrowserPresentation;
+  /** The actions the shell is allowed to expose. */
+  capabilities?: CommunityBrowserCapabilities;
   // Local world list (drives download-state) + setter (download/overwrite add or update local copies).
   worlds: WorldRecord[];
   setWorlds: React.Dispatch<React.SetStateAction<WorldRecord[]>>;
@@ -156,13 +170,13 @@ interface CommunityCreationsBrowserProps {
 // The Community Creations browser: browse/search/filter/sort the published catalog, view world details
 // and comments, and download/refresh/update copies to the local library.
 const CommunityCreationsBrowser = ({
-  open, onOpenChange, presentation = 'dialog', worlds, setWorlds, entities, dictionaries,
+  open, onOpenChange, presentation = 'dialog', capabilities = APP_COMMUNITY_CAPABILITIES, worlds, setWorlds, entities, dictionaries,
   refreshEntities, refreshDictionaries,
   isAuthenticated, currentUser, openImageViewer, initialTab, openListing, onListingOpened,
   events = [], onOpenEvent, openLikersOnMount = false,
 }: CommunityCreationsBrowserProps) => {
   // The header's title element, which differs per shell (see PageHeading).
-  const Heading = presentation === 'page' ? PageHeading : DialogTitle;
+  const Heading = presentation === 'dialog' ? DialogTitle : PageHeading;
   // Catalog fetch/cache/sync (loads on open, refreshes in the background).
   const { remoteWorlds, setRemoteWorlds, isLoadingRemoteWorlds, isSyncingCatalog, catalogSettled, loadCatalog } = useCatalogSync(open);
   const [remoteWorldToDelete, setRemoteWorldToDelete] = useState<string | null>(null);
@@ -366,7 +380,7 @@ const CommunityCreationsBrowser = ({
 
   // Admin-only, and only once something is actually quarantined: a toggle that can only ever show an
   // empty list is a control that teaches nothing.
-  const quarantineControl = viewerIsStaff && quarantinedCount > 0 && browseTab !== 'contest' ? (
+  const quarantineControl = capabilities.moderation && viewerIsStaff && quarantinedCount > 0 && browseTab !== 'contest' ? (
     <Tip tip="Show only what is hidden pending changes" labelsChild={false}>
       <Button
         variant={quarantinedOnly ? 'default' : 'outline'}
@@ -682,7 +696,7 @@ const CommunityCreationsBrowser = ({
     </div>
   );
 
-  const hiddenControl = (
+  const hiddenControl = capabilities.hiddenFilters ? (
     // The tutorial wraps the Hidden popover rather than sitting inside it: its own Popover would otherwise
     // become the context the trigger below binds to.
     <TutorialPopover entry={hiddenTutorial} nav={tutorialNav} align="start">
@@ -739,9 +753,9 @@ const CommunityCreationsBrowser = ({
     </Popover>
     </span>
     </TutorialPopover>
-  );
+  ) : null;
 
-  const updatesControl = browseTab === 'contest' ? null : (
+  const updatesControl = !capabilities.localLibrary || browseTab === 'contest' ? null : (
     <label className="flex items-center gap-2 shrink-0 cursor-pointer text-label select-none">
       <Checkbox
         checked={sortUpdatesFirst}
@@ -935,18 +949,18 @@ const CommunityCreationsBrowser = ({
                       isAuthenticated={isAuthenticated}
                       currentUser={currentUser}
                       onView={handleViewRemoteWorldDetails}
-                      onHideWorld={hideRemoteWorld}
-                      onHideAuthor={hideRemoteAuthor}
-                      onHideTag={hideRemoteTag}
-                      onContextualDownload={handleCardDownload}
-                      onDelete={setRemoteWorldToDelete}
-                      onLike={handleLike}
-                      onQuarantine={setQuarantining}
-                      onRelease={handleRelease}
+                      onHideWorld={capabilities.hiddenFilters ? hideRemoteWorld : undefined}
+                      onHideAuthor={capabilities.hiddenFilters ? hideRemoteAuthor : undefined}
+                      onHideTag={capabilities.hiddenFilters ? hideRemoteTag : undefined}
+                      onContextualDownload={capabilities.localLibrary ? handleCardDownload : undefined}
+                      onDelete={capabilities.authorManagement ? setRemoteWorldToDelete : undefined}
+                      onLike={capabilities.likes ? handleLike : undefined}
+                      onQuarantine={capabilities.moderation ? setQuarantining : undefined}
+                      onRelease={capabilities.moderation ? handleRelease : undefined}
                       placements={placementsBy(world, contests)}
                       // Only where the entry is the subject, and only while it is still an entry: a
                       // decided contest keeps its podium, and the server refuses to release a placed world.
-                      onWithdraw={browseTab === 'contest' && shownContest && contestPhase(shownContest) !== 'decided'
+                      onWithdraw={capabilities.contestParticipation && browseTab === 'contest' && shownContest && contestPhase(shownContest) !== 'decided'
                         ? (entry) => withdrawal.ask({
                             id: String(entry._id || entry.id),
                             name: String(entry.name ?? 'That world'),
@@ -990,6 +1004,7 @@ const CommunityCreationsBrowser = ({
         onLikesChanged={handleLikesChanged}
         openLikersOnMount={openLikersOnMount}
         contests={contests}
+        capabilities={capabilities}
       />
 
       {/* Refresh/Update decision: download a separate copy vs overwrite an existing local copy */}

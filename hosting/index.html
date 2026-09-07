@@ -75,7 +75,9 @@
   /* Over the hero rather than above it: the hero is the whole first screen and a bar of its own would
      push the logo down without giving the page anything. */
   .topbar { position:absolute; top:0; left:0; right:0; z-index:10;
-    display:flex; justify-content:flex-end; padding:1rem 1.25rem; }
+    display:flex; justify-content:flex-end; gap:.75rem; align-items:center; padding:1rem 1.25rem; }
+  .community-link { color:var(--text); font-weight:600; text-decoration:none; }
+  .community-link:hover { color:var(--accent); }
   .acct { display:inline-flex; align-items:center; justify-content:center; gap:.45em; height:42px; padding:0 .85em; border-radius:999px;
     border:1px solid var(--edge); background:var(--account-bg); color:var(--text); font-weight:600;
     font-size:1.05rem; text-decoration:none; }
@@ -113,6 +115,7 @@
 <!-- Signed out is the markup, not a render: a visitor whose browser never runs the module below still
      gets a working Sign In. The script swaps in the avatar when a session is held. -->
 <header class="topbar">
+  <a class="community-link" href="/community">Community</a>
   <a class="acct" data-account href="/login?next=/">
     <span>Sign In</span>
     <svg class="acct-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"

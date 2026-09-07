@@ -15,6 +15,7 @@
 /profile           /site-app/              200
 /reset-password    /site-app/              200
 /verify-email      /site-app/              200
+/community         /site-app/              200
 /u/*               /site-app/              200
 
 # The same paths with a trailing slash. Pages matches this file before it looks for an asset, so
@@ -26,3 +27,4 @@
 /profile/          /profile                301
 /reset-password/   /reset-password         301
 /verify-email/     /verify-email           301
+/community/        /community              301
