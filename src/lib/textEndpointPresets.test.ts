@@ -29,6 +29,7 @@ describe('presetStoreFromEnv', () => {
     expect(store?.presets.map((p) => p.name)).toEqual(['Cloud', 'Local']);
     expect(store?.activeId).toBe(store?.presets[0].id);
     expect(store?.presets[0].id).not.toBe(store?.presets[1].id);
+    expect(store?.presets.every((preset) => !preset.values.maxOutputOverride.enabled)).toBe(true);
   });
 
   it('layers each entry over the built-in defaults, coercing per-field types', () => {
@@ -38,6 +39,7 @@ describe('presetStoreFromEnv', () => {
     expect(v.contextWindowOverride).toBe(8000);
     expect(v.maxOutputOverride.value).toBe(DEFAULT_TEXT_ENDPOINT_VALUES.maxOutputOverride.value); // wrong type falls back to default
     expect(v.endpoint).toBe(DEFAULT_TEXT_ENDPOINT_VALUES.endpoint); // unspecified → default
+    expect(v.maxOutputOverride.enabled).toBe(false);
   });
 });
 

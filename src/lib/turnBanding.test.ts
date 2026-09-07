@@ -11,6 +11,7 @@ import {
   IMPORTANCE_SPREAD,
   type BandTurn,
 } from './turnBanding';
+import { outputReserve } from './outputLength';
 import { runsTile } from './requestAnatomy';
 
 const user = (content: string): ChatMessage => ({ role: 'user', content });
@@ -289,6 +290,31 @@ describe('buildBandedHistory', () => {
     expect(recap).toContain('NEWERBAND');
     expect(messages.some((m) => m.content.includes('NEWERBAND'))).toBe(true); // t2 survives in the recap exchange
     expect(messages.some((m) => m.content.includes('OLDEST'))).toBe(false);
+  });
+
+  it('admits more narration context when an endpoint leaves output unreserved, while the window still trims it', () => {
+    const turns = parseTurns(Array.from({ length: 6 }, (_, i) => pair(`a${i + 1}`, {
+      turnId: `t${i + 1}`,
+      narration: `g${i + 1}`,
+      summary: `D${i + 1} ${'detail '.repeat(35)}`,
+    })).flat());
+    const forOutputOverride = (maxOutputOverride: number | undefined) => buildBandedHistory({
+      ...base,
+      turns,
+      contextWindow: 600,
+      maxTokens: outputReserve(maxOutputOverride),
+      verbatimFloor: 0,
+      rehydrateCap: 0,
+      keywords: [],
+    });
+
+    const capped = forOutputOverride(512);
+    const endpointDefault = forOutputOverride(undefined);
+    const restoredCap = forOutputOverride(512);
+
+    expect(endpointDefault.counts.turnsBanded).toBeGreaterThan(capped.counts.turnsBanded);
+    expect(endpointDefault.counts.turnsBanded).toBeLessThan(turns.length);
+    expect(restoredCap.counts.turnsBanded).toBe(capped.counts.turnsBanded);
   });
 });
 

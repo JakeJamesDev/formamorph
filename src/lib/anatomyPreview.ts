@@ -11,7 +11,7 @@ import { renderPromptTemplate } from './promptTemplate';
 import { estimateTokens } from './memoryUtils';
 import { buildStamper, hoursByPosition } from './gameClock';
 import type { SectionStyle } from './promptPresets';
-import type { ParagraphLimit } from './outputLength';
+import { outputReserve, type ParagraphLimit } from './outputLength';
 import { toAnatomyBlocks, type AnatomyBlock } from './requestAnatomy';
 import { SAMPLE_TURN } from './previewValuePool';
 
@@ -377,8 +377,8 @@ function narrationBand(
   const stamp: BandStamp | undefined = settings.timeContext
     ? buildStamper({ nowHours: FIXTURE_ELAPSED_HOURS, hoursAt: hoursByPosition(turns) })
     : undefined;
-  const outputReserve = settings.maxTokens ?? 0;
-  const contextWindow = PREVIEW_HEADROOM + estimateTokens(prompt.length) + outputReserve;
+  const reservedOutput = outputReserve(settings.maxTokens);
+  const contextWindow = PREVIEW_HEADROOM + estimateTokens(prompt.length) + reservedOutput;
 
   // Condensing is what creates the band, so the recap toggle is a verbatim floor wide enough to swallow
   // every turn — the same thing a short game does — rather than a flag the assembly doesn't have.
@@ -386,7 +386,7 @@ function narrationBand(
     turns,
     contextWindow,
     promptTokens: estimateTokens(prompt.length),
-    maxTokens: outputReserve,
+    maxTokens: reservedOutput,
     verbatimFloor: recap ? 1 : FIXTURE_TURNS.length,
     keywords: [],
     actionEntities: [],
