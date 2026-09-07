@@ -39,14 +39,19 @@ const base = (over: Partial<NarrationPromptInput> = {}): NarrationPromptInput =>
 });
 
 describe('buildNarrationPrompt', () => {
-  it('removes derived length guidance when the endpoint supplies no output cap', () => {
-    const { prompt } = buildNarrationPrompt(base({
+  it('keeps an empty length-guidance chip when the endpoint supplies no output cap', () => {
+    const { prompt, runs } = buildNarrationPrompt(base({
       template: 'Describe the scene.\n\n<LENGTH GUIDANCE>',
       paragraphLimit: 'auto',
       maxTokens: undefined,
     }));
 
     expect(prompt).toBe('Describe the scene.');
+    expect(runsTile(prompt, runs)).toBe(true);
+    expect(runs.find((run) => run.chip === '<LENGTH GUIDANCE>')).toMatchObject({
+      start: prompt.length,
+      end: prompt.length,
+    });
   });
 
   it('renders a fixed input to a byte-identical prompt', () => {

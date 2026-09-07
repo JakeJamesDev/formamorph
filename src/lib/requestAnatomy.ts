@@ -74,6 +74,8 @@ export interface AnatomyPiece {
   source?: AnatomySource;
   chip?: string;
   contextLabel?: ContextLabel;
+  /** Keeps a zero-width run when a parsed chip resolves to empty text. */
+  preserveWhenEmpty?: boolean;
   glue?: boolean;
 }
 
@@ -87,9 +89,10 @@ const sameLabel = (a: AnatomyPiece, b: AnatomyRun): boolean =>
   a.source === b.source && a.chip === b.chip && a.contextLabel === b.contextLabel;
 
 /**
- * Join pieces into one string and the runs covering it. Empty pieces vanish, adjacent pieces sharing a
- * label merge into one run, and glue extends whichever run it sits against (the previous one, or the next
- * when it leads). The result always tiles: no gaps, no overlaps, `end` of the last run = content length.
+ * Join pieces into one string and the runs covering it. Empty pieces vanish unless their parsed chip needs
+ * a zero-width run; adjacent pieces sharing a label merge into one run, and glue extends whichever run it
+ * sits against (the previous one, or the next when it leads). The result always tiles: no gaps, no overlaps,
+ * `end` of the last run = content length.
  */
 export function tilePieces(pieces: AnatomyPiece[]): TiledRuns {
   let content = '';
@@ -99,7 +102,16 @@ export function tilePieces(pieces: AnatomyPiece[]): TiledRuns {
   for (const piece of pieces) {
     const text = leading + piece.text;
     leading = '';
-    if (!text) continue;
+    if (!text) {
+      if (piece.preserveWhenEmpty) runs.push({
+        start: content.length,
+        end: content.length,
+        ...(piece.source ? { source: piece.source } : {}),
+        ...(piece.chip ? { chip: piece.chip } : {}),
+        ...(piece.contextLabel ? { contextLabel: piece.contextLabel } : {}),
+      });
+      continue;
+    }
     if (piece.glue && runs.length === 0) {
       // Nothing to extend yet — hold it and let the next labeled piece's run open on it.
       leading = text;
@@ -139,7 +151,10 @@ export function trimEndTiled(tiled: TiledRuns): TiledRuns {
   if (content.length === tiled.content.length) return tiled;
   const runs: AnatomyRun[] = [];
   for (const run of tiled.runs) {
-    if (run.start >= content.length) break;
+    if (run.start >= content.length) {
+      if (run.end === run.start) runs.push({ ...run, start: content.length, end: content.length });
+      break;
+    }
     runs.push({ ...run, end: Math.min(run.end, content.length) });
   }
   return { content, runs };

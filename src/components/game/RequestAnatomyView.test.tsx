@@ -192,6 +192,24 @@ describe('RequestAnatomyView chips mode', () => {
     expect(screen.getByText('Stats (Range)')).toBeInTheDocument();
   });
 
+  it('shows a parsed chip even when it resolves to no request bytes', () => {
+    render(
+      <RequestAnatomyView
+        blocks={[{
+          role: 'system',
+          content: 'Before after.',
+          runs: [
+            { start: 0, end: 7, source: 'system-template' },
+            { start: 7, end: 7, source: 'system-template', chip: '<LENGTH GUIDANCE>' },
+            { start: 7, end: 13, source: 'system-template' },
+          ],
+        }]}
+        mode="chips"
+      />,
+    );
+    expect(screen.getByText('Length Guidance')).toBeInTheDocument();
+  });
+
   it('collapses an assembled run to its own chip, short name out and the sentence in the tooltip', async () => {
     render(<RequestAnatomyView blocks={BLOCKS} mode="chips" />);
     const chip = screen.getByText(CONTEXT_LABELS.condensed);

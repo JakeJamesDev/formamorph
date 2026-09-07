@@ -10,9 +10,9 @@ Some prompt-specific tuning already applies to external endpoints. The new contr
 
 ## Solution
 
-Expose six independently enabled overrides on each external text endpoint configuration, including hosted Default: Temperature, Repetition Penalty, Top P, Top K, Min P, and Max Output. Keep the built-in engine's existing explicit controls.
+Expose independently enabled overrides on each user-created external text endpoint configuration: Temperature, Repetition Penalty, Top P, Top K, Min P, and Max Output. The hosted Default keeps its intentional fixed Max Output cap. Keep the built-in engine's existing explicit controls.
 
-An override retains its numeric value while disabled and displays **Endpoint default**. That label describes the endpoint-level fallback; prompt-specific tuning and internal call caps still take priority. Settings follow the endpoint actually selected for each request.
+An override retains its numeric value while disabled. Disabled sampler controls display **Endpoint Default**, which describes the endpoint-level fallback; prompt-specific tuning and internal call caps still take priority. A disabled Max Output override displays **No Limit**: Formamorph omits `max_tokens` rather than resolving a default limit. Settings follow the endpoint actually selected for each request.
 
 If a server explicitly rejects a value supplied by an enabled endpoint override, show the failure, disable that override for that endpoint, and retain its value. The player decides when to retry.
 
@@ -20,7 +20,7 @@ If a server explicitly rejects a value supplied by an enabled endpoint override,
 
 1. As a player using a cloud endpoint, I want generation controls in its settings, so that I can tune its responses from Formamorph.
 2. As a player using a locally hosted endpoint, I want the same controls, so that I can tune it without changing the server's global defaults.
-3. As a player using hosted Default, I want editable generation tuning, so that I do not need to recreate its connection details.
+3. As a player using hosted Default, I want its intentional Max Output cap to remain fixed, so that shared-endpoint request budgets cannot be disabled or changed.
 4. As a player, I want an independent switch for each setting, so that I can override one value while leaving others to their defaults.
 5. As a player, I want a Temperature override, so that I can adjust response variability.
 6. As a player, I want a Repetition Penalty override, so that I can adjust repetition handling.
@@ -29,7 +29,7 @@ If a server explicitly rejects a value supplied by an enabled endpoint override,
 9. As a player, I want a Min P override, so that I can tune the relative probability threshold.
 10. As a player, I want a Max Output override, so that I can choose whether Formamorph sends an endpoint-level output cap.
 11. As a player, I want disabled overrides to remember their values, so that temporary changes do not erase my tuning.
-12. As a player, I want disabled controls to show Endpoint default, so that a remembered number is not presented as an active override or a known server default.
+12. As a player, I want disabled sampler controls to show Endpoint Default and Max Output to show No Limit, so that a remembered number is not presented as an active override or a known server default.
 13. As a player using multiple endpoint configurations, I want tuning saved separately for each, so that changes do not leak between them.
 14. As a player routing prompts to different endpoints, I want each request to use its target's overrides, so that the globally selected endpoint cannot supply the wrong tuning.
 15. As a player with custom prompt tuning, I want it to retain priority, so that endpoint settings do not replace deliberate prompt-specific choices.
@@ -49,8 +49,8 @@ If a server explicitly rejects a value supplied by an enabled endpoint override,
 ### Endpoint settings and persistence
 
 - Store an enabled state and remembered numeric value for each of the six overrides per external endpoint configuration. Keep tuning separate from the prompt preset's existing custom sampler values.
-- Hosted Default gains persisted tuning while its connection details remain fixed. It must not require cloning the hosted connection to adjust overrides.
-- Preserve existing endpoint Max Output values as enabled overrides when reading settings created before this feature, including the existing hosted Default behavior. Initialize the five new sampler overrides as disabled.
+- Hosted Default gains persisted sampler tuning while its connection details remain fixed. Its intentional Max Output cap is fixed and cannot be changed or disabled.
+- Preserve existing user endpoint Max Output values as enabled overrides when reading settings created before this feature. Initialize the five new sampler overrides as disabled.
 - Newly created endpoint configurations start with all six overrides disabled, even when the existing creation flow copies connection values from the selected endpoint. Seed remembered numbers from existing central defaults or copied values; do not claim they are the server's actual defaults.
 - Persist values and switches across endpoint selection and reload. Disabling a switch manually or following rejection never erases its number.
 - This is an endpoint-settings storage extension. No world/save export-shape change, prompt-preset sharing change, or application version bump is part of this feature.
@@ -63,9 +63,9 @@ Resolve every setting against the request's actual target, including per-prompt 
 | --- | --- |
 | Temperature and Repetition Penalty | Enabled prompt custom value → built-in prompt-specific value → enabled endpoint override → omit field |
 | Top P, Top K, Min P | Enabled endpoint override → omit field |
-| Max Output | Explicit internal call cap → enabled endpoint override → omit field |
+| Max Output | Explicit internal call cap → shared endpoint fixed cap or enabled user-endpoint override → omit field |
 
-- Omitting a field lets the server choose its behavior; do not send a null, remembered value, or substituted Formamorph default for an inactive endpoint override.
+- Omitting a sampler field lets the server choose its behavior; do not send a null, remembered value, or substituted Formamorph default for an inactive endpoint override. Omitting `max_tokens` means only that Formamorph sends no cap; the endpoint may still enforce one.
 - Keep existing per-prompt controls and built-in prompt-specific values. Do not add per-prompt Top P, Top K, or Min P controls.
 - Preserve the current built-in engine resolution and reasoning behavior.
 - Max Output remains a fallback for internal calls, not a ceiling imposed over their explicit caps.
@@ -123,5 +123,5 @@ Test observable behavior through existing interfaces, using the highest existing
 ## Further Notes
 
 - The product behavior was confirmed through the design interview. In particular, removing the output reserve is intentional: when Max Output is off, the player accepts that more context can be used without Formamorph reserving room for the response from that setting.
-- Endpoint default is a fallback, not an assertion that no prompt-level value will be sent. Explain the precedence in the settings help rather than adding repeated explanatory text to AI requests.
+- Endpoint Default is a sampler fallback, not an assertion that no prompt-level value will be sent. Explain the precedence in the settings help rather than adding repeated explanatory text to AI requests.
 - Preserve the accepted Turn Pipeline architecture: the request adapter and derivation callback remain its two interfaces for injected behavior.

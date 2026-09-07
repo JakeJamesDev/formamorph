@@ -545,8 +545,8 @@ function useProvideSettings() {
   // Live engine state, so a request to the engine names the GGUF actually loaded rather than a nominal
   // placeholder — which is what a `/models` probe compares against.
   const engineState = useLocalLlmStatus();
-  // Honor the desktop local engine's own cap when it's active; otherwise the active endpoint preset's cap
-  // (the Default preset holds DEFAULT_MAX_TOKENS, so a Default selection matches the shared-endpoint cap).
+  // Honor the desktop local engine's own cap when it's active; otherwise the active endpoint preset's cap.
+  // (The shared Default fixes DEFAULT_MAX_TOKENS; user endpoints may omit theirs.)
   const activeMaxTokens = localModelActive ? localMaxTokens : maxOutputOverride.enabled ? maxTokens : undefined;
 
   // Generation sampling for the local model — sent while the local engine is active.

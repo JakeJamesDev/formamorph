@@ -15,7 +15,7 @@ export interface EndpointSamplerOverride {
   value: number;
 }
 
-/** A separately persisted output limit: unlike sampler overrides, internal calls can supersede it. */
+/** A Formamorph output limit; disabled means no cap is sent to the endpoint. */
 export type EndpointMaxOutputOverride = EndpointSamplerOverride;
 
 export type EndpointSamplerOverrides = Record<EndpointSampler, EndpointSamplerOverride>;
@@ -50,7 +50,7 @@ export function coerceEndpointSamplerOverrides(raw: unknown): EndpointSamplerOve
   })) as EndpointSamplerOverrides;
 }
 
-/** Existing endpoint caps stay enabled when this switch is first introduced. */
+/** Existing Formamorph output limits stay enabled when this switch is first introduced. */
 export function coerceEndpointMaxOutputOverride(raw: unknown, legacyValue = DEFAULT_MAX_TOKENS): EndpointMaxOutputOverride {
   if (!raw || typeof raw !== 'object') return { enabled: true, value: legacyValue };
   const record = raw as Record<string, unknown>;

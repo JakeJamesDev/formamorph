@@ -8,6 +8,9 @@ import { ThemeProvider } from '@/components/theme-provider';
 import { SettingsModal } from './SettingsModal';
 import { SURFACE_LABELS, HUB_LABEL } from '@/lib/promptGroups';
 import { CONTEXT_LABELS } from '@/lib/requestAnatomy';
+import { DEFAULT_TEXT_ENDPOINT_VALUES, textEndpointPresetCodec } from '@/lib/textEndpointPresets';
+
+const anatomy = vi.hoisted(() => ({ build: vi.fn() }));
 
 /**
  * Settings → Prompts navigation: what selecting a prompt lands on, what the rail lists under it, and how
@@ -22,6 +25,16 @@ vi.mock('@/lib/embeddingWorkerClient', () => ({
   loadEmbeddingModel: () => Promise.resolve(),
   disposeEmbeddingModel: () => {},
 }));
+vi.mock('@/lib/anatomyPreview', async () => {
+  const actual = await vi.importActual<typeof import('@/lib/anatomyPreview')>('@/lib/anatomyPreview');
+  return {
+    ...actual,
+    buildAnatomyHub: (...args: Parameters<typeof actual.buildAnatomyHub>) => {
+      anatomy.build(...args);
+      return actual.buildAnatomyHub(...args);
+    },
+  };
+});
 
 const openPrompts = (props: { initialPromptTab?: string; initialPromptSurface?: string } = {}) =>
   render(
@@ -62,10 +75,42 @@ function EnableTemperatureOverride() {
   return null;
 }
 
+function CreateEndpointWithNoLimit() {
+  const { activeTextEndpointPresetIsBuiltIn, addTextEndpointPreset, setMaxOutputOverrideEnabled } = useSettings();
+  const created = useRef(false);
+  const disabled = useRef(false);
+  useEffect(() => {
+    if (!created.current && activeTextEndpointPresetIsBuiltIn) {
+      created.current = true;
+      addTextEndpointPreset('Custom Endpoint');
+    } else if (created.current && !activeTextEndpointPresetIsBuiltIn && !disabled.current) {
+      disabled.current = true;
+      setMaxOutputOverrideEnabled(false);
+    }
+  }, [activeTextEndpointPresetIsBuiltIn, addTextEndpointPreset, setMaxOutputOverrideEnabled]);
+  return null;
+}
+
 const temperatureReadout = () => document.getElementById('customTemp')!.closest('.space-y-2')!;
 const endpointTemperatureReadout = () => document.getElementById('endpointTemperature')!.closest('.space-y-2')!;
 
-beforeEach(() => localStorage.clear());
+function seedNoLimitNarrationEndpoint() {
+  localStorage.setItem('FORMAMORPH_textEndpointPresets', textEndpointPresetCodec.serialize({
+    activeId: 'no-limit',
+    presets: [{
+      id: 'no-limit', name: 'No Limit', values: {
+        ...DEFAULT_TEXT_ENDPOINT_VALUES,
+        maxOutputOverride: { enabled: false, value: DEFAULT_TEXT_ENDPOINT_VALUES.maxOutputOverride.value },
+      },
+    }],
+  }));
+  localStorage.setItem('FORMAMORPH_paragraphLimit', 'auto');
+}
+
+beforeEach(() => {
+  localStorage.clear();
+  anatomy.build.mockClear();
+});
 
 describe('Settings → Prompts landing', () => {
   it('opens on the hub rather than on a wall of template text', () => {
@@ -121,11 +166,46 @@ describe('Settings → Prompts endpoint sampler fallback', () => {
   });
 });
 
+describe('Settings → Prompts output limit', () => {
+  it('passes no narration cap to the Request Anatomy when the resolved endpoint sends no Max Output limit', async () => {
+    seedNoLimitNarrationEndpoint();
+
+    openPrompts({ initialPromptTab: 'narration' });
+
+    await waitFor(() => expect(anatomy.build).toHaveBeenCalledWith(
+      'narration', expect.anything(), expect.anything(), expect.anything(), expect.objectContaining({ maxTokens: undefined }),
+    ));
+    expect(document.body.textContent).not.toMatch(/Write at most \d+ short paragraphs\./);
+  });
+});
+
 describe('Settings → Endpoints sampler fallback', () => {
   it('uses Endpoint Default capitalization while its sampler override is off', () => {
     openEndpoints();
 
     expect(endpointTemperatureReadout()).toHaveTextContent('Endpoint Default');
+  });
+});
+
+describe('Settings → Endpoints Max Output', () => {
+  it('locks the shared endpoint cap', () => {
+    openEndpoints();
+
+    expect(screen.getByRole('checkbox', { name: 'Override endpoint limit' })).toBeDisabled();
+    expect(document.getElementById('maxTokens')).toBeDisabled();
+  });
+
+  it('calls an omitted user endpoint cap No Limit', async () => {
+    render(
+      <ThemeProvider>
+        <SettingsProvider>
+          <CreateEndpointWithNoLimit />
+          <SettingsModal isOpen onOpenChange={() => {}} forcedMode="advanced" initialTab="endpoints" />
+        </SettingsProvider>
+      </ThemeProvider>,
+    );
+
+    await waitFor(() => expect(screen.getByText('No Limit')).toBeInTheDocument());
   });
 });
 
