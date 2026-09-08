@@ -6,7 +6,7 @@ test('all design references fit the viewport and remain reachable', async ({ pag
   const showcase = page.locator('[data-design-system-showcase]');
   await expect(showcase).toBeVisible();
 
-  for (const name of ['Settings', 'Markdown', 'Community Cards', 'Find', 'Code Templates', 'Locations', 'Context Menu']) {
+  for (const name of ['Settings', 'Markdown', 'Community Cards', 'Find', 'Code Templates', 'Locations', 'Context Menu', 'Footer Actions']) {
     const tab = page.getByRole('tab', { name, exact: true });
     await tab.click();
     await expect(tab).toHaveAttribute('aria-selected', 'true');
