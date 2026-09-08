@@ -22,6 +22,8 @@ test('the Main Menu context menu keeps its actions local and keyboard-accessible
   expect(menuBox).not.toBeNull();
   expect(menuBox!.x).toBeGreaterThanOrEqual(0);
   expect(menuBox!.x + menuBox!.width).toBeLessThanOrEqual(page.viewportSize()!.width);
+  expect(menuBox!.y).toBeGreaterThanOrEqual(0);
+  expect(menuBox!.y + menuBox!.height).toBeLessThanOrEqual(page.viewportSize()!.height);
   expect(await menu.evaluate((element) => element.scrollHeight > element.clientHeight)).toBe(true);
   const labelLefts = await menu.locator('[role="menuitemradio"], [role="menuitem"]').evaluateAll((items) => (
     items.map((item) => {
@@ -63,7 +65,8 @@ test('the Main Menu context menu keeps its actions local and keyboard-accessible
   expect(await page.evaluate(() => JSON.stringify(localStorage))).toBe(beforeStorage);
 });
 
-test('the Main Menu context menu opens by touch and dismisses outside', async ({ page }) => {
+test('the Main Menu context menu opens by touch and dismisses outside', async ({ page }, testInfo) => {
+  test.skip(testInfo.project.name !== 'mobile', 'Touch interaction needs a touch-enabled browser.');
   const reference = await openReference(page);
   const sample = reference.getByRole('button', { name: /sample world/i });
 
@@ -76,7 +79,7 @@ test('the Main Menu context menu opens by touch and dismisses outside', async ({
     clientY: 100,
   });
 
-  await page.mouse.click(4, 4);
+  await page.touchscreen.tap(4, 4);
   await expect(page.getByRole('menu')).toBeHidden();
 });
 

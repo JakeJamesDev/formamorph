@@ -48,7 +48,7 @@ export function MainMenuContextMenuReference() {
       <div className="grid gap-2">
         <h3 id="main-menu-context-menu-reference-title" className="text-heading">Grouped Context Actions</h3>
         <Hint>
-          Right-click the sample world. On a touch screen, press and hold it. Focus it with the keyboard, then press Shift+F10.
+          Right-click the sample world. On a touch screen, press and hold the sample world. For keyboard access, focus the sample world. Press Shift+F10 or the Context Menu key.
         </Hint>
       </div>
 
