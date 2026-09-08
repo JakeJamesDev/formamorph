@@ -413,7 +413,7 @@ describe('the retained entry draft', () => {
     expect(screen.getByText('Town: Sedge. Mood: Calm.')).toBeInTheDocument();
     fireEvent.click(screen.getByRole('checkbox', { name: 'Extra trait' }));
     expect(screen.getByText('Town: Sedge. Mood: Excited.')).toBeInTheDocument();
-    fireEvent.click(screen.getByRole('button', { name: 'Introduction' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Read Introduction' }));
     const reopened = await screen.findByRole('dialog', { name: 'Introduction' });
     fireEvent.click(within(reopened).getByRole('button', { name: 'Close' }));
     expect(screen.getByRole('checkbox', { name: 'Extra trait' })).toBeChecked();
