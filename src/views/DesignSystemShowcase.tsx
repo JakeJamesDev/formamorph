@@ -33,6 +33,7 @@ import { SETTINGS_OPTIONS } from '@/components/modals/settingsCopy';
 import { optionRowCopy, rowCopy } from '@/components/modals/settingsRowCopy';
 import PromptField from '@/components/prompt/PromptField';
 import { plainVocabulary } from '@/lib/chipVocabulary';
+import { CommunityCardReference } from '@/components/design-system/CommunityCardReference';
 
 type ReferenceDefinition = {
   id: string;
@@ -89,8 +90,8 @@ function DisplayReference() {
   return (
     <Card role="region" aria-labelledby="display-reference-title">
       <CardHeader>
-        <CardTitle id="display-reference-title" className="text-heading">Display reference</CardTitle>
-        <CardDescription>Appearance, scene, and narration controls in the aligned settings stack.</CardDescription>
+        <CardTitle id="display-reference-title" className="text-heading">Display Reference</CardTitle>
+        <CardDescription>This reference shows display controls.</CardDescription>
       </CardHeader>
       <CardContent className="grid gap-6">
         <Section title="Appearance">
@@ -131,7 +132,7 @@ function DisplayReference() {
               </SelectContent>
             </Select>
           </Row>
-          <Row label="Live sample">
+          <Row label="Live Sample">
             <div
               data-theme={palette}
               data-reference-theme={previewMode}
@@ -139,7 +140,7 @@ function DisplayReference() {
               style={{ fontFamily: previewFont, fontSizeAdjust: String(fontSizeAdjust(font)) }}
             >
               <p className="text-label font-semibold">The lanterns wake along the harbor.</p>
-              <p className="text-helper text-muted-foreground">Theme tokens and the selected font style this sample.</p>
+              <p className="text-helper text-muted-foreground">This sample shows the selected theme and font.</p>
             </div>
           </Row>
         </Section>
@@ -159,7 +160,7 @@ function DisplayReference() {
           />
           <Row {...rowCopy('backgroundFade')}>
             <ValueSlider
-              ariaLabel="Background fade"
+              ariaLabel="Background Fade"
               value={fade}
               min={0}
               max={100}
@@ -173,7 +174,7 @@ function DisplayReference() {
         <Section title="Narration">
           <Row {...rowCopy('narrationTextSize')}>
             <ValueSlider
-              ariaLabel="Narration size"
+              ariaLabel="Narration Size"
               value={narrationScale}
               min={85}
               max={160}
@@ -198,11 +199,11 @@ function OutputReference() {
   return (
     <Card role="region" aria-labelledby="output-reference-title">
       <CardHeader>
-        <CardTitle id="output-reference-title" className="text-heading">Output reference</CardTitle>
-        <CardDescription>Optional passes, reasoning, and choices with production control behavior.</CardDescription>
+        <CardTitle id="output-reference-title" className="text-heading">Output Reference</CardTitle>
+        <CardDescription>These controls show the output settings.</CardDescription>
       </CardHeader>
       <CardContent className="grid gap-6">
-        <Section title="Turn Extras" hint="Optional passes that run alongside each turn's narration.">
+        <Section title="Turn Extras" hint="These options control additional tasks for each turn.">
           <Row {...rowCopy('systemPrompts')}>
             <CheckboxOptionGroup options={[
               { id: 'reference-choices', label: 'Choices', checked: choices, onChange: setChoices },
@@ -226,7 +227,7 @@ function OutputReference() {
         <Section title="Choices">
           <Row {...rowCopy('continueTheStory')}>
             <OptionSwitcher
-              ariaLabel="Continue the story"
+              ariaLabel="Continue the Story"
               value={continueMode}
               onChange={setContinueMode}
               options={CONTINUE_CHOICE_MODES}
@@ -245,21 +246,21 @@ function StateReference() {
   return (
     <Card role="region" aria-labelledby="control-states-title">
       <CardHeader>
-        <CardTitle id="control-states-title" className="text-heading">Control states</CardTitle>
-        <CardDescription>Inspectable examples for focus, disabled, validation, and overflow behavior.</CardDescription>
+        <CardTitle id="control-states-title" className="text-heading">Control States</CardTitle>
+        <CardDescription>These examples show the control states.</CardDescription>
       </CardHeader>
       <CardContent>
         <Section title="Reference States">
-          <Row label="Keyboard focus" hint="The ring uses the active theme's focus token.">
-            <Button autoFocus variant="outline">Focused action</Button>
+          <Row label="Keyboard Focus" hint="The selected theme controls the focus ring color.">
+            <Button autoFocus variant="outline">Focused Action</Button>
           </Row>
-          <Row label="Unavailable option" muted>
+          <Row label="Unavailable Option" muted>
             <label htmlFor="reference-disabled" className="flex items-center gap-2">
-              <Checkbox id="reference-disabled" aria-label="Scene images" checked disabled />
-              <Hint as="span">No image endpoint is configured.</Hint>
+              <Checkbox id="reference-disabled" aria-label="Scene Images" checked disabled />
+              <Hint as="span">This example has no image endpoint.</Hint>
             </label>
           </Row>
-          <Row top label="Context window" htmlFor="reference-context-window">
+          <Row top label="Context Window" htmlFor="reference-context-window">
             <div className="space-y-1">
               <Input
                 id="reference-context-window"
@@ -270,13 +271,13 @@ function StateReference() {
                 className={invalidContext ? 'border-destructive' : undefined}
               />
               {invalidContext && (
-                <FieldError id="reference-context-error">Exceeds the reference endpoint limit of 65,536 tokens.</FieldError>
+                <FieldError id="reference-context-error">The value is more than 65,536 tokens.</FieldError>
               )}
             </div>
           </Row>
-          <Row label="Endpoint profile" hint="Long selected values stay on one line without widening the row.">
+          <Row label="Endpoint Profile" hint="The control shows long values on one line.">
             <Select value={LONG_ENDPOINT} onValueChange={() => {}}>
-              <SelectTrigger aria-label="Endpoint profile" title={LONG_ENDPOINT}>
+              <SelectTrigger aria-label="Endpoint Profile" title={LONG_ENDPOINT}>
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
@@ -308,9 +309,9 @@ function MarkdownReference() {
   return (
     <Card role="region" aria-labelledby="markdown-reference-title">
       <CardHeader>
-        <CardTitle id="markdown-reference-title" className="text-heading">Markdown editing reference</CardTitle>
+        <CardTitle id="markdown-reference-title" className="text-heading">Markdown Editing Reference</CardTitle>
         <CardDescription>
-          Long-form authoring with production formatting, history, view, and full-screen controls.
+          This editor shows the world introduction.
         </CardDescription>
       </CardHeader>
       <CardContent>
@@ -319,8 +320,8 @@ function MarkdownReference() {
           onChange={setContent}
           vocabulary={MARKDOWN_VOCABULARY}
           markdown
-          label="World introduction"
-          ariaLabel="World introduction"
+          label="World Introduction"
+          ariaLabel="World Introduction"
           className="h-[30rem] max-h-[70dvh]"
         />
       </CardContent>
@@ -342,6 +343,12 @@ const DESIGN_SYSTEM_REFERENCES: readonly ReferenceDefinition[] = [
     description: 'Compact long-form editing',
     Component: MarkdownReference,
   },
+  {
+    id: 'community-cards',
+    label: 'Community Cards',
+    description: 'Image-led creation listings',
+    Component: CommunityCardReference,
+  },
 ];
 
 export function DesignSystemShowcase() {
@@ -353,11 +360,11 @@ export function DesignSystemShowcase() {
         <header className="grid gap-3 border-b border-border pb-6 sm:grid-cols-[1fr_auto] sm:items-end">
           <div className="space-y-2">
             <Meta className="inline-flex items-center gap-1.5 uppercase tracking-wider">
-              <MonitorCog className="h-3.5 w-3.5" /> Development reference
+              <MonitorCog className="h-3.5 w-3.5" /> Development Reference
             </Meta>
-            <h1 className="text-display font-semibold">Formamorph design system</h1>
+            <h1 className="text-display font-semibold">Formamorph Design System</h1>
             <Hint className="max-w-3xl">
-              Live production components for visual review. Changes here never alter saved settings or call an endpoint.
+              Select a reference.
             </Hint>
           </div>
           <div className="flex items-center gap-2 text-meta text-muted-foreground">
@@ -367,12 +374,12 @@ export function DesignSystemShowcase() {
 
         <Tabs value={activeReference} onValueChange={setActiveReference}>
           <TabsList
-            aria-label="Design references"
-            className="grid w-full sm:w-auto"
-            style={{ gridTemplateColumns: `repeat(${DESIGN_SYSTEM_REFERENCES.length}, minmax(8rem, 1fr))` }}
+            aria-label="Design References"
+            className="grid h-auto w-full sm:h-10 sm:w-auto"
+            style={{ gridTemplateColumns: `repeat(${DESIGN_SYSTEM_REFERENCES.length}, minmax(0, 1fr))` }}
           >
             {DESIGN_SYSTEM_REFERENCES.map((reference) => (
-              <TabsTrigger key={reference.id} value={reference.id}>{reference.label}</TabsTrigger>
+              <TabsTrigger key={reference.id} value={reference.id} className="min-w-0 whitespace-normal px-2 text-center">{reference.label}</TabsTrigger>
             ))}
           </TabsList>
           {DESIGN_SYSTEM_REFERENCES.map(({ id, label, description, Component }) => (
