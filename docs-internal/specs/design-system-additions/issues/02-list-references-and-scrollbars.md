@@ -1,6 +1,6 @@
 # 02: Showcase List Densities And Standardize Scrollbars
 
-Status: ready-for-agent
+Status: ready-for-human
 Blocked by: None (can start immediately)
 Recommended model: GPT-5.6 Sol (`gpt-5.6-sol`)
 Reasoning effort: high
@@ -15,18 +15,18 @@ Sol is recommended for the bounded component-reuse and documentation work. High 
 
 ## Acceptance criteria
 
-- [ ] Provide realistic World Editor and Save/Load list examples using production components and controlled local fixtures/callbacks. Preserve useful metadata, selection, and existing actions; do not replace them with decorative lookalikes.
-- [ ] Demonstration editing, sorting where already present, save actions, and deletion affect only isolated sample state. The showcase must not load/delete real saves or change authored worlds.
-- [ ] Document richer rows separately from compact selection rows. Density follows actual content and controls. Do not force every list to use a 56px editor floor, remove meaningful controls to fit the compact pattern, or add sorting to a simple chooser.
-- [ ] Apply the World Editor scrollbar appearance to the scoped references: 10px vertical track, rounded theme-derived thumb, no up/down chevrons, and enough gutter to avoid obscuring content.
-- [ ] Reuse shared scroll-area behavior where suitable. Preserve specialized editor selection and scrolling, horizontal scrolling where required, wheel/touch/keyboard access, and focus reveal. Do not introduce nested scroll containers merely to imitate styling.
-- [ ] Bound long list panes and keep relevant search/footer controls reachable outside scrolling content. Exercise long labels and realistic metadata rather than shortening fixtures to hide overflow.
-- [ ] Add guide sections with production mappings, density-selection guidance, applicable states, and explicit mobile adaptations. Add the two production-backed references to the existing dev-only showcase.
-- [ ] Inspect desktop/mobile layouts in both themes and representative font/palette settings. Verify selected, disabled, focus, long-content, and overflow behavior applicable to each source.
-- [ ] Publish an actionable inventory of other scrollbar/list alignment needs, grouped by surface and observed limitation. Distinguish native/specialized scrollers from shared ones; do not silently migrate them in this ticket.
-- [ ] Confirm the existing design-system skill discovers the additions through the guide. Modify its workflow only for a demonstrated gap, without duplicating component values.
-- [ ] Review new functional copy through the Writing Guide and preserve authored fixture voices. Record unresolved STE limits.
-- [ ] Pass typecheck, lint, tests, build, and live UI verification. Time tests, apply the project test-quality requirements, update the code graph after changes, and add the appropriate In-Progress changelog entry.
+- [x] Provide realistic World Editor and Save/Load list examples using production components and controlled local fixtures/callbacks. Preserve useful metadata, selection, and existing actions; do not replace them with decorative lookalikes.
+- [x] Demonstration editing, sorting where already present, save actions, and deletion affect only isolated sample state. The showcase must not load/delete real saves or change authored worlds.
+- [x] Document richer rows separately from compact selection rows. Density follows actual content and controls. Do not force every list to use a 56px editor floor, remove meaningful controls to fit the compact pattern, or add sorting to a simple chooser.
+- [x] Apply the World Editor scrollbar appearance to the scoped references: 10px vertical track, rounded theme-derived thumb, no up/down chevrons, and enough gutter to avoid obscuring content.
+- [x] Reuse shared scroll-area behavior where suitable. Preserve specialized editor selection and scrolling, horizontal scrolling where required, wheel/touch/keyboard access, and focus reveal. Do not introduce nested scroll containers merely to imitate styling.
+- [x] Bound long list panes and keep relevant search/footer controls reachable outside scrolling content. Exercise long labels and realistic metadata rather than shortening fixtures to hide overflow.
+- [x] Add guide sections with production mappings, density-selection guidance, applicable states, and explicit mobile adaptations. Add the two production-backed references to the existing dev-only showcase.
+- [x] Inspect desktop/mobile layouts in both themes and representative font/palette settings. Verify selected, disabled, focus, long-content, and overflow behavior applicable to each source.
+- [x] Publish an actionable inventory of other scrollbar/list alignment needs, grouped by surface and observed limitation. Distinguish native/specialized scrollers from shared ones; do not silently migrate them in this ticket.
+- [x] Confirm the existing design-system skill discovers the additions through the guide. Modify its workflow only for a demonstrated gap, without duplicating component values.
+- [x] Review new functional copy through the Writing Guide and preserve authored fixture voices. Record unresolved STE limits.
+- [x] Pass typecheck, lint, tests, build, and live UI verification. Time tests, apply the project test-quality requirements, update the code graph after changes, and add the appropriate In-Progress changelog entry.
 
 ## Verification
 

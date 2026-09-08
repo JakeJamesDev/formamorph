@@ -3,7 +3,7 @@ import { downloadBlob } from "@/lib/downloadBlob";
 import React from 'react';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { Loader2, X, GripVertical, Folder, FolderOpen, ChevronLeft } from "lucide-react";
+import { Loader2, GripVertical, Folder, FolderOpen, ChevronLeft } from "lucide-react";
 import { ActionIcon } from "@/lib/actionIcons";
 import { type DragEndEvent } from '@dnd-kit/core';
 import { useSortable, verticalListSortingStrategy, arrayMove } from '@dnd-kit/sortable';
@@ -15,7 +15,6 @@ import {
 } from './dbUtils';
 import { serializeJsonBlob, terminateWorker as terminateExportWorker } from '../../lib/jsonFileWorkerUtils';
 import { APP_VERSION, isSaveEnvelope, migrateSave, SAVE_FILE_KIND } from '../../lib/version';
-import { cn } from "@/lib/utils";
 import { useClosingSnapshot } from "@/lib/useClosingSnapshot";
 import { filesFrom, importSummaryToast } from "@/lib/importFiles";
 import WorldStorageService from '../../services/WorldStorageService';
@@ -24,17 +23,12 @@ import {
 } from '../../lib/saveOrdering';
 import type { SaveRecord } from "@/types";
 import { Tip } from "@/components/ui/tooltip";
-
-const formatGameTime = (time: number) => {
-  const hours = Math.floor(time);
-  const minutes = Math.floor((time - hours) * 60);
-  return `${hours}h ${minutes}m`;
-};
+import { SaveList, type SaveListItem } from './SaveList';
 
 const formatStamp = (ms: number) => (ms ? new Date(ms).toLocaleString() : '');
 
 /** SaveMeta enriched with the raw record + display bits, so the row can render and export without a re-read. */
-export interface SaveRow extends SaveMeta {
+export interface SaveRow extends SaveMeta, SaveListItem {
   gameTime: number;
   isAutosave?: boolean;
   record: SaveRecord;
@@ -50,87 +44,6 @@ const recordToRow = (r: SaveRecord): SaveRow => ({
   isAutosave: r.isAutosave,
   record: r,
 });
-
-// --- One save row (draggable) --------------------------------------------------------------------
-
-function SortableSaveRow({ row, disabled, busy, onLoad, onExport, onDelete }: {
-  row: SaveRow;
-  disabled: boolean;
-  busy: boolean;
-  onLoad: (row: SaveRow) => void;
-  onExport: (row: SaveRow) => void;
-  onDelete: (row: SaveRow) => void;
-}) {
-  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: row.id });
-  // Translate only (not Transform): a sortable's transform includes a scale to morph the dragged row to the
-  // target slot's size, which visibly resizes it when rows differ in height. Translation keeps its own size.
-  const style = { transform: CSS.Translate.toString(transform), transition, opacity: isDragging ? 0.5 : 1, zIndex: isDragging ? 1 : undefined };
-  return (
-    <div
-      ref={setNodeRef}
-      style={style}
-      className={cn(
-        "flex items-center gap-1 w-full rounded-md border border-input bg-background pr-1 text-left text-label transition-colors",
-        disabled ? "pointer-events-none opacity-50" : "hover:bg-accent hover:text-accent-foreground",
-      )}
-    >
-      {/* Drag handle — far left */}
-      <Tip tip="Drag to reorder">
-        <span
-          {...attributes}
-          {...listeners}
-          className="cursor-grab touch-none px-1 py-2 text-muted-foreground shrink-0 self-stretch flex items-center"
-        >
-          <GripVertical className="h-4 w-4" />
-        </span>
-      </Tip>
-
-      {/* Details — middle column grows, wraps, and loads on click */}
-      <div
-        role="button"
-        tabIndex={0}
-        className="flex-1 min-w-0 py-2 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded-sm"
-        onClick={() => onLoad(row)}
-        onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onLoad(row); } }}
-      >
-        <div className="break-words font-medium">
-          {row.name}
-          {row.isAutosave && (
-            <span className="relative -top-[2px] ml-2 inline-block rounded bg-info/15 px-1.5 py-px align-middle text-[10px] font-semibold uppercase leading-none tracking-wide text-info">
-              Auto
-            </span>
-          )}
-        </div>
-        <div className="text-meta opacity-70">
-          {formatStamp(row.timestamp)} - Game Time: {formatGameTime(row.gameTime)}
-        </div>
-      </div>
-
-      {/* Export then Delete — right-anchored */}
-      <Tip tip="Export save">
-        <Button
-          variant="ghost"
-          size="sm"
-          className="h-7 w-7 p-0 shrink-0"
-          disabled={busy}
-          onClick={(e) => { e.stopPropagation(); onExport(row); }}
-        >
-          <ActionIcon.export className="h-3.5 w-3.5" />
-        </Button>
-      </Tip>
-      <Tip tip="Delete save">
-        <Button
-          variant="ghost"
-          size="sm"
-          className="h-7 w-7 p-0 shrink-0 text-destructive"
-          onClick={(e) => { e.stopPropagation(); onDelete(row); }}
-        >
-          <X className="h-4 w-4" />
-        </Button>
-      </Tip>
-    </div>
-  );
-}
 
 // --- One folder row ------------------------------------------------------------------------------
 
@@ -368,17 +281,6 @@ export function LoadGameDialog({ open, onOpenChange, current, onLoad, title, ico
     }
   };
 
-  const handleSaveDragEnd = ({ active, over }: DragEndEvent) => {
-    if (!over || active.id === over.id || !activeFolder) return;
-    const ids = activeSaves.map(s => s.id);
-    const from = ids.indexOf(String(active.id));
-    const to = ids.indexOf(String(over.id));
-    if (from < 0 || to < 0) return;
-    const next = arrayMove(ids, from, to);
-    setSaveOrderByKey(prev => ({ ...prev, [activeFolder.key]: next }));
-    void setOrder(activeFolder.key, next);
-  };
-
   const handleFolderDragEnd = ({ active, over }: DragEndEvent) => {
     if (!over || active.id === over.id) return;
     const keys = listFolders.map(f => f.key);
@@ -524,21 +426,21 @@ export function LoadGameDialog({ open, onOpenChange, current, onLoad, title, ico
                     </EditorDndContext>
                   </>
                 ) : (
-                  <EditorDndContext onDragEnd={handleSaveDragEnd}>
-                    <StableSortableContext items={shownSaves} strategy={verticalListSortingStrategy}>
-                      {shownSaves.map(row => (
-                        <SortableSaveRow
-                          key={row.id}
-                          row={row}
-                          disabled={isLoading}
-                          busy={busy}
-                          onLoad={onPickSave ?? requestLoad}
-                          onExport={(r) => void doExport(r)}
-                          onDelete={(r) => setPendingDelete(r)}
-                        />
-                      ))}
-                    </StableSortableContext>
-                  </EditorDndContext>
+                  <SaveList
+                    rows={shownSaves}
+                    disabled={isLoading}
+                    busy={busy}
+                    getPickLabel={onPickSave ? (row) => `Select save “${row.name}”` : undefined}
+                    onPick={onPickSave ?? requestLoad}
+                    onExport={(row) => void doExport(row)}
+                    onDelete={setPendingDelete}
+                    onReorder={(next) => {
+                      if (!activeFolder) return;
+                      const ids = next.map((row) => row.id);
+                      setSaveOrderByKey((previous) => ({ ...previous, [activeFolder.key]: ids }));
+                      void setOrder(activeFolder.key, ids);
+                    }}
+                  />
                 )}
 
                 {busy && (

@@ -142,3 +142,15 @@ describe('main menu context menu reference', () => {
     expect(screen.getByRole('button', { name: /sample world/i })).toBeInTheDocument();
   });
 });
+
+describe('rich list references', () => {
+  it('registers the production-backed World Editor and Save/Load lists', async () => {
+    const user = userEvent.setup();
+    renderShowcase();
+
+    await user.click(screen.getByRole('tab', { name: 'Rich Lists' }));
+
+    expect(screen.getByRole('heading', { name: 'World Editor List' })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Save and Load List' })).toBeInTheDocument();
+  });
+});

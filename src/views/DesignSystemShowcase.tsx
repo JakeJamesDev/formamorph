@@ -40,6 +40,7 @@ import { CodeTemplatesReference } from '@/components/design-system/CodeTemplates
 import { LocationsCanvasReference } from '@/components/design-system/LocationsCanvasReference';
 import { MainMenuContextMenuReference } from '@/components/design-system/MainMenuContextMenuReference';
 import { FooterActionOrderReference } from '@/components/design-system/FooterActionOrderReference';
+import { RichListReferences } from '@/components/design-system/RichListReferences';
 
 type ReferenceDefinition = {
   id: string;
@@ -378,6 +379,12 @@ const DESIGN_SYSTEM_REFERENCES: readonly ReferenceDefinition[] = [
     label: 'Context Menu',
     description: 'Grouped library tile actions',
     Component: MainMenuContextMenuReference,
+  },
+  {
+    id: 'rich-lists',
+    label: 'Rich Lists',
+    description: 'Editor and Save/Load list composition',
+    Component: RichListReferences,
   },
   {
     id: 'footer-actions',
