@@ -10,7 +10,9 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import type { DictionarySelectionItem } from '@/lib/dictionarySelection';
+import { useElementSize } from '@/lib/useElementSize';
 import { useIsMobile } from '@/lib/useIsMobile';
+import { usePrefersReducedMotion } from '@/lib/usePrefersReducedMotion';
 import type { EntityMetadata } from '@/types';
 import { cn } from '@/lib/utils';
 
@@ -179,11 +181,12 @@ function DetailChoice({ id, checked, ariaLabel, label, onChange }: {
   );
 }
 
-function AdditionDetails({ addition, entitySelected, dictionaryTotal, headingRef, onEntityToggle, onDictionaryToggle, onMove, onBack }: {
+function AdditionDetails({ addition, entitySelected, dictionaryTotal, headingRef, showBack, onEntityToggle, onDictionaryToggle, onMove, onBack }: {
   addition: InspectedAddition | null;
   entitySelected: boolean;
   dictionaryTotal: number;
   headingRef: RefObject<HTMLHeadingElement>;
+  showBack: boolean;
   onEntityToggle: (entityId: string, selected: boolean) => void;
   onDictionaryToggle: (key: string, enabled: boolean) => void;
   onMove: (key: string, offset: -1 | 1) => void;
@@ -202,10 +205,12 @@ function AdditionDetails({ addition, entitySelected, dictionaryTotal, headingRef
   const artwork = addition.kind === 'entity' ? addition.entity.image : addition.item.book.thumbnail;
   return (
     <div className="space-y-5 p-4 sm:p-5">
-      <Button type="button" variant="ghost" className="-ml-2 min-h-11 gap-2 md:hidden" onClick={onBack}>
-        <ArrowLeft aria-hidden className="h-4 w-4" />
-        <span>Back to Additions</span>
-      </Button>
+      {showBack && (
+        <Button type="button" variant="ghost" className="-ml-2 min-h-11 gap-2" onClick={onBack}>
+          <ArrowLeft aria-hidden className="h-4 w-4" />
+          <span>Back to Additions</span>
+        </Button>
+      )}
       <div className="flex flex-col gap-4 lg:flex-row">
         <Artwork
           src={artwork ?? undefined}
@@ -281,14 +286,18 @@ function AdditionDetails({ addition, entitySelected, dictionaryTotal, headingRef
 }
 
 export default function EnterWorldLibrary(props: EnterWorldLibraryProps) {
-  const isMobile = useIsMobile();
+  const viewportMobile = useIsMobile();
+  const [containerRef, containerSize] = useElementSize();
+  const singlePane = containerSize.width > 0 ? containerSize.width < 44 * 16 : viewportMobile;
+  const prefersReducedMotion = usePrefersReducedMotion();
   const [query, setQuery] = useState('');
   const [inspectedKey, setInspectedKey] = useState<string | null>(null);
-  const [mobileDetailsOpen, setMobileDetailsOpen] = useState(false);
+  const [detailsOpen, setDetailsOpen] = useState(false);
   const headingRef = useRef<HTMLHeadingElement>(null);
   const searchRef = useRef<HTMLInputElement>(null);
   const openerRefs = useRef(new Map<string, HTMLButtonElement>());
   const restoreFocus = useRef(false);
+  const entryFrame = useRef<number | null>(null);
   const normalizedQuery = query.trim().toLocaleLowerCase();
   const matchesQuery = (name: string, description?: string) => (
     !normalizedQuery
@@ -313,21 +322,47 @@ export default function EnterWorldLibrary(props: EnterWorldLibraryProps) {
   }, [inspectedKey, props.dictionaryItems, props.entities]);
 
   useEffect(() => {
-    if (isMobile && mobileDetailsOpen) headingRef.current?.focus({ preventScroll: true });
-  }, [inspectedKey, isMobile, mobileDetailsOpen]);
+    if (detailsOpen) headingRef.current?.focus({ preventScroll: true });
+  }, [detailsOpen, inspectedKey]);
   useEffect(() => {
-    if (!isMobile || mobileDetailsOpen || !restoreFocus.current || !inspectedKey) return;
+    if (!singlePane || detailsOpen || !restoreFocus.current || !inspectedKey) return;
     restoreFocus.current = false;
     (openerRefs.current.get(inspectedKey) ?? searchRef.current)?.focus({ preventScroll: true });
-  }, [inspectedKey, isMobile, mobileDetailsOpen]);
+  }, [detailsOpen, inspectedKey, singlePane]);
+  useEffect(() => () => {
+    if (entryFrame.current !== null) cancelAnimationFrame(entryFrame.current);
+  }, []);
+  useEffect(() => {
+    if (singlePane && !prefersReducedMotion) return;
+    if (entryFrame.current === null) return;
+    cancelAnimationFrame(entryFrame.current);
+    entryFrame.current = null;
+    setDetailsOpen(true);
+  }, [prefersReducedMotion, singlePane]);
 
   const inspect = (key: string) => {
+    if (entryFrame.current !== null) cancelAnimationFrame(entryFrame.current);
     setInspectedKey(key);
-    if (isMobile) setMobileDetailsOpen(true);
+    if (!singlePane || prefersReducedMotion) {
+      entryFrame.current = null;
+      setDetailsOpen(true);
+      return;
+    }
+    setDetailsOpen(false);
+    entryFrame.current = requestAnimationFrame(() => {
+      entryFrame.current = requestAnimationFrame(() => {
+        entryFrame.current = null;
+        setDetailsOpen(true);
+      });
+    });
   };
   const closeDetails = () => {
+    if (entryFrame.current !== null) {
+      cancelAnimationFrame(entryFrame.current);
+      entryFrame.current = null;
+    }
     restoreFocus.current = true;
-    setMobileDetailsOpen(false);
+    setDetailsOpen(false);
   };
   const setOpenerRef = (key: string) => (node: HTMLButtonElement | null) => {
     if (node) openerRefs.current.set(key, node);
@@ -352,11 +387,20 @@ export default function EnterWorldLibrary(props: EnterWorldLibraryProps) {
   };
   const entityCount = props.entities.filter((entity) => props.selectedEntityIds.has(entity.id)).length;
   const dictionaryCount = props.dictionaryItems.filter((item) => item.enabled).length;
-  const listVisible = !isMobile || !mobileDetailsOpen;
-  const detailsVisible = !isMobile || mobileDetailsOpen;
+  const listVisible = !singlePane || !detailsOpen;
+  const detailsVisible = !singlePane || detailsOpen;
 
   return (
-    <div className="relative grid min-h-0 flex-1 grid-cols-1 gap-4 md:grid-cols-[minmax(18rem,0.95fr)_minmax(20rem,1.05fr)]">
+    <div
+      ref={containerRef}
+      data-enter-world-container="library"
+      data-pane-mode={singlePane ? 'single' : 'split'}
+      data-testid="enter-world-library-layout"
+      className={cn(
+        'relative grid min-h-0 flex-1 grid-cols-1 overflow-hidden',
+        !singlePane && 'grid-cols-[minmax(18rem,0.95fr)_minmax(20rem,1.05fr)] gap-4',
+      )}
+    >
       <section
         role="region"
         aria-label="Library Additions List"
@@ -364,7 +408,8 @@ export default function EnterWorldLibrary(props: EnterWorldLibraryProps) {
         {...(!listVisible ? { inert: '' } : {})}
         className={cn(
           'flex min-h-0 flex-col overflow-hidden rounded-lg border bg-card',
-          !listVisible && 'invisible pointer-events-none absolute inset-0',
+          singlePane && 'col-start-1 row-start-1 transition-transform duration-200 ease-out motion-reduce:transition-none',
+          singlePane && detailsOpen && '-translate-x-1/4 pointer-events-none',
         )}
       >
         <div className="shrink-0 border-b p-3">
@@ -475,8 +520,9 @@ export default function EnterWorldLibrary(props: EnterWorldLibraryProps) {
         aria-hidden={!detailsVisible}
         {...(!detailsVisible ? { inert: '' } : {})}
         className={cn(
-          'min-h-0 overflow-hidden rounded-lg border bg-card',
-          !detailsVisible && 'invisible pointer-events-none absolute inset-0',
+          'z-10 min-h-0 overflow-hidden rounded-lg border bg-card',
+          singlePane && 'col-start-1 row-start-1 transition-transform duration-200 ease-out motion-reduce:transition-none',
+          singlePane && (detailsOpen ? 'translate-x-0' : 'translate-x-full pointer-events-none'),
         )}
       >
         <ScrollArea type="always" className="h-full min-h-0">
@@ -485,6 +531,7 @@ export default function EnterWorldLibrary(props: EnterWorldLibraryProps) {
             entitySelected={inspected?.kind === 'entity' && props.selectedEntityIds.has(inspected.entity.id)}
             dictionaryTotal={props.dictionaryItems.length}
             headingRef={headingRef}
+            showBack={singlePane}
             onEntityToggle={props.onEntityToggle}
             onDictionaryToggle={updateDictionary}
             onMove={move}

@@ -6,6 +6,7 @@ import { Dialog, DialogContent, DialogDescription, DialogTitle } from '@/compone
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import type { DictionarySelectionItem } from '@/lib/dictionarySelection';
 import type { EntityMetadata, GameLocation, Stat, Trait, TraitGroup } from '@/types';
+import { useElementSize } from '@/lib/useElementSize';
 import { cn } from '@/lib/utils';
 import { useIsMobile } from '@/lib/useIsMobile';
 import EnterWorldLibrary from './EnterWorldLibrary';
@@ -103,9 +104,11 @@ const buildTraitWorkspace = (traits: Trait[], groups: TraitGroup[]): TraitWorksp
 };
 
 export default function EnterWorldWorkspace(props: EnterWorldWorkspaceProps) {
-  const isMobile = useIsMobile();
-  const [mobileNavigationOpen, setMobileNavigationOpen] = useState(false);
-  const mobileNavigationButton = useRef<HTMLButtonElement>(null);
+  const viewportMobile = useIsMobile();
+  const [containerRef, containerSize] = useElementSize();
+  const categoriesCollapsed = containerSize.width > 0 ? containerSize.width < 72 * 16 : viewportMobile;
+  const [categoryNavigationOpen, setCategoryNavigationOpen] = useState(false);
+  const categoryNavigationButton = useRef<HTMLButtonElement>(null);
   const traitWorkspace = useMemo(
     () => buildTraitWorkspace(props.traits, props.traitGroups),
     [props.traits, props.traitGroups],
@@ -145,9 +148,9 @@ export default function EnterWorldWorkspace(props: EnterWorldWorkspaceProps) {
         style={{ paddingLeft: 8 + Math.min(depth, 5) * 12 }}
         onClick={() => {
           props.onCategoryChange(index);
-          if (!isMobile) return;
-          setMobileNavigationOpen(false);
-          mobileNavigationButton.current?.focus();
+          if (!categoriesCollapsed) return;
+          setCategoryNavigationOpen(false);
+          categoryNavigationButton.current?.focus();
         }}
       >
         <span className="min-w-0 flex-1 break-words">{category.name}</span>
@@ -170,7 +173,7 @@ export default function EnterWorldWorkspace(props: EnterWorldWorkspaceProps) {
       aria-label="World setup categories"
       className={cn(
         'space-y-1 overflow-y-auto p-3',
-        isMobile
+        categoriesCollapsed
           ? 'max-h-[45dvh] overscroll-contain border-t border-border/60'
           : 'h-full',
       )}
@@ -214,6 +217,8 @@ export default function EnterWorldWorkspace(props: EnterWorldWorkspaceProps) {
   return (
     <Dialog open onOpenChange={(open) => { if (!open) props.onCancel(); }}>
       <DialogContent
+        ref={containerRef}
+        data-enter-world-container="dialog"
         hideClose
         unanimated
         className="fixed inset-x-0 left-0 top-[var(--app-top,0px)] flex h-[var(--app-h,100dvh)] max-h-none w-full max-w-none translate-x-0 translate-y-0 flex-col gap-0 rounded-none border-0 p-0 pt-[env(safe-area-inset-top)] sm:inset-x-6 sm:top-6 sm:mx-auto sm:h-[calc(100dvh-3rem)] sm:w-[calc(100%-3rem)] sm:max-w-[1600px] sm:rounded-xl sm:border sm:pt-0 [@media(max-height:500px)]:inset-0 [@media(max-height:500px)]:m-0 [@media(max-height:500px)]:h-[var(--app-h,100dvh)] [@media(max-height:500px)]:w-full [@media(max-height:500px)]:rounded-none"
@@ -237,23 +242,23 @@ export default function EnterWorldWorkspace(props: EnterWorldWorkspaceProps) {
           <Button variant="ghost" className="min-h-11 text-muted-foreground" onClick={props.onCancel}>Cancel</Button>
         </div>
       </header>
-      <div className="flex min-h-0 flex-1 flex-col md:flex-row">
+      <div className={cn('flex min-h-0 flex-1', categoriesCollapsed ? 'flex-col' : 'flex-row')}>
         <aside
           className={cn(
-            'relative z-10 shrink-0 md:w-72 md:border-r xl:w-80',
-            isMobile
-              ? cn('border-b bg-secondary/60', mobileNavigationOpen ? 'border-muted-foreground/30' : 'border-border')
-              : 'bg-background',
+            'relative z-10 shrink-0',
+            categoriesCollapsed
+              ? cn('border-b bg-secondary/60', categoryNavigationOpen ? 'border-muted-foreground/30' : 'border-border')
+              : 'w-80 border-r bg-background',
           )}
         >
-          {isMobile && (
+          {categoriesCollapsed && (
             <button
-              ref={mobileNavigationButton}
+              ref={categoryNavigationButton}
               type="button"
-              aria-expanded={mobileNavigationOpen}
+              aria-expanded={categoryNavigationOpen}
               aria-controls="setup-category-tree"
               className="flex min-h-11 w-full items-center gap-2 px-4 py-2 text-left text-label"
-              onClick={() => setMobileNavigationOpen((open) => !open)}
+              onClick={() => setCategoryNavigationOpen((open) => !open)}
             >
               <ListTree className="h-4 w-4 shrink-0" />
               <span className="font-medium">Categories</span>
@@ -263,22 +268,22 @@ export default function EnterWorldWorkspace(props: EnterWorldWorkspaceProps) {
               <ChevronDown
                 className={cn(
                   'h-4 w-4 shrink-0 transition-transform duration-150 motion-reduce:transition-none',
-                  mobileNavigationOpen && 'rotate-180',
+                  categoryNavigationOpen && 'rotate-180',
                 )}
               />
             </button>
           )}
           <div
             id="setup-category-tree"
-            aria-hidden={isMobile ? !mobileNavigationOpen : undefined}
-            {...(isMobile && !mobileNavigationOpen ? { inert: '' } : {})}
+            aria-hidden={categoriesCollapsed ? !categoryNavigationOpen : undefined}
+            {...(categoriesCollapsed && !categoryNavigationOpen ? { inert: '' } : {})}
             className={cn(
-              isMobile && 'grid transition-[grid-template-rows] duration-150 ease-out motion-reduce:transition-none',
-              !isMobile && 'h-full min-h-0',
+              categoriesCollapsed && 'grid transition-[grid-template-rows] duration-150 ease-out motion-reduce:transition-none',
+              !categoriesCollapsed && 'h-full min-h-0',
             )}
-            style={isMobile ? { gridTemplateRows: mobileNavigationOpen ? '1fr' : '0fr' } : undefined}
+            style={categoriesCollapsed ? { gridTemplateRows: categoryNavigationOpen ? '1fr' : '0fr' } : undefined}
           >
-            <div className={cn('min-h-0', isMobile ? 'overflow-hidden' : 'h-full')}>
+            <div className={cn('min-h-0', categoriesCollapsed ? 'overflow-hidden' : 'h-full')}>
               {navigation}
             </div>
           </div>
