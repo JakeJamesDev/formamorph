@@ -9,6 +9,8 @@ import remarkGfm from 'remark-gfm';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Slider } from '@/components/ui/slider';
 import { Popover, PopoverTrigger, PopoverContent } from '@/components/ui/popover';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import { Tip } from '@/components/ui/tooltip';
 import { Hint } from '@/components/ui/typography';
 import 'streamdown/styles.css';
@@ -136,6 +138,46 @@ export function RecommendedMark() {
   );
 }
 
+/** A segmented option control that becomes a dropdown below `sm`. */
+export function OptionSwitcher<T extends string>({ value, onChange, options, ariaLabel }: {
+  value: T;
+  onChange: (v: T) => void;
+  options: readonly { value: T; label: string; recommended?: true }[];
+  ariaLabel?: string;
+}) {
+  const choose = (nextValue: string) => {
+    const option = options.find(({ value: optionValue }) => optionValue === nextValue);
+    if (option) onChange(option.value);
+  };
+
+  return (
+    <div>
+      <Select value={value} onValueChange={choose}>
+        <SelectTrigger aria-label={ariaLabel} className="w-full sm:hidden"><SelectValue /></SelectTrigger>
+        <SelectContent>
+          {options.map((o) => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}
+        </SelectContent>
+      </Select>
+      <div className="hidden sm:block">
+        <ToggleGroup
+          type="single"
+          aria-label={ariaLabel}
+          value={value}
+          onValueChange={(nextValue) => { if (nextValue) choose(nextValue); }}
+          className="grid w-full"
+          style={{ gridTemplateColumns: `repeat(${options.length}, minmax(0, 1fr))` }}
+        >
+          {options.map((o) => (
+            <ToggleGroupItem key={o.value} value={o.value}>
+              {o.label}{o.recommended && <RecommendedMark />}
+            </ToggleGroupItem>
+          ))}
+        </ToggleGroup>
+      </div>
+    </div>
+  );
+}
+
 /**
  * A label + control row on the settings tabs' two-column grid — the one shape every non-checkbox setting
  * uses, so a tab reads as a single column of controls rather than a pile of bespoke grids.
@@ -177,12 +219,13 @@ export function Row({ label, htmlFor, children, hint, top, info, muted, experime
 }
 
 /** A slider with its current value shown to the right. */
-export function ValueSlider({ id, value, onChange, min, max, step, format }: {
-  id?: string; value: number; onChange: (v: number) => void; min: number; max: number; step: number; format: (v: number) => string;
+export function ValueSlider({ id, value, onChange, min, max, step, format, ariaLabel }: {
+  id?: string; value: number; onChange: (v: number) => void; min: number; max: number; step: number;
+  format: (v: number) => string; ariaLabel?: string;
 }) {
   return (
     <div className="flex items-center gap-3">
-      <Slider id={id} className="flex-grow" value={[value]} min={min} max={max} step={step} onValueChange={(v) => onChange(v[0])} />
+      <Slider id={id} aria-label={ariaLabel} className="flex-grow" value={[value]} min={min} max={max} step={step} onValueChange={(v) => onChange(v[0])} />
       <span className="w-24 text-right text-label tabular-nums">{format(value)}</span>
     </div>
   );
@@ -206,6 +249,27 @@ export function CheckRow({ label, htmlFor, checked, onChange, hint, info, experi
         </span>
         <Hint as="span">{hint}</Hint>
       </div>
+    </div>
+  );
+}
+
+/** Compact related checkboxes that share one settings row. */
+export function CheckboxOptionGroup({ options }: {
+  options: readonly { id: string; label: string; checked: boolean; onChange: (checked: boolean) => void }[];
+}) {
+  return (
+    <div className="flex flex-wrap gap-x-4 gap-y-2">
+      {options.map((option) => (
+        <label key={option.id} htmlFor={option.id} className="flex cursor-pointer items-center gap-2 text-label">
+          <Checkbox
+            id={option.id}
+            checked={option.checked}
+            onCheckedChange={(checked) => option.onChange(checked === true)}
+            className="shrink-0"
+          />
+          {option.label}
+        </label>
+      ))}
     </div>
   );
 }

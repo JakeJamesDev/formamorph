@@ -5,7 +5,8 @@
 @tailwind utilities;
 
 @layer base {
-  :root {
+  :root,
+  .light[data-theme="blue"] {
     color-scheme: light; /* native controls (number-input spinners, etc.) follow the theme */
     /* App font: the OS sans stack by default; the Font setting overrides this inline with a webfont. */
     --app-font: ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;

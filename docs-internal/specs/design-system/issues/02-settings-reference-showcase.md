@@ -1,6 +1,6 @@
 # 02: Build the Settings Reference Showcase
 
-Status: ready-for-agent
+Status: ready-for-human
 Blocked by: None (can start immediately)
 Recommended model: GPT-5.6 Sol (`gpt-5.6-sol`)
 Reasoning effort: high

@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { lazy, Suspense, useEffect, useState } from 'react';
 import { Capacitor } from '@capacitor/core';
 import { ThemeProvider } from "./components/theme-provider";
 import { AndroidBackHandler } from './components/AndroidBackHandler';
@@ -24,6 +24,10 @@ import { TooltipProvider } from './components/ui/tooltip';
 import GameViewer from './views/GameViewer';
 import MainMenu from './views/MainMenu';
 import type { CharacterData, Dictionary, Entity } from '@/types';
+
+const DesignSystemShowcase = import.meta.env.DEV
+  ? lazy(() => import('./views/DesignSystemShowcase'))
+  : null;
 
 /** Set once the first-run welcome intro has played, so it never auto-plays again on this device. */
 const INTRO_SEEN_KEY = 'FORMAMORPH_introSeen';
@@ -176,6 +180,22 @@ function AppViews() {
 }
 
 function App() {
+  const devRoute = useDevRoute();
+  const showDesignSystem = import.meta.env.DEV && devRoute?.modal === 'designSystem';
+
+  // The reference stays outside app providers so it cannot start storage, account, or endpoint work.
+  if (showDesignSystem && DesignSystemShowcase) {
+    return (
+      <ThemeProvider defaultTheme="system" storageKey="vite-ui-theme">
+        <TooltipProvider>
+          <Suspense fallback={<main className="min-h-screen bg-background p-8 text-foreground">Loading design system…</main>}>
+            <DesignSystemShowcase />
+          </Suspense>
+        </TooltipProvider>
+      </ThemeProvider>
+    );
+  }
+
   return (
     <ThemeProvider defaultTheme="system" storageKey="vite-ui-theme">
       {/* One tooltip provider for the app: it owns the open delay and the instant-open window shared by
