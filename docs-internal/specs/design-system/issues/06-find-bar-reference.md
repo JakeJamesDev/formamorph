@@ -1,6 +1,6 @@
 # 06: Add the Find Bar Reference
 
-Status: in-progress
+Status: ready-for-human
 Blocked by: None (can start immediately)
 Recommended model: GPT-5.6 Sol (`gpt-5.6-sol`)
 Reasoning effort: high
