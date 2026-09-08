@@ -72,6 +72,156 @@ async function enter() {
 }
 
 describe('the retained entry draft', () => {
+  it('remembers explicitly saved additions after cancel and remount, with independent runtime copies', async () => {
+    const original = await WorldStorageService.getWorldData('entry-world');
+    const onStartGame = vi.fn();
+    renderMainMenu({ onStartGame });
+    await enter();
+    fireEvent.click(screen.getByRole('button', { name: 'Library Additions' }));
+    fireEvent.click(screen.getByRole('checkbox', { name: 'Include Companion' }));
+    fireEvent.click(screen.getByRole('checkbox', { name: 'Enable Library book from library' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Move Library book from library up' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Move Library book from library up' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Use these additions for future games' }));
+    expect(toast.success).toHaveBeenCalledWith('Formamorph saved these additions for future games.');
+    fireEvent.click(screen.getByRole('button', { name: 'Cancel' }));
+    cleanup();
+    renderMainMenu({ onStartGame });
+    await enter();
+    fireEvent.click(screen.getByRole('button', { name: 'Library Additions' }));
+    expect(screen.getByRole('checkbox', { name: 'Include Companion' })).toBeChecked();
+    expect(screen.getByRole('checkbox', { name: 'Enable Library book from library' })).toBeChecked();
+    expect(within(screen.getByRole('list', { name: 'Dictionary order' })).getAllByRole('listitem')[0]).toHaveTextContent('Library book');
+    fireEvent.click(screen.getByRole('button', { name: 'Start game' }));
+    await waitFor(() => expect(onStartGame).toHaveBeenCalledOnce());
+    expect(onStartGame.mock.calls[0][4]).toEqual([
+      expect.objectContaining({ name: 'Library book', id: expect.not.stringMatching(/^shared$/) }),
+      expect.objectContaining({ name: 'World book', id: 'shared' }),
+    ]);
+    expect(onStartGame.mock.calls[0][5]).toEqual([expect.objectContaining({ name: 'Companion', id: expect.not.stringMatching(/^companion$/) })]);
+    expect((await DictionaryStorageService.getDictionaryData('shared')).entries[0].id).toBe('library-entry');
+    expect(await WorldStorageService.getWorldData('entry-world')).toEqual(original);
+  });
+
+  it('keeps saved none across restart and one-game overrides, without persisting traits or location', async () => {
+    const onStartGame = vi.fn();
+    renderMainMenu({ onStartGame });
+    await enter();
+    fireEvent.click(screen.getByRole('checkbox', { name: 'Default trait' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Starting Location' }));
+    fireEvent.click(screen.getByRole('radio', { name: 'Hill' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Library Additions' }));
+    fireEvent.click(screen.getByRole('checkbox', { name: 'Enable World book from world' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Use these additions for future games' }));
+    fireEvent.click(screen.getByRole('checkbox', { name: 'Include Companion' }));
+    fireEvent.click(screen.getByRole('checkbox', { name: 'Enable Library book from library' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Start game' }));
+    await waitFor(() => expect(onStartGame).toHaveBeenCalledOnce());
+    expect(onStartGame.mock.calls[0][0]).toEqual([]);
+    expect(onStartGame.mock.calls[0][3]).toBe('hill');
+    expect(onStartGame.mock.calls[0][4]).toEqual([expect.objectContaining({ name: 'Library book' })]);
+    expect(onStartGame.mock.calls[0][5]).toEqual([expect.objectContaining({ name: 'Companion' })]);
+    cleanup();
+    onStartGame.mockClear();
+    renderMainMenu({ onStartGame });
+    await enter();
+    expect(screen.getByRole('checkbox', { name: 'Default trait' })).toBeChecked();
+    fireEvent.click(screen.getByRole('button', { name: 'Starting Location' }));
+    expect(screen.getByRole('radio', { name: /Random/ })).toBeChecked();
+    fireEvent.click(screen.getByRole('button', { name: 'Library Additions' }));
+    expect(screen.getByRole('checkbox', { name: 'Include Companion' })).not.toBeChecked();
+    expect(screen.getByRole('checkbox', { name: 'Enable Library book from library' })).not.toBeChecked();
+    expect(screen.getByRole('checkbox', { name: 'Enable World book from world' })).not.toBeChecked();
+    fireEvent.click(screen.getByRole('button', { name: 'Start game' }));
+    await waitFor(() => expect(onStartGame).toHaveBeenCalledWith(['default'], null, true, null, [], []));
+    cleanup();
+    onStartGame.mockClear();
+    renderMainMenu({ onStartGame });
+    fireEvent.click(await screen.findByText('Entry World'));
+    fireEvent.click(await screen.findByRole('button', { name: 'Quick Start' }));
+    expect(onStartGame).toHaveBeenCalledWith(['default'], null, true);
+  });
+
+  it('keeps defaults independent for two local worlds', async () => {
+    const second = { ...world(), id: 'second-world', name: 'Second World' };
+    await WorldStorageService.storeWorld(second);
+    const onStartGame = vi.fn();
+    renderMainMenu({ onStartGame });
+    await enter();
+    fireEvent.click(screen.getByRole('button', { name: 'Library Additions' }));
+    fireEvent.click(screen.getByRole('checkbox', { name: 'Include Companion' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Use these additions for future games' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Cancel' }));
+    fireEvent.click(await screen.findByText('Second World'));
+    fireEvent.click(await screen.findByRole('button', { name: 'Enter World' }));
+    fireEvent.click(await screen.findByRole('button', { name: 'Library Additions' }));
+    expect(screen.getByRole('checkbox', { name: 'Include Companion' })).not.toBeChecked();
+    fireEvent.click(screen.getByRole('checkbox', { name: 'Enable World book from world' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Use these additions for future games' }));
+    cleanup();
+    renderMainMenu({ onStartGame });
+    await enter();
+    fireEvent.click(screen.getByRole('button', { name: 'Library Additions' }));
+    expect(screen.getByRole('checkbox', { name: 'Include Companion' })).toBeChecked();
+    expect(screen.getByRole('checkbox', { name: 'Enable World book from world' })).toBeChecked();
+    fireEvent.click(screen.getByRole('button', { name: 'Cancel' }));
+    fireEvent.click(await screen.findByText('Second World'));
+    fireEvent.click(await screen.findByRole('button', { name: 'Enter World' }));
+    fireEvent.click(await screen.findByRole('button', { name: 'Library Additions' }));
+    expect(screen.getByRole('checkbox', { name: 'Enable World book from world' })).not.toBeChecked();
+    fireEvent.click(screen.getByRole('button', { name: 'Start game' }));
+    await waitFor(() => expect(onStartGame).toHaveBeenCalledWith(['default'], null, true, null, [], []));
+  });
+
+  it('keeps a remembered lone world dictionary editable after the library is removed', async () => {
+    const w = world();
+    w.data.traits = [];
+    w.data.locations = [{ id: 'harbor', name: 'Harbor', isStarting: true }];
+    w.data.dictionaries = [{ id: 'shared', name: 'World book', enabled: true, entries: [] }];
+    await WorldStorageService.storeWorld(w);
+    const onStartGame = vi.fn();
+    renderMainMenu({ onStartGame });
+    await enter();
+    fireEvent.click(screen.getByRole('checkbox', { name: 'Enable World book from world' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Use these additions for future games' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Cancel' }));
+    cleanup();
+    await EntityStorageService.deleteEntity('companion');
+    await DictionaryStorageService.deleteDictionary('shared');
+    renderMainMenu({ onStartGame });
+    await enter();
+    expect(onStartGame).not.toHaveBeenCalled();
+    expect(screen.getByRole('checkbox', { name: 'Enable World book from world' })).not.toBeChecked();
+    fireEvent.click(screen.getByRole('checkbox', { name: 'Enable World book from world' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Use these additions for future games' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Start game' }));
+    await waitFor(() => expect(onStartGame.mock.calls[0][4]).toEqual([expect.objectContaining({ id: 'shared' })]));
+  });
+
+  it('reports a failed save without false success, retains the draft, and saves on retry', async () => {
+    renderMainMenu();
+    await enter();
+    fireEvent.click(screen.getByRole('button', { name: 'Library Additions' }));
+    fireEvent.click(screen.getByRole('checkbox', { name: 'Include Companion' }));
+    vi.mocked(toast.success).mockClear();
+    const write = vi.spyOn(Storage.prototype, 'setItem').mockImplementation(() => {
+      throw new DOMException('Storage full', 'QuotaExceededError');
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Use these additions for future games' }));
+    expect(toast.success).not.toHaveBeenCalled();
+    expect(toast.error).toHaveBeenCalledWith('Formamorph could not save these additions. Try again.');
+    expect(screen.getByRole('checkbox', { name: 'Include Companion' })).toBeChecked();
+    write.mockRestore();
+    fireEvent.click(screen.getByRole('button', { name: 'Use these additions for future games' }));
+    expect(toast.success).toHaveBeenCalledOnce();
+    fireEvent.click(screen.getByRole('button', { name: 'Cancel' }));
+    cleanup();
+    renderMainMenu();
+    await enter();
+    fireEvent.click(screen.getByRole('button', { name: 'Library Additions' }));
+    expect(screen.getByRole('checkbox', { name: 'Include Companion' })).toBeChecked();
+  });
+
   it.each([false, true])('keeps Introduction first with no pickers (Avatar: %s)', async avatar => {
     const w = world(avatar);
     w.data.traits = [];

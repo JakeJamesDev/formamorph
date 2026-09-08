@@ -47,6 +47,7 @@ export interface EnterWorldWorkspaceProps {
   onLocationChange: (locationId: string | null) => void;
   onEntityToggle: (entityId: string, selected: boolean) => void;
   onDictionaryItemsChange: (items: DictionarySelectionItem[]) => void;
+  onSaveAdditions?: () => void;
   onIntroduction?: () => void;
   onCancel: () => void;
   onContinue: () => void;
@@ -336,6 +337,17 @@ export default function EnterWorldWorkspace(props: EnterWorldWorkspaceProps) {
             <>
               <p className="mb-1 text-meta uppercase tracking-wide text-muted-foreground">World setup</p>
               <h2 className="mb-4 text-heading font-semibold">Library Additions</h2>
+              {props.onSaveAdditions && (
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="mb-4 h-auto min-h-11 max-w-full whitespace-normal text-left"
+                  onClick={props.onSaveAdditions}
+                  disabled={props.resolving}
+                >
+                  Use these additions for future games
+                </Button>
+              )}
               <EnterWorldLibrary
                 entities={props.libraryEntities}
                 selectedEntityIds={props.selectedEntityIds}
