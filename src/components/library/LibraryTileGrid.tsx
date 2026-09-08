@@ -201,6 +201,7 @@ function FolderHeader({ name, settings, onBack, onRename }: {
 export function LibraryTileGrid<T>({
   items,
   idOf,
+  nameOf,
   tiles,
   layout,
   aspect,
@@ -215,6 +216,7 @@ export function LibraryTileGrid<T>({
 }: {
   items: T[];
   idOf: (item: T) => string;
+  nameOf: (item: T) => string;
   tiles: LibraryTiles;
   layout: 'grid' | 'detailed';
   aspect: ThumbAspect;
@@ -666,6 +668,7 @@ export function LibraryTileGrid<T>({
       <LibraryTileContextMenu
         key={id}
         id={id}
+        name={group?.name ?? (item ? nameOf(item) : '')}
         tiles={tiles}
         layout={layout}
         renderedIds={renderedIds}
@@ -787,6 +790,8 @@ export function LibraryTileGrid<T>({
         {renderedIds.length === 0 && !openGroup ? emptyState : (
           <div
             ref={measureGrid}
+            data-library-focus-root
+            tabIndex={-1}
             style={gridStyle}
             className={cn('grid gap-4', layout === 'detailed' && detailedColumnsClass)}
           >

@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import { fireEvent, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { TooltipProvider } from '@/components/ui/tooltip';
@@ -13,7 +13,24 @@ const renderReference = () => render(
 const getSample = () => screen.getByRole('button', { name: /sample world/i });
 const openSampleMenu = () => fireEvent.contextMenu(getSample());
 
+afterEach(() => {
+  window.location.hash = '';
+  fireEvent(window, new Event('hashchange'));
+});
+
 describe('main menu context menu reference', () => {
+  it('targets both group dialogs through the live dev route', async () => {
+    const user = userEvent.setup();
+    renderReference();
+    window.location.hash = '#dev?modal=designSystem&tab=context-menu&subtab=picker';
+    fireEvent(window, new Event('hashchange'));
+    expect(screen.getByRole('textbox', { name: 'Find a Group' })).toHaveFocus();
+    window.location.hash = '#dev?modal=designSystem&tab=context-menu&subtab=create';
+    fireEvent(window, new Event('hashchange'));
+    expect(screen.getByRole('textbox', { name: 'Group Name' })).toHaveFocus();
+    await user.click(screen.getByRole('button', { name: 'Cancel' }));
+    expect(screen.getByRole('button', { name: 'Add To Group…' })).toHaveFocus();
+  });
   it('changes the sample tile size through the production menu', async () => {
     const user = userEvent.setup();
     renderReference();
@@ -41,7 +58,9 @@ describe('main menu context menu reference', () => {
     renderReference();
 
     openSampleMenu();
-    await user.click(screen.getByRole('menuitem', { name: 'Create New Group' }));
+    await user.click(screen.getByRole('menuitem', { name: 'Create New Group…' }));
+    await user.type(screen.getByRole('textbox', { name: 'Group Name' }), 'New Group');
+    await user.click(screen.getByRole('button', { name: 'Create Group' }));
 
     expect(screen.getByText('The sample group is New Group.')).toBeInTheDocument();
   });
@@ -102,7 +121,9 @@ describe('main menu context menu reference', () => {
     openSampleMenu();
     await user.click(screen.getByRole('menuitem', { name: 'Favorites' }));
     openSampleMenu();
-    await user.click(screen.getByRole('menuitem', { name: 'Create New Group' }));
+    await user.click(screen.getByRole('menuitem', { name: 'Create New Group…' }));
+    await user.type(screen.getByRole('textbox', { name: 'Group Name' }), 'Local Creation');
+    await user.click(screen.getByRole('button', { name: 'Create Group' }));
 
     expect(setItem).not.toHaveBeenCalled();
   });

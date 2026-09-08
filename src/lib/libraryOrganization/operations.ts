@@ -76,9 +76,13 @@ const detach = (
  */
 export function createGroupFromItem(
   org: LibraryTabOrganization,
-  { groupId, itemId }: { groupId: string; itemId: string },
+  { groupId, itemId, name }: { groupId: string; itemId: string; name?: string },
 ): LibraryTabOrganization {
   if (isGroupId(org, itemId)) return org;
+  const trimmedName = name?.trim();
+  if (name !== undefined && (!trimmedName || Object.values(org.groups).some(
+    (group) => group.name.trim().toLowerCase() === trimmedName.toLowerCase(),
+  ))) return org;
 
   const groups = detach(org.groups, itemId);
   const slot = org.order.indexOf(itemId);
@@ -89,7 +93,7 @@ export function createGroupFromItem(
     order: slot === -1 ? [...org.order, groupId] : spliced(org.order, slot, 1, groupId),
     groups: {
       ...groups,
-      [groupId]: { id: groupId, name: NEW_GROUP_NAME, members: [itemId], settings: {} },
+      [groupId]: { id: groupId, name: trimmedName ?? NEW_GROUP_NAME, members: [itemId], settings: {} },
     },
     sizes: size ? { ...org.sizes, [groupId]: size } : org.sizes,
     // The folder inherits the tile's cell, so the board looks the same the moment the folder appears.

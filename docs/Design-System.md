@@ -287,16 +287,17 @@ The reference preserves production density and panel placement. Dense labels can
 
 **Purpose:** Keep related actions close to the item they affect without crowding its resting surface.
 
-**Density:** Compact. Menu rows use the production label size and padding; section labels use the smaller meta role. The menu shows one action per row and scrolls within 60% of the viewport height.
+**Density:** Compact. Menu rows use the production label size and padding; section labels use the smaller meta role. The group shortcuts are bounded, so ordinary menus do not need scrolling.
 
 ### Composition
 
 - Start with the reversible preference section. Tile Size uses one radio group and keeps the selected-size checkmark visible.
-- Reserve the same icon or checkmark column on every action row so option text starts on one line.
-- Label the grouping section Add To Group. List existing Groups before Create New Group, and omit the Group that already contains the item.
+- Align destination text with the action-label column, without repeating folder icons. Keep full accessible names and truncate shortcuts on one line; the picker exposes their full text.
+- Label the grouping section Add To Group. Show the first three eligible Groups in existing order, excluding the current Group before taking three.
+- Follow shortcuts with FolderPlus + Create New Group… and FolderSearch + Add To Group…. The full chooser is last in this section. Keep explanations in the dialog or help.
 - Separate meaning changes with semantic separators: preference, grouping, and the final destructive action.
 - Put Delete alone in the final section. Keep its production trash icon and destructive color.
-- Keep Group names in their authored voice. Long names wrap inside the bounded menu instead of widening the viewport.
+- Keep Group names in their authored voice. Group tiles retain Open Group and Delete Group; assigned items retain Remove From Group in a separate section.
 
 ### Production mapping
 
@@ -312,7 +313,7 @@ The reference preserves production density and panel placement. Dense labels can
 
 On desktop, right-click a tile or focus it and use Shift+F10 or the Context Menu key. Arrow keys move through actions, Enter activates one, and Escape closes the menu and restores focus to the tile. A primary click outside dismisses the menu without activating what is underneath.
 
-On a touch screen, press and hold the tile. Moving the held finger far enough to begin a drag closes the menu; tapping outside dismisses it. The menu uses Radix's available-width token to stay inside viewport edges. Long Group names wrap, and vertical overflow scrolls inside the production height limit.
+On a touch screen, press and hold the tile. Moving the held finger far enough to begin a drag closes the menu; tapping outside dismisses it. Radix positions the bounded menu inside viewport edges. At short heights, enlarged text, or zoom, the shared ScrollArea keeps every action reachable with the same arrowless scrollbar as the picker.
 
 ### State reference
 
@@ -322,7 +323,7 @@ On a touch screen, press and hold the tile. Moving the held finger far enough to
 | Checked | The selected Tile Size row has `aria-checked="true"` and the production checkmark. |
 | Disabled | No current action uses a disabled row. While a world tile loads, production omits Delete instead of presenting an unavailable destructive action. |
 | Focus | Keyboard opening focuses the first action; arrow navigation uses the shared focus fill and text treatment. Closing with Escape restores focus to the trigger. |
-| Overflow | Long Group names wrap within the bounded width; enough Groups make the menu scroll within 60% of the viewport height. |
+| Overflow | Long Group names truncate without losing their accessible names. Group count cannot grow the menu beyond three shortcuts. Exceptional-height overflow uses ScrollArea. |
 | Destructive | Delete remains in its own final section and opens the existing confirmation. Cancel keeps the item; Confirm removes it. |
 
 The live reference uses the production menu against a production card shell. Tile size, Group selection, Group creation, removal, deletion, and restoration stay in mounted React state. The sample never reads or writes Main Menu preferences, library records, storage, account data, or authored worlds.
@@ -335,6 +336,47 @@ The live reference uses the production menu against a production card shell. Til
 - **Unverified:** the accessible label “Sample world: The Lantern District” has terminology and formatting review only; standalone label-fragment grammar is outside the listed evidence.
 
 Tile Size, Add To Group, Create New Group, Remove From Group, Delete, Delete World, Cancel, and Confirm reuse production copy so the reference and Main Menu cannot drift. Reuse does not certify those labels or the confirmation as fully ASD-STE100 compliant. In particular, the existing Delete label remains unchanged for production parity; this ticket does not perform the app-wide terminology decision that would be required before replacing it.
+
+## Pattern: Compact Selection Lists
+
+**Purpose:** Choose one destination from a simple list without reserving room for absent controls.
+
+Use [`CompactSelectionRow`](../src/components/ui/compact-selection-row.tsx) for simple choices. Its production values are the authority: 32px minimum height, 8px horizontal and 6px vertical padding, with no inter-row gap. Typography and wrapped names can increase row height. Do not add empty grip, icon, metadata, or action columns. Rich editor and save rows keep their useful controls and distinct density.
+
+| State | Treatment |
+| --- | --- |
+| Default | Native button; full name wraps and long unbroken text remains inside the row. |
+| Selected | Primary fill, contrasting text, pressed state, and an inline check. Only the selected row needs the check's space. |
+| Focus | Shared inset ring; Tab reaches choices and Enter or Space activates them. |
+| Disabled | Native disabled behavior and reduced opacity. |
+| Empty | A concise status occupies the pane; actions remain available. |
+
+On mobile, preserve the same text-first row and minimum height. Wrapping increases the touch area instead of clipping names. Sorting and secondary row actions belong to richer lists, not this pattern.
+
+## Pattern: Searchable Group Picker
+
+**Purpose:** Keep an unbounded destination list out of the quick-action menu.
+
+[`LibraryGroupPicker`](../src/components/library/LibraryGroupPicker.tsx) composes the shared Dialog, Input, CompactSelectionRow, ScrollArea, and DialogFooter. It names the affected item, focuses Find a Group after menu teardown, and shows all Groups in their existing order. Search filters names without sorting. The current assignment has selected styling and a check; choosing it closes without an assignment write.
+
+- Choosing another row moves the item by stable Group ID and closes the dialog. Existing duplicate names remain distinct destinations.
+- Cancel, Close, and Escape leave the library unchanged and return focus to the opener. A grid that loses its original tile provides a focus fallback.
+- Create New Group… opens the naming form from either entry point. Blank names and trimmed case-insensitive duplicates are rejected; corrections can be submitted with Create Group.
+- Keep search and footer outside the bounded destination pane. The pane uses the shared 10px arrowless scrollbar and reserved gutter. At exceptionally short heights or enlarged text, the outer shared scroller also reveals dialog controls.
+- Keep Cancel before Create in markup and together in the footer. The shared mobile footer stacks the affirmative action above Cancel; desktop places Cancel to its left.
+
+### Production and verification mapping
+
+| Need | Source |
+| --- | --- |
+| Menu and focus handoff | [`LibraryTileContextMenu.tsx`](../src/components/library/LibraryTileContextMenu.tsx) |
+| Assignment and named creation | [`useLibraryTiles.ts`](../src/lib/useLibraryTiles.ts), [`operations.ts`](../src/lib/libraryOrganization/operations.ts) |
+| Isolated live composition | [`MainMenuContextMenuReference.tsx`](../src/components/design-system/MainMenuContextMenuReference.tsx) |
+| Behavior and storage round trip | [`LibraryGroupFlow.test.tsx`](../src/components/library/LibraryGroupFlow.test.tsx) |
+
+Open `#dev?modal=designSystem&tab=context-menu&subtab=picker` or use `subtab=create` for the naming form. These routes use local demonstration state and production components. They do not change stored library data or ship a prototype route.
+
+New functional labels and error/status sentences follow the [Writing Guide](Writing-Guide.md) by role. Authored names retain their voice. The [review record](../docs-internal/designs/design-system/group-picker-review.md) records behavior evidence and unresolved STE limits; brevity does not certify label grammar.
 
 ## Functional writing
 

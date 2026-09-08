@@ -33,6 +33,18 @@ const withTwoGroups = (): LibraryTabOrganization =>
   );
 
 describe('createGroupFromItem', () => {
+  it.each(['', '   ', ' new GROUP '])('rejects the invalid explicit name %j without changing the organization', (name) => {
+    const org = withGroup();
+    expect(createGroupFromItem(org, { groupId: 'named', itemId: 'c', name })).toBe(org);
+  });
+
+  it('creates a trimmed named group while keeping existing duplicate groups intact', () => {
+    const org = withTwoGroups();
+    const next = createGroupFromItem(org, { groupId: 'named', itemId: 'b', name: '  Expeditions  ' });
+    expect(next.groups.named).toMatchObject({ name: 'Expeditions', members: ['b'] });
+    expect(next.groups.g1.name).toBe(NEW_GROUP_NAME);
+    expect(next.groups.g2).toEqual(org.groups.g2);
+  });
   it('puts a lone tile in a folder standing where the tile stood', () => {
     const org = createGroupFromItem(withItems('a', 'b', 'c'), { groupId: 'g1', itemId: 'b' });
 

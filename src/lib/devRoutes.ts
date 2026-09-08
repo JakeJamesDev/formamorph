@@ -65,6 +65,8 @@ export type DevModal = (typeof DEV_MODALS)[number];
 /** Coverage ledger: tabbed surface → the sub-tabs the router can target (via `tab=…`). Kept in lockstep
  *  with each surface's own exported tab list by `devRouter.test.ts`. Add a surface's tabs here when wired. */
 export const DEV_MODAL_TABS = {
+  // The Context Menu reference exposes both production group dialogs with isolated data.
+  designSystemGroupPicker: ['picker', 'create'],
   settings: ['display', 'output', 'prompts', 'endpoints', 'data'],
   worldEditor: ['overview', 'stats', 'entities', 'locations', 'traits', 'dictionary', 'placeholders'],
   // Community Creations browses one kind per tab, plus Contest — a view over the worlds already in the

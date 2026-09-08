@@ -1,5 +1,5 @@
-import type { ReactElement } from 'react';
-import { Trash2 } from 'lucide-react';
+import { useRef, useState, type ReactElement } from 'react';
+import { FolderPlus, FolderSearch, Trash2 } from 'lucide-react';
 import {
   ContextMenu,
   ContextMenuContent,
@@ -12,6 +12,8 @@ import {
 } from '@/components/ui/context-menu';
 import type { LibraryTileSize } from '@/lib/libraryOrganization';
 import type { LibraryTiles } from '@/lib/useLibraryTiles';
+import { ScrollArea } from '@/components/ui/scroll-area';
+import { LibraryGroupPicker } from './LibraryGroupPicker';
 
 const SIZE_LABELS: { size: LibraryTileSize; label: string }[] = [
   { size: 'small', label: 'Small' },
@@ -30,6 +32,7 @@ export type LibraryTileMenuModel = Pick<
 export function LibraryTileContextMenu({
   children,
   id,
+  name,
   tiles,
   layout,
   renderedIds,
@@ -39,6 +42,7 @@ export function LibraryTileContextMenu({
 }: {
   children: ReactElement;
   id: string;
+  name: string;
   tiles: LibraryTileMenuModel;
   layout: 'grid' | 'detailed';
   renderedIds: string[];
@@ -48,11 +52,38 @@ export function LibraryTileContextMenu({
 }) {
   const group = tiles.group(id);
   const inFolder = tiles.groupOfItem(id);
+  const [panel, setPanel] = useState<'picker' | 'create' | null>(null);
+  const pendingPanel = useRef<typeof panel>(null);
+  const trigger = useRef<HTMLSpanElement>(null);
+  const opener = useRef<HTMLElement | null>(null);
+  const fallback = useRef<HTMLElement | null>(null);
+  const restoreFocus = () => {
+    const target = opener.current?.isConnected ? opener.current : fallback.current;
+    target?.focus({ preventScroll: true });
+  };
 
   return (
-    <ContextMenu>
-      <ContextMenuTrigger asChild>{children}</ContextMenuTrigger>
-      <ContextMenuContent className="max-h-[60vh] w-max max-w-[calc(var(--radix-context-menu-content-available-width)-0.5rem)] overflow-x-hidden overflow-y-auto sm:max-w-sm">
+    <>
+    <ContextMenu onOpenChange={(open) => {
+      if (!open) return;
+      const node = trigger.current;
+      opener.current = node?.querySelector<HTMLElement>('button, [tabindex="0"]') ?? node;
+      fallback.current = node?.closest<HTMLElement>('[data-library-focus-root]') ?? null;
+    }}>
+      <ContextMenuTrigger ref={trigger} asChild>{children}</ContextMenuTrigger>
+      <ContextMenuContent
+        className="w-64 max-w-[calc(100vw-1rem)] p-0"
+        collisionPadding={8}
+        sticky="always"
+        onCloseAutoFocus={(event) => {
+          event.preventDefault();
+          const next = pendingPanel.current;
+          pendingPanel.current = null;
+          if (next) setPanel(next);
+          else restoreFocus();
+        }}
+      >
+        <ScrollArea className="max-h-[min(calc(100dvh-1rem-2px),calc(var(--radix-context-menu-content-available-height)-2px))] p-1">
         {/* Size only affects the packed grid; detailed cards are uniform. */}
         {layout === 'grid' && (
           <>
@@ -86,19 +117,25 @@ export function LibraryTileContextMenu({
             <ContextMenuLabel>Add To Group</ContextMenuLabel>
             {tiles.groups
               .filter((candidate) => candidate.id !== inFolder?.id)
+              .slice(0, 3)
               .map((candidate) => (
-                <ContextMenuItem key={candidate.id} onSelect={() => tiles.addTo(id, candidate.id)}>
-                  <ActionSpace /> <span className="min-w-0 break-words">{candidate.name}</span>
+                <ContextMenuItem key={candidate.id} className="pl-8" onSelect={() => tiles.addTo(id, candidate.id)}>
+                  <span className="min-w-0 truncate">{candidate.name}</span>
                 </ContextMenuItem>
               ))}
-            {/* Distinguish the action from a folder already named "New Group". */}
-            <ContextMenuItem onSelect={() => tiles.groupWithNew(id)}>
-              <ActionSpace /> Create New Group
+            <ContextMenuItem onSelect={() => { pendingPanel.current = 'create'; }}>
+              <FolderPlus className="h-4 w-4 shrink-0" /> Create New Group…
+            </ContextMenuItem>
+            <ContextMenuItem onSelect={() => { pendingPanel.current = 'picker'; }}>
+              <FolderSearch className="h-4 w-4 shrink-0" /> Add To Group…
             </ContextMenuItem>
             {inFolder && (
+              <>
+              <ContextMenuSeparator />
               <ContextMenuItem onSelect={() => tiles.removeFrom(id)}>
                 <ActionSpace /> Remove From Group
               </ContextMenuItem>
+              </>
             )}
           </>
         )}
@@ -115,7 +152,19 @@ export function LibraryTileContextMenu({
             </ContextMenuItem>
           </>
         )}
+        </ScrollArea>
       </ContextMenuContent>
     </ContextMenu>
+    {panel && <LibraryGroupPicker
+      name={name}
+      groups={tiles.groups}
+      currentGroupId={inFolder?.id}
+      initialPanel={panel}
+      onSelect={(groupId) => tiles.addTo(id, groupId)}
+      onCreate={(groupName) => tiles.groupWithNew(id, groupName)}
+      onClose={() => setPanel(null)}
+      restoreFocus={restoreFocus}
+    />}
+    </>
   );
 }
