@@ -287,6 +287,14 @@ The reference preserves production density and panel placement. Dense labels can
 
 **Purpose:** Keep related actions close to the item they affect without crowding its resting surface.
 
+**Rule:**
+
+- Every row is one of two kinds. A row that answers "which one?" belongs to a titled set. A row that does something belongs to a flat action set.
+- A title is the flyout handle. A titled set can fold into a flyout. The title becomes the flyout label.
+- Action rows never fold. They carry an icon to stay apart from set rows.
+- Separators divide kinds, not topics.
+- A context-dependent action section sits where the fixed action section sits. It keeps its icons.
+
 **Density:** Compact. Menu rows use the production label size and padding; section labels use the smaller meta role. The group shortcuts are bounded, so ordinary menus do not need scrolling.
 
 ### Composition
