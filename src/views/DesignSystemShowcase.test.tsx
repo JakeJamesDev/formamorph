@@ -71,6 +71,19 @@ describe('settings design reference', () => {
     expect(await screen.findByText(/sets the app’s light or dark color scheme/i)).toBeInTheDocument();
     expect(localStorage).toHaveLength(0);
   });
+
+  it('labels a Default and a Selected example in the control states reference', () => {
+    renderShowcase();
+
+    const states = screen.getByRole('region', { name: 'Control States' });
+
+    expect(within(states).getByRole('textbox', { name: 'Model Name' })).toHaveValue('Silver Siren 12B');
+
+    const paragraphLimit = within(states).getByRole('radiogroup', { name: 'Paragraph Limit' });
+    const selected = within(paragraphLimit).getAllByRole('radio', { checked: true });
+    expect(selected).toHaveLength(1);
+    expect(within(paragraphLimit).getByRole('radio', { name: /^Auto/ })).toHaveAttribute('data-state', 'on');
+  });
 });
 
 describe('markdown editing reference', () => {
