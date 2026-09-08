@@ -248,6 +248,41 @@ The live Code Templates reference passes neutral sample stats and an in-memory p
 
 New reference instructions name the visible “Open Code Templates” action and local outcome messages report only completed demonstration changes. Code Template, stat, parameter, and generated code retain their product or technical meanings; sample stat names and template prose are authored demonstration content. Accessible labels keep validation in descriptions rather than changing field names. Standalone label-fragment grammar and complete technical-term admission remain unverified under the Writing Guide. Reuse does not certify the existing production dialog copy as fully ASD-STE100 compliant, and code tokens and stat sandbox semantics are unchanged.
 
+## Pattern: Bounded Spatial Workspace
+
+**Purpose:** Edit spatial relationships while keeping nested containment distinct from authored travel.
+
+**Density:** Compact floating controls around a large, bounded work area. Group frames contain their children; labels and arrows share the remaining space rather than becoming a separate list.
+
+### Composition and production mapping
+
+| Need | Production source and treatment |
+| --- | --- |
+| Work area and fullscreen | [`LocationCanvas.tsx`](../src/managers/LocationCanvas.tsx): embedded view with zoom/fit controls; fullscreen adds editing tools, search, and minimap. |
+| Nested Groups | [`locationCanvas.ts`](../src/lib/locationCanvas.ts): measured frames around child locations, including nested Groups. Containment is the frame itself, never a line. |
+| Connection hierarchy | [`FloatingEdge.tsx`](../src/components/FloatingEdge.tsx) and [`canvasEdges.ts`](../src/lib/canvasEdges.ts): muted dashed arrows for implicit sibling travel; solid primary-colored arrows for authored Connections, one arrow per direction. An authored Connection replaces that pair's implicit navigation. |
+| Floating tool groups | `CanvasToolbar` in the canvas: arrangement, alignment/distribution, grid/snap, Connection Style, then undo/redo, separated by hairlines. |
+| Search and reveal | `LocationSearch`: names plus ancestry, keyboard result selection, and viewport reveal of deeply nested locations. |
+| Zoom and orientation | [`CanvasControls.tsx`](../src/components/CanvasControls.tsx): zoom in/out, fit, fullscreen; the fullscreen minimap also pans and navigates. |
+| Manual arrangement and history | [`locationArrange.ts`](../src/lib/locationArrange.ts), [`locationAlign.ts`](../src/lib/locationAlign.ts), and [`canvasHistory.ts`](../src/lib/canvasHistory.ts): explicit edits, with a whole arrangement restored in one undo step. |
+| Isolated reference | [`LocationsCanvasReference.tsx`](../src/components/design-system/LocationsCanvasReference.tsx): the production workspace with local locations, Connections, history, and preferences. |
+
+Opening, zooming, or fitting the canvas never rewrites manual positions. Auto Arrange acts on the selected Group, or a selected child's Group; Auto Arrange All acts recursively when nothing is selected. Preserve these scopes and the existing drag/nesting and touch gestures. These are authoring commands, not background layout behavior.
+
+### Responsive behavior and states
+
+The reference keeps the embedded canvas inside a bounded editor panel. At desktop widths, fullscreen places search at the upper left, tool groups along the top, zoom controls at the lower left, and the minimap at the lower right. On phones, the toolbar scrolls horizontally and search moves beneath it. Use full screen and search/reveal when the whole-map overview makes names too small to read.
+
+| State | Treatment |
+| --- | --- |
+| Selected | Nodes keep the production ring; selected authored arrows thicken and open the Connection inspector. |
+| Disabled | Undo/redo disable at empty history boundaries; alignment needs two locations and distribution needs three. |
+| Focus | Search and toolbar controls retain shared focus styling and accessible names. |
+| Overflow | Long node names truncate; search and the reference's selected-location output expose the complete name. Long Connection labels clamp in the overview and expand on selection/hover; the inspector holds the full travel hint. |
+| Local edits | Moving, arranging, and editing Connections use the real handlers. Fullscreen preserves local history; leaving the reference discards the sample session. |
+
+The reference preserves production density and panel placement. Dense labels can overlap the graph, and the floating Connection inspector can cover other controls at narrow widths; close it to return to those controls. These are reference limitations to review, not patterns to copy into new surfaces without judgment. Theme, palette, font, reduced-motion handling, and touch behavior come from production. Detailed checks and writing limits live in the [review record](../docs-internal/designs/design-system/locations-canvas-review.md).
+
 ## Functional writing
 
 Keep setting descriptions to one sentence, third person, and no more than 12 words. Put necessary additional detail behind `HintInfo`. Do not claim ASD-STE100 compliance from length or tone alone; use the vocabulary, grammar, meaning, and evidence process in the [Writing Guide](Writing-Guide.md).
