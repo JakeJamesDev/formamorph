@@ -43,8 +43,8 @@ describe('settings design reference', () => {
     const user = userEvent.setup();
     renderShowcase();
 
-    expect(screen.getByRole('heading', { name: 'Display reference' })).toBeInTheDocument();
-    expect(screen.getByRole('heading', { name: 'Output reference' })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Display Reference' })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Output Reference' })).toBeInTheDocument();
 
     const music = screen.getByRole('checkbox', { name: 'Background Music' });
     expect(music).toBeChecked();
@@ -61,12 +61,12 @@ describe('settings design reference', () => {
     await user.click(planning);
     expect(planning).toHaveAttribute('data-state', 'on');
 
-    const scale = screen.getByRole('slider', { name: 'Narration size' });
+    const scale = screen.getByRole('slider', { name: 'Narration Size' });
     scale.focus();
     await user.keyboard('{ArrowRight}');
     expect(screen.getByText('105%')).toBeInTheDocument();
 
-    const displayReference = screen.getByRole('region', { name: 'Display reference' });
+    const displayReference = screen.getByRole('region', { name: 'Display Reference' });
     await user.click(within(displayReference).getByRole('button', { name: 'More info' }));
     expect(await screen.findByText(/sets the app’s light or dark color scheme/i)).toBeInTheDocument();
     expect(localStorage).toHaveLength(0);
@@ -80,10 +80,10 @@ describe('markdown editing reference', () => {
 
     await user.click(screen.getByRole('tab', { name: 'Markdown' }));
 
-    expect(screen.getByRole('heading', { name: 'Markdown editing reference' })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Markdown Editing Reference' })).toBeInTheDocument();
     expect(screen.getByLabelText('Bold')).toBeInTheDocument();
     expect(screen.getByLabelText('Heading level')).toBeInTheDocument();
-    expect(screen.getByRole('textbox', { name: 'World introduction' }))
+    expect(screen.getByRole('textbox', { name: 'World Introduction' }))
       .toHaveTextContent('The Night Glass');
 
     await user.click(screen.getByRole('tab', { name: 'Preview' }));
@@ -92,5 +92,17 @@ describe('markdown editing reference', () => {
     expect(screen.getByRole('button', { name: 'old observatory' })).toBeInTheDocument();
     expect(screen.getByLabelText('Bold')).toBeDisabled();
     expect(localStorage).toHaveLength(0);
+  });
+});
+
+describe('community card reference', () => {
+  it('registers the production card reference in the showcase', async () => {
+    const user = userEvent.setup();
+    renderShowcase();
+
+    await user.click(screen.getByRole('tab', { name: 'Community Cards' }));
+
+    expect(screen.getByRole('heading', { name: 'Community Creation Cards' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /Unlike — 286 likes/ })).toHaveAttribute('aria-pressed', 'true');
   });
 });

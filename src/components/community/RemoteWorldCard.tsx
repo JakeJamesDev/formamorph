@@ -134,7 +134,7 @@ export function RemoteWorldCard({
           {onHideWorld && <Tip tip="Hide this world">
             <button
               onClick={(e) => { e.stopPropagation(); onHideWorld(worldId); }}
-              className="p-1 rounded bg-overlay/50 text-white hover:bg-overlay/70 opacity-0 pointer-events-none transition-opacity group-hover:opacity-100 group-hover:pointer-events-auto"
+              className="p-1 rounded bg-overlay/50 text-white hover:bg-overlay/70 opacity-0 pointer-events-none transition-opacity group-hover:opacity-100 group-hover:pointer-events-auto focus-visible:pointer-events-auto focus-visible:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
             >
               <EyeOff className="h-5 w-5" />
             </button>
@@ -142,7 +142,7 @@ export function RemoteWorldCard({
           {onContextualDownload && <Tip tip={dlState === 'update' ? "Update available — download the newer version" : dlState === 'refresh' ? `Re-download this ${noun}` : `Download this ${noun}`}>
             <button
               onClick={(e) => { e.stopPropagation(); onContextualDownload?.(world, dlState); }}
-              className="p-1 rounded bg-overlay/50 text-white hover:bg-overlay/70 opacity-0 pointer-events-none transition-opacity group-hover:opacity-100 group-hover:pointer-events-auto"
+              className="p-1 rounded bg-overlay/50 text-white hover:bg-overlay/70 opacity-0 pointer-events-none transition-opacity group-hover:opacity-100 group-hover:pointer-events-auto focus-visible:pointer-events-auto focus-visible:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
               aria-label={dlState === 'update' ? "Update available" : dlState === 'refresh' ? `Re-download this ${noun}` : `Download this ${noun}`}
             >
               {dlState === 'update' ? (
@@ -157,7 +157,7 @@ export function RemoteWorldCard({
           {!onContextualDownload && onDeviceDownload && <Tip tip={`Download this ${noun}`}>
             <button
               onClick={(e) => { e.stopPropagation(); onDeviceDownload(world); }}
-              className="p-1 rounded bg-overlay/50 text-white hover:bg-overlay/70 opacity-0 pointer-events-none transition-opacity group-hover:opacity-100 group-hover:pointer-events-auto"
+              className="p-1 rounded bg-overlay/50 text-white hover:bg-overlay/70 opacity-0 pointer-events-none transition-opacity group-hover:opacity-100 group-hover:pointer-events-auto focus-visible:pointer-events-auto focus-visible:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
               aria-label={`Download ${noun}`}
             >
               <ActionIcon.cloudDownload className="h-5 w-5" />

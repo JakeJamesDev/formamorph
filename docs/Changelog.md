@@ -22,6 +22,7 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
 
 - **🛠️ Developer tooling**
   - **A paired stat-name probe compares formatted and plain AI requests using the real parser and update code.** It measures missed updates, unintended changes, and unrecognized replies on the stat relevance cases.
+  - **The Design System now includes interactive Community Cards, a project skill for UI and prototype verification, writing review, new-pattern approval, and showcase navigation that fits narrow screens.**
 
 #### 🔧 Fixed
 

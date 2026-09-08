@@ -109,9 +109,60 @@ At desktop widths, the toolbar stays compact and wraps only when its container r
 
 The live Markdown reference reuses the complete production editor. It demonstrates the compact groups, separators, split-button current actions, long-content overflow, local editing, and rendered preview without a showcase-only toolbar.
 
-## Writing in settings
+## Pattern: Image-Led Community Creation Cards
+
+**Purpose:** Let readers scan community creations through their artwork while keeping the name, author, summary, social proof, and secondary actions easy to find.
+
+**Density:** Compact. Artwork dominates the first impression; the details beneath it fit a description, one three-part count row, and up to two rows of tags before an overflow disclosure.
+
+### Composition
+
+- Keep the creation title and author on its thumbnail over the shared title scrim. A long title expands to three lines on hover and keeps its full value in a tooltip when clipped.
+- Put a concise description below the art, then align likes, downloads, and comments across one row.
+- Put tags after counts. Show two rows in the resting card and disclose the remainder on hover rather than making every card taller.
+- Keep the contextual download control in the art’s top-right corner. Other secondary actions remain in their established contextual placements.
+- Use controlled callbacks in the showcase. The reference never opens a listing, publishes, downloads, deletes, or changes a like outside its local state.
+
+### Production mapping
+
+| Need | Component |
+| --- | --- |
+| Frame, artwork, title scrim, author, and description | `WorldCardShell` in [`WorldCardShell.tsx`](../src/components/WorldCardShell.tsx) |
+| Community counts, tags, and contextual actions | `RemoteWorldCard` in [`RemoteWorldCard.tsx`](../src/components/community/RemoteWorldCard.tsx) |
+| Favorite selection and pending state | `LikeButton` in [`LikeButton.tsx`](../src/components/community/LikeButton.tsx) |
+| Tag density and overflow | `CardTags` in [`WorldDetails.tsx`](../src/components/WorldDetails.tsx) |
+
+### Responsive behavior
+
+At desktop widths, cards form a two-column reference grid. At narrower widths they stack at one column while preserving the image-first order, count row, wrapping tags, and minimum touch targets. Title expansion and image actions retain keyboard access; a focused image action becomes visible with the shared focus ring even without hover.
+
+### State reference
+
+| State | Treatment |
+| --- | --- |
+| Selected | A liked creation uses the production filled heart and pressed state. Selecting a card reports the local selected listing. |
+| Disabled | A pending favorite callback disables the production heart until the local callback completes. |
+| Focus | Thumbnail actions reveal on keyboard focus and use the shared ring. |
+| Overflow | Titles clamp in the resting card and expand up to three lines on hover; a tooltip preserves clipped titles. Tags disclose after two rows. |
+| Action | The update action and favorite callback report local outcomes only. |
+
+The live Community cards reference uses the production card and shell with neutral, controlled fixtures. It covers long titles, descriptions, tags, counts, selected likes, pending actions, keyboard focus, and update affordances without touching community data.
+
+## Functional writing
 
 Keep setting descriptions to one sentence, third person, and no more than 12 words. Put necessary additional detail behind `HintInfo`. Do not claim ASD-STE100 compliance from length or tone alone; use the vocabulary, grammar, meaning, and evidence process in the [Writing Guide](Writing-Guide.md).
+
+Apply that guide by role to all three patterns: settings labels and information, markdown toolbar names and instructions, and card action names and status messages. Accessible text receives the same review as visible text. World introductions, creation titles, descriptions, and tags are authored content; these samples retain their own voice. Existing production copy is not certified by reuse in the showcase.
+
+The foundation's [review record](../docs-internal/designs/design-system/workflow-review.md) records copy findings, evidence limits, and the two workflow demonstrations. Existing-screen alignment remains separate work.
+
+## UI and prototype workflow
+
+The project `design-system` skill routes UI changes and prototypes here. Use the applicable named pattern and its production components, then inspect the result through the live reference. Agents verify established patterns themselves and report desktop/mobile states, theme/font inheritance, interaction results, and static evidence.
+
+For a new pattern, show a proposal inside a representative Formamorph app screen at desktop and mobile sizes. Keep it separate from the approved registry until the user approves that concrete proposal. Record the approval with the artifacts before adoption.
+
+The reference navigation uses equal flexible columns. Labels can wrap on narrow screens so every reference remains reachable without horizontal page scrolling.
 
 ## Adding an approved pattern
 
@@ -119,4 +170,4 @@ The live shell renders `DESIGN_SYSTEM_REFERENCES` from [`DesignSystemShowcase.ts
 
 Add a matching `## Pattern:` section here with its purpose, density, desktop/mobile behavior, component mapping, and applicable states. Demonstrate a new visual pattern inside a representative Formamorph screen at desktop and mobile sizes, then get product approval before adding it to this reference.
 
-The community card ticket extends this registry and guide. It does not need a new showcase shell or another token set.
+Keep the guide and registry synchronized when an approved reference changes; retain the existing shell and shared semantic values.
