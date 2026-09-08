@@ -1,6 +1,6 @@
 # 02: Return focus when Find closes in the World Editor
 
-Status: in-progress
+Status: ready-for-human
 Base: c87369b8
 Blocked by: None (can start immediately)
 Recommended model: Claude Opus 5 (`claude-opus-5`)
@@ -20,13 +20,28 @@ The Find bar component does not change. The host records the active element befo
 
 ## Acceptance criteria
 
-- [ ] Open Find from a focused field, close with Escape, and focus is back on that field.
-- [ ] Open Find from a focused field, close with the Close action, and focus is back on that field.
-- [ ] Remove the original field before closing, and focus lands on the stable fallback, not the body.
-- [ ] Find and Replace opened with its own shortcut behaves the same.
-- [ ] Both cases live in an existing World Editor or Find bar suite and fail when the focus return is removed.
-- [ ] The four gates pass. One In Progress changelog entry in the dev-tooling bucket.
+- [x] Open Find from a focused field, close with Escape, and focus is back on that field.
+- [x] Open Find from a focused field, close with the Close action, and focus is back on that field.
+- [x] Remove the original field before closing, and focus lands on the stable fallback, not the body.
+- [x] Find and Replace opened with its own shortcut behaves the same.
+- [ ] Both cases live in an existing World Editor or Find bar suite and fail when the focus return is removed. (Partial: they fail when the return is removed, but live in a new topic suite. See Comments.)
+- [x] The four gates pass. One In Progress changelog entry in the dev-tooling bucket.
 
 ## Blocked by
 
 - None — can start immediately.
+
+## Comments
+
+Done in `ccf08151`, review fixes in `69a72664`.
+
+The host owns both ends. `openFind` records `document.activeElement`; `closeFind` restores it before the
+bar unmounts, because removing a focused node drops focus on the body. `EditorFindBar` is unchanged.
+
+Deviation from the acceptance list: the cases live in a new file,
+`src/views/WorldEditor.findFocus.test.tsx`, not an existing suite. The existing World Editor suites carry
+their own fixtures and per-file mocks for other topics, and the repo already splits them by topic
+(`WorldEditor.fix`, `WorldEditor.discard`, `WorldEditor.tutorial`). Say so if you want them merged instead.
+
+Six cases, each proven by mutation: dropping the restore fails all six, dropping the fallback fails one,
+dropping the re-entrancy guard fails one.
