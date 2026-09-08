@@ -7,10 +7,12 @@ import { EditorDndContext, StableSortableContext } from '@/components/dnd/Editor
 import { EditorRow, EditorRowList } from '@/components/EditorRow';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
+import { Meta } from '@/components/ui/typography';
 import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import type { DictionarySelectionItem } from '@/lib/dictionarySelection';
 import { useElementSize } from '@/lib/useElementSize';
+import { THUMB_FRAME, THUMB_INTRINSIC, thumbFit, type ThumbAspect } from '@/lib/thumbAspect';
 import { useIsMobile } from '@/lib/useIsMobile';
 import { usePrefersReducedMotion } from '@/lib/usePrefersReducedMotion';
 import type { EntityMetadata } from '@/types';
@@ -33,18 +35,30 @@ const dictionaryInspectionKey = (key: string) => `dictionary:${key}`;
 const displayName = (name: string) => name || 'Untitled';
 const sourceLabel = (source: DictionarySelectionItem['source']) => source === 'world' ? 'World' : 'Library';
 
+// Entities frame as portraits and dictionaries as landscapes, the same ratios the library cards use,
+// so the detail pane keeps one box whether or not the item has art.
+const ARTWORK_ASPECT: Record<'portrait' | 'cover', ThumbAspect> = { portrait: 'portrait', cover: 'landscape' };
+
 function Artwork({ src, name, fallback, large = false }: {
   src?: string;
   name: string;
   fallback: 'portrait' | 'cover';
   large?: boolean;
 }) {
+  const aspect = ARTWORK_ASPECT[fallback];
   return (
     <span className={cn(
       'flex shrink-0 items-center justify-center overflow-hidden rounded-md border bg-muted',
-      large ? 'h-56 w-full max-w-56' : 'h-10 w-10',
+      large ? cn('w-full self-start', THUMB_FRAME[aspect], aspect === 'portrait' ? 'max-w-40' : 'max-w-64') : 'h-10 w-10',
     )}>
-      {src ? <img src={src} alt={`${name} ${fallback}`} className="h-full w-full object-cover" /> : (
+      {src ? (
+        <img
+          src={src}
+          alt={`${name} ${fallback}`}
+          {...(large ? THUMB_INTRINSIC[aspect] : {})}
+          className={cn('h-full w-full', thumbFit(aspect))}
+        />
+      ) : (
         <span role="img" aria-label={`${name} has no ${fallback}`}>
           {fallback === 'portrait'
             ? <User aria-hidden className={cn('text-muted-foreground', large ? 'h-12 w-12' : 'h-5 w-5')} />
@@ -99,15 +113,12 @@ function reorderVisibleItems(
   ));
 }
 
-function DictionaryRow({ item, selected, canMoveUp, canMoveDown, buttonRef, onInspect, onToggle, onMove }: {
+function DictionaryRow({ item, selected, buttonRef, onInspect, onToggle }: {
   item: DictionarySelectionItem;
   selected: boolean;
-  canMoveUp: boolean;
-  canMoveDown: boolean;
   buttonRef: (node: HTMLButtonElement | null) => void;
   onInspect: () => void;
   onToggle: (enabled: boolean) => void;
-  onMove: (offset: -1 | 1) => void;
 }) {
   const name = displayName(item.book.name);
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: item.key });
@@ -135,27 +146,8 @@ function DictionaryRow({ item, selected, canMoveUp, canMoveDown, buttonRef, onIn
             onInspect={onInspect}
           />
         )}
-        meta={(
-          <span className="flex flex-col items-end leading-tight">
-            <span>{sourceLabel(item.source)}</span>
-            <span>{item.enabled ? 'Enabled' : 'Disabled'}</span>
-          </span>
-        )}
-        metaTitle={`${sourceLabel(item.source)} dictionary, ${item.enabled ? 'enabled' : 'disabled'}`}
-        actions={[
-          {
-            icon: <ArrowUp aria-hidden className="h-4 w-4" />,
-            title: `Move ${name} from ${sourceLabel(item.source)} Up`,
-            onClick: () => onMove(-1),
-            disabled: !canMoveUp,
-          },
-          {
-            icon: <ArrowDown aria-hidden className="h-4 w-4" />,
-            title: `Move ${name} from ${sourceLabel(item.source)} Down`,
-            onClick: () => onMove(1),
-            disabled: !canMoveDown,
-          },
-        ]}
+        meta={sourceLabel(item.source)}
+        metaTitle={item.source === 'world' ? 'Bundled with this world' : 'From your library'}
       />
     </div>
   );
@@ -169,15 +161,16 @@ function DetailChoice({ id, checked, ariaLabel, label, onChange }: {
   onChange: (checked: boolean) => void;
 }) {
   return (
-    <div className="flex items-center gap-3 rounded-md border bg-background p-3">
+    <label htmlFor={id} className="flex w-fit cursor-pointer items-center gap-2 text-label">
       <Checkbox
         id={id}
         checked={checked}
         aria-label={ariaLabel}
+        className="shrink-0"
         onCheckedChange={(value) => onChange(value === true)}
       />
-      <label htmlFor={id} className="text-label font-medium">{label}</label>
-    </div>
+      {label}
+    </label>
   );
 }
 
@@ -248,20 +241,18 @@ function AdditionDetails({ addition, entitySelected, dictionaryTotal, headingRef
             label="Enabled in This Game"
             onChange={(enabled) => onDictionaryToggle(addition.item.key, enabled)}
           />
-          <div className="rounded-md border bg-background p-3">
+          <div>
             <p className="text-label font-medium">Dictionary Order</p>
-            <p className="mt-1 text-helper text-muted-foreground">
-              Position {addition.position + 1} of {dictionaryTotal}
-            </p>
-            <p className="text-helper text-muted-foreground">
-              {addition.item.entryCount} {addition.item.entryCount === 1 ? 'entry' : 'entries'}
-            </p>
-            <div className="mt-3 flex gap-2">
+            <Meta className="mt-1 block text-muted-foreground">
+              Position {addition.position + 1} of {dictionaryTotal}, {addition.item.entryCount} {addition.item.entryCount === 1 ? 'entry' : 'entries'}
+            </Meta>
+            <div className="mt-3 flex flex-wrap gap-2">
               <Button
                 type="button"
                 variant="outline"
-                className="min-h-11 flex-1 gap-2"
-                aria-label={`Move ${name} Up`}
+                size="sm"
+                className="min-h-11 gap-2 sm:min-h-9"
+                aria-label={`Move ${name} from ${sourceLabel(addition.item.source)} Up`}
                 disabled={addition.position === 0}
                 onClick={() => onMove(addition.item.key, -1)}
               >
@@ -270,8 +261,9 @@ function AdditionDetails({ addition, entitySelected, dictionaryTotal, headingRef
               <Button
                 type="button"
                 variant="outline"
-                className="min-h-11 flex-1 gap-2"
-                aria-label={`Move ${name} Down`}
+                size="sm"
+                className="min-h-11 gap-2 sm:min-h-9"
+                aria-label={`Move ${name} from ${sourceLabel(addition.item.source)} Down`}
                 disabled={addition.position === dictionaryTotal - 1}
                 onClick={() => onMove(addition.item.key, 1)}
               >
@@ -488,18 +480,14 @@ export default function EnterWorldLibrary(props: EnterWorldLibraryProps) {
                     <EditorRowList role="list" aria-label="Dictionary Order">
                       {visibleDictionaryItems.map((item) => {
                         const key = dictionaryInspectionKey(item.key);
-                        const position = props.dictionaryItems.findIndex((candidate) => candidate.key === item.key);
                         return (
                           <DictionaryRow
                             key={item.key}
                             item={item}
                             selected={inspectedKey === key}
-                            canMoveUp={position > 0}
-                            canMoveDown={position >= 0 && position < props.dictionaryItems.length - 1}
                             buttonRef={setOpenerRef(key)}
                             onInspect={() => inspect(key)}
                             onToggle={(enabled) => updateDictionary(item.key, enabled)}
-                            onMove={(offset) => move(item.key, offset)}
                           />
                         );
                       })}

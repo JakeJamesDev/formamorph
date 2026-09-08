@@ -397,7 +397,9 @@ describe('EnterWorldWorkspace', () => {
       expect.stringContaining('Traveler Notes'),
     ]);
 
-    await user.click(within(order).getByRole('button', { name: 'Move Traveler Notes from Library Up' }));
+    expect(within(order).queryByRole('button', { name: /^Move / })).not.toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: 'Inspect Traveler Notes from Library' }));
+    await user.click(screen.getByRole('button', { name: 'Move Traveler Notes from Library Up' }));
     expect(within(order).getAllByRole('listitem').map((item) => item.textContent)).toEqual([
       expect.stringContaining('Traveler Notes'),
       expect.stringContaining('World Atlas'),
@@ -405,11 +407,11 @@ describe('EnterWorldWorkspace', () => {
     expect(screen.getByRole('checkbox', { name: 'Enable World Atlas from World' })).toBeChecked();
     expect(screen.getByRole('checkbox', { name: 'Enable Traveler Notes from Library' })).not.toBeChecked();
 
-    const keyboardMove = within(order).getByRole('button', { name: 'Move Traveler Notes from Library Down' });
+    const keyboardMove = screen.getByRole('button', { name: 'Move Traveler Notes from Library Down' });
     keyboardMove.focus();
     await user.keyboard('[Enter]');
     expect(within(order).getAllByRole('listitem')[0]).toHaveTextContent('World Atlas');
-    await user.click(within(order).getByRole('button', { name: 'Move Traveler Notes from Library Up' }));
+    await user.click(screen.getByRole('button', { name: 'Move Traveler Notes from Library Up' }));
 
     await user.type(screen.getByRole('searchbox', { name: 'Search Library Additions' }), 'Mara');
     await user.clear(screen.getByRole('searchbox', { name: 'Search Library Additions' }));
@@ -430,8 +432,10 @@ describe('EnterWorldWorkspace', () => {
 
     await user.click(screen.getByRole('button', { name: 'Library Additions' }));
     const order = screen.getByRole('list', { name: 'Dictionary Order' });
-    expect(within(order).getByRole('button', { name: 'Move Shared Notes from World Down' })).toBeEnabled();
-    expect(within(order).getByRole('button', { name: 'Move Shared Notes from Library Up' })).toBeEnabled();
+    await user.click(within(order).getByRole('button', { name: 'Inspect Shared Notes from World' }));
+    expect(screen.getByRole('button', { name: 'Move Shared Notes from World Down' })).toBeEnabled();
+    await user.click(within(order).getByRole('button', { name: 'Inspect Shared Notes from Library' }));
+    expect(screen.getByRole('button', { name: 'Move Shared Notes from Library Up' })).toBeEnabled();
     expect(within(order).getByRole('button', { name: 'Drag Shared Notes from World' })).toBeInTheDocument();
     expect(within(order).getByRole('button', { name: 'Drag Shared Notes from Library' })).toBeInTheDocument();
   });
@@ -641,8 +645,8 @@ describe('Enter World library inspection', () => {
 
     await user.click(screen.getByRole('button', { name: 'Inspect Third Atlas from World' }));
     const details = screen.getByRole('region', { name: 'Addition Details' });
-    expect(within(details).getByText('Position 3 of 4')).toBeInTheDocument();
-    await user.click(within(details).getByRole('button', { name: 'Move Third Atlas Up' }));
+    expect(within(details).getByText(/Position 3 of 4/)).toBeInTheDocument();
+    await user.click(within(details).getByRole('button', { name: 'Move Third Atlas from World Up' }));
     expect(within(list).getAllByRole('listitem').map((item) => item.textContent)).toEqual([
       expect.stringContaining('World Atlas'),
       expect.stringContaining('Third Atlas'),
@@ -652,7 +656,7 @@ describe('Enter World library inspection', () => {
 
     await user.click(screen.getByRole('checkbox', { name: 'Enable Hidden Notes from Library' }));
     expect(within(list).getAllByRole('listitem')[2]).toHaveTextContent('Hidden Notes');
-    expect(within(details).getByText('Position 2 of 4')).toBeInTheDocument();
+    expect(within(details).getByText(/Position 2 of 4/)).toBeInTheDocument();
   });
 
   it('uses a full-width detail pane on phones and restores focus to the inspected row', async () => {

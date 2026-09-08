@@ -80,9 +80,10 @@ describe('the retained entry draft', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Library Additions' }));
     fireEvent.click(screen.getByRole('checkbox', { name: 'Include Companion' }));
     fireEvent.click(screen.getByRole('checkbox', { name: 'Enable Library book from Library' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Inspect Library book from Library' }));
     fireEvent.click(screen.getByRole('button', { name: 'Move Library book from Library Up' }));
     fireEvent.click(screen.getByRole('button', { name: 'Move Library book from Library Up' }));
-    fireEvent.click(screen.getByRole('button', { name: 'Use these additions for future games' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Remember Additions' }));
     expect(toast.success).toHaveBeenCalledWith('Formamorph saved these additions for future games.');
     fireEvent.click(screen.getByRole('button', { name: 'Cancel' }));
     cleanup();
@@ -112,7 +113,7 @@ describe('the retained entry draft', () => {
     fireEvent.click(screen.getByRole('radio', { name: 'Hill' }));
     fireEvent.click(screen.getByRole('button', { name: 'Library Additions' }));
     fireEvent.click(screen.getByRole('checkbox', { name: 'Enable World book from World' }));
-    fireEvent.click(screen.getByRole('button', { name: 'Use these additions for future games' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Remember Additions' }));
     fireEvent.click(screen.getByRole('checkbox', { name: 'Include Companion' }));
     fireEvent.click(screen.getByRole('checkbox', { name: 'Enable Library book from Library' }));
     fireEvent.click(screen.getByRole('button', { name: 'Start game' }));
@@ -150,14 +151,14 @@ describe('the retained entry draft', () => {
     await enter();
     fireEvent.click(screen.getByRole('button', { name: 'Library Additions' }));
     fireEvent.click(screen.getByRole('checkbox', { name: 'Include Companion' }));
-    fireEvent.click(screen.getByRole('button', { name: 'Use these additions for future games' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Remember Additions' }));
     fireEvent.click(screen.getByRole('button', { name: 'Cancel' }));
     fireEvent.click(await screen.findByText('Second World'));
     fireEvent.click(await screen.findByRole('button', { name: 'Enter World' }));
     fireEvent.click(await screen.findByRole('button', { name: 'Library Additions' }));
     expect(screen.getByRole('checkbox', { name: 'Include Companion' })).not.toBeChecked();
     fireEvent.click(screen.getByRole('checkbox', { name: 'Enable World book from World' }));
-    fireEvent.click(screen.getByRole('button', { name: 'Use these additions for future games' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Remember Additions' }));
     cleanup();
     renderMainMenu({ onStartGame });
     await enter();
@@ -183,7 +184,7 @@ describe('the retained entry draft', () => {
     renderMainMenu({ onStartGame });
     await enter();
     fireEvent.click(screen.getByRole('checkbox', { name: 'Enable World book from World' }));
-    fireEvent.click(screen.getByRole('button', { name: 'Use these additions for future games' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Remember Additions' }));
     fireEvent.click(screen.getByRole('button', { name: 'Cancel' }));
     cleanup();
     await EntityStorageService.deleteEntity('companion');
@@ -193,7 +194,7 @@ describe('the retained entry draft', () => {
     expect(onStartGame).not.toHaveBeenCalled();
     expect(screen.getByRole('checkbox', { name: 'Enable World book from World' })).not.toBeChecked();
     fireEvent.click(screen.getByRole('checkbox', { name: 'Enable World book from World' }));
-    fireEvent.click(screen.getByRole('button', { name: 'Use these additions for future games' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Remember Additions' }));
     fireEvent.click(screen.getByRole('button', { name: 'Start game' }));
     await waitFor(() => expect(onStartGame.mock.calls[0][4]).toEqual([expect.objectContaining({ id: 'shared' })]));
   });
@@ -207,12 +208,12 @@ describe('the retained entry draft', () => {
     const write = vi.spyOn(Storage.prototype, 'setItem').mockImplementation(() => {
       throw new DOMException('Storage full', 'QuotaExceededError');
     });
-    fireEvent.click(screen.getByRole('button', { name: 'Use these additions for future games' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Remember Additions' }));
     expect(toast.success).not.toHaveBeenCalled();
     expect(toast.error).toHaveBeenCalledWith('Formamorph could not save these additions. Try again.');
     expect(screen.getByRole('checkbox', { name: 'Include Companion' })).toBeChecked();
     write.mockRestore();
-    fireEvent.click(screen.getByRole('button', { name: 'Use these additions for future games' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Remember Additions' }));
     expect(toast.success).toHaveBeenCalledOnce();
     fireEvent.click(screen.getByRole('button', { name: 'Cancel' }));
     cleanup();
@@ -293,6 +294,7 @@ describe('the retained entry draft', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Library Additions' }));
     fireEvent.click(screen.getByRole('checkbox', { name: 'Include Companion' }));
     fireEvent.click(screen.getByRole('checkbox', { name: 'Enable Library book from Library' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Inspect Library book from Library' }));
     fireEvent.click(screen.getByRole('button', { name: 'Move Library book from Library Up' }));
     fireEvent.click(screen.getByRole('button', { name: 'Move Library book from Library Up' }));
 
@@ -334,6 +336,7 @@ describe('the retained entry draft', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Library Additions' }));
     await user.click(screen.getByRole('checkbox', { name: 'Include Companion' }));
     await user.click(screen.getByRole('checkbox', { name: 'Enable Library book from Library' }));
+    await user.click(screen.getByRole('button', { name: 'Inspect Library book from Library' }));
     await user.click(screen.getByRole('button', { name: 'Move Library book from Library Up' }));
     await user.click(screen.getByRole('button', { name: 'Move Library book from Library Up' }));
     const order = () => within(screen.getByRole('list', { name: 'Dictionary Order' }))
