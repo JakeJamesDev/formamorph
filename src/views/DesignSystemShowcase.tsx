@@ -30,6 +30,7 @@ import {
   type ContinueChoiceMode,
 } from '@/contexts/settingsDefaults';
 import type { ThinkingMode } from '@/contexts/SettingsContext';
+import type { ParagraphLimit } from '@/lib/outputLength';
 import { SETTINGS_OPTIONS } from '@/components/modals/settingsCopy';
 import { optionRowCopy, rowCopy } from '@/components/modals/settingsRowCopy';
 import PromptField from '@/components/prompt/PromptField';
@@ -249,6 +250,8 @@ function OutputReference() {
 function StateReference() {
   const [contextWindow, setContextWindow] = useState('131072');
   const invalidContext = Number(contextWindow) > 65536;
+  const [modelName, setModelName] = useState('Silver Siren 12B');
+  const [paragraphLimit, setParagraphLimit] = useState<ParagraphLimit>('auto');
 
   return (
     <Card role="region" aria-labelledby="control-states-title">
@@ -258,6 +261,17 @@ function StateReference() {
       </CardHeader>
       <CardContent>
         <Section title="Reference States">
+          <Row htmlFor="reference-default" {...rowCopy('modelName')}>
+            <Input id="reference-default" value={modelName} onChange={(event) => setModelName(event.target.value)} />
+          </Row>
+          <Row top {...optionRowCopy('paragraphLimit', SETTINGS_OPTIONS.paragraphLimit.find((option) => option.value === paragraphLimit))}>
+            <OptionSwitcher
+              ariaLabel="Paragraph Limit"
+              value={paragraphLimit}
+              onChange={setParagraphLimit}
+              options={SETTINGS_OPTIONS.paragraphLimit}
+            />
+          </Row>
           <Row label="Keyboard Focus" hint="The selected theme controls the focus ring color.">
             <Button autoFocus variant="outline">Focused Action</Button>
           </Row>
