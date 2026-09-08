@@ -15,20 +15,20 @@ const world = (over: Partial<EnterFlowWorld> = {}): EnterFlowWorld => ({ ...bare
 describe('buildEnterFlow', () => {
   it('opens with the Introduction when the world has one', () => {
     expect(buildEnterFlow(world({ introReadme: '# Welcome', traitCount: 2 }), 'newGame'))
-      .toEqual(['intro', 'traits']);
+      .toEqual(['intro', 'workspace']);
   });
 
   it('leaves the Introduction out when the world has none', () => {
-    expect(buildEnterFlow(world({ traitCount: 2 }), 'newGame')).toEqual(['traits']);
+    expect(buildEnterFlow(world({ traitCount: 2 }), 'newGame')).toEqual(['workspace']);
   });
 
   it('treats whitespace-only Introduction text as none', () => {
-    expect(buildEnterFlow(world({ introReadme: '   \n  ', traitCount: 2 }), 'newGame')).toEqual(['traits']);
+    expect(buildEnterFlow(world({ introReadme: '   \n  ', traitCount: 2 }), 'newGame')).toEqual(['workspace']);
   });
 
   it('still shows the Introduction for a world with no traits', () => {
     expect(buildEnterFlow(world({ introReadme: '# Welcome', startingLocationCount: 3 }), 'newGame'))
-      .toEqual(['intro', 'location']);
+      .toEqual(['intro', 'workspace']);
   });
 
   it('skips every step, Introduction included, on Quick Start', () => {
@@ -51,11 +51,11 @@ describe('buildEnterFlow', () => {
       use3DModel: true,
     });
     expect(buildEnterFlow(full, 'newGame'))
-      .toEqual(['intro', 'traits', 'location', 'characters', 'dictionaries', 'avatar']);
+      .toEqual(['intro', 'workspace', 'characters', 'dictionaries', 'avatar']);
   });
 
   it('offers no location step when the world has a single starting location', () => {
-    expect(buildEnterFlow(world({ startingLocationCount: 1, traitCount: 1 }), 'newGame')).toEqual(['traits']);
+    expect(buildEnterFlow(world({ startingLocationCount: 1, traitCount: 1 }), 'newGame')).toEqual(['workspace']);
   });
 
   it('gives an Introduction-only world nothing to overlay', () => {
@@ -65,10 +65,10 @@ describe('buildEnterFlow', () => {
 
 describe('navigableSteps', () => {
   it('drops the Introduction, so Back never targets an overlay', () => {
-    expect(navigableSteps(['intro', 'traits', 'location'])).toEqual(['traits', 'location']);
+    expect(navigableSteps(['intro', 'workspace', 'characters'])).toEqual(['workspace', 'characters']);
   });
 
   it('leaves a flow without an Introduction alone', () => {
-    expect(navigableSteps(['traits', 'avatar'])).toEqual(['traits', 'avatar']);
+    expect(navigableSteps(['workspace', 'avatar'])).toEqual(['workspace', 'avatar']);
   });
 });
