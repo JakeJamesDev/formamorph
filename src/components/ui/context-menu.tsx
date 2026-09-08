@@ -32,7 +32,7 @@ const ContextMenu = ({ open: openProp, onOpenChange, ...props }: React.Component
 const ContextMenuTrigger = React.forwardRef<
   React.ElementRef<typeof ContextMenuPrimitive.Trigger>,
   React.ComponentPropsWithoutRef<typeof ContextMenuPrimitive.Trigger>
->(({ onPointerDown, onPointerMove, ...props }, ref) => {
+>(({ onKeyDown, onPointerDown, onPointerMove, ...props }, ref) => {
   const { open, close } = React.useContext(OpenState)
   // Where the finger landed. A touch pointer stays captured by the element it went down on, so its moves
   // keep arriving here even once the menu has put the rest of the page behind a modal layer.
@@ -40,6 +40,19 @@ const ContextMenuTrigger = React.forwardRef<
   return (
     <ContextMenuPrimitive.Trigger
       ref={ref}
+      onKeyDown={(event) => {
+        onKeyDown?.(event)
+        const opensMenu = event.key === 'ContextMenu' || (event.shiftKey && event.key === 'F10')
+        if (event.defaultPrevented || !opensMenu) return
+        event.preventDefault()
+        const bounds = event.currentTarget.getBoundingClientRect()
+        event.currentTarget.dispatchEvent(new MouseEvent('contextmenu', {
+          bubbles: true,
+          cancelable: true,
+          clientX: bounds.left,
+          clientY: bounds.bottom,
+        }))
+      }}
       onPointerDown={(event) => {
         onPointerDown?.(event)
         downAt.current = event.pointerType === 'mouse' ? null : { x: event.clientX, y: event.clientY }

@@ -283,11 +283,61 @@ The reference keeps the embedded canvas inside a bounded editor panel. At deskto
 
 The reference preserves production density and panel placement. Dense labels can overlap the graph, and the floating Connection inspector can cover other controls at narrow widths; close it to return to those controls. These are reference limitations to review, not patterns to copy into new surfaces without judgment. Theme, palette, font, reduced-motion handling, and touch behavior come from production. Detailed checks and writing limits live in the [review record](../docs-internal/designs/design-system/locations-canvas-review.md).
 
+## Pattern: Grouped Context Actions
+
+**Purpose:** Keep related actions close to the item they affect without crowding its resting surface.
+
+**Density:** Compact. Menu rows use the production label size and padding; section labels use the smaller meta role. The menu shows one action per row and scrolls within 60% of the viewport height.
+
+### Composition
+
+- Start with the reversible preference section. Tile Size uses one radio group and keeps the selected-size checkmark visible.
+- Reserve the same icon or checkmark column on every action row so option text starts on one line.
+- Label the grouping section Add To Group. List existing Groups before Create New Group, and omit the Group that already contains the item.
+- Separate meaning changes with semantic separators: preference, grouping, and the final destructive action.
+- Put Delete alone in the final section. Keep its production trash icon and destructive color.
+- Keep Group names in their authored voice. Long names wrap inside the bounded menu instead of widening the viewport.
+
+### Production mapping
+
+| Need | Component |
+| --- | --- |
+| Full tile-triggered composition | `LibraryTileContextMenu` in [`LibraryTileContextMenu.tsx`](../src/components/library/LibraryTileContextMenu.tsx) |
+| Main Menu host, Group membership, and tile preferences | `LibraryTileGrid` in [`LibraryTileGrid.tsx`](../src/components/library/LibraryTileGrid.tsx) and `useLibraryTiles` in [`useLibraryTiles.ts`](../src/lib/useLibraryTiles.ts) |
+| Menu primitives, checkmarks, focus, dismissal, and touch hold | [`context-menu.tsx`](../src/components/ui/context-menu.tsx) |
+| Destructive confirmation and cancellation | `ConfirmDialog` in [`ConfirmDialog.tsx`](../src/components/ConfirmDialog.tsx), controlled by [`MainMenu.tsx`](../src/views/MainMenu.tsx) |
+| Isolated reference | [`MainMenuContextMenuReference.tsx`](../src/components/design-system/MainMenuContextMenuReference.tsx) |
+
+### Responsive behavior
+
+On desktop, right-click a tile or focus it and use Shift+F10 or the Context Menu key. Arrow keys move through actions, Enter activates one, and Escape closes the menu and restores focus to the tile. A primary click outside dismisses the menu without activating what is underneath.
+
+On a touch screen, press and hold the tile. Moving the held finger far enough to begin a drag closes the menu; tapping outside dismisses it. The menu uses Radix's available-width token to stay inside viewport edges. Long Group names wrap, and vertical overflow scrolls inside the production height limit.
+
+### State reference
+
+| State | Treatment |
+| --- | --- |
+| Default | The menu is closed and the tile keeps the normal Main Menu card treatment. |
+| Checked | The selected Tile Size row has `aria-checked="true"` and the production checkmark. |
+| Disabled | No current action uses a disabled row. While a world tile loads, production omits Delete instead of presenting an unavailable destructive action. |
+| Focus | Keyboard opening focuses the first action; arrow navigation uses the shared focus fill and text treatment. Closing with Escape restores focus to the trigger. |
+| Overflow | Long Group names wrap within the bounded width; enough Groups make the menu scroll within 60% of the viewport height. |
+| Destructive | Delete remains in its own final section and opens the existing confirmation. Cancel keeps the item; Confirm removes it. |
+
+The live reference uses the production menu against a production card shell. Tile size, Group selection, Group creation, removal, deletion, and restoration stay in mounted React state. The sample never reads or writes Main Menu preferences, library records, storage, account data, or authored worlds.
+
+### Writing review
+
+The new opening instructions use imperative sentences and name the visible sample. “Right-click,” “touch screen,” “keyboard,” Shift+F10, and Context Menu retain their interface meanings; their complete technical-term admission remains unverified under the Writing Guide. The accessible sample-world label is reviewed as terminology and formatting only because standalone label-fragment grammar remains unverified. Sample Group names are user-authored fixtures and retain their own voice.
+
+Tile Size, Add To Group, Create New Group, Remove From Group, Delete, Delete World, Cancel, and Confirm reuse production copy so the reference and Main Menu cannot drift. Reuse does not certify those labels or the confirmation as fully ASD-STE100 compliant. In particular, the existing Delete label remains unchanged for production parity; this ticket does not perform the app-wide terminology decision that would be required before replacing it.
+
 ## Functional writing
 
 Keep setting descriptions to one sentence, third person, and no more than 12 words. Put necessary additional detail behind `HintInfo`. Do not claim ASD-STE100 compliance from length or tone alone; use the vocabulary, grammar, meaning, and evidence process in the [Writing Guide](Writing-Guide.md).
 
-Apply that guide by role to all approved patterns: settings labels and information, markdown toolbar names and instructions, card action names and status messages, Find controls and status text, and Code Template fields, validation, and actions. Accessible text receives the same review as visible text. World introductions, creation titles, descriptions, and tags are authored content; these samples retain their own voice. Existing production copy is not certified by reuse in the showcase.
+Apply that guide by role to all approved patterns: settings labels and information, markdown toolbar names and instructions, card action names and status messages, Find controls and status text, Code Template fields, validation and actions, and context-menu instructions, action labels and local status. Accessible text receives the same review as visible text. World introductions, creation titles, descriptions, tags, and sample Group names are authored content; these samples retain their own voice. Existing production copy is not certified by reuse in the showcase.
 
 The foundation's [review record](../docs-internal/designs/design-system/workflow-review.md) records copy findings, evidence limits, and the two workflow demonstrations. Existing-screen alignment remains separate work.
 
@@ -297,7 +347,7 @@ The project `design-system` skill routes UI changes and prototypes here. Use the
 
 For a new pattern, show a proposal inside a representative Formamorph app screen at desktop and mobile sizes. Keep it separate from the approved registry until the user approves that concrete proposal. Record the approval with the artifacts before adoption.
 
-The reference navigation uses equal flexible columns. Labels can wrap on narrow screens so every reference remains reachable without horizontal page scrolling.
+The reference navigation uses equal flexible columns that wrap into additional rows. Every tab keeps enough width for its label, so all references remain readable and reachable without horizontal page scrolling.
 
 ## Adding an approved pattern
 

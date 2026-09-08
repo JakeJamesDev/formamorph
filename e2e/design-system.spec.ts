@@ -6,7 +6,7 @@ test('all design references fit the viewport and remain reachable', async ({ pag
   const showcase = page.locator('[data-design-system-showcase]');
   await expect(showcase).toBeVisible();
 
-  for (const name of ['Settings', 'Markdown', 'Community Cards', 'Find', 'Code Templates']) {
+  for (const name of ['Settings', 'Markdown', 'Community Cards', 'Find', 'Code Templates', 'Locations', 'Context Menu']) {
     const tab = page.getByRole('tab', { name, exact: true });
     await tab.click();
     await expect(tab).toHaveAttribute('aria-selected', 'true');
@@ -19,6 +19,23 @@ test('all design references fit the viewport and remain reachable', async ({ pag
     expect(box).not.toBeNull();
     expect(box!.x).toBeGreaterThanOrEqual(0);
     expect(box!.x + box!.width).toBeLessThanOrEqual(page.viewportSize()!.width);
+    const labelDimensions = await tab.evaluate(element => {
+      const tabBounds = element.getBoundingClientRect();
+      const range = document.createRange();
+      range.selectNodeContents(element);
+      const labelBounds = range.getBoundingClientRect();
+      return {
+        content: element.scrollWidth,
+        viewport: element.clientWidth,
+        labelLeft: labelBounds.left,
+        labelRight: labelBounds.right,
+        tabLeft: tabBounds.left,
+        tabRight: tabBounds.right,
+      };
+    });
+    expect(labelDimensions.content).toBeLessThanOrEqual(labelDimensions.viewport);
+    expect(labelDimensions.labelLeft).toBeGreaterThanOrEqual(labelDimensions.tabLeft - 1);
+    expect(labelDimensions.labelRight).toBeLessThanOrEqual(labelDimensions.tabRight + 1);
   }
 });
 
