@@ -103,7 +103,7 @@ export function LibraryTileContextMenu({
           </>
         )}
 
-        {/* The card draws no delete control anymore, so the menu is where an item is deleted. */}
+        {/* Delete stays in the menu because the card has no delete control. */}
         {!group && onDelete && (
           <>
             <ContextMenuSeparator />

@@ -329,7 +329,10 @@ The live reference uses the production menu against a production card shell. Til
 
 ### Writing review
 
-The new opening instructions use imperative sentences and name the visible sample. “Right-click,” “touch screen,” “keyboard,” Shift+F10, and Context Menu retain their interface meanings; their complete technical-term admission remains unverified under the Writing Guide. The accessible sample-world label is reviewed as terminology and formatting only because standalone label-fragment grammar remains unverified. Sample Group names are user-authored fixtures and retain their own voice.
+- **Unverified:** “Right-click the sample world. On a touch screen, press and hold the sample world. For keyboard access, focus the sample world. Press Shift+F10 or the Context Menu key.” gives one action per sentence and names its target, but complete technical-term admission for “Right-click,” “touch screen,” “keyboard,” Shift+F10, and Context Menu is not recorded.
+- **Unverified:** “A controlled library sample for the production tile menu.” identifies the sample in one sentence. “Restore the local sample to continue.” states the next local step, and “Restore Sample” names its action. “Grouped library tile actions” is a compact selector phrase. Vocabulary and grammar evidence is not recorded.
+- **Unverified:** status cases are “The tile size is small/medium/large.”, “The sample group is {Group name}.” or “The sample is not in a group.”, and “The local sample is available/deleted.” Vocabulary and grammar evidence is not recorded; interpolated Group names are user-authored fixtures and retain their own voice.
+- **Unverified:** the accessible label “Sample world: The Lantern District” has terminology and formatting review only; standalone label-fragment grammar is outside the listed evidence.
 
 Tile Size, Add To Group, Create New Group, Remove From Group, Delete, Delete World, Cancel, and Confirm reuse production copy so the reference and Main Menu cannot drift. Reuse does not certify those labels or the confirmation as fully ASD-STE100 compliant. In particular, the existing Delete label remains unchanged for production parity; this ticket does not perform the app-wide terminology decision that would be required before replacing it.
 

@@ -10,12 +10,15 @@ const renderReference = () => render(
   </TooltipProvider>,
 );
 
+const getSample = () => screen.getByRole('button', { name: /sample world/i });
+const openSampleMenu = () => fireEvent.contextMenu(getSample());
+
 describe('main menu context menu reference', () => {
   it('changes the sample tile size through the production menu', async () => {
     const user = userEvent.setup();
     renderReference();
 
-    fireEvent.contextMenu(screen.getByRole('button', { name: /sample world/i }));
+    openSampleMenu();
     expect(screen.getByRole('menuitemradio', { name: 'Medium' })).toHaveAttribute('aria-checked', 'true');
 
     await user.click(screen.getByRole('menuitemradio', { name: 'Large' }));
@@ -27,7 +30,7 @@ describe('main menu context menu reference', () => {
     const user = userEvent.setup();
     renderReference();
 
-    fireEvent.contextMenu(screen.getByRole('button', { name: /sample world/i }));
+    openSampleMenu();
     await user.click(screen.getByRole('menuitem', { name: 'Archive of Very Long Expeditions and Unfinished Maps' }));
 
     expect(screen.getByText('The sample group is Archive of Very Long Expeditions and Unfinished Maps.')).toBeInTheDocument();
@@ -37,7 +40,7 @@ describe('main menu context menu reference', () => {
     const user = userEvent.setup();
     renderReference();
 
-    fireEvent.contextMenu(screen.getByRole('button', { name: /sample world/i }));
+    openSampleMenu();
     await user.click(screen.getByRole('menuitem', { name: 'Create New Group' }));
 
     expect(screen.getByText('The sample group is New Group.')).toBeInTheDocument();
@@ -46,16 +49,15 @@ describe('main menu context menu reference', () => {
   it('preserves deletion confirmation and cancellation for the local sample', async () => {
     const user = userEvent.setup();
     renderReference();
-    const sample = () => screen.getByRole('button', { name: /sample world/i });
 
-    fireEvent.contextMenu(sample());
+    openSampleMenu();
     await user.click(screen.getByRole('menuitem', { name: 'Delete' }));
     const confirmation = screen.getByRole('alertdialog', { name: 'Delete World' });
     await user.click(screen.getByRole('button', { name: 'Cancel' }));
     expect(confirmation).not.toBeInTheDocument();
-    expect(sample()).toBeInTheDocument();
+    expect(getSample()).toBeInTheDocument();
 
-    fireEvent.contextMenu(sample());
+    openSampleMenu();
     await user.click(screen.getByRole('menuitem', { name: 'Delete' }));
     await user.click(screen.getByRole('button', { name: 'Confirm' }));
 
@@ -66,7 +68,7 @@ describe('main menu context menu reference', () => {
   it('opens, navigates, activates, and restores focus from the keyboard', async () => {
     const user = userEvent.setup();
     renderReference();
-    const sample = screen.getByRole('button', { name: /sample world/i });
+    const sample = getSample();
     sample.focus();
 
     await user.keyboard('{Shift>}{F10}{/Shift}');
@@ -83,11 +85,9 @@ describe('main menu context menu reference', () => {
   it('removes the local sample from its selected group', async () => {
     const user = userEvent.setup();
     renderReference();
-    const sample = screen.getByRole('button', { name: /sample world/i });
-
-    fireEvent.contextMenu(sample);
+    openSampleMenu();
     await user.click(screen.getByRole('menuitem', { name: 'Favorites' }));
-    fireEvent.contextMenu(sample);
+    openSampleMenu();
     await user.click(screen.getByRole('menuitem', { name: 'Remove From Group' }));
 
     expect(screen.getByText('The sample is not in a group.')).toBeInTheDocument();
@@ -97,13 +97,11 @@ describe('main menu context menu reference', () => {
     const user = userEvent.setup();
     const setItem = vi.spyOn(Storage.prototype, 'setItem');
     renderReference();
-    const sample = screen.getByRole('button', { name: /sample world/i });
-
-    fireEvent.contextMenu(sample);
+    openSampleMenu();
     await user.click(screen.getByRole('menuitemradio', { name: 'Small' }));
-    fireEvent.contextMenu(sample);
+    openSampleMenu();
     await user.click(screen.getByRole('menuitem', { name: 'Favorites' }));
-    fireEvent.contextMenu(sample);
+    openSampleMenu();
     await user.click(screen.getByRole('menuitem', { name: 'Create New Group' }));
 
     expect(setItem).not.toHaveBeenCalled();
