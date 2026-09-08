@@ -1,6 +1,7 @@
 import type { AIRequestType, ChatMessage, Entity } from '@/types';
 import type { AnatomyRun, RequestAnatomy } from '@/lib/requestAnatomy';
 import type { ThinkingMode } from '@/contexts/SettingsContext';
+import type { StatRequestSnapshot } from '@/lib/statRequest';
 
 /**
  * The Turn Plan: what one turn will ask the model, decided before any request is sent.
@@ -116,6 +117,7 @@ export interface TurnPassSubject {
  * post-narration pass sees the narration, a planning pass does not.
  */
 export interface TurnMaterial {
+  statRequest?: StatRequestSnapshot;
   /** The player's action verbatim — what the location router and the narration are fed. */
   action: string;
   /** The action every other consumer sees ("START GAME" on the opening turn). */
@@ -195,6 +197,7 @@ export function emptyTurnMaterial(seed: TurnMaterialSeed): TurnMaterial {
 
 /** One request, exactly as the request adapter receives it. */
 export interface TurnPassRequest {
+  statRequest?: StatRequestSnapshot;
   type: AIRequestType;
   systemPrompt: string;
   messages: ChatMessage[];

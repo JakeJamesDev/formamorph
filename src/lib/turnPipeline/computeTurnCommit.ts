@@ -6,6 +6,7 @@ import { materializeDiscoveredEntity } from '@/lib/runtimeCharacters';
 import { sameCharacterName } from '@/lib/entityMatch';
 import { randomUUID } from '@/lib/uuid';
 import type { parseStatUpdates } from '@/lib/statChanges';
+import { readStatResponse, statResponseChanges, type StatResponse } from '@/lib/statRequest';
 import type { TurnPassId, TurnPlan } from './turnPlan';
 import type { TurnPassOutcome, TurnResult } from './turnRunner';
 
@@ -55,6 +56,7 @@ export interface TurnCommitInput {
 
 /** One turn's complete state delta. */
 export interface TurnCommit {
+  statResponse: StatResponse | null;
   /** The turn as it is stored, ready to replace the streamed assistant message. */
   turn: AITurnResult;
   /** Value deltas, one single-key object per stat, as the stat applier takes them. */
@@ -99,7 +101,11 @@ export function computeTurnCommit({ result, plan, context }: TurnCommitInput): T
   const choices = answerOf<string[]>(passes, 'choices') ?? [];
 
   const stats = answerOf<ReturnType<typeof parseStatUpdates>>(passes, 'statUpdates');
-  const statChanges = Object.entries(stats?.values ?? {}).map(([name, delta]) => ({ [name]: delta }));
+  const statOutcome = answers(passes, 'statUpdates')[0];
+  const statResponse = statOutcome?.request.statRequest
+    ? readStatResponse(statOutcome.raw, statOutcome.request.statRequest) : null;
+  const statChanges = statResponse ? statResponseChanges(statResponse)
+    : Object.entries(stats?.values ?? {}).map(([name, delta]) => ({ [name]: delta }));
   const statMaxChanges = stats?.maxes ?? {};
 
   // The measured duration, or the flat hour the game has always charged. An unreadable, out-of-range or
@@ -155,6 +161,7 @@ export function computeTurnCommit({ result, plan, context }: TurnCommitInput): T
 
   return {
     turn,
+    statResponse,
     statChanges,
     statMaxChanges,
     suggestedLocation: suggested === context.currentLocationName ? null : suggested,

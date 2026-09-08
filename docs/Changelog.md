@@ -20,9 +20,13 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
   - **Every website page shares a compact header with underlined Community navigation and an avatar menu for Profile, Account Settings, appearance, and Sign Out.** Light, Dark, and System use the same theme setting as the app and follow changes in other tabs.
   - **The website Community catalog starts with the most-liked creations first.** Visitors can change the sort, and website browsing preferences stay separate from the app.
 
+- **🛠️ Developer tooling**
+  - **A paired stat-name probe compares formatted and plain AI requests using the real parser and update code.** It measures missed updates, unintended changes, and unrecognized replies on the stat relevance cases.
+
 #### 🔧 Fixed
 
 - **👤 User-facing**
+  - **AI stat updates send plain names and accept formatted replies for values and maximums.** Updates follow the stat identified when the request began, preserve placeholder names across pins and rerolls, and report ambiguous or unavailable targets in AI Context.
   - **Text-to-speech reads formatted text without speaking highlight colors, superscript markers, task checkboxes, or table layout syntax.** Markdown text extraction is shared so other text matching can use the same readable words.
   - **Enter World keeps setup choices when revisiting steps or returning from Avatar.** Traits, starting location, library additions, and dictionary order stay in one draft; canceling starts the next visit fresh. Turning every dictionary off stays empty when the game starts.
   - **Website community Likes highlight on hover and fill the heart when liked.** The website and app share the Like control and its color token.
