@@ -458,3 +458,9 @@ The demo uses fixed sample actors/content and simplified revision counters. It o
 - Remaining-decisions round 4: keep staged review rows visible with Pending change and Discard Changes; stage Mark reviewed too. Comparisons show changed fields first, with unchanged content expandable and dictionary entries grouped by change. Missing optional sources preserve content and tracking without blocking play. Dependencies first published with a world default Unlisted. Manage Add-ons lives on published-world actions, while repairs are reachable contextually and through the editor issue list in both modes.
 - The author confirmed the UI checkpoint covering these four rounds. Remaining edge cases and implementation contracts stay open; this confirmation does not authorize implementation or make the spec AFK-ready.
 - Portability decision: entity/dictionary files carry component content and world associations without bundling worlds; importers choose compatible installed worlds or optional server downloads. World files bundle content in native collections with additive relationship metadata and optional library placement/linking on import. Preserve imported content until update approval, support offline import, and verify older-importer compatibility. Exact schema/version/migration decisions remain open.
+
+### UI prototype checkpoint
+
+A separate UI study is captured on branch `prototype/linked-world-content`, commit `f35514c1`. Its `docs-internal/specs/linked-world-content/ui-prototype.md` records the launch command and inspection scenarios. Run `npm run prototype:linked-content` from that branch to compare three presentation layouts across authoring, download, review, publishing, updates, repairs, and file import.
+
+This draft uses temporary sample state and simulated operations. Exact import controls remain exploratory. No layout has been selected, and the prototype does not settle the open engineering contracts above.
