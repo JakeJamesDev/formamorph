@@ -1,4 +1,3 @@
-import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
@@ -15,12 +14,16 @@ const RANDOM = "random";
 const StartingLocationModal = ({
   locations,
   resolveText,
+  selectedLocationId,
+  onLocationChange,
   onConfirm,
   onAbort,
   onBack,
   confirmLabel = 'Start',
 }: {
   locations: GameLocation[];
+  selectedLocationId: string | null;
+  onLocationChange: (id: string | null) => void;
   /** Resolves a chip to this playthrough's value. Names arrive resolved; descriptions are resolved here. */
   resolveText: (text: string) => string;
   onConfirm: (locationId: string | null) => void;
@@ -33,7 +36,7 @@ const StartingLocationModal = ({
   // This card is not a Radix layer, so the Android back button cannot see it; it steps back the way the Back
   // button does, and leaves the flow from its first step.
   useBackStop(onBack ?? onAbort);
-  const [selected, setSelected] = useState<string>(RANDOM);
+  const selected = selectedLocationId ?? RANDOM;
 
   return (
     <Card className="fixed inset-x-0 top-[env(safe-area-inset-top)] bottom-[env(safe-area-inset-bottom)] m-auto w-[95%] max-w-[600px] h-[calc(90dvh-env(safe-area-inset-top)-env(safe-area-inset-bottom))] max-h-[800px] z-50">
@@ -41,7 +44,7 @@ const StartingLocationModal = ({
         <h2 className="text-title sm:text-heading font-semibold mb-3">Choose Starting Location</h2>
 
         <ScrollArea className="flex-1 mb-4">
-          <RadioGroup value={selected} onValueChange={setSelected} className="pr-2">
+          <RadioGroup value={selected} onValueChange={(id) => onLocationChange(id === RANDOM ? null : id)} className="pr-2">
             <label
               htmlFor="start-loc-random"
               className="flex items-start gap-2 mb-2 sm:mb-4 p-2 border rounded cursor-pointer"

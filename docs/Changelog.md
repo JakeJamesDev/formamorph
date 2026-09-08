@@ -23,6 +23,7 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
 #### 🔧 Fixed
 
 - **👤 User-facing**
+  - **Enter World keeps setup choices when revisiting steps or returning from Avatar.** Traits, starting location, library additions, and dictionary order stay in one draft; canceling starts the next visit fresh. Turning every dictionary off stays empty when the game starts.
   - **Website community Likes highlight on hover and fill the heart when liked.** The website and app share the Like control and its color token.
 
 ---

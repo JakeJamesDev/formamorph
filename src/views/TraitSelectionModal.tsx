@@ -24,6 +24,8 @@ const TraitSelectionModal = ({
   resolveText,
   resolveTraitText,
   selectedTraits,
+  sectionIndex,
+  onSectionChange,
   onTraitSelect,
   onAbort,
   onConfirm,
@@ -42,6 +44,8 @@ const TraitSelectionModal = ({
    *  value whatever else is ticked. Used for everything printed inside a card. */
   resolveTraitText: (trait: Trait, text: string) => string;
   selectedTraits: string[];
+  sectionIndex?: number;
+  onSectionChange?: (index: number) => void;
   onTraitSelect: (traitId: string) => void;
   onAbort: () => void;
   onConfirm: () => void;
@@ -94,10 +98,12 @@ const TraitSelectionModal = ({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [traitGroups, traits, hasUngrouped]);
 
-  const [index, setIndex] = useState(0);
+  const [localIndex, setLocalIndex] = useState(0);
+  const index = sectionIndex ?? localIndex;
+  const setIndex = (next: number) => (onSectionChange ?? setLocalIndex)(next);
   // These cards are not Radix layers, so the Android back button cannot see them; it steps back the way the
   // Back button does, and leaves the flow from its first step.
-  useBackStop(() => (index > 0 ? setIndex((i) => i - 1) : (onBack ?? onAbort)()));
+  useBackStop(() => (index > 0 ? setIndex(index - 1) : (onBack ?? onAbort)()));
   const current = stops[Math.min(index, stops.length - 1)];
 
   // Defensive: the parent skips this modal entirely when the world has no traits.
@@ -173,7 +179,7 @@ const TraitSelectionModal = ({
   };
 
   const isLast = index >= stops.length - 1;
-  const next = () => (isLast ? onConfirm() : setIndex((i) => i + 1));
+  const next = () => (isLast ? onConfirm() : setIndex(index + 1));
 
   return (
     <Card className="fixed inset-x-0 top-[env(safe-area-inset-top)] bottom-[env(safe-area-inset-bottom)] m-auto w-[95%] max-w-[600px] h-[calc(90dvh-env(safe-area-inset-top)-env(safe-area-inset-bottom))] max-h-[800px] z-50">
@@ -240,7 +246,7 @@ const TraitSelectionModal = ({
           {/* Advance-now (skip remaining sections). Hidden on the last section, where Next already advances. */}
           {!isLast && <Button onClick={onConfirm} variant="outline" className="flex-1">{confirmLabel}</Button>}
           {/* Back: pages within trait sections, else steps back in the flow; faded on the very first step. */}
-          <Button onClick={() => (index > 0 ? setIndex((i) => i - 1) : onBack?.())} variant="outline" className="flex-1" disabled={index === 0 && !onBack}>Back</Button>
+          <Button onClick={() => (index > 0 ? setIndex(index - 1) : onBack?.())} variant="outline" className="flex-1" disabled={index === 0 && !onBack}>Back</Button>
           <Button onClick={next} className="flex-1">{isLast ? confirmLabel : 'Next'}</Button>
         </div>
       </CardContent>

@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import type { Dispatch, SetStateAction } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -8,9 +8,7 @@ import { closestCorners, type DragEndEvent } from '@dnd-kit/core';
 import { useSortable, verticalListSortingStrategy, arrayMove } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import { EditorDndContext, StableSortableContext } from '@/components/dnd/EditorDndContext';
-import DictionaryStorageService from '@/services/DictionaryStorageService';
-import { buildInitialSelection, finalizeSelection, type DictionarySelectionItem } from '@/lib/dictionarySelection';
-import type { Dictionary, DictionaryMetadata } from '@/types';
+import type { DictionarySelectionItem } from '@/lib/dictionarySelection';
 import { Tip } from '@/components/ui/tooltip';
 import { useBackStop } from '@/hooks/useBackStop';
 
@@ -82,16 +80,18 @@ function SelectionRow({ item, onToggle }: {
  * `shouldShowDictionaryStep`).
  */
 const DictionarySelectionModal = ({
-  worldBooks,
-  libraryMeta,
+  items,
+  setItems,
+  resolving = false,
   onConfirm,
   onAbort,
   onBack,
   confirmLabel = 'Start',
 }: {
-  worldBooks: Dictionary[];
-  libraryMeta: DictionaryMetadata[];
-  onConfirm: (finalDictionaries: Dictionary[]) => void;
+  items: DictionarySelectionItem[];
+  setItems: Dispatch<SetStateAction<DictionarySelectionItem[]>>;
+  resolving?: boolean;
+  onConfirm: () => void;
   onAbort: () => void;
   /** Step back in the enter-world flow. Undefined on the flow's first step (the Back button then fades). */
   onBack?: () => void;
@@ -101,11 +101,6 @@ const DictionarySelectionModal = ({
   // This card is not a Radix layer, so the Android back button cannot see it; it steps back the way the Back
   // button does, and leaves the flow from its first step.
   useBackStop(onBack ?? onAbort);
-  const [items, setItems] = useState<DictionarySelectionItem[]>(
-    () => buildInitialSelection(worldBooks, libraryMeta),
-  );
-  const [resolving, setResolving] = useState(false);
-
   const toggle = (key: string, enabled: boolean) =>
     setItems((prev) => prev.map((i) => (i.key === key ? { ...i, enabled } : i)));
 
@@ -119,24 +114,6 @@ const DictionarySelectionModal = ({
     });
   };
 
-  const handleConfirm = async () => {
-    setResolving(true);
-    try {
-      const resolved = new Map<string, Dictionary>();
-      for (const item of items) {
-        if (item.enabled && item.source === 'library') {
-          try {
-            resolved.set(item.book.id, await DictionaryStorageService.getDictionaryData(item.book.id));
-          } catch {
-            // Record vanished between listing and confirm — finalizeSelection skips it.
-          }
-        }
-      }
-      onConfirm(finalizeSelection(items, resolved));
-    } finally {
-      setResolving(false);
-    }
-  };
 
   return (
     <Card className="fixed inset-x-0 top-[env(safe-area-inset-top)] bottom-[env(safe-area-inset-bottom)] m-auto w-[95%] max-w-[600px] h-[calc(90dvh-env(safe-area-inset-top)-env(safe-area-inset-bottom))] max-h-[800px] z-50">
@@ -160,9 +137,9 @@ const DictionarySelectionModal = ({
         </ScrollArea>
 
         <div className="flex gap-2 flex-shrink-0">
-          <Button onClick={onAbort} variant="destructive" className="flex-1" disabled={resolving}>Abort</Button>
-          <Button onClick={onBack} variant="outline" className="flex-1" disabled={!onBack || resolving}>Back</Button>
-          <Button onClick={handleConfirm} className="flex-1" disabled={resolving}>
+          <Button onClick={onAbort} variant="destructive" className="flex-1" >Abort</Button>
+          <Button onClick={onBack} variant="outline" className="flex-1" disabled={!onBack}>Back</Button>
+          <Button onClick={onConfirm} className="flex-1" disabled={resolving}>
             {resolving ? 'Loading…' : confirmLabel}
           </Button>
         </div>

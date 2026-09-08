@@ -1,12 +1,10 @@
-import { randomUUID } from "@/lib/uuid";
-import { useState } from 'react';
+import type { Dispatch, SetStateAction } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Checkbox } from '@/components/ui/checkbox';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { User } from 'lucide-react';
-import EntityStorageService from '@/services/EntityStorageService';
-import type { Entity, EntityMetadata } from '@/types';
+import type { EntityMetadata } from '@/types';
 import { useBackStop } from '@/hooks/useBackStop';
 
 /**
@@ -15,9 +13,12 @@ import { useBackStop } from '@/hooks/useBackStop';
  * location as runtime-only entities — the authored world is never modified. Only shown when the library has
  * characters (see `shouldShowCharacterStep`).
  */
-const CharacterSelectionModal = ({ libraryMeta, onConfirm, onAbort, onBack, confirmLabel = 'Start' }: {
+const CharacterSelectionModal = ({ libraryMeta, selectedIds, setSelectedIds, resolving = false, onConfirm, onAbort, onBack, confirmLabel = 'Start' }: {
   libraryMeta: EntityMetadata[];
-  onConfirm: (characters: Entity[]) => void;
+  selectedIds: Set<string>;
+  setSelectedIds: Dispatch<SetStateAction<Set<string>>>;
+  resolving?: boolean;
+  onConfirm: () => void;
   onAbort: () => void;
   /** Step back in the enter-world flow. Undefined on the flow's first step (the Back button then fades). */
   onBack?: () => void;
@@ -27,8 +28,6 @@ const CharacterSelectionModal = ({ libraryMeta, onConfirm, onAbort, onBack, conf
   // This card is not a Radix layer, so the Android back button cannot see it; it steps back the way the Back
   // button does, and leaves the flow from its first step.
   useBackStop(onBack ?? onAbort);
-  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
-  const [resolving, setResolving] = useState(false);
 
   const toggle = (id: string, checked: boolean) =>
     setSelectedIds((prev) => {
@@ -37,22 +36,6 @@ const CharacterSelectionModal = ({ libraryMeta, onConfirm, onAbort, onBack, conf
       return next;
     });
 
-  const handleConfirm = async () => {
-    setResolving(true);
-    try {
-      // Preserve list order; skip any record that vanished between listing and confirm.
-      const ordered = libraryMeta.filter((m) => selectedIds.has(m.id));
-      const loaded = await Promise.all(
-        ordered.map((m) => EntityStorageService.getEntityData(m.id).catch(() => null)),
-      );
-      const characters = loaded
-        .filter((e): e is Entity => e !== null)
-        .map((e) => ({ ...e, id: randomUUID() })); // fresh id: a runtime copy, independent of the library
-      onConfirm(characters);
-    } finally {
-      setResolving(false);
-    }
-  };
 
   return (
     <Card className="fixed inset-x-0 top-[env(safe-area-inset-top)] bottom-[env(safe-area-inset-bottom)] m-auto w-[95%] max-w-[600px] h-[calc(90dvh-env(safe-area-inset-top)-env(safe-area-inset-bottom))] max-h-[800px] z-50">
@@ -90,9 +73,9 @@ const CharacterSelectionModal = ({ libraryMeta, onConfirm, onAbort, onBack, conf
         </ScrollArea>
 
         <div className="flex gap-2 flex-shrink-0">
-          <Button onClick={onAbort} variant="destructive" className="flex-1" disabled={resolving}>Abort</Button>
-          <Button onClick={onBack} variant="outline" className="flex-1" disabled={!onBack || resolving}>Back</Button>
-          <Button onClick={handleConfirm} className="flex-1" disabled={resolving}>
+          <Button onClick={onAbort} variant="destructive" className="flex-1" >Abort</Button>
+          <Button onClick={onBack} variant="outline" className="flex-1" disabled={!onBack}>Back</Button>
+          <Button onClick={onConfirm} className="flex-1" disabled={resolving}>
             {resolving ? 'Loading…' : confirmLabel}
           </Button>
         </div>
