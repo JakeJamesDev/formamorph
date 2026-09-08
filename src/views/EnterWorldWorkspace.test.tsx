@@ -1,13 +1,32 @@
 import { useState, type ComponentProps } from 'react';
 import { fireEvent, render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { describe, expect, it, vi } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import EnterWorldWorkspace from './EnterWorldWorkspace';
 import type { DictionarySelectionItem } from '@/lib/dictionarySelection';
 import type { EntityMetadata, Trait } from '@/types';
 
 const identity = (text: string) => text;
 const traitIdentity = (_trait: Trait, text: string) => text;
+
+const mockPhoneViewport = () => {
+  vi.stubGlobal('innerWidth', 390);
+  vi.spyOn(window, 'matchMedia').mockImplementation((query) => ({
+    matches: query === '(max-width: 767px)',
+    media: query,
+    onchange: null,
+    addListener: () => {},
+    removeListener: () => {},
+    addEventListener: () => {},
+    removeEventListener: () => {},
+    dispatchEvent: () => false,
+  }));
+};
+
+afterEach(() => {
+  vi.unstubAllGlobals();
+  vi.restoreAllMocks();
+});
 
 const groups = [
   { id: 'origin', name: 'Origin', parentId: null, order: 0, playerDescription: 'Where you came from.' },
@@ -82,6 +101,41 @@ function Harness(props: Partial<ComponentProps<typeof EnterWorldWorkspace>> = {}
 }
 
 describe('EnterWorldWorkspace', () => {
+  it('keeps phone categories collapsed and returns focus after choosing one', async () => {
+    mockPhoneViewport();
+    const user = userEvent.setup();
+    render(<Harness />);
+
+    const disclosure = screen.getByRole('button', { name: /Categories/ });
+    expect(disclosure).toHaveAttribute('aria-expanded', 'false');
+    expect(disclosure).toHaveTextContent('Culture');
+    const panel = document.getElementById(disclosure.getAttribute('aria-controls')!);
+    expect(panel).toHaveAttribute('aria-hidden', 'true');
+    expect(panel).toHaveAttribute('inert');
+    expect(screen.queryByRole('navigation', { name: 'World setup categories' })).not.toBeInTheDocument();
+
+    await user.click(disclosure);
+    expect(disclosure).toHaveAttribute('aria-expanded', 'true');
+    expect(panel).toHaveAttribute('aria-hidden', 'false');
+    expect(panel).not.toHaveAttribute('inert');
+    const navigation = screen.getByRole('navigation', { name: 'World setup categories' });
+
+    await user.click(within(navigation).getByRole('button', { name: /Practice/ }));
+    expect(screen.getByRole('heading', { name: 'Practice' })).toBeInTheDocument();
+    expect(disclosure).toHaveTextContent('Practice');
+    expect(disclosure).toHaveAttribute('aria-expanded', 'false');
+    expect(panel).toHaveAttribute('aria-hidden', 'true');
+    expect(panel).toHaveAttribute('inert');
+    expect(disclosure).toHaveFocus();
+  });
+
+  it('keeps the phone Introduction action compact and explicitly named', () => {
+    mockPhoneViewport();
+    render(<Harness />);
+
+    expect(screen.getByRole('button', { name: 'Read Introduction' })).toBeInTheDocument();
+  });
+
   it('opens the first meaningful category in an always-expanded authored hierarchy', () => {
     render(<Harness />);
 
@@ -309,7 +363,7 @@ describe('EnterWorldWorkspace', () => {
     await user.click(screen.getByRole('radio', { name: 'Local' }));
     expect(screen.getByLabelText('0 of 2 selected')).toHaveTextContent('0/2');
 
-    await user.click(within(dialog).getByRole('button', { name: 'Introduction' }));
+    await user.click(within(dialog).getByRole('button', { name: 'Read Introduction' }));
     await user.click(within(dialog).getByRole('button', { name: 'Cancel' }));
     await user.click(continueButton);
     expect(onIntroduction).toHaveBeenCalledOnce();

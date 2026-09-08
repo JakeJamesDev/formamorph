@@ -1,10 +1,11 @@
-import { useMemo } from 'react';
-import { BookOpen } from 'lucide-react';
+import { useMemo, useRef, useState } from 'react';
+import { BookOpen, ChevronDown, ListTree } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from '@/components/ui/dialog';
 import type { DictionarySelectionItem } from '@/lib/dictionarySelection';
 import type { EntityMetadata, GameLocation, Stat, Trait, TraitGroup } from '@/types';
 import { cn } from '@/lib/utils';
+import { useIsMobile } from '@/lib/useIsMobile';
 import EnterWorldLibrary from './EnterWorldLibrary';
 
 interface TraitCategory {
@@ -92,6 +93,9 @@ const buildTraitWorkspace = (traits: Trait[], groups: TraitGroup[]): TraitWorksp
 };
 
 export default function EnterWorldWorkspace(props: EnterWorldWorkspaceProps) {
+  const isMobile = useIsMobile();
+  const [mobileNavigationOpen, setMobileNavigationOpen] = useState(false);
+  const mobileNavigationButton = useRef<HTMLButtonElement>(null);
   const traitWorkspace = useMemo(
     () => buildTraitWorkspace(props.traits, props.traitGroups),
     [props.traits, props.traitGroups],
@@ -123,13 +127,18 @@ export default function EnterWorldWorkspace(props: EnterWorldWorkspaceProps) {
         type="button"
         aria-current={index === currentIndex ? 'page' : undefined}
         className={cn(
-          'flex min-h-8 w-full min-w-0 items-center gap-2 rounded px-2 py-1 text-left text-label',
+          'flex min-h-11 w-full min-w-0 items-center gap-2 rounded px-2 py-1 text-left text-label md:min-h-8',
           index === currentIndex
             ? 'bg-muted font-semibold text-foreground'
             : 'text-muted-foreground hover:bg-muted/50 hover:text-foreground',
         )}
         style={{ paddingLeft: 8 + Math.min(depth, 5) * 12 }}
-        onClick={() => props.onCategoryChange(index)}
+        onClick={() => {
+          props.onCategoryChange(index);
+          if (!isMobile) return;
+          setMobileNavigationOpen(false);
+          mobileNavigationButton.current?.focus();
+        }}
       >
         <span className="min-w-0 flex-1 break-words">{category.name}</span>
         {category.kind === 'traits' && (
@@ -146,6 +155,51 @@ export default function EnterWorldWorkspace(props: EnterWorldWorkspaceProps) {
   const generalIndex = categories.findIndex((category) => category.kind === 'traits' && category.id === null);
   const locationIndex = categories.findIndex((category) => category.kind === 'location');
   const libraryIndex = categories.findIndex((category) => category.kind === 'library');
+  const navigation = (
+    <nav
+      aria-label="World setup categories"
+      className={cn(
+        'space-y-1 overflow-y-auto p-3',
+        isMobile
+          ? 'max-h-[45dvh] overscroll-contain border-t border-border/60'
+          : 'h-full',
+      )}
+    >
+      {props.traits.length > 0 && (
+        <p className="my-3 flex items-center gap-3 px-2 text-meta font-medium uppercase text-muted-foreground">
+          <span>Starting traits</span><span className="h-px flex-1 bg-border" />
+        </p>
+      )}
+      {generalIndex >= 0 && categoryButton(categories[generalIndex], generalIndex)}
+      {visibleGroups.map(({ group, depth, categoryIndex }) => (
+        <div key={group.id}>
+          {categoryIndex >= 0 ? categoryButton(categories[categoryIndex], categoryIndex, depth) : (
+            <div
+              aria-describedby={group.playerDescription?.trim() ? `setup-group-${group.id}-description` : undefined}
+              className="min-h-8 break-words px-2 py-1 text-label text-muted-foreground"
+              style={{ paddingLeft: 8 + Math.min(depth, 5) * 12 }}
+            >
+              {group.name}
+              {group.playerDescription?.trim() && (
+                <span id={`setup-group-${group.id}-description`} className="sr-only">
+                  {props.resolveText(group.playerDescription)}
+                </span>
+              )}
+            </div>
+          )}
+        </div>
+      ))}
+      {locationIndex >= 0 && (
+        <>
+          <p className="my-3 flex items-center gap-3 px-2 text-meta font-medium uppercase text-muted-foreground">
+            <span>World</span><span className="h-px flex-1 bg-border" />
+          </p>
+          {categoryButton(categories[locationIndex], locationIndex)}
+        </>
+      )}
+      {libraryIndex >= 0 && categoryButton(categories[libraryIndex], libraryIndex)}
+    </nav>
+  );
 
   return (
     <Dialog open onOpenChange={(open) => { if (!open) props.onCancel(); }}>
@@ -160,52 +214,65 @@ export default function EnterWorldWorkspace(props: EnterWorldWorkspaceProps) {
         <h1 className="min-w-0 truncate text-label font-semibold sm:text-heading">{props.worldName}</h1>
         <div className="flex shrink-0 items-center gap-1">
           {props.onIntroduction && (
-            <Button variant="ghost" className="min-h-11 gap-2 px-3" onClick={props.onIntroduction}>
-              <BookOpen className="h-4 w-4" /> Introduction
+            <Button
+              variant="ghost"
+              className="min-h-11 gap-2 px-3"
+              aria-label="Read Introduction"
+              onClick={props.onIntroduction}
+            >
+              <BookOpen className="h-4 w-4" />
+              <span className="hidden sm:inline">Introduction</span>
             </Button>
           )}
           <Button variant="ghost" className="min-h-11 text-muted-foreground" onClick={props.onCancel}>Cancel</Button>
         </div>
       </header>
       <div className="flex min-h-0 flex-1 flex-col md:flex-row">
-        <nav
-          aria-label="World setup categories"
-          className="max-h-[36dvh] shrink-0 space-y-1 overflow-y-auto border-b bg-secondary/60 p-3 md:max-h-none md:w-72 md:border-b-0 md:border-r md:bg-background xl:w-80"
+        <aside
+          className={cn(
+            'relative z-10 shrink-0 md:w-72 md:border-r xl:w-80',
+            isMobile
+              ? cn('border-b bg-secondary/60', mobileNavigationOpen ? 'border-muted-foreground/30' : 'border-border')
+              : 'bg-background',
+          )}
         >
-          {props.traits.length > 0 && (
-            <p className="my-3 flex items-center gap-3 px-2 text-meta font-medium uppercase text-muted-foreground">
-              <span>Starting traits</span><span className="h-px flex-1 bg-border" />
-            </p>
+          {isMobile && (
+            <button
+              ref={mobileNavigationButton}
+              type="button"
+              aria-expanded={mobileNavigationOpen}
+              aria-controls="setup-category-tree"
+              className="flex min-h-11 w-full items-center gap-2 px-4 py-2 text-left text-label"
+              onClick={() => setMobileNavigationOpen((open) => !open)}
+            >
+              <ListTree className="h-4 w-4 shrink-0" />
+              <span className="font-medium">Categories</span>
+              <span className="ml-auto min-w-0 truncate text-helper text-muted-foreground">
+                {current?.name ?? 'Setup'}
+              </span>
+              <ChevronDown
+                className={cn(
+                  'h-4 w-4 shrink-0 transition-transform duration-150 motion-reduce:transition-none',
+                  mobileNavigationOpen && 'rotate-180',
+                )}
+              />
+            </button>
           )}
-          {generalIndex >= 0 && categoryButton(categories[generalIndex], generalIndex)}
-          {visibleGroups.map(({ group, depth, categoryIndex }) => (
-            <div key={group.id}>
-              {categoryIndex >= 0 ? categoryButton(categories[categoryIndex], categoryIndex, depth) : (
-                <div
-                  aria-describedby={group.playerDescription?.trim() ? `setup-group-${group.id}-description` : undefined}
-                  className="min-h-8 break-words px-2 py-1 text-label text-muted-foreground"
-                  style={{ paddingLeft: 8 + Math.min(depth, 5) * 12 }}
-                >
-                  {group.name}
-                  {group.playerDescription?.trim() && (
-                    <span id={`setup-group-${group.id}-description`} className="sr-only">
-                      {props.resolveText(group.playerDescription)}
-                    </span>
-                  )}
-                </div>
-              )}
+          <div
+            id="setup-category-tree"
+            aria-hidden={isMobile ? !mobileNavigationOpen : undefined}
+            {...(isMobile && !mobileNavigationOpen ? { inert: '' } : {})}
+            className={cn(
+              isMobile && 'grid transition-[grid-template-rows] duration-150 ease-out motion-reduce:transition-none',
+              !isMobile && 'h-full min-h-0',
+            )}
+            style={isMobile ? { gridTemplateRows: mobileNavigationOpen ? '1fr' : '0fr' } : undefined}
+          >
+            <div className={cn('min-h-0', isMobile ? 'overflow-hidden' : 'h-full')}>
+              {navigation}
             </div>
-          ))}
-          {locationIndex >= 0 && (
-            <>
-              <p className="my-3 flex items-center gap-3 px-2 text-meta font-medium uppercase text-muted-foreground">
-                <span>World</span><span className="h-px flex-1 bg-border" />
-              </p>
-              {categoryButton(categories[locationIndex], locationIndex)}
-            </>
-          )}
-          {libraryIndex >= 0 && categoryButton(categories[libraryIndex], libraryIndex)}
-        </nav>
+          </div>
+        </aside>
         <main className="min-h-0 min-w-0 flex-1 overflow-y-auto p-4 md:px-6 md:py-4">
           {current?.kind === 'traits' && (
             <>
