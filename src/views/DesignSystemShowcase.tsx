@@ -261,8 +261,8 @@ function StateReference() {
       </CardHeader>
       <CardContent>
         <Section title="Reference States">
-          <Row htmlFor="reference-default" {...rowCopy('modelName')}>
-            <Input id="reference-default" value={modelName} onChange={(event) => setModelName(event.target.value)} />
+          <Row htmlFor="reference-model-name" {...rowCopy('modelName')}>
+            <Input id="reference-model-name" value={modelName} onChange={(event) => setModelName(event.target.value)} />
           </Row>
           <Row top {...optionRowCopy('paragraphLimit', SETTINGS_OPTIONS.paragraphLimit.find((option) => option.value === paragraphLimit))}>
             <OptionSwitcher
