@@ -22,7 +22,7 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
 
 - **🛠️ Developer tooling**
   - **A paired stat-name probe compares formatted and plain AI requests using the real parser and update code.** It measures missed updates, unintended changes, and unrecognized replies on the stat relevance cases.
-  - **The Design System now includes interactive Community Cards and World Editor Find references, a project skill for UI and prototype verification, writing review, new-pattern approval, and showcase navigation that fits narrow screens.** The Find reference uses a local sample to demonstrate matching, options, navigation boundaries, replacement confirmation, compact responsive layout, and keyboard focus without changing an authored world.
+  - **The Design System now provides interactive Community Cards, World Editor Find, and stat Code Templates references, a UI workflow skill, reviewed writing guidance, required new-pattern approval, and narrow-screen navigation; local-only samples cover search, replacement, parameter validation, generated-code insertion, and keyboard focus without changing authored worlds or personal template data.**
 
 #### 🔧 Fixed
 

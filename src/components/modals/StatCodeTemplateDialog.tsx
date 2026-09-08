@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useId, useMemo, useRef, useState } from 'react';
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
   dialogFullHeightMobile,
@@ -50,6 +50,25 @@ const BLANK_TEMPLATE: StatCodeTemplate = {
   code: 'return {{amount:number=1}};',
 };
 
+export interface StatTemplateRepository {
+  list: () => Promise<StatCodeTemplate[]>;
+  save: (template: StatCodeTemplate) => Promise<StatCodeTemplate>;
+  remove: (id: string) => Promise<void>;
+  import: (templates: StatCodeTemplate[]) => Promise<number>;
+}
+
+export interface StatTemplateFileTransfer {
+  readImportPack: () => Promise<string | null>;
+  writeExportPack: (contents: string, filename: string) => void;
+}
+
+const productionRepository: StatTemplateRepository = {
+  list: listUserTemplates,
+  save: saveUserTemplate,
+  remove: deleteUserTemplate,
+  import: importTemplates,
+};
+
 /** One control for one slot. Stat and daypart slots pick from a list so the generated string is always
  *  a name the sandbox will actually match. */
 function SlotField({ slot, value, problem, stats, onChange }: {
@@ -61,6 +80,9 @@ function SlotField({ slot, value, problem, stats, onChange }: {
 }) {
   /** What the author is part-way through typing, or null when the field is showing its resolved value. */
   const [typing, setTyping] = useState<string | null>(null);
+  const fieldId = useId();
+  const labelId = `${fieldId}-label`;
+  const problemId = `${fieldId}-problem`;
   const options = slot.type === 'stat'
     ? stats.map(stat => stat.name).filter(Boolean)
     : slot.type === 'daypart'
@@ -68,10 +90,14 @@ function SlotField({ slot, value, problem, stats, onChange }: {
       : slot.options ?? [];
 
   return (
-    <label className="flex flex-col gap-1 min-w-0">
-      <span className="text-label">{humanizeSlotName(slot.name)}</span>
+    <label htmlFor={fieldId} className="flex flex-col gap-1 min-w-0">
+      <span id={labelId} className="text-label">{humanizeSlotName(slot.name)}</span>
       {slot.type === 'number' || slot.type === 'text' ? (
         <Input
+          id={fieldId}
+          aria-labelledby={labelId}
+          aria-invalid={!!problem}
+          aria-describedby={problem ? problemId : undefined}
           // While the field is being typed in it shows exactly what was typed, empty included. Resolving
           // on every keystroke would refill a backspaced field before the next character landed, so a
           // defaulted number could only be replaced by typing over the selection.
@@ -82,14 +108,21 @@ function SlotField({ slot, value, problem, stats, onChange }: {
         />
       ) : (
         <Select value={value || undefined} onValueChange={onChange}>
-          <SelectTrigger><SelectValue placeholder={slot.type === 'stat' ? 'Pick a stat…' : 'Pick one…'} /></SelectTrigger>
+          <SelectTrigger
+            id={fieldId}
+            aria-labelledby={labelId}
+            aria-invalid={!!problem}
+            aria-describedby={problem ? problemId : undefined}
+          >
+            <SelectValue placeholder={slot.type === 'stat' ? 'Pick a stat…' : 'Pick one…'} />
+          </SelectTrigger>
           <SelectContent>
             {options.length === 0 && <div className="px-2 py-1.5 text-meta text-muted-foreground">Nothing to pick</div>}
             {options.map(option => <SelectItem key={option} value={option}>{option}</SelectItem>)}
           </SelectContent>
         </Select>
       )}
-      {problem && <span className="text-meta text-destructive">{problem}</span>}
+      {problem && <span id={problemId} className="text-meta text-destructive">{problem}</span>}
     </label>
   );
 }
@@ -100,7 +133,7 @@ function TemplateForm({ code, stats, values, onChange }: {
   code: string;
   stats: Stat[];
   values: Record<string, string>;
-  onChange: (values: Record<string, string>) => void;
+  onChange: (update: (values: Record<string, string>) => Record<string, string>) => void;
 }) {
   const parsed = useMemo(() => parseTemplateSlots(code), [code]);
   const problems = validateSlotValues(parsed.slots, values);
@@ -121,7 +154,7 @@ function TemplateForm({ code, stats, values, onChange }: {
               // generated code below already shows for it.
               value={resolveSlotValue(slot, values)}
               problem={problems[slot.name]}
-              onChange={(value) => onChange({ ...values, [slot.name]: value })}
+              onChange={(value) => onChange(current => ({ ...current, [slot.name]: value }))}
             />
           ))}
         </div>
@@ -145,7 +178,16 @@ function TemplateForm({ code, stats, values, onChange }: {
  * code field — the finished stat keeps no link to the template it came from, so the author is free to
  * edit the result by hand afterwards.
  */
-export function StatCodeTemplateDialog({ open, onOpenChange, stats, currentStatId, hasExistingCode, onInsert }: {
+export function StatCodeTemplateDialog({
+  open,
+  onOpenChange,
+  stats,
+  currentStatId,
+  hasExistingCode,
+  onInsert,
+  repository = productionRepository,
+  fileTransfer,
+}: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   stats: Stat[];
@@ -154,6 +196,8 @@ export function StatCodeTemplateDialog({ open, onOpenChange, stats, currentStatI
   currentStatId?: string;
   hasExistingCode: boolean;
   onInsert: (code: string) => void;
+  repository?: StatTemplateRepository;
+  fileTransfer?: StatTemplateFileTransfer;
 }) {
   const [userTemplates, setUserTemplates] = useState<StatCodeTemplate[]>([]);
   const [selectedId, setSelectedId] = useState<string>(BUILT_IN_TEMPLATES[0].id);
@@ -167,11 +211,11 @@ export function StatCodeTemplateDialog({ open, onOpenChange, stats, currentStatI
 
   const refresh = useCallback(async () => {
     try {
-      setUserTemplates(await listUserTemplates());
+      setUserTemplates(await repository.list());
     } catch (error) {
       toast.error(`Couldn’t read your templates: ${(error as Error).message}`);
     }
-  }, []);
+  }, [repository]);
 
   useResetOnOpen(open, () => {
     setSelectedId(BUILT_IN_TEMPLATES[0].id);
@@ -219,7 +263,7 @@ export function StatCodeTemplateDialog({ open, onOpenChange, stats, currentStatI
   const saveDraft = async () => {
     if (!draft?.name.trim() || !draft.code.trim()) return;
     try {
-      const saved = await saveUserTemplate({ ...draft, name: draft.name.trim() });
+      const saved = await repository.save({ ...draft, name: draft.name.trim() });
       await refresh();
       setSelectedId(saved.id);
       setDraft(null);
@@ -232,7 +276,7 @@ export function StatCodeTemplateDialog({ open, onOpenChange, stats, currentStatI
   const remove = async (template: StatCodeTemplate) => {
     setConfirmDelete(null);
     try {
-      await deleteUserTemplate(template.id);
+      await repository.remove(template.id);
       await refresh();
       setSelectedId(BUILT_IN_TEMPLATES[0].id);
     } catch (error) {
@@ -242,19 +286,20 @@ export function StatCodeTemplateDialog({ open, onOpenChange, stats, currentStatI
 
   const exportPack = () => {
     if (sortedUser.length === 0) return;
-    downloadBlob(
-      new Blob([JSON.stringify(buildTemplatePack(sortedUser), null, 2)], { type: 'application/json' }),
-      'stat-templates.json',
-    );
+    const filename = 'stat-templates.json';
+    const contents = JSON.stringify(buildTemplatePack(sortedUser), null, 2);
+    if (fileTransfer) {
+      fileTransfer.writeExportPack(contents, filename);
+      return;
+    }
+    downloadBlob(new Blob([contents], { type: 'application/json' }), filename);
   };
 
-  const importPack = async (event: React.ChangeEvent<HTMLInputElement>) => {
-    const [file] = filesFrom(event);
-    // Clearing the input is what lets the same file be chosen twice — an unchanged value fires no change.
-    event.target.value = '';
-    if (!file) return;
+  const importPackText = async (readText: () => Promise<string | null>) => {
     try {
-      const added = await importTemplates(parseTemplatePack(await file.text()));
+      const text = await readText();
+      if (text === null) return;
+      const added = await repository.import(parseTemplatePack(text));
       await refresh();
       toast.success(added > 0
         ? `Imported ${added} template${added === 1 ? '' : 's'}`
@@ -262,6 +307,21 @@ export function StatCodeTemplateDialog({ open, onOpenChange, stats, currentStatI
     } catch (error) {
       toast.error((error as Error).message);
     }
+  };
+
+  const importPack = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const [file] = filesFrom(event);
+    // Clearing the input is what lets the same file be chosen twice — an unchanged value fires no change.
+    event.target.value = '';
+    if (file) void importPackText(() => file.text());
+  };
+
+  const requestImport = () => {
+    if (fileTransfer) {
+      void importPackText(fileTransfer.readImportPack);
+      return;
+    }
+    fileRef.current?.click();
   };
 
   const templateButton = (template: StatCodeTemplate) => (
@@ -339,7 +399,7 @@ export function StatCodeTemplateDialog({ open, onOpenChange, stats, currentStatI
             <div className={cn('flex-1 min-h-0 gap-4', isMobile ? 'flex flex-col' : 'grid grid-cols-[minmax(0,15rem)_minmax(0,1fr)]')}>
               {isMobile ? (
                 <Select value={selected?.id} onValueChange={setSelectedId}>
-                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectTrigger aria-label="Code Template"><SelectValue /></SelectTrigger>
                   <SelectContent>
                     {BUILT_IN_TEMPLATES.map(t => <SelectItem key={t.id} value={t.id}>{t.name}</SelectItem>)}
                     {sortedUser.map(t => <SelectItem key={t.id} value={t.id}>{t.name}</SelectItem>)}
@@ -358,7 +418,7 @@ export function StatCodeTemplateDialog({ open, onOpenChange, stats, currentStatI
                           <button
                             type="button"
                             className="rounded p-1 text-muted-foreground hover:bg-accent hover:text-foreground"
-                            onClick={() => fileRef.current?.click()}
+                            onClick={requestImport}
                           >
                             <ActionIcon.import className="h-3.5 w-3.5" />
                           </button>

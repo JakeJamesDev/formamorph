@@ -200,11 +200,59 @@ The live Find reference uses the production bar and matching code against local 
 
 The new description states the reference purpose. Action labels use the production Find and Replace terminology, and dynamic status text reports the selected field or the completed local action. Sample names and prose are authored content and keep their own voice. Accessible names receive the same role review as visible controls. Standalone label-fragment grammar remains unverified under the Writing Guide, and reuse here does not certify the existing production Find, replacement, confirmation, or notice copy as fully ASD-STE100 compliant.
 
+## Pattern: Code Template Selection and Detail
+
+**Purpose:** Help an author choose a stat Code Template, supply its parameters, inspect the generated code, and insert the result.
+
+**Density:** Dense and task-focused. The dialog reserves one bounded window for a categorized library and a scrollable detail pane. Fields use the production control height and compact two-column grid where width permits; the generated code remains close to the parameters that change it.
+
+### Composition
+
+- Put Built-In and My Templates in a categorized sidebar at desktop widths. Use one template selector on mobile so the detail pane keeps useful width.
+- Keep the selected template's name and explanation above its parameter form. Use the template declaration as the source of fields and defaults.
+- Put required stat choices and numeric parameters in the same form. Show validation beside the affected field and connect it to the control's accessible description.
+- Update the generated code preview as parameter values change. Keep the preview bounded and scrollable for long code.
+- Freeze the footer below the scrolling panes. Keep Duplicate or Edit and Delete beside Insert Code according to template ownership.
+- Disable Insert Code while any slot is missing or invalid. Ask for confirmation before replacing existing stat code.
+
+### Production mapping
+
+| Need | Component |
+| --- | --- |
+| Dialog shell, categorized library, detail pane, parameter form, and footer actions | `StatCodeTemplateDialog` in [`StatCodeTemplateDialog.tsx`](../src/components/modals/StatCodeTemplateDialog.tsx) |
+| Slot parsing, defaults, validation, and generated code | [`statCodeTemplates.ts`](../src/lib/statCodeTemplates.ts) |
+| Personal-template persistence and share packs | [`StatTemplateStorageService.ts`](../src/services/StatTemplateStorageService.ts) |
+| Code editing and syntax preview | `CodeArea` and `HighlightedCode` in [`src/components/prompt`](../src/components/prompt/) |
+| Production host and insertion target | `StatManager` in [`StatManager.tsx`](../src/managers/StatManager.tsx) |
+| Isolated interactive reference | `CodeTemplatesReference` in [`CodeTemplatesReference.tsx`](../src/components/design-system/CodeTemplatesReference.tsx) |
+
+### Responsive and overflow behavior
+
+At desktop widths, the fixed-height dialog uses a 15rem library beside the detail pane. The panes scroll independently, so long template names, explanations, forms, and generated code do not move the footer. At mobile widths, the dialog fills the usable viewport, replaces the sidebar with a selector, stacks parameter fields, and keeps actions wrapping within the footer.
+
+### State reference
+
+| State | Treatment |
+| --- | --- |
+| Selected | The active desktop library item uses the shared accent fill; the mobile selector shows the same template. |
+| Missing | An unanswered required stat shows `Required`, sets `aria-invalid`, and keeps insertion disabled. |
+| Invalid | An unusable number shows `Must be a number`; the preview stays runnable while insertion remains disabled. |
+| Valid | Completed values remove inline errors, update the preview, and enable Insert Code. |
+| Focus | Dialog controls use the shared focus ring, and keyboard opening moves focus into the dialog. |
+| Overflow | The library, detail pane, and generated code stay bounded and scroll rather than widening the dialog. |
+| Action | Insert Code closes the dialog after writing generated code to the host callback. Personal-template and file actions use their supplied storage boundaries. |
+
+The live Code Templates reference passes neutral sample stats and an in-memory personal-template repository to the production dialog. Insert Code updates a visible local sample target. Duplicate, edit, delete, import, and export remain available, but their reads, writes, and file transfers stay inside the mounted reference and never use the author's template database or files.
+
+### Writing review
+
+New reference instructions name the visible “Open Code Templates” action and local outcome messages report only completed demonstration changes. Code Template, stat, parameter, and generated code retain their product or technical meanings; sample stat names and template prose are authored demonstration content. Accessible labels keep validation in descriptions rather than changing field names. Standalone label-fragment grammar and complete technical-term admission remain unverified under the Writing Guide. Reuse does not certify the existing production dialog copy as fully ASD-STE100 compliant, and code tokens and stat sandbox semantics are unchanged.
+
 ## Functional writing
 
 Keep setting descriptions to one sentence, third person, and no more than 12 words. Put necessary additional detail behind `HintInfo`. Do not claim ASD-STE100 compliance from length or tone alone; use the vocabulary, grammar, meaning, and evidence process in the [Writing Guide](Writing-Guide.md).
 
-Apply that guide by role to all approved patterns: settings labels and information, markdown toolbar names and instructions, card action names and status messages, and Find controls and status text. Accessible text receives the same review as visible text. World introductions, creation titles, descriptions, and tags are authored content; these samples retain their own voice. Existing production copy is not certified by reuse in the showcase.
+Apply that guide by role to all approved patterns: settings labels and information, markdown toolbar names and instructions, card action names and status messages, Find controls and status text, and Code Template fields, validation, and actions. Accessible text receives the same review as visible text. World introductions, creation titles, descriptions, and tags are authored content; these samples retain their own voice. Existing production copy is not certified by reuse in the showcase.
 
 The foundation's [review record](../docs-internal/designs/design-system/workflow-review.md) records copy findings, evidence limits, and the two workflow demonstrations. Existing-screen alignment remains separate work.
 

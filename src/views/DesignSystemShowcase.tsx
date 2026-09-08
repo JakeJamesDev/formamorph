@@ -35,6 +35,7 @@ import PromptField from '@/components/prompt/PromptField';
 import { plainVocabulary } from '@/lib/chipVocabulary';
 import { CommunityCardReference } from '@/components/design-system/CommunityCardReference';
 import { FindBarReference } from '@/components/design-system/FindBarReference';
+import { CodeTemplatesReference } from '@/components/design-system/CodeTemplatesReference';
 
 type ReferenceDefinition = {
   id: string;
@@ -355,6 +356,12 @@ const DESIGN_SYSTEM_REFERENCES: readonly ReferenceDefinition[] = [
     label: 'Find',
     description: 'Compact editor search and replacement',
     Component: FindBarReference,
+  },
+  {
+    id: 'code-templates',
+    label: 'Code Templates',
+    description: 'Selection, parameters, validation, and generated code',
+    Component: CodeTemplatesReference,
   },
 ];
 

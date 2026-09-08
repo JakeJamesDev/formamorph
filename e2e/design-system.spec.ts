@@ -6,7 +6,7 @@ test('all design references fit the viewport and remain reachable', async ({ pag
   const showcase = page.locator('[data-design-system-showcase]');
   await expect(showcase).toBeVisible();
 
-  for (const name of ['Settings', 'Markdown', 'Community Cards', 'Find']) {
+  for (const name of ['Settings', 'Markdown', 'Community Cards', 'Find', 'Code Templates']) {
     const tab = page.getByRole('tab', { name, exact: true });
     await tab.click();
     await expect(tab).toHaveAttribute('aria-selected', 'true');
@@ -20,6 +20,43 @@ test('all design references fit the viewport and remain reachable', async ({ pag
     expect(box!.x).toBeGreaterThanOrEqual(0);
     expect(box!.x + box!.width).toBeLessThanOrEqual(page.viewportSize()!.width);
   }
+});
+
+test('the Code Templates reference validates and inserts into its local target', async ({ page }) => {
+  await page.addInitScript(() => localStorage.setItem('FORMAMORPH_introSeen', '1'));
+  await page.goto('/#dev?modal=designSystem');
+  await page.getByRole('tab', { name: 'Code Templates', exact: true }).click();
+
+  const reference = page.getByRole('region', { name: 'Stat Code Templates' });
+  const opener = reference.getByRole('button', { name: 'Open Code Templates' });
+  await opener.focus();
+  await page.keyboard.press('Enter');
+
+  const dialog = page.getByRole('dialog', { name: 'Code Templates' });
+  await expect(dialog).toBeVisible();
+  expect(await page.locator(':focus').evaluate((element) => Boolean(element.closest('[role="dialog"]')))).toBe(true);
+
+  const insert = dialog.getByRole('button', { name: 'Insert Code' });
+  await expect(insert).toBeDisabled();
+  await dialog.getByRole('combobox', { name: 'First Stat' }).click();
+  await page.getByRole('option', { name: 'Warmth' }).click();
+  await dialog.getByRole('combobox', { name: 'Second Stat' }).click();
+  await page.getByRole('option', { name: 'Fatigue' }).click();
+
+  const weight = dialog.getByRole('textbox', { name: 'Weight' });
+  await weight.fill('invalid');
+  await expect(dialog.getByText('Must be a number')).toBeVisible();
+  await expect(insert).toBeDisabled();
+
+  await weight.fill('0.25');
+  await expect(dialog.getByText('Must be a number')).toBeHidden();
+  await expect(dialog).toContainText('const weight = 0.25;');
+  await expect(insert).toBeEnabled();
+  await insert.click();
+
+  await expect(dialog).toBeHidden();
+  await expect(reference).toContainText('const weight = 0.25;');
+  await expect(reference.getByText('The local sample stat code is updated.')).toBeVisible();
 });
 
 test('the Find reference exposes local search states and keyboard focus', async ({ page }) => {
