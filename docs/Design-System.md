@@ -378,6 +378,52 @@ Open `#dev?modal=designSystem&tab=context-menu&subtab=picker` or use `subtab=cre
 
 New functional labels and error/status sentences follow the [Writing Guide](Writing-Guide.md) by role. Authored names retain their voice. The [review record](../docs-internal/designs/design-system/group-picker-review.md) records behavior evidence and unresolved STE limits; brevity does not certify label grammar.
 
+## Pattern: Paired Footer Actions
+
+**Purpose:** Make acceptance predictable by keeping a negative action before its affirmative partner.
+
+**Density:** Compact. Keep the pair together in the footer action area; unrelated navigation or utility actions need their own justified grouping.
+
+### Composition
+
+- Order a pair as negative | affirmative: Cancel or decline on the left, then acceptance or continuation on the right.
+- Keep the pair together. Do not place unrelated controls between the negative and affirmative actions.
+- Treat placement and color as separate semantics. A destructive affirmative action keeps the destructive variant in the right-hand confirmation position.
+- Preserve existing labels and operation semantics. This rule changes neither what an action does nor whether it requires confirmation.
+- Put the negative action before the affirmative action in keyboard order. Do not use visual ordering to create a keyboard sequence that disagrees with the controls.
+
+### Production mapping
+
+| Need | Component |
+| --- | --- |
+| Ordinary dialog pair and responsive layout | `DialogFooter`, `DialogClose`, and `Button` in [`src/components/ui`](../src/components/ui/) |
+| Destructive confirmation pair | `AlertDialogFooter`, `AlertDialogCancel`, and `AlertDialogAction` in [`alert-dialog.tsx`](../src/components/ui/alert-dialog.tsx) |
+| Isolated acceptance and deletion examples | [`FooterActionOrderReference.tsx`](../src/components/design-system/FooterActionOrderReference.tsx) |
+| Existing alignment follow-up and copy review | [Footer action order review](../docs-internal/designs/design-system/footer-action-order-review.md) |
+
+### Responsive and keyboard behavior
+
+At `sm` and wider, the shared footer renders the negative action on the left and the affirmative action on the right. Below `sm`, the shared reverse-column layout puts the affirmative action above the negative action. Keep negative-first DOM order so Tab reaches Cancel or decline before acceptance or continuation at every size. When a footer intentionally constrains available width, add reverse wrapping to that footer so long labels or enlarged text put the affirmative line above the negative line. Buttons keep their labels intact, and the footer must remain inside the dialog without horizontal page overflow.
+
+Closing through Cancel, Escape, or the close control changes no data and returns focus to a valid opener. Confirmation changes only the operation named by the dialog. The live reference keeps both outcomes in mounted sample state and never writes authored worlds, saves, library data, or settings.
+
+### State reference
+
+| State | Treatment |
+| --- | --- |
+| Disabled | Keep acceptance disabled until its required input is valid. Cancellation remains available unless an operation cannot safely stop. |
+| Focus | Both actions use the shared visible focus ring. Closing returns focus to the reference opener. |
+| Canceled | Cancel and Escape close the dialog without changing the sample state. |
+| Confirmed | The affirmative action closes the dialog and updates only its local sample state. |
+| Destructive | Delete keeps the destructive fill and confirmation semantics in the affirmative position. |
+| Overflow | The pair stacks before labels force horizontal page overflow; controls remain reachable with enlarged text. |
+
+The live Footer Actions reference demonstrates Cancel | Create Group and Cancel | Delete with production dialogs and footer controls. A constrained example uses the established Download and Embed — Works Offline label to demonstrate wrapping. Create Group starts disabled, keyboard focus moves through the negative-first action order, and the destructive example preserves its semantic treatment.
+
+### Writing review
+
+The reference descriptions and local status messages were reviewed by copy role against the Writing Guide. Behavior claims were exercised against the isolated callbacks. Standalone label grammar, complete vocabulary admission, and reused production labels remain unverified; the [review record](../docs-internal/designs/design-system/footer-action-order-review.md) lists those limits. Reuse does not certify the production copy as fully ASD-STE100 compliant.
+
 ## Functional writing
 
 Keep setting descriptions to one sentence, third person, and no more than 12 words. Put necessary additional detail behind `HintInfo`. Do not claim ASD-STE100 compliance from length or tone alone; use the vocabulary, grammar, meaning, and evidence process in the [Writing Guide](Writing-Guide.md).

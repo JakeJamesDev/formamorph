@@ -39,6 +39,7 @@ import { FindBarReference } from '@/components/design-system/FindBarReference';
 import { CodeTemplatesReference } from '@/components/design-system/CodeTemplatesReference';
 import { LocationsCanvasReference } from '@/components/design-system/LocationsCanvasReference';
 import { MainMenuContextMenuReference } from '@/components/design-system/MainMenuContextMenuReference';
+import { FooterActionOrderReference } from '@/components/design-system/FooterActionOrderReference';
 
 type ReferenceDefinition = {
   id: string;
@@ -377,6 +378,12 @@ const DESIGN_SYSTEM_REFERENCES: readonly ReferenceDefinition[] = [
     label: 'Context Menu',
     description: 'Grouped library tile actions',
     Component: MainMenuContextMenuReference,
+  },
+  {
+    id: 'footer-actions',
+    label: 'Footer Actions',
+    description: 'Negative and affirmative dialog actions',
+    Component: FooterActionOrderReference,
   },
 ];
 
