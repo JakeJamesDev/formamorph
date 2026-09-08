@@ -667,14 +667,28 @@ interface CanvasSession {
   setSelectedConnectionId: (id: string | null) => void;
 }
 
-const CanvasInner = ({ selectedId, onSelect, session, fullscreen, onToggleFullscreen }: {
+type CanvasData = Pick<ReturnType<typeof useGameData>,
+  'locations' | 'setLocations' | 'connections' | 'setConnections' | 'placeholders' |
+  'placementLetters' | 'placeholderOwners'>;
+
+export interface LocationCanvasInputs {
+  data: CanvasData;
+  preferences: {
+    snap: ReturnType<typeof useCanvasSnap>;
+    grid: ReturnType<typeof useCanvasGridVisible>;
+    connectionStyle: ReturnType<typeof useCanvasConnectionStyle>;
+  };
+  historyRef: React.MutableRefObject<CanvasHistory>;
+}
+
+const CanvasInner = ({ selectedId, onSelect, session, fullscreen, onToggleFullscreen, data, preferences }: {
   selectedId: string | null;
   onSelect: (id: string) => void;
   session: CanvasSession;
   fullscreen: boolean;
   onToggleFullscreen: () => void;
-}) => {
-  const { locations, setLocations, connections, setConnections, placeholders, placementLetters, placeholderOwners } = useGameData();
+} & Pick<LocationCanvasInputs, 'data' | 'preferences'>) => {
+  const { locations, setLocations, connections, setConnections, placeholders, placementLetters, placeholderOwners } = data;
   const {
     selectedIdsRef, lastSyncedRef, reportSelection, wake, historyRef, selectedConnectionId,
     setSelectedConnectionId,
@@ -682,9 +696,9 @@ const CanvasInner = ({ selectedId, onSelect, session, fullscreen, onToggleFullsc
   const store = useStoreApi();
   const { fitView, setCenter, getInternalNode, getZoom } = useReactFlow();
   const reduceMotion = usePrefersReducedMotion();
-  const [snap, setSnap] = useCanvasSnap();
-  const [gridVisible, setGridVisible] = useCanvasGridVisible();
-  const [connectionStyle, setConnectionStyle] = useCanvasConnectionStyle();
+  const [snap, setSnap] = preferences.snap;
+  const [gridVisible, setGridVisible] = preferences.grid;
+  const [connectionStyle, setConnectionStyle] = preferences.connectionStyle;
   // What the next menu will be a menu of. Radix owns whether one is open and where; all this holds is which
   // target the right-click that is about to open it landed on.
   const [menuTarget, setMenuTarget] = useState<MenuTarget>({ kind: 'pane' });
@@ -1317,24 +1331,15 @@ const CanvasInner = ({ selectedId, onSelect, session, fullscreen, onToggleFullsc
   );
 };
 
-/**
- * The Locations tab's canvas view — the list's spatial twin, editing the same authored world.
- *
- * Embedded and full screen are one canvas wearing different chrome, not two surfaces: the same component is
- * mounted in the pane or in the shared full-screen window, and what the author was in the middle of — the
- * picked nodes, the open Connection — is held here so the trip between them carries it. World edits need no
- * carrying: both are writing to the same authored world through GameDataContext.
- */
-const LocationCanvas = (props: { selectedId: string | null; onSelect: (id: string) => void }) => {
-  const { worldId } = useGameData();
+/** Embedded and fullscreen canvas with caller-owned data, preferences, and history. */
+export const LocationCanvasWorkspace = (props: LocationCanvasInputs & {
+  selectedId: string | null; onSelect: (id: string) => void;
+}) => {
   const hostRef = useRef<HTMLDivElement | null>(null);
   const morph = useMorphFullscreen(hostRef);
   const selectedIdsRef = useRef<string[]>(props.selectedId ? [props.selectedId] : []);
   const lastSyncedRef = useRef<string | null>(props.selectedId);
-  // Session-only, and nothing clears it: a save is not the end of what the author may still take back, so
-  // undoing past one simply makes the world dirty again. Held for the open world rather than by this
-  // component, which the trip to the list panel unmounts.
-  const historyRef = canvasHistoryFor(worldId);
+  const { historyRef } = props;
   const [selectedConnectionId, setSelectedConnectionId] = useState<string | null>(null);
 
   // Set while the canvas is moving between the pane and the window. The old one reports an empty selection as
@@ -1400,6 +1405,16 @@ const LocationCanvas = (props: { selectedId: string | null; onSelect: (id: strin
       )}
     </div>
   );
+};
+
+const LocationCanvas = (props: { selectedId: string | null; onSelect: (id: string) => void }) => {
+  const data = useGameData();
+  const snap = useCanvasSnap();
+  const grid = useCanvasGridVisible();
+  const connectionStyle = useCanvasConnectionStyle();
+  // The authored world's history survives switching between its canvas and list views.
+  return <LocationCanvasWorkspace {...props} data={data}
+    preferences={{ snap, grid, connectionStyle }} historyRef={canvasHistoryFor(data.worldId)} />;
 };
 
 export default LocationCanvas;
