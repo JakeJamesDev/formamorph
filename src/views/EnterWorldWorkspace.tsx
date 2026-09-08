@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from '@/components/ui/dialog';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
+import { Tip } from '@/components/ui/tooltip';
 import type { DictionarySelectionItem } from '@/lib/dictionarySelection';
 import type { EntityMetadata, GameLocation, Stat, Trait, TraitGroup } from '@/types';
 import { useElementSize } from '@/lib/useElementSize';
@@ -210,7 +211,14 @@ export default function EnterWorldWorkspace(props: EnterWorldWorkspaceProps) {
           {categoryButton(categories[locationIndex], locationIndex)}
         </>
       )}
-      {libraryIndex >= 0 && categoryButton(categories[libraryIndex], libraryIndex)}
+      {libraryIndex >= 0 && (
+        <>
+          <p className="my-3 flex items-center gap-3 px-2 text-meta font-medium uppercase text-muted-foreground">
+            <span>Library</span><span className="h-px flex-1 bg-border" />
+          </p>
+          {categoryButton(categories[libraryIndex], libraryIndex)}
+        </>
+      )}
     </nav>
   );
 
@@ -319,7 +327,7 @@ export default function EnterWorldWorkspace(props: EnterWorldWorkspaceProps) {
                             id={`setup-trait-${trait.id}`}
                             value={trait.id}
                             aria-label={trait.name}
-                            className="mt-0.5 h-5 w-5 shrink-0"
+                            className="mt-0.5 shrink-0"
                             onClick={(event) => {
                               if (selected) {
                                 event.preventDefault();
@@ -332,7 +340,7 @@ export default function EnterWorldWorkspace(props: EnterWorldWorkspaceProps) {
                             id={`setup-trait-${trait.id}`}
                             checked={selected}
                             aria-label={trait.name}
-                            className="mt-0.5 h-5 w-5 shrink-0"
+                            className="mt-0.5 shrink-0"
                             onCheckedChange={() => props.onTraitSelect(trait.id)}
                           />
                         )}
@@ -382,7 +390,7 @@ export default function EnterWorldWorkspace(props: EnterWorldWorkspaceProps) {
                 className="space-y-3"
               >
                 <div className={choiceRowClass(props.selectedLocationId === null)}>
-                  <RadioGroupItem id="setup-location-random" value="random" aria-label="Random" className="mt-0.5 h-5 w-5 shrink-0" />
+                  <RadioGroupItem id="setup-location-random" value="random" aria-label="Random" className="mt-0.5 shrink-0" />
                   <label htmlFor="setup-location-random" className="min-w-0 flex-1 cursor-pointer">
                     <strong className="block text-label font-semibold">Random</strong>
                     <span className="mt-1 block text-helper text-muted-foreground">
@@ -401,7 +409,7 @@ export default function EnterWorldWorkspace(props: EnterWorldWorkspaceProps) {
                         id={`setup-location-${location.id}`}
                         value={location.id}
                         aria-label={location.name}
-                        className="mt-0.5 h-5 w-5 shrink-0"
+                        className="mt-0.5 shrink-0"
                       />
                       <label htmlFor={`setup-location-${location.id}`} className="min-w-0 flex-1 cursor-pointer">
                         <strong className="block text-label font-semibold">{location.name}</strong>
@@ -420,18 +428,23 @@ export default function EnterWorldWorkspace(props: EnterWorldWorkspaceProps) {
           {current?.kind === 'library' && (
             <>
               <p className="mb-1 text-meta font-medium tracking-wide text-muted-foreground">World Setup</p>
-              <h2 className="mb-4 text-heading font-semibold">Library Additions</h2>
-              {props.onSaveAdditions && (
-                <Button
-                  type="button"
-                  variant="outline"
-                  className="mb-4 h-auto min-h-11 max-w-full whitespace-normal text-left"
-                  onClick={props.onSaveAdditions}
-                  disabled={props.resolving}
-                >
-                  Use these additions for future games
-                </Button>
-              )}
+              <div className="mb-4 flex items-center justify-between gap-3">
+                <h2 className="text-heading font-semibold">Library Additions</h2>
+                {props.onSaveAdditions && (
+                  <Tip tip="Use these additions for future games" labelsChild={false}>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      className="min-h-11 shrink-0 sm:min-h-9"
+                      onClick={props.onSaveAdditions}
+                      disabled={props.resolving}
+                    >
+                      Remember Additions
+                    </Button>
+                  </Tip>
+                )}
+              </div>
               <EnterWorldLibrary
                 entities={props.libraryEntities}
                 selectedEntityIds={props.selectedEntityIds}
