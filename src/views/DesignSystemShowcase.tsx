@@ -31,6 +31,8 @@ import {
 import type { ThinkingMode } from '@/contexts/SettingsContext';
 import { SETTINGS_OPTIONS } from '@/components/modals/settingsCopy';
 import { optionRowCopy, rowCopy } from '@/components/modals/settingsRowCopy';
+import PromptField from '@/components/prompt/PromptField';
+import { plainVocabulary } from '@/lib/chipVocabulary';
 
 type ReferenceDefinition = {
   id: string;
@@ -42,6 +44,34 @@ type ReferenceDefinition = {
 type ThemeMode = (typeof SETTINGS_OPTIONS.theme)[number]['value'];
 
 const LONG_ENDPOINT = 'Silver Siren local endpoint — 131,072-token creative-writing profile';
+const MARKDOWN_VOCABULARY = plainVocabulary();
+const MARKDOWN_EXAMPLE = `# The Night Glass
+
+The bell above the **old observatory** rings once at midnight. Its keeper has not answered in three days, but a warm light still moves behind the highest window.
+
+Read the [old observatory](https://example.com/observatory) ledger before you cross the salt marsh. The last entry warns that *reflections remember more than faces*.
+
+## What the traveler knows
+
+- The eastern stair is flooded.
+- A brass key hangs in the keeper's room.
+- The lens turns toward the sea when no one is watching.
+
+> Bring no mirror past the third landing.
+
+## Field checklist
+
+- [x] Pack lamp oil
+- [ ] Find the keeper
+- [ ] Record the lens alignment
+
+| Watch | Tide | Signal |
+| --- | --- | --- |
+| First | Rising | One blue flare |
+| Second | High | Three white flares |
+| Third | Falling | No light; leave immediately |
+
+Use \`/listen\` at the sealed door, then note any reply in the margin.`;
 
 function DisplayReference() {
   const { resolvedTheme } = useTheme();
@@ -272,6 +302,32 @@ function SettingsReference() {
   );
 }
 
+function MarkdownReference() {
+  const [content, setContent] = useState(MARKDOWN_EXAMPLE);
+
+  return (
+    <Card role="region" aria-labelledby="markdown-reference-title">
+      <CardHeader>
+        <CardTitle id="markdown-reference-title" className="text-heading">Markdown editing reference</CardTitle>
+        <CardDescription>
+          Long-form authoring with production formatting, history, view, and full-screen controls.
+        </CardDescription>
+      </CardHeader>
+      <CardContent>
+        <PromptField
+          value={content}
+          onChange={setContent}
+          vocabulary={MARKDOWN_VOCABULARY}
+          markdown
+          label="World introduction"
+          ariaLabel="World introduction"
+          className="h-[30rem] max-h-[70dvh]"
+        />
+      </CardContent>
+    </Card>
+  );
+}
+
 /** Add later approved references here; the shell and responsive navigation need no redesign. */
 const DESIGN_SYSTEM_REFERENCES: readonly ReferenceDefinition[] = [
   {
@@ -280,13 +336,19 @@ const DESIGN_SYSTEM_REFERENCES: readonly ReferenceDefinition[] = [
     description: 'Display and Output composition',
     Component: SettingsReference,
   },
+  {
+    id: 'markdown',
+    label: 'Markdown',
+    description: 'Compact long-form editing',
+    Component: MarkdownReference,
+  },
 ];
 
 export function DesignSystemShowcase() {
   const [activeReference, setActiveReference] = useState(DESIGN_SYSTEM_REFERENCES[0].id);
 
   return (
-    <main data-design-system-showcase className="fixed inset-0 z-[200] overflow-y-auto bg-background text-foreground">
+    <main data-design-system-showcase className="fixed inset-0 overflow-y-auto bg-background text-foreground">
       <div className="mx-auto grid max-w-7xl gap-6 p-4 sm:p-8">
         <header className="grid gap-3 border-b border-border pb-6 sm:grid-cols-[1fr_auto] sm:items-end">
           <div className="space-y-2">

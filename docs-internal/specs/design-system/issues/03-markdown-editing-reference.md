@@ -1,6 +1,6 @@
 # 03: Add the Markdown Editing Reference
 
-Status: ready-for-agent
+Status: ready-for-human
 Blocked by: 02 — Build the Settings Reference Showcase
 Recommended model: GPT-5.6 Sol (`gpt-5.6-sol`)
 Reasoning effort: high
