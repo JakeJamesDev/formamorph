@@ -171,7 +171,7 @@ describe('EnterWorldWorkspace', () => {
     expect(onTraitSelect).toHaveBeenCalledTimes(1);
 
     onTraitSelect.mockClear();
-    expect(fireEvent.click(screen.getByRole('radio', { name: 'Local' }))).toBe(true);
+    fireEvent.click(screen.getByRole('radio', { name: 'Local' }));
     expect(onTraitSelect).toHaveBeenLastCalledWith('local');
     expect(onTraitSelect).toHaveBeenCalledTimes(1);
 
@@ -191,6 +191,29 @@ describe('EnterWorldWorkspace', () => {
     await user.click(screen.getByRole('checkbox', { name: 'Artisan' }));
     expect(onTraitSelect).toHaveBeenLastCalledWith('artisan');
     expect(onTraitSelect).toHaveBeenCalledTimes(1);
+  });
+
+  it('keeps exclusive trait choices optional and changes them as one selection', async () => {
+    const user = userEvent.setup();
+    render(<Harness />);
+
+    const local = screen.getByRole('radio', { name: 'Local' });
+    const outsider = screen.getByRole('radio', { name: 'Outsider' });
+    expect(local).toBeChecked();
+    expect(outsider).not.toBeChecked();
+
+    local.focus();
+    await user.keyboard('[Space]');
+    expect(local).not.toBeChecked();
+    expect(outsider).not.toBeChecked();
+
+    outsider.focus();
+    await user.keyboard('[Space]');
+    expect(local).not.toBeChecked();
+    expect(outsider).toBeChecked();
+
+    fireEvent.click(outsider);
+    expect(outsider).not.toBeChecked();
   });
 
   it('uses Starting Location as the first category when a world has no traits', async () => {
