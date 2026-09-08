@@ -148,11 +148,63 @@ At desktop widths, cards form a two-column reference grid. At narrower widths th
 
 The live Community cards reference uses the production card and shell with neutral, controlled fixtures. It covers long titles, descriptions, tags, counts, selected likes, pending actions, keyboard focus, and update affordances without touching community data.
 
+## Pattern: Compact Find Utility Bar
+
+**Purpose:** Search and replace across a structured editor without taking over the editing workspace.
+
+**Density:** Compact. The floating bar keeps its search, options, counter, navigation, and close actions on one row. Replace expands beneath search without changing the surrounding editor layout.
+
+### Composition
+
+- Place the bar over the upper-left of a bounded editor workspace. Keep enough document context visible to show which field receives the current match.
+- Join Match Case and Match Whole Word to the search input. Their pressed fills show option state without adding separate labels to the row.
+- Keep Previous Match, Next Match, and Close Find as separate actions. Do not combine navigation into one split control.
+- Put replacement in an expandable second row. Align its input with search and keep Replace and Replace All together at the row end.
+- Show the match position and total beside navigation at desktop widths. Move the counter below the controls on narrow screens so the search input keeps useful width.
+- Show the current tab, item, and field as a compact breadcrumb when room permits. The editor itself remains the visible source of truth for replacement results.
+- Confirm Replace All before changing text. Keep the result notice factual and based on the completed action.
+
+### Production mapping
+
+| Need | Component |
+| --- | --- |
+| Search, options, navigation, replacement, and confirmation | `EditorFindBar` in [`EditorFindBar.tsx`](../src/components/editor/EditorFindBar.tsx) |
+| Search targets, matching, text splices, and grouped writes | [`worldSearch.ts`](../src/lib/worldSearch.ts) |
+| Field and Chip reveal in the authored editor | [`editorFieldFocus.ts`](../src/lib/editorFieldFocus.ts) |
+| Production host and keyboard shortcuts | `WorldEditor` in [`WorldEditor.tsx`](../src/views/WorldEditor.tsx) |
+| Isolated interactive reference | `FindBarReference` in [`FindBarReference.tsx`](../src/components/design-system/FindBarReference.tsx) |
+
+### Keyboard and focus behavior
+
+The production editor opens Find with Ctrl+F and Find and Replace with Ctrl+H. The search input receives focus when the bar opens. Enter moves to the next match, Shift+Enter moves to the previous match, and Escape closes the bar. Expanding Replace and selecting navigation actions leave focus on the action that ran. A host must return focus to a stable opener when the bar closes; the live reference demonstrates that behavior.
+
+### Responsive behavior
+
+At desktop widths, the bar shows the counter and current-field breadcrumb in the floating surface. At mobile widths, it uses the same controls and grouping, moves the counter beneath the main row, hides the breadcrumb, and stays inside the editor width. The editor context stacks its section list above the local fields without horizontal page overflow. Long queries and document values remain constrained by their inputs.
+
+### State reference
+
+| State | Treatment |
+| --- | --- |
+| Empty | Navigation and replacement actions are disabled; no field is selected. |
+| Matches | The counter reports the current result and total; the sample marks the field that contains it. |
+| No matches | The counter uses the destructive text color and navigation remains disabled. |
+| Options | Match Case and Match Whole Word use their production pressed states and immediately restart navigation at the first result. |
+| Boundary | Previous from the first match wraps to the last; Next from the last wraps to the first. |
+| Replace | The disclosure adds the joined replacement row; Replace changes one result and Replace All requires confirmation. |
+| Focus | Search receives opening focus; disclosure and navigation retain action focus; closing returns focus to the reference opener. |
+
+The live Find reference uses the production bar and matching code against local component state. Search, navigation, option changes, and replacements update a realistic sample document without using authored-world storage or the clipboard.
+
+### Writing review
+
+The new description states the reference purpose. Action labels use the production Find and Replace terminology, and dynamic status text reports the selected field or the completed local action. Sample names and prose are authored content and keep their own voice. Accessible names receive the same role review as visible controls. Standalone label-fragment grammar remains unverified under the Writing Guide, and reuse here does not certify the existing production Find, replacement, confirmation, or notice copy as fully ASD-STE100 compliant.
+
 ## Functional writing
 
 Keep setting descriptions to one sentence, third person, and no more than 12 words. Put necessary additional detail behind `HintInfo`. Do not claim ASD-STE100 compliance from length or tone alone; use the vocabulary, grammar, meaning, and evidence process in the [Writing Guide](Writing-Guide.md).
 
-Apply that guide by role to all three patterns: settings labels and information, markdown toolbar names and instructions, and card action names and status messages. Accessible text receives the same review as visible text. World introductions, creation titles, descriptions, and tags are authored content; these samples retain their own voice. Existing production copy is not certified by reuse in the showcase.
+Apply that guide by role to all approved patterns: settings labels and information, markdown toolbar names and instructions, card action names and status messages, and Find controls and status text. Accessible text receives the same review as visible text. World introductions, creation titles, descriptions, and tags are authored content; these samples retain their own voice. Existing production copy is not certified by reuse in the showcase.
 
 The foundation's [review record](../docs-internal/designs/design-system/workflow-review.md) records copy findings, evidence limits, and the two workflow demonstrations. Existing-screen alignment remains separate work.
 
