@@ -1,6 +1,6 @@
 # 01: Correct the seven guide claims
 
-Status: in-progress
+Status: ready-for-human
 Base: c87369b8
 Blocked by: None (can start immediately)
 Recommended model: Claude Sonnet 5 (`claude-sonnet-5`)
