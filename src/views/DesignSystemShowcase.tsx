@@ -37,6 +37,7 @@ import { CommunityCardReference } from '@/components/design-system/CommunityCard
 import { FindBarReference } from '@/components/design-system/FindBarReference';
 import { CodeTemplatesReference } from '@/components/design-system/CodeTemplatesReference';
 import { LocationsCanvasReference } from '@/components/design-system/LocationsCanvasReference';
+import { MainMenuContextMenuReference } from '@/components/design-system/MainMenuContextMenuReference';
 
 type ReferenceDefinition = {
   id: string;
@@ -370,6 +371,12 @@ const DESIGN_SYSTEM_REFERENCES: readonly ReferenceDefinition[] = [
     description: 'Bounded spatial editing',
     Component: LocationsCanvasReference,
   },
+  {
+    id: 'context-menu',
+    label: 'Context Menu',
+    description: 'Grouped library tile actions',
+    Component: MainMenuContextMenuReference,
+  },
 ];
 
 export function DesignSystemShowcase() {
@@ -396,11 +403,11 @@ export function DesignSystemShowcase() {
         <Tabs value={activeReference} onValueChange={setActiveReference}>
           <TabsList
             aria-label="Design References"
-            className="grid h-auto w-full sm:h-10 sm:w-auto"
-            style={{ gridTemplateColumns: `repeat(${DESIGN_SYSTEM_REFERENCES.length}, minmax(0, 1fr))` }}
+            className="grid h-auto w-full"
+            style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(8rem, 1fr))' }}
           >
             {DESIGN_SYSTEM_REFERENCES.map((reference) => (
-              <TabsTrigger key={reference.id} value={reference.id} className="min-w-0 whitespace-normal px-2 text-center">{reference.label}</TabsTrigger>
+              <TabsTrigger key={reference.id} value={reference.id} className="min-h-10 min-w-0 whitespace-normal px-2 text-center">{reference.label}</TabsTrigger>
             ))}
           </TabsList>
           {DESIGN_SYSTEM_REFERENCES.map(({ id, label, description, Component }) => (

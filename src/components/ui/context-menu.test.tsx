@@ -1,5 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { act, fireEvent, render, screen } from '@testing-library/react';
+import type { KeyboardEvent as ReactKeyboardEvent } from 'react';
 import { ContextMenu, ContextMenuContent, ContextMenuItem, ContextMenuTrigger } from './context-menu';
 
 // jsdom has no PointerEvent, so testing-library falls back to a plain Event and drops the pointer fields.
@@ -158,5 +159,36 @@ describe('ContextMenu on touch', () => {
 
     fireEvent.click(screen.getByText('Rename'));
     expect(onSelect).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe('ContextMenu from the keyboard', () => {
+  it.each([
+    ['Context Menu key', { key: 'ContextMenu' }],
+    ['Shift+F10', { key: 'F10', shiftKey: true }],
+  ])('opens with %s', (_label, key) => {
+    render(<Menu />);
+    fireEvent.keyDown(screen.getByText('Tile'), key);
+
+    expect(screen.getByRole('menu')).toBeInTheDocument();
+  });
+
+  it('honors a consumer that prevents the keyboard event', () => {
+    const onKeyDown = vi.fn((event: ReactKeyboardEvent) => event.preventDefault());
+    render(
+      <ContextMenu>
+        <ContextMenuTrigger asChild onKeyDown={onKeyDown}>
+          <div>Tile</div>
+        </ContextMenuTrigger>
+        <ContextMenuContent>
+          <ContextMenuItem>Rename</ContextMenuItem>
+        </ContextMenuContent>
+      </ContextMenu>,
+    );
+
+    fireEvent.keyDown(screen.getByText('Tile'), { key: 'F10', shiftKey: true });
+
+    expect(onKeyDown).toHaveBeenCalledOnce();
+    expect(screen.queryByRole('menu')).not.toBeInTheDocument();
   });
 });

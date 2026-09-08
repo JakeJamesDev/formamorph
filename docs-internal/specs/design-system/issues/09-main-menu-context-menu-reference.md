@@ -1,6 +1,6 @@
 # 09: Add the Main Menu Context Menu Reference
 
-Status: ready-for-agent
+Status: ready-for-human
 Blocked by: None (can start immediately)
 Recommended model: GPT-5.6 Sol (`gpt-5.6-sol`)
 Reasoning effort: high
