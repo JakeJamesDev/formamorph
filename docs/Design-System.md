@@ -12,9 +12,9 @@ Use semantic values from the app. Do not sample colors from screenshots; HDR and
 
 | Foundation | Approved source | Use |
 | --- | --- | --- |
-| Color | [`src/index.css`](../src/index.css) | Use `background`, `foreground`, `card`, `muted`, `accent`, `border`, `input`, `ring`, and semantic status tokens. All supported light/dark palettes override these values. |
+| Color | [`src/index.css`](../src/index.css) | Use `background`, `foreground`, `card`, `muted`, `accent`, `border`, `input`, `ring`, and semantic status tokens. Palettes override every value except the semantic status tokens, which come from the base light and dark blocks and stay constant across palettes. |
 | Typography | [`tailwind.config.js`](../tailwind.config.js) and [`typography.tsx`](../src/components/ui/typography.tsx) | Choose the role: `display`, `heading`, `title`, `body`, `label`, `helper`, or `meta`. Use `Hint`, `FieldError`, `SectionTitle`, and `Meta` for secondary text. |
-| Font | [`settingsDefaults.ts`](../src/contexts/settingsDefaults.ts) | Inherit `--app-font`. Production font choices and per-font tuning remain authoritative. |
+| Font | [`src/index.css`](../src/index.css) defines `--app-font`, [`SettingsContext.tsx`](../src/contexts/SettingsContext.tsx) sets it, and [`tailwind.config.js`](../tailwind.config.js) puts it in the sans stack. The font registry stays in [`settingsDefaults.ts`](../src/contexts/settingsDefaults.ts). | Inherit `--app-font`. Production font choices and per-font tuning remain authoritative. |
 | Borders and radius | [`src/index.css`](../src/index.css) | Use `border`, `input`, and `--radius`; use `h-hairline` or `w-hairline` for dividers. |
 | Spacing | Production component classes | Compose the existing 4-unit rhythm: 1rem between rows and 1.5rem between sections in settings surfaces. |
 | Focus | Production controls in [`src/components/ui`](../src/components/ui) | Keep the shared two-pixel inset `ring` treatment. Do not replace it with a palette-specific outline. |
@@ -67,14 +67,14 @@ The live Settings reference shows all six states. Its Display and Output example
 
 **Purpose:** Keep long-form source editing dense while making the rendered result one clear switch away.
 
-**Density:** Compact controls, comfortable content. Toolbar buttons use the production 1.75rem control height and one-unit gaps; the editor keeps a 1rem internal text rhythm and a substantial scrollable work area.
+**Density:** Compact controls, comfortable content. Toolbar buttons use the production 1.75rem control height and one-unit gaps; the editor uses the `label` text role (0.875rem, 1.25rem line height) with 0.75rem horizontal and 0.5rem vertical surface padding, plus a substantial scrollable work area.
 
 ### Composition
 
 - Put the field label above the toolbar so the complete toolbar can use the control row.
 - Keep common inline actions visible: bold, italic, strikethrough, inline code, and blockquote.
 - Group highlight, heading, list, and insertion choices as split buttons. The face runs the current action; the chevron opens the group.
-- Keep each split button visually joined, including its internal divider. Separate formatting, history, and view groups with vertical hairlines.
+- Keep each split button visually joined, including its internal divider. Put the formatting group at the left and history at the row end; one hairline separates history from the view controls.
 - Put Edit and Preview in one two-option selector. The selected view uses the shared active-tab treatment.
 - Use realistic content that includes headings, links, emphasis, lists, tasks, quotes, tables, and code. Keep the editing area bounded so long prose demonstrates vertical overflow.
 - Keep demonstration text in local component state. A reference editor must not save authored data or call an endpoint.
@@ -258,12 +258,12 @@ New reference instructions name the visible “Open Code Templates” action and
 
 | Need | Production source and treatment |
 | --- | --- |
-| Work area and fullscreen | [`LocationCanvas.tsx`](../src/managers/LocationCanvas.tsx): embedded view with zoom/fit controls; fullscreen adds editing tools, search, and minimap. |
+| Work area and fullscreen | [`LocationCanvas.tsx`](../src/managers/LocationCanvas.tsx): embedded view with zoom/fit controls; fullscreen adds the toolbar, search, and minimap. Drag, nesting, and the context menu's Auto Arrange work in the embedded view. |
 | Nested Groups | [`locationCanvas.ts`](../src/lib/locationCanvas.ts): measured frames around child locations, including nested Groups. Containment is the frame itself, never a line. |
 | Connection hierarchy | [`FloatingEdge.tsx`](../src/components/FloatingEdge.tsx) and [`canvasEdges.ts`](../src/lib/canvasEdges.ts): muted dashed arrows for implicit sibling travel; solid primary-colored arrows for authored Connections, one arrow per direction. An authored Connection replaces that pair's implicit navigation. |
 | Floating tool groups | `CanvasToolbar` in the canvas: arrangement, alignment/distribution, grid/snap, Connection Style, then undo/redo, separated by hairlines. |
 | Search and reveal | `LocationSearch`: names plus ancestry, keyboard result selection, and viewport reveal of deeply nested locations. |
-| Zoom and orientation | [`CanvasControls.tsx`](../src/components/CanvasControls.tsx): zoom in/out, fit, fullscreen; the fullscreen minimap also pans and navigates. |
+| Zoom and orientation | [`CanvasControls.tsx`](../src/components/CanvasControls.tsx): zoom in, zoom out, and fit; the canvas supplies the fullscreen button. The fullscreen minimap also pans and navigates. |
 | Manual arrangement and history | [`locationArrange.ts`](../src/lib/locationArrange.ts), [`locationAlign.ts`](../src/lib/locationAlign.ts), and [`canvasHistory.ts`](../src/lib/canvasHistory.ts): explicit edits, with a whole arrangement restored in one undo step. |
 | Isolated reference | [`LocationsCanvasReference.tsx`](../src/components/design-system/LocationsCanvasReference.tsx): the production workspace with local locations, Connections, history, and preferences. |
 
@@ -278,7 +278,7 @@ The reference keeps the embedded canvas inside a bounded editor panel. At deskto
 | Selected | Nodes keep the production ring; selected authored arrows thicken and open the Connection inspector. |
 | Disabled | Undo/redo disable at empty history boundaries; alignment needs two locations and distribution needs three. |
 | Focus | Search and toolbar controls retain shared focus styling and accessible names. |
-| Overflow | Long node names truncate; search and the reference's selected-location output expose the complete name. Long Connection labels clamp in the overview and expand on selection/hover; the inspector holds the full travel hint. |
+| Overflow | Long node names truncate; search rows truncate too. Only the reference's selected-location output exposes the complete name. Long Connection labels clamp in the overview and expand on selection/hover; the inspector holds the full travel hint. |
 | Local edits | Moving, arranging, and editing Connections use the real handlers. Fullscreen preserves local history; leaving the reference discards the sample session. |
 
 The reference preserves production density and panel placement. Dense labels can overlap the graph, and the floating Connection inspector can cover other controls at narrow widths; close it to return to those controls. These are reference limitations to review, not patterns to copy into new surfaces without judgment. Theme, palette, font, reduced-motion handling, and touch behavior come from production. Detailed checks and writing limits live in the [review record](../docs-internal/designs/design-system/locations-canvas-review.md).
