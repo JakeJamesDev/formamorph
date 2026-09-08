@@ -10,7 +10,7 @@ import { readSettingsMode, writeSettingsMode, type SettingsMode } from '@/lib/se
 import { settingsUseAdvancedValues } from '@/lib/settingsAdvancedData';
 import { TutorialPopover } from '@/components/TutorialPopover';
 import { useDevRoute } from '@/lib/devRouter';
-import { Row, CheckRow, Section, SubGroup, HintInfo, RecommendedMark } from '@/components/SettingsRows';
+import { Row, CheckRow, Section, SubGroup, HintInfo, RecommendedMark, OptionSwitcher, CheckboxOptionGroup } from '@/components/SettingsRows';
 import { SETTINGS_COPY, SETTINGS_BUTTONS, SETTINGS_CONFIRMS, SETTINGS_OPTIONS, REASONING_EFFORT_HELP, type SettingOptionCopy } from '@/components/modals/settingsCopy';
 import { rowCopy, optionRowCopy } from '@/components/modals/settingsRowCopy';
 import TagField from '@/components/prompt/TagField';
@@ -83,42 +83,6 @@ const THINKING_OPTIONS: readonly SettingOptionCopy<ThinkingMode>[] = SETTINGS_OP
  *  stored setting is '' (Uncategorized). */
 const UNCATEGORIZED_BOARD = '__uncategorized__';
 
-/** A segmented option control that collapses to a dropdown on mobile: a full-width Select below `sm`, the
- *  tab row at `sm+`. Both drive the same value, so option help stacked beneath it (by the caller) is unaffected.
- *  One element, not a fragment: as two siblings the hidden half still counts under a `space-y-*` parent, which
- *  pushed the visible half down a row's worth of gap and knocked the label off its center line. */
-function OptionSwitcher({ value, onChange, options }: {
-  value: string;
-  onChange: (v: string) => void;
-  // Help text is the caller's to render, so a plain `{value,label}` list is enough here.
-  options: readonly { value: string; label: string; recommended?: true }[];
-}) {
-  return (
-    <div>
-      <Select value={value} onValueChange={onChange}>
-        <SelectTrigger className="w-full sm:hidden"><SelectValue /></SelectTrigger>
-        <SelectContent>
-          {options.map((o) => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}
-        </SelectContent>
-      </Select>
-      <div className="hidden sm:block">
-        <ToggleGroup
-          type="single"
-          value={value}
-          // A single ToggleGroup clears its value when the active item is clicked again; every caller's
-          // setting is required, so an empty result is ignored rather than stored.
-          onValueChange={(v) => { if (v) onChange(v); }}
-          className="grid w-full"
-          style={{ gridTemplateColumns: `repeat(${options.length}, minmax(0, 1fr))` }}
-        >
-          {options.map((o) => (
-            <ToggleGroupItem key={o.value} value={o.value}>{o.label}{o.recommended && <RecommendedMark />}</ToggleGroupItem>
-          ))}
-        </ToggleGroup>
-      </div>
-    </div>
-  );
-}
 
 /** Parse a numeric `<input>` value, falling back to `min` when it's empty or invalid. Without this a cleared
  *  field yields `Number('') === 0`, which would persist a zero (a 0-token request, a 0px image) to settings. */
@@ -1612,35 +1576,11 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, initialTab,
               {/* Enable/disable the optional per-turn requests. Synced with the System Prompts tab, which
                   shows a prompt's editor tab only while it's enabled here. */}
               <Row {...rowCopy('systemPrompts')}>
-                <div className="flex flex-wrap gap-x-4 gap-y-2">
-                  <label htmlFor="choicesEnabled" className="flex items-center gap-2 text-label cursor-pointer">
-                    <Checkbox
-                      id="choicesEnabled"
-                      checked={choicesEnabled}
-                      onCheckedChange={(c) => setChoicesEnabled(c === true)}
-                      className="shrink-0"
-                    />
-                    Choices
-                  </label>
-                  <label htmlFor="statUpdatesEnabled" className="flex items-center gap-2 text-label cursor-pointer">
-                    <Checkbox
-                      id="statUpdatesEnabled"
-                      checked={statUpdatesEnabled}
-                      onCheckedChange={(c) => setStatUpdatesEnabled(c === true)}
-                      className="shrink-0"
-                    />
-                    Stat Updates
-                  </label>
-                  <label htmlFor="locationChangeEnabled" className="flex items-center gap-2 text-label cursor-pointer">
-                    <Checkbox
-                      id="locationChangeEnabled"
-                      checked={locationChangeEnabled}
-                      onCheckedChange={(c) => setLocationChangeEnabled(c === true)}
-                      className="shrink-0"
-                    />
-                    Location Change
-                  </label>
-                </div>
+                <CheckboxOptionGroup options={[
+                  { id: 'choicesEnabled', label: 'Choices', checked: choicesEnabled, onChange: setChoicesEnabled },
+                  { id: 'statUpdatesEnabled', label: 'Stat Updates', checked: statUpdatesEnabled, onChange: setStatUpdatesEnabled },
+                  { id: 'locationChangeEnabled', label: 'Location Change', checked: locationChangeEnabled, onChange: setLocationChangeEnabled },
+                ]} />
               </Row>
               {/* Auto-apply detected location changes — its own row, only shown while Location Change is on. */}
               {locationChangeEnabled && (
