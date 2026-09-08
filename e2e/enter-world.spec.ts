@@ -1,10 +1,13 @@
 import { expect, test, type Page } from '@playwright/test';
 import { openApp } from './app';
+import { dragBy, editorGrip, IN_DIALOG, ROW_STEP, rowLabels } from './dragSampling';
+
+const archiveDictionaryNames = Array.from({ length: 8 }, (_, index) => `Archive Volume ${index + 1}`);
 
 const openEnterWorld = async (page: Page) => {
   await openApp(page);
   await page.getByText('Loaded default worlds').waitFor({ state: 'visible' });
-  const worldId = await page.evaluate(async () => {
+  const worldId = await page.evaluate(async (archiveNames) => {
     interface DevRouter {
       listWorlds(): Promise<{ id: string; name: string }[]>;
       getWorld(id: string): Promise<unknown>;
@@ -15,6 +18,7 @@ const openEnterWorld = async (page: Page) => {
       worldOverview?: Record<string, unknown>;
       traitGroups?: unknown[];
       traits?: unknown[];
+      dictionaries?: unknown[];
     }
     const dev = (window as unknown as { __fmDev: DevRouter }).__fmDev;
     const [firstWorld] = await dev.listWorlds();
@@ -61,9 +65,22 @@ const openEnterWorld = async (page: Page) => {
       }
       return traits;
     });
+    world.dictionaries = [
+      { id: 'atlas', name: 'World Atlas', description: 'Routes from the authored world.', enabled: true, entries: [] },
+      { id: 'hidden', name: 'Hidden Notes', description: 'A disabled book that retains its slot.', enabled: false, entries: [] },
+      { id: 'third', name: 'Third Atlas', description: 'Another visible result for filtered ordering.', enabled: true, entries: [] },
+      { id: 'last', name: 'Last Notes', description: 'The final complete-order boundary.', enabled: false, entries: [] },
+      ...archiveNames.map((name, index) => ({
+        id: `archive-${index + 1}`,
+        name,
+        description: 'A long archive description fills the detail viewport with realistic reading content. It preserves the complete record while the compact row keeps every action reachable. The repeated volumes also make the additions list overflow at both supported phone widths.',
+        enabled: index % 2 === 0,
+        entries: [],
+      })),
+    ];
     await dev.putWorld(world);
     return id;
-  });
+  }, archiveDictionaryNames);
   await page.evaluate((id) => {
     window.location.hash = `#dev?modal=enterWorld&tab=${id}`;
   }, worldId);
@@ -76,6 +93,33 @@ const openEnterWorld = async (page: Page) => {
   await expect(workspace).toBeVisible();
   return workspace;
 };
+
+test('filtered dictionary drag retains hidden slots and the draft enters the game', async ({ page }, testInfo) => {
+  test.skip(testInfo.project.name === 'mobile', 'desktop exercises the existing split list and details boundary');
+  await page.setViewportSize({ width: 1280, height: 800 });
+  const workspace = await openEnterWorld(page);
+  await workspace.getByRole('button', { name: 'Library Additions' }).click();
+
+  const search = workspace.getByRole('searchbox', { name: 'Search Library Additions' });
+  await search.fill('Atlas');
+  expect(await rowLabels(page, IN_DIALOG)).toEqual(['World Atlas', 'Third Atlas']);
+
+  await dragBy(page, editorGrip(page, IN_DIALOG, 'Third Atlas'), { dy: -ROW_STEP });
+  expect(await rowLabels(page, IN_DIALOG)).toEqual(['Third Atlas', 'World Atlas']);
+
+  await search.fill('');
+  expect(await rowLabels(page, IN_DIALOG)).toEqual([
+    'Third Atlas', 'Hidden Notes', 'World Atlas', 'Last Notes', ...archiveDictionaryNames,
+  ]);
+  await workspace.getByRole('button', { name: 'Inspect Third Atlas from World' }).click();
+  const details = workspace.getByRole('region', { name: 'Addition Details' });
+  await expect(details.getByText('Position 1 of 12')).toBeVisible();
+  await expect(details.getByRole('button', { name: 'Move Third Atlas Up' })).toBeDisabled();
+  await expect(workspace.getByRole('checkbox', { name: 'Enable Hidden Notes from World' })).not.toBeChecked();
+
+  await workspace.getByRole('button', { name: 'Start game' }).click();
+  await expect(workspace).toBeHidden();
+});
 
 for (const width of [360, 390]) {
   test(`phone Categories stays bounded and accessible at ${width}px`, async ({ page }, testInfo) => {
@@ -123,6 +167,30 @@ for (const width of [360, 390]) {
     await expect(disclosure).toBeFocused();
     await expect(workspace.getByRole('heading', { name: 'Library Additions' })).toBeVisible();
     await expect(finish).toBeVisible();
+    const list = workspace.locator('section[aria-label="Library Additions List"]');
+    const listViewport = list.locator('[data-radix-scroll-area-viewport]');
+    expect(await listViewport.evaluate((element) => element.scrollHeight > element.clientHeight)).toBe(true);
+
+    const inspect = workspace.getByRole('button', { name: 'Inspect Archive Volume 6 from World' });
+    await inspect.scrollIntoViewIfNeeded();
+    const listScroll = await listViewport.evaluate((element) => element.scrollTop);
+    expect(listScroll).toBeGreaterThan(0);
+    await inspect.click();
+
+    await expect(list).toHaveAttribute('aria-hidden', 'true');
+    await expect(list).toHaveAttribute('inert', '');
+    const details = workspace.getByRole('region', { name: 'Addition Details' });
+    await expect(details.getByRole('heading', { name: 'Archive Volume 6' })).toBeFocused();
+    const detailsViewport = details.locator('[data-radix-scroll-area-viewport]');
+    expect(await detailsViewport.evaluate((element) => element.scrollHeight > element.clientHeight)).toBe(true);
+    await detailsViewport.evaluate((element) => { element.scrollTop = element.scrollHeight; });
+    expect(await detailsViewport.evaluate((element) => element.scrollTop)).toBeGreaterThan(0);
+
+    await details.getByRole('button', { name: 'Back to Additions' }).click();
+    await expect(list).toHaveAttribute('aria-hidden', 'false');
+    await expect(list).not.toHaveAttribute('inert', '');
+    await expect(inspect).toBeFocused();
+    expect(await listViewport.evaluate((element) => element.scrollTop)).toBe(listScroll);
     expect(await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth)).toBe(0);
   });
 }

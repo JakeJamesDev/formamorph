@@ -1,13 +1,16 @@
-import { useState } from 'react';
+import { useEffect, useMemo, useRef, useState, type RefObject } from 'react';
 import { closestCorners, type DragEndEvent } from '@dnd-kit/core';
 import { useSortable, verticalListSortingStrategy } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
-import { ArrowDown, ArrowUp, BookOpen, GripVertical, Search, User } from 'lucide-react';
+import { ArrowDown, ArrowLeft, ArrowUp, BookOpen, Search, User } from 'lucide-react';
 import { EditorDndContext, StableSortableContext } from '@/components/dnd/EditorDndContext';
+import { EditorRow, EditorRowList } from '@/components/EditorRow';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
+import { ScrollArea } from '@/components/ui/scroll-area';
 import type { DictionarySelectionItem } from '@/lib/dictionarySelection';
+import { useIsMobile } from '@/lib/useIsMobile';
 import type { EntityMetadata } from '@/types';
 import { cn } from '@/lib/utils';
 
@@ -19,50 +22,58 @@ interface EnterWorldLibraryProps {
   onDictionaryItemsChange: (items: DictionarySelectionItem[]) => void;
 }
 
-function Artwork({ src, alt, fallback }: { src?: string; alt: string; fallback: 'portrait' | 'cover' }) {
+type InspectedAddition =
+  | { kind: 'entity'; entity: EntityMetadata }
+  | { kind: 'dictionary'; item: DictionarySelectionItem; position: number };
+
+const entityInspectionKey = (id: string) => `entity:${id}`;
+const dictionaryInspectionKey = (key: string) => `dictionary:${key}`;
+const displayName = (name: string) => name || 'Untitled';
+const sourceLabel = (source: DictionarySelectionItem['source']) => source === 'world' ? 'World' : 'Library';
+
+function Artwork({ src, name, fallback, large = false }: {
+  src?: string;
+  name: string;
+  fallback: 'portrait' | 'cover';
+  large?: boolean;
+}) {
   return (
-    <span className="flex h-16 w-12 shrink-0 items-center justify-center overflow-hidden rounded bg-muted">
-      {src ? <img src={src} alt={alt} className="h-full w-full object-cover" /> : (
-        <span role="img" aria-label={`${alt.replace(/ (portrait|cover)$/, '')} has no ${fallback}`}>
+    <span className={cn(
+      'flex shrink-0 items-center justify-center overflow-hidden rounded-md border bg-muted',
+      large ? 'h-56 w-full max-w-56' : 'h-10 w-10',
+    )}>
+      {src ? <img src={src} alt={`${name} ${fallback}`} className="h-full w-full object-cover" /> : (
+        <span role="img" aria-label={`${name} has no ${fallback}`}>
           {fallback === 'portrait'
-            ? <User aria-hidden className="h-6 w-6 text-muted-foreground" />
-            : <BookOpen aria-hidden className="h-6 w-6 text-muted-foreground" />}
+            ? <User aria-hidden className={cn('text-muted-foreground', large ? 'h-12 w-12' : 'h-5 w-5')} />
+            : <BookOpen aria-hidden className={cn('text-muted-foreground', large ? 'h-12 w-12' : 'h-5 w-5')} />}
         </span>
       )}
     </span>
   );
 }
 
-function ChoiceRow({ checked, name, ariaLabel, description, artwork, onCheckedChange }: {
-  checked: boolean;
+function AdditionLabel({ name, ariaLabel, buttonRef, onInspect }: {
   name: string;
   ariaLabel: string;
-  description?: string;
-  artwork: React.ReactNode;
-  onCheckedChange: (checked: boolean) => void;
+  buttonRef: (node: HTMLButtonElement | null) => void;
+  onInspect: () => void;
 }) {
   return (
-    <label className={cn(
-      'flex min-h-20 cursor-pointer items-center gap-3 rounded-lg border p-3 transition-colors',
-      checked ? 'border-primary bg-primary/10' : 'bg-background hover:bg-muted/40',
-    )}>
-      <Checkbox
-        checked={checked}
-        onCheckedChange={(value) => onCheckedChange(value === true)}
-        aria-label={ariaLabel}
-        className="shrink-0"
-      />
-      {artwork}
-      <span className="min-w-0 flex-1">
-        <strong className="block break-words">{name}</strong>
-        {description && <span className="mt-1 block text-helper text-muted-foreground">{description}</span>}
-      </span>
-    </label>
+    <button
+      ref={buttonRef}
+      type="button"
+      aria-label={ariaLabel}
+      className="block w-full truncate rounded-sm text-left outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset"
+      onClick={(event) => { event.stopPropagation(); onInspect(); }}
+    >
+      {name}
+    </button>
   );
 }
 
 function EmptySection({ children }: { children: string }) {
-  return <p className="text-helper text-muted-foreground">{children}</p>;
+  return <p className="rounded-md border border-dashed p-3 text-helper text-muted-foreground">{children}</p>;
 }
 
 function reorderVisibleItems(
@@ -86,85 +97,245 @@ function reorderVisibleItems(
   ));
 }
 
-function DictionaryOrderRow({ item, canMoveUp, canMoveDown, onMove }: {
+function DictionaryRow({ item, selected, canMoveUp, canMoveDown, buttonRef, onInspect, onToggle, onMove }: {
   item: DictionarySelectionItem;
+  selected: boolean;
   canMoveUp: boolean;
   canMoveDown: boolean;
+  buttonRef: (node: HTMLButtonElement | null) => void;
+  onInspect: () => void;
+  onToggle: (enabled: boolean) => void;
   onMove: (offset: -1 | 1) => void;
 }) {
+  const name = displayName(item.book.name);
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: item.key });
   return (
-    <li
-      ref={setNodeRef}
-      style={{
-        transform: CSS.Translate.toString(transform),
-        transition,
-        opacity: isDragging ? 0.5 : 1,
-        zIndex: isDragging ? 1 : undefined,
-      }}
-      className="flex min-h-14 items-center gap-2 rounded-lg border bg-background p-2"
-    >
-      <button
-        type="button"
-        aria-label={`Drag ${item.book.name || 'Untitled'} from ${item.source}`}
-        className="flex min-h-11 min-w-11 touch-none cursor-grab items-center justify-center rounded text-muted-foreground hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset"
-        {...attributes}
-        {...listeners}
-      >
-        <GripVertical aria-hidden className="h-4 w-4" />
-      </button>
-      <span className="min-w-0 flex-1">
-        <strong className="block truncate text-label">{item.book.name || 'Untitled'}</strong>
-        <span className="text-meta uppercase tracking-wide text-muted-foreground">{item.source}</span>
-      </span>
-      <Button
-        type="button"
-        variant="ghost"
-        size="icon"
-        className="min-h-11 min-w-11"
-        aria-label={`Move ${item.book.name || 'Untitled'} from ${item.source} up`}
-        disabled={!canMoveUp}
-        onClick={() => onMove(-1)}
-      >
-        <ArrowUp aria-hidden className="h-4 w-4" />
+    <div role="listitem">
+      <EditorRow
+        setNodeRef={setNodeRef}
+        style={{
+          transform: CSS.Translate.toString(transform),
+          transition,
+          opacity: isDragging ? 0.5 : 1,
+          zIndex: isDragging ? 1 : undefined,
+        }}
+        gripProps={{ ...attributes, ...listeners }}
+        gripTitle={`Drag ${name} from ${sourceLabel(item.source)}`}
+        selected={selected}
+        onSelect={onInspect}
+        checkbox={{ checked: item.enabled, onChange: onToggle, ariaLabel: `Enable ${name} from ${sourceLabel(item.source)}` }}
+        icon={<Artwork src={item.book.thumbnail ?? undefined} name={name} fallback="cover" />}
+        label={(
+          <AdditionLabel
+            name={name}
+            ariaLabel={`Inspect ${name} from ${sourceLabel(item.source)}`}
+            buttonRef={buttonRef}
+            onInspect={onInspect}
+          />
+        )}
+        meta={(
+          <span className="flex flex-col items-end leading-tight">
+            <span>{sourceLabel(item.source)}</span>
+            <span>{item.enabled ? 'Enabled' : 'Disabled'}</span>
+          </span>
+        )}
+        metaTitle={`${sourceLabel(item.source)} dictionary, ${item.enabled ? 'enabled' : 'disabled'}`}
+        actions={[
+          {
+            icon: <ArrowUp aria-hidden className="h-4 w-4" />,
+            title: `Move ${name} from ${sourceLabel(item.source)} Up`,
+            onClick: () => onMove(-1),
+            disabled: !canMoveUp,
+          },
+          {
+            icon: <ArrowDown aria-hidden className="h-4 w-4" />,
+            title: `Move ${name} from ${sourceLabel(item.source)} Down`,
+            onClick: () => onMove(1),
+            disabled: !canMoveDown,
+          },
+        ]}
+      />
+    </div>
+  );
+}
+
+function DetailChoice({ id, checked, ariaLabel, label, onChange }: {
+  id: string;
+  checked: boolean;
+  ariaLabel: string;
+  label: string;
+  onChange: (checked: boolean) => void;
+}) {
+  return (
+    <div className="flex items-center gap-3 rounded-md border bg-background p-3">
+      <Checkbox
+        id={id}
+        checked={checked}
+        aria-label={ariaLabel}
+        onCheckedChange={(value) => onChange(value === true)}
+      />
+      <label htmlFor={id} className="text-label font-medium">{label}</label>
+    </div>
+  );
+}
+
+function AdditionDetails({ addition, entitySelected, dictionaryTotal, headingRef, onEntityToggle, onDictionaryToggle, onMove, onBack }: {
+  addition: InspectedAddition | null;
+  entitySelected: boolean;
+  dictionaryTotal: number;
+  headingRef: RefObject<HTMLHeadingElement>;
+  onEntityToggle: (entityId: string, selected: boolean) => void;
+  onDictionaryToggle: (key: string, enabled: boolean) => void;
+  onMove: (key: string, offset: -1 | 1) => void;
+  onBack: () => void;
+}) {
+  if (!addition) {
+    return (
+      <div className="flex h-full min-h-48 items-center justify-center p-6 text-center text-helper text-muted-foreground">
+        Select an entity or dictionary to inspect it.
+      </div>
+    );
+  }
+
+  const name = displayName(addition.kind === 'entity' ? addition.entity.name : addition.item.book.name);
+  const description = addition.kind === 'entity' ? addition.entity.description : addition.item.book.description;
+  const artwork = addition.kind === 'entity' ? addition.entity.image : addition.item.book.thumbnail;
+  return (
+    <div className="space-y-5 p-4 sm:p-5">
+      <Button type="button" variant="ghost" className="-ml-2 min-h-11 gap-2 md:hidden" onClick={onBack}>
+        <ArrowLeft aria-hidden className="h-4 w-4" />
+        <span>Back to Additions</span>
       </Button>
-      <Button
-        type="button"
-        variant="ghost"
-        size="icon"
-        className="min-h-11 min-w-11"
-        aria-label={`Move ${item.book.name || 'Untitled'} from ${item.source} down`}
-        disabled={!canMoveDown}
-        onClick={() => onMove(1)}
-      >
-        <ArrowDown aria-hidden className="h-4 w-4" />
-      </Button>
-    </li>
+      <div className="flex flex-col gap-4 lg:flex-row">
+        <Artwork
+          src={artwork ?? undefined}
+          name={name}
+          fallback={addition.kind === 'entity' ? 'portrait' : 'cover'}
+          large
+        />
+        <div className="min-w-0 flex-1">
+          <p className="mb-1 text-meta uppercase tracking-wide text-muted-foreground">
+            {addition.kind === 'entity' ? 'Entity' : `${sourceLabel(addition.item.source)} Dictionary`}
+          </p>
+          <h3 ref={headingRef} tabIndex={-1} className="break-words text-heading font-semibold outline-none">
+            {name}
+          </h3>
+          <p className="mt-3 whitespace-pre-wrap text-body text-muted-foreground">
+            {description?.trim() || 'No description is available.'}
+          </p>
+        </div>
+      </div>
+
+      {addition.kind === 'entity' ? (
+        <DetailChoice
+          id="addition-detail-entity-toggle"
+          checked={entitySelected}
+          ariaLabel={`Include ${name} in This Game`}
+          label="Included in This Game"
+          onChange={(selected) => onEntityToggle(addition.entity.id, selected)}
+        />
+      ) : (
+        <>
+          <DetailChoice
+            id="addition-detail-dictionary-toggle"
+            checked={addition.item.enabled}
+            ariaLabel={`Enable ${name} from ${sourceLabel(addition.item.source)} in This Game`}
+            label="Enabled in This Game"
+            onChange={(enabled) => onDictionaryToggle(addition.item.key, enabled)}
+          />
+          <div className="rounded-md border bg-background p-3">
+            <p className="text-label font-medium">Dictionary Order</p>
+            <p className="mt-1 text-helper text-muted-foreground">
+              Position {addition.position + 1} of {dictionaryTotal}
+            </p>
+            <p className="text-helper text-muted-foreground">
+              {addition.item.entryCount} {addition.item.entryCount === 1 ? 'entry' : 'entries'}
+            </p>
+            <div className="mt-3 flex gap-2">
+              <Button
+                type="button"
+                variant="outline"
+                className="min-h-11 flex-1 gap-2"
+                aria-label={`Move ${name} Up`}
+                disabled={addition.position === 0}
+                onClick={() => onMove(addition.item.key, -1)}
+              >
+                <ArrowUp aria-hidden className="h-4 w-4" /> Move Up
+              </Button>
+              <Button
+                type="button"
+                variant="outline"
+                className="min-h-11 flex-1 gap-2"
+                aria-label={`Move ${name} Down`}
+                disabled={addition.position === dictionaryTotal - 1}
+                onClick={() => onMove(addition.item.key, 1)}
+              >
+                <ArrowDown aria-hidden className="h-4 w-4" /> Move Down
+              </Button>
+            </div>
+          </div>
+        </>
+      )}
+    </div>
   );
 }
 
 export default function EnterWorldLibrary(props: EnterWorldLibraryProps) {
+  const isMobile = useIsMobile();
   const [query, setQuery] = useState('');
+  const [inspectedKey, setInspectedKey] = useState<string | null>(null);
+  const [mobileDetailsOpen, setMobileDetailsOpen] = useState(false);
+  const headingRef = useRef<HTMLHeadingElement>(null);
+  const searchRef = useRef<HTMLInputElement>(null);
+  const openerRefs = useRef(new Map<string, HTMLButtonElement>());
+  const restoreFocus = useRef(false);
   const normalizedQuery = query.trim().toLocaleLowerCase();
   const matchesQuery = (name: string, description?: string) => (
     !normalizedQuery
     || name.toLocaleLowerCase().includes(normalizedQuery)
     || description?.toLocaleLowerCase().includes(normalizedQuery)
   );
-  const updateDictionary = (key: string, enabled: boolean) => props.onDictionaryItemsChange(
-    props.dictionaryItems.map((item) => item.key === key ? { ...item, enabled } : item),
-  );
   const visibleEntities = props.entities.filter((entity) => matchesQuery(entity.name, entity.description));
-  const libraryBooks = props.dictionaryItems.filter((item) => (
-    item.source === 'library' && matchesQuery(item.book.name, item.book.description)
-  ));
-  const worldBooks = props.dictionaryItems.filter((item) => (
-    item.source === 'world' && matchesQuery(item.book.name, item.book.description)
-  ));
   const visibleDictionaryItems = props.dictionaryItems.filter((item) => (
     matchesQuery(item.book.name, item.book.description)
   ));
   const visibleDictionaryKeys = visibleDictionaryItems.map((item) => item.key);
+  const inspected = useMemo<InspectedAddition | null>(() => {
+    if (!inspectedKey) return null;
+    if (inspectedKey.startsWith('entity:')) {
+      const entity = props.entities.find((candidate) => entityInspectionKey(candidate.id) === inspectedKey);
+      return entity ? { kind: 'entity', entity } : null;
+    }
+    const position = props.dictionaryItems.findIndex(
+      (candidate) => dictionaryInspectionKey(candidate.key) === inspectedKey,
+    );
+    return position >= 0 ? { kind: 'dictionary', item: props.dictionaryItems[position], position } : null;
+  }, [inspectedKey, props.dictionaryItems, props.entities]);
+
+  useEffect(() => {
+    if (isMobile && mobileDetailsOpen) headingRef.current?.focus({ preventScroll: true });
+  }, [inspectedKey, isMobile, mobileDetailsOpen]);
+  useEffect(() => {
+    if (!isMobile || mobileDetailsOpen || !restoreFocus.current || !inspectedKey) return;
+    restoreFocus.current = false;
+    (openerRefs.current.get(inspectedKey) ?? searchRef.current)?.focus({ preventScroll: true });
+  }, [inspectedKey, isMobile, mobileDetailsOpen]);
+
+  const inspect = (key: string) => {
+    setInspectedKey(key);
+    if (isMobile) setMobileDetailsOpen(true);
+  };
+  const closeDetails = () => {
+    restoreFocus.current = true;
+    setMobileDetailsOpen(false);
+  };
+  const setOpenerRef = (key: string) => (node: HTMLButtonElement | null) => {
+    if (node) openerRefs.current.set(key, node);
+    else openerRefs.current.delete(key);
+  };
+  const updateDictionary = (key: string, enabled: boolean) => props.onDictionaryItemsChange(
+    props.dictionaryItems.map((item) => item.key === key ? { ...item, enabled } : item),
+  );
   const reorder = (fromKey: string, toKey: string) => props.onDictionaryItemsChange(
     reorderVisibleItems(props.dictionaryItems, visibleDictionaryKeys, fromKey, toKey),
   );
@@ -172,105 +343,154 @@ export default function EnterWorldLibrary(props: EnterWorldLibraryProps) {
     if (over) reorder(String(active.id), String(over.id));
   };
   const move = (key: string, offset: -1 | 1) => {
-    const index = visibleDictionaryKeys.indexOf(key);
-    const destination = visibleDictionaryKeys[index + offset];
-    if (destination) reorder(key, destination);
+    const index = props.dictionaryItems.findIndex((item) => item.key === key);
+    const destination = index + offset;
+    if (index < 0 || destination < 0 || destination >= props.dictionaryItems.length) return;
+    const next = [...props.dictionaryItems];
+    [next[index], next[destination]] = [next[destination], next[index]];
+    props.onDictionaryItemsChange(next);
   };
+  const entityCount = props.entities.filter((entity) => props.selectedEntityIds.has(entity.id)).length;
+  const dictionaryCount = props.dictionaryItems.filter((item) => item.enabled).length;
+  const listVisible = !isMobile || !mobileDetailsOpen;
+  const detailsVisible = !isMobile || mobileDetailsOpen;
 
   return (
-    <div className="space-y-6">
-      <div className="relative">
-        <Search aria-hidden className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-        <Input
-          type="search"
-          aria-label="Search library additions"
-          placeholder="Search additions"
-          value={query}
-          onChange={(event) => setQuery(event.target.value)}
-          className="pl-9"
-        />
-      </div>
-
-      <section aria-labelledby="library-entities-heading">
-        <h3 id="library-entities-heading" className="mb-3 text-title font-semibold">Entities</h3>
-        {visibleEntities.length ? (
-          <div className="grid min-w-0 gap-3 xl:grid-cols-2">
-            {visibleEntities.map((entity) => (
-              <ChoiceRow
-                key={entity.id}
-                checked={props.selectedEntityIds.has(entity.id)}
-                name={entity.name || 'Untitled'}
-                ariaLabel={`Include ${entity.name || 'Untitled'}`}
-                description={entity.description}
-                artwork={<Artwork src={entity.image} alt={`${entity.name || 'Untitled'} portrait`} fallback="portrait" />}
-                onCheckedChange={(selected) => props.onEntityToggle(entity.id, selected)}
-              />
-            ))}
+    <div className="relative grid min-h-0 flex-1 grid-cols-1 gap-4 md:grid-cols-[minmax(18rem,0.95fr)_minmax(20rem,1.05fr)]">
+      <section
+        role="region"
+        aria-label="Library Additions List"
+        aria-hidden={!listVisible}
+        {...(!listVisible ? { inert: '' } : {})}
+        className={cn(
+          'flex min-h-0 flex-col overflow-hidden rounded-lg border bg-card',
+          !listVisible && 'invisible pointer-events-none absolute inset-0',
+        )}
+      >
+        <div className="shrink-0 border-b p-3">
+          <div className="relative">
+            <Search aria-hidden className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+            <Input
+              ref={searchRef}
+              type="search"
+              aria-label="Search Library Additions"
+              placeholder="Search additions"
+              value={query}
+              onChange={(event) => setQuery(event.target.value)}
+              className="pl-9"
+            />
           </div>
-        ) : <EmptySection>{props.entities.length ? 'No entities match your search.' : 'No entities are available.'}</EmptySection>}
+        </div>
+        <ScrollArea type="always" className="min-h-0 flex-1">
+          <div className="space-y-6 p-3">
+            <section aria-labelledby="library-entities-heading">
+              <div className="mb-2 flex items-baseline justify-between gap-3">
+                <h3 id="library-entities-heading" className="text-title font-semibold">Entities</h3>
+                <p className="text-meta text-muted-foreground">
+                  {entityCount} of {props.entities.length} entities included
+                </p>
+              </div>
+              {visibleEntities.length ? (
+                <EditorRowList role="list" aria-label="Entities">
+                  {visibleEntities.map((entity) => {
+                    const key = entityInspectionKey(entity.id);
+                    const name = displayName(entity.name);
+                    return (
+                      <div key={key} role="listitem">
+                        <EditorRow
+                          grip={false}
+                          selected={inspectedKey === key}
+                          onSelect={() => inspect(key)}
+                          checkbox={{
+                            checked: props.selectedEntityIds.has(entity.id),
+                            onChange: (selected) => props.onEntityToggle(entity.id, selected),
+                            ariaLabel: `Include ${name}`,
+                          }}
+                          icon={<Artwork src={entity.image} name={name} fallback="portrait" />}
+                          label={(
+                            <AdditionLabel
+                              name={name}
+                              ariaLabel={`Inspect ${name}`}
+                              buttonRef={setOpenerRef(key)}
+                              onInspect={() => inspect(key)}
+                            />
+                          )}
+                          meta={props.selectedEntityIds.has(entity.id) ? 'Included' : 'Excluded'}
+                        />
+                      </div>
+                    );
+                  })}
+                </EditorRowList>
+              ) : (
+                <EmptySection>{props.entities.length ? 'No entities match your search.' : 'No entities are available.'}</EmptySection>
+              )}
+            </section>
+
+            <section aria-labelledby="library-dictionaries-heading">
+              <div className="mb-2 flex items-baseline justify-between gap-3">
+                <h3 id="library-dictionaries-heading" className="text-title font-semibold">Dictionaries</h3>
+                <p className="text-meta text-muted-foreground">
+                  {dictionaryCount} of {props.dictionaryItems.length} dictionaries enabled
+                </p>
+              </div>
+              {visibleDictionaryItems.length ? (
+                <EditorDndContext collisionDetection={closestCorners} onDragEnd={handleDragEnd}>
+                  <StableSortableContext
+                    items={visibleDictionaryItems}
+                    getId={(item) => item.key}
+                    strategy={verticalListSortingStrategy}
+                  >
+                    <EditorRowList role="list" aria-label="Dictionary Order">
+                      {visibleDictionaryItems.map((item) => {
+                        const key = dictionaryInspectionKey(item.key);
+                        const position = props.dictionaryItems.findIndex((candidate) => candidate.key === item.key);
+                        return (
+                          <DictionaryRow
+                            key={item.key}
+                            item={item}
+                            selected={inspectedKey === key}
+                            canMoveUp={position > 0}
+                            canMoveDown={position >= 0 && position < props.dictionaryItems.length - 1}
+                            buttonRef={setOpenerRef(key)}
+                            onInspect={() => inspect(key)}
+                            onToggle={(enabled) => updateDictionary(item.key, enabled)}
+                            onMove={(offset) => move(item.key, offset)}
+                          />
+                        );
+                      })}
+                    </EditorRowList>
+                  </StableSortableContext>
+                </EditorDndContext>
+              ) : (
+                <EmptySection>{props.dictionaryItems.length ? 'No dictionaries match your search.' : 'No dictionaries are available.'}</EmptySection>
+              )}
+            </section>
+          </div>
+        </ScrollArea>
       </section>
 
-      <section aria-labelledby="library-dictionaries-heading">
-        <h3 id="library-dictionaries-heading" className="mb-3 text-title font-semibold">Library dictionaries</h3>
-        {libraryBooks.length ? (
-          <div className="grid min-w-0 gap-3 xl:grid-cols-2">
-            {libraryBooks.map((item) => (
-              <ChoiceRow
-                key={item.key}
-                checked={item.enabled}
-                name={item.book.name || 'Untitled'}
-                ariaLabel={`Enable ${item.book.name || 'Untitled'} from library`}
-                description={item.book.description}
-                artwork={<Artwork src={item.book.thumbnail ?? undefined} alt={`${item.book.name || 'Untitled'} cover`} fallback="cover" />}
-                onCheckedChange={(enabled) => updateDictionary(item.key, enabled)}
-              />
-            ))}
-          </div>
-        ) : <EmptySection>{props.dictionaryItems.some((item) => item.source === 'library') ? 'No library dictionaries match your search.' : 'No library dictionaries are available.'}</EmptySection>}
-      </section>
-
-      <section aria-labelledby="world-dictionaries-heading">
-        <h3 id="world-dictionaries-heading" className="mb-3 text-title font-semibold">Included with this world</h3>
-        {worldBooks.length ? (
-          <div className="grid min-w-0 gap-3 xl:grid-cols-2">
-            {worldBooks.map((item) => (
-              <ChoiceRow
-                key={item.key}
-                checked={item.enabled}
-                name={item.book.name || 'Untitled'}
-                ariaLabel={`Enable ${item.book.name || 'Untitled'} from world`}
-                description={item.book.description}
-                artwork={<Artwork src={item.book.thumbnail ?? undefined} alt={`${item.book.name || 'Untitled'} cover`} fallback="cover" />}
-                onCheckedChange={(enabled) => updateDictionary(item.key, enabled)}
-              />
-            ))}
-          </div>
-        ) : <EmptySection>{props.dictionaryItems.some((item) => item.source === 'world') ? 'No world dictionaries match your search.' : 'This world includes no dictionaries.'}</EmptySection>}
-      </section>
-
-      <section aria-labelledby="dictionary-order-heading">
-        <h3 id="dictionary-order-heading" className="mb-3 text-title font-semibold">Dictionary order</h3>
-        {visibleDictionaryItems.length ? (
-          <EditorDndContext collisionDetection={closestCorners} onDragEnd={handleDragEnd}>
-            <StableSortableContext
-              items={visibleDictionaryItems}
-              getId={(item) => item.key}
-              strategy={verticalListSortingStrategy}
-            >
-              <ol aria-label="Dictionary order" className="flex flex-col gap-2">
-                {visibleDictionaryItems.map((item, index) => (
-                  <DictionaryOrderRow
-                    key={item.key}
-                    item={item}
-                    canMoveUp={index > 0}
-                    canMoveDown={index < visibleDictionaryItems.length - 1}
-                    onMove={(offset) => move(item.key, offset)}
-                  />
-                ))}
-              </ol>
-            </StableSortableContext>
-          </EditorDndContext>
-        ) : <EmptySection>{props.dictionaryItems.length ? 'No dictionaries match your search.' : 'No dictionaries are available.'}</EmptySection>}
+      <section
+        role="region"
+        aria-label="Addition Details"
+        aria-hidden={!detailsVisible}
+        {...(!detailsVisible ? { inert: '' } : {})}
+        className={cn(
+          'min-h-0 overflow-hidden rounded-lg border bg-card',
+          !detailsVisible && 'invisible pointer-events-none absolute inset-0',
+        )}
+      >
+        <ScrollArea type="always" className="h-full min-h-0">
+          <AdditionDetails
+            addition={inspected}
+            entitySelected={inspected?.kind === 'entity' && props.selectedEntityIds.has(inspected.entity.id)}
+            dictionaryTotal={props.dictionaryItems.length}
+            headingRef={headingRef}
+            onEntityToggle={props.onEntityToggle}
+            onDictionaryToggle={updateDictionary}
+            onMove={move}
+            onBack={closeDetails}
+          />
+        </ScrollArea>
       </section>
     </div>
   );
