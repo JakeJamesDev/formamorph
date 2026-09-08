@@ -1,6 +1,6 @@
 # 02: Unify Library Rows, Inspection, and Dictionary Ordering
 
-Status: ready-for-agent
+Status: ready-for-human
 Blocked by: None (can start immediately)
 Recommended model: GPT-5.6 Sol (`gpt-5.6-sol`)
 Reasoning effort: high
@@ -17,18 +17,18 @@ Model rationale: a complete UI and state integration slice involving search, sou
 
 ## Acceptance criteria
 
-- [ ] Reuse the production EditorRow and EditorRowList for separate Entities and Dictionaries sections. Combine world and library dictionaries into one ordered list with source labels and explicit enabled state.
-- [ ] Preserve source-qualified identity when world and library dictionaries have the same underlying ID. Disabled dictionaries retain their positions.
-- [ ] Inspecting a row does not change inclusion. Toggling a row checkbox does not switch the inspected item. Row/detail inclusion controls and totals stay synchronized.
-- [ ] Details expose full names, descriptions, artwork or meaningful missing-art fallbacks, inclusion, and dictionary order. Long row names truncate without losing access to their full text.
-- [ ] Search filters presentation without clearing inspection, choices, or order; distinguish empty content from no search matches.
-- [ ] Dragging filtered dictionaries changes visible relative order while hidden items retain their slots. Use the shared editor drag infrastructure, stable sortable identity, and translation without scale.
-- [ ] Move Up/Down operates on complete dictionary order, disables unavailable boundary actions, and provides an alternative to dragging for keyboard and touch users.
-- [ ] Use bounded shared ScrollArea viewports for list and details, with themed thumbs and reserved gutters. Verify overflow with realistic content in dark/light themes and a representative alternate palette/font.
-- [ ] Provide usable full-width details and Back at the existing narrow boundary. Preserve list scroll and inspected identity, move focus without automatic scrolling, and exclude inactive controls from interaction and accessibility navigation. The new three-stage responsive behavior and transition verification belong to 03.
-- [ ] Integrate with the existing draft owner: game continuation and explicit saved-additions actions receive the real choices and complete order. Preserve existing source-copy, cancellation, and finalization contracts without new schemas or APIs.
-- [ ] Extend the stateful workspace tests for independent actions, source-ID collisions, filtered ordering, disabled items, and boundary controls. Exercise actual dragging and game-entry integration through the existing browser flow and editor drag-test conventions.
-- [ ] Demonstrate important guards fail with their defect reinstated, complete applicable gates, and report test wall time. Do not weaken fixtures, ship sample data, or create a new app-wide list standard.
+- [x] Reuse the production EditorRow and EditorRowList for separate Entities and Dictionaries sections. Combine world and library dictionaries into one ordered list with source labels and explicit enabled state.
+- [x] Preserve source-qualified identity when world and library dictionaries have the same underlying ID. Disabled dictionaries retain their positions.
+- [x] Inspecting a row does not change inclusion. Toggling a row checkbox does not switch the inspected item. Row/detail inclusion controls and totals stay synchronized.
+- [x] Details expose full names, descriptions, artwork or meaningful missing-art fallbacks, inclusion, and dictionary order. Long row names truncate without losing access to their full text.
+- [x] Search filters presentation without clearing inspection, choices, or order; distinguish empty content from no search matches.
+- [x] Dragging filtered dictionaries changes visible relative order while hidden items retain their slots. Use the shared editor drag infrastructure, stable sortable identity, and translation without scale.
+- [x] Move Up/Down operates on complete dictionary order, disables unavailable boundary actions, and provides an alternative to dragging for keyboard and touch users.
+- [x] Use bounded shared ScrollArea viewports for list and details, with themed thumbs and reserved gutters. Verify overflow with realistic content in dark/light themes and a representative alternate palette/font.
+- [x] Provide usable full-width details and Back at the existing narrow boundary. Preserve list scroll and inspected identity, move focus without automatic scrolling, and exclude inactive controls from interaction and accessibility navigation. The new three-stage responsive behavior and transition verification belong to 03.
+- [x] Integrate with the existing draft owner: game continuation and explicit saved-additions actions receive the real choices and complete order. Preserve existing source-copy, cancellation, and finalization contracts without new schemas or APIs.
+- [x] Extend the stateful workspace tests for independent actions, source-ID collisions, filtered ordering, disabled items, and boundary controls. Exercise actual dragging and game-entry integration through the existing browser flow and editor drag-test conventions.
+- [x] Demonstrate important guards fail with their defect reinstated, complete applicable gates, and report test wall time. Do not weaken fixtures, ship sample data, or create a new app-wide list standard.
 
 ## Coordination
 

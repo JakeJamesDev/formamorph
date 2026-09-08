@@ -26,6 +26,7 @@ export interface EditorRowAction {
   /** Tooltip and accessible name. */
   title: string;
   onClick: () => void;
+  disabled?: boolean;
 }
 
 export interface EditorRowProps {
@@ -53,7 +54,7 @@ export interface EditorRowProps {
   collapseLabels?: [string, string];
 
   /** The enabled toggle, where the surface offers one. */
-  checkbox?: { checked: boolean; onChange: (checked: boolean) => void };
+  checkbox?: { checked: boolean; onChange: (checked: boolean) => void; ariaLabel?: string };
   /** Between the grip and the label (e.g. a folder glyph on group rows). */
   icon?: ReactNode;
   label: ReactNode;
@@ -149,7 +150,11 @@ export function EditorRow({
             checked={checkbox.checked}
             onCheckedChange={(v) => checkbox.onChange(v === true)}
             onClick={(e) => e.stopPropagation()}
-            className="mx-1 shrink-0"
+            aria-label={checkbox.ariaLabel}
+            className={cn(
+              'mx-1 shrink-0',
+              selected && 'border-primary-foreground data-[state=checked]:border-primary-foreground data-[state=checked]:bg-primary-foreground data-[state=checked]:text-primary',
+            )}
           />
         </Tip>
       )}
@@ -175,6 +180,8 @@ export function EditorRow({
             size="icon"
             className={cn('shrink-0', chrome)}
             onClick={(e) => { e.stopPropagation(); action.onClick(); }}
+            disabled={action.disabled}
+            aria-label={action.title}
           >
             {action.icon}
           </Button>

@@ -283,7 +283,10 @@ export default function EnterWorldWorkspace(props: EnterWorldWorkspaceProps) {
             </div>
           </div>
         </aside>
-        <main className="min-h-0 min-w-0 flex-1 overflow-y-auto p-4 md:px-6 md:py-4">
+        <main className={cn(
+          'flex min-h-0 min-w-0 flex-1 flex-col p-4 md:px-6 md:py-4',
+          current?.kind === 'library' ? 'overflow-hidden' : 'overflow-y-auto',
+        )}>
           {current?.kind === 'traits' && (
             <>
               <p className="mb-1 text-meta font-medium tracking-wide text-muted-foreground">Starting Traits</p>
