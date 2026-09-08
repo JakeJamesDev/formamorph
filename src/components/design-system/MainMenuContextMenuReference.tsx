@@ -1,9 +1,12 @@
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
+import { LibraryGroupPicker } from '@/components/library/LibraryGroupPicker';
+import { useDevRoute } from '@/lib/devRouter';
 import { LibraryTileContextMenu, type LibraryTileMenuModel } from '@/components/library/LibraryTileContextMenu';
 import { WorldCardShell } from '@/components/WorldCardShell';
 import { ConfirmDialog } from '@/components/ConfirmDialog';
 import { Button } from '@/components/ui/button';
-import type { LibraryGroup, LibraryTileSize } from '@/lib/libraryOrganization';
+import { addToGroup, createGroupFromItem, disbandGroup, emptyTabOrganization, groupOf, removeFromGroup, setTileSize, tileSize, type LibraryGroup } from '@/lib/libraryOrganization';
+import { randomUUID } from '@/lib/uuid';
 import { Hint, Meta } from '@/components/ui/typography';
 
 const SAMPLE_ID = 'context-menu-sample-world';
@@ -16,31 +19,45 @@ const SAMPLE_GROUPS: LibraryGroup[] = [
   { id: 'puzzles', name: 'Puzzle Worlds', members: [], settings: {} },
   { id: 'drafts', name: 'Drafts to Revisit', members: [], settings: {} },
   { id: 'shared', name: 'Shared Table Worlds', members: [], settings: {} },
+  { id: 'winter', name: 'Winter Adventures', members: [], settings: {} },
+  { id: 'science', name: 'Science Fiction', members: [], settings: {} },
+  { id: 'one-shot', name: 'One-Shot Worlds', members: [], settings: {} },
+  { id: 'finished', name: 'Recently Finished', members: [], settings: {} },
 ];
 
 export function MainMenuContextMenuReference() {
-  const [size, setSize] = useState<LibraryTileSize>('medium');
-  const [groupId, setGroupId] = useState<string>();
-  const [createdGroup, setCreatedGroup] = useState<LibraryGroup>();
+  const route = useDevRoute();
+  const pickerOpener = useRef<HTMLButtonElement>(null);
+  const [panel, setPanel] = useState<'picker' | 'create' | null>(null);
+  useEffect(() => {
+    if (route?.modal === 'designSystem' && route.tab === 'context-menu' && (route.subtab === 'picker' || route.subtab === 'create')) {
+      setPanel(route.subtab);
+    }
+  }, [route]);
+  const [organization, setOrganization] = useState(() => ({
+    ...emptyTabOrganization(),
+    order: [SAMPLE_ID, ...SAMPLE_GROUPS.map((group) => group.id)],
+    groups: Object.fromEntries(SAMPLE_GROUPS.map((group) => [group.id, group])),
+  }));
   const [pendingDelete, setPendingDelete] = useState(false);
   const [deleted, setDeleted] = useState(false);
-  const groups = createdGroup ? [...SAMPLE_GROUPS, createdGroup] : SAMPLE_GROUPS;
-  const group = groups.find((candidate) => candidate.id === groupId);
+  const groups = organization.order.flatMap((id) => organization.groups[id] ? [organization.groups[id]] : []);
+  const group = groupOf(organization, SAMPLE_ID);
+  const size = tileSize(organization, SAMPLE_ID);
 
   const tiles: LibraryTileMenuModel = {
     groups,
     group: () => undefined,
     groupOfItem: () => group,
     size: () => size,
-    setSize: (_id, nextSize) => setSize(nextSize),
-    addTo: (_itemId, nextGroupId) => setGroupId(nextGroupId),
-    groupWithNew: () => {
-      const next = { id: 'new-group', name: 'New Group', members: [SAMPLE_ID], settings: {} };
-      setCreatedGroup(next);
-      setGroupId(next.id);
+    setSize: (id, nextSize) => setOrganization((prev) => setTileSize(prev, id, nextSize)),
+    addTo: (itemId, groupId) => setOrganization((prev) => addToGroup(prev, itemId, groupId)),
+    groupWithNew: (itemId, name) => {
+      const groupId = randomUUID();
+      setOrganization((prev) => createGroupFromItem(prev, { groupId, itemId, name }));
     },
-    removeFrom: () => setGroupId(undefined),
-    disband: () => undefined,
+    removeFrom: (itemId) => setOrganization((prev) => removeFromGroup(prev, itemId)),
+    disband: (groupId) => setOrganization((prev) => disbandGroup(prev, groupId)),
   };
 
   return (
@@ -61,6 +78,7 @@ export function MainMenuContextMenuReference() {
         ) : (
           <LibraryTileContextMenu
             id={SAMPLE_ID}
+            name="The Lantern District"
             tiles={tiles}
             layout="grid"
             renderedIds={[SAMPLE_ID]}
@@ -80,6 +98,21 @@ export function MainMenuContextMenuReference() {
           </LibraryTileContextMenu>
         )}
       </div>
+
+      <div>
+        <Button ref={pickerOpener} variant="outline" disabled={deleted} onClick={() => setPanel('picker')}>Add To Group…</Button>
+      </div>
+      {panel && <LibraryGroupPicker
+        key={panel}
+        name="The Lantern District"
+        groups={groups}
+        currentGroupId={group?.id}
+        initialPanel={panel}
+        onSelect={(groupId) => tiles.addTo(SAMPLE_ID, groupId)}
+        onCreate={(name) => tiles.groupWithNew(SAMPLE_ID, name)}
+        onClose={() => setPanel(null)}
+        restoreFocus={() => pickerOpener.current?.focus({ preventScroll: true })}
+      />}
 
       <div className="rounded-md border border-border bg-muted/30 p-3" role="status" aria-live="polite">
         <div className="grid gap-1">

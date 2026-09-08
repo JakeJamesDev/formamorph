@@ -27,6 +27,7 @@ describe('LibraryTileContextMenu', () => {
     render(
       <LibraryTileContextMenu
         id={group.id}
+        name={group.name}
         tiles={tiles}
         layout="grid"
         renderedIds={[group.id]}
@@ -53,6 +54,7 @@ describe('LibraryTileContextMenu', () => {
     render(
       <LibraryTileContextMenu
         id="world-1"
+        name="World"
         tiles={{ ...groupTileModel(), group: () => undefined }}
         layout="detailed"
         renderedIds={['world-1']}

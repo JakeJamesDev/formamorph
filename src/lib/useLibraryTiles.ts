@@ -43,7 +43,7 @@ export interface LibraryTiles {
   setSize: (id: string, size: LibraryTileSize, ids?: string[], columns?: number) => void;
   addTo: (itemId: string, groupId: string) => void;
   /** Fold a tile into a brand-new folder on its own, for the context menu's New Group entry. */
-  groupWithNew: (itemId: string) => void;
+  groupWithNew: (itemId: string, name?: string) => void;
   /** Fold two loose tiles into one new folder where the target stood, for the drag's group drop. */
   groupWith: (itemId: string, targetId: string) => void;
   removeFrom: (itemId: string) => void;
@@ -98,8 +98,9 @@ export function useLibraryTiles(
     [topLevel, organization],
   );
 
-  const groupWithNew = useCallback((itemId: string) => {
-    setOrganization((prev) => createGroupFromItem(prev, { groupId: randomUUID(), itemId }));
+  const groupWithNew = useCallback((itemId: string, name?: string) => {
+    const groupId = randomUUID();
+    setOrganization((prev) => createGroupFromItem(prev, { groupId, itemId, name }));
   }, []);
 
   return {

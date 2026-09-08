@@ -1,4 +1,5 @@
-import { useState, type ComponentType } from 'react';
+import { useEffect, useState, type ComponentType } from 'react';
+import { useDevRoute } from '@/lib/devRouter';
 import { BookOpen, MonitorCog } from 'lucide-react';
 import {
   CheckRow,
@@ -380,7 +381,13 @@ const DESIGN_SYSTEM_REFERENCES: readonly ReferenceDefinition[] = [
 ];
 
 export function DesignSystemShowcase() {
+  const route = useDevRoute();
   const [activeReference, setActiveReference] = useState(DESIGN_SYSTEM_REFERENCES[0].id);
+  useEffect(() => {
+    if (route?.modal === 'designSystem' && DESIGN_SYSTEM_REFERENCES.some((reference) => reference.id === route.tab)) {
+      setActiveReference(route.tab!);
+    }
+  }, [route]);
 
   return (
     <main data-design-system-showcase className="fixed inset-0 overflow-y-auto bg-background text-foreground">

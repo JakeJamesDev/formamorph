@@ -1,6 +1,6 @@
 # 01: Implement Short Tile Menus And Compact Group Selection
 
-Status: ready-for-agent
+Status: ready-for-human
 Blocked by: None (can start immediately)
 Recommended model: GPT-6 Astra (`gpt-6-astra`)
 Reasoning effort: high
@@ -17,20 +17,20 @@ Astra is recommended for the interaction-heavy integration: preserve library ide
 
 ## Acceptance criteria
 
-- [ ] Retain applicable Tile Size, group-tile, removal, and deletion behavior. Keep the individual-world Add To Group section bounded to the first three eligible destinations in existing order, excluding the current group from direct move shortcuts.
-- [ ] Existing destinations are text-only, aligned with the label column, and truncated to one line. Preserve full accessible names. Use shared tooltips if needed; do not use native title tooltips as the accessibility solution.
-- [ ] Follow shortcuts with FolderPlus + Create New Group… and FolderSearch + Add To Group…. The latter is last in its section; destructive Delete stays separated below.
-- [ ] Menu labels are brief. Explanations belong outside the menu. Ordinary desktop/mobile menus fit without routine scrolling; short heights, zoom, and enlarged fonts must not make actions unreachable. Any necessary fallback uses the shared scrollbar treatment.
-- [ ] Add To Group… opens a dialog naming the world with Find a Group, the full destination list, and grouped Cancel | Create New Group… footer actions.
-- [ ] Search filters names without reordering groups. Show an empty-result state. Full names wrap in the picker; the current assignment has selected styling and a check.
-- [ ] Introduce a reusable compact row for simple choices: 32px minimum height, 8px horizontal and 6px vertical padding, no inter-row gap, and no reserved grip, icon, metadata, or action columns. Preserve native keyboard activation and visible focus. Let typography and wrapped names increase height when necessary.
-- [ ] Choosing a group uses stable production identifiers, updates assignment, and closes the picker. Choosing the current group is a no-op assignment. Opening, Cancel, Close, and Escape do not mutate the library.
-- [ ] Both creation entry points offer a naming dialog with Cancel | Create Group. Reject blank and trimmed case-insensitive duplicate names without modifying existing duplicate-named groups. Create and assign through existing production operations; do not add a storage schema or use names as identity.
-- [ ] Search receives focus after menu teardown; dismissal returns focus to a valid opener. Preserve right-click, touch access, Shift+F10/Context Menu key, keyboard selection, and relevant disabled states.
-- [ ] Use the shared 10px arrowless scrollbar within the bounded picker pane. Search and footer stay outside the scrolling content.
-- [ ] Replace the demonstration composition with a production-backed showcase using isolated fixtures/callbacks. It must not mutate stored worlds, call endpoints, or ship the prototype route in production.
-- [ ] Add guide sections for short context menus, compact lists, and the group-picker composition, including states and mobile behavior. Keep shared visual values in production components. Preserve STE role review and authored names.
-- [ ] Pass typecheck, lint, tests, build, and live UI verification. Time each test run, apply the project test-quality requirements, update the code graph after code changes, and add the appropriate In-Progress changelog entry.
+- [x] Retain applicable Tile Size, group-tile, removal, and deletion behavior. Keep the individual-world Add To Group section bounded to the first three eligible destinations in existing order, excluding the current group from direct move shortcuts.
+- [x] Existing destinations are text-only, aligned with the label column, and truncated to one line. Preserve full accessible names. Use shared tooltips if needed; do not use native title tooltips as the accessibility solution.
+- [x] Follow shortcuts with FolderPlus + Create New Group… and FolderSearch + Add To Group…. The latter is last in its section; destructive Delete stays separated below.
+- [x] Menu labels are brief. Explanations belong outside the menu. Ordinary desktop/mobile menus fit without routine scrolling; short heights, zoom, and enlarged fonts must not make actions unreachable. Any necessary fallback uses the shared scrollbar treatment.
+- [x] Add To Group… opens a dialog naming the world with Find a Group, the full destination list, and grouped Cancel | Create New Group… footer actions.
+- [x] Search filters names without reordering groups. Show an empty-result state. Full names wrap in the picker; the current assignment has selected styling and a check.
+- [x] Introduce a reusable compact row for simple choices: 32px minimum height, 8px horizontal and 6px vertical padding, no inter-row gap, and no reserved grip, icon, metadata, or action columns. Preserve native keyboard activation and visible focus. Let typography and wrapped names increase height when necessary.
+- [x] Choosing a group uses stable production identifiers, updates assignment, and closes the picker. Choosing the current group is a no-op assignment. Opening, Cancel, Close, and Escape do not mutate the library.
+- [x] Both creation entry points offer a naming dialog with Cancel | Create Group. Reject blank and trimmed case-insensitive duplicate names without modifying existing duplicate-named groups. Create and assign through existing production operations; do not add a storage schema or use names as identity.
+- [x] Search receives focus after menu teardown; dismissal returns focus to a valid opener. Preserve right-click, touch access, Shift+F10/Context Menu key, keyboard selection, and relevant disabled states.
+- [x] Use the shared 10px arrowless scrollbar within the bounded picker pane. Search and footer stay outside the scrolling content.
+- [x] Replace the demonstration composition with a production-backed showcase using isolated fixtures/callbacks. It must not mutate stored worlds, call endpoints, or ship the prototype route in production.
+- [x] Add guide sections for short context menus, compact lists, and the group-picker composition, including states and mobile behavior. Keep shared visual values in production components. Preserve STE role review and authored names.
+- [x] Pass typecheck, lint, tests, build, and live UI verification. Time each test run, apply the project test-quality requirements, update the code graph after code changes, and add the appropriate In-Progress changelog entry.
 
 ## Verification
 
@@ -47,3 +47,8 @@ Do only necessary prefactoring before integration. No bulk migration of other li
 ## Parent
 
 [Design Standards Additions](../spec.md).
+## Comments
+
+Implemented with production library operations, compact picker rows, named creation, focus handoff and grid fallback, and shared scrollbar overflow. Typecheck/lint/build passed; full suite: 8,626 passed in 63.46s. Final focused coverage: 118 passed in 11.24s; menu/picker/row/showcase 100% lines. Eight mutation checks failed as intended and source was restored. Graph update completed.
+
+[Review and evidence](../../../designs/design-system/group-picker-review.md) records desktop/mobile, both themes, alternate palette/font, short-height and enlarged-text checks. Native browser zoom and physical touch-device checks remain for human review; browser zoom shortcuts produced no measurable change in this environment. No version or export shape changed.

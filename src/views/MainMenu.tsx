@@ -1798,6 +1798,7 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
         <LibraryTileGrid
           items={models}
           idOf={(model) => model.id}
+          nameOf={(model) => model.name}
           tiles={modelTiles}
           layout="grid"
           aspect="portrait"
@@ -1839,6 +1840,7 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
         <LibraryTileGrid
           items={entities}
           idOf={(entity) => entity.id}
+          nameOf={(entity) => entity.name}
           tiles={entityTiles}
           layout={layoutMode}
           aspect="portrait"
@@ -1868,6 +1870,7 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
         <LibraryTileGrid
           items={dictionaries}
           idOf={(dictionary) => dictionary.id}
+          nameOf={(dictionary) => dictionary.name}
           tiles={dictionaryTiles}
           layout={layoutMode}
           aspect="landscape"
@@ -1899,6 +1902,7 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
         <LibraryTileGrid
           items={shownWorlds}
           idOf={(world) => world.id as string}
+          nameOf={(world) => String(world.name ?? '')}
           tiles={worldTiles}
           layout={layoutMode}
           aspect="landscape"
