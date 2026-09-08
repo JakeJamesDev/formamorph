@@ -72,3 +72,25 @@ describe('settings design reference', () => {
     expect(localStorage).toHaveLength(0);
   });
 });
+
+describe('markdown editing reference', () => {
+  it('opens the production editor with realistic local content and rendered preview', async () => {
+    const user = userEvent.setup();
+    renderShowcase();
+
+    await user.click(screen.getByRole('tab', { name: 'Markdown' }));
+
+    expect(screen.getByRole('heading', { name: 'Markdown editing reference' })).toBeInTheDocument();
+    expect(screen.getByLabelText('Bold')).toBeInTheDocument();
+    expect(screen.getByLabelText('Heading level')).toBeInTheDocument();
+    expect(screen.getByRole('textbox', { name: 'World introduction' }))
+      .toHaveTextContent('The Night Glass');
+
+    await user.click(screen.getByRole('tab', { name: 'Preview' }));
+
+    expect(screen.getByRole('heading', { name: 'The Night Glass' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'old observatory' })).toBeInTheDocument();
+    expect(screen.getByLabelText('Bold')).toBeDisabled();
+    expect(localStorage).toHaveLength(0);
+  });
+});

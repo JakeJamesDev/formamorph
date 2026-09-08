@@ -63,6 +63,52 @@ Cards use `card` rather than inventing a second panel color. Destructive, succes
 
 The live Settings reference shows all six states. Its Display and Output examples reuse the same rows, options, theme registries, font registries, and controls as production.
 
+## Pattern: Focused Markdown Authoring
+
+**Purpose:** Keep long-form source editing dense while making the rendered result one clear switch away.
+
+**Density:** Compact controls, comfortable content. Toolbar buttons use the production 1.75rem control height and one-unit gaps; the editor keeps a 1rem internal text rhythm and a substantial scrollable work area.
+
+### Composition
+
+- Put the field label above the toolbar so the complete toolbar can use the control row.
+- Keep common inline actions visible: bold, italic, strikethrough, inline code, and blockquote.
+- Group highlight, heading, list, and insertion choices as split buttons. The face runs the current action; the chevron opens the group.
+- Keep each split button visually joined, including its internal divider. Separate formatting, history, and view groups with vertical hairlines.
+- Put Edit and Preview in one two-option selector. The selected view uses the shared active-tab treatment.
+- Use realistic content that includes headings, links, emphasis, lists, tasks, quotes, tables, and code. Keep the editing area bounded so long prose demonstrates vertical overflow.
+- Keep demonstration text in local component state. A reference editor must not save authored data or call an endpoint.
+
+### Production mapping
+
+| Need | Component |
+| --- | --- |
+| Editor, toolbar, history, fullscreen, and views | `PromptField` with `markdown` in [`PromptField.tsx`](../src/components/prompt/PromptField.tsx) |
+| Markdown operations and selected-text ranges | [`markdownToolbar.ts`](../src/lib/markdownToolbar.ts) and [`promptFieldState.ts`](../src/components/prompt/promptFieldState.ts) |
+| Rendered output | `MarkdownRenderer` in [`MarkdownRenderer.tsx`](../src/components/game/MarkdownRenderer.tsx) |
+| Split-button dropdown | `Popover` in [`src/components/ui`](../src/components/ui) |
+| Edit/Preview selector | `Tabs` in [`src/components/ui`](../src/components/ui) |
+| Tooltips and focus names | `Tip` in [`tooltip.tsx`](../src/components/ui/tooltip.tsx) |
+
+### Split-button behavior
+
+The face starts with the first action in its group. Choosing a dropdown item applies it and makes it the face's current action for the rest of that mounted editor session. Toolbar presses retain editor focus and selection, so formatting applies to the selected text and leaves the transformed range selected.
+
+### Responsive behavior
+
+At desktop widths, the toolbar stays compact and wraps only when its container requires it. A sufficiently wide full-screen editor can place Edit and Preview side by side. At mobile widths, controls wrap without horizontal page overflow; tapping the inline editing surface opens the production full-screen editor, where Edit and Preview become swipeable panes with position dots.
+
+### State reference
+
+| State | Treatment |
+| --- | --- |
+| Selected | Edit or Preview uses the shared active-tab fill and foreground. Text selection remains visible while a toolbar action runs. |
+| Disabled | Formatting and history controls disable in Preview; undo and redo also disable when their stacks are empty. |
+| Focus | Toolbar controls and tabs use the shared focus ring; the editable surface keeps its native caret and selection. |
+| Overflow | The editor and preview scroll inside their bounded surface. Tables keep their own overflow behavior rather than widening the page. |
+
+The live Markdown reference reuses the complete production editor. It demonstrates the compact groups, separators, split-button current actions, long-content overflow, local editing, and rendered preview without a showcase-only toolbar.
+
 ## Writing in settings
 
 Keep setting descriptions to one sentence, third person, and no more than 12 words. Put necessary additional detail behind `HintInfo`. Do not claim ASD-STE100 compliance from length or tone alone; use the vocabulary, grammar, meaning, and evidence process in the [Writing Guide](Writing-Guide.md).
@@ -73,4 +119,4 @@ The live shell renders `DESIGN_SYSTEM_REFERENCES` from [`DesignSystemShowcase.ts
 
 Add a matching `## Pattern:` section here with its purpose, density, desktop/mobile behavior, component mapping, and applicable states. Demonstrate a new visual pattern inside a representative Formamorph screen at desktop and mobile sizes, then get product approval before adding it to this reference.
 
-The markdown editing and community card tickets extend this registry and guide. They do not need a new showcase shell or another token set.
+The community card ticket extends this registry and guide. It does not need a new showcase shell or another token set.
