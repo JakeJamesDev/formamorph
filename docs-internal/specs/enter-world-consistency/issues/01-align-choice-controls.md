@@ -1,6 +1,6 @@
 # 01: Align Enter World Choice Controls
 
-Status: ready-for-agent
+Status: ready-for-human
 Blocked by: None (can start immediately)
 Recommended model: GPT-5.6 Luna (`gpt-5.6-luna`)
 Reasoning effort: high

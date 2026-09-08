@@ -1,7 +1,9 @@
 import { useMemo, useRef, useState } from 'react';
 import { BookOpen, ChevronDown, ListTree } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { Checkbox } from '@/components/ui/checkbox';
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from '@/components/ui/dialog';
+import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import type { DictionarySelectionItem } from '@/lib/dictionarySelection';
 import type { EntityMetadata, GameLocation, Stat, Trait, TraitGroup } from '@/types';
 import { cn } from '@/lib/utils';
@@ -58,6 +60,14 @@ export interface EnterWorldWorkspaceProps {
 
 const authoredOrder = <T extends { order?: number }>(items: T[]): T[] =>
   [...items].sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
+
+const choiceRowClass = (selected: boolean) => cn(
+  'flex min-h-14 cursor-pointer items-start gap-3 rounded-lg border bg-card p-3 transition-colors',
+  'focus-within:ring-2 focus-within:ring-ring focus-within:ring-inset',
+  selected
+    ? 'border-primary bg-primary/10'
+    : 'border-border hover:border-muted-foreground/60 hover:bg-muted/40',
+);
 
 const buildTraitWorkspace = (traits: Trait[], groups: TraitGroup[]): TraitWorkspace => {
   const directTraits = (groupId: string | null) => authoredOrder(
@@ -167,7 +177,7 @@ export default function EnterWorldWorkspace(props: EnterWorldWorkspaceProps) {
     >
       {props.traits.length > 0 && (
         <p className="my-3 flex items-center gap-3 px-2 text-meta font-medium uppercase text-muted-foreground">
-          <span>Starting traits</span><span className="h-px flex-1 bg-border" />
+          <span>Starting Traits</span><span className="h-px flex-1 bg-border" />
         </p>
       )}
       {generalIndex >= 0 && categoryButton(categories[generalIndex], generalIndex)}
@@ -276,133 +286,132 @@ export default function EnterWorldWorkspace(props: EnterWorldWorkspaceProps) {
         <main className="min-h-0 min-w-0 flex-1 overflow-y-auto p-4 md:px-6 md:py-4">
           {current?.kind === 'traits' && (
             <>
-              <p className="mb-1 text-meta uppercase tracking-wide text-muted-foreground">Starting traits</p>
+              <p className="mb-1 text-meta font-medium tracking-wide text-muted-foreground">Starting Traits</p>
               <h2 className="mb-3 text-heading font-semibold">{current.name}</h2>
               {current.path.map((group) => group.playerDescription?.trim() && (
                 <p key={group.id} className="mb-2 max-w-3xl text-helper text-muted-foreground">
                   {props.resolveText(group.playerDescription)}
                 </p>
               ))}
-              <fieldset className="mt-4 grid min-w-0 gap-3 xl:grid-cols-2">
+              <fieldset className="mt-4 min-w-0">
                 <legend className="sr-only">{current.name} choices</legend>
-                {current.traits.map((trait) => {
-                  const selected = props.selectedTraits.includes(trait.id);
+                {(() => {
                   const exclusive = current.group?.exclusive === true;
-                  const description = props.resolveTraitText(trait, trait.playerDescription ?? '').trim();
-                  const changes = trait.statChanges
-                    .map((change) => ({ change, stat: statById.get(change.statId) }))
-                    .filter(({ stat }) => stat !== undefined && stat.hidden !== true);
-                  return (
-                    <label
-                      key={trait.id}
-                      className={cn(
-                        'flex min-h-14 cursor-pointer items-start gap-3 rounded-lg border p-3 transition-colors',
-                        selected ? 'border-primary bg-primary/10' : 'bg-background hover:bg-muted/40',
-                      )}
-                    >
-                      <input
-                        className="mt-1 h-5 w-5 shrink-0 accent-[hsl(var(--primary))]"
-                        type={exclusive ? 'radio' : 'checkbox'}
-                        name={exclusive ? `trait-group-${current.id}` : undefined}
-                        aria-label={trait.name}
-                        checked={selected}
-                        onClick={() => {
-                          if (!exclusive || !selected) return;
-                          props.onTraitSelect(trait.id);
-                        }}
-                        onChange={() => {
-                          if (!exclusive || !selected) props.onTraitSelect(trait.id);
-                        }}
-                      />
-                      <span className="min-w-0 flex-1">
-                        <strong className="block">{trait.name}</strong>
-                        {description && <span className="mt-1 block text-helper text-muted-foreground">{description}</span>}
-                        {changes.length > 0 && (
-                          <ul className="mt-2 list-inside list-disc text-helper text-muted-foreground">
-                            {changes.map(({ change, stat }, index) => (
-                              <li key={index}>
-                                {props.resolveTraitText(trait, stat!.name)}:{' '}
-                                <span className={change.value > 0 ? 'text-success' : 'text-destructive'}>
-                                  {change.value > 0 ? '+' : ''}{change.value}
-                                </span>
-                                {change.type && change.type !== 'starting' ? ` (${change.type})` : ''}
-                              </li>
-                            ))}
-                          </ul>
+                  const selectedExclusive = current.traits.find((trait) => props.selectedTraits.includes(trait.id))?.id;
+                  const rows = current.traits.map((trait) => {
+                    const selected = props.selectedTraits.includes(trait.id);
+                    const description = props.resolveTraitText(trait, trait.playerDescription ?? '').trim();
+                    const changes = trait.statChanges
+                      .map((change) => ({ change, stat: statById.get(change.statId) }))
+                      .filter(({ stat }) => stat !== undefined && stat.hidden !== true);
+                    return (
+                      <div key={trait.id} className={choiceRowClass(selected)}>
+                        {exclusive ? (
+                          <RadioGroupItem
+                            id={`setup-trait-${trait.id}`}
+                            value={trait.id}
+                            aria-label={trait.name}
+                            className="mt-0.5 h-5 w-5 shrink-0"
+                            onClick={(event) => {
+                              if (selected) {
+                                event.preventDefault();
+                                props.onTraitSelect(trait.id);
+                              }
+                            }}
+                          />
+                        ) : (
+                          <Checkbox
+                            id={`setup-trait-${trait.id}`}
+                            checked={selected}
+                            aria-label={trait.name}
+                            className="mt-0.5 h-5 w-5 shrink-0"
+                            onCheckedChange={() => props.onTraitSelect(trait.id)}
+                          />
                         )}
-                      </span>
-                    </label>
+                        <label htmlFor={`setup-trait-${trait.id}`} className="min-w-0 flex-1 cursor-pointer">
+                          <strong className="block text-label font-semibold">{trait.name}</strong>
+                          {description && <span className="mt-1 block text-helper text-muted-foreground">{description}</span>}
+                          {changes.length > 0 && (
+                            <ul className="mt-2 list-inside list-disc text-helper text-muted-foreground">
+                              {changes.map(({ change, stat }, index) => (
+                                <li key={index}>
+                                  {props.resolveTraitText(trait, stat!.name)}:{' '}
+                                  <span className={change.value > 0 ? 'text-success' : 'text-destructive'}>
+                                    {change.value > 0 ? '+' : ''}{change.value}
+                                  </span>
+                                  {change.type && change.type !== 'starting' ? ` (${change.type})` : ''}
+                                </li>
+                              ))}
+                            </ul>
+                          )}
+                        </label>
+                      </div>
+                    );
+                  });
+                  return exclusive ? (
+                    <RadioGroup
+                      value={selectedExclusive ?? ''}
+                      onValueChange={props.onTraitSelect}
+                      className="grid min-w-0 gap-3 xl:grid-cols-2"
+                    >
+                      {rows}
+                    </RadioGroup>
+                  ) : (
+                    <div className="grid min-w-0 gap-3 xl:grid-cols-2">{rows}</div>
                   );
-                })}
+                })()}
               </fieldset>
             </>
           )}
           {current?.kind === 'location' && (
             <>
-              <p className="mb-1 text-meta uppercase tracking-wide text-muted-foreground">World setup</p>
+              <p className="mb-1 text-meta font-medium tracking-wide text-muted-foreground">World Setup</p>
               <h2 className="mb-3 text-heading font-semibold">{current.name}</h2>
               <p className="mb-4 text-helper text-muted-foreground">Choose where your story begins.</p>
-              <div className="space-y-3">
-                <label
-                  className={cn(
-                    'flex min-h-14 cursor-pointer items-start gap-3 rounded-lg border p-3 transition-colors',
-                    props.selectedLocationId === null
-                      ? 'border-primary bg-primary/10'
-                      : 'bg-background hover:bg-muted/40',
-                  )}
-                >
-                  <input
-                    className="mt-1 h-5 w-5 shrink-0 accent-[hsl(var(--primary))]"
-                    type="radio"
-                    name="starting-location"
-                    aria-label="Random"
-                    checked={props.selectedLocationId === null}
-                    onChange={() => props.onLocationChange(null)}
-                  />
-                  <span className="min-w-0">
-                    <strong className="block">Random</strong>
+              <RadioGroup
+                value={props.selectedLocationId ?? 'random'}
+                onValueChange={(locationId) => props.onLocationChange(locationId === 'random' ? null : locationId)}
+                className="space-y-3"
+              >
+                <div className={choiceRowClass(props.selectedLocationId === null)}>
+                  <RadioGroupItem id="setup-location-random" value="random" aria-label="Random" className="mt-0.5 h-5 w-5 shrink-0" />
+                  <label htmlFor="setup-location-random" className="min-w-0 flex-1 cursor-pointer">
+                    <strong className="block text-label font-semibold">Random</strong>
                     <span className="mt-1 block text-helper text-muted-foreground">
                       Let the world choose a starting place.
                     </span>
-                  </span>
-                </label>
+                  </label>
+                </div>
                 {props.locations.map((location) => {
                   const description = location.playerDescription?.trim() || location.description?.trim();
                   return (
-                    <label
+                    <div
                       key={location.id}
-                      className={cn(
-                        'flex min-h-14 cursor-pointer items-start gap-3 rounded-lg border p-3 transition-colors',
-                        props.selectedLocationId === location.id
-                          ? 'border-primary bg-primary/10'
-                          : 'bg-background hover:bg-muted/40',
-                      )}
+                      className={choiceRowClass(props.selectedLocationId === location.id)}
                     >
-                      <input
-                        className="mt-1 h-5 w-5 shrink-0 accent-[hsl(var(--primary))]"
-                        type="radio"
-                        name="starting-location"
+                      <RadioGroupItem
+                        id={`setup-location-${location.id}`}
+                        value={location.id}
                         aria-label={location.name}
-                        checked={props.selectedLocationId === location.id}
-                        onChange={() => props.onLocationChange(location.id)}
+                        className="mt-0.5 h-5 w-5 shrink-0"
                       />
-                      <span className="min-w-0">
-                        <strong className="block">{location.name}</strong>
+                      <label htmlFor={`setup-location-${location.id}`} className="min-w-0 flex-1 cursor-pointer">
+                        <strong className="block text-label font-semibold">{location.name}</strong>
                         {description && (
                           <span className="mt-1 block text-helper text-muted-foreground">
                             {props.resolveText(description)}
                           </span>
                         )}
-                      </span>
-                    </label>
+                      </label>
+                    </div>
                   );
                 })}
-              </div>
+              </RadioGroup>
             </>
           )}
           {current?.kind === 'library' && (
             <>
-              <p className="mb-1 text-meta uppercase tracking-wide text-muted-foreground">World setup</p>
+              <p className="mb-1 text-meta font-medium tracking-wide text-muted-foreground">World Setup</p>
               <h2 className="mb-4 text-heading font-semibold">Library Additions</h2>
               {props.onSaveAdditions && (
                 <Button
