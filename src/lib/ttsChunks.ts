@@ -1,3 +1,5 @@
+import { stripMarkdown } from './stripMarkdown';
+
 // Kokoro caps each generate() call at ~510 tokens and silently truncates beyond it, so long
 // narration must be split into chunks that each stay under the budget. maxChars is a conservative
 // character proxy for that token budget (narration sentences sit well under it).
@@ -13,22 +15,9 @@ export function splitSentenceSegments(text: string): string[] {
   return text.split(/(?<=[.!?…]["'”’»)\]*_~`]*)\s+|[^\S\n]*\n\s*\n\s*/);
 }
 
-/**
- * Strip Markdown syntax so the TTS engine speaks the words, not the punctuation — Kokoro reads a stray
- * `*` as "asterisk". Keeps the readable text and drops the markers: emphasis (*, **, _, __, ~~), inline
- * code and fences (backticks), links/images (keeps the visible text, drops the target), and line-start
- * headings, blockquotes, and list bullets. Not a full parser — just enough to keep narration clean for speech.
- */
+/** Extract readable Markdown and remove stray markers that the speech engine pronounces. */
 export function stripMarkdownForSpeech(text: string): string {
-  return text
-    .replace(/!\[([^\]]*)\]\([^)]*\)/g, '$1') // images ![alt](url) -> alt
-    .replace(/\[([^\]]*)\]\([^)]*\)/g, '$1') // links [text](url) -> text
-    .replace(/```[^\n]*\n?([\s\S]*?)```/g, '$1') // fenced code -> inner text
-    .replace(/(\*{1,3}|_{1,3}|~~)(.+?)\1/g, '$2') // paired emphasis/strikethrough -> inner text
-    .replace(/^\s{0,3}#{1,6}\s+/gm, '') // headings
-    .replace(/^\s{0,3}>\s?/gm, '') // blockquotes
-    .replace(/^\s{0,3}[-+*]\s+/gm, '') // unordered list bullets
-    .replace(/^\s{0,3}\d+\.\s+/gm, '') // ordered list markers
+  return stripMarkdown(text)
     .replace(/[*_`~]/g, '') // any leftover/unpaired markers
     .replace(/\|/g, ' ') // table pipes
     .replace(/[ \t]{2,}/g, ' '); // tidy the gaps left behind

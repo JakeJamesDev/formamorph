@@ -55,6 +55,23 @@ describe('splitSentenceSegments', () => {
 });
 
 describe('stripMarkdownForSpeech', () => {
+  it.each(['', 'r', 'o', 'y', 'g', 'c', 'b', 'p', 'q', 'x'])('reads highlight %s without its markers', (color) => {
+    expect(stripMarkdownForSpeech(`=${color}=Health==`)).toBe('Health');
+  });
+
+  it('reads nested formatting and subscript/superscript as text', () => {
+    expect(stripMarkdownForSpeech('=c=**Health** and *stamina*==, H~2~O and x^2^.')).toBe('Health and stamina, H2O and x2.');
+  });
+
+  it('reads task lists and tables without their layout syntax', () => {
+    expect(stripMarkdownForSpeech('> - [x] Find **water**\n> - [ ] Rest')).toBe('Find water\nRest');
+    expect(stripMarkdownForSpeech('| Stat | Value |\n| --- | ---: |\n| Health | 100 |')).toBe('Stat Value\nHealth 100');
+  });
+
+  it('reads reference links without their destinations or definitions', () => {
+    expect(stripMarkdownForSpeech('Visit [the gate][gate].\n\n[gate]: https://example.com')).toBe('Visit the gate.');
+  });
+
   it('drops emphasis markers but keeps the words', () => {
     expect(stripMarkdownForSpeech('**This is text I read**')).toBe('This is text I read');
     expect(stripMarkdownForSpeech('a *spear* and _fear_ and ~~gone~~')).toBe('a spear and fear and gone');
