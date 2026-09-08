@@ -1,5 +1,5 @@
 import { beforeEach, describe, it, expect, vi } from "vitest";
-import { canvasMenuSections, type CanvasMenuItem, type CanvasMenuState } from "./canvasMenu";
+import { canvasMenuSections, type CanvasMenuItem, type CanvasMenuSection, type CanvasMenuState } from "./canvasMenu";
 
 const noop = () => {};
 const state: CanvasMenuState = {
@@ -8,9 +8,10 @@ const state: CanvasMenuState = {
 const actions = {
   undo: vi.fn(), redo: vi.fn(), setSnap: vi.fn(), setGridVisible: vi.fn(), setConnectionStyle: vi.fn(),
 };
-const labels = (sections: CanvasMenuItem[][]) => sections.map((section) => section.map((i) => i.label));
-const rowsOf = (sections: CanvasMenuItem[][], label: string) =>
-  sections.flat().find((item) => item.label === label);
+const titles = (sections: CanvasMenuSection[]) => sections.map((section) => section.title);
+const labels = (sections: CanvasMenuSection[]) => sections.map((section) => section.items.map((i) => i.label));
+const rowsOf = (sections: CanvasMenuSection[], label: string) =>
+  sections.flatMap((section) => section.items).find((item) => item.label === label);
 
 describe("canvasMenuSections", () => {
   beforeEach(() => { vi.clearAllMocks(); });
@@ -20,18 +21,27 @@ describe("canvasMenuSections", () => {
     { label: "Auto Arrange", onSelect: noop },
   ];
 
-  it("leads with history, then what was clicked, then the view switches, then the arrow shapes", () => {
-    expect(labels(canvasMenuSections(state, actions, nodeActions))).toEqual([
+  it("leads with the titled sets, then history, then what was clicked", () => {
+    const sections = canvasMenuSections(state, actions, nodeActions);
+    expect(titles(sections)).toEqual(["Grid", "Connection Style", undefined, undefined]);
+    expect(labels(sections)).toEqual([
+      ["Snap To Grid", "Show Grid"],
+      ["Straight", "Curved", "Elbow"],
       ["Undo", "Redo"],
       ["Edit Location", "Auto Arrange"],
-      ["Snap To Grid", "Show Grid"],
-      ["Straight Connections", "Curved Connections", "Elbow Connections"],
     ]);
+  });
+
+  it("carries no title on the history or target sections", () => {
+    const sections = canvasMenuSections(state, actions, nodeActions);
+    expect(sections[2].title).toBeUndefined();
+    expect(sections[3].title).toBeUndefined();
   });
 
   it("offers undo and redo whatever the menu was opened on, the bare pane included", () => {
     for (const target of [nodeActions, [{ label: "Clear Selection", onSelect: noop }], []]) {
-      expect(labels(canvasMenuSections(state, actions, target))[0]).toEqual(["Undo", "Redo"]);
+      const sections = canvasMenuSections(state, actions, target);
+      expect(labels(sections)[2]).toEqual(["Undo", "Redo"]);
     }
   });
 
@@ -57,9 +67,15 @@ describe("canvasMenuSections", () => {
     const sections = canvasMenuSections(state, actions, nodeActions);
     expect(rowsOf(sections, "Snap To Grid")?.checked).toBe(false);
     expect(rowsOf(sections, "Show Grid")?.checked).toBe(true);
-    const styles = sections[3];
-    expect(styles.filter((item) => item.checked).map((item) => item.label)).toEqual(["Curved Connections"]);
+    const styles = sections[1].items;
+    expect(styles.filter((item) => item.checked).map((item) => item.label)).toEqual(["Curved"]);
     expect(styles.every((item) => item.exclusive)).toBe(true);
+  });
+
+  it("reads the arrow shapes by their short presentation label, since the title carries the shared word", () => {
+    const styles = canvasMenuSections(state, actions, nodeActions)[1];
+    expect(styles.title).toBe("Connection Style");
+    expect(styles.items.map((item) => item.label)).toEqual(["Straight", "Curved", "Elbow"]);
   });
 
   it("hands each row's press straight to what it is a row for", () => {
@@ -72,7 +88,7 @@ describe("canvasMenuSections", () => {
     rowsOf(sections, "Snap To Grid")?.onSelect();
     expect(actions.setSnap).toHaveBeenCalledWith(true);
     // A shape is chosen rather than switched: the row hands over its own value, whatever is in force.
-    sections[3][2].onSelect();
+    sections[1].items[2].onSelect();
     expect(actions.setConnectionStyle).toHaveBeenCalledWith("elbow");
   });
 });

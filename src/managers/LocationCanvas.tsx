@@ -25,8 +25,8 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Separator } from '@/components/ui/separator';
 import {
-  ContextMenu, ContextMenuCheckboxItem, ContextMenuContent, ContextMenuItem, ContextMenuRadioGroup,
-  ContextMenuRadioItem, ContextMenuSeparator, ContextMenuTrigger,
+  ContextMenu, ContextMenuCheckboxItem, ContextMenuContent, ContextMenuGroup, ContextMenuItem,
+  ContextMenuLabel, ContextMenuRadioGroup, ContextMenuRadioItem, ContextMenuSeparator, ContextMenuTrigger,
 } from '@/components/ui/context-menu';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import { labelPlaceholders } from '@/lib/placementLetters';
@@ -331,39 +331,62 @@ type MenuTarget =
  * Radix owns the placement: portaled above the panels the canvas sits inside, flipped back into view at a
  * viewport edge, and dismissed, focused and walked by the arrows the way every other menu in the app is.
  */
-const CanvasMenu = ({ sections, menuRef }: {
+const CanvasMenu = ({ sections, menuRef, frameRef }: {
   sections: CanvasMenuSection[];
   /** Lets the keydown scope count the portaled menu as the canvas (see `trackPointer`). */
   menuRef: RefObject<HTMLDivElement>;
+  /** Where focus goes back to on close — the pane takes none of its own, so nothing else is left holding it. */
+  frameRef: RefObject<HTMLDivElement>;
 }) => (
-  <ContextMenuContent ref={menuRef} aria-label="Canvas Options" className="min-w-44">
+  <ContextMenuContent
+    ref={menuRef}
+    aria-label="Canvas Options"
+    className="min-w-44"
+    onCloseAutoFocus={(event) => {
+      event.preventDefault();
+      frameRef.current?.focus({ preventScroll: true });
+    }}
+  >
     {sections.map((section, index) => (
-      <Fragment key={section.map((item) => item.label).join('|')}>
+      <Fragment key={section.items.map((item) => item.label).join('|')}>
         {index > 0 && <ContextMenuSeparator />}
-        {section[0]?.exclusive
-          // One choice between each other, so the group is what carries which one is taken.
+        {section.items[0]?.exclusive
+          // One choice between each other, so the group is what carries which one is taken. The title is the
+          // group's accessible name as well as its printed label, so a screen reader hears which set a radio
+          // belongs to.
           ? (
-            <ContextMenuRadioGroup value={section.find((item) => item.checked)?.label ?? ''}>
-              {section.map((item) => (
+            <ContextMenuRadioGroup
+              aria-label={section.title}
+              value={section.items.find((item) => item.checked)?.label ?? ''}
+            >
+              {section.title && <ContextMenuLabel>{section.title}</ContextMenuLabel>}
+              {section.items.map((item) => (
                 <ContextMenuRadioItem key={item.label} value={item.label} checked={item.checked} onSelect={item.onSelect}>
                   {item.label}
                 </ContextMenuRadioItem>
               ))}
             </ContextMenuRadioGroup>
           )
-          : section.map((item) => (item.checked === undefined
-            ? (
-              <ContextMenuItem key={item.label} disabled={item.disabled} onSelect={item.onSelect}>
-                {/* The tick's column is held even by an action, so every label in the menu starts on one line. */}
-                <Check className="h-4 w-4 shrink-0 opacity-0" />
-                {item.label}
-              </ContextMenuItem>
-            )
-            : (
-              <ContextMenuCheckboxItem key={item.label} checked={item.checked} onSelect={item.onSelect}>
-                {item.label}
-              </ContextMenuCheckboxItem>
-            )))}
+          : section.title
+          // The grammar the section builder follows: a titled, non-exclusive set is a set of checkboxes — a
+          // row that answers "which one?" on its own rather than against the rest of the set.
+          ? (
+            <ContextMenuGroup aria-label={section.title}>
+              <ContextMenuLabel>{section.title}</ContextMenuLabel>
+              {section.items.map((item) => (
+                <ContextMenuCheckboxItem key={item.label} checked={item.checked} onSelect={item.onSelect}>
+                  {item.label}
+                </ContextMenuCheckboxItem>
+              ))}
+            </ContextMenuGroup>
+          )
+          : section.items.map((item) => (
+            <ContextMenuItem key={item.label} disabled={item.disabled} onSelect={item.onSelect}>
+              {/* The tick's column is held even by an action, so every label in the menu starts on one line. */}
+              <Check className="h-4 w-4 shrink-0 opacity-0" />
+              {item.label}
+            </ContextMenuItem>
+          ))}
       </Fragment>
     ))}
   </ContextMenuContent>
@@ -1207,6 +1230,9 @@ const CanvasInner = ({ selectedId, onSelect, session, fullscreen, onToggleFullsc
     <ContextMenuTrigger asChild>
     <div
       ref={frameRef}
+      // Programmatically focusable but out of the Tab order, exactly as the pane itself is: the map takes no
+      // focus of its own, but the frame is somewhere real for the menu to hand focus back to on close.
+      tabIndex={-1}
       className="relative h-full w-full"
       onPointerDownCapture={handlePointerDown}
       onContextMenu={reraiseForTrigger}
@@ -1315,6 +1341,7 @@ const CanvasInner = ({ selectedId, onSelect, session, fullscreen, onToggleFullsc
     </ContextMenuTrigger>
     <CanvasMenu
       menuRef={menuRef}
+      frameRef={frameRef}
       sections={canvasMenuSections(
         { ...history, snap, gridVisible, connectionStyle },
         {

@@ -1,5 +1,5 @@
 import { afterEach, expect, it, vi } from 'vitest';
-import { render, screen } from '@testing-library/react';
+import { fireEvent, render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { TooltipProvider } from '@/components/ui/tooltip';
 import { canvasHistoryFor } from '@/lib/canvasHistory';
@@ -44,4 +44,57 @@ it('keeps canvas preferences and history local across fullscreen edits and remou
   expect(read).not.toHaveBeenCalled();
   expect(write).not.toHaveBeenCalled();
   second.unmount();
+});
+
+it('opens the canvas menu with titled sets, and Escape closes it and hands focus back to the canvas', async () => {
+  const user = userEvent.setup();
+  const { container } = render(<TooltipProvider><LocationsCanvasReference /></TooltipProvider>);
+  const pane = container.querySelector('.react-flow__pane') as HTMLElement;
+
+  fireEvent.contextMenu(pane);
+  const menu = await screen.findByRole('menu', { name: 'Canvas Options' });
+
+  // Two titled sets, each exposing its title as the group's own accessible name.
+  expect(within(menu).getByRole('group', { name: 'Grid' })).toBeInTheDocument();
+  expect(within(menu).getByRole('group', { name: 'Connection Style' })).toBeInTheDocument();
+
+  // Checkbox rows carry their own checked state, defaulted on.
+  expect(within(menu).getByRole('menuitemcheckbox', { name: 'Snap To Grid' })).toHaveAttribute('aria-checked', 'true');
+  expect(within(menu).getByRole('menuitemcheckbox', { name: 'Show Grid' })).toHaveAttribute('aria-checked', 'true');
+
+  // One radio checked among the three, read by their short presentation labels.
+  expect(within(menu).getByRole('menuitemradio', { name: 'Straight' })).toHaveAttribute('aria-checked', 'true');
+  expect(within(menu).getByRole('menuitemradio', { name: 'Curved' })).toHaveAttribute('aria-checked', 'false');
+  expect(within(menu).getByRole('menuitemradio', { name: 'Elbow' })).toHaveAttribute('aria-checked', 'false');
+
+  // Action rows by name, with no titled group around them.
+  expect(within(menu).getByRole('menuitem', { name: 'Undo' })).toBeInTheDocument();
+  expect(within(menu).getByRole('menuitem', { name: 'Redo' })).toBeInTheDocument();
+  expect(within(menu).getByRole('menuitem', { name: 'Select All Locations' })).toBeInTheDocument();
+  expect(within(menu).getByRole('menuitem', { name: 'Auto Arrange All' })).toBeInTheDocument();
+
+  await user.keyboard('{Escape}');
+  expect(screen.queryByRole('menu')).not.toBeInTheDocument();
+  // The pane takes no focus of its own; the frame around it is what is left holding it.
+  expect(document.activeElement).toBe(container.querySelector('[tabindex="-1"]'));
+});
+
+it('walks every row with the arrow keys, and the titles are not among the stops', async () => {
+  const user = userEvent.setup();
+  const { container } = render(<TooltipProvider><LocationsCanvasReference /></TooltipProvider>);
+  const pane = container.querySelector('.react-flow__pane') as HTMLElement;
+
+  fireEvent.contextMenu(pane);
+  await screen.findByRole('menu', { name: 'Canvas Options' });
+
+  // Undo and Redo are disabled on a fresh canvas and so take no stop of their own — the walk lands on every
+  // row that can be picked, in the order the menu draws them, and on nothing else.
+  const stops: string[] = [];
+  for (let i = 0; i < 7; i += 1) {
+    await user.keyboard('{ArrowDown}');
+    stops.push(document.activeElement?.textContent ?? '');
+  }
+  expect(stops).toEqual([
+    'Snap To Grid', 'Show Grid', 'Straight', 'Curved', 'Elbow', 'Select All Locations', 'Auto Arrange All',
+  ]);
 });
