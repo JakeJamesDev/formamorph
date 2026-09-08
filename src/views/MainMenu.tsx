@@ -50,6 +50,7 @@ import { startingLocations } from '@/lib/startingLocation';
 import { exclusiveSiblings, collapseExclusiveDefaults } from '@/lib/traitEffects';
 import { buildInitialSelection, finalizeSelection, shouldShowDictionaryChoices } from '@/lib/dictionarySelection';
 import { emptyEntryDraft, type EntryDraft } from '@/lib/entryDraft';
+import { hasWorldAdditionDefaults, restoreWorldAdditionDefaults, saveWorldAdditionDefaults } from '@/lib/worldAdditionDefaults';
 import WorldStorageService from '../services/WorldStorageService';
 import DictionaryStorageService from '../services/DictionaryStorageService';
 import EntityStorageService from '../services/EntityStorageService';
@@ -1066,7 +1067,8 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
     });
   };
 
-  const hasLibraryAdditions = entities.length > 0 || shouldShowDictionaryChoices(worldBooks, dictionaries);
+  const hasLibraryAdditions = entities.length > 0 || shouldShowDictionaryChoices(worldBooks, dictionaries)
+    || (worldBooks.length > 0 && !!selectedWorld && hasWorldAdditionDefaults(selectedWorld.id));
 
   // Resolve one snapshot; navigation or cancellation invalidates its pending handoff.
   const enterWorld = async (draft: EntryDraft = entryDraft) => {
@@ -1175,7 +1177,7 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
       rawTraits.filter(t => t.isDefault).map(t => t.id), rawTraits, rawTraitGroups);
     const draft: EntryDraft = {
       ...emptyEntryDraft(), traitIds: defaults,
-      dictionaryItems: buildInitialSelection(worldBooks, dictionaries),
+      ...restoreWorldAdditionDefaults(selectedWorld!.id, buildInitialSelection(worldBooks, dictionaries), entities),
     };
     cancelEntryResolution();
     entryStarted.current = false;
@@ -2612,6 +2614,14 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
             return next;
           })}
           onDictionaryItemsChange={(items) => updateDraft('dictionaryItems', items)}
+          onSaveAdditions={() => {
+            try {
+              saveWorldAdditionDefaults(selectedWorld.id, entryDraft);
+              toast.success('Formamorph saved these additions for future games.');
+            } catch {
+              toast.error('Formamorph could not save these additions. Try again.');
+            }
+          }}
           onIntroduction={selectedWorld.data.worldOverview?.introReadme?.trim()
             ? () => setShowIntroReadme(true)
             : undefined}
