@@ -186,13 +186,14 @@ const WorldEditorInner = ({ onClose, embedded = false, backButton }: {
   const findOpenerRef = useRef<HTMLElement | null>(null);
   const openFind = useCallback((withReplace: boolean) => {
     // Only the first press records: Ctrl+H over an open bar would otherwise capture the bar's own field.
-    if (!findOpen) {
+    // The ref answers that, not `findOpen`, so the shortcut listener isn't re-bound on every open.
+    if (!findOpenerRef.current) {
       const active = document.activeElement;
       findOpenerRef.current = active instanceof HTMLElement ? active : null;
     }
     setFindWithReplace(withReplace);
     setFindOpen(true);
-  }, [findOpen]);
+  }, []);
   const closeFind = useCallback(() => {
     setFindOpen(false);
     clearEditorMatch();
@@ -930,9 +931,10 @@ const WorldEditorInner = ({ onClose, embedded = false, backButton }: {
         />
       )}
       <div
-        className="relative flex-grow flex overflow-hidden focus:outline-none"
+        className="relative flex-grow flex overflow-hidden focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset"
         ref={editorRootRef}
-        // Focusable only as Find's fallback landing spot; never in the tab order.
+        // Focusable only as Find's fallback landing spot, never in the tab order — and it shows a ring there,
+        // so a keyboard author who closed Find can see where focus went.
         tabIndex={-1}
       >
         {findOpen && (

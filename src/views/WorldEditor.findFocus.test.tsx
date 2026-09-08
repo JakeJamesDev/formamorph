@@ -45,8 +45,15 @@ const focusWorldName = async () => {
 /** Fire the editor's own shortcut; `withReplace` picks Ctrl+H over Ctrl+F. */
 const pressFindShortcut = async (withReplace = false) => {
   fireEvent.keyDown(window, { key: withReplace ? 'h' : 'f', ctrlKey: true });
-  return screen.findByRole('search', { name: 'Find and replace in world' });
+  const bar = await screen.findByRole('search', { name: 'Find and replace in world' });
+  // The bar takes focus off the field on open. Without this the restore cases would pass on a field that
+  // never lost focus in the first place.
+  await waitFor(() => expect(document.activeElement).toBe(screen.getByLabelText('Find')));
+  return bar;
 };
+
+const findBarIsGone = () =>
+  waitFor(() => expect(screen.queryByRole('search', { name: 'Find and replace in world' })).toBeNull());
 
 beforeEach(() => {
   vi.clearAllMocks();
@@ -62,7 +69,7 @@ describe('World Editor find focus return', () => {
 
     fireEvent.keyDown(screen.getByLabelText('Find'), { key: 'Escape' });
 
-    await waitFor(() => expect(screen.queryByRole('search', { name: 'Find and replace in world' })).toBeNull());
+    await findBarIsGone();
     expect(document.activeElement).toBe(field);
   });
 
@@ -73,7 +80,7 @@ describe('World Editor find focus return', () => {
 
     fireEvent.click(screen.getByLabelText('Close find'));
 
-    await waitFor(() => expect(screen.queryByRole('search', { name: 'Find and replace in world' })).toBeNull());
+    await findBarIsGone();
     expect(document.activeElement).toBe(field);
   });
 
@@ -86,25 +93,54 @@ describe('World Editor find focus return', () => {
 
     fireEvent.keyDown(screen.getByLabelText('Find'), { key: 'Escape' });
 
-    await waitFor(() => expect(screen.queryByRole('search', { name: 'Find and replace in world' })).toBeNull());
+    await findBarIsGone();
     expect(document.activeElement).toBe(field);
   });
 
-  it('falls back to the editor container when the field is gone, never the body', async () => {
+  it('keeps the first opener when Ctrl+H reaches an already open bar', async () => {
+    setup();
+    const field = await focusWorldName();
+    await pressFindShortcut();
+    // The second shortcut adds the replace row. It must not re-record the opener as the bar's own field.
+    await pressFindShortcut(true);
+    expect(screen.getByLabelText('Hide replace')).toBeTruthy();
+
+    fireEvent.keyDown(screen.getByLabelText('Find'), { key: 'Escape' });
+
+    await findBarIsGone();
+    expect(document.activeElement).toBe(field);
+  });
+
+  it('returns focus to the header button when Find is opened by clicking it', async () => {
+    setup();
+    const opener = await screen.findByLabelText('Find and replace');
+    opener.focus();
+    fireEvent.click(opener);
+    await waitFor(() => expect(document.activeElement).toBe(screen.getByLabelText('Find')));
+
+    fireEvent.keyDown(screen.getByLabelText('Find'), { key: 'Escape' });
+
+    await findBarIsGone();
+    expect(document.activeElement).toBe(opener);
+  });
+
+  it('falls back to the editor container when navigating to a hit unmounts the field', async () => {
     setup();
     await focusWorldName();
-    await pressFindShortcut();
+    const bar = await pressFindShortcut();
+    // The bar is a child of the container Find falls back to, which is how the test names it without
+    // reaching for a test-only attribute.
+    const editorRoot = bar.parentElement as HTMLElement;
 
-    // Leaving Overview unmounts the field focus was in, which is what a navigated hit does.
-    fireEvent.mouseDown(screen.getByRole('tab', { name: 'Entities' }));
+    // A hit on another tab: taking it switches tabs, which unmounts the field focus was in.
+    fireEvent.change(screen.getByLabelText('Find'), { target: { value: 'Odd Wick' } });
+    fireEvent.keyDown(screen.getByLabelText('Find'), { key: 'Enter' });
     await waitFor(() => expect(screen.queryByLabelText('World Name')).toBeNull());
 
     fireEvent.keyDown(screen.getByLabelText('Find'), { key: 'Escape' });
 
-    await waitFor(() => expect(screen.queryByRole('search', { name: 'Find and replace in world' })).toBeNull());
-    const landed = document.activeElement as HTMLElement;
-    expect(landed).not.toBe(document.body);
-    // The container that holds the editor's own tab strip, not some detached node.
-    expect(landed.contains(screen.getByRole('tab', { name: 'Entities' }))).toBe(true);
+    await findBarIsGone();
+    expect(document.activeElement).not.toBe(document.body);
+    expect(document.activeElement).toBe(editorRoot);
   });
 });
