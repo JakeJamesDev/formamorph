@@ -2,8 +2,10 @@ import { useMemo } from 'react';
 import { BookOpen } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from '@/components/ui/dialog';
-import type { GameLocation, Stat, Trait, TraitGroup } from '@/types';
+import type { DictionarySelectionItem } from '@/lib/dictionarySelection';
+import type { EntityMetadata, GameLocation, Stat, Trait, TraitGroup } from '@/types';
 import { cn } from '@/lib/utils';
+import EnterWorldLibrary from './EnterWorldLibrary';
 
 interface TraitCategory {
   kind: 'traits';
@@ -36,10 +38,15 @@ export interface EnterWorldWorkspaceProps {
   resolveTraitText: (trait: Trait, text: string) => string;
   selectedTraits: string[];
   selectedLocationId: string | null;
+  libraryEntities: EntityMetadata[];
+  selectedEntityIds: Set<string>;
+  dictionaryItems: DictionarySelectionItem[];
   categoryIndex: number;
   onCategoryChange: (index: number) => void;
   onTraitSelect: (traitId: string) => void;
   onLocationChange: (locationId: string | null) => void;
+  onEntityToggle: (entityId: string, selected: boolean) => void;
+  onDictionaryItemsChange: (items: DictionarySelectionItem[]) => void;
   onIntroduction?: () => void;
   onCancel: () => void;
   onContinue: () => void;
@@ -94,18 +101,17 @@ export default function EnterWorldWorkspace(props: EnterWorldWorkspaceProps) {
       ...(props.locations.length > 1
         ? [{ kind: 'location' as const, id: 'location', name: 'Starting Location' }]
         : []),
+      ...((props.libraryEntities.length > 0 || props.dictionaryItems.length > 0)
+        ? [{ kind: 'library' as const, id: 'library', name: 'Library Additions' }]
+        : []),
     ],
-    [props.locations.length, traitWorkspace],
+    [props.dictionaryItems.length, props.libraryEntities.length, props.locations.length, traitWorkspace],
   );
   const currentIndex = Math.min(props.categoryIndex, Math.max(categories.length - 1, 0));
   const current = categories[currentIndex];
   const visibleGroups = traitWorkspace.navigationGroups;
   const statById = useMemo(() => new Map(props.stats.map((stat) => [stat.id, stat])), [props.stats]);
-  const dialogDescription = props.traits.length > 0
-    ? props.locations.length > 1
-      ? 'Choose starting traits and a starting location.'
-      : 'Choose starting traits.'
-    : 'Choose a starting location.';
+  const dialogDescription = 'Configure this playthrough before entering the world.';
 
   const categoryButton = (category: (typeof categories)[number], index: number, depth = 0) => {
     const selected = category.kind === 'traits'
@@ -138,6 +144,7 @@ export default function EnterWorldWorkspace(props: EnterWorldWorkspaceProps) {
   };
   const generalIndex = categories.findIndex((category) => category.kind === 'traits' && category.id === null);
   const locationIndex = categories.findIndex((category) => category.kind === 'location');
+  const libraryIndex = categories.findIndex((category) => category.kind === 'library');
 
   return (
     <Dialog open onOpenChange={(open) => { if (!open) props.onCancel(); }}>
@@ -196,6 +203,7 @@ export default function EnterWorldWorkspace(props: EnterWorldWorkspaceProps) {
               {categoryButton(categories[locationIndex], locationIndex)}
             </>
           )}
+          {libraryIndex >= 0 && categoryButton(categories[libraryIndex], libraryIndex)}
         </nav>
         <main className="min-h-0 min-w-0 flex-1 overflow-y-auto p-4 md:px-6 md:py-4">
           {current?.kind === 'traits' && (
@@ -324,12 +332,25 @@ export default function EnterWorldWorkspace(props: EnterWorldWorkspaceProps) {
               </div>
             </>
           )}
+          {current?.kind === 'library' && (
+            <>
+              <p className="mb-1 text-meta uppercase tracking-wide text-muted-foreground">World setup</p>
+              <h2 className="mb-4 text-heading font-semibold">Library Additions</h2>
+              <EnterWorldLibrary
+                entities={props.libraryEntities}
+                selectedEntityIds={props.selectedEntityIds}
+                dictionaryItems={props.dictionaryItems}
+                onEntityToggle={props.onEntityToggle}
+                onDictionaryItemsChange={props.onDictionaryItemsChange}
+              />
+            </>
+          )}
         </main>
       </div>
       <footer className="shrink-0 border-t bg-background px-4 pb-[calc(0.75rem+env(safe-area-inset-bottom))] pt-3 sm:px-6 sm:pb-3">
         <div className="flex justify-end">
           <Button className="min-h-12 w-full sm:w-auto" disabled={props.resolving} onClick={props.onContinue}>
-            {props.continueLabel}
+            {props.resolving ? 'Loading…' : props.continueLabel}
           </Button>
         </div>
       </footer>

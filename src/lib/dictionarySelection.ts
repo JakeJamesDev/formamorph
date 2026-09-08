@@ -2,7 +2,7 @@ import { randomUUID } from "@/lib/uuid";
 import type { Dictionary, DictionaryMetadata } from '@/types';
 
 /**
- * One row in the pre-game dictionary-selection step: a world book or a library dictionary, with its
+ * One dictionary row in the Library Additions workspace: a world book or a library dictionary, with its
  * current enabled toggle. `key` is a composite dnd id (`world:<id>` / `library:<id>`) so the two stores
  * never collide when their underlying ids overlap.
  */
@@ -19,11 +19,10 @@ export interface DictionarySelectionItem {
 export const selectionKey = (source: 'world' | 'library', id: string): string => `${source}:${id}`;
 
 /**
- * Whether the dictionary step is worth showing at all: only when there's a real choice — more than one
- * world book, or at least one downloaded library dictionary. A single-book world with an empty library
- * skips the step (mirrors how the location step is skipped for single-location worlds).
+ * Whether dictionary choices make the setup workspace worth showing: more than one world book, or at
+ * least one downloaded library dictionary.
  */
-export function shouldShowDictionaryStep(
+export function shouldShowDictionaryChoices(
   worldBooks: Dictionary[],
   libraryMeta: DictionaryMetadata[],
 ): boolean {
@@ -47,7 +46,14 @@ export function buildInitialSelection(
   }));
   const library: DictionarySelectionItem[] = libraryMeta.map((meta) => ({
     key: selectionKey('library', meta.id),
-    book: { id: meta.id, name: meta.name, enabled: true, entries: [] },
+    book: {
+      id: meta.id,
+      name: meta.name,
+      description: meta.description,
+      thumbnail: meta.thumbnail,
+      enabled: true,
+      entries: [],
+    },
     source: 'library',
     enabled: false,
     entryCount: meta.entryCount ?? 0,

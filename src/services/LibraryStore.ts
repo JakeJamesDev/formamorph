@@ -14,6 +14,14 @@ export interface StoredRecord<T> extends CommunityLink {
   data: T;
 }
 
+/** A selected library record no longer exists by the time its full data is requested. */
+export class LibraryRecordNotFoundError extends Error {
+  constructor(noun: string) {
+    super(`${noun} not found`);
+    this.name = 'LibraryRecordNotFoundError';
+  }
+}
+
 /** How one library type specializes the shared store: where it lives, how it reads, and how it validates. */
 export interface LibraryStoreOptions<T, M> {
   dbName: string;
@@ -85,7 +93,8 @@ export class LibraryStore<T, M> {
     await this.ensureInitialized();
     if (!id) return Promise.reject(`${this.noun} ID is required`);
     const record = await promisifyRequest<StoredRecord<T> | undefined>(this.objectStore('readonly').get(id));
-    if (!record?.data || !this.isValid(record.data)) return Promise.reject(`${this.noun} not found`);
+    if (!record?.data) throw new LibraryRecordNotFoundError(this.noun);
+    if (!this.isValid(record.data)) throw new Error(`Invalid ${this.lowerNoun}: malformed data`);
     return record.data;
   }
 

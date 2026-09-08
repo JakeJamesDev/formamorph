@@ -9,6 +9,7 @@ import { DEFAULT_WORLDS, tombstoneDefaultWorld } from '@/lib/defaultWorlds';
 import { acceptAgeGate } from '@/lib/ageGate';
 import type { StoredWorldRecord } from '@/services/WorldStorageService';
 import { encodePlaceholderToken } from '@/lib/placeholders';
+import { toast } from 'react-toastify';
 
 vi.mock('react-toastify', () => ({
   toast: { error: vi.fn(), success: vi.fn(), info: vi.fn(), warn: vi.fn() },
@@ -56,21 +57,19 @@ beforeEach(async () => {
   });
   await DictionaryStorageService.storeDictionary({
     id: 'shared', name: 'Library book',
-    data: { id: 'shared', name: 'Library book', enabled: true, entries: [] },
+    data: {
+      id: 'shared', name: 'Library book', enabled: true,
+      entries: [{ id: 'library-entry', name: 'Library entry', key: ['note'], value: 'A note.' }],
+    },
   });
 });
 afterEach(() => { cleanup(); vi.unstubAllGlobals(); vi.restoreAllMocks(); });
 
-const click = (name: string) => {
-  const heading = screen.getByRole('heading', { name: /^(Choose |Select Starting)/ });
-  fireEvent.click(within(heading.parentElement!).getByRole('button', { name }));
-};
 async function enter() {
   fireEvent.click(await screen.findByText('Entry World'));
   fireEvent.click(await screen.findByRole('button', { name: 'Enter World' }));
   await screen.findByRole('dialog', { name: 'Enter Entry World' });
 }
-const dictionaryToggle = (name: string) => within(screen.getByText(name).closest('.border') as HTMLElement).getByRole('checkbox');
 
 describe('the retained entry draft', () => {
   it.each([false, true])('keeps Introduction first with no pickers (Avatar: %s)', async avatar => {
@@ -141,32 +140,37 @@ describe('the retained entry draft', () => {
     fireEvent.click(screen.getByRole('checkbox', { name: 'Extra trait' }));
     fireEvent.click(screen.getByRole('button', { name: 'Starting Location' }));
     fireEvent.click(screen.getByRole('radio', { name: 'Hill' }));
-    fireEvent.click(screen.getByRole('button', { name: 'Continue to Characters' }));
-    fireEvent.click(screen.getByText('Companion'));
-    click('Dictionaries');
-    await screen.findByRole('heading', { name: 'Choose Dictionaries' });
-    fireEvent.click(dictionaryToggle('World book'));
-    fireEvent.click(dictionaryToggle('Library book'));
-    click('Back');
-    expect(screen.getByRole('checkbox')).toBeChecked();
-    click('Back');
+    fireEvent.click(screen.getByRole('button', { name: 'Library Additions' }));
+    fireEvent.click(screen.getByRole('checkbox', { name: 'Include Companion' }));
+    fireEvent.click(screen.getByRole('checkbox', { name: 'Enable Library book from library' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Move Library book from library up' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Move Library book from library up' }));
+
+    fireEvent.click(screen.getByRole('button', { name: 'Starting Location' }));
     expect(screen.getByRole('radio', { name: 'Hill' })).toBeChecked();
     fireEvent.click(screen.getByRole('button', { name: /Other traits/ }));
     expect(screen.getByRole('checkbox', { name: 'Extra trait' })).toBeChecked();
-    fireEvent.click(screen.getByRole('button', { name: 'Starting Location' }));
-    expect(screen.getByRole('radio', { name: 'Hill' })).toBeChecked();
-    fireEvent.click(screen.getByRole('button', { name: 'Continue to Characters' }));
-    expect(screen.getByRole('checkbox')).toBeChecked();
-    click('Dictionaries');
-    expect(dictionaryToggle('World book')).not.toBeChecked();
-    expect(dictionaryToggle('Library book')).toBeChecked();
-    click('Start');
+    fireEvent.click(screen.getByRole('button', { name: 'Library Additions' }));
+    expect(screen.getByRole('checkbox', { name: 'Include Companion' })).toBeChecked();
+    expect(screen.getByRole('checkbox', { name: 'Enable World book from world' })).toBeChecked();
+    expect(screen.getByRole('checkbox', { name: 'Enable Library book from library' })).toBeChecked();
+    fireEvent.change(screen.getByRole('searchbox', { name: 'Search library additions' }), { target: { value: 'World book' } });
+    expect(screen.queryByText('Library book')).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Start game' }));
     await waitFor(() => expect(onStartGame).toHaveBeenCalledTimes(1));
-    expect(onStartGame).toHaveBeenCalledWith(['extra'], null, true, 'hill',
-      [expect.objectContaining({ name: 'Library book', id: expect.not.stringMatching(/^shared$/) })],
+    expect(onStartGame).toHaveBeenCalledWith(['extra'], null, true, 'hill', [
+      expect.objectContaining({
+        name: 'Library book',
+        id: expect.not.stringMatching(/^shared$/),
+        entries: [expect.objectContaining({ id: expect.not.stringMatching(/^library-entry$/) })],
+      }),
+      expect.objectContaining({ name: 'World book', id: 'shared' }),
+    ],
       [expect.objectContaining({ name: 'Companion', id: expect.not.stringMatching(/^companion$/) })]);
     expect((await EntityStorageService.getEntityData('companion')).id).toBe('companion');
-    expect((await DictionaryStorageService.getDictionaryData('shared')).id).toBe('shared');
+    expect(await DictionaryStorageService.getDictionaryData('shared')).toMatchObject({
+      id: 'shared', entries: [{ id: 'library-entry' }],
+    });
   });
 
   it('retains dictionary order and explicit none through Avatar, then resets on cancel and re-entry', async () => {
@@ -177,32 +181,28 @@ describe('the retained entry draft', () => {
     await enter();
     fireEvent.click(screen.getByRole('button', { name: 'Starting Location' }));
     fireEvent.click(screen.getByRole('radio', { name: 'Hill' }));
-    fireEvent.click(screen.getByRole('button', { name: 'Continue to Characters' }));
-    fireEvent.click(screen.getByText('Companion'));
-    click('Dictionaries');
-    fireEvent.click(dictionaryToggle('Library book'));
-    // jsdom has no layout; give the real drag sensor distinct row positions.
-    ['World book', 'Disabled book', 'Library book'].forEach((name, index) => {
-      const element = screen.getByText(name).closest('.border') as HTMLElement;
-      vi.spyOn(element, 'getBoundingClientRect').mockReturnValue(new DOMRect(0, index * 60, 500, 50));
-    });
-    const row = screen.getByText('Library book').closest('.border') as HTMLElement;
-    within(row).getByRole('button').focus();
-    await user.keyboard('[Space][ArrowUp][ArrowUp][Space]');
-    const order = () => screen.getAllByRole('checkbox').map(el => el.parentElement?.closest('.border')?.textContent);
+    fireEvent.click(screen.getByRole('button', { name: 'Library Additions' }));
+    await user.click(screen.getByRole('checkbox', { name: 'Include Companion' }));
+    await user.click(screen.getByRole('checkbox', { name: 'Enable Library book from library' }));
+    await user.click(screen.getByRole('button', { name: 'Move Library book from library up' }));
+    await user.click(screen.getByRole('button', { name: 'Move Library book from library up' }));
+    const order = () => within(screen.getByRole('list', { name: 'Dictionary order' }))
+      .getAllByRole('listitem').map((item) => item.textContent);
     expect(order()[0]).toContain('Library book');
-    click('Avatar');
+    fireEvent.click(screen.getByRole('button', { name: 'Continue to Avatar' }));
     await screen.findByRole('button', { name: 'Finalize Character' });
     fireEvent.click(screen.getByRole('button', { name: 'Back' }));
     expect(order()[0]).toContain('Library book');
-    expect(dictionaryToggle('Library book')).toBeChecked();
-    fireEvent.click(dictionaryToggle('Library book'));
-    fireEvent.click(dictionaryToggle('World book'));
-    click('Avatar');
+    expect(screen.getByRole('checkbox', { name: 'Enable Library book from library' })).toBeChecked();
+    fireEvent.click(screen.getByRole('checkbox', { name: 'Enable Library book from library' }));
+    fireEvent.click(screen.getByRole('checkbox', { name: 'Enable World book from world' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Continue to Avatar' }));
     await screen.findByRole('button', { name: 'Finalize Character' });
     fireEvent.click(screen.getByRole('button', { name: 'Back' }));
-    expect(screen.getAllByRole('checkbox').every(el => el.getAttribute('aria-checked') === 'false')).toBe(true);
-    click('Avatar');
+    expect(screen.getByRole('checkbox', { name: 'Enable Library book from library' })).not.toBeChecked();
+    expect(screen.getByRole('checkbox', { name: 'Enable World book from world' })).not.toBeChecked();
+    expect(screen.getByRole('checkbox', { name: 'Enable Disabled book from world' })).not.toBeChecked();
+    fireEvent.click(screen.getByRole('button', { name: 'Continue to Avatar' }));
     fireEvent.click(await screen.findByRole('button', { name: 'Finalize Character' }));
     expect(onStartGame).toHaveBeenCalledWith(['default'], expect.any(Object), true, 'hill', [],
       [expect.objectContaining({ name: 'Companion' })]);
@@ -211,20 +211,18 @@ describe('the retained entry draft', () => {
     fireEvent.click(screen.getByRole('checkbox', { name: 'Default trait' }));
     fireEvent.click(screen.getByRole('button', { name: 'Starting Location' }));
     fireEvent.click(screen.getByRole('radio', { name: 'Hill' }));
-    fireEvent.click(screen.getByRole('button', { name: 'Continue to Characters' }));
-    fireEvent.click(screen.getByText('Companion'));
-    click('Dictionaries');
-    fireEvent.click(dictionaryToggle('World book'));
-    click('Abort');
+    fireEvent.click(screen.getByRole('button', { name: 'Library Additions' }));
+    fireEvent.click(screen.getByRole('checkbox', { name: 'Include Companion' }));
+    fireEvent.click(screen.getByRole('checkbox', { name: 'Enable World book from world' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Cancel' }));
     await enter();
     expect(screen.getByRole('checkbox', { name: 'Default trait' })).toBeChecked();
     fireEvent.click(screen.getByRole('button', { name: 'Starting Location' }));
     expect(screen.getByRole('radio', { name: /Random/ })).toBeChecked();
-    fireEvent.click(screen.getByRole('button', { name: 'Continue to Characters' }));
-    expect(screen.getByRole('checkbox')).not.toBeChecked();
-    click('Dictionaries');
-    expect(dictionaryToggle('World book')).toBeChecked();
-    expect(dictionaryToggle('Library book')).not.toBeChecked();
+    fireEvent.click(screen.getByRole('button', { name: 'Library Additions' }));
+    expect(screen.getByRole('checkbox', { name: 'Include Companion' })).not.toBeChecked();
+    expect(screen.getByRole('checkbox', { name: 'Enable World book from world' })).toBeChecked();
+    expect(screen.getByRole('checkbox', { name: 'Enable Library book from library' })).not.toBeChecked();
     expect(order()[0]).toContain('World book');
   });
 
@@ -272,12 +270,10 @@ describe('the retained entry draft', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Starting Location' }));
     fireEvent.click(screen.getByRole('radio', { name: 'Hill' }));
     expect(screen.getByText('Here: Hill town')).toBeInTheDocument();
-    fireEvent.click(screen.getByRole('button', { name: 'Continue to Characters' }));
-    click('Dictionaries'); click('Avatar');
+    fireEvent.click(screen.getByRole('button', { name: 'Continue to Avatar' }));
     await screen.findByRole('button', { name: 'Finalize Character' });
     vi.mocked(Math.random).mockReturnValue(0.9);
     fireEvent.click(screen.getByRole('button', { name: 'Back' }));
-    click('Back'); click('Back');
     fireEvent.click(screen.getByRole('radio', { name: /Random/ }));
     expect(screen.getByText('Here: Sedge')).toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: /Other traits/ }));
@@ -318,26 +314,74 @@ describe('the retained entry draft', () => {
     const onStartGame = vi.fn();
     renderMainMenu({ onStartGame });
     await enter();
-    fireEvent.click(screen.getByRole('button', { name: 'Continue to Characters' }));
-    click('Dictionaries');
-    fireEvent.click(dictionaryToggle('Library book'));
+    fireEvent.click(screen.getByRole('button', { name: 'Library Additions' }));
+    fireEvent.click(screen.getByRole('checkbox', { name: 'Enable Library book from library' }));
     const book = await DictionaryStorageService.getDictionaryData('shared');
     let finish!: (value: typeof book) => void;
     const load = vi.spyOn(DictionaryStorageService, 'getDictionaryData')
       .mockImplementationOnce(() => new Promise(resolve => { finish = resolve; }));
-    const start = screen.getByRole('button', { name: 'Start' });
+    const start = screen.getByRole('button', { name: 'Start game' });
     act(() => { fireEvent.click(start); fireEvent.click(start); });
     await waitFor(() => expect(load).toHaveBeenCalledTimes(1));
     expect(screen.getByRole('button', { name: 'Loading…' })).toBeDisabled();
     fireEvent.click(screen.getByRole('button', { name: 'Loading…' }));
     expect(load).toHaveBeenCalledTimes(1);
-    click('Abort');
+    fireEvent.click(screen.getByRole('button', { name: 'Cancel' }));
     await enter();
     await act(async () => finish(book));
     expect(onStartGame).not.toHaveBeenCalled();
     expect(screen.getByRole('dialog', { name: 'Enter Entry World' })).toBeInTheDocument();
-    fireEvent.click(screen.getByRole('button', { name: 'Continue to Characters' }));
-    click('Dictionaries'); click('Start');
+    fireEvent.click(screen.getByRole('button', { name: 'Start game' }));
     await waitFor(() => expect(onStartGame).toHaveBeenCalledTimes(1));
+  });
+
+  it('skips selected library records that disappear before finalization', async () => {
+    const onStartGame = vi.fn();
+    renderMainMenu({ onStartGame });
+    await enter();
+    fireEvent.click(screen.getByRole('button', { name: 'Library Additions' }));
+    fireEvent.click(screen.getByRole('checkbox', { name: 'Include Companion' }));
+    fireEvent.click(screen.getByRole('checkbox', { name: 'Enable Library book from library' }));
+    await EntityStorageService.deleteEntity('companion');
+    await DictionaryStorageService.deleteDictionary('shared');
+
+    fireEvent.click(screen.getByRole('button', { name: 'Start game' }));
+    await waitFor(() => expect(onStartGame).toHaveBeenCalledOnce());
+    expect(onStartGame).toHaveBeenCalledWith(
+      ['default'], null, true, null,
+      [expect.objectContaining({ id: 'shared', name: 'World book' })],
+      [],
+    );
+  });
+
+  it.each(['entity', 'dictionary'] as const)(
+    'keeps the editable draft and permits retry when %s resolution fails',
+    async (kind) => {
+    const onStartGame = vi.fn();
+    renderMainMenu({ onStartGame });
+    await enter();
+    fireEvent.click(screen.getByRole('button', { name: 'Library Additions' }));
+    const selectedName = kind === 'entity' ? 'Include Companion' : 'Enable Library book from library';
+    fireEvent.click(screen.getByRole('checkbox', { name: selectedName }));
+    const consoleError = vi.spyOn(console, 'error').mockImplementation(() => undefined);
+    const resolution = kind === 'entity'
+      ? vi.spyOn(EntityStorageService, 'getEntityData').mockRejectedValueOnce(new Error('IndexedDB unavailable'))
+      : vi.spyOn(DictionaryStorageService, 'getDictionaryData').mockRejectedValueOnce(new Error('IndexedDB unavailable'));
+
+    fireEvent.click(screen.getByRole('button', { name: 'Start game' }));
+    await waitFor(() => expect(toast.error).toHaveBeenCalledWith(
+      'Formamorph could not prepare those library additions. Try again.',
+    ));
+    expect(consoleError).toHaveBeenCalledWith(
+      'Could not finalize enter-world library additions',
+      expect.objectContaining({ message: 'IndexedDB unavailable' }),
+    );
+    expect(screen.getByRole('dialog', { name: 'Enter Entry World' })).toBeInTheDocument();
+    expect(screen.getByRole('checkbox', { name: selectedName })).toBeChecked();
+    expect(onStartGame).not.toHaveBeenCalled();
+
+    resolution.mockRestore();
+    fireEvent.click(screen.getByRole('button', { name: 'Start game' }));
+    await waitFor(() => expect(onStartGame).toHaveBeenCalledOnce());
   });
 });

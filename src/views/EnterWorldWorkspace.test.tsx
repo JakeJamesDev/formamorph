@@ -3,7 +3,8 @@ import { fireEvent, render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 import EnterWorldWorkspace from './EnterWorldWorkspace';
-import type { Trait } from '@/types';
+import type { DictionarySelectionItem } from '@/lib/dictionarySelection';
+import type { EntityMetadata, Trait } from '@/types';
 
 const identity = (text: string) => text;
 const traitIdentity = (_trait: Trait, text: string) => text;
@@ -23,9 +24,27 @@ const traits: Trait[] = [
   { id: 'artisan', name: 'Artisan', groupId: 'practice', order: 0, statChanges: [] },
 ];
 
+const libraryEntities: EntityMetadata[] = [
+  { id: 'portrait', name: 'Mara Vale', description: 'A practiced guide.', image: 'data:image/png;base64,portrait' },
+  { id: 'fallback', name: 'Quiet Cartographer', description: 'Maps forgotten roads.' },
+];
+
+const dictionaryItems: DictionarySelectionItem[] = [
+  {
+    key: 'world:shared', source: 'world', enabled: true, entryCount: 2,
+    book: { id: 'shared', name: 'World Atlas', description: 'Authored routes.', thumbnail: 'data:image/png;base64,world', entries: [] },
+  },
+  {
+    key: 'library:shared', source: 'library', enabled: false, entryCount: 3,
+    book: { id: 'shared', name: 'Traveler Notes', description: 'Collected rumors.', entries: [] },
+  },
+];
+
 function Harness(props: Partial<ComponentProps<typeof EnterWorldWorkspace>> = {}) {
   const [selectedTraits, setSelectedTraits] = useState(['local']);
   const [selectedLocationId, setSelectedLocationId] = useState<string | null>(null);
+  const [selectedEntityIds, setSelectedEntityIds] = useState(new Set<string>());
+  const [selectedDictionaries, setSelectedDictionaries] = useState(dictionaryItems);
   const [categoryIndex, setCategoryIndex] = useState(0);
   return (
     <EnterWorldWorkspace
@@ -38,12 +57,21 @@ function Harness(props: Partial<ComponentProps<typeof EnterWorldWorkspace>> = {}
       resolveTraitText={traitIdentity}
       selectedTraits={selectedTraits}
       selectedLocationId={selectedLocationId}
+      libraryEntities={libraryEntities}
+      selectedEntityIds={selectedEntityIds}
+      dictionaryItems={selectedDictionaries}
       categoryIndex={categoryIndex}
       onCategoryChange={setCategoryIndex}
       onTraitSelect={(id) => setSelectedTraits((current) => current.includes(id)
         ? current.filter((traitId) => traitId !== id)
         : [...current, id])}
       onLocationChange={setSelectedLocationId}
+      onEntityToggle={(id, selected) => setSelectedEntityIds((current) => {
+        const next = new Set(current);
+        if (selected) next.add(id); else next.delete(id);
+        return next;
+      })}
+      onDictionaryItemsChange={setSelectedDictionaries}
       onIntroduction={vi.fn()}
       onCancel={vi.fn()}
       onContinue={vi.fn()}
@@ -163,6 +191,100 @@ describe('EnterWorldWorkspace', () => {
       ),
     ).toBeInTheDocument();
     expect(screen.queryByText(/Secret/)).not.toBeInTheDocument();
+  });
+
+  it('presents selectable entities and source-separated dictionaries with artwork fallbacks', async () => {
+    const user = userEvent.setup();
+    render(<Harness />);
+
+    await user.click(screen.getByRole('button', { name: 'Library Additions' }));
+    expect(screen.getByRole('heading', { name: 'Entities' })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Library dictionaries' })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Included with this world' })).toBeInTheDocument();
+    expect(screen.getByRole('img', { name: 'Mara Vale portrait' })).toBeInTheDocument();
+    expect(screen.getByLabelText('Quiet Cartographer has no portrait')).toBeInTheDocument();
+    expect(screen.getByRole('img', { name: 'World Atlas cover' })).toBeInTheDocument();
+    expect(screen.getByLabelText('Traveler Notes has no cover')).toBeInTheDocument();
+    expect(screen.getByText('A practiced guide.')).toBeInTheDocument();
+    expect(screen.getByText('Collected rumors.')).toBeInTheDocument();
+
+    const entity = screen.getByRole('checkbox', { name: 'Include Mara Vale' });
+    const libraryBook = screen.getByRole('checkbox', { name: 'Enable Traveler Notes from library' });
+    expect(entity).not.toBeChecked();
+    expect(libraryBook).not.toBeChecked();
+    await user.click(entity);
+    await user.click(libraryBook);
+    expect(entity).toBeChecked();
+    expect(libraryBook).toBeChecked();
+    expect(screen.getByRole('checkbox', { name: 'Enable World Atlas from world' })).toBeChecked();
+  });
+
+  it('filters presentation without clearing hidden selections', async () => {
+    const user = userEvent.setup();
+    render(<Harness />);
+
+    await user.click(screen.getByRole('button', { name: 'Library Additions' }));
+    await user.click(screen.getByRole('checkbox', { name: 'Include Mara Vale' }));
+    await user.click(screen.getByRole('checkbox', { name: 'Enable Traveler Notes from library' }));
+    await user.type(screen.getByRole('searchbox', { name: 'Search library additions' }), 'cartographer');
+
+    expect(screen.getByText('Quiet Cartographer')).toBeInTheDocument();
+    expect(screen.queryByText('Mara Vale')).not.toBeInTheDocument();
+    expect(screen.queryByText('Traveler Notes')).not.toBeInTheDocument();
+
+    await user.clear(screen.getByRole('searchbox', { name: 'Search library additions' }));
+    expect(screen.getByRole('checkbox', { name: 'Include Mara Vale' })).toBeChecked();
+    expect(screen.getByRole('checkbox', { name: 'Enable Traveler Notes from library' })).toBeChecked();
+  });
+
+  it('orders world and library dictionaries together without changing enablement', async () => {
+    const user = userEvent.setup();
+    render(<Harness />);
+
+    await user.click(screen.getByRole('button', { name: 'Library Additions' }));
+    const order = screen.getByRole('list', { name: 'Dictionary order' });
+    expect(within(order).getAllByRole('listitem').map((item) => item.textContent)).toEqual([
+      expect.stringContaining('World Atlas'),
+      expect.stringContaining('Traveler Notes'),
+    ]);
+
+    await user.click(within(order).getByRole('button', { name: 'Move Traveler Notes from library up' }));
+    expect(within(order).getAllByRole('listitem').map((item) => item.textContent)).toEqual([
+      expect.stringContaining('Traveler Notes'),
+      expect.stringContaining('World Atlas'),
+    ]);
+    expect(screen.getByRole('checkbox', { name: 'Enable World Atlas from world' })).toBeChecked();
+    expect(screen.getByRole('checkbox', { name: 'Enable Traveler Notes from library' })).not.toBeChecked();
+
+    const keyboardMove = within(order).getByRole('button', { name: 'Move Traveler Notes from library down' });
+    keyboardMove.focus();
+    await user.keyboard('[Enter]');
+    expect(within(order).getAllByRole('listitem')[0]).toHaveTextContent('World Atlas');
+    await user.click(within(order).getByRole('button', { name: 'Move Traveler Notes from library up' }));
+
+    await user.type(screen.getByRole('searchbox', { name: 'Search library additions' }), 'Mara');
+    await user.clear(screen.getByRole('searchbox', { name: 'Search library additions' }));
+    const restoredOrder = screen.getByRole('list', { name: 'Dictionary order' });
+    expect(within(restoredOrder).getAllByRole('listitem').map((item) => item.textContent)).toEqual([
+      expect.stringContaining('Traveler Notes'),
+      expect.stringContaining('World Atlas'),
+    ]);
+  });
+
+  it('distinguishes ordering controls when world and library dictionary names match', async () => {
+    const matchingNames: DictionarySelectionItem[] = [
+      { ...dictionaryItems[0], book: { ...dictionaryItems[0].book, name: 'Shared Notes' } },
+      { ...dictionaryItems[1], book: { ...dictionaryItems[1].book, name: 'Shared Notes' } },
+    ];
+    const user = userEvent.setup();
+    render(<Harness dictionaryItems={matchingNames} />);
+
+    await user.click(screen.getByRole('button', { name: 'Library Additions' }));
+    const order = screen.getByRole('list', { name: 'Dictionary order' });
+    expect(within(order).getByRole('button', { name: 'Move Shared Notes from world down' })).toBeEnabled();
+    expect(within(order).getByRole('button', { name: 'Move Shared Notes from library up' })).toBeEnabled();
+    expect(within(order).getByRole('button', { name: 'Drag Shared Notes from world' })).toBeInTheDocument();
+    expect(within(order).getByRole('button', { name: 'Drag Shared Notes from library' })).toBeInTheDocument();
   });
 
   it('keeps workspace actions outside scrolling content and updates ratios immediately', async () => {

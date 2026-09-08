@@ -2,6 +2,7 @@
 import 'fake-indexeddb/auto';
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import ModelStorageService, { type StoredModelRecord } from './ModelStorageService';
+import { LibraryRecordNotFoundError } from './LibraryStore';
 import { promisifyRequest } from '@/lib/idb';
 import { makeVrm1, THUMB_DATA_URL } from '@/test/glbFixture';
 
@@ -154,7 +155,7 @@ describe('deleteModel', () => {
     const gone = await ModelStorageService.addModel(new File([blob('a')], 'gone.vrm', { type: 'model/vrm' }));
     await ModelStorageService.addModel(new File([blob('b')], 'kept.vrm', { type: 'model/vrm' }));
     await ModelStorageService.deleteModel(gone.id);
-    await expect(ModelStorageService.getModelData(gone.id)).rejects.toBe('Model not found');
+    await expect(ModelStorageService.getModelData(gone.id)).rejects.toBeInstanceOf(LibraryRecordNotFoundError);
   });
 
   it('refuses to delete the last model, so the player always has one to be', async () => {
@@ -317,7 +318,7 @@ describe('updateDataIfPresent (backfill persist)', () => {
     await persist(gone.id, { type: 'model/vrm', blob: blob('a'), size: 1, thumbnail: 'data:image/webp;base64,ZZ' });
 
     expect(await getRaw(gone.id)).toBeUndefined();
-    await expect(ModelStorageService.getModelData(gone.id)).rejects.toBe('Model not found');
+    await expect(ModelStorageService.getModelData(gone.id)).rejects.toBeInstanceOf(LibraryRecordNotFoundError);
   });
 
   it('writes the data onto a record that still exists, preserving its identity fields', async () => {
