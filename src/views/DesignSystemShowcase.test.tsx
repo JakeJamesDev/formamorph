@@ -118,3 +118,15 @@ describe('find bar reference', () => {
     expect(screen.getByRole('search', { name: 'Find and replace in world' })).toBeInTheDocument();
   });
 });
+
+describe('code templates reference', () => {
+  it('registers the production Code Templates dialog in the showcase', async () => {
+    const user = userEvent.setup();
+    renderShowcase();
+
+    await user.click(screen.getByRole('tab', { name: 'Code Templates' }));
+
+    expect(screen.getByRole('heading', { name: 'Stat Code Templates' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Open Code Templates' })).toBeInTheDocument();
+  });
+});

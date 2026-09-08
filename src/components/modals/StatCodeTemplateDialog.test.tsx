@@ -42,6 +42,13 @@ const open = () => render(
   />,
 );
 
+const localTemplate = {
+  id: 'local-template',
+  name: 'Local Demonstration',
+  description: 'A controlled template.',
+  code: 'return {{amount:number=2}};',
+};
+
 /** Start a new template and replace its code with `code`. */
 async function authoring(user: ReturnType<typeof userEvent.setup>, code: string) {
   open();
@@ -105,5 +112,64 @@ describe('the form a template presents', () => {
 
     // The built-in declares -5 per hour; the picker must meet the author with that, not with a blank.
     await waitFor(() => expect(screen.getByLabelText('Rate Per Hour')).toHaveValue('-5'));
+  });
+});
+
+describe('personal template boundaries', () => {
+  it('routes library and file actions through supplied adapters', async () => {
+    const user = userEvent.setup();
+    const repository = {
+      list: vi.fn(async () => [localTemplate]),
+      save: vi.fn(async (template: typeof localTemplate) => ({ ...template, id: template.id || 'saved-copy' })),
+      remove: vi.fn(async () => {}),
+      import: vi.fn(async () => 1),
+    };
+    const fileTransfer = {
+      readImportPack: vi.fn(async () => JSON.stringify({
+        formamorphTemplates: 1,
+        appVersion: 'test',
+        templates: [{ ...localTemplate, id: 'imported-template', name: 'Imported Demonstration' }],
+      })),
+      writeExportPack: vi.fn(),
+    };
+
+    render(
+      <StatCodeTemplateDialog
+        open
+        onOpenChange={vi.fn()}
+        stats={stats}
+        currentStatId="s1"
+        hasExistingCode={false}
+        onInsert={vi.fn()}
+        repository={repository}
+        fileTransfer={fileTransfer}
+      />,
+    );
+
+    expect(await screen.findByText(localTemplate.name)).toBeInTheDocument();
+    expect(repository.list).toHaveBeenCalled();
+
+    await user.click(screen.getByLabelText('Import templates'));
+    await waitFor(() => expect(repository.import).toHaveBeenCalledWith([
+      expect.objectContaining({ id: 'imported-template', name: 'Imported Demonstration' }),
+    ]));
+
+    await user.click(screen.getByLabelText('Export templates'));
+    expect(fileTransfer.writeExportPack).toHaveBeenCalledWith(
+      expect.stringContaining('Local Demonstration'),
+      'stat-templates.json',
+    );
+
+    await user.click(screen.getByText(localTemplate.name));
+    await user.click(screen.getByRole('button', { name: 'Delete' }));
+    await user.click(await screen.findByRole('button', { name: 'Confirm' }));
+    await waitFor(() => expect(repository.remove).toHaveBeenCalledWith(localTemplate.id));
+
+    await user.click(screen.getByRole('button', { name: 'Weighted Blend' }));
+    await user.click(screen.getByRole('button', { name: 'Duplicate' }));
+    await user.click(screen.getByRole('button', { name: 'Save Template' }));
+    await waitFor(() => expect(repository.save).toHaveBeenCalledWith(
+      expect.objectContaining({ id: '', name: 'Weighted Blend Copy' }),
+    ));
   });
 });
