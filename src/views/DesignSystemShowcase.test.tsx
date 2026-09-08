@@ -106,3 +106,15 @@ describe('community card reference', () => {
     expect(screen.getByRole('button', { name: /Unlike — 286 likes/ })).toHaveAttribute('aria-pressed', 'true');
   });
 });
+
+describe('find bar reference', () => {
+  it('registers the production Find bar in the showcase', async () => {
+    const user = userEvent.setup();
+    renderShowcase();
+
+    await user.click(screen.getByRole('tab', { name: 'Find' }));
+
+    expect(screen.getByRole('heading', { name: 'Find Bar Reference' })).toBeInTheDocument();
+    expect(screen.getByRole('search', { name: 'Find and replace in world' })).toBeInTheDocument();
+  });
+});

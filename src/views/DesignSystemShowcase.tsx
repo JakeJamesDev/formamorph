@@ -34,6 +34,7 @@ import { optionRowCopy, rowCopy } from '@/components/modals/settingsRowCopy';
 import PromptField from '@/components/prompt/PromptField';
 import { plainVocabulary } from '@/lib/chipVocabulary';
 import { CommunityCardReference } from '@/components/design-system/CommunityCardReference';
+import { FindBarReference } from '@/components/design-system/FindBarReference';
 
 type ReferenceDefinition = {
   id: string;
@@ -348,6 +349,12 @@ const DESIGN_SYSTEM_REFERENCES: readonly ReferenceDefinition[] = [
     label: 'Community Cards',
     description: 'Image-led creation listings',
     Component: CommunityCardReference,
+  },
+  {
+    id: 'find-bar',
+    label: 'Find',
+    description: 'Compact editor search and replacement',
+    Component: FindBarReference,
   },
 ];
 

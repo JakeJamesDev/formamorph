@@ -269,6 +269,7 @@ export default function EditorFindBar({
             ref={searchRef}
             value={query}
             onChange={(e) => setQuery(e.target.value)}
+            aria-label="Find"
             placeholder="Find"
             className="h-8 pr-[4.25rem] focus-visible:ring-0"
           />
@@ -340,6 +341,7 @@ export default function EditorFindBar({
                 <Input
                   value={replaceText}
                   onChange={(e) => setReplaceText(e.target.value)}
+                  aria-label="Replace with"
                   placeholder="Replace"
                   className={cn('h-8 focus-visible:ring-0', allowPlaceholderReplace && 'pr-10')}
                 />
