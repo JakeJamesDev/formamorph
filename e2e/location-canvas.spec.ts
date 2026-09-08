@@ -702,10 +702,11 @@ test.describe('Locations canvas', () => {
     // would set off from the far side of the Group and cross the whole box to get here.
     expect(Math.hypot(to.x - from.x, to.y - from.y)).toBeLessThan(Math.min(parent.width, parent.height) / 2);
 
-    // Curved and elbow move the shape between those ends, and nothing else about the arrow.
-    await pick('Curved Connections');
+    // Curved and elbow move the shape between those ends, and nothing else about the arrow. The canvas menu's
+    // own rows read Curved and Elbow now that the Connection Style title carries the shared word.
+    await pick('Curved');
     await expect.poll(shape).toContain(' C ');
-    await pick('Elbow Connections');
+    await pick('Elbow');
     const elbow = await shape();
     expect(elbow.match(/ L /g)!.length).toBe(3);
 

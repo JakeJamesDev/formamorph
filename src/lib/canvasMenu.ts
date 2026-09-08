@@ -18,8 +18,17 @@ export interface CanvasMenuItem {
   onSelect: () => void;
 }
 
-/** One group of rows, drawn between separators. */
-export type CanvasMenuSection = CanvasMenuItem[];
+/** One group of rows, drawn between separators. A title is the flyout handle for a set that answers "which
+ *  one?"; a flat action set that only does something carries none. */
+export interface CanvasMenuSection {
+  title?: string;
+  items: CanvasMenuItem[];
+}
+
+/** The short word an author reads a connection shape by, once the "Connection Style" title above it already
+ *  carries the shared word. A consumer with no title to carry it, like the toolbar picker, keeps the long
+ *  form straight off `CONNECTION_STYLES`. */
+const STYLE_ROW_LABEL: Record<ConnectionStyle, string> = { straight: 'Straight', bezier: 'Curved', elbow: 'Elbow' };
 
 /** What the menu is reporting on: how the map is drawn, and whether there is anything to walk back. */
 export interface CanvasMenuState {
@@ -41,30 +50,36 @@ export interface CanvasMenuActions {
 }
 
 /**
- * The menu's groups, in the order they are drawn. History leads every menu the canvas opens — the pane has no
- * toolbar to reach it from, so this is the only place undo is offered there. An empty stack grays its row out
- * rather than dropping it: a menu that changes height tells the author nothing about what is missing, and a
- * grayed Undo is where they learn the map has one at all.
+ * The menu's groups, in the order they are drawn: the titled sets first, then the flat action sets, matching
+ * the Main Menu tile menu's own order. The pane has no toolbar to reach history from, so its row is the only
+ * place undo is offered there. An empty stack grays its row out rather than dropping it: a menu that changes
+ * height tells the author nothing about what is missing, and a grayed Undo is where they learn the map has
+ * one at all.
  */
 export function canvasMenuSections(
   state: CanvasMenuState,
   actions: CanvasMenuActions,
   targetActions: CanvasMenuItem[],
 ): CanvasMenuSection[] {
-  const history: CanvasMenuSection = [
-    { label: "Undo", disabled: !state.canUndo, onSelect: actions.undo },
-    { label: "Redo", disabled: !state.canRedo, onSelect: actions.redo },
-  ];
-  const view: CanvasMenuSection = [
+  const grid: CanvasMenuItem[] = [
     { label: "Snap To Grid", checked: state.snap, onSelect: () => actions.setSnap(!state.snap) },
     { label: "Show Grid", checked: state.gridVisible, onSelect: () => actions.setGridVisible(!state.gridVisible) },
   ];
-  const style: CanvasMenuSection = CONNECTION_STYLES.map(({ value, label }) => ({
-    label,
+  const style: CanvasMenuItem[] = CONNECTION_STYLES.map(({ value }) => ({
+    label: STYLE_ROW_LABEL[value],
     checked: state.connectionStyle === value,
     exclusive: true,
     onSelect: () => actions.setConnectionStyle(value),
   }));
+  const history: CanvasMenuItem[] = [
+    { label: "Undo", disabled: !state.canUndo, onSelect: actions.undo },
+    { label: "Redo", disabled: !state.canRedo, onSelect: actions.redo },
+  ];
   // A target with nothing to offer contributes no group, rather than a separator with nothing between it.
-  return [history, ...(targetActions.length ? [targetActions] : []), view, style];
+  return [
+    { title: "Grid", items: grid },
+    { title: "Connection Style", items: style },
+    { items: history },
+    ...(targetActions.length ? [{ items: targetActions }] : []),
+  ];
 }
