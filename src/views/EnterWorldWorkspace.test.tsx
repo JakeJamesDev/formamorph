@@ -1,5 +1,5 @@
 import { useState, type ComponentProps } from 'react';
-import { fireEvent, render, screen, within } from '@testing-library/react';
+import { act, fireEvent, render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import EnterWorldWorkspace from './EnterWorldWorkspace';
@@ -21,6 +21,55 @@ const mockPhoneViewport = () => {
     removeEventListener: () => {},
     dispatchEvent: () => false,
   }));
+};
+
+const mockContainerWidths = (dialogWidth: number, libraryWidth: number) => {
+  const callbacks = new Set<ResizeObserverCallback>();
+  let widths = { dialog: dialogWidth, library: libraryWidth };
+
+  class StubResizeObserver {
+    constructor(private readonly callback: ResizeObserverCallback) {
+      callbacks.add(callback);
+    }
+
+    observe() {}
+    unobserve() {}
+    disconnect() { callbacks.delete(this.callback); }
+  }
+
+  vi.stubGlobal('ResizeObserver', StubResizeObserver);
+  vi.spyOn(HTMLElement.prototype, 'offsetWidth', 'get').mockImplementation(function measuredWidth(this: HTMLElement) {
+    if (this.dataset.enterWorldContainer === 'dialog') return widths.dialog;
+    if (this.dataset.enterWorldContainer === 'library') return widths.library;
+    return 0;
+  });
+
+  return {
+    resize(dialog: number, library: number) {
+      widths = { dialog, library };
+      act(() => callbacks.forEach((callback) => callback([], {} as ResizeObserver)));
+    },
+  };
+};
+
+const mockAnimationFrames = () => {
+  const callbacks = new Map<number, FrameRequestCallback>();
+  let nextId = 1;
+  vi.stubGlobal('requestAnimationFrame', (callback: FrameRequestCallback) => {
+    const id = nextId++;
+    callbacks.set(id, callback);
+    return id;
+  });
+  vi.stubGlobal('cancelAnimationFrame', (id: number) => callbacks.delete(id));
+
+  return {
+    step() {
+      const current = [...callbacks.values()];
+      callbacks.clear();
+      act(() => current.forEach((callback) => callback(performance.now())));
+    },
+    get pending() { return callbacks.size; },
+  };
 };
 
 afterEach(() => {
@@ -103,6 +152,26 @@ function Harness({ initialDictionaryItems = dictionaryItems, ...props }: Partial
 }
 
 describe('EnterWorldWorkspace', () => {
+  it('uses dialog and library container widths for all three responsive stages', async () => {
+    const containers = mockContainerWidths(72 * 16, 44 * 16);
+    const user = userEvent.setup();
+    render(<Harness />);
+
+    expect(screen.queryByRole('button', { name: /Categories/ })).not.toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: 'Library Additions' }));
+    expect(screen.getByTestId('enter-world-library-layout')).toHaveAttribute('data-pane-mode', 'split');
+
+    containers.resize(72 * 16 - 1, 44 * 16);
+    expect(screen.getByRole('button', { name: /Categories/ })).toBeInTheDocument();
+    expect(screen.getByTestId('enter-world-library-layout')).toHaveAttribute('data-pane-mode', 'split');
+
+    containers.resize(72 * 16 - 1, 44 * 16 - 1);
+    expect(screen.getByRole('button', { name: /Categories/ })).toBeInTheDocument();
+    expect(screen.getByTestId('enter-world-library-layout')).toHaveAttribute('data-pane-mode', 'single');
+    expect(screen.getByRole('region', { name: 'Library Additions List' })).not.toHaveAttribute('inert');
+    expect(document.querySelector('section[aria-label="Addition Details"]')).toHaveAttribute('inert');
+  });
+
   it('keeps phone categories collapsed and returns focus after choosing one', async () => {
     mockPhoneViewport();
     const user = userEvent.setup();
@@ -399,6 +468,88 @@ describe('EnterWorldWorkspace', () => {
 });
 
 describe('Enter World library inspection', () => {
+  it('stages every narrow detail entry offscreen and cancels replaced or resized entries', () => {
+    const containers = mockContainerWidths(1000, 680);
+    const frames = mockAnimationFrames();
+    render(<Harness />);
+
+    fireEvent.click(screen.getByRole('button', { name: /Categories/ }));
+    fireEvent.click(screen.getByRole('button', { name: 'Library Additions' }));
+    const layout = screen.getByTestId('enter-world-library-layout');
+    const list = screen.getByRole('region', { name: 'Library Additions List' });
+    const details = document.querySelector<HTMLElement>('section[aria-label="Addition Details"]')!;
+
+    fireEvent.click(screen.getByRole('button', { name: 'Inspect Mara Vale' }));
+    expect(within(details).getByRole('heading', { name: 'Mara Vale', hidden: true })).toBeInTheDocument();
+    expect(details).toHaveClass('translate-x-full');
+    expect(details).toHaveAttribute('inert');
+    expect(list).not.toHaveAttribute('inert');
+    expect(frames.pending).toBe(1);
+
+    frames.step();
+    expect(details).toHaveClass('translate-x-full');
+    expect(frames.pending).toBe(1);
+
+    fireEvent.click(screen.getByRole('button', { name: 'Inspect Quiet Cartographer' }));
+    expect(within(details).getByRole('heading', { name: 'Quiet Cartographer', hidden: true })).toBeInTheDocument();
+    frames.step();
+    frames.step();
+    expect(details).toHaveClass('translate-x-0');
+    expect(details).not.toHaveAttribute('inert');
+    expect(list).toHaveClass('-translate-x-1/4');
+    expect(within(details).getByRole('heading', { name: 'Quiet Cartographer' })).toHaveFocus();
+
+    fireEvent.click(within(details).getByRole('button', { name: 'Back to Additions' }));
+    expect(details).toHaveClass('translate-x-full');
+    expect(list).not.toHaveClass('-translate-x-1/4');
+    expect(screen.getByRole('button', { name: 'Inspect Quiet Cartographer' })).toHaveFocus();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Inspect Quiet Cartographer' }));
+    frames.step();
+    containers.resize(1000, 800);
+    frames.step();
+    expect(layout).toHaveAttribute('data-pane-mode', 'split');
+    expect(details).not.toHaveClass('translate-x-full');
+    expect(details).not.toHaveClass('translate-x-0');
+    expect(list).not.toHaveClass('-translate-x-1/4');
+    expect(details).not.toHaveAttribute('inert');
+    expect(list).not.toHaveAttribute('inert');
+    expect(frames.pending).toBe(0);
+
+    containers.resize(1000, 680);
+    expect(layout).toHaveAttribute('data-pane-mode', 'single');
+    expect(details).toHaveClass('translate-x-0');
+    expect(details).not.toHaveAttribute('inert');
+  });
+
+  it('keeps narrow navigation outcomes while reduced motion skips staged entry', () => {
+    mockContainerWidths(1000, 680);
+    const frames = mockAnimationFrames();
+    vi.spyOn(window, 'matchMedia').mockImplementation((query) => ({
+      matches: query === '(prefers-reduced-motion: reduce)',
+      media: query,
+      onchange: null,
+      addListener: () => {},
+      removeListener: () => {},
+      addEventListener: () => {},
+      removeEventListener: () => {},
+      dispatchEvent: () => false,
+    }));
+    render(<Harness />);
+
+    fireEvent.click(screen.getByRole('button', { name: /Categories/ }));
+    fireEvent.click(screen.getByRole('button', { name: 'Library Additions' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Inspect Mara Vale' }));
+
+    const details = screen.getByRole('region', { name: 'Addition Details' });
+    expect(details).toHaveClass('translate-x-0');
+    expect(within(details).getByRole('heading', { name: 'Mara Vale' })).toHaveFocus();
+    expect(frames.pending).toBe(0);
+
+    fireEvent.click(within(details).getByRole('button', { name: 'Back to Additions' }));
+    expect(screen.getByRole('button', { name: 'Inspect Mara Vale' })).toHaveFocus();
+  });
+
   it('keeps inspection independent from row and detail inclusion controls', async () => {
     const user = userEvent.setup();
     render(<Harness />);
@@ -506,6 +657,7 @@ describe('Enter World library inspection', () => {
 
   it('uses a full-width detail pane on phones and restores focus to the inspected row', async () => {
     mockPhoneViewport();
+    const frames = mockAnimationFrames();
     const user = userEvent.setup();
     render(<Harness />);
 
@@ -514,6 +666,8 @@ describe('Enter World library inspection', () => {
     await user.click(screen.getByRole('button', { name: 'Library Additions' }));
     const opener = screen.getByRole('button', { name: 'Inspect Mara Vale' });
     await user.click(opener);
+    frames.step();
+    frames.step();
 
     expect(document.querySelector('section[aria-label="Library Additions List"]')).toHaveAttribute('inert');
     const details = screen.getByRole('region', { name: 'Addition Details' });
@@ -525,6 +679,8 @@ describe('Enter World library inspection', () => {
     expect(opener).toHaveFocus();
 
     await user.click(opener);
+    frames.step();
+    frames.step();
     fireEvent.change(screen.getByRole('searchbox', { name: 'Search Library Additions', hidden: true }), {
       target: { value: 'no visible opener' },
     });
