@@ -12,7 +12,7 @@ export type EnterMode = 'newGame' | 'quickStart' | 'saveLoad';
  * One screen of the flow. `intro` is the world's Introduction readme — an overlay over whatever setup
  * screen comes next rather than a screen of its own, which is why `navigableSteps` drops it.
  */
-export type EnterStep = 'intro' | 'traits' | 'location' | 'characters' | 'dictionaries' | 'avatar';
+export type EnterStep = 'intro' | 'workspace' | 'characters' | 'dictionaries' | 'avatar';
 
 /** The steps the player can actually step back to. */
 export type NavigableStep = Exclude<EnterStep, 'intro'>;
@@ -36,8 +36,7 @@ export function buildEnterFlow(world: EnterFlowWorld, mode: EnterMode): EnterSte
   if (mode !== 'newGame') return [];
   const steps: EnterStep[] = [];
   if (world.introReadme?.trim()) steps.push('intro');
-  if (world.traitCount > 0) steps.push('traits');
-  if (world.startingLocationCount > 1) steps.push('location');
+  if (world.traitCount > 0 || world.startingLocationCount > 1) steps.push('workspace');
   if (world.hasCharacterStep) steps.push('characters');
   if (world.hasDictionaryStep) steps.push('dictionaries');
   if (world.use3DModel) steps.push('avatar');

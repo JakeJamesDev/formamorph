@@ -68,7 +68,7 @@ const click = (name: string) => {
 async function enter() {
   fireEvent.click(await screen.findByText('Entry World'));
   fireEvent.click(await screen.findByRole('button', { name: 'Enter World' }));
-  await screen.findByRole('heading', { name: 'Select Starting Traits' });
+  await screen.findByRole('dialog', { name: 'Enter Entry World' });
 }
 const dictionaryToggle = (name: string) => within(screen.getByText(name).closest('.border') as HTMLElement).getByRole('checkbox');
 
@@ -102,19 +102,46 @@ describe('the retained entry draft', () => {
     fireEvent.click(await screen.findByText('Entry World'));
     fireEvent.click(await screen.findByRole('button', { name: 'Quick Start' }));
     expect(onStartGame).toHaveBeenCalledWith(['default'], null, true);
-    expect(screen.queryByRole('heading', { name: 'Select Starting Traits' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('dialog', { name: 'Enter Entry World' })).not.toBeInTheDocument();
   });
 
-  it('retains choices through every picker remount and starts from those choices', async () => {
+  it('starts from the workspace when no library or Avatar continuation remains', async () => {
+    const w = world();
+    w.data.dictionaries = [];
+    await WorldStorageService.storeWorld(w);
+    await EntityStorageService.deleteEntity('companion');
+    await DictionaryStorageService.deleteDictionary('shared');
+    const onStartGame = vi.fn();
+    renderMainMenu({ onStartGame });
+    await enter();
+
+    fireEvent.click(screen.getByRole('button', { name: /Other traits/ }));
+    fireEvent.click(screen.getByRole('checkbox', { name: 'Extra trait' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Starting Location' }));
+    fireEvent.click(screen.getByRole('radio', { name: 'Hill' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Start game' }));
+
+    await waitFor(() => expect(onStartGame).toHaveBeenCalledOnce());
+    expect(onStartGame).toHaveBeenCalledWith(
+      ['default', 'extra'],
+      null,
+      true,
+      'hill',
+      [expect.objectContaining({ name: 'Default', enabled: true })],
+      [],
+    );
+  });
+
+  it('retains workspace and library choices through navigation and starts from those choices', async () => {
     const onStartGame = vi.fn();
     renderMainMenu({ onStartGame });
     await enter();
     fireEvent.click(screen.getByRole('checkbox', { name: 'Default trait' }));
-    click('Next');
+    fireEvent.click(screen.getByRole('button', { name: /Other traits/ }));
     fireEvent.click(screen.getByRole('checkbox', { name: 'Extra trait' }));
-    click('Location');
+    fireEvent.click(screen.getByRole('button', { name: 'Starting Location' }));
     fireEvent.click(screen.getByRole('radio', { name: 'Hill' }));
-    click('Characters');
+    fireEvent.click(screen.getByRole('button', { name: 'Continue to Characters' }));
     fireEvent.click(screen.getByText('Companion'));
     click('Dictionaries');
     await screen.findByRole('heading', { name: 'Choose Dictionaries' });
@@ -124,11 +151,11 @@ describe('the retained entry draft', () => {
     expect(screen.getByRole('checkbox')).toBeChecked();
     click('Back');
     expect(screen.getByRole('radio', { name: 'Hill' })).toBeChecked();
-    click('Back');
+    fireEvent.click(screen.getByRole('button', { name: /Other traits/ }));
     expect(screen.getByRole('checkbox', { name: 'Extra trait' })).toBeChecked();
-    click('Location');
+    fireEvent.click(screen.getByRole('button', { name: 'Starting Location' }));
     expect(screen.getByRole('radio', { name: 'Hill' })).toBeChecked();
-    click('Characters');
+    fireEvent.click(screen.getByRole('button', { name: 'Continue to Characters' }));
     expect(screen.getByRole('checkbox')).toBeChecked();
     click('Dictionaries');
     expect(dictionaryToggle('World book')).not.toBeChecked();
@@ -148,9 +175,9 @@ describe('the retained entry draft', () => {
     const user = userEvent.setup();
     renderMainMenu({ onStartGame });
     await enter();
-    click('Location');
+    fireEvent.click(screen.getByRole('button', { name: 'Starting Location' }));
     fireEvent.click(screen.getByRole('radio', { name: 'Hill' }));
-    click('Characters');
+    fireEvent.click(screen.getByRole('button', { name: 'Continue to Characters' }));
     fireEvent.click(screen.getByText('Companion'));
     click('Dictionaries');
     fireEvent.click(dictionaryToggle('Library book'));
@@ -182,18 +209,18 @@ describe('the retained entry draft', () => {
     // The harness keeps MainMenu mounted after handoff; start another ordinary visit.
     await enter();
     fireEvent.click(screen.getByRole('checkbox', { name: 'Default trait' }));
-    click('Location');
+    fireEvent.click(screen.getByRole('button', { name: 'Starting Location' }));
     fireEvent.click(screen.getByRole('radio', { name: 'Hill' }));
-    click('Characters');
+    fireEvent.click(screen.getByRole('button', { name: 'Continue to Characters' }));
     fireEvent.click(screen.getByText('Companion'));
     click('Dictionaries');
     fireEvent.click(dictionaryToggle('World book'));
     click('Abort');
     await enter();
     expect(screen.getByRole('checkbox', { name: 'Default trait' })).toBeChecked();
-    click('Location');
+    fireEvent.click(screen.getByRole('button', { name: 'Starting Location' }));
     expect(screen.getByRole('radio', { name: /Random/ })).toBeChecked();
-    click('Characters');
+    fireEvent.click(screen.getByRole('button', { name: 'Continue to Characters' }));
     expect(screen.getByRole('checkbox')).not.toBeChecked();
     click('Dictionaries');
     expect(dictionaryToggle('World book')).toBeChecked();
@@ -234,35 +261,65 @@ describe('the retained entry draft', () => {
     fireEvent.click(within(intro).getByRole('checkbox', { name: "Don't Show This Again" }));
     fireEvent.click(within(intro).getByRole('button', { name: 'Close' }));
     fireEvent.click(screen.getByRole('checkbox', { name: 'Default trait' }));
-    click('Next');
+    fireEvent.click(screen.getByRole('button', { name: /Other traits/ }));
     expect(screen.getByText('Town: Sedge. Mood: Calm.')).toBeInTheDocument();
     fireEvent.click(screen.getByRole('checkbox', { name: 'Extra trait' }));
     expect(screen.getByText('Town: Sedge. Mood: Excited.')).toBeInTheDocument();
-    click('Location');
+    fireEvent.click(screen.getByRole('button', { name: 'Introduction' }));
+    const reopened = await screen.findByRole('dialog', { name: 'Introduction' });
+    fireEvent.click(within(reopened).getByRole('button', { name: 'Close' }));
+    expect(screen.getByRole('checkbox', { name: 'Extra trait' })).toBeChecked();
+    fireEvent.click(screen.getByRole('button', { name: 'Starting Location' }));
     fireEvent.click(screen.getByRole('radio', { name: 'Hill' }));
     expect(screen.getByText('Here: Hill town')).toBeInTheDocument();
-    click('Characters'); click('Dictionaries'); click('Avatar');
+    fireEvent.click(screen.getByRole('button', { name: 'Continue to Characters' }));
+    click('Dictionaries'); click('Avatar');
     await screen.findByRole('button', { name: 'Finalize Character' });
     vi.mocked(Math.random).mockReturnValue(0.9);
     fireEvent.click(screen.getByRole('button', { name: 'Back' }));
     click('Back'); click('Back');
     fireEvent.click(screen.getByRole('radio', { name: /Random/ }));
     expect(screen.getByText('Here: Sedge')).toBeInTheDocument();
-    click('Back');
+    fireEvent.click(screen.getByRole('button', { name: /Other traits/ }));
     fireEvent.click(screen.getByRole('checkbox', { name: 'Extra trait' }));
     expect(screen.getByText('Town: Sedge. Mood: Calm.')).toBeInTheDocument();
-    click('Abort');
+    fireEvent.click(screen.getByRole('button', { name: 'Cancel' }));
     await enter();
     expect(screen.queryByRole('dialog', { name: 'Introduction' })).not.toBeInTheDocument();
     fireEvent.click(screen.getByRole('checkbox', { name: 'Default trait' }));
-    click('Next');
+    fireEvent.click(screen.getByRole('button', { name: /Other traits/ }));
     expect(screen.getByText('Town: Marrow. Mood: Calm.')).toBeInTheDocument();
+  });
+
+  it('replaces and click-again clears traits in an exclusive category', async () => {
+    const w = world();
+    w.data.traits = [
+      { id: 'first', name: 'First path', groupId: 'group', statChanges: [] },
+      { id: 'second', name: 'Second path', groupId: 'group', statChanges: [] },
+    ];
+    w.data.traitGroups = [{ id: 'group', name: 'Paths', parentId: null, exclusive: true }];
+    await WorldStorageService.storeWorld(w);
+    renderMainMenu();
+    await enter();
+
+    const first = screen.getByRole('radio', { name: 'First path' });
+    const second = screen.getByRole('radio', { name: 'Second path' });
+    fireEvent.click(first);
+    expect(first).toBeChecked();
+    fireEvent.click(second);
+    expect(first).not.toBeChecked();
+    expect(second).toBeChecked();
+    fireEvent.click(second);
+    expect(second).not.toBeChecked();
+    expect(screen.getByLabelText('0 of 2 selected')).toHaveTextContent('0/2');
   });
 
   it('ignores duplicate starts and a library load that completes after cancellation', async () => {
     const onStartGame = vi.fn();
     renderMainMenu({ onStartGame });
-    await enter(); click('Location'); click('Characters'); click('Dictionaries');
+    await enter();
+    fireEvent.click(screen.getByRole('button', { name: 'Continue to Characters' }));
+    click('Dictionaries');
     fireEvent.click(dictionaryToggle('Library book'));
     const book = await DictionaryStorageService.getDictionaryData('shared');
     let finish!: (value: typeof book) => void;
@@ -278,8 +335,9 @@ describe('the retained entry draft', () => {
     await enter();
     await act(async () => finish(book));
     expect(onStartGame).not.toHaveBeenCalled();
-    expect(screen.getByRole('heading', { name: 'Select Starting Traits' })).toBeInTheDocument();
-    click('Location'); click('Characters'); click('Dictionaries'); click('Start');
+    expect(screen.getByRole('dialog', { name: 'Enter Entry World' })).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Continue to Characters' }));
+    click('Dictionaries'); click('Start');
     await waitFor(() => expect(onStartGame).toHaveBeenCalledTimes(1));
   });
 });

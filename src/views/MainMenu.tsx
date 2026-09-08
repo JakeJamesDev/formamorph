@@ -45,8 +45,7 @@ import { LoadGameDialog } from '../components/modals/LoadGameDialog';
 import WorldEditor from './WorldEditor';
 import { LibraryTileGrid } from '@/components/library/LibraryTileGrid';
 import { useLibraryTiles } from '@/lib/useLibraryTiles';
-import TraitSelectionModal from './TraitSelectionModal';
-import StartingLocationModal from './StartingLocationModal';
+import EnterWorldWorkspace from './EnterWorldWorkspace';
 import DictionarySelectionModal from './DictionarySelectionModal';
 import CharacterSelectionModal from './CharacterSelectionModal';
 import { startingLocations } from '@/lib/startingLocation';
@@ -292,8 +291,7 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
   const [worldToDelete, setWorldToDelete] = useState<string | null>(null);
   const [warmingOffline, setWarmingOffline] = useState(false);
   const [showCharacterCustomization, setShowCharacterCustomization] = useState(false);
-  const [showTraitSelection, setShowTraitSelection] = useState(false);
-  const [showLocationSelection, setShowLocationSelection] = useState(false);
+  const [showSetupWorkspace, setShowSetupWorkspace] = useState(false);
   const [showDictionarySelection, setShowDictionarySelection] = useState(false);
   const [showCharacterSelection, setShowCharacterSelection] = useState(false);
   const [showIntroReadme, setShowIntroReadme] = useState(false);
@@ -1125,8 +1123,7 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
     setSelectedDictionaries(null);
     setShowIntroReadme(false);
     setEnterAfterIntro(null);
-    setShowTraitSelection(false);
-    setShowLocationSelection(false);
+    setShowSetupWorkspace(false);
     setShowCharacterSelection(false);
     setShowDictionarySelection(false);
     setShowCharacterCustomization(false);
@@ -1145,8 +1142,7 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
   }, mode);
   const showEnterStep = (step: NavigableStep) => {
     cancelEntryResolution();
-    setShowTraitSelection(step === 'traits');
-    setShowLocationSelection(step === 'location');
+    setShowSetupWorkspace(step === 'workspace');
     setShowCharacterSelection(step === 'characters');
     setShowDictionarySelection(step === 'dictionaries');
     setShowCharacterCustomization(step === 'avatar');
@@ -2578,7 +2574,7 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
 
       {/* Dimming scrim behind the enter-world flow popups (they're bare fixed cards, not Radix dialogs, so
           they don't bring their own overlay). z-40 sits under the cards' z-50. */}
-      {(showTraitSelection || showLocationSelection || showCharacterSelection || showDictionarySelection) && (
+      {(showCharacterSelection || showDictionarySelection) && (
         <div className="fixed inset-0 z-40 bg-black/80" aria-hidden />
       )}
 
@@ -2595,58 +2591,36 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
         />
       )}
 
-      {showTraitSelection && (
-        <TraitSelectionModal
+      {showSetupWorkspace && selectedWorld && (
+        <EnterWorldWorkspace
+          worldName={selectedWorld.name}
           traits={traits}
           traitGroups={traitGroups}
           stats={rawStats}
+          locations={startingLocations(locations)}
           resolveText={resolvePH}
           resolveTraitText={resolveTraitText}
           selectedTraits={selectedTraits}
-          sectionIndex={entryDraft.traitSection}
-          onSectionChange={(index) => updateDraft('traitSection', index)}
-          onTraitSelect={handleTraitSelection}
-          onAbort={() => {
-            setShowTraitSelection(false);
-            abandonEnterFlow();
-          }}
-          onConfirm={() => advanceEntry('traits')}
-          onBack={backFrom('traits')}
-          confirmLabel={
-            startingLocations(locations).length > 1
-              ? 'Location'
-              : charStepVisible
-                ? 'Characters'
-                : dictStepVisible
-                  ? 'Dictionaries'
-                  : selectedWorld?.data.worldOverview?.use3DModel
-                    ? 'Avatar'
-                    : 'Start'
-          }
-        />
-      )}
-
-      {showLocationSelection && (
-        <StartingLocationModal
-          locations={startingLocations(locations)}
-          resolveText={resolvePH}
           selectedLocationId={selectedLocationId}
+          categoryIndex={entryDraft.traitSection}
+          onCategoryChange={(index) => updateDraft('traitSection', index)}
+          onTraitSelect={handleTraitSelection}
           onLocationChange={(id) => updateDraft('locationId', id)}
-          onConfirm={() => advanceEntry('location')}
-          onBack={backFrom('location')}
-          onAbort={() => {
-            setShowLocationSelection(false);
-            abandonEnterFlow();
-          }}
-          confirmLabel={
+          onIntroduction={selectedWorld.data.worldOverview?.introReadme?.trim()
+            ? () => setShowIntroReadme(true)
+            : undefined}
+          onCancel={abandonEnterFlow}
+          onContinue={() => advanceEntry('workspace')}
+          continueLabel={
             charStepVisible
-              ? 'Characters'
+              ? 'Continue to Characters'
               : dictStepVisible
-                ? 'Dictionaries'
-                : selectedWorld?.data.worldOverview?.use3DModel
-                  ? 'Avatar'
-                  : 'Start'
+                ? 'Continue to Dictionaries'
+                : selectedWorld.data.worldOverview?.use3DModel
+                  ? 'Continue to Avatar'
+                  : 'Start game'
           }
+          resolving={resolvingEntry}
         />
       )}
 
