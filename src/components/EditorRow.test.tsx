@@ -1,4 +1,5 @@
 import { render, fireEvent, cleanup, screen } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { describe, it, expect, afterEach, vi } from 'vitest';
 import { EditorRow, EditorRowList, TREE_INDENT } from './EditorRow';
 
@@ -9,6 +10,27 @@ describe('EditorRow', () => {
     const onSelect = vi.fn();
     render(<EditorRow selected={false} onSelect={onSelect} label="Vigor" />);
     fireEvent.click(screen.getByText('Vigor'));
+    expect(onSelect).toHaveBeenCalledTimes(1);
+  });
+
+  it('offers keyboard selection when a row exposes a selection label', async () => {
+    const user = userEvent.setup();
+    const onSelect = vi.fn();
+    render(
+      <EditorRow
+        selected={false}
+        onSelect={onSelect}
+        label="Vigor"
+        selectionLabel="Select Vigor"
+        gripProps={{ role: 'button', tabIndex: 0, 'aria-label': 'Drag Vigor' }}
+      />,
+    );
+
+    await user.tab();
+    expect(screen.getByRole('button', { name: 'Drag Vigor' })).toHaveFocus();
+    await user.tab();
+    expect(screen.getByRole('button', { name: 'Select Vigor' })).toHaveFocus();
+    await user.keyboard('{Enter}');
     expect(onSelect).toHaveBeenCalledTimes(1);
   });
 
