@@ -76,8 +76,23 @@ test('rich-list actions stay local and reachable through bounded panes', async (
     await expect.poll(() => pane.evaluate((element) => element.scrollTop)).toBeGreaterThan(0);
   }
 
+  const editorGrip = editor.getByRole('button', { name: 'Drag to reorder' }).first();
+  await editorGrip.focus();
+  await page.keyboard.press('Shift+Tab');
+  await page.keyboard.press('Tab');
+  await expect(editorGrip).toBeFocused();
+  expect(await editorGrip.evaluate((element) => getComputedStyle(element).boxShadow)).not.toBe('none');
+  await page.keyboard.press('Tab');
+  const editorSelection = editor.getByRole('button', { name: /^Select / }).first();
+  await expect(editorSelection).toBeFocused();
+  expect(await editorSelection.evaluate((element) => getComputedStyle(element).boxShadow)).not.toBe('none');
+  await page.keyboard.press('Enter');
+
   const lastSaveAction = saves.getByRole('button', { name: 'Delete save “Arrival at Tidemark”' });
-  await lastSaveAction.focus();
+  await saveName.focus();
+  for (let step = 0; step < 40 && !await lastSaveAction.evaluate((element) => element === document.activeElement); step += 1) {
+    await page.keyboard.press('Tab');
+  }
   await expect(lastSaveAction).toBeFocused();
   const focusReveal = await lastSaveAction.evaluate((element) => {
     const viewport = element.closest('[data-radix-scroll-area-viewport]')?.getBoundingClientRect();

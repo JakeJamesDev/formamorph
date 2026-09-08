@@ -3,6 +3,14 @@
  * device-local manual order. Kept free of IndexedDB/React so they're unit-testable; the modal supplies
  * the raw records + stored order and renders the result.
  */
+import { reorderVisible } from './sortableOrder';
+
+export const formatSaveTimestamp = (ms: number) => (ms ? new Date(ms).toLocaleString() : '');
+
+/** Preserve saves excluded from a filtered list while reordering the rows that remain visible. */
+export const mergeVisibleSaveOrder = <T extends { id: string }>(allRows: T[], visibleRows: T[]) => (
+  reorderVisible(allRows, visibleRows)
+);
 
 /** Minimal shape the ordering/grouping needs from a stored save. */
 export interface SaveMeta {

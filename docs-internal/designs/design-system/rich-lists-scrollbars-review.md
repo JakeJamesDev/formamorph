@@ -10,7 +10,7 @@ Ticket [02](../../specs/design-system-additions/issues/02-list-references-and-sc
 | Save and Load List | `SaveList`, extracted from `LoadGameDialog`; wrapped name, timestamp, game time, Auto tag, grip, load/select, export, delete, and complete disabled semantics | Save, load, export, delete, and reorder operate on mounted save fixtures and local status. |
 | Both | `ScrollArea`; 10px vertical track, rounded `border` thumb, 11px viewport gutter, no arrow controls | Long fixtures overflow a 16rem pane; controls and status remain outside the viewport. |
 
-The extraction changes no save data, save-file shape, persistence operation, or production ordering rule. `LoadGameDialog` supplies the same records and callbacks to `SaveList` that its former internal row composition received.
+The extraction changes no save data, save-file shape, persistence operation, or production ordering rule. `LoadGameDialog` supplies the same records and callbacks to `SaveList` that its former internal row composition received, and merges reordered manual saves back into their full list so a hidden autosave keeps its persisted slot.
 
 ## Density decision
 
@@ -68,14 +68,14 @@ Source review route: [Writing Guide](../../../docs/Writing-Guide.md), based on A
 
 | Check | Observed evidence |
 | --- | --- |
-| Local behavior | Vitest exercises editor selection/rename/duplicate/delete and save/load/export/delete without storage writes. The production `SaveList` test separately verifies metadata, per-row callbacks, and keyboard-safe disabled behavior. |
-| Targeted coverage | The three focused suites pass 12 tests in 11.28s: `RichListReferences.tsx` has 100% statement/function/line coverage, `SaveList.tsx` has 94.33% statement/line and 88.88% function coverage, and the showcase has 99.41% statement/line coverage. |
-| Regression sensitivity | Changing the export callback to report a load made the targeted suite fail on the expected export status in 3.26s; restoring the callback returned the suite to green. |
+| Local behavior | Vitest exercises editor selection/rename/duplicate/delete and save/load/export/delete without storage writes. Production tests separately verify keyboard row selection, metadata, per-row callbacks, keyboard-safe disabled behavior, and filtered ordering that preserves a hidden autosave. |
+| Targeted coverage | Five focused suites pass 35 tests in 12.15s with 97.98% aggregate statement/line coverage. `RichListReferences.tsx` and `saveOrdering.ts` have 100% statement/function/line coverage; `EditorRow.tsx` has 98.34% statement/line coverage; `SaveList.tsx` has 94.28%; and the showcase has 99.41%. |
+| Regression sensitivity | Replacing the filtered-order merge with the visible subset made the hidden-autosave guard fail in 2.44s; restoring the merge returned the suite to green. An earlier export-result mutation likewise failed on the expected local status. |
 | Desktop and mobile layout | Playwright passed the 1280×860 desktop and touch-enabled 375×812 profiles. Cards share a row only on desktop, stack on mobile, and produce no page-level horizontal overflow. |
-| Scroll input and focus reveal | Real wheel input scrolls each independent pane. A Chromium touch sequence scrolls the mobile editor pane. Focusing the final off-screen save action reveals it inside its viewport. |
+| Scroll input and focus reveal | Real wheel input scrolls each independent pane. A Chromium touch sequence scrolls the mobile editor pane. Tab and Shift+Tab traverse visible focus rings on the editor grip and selection control, then Tab navigation through every save row reveals the final off-screen action inside its viewport. |
 | Sorting and actions | Pointer drag changes save order. Rename, duplicate, delete, Save, Load, and Export produce the expected local result; blank Save Name disables Save. |
 | Scrollbar structure | Each pane has one shared viewport and one vertical scrollbar. Computed values are a 10px track, 11px right gutter, 9999px rounded thumb, and zero button descendants. |
 | Long content | The long autosave row stays within its client width, keeps complete accessible names and metadata, and does not force horizontal page overflow. |
 | Theme, palette, font, and enlarged text | Light and dark modes passed with the Forest palette, Atkinson Hyperlegible, and a 20px root font on both viewport profiles. Selected rows and scrollbar thumbs remain distinguishable from their card surface. |
 
-The complete rich-list browser matrix passed 8 tests in 29.97s. Static screenshots and DOM measurements support the interaction evidence; they are not treated as proof on their own.
+The complete rich-list browser matrix passed 8 tests in 30.79s. Static screenshots and DOM measurements support the interaction evidence; they are not treated as proof on their own.

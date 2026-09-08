@@ -59,6 +59,7 @@ export function SortableRow({
       gripProps={{ ...attributes, ...listeners }}
       selected={selected}
       onSelect={() => onSelect(item.id)}
+      selectionLabel={`Select ${item.name}`}
       checkbox={onToggleEnabled ? { checked: enabled !== false, onChange: (v) => onToggleEnabled(item.id, v) } : undefined}
       label={label ?? item.name}
       meta={meta?.text}

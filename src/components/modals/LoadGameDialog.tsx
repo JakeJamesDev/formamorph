@@ -19,13 +19,12 @@ import { useClosingSnapshot } from "@/lib/useClosingSnapshot";
 import { filesFrom, importSummaryToast } from "@/lib/importFiles";
 import WorldStorageService from '../../services/WorldStorageService';
 import {
-  groupSaves, mergeOrder, folderRefFor, FOLDER_ORDER_KEY, type SaveMeta, type SaveFolder, type WorldRef,
+  formatSaveTimestamp, groupSaves, mergeOrder, mergeVisibleSaveOrder, folderRefFor, FOLDER_ORDER_KEY,
+  type SaveMeta, type SaveFolder, type WorldRef,
 } from '../../lib/saveOrdering';
 import type { SaveRecord } from "@/types";
 import { Tip } from "@/components/ui/tooltip";
 import { SaveList, type SaveListItem } from './SaveList';
-
-const formatStamp = (ms: number) => (ms ? new Date(ms).toLocaleString() : '');
 
 /** SaveMeta enriched with the raw record + display bits, so the row can render and export without a re-read. */
 export interface SaveRow extends SaveMeta, SaveListItem {
@@ -57,7 +56,7 @@ function FolderRowBody({ folder, pinned }: { folder: SaveFolder; pinned: boolean
         </div>
         <div className="text-meta opacity-70">
           {folder.saves.length} save{folder.saves.length === 1 ? '' : 's'}
-          {folder.lastPlayed > 0 && <> · Last played {formatStamp(folder.lastPlayed)}</>}
+          {folder.lastPlayed > 0 && <> · Last played {formatSaveTimestamp(folder.lastPlayed)}</>}
         </div>
       </div>
     </>
@@ -436,7 +435,7 @@ export function LoadGameDialog({ open, onOpenChange, current, onLoad, title, ico
                     onDelete={setPendingDelete}
                     onReorder={(next) => {
                       if (!activeFolder) return;
-                      const ids = next.map((row) => row.id);
+                      const ids = mergeVisibleSaveOrder(activeSaves, next).map((row) => row.id);
                       setSaveOrderByKey((previous) => ({ ...previous, [activeFolder.key]: ids }));
                       void setOrder(activeFolder.key, ids);
                     }}

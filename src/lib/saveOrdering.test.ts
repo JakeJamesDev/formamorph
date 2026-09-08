@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { mergeOrder, folderRefFor, groupSaves, type SaveMeta } from './saveOrdering';
+import { mergeOrder, folderRefFor, groupSaves, mergeVisibleSaveOrder, type SaveMeta } from './saveOrdering';
 
 const meta = (id: string, worldId: string | undefined, worldName: string | null, timestamp: number): SaveMeta =>
   ({ id, name: id, worldId, worldName, timestamp });
@@ -24,6 +24,22 @@ describe('mergeOrder', () => {
 
   it('skips stored ids that no longer exist', () => {
     expect(mergeOrder(items, idOf, timeOf, ['gone', 'b', 'a', 'c']).map(idOf)).toEqual(['b', 'a', 'c']);
+  });
+});
+
+describe('mergeVisibleSaveOrder', () => {
+  it('keeps a hidden autosave in place while manual saves are reordered', () => {
+    const all = [
+      meta('manual-one', 'w', 'W', 30),
+      meta('hidden-auto', 'w', 'W', 20),
+      meta('manual-two', 'w', 'W', 10),
+    ];
+
+    expect(mergeVisibleSaveOrder(all, [all[2], all[0]]).map((row) => row.id)).toEqual([
+      'manual-two',
+      'hidden-auto',
+      'manual-one',
+    ]);
   });
 });
 

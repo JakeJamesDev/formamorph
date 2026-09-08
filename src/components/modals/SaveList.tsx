@@ -6,6 +6,7 @@ import { EditorDndContext, StableSortableContext } from '@/components/dnd/Editor
 import { Button } from '@/components/ui/button';
 import { Tip } from '@/components/ui/tooltip';
 import { ActionIcon } from '@/lib/actionIcons';
+import { formatSaveTimestamp } from '@/lib/saveOrdering';
 import { cn } from '@/lib/utils';
 
 export interface SaveListItem {
@@ -21,8 +22,6 @@ const formatGameTime = (time: number) => {
   const minutes = Math.floor((time - hours) * 60);
   return `${hours}h ${minutes}m`;
 };
-
-const formatStamp = (ms: number) => (ms ? new Date(ms).toLocaleString() : '');
 
 function SortableSaveRow<T extends SaveListItem>({ row, disabled, busy, pickLabel, onPick, onExport, onDelete }: {
   row: T;
@@ -55,7 +54,7 @@ function SortableSaveRow<T extends SaveListItem>({ row, disabled, busy, pickLabe
         <span
           {...attributes}
           {...listeners}
-          className="flex shrink-0 self-stretch cursor-grab touch-none items-center px-1 py-2 text-muted-foreground"
+          className="flex shrink-0 self-stretch cursor-grab touch-none items-center rounded-sm px-1 py-2 text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset"
         >
           <GripVertical className="h-4 w-4" />
         </span>
@@ -65,7 +64,7 @@ function SortableSaveRow<T extends SaveListItem>({ row, disabled, busy, pickLabe
         tabIndex={disabled ? -1 : 0}
         aria-disabled={disabled}
         aria-label={pickLabel}
-        className="min-w-0 flex-1 cursor-pointer rounded-sm py-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+        className="min-w-0 flex-1 cursor-pointer rounded-sm py-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset"
         onClick={() => { if (!disabled) onPick(row); }}
         onKeyDown={(event) => {
           if (!disabled && (event.key === 'Enter' || event.key === ' ')) {
@@ -83,7 +82,7 @@ function SortableSaveRow<T extends SaveListItem>({ row, disabled, busy, pickLabe
           )}
         </div>
         <div className="text-meta opacity-70">
-          {formatStamp(row.timestamp)} - Game Time: {formatGameTime(row.gameTime)}
+          {formatSaveTimestamp(row.timestamp)} - Game Time: {formatGameTime(row.gameTime)}
         </div>
       </div>
       <Tip tip="Export save">

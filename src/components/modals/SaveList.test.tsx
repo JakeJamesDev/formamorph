@@ -31,8 +31,12 @@ describe('SaveList', () => {
 
     expect(screen.getByText('Auto')).toBeInTheDocument();
     expect(screen.getByText(/Game Time: 3h 6m/)).toBeInTheDocument();
+    const grip = screen.getAllByRole('button', { name: 'Drag to reorder' })[0];
     const pick = screen.getByRole('button', { name: 'Load save “Harbor Arrival”' });
-    pick.focus();
+    await user.tab();
+    expect(grip).toHaveFocus();
+    await user.tab();
+    expect(pick).toHaveFocus();
     await user.keyboard('{Enter}');
     await user.click(screen.getByRole('button', { name: 'Export save “Harbor Arrival”' }));
     await user.click(screen.getByRole('button', { name: 'Delete save “Harbor Arrival”' }));
