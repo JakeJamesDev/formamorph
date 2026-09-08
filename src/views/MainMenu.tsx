@@ -51,7 +51,8 @@ import DictionarySelectionModal from './DictionarySelectionModal';
 import CharacterSelectionModal from './CharacterSelectionModal';
 import { startingLocations } from '@/lib/startingLocation';
 import { exclusiveSiblings, collapseExclusiveDefaults } from '@/lib/traitEffects';
-import { shouldShowDictionaryStep } from '@/lib/dictionarySelection';
+import { buildInitialSelection, finalizeSelection, shouldShowDictionaryStep } from '@/lib/dictionarySelection';
+import { emptyEntryDraft, type EntryDraft } from '@/lib/entryDraft';
 import { shouldShowCharacterStep } from '@/lib/characterSelection';
 import WorldStorageService from '../services/WorldStorageService';
 import DictionaryStorageService from '../services/DictionaryStorageService';
@@ -298,9 +299,21 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
   const [showIntroReadme, setShowIntroReadme] = useState(false);
   // Set only when the Introduction has no setup screen to sit over: the traits to start with once the
   // player closes it. A world with nothing to choose would otherwise flash the overlay and enter anyway.
-  const [enterAfterIntro, setEnterAfterIntro] = useState<string[] | null>(null);
-  const [selectedTraits, setSelectedTraits] = useState<string[]>([]);
-  const [selectedLocationId, setSelectedLocationId] = useState<string | null>(null);
+  const [enterAfterIntro, setEnterAfterIntro] = useState<EntryDraft | null>(null);
+  const [entryDraft, setEntryDraft] = useState<EntryDraft>(emptyEntryDraft);
+  const { traitIds: selectedTraits, locationId: selectedLocationId } = entryDraft;
+  const [resolvingEntry, setResolvingEntry] = useState(false);
+  const entryRequest = useRef<object | null>(null);
+  const entryStarted = useRef(false);
+  const cancelEntryResolution = () => {
+    entryRequest.current = null;
+    setResolvingEntry(false);
+  };
+  const updateDraft = <K extends keyof EntryDraft>(key: K, value: React.SetStateAction<EntryDraft[K]>) => {
+    cancelEntryResolution();
+    setEntryDraft(prev => ({ ...prev, [key]: typeof value === 'function' ? value(prev[key]) : value }));
+  };
+  useEffect(() => () => { entryRequest.current = null; }, []);
   // The dictionary set chosen at the entry step; null = step skipped (GameViewer falls back to authored books).
   const [selectedDictionaries, setSelectedDictionaries] = useState<Dictionary[] | null>(null);
   // The library characters chosen at the entry step to place in the starting location; null = none/skipped.
@@ -1052,90 +1065,71 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
   // which is what makes that group read (and behave) as a set of radio buttons.
   const handleTraitSelection = (traitId: string) => {
     const trait = traits.find(t => t.id === traitId);
-    setSelectedTraits(prev => {
+    updateDraft('traitIds', prev => {
       if (prev.includes(traitId)) return prev.filter(id => id !== traitId);
       const retire = trait ? new Set(exclusiveSiblings(trait, traits, traitGroups)) : new Set<string>();
       return [...prev.filter(id => !retire.has(id)), traitId];
     });
   };
 
-  // Start the world: the custom-character step first for 3D worlds, otherwise straight into the game. The
-  // chosen characters + dictionary set are stashed for the 3D path and passed directly otherwise.
-  const enterWorld = (traitIds: string[], locationId: string | null, chars: Entity[] | null, dicts: Dictionary[] | null) => {
-    setSelectedCharacters(chars);
-    setSelectedDictionaries(dicts);
-    if (selectedWorld!.data.worldOverview?.use3DModel) {
-      setShowCharacterCustomization(true);
-    } else {
-      onStartGame(traitIds, null, true, locationId, dicts, chars);
-    }
-  };
-
-  // Whether each entry step is worth showing for the selected world + current library.
   const dictStepVisible = shouldShowDictionaryStep(worldBooks, dictionaries);
   const charStepVisible = shouldShowCharacterStep(entities);
 
-  // After location + characters, offer the dictionary step when there's a real choice; otherwise enter.
-  const proceedToDictOrEnter = (traitIds: string[], locationId: string | null, chars: Entity[] | null) => {
-    setSelectedCharacters(chars); // committed for the 3D path + proceedFromDictionaries
-    if (dictStepVisible) {
-      setShowDictionarySelection(true);
-    } else {
-      enterWorld(traitIds, locationId, chars, null);
+  // Resolve one snapshot; navigation or cancellation invalidates its pending handoff.
+  const enterWorld = async (draft: EntryDraft = entryDraft) => {
+    if (entryRequest.current || entryStarted.current) return;
+    const request = {};
+    entryRequest.current = request;
+    setResolvingEntry(true);
+    try {
+      const loaded = await Promise.all(entities.filter(m => draft.entityIds.has(m.id))
+        .map(m => EntityStorageService.getEntityData(m.id).catch(() => null)));
+      const chars = loaded.filter((e): e is Entity => e !== null)
+        .map(e => ({ ...e, id: randomUUID() }));
+      const books = new Map<string, Dictionary>();
+      for (const item of draft.dictionaryItems) {
+        if (item.enabled && item.source === 'library') {
+          try {
+            books.set(item.book.id, await DictionaryStorageService.getDictionaryData(item.book.id));
+          } catch {
+            // Missing library records are skipped by finalization.
+          }
+        }
+      }
+      if (entryRequest.current !== request) return;
+      const dicts = finalizeSelection(draft.dictionaryItems, books);
+      setSelectedCharacters(chars);
+      setSelectedDictionaries(dicts);
+      if (selectedWorld!.data.worldOverview?.use3DModel) {
+        showEnterStep('avatar');
+      } else {
+        entryStarted.current = true;
+        onStartGame(draft.traitIds, null, true, draft.locationId, dicts, chars);
+      }
+    } finally {
+      if (entryRequest.current === request) cancelEntryResolution();
     }
   };
 
-  // After location, offer the character step when the library has characters; otherwise go to dictionaries.
-  const proceedToCharsOrDict = (traitIds: string[], locationId: string | null) => {
-    if (charStepVisible) {
-      setShowCharacterSelection(true);
-    } else {
-      proceedToDictOrEnter(traitIds, locationId, null);
-    }
+  const advanceEntry = (step: NavigableStep) => {
+    const steps = navigableSteps(enterFlowSteps());
+    const next = steps[steps.indexOf(step) + 1];
+    if (next && next !== 'avatar') showEnterStep(next);
+    else void enterWorld();
   };
 
-  // Leave the trait step. Offer a location choice when the world has more than one starting location;
-  // otherwise fall through to the character/dictionary steps (or straight into the world).
-  const proceedFromTraits = (traitIds: string[]) => {
-    setShowTraitSelection(false);
-    setSelectedLocationId(null);
-    setSelectedDictionaries(null);
-    setSelectedCharacters(null);
-    if (startingLocations(locations).length > 1) {
-      setShowLocationSelection(true);
-    } else {
-      proceedToCharsOrDict(traitIds, null);
-    }
-  };
-
-  // Leave the location step with the player's choice (null = Random) and continue the flow.
-  const proceedFromLocation = (locationId: string | null) => {
-    setShowLocationSelection(false);
-    setSelectedLocationId(locationId);
-    proceedToCharsOrDict(selectedTraits, locationId);
-  };
-
-  // Leave the character step: carry the chosen characters forward into the dictionary step (or the world).
-  const proceedFromCharacters = (chars: Entity[]) => {
-    setShowCharacterSelection(false);
-    proceedToDictOrEnter(selectedTraits, selectedLocationId, chars);
-  };
-
-  // Leave the dictionary step: carry the chosen sets into the session (via enterWorld → onStartGame), then enter.
-  const proceedFromDictionaries = (finalDicts: Dictionary[]) => {
-    setShowDictionarySelection(false);
-    enterWorld(selectedTraits, selectedLocationId, selectedCharacters, finalDicts);
-  };
-
-  // Back out of the enter-world flow entirely: drop the draft choices and close the world session, so the
-  // next entry rolls its placeholders fresh rather than reusing the values these screens were showing.
   const abandonEnterFlow = () => {
-    setSelectedTraits([]);
-    setSelectedLocationId(null);
+    cancelEntryResolution();
+    setEntryDraft(emptyEntryDraft());
     setSelectedCharacters(null);
     setSelectedDictionaries(null);
     setShowIntroReadme(false);
     setEnterAfterIntro(null);
+    setShowTraitSelection(false);
+    setShowLocationSelection(false);
+    setShowCharacterSelection(false);
+    setShowDictionarySelection(false);
+    setShowCharacterCustomization(false);
     endSession();
   };
 
@@ -1150,6 +1144,7 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
     use3DModel: !!selectedWorld?.data.worldOverview?.use3DModel,
   }, mode);
   const showEnterStep = (step: NavigableStep) => {
+    cancelEntryResolution();
     setShowTraitSelection(step === 'traits');
     setShowLocationSelection(step === 'location');
     setShowCharacterSelection(step === 'characters');
@@ -1163,22 +1158,58 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
     return idx > 0 ? () => showEnterStep(steps[idx - 1]) : undefined;
   };
 
-  // Open the flow's first setup screen, read off the step list rather than re-deriving which steps exist.
-  // `defaults` are the author's pre-ticked traits, which a world with no trait step still carries in.
-  const openFirstEnterStep = (steps: NavigableStep[], defaults: string[]) => {
-    if (steps[0] === 'traits') setShowTraitSelection(true);
-    else proceedFromTraits(defaults);
+  const openFirstEnterStep = (steps: NavigableStep[], draft: EntryDraft) => {
+    if (steps[0] && steps[0] !== 'avatar') showEnterStep(steps[0]);
+    else void enterWorld(draft);
   };
 
-  // Leave the Introduction. It overlays the first setup screen, so closing it usually just reveals what is
-  // already there; a world whose only step *was* the Introduction starts the game instead.
   const closeIntroReadme = () => {
     setShowIntroReadme(false);
     if (!enterAfterIntro) return;
-    const defaults = enterAfterIntro;
+    const draft = enterAfterIntro;
     setEnterAfterIntro(null);
-    proceedFromTraits(defaults);
+    void enterWorld(draft);
   };
+
+  const startEntry = () => {
+    const defaults = collapseExclusiveDefaults(
+      rawTraits.filter(t => t.isDefault).map(t => t.id), rawTraits, rawTraitGroups);
+    const draft: EntryDraft = {
+      ...emptyEntryDraft(), traitIds: defaults,
+      dictionaryItems: buildInitialSelection(worldBooks, dictionaries),
+    };
+    cancelEntryResolution();
+    entryStarted.current = false;
+    setEntryDraft(draft);
+    setShowWorldModal(false);
+    beginSession();
+    const steps = enterFlowSteps();
+    const rest = navigableSteps(steps);
+    if (steps[0] === 'intro' && showReadme(selectedWorld!.id)) {
+      setShowIntroReadme(true);
+      if (rest.length === 0) {
+        setEnterAfterIntro(draft);
+        return;
+      }
+    }
+    openFirstEnterStep(rest, draft);
+  };
+
+  const devEntryActions = useRef({ select: handleWorldSelection, start: startEntry });
+  useEffect(() => { devEntryActions.current = { select: handleWorldSelection, start: startEntry }; });
+  const [devEntryPending, setDevEntryPending] = useState(false);
+  const devEntryRoute = useRef<typeof devRoute>(null);
+  useEffect(() => {
+    if (!import.meta.env.DEV || devRoute?.modal !== 'enterWorld' || !worlds.length) return;
+    if (devEntryRoute.current === devRoute) return;
+    devEntryRoute.current = devRoute;
+    void devEntryActions.current.select(devRoute.tab ?? worlds[0].id).then(() => setDevEntryPending(true));
+  }, [devRoute, worlds]);
+  useEffect(() => {
+    if (!import.meta.env.DEV || !devEntryPending || !selectedWorld) return;
+    setDevEntryPending(false);
+    devEntryActions.current.start();
+  }, [devEntryPending, selectedWorld]);
 
   /**
    * Download this world's linked pictures into the on-device cache so it stays viewable without a connection.
@@ -1556,10 +1587,12 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
     </>
   );
 
-  if (showCharacterCustomization) {
+  if (showCharacterCustomization && !showIntroReadme) {
     return (
       <CharacterCustomization
         onCharacterCustomized={(customizedData) => {
+          if (entryStarted.current) return;
+          entryStarted.current = true;
           setShowCharacterCustomization(false);
           onStartGame(selectedTraits, customizedData, true, selectedLocationId, selectedDictionaries, selectedCharacters);
         }}
@@ -2203,30 +2236,7 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
                     <WorldActionButton
                       tone="sky"
                       className="w-2/3 rounded-r-none"
-                      onClick={() => {
-                        // Pre-check "Enabled by Default" traits for the selection screen (one per
-                        // exclusive group — the radio can only show one anyway).
-                        const defaults = collapseExclusiveDefaults(
-                          traits.filter((t) => t.isDefault).map((t) => t.id), traits, traitGroups);
-                        setSelectedTraits(defaults);
-                        setShowWorldModal(false);
-                        // Roll this playthrough's placeholders now, so the picker screens show the names the
-                        // game will actually use instead of every option they could have taken.
-                        beginSession();
-                        const steps = enterFlowSteps();
-                        const rest = navigableSteps(steps);
-                        // The Introduction rides on top of the first setup screen, under the same per-world
-                        // flag as the Gameplay readme.
-                        if (steps[0] === 'intro' && showReadme(selectedWorld!.id)) {
-                          setShowIntroReadme(true);
-                          // Nothing to overlay: hold the entry until the player closes it.
-                          if (rest.length === 0) {
-                            setEnterAfterIntro(defaults);
-                            return;
-                          }
-                        }
-                        openFirstEnterStep(rest, defaults);
-                      }}
+                      onClick={startEntry}
                     >
                       <DoorOpen className="mr-2 h-4 w-4" /> Enter World
                     </WorldActionButton>
@@ -2240,7 +2250,13 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
                         // Skip the setup steps but honor the author's default trait choices.
                         const defaults = collapseExclusiveDefaults(
                           traits.filter((t) => t.isDefault).map((t) => t.id), traits, traitGroups);
-                        setSelectedTraits(defaults);
+                        const draft: EntryDraft = {
+                          ...emptyEntryDraft(), traitIds: defaults,
+                          dictionaryItems: buildInitialSelection(worldBooks, dictionaries),
+                        };
+                        cancelEntryResolution();
+                        entryStarted.current = false;
+                        setEntryDraft(draft);
                         onStartGame(defaults, currentWorldData.worldOverview?.use3DModel ? defaultCharacterData : null, true);
                       }}
                     >
@@ -2587,12 +2603,14 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
           resolveText={resolvePH}
           resolveTraitText={resolveTraitText}
           selectedTraits={selectedTraits}
+          sectionIndex={entryDraft.traitSection}
+          onSectionChange={(index) => updateDraft('traitSection', index)}
           onTraitSelect={handleTraitSelection}
           onAbort={() => {
             setShowTraitSelection(false);
             abandonEnterFlow();
           }}
-          onConfirm={() => proceedFromTraits(selectedTraits)}
+          onConfirm={() => advanceEntry('traits')}
           onBack={backFrom('traits')}
           confirmLabel={
             startingLocations(locations).length > 1
@@ -2612,7 +2630,9 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
         <StartingLocationModal
           locations={startingLocations(locations)}
           resolveText={resolvePH}
-          onConfirm={proceedFromLocation}
+          selectedLocationId={selectedLocationId}
+          onLocationChange={(id) => updateDraft('locationId', id)}
+          onConfirm={() => advanceEntry('location')}
           onBack={backFrom('location')}
           onAbort={() => {
             setShowLocationSelection(false);
@@ -2633,7 +2653,10 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
       {showCharacterSelection && (
         <CharacterSelectionModal
           libraryMeta={entities}
-          onConfirm={proceedFromCharacters}
+          selectedIds={entryDraft.entityIds}
+          setSelectedIds={(ids) => updateDraft('entityIds', ids)}
+          resolving={resolvingEntry}
+          onConfirm={() => advanceEntry('characters')}
           onBack={backFrom('characters')}
           onAbort={() => {
             setShowCharacterSelection(false);
@@ -2651,9 +2674,10 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
 
       {showDictionarySelection && (
         <DictionarySelectionModal
-          worldBooks={worldBooks}
-          libraryMeta={dictionaries}
-          onConfirm={proceedFromDictionaries}
+          items={entryDraft.dictionaryItems}
+          setItems={(items) => updateDraft('dictionaryItems', items)}
+          resolving={resolvingEntry}
+          onConfirm={() => advanceEntry('dictionaries')}
           onBack={backFrom('dictionaries')}
           onAbort={() => {
             setShowDictionarySelection(false);
