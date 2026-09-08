@@ -1,7 +1,7 @@
 // Must load before constructing a store: the constructor opens IndexedDB.
 import 'fake-indexeddb/auto';
 import { describe, it, expect, vi, afterEach } from 'vitest';
-import { LibraryStore, type StoredRecord } from './LibraryStore';
+import { LibraryRecordNotFoundError, LibraryStore, type StoredRecord } from './LibraryStore';
 
 interface Payload {
   entries?: string[];
@@ -50,7 +50,8 @@ describe('store + getData', () => {
 
   it('rejects an unknown id as not found', async () => {
     const store = makeStore();
-    await expect(store.getData('nope')).rejects.toBe('Widget not found');
+    await expect(store.getData('nope')).rejects.toBeInstanceOf(LibraryRecordNotFoundError);
+    await expect(store.getData('nope')).rejects.toThrow('Widget not found');
   });
 
   it('throws when name is absent', async () => {
@@ -73,8 +74,7 @@ describe('isValid', () => {
       .rejects.toThrow('Invalid widget: missing required fields');
   });
 
-  it('treats a stored-but-invalid payload as not found on read', async () => {
-    // Validation tightening after the fact must not surface a malformed record.
+  it('reports a stored-but-invalid payload as a resolution failure', async () => {
     const lenient = makeStore();
     await lenient.store(record({ data: { label: 'no entries' } }));
     const strict = new LibraryStore<Payload, Meta>({
@@ -84,7 +84,7 @@ describe('isValid', () => {
       isValid: (d) => Array.isArray(d.entries),
       toMetadata: (r) => ({ id: r.id, name: r.name, count: 0 }),
     });
-    await expect(strict.getData('a1')).rejects.toBe('Widget not found');
+    await expect(strict.getData('a1')).rejects.toThrow('Invalid widget: malformed data');
   });
 
   it('defaults to accepting any present payload', async () => {
@@ -153,7 +153,7 @@ describe('delete', () => {
     const store = makeStore();
     await store.store(record());
     await store.delete('a1');
-    await expect(store.getData('a1')).rejects.toBe('Widget not found');
+    await expect(store.getData('a1')).rejects.toBeInstanceOf(LibraryRecordNotFoundError);
   });
 
   it('requires an id', async () => {

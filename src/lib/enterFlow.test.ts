@@ -5,8 +5,7 @@ import { buildEnterFlow, navigableSteps, type EnterFlowWorld } from './enterFlow
 const bare: EnterFlowWorld = {
   traitCount: 0,
   startingLocationCount: 1,
-  hasCharacterStep: false,
-  hasDictionaryStep: false,
+  hasLibraryAdditions: false,
   use3DModel: false,
 };
 
@@ -41,17 +40,16 @@ describe('buildEnterFlow', () => {
       .toEqual([]);
   });
 
-  it('lays the setup steps out in flow order', () => {
+  it('keeps all library choices inside the workspace before Avatar', () => {
     const full = world({
       introReadme: 'hi',
       traitCount: 1,
       startingLocationCount: 2,
-      hasCharacterStep: true,
-      hasDictionaryStep: true,
+      hasLibraryAdditions: true,
       use3DModel: true,
     });
     expect(buildEnterFlow(full, 'newGame'))
-      .toEqual(['intro', 'workspace', 'characters', 'dictionaries', 'avatar']);
+      .toEqual(['intro', 'workspace', 'avatar']);
   });
 
   it('offers no location step when the world has a single starting location', () => {
@@ -65,7 +63,7 @@ describe('buildEnterFlow', () => {
 
 describe('navigableSteps', () => {
   it('drops the Introduction, so Back never targets an overlay', () => {
-    expect(navigableSteps(['intro', 'workspace', 'characters'])).toEqual(['workspace', 'characters']);
+    expect(navigableSteps(['intro', 'workspace', 'avatar'])).toEqual(['workspace', 'avatar']);
   });
 
   it('leaves a flow without an Introduction alone', () => {

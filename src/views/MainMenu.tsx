@@ -46,16 +46,14 @@ import WorldEditor from './WorldEditor';
 import { LibraryTileGrid } from '@/components/library/LibraryTileGrid';
 import { useLibraryTiles } from '@/lib/useLibraryTiles';
 import EnterWorldWorkspace from './EnterWorldWorkspace';
-import DictionarySelectionModal from './DictionarySelectionModal';
-import CharacterSelectionModal from './CharacterSelectionModal';
 import { startingLocations } from '@/lib/startingLocation';
 import { exclusiveSiblings, collapseExclusiveDefaults } from '@/lib/traitEffects';
-import { buildInitialSelection, finalizeSelection, shouldShowDictionaryStep } from '@/lib/dictionarySelection';
+import { buildInitialSelection, finalizeSelection, shouldShowDictionaryChoices } from '@/lib/dictionarySelection';
 import { emptyEntryDraft, type EntryDraft } from '@/lib/entryDraft';
-import { shouldShowCharacterStep } from '@/lib/characterSelection';
 import WorldStorageService from '../services/WorldStorageService';
 import DictionaryStorageService from '../services/DictionaryStorageService';
 import EntityStorageService from '../services/EntityStorageService';
+import { LibraryRecordNotFoundError } from '../services/LibraryStore';
 import ModelStorageService from '../services/ModelStorageService';
 import AuthService from '../services/AuthService';
 import type { World, Stat, CharacterData, Dictionary, DictionaryMetadata, Entity, EntityMetadata, ModelMetadata, ServerEvent, WorldOverview } from '@/types';
@@ -292,8 +290,6 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
   const [warmingOffline, setWarmingOffline] = useState(false);
   const [showCharacterCustomization, setShowCharacterCustomization] = useState(false);
   const [showSetupWorkspace, setShowSetupWorkspace] = useState(false);
-  const [showDictionarySelection, setShowDictionarySelection] = useState(false);
-  const [showCharacterSelection, setShowCharacterSelection] = useState(false);
   const [showIntroReadme, setShowIntroReadme] = useState(false);
   // Set only when the Introduction has no setup screen to sit over: the traits to start with once the
   // player closes it. A world with nothing to choose would otherwise flash the overlay and enter anyway.
@@ -312,9 +308,9 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
     setEntryDraft(prev => ({ ...prev, [key]: typeof value === 'function' ? value(prev[key]) : value }));
   };
   useEffect(() => () => { entryRequest.current = null; }, []);
-  // The dictionary set chosen at the entry step; null = step skipped (GameViewer falls back to authored books).
+  // Finalized dictionaries for normal entry; null keeps Quick Start and saves on authored defaults.
   const [selectedDictionaries, setSelectedDictionaries] = useState<Dictionary[] | null>(null);
-  // The library characters chosen at the entry step to place in the starting location; null = none/skipped.
+  // Independent entity copies finalized for normal entry; null means this path did not configure entities.
   const [selectedCharacters, setSelectedCharacters] = useState<Entity[] | null>(null);
 
   // The pins the *draft* selection would impose: the traits ticked so far, the starting location picked, and
@@ -1070,8 +1066,7 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
     });
   };
 
-  const dictStepVisible = shouldShowDictionaryStep(worldBooks, dictionaries);
-  const charStepVisible = shouldShowCharacterStep(entities);
+  const hasLibraryAdditions = entities.length > 0 || shouldShowDictionaryChoices(worldBooks, dictionaries);
 
   // Resolve one snapshot; navigation or cancellation invalidates its pending handoff.
   const enterWorld = async (draft: EntryDraft = entryDraft) => {
@@ -1081,7 +1076,14 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
     setResolvingEntry(true);
     try {
       const loaded = await Promise.all(entities.filter(m => draft.entityIds.has(m.id))
-        .map(m => EntityStorageService.getEntityData(m.id).catch(() => null)));
+        .map(async (metadata) => {
+          try {
+            return await EntityStorageService.getEntityData(metadata.id);
+          } catch (error) {
+            if (error instanceof LibraryRecordNotFoundError) return null;
+            throw error;
+          }
+        }));
       const chars = loaded.filter((e): e is Entity => e !== null)
         .map(e => ({ ...e, id: randomUUID() }));
       const books = new Map<string, Dictionary>();
@@ -1089,8 +1091,8 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
         if (item.enabled && item.source === 'library') {
           try {
             books.set(item.book.id, await DictionaryStorageService.getDictionaryData(item.book.id));
-          } catch {
-            // Missing library records are skipped by finalization.
+          } catch (error) {
+            if (!(error instanceof LibraryRecordNotFoundError)) throw error;
           }
         }
       }
@@ -1103,6 +1105,12 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
       } else {
         entryStarted.current = true;
         onStartGame(draft.traitIds, null, true, draft.locationId, dicts, chars);
+      }
+    } catch (error) {
+      if (entryRequest.current === request) {
+        entryStarted.current = false;
+        console.error('Could not finalize enter-world library additions', error);
+        toast.error('Formamorph could not prepare those library additions. Try again.');
       }
     } finally {
       if (entryRequest.current === request) cancelEntryResolution();
@@ -1124,8 +1132,6 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
     setShowIntroReadme(false);
     setEnterAfterIntro(null);
     setShowSetupWorkspace(false);
-    setShowCharacterSelection(false);
-    setShowDictionarySelection(false);
     setShowCharacterCustomization(false);
     endSession();
   };
@@ -1136,15 +1142,12 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
     introReadme: selectedWorld?.data.worldOverview?.introReadme,
     traitCount: traits.length,
     startingLocationCount: startingLocations(locations).length,
-    hasCharacterStep: charStepVisible,
-    hasDictionaryStep: dictStepVisible,
+    hasLibraryAdditions,
     use3DModel: !!selectedWorld?.data.worldOverview?.use3DModel,
   }, mode);
   const showEnterStep = (step: NavigableStep) => {
     cancelEntryResolution();
     setShowSetupWorkspace(step === 'workspace');
-    setShowCharacterSelection(step === 'characters');
-    setShowDictionarySelection(step === 'dictionaries');
     setShowCharacterCustomization(step === 'avatar');
   };
   // Back handler for a given step: goes to the previous shown step, or undefined on the first (button fades).
@@ -2572,12 +2575,6 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
         </DialogContent>
       </Dialog>
 
-      {/* Dimming scrim behind the enter-world flow popups (they're bare fixed cards, not Radix dialogs, so
-          they don't bring their own overlay). z-40 sits under the cards' z-50. */}
-      {(showCharacterSelection || showDictionarySelection) && (
-        <div className="fixed inset-0 z-40 bg-black/80" aria-hidden />
-      )}
-
       {/* The world's Introduction, over whichever setup screen is behind it. Placeholders resolve because
           `beginSession` rolls them on the Enter World click, before this opens. */}
       {selectedWorld && (
@@ -2602,62 +2599,26 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
           resolveTraitText={resolveTraitText}
           selectedTraits={selectedTraits}
           selectedLocationId={selectedLocationId}
+          libraryEntities={entities}
+          selectedEntityIds={entryDraft.entityIds}
+          dictionaryItems={entryDraft.dictionaryItems}
           categoryIndex={entryDraft.traitSection}
           onCategoryChange={(index) => updateDraft('traitSection', index)}
           onTraitSelect={handleTraitSelection}
           onLocationChange={(id) => updateDraft('locationId', id)}
+          onEntityToggle={(id, selected) => updateDraft('entityIds', (current) => {
+            const next = new Set(current);
+            if (selected) next.add(id); else next.delete(id);
+            return next;
+          })}
+          onDictionaryItemsChange={(items) => updateDraft('dictionaryItems', items)}
           onIntroduction={selectedWorld.data.worldOverview?.introReadme?.trim()
             ? () => setShowIntroReadme(true)
             : undefined}
           onCancel={abandonEnterFlow}
           onContinue={() => advanceEntry('workspace')}
-          continueLabel={
-            charStepVisible
-              ? 'Continue to Characters'
-              : dictStepVisible
-                ? 'Continue to Dictionaries'
-                : selectedWorld.data.worldOverview?.use3DModel
-                  ? 'Continue to Avatar'
-                  : 'Start game'
-          }
+          continueLabel={selectedWorld.data.worldOverview?.use3DModel ? 'Continue to Avatar' : 'Start game'}
           resolving={resolvingEntry}
-        />
-      )}
-
-      {showCharacterSelection && (
-        <CharacterSelectionModal
-          libraryMeta={entities}
-          selectedIds={entryDraft.entityIds}
-          setSelectedIds={(ids) => updateDraft('entityIds', ids)}
-          resolving={resolvingEntry}
-          onConfirm={() => advanceEntry('characters')}
-          onBack={backFrom('characters')}
-          onAbort={() => {
-            setShowCharacterSelection(false);
-            abandonEnterFlow();
-          }}
-          confirmLabel={
-            dictStepVisible
-              ? 'Dictionaries'
-              : selectedWorld?.data.worldOverview?.use3DModel
-                ? 'Avatar'
-                : 'Start'
-          }
-        />
-      )}
-
-      {showDictionarySelection && (
-        <DictionarySelectionModal
-          items={entryDraft.dictionaryItems}
-          setItems={(items) => updateDraft('dictionaryItems', items)}
-          resolving={resolvingEntry}
-          onConfirm={() => advanceEntry('dictionaries')}
-          onBack={backFrom('dictionaries')}
-          onAbort={() => {
-            setShowDictionarySelection(false);
-            abandonEnterFlow();
-          }}
-          confirmLabel={selectedWorld?.data.worldOverview?.use3DModel ? 'Avatar' : 'Start'}
         />
       )}
 
