@@ -40,3 +40,15 @@ The user approved adding the main-menu example after reviewing this single-ticke
 ## Parent
 
 [Design System Foundation spec](../spec.md). This ticket extends the original reference set with the user-approved main-menu context menu; the parent spec and other tickets remain unchanged by this addition.
+
+## Follow-up prototype: short tile menu and group picker
+
+**Question:** Does a menu with the first three group shortcuts, distinct folder/action icons, and a searchable Add To Group dialog feel right in Formamorph?
+
+**Verdict:** Pending user review. The prototype does not approve a new pattern or change production library behavior.
+
+**Artifact:** `prototype/tile-group-picker`, commit `2386ee4d`. The runnable source, launch notes, and desktop/mobile evidence are in `docs-internal/prototypes/tile-groups/README.md` on that branch.
+
+**Run:** In `C:/Users/benny/.codex/worktrees/45c8/formamorph`, run `npm run prototype:tile-groups`, then open [the local preview](http://127.0.0.1:5174/?prototype=tile-groups#dev?modal=designSystem).
+
+The prototype reuses the context-menu primitives, World Editor rows, shared 10px scrollbar, and dialog controls. Search, keyboard selection, cancellation, creation, focus handoff, and mobile overflow were checked. TypeScript/scoped lint passed in 16.4 seconds; the production build passed in 15.8 seconds. Full writing and cross-palette/font review remain implementation work. All sample state is temporary.
