@@ -378,6 +378,66 @@ Open `#dev?modal=designSystem&tab=context-menu&subtab=picker` or use `subtab=cre
 
 New functional labels and error/status sentences follow the [Writing Guide](Writing-Guide.md) by role. Authored names retain their voice. The [review record](../docs-internal/designs/design-system/group-picker-review.md) records behavior evidence and unresolved STE limits; brevity does not certify label grammar.
 
+## Pattern: Lists With Controls or Metadata
+
+**Purpose:** Preserve the information and actions needed to identify, edit, order, and manage complex items.
+
+**Density:** Content-led. Rich rows can use the World Editor's 56px floor, inter-row spacing, grip, metadata, selection, and actions. Save rows grow when names wrap and keep their timestamp, game time, reorder grip, and actions. Do not compress either family into the 32px compact-selection pattern.
+
+### Choose the composition by purpose
+
+| List purpose | Composition |
+| --- | --- |
+| Choose one simple destination | Use `CompactSelectionRow`. Do not reserve absent control columns or add sorting. |
+| Edit or order authored items | Use `SortableList`, `SortableRow`, and `EditorRow`; preserve selection, metadata, duplicate/delete controls, and the detail editor. |
+| Choose and manage saved progress | Use `SaveList`; preserve the save name, timestamp, game time, Auto state, ordering, load/select action, export, and delete. |
+
+Keep controls that change the collection outside its scrolling pane when they must remain reachable. The live Save/Load reference keeps Save Name and Save above the list; the World Editor reference keeps the selected item's editor beside or below the list. Do not nest a second vertical scroller merely to imitate a scrollbar.
+
+### Production mapping
+
+| Need | Component |
+| --- | --- |
+| World Editor row, selection, metadata, and actions | [`EditorRow.tsx`](../src/components/EditorRow.tsx) |
+| World Editor sorting and item actions | [`SortableList.tsx`](../src/components/SortableList.tsx) |
+| Save metadata, ordering, selection, export, and delete | [`SaveList.tsx`](../src/components/modals/SaveList.tsx) and [`LoadGameDialog.tsx`](../src/components/modals/LoadGameDialog.tsx) |
+| Bounded list viewport | [`scroll-area.tsx`](../src/components/ui/scroll-area.tsx) |
+| Isolated interactive examples | [`RichListReferences.tsx`](../src/components/design-system/RichListReferences.tsx) |
+
+### Responsive behavior
+
+At desktop widths, an editor list can sit beside its detail controls, and the two reference families can share a two-column showcase row. At mobile widths, the references stack. The selected-item editor follows its list, while Save Name and Save stack above the save pane. Long authored names truncate only where a trailing editor control must remain visible; save names wrap because their metadata and actions identify a distinct saved state. Keep every action inside the card width and retain useful touch targets.
+
+### State reference
+
+| State | Treatment |
+| --- | --- |
+| Selected | Editor rows use the production primary fill and keep their controls legible. Editing changes the selected local item. |
+| Disabled | Busy save rows and their export actions retain production disabled behavior; do not remove metadata to simplify the state. |
+| Focus | Rows, grips, inputs, and icon actions keep visible shared focus. Keyboard selection reveals the active item in the bounded pane. |
+| Long content | Editor names truncate before actions; save names wrap above their metadata. Accessible names preserve the complete authored value. |
+| Overflow | Long collections scroll inside one bounded pane. Adjacent editors, Save Name, Save, and status remain reachable outside it. |
+| Action | Editing, duplication, deletion, saving, loading, exporting, and sorting use controlled callbacks in the live reference. They change mounted sample state only. |
+
+The Rich Lists reference uses the same production row components as World Editor and Save/Load. Its fixtures contain long names, realistic types, timestamps, game time, and an Autosave. It never reads or writes authored worlds, saved games, IndexedDB, local storage, files, or endpoints.
+
+### Writing review
+
+The reference descriptions, control labels, dynamic status, and accessible action names were reviewed by role through the [Writing Guide](Writing-Guide.md). Authored character, location, and save names retain their voices. Standalone label grammar, complete technical-term admission, reused production copy, and dynamic substitutions remain unverified; the [review record](../docs-internal/designs/design-system/rich-lists-scrollbars-review.md) records those limits.
+
+## Standard: Scrollbars
+
+Use [`ScrollArea`](../src/components/ui/scroll-area.tsx) for bounded vertical content when it preserves the surface's behavior. It is the shared World Editor appearance: a 10px vertical track, rounded theme-derived thumb, no up/down chevrons, and an 11px viewport gutter so the overlay thumb does not obscure content.
+
+- Keep one vertical scrolling owner per pane. Preserve wheel, touch, keyboard, and focus-reveal behavior.
+- Give the pane a definite height or a flex-resolved height. A maximum height alone does not give the Radix viewport a scroll boundary.
+- Keep search, primary inputs, and footer actions outside the list viewport when they must remain reachable while the collection scrolls.
+- Preserve horizontal scrolling where content requires it. The shared viewport assumes vertical content and forces its content wrapper to block layout; do not apply it blindly to code, tables, or other horizontal scrollers.
+- Native text editors, editable regions, canvases, virtualizers, drag lists, and popover-hosted scrollers can have selection, autoscroll, wheel-lock, or focus contracts. Match the appearance only where supported, and do not wrap them in a nested ScrollArea to hide native chrome.
+- Use `type="always"` when the scrollbar itself communicates that a bounded reference can scroll. Other production surfaces can retain the component's normal visibility behavior.
+
+The [scrollbar and list inventory](../docs-internal/designs/design-system/rich-lists-scrollbars-review.md) groups remaining native and specialized surfaces by limitation. It is follow-up scope, not authorization for an app-wide migration.
+
 ## Pattern: Paired Footer Actions
 
 **Purpose:** Make acceptance predictable by keeping a negative action before its affirmative partner.
