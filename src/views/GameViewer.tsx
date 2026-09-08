@@ -135,7 +135,9 @@ import { revealActive } from "../lib/narrationRevealConfig";
 import { REVEAL_TEST_NARRATION, REVEAL_TEST_PROFILES } from "../lib/revealTestScripts";
 import { MARKDOWN_SAMPLE } from "../lib/markdownSample";
 import { parseSlashCommand } from "../lib/slashCommands";
-import { normalizeStatChanges, applyAiStatChanges, parseStatUpdates, applyAiMaxChanges, appliedStatDeltas } from "../lib/statChanges";
+import { normalizeStatChanges, appliedStatDeltas } from "../lib/statChanges";
+import { applyStatResponse, createStatRequest, readStatResponse, statResponseChanges, type StatRequestSnapshot, type StatResponse, type StatUpdateDiagnostic } from "../lib/statRequest";
+import { resolveStatNames } from "../lib/resolveWorldNames";
 import { toDebugEndpoint, type DebugEndpointInfo } from "../lib/promptEndpoints";
 import { composeSceneTags, stripPlaces, splitTags, MAX_SCENE_CHARACTERS, type SceneCharacter } from "../lib/sceneTags";
 import { loadDanbooruTags } from "../lib/danbooruTags";
@@ -188,6 +190,8 @@ interface GameViewerProps {
 // lets the AI-context viewer mark real matches — and only real matches — even on historical turns whose live
 // state has moved on.
 interface DebugRequest {
+  statRequestId?: string;
+  statDiagnostics?: StatUpdateDiagnostic[];
   type: string;
   messages: ChatMessage[];
   response?: string;
@@ -231,6 +235,7 @@ const DISCOVER_MAX_TOKENS = TURN_PASS_CAPS.discoverEntity;
  * request adapter hands its request straight through with only the turn's signal added.
  */
 interface AiCallArgs {
+  statRequest?: StatRequestSnapshot;
   systemPrompt: string;
   messages: ChatMessage[];
   type: AIRequestType;
@@ -461,6 +466,7 @@ const GameViewer = ({
     setVisibleEntities,
     setCurrentLocation,
     setPlayerStats,
+    playerStats: rawPlayerStats,
     playerTraits,
     setPlayerTraits,
     disabledTraitIds,
@@ -1156,10 +1162,11 @@ const GameViewer = ({
     if (!baseline) return;
     const { prev, action } = target;
     void runPartialRegen(async (signal) => {
-      const response = await requestStats(buildContextValues(), action, prev.narration ?? "", signal);
+      const snapshot = createStatRequest(enabledStats(playerStatsRef.current, statEnabledRef.current));
+      const response = await requestStats(buildContextValues(), snapshot, action, prev.narration ?? "", signal);
       if (signal.aborted) return;
-      const { values, maxes } = parseStatUpdates(response);
-      const statChanges = Object.entries(values).map(([k, v]) => ({ [k]: v }));
+      const parsed = readStatResponse(response, snapshot);
+      const statChanges = statResponseChanges(parsed);
       // Mirror the live turn's stat commit: reset the per-turn bar deltas, apply max-cap + value deltas onto
       // the pre-turn baseline, then re-run the regen/starvation tick (thresholded on that baseline) WITHOUT
       // re-advancing game time. Not awaited, so regen stacks before stat code — the same order the live turn
@@ -1170,11 +1177,11 @@ const GameViewer = ({
       // `gameTime` already includes this turn — only the latest turn is ever re-rolled — so it is the
       // end-of-turn elapsed the live pass used, and code re-derives the same value instead of drifting.
       const turnHours = prev.timeDelta ?? FLAT_HOURS_PER_TURN;
-      applyStatChanges(statChanges, null, applyAiMaxChanges(baseline, liveStatChanges(baseline, maxes)), {
+      applyStatChanges(parsed, {
         deltaHours: turnHours,
         elapsedHours: gameTime,
         calendar,
-      });
+      }, baseline);
       applyRegenTick(turnHours, baseline);
       patchLatestTurn({ stat_changes: statChanges });
       armTurnSnapshot();
@@ -1349,12 +1356,6 @@ const GameViewer = ({
   // The live stat-enabled map, read by the turn callbacks below. A ref because they are memoized against
   // their own inputs and must not re-create every time a trait switches something on or off.
   const statEnabledRef = useRef<Record<string, boolean>>({});
-
-  // Drop AI deltas (keyed by lowercased name) aimed at stats that aren't live.
-  const liveStatChanges = useCallback((base: PlayerStat[], deltas: Record<string, number>) => {
-    const live = new Set(enabledStats(base, statEnabledRef.current).map((st) => st.name.toLowerCase()));
-    return Object.fromEntries(Object.entries(deltas).filter(([name]) => live.has(name)));
-  }, []);
 
   // A stat is live unless its author started it off or an active trait switched it off. Disabled stats keep
   // their value in `playerStats` — they are filtered out of everything that reads or moves them instead, so
@@ -1724,12 +1725,6 @@ const GameViewer = ({
 
     setChoices(commit.turn.choices);
 
-    // Max changes re-clamp the current value into the new range (lib handles the guards). Restricted
-    // to live stats like the value deltas — a disabled stat's cap must not move off a name collision.
-    if (Object.keys(commit.statMaxChanges).length > 0) {
-      setPlayerStats((prevStats) => applyAiMaxChanges(prevStats, liveStatChanges(prevStats, commit.statMaxChanges)));
-    }
-
     // Seed the story's opening hour. Only ever written on the opening turn; null reads downstream as the
     // shipped DEFAULT_START_HOUR, so an unreadable answer plays exactly as before this pass existed.
     if (commit.isOpeningTurn) setStartHour(commit.openingHour);
@@ -1764,8 +1759,8 @@ const GameViewer = ({
     setHeldStatChanges({});
 
     // Apply stat changes
-    if (commit.statChanges.length > 0) {
-      applyStatChanges(commit.statChanges, null, null, commit.clock);
+    if (commit.statResponse) {
+      applyStatChanges(commit.statResponse, commit.clock);
     } else if (anyStatUsesClock) {
       // Nothing moved, but time still passed — clock-reading code runs on its own so a time-based stat
       // ticks every turn instead of only on turns the AI happened to report a stat change.
@@ -2069,7 +2064,10 @@ const GameViewer = ({
             // With no choices pass there is nothing to wait on, so the input unblocks right away.
             if (!planHasPass(plan, "choices")) setChoicesReady(true);
             const fanOut = splitParticipants(turnParticipants, allEntities, suppressedCharacterNames);
-            return { subjects: { ...material.subjects, ...fanOut } };
+            return {
+              subjects: { ...material.subjects, ...fanOut },
+              statRequest: createStatRequest(enabledStats(playerStatsRef.current, statEnabledRef.current)),
+            };
           }
           return;
         }
@@ -2232,6 +2230,8 @@ const GameViewer = ({
   // Latest committed stats, so off-render derivations (below) don't rely on a stale closure.
   const playerStatsRef = useRef(playerStats);
   playerStatsRef.current = playerStats;
+  const rawPlayerStatsRef = useRef(rawPlayerStats);
+  rawPlayerStatsRef.current = rawPlayerStats;
   // Pending "clear recent changes" timer, tracked so a new turn or unmount can cancel it.
   const recentStatTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const drainStatTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -2280,10 +2280,10 @@ const GameViewer = ({
         // Override only the stats the code actually moved, onto the LATEST stats — not a blanket
         // `setPlayerStats(coded)`, whose `coded` is computed from the pre-`await` baseline and would clobber
         // anything applied in the meantime (this turn's regen, or a re-generate that landed during the await).
-        const codedById = new Map(coded.map((s) => [s.id, s.value]));
+        const codedById = new Map(coded.filter((s, i) => s.value !== live[i]?.value).map((s) => [s.id, s.value]));
         setPlayerStats((prev) =>
           prev.map((s) =>
-            codeChanges[s.name.toLowerCase()] !== undefined && codedById.has(s.id)
+            codedById.has(s.id)
               ? { ...s, value: codedById.get(s.id) as number }
               : s,
           ),
@@ -2304,35 +2304,28 @@ const GameViewer = ({
   // worlds on exactly the run schedule they have always had.
   const anyStatUsesClock = useMemo(() => activeStats.some((s) => usesStatClock(s.code)), [activeStats]);
 
-  // Update the applyStatChanges function to handle specific stat updates
+  // Apply request identities to authored state; resolved names are only for code and display feedback.
   const applyStatChanges = useCallback(
     // `base` overrides the starting stats (defaults to the live ref) — a stat re-generation applies the
     // fresh deltas onto the pre-turn baseline so repeated re-rolls don't stack on already-applied changes.
     async (
-      changes: Record<string, number>[],
-      affectedStats: string[] | null = null,
-      base: typeof playerStats | null = null,
+      response: StatResponse,
       clock: StatClock = {},
+      base: typeof playerStats | null = null,
     ) => {
-      // Merge the AI's change objects into one normalized (name→delta) map.
-      const normalizedChanges = normalizeStatChanges(changes);
-
-      // Apply the AI's direct changes, then derive any code-based stats from that result. Both run
-      // outside the state updater (updaters must stay pure), reading the latest stats via the ref.
-      const baseStats = base ?? playerStatsRef.current;
-      // A disabled stat isn't in the prompt, but a name collision could still land on it — restrict the
-      // apply to the live set rather than trusting that.
-      const live = enabledStats(baseStats, statEnabledRef.current).map((s) => s.name);
-      const directApplied = applyAiStatChanges(
-        baseStats,
-        normalizedChanges,
-        affectedStats ? affectedStats.filter((n) => live.includes(n)) : live,
-      );
+      const baseStats = base ?? rawPlayerStatsRef.current;
+      const live = new Set(enabledStats(rawPlayerStatsRef.current, statEnabledRef.current).map((s) => s.id));
+      const applied = applyStatResponse(baseStats, response, live);
+      const directApplied = applied.stats;
+      setDebugTurns((turns) => turns.map((turn) => ({ ...turn, requests: turn.requests.map((request) =>
+        request.statRequestId === response.requestId ? { ...request, statDiagnostics: applied.diagnostics } : request,
+      ) })));
 
       // Show the *actual* applied change (clamped to min/max and honoring noIncrease/noDecrease), not the
       // raw request — so a stat pinned at its cap shows no delta, and the live bar/text match the history
       // view's value-diff deltas (`pageStatDeltas`) instead of diverging from them.
-      const actualChanges = appliedStatDeltas(baseStats, directApplied);
+      const resolvedApplied = resolveStatNames(directApplied, resolvePH);
+      const actualChanges = appliedStatDeltas(resolveStatNames(baseStats, resolvePH), resolvedApplied);
 
       // Surface the changes, then clear the highlight after 10s. Cancel any prior timer first so a
       // stale clear can't wipe a newer turn's changes.
@@ -2344,9 +2337,11 @@ const GameViewer = ({
       setHeldStatChanges((prev) => ({ ...prev, ...actualChanges }));
 
       setPlayerStats(directApplied);
-      await runStatCode(directApplied, clock);
+      if (response.updates.some((update) => update.value !== 0) || anyStatUsesClock) {
+        await runStatCode(resolvedApplied, clock);
+      }
     },
-    [runStatCode, setPlayerStats, setRecentStatChanges, setHeldStatChanges],
+    [runStatCode, setPlayerStats, setRecentStatChanges, setHeldStatChanges, resolvePH, anyStatUsesClock],
   );
 
   // Discard a turn's dangling, unpaired user message. The failure exits (empty narration, request error)
@@ -2435,6 +2430,7 @@ const GameViewer = ({
     attachTurnId,
     quiet: quietLabel = false,
     anatomy,
+    statRequest,
   }: AiCallArgs) => {
     // The parity recording observes the seam itself: exactly the arguments this call received, in
     // dispatch order, before anything downstream shapes them. Inert unless the harness armed it.
@@ -2490,6 +2486,7 @@ const GameViewer = ({
             // The wire messages, so the viewer shows exactly what was sent (the `/no_think` switch included).
             messages: spec.body.messages,
             id: captureId,
+            statRequestId: statRequest?.id,
             dictionary,
             // The sidecar indexes the messages the caller stated; the wire list prepends the system
             // message, which `toAnatomyBlocks` accounts for when the viewer lines the two up.
@@ -2714,7 +2711,10 @@ const GameViewer = ({
         const next = prev.slice();
         const turn = { ...next[idx] };
         turn.requests = turn.requests.map((r) =>
-          r.id === captureId ? { ...r, response: rawContent } : r,
+          r.id === captureId ? {
+            ...r, response: rawContent,
+            statDiagnostics: statRequest ? readStatResponse(finalContent, statRequest).diagnostics : undefined,
+          } : r,
         );
         next[idx] = turn;
         return next;
@@ -3029,13 +3029,15 @@ const GameViewer = ({
     });
   const requestStats = (
     ctx: Record<string, string>,
+    snapshot: StatRequestSnapshot,
     action: string,
     narration: string,
     signal: AbortSignal,
     quiet = false,
   ): Promise<string> =>
     makeAIRequest({
-      systemPrompt: statUpdatesSystemPrompt(resolvedStatUpdatesPrompt, ctx),
+      systemPrompt: statUpdatesSystemPrompt(resolvedStatUpdatesPrompt, { ...ctx, ...snapshot.context }),
+      statRequest: snapshot,
       messages: [{ role: "user", content: renderPromptTemplate(statUpdatesUserPrompt, { "<PLAYER ACTION>": action, "<NARRATION>": narration }) }],
       type: "statUpdates",
       signal,
@@ -4734,6 +4736,11 @@ const GameViewer = ({
                                           <span className="text-muted-foreground">(empty output)</span>
                                         )}
                                       </p>
+                                      {!!req.statDiagnostics?.length && (
+                                        <p className="mt-2 whitespace-pre-wrap break-words text-helper text-muted-foreground">
+                                          Skipped stat updates: {req.statDiagnostics.map(({ name, reason }) => `${name} (${reason})`).join('; ')}
+                                        </p>
+                                      )}
                                     </CollapsibleContent>
                                   </Collapsible>
                                 )}

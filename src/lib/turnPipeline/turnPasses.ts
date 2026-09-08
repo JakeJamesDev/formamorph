@@ -414,8 +414,8 @@ const statUpdatesPass: TurnPassRecord<ReturnType<typeof parseStatUpdates>> = {
   // A world with no live stats would only get hallucinated stat names that match nothing.
   isDue: (input) => input.settings.statUpdatesEnabled && input.settings.statCount > 0,
   buildRequest: (input, material) => labeledRequest(
-    { type: 'statUpdates', maxTokens: null, silent: false, quiet: quietInBatch(input) },
-    systemTiled(input.prompts.statUpdates, material.ctx),
+    { type: 'statUpdates', maxTokens: null, silent: false, quiet: quietInBatch(input), statRequest: material.statRequest },
+    systemTiled(input.prompts.statUpdates, { ...material.ctx, ...material.statRequest?.context }),
     userTiled(input.prompts.statUpdatesUser, {
       '<PLAYER ACTION>': material.effectiveAction,
       '<NARRATION>': material.narration,
