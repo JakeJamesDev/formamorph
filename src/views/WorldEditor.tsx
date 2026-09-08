@@ -182,13 +182,25 @@ const WorldEditorInner = ({ onClose, embedded = false, backButton }: {
   // Overview's fields sit in the list pane and every other tab's in the detail pane, so the hit lookup
   // spans the whole editor and skips the two boxes that aren't world text (the find bar, the list filter).
   const editorRootRef = useRef<HTMLDivElement>(null);
+  // Where focus was when Find opened, so closing it puts the author back in the field they were typing in.
+  const findOpenerRef = useRef<HTMLElement | null>(null);
   const openFind = useCallback((withReplace: boolean) => {
+    // Only the first press records: Ctrl+H over an open bar would otherwise capture the bar's own field.
+    if (!findOpen) {
+      const active = document.activeElement;
+      findOpenerRef.current = active instanceof HTMLElement ? active : null;
+    }
     setFindWithReplace(withReplace);
     setFindOpen(true);
-  }, []);
+  }, [findOpen]);
   const closeFind = useCallback(() => {
     setFindOpen(false);
     clearEditorMatch();
+    const opener = findOpenerRef.current;
+    findOpenerRef.current = null;
+    // Before the unmount, not after: focus has to leave the bar's field while that field still exists,
+    // or removing it drops focus on the body. A navigated hit can unmount the opener, hence the fallback.
+    (opener?.isConnected ? opener : editorRootRef.current)?.focus();
   }, []);
   useEffect(() => {
     const onKey = (event: KeyboardEvent) => {
@@ -917,7 +929,12 @@ const WorldEditorInner = ({ onClose, embedded = false, backButton }: {
           pauseOnHover
         />
       )}
-      <div className="relative flex-grow flex overflow-hidden" ref={editorRootRef}>
+      <div
+        className="relative flex-grow flex overflow-hidden focus:outline-none"
+        ref={editorRootRef}
+        // Focusable only as Find's fallback landing spot; never in the tab order.
+        tabIndex={-1}
+      >
         {findOpen && (
           <EditorFindBar
             targets={searchTargets}
