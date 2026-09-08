@@ -45,7 +45,7 @@ The user approved adding the main-menu example after reviewing this single-ticke
 
 **Question:** Does a menu with the first three group shortcuts, text-only group shortcuts and distinct action icons, and a searchable Add To Group dialog feel right in Formamorph?
 
-**Verdict:** Pending user review. The prototype does not approve a new pattern or change production library behavior.
+**Verdict:** Approved by the user on 2026-09-08, including the compact-list and footer-order revisions. Production integration remains follow-up work under the [Design Standards Additions spec](../../design-system-additions/spec.md).
 
 **Artifact:** `prototype/tile-group-picker`, commit `47ed367b`. The runnable source, launch notes, and desktop/mobile evidence are in `docs-internal/prototypes/tile-groups/README.md` on that branch.
 

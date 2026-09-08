@@ -119,3 +119,7 @@ The user confirmed the testing boundary: the live showcase is the primary integr
 - [Product glossary](../../../CONTEXT.md) provides established domain vocabulary.
 - [Official ASD-STE100 guidance](https://www.asd-ste100.org/STE_faq.html) explains the standard; use its full rules and dictionary for implementation review.
 - The first build is the guide, project skill, and dev-only showcase. The user's confirmation reserves implementation for a follow-up; this spec makes that work ready for an agent.
+
+## Standards additions
+
+[Design Standards Additions](../design-system-additions/spec.md) specifies short context menus, the approved tile group picker, compact and richer list references, the shared scrollbar treatment, and negative-left/positive-right footer actions. This follow-up preserves the completed foundation and earlier reference extensions.
