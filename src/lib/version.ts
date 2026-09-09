@@ -8,6 +8,7 @@ import { autoBindLegacyBodyStats } from './bodyMorphs';
 import { appendCurrentToHistory } from './turnHistory';
 import { DEFAULT_AVATAR_ID, LEGACY_DEFAULT_AVATAR_ID, LEGACY_DEFAULT_AVATAR_SENTINEL } from './defaultAvatar';
 import { migrateEntityImages } from './entityImages';
+import { normalizeLinkedItem } from './contentLink';
 
 /** Current app version, derived from package.json (see vite.config.js `define`). User-managed. */
 export const APP_VERSION = __APP_VERSION__;
@@ -293,6 +294,30 @@ function migratePlaceholderValues(ph: Record<string, unknown>): Record<string, u
 }
 
 /**
+ * Guard the link record every entity and dictionary may carry (see `ContentLink`), dropping one that is not
+ * a record so nothing downstream reads a state it cannot understand.
+ *
+ * Purely additive otherwise: a copy with no record, or one whose record holds fields this version does not
+ * know, passes through exactly as written, so a world saved by a later version keeps what it wrote.
+ * Idempotent, and it leaves the arrays' references alone when there is nothing to drop. Deliberately NOT
+ * version-gated, for the same reason as `foldDictionaryIntoBooks`.
+ */
+function normalizeContentLinks(world: Record<string, unknown>): void {
+  for (const key of ['entities', 'dictionaries'] as const) {
+    const items = world[key];
+    if (!Array.isArray(items)) continue;
+    let changed = false;
+    const next = items.map((raw) => {
+      if (!raw || typeof raw !== 'object') return raw;
+      const item = normalizeLinkedItem(raw as Record<string, unknown>);
+      if (item !== raw) changed = true;
+      return item;
+    });
+    if (changed) world[key] = next;
+  }
+}
+
+/**
  * Give every placeholder's values their stable ids. Deliberately NOT version-gated, for the same reason as
  * `foldDictionaryIntoBooks`: shipped 2.x worlds carry `version === APP_VERSION` yet predate the records.
  */
@@ -326,10 +351,10 @@ function coerceLegacyListStats(stats: readonly Stat[]): Stat[] {
 /**
  * Bring an imported world up to the current format and stamp it with `APP_VERSION`. The dictionary→books
  * fold, the keyword-array migration, the entity-gallery fold, the entity-location flip, the
- * connection-record pair-merge, the start-flag rename and the placeholder value-record conversion run
- * unconditionally (they aren't
- * version-gated — see `foldDictionaryIntoBooks`); the rest is skipped for a world already at `APP_VERSION`. Moves the legacy root `customPlayerVRM` bare data-URL into
- * `worldOverview.customPlayerVRM` as a `MediaAsset`, auto-binds legacy body stats to body morphs, and
+ * connection-record pair-merge, the start-flag rename, the placeholder value-record conversion and the
+ * content-link guard run unconditionally (they aren't version-gated — see `foldDictionaryIntoBooks`); the
+ * rest is skipped for a world already at `APP_VERSION`. Moves the legacy root `customPlayerVRM` bare
+ * data-URL into `worldOverview.customPlayerVRM` as a `MediaAsset`, auto-binds legacy body stats to morphs, and
  * renames v1.2 description keys on entities/locations/traits to the audience-based keys. Remaining field
  * defaults are left to `loadWorldData`. Add further 2.0 → 2.x steps here when the shape changes — a version
  * bump is the user's call (see the export-shape-versioning note); shipped worlds are only reshaped through
@@ -344,6 +369,7 @@ export function migrateWorld(raw: unknown): World {
   migrateLocationConnections(world);
   migrateStartLocationFlag(world);
   migrateWorldPlaceholders(world);
+  normalizeContentLinks(world);
   if (world.version === APP_VERSION) return world as unknown as World;
 
   const overview = { ...((world.worldOverview as Record<string, unknown>) ?? {}) };

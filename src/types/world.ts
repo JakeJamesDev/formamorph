@@ -172,6 +172,8 @@ export interface Entity {
   /** Off-world only: the shared placeholders this entity's chips use, so they resolve after import. An import
    *  merges them into the world's shared list by name and values and clears the field. */
   sharedPlaceholders?: Placeholder[];
+  /** What this copy follows, where it follows anything (see `ContentLink`). Absent = independent copy. */
+  link?: ContentLink;
 }
 
 /** An editor-only folder for organizing entities, nestable via `parentId`. Just a name — never sent to the
@@ -313,6 +315,8 @@ export interface Dictionary {
   /** Off-world only: the shared placeholders this book's entries use, so they resolve after import. An import
    *  merges them into the world's shared list by name and values and clears the field. */
   sharedPlaceholders?: Placeholder[];
+  /** What this copy follows, where it follows anything (see `ContentLink`). Absent = independent copy. */
+  link?: ContentLink;
 }
 
 /**
@@ -436,6 +440,32 @@ export interface Placeholder {
    *  shared placeholder is grouped: a scoped one sits under its entity or book, an owned one under its
    *  holder. Editor-only, never sent to the AI, and dropped from card and dictionary exports. */
   groupId?: string | null;
+}
+
+/**
+ * What one world's copy of an entity or dictionary follows. The record lives on the copy inside the world,
+ * so two worlds holding the same source track it separately; a copy with no record is an independent copy
+ * and follows nothing.
+ *
+ * Not `CommunityLink`: that is local-only bookkeeping about a downloaded library item and is never exported.
+ * This record is part of the authored world and travels with a world export.
+ */
+export interface ContentLink {
+  /** The local library item this copy follows. */
+  libraryId?: string;
+  /** The published listing behind that library item, where it has one. */
+  sourceId?: string;
+  /** The source revision this copy holds — what an update compares against. */
+  sourceRevision?: string;
+  /** The last revision the player reviewed, so a revision they kept does not return to review until the
+   *  source changes again. Absent until something has been reviewed. */
+  reviewedRevision?: string;
+  /** The copy has been edited away from its source but still tracks it. */
+  localReplacement?: boolean;
+  /** The source's name as it read when the link was made. Display only, never identity — a name alone
+   *  cannot establish a link. Carried so an exported world, or one whose library item is gone, can still
+   *  say what the copy follows. */
+  sourceName?: string;
 }
 
 /** An editor-only folder for organizing shared placeholders, nestable via `parentId`. Just a name — never

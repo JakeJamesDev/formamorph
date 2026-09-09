@@ -6,6 +6,7 @@ import { withEntityLocations } from '@/lib/entityPresence';
 import type { Entity } from '@/types';
 import { labelPlaceholders } from '@/lib/placementLetters';
 import { locationRows } from '@/lib/locationTree';
+import { ContentLinkHeader } from '@/components/ContentLinkStatus';
 
 const EntityManager = ({ entity }: { entity: Entity }) => {
   const { updateEntity, locations, placeholders, placementLetters, placeholderOwners } = useGameData();
@@ -28,6 +29,7 @@ const EntityManager = ({ entity }: { entity: Entity }) => {
 
   return (
     <div className="space-y-4">
+      <ContentLinkHeader link={editingEntity.link} />
       <EntityFields
         value={editingEntity}
         onChange={handleChange}

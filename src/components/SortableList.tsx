@@ -22,6 +22,7 @@ export interface SortableRowMeta {
  *  optional enabled checkbox). Shared by the World Editor's item lists and the standalone placeholder editor. */
 export function SortableRow({
   item,
+  icon,
   label,
   meta,
   selected,
@@ -32,6 +33,8 @@ export function SortableRow({
   onToggleEnabled,
 }: {
   item: SortableListItem;
+  /** Between the checkbox and the label, for a marker the row carries (see `EditorRow`'s `icon`). */
+  icon?: ReactNode;
   /** Overrides the rendered name — a node, so a name holding a placeholder can draw it as a chip. The
    *  plain `item.name` still names the row for screen readers and the delete confirmation. */
   label?: ReactNode;
@@ -61,6 +64,7 @@ export function SortableRow({
       onSelect={() => onSelect(item.id)}
       selectionLabel={`Select ${item.name}`}
       checkbox={onToggleEnabled ? { checked: enabled !== false, onChange: (v) => onToggleEnabled(item.id, v) } : undefined}
+      icon={icon}
       label={label ?? item.name}
       meta={meta?.text}
       metaTitle={meta?.title}

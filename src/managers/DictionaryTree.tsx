@@ -17,6 +17,7 @@ import { reorderBooks, moveEntryInBooks, duplicateEntryInBooks } from '@/lib/dic
 import { EmptyListHint } from '@/components/EmptyListHint';
 import type { Dictionary, DictionaryEntry } from '@/types';
 import PlaceholderText from '@/components/prompt/PlaceholderText';
+import { ContentLinkIcon } from '@/components/ContentLinkStatus';
 import { useEditorMode } from '@/lib/editorMode';
 
 /** One entry ("page") row inside a book zone: grip handle + enabled toggle + name + duplicate/delete. */
@@ -282,6 +283,7 @@ function BookRow({ book, collapsed, collapsedZones, selectedId, onToggleCollapse
         onToggleCollapse={() => onToggleCollapse(book.id)}
         collapseLabels={['Expand dictionary', 'Collapse dictionary']}
         checkbox={advanced ? { checked: book.enabled !== false, onChange: (v) => onToggleEnabled(book, v) } : undefined}
+        icon={<ContentLinkIcon link={book.link} />}
         label={<PlaceholderText text={book.name} placeholders={placeholders} />}
         labelClass="font-medium"
         meta={advanced ? `${enabledCount}/${book.entries.length}` : book.entries.length}
