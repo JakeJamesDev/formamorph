@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react';
+import { createContext, useContext, useRef, useState, type ReactNode } from 'react';
 import { type DragEndEvent } from '@dnd-kit/core';
 import { useSortable, arrayMove, rectSortingStrategy } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
@@ -59,6 +59,22 @@ interface ImageTagsFieldProps {
   /** The entity or location whose tags these are — see `ownerId` on `PlaceholderField`. */
   ownerId?: string;
 }
+
+const WidgetContext = createContext<ImageTagsFieldProps | null>(null);
+
+const useImageWidget = () => {
+  const props = useContext(WidgetContext);
+  if (!props) throw new Error('ImageGallery and ImageTags must be rendered inside an ImageWidget.');
+  return props;
+};
+
+/**
+ * Holds the subject one image widget acts on, so its two pieces can sit in different boxes of a layout and
+ * still write the same record. A host that wants them together uses `ImageTagsField` instead.
+ */
+export const ImageWidget = ({ children, ...props }: ImageTagsFieldProps & { children?: ReactNode }) => (
+  <WidgetContext.Provider value={props}>{children}</WidgetContext.Provider>
+);
 
 /** The big frame the gallery shows its picture in. A character is drawn portrait, a place landscape — the
  *  same split the image generator already uses when it picks dimensions. */
@@ -148,16 +164,24 @@ const AddTile = ({ htmlFor, selected, onSelect, onUrl, onFiles, allowFiles }: {
 };
 
 /**
- * The image-upload → embedded-prompt confirmation → booru Image Tags → generate-image stack shared by the
- * Location and Entity editors. Owns the `pendingPrompt` handshake: an uploaded image's embedded SD prompt is
- * held until the user confirms using it as the Image Tags (which replaces the current tags).
+ * The picture half of the widget: the image-upload → embedded-prompt confirmation → generate-image stack
+ * shared by the Location and Entity editors. Owns the `pendingPrompt` handshake: an uploaded image's
+ * embedded SD prompt is held until the user confirms using it as the Image Tags (which replaces the current
+ * tags).
  *
  * With more than one slot it authors a gallery: one framed picture with a strip of tiles beneath it, the
  * last tile adding. Clicking a tile frames it; dragging reorders, which is also how the stand-in picture is
  * chosen, since that is simply the first. Tag generation acts on the subject as a whole rather than on any one
  * slot; a generated picture fills a free slot, and asks which one it replaces when there is none.
+ *
+ * `children` fill the line between the picture strip and the Generate button. A host that keeps the tags
+ * beside the picture passes `ImageTags` there; a host that places them elsewhere passes nothing.
  */
-const ImageTagsField = ({ label, images, onImagesChange, slots = 1, embeddedLimit = slots, imageId, cap, description, kind, tags, onTagsChange, placeholders = [], ownerId }: ImageTagsFieldProps) => {
+export const ImageGallery = ({ children }: { children?: ReactNode }) => {
+  const {
+    label, images, onImagesChange, slots = 1, embeddedLimit = slots, imageId, cap, description, kind,
+    tags, onTagsChange,
+  } = useImageWidget();
   // SD prompt pulled from an uploaded image, pending the user's OK to use it as Image Tags.
   const [pendingPrompt, setPendingPrompt] = useState<string | null>(null);
   // A generated picture with nowhere free to go, held while the user picks the slot it replaces.
@@ -387,17 +411,7 @@ const ImageTagsField = ({ label, images, onImagesChange, slots = 1, embeddedLimi
         onConfirm={() => { if (pendingPrompt) onTagsChange(pendingPrompt); setPendingPrompt(null); }}
         onCancel={() => setPendingPrompt(null)}
       />
-      {advanced && (
-        <TagField
-          label="Image Tags"
-          value={tags || ''}
-          onChange={onTagsChange}
-          placeholders={placeholders}
-          ownerId={ownerId}
-          placeholder="booru tags, comma separated"
-          aside={<AiGenerateButton mode="tags" kind={kind} source={description} onChange={onTagsChange} />}
-        />
-      )}
+      {children}
       {/* A generated picture always arrives as bytes, so it answers to the embedded allowance: it fills a free
           slot, and once there is none it replaces one the author picks. */}
       {canGenerate && (
@@ -439,5 +453,34 @@ const ImageTagsField = ({ label, images, onImagesChange, slots = 1, embeddedLimi
     </div>
   );
 };
+
+/**
+ * The tags half of the widget: the booru Image Tags line with its AI tag writer. Advanced only, as the tags
+ * themselves are. It reads the same subject the gallery does, so an adopted embedded prompt and generated
+ * tags land here wherever the host draws it.
+ */
+export const ImageTags = () => {
+  const { tags, onTagsChange, placeholders = [], ownerId, description, kind } = useImageWidget();
+  const { advanced } = useEditorMode();
+  if (!advanced) return null;
+  return (
+    <TagField
+      label="Image Tags"
+      value={tags || ''}
+      onChange={onTagsChange}
+      placeholders={placeholders}
+      ownerId={ownerId}
+      placeholder="booru tags, comma separated"
+      aside={<AiGenerateButton mode="tags" kind={kind} source={description} onChange={onTagsChange} />}
+    />
+  );
+};
+
+/** The whole widget in one box: the gallery with its tags between the picture strip and the Generate button. */
+const ImageTagsField = (props: ImageTagsFieldProps) => (
+  <ImageWidget {...props}>
+    <ImageGallery><ImageTags /></ImageGallery>
+  </ImageWidget>
+);
 
 export default ImageTagsField;
