@@ -3,7 +3,7 @@ import { MarkdownRenderer } from '@/components/game/MarkdownRenderer';
 import { BookOpen, Check, ChevronDown, ListTree } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogTitle } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogTitle, dialogCenteredAnimation } from '@/components/ui/dialog';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Tip } from '@/components/ui/tooltip';
@@ -37,6 +37,8 @@ interface TraitWorkspace {
 }
 
 export interface EnterWorldWorkspaceProps {
+  /** False plays the exit animation; the host keeps the workspace mounted until it finishes. */
+  open?: boolean;
   worldName: string;
   traits: Trait[];
   traitGroups: TraitGroup[];
@@ -236,13 +238,18 @@ export default function EnterWorldWorkspace(props: EnterWorldWorkspaceProps) {
   );
 
   return (
-    <Dialog open onOpenChange={(open) => { if (!open) props.onCancel(); }}>
+    <Dialog open={props.open ?? true} onOpenChange={(open) => { if (!open) props.onCancel(); }}>
       <DialogContent
         ref={containerRef}
         data-enter-world-container="dialog"
         hideClose
         unanimated
-        className="fixed inset-x-0 left-0 top-[var(--app-top,0px)] flex h-[var(--app-h,100dvh)] max-h-none w-full max-w-none translate-x-0 translate-y-0 flex-col gap-0 rounded-none border-0 p-0 pt-[env(safe-area-inset-top)] sm:inset-x-6 sm:top-6 sm:mx-auto sm:h-[calc(100dvh-3rem)] sm:w-[calc(100%-3rem)] sm:max-w-[1600px] sm:rounded-xl sm:border sm:pt-0 [@media(max-height:500px)]:inset-0 [@media(max-height:500px)]:m-0 [@media(max-height:500px)]:h-[var(--app-h,100dvh)] [@media(max-height:500px)]:w-full [@media(max-height:500px)]:rounded-none"
+        className={cn(
+          // The stock slide assumes a transform-centered box; this one is inset-positioned, so it takes
+          // the Introduction popup's fade-and-zoom without the slide.
+          dialogCenteredAnimation,
+          'fixed inset-x-0 left-0 top-[var(--app-top,0px)] flex h-[var(--app-h,100dvh)] max-h-none w-full max-w-none translate-x-0 translate-y-0 flex-col gap-0 rounded-none border-0 p-0 pt-[env(safe-area-inset-top)] sm:inset-x-6 sm:top-6 sm:mx-auto sm:h-[calc(100dvh-3rem)] sm:w-[calc(100%-3rem)] sm:max-w-[1600px] sm:rounded-xl sm:border sm:pt-0 [@media(max-height:500px)]:inset-0 [@media(max-height:500px)]:m-0 [@media(max-height:500px)]:h-[var(--app-h,100dvh)] [@media(max-height:500px)]:w-full [@media(max-height:500px)]:rounded-none',
+        )}
       >
       <DialogTitle className="sr-only">Enter {props.worldName}</DialogTitle>
       <DialogDescription className="sr-only">{dialogDescription}</DialogDescription>
