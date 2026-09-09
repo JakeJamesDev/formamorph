@@ -18,7 +18,7 @@ import { Input } from "@/components/ui/input";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { Plus, ArrowLeft, Save, FolderPlus, FilePlus, ImageDown, BookPlus, UserPlus, Loader2, Search, List, Map } from "lucide-react";
+import { Plus, ArrowLeft, Save, FolderPlus, FilePlus, ImageDown, BookPlus, UserPlus, Loader2, Search, List, Map, ChevronUp } from "lucide-react";
 import { ActionIcon } from '@/lib/actionIcons';
 import { cn } from "@/lib/utils";
 import EditorFindBar from '@/components/editor/EditorFindBar';
@@ -84,7 +84,8 @@ import { APP_VERSION } from '@/lib/version';
 import type { Stat, Entity, GameLocation, StatUpdate, Dictionary, World, ContentLink } from '@/types';
 import { useDownscalePrompt } from '@/lib/useDownscalePrompt';
 import { SortableRow, type SortableListItem } from '@/components/SortableList';
-import { ContentLinkIcon } from '@/components/ContentLinkStatus';
+import { ContentLinkIcon, PendingLinksProvider, SelectedContentActions } from '@/components/ContentLinkStatus';
+import { useLibraryLinking } from '@/lib/useLibraryLinking';
 import { EditorRowList } from '@/components/EditorRow';
 import PlaceholderText from '@/components/prompt/PlaceholderText';
 import { Tip } from '@/components/ui/tooltip';
@@ -110,7 +111,7 @@ const WorldEditorInner = ({ onClose, embedded = false, backButton }: {
     updateStat, updateEntity, updateEntityGroup, updateLocation, updateTrait, updateTraitGroup,
     updateDictionary, updateDictionaryEntry, updatePlaceholder, updatePlaceholderGroup,
     removeStat, removeEntity, removeTrait, removeStatUpdate,
-    setStats, setLocations, setEntities, setTraits, setTraitGroups, setStatUpdates,
+    setStats, setLocations, setEntities, setTraits, setTraitGroups, setStatUpdates, setDictionaries,
     isWorldDirty, saveWorld: saveWorldCtx, discardChanges
   } = useGameData();
   const { promptWorld, dialog: downscaleDialog } = useDownscalePrompt();
@@ -343,10 +344,37 @@ const WorldEditorInner = ({ onClose, embedded = false, backButton }: {
     return adopted;
   };
 
+  // Imported/card entities land ungrouped at the root and in no location — ids carried over from the
+  // world they were exported from name a folder and places that don't exist here.
+  const addEntityToWorld = (entity: Entity) => {
+    const placed = {
+      ...withEntityLocations(adoptEntity(entity), []),
+      groupId: null,
+      order: entityRootSiblingCount(),
+    };
+    addEntity(placed);
+    setSelectedItemId(placed.id);
+  };
+  const addBookToWorld = (book: Dictionary) => {
+    const adopted = adoptBook(book);
+    addDictionary(adopted);
+    setSelectedItemId(adopted.id);
+  };
+
+  const linking = useLibraryLinking({
+    entities, dictionaries, placeholders,
+    updateEntity, updateDictionary, setEntities, setDictionaries,
+    addEntityToWorld, addBookToWorld,
+    exportEntity: (entity) => { void exportEntity(entity); },
+    exportDictionary,
+  });
+
   const saveWorld = async () => {
     const ok = await saveWorldCtx();
     if (ok) {
       toast.success('World saved successfully!');
+      // The links made this session are now on disk, so they stop reading as pending.
+      linking.clearPendingLinks();
     } else {
       toast.error('Error saving world. Please try again.');
     }
@@ -545,13 +573,14 @@ const WorldEditorInner = ({ onClose, embedded = false, backButton }: {
       ? selectedPlaceholderOwner?.id ?? (selectedPlaceholder ? placeholderOwners.get(selectedPlaceholder.row.placeholder.id)?.id : undefined)
     : undefined;
 
-  // Contextual footer actions. Simple authoring is bringing a character or lorebook in from your library;
-  // handing one out is an Advanced move, so Entities/Dictionary offer Add in both modes, Export in Advanced.
+  // Contextual footer actions. The whole world is the only thing still exported by a button of its own;
+  // an entity's or a book's Export is one item in the selected-content split button below.
   const exportContext =
-    activeTab === 'overview' ? { label: 'Export World', disabled: false, onClick: () => { exportCurrentWorld(); } }
-    : activeTab === 'entities' && advanced ? { label: `Export ${selectedItem ? labelPlaceholders(selectedItem.name, placeholders, { letters: placementLetters, owners: placeholderOwners }) : 'Entity'}`, disabled: !selectedItem, onClick: () => { if (selectedItem) exportEntity(selectedItem as Entity); } }
-    : activeTab === 'dictionary' && advanced
-      ? { label: `Export ${(selectedBook && labelPlaceholders(selectedBook.name, placeholders, { letters: placementLetters, owners: placeholderOwners })) || 'Dictionary'}`, disabled: !selectedBook, onClick: () => { if (selectedBook) exportDictionary(selectedBook); } }
+    activeTab === 'overview' ? { label: 'Export World', disabled: false, onClick: () => { exportCurrentWorld(); } } : null;
+  // What the selected-content split button acts on, on the two tabs that have one.
+  const selectedLinkable =
+    activeTab === 'entities' ? (selectedEntityGroup ? null : selectedEntity)
+    : activeTab === 'dictionary' ? selectedBook
     : null;
   // "Add" opens the add-from-library picker (characters on Entities, books on Dictionary).
   const showImport = activeTab === 'entities' || activeTab === 'dictionary';
@@ -896,20 +925,55 @@ const WorldEditorInner = ({ onClose, embedded = false, backButton }: {
   const footerBar = (
     <div className="p-3 border-t flex flex-wrap gap-2 justify-between">
       {downscaleDialog}
-      <div className="flex gap-2">
-        {exportContext && (
+      {/* Wraps: two split buttons are wider than a phone, and each one has to stay joined. */}
+      <div className="flex flex-wrap gap-2">
+        {showImport ? (
+          // Export moves into this button's menu: what an author does with the selected entity or book is
+          // one control, and saving it to the library is the everyday half of it.
+          <SelectedContentActions
+            disabled={!selectedLinkable}
+            {...(selectedLinkable
+              ? linking.controlFor(selectedLinkable, advanced)
+              : { faceLabel: 'Save to Library', onFace: () => {}, menu: [] })}
+          />
+        ) : exportContext && (
           <Button variant="outline" size="sm" onClick={exportContext.onClick} disabled={exportContext.disabled}>
             <ActionIcon.export className="h-4 w-4 mr-2 shrink-0" />
             <span className="truncate max-w-[14rem]">{exportContext.label}</span>
           </Button>
         )}
         {showImport && (
-          <Button variant="outline" size="sm" onClick={() => { if (activeTab === "dictionary") setShowAddDictionary(true); else if (activeTab === "entities") setShowAddEntity(true); }} disabled={importDisabled}>
-            {activeTab === "dictionary"
-              ? <BookPlus className="h-4 w-4 mr-2 shrink-0" />
-              : <UserPlus className="h-4 w-4 mr-2 shrink-0" />}
-            <span className="truncate max-w-[14rem]">{importLabel}</span>
-          </Button>
+          // The face opens the library picker; the chevron holds the file route into the same review.
+          <div className="flex">
+            <Button
+              variant="outline" size="sm" className="rounded-r-none"
+              onClick={() => { if (activeTab === "dictionary") setShowAddDictionary(true); else setShowAddEntity(true); }}
+              disabled={importDisabled}
+            >
+              {activeTab === "dictionary"
+                ? <BookPlus className="h-4 w-4 mr-2 shrink-0" />
+                : <UserPlus className="h-4 w-4 mr-2 shrink-0" />}
+              <span className="truncate max-w-[14rem]">{importLabel}</span>
+            </Button>
+            <Popover open={addMenuOpen} onOpenChange={setAddMenuOpen}>
+              <PopoverTrigger asChild>
+                <Button variant="outline" size="sm" className="rounded-l-none border-l-0 px-2" aria-label="More add options">
+                  <ChevronUp className="h-4 w-4" />
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent side="top" align="start" className="w-48 p-1">
+                <Button
+                  variant="ghost" className="justify-start text-meta h-8 w-full"
+                  onClick={() => {
+                    setAddMenuOpen(false);
+                    linking.openImportFile(activeTab === "dictionary" ? 'dictionary' : 'entity');
+                  }}
+                >
+                  {activeTab === "dictionary" ? 'Import Dictionary…' : 'Import Entity…'}
+                </Button>
+              </PopoverContent>
+            </Popover>
+          </div>
         )}
       </div>
       <div className="flex gap-2">
@@ -942,6 +1006,9 @@ const WorldEditorInner = ({ onClose, embedded = false, backButton }: {
   );
 
   return (
+    // The pending set reaches the link header through context, so the panels drawing that header stay
+    // unaware of whether the world has saved yet.
+    <PendingLinksProvider value={linking.pendingLinks}>
     <div className={`${embedded ? "h-full" : "app-viewport"} flex flex-col overflow-hidden`}>
       {!embedded && (
         <ThemedToastContainer
@@ -1077,31 +1144,24 @@ const WorldEditorInner = ({ onClose, embedded = false, backButton }: {
         onOpenChange={setShowExitPrompt}
         onSave={async () => { if (await saveWorld()) onClose(); }}
         // The managers write edits straight into the store as you type, so leaving has to actively roll them
-        // back — closing alone would keep them live for the next time this world is opened.
-        onExit={() => { discardChanges(); onClose(); }}
+        // back — closing alone would keep them live for the next time this world is opened. The links made
+        // this session roll back with them; the library items they named stay.
+        onExit={() => { discardChanges(); linking.clearPendingLinks(); onClose(); }}
       />
       {worldExportDialog}
       <AddDictionaryModal
         open={showAddDictionary}
         onOpenChange={setShowAddDictionary}
-        onAdd={(book) => { const b = adoptBook(book); addDictionary(b); setSelectedItemId(b.id); }}
+        onAdd={(book, source) => { addBookToWorld(book); if (source) linking.notePendingLink(source.id); }}
       />
       <AddEntityModal
         open={showAddEntity}
         onOpenChange={setShowAddEntity}
-        // Imported/card entities land ungrouped at the root and in no location — ids carried over from the
-        // world they were exported from name a folder and places that don't exist here.
-        onAdd={(entity) => {
-          const placed = {
-            ...withEntityLocations(adoptEntity(entity), []),
-            groupId: null,
-            order: entityRootSiblingCount(),
-          };
-          addEntity(placed);
-          setSelectedItemId(placed.id);
-        }}
+        onAdd={(entity, source) => { addEntityToWorld(entity); if (source) linking.notePendingLink(source.id); }}
       />
+      {linking.dialogs}
     </div>
+    </PendingLinksProvider>
   );
 };
 

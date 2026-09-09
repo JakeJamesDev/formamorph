@@ -499,6 +499,9 @@ export interface CommunityLink {
   /** The account that published the listing, captured at download. The authored `author` string is free
    *  text and names nobody in particular; this is who actually put it on Community Creations. */
   sourceAuthorId?: string;
+  /** That account's display name at download, so a picker can print who a copy follows without a lookup.
+   *  Display only; `sourceAuthorId` is the identity. */
+  sourceAuthorName?: string;
 }
 
 export interface WorldMetadata extends CommunityLink {

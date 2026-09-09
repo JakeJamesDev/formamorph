@@ -122,6 +122,8 @@ export class LibraryStore<T, M> {
           editedAt: record.editedAt ?? existing?.editedAt,
           downloadedAt: record.downloadedAt ?? existing?.downloadedAt,
           sourceUpdatedAt: record.sourceUpdatedAt ?? existing?.sourceUpdatedAt,
+          sourceAuthorId: record.sourceAuthorId ?? existing?.sourceAuthorId,
+          sourceAuthorName: record.sourceAuthorName ?? existing?.sourceAuthorName,
         });
         putRequest.onsuccess = () => resolve();
         putRequest.onerror = () => reject(`Failed to store ${this.lowerNoun}`);

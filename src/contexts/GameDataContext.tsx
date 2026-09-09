@@ -14,6 +14,7 @@ import {
 } from '@/lib/placeholderHomes';
 import { releasePlaceholderOwners, removePlaceholderCascade } from '@/lib/placeholderTree';
 import { chipBearingTexts } from '@/lib/testBench/rules';
+import { markEdited } from '@/lib/linkedContent';
 import { useDictionaryStoreState, DictionaryStoreProvider } from '@/contexts/DictionaryStoreContext';
 import { PlaceholderStoreProvider } from '@/contexts/PlaceholderStoreContext';
 import { PlacementLettersProvider, useStablePlacementLetters } from '@/contexts/PlacementLettersContext';
@@ -159,9 +160,14 @@ function useProvideGameData() {
     setEntities(prevEntities => [...prevEntities, newEntity]);
   }, []);
 
+  // An edit to an entity that follows a source makes it a local replacement. A caller that hands over a
+  // different `link` is managing the link itself (linking, unlinking, taking a source update), so its
+  // record stands: only a content edit, which carries the entity's own link through untouched, marks it.
   const updateEntity = useCallback((updatedEntity: Entity) => {
     setEntities(prevEntities => prevEntities.map(entity =>
-      entity.id === updatedEntity.id ? updatedEntity : entity
+      entity.id === updatedEntity.id
+        ? (entity.link === updatedEntity.link ? markEdited(updatedEntity) : updatedEntity)
+        : entity
     ));
   }, []);
 
