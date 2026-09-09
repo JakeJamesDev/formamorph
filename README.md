@@ -1,3 +1,5 @@
+![Formamorph title card](thumbnails/title-card-default.webp)
+
 # 🧬 Formamorph
 
 > A browser-based, AI-driven text RPG framework — **play**, **create**, and **share** interactive worlds powered by your own LLM.
