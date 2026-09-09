@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogTitle } from '@/components/ui/dialog';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
+import { ScrollArea } from '@/components/ui/scroll-area';
 import { Tip } from '@/components/ui/tooltip';
 import type { DictionarySelectionItem } from '@/lib/dictionarySelection';
 import type { EntityMetadata, GameLocation, Stat, Trait, TraitGroup } from '@/types';
@@ -180,15 +181,14 @@ export default function EnterWorldWorkspace(props: EnterWorldWorkspaceProps) {
   const locationIndex = categories.findIndex((category) => category.kind === 'location');
   const libraryIndex = categories.findIndex((category) => category.kind === 'library');
   const navigation = (
-    <nav
-      aria-label="World setup categories"
+    <ScrollArea
       className={cn(
-        'space-y-1 overflow-y-auto p-3',
         categoriesCollapsed
-          ? 'max-h-[45dvh] overscroll-contain border-t border-border/60'
-          : 'h-full',
+          ? 'max-h-[45dvh] border-t border-border/60 [&>[data-radix-scroll-area-viewport]]:overscroll-contain'
+          : 'h-full min-h-0',
       )}
     >
+    <nav aria-label="World setup categories" className="space-y-1 p-3">
       {props.traits.length > 0 && (
         <p className="my-3 flex items-center gap-3 px-2 text-meta font-medium uppercase text-muted-foreground">
           <span>Starting Traits</span><span className="h-px flex-1 bg-border" />
@@ -230,6 +230,7 @@ export default function EnterWorldWorkspace(props: EnterWorldWorkspaceProps) {
         </>
       )}
     </nav>
+    </ScrollArea>
   );
 
   return (
@@ -306,10 +307,10 @@ export default function EnterWorldWorkspace(props: EnterWorldWorkspaceProps) {
             </div>
           </div>
         </aside>
-        <main className={cn(
-          'flex min-h-0 min-w-0 flex-1 flex-col p-4 md:px-6 md:py-4',
-          current?.kind === 'library' ? 'overflow-hidden' : 'overflow-y-auto',
-        )}>
+        <main className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
+          {current?.kind !== 'library' && (
+            <ScrollArea className="min-h-0 flex-1">
+              <div className="p-4 md:px-6 md:py-4">
           {current?.kind === 'traits' && (
             <>
               <p className="mb-1 text-meta font-medium tracking-wide text-muted-foreground">Starting Traits</p>
@@ -435,7 +436,11 @@ export default function EnterWorldWorkspace(props: EnterWorldWorkspaceProps) {
               </RadioGroup>
             </>
           )}
+              </div>
+            </ScrollArea>
+          )}
           {current?.kind === 'library' && (
+            <div className="flex min-h-0 flex-1 flex-col p-4 md:px-6 md:py-4">
             <>
               <p className="mb-1 text-meta font-medium tracking-wide text-muted-foreground">World Setup</p>
               <div className="mb-4 flex items-center justify-between gap-3">
@@ -492,6 +497,7 @@ export default function EnterWorldWorkspace(props: EnterWorldWorkspaceProps) {
                 onDictionaryItemsChange={(items) => { setAdditionsRemembered(false); props.onDictionaryItemsChange(items); }}
               />
             </>
+            </div>
           )}
         </main>
       </div>
