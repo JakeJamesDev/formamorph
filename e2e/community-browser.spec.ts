@@ -99,6 +99,35 @@ test.describe('Community Creations from the main menu', () => {
     expect(Math.abs(iconBox!.y - labelBox!.y)).toBeLessThan(4);
   });
 
+  test('keeps the first two tour steps on screen, each with an arrow at its control', async ({ page }, testInfo) => {
+    test.skip(testInfo.project.name === 'mobile', 'the rail and the inline filter bar are landscape-only anchors');
+    // The tour, un-dismissed for this spec only: the rows explanation anchors to a rail as tall as the
+    // results, and the filters explanation to a control inside a bar as wide as the row — both shapes a
+    // popover can be pushed off or lose its arrow against.
+    await openApp(page, { 'formamorph.tutorialsSeen': [] });
+    await stubCatalog(page);
+    await gotoDev(page, 'mainMenu', { modal: 'community' });
+
+    const viewport = page.viewportSize()!;
+    const onScreen = async (dialog: ReturnType<Page['getByRole']>) => {
+      const box = (await dialog.boundingBox())!;
+      expect(box.y).toBeGreaterThanOrEqual(0);
+      expect(box.y + box.height).toBeLessThanOrEqual(viewport.height);
+      expect(box.x).toBeGreaterThanOrEqual(0);
+      // The arrow is the popover's only svg; Radix hides it when it cannot center on the anchor.
+      await expect(dialog.locator('svg').first()).toBeVisible();
+    };
+
+    const rows = page.getByRole('dialog', { name: 'Worlds, Entities & Dictionaries' });
+    await expect(rows).toBeVisible();
+    await onScreen(rows);
+
+    await rows.getByRole('button', { name: 'Next' }).click();
+    const filters = page.getByRole('dialog', { name: 'Narrow the Catalog' });
+    await expect(filters).toBeVisible();
+    await onScreen(filters);
+  });
+
   test('lands on the tab the route asks for', async ({ page }) => {
     await gotoDev(page, 'mainMenu', { modal: 'community', tab: 'entity' });
 

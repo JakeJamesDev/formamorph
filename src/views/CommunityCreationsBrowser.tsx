@@ -673,17 +673,21 @@ const CommunityCreationsBrowser = ({
     : kindSections;
   const activeSectionMeta = sections.find((s) => s.key === browseTab) ?? sections[0];
 
-  // Landscape: a vertical rail beside the results, below the header.
+  // Landscape: a vertical rail beside the results, below the header. Its explanation opens to the right of
+  // the rows, not of the rail: the rail is as tall as the results, so above or below it is off the screen,
+  // and an arrow can't aim at the middle of a column that is mostly empty.
   const landscapeRail = (
+    <nav
+      className="flex flex-col w-48 shrink-0 border-r p-3"
+      onPointerDownCapture={() => dismissIfShowing('community-kind-tabs')}
+    >
     <TutorialPopover
       entry={tutorial?.id === 'community-kind-tabs' ? tutorial : null}
       nav={tutorialNav}
+      side="right"
       align="start"
     >
-    <nav
-      className="flex flex-col w-48 shrink-0 gap-1 border-r p-3"
-      onPointerDownCapture={() => dismissIfShowing('community-kind-tabs')}
-    >
+    <div className="flex flex-col gap-1">
       {sections.map(({ key, label, icon: Icon }) => {
         const active = browseTab === key;
         return (
@@ -703,8 +707,9 @@ const CommunityCreationsBrowser = ({
           </React.Fragment>
         );
       })}
-    </nav>
+    </div>
     </TutorialPopover>
+    </nav>
   );
 
   // Portrait: a dropdown carrying every section, icon mirrored onto the closed trigger itself.
@@ -886,10 +891,13 @@ const CommunityCreationsBrowser = ({
 
   // Hidden and updates-first ride along inside the bar: they narrow or reorder the same grid, and a second
   // row for two controls reads as a second, unrelated set of filters.
+  // The explanation anchors to the Add Filter control inside the bar, not the bar: the bar spans the
+  // row, and a popover can't aim its arrow at the middle of something wider than itself.
   const filterBar = (
-    <TutorialPopover entry={filterBarTutorial} nav={tutorialNav} align="start">
     <div onPointerDownCapture={() => dismissIfShowing('community-filters')}>
     <CommunityFilterBar
+      addFilterTutorial={filterBarTutorial}
+      tutorialNav={tutorialNav}
       authorFilter={authorFilter}
       setAuthorFilter={setAuthorFilter}
       tagFilter={tagFilter}
@@ -908,7 +916,6 @@ const CommunityCreationsBrowser = ({
       {hiddenControl}
     </CommunityFilterBar>
     </div>
-    </TutorialPopover>
   );
 
   return (
