@@ -31,7 +31,8 @@ export default tseslint.config(
   // 'out' is the Cloudflare Pages upload root the deploy assembles: a copy of dist beside the site.
   // '.scratch' is throwaway work, including vendored third-party source to test against.
   // 'android' is the native project; `cap sync` copies the built bundle into it.
-  { ignores: ['dist', 'site-dist', 'out', 'coverage', 'release', 'electron', 'docs-api', '.scratch', 'android'] },
+  // `.claude/worktrees` holds other sessions' checkouts; each lints itself.
+  { ignores: ['dist', 'site-dist', 'out', 'coverage', 'release', 'electron', 'docs-api', '.scratch', 'android', '.claude/worktrees'] },
   {
     files: ['*.config.js'],
     languageOptions: {

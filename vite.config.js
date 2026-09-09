@@ -68,7 +68,7 @@ export default defineConfig({
   },
   test: {
     // e2e/ belongs to Playwright; .scratch/ contains untracked working copies and experiments.
-    exclude: ['**/node_modules/**', '**/dist/**', 'e2e/**', '.scratch/**'],
+    exclude: ['**/node_modules/**', '**/dist/**', 'e2e/**', '.scratch/**', '.claude/worktrees/**'],
     environment: 'jsdom',
     setupFiles: ['./src/test/setup.ts'],
     css: false,
