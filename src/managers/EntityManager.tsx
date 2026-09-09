@@ -75,9 +75,12 @@ const EntityManager = ({ entity, tab, onTabChange, focusField }: {
           className="grid w-full"
           style={{ gridTemplateColumns: `repeat(${tabs.length}, minmax(0, 1fr))` }}
         >
+          {/* Icon alone below `sm`: "Descriptions" needs 137px on one row, and the 375px detail sheet gives
+              each of three tabs 105px. The name stays on `aria-label`, which reads the same at every width. */}
           {tabs.map(({ value, label, icon: Icon }) => (
-            <TabsTrigger key={value} value={value} className="gap-1.5">
-              <Icon className="h-4 w-4" />{label}
+            <TabsTrigger key={value} value={value} aria-label={label} className="gap-1.5">
+              <Icon className="h-4 w-4 shrink-0" />
+              <span className="hidden sm:inline">{label}</span>
             </TabsTrigger>
           ))}
         </TabsList>
