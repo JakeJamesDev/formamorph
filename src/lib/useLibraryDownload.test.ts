@@ -74,6 +74,16 @@ describe('useLibraryDownload record id', () => {
       dirty: false, // a fresh download is unedited — and this clears the flag on a copy you'd edited
     });
   });
+
+  it('passes the listing\'s own name, for a kind whose content names itself nothing', async () => {
+    // An Avatar's content is just `{ vrm, license, hash }` — the only name available is the listing's.
+    const { hook, store } = setup();
+
+    await act(async () => { hook.result.current.startDownload(listing('L1')); });
+    await waitFor(() => expect(store).toHaveBeenCalled());
+
+    expect(store.mock.calls[0][3]).toBe('Mara');
+  });
 });
 
 describe('useLibraryDownload guards', () => {

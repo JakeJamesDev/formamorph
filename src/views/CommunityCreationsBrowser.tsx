@@ -36,7 +36,11 @@ import { useDeviceDownload } from "@/lib/useDeviceDownload";
 import { useDownscalePrompt } from "@/lib/useDownscalePrompt";
 import EntityStorageService from "@/services/EntityStorageService";
 import DictionaryStorageService from "@/services/DictionaryStorageService";
-import type { Entity, Dictionary, EntityMetadata, DictionaryMetadata, ServerEvent } from "@/types";
+import ModelStorageService from "@/services/ModelStorageService";
+import { avatarListingToVrmData } from "@/lib/avatarDownload";
+import type {
+  Entity, Dictionary, EntityMetadata, DictionaryMetadata, ModelMetadata, AvatarListingContent, ServerEvent,
+} from "@/types";
 import { EventBanner, EventBannerChips } from "@/components/events/EventBanner";
 import { useEventBanners } from "@/components/events/useEventBanners";
 import { useClosingSnapshot } from "@/lib/useClosingSnapshot";
@@ -165,12 +169,14 @@ interface CommunityCreationsBrowserProps {
   // Local world list (drives download-state) + setter (download/overwrite add or update local copies).
   worlds: WorldRecord[];
   setWorlds: React.Dispatch<React.SetStateAction<WorldRecord[]>>;
-  // The entity/dictionary libraries drive their tabs' download-state; refreshing re-reads them after a
-  // download lands (unlike worlds, these are stored by their own service rather than set here).
+  // The entity/dictionary/model libraries drive their tabs' download-state; refreshing re-reads them after
+  // a download lands (unlike worlds, these are stored by their own service rather than set here).
   entities: EntityMetadata[];
   dictionaries: DictionaryMetadata[];
+  models: ModelMetadata[];
   refreshEntities: () => void;
   refreshDictionaries: () => void;
+  refreshModels: () => void;
   isAuthenticated: boolean;
   currentUser: WorldRecord | null;
   /** Starts authentication instead of mutating when a guest presses Like. */
@@ -202,8 +208,8 @@ interface CommunityCreationsBrowserProps {
 // The Community Creations browser: browse/search/filter/sort the published catalog, view world details
 // and comments, and download/refresh/update copies to the local library.
 const CommunityCreationsBrowser = ({
-  open, onOpenChange, presentation = 'dialog', capabilities = APP_COMMUNITY_CAPABILITIES, filterPreferences, worlds, setWorlds, entities, dictionaries,
-  refreshEntities, refreshDictionaries,
+  open, onOpenChange, presentation = 'dialog', capabilities = APP_COMMUNITY_CAPABILITIES, filterPreferences, worlds, setWorlds, entities, dictionaries, models,
+  refreshEntities, refreshDictionaries, refreshModels,
   isAuthenticated, currentUser, onGuestLike, openImageViewer, initialTab, openListing, onListingOpened, listing: controlledListing,
   onListingChange, onListingUnavailable, detailsAction,
   events = [], onOpenEvent, openLikersOnMount = false,
@@ -250,8 +256,8 @@ const CommunityCreationsBrowser = ({
   // Contest is a fourth tab rather than a fourth kind — a narrowing of the worlds already in hand.
   const [browseTab, setBrowseTab] = useState<BrowseTab>(initialTab ?? 'world');
 
-  // Entities and dictionaries download into their own libraries, one copy per listing. Worlds keep the
-  // coordinator's multi-copy flow (see useLibraryDownload for why the two differ).
+  // Entities, dictionaries, and models download into their own libraries, one copy per listing. Worlds
+  // keep the coordinator's multi-copy flow (see useLibraryDownload for why the two differ).
   const entityDownload = useLibraryDownload<Entity>({
     kind: 'entity',
     records: entities,
@@ -271,6 +277,20 @@ const CommunityCreationsBrowser = ({
     },
     refresh: refreshDictionaries,
   });
+
+  const modelDownload = useLibraryDownload<AvatarListingContent>({
+    kind: 'model',
+    records: models,
+    // The content carries no name of its own (just `{ vrm, license, hash }`); the file's own embedded
+    // title wins, as it does for an uploaded model, else the listing's name stands in for it. No
+    // thumbnail is stored either — `ensureThumbnail` backfills one lazily on first view, from these
+    // same bytes, exactly as it does for any other legacy or freshly-migrated record.
+    store: async (id, content, link, listingName) => {
+      const data = await avatarListingToVrmData(content);
+      await ModelStorageService.storeModel({ id, name: content.license?.title?.trim() || listingName, data, ...link });
+    },
+    refresh: refreshModels,
+  });
   const deviceDownload = useDeviceDownload();
 
   /**
@@ -281,7 +301,7 @@ const CommunityCreationsBrowser = ({
    * importer written for a different shape.
    */
   const downloadFor = (kind: CatalogKind) => (
-    kind === 'entity' ? entityDownload : kind === 'dictionary' ? dictionaryDownload : null
+    kind === 'entity' ? entityDownload : kind === 'dictionary' ? dictionaryDownload : kind === 'model' ? modelDownload : null
   );
 
   /**
@@ -296,13 +316,14 @@ const CommunityCreationsBrowser = ({
     // A kind with no library holds no copy, so it is never downloaded and never out of date.
     return downloadFor(kind)?.downloadStateFor(record) ?? 'none';
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [localCopiesBySource, entityDownload.copyBySource, dictionaryDownload.copyBySource]);
+  }, [localCopiesBySource, entityDownload.copyBySource, dictionaryDownload.copyBySource, modelDownload.copyBySource]);
 
-  // Every in-flight bar, keyed by listing id — unique across kinds, so the three sources merge cleanly.
+  // Every in-flight bar, keyed by listing id — unique across kinds, so the four sources merge cleanly.
   const allDownloadProgress = {
     ...downloadProgress,
     ...entityDownload.downloadProgress,
     ...dictionaryDownload.downloadProgress,
+    ...modelDownload.downloadProgress,
     ...deviceDownload.downloadProgress,
   };
 

@@ -1,6 +1,7 @@
 # 05: Save an Avatar to the Model Library
 
-Status: ready-for-agent
+Status: ready-for-human
+Base: 4d04e0a5
 Blocked by: 04
 Recommended model: Claude Sonnet 5 (`claude-sonnet-5`)
 Reasoning effort: high
@@ -26,3 +27,7 @@ Device download of an Avatar listing saves the `.vrm` file itself, not a JSON wr
 - [ ] Website catalog: Avatars section present, cards render, device download works where enabled, library save absent.
 - [ ] Model library record shape change is local only; no export-shape change.
 - [ ] Four gates green; changelog In-Progress entry added.
+
+## Comments
+
+Implemented in `0a434d33`. Standards and Spec review (`/mattpocock-skills:code-review 4d04e0a5`) ran clean: no hard standards violations, no missing requirements, no scope creep. One spec-review soft note — the acceptance criteria list "thumbnail" among what Save stores, but the implementation stores none at download time and leans on `ModelStorageService.ensureThumbnail`'s existing lazy-backfill path (the same one legacy and freshly-migrated records already use) instead; the outcome (the model appears with a picture) is unaffected. Made that intent explicit with a comment at the `modelDownload.store` call site rather than changing the behavior.

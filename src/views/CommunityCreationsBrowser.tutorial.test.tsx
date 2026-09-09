@@ -68,8 +68,10 @@ const renderBrowser = ({ signedIn = true, open = true } = {}) =>
       setWorlds={() => {}}
       entities={[]}
       dictionaries={[]}
+      models={[]}
       refreshEntities={() => {}}
       refreshDictionaries={() => {}}
+      refreshModels={() => {}}
       isAuthenticated={signedIn}
       currentUser={signedIn ? reader : null}
       openImageViewer={() => {}}
@@ -127,8 +129,10 @@ describe('Community Creations tour', () => {
         setWorlds={() => {}}
         entities={[]}
         dictionaries={[]}
+        models={[]}
         refreshEntities={() => {}}
         refreshDictionaries={() => {}}
+        refreshModels={() => {}}
         isAuthenticated
         currentUser={reader}
         openImageViewer={() => {}}

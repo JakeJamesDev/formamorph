@@ -64,8 +64,10 @@ const renderBrowser = () =>
       setWorlds={() => {}}
       entities={[]}
       dictionaries={[]}
+      models={[]}
       refreshEntities={() => {}}
       refreshDictionaries={() => {}}
+      refreshModels={() => {}}
       isAuthenticated
       currentUser={reader}
       openImageViewer={() => {}}
@@ -162,7 +164,7 @@ describe('the section switcher on portrait (the dropdown)', () => {
   });
 });
 
-describe('a kind the catalog carries before its library does', () => {
+describe('every catalog kind saves into its own library, never falls back to another', () => {
   beforeEach(() => stubMatchMedia(false));
 
   /** One listing of `kind`, shaped as the catalog serves it. */
@@ -178,21 +180,20 @@ describe('a kind the catalog carries before its library does', () => {
     likes: 0,
   });
 
-  it('offers no Save on an Avatar card, whose library instance has not landed', async () => {
-    // Avatars became browsable before the model download instance existed. Without this, the card's
-    // Save ran the dictionary importer over a VRM — the fallback in `downloadFor` sent every non-entity
-    // kind to the dictionary library.
+  it('offers Save on an Avatar card, keyed to its own model library', async () => {
+    // Avatars became browsable (ticket 04) before the model download instance existed (ticket 05).
+    // Without it, the card's Save either offered nothing or ran the dictionary importer over a VRM —
+    // the pre-05 fallback in `downloadFor` sent every non-entity kind to the dictionary library.
     catalog.items = [listed('model')];
     renderBrowser();
 
     await userEvent.click(await screen.findByRole('button', { name: 'Avatars' }));
 
     expect(await screen.findByText('A model')).toBeInTheDocument();
-    expect(screen.queryByRole('button', { name: /download this avatar/i })).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /download this avatar/i })).toBeInTheDocument();
   });
 
-  it('still offers Save on a Dictionary, whose library it does have', async () => {
-    // The other half of the guard: it withholds for the one reason, not because it withholds.
+  it('still offers Save on a Dictionary, whose library landed earlier', async () => {
     catalog.items = [listed('dictionary')];
     renderBrowser();
 

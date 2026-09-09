@@ -158,6 +158,18 @@ describe('getModelMetadata', () => {
     const meta = await ModelStorageService.getModelMetadata();
     expect(meta.map((m) => m.name)).toEqual(['Newer', 'Older']);
   });
+
+  it('carries the community link along, driving the download-state badge', async () => {
+    await putRaw({
+      id: 'a', name: 'Robot Girl', data: { type: 'model/vrm', blob: blob(), size: 1 },
+      sourceId: 'listing-1', dirty: false, downloadedAt: '2026-01-01T00:00:00.000Z', sourceUpdatedAt: '2026-01-01T00:00:00.000Z',
+    });
+    const [meta] = await ModelStorageService.getModelMetadata();
+    expect(meta).toMatchObject({
+      sourceId: 'listing-1', dirty: false,
+      downloadedAt: '2026-01-01T00:00:00.000Z', sourceUpdatedAt: '2026-01-01T00:00:00.000Z',
+    });
+  });
 });
 
 describe('deleteModel', () => {

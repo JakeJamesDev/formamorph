@@ -53,8 +53,10 @@ const renderBrowser = () =>
       setWorlds={() => {}}
       entities={[]}
       dictionaries={[]}
+      models={[]}
       refreshEntities={() => {}}
       refreshDictionaries={() => {}}
+      refreshModels={() => {}}
       isAuthenticated
       currentUser={reader}
       openImageViewer={() => {}}

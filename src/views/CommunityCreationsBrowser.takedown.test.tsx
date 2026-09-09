@@ -66,8 +66,10 @@ const renderBrowser = (currentUser: WorldRecord | null = admin) =>
       setWorlds={() => {}}
       entities={[]}
       dictionaries={[]}
+      models={[]}
       refreshEntities={() => {}}
       refreshDictionaries={() => {}}
+      refreshModels={() => {}}
       isAuthenticated
       currentUser={currentUser}
       openImageViewer={() => {}}
