@@ -27,6 +27,7 @@ Introduce linked entities and dictionaries with separate rules for **authorship*
 | Declined add-on | Compatible content explicitly declined by the world author; excluded from that world's download review but still independently downloadable and linkable. |
 | Local replacement | A player's edited version of a component in one world, retaining source tracking until explicitly unlinked. |
 | Independent copy | Content with no active synchronization relationship. |
+| Unlisted | A published component hidden from discovery, not from existence. Its author and staff see it as normal; staff moderate it exactly like public content. Other players reach it only through a world that depends on it. |
 
 ### Relationship authority and download behavior
 
@@ -148,7 +149,7 @@ The library/file selection confirmation starts this step when needed; insertion 
 - World authors may require another author's published component without a separate permission step. They control the requirement; the component author retains source ownership and publication control.
 - Publication is explicit. Published worlds immediately resolve the latest published linked content, without requiring each world to be republished.
 - Do not introduce retained server-side content versions or version pinning to support this feature. Revision markers for detecting changes are a separate implementation concern.
-- Publishing a world can publish its linked components in the same action. Components may be publicly listed or unlisted but accessible through the world.
+- Publishing a world can publish its linked components in the same action. Components may be publicly listed or unlisted. An unlisted component stays visible to its author and to staff, who moderate it as if it were public; other players reach it only through a world that depends on it.
 - Downloaded worlds retain installed content until updated. Offer component updates independently as well as through world updates.
 - Preserve the existing ability to download a separate world copy. A world update that encounters edited linked components offers one combined conflict review rather than repeatedly prompting for every component.
 
@@ -399,7 +400,7 @@ These are recorded for continued design work, not answered by prototype behavior
 1. **Dependency scope:** third-party published dependencies are allowed without an additional permission step. Source ownership stays with the component author; no special availability guarantee has been specified.
 2. **Relationship editing:** how do authors add/remove requirements, revoke compatibility or approval, and migrate installed worlds when the declared relationship changes? How should an add-on associated with several worlds offer them?
 3. **Publication authority:** publishing a world together with linked content must not republish someone else's source. Owned required components can publish together; successes persist on partial failure while world publication waits for required sources. Define the server authorization and retry contracts.
-4. **Unlisted discovery:** how do unlisted sources interact with compatibility lists, approval, access checks, moderation, and deleted accounts? Public approval cannot silently widen the source's access.
+4. **Unlisted discovery:** visibility and moderation are settled in the Terms table. Still open: how unlisted sources interact with compatibility lists, approval, access checks, and deleted accounts. Public approval cannot silently widen the source's access.
 5. **Atomicity and recovery:** the UI outcomes for partial downloads, updates, and publication are settled above. Define source changes during resolution, cross-store commit guarantees, and idempotent retries before selecting storage/API contracts.
 6. **Local propagation:** define synchronization across closed worlds, unsaved editor sessions, multiple local library copies, and multiple devices. The desired local-save result is settled; delivery and conflict granularity are not.
 7. **Conflict review:** per-item action dropdowns and one Apply Updates confirmation are settled above. Define repeated notices for an already-kept revision, additional dropdown actions, independent-copy choices, and how component decisions interact with ordinary world-level overwrite/copy decisions.
@@ -458,6 +459,8 @@ The demo uses fixed sample actors/content and simplified revision counters. It o
 - Remaining-decisions round 4: keep staged review rows visible with Pending change and Discard Changes; stage Mark reviewed too. Comparisons show changed fields first, with unchanged content expandable and dictionary entries grouped by change. Missing optional sources preserve content and tracking without blocking play. Dependencies first published with a world default Unlisted. Manage Add-ons lives on published-world actions, while repairs are reachable contextually and through the editor issue list in both modes.
 - The author confirmed the UI checkpoint covering these four rounds. Remaining edge cases and implementation contracts stay open; this confirmation does not authorize implementation or make the spec AFK-ready.
 - Portability decision: entity/dictionary files carry component content and world associations without bundling worlds; importers choose compatible installed worlds or optional server downloads. World files bundle content in native collections with additive relationship metadata and optional library placement/linking on import. Preserve imported content until update approval, support offline import, and verify older-importer compatibility. Exact schema/version/migration decisions remain open.
+
+- Unlisted decision (2026-09-09): unlisted hides a component from discovery only. The author and staff see it as normal, staff moderate it like public content, and other players reach it through a dependent world. The remaining parts of open question 4 stay open.
 
 ### UI prototype checkpoint
 
