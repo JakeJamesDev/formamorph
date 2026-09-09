@@ -35,10 +35,10 @@ describe('AddDictionaryModal', () => {
     expect(screen.getByText('Beta')).toBeTruthy();
   });
 
-  it('disables Add until at least one is checked', async () => {
+  it('disables Add Dictionary until at least one is checked', async () => {
     render(<AddDictionaryModal open onOpenChange={() => {}} onAdd={() => {}} />);
     await screen.findByText('Alpha');
-    const add = screen.getByText('Add').closest('button')!;
+    const add = screen.getByRole('button', { name: 'Add Dictionary' }) as HTMLButtonElement;
     expect(add.disabled).toBe(true);
     fireEvent.click(screen.getByText('Alpha'));
     expect(add.disabled).toBe(false);
@@ -51,7 +51,7 @@ describe('AddDictionaryModal', () => {
     await screen.findByText('Alpha');
     fireEvent.click(screen.getByText('Alpha'));
     fireEvent.click(screen.getByText('Beta'));
-    fireEvent.click(screen.getByText('Add'));
+    fireEvent.click(screen.getByRole('button', { name: 'Add Dictionary' }));
 
     await waitFor(() => expect(onAdd).toHaveBeenCalledTimes(2));
     const added = onAdd.mock.calls.map((c) => c[0] as Dictionary);
