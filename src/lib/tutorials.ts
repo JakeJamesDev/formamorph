@@ -43,11 +43,12 @@ export const TUTORIALS: readonly TutorialEntry[] = [
   {
     id: 'community-kind-tabs',
     screen: 'community',
-    title: 'Worlds, Entities & Dictionaries',
+    title: 'Worlds, Entities, Dictionaries & Avatars',
     points: [
       { term: 'Worlds', text: 'Complete adventures to play' },
       { term: 'Entities', text: 'Characters and creatures to add to yours' },
       { term: 'Dictionaries', text: "Lore books that teach the AI your world's terms" },
+      { term: 'Avatars', text: 'Player models to wear in any world' },
     ],
   },
   {
