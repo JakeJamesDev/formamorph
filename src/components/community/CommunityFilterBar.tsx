@@ -8,6 +8,8 @@ import { TokenAutocomplete } from "@/components/TokenAutocomplete";
 import {
   STATUS_FACET_LABELS, availableFacets, type StatusFacet,
 } from "@/lib/communityStatusFacets";
+import { TutorialPopover } from "@/components/TutorialPopover";
+import type { TutorialEntry, TutorialNav } from "@/lib/tutorials";
 
 interface CommunityFilterBarProps {
   authorFilter: string[];
@@ -30,6 +32,9 @@ interface CommunityFilterBarProps {
   centered?: React.ReactNode;
   /** Sits at the far end of the row: the updates-first checkbox. */
   trailing?: React.ReactNode;
+  /** The filters tutorial, anchored to the Add Filter control when this bar is the one to carry it. */
+  addFilterTutorial?: TutorialEntry | null;
+  tutorialNav?: TutorialNav;
 }
 
 /**
@@ -42,13 +47,12 @@ interface CommunityFilterBarProps {
 export function CommunityFilterBar({
   authorFilter, setAuthorFilter, tagFilter, setTagFilter, tagMode, setTagMode,
   statusFilter, toggleStatus, clearFilters, allAuthors, allTags, signedIn, children,
-  centered, trailing,
+  centered, trailing, addFilterTutorial, tutorialNav,
 }: CommunityFilterBarProps) {
   const facets = availableFacets(signedIn);
   const activeCount = statusFilter.length + authorFilter.length + tagFilter.length;
 
-  const filters = (
-    <>
+  const addFilter = (
       <Popover>
         <PopoverTrigger asChild>
           <Button variant="outline" size="sm" className="shrink-0 gap-1">
@@ -117,6 +121,18 @@ export function CommunityFilterBar({
           </div>
         </PopoverContent>
       </Popover>
+  );
+
+  const filters = (
+    <>
+      {/* The tutorial wraps the Add Filter popover rather than sitting inside it, the way the Hidden control's
+          does: its own Popover would otherwise become the context the trigger binds to. The span carries the
+          anchor, since a Popover root renders no element of its own. */}
+      {addFilterTutorial && tutorialNav ? (
+        <TutorialPopover entry={addFilterTutorial} nav={tutorialNav} align="start">
+          <span className="inline-flex shrink-0">{addFilter}</span>
+        </TutorialPopover>
+      ) : addFilter}
 
       {/* Applied filters. Tags carry the any/all mode on the chip group so what "two tags" means is read
           off the row rather than remembered from the panel. */}
