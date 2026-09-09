@@ -37,7 +37,8 @@
     "docs": "typedoc",
     "changelog:notes": "node scripts/extractReleaseNotes.mjs",
     "baseline": "node testing/baseline/harness/run.mjs",
-    "screen": "node testing/baseline/harness/screen.mjs"
+    "screen": "node testing/baseline/harness/screen.mjs",
+    "title-card": "node scripts/captureTitleCard.mjs"
   },
   "dependencies": {
     "@codemirror/autocomplete": "^6.20.3",
