@@ -27,7 +27,7 @@ Introduce linked entities and dictionaries with separate rules for **authorship*
 | Declined add-on | Compatible content explicitly declined by the world author; excluded from that world's download review but still independently downloadable and linkable. |
 | Local replacement | A player's edited version of a component in one world, retaining source tracking until explicitly unlinked. |
 | Independent copy | Content with no active synchronization relationship. |
-| Unlisted | A published component hidden from discovery, not from existence. Its author and staff see it as normal; staff moderate it exactly like public content. Other players reach it only through a world that depends on it. |
+| Unlisted | A published component hidden from discovery, not from existence. Its author and staff see it as normal; staff moderate it exactly like public content. It can be updated on its own but is never downloaded by itself: players receive it only inside a dependency download, and only the author and staff can download it standalone. Unlisted components can be required dependencies, never add-ons. A direct link answers not found to anyone else. |
 
 ### Relationship authority and download behavior
 
@@ -312,6 +312,40 @@ When publishing a world with components, retain successful component publication
 - Preserve entity-owned location membership. Cross-world location references need an explicit mapping contract; this proposal does not reverse ownership.
 - Export/import behavior is settled in the portability section: component files carry associations without worlds; world files bundle native content plus relationship metadata; importers choose active links. No field names, endpoint shapes, storage layout, version bump, or migration has been approved by this checkpoint.
 
+### Settled follow-up decisions (2026-09-09)
+
+Product decisions from the open-question review. Engineering contracts for each remain open below.
+
+**Unlisted**
+- Unlisted components ship inside dependency downloads, are required dependencies only, and are never offered as add-ons.
+- A direct listing link answers not found to anyone but the author and staff. Only the author and staff download one standalone.
+- When a deleted author chose Keep My Work, their unlisted components stay, still unlisted and staff-visible.
+- Unchecking Include as required for an unlisted owned source embeds the content and leaves the source's listing state alone.
+
+**Relationships over time**
+- A component author may delete a source that other worlds require. Dependents enter the missing-source repair.
+- A requirement removed by republication leaves the player an independent copy with content kept.
+- A requirement added by republication appears in the player's update review as a new required item and downloads on Apply.
+- A public component's listing shows its approved and community world associations with their review state. Declined associations are not shown.
+
+**Local library**
+- Deleting a library item makes its world copies independent copies with content kept.
+- Duplicate names stay allowed. Pickers and reviews show author and source under the name.
+- An independent copy can reconnect through a Link to Library Item action in the selected-content menu. It becomes Linked, or Local replacement when its content differs; nothing is overwritten.
+- The Enter World picker hides a library row when the world already holds a linked copy of it and marks the world row Linked.
+- There is no cross-device synchronization. Each device resolves from published sources alone.
+
+**Updates and repairs**
+- A revision the player kept returns to Review Updates only when the source changes again. The reviewed revision is remembered per world copy.
+- Review Updates offers Unlink as a fourth action. It keeps current content and ends tracking.
+- A source is confirmed gone only on a definite not-found answer. Network errors and timeouts read Unavailable with Retry; repairs are offered in both states.
+- A republished source has a new identity and never reconnects on its own. The author repairs with Replace From Library.
+- When several world Placeholders match a reference equally, the row preselects nothing and lists the candidates first. Entity location references use the same connection step, with Create New.
+
+**Portability**
+- Importing a component file whose source already has a library item opens that item's update review with the file as the incoming revision.
+- World exports carry each local replacement's source identity and a local-replacement marker. On import the file's content wins and stays a local replacement.
+
 ### Proposed implementation boundary — not yet reviewed
 
 Extend the existing download/update coordination boundary to orchestrate a complete world/component operation: resolve sources, obtain required content, review local conflicts, and commit the selected result. Reuse the existing world/library storage and catalog publication boundaries rather than distributing relationship decisions across editor buttons.
@@ -397,18 +431,18 @@ Keep remote authorship enforcement at the catalog mutation boundary. Local UI re
 
 These are recorded for continued design work, not answered by prototype behavior.
 
-1. **Dependency scope:** third-party published dependencies are allowed without an additional permission step. Source ownership stays with the component author; no special availability guarantee has been specified.
-2. **Relationship editing:** how do authors add/remove requirements, revoke compatibility or approval, and migrate installed worlds when the declared relationship changes? How should an add-on associated with several worlds offer them?
+1. **Dependency scope:** settled. Third-party published dependencies are allowed without an additional permission step. Source ownership stays with the component author, deletion is allowed, and dependents repair.
+2. **Relationship editing:** product outcomes settled (removed requirement, added requirement, listing associations). Open: the server contract for changing declarations after publication.
 3. **Publication authority:** publishing a world together with linked content must not republish someone else's source. Owned required components can publish together; successes persist on partial failure while world publication waits for required sources. Define the server authorization and retry contracts.
-4. **Unlisted discovery:** visibility and moderation are settled in the Terms table. Still open: how unlisted sources interact with compatibility lists, approval, access checks, and deleted accounts. Public approval cannot silently widen the source's access.
+4. **Unlisted discovery:** settled in the Terms table and the follow-up decisions. Open: the server access check that serves an unlisted component only inside a dependency download or to its author and staff.
 5. **Atomicity and recovery:** the UI outcomes for partial downloads, updates, and publication are settled above. Define source changes during resolution, cross-store commit guarantees, and idempotent retries before selecting storage/API contracts.
-6. **Local propagation:** define synchronization across closed worlds, unsaved editor sessions, multiple local library copies, and multiple devices. The desired local-save result is settled; delivery and conflict granularity are not.
-7. **Conflict review:** per-item action dropdowns and one Apply Updates confirmation are settled above. Define repeated notices for an already-kept revision, additional dropdown actions, independent-copy choices, and how component decisions interact with ordinary world-level overwrite/copy decisions.
-8. **Local relationships:** the already-linked action opens the library item rather than creating duplicates. Define in-flight repeated clicks, intentional duplicate names, reconnecting independent copies, and whether deleting a local library item should also stop published-source tracking on its world copies.
-9. **Missing-source checks:** checks are user-initiated, with no automatic open/launch/background checks. Installed optional-source loss is nonblocking and retains its association. Define confirmed inaccessible versus temporary failure and restoration after re-publication.
-10. **World-specific references:** the world Placeholder connection/repair flow is settled above; matching ambiguity, nested paths, validation gates, entity location membership, and other cross-world references still need contracts.
-11. **Portability contracts:** component associations, bundled native world content, importer-controlled linking, offline import, and preserving imported content until update approval are settled above. Define metadata fields, collision/deduplication handling, local replacement provenance, and the exact import-review controls. Verify older-importer compatibility rather than assuming unknown fields are tolerated.
-12. **Selection:** define how linked library/world copies appear in the pre-game entity/dictionary pickers so the same content is not accidentally activated twice.
+6. **Local propagation:** no cross-device synchronization. Open: delivery and conflict granularity across closed worlds, unsaved editor sessions, and multiple local library copies on one device.
+7. **Conflict review:** settled (kept revisions, Unlink action, per-item dropdowns, one confirmation). Open: how component decisions sit inside the ordinary world-level overwrite/copy decision.
+8. **Local relationships:** settled (library deletion, duplicate names, reconnecting independent copies). Open: in-flight repeated clicks.
+9. **Missing-source checks:** settled (user-initiated checks, not-found versus unavailable, no automatic reconnection). Open: the exact wording for each state.
+10. **World-specific references:** settled (connection flow, equal-match handling, entity location references through the same step). Open: nested paths and validation gates.
+11. **Portability contracts:** settled (associations, bundled content, importer-controlled linking, offline import, collision through update review, local-replacement provenance in exports and imports). Unknown fields survive today's importer, which spreads the parsed world and validates only required keys; there is no newer-version guard. Open: metadata field names and the exact import-review controls.
+12. **Selection:** settled. The Enter World picker hides a library row when the world holds a linked copy of it and marks the world row Linked.
 13. **Validation:** review the proposed testing boundaries and unresolved decisions, then create scoped implementation tickets. This checkpoint must not be treated as AFK-ready.
 
 ### Current codebase evidence
@@ -460,7 +494,8 @@ The demo uses fixed sample actors/content and simplified revision counters. It o
 - The author confirmed the UI checkpoint covering these four rounds. Remaining edge cases and implementation contracts stay open; this confirmation does not authorize implementation or make the spec AFK-ready.
 - Portability decision: entity/dictionary files carry component content and world associations without bundling worlds; importers choose compatible installed worlds or optional server downloads. World files bundle content in native collections with additive relationship metadata and optional library placement/linking on import. Preserve imported content until update approval, support offline import, and verify older-importer compatibility. Exact schema/version/migration decisions remain open.
 
-- Unlisted decision (2026-09-09): unlisted hides a component from discovery only. The author and staff see it as normal, staff moderate it like public content, and other players reach it through a dependent world. The remaining parts of open question 4 stay open.
+- Unlisted decision (2026-09-09): unlisted hides a component from discovery only. The author and staff see it as normal, staff moderate it like public content, and other players reach it through a dependent world. Unlisted content still ships in dependency downloads; it exists to be updated separately without ever being downloaded by itself.
+- Open-question review (2026-09-09): the product decisions for open questions 1 to 12 are recorded under Settled follow-up decisions. Each question now lists only its remaining engineering contract. This does not authorize implementation.
 
 ### UI prototype checkpoint
 
