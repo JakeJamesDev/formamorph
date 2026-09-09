@@ -7,35 +7,9 @@ import { MobileControlsDrawer } from '@/components/MobileControlsDrawer';
 import { useVrmCustomization } from '@/lib/useVrmCustomization';
 import { useIsMobile } from '@/lib/useIsMobile';
 import { useBackStop } from '@/hooks/useBackStop';
-import { formatBytes } from '@/lib/imageOptim';
+import { VrmFileDetails, Row } from '@/components/VrmFileDetails';
 import type { VrmLicense } from '@/types';
-import { Tip } from '@/components/ui/tooltip';
 import { gateAvatarLicense, type AvatarLicenseRequirement } from '@/lib/avatarLicenseGate';
-
-/** One label/value row of the details column. `min-w-0` on the value cell lets a long value truncate rather
- *  than forcing the panel wider (grid tracks default to `min-width: auto`). */
-function Row({ label, children }: { label: string; children: ReactNode }) {
-  return (
-    <div className="grid grid-cols-[7rem_1fr] gap-2 py-1.5 border-b border-border/50 last:border-0">
-      <span className="text-meta font-medium text-muted-foreground">{label}</span>
-      <span className="text-meta min-w-0">{children}</span>
-    </div>
-  );
-}
-
-/** Stands in wherever a model told us nothing — absent metadata is unknown, never permission. */
-const Unknown = () => <span className="text-muted-foreground italic">Unknown</span>;
-
-/** VRM 1.0's commercial-use options are finer than 0.0's allow/disallow; name each in the author's terms. */
-const COMMERCIAL_LABELS: Record<NonNullable<VrmLicense['commercialUse']>, string> = {
-  allow: 'Allowed',
-  disallow: 'Not allowed',
-  personalNonProfit: 'Personal, non-profit only',
-  personalProfit: 'Personal, profit allowed',
-  corporation: 'Allowed, including commercial',
-};
-
-const TONE_CLASS = { good: 'text-success', bad: 'text-destructive' } as const;
 
 /** Player-facing name for each Permissive License requirement, named only when it fails — a passing
  *  requirement is never called out (see `avatarLicenseGate.ts` for the identifiers themselves). */
@@ -46,19 +20,6 @@ const REQUIREMENT_LABELS: Record<AvatarLicenseRequirement, string> = {
   modification: 'modification and redistribution allowed',
   commercialUsage: 'commercial use allowed',
 };
-
-/** Yes/no/unknown flag. Each branch names its own tone, since which side is the good news differs per field:
- *  redistribution-not-allowed is a restriction (bad), but credit-not-required is a freedom (good). A missing
- *  flag reads as "unknown", never as a "no". */
-function Flag({ value, yes, no }: {
-  value?: boolean;
-  yes: { label: string; tone?: keyof typeof TONE_CLASS };
-  no: { label: string; tone?: keyof typeof TONE_CLASS };
-}) {
-  if (value === undefined) return <Unknown />;
-  const { label, tone } = value ? yes : no;
-  return <span className={tone && TONE_CLASS[tone]}>{label}</span>;
-}
 
 /**
  * A model's 3D preview and everything its file says about itself, in the layout both VRM surfaces share: the
@@ -90,7 +51,6 @@ export function ModelDetailsPanel({ open, name, url, license, size, failed = fal
   // The mobile overlay is not a Radix layer, so the Android back button cannot see it and closes it here.
   useBackStop(isMobile && open ? onClose : undefined);
 
-  const authors = license?.authors?.length ? license.authors.join(', ') : null;
   // Absence is failure, same as every other license read: a model whose license hasn't resolved yet gates
   // exactly like a plain glTF would, never like a pass.
   const verdict = gateAvatarLicense(license ?? { metaVersion: null });
@@ -109,32 +69,7 @@ export function ModelDetailsPanel({ open, name, url, license, size, failed = fal
   );
 
   const info = (
-    <div>
-      <Row label="Author">{authors ?? <Unknown />}</Row>
-      <Row label="Format">
-        {license?.metaVersion === null
-          ? 'glTF (no VRM data)'
-          : `VRM ${license?.metaVersion === '0' ? '0.0' : '1.0'}`}
-      </Row>
-      <Row label="Size">{formatBytes(size ?? 0)}</Row>
-      <Row label="License">
-        {license?.licenseName ?? (license?.licenseUrl
-          ? (
-            <Tip tip={license.licenseUrl} labelsChild={false}>
-              <a href={license.licenseUrl} target="_blank" rel="noopener noreferrer" className="block truncate underline hover:text-foreground">{license.licenseUrl}</a>
-            </Tip>
-          )
-          : <Unknown />)}
-      </Row>
-      <Row label="Redistribution">
-        <Flag value={license?.allowRedistribution} yes={{ label: 'Allowed', tone: 'good' }} no={{ label: 'Not allowed', tone: 'bad' }} />
-      </Row>
-      <Row label="Commercial use">
-        {license?.commercialUse ? COMMERCIAL_LABELS[license.commercialUse] : <Unknown />}
-      </Row>
-      <Row label="Credit">
-        <Flag value={license?.creditRequired} yes={{ label: 'Required' }} no={{ label: 'Not required', tone: 'good' }} />
-      </Row>
+    <VrmFileDetails license={license} size={size ?? 0}>
       <Row label="Community Creations">
         {verdict.allowed
           ? <span className="text-success">Shareable</span>
@@ -147,17 +82,7 @@ export function ModelDetailsPanel({ open, name, url, license, size, failed = fal
           Community Creations.
         </p>
       )}
-      {license?.metaVersion === null && (
-        <p className="mt-3 text-[11px] text-muted-foreground">
-          A plain glTF file carries no license information, and isn&apos;t guaranteed to pose or morph like a VRM.
-        </p>
-      )}
-      {license?.creditRequired && (
-        <p className="mt-3 text-[11px] text-muted-foreground">
-          This model&apos;s author asks to be credited wherever it appears.
-        </p>
-      )}
-    </div>
+    </VrmFileDetails>
   );
 
   // The mobile path is a plain overlay rather than a Radix dialog, so it has no exit transition to preserve

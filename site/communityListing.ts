@@ -1,7 +1,7 @@
 /** One community listing as represented in a website destination. */
 export interface CommunityListing {
   id: string;
-  kind: 'world' | 'entity' | 'dictionary';
+  kind: 'world' | 'entity' | 'dictionary' | 'model';
 }
 
 export type CommunityListingTarget =
@@ -9,7 +9,7 @@ export type CommunityListingTarget =
   | { status: 'listing'; listing: CommunityListing }
   | { status: 'invalid' };
 
-const COMMUNITY_LISTING = /^\/community\/(world|entity|dictionary)\/([^/]+)$/;
+const COMMUNITY_LISTING = /^\/community\/(world|entity|dictionary|model)\/([^/]+)$/;
 
 /** The canonical, shareable path for an individual public creation. */
 export function communityListingPath({ kind, id }: CommunityListing): string {

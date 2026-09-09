@@ -14,6 +14,7 @@ import type { LibraryTileSize } from '@/lib/libraryOrganization';
 import type { LibraryTiles } from '@/lib/useLibraryTiles';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { LibraryGroupPicker } from './LibraryGroupPicker';
+import { ActionIcon } from '@/lib/actionIcons';
 
 const SIZE_LABELS: { size: LibraryTileSize; label: string }[] = [
   { size: 'small', label: 'Small' },
@@ -38,6 +39,7 @@ export function LibraryTileContextMenu({
   renderedIds,
   baseCols,
   onOpenGroup,
+  onPublish,
   onDelete,
 }: {
   children: ReactElement;
@@ -48,6 +50,7 @@ export function LibraryTileContextMenu({
   renderedIds: string[];
   baseCols: number;
   onOpenGroup: (groupId: string) => void;
+  onPublish?: (id: string) => void;
   onDelete?: (id: string) => void;
 }) {
   const group = tiles.group(id);
@@ -140,16 +143,24 @@ export function LibraryTileContextMenu({
           </>
         )}
 
-        {/* Delete stays in the menu because the card has no delete control. */}
-        {!group && onDelete && (
+        {/* The item's own actions, below everything about arranging it. Publish is offered on the tabs
+            whose tiles can be published; Delete stays here because the card has no delete control. */}
+        {!group && (onPublish || onDelete) && (
           <>
             <ContextMenuSeparator />
-            <ContextMenuItem
-              className="text-destructive focus:text-destructive"
-              onSelect={() => onDelete(id)}
-            >
-              <Trash2 className="h-4 w-4 shrink-0" /> Delete
-            </ContextMenuItem>
+            {onPublish && (
+              <ContextMenuItem onSelect={() => onPublish(id)}>
+                <ActionIcon.publish className="h-4 w-4 shrink-0" /> Publish
+              </ContextMenuItem>
+            )}
+            {onDelete && (
+              <ContextMenuItem
+                className="text-destructive focus:text-destructive"
+                onSelect={() => onDelete(id)}
+              >
+                <Trash2 className="h-4 w-4 shrink-0" /> Delete
+              </ContextMenuItem>
+            )}
           </>
         )}
         </ScrollArea>

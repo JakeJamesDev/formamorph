@@ -11,8 +11,10 @@ import type { ModelMetadata, VrmLicense } from '@/types';
  * `ModelDetailsPanel`. Export lives here rather than in the panel because only a library model has a file to
  * save back out.
  */
-export function ModelDetailsModal({ model, onClose }: {
+export function ModelDetailsModal({ model, onPublish, onClose }: {
   model: ModelMetadata | null;
+  /** Publishes this model to Community Creations. Absent for a reader who could not publish anyway. */
+  onPublish?: (model: ModelMetadata) => void;
   onClose: () => void;
 }) {
   const [url, setUrl] = useState<string | undefined>();
@@ -73,9 +75,18 @@ export function ModelDetailsModal({ model, onClose }: {
       failed={failed}
       onClose={onClose}
       footer={
-        <Button variant="outline" size="sm" className="w-full" onClick={handleExport} disabled={!blob}>
-          <ActionIcon.export className="mr-2 h-4 w-4" /> Export Avatar
-        </Button>
+        <div className="space-y-2">
+          <Button variant="outline" size="sm" className="w-full" onClick={handleExport} disabled={!blob}>
+            <ActionIcon.export className="mr-2 h-4 w-4" /> Export Avatar
+          </Button>
+          {/* Offered whatever the file's license says. Pressing it on a model that cannot be shared is
+              how the player learns which requirement it fails, so the gate runs on the press. */}
+          {onPublish && model && (
+            <Button variant="outline" size="sm" className="w-full" onClick={() => onPublish(model)}>
+              <ActionIcon.publish className="mr-2 h-4 w-4" /> Publish Avatar
+            </Button>
+          )}
+        </div>
       }
     />
   );

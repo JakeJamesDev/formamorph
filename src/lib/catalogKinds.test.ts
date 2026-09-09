@@ -6,6 +6,7 @@ describe('kindOf', () => {
     expect(kindOf({ kind: 'entity' })).toBe('entity');
     expect(kindOf({ kind: 'dictionary' })).toBe('dictionary');
     expect(kindOf({ kind: 'world' })).toBe('world');
+    expect(kindOf({ kind: 'model' })).toBe('model');
   });
 
   it('treats a record with no kind as a world', () => {
@@ -38,6 +39,6 @@ describe('kind mappings', () => {
 
   it('matches the server’s kinds', () => {
     // Mirrors FormamorphServer's config/kinds KINDS — they must not drift.
-    expect([...CATALOG_KINDS]).toEqual(['world', 'entity', 'dictionary']);
+    expect([...CATALOG_KINDS]).toEqual(['world', 'entity', 'dictionary', 'model']);
   });
 });

@@ -7,7 +7,7 @@ import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
   Search, RotateCcw, ArrowDownWideNarrow, ArrowUpNarrowWide, ArrowLeft, X, SlidersHorizontal, ChevronDown,
-  Earth, User, BookOpen, Globe, ShieldAlert, Trophy,
+  Earth, User, BookOpen, PersonStanding, Globe, ShieldAlert, Trophy,
   type LucideIcon,
 } from "lucide-react";
 import { Tabs, TabsContent } from "@/components/ui/tabs";
@@ -82,6 +82,8 @@ const SECTION_ICON_BY_KIND: Record<CatalogKind, LucideIcon> = {
   world: Earth,
   entity: User,
   dictionary: BookOpen,
+  // The same figure the local library's Avatars tab wears, so one thing has one icon everywhere.
+  model: PersonStanding,
 };
 
 /** A row in the section switcher: one per catalog kind, plus Contest while a contest exists. */
@@ -271,7 +273,16 @@ const CommunityCreationsBrowser = ({
   });
   const deviceDownload = useDeviceDownload();
 
-  const downloadFor = (kind: CatalogKind) => (kind === 'entity' ? entityDownload : dictionaryDownload);
+  /**
+   * The library that stores a downloaded listing of this kind, or null for a kind with none yet.
+   *
+   * Named per kind rather than defaulted, so a kind the catalog gains before its library does offers no
+   * download at all — falling through to another kind's library would hand a listing's content to an
+   * importer written for a different shape.
+   */
+  const downloadFor = (kind: CatalogKind) => (
+    kind === 'entity' ? entityDownload : kind === 'dictionary' ? dictionaryDownload : null
+  );
 
   /**
    * The none/refresh/update state for any listing, from whichever library holds that kind.
@@ -281,7 +292,9 @@ const CommunityCreationsBrowser = ({
    */
   const downloadStateForRecord = useCallback((record: WorldRecord): DownloadState => {
     const kind = kindOf(record);
-    return kind === 'world' ? downloadStateForWorld(record) : downloadFor(kind).downloadStateFor(record);
+    if (kind === 'world') return downloadStateForWorld(record);
+    // A kind with no library holds no copy, so it is never downloaded and never out of date.
+    return downloadFor(kind)?.downloadStateFor(record) ?? 'none';
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [localCopiesBySource, entityDownload.copyBySource, dictionaryDownload.copyBySource]);
 
@@ -299,8 +312,11 @@ const CommunityCreationsBrowser = ({
       handleContextualDownload(record, state);
       return;
     }
-    downloadFor(kind).startDownload(record);
+    downloadFor(kind)?.startDownload(record);
   };
+
+  /** Whether a listing of this kind can be saved into a local library at all. */
+  const savesLocally = (record: WorldRecord) => kindOf(record) === 'world' || downloadFor(kindOf(record)) !== null;
 
   // Browse pipeline: search/author/tag/sort filters, hide preferences, and responsive pagination.
   // Moderation controls are offered to any staff account; the server narrows it per listing.
@@ -1038,7 +1054,7 @@ const CommunityCreationsBrowser = ({
                       onHideWorld={capabilities.hiddenFilters ? hideRemoteWorld : undefined}
                       onHideAuthor={capabilities.hiddenFilters ? hideRemoteAuthor : undefined}
                       onHideTag={capabilities.hiddenFilters ? hideRemoteTag : undefined}
-                      onContextualDownload={capabilities.localLibrary ? handleCardDownload : undefined}
+                      onContextualDownload={capabilities.localLibrary && savesLocally(world) ? handleCardDownload : undefined}
                       onDeviceDownload={capabilities.deviceDownloads ? deviceDownload.download : undefined}
                       onDelete={capabilities.authorManagement ? setRemoteWorldToDelete : undefined}
                       onLike={capabilities.likes ? handleLike : undefined}
@@ -1094,7 +1110,12 @@ const CommunityCreationsBrowser = ({
         openImageViewer={openImageViewer}
         downloadStateForWorld={downloadStateForRecord}
         downloadProgress={allDownloadProgress}
-        onContextualDownload={capabilities.localLibrary ? handleCardDownload : undefined}
+        // Withheld for a kind whose library instance has not landed yet, on the same rule as the card's.
+        onContextualDownload={
+          capabilities.localLibrary && selectedRemoteWorld && savesLocally(selectedRemoteWorld)
+            ? handleCardDownload
+            : undefined
+        }
         onDeviceDownload={capabilities.deviceDownloads ? deviceDownload.download : undefined}
         currentUser={currentUser}
         onLike={handleLike}

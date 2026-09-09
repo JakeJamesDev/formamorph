@@ -111,6 +111,7 @@ import { FeedbackHubDialog } from "@/components/menu/FeedbackHubDialog";
 import { AuthModals } from "@/components/menu/AuthModals";
 import { PublishModal } from "@/components/menu/PublishModal";
 import { worldPublishPayload, entityPublishPayload, dictionaryPublishPayload, type PublishPayload } from "@/lib/publishPayload";
+import { buildAvatarPublish, avatarPublishRefusal } from "@/lib/avatarPublish";
 import { BackupRestoreDialog } from "@/components/menu/BackupRestoreDialog";
 import { COMMUNITY_ENABLED } from "@/lib/featureFlags";
 import { useAgeGate } from "@/contexts/AgeGateContext";
@@ -534,6 +535,21 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
    */
   const publishEntity = async (entity: Entity) => {
     openPublish(entityPublishPayload(await promptEntity(entity)));
+  };
+
+  /**
+   * Publish an Avatar, once its own file has been read and found to grant every right the catalog needs.
+   *
+   * A file that does not is refused here rather than by the server: the dialog would otherwise open on a
+   * payload that could only be rejected, and the reason would arrive after the upload instead of before it.
+   */
+  const publishModel = async (model: { id: string; name: string }) => {
+    const attempt = await buildAvatarPublish(model);
+    if (!attempt.allowed) {
+      toast.error(avatarPublishRefusal(attempt.failedRequirements));
+      return;
+    }
+    openPublish(attempt.payload);
   };
   const [showBackup, setShowBackup] = useState(false);
 
@@ -1837,6 +1853,10 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
               onSelect={setPreviewModelId}
             />
           )}
+          onPublish={isAuthenticated ? (id) => {
+            const target = models.find((m) => m.id === id);
+            if (target) void publishModel(target);
+          } : undefined}
           onDelete={setModelToDelete}
         />
       ) : cardType === 'entities' ? (
@@ -2493,6 +2513,7 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
 
       <ModelDetailsModal
         model={models.find((m) => m.id === previewModelId) ?? null}
+        onPublish={isAuthenticated ? publishModel : undefined}
         onClose={() => setPreviewModelId(null)}
       />
 

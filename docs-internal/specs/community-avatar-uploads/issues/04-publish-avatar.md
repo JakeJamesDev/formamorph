@@ -1,6 +1,7 @@
 # 04: Publish an Avatar from the Model Library
 
-Status: ready-for-agent
+Status: ready-for-human
+Base: fc4c1d75
 Blocked by: 01, 02, 03
 Recommended model: Claude Opus 5 (`claude-opus-5`)
 Reasoning effort: high

@@ -117,4 +117,13 @@ describe('what the notice says', () => {
 
     expect(quarantineTemplate(character).subject).toContain('entity');
   });
+
+  it('moderates an Avatar by the word a player knows it as, not by its kind id', () => {
+    // The kind id is `model`, which no player has ever seen. A notice naming it would be about a thing
+    // the author cannot find in their library.
+    const avatar = quarantineTargetFor(listing({ kind: 'model', name: 'Sedge' }), 'admin-1')!;
+
+    expect(quarantineTemplate(avatar).subject).toContain('avatar');
+    expect(quarantineTemplate(avatar).subject).not.toContain('model');
+  });
 });

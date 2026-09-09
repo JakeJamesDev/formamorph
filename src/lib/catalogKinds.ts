@@ -5,7 +5,7 @@
  * server names a single row's kind (singular). `CARD_TYPE_BY_KIND` bridges the two so neither side has to
  * adopt the other's vocabulary.
  */
-export const CATALOG_KINDS = ['world', 'entity', 'dictionary'] as const;
+export const CATALOG_KINDS = ['world', 'entity', 'dictionary', 'model'] as const;
 
 export type CatalogKind = (typeof CATALOG_KINDS)[number];
 
@@ -19,10 +19,11 @@ export type CatalogKind = (typeof CATALOG_KINDS)[number];
 export type CatalogKindQuery = CatalogKind | 'all';
 
 /** The local library's tab value for each kind. */
-export const CARD_TYPE_BY_KIND: Record<CatalogKind, 'worlds' | 'entities' | 'dictionaries'> = {
+export const CARD_TYPE_BY_KIND: Record<CatalogKind, 'worlds' | 'entities' | 'dictionaries' | 'models'> = {
   world: 'worlds',
   entity: 'entities',
   dictionary: 'dictionaries',
+  model: 'models',
 };
 
 /** The kind behind each local library tab. */
@@ -30,6 +31,7 @@ export const KIND_BY_CARD_TYPE = {
   worlds: 'world',
   entities: 'entity',
   dictionaries: 'dictionary',
+  models: 'model',
 } as const satisfies Record<string, CatalogKind>;
 
 /** Player-facing name for a kind, singular and plural. */
@@ -37,6 +39,9 @@ export const KIND_LABELS: Record<CatalogKind, { one: string; many: string }> = {
   world: { one: 'World', many: 'Worlds' },
   entity: { one: 'Entity', many: 'Entities' },
   dictionary: { one: 'Dictionary', many: 'Dictionaries' },
+  // The kind id keeps the library's own `models` spelling, because `avatar` in code means Profile
+  // Picture on both sides of the wire. The player-facing word is Avatar.
+  model: { one: 'Avatar', many: 'Avatars' },
 };
 
 /** A listing's kind, defaulting rows that predate the column (or a server that omits it) to 'world'. */

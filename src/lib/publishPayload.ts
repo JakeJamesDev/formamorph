@@ -1,4 +1,4 @@
-import type { World, Entity, Dictionary } from '@/types';
+import type { World, Entity, Dictionary, VrmLicense } from '@/types';
 import type { CatalogKind } from '@/lib/catalogKinds';
 import { describePlaceholders } from '@/lib/placeholders';
 import { allPlaceholders } from '@/lib/placeholderHomes';
@@ -77,6 +77,46 @@ export function dictionaryPublishPayload(book: Dictionary): PublishPayload {
     thumbnail: book.thumbnail || undefined, // optional; the server supplies stand-in art
     contentData: book,
     tags: book.tags ?? [],
+  };
+}
+
+/** A model's bytes and everything its file said about itself, resolved by the caller. */
+export interface ModelPublishSource {
+  /** The library's name for it, which is the fallback when the file names itself nothing. */
+  name: string;
+  /** The `.vrm` file's own bytes as a data URL. This is what the server re-reads the license from. */
+  vrm: string;
+  license?: VrmLicense;
+  hash?: string;
+  /** The model's picture, absent when there is none — the server then fills its stand-in. */
+  thumbnail?: string;
+}
+
+/** "By Alice.", "By Alice and Bob.", "By Alice, Bob, and Carol." — or nothing, for a file crediting nobody. */
+function creditLine(authors: string[] | undefined): string {
+  const names = authors?.filter((name) => name.trim()) ?? [];
+  if (names.length === 0) return '';
+  if (names.length === 1) return `By ${names[0]}.`;
+  if (names.length === 2) return `By ${names[0]} and ${names[1]}.`;
+  return `By ${names.slice(0, -1).join(', ')}, and ${names[names.length - 1]}.`;
+}
+
+/**
+ * An Avatar publishes what its own file says: the author's title, the authors it credits, and its embedded
+ * picture. There is no authored blurb and no tag field for this kind, so the description is generated and
+ * the tags are empty — a listing form nobody has to fill in.
+ *
+ * The license rides in the content for readers of it. The server never trusts it: it re-reads the same
+ * verdict out of `vrm` before storing the row.
+ */
+export function modelPublishPayload(model: ModelPublishSource): PublishPayload {
+  return {
+    kind: 'model',
+    name: model.license?.title?.trim() || model.name.trim() || 'Untitled Avatar',
+    description: creditLine(model.license?.authors),
+    thumbnail: model.thumbnail || undefined, // optional; the server supplies stand-in art
+    contentData: { vrm: model.vrm, license: model.license, hash: model.hash },
+    tags: [],
   };
 }
 

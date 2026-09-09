@@ -291,10 +291,11 @@ export function PublishModal({
     }
 
     const reqId = ++changelogReqRef.current;
-    void WorldStorageService.fetchChangelog(overwriteTarget).then((entries) => {
+    void WorldStorageService.fetchListingDetails(overwriteTarget).then((details) => {
       if (reqId !== changelogReqRef.current) return;
-      changelogSupportRef.current = entries !== null;
-      setChangelogSupported(entries !== null);
+      const supported = (details?.changelog ?? null) !== null;
+      changelogSupportRef.current = supported;
+      setChangelogSupported(supported);
     });
   }, [overwriteTarget]);
 

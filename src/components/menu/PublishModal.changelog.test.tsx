@@ -70,7 +70,7 @@ beforeEach(() => {
   vi.spyOn(WorldStorageService, 'getUserWorlds').mockResolvedValue([listing('w1', 'Sedge Landing')]);
   vi.spyOn(WorldStorageService, 'publishItem').mockResolvedValue({ _id: 'w1' });
   vi.spyOn(WorldStorageService, 'linkWorldToListing').mockResolvedValue();
-  vi.spyOn(WorldStorageService, 'fetchChangelog').mockResolvedValue([]);
+  vi.spyOn(WorldStorageService, 'fetchListingDetails').mockResolvedValue({ changelog: [] });
   vi.spyOn(WorldStorageService, 'createChangelogEntry').mockResolvedValue(entryRow());
 });
 
@@ -85,7 +85,7 @@ describe('when the changelog ask appears', () => {
 
     await screen.findByLabelText('Publish as new world');
     expect(describeButton()).toBeNull();
-    expect(WorldStorageService.fetchChangelog).not.toHaveBeenCalled();
+    expect(WorldStorageService.fetchListingDetails).not.toHaveBeenCalled();
   });
 
   it('appears once an existing listing is picked', async () => {
@@ -111,18 +111,18 @@ describe('when the changelog ask appears', () => {
     await user.click(screen.getByLabelText('The Cold Ford (w3, 0 downloads)'));
 
     await waitFor(() => expect(describeButton()).toBeInTheDocument());
-    expect(WorldStorageService.fetchChangelog).toHaveBeenCalledTimes(1);
+    expect(WorldStorageService.fetchListingDetails).toHaveBeenCalledTimes(1);
   });
 
   it('stays away against a server that does not keep changelogs', async () => {
     // The publish itself is unaffected — the section simply is not there, as the details window's tab
     // is not there.
-    vi.spyOn(WorldStorageService, 'fetchChangelog').mockResolvedValue(null);
+    vi.spyOn(WorldStorageService, 'fetchListingDetails').mockResolvedValue({ changelog: null });
     view();
 
     await chooseUpdate();
 
-    await waitFor(() => expect(WorldStorageService.fetchChangelog).toHaveBeenCalledWith('w1'));
+    await waitFor(() => expect(WorldStorageService.fetchListingDetails).toHaveBeenCalledWith('w1'));
     expect(describeButton()).toBeNull();
   });
 });

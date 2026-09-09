@@ -104,8 +104,8 @@ const pickDate = (day: string) => {
  * server's answer resolves to.
  */
 const serveChangelog = (entries: ChangelogEntry[] | null) =>
-  vi.spyOn(WorldStorageService, 'fetchChangelog')
-    .mockResolvedValue(entries === null ? null : changelogOf({ changelog: entries }));
+  vi.spyOn(WorldStorageService, 'fetchListingDetails')
+    .mockResolvedValue({ changelog: entries === null ? null : changelogOf({ changelog: entries }) });
 
 const show = (props: Record<string, unknown> = {}) =>
   render(
@@ -152,7 +152,7 @@ describe('whether the switch is there at all', () => {
 
     show();
 
-    await waitFor(() => expect(WorldStorageService.fetchChangelog).toHaveBeenCalled());
+    await waitFor(() => expect(WorldStorageService.fetchListingDetails).toHaveBeenCalled());
     expect(changelogTab()).toBeNull();
     expect(commentsTab()).toBeNull();
     expect(await screen.findByText(/no comments yet/i)).toBeInTheDocument();
@@ -182,7 +182,7 @@ describe('whether the switch is there at all', () => {
 
     show({ currentUser: owner() });
 
-    await waitFor(() => expect(WorldStorageService.fetchChangelog).toHaveBeenCalled());
+    await waitFor(() => expect(WorldStorageService.fetchListingDetails).toHaveBeenCalled());
     expect(changelogTab()).toBeNull();
     expect(screen.queryByRole('button', { name: /add entry/i })).toBeNull();
   });
