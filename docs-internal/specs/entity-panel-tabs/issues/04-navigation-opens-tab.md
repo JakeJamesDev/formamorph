@@ -43,3 +43,10 @@ Findings recorded and not acted on, with reasons:
 - **Three shapes for one field-key decision.** `entityTabForField` is a map; `WorldDetailsManager` still answers the same question with two `if`-cascades. Folding those into the same idiom is worth doing, in that file's own unit.
 - **`navigateToBenchItem` does not pair its arguments.** `('dictionary', id, 'placeholders')` type-checks. Enforcing the pairing needs an overload plus a cast, which this project's conventions push against, and a mis-pairing sets an entity tab nobody is looking at. Left as is.
 - **Returning to the same entity while Find is open re-opens the hit's tab.** The item-id guard covers other items only, so the panel's mount applies a hint that is still current. That reads as coherent rather than wrong: the bar still holds that hit and the field still wears its ring. Recorded as deliberate.
+
+### Follow-up raised by the location-panel-tabs session (2026-09-09)
+
+The location panel copied this unit's shape, so the shared path now exists twice: `entityTabForField` and
+`locationTabForField` are the same idea in two files, and the `itemId` guard is written out at two call
+sites in `WorldEditor.tsx`. Neither copy is wrong today. A third panel is the point at which the map and the
+guard should become one helper, alongside the named focus-field type recorded above.
