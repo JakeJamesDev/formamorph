@@ -125,7 +125,15 @@ describe('VRM 0.0', () => {
       allowRedistribution: undefined,
       commercialUse: undefined,
       creditRequired: undefined,
+      avatarPermission: undefined,
+      modification: undefined,
     });
+  });
+
+  it('leaves avatarPermission and modification unset — VRM 0.0 has no equivalent concept', async () => {
+    const { license } = await readVrmMeta(v0({ title: 'Robot' }));
+    expect(license.avatarPermission).toBeUndefined();
+    expect(license.modification).toBeUndefined();
   });
 
   it('reads the thumbnail through the texture indirection', async () => {
@@ -168,6 +176,20 @@ describe('VRM 1.0', () => {
   it('leaves an unrecognized commercialUsage unknown rather than guessing', async () => {
     const { license } = await readVrmMeta(v1({ commercialUsage: 'somethingNew' }));
     expect(license.commercialUse).toBeUndefined();
+  });
+
+  it('normalizes avatarPermission and modification', async () => {
+    const { license } = await readVrmMeta(
+      v1({ avatarPermission: 'everyone', modification: 'allowModificationRedistribution' }),
+    );
+    expect(license.avatarPermission).toBe('everyone');
+    expect(license.modification).toBe('allowModificationRedistribution');
+  });
+
+  it('leaves an unrecognized avatarPermission or modification unknown rather than guessing', async () => {
+    const { license } = await readVrmMeta(v1({ avatarPermission: 'nobody', modification: 'whatever' }));
+    expect(license.avatarPermission).toBeUndefined();
+    expect(license.modification).toBeUndefined();
   });
 
   it('reads the thumbnail directly from the image index, with no texture indirection', async () => {

@@ -1,6 +1,7 @@
 # 03: Client license gate, shown in model details
 
-Status: ready-for-agent
+Status: in-progress
+Base: eaf2bee5
 Blocked by: None (can start immediately)
 Recommended model: Claude Sonnet 5 (`claude-sonnet-5`)
 Reasoning effort: high

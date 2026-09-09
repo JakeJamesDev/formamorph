@@ -10,6 +10,7 @@ import { useBackStop } from '@/hooks/useBackStop';
 import { formatBytes } from '@/lib/imageOptim';
 import type { VrmLicense } from '@/types';
 import { Tip } from '@/components/ui/tooltip';
+import { gateAvatarLicense, type AvatarLicenseRequirement } from '@/lib/avatarLicenseGate';
 
 /** One label/value row of the details column. `min-w-0` on the value cell lets a long value truncate rather
  *  than forcing the panel wider (grid tracks default to `min-width: auto`). */
@@ -35,6 +36,16 @@ const COMMERCIAL_LABELS: Record<NonNullable<VrmLicense['commercialUse']>, string
 };
 
 const TONE_CLASS = { good: 'text-success', bad: 'text-destructive' } as const;
+
+/** Player-facing name for each Permissive License requirement, named only when it fails — a passing
+ *  requirement is never called out (see `avatarLicenseGate.ts` for the identifiers themselves). */
+const REQUIREMENT_LABELS: Record<AvatarLicenseRequirement, string> = {
+  metaVersion: 'VRM 1.0 metadata',
+  avatarPermission: 'permission for everyone to use it',
+  allowRedistribution: 'redistribution allowed',
+  modification: 'modification and redistribution allowed',
+  commercialUsage: 'commercial use allowed',
+};
 
 /** Yes/no/unknown flag. Each branch names its own tone, since which side is the good news differs per field:
  *  redistribution-not-allowed is a restriction (bad), but credit-not-required is a freedom (good). A missing
@@ -80,6 +91,9 @@ export function ModelDetailsPanel({ open, name, url, license, size, failed = fal
   useBackStop(isMobile && open ? onClose : undefined);
 
   const authors = license?.authors?.length ? license.authors.join(', ') : null;
+  // Absence is failure, same as every other license read: a model whose license hasn't resolved yet gates
+  // exactly like a plain glTF would, never like a pass.
+  const verdict = gateAvatarLicense(license ?? { metaVersion: null });
 
   // Keyed on the url so switching models rebuilds the scene rather than reusing the old one.
   const preview = failed ? (
@@ -121,7 +135,18 @@ export function ModelDetailsPanel({ open, name, url, license, size, failed = fal
       <Row label="Credit">
         <Flag value={license?.creditRequired} yes={{ label: 'Required' }} no={{ label: 'Not required', tone: 'good' }} />
       </Row>
+      <Row label="Community Creations">
+        {verdict.allowed
+          ? <span className="text-success">Shareable</span>
+          : <span className="text-destructive">Not shareable</span>}
+      </Row>
 
+      {!verdict.allowed && (
+        <p className="mt-3 text-[11px] text-muted-foreground">
+          Needs {verdict.failedRequirements.map((id) => REQUIREMENT_LABELS[id]).join(', ')} to publish to
+          Community Creations.
+        </p>
+      )}
       {license?.metaVersion === null && (
         <p className="mt-3 text-[11px] text-muted-foreground">
           A plain glTF file carries no license information, and isn&apos;t guaranteed to pose or morph like a VRM.
