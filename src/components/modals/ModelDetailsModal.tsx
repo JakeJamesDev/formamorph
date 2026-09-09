@@ -4,7 +4,7 @@ import { ActionIcon } from '@/lib/actionIcons';
 import { ModelDetailsPanel } from './ModelDetailsPanel';
 import ModelStorageService from '@/services/ModelStorageService';
 import { downloadBlob } from '@/lib/downloadBlob';
-import type { ModelMetadata } from '@/types';
+import type { ModelMetadata, VrmLicense } from '@/types';
 
 /**
  * The model library's details view: resolves a stored model's bytes, then hands them to the shared
@@ -17,6 +17,7 @@ export function ModelDetailsModal({ model, onClose }: {
 }) {
   const [url, setUrl] = useState<string | undefined>();
   const [blob, setBlob] = useState<Blob | null>(null);
+  const [license, setLicense] = useState<VrmLicense | undefined>();
   const [failed, setFailed] = useState(false);
 
   // Hold the model's bytes as an object URL only while the dialog is open; a VRM runs to tens of megabytes.
@@ -25,14 +26,23 @@ export function ModelDetailsModal({ model, onClose }: {
     let cancelled = false;
     let objectUrl: string | undefined;
     setFailed(false);
-    ModelStorageService.getModelData(model.id)
-      .then((data) => {
+    setLicense(model.license); // shown immediately; replaced below once a stale copy has been re-read
+    (async () => {
+      try {
+        // The library grid only backfills a model that has no thumbnail yet, so a legacy record that already
+        // has one can carry a license that predates the Permissive License gate's fields. Forcing the same
+        // backfill here, on open, is what actually satisfies "stale record re-read, then kept" for this view.
+        await ModelStorageService.ensureThumbnail(model.id);
+        const data = await ModelStorageService.getModelData(model.id);
         if (cancelled) return;
         objectUrl = URL.createObjectURL(data.blob);
         setUrl(objectUrl);
         setBlob(data.blob);
-      })
-      .catch(() => { if (!cancelled) setFailed(true); });
+        setLicense(data.license);
+      } catch {
+        if (!cancelled) setFailed(true);
+      }
+    })();
     return () => {
       cancelled = true;
       if (objectUrl) URL.revokeObjectURL(objectUrl);
@@ -49,7 +59,7 @@ export function ModelDetailsModal({ model, onClose }: {
     if (!blob || !model) return;
     // A file with no VRM data is a plain glTF; name it for what it is rather than trusting the reported MIME,
     // which browsers often leave empty for .vrm.
-    const extension = model.license?.metaVersion === null ? 'glb' : 'vrm';
+    const extension = license?.metaVersion === null ? 'glb' : 'vrm';
     downloadBlob(blob, `${model.name || 'Avatar'}.${extension}`);
   };
 
@@ -58,7 +68,7 @@ export function ModelDetailsModal({ model, onClose }: {
       open={!!model}
       name={model?.name ?? ''}
       url={url}
-      license={model?.license}
+      license={license}
       size={model?.size}
       failed={failed}
       onClose={onClose}
