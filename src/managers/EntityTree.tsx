@@ -9,6 +9,7 @@ import { TREE_INDENT } from '@/components/EditorRow';
 import { useEditorMode } from '@/lib/editorMode';
 import { EmptyListHint } from '@/components/EmptyListHint';
 import PlaceholderText from '@/components/prompt/PlaceholderText';
+import { ContentLinkIcon } from '@/components/ContentLinkStatus';
 
 /** The Entities tab's folder tree: a flat sortable list where horizontal drag sets nesting depth. Groups are
  *  editor-only folders (never sent to the AI); entities are leaves. Mirrors the Traits tab. */
@@ -31,7 +32,7 @@ const EntityTree = ({ selectedId, onSelect }: { selectedId: string | null; onSel
         // Only groups collapse; entities get no leading slot (matching the flat list layout).
         lead: isGroup ? 'chevron' : 'none',
         collapseLabels: ['Expand group', 'Collapse group'],
-        icon: isGroup ? <Folder className="h-4 w-4 shrink-0" /> : undefined,
+        icon: isGroup ? <Folder className="h-4 w-4 shrink-0" /> : <ContentLinkIcon link={node.leaf?.link} />,
         label: <PlaceholderText text={isGroup ? node.group?.name ?? '' : node.leaf?.name ?? ''} placeholders={placeholders} />,
         labelClass: isGroup ? 'font-medium' : undefined,
         remove: () => { if (isGroup) removeEntityGroup(node.id); else removeEntity(node.id); },

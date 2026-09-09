@@ -80,9 +80,10 @@ import { arrayMove, verticalListSortingStrategy } from '@dnd-kit/sortable';
 import { EditorDndContext, StableSortableContext } from '@/components/dnd/EditorDndContext';
 import { UnsavedChangesDialog } from "@/components/UnsavedChangesDialog";
 import { APP_VERSION } from '@/lib/version';
-import type { Stat, Entity, GameLocation, StatUpdate, Dictionary, World } from '@/types';
+import type { Stat, Entity, GameLocation, StatUpdate, Dictionary, World, ContentLink } from '@/types';
 import { useDownscalePrompt } from '@/lib/useDownscalePrompt';
 import { SortableRow, type SortableListItem } from '@/components/SortableList';
+import { ContentLinkIcon } from '@/components/ContentLinkStatus';
 import { EditorRowList } from '@/components/EditorRow';
 import PlaceholderText from '@/components/prompt/PlaceholderText';
 import { Tip } from '@/components/ui/tooltip';
@@ -489,6 +490,14 @@ const WorldEditorInner = ({ onClose, embedded = false, backButton }: {
       || hit(describePlaceholders(item.name, placeholders)));
   }, [activeTab, stats, entities, locations, traits, statUpdates, searchTerm, placeholders, placementLetters, placeholderOwners]);
 
+  // The search results reuse one row for every tab, and entities are the only kind here that follows a
+  // source — a row from any other tab misses this lookup and draws no marker. A record, not a `Map`: the
+  // lucide `Map` icon is imported above and shadows the global.
+  const entityLinks = useMemo(
+    () => Object.fromEntries(entities.map((e) => [e.id, e.link])) as Record<string, ContentLink | undefined>,
+    [entities],
+  );
+
   const selectedItem = filteredItems.find(item => item.id === selectedItemId);
   // Traits tab can select either a trait or a group (the right panel branches on which).
   const selectedTrait = traits.find(t => t.id === selectedItemId);
@@ -611,6 +620,7 @@ const WorldEditorInner = ({ onClose, embedded = false, backButton }: {
             <SortableRow
               key={item.id}
               item={item}
+              icon={<ContentLinkIcon link={entityLinks[item.id]} />}
               label={<PlaceholderText text={item.name} placeholders={placeholders} />}
               selected={selectedItemId === item.id}
               onSelect={setSelectedItemId}

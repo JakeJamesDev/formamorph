@@ -6,6 +6,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { useEditorMode } from '@/lib/editorMode';
 import type { Dictionary } from '@/types';
 import ScopedPlaceholdersSection from './ScopedPlaceholdersSection';
+import { ContentLinkHeader } from '@/components/ContentLinkStatus';
 
 /** Right-panel editor for a selected book (dictionary): rename + enable toggle. Entry editing is the
  *  DictionaryManager's job; add/delete entries from the tree on the left.
@@ -18,6 +19,7 @@ const DictionaryBookManager = ({ book }: { book: Dictionary }) => {
   const { advanced } = useEditorMode();
   return (
     <div className="space-y-4">
+      <ContentLinkHeader link={book.link} />
       <div className="space-y-2">
         <Label>Dictionary Name</Label>
         <Input value={book.name} onChange={(e) => updateDictionary({ ...book, name: e.target.value })} />

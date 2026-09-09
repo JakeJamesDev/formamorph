@@ -1,6 +1,7 @@
 # 01: Link metadata on world content
 
-Status: ready-for-agent
+Status: ready-for-human
+Base: 4787f139
 Blocked by: None (can start immediately)
 Recommended model: Claude Opus 5 (`claude-opus-5`)
 Reasoning effort: high
@@ -30,6 +31,11 @@ interface ContentLink {
   localReplacement?: boolean;
 }
 ```
+
+Settled shape: the five proposed fields, plus `sourceName?: string` — the source's name as it read when the
+link was made. Display only, never identity. Without it a world exported to another machine, or one whose
+library item was renamed or deleted, shows a state label with nothing to name. It lives on `Entity.link` and
+`Dictionary.link` (`src/types/world.ts`).
 
 This is an export-shape change. Say so in the response and do not bump the version.
 
