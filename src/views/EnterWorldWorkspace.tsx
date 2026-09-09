@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
+import { MarkdownRenderer } from '@/components/game/MarkdownRenderer';
 import { BookOpen, Check, ChevronDown, ListTree } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -8,6 +9,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Tip } from '@/components/ui/tooltip';
 import type { DictionarySelectionItem } from '@/lib/dictionarySelection';
 import type { EntityMetadata, GameLocation, Stat, Trait, TraitGroup } from '@/types';
+import { stripMarkdown } from '@/lib/stripMarkdown';
 import { useElementSize } from '@/lib/useElementSize';
 import { cn } from '@/lib/utils';
 import { useIsMobile } from '@/lib/useIsMobile';
@@ -206,7 +208,7 @@ export default function EnterWorldWorkspace(props: EnterWorldWorkspaceProps) {
               {group.name}
               {group.playerDescription?.trim() && (
                 <span id={`setup-group-${group.id}-description`} className="sr-only">
-                  {props.resolveText(group.playerDescription)}
+                  {stripMarkdown(props.resolveText(group.playerDescription))}
                 </span>
               )}
             </div>
@@ -316,9 +318,9 @@ export default function EnterWorldWorkspace(props: EnterWorldWorkspaceProps) {
               <p className="mb-1 text-meta font-medium tracking-wide text-muted-foreground">Starting Traits</p>
               <h2 className="mb-3 text-heading font-semibold">{current.name}</h2>
               {current.path.map((group) => group.playerDescription?.trim() && (
-                <p key={group.id} className="mb-2 max-w-3xl text-helper text-muted-foreground">
-                  {props.resolveText(group.playerDescription)}
-                </p>
+                <div key={group.id} className="mb-2 max-w-3xl text-helper text-muted-foreground">
+                  <MarkdownRenderer text={props.resolveText(group.playerDescription)} />
+                </div>
               ))}
               <fieldset className="mt-4 min-w-0">
                 <legend className="sr-only">{current.name} choices</legend>

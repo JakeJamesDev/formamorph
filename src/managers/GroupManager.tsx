@@ -28,6 +28,8 @@ const GroupManager = ({ group }: { group: TraitGroup }) => {
         value={editingGroup.playerDescription || ''}
         onChange={(v) => handleChange('playerDescription', v)}
         placeholders={placeholders}
+        markdown
+        placeholder="Shown above this group's choices in World Setup. Supports markdown."
         resizable
       />
       <PlaceholderField

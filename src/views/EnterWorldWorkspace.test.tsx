@@ -79,7 +79,7 @@ afterEach(() => {
 
 const groups = [
   { id: 'origin', name: 'Origin', parentId: null, order: 0, playerDescription: 'Where you came from.' },
-  { id: 'culture', name: 'Culture', parentId: 'origin', order: 0, playerDescription: 'What shaped you.', exclusive: true },
+  { id: 'culture', name: 'Culture', parentId: 'origin', order: 0, playerDescription: 'What **shaped** you.', exclusive: true },
   { id: 'calling', name: 'Calling', parentId: 'culture', order: 0 },
   { id: 'discipline', name: 'Discipline', parentId: 'calling', order: 0 },
   { id: 'practice', name: 'Practice', parentId: 'discipline', order: 0 },
@@ -226,6 +226,10 @@ describe('EnterWorldWorkspace', () => {
     expect(screen.getByText('Local')).toBeInTheDocument();
     expect(screen.getByText('Outsider')).toBeInTheDocument();
     expect(screen.getAllByText('Where you came from.')).toHaveLength(2);
+    // The group description renders as markdown: the emphasized word becomes an element, not literal asterisks.
+    const shaped = screen.getByText('shaped', { selector: '[data-streamdown="strong"]' });
+    expect(shaped.closest('main')).not.toBeNull();
+    expect(within(screen.getByRole('main')).queryByText(/\*\*shaped\*\*/)).not.toBeInTheDocument();
 
     fireEvent.click(within(navigation).getByRole('button', { name: /Practice/ }));
     expect(screen.getByRole('heading', { name: 'Practice' })).toBeInTheDocument();
