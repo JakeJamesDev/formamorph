@@ -215,6 +215,9 @@ const WorldEditorInner = ({ onClose, embedded = false, backButton }: {
   const closeFind = useCallback(() => {
     setFindOpen(false);
     clearEditorMatch();
+    // Dropped with the bar: a panel that opens the hit's own tab must not re-open it the next time the
+    // author selects that item themselves.
+    setFindField(null);
     const opener = findOpenerRef.current;
     findOpenerRef.current = null;
     // Before the unmount, not after: focus has to leave the bar's field while that field still exists,
@@ -249,7 +252,8 @@ const WorldEditorInner = ({ onClose, embedded = false, backButton }: {
       updatePlaceholderGroup]);
   // A fresh object per navigation, not the bare key: a panel with its own tabs has to re-open the right one
   // even when two consecutive hits sit in the same field and the author flipped tabs between them.
-  const [findField, setFindField] = useState<{ fieldKey: string } | null>(null);
+  // `itemId` says which item the hit belongs to — null for Overview's own fields, which sit in no item.
+  const [findField, setFindField] = useState<{ fieldKey: string; itemId: string | null } | null>(null);
   const navigateToMatch = useCallback((match: SearchMatch | null) => {
     if (!match) { setFindField(null); clearEditorMatch(); return; }
     setActiveTab(match.target.tab);
@@ -258,7 +262,7 @@ const WorldEditorInner = ({ onClose, embedded = false, backButton }: {
     setSelectedItemId(match.target.itemId);
     // A panel that hides some of its fields behind its own tabs (the Readme pair) needs telling which one
     // was asked for; text alone can't reach a field that isn't rendered.
-    setFindField({ fieldKey: match.target.fieldKey });
+    setFindField({ fieldKey: match.target.fieldKey, itemId: match.target.itemId });
     const hit = {
       value: match.target.value,
       matchText: match.target.value.slice(match.start, match.end),
@@ -294,10 +298,13 @@ const WorldEditorInner = ({ onClose, embedded = false, backButton }: {
   // ── Test Bench ────────────────────────────────────────────────────────────
   // A finding's item is a place in the editor: land on its tab with it selected, and scroll the list to it
   // the same way a search hit does. A filter left in the list box would hide the very row being navigated to.
-  const navigateToBenchItem = useCallback((section: FindingSection, itemId: string) => {
+  // `entityTab` is for a caller that means one of the entity panel's own tabs — the Placeholders tab's owner
+  // node opens the entity where its placeholders are. A finding names none and keeps the author's tab.
+  const navigateToBenchItem = useCallback((section: FindingSection, itemId: string, entityTab?: EntityPanelTab) => {
     setActiveTab(section);
     setSearchTerm('');
     setSelectedItemId(itemId);
+    if (entityTab) setEntityTab(entityTab);
     setTimeout(() => revealSelectedRow(editorRootRef.current), 0);
   }, []);
   const bench = useTestBench({
@@ -719,7 +726,15 @@ const WorldEditorInner = ({ onClose, embedded = false, backButton }: {
         <EntityGroupManager key={selectedEntityGroup.id} group={selectedEntityGroup} />
       )}
       {activeTab === "entities" && !selectedEntityGroup && selectedEntity && (
-        <EntityManager key={selectedEntity.id} entity={selectedEntity} tab={shownEntityTab} onTabChange={setEntityTab} />
+        <EntityManager
+          key={selectedEntity.id}
+          entity={selectedEntity}
+          tab={shownEntityTab}
+          onTabChange={setEntityTab}
+          // Only this entity's own hit opens a tab. A hit in another item is a stale hint here: the panel
+          // remounts per entity, and its mount would otherwise re-open that hit's tab.
+          focusField={findField?.itemId === selectedEntity.id ? findField : null}
+        />
       )}
       {activeTab === "locations" && selectedItem && (
         <LocationManager key={selectedItem.id} location={selectedItem as GameLocation} />
@@ -751,7 +766,9 @@ const WorldEditorInner = ({ onClose, embedded = false, backButton }: {
         <PlaceholderOwnerPanel
           owner={selectedPlaceholderOwner}
           placeholders={placeholders}
-          onOpen={() => navigateToBenchItem(selectedPlaceholderOwner.kind === 'entity' ? 'entities' : 'dictionary', selectedPlaceholderOwner.id)}
+          onOpen={() => (selectedPlaceholderOwner.kind === 'entity'
+            ? navigateToBenchItem('entities', selectedPlaceholderOwner.id, 'placeholders')
+            : navigateToBenchItem('dictionary', selectedPlaceholderOwner.id))}
         />
       )}
       {activeTab === "placeholders" && !selectedPlaceholderGroup && selectedPlaceholder && (
