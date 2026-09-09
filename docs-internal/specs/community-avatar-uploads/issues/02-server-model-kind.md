@@ -1,6 +1,7 @@
 # 02: Server: `model` kind with the license gate
 
-Status: ready-for-agent
+Status: ready-for-human
+Base: 0570a37cf58773f4f9258b5febcf9aabecfd2fc9
 Blocked by: None (can start immediately)
 Recommended model: Claude Sonnet 5 (`claude-sonnet-5`)
 Reasoning effort: high
@@ -23,12 +24,27 @@ The requirement identifiers are the contract with the client's copy; record them
 
 ## Acceptance criteria
 
-- [ ] `KINDS` includes `model`; kind and kind-validation drift assertions updated.
-- [ ] Create and update with a passing VRM 1.0 file succeed and store the content verbatim.
-- [ ] Each requirement failing alone yields a 400 naming that requirement; a VRM 0.0 file and a plain glTF yield a 400.
-- [ ] Content over 64MB is refused; a missing thumbnail is filled with the placeholder.
-- [ ] Only the GLB header and JSON chunk are read; the binary chunk is never decoded.
-- [ ] List and single-listing reads return `model` rows; an unnamed kind still returns worlds only.
-- [ ] Ownership, quarantine, comments, likes, changelog, and reports behave for `model` exactly as for other kinds (route tests in the existing style, prior art the kind and contest-entries suites).
-- [ ] Both bundled Formamorph avatars pass the gate when sent as fixtures.
-- [ ] Server test suite green.
+- [x] `KINDS` includes `model`; kind and kind-validation drift assertions updated.
+- [x] Create and update with a passing VRM 1.0 file succeed and store the content verbatim.
+- [x] Each requirement failing alone yields a 400 naming that requirement; a VRM 0.0 file and a plain glTF yield a 400.
+- [x] Content over 64MB is refused; a missing thumbnail is filled with the placeholder.
+- [x] Only the GLB header and JSON chunk are read; the binary chunk is never decoded.
+- [x] List and single-listing reads return `model` rows; an unnamed kind still returns worlds only.
+- [x] Ownership, quarantine, comments, likes, changelog, and reports behave for `model` exactly as for other kinds (route tests in the existing style, prior art the kind and contest-entries suites).
+- [x] Both bundled Formamorph avatars pass the gate when sent as fixtures.
+- [x] Server test suite green.
+
+## Comments
+
+Implemented in FormamorphServer commit `aed800e` (branch `main`, base `0570a37`). New pure module
+`src/utils/vrmLicenseGate.js` parses the GLB header and JSON chunk only (never the binary chunk) and
+runs the gate; `MODEL_LICENSE_REQUIREMENTS` in `src/config/kinds.js` is the stable identifier list.
+Route tests in `tests/modelKind.test.js`, gate unit tests in `tests/vrmLicenseGate.test.js` (100%
+statement/branch coverage on the new module, mutation-tested per requirement), shared GLB fixture
+builder in `tests/glbFixture.js`. Full server suite: 46 files, 1425 tests, all green (14.6s).
+
+`/mattpocock-skills:code-review` run against Base on both axes: no Standards violations, no missing
+or wrong Spec requirements, no scope creep. Two judgment-call notes (a string-literal kind check
+instead of a table dispatch; a structural nit in how VRM 1.0 fields are copied through, functionally
+equivalent since strict-equality checks already reject anything unrecognized) — neither warranted a
+change.
