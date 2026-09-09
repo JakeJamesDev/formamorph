@@ -33,7 +33,7 @@ import { useEditorMode } from '@/lib/editorMode';
 import type { Placeholder } from '@/types';
 import { Tip } from '@/components/ui/tooltip';
 
-interface ImageTagsFieldProps {
+interface ImageWidgetProps {
   /** Field label above the upload — "Background Image" for locations, "Image" for entities. */
   label: string;
   /** The pictures this subject carries, in order; slot 0 is the primary. */
@@ -60,7 +60,7 @@ interface ImageTagsFieldProps {
   ownerId?: string;
 }
 
-const WidgetContext = createContext<ImageTagsFieldProps | null>(null);
+const WidgetContext = createContext<ImageWidgetProps | null>(null);
 
 const useImageWidget = () => {
   const props = useContext(WidgetContext);
@@ -72,7 +72,7 @@ const useImageWidget = () => {
  * Holds the subject one image widget acts on, so its two pieces can sit in different boxes of a layout and
  * still write the same record. A host that wants them together uses `ImageTagsField` instead.
  */
-export const ImageWidget = ({ children, ...props }: ImageTagsFieldProps & { children?: ReactNode }) => (
+export const ImageWidget = ({ children, ...props }: ImageWidgetProps & { children?: ReactNode }) => (
   <WidgetContext.Provider value={props}>{children}</WidgetContext.Provider>
 );
 
@@ -174,10 +174,12 @@ const AddTile = ({ htmlFor, selected, onSelect, onUrl, onFiles, allowFiles }: {
  * chosen, since that is simply the first. Tag generation acts on the subject as a whole rather than on any one
  * slot; a generated picture fills a free slot, and asks which one it replaces when there is none.
  *
- * `children` fill the line between the picture strip and the Generate button. A host that keeps the tags
- * beside the picture passes `ImageTags` there; a host that places them elsewhere passes nothing.
+ * `tagsSlot` is the line between the picture strip and the Generate button. A host that keeps the tags under
+ * the picture passes `ImageTags` there; a host that places them elsewhere passes nothing and draws the piece
+ * itself. It is a named slot rather than `children` so that it cannot be confused with `ImageWidget`'s, which
+ * takes the host's whole layout.
  */
-export const ImageGallery = ({ children }: { children?: ReactNode }) => {
+export const ImageGallery = ({ tagsSlot }: { tagsSlot?: ReactNode }) => {
   const {
     label, images, onImagesChange, slots = 1, embeddedLimit = slots, imageId, cap, description, kind,
     tags, onTagsChange,
@@ -411,7 +413,7 @@ export const ImageGallery = ({ children }: { children?: ReactNode }) => {
         onConfirm={() => { if (pendingPrompt) onTagsChange(pendingPrompt); setPendingPrompt(null); }}
         onCancel={() => setPendingPrompt(null)}
       />
-      {children}
+      {tagsSlot}
       {/* A generated picture always arrives as bytes, so it answers to the embedded allowance: it fills a free
           slot, and once there is none it replaces one the author picks. */}
       {canGenerate && (
@@ -477,9 +479,9 @@ export const ImageTags = () => {
 };
 
 /** The whole widget in one box: the gallery with its tags between the picture strip and the Generate button. */
-const ImageTagsField = (props: ImageTagsFieldProps) => (
+const ImageTagsField = (props: ImageWidgetProps) => (
   <ImageWidget {...props}>
-    <ImageGallery><ImageTags /></ImageGallery>
+    <ImageGallery tagsSlot={<ImageTags />} />
   </ImageWidget>
 );
 
