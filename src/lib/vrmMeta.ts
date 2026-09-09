@@ -60,6 +60,8 @@ interface Vrm1MetaRaw {
   allowRedistribution?: boolean;
   commercialUsage?: string;
   creditNotation?: string;
+  avatarPermission?: string;
+  modification?: string;
 }
 
 interface GltfJson {
@@ -102,12 +104,22 @@ function normalizeV0(meta: Vrm0MetaRaw): VrmLicense {
     commercialUse: commercial === 'Allow' ? 'allow' : commercial === 'Disallow' ? 'disallow' : undefined,
     // VRM 0.0 has no credit-notation field; CC_BY implies attribution but saying so would be our inference.
     creditRequired: undefined,
+    // VRM 0.0 has no equivalent concept; the keys are still set (to `undefined`) so a license this function
+    // produced reads as current-shape, not as a pre-license-gate record needing a re-read — see `avatarLicenseGate.ts`.
+    avatarPermission: undefined,
+    modification: undefined,
   };
 }
 
 function normalizeV1(meta: Vrm1MetaRaw): VrmLicense {
   const commercial = meta.commercialUsage;
   const known = commercial === 'personalNonProfit' || commercial === 'personalProfit' || commercial === 'corporation';
+  const permission = meta.avatarPermission;
+  const knownPermission =
+    permission === 'onlyAuthor' || permission === 'explicitlyLicensedPerson' || permission === 'everyone';
+  const modification = meta.modification;
+  const knownModification =
+    modification === 'prohibited' || modification === 'allowModification' || modification === 'allowModificationRedistribution';
   return {
     metaVersion: '1',
     title: meta.name || undefined,
@@ -118,6 +130,8 @@ function normalizeV1(meta: Vrm1MetaRaw): VrmLicense {
     allowRedistribution: meta.allowRedistribution,
     commercialUse: known ? commercial : undefined,
     creditRequired: meta.creditNotation === 'required' ? true : meta.creditNotation === 'unnecessary' ? false : undefined,
+    avatarPermission: knownPermission ? (permission as VrmLicense['avatarPermission']) : undefined,
+    modification: knownModification ? (modification as VrmLicense['modification']) : undefined,
   };
 }
 

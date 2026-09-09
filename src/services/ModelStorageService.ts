@@ -6,7 +6,7 @@ import { optimizeImageDataUrl, IMAGE_CAPS } from '@/lib/imageOptim';
 import { renderVrmThumbnail } from '@/lib/vrmThumbnail';
 import { DEFAULT_AVATAR_ID, LEGACY_DEFAULT_AVATAR_ID } from '@/lib/defaultAvatar';
 import { LibraryStore, type StoredRecord } from './LibraryStore';
-import type { ModelMetadata, VrmData } from '@/types';
+import type { ModelMetadata, VrmData, VrmLicense } from '@/types';
 
 /** A locally-stored VRM plus its library timestamps. Local-only, like `StoredEntityRecord`. */
 export type StoredModelRecord = StoredRecord<VrmData>;
@@ -42,6 +42,14 @@ const isFlat = (record: unknown): record is FlatModelRecord =>
  */
 const shrinkThumbnail = (thumbnail: string | undefined): Promise<string | undefined> =>
   thumbnail ? optimizeImageDataUrl(thumbnail, IMAGE_CAPS.thumbnail) : Promise.resolve(undefined);
+
+/**
+ * A stored license predates the Permissive License gate's `avatarPermission`/`modification` fields if it
+ * lacks the key entirely — `readVrmMeta`'s normalizers always set it now, even to `undefined` for VRM 0.0, so
+ * key presence (not the value) is what tells a pre-gate record apart from one legitimately missing the field.
+ */
+const isLicenseStale = (license: VrmLicense | undefined): boolean =>
+  !license || !('avatarPermission' in license);
 
 /** Shared by the store's grid listing and the lookups that read raw records. */
 const toMetadata = (record: StoredModelRecord): ModelMetadata => ({
@@ -260,35 +268,40 @@ class ModelStorageService {
 
   /**
    * Fill in whatever a record is missing — license, hash, and a thumbnail — and persist the result. Legacy
-   * records predate all three, so this is the library's backfill: cards call it on first view rather than the
-   * whole library paying for every model up front.
+   * records predate all three, and a record stored before the Permissive License gate's fields carries a
+   * license that predates *those*; either way, this is the library's backfill, called on first view rather
+   * than the whole library paying for every model up front.
    *
    * Returns the thumbnail if there is one. A render that produces nothing is recorded, so a model that simply
-   * can't be drawn isn't re-attempted on every view. Never throws: a card renders this, and a bad model must
-   * cost that card its picture, not the whole grid.
+   * can't be drawn isn't re-attempted on every view — unless its license is stale, which forces one more pass
+   * regardless. Never throws: a card renders this, and a bad model must cost that card its picture, not the
+   * whole grid.
    */
   async ensureThumbnail(id: string): Promise<string | undefined> {
     await this.ensureMigrated();
     const record = await this.getRecord(id);
     if (!record?.data?.blob) return undefined;
     const data = record.data;
-    if (data.thumbnail) return data.thumbnail;
-    if (data.thumbnailFailed) return undefined;
+    const staleLicense = isLicenseStale(data.license);
+    if (data.thumbnail && !staleLicense) return data.thumbnail;
+    if (data.thumbnailFailed && !staleLicense) return undefined;
 
     try {
       const resolved: VrmData = { ...data };
-      if (!resolved.license || !resolved.hash) {
+      if (!resolved.hash || staleLicense) {
         const [hash, meta] = await Promise.all([
           resolved.hash ? Promise.resolve(resolved.hash) : blobHash(data.blob),
           readVrmMeta(data.blob),
         ]);
         resolved.hash = hash;
-        resolved.license ??= meta.license;
-        resolved.thumbnail = await shrinkThumbnail(meta.thumbnail);
+        if (staleLicense) resolved.license = meta.license;
+        resolved.thumbnail ??= await shrinkThumbnail(meta.thumbnail);
       }
       // Only render when the file carried no thumbnail of its own.
       resolved.thumbnail ??= await renderVrmThumbnail(data.blob, resolved.license?.metaVersion ?? null);
-      if (!resolved.thumbnail) resolved.thumbnailFailed = true;
+      // A stale-license retry can land a thumbnail a prior attempt marked unproducible; clear that flag rather
+      // than carrying it forward once there is something to show.
+      resolved.thumbnailFailed = resolved.thumbnail ? undefined : true;
 
       // Persist only if the record still exists — the render can take a second, and a delete in that window
       // must not be undone by writing the row back.
