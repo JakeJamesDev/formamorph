@@ -4,6 +4,7 @@ import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import type { GameLocation, Placeholder, Trait } from '@/types';
 import { EditorModeContext } from '@/lib/editorMode';
+import type { LocationPanelTab } from '@/views/locationPanelTabs';
 import { phValueId, phValues } from '@/test/placeholderValues';
 import LocationManager from './LocationManager';
 
@@ -55,11 +56,18 @@ vi.mock('./LocationConnections', () => ({ default: () => null }));
 vi.mock('./ImageTagsField', () => ({ default: () => null }));
 vi.mock('../lib/UtilityComponents', () => ({ SoundUpload: () => null }));
 
-/** Renders the manager against the live store, re-rendering whenever it writes. */
+/**
+ * Renders the manager against the live store, re-rendering whenever it writes.
+ *
+ * The pins live on the panel's own Pins tab, and the editor is what holds the chosen tab in production, so
+ * the harness stands in for it and opens on Pins. That is the tab under test here; the tabs themselves are
+ * covered against the real editor in `WorldEditor.locationPanel.test.tsx`.
+ */
 const Harness = () => {
   const [, setTick] = useState(0);
+  const [tab, setTab] = useState<LocationPanelTab>('pins');
   store.rerender = () => setTick((n) => n + 1);
-  return <LocationManager location={store.location} />;
+  return <LocationManager location={store.location} tab={tab} onTabChange={setTab} />;
 };
 
 const renderManager = (mode: 'simple' | 'advanced' = 'advanced') => render(

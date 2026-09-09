@@ -8,6 +8,7 @@ import { WORLD_EDITOR_TABS } from '@/views/worldEditorTabs';
 import { BUILT_BENCH_TABS } from '@/lib/testBench/benchTabs';
 import { LOCATION_VIEWS } from '@/views/locationViews';
 import { ENTITY_PANEL_TABS } from '@/views/entityPanelTabs';
+import { LOCATION_PANEL_TABS } from '@/views/locationPanelTabs';
 import { MAIN_MENU_CARD_TABS } from '@/views/mainMenuTabs';
 import { GAME_LEFT_PANEL_TABS } from '@/components/game/leftPanelTabs';
 import { PROFILE_TABS } from '@/components/menu/profileTabs';
@@ -116,6 +117,17 @@ describe('dev-router coverage guard', () => {
   it('ledger lists exactly the tabs the entity panel switches between', () => {
     // Advanced-only tabs are listed too: the ledger says what the router can target, not what one mode shows.
     expect([...DEV_MODAL_TABS.worldEditorEntity]).toEqual(ENTITY_PANEL_TABS.map((t) => t.value));
+  });
+
+  it('ledger lists exactly the tabs the location panel switches between', () => {
+    expect([...DEV_MODAL_TABS.worldEditorLocation]).toEqual(LOCATION_PANEL_TABS.map((t) => t.value));
+  });
+
+  // The Locations tab spends one `subtab=…` slot on both switches, so a value landing in both would make
+  // the router move the panel and the view at once and neither call site could tell which was meant.
+  it('keeps the Locations tab’s two subtab meanings apart', () => {
+    const views = new Set<string>(LOCATION_VIEWS.map((v) => v.value));
+    expect(LOCATION_PANEL_TABS.map((t) => t.value).filter((v) => views.has(v))).toEqual([]);
   });
 
   it('ledger lists exactly the tabs the Community browser switches between', () => {

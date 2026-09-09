@@ -94,6 +94,10 @@ export const DEV_MODAL_TABS = {
   // slot over the Entities tab (`#dev?modal=worldEditor&tab=entities&subtab=descriptions`). It lands on the
   // panel, so pair it with a world that has an entity to select. `placeholders` is Advanced only.
   worldEditorEntity: ['profile', 'descriptions', 'placeholders'],
+  // The World Editor's location panel does the same over the Locations tab
+  // (`#dev?modal=worldEditor&tab=locations&subtab=presence`). It shares that tab's `subtab=…` slot with the
+  // List/Canvas switch above, which is why no value may appear in both lists. `pins` is Advanced only.
+  worldEditorLocation: ['details', 'presence', 'media', 'pins'],
   // The World Editor's Test Bench: `bench=…` opens the full panel — at whichever placement is remembered —
   // on the instrument it names (`#dev?modal=worldEditor&bench=issues`). Only built instruments are listed,
   // since an unbuilt tab renders

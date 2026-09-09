@@ -1,3 +1,4 @@
+import { useEffect } from 'react';
 import { useEditingDraft } from '@/lib/useEditingDraft';
 import { useGameData } from '@/contexts/GameDataContext';
 import { entitiesInTreeOrder } from '@/lib/entityGroupTree';
@@ -5,6 +6,7 @@ import { entityIdsAt, setLocationRoster } from '@/lib/entityPresence';
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import { MultiSelect } from "@/components/ui/multi-select";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import AiGenerateButton from "@/components/AiGenerateButton";
 import PlaceholderField, { PlaceholderNameField } from "@/components/prompt/PlaceholderField";
 import { labelPlaceholders } from '@/lib/placementLetters';
@@ -15,9 +17,25 @@ import LocationConnections from './LocationConnections';
 import { useEditorMode } from '@/lib/editorMode';
 import { HelpButton } from '@/components/HelpButton';
 import { PlaceholderPinRows } from '@/components/editor/PlaceholderPinRows';
+import { locationPanelTabsFor, locationTabForField, type LocationPanelTab } from '@/views/locationPanelTabs';
 import type { GameLocation, PlaceholderPin } from '@/types';
 
-const LocationManager = ({ location }: { location: GameLocation }) => {
+/**
+ * Right-panel editor for one location: its fields split across Details, Presence, Media and Pins.
+ *
+ * The panel remounts per location, so the chosen tab is the editor's to hold and arrives as a prop. The
+ * background image sits on Media rather than beside the name: a location has one slot and it is a backdrop,
+ * so it does not earn a column the way an entity's portrait does.
+ *
+ * `focusField` is the search target the find bar just navigated to. A hit on a tab that isn't showing has no
+ * field to mark, so the panel opens the owning tab; the same hint the entity and Overview panels take.
+ */
+const LocationManager = ({ location, tab, onTabChange, focusField }: {
+  location: GameLocation;
+  tab: LocationPanelTab;
+  onTabChange: (tab: LocationPanelTab) => void;
+  focusField?: { fieldKey: string } | null;
+}) => {
   const world = useGameData();
   const { updateLocation, entities, updateEntity, entityGroups, placeholders, placementLetters, placeholderOwners } = world;
   const { draft: editingLocation, setField: handleChange, apply } = useEditingDraft(location, updateLocation);
@@ -36,130 +54,167 @@ const LocationManager = ({ location }: { location: GameLocation }) => {
     });
   };
 
+  // Before the reveal, which is a timer behind this render: the field it looks for has to be mounting by
+  // then. A key no tab claims leaves the panel where the author put it.
+  useEffect(() => {
+    const owning = focusField ? locationTabForField(focusField.fieldKey) : null;
+    if (owning) onTabChange(owning);
+  }, [focusField, onTabChange]);
+
   if (!editingLocation) return null;
 
+  const tabs = locationPanelTabsFor(advanced);
+
   return (
-    <div className="space-y-4">
-      <div className="space-y-2">
-        <Label>Name</Label>
-        <PlaceholderNameField
-          value={editingLocation.name || ''}
-          onChange={(v) => handleChange('name', v)}
-          placeholders={placeholders}
-          ariaLabel="Name"
-        />
-      </div>
-      <div className="flex items-center space-x-2">
-        <Checkbox
-          id={`location-starting-${editingLocation.id}`}
-          checked={!!editingLocation.isStarting}
-          onCheckedChange={(checked) => handleChange('isStarting', !!checked)}
-        />
-        <Label htmlFor={`location-starting-${editingLocation.id}`}>
-          Starting location (new games may begin here)
-        </Label>
-      </div>
-      <PlaceholderField
-        label="Player-Facing Description"
-        labelAside={(
-          <AiGenerateButton
-            mode="playerDesc"
-            source={editingLocation.aiDescription}
-            onChange={(s) => handleChange('playerDescription', s)}
-            kind="location"
-          />
-        )}
-        value={editingLocation.playerDescription || ''}
-        onChange={(v) => handleChange('playerDescription', v)}
-        placeholders={placeholders}
-        resizable
-      />
-      <PlaceholderField
-        label="AI-Facing Description"
-        labelAside={(
-          <AiGenerateButton
-            mode="aiDesc"
-            source={editingLocation.playerDescription}
-            onChange={(s) => handleChange('aiDescription', s)}
-            kind="location"
-          />
-        )}
-        value={editingLocation.aiDescription || ''}
-        onChange={(v) => handleChange('aiDescription', v)}
-        placeholders={placeholders}
-        resizable
-      />
-      {advanced && (
-      <div className="space-y-2">
+    <Tabs value={tab} onValueChange={(v) => onTabChange(v as LocationPanelTab)} className="space-y-4">
+      {/* Named, because the editor's own strip is on the same screen and carries a Locations tab too. */}
+      <TabsList
+        aria-label="Location Fields"
+        className="grid h-auto w-full sm:h-10"
+        style={{ gridTemplateColumns: `repeat(${tabs.length}, minmax(0, 1fr))` }}
+      >
+        {/* Icon over label below `sm`, matching the entity panel: the 375px detail sheet gives each tab too
+            little width for one row. */}
+        {tabs.map(({ value, label, icon: Icon }) => (
+          <TabsTrigger key={value} value={value} className="flex-col gap-0.5 px-1 sm:flex-row sm:gap-1.5 sm:px-3">
+            <Icon className="h-4 w-4 shrink-0" />{label}
+          </TabsTrigger>
+        ))}
+      </TabsList>
+
+      <TabsContent value="details" className="space-y-4">
+        <div className="flex flex-col gap-2 sm:flex-row sm:items-end">
+          <div className="min-w-0 flex-1 space-y-2">
+            <Label>Name</Label>
+            <PlaceholderNameField
+              value={editingLocation.name || ''}
+              onChange={(v) => handleChange('name', v)}
+              placeholders={placeholders}
+              ariaLabel="Name"
+            />
+          </div>
+          {/* Bottom-aligned and as tall as the field, so the checkbox sits on the name's last line when a
+              long name wraps. */}
+          <div className="flex min-h-10 shrink-0 items-center gap-2">
+            <Checkbox
+              id={`location-starting-${editingLocation.id}`}
+              checked={!!editingLocation.isStarting}
+              onCheckedChange={(checked) => handleChange('isStarting', !!checked)}
+            />
+            <Label htmlFor={`location-starting-${editingLocation.id}`}>
+              Starting location (new games may begin here)
+            </Label>
+          </div>
+        </div>
         <PlaceholderField
-          label="AI-Facing Summary"
+          label="Player-Facing Description"
           labelAside={(
             <AiGenerateButton
-              mode="summary"
+              mode="playerDesc"
               source={editingLocation.aiDescription}
-              onChange={(s) => handleChange('aiSummary', s)}
+              onChange={(s) => handleChange('playerDescription', s)}
+              kind="location"
             />
           )}
-          value={editingLocation.aiSummary || ''}
-          onChange={(v) => handleChange('aiSummary', v)}
+          value={editingLocation.playerDescription || ''}
+          onChange={(v) => handleChange('playerDescription', v)}
           placeholders={placeholders}
           resizable
         />
-        <p className="text-helper text-muted-foreground">
-          A one-line version used where the full description is too long — keep it brief.
-        </p>
-      </div>
-      )}
-      <div className="space-y-2">
-        <Label>Entities</Label>
-        <MultiSelect
-          key={editingLocation.id}
-          options={entitiesInTreeOrder(entityGroups, entities).map((e) => ({ label: labelPlaceholders(e.name, placeholders, { letters: placementLetters, owners: placeholderOwners }), value: e.id }))}
-          defaultValue={presentIds}
-          onValueChange={handleEntitiesChange}
-          placeholder="Select entities"
-          hideSelectAll
-        />
-      </div>
-      <LocationConnections location={editingLocation} />
-      {advanced && (
-      <div className="space-y-2">
-        <div className="flex items-center gap-2">
-          <Label>Placeholder Pins</Label>
-          <HelpButton topicId="worldEditor.locationPins" className="h-6 w-6" />
-        </div>
-        <PlaceholderPinRows
-          pins={pins}
-          onChange={setPins}
-          source={{ kind: 'location', id: editingLocation.id }}
-          world={world}
+        <PlaceholderField
+          label="AI-Facing Description"
+          labelAside={(
+            <AiGenerateButton
+              mode="aiDesc"
+              source={editingLocation.playerDescription}
+              onChange={(s) => handleChange('aiDescription', s)}
+              kind="location"
+            />
+          )}
+          value={editingLocation.aiDescription || ''}
+          onChange={(v) => handleChange('aiDescription', v)}
           placeholders={placeholders}
+          resizable
         />
-      </div>
-      )}
-      <ImageTagsField
-        label="Background Image"
-        images={editingLocation.backgroundImage ? [editingLocation.backgroundImage] : []}
-        onImagesChange={(list) => handleChange('backgroundImage', list[0] ?? '')}
-        imageId={`location-image-${editingLocation.id}`}
-        cap={IMAGE_CAPS.background}
-        description={editingLocation.aiDescription || editingLocation.playerDescription}
-        kind="location"
-        tags={editingLocation.imageTags}
-        onTagsChange={(t) => handleChange('imageTags', t)}
-        placeholders={placeholders}
-      />
-      {advanced && (
+        {advanced && (
         <div className="space-y-2">
-          <Label>Ambient Sound</Label>
-          <SoundUpload
-            onChange={(file) => handleChange('ambientSound', file)}
-            id={`location-sound-${editingLocation.id}`}
-            value={editingLocation.ambientSound}
+          <PlaceholderField
+            label="AI-Facing Summary"
+            labelAside={(
+              <AiGenerateButton
+                mode="summary"
+                source={editingLocation.aiDescription}
+                onChange={(s) => handleChange('aiSummary', s)}
+              />
+            )}
+            value={editingLocation.aiSummary || ''}
+            onChange={(v) => handleChange('aiSummary', v)}
+            placeholders={placeholders}
+            resizable
+          />
+          <p className="text-helper text-muted-foreground">
+            A one-line version used where the full description is too long — keep it brief.
+          </p>
+        </div>
+        )}
+      </TabsContent>
+
+      <TabsContent value="presence" className="space-y-4">
+        <div className="space-y-2">
+          <Label>Entities</Label>
+          <MultiSelect
+            key={editingLocation.id}
+            options={entitiesInTreeOrder(entityGroups, entities).map((e) => ({ label: labelPlaceholders(e.name, placeholders, { letters: placementLetters, owners: placeholderOwners }), value: e.id }))}
+            defaultValue={presentIds}
+            onValueChange={handleEntitiesChange}
+            placeholder="Select entities"
+            hideSelectAll
           />
         </div>
+        <LocationConnections location={editingLocation} />
+      </TabsContent>
+
+      <TabsContent value="media" className="space-y-4">
+        <ImageTagsField
+          label="Background Image"
+          images={editingLocation.backgroundImage ? [editingLocation.backgroundImage] : []}
+          onImagesChange={(list) => handleChange('backgroundImage', list[0] ?? '')}
+          imageId={`location-image-${editingLocation.id}`}
+          cap={IMAGE_CAPS.background}
+          description={editingLocation.aiDescription || editingLocation.playerDescription}
+          kind="location"
+          tags={editingLocation.imageTags}
+          onTagsChange={(t) => handleChange('imageTags', t)}
+          placeholders={placeholders}
+        />
+        {advanced && (
+          <div className="space-y-2">
+            <Label>Ambient Sound</Label>
+            <SoundUpload
+              onChange={(file) => handleChange('ambientSound', file)}
+              id={`location-sound-${editingLocation.id}`}
+              value={editingLocation.ambientSound}
+            />
+          </div>
+        )}
+      </TabsContent>
+
+      {advanced && (
+        <TabsContent value="pins" className="space-y-2">
+          <div className="flex items-center gap-2">
+            <Label>Placeholder Pins</Label>
+            <HelpButton topicId="worldEditor.locationPins" className="h-6 w-6" />
+          </div>
+          <PlaceholderPinRows
+            pins={pins}
+            onChange={setPins}
+            source={{ kind: 'location', id: editingLocation.id }}
+            world={world}
+            placeholders={placeholders}
+          />
+        </TabsContent>
       )}
-    </div>
+    </Tabs>
   );
 };
 

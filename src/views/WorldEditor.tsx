@@ -49,6 +49,7 @@ import LocationTree from '../managers/LocationTree';
 import LocationCanvas from '../managers/LocationCanvas';
 import { LOCATION_VIEWS, type LocationView } from './locationViews';
 import { ENTITY_PANEL_TABS, entityPanelTabsFor, type EntityPanelTab } from './entityPanelTabs';
+import { LOCATION_PANEL_TABS, locationPanelTabsFor, type LocationPanelTab } from './locationPanelTabs';
 import EntityTree from '../managers/EntityTree';
 import { removeLocationPromotingChildren } from '@/lib/locationTree';
 import { duplicateTraitNode } from '@/lib/traitTree';
@@ -173,6 +174,10 @@ const WorldEditorInner = ({ onClose, embedded = false, backButton }: {
   // frame of a strip with nothing selected over an empty body. The choice itself is kept, so returning to
   // Advanced returns to the tab the author left.
   const shownEntityTab = entityTabs.some((t) => t.value === entityTab) ? entityTab : 'profile';
+  // The location panel's own tabs, held here for the same reason and answered the same way.
+  const [locationTab, setLocationTab] = useState<LocationPanelTab>('details');
+  const locationTabs = useMemo(() => locationPanelTabsFor(advanced), [advanced]);
+  const shownLocationTab = locationTabs.some((t) => t.value === locationTab) ? locationTab : 'details';
 
   // DEV dev-router: jump to a specific editor tab via `#dev?modal=worldEditor&tab=…`. Tree-shaken in prod.
   const devRoute = useDevRoute();
@@ -189,6 +194,13 @@ const WorldEditorInner = ({ onClose, embedded = false, backButton }: {
   useEffect(() => {
     if (import.meta.env.DEV && ENTITY_PANEL_TABS.some((t) => t.value === devSubtab)) {
       setEntityTab(devSubtab as EntityPanelTab);
+    }
+  }, [devSubtab]);
+  // And over the Locations tab, where the slot already names a view. The two value sets are disjoint, so
+  // one `subtab=…` reaches both the List/Canvas switch and the detail panel's own tabs.
+  useEffect(() => {
+    if (import.meta.env.DEV && LOCATION_PANEL_TABS.some((t) => t.value === devSubtab)) {
+      setLocationTab(devSubtab as LocationPanelTab);
     }
   }, [devSubtab]);
   const [searchTerm, setSearchTerm] = useState('');
@@ -737,7 +749,14 @@ const WorldEditorInner = ({ onClose, embedded = false, backButton }: {
         />
       )}
       {activeTab === "locations" && selectedItem && (
-        <LocationManager key={selectedItem.id} location={selectedItem as GameLocation} />
+        <LocationManager
+          key={selectedItem.id}
+          location={selectedItem as GameLocation}
+          tab={shownLocationTab}
+          onTabChange={setLocationTab}
+          // Only this location's own hit opens a tab, for the same reason as the entity panel above.
+          focusField={findField?.itemId === selectedItem.id ? findField : null}
+        />
       )}
       {activeTab === "traits" && selectedGroup && (
         <GroupManager key={selectedGroup.id} group={selectedGroup} />
