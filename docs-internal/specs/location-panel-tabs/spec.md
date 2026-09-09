@@ -1,6 +1,7 @@
 # Location Panel Tabs
 
-Status: ready-for-agent
+Status: in-progress
+Base: b6a8056d
 Status note: Shape settled by prototype on branch `prototype/location-panel` (see Further Notes). Follows the entity-panel-tabs effort and reuses its tab conventions; the mobile form needs a look in context before the pattern is extended in the Design System guide.
 
 ## Problem Statement
@@ -109,5 +110,21 @@ A good test drives the real World Editor with a loadable world and asserts what 
 **Why "Details".** The tab holds Name, Starting, and the prose, so it is the location's own record. "Overview" collides with the editor's top-level tab, "Description" undersells Name and Starting, "Location" repeats the list tab's name, and "Place" read as vague.
 
 **Dependency on the entity effort.** This spec assumes the entity-panel-tabs effort has landed its tab-persistence slot in the editor, its optional tab hint on item navigation, and its focus-field handling in the entity manager, and reuses all three. If it starts first, it builds those and the entity effort reuses them instead. The image widget's gallery-tags split is not needed here.
+
+**Decisions taken during implementation.**
+
+- *Base was rewritten under us.* The claim recorded `0960e56d`. The entity-panel-tabs session amended that
+  commit to `b6a8056d`, so the original is no longer an ancestor of `main`. `Base:` above now reads
+  `b6a8056d`, which is the same change under its final hash.
+- *User story 7 does not apply here.* The story asks for Generate with AI directly under the picture. That
+  was written for the entity panel, where the picture sits on the first tab beside the name. A location's
+  picture has a Media tab to itself, so the widget renders whole and the order stays Image, Image Tags,
+  Generate with AI, as every other caller of the widget shows it.
+- *The Design System guide entry is another session's.* The Design authority decision assigned the guide
+  extension to this implementer. The mobile form was captured and approved, and the guide work was
+  reassigned, so nothing here touches `DesignSystemShowcase` or the guide.
+- *The find-focus path is duplicated.* `locationTabForField` mirrors `entityTabForField`, and the
+  `itemId` guard is written at two call sites in `WorldEditor`. Recorded on entity-panel-tabs ticket 04
+  (`745177d5`) as work for whenever a third panel follows.
 
 **Measurements from the flat panel** (The Veilwood in the Veilwood world, Advanced, 1600x900): panel scroll height 1752px against an 873px viewport. The winning Details tab is the tallest of the four and still fits with the summary in view.
