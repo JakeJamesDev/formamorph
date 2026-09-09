@@ -2,6 +2,7 @@ import { randomUUID } from "@/lib/uuid";
 import { DEFAULT_WORLDS, isDefaultWorldId } from "@/lib/defaultWorlds";
 import React, { useState, useRef, useEffect, useCallback, useMemo } from 'react';
 import { useGameData } from '../contexts/GameDataContext';
+import { useLingeringMount } from '@/lib/useLingeringMount';
 import { usePlaceholderSession } from '../contexts/PlaceholderSessionContext';
 import { useResolvedAuthoredWorld } from '@/lib/useResolvedWorld';
 import { inAuthoredOrder, traitOrderIndex } from '@/lib/traitEffects';
@@ -291,6 +292,8 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
   const [warmingOffline, setWarmingOffline] = useState(false);
   const [showCharacterCustomization, setShowCharacterCustomization] = useState(false);
   const [showSetupWorkspace, setShowSetupWorkspace] = useState(false);
+  // The workspace stays mounted for one exit animation after it closes, so the dialog can fade out.
+  const workspaceMounted = useLingeringMount(showSetupWorkspace, 250);
   const [showIntroReadme, setShowIntroReadme] = useState(false);
   // Set only when the Introduction has no setup screen to sit over: the traits to start with once the
   // player closes it. A world with nothing to choose would otherwise flash the overlay and enter anyway.
@@ -2594,8 +2597,9 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
         />
       )}
 
-      {showSetupWorkspace && selectedWorld && (
+      {workspaceMounted && selectedWorld && (
         <EnterWorldWorkspace
+          open={showSetupWorkspace}
           worldName={selectedWorld.name}
           traits={traits}
           traitGroups={traitGroups}
