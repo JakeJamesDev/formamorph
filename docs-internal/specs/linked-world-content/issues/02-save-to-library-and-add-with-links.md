@@ -1,6 +1,9 @@
 # 02: Save to Library and Add from Library with links
 
-Status: ready-for-agent
+Status: ready-for-human
+Status note: Built across 5e299026, cefd6bd2 and b1bb970a. Two product calls are open for the author,
+below under Comments. Check for Updates is deliberately absent from the linked-copy menu; ticket 08 owns it.
+Base: e16d4a91
 Blocked by: 01
 Recommended model: Claude Sonnet 5 (`claude-sonnet-5`)
 Reasoning effort: high
@@ -25,14 +28,53 @@ The selection-key behavior in the prototype's picker is a presentation detail, n
 
 ## Acceptance criteria
 
-- [ ] Save to Library on an independent dictionary creates a library item, shows Link pending save, and after Save World shows Linked with the source name.
-- [ ] Add from Library with Link to Library on inserts a Linked copy; with it off inserts an independent copy; choosing an existing library item never creates a second library item.
-- [ ] Link to Library Item… on an independent copy with identical content yields Linked; with different content yields Local replacement and leaves the world's content unchanged.
-- [ ] Editing a copy that follows another author's source shows Local replacement after the edit; Unlink shows no indicator and keeps the content.
-- [ ] Saving an owned library item updates its linked copy in another world when that world opens; a local replacement in a third world is untouched.
-- [ ] Two library items with the same name appear as two rows with different author and source lines.
-- [ ] Type check, lint, tests, and build pass.
+- [x] Save to Library on an independent dictionary creates a library item, shows Link pending save, and after Save World shows Linked with the source name.
+- [x] Add from Library with Link to Library on inserts a Linked copy; with it off inserts an independent copy; choosing an existing library item never creates a second library item.
+- [x] Link to Library Item… on an independent copy with identical content yields Linked; with different content yields Local replacement and leaves the world's content unchanged.
+- [x] Editing a copy that follows another author's source shows Local replacement after the edit; Unlink shows no indicator and keeps the content.
+- [x] Saving an owned library item updates its linked copy in another world when that world opens; a local replacement in a third world is untouched.
+- [x] Two library items with the same name appear as two rows with different author and source lines.
+- [x] Type check, lint, tests, and build pass.
 
 ## Blocked by
 
 - 01 — Link metadata on world content.
+
+## Comments
+
+### Handover (2026-09-09)
+
+Built, four gates green, verified in the preview at 1600x900 and 375px.
+
+**Commits.** `5e299026` is the unit. `cefd6bd2` follows the renamed picker confirm in two older modal
+suites. `b1bb970a` builds the footer's Add button from the shared `SplitButton`. Three commits rather than
+one because `src/views/WorldEditor.tsx` held three tickets' hunks at once and the amend window closed each
+time a neighbour committed.
+
+**Placement changed during the build.** The selected-content split button replaces the footer's Export
+button rather than sitting above the item's fields. The author directed this: the space above the entity
+panel belongs to the entity-panel-tabs tab strip. Export moved into the button's menu, still Advanced only.
+
+**Not built here.** Check for Updates is absent from the linked-copy menu. Ticket 08 owns that behavior and
+a menu item that does nothing is worse than an absent one.
+
+**Export shape.** No new exported world field — `ContentLink` shipped with ticket 01. Worlds saved from this
+build now carry link records where nothing wrote them before. `CommunityLink.sourceAuthorName` is new and is
+local IndexedDB only.
+
+### Open for the author
+
+1. **Editing an owned linked copy marks it a local replacement.** The ticket scopes marking to a copy that
+   follows *another author's* source, leaving an owned copy undefined. The build marks it, because not
+   marking it lets the next world open overwrite the author's edit. The cost is that the copy stops
+   following its own library item until the author saves it there again.
+
+2. **The synchronization pass dirties the world on open.** Opening a world whose linked copy is behind
+   updates it and leaves the world unsaved, so the exit prompt appears after only looking at a world. This
+   follows the spec's world-save boundary, but the prompt is unsolicited.
+
+### Follow-ups for later tickets
+
+- The pass runs in the World Editor only. Syncing at play-open would violate the authored-world-immutable
+  constraint, so it belongs nowhere else.
+- A source's new placeholders do not reach a linked copy; that is ticket 03's reference-resolution step.
