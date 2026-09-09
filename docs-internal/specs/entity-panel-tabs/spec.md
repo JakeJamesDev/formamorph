@@ -1,7 +1,7 @@
 # Entity Panel Tabs
 
 Status: ready-for-agent
-Status note: Shape settled by prototype on branch `prototype/entity-panel` (see Further Notes). Desktop composition approved by the user on 2026-09-09; the mobile form still needs a look in context before the pattern is recorded in the Design System guide.
+Status note: Tickets 01–05 under issues/; 01 and 02 are the frontier. Shape settled by prototype on branch `prototype/entity-panel` (see Further Notes). Desktop composition approved by the user on 2026-09-09; the mobile form still needs a look in context before the pattern is recorded in the Design System guide.
 
 ## Problem Statement
 
