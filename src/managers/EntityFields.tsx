@@ -1,6 +1,6 @@
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { MultiSelect } from "@/components/ui/multi-select";
+import { MultiSelect, type MultiSelectOption } from "@/components/ui/multi-select";
 import { KeywordChips } from "@/components/KeywordChips";
 import { HelpButton } from "@/components/HelpButton";
 import AiGenerateButton from "@/components/AiGenerateButton";
@@ -130,13 +130,15 @@ export const EntityDescriptionFields = ({ value, onChange, placeholders = [], ow
   );
 };
 
-/** The locations the entity belongs to. World Editor only: a library character has no world locations. */
-export const EntityLocationsField = ({ value, options, selectedIds, onLocationsChange }: {
-  value: Entity;
-  options: { label: string; value: string; depth?: number }[];
+/** The world's locations to pick from, and the entity's own membership in them. */
+export interface EntityLocationsFieldProps extends EntityFieldGroupProps {
+  options: MultiSelectOption[];
   selectedIds?: string[];
   onLocationsChange?: (ids: string[]) => void;
-}) => (
+}
+
+/** The locations the entity belongs to. World Editor only: a library character has no world locations. */
+export const EntityLocationsField = ({ value, options, selectedIds, onLocationsChange }: EntityLocationsFieldProps) => (
   <div className="space-y-2">
     <Label>Locations</Label>
     <MultiSelect
@@ -170,7 +172,7 @@ export const EntityGalleryField = ({ value, onChange, placeholders = [], ownerId
 );
 
 /** The 3D model slot. Advanced only. */
-export const EntityModelField = ({ value, onChange }: Pick<EntityFieldGroupProps, 'value' | 'onChange'>) => {
+export const EntityModelField = ({ value, onChange }: EntityFieldGroupProps) => {
   const { advanced } = useEditorMode();
   if (!advanced) return null;
   return (
@@ -194,7 +196,7 @@ const EntityFields = (props: EntityFieldGroupProps) => (
     <EntityIdentityFields {...props} />
     <EntityDescriptionFields {...props} />
     <EntityGalleryField {...props} />
-    <EntityModelField value={props.value} onChange={props.onChange} />
+    <EntityModelField {...props} />
   </div>
 );
 
