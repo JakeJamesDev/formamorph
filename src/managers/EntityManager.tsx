@@ -1,5 +1,11 @@
 import { useGameData } from '../contexts/GameDataContext';
-import EntityFields from './EntityFields';
+import {
+  EntityDescriptionFields,
+  EntityGalleryField,
+  EntityIdentityFields,
+  EntityLocationsField,
+  EntityModelField,
+} from './EntityFields';
 import ScopedPlaceholdersSection from './ScopedPlaceholdersSection';
 import { useEditingDraft } from '@/lib/useEditingDraft';
 import { withEntityLocations } from '@/lib/entityPresence';
@@ -27,23 +33,26 @@ const EntityManager = ({ entity }: { entity: Entity }) => {
 
   if (!editingEntity) return null;
 
+  const groupProps = { value: editingEntity, onChange: handleChange, placeholders, ownerId: entity.id };
+
   return (
     <div className="space-y-4">
       <ContentLinkHeader link={editingEntity.link} />
-      <EntityFields
+      <EntityIdentityFields {...groupProps} />
+      <EntityDescriptionFields {...groupProps} />
+      <EntityLocationsField
         value={editingEntity}
-        onChange={handleChange}
-        placeholders={placeholders}
-        ownerId={entity.id}
         // Read as the tree it is, so the picker presents the hierarchy the way the game's own list does.
-        locationOptions={locationRows(locations).map(({ location, depth }) => ({
+        options={locationRows(locations).map(({ location, depth }) => ({
           label: labelPlaceholders(location.name, placeholders, { letters: placementLetters, owners: placeholderOwners }),
           value: location.id,
           depth,
         }))}
-        selectedLocationIds={selectedLocationIds}
+        selectedIds={selectedLocationIds}
         onLocationsChange={handleLocationsChange}
       />
+      <EntityGalleryField {...groupProps} />
+      <EntityModelField value={editingEntity} onChange={handleChange} />
       <ScopedPlaceholdersSection kind="entity" ownerId={entity.id} />
     </div>
   );
