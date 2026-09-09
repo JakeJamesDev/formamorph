@@ -18,7 +18,7 @@ import { Input } from "@/components/ui/input";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { Plus, ArrowLeft, Save, FolderPlus, FilePlus, ImageDown, BookPlus, UserPlus, Loader2, Search, List, Map, ChevronUp } from "lucide-react";
+import { Plus, ArrowLeft, Save, FolderPlus, FilePlus, ImageDown, BookPlus, UserPlus, Loader2, Search, List, Map } from "lucide-react";
 import { ActionIcon } from '@/lib/actionIcons';
 import { cn } from "@/lib/utils";
 import EditorFindBar from '@/components/editor/EditorFindBar';
@@ -86,6 +86,7 @@ import type { Stat, Entity, GameLocation, StatUpdate, Dictionary, World, Content
 import { useDownscalePrompt } from '@/lib/useDownscalePrompt';
 import { SortableRow, type SortableListItem } from '@/components/SortableList';
 import { ContentLinkIcon, PendingLinksProvider, SelectedContentActions } from '@/components/ContentLinkStatus';
+import { SplitButton } from '@/components/ui/split-button';
 import { useLibraryLinking } from '@/lib/useLibraryLinking';
 import { EditorRowList } from '@/components/EditorRow';
 import PlaceholderText from '@/components/prompt/PlaceholderText';
@@ -970,7 +971,7 @@ const WorldEditorInner = ({ onClose, embedded = false, backButton }: {
             disabled={!selectedLinkable}
             {...(selectedLinkable
               ? linking.controlFor(selectedLinkable, advanced)
-              : { faceLabel: 'Save to Library', onFace: () => {}, menu: [] })}
+              : { faceLabel: 'Save to Library', faceTip: 'Select an entity or a dictionary first', onFace: () => {}, menu: [] })}
           />
         ) : exportContext && (
           <Button variant="outline" size="sm" onClick={exportContext.onClick} disabled={exportContext.disabled}>
@@ -980,36 +981,19 @@ const WorldEditorInner = ({ onClose, embedded = false, backButton }: {
         )}
         {showImport && (
           // The face opens the library picker; the chevron holds the file route into the same review.
-          <div className="flex">
-            <Button
-              variant="outline" size="sm" className="rounded-r-none"
-              onClick={() => { if (activeTab === "dictionary") setShowAddDictionary(true); else setShowAddEntity(true); }}
-              disabled={importDisabled}
-            >
-              {activeTab === "dictionary"
-                ? <BookPlus className="h-4 w-4 mr-2 shrink-0" />
-                : <UserPlus className="h-4 w-4 mr-2 shrink-0" />}
-              <span className="truncate max-w-[14rem]">{importLabel}</span>
-            </Button>
-            <Popover open={addMenuOpen} onOpenChange={setAddMenuOpen}>
-              <PopoverTrigger asChild>
-                <Button variant="outline" size="sm" className="rounded-l-none border-l-0 px-2" aria-label="More add options">
-                  <ChevronUp className="h-4 w-4" />
-                </Button>
-              </PopoverTrigger>
-              <PopoverContent side="top" align="start" className="w-48 p-1">
-                <Button
-                  variant="ghost" className="justify-start text-meta h-8 w-full"
-                  onClick={() => {
-                    setAddMenuOpen(false);
-                    linking.openImportFile(activeTab === "dictionary" ? 'dictionary' : 'entity');
-                  }}
-                >
-                  {activeTab === "dictionary" ? 'Import Dictionary…' : 'Import Entity…'}
-                </Button>
-              </PopoverContent>
-            </Popover>
-          </div>
+          <SplitButton
+            icon={activeTab === "dictionary"
+              ? <BookPlus className="h-4 w-4 mr-2 shrink-0" />
+              : <UserPlus className="h-4 w-4 mr-2 shrink-0" />}
+            label={importLabel}
+            onClick={() => { if (activeTab === "dictionary") setShowAddDictionary(true); else setShowAddEntity(true); }}
+            disabled={importDisabled}
+            menuLabel="More add options"
+            menu={[{
+              label: activeTab === "dictionary" ? 'Import Dictionary…' : 'Import Entity…',
+              onClick: () => linking.openImportFile(activeTab === "dictionary" ? 'dictionary' : 'entity'),
+            }]}
+          />
         )}
       </div>
       <div className="flex gap-2">
