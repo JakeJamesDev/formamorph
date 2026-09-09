@@ -1,6 +1,7 @@
 # 03: Tabbed Entity Panel
 
-Status: ready-for-agent
+Status: ready-for-human
+Base: e16d4a91
 Blocked by: 01, 02
 Recommended model: Claude Opus 5 (`claude-opus-5`)
 Reasoning effort: high
@@ -19,16 +20,16 @@ The winning prototype is `?variant=A2` at commit `7d1b61e5` on branch `prototype
 
 ## Acceptance criteria
 
-- [ ] Advanced: three tabs. Profile shows Image, Name, Aliases, Type, Image Tags, Locations, 3D Model and no description. Descriptions shows the three prose fields only. Placeholders shows the scoped editor.
-- [ ] Simple: two tabs. Profile shows Image, Name, Locations and the Generate with AI button; no Aliases, Type, Image Tags, or 3D Model.
-- [ ] Locations and 3D Model are full-width lines below the grid.
-- [ ] The tab persists across selecting another entity; on Placeholders, switching to Simple lands on Profile.
-- [ ] Selecting an entity group shows the group panel with no tab strip.
-- [ ] The dev-router gains a `subtab` ledger entry for `profile`, `descriptions`, `placeholders`, and the ledger drift test covers it.
-- [ ] World Editor bench-harness tests cover every criterion above.
-- [ ] Changelog: one 👤 entry in the In-Progress bucket.
-- [ ] Desktop verified in the preview against the prototype at 1600x900; no export-shape change.
-- [ ] Four gates green; graph updated.
+- [x] Advanced: three tabs. Profile shows Image, Name, Aliases, Type, Image Tags, Locations, 3D Model and no description. Descriptions shows the three prose fields only. Placeholders shows the scoped editor.
+- [x] Simple: two tabs. Profile shows Image, Name, Locations and the Generate with AI button; no Aliases, Type, Image Tags, or 3D Model.
+- [x] Locations and 3D Model are full-width lines below the grid.
+- [x] The tab persists across selecting another entity; on Placeholders, switching to Simple lands on Profile.
+- [x] Selecting an entity group shows the group panel with no tab strip.
+- [x] The dev-router gains a `subtab` ledger entry for `profile`, `descriptions`, `placeholders`, and the ledger drift test covers it.
+- [x] World Editor bench-harness tests cover every criterion above.
+- [x] Changelog: one 👤 entry in the In-Progress bucket.
+- [x] Desktop verified in the preview against the prototype at 1600x900; no export-shape change.
+- [x] Four gates green; graph updated.
 
 ## Blocked by
 

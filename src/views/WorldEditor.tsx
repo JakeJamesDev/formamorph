@@ -48,6 +48,7 @@ import TraitTree from '../managers/TraitTree';
 import LocationTree from '../managers/LocationTree';
 import LocationCanvas from '../managers/LocationCanvas';
 import { LOCATION_VIEWS, type LocationView } from './locationViews';
+import { ENTITY_PANEL_TABS, entityPanelTabsFor, type EntityPanelTab } from './entityPanelTabs';
 import EntityTree from '../managers/EntityTree';
 import { removeLocationPromotingChildren } from '@/lib/locationTree';
 import { duplicateTraitNode } from '@/lib/traitTree';
@@ -163,6 +164,15 @@ const WorldEditorInner = ({ onClose, embedded = false, backButton }: {
   }, [visibleTabs, activeTab]);
   // Which of the Locations tab's two views is showing — the tree, or the canvas of the same locations.
   const [locationView, setLocationView] = useState<LocationView>('list');
+  // Which of the entity panel's tabs is showing. Held here rather than in the panel, which remounts per
+  // entity, so an author reviewing every entity's descriptions stays on Descriptions down the list.
+  const [entityTab, setEntityTab] = useState<EntityPanelTab>('profile');
+  const entityTabs = useMemo(() => entityPanelTabsFor(advanced), [advanced]);
+  // Simple mode has no Placeholders tab. Derived rather than corrected in an effect, which would draw one
+  // frame of a strip with nothing selected over an empty body. The choice itself is kept, so returning to
+  // Advanced returns to the tab the author left.
+  const shownEntityTab = entityTabs.some((t) => t.value === entityTab) ? entityTab : 'profile';
+
   // DEV dev-router: jump to a specific editor tab via `#dev?modal=worldEditor&tab=…`. Tree-shaken in prod.
   const devRoute = useDevRoute();
   useEffect(() => {
@@ -172,6 +182,12 @@ const WorldEditorInner = ({ onClose, embedded = false, backButton }: {
   useEffect(() => {
     if (import.meta.env.DEV && LOCATION_VIEWS.some((v) => v.value === devSubtab)) {
       setLocationView(devSubtab as LocationView);
+    }
+  }, [devSubtab]);
+  // The same `subtab=…` slot over the Entities tab, where it names one of the entity panel's own tabs.
+  useEffect(() => {
+    if (import.meta.env.DEV && ENTITY_PANEL_TABS.some((t) => t.value === devSubtab)) {
+      setEntityTab(devSubtab as EntityPanelTab);
     }
   }, [devSubtab]);
   const [searchTerm, setSearchTerm] = useState('');
@@ -674,7 +690,7 @@ const WorldEditorInner = ({ onClose, embedded = false, backButton }: {
         <EntityGroupManager key={selectedEntityGroup.id} group={selectedEntityGroup} />
       )}
       {activeTab === "entities" && !selectedEntityGroup && selectedEntity && (
-        <EntityManager key={selectedEntity.id} entity={selectedEntity} />
+        <EntityManager key={selectedEntity.id} entity={selectedEntity} tab={shownEntityTab} onTabChange={setEntityTab} />
       )}
       {activeTab === "locations" && selectedItem && (
         <LocationManager key={selectedItem.id} location={selectedItem as GameLocation} />

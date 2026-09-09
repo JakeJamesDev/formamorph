@@ -7,6 +7,7 @@ import { PROMPT_SURFACE_ROUTES } from './promptGroups';
 import { WORLD_EDITOR_TABS } from '@/views/worldEditorTabs';
 import { BUILT_BENCH_TABS } from '@/lib/testBench/benchTabs';
 import { LOCATION_VIEWS } from '@/views/locationViews';
+import { ENTITY_PANEL_TABS } from '@/views/entityPanelTabs';
 import { MAIN_MENU_CARD_TABS } from '@/views/mainMenuTabs';
 import { GAME_LEFT_PANEL_TABS } from '@/components/game/leftPanelTabs';
 import { PROFILE_TABS } from '@/components/menu/profileTabs';
@@ -110,6 +111,11 @@ describe('dev-router coverage guard', () => {
 
   it('ledger lists exactly the views the Locations tab switches between', () => {
     expect([...DEV_MODAL_TABS.worldEditorLocations]).toEqual(LOCATION_VIEWS.map((v) => v.value));
+  });
+
+  it('ledger lists exactly the tabs the entity panel switches between', () => {
+    // Advanced-only tabs are listed too: the ledger says what the router can target, not what one mode shows.
+    expect([...DEV_MODAL_TABS.worldEditorEntity]).toEqual(ENTITY_PANEL_TABS.map((t) => t.value));
   });
 
   it('ledger lists exactly the tabs the Community browser switches between', () => {

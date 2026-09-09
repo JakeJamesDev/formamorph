@@ -8,8 +8,9 @@ import PlaceholderField, { PlaceholderNameField } from "@/components/prompt/Plac
 import { ModelUpload } from '../lib/UtilityComponents';
 import { IMAGE_CAPS } from '../lib/imageOptim';
 import { ENTITY_EMBEDDED_IMAGE_LIMIT, entityImages } from '../lib/entityImages';
-import ImageTagsField from './ImageTagsField';
+import { ImageGallery, ImageTags, ImageWidget } from './ImageTagsField';
 import { useEditorMode } from '@/lib/editorMode';
+import type { ReactNode } from 'react';
 import type { Entity, Placeholder } from '@/types';
 
 /** What every entity field group needs: the entity, a field writer, and the chip vocabulary to offer. */
@@ -152,9 +153,12 @@ export const EntityLocationsField = ({ value, options, selectedIds, onLocationsC
   </div>
 );
 
-/** The picture gallery with its tags and generate controls. */
-export const EntityGalleryField = ({ value, onChange, placeholders = [], ownerId }: EntityFieldGroupProps) => (
-  <ImageTagsField
+/**
+ * The entity's picture widget with neither piece placed: a host draws `ImageGallery` and `ImageTags` where
+ * its own layout wants them and both still write this entity. `EntityGalleryField` is the one-box version.
+ */
+export const EntityImageWidget = ({ value, onChange, placeholders = [], ownerId, children }: EntityFieldGroupProps & { children: ReactNode }) => (
+  <ImageWidget
     label="Image"
     images={entityImages(value)}
     onImagesChange={(list) => onChange('images', list)}
@@ -168,7 +172,16 @@ export const EntityGalleryField = ({ value, onChange, placeholders = [], ownerId
     onTagsChange={(t) => onChange('imageTags', t)}
     placeholders={placeholders}
     ownerId={ownerId}
-  />
+  >
+    {children}
+  </ImageWidget>
+);
+
+/** The picture gallery with its tags and generate controls, in one box. */
+export const EntityGalleryField = (props: EntityFieldGroupProps) => (
+  <EntityImageWidget {...props}>
+    <ImageGallery tagsSlot={<ImageTags />} />
+  </EntityImageWidget>
 );
 
 /** The 3D model slot. Advanced only. */
