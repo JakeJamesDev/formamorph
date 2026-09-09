@@ -1,3 +1,4 @@
+import { Redo2, Undo2, type LucideIcon } from "lucide-react";
 import { CONNECTION_STYLES, type ConnectionStyle } from "./canvasEdgePath";
 
 /**
@@ -9,12 +10,14 @@ import { CONNECTION_STYLES, type ConnectionStyle } from "./canvasEdgePath";
  */
 
 /** One row. `checked` is what makes a row a setting rather than an action; `exclusive` marks the settings
- *  that are one choice between each other rather than a switch of their own. */
+ *  that are one choice between each other rather than a switch of their own. `icon` is what an action row
+ *  carries in place of a set row's checkmark — it never folds, so it stays visually apart instead. */
 export interface CanvasMenuItem {
   label: string;
   checked?: boolean;
   exclusive?: boolean;
   disabled?: boolean;
+  icon?: LucideIcon;
   onSelect: () => void;
 }
 
@@ -72,8 +75,8 @@ export function canvasMenuSections(
     onSelect: () => actions.setConnectionStyle(value),
   }));
   const history: CanvasMenuItem[] = [
-    { label: "Undo", disabled: !state.canUndo, onSelect: actions.undo },
-    { label: "Redo", disabled: !state.canRedo, onSelect: actions.redo },
+    { label: "Undo", icon: Undo2, disabled: !state.canUndo, onSelect: actions.undo },
+    { label: "Redo", icon: Redo2, disabled: !state.canRedo, onSelect: actions.redo },
   ];
   // A target with nothing to offer contributes no group, rather than a separator with nothing between it.
   return [

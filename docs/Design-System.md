@@ -316,6 +316,7 @@ The reference preserves production density and panel placement. Dense labels can
 | Menu primitives, checkmarks, focus, dismissal, and touch hold | [`context-menu.tsx`](../src/components/ui/context-menu.tsx) |
 | Destructive confirmation and cancellation | `ConfirmDialog` in [`ConfirmDialog.tsx`](../src/components/ConfirmDialog.tsx), controlled by [`MainMenu.tsx`](../src/views/MainMenu.tsx) |
 | Isolated reference | [`MainMenuContextMenuReference.tsx`](../src/components/design-system/MainMenuContextMenuReference.tsx) |
+| Canvas menu, the pattern's second production instance | `canvasMenuSections` in [`canvasMenu.ts`](../src/lib/canvasMenu.ts) and `LocationCanvas` in [`LocationCanvas.tsx`](../src/managers/LocationCanvas.tsx). Right-click the canvas in the existing [`LocationsCanvasReference.tsx`](../src/components/design-system/LocationsCanvasReference.tsx). |
 
 ### Responsive behavior
 

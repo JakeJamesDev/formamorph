@@ -1,4 +1,5 @@
 import { beforeEach, describe, it, expect, vi } from "vitest";
+import { Pencil, Redo2, Undo2 } from "lucide-react";
 import { canvasMenuSections, type CanvasMenuItem, type CanvasMenuSection, type CanvasMenuState } from "./canvasMenu";
 
 const noop = () => {};
@@ -16,9 +17,11 @@ const rowsOf = (sections: CanvasMenuSection[], label: string) =>
 describe("canvasMenuSections", () => {
   beforeEach(() => { vi.clearAllMocks(); });
 
+  // Icons on the fixture stand in for what the caller has already attached by the time these rows arrive —
+  // the section builder never invents one for a target action, only for the history rows it builds itself.
   const nodeActions: CanvasMenuItem[] = [
-    { label: "Edit Location", onSelect: noop },
-    { label: "Auto Arrange", onSelect: noop },
+    { label: "Edit Location", icon: Pencil, onSelect: noop },
+    { label: "Auto Arrange", icon: Pencil, onSelect: noop },
   ];
 
   it("leads with the titled sets, then history, then what was clicked", () => {
@@ -76,6 +79,20 @@ describe("canvasMenuSections", () => {
     const styles = canvasMenuSections(state, actions, nodeActions)[1];
     expect(styles.title).toBe("Connection Style");
     expect(styles.items.map((item) => item.label)).toEqual(["Straight", "Curved", "Elbow"]);
+  });
+
+  it("carries an icon on every action row and none on a set row", () => {
+    const sections = canvasMenuSections(state, actions, nodeActions);
+    expect(sections[0].items.every((item) => item.icon === undefined)).toBe(true); // Grid
+    expect(sections[1].items.every((item) => item.icon === undefined)).toBe(true); // Connection Style
+    expect(sections[2].items.every((item) => item.icon !== undefined)).toBe(true); // history
+    expect(sections[3].items.every((item) => item.icon !== undefined)).toBe(true); // what was clicked
+  });
+
+  it("gives Undo and Redo the same icons as the canvas toolbar", () => {
+    const sections = canvasMenuSections(state, actions, nodeActions);
+    expect(rowsOf(sections, "Undo")?.icon).toBe(Undo2);
+    expect(rowsOf(sections, "Redo")?.icon).toBe(Redo2);
   });
 
   it("hands each row's press straight to what it is a row for", () => {
