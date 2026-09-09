@@ -79,6 +79,28 @@ it('opens the canvas menu with titled sets, and Escape closes it and hands focus
   expect(document.activeElement).toBe(container.querySelector('[tabindex="-1"]'));
 });
 
+it('shows an icon before every action row label, with no reserved column left blank', async () => {
+  const { container } = render(<TooltipProvider><LocationsCanvasReference /></TooltipProvider>);
+  const pane = container.querySelector('.react-flow__pane') as HTMLElement;
+
+  fireEvent.contextMenu(pane);
+  const menu = await screen.findByRole('menu', { name: 'Canvas Options' });
+
+  // Every action row draws a real icon rather than the checkbox/radio rows' own opacity-toggled tick.
+  for (const name of ['Undo', 'Redo', 'Select All Locations', 'Auto Arrange All']) {
+    const icon = within(menu).getByRole('menuitem', { name }).querySelector('svg');
+    expect(icon).toBeInTheDocument();
+    expect(icon).not.toHaveClass('opacity-0');
+  }
+
+  // A set row wears only the shared checked-state tick, opacity-toggled by whether it is checked — never
+  // an action row's own icon.
+  for (const name of ['Snap To Grid', 'Show Grid']) {
+    const tick = within(menu).getByRole('menuitemcheckbox', { name }).querySelector('svg');
+    expect(tick?.classList.contains('opacity-0') || tick?.classList.contains('opacity-100')).toBe(true);
+  }
+});
+
 it('walks every row with the arrow keys, and the titles are not among the stops', async () => {
   const user = userEvent.setup();
   const { container } = render(<TooltipProvider><LocationsCanvasReference /></TooltipProvider>);

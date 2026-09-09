@@ -20,6 +20,7 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
   - **Library tile menus show three group shortcuts and a searchable group picker.** Full names remain available in compact choice rows. Create New Group asks for a name and rejects blank or duplicate names before assigning the item.
   - **Every website page shares a compact header with underlined Community navigation and an avatar menu for Profile, Account Settings, appearance, and Sign Out.** Light, Dark, and System use the same theme setting as the app and follow changes in other tabs.
   - **The website Community catalog starts with the most-liked creations first.** Visitors can change the sort, and website browsing preferences stay separate from the app.
+  - **The Locations Canvas menu groups Grid and Connection Style rows under titles and gives every action row an icon.** Connection Style rows read Straight, Curved, and Elbow. Undo and Redo carry the toolbar's own icons, and the menu no longer reserves blank space before an action's label.
 
 - **🛠️ Developer tooling**
   - **A paired stat-name probe compares formatted and plain AI requests using the real parser and update code.** It measures missed updates, unintended changes, and unrecognized replies on the stat relevance cases.

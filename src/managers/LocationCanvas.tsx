@@ -10,8 +10,9 @@ import {
 import '@xyflow/react/dist/base.css';
 import {
   AlertTriangle, AlignHorizontalDistributeCenter, AlignStartHorizontal, AlignStartVertical,
-  AlignVerticalDistributeCenter, ArrowLeft, ArrowLeftRight, ArrowRight, Check, CornerDownRight, Grid2x2,
-  LayoutGrid, Magnet, Maximize2, Minimize2, Minus, Redo2, Search, Spline, Star, Trash2, Undo2, X,
+  AlignVerticalDistributeCenter, ArrowLeft, ArrowLeftRight, ArrowRight, CornerDownRight, Grid2x2,
+  LayoutGrid, Magnet, Maximize2, Minimize2, Minus, Pencil, Redo2, Search, Spline, SquareCheck, Star, Trash2,
+  Undo2, X,
 } from 'lucide-react';
 import { useGameData } from '@/contexts/GameDataContext';
 import FullscreenShell from '@/components/FullscreenShell';
@@ -382,8 +383,8 @@ const CanvasMenu = ({ sections, menuRef, frameRef }: {
           )
           : section.items.map((item) => (
             <ContextMenuItem key={item.label} disabled={item.disabled} onSelect={item.onSelect}>
-              {/* The tick's column is held even by an action, so every label in the menu starts on one line. */}
-              <Check className="h-4 w-4 shrink-0 opacity-0" />
+              {/* Every action row carries an icon; labels align on it, as the Main Menu menu's do. */}
+              {item.icon && <item.icon className="h-4 w-4 shrink-0" />}
               {item.label}
             </ContextMenuItem>
           ))}
@@ -1192,6 +1193,7 @@ const CanvasInner = ({ selectedId, onSelect, session, fullscreen, onToggleFullsc
     if (target.kind === 'node') {
       const items: CanvasMenuItem[] = [{
         label: 'Edit Location',
+        icon: Pencil,
         onSelect: () => {
           setSelection((id) => id === target.id);
           lastSyncedRef.current = target.id;
@@ -1201,6 +1203,8 @@ const CanvasInner = ({ selectedId, onSelect, session, fullscreen, onToggleFullsc
       if (locations.some((l) => holderOf(locations, l) === target.id)) {
         items.push({
           label: 'Auto Arrange',
+          // Both Auto Arrange rows share the toolbar's own arrangement icon.
+          icon: LayoutGrid,
           onSelect: () => commitLocations(autoArrange(locations, connections, target.id)),
         });
       }
@@ -1210,16 +1214,22 @@ const CanvasInner = ({ selectedId, onSelect, session, fullscreen, onToggleFullsc
       // The same finishing moves the toolbar carries, offered where the selection itself was right-clicked.
       // An even spacing needs three boxes to mean anything, so below that it is not offered at all.
       return [
-        ...ALIGN_TOOLS.map(({ label, edge }) => ({ label, onSelect: () => alignSelection(edge) })),
+        ...ALIGN_TOOLS.map(({ label, edge, Icon }) => ({ label, icon: Icon, onSelect: () => alignSelection(edge) })),
         ...(selectedIds.length > 2
-          ? DISTRIBUTE_TOOLS.map(({ label, axis }) => ({ label, onSelect: () => distributeSelection(axis) }))
+          ? DISTRIBUTE_TOOLS.map(({ label, axis, Icon }) => (
+            { label, icon: Icon, onSelect: () => distributeSelection(axis) }
+          ))
           : []),
-        { label: 'Clear Selection', onSelect: () => setSelection(() => false) },
+        { label: 'Clear Selection', icon: X, onSelect: () => setSelection(() => false) },
       ];
     }
     return [
-      { label: 'Select All Locations', onSelect: () => setSelection(() => true) },
-      { label: 'Auto Arrange All', onSelect: () => commitLocations(autoArrangeAll(locations, connections)) },
+      { label: 'Select All Locations', icon: SquareCheck, onSelect: () => setSelection(() => true) },
+      {
+        label: 'Auto Arrange All',
+        icon: LayoutGrid,
+        onSelect: () => commitLocations(autoArrangeAll(locations, connections)),
+      },
     ];
   };
 
