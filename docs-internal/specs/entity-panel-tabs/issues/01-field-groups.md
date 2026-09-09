@@ -1,6 +1,7 @@
 # 01: Split The Entity Field Body Into Named Groups
 
-Status: ready-for-agent
+Status: in-progress
+Base: e16d4a91
 Blocked by: None (can start immediately)
 Recommended model: Claude Opus 5 (`claude-opus-5`)
 Reasoning effort: medium
