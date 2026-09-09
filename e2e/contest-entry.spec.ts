@@ -240,7 +240,7 @@ test('a world published with the entry switch on shows up in the contest tab', a
   const catalogEntry = page.getByText(`By ${username}`, { exact: true });
   await expect(catalogEntry).toBeVisible();
 
-  await page.getByRole('tab', { name: 'Contest' }).click();
+  await page.getByRole('button', { name: 'Contest' }).click();
   // The bar's Rules button, not the contest's title: the title also sits in the menu's event banner
   // behind this dialog. What ties the grid below to *this* contest is the entry itself — the tab shows
   // only worlds carrying the contest's id, so a listing appearing here is the server having stored it.

@@ -81,7 +81,7 @@ const renderBrowserProps = (props: Record<string, unknown>) => (
   />
 );
 
-const contestTab = () => screen.getByRole('tab', { name: 'Contest' });
+const contestTab = () => screen.getByRole('button', { name: 'Contest' });
 
 beforeEach(() => {
   localStorage.clear();
@@ -133,13 +133,13 @@ describe('reaching the entries from the banner in the header', () => {
     render(<Host events={[contest]} />);
 
     await userEvent.click(await screen.findByRole('button', { name: 'View Entries' }));
-    expect(contestTab()).toHaveAttribute('data-state', 'active');
+    expect(contestTab()).toHaveAttribute('aria-current', 'true');
 
     // Away and back: the banner returns, since the contest hides itself only on its own tab.
-    await userEvent.click(screen.getByRole('tab', { name: 'Worlds' }));
+    await userEvent.click(screen.getByRole('button', { name: 'Worlds' }));
     await userEvent.click(await screen.findByRole('button', { name: 'View Entries' }));
 
-    expect(contestTab()).toHaveAttribute('data-state', 'active');
+    expect(contestTab()).toHaveAttribute('aria-current', 'true');
   });
 
   it('lands there every time from the dismissed chip too', async () => {
@@ -149,11 +149,11 @@ describe('reaching the entries from the banner in the header', () => {
     const chip = async () => await screen.findByRole('button', { name: /Winter World-Building Contest/ });
 
     await userEvent.click(await chip());
-    expect(contestTab()).toHaveAttribute('data-state', 'active');
+    expect(contestTab()).toHaveAttribute('aria-current', 'true');
 
-    await userEvent.click(screen.getByRole('tab', { name: 'Worlds' }));
+    await userEvent.click(screen.getByRole('button', { name: 'Worlds' }));
     await userEvent.click(await chip());
 
-    expect(contestTab()).toHaveAttribute('data-state', 'active');
+    expect(contestTab()).toHaveAttribute('aria-current', 'true');
   });
 });
