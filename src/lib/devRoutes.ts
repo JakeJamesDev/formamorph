@@ -90,6 +90,10 @@ export const DEV_MODAL_TABS = {
   // (`#dev?modal=worldEditor&tab=locations&subtab=canvas`). Adding `fullscreen=1` opens the canvas in its
   // full-screen window on arrival — the same canvas, so it is not a third view and not listed as one.
   worldEditorLocations: ['list', 'canvas'],
+  // The World Editor's entity panel splits its fields across its own tabs, reached with the same `subtab=…`
+  // slot over the Entities tab (`#dev?modal=worldEditor&tab=entities&subtab=descriptions`). It lands on the
+  // panel, so pair it with a world that has an entity to select. `placeholders` is Advanced only.
+  worldEditorEntity: ['profile', 'descriptions', 'placeholders'],
   // The World Editor's Test Bench: `bench=…` opens the full panel — at whichever placement is remembered —
   // on the instrument it names (`#dev?modal=worldEditor&bench=issues`). Only built instruments are listed,
   // since an unbuilt tab renders

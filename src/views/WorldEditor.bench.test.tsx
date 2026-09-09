@@ -101,7 +101,7 @@ describe('WorldEditor — the Bench Popover', () => {
     fireEvent.click(await screen.findByRole('button', { name: 'Maren' }));
 
     // The entity opened in the detail panel, and the list is still there to work down.
-    expect(await screen.findByText('Player-Facing Description')).toBeInTheDocument();
+    expect(await screen.findByText('Name')).toBeInTheDocument();
     expect(popoverShown()).toBe(true);
   });
 
@@ -137,7 +137,7 @@ describe('WorldEditor — where the full Bench sits', () => {
 
     // And the detail panel beside it is what a finding's item opens into.
     fireEvent.click(await screen.findByRole('button', { name: 'Maren' }));
-    expect(await screen.findByText('Player-Facing Description')).toBeInTheDocument();
+    expect(await screen.findByText('Name')).toBeInTheDocument();
     expect(benchPanelShown()).toBe(true);
   });
 
@@ -214,6 +214,6 @@ describe('WorldEditor — the Bench on mobile', () => {
     fireEvent.click(await screen.findByRole('button', { name: 'Maren' }));
     // The sheet covers the editor, so navigation that stayed under it would be navigation nobody sees.
     await waitFor(() => expect(sheet()).toHaveAttribute('data-state', 'closed'));
-    expect(await screen.findByText('Player-Facing Description')).toBeInTheDocument();
+    expect(await screen.findByText('Name')).toBeInTheDocument();
   });
 });
