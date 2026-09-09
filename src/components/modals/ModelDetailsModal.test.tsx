@@ -1,13 +1,15 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
+import type { ReactNode } from 'react';
 import { render, screen, waitFor } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { ModelDetailsModal } from './ModelDetailsModal';
 import type { VrmLicense } from '@/types';
 
 // A shell that renders only what this suite checks — the license the modal resolved and handed down — same
 // approach WorldOverviewManager.avatar.test.tsx uses to keep the real 3D viewer out of this suite entirely.
 vi.mock('./ModelDetailsPanel', () => ({
-  ModelDetailsPanel: ({ open, license }: { open: boolean; license?: VrmLicense }) =>
-    open ? <div data-testid="panel">{JSON.stringify(license)}</div> : null,
+  ModelDetailsPanel: ({ open, license, footer }: { open: boolean; license?: VrmLicense; footer?: ReactNode }) =>
+    open ? <div data-testid="panel">{JSON.stringify(license)}{footer}</div> : null,
 }));
 
 const getModelData = vi.fn();
@@ -84,5 +86,41 @@ describe('ModelDetailsModal', () => {
     );
 
     expect(screen.getByTestId('panel')).toHaveTextContent(JSON.stringify(STALE_LICENSE));
+  });
+});
+
+describe('publishing from the details view', () => {
+  const model = { id: 'm1', name: 'Test', type: 'model/vrm', size: 1, license: FRESH_LICENSE };
+
+  beforeEach(() => {
+    ensureThumbnail.mockResolvedValue(undefined);
+    getModelData.mockResolvedValue({ type: 'model/vrm', blob: new Blob(['x']), size: 1, license: FRESH_LICENSE });
+  });
+
+  it('hands the model back to the caller, which owns the gate and the dialog', async () => {
+    const onPublish = vi.fn();
+    render(<ModelDetailsModal model={model} onPublish={onPublish} onClose={() => {}} />);
+
+    await userEvent.click(await screen.findByRole('button', { name: /publish avatar/i }));
+
+    expect(onPublish).toHaveBeenCalledWith(model);
+  });
+
+  it('is offered on a model whose file grants nothing, because that is where the refusal is explained', async () => {
+    // The button is not a claim that this file may be shared. Pressing it is how a player finds out
+    // which requirement their export fails, so hiding it would leave them with no way to ask.
+    const unshareable = { ...model, license: { metaVersion: null } as VrmLicense };
+    getModelData.mockResolvedValue({ type: 'model/vrm', blob: new Blob(['x']), size: 1, license: unshareable.license });
+
+    render(<ModelDetailsModal model={unshareable} onPublish={vi.fn()} onClose={() => {}} />);
+
+    expect(await screen.findByRole('button', { name: /publish avatar/i })).toBeEnabled();
+  });
+
+  it('offers nothing to a reader who cannot publish at all', async () => {
+    render(<ModelDetailsModal model={model} onClose={() => {}} />);
+
+    await screen.findByRole('button', { name: /export avatar/i });
+    expect(screen.queryByRole('button', { name: /publish avatar/i })).not.toBeInTheDocument();
   });
 });

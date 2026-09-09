@@ -9,7 +9,7 @@ import { describePlaceholders } from '@/lib/placeholders';
 import { allPlaceholders } from '@/lib/placeholderHomes';
 import { readDeletedDefaultWorlds, tombstoneDefaultWorld, type DefaultWorldSeed } from '@/lib/defaultWorlds';
 import { changelogOf, type ChangelogDraft, type ChangelogEntry } from '@/lib/listingChangelog';
-import type { LikerAuditRow, LikerRow, WorldMetadata } from '@/types';
+import type { LikerAuditRow, LikerRow, VrmLicense, WorldMetadata } from '@/types';
 
 /**
  * What a conditional catalog fetch answers with: a fresh snapshot and the tag to store beside it, the
@@ -675,17 +675,17 @@ class WorldStorageService {
   }
 
   /**
-   * Read a listing's changelog, or learn that this server has none.
+   * Read what a listing shows only when it is opened on its own: its changelog, and an Avatar's license.
    *
-   * Fetched as part of the listing behind the opt-in flag rather than from a route of its own, which is
-   * how the server serves it. Null means the deploy predates the feature — see `changelogOf`, which is
-   * what every surface reads the answer through, so the feature can be simply invisible against an older
-   * server rather than broken. A failed request is null for the same reason: nothing is worth an error
-   * toast over a panel the reader did not ask for.
+   * One request for both, because the server serves both as part of the listing row rather than from
+   * routes of their own. A null changelog means the deploy predates that feature — see `changelogOf`,
+   * which every surface reads the answer through, so the feature is invisible against an older server
+   * rather than broken. A failed request is null throughout for the same reason: nothing here is worth an
+   * error toast over a panel the reader did not ask for.
    *
    * @param worldId - The listing's server id
    */
-  async fetchChangelog(worldId: string): Promise<ChangelogEntry[] | null> {
+  async fetchListingDetails(worldId: string): Promise<{ changelog: ChangelogEntry[] | null; modelLicense?: VrmLicense } | null> {
     try {
       const headers: Record<string, string> = {};
       if (AuthService.isAuthenticated()) {
@@ -696,9 +696,9 @@ class WorldStorageService {
 
       const body = await response.json();
 
-      return changelogOf(body.data);
+      return { changelog: changelogOf(body.data), modelLicense: body.data?.modelLicense };
     } catch (error) {
-      console.error('Error fetching the changelog:', error);
+      console.error('Error fetching the listing:', error);
       return null;
     }
   }

@@ -32,7 +32,8 @@ import { WorldActionButton } from "@/components/WorldActionButton";
 import { PlaceBadges } from "@/components/PlaceBadges";
 import { placementsBy } from "@/lib/contests";
 import { Tip } from "@/components/ui/tooltip";
-import type { ServerEvent } from "@/types";
+import { VrmFileDetails } from "@/components/VrmFileDetails";
+import type { ServerEvent, VrmLicense } from "@/types";
 import type { CommunityBrowserCapabilities } from '@/lib/communityBrowserCapabilities';
 
 interface RemoteWorldDetailsModalProps {
@@ -100,6 +101,9 @@ export function RemoteWorldDetailsModal({
   // Null until the listing has been read, and null forever against a server that has never heard of
   // changelogs — which is what keeps the whole feature invisible rather than broken on an old deploy.
   const [changelog, setChangelog] = useState<ChangelogEntry[] | null>(null);
+  // An Avatar's own license terms, read from the file at publish. Undefined for every other kind, and
+  // against a server that predates the field.
+  const [modelLicense, setModelLicense] = useState<VrmLicense | undefined>(undefined);
   const [tab, setTab] = useState<ChangelogTab>('comments');
   // What the report dialog is aimed at, or null when it is closed. One dialog for both the listing and
   // any comment on it — they differ only in what they point at.
@@ -191,17 +195,20 @@ export function RemoteWorldDetailsModal({
   };
 
   /**
-   * Read the listing's changelog, and decide which panel this reader arrives on.
+   * Read what only an open listing shows — its changelog and, for an Avatar, its license terms — and
+   * decide which panel this reader arrives on.
    *
    * Tokened like the comments fetch, and for the same reason: a slow answer for a since-closed world must
    * not land in a different world's modal.
    */
-  const loadChangelog = async (worldId: string, forWorld: WorldRecord) => {
+  const loadListingDetails = async (worldId: string, forWorld: WorldRecord) => {
     const reqId = ++changelogReqRef.current;
-    const entries = await WorldStorageService.fetchChangelog(worldId);
+    const details = await WorldStorageService.fetchListingDetails(worldId);
     if (reqId !== changelogReqRef.current) return;
 
+    const entries = details?.changelog ?? null;
     setChangelog(entries);
+    setModelLicense(details?.modelLicense);
     setTab(defaultChangelogTab(entries, downloadStateForWorld(forWorld)));
   };
 
@@ -215,10 +222,11 @@ export function RemoteWorldDetailsModal({
       // Cleared rather than left standing: the previous world's history must not show under this one's
       // name for the frames before the fetch answers.
       setChangelog(null);
+      setModelLicense(undefined);
       setTab('comments');
       setReportTarget(null);
       loadComments(world._id || world.id, COMMENTS_PAGE);
-      void loadChangelog(world._id || world.id, world);
+      void loadListingDetails(world._id || world.id, world);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, world?._id, world?.id]);
@@ -404,6 +412,16 @@ export function RemoteWorldDetailsModal({
                       <h3 className="text-helper font-semibold text-muted-foreground">Updated</h3>
                       <p>{world.updated_at ? <DateTimeText value={world.updated_at} /> : "Unknown"}</p>
                     </div>
+
+                    {/* What the file itself permits, read from it at publish. A downloader decides here
+                        what they may do with an Avatar, before they take it. */}
+                    {modelLicense && (
+                      <div className="col-span-2">
+                        <h3 className="text-helper font-semibold text-muted-foreground">Avatar File</h3>
+                        {modelLicense.title && <p className="text-meta">{modelLicense.title}</p>}
+                        <VrmFileDetails license={modelLicense} />
+                      </div>
+                    )}
 
                     {/* Quiet and at the bottom, under everything the page is actually for. Never on your
                         own listing — reporting yourself is a way into the queue, not moderation. */}

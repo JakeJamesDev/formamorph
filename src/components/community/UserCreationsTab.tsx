@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState, type ReactNode } from "react";
-import { BookOpen, Download, Earth, EyeOff, MessageSquare, User } from "lucide-react";
+import { BookOpen, Download, Earth, EyeOff, MessageSquare, PersonStanding, User } from "lucide-react";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
@@ -18,6 +18,7 @@ const KIND_ICONS: Record<CatalogKind, typeof Earth> = {
   world: Earth,
   entity: User,
   dictionary: BookOpen,
+  model: PersonStanding,
 };
 
 /** The list's own box: a fixed scroller in a dialog, nothing at all on a page. */
@@ -81,7 +82,7 @@ export function UserCreationsTab({ userId, username, onOpenListing, listingHref,
   }, [userId]);
 
   const counts = useMemo(() => {
-    const tally = { world: 0, entity: 0, dictionary: 0 } satisfies Record<CatalogKind, number>;
+    const tally = { world: 0, entity: 0, dictionary: 0, model: 0 } satisfies Record<CatalogKind, number>;
     for (const row of creations) tally[row.kind] += 1;
 
     return tally;

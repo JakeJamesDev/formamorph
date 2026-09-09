@@ -666,9 +666,27 @@ describe('the listing changelog', () => {
   it('asks for the changelog as part of the listing, behind the opt-in flag', async () => {
     vi.mocked(fetch).mockResolvedValue(res({ data: { id: 'w1', changelog: [] } }));
 
-    await WorldStorageService.fetchChangelog('w1');
+    await WorldStorageService.fetchListingDetails('w1');
 
     expect(vi.mocked(fetch).mock.calls[0][0]).toContain('/worlds/w1?includeChangelog=true');
+  });
+
+  it('reads an Avatar’s license terms out of the same request as its changelog', () => {
+    // One request, because the server serves both as part of the listing row — a second one for the
+    // terms would double what opening any listing costs.
+    const license = { metaVersion: '1', title: 'Sedge', authors: ['Alice'] };
+    vi.mocked(fetch).mockResolvedValue(res({ data: { id: 'w1', changelog: [], modelLicense: license } }));
+
+    return WorldStorageService.fetchListingDetails('w1').then((details) => {
+      expect(details?.modelLicense).toEqual(license);
+      expect(vi.mocked(fetch)).toHaveBeenCalledTimes(1);
+    });
+  });
+
+  it('reports no license terms for a kind that has none', async () => {
+    vi.mocked(fetch).mockResolvedValue(res({ data: { id: 'w1', changelog: [] } }));
+
+    expect((await WorldStorageService.fetchListingDetails('w1'))?.modelLicense).toBeUndefined();
   });
 
   it('hands back the entries in reading order', async () => {
@@ -679,9 +697,9 @@ describe('the listing changelog', () => {
       },
     }));
 
-    const entries = await WorldStorageService.fetchChangelog('w1');
+    const details = await WorldStorageService.fetchListingDetails('w1');
 
-    expect(entries?.map((e) => e.id)).toEqual(['new', 'old']);
+    expect(details?.changelog?.map((e) => e.id)).toEqual(['new', 'old']);
   });
 
   it('answers null on a server whose listings carry no changelog field', async () => {
@@ -689,25 +707,25 @@ describe('the listing changelog', () => {
     // every surface reading this hides itself rather than showing an empty tab.
     vi.mocked(fetch).mockResolvedValue(res({ data: { id: 'w1', name: 'Sedge Landing' } }));
 
-    expect(await WorldStorageService.fetchChangelog('w1')).toBeNull();
+    expect((await WorldStorageService.fetchListingDetails('w1'))?.changelog).toBeNull();
   });
 
   it('tells an empty changelog apart from a server that has none', async () => {
     vi.mocked(fetch).mockResolvedValue(res({ data: { id: 'w1', changelog: [] } }));
 
-    expect(await WorldStorageService.fetchChangelog('w1')).toEqual([]);
+    expect((await WorldStorageService.fetchListingDetails('w1'))?.changelog).toEqual([]);
   });
 
   it('answers null rather than throwing when the request fails', async () => {
     vi.mocked(fetch).mockResolvedValue(res({ error: 'World not found' }, false, 404));
 
-    expect(await WorldStorageService.fetchChangelog('w1')).toBeNull();
+    expect(await WorldStorageService.fetchListingDetails('w1')).toBeNull();
   });
 
   it('answers null when the network is gone', async () => {
     vi.mocked(fetch).mockRejectedValue(new Error('offline'));
 
-    expect(await WorldStorageService.fetchChangelog('w1')).toBeNull();
+    expect(await WorldStorageService.fetchListingDetails('w1')).toBeNull();
   });
 
   it('posts a new entry with its fields trimmed', async () => {

@@ -92,8 +92,8 @@ describe('the section switcher on landscape (the rail)', () => {
   it('lists the catalog kinds in kind order, with no header tabs', async () => {
     renderBrowser();
 
-    const rows = await screen.findAllByRole('button', { name: /^(Worlds|Entities|Dictionaries)$/ });
-    expect(rows.map((r) => r.textContent)).toEqual(['Worlds', 'Entities', 'Dictionaries']);
+    const rows = await screen.findAllByRole('button', { name: /^(Worlds|Entities|Dictionaries|Avatars)$/ });
+    expect(rows.map((r) => r.textContent)).toEqual(['Worlds', 'Entities', 'Dictionaries', 'Avatars']);
     expect(screen.queryByRole('tab')).not.toBeInTheDocument();
   });
 
@@ -146,5 +146,59 @@ describe('the section switcher on portrait (the dropdown)', () => {
     await userEvent.click(entities);
 
     expect(trigger).toHaveTextContent('Entities');
+  });
+
+  it('offers every catalog kind, Avatars included', async () => {
+    renderBrowser();
+
+    const trigger = await screen.findByRole('combobox');
+    await userEvent.click(trigger);
+
+    const avatars = screen.getByRole('option', { name: 'Avatars' });
+    expect(avatars.querySelector('svg')).not.toBeNull();
+    await userEvent.click(avatars);
+
+    expect(trigger).toHaveTextContent('Avatars');
+  });
+});
+
+describe('a kind the catalog carries before its library does', () => {
+  beforeEach(() => stubMatchMedia(false));
+
+  /** One listing of `kind`, shaped as the catalog serves it. */
+  const listed = (kind: string) => ({
+    _id: `${kind}-1`,
+    id: `${kind}-1`,
+    name: `A ${kind}`,
+    kind,
+    description: '',
+    tags: [],
+    author: { id: 'a1', username: 'wren_hallow' },
+    downloads: 0,
+    likes: 0,
+  });
+
+  it('offers no Save on an Avatar card, whose library instance has not landed', async () => {
+    // Avatars became browsable before the model download instance existed. Without this, the card's
+    // Save ran the dictionary importer over a VRM — the fallback in `downloadFor` sent every non-entity
+    // kind to the dictionary library.
+    catalog.items = [listed('model')];
+    renderBrowser();
+
+    await userEvent.click(await screen.findByRole('button', { name: 'Avatars' }));
+
+    expect(await screen.findByText('A model')).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /download this avatar/i })).not.toBeInTheDocument();
+  });
+
+  it('still offers Save on a Dictionary, whose library it does have', async () => {
+    // The other half of the guard: it withholds for the one reason, not because it withholds.
+    catalog.items = [listed('dictionary')];
+    renderBrowser();
+
+    await userEvent.click(await screen.findByRole('button', { name: 'Dictionaries' }));
+
+    expect(await screen.findByText('A dictionary')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /download this dictionary/i })).toBeInTheDocument();
   });
 });

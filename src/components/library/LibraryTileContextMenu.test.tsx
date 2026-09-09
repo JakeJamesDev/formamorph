@@ -70,3 +70,64 @@ describe('LibraryTileContextMenu', () => {
     expect(screen.getByText('Add To Group')).toBeInTheDocument();
   });
 });
+
+describe('Publish', () => {
+  const itemTiles = (): LibraryTileMenuModel => ({ ...groupTileModel(), group: () => undefined });
+
+  const showItem = (props: Record<string, unknown>) => render(
+    <LibraryTileContextMenu
+      id="model-1"
+      name="Sedge"
+      tiles={itemTiles()}
+      layout="grid"
+      renderedIds={['model-1']}
+      baseCols={4}
+      onOpenGroup={vi.fn()}
+      {...props}
+    >
+      <button>Sedge tile</button>
+    </LibraryTileContextMenu>,
+  );
+
+  it('publishes the tile it was opened on', async () => {
+    const user = userEvent.setup();
+    const onPublish = vi.fn();
+    showItem({ onPublish, onDelete: vi.fn() });
+
+    fireEvent.contextMenu(screen.getByRole('button', { name: 'Sedge tile' }));
+    await user.click(screen.getByRole('menuitem', { name: 'Publish' }));
+
+    expect(onPublish).toHaveBeenCalledWith('model-1');
+  });
+
+  it('is absent on a tab that cannot publish, which still keeps Delete', () => {
+    showItem({ onDelete: vi.fn() });
+
+    fireEvent.contextMenu(screen.getByRole('button', { name: 'Sedge tile' }));
+
+    expect(screen.queryByRole('menuitem', { name: 'Publish' })).not.toBeInTheDocument();
+    expect(screen.getByRole('menuitem', { name: 'Delete' })).toBeInTheDocument();
+  });
+
+  it('is absent on a folder, which is an arrangement rather than a thing to publish', () => {
+    render(
+      <LibraryTileContextMenu
+        id={group.id}
+        name={group.name}
+        tiles={groupTileModel()}
+        layout="grid"
+        renderedIds={[group.id]}
+        baseCols={4}
+        onOpenGroup={vi.fn()}
+        onPublish={vi.fn()}
+        onDelete={vi.fn()}
+      >
+        <button>Favorites tile</button>
+      </LibraryTileContextMenu>,
+    );
+
+    fireEvent.contextMenu(screen.getByRole('button', { name: 'Favorites tile' }));
+
+    expect(screen.queryByRole('menuitem', { name: 'Publish' })).not.toBeInTheDocument();
+  });
+});

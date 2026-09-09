@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
-import { worldPublishPayload, entityPublishPayload, dictionaryPublishPayload, publishTags } from './publishPayload';
-import type { World, Entity, Dictionary, Placeholder } from '@/types';
+import { worldPublishPayload, entityPublishPayload, dictionaryPublishPayload, modelPublishPayload, publishTags } from './publishPayload';
+import type { World, Entity, Dictionary, Placeholder, VrmLicense } from '@/types';
 import { encodePlaceholderToken } from './placeholders';
 
 import { phValues } from '@/test/placeholderValues';
@@ -217,5 +217,83 @@ describe('linked images survive publishing', () => {
 
     expect(content.entities[0].images).toEqual(['https://files.example/a.png']);
     expect(content.locations[0].backgroundImage).toBe('https://files.example/bg.png');
+  });
+});
+
+describe('modelPublishPayload', () => {
+  const license = (over: Partial<VrmLicense> = {}): VrmLicense => ({
+    metaVersion: '1',
+    avatarPermission: 'everyone',
+    allowRedistribution: true,
+    modification: 'allowModificationRedistribution',
+    commercialUse: 'corporation',
+    ...over,
+  });
+
+  const model = (over = {}) => ({
+    name: 'sedge_export_final',
+    vrm: 'data:model/vnd.vrm;base64,AAAA',
+    license: license(),
+    hash: 'abc123',
+    ...over,
+  });
+
+  it('prefers the file’s own title over the library name', () => {
+    // The library name often comes from a filename an export tool chose; the title is what the author wrote.
+    expect(modelPublishPayload(model({ license: license({ title: 'Sedge' }) })).name).toBe('Sedge');
+  });
+
+  it('falls back to the library name when the file carries no title', () => {
+    expect(modelPublishPayload(model()).name).toBe('sedge_export_final');
+  });
+
+  it('ignores a title that is only whitespace', () => {
+    expect(modelPublishPayload(model({ license: license({ title: '   ' }) })).name).toBe('sedge_export_final');
+  });
+
+  it('names the listing rather than leaving it blank when nothing else has a name', () => {
+    expect(modelPublishPayload(model({ name: '', license: license() })).name).toBe('Untitled Avatar');
+  });
+
+  it('credits the file’s authors in the description', () => {
+    expect(modelPublishPayload(model({ license: license({ authors: ['Alice'] }) })).description)
+      .toBe('By Alice.');
+  });
+
+  it('lists two authors and three', () => {
+    expect(modelPublishPayload(model({ license: license({ authors: ['Alice', 'Bob'] }) })).description)
+      .toBe('By Alice and Bob.');
+    expect(modelPublishPayload(model({ license: license({ authors: ['Alice', 'Bob', 'Carol'] }) })).description)
+      .toBe('By Alice, Bob, and Carol.');
+  });
+
+  it('writes no description when the file credits nobody', () => {
+    expect(modelPublishPayload(model()).description).toBe('');
+    expect(modelPublishPayload(model({ license: license({ authors: [] }) })).description).toBe('');
+  });
+
+  it('carries the model’s picture when it has one', () => {
+    expect(modelPublishPayload(model({ thumbnail: 'data:image/webp;base64,BBBB' })).thumbnail)
+      .toBe('data:image/webp;base64,BBBB');
+  });
+
+  it('leaves the thumbnail absent when the model has none, so the server fills its own', () => {
+    expect(modelPublishPayload(model()).thumbnail).toBeUndefined();
+  });
+
+  it('publishes the file, its license, and its hash as the content', () => {
+    const payload = modelPublishPayload(model({ license: license({ title: 'Sedge' }) }));
+    expect(payload.kind).toBe('model');
+    expect(payload.contentData).toEqual({
+      vrm: 'data:model/vnd.vrm;base64,AAAA',
+      license: license({ title: 'Sedge' }),
+      hash: 'abc123',
+    });
+  });
+
+  it('publishes no tags: an Avatar listing has no field to write them in', () => {
+    const payload = modelPublishPayload(model());
+    expect(payload.tags).toEqual([]);
+    expect(publishTags(payload)).toEqual([]);
   });
 });
