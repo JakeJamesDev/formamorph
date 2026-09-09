@@ -21,11 +21,18 @@ export interface LibraryTarget<T> {
   kind: CatalogKind;
   /** Records already held, so a listing already downloaded can be recognized. */
   records: LibraryRecord[];
-  /** Persist a downloaded copy under `id`, with `link`'s community fields stored alongside it. */
+  /**
+   * Persist a downloaded copy under `id`, with `link`'s community fields stored alongside it.
+   *
+   * `listingName` is the catalog listing's own name — the only source of a display name for a kind whose
+   * content carries none of its own (an Avatar's content is just `{ vrm, license, hash }`). A kind whose
+   * content already names itself, like an entity or a dictionary, simply ignores the parameter.
+   */
   store: (
     id: string,
     content: T,
     link: Required<Pick<CommunityLink, 'sourceId' | 'downloadedAt'>> & CommunityLink,
+    listingName: string,
   ) => Promise<void>;
   /** Refresh the caller's list after a store. */
   refresh: () => void;
@@ -91,7 +98,7 @@ export function useLibraryDownload<T extends { id?: string }>(target: LibraryTar
         sourceUpdatedAt: listing.updated_at,
         // A fresh download is by definition unedited; this also clears the flag on a copy you'd edited.
         dirty: false,
-      });
+      }, listing.name || noun);
       target.refresh();
       toast.success(`"${listing.name || noun}" downloaded successfully`);
     } catch (error) {

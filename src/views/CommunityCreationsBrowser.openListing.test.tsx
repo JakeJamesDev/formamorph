@@ -74,8 +74,10 @@ const renderBrowser = (over: {
       setWorlds={() => {}}
       entities={[]}
       dictionaries={[]}
+      models={[]}
       refreshEntities={() => {}}
       refreshDictionaries={() => {}}
+      refreshModels={() => {}}
       isAuthenticated
       currentUser={reader}
       openImageViewer={() => {}}
@@ -166,8 +168,10 @@ describe('a listing named from outside, against a catalog still refreshing', () 
         setWorlds={() => {}}
         entities={[]}
         dictionaries={[]}
+        models={[]}
         refreshEntities={() => {}}
         refreshDictionaries={() => {}}
+        refreshModels={() => {}}
         isAuthenticated
         currentUser={reader}
         openImageViewer={() => {}}
@@ -187,8 +191,10 @@ describe('a listing named from outside, against a catalog still refreshing', () 
         setWorlds={() => {}}
         entities={[]}
         dictionaries={[]}
+        models={[]}
         refreshEntities={() => {}}
         refreshDictionaries={() => {}}
+        refreshModels={() => {}}
         isAuthenticated
         currentUser={reader}
         openImageViewer={() => {}}
@@ -212,8 +218,10 @@ describe('a listing named from outside, against a catalog still refreshing', () 
         setWorlds={() => {}}
         entities={[]}
         dictionaries={[]}
+        models={[]}
         refreshEntities={() => {}}
         refreshDictionaries={() => {}}
+        refreshModels={() => {}}
         isAuthenticated
         currentUser={reader}
         openImageViewer={() => {}}

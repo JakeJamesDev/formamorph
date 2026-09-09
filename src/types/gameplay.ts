@@ -1,4 +1,4 @@
-import type { Stat, Trait, Entity, Dictionary } from './world';
+import type { Stat, Trait, Entity, Dictionary, CommunityLink } from './world';
 import type { ChatMessage } from './ai';
 
 /** A director-invented character promoted to a persisted, per-playthrough entity (runtime characters,
@@ -124,7 +124,7 @@ export interface VrmLicense {
 
 /** Lightweight preview record for the model library grid and the character-model picker. Carries no blob, so
  *  the grid can render without holding every model's bytes. */
-export interface ModelMetadata {
+export interface ModelMetadata extends CommunityLink {
   id: string;
   name: string;
   type: string;
@@ -133,6 +133,17 @@ export interface ModelMetadata {
   license?: VrmLicense;
   createdAt?: string;
   lastAccessed?: string;
+}
+
+/** An Avatar listing's stored content, fetched back on download. Matches the server's `contentData` shape
+ *  exactly (see the community-avatar-uploads spec) — the `license` field is informational, never trusted
+ *  for enforcement, which already happened at publish time. `id` is never sent by the server; it's here
+ *  only so the download flow's `{ ...content, id }` fits `useLibraryDownload`'s generic constraint. */
+export interface AvatarListingContent {
+  id?: string;
+  vrm: string;
+  license?: VrmLicense;
+  hash?: string;
 }
 
 /** One saved snapshot of a play session (see GameplayContext.saveCurrentGameState). */

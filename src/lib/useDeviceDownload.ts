@@ -1,6 +1,6 @@
 import { useCallback, useRef, useState } from 'react';
 import { toast } from 'react-toastify';
-import type { Dictionary, Entity, World } from '@/types';
+import type { AvatarListingContent, Dictionary, Entity, World } from '@/types';
 import type { WorldRecord } from '@/components/WorldDetails';
 import { kindOf, KIND_LABELS } from './catalogKinds';
 import { fetchCatalogContent } from './fetchCatalogContent';
@@ -9,6 +9,7 @@ import { serializeJsonBlob } from './jsonFileWorkerUtils';
 import { exportEntityCard } from './entityFile';
 import { buildDictionaryFile } from './dictionaryFile';
 import { serializeWorldFile } from './worldFile';
+import { avatarListingBlob } from './avatarDownload';
 
 /** Downloads a published listing as its normal importable file without touching the local library. */
 export function useDeviceDownload() {
@@ -36,6 +37,10 @@ export function useDeviceDownload() {
         const entity = content as Entity;
         blob = await exportEntityCard(entity);
         filename = `${entity.name || listing.name || 'character'}.webp`;
+      } else if (kind === 'model') {
+        // The `.vrm` file itself, not a JSON wrapper — the one kind whose device download is the raw asset.
+        blob = await avatarListingBlob(content as AvatarListingContent);
+        filename = `${listing.name || 'avatar'}.vrm`;
       } else {
         const dictionary = content as Dictionary;
         const file = buildDictionaryFile(dictionary);

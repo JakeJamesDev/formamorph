@@ -9,10 +9,11 @@ import { COMMUNITY_ENABLED } from '@/lib/featureFlags';
 import WorldStorageService from '@/services/WorldStorageService';
 import EntityStorageService from '@/services/EntityStorageService';
 import DictionaryStorageService from '@/services/DictionaryStorageService';
+import ModelStorageService from '@/services/ModelStorageService';
 import AuthService from '@/services/AuthService';
 import type { BrowseTab } from '@/lib/browseTabs';
 import type { WorldRecord } from '@/components/WorldDetails';
-import type { EntityMetadata, DictionaryMetadata, ServerEvent } from '@/types';
+import type { EntityMetadata, DictionaryMetadata, ModelMetadata, ServerEvent } from '@/types';
 
 export interface CommunityBrowserHostProps {
   open: boolean;
@@ -47,7 +48,7 @@ export interface CommunityBrowserHostProps {
  * Everything the Community Creations browser needs to run, sourced from the services rather than from
  * whoever mounts it.
  *
- * The browser is the presentational half: it takes the three local libraries, the signed-in account, the
+ * The browser is the presentational half: it takes the four local libraries, the signed-in account, the
  * running events and an image viewer, and knows nothing about where they came from. This host is the
  * other half, and it is what makes the browser mountable anywhere — the app's main menu opens it as a
  * modal, and a page that is nothing but the browser opens the same component with `presentation="page"`.
@@ -57,7 +58,7 @@ export interface CommunityBrowserHostProps {
  *
  * The libraries are read when the browser opens rather than at mount, so a host sitting closed behind the
  * main menu costs nothing. Downloads keep the copy current from there: worlds through the download
- * coordinator's own optimistic writes, entities and dictionaries through the refreshers below.
+ * coordinator's own optimistic writes, entities, dictionaries, and models through the refreshers below.
  */
 export const CommunityBrowserHost = ({
   open, onOpenChange, presentation = 'dialog', capabilities = APP_COMMUNITY_CAPABILITIES, filterPreferences, initialTab, openListing, onListingOpened,
@@ -65,10 +66,11 @@ export const CommunityBrowserHost = ({
   detailsAction,
   openLikersOnMount = false,
 }: CommunityBrowserHostProps) => {
-  // The three local libraries, each driving its tab's download state.
+  // The four local libraries, each driving its tab's download state.
   const [worlds, setWorlds] = useState<WorldRecord[]>([]);
   const [entities, setEntities] = useState<EntityMetadata[]>([]);
   const [dictionaries, setDictionaries] = useState<DictionaryMetadata[]>([]);
+  const [models, setModels] = useState<ModelMetadata[]>([]);
 
   // The signed-in account, which likes, comments, publishing and the moderation controls all read.
   const [isAuthenticated, setIsAuthenticated] = useState(() => AuthService.isAuthenticated());
@@ -113,6 +115,15 @@ export const CommunityBrowserHost = ({
     }
   }, []);
 
+  const refreshModels = useCallback(async () => {
+    try {
+      await ModelStorageService.initialize();
+      setModels(await ModelStorageService.getModelMetadata());
+    } catch (error) {
+      console.error('Error loading models:', error);
+    }
+  }, []);
+
   /**
    * Re-read who is signed in.
    *
@@ -150,9 +161,10 @@ export const CommunityBrowserHost = ({
       void refreshWorlds();
       void refreshEntities();
       void refreshDictionaries();
+      void refreshModels();
     }
     void refreshAuth();
-  }, [open, capabilities.localLibrary, refreshWorlds, refreshEntities, refreshDictionaries, refreshAuth]);
+  }, [open, capabilities.localLibrary, refreshWorlds, refreshEntities, refreshDictionaries, refreshModels, refreshAuth]);
 
   // The website and game share one origin but are separate documents. A profile refresh also announces
   // itself, so only a changed credential or account starts another profile read.
@@ -202,8 +214,10 @@ export const CommunityBrowserHost = ({
         setWorlds={setWorlds}
         entities={entities}
         dictionaries={dictionaries}
+        models={models}
         refreshEntities={refreshEntities}
         refreshDictionaries={refreshDictionaries}
+        refreshModels={refreshModels}
         isAuthenticated={isAuthenticated}
         currentUser={currentUser}
         onGuestLike={onGuestLike}

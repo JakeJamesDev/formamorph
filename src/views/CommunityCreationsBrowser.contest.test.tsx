@@ -99,8 +99,10 @@ const renderBrowser = (props: Record<string, unknown> = {}) =>
       setWorlds={() => {}}
       entities={[]}
       dictionaries={[]}
+      models={[]}
       refreshEntities={() => {}}
       refreshDictionaries={() => {}}
+      refreshModels={() => {}}
       isAuthenticated
       currentUser={reader}
       openImageViewer={() => {}}
@@ -442,8 +444,10 @@ describe('reaching the rules and the archives', () => {
         setWorlds={() => {}}
         entities={[]}
         dictionaries={[]}
+        models={[]}
         refreshEntities={() => {}}
         refreshDictionaries={() => {}}
+        refreshModels={() => {}}
         isAuthenticated
         currentUser={reader}
         openImageViewer={() => {}}
@@ -458,8 +462,10 @@ describe('reaching the rules and the archives', () => {
         setWorlds={() => {}}
         entities={[]}
         dictionaries={[]}
+        models={[]}
         refreshEntities={() => {}}
         refreshDictionaries={() => {}}
+        refreshModels={() => {}}
         isAuthenticated
         currentUser={reader}
         openImageViewer={() => {}}

@@ -7,6 +7,7 @@ import CommunityBrowserHost from './CommunityBrowserHost';
 import { WEBSITE_COMMUNITY_CAPABILITIES } from '@/lib/communityBrowserCapabilities';
 import WorldStorageService from '@/services/WorldStorageService';
 import EntityStorageService from '@/services/EntityStorageService';
+import ModelStorageService from '@/services/ModelStorageService';
 import AuthService from '@/services/AuthService';
 import type { World } from '@/types';
 
@@ -85,6 +86,34 @@ const seedLocalWorld = async (sourceId: string, sourceUpdatedAt: string) => {
   } as unknown as Parameters<typeof WorldStorageService.storeWorld>[0]);
 };
 
+/** Put a model in the local library, linked to the catalog entry `sourceId` as a download would leave it. */
+const seedLocalModel = async (sourceId: string, sourceUpdatedAt: string) => {
+  await ModelStorageService.initialize();
+  await ModelStorageService.storeModel({
+    id: `local-${sourceId}`,
+    name: 'My avatar',
+    sourceId,
+    sourceUpdatedAt,
+    dirty: false,
+    data: { type: 'model/vrm', blob: new Blob(['vrm-bytes'], { type: 'model/vrm' }), size: 9 },
+  } as unknown as Parameters<typeof ModelStorageService.storeModel>[0]);
+};
+
+/** Empty the model library, bypassing `deleteModel`'s "keep at least one" rule — the raw store, like
+ *  `ModelStorageService.test.ts` reaches for the same way. */
+const clearModelLibrary = async () => {
+  await ModelStorageService.initialize();
+  const db = await new Promise<IDBDatabase>((resolve) => {
+    const req = indexedDB.open('FORMAMORPH_MODELS_DB');
+    req.onsuccess = () => resolve(req.result);
+  });
+  await new Promise<void>((resolve, reject) => {
+    const req = db.transaction(['models'], 'readwrite').objectStore('models').clear();
+    req.onsuccess = () => resolve();
+    req.onerror = () => reject(req.error);
+  });
+};
+
 /** Sign the shared auth service in, the way `login` leaves it. */
 const signIn = (accountType: string) => {
   AuthService.token = 'test-token';
@@ -96,9 +125,14 @@ const signOut = () => {
   AuthService.currentUser = null;
 };
 
+// Captured before any test stubs the global, so an Avatar download's local `data:` URL decode (which also
+// goes through `fetch`) still reaches the real implementation instead of this file's server double.
+const realFetch = globalThis.fetch;
+
 /** Answers `/auth/me` with whoever is signed in, and any download with `content`. */
 const stubServer = (content: unknown = worldData('Sedge Landing')) => {
   vi.stubGlobal('fetch', vi.fn(async (url: string) => {
+    if (String(url).startsWith('data:')) return realFetch(url);
     if (String(url).includes('/auth/me')) {
       return { ok: true, status: 200, json: async () => ({ user: AuthService.currentUser }) } as unknown as Response;
     }
@@ -131,6 +165,7 @@ afterEach(async () => {
   for (const id of await WorldStorageService.getWorldIds()) await WorldStorageService.deleteWorld(id);
   await EntityStorageService.initialize();
   for (const e of await EntityStorageService.getEntityMetadata()) await EntityStorageService.deleteEntity(e.id);
+  await clearModelLibrary();
 });
 
 describe('the community browser host', () => {
@@ -175,6 +210,47 @@ describe('the community browser host', () => {
     renderHost({ initialTab: 'entity' });
 
     expect(await screen.findByRole('button', { name: 'Re-download this entity' })).toBeInTheDocument();
+  });
+
+  it('reads the model library the same way, so an Avatar behaves like every other kind', async () => {
+    catalog.items = [listing({ _id: 'm1', id: 'm1', kind: 'model', name: 'Robot Girl' })];
+    await seedLocalModel('m1', SERVER_UPDATED);
+
+    renderHost({ initialTab: 'model' });
+
+    expect(await screen.findByRole('button', { name: 'Re-download this avatar' })).toBeInTheDocument();
+  });
+
+  it('lands a download in the model library, storing the file\'s own bytes, license, and hash', async () => {
+    catalog.items = [listing({ _id: 'm1', id: 'm1', kind: 'model', name: 'Robot Girl' })];
+    const license = {
+      metaVersion: '1' as const, title: 'Robot Girl', avatarPermission: 'everyone' as const,
+      allowRedistribution: true, modification: 'allowModificationRedistribution' as const, commercialUse: 'corporation' as const,
+    };
+    stubServer({
+      vrm: `data:model/gltf-binary;base64,${Buffer.from('vrm-bytes').toString('base64')}`,
+      license,
+      hash: 'content-hash',
+    });
+
+    renderHost({ initialTab: 'model' });
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Download this avatar' }));
+
+    await waitFor(async () => {
+      const held = await ModelStorageService.getModelMetadata();
+      expect(held.map((m) => m.sourceId)).toContain('m1');
+    });
+    const [stored] = (await ModelStorageService.getModelMetadata()).filter((m) => m.sourceId === 'm1');
+    expect(stored.name).toBe('Robot Girl');
+    expect(stored.type).toBe('model/gltf-binary');
+    expect(stored.size).toBe(Buffer.byteLength('vrm-bytes'));
+    const data = await ModelStorageService.getModelData(stored.id);
+    expect(data.hash).toBe('content-hash');
+    expect(data.license).toEqual(license);
+    // fake-indexeddb's structured clone strips Blob's methods on read-back (see ModelStorageService.test.ts);
+    // the byte-for-byte round trip through a real `.vrm` file is covered by avatarDownload.test.ts instead.
+    expect(data.blob).toBeDefined();
   });
 
   it('re-reads the libraries each time it opens, so a download made elsewhere is not stale', async () => {

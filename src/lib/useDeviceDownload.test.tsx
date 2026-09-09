@@ -25,6 +25,7 @@ const worldListing = {
 };
 const entityListing = { _id: 'entity-listing', id: 'entity-listing', kind: 'entity', name: 'River Warden' };
 const dictionaryListing = { _id: 'dictionary-listing', id: 'dictionary-listing', kind: 'dictionary', name: 'Harbor Terms' };
+const modelListing = { _id: 'model-listing', id: 'model-listing', kind: 'model', name: 'Robot Girl' };
 
 const blobText = (blob: Blob) => new Promise<string>((resolve, reject) => {
   const reader = new FileReader();
@@ -101,6 +102,23 @@ describe('useDeviceDownload', () => {
     expect(mocks.downloadBlob).toHaveBeenLastCalledWith(expect.any(Blob), 'Harbor Terms.json');
     const payload = JSON.parse(await blobText(vi.mocked(mocks.downloadBlob).mock.calls[1][0]));
     expect(parseDictionaryFile(payload)).toMatchObject({ name: 'Harbor Terms', entries: [] });
+  });
+
+  it('writes the Avatar\'s own .vrm bytes rather than a JSON wrapper', async () => {
+    mocks.fetchCatalogContent.mockResolvedValueOnce({
+      vrm: `data:model/gltf-binary;base64,${Buffer.from('vrm-bytes').toString('base64')}`,
+      license: { metaVersion: '1' },
+      hash: 'content-hash',
+    });
+    const { result } = renderHook(() => useDeviceDownload());
+
+    await act(async () => { await result.current.download(modelListing); });
+
+    expect(mocks.downloadBlob).toHaveBeenCalledWith(expect.any(Blob), 'Robot Girl.vrm');
+    const blob = vi.mocked(mocks.downloadBlob).mock.calls[0][0] as Blob;
+    expect(blob.type).toBe('model/gltf-binary');
+    expect(Buffer.from(await blob.arrayBuffer()).toString()).toBe('vrm-bytes');
+    expect(toast.success).toHaveBeenCalledWith('"Robot Girl" downloaded successfully');
   });
 
   it('reports a failed portrait or serializer without falsely reporting a saved file', async () => {

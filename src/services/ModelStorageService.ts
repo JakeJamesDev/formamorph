@@ -57,6 +57,13 @@ const toMetadata = (record: StoredModelRecord): ModelMetadata => ({
   license: record.data?.license,
   createdAt: record.createdAt,
   lastAccessed: record.lastAccessed,
+  // The community link travels with the metadata: the library grid never shows it, but the download flow
+  // reads these to tell a fresh listing from one already held (see lib/downloadState).
+  sourceId: record.sourceId,
+  dirty: record.dirty,
+  editedAt: record.editedAt,
+  downloadedAt: record.downloadedAt,
+  sourceUpdatedAt: record.sourceUpdatedAt,
 });
 
 /**

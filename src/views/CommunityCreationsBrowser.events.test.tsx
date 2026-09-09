@@ -72,8 +72,10 @@ const renderBrowserProps = (props: Record<string, unknown>) => (
     setWorlds={() => {}}
     entities={[]}
     dictionaries={[]}
+    models={[]}
     refreshEntities={() => {}}
     refreshDictionaries={() => {}}
+    refreshModels={() => {}}
     isAuthenticated
     currentUser={reader}
     openImageViewer={() => {}}
