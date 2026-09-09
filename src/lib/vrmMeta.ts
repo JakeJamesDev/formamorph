@@ -92,6 +92,15 @@ function redistributionFromLicenseName(licenseName?: string): boolean | undefine
   return undefined;
 }
 
+/** Narrows a raw enum string to one of its known values, or `undefined` if it's missing or unrecognized. */
+function pickKnown<T extends string>(value: string | undefined, allowed: readonly T[]): T | undefined {
+  return allowed.includes(value as T) ? (value as T) : undefined;
+}
+
+const COMMERCIAL_USES = ['personalNonProfit', 'personalProfit', 'corporation'] as const;
+const AVATAR_PERMISSIONS = ['onlyAuthor', 'explicitlyLicensedPerson', 'everyone'] as const;
+const MODIFICATIONS = ['prohibited', 'allowModification', 'allowModificationRedistribution'] as const;
+
 function normalizeV0(meta: Vrm0MetaRaw): VrmLicense {
   const commercial = meta.commercialUssageName;
   return {
@@ -112,14 +121,6 @@ function normalizeV0(meta: Vrm0MetaRaw): VrmLicense {
 }
 
 function normalizeV1(meta: Vrm1MetaRaw): VrmLicense {
-  const commercial = meta.commercialUsage;
-  const known = commercial === 'personalNonProfit' || commercial === 'personalProfit' || commercial === 'corporation';
-  const permission = meta.avatarPermission;
-  const knownPermission =
-    permission === 'onlyAuthor' || permission === 'explicitlyLicensedPerson' || permission === 'everyone';
-  const modification = meta.modification;
-  const knownModification =
-    modification === 'prohibited' || modification === 'allowModification' || modification === 'allowModificationRedistribution';
   return {
     metaVersion: '1',
     title: meta.name || undefined,
@@ -128,10 +129,10 @@ function normalizeV1(meta: Vrm1MetaRaw): VrmLicense {
     licenseName: undefined,
     licenseUrl: meta.licenseUrl || undefined,
     allowRedistribution: meta.allowRedistribution,
-    commercialUse: known ? commercial : undefined,
+    commercialUse: pickKnown(meta.commercialUsage, COMMERCIAL_USES),
     creditRequired: meta.creditNotation === 'required' ? true : meta.creditNotation === 'unnecessary' ? false : undefined,
-    avatarPermission: knownPermission ? (permission as VrmLicense['avatarPermission']) : undefined,
-    modification: knownModification ? (modification as VrmLicense['modification']) : undefined,
+    avatarPermission: pickKnown(meta.avatarPermission, AVATAR_PERMISSIONS),
+    modification: pickKnown(meta.modification, MODIFICATIONS),
   };
 }
 

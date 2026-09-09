@@ -43,11 +43,7 @@ const isFlat = (record: unknown): record is FlatModelRecord =>
 const shrinkThumbnail = (thumbnail: string | undefined): Promise<string | undefined> =>
   thumbnail ? optimizeImageDataUrl(thumbnail, IMAGE_CAPS.thumbnail) : Promise.resolve(undefined);
 
-/**
- * A stored license predates the Permissive License gate's `avatarPermission`/`modification` fields if it
- * lacks the key entirely — `readVrmMeta`'s normalizers always set it now, even to `undefined` for VRM 0.0, so
- * key presence (not the value) is what tells a pre-gate record apart from one legitimately missing the field.
- */
+/** A license predates the Permissive License gate's fields if it lacks the `avatarPermission` key entirely — `readVrmMeta` always sets that key now, even to `undefined` for VRM 0.0. */
 const isLicenseStale = (license: VrmLicense | undefined): boolean =>
   !license || !('avatarPermission' in license);
 
