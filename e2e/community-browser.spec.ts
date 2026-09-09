@@ -118,7 +118,7 @@ test.describe('Community Creations from the main menu', () => {
       await expect(dialog.locator('svg').first()).toBeVisible();
     };
 
-    const rows = page.getByRole('dialog', { name: 'Worlds, Entities & Dictionaries' });
+    const rows = page.getByRole('dialog', { name: 'Worlds, Entities, Dictionaries & Avatars' });
     await expect(rows).toBeVisible();
     await onScreen(rows);
 
