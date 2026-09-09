@@ -23,7 +23,7 @@ vi.mock('@/services/WorldStorageService', () => ({
     fetchComments: vi.fn(async () => ({ data: [], total: 0, pagination: {} })),
     // The details modal fetches these on open; a missing one rejects in an effect and fails the run
     // as an unhandled error even while every assertion passes.
-    fetchChangelog: vi.fn(async () => []),
+    fetchListingDetails: vi.fn(async () => null),
   },
   CONTEST_PLACED: 'CONTEST_PLACED',
 }));
