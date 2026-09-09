@@ -1,0 +1,175 @@
+<!doctype html>
+<!--
+  Title card: wordmark left, player avatar center, two app shots stitched behind. A fixed 1920x1080
+  stage, scaled to fit the window. The Vite dev server serves it from the repo root:
+
+    npm run dev -- --port 5180   →   http://localhost:5180/build-assets/title-card/
+
+  Query parameters:
+    avatar=default|alt   which bundled VRM to render (alt is the release-channel model beside this folder)
+    t=<seconds>          idle-animation frame to freeze on (default 1.4)
+    scale=1              1:1 pixels instead of fit-to-window
+
+  `npm run title-card` captures both models to thumbnails/ as PNG and WebP.
+-->
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<title>Formamorph title card</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link href="https://fonts.googleapis.com/css2?family=Lexend:wght@300&family=Baloo+2:wght@400..800&display=swap" rel="stylesheet" />
+<style>
+  :root {
+    --bg: hsl(220 12% 10%);
+    --fg: hsl(220 10% 96%);
+    --muted: hsl(220 8% 66%);
+    --font: 'Lexend', ui-sans-serif, system-ui, 'Segoe UI', Roboto, sans-serif;
+  }
+  html, body { margin: 0; height: 100%; background: #000; color: var(--fg); font-family: var(--font); overflow: hidden; }
+  #viewport { position: fixed; inset: 0; display: grid; place-items: center; }
+  #stage { position: relative; width: 1920px; height: 1080px; overflow: hidden; background: var(--bg); transform-origin: center; }
+
+  /* Library fades into the game shot along an angled, feathered seam. */
+  .shot { position: absolute; inset: 0; background-size: cover; background-position: center; filter: saturate(.85) brightness(.9); }
+  .lib  { background-image: url('/hosting/site/shots/graphite/dark/01-library.webp'); }
+  .game { background-image: url('/hosting/site/shots/graphite/dark/02-game.webp');
+    -webkit-mask-image: linear-gradient(100deg, transparent 44%, #000 56%); mask-image: linear-gradient(100deg, transparent 44%, #000 56%); }
+  .shade { position: absolute; inset: 0;
+    background:
+      linear-gradient(90deg, rgba(10,12,16,.96) 0, rgba(10,12,16,.82) 22%, rgba(10,12,16,.25) 48%, rgba(10,12,16,.55) 100%),
+      linear-gradient(0deg, rgba(10,12,16,.95) 0, rgba(10,12,16,0) 45%); }
+  .rule { position: absolute; left: 116px; bottom: 74px; width: 620px; height: 2px; background: linear-gradient(90deg, var(--fg), transparent); opacity: .5; }
+
+  #avatar { position: absolute; inset: 0; width: 1920px; height: 1080px; pointer-events: none; }
+
+  /* Wordmark: the intro's goo face. "Forma" holds one weight; "morph" steps heavier per letter and carries violet → rose. */
+  .mark { position: absolute; left: 110px; bottom: 96px; }
+  .mark h1 { margin: 0; font-family: 'Baloo 2', var(--font); font-size: 132px; letter-spacing: -.06em; line-height: .9; white-space: nowrap; filter: url(#goo); }
+  .mark h1 span { font-weight: var(--w); }
+  .mark h1 i { font-style: normal; background: linear-gradient(95deg, #a78bfa 0%, #f0abfc 55%, #fb7185 100%); -webkit-background-clip: text; background-clip: text; color: transparent; }
+  .mark p { margin: 20px 0 0 6px; font-size: 22px; font-weight: 300; letter-spacing: .3em; text-transform: uppercase; color: var(--muted); }
+</style>
+</head>
+<body>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <defs>
+    <filter id="goo">
+      <feGaussianBlur in="SourceGraphic" stdDeviation="3.5" result="b" />
+      <feColorMatrix in="b" mode="matrix" values="1 0 0 0 0  0 1 0 0 0  0 0 1 0 0  0 0 0 26 -11" />
+    </filter>
+  </defs>
+</svg>
+<div id="viewport">
+  <div id="stage">
+    <div class="shot lib"></div><div class="shot game"></div>
+    <div class="shade"></div>
+    <div class="rule"></div>
+    <canvas id="avatar"></canvas>
+    <div class="mark">
+      <h1><span style="--w:500">Forma</span><i><span style="--w:500">m</span><span style="--w:575">o</span><span style="--w:650">r</span><span style="--w:725">p</span><span style="--w:800">h</span></i></h1>
+      <p>AI text roleplay</p>
+    </div>
+  </div>
+</div>
+
+<script type="module">
+  import * as THREE from 'three';
+  import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
+  import { FBXLoader } from 'three/examples/jsm/loaders/FBXLoader.js';
+  import { VRMLoaderPlugin, VRMUtils } from '@pixiv/three-vrm';
+
+  const params = new URLSearchParams(location.search);
+
+  const stage = document.getElementById('stage');
+  function fit() {
+    const s = params.get('scale') ? Number(params.get('scale')) : Math.min(innerWidth / 1920, innerHeight / 1080);
+    stage.style.transform = `scale(${s})`;
+  }
+  addEventListener('resize', fit); fit();
+
+  // Same single light as the app's VRM viewer. MToon blows out under stacked lights.
+  const canvas = document.getElementById('avatar');
+  const renderer = new THREE.WebGLRenderer({ canvas, alpha: true, antialias: true });
+  renderer.setPixelRatio(1); renderer.setSize(1920, 1080, false);
+  renderer.outputColorSpace = THREE.SRGBColorSpace;
+  const scene = new THREE.Scene();
+  const camera = new THREE.PerspectiveCamera(22, 1920 / 1080, 0.1, 50);
+  camera.position.set(0, 0.95, 4.6); camera.lookAt(0, 0.85, 0);
+  const light = new THREE.DirectionalLight(0xffffff, Math.PI); light.position.set(1, 1, 1).normalize(); scene.add(light);
+
+  // Mixamo → VRM rig map, same as the app's VRM viewer.
+  const RIG = { Hips:'hips', Spine:'spine', Spine1:'chest', Spine2:'upperChest', Neck:'neck', Head:'head',
+    LeftShoulder:'leftShoulder', LeftArm:'leftUpperArm', LeftForeArm:'leftLowerArm', LeftHand:'leftHand',
+    LeftHandThumb1:'leftThumbMetacarpal', LeftHandThumb2:'leftThumbProximal', LeftHandThumb3:'leftThumbDistal',
+    LeftHandIndex1:'leftIndexProximal', LeftHandIndex2:'leftIndexIntermediate', LeftHandIndex3:'leftIndexDistal',
+    LeftHandMiddle1:'leftMiddleProximal', LeftHandMiddle2:'leftMiddleIntermediate', LeftHandMiddle3:'leftMiddleDistal',
+    LeftHandRing1:'leftRingProximal', LeftHandRing2:'leftRingIntermediate', LeftHandRing3:'leftRingDistal',
+    LeftHandPinky1:'leftLittleProximal', LeftHandPinky2:'leftLittleIntermediate', LeftHandPinky3:'leftLittleDistal',
+    RightShoulder:'rightShoulder', RightArm:'rightUpperArm', RightForeArm:'rightLowerArm', RightHand:'rightHand',
+    RightHandThumb1:'rightThumbMetacarpal', RightHandThumb2:'rightThumbProximal', RightHandThumb3:'rightThumbDistal',
+    RightHandIndex1:'rightIndexProximal', RightHandIndex2:'rightIndexIntermediate', RightHandIndex3:'rightIndexDistal',
+    RightHandMiddle1:'rightMiddleProximal', RightHandMiddle2:'rightMiddleIntermediate', RightHandMiddle3:'rightMiddleDistal',
+    RightHandRing1:'rightRingProximal', RightHandRing2:'rightRingIntermediate', RightHandRing3:'rightRingDistal',
+    RightHandPinky1:'rightLittleProximal', RightHandPinky2:'rightLittleIntermediate', RightHandPinky3:'rightLittleDistal',
+    LeftUpLeg:'leftUpperLeg', LeftLeg:'leftLowerLeg', LeftFoot:'leftFoot', LeftToeBase:'leftToes',
+    RightUpLeg:'rightUpperLeg', RightLeg:'rightLowerLeg', RightFoot:'rightFoot', RightToeBase:'rightToes' };
+
+  function retarget(asset, vrm) {
+    const clip = THREE.AnimationClip.findByName(asset.animations, 'mixamo.com');
+    const tracks = [];
+    const restInv = new THREE.Quaternion(), parentRest = new THREE.Quaternion(), q = new THREE.Quaternion(), v3 = new THREE.Vector3();
+    const motionHipsY = asset.getObjectByName('mixamorigHips').position.y;
+    const vrmHipsY = vrm.humanoid.getNormalizedBoneNode('hips').getWorldPosition(v3).y;
+    const hipsScale = Math.abs(vrmHipsY - vrm.scene.getWorldPosition(v3).y) / motionHipsY;
+    // VRM 0.0 faces -Z while Mixamo and VRM 1.0 face +Z, so mirror X/Z for 0.0 models.
+    const isVRM0 = vrm.meta?.metaVersion === '0';
+    for (const track of clip.tracks) {
+      const [rigName, prop] = track.name.split('.');
+      const node = vrm.humanoid.getNormalizedBoneNode(RIG[rigName.replace('mixamorig', '')] ?? '');
+      const rigNode = asset.getObjectByName(rigName);
+      if (!node || !rigNode) continue;
+      rigNode.getWorldQuaternion(restInv).invert();
+      rigNode.parent?.getWorldQuaternion(parentRest);
+      if (track instanceof THREE.QuaternionKeyframeTrack) {
+        tracks.push(new THREE.QuaternionKeyframeTrack(`${node.name}.${prop}`, track.times, track.values.map((x, i) => {
+          if (i % 4 === 0) { q.fromArray(track.values, i).premultiply(parentRest).multiply(restInv); return isVRM0 ? -q.x : q.x; }
+          if (i % 4 === 1) return q.y;
+          if (i % 4 === 2) return isVRM0 ? -q.z : q.z;
+          return q.w;
+        })));
+      } else if (track instanceof THREE.VectorKeyframeTrack) {
+        tracks.push(new THREE.VectorKeyframeTrack(`${node.name}.${prop}`, track.times, track.values.map((x, i) => (isVRM0 && i % 3 !== 1 ? -x : x) * hipsScale)));
+      }
+    }
+    return new THREE.AnimationClip('idle', clip.duration, tracks);
+  }
+
+  const loader = new GLTFLoader();
+  loader.register(p => new VRMLoaderPlugin(p));
+  const modelUrl = params.get('avatar') === 'alt' ? '/build-assets/alternate-avatar.vrm' : '/default-avatar.vrm';
+  const freezeAt = Number(params.get('t') ?? 1.4);
+  let vrm;
+  loader.load(modelUrl, gltf => {
+    vrm = gltf.userData.vrm;
+    VRMUtils.rotateVRM0(vrm);
+    vrm.scene.traverse(o => { o.frustumCulled = false; });
+    vrm.scene.rotation.y = 0.18;
+    scene.add(vrm.scene);
+    new FBXLoader().load('/idle.fbx', asset => {
+      const mixer = new THREE.AnimationMixer(vrm.scene);
+      mixer.clipAction(retarget(asset, vrm)).play();
+      mixer.setTime(freezeAt);
+      // Frozen, so a plain offset on top of the clip's pose sticks. Turns them slightly to the viewer's right.
+      const bone = n => vrm.humanoid.getNormalizedBoneNode(n);
+      bone('head').rotation.y += 0.18;
+      bone('spine').rotation.y += 0.08;
+      vrm.humanoid.update();
+      window.__titleCardReady = true;
+    }, undefined, err => console.error('FBX load failed', err));
+  }, undefined, err => console.error('VRM load failed', err));
+
+  function tick() { requestAnimationFrame(tick); if (vrm) vrm.update(1 / 60); renderer.render(scene, camera); }
+  tick();
+</script>
+</body>
+</html>
