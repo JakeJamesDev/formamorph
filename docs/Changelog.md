@@ -22,6 +22,7 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
   - **The website Community catalog starts with the most-liked creations first.** Visitors can change the sort, and website browsing preferences stay separate from the app.
   - **The Locations Canvas menu groups Grid and Connection Style rows under titles and gives every action row an icon.** Connection Style rows read Straight, Curved, and Elbow. Undo and Redo carry the toolbar's own icons, and the menu no longer reserves blank space before an action's label.
   - **A player avatar's details now show whether it can be shared to Community Creations.** The check reads the file's own embedded VRM 1.0 rights metadata and names every requirement a file falls short on; both bundled avatars pass it.
+  - **Community Creations switches its catalog kind with a sidebar rail on wide windows and a header dropdown on narrow ones**, replacing the old header tabs. Contest sits below a rule on the rail only while one exists, and both forms announce the current section to assistive technology.
 
 - **🛠️ Developer tooling**
   - **Lint and the unit test run skip other sessions' prototype worktrees under the checkout.** A worktree's own files no longer fail the main gates.

@@ -1,4 +1,4 @@
-import { test, expect, type Page } from '@playwright/test';
+import { test, expect, type Page, type TestInfo } from '@playwright/test';
 import { openApp, gotoDev } from './app';
 
 /**
@@ -41,13 +41,29 @@ async function stubCatalog(page: Page): Promise<void> {
   await page.route('**/worlds/*/comments*', (route) => route.fulfill({ json: { success: true, data: [] } }));
 }
 
+/**
+ * Selects a section the way a reader does on this viewport: a rail row on desktop (landscape), the
+ * header dropdown on mobile (portrait). `current` is the section the closed dropdown trigger is showing,
+ * needed to find it before the click changes what it says.
+ */
+async function selectSection(page: Page, testInfo: TestInfo, current: string, target: string): Promise<void> {
+  if (testInfo.project.name === 'mobile') {
+    // The trigger's accessible name is empty — role="combobox" takes its name only from an explicit
+    // label, never its content — so `hasText` is what the rest of this codebase's Select triggers use.
+    await page.getByRole('combobox').filter({ hasText: current }).click();
+    await page.getByRole('option', { name: target }).click();
+  } else {
+    await page.getByRole('button', { name: target }).click();
+  }
+}
+
 test.describe('Community Creations from the main menu', () => {
   test.beforeEach(async ({ page }) => {
     await stubCatalog(page);
     await openApp(page);
   });
 
-  test('opens on the catalog, switches kinds, and opens a listing', async ({ page }) => {
+  test('opens on the catalog, switches kinds, and opens a listing', async ({ page }, testInfo) => {
     await gotoDev(page, 'mainMenu', { modal: 'community' });
 
     // The shell the app has always raised, with the catalog inside it.
@@ -55,17 +71,32 @@ test.describe('Community Creations from the main menu', () => {
     await expect(browser).toBeVisible();
     await expect(page.getByText('E2E Sedge Landing')).toBeVisible();
 
-    // Kinds are tabs over one catalog, so switching is a filter rather than a fetch.
-    await page.getByRole('tab', { name: 'Entities' }).click();
+    // Kinds are rows in the section switcher over one catalog, so switching is a filter rather than a fetch.
+    await selectSection(page, testInfo, 'Worlds', 'Entities');
     await expect(page.getByText('E2E Sedge Warden')).toBeVisible();
     await expect(page.getByText('E2E Sedge Landing')).toBeHidden();
 
-    await page.getByRole('tab', { name: 'Worlds' }).click();
+    await selectSection(page, testInfo, 'Entities', 'Worlds');
     await page.getByText('E2E Sedge Landing').click();
 
     // The details modal is its own dialog above the browser's.
     const details = page.getByRole('dialog').filter({ hasText: 'A canned world for the browse path.' });
     await expect(details).toBeVisible();
+  });
+
+  test('shows the closed dropdown trigger with its icon beside the label, not stacked above it', async ({ page }, testInfo) => {
+    test.skip(testInfo.project.name !== 'mobile', 'the switcher is a rail on desktop; the stacking trap is dropdown-only');
+    await gotoDev(page, 'mainMenu', { modal: 'community' });
+
+    const trigger = page.getByRole('combobox').filter({ hasText: 'Worlds' });
+    // The trigger carries two icons — the section glyph and the dropdown's own chevron — so the first.
+    const icon = trigger.locator('svg').first();
+    const label = trigger.getByText('Worlds');
+    const [iconBox, labelBox] = await Promise.all([icon.boundingBox(), label.boundingBox()]);
+    expect(iconBox).not.toBeNull();
+    expect(labelBox).not.toBeNull();
+    // Stacked (the line-clamp trap) puts the label well below the icon; on the same row their tops match.
+    expect(Math.abs(iconBox!.y - labelBox!.y)).toBeLessThan(4);
   });
 
   test('lands on the tab the route asks for', async ({ page }) => {

@@ -183,7 +183,7 @@ describe('Community Creations tour', () => {
   it('counts switching tabs as reading the tabs explanation', () => {
     renderBrowser();
     settle();
-    fireEvent.pointerDown(screen.getByRole('tab', { name: 'Entities' }));
+    fireEvent.pointerDown(screen.getByRole('button', { name: 'Entities' }));
     expect(seenTutorials()).toContain('community-kind-tabs');
     expect(screen.queryByText('Worlds, Entities & Dictionaries')).not.toBeInTheDocument();
   });
@@ -227,7 +227,7 @@ describe('Community Creations tour', () => {
     expect(screen.getByText('Worlds, Entities & Dictionaries')).toBeInTheDocument();
 
     // What Radix does to the browser's own dialog when a modal opens above it.
-    const browserDialog = document.querySelector('[role="tablist"]')!.closest('[role="dialog"]')!;
+    const browserDialog = screen.getByRole('button', { name: 'Worlds' }).closest('[role="dialog"]')!;
     await act(async () => {
       browserDialog.setAttribute('aria-hidden', 'true');
       await Promise.resolve();

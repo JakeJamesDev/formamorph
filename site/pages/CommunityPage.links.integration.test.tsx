@@ -52,7 +52,7 @@ describe('creation links through the rendered website community route', () => {
     await user.click(screen.getByRole('button', { name: 'Accept' }));
 
     expect(await screen.findByRole('dialog', { name: 'River Warden' })).toBeInTheDocument();
-    expect(screen.getByRole('tab', { name: /entities/i, hidden: true })).toHaveAttribute('data-state', 'active');
+    expect(screen.getByRole('button', { name: /entities/i, hidden: true })).toHaveAttribute('aria-current', 'true');
   });
 
   it('updates the destination when a visitor opens a card', async () => {

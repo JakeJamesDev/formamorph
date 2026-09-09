@@ -8,10 +8,11 @@ import { Checkbox } from "@/components/ui/checkbox";
 import {
   Search, RotateCcw, ArrowDownWideNarrow, ArrowUpNarrowWide, ArrowLeft, X, SlidersHorizontal, ChevronDown,
   Earth, User, BookOpen, Globe, ShieldAlert, Trophy,
+  type LucideIcon,
 } from "lucide-react";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Tabs, TabsContent } from "@/components/ui/tabs";
 import { Tip } from "@/components/ui/tooltip";
-import { KIND_LABELS, kindOf, type CatalogKind } from "@/lib/catalogKinds";
+import { CATALOG_KINDS, KIND_LABELS, kindOf, type CatalogKind } from "@/lib/catalogKinds";
 import { BROWSE_TABS, BROWSE_TAB_LABELS, type BrowseTab } from "@/lib/browseTabs";
 import { contestPhase, placementsBy, entriesOf, orderContestEntries } from "@/lib/contests";
 import { isContestEvent } from "@/lib/serverEvents";
@@ -75,6 +76,16 @@ import { useTutorial } from "@/lib/tutorials";
 // Persisted preference to force the single-column (portrait) layout of the details modal at any width.
 // Key string kept as-is so an existing user's saved preference survives the rename.
 const COMMUNITY_BROWSER_MODAL_COLLAPSED_KEY = 'FORMAMORPH_discoverModalCollapsed';
+
+/** Icon for each catalog kind's row in the section switcher (rail on landscape, dropdown on portrait). */
+const SECTION_ICON_BY_KIND: Record<CatalogKind, LucideIcon> = {
+  world: Earth,
+  entity: User,
+  dictionary: BookOpen,
+};
+
+/** A row in the section switcher: one per catalog kind, plus Contest while a contest exists. */
+type SwitcherSection = { key: BrowseTab; label: string; icon: LucideIcon };
 
 /** How the browser is presented: the app's full-screen modal, or a page that is the whole surface. */
 export type BrowserPresentation = 'dialog' | 'page' | 'embedded';
@@ -613,44 +624,80 @@ const CommunityCreationsBrowser = ({
     setShowRemoteWorldDetailsModal(true);
   }, [open, openLikersOnMount, remoteWorlds, selectedRemoteWorld]);
 
-  // Header control fragments — reused across the mobile (collapsible) and desktop (inline) header layouts.
-  // Mirrors the local library's tabs (MainMenu's `cardType`) so the same three kinds read the same way
-  // in both places — icons below the label breakpoint, matching that header.
-  const kindTabs = (
+  // Section switcher: a rail on landscape, a dropdown on portrait. Rows come from the kinds list; Contest
+  // is appended rather than generated (see browseTabs.ts), only while one exists to browse.
+  const kindSections: SwitcherSection[] = CATALOG_KINDS.map((kind) => ({
+    key: kind,
+    label: BROWSE_TAB_LABELS[kind].many,
+    icon: SECTION_ICON_BY_KIND[kind],
+  }));
+  const sections: SwitcherSection[] = contests.length > 0
+    ? [...kindSections, { key: 'contest', label: 'Contest', icon: Trophy }]
+    : kindSections;
+  const activeSectionMeta = sections.find((s) => s.key === browseTab) ?? sections[0];
+
+  // Landscape: a vertical rail beside the results, below the header.
+  const landscapeRail = (
     <TutorialPopover
       entry={tutorial?.id === 'community-kind-tabs' ? tutorial : null}
       nav={tutorialNav}
       align="start"
     >
-    <TabsList onPointerDownCapture={() => dismissIfShowing('community-kind-tabs')}>
-      <Tip tip="Worlds">
-        <TabsTrigger value="world">
-          <Earth className="h-5 w-5 min-[1040px]:hidden" />
-          <span className="hidden min-[1040px]:inline">Worlds</span>
-        </TabsTrigger>
-      </Tip>
-      <Tip tip="Entities">
-        <TabsTrigger value="entity">
-          <User className="h-5 w-5 min-[1040px]:hidden" />
-          <span className="hidden min-[1040px]:inline">Entities</span>
-        </TabsTrigger>
-      </Tip>
-      <Tip tip="Dictionaries">
-        <TabsTrigger value="dictionary">
-          <BookOpen className="h-5 w-5 min-[1040px]:hidden" />
-          <span className="hidden min-[1040px]:inline">Dictionaries</span>
-        </TabsTrigger>
-      </Tip>
-      {/* A fourth tab only while there is a contest to browse — running, or finished and archived. */}
-      {contests.length > 0 && (
-        <Tip tip="Contest">
-          <TabsTrigger value="contest">
-            <Trophy className="h-5 w-5 min-[1040px]:hidden" />
-            <span className="hidden min-[1040px]:inline">Contest</span>
-          </TabsTrigger>
-        </Tip>
-      )}
-    </TabsList>
+    <nav
+      className="flex flex-col w-48 shrink-0 gap-1 border-r p-3"
+      onPointerDownCapture={() => dismissIfShowing('community-kind-tabs')}
+    >
+      {sections.map(({ key, label, icon: Icon }) => {
+        const active = browseTab === key;
+        return (
+          <React.Fragment key={key}>
+            {key === 'contest' && <div className="my-2 h-px bg-border" />}
+            <button
+              onClick={() => setBrowseTab(key)}
+              aria-current={active ? 'true' : undefined}
+              className={cn(
+                "flex items-center gap-2 rounded-md px-3 py-2 text-label font-medium transition-colors shrink-0",
+                active ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:bg-accent hover:text-foreground",
+              )}
+            >
+              <Icon className="h-4 w-4 shrink-0" />
+              {label}
+            </button>
+          </React.Fragment>
+        );
+      })}
+    </nav>
+    </TutorialPopover>
+  );
+
+  // Portrait: a dropdown carrying every section, icon mirrored onto the closed trigger itself.
+  const portraitDropdown = (
+    <TutorialPopover
+      entry={tutorial?.id === 'community-kind-tabs' ? tutorial : null}
+      nav={tutorialNav}
+      align="start"
+    >
+    <div onPointerDownCapture={() => dismissIfShowing('community-kind-tabs')}>
+    <Select value={browseTab} onValueChange={(v) => setBrowseTab(v as BrowseTab)}>
+      <SelectTrigger className="w-[170px] h-9">
+        {/* A `<div>`, not a `<span>`: the trigger's `[&>span]:line-clamp-1` style stacks a direct-child span's flex children instead of rowing them. */}
+        <div className="flex items-center gap-2 min-w-0">
+          <activeSectionMeta.icon className="h-4 w-4 shrink-0" />
+          <span className="truncate">{activeSectionMeta.label}</span>
+        </div>
+      </SelectTrigger>
+      <SelectContent>
+        {sections.map(({ key, label, icon: Icon }) => (
+          <SelectItem key={key} value={key}>
+            <span className="flex items-center gap-2">
+              <Icon className="h-4 w-4 shrink-0" />
+              {label}
+            </span>
+          </SelectItem>
+        ))}
+      </SelectContent>
+    </Select>
+    </div>
     </TutorialPopover>
   );
 
@@ -872,7 +919,7 @@ const CommunityCreationsBrowser = ({
                     {refreshControl}
                   </div>
                   <div className="flex flex-wrap items-center gap-2">
-                    {kindTabs}
+                    {portraitDropdown}
                     {quarantineControl}
                     <TutorialPopover entry={filtersToggleTutorial} nav={tutorialNav} align="end">
                     <CollapsibleTrigger asChild>
@@ -899,7 +946,6 @@ const CommunityCreationsBrowser = ({
                     <ArrowLeft className="h-5 w-5" />
                   </Button>
                   <Heading className="flex items-center gap-2 whitespace-nowrap mr-2"><Globe className="h-4 w-4 shrink-0" /> Community Creations</Heading>
-                  {kindTabs}
                   {searchControl}
                   {quarantineControl}
                   {refreshControl}
@@ -923,6 +969,11 @@ const CommunityCreationsBrowser = ({
             </div>
           </Collapsible>
 
+          {/* The section switcher's landscape rail sits beside the results; the pager stays with them in
+              the same column. */}
+          <div className={cn("flex min-h-0 flex-1", !isMobile ? "flex-row" : "flex-col")}>
+          {!isMobile && landscapeRail}
+          <div className="flex min-h-0 flex-1 flex-col">
           {/* The contest's own header: which contest, where it stands, its rules, and — once several have
               been run — which archive is being read. Above the grid rather than inside it, so it stays put
               while the entries scroll. */}
@@ -1020,6 +1071,8 @@ const CommunityCreationsBrowser = ({
             {!isLoadingRemoteWorlds && filteredRemoteWorlds.length > 0 && (
               <Pager page={currentPage} pageCount={totalPages} onPageChange={setCurrentPage} />
             )}
+          </div>
+          </div>
           </div>
           </Tabs>
       </BrowserShell>

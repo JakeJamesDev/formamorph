@@ -1,6 +1,7 @@
 # 01: Section switcher: rail on landscape, icon dropdown on portrait
 
-Status: ready-for-agent
+Status: ready-for-human
+Base: eaf2bee5
 Blocked by: None (can start immediately)
 Recommended model: Claude Sonnet 5 (`claude-sonnet-5`)
 Reasoning effort: high
@@ -21,12 +22,23 @@ Prototype trap to carry over: the dropdown trigger's content wrapper must not be
 
 ## Acceptance criteria
 
-- [ ] Landscape: rail with World, Entity, Dictionary rows, a rule, then Contest; no tabs in the header; results and pager unchanged.
-- [ ] Portrait: header dropdown; each item shows icon + label; closed trigger shows the current icon + label inline.
-- [ ] Contest row/item absent when no contest exists; present otherwise; the no-contest bounce to Worlds still works.
-- [ ] Rows are generated from the kinds list, not hand-written per kind.
-- [ ] The selected row/item is announced as current to assistive technology.
-- [ ] `initialTab`, event banners, and notification-row arrival land on the right section in both layouts.
-- [ ] The `community-kind-tabs` tutorial anchors to the rail on landscape and the dropdown on portrait.
-- [ ] Component tests in the existing browser suites cover both layouts; the community-browser Playwright spec covers both viewports including the closed trigger's inline icon.
-- [ ] Both themes checked; four gates green; changelog In-Progress entry added.
+- [x] Landscape: rail with World, Entity, Dictionary rows, a rule, then Contest; no tabs in the header; results and pager unchanged.
+- [x] Portrait: header dropdown; each item shows icon + label; closed trigger shows the current icon + label inline.
+- [x] Contest row/item absent when no contest exists; present otherwise; the no-contest bounce to Worlds still works.
+- [x] Rows are generated from the kinds list, not hand-written per kind.
+- [x] The selected row/item is announced as current to assistive technology.
+- [x] `initialTab`, event banners, and notification-row arrival land on the right section in both layouts.
+- [x] The `community-kind-tabs` tutorial anchors to the rail on landscape and the dropdown on portrait.
+- [x] Component tests in the existing browser suites cover both layouts; the community-browser Playwright spec covers both viewports including the closed trigger's inline icon.
+- [x] Dark theme checked; light theme NOT verified (see Comments). Four gates green; changelog In-Progress entry added.
+
+## Comments
+
+Landscape rail and portrait dropdown both verified live in the dev preview (dark theme): correct rows, active-row highlight, no header tabs, inline icon+label on the closed trigger. Could not get a light-theme screenshot — the Browser pane went hidden mid-session and stopped responding to further clicks. No new hardcoded colors were introduced; every class on the rail/dropdown is an existing theme token already used by neighboring controls (quarantine button, sort select, hidden popover), so light-theme correctness rests on that rather than a direct screenshot. **Needs a manual light-theme spot-check before merge.**
+
+Four gates, run this turn on the final commit:
+- `npm run typecheck` — `tsc --noEmit`, 0 errors.
+- `npm run lint` — `eslint .`, 0 errors.
+- `npm run test` — 538 files / 8681 tests passed, 3 skipped, 55.76s wall (one unrelated post-teardown warning in `FeedbackList.test.tsx`, pre-existing and untouched by this change).
+- `npm run build` — succeeded in 14.20s.
+- `npx playwright test e2e/community-browser.spec.ts` — 7 passed, 1 skipped (desktop skips the portrait-only inline-icon check), both projects.
