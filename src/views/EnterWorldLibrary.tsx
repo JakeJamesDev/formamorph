@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState, type RefObject } from 'react';
 import { closestCorners, type DragEndEvent } from '@dnd-kit/core';
+import { restrictToParentElement, restrictToVerticalAxis } from '@dnd-kit/modifiers';
 import { useSortable, verticalListSortingStrategy } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import { ArrowDown, ArrowLeft, ArrowUp, BookOpen, Search, User } from 'lucide-react';
@@ -33,6 +34,10 @@ type InspectedAddition =
 const entityInspectionKey = (id: string) => `entity:${id}`;
 const dictionaryInspectionKey = (key: string) => `dictionary:${key}`;
 const displayName = (name: string) => name || 'Untitled';
+// The dictionaries list is its own drag boundary: the ghost stays inside that list rather than the
+// shared scroller, so it never travels up into Entities.
+const DICTIONARY_LIST_MODIFIERS = [restrictToVerticalAxis, restrictToParentElement];
+
 const sourceLabel = (source: DictionarySelectionItem['source']) => source === 'world' ? 'World' : 'Library';
 
 // Entities frame as portraits and dictionaries as landscapes, the same ratios the library cards use,
@@ -123,15 +128,18 @@ function DictionaryRow({ item, selected, buttonRef, onInspect, onToggle }: {
   const name = displayName(item.book.name);
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: item.key });
   return (
-    <div role="listitem">
+    <div
+      role="listitem"
+      ref={setNodeRef}
+      style={{
+        transform: CSS.Translate.toString(transform),
+        transition,
+        opacity: isDragging ? 0.5 : 1,
+        zIndex: isDragging ? 1 : undefined,
+        position: 'relative',
+      }}
+    >
       <EditorRow
-        setNodeRef={setNodeRef}
-        style={{
-          transform: CSS.Translate.toString(transform),
-          transition,
-          opacity: isDragging ? 0.5 : 1,
-          zIndex: isDragging ? 1 : undefined,
-        }}
         gripProps={{ ...attributes, ...listeners }}
         gripTitle={`Drag ${name} from ${sourceLabel(item.source)}`}
         selected={selected}
@@ -187,7 +195,7 @@ function AdditionDetails({ addition, entitySelected, dictionaryTotal, headingRef
 }) {
   if (!addition) {
     return (
-      <div className="flex h-full min-h-48 items-center justify-center p-6 text-center text-helper text-muted-foreground">
+      <div className="flex h-full min-h-48 items-center justify-center rounded-md border border-dashed p-6 text-center text-helper text-muted-foreground">
         Select an entity or dictionary to inspect it.
       </div>
     );
@@ -197,7 +205,7 @@ function AdditionDetails({ addition, entitySelected, dictionaryTotal, headingRef
   const description = addition.kind === 'entity' ? addition.entity.description : addition.item.book.description;
   const artwork = addition.kind === 'entity' ? addition.entity.image : addition.item.book.thumbnail;
   return (
-    <div className="space-y-5 p-4 sm:p-5">
+    <div className={cn('space-y-5', showBack ? 'p-4' : 'pb-4')}>
       {showBack && (
         <Button type="button" variant="ghost" className="-ml-2 min-h-11 gap-2" onClick={onBack}>
           <ArrowLeft aria-hidden className="h-4 w-4" />
@@ -399,12 +407,12 @@ export default function EnterWorldLibrary(props: EnterWorldLibraryProps) {
         aria-hidden={!listVisible}
         {...(!listVisible ? { inert: '' } : {})}
         className={cn(
-          'flex min-h-0 flex-col overflow-hidden rounded-lg border bg-card',
+          'flex min-h-0 flex-col overflow-hidden',
           singlePane && 'col-start-1 row-start-1 transition-transform duration-200 ease-out motion-reduce:transition-none',
           singlePane && detailsOpen && '-translate-x-1/4 pointer-events-none',
         )}
       >
-        <div className="shrink-0 border-b p-3">
+        <div className="shrink-0 pb-3">
           <div className="relative">
             <Search aria-hidden className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
             <Input
@@ -419,7 +427,7 @@ export default function EnterWorldLibrary(props: EnterWorldLibraryProps) {
           </div>
         </div>
         <ScrollArea type="always" className="min-h-0 flex-1">
-          <div className="space-y-6 p-3">
+          <div className="space-y-6">
             <section aria-labelledby="library-entities-heading">
               <div className="mb-2 flex items-baseline justify-between gap-3">
                 <h3 id="library-entities-heading" className="text-title font-semibold">Entities</h3>
@@ -471,7 +479,7 @@ export default function EnterWorldLibrary(props: EnterWorldLibraryProps) {
                 </p>
               </div>
               {visibleDictionaryItems.length ? (
-                <EditorDndContext collisionDetection={closestCorners} onDragEnd={handleDragEnd}>
+                <EditorDndContext collisionDetection={closestCorners} modifiers={DICTIONARY_LIST_MODIFIERS} onDragEnd={handleDragEnd}>
                   <StableSortableContext
                     items={visibleDictionaryItems}
                     getId={(item) => item.key}
@@ -508,8 +516,8 @@ export default function EnterWorldLibrary(props: EnterWorldLibraryProps) {
         aria-hidden={!detailsVisible}
         {...(!detailsVisible ? { inert: '' } : {})}
         className={cn(
-          'z-10 min-h-0 overflow-hidden rounded-lg border bg-card',
-          singlePane && 'col-start-1 row-start-1 transition-transform duration-200 ease-out motion-reduce:transition-none',
+          'z-10 min-h-0 overflow-hidden',
+          singlePane && 'col-start-1 row-start-1 bg-background transition-transform duration-200 ease-out motion-reduce:transition-none',
           singlePane && (detailsOpen ? 'translate-x-0' : 'translate-x-full pointer-events-none'),
         )}
       >
