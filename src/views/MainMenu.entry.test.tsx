@@ -84,7 +84,7 @@ describe('the retained entry draft', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Move Library book from Library Up' }));
     fireEvent.click(screen.getByRole('button', { name: 'Move Library book from Library Up' }));
     fireEvent.click(screen.getByRole('button', { name: 'Remember Additions' }));
-    expect(toast.success).toHaveBeenCalledWith('Formamorph saved these additions for future games.');
+    expect(screen.getByRole('button', { name: 'Remembered' })).toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: 'Cancel' }));
     cleanup();
     renderMainMenu({ onStartGame });
@@ -204,17 +204,17 @@ describe('the retained entry draft', () => {
     await enter();
     fireEvent.click(screen.getByRole('button', { name: 'Library Additions' }));
     fireEvent.click(screen.getByRole('checkbox', { name: 'Include Companion' }));
-    vi.mocked(toast.success).mockClear();
     const write = vi.spyOn(Storage.prototype, 'setItem').mockImplementation(() => {
       throw new DOMException('Storage full', 'QuotaExceededError');
     });
     fireEvent.click(screen.getByRole('button', { name: 'Remember Additions' }));
-    expect(toast.success).not.toHaveBeenCalled();
+    expect(screen.queryByRole('button', { name: 'Remembered' })).not.toBeInTheDocument();
     expect(toast.error).toHaveBeenCalledWith('Formamorph could not save these additions. Try again.');
     expect(screen.getByRole('checkbox', { name: 'Include Companion' })).toBeChecked();
     write.mockRestore();
     fireEvent.click(screen.getByRole('button', { name: 'Remember Additions' }));
-    expect(toast.success).toHaveBeenCalledOnce();
+    expect(screen.getByRole('button', { name: 'Remembered' })).toBeInTheDocument();
+    expect(toast.success).not.toHaveBeenCalled();
     fireEvent.click(screen.getByRole('button', { name: 'Cancel' }));
     cleanup();
     renderMainMenu();

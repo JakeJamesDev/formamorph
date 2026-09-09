@@ -2621,9 +2621,10 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
           onSaveAdditions={() => {
             try {
               saveWorldAdditionDefaults(selectedWorld.id, entryDraft);
-              toast.success('Formamorph saved these additions for future games.');
+              return true;
             } catch {
               toast.error('Formamorph could not save these additions. Try again.');
+              return false;
             }
           }}
           onIntroduction={selectedWorld.data.worldOverview?.introReadme?.trim()

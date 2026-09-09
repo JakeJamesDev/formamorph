@@ -1,8 +1,8 @@
-import { useMemo, useRef, useState } from 'react';
-import { BookOpen, ChevronDown, ListTree } from 'lucide-react';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { BookOpen, Check, ChevronDown, ListTree } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
-import { Dialog, DialogContent, DialogDescription, DialogTitle } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogTitle } from '@/components/ui/dialog';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Tip } from '@/components/ui/tooltip';
 import type { DictionarySelectionItem } from '@/lib/dictionarySelection';
@@ -52,13 +52,16 @@ export interface EnterWorldWorkspaceProps {
   onLocationChange: (locationId: string | null) => void;
   onEntityToggle: (entityId: string, selected: boolean) => void;
   onDictionaryItemsChange: (items: DictionarySelectionItem[]) => void;
-  onSaveAdditions?: () => void;
+  /** Persists the current additions as this world's defaults; returns whether the save succeeded. */
+  onSaveAdditions?: () => boolean;
   onIntroduction?: () => void;
   onCancel: () => void;
   onContinue: () => void;
   continueLabel: string;
   resolving?: boolean;
 }
+
+const REMEMBERED_MS = 3000;
 
 const authoredOrder = <T extends { order?: number }>(items: T[]): T[] =>
   [...items].sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
@@ -109,6 +112,13 @@ export default function EnterWorldWorkspace(props: EnterWorldWorkspaceProps) {
   const [containerRef, containerSize] = useElementSize();
   const categoriesCollapsed = containerSize.width > 0 ? containerSize.width < 72 * 16 : viewportMobile;
   const [categoryNavigationOpen, setCategoryNavigationOpen] = useState(false);
+  // The remembered state shows for a few seconds or until the additions change, then the button re-arms.
+  const [additionsRemembered, setAdditionsRemembered] = useState(false);
+  useEffect(() => {
+    if (!additionsRemembered) return;
+    const timer = setTimeout(() => setAdditionsRemembered(false), REMEMBERED_MS);
+    return () => clearTimeout(timer);
+  }, [additionsRemembered]);
   const categoryNavigationButton = useRef<HTMLButtonElement>(null);
   const traitWorkspace = useMemo(
     () => buildTraitWorkspace(props.traits, props.traitGroups),
@@ -233,21 +243,21 @@ export default function EnterWorldWorkspace(props: EnterWorldWorkspaceProps) {
       >
       <DialogTitle className="sr-only">Enter {props.worldName}</DialogTitle>
       <DialogDescription className="sr-only">{dialogDescription}</DialogDescription>
-      <header className="flex shrink-0 items-center justify-between gap-3 border-b px-4 py-2 sm:px-6">
+      <header className="flex shrink-0 items-center justify-between gap-3 px-4 py-2 sm:px-6">
         <h1 className="min-w-0 truncate text-label font-semibold sm:text-heading">{props.worldName}</h1>
         <div className="flex shrink-0 items-center gap-1">
           {props.onIntroduction && (
             <Button
               variant="ghost"
-              className="min-h-11 gap-2 px-3"
+              size="sm"
+              className="gap-2"
               aria-label="Read Introduction"
               onClick={props.onIntroduction}
             >
-              <BookOpen className="h-4 w-4" />
+              <BookOpen aria-hidden className="h-4 w-4 shrink-0" />
               <span className="hidden sm:inline">Introduction</span>
             </Button>
           )}
-          <Button variant="ghost" className="min-h-11 text-muted-foreground" onClick={props.onCancel}>Cancel</Button>
         </div>
       </header>
       <div className={cn('flex min-h-0 flex-1', categoriesCollapsed ? 'flex-col' : 'flex-row')}>
@@ -431,37 +441,67 @@ export default function EnterWorldWorkspace(props: EnterWorldWorkspaceProps) {
               <div className="mb-4 flex items-center justify-between gap-3">
                 <h2 className="text-heading font-semibold">Library Additions</h2>
                 {props.onSaveAdditions && (
-                  <Tip tip="Use these additions for future games" labelsChild={false}>
+                  <Tip
+                    tip={additionsRemembered
+                      ? 'This world will start future games with these additions.'
+                      : "Save these additions as this world's defaults for future games."}
+                    labelsChild={false}
+                  >
                     <Button
                       type="button"
                       variant="outline"
                       size="sm"
-                      className="min-h-11 shrink-0 sm:min-h-9"
-                      onClick={props.onSaveAdditions}
+                      aria-label={additionsRemembered ? 'Remembered' : 'Remember Additions'}
+                      className={cn(
+                        // One color transition serves both directions: adding the success classes fades in,
+                        // removing them plays the same fade back.
+                        'min-h-11 shrink-0 duration-300 motion-reduce:transition-none sm:min-h-9',
+                        additionsRemembered && 'border-transparent bg-success text-success-foreground hover:bg-success/90 hover:text-success-foreground focus-visible:ring-success-foreground',
+                      )}
+                      onClick={() => setAdditionsRemembered(props.onSaveAdditions?.() === true)}
                       disabled={props.resolving}
                     >
-                      Remember Additions
+                      {/* Both labels stay mounted and stacked, so the button keeps one width while they cross-fade. */}
+                      <span aria-hidden className="grid">
+                        <span className={cn(
+                          'col-start-1 row-start-1 transition-opacity duration-300 motion-reduce:transition-none',
+                          additionsRemembered && 'opacity-0',
+                        )}>
+                          Remember Additions
+                        </span>
+                        <span className={cn(
+                          'col-start-1 row-start-1 flex items-center justify-center gap-2 transition-opacity duration-300 motion-reduce:transition-none',
+                          !additionsRemembered && 'opacity-0',
+                        )}>
+                          <Check className="h-4 w-4" />
+                          Remembered
+                        </span>
+                      </span>
                     </Button>
                   </Tip>
                 )}
+                <span role="status" className="sr-only">
+                  {additionsRemembered ? 'This world remembers these additions.' : ''}
+                </span>
               </div>
               <EnterWorldLibrary
                 entities={props.libraryEntities}
                 selectedEntityIds={props.selectedEntityIds}
                 dictionaryItems={props.dictionaryItems}
-                onEntityToggle={props.onEntityToggle}
-                onDictionaryItemsChange={props.onDictionaryItemsChange}
+                onEntityToggle={(id, selected) => { setAdditionsRemembered(false); props.onEntityToggle(id, selected); }}
+                onDictionaryItemsChange={(items) => { setAdditionsRemembered(false); props.onDictionaryItemsChange(items); }}
               />
             </>
           )}
         </main>
       </div>
-      <footer className="shrink-0 border-t bg-background px-4 pb-[calc(0.75rem+env(safe-area-inset-bottom))] pt-3 sm:px-6 sm:pb-3">
-        <div className="flex justify-end">
-          <Button className="min-h-12 w-full sm:w-auto" disabled={props.resolving} onClick={props.onContinue}>
+      <footer className="shrink-0 bg-background px-4 pb-[calc(0.5rem+env(safe-area-inset-bottom))] pt-2 sm:px-6 sm:pb-2">
+        <DialogFooter>
+          <Button variant="ghost" className="w-full text-muted-foreground sm:w-auto" onClick={props.onCancel}>Cancel</Button>
+          <Button className="w-full sm:w-auto" disabled={props.resolving} onClick={props.onContinue}>
             {props.resolving ? 'Loading…' : props.continueLabel}
           </Button>
-        </div>
+        </DialogFooter>
       </footer>
       </DialogContent>
     </Dialog>
