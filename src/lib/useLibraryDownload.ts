@@ -98,6 +98,10 @@ export function useLibraryDownload<T extends { id?: string }>(target: LibraryTar
         sourceUpdatedAt: listing.updated_at,
         // A fresh download is by definition unedited; this also clears the flag on a copy you'd edited.
         dirty: false,
+        // Who published it, so a picker can say whose content a linked copy follows. The name is for
+        // display; the id is what decides whether a save of yours may push to your linked copies.
+        sourceAuthorId: listing.author?.id,
+        sourceAuthorName: listing.author?.username,
       }, listing.name || noun);
       target.refresh();
       toast.success(`"${listing.name || noun}" downloaded successfully`);

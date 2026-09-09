@@ -1,5 +1,6 @@
 import { randomUUID } from "@/lib/uuid";
 import { createContext, useContext, useState, useCallback, type ReactNode } from 'react';
+import { markEdited } from '@/lib/linkedContent';
 import type { Dictionary, DictionaryEntry } from '@/types';
 
 /** A fresh, empty "Default" book — the ≥1-book invariant's seed. */
@@ -34,8 +35,13 @@ export function useDictionaryStoreState(initial: Dictionary[] = []): DictionaryS
     setDictionaries(prev => [...prev, book]);
   }, []);
 
+  // An edit to a book that follows a source makes it a local replacement. A caller that hands over a
+  // different `link` is managing the link itself (linking, unlinking, taking a source update), so its
+  // record stands: only a content edit, which carries the book's own link through untouched, marks it.
   const updateDictionary = useCallback((updated: Dictionary) => {
-    setDictionaries(prev => prev.map(book => (book.id === updated.id ? updated : book)));
+    setDictionaries(prev => prev.map(book => (
+      book.id === updated.id ? (book.link === updated.link ? markEdited(updated) : updated) : book
+    )));
   }, []);
 
   // Deleting the last book reseeds an empty "Default" so a collection always has ≥1 book.
@@ -48,23 +54,29 @@ export function useDictionaryStoreState(initial: Dictionary[] = []): DictionaryS
 
   const addDictionaryEntry = useCallback((bookId: string, newEntry: DictionaryEntry) => {
     setDictionaries(prev => prev.map(book =>
-      book.id === bookId ? { ...book, entries: [...book.entries, newEntry] } : book
+      book.id === bookId ? markEdited({ ...book, entries: [...book.entries, newEntry] }) : book
     ));
   }, []);
 
   // Entry ids are globally unique, so update/remove search across all books — no book context needed.
+  // The book holding the changed entry is what a source follows, so the edit lands on the book's record.
   const updateDictionaryEntry = useCallback((updatedEntry: DictionaryEntry) => {
-    setDictionaries(prev => prev.map(book => ({
-      ...book,
-      entries: book.entries.map(entry => (entry.id === updatedEntry.id ? updatedEntry : entry)),
-    })));
+    setDictionaries(prev => prev.map(book => (
+      book.entries.some(entry => entry.id === updatedEntry.id)
+        ? markEdited({
+          ...book,
+          entries: book.entries.map(entry => (entry.id === updatedEntry.id ? updatedEntry : entry)),
+        })
+        : book
+    )));
   }, []);
 
   const removeDictionaryEntry = useCallback((entryId: string) => {
-    setDictionaries(prev => prev.map(book => ({
-      ...book,
-      entries: book.entries.filter(entry => entry.id !== entryId),
-    })));
+    setDictionaries(prev => prev.map(book => (
+      book.entries.some(entry => entry.id === entryId)
+        ? markEdited({ ...book, entries: book.entries.filter(entry => entry.id !== entryId) })
+        : book
+    )));
   }, []);
 
   return {

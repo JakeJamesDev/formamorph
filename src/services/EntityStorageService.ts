@@ -41,6 +41,8 @@ class EntityStorageService {
         editedAt: record.editedAt,
         downloadedAt: record.downloadedAt,
         sourceUpdatedAt: record.sourceUpdatedAt,
+        sourceAuthorId: record.sourceAuthorId,
+        sourceAuthorName: record.sourceAuthorName,
       };
     },
   });
