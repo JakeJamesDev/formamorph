@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent, waitFor, within } from '@testing-library/react';
 import { IMAGE_CAPS } from '../lib/imageOptim';
+import { EditorModeContext, type EditorMode } from '@/lib/editorMode';
 import { ImageWidget, ImageGallery, ImageTags } from './ImageTagsField';
 
 // The uploader stands in as a marker that can fire the embedded-prompt handshake, as the gallery suite does.
@@ -43,6 +44,12 @@ const Split = () => {
   );
 };
 
+const inMode = (mode: EditorMode) => render(
+  <EditorModeContext.Provider value={{ mode, advanced: mode === 'advanced', setMode: () => {} }}>
+    <Split />
+  </EditorModeContext.Provider>,
+);
+
 const left = () => within(screen.getByTestId('left'));
 const right = () => within(screen.getByTestId('right'));
 const tagsValue = () => screen.getByLabelText('Image Tags').textContent;
@@ -73,5 +80,20 @@ describe('ImageTagsField placed as two pieces', () => {
     fireEvent.click(left().getByRole('button', { name: 'Generate with AI' }));
 
     await waitFor(() => expect(tagsValue()).toBe('generated, tags'));
+  });
+
+  // The tags are Advanced-only, the picture is not. Split apart, the two pieces answer the mode separately,
+  // so Simple mode is where a wrong gate on either would show.
+  it('keeps Generate in Simple mode and draws no tags field', () => {
+    inMode('simple');
+
+    expect(left().getByRole('button', { name: 'Generate with AI' })).toBeTruthy();
+    expect(screen.queryByLabelText('Image Tags')).toBeNull();
+  });
+
+  it('draws the tags field in Advanced mode', () => {
+    inMode('advanced');
+
+    expect(right().getByLabelText('Image Tags')).toBeTruthy();
   });
 });
