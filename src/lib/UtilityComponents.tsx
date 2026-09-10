@@ -107,8 +107,10 @@ const Dropzone = ({ htmlFor, frameClassName, dragOver, overlay, children }: {
   const frame = (
     <div
       className={cn(
-        'relative border-2 border-dashed border-border rounded-md',
+        'relative border-2 border-dashed border-border rounded-md transition-colors',
         frameClassName ?? 'flex items-center justify-center p-4',
+        // Only a clickable frame invites a hover; a withheld one stays flat.
+        htmlFor && 'hover:border-muted-foreground',
         dragOver && 'border-primary ring-2 ring-primary',
       )}
     >
