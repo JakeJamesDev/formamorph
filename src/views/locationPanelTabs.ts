@@ -1,4 +1,4 @@
-/** The location detail panel's own tabs, in order. Single source of truth: `LocationManager`'s TabsList
+/** The location detail panel's own tabs, in order. Single source of truth: `LocationManager`'s `PanelTabsList`
  *  renders from this, and the dev-router ledger (`DEV_MODAL_TABS.worldEditorLocation`) is guarded against it
  *  in `devRouter.test.ts`. */
 import { ImageIcon, MapPin, Pin, Users } from 'lucide-react';

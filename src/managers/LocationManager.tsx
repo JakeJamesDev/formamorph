@@ -68,8 +68,7 @@ const LocationManager = ({ location, tab, onTabChange, focusField }: {
 
   return (
     <Tabs value={tab} onValueChange={(v) => onTabChange(v as LocationPanelTab)} className="space-y-4">
-      {/* Named, because the editor's own strip is on the same screen and carries a Locations tab too. */}
-      <PanelTabsList tabs={tabs} label="Location Fields" />
+      <PanelTabsList tabs={tabs} stripLabel="Location Fields" />
 
       <TabsContent value="details" className="space-y-4">
         <div className="flex flex-col gap-2 sm:flex-row sm:items-end">

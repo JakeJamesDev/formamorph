@@ -70,8 +70,7 @@ const EntityManager = ({ entity, tab, onTabChange, focusField }: {
       {/* Above the strip, so a linked entity's status reads the same on every tab. */}
       <ContentLinkHeader link={editingEntity.link} />
       <Tabs value={tab} onValueChange={(v) => onTabChange(v as EntityPanelTab)} className="space-y-4">
-        {/* Named, because the editor's own strip is on the same screen and carries a Placeholders tab too. */}
-        <PanelTabsList tabs={tabs} label="Entity Fields" />
+        <PanelTabsList tabs={tabs} stripLabel="Entity Fields" />
 
         <TabsContent value="profile" className="space-y-4">
           <EntityImageWidget {...groupProps}>
