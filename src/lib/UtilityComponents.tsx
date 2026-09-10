@@ -95,7 +95,7 @@ export const resolveModelType = (model: Partial<MediaAsset>): ModelType => {
  *  `frameClassName` to give it a fixed size (e.g. the thumbnail crop); without it the box is compact and
  *  auto-sized. The dashed look lives here so every uploader stays in sync. */
 const Dropzone = ({ htmlFor, frameClassName, dragOver, overlay, children }: {
-  htmlFor?: string;
+  htmlFor: string;
   frameClassName?: string;
   /** A droppable drag is overhead — the frame says so rather than leaving the gesture to guesswork. */
   dragOver?: boolean;
@@ -107,10 +107,8 @@ const Dropzone = ({ htmlFor, frameClassName, dragOver, overlay, children }: {
   const frame = (
     <div
       className={cn(
-        'relative border-2 border-dashed border-border rounded-md transition-colors',
+        'relative border-2 border-dashed border-border rounded-md transition-colors hover:border-muted-foreground',
         frameClassName ?? 'flex items-center justify-center p-4',
-        // Only a clickable frame invites a hover; a withheld one stays flat.
-        htmlFor && 'hover:border-muted-foreground',
         dragOver && 'border-primary ring-2 ring-primary',
       )}
     >
@@ -119,11 +117,10 @@ const Dropzone = ({ htmlFor, frameClassName, dragOver, overlay, children }: {
       {overlay && <div onClick={(e) => { e.preventDefault(); e.stopPropagation(); }}>{overlay}</div>}
     </div>
   );
-  // No target input (upload withheld) ⇒ a plain box: a Label pointing nowhere would still read as clickable.
-  return htmlFor ? <Label htmlFor={htmlFor} className="cursor-pointer">{frame}</Label> : frame;
+  return <Label htmlFor={htmlFor} className="cursor-pointer">{frame}</Label>;
 };
 
-export const ImageUpload = ({ onChange, id, value, cap, previewClassName, objectFit = 'contain', onPromptExtracted, onFiles, allowUpload = true, uploadBlockedNote }: {
+export const ImageUpload = ({ onChange, id, value, cap, previewClassName, objectFit = 'contain', onPromptExtracted, onFiles }: {
   onChange: (value: string) => void;
   // Several pictures arriving at once (a multi-file drop). A caller holding more than one slot takes them
   // all; without this the first file is used and the rest are ignored, which is right for a single slot.
@@ -131,10 +128,6 @@ export const ImageUpload = ({ onChange, id, value, cap, previewClassName, object
   id: string | number;
   value?: string | null;
   cap?: ImageCap;
-  // False withdraws the file picker from an empty slot while leaving the URL box — the caller has spent its
-  // allowance for pictures carrying their own bytes. `uploadBlockedNote` says why, in the picker's place.
-  allowUpload?: boolean;
-  uploadBlockedNote?: string;
   // Optional fixed-size preview box (e.g. the 4:3 thumbnail crop). When set, replaces the default dashed box.
   previewClassName?: string;
   objectFit?: 'contain' | 'cover';
@@ -209,7 +202,6 @@ export const ImageUpload = ({ onChange, id, value, cap, previewClassName, object
   // works. Dropping onto a picture and silently replacing it is the hard gesture to take back.
   const { dragOver, dropProps } = useImageDropTarget({
     enabled: !value,
-    allowFiles: allowUpload,
     onUrl: onChange,
     onFiles: takeDropped,
   });
@@ -245,8 +237,7 @@ export const ImageUpload = ({ onChange, id, value, cap, previewClassName, object
           value={urlDraft}
           onChange={(e) => { setUrlDraft(e.target.value); setUrlError(null); }}
           onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); commitUrl(); } }}
-          // "Or" only while uploading is still on offer; with the allowance spent this is the way in.
-          placeholder={allowUpload ? 'Or paste an image URL' : 'Paste an image URL'}
+          placeholder="Or paste an image URL"
           aria-label="Image URL"
           // The focus ring is drawn by the overlay below instead, so it lands over both cells rather than
           // being covered by the button along the edge they share.
@@ -340,21 +331,19 @@ export const ImageUpload = ({ onChange, id, value, cap, previewClassName, object
     <div className="space-y-1">
       {dialog}
       {value && <ImageZoomViewer src={displaySrc} alt="" open={zoomOpen} onOpenChange={setZoomOpen} />}
-      {allowUpload && (
-        <Input
-          type="file"
-          accept="image/*"
-          multiple={!!onFiles}
-          onChange={handleImageChange}
-          className="hidden"
-          id={`image-upload-${id}`}
-        />
-      )}
-      {/* Wrapped rather than handled inside Dropzone: the frame is a Label when it is clickable, and a drop
+      <Input
+        type="file"
+        accept="image/*"
+        multiple={!!onFiles}
+        onChange={handleImageChange}
+        className="hidden"
+        id={`image-upload-${id}`}
+      />
+      {/* Wrapped rather than handled inside Dropzone: the frame is a Label, and a drop
           on a label's own child would otherwise re-open the file picker on the way through. */}
       <div {...dropProps} className="relative">
       <Dropzone
-        htmlFor={allowUpload ? `image-upload-${id}` : undefined}
+        htmlFor={`image-upload-${id}`}
         frameClassName={previewClassName}
         dragOver={dragOver}
         overlay={encoding && <ImageConvertOverlay thumb={encoding} done={0} total={1} objectFit={objectFit} />}
@@ -382,7 +371,7 @@ export const ImageUpload = ({ onChange, id, value, cap, previewClassName, object
             encoding ? null : (
               <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 p-3 text-center text-muted-foreground">
                 <span className="text-label">
-                  {dragOver ? 'Drop to add' : allowUpload ? 'Click to upload image' : uploadBlockedNote}
+                  {dragOver ? 'Drop to add' : 'Click to upload image'}
                 </span>
                 <div className="w-full max-w-[280px]">{urlBox}</div>
               </div>
@@ -406,13 +395,11 @@ export const ImageUpload = ({ onChange, id, value, cap, previewClassName, object
               {removeButton}
             </div>
           ) : (
-            encoding ? null : allowUpload ? (
+            encoding ? null : (
               <>
                 <ImagePlus className="mr-2" />
                 <span>{dragOver ? 'Drop to add' : 'Add Image'}</span>
               </>
-            ) : (
-              <span className="text-center text-helper text-muted-foreground">{uploadBlockedNote}</span>
             )
           )
         )}

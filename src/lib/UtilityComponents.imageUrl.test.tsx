@@ -217,15 +217,9 @@ describe('ImageUpload link field placement', () => {
     expect(line().textContent).toMatch(/http/);
   });
 
-  it("drops the \"Or\" once pasting a link is the only way in", () => {
-    const { rerender } = render(<ImageUpload id="t" onChange={vi.fn()} cap={IMAGE_CAPS.entity} previewClassName={SIZED} />);
+  it('offers the link box as the alternative to the upload prompt on an empty slot', () => {
+    render(<ImageUpload id="t" onChange={vi.fn()} cap={IMAGE_CAPS.entity} previewClassName={SIZED} />);
+    expect(screen.getByText('Click to upload image').closest('label')?.getAttribute('for')).toBe('image-upload-t');
     expect(screen.getByLabelText('Image URL').getAttribute('placeholder')).toBe('Or paste an image URL');
-
-    // Allowance spent: the file picker is withdrawn, so there is no longer an "or" to offer.
-    rerender(
-      <ImageUpload id="t" onChange={vi.fn()} cap={IMAGE_CAPS.entity} previewClassName={SIZED}
-        allowUpload={false} uploadBlockedNote="Upload limit reached (2)" />,
-    );
-    expect(screen.getByLabelText('Image URL').getAttribute('placeholder')).toBe('Paste an image URL');
   });
 });

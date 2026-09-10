@@ -8,8 +8,8 @@ const Nested = ({ innerEnabled, onInner, onOuter }: {
   onInner: (url: string) => void;
   onOuter: (url: string) => void;
 }) => {
-  const outer = useImageDropTarget({ enabled: true, allowFiles: true, onUrl: onOuter, onFiles: vi.fn() });
-  const inner = useImageDropTarget({ enabled: innerEnabled, allowFiles: true, onUrl: onInner, onFiles: vi.fn() });
+  const outer = useImageDropTarget({ enabled: true, onUrl: onOuter, onFiles: vi.fn() });
+  const inner = useImageDropTarget({ enabled: innerEnabled, onUrl: onInner, onFiles: vi.fn() });
   return (
     <div data-testid="pane" {...outer.dropProps} data-drag={String(outer.dragOver)}>
       <div data-testid="slot" {...inner.dropProps} data-drag={String(inner.dragOver)}>slot</div>

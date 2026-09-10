@@ -7,7 +7,7 @@ import AiGenerateButton from "@/components/AiGenerateButton";
 import PlaceholderField, { PlaceholderNameField } from "@/components/prompt/PlaceholderField";
 import { ModelUpload } from '../lib/UtilityComponents';
 import { IMAGE_CAPS } from '../lib/imageOptim';
-import { ENTITY_EMBEDDED_IMAGE_LIMIT, entityImages } from '../lib/entityImages';
+import { entityImages } from '../lib/entityImages';
 import { ImageGallery, ImageTags, ImageWidget } from './ImageTagsField';
 import { useEditorMode } from '@/lib/editorMode';
 import type { ReactNode } from 'react';
@@ -159,7 +159,6 @@ export const EntityImageWidget = ({ value, onChange, placeholders = [], ownerId,
     images={entityImages(value)}
     onImagesChange={(list) => onChange('images', list)}
     slots={Infinity}
-    embeddedLimit={ENTITY_EMBEDDED_IMAGE_LIMIT}
     imageId={`entity-image-${value.id}`}
     cap={IMAGE_CAPS.entity}
     description={value.aiDescription || value.playerDescription}

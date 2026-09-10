@@ -16,7 +16,6 @@ import AiGenerateButton from "@/components/AiGenerateButton";
 import TagField from "@/components/prompt/TagField";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
 import { ImageUpload } from '../lib/UtilityComponents';
-import { isRemoteImage } from '@/lib/imageBytes';
 import { fileToDataUrl } from '@/lib/imageDrop';
 import { followReorder } from '@/lib/imageGalleryOrder';
 import { useStableIds } from '@/lib/useStableIds';
@@ -40,10 +39,8 @@ interface ImageWidgetProps {
   images: string[];
   onImagesChange: (next: string[]) => void;
   /** How many pictures may be held. One (the default) renders as a plain single upload with no gallery chrome.
-   *  Pass Infinity for a gallery bounded only by `embeddedLimit`. */
+   *  Pass Infinity for an unbounded gallery. */
   slots?: number;
-  /** How many of those may carry their own bytes. Defaults to `slots`, i.e. no separate allowance for links. */
-  embeddedLimit?: number;
   /** Stable id for the file input (must be unique per rendered subject). */
   imageId: string;
   cap: ImageCap;
@@ -133,34 +130,37 @@ const ImageTile = ({ id, url, index, framed, onSelect }: {
   );
 };
 
-/** The strip's trailing tile: press it to add, or drop onto it. A label when the file picker is available,
- *  so one press opens it; a plain button once the upload allowance is spent, where it only reveals the URL
- *  box in the frame above. */
-const AddTile = ({ htmlFor, selected, onSelect, onUrl, onFiles, allowFiles }: {
-  htmlFor?: string;
+/** The strip's trailing tile: press it to add, or drop onto it. A label on the open slot's file input, so
+ *  one press opens the picker. */
+const AddTile = ({ htmlFor, selected, onSelect, onUrl, onFiles }: {
+  htmlFor: string;
   selected: boolean;
   onSelect: () => void;
   onUrl: (url: string) => void;
   onFiles: (files: File[]) => void;
-  allowFiles: boolean;
 }) => {
   // Targeting this tile frames the slot it fills, so the picture doesn't convert on top of whichever one
   // happened to be on show — and the frame is already on the new picture when it lands.
-  const { dragOver, dropProps } = useImageDropTarget({ enabled: true, allowFiles, onUrl, onFiles, onTargeted: onSelect });
-  const body = (
-    <span
-      className={cn(
-        'flex h-14 w-14 shrink-0 items-center justify-center rounded-md border-2 border-dashed',
-        dragOver || selected ? 'border-primary' : 'border-border hover:border-muted-foreground',
-      )}
+  const { dragOver, dropProps } = useImageDropTarget({ enabled: true, onUrl, onFiles, onTargeted: onSelect });
+  return (
+    <Label
+      htmlFor={htmlFor}
+      className="cursor-pointer"
+      {...dropProps}
+      onClick={onSelect}
+      title="Add an image"
+      aria-label="Add an image"
     >
-      <Plus className="h-5 w-5 text-muted-foreground" />
-    </span>
+      <span
+        className={cn(
+          'flex h-14 w-14 shrink-0 items-center justify-center rounded-md border-2 border-dashed',
+          dragOver || selected ? 'border-primary' : 'border-border hover:border-muted-foreground',
+        )}
+      >
+        <Plus className="h-5 w-5 text-muted-foreground" />
+      </span>
+    </Label>
   );
-  const shared = { ...dropProps, onClick: onSelect, title: 'Add an image', 'aria-label': 'Add an image' };
-  return htmlFor
-    ? <Label htmlFor={htmlFor} className="cursor-pointer" {...shared}>{body}</Label>
-    : <button type="button" {...shared}>{body}</button>;
 };
 
 /**
@@ -181,8 +181,7 @@ const AddTile = ({ htmlFor, selected, onSelect, onUrl, onFiles, allowFiles }: {
  */
 export const ImageGallery = ({ tagsSlot }: { tagsSlot?: ReactNode }) => {
   const {
-    label, images, onImagesChange, slots = 1, embeddedLimit = slots, imageId, cap, description, kind,
-    tags, onTagsChange,
+    label, images, onImagesChange, slots = 1, imageId, cap, description, kind, tags, onTagsChange,
   } = useImageWidget();
   // SD prompt pulled from an uploaded image, pending the user's OK to use it as Image Tags.
   const [pendingPrompt, setPendingPrompt] = useState<string | null>(null);
@@ -217,22 +216,10 @@ export const ImageGallery = ({ tagsSlot }: { tagsSlot?: ReactNode }) => {
   /** The file input inside each slot's uploader is keyed off this, and the add tile points a label at it. */
   const slotId = (i: number) => (i === 0 ? imageId : `${imageId}-${i}`);
 
-  // Only pictures carrying their own bytes count against the allowance; links are free to the payload.
-  const embedded = shown.filter((url) => url && !isRemoteImage(url)).length;
-  const canEmbed = embedded < embeddedLimit;
-
-  /** The slot a drop lands in: the trailing empty one, or none once the gallery is full. */
+  /** The slot a drop or a generated picture lands in: the trailing empty one, or none once the gallery is full. */
   const openSlot = rows.findIndex((url) => !url);
-
-  /** Where a generated picture goes without asking: the first empty slot, while there is room for its bytes. */
-  const generateTarget = canEmbed ? openSlot : -1;
-  /** The slots it may be put over instead. Once the embedded allowance is spent only the slots already
-   *  carrying bytes qualify — replacing a link with bytes would put the subject over that allowance. */
-  const overwritable = shown
-    .map((_url, i) => i)
-    .filter((i) => shown[i] && (canEmbed || !isRemoteImage(shown[i])));
-  // Somewhere legal to put it — an empty slot, or a filled one worth offering to replace.
-  const canGenerate = generateTarget !== -1 || overwritable.length > 0;
+  /** The slots a generated picture may be put over when there is no open one. */
+  const overwritable = shown.map((_url, i) => i);
 
   /** Write one slot; an emptied slot drops out rather than leaving a hole for the next one to fall into. */
   const setSlot = (index: number, value: string) => {
@@ -244,9 +231,9 @@ export const ImageGallery = ({ tagsSlot }: { tagsSlot?: ReactNode }) => {
   /** Take a generated picture. It fills the open slot where there is one, and otherwise asks which picture it
    *  replaces, resolving false if the author decides it replaces none of them. */
   const placeGenerated = (url: string) => {
-    if (generateTarget !== -1) {
-      setSlot(generateTarget, url);
-      setShowing(generateTarget);
+    if (openSlot !== -1) {
+      setSlot(openSlot, url);
+      setShowing(openSlot);
       return true;
     }
     // Start on the framed picture: the one being looked at is the one the author means to replace.
@@ -268,10 +255,9 @@ export const ImageGallery = ({ tagsSlot }: { tagsSlot?: ReactNode }) => {
 
   /** Several pictures dropped at once: they fill this slot and the ones after it, with a single consent
    *  prompt for the batch — a five-file drop raising five modals would be a worse gesture than five clicks.
-   *  Files past the slot count or the embedded allowance are simply not taken. */
+   *  Files past the slot count are not taken. */
   const takeFiles = async (index: number, files: File[]) => {
-    const room = Math.min(slots - index, embeddedLimit - embedded);
-    const accepted = files.slice(0, Math.max(0, room));
+    const accepted = files.slice(0, slots - index);
     if (!accepted.length) return;
     const urls = await Promise.all(accepted.map(fileToDataUrl));
     const mode = await promptImagesBatch(urls, cap);
@@ -303,7 +289,6 @@ export const ImageGallery = ({ tagsSlot }: { tagsSlot?: ReactNode }) => {
   // the drop is actually going; the slot then handles the drag itself, and stops it reaching here again.
   const pane = useImageDropTarget({
     enabled: gallery && openSlot !== -1 && !batch,
-    allowFiles: canEmbed,
     onUrl: (url) => setSlot(openSlot, url),
     onFiles: (files) => void takeFiles(openSlot, files),
     onTargeted: () => setShowing(openSlot),
@@ -353,12 +338,6 @@ export const ImageGallery = ({ tagsSlot }: { tagsSlot?: ReactNode }) => {
             cap={cap}
             // The gallery gives the picture a frame worth looking at; a single slot keeps its compact box.
             previewClassName={gallery ? FRAME_CLASS[shape] : undefined}
-            // Spent allowance closes the file picker on empty slots; the URL box stays, so a gallery can
-            // still grow with links. A filled slot ignores this — it is changed by removing it first.
-            allowUpload={canEmbed}
-            // Short enough for one line, like the prompt it replaces. What to do instead needs no sentence:
-            // the link field sits directly beneath it in the same frame.
-            uploadBlockedNote={`Upload limit reached (${embeddedLimit})`}
             // Only the primary offers its embedded prompt as the tags: the tags describe the subject, and a
             // later slot overwriting them would undo the choice made for the picture that represents it.
             onPromptExtracted={i === 0 && advanced ? setPendingPrompt : undefined}
@@ -395,12 +374,11 @@ export const ImageGallery = ({ tagsSlot }: { tagsSlot?: ReactNode }) => {
           {/* Outside the sortable set: dropping a picture onto "add" would mean nothing. */}
           {openSlot !== -1 && (
             <AddTile
-              htmlFor={canEmbed ? `image-upload-${slotId(openSlot)}` : undefined}
+              htmlFor={`image-upload-${slotId(openSlot)}`}
               selected={openSlot === showing}
               onSelect={() => setShowing(openSlot)}
               onUrl={(dropped) => setSlot(openSlot, dropped)}
               onFiles={(files) => void takeFiles(openSlot, files)}
-              allowFiles={canEmbed}
             />
           )}
         </div>
@@ -414,17 +392,13 @@ export const ImageGallery = ({ tagsSlot }: { tagsSlot?: ReactNode }) => {
         onCancel={() => setPendingPrompt(null)}
       />
       {tagsSlot}
-      {/* A generated picture always arrives as bytes, so it answers to the embedded allowance: it fills a free
-          slot, and once there is none it replaces one the author picks. */}
-      {canGenerate && (
-        <GenerateImageButton
-          subject={{ description: description || '', kind }}
-          cap={cap}
-          onChange={placeGenerated}
-          tags={tags ?? ''}
-          onTagsChange={onTagsChange}
-        />
-      )}
+      <GenerateImageButton
+        subject={{ description: description || '', kind }}
+        cap={cap}
+        onChange={placeGenerated}
+        tags={tags ?? ''}
+        onTagsChange={onTagsChange}
+      />
       <Dialog open={pendingGenerated !== null} onOpenChange={(o) => { if (!o) closeOverwrite(false); }}>
         <DialogContent className="sm:max-w-[420px]">
           <DialogHeader>

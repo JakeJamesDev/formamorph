@@ -6,11 +6,9 @@ import { canDropImage, imageDropPayload } from './imageDrop';
  * behave identically — a drop that works on one and not the other is the kind of inconsistency nobody
  * reports, they just stop trying.
  */
-export function useImageDropTarget({ enabled, allowFiles, onUrl, onFiles, onTargeted }: {
+export function useImageDropTarget({ enabled, onUrl, onFiles, onTargeted }: {
   /** False for a slot that has nothing to accept — a filled one, which is changed by removing it first. */
   enabled: boolean;
-  /** False once the embedded-bytes allowance is spent. Links stay welcome: they cost the payload nothing. */
-  allowFiles: boolean;
   onUrl: (url: string) => void;
   onFiles: (files: File[]) => void;
   /** This target is the one a droppable drag is aimed at. Lets a gallery bring the slot being filled into
@@ -40,8 +38,8 @@ export function useImageDropTarget({ enabled, allowFiles, onUrl, onFiles, onTarg
     e.stopPropagation();
     onTargeted?.();
     if (payload.kind === 'url') return onUrl(payload.url);
-    if (allowFiles) onFiles(payload.files);
-  }, [enabled, allowFiles, onUrl, onFiles, onTargeted]);
+    onFiles(payload.files);
+  }, [enabled, onUrl, onFiles, onTargeted]);
 
   return {
     dragOver,

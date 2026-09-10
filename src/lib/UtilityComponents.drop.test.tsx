@@ -98,22 +98,6 @@ describe('ImageUpload drag and drop', () => {
     await waitFor(() => expect(onChange).toHaveBeenCalledTimes(1));
   });
 
-  it('refuses dropped bytes once the embedded allowance is spent, but still takes a link', async () => {
-    const onChange = vi.fn();
-    render(
-      <ImageUpload id="t" onChange={onChange} cap={IMAGE_CAPS.entity} allowUpload={false} uploadBlockedNote="no room" />,
-    );
-    const frame = zone;
-
-    fireEvent.drop(frame(), { dataTransfer: transfer({ files: [file('a.png')] }) });
-    // The link is dropped second and awaited, so the file's own async read has had every chance to land
-    // by the time the count is checked — asserting on it straight after the drop could never fail.
-    fireEvent.drop(frame(), { dataTransfer: transfer({ data: { 'text/uri-list': 'https://files.example/a.png' } }) });
-
-    await waitFor(() => expect(onChange).toHaveBeenCalledWith('https://files.example/a.png'));
-    expect(onChange).toHaveBeenCalledTimes(1);
-  });
-
   it('marks the frame while a droppable drag is over it, and unmarks on leave', () => {
     render(<ImageUpload id="t" onChange={vi.fn()} cap={IMAGE_CAPS.entity} />);
     const frame = zone;
