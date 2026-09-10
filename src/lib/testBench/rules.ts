@@ -2125,7 +2125,7 @@ const dictionaryDisabled: Rule = {
 // ── The world itself ──────────────────────────────────────────────────────────────────────────────────────
 
 /** The world as a finding names it — for rules whose subject has no list row of its own. */
-const worldItem = (world: RuleWorld): FindingItem => ({
+export const worldItem = (world: RuleWorld): FindingItem => ({
   id: 'overview',
   name: describePlaceholders(world.worldOverview?.name ?? '', allPlaceholders(world)).trim() || 'This World',
 });
@@ -2281,8 +2281,20 @@ export const STAT_CODE_EXECUTION: RuleHead = {
   summary: (count) => `${count} stats’ code fails when it actually runs`,
 };
 
-/** Everything that can put a row in the Issues list — the live rules plus the on-demand check. */
-const RULE_HEADS: readonly RuleHead[] = [...RULES, STAT_CODE_EXECUTION];
+/**
+ * The publish-size check's row. It is a head without a `check` because the byte count comes from the
+ * debounced worker measure, not the synchronous pure pass: `lib/testBench/worldTooLarge` raises its finding
+ * from the measured size; it groups and sorts here like any other row.
+ */
+export const WORLD_TOO_LARGE: RuleHead = {
+  id: 'world-too-large',
+  severity: 'warning',
+  section: 'overview',
+  summary: () => 'The world is over the publish limit',
+};
+
+/** Everything that can put a row in the Issues list — the live rules plus the on-demand checks. */
+const RULE_HEADS: readonly RuleHead[] = [...RULES, STAT_CODE_EXECUTION, WORLD_TOO_LARGE];
 
 /** The one lookup from a finding's rule id back to what raised it. */
 const HEAD_BY_ID = new Map(RULE_HEADS.map((rule) => [rule.id, rule]));
