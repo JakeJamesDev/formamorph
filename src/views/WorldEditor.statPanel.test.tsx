@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { screen, fireEvent, within } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { benchEditorWorld, renderWorldEditorBench } from '@/test/worldEditorBench';
 import type { World } from '@/types';
 
@@ -115,13 +116,15 @@ describe('the World Editor stat panel tabs', () => {
     ]);
   });
 
-  it('carries both meanings of Availability on one help line', () => {
+  it('carries both meanings of Availability on one short line, with the definitions behind the info control', async () => {
     renderWorldEditorBench(WORLD, 'advanced');
     selectStat('Warmth');
-    const help = screen.getByText(/Off keeps the stat asleep/);
-    expect(help.textContent).toMatch(/Hidden keeps it from the player/);
-    // The pair had a paragraph each before; a second one under Availability is the regression.
-    expect(screen.queryByText(/Turn this off to keep the stat inert/)).toBeNull();
+    const help = screen.getByText(/Enabled makes the stat live/);
+    expect(help.textContent).toMatch(/Hidden keeps it from the player only/);
+    // The pair had a paragraph each before; a second line under Availability is the regression.
+    expect(screen.queryByText(/regen and code/)).toBeNull();
+    await userEvent.click(within(help.parentElement!).getByRole('button', { name: 'More info' }));
+    expect(await screen.findByText(/regen and code keep running/)).toBeInTheDocument();
   });
 
   it('puts the descriptor section whole on Descriptors', () => {
