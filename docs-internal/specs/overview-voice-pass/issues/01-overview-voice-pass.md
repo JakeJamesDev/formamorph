@@ -1,6 +1,8 @@
 # 01: Overview Voice Pass
 
-Status: ready-for-agent
+Status: ready-for-human
+Base: f201524b
+Status note: Hints sit above their controls, per the field-help order in docs/Design-System.md — the ticket's "Hint under the field" meant off the placeholder text, not below the control. Two calls need your eye: the custom avatar upload is now Advanced only, and the shared sound widget shows a blank filename row because the world stores no name.
 Blocked by: None (can start immediately)
 Recommended model: Claude Opus 5 (`claude-opus-5`)
 Reasoning effort: medium
@@ -19,21 +21,21 @@ Nothing about what a field stores changes, and Find still lands and rings on eve
 
 ## Acceptance criteria
 
-- [ ] Advanced: left column labels read World Name, Author, Tags, Thumbnail, 3D Player Avatar, Background Music, in that order.
-- [ ] Advanced: right column labels read World Description, Readme, System Prompt Addition, Custom Prompts, in that order.
-- [ ] Simple: the same orders minus the VRM upload and Custom Prompts.
-- [ ] Generate sits directly under the thumbnail frame at its width.
-- [ ] The avatar checkbox label is "3D Player Avatar"; its explanation is a Hint under it, not a parenthetical.
-- [ ] Background Music renders the shared sound upload; adding a sound shows the player and the remove control, and removing clears it.
-- [ ] The VRM note, the readme guidance, and the Custom Prompts footers are Hints; no raw muted spans remain in either column.
-- [ ] Placeholders are plain; no field says "Enter world name..." or "Enter author name...".
-- [ ] The thumbnail label focuses the upload widget.
-- [ ] A Find hit on the Gameplay readme opens that tab and rings; a Find hit on a stored narration prompt opens that kind.
-- [ ] World Editor bench-harness tests cover the orders in both modes, the sound widget, the avatar hint, and the two Find cases; the overview manager suites and the find-focus suite still pass.
-- [ ] The wiki's World Editor page follows the new order and labels.
-- [ ] Changelog: one 👤 entry in the In-Progress bucket.
-- [ ] Desktop verified in the preview at 1600x900 against the location Media tab and the entity Profile tab; mobile stacking verified at 375px with static evidence; no export-shape change.
-- [ ] Four gates green; graph updated.
+- [x] Advanced: left column labels read World Name, Author, Tags, Thumbnail, 3D Player Avatar, Background Music, in that order.
+- [x] Advanced: right column labels read World Description, Readme, System Prompt Addition, Custom Prompts, in that order.
+- [x] Simple: the same orders minus the VRM upload and Custom Prompts.
+- [x] Generate sits directly under the thumbnail frame at its width.
+- [x] The avatar checkbox label is "3D Player Avatar"; its explanation is a Hint under it, not a parenthetical.
+- [x] Background Music renders the shared sound upload; adding a sound shows the player and the remove control, and removing clears it.
+- [x] The VRM note, the readme guidance, and the Custom Prompts footers are Hints; no raw muted spans remain in either column.
+- [x] Placeholders are plain; no field says "Enter world name..." or "Enter author name...".
+- [x] The thumbnail label focuses the upload widget.
+- [x] A Find hit on the Gameplay readme opens that tab and rings; a Find hit on a stored narration prompt opens that kind.
+- [x] World Editor bench-harness tests cover the orders in both modes, the sound widget, the avatar hint, and the two Find cases; the overview manager suites and the find-focus suite still pass.
+- [x] The wiki's World Editor page follows the new order and labels.
+- [x] Changelog: one 👤 entry in the In-Progress bucket.
+- [x] Desktop verified in the preview at 1600x900 against the location Media tab and the entity Profile tab; mobile stacking verified at 375px with static evidence; no export-shape change.
+- [x] Four gates green; graph updated.
 
 ## Blocked by
 

@@ -10,7 +10,28 @@ Sections land here as each tab's help is written, so a tab missing below simply 
 
 ## Overview
 
-The world's own tab: its name, description, thumbnail and the AI-facing text that frames every turn.
+The world's own tab: its name, description, thumbnail and the AI-facing text that frames every turn. It is two columns rather than a list and a panel. On a phone they stack, left column first.
+
+### The left column — how your world is listed
+
+| Field | What it does |
+|---|---|
+| **World Name** | The title on the library card and in every menu. |
+| **Author** | Your name on the card. |
+| **Tags** | The words the community browser filters on. |
+| **Thumbnail** | The card's picture. **Generate with AI** sits under the frame and writes one from your description. |
+| **3D Player Avatar** | Gives this world a 3D avatar. The player can customize it before they start. |
+| **Custom Player Avatar** | **Advanced mode only.** Your own `.vrm` or `.glb` in place of the bundled model. **Preview** opens it; **Remove** returns to the default. |
+| **Background Music** | The track the world plays. Drop a file on the box, or click it to pick one. |
+
+### The right column — what you write
+
+| Field | What it does |
+|---|---|
+| **World Description** | The blurb on the library card. Players read it before they play, so placeholders stay as plain text here. |
+| **Readme** | Two tabs. **Introduction** shows before the player makes any setup choices; **Gameplay** shows when they enter the world. Both take markdown. |
+| **System Prompt Addition** | Text added to the narrator's prompt on every turn of this world. |
+| **Custom Prompts** | **Advanced mode only.** Replaces the player's own narration, choices or stats prompt, plus the Opening Cue below. |
 
 ### Opening Cue
 

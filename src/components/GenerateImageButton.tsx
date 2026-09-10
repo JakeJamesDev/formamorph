@@ -97,9 +97,11 @@ const PreviewPane = ({ shape, generating, progress, frame, preview, onZoom }: {
  * prompt from the subject's description (via the text model), lets the user tweak it, generates an image
  * through the configured image provider, fits it to the field's cap, and hands it back via `onChange`.
  */
-export function GenerateImageButton({ subject, cap, onChange, tags, onTagsChange }: {
+export function GenerateImageButton({ subject, cap, onChange, tags, onTagsChange, className }: {
   subject: { description: string; kind: ImageSubjectKind };
   cap: ImageCap;
+  /** Extra classes on the trigger, for a caller that sizes it to the picture above it. */
+  className?: string;
   /** Takes the finished picture. Returning `false` (or a promise of it) means the caller did not keep it, and
    *  this dialog stays open on its preview rather than closing over a picture that went nowhere. */
   onChange: (dataUrl: string) => void | boolean | Promise<void | boolean>;
@@ -211,7 +213,7 @@ export function GenerateImageButton({ subject, cap, onChange, tags, onTagsChange
   return (
     <>
       {downscaleDialog}
-      <Button type="button" variant="outline" size="sm" className="gap-1.5" onClick={openDialog}>
+      <Button type="button" variant="outline" size="sm" className={cn('gap-1.5', className)} onClick={openDialog}>
         <Sparkles className="h-4 w-4" /> Generate with AI
       </Button>
 
