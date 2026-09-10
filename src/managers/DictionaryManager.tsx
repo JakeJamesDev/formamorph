@@ -18,7 +18,7 @@ import type { DictionaryEntry, FocusFieldHint, Placeholder } from '@/types';
 
 /** The long form behind the Trigger Keywords ⓘ: the chip editor's own controls, which the field does not
  *  label. The line under the chips carries only what the keywords do. */
-const KEYWORDS_INFO = `**Trigger Keywords** are the words that fire this entry. When one appears in play, the Value goes into the prompt.
+const KEYWORDS_INFO = `**Trigger Keywords** activate this entry. When a message contains one, the Value is injected into the prompt.
 
 - Press Enter after each keyword.
 - Tap or double-click a chip to edit it.
@@ -88,22 +88,22 @@ const DictionaryManager = ({ entry, placeholders = [], ownerId, tab, onTabChange
   const secondaryKeywords = editingEntry.secondaryKeys ?? [];
   const handleSecondaryChange = (arr: string[]) => handleChange('secondaryKeys', arr.length ? arr : undefined);
 
-  // One line for the secondary-keyword gate, per any/all × require/exclude mode. The line decides; the ⓘ defines.
+  // One line for the secondary-keyword gate, per any/all × require/exclude mode, in the register's verbs.
   const secondaryHint = secondaryKeywords.length === 0
-    ? 'Optional. The entry also needs these, or needs them absent, before it fires.'
+    ? 'Optional. The entry activates only when these match too, or with Exclude, only when they do not.'
     : editingEntry.secondaryExclude
       ? (editingEntry.secondaryAll
-        ? 'Fires when a keyword appears and not every secondary does.'
-        : 'Fires when a keyword appears and no secondary does.')
+        ? 'Activates when a Trigger Keyword matches and not every Secondary Keyword matches.'
+        : 'Activates when a Trigger Keyword matches and no Secondary Keyword matches.')
       : (editingEntry.secondaryAll
-        ? 'Fires when a keyword and every secondary appear.'
-        : 'Fires when a keyword and at least one secondary appear.');
+        ? 'Activates when a Trigger Keyword matches and every Secondary Keyword matches.'
+        : 'Activates when a Trigger Keyword matches and at least one Secondary Keyword matches.');
 
   const detailsPanel = (
     <>
       <div className="space-y-2">
         <Label>Name</Label>
-        <Hint>Names the entry in the list and prefixes its Value in the prompt. Blank uses the first keyword.</Hint>
+        <Hint>Names the entry in the list and prefixes the Value in the prompt. Blank uses the first Trigger Keyword.</Hint>
         <PlaceholderNameField
           value={editingEntry.name ?? ''}
           onChange={(v) => handleChange('name', v)}
@@ -118,7 +118,7 @@ const DictionaryManager = ({ entry, placeholders = [], ownerId, tab, onTabChange
           <Label>Trigger Keywords</Label>
           <HintInfo>{KEYWORDS_INFO}</HintInfo>
         </div>
-        <Hint>Press Enter after each keyword. One of them in play sends the Value to the AI.</Hint>
+        <Hint>Press Enter after each keyword. A message that contains one activates the entry.</Hint>
         <KeywordChips keywords={keywords} onChange={(key) => handleChange('key', key)} placeholders={chipPlaceholders} ownerId={ownerId} offerCommaSplit={!editingEntry.useRegex} />
         {/* The two switches that modify these keywords, kept beside them: they are also the only matching
             switches Simple mode shows. */}
@@ -141,7 +141,7 @@ const DictionaryManager = ({ entry, placeholders = [], ownerId, tab, onTabChange
   const matchingPanel = (
     <>
       <div className="space-y-2">
-        <Hint>Always Inject sends the entry every turn. Regex reads keywords as patterns. Recursive lets other entries fire this one.</Hint>
+        <Hint>Always Inject injects the Value into every prompt. Regex matches keywords as regular expressions. Recursive lets an injected Value activate this entry.</Hint>
         <div className="flex flex-wrap gap-x-4 gap-y-2">
           <CheckRow label="Always Inject" checked={!!editingEntry.constant} onChange={(v) => handleChange('constant', v)} />
           <CheckRow label="Regex" checked={!!editingEntry.useRegex} onChange={(v) => handleChange('useRegex', v)} />
@@ -150,7 +150,7 @@ const DictionaryManager = ({ entry, placeholders = [], ownerId, tab, onTabChange
       </div>
       <div className="space-y-2">
         <Label>Scan Depth</Label>
-        <Hint>How many earlier messages to search. Blank searches all history. 0 searches only the current scene.</Hint>
+        <Hint>How many earlier messages to scan for keywords. Blank scans all of them. 0 scans only the current scene.</Hint>
         <Input type="number" min={0} value={editingEntry.scanDepth ?? ''} onChange={(e) => handleNumber('scanDepth', e.target.value)} placeholder="All history" />
       </div>
       <div className="space-y-2">

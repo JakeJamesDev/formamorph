@@ -32,9 +32,9 @@ import { StatDescriptorsSection, type DescriptorFieldValue } from './StatDescrip
 import { statPanelTabsFor, statTabForField, type StatPanelTab } from '@/views/statPanelTabs';
 import type { FocusFieldHint, Stat, StatDescriptor, StatType, ThresholdUnit } from "@/types";
 
-const AVAILABILITY_INFO = `**Enabled** — the stat is in play. Off keeps it inactive until a trait turns it on: the player and the AI never see it, and its regen and code pause.
+const AVAILABILITY_INFO = `**Enabled** — the stat is active. Off keeps it inactive until a trait enables it. An inactive stat is not shown to the player or sent to the AI, and its Regen and Code do not run.
 
-**Hidden** — the player never sees the stat. The AI still reads it, and its regen and code keep running. Use it for dice rolls, cooldowns, and other bookkeeping.`;
+**Hidden** — the stat is not shown to the player. It is still sent to the AI, and its Regen and Code run. Use it for dice rolls, cooldowns, and other bookkeeping.`;
 
 /** The stat being edited — a loose, partial Stat while fields are filled in. */
 type EditingStat = Partial<Stat>;
@@ -291,7 +291,7 @@ const StatManager = ({ stat, tab, onTabChange, focusField }: {
           </div>
           <div className="space-y-2">
             <Label>Body Sliders</Label>
-            <Hint>Sliders this stat drives. Its value from Min to Max moves each one.</Hint>
+            <Hint>Body sliders bound to this stat. Its value between Min and Max sets each slider's position.</Hint>
             <MultiSelect
               key={stat.id}
               options={morphGroups}
@@ -313,7 +313,7 @@ const StatManager = ({ stat, tab, onTabChange, focusField }: {
             <HintInfo>{AVAILABILITY_INFO}</HintInfo>
           </div>
           {/* The line decides; the ⓘ defines. Two paragraphs here cost the panel a screen. */}
-          <Hint>Enabled makes the stat live. Hidden keeps it from the player only.</Hint>
+          <Hint>Enabled makes the stat active. Hidden hides it from the player only.</Hint>
           <div className="grid grid-cols-2 gap-2">
             <label className="flex items-center space-x-2 cursor-pointer">
               <Checkbox
