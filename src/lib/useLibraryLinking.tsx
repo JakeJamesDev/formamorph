@@ -13,6 +13,7 @@ import {
   type LibrarySource, type LinkableContent,
 } from '@/lib/linkedContent';
 import { kindOf, loadLinkedSources, saveCopyToLibrary, type LibraryKind } from '@/lib/librarySources';
+import { LINKING_ENABLED } from '@/lib/linkingFlag';
 import type { Dictionary, Entity, Placeholder } from '@/types';
 
 /** One entry in the selected item's dropdown. */
@@ -53,6 +54,9 @@ interface LibraryLinkingOptions {
  * into the world's linked copies.
  *
  * A link made here is committed by the next world save, which is what `pending` reports until then.
+ *
+ * With `LINKING_ENABLED` off only the library half runs: content saves out, copies come back independent,
+ * and no link is written or read.
  */
 export function useLibraryLinking(options: LibraryLinkingOptions) {
   // The list state and its setters are read through the ref below, so the synchronization pass can run
@@ -71,6 +75,7 @@ export function useLibraryLinking(options: LibraryLinkingOptions) {
 
   /** Bring the world's linked copies up to date with the library items their author owns. */
   const syncFromLibrary = useCallback(async () => {
+    if (!LINKING_ENABLED) return;
     const current = latest.current;
     const linkedIds = [...current.entities, ...current.dictionaries]
       .map((item) => item.link?.libraryId)
@@ -108,7 +113,7 @@ export function useLibraryLinking(options: LibraryLinkingOptions) {
   const saveToLibrary = useCallback(async (item: LinkableContent) => {
     try {
       const source = await saveCopyToLibrary(item, placeholders);
-      applyLink(item, source, false);
+      if (LINKING_ENABLED) applyLink(item, source, false);
       toast.success(`"${source.name}" saved to your library.`);
     } catch (error) {
       toast.error((error as Error).message || 'Could not save to your library.');
@@ -142,6 +147,14 @@ export function useLibraryLinking(options: LibraryLinkingOptions) {
     const exportItem = () => (kind === 'dictionary'
       ? exportDictionary(item as Dictionary)
       : exportEntity(item as Entity));
+    if (!LINKING_ENABLED) {
+      return {
+        faceLabel: 'Save to Library',
+        faceTip: `Save a copy of this ${noun.toLowerCase()} to your library`,
+        onFace: () => { void saveToLibrary(item); },
+        menu: advanced ? [{ label: `Export ${noun}…`, onClick: exportItem }] : [],
+      };
+    }
     const linked = !!(item.link?.libraryId || item.link?.sourceId);
     return {
       faceLabel: linked ? 'Open in Library' : 'Save to Library',
@@ -191,7 +204,7 @@ export function useLibraryLinking(options: LibraryLinkingOptions) {
     if (!review) return;
     const { kind, item } = review;
     let linked = item;
-    if (link) {
+    if (link && LINKING_ENABLED) {
       try {
         const source = await saveCopyToLibrary(item, placeholders);
         linked = { ...item, link: linkToSource(source) };

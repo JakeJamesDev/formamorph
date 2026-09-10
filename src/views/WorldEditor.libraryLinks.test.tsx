@@ -10,7 +10,12 @@ import type { Dictionary, Entity, World } from '@/types';
  *
  * The libraries are in-memory stand-ins for the two IndexedDB services, so a test can read what the editor
  * actually wrote rather than only what it drew.
+ *
+ * Linking does not ship yet, so this file turns it on and proves the parked half still works. What the
+ * editor offers with it off is `WorldEditor.libraryOnly.test.tsx`.
  */
+
+vi.mock('@/lib/linkingFlag', () => ({ LINKING_ENABLED: true }));
 
 const library = vi.hoisted(() => ({
   dictionaries: new Map<string, { id: string; name: string; data: Dictionary; createdAt?: string; editedAt?: string; sourceId?: string; sourceAuthorId?: string; sourceAuthorName?: string }>(),

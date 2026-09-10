@@ -1,6 +1,8 @@
 # 10: Missing-source checks and repairs
 
 Status: ready-for-agent
+Status note: PAUSED with the linked-world-content effort. Ticket 03 removes the `LINKING_ENABLED`
+flag and is the resume point.
 Blocked by: 06
 Recommended model: Claude Sonnet 5 (`claude-sonnet-5`)
 Reasoning effort: high

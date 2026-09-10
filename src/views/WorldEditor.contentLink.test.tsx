@@ -9,7 +9,22 @@ import type { World } from '@/types';
  * No action creates a link yet, so these worlds are authored with the records already on them — which is
  * also how an imported or hand-edited world arrives. What is under test is that the editor reads the record
  * off the entity and the book and says so, in the list and in the selected item's header.
+ *
+ * Linking does not ship yet, so this file turns it on. What the editor draws with it off is
+ * `WorldEditor.libraryOnly.test.tsx`.
  */
+
+vi.mock('@/lib/linkingFlag', () => ({ LINKING_ENABLED: true }));
+
+// These worlds follow library items that are not here, so the editor's synchronization pass reaches the
+// two libraries on open. Empty stand-ins keep it off IndexedDB, which jsdom does not have.
+vi.mock('@/services/EntityStorageService', () => ({
+  default: { getEntityMetadata: () => Promise.resolve([]), getEntityData: () => Promise.reject(new Error('Entity not found')) },
+}));
+
+vi.mock('@/services/DictionaryStorageService', () => ({
+  default: { getDictionaryMetadata: () => Promise.resolve([]), getDictionaryData: () => Promise.reject(new Error('Dictionary not found')) },
+}));
 
 vi.mock('../services/WorldStorageService', () => ({
   default: {

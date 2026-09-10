@@ -1,6 +1,8 @@
 # 05: Publish with linked content
 
 Status: ready-for-agent
+Status note: PAUSED with the linked-world-content effort. Ticket 03 removes the `LINKING_ENABLED`
+flag and is the resume point.
 Blocked by: 01, 04
 Recommended model: Claude Opus 5 (`claude-opus-5`)
 Reasoning effort: high
