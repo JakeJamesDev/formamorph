@@ -1,6 +1,7 @@
 # 02: Tabbed Stat Panel
 
-Status: ready-for-agent
+Status: in-progress
+Base: 8caba323
 Blocked by: 01
 Recommended model: Claude Opus 5 (`claude-opus-5`)
 Reasoning effort: high

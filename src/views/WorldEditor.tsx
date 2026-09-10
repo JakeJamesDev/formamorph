@@ -50,6 +50,7 @@ import LocationCanvas from '../managers/LocationCanvas';
 import { LOCATION_VIEWS, type LocationView } from './locationViews';
 import { ENTITY_PANEL_TABS, entityPanelTabsFor, type EntityPanelTab } from './entityPanelTabs';
 import { LOCATION_PANEL_TABS, locationPanelTabsFor, type LocationPanelTab } from './locationPanelTabs';
+import { STAT_PANEL_TABS, statPanelTabsFor, type StatPanelTab } from './statPanelTabs';
 import { focusFieldForItem } from './findFocus';
 import EntityTree from '../managers/EntityTree';
 import { removeLocationPromotingChildren } from '@/lib/locationTree';
@@ -180,6 +181,17 @@ const WorldEditorInner = ({ onClose, embedded = false, backButton }: {
   const [locationTab, setLocationTab] = useState<LocationPanelTab>('details');
   const locationTabs = useMemo(() => locationPanelTabsFor(advanced), [advanced]);
   const shownLocationTab = locationTabs.some((t) => t.value === locationTab) ? locationTab : 'details';
+  // The stat panel's own tabs, held here for the same reason. Simple mode leaves it one tab, which the panel
+  // reads as no strip at all.
+  const [statTab, setStatTab] = useState<StatPanelTab>('details');
+  const statTabs = useMemo(() => statPanelTabsFor(advanced), [advanced]);
+  const shownStatTab = statTabs.some((t) => t.value === statTab) ? statTab : 'details';
+  // One tab means no strip, so the author is on Details for real rather than bounced off a tab they can see.
+  // Returning to Advanced opens there, which is where they were, not on the tab the strip last held. This is
+  // where the stat panel parts company with the entity and location ones, whose strips never go away.
+  useEffect(() => {
+    if (statTabs.length === 1) setStatTab('details');
+  }, [statTabs]);
 
   // DEV dev-router: jump to a specific editor tab via `#dev?modal=worldEditor&tab=…`. Tree-shaken in prod.
   const devRoute = useDevRoute();
@@ -203,6 +215,12 @@ const WorldEditorInner = ({ onClose, embedded = false, backButton }: {
   useEffect(() => {
     if (import.meta.env.DEV && LOCATION_PANEL_TABS.some((t) => t.value === devSubtab)) {
       setLocationTab(devSubtab as LocationPanelTab);
+    }
+  }, [devSubtab]);
+  // And over the Stats tab, where the slot names one of the stat panel's own tabs.
+  useEffect(() => {
+    if (import.meta.env.DEV && STAT_PANEL_TABS.some((t) => t.value === devSubtab)) {
+      setStatTab(devSubtab as StatPanelTab);
     }
   }, [devSubtab]);
   const [searchTerm, setSearchTerm] = useState('');
@@ -734,7 +752,13 @@ const WorldEditorInner = ({ onClose, embedded = false, backButton }: {
         <WorldDetailsManager focusField={findField} />
       )}
       {activeTab === "stats" && selectedItem && (
-        <StatManager key={selectedItem.id} stat={selectedItem as Stat} />
+        <StatManager
+          key={selectedItem.id}
+          stat={selectedItem as Stat}
+          tab={shownStatTab}
+          onTabChange={setStatTab}
+          focusField={focusFieldForItem(findField, selectedItem.id)}
+        />
       )}
       {activeTab === "entities" && selectedEntityGroup && (
         <EntityGroupManager key={selectedEntityGroup.id} group={selectedEntityGroup} />

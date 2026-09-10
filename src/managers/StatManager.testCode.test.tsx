@@ -40,6 +40,10 @@ vi.mock('@/lib/statCodeExecutor', () => ({ executeStatCode, STAT_CLOCK_VARS: [] 
 
 const row = () => screen.getByRole('button', { name: /Test Code/ }).parentElement as HTMLElement;
 
+/** The code editor lives on the panel's Code tab, so every case here opens there. The tab an author picks
+ *  belongs to the editor, which is why it arrives as a prop rather than being clicked to. */
+const renderCodePanel = (stat: Stat) => render(<StatManager stat={stat} tab="code" onTabChange={() => {}} />);
+
 /** Put code in the field the way an author would, and run it. */
 async function testCode(user: ReturnType<typeof userEvent.setup>, code: string) {
   const field = screen.getByLabelText('Stat code');
@@ -57,7 +61,7 @@ describe('what Test Code reports', () => {
   it('says how many problems the reader found beside the number the run produced', async () => {
     const user = userEvent.setup();
     executeStatCode.mockResolvedValue({ value: 5, error: null });
-    render(<StatManager stat={stats[0]} />);
+    renderCodePanel(stats[0]);
 
     // Runs perfectly — the branch holding the typo is never taken, which is exactly why running it
     // proves nothing about the typo.
@@ -70,7 +74,7 @@ describe('what Test Code reports', () => {
   it('leaves a clean result clean, with nothing to qualify it', async () => {
     const user = userEvent.setup();
     executeStatCode.mockResolvedValue({ value: 5, error: null });
-    render(<StatManager stat={stats[0]} />);
+    renderCodePanel(stats[0]);
 
     await testCode(user, 'return 5;');
 
@@ -81,7 +85,7 @@ describe('what Test Code reports', () => {
   it('still counts the problems when the run itself threw', async () => {
     const user = userEvent.setup();
     executeStatCode.mockResolvedValue({ value: null, error: "Error: 'nope' is not defined" });
-    render(<StatManager stat={stats[0]} />);
+    renderCodePanel(stats[0]);
 
     await testCode(user, 'const x = nope; return alsoNope;');
 
@@ -92,7 +96,7 @@ describe('what Test Code reports', () => {
   it('drops the whole report once the code it described has been edited', async () => {
     const user = userEvent.setup();
     executeStatCode.mockResolvedValue({ value: 5, error: null });
-    render(<StatManager stat={stats[0]} />);
+    renderCodePanel(stats[0]);
 
     await testCode(user, 'if (false) { return nope; } return 5;');
     await waitFor(() => expect(row()).toHaveTextContent('1 error in this code'));

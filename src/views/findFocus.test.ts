@@ -1,7 +1,12 @@
 import { describe, expect, it } from 'vitest';
 import { focusFieldForItem, tabForField } from './findFocus';
 
-const TABS = { name: 'profile', 'aliases[]': 'profile', aiSummary: 'descriptions' } as const;
+const TABS = {
+  name: 'profile',
+  'aliases[]': 'profile',
+  aiSummary: 'descriptions',
+  'descriptors[].description': 'descriptors',
+} as const;
 
 describe('tabForField', () => {
   it('answers the tab a plain key is mapped to', () => {
@@ -25,6 +30,11 @@ describe('tabForField', () => {
 
   it('answers null for an indexed key whose base no tab claims', () => {
     expect(tabForField('tags[0]', TABS)).toBeNull();
+  });
+
+  it('matches an index that sits inside the key rather than at its end', () => {
+    expect(tabForField('descriptors[0].description', TABS)).toBe('descriptors');
+    expect(tabForField('descriptors[7].description', TABS)).toBe('descriptors');
   });
 });
 

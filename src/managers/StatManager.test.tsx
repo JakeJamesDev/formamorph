@@ -1,11 +1,12 @@
 import { useState } from 'react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen } from '@testing-library/react';
+import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import type { Placeholder, Stat } from '@/types';
 import { EditorModeContext } from '@/lib/editorMode';
 import { encodePlaceholderToken } from '@/lib/placeholders';
 import { phValueId, phValues } from '@/test/placeholderValues';
+import type { StatPanelTab } from '@/views/statPanelTabs';
 import StatManager from './StatManager';
 
 // Ten rockets banded in the stat's own units — the case the unit toggle exists for.
@@ -43,18 +44,24 @@ vi.mock('@/components/prompt/PlaceholderField', () => ({
 }));
 vi.mock('@/lib/useBodyMorphNames', () => ({ useBodyMorphSources: () => ({ sources: [], loading: false, load: () => {} }) }));
 
-/** Renders the manager against the live store, re-rendering whenever it writes. */
-const Harness = () => {
+/** Renders the manager against the live store, re-rendering whenever it writes. The panel's tab belongs to
+ *  the editor, so the harness stands in for that slot and opens on whichever tab a case is about. */
+const Harness = ({ initialTab = 'descriptors' }: { initialTab?: StatPanelTab }) => {
   const [, setTick] = useState(0);
+  const [tab, setTab] = useState<StatPanelTab>(initialTab);
   store.rerender = () => setTick((n) => n + 1);
-  return <StatManager stat={store.stat} />;
+  return <StatManager stat={store.stat} tab={tab} onTabChange={setTab} />;
 };
 
-const renderManager = () => render(
+const renderManager = (initialTab: StatPanelTab = 'descriptors') => render(
   <EditorModeContext.Provider value={{ mode: 'advanced', advanced: true, setMode: () => {} }}>
-    <Harness />
+    <Harness initialTab={initialTab} />
   </EditorModeContext.Provider>,
 );
+
+/** Every chip field the open tab renders, by value, in document order. */
+const chipFieldValues = () =>
+  Array.from(document.querySelectorAll('[data-chip-field]')).map((el) => (el as HTMLInputElement).value);
 
 beforeEach(() => {
   store.stat = { ...rockets, descriptors: rockets.descriptors.map((d) => ({ ...d })) };
@@ -141,12 +148,33 @@ describe('the coverage bar', () => {
   });
 });
 
+describe('the tab strip', () => {
+  it('drops the Code tab for a stat with no numeric value, rather than offering an empty one', () => {
+    // A type no editor writes any more. `migrateWorld` retypes it on the way in, so the editor never shows
+    // one — but the panel takes whatever it is handed, and a tab whose body renders nothing is worse than
+    // no tab. Rendered here rather than through the editor for exactly that reason.
+    store.stat = { ...rockets, type: 'list' } as unknown as Stat;
+    renderManager('details');
+    const strip = screen.getByRole('tablist', { name: 'Stat Fields' });
+    expect(within(strip).getAllByRole('tab').map((el) => el.textContent)).toEqual(['Details', 'Descriptors']);
+  });
+
+  it('offers all three tabs for a numeric stat', () => {
+    renderManager('details');
+    const strip = screen.getByRole('tablist', { name: 'Stat Fields' });
+    expect(within(strip).getAllByRole('tab').map((el) => el.textContent)).toEqual(['Details', 'Descriptors', 'Code']);
+  });
+});
+
 describe('the stat text fields', () => {
-  it('offers the chip field for the description and for every descriptor row, the new one included', () => {
+  it('offers the chip field for the name and the description on Details', () => {
+    renderManager('details');
+    expect(chipFieldValues()).toEqual(['Rockets', '']);
+  });
+
+  it('offers the chip field for every descriptor row, the new one included', () => {
     renderManager();
-    const chipFields = document.querySelectorAll('[data-chip-field]');
-    expect(Array.from(chipFields).map((el) => (el as HTMLInputElement).value))
-      .toEqual(['Rockets', '', 'low', 'stocked', 'full', '']);
+    expect(chipFieldValues()).toEqual(['low', 'stocked', 'full', '']);
     expect(screen.getByLabelText('New Description')).toHaveAttribute('data-chip-field');
   });
 });
