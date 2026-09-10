@@ -3,7 +3,7 @@ import { runRules, type Finding, type RuleWorld } from './rules';
 
 /** How still the world has to go before the rules run again. Long enough that typing a name never
  *  triggers a pass per keystroke, short enough that the badge answers while the edit is still fresh. */
-const RULE_DEBOUNCE_MS = 400;
+export const RULE_DEBOUNCE_MS = 400;
 
 /**
  * The findings for `world`, recomputed once the author stops editing. Pass a value whose identity changes

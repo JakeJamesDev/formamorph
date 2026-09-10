@@ -1,17 +1,23 @@
 /**
- * The World Doctor — everything the rule pass raised, worst first, one row per rule.
+ * The World Doctor — the world's Publish Size, then everything the rule pass raised, worst first, one row
+ * per rule.
  *
  * Its own module because two chromes show it: the Test Bench panel's Issues tab, and the Bench Popover,
  * which is nothing but this list. Presentational like every Instrument — findings arrive as props and each
  * action is a callback the Bench fulfills.
  */
-import { useState } from 'react';
+import { useId, useState } from 'react';
 import { AlertTriangle, CircleX, EyeOff, Info, Play, Undo2 } from 'lucide-react';
+import { HintInfo } from '@/components/SettingsRows';
 import { Button } from '@/components/ui/button';
 import { Tip } from '@/components/ui/tooltip';
+import { Meta } from '@/components/ui/typography';
 import { cn } from '@/lib/utils';
 import { SEVERITIES, type FindingGroup, type Severity } from '@/lib/testBench/rules';
 import type { CodeCheckStatus, IssuesProps, OpenFindingItem } from '@/lib/testBench/benchProps';
+import {
+  formatPublishBytes, PUBLISH_LIMITS, publishSizeBand, type PublishSizeBand,
+} from '@/lib/publishLimits';
 
 const SEVERITY_HEADING: Record<Severity, string> = {
   error: 'Errors',
@@ -30,6 +36,47 @@ const SeverityIcon = ({ severity }: { severity: Severity }) => {
   if (severity === 'error') return <CircleX className={cn(className, 'text-destructive')} aria-hidden />;
   if (severity === 'warning') return <AlertTriangle className={cn(className, 'text-warning')} aria-hidden />;
   return <Info className={cn(className, 'text-muted-foreground')} aria-hidden />;
+};
+
+const BAND_FILL: Record<PublishSizeBand, string> = {
+  green: 'bg-success',
+  amber: 'bg-warning',
+  red: 'bg-destructive',
+};
+
+const PUBLISH_SIZE_INFO = `**Publish Size** is the size of the world content that publishing sends. Publishing stops when this size is more than the publish limit.
+
+- Embedded images, sounds, and 3D models add to the Publish Size.
+- A linked image adds only its URL.
+- The file from “Export World” is larger, because “Export World” indents the file.`;
+
+/** The world's publish size against the world limit. The fill stops at full; the readout does not. */
+const PublishSizeBar = ({ bytes }: { bytes: number }) => {
+  const labelId = useId();
+  const limit = PUBLISH_LIMITS.world;
+  const { band, ratio } = publishSizeBand(bytes, limit);
+  const readout = `${formatPublishBytes(bytes)} of ${formatPublishBytes(limit)}`;
+  return (
+    <div className="mb-2 space-y-1">
+      <div className="flex items-center gap-1.5">
+        <span id={labelId} className="text-meta font-medium">Publish Size</span>
+        <HintInfo>{PUBLISH_SIZE_INFO}</HintInfo>
+        <Meta className="ml-auto tabular-nums">{readout}</Meta>
+      </div>
+      <div
+        role="meter"
+        aria-labelledby={labelId}
+        aria-valuemin={0}
+        aria-valuemax={limit}
+        aria-valuenow={Math.min(bytes, limit)}
+        aria-valuetext={readout}
+        data-band={band}
+        className="h-1.5 w-full overflow-hidden rounded-full bg-secondary"
+      >
+        <div className={cn('h-full rounded-full', BAND_FILL[band])} style={{ width: `${ratio * 100}%` }} />
+      </div>
+    </div>
+  );
 };
 
 /** The marker on a row carrying something the author hasn't been shown. A row is the unit they act on, so it
@@ -210,6 +257,7 @@ export function IssuesInstrument({ issues, onFix }: IssuesInstrumentProps) {
           </Button>
         </div>
       )}
+      {issues.publishBytes !== null && <PublishSizeBar bytes={issues.publishBytes} />}
       {issues.groups.length === 0 ? (
         // Only when there is genuinely nothing: a world whose every finding is folded away is not clean, and
         // the fold below is what says so.

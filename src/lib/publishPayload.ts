@@ -36,7 +36,7 @@ export interface PublishPayload {
  * `contentData.worldOverview.tags` — a world with none would otherwise publish untagged. Copied rather
  * than assigned in place: the caller's world is the live library copy, not ours to edit.
  */
-export function worldPublishPayload(world: World): PublishPayload {
+export function worldPublishPayload(world: Omit<World, 'id' | 'version'>): PublishPayload {
   const overview = world.worldOverview ?? {};
   return {
     kind: 'world',

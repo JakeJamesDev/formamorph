@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { cleanup, screen, fireEvent, waitFor } from '@testing-library/react';
+import { act, cleanup, screen, fireEvent, waitFor, within } from '@testing-library/react';
 import { benchEditorWorld, clickFlask, clickOpenBench, renderWorldEditorBench } from '@/test/worldEditorBench';
 
 /**
@@ -21,6 +21,15 @@ vi.mock('../services/WorldStorageService', () => ({
 vi.mock('@/lib/jsonFileWorkerUtils', () => ({
   serializeJsonBlob: vi.fn(), parseJsonText: vi.fn(), terminateWorker: vi.fn(),
 }));
+
+// jsdom has no Worker: the measure answers with the real byte count, off a promise like the worker's.
+vi.mock('@/lib/jsonMeasureClient', async () => {
+  const { measurePublishBytes } = await import('@/lib/publishLimits');
+  return {
+    measureJsonBytes: async (value: unknown) => measurePublishBytes(value),
+    terminateMeasureWorker: vi.fn(),
+  };
+});
 
 vi.mock('react-toastify', () => ({
   toast: { info: vi.fn(), success: vi.fn(), error: vi.fn() },
@@ -122,6 +131,40 @@ describe('WorldEditor — the Bench Popover', () => {
 
     expect(await screen.findByText('No Problems Found')).toBeInTheDocument();
     expect(screen.getByText(/rules checked$/)).toBeInTheDocument();
+  });
+});
+
+describe('WorldEditor — the Publish Size bar', () => {
+  const meter = () => screen.findByRole('meter', { name: 'Publish Size' });
+
+  it('shows in the popover, and follows an edit to the world', async () => {
+    const { ctx } = setup();
+    await clickFlask();
+    const before = Number((await meter()).getAttribute('aria-valuenow'));
+    expect(before).toBeGreaterThan(0);
+
+    act(() => { ctx().updateWorldOverview({ readme: 'A fen primer. '.repeat(200) }); });
+    await waitFor(() => {
+      expect(Number(screen.getByRole('meter', { name: 'Publish Size' }).getAttribute('aria-valuenow')))
+        .toBeGreaterThan(before);
+    });
+  });
+
+  it('shows in the embedded panel and the docked panel', async () => {
+    setup();
+    await clickOpenBench();
+    expect(await meter()).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Pop Out' }));
+    expect(document.querySelector('[data-panel-id="editor-bench"] [role="meter"]')).not.toBeNull();
+  });
+
+  it('shows in the mobile sheet', async () => {
+    asMobile();
+    setup();
+    await clickOpenBench();
+    await waitFor(() => expect(sheet()).toHaveAttribute('data-state', 'open'));
+    expect(await within(sheet()).findByRole('meter', { name: 'Publish Size' })).toBeInTheDocument();
   });
 });
 
