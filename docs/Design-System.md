@@ -529,8 +529,13 @@ Each panel groups its fields by what kind of thing they are:
 | Location | Details · Presence · Media · Pins | Pins |
 | Stat | Details · Descriptors · Code | Descriptors, Code |
 | Trait | Details · Stats · Pins | Pins |
+| Dictionary entry | Details · Matching | Matching |
 
-The stat panel is the one that can lose its strip: Simple mode leaves it a single tab, which is no choice to offer, so it renders that body bare.
+Two panels can lose their strip: Simple mode leaves the stat panel and the dictionary entry panel a single tab, which is no choice to offer, so each renders that body bare.
+
+The dictionary entry panel splits by cadence rather than height. The panel is not tall, but its matching rules are set once and then sit between the keywords and the value on every later visit. Details holds Name, Trigger Keywords, and Value; Matching holds the rules. Whole words and Case-sensitive stay on Details on purpose: they are the only two matching switches Simple mode shows, they modify the keywords they sit under, and keeping them there is what leaves Simple one tab.
+
+It is also the only one of the five with two hosts. The World Editor holds its tab in the editor's per-panel slot; the library's dictionary editor has no such slot and holds it in modal state for as long as the modal is open.
 
 A tab name may repeat across panels, and may match a tab on the editor's own strip. The strip's own name keeps them apart: the trait panel's Stats tab and the editor's Stats tab both read as "Stats", and only "Trait Fields" says which strip you are on.
 
@@ -544,6 +549,8 @@ A tab name may repeat across panels, and may match a tab on the editor's own str
 | Four-tab instance and its registry | `LocationManager` in [`LocationManager.tsx`](../src/managers/LocationManager.tsx) and [`locationPanelTabs.ts`](../src/views/locationPanelTabs.ts) |
 | Instance whose tab name the editor also uses | `TraitManager` in [`TraitManager.tsx`](../src/managers/TraitManager.tsx) and [`traitPanelTabs.ts`](../src/views/traitPanelTabs.ts) |
 | Instance that drops its strip in Simple mode | `StatManager` in [`StatManager.tsx`](../src/managers/StatManager.tsx) and [`statPanelTabs.ts`](../src/views/statPanelTabs.ts) |
+| Two-tab instance, mounted by two hosts | `DictionaryManager` in [`DictionaryManager.tsx`](../src/managers/DictionaryManager.tsx) and [`dictionaryPanelTabs.ts`](../src/views/dictionaryPanelTabs.ts) |
+| Its second host | `DictionaryEditorModal` in [`DictionaryEditorModal.tsx`](../src/components/modals/DictionaryEditorModal.tsx) |
 | Isolated reference | [`PanelTabStripReference.tsx`](../src/components/design-system/PanelTabStripReference.tsx) |
 | Width coverage | [`entity-panel-widths.spec.ts`](../e2e/entity-panel-widths.spec.ts) |
 
@@ -551,7 +558,7 @@ A tab name may repeat across panels, and may match a tab on the editor's own str
 
 The pane holding these panels is not monotonic in viewport width. Below `md` the panel is the full-width detail sheet. At `md` the editor splits and the panel takes half of it. A 767px window therefore gives the panel about 715px, and an 820px window gives it about 347px.
 
-So the label steps on at `sm`, off at `md`, and on again at `xl`. Three tabs in a 375px sheet get 105px each and four get 85px, while one row of "Descriptions" needs 137px. The same shortfall returns in the half-width pane between `md` and `xl`.
+So the label steps on at `sm`, off at `md`, and on again at `xl`. Three tabs in a 375px sheet get 105px each and four get 85px, while one row of "Descriptions" needs 137px. Two tabs get 148px each, which is why the dictionary entry strip is the one case the label would fit; it hides anyway, because a strip that keeps its labels at a width where its neighbors drop theirs reads as a different control. The same shortfall returns in the half-width pane between `md` and `xl`.
 
 A container query would state this directly. `@tailwindcss/container-queries` is not a dependency, and these two breakpoints track the layout's own `md` switch exactly.
 
@@ -565,12 +572,12 @@ A container query would state this directly. `@tailwindcss/container-queries` is
 | Focus | Arrow keys move between tabs and the shared inset focus ring marks the active one. |
 | Overflow | Below `sm` and between `md` and `xl`, the label is hidden rather than truncated or wrapped. The icon keeps its full size. |
 
-The live reference renders three of the four production strips against their own registries. It leaves the stat panel out because that strip's width case is the entity panel's, three equal columns, and the reference exists to show the widths. It holds the chosen tab in mounted React state and never reads or writes authored worlds, saves, library data, or preferences.
+The live reference renders four of the five production strips against their own registries. It leaves the stat panel out because that strip's width case is the entity panel's, three equal columns, and the reference exists to show the widths. It holds the chosen tab in mounted React state and never reads or writes authored worlds, saves, library data, or preferences.
 
 ### Writing review
 
-- Tab names come from the three production registries, so the reference and the editor cannot drift. Reuse does not certify those names as fully ASD-STE100 compliant.
-- **Unverified:** the section headings "Three Tabs", "Four Tabs", and "A Tab Name the Editor Also Uses", and the three `Meta` lines, have terminology review only; vocabulary and grammar evidence is not recorded.
+- Tab names come from the four production registries, so the reference and the editor cannot drift. Reuse does not certify those names as fully ASD-STE100 compliant.
+- **Unverified:** the section headings "Three Tabs", "Four Tabs", "A Tab Name the Editor Also Uses", and "Two Tabs, Two Hosts", and the four `Meta` lines, have terminology review only; vocabulary and grammar evidence is not recorded.
 
 ## UI and prototype workflow
 

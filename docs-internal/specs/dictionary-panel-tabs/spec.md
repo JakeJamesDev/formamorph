@@ -108,3 +108,14 @@ A good test drives a real host with a loadable dictionary and asserts what an au
 **Why the library gets the tabs.** The entity panel kept its library modal stacked because the tabs were built around a gallery column the modal did not have. The entry panel is the same in both hosts and a library author refines values the same way, so the tabs belong in both. The modal holds the tab itself since it has no editor slot.
 
 **What this panel reuses.** The editor-held tab slot, the optional tab hint on item navigation, the named focus-field hint type, the shared tab-for-field helper, the item guard, and the one-tab rule are all on `main`. This panel adds a tab module, a field map, a ledger entry, the layout, tab state in the library modal, and a suite for that modal.
+
+## Comments
+
+**2026-09-10 — Mobile form approved as shown.** The user approved the 375px form for both tabs, in the library's dictionary editor.
+
+- **Details:** the strip drops to icons only, the keyword chips wrap to two rows, and Whole words and Case-sensitive sit on one row directly under them. Value follows.
+- **Matching:** Always inject, Regex and Recursive fit one row. Require all and Exclude take a line each.
+- Neither tab scrolls the page sideways. `scrollWidth - clientWidth` is 0 on both.
+- The strip is 296px wide in the modal at 375px, two equal 148px tabs.
+
+The Panel Tab Strip guide entry and its live showcase were extended with the dictionary composition on this approval, as the spec's design-authority decision requires.

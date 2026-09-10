@@ -31,6 +31,11 @@ const entry = (over: Partial<DictionaryEntry> = {}): DictionaryEntry => ({
   ...over,
 });
 
+/** The panel on its Details tab, where all three fields these cases touch live. The chosen tab is the
+ *  host's to hold, so it arrives as a prop; nothing here changes it. */
+const renderPanel = (e: DictionaryEntry) =>
+  render(<DictionaryManager entry={e} tab="details" onTabChange={() => {}} />);
+
 /** The most recent patch the manager pushed for this entry. */
 const lastPatch = () => updateDictionaryEntry.mock.calls.at(-1)?.at(-1) as Partial<DictionaryEntry>;
 
@@ -38,7 +43,7 @@ beforeEach(() => updateDictionaryEntry.mockClear());
 
 describe('DictionaryManager — name is independent of keywords', () => {
   it('editing keywords leaves the name alone', () => {
-    render(<DictionaryManager entry={entry({ name: 'Hostile Forces' })} />);
+    renderPanel(entry({ name: 'Hostile Forces' }));
     // The chip field shows 'Add keyword...' once it already holds a chip.
     const chips = screen.getByPlaceholderText('Add keyword...');
     fireEvent.change(chips, { target: { value: 'wyrm' } });
@@ -50,7 +55,7 @@ describe('DictionaryManager — name is independent of keywords', () => {
   });
 
   it('editing the name leaves the keywords alone', () => {
-    render(<DictionaryManager entry={entry({ name: 'Old' })} />);
+    renderPanel(entry({ name: 'Old' }));
     fireEvent.change(screen.getByPlaceholderText('e.g. Hostile Forces'), { target: { value: 'Dragons' } });
 
     const patch = lastPatch();
@@ -59,7 +64,7 @@ describe('DictionaryManager — name is independent of keywords', () => {
   });
 
   it('shows a blank name field rather than inventing one from the keywords', () => {
-    render(<DictionaryManager entry={entry({ name: '' })} />);
+    renderPanel(entry({ name: '' }));
     expect(screen.getByPlaceholderText('e.g. Hostile Forces')).toHaveValue('');
   });
 });
