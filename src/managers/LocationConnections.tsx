@@ -4,6 +4,7 @@ import { useGameData } from '@/contexts/GameDataContext';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Hint } from '@/components/ui/typography';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import { labelPlaceholders } from '@/lib/placementLetters';
@@ -63,10 +64,10 @@ const LocationConnections = ({ location }: { location: GameLocation }) => {
   return (
     <div className="space-y-2">
       <Label className="block">Connections</Label>
-      <p className="text-helper text-muted-foreground">
-        A Connection is the whole travel rule for its pair — locations with none still reach their parent,
+      <Hint>
+        A Connection is the whole travel rule for its pair. Locations with none still reach their parent,
         children, and siblings for free.
-      </p>
+      </Hint>
       {views.map(({ connection, partnerId, direction }) => {
         const Icon = DIRECTION_ICONS[direction];
         const partnerName = nameOf(partnerId);

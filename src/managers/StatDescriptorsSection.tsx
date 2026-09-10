@@ -191,7 +191,7 @@ export const StatDescriptorsSection = ({
               aria-label="Threshold units"
               className="h-8"
             >
-              <ToggleGroupItem value="raw" className="h-6 px-2 text-helper">Raw Unit</ToggleGroupItem>
+              <ToggleGroupItem value="raw" className="h-6 px-2 text-helper">Raw</ToggleGroupItem>
               <ToggleGroupItem value="percent" className="h-6 px-2 text-helper">% of Max</ToggleGroupItem>
             </ToggleGroup>
           </div>

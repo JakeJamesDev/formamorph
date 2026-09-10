@@ -86,7 +86,7 @@ describe('the descriptor unit control', () => {
     await userEvent.click(screen.getByRole('radio', { name: '% of Max' }));
     expect(screen.getByText('covers 0 – 3 of 10')).toBeInTheDocument();
 
-    await userEvent.click(screen.getByRole('radio', { name: 'Raw Unit' }));
+    await userEvent.click(screen.getByRole('radio', { name: 'Raw' }));
     expect(store.writes).toHaveLength(2);
     expect(store.writes[1].descriptors.map((d) => d.threshold)).toEqual([3, 6, 10]);
     expect(screen.getByText('covers 0 – 3')).toBeInTheDocument();

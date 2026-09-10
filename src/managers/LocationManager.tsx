@@ -4,6 +4,7 @@ import { useGameData } from '@/contexts/GameDataContext';
 import { entitiesInTreeOrder } from '@/lib/entityGroupTree';
 import { entityIdsAt, setLocationRoster } from '@/lib/entityPresence';
 import { Label } from "@/components/ui/label";
+import { Hint } from "@/components/ui/typography";
 import { Checkbox } from "@/components/ui/checkbox";
 import { MultiSelect } from "@/components/ui/multi-select";
 import { Tabs, TabsContent } from '@/components/ui/tabs';
@@ -140,9 +141,7 @@ const LocationManager = ({ location, tab, onTabChange, focusField }: {
             placeholders={placeholders}
             resizable
           />
-          <p className="text-helper text-muted-foreground">
-            A one-line version used where the full description is too long — keep it brief.
-          </p>
+          <Hint>A one-line version for where the full description is too long. Keep it brief.</Hint>
         </div>
         )}
       </TabsContent>

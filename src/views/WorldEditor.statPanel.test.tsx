@@ -52,7 +52,7 @@ const WORLD: World = benchEditorWorld({
 const openTab = (name: RegExp) => fireEvent.mouseDown(screen.getByRole('tab', { name }));
 
 const FIELD_LABELS =
-  /^(Name|Type|Description|Min|Max|Initial Value|Initial Value \(%\)|Regen|Body Sliders|Availability|Prevent AI Changes|Stat Descriptors|Dynamic Value Calculation \(Optional\)|Code)$/;
+  /^(Name|Type|Description|Min|Max|Initial Value|Initial Value \(%\)|Regen|Body Sliders|Availability|Prevent AI Changes|Stat Descriptors|Dynamic Value Calculation|Code)$/;
 
 /** Every field label the panel shows, in document order. The panel's own strip carries a Code tab and a
  *  Details tab, so the match is taken from the panel body rather than the whole editor. */
@@ -63,7 +63,7 @@ const panelLabels = () =>
 
 /** The checkbox captions the panel shows, which are spans rather than labeled fields. */
 const panelSwitches = () =>
-  screen.getAllByText(/^(Enabled|Hidden|Don't increase|Don't increase max|Don't decrease|Don't decrease Max)$/)
+  screen.getAllByText(/^(Enabled|Hidden|Don't Increase|Don't Increase Max|Don't Decrease|Don't Decrease Max)$/)
     .map((el) => el.textContent);
 
 /** One range box, read through its own label. The four carry no accessible name of their own, so the label
@@ -111,15 +111,15 @@ describe('the World Editor stat panel tabs', () => {
       'Availability', 'Prevent AI Changes',
     ]);
     expect(panelSwitches()).toEqual([
-      'Enabled', 'Hidden', "Don't increase", "Don't increase max", "Don't decrease", "Don't decrease Max",
+      'Enabled', 'Hidden', "Don't Increase", "Don't Increase Max", "Don't Decrease", "Don't Decrease Max",
     ]);
   });
 
   it('carries both meanings of Availability on one help line', () => {
     renderWorldEditorBench(WORLD, 'advanced');
     selectStat('Warmth');
-    const help = screen.getByText(/A disabled stat is inert/);
-    expect(help.textContent).toMatch(/hidden stat never shows to the player/);
+    const help = screen.getByText(/Off keeps the stat asleep/);
+    expect(help.textContent).toMatch(/Hidden keeps it from the player/);
     // The pair had a paragraph each before; a second one under Availability is the regression.
     expect(screen.queryByText(/Turn this off to keep the stat inert/)).toBeNull();
   });
@@ -129,7 +129,7 @@ describe('the World Editor stat panel tabs', () => {
     selectStat('Warmth');
     openPanelTab('Descriptors');
     expect(panelLabels()).toEqual(['Stat Descriptors']);
-    expect(screen.getByRole('radio', { name: 'Raw Unit' })).toBeInTheDocument();
+    expect(screen.getByRole('radio', { name: 'Raw' })).toBeInTheDocument();
     expect(screen.getByLabelText('Threshold for chilled')).toBeInTheDocument();
   });
 
@@ -137,7 +137,7 @@ describe('the World Editor stat panel tabs', () => {
     renderWorldEditorBench(WORLD, 'advanced');
     selectStat('Warmth');
     openPanelTab('Code');
-    expect(panelLabels()).toEqual(['Dynamic Value Calculation (Optional)', 'Code']);
+    expect(panelLabels()).toEqual(['Dynamic Value Calculation', 'Code']);
     expect(screen.getByRole('button', { name: /Templates/ })).toBeInTheDocument();
     expect(screen.getByLabelText('Stat code')).toHaveValue('return 4;');
     expect(screen.getByRole('button', { name: /Test Code/ })).toBeInTheDocument();

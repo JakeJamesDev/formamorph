@@ -78,14 +78,14 @@ Each has a **threshold** and a **Description**. A coverage bar above the rows dr
 
 > ⚠️ **A threshold is the *top* of its band, and the lowest band the value fits in wins.** Descriptors are read low to high whatever order you list them in, so `30 → Barren` covers Min–30 and a `60` above it covers everything up to 60. Give your highest descriptor a threshold of your **Max**, or a value above it gets no descriptor at all.
 
-**Thresholds in: Raw Unit | % of Max**
+**Thresholds in: Raw | % of Max**
 
 | Setting | A threshold of `3` on a 0–10 stat means | Raise Max to 20 and… |
 |---|---|---|
-| **Raw Unit** (default) | the value 3 | the band still ends at 3 |
+| **Raw** (default) | the value 3 | the band still ends at 3 |
 | **% of Max** | 3% of the way from Min to Max — the value 0.3 | the band rescales to 0.6 |
 
-Pick **Raw Unit** for counters ("3 rockets is low") and **% of Max** for proportions ("the bottom 30% is low"). Switching converts your existing numbers, so no band moves at the moment you switch — the choice only decides what happens the next time you change the range. A **Percentage** stat is pinned to 0–100, where both readings are the same number, so it has no switch.
+Pick **Raw** for counters ("3 rockets is low") and **% of Max** for proportions ("the bottom 30% is low"). Switching converts your existing numbers, so no band moves at the moment you switch — the choice only decides what happens the next time you change the range. A **Percentage** stat is pinned to 0–100, where both readings are the same number, so it has no switch.
 
 ### Prevent AI Changes
 
@@ -93,10 +93,10 @@ Four checkboxes stop the AI moving a stat in one direction, while your world's o
 
 | Checkbox | Blocks |
 |---|---|
-| **Don't increase** | AI raising the value |
-| **Don't decrease** | AI lowering the value |
-| **Don't increase max** | AI raising the ceiling |
-| **Don't decrease Max** | AI lowering the ceiling |
+| **Don't Increase** | AI raising the value |
+| **Don't Decrease** | AI lowering the value |
+| **Don't Increase Max** | AI raising the ceiling |
+| **Don't Decrease Max** | AI lowering the ceiling |
 
 Percentage stats show only the first two — their ceiling is pinned at 100, so the AI can never move it.
 
