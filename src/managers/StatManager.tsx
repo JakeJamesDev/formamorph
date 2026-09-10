@@ -291,7 +291,7 @@ const StatManager = ({ stat, tab, onTabChange, focusField }: {
           </div>
           <div className="space-y-2">
             <Label>Body Sliders</Label>
-            <Hint>Body sliders bound to this stat. Its value between Min and Max sets each slider's position.</Hint>
+            <Hint>Body sliders bound to this stat. Its value between Min and Max sets each slider&apos;s position.</Hint>
             <MultiSelect
               key={stat.id}
               options={morphGroups}
@@ -417,7 +417,7 @@ const StatManager = ({ stat, tab, onTabChange, focusField }: {
       <CodeArea
         value={editingStat.code || ""}
         onChange={(code) => { clearTestReport(); handleChange("code", code); }}
-        ariaLabel="Stat code"
+        ariaLabel="Stat Code"
         statNames={statNames}
         // Its caption is the section heading, which full screen leaves behind — so the field names
         // itself in the toolbar and stays labeled in both states.

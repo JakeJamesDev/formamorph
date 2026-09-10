@@ -142,7 +142,7 @@ describe('the World Editor stat panel tabs', () => {
     openPanelTab('Code');
     expect(panelLabels()).toEqual(['Dynamic Value Calculation', 'Code']);
     expect(screen.getByRole('button', { name: /Templates/ })).toBeInTheDocument();
-    expect(screen.getByLabelText('Stat code')).toHaveValue('return 4;');
+    expect(screen.getByLabelText('Stat Code')).toHaveValue('return 4;');
     expect(screen.getByRole('button', { name: /Test Code/ })).toBeInTheDocument();
   });
 
@@ -156,7 +156,7 @@ describe('the World Editor stat panel tabs', () => {
     expect(screen.queryByText('Enabled')).toBeNull();
     expect(screen.queryByText('Hidden')).toBeNull();
     expect(screen.queryByText('Stat Descriptors')).toBeNull();
-    expect(screen.queryByLabelText('Stat code')).toBeNull();
+    expect(screen.queryByLabelText('Stat Code')).toBeNull();
   });
 
   it('keeps the chosen tab when the author selects another stat', () => {
