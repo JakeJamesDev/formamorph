@@ -51,7 +51,7 @@ export const EntityIdentityFields = ({ value, onChange, placeholders = [], owner
           onChange={(aliases) => onChange('aliases', aliases)}
           placeholders={placeholders}
           ownerId={ownerId}
-          placeholder="press Enter after each · case-sensitive"
+          placeholder="Press Enter after each alias"
         />
       </div>
       )}

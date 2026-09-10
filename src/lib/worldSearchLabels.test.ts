@@ -26,11 +26,11 @@ const RELIED_ON = [
 
 /** Captions on the chip and plain-input fields, which caption with a sibling `<Label>` instead. */
 const RELIED_ON_PLAIN = [
+  'Name',
   'Aliases',
   'Trigger Keywords',
   'Secondary Keywords',
   'World Name',
-  'Dictionary Name',
   'Group Name',
   'Tags',
 ];

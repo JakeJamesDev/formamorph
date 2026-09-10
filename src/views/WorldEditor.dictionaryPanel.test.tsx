@@ -63,7 +63,7 @@ const takesChips = (name: string) => screen.queryByLabelText(name) !== null;
 const openTab = (name: RegExp) => fireEvent.mouseDown(screen.getByRole('tab', { name }));
 
 const FIELD_LABELS =
-  /^(Name|Trigger Keywords \(Key\)|Value \(injected on keyword match\)|Scan depth \(messages\)|Secondary Keywords)$/;
+  /^(Name|Trigger Keywords|Value|Scan Depth|Secondary Keywords)$/;
 
 /** Every field label the panel shows, in document order. The panel's own strip sits above them, so the
  *  match skips anything inside a tablist. */
@@ -74,7 +74,7 @@ const panelLabels = () =>
 
 /** The checkbox captions the panel shows, which are label text rather than labeled fields. */
 const panelSwitches = () =>
-  screen.queryAllByText(/^(Always inject|Regex|Recursive|Whole words|Case-sensitive|Require all|Exclude \(activate when absent\))$/)
+  screen.queryAllByText(/^(Always Inject|Regex|Recursive|Whole Words|Case-Sensitive|Require All|Exclude)$/)
     .map((el) => el.textContent);
 
 /** The entry panel's own strip. The editor's top-level strip is on the same screen, so every read and click
@@ -109,17 +109,17 @@ describe('the World Editor dictionary entry panel tabs', () => {
   it('puts the name, the keywords with their two switches, and the value on Details', () => {
     renderWorldEditorBench(WORLD, 'advanced');
     selectEntry('Hostile Forces');
-    expect(panelLabels()).toEqual(['Name', 'Trigger Keywords (Key)', 'Value (injected on keyword match)']);
-    expect(panelSwitches()).toEqual(['Whole words', 'Case-sensitive']);
+    expect(panelLabels()).toEqual(['Name', 'Trigger Keywords', 'Value']);
+    expect(panelSwitches()).toEqual(['Whole Words', 'Case-Sensitive']);
   });
 
   it('puts the set-once rules on Matching, with the secondary gate whole', () => {
     renderWorldEditorBench(WORLD, 'advanced');
     selectEntry('Hostile Forces');
     openPanelTab('Matching');
-    expect(panelLabels()).toEqual(['Scan depth (messages)', 'Secondary Keywords']);
+    expect(panelLabels()).toEqual(['Scan Depth', 'Secondary Keywords']);
     expect(panelSwitches()).toEqual([
-      'Always inject', 'Regex', 'Recursive', 'Require all', 'Exclude (activate when absent)',
+      'Always Inject', 'Regex', 'Recursive', 'Require All', 'Exclude',
     ]);
     // The gate's plain-English line reads off the entry's own modes, as it did before the split.
     expect(screen.getByText('Fires when a keyword and at least one secondary appear.')).toBeInTheDocument();
@@ -129,8 +129,8 @@ describe('the World Editor dictionary entry panel tabs', () => {
     renderWorldEditorBench(WORLD, 'simple');
     selectEntry('Hostile Forces');
     expect(panelStrip()).toBeNull();
-    expect(panelLabels()).toEqual(['Name', 'Trigger Keywords (Key)', 'Value (injected on keyword match)']);
-    expect(panelSwitches()).toEqual(['Whole words', 'Case-sensitive']);
+    expect(panelLabels()).toEqual(['Name', 'Trigger Keywords', 'Value']);
+    expect(panelSwitches()).toEqual(['Whole Words', 'Case-Sensitive']);
   });
 
   it('keeps the chosen tab when the author selects another entry, book or not', () => {
@@ -143,7 +143,7 @@ describe('the World Editor dictionary entry panel tabs', () => {
     // Lamp Oil sits in the second book, so this crosses a book boundary as well as an entry.
     fireEvent.click(screen.getByText('Lamp Oil'));
     expect(panelTab('Matching')).toHaveAttribute('aria-selected', 'true');
-    expect(panelLabels()).toEqual(['Scan depth (messages)', 'Secondary Keywords']);
+    expect(panelLabels()).toEqual(['Scan Depth', 'Secondary Keywords']);
   });
 
   it('lands on Details when Simple mode takes Matching away, and restores the strip', () => {
@@ -153,7 +153,7 @@ describe('the World Editor dictionary entry panel tabs', () => {
 
     fireEvent.click(screen.getByRole('radio', { name: 'Simple' }));
     expect(panelStrip()).toBeNull();
-    expect(panelLabels()).toEqual(['Name', 'Trigger Keywords (Key)', 'Value (injected on keyword match)']);
+    expect(panelLabels()).toEqual(['Name', 'Trigger Keywords', 'Value']);
 
     // The switch wears the hidden-data marker, whose own label joins its accessible name.
     fireEvent.click(screen.getByRole('radio', { name: /^Advanced/ }));
@@ -214,6 +214,6 @@ describe('the World Editor dictionary entry panel tabs', () => {
     fireEvent.click(screen.getByText('Fen Lore'));
     expect(panelStrip()).toBeNull();
     // The book panel's own first field, which the Label sits over rather than labels.
-    expect(screen.getByPlaceholderText('Notes about this dictionary (not sent to the AI).')).toBeInTheDocument();
+    expect(screen.getByPlaceholderText('Notes for you. The AI never sees them.')).toBeInTheDocument();
   });
 });

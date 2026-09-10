@@ -3,6 +3,7 @@ import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Checkbox } from '@/components/ui/checkbox';
+import { Hint } from '@/components/ui/typography';
 import { useEditorMode } from '@/lib/editorMode';
 import type { Dictionary } from '@/types';
 import ScopedPlaceholdersSection from './ScopedPlaceholdersSection';
@@ -21,32 +22,34 @@ const DictionaryBookManager = ({ book }: { book: Dictionary }) => {
     <div className="space-y-4">
       <ContentLinkHeader link={book.link} />
       <div className="space-y-2">
-        <Label>Dictionary Name</Label>
-        <Input value={book.name} onChange={(e) => updateDictionary({ ...book, name: e.target.value })} />
+        <Label>Name</Label>
+        <Input value={book.name} onChange={(e) => updateDictionary({ ...book, name: e.target.value })} aria-label="Name" />
       </div>
       <div className="space-y-2">
         <Label>Description</Label>
         <Textarea
           value={book.description ?? ''}
           onChange={(e) => updateDictionary({ ...book, description: e.target.value })}
-          placeholder="Notes about this dictionary (not sent to the AI)."
+          placeholder="Notes for you. The AI never sees them."
           rows={3}
         />
       </div>
       {advanced && (
-        <label className="flex items-center gap-2 text-label">
-          <Checkbox
-            checked={book.enabled !== false}
-            onCheckedChange={(v) => updateDictionary({ ...book, enabled: v === true })}
-          />
-          Enabled — inject entries from this dictionary
-        </label>
+        <div className="space-y-2">
+          <label className="flex items-center gap-2 text-label">
+            <Checkbox
+              checked={book.enabled !== false}
+              onCheckedChange={(v) => updateDictionary({ ...book, enabled: v === true })}
+            />
+            Enabled
+          </label>
+          <Hint>Off mutes every entry in this dictionary at once.</Hint>
+        </div>
       )}
-      <p className="text-meta text-muted-foreground">
-        {book.entries.length} {book.entries.length === 1 ? 'entry' : 'entries'}. Use the + on this dictionary
-        (left) to add one, then select an entry to edit it.
-        {advanced && ' Disabling mutes every entry in this book at once.'}
-      </p>
+      <Hint>
+        {book.entries.length} {book.entries.length === 1 ? 'entry' : 'entries'}. Add one with the + on this
+        dictionary, then select it to edit.
+      </Hint>
       <ScopedPlaceholdersSection kind="dictionary" ownerId={book.id} />
     </div>
   );

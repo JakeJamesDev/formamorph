@@ -272,7 +272,7 @@ export function collectSearchTargets(src: SearchSources): SearchTarget[] {
   (src.dictionaries ?? []).forEach((book) => {
     const bookWhere = { tab: 'dictionary', itemId: book.id, itemLabel: labeled(book.name, 'Dictionary') };
     const { add: addBook } = bind(`book:${book.id}`, book, src.updateDictionary);
-    addBook({ ...bookWhere, chipCapable: false }, 'name', 'Dictionary Name', book.name, (r, v) => ({ ...r, name: v }));
+    addBook({ ...bookWhere, chipCapable: false }, 'name', 'Name', book.name, (r, v) => ({ ...r, name: v }));
     addBook({ ...bookWhere, chipCapable: false }, 'description', 'Description', book.description, (r, v) => ({ ...r, description: v }));
     (book.entries ?? []).forEach((entry) => {
       // A regex entry drops the chip vocabulary, so its keys and value can't take a chip replacement.
