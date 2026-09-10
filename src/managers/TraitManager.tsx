@@ -109,7 +109,7 @@ const TraitManager = ({ trait, onOpenTrait, tab, onTabChange, focusField }: {
 
   const tabs = traitPanelTabsFor(advanced);
 
-  const details = (
+  const detailsPanel = (
     <>
       <div className="space-y-2">
         <Label>Name</Label>
@@ -273,7 +273,7 @@ const TraitManager = ({ trait, onOpenTrait, tab, onTabChange, focusField }: {
     </div>
   );
 
-  const panels: Record<TraitPanelTab, ReactNode> = { details, stats: statsPanel, pins: pinsPanel };
+  const panels: Record<TraitPanelTab, ReactNode> = { details: detailsPanel, stats: statsPanel, pins: pinsPanel };
 
   return (
     <Tabs value={tab} onValueChange={(v) => onTabChange(v as TraitPanelTab)} className="space-y-4">
