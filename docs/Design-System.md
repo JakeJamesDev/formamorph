@@ -527,7 +527,10 @@ Each panel groups its fields by what kind of thing they are:
 | --- | --- | --- |
 | Entity | Profile · Descriptions · Placeholders | Placeholders |
 | Location | Details · Presence · Media · Pins | Pins |
+| Stat | Details · Descriptors · Code | Descriptors, Code |
 | Trait | Details · Stats · Pins | Pins |
+
+The stat panel is the one that can lose its strip: Simple mode leaves it a single tab, which is no choice to offer, so it renders that body bare.
 
 A tab name may repeat across panels, and may match a tab on the editor's own strip. The strip's own name keeps them apart: the trait panel's Stats tab and the editor's Stats tab both read as "Stats", and only "Trait Fields" says which strip you are on.
 
@@ -540,6 +543,7 @@ A tab name may repeat across panels, and may match a tab on the editor's own str
 | Three-tab instance and its registry | `EntityManager` in [`EntityManager.tsx`](../src/managers/EntityManager.tsx) and [`entityPanelTabs.ts`](../src/views/entityPanelTabs.ts) |
 | Four-tab instance and its registry | `LocationManager` in [`LocationManager.tsx`](../src/managers/LocationManager.tsx) and [`locationPanelTabs.ts`](../src/views/locationPanelTabs.ts) |
 | Instance whose tab name the editor also uses | `TraitManager` in [`TraitManager.tsx`](../src/managers/TraitManager.tsx) and [`traitPanelTabs.ts`](../src/views/traitPanelTabs.ts) |
+| Instance that drops its strip in Simple mode | `StatManager` in [`StatManager.tsx`](../src/managers/StatManager.tsx) and [`statPanelTabs.ts`](../src/views/statPanelTabs.ts) |
 | Isolated reference | [`PanelTabStripReference.tsx`](../src/components/design-system/PanelTabStripReference.tsx) |
 | Width coverage | [`entity-panel-widths.spec.ts`](../e2e/entity-panel-widths.spec.ts) |
 
@@ -561,7 +565,7 @@ A container query would state this directly. `@tailwindcss/container-queries` is
 | Focus | Arrow keys move between tabs and the shared inset focus ring marks the active one. |
 | Overflow | Below `sm` and between `md` and `xl`, the label is hidden rather than truncated or wrapped. The icon keeps its full size. |
 
-The live reference renders all three production strips against their own registries. It holds the chosen tab in mounted React state and never reads or writes authored worlds, saves, library data, or preferences.
+The live reference renders three of the four production strips against their own registries. It leaves the stat panel out because that strip's width case is the entity panel's, three equal columns, and the reference exists to show the widths. It holds the chosen tab in mounted React state and never reads or writes authored worlds, saves, library data, or preferences.
 
 ### Writing review
 
