@@ -75,19 +75,23 @@ const EntityManager = ({ entity, tab, onTabChange, focusField }: {
           className="grid w-full"
           style={{ gridTemplateColumns: `repeat(${tabs.length}, minmax(0, 1fr))` }}
         >
-          {/* Icon alone below `sm`: "Descriptions" needs 137px on one row, and the 375px detail sheet gives
-              each of three tabs 105px. The name stays on `aria-label`, which reads the same at every width. */}
+          {/* Icon alone wherever the pane is narrow: "Descriptions" needs 137px on one row, and it gets 105px
+              in the 375px sheet and 113px in the half-width pane at `md`. Same non-monotonic pane as the grid
+              below, so the label follows the same steps. The name stays on `aria-label` at every width. */}
           {tabs.map(({ value, label, icon: Icon }) => (
             <TabsTrigger key={value} value={value} aria-label={label} className="gap-1.5">
               <Icon className="h-4 w-4 shrink-0" />
-              <span className="hidden sm:inline">{label}</span>
+              <span className="hidden sm:inline md:hidden xl:inline">{label}</span>
             </TabsTrigger>
           ))}
         </TabsList>
 
         <TabsContent value="profile" className="space-y-4">
           <EntityImageWidget {...groupProps}>
-            <div className="grid gap-4 sm:grid-cols-[18rem_minmax(0,1fr)]">
+            {/* Two columns need ~570px, and the pane holding them is not monotonic in viewport width: below
+                `md` it is the full-width detail sheet, at `md` it becomes half the editor. So the second
+                column comes back only where the pane is wide enough — once in the sheet, again at `xl`. */}
+            <div className="grid gap-4 sm:grid-cols-[18rem_minmax(0,1fr)] md:grid-cols-1 xl:grid-cols-[18rem_minmax(0,1fr)]">
               <ImageGallery />
               <div className="space-y-4">
                 <EntityIdentityFields {...groupProps} />
