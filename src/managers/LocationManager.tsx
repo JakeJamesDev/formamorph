@@ -73,12 +73,12 @@ const LocationManager = ({ location, tab, onTabChange, focusField }: {
         className="grid w-full"
         style={{ gridTemplateColumns: `repeat(${tabs.length}, minmax(0, 1fr))` }}
       >
-        {/* Icon alone below `sm`, matching the entity panel: four tabs get 85px each in the 375px detail
-            sheet, and one row of "Presence" needs 111px. The name stays on `aria-label`. */}
+        {/* Icon alone wherever the pane is narrow, matching the entity panel: one row of "Presence" needs
+            111px, and four tabs get 85px each in the 375px sheet. The name stays on `aria-label`. */}
         {tabs.map(({ value, label, icon: Icon }) => (
           <TabsTrigger key={value} value={value} aria-label={label} className="gap-1.5">
             <Icon className="h-4 w-4 shrink-0" />
-            <span className="hidden sm:inline">{label}</span>
+            <span className="hidden sm:inline md:hidden xl:inline">{label}</span>
           </TabsTrigger>
         ))}
       </TabsList>
