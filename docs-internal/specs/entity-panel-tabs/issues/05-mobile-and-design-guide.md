@@ -1,6 +1,7 @@
 # 05: Mobile Form And Design Guide Entry
 
-Status: ready-for-agent
+Status: ready-for-human
+Base: e16d4a91
 Blocked by: 03
 Recommended model: Claude Opus 5 (`claude-opus-5`)
 Reasoning effort: medium
@@ -13,11 +14,11 @@ Below `sm`, Profile stacks into one column with the gallery first, and the three
 
 ## Acceptance criteria
 
-- [ ] At 375px the tab strip shows all three tabs without horizontal page scroll and the Profile columns stack with the gallery first.
-- [ ] Both themes checked at desktop and mobile with static screenshots and DOM reads.
-- [ ] Mobile evidence presented and the user's approval recorded in the spec's Comments.
-- [ ] Guide section and showcase reference added together, production-backed, after approval.
-- [ ] Four gates green; graph updated.
+- [x] At 375px the tab strip shows all three tabs without horizontal page scroll and the Profile columns stack with the gallery first.
+- [x] Both themes checked at desktop and mobile with static screenshots and DOM reads.
+- [x] Mobile evidence presented and the user's approval recorded in the spec's Comments.
+- [x] Guide section and showcase reference added together, production-backed, after approval.
+- [x] Four gates green; graph updated.
 
 ## Blocked by
 
