@@ -1,6 +1,6 @@
 # 01: Tabbed Trait Panel
 
-Status: in-progress
+Status: ready-for-human
 Base: 5d4bdd7c
 Blocked by: None (can start immediately)
 Recommended model: Claude Opus 5 (`claude-opus-5`)
