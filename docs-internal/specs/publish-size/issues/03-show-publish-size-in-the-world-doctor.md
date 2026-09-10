@@ -37,5 +37,5 @@ The size is measured in the existing JSON file worker with no indentation, on th
 ## Comments
 
 - 2026-09-10: Live DOM checks in the dev app on a real 2.7 MB world: popover, embedded, docked, mobile sheet. Amber reached live through the real worker with a 60 MB unsaved probe. Green, amber, and red fills read from their semantic tokens in light and dark.
-- Open for the user: the readout says "100.0 MB" (spec decision, ticket 02's formatter), while user story 2 says "100 MB". The tip says a linked image "adds only its URL" rather than "adds nothing".
+- Resolved 2026-09-10 in review: the formatter shows a whole number bare ("100 MB"), and the spec now says a linked image "adds only its URL".
 - The measure is the world as edited, so it counts unsaved edits and lacks the stored record's `version` field (about 20 bytes).

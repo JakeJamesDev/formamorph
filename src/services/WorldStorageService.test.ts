@@ -253,14 +253,17 @@ describe('publishItem', () => {
     },
   );
 
-  it('reaches fetch when content sits exactly at the limit', async () => {
-    AuthService.token = 'tok';
-    vi.mocked(fetch).mockResolvedValue(res({ id: 'created' }));
+  it.each(Object.keys(PUBLISH_LIMITS) as (keyof typeof PUBLISH_LIMITS)[])(
+    'reaches fetch when %s content sits exactly at the limit',
+    async (kind) => {
+      AuthService.token = 'tok';
+      vi.mocked(fetch).mockResolvedValue(res({ id: 'created' }));
 
-    await WorldStorageService.publishItem(payload({ contentData: atLimit('world') }));
+      await WorldStorageService.publishItem(payload({ kind, contentData: atLimit(kind) }));
 
-    expect(fetch).toHaveBeenCalled();
-  });
+      expect(fetch).toHaveBeenCalled();
+    },
+  );
 });
 
 describe('getUserWorlds', () => {

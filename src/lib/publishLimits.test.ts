@@ -40,8 +40,13 @@ describe('publishSizeBand', () => {
 
 describe('formatPublishBytes', () => {
   it('formats 1024-based, to one decimal, labeled MB to match the server', () => {
-    expect(formatPublishBytes(100 * 1024 * 1024)).toBe('100.0 MB');
     expect(formatPublishBytes(12.4 * 1024 * 1024)).toBe('12.4 MB');
+    expect(formatPublishBytes(12.44 * 1024 * 1024)).toBe('12.4 MB');
+  });
+
+  it('shows a whole number bare, so the limit reads as the server states it', () => {
+    expect(formatPublishBytes(100 * 1024 * 1024)).toBe('100 MB');
+    expect(formatPublishBytes(100.04 * 1024 * 1024)).toBe('100 MB');
   });
 });
 
@@ -49,7 +54,7 @@ describe('publishLimitRefusal', () => {
   it('names the kind label, the size, and the limit', () => {
     const bytes = PUBLISH_LIMITS.entity + 1024 * 1024;
 
-    expect(publishLimitRefusal('entity', bytes)).toBe('Entity is 26.0 MB, over the 25.0 MB publish limit.');
+    expect(publishLimitRefusal('entity', bytes)).toBe('Entity is 26 MB, over the 25 MB publish limit.');
   });
 
   it('names each kind with its own label and limit', () => {

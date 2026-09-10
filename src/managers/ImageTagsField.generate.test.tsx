@@ -138,7 +138,7 @@ describe('ImageTagsField generated-image placement on a location', () => {
     await waitFor(() => expect(placed).toHaveBeenCalledWith(true));
   });
 
-  it('changes nothing and reports the picture unplaced when the pick is cancelled', async () => {
+  it('changes nothing and reports the picture unplaced when the pick is canceled', async () => {
     const { onImagesChange } = locationSetup([A]);
 
     generate();

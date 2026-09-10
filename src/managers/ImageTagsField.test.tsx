@@ -75,7 +75,7 @@ describe('ImageTagsField uploads on an entity', () => {
 
   /** The trailing empty row — the one an author adds through. */
   const emptyRow = () => screen.getAllByTestId('slot').find((s) => !s.getAttribute('data-value'));
-  const addTile = () => screen.getByLabelText('Add an image');
+  const addTile = () => screen.getByLabelText('Add an Image');
 
   it('points the add tile at the open slot’s file picker on an entity with two uploads', () => {
     gallery([DATA_A, DATA_B]);
@@ -119,6 +119,6 @@ describe('ImageTagsField uploads on an entity', () => {
 
     location([DATA_A]);
     expect(screen.getAllByTestId('slot')).toHaveLength(1);
-    expect(screen.queryByLabelText('Add an image')).toBeNull();
+    expect(screen.queryByLabelText('Add an Image')).toBeNull();
   });
 });

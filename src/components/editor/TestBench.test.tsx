@@ -395,8 +395,8 @@ describe('TestBench publish size', () => {
 
   it('reads the size against the world limit', () => {
     renderBench(world([]), { issues: { publishBytes: 12.4 * MB } });
-    expect(screen.getByText('12.4 MB of 100.0 MB')).toBeInTheDocument();
-    expect(meter()).toHaveAttribute('aria-valuetext', '12.4 MB of 100.0 MB');
+    expect(screen.getByText('12.4 MB of 100 MB')).toBeInTheDocument();
+    expect(meter()).toHaveAttribute('aria-valuetext', '12.4 MB of 100 MB');
   });
 
   it.each([
@@ -411,7 +411,7 @@ describe('TestBench publish size', () => {
 
   it('stops the fill at full for a world over the limit', () => {
     renderBench(world([]), { issues: { publishBytes: 150 * MB } });
-    expect(screen.getByText('150.0 MB of 100.0 MB')).toBeInTheDocument();
+    expect(screen.getByText('150 MB of 100 MB')).toBeInTheDocument();
     expect(meter()).toHaveAttribute('aria-valuenow', String(100 * MB));
     expect(meter().firstElementChild).toHaveStyle({ width: '100%' });
   });

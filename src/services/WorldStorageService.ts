@@ -807,8 +807,8 @@ class WorldStorageService {
    * listings, else `POST` creates. Requires auth; rethrows on failure. Build `payload` with the per-kind
    * helpers in `lib/publishPayload`, which own where each kind's fields come from.
    *
-   * Refuses before authenticating or sending anything when the content is over its kind's limit — see
-   * `lib/publishLimits`, the one place the client states a limit.
+   * Refuses before authenticating or sending anything when the content is over its kind's limit. The
+   * limit comes from `lib/publishLimits`, the one place the client states one.
    *
    * `contestEventId` enters the new listing into a contest. It rides top-level beside the tags and is
    * omitted when absent: it is intent about this upload rather than part of the content, so it never

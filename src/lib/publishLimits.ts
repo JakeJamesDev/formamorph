@@ -26,12 +26,12 @@ export function publishSizeBand(bytes: number, limit: number): { band: PublishSi
   return { band, ratio: Math.min(ratio, 1) };
 }
 
-/** "12.4 MB" — 1024-based, one decimal, so it agrees with the server's own "100MB" wording. */
+/** "12.4 MB", "100 MB" — 1024-based, one decimal, a whole number bare, so it agrees with the server's own "100MB" wording. */
 export function formatPublishBytes(bytes: number): string {
-  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+  return `${(bytes / (1024 * 1024)).toFixed(1).replace(/\.0$/, '')} MB`;
 }
 
-/** The refusal message: kind label, its size, and its limit — "World is 105.3 MB, over the 100.0 MB publish limit." */
+/** The refusal message: kind label, its size, and its limit — "World is 105.3 MB, over the 100 MB publish limit." */
 export function publishLimitRefusal(kind: CatalogKind, bytes: number): string {
   return `${KIND_LABELS[kind].one} is ${formatPublishBytes(bytes)}, over the ${formatPublishBytes(PUBLISH_LIMITS[kind])} publish limit.`;
 }

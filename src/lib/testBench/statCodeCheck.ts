@@ -10,7 +10,7 @@
 import { executeStatCode } from '@/lib/statCodeExecutor';
 import { allPlaceholders } from '@/lib/placeholderHomes';
 import { labelPlaceholders, worldPlacementLetters } from '@/lib/placementLetters';
-import { STAT_CODE_EXECUTION, type Finding, type RuleWorld } from './rules';
+import { finding, STAT_CODE_EXECUTION, type Finding, type RuleWorld } from './rules';
 import type { Stat } from '@/types';
 
 export { STAT_CODE_EXECUTION } from './rules';
@@ -43,13 +43,7 @@ export async function checkStatCode(world: RuleWorld): Promise<Finding[]> {
     const { error, kind } = await executeStatCode(stat.code ?? '', stats, stat);
     if (!error) return null;
     const name = labelPlaceholders(stat.name ?? '', allPlaceholders(world), { letters }).trim() || 'Untitled';
-    return {
-      ruleId: STAT_CODE_EXECUTION.id,
-      severity: STAT_CODE_EXECUTION.severity,
-      section: STAT_CODE_EXECUTION.section,
-      message: `Code on “${name}” ${FAILURE[kind ?? 'throw']}`,
-      items: [{ id: stat.id, name }],
-    } satisfies Finding;
+    return finding(STAT_CODE_EXECUTION, `Code on “${name}” ${FAILURE[kind ?? 'throw']}`, [{ id: stat.id, name }]);
   }));
   return results.filter((found): found is Finding => found !== null);
 }

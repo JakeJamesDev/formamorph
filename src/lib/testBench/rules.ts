@@ -111,7 +111,7 @@ export interface Rule extends RuleHead {
 const quote = (text: string) => `“${text}”`;
 
 /** A finding for `rule` — the boilerplate trio copied from the rule itself. */
-const finding = (rule: RuleHead, message: string, items: FindingItem[]): Finding => ({
+export const finding = (rule: RuleHead, message: string, items: FindingItem[]): Finding => ({
   ruleId: rule.id, severity: rule.severity, section: rule.section, message, items,
 });
 

@@ -3,6 +3,7 @@ import { act, renderHook } from '@testing-library/react';
 import type { WorldOverview } from '@/types';
 import { measurePublishBytes } from '@/lib/publishLimits';
 import { worldPublishPayload } from '@/lib/publishPayload';
+import { APP_VERSION } from '@/lib/version';
 import { usePublishSize } from './usePublishSize';
 import { RULE_DEBOUNCE_MS } from './useFindings';
 import type { RuleWorld } from './rules';
@@ -37,13 +38,15 @@ describe('usePublishSize', () => {
     expect(result.current).not.toBeNull();
   });
 
-  it('measures the content a publish sends, tags included', async () => {
-    // A world with no tags publishes `"tags":[]` in its overview — the server counts those bytes too.
+  it('measures the content a publish sends: the stored copy, version stamped, tags included', async () => {
+    // A world with no tags publishes `"tags":[]` in its overview, and the stored copy carries `version`. The
+    // server counts both, so the editor's bare world is the wrong thing to measure.
     const w = world('Sedge Landing');
     const { result } = renderHook(() => usePublishSize(w));
     await settle();
 
-    expect(result.current).toBe(measurePublishBytes(worldPublishPayload(w).contentData));
+    expect(result.current).toBe(measurePublishBytes(worldPublishPayload({ version: APP_VERSION, ...w }).contentData));
+    expect(result.current).not.toBe(measurePublishBytes(worldPublishPayload(w).contentData));
     expect(result.current).not.toBe(measurePublishBytes(w));
   });
 

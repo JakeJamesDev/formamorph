@@ -148,8 +148,8 @@ const AddTile = ({ htmlFor, selected, onSelect, onUrl, onFiles }: {
       className="cursor-pointer"
       {...dropProps}
       onClick={onSelect}
-      title="Add an image"
-      aria-label="Add an image"
+      title="Add an Image"
+      aria-label="Add an Image"
     >
       <span
         className={cn(
@@ -218,8 +218,6 @@ export const ImageGallery = ({ tagsSlot }: { tagsSlot?: ReactNode }) => {
 
   /** The slot a drop or a generated picture lands in: the trailing empty one, or none once the gallery is full. */
   const openSlot = rows.findIndex((url) => !url);
-  /** The slots a generated picture may be put over when there is no open one. */
-  const overwritable = shown.map((_url, i) => i);
 
   /** Write one slot; an emptied slot drops out rather than leaving a hole for the next one to fall into. */
   const setSlot = (index: number, value: string) => {
@@ -237,7 +235,7 @@ export const ImageGallery = ({ tagsSlot }: { tagsSlot?: ReactNode }) => {
       return true;
     }
     // Start on the framed picture: the one being looked at is the one the author means to replace.
-    setOverwriteSlot(overwritable.includes(showing) ? showing : overwritable[0]);
+    setOverwriteSlot(showing);
     setPendingGenerated(url);
     return new Promise<boolean>((resolve) => { settlePlacement.current = resolve; });
   };
@@ -408,7 +406,7 @@ export const ImageGallery = ({ tagsSlot }: { tagsSlot?: ReactNode }) => {
             </DialogDescription>
           </DialogHeader>
           <RadioGroup value={String(overwriteSlot)} onValueChange={(v) => setOverwriteSlot(Number(v))}>
-            {overwritable.map((i) => (
+            {shown.map((_url, i) => (
               <Label
                 key={i}
                 htmlFor={`${imageId}-overwrite-${i}`}
