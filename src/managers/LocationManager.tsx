@@ -70,14 +70,15 @@ const LocationManager = ({ location, tab, onTabChange, focusField }: {
       {/* Named, because the editor's own strip is on the same screen and carries a Locations tab too. */}
       <TabsList
         aria-label="Location Fields"
-        className="grid h-auto w-full sm:h-10"
+        className="grid w-full"
         style={{ gridTemplateColumns: `repeat(${tabs.length}, minmax(0, 1fr))` }}
       >
-        {/* Icon over label below `sm`, matching the entity panel: the 375px detail sheet gives each tab too
-            little width for one row. */}
+        {/* Icon alone below `sm`, matching the entity panel: four tabs get 85px each in the 375px detail
+            sheet, and one row of "Presence" needs 111px. The name stays on `aria-label`. */}
         {tabs.map(({ value, label, icon: Icon }) => (
-          <TabsTrigger key={value} value={value} className="flex-col gap-0.5 px-1 sm:flex-row sm:gap-1.5 sm:px-3">
-            <Icon className="h-4 w-4 shrink-0" />{label}
+          <TabsTrigger key={value} value={value} aria-label={label} className="gap-1.5">
+            <Icon className="h-4 w-4 shrink-0" />
+            <span className="hidden sm:inline">{label}</span>
           </TabsTrigger>
         ))}
       </TabsList>
