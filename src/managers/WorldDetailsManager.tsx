@@ -23,6 +23,7 @@ import {
 } from "@/lib/openingCue";
 import { OPENING_SCENE_CUE } from "@/components/game/GamePrompts";
 import { useEditorMode } from "@/lib/editorMode";
+import type { FocusFieldHint } from "@/types";
 
 /** Which preset field each kind replaces, and which chip palette that prompt is written against. */
 const PROMPT_KIND_VARIABLE_KEY = {
@@ -64,7 +65,7 @@ const PanelFooter = ({ note, onReset }: { note: ReactNode; onReset?: () => void 
  * The cue needs no player-facing opt-out where the prompts do: the pre-filled box is editable, so the
  * player already has the last word on what the opening turn says.
  */
-const CustomPromptsSection = ({ focusField }: { focusField?: { fieldKey: string } | null }) => {
+const CustomPromptsSection = ({ focusField }: { focusField?: FocusFieldHint | null }) => {
   const {
     worldOverview, updateWorldOverview, stats, locations, connections, entities, traits, traitGroups, dictionaries,
     placeholders,
@@ -287,7 +288,7 @@ const CustomPromptsSection = ({ focusField }: { focusField?: { fieldKey: string 
  * whichever readme isn't currently showing. It arrives as a fresh object per navigation so that stepping
  * onto a second hit in the same readme re-opens that tab after the author has flipped away from it.
  */
-const ReadmeSection = ({ focusField }: { focusField?: { fieldKey: string } | null }) => {
+const ReadmeSection = ({ focusField }: { focusField?: FocusFieldHint | null }) => {
   const { worldOverview, updateWorldOverview, placeholders } = useGameData();
   // Opens on the Introduction, except for a world that only has the older Gameplay readme — an author
   // whose readme is on the other tab would otherwise be met by an empty field where their text used to be.
@@ -335,7 +336,7 @@ const ReadmeSection = ({ focusField }: { focusField?: { fieldKey: string } | nul
 
 /** The AI-facing world content fields (description, system prompt, readmes), shown in the editor's right
  *  column on the Overview tab. Identity/listing fields live in WorldOverviewManager (left column). */
-const WorldDetailsManager = ({ focusField }: { focusField?: { fieldKey: string } | null }) => {
+const WorldDetailsManager = ({ focusField }: { focusField?: FocusFieldHint | null }) => {
   const { worldOverview, updateWorldOverview, placeholders } = useGameData();
   // The description shows in the library, before a playthrough exists — so placeholders can never be rolled
   // for it. No chip family here: any `{{ph…}}` an old world carries stays inert text, exactly as it'd read.

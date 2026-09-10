@@ -542,3 +542,10 @@ export interface EntityMetadata extends CommunityLink {
   /** Listing tags, shown on the library card the way a world's are. */
   tags?: string[];
 }
+
+/** A find-bar hit handed to a detail panel, so the panel can open the tab that holds the field. `itemId`
+ *  names the item the hit sits in, or is null for Overview, which has no item list. */
+export interface FocusFieldHint {
+  fieldKey: string;
+  itemId: string | null;
+}

@@ -19,7 +19,7 @@ import { useEditorMode } from '@/lib/editorMode';
 import { HelpButton } from '@/components/HelpButton';
 import { PlaceholderPinRows } from '@/components/editor/PlaceholderPinRows';
 import { locationPanelTabsFor, locationTabForField, type LocationPanelTab } from '@/views/locationPanelTabs';
-import type { GameLocation, PlaceholderPin } from '@/types';
+import type { FocusFieldHint, GameLocation, PlaceholderPin } from '@/types';
 
 /**
  * Right-panel editor for one location: its fields split across Details, Presence, Media and Pins.
@@ -35,7 +35,7 @@ const LocationManager = ({ location, tab, onTabChange, focusField }: {
   location: GameLocation;
   tab: LocationPanelTab;
   onTabChange: (tab: LocationPanelTab) => void;
-  focusField?: { fieldKey: string } | null;
+  focusField?: FocusFieldHint | null;
 }) => {
   const world = useGameData();
   const { updateLocation, entities, updateEntity, entityGroups, placeholders, placementLetters, placeholderOwners } = world;

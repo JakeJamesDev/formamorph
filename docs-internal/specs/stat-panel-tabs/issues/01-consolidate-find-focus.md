@@ -1,6 +1,7 @@
 # 01: Consolidate The Find-Focus Path
 
-Status: ready-for-agent
+Status: ready-for-human
+Base: a9077a07
 Blocked by: None (can start immediately)
 Recommended model: Claude Opus 5 (`claude-opus-5`)
 Reasoning effort: medium
