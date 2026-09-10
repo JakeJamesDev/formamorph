@@ -37,6 +37,8 @@ export interface IssuesProps {
   /** The rule whose repair is running, when one is. Only the async image conversion can be — a pure fix
    *  lands within the click — and the row it belongs to shows the work rather than looking unresponsive. */
   fixingRuleId: string | null;
+  /** The world's publish size in bytes, null until the first measure lands. */
+  publishBytes: number | null;
   onOpenItem: OpenFindingItem;
   onDismissRule: (ruleId: string) => void;
   onRestoreRule: (ruleId: string) => void;

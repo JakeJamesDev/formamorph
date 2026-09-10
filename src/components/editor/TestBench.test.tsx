@@ -65,6 +65,7 @@ const benchProps = (groups: FindingGroup[], over: BenchOver = {}): TestBenchProp
     codedStatCount: 0,
     codeCheckStatus: 'idle',
     fixingRuleId: null,
+    publishBytes: null,
     onOpenItem: vi.fn(),
     onDismissRule: vi.fn(),
     onRestoreRule: vi.fn(),
@@ -385,6 +386,53 @@ describe('TestBench stat-code check', () => {
     renderBench(world([]), { issues: { codedStatCount: 2, advanced: false } });
     expect(screen.queryByRole('button', { name: /Check Stat Code|Check Again/ })).toBeNull();
     expect(screen.queryByText(/stats have code/)).toBeNull();
+  });
+});
+
+describe('TestBench publish size', () => {
+  const MB = 1024 * 1024;
+  const meter = () => screen.getByRole('meter', { name: 'Publish Size' });
+
+  it('reads the size against the world limit', () => {
+    renderBench(world([]), { issues: { publishBytes: 12.4 * MB } });
+    expect(screen.getByText('12.4 MB of 100.0 MB')).toBeInTheDocument();
+    expect(meter()).toHaveAttribute('aria-valuetext', '12.4 MB of 100.0 MB');
+  });
+
+  it.each([
+    [59.9, 'green'],
+    [60, 'amber'],
+    [89.9, 'amber'],
+    [90, 'red'],
+  ])('bands %s MB as %s', (megabytes, band) => {
+    renderBench(world([]), { issues: { publishBytes: megabytes * MB } });
+    expect(meter()).toHaveAttribute('data-band', band);
+  });
+
+  it('stops the fill at full for a world over the limit', () => {
+    renderBench(world([]), { issues: { publishBytes: 150 * MB } });
+    expect(screen.getByText('150.0 MB of 100.0 MB')).toBeInTheDocument();
+    expect(meter()).toHaveAttribute('aria-valuenow', String(100 * MB));
+    expect(meter().firstElementChild).toHaveStyle({ width: '100%' });
+  });
+
+  it('shows the bar in a clean world too, above the verdict', () => {
+    renderBench(world([{ id: 'e1', name: 'Maren' }]), { issues: { publishBytes: MB } });
+    const verdict = screen.getByText('No Problems Found');
+    expect(meter().compareDocumentPosition(verdict) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  });
+
+  it('explains what is measured behind its tip', async () => {
+    renderBench(world([]), { issues: { publishBytes: MB } });
+    await userEvent.click(screen.getByRole('button', { name: 'More info' }));
+    expect(await screen.findByText(/linked image/i)).toBeInTheDocument();
+    expect(screen.getByText(/Export World/)).toBeInTheDocument();
+  });
+
+  it('shows no bar before the first measure', () => {
+    renderBench(world([]), { issues: { publishBytes: null } });
+    expect(screen.queryByRole('meter')).toBeNull();
+    expect(screen.queryByText('Publish Size')).toBeNull();
   });
 });
 

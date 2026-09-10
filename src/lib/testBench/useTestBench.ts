@@ -33,6 +33,7 @@ import { joinHistory } from './triggers';
 import { hasSeenDownloadNote, markDownloadNoteSeen } from './downloadNote';
 import { useDebouncedFindings } from './useFindings';
 import { useLatestRun } from './useLatestRun';
+import { usePublishSize } from './usePublishSize';
 
 /** What the Bench needs from the view — the editor's own knowledge, nothing Bench-owned. */
 export interface TestBenchWiring {
@@ -89,6 +90,7 @@ export function useTestBench({
   // signal the rule pass debounces on.
   const benchWorld = useMemo(getWorldData, [getWorldData]);
   const staticFindings = useDebouncedFindings(benchWorld);
+  const publishBytes = usePublishSize(benchWorld);
   // Stat-code execution is the one check the live pass can't carry — each stat costs a sandbox VM. Its
   // findings are held from the last explicit run and dropped the moment the world moves, so a repaired stat
   // can never keep showing its old failure.
@@ -312,6 +314,7 @@ export function useTestBench({
     codedStatCount,
     codeCheckStatus,
     fixingRuleId,
+    publishBytes,
     onOpenItem: openFindingItem,
     onDismissRule: bench.dismissRule,
     onRestoreRule: bench.restoreRule,

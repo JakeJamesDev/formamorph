@@ -60,6 +60,8 @@ These entries preserve established concepts. Noun admission is assessed under ru
 | setting, font, dialog, file | Respectively a configuration option, typeface choice, interface container, and stored data object. | Category 19; `font` also appears in category 15 |
 | model, token, reasoning | AI system, unit used by that system, and its reasoning output/process. Do not equate reasoning visibility with reasoning effort. | Settings copy; category 19 AI concepts |
 | cached images | Downloaded image copies in the remote-image cache, not embedded world images. | [remoteImageCache.ts](../src/lib/remoteImageCache.ts); category 19, two-word technical noun |
+| embedded image, linked image | An embedded image is stored in the world file. A linked image is stored as its URL only. | [entityImages.ts](../src/lib/entityImages.ts); category 19 data concepts |
+| publish, Publish Size, publish limit | Publishing sends a world, entity, dictionary, or avatar to Community Creations. Publish Size is the byte size of the content that publishing sends. The publish limit is the largest Publish Size the server accepts for that kind. | [publishLimits.ts](../src/lib/publishLimits.ts); category 19; `publish` is a technical verb under rule 1.12 because no approved verb names the upload-and-list operation |
 
 Use the same term for the same concept in prose, accessible names, and help. Quoted labels retain their display casing; ordinary nouns use normal prose casing. Introduce unfamiliar terms in help before depending on them. This register is scoped to the listed meanings, not a blanket whitelist for all game vocabulary.
 
