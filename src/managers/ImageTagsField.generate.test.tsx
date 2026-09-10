@@ -1,7 +1,10 @@
+import { useState } from 'react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, fireEvent, waitFor, within } from '@testing-library/react';
+import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { IMAGE_CAPS } from '../lib/imageOptim';
 import ImageTagsField from './ImageTagsField';
+import { EntityGalleryField } from './EntityFields';
+import type { Entity } from '@/types';
 
 // Stands in for the uploader as a marker carrying its slot's value, like the gallery tests use.
 vi.mock('../lib/UtilityComponents', () => ({
@@ -29,18 +32,36 @@ const B = 'data:image/webp;base64,BBBB';
 const LINK = 'https://files.example/c.png';
 const GENERATED = 'data:image/webp;base64,GGGG';
 
-const setup = (images: string[], { slots = 8, embeddedLimit = 2 } = {}) => {
+/** The entity's own widget, holding its images in state so a placed picture shows up in the strip. */
+const entitySetup = (images: string[]) => {
+  const onImagesChange = vi.fn();
+  const Host = () => {
+    const [value, setValue] = useState({ id: 'e1', name: 'Ada', images } as Entity);
+    return (
+      <EntityGalleryField
+        value={value}
+        onChange={(field, next) => {
+          if (field === 'images') onImagesChange(next);
+          setValue((prev) => ({ ...prev, [field]: next }));
+        }}
+      />
+    );
+  };
+  render(<Host />);
+  return { onImagesChange };
+};
+
+/** A location's background, configured as the Location panel configures it. */
+const locationSetup = (images: string[]) => {
   const onImagesChange = vi.fn();
   render(
     <ImageTagsField
-      label="Image"
+      label="Background Image"
       images={images}
       onImagesChange={onImagesChange}
-      slots={slots}
-      embeddedLimit={embeddedLimit}
-      imageId="x"
-      cap={IMAGE_CAPS.entity}
-      kind="character"
+      imageId="loc"
+      cap={IMAGE_CAPS.background}
+      kind="location"
       onTagsChange={vi.fn()}
     />,
   );
@@ -49,15 +70,12 @@ const setup = (images: string[], { slots = 8, embeddedLimit = 2 } = {}) => {
 
 const generate = () => fireEvent.click(screen.getByRole('button', { name: 'Generate with AI' }));
 const picker = () => screen.queryByText('Replace which image?');
-// Scoped, because the strip's own tiles are labelled "Image 2" too — the point of the pick is to name the
-// same pictures, so the two sets of labels are meant to read alike.
-const inPicker = () => within(screen.getByRole('dialog'));
 
-describe('ImageTagsField generated-image placement', () => {
+describe('ImageTagsField generated-image placement on an entity', () => {
   beforeEach(() => { vi.clearAllMocks(); });
 
-  it('fills the first empty slot instead of writing over the primary', async () => {
-    const { onImagesChange } = setup([A]);
+  it('adds after the primary instead of writing over it', async () => {
+    const { onImagesChange } = entitySetup([A]);
 
     generate();
 
@@ -65,55 +83,63 @@ describe('ImageTagsField generated-image placement', () => {
     expect(picker()).toBeNull();
   });
 
-  it('takes the primary slot when the subject has no pictures yet', async () => {
-    const { onImagesChange } = setup([]);
+  it('takes the primary slot when the entity has no pictures yet', async () => {
+    const { onImagesChange } = entitySetup([]);
 
     generate();
 
     await waitFor(() => expect(onImagesChange).toHaveBeenCalledWith([GENERATED]));
   });
 
-  it('asks which picture to replace once the embedded allowance is spent', async () => {
-    const { onImagesChange } = setup([A, B]);
+  it('adds a new image to an entity that already holds two uploads, and asks nothing', async () => {
+    const { onImagesChange } = entitySetup([A, B]);
 
     generate();
 
-    expect(await screen.findByText('Replace which image?')).toBeTruthy();
-    // Nothing is written until a slot is chosen.
-    expect(onImagesChange).not.toHaveBeenCalled();
-
-    fireEvent.click(inPicker().getByLabelText('Image 2'));
-    fireEvent.click(screen.getByRole('button', { name: 'Replace' }));
-
-    await waitFor(() => expect(onImagesChange).toHaveBeenCalledWith([A, GENERATED]));
+    await waitFor(() => expect(onImagesChange).toHaveBeenCalledWith([A, B, GENERATED]));
+    expect(picker()).toBeNull();
     // The generate dialog is told the picture was kept, so it may close.
     await waitFor(() => expect(placed).toHaveBeenCalledWith(true));
   });
 
-  it('starts the pick on the picture being framed', async () => {
-    setup([A, B]);
+  it('frames the image it adds, not the one on show before', async () => {
+    entitySetup([A, B]);
     fireEvent.click(screen.getByRole('button', { name: 'Image 2' }));
 
     generate();
 
-    await screen.findByText('Replace which image?');
-    expect(inPicker().getByLabelText('Image 2')).toBeChecked();
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Image 3' })).toHaveAttribute('aria-pressed', 'true'));
+    expect(screen.getByRole('button', { name: 'Image 2' })).toHaveAttribute('aria-pressed', 'false');
   });
 
-  it('leaves out slots holding a link, which bytes may not replace at the limit', async () => {
-    setup([A, B, LINK]);
+  it('adds after linked images as well, keeping every one', async () => {
+    const { onImagesChange } = entitySetup([A, B, LINK]);
 
     generate();
 
-    await screen.findByText('Replace which image?');
-    // Replacing the link would add a third embedded picture to a subject allowed two.
-    expect(inPicker().queryByLabelText('Image 3')).toBeNull();
-    expect(inPicker().getByLabelText('Primary')).toBeTruthy();
-    expect(inPicker().getByLabelText('Image 2')).toBeTruthy();
+    await waitFor(() => expect(onImagesChange).toHaveBeenCalledWith([A, B, LINK, GENERATED]));
+    expect(picker()).toBeNull();
+  });
+});
+
+describe('ImageTagsField generated-image placement on a location', () => {
+  beforeEach(() => { vi.clearAllMocks(); });
+
+  it('confirms the overwrite on a filled background rather than replacing it silently', async () => {
+    const { onImagesChange } = locationSetup([A]);
+
+    generate();
+
+    expect(await screen.findByText('Replace which image?')).toBeTruthy();
+    expect(onImagesChange).not.toHaveBeenCalled();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Replace' }));
+    await waitFor(() => expect(onImagesChange).toHaveBeenCalledWith([GENERATED]));
+    await waitFor(() => expect(placed).toHaveBeenCalledWith(true));
   });
 
   it('changes nothing and reports the picture unplaced when the pick is cancelled', async () => {
-    const { onImagesChange } = setup([A, B]);
+    const { onImagesChange } = locationSetup([A]);
 
     generate();
     await screen.findByText('Replace which image?');
@@ -124,21 +150,12 @@ describe('ImageTagsField generated-image placement', () => {
     expect(picker()).toBeNull();
   });
 
-  it('confirms the overwrite on a filled single-slot subject rather than replacing it silently', async () => {
-    const { onImagesChange } = setup([A], { slots: 1, embeddedLimit: 1 });
+  it('lets a generated picture replace a linked background', async () => {
+    const { onImagesChange } = locationSetup([LINK]);
 
     generate();
+    fireEvent.click(await screen.findByRole('button', { name: 'Replace' }));
 
-    expect(await screen.findByText('Replace which image?')).toBeTruthy();
-    expect(onImagesChange).not.toHaveBeenCalled();
-
-    fireEvent.click(screen.getByRole('button', { name: 'Replace' }));
     await waitFor(() => expect(onImagesChange).toHaveBeenCalledWith([GENERATED]));
-  });
-
-  it('offers no generation when every slot holds a link it may not replace', () => {
-    setup([LINK], { slots: 1, embeddedLimit: 0 });
-
-    expect(screen.queryByRole('button', { name: 'Generate with AI' })).toBeNull();
   });
 });

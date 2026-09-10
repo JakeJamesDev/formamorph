@@ -31,7 +31,6 @@ const Split = () => {
       images={[]}
       onImagesChange={() => {}}
       slots={Infinity}
-      embeddedLimit={2}
       imageId="x"
       cap={IMAGE_CAPS.entity}
       kind="character"

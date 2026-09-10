@@ -1,13 +1,15 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, fireEvent } from '@testing-library/react';
+import { render, screen, fireEvent, waitFor, cleanup } from '@testing-library/react';
 import { IMAGE_CAPS } from '../lib/imageOptim';
 import ImageTagsField from './ImageTagsField';
+import { EntityGalleryField } from './EntityFields';
+import type { Entity } from '@/types';
 
 // Stub the heavy leaf children; the upload stub exposes a button that fires the embedded-prompt handshake,
-// and reports the slot's own `allowUpload` so the byte allowance can be asserted per row.
+// and carries its slot's value and input id, which is what the add tile's label points at.
 vi.mock('../lib/UtilityComponents', () => ({
-  ImageUpload: ({ onPromptExtracted, value, allowUpload }: { onPromptExtracted?: (p: string) => void; value?: string | null; allowUpload?: boolean }) => (
-    <div data-testid="slot" data-value={value ?? ''} data-allow-upload={String(allowUpload ?? true)}>
+  ImageUpload: ({ onPromptExtracted, value, id }: { onPromptExtracted?: (p: string) => void; value?: string | null; id: string }) => (
+    <div data-testid="slot" data-value={value ?? ''} data-slot-id={id}>
       <button onClick={() => onPromptExtracted?.('extracted, tags')}>extract-prompt</button>
     </div>
   ),
@@ -15,6 +17,10 @@ vi.mock('../lib/UtilityComponents', () => ({
 vi.mock('../components/GenerateImageButton', () => ({ GenerateImageButton: () => <div>generate</div> }));
 vi.mock('@/components/AiGenerateButton', () => ({ default: () => <div /> }));
 vi.mock('@/components/TagAutocomplete', () => ({ TagAutocomplete: () => <div /> }));
+// Kept at full size, so the stored images are the dropped files as read.
+vi.mock('@/lib/useDownscalePrompt', () => ({
+  useDownscalePrompt: () => ({ promptImagesBatch: vi.fn(async () => 'off'), dialog: null }),
+}));
 
 const setup = () => {
   const onTagsChange = vi.fn();
@@ -54,81 +60,52 @@ describe('ImageTagsField embedded-prompt handshake', () => {
   });
 });
 
-describe('ImageTagsField embedded allowance', () => {
+describe('ImageTagsField uploads on an entity', () => {
   const DATA_A = 'data:image/webp;base64,AAAA';
   const DATA_B = 'data:image/webp;base64,BBBB';
+  const DATA_C = 'data:image/webp;base64,CCCC';
   const LINK_A = 'https://example.com/a.webp';
-  const LINK_B = 'https://example.com/b.webp';
 
-  /** An entity-shaped gallery: unbounded slots, two pictures' worth of bytes. */
-  const gallery = (images: string[]) =>
-    render(
-      <ImageTagsField
-        label="Image"
-        images={images}
-        onImagesChange={() => {}}
-        slots={Infinity}
-        embeddedLimit={2}
-        imageId="x"
-        cap={IMAGE_CAPS.entity}
-        kind="character"
-        onTagsChange={() => {}}
-      />,
-    );
+  /** The entity's own widget, as the Entity panel configures it. */
+  const gallery = (images: string[]) => {
+    const onChange = vi.fn();
+    render(<EntityGalleryField value={{ id: 'e1', name: 'Ada', images } as Entity} onChange={onChange} />);
+    return { onChange };
+  };
 
   /** The trailing empty row — the one an author adds through. */
   const emptyRow = () => screen.getAllByTestId('slot').find((s) => !s.getAttribute('data-value'));
+  const addTile = () => screen.getByLabelText('Add an image');
 
-  it('offers the file picker while the byte allowance is unspent', () => {
-    gallery([DATA_A]);
-    expect(emptyRow()?.getAttribute('data-allow-upload')).toBe('true');
-  });
-
-  it('withholds the file picker once two pictures carry their own bytes', () => {
+  it('points the add tile at the open slot’s file picker on an entity with two uploads', () => {
     gallery([DATA_A, DATA_B]);
-    // Still a row to add through — links are what it is for.
-    expect(emptyRow()).toBeTruthy();
-    expect(emptyRow()?.getAttribute('data-allow-upload')).toBe('false');
+    expect(addTile().getAttribute('for')).toBe(`image-upload-${emptyRow()?.getAttribute('data-slot-id')}`);
   });
 
-  it('never counts links against the allowance', () => {
-    gallery([LINK_A, LINK_B, DATA_A, LINK_A]);
-    expect(emptyRow()?.getAttribute('data-allow-upload')).toBe('true');
+  it('takes every file of a three-file drop onto an entity with two images', async () => {
+    const { onChange } = gallery([DATA_A, DATA_B]);
+    const files = ['c.png', 'd.png', 'e.png'].map((name) => new File(['x'], name, { type: 'image/png' }));
+
+    fireEvent.drop(addTile(), { dataTransfer: { files, types: ['Files'], getData: () => '' } });
+
+    await waitFor(() => expect(onChange).toHaveBeenCalledWith('images', expect.any(Array)));
+    const [, images] = onChange.mock.calls[0] as [string, string[]];
+    expect(images).toHaveLength(5);
+    expect(images.slice(0, 2)).toEqual([DATA_A, DATA_B]);
   });
 
-  it('keeps growing by link past the point uploads stop', () => {
-    gallery([DATA_A, DATA_B, LINK_A, LINK_B]);
-    // Four pictures held, a fifth row offered, and no truncation of what is already there.
-    expect(screen.getAllByTestId('slot')).toHaveLength(5);
-    expect(emptyRow()?.getAttribute('data-allow-upload')).toBe('false');
-  });
-
-  it('keeps every picture of an import that already exceeds the allowance', () => {
-    // Import deliberately does not truncate, so the editor has to show what it was handed rather than
-    // silently dropping the tail — it just refuses to add more bytes on top.
-    const DATA_C = 'data:image/webp;base64,CCCC';
+  it('keeps every picture of an import with more than two uploads, and still offers the picker', () => {
+    // Import does not truncate, so the editor shows every picture it was handed.
     gallery([DATA_A, DATA_B, DATA_C, LINK_A]);
     expect(screen.getAllByTestId('slot').filter((s) => s.getAttribute('data-value'))).toHaveLength(4);
-    expect(emptyRow()?.getAttribute('data-allow-upload')).toBe('false');
+    expect(addTile().getAttribute('for')).toBe(`image-upload-${emptyRow()?.getAttribute('data-slot-id')}`);
   });
 
-  it('keeps Generate with the allowance spent behind a linked primary', () => {
-    // The picture it replaces is the author's pick, so a linked primary is no longer the deciding slot: the
-    // two carrying bytes are both replaceable, and one of them is where a generated picture can land.
-    gallery([LINK_A, DATA_A, DATA_B]);
-    expect(screen.getByText('generate')).toBeTruthy();
-  });
-
-  it('keeps Generate when it would only overwrite a picture’s own bytes', () => {
-    gallery([DATA_A, DATA_B]);
-    expect(screen.getByText('generate')).toBeTruthy();
-  });
-
-  it('leaves a single-slot field (a location background) alone', () => {
-    render(
+  it('keeps a location to one background slot, filled or empty', () => {
+    const location = (images: string[]) => render(
       <ImageTagsField
         label="Background Image"
-        images={[]}
+        images={images}
         onImagesChange={() => {}}
         imageId="loc"
         cap={IMAGE_CAPS.background}
@@ -136,7 +113,12 @@ describe('ImageTagsField embedded allowance', () => {
         onTagsChange={() => {}}
       />,
     );
+    location([]);
     expect(screen.getAllByTestId('slot')).toHaveLength(1);
-    expect(emptyRow()?.getAttribute('data-allow-upload')).toBe('true');
+    cleanup();
+
+    location([DATA_A]);
+    expect(screen.getAllByTestId('slot')).toHaveLength(1);
+    expect(screen.queryByLabelText('Add an image')).toBeNull();
   });
 });
