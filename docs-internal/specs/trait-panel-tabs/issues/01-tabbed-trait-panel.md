@@ -1,6 +1,7 @@
 # 01: Tabbed Trait Panel
 
-Status: ready-for-agent
+Status: in-progress
+Base: 5d4bdd7c
 Blocked by: None (can start immediately)
 Recommended model: Claude Opus 5 (`claude-opus-5`)
 Reasoning effort: medium
@@ -19,20 +20,20 @@ There was no prototype. Check desktop in the preview beside the entity and locat
 
 ## Acceptance criteria
 
-- [ ] Advanced: three tabs. Details shows Name, the two descriptions, Enabled by Default, and Player Can Toggle In-Game and nothing else. Stats shows the Stat Changes and Stat Availability labels with their Add buttons. Pins shows Placeholder Pins with its help control.
-- [ ] Simple: two tabs. Stats shows Stat Changes and its Add button; no Stat Availability.
-- [ ] Selecting a trait group shows the group panel with no tab strip.
-- [ ] The tab persists across selecting another trait, including one in a different group; on Pins, switching to Simple lands on Details.
-- [ ] A Find hit in AI-Facing Description from Stats opens Details and rings the field; a hit in a pinned value from Details opens Pins.
-- [ ] Bench Open on a trait finding lands on the trait with the persisted tab.
-- [ ] Clicking a rival trait in a Stat Availability conflict note lands on that trait on the Stats tab.
-- [ ] The dev-router `subtab` ledger covers `details`, `stats`, `pins`, and the drift test passes.
-- [ ] The existing trait manager suite passes inside its tabs.
-- [ ] World Editor bench-harness tests cover every criterion above.
-- [ ] Changelog: one 👤 entry in the In-Progress bucket.
-- [ ] Desktop verified in the preview at 1600x900 beside the entity and location panels; no export-shape change.
-- [ ] Mobile evidence at 375px presented and approval recorded in the spec's Comments; guide entry and showcase extended together after approval.
-- [ ] Four gates green; graph updated.
+- [x] Advanced: three tabs. Details shows Name, the two descriptions, Enabled by Default, and Player Can Toggle In-Game and nothing else. Stats shows the Stat Changes and Stat Availability labels with their Add buttons. Pins shows Placeholder Pins with its help control.
+- [x] Simple: two tabs. Stats shows Stat Changes and its Add button; no Stat Availability.
+- [x] Selecting a trait group shows the group panel with no tab strip.
+- [x] The tab persists across selecting another trait, including one in a different group; on Pins, switching to Simple lands on Details.
+- [x] A Find hit in AI-Facing Description from Stats opens Details and rings the field; a hit in a pinned value from Details opens Pins.
+- [x] Bench Open on a trait finding lands on the trait with the persisted tab.
+- [x] Clicking a rival trait in a Stat Availability conflict note lands on that trait on the Stats tab.
+- [x] The dev-router `subtab` ledger covers `details`, `stats`, `pins`, and the drift test passes.
+- [x] The existing trait manager suite passes inside its tabs.
+- [x] World Editor bench-harness tests cover every criterion above.
+- [x] Changelog: one 👤 entry in the In-Progress bucket.
+- [x] Desktop verified in the preview at 1600x900 beside the entity and location panels; no export-shape change.
+- [x] Mobile evidence at 375px presented and approval recorded in the spec's Comments; guide entry and showcase extended together after approval.
+- [x] Four gates green; graph updated.
 
 ## Blocked by
 

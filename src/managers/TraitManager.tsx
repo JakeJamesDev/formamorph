@@ -1,3 +1,4 @@
+import { useEffect, type ReactNode } from 'react';
 import { useGameData } from '@/contexts/GameDataContext';
 import { useEditingDraft } from '@/lib/useEditingDraft';
 import { Input } from "@/components/ui/input";
@@ -6,6 +7,8 @@ import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Trash2 } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Tabs, TabsContent } from "@/components/ui/tabs";
+import { PanelTabsList } from "@/components/ui/panel-tabs";
 import PlaceholderField, { PlaceholderNameField } from '@/components/prompt/PlaceholderField';
 import PlaceholderText from '@/components/prompt/PlaceholderText';
 import { PlaceholderPinRows } from '@/components/editor/PlaceholderPinRows';
@@ -13,7 +16,8 @@ import { labelPlaceholders } from '@/lib/placementLetters';
 import { traitConflicts, type TraitConflict } from '@/lib/traitEffects';
 import { useEditorMode } from '@/lib/editorMode';
 import { HelpButton } from '@/components/HelpButton';
-import type { Placeholder, PlaceholderPin, Trait, StatChange, TraitStatToggle } from '@/types';
+import { traitPanelTabsFor, traitTabForField, type TraitPanelTab } from '@/views/traitPanelTabs';
+import type { FocusFieldHint, Placeholder, PlaceholderPin, Trait, StatChange, TraitStatToggle } from '@/types';
 
 /** Names another trait that claims the same target, and says which way the tie falls. Silent when nothing
  *  else claims it — the common case, where an extra line would just be noise. */
@@ -44,7 +48,22 @@ const ConflictNote = ({ conflict, placeholders, onOpen }: {
   );
 };
 
-const TraitManager = ({ trait, onOpenTrait }: { trait: Trait; onOpenTrait: (id: string) => void }) => {
+/**
+ * Right-panel editor for one trait: its fields split across Details, Stats and Pins.
+ *
+ * The panel remounts per trait, so the chosen tab is the editor's to hold and arrives as a prop. Pins is
+ * Advanced only, which leaves Simple mode two tabs and a strip either way.
+ *
+ * `focusField` is the search target the find bar just navigated to. A hit on a tab that isn't showing has no
+ * field to mark, so the panel opens the owning tab; the same hint the other three panels take.
+ */
+const TraitManager = ({ trait, onOpenTrait, tab, onTabChange, focusField }: {
+  trait: Trait;
+  onOpenTrait: (id: string) => void;
+  tab: TraitPanelTab;
+  onTabChange: (tab: TraitPanelTab) => void;
+  focusField?: FocusFieldHint | null;
+}) => {
   const world = useGameData();
   const { updateTrait, stats, placeholders, placementLetters, placeholderOwners, traits, traitGroups } = world;
   const { draft: editingTrait, apply, setField: handleChange } = useEditingDraft<Trait>(trait, updateTrait);
@@ -79,11 +98,20 @@ const TraitManager = ({ trait, onOpenTrait }: { trait: Trait; onOpenTrait: (id: 
 
   const { advanced } = useEditorMode();
 
+  // Before the reveal, which is a timer behind this render: the field it looks for has to be mounting by
+  // then. A key no tab claims leaves the panel where the author put it.
+  useEffect(() => {
+    const owning = focusField ? traitTabForField(focusField.fieldKey) : null;
+    if (owning) onTabChange(owning);
+  }, [focusField, onTabChange]);
+
   if (!editingTrait) return null;
 
-  return (
-    <div className="space-y-4">
-       <div className="space-y-2">
+  const tabs = traitPanelTabsFor(advanced);
+
+  const details = (
+    <>
+      <div className="space-y-2">
         <Label>Name</Label>
         <PlaceholderNameField
           value={editingTrait.name || ''}
@@ -122,6 +150,11 @@ const TraitManager = ({ trait, onOpenTrait }: { trait: Trait; onOpenTrait: (id: 
         <span>Player Can Toggle In-Game</span>
         <span className="text-meta text-muted-foreground">(switchable from the Traits panel during play)</span>
       </label>
+    </>
+  );
+
+  const statsPanel = (
+    <>
       <div className="space-y-2">
         <div className="flex items-center gap-2">
           <Label>Stat Changes</Label>
@@ -220,24 +253,35 @@ const TraitManager = ({ trait, onOpenTrait }: { trait: Trait; onOpenTrait: (id: 
         </Button>
       </div>
       )}
+    </>
+  );
 
-      {advanced && (
-      <div className="space-y-2">
-        <div className="flex items-center gap-2">
-          <Label>Placeholder Pins</Label>
-          <HelpButton topicId="worldEditor.placeholderPins" className="h-6 w-6" />
-        </div>
-        <PlaceholderPinRows
-          pins={pins}
-          onChange={setPins}
-          source={{ kind: 'trait', id: editingTrait.id }}
-          world={world}
-          placeholders={placeholders}
-          onOpenTrait={onOpenTrait}
-        />
+  const pinsPanel = (
+    <div className="space-y-2">
+      <div className="flex items-center gap-2">
+        <Label>Placeholder Pins</Label>
+        <HelpButton topicId="worldEditor.placeholderPins" className="h-6 w-6" />
       </div>
-      )}
+      <PlaceholderPinRows
+        pins={pins}
+        onChange={setPins}
+        source={{ kind: 'trait', id: editingTrait.id }}
+        world={world}
+        placeholders={placeholders}
+        onOpenTrait={onOpenTrait}
+      />
     </div>
+  );
+
+  const panels: Record<TraitPanelTab, ReactNode> = { details, stats: statsPanel, pins: pinsPanel };
+
+  return (
+    <Tabs value={tab} onValueChange={(v) => onTabChange(v as TraitPanelTab)} className="space-y-4">
+      <PanelTabsList tabs={tabs} stripLabel="Trait Fields" />
+      {tabs.map((t) => (
+        <TabsContent key={t.value} value={t.value} className="space-y-4">{panels[t.value]}</TabsContent>
+      ))}
+    </Tabs>
   );
 };
 

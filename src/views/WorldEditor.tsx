@@ -51,6 +51,7 @@ import { LOCATION_VIEWS, type LocationView } from './locationViews';
 import { ENTITY_PANEL_TABS, entityPanelTabsFor, type EntityPanelTab } from './entityPanelTabs';
 import { LOCATION_PANEL_TABS, locationPanelTabsFor, type LocationPanelTab } from './locationPanelTabs';
 import { STAT_PANEL_TABS, statPanelTabsFor, type StatPanelTab } from './statPanelTabs';
+import { TRAIT_PANEL_TABS, traitPanelTabsFor, type TraitPanelTab } from './traitPanelTabs';
 import { focusFieldForItem } from './findFocus';
 import EntityTree from '../managers/EntityTree';
 import { removeLocationPromotingChildren } from '@/lib/locationTree';
@@ -192,6 +193,11 @@ const WorldEditorInner = ({ onClose, embedded = false, backButton }: {
   useEffect(() => {
     if (statTabs.length === 1) setStatTab('details');
   }, [statTabs]);
+  // The trait panel's own tabs, held here for the same reason. Pins is the only Advanced-only one, so Simple
+  // mode keeps a strip of two.
+  const [traitTab, setTraitTab] = useState<TraitPanelTab>('details');
+  const traitTabs = useMemo(() => traitPanelTabsFor(advanced), [advanced]);
+  const shownTraitTab = traitTabs.some((t) => t.value === traitTab) ? traitTab : 'details';
 
   // DEV dev-router: jump to a specific editor tab via `#dev?modal=worldEditor&tab=…`. Tree-shaken in prod.
   const devRoute = useDevRoute();
@@ -221,6 +227,12 @@ const WorldEditorInner = ({ onClose, embedded = false, backButton }: {
   useEffect(() => {
     if (import.meta.env.DEV && STAT_PANEL_TABS.some((t) => t.value === devSubtab)) {
       setStatTab(devSubtab as StatPanelTab);
+    }
+  }, [devSubtab]);
+  // And over the Traits tab, where the slot names one of the trait panel's own tabs.
+  useEffect(() => {
+    if (import.meta.env.DEV && TRAIT_PANEL_TABS.some((t) => t.value === devSubtab)) {
+      setTraitTab(devSubtab as TraitPanelTab);
     }
   }, [devSubtab]);
   const [searchTerm, setSearchTerm] = useState('');
@@ -790,6 +802,9 @@ const WorldEditorInner = ({ onClose, embedded = false, backButton }: {
           trait={selectedTrait}
           // A conflict note names a rival trait; clicking the name lands on it like a Bench finding does.
           onOpenTrait={(id) => navigateToBenchItem('traits', id)}
+          tab={shownTraitTab}
+          onTabChange={setTraitTab}
+          focusField={focusFieldForItem(findField, selectedTrait.id)}
         />
       )}
       {activeTab === "dictionary" && selectedBook && (

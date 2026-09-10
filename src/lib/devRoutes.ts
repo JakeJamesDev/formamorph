@@ -102,6 +102,9 @@ export const DEV_MODAL_TABS = {
   // (`#dev?modal=worldEditor&tab=stats&subtab=code`). `descriptors` and `code` are Advanced only, and
   // Simple mode leaves one tab and no strip, so land those on an Advanced editor.
   worldEditorStat: ['details', 'descriptors', 'code'],
+  // The World Editor's trait panel does the same over the Traits tab
+  // (`#dev?modal=worldEditor&tab=traits&subtab=stats`). `pins` is Advanced only.
+  worldEditorTrait: ['details', 'stats', 'pins'],
   // The World Editor's Test Bench: `bench=…` opens the full panel — at whichever placement is remembered —
   // on the instrument it names (`#dev?modal=worldEditor&bench=issues`). Only built instruments are listed,
   // since an unbuilt tab renders

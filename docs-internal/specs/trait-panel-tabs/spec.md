@@ -97,3 +97,9 @@ A good test drives the real World Editor with a loadable world and asserts what 
 **Why "Stats".** The tab holds everything the trait does to stats, and both sections on it are named for stats. "Effects" was the first proposal and read as vaguer. The editor's own strip has a Stats tab too; the panel strip's accessible name keeps them apart, as the location panel's Details already does against the entity panel's.
 
 **What this panel reuses.** The editor-held tab slot, the optional tab hint on item navigation, the named focus-field hint type, the shared tab-for-field helper, and the item guard are all on `main` from the earlier efforts. This panel adds a tab module, a field map, a ledger entry, and the layout.
+
+## Comments
+
+**2026-09-10 — Mobile form approved.** Shown at 375x812 in the real editor over a bundled world, on the Details and Stats tabs. The strip renders three equal 105px columns across 323px, icon only, and the page does not scroll horizontally (`scrollWidth` 375 = `clientWidth` 375). A Stat Changes row keeps its three 94px controls plus the delete button, the same row the panel showed before the tabs. The user approved the form as shown and asked for the guide entry and showcase to follow.
+
+Desktop was checked at 1600x900 beside the entity and location panels. All three strips measure 40px tall and 737px wide with 32px triggers; the trait and entity strips take three 243px columns and the location strip four 182.25px columns.
