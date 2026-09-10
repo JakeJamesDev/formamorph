@@ -497,6 +497,15 @@ The reference descriptions and local status messages were reviewed by copy role 
 
 Keep setting descriptions to one sentence, third person, and no more than 12 words. Put necessary additional detail behind `HintInfo`. Do not claim ASD-STE100 compliance from length or tone alone; use the vocabulary, grammar, meaning, and evidence process in the [Writing Guide](Writing-Guide.md).
 
+### Field help order
+
+A field reads top to bottom as label, help, control. The label names the field. The `Hint` sits directly under the label and says what the field does, in one line. The control comes last. A `HintInfo` goes beside the label, never under the control. A control never has a `Hint` after it, so a reader always knows what a field is before reaching it, and a tall control never pushes its own explanation out of view.
+
+Two placements sit beside a control instead of above it:
+
+- A checkbox row puts its caption after the box and its `Hint` inline after the caption, as the trait panel's Enabled by Default does.
+- A status line under a list, such as an entry count or a band's covered range, is not help. It stays after what it reports on.
+
 Apply that guide by role to all approved patterns: settings labels and information, markdown toolbar names and instructions, card action names and status messages, Find controls and status text, Code Template fields, validation and actions, and context-menu instructions, action labels and local status. Accessible text receives the same review as visible text. World introductions, creation titles, descriptions, tags, and sample Group names are authored content; these samples retain their own voice. Existing production copy is not certified by reuse in the showcase.
 
 The foundation's [review record](../docs-internal/designs/design-system/workflow-review.md) records copy findings, evidence limits, and the two workflow demonstrations. Existing-screen alignment remains separate work.

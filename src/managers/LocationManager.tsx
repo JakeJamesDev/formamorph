@@ -4,7 +4,6 @@ import { useGameData } from '@/contexts/GameDataContext';
 import { entitiesInTreeOrder } from '@/lib/entityGroupTree';
 import { entityIdsAt, setLocationRoster } from '@/lib/entityPresence';
 import { Label } from "@/components/ui/label";
-import { Hint } from "@/components/ui/typography";
 import { Checkbox } from "@/components/ui/checkbox";
 import { MultiSelect } from "@/components/ui/multi-select";
 import { Tabs, TabsContent } from '@/components/ui/tabs';
@@ -134,7 +133,6 @@ const LocationManager = ({ location, tab, onTabChange, focusField }: {
           resizable
         />
         {advanced && (
-        <div className="space-y-2">
           <PlaceholderField
             label="AI-Facing Summary"
             labelAside={(
@@ -144,13 +142,12 @@ const LocationManager = ({ location, tab, onTabChange, focusField }: {
                 onChange={(s) => handleChange('aiSummary', s)}
               />
             )}
+            hint="A one-line version for where the full description is too long. Keep it brief."
             value={editingLocation.aiSummary || ''}
             onChange={(v) => handleChange('aiSummary', v)}
             placeholders={placeholders}
             resizable
           />
-          <Hint>A one-line version for where the full description is too long. Keep it brief.</Hint>
-        </div>
         )}
       </TabsContent>
 

@@ -1,6 +1,5 @@
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Hint } from "@/components/ui/typography";
 import { MultiSelect, type MultiSelectOption } from "@/components/ui/multi-select";
 import { KeywordChips } from "@/components/KeywordChips";
 import { HelpButton } from "@/components/HelpButton";
@@ -107,7 +106,6 @@ export const EntityDescriptionFields = ({ value, onChange, placeholders = [], ow
         resizable
       />
       {advanced && (
-      <div className="space-y-2">
         <PlaceholderField
           label="AI-Facing Summary"
           labelAside={(
@@ -117,14 +115,13 @@ export const EntityDescriptionFields = ({ value, onChange, placeholders = [], ow
               onChange={(s) => onChange('aiSummary', s)}
             />
           )}
+          hint="A one-line version for where the full description is too long. Keep it brief."
           value={value.aiSummary || ''}
           onChange={(v) => onChange('aiSummary', v)}
           placeholders={placeholders}
           ownerId={ownerId}
           resizable
         />
-        <Hint>A one-line version for where the full description is too long. Keep it brief.</Hint>
-      </div>
       )}
     </>
   );

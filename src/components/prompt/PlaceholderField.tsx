@@ -17,7 +17,7 @@ import { PLACEHOLDER_TRIGGER, placeholderHint } from '@/lib/placeholderInsert';
  * preview rolls, so every field shows the same value until the toolbar's Reroll draws again. The resolved
  * text is tinted the chip's own color, like the prompt previews.
  */
-const PlaceholderField = ({ value, onChange, placeholders, ownerId, markdown = false, resizable = false, placeholder, className, readOnly = false, label, labelAside, ariaLabel }: {
+const PlaceholderField = ({ value, onChange, placeholders, ownerId, markdown = false, resizable = false, placeholder, className, readOnly = false, label, labelAside, hint, ariaLabel }: {
   value: string;
   onChange: (v: string) => void;
   placeholders: Placeholder[];
@@ -30,6 +30,8 @@ const PlaceholderField = ({ value, onChange, placeholders, ownerId, markdown = f
   label?: ReactNode;
   /** Rendered at the end of the caption's row. Needs `label`. */
   labelAside?: ReactNode;
+  /** One line under the caption, above the editor (see `PromptField`). */
+  hint?: ReactNode;
   /** Prose field: adds a markdown toolbar and renders the Preview as markdown (see `PromptField`). */
   markdown?: boolean;
   /** Let the author drag the field taller/shorter (see `PromptField`). */
@@ -62,6 +64,7 @@ const PlaceholderField = ({ value, onChange, placeholders, ownerId, markdown = f
       insertOwnerId={ownerId}
       label={label}
       labelAside={labelAside}
+      hint={hint}
       markdown={markdown}
       resizable={resizable}
       placeholder={placeholder}

@@ -21,6 +21,7 @@ import {
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Tip } from '@/components/ui/tooltip';
 import { Label } from '@/components/ui/label';
+import { Hint } from '@/components/ui/typography';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { FullscreenShell } from '@/components/FullscreenShell';
 import { useMorphFullscreen } from '@/lib/useMorphFullscreen';
@@ -522,7 +523,7 @@ function MarkdownPreviewPane({ value, previewValues, vocab, scrollRef, onScroll 
  * With `markdown`, it also gains a formatting toolbar and its Preview renders markdown instead of tinting
  * chips — for author-facing prose fields (world description, readme) that the player reads as markdown.
  */
-const PromptField = ({ value, onChange, variables = [], vocabulary, previewValues, onReroll, insertOwnerId, markdown = false, resizable = false, placeholder, className, readOnly = false, ariaLabel, sampleData = false, onRequestEdit, readOnlyReason, onRequestFullscreen, fullscreen: fullscreenProp, insertTrigger, label, labelAside }: {
+const PromptField = ({ value, onChange, variables = [], vocabulary, previewValues, onReroll, insertOwnerId, markdown = false, resizable = false, placeholder, className, readOnly = false, ariaLabel, sampleData = false, onRequestEdit, readOnlyReason, onRequestFullscreen, fullscreen: fullscreenProp, insertTrigger, label, labelAside, hint }: {
   value: string;
   onChange: (v: string) => void;
   /** Prompt-variable palette (used when no explicit `vocabulary` is given — the default prompt family). */
@@ -542,6 +543,9 @@ const PromptField = ({ value, onChange, variables = [], vocabulary, previewValue
   label?: ReactNode;
   /** Rendered at the end of the caption's row (an AI generate/undo toolbar, say). Needs `label`. */
   labelAside?: ReactNode;
+  /** One line under the caption saying what the field does. Above the editor, so the reader meets it before
+   *  the control, per the Design System's field help order. */
+  hint?: ReactNode;
   /** Prose field: adds a markdown formatting toolbar and renders the Preview as markdown. */
   markdown?: boolean;
   /** Let the author drag the field taller/shorter. Only for fields in a content-height container (the
@@ -925,7 +929,11 @@ const PromptField = ({ value, onChange, variables = [], vocabulary, previewValue
           {labelAside}
         </div>
       )}
+      {/* Label, help, control: a markdown field's help follows its own caption row, and a plain field's
+          follows the chrome row that carries its caption. Either way it lands before the editor. */}
+      {markdown && hint && <Hint className="flex-shrink-0">{hint}</Hint>}
       {chrome}
+      {!markdown && hint && <Hint className="flex-shrink-0">{hint}</Hint>}
       {panes}
     </div>
   );

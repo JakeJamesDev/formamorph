@@ -35,16 +35,14 @@ const DictionaryBookManager = ({ book }: { book: Dictionary }) => {
         />
       </div>
       {advanced && (
-        <div className="space-y-2">
-          <label className="flex items-center gap-2 text-label">
-            <Checkbox
-              checked={book.enabled !== false}
-              onCheckedChange={(v) => updateDictionary({ ...book, enabled: v === true })}
-            />
-            Enabled
-          </label>
-          <Hint>Off mutes every entry in this dictionary at once.</Hint>
-        </div>
+        <label className="flex items-center gap-2 text-label">
+          <Checkbox
+            checked={book.enabled !== false}
+            onCheckedChange={(v) => updateDictionary({ ...book, enabled: v === true })}
+          />
+          Enabled
+          <Hint as="span">Off mutes every entry in this dictionary at once.</Hint>
+        </label>
       )}
       <Hint>
         {book.entries.length} {book.entries.length === 1 ? 'entry' : 'entries'}. Add one with the + on this
