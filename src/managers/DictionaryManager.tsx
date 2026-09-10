@@ -24,6 +24,13 @@ const KEYWORDS_INFO = `**Trigger Keywords** activate this entry. When a message 
 - Tap or double-click a chip to edit it.
 - Drag a chip to reorder. Click its × to remove it.`;
 
+/** The long form behind the Activation ⓘ: one definition per switch. */
+const ACTIVATION_INFO = `**Always Inject** — the Value is injected into every prompt. No keyword match is needed.
+
+**Regex** — each keyword is matched as a regular expression.
+
+**Recursive** — an injected Value from another entry can activate this one.`;
+
 /** A compact labeled checkbox for the entry panel's switch rows. */
 function CheckRow({ label, checked, onChange }: { label: string; checked: boolean; onChange: (v: boolean) => void }) {
   return (
@@ -141,7 +148,11 @@ const DictionaryManager = ({ entry, placeholders = [], ownerId, tab, onTabChange
   const matchingPanel = (
     <>
       <div className="space-y-2">
-        <Hint>Always Inject injects the Value into every prompt. Regex matches keywords as regular expressions. Recursive lets an injected Value activate this entry.</Hint>
+        <div className="flex items-center gap-2">
+          <Label>Activation</Label>
+          <HintInfo>{ACTIVATION_INFO}</HintInfo>
+        </div>
+        <Hint>How this entry activates and how its keywords match.</Hint>
         <div className="flex flex-wrap gap-x-4 gap-y-2">
           <CheckRow label="Always Inject" checked={!!editingEntry.constant} onChange={(v) => handleChange('constant', v)} />
           <CheckRow label="Regex" checked={!!editingEntry.useRegex} onChange={(v) => handleChange('useRegex', v)} />
