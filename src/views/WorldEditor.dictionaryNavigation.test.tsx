@@ -141,7 +141,7 @@ describe('World Editor — Simple mode has no Matching tab to open', () => {
     fireEvent.mouseDown(await screen.findByRole('tab', { name: /Dictionary/ }));
     fireEvent.click(screen.getByText('Hostile Forces'));
     // One tab, so no strip: Simple has nowhere to put a secondary-keyword hit.
-    await screen.findByText('Trigger Keywords (Key)');
+    await screen.findByText('Trigger Keywords');
     expect(screen.queryByRole('tablist', { name: 'Entry Fields' })).toBeNull();
 
     // Simple still finds the keyword; there is just no tab that holds it.

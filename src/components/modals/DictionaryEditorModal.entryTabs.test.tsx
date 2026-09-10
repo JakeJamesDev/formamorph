@@ -73,20 +73,20 @@ describe('the library dictionary editor’s entry panel', () => {
     selectEntry('Hostile Forces');
     expect(within(panelStrip()!).getAllByRole('tab').map((el) => el.textContent)).toEqual(['Details', 'Matching']);
     expect(panelTab('Details')).toHaveAttribute('aria-selected', 'true');
-    expect(screen.getByText('Value (injected on keyword match)')).toBeInTheDocument();
+    expect(screen.getByText('Value')).toBeInTheDocument();
   });
 
   it('shows the matching rules on Matching and nothing of them on Details', () => {
     open();
     selectEntry('Hostile Forces');
-    expect(screen.queryByText('Always inject')).toBeNull();
+    expect(screen.queryByText('Always Inject')).toBeNull();
     expect(screen.queryByText('Secondary Keywords')).toBeNull();
 
     openPanelTab('Matching');
-    expect(screen.getByText('Always inject')).toBeInTheDocument();
+    expect(screen.getByText('Always Inject')).toBeInTheDocument();
     expect(screen.getByText('Secondary Keywords')).toBeInTheDocument();
-    expect(screen.getByText('Scan depth (messages)')).toBeInTheDocument();
-    expect(screen.queryByText('Value (injected on keyword match)')).toBeNull();
+    expect(screen.getByText('Scan Depth')).toBeInTheDocument();
+    expect(screen.queryByText('Value')).toBeNull();
   });
 
   it('keeps the chosen tab when the author selects another entry', () => {
@@ -109,6 +109,6 @@ describe('the library dictionary editor’s entry panel', () => {
     // The modal opens with the book itself selected, so this is the panel an author lands on.
     open();
     expect(panelStrip()).toBeNull();
-    expect(screen.getByPlaceholderText('Notes about this dictionary (not sent to the AI).')).toBeInTheDocument();
+    expect(screen.getByPlaceholderText('Notes for you. The AI never sees them.')).toBeInTheDocument();
   });
 });

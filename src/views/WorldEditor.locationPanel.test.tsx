@@ -110,7 +110,7 @@ describe('the World Editor location panel tabs', () => {
     expect(panelLabels()).toEqual([
       'Name', 'Player-Facing Description', 'AI-Facing Description', 'AI-Facing Summary',
     ]);
-    expect(screen.getByRole('checkbox', { name: /Starting location/ })).toBeInTheDocument();
+    expect(screen.getByRole('checkbox', { name: /Starting Location/ })).toBeInTheDocument();
   });
 
   it('puts the roster and the connections on Presence', () => {
@@ -140,7 +140,7 @@ describe('the World Editor location panel tabs', () => {
     renderWorldEditorBench(WORLD, 'simple');
     selectLocation('The Veilwood');
     expect(panelLabels()).toEqual(['Name', 'Player-Facing Description', 'AI-Facing Description']);
-    expect(screen.getByRole('checkbox', { name: /Starting location/ })).toBeInTheDocument();
+    expect(screen.getByRole('checkbox', { name: /Starting Location/ })).toBeInTheDocument();
 
     openPanelTab('Media');
     // The picture and its Generate button stay; the tags line and the sound slot are Advanced only.

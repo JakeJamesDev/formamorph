@@ -158,9 +158,9 @@ Other names the entity goes by — a title, a nickname, an epithet. They do two 
 
 | | |
 |---|---|
-| **Case-sensitive** | `Matron` matches "the Matron" and misses "the matron". Add every casing narration is likely to write. |
+| **Case-Sensitive** | `Matron` matches "the Matron" and misses "the matron". Add every casing narration is likely to write. |
 | **Plural-aware** | `wolf` also matches "wolves", the same as names. |
-| **Whole words** | `Em` won't fire inside "System". |
+| **Whole Words** | `Em` won't fire inside "System". |
 
 > ⚠️ **Never start an alias with "the".** Narration puts a title at the start of a sentence constantly, and "The alpha…" won't match an alias written `the alpha`. Drop the article — `alpha` matches both positions.
 
@@ -380,7 +380,7 @@ The rule: **if the AI is told it, it can fire a trigger.** A **turn** is one act
 |---|---|
 | **The scene as the AI receives it** — your location and the characters present, plus any nearby / sub-location detail your prompt sends | Always |
 | **Your notes** and the **action** you just took | Always |
-| **Earlier turns** — your actions and the AI's replies | Up to the entry's **Scan depth** |
+| **Earlier turns** — your actions and the AI's replies | Up to the entry's **Scan Depth** |
 
 > 💡 Keywords match **the exact wording the AI is given**. Where a block is sent as a *summary*, the summary is what's matched — so a keyword that appears only in an entity's full description won't fire if the AI was sent the short version. Check which form your prompt sends in **Settings → Output → Turn Extras**.
 
@@ -390,26 +390,26 @@ Lore doesn't trigger other lore unless you ask it to: that's what **Recursive** 
 
 ### The entry editor
 
-Select an entry to open it. **Trigger Keywords (Key)** and **Value (injected on keyword match)** are the whole feature — everything else is there for a specific problem, and is safe to ignore until you hit one.
+Select an entry to open it. **Trigger Keywords** and **Value** are the whole feature — everything else is there for a specific problem, and is safe to ignore until you hit one.
 
 **Options**
 
 | Checkbox | What it does |
 |---|---|
-| **Always inject** | Skip the scan; send this entry every turn. Costs context every turn, so use sparingly. |
+| **Always Inject** | Skip the scan; send this entry every turn. Costs context every turn, so use sparingly. |
 | **Regex** | Treat keywords as regular expressions instead of plain text. |
-| **Whole words** | Match on word boundaries, so *art* stops firing inside *cart*. |
-| **Case-sensitive** | Off by default. |
+| **Whole Words** | Match on word boundaries, so *art* stops firing inside *cart*. |
+| **Case-Sensitive** | Off by default. |
 | **Recursive** | Lets the entry be fired by the content of entries that already activated, not just by the scene. |
 
-**Scan depth (messages)** — how many earlier messages to search. Leave it blank (*all history*) to search everything; `0` searches only the current scene.
+**Scan Depth** — how many earlier messages to search. Leave it blank (*all history*) to search everything; `0` searches only the current scene.
 
 **Secondary Keywords** — an extra condition on top of the trigger. *bridge* fires only if *toll* also appears in the scanned text.
 
 | Checkbox | What it does |
 |---|---|
-| **Require all** | Every secondary keyword must appear, not just one of them. |
-| **Exclude (activate when absent)** | Inverts the test — the entry fires only when the secondary keywords are **missing**. |
+| **Require All** | Every secondary keyword must appear, not just one of them. |
+| **Exclude** | Inverts the test — the entry fires only when the secondary keywords are **missing**. |
 
 ### Background and Foreground
 

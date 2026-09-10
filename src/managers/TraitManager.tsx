@@ -16,6 +16,7 @@ import { labelPlaceholders } from '@/lib/placementLetters';
 import { traitConflicts, type TraitConflict } from '@/lib/traitEffects';
 import { useEditorMode } from '@/lib/editorMode';
 import { HelpButton } from '@/components/HelpButton';
+import { Hint } from '@/components/ui/typography';
 import { traitPanelTabsFor, traitTabForField, type TraitPanelTab } from '@/views/traitPanelTabs';
 import type { FocusFieldHint, Placeholder, PlaceholderPin, Trait, StatChange, TraitStatToggle } from '@/types';
 
@@ -140,7 +141,7 @@ const TraitManager = ({ trait, onOpenTrait, tab, onTabChange, focusField }: {
           onCheckedChange={(c) => handleChange('isDefault', c === true)}
         />
         <span>Enabled by Default</span>
-        <span className="text-meta text-muted-foreground">(pre-checked in the trait-selection screen)</span>
+        <Hint as="span">Checked when a new game starts.</Hint>
       </label>
       <label className="flex items-center gap-2 cursor-pointer">
         <Checkbox
@@ -148,7 +149,7 @@ const TraitManager = ({ trait, onOpenTrait, tab, onTabChange, focusField }: {
           onCheckedChange={(c) => handleChange('playerToggle', c === true)}
         />
         <span>Player Can Toggle In-Game</span>
-        <span className="text-meta text-muted-foreground">(switchable from the Traits panel during play)</span>
+        <Hint as="span">Switchable from the Traits tab during play.</Hint>
       </label>
     </>
   );

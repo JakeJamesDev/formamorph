@@ -533,7 +533,7 @@ Each panel groups its fields by what kind of thing they are:
 
 Two panels can lose their strip: Simple mode leaves the stat panel and the dictionary entry panel a single tab, which is no choice to offer, so each renders that body bare.
 
-The dictionary entry panel splits by cadence rather than height. The panel is not tall, but its matching rules are set once and then sit between the keywords and the value on every later visit. Details holds Name, Trigger Keywords, and Value; Matching holds the rules. Whole words and Case-sensitive stay on Details on purpose: they are the only two matching switches Simple mode shows, they modify the keywords they sit under, and keeping them there is what leaves Simple one tab.
+The dictionary entry panel splits by cadence rather than height. The panel is not tall, but its matching rules are set once and then sit between the keywords and the value on every later visit. Details holds Name, Trigger Keywords, and Value; Matching holds the rules. Whole Words and Case-Sensitive stay on Details on purpose: they are the only two matching switches Simple mode shows, they modify the keywords they sit under, and keeping them there is what leaves Simple one tab.
 
 It is also the only one of the five with two hosts. The World Editor holds its tab in the editor's per-panel slot; the library's dictionary editor has no such slot and holds it in modal state for as long as the modal is open.
 

@@ -18,6 +18,7 @@ import ImageTagsField from './ImageTagsField';
 import LocationConnections from './LocationConnections';
 import { useEditorMode } from '@/lib/editorMode';
 import { HelpButton } from '@/components/HelpButton';
+import { HintInfo } from '@/components/SettingsRows';
 import { PlaceholderPinRows } from '@/components/editor/PlaceholderPinRows';
 import { locationPanelTabsFor, locationTabForField, type LocationPanelTab } from '@/views/locationPanelTabs';
 import type { FocusFieldHint, GameLocation, PlaceholderPin } from '@/types';
@@ -32,6 +33,14 @@ import type { FocusFieldHint, GameLocation, PlaceholderPin } from '@/types';
  * `focusField` is the search target the find bar just navigated to. A hit on a tab that isn't showing has no
  * field to mark, so the panel opens the owning tab; the same hint the entity and Overview panels take.
  */
+/** The long form behind the Starting Location ⓘ. The row has no room for a line, so the label decides and
+ *  the popover defines. */
+const STARTING_INFO = `**Starting Location** marks where a new game may begin.
+
+- With one, every new game starts there.
+- With several, the player picks one, or the game picks at random.
+- With none, any location can be the start.`;
+
 const LocationManager = ({ location, tab, onTabChange, focusField }: {
   location: GameLocation;
   tab: LocationPanelTab;
@@ -90,9 +99,8 @@ const LocationManager = ({ location, tab, onTabChange, focusField }: {
               checked={!!editingLocation.isStarting}
               onCheckedChange={(checked) => handleChange('isStarting', !!checked)}
             />
-            <Label htmlFor={`location-starting-${editingLocation.id}`}>
-              Starting location (new games may begin here)
-            </Label>
+            <Label htmlFor={`location-starting-${editingLocation.id}`}>Starting Location</Label>
+            <HintInfo>{STARTING_INFO}</HintInfo>
           </div>
         </div>
         <PlaceholderField

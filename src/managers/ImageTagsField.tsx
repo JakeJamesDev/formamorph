@@ -102,8 +102,8 @@ const ImageTile = ({ id, url, index, framed, onSelect }: {
     // The tip explains the tile; the short spoken name stays on the button.
     <Tip
       tip={primary
-        ? 'Primary — stands in wherever one image is shown. Drag to reorder.'
-        : `Image ${index + 1} — drag to reorder.`}
+        ? 'Primary. Shown wherever one image is needed. Drag to reorder.'
+        : `Image ${index + 1}. Drag to reorder.`}
       labelsChild={false}
     >
       <button
