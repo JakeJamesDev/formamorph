@@ -34,6 +34,7 @@ import { hasSeenDownloadNote, markDownloadNoteSeen } from './downloadNote';
 import { useDebouncedFindings } from './useFindings';
 import { useLatestRun } from './useLatestRun';
 import { usePublishSize } from './usePublishSize';
+import { checkWorldSize } from './worldTooLarge';
 
 /** What the Bench needs from the view — the editor's own knowledge, nothing Bench-owned. */
 export interface TestBenchWiring {
@@ -121,10 +122,14 @@ export function useTestBench({
     () => benchWorld.stats.filter((s) => s.code?.trim()).length,
     [benchWorld],
   );
-  const findings = useMemo(
-    () => (codeFindings.length === 0 ? staticFindings : [...staticFindings, ...codeFindings]),
-    [staticFindings, codeFindings],
-  );
+  // Out of band like the stat-code findings: the byte count comes from the debounced worker measure, not
+  // the pure pass, so it's checked and merged in here rather than living in the rule catalog.
+  const sizeFindings = useMemo(() => checkWorldSize(benchWorld, publishBytes), [benchWorld, publishBytes]);
+  const findings = useMemo(() => (
+    codeFindings.length === 0 && sizeFindings.length === 0
+      ? staticFindings
+      : [...staticFindings, ...codeFindings, ...sizeFindings]
+  ), [staticFindings, codeFindings, sizeFindings]);
   // Semantic scoring is opt-in per session and never remembered: a toggle that came back on by itself would
   // let an author read a semantic firing as proof their keywords work.
   const [semanticOn, setSemanticOn] = useState(false);
