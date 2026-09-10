@@ -103,6 +103,7 @@ const DictionaryManager = ({ entry, placeholders = [], ownerId, tab, onTabChange
     <>
       <div className="space-y-2">
         <Label>Name</Label>
+        <Hint>Names the entry in the list and prefixes its Value in the prompt. Blank uses the first keyword.</Hint>
         <PlaceholderNameField
           value={editingEntry.name ?? ''}
           onChange={(v) => handleChange('name', v)}
@@ -111,13 +112,13 @@ const DictionaryManager = ({ entry, placeholders = [], ownerId, tab, onTabChange
           placeholder="e.g. Hostile Forces"
           ariaLabel="Name"
         />
-        <Hint>Names the entry in the list and prefixes its Value in the prompt. Blank uses the first keyword.</Hint>
       </div>
       <div className="space-y-2">
         <div className="flex items-center gap-2">
           <Label>Trigger Keywords</Label>
           <HintInfo>{KEYWORDS_INFO}</HintInfo>
         </div>
+        <Hint>Press Enter after each keyword. One of them in play sends the Value to the AI.</Hint>
         <KeywordChips keywords={keywords} onChange={(key) => handleChange('key', key)} placeholders={chipPlaceholders} ownerId={ownerId} offerCommaSplit={!editingEntry.useRegex} />
         {/* The two switches that modify these keywords, kept beside them: they are also the only matching
             switches Simple mode shows. */}
@@ -125,7 +126,6 @@ const DictionaryManager = ({ entry, placeholders = [], ownerId, tab, onTabChange
           <CheckRow label="Whole Words" checked={!!editingEntry.matchWholeWords} onChange={(v) => handleChange('matchWholeWords', v)} />
           <CheckRow label="Case-Sensitive" checked={!!editingEntry.caseSensitive} onChange={(v) => handleChange('caseSensitive', v)} />
         </div>
-        <Hint>Press Enter after each keyword. One of them in play sends the Value to the AI.</Hint>
       </div>
       <PlaceholderField
         label="Value"
@@ -141,26 +141,26 @@ const DictionaryManager = ({ entry, placeholders = [], ownerId, tab, onTabChange
   const matchingPanel = (
     <>
       <div className="space-y-2">
+        <Hint>Always Inject sends the entry every turn. Regex reads keywords as patterns. Recursive lets other entries fire this one.</Hint>
         <div className="flex flex-wrap gap-x-4 gap-y-2">
           <CheckRow label="Always Inject" checked={!!editingEntry.constant} onChange={(v) => handleChange('constant', v)} />
           <CheckRow label="Regex" checked={!!editingEntry.useRegex} onChange={(v) => handleChange('useRegex', v)} />
           <CheckRow label="Recursive" checked={!!editingEntry.recursive} onChange={(v) => handleChange('recursive', v)} />
         </div>
-        <Hint>Always Inject sends the entry every turn. Regex reads keywords as patterns. Recursive lets other entries fire this one.</Hint>
       </div>
       <div className="space-y-2">
         <Label>Scan Depth</Label>
-        <Input type="number" min={0} value={editingEntry.scanDepth ?? ''} onChange={(e) => handleNumber('scanDepth', e.target.value)} placeholder="All history" />
         <Hint>How many earlier messages to search. Blank searches all history. 0 searches only the current scene.</Hint>
+        <Input type="number" min={0} value={editingEntry.scanDepth ?? ''} onChange={(e) => handleNumber('scanDepth', e.target.value)} placeholder="All history" />
       </div>
       <div className="space-y-2">
         <Label>Secondary Keywords</Label>
+        <Hint>{secondaryHint}</Hint>
         <KeywordChips keywords={secondaryKeywords} onChange={handleSecondaryChange} placeholders={chipPlaceholders} ownerId={ownerId} placeholder="e.g. red" offerCommaSplit={!editingEntry.useRegex} />
         <div className="flex flex-wrap gap-x-4 gap-y-2">
           <CheckRow label="Require All" checked={!!editingEntry.secondaryAll} onChange={(v) => handleChange('secondaryAll', v)} />
           <CheckRow label="Exclude" checked={!!editingEntry.secondaryExclude} onChange={(v) => handleChange('secondaryExclude', v)} />
         </div>
-        <Hint>{secondaryHint}</Hint>
       </div>
     </>
   );

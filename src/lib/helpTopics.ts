@@ -198,11 +198,11 @@ Give a location the two or three entities the scene genuinely turns on. Everythi
     title: 'Aliases',
     body: `Other names an entity goes by — a nickname, a title, an epithet. "Rosalind" answers to "Roz", and to her title, "Warden". List as many as you like.
 
-They exist so the story keeps recognizing a character even when it doesn't use their full name. Given only the name, the narrator writes "the Warden" and Formamorph no longer sees Rosalind in the scene — she drops off the cast, out of the choices, off the Entities tab. An alias closes that gap, and the AI is told the nickname too so it can reach for it naturally.
+They exist so the story keeps recognizing an entity even when it doesn't use the full name. Given only the name, the narrator writes "the Warden" and Formamorph no longer sees Rosalind in the scene — she drops off the cast, out of the choices, off the Entities tab. An alias closes that gap, and the AI is told the nickname too so it can reach for it naturally.
 
 **What an alias does**
 
-- **Detection.** When an alias appears in the narration, the entity counts as present that turn — exactly as if its name had appeared. This drives who shows in the Entities tab, who the choices consider, and which characters travel with the scene.
+- **Detection.** When an alias appears in the narration, the entity counts as present that turn — exactly as if its name had appeared. This drives who shows in the Entities tab, who the choices consider, and which entities travel with the scene.
 - **Told to the AI.** Aliases are sent alongside the name as *also known as*, so the narrator knows Rosalind and the Warden are one person and can use either.
 
 **How matching works**
