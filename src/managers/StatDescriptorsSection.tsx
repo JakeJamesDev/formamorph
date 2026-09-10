@@ -43,6 +43,25 @@ export interface StatDescriptorsSectionProps {
 /** Tints for consecutive bands, so neighbors read apart without carrying meaning of their own. */
 const BAND_TINTS = ['bg-primary/30', 'bg-primary/50', 'bg-primary/70', 'bg-primary/85', 'bg-primary'];
 
+/**
+ * One editable band, shared by the authored rows and the add row: a threshold, its text, and its controls.
+ *
+ * The threshold box holds a fixed width so the unit tag never crowds the value, which on a narrow panel
+ * leaves the sentence a third of the room. So where the panel is narrow the row wraps and the text takes a
+ * full line of its own, with the threshold and the controls sharing the line above it.
+ *
+ * Narrow is not one range: below `sm` the panel is the full-width detail sheet on a phone, and from `md` the
+ * editor splits and the panel takes half, so the same squeeze returns until `xl`. Hence the four steps.
+ */
+const ROW = 'flex flex-wrap items-center gap-2 sm:flex-nowrap md:flex-wrap xl:flex-nowrap';
+const ROW_TEXT = [
+  'order-last w-full',
+  'sm:order-none sm:w-auto sm:flex-grow',
+  'md:order-last md:w-full md:flex-grow-0',
+  'xl:order-none xl:w-auto xl:flex-grow',
+].join(' ');
+const ROW_CONTROLS = 'flex items-center gap-2 ms-auto sm:ms-0 md:ms-auto xl:ms-0';
+
 /** A threshold input wearing its unit inside the right edge — a placeholder says it only until you type. */
 const UnitInput = ({ value, unit, onChange, onBlur, placeholder, ariaLabel }: {
   value: number | string; unit: string; placeholder?: string; ariaLabel: string;
@@ -209,7 +228,7 @@ export const StatDescriptorsSection = ({
         const span = spanById.get(descriptor.id);
         return (
           <div key={descriptor.id}>
-            <div className="flex items-center space-x-2">
+            <div className={ROW}>
               <UnitInput
                 value={descriptor.threshold}
                 unit={tag}
@@ -217,7 +236,7 @@ export const StatDescriptorsSection = ({
                 onChange={(v) => onDescriptorChange(index, 'threshold', Number(v))}
                 onBlur={onDescriptorBlur}
               />
-              <div className="flex-grow">
+              <div className={ROW_TEXT}>
                 <PlaceholderNameField
                   value={descriptor.description}
                   onChange={(v) => onDescriptorChange(index, 'description', v)}
@@ -226,19 +245,21 @@ export const StatDescriptorsSection = ({
                   ariaLabel="Description"
                 />
               </div>
-              {advanced && (
-                <PinPopoverButton
-                  pins={descriptor.placeholderPins ?? []}
-                  onChange={(next) => onDescriptorChange(index, 'placeholderPins', next.length ? next : undefined)}
-                  source={{ kind: 'descriptor', statId: stat.id ?? '', descriptorId: descriptor.id }}
-                  world={world}
-                  placeholders={placeholders}
-                  label={`Pins for ${chipText(descriptor.description) || 'descriptor'}`}
-                />
-              )}
-              <Button variant="ghost" size="icon" onClick={() => onRemoveDescriptor(descriptor.id)}>
-                <Trash2 className="h-4 w-4" />
-              </Button>
+              <div className={ROW_CONTROLS}>
+                {advanced && (
+                  <PinPopoverButton
+                    pins={descriptor.placeholderPins ?? []}
+                    onChange={(next) => onDescriptorChange(index, 'placeholderPins', next.length ? next : undefined)}
+                    source={{ kind: 'descriptor', statId: stat.id ?? '', descriptorId: descriptor.id }}
+                    world={world}
+                    placeholders={placeholders}
+                    label={`Pins for ${chipText(descriptor.description) || 'descriptor'}`}
+                  />
+                )}
+                <Button variant="ghost" size="icon" onClick={() => onRemoveDescriptor(descriptor.id)}>
+                  <Trash2 className="h-4 w-4" />
+                </Button>
+              </div>
             </div>
             {span && (
               <p className="ml-1 mt-0.5 text-helper text-muted-foreground">
@@ -249,7 +270,7 @@ export const StatDescriptorsSection = ({
         );
       })}
 
-      <div className="flex items-center space-x-2">
+      <div className={ROW}>
         <UnitInput
           value={newDescriptor.threshold}
           unit={tag}
@@ -257,7 +278,7 @@ export const StatDescriptorsSection = ({
           ariaLabel="New threshold"
           onChange={(v) => setNewDescriptor({ ...newDescriptor, threshold: v === '' ? '' : Number(v) })}
         />
-        <div className="flex-grow">
+        <div className={ROW_TEXT}>
           <PlaceholderNameField
             value={newDescriptor.description}
             onChange={(v) => setNewDescriptor({ ...newDescriptor, description: v })}
@@ -266,9 +287,11 @@ export const StatDescriptorsSection = ({
             ariaLabel="New Description"
           />
         </div>
-        <Tip tip="Add Descriptor">
-          <Button onClick={onAddDescriptor} size="icon" className="h-9 w-9 shrink-0"><Plus className="h-4 w-4" /></Button>
-        </Tip>
+        <div className={ROW_CONTROLS}>
+          <Tip tip="Add Descriptor">
+            <Button onClick={onAddDescriptor} size="icon" className="h-9 w-9 shrink-0"><Plus className="h-4 w-4" /></Button>
+          </Tip>
+        </div>
       </div>
     </div>
   );

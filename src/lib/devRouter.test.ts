@@ -9,6 +9,7 @@ import { BUILT_BENCH_TABS } from '@/lib/testBench/benchTabs';
 import { LOCATION_VIEWS } from '@/views/locationViews';
 import { ENTITY_PANEL_TABS } from '@/views/entityPanelTabs';
 import { LOCATION_PANEL_TABS } from '@/views/locationPanelTabs';
+import { STAT_PANEL_TABS } from '@/views/statPanelTabs';
 import { MAIN_MENU_CARD_TABS } from '@/views/mainMenuTabs';
 import { GAME_LEFT_PANEL_TABS } from '@/components/game/leftPanelTabs';
 import { PROFILE_TABS } from '@/components/menu/profileTabs';
@@ -121,6 +122,10 @@ describe('dev-router coverage guard', () => {
 
   it('ledger lists exactly the tabs the location panel switches between', () => {
     expect([...DEV_MODAL_TABS.worldEditorLocation]).toEqual(LOCATION_PANEL_TABS.map((t) => t.value));
+  });
+
+  it('ledger lists exactly the tabs the stat panel switches between', () => {
+    expect([...DEV_MODAL_TABS.worldEditorStat]).toEqual(STAT_PANEL_TABS.map((t) => t.value));
   });
 
   // The Locations tab spends one `subtab=…` slot on both switches, so a value landing in both would make

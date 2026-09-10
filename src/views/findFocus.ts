@@ -6,15 +6,16 @@ import type { FocusFieldHint } from '@/types';
  * The tab in `tabByField` that holds `fieldKey`, or `null` for a key no tab claims.
  *
  * Find reaches a field by its text, which a tab that isn't open never renders, so a hit has to open its own
- * tab first. Keys come from the search targets in `worldSearch`. An element of an array field arrives
- * indexed, since the hit is on one chip, and matches a bracket entry: `aliases[2]` finds `aliases[]`.
+ * tab first. Keys come from the search targets in `worldSearch`. A hit inside an array field arrives with
+ * the element's index, since the hit is on one row or chip, and matches a bracket entry wherever the index
+ * sits: `aliases[2]` finds `aliases[]`, and `descriptors[0].description` finds `descriptors[].description`.
  * Anything unlisted answers `null`, which leaves the panel on whichever tab the author was already on.
  */
 export function tabForField<Tab extends string>(fieldKey: string, tabByField: Record<string, Tab>): Tab | null {
   const direct = tabByField[fieldKey];
   if (direct) return direct;
-  const indexed = /^(.+)\[\d+\]$/.exec(fieldKey);
-  return indexed ? tabByField[`${indexed[1]}[]`] ?? null : null;
+  const bracketed = fieldKey.replace(/\[\d+\]/g, '[]');
+  return bracketed === fieldKey ? null : tabByField[bracketed] ?? null;
 }
 
 /**
