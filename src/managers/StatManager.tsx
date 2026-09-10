@@ -18,6 +18,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { HelpButton } from "@/components/HelpButton";
+import { HintInfo } from "@/components/SettingsRows";
 import { executeStatCode } from "@/lib/statCodeExecutor";
 import { StatCodeTemplateDialog } from "@/components/modals/StatCodeTemplateDialog";
 import { CodeArea } from "@/components/prompt/CodeArea";
@@ -30,6 +31,10 @@ import { useEditorMode } from '@/lib/editorMode';
 import { StatDescriptorsSection, type DescriptorFieldValue } from './StatDescriptorsSection';
 import { statPanelTabsFor, statTabForField, type StatPanelTab } from '@/views/statPanelTabs';
 import type { FocusFieldHint, Stat, StatDescriptor, StatType, ThresholdUnit } from "@/types";
+
+const AVAILABILITY_INFO = `**Enabled** — the stat is in play. Off keeps it inactive until a trait turns it on: the player and the AI never see it, and its regen and code pause.
+
+**Hidden** — the player never sees the stat. The AI still reads it, and its regen and code keep running. Use it for dice rolls, cooldowns, and other bookkeeping.`;
 
 /** The stat being edited — a loose, partial Stat while fields are filled in. */
 type EditingStat = Partial<Stat>;
@@ -303,7 +308,12 @@ const StatManager = ({ stat, tab, onTabChange, focusField }: {
       )}
       {advanced && (
         <div className="space-y-2">
-          <Label>Availability</Label>
+          <div className="flex items-center gap-2">
+            <Label>Availability</Label>
+            <HintInfo>{AVAILABILITY_INFO}</HintInfo>
+          </div>
+          {/* The line decides; the ⓘ defines. Two paragraphs here cost the panel a screen. */}
+          <Hint>Enabled makes the stat live. Hidden keeps it from the player only.</Hint>
           <div className="grid grid-cols-2 gap-2">
             <label className="flex items-center space-x-2 cursor-pointer">
               <Checkbox
@@ -320,11 +330,6 @@ const StatManager = ({ stat, tab, onTabChange, focusField }: {
               <span>Hidden</span>
             </label>
           </div>
-          {/* One line for the pair: each box needs a sentence, and two paragraphs cost the panel a screen. */}
-          <Hint>
-            Off keeps the stat asleep until a trait turns it on. Hidden keeps it from the player. The AI still
-            reads it, and regen and code still run.
-          </Hint>
         </div>
       )}
       {advanced && (
