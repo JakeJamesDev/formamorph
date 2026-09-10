@@ -52,6 +52,7 @@ import { ENTITY_PANEL_TABS, entityPanelTabsFor, type EntityPanelTab } from './en
 import { LOCATION_PANEL_TABS, locationPanelTabsFor, type LocationPanelTab } from './locationPanelTabs';
 import { STAT_PANEL_TABS, statPanelTabsFor, type StatPanelTab } from './statPanelTabs';
 import { TRAIT_PANEL_TABS, traitPanelTabsFor, type TraitPanelTab } from './traitPanelTabs';
+import { DICTIONARY_PANEL_TABS, dictionaryPanelTabsFor, type DictionaryPanelTab } from './dictionaryPanelTabs';
 import { focusFieldForItem } from './findFocus';
 import EntityTree from '../managers/EntityTree';
 import { removeLocationPromotingChildren } from '@/lib/locationTree';
@@ -198,6 +199,14 @@ const WorldEditorInner = ({ onClose, embedded = false, backButton }: {
   const [traitTab, setTraitTab] = useState<TraitPanelTab>('details');
   const traitTabs = useMemo(() => traitPanelTabsFor(advanced), [advanced]);
   const shownTraitTab = traitTabs.some((t) => t.value === traitTab) ? traitTab : 'details';
+  // The dictionary entry panel's own tabs, held here for the same reason. Matching is Advanced only, so
+  // Simple mode leaves one tab and the panel reads that as no strip, as the stat panel does.
+  const [entryTab, setEntryTab] = useState<DictionaryPanelTab>('details');
+  const entryTabs = useMemo(() => dictionaryPanelTabsFor(advanced), [advanced]);
+  const shownEntryTab = entryTabs.some((t) => t.value === entryTab) ? entryTab : 'details';
+  useEffect(() => {
+    if (entryTabs.length === 1) setEntryTab('details');
+  }, [entryTabs]);
 
   // DEV dev-router: jump to a specific editor tab via `#dev?modal=worldEditor&tab=…`. Tree-shaken in prod.
   const devRoute = useDevRoute();
@@ -233,6 +242,12 @@ const WorldEditorInner = ({ onClose, embedded = false, backButton }: {
   useEffect(() => {
     if (import.meta.env.DEV && TRAIT_PANEL_TABS.some((t) => t.value === devSubtab)) {
       setTraitTab(devSubtab as TraitPanelTab);
+    }
+  }, [devSubtab]);
+  // And over the Dictionary tab, where the slot names one of the entry panel's own tabs.
+  useEffect(() => {
+    if (import.meta.env.DEV && DICTIONARY_PANEL_TABS.some((t) => t.value === devSubtab)) {
+      setEntryTab(devSubtab as DictionaryPanelTab);
     }
   }, [devSubtab]);
   const [searchTerm, setSearchTerm] = useState('');
@@ -811,7 +826,15 @@ const WorldEditorInner = ({ onClose, embedded = false, backButton }: {
         <DictionaryBookManager key={selectedBook.id} book={selectedBook} />
       )}
       {activeTab === "dictionary" && !selectedBook && selectedEntry && (
-        <DictionaryManager key={selectedEntry.id} entry={selectedEntry} placeholders={placeholders} ownerId={selectedEntryBook?.id} />
+        <DictionaryManager
+          key={selectedEntry.id}
+          entry={selectedEntry}
+          placeholders={placeholders}
+          ownerId={selectedEntryBook?.id}
+          tab={shownEntryTab}
+          onTabChange={setEntryTab}
+          focusField={focusFieldForItem(findField, selectedEntry.id)}
+        />
       )}
       {activeTab === "statUpdates" && selectedItem && (
         <StatUpdatesManager key={selectedItem.id} statUpdate={selectedItem as StatUpdate} />

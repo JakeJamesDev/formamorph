@@ -6,6 +6,7 @@ import { Meta } from '@/components/ui/typography';
 import { ENTITY_PANEL_TABS } from '@/views/entityPanelTabs';
 import { LOCATION_PANEL_TABS } from '@/views/locationPanelTabs';
 import { TRAIT_PANEL_TABS } from '@/views/traitPanelTabs';
+import { DICTIONARY_PANEL_TABS } from '@/views/dictionaryPanelTabs';
 
 /** What each tab's body says, so switching tabs shows a real change rather than an empty box. One map per
  *  registry: three panels share the value `details`, and each one holds different fields. */
@@ -26,6 +27,11 @@ const TRAIT_BODY: Record<string, string> = {
   details: 'Name, both descriptions, and the trait\'s two switches.',
   stats: 'Stat Changes and Stat Availability, with their conflict notes.',
   pins: 'Placeholder pin rows.',
+};
+
+const ENTRY_BODY: Record<string, string> = {
+  details: 'Name, Trigger Keywords with their two switches, and the Value.',
+  matching: 'Always inject, Regex, Recursive, Scan depth, and Secondary Keywords.',
 };
 
 function Strip({ tabs, stripLabel, body }: {
@@ -54,8 +60,8 @@ export function PanelTabStripReference() {
           Panel Tab Strip
         </CardTitle>
         <CardDescription>
-          These are the production strips from the entity, location, and trait panels, reading their own
-          tab registries. Narrow the window to see the labels give way to their icons.
+          These are the production strips from the entity, location, trait, and dictionary entry panels,
+          reading their own tab registries. Narrow the window to see the labels give way to their icons.
         </CardDescription>
       </CardHeader>
       <CardContent className="grid gap-6 lg:grid-cols-2">
@@ -81,6 +87,17 @@ export function PanelTabStripReference() {
             <Meta>The trait panel, whose Stats tab shares a name with the editor&apos;s own.</Meta>
           </div>
           <Strip tabs={TRAIT_PANEL_TABS} stripLabel="Sample Trait Fields" body={TRAIT_BODY} />
+        </section>
+
+        <section className="grid content-start gap-3 rounded-md border border-border p-4">
+          <div className="space-y-1">
+            <h3 className="text-label font-semibold">Two Tabs, Two Hosts</h3>
+            <Meta>
+              The dictionary entry panel, in Advanced mode. It splits by cadence, not height, and the World
+              Editor and the library&apos;s dictionary editor mount the same panel.
+            </Meta>
+          </div>
+          <Strip tabs={DICTIONARY_PANEL_TABS} stripLabel="Sample Entry Fields" body={ENTRY_BODY} />
         </section>
       </CardContent>
     </Card>

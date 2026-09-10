@@ -5,9 +5,10 @@ import { PanelTabStripReference } from './PanelTabStripReference';
 import { ENTITY_PANEL_TABS } from '@/views/entityPanelTabs';
 import { LOCATION_PANEL_TABS } from '@/views/locationPanelTabs';
 import { TRAIT_PANEL_TABS } from '@/views/traitPanelTabs';
+import { DICTIONARY_PANEL_TABS } from '@/views/dictionaryPanelTabs';
 
 describe('panel tab strip reference', () => {
-  it('renders all three production registries and switches the body with the tab', async () => {
+  it('renders all four production registries and switches the body with the tab', async () => {
     const user = userEvent.setup();
     render(<PanelTabStripReference />);
 
@@ -15,6 +16,7 @@ describe('panel tab strip reference', () => {
     const entity = screen.getByRole('tablist', { name: 'Sample Entity Fields' });
     const location = screen.getByRole('tablist', { name: 'Sample Location Fields' });
     const trait = screen.getByRole('tablist', { name: 'Sample Trait Fields' });
+    const entry = screen.getByRole('tablist', { name: 'Sample Entry Fields' });
     for (const { label } of ENTITY_PANEL_TABS) {
       expect(within(entity).getByRole('tab', { name: label })).toBeInTheDocument();
     }
@@ -23,6 +25,9 @@ describe('panel tab strip reference', () => {
     }
     for (const { label } of TRAIT_PANEL_TABS) {
       expect(within(trait).getByRole('tab', { name: label })).toBeInTheDocument();
+    }
+    for (const { label } of DICTIONARY_PANEL_TABS) {
+      expect(within(entry).getByRole('tab', { name: label })).toBeInTheDocument();
     }
 
     expect(screen.getByText('Identity, picture, and where the entity is found.')).toBeInTheDocument();

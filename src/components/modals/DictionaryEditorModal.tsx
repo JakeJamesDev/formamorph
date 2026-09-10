@@ -21,6 +21,7 @@ import { buildDictionaryFile } from '@/lib/dictionaryFile';
 import { downloadBlob } from '@/lib/downloadBlob';
 import { canonicalStringify } from '@/lib/canonicalStringify';
 import DictionaryStorageService from '@/services/DictionaryStorageService';
+import type { DictionaryPanelTab } from '@/views/dictionaryPanelTabs';
 import type { Dictionary, Placeholder } from '@/types';
 
 /** The baseline in the same canonical form the live value is compared in — a fresh cache each time, since
@@ -53,6 +54,9 @@ const DictionaryEditorModal = ({ dictionaryId, draft, onClose, onPublish }: {
   const [selectedId, setSelectedId] = useState<string | null>(null);
   // Opens on Dictionary: the entries are the work, the Overview is set once.
   const [tab, setTab] = useState<DictionaryTab>('dictionary');
+  // The entry panel's own tabs. The modal has no editor slot, so it holds the choice itself for as long as
+  // it is open: the tab survives selecting another entry and resets with the next open.
+  const [entryTab, setEntryTab] = useState<DictionaryPanelTab>('details');
   const baselineRef = useRef('');
   // Reuses cached serialization for unedited entries on each keystroke; matches the JSON.stringify baseline.
   const stringifyCache = useRef(new WeakMap<object, string>());
@@ -72,6 +76,9 @@ const DictionaryEditorModal = ({ dictionaryId, draft, onClose, onPublish }: {
       .catch(() => { if (!cancelled) { toast.error('Could not load dictionary.'); onCloseRef.current(); } });
     return () => { cancelled = true; };
   }, [dictionaryId, draft, setDictionaries]);
+
+  // The modal stays mounted between opens, so the entry tab is reset here rather than by unmounting.
+  useEffect(() => { setEntryTab('details'); }, [dictionaryId, draft]);
 
   const hasUnsavedChanges = book != null && canonicalStringify(dictionaries, stringifyCache.current) !== baselineRef.current;
   const selectedBook = dictionaries.find((b) => b.id === selectedId);
@@ -188,7 +195,13 @@ const DictionaryEditorModal = ({ dictionaryId, draft, onClose, onPublish }: {
                   ) : selectedEntry ? (
                     <ChipInsertTargetProvider>
                       <PlaceholderPaletteBar placeholders={bookPlaceholders} />
-                      <DictionaryManager key={selectedEntry.id} entry={selectedEntry} placeholders={bookPlaceholders} />
+                      <DictionaryManager
+                        key={selectedEntry.id}
+                        entry={selectedEntry}
+                        placeholders={bookPlaceholders}
+                        tab={entryTab}
+                        onTabChange={setEntryTab}
+                      />
                     </ChipInsertTargetProvider>
                   ) : (
                     <p className="text-helper text-muted-foreground">Select the dictionary or an entry to edit it.</p>

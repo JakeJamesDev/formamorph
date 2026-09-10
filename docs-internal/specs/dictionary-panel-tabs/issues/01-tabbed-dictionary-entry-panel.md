@@ -1,6 +1,7 @@
 # 01: Tabbed Dictionary Entry Panel
 
-Status: ready-for-agent
+Status: ready-for-human
+Base: 41e74760
 Blocked by: None (can start immediately)
 Recommended model: Claude Opus 5 (`claude-opus-5`)
 Reasoning effort: medium
@@ -21,22 +22,22 @@ There was no prototype. Check desktop in the preview beside the other panels for
 
 ## Acceptance criteria
 
-- [ ] Advanced: two tabs. Details shows Name, Trigger Keywords, Whole words, Case-sensitive, and Value and nothing else. Matching shows Always inject, Regex, Recursive, Scan depth, and Secondary Keywords with Require all and Exclude.
-- [ ] Simple: no strip. Name, Trigger Keywords, Whole words, Case-sensitive, Value; no Always inject, Regex, Recursive, Scan depth, or Secondary Keywords.
-- [ ] Selecting a book shows the book panel with no tab strip, in both hosts.
-- [ ] The tab persists across selecting another entry, including one in another book; on Matching, switching to Simple lands on Details with no strip, and switching back restores the strip on Details.
-- [ ] Regex on: the keyword and value fields lose the chip vocabulary and the comma split, as today.
-- [ ] A Find hit in a secondary keyword from Details opens Matching and rings the chip; a hit in Value from Matching opens Details.
-- [ ] Bench Open on an entry finding lands on the entry with the persisted tab.
-- [ ] Library dictionary editor: two tabs on an entry, the tab persists across selecting another entry, and the palette bar sits above the strip.
-- [ ] A new suite at the library modal's boundary covers the library cases above.
-- [ ] The dev-router `subtab` ledger covers `details`, `matching`, and the drift test passes.
-- [ ] The existing entry manager suite passes inside the Details tab.
-- [ ] World Editor bench-harness tests cover every World Editor criterion above.
-- [ ] Changelog: one 👤 entry in the In-Progress bucket, naming both hosts.
-- [ ] Desktop verified in the preview at 1600x900 in both hosts beside the other panels; no export-shape change.
-- [ ] Mobile evidence at 375px presented and approval recorded in the spec's Comments; guide entry and showcase extended together after approval.
-- [ ] Four gates green; graph updated.
+- [x] Advanced: two tabs. Details shows Name, Trigger Keywords, Whole words, Case-sensitive, and Value and nothing else. Matching shows Always inject, Regex, Recursive, Scan depth, and Secondary Keywords with Require all and Exclude.
+- [x] Simple: no strip. Name, Trigger Keywords, Whole words, Case-sensitive, Value; no Always inject, Regex, Recursive, Scan depth, or Secondary Keywords.
+- [x] Selecting a book shows the book panel with no tab strip, in both hosts.
+- [x] The tab persists across selecting another entry, including one in another book; on Matching, switching to Simple lands on Details with no strip, and switching back restores the strip on Details.
+- [x] Regex on: the keyword and value fields lose the chip vocabulary and the comma split, as today.
+- [x] A Find hit in a secondary keyword from Details opens Matching and rings the chip; a hit in Value from Matching opens Details.
+- [x] Bench Open on an entry finding lands on the entry with the persisted tab.
+- [x] Library dictionary editor: two tabs on an entry, the tab persists across selecting another entry, and the palette bar sits above the strip.
+- [x] A new suite at the library modal's boundary covers the library cases above.
+- [x] The dev-router `subtab` ledger covers `details`, `matching`, and the drift test passes.
+- [x] The existing entry manager suite passes inside the Details tab.
+- [x] World Editor bench-harness tests cover every World Editor criterion above.
+- [x] Changelog: one 👤 entry in the In-Progress bucket, naming both hosts.
+- [x] Desktop verified in the preview at 1600x900 in both hosts beside the other panels; no export-shape change.
+- [x] Mobile evidence at 375px presented and approval recorded in the spec's Comments; guide entry and showcase extended together after approval.
+- [x] Four gates green; graph updated.
 
 ## Blocked by
 

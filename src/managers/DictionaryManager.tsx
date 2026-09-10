@@ -1,14 +1,20 @@
+import { useEffect, type ReactNode } from 'react';
 import { useDictionaryStore } from '@/contexts/DictionaryStoreContext';
 import { useEditingDraft } from '@/lib/useEditingDraft';
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Tabs, TabsContent } from "@/components/ui/tabs";
+import { PanelTabsList } from "@/components/ui/panel-tabs";
 import { KeywordChips } from "@/components/KeywordChips";
 import PlaceholderField, { PlaceholderNameField } from "@/components/prompt/PlaceholderField";
 import { useEditorMode } from '@/lib/editorMode';
-import type { DictionaryEntry, Placeholder } from '@/types';
+import {
+  dictionaryPanelTabsFor, dictionaryTabForField, type DictionaryPanelTab,
+} from '@/views/dictionaryPanelTabs';
+import type { DictionaryEntry, FocusFieldHint, Placeholder } from '@/types';
 
-/** A compact labeled checkbox for the lorebook options grid. */
+/** A compact labeled checkbox for the entry panel's switch rows. */
 function CheckRow({ label, checked, onChange }: { label: string; checked: boolean; onChange: (v: boolean) => void }) {
   return (
     <label className="flex items-center gap-2 text-label">
@@ -18,12 +24,26 @@ function CheckRow({ label, checked, onChange }: { label: string; checked: boolea
   );
 }
 
-const DictionaryManager = ({ entry, placeholders = [], ownerId }: {
+/**
+ * Right-panel editor for one dictionary entry: its fields split across Details and Matching.
+ *
+ * Both hosts mount this one panel — the World Editor and the library's dictionary editor — so the chosen tab
+ * arrives as a prop and each host holds it for as long as its own session lasts. Matching is Advanced only,
+ * which leaves Simple mode a single tab and so no strip at all.
+ *
+ * `focusField` is the search target the find bar just navigated to. A hit on a tab that isn't showing has no
+ * field to mark, so the panel opens the owning tab; the same hint the other four panels take. The library
+ * editor has no Find and passes none.
+ */
+const DictionaryManager = ({ entry, placeholders = [], ownerId, tab, onTabChange, focusField }: {
   entry: DictionaryEntry;
   placeholders?: Placeholder[];
   /** The book this entry belongs to, as the owner of its fields — see `ownerId` on `PlaceholderField`.
    *  World Editor only; a library book owns everything it carries. */
   ownerId?: string;
+  tab: DictionaryPanelTab;
+  onTabChange: (tab: DictionaryPanelTab) => void;
+  focusField?: FocusFieldHint | null;
 }) => {
   const { updateDictionaryEntry } = useDictionaryStore();
   const { draft: editingEntry, setField: handleChange } = useEditingDraft<DictionaryEntry>(entry, updateDictionaryEntry);
@@ -34,6 +54,18 @@ const DictionaryManager = ({ entry, placeholders = [], ownerId }: {
     const n = raw === '' ? undefined : Number(raw);
     handleChange(field, n != null && Number.isFinite(n) ? n : undefined);
   };
+
+  const tabs = dictionaryPanelTabsFor(advanced);
+
+  // Before the reveal, which is a timer behind this render: the field it looks for has to be mounting by
+  // then. A key no tab claims leaves the panel where the author put it, and so does a hit on a tab this mode
+  // doesn't offer — Simple can find a secondary keyword, and Matching is not there to open.
+  useEffect(() => {
+    const owning = focusField ? dictionaryTabForField(focusField.fieldKey) : null;
+    if (owning && tabs.some((t) => t.value === owning)) onTabChange(owning);
+    // Only a new hint moves the panel. `tabs` is left out on purpose: re-running when the mode widens would
+    // act on the last hint again and open a tab the author never asked for.
+  }, [focusField, onTabChange]); // eslint-disable-line react-hooks/exhaustive-deps
 
   if (!editingEntry) return null;
 
@@ -57,8 +89,8 @@ const DictionaryManager = ({ entry, placeholders = [], ownerId }: {
         ? 'Fires when a keyword and all secondaries appear.'
         : 'Fires when a keyword and at least one secondary appear.');
 
-  return (
-    <div className="space-y-4">
+  const detailsPanel = (
+    <>
       <div className="space-y-2">
         <Label>Name</Label>
         <PlaceholderNameField
@@ -77,43 +109,16 @@ const DictionaryManager = ({ entry, placeholders = [], ownerId }: {
       <div className="space-y-2">
         <Label>Trigger Keywords (Key)</Label>
         <KeywordChips keywords={keywords} onChange={(key) => handleChange('key', key)} placeholders={chipPlaceholders} ownerId={ownerId} offerCommaSplit={!editingEntry.useRegex} />
+        {/* The two switches that modify these keywords, kept beside them: they are also the only matching
+            switches Simple mode shows. */}
+        <div className="flex flex-wrap gap-x-4 gap-y-2">
+          <CheckRow label="Whole words" checked={!!editingEntry.matchWholeWords} onChange={(v) => handleChange('matchWholeWords', v)} />
+          <CheckRow label="Case-sensitive" checked={!!editingEntry.caseSensitive} onChange={(v) => handleChange('caseSensitive', v)} />
+        </div>
         <p className="text-meta text-muted-foreground">
           Type a keyword and press Enter to add it. Tap (or double-click) to edit, drag to reorder, click the × to remove.
           The value below is injected into the AI prompt only when one of these appears in play.
         </p>
-      </div>
-      <div className="space-y-2">
-        <Label>Options</Label>
-        <div className="flex flex-wrap gap-x-4 gap-y-2">
-          {advanced && (
-            <>
-              <CheckRow label="Always inject" checked={!!editingEntry.constant} onChange={(v) => handleChange('constant', v)} />
-              <CheckRow label="Regex" checked={!!editingEntry.useRegex} onChange={(v) => handleChange('useRegex', v)} />
-            </>
-          )}
-          <CheckRow label="Whole words" checked={!!editingEntry.matchWholeWords} onChange={(v) => handleChange('matchWholeWords', v)} />
-          <CheckRow label="Case-sensitive" checked={!!editingEntry.caseSensitive} onChange={(v) => handleChange('caseSensitive', v)} />
-          {advanced && (
-            <CheckRow label="Recursive" checked={!!editingEntry.recursive} onChange={(v) => handleChange('recursive', v)} />
-          )}
-        </div>
-        {advanced && (
-        <div className="space-y-1">
-          <Label className="text-meta text-muted-foreground">Scan depth (messages)</Label>
-          <Input type="number" min={0} value={editingEntry.scanDepth ?? ''} onChange={(e) => handleNumber('scanDepth', e.target.value)} placeholder="all history" />
-        </div>
-        )}
-        {advanced && (
-        <div className="space-y-1">
-          <Label className="text-meta text-muted-foreground">Secondary Keywords</Label>
-          <KeywordChips keywords={secondaryKeywords} onChange={handleSecondaryChange} placeholders={chipPlaceholders} ownerId={ownerId} placeholder="e.g. red" offerCommaSplit={!editingEntry.useRegex} />
-          <div className="flex flex-wrap gap-x-4 gap-y-1 pt-1">
-            <CheckRow label="Require all" checked={!!editingEntry.secondaryAll} onChange={(v) => handleChange('secondaryAll', v)} />
-            <CheckRow label="Exclude (activate when absent)" checked={!!editingEntry.secondaryExclude} onChange={(v) => handleChange('secondaryExclude', v)} />
-          </div>
-          <p className="text-[0.7rem] text-muted-foreground">{secondaryHint}</p>
-        </div>
-        )}
       </div>
       <PlaceholderField
         label="Value (injected on keyword match)"
@@ -123,7 +128,44 @@ const DictionaryManager = ({ entry, placeholders = [], ownerId }: {
         ownerId={ownerId}
         resizable
       />
-    </div>
+    </>
+  );
+
+  const matchingPanel = (
+    <>
+      <div className="flex flex-wrap gap-x-4 gap-y-2">
+        <CheckRow label="Always inject" checked={!!editingEntry.constant} onChange={(v) => handleChange('constant', v)} />
+        <CheckRow label="Regex" checked={!!editingEntry.useRegex} onChange={(v) => handleChange('useRegex', v)} />
+        <CheckRow label="Recursive" checked={!!editingEntry.recursive} onChange={(v) => handleChange('recursive', v)} />
+      </div>
+      <div className="space-y-1">
+        <Label className="text-meta text-muted-foreground">Scan depth (messages)</Label>
+        <Input type="number" min={0} value={editingEntry.scanDepth ?? ''} onChange={(e) => handleNumber('scanDepth', e.target.value)} placeholder="all history" />
+      </div>
+      <div className="space-y-1">
+        <Label className="text-meta text-muted-foreground">Secondary Keywords</Label>
+        <KeywordChips keywords={secondaryKeywords} onChange={handleSecondaryChange} placeholders={chipPlaceholders} ownerId={ownerId} placeholder="e.g. red" offerCommaSplit={!editingEntry.useRegex} />
+        <div className="flex flex-wrap gap-x-4 gap-y-1 pt-1">
+          <CheckRow label="Require all" checked={!!editingEntry.secondaryAll} onChange={(v) => handleChange('secondaryAll', v)} />
+          <CheckRow label="Exclude (activate when absent)" checked={!!editingEntry.secondaryExclude} onChange={(v) => handleChange('secondaryExclude', v)} />
+        </div>
+        <p className="text-[0.7rem] text-muted-foreground">{secondaryHint}</p>
+      </div>
+    </>
+  );
+
+  const panels: Record<DictionaryPanelTab, ReactNode> = { details: detailsPanel, matching: matchingPanel };
+
+  // One tab is not a choice, so Simple mode gets that tab's body bare rather than a strip of one.
+  if (tabs.length === 1) return <div className="space-y-4">{panels[tabs[0].value]}</div>;
+
+  return (
+    <Tabs value={tab} onValueChange={(v) => onTabChange(v as DictionaryPanelTab)} className="space-y-4">
+      <PanelTabsList tabs={tabs} stripLabel="Entry Fields" />
+      {tabs.map((t) => (
+        <TabsContent key={t.value} value={t.value} className="space-y-4">{panels[t.value]}</TabsContent>
+      ))}
+    </Tabs>
   );
 };
 

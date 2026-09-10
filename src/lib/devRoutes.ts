@@ -105,6 +105,11 @@ export const DEV_MODAL_TABS = {
   // The World Editor's trait panel does the same over the Traits tab
   // (`#dev?modal=worldEditor&tab=traits&subtab=stats`). `pins` is Advanced only.
   worldEditorTrait: ['details', 'stats', 'pins'],
+  // The World Editor's dictionary entry panel does the same over the Dictionary tab
+  // (`#dev?modal=worldEditor&tab=dictionary&subtab=matching`). It lands on the entry panel, so pair it with
+  // a book that has an entry to select. `matching` is Advanced only, and Simple mode leaves one tab and no
+  // strip, so land it on an Advanced editor.
+  worldEditorEntry: ['details', 'matching'],
   // The World Editor's Test Bench: `bench=…` opens the full panel — at whichever placement is remembered —
   // on the instrument it names (`#dev?modal=worldEditor&bench=issues`). Only built instruments are listed,
   // since an unbuilt tab renders
