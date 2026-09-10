@@ -121,8 +121,8 @@ describe('the World Editor dictionary entry panel tabs', () => {
     expect(panelSwitches()).toEqual([
       'Always Inject', 'Regex', 'Recursive', 'Require All', 'Exclude',
     ]);
-    // The gate's plain-English line reads off the entry's own modes, as it did before the split.
-    expect(screen.getByText('Fires when a keyword and at least one secondary appear.')).toBeInTheDocument();
+    // The gate's line reads off the entry's own modes, as it did before the split.
+    expect(screen.getByText('Activates when a Trigger Keyword matches and at least one Secondary Keyword matches.')).toBeInTheDocument();
   });
 
   it('leaves Simple mode one tab, so no strip and no matching rules at all', () => {
@@ -214,6 +214,6 @@ describe('the World Editor dictionary entry panel tabs', () => {
     fireEvent.click(screen.getByText('Fen Lore'));
     expect(panelStrip()).toBeNull();
     // The book panel's own first field, which the Label sits over rather than labels.
-    expect(screen.getByPlaceholderText('Notes for you. The AI never sees them.')).toBeInTheDocument();
+    expect(screen.getByPlaceholderText('Notes for you. Not injected into the prompt.')).toBeInTheDocument();
   });
 });

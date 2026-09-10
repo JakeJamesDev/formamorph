@@ -52,7 +52,11 @@ These entries preserve established concepts. Noun admission is assessed under ru
 | Autosave | Named automatic-save feature/slot. Preserve `Auto` when quoting the displayed tag. | `autosave` in settings copy; category 19 |
 | narration | Story text presented during play. | Settings copy; category 19 application output |
 | memory summary / Memory Summaries | Condensed earlier turns used as context; the plural title names the setting. Do not replace with internal `memoryDigests`. | `memorySummaries` in settings copy; category 19 |
-| character, location, stat, trait | Distinct authored domain concepts, with their definitions in the world types. | Category 19 application entities; not interchangeable synonyms |
+| entity, location, stat, trait | Distinct authored domain concepts, with their definitions in the world types. An entity can be a person, a creature, an object, or a fixture; never write "character" for it. | Category 19 application entities; not interchangeable synonyms |
+| dictionary, entry | A dictionary is a set of entries. An entry holds Trigger Keywords and a Value. | World types; category 19 |
+| Trigger Keywords, Secondary Keywords, Value, Scan Depth | The entry panel's own labels. Quote them with their display casing. | [DictionaryManager.tsx](../src/managers/DictionaryManager.tsx); category 19 |
+| prompt, message | The prompt is the text sent to the AI for one turn. A message is one earlier action or narration that keyword scanning reads. | Settings copy and Scan Depth; category 19 |
+| activate, match, inject | Verbs for the entry mechanism. A keyword matches a message; a match activates the entry; an activated entry's Value is injected into the prompt. | [World Editor docs](WorldEditor.md); rule 1.12 technical verbs |
 | setting, font, dialog, file | Respectively a configuration option, typeface choice, interface container, and stored data object. | Category 19; `font` also appears in category 15 |
 | model, token, reasoning | AI system, unit used by that system, and its reasoning output/process. Do not equate reasoning visibility with reasoning effort. | Settings copy; category 19 AI concepts |
 | cached images | Downloaded image copies in the remote-image cache, not embedded world images. | [remoteImageCache.ts](../src/lib/remoteImageCache.ts); category 19, two-word technical noun |
@@ -62,6 +66,15 @@ Use the same term for the same concept in prose, accessible names, and help. Quo
 Technical verbs need a separate entry under rule 1.12; a noun entry does not authorize verb use. For example, `save` means persist application data and `open` means load/access a file. Category 2b, page 1-1-14 ([PDF page 58](https://www.asd-ste100.org/assets/files/ASD-STE100_ISSUE9.pdf#page=58)), covers these computer operations. Record why an approved dictionary verb cannot convey the same operation accurately: keeping something is not necessarily persisting it; showing something is not necessarily opening/parsing it. Apply the rule's approved-word preference on page 1-1-15. Do not justify `delete` as a technical verb when approved `erase` conveys the intended data operation accurately.
 
 For a new term, record its spelling, part of speech, exact product meaning, source location, category, and why dictionary alternatives do not fit. Preserve established names while resolving uncertain admission; flag the uncertainty instead of casually renaming them.
+
+### The help-line test
+
+A help line under a field, a tooltip, and a ⓘ popover are instructions, not prose. Before shipping one, check every word against two lists:
+
+- **Every noun is a label on the same screen or a term in the register above.** "The Value is injected into the prompt" passes: Value is a label, prompt is registered. "The text goes into the AI" fails: neither noun is defined.
+- **Every verb names the literal operation.** Match, activate, inject, scan, add, remove, show, hide, run, send, set, select. A verb that describes the effect by image fails: fire, drive, mute, live, stand in, appear in play, get out of the way, keep in reach.
+
+A line that fails either list is rewritten with the defined words, even when the rewrite reads flatter. The reader of a help line is looking for which control does what, and a defined word answers that where a pretty one does not. World text, narration, and readme prose keep their own voice; this test does not apply to them.
 
 ## Worked review examples
 

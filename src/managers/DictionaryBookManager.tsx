@@ -30,7 +30,7 @@ const DictionaryBookManager = ({ book }: { book: Dictionary }) => {
         <Textarea
           value={book.description ?? ''}
           onChange={(e) => updateDictionary({ ...book, description: e.target.value })}
-          placeholder="Notes for you. The AI never sees them."
+          placeholder="Notes for you. Not injected into the prompt."
           rows={3}
         />
       </div>
@@ -41,7 +41,7 @@ const DictionaryBookManager = ({ book }: { book: Dictionary }) => {
             onCheckedChange={(v) => updateDictionary({ ...book, enabled: v === true })}
           />
           Enabled
-          <Hint as="span">Off mutes every entry in this dictionary at once.</Hint>
+          <Hint as="span">Off stops every entry in this dictionary from activating.</Hint>
         </label>
       )}
       <Hint>

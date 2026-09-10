@@ -499,7 +499,7 @@ Keep setting descriptions to one sentence, third person, and no more than 12 wor
 
 ### Field help order
 
-A field reads top to bottom as label, help, control. The label names the field. The `Hint` sits directly under the label and says what the field does, in one line. The control comes last. A `HintInfo` goes beside the label, never under the control. A control never has a `Hint` after it, so a reader always knows what a field is before reaching it, and a tall control never pushes its own explanation out of view.
+A field reads top to bottom as label, help, control. The label names the field. The `Hint` sits directly under the label and says what the field does, in one line, using only labels and registered terms as the [Writing Guide's help-line test](Writing-Guide.md) requires. The control comes last. A `HintInfo` goes beside the label, never under the control. A control never has a `Hint` after it, so a reader always knows what a field is before reaching it, and a tall control never pushes its own explanation out of view.
 
 Two placements sit beside a control instead of above it:
 
