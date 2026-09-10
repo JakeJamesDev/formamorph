@@ -4,6 +4,7 @@ import { useGameData } from "@/contexts/GameDataContext";
 import { useEditingDraft } from "@/lib/useEditingDraft";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Hint } from "@/components/ui/typography";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Code, LayoutTemplate } from "lucide-react";
@@ -283,11 +284,9 @@ const StatManager = ({ stat, tab, onTabChange, focusField }: {
               </>
             )}
           </div>
-          <div>
+          <div className="space-y-2">
             <Label>Body Sliders</Label>
-            <p className="py-2 text-helper text-muted-foreground">
-              Bind body morph sliders to this stat — its value (min→max) drives each slider.
-            </p>
+            <Hint>Sliders this stat drives. Its value from Min to Max moves each one.</Hint>
             <MultiSelect
               key={stat.id}
               options={morphGroups}
@@ -322,23 +321,23 @@ const StatManager = ({ stat, tab, onTabChange, focusField }: {
             </label>
           </div>
           {/* One line for the pair: each box needs a sentence, and two paragraphs cost the panel a screen. */}
-          <p className="text-helper text-muted-foreground">
-            A disabled stat is inert until a trait switches it on. A hidden stat never shows to the player,
-            but the AI still reads it and its regen and code keep running.
-          </p>
+          <Hint>
+            Off keeps the stat asleep until a trait turns it on. Hidden keeps it from the player. The AI still
+            reads it, and regen and code still run.
+          </Hint>
         </div>
       )}
       {advanced && (
         <div className="space-y-2">
           <Label>Prevent AI Changes</Label>
-          <p className="text-helper text-muted-foreground">Stop the AI from changing this stat in a given direction.</p>
+          <Hint>Stop the AI from changing this stat in a given direction.</Hint>
           <div className="grid grid-cols-2 gap-2">
             <label className="flex items-center space-x-2 cursor-pointer">
               <Checkbox
                 checked={!!editingStat.noIncrease}
                 onCheckedChange={(c) => handleChange("noIncrease", c === true)}
               />
-              <span>Don&apos;t increase</span>
+              <span>Don&apos;t Increase</span>
             </label>
 
             {!isPercentage && (
@@ -347,7 +346,7 @@ const StatManager = ({ stat, tab, onTabChange, focusField }: {
                   checked={!!editingStat.noIncreaseMax}
                   onCheckedChange={(c) => handleChange("noIncreaseMax", c === true)}
                 />
-                <span>Don&apos;t increase max</span>
+                <span>Don&apos;t Increase Max</span>
               </label>
             )}
 
@@ -356,7 +355,7 @@ const StatManager = ({ stat, tab, onTabChange, focusField }: {
                 checked={!!editingStat.noDecrease}
                 onCheckedChange={(c) => handleChange("noDecrease", c === true)}
               />
-              <span>Don&apos;t decrease</span>
+              <span>Don&apos;t Decrease</span>
             </label>
 
             {!isPercentage && (
@@ -365,7 +364,7 @@ const StatManager = ({ stat, tab, onTabChange, focusField }: {
                   checked={!!editingStat.noDecreaseMax}
                   onCheckedChange={(c) => handleChange("noDecreaseMax", c === true)}
                 />
-                <span>Don&apos;t decrease Max</span>
+                <span>Don&apos;t Decrease Max</span>
               </label>
             )}
           </div>
@@ -391,7 +390,7 @@ const StatManager = ({ stat, tab, onTabChange, focusField }: {
     <div className="space-y-2">
       <div className="flex items-center gap-2">
         <Code className="h-4 w-4 flex-shrink-0 text-muted-foreground" />
-        <Label>Dynamic Value Calculation (Optional)</Label>
+        <Label>Dynamic Value Calculation</Label>
         <HelpButton topicId="worldEditor.statCode" className="h-6 w-6" />
         <Button variant="outline" size="sm" className="ml-auto" onClick={() => setTemplatesOpen(true)}>
           <LayoutTemplate className="h-4 w-4 mr-1" />
@@ -399,9 +398,7 @@ const StatManager = ({ stat, tab, onTabChange, focusField }: {
         </Button>
       </div>
 
-      <p className="text-helper text-muted-foreground">
-        Code that returns a number replaces this stat&apos;s value each turn.
-      </p>
+      <Hint>Code that returns a number replaces this stat&apos;s value each turn.</Hint>
 
       <StatCodeTemplateDialog
         open={templatesOpen}

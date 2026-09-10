@@ -1,5 +1,6 @@
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Hint } from "@/components/ui/typography";
 import { MultiSelect, type MultiSelectOption } from "@/components/ui/multi-select";
 import { KeywordChips } from "@/components/KeywordChips";
 import { HelpButton } from "@/components/HelpButton";
@@ -122,9 +123,7 @@ export const EntityDescriptionFields = ({ value, onChange, placeholders = [], ow
           ownerId={ownerId}
           resizable
         />
-        <p className="text-helper text-muted-foreground">
-          A one-line version used where the full description is too long — keep it brief.
-        </p>
+        <Hint>A one-line version for where the full description is too long. Keep it brief.</Hint>
       </div>
       )}
     </>
