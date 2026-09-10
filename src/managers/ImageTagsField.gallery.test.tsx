@@ -81,7 +81,7 @@ describe('ImageTagsField gallery', () => {
     expect(slotWrapper(B).className).toMatch(/hidden/);
     expect(tile('Primary image')).toBeTruthy();
     expect(tile('Image 2')).toBeTruthy();
-    expect(screen.getByLabelText('Add an image')).toBeTruthy();
+    expect(screen.getByLabelText('Add an Image')).toBeTruthy();
   });
 
   it('frames the picture whose tile is pressed', () => {
@@ -160,14 +160,14 @@ describe('ImageTagsField gallery', () => {
 
     const emptyId = screen.getAllByTestId('slot')
       .find((n) => !n.getAttribute('data-value'))!.getAttribute('data-slot-id');
-    expect(screen.getByLabelText('Add an image').getAttribute('for')).toBe(`image-upload-${emptyId}`);
+    expect(screen.getByLabelText('Add an Image').getAttribute('for')).toBe(`image-upload-${emptyId}`);
   });
 
   it('fills consecutive slots from files dropped on the add tile, asking once for the batch', async () => {
     const { onImagesChange } = setup([A]);
     const files = [new File(['1'], 'b.png', { type: 'image/png' }), new File(['2'], 'c.png', { type: 'image/png' })];
 
-    fireEvent.drop(screen.getByLabelText('Add an image'), {
+    fireEvent.drop(screen.getByLabelText('Add an Image'), {
       dataTransfer: { files, types: ['Files'], getData: () => '' },
     });
 
@@ -227,7 +227,7 @@ describe('ImageTagsField gallery', () => {
     setup([A]);
     expect(slotWrapper(A).className).not.toMatch(/hidden/);
 
-    fireEvent.drop(screen.getByLabelText('Add an image'), {
+    fireEvent.drop(screen.getByLabelText('Add an Image'), {
       dataTransfer: { files: [new File(['1'], 'b.png', { type: 'image/png' })], types: ['Files'], getData: () => '' },
     });
 
@@ -251,7 +251,7 @@ describe('ImageTagsField gallery', () => {
     setup([A]);
     const files = [new File(['1'], 'b.png', { type: 'image/png' }), new File(['2'], 'c.png', { type: 'image/png' })];
 
-    fireEvent.drop(screen.getByLabelText('Add an image'), {
+    fireEvent.drop(screen.getByLabelText('Add an Image'), {
       dataTransfer: { files, types: ['Files'], getData: () => '' },
     });
 
@@ -277,7 +277,7 @@ describe('ImageTagsField gallery', () => {
     const { onImagesChange } = setup([A]);
     const files = [new File(['1'], 'b.png', { type: 'image/png' })];
 
-    fireEvent.drop(screen.getByLabelText('Add an image'), {
+    fireEvent.drop(screen.getByLabelText('Add an Image'), {
       dataTransfer: { files, types: ['Files'], getData: () => '' },
     });
 
@@ -289,7 +289,7 @@ describe('ImageTagsField gallery', () => {
   it('leaves a single-slot subject as the plain uploader, with no strip', () => {
     setup([A], 1);
 
-    expect(screen.queryByLabelText('Add an image')).toBeNull();
+    expect(screen.queryByLabelText('Add an Image')).toBeNull();
     expect(screen.queryByRole('button', { name: 'Primary image' })).toBeNull();
     expect(slotWrapper(A).className).not.toMatch(/hidden/);
   });
