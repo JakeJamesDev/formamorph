@@ -156,7 +156,7 @@ const WorldOverviewManager = () => {
             onChange={(v) => updateWorldOverview({ thumbnail: v })}
             cap={IMAGE_CAPS.thumbnail}
             objectFit="cover"
-            previewClassName="w-full aspect-video relative rounded-md hover:border-muted-foreground transition-colors"
+            previewClassName="w-full aspect-video relative rounded-md"
           />
           <GenerateImageButton
             subject={{ description: worldOverview.description || worldOverview.systemPrompt || '', kind: 'world' }}

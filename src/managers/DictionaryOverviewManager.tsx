@@ -29,7 +29,7 @@ const DictionaryOverviewManager = ({ book }: { book: Dictionary }) => {
           onChange={(thumbnail) => updateDictionary({ ...book, thumbnail })}
           cap={IMAGE_CAPS.thumbnail}
           objectFit="cover"
-          previewClassName="w-full max-w-[400px] aspect-video relative rounded-md hover:border-muted-foreground transition-colors"
+          previewClassName="w-full max-w-[400px] aspect-video relative rounded-md"
         />
         <p className="text-meta text-muted-foreground">
           Optional. A dictionary published without one gets a stand-in cover.
