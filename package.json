@@ -36,6 +36,7 @@
     "gen-tags": "node scripts/genDanbooruTags.mjs",
     "docs": "typedoc",
     "changelog:notes": "node scripts/extractReleaseNotes.mjs",
+    "copy:sweep": "node scripts/copySweep.mjs",
     "baseline": "node testing/baseline/harness/run.mjs",
     "screen": "node testing/baseline/harness/screen.mjs",
     "title-card": "node scripts/captureTitleCard.mjs"

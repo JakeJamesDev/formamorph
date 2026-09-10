@@ -16,7 +16,7 @@ import { labelPlaceholders } from '@/lib/placementLetters';
 import { traitConflicts, type TraitConflict } from '@/lib/traitEffects';
 import { useEditorMode } from '@/lib/editorMode';
 import { HelpButton } from '@/components/HelpButton';
-import { Hint } from '@/components/ui/typography';
+import { Hint, Meta } from '@/components/ui/typography';
 import { traitPanelTabsFor, traitTabForField, type TraitPanelTab } from '@/views/traitPanelTabs';
 import type { FocusFieldHint, Placeholder, PlaceholderPin, Trait, StatChange, TraitStatToggle } from '@/types';
 
@@ -41,11 +41,11 @@ const ConflictNote = ({ conflict, placeholders, onOpen }: {
     </button>
   );
   return (
-    <p className="text-meta text-muted-foreground pl-1">
+    <Meta as="p" className="pl-1">
       Also set by {conflict.others.map((t, i) => (
         <span key={t.id}>{i > 0 && ', '}{link(t)}</span>
       ))}. The lowest in the trait list wins: {winner ? link(winner) : 'this trait'}.
-    </p>
+    </Meta>
   );
 };
 

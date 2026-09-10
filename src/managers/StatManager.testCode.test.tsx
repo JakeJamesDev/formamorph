@@ -46,7 +46,7 @@ const renderCodePanel = (stat: Stat) => render(<StatManager stat={stat} tab="cod
 
 /** Put code in the field the way an author would, and run it. */
 async function testCode(user: ReturnType<typeof userEvent.setup>, code: string) {
-  const field = screen.getByLabelText('Stat code');
+  const field = screen.getByLabelText('Stat Code');
   await user.clear(field);
   await user.paste(code);
   await user.click(screen.getByRole('button', { name: /Test Code/ }));
@@ -101,7 +101,7 @@ describe('what Test Code reports', () => {
     await testCode(user, 'if (false) { return nope; } return 5;');
     await waitFor(() => expect(row()).toHaveTextContent('1 error in this code'));
 
-    await user.type(screen.getByLabelText('Stat code'), ' ');
+    await user.type(screen.getByLabelText('Stat Code'), ' ');
     expect(row()).not.toHaveTextContent('Result:');
     expect(row()).not.toHaveTextContent('in this code');
   });
