@@ -521,6 +521,16 @@ The foundation's [review record](../docs-internal/designs/design-system/workflow
 - The chosen tab belongs to the editor, not the panel. These panels remount per selected item, so panel-held state would reset down the list.
 - When the chosen tab is unavailable in the current mode, the panel shows its first tab.
 
+Each panel groups its fields by what kind of thing they are:
+
+| Panel | Tabs | Advanced only |
+| --- | --- | --- |
+| Entity | Profile · Descriptions · Placeholders | Placeholders |
+| Location | Details · Presence · Media · Pins | Pins |
+| Trait | Details · Stats · Pins | Pins |
+
+A tab name may repeat across panels, and may match a tab on the editor's own strip. The strip's own name keeps them apart: the trait panel's Stats tab and the editor's Stats tab both read as "Stats", and only "Trait Fields" says which strip you are on.
+
 ### Production mapping
 
 | Need | Component |
@@ -529,6 +539,7 @@ The foundation's [review record](../docs-internal/designs/design-system/workflow
 | Tab, list, and panel primitives | [`tabs.tsx`](../src/components/ui/tabs.tsx) |
 | Three-tab instance and its registry | `EntityManager` in [`EntityManager.tsx`](../src/managers/EntityManager.tsx) and [`entityPanelTabs.ts`](../src/views/entityPanelTabs.ts) |
 | Four-tab instance and its registry | `LocationManager` in [`LocationManager.tsx`](../src/managers/LocationManager.tsx) and [`locationPanelTabs.ts`](../src/views/locationPanelTabs.ts) |
+| Instance whose tab name the editor also uses | `TraitManager` in [`TraitManager.tsx`](../src/managers/TraitManager.tsx) and [`traitPanelTabs.ts`](../src/views/traitPanelTabs.ts) |
 | Isolated reference | [`PanelTabStripReference.tsx`](../src/components/design-system/PanelTabStripReference.tsx) |
 | Width coverage | [`entity-panel-widths.spec.ts`](../e2e/entity-panel-widths.spec.ts) |
 
@@ -550,12 +561,12 @@ A container query would state this directly. `@tailwindcss/container-queries` is
 | Focus | Arrow keys move between tabs and the shared inset focus ring marks the active one. |
 | Overflow | Below `sm` and between `md` and `xl`, the label is hidden rather than truncated or wrapped. The icon keeps its full size. |
 
-The live reference renders both production strips against their own registries. It holds the chosen tab in mounted React state and never reads or writes authored worlds, saves, library data, or preferences.
+The live reference renders all three production strips against their own registries. It holds the chosen tab in mounted React state and never reads or writes authored worlds, saves, library data, or preferences.
 
 ### Writing review
 
-- Tab names come from the two production registries, so the reference and the editor cannot drift. Reuse does not certify those names as fully ASD-STE100 compliant.
-- **Unverified:** the section headings "Three Tabs" and "Four Tabs" and the two `Meta` lines have terminology review only; vocabulary and grammar evidence is not recorded.
+- Tab names come from the three production registries, so the reference and the editor cannot drift. Reuse does not certify those names as fully ASD-STE100 compliant.
+- **Unverified:** the section headings "Three Tabs", "Four Tabs", and "A Tab Name the Editor Also Uses", and the three `Meta` lines, have terminology review only; vocabulary and grammar evidence is not recorded.
 
 ## UI and prototype workflow
 

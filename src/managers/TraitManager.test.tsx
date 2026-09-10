@@ -6,6 +6,7 @@ import { encodePlaceholderToken } from '@/lib/placeholders';
 import type { GameLocation, Placeholder, Trait } from '@/types';
 import { EditorModeContext } from '@/lib/editorMode';
 import TraitManager from './TraitManager';
+import type { TraitPanelTab } from '@/views/traitPanelTabs';
 
 import { phValueId, phValues } from '@/test/placeholderValues';
 // A trait pinning a hair color — the row the pin editor exists for.
@@ -59,16 +60,23 @@ vi.mock('@/components/prompt/PlaceholderField', () => ({
 
 const onOpenTrait = vi.fn();
 
-/** Renders the manager against the live store, re-rendering whenever it writes. */
-const Harness = () => {
+/**
+ * Renders the manager against the live store, re-rendering whenever it writes.
+ *
+ * The pins live on the panel's own Pins tab, and the editor is what holds the chosen tab in production, so
+ * the harness stands in for it and opens on Pins. That is the tab under test here; the tabs themselves are
+ * covered against the real editor in `WorldEditor.traitPanel.test.tsx`.
+ */
+const Harness = ({ initialTab }: { initialTab: TraitPanelTab }) => {
   const [, setTick] = useState(0);
+  const [tab, setTab] = useState<TraitPanelTab>(initialTab);
   store.rerender = () => setTick((n) => n + 1);
-  return <TraitManager trait={store.trait} onOpenTrait={onOpenTrait} />;
+  return <TraitManager trait={store.trait} onOpenTrait={onOpenTrait} tab={tab} onTabChange={setTab} />;
 };
 
-const renderManager = () => render(
+const renderManager = (initialTab: TraitPanelTab = 'pins') => render(
   <EditorModeContext.Provider value={{ mode: 'advanced', advanced: true, setMode: () => {} }}>
-    <Harness />
+    <Harness initialTab={initialTab} />
   </EditorModeContext.Provider>,
 );
 
@@ -85,10 +93,13 @@ beforeEach(() => {
 
 // An unknown topic id renders no button at all, so the hint buttons prove their ids resolve.
 describe('the section help buttons', () => {
-  it('mount registered topics for all three sections', () => {
-    renderManager();
+  it('mount registered topics for all three sections, each on its own tab', () => {
+    const { unmount } = renderManager('stats');
     expect(screen.getByRole('button', { name: 'About Stat Changes' })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'About Stat Availability' })).toBeInTheDocument();
+    unmount();
+
+    renderManager('pins');
     expect(screen.getByRole('button', { name: 'About Placeholder Pins' })).toBeInTheDocument();
   });
 });
