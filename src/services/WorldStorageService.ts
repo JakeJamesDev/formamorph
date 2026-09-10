@@ -2,6 +2,7 @@ import AuthService from './AuthService';
 import type { CatalogKindQuery } from '@/lib/catalogKinds';
 import { API_BASE_URL } from '@/lib/apiBase';
 import type { PublishPayload } from '@/lib/publishPayload';
+import { PUBLISH_LIMITS, measurePublishBytes, publishLimitRefusal } from '@/lib/publishLimits';
 import { openDatabase, promisifyRequest } from '@/lib/idb';
 import { migrateCarriedPlaceholders, migrateWorld } from '@/lib/version';
 import { contentHash } from '@/lib/contentHash';
@@ -806,11 +807,19 @@ class WorldStorageService {
    * listings, else `POST` creates. Requires auth; rethrows on failure. Build `payload` with the per-kind
    * helpers in `lib/publishPayload`, which own where each kind's fields come from.
    *
+   * Refuses before authenticating or sending anything when the content is over its kind's limit — see
+   * `lib/publishLimits`, the one place the client states a limit.
+   *
    * `contestEventId` enters the new listing into a contest. It rides top-level beside the tags and is
    * omitted when absent: it is intent about this upload rather than part of the content, so it never
    * reaches the world's own shape, and a server without an events layer is sent nothing new.
    */
   async publishItem(payload: PublishPayload, targetId: string | null = null, contestEventId: string | null = null) {
+    const bytes = measurePublishBytes(payload.contentData);
+    if (bytes > PUBLISH_LIMITS[payload.kind]) {
+      throw new Error(publishLimitRefusal(payload.kind, bytes));
+    }
+
     if (!AuthService.isAuthenticated()) {
       throw new Error('You must be logged in to publish');
     }
