@@ -13,7 +13,7 @@ import { ImageGallery, ImageTags } from './ImageTagsField';
 import ScopedPlaceholdersSection from './ScopedPlaceholdersSection';
 import { useEditingDraft } from '@/lib/useEditingDraft';
 import { withEntityLocations } from '@/lib/entityPresence';
-import type { Entity } from '@/types';
+import type { Entity, FocusFieldHint } from '@/types';
 import { labelPlaceholders } from '@/lib/placementLetters';
 import { locationRows } from '@/lib/locationTree';
 import { useEditorMode } from '@/lib/editorMode';
@@ -34,7 +34,7 @@ const EntityManager = ({ entity, tab, onTabChange, focusField }: {
   entity: Entity;
   tab: EntityPanelTab;
   onTabChange: (tab: EntityPanelTab) => void;
-  focusField?: { fieldKey: string } | null;
+  focusField?: FocusFieldHint | null;
 }) => {
   const { updateEntity, locations, placeholders, placementLetters, placeholderOwners } = useGameData();
   const { draft: editingEntity, setDraft, setField: handleChange } = useEditingDraft<Entity>(entity, updateEntity);

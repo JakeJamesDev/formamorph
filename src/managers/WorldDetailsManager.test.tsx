@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, act } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import type { Dictionary, Entity, GameLocation, Placeholder, Stat, Trait, WorldOverview } from '@/types';
+import type { Dictionary, Entity, FocusFieldHint, GameLocation, Placeholder, Stat, Trait, WorldOverview } from '@/types';
 import { EditorModeContext } from '@/lib/editorMode';
 import { OPENING_SCENE_CUE } from '@/components/game/GamePrompts';
 import WorldDetailsManager from './WorldDetailsManager';
@@ -90,7 +90,7 @@ vi.mock('@/components/prompt/PlaceholderField', () => ({
   },
 }));
 
-type FocusField = { fieldKey: string } | null;
+type FocusField = FocusFieldHint | null;
 
 /** Renders the manager against the live `world`, re-rendering whenever the manager writes to it. */
 const Harness = ({ focusField }: { focusField?: FocusField }) => {
@@ -539,7 +539,7 @@ describe('the opening cue panel', () => {
     world.overview.openingCue = 'You wake in the reed-beds.';
     // The find bar is the only way to reach a panel that is not showing; a hit that leaves it closed lands
     // the author on a picker with nothing open and no visible match.
-    renderManager(true, { fieldKey: 'openingCue' });
+    renderManager(true, { fieldKey: 'openingCue', itemId: null });
 
     expect(screen.getByTestId(CUE_FIELD)).toBeInTheDocument();
     expect(field(CUE_FIELD).value).toBe('You wake in the reed-beds.');

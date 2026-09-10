@@ -50,6 +50,7 @@ import LocationCanvas from '../managers/LocationCanvas';
 import { LOCATION_VIEWS, type LocationView } from './locationViews';
 import { ENTITY_PANEL_TABS, entityPanelTabsFor, type EntityPanelTab } from './entityPanelTabs';
 import { LOCATION_PANEL_TABS, locationPanelTabsFor, type LocationPanelTab } from './locationPanelTabs';
+import { focusFieldForItem } from './findFocus';
 import EntityTree from '../managers/EntityTree';
 import { removeLocationPromotingChildren } from '@/lib/locationTree';
 import { duplicateTraitNode } from '@/lib/traitTree';
@@ -82,7 +83,7 @@ import { arrayMove, verticalListSortingStrategy } from '@dnd-kit/sortable';
 import { EditorDndContext, StableSortableContext } from '@/components/dnd/EditorDndContext';
 import { UnsavedChangesDialog } from "@/components/UnsavedChangesDialog";
 import { APP_VERSION } from '@/lib/version';
-import type { Stat, Entity, GameLocation, StatUpdate, Dictionary, World, ContentLink } from '@/types';
+import type { Stat, Entity, GameLocation, StatUpdate, Dictionary, World, ContentLink, FocusFieldHint } from '@/types';
 import { useDownscalePrompt } from '@/lib/useDownscalePrompt';
 import { SortableRow, type SortableListItem } from '@/components/SortableList';
 import { ContentLinkIcon, PendingLinksProvider, SelectedContentActions } from '@/components/ContentLinkStatus';
@@ -266,7 +267,7 @@ const WorldEditorInner = ({ onClose, embedded = false, backButton }: {
   // A fresh object per navigation, not the bare key: a panel with its own tabs has to re-open the right one
   // even when two consecutive hits sit in the same field and the author flipped tabs between them.
   // `itemId` says which item the hit belongs to — null for Overview's own fields, which sit in no item.
-  const [findField, setFindField] = useState<{ fieldKey: string; itemId: string | null } | null>(null);
+  const [findField, setFindField] = useState<FocusFieldHint | null>(null);
   const navigateToMatch = useCallback((match: SearchMatch | null) => {
     if (!match) { setFindField(null); clearEditorMatch(); return; }
     setActiveTab(match.target.tab);
@@ -744,9 +745,7 @@ const WorldEditorInner = ({ onClose, embedded = false, backButton }: {
           entity={selectedEntity}
           tab={shownEntityTab}
           onTabChange={setEntityTab}
-          // Only this entity's own hit opens a tab. A hit in another item is a stale hint here: the panel
-          // remounts per entity, and its mount would otherwise re-open that hit's tab.
-          focusField={findField?.itemId === selectedEntity.id ? findField : null}
+          focusField={focusFieldForItem(findField, selectedEntity.id)}
         />
       )}
       {activeTab === "locations" && selectedItem && (
@@ -755,8 +754,7 @@ const WorldEditorInner = ({ onClose, embedded = false, backButton }: {
           location={selectedItem as GameLocation}
           tab={shownLocationTab}
           onTabChange={setLocationTab}
-          // Only this location's own hit opens a tab, for the same reason as the entity panel above.
-          focusField={findField?.itemId === selectedItem.id ? findField : null}
+          focusField={focusFieldForItem(findField, selectedItem.id)}
         />
       )}
       {activeTab === "traits" && selectedGroup && (
