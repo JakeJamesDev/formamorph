@@ -548,7 +548,7 @@ A container query would state this directly. `@tailwindcss/container-queries` is
 | Selected | The active trigger takes the background, foreground, and shadow from the shared tab primitive. |
 | Disabled | No tab is disabled. A tab the current mode does not offer is absent from the registry instead. |
 | Focus | Arrow keys move between tabs and the shared inset focus ring marks the active one. |
-| Overflow | Below `xl`, and in the mobile sheet, the label is hidden rather than truncated or wrapped. The icon keeps its full size. |
+| Overflow | Below `sm` and between `md` and `xl`, the label is hidden rather than truncated or wrapped. The icon keeps its full size. |
 
 The live reference renders both production strips against their own registries. It holds the chosen tab in mounted React state and never reads or writes authored worlds, saves, library data, or preferences.
 

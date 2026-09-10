@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent } from '@/components/ui/tabs';
-import { PanelTabsList } from '@/components/ui/panel-tabs';
+import { PanelTabsList, type PanelTab } from '@/components/ui/panel-tabs';
 import { Meta } from '@/components/ui/typography';
 import { ENTITY_PANEL_TABS } from '@/views/entityPanelTabs';
 import { LOCATION_PANEL_TABS } from '@/views/locationPanelTabs';
@@ -17,11 +17,11 @@ const BODY: Record<string, string> = {
   pins: 'Placeholder pin rows and their conflict notes.',
 };
 
-function Strip({ tabs, label }: { tabs: readonly { value: string; label: string; icon: typeof ENTITY_PANEL_TABS[number]['icon'] }[]; label: string }) {
+function Strip({ tabs, stripLabel }: { tabs: readonly PanelTab[]; stripLabel: string }) {
   const [tab, setTab] = useState(tabs[0].value);
   return (
     <Tabs value={tab} onValueChange={setTab} className="space-y-3">
-      <PanelTabsList tabs={tabs} label={label} />
+      <PanelTabsList tabs={tabs} stripLabel={stripLabel} />
       {tabs.map(({ value }) => (
         <TabsContent key={value} value={value}>
           <p className="text-body text-muted-foreground">{BODY[value]}</p>
@@ -49,15 +49,15 @@ export function PanelTabStripReference() {
             <h3 className="text-label font-semibold">Three Tabs</h3>
             <Meta>The entity panel, in Advanced mode.</Meta>
           </div>
-          <Strip tabs={ENTITY_PANEL_TABS} label="Sample Entity Fields" />
+          <Strip tabs={ENTITY_PANEL_TABS} stripLabel="Sample Entity Fields" />
         </section>
 
         <section className="grid content-start gap-3 rounded-md border border-border p-4">
           <div className="space-y-1">
             <h3 className="text-label font-semibold">Four Tabs</h3>
-            <Meta>The location panel, where each tab has less room.</Meta>
+            <Meta>The location panel, in Advanced mode, where each tab has less room.</Meta>
           </div>
-          <Strip tabs={LOCATION_PANEL_TABS} label="Sample Location Fields" />
+          <Strip tabs={LOCATION_PANEL_TABS} stripLabel="Sample Location Fields" />
         </section>
       </CardContent>
     </Card>

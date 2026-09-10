@@ -1,5 +1,5 @@
-/** The entity detail panel's own tabs, in order. Single source of truth: `EntityManager`'s TabsList renders
- *  from this, and the dev-router ledger (`DEV_MODAL_TABS.worldEditorEntity`) is guarded against it in
+/** The entity detail panel's own tabs, in order. Single source of truth: `EntityManager`'s `PanelTabsList`
+ *  renders from this, and the dev-router ledger (`DEV_MODAL_TABS.worldEditorEntity`) is guarded against it in
  *  `devRouter.test.ts`. */
 import { AlignLeft, Braces, User } from 'lucide-react';
 
