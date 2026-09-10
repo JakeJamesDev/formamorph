@@ -41,6 +41,7 @@ import { CodeTemplatesReference } from '@/components/design-system/CodeTemplates
 import { LocationsCanvasReference } from '@/components/design-system/LocationsCanvasReference';
 import { MainMenuContextMenuReference } from '@/components/design-system/MainMenuContextMenuReference';
 import { FooterActionOrderReference } from '@/components/design-system/FooterActionOrderReference';
+import { PanelTabStripReference } from '@/components/design-system/PanelTabStripReference';
 import { RichListReferences } from '@/components/design-system/RichListReferences';
 
 type ReferenceDefinition = {
@@ -405,6 +406,12 @@ const DESIGN_SYSTEM_REFERENCES: readonly ReferenceDefinition[] = [
     label: 'Footer Actions',
     description: 'Negative and affirmative dialog actions',
     Component: FooterActionOrderReference,
+  },
+  {
+    id: 'panel-tabs',
+    label: 'Panel Tabs',
+    description: 'Editor detail panel tab strips',
+    Component: PanelTabStripReference,
   },
 ];
 

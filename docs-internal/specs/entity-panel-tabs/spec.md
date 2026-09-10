@@ -113,3 +113,34 @@ A good test drives the real World Editor with a loadable world and asserts what 
 **Measurements from the flat panel** (Ember Speckle in the Veilwood world, Advanced, 1600x900): panel scroll height 2477px against an 873px viewport. The winning Profile tab fits in one screen with no scroll at the same size.
 
 **Known gap to carry into the implementation.** The prototype's image widget change is a portal; the production split is a real decision for the implementer to make cleanly. The tab persistence in the prototype is module-level state; production keeps it in the editor.
+
+## Comments
+
+**2026-09-10 — the mobile form, approved.** Ticket 05 measured the strip at 375px and found the
+original one-row form broken: three tabs get 105px each, one row of "Descriptions" needs 137px, and
+flexbox paid for the gap by shrinking two of the three icons to zero width and spilling the labels
+across their cells. Profile already stacked correctly, gallery first.
+
+Four treatments were put to the user with the measurements: label-only, icon-only, a scrolling strip,
+and shorter phone labels. **The user chose icon-only.** The tab's name moves to `aria-label`, so the
+accessible name is the same string at every width. The strip stays 40px tall, unlike the icon-over-label
+form that was built first and rejected.
+
+Two decisions followed from that one:
+
+- **The location panel follows.** It had copied the stacked form mid-flight and cited the entity panel
+  in a comment that the change made false. The user chose to align it rather than let the two sibling
+  panels differ.
+- **The rule is not a single step up.** The pane is not monotonic in viewport width: below `md` the
+  panel is the full-width sheet, at `md` it becomes half the editor. So 767px gives the panel ~715px
+  and 820px gives it ~347px, where the same spill returned along with a 43px Profile column that
+  wrapped the entity name one letter per line. The label and the second column both step on at `sm`,
+  off at `md`, and on again at `xl`. `e2e/entity-panel-widths.spec.ts` holds that shape at six widths.
+
+**The pattern, approved.** With the form settled the user approved recording it in the Design System.
+It is `## Pattern: Panel Tab Strip` in the guide and the `panel-tabs` reference in the showcase, both
+rendering `PanelTabsList` — the strip itself, extracted from the two managers that had duplicated it.
+
+Evidence: static screenshots and DOM reads at 375px and 1600px in both themes, plus the Playwright
+sweep at 375, 767, 820, 900, 1280, and 1600. Reverting either responsive class turns 820 and 900 red
+and leaves the other four green.

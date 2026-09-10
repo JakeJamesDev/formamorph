@@ -6,7 +6,8 @@ import { entityIdsAt, setLocationRoster } from '@/lib/entityPresence';
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import { MultiSelect } from "@/components/ui/multi-select";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Tabs, TabsContent } from '@/components/ui/tabs';
+import { PanelTabsList } from '@/components/ui/panel-tabs';
 import AiGenerateButton from "@/components/AiGenerateButton";
 import PlaceholderField, { PlaceholderNameField } from "@/components/prompt/PlaceholderField";
 import { labelPlaceholders } from '@/lib/placementLetters';
@@ -68,20 +69,7 @@ const LocationManager = ({ location, tab, onTabChange, focusField }: {
   return (
     <Tabs value={tab} onValueChange={(v) => onTabChange(v as LocationPanelTab)} className="space-y-4">
       {/* Named, because the editor's own strip is on the same screen and carries a Locations tab too. */}
-      <TabsList
-        aria-label="Location Fields"
-        className="grid w-full"
-        style={{ gridTemplateColumns: `repeat(${tabs.length}, minmax(0, 1fr))` }}
-      >
-        {/* Icon alone wherever the pane is narrow, matching the entity panel: one row of "Presence" needs
-            111px, and four tabs get 85px each in the 375px sheet. The name stays on `aria-label`. */}
-        {tabs.map(({ value, label, icon: Icon }) => (
-          <TabsTrigger key={value} value={value} aria-label={label} className="gap-1.5">
-            <Icon className="h-4 w-4 shrink-0" />
-            <span className="hidden sm:inline md:hidden xl:inline">{label}</span>
-          </TabsTrigger>
-        ))}
-      </TabsList>
+      <PanelTabsList tabs={tabs} label="Location Fields" />
 
       <TabsContent value="details" className="space-y-4">
         <div className="flex flex-col gap-2 sm:flex-row sm:items-end">

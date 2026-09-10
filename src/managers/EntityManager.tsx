@@ -1,6 +1,7 @@
 import { useEffect } from 'react';
 import { useGameData } from '../contexts/GameDataContext';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Tabs, TabsContent } from '@/components/ui/tabs';
+import { PanelTabsList } from '@/components/ui/panel-tabs';
 import {
   EntityDescriptionFields,
   EntityIdentityFields,
@@ -70,21 +71,7 @@ const EntityManager = ({ entity, tab, onTabChange, focusField }: {
       <ContentLinkHeader link={editingEntity.link} />
       <Tabs value={tab} onValueChange={(v) => onTabChange(v as EntityPanelTab)} className="space-y-4">
         {/* Named, because the editor's own strip is on the same screen and carries a Placeholders tab too. */}
-        <TabsList
-          aria-label="Entity Fields"
-          className="grid w-full"
-          style={{ gridTemplateColumns: `repeat(${tabs.length}, minmax(0, 1fr))` }}
-        >
-          {/* Icon alone wherever the pane is narrow: "Descriptions" needs 137px on one row, and it gets 105px
-              in the 375px sheet and 113px in the half-width pane at `md`. Same non-monotonic pane as the grid
-              below, so the label follows the same steps. The name stays on `aria-label` at every width. */}
-          {tabs.map(({ value, label, icon: Icon }) => (
-            <TabsTrigger key={value} value={value} aria-label={label} className="gap-1.5">
-              <Icon className="h-4 w-4 shrink-0" />
-              <span className="hidden sm:inline md:hidden xl:inline">{label}</span>
-            </TabsTrigger>
-          ))}
-        </TabsList>
+        <PanelTabsList tabs={tabs} label="Entity Fields" />
 
         <TabsContent value="profile" className="space-y-4">
           <EntityImageWidget {...groupProps}>

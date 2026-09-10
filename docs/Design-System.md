@@ -501,6 +501,62 @@ Apply that guide by role to all approved patterns: settings labels and informati
 
 The foundation's [review record](../docs-internal/designs/design-system/workflow-review.md) records copy findings, evidence limits, and the two workflow demonstrations. Existing-screen alignment remains separate work.
 
+## Pattern: Panel Tab Strip
+
+**Purpose:** Split one editor detail panel's fields into named tabs, so a long panel fits one screen without hiding anything behind a scroll.
+
+**Rule:**
+
+- The strip is one row of equal columns. Every tab gets the same width, whatever its label's length.
+- Each tab carries an icon and a name. The name is always on `aria-label`, so it reaches assistive technology and role queries whether or not it is drawn.
+- The label gives way to its icon wherever the pane is narrow. The icon never shrinks.
+- The strip is named, because the editor's own strip is on the same screen and can carry a tab of the same name.
+- Mode-only tabs are filtered out of the registry before the strip renders, not disabled in place.
+
+**Density:** Compact. The strip is 40px tall at every width. Labels use the production label role; hiding one does not change the strip's height, so the panel below it does not move.
+
+### Composition
+
+- One registry per panel holds the tabs in order, with the value, name, icon, and any mode flag. The strip renders from it and the dev-router ledger is guarded against it.
+- The chosen tab belongs to the editor, not the panel. These panels remount per selected item, so panel-held state would reset down the list.
+- When the chosen tab is unavailable in the current mode, the panel shows its first tab.
+
+### Production mapping
+
+| Need | Component |
+| --- | --- |
+| The strip itself | `PanelTabsList` in [`panel-tabs.tsx`](../src/components/ui/panel-tabs.tsx) |
+| Tab, list, and panel primitives | [`tabs.tsx`](../src/components/ui/tabs.tsx) |
+| Three-tab instance and its registry | `EntityManager` in [`EntityManager.tsx`](../src/managers/EntityManager.tsx) and [`entityPanelTabs.ts`](../src/views/entityPanelTabs.ts) |
+| Four-tab instance and its registry | `LocationManager` in [`LocationManager.tsx`](../src/managers/LocationManager.tsx) and [`locationPanelTabs.ts`](../src/views/locationPanelTabs.ts) |
+| Isolated reference | [`PanelTabStripReference.tsx`](../src/components/design-system/PanelTabStripReference.tsx) |
+| Width coverage | [`entity-panel-widths.spec.ts`](../e2e/entity-panel-widths.spec.ts) |
+
+### Responsive behavior
+
+The pane holding these panels is not monotonic in viewport width. Below `md` the panel is the full-width detail sheet. At `md` the editor splits and the panel takes half of it. A 767px window therefore gives the panel about 715px, and an 820px window gives it about 347px.
+
+So the label steps on at `sm`, off at `md`, and on again at `xl`. Three tabs in a 375px sheet get 105px each and four get 85px, while one row of "Descriptions" needs 137px. The same shortfall returns in the half-width pane between `md` and `xl`.
+
+A container query would state this directly. `@tailwindcss/container-queries` is not a dependency, and these two breakpoints track the layout's own `md` switch exactly.
+
+### State reference
+
+| State | Treatment |
+| --- | --- |
+| Default | The first tab is selected and its body is the only one mounted. |
+| Selected | The active trigger takes the background, foreground, and shadow from the shared tab primitive. |
+| Disabled | No tab is disabled. A tab the current mode does not offer is absent from the registry instead. |
+| Focus | Arrow keys move between tabs and the shared inset focus ring marks the active one. |
+| Overflow | Below `xl`, and in the mobile sheet, the label is hidden rather than truncated or wrapped. The icon keeps its full size. |
+
+The live reference renders both production strips against their own registries. It holds the chosen tab in mounted React state and never reads or writes authored worlds, saves, library data, or preferences.
+
+### Writing review
+
+- Tab names come from the two production registries, so the reference and the editor cannot drift. Reuse does not certify those names as fully ASD-STE100 compliant.
+- **Unverified:** the section headings "Three Tabs" and "Four Tabs" and the two `Meta` lines have terminology review only; vocabulary and grammar evidence is not recorded.
+
 ## UI and prototype workflow
 
 The project `design-system` skill routes UI changes and prototypes here. Use the applicable named pattern and its production components, then inspect the result through the live reference. Agents verify established patterns themselves and report desktop/mobile states, theme/font inheritance, interaction results, and static evidence.
