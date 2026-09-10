@@ -6,6 +6,8 @@ import { clearDeletedDefaultWorlds } from '@/lib/defaultWorlds';
 import { encodePlaceholderToken } from '@/lib/placeholders';
 import AuthService from './AuthService';
 import { getDownloadState } from '@/lib/downloadState';
+import { PUBLISH_LIMITS } from '@/lib/publishLimits';
+import { KIND_LABELS } from '@/lib/catalogKinds';
 
 const res = (body: unknown, ok = true, status = 200): Response =>
   ({ ok, status, json: async () => body } as unknown as Response);
@@ -235,6 +237,29 @@ describe('publishItem', () => {
     const plain = JSON.parse(vi.mocked(fetch).mock.calls[1][1]?.body as string);
     expect(entered.contestEventId).toBe('ev1');
     expect(plain).not.toHaveProperty('contestEventId');
+  });
+
+  // A raw string as `contentData` serializes to `"xxx…"`: length + 2 quote characters, all single-byte —
+  // so its byte count is exactly controllable without building a real world/entity/dictionary fixture.
+  const overLimit = (kind: keyof typeof PUBLISH_LIMITS) => 'x'.repeat(PUBLISH_LIMITS[kind] + 1);
+  const atLimit = (kind: keyof typeof PUBLISH_LIMITS) => 'x'.repeat(PUBLISH_LIMITS[kind] - 2);
+
+  it.each(Object.keys(PUBLISH_LIMITS) as (keyof typeof PUBLISH_LIMITS)[])(
+    'refuses over-limit %s content before any request is sent, even unauthenticated',
+    async (kind) => {
+      await expect(WorldStorageService.publishItem(payload({ kind, contentData: overLimit(kind) })))
+        .rejects.toThrow(new RegExp(`^${KIND_LABELS[kind].one} is .+ over the .+ publish limit\\.$`));
+      expect(fetch).not.toHaveBeenCalled();
+    },
+  );
+
+  it('reaches fetch when content sits exactly at the limit', async () => {
+    AuthService.token = 'tok';
+    vi.mocked(fetch).mockResolvedValue(res({ id: 'created' }));
+
+    await WorldStorageService.publishItem(payload({ contentData: atLimit('world') }));
+
+    expect(fetch).toHaveBeenCalled();
   });
 });
 
