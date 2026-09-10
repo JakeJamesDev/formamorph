@@ -3,6 +3,9 @@
 Status: ready-for-human
 Status note: Built across 5e299026, cefd6bd2 and b1bb970a. Two product calls are open for the author,
 below under Comments. Check for Updates is deliberately absent from the linked-copy menu; ticket 08 owns it.
+PARKED behind `LINKING_ENABLED` in `src/lib/linkingFlag.ts`, which ships false. The library half ships on
+its own: Save to Library, Add from Library and Import file all work, nothing writes a `link` record, and no
+copy follows a source. Ticket 03 removes the flag when the effort resumes.
 Base: e16d4a91
 Blocked by: 01
 Recommended model: Claude Sonnet 5 (`claude-sonnet-5`)

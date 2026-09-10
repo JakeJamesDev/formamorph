@@ -1,6 +1,8 @@
 # 03: Connect World References
 
 Status: ready-for-agent
+Status note: This ticket resumes the effort. Do the flag removal below first — the rest of the spec assumes
+links are live.
 Blocked by: 02
 Recommended model: Claude Sonnet 5 (`claude-sonnet-5`)
 Reasoning effort: high
@@ -10,6 +12,25 @@ Model rationale: one dialog with clear rules from the spec and prototype, plus a
 ## Parent
 
 [spec.md](../spec.md) — World Placeholder reference resolution, Settled follow-up decisions (Updates and repairs), ADR 0003 entity-owned location membership.
+
+## First: remove the linking flag
+
+Ticket 02 shipped its library half on its own. Its linking half is parked behind `LINKING_ENABLED` in
+`src/lib/linkingFlag.ts`. Delete that module and every guard that reads it, then delete this section.
+
+| File | Guard |
+| --- | --- |
+| `src/components/ContentLinkStatus.tsx` | `ContentLinkIcon` and `ContentLinkHeader` force the state to null |
+| `src/lib/useLibraryLinking.tsx` | `syncFromLibrary` returns early; `saveToLibrary` skips `applyLink`; `controlFor` returns the independent face; `confirmImport` ignores the link choice |
+| `src/components/modals/AddFromLibraryModal.tsx` | the link choice is hidden and `linking` is forced false |
+| `src/components/modals/ImportContentModal.tsx` | the link choice is hidden and `onConfirm` is forced false |
+| `src/contexts/GameDataContext.tsx`, `src/contexts/DictionaryStoreContext.tsx` | a local `markEdited` wrapper that does nothing |
+
+Two test files pair with it. `src/views/WorldEditor.libraryLinks.test.tsx` and
+`src/views/WorldEditor.contentLink.test.tsx` each mock the flag on — drop the mock. Delete
+`src/views/WorldEditor.libraryOnly.test.tsx`, which exists only to prove the parked state.
+
+Removing the flag turns `link` back into a written field, so hard constraint 2 applies: tell the author.
 
 ## What to build
 
@@ -21,6 +42,7 @@ Connections persist per world and survive updates from the source. The same dial
 
 ## Acceptance criteria
 
+- [ ] `src/lib/linkingFlag.ts` is gone and no file references `LINKING_ENABLED`.
 - [ ] Adding content whose references all resolve inserts it with no dialog.
 - [ ] Adding content with one unresolved Placeholder opens the dialog with that row preselected to its single match and a value preview.
 - [ ] A reference with two equal matches opens with no preselection and the note; Connect & Add is disabled until chosen.

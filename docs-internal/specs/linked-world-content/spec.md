@@ -1,7 +1,10 @@
 # Linked world content: dependencies and optional add-ons
 
 Status: needs-info
-Status note: The author confirmed the main UI checkpoint after four remaining-decision rounds. This is not implementation authorization; unresolved edge cases, contracts, and proposed testing boundaries must be reviewed before implementation tickets become ready-for-agent. The exploratory prototype has not been updated to represent every subsequent UI decision.
+Status note: PAUSED after ticket 02. The library half of ticket 02 ships on its own; its linking half is
+parked behind `LINKING_ENABLED` in `src/lib/linkingFlag.ts`. Tickets 03 and 05 to 13 wait on the author.
+Ticket 03 carries the flag-removal checklist and is the resume point.
+Earlier note: The author confirmed the main UI checkpoint after four remaining-decision rounds. This is not implementation authorization; unresolved edge cases, contracts, and proposed testing boundaries must be reviewed before implementation tickets become ready-for-agent. The exploratory prototype has not been updated to represent every subsequent UI decision.
 
 ## Problem Statement
 

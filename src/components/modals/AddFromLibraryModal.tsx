@@ -6,6 +6,7 @@ import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Meta } from '@/components/ui/typography';
 import { libraryItemData, libraryItems, LINK_EXPLANATIONS, type LibraryItemSummary, type LibraryKind } from '@/lib/librarySources';
+import { LINKING_ENABLED } from '@/lib/linkingFlag';
 import type { LinkableContent } from '@/lib/linkedContent';
 
 /** One picked library item with the content behind it. */
@@ -39,6 +40,8 @@ interface AddFromLibraryModalProps {
  * Every row names its author and where it came from, because two library items may share a name and the
  * name alone cannot tell them apart. The link choice decides whether the copies follow what they came from
  * or arrive independent; it is on by default, and picking an existing item never makes a second one.
+ *
+ * The link choice appears only while `LINKING_ENABLED` is on. Off, every copy arrives independent.
  */
 function AddFromLibraryModal({
   open, onOpenChange, kind, title, description, emptyMessage, confirmLabel,
@@ -76,7 +79,7 @@ function AddFromLibraryModal({
     });
 
   const picked = useMemo(() => list.filter((item) => selectedIds.includes(item.id)), [list, selectedIds]);
-  const linking = alwaysLink || link;
+  const linking = LINKING_ENABLED && (alwaysLink || link);
   const explanation = !linking
     ? LINK_EXPLANATIONS.independent
     : picked.some((item) => !item.owned) ? LINK_EXPLANATIONS.other : LINK_EXPLANATIONS.own;
@@ -138,15 +141,17 @@ function AddFromLibraryModal({
                 )}
               </div>
             </ScrollArea>
-            <div className="space-y-1">
-              {!alwaysLink && (
-                <label className="flex items-center gap-2 cursor-pointer">
-                  <Checkbox checked={link} onCheckedChange={(v) => setLink(v === true)} className="shrink-0" />
-                  <span>Link to Library</span>
-                </label>
-              )}
-              <Meta as="p">{explanation}</Meta>
-            </div>
+            {LINKING_ENABLED && (
+              <div className="space-y-1">
+                {!alwaysLink && (
+                  <label className="flex items-center gap-2 cursor-pointer">
+                    <Checkbox checked={link} onCheckedChange={(v) => setLink(v === true)} className="shrink-0" />
+                    <span>Link to Library</span>
+                  </label>
+                )}
+                <Meta as="p">{explanation}</Meta>
+              </div>
+            )}
           </>
         )}
         <DialogFooter>

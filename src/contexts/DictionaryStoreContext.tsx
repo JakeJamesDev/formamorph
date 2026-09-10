@@ -1,7 +1,12 @@
 import { randomUUID } from "@/lib/uuid";
 import { createContext, useContext, useState, useCallback, type ReactNode } from 'react';
-import { markEdited } from '@/lib/linkedContent';
+import { markEdited as markEditedCopy } from '@/lib/linkedContent';
+import { LINKING_ENABLED } from '@/lib/linkingFlag';
 import type { Dictionary, DictionaryEntry } from '@/types';
+
+/** PARKED: a copy becomes a local replacement only once linking ships, so an edit leaves any `link` record
+ *  a world already carries exactly as it found it. Drop this wrapper with `LINKING_ENABLED`. */
+const markEdited = LINKING_ENABLED ? markEditedCopy : <T,>(item: T): T => item;
 
 /** A fresh, empty "Default" book — the ≥1-book invariant's seed. */
 const makeDefaultBook = (): Dictionary => ({ id: randomUUID(), name: 'Default', enabled: true, entries: [] });

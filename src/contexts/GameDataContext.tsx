@@ -14,7 +14,8 @@ import {
 } from '@/lib/placeholderHomes';
 import { releasePlaceholderOwners, removePlaceholderCascade } from '@/lib/placeholderTree';
 import { chipBearingTexts } from '@/lib/testBench/rules';
-import { markEdited } from '@/lib/linkedContent';
+import { markEdited as markEditedCopy } from '@/lib/linkedContent';
+import { LINKING_ENABLED } from '@/lib/linkingFlag';
 import { useDictionaryStoreState, DictionaryStoreProvider } from '@/contexts/DictionaryStoreContext';
 import { PlaceholderStoreProvider } from '@/contexts/PlaceholderStoreContext';
 import { PlacementLettersProvider, useStablePlacementLetters } from '@/contexts/PlacementLettersContext';
@@ -38,6 +39,10 @@ import type {
 
 /** A fresh, empty "Default" book — the ≥1-book invariant's seed. */
 const makeDefaultBook = (): Dictionary => ({ id: randomUUID(), name: 'Default', enabled: true, entries: [] });
+
+/** PARKED: a copy becomes a local replacement only once linking ships, so an edit leaves any `link` record
+ *  a world already carries exactly as it found it. Drop this wrapper with `LINKING_ENABLED`. */
+const markEdited = LINKING_ENABLED ? markEditedCopy : <T,>(item: T): T => item;
 
 // The canonical world payload: the single field list every serialize/save/export path shares. Add a new
 // world field here and it flows to dirty-detection, save, and download at once.

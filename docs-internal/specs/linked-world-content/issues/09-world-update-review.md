@@ -1,6 +1,8 @@
 # 09: World update review with requirement changes
 
 Status: ready-for-agent
+Status note: PAUSED with the linked-world-content effort. Ticket 03 removes the `LINKING_ENABLED`
+flag and is the resume point.
 Blocked by: 06, 08
 Recommended model: Claude Opus 5 (`claude-opus-5`)
 Reasoning effort: high

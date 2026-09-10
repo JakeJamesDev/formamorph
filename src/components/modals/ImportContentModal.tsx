@@ -4,10 +4,11 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Button } from '@/components/ui/button';
 import { Meta } from '@/components/ui/typography';
 import { LINK_EXPLANATIONS, type LibraryKind } from '@/lib/librarySources';
+import { LINKING_ENABLED } from '@/lib/linkingFlag';
 
 const COPY = {
-  entity: { title: 'Import Entity', confirm: 'Add Entity' },
-  dictionary: { title: 'Import Dictionary', confirm: 'Add Dictionary' },
+  entity: { title: 'Import Entity', confirm: 'Add Entity', noun: 'entity' },
+  dictionary: { title: 'Import Dictionary', confirm: 'Add Dictionary', noun: 'dictionary' },
 } as const;
 
 /**
@@ -16,6 +17,8 @@ const COPY = {
  *
  * With the link kept, the file becomes a library item the author owns and the world holds a linked copy of
  * it. Without it, the world holds the only copy.
+ *
+ * The link choice appears only while `LINKING_ENABLED` is on. Off, the file goes straight into the world.
  */
 const ImportContentModal = ({ kind, name, onCancel, onConfirm }: {
   /** Which library the file belongs to, or null while nothing is under review. */
@@ -38,16 +41,20 @@ const ImportContentModal = ({ kind, name, onCancel, onConfirm }: {
           <DialogTitle>{COPY[kind].title}</DialogTitle>
           <DialogDescription>{name}</DialogDescription>
         </DialogHeader>
-        <div className="space-y-1">
-          <label className="flex items-center gap-2 cursor-pointer">
-            <Checkbox checked={link} onCheckedChange={(v) => setLink(v === true)} className="shrink-0" />
-            <span>Link through my library</span>
-          </label>
-          <Meta as="p">{link ? LINK_EXPLANATIONS.own : LINK_EXPLANATIONS.independent}</Meta>
-        </div>
+        {LINKING_ENABLED ? (
+          <div className="space-y-1">
+            <label className="flex items-center gap-2 cursor-pointer">
+              <Checkbox checked={link} onCheckedChange={(v) => setLink(v === true)} className="shrink-0" />
+              <span>Link through my library</span>
+            </label>
+            <Meta as="p">{link ? LINK_EXPLANATIONS.own : LINK_EXPLANATIONS.independent}</Meta>
+          </div>
+        ) : (
+          <Meta as="p">Formamorph adds this {COPY[kind].noun} to the world you are editing.</Meta>
+        )}
         <DialogFooter>
           <Button variant="outline" onClick={onCancel}>Cancel</Button>
-          <Button onClick={() => onConfirm(link)}>{COPY[kind].confirm}</Button>
+          <Button onClick={() => onConfirm(LINKING_ENABLED && link)}>{COPY[kind].confirm}</Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>
