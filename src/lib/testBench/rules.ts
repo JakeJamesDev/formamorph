@@ -829,10 +829,8 @@ const placeholderPinnedUnused: Rule = {
 // `==`/`!=` forms — any comparison against `.name` names a stat.
 const NAME_THEN_LITERAL = /\.name\s*[!=]==?\s*(["'`])((?:\\.|(?!\1).)*)\1/g;
 const LITERAL_THEN_NAME = /(["'`])((?:\\.|(?!\1).)*)\1\s*[!=]==?\s*[\w$]+(?:\??\.[\w$]+)*\??\.name\b/g;
-// The map form: `stats.Vigour` names the stat by identifier; `stats["Vigour"]` (any quote style) names it
-// by bracket key. A computed key (no leading quote, e.g. `stats[key]`) has no literal to check and is left
-// to match nothing, the same way a dynamic `.name` comparison is. A call (`stats.find(`, `stats.filter(`)
-// is the old array API, not an entry lookup, and is excluded so it isn't misread as a stat named "find".
+// The map form: `stats.Vigor` names the stat by identifier, `stats["Vigor"]` (any quote style) by bracket
+// key; a computed bracket key or an array-method call like `stats.find(` matches neither, as intended.
 const MAP_DOT = /\bstats\.([A-Za-z_$][\w$]*)\b(?!\s*\()/g;
 const MAP_BRACKET = /\bstats\[\s*(["'`])((?:\\.|(?!\1).)*)\1\s*\]/g;
 

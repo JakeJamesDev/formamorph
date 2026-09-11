@@ -1,6 +1,7 @@
 # 07: Test Bench Rules Read The Map Form
 
-Status: ready-for-agent
+Status: ready-for-human
+Base: 7959d7a1
 Blocked by: 01
 Recommended model: Claude Sonnet 5 (`claude-sonnet-5`)
 Reasoning effort: medium
@@ -17,13 +18,23 @@ The overrides-trait rule's "does the code read itself" check (`codeReadsSelf`) c
 
 ## Acceptance criteria
 
-- [ ] `stats.Vigour` and `stats["Vigour"]` with a typo raise the unknown-stat row; the correct name raises nothing
-- [ ] A computed bracket key raises nothing
-- [ ] `codeReadsSelf` is true for `self.value`, `stats.Own.value`, and `stats["Own"].value`, and false for a lookup of another stat
-- [ ] The overrides-trait rule no longer warns on code that reads `self`
-- [ ] Rule tests cover each criterion; existing comparison-form cases still pass
-- [ ] Four gates green; graph updated
+- [x] `stats.Vigour` and `stats["Vigour"]` with a typo raise the unknown-stat row; the correct name raises nothing
+- [x] A computed bracket key raises nothing
+- [x] `codeReadsSelf` is true for `self.value`, `stats.Own.value`, and `stats["Own"].value`, and false for a lookup of another stat
+- [x] The overrides-trait rule no longer warns on code that reads `self`
+- [x] Rule tests cover each criterion; existing comparison-form cases still pass
+- [x] Four gates green; graph updated
 
 ## Blocked by
 
 - 01 — Stats Becomes A Name-Keyed Map
+
+## Comments
+
+**2026-09-11, implementation notes.**
+
+- `statNamesInCode` gained a dot regex and a bracket regex for the map form; both feed the same unknown-stat check and the same own-name check `codeReadsSelf` already used, so neither rule needed its own map-aware logic.
+- The dot regex excludes a call (`stats.find(`) so the pre-migration array API in older comparison-form fixtures isn't misread as a stat named "find" — caught by a mutation test on the guard, which backtracked past a naive `(?!\s*\()` lookahead onto a truncated identifier until a trailing `\b` was added.
+- `codeReadsSelf` also gained a bare `/\bself\b/` check, matching the existing unguarded style of its `currentStatId` check in the same function.
+- **Review folded in.** The new comment above the map-form regexes used the British "Vigour" spelling while the surrounding tests use "Vigor"; reworded to "Vigor" and trimmed from four lines to two, matching the file's existing comment length for a regex pair.
+- **Known limit, not fixed.** `/\bself\b/` matches the bare word anywhere in the code text, including inside a string or comment, so code that never touches the sandbox's `self` but happens to contain the word could suppress a real overrides-trait warning. Judged acceptable: it mirrors the pre-existing `currentStatId` check's same unguarded style, and no world's stat code plausibly writes "self" outside that usage.
