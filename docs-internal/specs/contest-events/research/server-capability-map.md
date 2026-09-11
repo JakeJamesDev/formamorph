@@ -45,7 +45,7 @@ Mounted in `src/app.js`. Auth: **public**, **user** (`protect`), **user+** (`pro
 | GET | `/` | optional | Catalog: `page,limit,search,tags,searchByAuthor,sort,order,kind`; sweeps quarantine first |
 | GET | `/:id` | optional | One listing (+`includeComments`) |
 | GET | `/:id/content` | optional | Download content; increments `downloads` |
-| POST | `/` | user + upload-gate | Publish (200MB cap; per-kind size rules) |
+| POST | `/` | user + upload-gate | Publish (100MB cap; per-kind size rules) |
 | PUT | `/:id` | user (owner or `canModerate`) + upload-gate | Update; `kind` immutable |
 | PUT | `/:id/spoiler` | user (owner/staff) | Toggle spoiler flag |
 | PUT | `/:id/like` | user | Like/unlike; own listing refused |
@@ -89,7 +89,7 @@ GET `/meta` staff · GET `/` staff. No write route by design.
 ### Static
 GET `/api/thumbnails/:filename`, `/api/avatars/:filename` public · GET `/` banner.
 
-Global: helmet, CORS `*`, 1000 req/15min limiter keyed on `CF-Connecting-IP`, `trust proxy = loopback` (behind cloudflared). Body caps: 100kb default, 200mb world create/update, 2mb avatar.
+Global: helmet, CORS `*`, 1000 req/15min limiter keyed on `CF-Connecting-IP`, `trust proxy = loopback` (behind cloudflared). Body caps: 100kb default, 120mb world create/update (100MB per-kind content cap), 2mb avatar.
 
 ## 3. Auth
 
