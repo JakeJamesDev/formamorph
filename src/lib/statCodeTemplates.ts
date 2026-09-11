@@ -5,12 +5,19 @@
  *
  * Slot syntax is `{{name:type=default}}`; `type` and `=default` are both optional, and repeating a name
  * reuses the first occurrence's declaration. Substitution is textual, so a template controls its own
- * quoting: a `stat` or `daypart` slot emits a quoted string, while `number`, `choice` and `text` emit
- * their value verbatim (which is what lets a choice supply a comparison operator).
+ * quoting: a `stat`, `placeholder`, `trait` or `daypart` slot emits a quoted string, while `number`,
+ * `choice` and `text` emit their value verbatim (which is what lets a choice supply a comparison operator).
  */
 
-export const SLOT_TYPES = ['stat', 'number', 'daypart', 'choice', 'text'] as const;
+export const SLOT_TYPES = ['stat', 'placeholder', 'trait', 'number', 'daypart', 'choice', 'text'] as const;
 export type SlotType = (typeof SLOT_TYPES)[number];
+
+/** The slot types filled from a list of the world's own names. Each renders as a quoted string. */
+export const NAME_SLOT_TYPES = ['stat', 'placeholder', 'trait'] as const satisfies readonly SlotType[];
+export type NameSlotType = (typeof NAME_SLOT_TYPES)[number];
+
+export const isNameSlotType = (type: SlotType): type is NameSlotType =>
+  (NAME_SLOT_TYPES as readonly SlotType[]).includes(type);
 
 /** The six dayparts a `daypart` slot offers — the set `gameClock.daypart()` emits. */
 export const DAYPART_OPTIONS = ['night', 'dawn', 'morning', 'midday', 'afternoon', 'evening'] as const;
@@ -138,11 +145,12 @@ export function defaultSlotValues(slots: TemplateSlot[]): Record<string, string>
  *  name containing a quote can't break out of its literal; the rest are pasted as written. */
 function renderSlot(slot: TemplateSlot, raw: string): string {
   const value = (raw ?? '').trim();
+  if (isNameSlotType(slot.type)) return JSON.stringify(value);
   switch (slot.type) {
-    case 'stat':
     case 'daypart':
+      return JSON.stringify(value);
     case 'text':
-      return slot.type === 'text' ? value : JSON.stringify(value);
+      return value;
     case 'number': {
       const parsed = Number(value);
       // A blank or unparseable number would generate code that throws at run time; 0 keeps it valid and
@@ -184,9 +192,10 @@ export function fillTemplate(code: string, values: Record<string, string>): stri
 }
 
 /**
- * The bundled templates. Eight rather than a longer literal list: a signed rate covers decay and growth,
- * a comparison slot covers both threshold directions, a direction slot covers counting up and down, and
- * "regen toward target" with the target set to the stat's max is the soft-capped regen.
+ * The bundled templates. Eight value formulas rather than a longer literal list: a signed rate covers
+ * decay and growth, a comparison slot covers both threshold directions, a direction slot covers counting
+ * up and down, and "regen toward target" with the target set to the stat's max is the soft-capped regen.
+ * Three more show each write the sandbox reads back: a bound on `self`, a placeholder pin, a trait switch.
  *
  * Each reads its own bounds from the stat it belongs to instead of assuming 0–100, and the four that
  * name a clock variable thereby qualify for the every-turn run schedule (see `usesStatClock`).
@@ -262,6 +271,28 @@ const value = me?.value ?? 0;
 const target = {{target:number=100}};
 const rate = {{rate:number=0.1}};
 return value + (target - value) * rate * deltaHours;`,
+  },
+  {
+    id: 'builtin-bound-from-stat',
+    name: 'Bound From Another Stat',
+    description: 'Set this stat’s Min, Max, or Regen from another stat times a factor. The value keeps its normal changes.',
+    code: `const source = stats.find(s => s.name === {{source:stat}})?.value ?? 0;
+self.{{bound:choice(max|min|regen)=max}} = Math.round(source * {{factor:number=2}});`,
+  },
+  {
+    id: 'builtin-placeholder-follows-stat',
+    name: 'Placeholder Follows This Stat',
+    description: 'Pin a placeholder to one of its values by where this stat sits in its range: the first value at Min, the last at Max.',
+    code: `const target = placeholders[{{placeholder:placeholder}}];
+const span = self.max - self.min || 1;
+const band = Math.floor((self.value - self.min) / span * target.values.length);
+if (target.values.length) target.value = target.values[Math.max(0, Math.min(band, target.values.length - 1))];`,
+  },
+  {
+    id: 'builtin-trait-by-threshold',
+    name: 'Trait by Threshold',
+    description: 'Switch a trait on while this stat is past a line, and off once it comes back. Code can switch a trait the player can’t toggle.',
+    code: `traits[{{trait:trait}}].enabled = self.value {{comparison:choice(>=|<=)=>=}} {{threshold:number=50}};`,
   },
 ];
 

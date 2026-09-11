@@ -6,7 +6,7 @@
  */
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import type { Stat, WorldOverview } from '@/types';
-import { checkStatCode, STAT_CODE_EXECUTION } from './statCodeCheck';
+import { checkStatCode, STAT_CODE_EXECUTION, STAT_CODE_UNKNOWN_NAME } from './statCodeCheck';
 import { groupFindings, type RuleWorld } from './rules';
 
 const base = (stats: Stat[]): RuleWorld => ({
@@ -36,6 +36,38 @@ describe('the on-demand stat-code check', () => {
     const world = base([stat({ id: 's1', name: 'Fertility', code: 'return placeholders.Mood.value === "calm" ? 1 : 2;' })]);
     world.placeholders = [{ id: 'mood', name: 'Mood', values: [{ id: 'v:calm', text: 'calm' }] }];
     expect(await checkStatCode(world)).toEqual([]);
+  });
+
+  it('runs code that reads and switches a trait the world has, and reports none', async () => {
+    const world = base([stat({ id: 's1', name: 'Fertility', code: 'traits.Cursed.enabled = !traits.Cursed.acquired;' })]);
+    world.traits = [{ id: 't1', name: 'Cursed', playerDescription: '', aiDescription: '', statChanges: [] }];
+    expect(await checkStatCode(world)).toEqual([]);
+  });
+
+  it('runs code that sets its own bounds, and reports none', async () => {
+    expect(await checkStatCode(base([
+      stat({ id: 's1', name: 'Fertility', code: 'self.max = 200; self.regen = 2;' }),
+    ]))).toEqual([]);
+  });
+
+  // A write to a name the world lacks is dropped at run time, so the author only learns of the typo here.
+  it('reports a write to a placeholder or trait the world does not have, as a warning naming the stat', async () => {
+    const world = base([
+      stat({ id: 's1', name: 'Fertility', code: 'placeholders.Mood.value = "calm"; placeholders.Moood = "x";' }),
+      stat({ id: 's2', name: 'Weave', code: 'traits.Cursd.enabled = true; traits.Blessed.enabled = true;' }),
+    ]);
+    world.placeholders = [{ id: 'mood', name: 'Mood', values: [{ id: 'v:calm', text: 'calm' }] }];
+    world.traits = [{ id: 't1', name: 'Cursed', playerDescription: '', aiDescription: '', statChanges: [] }];
+    const found = await checkStatCode(world);
+    expect(found.map((f) => [f.ruleId, f.severity, f.items[0].id])).toEqual([
+      [STAT_CODE_UNKNOWN_NAME.id, 'warning', 's1'],
+      [STAT_CODE_UNKNOWN_NAME.id, 'warning', 's2'],
+    ]);
+    expect(found[0].message).toContain('Fertility');
+    expect(found[0].message).toContain('Moood');
+    expect(found[0].message).not.toContain('Mood.');
+    expect(found[1].message).toContain('Cursd');
+    expect(found[1].message).toContain('Blessed');
   });
 
   it('reports code that throws, naming the stat and the failure', async () => {
@@ -98,6 +130,16 @@ describe('the on-demand stat-code check', () => {
       stat({ id: 's1', name: 'Vigor' }),
       stat({ id: 's2', name: 'Weave', code: '   ' }),
     ]))).toEqual([]);
+  });
+
+  // The bundled worlds are the check's real workload: every one must come back clean under the new surface.
+  it('reports nothing on the bundled worlds', async () => {
+    const worlds = import.meta.glob<{ default: RuleWorld }>('../../defaultworlds/*.json', { eager: true });
+    const entries = Object.entries(worlds);
+    expect(entries.length).toBeGreaterThan(0);
+    for (const [path, world] of entries) {
+      expect(await checkStatCode(world.default), path).toEqual([]);
+    }
   });
 
   it('collapses its findings into one counted row like any other rule', async () => {

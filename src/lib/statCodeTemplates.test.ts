@@ -11,10 +11,12 @@ import {
   validateSlotValues,
   fillTemplate,
   isBuiltInTemplate,
+  isNameSlotType,
   BUILT_IN_TEMPLATES,
   DAYPART_OPTIONS,
+  type TemplateSlot,
 } from './statCodeTemplates';
-import { executeStatCode, usesStatClock } from './statCodeExecutor';
+import { executeStatCode, usesStatClock, type SandboxPlaceholder, type SandboxTrait } from './statCodeExecutor';
 import type { Stat } from '@/types';
 
 const makeStat = (over: Partial<Stat>): Stat => ({
@@ -189,9 +191,11 @@ describe('built-in templates', () => {
     for (const template of BUILT_IN_TEMPLATES) {
       const { slots, errors } = parseTemplateSlots(template.code);
       expect(errors, template.name).toEqual([]);
-      // A stat slot has no sensible shipped default (world-specific), so fill it here the way the form will.
+      // A name slot has no sensible shipped default (world-specific), so fill it here the way the form will.
       const values = { ...defaultSlotValues(slots) };
-      for (const slot of slots) if (slot.type === 'stat') values[slot.name] = 'Health';
+      for (const slot of slots) {
+        if (isNameSlotType(slot.type)) values[slot.name] = { stat: 'Health', placeholder: 'Mood', trait: 'Cursed' }[slot.type];
+      }
       expect(validateSlotValues(slots, values), template.name).toEqual({});
     }
   });
@@ -204,20 +208,39 @@ describe('built-in templates', () => {
     makeStat({ id: 's', name: 'Strength', value: 20 }),
   ];
   const self = world[0];
+  const placeholders: SandboxPlaceholder[] = [
+    { name: 'Mood', value: 'calm', values: ['calm', 'wary', 'angry', 'furious'], roll: () => 'calm' },
+  ];
+  const traits: SandboxTrait[] = [
+    { name: 'Cursed', enabled: true, acquired: true },
+    { name: 'Blessed', enabled: false, acquired: false },
+  ];
+  /** The world's names, the way the picker fills a slot of each kind. */
+  const pickFor = (slot: TemplateSlot): string | undefined => {
+    switch (slot.type) {
+      case 'stat': return slot.name === 'secondStat' ? 'Strength' : 'Health';
+      case 'placeholder': return placeholders[0].name;
+      case 'trait': return traits[0].name;
+      default: return undefined;
+    }
+  };
 
   for (const template of BUILT_IN_TEMPLATES) {
     it(`runs in the sandbox: ${template.name}`, async () => {
       const { slots } = parseTemplateSlots(template.code);
       const values = { ...defaultSlotValues(slots) };
       for (const slot of slots) {
-        if (slot.type === 'stat') values[slot.name] = slot.name === 'secondStat' ? 'Strength' : 'Health';
+        const picked = pickFor(slot);
+        if (picked !== undefined) values[slot.name] = picked;
       }
       const result = await executeStatCode(fillTemplate(template.code, values), world, self, {
         deltaHours: 2,
         elapsedHours: 12,
-      });
+      }, undefined, placeholders, traits);
       expect(result.error, template.name).toBeNull();
-      expect(typeof result.value, template.name).toBe('number');
+      // A template writes a value, a bound, a placeholder, or a trait; one that does nothing is broken.
+      const wrote = result.value !== null || !!result.bounds || !!result.placeholders?.length || !!result.traits?.length;
+      expect(wrote, template.name).toBe(true);
     });
   }
 
@@ -234,6 +257,56 @@ describe('built-in templates', () => {
       'builtin-daypart-modifier': true,
       'builtin-random-roll': true,
       'builtin-regen-toward-target': true,
+      'builtin-bound-from-stat': false,
+      'builtin-placeholder-follows-stat': false,
+      'builtin-trait-by-threshold': false,
+    });
+  });
+
+  // The three write templates prove themselves by what the host reads back, not by a returned number:
+  // a bound on `self`, a pin on a placeholder, and a switch on a trait.
+  describe('the write templates', () => {
+    const run = (id: string, values: Record<string, string>) => {
+      const template = BUILT_IN_TEMPLATES.find(t => t.id === id)!;
+      return executeStatCode(fillTemplate(template.code, values), world, self, undefined, undefined, placeholders, traits);
+    };
+
+    it('sets the chosen bound from another stat times a factor, and leaves the value alone', async () => {
+      // Health 80 × 2 lands Max at 160; Min and Regen are untouched.
+      const result = await run('builtin-bound-from-stat', { source: 'Health', bound: 'max', factor: '2' });
+      expect(result).toEqual({ value: null, error: null, bounds: { max: 160 } });
+      // The same template writes Regen when the choice says so.
+      const regen = await run('builtin-bound-from-stat', { source: 'Strength', bound: 'regen', factor: '0.5' });
+      expect(regen.bounds).toEqual({ regen: 10 });
+    });
+
+    it('pins a placeholder to the value at the subject’s position in its range', async () => {
+      // The subject sits at 40 of 0–200: a fifth of the way, so the first of four values.
+      expect((await run('builtin-placeholder-follows-stat', { placeholder: 'Mood' })).placeholders)
+        .toEqual([{ name: 'Mood', text: 'calm' }]);
+      const high = { ...self, value: 200 };
+      const template = BUILT_IN_TEMPLATES.find(t => t.id === 'builtin-placeholder-follows-stat')!;
+      const atMax = await executeStatCode(
+        fillTemplate(template.code, { placeholder: 'Mood' }), [high, ...world.slice(1)], high, undefined, undefined, placeholders, traits,
+      );
+      // At Max the index would run past the list; it clamps to the last value.
+      expect(atMax.placeholders).toEqual([{ name: 'Mood', text: 'furious' }]);
+    });
+
+    it('switches a trait on past the line and off below it', async () => {
+      // 40 >= 50 is false, so an enabled trait switches off.
+      expect((await run('builtin-trait-by-threshold', { trait: 'Cursed', comparison: '>=', threshold: '50' })).traits)
+        .toEqual([{ name: 'Cursed', enabled: false }]);
+      // 40 <= 50 is true, so an unacquired trait switches on.
+      expect((await run('builtin-trait-by-threshold', { trait: 'Blessed', comparison: '<=', threshold: '50' })).traits)
+        .toEqual([{ name: 'Blessed', enabled: true }]);
+    });
+
+    it('quotes placeholder and trait slots so a name with a space still reaches the map', () => {
+      expect(fillTemplate('placeholders[{{p:placeholder}}].value', { p: 'Hair Color' }))
+        .toBe('placeholders["Hair Color"].value');
+      expect(fillTemplate('traits[{{t:trait}}].enabled', { t: 'Night Owl' }))
+        .toBe('traits["Night Owl"].enabled');
     });
   });
 

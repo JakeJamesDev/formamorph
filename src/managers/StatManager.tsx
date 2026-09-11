@@ -104,6 +104,7 @@ const StatManager = ({ stat, tab, onTabChange, focusField }: {
     [placeholders, placeholderOwners],
   );
   const traitNames = useMemo(() => traits.map((trait) => trait.name), [traits]);
+  const placeholderNames = useMemo(() => placeholders.map((entry) => entry.name), [placeholders]);
 
   /** Drop what the last test said. Editing the code makes every part of that report stale together. */
   const clearTestReport = useCallback(() => {
@@ -418,7 +419,7 @@ const StatManager = ({ stat, tab, onTabChange, focusField }: {
         </Button>
       </div>
 
-      <Hint>Code that returns a number replaces this stat&apos;s value each turn.</Hint>
+      <Hint>Code can set this stat&apos;s value, Min, Max, or Regen, pin a placeholder, or switch a trait.</Hint>
 
       <StatCodeTemplateDialog
         open={templatesOpen}
@@ -427,6 +428,8 @@ const StatManager = ({ stat, tab, onTabChange, focusField }: {
         currentStatId={stat.id}
         hasExistingCode={!!editingStat.code?.trim()}
         onInsert={(code) => handleChange("code", code)}
+        placeholderNames={placeholderNames}
+        traitNames={traitNames}
       />
 
       <CodeArea

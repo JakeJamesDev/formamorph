@@ -4,17 +4,18 @@
  * has to answer instantly on every keystroke.
  *
  * Pure with respect to the world — it marshals a turn-one snapshot, runs it, and returns findings. The rules
- * module owns the row this raises ({@link STAT_CODE_EXECUTION}), so an execution failure lists, groups and
- * sorts exactly like a static finding.
+ * module owns the rows this raises ({@link STAT_CODE_EXECUTION}, {@link STAT_CODE_UNKNOWN_NAME}), so an
+ * execution failure lists, groups and sorts exactly like a static finding.
  */
-import { executeStatCode } from '@/lib/statCodeExecutor';
+import { executeStatCode, type StatCodeResult } from '@/lib/statCodeExecutor';
 import { allPlaceholders } from '@/lib/placeholderHomes';
 import { sandboxPlaceholders } from '@/lib/statCodePlaceholders';
+import { sandboxTraits } from '@/lib/statCodeTraits';
 import { labelPlaceholders, worldPlacementLetters } from '@/lib/placementLetters';
-import { finding, STAT_CODE_EXECUTION, type Finding, type RuleWorld } from './rules';
+import { finding, STAT_CODE_EXECUTION, STAT_CODE_UNKNOWN_NAME, type Finding, type RuleWorld } from './rules';
 import type { Stat } from '@/types';
 
-export { STAT_CODE_EXECUTION } from './rules';
+export { STAT_CODE_EXECUTION, STAT_CODE_UNKNOWN_NAME } from './rules';
 
 /** How a run failed, in the author's words. */
 const FAILURE: Record<'timeout' | 'non-number' | 'throw', string> = {
@@ -32,21 +33,38 @@ const atStartingValues = (stats: Stat[]): Stat[] => stats.map((stat) => ({
       : stat.min ?? 0,
 }));
 
+const quoteAll = (names: readonly string[]) => names.map((name) => `“${name}”`).join(', ');
+
+/** The names a run wrote that the world lacks, phrased for the row; null when every write landed. */
+function unknownNames({ unknownPlaceholders = [], unknownTraits = [] }: StatCodeResult): string | null {
+  const parts = [
+    ...(unknownPlaceholders.length ? [`no placeholder is named ${quoteAll(unknownPlaceholders)}`] : []),
+    ...(unknownTraits.length ? [`no trait is named ${quoteAll(unknownTraits)}`] : []),
+  ];
+  return parts.length ? parts.join(' and ') : null;
+}
+
 /**
- * Run each coded stat once and report the ones that fail. Stats without code never reach the sandbox, so a
- * world of plain stats costs nothing.
+ * Run each coded stat once and report the ones that fail, then the ones whose writes named nothing. Stats
+ * without code never reach the sandbox, so a world of plain stats costs nothing.
  */
 export async function checkStatCode(world: RuleWorld): Promise<Finding[]> {
   const stats = atStartingValues(world.stats);
   const coded = stats.filter((stat) => stat.code?.trim());
   const letters = worldPlacementLetters(world);
-  // Turn one has no rolls yet, so an unrolled placeholder reads as a fresh draw.
+  // Turn one has no rolls yet, so an unrolled placeholder reads as a fresh draw; the player holds no traits.
   const placeholders = coded.length ? sandboxPlaceholders({ placeholders: allPlaceholders(world), rolls: {} }) : [];
+  const traits = coded.length ? sandboxTraits({
+    acquired: [], disabledTraitIds: [], appliedValues: {},
+    world: { traits: world.traits, groups: world.traitGroups ?? [] },
+  }) : [];
   const results = await Promise.all(coded.map(async (stat) => {
-    const { error, kind } = await executeStatCode(stat.code ?? '', stats, stat, undefined, undefined, placeholders);
-    if (!error) return null;
+    const result = await executeStatCode(stat.code ?? '', stats, stat, undefined, undefined, placeholders, traits);
     const name = labelPlaceholders(stat.name ?? '', allPlaceholders(world), { letters }).trim() || 'Untitled';
-    return finding(STAT_CODE_EXECUTION, `Code on “${name}” ${FAILURE[kind ?? 'throw']}`, [{ id: stat.id, name }]);
+    const item = [{ id: stat.id, name }];
+    if (result.error) return finding(STAT_CODE_EXECUTION, `Code on “${name}” ${FAILURE[result.kind ?? 'throw']}`, item);
+    const unknown = unknownNames(result);
+    return unknown ? finding(STAT_CODE_UNKNOWN_NAME, `Code on “${name}” writes to names the world doesn’t have: ${unknown}`, item) : null;
   }));
   return results.filter((found): found is Finding => found !== null);
 }
