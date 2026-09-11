@@ -13,7 +13,7 @@ import { placeholderDisplayName } from '@/lib/placementLetters';
 import { findSlotRanges, parseTemplateSlots } from '@/lib/statCodeTemplates';
 import type { Placeholder } from '@/types';
 import {
-  BUILTIN_MEMBERS, PLACEHOLDER_ENTRY_FIELDS, PREVIOUS_FIELDS, REQUESTED_FIELDS, SANDBOX_BUILTINS, SANDBOX_GLOBALS, SANDBOX_KNOWN_NAMES,
+  BUILTIN_MEMBERS, DELTA_FIELDS, DELTA_MEMBERS, PLACEHOLDER_ENTRY_FIELDS, PREVIOUS_FIELDS, SANDBOX_BUILTINS, SANDBOX_GLOBALS, SANDBOX_KNOWN_NAMES,
   SELF_WRITABLE_FIELDS, STAT_FIELDS, TRAIT_ENTRY_FIELDS, TRAIT_WRITABLE_FIELD, nearestName, nearestSurfaceName,
   type SurfaceEntry,
 } from '@/lib/statCodeSurface';
@@ -219,10 +219,14 @@ function membersAfterDot(
   if (PLACEHOLDER_ENTRY_EXPRESSION.test(expression)) return PLACEHOLDER_ENTRY_FIELDS;
   if (expression === 'traits') return options.traits ? mapNameEntries(options.traits, 'trait', true) : null;
   if (TRAIT_ENTRY_EXPRESSION.test(expression)) return TRAIT_ENTRY_FIELDS;
-  const turnInput = /^(.+)\.(previous|requested)$/.exec(expression);
+  const turnInput = /^(.+)\.(previous|delta)$/.exec(expression);
   if (turnInput) {
     if (!looksLikeStat(code, tree, turnInput[1])) return null;
-    return turnInput[2] === 'previous' ? PREVIOUS_FIELDS : REQUESTED_FIELDS;
+    return turnInput[2] === 'previous' ? PREVIOUS_FIELDS : DELTA_MEMBERS;
+  }
+  const deltaMember = /^(.+)\.delta\.([A-Za-z_$][\w$]*)$/.exec(expression);
+  if (deltaMember && DELTA_MEMBERS.some((member) => member.name === deltaMember[2])) {
+    return looksLikeStat(code, tree, deltaMember[1]) ? DELTA_FIELDS : null;
   }
   return BUILTIN_MEMBERS.get(expression)
     ?? (looksLikeStat(code, tree, expression) ? STAT_FIELDS : null);

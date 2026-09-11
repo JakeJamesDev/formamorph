@@ -152,25 +152,50 @@ describe('executeStatCode self and turn inputs', () => {
     expect((await run('return self === stats.Mood ? 1 : 0;')).value).toBe(1);
   });
 
+  /** Every `delta` source of `self` as the sandbox reads it, as JSON. */
+  const readDelta = async (turn?: StatCodeRunOptions['turn'], target = 'self') => {
+    const log = vi.spyOn(console, 'log').mockImplementation(() => {});
+    const res = await executeStatCode(`console.log(JSON.stringify(${target}.delta));`, stats, me, { turn });
+    expect(res.error).toBeNull();
+    return JSON.parse(String(log.mock.calls[0]?.[0]));
+  };
+  const zero = { value: 0, min: 0, max: 0, regen: 0 };
+
   it('carries the turn inputs on every entry, not only on self', async () => {
     const turn = {
       other: {
         previous: makeStat({ id: 'other', name: 'Health', value: 90, max: 100 }),
-        requested: { value: -25, max: 10 },
-        regenApplied: 5,
+        delta: { ai: { value: -25, max: 10 }, regen: { value: 5 } },
       },
     };
-    const res = await run(
-      'const h = stats.Health; return h.previous.value + h.requested.value + h.requested.max + h.regenApplied;',
-      turn,
-    );
-    expect(res.value).toBe(80);
+    expect(await readDelta(turn, 'stats.Health')).toEqual({
+      ai: { ...zero, value: -25, max: 10 },
+      regen: { ...zero, value: 5 },
+      total: { ...zero, value: -20, max: 10 },
+      actual: { ...zero, value: -20 },
+    });
+  });
+
+  it('reads actual as the current numbers minus previous, field by field', async () => {
+    const turn = { me: { previous: makeStat({ id: 'me', value: 30, min: 5, max: 80, regen: 2 }) } };
+    expect((await readDelta(turn)).actual).toEqual({ value: 10, min: -5, max: 20, regen: -2 });
   });
 
   it('reads an untouched turn when the caller passes no inputs', async () => {
-    const res = await run(`return self.previous.value === 40 && self.previous.max === 100
-      && self.requested.value === 0 && self.requested.max === 0 && self.regenApplied === 0 ? 1 : 0;`);
-    expect(res.value).toBe(1);
+    expect(await readDelta()).toEqual({ ai: zero, regen: zero, total: zero, actual: zero });
+    expect((await run('return self.previous.value === 40 && self.previous.max === 100 ? 1 : 0;')).value).toBe(1);
+  });
+
+  it('injects neither requested nor regenApplied', async () => {
+    const res = await run('return "requested" in self || "regenApplied" in self || "requested" in stats.Health ? 1 : 0;');
+    expect(res.value).toBe(0);
+  });
+
+  it('freezes delta at every depth, so a write to it changes nothing', async () => {
+    const turn = { me: { delta: { ai: { value: 7 } } } };
+    const code = 'self.delta.ai.value = 99; self.delta.total = null; stats.Health.delta.actual.max = 5;'
+      + ' return self.delta.ai.value + self.delta.total.value + stats.Health.delta.actual.max;';
+    expect((await run(code, turn)).value).toBe(14);
   });
 
   it('carries previous as the whole stat, not only value and max', async () => {
