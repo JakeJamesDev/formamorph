@@ -234,9 +234,8 @@ describe('built-in templates', () => {
         if (picked !== undefined) values[slot.name] = picked;
       }
       const result = await executeStatCode(fillTemplate(template.code, values), world, self, {
-        deltaHours: 2,
-        elapsedHours: 12,
-      }, undefined, placeholders, traits);
+        clock: { deltaHours: 2, elapsedHours: 12 }, placeholders, traits,
+      });
       expect(result.error, template.name).toBeNull();
       // A template writes a value, a bound, a placeholder, or a trait; one that does nothing is broken.
       const wrote = result.value !== null || !!result.bounds || !!result.placeholders?.length || !!result.traits?.length;
@@ -268,7 +267,7 @@ describe('built-in templates', () => {
   describe('the write templates', () => {
     const run = (id: string, values: Record<string, string>) => {
       const template = BUILT_IN_TEMPLATES.find(t => t.id === id)!;
-      return executeStatCode(fillTemplate(template.code, values), world, self, undefined, undefined, placeholders, traits);
+      return executeStatCode(fillTemplate(template.code, values), world, self, { placeholders, traits });
     };
 
     it('sets the chosen bound from another stat times a factor, and leaves the value alone', async () => {
@@ -287,7 +286,7 @@ describe('built-in templates', () => {
       const high = { ...self, value: 200 };
       const template = BUILT_IN_TEMPLATES.find(t => t.id === 'builtin-placeholder-follows-stat')!;
       const atMax = await executeStatCode(
-        fillTemplate(template.code, { placeholder: 'Mood' }), [high, ...world.slice(1)], high, undefined, undefined, placeholders, traits,
+        fillTemplate(template.code, { placeholder: 'Mood' }), [high, ...world.slice(1)], high, { placeholders, traits },
       );
       // At Max the index would run past the list; it clamps to the last value.
       expect(atMax.placeholders).toEqual([{ name: 'Mood', text: 'furious' }]);
@@ -313,7 +312,7 @@ describe('built-in templates', () => {
   it('computes the values the descriptions promise', async () => {
     const run = async (id: string, values: Record<string, string>, clock?: { deltaHours: number; elapsedHours: number }) => {
       const template = BUILT_IN_TEMPLATES.find(t => t.id === id)!;
-      return executeStatCode(fillTemplate(template.code, values), world, self, clock);
+      return executeStatCode(fillTemplate(template.code, values), world, self, { clock });
     };
 
     // Weight 0.5 is the plain average of Health 80 and Strength 20.
@@ -357,7 +356,7 @@ describe('built-in templates', () => {
     const template = BUILT_IN_TEMPLATES.find(t => t.id === 'builtin-random-roll')!;
     const code = fillTemplate(template.code, {});
     for (const elapsedHours of [1, 7, 23]) {
-      const { value, error } = await executeStatCode(code, world, self, { deltaHours: 1, elapsedHours });
+      const { value, error } = await executeStatCode(code, world, self, { clock: { deltaHours: 1, elapsedHours } });
       expect(error).toBeNull();
       expect(value).toBeGreaterThanOrEqual(0);
       expect(value).toBeLessThanOrEqual(200);

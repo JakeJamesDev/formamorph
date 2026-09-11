@@ -370,10 +370,10 @@ export function createCodeSession(options: CodeSessionOptions): CodeSession {
     canUndo: () => undoDepth(view.state) > 0,
     canRedo: () => redoDepth(view.state) > 0,
     setStatNames(names) { statNames = names; },
+    // A rename or a new entry can clear or raise a name diagnostic with no edit to the code.
     setPlaceholders(next) {
       if (next === placeholders) return;
       placeholders = next;
-      // A rename or a new placeholder can clear or raise a name diagnostic with no edit to the code.
       forceLinting(view);
     },
     setTraits(next) {

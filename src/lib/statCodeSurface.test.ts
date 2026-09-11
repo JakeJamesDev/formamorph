@@ -53,7 +53,7 @@ describe('the described surface against the sandbox that provides it', () => {
     const entry = { name: 'Mood', value: 'calm', values: ['calm'], roll: () => 'calm' };
     await expect(executeStatCode(
       `return Object.keys(placeholders.Mood).sort().join(',') === ${JSON.stringify(expected)} ? 1 : 0;`,
-      stats, stats[0], undefined, undefined, [entry],
+      stats, stats[0], { placeholders: [entry] },
     )).resolves.toEqual({ value: 1, error: null });
   });
 
@@ -61,14 +61,14 @@ describe('the described surface against the sandbox that provides it', () => {
     const expected = TRAIT_ENTRY_FIELDS.map(entry => entry.name).sort().join(',');
     await expect(executeStatCode(
       `return Object.keys(traits.Brave).sort().join(',') === ${JSON.stringify(expected)} ? 1 : 0;`,
-      stats, stats[0], undefined, undefined, [], [{ name: 'Brave', enabled: false, acquired: false }],
+      stats, stats[0], { traits: [{ name: 'Brave', enabled: false, acquired: false }] },
     )).resolves.toEqual({ value: 1, error: null });
   });
 
   // The one writable trait field; a write the host never reads back is the editor promising a switch that does nothing.
   it('reads a write to a trait’s enabled back out of the sandbox', async () => {
-    const result = await executeStatCode('traits.Brave.enabled = true;', stats, stats[0], undefined, undefined, [],
-      [{ name: 'Brave', enabled: false, acquired: false }]);
+    const result = await executeStatCode('traits.Brave.enabled = true;', stats, stats[0],
+      { traits: [{ name: 'Brave', enabled: false, acquired: false }] });
     expect(result.traits).toEqual([{ name: 'Brave', enabled: true }]);
   });
 

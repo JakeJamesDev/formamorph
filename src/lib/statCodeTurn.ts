@@ -116,7 +116,7 @@ export async function runStatCodeTurn(turn: StatCodeTurn): Promise<StatCodeTurnR
   const placeholderWritesByStat = new Map<string, readonly PlaceholderWrite[]>();
   const traitWritesByStat = new Map<string, readonly TraitWrite[]>();
   await Promise.all(coded.map(async (stat) => {
-    const result = await executeStatCode(stat.code ?? '', live, stat, turn.clock, inputs, placeholders, traits);
+    const result = await executeStatCode(stat.code ?? '', live, stat, { clock: turn.clock, turn: inputs, placeholders, traits });
     if (result.error) {
       console.error(`Error executing code for stat ${stat.name}:`, result.error);
       return;

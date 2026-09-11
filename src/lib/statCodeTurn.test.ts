@@ -225,8 +225,12 @@ describe('runStatCodeTurn placeholders', () => {
     await expect(run('return placeholders["Eye Color"].value === "green" ? 1 : 0;', [eyes])).resolves.toBe(1);
   });
 
-  it('reads an unknown name as undefined', async () => {
-    await expect(run('return placeholders.Nope === undefined ? 1 : 0;', [mood])).resolves.toBe(1);
+  it('reads an unknown name as a placeholder with no text, so a write to it is dropped rather than thrown', async () => {
+    await expect(run('return placeholders.Nope.value === "" ? 1 : 0;', [mood])).resolves.toBe(1);
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    await expect(run('placeholders.Nope.value = "x"; return 1;', [mood])).resolves.toBe(1);
+    expect(warn).toHaveBeenCalledWith(expect.stringContaining('Nope'));
+    warn.mockRestore();
   });
 
   it('lets the last authored of two same-named placeholders win', async () => {

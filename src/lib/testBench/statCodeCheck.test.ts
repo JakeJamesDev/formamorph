@@ -90,6 +90,15 @@ describe('the on-demand stat-code check', () => {
     expect(found.message).not.toContain('throws');
   });
 
+  it('reports a placeholder written something other than text as a wrong-type write, not as a throw', async () => {
+    const [found] = await checkStatCode({ ...base([
+      stat({ id: 's1', name: 'Fertility', code: 'placeholders.Mood.value = {};' }),
+    ]), placeholders: [{ id: 'p1', name: 'Mood', values: [{ id: 'v1', text: 'calm' }] }] });
+    expect(found.ruleId).toBe(STAT_CODE_EXECUTION.id);
+    expect(found.message).toContain('wrong type');
+    expect(found.message).not.toContain('throws');
+  });
+
   it('accepts code that sets its value through self and returns nothing', async () => {
     expect(await checkStatCode(base([
       stat({ id: 's1', name: 'Fertility', code: 'self.value = 25;' }),

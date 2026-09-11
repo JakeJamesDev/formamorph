@@ -470,7 +470,7 @@ const StatManager = ({ stat, tab, onTabChange, focusField }: {
               // player has no traits. A switch is reported here and never applied.
               const placeholderEntries = sandboxPlaceholders({ placeholders, rolls: {} });
               const traitEntries = sandboxTraits({ acquired: [], disabledTraitIds: [], appliedValues: {}, world: { traits, groups: [] } });
-              const result = await executeStatCode(source, stats, editingStat as Stat, undefined, undefined, placeholderEntries, traitEntries);
+              const result = await executeStatCode(source, stats, editingStat as Stat, { placeholders: placeholderEntries, traits: traitEntries });
               if (result.error) {
                 setCodeError(result.error);
               } else {
