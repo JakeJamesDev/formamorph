@@ -38,6 +38,8 @@ import {
   prunePlaceholderWeights,
   pruneSharedWeights,
   mergePlaceholderWeights,
+  readPlaceholders,
+  type ResolveOptions,
 } from './placeholders';
 
 const P = (id: string, values: string[]): Placeholder => ({ id, name: id, values: phValues(values) });
@@ -1771,5 +1773,47 @@ describe('token codec with placement labels', () => {
     const opts = { placeholders: defs, rolls, setRoll, pick: first };
     expect(resolvePlaceholders(labeled, opts)).toBe(resolvePlaceholders(plain, opts));
     expect(describePlaceholders(labeled, defs)).toBe(describePlaceholders(plain, defs));
+  });
+});
+
+describe('readPlaceholders', () => {
+  const tokOf = (id: string) => tok(id, 'world', `p-${id}`);
+
+  it('reads each placeholder under its roll, a pin masking the roll', () => {
+    const defs = [P('mood', ['calm', 'angry']), P('hair', ['red', 'black'])];
+    const out = readPlaceholders({
+      placeholders: defs, rolls: { world: { mood: 'angry', hair: 'red' } }, pins: { hair: 'silver' },
+    });
+    expect(out.map((r) => [r.id, r.value])).toEqual([['mood', 'angry'], ['hair', 'silver']]);
+  });
+
+  it('lists every value as resolved text, in authored order, benched values and chip values included', () => {
+    const defs: Placeholder[] = [
+      { ...P('mood', ['calm', 'angry']), weights: { [phValueId('angry')]: 0 } },
+      P('name', ['Ada']),
+    ];
+    defs[0].values.push({ id: 'v:chip', text: tokOf('name') });
+    const [mood] = readPlaceholders({ placeholders: defs, rolls: {} });
+    expect(mood.values).toEqual(['calm', 'angry', 'Ada']);
+  });
+
+  it('mints no roll: a Wildcard with none reads as a draw that never reaches the rolls', () => {
+    const rolls: PlaceholderRolls = {};
+    const setRoll = vi.fn();
+    // A caller holding the session's setRoll can still pass it; the read drops it.
+    const opts: ResolveOptions = { placeholders: [P('mood', ['calm', 'angry'])], rolls, setRoll, pick: first };
+    const [mood] = readPlaceholders(opts);
+    expect(mood.value).toBe('calm');
+    expect(setRoll).not.toHaveBeenCalled();
+    expect(rolls).toEqual({});
+  });
+
+  it('draws an unrolled placeholder once per read, so a chip of it elsewhere reads the same', () => {
+    const texts = ['red', 'black'];
+    let calls = 0;
+    const alternate: PlaceholderPick = (values) => values[calls++ % 2].text;
+    const defs = [P('look', [tokOf('hair')]), P('hair', texts)];
+    const out = readPlaceholders({ placeholders: defs, rolls: {}, pick: alternate });
+    expect(out.map((r) => r.value)).toEqual(['red', 'red']);
   });
 });

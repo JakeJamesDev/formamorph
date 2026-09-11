@@ -1,6 +1,10 @@
 import { describe, it, expect } from 'vitest';
 import { statCodeCompletions, statCodeDiagnostics, summarizeProblems } from './statCodeAnalysis';
 import { BUILT_IN_TEMPLATES } from './statCodeTemplates';
+import { PLACEHOLDER_ENTRY_FIELDS } from './statCodeSurface';
+import { phValues } from '@/test/placeholderValues';
+import { encodePlaceholderToken } from './placeholders';
+import type { Placeholder } from '@/types';
 
 /** Completions for a caret written as `|` in the doc, so each case reads as the thing being typed. */
 function completeAt(doc: string, options?: Parameters<typeof statCodeCompletions>[2]) {
@@ -306,5 +310,71 @@ describe('statCodeCompletions', () => {
 
   it('offers nothing for stat names the world does not have', () => {
     expect(labels(`return stats.find(s => s.name === '|');`)).toEqual([]);
+  });
+});
+
+describe('placeholders in stat code', () => {
+  const ph = (id: string, name: string, over: Partial<Placeholder> = {}): Placeholder => ({
+    id, name, values: phValues(['a', 'b']), ...over,
+  });
+  const world = [ph('mood', 'Mood'), ph('eyes', 'Eye Color')];
+
+  it('says nothing about names the world has, by dot or by bracket', () => {
+    expect(messages('return placeholders.Mood.value.length + placeholders["Eye Color"].values.length;', { placeholders: { list: world } }))
+      .toEqual([]);
+  });
+
+  it('flags a name no placeholder has, and names the one it was reaching for', () => {
+    const [problem] = statCodeDiagnostics('return placeholders.Mod.value.length;', { placeholders: { list: world } });
+    expect(problem.severity).toBe('error');
+    expect(problem.message).toBe('No placeholder is named “Mod”. Did you mean “Mood”?');
+  });
+
+  it('flags an unknown name in bracket syntax', () => {
+    expect(messages('return placeholders["Eye Colour"].value.length;', { placeholders: { list: world } }))
+      .toEqual(['No placeholder is named “Eye Colour”. Did you mean “Eye Color”?']);
+  });
+
+  it('flags every name when the world has no placeholders', () => {
+    expect(messages('return placeholders.Mood.value.length;', { placeholders: { list: [] } }))
+      .toEqual(['No placeholder is named “Mood”.']);
+  });
+
+  it('keeps quiet without a world to check against, and about a name computed at run time', () => {
+    expect(messages('return placeholders.Mood.value.length;')).toEqual([]);
+    expect(messages('const key = "Mood";\nreturn placeholders[key].value.length;', { placeholders: { list: [] } })).toEqual([]);
+  });
+
+  it('warns on a shared name and names the placeholder that wins', () => {
+    // An owned placeholder is always a chip value of its owner.
+    const molly = ph('molly', 'Molly', { values: [{ id: 'v:m2', text: encodePlaceholderToken({ id: 'm2', mode: 'world', placementId: 'p1' }) }] });
+    const shared = [ph('m1', 'Mood'), molly, ph('m2', 'Mood', { ownerId: 'molly' })];
+    expect(messages('return placeholders.Mood.value.length;', { placeholders: { list: shared } }))
+      .toEqual(['2 placeholders are named “Mood”. This reads “Molly › Mood”, the last one authored.']);
+  });
+
+  it('names an entity’s own placeholder by its entity when it wins a shared name', () => {
+    const list = [ph('m1', 'Mood'), ph('m2', 'Mood')];
+    const owners = new Map([['m2', { kind: 'entity' as const, id: 'ent-bo', name: 'Bo' }]]);
+    expect(messages('return placeholders.Mood.value.length;', { placeholders: { list, owners } }))
+      .toEqual(['2 placeholders are named “Mood”. This reads “Bo › Mood”, the last one authored.']);
+  });
+
+  it('offers the names after placeholders., leaving out any a dot cannot reach', () => {
+    expect(labels('return placeholders.|', { placeholders: { list: world } })).toEqual(['Mood']);
+  });
+
+  it('offers every name inside placeholders[""], and no stat name', () => {
+    expect(labels('return placeholders["|"];', { placeholders: { list: world }, statNames: ['Health'] })).toEqual(['Mood', 'Eye Color']);
+  });
+
+  it('offers the entry members after a placeholder, by dot or by bracket', () => {
+    const members = PLACEHOLDER_ENTRY_FIELDS.map(entry => entry.name);
+    expect(labels('return placeholders.Mood.|', { placeholders: { list: world } })).toEqual(members);
+    expect(labels('return placeholders["Eye Color"].|', { placeholders: { list: world } })).toEqual(members);
+  });
+
+  it('offers placeholders among the globals', () => {
+    expect(labels('return pla|')).toContain('placeholders');
   });
 });

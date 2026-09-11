@@ -85,6 +85,31 @@ export interface StatTurnInputs {
   regenApplied?: number;
 }
 
+/** One entry of the sandbox's `placeholders` map. `roll` runs on the host; the rest rides in as data. */
+export interface SandboxPlaceholder {
+  name: string;
+  value: string;
+  values: readonly string[];
+  roll: () => string;
+}
+
+// The host hook every entry's `roll()` calls. The prelude takes it and deletes the global before user code runs.
+const ROLL_HOOK = '__formamorphRollPlaceholder';
+
+/** The prelude line that builds `placeholders`. Parsed from a JSON string, not a literal, so a name like
+ *  `__proto__` is an own key; the map has no prototype, so `toString` is not a name. */
+const placeholdersPrelude = (entries: readonly SandboxPlaceholder[]): string => {
+  const data = Object.fromEntries(entries.map(({ name, value, values }) => [name, { value, values }]));
+  return [
+    `const placeholders = ((roll) => {`,
+    `  const map = Object.assign(Object.create(null), JSON.parse(${JSON.stringify(JSON.stringify(data))}));`,
+    `  for (const name of Object.keys(map)) map[name].roll = () => roll(name);`,
+    `  return map;`,
+    `})(globalThis.${ROLL_HOOK});`,
+    `delete globalThis.${ROLL_HOOK};`,
+  ].join('\n');
+};
+
 const nonNumberFailure = (what: string): StatCodeResult => ({
   value: null,
   error: `Error: ${what}\nStack: No stack trace available`,
@@ -92,13 +117,15 @@ const nonNumberFailure = (what: string): StatCodeResult => ({
 });
 
 /** Run a stat's untrusted `code` in an isolated QuickJS (WASM) VM over `stats`, `self`, the turn inputs,
- *  and the clock. A number return or a `self.value` write sets the value, clamped; a failure discards it. */
+ *  the clock, and `placeholders`. A number return or a `self.value` write sets the value, clamped; a
+ *  failure discards it. Of two placeholders sharing a name, the later one is the entry. */
 export const executeStatCode = async (
   code: string,
   stats: Stat[],
   currentStat: Stat,
   clock?: StatClock,
   turn?: Readonly<Record<string, StatTurnInputs>>,
+  placeholders: readonly SandboxPlaceholder[] = [],
 ): Promise<StatCodeResult> => {
   // If code is empty, return null (use the manually set value)
   if (!code || code.trim() === '') {
@@ -152,14 +179,20 @@ export const executeStatCode = async (
       logFn.dispose();
       consoleObj.dispose();
 
-      // The stat data rides in as JSON literals (JSON is valid JS expression syntax), so no host
-      // references ever enter the VM. The user code runs as a function body so `return` works; the
+      const rollByName = new Map(placeholders.map((entry) => [entry.name, entry.roll]));
+      const rollFn = vm.newFunction('roll', (nameHandle) => vm.newString(rollByName.get(vm.getString(nameHandle))?.() ?? ''));
+      vm.setProp(vm.global, ROLL_HOOK, rollFn);
+      rollFn.dispose();
+
+      // The stat data rides in as JSON literals (JSON is valid JS expression syntax); console.log and the
+      // roll hook are the only host functions. The user code runs as a function body so `return` works; the
       // program's completion value pairs what it returned with what `self.value` holds afterwards.
       const program = [
         `const stats = ${JSON.stringify(statsData)};`,
         `const currentStatId = ${JSON.stringify(String(currentStat.id))};`,
         `const self = ${selfIndex >= 0 ? `stats[${selfIndex}]` : JSON.stringify(selfData)};`,
         ...Object.entries(resolveClock(clock)).map(([name, value]) => `const ${name} = ${JSON.stringify(value)};`),
+        placeholdersPrelude(placeholders),
         `[(function() {`,
         code,
         `})(), self.value];`,

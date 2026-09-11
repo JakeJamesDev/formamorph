@@ -36,6 +36,7 @@ export const SANDBOX_GLOBALS: readonly SurfaceEntry[] = [
   { name: 'stats', detail: 'Stat[]', info: 'Every stat in the world, as plain data. Look one up by name or id.' },
   { name: 'currentStatId', detail: 'string', info: 'The id of the stat this code belongs to. self.id is the same.' },
   ...STAT_CLOCK_VARS.map((name) => CLOCK_INFO[name]),
+  { name: 'placeholders', detail: 'object', info: 'Every placeholder in the world by name. Use placeholders["Two Words"] for a name with a space.' },
   { name: 'console', detail: 'object', info: 'Only console.log — output shows up in the browser console.' },
 ];
 
@@ -68,6 +69,13 @@ export const PREVIOUS_FIELDS: readonly SurfaceEntry[] = [
 export const REQUESTED_FIELDS: readonly SurfaceEntry[] = [
   { name: 'value', detail: 'number', info: 'The change to the value the AI asked for this turn. Zero when it asked for none.' },
   { name: 'max', detail: 'number', info: 'The change to the max the AI asked for this turn. Zero when it asked for none.' },
+];
+
+/** The members of one entry in `placeholders`. */
+export const PLACEHOLDER_ENTRY_FIELDS: readonly SurfaceEntry[] = [
+  { name: 'value', detail: 'string', info: 'The text the placeholder reads as now, with pins applied.' },
+  { name: 'values', detail: 'string[]', info: 'Every value the author wrote, in order, as text. Values with weight 0 are included.' },
+  { name: 'roll', detail: '() => string', info: 'Draw one value with the author’s weights. The draw is not kept.' },
 ];
 
 /** Built-ins the VM already has. Listed so a reference to one isn't flagged, and so completions offer the

@@ -20,6 +20,7 @@ import {
 import { HelpButton } from "@/components/HelpButton";
 import { HintInfo } from "@/components/SettingsRows";
 import { executeStatCode } from "@/lib/statCodeExecutor";
+import { sandboxPlaceholders } from "@/lib/statCodePlaceholders";
 import { StatCodeTemplateDialog } from "@/components/modals/StatCodeTemplateDialog";
 import { CodeArea } from "@/components/prompt/CodeArea";
 import { MultiSelect } from "@/components/ui/multi-select";
@@ -61,7 +62,7 @@ const StatManager = ({ stat, tab, onTabChange, focusField }: {
   onTabChange: (tab: StatPanelTab) => void;
   focusField?: FocusFieldHint | null;
 }) => {
-  const { updateStat, stats, placeholders } = useGameData();
+  const { updateStat, stats, placeholders, placeholderOwners } = useGameData();
   const [newDescriptor, setNewDescriptor] = useState<{ threshold: number | string; description: string }>({
     threshold: "",
     description: "",
@@ -89,6 +90,10 @@ const StatManager = ({ stat, tab, onTabChange, focusField }: {
   const statNames = useMemo(
     () => stats.map(entry => entry.name).filter((name): name is string => !!name),
     [stats],
+  );
+  const codePlaceholders = useMemo(
+    () => ({ list: placeholders, owners: placeholderOwners }),
+    [placeholders, placeholderOwners],
   );
 
   /** Drop what the last test said. Editing the code makes every part of that report stale together. */
@@ -419,6 +424,7 @@ const StatManager = ({ stat, tab, onTabChange, focusField }: {
         onChange={(code) => { clearTestReport(); handleChange("code", code); }}
         ariaLabel="Stat Code"
         statNames={statNames}
+        placeholders={codePlaceholders}
         // Its caption is the section heading, which full screen leaves behind — so the field names
         // itself in the toolbar and stays labeled in both states.
         label="Code"
@@ -440,13 +446,15 @@ const StatManager = ({ stat, tab, onTabChange, focusField }: {
               // Only the editor's chunk holds the reader, and CodeArea fetches that chunk on
               // demand — so this stays off the world editor's own bundle.
               const { statCodeDiagnostics, summarizeProblems } = await import('@/lib/statCodeAnalysis');
-              setCodeProblems(summarizeProblems(statCodeDiagnostics(source)));
+              setCodeProblems(summarizeProblems(statCodeDiagnostics(source, { placeholders: codePlaceholders })));
             } catch {
               // What the run itself found is the point; the count is what the editor adds to it.
             }
 
             try {
-              const result = await executeStatCode(source, stats, editingStat as Stat);
+              // No playthrough behind the editor: an unrolled placeholder reads as a fresh draw.
+              const placeholderEntries = sandboxPlaceholders({ placeholders, rolls: {} });
+              const result = await executeStatCode(source, stats, editingStat as Stat, undefined, undefined, placeholderEntries);
               if (result.error) {
                 setCodeError(result.error);
               } else if (result.value !== null) {

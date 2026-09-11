@@ -9,6 +9,7 @@
  */
 import { executeStatCode } from '@/lib/statCodeExecutor';
 import { allPlaceholders } from '@/lib/placeholderHomes';
+import { sandboxPlaceholders } from '@/lib/statCodePlaceholders';
 import { labelPlaceholders, worldPlacementLetters } from '@/lib/placementLetters';
 import { finding, STAT_CODE_EXECUTION, type Finding, type RuleWorld } from './rules';
 import type { Stat } from '@/types';
@@ -39,8 +40,10 @@ export async function checkStatCode(world: RuleWorld): Promise<Finding[]> {
   const stats = atStartingValues(world.stats);
   const coded = stats.filter((stat) => stat.code?.trim());
   const letters = worldPlacementLetters(world);
+  // Turn one has no rolls yet, so an unrolled placeholder reads as a fresh draw.
+  const placeholders = coded.length ? sandboxPlaceholders({ placeholders: allPlaceholders(world), rolls: {} }) : [];
   const results = await Promise.all(coded.map(async (stat) => {
-    const { error, kind } = await executeStatCode(stat.code ?? '', stats, stat);
+    const { error, kind } = await executeStatCode(stat.code ?? '', stats, stat, undefined, undefined, placeholders);
     if (!error) return null;
     const name = labelPlaceholders(stat.name ?? '', allPlaceholders(world), { letters }).trim() || 'Untitled';
     return finding(STAT_CODE_EXECUTION, `Code on “${name}” ${FAILURE[kind ?? 'throw']}`, [{ id: stat.id, name }]);

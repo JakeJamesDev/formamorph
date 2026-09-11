@@ -4,7 +4,9 @@
  */
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { runStatCodeTurn, type StatCodeTurn } from './statCodeTurn';
-import type { PlayerStat } from '@/types';
+import type { Placeholder, PlaceholderRolls, PlayerStat } from '@/types';
+import { encodePlaceholderToken, type PlaceholderPick } from './placeholders';
+import { phValueId, phValues } from '@/test/placeholderValues';
 
 const stat = (over: Partial<PlayerStat>): PlayerStat => ({
   id: 'x', name: 'Stat', type: 'number', description: '', min: 0, max: 100, value: 50, regen: 0, descriptors: [],
@@ -140,5 +142,95 @@ describe('runStatCodeTurn', () => {
     const second = await runStatCodeTurn(input);
     expect(valueOf(second.stats, 'a')).toBe(valueOf(first.stats, 'a'));
     expect(valueOf(second.stats, 'a')).toBe(60);
+  });
+});
+
+describe('runStatCodeTurn placeholders', () => {
+  beforeEach(() => vi.spyOn(console, 'error').mockImplementation(() => {}));
+  afterEach(() => vi.restoreAllMocks());
+
+  const ph = (id: string, name: string, texts: string[], over: Partial<Placeholder> = {}): Placeholder => ({
+    id, name, values: phValues(texts), ...over,
+  });
+  const mood = ph('mood', 'Mood', ['calm', 'angry', 'sad']);
+
+  /** One stat running `code`, over `placeholders` with `rolls` and `pins`. */
+  const run = (code: string, placeholders: Placeholder[], rolls: PlaceholderRolls = {}, extra: { pins?: Record<string, string>; pick?: PlaceholderPick } = {}) =>
+    runStatCodeTurn(turn({
+      stats: [stat({ id: 'a', value: 0, code })],
+      placeholders: { placeholders, rolls, ...extra },
+    })).then((out) => valueOf(out.stats, 'a'));
+
+  it('reads a placeholder’s current value under the playthrough’s roll', async () => {
+    const code = 'return { calm: 1, angry: 2, sad: 3 }[placeholders.Mood.value];';
+    await expect(run(code, [mood], { world: { mood: 'angry' } })).resolves.toBe(2);
+  });
+
+  it('reads a pin over the roll', async () => {
+    const code = 'return { calm: 1, angry: 2, sad: 3 }[placeholders.Mood.value];';
+    await expect(run(code, [mood], { world: { mood: 'angry' } }, { pins: { mood: 'sad' } })).resolves.toBe(3);
+  });
+
+  it('lists every authored value as text, benched values and chip values included', async () => {
+    const name = ph('name', 'Name', ['Ada']);
+    const chip = encodePlaceholderToken({ id: 'name', mode: 'world', placementId: 'p1' });
+    const benched = ph('mood', 'Mood', ['calm', chip], { weights: { [phValueId('calm')]: 0 } });
+    const code = 'return placeholders.Mood.values.join("|") === "calm|Ada" ? 1 : 0;';
+    await expect(run(code, [benched, name])).resolves.toBe(1);
+  });
+
+  it('draws roll() with the author’s weights through the picker', async () => {
+    const weighted = ph('mood', 'Mood', ['calm', 'angry'], { weights: { [phValueId('calm')]: 3 } });
+    const pick = vi.fn<PlaceholderPick>((values) => values[1].text);
+    await expect(run('return placeholders.Mood.roll() === "angry" ? 1 : 0;', [weighted], {}, { pick })).resolves.toBe(1);
+    expect(pick).toHaveBeenCalledWith(weighted.values, weighted.weights);
+  });
+
+  it('never rolls a benched value', async () => {
+    const weighted = ph('mood', 'Mood', ['calm', 'angry'], { weights: { [phValueId('calm')]: 0 } });
+    const code = 'let n = 0; for (let i = 0; i < 200; i++) if (placeholders.Mood.roll() === "calm") n++; return n + 10;';
+    // Offset from the stat's 0, so a run that failed outright cannot pass as zero draws.
+    await expect(run(code, [weighted], { world: { mood: 'angry' } })).resolves.toBe(10);
+  });
+
+  it('rolls a chip value as its resolved chain', async () => {
+    const name = ph('name', 'Name', ['Ada']);
+    const chip = encodePlaceholderToken({ id: 'name', mode: 'world', placementId: 'p1' });
+    const pick: PlaceholderPick = (values) => values[0].text;
+    await expect(run('return placeholders.Who.roll() === "Ada" ? 1 : 0;', [ph('who', 'Who', [chip, 'Bo']), name], {}, { pick }))
+      .resolves.toBe(1);
+  });
+
+  it('persists neither a roll() nor a read of an unrolled placeholder', async () => {
+    const rolls: PlaceholderRolls = { world: {} };
+    const code = 'placeholders.Mood.roll(); const seen = placeholders.Mood.value; return 1;';
+    await expect(run(code, [mood], rolls)).resolves.toBe(1);
+    expect(rolls).toEqual({ world: {} });
+  });
+
+  it('reads a placeholder with no values as empty text, and rolls it as empty text', async () => {
+    const code = 'const e = placeholders.Empty; return e.value === "" && e.values.length === 0 && e.roll() === "" ? 1 : 0;';
+    await expect(run(code, [ph('empty', 'Empty', [])])).resolves.toBe(1);
+  });
+
+  it('reaches a name that is not an identifier with bracket syntax', async () => {
+    const eyes = ph('eyes', 'Eye Color', ['green']);
+    await expect(run('return placeholders["Eye Color"].value === "green" ? 1 : 0;', [eyes])).resolves.toBe(1);
+  });
+
+  it('reads an unknown name as undefined', async () => {
+    await expect(run('return placeholders.Nope === undefined ? 1 : 0;', [mood])).resolves.toBe(1);
+  });
+
+  it('lets the last authored of two same-named placeholders win', async () => {
+    const first = ph('m1', 'Mood', ['calm']);
+    const last = ph('m2', 'Mood', ['angry']);
+    await expect(run('return placeholders.Mood.value === "angry" && placeholders.Mood.roll() === "angry" ? 1 : 0;', [first, last]))
+      .resolves.toBe(1);
+  });
+
+  it('offers an empty map when the turn carries no placeholders', async () => {
+    const out = await runStatCodeTurn(turn({ stats: [stat({ id: 'a', value: 0, code: 'return Object.keys(placeholders).length + 1;' })] }));
+    expect(valueOf(out.stats, 'a')).toBe(1);
   });
 });

@@ -544,7 +544,7 @@ const GameViewer = ({
   // values above stay untouched for roll priming, which has to see the chips it is rolling for.
   const {
     entities, locations, stats, traits, traitGroups, dictionary, playerStats, viewStats,
-    currentLocation, traitOrder, resolvePH, resolveWith, resolveTraitText,
+    currentLocation, traitOrder, pins, resolvePH, resolveWith, resolveTraitText,
   } = useResolvedWorld();
   // The session's rolls, for the one pass that collects pins before they are in state (the init effect).
   const { rolls: sessionRolls } = usePlaceholderSession();
@@ -2262,6 +2262,7 @@ const GameViewer = ({
         const stats = resolveStatNames(regen.stats, resolvePH);
         const { stats: coded, moved } = await runStatCodeTurn({
           stats, enabled, previous: before, asks, regenApplied: regen.applied, clock,
+          placeholders: { placeholders, rolls: sessionRolls, pins },
         });
         if (moved.length === 0) return;
         const codeChanges = appliedStatDeltas(stats, coded);
@@ -2284,7 +2285,7 @@ const GameViewer = ({
         console.error("Error processing stat code:", error);
       }
     },
-    [setPlayerStats, setRecentStatChanges, setHeldStatChanges, resolvePH],
+    [setPlayerStats, setRecentStatChanges, setHeldStatChanges, resolvePH, placeholders, sessionRolls, pins],
   );
 
   // Whether any stat's code reads the clock, and so needs a per-turn run of its own on turns the AI
