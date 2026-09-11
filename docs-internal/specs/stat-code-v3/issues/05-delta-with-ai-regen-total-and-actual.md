@@ -1,6 +1,7 @@
 # 05: Delta With Ai, Regen, Total, And Actual
 
-Status: ready-for-agent
+Status: ready-for-human
+Base: f8b199db
 Blocked by: 04
 Recommended model: Claude Opus 5 (`claude-opus-5`)
 Reasoning effort: medium
@@ -13,16 +14,23 @@ Every stat entry, `self` included, carries a read-only `delta` with four members
 
 ## Acceptance criteria
 
-- [ ] `delta.ai`, `delta.regen`, `delta.total`, `delta.actual` each carry `value`, `min`, `max`, `regen`
-- [ ] On a capped ask, `actual.value` is short of `total.value` by what the range took; `total.value === ai.value + regen.value`
-- [ ] `delta.actual.max` reflects an AI max change that landed; `delta.actual.min` reflects a bound a trait moved since turn start
-- [ ] A write to any `delta` field changes nothing; the editor underlines it
-- [ ] `requested` and `regenApplied` are not injected; the drift guard and surface list agree
-- [ ] Completions two levels down under `delta`
-- [ ] Guide, help, and the v2 changelog entry use the new names; the guide shows `total - actual` once
-- [ ] The e2e stat-code spec gains a case reading `delta.ai.value` and `previous.min` through a real turn
-- [ ] Four gates green; graph updated
+- [x] `delta.ai`, `delta.regen`, `delta.total`, `delta.actual` each carry `value`, `min`, `max`, `regen`
+- [x] On a capped ask, `actual.value` is short of `total.value` by what the range took; `total.value === ai.value + regen.value`
+- [x] `delta.actual.max` reflects an AI max change that landed; `delta.actual.min` reflects a bound a trait moved since turn start
+- [x] A write to any `delta` field changes nothing; the editor underlines it
+- [x] `requested` and `regenApplied` are not injected; the drift guard and surface list agree
+- [x] Completions two levels down under `delta`
+- [x] Guide, help, and the v2 changelog entry use the new names; the guide shows `total - actual` once
+- [x] The e2e stat-code spec gains a case reading `delta.ai.value` and `previous.min` through a real turn
+- [x] Four gates green; graph updated
 
 ## Blocked by
 
 - 04 — Previous Is The Whole Stat, Frozen
+
+## Comments
+
+- **Built** in `14f61168`, review fold in the commit after it. The executor computes `delta` in `marshal` from `DELTA_SOURCES`, so a later source such as `delta.trait` is one list entry plus its turn input, and it lands in `total` on its own. `actual` is the marshaled numbers minus `previous`.
+- **Host names kept.** `StatCodeTurn` still takes `asks` and a `regenApplied` map. Only the sandbox names changed, so GameViewer passes the same inputs.
+- **Nested writes.** A write into another stat's `delta` or `previous` (`stats.Health.delta.ai.value = 1`) is flagged by ticket 01's `checkWrite` walk in `df5ce5ad`. `self.delta.*` uses the existing read-only field check.
+- **Open, not in scope:** `marshalSnapshot` reads a max of `0` as `100` (`stat.max || 100`), so a max going from 0 to 20 reads `delta.actual.max = -80`. The fallback predates this ticket; `actual` is the first field that reports it.

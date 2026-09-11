@@ -72,7 +72,7 @@ Each stat in the `stats` array, `self` included, exposes the following propertie
 | `value` | Current value, with this turn's AI change and regen applied |
 | `regen` | Regen per story hour, with traits applied |
 | `previous` | The whole stat as it stood at the start of the turn — `id`, `name`, `type`, `description`, `min`, `max`, `value`, `regen`. Read-only |
-| `delta` | Every change this turn made, by who made it: `ai`, `regen`, `total`, `actual`. Read-only |
+| `delta` | Every change this turn made, by source: `ai`, `regen`, `total`, `actual`. Read-only |
 
 > ℹ️ Only these fields are passed into the sandbox. A stat's own `code` and `descriptors` are **not** available from inside a script.
 
@@ -101,7 +101,7 @@ A bound your code sets wins over the authored bound, trait changes, and the AI's
 
 Every stat carries what the turn did before the code ran. `previous` holds the whole stat — every field `self` has — as it stood at the start of the turn.
 
-`delta` holds every change the turn made to the stat, by who made it. Each member has the same four fields: `value`, `min`, `max`, and `regen`. A field that a source cannot move reads `0`.
+`delta` holds every change the turn made to the stat, by source. Each member has the same four fields: `value`, `min`, `max`, and `regen`. A field that a source cannot move reads `0`.
 
 | Member | What it is |
 | --- | --- |

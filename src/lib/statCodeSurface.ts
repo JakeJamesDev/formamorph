@@ -43,6 +43,30 @@ export const SANDBOX_GLOBALS: readonly SurfaceEntry[] = [
 /** Names the sandbox injects for older code but never offers or documents. */
 export const SANDBOX_UNDOCUMENTED_GLOBALS: readonly string[] = ['currentStatId'];
 
+/** An object's members as its completion detail: `{ a, b }`. */
+const shapeOf = (entries: readonly SurfaceEntry[]) => `{ ${entries.map((entry) => entry.name).join(', ')} }`;
+
+/** The fields on every member of `delta`. */
+export const DELTA_FIELDS: readonly SurfaceEntry[] = [
+  { name: 'value', detail: 'number', info: 'The change to the value.' },
+  { name: 'min', detail: 'number', info: 'The change to the lower bound.' },
+  { name: 'max', detail: 'number', info: 'The change to the upper bound.' },
+  { name: 'regen', detail: 'number', info: 'The change to regen per story hour.' },
+];
+
+/** What each change source means. Keyed off the executor's own list, as the clock is. */
+const DELTA_SOURCE_INFO: Record<DeltaSource, SurfaceEntry> = {
+  ai: { name: 'ai', detail: shapeOf(DELTA_FIELDS), info: 'The change the AI asked for this turn, raw: before flags and the range.' },
+  regen: { name: 'regen', detail: shapeOf(DELTA_FIELDS), info: 'What regen did this turn, after clamping. Only value moves.' },
+};
+
+/** The members of a stat's `delta`: one per change source, then their sum and what landed. */
+export const DELTA_MEMBERS: readonly SurfaceEntry[] = [
+  ...DELTA_SOURCES.map((source) => DELTA_SOURCE_INFO[source]),
+  { name: 'total', detail: shapeOf(DELTA_FIELDS), info: 'Every source added up: what this turn asked of the stat, before flags and the range.' },
+  { name: 'actual', detail: shapeOf(DELTA_FIELDS), info: 'What landed since the start of this turn: the current numbers minus previous.' },
+];
+
 /** The fields on a stat object inside `stats`, `self` included. Anything else is `undefined`. */
 export const STAT_FIELDS: readonly SurfaceEntry[] = [
   { name: 'id', detail: 'string', info: 'The stat’s unique id.' },
@@ -54,7 +78,7 @@ export const STAT_FIELDS: readonly SurfaceEntry[] = [
   { name: 'value', detail: 'number', info: 'Current value, with this turn’s AI change and regen applied. Write self.value to set it.' },
   { name: 'regen', detail: 'number', info: 'Regen per story hour, with traits applied. Write self.regen to set it.' },
   { name: 'previous', detail: 'Stat', info: 'The whole stat as it stood at the start of this turn. Read-only.' },
-  { name: 'delta', detail: '{ ai, regen, total, actual }', info: 'Every change this turn made to the stat, by who made it. Read-only.' },
+  { name: 'delta', detail: shapeOf(DELTA_MEMBERS), info: 'Every change this turn made to the stat, by source. Read-only.' },
 ];
 
 /** The fields on `self` that a write reaches. The host reads these back after the run; writes to any other
@@ -72,29 +96,6 @@ export const PREVIOUS_FIELDS: readonly SurfaceEntry[] = [
   { name: 'max', detail: 'number', info: 'Upper bound at the start of this turn, traits and code bounds included.' },
   { name: 'value', detail: 'number', info: 'The value at the start of this turn.' },
   { name: 'regen', detail: 'number', info: 'Regen per story hour at the start of this turn, traits included.' },
-];
-
-const DELTA_SHAPE = '{ value, min, max, regen }';
-
-/** What each change source means. Keyed off the executor's own list, as the clock is. */
-const DELTA_SOURCE_INFO: Record<DeltaSource, SurfaceEntry> = {
-  ai: { name: 'ai', detail: DELTA_SHAPE, info: 'The change the AI asked for this turn, raw: before flags and the range.' },
-  regen: { name: 'regen', detail: DELTA_SHAPE, info: 'What regen did this turn, after clamping. Only value moves.' },
-};
-
-/** The members of a stat's `delta`: one per change source, then their sum and what landed. Frozen. */
-export const DELTA_MEMBERS: readonly SurfaceEntry[] = [
-  ...DELTA_SOURCES.map((source) => DELTA_SOURCE_INFO[source]),
-  { name: 'total', detail: DELTA_SHAPE, info: 'Every source added up: what this turn asked of the stat, before flags and the range.' },
-  { name: 'actual', detail: DELTA_SHAPE, info: 'What landed since the start of this turn: the current numbers minus previous.' },
-];
-
-/** The fields on every member of `delta`. */
-export const DELTA_FIELDS: readonly SurfaceEntry[] = [
-  { name: 'value', detail: 'number', info: 'The change to the value.' },
-  { name: 'min', detail: 'number', info: 'The change to the lower bound.' },
-  { name: 'max', detail: 'number', info: 'The change to the upper bound.' },
-  { name: 'regen', detail: 'number', info: 'The change to regen per story hour.' },
 ];
 
 /** The members of one entry in `placeholders`. */

@@ -152,7 +152,7 @@ describe('executeStatCode self and turn inputs', () => {
     expect((await run('return self === stats.Mood ? 1 : 0;')).value).toBe(1);
   });
 
-  /** Every `delta` source of `self` as the sandbox reads it, as JSON. */
+  /** The whole `delta` of `target` as the sandbox reads it. */
   const readDelta = async (turn?: StatCodeRunOptions['turn'], target = 'self') => {
     const log = vi.spyOn(console, 'log').mockImplementation(() => {});
     const res = await executeStatCode(`console.log(JSON.stringify(${target}.delta));`, stats, me, { turn });

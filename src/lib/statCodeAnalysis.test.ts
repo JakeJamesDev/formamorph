@@ -223,7 +223,7 @@ describe('statCodeCompletions', () => {
     expect(labels('const me = self;\nreturn me.|')).toContain('previous');
   });
 
-  it('offers the four sources after delta, and the four numbers after each source', () => {
+  it('offers the four members after delta, and the four numbers after each member', () => {
     for (const doc of ['return self.delta.|', 'return stats.Health.delta.|', 'const me = self;\nreturn me.delta.|']) {
       expect(labels(doc), doc).toEqual(['ai', 'regen', 'total', 'actual']);
     }

@@ -2357,7 +2357,7 @@ const GameViewer = ({
       setHeldStatChanges((prev) => ({ ...prev, ...actualChanges }));
 
       setPlayerStats(directApplied);
-      // A max-only ask counts too: code reads it as `requested.max`.
+      // A max-only ask counts too: code reads it as `delta.ai.max`.
       if (response.updates.some((update) => update.value !== 0 || update.max !== 0) || anyStatUsesClock) {
         await runStatCode(baseStats, directApplied, response.updates, clock, base ?? undefined);
       }
