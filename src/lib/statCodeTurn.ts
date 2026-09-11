@@ -27,8 +27,9 @@ export interface StatCodeTurn {
   stats: readonly PlayerStat[];
   /** The live stat-enabled map. A disabled stat's code never runs and no other code sees it. */
   enabled: Readonly<Record<string, boolean>>;
-  /** The stats as they stood at the start of the turn, matched by id. */
-  previous: readonly (ValueAndMax & { id: string })[];
+  /** The stats as they stood at the start of the turn, matched by id. A stat missing here reads its
+   *  `previous` as a copy of its own current entry. */
+  previous: readonly PlayerStat[];
   /** This turn's AI asks, raw: before flags and clamping. */
   asks: readonly (ValueAndMax & { id: string })[];
   /** Regen applied this turn, by stat id. */
@@ -102,7 +103,7 @@ export async function runStatCodeTurn(turn: StatCodeTurn): Promise<StatCodeTurnR
     const before = previous.get(stat.id);
     const ask = asks.get(stat.id);
     return [stat.id, {
-      previous: before && { value: before.value, max: before.max },
+      previous: before,
       requested: ask && { value: ask.value, max: ask.max },
       regenApplied: turn.regenApplied[stat.id],
     }];
