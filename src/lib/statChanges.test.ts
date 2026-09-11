@@ -6,6 +6,7 @@ import {
   applyAiMaxChanges,
   pageStatDeltas,
   appliedStatDeltas,
+  applyRegen,
 } from './statChanges';
 import type { PlayerStat } from '@/types';
 
@@ -20,6 +21,32 @@ const stat = (over: Partial<PlayerStat>): PlayerStat => ({
   regen: 0,
   descriptors: [],
   ...over,
+});
+
+describe('applyRegen', () => {
+  it('moves each stat by its regen times the hours, and reports the amount by id', () => {
+    const out = applyRegen([stat({ id: 'a', value: 50, regen: 2 }), stat({ id: 'b', value: 10, regen: -1 })], 3, {});
+    expect(out.stats.map(s => s.value)).toEqual([56, 7]);
+    expect(out.applied).toEqual({ a: 6, b: -3 });
+  });
+
+  it('reports the clamped amount, so a stat at its cap applies nothing', () => {
+    const out = applyRegen([stat({ id: 'a', value: 98, regen: 5 }), stat({ id: 'b', value: 100, regen: 5 })], 1, {});
+    expect(out.stats.map(s => s.value)).toEqual([100, 100]);
+    expect(out.applied).toEqual({ a: 2 });
+  });
+
+  it('leaves a disabled stat where it was', () => {
+    const out = applyRegen([stat({ id: 'a', value: 50, regen: 2 })], 1, { a: false });
+    expect(out.stats[0].value).toBe(50);
+    expect(out.applied).toEqual({});
+  });
+
+  it('does not mutate its input', () => {
+    const input = [stat({ id: 'a', value: 50, regen: 2 })];
+    applyRegen(input, 1, {});
+    expect(input[0].value).toBe(50);
+  });
 });
 
 describe('pageStatDeltas', () => {

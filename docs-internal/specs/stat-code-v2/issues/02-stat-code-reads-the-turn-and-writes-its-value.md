@@ -1,6 +1,7 @@
 # 02: Stat Code Reads The Turn And Writes Its Value
 
-Status: ready-for-agent
+Status: ready-for-human
+Base: 06c3a0f4
 Blocked by: 01
 Recommended model: Claude Opus 5 (`claude-opus-5`)
 Reasoning effort: high
@@ -19,17 +20,26 @@ Demo: a stat whose code reads `self.requested.value` and halves any AI gain show
 
 ## Acceptance criteria
 
-- [ ] One per-turn run function carries the forward turn, the re-roll, and the clock-only run; the value-only utility it replaces is gone
-- [ ] `self`, `previous`, `requested`, and `regenApplied` are injected and documented in the surface list
-- [ ] Number return, `self.value` write, and no-return all behave as specified; another return type fails as today
-- [ ] A throw or timeout leaves the stat unchanged
-- [ ] Disabled stats stay inert and unexposed
-- [ ] Re-roll reproduces the same code result as the original turn
-- [ ] Completions and diagnostics cover the new names; unknown `self` field and other-stat write each produce a diagnostic
-- [ ] Existing stat code templates and default worlds run unchanged
-- [ ] Tests at the per-turn seam cover: number return, `self.value` write, omitted field, AI ask clamped, failure discards, disabled inert, clock-only zero asks
-- [ ] Four gates green; graph updated
+- [x] One per-turn run function carries the forward turn, the re-roll, and the clock-only run; the value-only utility it replaces is gone
+- [x] `self`, `previous`, `requested`, and `regenApplied` are injected and documented in the surface list
+- [x] Number return, `self.value` write, and no-return all behave as specified; another return type fails as today
+- [x] A throw or timeout leaves the stat unchanged
+- [x] Disabled stats stay inert and unexposed
+- [x] Re-roll reproduces the same code result as the original turn
+- [x] Completions and diagnostics cover the new names; unknown `self` field and other-stat write each produce a diagnostic
+- [x] Existing stat code templates and default worlds run unchanged (they run with no edits; see the regen note below)
+- [x] Tests at the per-turn seam cover: number return, `self.value` write, omitted field, AI ask clamped, failure discards, disabled inert, clock-only zero asks
+- [x] Four gates green; graph updated
 
 ## Blocked by
 
 - 01 — Rename Held To Acquired
+
+## Comments
+
+**2026-09-10: regen order (user decision).** Stat code reads each stat after this turn's AI change *and* regen. `regenApplied` is the amount that regen added. Before this ticket, code read the value before regen, and its result replaced the regen. Consequences:
+
+- A derived stat in a bundled world (drone, rampage, valentines) now reads its sources after regen. The one-turn lag is gone, so its numbers shift a little.
+- Accumulating code on a stat with nonzero regen now stacks with regen. The hint "Leave Regen at 0 — code replaces it" on the Per-Turn Change and Regen Toward Target templates is now wrong. **Ticket 07 must rewrite it.**
+
+**Seam.** The seam is `runStatCodeTurn` in `src/lib/statCodeTurn.ts`. A number return wins over a `self.value` write. The run gate also counts max-only AI asks, because code can read `requested.max`. `SELF_WRITABLE_FIELDS` in `src/lib/statCodeSurface.ts` is the list that ticket 03 extends. The live check is `e2e/stat-code-turn.spec.ts`: forward turn, re-roll, post-regen order, and clock-only run.

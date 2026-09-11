@@ -1,8 +1,8 @@
 import { describe, it, expect } from 'vitest';
 import { executeStatCode } from './statCodeExecutor';
 import {
-  BUILTIN_MEMBERS, LANGUAGE_NAMES, SANDBOX_BUILTINS, SANDBOX_GLOBALS, STATS_MEMBERS, STAT_FIELDS,
-  nearestSurfaceName,
+  BUILTIN_MEMBERS, LANGUAGE_NAMES, PREVIOUS_FIELDS, REQUESTED_FIELDS, SANDBOX_BUILTINS, SANDBOX_GLOBALS,
+  SELF_WRITABLE_FIELDS, STATS_MEMBERS, STAT_FIELDS, nearestSurfaceName,
 } from './statCodeSurface';
 import type { Stat } from '@/types';
 
@@ -37,6 +37,25 @@ describe('the described surface against the sandbox that provides it', () => {
     const expected = STAT_FIELDS.map(field => field.name).sort().join(',');
     await expect(run(`return Object.keys(stats[0]).sort().join(',') === ${JSON.stringify(expected)} ? 1 : 0;`))
       .resolves.toEqual({ value: 1, error: null });
+  });
+
+  it.each([['previous', PREVIOUS_FIELDS], ['requested', REQUESTED_FIELDS]] as const)(
+    'describes every field on a stat’s %s, and no field it does not',
+    async (field, described) => {
+      const expected = described.map(entry => entry.name).sort().join(',');
+      await expect(run(`return Object.keys(stats[0].${field}).sort().join(',') === ${JSON.stringify(expected)} ? 1 : 0;`))
+        .resolves.toEqual({ value: 1, error: null });
+    },
+  );
+
+  it('offers self as the stat’s own entry in stats', async () => {
+    await expect(run('return self === stats.find(s => s.id === currentStatId) ? 1 : 0;'))
+      .resolves.toEqual({ value: 1, error: null });
+  });
+
+  // A field listed as writable that the host never reads back is the editor promising a write that does nothing.
+  it.each(SELF_WRITABLE_FIELDS)('reads a write to self.%s back out of the sandbox', async (field) => {
+    await expect(run(`self.${field} = 7;`)).resolves.toEqual({ value: 7, error: null });
   });
 
   // The member tables are keyed by name, so a built-in renamed in one list and not the other would offer

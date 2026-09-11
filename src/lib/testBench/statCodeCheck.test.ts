@@ -44,12 +44,18 @@ describe('the on-demand stat-code check', () => {
     expect(found.message).toContain('throws');
   });
 
-  it('reports code that never returns a number as its own failure, not as a throw', async () => {
+  it('reports code that returns something other than a number as its own failure, not as a throw', async () => {
     const [found] = await checkStatCode(base([
-      stat({ id: 's1', name: 'Fertility', code: 'const x = 25;' }),
+      stat({ id: 's1', name: 'Fertility', code: 'return "25";' }),
     ]));
     expect(found.message).toContain('doesn’t return a number');
     expect(found.message).not.toContain('throws');
+  });
+
+  it('accepts code that sets its value through self and returns nothing', async () => {
+    expect(await checkStatCode(base([
+      stat({ id: 's1', name: 'Fertility', code: 'self.value = 25;' }),
+    ]))).toEqual([]);
   });
 
   it('reports code that never finishes as a timeout', async () => {

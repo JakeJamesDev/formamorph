@@ -61,22 +61,44 @@ const resolveClock = (clock?: StatClock) => {
 export type StatCodeFailure = 'timeout' | 'non-number' | 'throw';
 
 export interface StatCodeResult {
+  /** The value the code set, by return or by `self.value`, clamped; null when it left the value alone. */
   value: number | null;
   error: string | null;
   /** Present exactly when `error` is. */
   kind?: StatCodeFailure;
 }
 
-/** Run a stat's untrusted `code` in an isolated QuickJS (WASM) VM to compute `currentStat`'s value from
- *  the other stats and the story clock, clamped to its `[min, max]`. A ~1s interrupt timeout, memory, and
- *  stack caps bound it; empty code yields `{value: null}` (keep the manual value), and any error/non-number
- *  surfaces in `error`. Omitting `clock` runs at the flat hour on day one, which is what the editor's
- *  test button and any clock-less caller want. */
+/** A stat's value and max, as one turn input carries them. */
+export interface ValueAndMax {
+  value: number;
+  max: number;
+}
+
+/** What this turn did to one stat before its code runs. Every entry in `stats` carries these; a part left
+ *  out reads as untouched: `previous` as the current numbers, the rest as zero. */
+export interface StatTurnInputs {
+  /** Value and max at the start of the turn. */
+  previous?: ValueAndMax;
+  /** The AI's asked change to value and max, raw: before flags and clamping. */
+  requested?: ValueAndMax;
+  /** Regen applied this turn, after the enabled gate and clamping. */
+  regenApplied?: number;
+}
+
+const nonNumberFailure = (what: string): StatCodeResult => ({
+  value: null,
+  error: `Error: ${what}\nStack: No stack trace available`,
+  kind: 'non-number',
+});
+
+/** Run a stat's untrusted `code` in an isolated QuickJS (WASM) VM over `stats`, `self`, the turn inputs,
+ *  and the clock. A number return or a `self.value` write sets the value, clamped; a failure discards it. */
 export const executeStatCode = async (
   code: string,
   stats: Stat[],
   currentStat: Stat,
   clock?: StatClock,
+  turn?: Readonly<Record<string, StatTurnInputs>>,
 ): Promise<StatCodeResult> => {
   // If code is empty, return null (use the manually set value)
   if (!code || code.trim() === '') {
@@ -87,16 +109,28 @@ export const executeStatCode = async (
     const QuickJS = await loadQuickJS();
 
     // Only whitelisted plain data crosses into the VM (never `code`/`descriptors`).
-    const statsData = stats.map(stat => ({
-      id: String(stat.id),
-      name: stat.name || '',
-      type: stat.type || 'number',
-      description: stat.description || '',
-      min: stat.min || 0,
-      max: stat.max || 100,
-      value: stat.value || 0,
-      regen: stat.regen || 0
-    }));
+    const marshal = (stat: Stat) => {
+      const value = stat.value || 0;
+      const max = stat.max || 100;
+      const inputs = turn?.[stat.id];
+      return {
+        id: String(stat.id),
+        name: stat.name || '',
+        type: stat.type || 'number',
+        description: stat.description || '',
+        min: stat.min || 0,
+        max,
+        value,
+        regen: stat.regen || 0,
+        previous: { value: inputs?.previous?.value ?? value, max: inputs?.previous?.max ?? max },
+        requested: { value: inputs?.requested?.value ?? 0, max: inputs?.requested?.max ?? 0 },
+        regenApplied: inputs?.regenApplied ?? 0,
+      };
+    };
+    const statsData = stats.map(marshal);
+    // `self` is the current stat's own entry in `stats`; a stat missing from `stats` stands alone.
+    const selfIndex = stats.findIndex(stat => stat.id === currentStat.id);
+    const selfData = selfIndex >= 0 ? statsData[selfIndex] : marshal(currentStat);
 
     const runtime = QuickJS.newRuntime();
     runtime.setInterruptHandler(shouldInterruptAfterDeadline(Date.now() + EXECUTION_TIMEOUT_MS));
@@ -119,14 +153,16 @@ export const executeStatCode = async (
       consoleObj.dispose();
 
       // The stat data rides in as JSON literals (JSON is valid JS expression syntax), so no host
-      // references ever enter the VM. The user code runs as a function body so `return` works.
+      // references ever enter the VM. The user code runs as a function body so `return` works; the
+      // program's completion value pairs what it returned with what `self.value` holds afterwards.
       const program = [
         `const stats = ${JSON.stringify(statsData)};`,
         `const currentStatId = ${JSON.stringify(String(currentStat.id))};`,
+        `const self = ${selfIndex >= 0 ? `stats[${selfIndex}]` : JSON.stringify(selfData)};`,
         ...Object.entries(resolveClock(clock)).map(([name, value]) => `const ${name} = ${JSON.stringify(value)};`),
-        `(function() {`,
+        `[(function() {`,
         code,
-        `})();`,
+        `})(), self.value];`,
       ].join('\n');
 
       const result = vm.evalCode(program);
@@ -146,22 +182,32 @@ export const executeStatCode = async (
         };
       }
 
-      const raw = vm.dump(result.value);
+      // Each half is read by its own handle and typeof, never through a JSON dump: a dump turns
+      // `undefined` and `NaN` into `null`, which would erase the difference between them.
+      const readSlot = (index: number): { type: string; number: number } => {
+        const handle = vm.getProp(result.value, index);
+        try {
+          const type = vm.typeof(handle);
+          return { type, number: type === 'number' ? vm.getNumber(handle) : NaN };
+        } finally {
+          handle.dispose();
+        }
+      };
+      const returned = readSlot(0);
+      const written = readSlot(1);
       result.value.dispose();
 
       if (consoleOutput.trim()) {
         console.log('Console output:', consoleOutput);
       }
 
-      // Ensure the result is a number, clamped to the stat's min/max range.
-      if (typeof raw !== 'number') {
-        return {
-          value: null,
-          error: 'Error: Code must return a number\nStack: No stack trace available',
-          kind: 'non-number'
-        };
-      }
-      return { value: clamp(raw, currentStat.min || 0, currentStat.max || 100), error: null };
+      const clampToRange = (value: number) => clamp(value, selfData.min, selfData.max);
+      if (returned.type === 'number') return { value: clampToRange(returned.number), error: null };
+      if (returned.type !== 'undefined') return nonNumberFailure('Code must return a number or nothing');
+      if (written.type !== 'number') return nonNumberFailure('self.value must be a number');
+      // A field the code left alone keeps the pipeline's result, so only a changed value is a write.
+      if (Object.is(written.number, selfData.value)) return { value: null, error: null };
+      return { value: clampToRange(written.number), error: null };
     } finally {
       vm.dispose();
       runtime.dispose();

@@ -59,10 +59,66 @@ function scale(amount) { return amount * 2; }
 return scale(total) + min + max;`)).toEqual([]);
   });
 
-  it('warns when the code can never hand a number back', () => {
+  it('warns when the code neither returns nor touches its own stat', () => {
     const [problem] = statCodeDiagnostics('const doubled = stats[0].value * 2;');
     expect(problem.severity).toBe('warning');
     expect(problem.message).toMatch(/return/i);
+    expect(problem.message).toContain('self.value');
+  });
+
+  it('still warns when the code only reads its own stat', () => {
+    expect(messages('const seen = self.value;')).toContainEqual(expect.stringContaining('self.value'));
+  });
+
+  it('accepts code that writes self.value and never returns', () => {
+    expect(statCodeDiagnostics('self.value = self.previous.value + self.requested.value / 2;')).toEqual([]);
+  });
+
+  it('accepts a write through the currentStatId lookup, which reaches the same entry as self', () => {
+    expect(statCodeDiagnostics('const me = stats.find(s => s.id === currentStatId);\nme.value = 5;')).toEqual([]);
+    expect(statCodeDiagnostics('stats.find(s => s.id === currentStatId).value = 5;')).toEqual([]);
+  });
+
+  it('flags a write to a field self does not have, and names the one it was reaching for', () => {
+    const [problem] = statCodeDiagnostics('self.vlaue = 3;');
+    expect(problem.severity).toBe('error');
+    expect(problem.message).toContain('vlaue');
+    expect(problem.message).toContain('“value”');
+    // Pointed at the field, not the whole statement.
+    expect('self.vlaue = 3;'.slice(problem.from, problem.to)).toBe('vlaue');
+  });
+
+  it('flags every way of writing an unknown field, not only plain assignment', () => {
+    for (const code of ['self.count += 1;', 'self.count++;', '++self.count;']) {
+      expect(messages(code), code).toContainEqual(expect.stringContaining('count'));
+    }
+  });
+
+  it('flags a write to a field self has but code cannot set', () => {
+    for (const [code, field] of [['self.name = "x";', 'name'], ['self.previous.value = 1;', 'previous']] as const) {
+      const [problem] = statCodeDiagnostics(code);
+      expect(problem?.severity, code).toBe('error');
+      expect(problem?.message, code).toContain(`self.${field}`);
+      expect(problem?.message, code).toContain('self.value');
+    }
+  });
+
+  it('warns about a write to another stat’s entry, which the host ignores', () => {
+    for (const code of [
+      'stats[0].value = 1;\nreturn 2;',
+      'stats.find(s => s.name === "Health").value = 1;\nreturn 2;',
+      'const hp = stats.find(s => s.name === "Health");\nhp.value -= 1;\nreturn 2;',
+      'const other = stats.find(s => s.id !== currentStatId);\nother.value = 1;\nreturn 2;',
+    ]) {
+      const problems = statCodeDiagnostics(code);
+      expect(problems, code).toHaveLength(1);
+      expect(problems[0].severity, code).toBe('warning');
+      expect(problems[0].message, code).toMatch(/another stat/i);
+    }
+  });
+
+  it('keeps quiet about reads, which are always allowed', () => {
+    expect(statCodeDiagnostics('const hp = stats.find(s => s.name === "Health");\nreturn hp.value + self.regenApplied;')).toEqual([]);
   });
 
   it('keeps quiet about a missing return while the code is still unreadable', () => {
@@ -133,9 +189,30 @@ describe('statCodeCompletions', () => {
     expect(offered).not.toContain('localStorage');
   });
 
+  it('offers self among the globals', () => {
+    expect(labels('return se|')).toContain('self');
+  });
+
   it('offers the stat fields after a dot', () => {
     const offered = labels('const me = stats.find(s => s.id === currentStatId);\nreturn me.|');
-    expect(offered).toEqual(['id', 'name', 'type', 'description', 'min', 'max', 'value', 'regen']);
+    expect(offered).toEqual([
+      'id', 'name', 'type', 'description', 'min', 'max', 'value', 'regen', 'previous', 'requested', 'regenApplied',
+    ]);
+  });
+
+  it('offers the stat fields after self, and after a name that holds self', () => {
+    expect(labels('return self.|')).toContain('requested');
+    expect(labels('const me = self;\nreturn me.|')).toContain('previous');
+  });
+
+  it('offers value and max after a turn input, and nothing a stat has', () => {
+    for (const doc of ['return self.previous.|', 'return self.requested.|', 'return stats[0].requested.|']) {
+      expect(labels(doc), doc).toEqual(['value', 'max']);
+    }
+  });
+
+  it('says nothing after previous on something that is not a stat', () => {
+    expect(labels('const other = { previous: 1 };\nreturn other.previous.|')).toEqual([]);
   });
 
   it('offers the stat fields off the find call itself, without a variable in between', () => {
@@ -188,7 +265,7 @@ describe('statCodeCompletions', () => {
   // The info string is what the popup's description card reads out, and it is the only place the editor
   // gets to explain the sandbox as the author types.
   it('explains every member it offers', () => {
-    for (const doc of ['return Math.|', 'return stats.|', 'return stats[0].|']) {
+    for (const doc of ['return Math.|', 'return stats.|', 'return stats[0].|', 'return self.previous.|', 'return self.requested.|']) {
       const options = completeAt(doc)?.options ?? [];
       expect(options.length, doc).toBeGreaterThan(0);
       for (const option of options) expect(option.info, `${doc} ${option.label}`).toBeTruthy();
