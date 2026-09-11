@@ -149,7 +149,7 @@ import { rollbackState, regenerateState, canRegenerate, lastTurnAction, markRege
 import { useDeferredSnapshot } from "../lib/useDeferredSnapshot";
 import { statMorphMap } from "../lib/bodyMorphs";
 import {
-  inAuthoredOrder, refreshChosenTraits, activeStatEnabled, enabledStats,
+  inAuthoredOrder, refreshChosenTraits, refreshSavedStats, activeStatEnabled, enabledStats,
 } from "../lib/traitEffects";
 import { collectPins } from "../lib/placeholderPins";
 import { usePlaceholderSession } from "../contexts/PlaceholderSessionContext";
@@ -2278,7 +2278,8 @@ const GameViewer = ({
       try {
         const enabled = statEnabledRef.current;
         const regen = applyRegen(afterAsks, clock.deltaHours ?? FLAT_HOURS_PER_TURN, enabled);
-        const stats = resolveStatNames(regen.stats, resolvePH);
+        // A save runs the world's current stat code, not the copy frozen in the save.
+        const stats = resolveStatNames(refreshSavedStats(regen.stats, authoredStats), resolvePH);
         // The same slice the player's checkbox switches, so a code switch is that switch.
         const held = preTurn ? savedTraits(preTurn, traits) : { acquired: chosenTraits, disabledTraitIds, appliedValues: appliedTraitValues };
         const inForce = preTurn ? traitsInForce(held.acquired, held.disabledTraitIds) : activeTraits;
@@ -2308,14 +2309,18 @@ const GameViewer = ({
       }
     },
     [setPlayerStats, setRecentStatChanges, setHeldStatChanges, setCodePins, resolvePH, placeholders, sessionRolls, pins, pinsFor, activeTraits,
-      traits, chosenTraits, disabledTraitIds, appliedTraitValues, authoredTraits, traitGroups, resolveTraitText,
+      traits, chosenTraits, disabledTraitIds, appliedTraitValues, authoredTraits, authoredStats, traitGroups, resolveTraitText,
       setPlayerTraits, setDisabledTraitIds, setAppliedTraitValues, addLogEntry],
   );
 
   // Whether any stat's code reads the clock, and so needs a per-turn run of its own on turns the AI
-  // changed nothing. False for every world authored before these variables existed, which keeps those
-  // worlds on exactly the run schedule they have always had.
-  const anyStatUsesClock = useMemo(() => activeStats.some((s) => usesStatClock(s.code)), [activeStats]);
+  // changed nothing. Reads each stat's current code, not a save's frozen copy, so a world edit that adds a
+  // clock variable takes effect on that save's very next turn. False for every world authored before these
+  // variables existed, which keeps those worlds on exactly the run schedule they have always had.
+  const anyStatUsesClock = useMemo(
+    () => refreshSavedStats(activeStats, authoredStats).some((s) => usesStatClock(s.code)),
+    [activeStats, authoredStats],
+  );
 
   // Apply request identities to authored state; resolved names are only for code and display feedback.
   const applyStatChanges = useCallback(

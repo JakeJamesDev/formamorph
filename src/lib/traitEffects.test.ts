@@ -1,7 +1,8 @@
 import { describe, it, expect } from 'vitest';
-import type { Placeholder, Stat, Trait, TraitGroup } from '@/types';
+import type { Placeholder, PlayerStat, Stat, Trait, TraitGroup } from '@/types';
 import { phValues, phValueId } from '@/test/placeholderValues';
 import { reconcilePlaceholderValues } from './placeholders';
+import { usesStatClock } from './statCodeExecutor';
 import {
   traitOrderIndex,
   inAuthoredOrder,
@@ -11,6 +12,7 @@ import {
   traitConflicts,
   collapseExclusiveDefaults,
   refreshChosenTraits,
+  refreshSavedStats,
   renamedPlaceholderValues,
   repinRenamedValues,
 } from './traitEffects';
@@ -24,6 +26,9 @@ const G = (id: string, extra: Partial<TraitGroup> = {}): TraitGroup => ({
 });
 const S = (id: string, extra: Partial<Stat> = {}): Stat => ({
   id, name: id, type: 'number', description: '', min: 0, max: 100, regen: 0, descriptors: [], ...extra,
+});
+const PS = (id: string, extra: Partial<PlayerStat> = {}): PlayerStat => ({
+  id, name: id, type: 'number', description: '', min: 0, max: 100, value: 0, regen: 0, descriptors: [], ...extra,
 });
 
 describe('authored order', () => {
@@ -82,6 +87,48 @@ describe('re-reading chosen traits from the world', () => {
     // dropping it would strip it, and its effects, from every existing save.
     const saved = [T('gone', { name: 'Gone', aiDescription: 'still here' })];
     expect(refreshChosenTraits(saved, [])).toEqual(saved);
+  });
+});
+
+describe('re-reading saved stats from the world', () => {
+  it('runs the code the author wrote since the save was made', () => {
+    const saved = [PS('vigor', { code: 'self.value = 1;' })];
+    const authored = [S('vigor', { code: 'self.value = 2;' })];
+    expect(refreshSavedStats(saved, authored)[0].code).toBe('self.value = 2;');
+  });
+
+  it('picks up a clock variable the author adds, so the per-turn clock gate fires from the next turn', () => {
+    const saved = [PS('vigor', { code: 'self.value = 1;' })];
+    const authored = [S('vigor', { code: 'self.value = clock.elapsedHours;' })];
+    expect(usesStatClock(refreshSavedStats(saved, authored)[0].code)).toBe(true);
+  });
+
+  it('picks up a rename, a redescription, and a retype since the save was made', () => {
+    const saved = [PS('vigor', { name: 'Vigor', description: 'old', type: 'number' })];
+    const authored = [S('vigor', { name: 'Fortitude', description: 'new', type: 'percentage' })];
+    const [stat] = refreshSavedStats(saved, authored);
+    expect(stat.name).toBe('Fortitude');
+    expect(stat.description).toBe('new');
+    expect(stat.type).toBe('percentage');
+  });
+
+  it('keeps the numbers the playthrough actually reached, not the author\'s current defaults', () => {
+    const saved = [PS('vigor', {
+      value: 42, min: 5, max: 90, regen: 3, starting: 10, aiMaxDelta: 8,
+      codeBounds: { max: 90 }, enabled: false, baseMin: 0, baseMax: 100, baseRegen: 1,
+    })];
+    const authored = [S('vigor', { min: 0, max: 100, regen: 0, enabled: true })];
+    const [stat] = refreshSavedStats(saved, authored);
+    expect(stat).toMatchObject({
+      value: 42, min: 5, max: 90, regen: 3, starting: 10, aiMaxDelta: 8,
+      codeBounds: { max: 90 }, enabled: false, baseMin: 0, baseMax: 100, baseRegen: 1,
+    });
+  });
+
+  it('leaves a stat the world no longer has exactly as the save had it', () => {
+    // Deleting and re-creating a stat mints a new id, the same fallback an unmatched trait gets.
+    const saved = [PS('gone', { name: 'Gone', code: 'self.value = 1;' })];
+    expect(refreshSavedStats(saved, [])).toEqual(saved);
   });
 });
 
