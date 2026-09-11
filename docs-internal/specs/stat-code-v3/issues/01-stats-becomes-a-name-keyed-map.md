@@ -1,6 +1,7 @@
 # 01: Stats Becomes A Name-Keyed Map
 
-Status: ready-for-agent
+Status: in-progress
+Base: f8b199db
 Blocked by: None (can start immediately)
 Recommended model: Claude Opus 5 (`claude-opus-5`)
 Reasoning effort: high
@@ -31,3 +32,14 @@ Templates, help, guide, bundled worlds, and the world migration are separate tic
 ## Blocked by
 
 - None (can start immediately)
+
+## Comments
+
+**2026-09-11, implementation notes.**
+
+- **Scope moved in, per the orchestrating session.** 01 rewrote the 11 `stats.find` lookups in the built-in template code to `stats[{{slot:stat}}]` and `self`, and the 4 bundled-world code strings to `stats.Name`. Without them the template and bundled-world sandbox tests fail under the map. 02 and 03 skip those edits; template descriptions, help, the guide, snippets, and the migration stay theirs.
+- **Scope moved out.** The Test Bench rules that scan `s.name === "X"` lookups (`stat-code-unknown-stat`, `codeReadsSelf`) are ticket 07.
+- **Where the code landed.** The shared tree put the executor, executor-test, template, and per-turn-test edits for this ticket into `b274ff79` (ticket 06). This ticket's own commit holds the editor side, the surface list, the bundled worlds, and the remaining test fixtures.
+- **`stats.find` is a blank entry, not `undefined`.** The map reads every unknown name as a blank entry, `find` included, so `stats.find(...)` throws "not a function". The acceptance line said `undefined`; the body said "not a function". The tests assert the body.
+- **`selfName` in the editor.** The analysis takes the current stat's name, so `stats.Mood.value = 5` inside Mood's own code counts as its own write instead of getting the other-stat warning.
+- **Re-lint fix.** `forceLinting` does nothing once a lint has settled (`@codemirror/lint` 6.9.7 `force()` runs only while one is pending). The code session now marks a world-list change with a state effect the linter's `needsRefresh` reads, so a stat, placeholder, or trait rename re-lints with no edit to the code.

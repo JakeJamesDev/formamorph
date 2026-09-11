@@ -189,7 +189,7 @@
           "description": "Last resort: Aegis-One and experimental weapons are cleared to engage."
         }
       ],
-      "code": "const destruction = stats.find(s => s.name === 'Destruction').value;\nconst rampage = stats.find(s => s.name === 'Rampage').value;\nreturn Math.round(destruction * 0.6 + rampage * 0.4);"
+      "code": "const destruction = stats.Destruction.value;\nconst rampage = stats.Rampage.value;\nreturn Math.round(destruction * 0.6 + rampage * 0.4);"
     }
   ],
   "locations": [

@@ -33,17 +33,19 @@ const CLOCK_INFO: Record<(typeof STAT_CLOCK_VARS)[number], SurfaceEntry> = {
 /** Every name the sandbox injects into the program, in the order an author meets them. */
 export const SANDBOX_GLOBALS: readonly SurfaceEntry[] = [
   { name: 'self', detail: 'Stat', info: 'The stat this code belongs to. Write self.value to set its value.' },
-  { name: 'stats', detail: 'Stat[]', info: 'Every stat in the world, as plain data. Look one up by name or id.' },
-  { name: 'currentStatId', detail: 'string', info: 'The id of the stat this code belongs to. self.id is the same.' },
+  { name: 'stats', detail: 'object', info: 'Every stat in the world by name. Use stats["Two Words"] for a name with a space.' },
   ...STAT_CLOCK_VARS.map((name) => CLOCK_INFO[name]),
   { name: 'placeholders', detail: 'object', info: 'Every placeholder in the world by name. Use placeholders["Two Words"] for a name with a space.' },
   { name: 'traits', detail: 'object', info: 'Every trait in the world by name. Use traits["Two Words"] for a name with a space.' },
   { name: 'console', detail: 'object', info: 'Only console.log — output shows up in the browser console.' },
 ];
 
+/** Names the sandbox still injects for older code but never offers or documents. */
+export const SANDBOX_UNDOCUMENTED_GLOBALS: readonly string[] = ['currentStatId'];
+
 /** The fields on a stat object inside `stats`, `self` included. Anything else is `undefined`. */
 export const STAT_FIELDS: readonly SurfaceEntry[] = [
-  { name: 'id', detail: 'string', info: 'Unique id. Compare against currentStatId to find this stat.' },
+  { name: 'id', detail: 'string', info: 'The stat’s unique id.' },
   { name: 'name', detail: 'string', info: 'The stat’s display name, as the author typed it.' },
   { name: 'type', detail: 'string', info: 'number, percentage, or whichever type the stat was given.' },
   { name: 'description', detail: 'string', info: 'The stat’s description text.' },
@@ -115,19 +117,6 @@ export const SANDBOX_BUILTINS: readonly SurfaceEntry[] = [
   { name: 'NaN', detail: 'number', info: 'The not-a-number value.' },
   { name: 'Infinity', detail: 'number', info: 'Positive infinity.' },
   { name: 'undefined', detail: 'undefined', info: 'The absent value.' },
-];
-
-/** The members offered after `stats.` — what the one array in the sandbox is actually used for, rather
- *  than everything `Array.prototype` defines. */
-export const STATS_MEMBERS: readonly SurfaceEntry[] = [
-  { name: 'find', detail: '(fn) => Stat', info: 'The first stat the test returns true for, or undefined.' },
-  { name: 'filter', detail: '(fn) => Stat[]', info: 'Every stat the test returns true for, as a new array.' },
-  { name: 'map', detail: '(fn) => any[]', info: 'One result per stat, in order.' },
-  { name: 'some', detail: '(fn) => boolean', info: 'Whether any stat passes the test.' },
-  { name: 'every', detail: '(fn) => boolean', info: 'Whether every stat passes the test.' },
-  { name: 'reduce', detail: '(fn, start) => any', info: 'Fold the stats down to a single value.' },
-  { name: 'at', detail: '(index) => Stat', info: 'The stat at an index. Negative counts from the end.' },
-  { name: 'length', detail: 'number', info: 'How many stats the world has.' },
 ];
 
 /**
@@ -210,6 +199,7 @@ export const LANGUAGE_NAMES: readonly string[] = [
 /** Every name a reference is allowed to resolve to without the author having declared it. */
 export const SANDBOX_KNOWN_NAMES: ReadonlySet<string> = new Set([
   ...SANDBOX_GLOBALS.map((entry) => entry.name),
+  ...SANDBOX_UNDOCUMENTED_GLOBALS,
   ...SANDBOX_BUILTINS.map((entry) => entry.name),
   ...LANGUAGE_NAMES,
 ]);

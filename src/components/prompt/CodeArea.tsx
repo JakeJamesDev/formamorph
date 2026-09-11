@@ -58,8 +58,10 @@ interface CodeAreaProps {
   label?: ReactNode;
   /** Offer the `{{slot}}` menu. Template editing only. */
   slots?: boolean;
-  /** The world's stat names, completed inside string literals — the one place a typo fails silently. */
+  /** The world's stat names, completed after `stats` and inside string literals, and checked by name. */
   statNames?: readonly string[];
+  /** The name of the stat the code belongs to, so a write to it through `stats` is not flagged. */
+  selfName?: string;
   /** The world's placeholders, completed after `placeholders` and checked by name. */
   placeholders?: CodePlaceholders;
   /** The world's trait names, completed after `traits` and checked by name. */
@@ -76,7 +78,7 @@ interface CodeAreaProps {
 function CodeAreaBody({
   value, onChange, ariaLabel, placeholder, label, slots, preview, className, rows = 8, fullscreen,
   onToggleFullscreen, session, active, expose,
-}: Omit<CodeAreaProps, 'statNames' | 'placeholders' | 'traits'> & {
+}: Omit<CodeAreaProps, 'statNames' | 'selfName' | 'placeholders' | 'traits'> & {
   fullscreen: boolean;
   onToggleFullscreen: () => void;
   /** The one editor both copies take turns hosting. Null until its chunk has loaded. */
@@ -268,6 +270,7 @@ export function CodeArea(props: CodeAreaProps) {
         placeholder,
         slots,
         statNames: latest.current.statNames,
+        selfName: latest.current.selfName,
         placeholders: latest.current.placeholders,
         traits: latest.current.traits,
         onChange: (next) => latest.current.onChange(next),
@@ -284,7 +287,8 @@ export function CodeArea(props: CodeAreaProps) {
   // read by hovering its squiggle.
   useEffect(() => { session?.setLintGutter(morph.mounted); }, [session, morph.mounted]);
   // Stats are renamed and added while a code field is open, so the completions follow the list.
-  useEffect(() => { session?.setStatNames(props.statNames ?? []); }, [session, props.statNames]);
+  useEffect(() => { session?.setStatNames(props.statNames); }, [session, props.statNames]);
+  useEffect(() => { session?.setSelfName(props.selfName); }, [session, props.selfName]);
   useEffect(() => { session?.setPlaceholders(props.placeholders); }, [session, props.placeholders]);
   useEffect(() => { session?.setTraits(props.traits); }, [session, props.traits]);
 

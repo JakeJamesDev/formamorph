@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest';
 import { executeStatCode, type CodeBoundField } from './statCodeExecutor';
 import {
   BUILTIN_MEMBERS, LANGUAGE_NAMES, PLACEHOLDER_ENTRY_FIELDS, PREVIOUS_FIELDS, REQUESTED_FIELDS, SANDBOX_BUILTINS, SANDBOX_GLOBALS,
-  SELF_WRITABLE_FIELDS, STATS_MEMBERS, STAT_FIELDS, TRAIT_ENTRY_FIELDS, nearestSurfaceName,
+  SANDBOX_UNDOCUMENTED_GLOBALS, SELF_WRITABLE_FIELDS, STAT_FIELDS, TRAIT_ENTRY_FIELDS, nearestSurfaceName,
 } from './statCodeSurface';
 import type { Stat } from '@/types';
 
@@ -17,7 +17,7 @@ const stats = [stat({}), stat({ id: 'b', name: 'Stamina', value: 20 })];
 const run = (code: string) => executeStatCode(code, stats, stats[0]);
 
 describe('the described surface against the sandbox that provides it', () => {
-  it.each(SANDBOX_GLOBALS.map(entry => entry.name))('injects %s', async (name) => {
+  it.each([...SANDBOX_GLOBALS.map(entry => entry.name), ...SANDBOX_UNDOCUMENTED_GLOBALS])('injects %s', async (name) => {
     await expect(run(`return typeof ${name} === 'undefined' ? 0 : 1;`)).resolves.toEqual({ value: 1, error: null });
   });
 
@@ -35,7 +35,14 @@ describe('the described surface against the sandbox that provides it', () => {
 
   it('describes every field a marshalled stat carries, and no field it does not', async () => {
     const expected = STAT_FIELDS.map(field => field.name).sort().join(',');
-    await expect(run(`return Object.keys(stats[0]).sort().join(',') === ${JSON.stringify(expected)} ? 1 : 0;`))
+    await expect(run(`return Object.keys(stats.Health).sort().join(',') === ${JSON.stringify(expected)} ? 1 : 0;`))
+      .resolves.toEqual({ value: 1, error: null });
+  });
+
+  // An unknown name is underlined, not silenced, so its fields complete like any other stat's.
+  it('describes every field of the blank entry an unknown stat name reads as', async () => {
+    const expected = STAT_FIELDS.map(field => field.name).sort().join(',');
+    await expect(run(`return Object.keys(stats.Nope).sort().join(',') === ${JSON.stringify(expected)} ? 1 : 0;`))
       .resolves.toEqual({ value: 1, error: null });
   });
 
@@ -43,7 +50,7 @@ describe('the described surface against the sandbox that provides it', () => {
     'describes every field on a stat’s %s, and no field it does not',
     async (field, described) => {
       const expected = described.map(entry => entry.name).sort().join(',');
-      await expect(run(`return Object.keys(stats[0].${field}).sort().join(',') === ${JSON.stringify(expected)} ? 1 : 0;`))
+      await expect(run(`return Object.keys(stats.Health.${field}).sort().join(',') === ${JSON.stringify(expected)} ? 1 : 0;`))
         .resolves.toEqual({ value: 1, error: null });
     },
   );
@@ -73,7 +80,7 @@ describe('the described surface against the sandbox that provides it', () => {
   });
 
   it('offers self as the stat’s own entry in stats', async () => {
-    await expect(run('return self === stats.find(s => s.id === currentStatId) ? 1 : 0;'))
+    await expect(run('return self === stats[self.name] ? 1 : 0;'))
       .resolves.toEqual({ value: 1, error: null });
   });
 
@@ -98,8 +105,9 @@ describe('the described surface against the sandbox that provides it', () => {
       .resolves.toEqual({ value: 1, error: null });
   });
 
-  it.each(STATS_MEMBERS.map(member => member.name))('reaches stats.%s', async (member) => {
-    await expect(run(`return typeof stats.${member} === 'undefined' ? 0 : 1;`))
+  // The names offered after `stats.` are the world's stat names, so each has to reach its own stat.
+  it.each(stats.map(entry => [entry.name, entry.id] as const))('reaches stats.%s by name', async (name, id) => {
+    await expect(run(`return stats.${name}.id === ${JSON.stringify(id)} ? 1 : 0;`))
       .resolves.toEqual({ value: 1, error: null });
   });
 
