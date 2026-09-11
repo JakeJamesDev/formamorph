@@ -390,6 +390,32 @@ describe('reference-integrity rules', () => {
     });
     expect(only(w, 'stat-code-unknown-stat')).toEqual([]);
   });
+
+  it('flags a stat name that doesn’t exist in the map form too, dot and bracket alike', () => {
+    const coded = (code: string) => base({
+      stats: [
+        stat({ id: 's1', name: 'Mana', code }),
+        stat({ id: 's2', name: 'Vigor' }),
+      ],
+    });
+    const dotTypo = only(coded('return stats.Vigro.value;'), 'stat-code-unknown-stat');
+    expect(dotTypo).toHaveLength(1);
+    expect(dotTypo[0].message).toContain('Vigro');
+
+    const bracketTypo = only(coded('return stats["Vigro"].value;'), 'stat-code-unknown-stat');
+    expect(bracketTypo).toHaveLength(1);
+    expect(bracketTypo[0].message).toContain('Vigro');
+
+    expect(only(coded('return stats.Vigor.value;'), 'stat-code-unknown-stat')).toEqual([]);
+    expect(only(coded('return stats["Vigor"].value;'), 'stat-code-unknown-stat')).toEqual([]);
+  });
+
+  it('leaves a computed map key alone — there is no literal to check', () => {
+    const w = base({
+      stats: [stat({ id: 's1', name: 'Mana', code: 'const key = "Vigor";\nreturn stats[key].value;' })],
+    });
+    expect(only(w, 'stat-code-unknown-stat')).toEqual([]);
+  });
 });
 
 describe('dictionary rules', () => {
@@ -800,6 +826,28 @@ describe('stat sanity rules', () => {
     const byName = 'const me = stats.find(s => s.name === "Fertility"); return me.value + 1;';
     expect(only(oneStat({ starting: 40, code: byId }, [ashen]), 'stat-code-overrides-trait')).toEqual([]);
     expect(only(oneStat({ starting: 40, code: byName }, [ashen]), 'stat-code-overrides-trait')).toEqual([]);
+  });
+
+  it('says nothing when the code reads the self map entry, by bare self or by its own name', () => {
+    const ashen = trait({ id: 't1', name: 'Ashen', statChanges: [{ statId: 's1', type: 'starting', value: -10 }] });
+    const bareSelf = 'return Math.min(self.value + 1, self.max);';
+    const dotName = 'return stats.Fertility.value + 1;';
+    const bracketName = 'return stats["Fertility"].value + 1;';
+    expect(only(oneStat({ starting: 40, code: bareSelf }, [ashen]), 'stat-code-overrides-trait')).toEqual([]);
+    expect(only(oneStat({ starting: 40, code: dotName }, [ashen]), 'stat-code-overrides-trait')).toEqual([]);
+    expect(only(oneStat({ starting: 40, code: bracketName }, [ashen]), 'stat-code-overrides-trait')).toEqual([]);
+  });
+
+  it('still flags code that only reads another stat through the map', () => {
+    const ashen = trait({ id: 't1', name: 'Ashen', statChanges: [{ statId: 's1', type: 'starting', value: -10 }] });
+    const other = base({
+      stats: [
+        stat({ id: 's1', name: 'Fertility', starting: 40, code: 'return stats.Vigor.value;' }),
+        stat({ id: 's2', name: 'Vigor' }),
+      ],
+      traits: [ashen],
+    });
+    expect(only(other, 'stat-code-overrides-trait')).toHaveLength(1);
   });
 
   it('reads a stat’s own id as a lookup only where it is quoted', () => {

@@ -829,18 +829,25 @@ const placeholderPinnedUnused: Rule = {
 // `==`/`!=` forms — any comparison against `.name` names a stat.
 const NAME_THEN_LITERAL = /\.name\s*[!=]==?\s*(["'`])((?:\\.|(?!\1).)*)\1/g;
 const LITERAL_THEN_NAME = /(["'`])((?:\\.|(?!\1).)*)\1\s*[!=]==?\s*[\w$]+(?:\??\.[\w$]+)*\??\.name\b/g;
+// The map form: `stats.Vigour` names the stat by identifier; `stats["Vigour"]` (any quote style) names it
+// by bracket key. A computed key (no leading quote, e.g. `stats[key]`) has no literal to check and is left
+// to match nothing, the same way a dynamic `.name` comparison is. A call (`stats.find(`, `stats.filter(`)
+// is the old array API, not an entry lookup, and is excluded so it isn't misread as a stat named "find".
+const MAP_DOT = /\bstats\.([A-Za-z_$][\w$]*)\b(?!\s*\()/g;
+const MAP_BRACKET = /\bstats\[\s*(["'`])((?:\\.|(?!\1).)*)\1\s*\]/g;
 
-/** Every stat name a piece of code compares against, unescaped. Template literals with `${}` are dynamic
- *  and skipped — there is no literal name to check. */
+/** Every stat name a piece of code names, unescaped — by `.name` comparison or by map lookup. Template
+ *  literals with `${}` are dynamic and skipped — there is no literal name to check. */
 const statNamesInCode = (code: string): string[] => {
   const names: string[] = [];
-  for (const re of [NAME_THEN_LITERAL, LITERAL_THEN_NAME]) {
+  for (const re of [NAME_THEN_LITERAL, LITERAL_THEN_NAME, MAP_BRACKET]) {
     for (const m of code.matchAll(re)) {
       const literal = m[2];
       if (!literal || literal.includes('${')) continue;
       names.push(literal.replace(/\\(.)/g, '$1'));
     }
   }
+  for (const m of code.matchAll(MAP_DOT)) names.push(m[1]);
   return names;
 };
 
@@ -1256,8 +1263,8 @@ const statTraitDeltaClamped: Rule = {
 };
 
 /** Whether a stat's code builds on the stat's own current value, which is the one thing that lets a trait's
- *  starting change survive the first recompute. Both ways code can find itself count: the injected
- *  `currentStatId`, and its own name written as a literal. */
+ *  starting change survive the first recompute. Three ways code can find itself count: the injected
+ *  `currentStatId`, the `self` map entry, and its own name written as a literal or a map lookup. */
 const codeReadsSelf = (stat: Stat, world: RuleWorld): boolean => {
   const code = stat.code ?? '';
   // The id has to be quoted to be a lookup: bare containment would read a stat whose id is "1" out of
@@ -1265,7 +1272,7 @@ const codeReadsSelf = (stat: Stat, world: RuleWorld): boolean => {
   const quotedId = stat.id
     ? new RegExp(`["'\`]${stat.id.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}["'\`]`)
     : undefined;
-  if (/\bcurrentStatId\b/.test(code) || quotedId?.test(code)) return true;
+  if (/\bcurrentStatId\b/.test(code) || /\bself\b/.test(code) || quotedId?.test(code)) return true;
   const names = new Set([stat.name, describePlaceholders(stat.name ?? '', allPlaceholders(world))]);
   return statNamesInCode(code).some((name) => names.has(name));
 };
