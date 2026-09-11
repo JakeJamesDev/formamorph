@@ -141,7 +141,7 @@ export interface StatTurnInputs {
   delta?: Partial<Record<DeltaSource, Partial<StatNumbers>>>;
 }
 
-/** A `StatNumbers` built one field at a time. */
+/** Each of the four numbers as `read` gives it. */
 const fieldwise = (read: (field: keyof StatNumbers) => number): StatNumbers =>
   ({ value: read('value'), min: read('min'), max: read('max'), regen: read('regen') });
 
@@ -381,6 +381,7 @@ export const executeStatCode = async (
       const inputs = turn?.[stat.id];
       // No pre-turn entry: `previous` reads as this same entry's own current fields.
       const previous = inputs?.previous ? marshalSnapshot(inputs.previous) : snapshot;
+      // fromEntries types its keys as string; the map is over DELTA_SOURCES, so every source is present.
       const sources = Object.fromEntries(DELTA_SOURCES.map((source) =>
         [source, fieldwise((field) => inputs?.delta?.[source]?.[field] ?? 0)])) as Record<DeltaSource, StatNumbers>;
       return {
@@ -434,7 +435,7 @@ export const executeStatCode = async (
         statsPrelude(statsData, blankOf(selfData)),
         `const currentStatId = ${JSON.stringify(String(currentStat.id))};`,
         `const self = ${selfIsEntry ? `stats[${JSON.stringify(selfData.name)}]` : JSON.stringify(selfData)};`,
-        // `previous` and `delta` are what the turn did, not live fields: frozen, so a write is dropped.
+        // `previous` and `delta` describe the turn, not live fields: frozen, so a write is dropped.
         `for (const s of [...Object.values(stats), self]) {`,
         `  Object.freeze(s.previous);`,
         `  Object.values(s.delta).forEach(Object.freeze);`,

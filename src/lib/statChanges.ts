@@ -86,7 +86,7 @@ export function parseStatUpdates(text: string): {
  * The movement is also accumulated into `aiMaxDelta`, which is what keeps the maximum derivable: a later
  * trait toggle recomputes the cap from base + traits + this, so the AI's work survives the recompute.
  * Under a code max the cap holds and the ask moves the cap underneath, which `active` derives; stat code
- * reads the ask itself as `requested.max`.
+ * reads the ask itself as `delta.ai.max`.
  */
 export function applyAiMaxChanges(
   stats: PlayerStat[],

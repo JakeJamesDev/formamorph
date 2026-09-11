@@ -80,7 +80,7 @@ describe('runStatCodeTurn', () => {
   });
 
   it('reads a capped ask as actual short of total, total being the ai and regen asks added up', async () => {
-    // 90 asked +20 and regened +5 against a cap of 100: the range took 15.
+    // 90 with +20 asked and +5 regen against a cap of 100: the range took 15.
     const out = await runStatCodeTurn(turn({
       stats: [
         stat({ id: 'a', name: 'A', value: 100, code: 'return self.delta.total.value - self.delta.actual.value;' }),
