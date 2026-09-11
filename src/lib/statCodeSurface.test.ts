@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest';
 import { executeStatCode, type CodeBoundField } from './statCodeExecutor';
 import {
   BUILTIN_MEMBERS, LANGUAGE_NAMES, PLACEHOLDER_ENTRY_FIELDS, PREVIOUS_FIELDS, REQUESTED_FIELDS, SANDBOX_BUILTINS, SANDBOX_GLOBALS,
-  SELF_WRITABLE_FIELDS, STATS_MEMBERS, STAT_FIELDS, nearestSurfaceName,
+  SELF_WRITABLE_FIELDS, STATS_MEMBERS, STAT_FIELDS, TRAIT_ENTRY_FIELDS, nearestSurfaceName,
 } from './statCodeSurface';
 import type { Stat } from '@/types';
 
@@ -55,6 +55,21 @@ describe('the described surface against the sandbox that provides it', () => {
       `return Object.keys(placeholders.Mood).sort().join(',') === ${JSON.stringify(expected)} ? 1 : 0;`,
       stats, stats[0], undefined, undefined, [entry],
     )).resolves.toEqual({ value: 1, error: null });
+  });
+
+  it('describes every member of a traits entry, and no member it does not', async () => {
+    const expected = TRAIT_ENTRY_FIELDS.map(entry => entry.name).sort().join(',');
+    await expect(executeStatCode(
+      `return Object.keys(traits.Brave).sort().join(',') === ${JSON.stringify(expected)} ? 1 : 0;`,
+      stats, stats[0], undefined, undefined, [], [{ name: 'Brave', enabled: false, acquired: false }],
+    )).resolves.toEqual({ value: 1, error: null });
+  });
+
+  // The one writable trait field; a write the host never reads back is the editor promising a switch that does nothing.
+  it('reads a write to a trait’s enabled back out of the sandbox', async () => {
+    const result = await executeStatCode('traits.Brave.enabled = true;', stats, stats[0], undefined, undefined, [],
+      [{ name: 'Brave', enabled: false, acquired: false }]);
+    expect(result.traits).toEqual([{ name: 'Brave', enabled: true }]);
   });
 
   it('offers self as the stat’s own entry in stats', async () => {

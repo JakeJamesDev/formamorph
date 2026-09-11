@@ -21,6 +21,7 @@ import { HelpButton } from "@/components/HelpButton";
 import { HintInfo } from "@/components/SettingsRows";
 import { CODE_BOUND_FIELDS, executeStatCode, type CodeBoundField } from "@/lib/statCodeExecutor";
 import { sandboxPlaceholders } from "@/lib/statCodePlaceholders";
+import { sandboxTraits } from "@/lib/statCodeTraits";
 import { StatCodeTemplateDialog } from "@/components/modals/StatCodeTemplateDialog";
 import { CodeArea } from "@/components/prompt/CodeArea";
 import { MultiSelect } from "@/components/ui/multi-select";
@@ -65,17 +66,17 @@ const StatManager = ({ stat, tab, onTabChange, focusField }: {
   onTabChange: (tab: StatPanelTab) => void;
   focusField?: FocusFieldHint | null;
 }) => {
-  const { updateStat, stats, placeholders, placeholderOwners } = useGameData();
+  const { updateStat, stats, placeholders, placeholderOwners, traits } = useGameData();
   const [newDescriptor, setNewDescriptor] = useState<{ threshold: number | string; description: string }>({
     threshold: "",
     description: "",
   });
-  /** What the last Test Code run wrote: the value, each bound, then each placeholder, as one line. Null when
-   *  it wrote nothing. */
+  /** What the last Test Code run wrote: the value, each bound, each placeholder, then each trait switch, as
+   *  one line. Null when it wrote nothing. */
   const [codeResult, setCodeResult] = useState<string | null>(null);
   const [codeError, setCodeError] = useState<string | null>(null);
-  /** The placeholder names the last run wrote that no placeholder has. Null when there were none. */
-  const [codeUnknownPlaceholders, setCodeUnknownPlaceholders] = useState<string | null>(null);
+  /** The writes the last run made that did nothing: unknown names, and `acquired`. */
+  const [codeWarnings, setCodeWarnings] = useState<string[]>([]);
   /** What the editor's own reader found, phrased for the test row. Null when it found nothing. */
   const [codeProblems, setCodeProblems] = useState<string | null>(null);
   const [isTestingCode, setIsTestingCode] = useState(false);
@@ -102,12 +103,13 @@ const StatManager = ({ stat, tab, onTabChange, focusField }: {
     () => ({ list: placeholders, owners: placeholderOwners }),
     [placeholders, placeholderOwners],
   );
+  const traitNames = useMemo(() => traits.map((trait) => trait.name), [traits]);
 
   /** Drop what the last test said. Editing the code makes every part of that report stale together. */
   const clearTestReport = useCallback(() => {
     setCodeResult(null);
     setCodeError(null);
-    setCodeUnknownPlaceholders(null);
+    setCodeWarnings([]);
     setCodeProblems(null);
   }, []);
 
@@ -433,6 +435,7 @@ const StatManager = ({ stat, tab, onTabChange, focusField }: {
         ariaLabel="Stat Code"
         statNames={statNames}
         placeholders={codePlaceholders}
+        traits={traitNames}
         // Its caption is the section heading, which full screen leaves behind — so the field names
         // itself in the toolbar and stays labeled in both states.
         label="Code"
@@ -454,15 +457,17 @@ const StatManager = ({ stat, tab, onTabChange, focusField }: {
               // Only the editor's chunk holds the reader, and CodeArea fetches that chunk on
               // demand — so this stays off the world editor's own bundle.
               const { statCodeDiagnostics, summarizeProblems } = await import('@/lib/statCodeAnalysis');
-              setCodeProblems(summarizeProblems(statCodeDiagnostics(source, { placeholders: codePlaceholders })));
+              setCodeProblems(summarizeProblems(statCodeDiagnostics(source, { placeholders: codePlaceholders, traits: traitNames })));
             } catch {
               // What the run itself found is the point; the count is what the editor adds to it.
             }
 
             try {
-              // No playthrough behind the editor: an unrolled placeholder reads as a fresh draw.
+              // No playthrough behind the editor: an unrolled placeholder reads as a fresh draw, and the
+              // player has no traits. A switch is reported here and never applied.
               const placeholderEntries = sandboxPlaceholders({ placeholders, rolls: {} });
-              const result = await executeStatCode(source, stats, editingStat as Stat, undefined, undefined, placeholderEntries);
+              const traitEntries = sandboxTraits({ acquired: [], disabledTraitIds: [], appliedValues: {}, world: { traits, groups: [] } });
+              const result = await executeStatCode(source, stats, editingStat as Stat, undefined, undefined, placeholderEntries, traitEntries);
               if (result.error) {
                 setCodeError(result.error);
               } else {
@@ -474,11 +479,14 @@ const StatManager = ({ stat, tab, onTabChange, focusField }: {
                   }),
                   ...(result.placeholders ?? []).map((write) =>
                     ('unpin' in write ? `${write.name} unpinned` : `${write.name} = ${write.text}`)),
+                  ...(result.traits ?? []).map((write) => `${write.name} switched ${write.enabled ? 'on' : 'off'}`),
                 ];
                 if (parts.length) setCodeResult(parts.join(' · '));
-                if (result.unknownPlaceholders) {
-                  setCodeUnknownPlaceholders(`No placeholder has these names, so code did not change them: ${result.unknownPlaceholders.join(', ')}.`);
-                }
+                setCodeWarnings([
+                  ...(result.unknownPlaceholders ? [`No placeholder has these names, so code did not change them: ${result.unknownPlaceholders.join(', ')}.`] : []),
+                  ...(result.unknownTraits ? [`No trait has these names, so code did not switch them: ${result.unknownTraits.join(', ')}.`] : []),
+                  ...(result.acquiredWrites ? [`Code can’t change acquired, so these writes did nothing: ${result.acquiredWrites.join(', ')}.`] : []),
+                ]);
               }
             } catch (error) {
               setCodeError((error as Error).message);
@@ -495,7 +503,7 @@ const StatManager = ({ stat, tab, onTabChange, focusField }: {
         <div className="min-w-0 text-right">
           {codeResult !== null && <div className="text-success">{codeResult}</div>}
           {codeError && <div className="text-destructive text-label">Error: {codeError}</div>}
-          {codeUnknownPlaceholders && <div className="text-warning text-label">{codeUnknownPlaceholders}</div>}
+          {codeWarnings.map((warning) => <div key={warning} className="text-warning text-label">{warning}</div>)}
           {/* Always beside what the run reported, never instead of it: a run says what the code did
               this once, which is silent about a typo on a branch it didn't take. */}
           {codeProblems && <div className="text-warning text-label">{codeProblems}</div>}

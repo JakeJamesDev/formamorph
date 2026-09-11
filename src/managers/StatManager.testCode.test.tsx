@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import type { Stat } from '@/types';
+import type { Stat, Trait } from '@/types';
 import StatManager from './StatManager';
 
 /** Running the code and reading it are two different answers about the same text, and the panel has to
@@ -12,9 +12,11 @@ const stats = [
   { id: 's2', name: 'Damp', type: 'number', value: 3, min: 0, max: 10 },
 ] as unknown as Stat[];
 
+const traits = [{ id: 't1', name: 'Brave', statChanges: [] }, { id: 't2', name: 'Night Owl', statChanges: [] }] as Trait[];
+
 const updateStat = vi.fn();
 vi.mock('@/contexts/GameDataContext', () => ({
-  useGameData: () => ({ updateStat, stats, placeholders: [] }),
+  useGameData: () => ({ updateStat, stats, placeholders: [], traits }),
 }));
 vi.mock('@/lib/useBodyMorphNames', () => ({
   useBodyMorphSources: () => ({ sources: [], loading: false, load: vi.fn() }),
@@ -129,6 +131,32 @@ describe('what Test Code reports', () => {
 
     await waitFor(() => expect(row()).toHaveTextContent('No placeholder has these names, so code did not change them: Nope, Gone.'));
     expect(row()).not.toHaveTextContent('Result:');
+  });
+
+  it('runs over the world’s traits with none acquired, and lists each switch without making it', async () => {
+    const user = userEvent.setup();
+    executeStatCode.mockResolvedValue({ value: 5, error: null, traits: [{ name: 'Brave', enabled: true }] });
+    renderCodePanel(stats[0]);
+
+    await testCode(user, 'traits.Brave.enabled = true; return 5;');
+
+    await waitFor(() => expect(row()).toHaveTextContent('Result: 5 · Brave switched on'));
+    expect(executeStatCode.mock.calls[0][6]).toEqual([
+      { name: 'Brave', enabled: false, acquired: false },
+      { name: 'Night Owl', enabled: false, acquired: false },
+    ]);
+    expect(traits).toEqual([{ id: 't1', name: 'Brave', statChanges: [] }, { id: 't2', name: 'Night Owl', statChanges: [] }]);
+  });
+
+  it('names the trait switches and acquired writes that did nothing', async () => {
+    const user = userEvent.setup();
+    executeStatCode.mockResolvedValue({ value: null, error: null, unknownTraits: ['Nope'], acquiredWrites: ['Brave'] });
+    renderCodePanel(stats[0]);
+
+    await testCode(user, 'traits.Nope = true; traits.Brave.acquired = true;');
+
+    await waitFor(() => expect(row()).toHaveTextContent('No trait has these names, so code did not switch them: Nope.'));
+    expect(row()).toHaveTextContent('Code can’t change acquired, so these writes did nothing: Brave.');
   });
 
   it('still counts the problems when the run itself threw', async () => {

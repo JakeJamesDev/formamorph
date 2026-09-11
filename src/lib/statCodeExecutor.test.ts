@@ -3,7 +3,7 @@
  * (No DOM needed; node keeps the QuickJS WASM engine loading through its filesystem path.)
  */
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { executeStatCode, usesStatClock, STAT_CLOCK_VARS, type SandboxPlaceholder } from './statCodeExecutor';
+import { executeStatCode, usesStatClock, STAT_CLOCK_VARS, type SandboxPlaceholder, type SandboxTrait } from './statCodeExecutor';
 import type { Stat } from '@/types';
 
 const makeStat = (over: Partial<Stat>): Stat => ({
@@ -359,5 +359,70 @@ describe('executeStatCode placeholder writes', () => {
     const result = await run('placeholders.Mood.value = "Furious"; throw new Error("late");');
     expect(result).toMatchObject({ value: null, kind: 'throw' });
     expect(result.placeholders).toBeUndefined();
+  });
+});
+
+describe('executeStatCode traits', () => {
+  const stat = makeStat({ id: 'a', max: 1000 });
+  const brave: SandboxTrait = { name: 'Brave', enabled: true, acquired: true };
+  const timid: SandboxTrait = { name: 'Timid', enabled: false, acquired: true };
+  const cursed: SandboxTrait = { name: 'Cursed', enabled: false, acquired: false };
+  const run = (code: string, traits: SandboxTrait[] = [brave, timid, cursed]) =>
+    executeStatCode(code, [stat], stat, undefined, undefined, [], traits);
+
+  it('reads enabled and acquired for each of the three trait states', async () => {
+    const code = 'const t = traits; return [t.Brave, t.Timid, t.Cursed].map(e => (e.enabled ? 2 : 0) + (e.acquired ? 1 : 0)).join("") * 1;';
+    await expect(run(code)).resolves.toEqual({ value: 310, error: null });
+  });
+
+  it('offers an empty map when the run carries no traits', async () => {
+    await expect(run('return Object.keys(traits).length + 1;', [])).resolves.toEqual({ value: 1, error: null });
+  });
+
+  it('reads a changed enabled back as a switch', async () => {
+    await expect(run('traits.Cursed.enabled = true; traits.Brave.enabled = false;')).resolves.toEqual({
+      value: null, error: null, traits: [{ name: 'Brave', enabled: false }, { name: 'Cursed', enabled: true }],
+    });
+  });
+
+  it('reads every assignment as a switch, even one to the state it read, and a plain read as none', async () => {
+    await expect(run('traits.Brave.enabled = true; traits.Timid.enabled = true; traits.Timid.enabled = false; return 1;'))
+      .resolves.toEqual({ value: 1, error: null, traits: [{ name: 'Brave', enabled: true }, { name: 'Timid', enabled: false }] });
+    await expect(run('return traits.Brave.enabled ? 1 : 0;')).resolves.toEqual({ value: 1, error: null });
+  });
+
+  it('takes true or false assigned to the entry itself as a switch', async () => {
+    await expect(run('traits.Cursed = true; return 1;'))
+      .resolves.toEqual({ value: 1, error: null, traits: [{ name: 'Cursed', enabled: true }] });
+  });
+
+  it('keeps acquired as it was, and reports the write', async () => {
+    await expect(run('traits.Cursed.acquired = true; return traits.Cursed.acquired ? 0 : 1;'))
+      .resolves.toEqual({ value: 1, error: null, acquiredWrites: ['Cursed'] });
+  });
+
+  it('drops a switch of a name the world has no trait for, and reports it, keeping the other switches', async () => {
+    const code = 'traits.Nope = true; traits["Also Nope"] = { enabled: false }; traits.Gone.enabled = true; traits.Cursed.enabled = true;';
+    await expect(run(code)).resolves.toEqual({
+      value: null, error: null, traits: [{ name: 'Cursed', enabled: true }], unknownTraits: ['Nope', 'Also Nope', 'Gone'],
+    });
+  });
+
+  it('reads an unknown name as a trait nobody has, and a read of it reports nothing', async () => {
+    await expect(run('return traits.Gone.enabled || traits.Gone.acquired || "Gone" in traits ? 0 : 1;'))
+      .resolves.toEqual({ value: 1, error: null });
+  });
+
+  it('fails the run on an enabled that is not true or false, discarding every write', async () => {
+    const result = await run('traits.Cursed.enabled = true; traits.Brave.enabled = 0;');
+    expect(result).toMatchObject({ value: null, kind: 'throw' });
+    expect(result.error).toContain('traits.Brave.enabled must be true or false');
+    expect(result.traits).toBeUndefined();
+  });
+
+  it('discards the switches of a run that throws after making them', async () => {
+    const result = await run('traits.Cursed.enabled = true; throw new Error("late");');
+    expect(result).toMatchObject({ value: null, kind: 'throw' });
+    expect(result.traits).toBeUndefined();
   });
 });

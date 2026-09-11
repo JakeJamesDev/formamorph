@@ -37,6 +37,7 @@ export const SANDBOX_GLOBALS: readonly SurfaceEntry[] = [
   { name: 'currentStatId', detail: 'string', info: 'The id of the stat this code belongs to. self.id is the same.' },
   ...STAT_CLOCK_VARS.map((name) => CLOCK_INFO[name]),
   { name: 'placeholders', detail: 'object', info: 'Every placeholder in the world by name. Use placeholders["Two Words"] for a name with a space.' },
+  { name: 'traits', detail: 'object', info: 'Every trait in the world by name. Use traits["Two Words"] for a name with a space.' },
   { name: 'console', detail: 'object', info: 'Only console.log — output shows up in the browser console.' },
 ];
 
@@ -78,6 +79,15 @@ export const PLACEHOLDER_ENTRY_FIELDS: readonly SurfaceEntry[] = [
   { name: 'roll', detail: '() => string', info: 'Draw one value with the author’s weights. The draw is not kept.' },
   { name: 'unpin', detail: '() => void', info: 'Remove the pin that code set, after this run. The rolled value shows again.' },
 ];
+
+/** The members of one entry in `traits`. */
+export const TRAIT_ENTRY_FIELDS: readonly SurfaceEntry[] = [
+  { name: 'enabled', detail: 'boolean', info: 'Whether the player has the trait and it is on. Write it to switch the trait on or off, after this run.' },
+  { name: 'acquired', detail: 'boolean', info: 'Whether the player has the trait, on or off. Code can’t change it.' },
+];
+
+/** The one field on a `traits` entry that a write reaches. */
+export const TRAIT_WRITABLE_FIELD = 'enabled';
 
 /** Built-ins the VM already has. Listed so a reference to one isn't flagged, and so completions offer the
  *  handful that stat code actually reaches for rather than everything a JS engine defines. */

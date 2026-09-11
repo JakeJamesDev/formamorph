@@ -219,6 +219,8 @@ export interface CodeSession {
   setStatNames: (names: readonly string[]) => void;
   /** The world's placeholders, for completions and name checks. Re-lints when the list changes. */
   setPlaceholders: (placeholders: CodePlaceholders | undefined) => void;
+  /** The world's trait names, for completions and name checks. Re-lints when the list changes. */
+  setTraits: (traits: readonly string[] | undefined) => void;
   focus: () => void;
   destroy: () => void;
 }
@@ -233,6 +235,8 @@ export interface CodeSessionOptions {
   statNames?: readonly string[];
   /** The world's placeholders. Absent, placeholder names are neither offered nor checked. */
   placeholders?: CodePlaceholders;
+  /** The world's trait names. Absent, trait names are neither offered nor checked. */
+  traits?: readonly string[];
   onChange: (value: string) => void;
   /** Any update at all, so the toolbar can re-read what undo and redo have to offer. */
   onUpdate?: () => void;
@@ -245,12 +249,13 @@ export function createCodeSession(options: CodeSessionOptions): CodeSession {
   // every render that could rebuild an extension around it.
   let statNames: readonly string[] = options.statNames ?? [];
   let placeholders: CodePlaceholders | undefined = options.placeholders;
+  let traits: readonly string[] | undefined = options.traits;
 
   /** The one completion source. Everything it offers comes from the analysis module; nothing here knows
    *  what the sandbox exposes. */
   const completeStatCode = (context: CompletionContext): CMCompletionResult | null => {
     const doc = context.state.doc.toString();
-    const result = statCodeCompletions(doc, context.pos, { slots: options.slots, statNames, placeholders });
+    const result = statCodeCompletions(doc, context.pos, { slots: options.slots, statNames, placeholders, traits });
     if (!result || result.options.length === 0) return null;
     // Explicit means the author asked for the list; otherwise an empty word is every option at once.
     if (!context.explicit && result.from === result.to && !context.matchBefore(/["'.]|\{\{/)) return null;
@@ -260,7 +265,7 @@ export function createCodeSession(options: CodeSessionOptions): CodeSession {
   };
 
   const statCodeLinter = linter(
-    (view): Diagnostic[] => statCodeDiagnostics(view.state.doc.toString(), { slots: options.slots, placeholders }),
+    (view): Diagnostic[] => statCodeDiagnostics(view.state.doc.toString(), { slots: options.slots, placeholders, traits }),
     { delay: 400 },
   );
   /** Set by Escape, so the next Tab moves focus instead of indenting — otherwise a keyboard-only user is
@@ -369,6 +374,11 @@ export function createCodeSession(options: CodeSessionOptions): CodeSession {
       if (next === placeholders) return;
       placeholders = next;
       // A rename or a new placeholder can clear or raise a name diagnostic with no edit to the code.
+      forceLinting(view);
+    },
+    setTraits(next) {
+      if (next === traits) return;
+      traits = next;
       forceLinting(view);
     },
     setLintGutter(show) {

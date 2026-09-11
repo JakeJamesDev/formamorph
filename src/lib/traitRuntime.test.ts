@@ -2,11 +2,13 @@ import { describe, it, expect } from 'vitest';
 import {
   acquireTrait,
   activeTraits,
+  applyCodeTraitSwitches,
   deriveEffectiveStats,
   listablePlayerTraits,
   recoverStatBases,
   seedStatBases,
   setTraitEnabled,
+  traitSwitchLog,
   withCodeBounds,
   type TraitRuntimeState,
   type TraitWorld,
@@ -384,6 +386,38 @@ describe('exclusive groups', () => {
     const off = setTraitEnabled(on, 'a', false, w).state;
     expect(activeTraits(off.traits, off.disabledTraitIds)).toEqual([]);
     expect(valueOf(off)).toBe(50);
+  });
+});
+
+describe('applyCodeTraitSwitches', () => {
+  const group: TraitGroup = { id: 'g', name: 'Origin', parentId: null, exclusive: true };
+  const noble = trait('noble', [{ statId: 'h', value: 10, type: 'starting' }], { groupId: 'g' });
+  const outcast = trait('outcast', [], { groupId: 'g' });
+  const w = world([noble, outcast], [group]);
+
+  it('logs the switch and each retired sibling with the player-switch wording, attributed to the stat', () => {
+    const start = acquireTrait(state(), noble, w).state;
+    const { log } = applyCodeTraitSwitches(start, [{ traitId: 'outcast', enabled: true, by: 'Health' }], w);
+    expect(log).toEqual(['Trait switched off: noble (by Health)', 'Acquired trait: outcast (by Health)']);
+  });
+
+  it('names each trait through the resolver it is given', () => {
+    const { log } = applyCodeTraitSwitches(state(), [{ traitId: 'noble', enabled: true, by: 'Health' }], w, (t) => t.id.toUpperCase());
+    expect(log).toEqual(['Acquired trait: NOBLE (by Health)']);
+  });
+
+  it('skips a switch to the state the trait already holds, so a recorded movement is not reversed twice', () => {
+    const off = setTraitEnabled(acquireTrait(state(), noble, w).state, 'noble', false, w).state;
+    const { state: next, log } = applyCodeTraitSwitches(off, [{ traitId: 'noble', enabled: false, by: 'Health' }], w);
+    expect(next).toBe(off);
+    expect(log).toEqual([]);
+  });
+});
+
+describe('traitSwitchLog', () => {
+  it('writes the player’s own switch without an attribution', () => {
+    expect(traitSwitchLog('Brave', 'on', ['Timid'])).toEqual(['Trait switched off: Timid', 'Trait switched on: Brave']);
+    expect(traitSwitchLog('Brave', 'off', [])).toEqual(['Trait switched off: Brave']);
   });
 });
 
