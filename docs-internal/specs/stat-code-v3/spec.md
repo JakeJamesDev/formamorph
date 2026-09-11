@@ -1,7 +1,7 @@
 # Stat Code v3: Surface Parity
 
 Status: ready-for-agent
-Status note: Tickets 01–08 cut 2026-09-11 under `issues/`. 01 also rewrites template and bundled-world code so it lands green; 02 and 03 skip those edits. 07 covers the Test Bench rules. 08 makes saves read stat code from the world, so 02 is world-only.
+Status note: Tickets 01–10 cut 2026-09-11 under `issues/`. 09 and 10 run after the first eight. 01 also rewrites template and bundled-world code so it lands green; 02 and 03 skip those edits. 07 covers the Test Bench rules. 08 makes saves read stat code from the world, so 02 is world-only.
 
 ## Problem Statement
 
@@ -43,6 +43,10 @@ One shape for every entry, and one word for every change. A stat's `previous` is
 24b. As a world author, I want a way to iterate every stat, so that an average-of-all-stats formula is still one line.
 25. As a player, I want a saved game from v2 to load and run its stat code unchanged, so that a rename inside the sandbox never costs me a playthrough.
 26. As a maintainer, I want the surface list to stay the one description of the sandbox, so that completions, diagnostics, and help cannot drift apart.
+27. As a world author, I want a stat whose name carries a placeholder chip to have one name in code across every playthrough, so that I can reference it at all.
+28. As a world author, I want the editor, Test Code, the Test Bench, and play to agree on that name, so that what completes is what runs.
+29. As a world author, I want a rename to offer to update the scripts that reference the old name, so that a rename does not silently break my code.
+30. As a world author, I want that offer only when something references the old name, and never on a keystroke, so that renaming stays quiet.
 
 ## Implementation Decisions
 
@@ -86,6 +90,18 @@ One shape for every entry, and one word for every change. A stat's `previous` is
 - The stat slot in templates already expands to a quoted name, so `stats[{{source:stat}}]` is the template form.
 - The editor's stat-like scanner keys off `stats` and `self` as before; what changes is the shape it expects after `stats`: a dot or bracket names an entry, and the entry completes to the stat fields. Completions after `stats.` list stat names; inside `stats[` they list quoted names.
 
+**5. One stable code name for every stat (locked 2026-09-11, ticket 09).**
+
+- The name stat code sees is derived from authoring, never from a roll. A stat's code name is its authored name with each placeholder chip replaced by that placeholder's own name. A chip-free name is its own code name.
+- One pure function produces it. The sandbox marshals `name` from it and keys `stats` on it; the play site no longer resolves stat names before the run. Completions, the editor's stat checks, the Test Bench's stat-name rules, and Test Code all use the same function.
+- The resolved text stays in use for prompts and the panel. Code keys on identity, not on this playthrough's roll.
+
+**6. A rename offers to update code references (locked 2026-09-11, ticket 10).**
+
+- A rename is a committed edit of a stat, placeholder, or trait name: blur or Enter with text different from the focus-time value. Keystrokes are not renames. Search-and-replace renames count.
+- When at least one stat's code references the old name in a map form, the editor asks whether to update. Yes rewrites the exact map-lookup forms across every stat's code; No leaves them. Renaming to a duplicate name offers nothing. The Test Bench is the net for anything declined or missed; its rules never guess a rename, since a guess is judgment.
+- Stats compare by code name, so a chip-bearing name renames the way code reads it.
+
 ## Testing Decisions
 
 A good test drives the sandbox as a turn does and reads what came out: the returned stats, the pins, the switches, the diagnostics. It never inspects the prelude text or the row format.
@@ -96,14 +112,16 @@ A good test drives the sandbox as a turn does and reads what came out: the retur
 - **Editor seam.** Diagnostics: a write to a `previous` field, a `pin()` on an unknown or duplicate name, a write to another stat through the map. Completions: after `previous.`, `delta.`, `delta.ai.`, and after the stat map's dot and inside its brackets. Prior art: the analysis tests.
 - **Surface drift guard.** The surface list describes every injected name and no other; the existing drift test beside the surface module extends to `delta` and the four-field delta shape.
 - **Templates.** Every built-in template runs in the sandbox under the new surface; the pin template reports its pin. Prior art: the template sandbox tests.
-- **Live check.** The e2e stat-code spec gains one case reading `delta.ai` and `previous.min` through a real turn.
+- **Live check.** The e2e stat-code spec gains one case reading `delta.ai` and `previous.min` through a real turn, and one reading a chip-bearing stat name across a roll.
+- **Code-name drift guard.** One chip-bearing fixture run through the sandbox, the completions, and the bench asserts all three produce the same name.
+- **Rename seam.** The detector and the rewrite are pure over old name, new name, and code; a live check renames in the editor and reads the rewritten code.
 
 ## Out of Scope
 
 - `delta.trait`. Named so the nesting has somewhere to grow; not built. What the range took has no name; it is `total - actual`.
 - Removing the `currentStatId` global. It stays one release, undocumented, so unmigrated code has a chance.
 - Any change to the save envelope or the world file shape. The migration rewrites the text of `code` in worlds only; it adds no field, and saves are never written by this work. `codeBounds` and `codePins` are as v2 left them.
-- Rewriting stat code beyond the two taught lookup spellings.
+- Rewriting stat code beyond the two taught lookup spellings, and beyond the exact map-lookup forms a rename touches.
 
 ## Further Notes
 
