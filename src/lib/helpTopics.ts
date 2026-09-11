@@ -368,16 +368,16 @@ const level = stats.find(s => s.name === 'Level')?.value ?? 1;
 self.max = level * 10;
 \`\`\`
 
-**Reading this turn.** Each stat also carries what the turn did before your code ran: \`previous.value\` and \`previous.max\` from the start of the turn, \`requested.value\` and \`requested.max\` for the change the AI asked for, and \`regenApplied\` for the regen this turn added. Use them to clamp or scale an ask before it lands.
+**Reading this turn.** Each stat also carries what the turn did before your code ran: \`previous\`, the whole stat — \`id\`, \`name\`, \`type\`, \`description\`, \`min\`, \`max\`, \`value\` and \`regen\` — as it stood at the start of the turn and frozen against writes; \`requested.value\` and \`requested.max\` for the change the AI asked for; and \`regenApplied\` for the regen this turn added. Use them to clamp or scale an ask before it lands.
 
 \`\`\`js
 self.value = self.previous.value + Math.min(self.requested.value, 10);
 \`\`\`
 
-**Placeholders.** \`placeholders\` holds every placeholder by name. Each entry has \`value\`, the text it reads as now; \`values\`, every authored value as text; and \`roll()\`, one draw with the author's weights. Write \`value\` to pin the placeholder to any text until your code changes it again, or call \`unpin()\` to let the other pins and the roll show through. A name with a space needs brackets: \`placeholders["Hair Color"]\`.
+**Placeholders.** \`placeholders\` holds every placeholder by name. Each entry has \`value\`, the text it reads as now; \`values\`, every authored value as text; and \`roll()\`, one draw with the author's weights. Call \`pin(text)\` to pin the placeholder to any text until your code changes it again, or \`unpin()\` to let the other pins and the roll show through. A name with a space needs brackets: \`placeholders["Hair Color"]\`.
 
 \`\`\`js
-placeholders.Mood.value = self.value < 20 ? 'furious' : 'calm';
+placeholders.Mood.pin(self.value < 20 ? 'furious' : 'calm');
 \`\`\`
 
 **Traits.** \`traits\` holds every authored trait by name. Each entry has \`enabled\`, whether the player has it and it's on, and \`acquired\`, whether the player has it at all. Write \`enabled\` to switch the trait on or off after the run, exactly as the player's checkbox does, exclusive siblings included. Switching on a trait the player never took acquires it. Code ignores Player Can Toggle In-Game, so it can drive a trait the player has no checkbox for.
