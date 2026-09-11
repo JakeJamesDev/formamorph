@@ -1,7 +1,7 @@
 # Stat Code v3: Surface Parity
 
 Status: ready-for-agent
-Status note: Tickets 01–06 cut 2026-09-11 under `issues/`. Frontier at start: 01, 04, 06.
+Status note: Tickets 01–07 cut 2026-09-11 under `issues/`. 01 also rewrites template and bundled-world code so it lands green; 02 and 03 skip those edits. 07 covers the Test Bench rules.
 
 ## Problem Statement
 
