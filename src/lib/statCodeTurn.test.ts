@@ -51,9 +51,9 @@ describe('runStatCodeTurn', () => {
     expect(out.stats).toBe(stats);
   });
 
-  it('lets code halve an AI gain it reads from requested and previous', async () => {
+  it('lets code halve an AI gain it reads from delta.ai and previous', async () => {
     // The AI asked +20 onto 50, so the pipeline already shows 70; the code keeps half of the ask.
-    const code = 'self.value = self.previous.value + self.requested.value / 2;';
+    const code = 'self.value = self.previous.value + self.delta.ai.value / 2;';
     const out = await runStatCodeTurn(turn({
       stats: [stat({ id: 'a', value: 70, code })],
       previous: [stat({ id: 'a', value: 50 })],
@@ -65,7 +65,7 @@ describe('runStatCodeTurn', () => {
   it('hands code the raw ask, before the flags and the clamp shaped it', async () => {
     // noIncrease blocked the +30 and the pipeline value stayed 50, but the ask itself reaches the code.
     const out = await runStatCodeTurn(turn({
-      stats: [stat({ id: 'a', value: 50, noIncrease: true, code: 'return self.requested.value;' })],
+      stats: [stat({ id: 'a', value: 50, noIncrease: true, code: 'return self.delta.ai.value;' })],
       asks: [{ id: 'a', value: 30, max: 5 }],
     }));
     expect(valueOf(out.stats, 'a')).toBe(30);
@@ -73,10 +73,60 @@ describe('runStatCodeTurn', () => {
 
   it('exposes the regen this turn applied', async () => {
     const out = await runStatCodeTurn(turn({
-      stats: [stat({ id: 'a', value: 55, code: 'return self.value - self.regenApplied;' })],
+      stats: [stat({ id: 'a', value: 55, code: 'return self.value - self.delta.regen.value;' })],
       regenApplied: { a: 5 },
     }));
     expect(valueOf(out.stats, 'a')).toBe(50);
+  });
+
+  it('reads a capped ask as actual short of total, total being the ai and regen asks added up', async () => {
+    // 90 asked +20 and regened +5 against a cap of 100: the range took 15.
+    const out = await runStatCodeTurn(turn({
+      stats: [
+        stat({ id: 'a', name: 'A', value: 100, code: 'return self.delta.total.value - self.delta.actual.value;' }),
+        stat({ id: 'b', name: 'B', max: 1000, code: 'const d = stats.A.delta; '
+          + 'return d.total.value === d.ai.value + d.regen.value ? d.total.value * 10 + d.actual.value : -1;' }),
+      ],
+      previous: [stat({ id: 'a', name: 'A', value: 90 }), stat({ id: 'b', name: 'B' })],
+      asks: [{ id: 'a', value: 20, max: 0 }],
+      regenApplied: { a: 5 },
+    }));
+    expect(valueOf(out.stats, 'a')).toBe(15);
+    expect(valueOf(out.stats, 'b')).toBe(260);
+  });
+
+  it('keeps an ask a flag zeroed in total, and the loss in total minus actual', async () => {
+    const out = await runStatCodeTurn(turn({
+      stats: [stat({ id: 'a', value: 50, noIncrease: true, code: 'return self.delta.total.value * 10 + self.delta.actual.value;' })],
+      asks: [{ id: 'a', value: 3, max: 0 }],
+    }));
+    expect(valueOf(out.stats, 'a')).toBe(30);
+  });
+
+  it('reads an AI max change that landed in actual.max', async () => {
+    const out = await runStatCodeTurn(turn({
+      stats: [stat({ id: 'a', value: 50, max: 120, code: 'return self.delta.actual.max * 2 + self.delta.ai.max;' })],
+      previous: [stat({ id: 'a', value: 50, max: 100 })],
+      asks: [{ id: 'a', value: 0, max: 20 }],
+    }));
+    expect(valueOf(out.stats, 'a')).toBe(60);
+  });
+
+  it('reads a bound a trait moved since turn start in actual.min, and not in total', async () => {
+    const out = await runStatCodeTurn(turn({
+      stats: [stat({ id: 'a', value: 50, min: 10, regen: 3, code: 'return self.delta.actual.min * 2 + self.delta.actual.regen + self.delta.total.min;' })],
+      previous: [stat({ id: 'a', value: 50, min: 0, regen: 0 })],
+    }));
+    expect(valueOf(out.stats, 'a')).toBe(23);
+  });
+
+  it('ignores a write to delta', async () => {
+    const out = await runStatCodeTurn(turn({
+      stats: [stat({ id: 'a', value: 70, code: 'self.delta.ai.value = 5; self.delta.actual = { value: 1 }; return self.delta.ai.value + self.delta.actual.value;' })],
+      previous: [stat({ id: 'a', value: 50 })],
+      asks: [{ id: 'a', value: 20, max: 0 }],
+    }));
+    expect(valueOf(out.stats, 'a')).toBe(40);
   });
 
   it('matches previous by id, and reads a stat missing from it as unmoved', async () => {
@@ -157,7 +207,7 @@ describe('runStatCodeTurn', () => {
 
   it('reads zero asks on a clock-only run, with the clock still ticking', async () => {
     const out = await runStatCodeTurn(turn({
-      stats: [stat({ id: 'a', value: 50, max: 1000, code: 'return self.requested.value + self.requested.max + deltaHours * 100;' })],
+      stats: [stat({ id: 'a', value: 50, max: 1000, code: 'return self.delta.ai.value + self.delta.ai.max + deltaHours * 100;' })],
       asks: [],
       clock: { deltaHours: 3, elapsedHours: 10 },
     }));
@@ -166,7 +216,7 @@ describe('runStatCodeTurn', () => {
 
   it('gives the same result for the same turn, so a re-roll does not stack', async () => {
     const input = turn({
-      stats: [stat({ id: 'a', value: 70, code: 'self.value = self.previous.value + self.requested.value / 2;' })],
+      stats: [stat({ id: 'a', value: 70, code: 'self.value = self.previous.value + self.delta.ai.value / 2;' })],
       previous: [stat({ id: 'a', value: 50 })],
       asks: [{ id: 'a', value: 20, max: 0 }],
     });

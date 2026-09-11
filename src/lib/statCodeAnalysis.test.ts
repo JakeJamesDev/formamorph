@@ -75,7 +75,7 @@ return scale(total) + min + max;`)).toEqual([]);
   });
 
   it('accepts code that writes self.value and never returns', () => {
-    expect(statCodeDiagnostics('self.value = self.previous.value + self.requested.value / 2;')).toEqual([]);
+    expect(statCodeDiagnostics('self.value = self.previous.value + self.delta.ai.value / 2;')).toEqual([]);
   });
 
   it('accepts code that only writes its own bounds', () => {
@@ -110,7 +110,10 @@ return scale(total) + min + max;`)).toEqual([]);
   });
 
   it('flags a write to a field self has but code cannot set', () => {
-    for (const [code, field] of [['self.name = "x";', 'name'], ['self.previous.value = 1;', 'previous']] as const) {
+    for (const [code, field] of [
+      ['self.name = "x";', 'name'], ['self.previous.value = 1;', 'previous'], ['self.delta.ai.value = 1;', 'delta'],
+      ['self.delta.actual = null;', 'delta'],
+    ] as const) {
       const [problem] = statCodeDiagnostics(code);
       expect(problem?.severity, code).toBe('error');
       expect(problem?.message, code).toContain(`self.${field}`);
@@ -133,7 +136,7 @@ return scale(total) + min + max;`)).toEqual([]);
   });
 
   it('keeps quiet about reads, which are always allowed', () => {
-    expect(statCodeDiagnostics('const hp = stats.Health;\nreturn hp.value + self.regenApplied;')).toEqual([]);
+    expect(statCodeDiagnostics('const hp = stats.Health;\nreturn hp.value + self.delta.regen.value + hp.delta.actual.max;')).toEqual([]);
   });
 
   it('keeps quiet about a missing return while the code is still unreadable', () => {
@@ -211,19 +214,30 @@ describe('statCodeCompletions', () => {
   it('offers the stat fields after a dot', () => {
     const offered = labels('const me = stats[self.name];\nreturn me.|');
     expect(offered).toEqual([
-      'id', 'name', 'type', 'description', 'min', 'max', 'value', 'regen', 'previous', 'requested', 'regenApplied',
+      'id', 'name', 'type', 'description', 'min', 'max', 'value', 'regen', 'previous', 'delta',
     ]);
   });
 
   it('offers the stat fields after self, and after a name that holds self', () => {
-    expect(labels('return self.|')).toContain('requested');
+    expect(labels('return self.|')).toContain('delta');
     expect(labels('const me = self;\nreturn me.|')).toContain('previous');
   });
 
-  it('offers value and max after requested, and nothing a stat has', () => {
-    for (const doc of ['return self.requested.|', 'return stats[0].requested.|']) {
-      expect(labels(doc), doc).toEqual(['value', 'max']);
+  it('offers the four sources after delta, and the four numbers after each source', () => {
+    for (const doc of ['return self.delta.|', 'return stats.Health.delta.|', 'const me = self;\nreturn me.delta.|']) {
+      expect(labels(doc), doc).toEqual(['ai', 'regen', 'total', 'actual']);
     }
+    for (const source of ['ai', 'regen', 'total', 'actual']) {
+      for (const doc of [`return self.delta.${source}.|`, `return stats["Health"].delta.${source}.|`]) {
+        expect(labels(doc), doc).toEqual(['value', 'min', 'max', 'regen']);
+      }
+    }
+  });
+
+  it('says nothing after delta on something that is not a stat, or after a source delta lacks', () => {
+    expect(labels('const other = { delta: { ai: 1 } };\nreturn other.delta.|')).toEqual([]);
+    expect(labels('const other = { delta: { ai: 1 } };\nreturn other.delta.ai.|')).toEqual([]);
+    expect(labels('return self.delta.trait.|')).toEqual([]);
   });
 
   it('offers the whole stat’s fields after previous, and none of its own turn-relative ones', () => {
@@ -282,7 +296,7 @@ describe('statCodeCompletions', () => {
   // The info string is what the popup's description card reads out, and it is the only place the editor
   // gets to explain the sandbox as the author types.
   it('explains every member it offers', () => {
-    for (const doc of ['return Math.|', 'return stats.|', 'return stats.Health.|', 'return self.previous.|', 'return self.requested.|']) {
+    for (const doc of ['return Math.|', 'return stats.|', 'return stats.Health.|', 'return self.previous.|', 'return self.delta.|', 'return self.delta.ai.|']) {
       const options = completeAt(doc, { statNames: ['Health'] })?.options ?? [];
       expect(options.length, doc).toBeGreaterThan(0);
       for (const option of options) expect(option.info, `${doc} ${option.label}`).toBeTruthy();

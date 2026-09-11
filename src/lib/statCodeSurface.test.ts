@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { executeStatCode, type CodeBoundField } from './statCodeExecutor';
 import {
-  BUILTIN_MEMBERS, LANGUAGE_NAMES, PLACEHOLDER_ENTRY_FIELDS, PREVIOUS_FIELDS, REQUESTED_FIELDS, SANDBOX_BUILTINS, SANDBOX_GLOBALS,
+  BUILTIN_MEMBERS, DELTA_FIELDS, DELTA_MEMBERS, LANGUAGE_NAMES, PLACEHOLDER_ENTRY_FIELDS, PREVIOUS_FIELDS, SANDBOX_BUILTINS, SANDBOX_GLOBALS,
   SANDBOX_UNDOCUMENTED_GLOBALS, SELF_WRITABLE_FIELDS, STAT_FIELDS, TRAIT_ENTRY_FIELDS, nearestSurfaceName,
 } from './statCodeSurface';
 import type { Stat } from '@/types';
@@ -46,7 +46,11 @@ describe('the described surface against the sandbox that provides it', () => {
       .resolves.toEqual({ value: 1, error: null });
   });
 
-  it.each([['previous', PREVIOUS_FIELDS], ['requested', REQUESTED_FIELDS]] as const)(
+  it.each([
+    ['previous', PREVIOUS_FIELDS],
+    ['delta', DELTA_MEMBERS],
+    ...DELTA_MEMBERS.map((member) => [`delta.${member.name}`, DELTA_FIELDS] as const),
+  ] as const)(
     'describes every field on a stat’s %s, and no field it does not',
     async (field, described) => {
       const expected = described.map(entry => entry.name).sort().join(',');

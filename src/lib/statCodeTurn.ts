@@ -104,8 +104,7 @@ export async function runStatCodeTurn(turn: StatCodeTurn): Promise<StatCodeTurnR
     const ask = asks.get(stat.id);
     return [stat.id, {
       previous: before,
-      requested: ask && { value: ask.value, max: ask.max },
-      regenApplied: turn.regenApplied[stat.id],
+      delta: { ai: ask && { value: ask.value, max: ask.max }, regen: { value: turn.regenApplied[stat.id] } },
     }];
   }));
 

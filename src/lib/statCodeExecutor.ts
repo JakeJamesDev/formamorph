@@ -123,17 +123,27 @@ export interface StatSnapshot {
   regen: number;
 }
 
+/** The numbers a stat carries, and the fields of every `delta` source. */
+export type StatNumbers = Pick<StatSnapshot, 'value' | 'min' | 'max' | 'regen'>;
+
+/** Each thing that moves a stat in a turn, one `delta` source apiece. `delta.total` adds them up. */
+export const DELTA_SOURCES = ['ai', 'regen'] as const;
+export type DeltaSource = (typeof DELTA_SOURCES)[number];
+
 /** What this turn did to one stat before its code runs. Every entry in `stats` carries these; a part left
- *  out reads as untouched: `previous` as a copy of the current entry, the rest as zero. */
+ *  out reads as untouched: `previous` as a copy of the current entry, a change as zero. */
 export interface StatTurnInputs {
   /** The whole stat as it stood at the start of the turn. `min`, `max` and `regen` are the effective
    *  numbers then, traits and code bounds included. */
   previous?: Stat;
-  /** The AI's asked change to value and max, raw: before flags and clamping. */
-  requested?: ValueAndMax;
-  /** Regen applied this turn, after the enabled gate and clamping. */
-  regenApplied?: number;
+  /** Each source's change this turn. `ai` is the raw ask, before flags and the range; `regen` is what regen
+   *  did, after the enabled gate and clamping. */
+  delta?: Partial<Record<DeltaSource, Partial<StatNumbers>>>;
 }
+
+/** A `StatNumbers` built one field at a time. */
+const fieldwise = (read: (field: keyof StatNumbers) => number): StatNumbers =>
+  ({ value: read('value'), min: read('min'), max: read('max'), regen: read('regen') });
 
 /** One entry of the sandbox's `placeholders` map. `roll` runs on the host; the rest rides in as data. */
 export interface SandboxPlaceholder {
@@ -368,12 +378,18 @@ export const executeStatCode = async (
     const marshal = (stat: Stat) => {
       const snapshot = marshalSnapshot(stat);
       const inputs = turn?.[stat.id];
+      // No pre-turn entry: `previous` reads as this same entry's own current fields.
+      const previous = inputs?.previous ? marshalSnapshot(inputs.previous) : snapshot;
+      const sources = Object.fromEntries(DELTA_SOURCES.map((source) =>
+        [source, fieldwise((field) => inputs?.delta?.[source]?.[field] ?? 0)])) as Record<DeltaSource, StatNumbers>;
       return {
         ...snapshot,
-        // No pre-turn entry: `previous` reads as this same entry's own current fields.
-        previous: inputs?.previous ? marshalSnapshot(inputs.previous) : snapshot,
-        requested: { value: inputs?.requested?.value ?? 0, max: inputs?.requested?.max ?? 0 },
-        regenApplied: inputs?.regenApplied ?? 0,
+        previous,
+        delta: {
+          ...sources,
+          total: fieldwise((field) => DELTA_SOURCES.reduce((sum, source) => sum + sources[source][field], 0)),
+          actual: fieldwise((field) => snapshot[field] - previous[field]),
+        },
       };
     };
     const statsData = stats.map(marshal);
@@ -417,9 +433,12 @@ export const executeStatCode = async (
         statsPrelude(statsData, blankOf(selfData)),
         `const currentStatId = ${JSON.stringify(String(currentStat.id))};`,
         `const self = ${selfIsEntry ? `stats[${JSON.stringify(selfData.name)}]` : JSON.stringify(selfData)};`,
-        // `previous` is a snapshot, not a live field — frozen so a write to it is silently dropped.
-        `for (const s of Object.values(stats)) Object.freeze(s.previous);`,
-        `Object.freeze(self.previous);`,
+        // `previous` and `delta` are what the turn did, not live fields: frozen, so a write is dropped.
+        `for (const s of [...Object.values(stats), self]) {`,
+        `  Object.freeze(s.previous);`,
+        `  Object.values(s.delta).forEach(Object.freeze);`,
+        `  Object.freeze(s.delta);`,
+        `}`,
         ...Object.entries(resolveClock(clock)).map(([name, value]) => `const ${name} = ${JSON.stringify(value)};`),
         placeholdersPrelude(placeholders),
         traitsPrelude(traits),

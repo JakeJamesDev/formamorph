@@ -72,8 +72,7 @@ Each stat in the `stats` array, `self` included, exposes the following propertie
 | `value` | Current value, with this turn's AI change and regen applied |
 | `regen` | Regen per story hour, with traits applied |
 | `previous` | The whole stat as it stood at the start of the turn — `id`, `name`, `type`, `description`, `min`, `max`, `value`, `regen`. Read-only |
-| `requested` | `{ value, max }` the AI asked to change this turn, before flags and clamping |
-| `regenApplied` | The regen this turn added, after clamping |
+| `delta` | Every change this turn made, by who made it: `ai`, `regen`, `total`, `actual`. Read-only |
 
 > ℹ️ Only these fields are passed into the sandbox. A stat's own `code` and `descriptors` are **not** available from inside a script.
 
@@ -100,15 +99,39 @@ A bound your code sets wins over the authored bound, trait changes, and the AI's
 
 ### Reading This Turn
 
-Every stat carries what the turn did before the code ran. `previous` holds the whole stat — every field `self` has — as it stood at the start of the turn; it is frozen, so a write to it does nothing. `requested` holds the change the AI asked for, raw. `regenApplied` holds the regen this turn added. Together they let a script clamp or scale an ask:
+Every stat carries what the turn did before the code ran. `previous` holds the whole stat — every field `self` has — as it stood at the start of the turn.
+
+`delta` holds every change the turn made to the stat, by who made it. Each member has the same four fields: `value`, `min`, `max`, and `regen`. A field that a source cannot move reads `0`.
+
+| Member | What it is |
+| --- | --- |
+| `delta.ai` | The change the AI asked for, raw: before flags and the range. The AI asks for `value` and `max` only |
+| `delta.regen` | What regen did this turn. Only `value` moves |
+| `delta.total` | Every source added up: what the turn asked of the stat, before flags and the range |
+| `delta.actual` | What landed: the current numbers minus `previous`. A bound a trait moved since the turn started shows here |
+
+`previous` and `delta` are frozen, so a write to them does nothing. Together they let a script clamp or scale an ask:
 
 ```javascript
 // The AI may lower Sanity by at most 10 per turn, and never raise it.
-const ask = Math.max(-10, Math.min(0, self.requested.value));
-self.value = self.previous.value + ask + self.regenApplied;
+const ask = Math.max(-10, Math.min(0, self.delta.ai.value));
+self.value = self.previous.value + ask + self.delta.regen.value;
 ```
 
-On a turn with no ask, `requested.value` and `requested.max` are both `0`.
+On a turn with no ask, every field of `delta.ai` is `0`.
+
+#### Refunding What a Cap Ate
+
+`total - actual` is what flags and the range took from the turn. A `noIncrease` flag that blocks a gain still shows the gain in `total`, so the loss shows in the difference.
+
+```javascript
+// A gain the cap cut off stretches the cap instead.
+const lost = self.delta.total.value - self.delta.actual.value;
+if (lost > 0 && self.value === self.max) {
+  self.max += lost;
+  self.value += lost;
+}
+```
 
 ### Placeholders
 

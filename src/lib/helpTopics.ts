@@ -368,10 +368,10 @@ const level = stats.find(s => s.name === 'Level')?.value ?? 1;
 self.max = level * 10;
 \`\`\`
 
-**Reading this turn.** Each stat also carries what the turn did before your code ran: \`previous\`, the whole stat — \`id\`, \`name\`, \`type\`, \`description\`, \`min\`, \`max\`, \`value\` and \`regen\` — as it stood at the start of the turn and frozen against writes; \`requested.value\` and \`requested.max\` for the change the AI asked for; and \`regenApplied\` for the regen this turn added. Use them to clamp or scale an ask before it lands.
+**Reading this turn.** Each stat also carries what the turn did before your code ran: \`previous\`, the whole stat — \`id\`, \`name\`, \`type\`, \`description\`, \`min\`, \`max\`, \`value\` and \`regen\` — as it stood at the start of the turn; and \`delta\`, every change the turn made. \`delta.ai\` is the change the AI asked for, raw; \`delta.regen\` is what regen did; \`delta.total\` adds them up; and \`delta.actual\` is what landed since the start of the turn. Each has \`value\`, \`min\`, \`max\` and \`regen\`. Both \`previous\` and \`delta\` are frozen against writes. Use them to clamp or scale an ask before it lands.
 
 \`\`\`js
-self.value = self.previous.value + Math.min(self.requested.value, 10);
+self.value = self.previous.value + Math.min(self.delta.ai.value, 10);
 \`\`\`
 
 **Placeholders.** \`placeholders\` holds every placeholder by name. Each entry has \`value\`, the text it reads as now; \`values\`, every authored value as text; and \`roll()\`, one draw with the author's weights. Call \`pin(text)\` to pin the placeholder to any text until your code changes it again, or \`unpin()\` to let the other pins and the roll show through. A name with a space needs brackets: \`placeholders["Hair Color"]\`.

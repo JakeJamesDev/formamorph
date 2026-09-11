@@ -2,14 +2,16 @@ import { test, expect, type Page } from '@playwright/test';
 import { readFileSync } from 'node:fs';
 import { openApp } from './app';
 
-/** Serve the whiteRoom world and save with Coin (60 of 100 in the save) carrying `code` and `regen`.
- *  `extra` is laid over the root of each fixture. */
-async function coinWithCode(page: Page, code: string, regen = 0, extra: { World?: object; Save?: object } = {}) {
+/** Serve the whiteRoom world and save with Coin (60 of 100 in the save) carrying `code` and the `stat` fields,
+ *  regen 0 unless given. `extra` is laid over the root of each fixture. */
+async function coinWithCode(
+  page: Page, code: string, stat: { regen?: number; min?: number } = {}, extra: { World?: object; Save?: object } = {},
+) {
   for (const kind of ['World', 'Save'] as const) {
     const fixture = { ...JSON.parse(readFileSync(`src/lib/devFixtures/whiteRoom${kind}.json`, 'utf8')), ...extra[kind] };
     const visit = (value: unknown) => {
       if (!value || typeof value !== 'object') return;
-      if ('id' in value && value.id === 'stat-coin' && 'name' in value) Object.assign(value, { code, regen });
+      if ('id' in value && value.id === 'stat-coin' && 'name' in value) Object.assign(value, { code, regen: 0, ...stat });
       Object.values(value).forEach(visit);
     };
     visit(fixture);
@@ -60,7 +62,7 @@ const calmRoll = { placeholderRolls: { world: { 'ph-mood': 'calm' } } };
 
 test('stat code halves an AI gain, and a stats re-roll lands the same value', async ({ page }) => {
   page.on('pageerror', (error) => console.error(error.message));
-  await coinWithCode(page, 'self.value = self.previous.value + self.requested.value / 2;');
+  await coinWithCode(page, 'self.value = self.previous.value + self.delta.ai.value / 2;');
   const statCalls = await mockModel(page, 'Coin: +20');
   await openApp(page, settings(), { url: '/#dev?view=gameViewer&fixture=whiteRoom' });
   const mobile = await playOneTurn(page);
@@ -81,7 +83,7 @@ test('stat code halves an AI gain, and a stats re-roll lands the same value', as
 
 test('stat code reads the value after this turn’s regen, and the regen it applied', async ({ page }) => {
   page.on('pageerror', (error) => console.error(error.message));
-  await coinWithCode(page, 'self.value = self.value + self.regenApplied;', 5);
+  await coinWithCode(page, 'self.value = self.value + self.delta.regen.value;', { regen: 5 });
   await mockModel(page, 'Coin: +20');
   await openApp(page, settings(), { url: '/#dev?view=gameViewer&fixture=whiteRoom' });
   await playOneTurn(page);
@@ -90,9 +92,20 @@ test('stat code reads the value after this turn’s regen, and the regen it appl
   await expect(page.getByText(/90\s*\/\s*100/).first()).toBeVisible();
 });
 
+test('stat code reads the AI ask from delta.ai and the turn-start min from previous', async ({ page }) => {
+  page.on('pageerror', (error) => console.error(error.message));
+  await coinWithCode(page, 'return self.previous.value + self.delta.ai.value / 2 + self.previous.min * 2;', { min: 10 });
+  await mockModel(page, 'Coin: +20');
+  await openApp(page, settings(), { url: '/#dev?view=gameViewer&fixture=whiteRoom' });
+  await playOneTurn(page);
+
+  // 60 + 20 / 2 + 10 * 2 = 90; the AI alone would leave 80.
+  await expect(page.getByText(/90\s*\/\s*100/).first()).toBeVisible();
+});
+
 test('stat code sets its value from the playthrough’s roll of a placeholder', async ({ page }) => {
   page.on('pageerror', (error) => console.error(error.message));
-  await coinWithCode(page, 'return { calm: 11, angry: 22 }[placeholders.Mood.value];', 0, {
+  await coinWithCode(page, 'return { calm: 11, angry: 22 }[placeholders.Mood.value];', {}, {
     World: { placeholders: [mood] },
     Save: { placeholderRolls: { world: { 'ph-mood': 'angry' } } },
   });
@@ -108,7 +121,7 @@ test('a placeholder that stat code writes reaches the next turn’s prompt', asy
   const world = JSON.parse(readFileSync('src/lib/devFixtures/whiteRoomWorld.json', 'utf8'));
   const locations = world.locations.map((location: { id: string }) => (location.id === '1783535114538'
     ? { ...location, aiDescription: 'The walls glow {{ph:ph-mood:world:p1}}.' } : location));
-  await coinWithCode(page, 'placeholders.Mood.value = "incandescent";', 0, {
+  await coinWithCode(page, 'placeholders.Mood.value = "incandescent";', {}, {
     World: { placeholders: [mood], locations }, Save: calmRoll,
   });
   const narration: string[] = [];
@@ -125,7 +138,7 @@ test('a stats re-roll reads the pre-turn Code Pins, so a flip lands once', async
   page.on('pageerror', (error) => console.error(error.message));
   const flip = 'const next = placeholders.Mood.value === "calm" ? "angry" : "calm";\n'
     + 'placeholders.Mood.value = next;\nreturn { calm: 11, angry: 22 }[next];';
-  await coinWithCode(page, flip, 0, { World: { placeholders: [mood] }, Save: calmRoll });
+  await coinWithCode(page, flip, {}, { World: { placeholders: [mood] }, Save: calmRoll });
   const statCalls = await mockModel(page, 'Coin: +20');
   await openApp(page, settings(), { url: '/#dev?view=gameViewer&fixture=whiteRoom' });
   const mobile = await playOneTurn(page);
@@ -179,7 +192,7 @@ test('a stat code bound shows as the bar’s range, and the delta reports only t
 
 test('clock-reading stat code runs with zero asks on a turn with no stat update', async ({ page }) => {
   page.on('pageerror', (error) => console.error(error.message));
-  await coinWithCode(page, 'return self.previous.value + self.requested.value + self.requested.max + 5 * deltaHours;');
+  await coinWithCode(page, 'return self.previous.value + self.delta.ai.value + self.delta.ai.max + 5 * deltaHours;');
   const statCalls = await mockModel(page, 'Coin: +20');
   await openApp(page, settings({ FORMAMORPH_statUpdatesEnabled: false }), { url: '/#dev?view=gameViewer&fixture=whiteRoom' });
   await playOneTurn(page);
