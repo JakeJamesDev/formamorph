@@ -36,7 +36,7 @@ Time passes on every turn, so code that reads the clock has to run on every turn
 
 ### Basic Syntax
 
-Your code is plain JavaScript. Return a number to set the stat's value. The code has access to a `stats` array containing all stats in the game, and to `self`, the stat the code belongs to.
+Your code is plain JavaScript. Return a number to set the stat's value. The code has access to `stats`, a map of every stat in the game keyed by name, and to `self`, the stat the code belongs to.
 
 ```javascript
 // Example: Return a fixed value
@@ -47,19 +47,19 @@ A script does not have to return anything. One that only writes `self`, a placeh
 
 ### Accessing Other Stats
 
-To access other stats, use the `stats` array and the `find` method to locate stats by name:
+Read another stat by its name:
 
 ```javascript
 // Example: Return the value of another stat
-const health = stats.find(s => s.name === 'Health')?.value || 0;
+const health = stats.Health.value;
 return health;
 ```
 
-The `?.` operator safely accesses the value property (returns undefined if the stat isn't found), and the `|| 0` provides a default value of 0 if the stat isn't found.
+A name with a space needs brackets: `stats["Hit Points"].value`. A name that doesn't exist in the world reads as a blank entry — every number `0` — so a typo never throws.
 
 ### Stat Properties
 
-Each stat in the `stats` array, `self` included, exposes the following properties:
+Each stat in the `stats` map, `self` included, exposes the following properties:
 
 | Property | What it is |
 | --- | --- |
@@ -78,7 +78,7 @@ Each stat in the `stats` array, `self` included, exposes the following propertie
 
 ### Writing to `self`
 
-`self` is the stat the code belongs to. It is the same object that sits in `stats`, so `self.value` and `stats.find(s => s.id === self.id).value` read alike. Four of its fields take writes:
+`self` is the stat the code belongs to. It is the same object that sits in `stats`, so `self.value` and `stats[self.name].value` read alike. Four of its fields take writes:
 
 | Write | Effect |
 | --- | --- |
@@ -91,7 +91,7 @@ A field you do not write keeps what the turn gave it. So a script can move the c
 
 ```javascript
 // Max grows with Level. The value still moves as the AI narrates.
-const level = stats.find(s => s.name === 'Level')?.value ?? 1;
+const level = stats.Level.value;
 self.max = 50 + level * 10;
 ```
 
@@ -203,19 +203,18 @@ Calculate a stat as a percentage of another stat:
 
 ```javascript
 // Make Stamina 75% of Health
-const health = stats.find(s => s.name === 'Health')?.value || 0;
+const health = stats.Health.value;
 return health * 0.75;
 ```
 
-#### Average of Multiple Stats
+#### Average of All Stats
 
-Calculate a stat as the average of multiple other stats:
+Calculate a stat as the average of every stat, iterating with `Object.values`:
 
 ```javascript
-// Make Defense the average of Strength and Agility
-const strength = stats.find(s => s.name === 'Strength')?.value || 0;
-const agility = stats.find(s => s.name === 'Agility')?.value || 0;
-return (strength + agility) / 2;
+// Make Morale the average of every stat, this one included
+const all = Object.values(stats);
+return all.reduce((sum, stat) => sum + stat.value, 0) / all.length;
 ```
 
 #### Conditional Calculation
@@ -225,7 +224,7 @@ Calculate a stat differently based on conditions:
 ```javascript
 // Make Speed depend on Health
 // Full speed when Health > 50, otherwise reduced
-const health = stats.find(s => s.name === 'Health')?.value || 0;
+const health = stats.Health.value;
 const baseSpeed = 100;
 
 if (health > 50) {
@@ -243,8 +242,8 @@ Use more complex formulas for game mechanics:
 
 ```javascript
 // Calculate Damage based on Strength, Weapon Skill, and a random factor
-const strength = stats.find(s => s.name === 'Strength')?.value || 0;
-const weaponSkill = stats.find(s => s.name === 'Weapon Skill')?.value || 0;
+const strength = stats.Strength.value;
+const weaponSkill = stats["Weapon Skill"].value;
 
 // Base damage from strength
 const baseDamage = strength * 0.8;
@@ -266,7 +265,7 @@ Implement diminishing returns for stat scaling:
 
 ```javascript
 // Calculate Dodge Chance with diminishing returns
-const agility = stats.find(s => s.name === 'Agility')?.value || 0;
+const agility = stats.Agility.value;
 
 // Diminishing returns formula
 // First 50 points give full value, after that diminishing returns
@@ -294,7 +293,7 @@ Scale a change by how long the turn actually took, so a night's sleep costs more
 
 ```javascript
 // Thirst rises 2 per story hour
-const current = stats.find(s => s.name === 'Thirst')?.value || 0;
+const current = stats.Thirst.value;
 return current + (2 * deltaHours);
 ```
 
@@ -304,7 +303,7 @@ React to when the turn happened rather than to another stat:
 
 ```javascript
 // A vampire's Power climbs at night and fades by day
-const current = stats.find(s => s.name === 'Power')?.value || 50;
+const current = stats.Power.value;
 const rate = (daypart === 'night' || daypart === 'evening') ? 4 : -4;
 return current + (rate * deltaHours);
 ```
@@ -315,8 +314,8 @@ Calculate resource consumption based on other stats:
 
 ```javascript
 // Calculate Hunger Rate based on activity and size
-const activityLevel = stats.find(s => s.name === 'Activity')?.value || 0;
-const size = stats.find(s => s.name === 'Size')?.value || 0;
+const activityLevel = stats.Activity.value;
+const size = stats.Size.value;
 
 // Base consumption rate
 const baseRate = 1;
@@ -335,7 +334,7 @@ return baseRate * activityMultiplier * sizeFactor;
 ## Best Practices
 
 1. **Keep it simple**: Complex code can be hard to debug and may impact performance
-2. **Handle missing stats**: Always use default values (`|| 0`) when accessing stats that might not exist
+2. **A missing name reads as zero**: a stat name not in the world reads as a blank entry, every number `0`, so a lookup never throws
 3. **Stay within min/max**: The system will automatically clamp your result to the stat's min/max range
 4. **Avoid infinite loops**: Don't create circular dependencies between stats
 5. **Write only what you mean to change**: A field, placeholder, or trait you leave alone keeps the turn's own result
@@ -373,8 +372,8 @@ If your code doesn't work as expected:
 
 ```javascript
 // Scale Health based on Level and Constitution
-const level = stats.find(s => s.name === 'Level')?.value || 1;
-const constitution = stats.find(s => s.name === 'Constitution')?.value || 10;
+const level = stats.Level.value;
+const constitution = stats.Constitution.value;
 
 // Base health
 const baseHealth = 50;
@@ -392,9 +391,9 @@ return baseHealth + levelBonus + constitutionBonus;
 
 ```javascript
 // Calculate Fatigue based on recent actions and Stamina
-const stamina = stats.find(s => s.name === 'Stamina')?.value || 0;
-const staminaMax = stats.find(s => s.name === 'Stamina')?.max || 100;
-const actions = stats.find(s => s.name === 'Recent Actions')?.value || 0;
+const stamina = stats.Stamina.value;
+const staminaMax = stats.Stamina.max;
+const actions = stats["Recent Actions"].value;
 
 // Base fatigue from actions
 const actionFatigue = actions * 5;
@@ -410,7 +409,7 @@ return Math.min(actionFatigue * staminaFactor, 100);
 
 ```javascript
 // Calculate Carrying Capacity based on Strength
-const strength = stats.find(s => s.name === 'Strength')?.value || 0;
+const strength = stats.Strength.value;
 
 // Base capacity
 const baseCapacity = 50;
@@ -433,10 +432,10 @@ return capacity;
 
 ```javascript
 // Calculate Magical Power based on Intelligence, Wisdom, and current Mana
-const intelligence = stats.find(s => s.name === 'Intelligence')?.value || 0;
-const wisdom = stats.find(s => s.name === 'Wisdom')?.value || 0;
-const mana = stats.find(s => s.name === 'Mana')?.value || 0;
-const maxMana = stats.find(s => s.name === 'Mana')?.max || 100;
+const intelligence = stats.Intelligence.value;
+const wisdom = stats.Wisdom.value;
+const mana = stats.Mana.value;
+const maxMana = stats.Mana.max;
 
 // Base power from intelligence
 const basePower = intelligence * 1.5;
