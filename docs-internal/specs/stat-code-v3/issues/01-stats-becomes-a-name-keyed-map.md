@@ -1,6 +1,6 @@
 # 01: Stats Becomes A Name-Keyed Map
 
-Status: in-progress
+Status: ready-for-human
 Base: f8b199db
 Blocked by: None (can start immediately)
 Recommended model: Claude Opus 5 (`claude-opus-5`)
@@ -18,16 +18,16 @@ Templates, help, guide, bundled worlds, and the world migration are separate tic
 
 ## Acceptance criteria
 
-- [ ] `stats["Health"].value` and `stats.Health.value` read the stat; `stats.find` is undefined
-- [ ] `self === stats[self.name]` inside the sandbox
-- [ ] An unknown name reads as a blank entry with zeros, and `"Nope" in stats` is false
-- [ ] Of two same-named stats the last authored is the entry
-- [ ] A write to another stat through the map changes nothing after the run
-- [ ] Completions: names after `stats.`, quoted names inside `stats[`, stat fields after an entry
-- [ ] Diagnostics: unknown name, duplicate name naming the winner, other-stat write through the map
-- [ ] Surface list and drift guard updated; `currentStatId` remains injected
-- [ ] Executor, per-turn, and analysis tests cover the above; Test Code in the editor runs under the map
-- [ ] Four gates green; graph updated
+- [x] `stats["Health"].value` and `stats.Health.value` read the stat; `stats.find` is undefined
+- [x] `self === stats[self.name]` inside the sandbox
+- [x] An unknown name reads as a blank entry with zeros, and `"Nope" in stats` is false
+- [x] Of two same-named stats the last authored is the entry
+- [x] A write to another stat through the map changes nothing after the run
+- [x] Completions: names after `stats.`, quoted names inside `stats[`, stat fields after an entry
+- [x] Diagnostics: unknown name, duplicate name naming the winner, other-stat write through the map
+- [x] Surface list and drift guard updated; `currentStatId` remains injected
+- [x] Executor, per-turn, and analysis tests cover the above; Test Code in the editor runs under the map
+- [x] Four gates green; graph updated
 
 ## Blocked by
 
@@ -42,4 +42,6 @@ Templates, help, guide, bundled worlds, and the world migration are separate tic
 - **Where the code landed.** The shared tree put the executor, executor-test, template, and per-turn-test edits for this ticket into `b274ff79` (ticket 06). This ticket's own commit holds the editor side, the surface list, the bundled worlds, and the remaining test fixtures.
 - **`stats.find` is a blank entry, not `undefined`.** The map reads every unknown name as a blank entry, `find` included, so `stats.find(...)` throws "not a function". The acceptance line said `undefined`; the body said "not a function". The tests assert the body.
 - **`selfName` in the editor.** The analysis takes the current stat's name, so `stats.Mood.value = 5` inside Mood's own code counts as its own write instead of getting the other-stat warning.
+- **Review folded in.** A write through the map or an alias to the stat's own entry now gets the same field checks as `self` (`stats.Mood.valeu`, `me.delta.ai.value`). A write nested in another stat's `previous` or `delta` gets the other-stat warning. `Object.values(stats).find(f).filter(g).` no longer completes stat fields, and `stats[""]` is not flagged.
+- **Known limits, not fixed.** When the current stat loses its name to a later stat, `self` stands alone and a write through `stats[self.name]` is dropped with no diagnostic; the duplicate-name warning is the only sign. `Object.values(stats)` puts number-like names first, as any JS object does. The duplicate warning names the winner as "the last one authored", since the names are identical.
 - **Re-lint fix.** `forceLinting` does nothing once a lint has settled (`@codemirror/lint` 6.9.7 `force()` runs only while one is pending). The code session now marks a world-list change with a state effect the linter's `needsRefresh` reads, so a stat, placeholder, or trait rename re-lints with no edit to the code.

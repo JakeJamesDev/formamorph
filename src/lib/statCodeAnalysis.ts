@@ -65,8 +65,6 @@ export interface AnalysisOptions {
   selfName?: string;
 }
 
-export type CompletionOptions = AnalysisOptions;
-
 const parse = (code: string): Tree => javascriptLanguage.parser.parse(code);
 
 const isWordChar = (character: string) => /[A-Za-z0-9_$]/.test(character);
@@ -184,13 +182,25 @@ const PLACEHOLDER_ENTRY_EXPRESSION = entryExpression('placeholders');
 const TRAIT_ENTRY_EXPRESSION = entryExpression('traits');
 /** One entry of `stats`, the key literal or computed: every key reads a stat, if only a blank one. */
 const STAT_ENTRY_EXPRESSION = /^stats(\??\.[A-Za-z_$][\w$]*|\??\.?\[[^[\]]*\])$/;
-/** One stat picked out of `Object.values(stats)`. `filter` hands back another array, so it stays quiet. */
-const ITERATED_STAT_EXPRESSION = /^Object\.values\(\s*stats\s*\)(\.(find|at|pop|shift)\(.*\)|\[[^[\]]*\])$/;
+/** One stat picked out of `Object.values(stats)`, the call's arguments captured. `filter` hands back another
+ *  array, so it stays quiet. */
+const ITERATED_STAT_EXPRESSION = /^Object\.values\(\s*stats\s*\)(?:\.(?:find|at|pop|shift)(\(.*\))|\[[^[\]]*\])$/;
+
+/** Whether a parenthesized argument list closes only at its last character, so nothing chains after it. */
+function closesAtEnd(args: string): boolean {
+  let depth = 0;
+  for (let i = 0; i < args.length; i += 1) {
+    if (args[i] === '(') depth += 1;
+    else if (args[i] === ')' && (depth -= 1) === 0 && i < args.length - 1) return false;
+  }
+  return depth === 0;
+}
 
 /** Whether the expression before a `.` is recognizably a stat, so its fields are the honest list. */
 function looksLikeStat(code: string, tree: Tree, expression: string): boolean {
-  if (expression === 'self') return true;
-  if (STAT_ENTRY_EXPRESSION.test(expression) || ITERATED_STAT_EXPRESSION.test(expression)) return true;
+  if (expression === 'self' || STAT_ENTRY_EXPRESSION.test(expression)) return true;
+  const iterated = ITERATED_STAT_EXPRESSION.exec(expression);
+  if (iterated) return iterated[1] === undefined || closesAtEnd(iterated[1]);
   return statLikeNames(code, tree).has(expression);
 }
 
@@ -251,39 +261,37 @@ interface WriteCheck {
   problem: CodeDiagnostic | null;
 }
 
+/** A write to `field` on the stat's own entry, reached as `path`: fine for a writable field, an error otherwise. */
+function checkOwnField(field: SyntaxNode | null, path: string, code: string): WriteCheck {
+  // A bracketed field can't be named without running the code.
+  if (!field) return { own: true, problem: null };
+  const name = code.slice(field.from, field.to);
+  const known = STAT_FIELDS.some((entry) => entry.name === name);
+  if (known && SELF_WRITABLE_FIELDS.includes(name)) return { own: true, problem: null };
+  const suggestion = known ? null : nearestName(name, STAT_FIELDS.map((entry) => entry.name));
+  const message = known ? `${path}.${name} can’t be written. Only ${WRITABLE_LIST} can.`
+    : suggestion ? `${path} has no field “${name}”. Did you mean “${suggestion}”?` : `${path} has no field “${name}”.`;
+  return { own: true, problem: { from: field.from, to: field.to, severity: 'error', message } };
+}
+
+const OTHER_STAT_WRITE = 'This writes to another stat, and stat code can only change its own. Write to self instead.';
+
 function checkWrite(target: SyntaxNode, code: string, tree: Tree, declared: Set<string>, selfName?: string): WriteCheck {
-  let innermost = target;
-  while (innermost.firstChild?.name === 'MemberExpression') innermost = innermost.firstChild;
-  const first = innermost.getChild('PropertyName');
-  if (memberRoot(target, code) === 'self' && !declared.has('self')) {
-    // A bracketed field can't be named without running the code.
-    if (!first) return { own: true, problem: null };
-    const field = code.slice(first.from, first.to);
-    const known = STAT_FIELDS.some((entry) => entry.name === field);
-    if (known && SELF_WRITABLE_FIELDS.includes(field)) return { own: true, problem: null };
-    const suggestion = known ? null : nearestName(field, STAT_FIELDS.map((entry) => entry.name));
-    const message = known ? `self.${field} can’t be written. Only ${WRITABLE_LIST} can.`
-      : suggestion ? `self has no field “${field}”. Did you mean “${suggestion}”?` : `self has no field “${field}”.`;
-    return { own: true, problem: { from: first.from, to: first.to, severity: 'error', message } };
-  }
-  const object = target.firstChild;
-  if (!object) return { own: false, problem: null };
+  const warn = (message: string): WriteCheck => ({ own: false, problem: { from: target.from, to: target.to, severity: 'warning', message } });
+  const reachesOwn = (text: string) => reachesOwnStat(statLikeNames(code, tree).get(text) ?? text, selfName);
   // `stats.Name = …` replaces the whole entry, which the host never reads back, even for the stat's own name.
-  const replaced = STAT_ENTRY_EXPRESSION.test(code.slice(target.from, target.to));
-  const entry = replaced ? target : object;
-  const text = code.slice(entry.from, entry.to);
-  if (!looksLikeStat(code, tree, text)) return { own: false, problem: null };
-  const own = reachesOwnStat(statLikeNames(code, tree).get(text) ?? text, selfName);
-  if (own && !replaced) return { own: true, problem: null };
-  return {
-    own: false,
-    problem: {
-      from: target.from,
-      to: target.to,
-      severity: 'warning',
-      message: own ? 'Write to self.value instead.' : 'This writes to another stat, and stat code can only change its own. Write to self instead.',
-    },
-  };
+  const targetText = code.slice(target.from, target.to);
+  if (STAT_ENTRY_EXPRESSION.test(targetText)) return warn(reachesOwn(targetText) ? 'Write to self.value instead.' : OTHER_STAT_WRITE);
+  // Walk in to the stat the chain starts from, so a write nested in `previous` or `delta` is caught too.
+  for (let member: SyntaxNode | null = target; member?.name === 'MemberExpression'; member = member.firstChild) {
+    const entry = member.firstChild;
+    if (!entry) break;
+    const text = code.slice(entry.from, entry.to);
+    if (text === 'self' && declared.has('self')) return { own: true, problem: null };
+    if (!looksLikeStat(code, tree, text)) continue;
+    return reachesOwn(text) ? checkOwnField(member.getChild('PropertyName'), text, code) : warn(OTHER_STAT_WRITE);
+  }
+  return { own: false, problem: null };
 }
 
 /** The variable a member chain starts from, like `placeholders` in `placeholders.Mood.value`. */
@@ -385,7 +393,7 @@ const KEYWORDS = ['return', 'const', 'let', 'if', 'else', 'for', 'of', 'function
 export function statCodeCompletions(
   code: string,
   pos: number,
-  options: CompletionOptions = {},
+  options: AnalysisOptions = {},
 ): CompletionResult | null {
   const tree = parse(code);
   const node = tree.resolveInner(pos, -1);
@@ -552,7 +560,8 @@ export function statCodeDiagnostics(code: string, options: AnalysisOptions = {})
     }
     if (cursor.type.name === 'MemberExpression' && options.statNames && statsInScope) {
       const ref = entryRef(cursor.node, code, 'stats');
-      const problem = ref && !overlapsAny(ref.from, ref.to, ranges) ? checkEntryName(ref, options.statNames, 'stat') : null;
+      // The empty key reaches an unnamed stat, which no name list carries.
+      const problem = ref?.name && !overlapsAny(ref.from, ref.to, ranges) ? checkEntryName(ref, options.statNames, 'stat') : null;
       if (problem) diagnostics.push(problem);
     }
     if (cursor.type.name !== 'VariableName') continue;

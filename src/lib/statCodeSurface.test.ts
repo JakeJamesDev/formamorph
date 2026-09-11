@@ -109,7 +109,7 @@ describe('the described surface against the sandbox that provides it', () => {
       .resolves.toEqual({ value: 1, error: null });
   });
 
-  // The names offered after `stats.` are the world's stat names, so each has to reach its own stat.
+  // `stats` is keyed by name, so each stat's name reaches that stat.
   it.each(stats.map(entry => [entry.name, entry.id] as const))('reaches stats.%s by name', async (name, id) => {
     await expect(run(`return stats.${name}.id === ${JSON.stringify(id)} ? 1 : 0;`))
       .resolves.toEqual({ value: 1, error: null });
