@@ -205,8 +205,8 @@ export const BUILT_IN_TEMPLATES: readonly StatCodeTemplate[] = [
     id: 'builtin-weighted-blend',
     name: 'Weighted Blend',
     description: 'Combine two other stats. A weight of 0.5 is a plain average; 1 is all of the first stat.',
-    code: `const a = stats.find(s => s.name === {{firstStat:stat}})?.value ?? 0;
-const b = stats.find(s => s.name === {{secondStat:stat}})?.value ?? 0;
+    code: `const a = stats[{{firstStat:stat}}].value;
+const b = stats[{{secondStat:stat}}].value;
 const weight = {{weight:number=0.5}};
 return a * weight + b * (1 - weight);`,
   },
@@ -214,60 +214,52 @@ return a * weight + b * (1 - weight);`,
     id: 'builtin-inverse',
     name: 'Inverse of a Stat',
     description: 'Mirror another stat within its own range — high Rest becomes low Fatigue.',
-    code: `const source = stats.find(s => s.name === {{source:stat}});
-if (!source) return 0;
+    code: `const source = stats[{{source:stat}}];
 return source.max - source.value;`,
   },
   {
     id: 'builtin-threshold-flag',
     name: 'Threshold Flag',
     description: 'Snap to this stat’s max or min depending on whether another stat has crossed a line.',
-    code: `const me = stats.find(s => s.id === currentStatId);
-const source = stats.find(s => s.name === {{source:stat}})?.value ?? 0;
-return source {{comparison:choice(>=|<=)=>=}} {{threshold:number=50}} ? (me?.max ?? 100) : (me?.min ?? 0);`,
+    code: `const source = stats[{{source:stat}}].value;
+return source {{comparison:choice(>=|<=)=>=}} {{threshold:number=50}} ? self.max : self.min;`,
   },
   {
     id: 'builtin-per-turn-change',
     name: 'Per-Turn Change',
     description: 'Drift by a fixed amount per story hour. A negative rate drains (hunger, fuel), a positive one fills. Stacks with Regen, so set one or the other.',
-    code: `const me = stats.find(s => s.id === currentStatId);
-const ratePerHour = {{ratePerHour:number=-5}};
-return (me?.value ?? 0) + ratePerHour * deltaHours;`,
+    code: `const ratePerHour = {{ratePerHour:number=-5}};
+return self.value + ratePerHour * deltaHours;`,
   },
   {
     id: 'builtin-timer',
     name: 'Timer',
     description: 'Sweep across this stat’s range over a set number of story hours, counting up to it or down from it.',
-    code: `const me = stats.find(s => s.id === currentStatId);
-const totalHours = {{totalHours:number=24}};
+    code: `const totalHours = {{totalHours:number=24}};
 const fraction = Math.min(1, Math.max(0, elapsedHours / totalHours));
 const progress = '{{direction:choice(up|down)=up}}' === 'up' ? fraction : 1 - fraction;
-const min = me?.min ?? 0;
-return min + ((me?.max ?? 100) - min) * progress;`,
+return self.min + (self.max - self.min) * progress;`,
   },
   {
     id: 'builtin-daypart-modifier',
     name: 'Daypart Modifier',
     description: 'Follow another stat, with a bonus that only applies during one part of the day.',
-    code: `const base = stats.find(s => s.name === {{base:stat}})?.value ?? 0;
+    code: `const base = stats[{{base:stat}}].value;
 return base + (daypart === {{when:daypart=night}} ? {{bonus:number=20}} : 0);`,
   },
   {
     id: 'builtin-random-roll',
     name: 'Random Per-Turn Roll',
     description: 'A fresh random value each turn, spread across this stat’s range. Use only one of these per world — a second would draw the same numbers.',
-    code: `const me = stats.find(s => s.id === currentStatId);
-const min = me?.min ?? 0;
-// elapsedHours keeps the roll moving even when the clock seed hasn't changed between turns.
+    code: `// elapsedHours keeps the roll moving even when the clock seed hasn't changed between turns.
 const roll = (Math.random() * 100 + elapsedHours) % 100;
-return min + ((me?.max ?? 100) - min) * (roll / 100);`,
+return self.min + (self.max - self.min) * (roll / 100);`,
   },
   {
     id: 'builtin-regen-toward-target',
     name: 'Regen Toward Target',
     description: 'Ease toward a resting value from either side, slowing as it arrives. Set the target to this stat’s max for a soft-capped regen. Stacks with Regen, so set one or the other.',
-    code: `const me = stats.find(s => s.id === currentStatId);
-const value = me?.value ?? 0;
+    code: `const value = self.value;
 const target = {{target:number=100}};
 const rate = {{rate:number=0.1}};
 return value + (target - value) * rate * deltaHours;`,
@@ -276,7 +268,7 @@ return value + (target - value) * rate * deltaHours;`,
     id: 'builtin-bound-from-stat',
     name: 'Bound From Another Stat',
     description: 'Set this stat’s Min, Max, or Regen from another stat times a factor. The value keeps its normal changes.',
-    code: `const source = stats.find(s => s.name === {{source:stat}})?.value ?? 0;
+    code: `const source = stats[{{source:stat}}].value;
 self.{{bound:choice(max|min|regen)=max}} = Math.round(source * {{factor:number=2}});`,
   },
   {
@@ -286,7 +278,7 @@ self.{{bound:choice(max|min|regen)=max}} = Math.round(source * {{factor:number=2
     code: `const target = placeholders[{{placeholder:placeholder}}];
 const span = self.max - self.min || 1;
 const band = Math.floor((self.value - self.min) / span * target.values.length);
-if (target.values.length) target.value = target.values[Math.max(0, Math.min(band, target.values.length - 1))];`,
+if (target.values.length) target.pin(target.values[Math.max(0, Math.min(band, target.values.length - 1))]);`,
   },
   {
     id: 'builtin-trait-by-threshold',

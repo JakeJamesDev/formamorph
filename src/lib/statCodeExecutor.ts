@@ -110,11 +110,25 @@ export interface ValueAndMax {
   max: number;
 }
 
+/** The plain 8-field shape of a stat, with none of the turn-relative parts `self` and `stats` entries add.
+ *  What `previous` marshals down to. */
+export interface StatSnapshot {
+  id: string;
+  name: string;
+  type: string;
+  description: string;
+  min: number;
+  max: number;
+  value: number;
+  regen: number;
+}
+
 /** What this turn did to one stat before its code runs. Every entry in `stats` carries these; a part left
- *  out reads as untouched: `previous` as the current numbers, the rest as zero. */
+ *  out reads as untouched: `previous` as a copy of the current entry, the rest as zero. */
 export interface StatTurnInputs {
-  /** Value and max at the start of the turn. */
-  previous?: ValueAndMax;
+  /** The whole stat as it stood at the start of the turn. `min`, `max` and `regen` are the effective
+   *  numbers then, traits and code bounds included. */
+  previous?: Stat;
   /** The AI's asked change to value and max, raw: before flags and clamping. */
   requested?: ValueAndMax;
   /** Regen applied this turn, after the enabled gate and clamping. */
@@ -137,23 +151,29 @@ const PLACEHOLDER_WRITES = '__formamorphPlaceholderWrites';
 const TRAIT_WRITES = '__formamorphTraitWrites';
 
 /** One sandbox map and how its entries are tracked. Every `string` field is JS source the prelude inlines. */
-interface TrackedMapSpec {
+interface TrackedMapBase {
   /** The variable code reads the map by. */
   root: string;
-  /** The variable the reader of the map's writes is bound to. */
-  reader: string;
   data: Record<string, unknown>;
   /** `(name, entry, state) => void`: installs the entry's accessors; `state` starts as `{ entry }`. */
   track: string;
   /** The literal an unknown name reads as. */
   blank: string;
+  /** Host values the prelude closes over, as parameter and argument pairs. */
+  hostArgs?: readonly (readonly [string, string])[];
+}
+
+/** How the host reads back what a run wrote to a map. A map the host reads nothing back from leaves it out. */
+interface TrackedMapWrites {
+  /** The variable the reader of the map's writes is bound to. */
+  reader: string;
   /** `(name, state) => row | null` for an entry still in place; null when the run left it alone. */
   row: string;
   /** `(name, entry) => row` for an entry the code replaced wholesale. */
   replaced: string;
-  /** Host values the prelude closes over, as parameter and argument pairs. */
-  hostArgs?: readonly (readonly [string, string])[];
 }
+
+type TrackedMapSpec = TrackedMapBase & (TrackedMapWrites | { [K in keyof TrackedMapWrites]?: undefined });
 
 /** The prelude that builds one sandbox map and a reader of what the run did to it. The map is parsed from a
  *  JSON string onto a null prototype, so `__proto__` is a plain name and `toString` is not one. A Proxy hands
@@ -162,8 +182,9 @@ const trackedMapPrelude = (spec: TrackedMapSpec): string => {
   const hostArgs = spec.hostArgs ?? [];
   const params = hostArgs.map(([param]) => `, ${param}`).join('');
   const args = hostArgs.map(([, arg]) => `, ${arg}`).join('');
+  const writes = spec.reader === undefined ? null : spec;
   return [
-    `const [${spec.root}, ${spec.reader}] = ((stringify, keys${params}) => {`,
+    `const [${spec.root}${writes ? `, ${writes.reader}` : ''}] = ((stringify, keys${params}) => {`,
     `  const map = Object.assign(Object.create(null), JSON.parse(${JSON.stringify(JSON.stringify(spec.data))}));`,
     `  const own = Object.create(null);`,
     `  const track = (name, entry) => { const state = own[name] = { entry }; (${spec.track})(name, entry, state); return entry; };`,
@@ -172,19 +193,39 @@ const trackedMapPrelude = (spec: TrackedMapSpec): string => {
     `    get: (target, key) => typeof key !== 'string' || key in target ? target[key]`,
     `      : own[key] ? own[key].entry : track(key, ${spec.blank}),`,
     `  });`,
-    `  const readWrites = () => stringify([...keys(map), ...keys(own).filter((name) => !(name in map))].map((name) => {`,
-    `    const entry = map[name], state = own[name];`,
-    `    if (!state || (name in map && entry !== state.entry)) return (${spec.replaced})(name, entry);`,
-    `    return (${spec.row})(name, state);`,
-    `  }).filter((row) => row));`,
-    `  return [${spec.root}, readWrites];`,
+    ...(writes ? [
+      `  const readWrites = () => stringify([...keys(map), ...keys(own).filter((name) => !(name in map))].map((name) => {`,
+      `    const entry = map[name], state = own[name];`,
+      `    if (!state || (name in map && entry !== state.entry)) return (${writes.replaced})(name, entry);`,
+      `    return (${writes.row})(name, state);`,
+      `  }).filter((row) => row));`,
+    ] : []),
+    `  return [${spec.root}${writes ? ', readWrites' : ''}];`,
     `})(JSON.stringify, Object.keys${args});`,
   ].join('\n');
 };
 
+/** `entry` with every string emptied and every number zeroed, at every depth. */
+const blankOf = (entry: unknown): unknown => {
+  if (typeof entry === 'string') return '';
+  if (typeof entry === 'number') return 0;
+  if (typeof entry !== 'object' || entry === null) return entry;
+  return Object.fromEntries(Object.entries(entry).map(([key, value]) => [key, blankOf(value)]));
+};
+
+/** The `stats` prelude: every entry keyed by name, the last authored winning a shared name. The host reads
+ *  back only `self`'s fields, so the map has no reader. An unknown name reads as `blank`. */
+const statsPrelude = (entries: readonly { name: string }[], blank: unknown): string => trackedMapPrelude({
+  root: 'stats',
+  data: Object.fromEntries(entries.map((entry) => [entry.name, entry])),
+  track: '() => {}',
+  blank: JSON.stringify(blank),
+});
+
 /** The `placeholders` prelude. `value` is an accessor, so the reader knows whether the entry was written and
- *  whether an unpin came after. Rows are `[name, 'set', value]` or `[name, 'unpin']`; a replaced entry is a
- *  write of itself when it is a string, else of its own value. */
+ *  whether an unpin came after. `pin(text)` is an alias of the `value` setter — same state, same row — so the
+ *  last of `pin`, `value` and `unpin` a run calls wins. Rows are `[name, 'set', value]` or `[name, 'unpin']`; a
+ *  replaced entry is a write of itself when it is a string, else of its own value. */
 const placeholdersPrelude = (entries: readonly SandboxPlaceholder[]): string => [
   trackedMapPrelude({
     root: 'placeholders',
@@ -193,11 +234,10 @@ const placeholdersPrelude = (entries: readonly SandboxPlaceholder[]): string => 
     hostArgs: [['roll', `globalThis.${ROLL_HOOK}`]],
     track: `(name, entry, state) => {
       state.value = entry.value; state.assigned = false; state.unpinned = false;
-      Object.defineProperty(entry, 'value', {
-        enumerable: true, get: () => state.value,
-        set: (v) => { state.value = v; state.assigned = true; state.unpinned = false; },
-      });
+      const set = (v) => { state.value = v; state.assigned = true; state.unpinned = false; };
+      Object.defineProperty(entry, 'value', { enumerable: true, get: () => state.value, set });
       entry.roll = () => roll(name);
+      entry.pin = set;
       entry.unpin = () => { state.unpinned = true; };
     }`,
     blank: `{ value: '', values: [] }`,
@@ -315,28 +355,34 @@ export const executeStatCode = async (
     const QuickJS = await loadQuickJS();
 
     // Only whitelisted plain data crosses into the VM (never `code`/`descriptors`).
+    const marshalSnapshot = (stat: Stat): StatSnapshot => ({
+      id: String(stat.id),
+      name: stat.name || '',
+      type: stat.type || 'number',
+      description: stat.description || '',
+      min: stat.min || 0,
+      max: stat.max || 100,
+      value: stat.value || 0,
+      regen: stat.regen || 0,
+    });
     const marshal = (stat: Stat) => {
-      const value = stat.value || 0;
-      const max = stat.max || 100;
+      const snapshot = marshalSnapshot(stat);
       const inputs = turn?.[stat.id];
       return {
-        id: String(stat.id),
-        name: stat.name || '',
-        type: stat.type || 'number',
-        description: stat.description || '',
-        min: stat.min || 0,
-        max,
-        value,
-        regen: stat.regen || 0,
-        previous: { value: inputs?.previous?.value ?? value, max: inputs?.previous?.max ?? max },
+        ...snapshot,
+        // No pre-turn entry: `previous` reads as this same entry's own current fields.
+        previous: inputs?.previous ? marshalSnapshot(inputs.previous) : snapshot,
         requested: { value: inputs?.requested?.value ?? 0, max: inputs?.requested?.max ?? 0 },
         regenApplied: inputs?.regenApplied ?? 0,
       };
     };
     const statsData = stats.map(marshal);
-    // `self` is the current stat's own entry in `stats`; a stat missing from `stats` stands alone.
+    // `self` is the current stat's own entry in `stats`. A stat missing from `stats`, or one that loses its
+    // name to a later stat, stands alone.
     const selfIndex = stats.findIndex(stat => stat.id === currentStat.id);
     const selfData = selfIndex >= 0 ? statsData[selfIndex] : marshal(currentStat);
+    const lastByName = new Map(statsData.map((entry, index) => [entry.name, index]));
+    const selfIsEntry = selfIndex >= 0 && lastByName.get(selfData.name) === selfIndex;
 
     const runtime = QuickJS.newRuntime();
     runtime.setInterruptHandler(shouldInterruptAfterDeadline(Date.now() + EXECUTION_TIMEOUT_MS));
@@ -368,9 +414,12 @@ export const executeStatCode = async (
       // the readers' names shadowed as its parameters; the program's completion value pairs what it returned
       // with what `self`'s writable fields hold afterwards, then what it did to `placeholders` and to `traits`.
       const program = [
-        `const stats = ${JSON.stringify(statsData)};`,
+        statsPrelude(statsData, blankOf(selfData)),
         `const currentStatId = ${JSON.stringify(String(currentStat.id))};`,
-        `const self = ${selfIndex >= 0 ? `stats[${selfIndex}]` : JSON.stringify(selfData)};`,
+        `const self = ${selfIsEntry ? `stats[${JSON.stringify(selfData.name)}]` : JSON.stringify(selfData)};`,
+        // `previous` is a snapshot, not a live field — frozen so a write to it is silently dropped.
+        `for (const s of Object.values(stats)) Object.freeze(s.previous);`,
+        `Object.freeze(self.previous);`,
         ...Object.entries(resolveClock(clock)).map(([name, value]) => `const ${name} = ${JSON.stringify(value)};`),
         placeholdersPrelude(placeholders),
         traitsPrelude(traits),

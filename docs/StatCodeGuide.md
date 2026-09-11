@@ -71,7 +71,7 @@ Each stat in the `stats` array, `self` included, exposes the following propertie
 | `max` | Maximum value |
 | `value` | Current value, with this turn's AI change and regen applied |
 | `regen` | Regen per story hour, with traits applied |
-| `previous` | `{ value, max }` at the start of the turn |
+| `previous` | The whole stat as it stood at the start of the turn — `id`, `name`, `type`, `description`, `min`, `max`, `value`, `regen`. Read-only |
 | `requested` | `{ value, max }` the AI asked to change this turn, before flags and clamping |
 | `regenApplied` | The regen this turn added, after clamping |
 
@@ -100,7 +100,7 @@ A bound your code sets wins over the authored bound, trait changes, and the AI's
 
 ### Reading This Turn
 
-Every stat carries what the turn did before the code ran. `previous` holds the value and max at the start of the turn. `requested` holds the change the AI asked for, raw. `regenApplied` holds the regen this turn added. Together they let a script clamp or scale an ask:
+Every stat carries what the turn did before the code ran. `previous` holds the whole stat — every field `self` has — as it stood at the start of the turn; it is frozen, so a write to it does nothing. `requested` holds the change the AI asked for, raw. `regenApplied` holds the regen this turn added. Together they let a script clamp or scale an ask:
 
 ```javascript
 // The AI may lower Sanity by at most 10 per turn, and never raise it.
@@ -116,16 +116,17 @@ On a turn with no ask, `requested.value` and `requested.max` are both `0`.
 
 | Member | What it is |
 | --- | --- |
-| `value` | The text the placeholder reads as now, with pins applied. Write it to pin the placeholder |
+| `value` | The text the placeholder reads as now, with pins applied |
 | `values` | Every authored value as text, in authored order. Values with weight 0 are included |
 | `roll()` | One draw with the author's weights. The draw is not kept |
+| `pin(text)` | Pin the placeholder to that text |
 | `unpin()` | Remove the pin code set. The next pin in rank, or the roll, shows again |
 
-Writing `value` pins the placeholder to that text until the code changes it again. The pin sits over the roll and every other pin; it never replaces them, so `unpin()` hands the placeholder back to whatever sat underneath. Any text is allowed, on the list or off it:
+`pin(text)` pins the placeholder to that text until the code changes it again. Writing `value` does the same thing — `pin` is the suggested spelling, and the last of `pin`, `value` or `unpin` a run calls wins. The pin sits over the roll and every other pin; it never replaces them, so `unpin()` hands the placeholder back to whatever sat underneath. Any text is allowed, on the list or off it:
 
 ```javascript
 // Mood follows Sanity's band.
-placeholders.Mood.value = self.value < 20 ? 'furious' : self.value < 50 ? 'wary' : 'calm';
+placeholders.Mood.pin(self.value < 20 ? 'furious' : self.value < 50 ? 'wary' : 'calm');
 ```
 
 A write to a placeholder name the world does not have is dropped. **Test Code** and the Test Bench both report it.

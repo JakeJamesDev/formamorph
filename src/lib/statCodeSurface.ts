@@ -51,7 +51,7 @@ export const STAT_FIELDS: readonly SurfaceEntry[] = [
   { name: 'max', detail: 'number', info: 'Upper bound. Results are clamped to it. Write self.max to set it.' },
   { name: 'value', detail: 'number', info: 'Current value, with this turn’s AI change and regen applied. Write self.value to set it.' },
   { name: 'regen', detail: 'number', info: 'Regen per story hour, with traits applied. Write self.regen to set it.' },
-  { name: 'previous', detail: '{ value, max }', info: 'Value and max at the start of this turn.' },
+  { name: 'previous', detail: 'Stat', info: 'The whole stat as it stood at the start of this turn. Read-only.' },
   { name: 'requested', detail: '{ value, max }', info: 'The change the AI asked for this turn, before flags and clamping. Zero when it asked for none.' },
   { name: 'regenApplied', detail: 'number', info: 'The regen this turn applied, after clamping.' },
 ];
@@ -60,10 +60,17 @@ export const STAT_FIELDS: readonly SurfaceEntry[] = [
  *  field, or to another stat's entry, do nothing. A bound write holds until the code next runs. */
 export const SELF_WRITABLE_FIELDS: readonly string[] = ['value', ...CODE_BOUND_FIELDS];
 
-/** The fields on a stat's `previous`. */
+/** The fields on a stat's `previous` — the whole stat as it stood at the start of this turn. Frozen, so
+ *  a write reaches none of them. */
 export const PREVIOUS_FIELDS: readonly SurfaceEntry[] = [
+  { name: 'id', detail: 'string', info: 'Unique id, at the start of this turn.' },
+  { name: 'name', detail: 'string', info: 'The stat’s display name, at the start of this turn.' },
+  { name: 'type', detail: 'string', info: 'number, percentage, or whichever type the stat was given, at the start of this turn.' },
+  { name: 'description', detail: 'string', info: 'The stat’s description text, at the start of this turn.' },
+  { name: 'min', detail: 'number', info: 'Lower bound at the start of this turn, traits and code bounds included.' },
+  { name: 'max', detail: 'number', info: 'Upper bound at the start of this turn, traits and code bounds included.' },
   { name: 'value', detail: 'number', info: 'The value at the start of this turn.' },
-  { name: 'max', detail: 'number', info: 'The max at the start of this turn.' },
+  { name: 'regen', detail: 'number', info: 'Regen per story hour at the start of this turn, traits included.' },
 ];
 
 /** The fields on a stat's `requested`. */
@@ -74,9 +81,10 @@ export const REQUESTED_FIELDS: readonly SurfaceEntry[] = [
 
 /** The members of one entry in `placeholders`. */
 export const PLACEHOLDER_ENTRY_FIELDS: readonly SurfaceEntry[] = [
-  { name: 'value', detail: 'string', info: 'The text the placeholder reads as now, with pins applied. Write it to pin the placeholder to any text.' },
+  { name: 'value', detail: 'string', info: 'The text the placeholder reads as now, with pins applied.' },
   { name: 'values', detail: 'string[]', info: 'Every value the author wrote, in order, as text. Values with weight 0 are included.' },
   { name: 'roll', detail: '() => string', info: 'Draw one value with the author’s weights. The draw is not kept.' },
+  { name: 'pin', detail: '(text) => void', info: 'Pin the placeholder to any text, after this run.' },
   { name: 'unpin', detail: '() => void', info: 'Remove the pin that code set, after this run. The rolled value shows again.' },
 ];
 

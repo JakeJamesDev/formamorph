@@ -1,6 +1,7 @@
 # 06: Pin(text) As The Documented Placeholder Write
 
-Status: ready-for-agent
+Status: ready-for-human
+Base: f8b199db
 Blocked by: None (can start immediately)
 Recommended model: Claude Sonnet 5 (`claude-sonnet-5`)
 Reasoning effort: medium
@@ -13,15 +14,21 @@ A one-line prelude alias plus a static-check extension and a copy pass. Sonnet a
 
 ## Acceptance criteria
 
-- [ ] `pin("x")` lands as a Code Pin; last of `pin`/`value`/`unpin` wins in one run
-- [ ] `pin({})` fails as `bad-write`; `pin` on an unknown name is reported and dropped
-- [ ] The editor underlines `placeholders.Nope.pin("x")` and warns on a duplicate name reached through `pin`
-- [ ] Completions: `value` reads as a read, `pin` as the write; `pin` is in the entry field list and the drift guard passes
-- [ ] The pin template and every guide and help pin sample use `pin()`; `value =` appears in none of them
-- [ ] Test Code lists a `pin()` write the same as a `value` write
-- [ ] Executor, per-turn, analysis, and template tests cover the above
-- [ ] Four gates green; graph updated
+- [x] `pin("x")` lands as a Code Pin; last of `pin`/`value`/`unpin` wins in one run
+- [x] `pin({})` fails as `bad-write`; `pin` on an unknown name is reported and dropped
+- [x] The editor underlines `placeholders.Nope.pin("x")` and warns on a duplicate name reached through `pin`
+- [x] Completions: `value` reads as a read, `pin` as the write; `pin` is in the entry field list and the drift guard passes
+- [x] The pin template and every guide and help pin sample use `pin()`; `value =` appears in none of them
+- [x] Test Code lists a `pin()` write the same as a `value` write
+- [x] Executor, per-turn, analysis, and template tests cover the above
+- [x] Four gates green; graph updated
 
 ## Blocked by
 
 - None (can start immediately)
+
+## Comments
+
+Implemented and reviewed against `Base:` in commit `e97ba4c9` ("Add pin(text) as the documented placeholder write"). `/mattpocock-skills:code-review` found nothing wrong with the pin() surface itself on either axis.
+
+**File collision, flagged not fixed:** this repo's working tree is shared by every parallel session (not separate worktrees), so the files this ticket touched — `statCodeExecutor.ts`, `statCodeAnalysis.ts`, `statCodeSurface.ts`, `statCodeTemplates.ts`, `statCodeExecutor.test.ts`, `statCodeTurn.test.ts` — already carried tickets 01's and 04's uncommitted work when this commit was staged by name. `e97ba4c9` therefore also contains ticket 01's `stats` name-keyed map (`statsPrelude`, `TrackedMapBase`) and ticket 04's frozen `previous` snapshot (`StatSnapshot`, `Object.freeze(self.previous)`), neither mentioned in this ticket's own scope. The Standards review also caught that this leaves `statCodeSurface.ts`, `helpTopics.ts`, and `StatCodeGuide.md` teaching `stats.find(...)` against a `stats` that is no longer an array — that's ticket 03's job (map-form docs), left alone here since it's outside this ticket. Sessions 01 and 04 were notified directly that their work already landed under this commit.

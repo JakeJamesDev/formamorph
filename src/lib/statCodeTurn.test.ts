@@ -109,8 +109,8 @@ describe('runStatCodeTurn', () => {
   it('never writes a stat other than the one the code belongs to', async () => {
     const out = await runStatCodeTurn(turn({
       stats: [
-        stat({ id: 'a', value: 50, code: 'stats.find(s => s.id === "b").value = 1; return 10;' }),
-        stat({ id: 'b', value: 80 }),
+        stat({ id: 'a', value: 50, code: 'stats.B.value = 1; stats.B.max = 1; return 10;' }),
+        stat({ id: 'b', name: 'B', value: 80 }),
       ],
     }));
     expect(valueOf(out.stats, 'b')).toBe(80);
@@ -120,12 +120,37 @@ describe('runStatCodeTurn', () => {
   it('keeps a disabled stat inert and hides it from every other stat', async () => {
     const out = await runStatCodeTurn(turn({
       stats: [
-        stat({ id: 'a', value: 50, code: 'return stats.length * 10 + (stats.some(s => s.id === "off") ? 1 : 0);' }),
-        stat({ id: 'off', value: 5, code: 'return 99;' }),
+        stat({ id: 'a', name: 'A', value: 50, code: 'return Object.keys(stats).length * 10 + ("Off" in stats ? 1 : 0);' }),
+        stat({ id: 'off', name: 'Off', value: 5, code: 'return 99;' }),
       ],
       enabled: { off: false },
     }));
     expect(valueOf(out.stats, 'a')).toBe(10);
+    expect(valueOf(out.stats, 'off')).toBe(5);
+    expect(out.moved).toEqual(['a']);
+  });
+
+  it('reads another stat by name, the last authored winning a shared name and an unknown name reading zero', async () => {
+    const out = await runStatCodeTurn(turn({
+      stats: [
+        stat({ id: 'a', name: 'A', max: 1000, code: 'return stats.Health.value + stats["Night Vision"].value + stats.Gone.value;' }),
+        stat({ id: 'h1', name: 'Health', value: 10 }),
+        stat({ id: 'h2', name: 'Health', value: 20 }),
+        stat({ id: 'nv', name: 'Night Vision', value: 3 }),
+      ],
+    }));
+    expect(valueOf(out.stats, 'a')).toBe(23);
+  });
+
+  it('reads a disabled stat’s name as a blank entry', async () => {
+    const out = await runStatCodeTurn(turn({
+      stats: [
+        stat({ id: 'a', name: 'A', value: 50, code: 'return stats.Off.value;' }),
+        stat({ id: 'off', name: 'Off', value: 5 }),
+      ],
+      enabled: { off: false },
+    }));
+    expect(valueOf(out.stats, 'a')).toBe(0);
     expect(valueOf(out.stats, 'off')).toBe(5);
     expect(out.moved).toEqual(['a']);
   });
@@ -268,6 +293,12 @@ describe('runStatCodeTurn placeholder writes', () => {
 
   it('turns a value write into a Code Pin the next prompt reads', async () => {
     const { pinWrites } = await run(['placeholders.Mood.value = "angry";']);
+    expect(pinWrites).toEqual({ mood: 'angry' });
+    expect(nextPrompt(withPinWrites({}, pinWrites))).toBe('She is angry.');
+  });
+
+  it('turns a pin() call into the same Code Pin a value write makes', async () => {
+    const { pinWrites } = await run(['placeholders.Mood.pin("angry");']);
     expect(pinWrites).toEqual({ mood: 'angry' });
     expect(nextPrompt(withPinWrites({}, pinWrites))).toBe('She is angry.');
   });
@@ -493,7 +524,7 @@ describe('runStatCodeTurn traits', () => {
   it('lands the switch after the run: every stat reads the pre-switch traits and bounds', async () => {
     const out = await run([
       'traits.Cursed.enabled = true;',
-      'return (traits.Cursed.enabled ? 1 : 0) + stats.find(s => s.id === "h").max / 10;',
+      'return (traits.Cursed.enabled ? 1 : 0) + stats.Health.max / 10;',
     ]);
     // Read after the switch, this would be 1 + 150 / 10.
     expect(valueOf(out.stats, 's1')).toBe(10);

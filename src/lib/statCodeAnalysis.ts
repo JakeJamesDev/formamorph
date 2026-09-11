@@ -272,12 +272,15 @@ function memberRoot(member: SyntaxNode, code: string): string | null {
   return root?.name === 'VariableName' ? code.slice(root.from, root.to) : null;
 }
 
-/** Whether `node` is a `placeholders.<name>.unpin()` call. */
-function isUnpinCall(node: SyntaxNode, code: string): boolean {
+/** Whether `node` is a `placeholders.<name>.pin(text)` or `.unpin()` call — a write, exactly as an assignment
+ *  to `.value` is. */
+function isPlaceholderWriteCall(node: SyntaxNode, code: string): boolean {
   const callee = node.firstChild;
   if (callee?.name !== 'MemberExpression') return false;
   const property = callee.getChild('PropertyName');
-  return !!property && code.slice(property.from, property.to) === 'unpin' && memberRoot(callee, code) === 'placeholders';
+  if (!property) return false;
+  const name = code.slice(property.from, property.to);
+  return (name === 'pin' || name === 'unpin') && memberRoot(callee, code) === 'placeholders';
 }
 
 /** A map entry's name as the code spells it, and where. */
@@ -511,7 +514,7 @@ export function statCodeDiagnostics(code: string, options: AnalysisOptions = {})
         if (traitProblem) diagnostics.push(traitProblem);
       }
     }
-    if (cursor.type.name === 'CallExpression' && placeholdersInScope && isUnpinCall(cursor.node, code)) {
+    if (cursor.type.name === 'CallExpression' && placeholdersInScope && isPlaceholderWriteCall(cursor.node, code)) {
       sawPlaceholderWrite = true;
     }
     if (cursor.type.name === 'MemberExpression' && options.placeholders && placeholdersInScope) {

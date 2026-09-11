@@ -54,7 +54,7 @@ describe('executeStatCode', () => {
   it('can read other stats via the stats argument', async () => {
     const stats = [makeStat({ name: 'Strength', value: 7 })];
     const res = await executeStatCode(
-      'return stats.find(s => s.name === "Strength").value * 2;',
+      'return stats.Strength.value * 2;',
       stats,
       makeStat({ max: 100 }),
     );
@@ -87,6 +87,57 @@ describe('executeStatCode', () => {
   });
 });
 
+describe('executeStatCode stats map', () => {
+  beforeEach(() => vi.spyOn(console, 'error').mockImplementation(() => {}));
+  afterEach(() => vi.restoreAllMocks());
+
+  const health = makeStat({ id: 'h', name: 'Health', value: 70 });
+  const vision = makeStat({ id: 'v', name: 'Night Vision', value: 30 });
+  const me = makeStat({ id: 'me', name: 'Mood', value: 40, max: 1000 });
+  const stats = [health, vision, me];
+  const run = (code: string, list: Stat[] = stats, self: Stat = me) => executeStatCode(code, list, self);
+
+  it('reads a stat by name, with brackets for a name with a space', async () => {
+    await expect(run('return stats.Health.value + stats["Night Vision"].value;')).resolves.toEqual({ value: 100, error: null });
+  });
+
+  it('is not an array, so a find lookup fails the run', async () => {
+    await expect(run('return typeof stats.find === "function" || Array.isArray(stats) ? 0 : 1;'))
+      .resolves.toEqual({ value: 1, error: null });
+    await expect(run('return stats.find(s => s.name === "Health").value;')).resolves.toMatchObject({ value: null, kind: 'throw' });
+  });
+
+  it('makes self the very entry the map holds under its name', async () => {
+    await expect(run('return self === stats[self.name] && self === stats.Mood ? 1 : 0;')).resolves.toEqual({ value: 1, error: null });
+  });
+
+  it('reads an unknown name as a blank entry: the entry shape, names empty, every number zero', async () => {
+    const code = `const blank = stats.Nope;
+      const zeroed = (o) => Object.values(o).every(v => typeof v === 'object' ? zeroed(v) : v === 0 || v === '');
+      return Object.keys(blank).join() === Object.keys(stats.Health).join() && zeroed(blank)
+        && blank.max === 0 && !('Nope' in stats) && stats.toString.value === 0 ? 1 : 0;`;
+    await expect(run(code)).resolves.toEqual({ value: 1, error: null });
+  });
+
+  it('keeps the last authored of two stats sharing a name, and a self that loses its name stands alone', async () => {
+    const first = makeStat({ id: 'h1', name: 'Health', value: 10 });
+    const last = makeStat({ id: 'h2', name: 'Health', value: 20 });
+    await expect(run('return stats.Health.id === "h2" ? stats.Health.value : 0;', [first, last], me))
+      .resolves.toEqual({ value: 20, error: null });
+    await expect(run('return self !== stats.Health && self.id === "h1" ? self.value : 0;', [first, last], first))
+      .resolves.toEqual({ value: 10, error: null });
+  });
+
+  it('iterates every stat with Object.values', async () => {
+    await expect(run('return Object.values(stats).reduce((sum, s) => sum + s.value, 0);')).resolves.toEqual({ value: 140, error: null });
+  });
+
+  it('ignores a write to another stat through the map, and still injects currentStatId', async () => {
+    await expect(run('stats.Health.value = 1; stats["Night Vision"] = 5;')).resolves.toEqual({ value: null, error: null });
+    await expect(run('return currentStatId === self.id ? 1 : 0;')).resolves.toEqual({ value: 1, error: null });
+  });
+});
+
 describe('executeStatCode self and turn inputs', () => {
   beforeEach(() => vi.spyOn(console, 'error').mockImplementation(() => {}));
   afterEach(() => vi.restoreAllMocks());
@@ -98,15 +149,19 @@ describe('executeStatCode self and turn inputs', () => {
     executeStatCode(code, stats, me, { turn });
 
   it('injects self as the very entry that sits in stats', async () => {
-    expect((await run('return self === stats.find(s => s.id === currentStatId) ? 1 : 0;')).value).toBe(1);
+    expect((await run('return self === stats.Mood ? 1 : 0;')).value).toBe(1);
   });
 
   it('carries the turn inputs on every entry, not only on self', async () => {
     const turn = {
-      other: { previous: { value: 90, max: 100 }, requested: { value: -25, max: 10 }, regenApplied: 5 },
+      other: {
+        previous: makeStat({ id: 'other', name: 'Health', value: 90, max: 100 }),
+        requested: { value: -25, max: 10 },
+        regenApplied: 5,
+      },
     };
     const res = await run(
-      'const h = stats.find(s => s.name === "Health"); return h.previous.value + h.requested.value + h.requested.max + h.regenApplied;',
+      'const h = stats.Health; return h.previous.value + h.requested.value + h.requested.max + h.regenApplied;',
       turn,
     );
     expect(res.value).toBe(80);
@@ -116,6 +171,18 @@ describe('executeStatCode self and turn inputs', () => {
     const res = await run(`return self.previous.value === 40 && self.previous.max === 100
       && self.requested.value === 0 && self.requested.max === 0 && self.regenApplied === 0 ? 1 : 0;`);
     expect(res.value).toBe(1);
+  });
+
+  it('carries previous as the whole stat, not only value and max', async () => {
+    const res = await run(
+      'return self.previous.id === "me" && self.previous.name === "Mood" && self.previous.regen === 0 ? 1 : 0;',
+    );
+    expect(res.value).toBe(1);
+  });
+
+  it('freezes previous, so a write to it changes nothing', async () => {
+    const res = await run('self.previous.value = 999; return self.previous.value;');
+    expect(res.value).toBe(40);
   });
 
   it('sets the value from a self.value write with no return', async () => {
@@ -153,7 +220,7 @@ describe('executeStatCode self and turn inputs', () => {
   });
 
   it('ignores a write to another stat entry', async () => {
-    expect(await run('stats.find(s => s.name === "Health").value = 1;')).toEqual({ value: null, error: null });
+    expect(await run('stats.Health.value = 1;')).toEqual({ value: null, error: null });
   });
 });
 
@@ -340,6 +407,35 @@ describe('executeStatCode placeholder writes', () => {
       .resolves.toEqual({ value: null, error: null, placeholders: [{ name: 'Mood', text: 'Furious' }] });
     await expect(run('placeholders.Mood.value = "Furious"; placeholders.Mood.unpin();'))
       .resolves.toEqual({ value: null, error: null, placeholders: [{ name: 'Mood', unpin: true }] });
+  });
+
+  it('reads pin() back as the same write a value assignment makes', async () => {
+    await expect(run('placeholders.Mood.pin("Furious");'))
+      .resolves.toEqual({ value: null, error: null, placeholders: [{ name: 'Mood', text: 'Furious' }] });
+  });
+
+  it('keeps the last of pin, value and unpin, whichever order code calls them', async () => {
+    await expect(run('placeholders.Mood.pin("Furious"); placeholders.Mood.unpin();'))
+      .resolves.toEqual({ value: null, error: null, placeholders: [{ name: 'Mood', unpin: true }] });
+    await expect(run('placeholders.Mood.unpin(); placeholders.Mood.pin("Furious");'))
+      .resolves.toEqual({ value: null, error: null, placeholders: [{ name: 'Mood', text: 'Furious' }] });
+    await expect(run('placeholders.Mood.pin("Furious"); placeholders.Mood.value = "calm";'))
+      .resolves.toEqual({ value: null, error: null, placeholders: [{ name: 'Mood', text: 'calm' }] });
+    await expect(run('placeholders.Mood.value = "calm"; placeholders.Mood.pin("Furious");'))
+      .resolves.toEqual({ value: null, error: null, placeholders: [{ name: 'Mood', text: 'Furious' }] });
+  });
+
+  it('drops a pin() on a name the world has no placeholder for, and reports it', async () => {
+    await expect(run('placeholders.Gone.pin("x"); placeholders.Mood.value = "Furious";')).resolves.toEqual({
+      value: null, error: null, placeholders: [{ name: 'Mood', text: 'Furious' }], unknownPlaceholders: ['Gone'],
+    });
+  });
+
+  it('fails the run on a pin() argument that is not text, the same way a bad value write does', async () => {
+    const result = await run('placeholders.Mood.pin({});');
+    expect(result).toMatchObject({ value: null, kind: 'bad-write' });
+    expect(result.error).toContain('placeholders.Mood.value must be text');
+    expect(result.placeholders).toBeUndefined();
   });
 
   it('drops a write to a name the world has no placeholder for, and reports it, keeping the other writes', async () => {

@@ -220,9 +220,15 @@ describe('statCodeCompletions', () => {
     expect(labels('const me = self;\nreturn me.|')).toContain('previous');
   });
 
-  it('offers value and max after a turn input, and nothing a stat has', () => {
-    for (const doc of ['return self.previous.|', 'return self.requested.|', 'return stats[0].requested.|']) {
+  it('offers value and max after requested, and nothing a stat has', () => {
+    for (const doc of ['return self.requested.|', 'return stats[0].requested.|']) {
       expect(labels(doc), doc).toEqual(['value', 'max']);
+    }
+  });
+
+  it('offers the whole stat’s fields after previous, and none of its own turn-relative ones', () => {
+    for (const doc of ['return self.previous.|', 'return stats[0].previous.|']) {
+      expect(labels(doc), doc).toEqual(['id', 'name', 'type', 'description', 'min', 'max', 'value', 'regen']);
     }
   });
 
@@ -341,6 +347,17 @@ describe('placeholders in stat code', () => {
     expect(problem.message).toBe('No placeholder is named “Mod”. Did you mean “Mood”?');
   });
 
+  it('flags a name no placeholder has, reached through pin()', () => {
+    const [problem] = statCodeDiagnostics('placeholders.Nope.pin("x");', { placeholders: { list: world } });
+    expect(problem).toMatchObject({ severity: 'error', message: 'No placeholder is named “Nope”.' });
+  });
+
+  it('warns on a shared name reached through pin(), and names the placeholder that wins', () => {
+    const shared = [ph('m1', 'Mood'), ph('m2', 'Mood')];
+    expect(messages('placeholders.Mood.pin("x");', { placeholders: { list: shared } }))
+      .toEqual(['2 placeholders are named “Mood”. This reads the last one authored.']);
+  });
+
   it('flags an unknown name in bracket syntax', () => {
     expect(messages('return placeholders["Eye Colour"].value.length;', { placeholders: { list: world } }))
       .toEqual(['No placeholder is named “Eye Colour”. Did you mean “Eye Color”?']);
@@ -396,8 +413,9 @@ describe('placeholders in stat code', () => {
       .toEqual(['Write to placeholders["Eye Color"].value instead.']);
   });
 
-  it('says nothing about a write to .value or an unpin(), and takes either as the code doing something', () => {
+  it('says nothing about a write to .value, a pin(), or an unpin(), and takes any of them as the code doing something', () => {
     expect(messages('placeholders.Mood.value = "angry";', { placeholders: { list: world } })).toEqual([]);
+    expect(messages('placeholders.Mood.pin("angry");', { placeholders: { list: world } })).toEqual([]);
     expect(messages('placeholders["Eye Color"].unpin();', { placeholders: { list: world } })).toEqual([]);
   });
 
