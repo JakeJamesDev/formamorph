@@ -1,6 +1,7 @@
 # 01: Rename Held To Acquired
 
-Status: ready-for-agent
+Status: ready-for-human
+Base: 06c3a0f4
 Blocked by: None (can start immediately)
 Recommended model: Claude Sonnet 5 (`claude-sonnet-5`)
 Reasoning effort: medium
@@ -13,11 +14,11 @@ The trait code says "acquired" where it now says "held". A trait the player chos
 
 ## Acceptance criteria
 
-- [ ] No identifier, parameter, or local in the trait runtime or the game view uses "held" for an acquired trait
-- [ ] TSDoc and comments in the trait runtime and the game view use "acquired"
-- [ ] The glossary defines **Acquired** with an _Avoid_ line listing "held"
-- [ ] The save shape is unchanged
-- [ ] Four gates green
+- [x] No identifier, parameter, or local in the trait runtime or the game view uses "held" for an acquired trait
+- [x] TSDoc and comments in the trait runtime and the game view use "acquired"
+- [x] The glossary defines **Acquired** with an _Avoid_ line listing "held"
+- [x] The save shape is unchanged
+- [x] Four gates green
 
 ## Blocked by
 

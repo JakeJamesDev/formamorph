@@ -149,3 +149,7 @@ _Avoid_: placeholder list, defs, vocabulary (that is the editor's chip menu)
 **Placeholder Store**:
 The write side of the same list: the editing operations the placeholder widgets need, bound to whichever list is being edited.
 _Avoid_: placeholder context, editor state
+
+**Acquired**:
+A trait the player has — chosen at creation or picked up in play. A trait the player switched off is still Acquired.
+_Avoid_: held
