@@ -187,7 +187,8 @@ type TrackedMapSpec = TrackedMapBase & (TrackedMapWrites | { [K in keyof Tracked
 
 /** The prelude that builds one sandbox map and a reader of what the run did to it. The map is parsed from a
  *  JSON string onto a null prototype, so `__proto__` is a plain name and `toString` is not one. A Proxy hands
- *  an unknown name a tracked blank entry, so a write to it is reported rather than thrown. */
+ *  an unknown name a tracked blank entry, so a write to it is dropped rather than thrown, and reported when
+ *  the map has a reader. */
 const trackedMapPrelude = (spec: TrackedMapSpec): string => {
   const hostArgs = spec.hostArgs ?? [];
   const params = hostArgs.map(([param]) => `, ${param}`).join('');

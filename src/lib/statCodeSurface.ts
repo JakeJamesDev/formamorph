@@ -40,7 +40,7 @@ export const SANDBOX_GLOBALS: readonly SurfaceEntry[] = [
   { name: 'console', detail: 'object', info: 'Only console.log — output shows up in the browser console.' },
 ];
 
-/** Names the sandbox still injects for older code but never offers or documents. */
+/** Names the sandbox injects for older code but never offers or documents. */
 export const SANDBOX_UNDOCUMENTED_GLOBALS: readonly string[] = ['currentStatId'];
 
 /** The fields on a stat object inside `stats`, `self` included. Anything else is `undefined`. */

@@ -569,6 +569,28 @@ describe('the stats map in stat code', () => {
     for (const option of completeAt('return stats.|', { statNames })?.options ?? []) expect(option.info).toBeTruthy();
   });
 
+  it('checks a write to its own entry through the map exactly as it checks self', () => {
+    const options = { statNames, selfName: 'Mood' };
+    expect(messages('stats.Mood.valeu = 5;', options)).toEqual(['stats.Mood has no field “valeu”. Did you mean “value”?']);
+    expect(messages('stats["Mood"].name = "x";', options))
+      .toEqual(['stats["Mood"].name can’t be written. Only self.value, self.min, self.max, self.regen can.']);
+    expect(messages('const me = self;\nme.delta.ai.value = 1;', options)[0]).toMatch(/^me\.delta can’t be written/);
+  });
+
+  it('warns about a write nested inside another stat’s entry', () => {
+    for (const code of ['stats.Health.previous.value = 1;\nreturn 2;', 'const hp = stats.Health;\nhp.delta.ai.value = 1;\nreturn 2;']) {
+      expect(messages(code, { statNames, selfName: 'Mood' }), code).toEqual([expect.stringMatching(/another stat/)]);
+    }
+  });
+
+  it('says nothing after a chain that continues past the one lookup', () => {
+    expect(labels('return Object.values(stats).find(f).filter(g).|', { statNames })).toEqual([]);
+  });
+
+  it('reads the empty key as the unnamed stat it reaches, not an unknown name', () => {
+    expect(messages('return stats[""].value;', { statNames })).toEqual([]);
+  });
+
   it('keeps currentStatId working but out of the list', () => {
     expect(messages('return currentStatId === self.id ? 1 : 0;')).toEqual([]);
     expect(labels('return cur|')).not.toContain('currentStatId');
