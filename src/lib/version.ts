@@ -9,6 +9,7 @@ import { appendCurrentToHistory } from './turnHistory';
 import { DEFAULT_AVATAR_ID, LEGACY_DEFAULT_AVATAR_ID, LEGACY_DEFAULT_AVATAR_SENTINEL } from './defaultAvatar';
 import { migrateEntityImages } from './entityImages';
 import { normalizeLinkedItem } from './contentLink';
+import { migrateStatLookups } from './statLookupMigration';
 
 /** Current app version, derived from package.json (see vite.config.js `define`). User-managed. */
 export const APP_VERSION = __APP_VERSION__;
@@ -348,14 +349,24 @@ function coerceLegacyListStats(stats: readonly Stat[]): Stat[] {
   });
 }
 
+/** Rewrite the retired `stats.find` lookups in every stat's code to the map form (see
+ *  `migrateStatLookups`). Idempotent; a stat whose code needs nothing keeps its reference. */
+function migrateStatCode(stats: readonly Stat[]): Stat[] {
+  return stats.map((stat) => {
+    if (typeof stat?.code !== 'string') return stat;
+    const code = migrateStatLookups(stat.code);
+    return code === stat.code ? stat : { ...stat, code };
+  });
+}
+
 /**
  * Bring an imported world up to the current format and stamp it with `APP_VERSION`. The dictionary→books
  * fold, the keyword-array migration, the entity-gallery fold, the entity-location flip, the
  * connection-record pair-merge, the start-flag rename, the placeholder value-record conversion and the
  * content-link guard run unconditionally (they aren't version-gated — see `foldDictionaryIntoBooks`); the
  * rest is skipped for a world already at `APP_VERSION`. Moves the legacy root `customPlayerVRM` bare
- * data-URL into `worldOverview.customPlayerVRM` as a `MediaAsset`, auto-binds legacy body stats to morphs, and
- * renames v1.2 description keys on entities/locations/traits to the audience-based keys. Remaining field
+ * data-URL into `worldOverview.customPlayerVRM` as a `MediaAsset`, auto-binds legacy body stats to morphs,
+ * rewrites stat code's `stats.find` lookups to the map form, and renames v1.2 description keys on entities/locations/traits to the audience-based keys. Remaining field
  * defaults are left to `loadWorldData`. Add further 2.0 → 2.x steps here when the shape changes — a version
  * bump is the user's call (see the export-shape-versioning note); shipped worlds are only reshaped through
  * this load-time path, never autonomously re-persisted.
@@ -378,7 +389,7 @@ export function migrateWorld(raw: unknown): World {
   delete world.customPlayerVRM; // drop the stray v1.2 root key
 
   if (Array.isArray(world.stats)) {
-    world.stats = autoBindLegacyBodyStats(coerceLegacyListStats(world.stats as Stat[]));
+    world.stats = migrateStatCode(autoBindLegacyBodyStats(coerceLegacyListStats(world.stats as Stat[])));
   }
 
   // v1.2 used `inGameDescription`/`detailedDescription`; rename to the audience-based keys.
