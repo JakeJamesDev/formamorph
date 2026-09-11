@@ -12,6 +12,13 @@ Each release groups changes as **Major** / **Minor**, then **Added** / **Removed
 
 _Unreleased — new work accumulates here until it earns a version bump. The next batch will pin its own version; `package.json` reads **2.18.0** (just released below)._
 
+### Major Changes
+
+#### ➕ Added
+
+- **👤 User-facing**
+  - **Stat code can now set its own bounds, pin placeholders, and switch traits, and it can read what the turn did before it ran.** A stat's code sees `self`, the stat it belongs to, and can write `self.value`, `self.min`, `self.max`, or `self.regen`. A bound it sets holds until the code writes it again and wins over the authored bound, trait changes, and the AI's max changes; a field it leaves alone keeps the turn's own result, so a script can move the cap and leave the value to the AI. Every stat carries `previous`, the value and max at the start of the turn, `requested`, the change the AI asked for, and `regenApplied`, so code can clamp or scale an ask before it lands. `placeholders` holds every placeholder by name with its current text, its authored values, a weighted `roll()`, and `unpin()`; writing `value` pins the placeholder to any text until the code changes it, and the roll returns when it stops. `traits` holds every authored trait by name with `enabled` and `acquired`; writing `enabled` switches the trait exactly as the checkbox does, siblings included, acquires a trait the player never took, and ignores Player Can Toggle In-Game. Switches show in the turn log under the stat that made them. Re-roll and undo restore code-set bounds, pins, and switches. A run that throws or times out changes nothing, and `return <number>` means what it always did, so existing worlds run unchanged. The editor completes the new names, underlines a write to a field the sandbox lacks, a placeholder or trait the world lacks, or another stat's entry, and warns when two placeholders share a name. **Test Code** lists every field, placeholder, and trait a run wrote; a trait switch is shown and never applied. **Templates** gains **Bound From Another Stat**, **Placeholder Follows This Stat**, and **Trait by Threshold**, and placeholder and trait slots pick from the world's own names. The Test Bench's stat code check runs under the new surface and adds a warning row for code that writes to a placeholder or trait name the world does not have. The Stat Code Guide documents the full surface.
+
 ---
 
 <details>

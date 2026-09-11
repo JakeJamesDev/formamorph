@@ -1,23 +1,27 @@
 # 🧮 Stat Code Guide
 
-This guide explains Formamorph's **dynamic stat calculation** — attach a small JavaScript snippet to a stat to derive its value from other stats. In a world file this snippet is a stat's `code` field; see the [World Format](WorldFormat) for where it lives.
+This guide explains Formamorph's **stat code** — a small JavaScript script attached to a stat. It can set the stat's value from other stats, move the stat's own bounds, pin a placeholder, or switch a trait. In a world file this script is a stat's `code` field; see the [World Format](WorldFormat) for where it lives.
 
 ## Overview
 
-The dynamic stat calculation feature allows you to write JavaScript code that automatically calculates a stat's value based on other stats. This enables you to create:
+Stat code runs in a sandbox when a stat changes, or every turn when it reads the clock (see [When Your Code Runs](#when-your-code-runs)). It can:
 
-- **Derived stats** that depend on other stats (e.g., carrying capacity based on strength)
-- **Compound stats** that combine multiple stats (e.g., defense calculated from armor + agility)
-- **Threshold effects** that change based on conditions (e.g., speed penalties when health is below 30%)
-- **Complex formulas** for game mechanics (e.g., damage calculations, regeneration rates)
-- **Time-based stats** that respond to how long a turn took or what time of day it is (see [The Story Clock](#the-story-clock))
+- **Derive a value** from other stats (e.g., carrying capacity based on strength)
+- **Combine stats** (e.g., defense calculated from armor + agility)
+- **React to thresholds** (e.g., speed penalties when health is below 30%)
+- **Follow time** — how long a turn took, or what time of day it is (see [The Story Clock](#the-story-clock))
+- **Set its own Min, Max, or Regen** (see [Writing to `self`](#writing-to-self))
+- **Shape what the AI asked for** before it lands (see [Reading This Turn](#reading-this-turn))
+- **Pin a placeholder** to any text (see [Placeholders](#placeholders))
+- **Switch a trait** on or off (see [Traits](#traits))
 
 ## How It Works
 
-1. Each stat can have an optional JavaScript code snippet
-2. When stats are updated during gameplay, the code is executed in a safe environment
-3. The code has access to all current stats, the story clock, and must return a number
-4. The returned number becomes the new value of the stat (constrained by min/max)
+1. Each stat can have an optional JavaScript script
+2. When the AI changes a stat, or every turn if any code reads the clock, the script runs in a safe environment after the AI's changes and regen apply
+3. The script reads every stat, the story clock, the world's placeholders, and the world's traits
+4. `return <number>` sets the stat's value, clamped to its range. Writes to `self`, `placeholders`, and `traits` apply after the run
+5. A script that throws or times out changes nothing
 
 ### When Your Code Runs
 
@@ -32,12 +36,14 @@ Time passes on every turn, so code that reads the clock has to run on every turn
 
 ### Basic Syntax
 
-Your code should be valid JavaScript that returns a number. The code has access to a `stats` array containing all stats in the game.
+Your code is plain JavaScript. Return a number to set the stat's value. The code has access to a `stats` array containing all stats in the game, and to `self`, the stat the code belongs to.
 
 ```javascript
 // Example: Return a fixed value
 return 50;
 ```
+
+A script does not have to return anything. One that only writes `self`, a placeholder, or a trait leaves the value to the AI and regen.
 
 ### Accessing Other Stats
 
@@ -53,18 +59,98 @@ The `?.` operator safely accesses the value property (returns undefined if the s
 
 ### Stat Properties
 
-Each stat in the `stats` array exposes the following properties:
+Each stat in the `stats` array, `self` included, exposes the following properties:
 
-- `id`: Unique identifier
-- `name`: Display name of the stat (this is what you match on)
-- `type`: Type of stat (`'number'` or `'list'`)
-- `description`: Text description
-- `min`: Minimum value
-- `max`: Maximum value
-- `value`: Current value
-- `regen`: Regeneration rate
+| Property | What it is |
+| --- | --- |
+| `id` | Unique identifier |
+| `name` | Display name (this is what you match on) |
+| `type` | Type of stat (`'number'` or `'percentage'`) |
+| `description` | Text description |
+| `min` | Minimum value |
+| `max` | Maximum value |
+| `value` | Current value, with this turn's AI change and regen applied |
+| `regen` | Regen per story hour, with traits applied |
+| `previous` | `{ value, max }` at the start of the turn |
+| `requested` | `{ value, max }` the AI asked to change this turn, before flags and clamping |
+| `regenApplied` | The regen this turn added, after clamping |
 
-> ℹ️ Only these fields are passed into the sandbox. A stat's own `code` and `descriptors` are **not** available from inside a snippet.
+> ℹ️ Only these fields are passed into the sandbox. A stat's own `code` and `descriptors` are **not** available from inside a script.
+
+### Writing to `self`
+
+`self` is the stat the code belongs to. It is the same object that sits in `stats`, so `self.value` and `stats.find(s => s.id === self.id).value` read alike. Four of its fields take writes:
+
+| Write | Effect |
+| --- | --- |
+| `self.value = n` | Sets the value this turn, clamped to the range. Same as `return n` |
+| `self.min = n` | Sets the floor. Holds until the code writes it again |
+| `self.max = n` | Sets the cap. Holds until the code writes it again |
+| `self.regen = n` | Sets regen per story hour. Holds until the code writes it again |
+
+A field you do not write keeps what the turn gave it. So a script can move the cap and leave the value to the AI:
+
+```javascript
+// Max grows with Level. The value still moves as the AI narrates.
+const level = stats.find(s => s.name === 'Level')?.value ?? 1;
+self.max = 50 + level * 10;
+```
+
+A bound your code sets wins over the authored bound, trait changes, and the AI's max changes for that field. It stays set on runs that do not write it, and empty code clears every code-set bound. A write equal to the bound's current number counts as leaving it alone. Only `self` takes writes; a write to another stat's entry does nothing, and the editor underlines it.
+
+### Reading This Turn
+
+Every stat carries what the turn did before the code ran. `previous` holds the value and max at the start of the turn. `requested` holds the change the AI asked for, raw. `regenApplied` holds the regen this turn added. Together they let a script clamp or scale an ask:
+
+```javascript
+// The AI may lower Sanity by at most 10 per turn, and never raise it.
+const ask = Math.max(-10, Math.min(0, self.requested.value));
+self.value = self.previous.value + ask + self.regenApplied;
+```
+
+On a turn with no ask, `requested.value` and `requested.max` are both `0`.
+
+### Placeholders
+
+`placeholders` holds every placeholder in the world, by name. A name with a space needs brackets: `placeholders["Hair Color"]`. Each entry has:
+
+| Member | What it is |
+| --- | --- |
+| `value` | The text the placeholder reads as now, with pins applied. Write it to pin the placeholder |
+| `values` | Every authored value as text, in authored order. Values with weight 0 are included |
+| `roll()` | One draw with the author's weights. The draw is not kept |
+| `unpin()` | Remove the pin code set. The next pin in rank, or the roll, shows again |
+
+Writing `value` pins the placeholder to that text until the code changes it again. The pin sits over the roll and every other pin; it never replaces them, so `unpin()` hands the placeholder back to whatever sat underneath. Any text is allowed, on the list or off it:
+
+```javascript
+// Mood follows Sanity's band.
+placeholders.Mood.value = self.value < 20 ? 'furious' : self.value < 50 ? 'wary' : 'calm';
+```
+
+A write to a placeholder name the world does not have is dropped. **Test Code** and the Test Bench both report it.
+
+### Traits
+
+`traits` holds every authored trait in the world, by name, whether the player has it or not. Each entry has:
+
+| Member | What it is |
+| --- | --- |
+| `enabled` | Whether the player has the trait and it is on. Write it to switch the trait |
+| `acquired` | Whether the player has the trait at all, on or off. Read-only |
+
+Writing `enabled` switches the trait after the run, exactly as the player's checkbox does. Switching on retires its exclusive siblings. Switching on a trait the player never took acquires it. The switch persists until the player, the AI, or a later run switches it again. Code ignores **Player Can Toggle In-Game**, so a script can drive a curse or a rank the player has no checkbox for.
+
+```javascript
+// Cursed while Sanity is on the floor.
+traits.Cursed.enabled = self.value <= 0;
+```
+
+A write to a trait name the world does not have is dropped. **Test Code** and the Test Bench both report it. A write to `acquired` is dropped, and **Test Code** says so.
+
+### Order of Effects
+
+Every stat's code runs over the same snapshot, so no script sees another's writes in the same turn. After the run, effects apply in this order: trait switches, then bounds, then values, then placeholder pins. A bound a stat set this turn still wins over a bound its own trait switch moved. When two stats write the same placeholder or trait in one turn, the later stat in the list wins.
 
 ### The Story Clock
 
@@ -228,8 +314,9 @@ return baseRate * activityMultiplier * sizeFactor;
 2. **Handle missing stats**: Always use default values (`|| 0`) when accessing stats that might not exist
 3. **Stay within min/max**: The system will automatically clamp your result to the stat's min/max range
 4. **Avoid infinite loops**: Don't create circular dependencies between stats
-5. **Test your code**: Use the "Test Code" button to validate your code before saving
-6. **Add comments**: Document your code for future reference
+5. **Write only what you mean to change**: A field, placeholder, or trait you leave alone keeps the turn's own result
+6. **Test your code**: Use the "Test Code" button to validate your code before saving
+7. **Add comments**: Document your code for future reference
 
 ## Limitations
 
@@ -237,7 +324,8 @@ return baseRate * activityMultiplier * sizeFactor;
 - The code cannot access external resources (network, files, etc.)
 - Circular dependencies between stats may cause unexpected behavior
 - The code runs in a sandboxed environment with limited JavaScript features
-- **Test Code** runs your snippet as a one-hour turn on day one, so it can't preview a long turn or a different daypart
+- Code writes only its own bounds; another stat's entry is read-only
+- **Test Code** runs your script as a one-hour turn on day one with no player traits, so it can't preview a long turn or a different daypart. It shows a trait switch and never applies it to the world
 
 ### A Note on Accumulating Stats
 
@@ -249,10 +337,10 @@ Formamorph runs it once per turn. But re-rolling a turn's stat changes re-runs i
 
 If your code doesn't work as expected:
 
-1. Check for typos in stat names (they are case-sensitive)
-2. Ensure your code returns a number
+1. Check for typos in stat, placeholder, and trait names (they are case-sensitive)
+2. Ensure your code returns a number, or writes a field instead
 3. Verify that all stats you're referencing actually exist
-4. Use the "Test Code" button to see any error messages
+4. Use the "Test Code" button to see any error messages and every field, placeholder, and trait the run wrote
 5. Add `console.log()` statements to debug your code (output appears in browser console)
 
 ## Advanced Examples

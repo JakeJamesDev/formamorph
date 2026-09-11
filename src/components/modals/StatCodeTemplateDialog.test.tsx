@@ -39,6 +39,8 @@ const open = () => render(
     currentStatId="s1"
     hasExistingCode={false}
     onInsert={vi.fn()}
+    placeholderNames={['Mood', 'Hair Color']}
+    traitNames={['Cursed']}
   />,
 );
 
@@ -103,6 +105,22 @@ describe('the form a template presents', () => {
     await user.clear(slotField);
     await user.tab();
     await waitFor(() => expect(slotField).toHaveValue('-5'));
+  });
+
+  // A name slot picks from the world's own list so the generated string always matches something.
+  it('offers the world’s placeholders and traits for their slot types, quoted in the code', async () => {
+    const user = userEvent.setup();
+    await authoring(user, 'placeholders[{{p:placeholder}}].value = "x"; traits[{{t:trait}}].enabled = true;');
+
+    await user.click(await screen.findByRole('combobox', { name: 'P' }));
+    await user.click(await screen.findByRole('option', { name: 'Hair Color' }));
+    await user.click(await screen.findByRole('combobox', { name: 'T' }));
+    await user.click(await screen.findByRole('option', { name: 'Cursed' }));
+
+    // The highlighter splits the code into token spans, so read the whole generated block.
+    const generated = () => document.querySelector('pre')?.textContent ?? '';
+    await waitFor(() => expect(generated()).toContain('placeholders["Hair Color"]'));
+    expect(generated()).toContain('traits["Cursed"]');
   });
 
   it('prefills the defaults of a template picked from the list', async () => {

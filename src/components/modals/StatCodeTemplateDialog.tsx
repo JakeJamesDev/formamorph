@@ -29,6 +29,8 @@ import {
   parseTemplateSlots,
   resolveSlotValue,
   validateSlotValues,
+  isNameSlotType,
+  type NameSlotType,
   type StatCodeTemplate,
   type TemplateSlot,
 } from '@/lib/statCodeTemplates';
@@ -69,13 +71,21 @@ const productionRepository: StatTemplateRepository = {
   import: importTemplates,
 };
 
-/** One control for one slot. Stat and daypart slots pick from a list so the generated string is always
+/** The world's names a name slot of each type picks from. */
+type SlotNames = Record<NameSlotType, readonly string[]>;
+
+/** What a name slot's empty picker asks for. */
+const PICK_PROMPT: Record<NameSlotType, string> = {
+  stat: 'Pick a stat…', placeholder: 'Pick a placeholder…', trait: 'Pick a trait…',
+};
+
+/** One control for one slot. Name and daypart slots pick from a list so the generated string is always
  *  a name the sandbox will actually match. */
-function SlotField({ slot, value, problem, stats, onChange }: {
+function SlotField({ slot, value, problem, names, onChange }: {
   slot: TemplateSlot;
   value: string;
   problem?: string;
-  stats: Stat[];
+  names: SlotNames;
   onChange: (value: string) => void;
 }) {
   /** What the author is part-way through typing, or null when the field is showing its resolved value. */
@@ -83,8 +93,8 @@ function SlotField({ slot, value, problem, stats, onChange }: {
   const fieldId = useId();
   const labelId = `${fieldId}-label`;
   const problemId = `${fieldId}-problem`;
-  const options = slot.type === 'stat'
-    ? stats.map(stat => stat.name).filter(Boolean)
+  const options = isNameSlotType(slot.type)
+    ? names[slot.type]
     : slot.type === 'daypart'
       ? [...DAYPART_OPTIONS]
       : slot.options ?? [];
@@ -114,7 +124,7 @@ function SlotField({ slot, value, problem, stats, onChange }: {
             aria-invalid={!!problem}
             aria-describedby={problem ? problemId : undefined}
           >
-            <SelectValue placeholder={slot.type === 'stat' ? 'Pick a stat…' : 'Pick one…'} />
+            <SelectValue placeholder={isNameSlotType(slot.type) ? PICK_PROMPT[slot.type] : 'Pick one…'} />
           </SelectTrigger>
           <SelectContent>
             {options.length === 0 && <div className="px-2 py-1.5 text-meta text-muted-foreground">Nothing to pick</div>}
@@ -129,9 +139,9 @@ function SlotField({ slot, value, problem, stats, onChange }: {
 
 /** The fill-in form and the code it generates. Shared by the picker and the template editor's Preview tab,
  *  so an author writing a template sees the exact interface theirs will present. */
-function TemplateForm({ code, stats, values, onChange }: {
+function TemplateForm({ code, names, values, onChange }: {
   code: string;
-  stats: Stat[];
+  names: SlotNames;
   values: Record<string, string>;
   onChange: (update: (values: Record<string, string>) => Record<string, string>) => void;
 }) {
@@ -148,7 +158,7 @@ function TemplateForm({ code, stats, values, onChange }: {
             <SlotField
               key={slot.name}
               slot={slot}
-              stats={stats}
+              names={names}
               // Read through the resolver rather than straight out of `values`: a slot the author has
               // only just typed into the code has no answer yet, and its declared default is what the
               // generated code below already shows for it.
@@ -185,6 +195,8 @@ export function StatCodeTemplateDialog({
   currentStatId,
   hasExistingCode,
   onInsert,
+  placeholderNames = [],
+  traitNames = [],
   repository = productionRepository,
   fileTransfer,
 }: {
@@ -195,6 +207,10 @@ export function StatCodeTemplateDialog({
    *  value through `currentStatId` rather than by name. */
   currentStatId?: string;
   hasExistingCode: boolean;
+  /** What a placeholder slot's picker offers. */
+  placeholderNames?: readonly string[];
+  /** What a trait slot's picker offers. */
+  traitNames?: readonly string[];
   onInsert: (code: string) => void;
   repository?: StatTemplateRepository;
   fileTransfer?: StatTemplateFileTransfer;
@@ -229,10 +245,11 @@ export function StatCodeTemplateDialog({
   );
   const all = useMemo(() => [...BUILT_IN_TEMPLATES, ...sortedUser], [sortedUser]);
   const selected = all.find(template => template.id === selectedId) ?? all[0];
-  const pickableStats = useMemo(
-    () => stats.filter(stat => stat.id !== currentStatId),
-    [stats, currentStatId],
-  );
+  const slotNames = useMemo<SlotNames>(() => ({
+    stat: stats.filter(stat => stat.id !== currentStatId).map(stat => stat.name).filter(Boolean),
+    placeholder: placeholderNames,
+    trait: traitNames,
+  }), [stats, currentStatId, placeholderNames, traitNames]);
   // Every stat, not the pickable ones: a slot picker must not offer the stat being edited (a formula
   // reading its own value from the list is a loop), but code written by hand reads it through
   // `currentStatId` all the time, so its name belongs in the completions.
@@ -377,13 +394,13 @@ export function StatCodeTemplateDialog({
                 slots
                 className="flex-1"
                 preview={(
-                  <TemplateForm code={draft.code} stats={pickableStats} values={draftValues} onChange={setDraftValues} />
+                  <TemplateForm code={draft.code} names={slotNames} values={draftValues} onChange={setDraftValues} />
                 )}
               />
               <p className="text-meta text-muted-foreground">
-                A slot is <code>{'{{name:type=default}}'}</code>. Stat and daypart slots become quoted
-                strings; number, choice and text are pasted as written, so quote them yourself when you
-                need a string.
+                A slot is <code>{'{{name:type=default}}'}</code>. Stat, placeholder, trait and daypart
+                slots become quoted strings; number, choice and text are pasted as written, so quote them
+                yourself when you need a string.
               </p>
             </div>
 
@@ -455,7 +472,7 @@ export function StatCodeTemplateDialog({
                       <p className="text-label font-medium">{selected.name}</p>
                       <p className="text-helper text-muted-foreground">{selected.description}</p>
                     </div>
-                    <TemplateForm code={selected.code} stats={pickableStats} values={values} onChange={setValues} />
+                    <TemplateForm code={selected.code} names={slotNames} values={values} onChange={setValues} />
                   </>
                 )}
               </div>

@@ -2282,6 +2282,19 @@ export const STAT_CODE_EXECUTION: RuleHead = {
 };
 
 /**
+ * The stat-code unknown-name row: a run wrote a placeholder or trait the world lacks, so the write was
+ * dropped. Raised from the same explicit action as {@link STAT_CODE_EXECUTION}; a warning, because the code
+ * still runs and the stat still gets its value.
+ */
+export const STAT_CODE_UNKNOWN_NAME: RuleHead = {
+  id: 'stat-code-unknown-name',
+  severity: 'warning',
+  section: 'stats',
+  advanced: true,
+  summary: (count) => `${count} stats’ code writes names the world doesn’t have`,
+};
+
+/**
  * The publish-size check's row. It is a head without a `check` because the byte count comes from the
  * debounced worker measure, not the synchronous pure pass: `lib/testBench/worldTooLarge` raises its finding
  * from the measured size; it groups and sorts here like any other row.
@@ -2294,7 +2307,7 @@ export const WORLD_TOO_LARGE: RuleHead = {
 };
 
 /** Everything that can put a row in the Issues list — the live rules plus the on-demand checks. */
-const RULE_HEADS: readonly RuleHead[] = [...RULES, STAT_CODE_EXECUTION, WORLD_TOO_LARGE];
+const RULE_HEADS: readonly RuleHead[] = [...RULES, STAT_CODE_EXECUTION, STAT_CODE_UNKNOWN_NAME, WORLD_TOO_LARGE];
 
 /** The one lookup from a finding's rule id back to what raised it. */
 const HEAD_BY_ID = new Map(RULE_HEADS.map((rule) => [rule.id, rule]));

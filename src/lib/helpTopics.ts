@@ -341,7 +341,7 @@ They exist to give the story a memory with consequences. Prose alone drifts; a s
 - **Stat Descriptors** turn a number into a word. A threshold is a **value of this stat** — on a 0–10 stat, \`3\` means 3 — and it is the *top* of its band, so the lowest band the value fits in wins, whatever order you list them in. Give the highest one a threshold of your **Max**, or a value above it gets no descriptor at all. The coverage bar draws every band's real extent with the gap above them in red, and each row says what it covers. Switch **Thresholds in** to **% of Max** if you would rather the bands rescale when you change the range; your numbers are converted as you switch, so nothing moves.
 - **Prevent AI Changes** locks a stat against the AI in one direction. Useful for anything only your world's rules should move.
 - **Body Sliders** bind a body morph to the stat, so its value drives the slider from Min to Max.
-- **Dynamic Value Calculation** replaces the value with the result of a small script that runs each turn. It has a **?** of its own beside it.
+- **Dynamic Value Calculation** runs a small script that can set the value, Min, Max, or Regen, pin a placeholder, or switch a trait. It has a **?** of its own beside it.
 
 **Simple mode hides** Stat Descriptors, Prevent AI Changes and Dynamic Value Calculation. Switch the editor to Advanced to use them.
 
@@ -350,15 +350,40 @@ Start with two or three stats that the story would genuinely turn on. Every stat
   'worldEditor.statCode': {
     title: 'Dynamic Value Calculation',
     wikiPage: 'StatCodeGuide',
-    body: `A stat can compute itself from the others. Write JavaScript that **returns a number**, and the stat recalculates each turn instead of using its Initial Value. Leave the box empty and the manual value stands.
+    body: `A stat can run a small script. Write JavaScript that **returns a number**, and the stat takes that value instead of its Initial Value. Leave the box empty and the manual value stands.
 
-**Test Code** runs your script right there and shows the number it produced, as a one-hour turn on day one. It's the ground truth — the underlines in the editor are advice given without running anything.
+**Test Code** runs your script right there and shows what it set, as a one-hour turn on day one. It's the ground truth — the underlines in the editor are advice given without running anything.
 
-**What your script can reach.** A read-only copy of every stat and nothing else: no page, no network, no other stat's code. Each one carries \`id\`, \`name\`, \`type\`, \`description\`, \`min\`, \`max\`, \`value\` and \`regen\`. \`stats\` is the list; \`currentStatId\` is the id of the stat you're editing.
+**What your script can reach.** A copy of every stat, the world's placeholders and traits, and nothing else: no page, no network, no other stat's code. \`stats\` is the list; \`self\` is the stat you're editing. Each stat carries \`id\`, \`name\`, \`type\`, \`description\`, \`min\`, \`max\`, \`value\` and \`regen\`.
 
 \`\`\`js
 const health = stats.find(s => s.name === 'Health')?.value ?? 0;
 return health / 2;
+\`\`\`
+
+**Writing to \`self\`.** Set \`self.value\`, \`self.min\`, \`self.max\` or \`self.regen\` and the stat takes that number this turn. A bound you set holds until your code writes it again, or until you empty the code. A field you don't write keeps what the turn gave it, so a script can move the cap and leave the value to the AI. Only \`self\` takes writes; every other stat is read-only.
+
+\`\`\`js
+const level = stats.find(s => s.name === 'Level')?.value ?? 1;
+self.max = level * 10;
+\`\`\`
+
+**Reading this turn.** Each stat also carries what the turn did before your code ran: \`previous.value\` and \`previous.max\` from the start of the turn, \`requested.value\` and \`requested.max\` for the change the AI asked for, and \`regenApplied\` for the regen this turn added. Use them to clamp or scale an ask before it lands.
+
+\`\`\`js
+self.value = self.previous.value + Math.min(self.requested.value, 10);
+\`\`\`
+
+**Placeholders.** \`placeholders\` holds every placeholder by name. Each entry has \`value\`, the text it reads as now; \`values\`, every authored value as text; and \`roll()\`, one draw with the author's weights. Write \`value\` to pin the placeholder to any text until your code changes it again, or call \`unpin()\` to let the other pins and the roll show through. A name with a space needs brackets: \`placeholders["Hair Color"]\`.
+
+\`\`\`js
+placeholders.Mood.value = self.value < 20 ? 'furious' : 'calm';
+\`\`\`
+
+**Traits.** \`traits\` holds every authored trait by name. Each entry has \`enabled\`, whether the player has it and it's on, and \`acquired\`, whether the player has it at all. Write \`enabled\` to switch the trait on or off after the run, exactly as the player's checkbox does, exclusive siblings included. Switching on a trait the player never took acquires it. Code ignores Player Can Toggle In-Game, so it can drive a trait the player has no checkbox for.
+
+\`\`\`js
+traits.Cursed.enabled = self.value <= 0;
 \`\`\`
 
 **It can also read the clock.** Six values describe where the story stands in time:
@@ -376,9 +401,11 @@ Both ends are given because a turn spans time: an eight-hour sleep begins in the
 
 That's what makes a per-hour drain (\`current + 2 * deltaHours\`) or a stat that only climbs after dark possible. One catch: a script mentioning any of these re-runs **every** turn, since time passes every turn — a script that mentions none of them runs only when a stat changes.
 
-**A calculated stat ignores the AI.** Whatever the AI writes gets recomputed away, though it still *reads* the value and description normally.
+**A script that sets the value ignores the AI.** Whatever the AI writes gets recomputed away, though it still *reads* the value and description normally. A script that only writes a bound, a placeholder or a trait leaves the value to the AI.
 
-**Templates** beside the button writes the common shapes for you — a drain, a timer, a blend of two stats — and asks only for what each one needs. What it inserts is ordinary code you can then edit.`,
+**A failed run changes nothing.** Code that throws or times out leaves the stat, the placeholders and the traits as they were. A write to a placeholder or trait name the world doesn't have is dropped, and Test Code and the Test Bench both say so.
+
+**Templates** beside the button writes the common shapes for you — a drain, a timer, a blend of two stats, a bound from another stat, a placeholder pin, a trait switch — and asks only for what each one needs. What it inserts is ordinary code you can then edit.`,
   },
   'worldEditor.dictionary': {
     title: 'Dictionary',

@@ -7,7 +7,7 @@ import { IMAGE_CAPS } from '@/lib/imageOptim';
 import { phValueId, phValues } from '@/test/placeholderValues';
 import {
   applyRuleFix, runRules, groupFindings, isAdvancedRule, isRuleFixable, selectMatchingFindings,
-  MATCHING_RULES, RULES, STAT_CODE_EXECUTION, type RuleWorld,
+  MATCHING_RULES, RULES, STAT_CODE_EXECUTION, STAT_CODE_UNKNOWN_NAME, type RuleWorld,
 } from './rules';
 
 /** A described entity at the starting location — what keeps the completeness rules quiet about a fixture
@@ -2699,6 +2699,7 @@ const RULE_SCOPE: Record<string, 'simple' | 'advanced'> = {
   'placeholder-weight-unknown-value': 'advanced',
   'stat-ai-lock-frozen': 'advanced',
   'stat-code-execution': 'advanced',
+  'stat-code-unknown-name': 'advanced',
   'stat-code-never-ticks': 'advanced',
   'stat-code-overrides-trait': 'advanced',
   'stat-code-unknown-stat': 'advanced',
@@ -2745,7 +2746,7 @@ describe('the rule registry', () => {
   });
 
   it('makes every rule decide whether Simple mode can act on it', () => {
-    const heads = [...RULES, STAT_CODE_EXECUTION].map((r) => r.id);
+    const heads = [...RULES, STAT_CODE_EXECUTION, STAT_CODE_UNKNOWN_NAME].map((r) => r.id);
     expect(heads.slice().sort()).toEqual(Object.keys(RULE_SCOPE).sort());
   });
 
