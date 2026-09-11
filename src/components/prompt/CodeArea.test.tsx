@@ -119,7 +119,7 @@ describe('CodeArea', () => {
     await user.click(screen.getByLabelText('Variable'));
     await user.click(screen.getByText('This stat’s value'));
 
-    expect(owned()).toBe('return stats.find(s => s.id === currentStatId)?.value ?? 0 + 1;');
+    expect(owned()).toBe('return self.value + 1;');
   });
 
   it('leaves the part of a slot the author should rename selected, ready to type over', async () => {
@@ -142,7 +142,7 @@ describe('CodeArea', () => {
     await type(user, 'return ');
     await user.click(screen.getByLabelText('Variable'));
     await user.click(screen.getByText('This stat’s value'));
-    expect(owned()).toBe('return stats.find(s => s.id === currentStatId)?.value ?? 0');
+    expect(owned()).toBe('return self.value');
 
     await user.click(screen.getByLabelText('Undo'));
     expect(owned()).toBe('return ');

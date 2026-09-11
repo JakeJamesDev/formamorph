@@ -52,7 +52,7 @@ const LONG_TEMPLATE: StatCodeTemplate = {
   id: 'showcase-long-template',
   name: 'Long Observatory Schedule With Recovery Conditions',
   description: 'This controlled personal template has enough detail and parameters to demonstrate selection, wrapping, and vertical overflow without reading the real template library.',
-  code: `const source = stats.find(s => s.name === {{source:stat}})?.value ?? 0;
+  code: `const source = stats[{{source:stat}}].value;
 const floor = {{floor:number=10}};
 const ceiling = {{ceiling:number=90}};
 const recovery = {{recovery:number=4}};

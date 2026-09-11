@@ -354,17 +354,17 @@ Start with two or three stats that the story would genuinely turn on. Every stat
 
 **Test Code** runs your script right there and shows what it set, as a one-hour turn on day one. It's the ground truth — the underlines in the editor are advice given without running anything.
 
-**What your script can reach.** A copy of every stat, the world's placeholders and traits, and nothing else: no page, no network, no other stat's code. \`stats\` is the list; \`self\` is the stat you're editing. Each stat carries \`id\`, \`name\`, \`type\`, \`description\`, \`min\`, \`max\`, \`value\` and \`regen\`.
+**What your script can reach.** A copy of every stat, the world's placeholders and traits, and nothing else: no page, no network, no other stat's code. \`stats\` is a map keyed by name; \`self\` is the stat you're editing. Each stat carries \`id\`, \`name\`, \`type\`, \`description\`, \`min\`, \`max\`, \`value\` and \`regen\`.
 
 \`\`\`js
-const health = stats.find(s => s.name === 'Health')?.value ?? 0;
+const health = stats.Health.value;
 return health / 2;
 \`\`\`
 
 **Writing to \`self\`.** Set \`self.value\`, \`self.min\`, \`self.max\` or \`self.regen\` and the stat takes that number this turn. A bound you set holds until your code writes it again, or until you empty the code. A field you don't write keeps what the turn gave it, so a script can move the cap and leave the value to the AI. Only \`self\` takes writes; every other stat is read-only.
 
 \`\`\`js
-const level = stats.find(s => s.name === 'Level')?.value ?? 1;
+const level = stats.Level.value;
 self.max = level * 10;
 \`\`\`
 

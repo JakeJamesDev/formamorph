@@ -10,12 +10,11 @@ export interface InsertSnippet {
   select?: string;
 }
 
-/** The two lookups every template needs. Whole expressions rather than names, which is what keeps them
- *  here: the completion popup offers the sandbox's variables as you type, but it can't write a `find`
- *  call around one. */
+/** The two lookups every template needs. The first needs the map's bracket syntax, which completions
+ *  can't write around a name; the second is `self.value`, kept alongside it so the menu teaches both. */
 export const STAT_CODE_SNIPPETS: InsertSnippet[] = [
-  { label: 'Another stat’s value', text: 'stats.find(s => s.name === "Health")?.value ?? 0', select: 'Health' },
-  { label: 'This stat’s value', text: 'stats.find(s => s.id === currentStatId)?.value ?? 0' },
+  { label: 'Another stat’s value', text: 'stats["Health"].value', select: 'Health' },
+  { label: 'This stat’s value', text: 'self.value' },
 ];
 
 /** The slot forms a template may declare. Only offered in the template editor — a stat's own code has no
