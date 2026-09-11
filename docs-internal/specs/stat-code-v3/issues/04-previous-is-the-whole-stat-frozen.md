@@ -50,3 +50,20 @@ Only `statCodeTurn.ts` and the Changelog wording remained uncommitted here. Four
 clean, build succeeds; the test suite has 3 pre-existing failures unrelated to `previous` (`currentStatId`/
 `stats` array-members expectations left over from the still-in-progress stats-becomes-a-map ticket), not
 caused by this change — confirmed by running them in isolation before and after this ticket's edits.
+
+Ran `/mattpocock-skills:code-review` (Standards + Spec sub-agents, scoped to the `previous`/freeze work only,
+excluding the `pin()` feature and the stats-map migration sharing the same commits/files):
+
+- **Standards:** no hard violations. One judgement call: `PREVIOUS_FIELDS` and `STAT_FIELDS` in
+  `statCodeSurface.ts` now describe the same 8 fields with near-duplicate wording (Duplicated Code) — a small
+  helper deriving one from the other would remove it, but it's optional, not required, given how short and
+  stable this list is.
+- **Spec:** one real but out-of-scope gap. `checkWrite` (`statCodeAnalysis.ts`) only flags `self.previous.<field>`
+  writes, not a write to *another* stat's `previous` reached by name (e.g. `stats.Health.previous.value = 1`).
+  Root cause: `looksLikeStat` doesn't yet recognize bare `stats.Name` dot-access as a stat reference at all —
+  that's true for every field, not just `previous`, and is ticket 01/02's `looksLikeStat` map-migration work to
+  finish. Once that lands, `checkWrite`'s existing field-agnostic "writes to another stat" branch will start
+  catching `stats.Name.previous.*` too, with no `previous`-specific code needed. Left unfixed here on purpose.
+
+No fixes applied — both findings are either optional or blocked on other in-progress tickets in this same
+shared tree.
