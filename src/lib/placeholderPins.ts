@@ -1,12 +1,13 @@
-// Placeholder pins: what holds a placeholder at a fixed value, from any of the four sources — a trait, the
-// current location, a stat descriptor band, or a placeholder value. A pin masks the roll under it and never
-// overwrites it, so every collector here is an overlay computed fresh from the current state.
+// Placeholder pins: what holds a placeholder at a fixed value, from any of the four authored sources — a
+// trait, the current location, a stat descriptor band, or a placeholder value — plus the Code Pins stat code
+// writes at runtime. A pin masks the roll under it and never overwrites it, so every collector here is an
+// overlay computed fresh from the current state.
 //
-// Precedence: descriptor > location > trait > value pin. Within traits the later one in the authored tree
-// wins; within one location or one band the later row wins.
+// Precedence: Code Pin > descriptor > location > trait > value pin. Within traits the later one in the
+// authored tree wins; within one location or one band the later row wins.
 
 import type {
-  GameLocation, Placeholder, PlaceholderGroup, PlaceholderPin, PlaceholderRolls, PlaceholderValue, Stat, StatDescriptor,
+  CodePins, GameLocation, Placeholder, PlaceholderGroup, PlaceholderPin, PlaceholderRolls, PlaceholderValue, Stat, StatDescriptor,
   Trait, TraitGroup,
 } from '@/types';
 import { encodePlaceholderToken, pinText, placeholderIsChoice, placeholderValueLine, sameMap } from './placeholders';
@@ -42,6 +43,8 @@ export interface PinSources {
   placeholders: readonly Placeholder[];
   /** The playthrough's rolls: what a value-pinning placeholder reads as when nothing pins it. */
   rolls?: PlaceholderRolls;
+  /** Outranks every authored source. */
+  codePins?: CodePins;
   onFinding?: (finding: PinFinding) => void;
 }
 
@@ -106,10 +109,10 @@ export function activePlaceholderPins(
 
 /**
  * Placeholder id → the value in force, from every source at once. Traits, then the location, then the
- * active descriptor of each live stat lay their pins in that order, later winning. Value pins then settle
- * underneath: each value-pinning placeholder reads its effective world value — the pin on it so far, else
- * its roll — and lays that value's pins wherever nothing above claimed the target. A pin can change which
- * value another placeholder reads as, so this repeats until a pass changes nothing.
+ * active descriptor of each live stat, then the Code Pins lay their pins in that order, later winning.
+ * Value pins then settle underneath: each value-pinning placeholder reads its effective world value — the
+ * pin on it so far, else its roll — and lays that value's pins wherever nothing above claimed the target. A
+ * pin can change which value another placeholder reads as, so this repeats until a pass changes nothing.
  */
 export function collectPins(src: PinSources): Record<string, string> {
   return collectPinLayers(src).pins;
@@ -121,7 +124,7 @@ export function collectPins(src: PinSources): Record<string, string> {
  * the record. One walk produces both, so the two can never disagree about who wins.
  */
 export function collectPinLayers(src: PinSources): { pins: Record<string, string>; layers: PinLayer[] } {
-  const { traits, disabledTraitIds = [], location, stats = [], placeholders, rolls, onFinding } = src;
+  const { traits, disabledTraitIds = [], location, stats = [], placeholders, rolls, codePins = {}, onFinding } = src;
   const byId = indexPlaceholders(placeholders);
   const off = new Set(disabledTraitIds);
   const active = traits.filter((t) => !off.has(t.id));
@@ -137,11 +140,16 @@ export function collectPinLayers(src: PinSources): { pins: Record<string, string
     const band = activeDescriptor(stat, stat.value);
     if (band) layPins(layered, band.placeholderPins, byId, laidBy({ kind: 'descriptor', statId: stat.id, descriptorId: band.id }));
   }
+  // Code Pins are runtime state with no authored row to trace, so they lay no layer.
+  Object.assign(layered, codePins);
   const settled = settleValuePins(layered, placeholders, byId, rolls, onFinding);
   const claimed = new Set(Object.keys(layered));
   return {
     pins: settled.pins,
-    layers: [...markWinners(layers, layered, new Set()), ...markWinners(settled.layers, settled.pins, claimed)],
+    layers: [
+      ...markWinners(layers, layered, new Set(Object.keys(codePins))),
+      ...markWinners(settled.layers, settled.pins, claimed),
+    ],
   };
 }
 

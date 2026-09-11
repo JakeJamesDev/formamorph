@@ -70,9 +70,12 @@ const StatManager = ({ stat, tab, onTabChange, focusField }: {
     threshold: "",
     description: "",
   });
-  /** What the last Test Code run wrote: the value, then each bound, as one line. Null when it wrote nothing. */
+  /** What the last Test Code run wrote: the value, each bound, then each placeholder, as one line. Null when
+   *  it wrote nothing. */
   const [codeResult, setCodeResult] = useState<string | null>(null);
   const [codeError, setCodeError] = useState<string | null>(null);
+  /** The placeholder names the last run wrote that no placeholder has. Null when there were none. */
+  const [codeUnknownPlaceholders, setCodeUnknownPlaceholders] = useState<string | null>(null);
   /** What the editor's own reader found, phrased for the test row. Null when it found nothing. */
   const [codeProblems, setCodeProblems] = useState<string | null>(null);
   const [isTestingCode, setIsTestingCode] = useState(false);
@@ -104,6 +107,7 @@ const StatManager = ({ stat, tab, onTabChange, focusField }: {
   const clearTestReport = useCallback(() => {
     setCodeResult(null);
     setCodeError(null);
+    setCodeUnknownPlaceholders(null);
     setCodeProblems(null);
   }, []);
 
@@ -468,8 +472,13 @@ const StatManager = ({ stat, tab, onTabChange, focusField }: {
                     const bound = result.bounds?.[field];
                     return bound === undefined ? [] : [`${BOUND_LABELS[field]}: ${bound}`];
                   }),
+                  ...(result.placeholders ?? []).map((write) =>
+                    ('unpin' in write ? `${write.name} unpinned` : `${write.name} = ${write.text}`)),
                 ];
                 if (parts.length) setCodeResult(parts.join(' · '));
+                if (result.unknownPlaceholders) {
+                  setCodeUnknownPlaceholders(`No placeholder has these names, so code did not change them: ${result.unknownPlaceholders.join(', ')}.`);
+                }
               }
             } catch (error) {
               setCodeError((error as Error).message);
@@ -486,6 +495,7 @@ const StatManager = ({ stat, tab, onTabChange, focusField }: {
         <div className="min-w-0 text-right">
           {codeResult !== null && <div className="text-success">{codeResult}</div>}
           {codeError && <div className="text-destructive text-label">Error: {codeError}</div>}
+          {codeUnknownPlaceholders && <div className="text-warning text-label">{codeUnknownPlaceholders}</div>}
           {/* Always beside what the run reported, never instead of it: a run says what the code did
               this once, which is silent about a typo on a branch it didn't take. */}
           {codeProblems && <div className="text-warning text-label">{codeProblems}</div>}

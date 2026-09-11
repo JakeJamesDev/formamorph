@@ -6,7 +6,7 @@ import { useSettingsOpenRequest } from "@/lib/useSettingsOpenRequest";
 import { useGameplay } from "@/contexts/GameplayContext";
 import { useAccountDeletion } from "@/contexts/AccountDeletionContext";
 import { usesStatClock, type StatClock } from "@/lib/statCodeExecutor";
-import { overlayStatCodeResult, runStatCodeTurn, type StatCodeTurn } from "@/lib/statCodeTurn";
+import { overlayStatCodeResult, runStatCodeTurn, withPinWrites, type StatCodeTurn } from "@/lib/statCodeTurn";
 import { Button } from "@/components/ui/button";
 import {
   AlertDialog,
@@ -54,7 +54,7 @@ import { MenuModal } from "../components/modals/MenuModal";
 import LlmSetupGuide from "../components/modals/LlmSetupGuide";
 import { isLikelyConnectionError } from "../lib/connectionError";
 import WorldEditor from "./WorldEditor";
-import type { CharacterData, ChatMessage, ChatRole, AIRequestType, AITurnResult, GameLocation, MediaAsset, Dictionary, Entity, SaveRecord, World, PlayerStat } from "@/types";
+import type { CharacterData, ChatMessage, ChatRole, AIRequestType, AITurnResult, CodePins, GameLocation, GameState, MediaAsset, Dictionary, Entity, SaveRecord, World, PlayerStat } from "@/types";
 import { UnsavedChangesDialog } from "../components/UnsavedChangesDialog";
 import { estimateHistoryChars, estimateTokens } from "../lib/memoryUtils";
 import { parseNarration, stripReasoning, stripReasoningLive, extractReasoning, extractReasoningLive } from "../lib/aiResponse";
@@ -473,6 +473,7 @@ const GameViewer = ({
     setDisabledTraitIds,
     appliedTraitValues,
     setAppliedTraitValues,
+    setCodePins,
     recentStatChanges,
     setRecentStatChanges,
     setRecentStatFading,
@@ -544,7 +545,7 @@ const GameViewer = ({
   // values above stay untouched for roll priming, which has to see the chips it is rolling for.
   const {
     entities, locations, stats, traits, traitGroups, dictionary, playerStats, viewStats,
-    currentLocation, traitOrder, pins, resolvePH, resolveWith, resolveTraitText,
+    currentLocation, traitOrder, pins, pinsFor, resolvePH, resolveWith, resolveTraitText,
   } = useResolvedWorld();
   // The session's rolls, for the one pass that collects pins before they are in state (the init effect).
   const { rolls: sessionRolls } = usePlaceholderSession();
@@ -1158,8 +1159,8 @@ const GameViewer = ({
   const handleRegenerateStats = () => {
     const target = partialRegenTarget();
     if (!target || !statUpdatesEnabled || activeStats.length === 0) return;
-    const baseline = regenerateState(gameStates, initialStateRef.current, currentPage)?.playerStats;
-    if (!baseline) return;
+    const preTurn = regenerateState(gameStates, initialStateRef.current, currentPage);
+    if (!preTurn?.playerStats) return;
     const { prev, action } = target;
     void runPartialRegen(async (signal) => {
       const snapshot = createStatRequest(enabledStats(playerStatsRef.current, statEnabledRef.current));
@@ -1177,12 +1178,14 @@ const GameViewer = ({
       // `gameTime` already includes this turn — only the latest turn is ever re-rolled — so it is the
       // end-of-turn elapsed the live pass used, and code re-derives the same value instead of drifting.
       const turnHours = prev.timeDelta ?? FLAT_HOURS_PER_TURN;
+      // The turn's code writes go back to the pre-turn Code Pins, so stat code re-lays them once.
+      setCodePins(preTurn.codePins ?? {});
       applyStatChanges(parsed, {
         deltaHours: turnHours,
         elapsedHours: gameTime,
         calendar,
-      }, baseline);
-      applyRegenTick(turnHours, baseline);
+      }, preTurn);
+      applyRegenTick(turnHours, preTurn.playerStats);
       patchLatestTurn({ stat_changes: statChanges });
       armTurnSnapshot();
     });
@@ -2253,17 +2256,22 @@ const GameViewer = ({
   }, [heldStatChanges, recentStatChanges, setHeldStatChanges, setDrainingStatChanges, setRecentStatChanges, setRecentStatFading]);
 
   // Run stat code over this turn, regen included, and fold what it moved into the live delta feedback.
-  // Its own callback because clock-reading code also runs on turns the AI moved no stat.
+  // Its own callback because clock-reading code also runs on turns the AI moved no stat. A re-roll passes
+  // the pre-turn Code Pins, so code reads placeholders as the turn it replaces did.
   const runStatCode = useCallback(
-    async (before: PlayerStat[], afterAsks: PlayerStat[], asks: StatCodeTurn["asks"], clock: StatClock) => {
+    async (
+      before: PlayerStat[], afterAsks: PlayerStat[], asks: StatCodeTurn["asks"], clock: StatClock,
+      preTurnCodePins?: CodePins,
+    ) => {
       try {
         const enabled = statEnabledRef.current;
         const regen = applyRegen(afterAsks, clock.deltaHours ?? FLAT_HOURS_PER_TURN, enabled);
         const stats = resolveStatNames(regen.stats, resolvePH);
         const result = await runStatCodeTurn({
           stats, enabled, previous: before, asks, regenApplied: regen.applied, clock, traits: activeTraits,
-          placeholders: { placeholders, rolls: sessionRolls, pins },
+          placeholders: { placeholders, rolls: sessionRolls, pins: preTurnCodePins ? pinsFor(preTurnCodePins) : pins },
         });
+        setCodePins((prev) => withPinWrites(prev, result.pinWrites));
         if (result.moved.length === 0 && result.boundsChanged.length === 0) return;
         const codeChanges = appliedStatDeltas(stats, result.stats);
         // Onto the LATEST stats, not a blanket `setPlayerStats(result.stats)`: the run read the pre-`await`
@@ -2277,7 +2285,7 @@ const GameViewer = ({
         console.error("Error processing stat code:", error);
       }
     },
-    [setPlayerStats, setRecentStatChanges, setHeldStatChanges, resolvePH, placeholders, sessionRolls, pins, activeTraits],
+    [setPlayerStats, setRecentStatChanges, setHeldStatChanges, setCodePins, resolvePH, placeholders, sessionRolls, pins, pinsFor, activeTraits],
   );
 
   // Whether any stat's code reads the clock, and so needs a per-turn run of its own on turns the AI
@@ -2287,14 +2295,14 @@ const GameViewer = ({
 
   // Apply request identities to authored state; resolved names are only for code and display feedback.
   const applyStatChanges = useCallback(
-    // `base` overrides the starting stats (defaults to the live ref) — a stat re-generation applies the
-    // fresh deltas onto the pre-turn baseline so repeated re-rolls don't stack on already-applied changes.
+    // `base` is the pre-turn snapshot a stat re-generation starts from (defaults to the live state), so
+    // repeated re-rolls don't stack on already-applied changes or Code Pins.
     async (
       response: StatResponse,
       clock: StatClock = {},
-      base: typeof playerStats | null = null,
+      base: Pick<GameState, 'playerStats' | 'codePins'> | null = null,
     ) => {
-      const baseStats = base ?? rawPlayerStatsRef.current;
+      const baseStats = base?.playerStats ?? rawPlayerStatsRef.current;
       const live = new Set(enabledStats(rawPlayerStatsRef.current, statEnabledRef.current).map((s) => s.id));
       const applied = applyStatResponse(baseStats, response, live, activeTraits);
       const directApplied = applied.stats;
@@ -2320,7 +2328,7 @@ const GameViewer = ({
       setPlayerStats(directApplied);
       // A max-only ask counts too: code reads it as `requested.max`.
       if (response.updates.some((update) => update.value !== 0 || update.max !== 0) || anyStatUsesClock) {
-        await runStatCode(baseStats, directApplied, response.updates, clock);
+        await runStatCode(baseStats, directApplied, response.updates, clock, base ? base.codePins ?? {} : undefined);
       }
     },
     [runStatCode, setPlayerStats, setRecentStatChanges, setHeldStatChanges, resolvePH, anyStatUsesClock, activeTraits],
@@ -3559,8 +3567,9 @@ const GameViewer = ({
       // when the step was skipped. A loaded save overrides this later via loadGame.
       setRuntimeDictionaries(initialDictionaries ?? dictionaries);
 
-      // Fresh playthrough: no memory pins, selection or player overrides yet. loadGame overrides.
+      // Fresh playthrough: no memory pins, Code Pins, selection or player overrides yet. loadGame overrides.
       setMemoryPins({});
+      setCodePins({});
       setEntityVisualPreference({});
       setEntityImageIndex({});
       setMilestoneSelection(null);
@@ -3608,6 +3617,7 @@ const GameViewer = ({
     setDiscoveredEntities,
     setPlayerInput,
     setMemoryPins,
+    setCodePins,
     setEntityVisualPreference,
     setEntityImageIndex,
     setMilestoneSelection,

@@ -388,4 +388,21 @@ describe('placeholders in stat code', () => {
   it('offers placeholders among the globals', () => {
     expect(labels('return pla|')).toContain('placeholders');
   });
+
+  it('suggests .value on a string assigned to the entry itself, by dot or by bracket', () => {
+    const [problem] = statCodeDiagnostics('placeholders.Mood = "angry";', { placeholders: { list: world } });
+    expect(problem).toMatchObject({ severity: 'warning', message: 'Write to placeholders.Mood.value instead.' });
+    expect(messages('placeholders["Eye Color"] = "green";', { placeholders: { list: world } }))
+      .toEqual(['Write to placeholders["Eye Color"].value instead.']);
+  });
+
+  it('says nothing about a write to .value or an unpin(), and takes either as the code doing something', () => {
+    expect(messages('placeholders.Mood.value = "angry";', { placeholders: { list: world } })).toEqual([]);
+    expect(messages('placeholders["Eye Color"].unpin();', { placeholders: { list: world } })).toEqual([]);
+  });
+
+  it('still warns when code only reads placeholders', () => {
+    expect(messages('const mood = placeholders.Mood.value;', { placeholders: { list: world } }))
+      .toEqual(['This code never returns a number or writes self.value, so the stat keeps its value.']);
+  });
 });

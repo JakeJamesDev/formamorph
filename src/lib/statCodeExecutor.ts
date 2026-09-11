@@ -73,7 +73,14 @@ export interface StatCodeResult {
   kind?: StatCodeFailure;
   /** The bounds the code wrote on `self`. Absent when it wrote none. */
   bounds?: CodeBounds;
+  /** The placeholders the code wrote or unpinned, in map order. Absent when it touched none. */
+  placeholders?: PlaceholderWrite[];
+  /** Names the code wrote that no placeholder has; each write was dropped. */
+  unknownPlaceholders?: string[];
 }
+
+/** One placeholder a run pinned to new text, or released with `unpin()`. */
+export type PlaceholderWrite = { name: string; text: string } | { name: string; unpin: true };
 
 /** A stat's value and max, as one turn input carries them. */
 export interface ValueAndMax {
@@ -102,26 +109,76 @@ export interface SandboxPlaceholder {
 
 // The host hook every entry's `roll()` calls. The prelude takes it and deletes the global before user code runs.
 const ROLL_HOOK = '__formamorphRollPlaceholder';
+// The prelude's reader for what the run did to `placeholders`; the program's completion value calls it.
+const PLACEHOLDER_WRITES = '__formamorphPlaceholderWrites';
 
-/** The prelude line that builds `placeholders`. Parsed from a JSON string, not a literal, so a name like
- *  `__proto__` is an own key; the map has no prototype, so `toString` is not a name. */
+/** The prelude that builds `placeholders` and a reader of what the run did to it. The map is parsed from a
+ *  JSON string onto a null prototype, so `__proto__` is a plain name and `toString` is not one. */
 const placeholdersPrelude = (entries: readonly SandboxPlaceholder[]): string => {
   const data = Object.fromEntries(entries.map(({ name, value, values }) => [name, { value, values }]));
   return [
-    `const placeholders = ((roll) => {`,
+    `const [placeholders, ${PLACEHOLDER_WRITES}] = ((roll, stringify, keys) => {`,
     `  const map = Object.assign(Object.create(null), JSON.parse(${JSON.stringify(JSON.stringify(data))}));`,
-    `  for (const name of Object.keys(map)) map[name].roll = () => roll(name);`,
-    `  return map;`,
-    `})(globalThis.${ROLL_HOOK});`,
+    `  const own = Object.create(null);`,
+    `  for (const name of keys(map)) {`,
+    `    const entry = map[name];`,
+    // `value` is an accessor, so the reader knows whether the entry was written and whether an unpin came after.
+    `    const state = own[name] = { entry, value: entry.value, assigned: false, unpinned: false };`,
+    `    Object.defineProperty(entry, 'value', {`,
+    `      enumerable: true, get: () => state.value,`,
+    `      set: (v) => { state.value = v; state.assigned = true; state.unpinned = false; },`,
+    `    });`,
+    `    entry.roll = () => roll(name);`,
+    `    entry.unpin = () => { state.unpinned = true; };`,
+    `  }`,
+    // One row per key the run touched: [name, 'set', value] or [name, 'unpin']. A replaced entry is a write
+    // of itself when it is a string, else of its own value.
+    `  const readWrites = () => stringify(keys(map).map((name) => {`,
+    `    const entry = map[name], state = own[name];`,
+    `    if (!state || entry !== state.entry) {`,
+    `      return [name, 'set', typeof entry === 'string' || entry == null ? entry : entry.value];`,
+    `    }`,
+    `    return state.unpinned ? [name, 'unpin'] : state.assigned ? [name, 'set', state.value] : null;`,
+    `  }).filter((row) => row));`,
+    `  return [map, readWrites];`,
+    `})(globalThis.${ROLL_HOOK}, JSON.stringify, Object.keys);`,
     `delete globalThis.${ROLL_HOOK};`,
   ].join('\n');
 };
 
-const nonNumberFailure = (what: string): StatCodeResult => ({
+/** How code names a placeholder: dot syntax for an identifier, brackets otherwise. */
+const placeholderPath = (name: string) =>
+  /^[A-Za-z_$][\w$]*$/.test(name) ? `placeholders.${name}` : `placeholders[${JSON.stringify(name)}]`;
+
+/** The writes in the reader's dump. A name no placeholder has is dropped; a write holds text or a finite
+ *  number, and anything else fails the run. */
+function readPlaceholderWrites(
+  dump: string,
+  entries: readonly SandboxPlaceholder[],
+): { writes: PlaceholderWrite[]; unknown: string[] } | { error: string } {
+  const names = new Set(entries.map((entry) => entry.name));
+  const rows: unknown = JSON.parse(dump);
+  const writes: PlaceholderWrite[] = [];
+  const unknown: string[] = [];
+  for (const row of Array.isArray(rows) ? rows : []) {
+    if (!Array.isArray(row) || typeof row[0] !== 'string') continue;
+    const [name, action, value] = row as [string, unknown, unknown];
+    if (!names.has(name)) { unknown.push(name); continue; }
+    if (action === 'unpin') { writes.push({ name, unpin: true }); continue; }
+    const text = typeof value === 'string' ? value
+      : typeof value === 'number' && Number.isFinite(value) ? String(value) : null;
+    if (text === null) return { error: `${placeholderPath(name)}.value must be text` };
+    writes.push({ name, text });
+  }
+  return { writes, unknown };
+}
+
+const failure = (what: string, kind: StatCodeFailure): StatCodeResult => ({
   value: null,
   error: `Error: ${what}\nStack: No stack trace available`,
-  kind: 'non-number',
+  kind,
 });
+const nonNumberFailure = (what: string) => failure(what, 'non-number');
 
 /** Run a stat's untrusted `code` in an isolated QuickJS (WASM) VM over `stats`, `self`, the turn inputs,
  *  the clock, and `placeholders`. A number return or a `self.value` write sets the value, clamped; a
@@ -194,7 +251,8 @@ export const executeStatCode = async (
 
       // The stat data rides in as JSON literals (JSON is valid JS expression syntax); console.log and the
       // roll hook are the only host functions. The user code runs as a function body so `return` works; the
-      // program's completion value pairs what it returned with what `self`'s writable fields hold afterwards.
+      // program's completion value pairs what it returned with what `self`'s writable fields hold afterwards,
+      // then what it did to `placeholders`.
       const program = [
         `const stats = ${JSON.stringify(statsData)};`,
         `const currentStatId = ${JSON.stringify(String(currentStat.id))};`,
@@ -203,7 +261,7 @@ export const executeStatCode = async (
         placeholdersPrelude(placeholders),
         `[(function() {`,
         code,
-        `})(), self.value, ${CODE_BOUND_FIELDS.map((field) => `self.${field}`).join(', ')}];`,
+        `})(), self.value, ${CODE_BOUND_FIELDS.map((field) => `self.${field}`).join(', ')}, ${PLACEHOLDER_WRITES}()];`,
       ].join('\n');
 
       const result = vm.evalCode(program);
@@ -237,6 +295,9 @@ export const executeStatCode = async (
       const returned = readSlot(0);
       const written = readSlot(1);
       const boundSlots = CODE_BOUND_FIELDS.map((field, i) => [field, readSlot(2 + i)] as const);
+      const writesHandle = vm.getProp(result.value, 2 + CODE_BOUND_FIELDS.length);
+      const writesDump = vm.typeof(writesHandle) === 'string' ? vm.getString(writesHandle) : '[]';
+      writesHandle.dispose();
       result.value.dispose();
 
       if (consoleOutput.trim()) {
@@ -256,6 +317,8 @@ export const executeStatCode = async (
         if (!Number.isFinite(slot.number)) return nonNumberFailure(`self.${field} must be a finite number`);
         bounds[field] = slot.number;
       }
+      const placeholderWrites = readPlaceholderWrites(writesDump, placeholders);
+      if ('error' in placeholderWrites) return failure(placeholderWrites.error, 'throw');
 
       const min = bounds.min ?? selfData.min;
       const max = Math.max(min, bounds.max ?? selfData.max);
@@ -263,6 +326,8 @@ export const executeStatCode = async (
         value: value === null ? null : clamp(value, min, max),
         error: null,
         ...(Object.keys(bounds).length ? { bounds } : {}),
+        ...(placeholderWrites.writes.length ? { placeholders: placeholderWrites.writes } : {}),
+        ...(placeholderWrites.unknown.length ? { unknownPlaceholders: placeholderWrites.unknown } : {}),
       });
       if (returned.type === 'number') return settled(returned.number);
       return settled(Object.is(written.number, selfData.value) ? null : written.number);

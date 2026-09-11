@@ -37,7 +37,7 @@ Stat code becomes a small script over the stat it belongs to and over the world'
 16. As a world author, I want a weighted draw over a placeholder's values, so that the weights I set on the Placeholders tab still count.
 17. As a world author, I want to assign any text to a placeholder from code, so that a variable placeholder can carry a computed or off-list value.
 18. As a world author, I want a placeholder set from code to hold until my code changes it again, so that the narration sees the same value across turns.
-19. As a world author, I want a code-set placeholder to mask the roll, not replace it, so that the roll returns when the code stops setting it.
+19. As a world author, I want a code-set placeholder to mask the roll, not replace it, so that the roll returns when the code unpins it.
 20. As a world author, I want a placeholder value that is itself a chip to read as its resolved chain, so that `values` is usable text.
 21. As a world author, I want an assignment to `placeholders.<name>` without `.value` to still work, so that the likely typo does not silently do nothing.
 22. As a world author, I want completions for `self`, `placeholders`, and the new fields, so that I discover the surface while typing.
@@ -90,6 +90,7 @@ Stat code becomes a small script over the stat it belongs to and over the world'
 **Placeholder writes and reads**
 
 - A code write to a placeholder becomes a Code Pin: a new Pin source keyed by placeholder id, holding the written text. Code Pins outrank every other pin source. The Roll underneath is never replaced.
+- A Code Pin holds across turns until code changes it. `placeholders.<name>.unpin()` releases it, and the Roll shows again. The release lands after the run; `value` keeps its run-start text for the rest of the run. In one run the last of a write and an `unpin()` wins. `unpin()` on a placeholder that no code pinned does nothing. Assigning `null` is not a release.
 - Code Pins live in the snapshotted gameplay state, not on the save envelope beside the memory maps, so undo and re-roll restore them.
 - Code Pins are read by the resolver in every place trait pins are read: prompt context, stat name resolution, the immersive view.
 - Reading `placeholders` requires resolving every placeholder once per run under current rolls and pins. Resolution during the run does not mint rolls; a placeholder with no roll yet reads as its draw would and the minted roll is discarded.

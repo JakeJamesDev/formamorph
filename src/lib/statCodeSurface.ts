@@ -73,9 +73,10 @@ export const REQUESTED_FIELDS: readonly SurfaceEntry[] = [
 
 /** The members of one entry in `placeholders`. */
 export const PLACEHOLDER_ENTRY_FIELDS: readonly SurfaceEntry[] = [
-  { name: 'value', detail: 'string', info: 'The text the placeholder reads as now, with pins applied.' },
+  { name: 'value', detail: 'string', info: 'The text the placeholder reads as now, with pins applied. Write it to pin the placeholder to any text.' },
   { name: 'values', detail: 'string[]', info: 'Every value the author wrote, in order, as text. Values with weight 0 are included.' },
   { name: 'roll', detail: '() => string', info: 'Draw one value with the author’s weights. The draw is not kept.' },
+  { name: 'unpin', detail: '() => void', info: 'Remove the pin that code set, after this run. The rolled value shows again.' },
 ];
 
 /** Built-ins the VM already has. Listed so a reference to one isn't flagged, and so completions offer the

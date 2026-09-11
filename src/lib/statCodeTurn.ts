@@ -1,6 +1,6 @@
-import type { CodeBounds, PlayerStat, Trait } from '@/types';
+import type { CodeBounds, CodePins, Placeholder, PlayerStat, Trait } from '@/types';
 import {
-  CODE_BOUND_FIELDS, executeStatCode, type StatClock, type StatTurnInputs, type ValueAndMax,
+  CODE_BOUND_FIELDS, executeStatCode, type PlaceholderWrite, type StatClock, type StatTurnInputs, type ValueAndMax,
 } from './statCodeExecutor';
 import { sandboxPlaceholders, type StatCodePlaceholderSet } from './statCodePlaceholders';
 import { enabledStats } from './traitEffects';
@@ -33,6 +33,23 @@ export interface StatCodeTurnResult {
   moved: string[];
   /** Ids of the stats whose code bounds the run set or cleared, in stat order. */
   boundsChanged: string[];
+  /** Where two stats touched one placeholder, the later stat's action is the one here. */
+  pinWrites: PinWrites;
+}
+
+/** Placeholder id → the text code pinned it to, or null where code unpinned it. */
+export type PinWrites = Readonly<Record<string, string | null>>;
+
+/** `codePins` with a turn's pin writes laid on; the same object when they change nothing. */
+export function withPinWrites(codePins: CodePins, pinWrites: PinWrites): CodePins {
+  const changed = Object.entries(pinWrites).filter(([id, text]) => (text === null ? id in codePins : codePins[id] !== text));
+  if (!changed.length) return codePins;
+  const next: Record<string, string> = { ...codePins };
+  for (const [id, text] of changed) {
+    if (text === null) delete next[id];
+    else next[id] = text;
+  }
+  return next;
 }
 
 const sameBounds = (a: CodeBounds = {}, b: CodeBounds = {}) =>
@@ -76,13 +93,22 @@ export async function runStatCodeTurn(turn: StatCodeTurn): Promise<StatCodeTurnR
   // Resolved once, so every stat's code reads the same placeholders.
   const placeholders = coded.length && turn.placeholders ? sandboxPlaceholders(turn.placeholders) : [];
   const writes = new Map<string, { value: number | null; bounds: CodeBounds | null }>();
+  const placeholderWritesByStat = new Map<string, readonly PlaceholderWrite[]>();
   await Promise.all(coded.map(async (stat) => {
     const result = await executeStatCode(stat.code ?? '', live, stat, turn.clock, inputs, placeholders);
-    if (result.error) console.error(`Error executing code for stat ${stat.name}:`, result.error);
-    else if (result.value !== null || result.bounds) {
+    if (result.error) {
+      console.error(`Error executing code for stat ${stat.name}:`, result.error);
+      return;
+    }
+    if (result.value !== null || result.bounds) {
       writes.set(stat.id, { value: result.value, bounds: result.bounds ? { ...stat.codeBounds, ...result.bounds } : null });
     }
+    if (result.placeholders) placeholderWritesByStat.set(stat.id, result.placeholders);
+    if (result.unknownPlaceholders) {
+      console.warn(`Stat ${stat.name} wrote placeholders the world does not have: ${result.unknownPlaceholders.join(', ')}`);
+    }
   }));
+  const pinWrites = pinWritesInStatOrder(live, placeholderWritesByStat, turn.placeholders?.placeholders ?? []);
   for (const stat of live) {
     if (!stat.code?.trim() && stat.codeBounds) writes.set(stat.id, { value: null, bounds: {} });
   }
@@ -100,6 +126,24 @@ export async function runStatCodeTurn(turn: StatCodeTurn): Promise<StatCodeTurnR
     if (boundsMoved) boundsChanged.push(stat.id);
     return next.value === stat.value && !boundsMoved ? stat : next;
   });
-  if (moved.length === 0 && boundsChanged.length === 0) return { stats: turn.stats, moved, boundsChanged };
-  return { stats, moved, boundsChanged };
+  if (moved.length === 0 && boundsChanged.length === 0) return { stats: turn.stats, moved, boundsChanged, pinWrites };
+  return { stats, moved, boundsChanged, pinWrites };
+}
+
+/** Each stat's placeholder writes keyed by placeholder id, laid in stat order so the later stat wins. A name
+ *  reaches the last authored placeholder carrying it, as the sandbox map does. */
+function pinWritesInStatOrder(
+  stats: readonly PlayerStat[],
+  writesByStat: ReadonlyMap<string, readonly PlaceholderWrite[]>,
+  placeholders: readonly Placeholder[],
+): PinWrites {
+  const idByName = new Map(placeholders.map((ph) => [ph.name, ph.id]));
+  const out: Record<string, string | null> = {};
+  for (const stat of stats) {
+    for (const write of writesByStat.get(stat.id) ?? []) {
+      const id = idByName.get(write.name);
+      if (id !== undefined) out[id] = 'unpin' in write ? null : write.text;
+    }
+  }
+  return out;
 }

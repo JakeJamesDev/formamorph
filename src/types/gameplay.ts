@@ -164,6 +164,8 @@ export interface GameState {
    *  clamp is undone as fully as it was applied. Absent on saves written before it, which reverse by negating
    *  the authored change as they always did. */
   appliedTraitValues?: Record<string, Record<string, number>>;
+  /** Absent ⇒ none. */
+  codePins?: CodePins;
   /** The live scene list — who is physically present this turn, with alias/reveal state for the tab. Legacy
    *  saves stored a bare `string[]` of names; those are normalized to `{ name, revealed: true }` on load. */
   visibleEntities: SceneEntity[];
@@ -273,6 +275,10 @@ export interface SaveObject {
    *  a player-written memory rides until deleted. Absent (or empty) on older saves ⇒ none. */
   memoryNotes?: Array<{ id: string; text: string; anchorTurn: number }>;
 }
+
+/** Placeholder id → the text stat code pinned it to. Masks the roll and every authored pin until code
+ *  unpins it. */
+export type CodePins = Readonly<Record<string, string>>;
 
 /** Per-playthrough Wildcard rolls, frozen in the save. */
 export interface PlaceholderRolls {

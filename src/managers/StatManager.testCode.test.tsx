@@ -107,6 +107,30 @@ describe('what Test Code reports', () => {
     expect(row()).not.toHaveTextContent('Result:');
   });
 
+  it('lists every placeholder the run wrote or unpinned beside the value', async () => {
+    const user = userEvent.setup();
+    executeStatCode.mockResolvedValue({
+      value: 5, error: null, bounds: { max: 60 },
+      placeholders: [{ name: 'Mood', text: 'Furious' }, { name: 'Hair', unpin: true }],
+    });
+    renderCodePanel(stats[0]);
+
+    await testCode(user, 'self.max = 60; placeholders.Mood.value = "Furious"; placeholders.Hair.unpin(); return 5;');
+
+    await waitFor(() => expect(row()).toHaveTextContent('Result: 5 · Max: 60 · Mood = Furious · Hair unpinned'));
+  });
+
+  it('names the placeholders whose writes were dropped', async () => {
+    const user = userEvent.setup();
+    executeStatCode.mockResolvedValue({ value: null, error: null, unknownPlaceholders: ['Nope', 'Gone'] });
+    renderCodePanel(stats[0]);
+
+    await testCode(user, 'placeholders[["No", "pe"].join("")] = "x";');
+
+    await waitFor(() => expect(row()).toHaveTextContent('No placeholder has these names, so code did not change them: Nope, Gone.'));
+    expect(row()).not.toHaveTextContent('Result:');
+  });
+
   it('still counts the problems when the run itself threw', async () => {
     const user = userEvent.setup();
     executeStatCode.mockResolvedValue({ value: null, error: "Error: 'nope' is not defined" });
