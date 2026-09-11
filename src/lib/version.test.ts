@@ -314,6 +314,37 @@ describe('migrateWorld', () => {
     expect(migrateWorld(once)).toEqual(once);
   });
 
+  describe('stat code lookups', () => {
+    const stats = [
+      { id: 's1', name: 'Health', code: "const self = stats.find(s => s.id === currentStatId);\nreturn stats.find(s => s.name === 'Power').value + self.value;" },
+      { id: 's2', name: 'Power', code: 'const me = stats.find(s => s.id === currentStatId);\nreturn me.value;' },
+      { id: 's3', name: 'Plain' },
+    ];
+    const codeOf = (world: unknown) => (world as { stats: { code?: string }[] }).stats.map((s) => s.code);
+
+    it('rewrites every stat’s code in a world from an earlier version', () => {
+      expect(codeOf(migrateWorld({ version: '2.14.0', worldOverview: { name: 'W' }, stats }))).toEqual([
+        "return stats['Power'].value + self.value;",
+        'const me = self;\nreturn me.value;',
+        undefined,
+      ]);
+    });
+
+    it('rewrites an unversioned world', () => {
+      expect(codeOf(migrateWorld({ worldOverview: { name: 'W' }, stats }))[1]).toBe('const me = self;\nreturn me.value;');
+    });
+
+    it('leaves a world already at APP_VERSION as written', () => {
+      expect(codeOf(migrateWorld({ version: APP_VERSION, worldOverview: { name: 'W' }, stats })))
+        .toEqual(stats.map((s) => s.code));
+    });
+
+    it('is idempotent', () => {
+      const once = migrateWorld({ version: '2.14.0', worldOverview: { name: 'W' }, stats });
+      expect(migrateWorld({ ...once, version: '2.14.0' })).toEqual(once);
+    });
+  });
+
   it('retypes an upstream `list` stat as a number seeded at its floor', () => {
     const legacy = {
       worldOverview: { name: 'W' },
