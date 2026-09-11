@@ -1,13 +1,14 @@
 import { javascriptLanguage } from '@codemirror/lang-javascript';
 import type { SyntaxNode } from '@lezer/common';
 
-interface Edit {
+/** One text replacement over the original code. */
+interface Splice {
   from: number;
   to: number;
   insert: string;
 }
 
-/** A lookup the rewrite recognizes: by name against a string literal, or by id against `currentStatId`. */
+/** A recognized lookup; the name form carries its literal with the author's quotes. */
 type Lookup = { by: 'name'; literal: string } | { by: 'id' };
 
 /** Statement lists a deleted declaration can leave without breaking the syntax around it. */
@@ -54,7 +55,7 @@ function matchLookup(call: SyntaxNode, code: string): Lookup | null {
 }
 
 /** Delete a statement, taking its line with it when nothing else shares the line. */
-function deleteStatement(from: number, to: number, code: string): Edit {
+function deleteStatement(from: number, to: number, code: string): Splice {
   const isBlank = (ch: string | undefined) => ch === ' ' || ch === '\t';
   let start = from;
   while (isBlank(code[start - 1])) start -= 1;
@@ -71,11 +72,11 @@ function deleteStatement(from: number, to: number, code: string): Edit {
 }
 
 /**
- * The edit that removes `self = <lookup>` from its declaration, since the sandbox already declares `self`
+ * The splice that removes `self = <lookup>` from its declaration, since the sandbox already declares `self`
  * and the rewritten `const self = self;` would read `self` before its own initialization. Null when the
  * declarator is not named `self` or the declaration cannot go without breaking the code around it.
  */
-function dropSelfDeclarator(call: SyntaxNode, code: string): Edit | null {
+function dropSelfDeclarator(call: SyntaxNode, code: string): Splice | null {
   const declaration = call.parent;
   const equals = call.prevSibling;
   const name = equals?.prevSibling;
@@ -91,7 +92,7 @@ function dropSelfDeclarator(call: SyntaxNode, code: string): Edit | null {
 }
 
 /**
- * Rewrite the two `stats` lookups the templates and the guide once taught to the map form:
+ * Rewrite the two array-form `stats` lookups of the templates and the guide to the map form:
  * `stats.find(s => s.name === 'X')` becomes `stats['X']` with the author's quotes, and
  * `stats.find(s => s.id === currentStatId)` becomes `self`. A declaration of `self` from the second is
  * dropped whole; any other name keeps the alias. Everything else is left byte for byte, so a second run
@@ -99,19 +100,19 @@ function dropSelfDeclarator(call: SyntaxNode, code: string): Edit | null {
  */
 export function migrateStatLookups(code: string): string {
   if (!code.includes('find')) return code;
-  const edits: Edit[] = [];
+  const splices: Splice[] = [];
   javascriptLanguage.parser.parse(code).iterate({
     enter: (ref) => {
       if (ref.name !== 'CallExpression') return true;
       const lookup = matchLookup(ref.node, code);
       if (!lookup) return true;
-      edits.push(lookup.by === 'name'
+      splices.push(lookup.by === 'name'
         ? { from: ref.from, to: ref.to, insert: `stats[${lookup.literal}]` }
         : dropSelfDeclarator(ref.node, code) ?? { from: ref.from, to: ref.to, insert: 'self' });
       return false;
     },
   });
-  return edits
+  return splices
     .sort((a, b) => b.from - a.from)
-    .reduce((out, edit) => out.slice(0, edit.from) + edit.insert + out.slice(edit.to), code);
+    .reduce((out, splice) => out.slice(0, splice.from) + splice.insert + out.slice(splice.to), code);
 }
