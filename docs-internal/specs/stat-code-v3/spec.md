@@ -1,7 +1,7 @@
 # Stat Code v3: Surface Parity
 
 Status: ready-for-agent
-Status note: All four decisions locked 2026-09-11. Tickets not yet cut.
+Status note: Tickets 01–06 cut 2026-09-11 under `issues/`. Frontier at start: 01, 04, 06.
 
 ## Problem Statement
 
