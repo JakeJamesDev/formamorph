@@ -366,8 +366,8 @@ function migrateStatCode(stats: readonly Stat[]): Stat[] {
  * content-link guard run unconditionally (they aren't version-gated — see `foldDictionaryIntoBooks`); the
  * rest is skipped for a world already at `APP_VERSION`. Moves the legacy root `customPlayerVRM` bare
  * data-URL into `worldOverview.customPlayerVRM` as a `MediaAsset`, auto-binds legacy body stats to morphs,
- * rewrites stat code's `stats.find` lookups to the map form, and renames v1.2 description keys on entities/locations/traits to the audience-based keys. Remaining field
- * defaults are left to `loadWorldData`. Add further 2.0 → 2.x steps here when the shape changes — a version
+ * rewrites stat code's `stats.find` lookups to the map form, and renames v1.2 description keys on
+ * entities/locations/traits to the audience-based keys. Remaining field defaults are left to `loadWorldData`. Add further 2.0 → 2.x steps here when the shape changes — a version
  * bump is the user's call (see the export-shape-versioning note); shipped worlds are only reshaped through
  * this load-time path, never autonomously re-persisted.
  */
