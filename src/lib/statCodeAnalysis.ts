@@ -14,7 +14,8 @@ import { findSlotRanges, parseTemplateSlots } from '@/lib/statCodeTemplates';
 import type { Placeholder } from '@/types';
 import {
   BUILTIN_MEMBERS, PLACEHOLDER_ENTRY_FIELDS, PREVIOUS_FIELDS, REQUESTED_FIELDS, SANDBOX_BUILTINS, SANDBOX_GLOBALS, SANDBOX_KNOWN_NAMES,
-  SELF_WRITABLE_FIELDS, STATS_MEMBERS, STAT_FIELDS, nearestName, nearestSurfaceName, type SurfaceEntry,
+  SELF_WRITABLE_FIELDS, STATS_MEMBERS, STAT_FIELDS, TRAIT_ENTRY_FIELDS, TRAIT_WRITABLE_FIELD, nearestName, nearestSurfaceName,
+  type SurfaceEntry,
 } from '@/lib/statCodeSurface';
 
 export type DiagnosticSeverity = 'error' | 'warning';
@@ -56,6 +57,8 @@ export interface AnalysisOptions {
   slots?: boolean;
   /** Absent, placeholder names are neither offered nor checked. */
   placeholders?: CodePlaceholders;
+  /** The world's trait names, in authored order. Absent, trait names are neither offered nor checked. */
+  traits?: readonly string[];
 }
 
 export interface CompletionOptions extends AnalysisOptions {
@@ -162,16 +165,18 @@ const IDENTIFIER = /^[A-Za-z_$][\w$]*$/;
 /** Each distinct placeholder name, in authored order. */
 const placeholderNames = (placeholders: readonly Placeholder[]): string[] => [...new Set(placeholders.map((p) => p.name))];
 
-/** One entry per distinct placeholder name. `dotted` keeps only the names a `.` can reach; the rest need
- *  bracket syntax. */
-function placeholderNameEntries(placeholders: readonly Placeholder[], dotted: boolean): SurfaceEntry[] {
-  return placeholderNames(placeholders)
+/** One entry per distinct name of a `kind` of map entry. `dotted` keeps only the names a `.` can reach; the
+ *  rest need bracket syntax. */
+function mapNameEntries(names: readonly string[], kind: 'placeholder' | 'trait', dotted: boolean): SurfaceEntry[] {
+  return [...new Set(names)]
     .filter((name) => !dotted || IDENTIFIER.test(name))
-    .map((name) => ({ name, detail: 'placeholder', info: `The “${name}” placeholder in this world.` }));
+    .map((name) => ({ name, detail: kind, info: `The “${name}” ${kind} in this world.` }));
 }
 
-/** `placeholders.Name` or `placeholders["Name"]`: an expression that is one placeholder entry. */
-const PLACEHOLDER_ENTRY_EXPRESSION = /^placeholders(\??\.[A-Za-z_$][\w$]*|\??\.?\[\s*(["'])[^"'\\]*\2\s*\])$/;
+/** `root.Name` or `root["Name"]`: an expression that is one entry of the map `root`. */
+const entryExpression = (root: string) => new RegExp(`^${root}(\\??\\.[A-Za-z_$][\\w$]*|\\??\\.?\\[\\s*(["'])[^"'\\\\]*\\2\\s*\\])$`);
+const PLACEHOLDER_ENTRY_EXPRESSION = entryExpression('placeholders');
+const TRAIT_ENTRY_EXPRESSION = entryExpression('traits');
 
 /** Whether the expression before a `.` is recognizably a stat, so its fields are the honest list. The
  *  calls named are the ones that hand back a single stat; `filter` hands back another array, so a chain
@@ -189,13 +194,17 @@ function looksLikeStat(code: string, tree: Tree, expression: string): boolean {
  * editor asserting the sandbox holds something it never has.
  */
 function membersAfterDot(
-  code: string, tree: Tree, dotPos: number, placeholders?: CodePlaceholders,
+  code: string, tree: Tree, dotPos: number, options: AnalysisOptions,
 ): readonly SurfaceEntry[] | null {
   const expression = expressionBeforeDot(code, dotPos);
   if (expression === null) return null;
   if (expression === 'stats') return STATS_MEMBERS;
-  if (expression === 'placeholders') return placeholders ? placeholderNameEntries(placeholders.list, true) : null;
+  if (expression === 'placeholders') {
+    return options.placeholders ? mapNameEntries(placeholderNames(options.placeholders.list), 'placeholder', true) : null;
+  }
   if (PLACEHOLDER_ENTRY_EXPRESSION.test(expression)) return PLACEHOLDER_ENTRY_FIELDS;
+  if (expression === 'traits') return options.traits ? mapNameEntries(options.traits, 'trait', true) : null;
+  if (TRAIT_ENTRY_EXPRESSION.test(expression)) return TRAIT_ENTRY_FIELDS;
   const turnInput = /^(.+)\.(previous|requested)$/.exec(expression);
   if (turnInput) {
     if (!looksLikeStat(code, tree, turnInput[1])) return null;
@@ -271,18 +280,18 @@ function isUnpinCall(node: SyntaxNode, code: string): boolean {
   return !!property && code.slice(property.from, property.to) === 'unpin' && memberRoot(callee, code) === 'placeholders';
 }
 
-/** A placeholder name as the code spells it, and where. */
-interface PlaceholderRef {
+/** A map entry's name as the code spells it, and where. */
+interface EntryRef {
   name: string;
   from: number;
   to: number;
 }
 
-/** The name a `placeholders.Name` or `placeholders["Name"]` member names, or null for any other member and
- *  for a key only a run could know. */
-function placeholderRef(node: SyntaxNode, code: string): PlaceholderRef | null {
+/** The name a `root.Name` or `root["Name"]` member names, or null for any other member and for a key only a
+ *  run could know. */
+function entryRef(node: SyntaxNode, code: string, root: 'placeholders' | 'traits'): EntryRef | null {
   const object = node.firstChild;
-  if (object?.name !== 'VariableName' || code.slice(object.from, object.to) !== 'placeholders') return null;
+  if (object?.name !== 'VariableName' || code.slice(object.from, object.to) !== root) return null;
   const property = node.getChild('PropertyName');
   if (property) return { name: code.slice(property.from, property.to), from: property.from, to: property.to };
   const literal = node.getChild('String');
@@ -292,8 +301,37 @@ function placeholderRef(node: SyntaxNode, code: string): PlaceholderRef | null {
   return name.includes('\\') ? null : { name, from: literal.from, to: literal.to };
 }
 
+/** What is wrong with a reference to the trait `name`: none has it, or several share it. */
+function checkTraitName({ name, from, to }: EntryRef, names: readonly string[]): CodeDiagnostic | null {
+  const count = names.filter((n) => n === name).length;
+  if (count === 1) return null;
+  if (count > 1) return { from, to, severity: 'warning', message: `${count} traits are named “${name}”. This reads the last one authored.` };
+  const suggestion = nearestName(name, [...new Set(names)]);
+  const message = suggestion ? `No trait is named “${name}”. Did you mean “${suggestion}”?` : `No trait is named “${name}”.`;
+  return { from, to, severity: 'error', message };
+}
+
+/** What is wrong with a write into `traits`: to the entry itself, or to a field other than `enabled`. */
+function checkTraitWrite(target: SyntaxNode, code: string, assignment: boolean): CodeDiagnostic | null {
+  const { from, to } = target;
+  if (entryRef(target, code, 'traits')) {
+    return assignment ? { from, to, severity: 'warning', message: `Write to ${code.slice(from, to)}.${TRAIT_WRITABLE_FIELD} instead.` } : null;
+  }
+  const entry = target.firstChild;
+  const field = target.getChild('PropertyName');
+  if (!entry || !field || !entryRef(entry, code, 'traits')) return null;
+  const name = code.slice(field.from, field.to);
+  if (name === TRAIT_WRITABLE_FIELD) return null;
+  const path = code.slice(entry.from, entry.to);
+  const known = TRAIT_ENTRY_FIELDS.some((f) => f.name === name);
+  const suggestion = known ? null : nearestName(name, TRAIT_ENTRY_FIELDS.map((f) => f.name));
+  const message = known ? `${path}.${name} can’t be written. Only ${path}.${TRAIT_WRITABLE_FIELD} can.`
+    : suggestion ? `A trait has no field “${name}”. Did you mean “${suggestion}”?` : `A trait has no field “${name}”.`;
+  return { from: field.from, to: field.to, severity: 'error', message };
+}
+
 /** What is wrong with a reference to the placeholder `name`: none has it, or several share it. */
-function checkPlaceholderName(ref: PlaceholderRef, { list, owners }: CodePlaceholders): CodeDiagnostic | null {
+function checkPlaceholderName(ref: EntryRef, { list, owners }: CodePlaceholders): CodeDiagnostic | null {
   const named = list.filter((p) => p.name === ref.name);
   const { from, to } = ref;
   if (named.length === 0) {
@@ -337,7 +375,11 @@ export function statCodeCompletions(
     const innerTo = code[node.to - 1] === quote && node.to - 1 > node.from ? node.to - 1 : node.to;
     if (pos < innerFrom) return null;
     if (/\bplaceholders\s*(\?\.)?\[\s*$/.test(code.slice(0, node.from))) {
-      const names = placeholderNameEntries(options.placeholders?.list ?? [], false);
+      const names = mapNameEntries(placeholderNames(options.placeholders?.list ?? []), 'placeholder', false);
+      return { from: innerFrom, to: innerTo, options: names.map((entry) => asCompletion(entry, 'text')) };
+    }
+    if (/\btraits\s*(\?\.)?\[\s*$/.test(code.slice(0, node.from))) {
+      const names = mapNameEntries(options.traits ?? [], 'trait', false);
       return { from: innerFrom, to: innerTo, options: names.map((entry) => asCompletion(entry, 'text')) };
     }
     // The whole literal is replaced, not the part before the caret — a name half-typed in the middle of
@@ -374,7 +416,7 @@ export function statCodeCompletions(
   // After a dot the list is only ever as good as what the expression can be shown to be. A wrong guess
   // here is worse than silence: it reads as the editor asserting the sandbox has something it doesn't.
   if (/\.\s*$/.test(beforeWord)) {
-    const members = membersAfterDot(code, tree, beforeWord.replace(/\s+$/, '').length - 1, options.placeholders);
+    const members = membersAfterDot(code, tree, beforeWord.replace(/\s+$/, '').length - 1, options);
     if (!members) return null;
     return { from, to: pos, options: members.map((member) => asCompletion(member, 'property')) };
   }
@@ -427,7 +469,9 @@ export function statCodeDiagnostics(code: string, options: AnalysisOptions = {})
   let sawSyntaxError = false;
   let sawOwnWrite = false;
   let sawPlaceholderWrite = false;
+  let sawTraitWrite = false;
   const placeholdersInScope = !declared.has('placeholders');
+  const traitsInScope = !declared.has('traits');
 
   const cursor = tree.cursor();
   do {
@@ -453,7 +497,7 @@ export function statCodeDiagnostics(code: string, options: AnalysisOptions = {})
       if (problem) diagnostics.push(problem);
       if (placeholdersInScope && memberRoot(target, code) === 'placeholders') {
         sawPlaceholderWrite = true;
-        if (cursor.type.name === 'AssignmentExpression' && placeholderRef(target, code)) {
+        if (cursor.type.name === 'AssignmentExpression' && entryRef(target, code, 'placeholders')) {
           const entry = code.slice(target.from, target.to);
           diagnostics.push({
             from: target.from, to: target.to, severity: 'warning',
@@ -461,13 +505,23 @@ export function statCodeDiagnostics(code: string, options: AnalysisOptions = {})
           });
         }
       }
+      if (traitsInScope && memberRoot(target, code) === 'traits') {
+        sawTraitWrite = true;
+        const traitProblem = checkTraitWrite(target, code, cursor.type.name === 'AssignmentExpression');
+        if (traitProblem) diagnostics.push(traitProblem);
+      }
     }
     if (cursor.type.name === 'CallExpression' && placeholdersInScope && isUnpinCall(cursor.node, code)) {
       sawPlaceholderWrite = true;
     }
     if (cursor.type.name === 'MemberExpression' && options.placeholders && placeholdersInScope) {
-      const ref = placeholderRef(cursor.node, code);
+      const ref = entryRef(cursor.node, code, 'placeholders');
       const problem = ref && !overlapsAny(ref.from, ref.to, ranges) ? checkPlaceholderName(ref, options.placeholders) : null;
+      if (problem) diagnostics.push(problem);
+    }
+    if (cursor.type.name === 'MemberExpression' && options.traits && traitsInScope) {
+      const ref = entryRef(cursor.node, code, 'traits');
+      const problem = ref && !overlapsAny(ref.from, ref.to, ranges) ? checkTraitName(ref, options.traits) : null;
       if (problem) diagnostics.push(problem);
     }
     if (cursor.type.name !== 'VariableName') continue;
@@ -486,10 +540,10 @@ export function statCodeDiagnostics(code: string, options: AnalysisOptions = {})
     });
   } while (cursor.next());
 
-  // Code with no return can still set the value through self, or pin a placeholder. Code that does none of
-  // these changes nothing. A missing return on code the parser couldn't finish reading is a guess about
-  // half-typed code.
-  if (!sawReturn && !sawOwnWrite && !sawPlaceholderWrite && !sawSyntaxError) {
+  // Code with no return can still set the value through self, pin a placeholder, or switch a trait. Code that
+  // does none of these changes nothing. A missing return on code the parser couldn't finish reading is a
+  // guess about half-typed code.
+  if (!sawReturn && !sawOwnWrite && !sawPlaceholderWrite && !sawTraitWrite && !sawSyntaxError) {
     diagnostics.push({
       from: 0,
       to: Math.min(code.length, code.indexOf('\n') === -1 ? code.length : code.indexOf('\n')),

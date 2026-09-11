@@ -1,6 +1,7 @@
 # 06: Stat Code Reads And Switches Traits
 
-Status: ready-for-agent
+Status: ready-for-human
+Base: d1a5bb5b
 Blocked by: 03
 Recommended model: Claude Opus 5 (`claude-opus-5`)
 Reasoning effort: high

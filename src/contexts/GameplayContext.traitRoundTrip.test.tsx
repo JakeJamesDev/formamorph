@@ -7,7 +7,7 @@ import { render, act } from '@testing-library/react';
 import { GameplayProvider, useGameplay } from './GameplayContext';
 import { GameDataProvider } from './GameDataContext';
 import { PlaceholderSessionProvider } from './PlaceholderSessionContext';
-import { acquireTrait, seedStatBases, setTraitEnabled, type TraitRuntimeState } from '@/lib/traitRuntime';
+import { acquireTrait, applyCodeTraitSwitches, seedStatBases, setTraitEnabled, type TraitRuntimeState } from '@/lib/traitRuntime';
 import type { PlayerStat, Stat, Trait } from '@/types';
 
 vi.mock('@/lib/useTtsPlayback', () => import('@/test/stubs/ttsPlayback'));
@@ -131,6 +131,31 @@ describe('trait movement records across a save/load round trip', () => {
       await live().loadGame('save-2', [], [authored]);
     });
     expect(live().appliedTraitValues).toEqual({});
+  });
+});
+
+describe('a code trait switch under undo', () => {
+  it('restores the pre-switch trait state and the value the switch moved', async () => {
+    const live = mount();
+    const drain: Trait = { id: 'd', name: 'Drained', statChanges: [{ statId: 'vigor', value: -30, type: 'starting' }] };
+    const world = { traits: [trait, drain], groups: [] };
+    await act(async () => {
+      commit(live(), { stats: seedStatBases([startStat]), traits: [], disabledTraitIds: [], appliedValues: {} });
+    });
+    const preTurn = live().saveCurrentGameState();
+
+    await act(async () => {
+      commit(live(), applyCodeTraitSwitches(slice(live()), [{ traitId: 'd', enabled: true, by: 'Vigor' }], world).state);
+    });
+    expect(live().playerTraits.map((t) => t.id)).toEqual(['d']);
+    expect(valueOf(live().playerStats)).toBe(70);
+
+    // Undo loads the snapshot the turn before the switch left.
+    await act(async () => {
+      live().loadGameState(preTurn, [], { keepLiveHistory: true });
+    });
+    expect(slice(live())).toMatchObject({ traits: [], disabledTraitIds: [], appliedValues: {} });
+    expect(valueOf(live().playerStats)).toBe(100);
   });
 });
 

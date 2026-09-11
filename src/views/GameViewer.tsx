@@ -54,7 +54,7 @@ import { MenuModal } from "../components/modals/MenuModal";
 import LlmSetupGuide from "../components/modals/LlmSetupGuide";
 import { isLikelyConnectionError } from "../lib/connectionError";
 import WorldEditor from "./WorldEditor";
-import type { CharacterData, ChatMessage, ChatRole, AIRequestType, AITurnResult, CodePins, GameLocation, GameState, MediaAsset, Dictionary, Entity, SaveRecord, World, PlayerStat } from "@/types";
+import type { CharacterData, ChatMessage, ChatRole, AIRequestType, AITurnResult, GameLocation, GameState, MediaAsset, Dictionary, Entity, SaveRecord, World, PlayerStat } from "@/types";
 import { UnsavedChangesDialog } from "../components/UnsavedChangesDialog";
 import { estimateHistoryChars, estimateTokens } from "../lib/memoryUtils";
 import { parseNarration, stripReasoning, stripReasoningLive, extractReasoning, extractReasoningLive } from "../lib/aiResponse";
@@ -154,8 +154,9 @@ import {
 import { collectPins } from "../lib/placeholderPins";
 import { usePlaceholderSession } from "../contexts/PlaceholderSessionContext";
 import {
-  acquireTrait, seedNewGameStats, setTraitEnabled, type TraitRuntimeState,
+  acquireTrait, activeTraits as traitsInForce, seedNewGameStats, setTraitEnabled, traitSwitchLog, type TraitRuntimeState,
 } from "../lib/traitRuntime";
+import { savedTraits } from "../lib/statCodeTraits";
 import { parseKeywords, locateMatches, type EntryActivation, type MatchHit, type MatchRule } from "../lib/dictionaryUtils";
 import { highlightSegments, HIGHLIGHT_PALETTE, type HighlightRule, type HighlightSegment } from "../lib/highlightUtils";
 import { useIsMobile } from "../lib/useIsMobile";
@@ -215,6 +216,9 @@ interface DebugTurn {
   pruned?: boolean; // this turn was discarded by a rollback to an earlier page
   aborted?: boolean; // this turn was stopped before any narration landed (its user message was dropped)
 }
+
+/** The pre-turn state a stat re-roll hands stat code, so code reads and switches as the turn it replaces did. */
+type PreTurnCodeState = Pick<GameState, 'codePins' | 'playerTraits' | 'disabledTraitIds' | 'appliedTraitValues'>;
 
 // Each completed turn is digested as soon as it commits (same-turn), so a summary is always ready for
 // the next turn's context assembly. Per-pass caps and their sizing live with the pass records.
@@ -1178,8 +1182,11 @@ const GameViewer = ({
       // `gameTime` already includes this turn — only the latest turn is ever re-rolled — so it is the
       // end-of-turn elapsed the live pass used, and code re-derives the same value instead of drifting.
       const turnHours = prev.timeDelta ?? FLAT_HOURS_PER_TURN;
-      // The turn's code writes go back to the pre-turn Code Pins, so stat code re-lays them once.
+      // The turn's code writes go back to the pre-turn Code Pins and traits, so stat code re-makes them once.
       setCodePins(preTurn.codePins ?? {});
+      setPlayerTraits(preTurn.playerTraits);
+      setDisabledTraitIds(preTurn.disabledTraitIds ?? []);
+      setAppliedTraitValues(preTurn.appliedTraitValues ?? {});
       applyStatChanges(parsed, {
         deltaHours: turnHours,
         elapsedHours: gameTime,
@@ -2257,26 +2264,36 @@ const GameViewer = ({
 
   // Run stat code over this turn, regen included, and fold what it moved into the live delta feedback.
   // Its own callback because clock-reading code also runs on turns the AI moved no stat. A re-roll passes
-  // the pre-turn Code Pins, so code reads placeholders as the turn it replaces did.
+  // the pre-turn state, so code reads placeholders and traits as the turn it replaces did.
   const runStatCode = useCallback(
     async (
       before: PlayerStat[], afterAsks: PlayerStat[], asks: StatCodeTurn["asks"], clock: StatClock,
-      preTurnCodePins?: CodePins,
+      preTurn?: PreTurnCodeState,
     ) => {
       try {
         const enabled = statEnabledRef.current;
         const regen = applyRegen(afterAsks, clock.deltaHours ?? FLAT_HOURS_PER_TURN, enabled);
         const stats = resolveStatNames(regen.stats, resolvePH);
+        // The same slice the player's checkbox switches, so a code switch is that switch.
+        const held = preTurn ? savedTraits(preTurn, traits) : { acquired: chosenTraits, disabledTraitIds, appliedValues: appliedTraitValues };
+        const inForce = preTurn ? traitsInForce(held.acquired, held.disabledTraitIds) : activeTraits;
         const result = await runStatCodeTurn({
-          stats, enabled, previous: before, asks, regenApplied: regen.applied, clock, traits: activeTraits,
-          placeholders: { placeholders, rolls: sessionRolls, pins: preTurnCodePins ? pinsFor(preTurnCodePins) : pins },
+          stats, enabled, previous: before, asks, regenApplied: regen.applied, clock,
+          traits: { ...held, world: { traits: authoredTraits, groups: traitGroups }, nameOf: (trait) => resolveTraitText(trait, trait.name) },
+          placeholders: { placeholders, rolls: sessionRolls, pins: preTurn ? pinsFor(preTurn.codePins ?? {}) : pins },
         });
         setCodePins((prev) => withPinWrites(prev, result.pinWrites));
-        if (result.moved.length === 0 && result.boundsChanged.length === 0) return;
+        if (result.traits) {
+          setPlayerTraits(result.traits.acquired);
+          setDisabledTraitIds(result.traits.disabledTraitIds);
+          setAppliedTraitValues(result.traits.appliedValues);
+          for (const line of result.traits.log) addLogEntry(line);
+        }
+        if (!result.traits && result.moved.length === 0 && result.boundsChanged.length === 0) return;
         const codeChanges = appliedStatDeltas(stats, result.stats);
         // Onto the LATEST stats, not a blanket `setPlayerStats(result.stats)`: the run read the pre-`await`
         // baseline, and anything applied in the meantime (starvation, a re-generate) must survive.
-        setPlayerStats((prev) => overlayStatCodeResult(prev, result, activeTraits));
+        setPlayerStats((prev) => overlayStatCodeResult(prev, result, inForce));
         // Fold the code-derived movement into the live delta feedback, so a code stat's bar/text animates
         // live — matching the history view (pageStatDeltas diffs the final, post-code snapshot).
         setRecentStatChanges((prev) => normalizeStatChanges([prev, codeChanges]));
@@ -2285,7 +2302,9 @@ const GameViewer = ({
         console.error("Error processing stat code:", error);
       }
     },
-    [setPlayerStats, setRecentStatChanges, setHeldStatChanges, setCodePins, resolvePH, placeholders, sessionRolls, pins, pinsFor, activeTraits],
+    [setPlayerStats, setRecentStatChanges, setHeldStatChanges, setCodePins, resolvePH, placeholders, sessionRolls, pins, pinsFor, activeTraits,
+      traits, chosenTraits, disabledTraitIds, appliedTraitValues, authoredTraits, traitGroups, resolveTraitText,
+      setPlayerTraits, setDisabledTraitIds, setAppliedTraitValues, addLogEntry],
   );
 
   // Whether any stat's code reads the clock, and so needs a per-turn run of its own on turns the AI
@@ -2300,11 +2319,13 @@ const GameViewer = ({
     async (
       response: StatResponse,
       clock: StatClock = {},
-      base: Pick<GameState, 'playerStats' | 'codePins'> | null = null,
+      base: (Pick<GameState, 'playerStats'> & PreTurnCodeState) | null = null,
     ) => {
       const baseStats = base?.playerStats ?? rawPlayerStatsRef.current;
       const live = new Set(enabledStats(rawPlayerStatsRef.current, statEnabledRef.current).map((s) => s.id));
-      const applied = applyStatResponse(baseStats, response, live, activeTraits);
+      const baseTraits = base ? savedTraits(base, traits) : null;
+      const inForce = baseTraits ? traitsInForce(baseTraits.acquired, baseTraits.disabledTraitIds) : activeTraits;
+      const applied = applyStatResponse(baseStats, response, live, inForce);
       const directApplied = applied.stats;
       setDebugTurns((turns) => turns.map((turn) => ({ ...turn, requests: turn.requests.map((request) =>
         request.statRequestId === response.requestId ? { ...request, statDiagnostics: applied.diagnostics } : request,
@@ -2328,10 +2349,10 @@ const GameViewer = ({
       setPlayerStats(directApplied);
       // A max-only ask counts too: code reads it as `requested.max`.
       if (response.updates.some((update) => update.value !== 0 || update.max !== 0) || anyStatUsesClock) {
-        await runStatCode(baseStats, directApplied, response.updates, clock, base ? base.codePins ?? {} : undefined);
+        await runStatCode(baseStats, directApplied, response.updates, clock, base ?? undefined);
       }
     },
-    [runStatCode, setPlayerStats, setRecentStatChanges, setHeldStatChanges, resolvePH, anyStatUsesClock, activeTraits],
+    [runStatCode, setPlayerStats, setRecentStatChanges, setHeldStatChanges, resolvePH, anyStatUsesClock, activeTraits, traits],
   );
 
   // Discard a turn's dangling, unpaired user message. The failure exits (empty narration, request error)
@@ -3470,8 +3491,8 @@ const GameViewer = ({
       if (acquiredTrait) {
         const { state: next, retired } = setTraitEnabled(traitState, traitId, enabled, world);
         commitTraitState(next);
-        for (const sibling of retired) addLogEntry(`Trait switched off: ${sibling.name}`);
-        addLogEntry(`Trait switched ${enabled ? 'on' : 'off'}: ${acquiredTrait.name}`);
+        const siblings = retired.map((t) => t.name);
+        for (const line of traitSwitchLog(acquiredTrait.name, enabled ? 'on' : 'off', siblings)) addLogEntry(line);
         return;
       }
       // Not acquired yet: only a switch-on of a trait the author marked switchable acquires one. It freezes the
@@ -3482,8 +3503,8 @@ const GameViewer = ({
       if (!enabled || !authored?.playerToggle) return;
       const { state: next, retired } = acquireTrait(traitState, authored, world);
       commitTraitState(next);
-      for (const sibling of retired) addLogEntry(`Trait switched off: ${sibling.name}`);
-      addLogEntry(`Acquired trait: ${resolveTraitText(authored, authored.name)}`);
+      const siblings = retired.map((t) => t.name);
+      for (const line of traitSwitchLog(resolveTraitText(authored, authored.name), 'acquired', siblings)) addLogEntry(line);
     },
     [chosenTraits, authoredTraits, traitGroups, traitState, commitTraitState, addLogEntry, resolveTraitText],
   );

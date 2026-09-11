@@ -1,10 +1,24 @@
 import type { CodeBounds, CodePins, Placeholder, PlayerStat, Trait } from '@/types';
 import {
-  CODE_BOUND_FIELDS, executeStatCode, type PlaceholderWrite, type StatClock, type StatTurnInputs, type ValueAndMax,
+  CODE_BOUND_FIELDS, executeStatCode, type PlaceholderWrite, type StatClock, type StatTurnInputs, type TraitWrite,
+  type ValueAndMax,
 } from './statCodeExecutor';
 import { sandboxPlaceholders, type StatCodePlaceholderSet } from './statCodePlaceholders';
+import { sandboxTraits, traitNamer, type StatCodeTraits } from './statCodeTraits';
 import { enabledStats } from './traitEffects';
-import { withCodeBounds } from './traitRuntime';
+import {
+  activeTraits, applyCodeTraitSwitches, withCodeBounds, type AppliedTraitValues, type CodeTraitSwitch,
+  type TraitRuntimeState,
+} from './traitRuntime';
+import { clamp } from './utils';
+
+/** The trait state a run's switches left, and the log lines they wrote. */
+export interface StatCodeTraitResult {
+  acquired: Trait[];
+  disabledTraitIds: string[];
+  appliedValues: AppliedTraitValues;
+  log: string[];
+}
 
 /** Everything one turn hands to stat code. The forward turn, the re-roll, and the clock-only run all
  *  build one of these; the clock-only run has no asks. */
@@ -20,21 +34,24 @@ export interface StatCodeTurn {
   /** Regen applied this turn, by stat id. */
   regenApplied: Readonly<Record<string, number>>;
   clock: StatClock;
-  /** The traits in force, which bounds re-derive under when code sets or clears one. */
-  traits: readonly Trait[];
+  /** What `traits` reads and switches. Bounds re-derive under the ones in force. */
+  traits: StatCodeTraits;
   /** What `placeholders` reads. Absent, the map is empty. */
   placeholders?: StatCodePlaceholderSet;
 }
 
 export interface StatCodeTurnResult {
-  /** `stats` with the code writes applied, in the same order; the same array when nothing moved. */
+  /** `stats` with the trait switches, then the code writes, applied, in the same order; the same array when
+   *  nothing moved. */
   stats: readonly PlayerStat[];
-  /** Ids of the stats whose value the code moved, in stat order. */
+  /** Ids of the stats whose value the run moved, in stat order. */
   moved: string[];
   /** Ids of the stats whose code bounds the run set or cleared, in stat order. */
   boundsChanged: string[];
   /** Where two stats touched one placeholder, the later stat's action is the one here. */
   pinWrites: PinWrites;
+  /** Absent when code switched no trait. */
+  traits?: StatCodeTraitResult;
 }
 
 /** Placeholder id → the text code pinned it to, or null where code unpinned it. */
@@ -56,18 +73,20 @@ const sameBounds = (a: CodeBounds = {}, b: CodeBounds = {}) =>
   CODE_BOUND_FIELDS.every((field) => a[field] === b[field]);
 
 /** Lay a turn's code result onto the latest stats, which may have moved since the run read its snapshot:
- *  only a value the code moved and the code bounds it changed carry over, re-derived onto the latest bases. */
+ *  only a value the run moved and the code bounds it changed carry over, re-derived onto the latest bases.
+ *  After a trait switch every stat re-derives, under the traits the switch left in force. */
 export function overlayStatCodeResult(
   latest: readonly PlayerStat[],
   result: StatCodeTurnResult,
   active: readonly Trait[],
 ): PlayerStat[] {
   const coded = new Map(result.stats.map((stat) => [stat.id, stat]));
+  const inForce = result.traits ? activeTraits(result.traits.acquired, result.traits.disabledTraitIds) : active;
   return latest.map((stat) => {
     const run = coded.get(stat.id);
-    if (!run) return stat;
-    const value = result.moved.includes(stat.id) ? run.value : stat.value;
-    if (result.boundsChanged.includes(stat.id)) return withCodeBounds(stat, run.codeBounds ?? {}, value, active);
+    const value = run && result.moved.includes(stat.id) ? run.value : stat.value;
+    if (run && result.boundsChanged.includes(stat.id)) return withCodeBounds(stat, run.codeBounds ?? {}, value, inForce);
+    if (result.traits) return withCodeBounds(stat, stat.codeBounds ?? {}, value, inForce);
     return value === stat.value ? stat : { ...stat, value };
   });
 }
@@ -90,12 +109,14 @@ export async function runStatCodeTurn(turn: StatCodeTurn): Promise<StatCodeTurnR
   }));
 
   const coded = live.filter((stat) => stat.code?.trim());
-  // Resolved once, so every stat's code reads the same placeholders.
+  // Resolved once, so every stat's code reads the same placeholders and the same traits.
   const placeholders = coded.length && turn.placeholders ? sandboxPlaceholders(turn.placeholders) : [];
+  const traits = coded.length ? sandboxTraits(turn.traits) : [];
   const writes = new Map<string, { value: number | null; bounds: CodeBounds | null }>();
   const placeholderWritesByStat = new Map<string, readonly PlaceholderWrite[]>();
+  const traitWritesByStat = new Map<string, readonly TraitWrite[]>();
   await Promise.all(coded.map(async (stat) => {
-    const result = await executeStatCode(stat.code ?? '', live, stat, turn.clock, inputs, placeholders);
+    const result = await executeStatCode(stat.code ?? '', live, stat, turn.clock, inputs, placeholders, traits);
     if (result.error) {
       console.error(`Error executing code for stat ${stat.name}:`, result.error);
       return;
@@ -104,8 +125,15 @@ export async function runStatCodeTurn(turn: StatCodeTurn): Promise<StatCodeTurnR
       writes.set(stat.id, { value: result.value, bounds: result.bounds ? { ...stat.codeBounds, ...result.bounds } : null });
     }
     if (result.placeholders) placeholderWritesByStat.set(stat.id, result.placeholders);
+    if (result.traits) traitWritesByStat.set(stat.id, result.traits);
     if (result.unknownPlaceholders) {
       console.warn(`Stat ${stat.name} wrote placeholders the world does not have: ${result.unknownPlaceholders.join(', ')}`);
+    }
+    if (result.unknownTraits) {
+      console.warn(`Stat ${stat.name} switched traits the world does not have: ${result.unknownTraits.join(', ')}`);
+    }
+    if (result.acquiredWrites) {
+      console.warn(`Stat ${stat.name} wrote acquired on: ${result.acquiredWrites.join(', ')}`);
     }
   }));
   const pinWrites = pinWritesInStatOrder(live, placeholderWritesByStat, turn.placeholders?.placeholders ?? []);
@@ -113,21 +141,59 @@ export async function runStatCodeTurn(turn: StatCodeTurn): Promise<StatCodeTurnR
     if (!stat.code?.trim() && stat.codeBounds) writes.set(stat.id, { value: null, bounds: {} });
   }
 
+  // Trait switches first, so bounds re-derive under them; the code's own bounds and values then go on top.
+  const before: TraitRuntimeState = {
+    stats: [...turn.stats],
+    traits: [...turn.traits.acquired],
+    disabledTraitIds: [...turn.traits.disabledTraitIds],
+    appliedValues: turn.traits.appliedValues,
+  };
+  const switched = applyCodeTraitSwitches(
+    before, traitSwitchesInStatOrder(live, traitWritesByStat, turn.traits), turn.traits.world, turn.traits.nameOf,
+  );
+  const traitResult: StatCodeTraitResult | undefined = switched.state === before ? undefined : {
+    acquired: switched.state.traits,
+    disabledTraitIds: switched.state.disabledTraitIds,
+    appliedValues: switched.state.appliedValues,
+    log: switched.log,
+  };
+  const active = activeTraits(switched.state.traits, switched.state.disabledTraitIds);
+
   const moved: string[] = [];
   const boundsChanged: string[] = [];
-  const stats = turn.stats.map((stat) => {
+  const stats = switched.state.stats.map((stat, i) => {
     const write = writes.get(stat.id);
-    if (!write) return stat;
-    const value = write.value ?? stat.value;
-    // A value-only write keeps the bounds as they stand; the executor already clamped it to them.
-    const next = write.bounds === null ? { ...stat, value } : withCodeBounds(stat, write.bounds, value, turn.traits);
-    const boundsMoved = write.bounds !== null && !sameBounds(write.bounds, stat.codeBounds);
-    if (next.value !== stat.value) moved.push(stat.id);
-    if (boundsMoved) boundsChanged.push(stat.id);
-    return next.value === stat.value && !boundsMoved ? stat : next;
+    // A value-only write keeps the bounds as they stand, which a trait switch may have moved.
+    const next = !write ? stat
+      : write.bounds === null ? { ...stat, value: clamp(write.value ?? stat.value, stat.min, stat.max) }
+        : withCodeBounds(stat, write.bounds, write.value ?? stat.value, active);
+    if (write?.bounds && !sameBounds(write.bounds, stat.codeBounds)) boundsChanged.push(stat.id);
+    if (next.value !== turn.stats[i].value) moved.push(stat.id);
+    return next.value === stat.value && !boundsChanged.includes(stat.id) ? stat : next;
   });
-  if (moved.length === 0 && boundsChanged.length === 0) return { stats: turn.stats, moved, boundsChanged, pinWrites };
-  return { stats, moved, boundsChanged, pinWrites };
+  if (!traitResult && moved.length === 0 && boundsChanged.length === 0) return { stats: turn.stats, moved, boundsChanged, pinWrites };
+  return { stats, moved, boundsChanged, pinWrites, ...(traitResult ? { traits: traitResult } : {}) };
+}
+
+/** Each stat's trait switches keyed by trait, laid in stat order so the later stat wins and its switch lands
+ *  where that stat stands. A name reaches the last authored trait carrying it, as the sandbox map does. */
+function traitSwitchesInStatOrder(
+  stats: readonly PlayerStat[],
+  writesByStat: ReadonlyMap<string, readonly TraitWrite[]>,
+  traits: StatCodeTraits,
+): CodeTraitSwitch[] {
+  const nameOf = traitNamer(traits);
+  const idByName = new Map(traits.world.traits.map((trait) => [nameOf(trait), trait.id]));
+  const out = new Map<string, CodeTraitSwitch>();
+  for (const stat of stats) {
+    for (const write of writesByStat.get(stat.id) ?? []) {
+      const traitId = idByName.get(write.name);
+      if (traitId === undefined) continue;
+      out.delete(traitId);
+      out.set(traitId, { traitId, enabled: write.enabled, by: stat.name });
+    }
+  }
+  return [...out.values()];
 }
 
 /** Each stat's placeholder writes keyed by placeholder id, laid in stat order so the later stat wins. A name

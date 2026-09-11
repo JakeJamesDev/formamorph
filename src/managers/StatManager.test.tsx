@@ -27,6 +27,7 @@ vi.mock('@/contexts/GameDataContext', () => ({
   useGameData: () => ({
     stats: [store.stat],
     placeholders: store.placeholders,
+    traits: [],
     placementLetters: new Map(),
     placeholderOwners: new Map(),
     updateStat: (next: Stat) => {

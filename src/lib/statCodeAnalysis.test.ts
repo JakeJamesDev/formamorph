@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { statCodeCompletions, statCodeDiagnostics, summarizeProblems } from './statCodeAnalysis';
 import { BUILT_IN_TEMPLATES } from './statCodeTemplates';
-import { PLACEHOLDER_ENTRY_FIELDS } from './statCodeSurface';
+import { PLACEHOLDER_ENTRY_FIELDS, TRAIT_ENTRY_FIELDS } from './statCodeSurface';
 import { phValues } from '@/test/placeholderValues';
 import { encodePlaceholderToken } from './placeholders';
 import type { Placeholder } from '@/types';
@@ -404,5 +404,55 @@ describe('placeholders in stat code', () => {
   it('still warns when code only reads placeholders', () => {
     expect(messages('const mood = placeholders.Mood.value;', { placeholders: { list: world } }))
       .toEqual(['This code never returns a number or writes self.value, so the stat keeps its value.']);
+  });
+});
+
+describe('traits in stat code', () => {
+  const world = ['Brave', 'Night Owl'];
+
+  it('says nothing about names the world has, by dot or by bracket, or about a switch', () => {
+    expect(messages('traits["Night Owl"].enabled = traits.Brave.acquired;', { traits: world })).toEqual([]);
+  });
+
+  it('flags a name no trait has, and names the one it was reaching for', () => {
+    const [problem] = statCodeDiagnostics('return traits.Brav.enabled ? 1 : 0;', { traits: world });
+    expect(problem).toMatchObject({ severity: 'error', message: 'No trait is named “Brav”. Did you mean “Brave”?' });
+    expect(messages('traits["Night Owel"].enabled = true;', { traits: world }))
+      .toEqual(['No trait is named “Night Owel”. Did you mean “Night Owl”?']);
+  });
+
+  it('keeps quiet without a world to check against', () => {
+    expect(messages('return traits.Brav.enabled ? 1 : 0;')).toEqual([]);
+  });
+
+  it('warns on a shared name, which reaches the last one authored', () => {
+    expect(messages('return traits.Brave.enabled ? 1 : 0;', { traits: ['Brave', 'Brave'] }))
+      .toEqual(['2 traits are named “Brave”. This reads the last one authored.']);
+  });
+
+  it('flags a write to acquired', () => {
+    const [problem] = statCodeDiagnostics('traits.Brave.acquired = true;', { traits: world });
+    expect(problem).toMatchObject({ severity: 'error', message: 'traits.Brave.acquired can’t be written. Only traits.Brave.enabled can.' });
+  });
+
+  it('flags a write to a field a trait does not have', () => {
+    expect(messages('traits.Brave.enable = true;', { traits: world }))
+      .toEqual(['A trait has no field “enable”. Did you mean “enabled”?']);
+  });
+
+  it('suggests .enabled on a value assigned to the entry itself', () => {
+    expect(messages('traits["Night Owl"] = true;', { traits: world })).toEqual(['Write to traits["Night Owl"].enabled instead.']);
+  });
+
+  it('takes a switch as the code doing something', () => {
+    expect(messages('if (self.value > 50) traits.Brave.enabled = true;', { traits: world })).toEqual([]);
+  });
+
+  it('offers the names after traits. and inside traits[""], and the entry members after a trait', () => {
+    expect(labels('return traits.|', { traits: world })).toEqual(['Brave']);
+    expect(labels('return traits["|"];', { traits: world, statNames: ['Health'] })).toEqual(world);
+    const members = TRAIT_ENTRY_FIELDS.map(entry => entry.name);
+    expect(labels('return traits.Brave.|', { traits: world })).toEqual(members);
+    expect(labels('return traits["Night Owl"].|', { traits: world })).toEqual(members);
   });
 });

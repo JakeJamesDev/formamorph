@@ -62,6 +62,8 @@ interface CodeAreaProps {
   statNames?: readonly string[];
   /** The world's placeholders, completed after `placeholders` and checked by name. */
   placeholders?: CodePlaceholders;
+  /** The world's trait names, completed after `traits` and checked by name. */
+  traits?: readonly string[];
   /** What the code produces. Given this, the field grows the Edit | Preview pair, which becomes a
    *  side-by-side split once full screen has the width for it. */
   preview?: ReactNode;
@@ -74,7 +76,7 @@ interface CodeAreaProps {
 function CodeAreaBody({
   value, onChange, ariaLabel, placeholder, label, slots, preview, className, rows = 8, fullscreen,
   onToggleFullscreen, session, active, expose,
-}: Omit<CodeAreaProps, 'statNames' | 'placeholders'> & {
+}: Omit<CodeAreaProps, 'statNames' | 'placeholders' | 'traits'> & {
   fullscreen: boolean;
   onToggleFullscreen: () => void;
   /** The one editor both copies take turns hosting. Null until its chunk has loaded. */
@@ -267,6 +269,7 @@ export function CodeArea(props: CodeAreaProps) {
         slots,
         statNames: latest.current.statNames,
         placeholders: latest.current.placeholders,
+        traits: latest.current.traits,
         onChange: (next) => latest.current.onChange(next),
         onUpdate,
       });
@@ -283,6 +286,7 @@ export function CodeArea(props: CodeAreaProps) {
   // Stats are renamed and added while a code field is open, so the completions follow the list.
   useEffect(() => { session?.setStatNames(props.statNames ?? []); }, [session, props.statNames]);
   useEffect(() => { session?.setPlaceholders(props.placeholders); }, [session, props.placeholders]);
+  useEffect(() => { session?.setTraits(props.traits); }, [session, props.traits]);
 
   return (
     <>

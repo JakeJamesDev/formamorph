@@ -77,10 +77,31 @@ export interface StatCodeResult {
   placeholders?: PlaceholderWrite[];
   /** Names the code wrote that no placeholder has; each write was dropped. */
   unknownPlaceholders?: string[];
+  /** The traits the code switched, in map order. Absent when it switched none. */
+  traits?: TraitWrite[];
+  /** Names the code switched that no trait has; each switch was dropped. */
+  unknownTraits?: string[];
+  /** Traits whose `acquired` the code wrote; each write was dropped. */
+  acquiredWrites?: string[];
 }
 
 /** One placeholder a run pinned to new text, or released with `unpin()`. */
 export type PlaceholderWrite = { name: string; text: string } | { name: string; unpin: true };
+
+/** One trait a run switched on or off. */
+export interface TraitWrite {
+  name: string;
+  enabled: boolean;
+}
+
+/** One entry of the sandbox's `traits` map. */
+export interface SandboxTrait {
+  name: string;
+  /** Acquired and not switched off. */
+  enabled: boolean;
+  /** In the player's list, on or off. */
+  acquired: boolean;
+}
 
 /** A stat's value and max, as one turn input carries them. */
 export interface ValueAndMax {
@@ -146,9 +167,70 @@ const placeholdersPrelude = (entries: readonly SandboxPlaceholder[]): string => 
   ].join('\n');
 };
 
-/** How code names a placeholder: dot syntax for an identifier, brackets otherwise. */
-const placeholderPath = (name: string) =>
-  /^[A-Za-z_$][\w$]*$/.test(name) ? `placeholders.${name}` : `placeholders[${JSON.stringify(name)}]`;
+// The prelude's reader for what the run did to `traits`; the program's completion value calls it.
+const TRAIT_WRITES = '__formamorphTraitWrites';
+
+/** The prelude that builds `traits` and a reader of what the run did to it, on a null prototype like
+ *  `placeholders`. Every assignment to `enabled` is a switch; `acquired` is read-only and a write to it is
+ *  recorded. An unknown name reads as a trait nobody has, so a switch of it is reported rather than thrown. */
+const traitsPrelude = (entries: readonly SandboxTrait[]): string => {
+  const data = Object.fromEntries(entries.map(({ name, enabled, acquired }) => [name, { enabled, acquired }]));
+  return [
+    `const [traits, ${TRAIT_WRITES}] = ((stringify, keys) => {`,
+    `  const map = Object.assign(Object.create(null), JSON.parse(${JSON.stringify(JSON.stringify(data))}));`,
+    `  const own = Object.create(null);`,
+    `  const track = (name, entry) => {`,
+    `    const state = own[name] = { entry, enabled: entry.enabled, acquired: entry.acquired, assigned: false, acquiredWritten: false };`,
+    `    Object.defineProperty(entry, 'enabled', { enumerable: true, get: () => state.enabled, set: (v) => { state.enabled = v; state.assigned = true; } });`,
+    `    Object.defineProperty(entry, 'acquired', { enumerable: true, get: () => state.acquired, set: () => { state.acquiredWritten = true; } });`,
+    `    return entry;`,
+    `  };`,
+    `  for (const name of keys(map)) track(name, map[name]);`,
+    `  const traits = new Proxy(map, {`,
+    `    get: (target, key) => typeof key !== 'string' || key in target ? target[key]`,
+    `      : own[key] ? own[key].entry : track(key, { enabled: false, acquired: false }),`,
+    `  });`,
+    // One row per written key: [name, enabled, assigned, acquiredWritten]. A replaced entry reads as itself
+    // when it is not an object.
+    `  const readWrites = () => stringify([...keys(map), ...keys(own).filter((name) => !(name in map))].map((name) => {`,
+    `    const entry = map[name], state = own[name];`,
+    `    if (!state || (name in map && entry !== state.entry)) {`,
+    `      return [name, typeof entry === 'object' && entry !== null ? entry.enabled : entry, true, false];`,
+    `    }`,
+    `    return state.assigned || state.acquiredWritten ? [name, state.enabled, state.assigned, state.acquiredWritten] : null;`,
+    `  }).filter((row) => row));`,
+    `  return [traits, readWrites];`,
+    `})(JSON.stringify, Object.keys);`,
+  ].join('\n');
+};
+
+/** How code names an entry of `root`: dot syntax for an identifier, brackets otherwise. */
+const memberPath = (root: string, name: string) =>
+  /^[A-Za-z_$][\w$]*$/.test(name) ? `${root}.${name}` : `${root}[${JSON.stringify(name)}]`;
+const placeholderPath = (name: string) => memberPath('placeholders', name);
+
+/** The switches in the reader's dump, one per assigned `enabled`. A name no trait has is dropped; a switch
+ *  holds true or false, and anything else fails the run. */
+function readTraitWrites(
+  dump: string,
+  entries: readonly SandboxTrait[],
+): { writes: TraitWrite[]; unknown: string[]; acquired: string[] } | { error: string } {
+  const names = new Set(entries.map((entry) => entry.name));
+  const rows: unknown = JSON.parse(dump);
+  const writes: TraitWrite[] = [];
+  const unknown: string[] = [];
+  const acquired: string[] = [];
+  for (const row of Array.isArray(rows) ? rows : []) {
+    if (!Array.isArray(row) || typeof row[0] !== 'string') continue;
+    const [name, enabled, assigned, acquiredWritten] = row as [string, unknown, unknown, unknown];
+    if (!names.has(name)) { unknown.push(name); continue; }
+    if (acquiredWritten === true) acquired.push(name);
+    if (assigned !== true) continue;
+    if (typeof enabled !== 'boolean') return { error: `${memberPath('traits', name)}.enabled must be true or false` };
+    writes.push({ name, enabled });
+  }
+  return { writes, unknown, acquired };
+}
 
 /** The writes in the reader's dump. A name no placeholder has is dropped; a write holds text or a finite
  *  number, and anything else fails the run. */
@@ -181,9 +263,10 @@ const failure = (what: string, kind: StatCodeFailure): StatCodeResult => ({
 const nonNumberFailure = (what: string) => failure(what, 'non-number');
 
 /** Run a stat's untrusted `code` in an isolated QuickJS (WASM) VM over `stats`, `self`, the turn inputs,
- *  the clock, and `placeholders`. A number return or a `self.value` write sets the value, clamped; a
- *  `self.min`, `self.max` or `self.regen` write sets that bound; a failure discards every write. Of two
- *  placeholders sharing a name, the later one is the entry. */
+ *  the clock, `placeholders`, and `traits`. A number return or a `self.value` write sets the value, clamped;
+ *  a `self.min`, `self.max` or `self.regen` write sets that bound; a `traits.<name>.enabled` write switches
+ *  that trait; a failure discards every write. Of two placeholders or traits sharing a name, the later one
+ *  is the entry. */
 export const executeStatCode = async (
   code: string,
   stats: Stat[],
@@ -191,6 +274,7 @@ export const executeStatCode = async (
   clock?: StatClock,
   turn?: Readonly<Record<string, StatTurnInputs>>,
   placeholders: readonly SandboxPlaceholder[] = [],
+  traits: readonly SandboxTrait[] = [],
 ): Promise<StatCodeResult> => {
   // If code is empty, return null (use the manually set value)
   if (!code || code.trim() === '') {
@@ -252,16 +336,17 @@ export const executeStatCode = async (
       // The stat data rides in as JSON literals (JSON is valid JS expression syntax); console.log and the
       // roll hook are the only host functions. The user code runs as a function body so `return` works; the
       // program's completion value pairs what it returned with what `self`'s writable fields hold afterwards,
-      // then what it did to `placeholders`.
+      // then what it did to `placeholders` and to `traits`.
       const program = [
         `const stats = ${JSON.stringify(statsData)};`,
         `const currentStatId = ${JSON.stringify(String(currentStat.id))};`,
         `const self = ${selfIndex >= 0 ? `stats[${selfIndex}]` : JSON.stringify(selfData)};`,
         ...Object.entries(resolveClock(clock)).map(([name, value]) => `const ${name} = ${JSON.stringify(value)};`),
         placeholdersPrelude(placeholders),
+        traitsPrelude(traits),
         `[(function() {`,
         code,
-        `})(), self.value, ${CODE_BOUND_FIELDS.map((field) => `self.${field}`).join(', ')}, ${PLACEHOLDER_WRITES}()];`,
+        `})(), self.value, ${CODE_BOUND_FIELDS.map((field) => `self.${field}`).join(', ')}, ${PLACEHOLDER_WRITES}(), ${TRAIT_WRITES}()];`,
       ].join('\n');
 
       const result = vm.evalCode(program);
@@ -295,9 +380,16 @@ export const executeStatCode = async (
       const returned = readSlot(0);
       const written = readSlot(1);
       const boundSlots = CODE_BOUND_FIELDS.map((field, i) => [field, readSlot(2 + i)] as const);
-      const writesHandle = vm.getProp(result.value, 2 + CODE_BOUND_FIELDS.length);
-      const writesDump = vm.typeof(writesHandle) === 'string' ? vm.getString(writesHandle) : '[]';
-      writesHandle.dispose();
+      const readDump = (index: number): string => {
+        const handle = vm.getProp(result.value, index);
+        try {
+          return vm.typeof(handle) === 'string' ? vm.getString(handle) : '[]';
+        } finally {
+          handle.dispose();
+        }
+      };
+      const writesDump = readDump(2 + CODE_BOUND_FIELDS.length);
+      const traitsDump = readDump(3 + CODE_BOUND_FIELDS.length);
       result.value.dispose();
 
       if (consoleOutput.trim()) {
@@ -319,6 +411,8 @@ export const executeStatCode = async (
       }
       const placeholderWrites = readPlaceholderWrites(writesDump, placeholders);
       if ('error' in placeholderWrites) return failure(placeholderWrites.error, 'throw');
+      const traitWrites = readTraitWrites(traitsDump, traits);
+      if ('error' in traitWrites) return failure(traitWrites.error, 'throw');
 
       const min = bounds.min ?? selfData.min;
       const max = Math.max(min, bounds.max ?? selfData.max);
@@ -328,6 +422,9 @@ export const executeStatCode = async (
         ...(Object.keys(bounds).length ? { bounds } : {}),
         ...(placeholderWrites.writes.length ? { placeholders: placeholderWrites.writes } : {}),
         ...(placeholderWrites.unknown.length ? { unknownPlaceholders: placeholderWrites.unknown } : {}),
+        ...(traitWrites.writes.length ? { traits: traitWrites.writes } : {}),
+        ...(traitWrites.unknown.length ? { unknownTraits: traitWrites.unknown } : {}),
+        ...(traitWrites.acquired.length ? { acquiredWrites: traitWrites.acquired } : {}),
       });
       if (returned.type === 'number') return settled(returned.number);
       return settled(Object.is(written.number, selfData.value) ? null : written.number);

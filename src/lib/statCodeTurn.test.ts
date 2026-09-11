@@ -4,7 +4,8 @@
  */
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { overlayStatCodeResult, runStatCodeTurn, withPinWrites, type StatCodeTurn } from './statCodeTurn';
-import type { Placeholder, PlaceholderRolls, PlayerStat, Trait } from '@/types';
+import type { StatCodeTraits } from './statCodeTraits';
+import type { Placeholder, PlaceholderRolls, PlayerStat, Trait, TraitGroup } from '@/types';
 import { encodePlaceholderToken, resolvePlaceholders, type PlaceholderPick } from './placeholders';
 import { collectPins } from './placeholderPins';
 import { phValueId, phValues } from '@/test/placeholderValues';
@@ -14,9 +15,14 @@ const stat = (over: Partial<PlayerStat>): PlayerStat => ({
   ...over,
 });
 
-/** A turn where nothing happened unless a case says so: no asks, no regen, previous equal to now. */
+/** `active` acquired and on, as the only traits the world authors. */
+const inForce = (active: Trait[]): StatCodeTraits => ({
+  acquired: active, disabledTraitIds: [], appliedValues: {}, world: { traits: active, groups: [] },
+});
+
+/** A turn where nothing happened unless a case says so: no asks, no regen, previous equal to now, no traits. */
 const turn = (over: Partial<StatCodeTurn> & Pick<StatCodeTurn, 'stats'>): StatCodeTurn => ({
-  enabled: {}, previous: over.stats, asks: [], regenApplied: {}, clock: {}, traits: [], ...over,
+  enabled: {}, previous: over.stats, asks: [], regenApplied: {}, clock: {}, traits: inForce([]), ...over,
 });
 
 const valueOf = (stats: readonly PlayerStat[], id: string) => stats.find(s => s.id === id)?.value;
@@ -382,7 +388,7 @@ describe('runStatCodeTurn bound writes', () => {
   it('keeps the active traits under a bound the code did not write', async () => {
     const out = await runStatCodeTurn(turn({
       stats: [seeded({ max: 120, code: 'self.min = 10;' })],
-      traits: [raiseCap],
+      traits: inForce([raiseCap]),
     }));
     expect(only(out)).toMatchObject({ min: 10, max: 120 });
   });
@@ -412,6 +418,159 @@ describe('runStatCodeTurn bound writes', () => {
   it('writes nothing for code that sets a bound to the number it already has', async () => {
     const stats = [seeded({ max: 40, codeBounds: { max: 40 }, code: 'self.max = 40;' })];
     expect((await runStatCodeTurn(turn({ stats }))).stats).toBe(stats);
+  });
+});
+
+describe('runStatCodeTurn traits', () => {
+  beforeEach(() => {
+    vi.spyOn(console, 'error').mockImplementation(() => {});
+    vi.spyOn(console, 'warn').mockImplementation(() => {});
+  });
+  afterEach(() => vi.restoreAllMocks());
+
+  const seeded = (over: Partial<PlayerStat>): PlayerStat => stat({
+    min: 0, max: 100, regen: 0, baseMin: 0, baseMax: 100, baseRegen: 0, aiMaxDelta: 0, ...over,
+  });
+  const group: TraitGroup = { id: 'g', name: 'Origin', parentId: null, exclusive: true };
+  // Brave is acquired and on, Timid acquired and off, Cursed never acquired; Brave and Cursed share a group.
+  const brave: Trait = { id: 'brave', name: 'Brave', groupId: 'g', statChanges: [{ statId: 'h', value: 10, type: 'starting' }] };
+  const timid: Trait = { id: 'timid', name: 'Timid', statChanges: [{ statId: 'h', value: -20, type: 'starting' }] };
+  const cursed: Trait = { id: 'cursed', name: 'Cursed', groupId: 'g', statChanges: [{ statId: 'h', value: 50, type: 'max' }] };
+  const world = { traits: [brave, timid, cursed], groups: [group] };
+  const held = (over: Partial<StatCodeTraits> = {}): StatCodeTraits => ({
+    acquired: [brave, timid], disabledTraitIds: ['timid'], appliedValues: { brave: { h: 10 }, timid: { h: 20 } }, world, ...over,
+  });
+  /** Health at 60 under Brave, plus one stat per piece of code, in order. */
+  const run = (codes: string[], traits: StatCodeTraits = held()) =>
+    runStatCodeTurn(turn({
+      stats: [seeded({ id: 'h', name: 'Health', value: 60 }), ...codes.map((code, i) => seeded({ id: `s${i}`, name: `S${i}`, code }))],
+      traits,
+    }));
+  const health = (out: { stats: readonly PlayerStat[] }) => out.stats.find((s) => s.id === 'h')!;
+
+  it('reads enabled and acquired for an enabled, a switched-off, and an unacquired trait', async () => {
+    const code = 'return [traits.Brave, traits.Timid, traits.Cursed].map(e => (e.enabled ? 2 : 0) + (e.acquired ? 1 : 0)).join("") * 1;';
+    const out = await runStatCodeTurn(turn({ stats: [seeded({ id: 'a', max: 1000, code })], traits: held() }));
+    expect(valueOf(out.stats, 'a')).toBe(310);
+  });
+
+  it('re-enables an acquired trait, reversing the movement its switch-off recorded', async () => {
+    const out = await run(['traits.Timid.enabled = true;']);
+    expect(out.traits).toMatchObject({ disabledTraitIds: [] });
+    expect(health(out).value).toBe(40);
+    expect(out.traits?.log).toEqual(['Trait switched on: Timid (by S0)']);
+  });
+
+  it.each([[false], [true]])('acquires an unacquired trait on switch-on, Player Can Toggle In-Game %s', async (playerToggle) => {
+    const out = await run(['traits.Cursed.enabled = true;'], held({ world: { ...world, traits: [brave, timid, { ...cursed, playerToggle }] } }));
+    expect(out.traits?.acquired.map((t) => t.id)).toEqual(['brave', 'timid', 'cursed']);
+    expect(health(out).max).toBe(150);
+  });
+
+  it('switches an acquired trait off, handing back what it moved', async () => {
+    const out = await run(['traits.Brave.enabled = false;']);
+    expect(out.traits).toMatchObject({ disabledTraitIds: ['timid', 'brave'], log: ['Trait switched off: Brave (by S0)'] });
+    expect(health(out).value).toBe(50);
+  });
+
+  it('does nothing for a switch-off of a trait the player never acquired', async () => {
+    const out = await run(['traits.Cursed.enabled = false; traits.Cursed = false;']);
+    expect(out.traits).toBeUndefined();
+    expect(health(out).value).toBe(60);
+  });
+
+  it('retires an exclusive sibling on a code switch-on and logs both, attributed to the stat', async () => {
+    const out = await run(['traits.Cursed.enabled = true;']);
+    expect(out.traits?.disabledTraitIds).toContain('brave');
+    expect(out.traits?.log).toEqual(['Trait switched off: Brave (by S0)', 'Acquired trait: Cursed (by S0)']);
+    expect(health(out)).toMatchObject({ max: 150, value: 50 });
+  });
+
+  it('lands the switch after the run: every stat reads the pre-switch traits and bounds', async () => {
+    const out = await run([
+      'traits.Cursed.enabled = true;',
+      'return (traits.Cursed.enabled ? 1 : 0) + stats.find(s => s.id === "h").max / 10;',
+    ]);
+    // Read after the switch, this would be 1 + 150 / 10.
+    expect(valueOf(out.stats, 's1')).toBe(10);
+    expect(health(out).max).toBe(150);
+  });
+
+  it('keeps a bound the code wrote this run over the bound its trait switch moved', async () => {
+    const out = await runStatCodeTurn(turn({
+      stats: [seeded({ id: 'h', name: 'Health', value: 60, code: 'traits.Cursed.enabled = true; self.max = 80;' })],
+      traits: held(),
+    }));
+    expect(health(out)).toMatchObject({ max: 80, codeBounds: { max: 80 } });
+  });
+
+  it('applies two stats switching one trait once, the later stat winning', async () => {
+    const off = 'traits.Brave.enabled = false;';
+    const on = 'traits.Brave.enabled = true;';
+    const twice = await run([off, off]);
+    expect(twice.traits?.log).toEqual(['Trait switched off: Brave (by S1)']);
+    expect(health(twice).value).toBe(50);
+    await expect(run([on, off])).resolves.toMatchObject({ traits: { log: ['Trait switched off: Brave (by S1)'] } });
+    // The later stat asks for the state Brave already holds, so Brave stays on and nothing switches.
+    const keptOn = await run([off, on]);
+    expect(keptOn.traits).toBeUndefined();
+    expect(health(keptOn).value).toBe(60);
+  });
+
+  it('applies switches of different traits in stat order', async () => {
+    const braveFirst = await run(['traits.Brave.enabled = false;', 'traits.Cursed.enabled = true;']);
+    expect(braveFirst.traits?.log).toEqual(['Trait switched off: Brave (by S0)', 'Acquired trait: Cursed (by S1)']);
+    // Cursed retires Brave first, which leaves the later switch-off nothing to do.
+    const cursedFirst = await run(['traits.Cursed.enabled = true;', 'traits.Brave.enabled = false;']);
+    expect(cursedFirst.traits?.log).toEqual(['Trait switched off: Brave (by S0)', 'Acquired trait: Cursed (by S0)']);
+  });
+
+  it('lands a later stat’s switch after the earlier stat’s, so it wins an exclusive group', async () => {
+    const blessed: Trait = { id: 'blessed', name: 'Blessed', groupId: 'g', statChanges: [] };
+    const traits = held({ world: { ...world, traits: [brave, timid, cursed, blessed] } });
+    // Alone, the first stat's two switch-ons land in map order and Blessed retires Cursed.
+    const out = await run(['traits.Cursed.enabled = true; traits.Blessed.enabled = true;', 'traits.Cursed.enabled = true;'], traits);
+    expect(out.traits?.disabledTraitIds).toContain('blessed');
+    expect(out.traits?.disabledTraitIds).not.toContain('cursed');
+  });
+
+  it('clamps a value the code wrote into the range its trait switch left', async () => {
+    const frail: Trait = { id: 'frail', name: 'Frail', statChanges: [{ statId: 'h', value: -50, type: 'max' }] };
+    const out = await runStatCodeTurn(turn({
+      stats: [seeded({ id: 'h', name: 'Health', value: 60, code: 'traits.Frail.enabled = true; self.value = 90;' })],
+      traits: held({ world: { ...world, traits: [brave, timid, cursed, frail] } }),
+    }));
+    expect(health(out)).toMatchObject({ max: 50, value: 50 });
+  });
+
+  it('drops and reports a switch of an unknown name and a write to acquired, keeping the run’s other writes', async () => {
+    const out = await run(['traits.Nope.enabled = true; traits.Cursed.acquired = true; traits.Timid.enabled = true; return 7;']);
+    expect(out.traits?.log).toEqual(['Trait switched on: Timid (by S0)']);
+    expect(valueOf(out.stats, 's0')).toBe(7);
+    expect(console.warn).toHaveBeenCalledWith(expect.stringContaining('Nope'));
+    expect(console.warn).toHaveBeenCalledWith(expect.stringContaining('Cursed'));
+  });
+
+  it('discards the switches of a run that fails, and of a disabled stat', async () => {
+    expect((await run(['traits.Timid.enabled = true; throw new Error("late");'])).traits).toBeUndefined();
+    const out = await runStatCodeTurn(turn({
+      stats: [seeded({ id: 'h', value: 60 }), seeded({ id: 'off', code: 'traits.Timid.enabled = true;' })],
+      enabled: { off: false },
+      traits: held(),
+    }));
+    expect(out.traits).toBeUndefined();
+  });
+
+  it('reads and logs a trait by the name it is given', async () => {
+    const out = await run(['traits.BRAVE.enabled = false;'], held({ nameOf: (t) => t.name.toUpperCase() }));
+    expect(out.traits?.log).toEqual(['Trait switched off: BRAVE (by S0)']);
+  });
+
+  it('carries a switch onto the latest stats, re-derived under the traits now in force', async () => {
+    const result = await run(['traits.Cursed.enabled = true;']);
+    // An AI max ask landed on the latest Health while the run was in flight.
+    const latest = [seeded({ id: 'h', value: 60, max: 110, aiMaxDelta: 10 }), seeded({ id: 's0' })];
+    expect(overlayStatCodeResult(latest, result, [brave])[0]).toMatchObject({ max: 160, value: 50 });
   });
 });
 

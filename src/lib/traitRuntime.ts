@@ -33,7 +33,7 @@ export interface TraitWorld {
 }
 
 /** The traits currently in force: everything in the player's list that isn't switched off. */
-export function activeTraits(traits: Trait[], disabledTraitIds: readonly string[]): Trait[] {
+export function activeTraits(traits: readonly Trait[], disabledTraitIds: readonly string[]): Trait[] {
   const off = new Set(disabledTraitIds);
   return traits.filter((t) => !off.has(t.id));
 }
@@ -293,6 +293,51 @@ export function setTraitEnabled(
   let next = state;
   for (const sibling of retired) next = switchTrait(next, sibling, false);
   return { state: switchTrait(next, trait, true), retired };
+}
+
+/** What one switch did to its trait, for the log. */
+export type TraitSwitchKind = 'on' | 'off' | 'acquired';
+
+/** The turn log lines for one switch: each retired sibling, then the switch. `by` names the stat whose code
+ *  made it; the player's own switch has none. */
+export function traitSwitchLog(name: string, kind: TraitSwitchKind, retired: readonly string[], by?: string): string[] {
+  const from = by === undefined ? '' : ` (by ${by})`;
+  return [
+    ...retired.map((sibling) => `Trait switched off: ${sibling}${from}`),
+    kind === 'acquired' ? `Acquired trait: ${name}${from}` : `Trait switched ${kind}: ${name}${from}`,
+  ];
+}
+
+/** One trait switch a stat's code made. `by` is that stat's name. */
+export interface CodeTraitSwitch {
+  traitId: string;
+  enabled: boolean;
+  by: string;
+}
+
+/**
+ * Apply stat code's trait switches in order, each through the player's own switch. Code ignores Player Can
+ * Toggle In-Game, so a switch-on of a trait the player lacks acquires it. A switch to the state a trait
+ * already holds does nothing: switching an off trait off again would reverse its record a second time.
+ */
+export function applyCodeTraitSwitches(
+  state: TraitRuntimeState,
+  switches: readonly CodeTraitSwitch[],
+  world: TraitWorld,
+  nameOf: (trait: Trait) => string = (trait) => trait.name,
+): { state: TraitRuntimeState; log: string[] } {
+  let next = state;
+  const log: string[] = [];
+  for (const { traitId, enabled, by } of switches) {
+    const acquired = next.traits.find((t) => t.id === traitId);
+    const trait = acquired ?? world.traits.find((t) => t.id === traitId);
+    if (!trait || (!!acquired && !next.disabledTraitIds.includes(traitId)) === enabled) continue;
+    const result = acquired ? setTraitEnabled(next, traitId, enabled, world) : acquireTrait(next, trait, world);
+    next = result.state;
+    const kind = !acquired ? 'acquired' : enabled ? 'on' : 'off';
+    log.push(...traitSwitchLog(nameOf(trait), kind, result.retired.map(nameOf), by));
+  }
+  return { state: next, log };
 }
 
 /**
