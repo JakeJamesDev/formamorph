@@ -218,7 +218,7 @@ function withDisabled(ids: readonly string[], add: string | null, remove: string
  * what folds a clamp into the reversal: a switch-off that a shrinking cap forced further down than the
  * record asked records the larger movement, and the switch back on restores all of it.
  *
- * The exception is the first switch-on, and a trait held by a save that carries no record for it. Those have
+ * The exception is the first switch-on, and a trait acquired by a save that carries no record for it. Those have
  * nothing to reverse, so the authored changes apply — for a switch-off that means negating them, which a
  * bound can swallow and ratchet, for that one trait. That switch records properly, so a save without records
  * heals itself the first time the player touches the trait.
@@ -241,7 +241,7 @@ function switchTrait(state: TraitRuntimeState, trait: Trait, on: boolean): Trait
 }
 
 /**
- * First switch-on of a trait the player does not hold yet. Identical to choosing it at creation: the trait
+ * First switch-on of a trait the player has not acquired yet. Identical to choosing it at creation: the trait
  * joins the list with its stat changes frozen as the world defines them right now, and they apply.
  */
 export function acquireTrait(
@@ -257,7 +257,7 @@ export function acquireTrait(
 }
 
 /**
- * Switch a held trait on or off. Switching one on retires its active exclusive siblings first, each reversed
+ * Switch an acquired trait on or off. Switching one on retires its active exclusive siblings first, each reversed
  * exactly as an explicit switch-off would be. A group may be left with nothing active.
  *
  * `retired` names the siblings that were switched off, for the caller's log.
@@ -282,15 +282,16 @@ export function setTraitEnabled(
 }
 
 /**
- * Every trait the player can act on, in authored order: the ones they hold, plus every toggleable trait the
- * world offers that they don't. Once a trait can be taken at will, holding it is only a checkbox state.
+ * Every trait the player can act on, in authored order: the ones they have acquired, plus every toggleable
+ * trait the world offers that they haven't. Once a trait can be taken at will, being acquired is only a
+ * checkbox state.
  */
 export function listablePlayerTraits(
-  held: readonly Trait[],
+  acquiredTraits: readonly Trait[],
   authored: readonly Trait[],
   order: Map<string, number>,
 ): Trait[] {
-  const heldIds = new Set(held.map((t) => t.id));
-  const acquirable = authored.filter((t) => t.playerToggle && !heldIds.has(t.id));
-  return inAuthoredOrder([...held, ...acquirable], order);
+  const acquiredIds = new Set(acquiredTraits.map((t) => t.id));
+  const acquirable = authored.filter((t) => t.playerToggle && !acquiredIds.has(t.id));
+  return inAuthoredOrder([...acquiredTraits, ...acquirable], order);
 }

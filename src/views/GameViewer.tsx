@@ -3469,22 +3469,22 @@ const GameViewer = ({
   );
 
   /**
-   * Switch a trait on or off mid-play, acquiring it first if the player doesn't hold it yet. Every trait the
+   * Switch a trait on or off mid-play, acquiring it first if the player doesn't have it yet. Every trait the
    * author marked switchable is available at any time; everything the trait does beyond its stat changes (AI
    * text, stat availability, placeholder pins) is derived from the active set and simply follows.
    */
   const toggleTrait = useCallback(
     (traitId: string, enabled: boolean) => {
       const world = { traits: authoredTraits, groups: traitGroups };
-      const held = chosenTraits.find((t) => t.id === traitId);
-      if (held) {
+      const acquiredTrait = chosenTraits.find((t) => t.id === traitId);
+      if (acquiredTrait) {
         const { state: next, retired } = setTraitEnabled(traitState, traitId, enabled, world);
         commitTraitState(next);
         for (const sibling of retired) addLogEntry(`Trait switched off: ${sibling.name}`);
-        addLogEntry(`Trait switched ${enabled ? 'on' : 'off'}: ${held.name}`);
+        addLogEntry(`Trait switched ${enabled ? 'on' : 'off'}: ${acquiredTrait.name}`);
         return;
       }
-      // Not held: only a switch-on of a trait the author marked switchable acquires one. It freezes the
+      // Not acquired yet: only a switch-on of a trait the author marked switchable acquires one. It freezes the
       // world's stat changes as they stand right now, exactly as a trait chosen at creation freezes them at
       // game start. Authored, chips intact, for the same reason seeding uses them: a resolved name written
       // into state stops being resolvable.
