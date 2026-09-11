@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { executeStatCode } from './statCodeExecutor';
+import { executeStatCode, type CodeBoundField } from './statCodeExecutor';
 import {
   BUILTIN_MEMBERS, LANGUAGE_NAMES, PLACEHOLDER_ENTRY_FIELDS, PREVIOUS_FIELDS, REQUESTED_FIELDS, SANDBOX_BUILTINS, SANDBOX_GLOBALS,
   SELF_WRITABLE_FIELDS, STATS_MEMBERS, STAT_FIELDS, nearestSurfaceName,
@@ -64,7 +64,8 @@ describe('the described surface against the sandbox that provides it', () => {
 
   // A field listed as writable that the host never reads back is the editor promising a write that does nothing.
   it.each(SELF_WRITABLE_FIELDS)('reads a write to self.%s back out of the sandbox', async (field) => {
-    await expect(run(`self.${field} = 7;`)).resolves.toEqual({ value: 7, error: null });
+    const result = await run(`self.${field} = 7;`);
+    expect(field === 'value' ? result.value : result.bounds?.[field as CodeBoundField]).toBe(7);
   });
 
   // The member tables are keyed by name, so a built-in renamed in one list and not the other would offer

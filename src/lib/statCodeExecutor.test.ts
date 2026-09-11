@@ -144,12 +144,53 @@ describe('executeStatCode self and turn inputs', () => {
     expect(await run('self.value = "high";')).toMatchObject({ value: null, kind: 'non-number' });
   });
 
+  it('lets a number return win over a non-number self.value write', async () => {
+    expect(await run('self.value = "high"; return 30;')).toEqual({ value: 30, error: null });
+  });
+
   it('discards a write when the code throws after making it', async () => {
     expect(await run('self.value = 12; throw new Error("late");')).toMatchObject({ value: null, kind: 'throw' });
   });
 
   it('ignores a write to another stat entry', async () => {
     expect(await run('stats.find(s => s.name === "Health").value = 1;')).toEqual({ value: null, error: null });
+  });
+});
+
+describe('executeStatCode bound writes', () => {
+  beforeEach(() => vi.spyOn(console, 'error').mockImplementation(() => {}));
+  afterEach(() => vi.restoreAllMocks());
+
+  const me = makeStat({ id: 'me', min: 10, max: 100, value: 40, regen: 2 });
+  const run = (code: string) => executeStatCode(code, [me], me);
+
+  it('reads each bound write back out, and only the ones that changed', async () => {
+    expect(await run('self.min = 5; self.max = 60; self.regen = -1;'))
+      .toEqual({ value: null, error: null, bounds: { min: 5, max: 60, regen: -1 } });
+    expect(await run('self.max = 60; self.regen = self.regen;'))
+      .toEqual({ value: null, error: null, bounds: { max: 60 } });
+  });
+
+  it('clamps a value write to the range the same run wrote', async () => {
+    expect(await run('self.max = 30; self.value = 90;')).toEqual({ value: 30, error: null, bounds: { max: 30 } });
+    expect(await run('self.min = 50; return 20;')).toEqual({ value: 50, error: null, bounds: { min: 50 } });
+  });
+
+  it('floors the written max at the written min when it clamps the value', async () => {
+    expect((await run('self.min = 70; self.max = 20; self.value = 0;')).value).toBe(70);
+  });
+
+  it('fails the run on a bound that is not a finite number, discarding every write', async () => {
+    for (const code of ['self.max = "high"; self.value = 5;', 'self.min = NaN;', 'self.regen = Infinity;']) {
+      expect(await run(code), code).toMatchObject({ value: null, kind: 'non-number' });
+      expect((await run(code)).bounds, code).toBeUndefined();
+    }
+  });
+
+  it('discards a bound write when the code throws after making it', async () => {
+    const res = await run('self.max = 60; throw new Error("late");');
+    expect(res).toMatchObject({ value: null, kind: 'throw' });
+    expect(res.bounds).toBeUndefined();
   });
 });
 

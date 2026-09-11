@@ -7,6 +7,7 @@ import {
   recoverStatBases,
   seedStatBases,
   setTraitEnabled,
+  withCodeBounds,
   type TraitRuntimeState,
   type TraitWorld,
 } from './traitRuntime';
@@ -88,6 +89,63 @@ describe('deriveEffectiveStats', () => {
     const down = trait('b', [{ statId: 'h', value: -40, type: 'max' }]);
     const [derived] = deriveEffectiveStats([stat('h')], [up, down]);
     expect(derived.max).toBe(100);
+  });
+});
+
+describe('deriveEffectiveStats with code bounds', () => {
+  const raise = trait('a', [
+    { statId: 'h', value: 20, type: 'max' },
+    { statId: 'h', value: 10, type: 'min' },
+    { statId: 'h', value: 2, type: 'regen' },
+  ]);
+
+  it('lets each code bound replace the derived result for its field', () => {
+    const coded = stat('h', { aiMaxDelta: 15, codeBounds: { min: 5, max: 60, regen: -1 } });
+    expect(deriveEffectiveStats([coded], [raise])[0]).toMatchObject({ min: 5, max: 60, regen: -1 });
+  });
+
+  it('derives a field the code did not set from the bases and traits', () => {
+    const coded = stat('h', { aiMaxDelta: 15, codeBounds: { max: 60 } });
+    expect(deriveEffectiveStats([coded], [raise])[0]).toMatchObject({ min: 10, max: 60, regen: 2 });
+  });
+
+  it('floors a code max at the effective min', () => {
+    expect(deriveEffectiveStats([stat('h', { codeBounds: { min: 70, max: 40 } })], [])[0]).toMatchObject({ min: 70, max: 70 });
+    expect(deriveEffectiveStats([stat('h', { codeBounds: { max: 5 } })], [raise])[0]).toMatchObject({ min: 10, max: 10 });
+  });
+
+  it('returns to the derived cap, AI max delta included, once the code bound is gone', () => {
+    const [coded] = deriveEffectiveStats([stat('h', { aiMaxDelta: 15, codeBounds: { max: 60 } })], []);
+    expect(coded.max).toBe(60);
+    const { codeBounds: _cleared, ...rest } = coded;
+    expect(deriveEffectiveStats([rest], [])[0].max).toBe(115);
+  });
+
+  it('keeps a code bound through a trait switch, and settles the value inside it', () => {
+    const before = state({ stats: [stat('h', { value: 60, min: 0, max: 60, codeBounds: { max: 60 } })] });
+    const on = setTraitEnabled({ ...before, traits: [raise] }, 'a', true, world([raise])).state;
+    expect(boundsOf(on)).toEqual({ min: 10, max: 60, regen: 2 });
+    expect(on.stats[0].codeBounds).toEqual({ max: 60 });
+    const off = setTraitEnabled(on, 'a', false, world([raise])).state;
+    expect(boundsOf(off)).toEqual({ min: 0, max: 60, regen: 0 });
+    expect(valueOf(off)).toBeLessThanOrEqual(60);
+  });
+});
+
+describe('withCodeBounds', () => {
+  const raiseCap = trait('a', [{ statId: 'h', value: 20, type: 'max' }]);
+  const base = stat('h', { value: 90, max: 120 });
+
+  it('holds exactly the given code bounds, re-derives under the traits, and clamps the value', () => {
+    const next = withCodeBounds({ ...base, codeBounds: { min: 3 } }, { max: 60 }, 90, [raiseCap]);
+    expect(next).toMatchObject({ min: 0, max: 60, value: 60 });
+    expect(next.codeBounds).toEqual({ max: 60 });
+  });
+
+  it('drops the field and returns to the derived bounds, traits included, when given none', () => {
+    const next = withCodeBounds({ ...base, max: 60, codeBounds: { max: 60 } }, {}, 50, [raiseCap]);
+    expect(next).toMatchObject({ max: 120, value: 50 });
+    expect('codeBounds' in next).toBe(false);
   });
 });
 

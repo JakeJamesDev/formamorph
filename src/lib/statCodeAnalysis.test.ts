@@ -78,6 +78,17 @@ return scale(total) + min + max;`)).toEqual([]);
     expect(statCodeDiagnostics('self.value = self.previous.value + self.requested.value / 2;')).toEqual([]);
   });
 
+  it('accepts code that only writes its own bounds', () => {
+    for (const code of ['self.min = 5;', 'self.max = stats.length * 10;', 'self.regen -= 1;']) {
+      expect(statCodeDiagnostics(code), code).toEqual([]);
+    }
+  });
+
+  it('names every writable field when a write misses them all', () => {
+    const [problem] = statCodeDiagnostics('self.name = "x";');
+    for (const field of ['self.value', 'self.min', 'self.max', 'self.regen']) expect(problem.message).toContain(field);
+  });
+
   it('accepts a write through the currentStatId lookup, which reaches the same entry as self', () => {
     expect(statCodeDiagnostics('const me = stats.find(s => s.id === currentStatId);\nme.value = 5;')).toEqual([]);
     expect(statCodeDiagnostics('stats.find(s => s.id === currentStatId).value = 5;')).toEqual([]);

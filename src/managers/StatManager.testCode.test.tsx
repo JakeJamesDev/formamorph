@@ -36,7 +36,11 @@ vi.mock('@/components/prompt/CodeArea', () => ({
 }));
 
 const executeStatCode = vi.hoisted(() => vi.fn());
-vi.mock('@/lib/statCodeExecutor', () => ({ executeStatCode, STAT_CLOCK_VARS: [] }));
+// Only the run is faked; the editor's reader still imports the executor's real surface lists.
+vi.mock('@/lib/statCodeExecutor', async (importOriginal) => ({
+  ...await importOriginal<typeof import('@/lib/statCodeExecutor')>(),
+  executeStatCode,
+}));
 
 const row = () => screen.getByRole('button', { name: /Test Code/ }).parentElement as HTMLElement;
 
@@ -80,6 +84,27 @@ describe('what Test Code reports', () => {
 
     await waitFor(() => expect(row()).toHaveTextContent('Result: 5'));
     expect(row()).not.toHaveTextContent('in this code');
+  });
+
+  it('lists every bound the run wrote beside the value', async () => {
+    const user = userEvent.setup();
+    executeStatCode.mockResolvedValue({ value: 5, error: null, bounds: { regen: 2, max: 60 } });
+    renderCodePanel(stats[0]);
+
+    await testCode(user, 'self.max = 60; self.regen = 2; return 5;');
+
+    await waitFor(() => expect(row()).toHaveTextContent('Result: 5 · Max: 60 · Regen: 2'));
+  });
+
+  it('lists the bounds of a run that wrote no value', async () => {
+    const user = userEvent.setup();
+    executeStatCode.mockResolvedValue({ value: null, error: null, bounds: { min: 3 } });
+    renderCodePanel(stats[0]);
+
+    await testCode(user, 'self.min = 3;');
+
+    await waitFor(() => expect(row()).toHaveTextContent('Min: 3'));
+    expect(row()).not.toHaveTextContent('Result:');
   });
 
   it('still counts the problems when the run itself threw', async () => {

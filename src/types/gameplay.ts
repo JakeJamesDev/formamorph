@@ -11,12 +11,16 @@ export interface DiscoveredEntity {
   sourceTurnId: string;
 }
 
+/** The bounds a stat's own code set on it. Each is absolute; a field the code never set is absent. */
+export type CodeBounds = { min?: number; max?: number; regen?: number };
+
 /** A stat during gameplay — a definition Stat whose live `value` is always a number.
  *
  *  `min`, `max` and `regen` are *effective* bounds, derived from the `base*` fields plus the active traits'
- *  contributions plus `aiMaxDelta`. Everything outside the trait runtime — the panel, stat code, morph
- *  bindings — reads only the effective numbers; the bases are bookkeeping. All four are optional so a save
- *  written before bounds were derived still loads, its bases reconstructed at load time. */
+ *  contributions plus `aiMaxDelta`, with each `codeBounds` field replacing its bound last. Everything outside
+ *  the trait runtime — the panel, stat code, morph bindings — reads only the effective numbers; the rest is
+ *  bookkeeping. All of it is optional so a save written before bounds were derived still loads, its bases
+ *  reconstructed at load time. */
 export type PlayerStat = Omit<Stat, 'value'> & {
   value: number;
   /** The author's own floor, which no trait may dig below. */
@@ -26,6 +30,8 @@ export type PlayerStat = Omit<Stat, 'value'> & {
   /** How far the AI has moved this stat's maximum over the playthrough, kept apart from the trait
    *  contributions so the maximum stays fully derived. */
   aiMaxDelta?: number;
+  /** What the stat's code last set, held until the code runs again. Absent when it set nothing. */
+  codeBounds?: CodeBounds;
 };
 
 /** One row of the live scene list (the Entities tab): who is physically present this turn. `name` is the

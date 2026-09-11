@@ -1,4 +1,4 @@
-import type { Stat } from '@/types';
+import type { CodeBounds, Stat } from '@/types';
 import { getQuickJS, shouldInterruptAfterDeadline, type QuickJSWASMModule } from 'quickjs-emscripten';
 import { clamp } from './utils';
 import { dayAndHour, daypart, FLAT_HOURS_PER_TURN, type WorldCalendar } from './gameClock';
@@ -60,12 +60,19 @@ const resolveClock = (clock?: StatClock) => {
 /** How a run failed, for a caller that sorts failures rather than printing them. */
 export type StatCodeFailure = 'timeout' | 'non-number' | 'throw';
 
+/** The bounds a stat's code may set on itself, in the order the host reads them back. */
+export const CODE_BOUND_FIELDS = ['min', 'max', 'regen'] as const satisfies readonly (keyof CodeBounds)[];
+export type CodeBoundField = (typeof CODE_BOUND_FIELDS)[number];
+
 export interface StatCodeResult {
-  /** The value the code set, by return or by `self.value`, clamped; null when it left the value alone. */
+  /** The value the code set, by return or by `self.value`, clamped to the range after this run's bound
+   *  writes; null when it left the value alone. */
   value: number | null;
   error: string | null;
   /** Present exactly when `error` is. */
   kind?: StatCodeFailure;
+  /** The bounds the code wrote on `self`. Absent when it wrote none. */
+  bounds?: CodeBounds;
 }
 
 /** A stat's value and max, as one turn input carries them. */
@@ -118,7 +125,8 @@ const nonNumberFailure = (what: string): StatCodeResult => ({
 
 /** Run a stat's untrusted `code` in an isolated QuickJS (WASM) VM over `stats`, `self`, the turn inputs,
  *  the clock, and `placeholders`. A number return or a `self.value` write sets the value, clamped; a
- *  failure discards it. Of two placeholders sharing a name, the later one is the entry. */
+ *  `self.min`, `self.max` or `self.regen` write sets that bound; a failure discards every write. Of two
+ *  placeholders sharing a name, the later one is the entry. */
 export const executeStatCode = async (
   code: string,
   stats: Stat[],
@@ -186,7 +194,7 @@ export const executeStatCode = async (
 
       // The stat data rides in as JSON literals (JSON is valid JS expression syntax); console.log and the
       // roll hook are the only host functions. The user code runs as a function body so `return` works; the
-      // program's completion value pairs what it returned with what `self.value` holds afterwards.
+      // program's completion value pairs what it returned with what `self`'s writable fields hold afterwards.
       const program = [
         `const stats = ${JSON.stringify(statsData)};`,
         `const currentStatId = ${JSON.stringify(String(currentStat.id))};`,
@@ -195,7 +203,7 @@ export const executeStatCode = async (
         placeholdersPrelude(placeholders),
         `[(function() {`,
         code,
-        `})(), self.value];`,
+        `})(), self.value, ${CODE_BOUND_FIELDS.map((field) => `self.${field}`).join(', ')}];`,
       ].join('\n');
 
       const result = vm.evalCode(program);
@@ -228,19 +236,36 @@ export const executeStatCode = async (
       };
       const returned = readSlot(0);
       const written = readSlot(1);
+      const boundSlots = CODE_BOUND_FIELDS.map((field, i) => [field, readSlot(2 + i)] as const);
       result.value.dispose();
 
       if (consoleOutput.trim()) {
         console.log('Console output:', consoleOutput);
       }
 
-      const clampToRange = (value: number) => clamp(value, selfData.min, selfData.max);
-      if (returned.type === 'number') return { value: clampToRange(returned.number), error: null };
-      if (returned.type !== 'undefined') return nonNumberFailure('Code must return a number or nothing');
-      if (written.type !== 'number') return nonNumberFailure('self.value must be a number');
-      // A field the code left alone keeps the pipeline's result, so only a changed value is a write.
-      if (Object.is(written.number, selfData.value)) return { value: null, error: null };
-      return { value: clampToRange(written.number), error: null };
+      if (returned.type !== 'number' && returned.type !== 'undefined') {
+        return nonNumberFailure('Code must return a number or nothing');
+      }
+      if (returned.type === 'undefined' && written.type !== 'number') {
+        return nonNumberFailure('self.value must be a number');
+      }
+      // A field the code left alone keeps the pipeline's result, so only a changed field is a write.
+      const bounds: CodeBounds = {};
+      for (const [field, slot] of boundSlots) {
+        if (slot.type === 'number' && Object.is(slot.number, selfData[field])) continue;
+        if (!Number.isFinite(slot.number)) return nonNumberFailure(`self.${field} must be a finite number`);
+        bounds[field] = slot.number;
+      }
+
+      const min = bounds.min ?? selfData.min;
+      const max = Math.max(min, bounds.max ?? selfData.max);
+      const settled = (value: number | null): StatCodeResult => ({
+        value: value === null ? null : clamp(value, min, max),
+        error: null,
+        ...(Object.keys(bounds).length ? { bounds } : {}),
+      });
+      if (returned.type === 'number') return settled(returned.number);
+      return settled(Object.is(written.number, selfData.value) ? null : written.number);
     } finally {
       vm.dispose();
       runtime.dispose();

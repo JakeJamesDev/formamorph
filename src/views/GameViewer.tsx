@@ -6,7 +6,7 @@ import { useSettingsOpenRequest } from "@/lib/useSettingsOpenRequest";
 import { useGameplay } from "@/contexts/GameplayContext";
 import { useAccountDeletion } from "@/contexts/AccountDeletionContext";
 import { usesStatClock, type StatClock } from "@/lib/statCodeExecutor";
-import { runStatCodeTurn, type StatCodeTurn } from "@/lib/statCodeTurn";
+import { overlayStatCodeResult, runStatCodeTurn, type StatCodeTurn } from "@/lib/statCodeTurn";
 import { Button } from "@/components/ui/button";
 import {
   AlertDialog,
@@ -2260,23 +2260,15 @@ const GameViewer = ({
         const enabled = statEnabledRef.current;
         const regen = applyRegen(afterAsks, clock.deltaHours ?? FLAT_HOURS_PER_TURN, enabled);
         const stats = resolveStatNames(regen.stats, resolvePH);
-        const { stats: coded, moved } = await runStatCodeTurn({
-          stats, enabled, previous: before, asks, regenApplied: regen.applied, clock,
+        const result = await runStatCodeTurn({
+          stats, enabled, previous: before, asks, regenApplied: regen.applied, clock, traits: activeTraits,
           placeholders: { placeholders, rolls: sessionRolls, pins },
         });
-        if (moved.length === 0) return;
-        const codeChanges = appliedStatDeltas(stats, coded);
-        // Override only the stats the code actually moved, onto the LATEST stats — not a blanket
-        // `setPlayerStats(coded)`, whose `coded` is computed from the pre-`await` baseline and would clobber
-        // anything applied in the meantime (starvation, or a re-generate that landed during the await).
-        const codedById = new Map(coded.filter((s) => moved.includes(s.id)).map((s) => [s.id, s.value]));
-        setPlayerStats((prev) =>
-          prev.map((s) =>
-            codedById.has(s.id)
-              ? { ...s, value: codedById.get(s.id) as number }
-              : s,
-          ),
-        );
+        if (result.moved.length === 0 && result.boundsChanged.length === 0) return;
+        const codeChanges = appliedStatDeltas(stats, result.stats);
+        // Onto the LATEST stats, not a blanket `setPlayerStats(result.stats)`: the run read the pre-`await`
+        // baseline, and anything applied in the meantime (starvation, a re-generate) must survive.
+        setPlayerStats((prev) => overlayStatCodeResult(prev, result, activeTraits));
         // Fold the code-derived movement into the live delta feedback, so a code stat's bar/text animates
         // live — matching the history view (pageStatDeltas diffs the final, post-code snapshot).
         setRecentStatChanges((prev) => normalizeStatChanges([prev, codeChanges]));
@@ -2285,7 +2277,7 @@ const GameViewer = ({
         console.error("Error processing stat code:", error);
       }
     },
-    [setPlayerStats, setRecentStatChanges, setHeldStatChanges, resolvePH, placeholders, sessionRolls, pins],
+    [setPlayerStats, setRecentStatChanges, setHeldStatChanges, resolvePH, placeholders, sessionRolls, pins, activeTraits],
   );
 
   // Whether any stat's code reads the clock, and so needs a per-turn run of its own on turns the AI
@@ -2304,7 +2296,7 @@ const GameViewer = ({
     ) => {
       const baseStats = base ?? rawPlayerStatsRef.current;
       const live = new Set(enabledStats(rawPlayerStatsRef.current, statEnabledRef.current).map((s) => s.id));
-      const applied = applyStatResponse(baseStats, response, live);
+      const applied = applyStatResponse(baseStats, response, live, activeTraits);
       const directApplied = applied.stats;
       setDebugTurns((turns) => turns.map((turn) => ({ ...turn, requests: turn.requests.map((request) =>
         request.statRequestId === response.requestId ? { ...request, statDiagnostics: applied.diagnostics } : request,
@@ -2331,7 +2323,7 @@ const GameViewer = ({
         await runStatCode(baseStats, directApplied, response.updates, clock);
       }
     },
-    [runStatCode, setPlayerStats, setRecentStatChanges, setHeldStatChanges, resolvePH, anyStatUsesClock],
+    [runStatCode, setPlayerStats, setRecentStatChanges, setHeldStatChanges, resolvePH, anyStatUsesClock, activeTraits],
   );
 
   // Discard a turn's dangling, unpaired user message. The failure exits (empty narration, request error)
