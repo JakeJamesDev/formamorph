@@ -3,9 +3,10 @@
  * (No DOM needed; node keeps the QuickJS WASM engine loading through its filesystem path.)
  */
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { overlayStatCodeResult, runStatCodeTurn, type StatCodeTurn } from './statCodeTurn';
+import { overlayStatCodeResult, runStatCodeTurn, withPinWrites, type StatCodeTurn } from './statCodeTurn';
 import type { Placeholder, PlaceholderRolls, PlayerStat, Trait } from '@/types';
-import { encodePlaceholderToken, type PlaceholderPick } from './placeholders';
+import { encodePlaceholderToken, resolvePlaceholders, type PlaceholderPick } from './placeholders';
+import { collectPins } from './placeholderPins';
 import { phValueId, phValues } from '@/test/placeholderValues';
 
 const stat = (over: Partial<PlayerStat>): PlayerStat => ({
@@ -232,6 +233,106 @@ describe('runStatCodeTurn placeholders', () => {
   it('offers an empty map when the turn carries no placeholders', async () => {
     const out = await runStatCodeTurn(turn({ stats: [stat({ id: 'a', value: 0, code: 'return Object.keys(placeholders).length + 1;' })] }));
     expect(valueOf(out.stats, 'a')).toBe(1);
+  });
+});
+
+describe('runStatCodeTurn placeholder writes', () => {
+  beforeEach(() => {
+    vi.spyOn(console, 'error').mockImplementation(() => {});
+    vi.spyOn(console, 'warn').mockImplementation(() => {});
+  });
+  afterEach(() => vi.restoreAllMocks());
+
+  const mood: Placeholder = { id: 'mood', name: 'Mood', values: phValues(['calm', 'angry', 'sad']) };
+  const rolls: PlaceholderRolls = { world: { mood: 'calm' } };
+  /** Stats running `codes` in order, over Mood rolled calm and the Code Pins already in force. */
+  const run = (codes: string[], { placeholders = [mood], codePins = {} }: { placeholders?: Placeholder[]; codePins?: Record<string, string> } = {}) =>
+    runStatCodeTurn(turn({
+      stats: codes.map((code, i) => stat({ id: `s${i}`, value: 0, code })),
+      placeholders: { placeholders, rolls, pins: collectPins({ traits: [], placeholders, rolls, codePins }) },
+    }));
+  const chip = encodePlaceholderToken({ id: 'mood', mode: 'world', placementId: 'p' });
+  /** The narration text the next prompt sends, under the Code Pins a turn leaves. */
+  const nextPrompt = (codePins: Record<string, string>) =>
+    resolvePlaceholders(`She is ${chip}.`, { placeholders: [mood], rolls, pins: collectPins({ traits: [], placeholders: [mood], rolls, codePins }) });
+
+  it('turns a value write into a Code Pin the next prompt reads', async () => {
+    const { pinWrites } = await run(['placeholders.Mood.value = "angry";']);
+    expect(pinWrites).toEqual({ mood: 'angry' });
+    expect(nextPrompt(withPinWrites({}, pinWrites))).toBe('She is angry.');
+  });
+
+  it('pins text that is not on the authored list', async () => {
+    const { pinWrites } = await run(['placeholders.Mood.value = "incandescent";']);
+    expect(nextPrompt(withPinWrites({}, pinWrites))).toBe('She is incandescent.');
+  });
+
+  it('takes a bare string assigned to the entry as a value write', async () => {
+    await expect(run(['placeholders.Mood = "sad";'])).resolves.toMatchObject({ pinWrites: { mood: 'sad' } });
+  });
+
+  it('drops and reports a write to a name no placeholder has, keeping the run’s other writes', async () => {
+    const { pinWrites, stats } = await run(['placeholders.Nope = "x"; placeholders.Mood.value = "sad"; return 7;']);
+    expect(pinWrites).toEqual({ mood: 'sad' });
+    expect(valueOf(stats, 's0')).toBe(7);
+    expect(console.warn).toHaveBeenCalledWith(expect.stringContaining('Nope'));
+  });
+
+  it('applies two stats’ writes to one placeholder in stat order, the last winning', async () => {
+    const angry = 'placeholders.Mood.value = "angry";';
+    const sad = 'placeholders.Mood.value = "sad";';
+    await expect(run([sad, angry])).resolves.toMatchObject({ pinWrites: { mood: 'angry' } });
+    await expect(run([angry, sad])).resolves.toMatchObject({ pinWrites: { mood: 'sad' } });
+  });
+
+  it('lets the later stat win with the text the placeholder started the run at', async () => {
+    const angry = 'placeholders.Mood.value = "angry";';
+    const calm = 'placeholders.Mood.value = "calm";';
+    await expect(run([angry, calm])).resolves.toMatchObject({ pinWrites: { mood: 'calm' } });
+  });
+
+  it('pins a written text that an authored pin already shows, so it outlasts that pin', async () => {
+    const band = stat({ id: 'band', value: 10, descriptors: [{ id: 'low', threshold: 50, description: 'low', placeholderPins: [{ placeholderId: 'mood', value: 'angry' }] }] });
+    const pins = collectPins({ traits: [], stats: [band], placeholders: [mood], rolls });
+    const out = await runStatCodeTurn(turn({
+      stats: [band, stat({ id: 's0', value: 0, code: 'placeholders.Mood.value = "angry";' })],
+      placeholders: { placeholders: [mood], rolls, pins },
+    }));
+    expect(out.pinWrites).toEqual({ mood: 'angry' });
+  });
+
+  it('holds a Code Pin across turns while code writes the same text again', async () => {
+    const pins = { mood: 'angry' };
+    const { pinWrites } = await run(['placeholders.Mood.value = "angry";'], { codePins: pins });
+    expect(withPinWrites(pins, pinWrites)).toBe(pins);
+  });
+
+  it('releases a Code Pin on unpin(), bringing the Roll back', async () => {
+    const { pinWrites } = await run(['placeholders.Mood.unpin();'], { codePins: { mood: 'angry' } });
+    expect(pinWrites).toEqual({ mood: null });
+    expect(nextPrompt(withPinWrites({ mood: 'angry' }, pinWrites))).toBe('She is calm.');
+  });
+
+  it('leaves the Code Pins alone when unpin() hits a placeholder code never pinned', async () => {
+    const pins = { other: 'x' };
+    const { pinWrites } = await run(['placeholders.Mood.unpin();']);
+    expect(withPinWrites(pins, pinWrites)).toBe(pins);
+  });
+
+  it('pins the last authored of two same-named placeholders', async () => {
+    const twin: Placeholder = { id: 'mood-2', name: 'Mood', values: phValues(['calm']) };
+    await expect(run(['placeholders.Mood.value = "sad";'], { placeholders: [mood, twin] }))
+      .resolves.toMatchObject({ pinWrites: { 'mood-2': 'sad' } });
+  });
+
+  it('discards the writes of a run that fails, and of a disabled stat', async () => {
+    await expect(run(['placeholders.Mood.value = "sad"; throw new Error("late");'])).resolves.toMatchObject({ pinWrites: {} });
+    const out = await runStatCodeTurn(turn({
+      stats: [stat({ id: 'off', value: 0, code: 'placeholders.Mood.value = "sad";' })],
+      enabled: { off: false },
+      placeholders: { placeholders: [mood], rolls },
+    }));
+    expect(out.pinWrites).toEqual({});
   });
 });
 

@@ -1,6 +1,7 @@
 # 05: Stat Code Writes Placeholders
 
-Status: ready-for-agent
+Status: ready-for-human
+Base: d1a5bb5b
 Blocked by: 04
 Recommended model: Claude Opus 5 (`claude-opus-5`)
 Reasoning effort: high
@@ -19,18 +20,27 @@ This ticket changes the save envelope shape (an additive, optional Code Pins map
 
 ## Acceptance criteria
 
-- [ ] A `value` write becomes a Code Pin that the next prompt's placeholder context reflects
-- [ ] A Code Pin outranks a stat band pin and masks, not replaces, the Roll
-- [ ] Undo restores the pre-write pins; a re-roll reproduces the write
-- [ ] Bare-string assignment to the entry is accepted as a `value` write and gets a diagnostic suggesting `.value`
-- [ ] Unknown placeholder name on write is dropped and reported
-- [ ] Two stats writing one placeholder apply in stat order, last wins
-- [ ] A save without Code Pins loads with none
-- [ ] Test Code shows written placeholders
-- [ ] Tests at the per-turn seam cover write, off-list text, bare-string, unknown name, and stat-order conflict; a pin-collection test covers rank; a save-load test covers the missing map
-- [ ] Closing response states the save-shape change
-- [ ] Four gates green; graph updated
+- [x] A `value` write becomes a Code Pin that the next prompt's placeholder context reflects
+- [x] A Code Pin outranks a stat band pin and masks, not replaces, the Roll
+- [x] Undo restores the pre-write pins; a re-roll reproduces the write
+- [x] Bare-string assignment to the entry is accepted as a `value` write and gets a diagnostic suggesting `.value`
+- [x] Unknown placeholder name on write is dropped and reported
+- [x] Two stats writing one placeholder apply in stat order, last wins
+- [x] A save without Code Pins loads with none
+- [x] Test Code shows written placeholders
+- [x] Tests at the per-turn seam cover write, off-list text, bare-string, unknown name, and stat-order conflict; a pin-collection test covers rank; a save-load test covers the missing map
+- [x] Closing response states the save-shape change
+- [x] Four gates green; graph updated
 
 ## Blocked by
 
 - 04 — Stat Code Reads Placeholders
+
+## Comments
+
+- 2026-09-10, user decision: code releases a Code Pin with `placeholders.<name>.unpin()`. The release lands after the run, `value` keeps its run-start text mid-run, the last of a write and an unpin wins, and unpinning a placeholder no code pinned does nothing. `null` is not a release. Recorded in the spec; ticket 07 documents it.
+- A write to `placeholders.Nope.value` on a name no placeholder has throws a TypeError in the sandbox, so the whole run fails. Only a write that adds a key (`placeholders.Nope = "x"`) is dropped and reported; the editor flags both statically.
+- A value that is not text or a finite number fails the run, as a non-number `self.value` does. A number is written as its text.
+- A placeholder write is any assignment, not a change against the resolved text: the review found that a diff let an earlier stat win over a later one writing the run-start text, and skipped pinning a text an authored pin already showed. `withPinWrites` compares against the existing Code Pin, so rewriting the same text each turn is still a no-op.
+- The stats-only re-roll resets Code Pins to the pre-turn snapshot and runs code over the pins as they stood before the turn, so code that reads the placeholder it writes lands once.
+- Open, found in review: the first coded turn of a session snapshots before stat code settles (QuickJS loads after the deferred snapshot), so that turn's snapshot misses its Code Pins, bounds, and code values. Probed 2026-09-10: the snapshot held `coin: 80, codePins: null` where code set 42 and a pin. Pre-existing since ticket 02; the fix is in the turn-commit path.

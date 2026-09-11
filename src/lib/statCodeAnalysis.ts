@@ -227,9 +227,8 @@ interface WriteCheck {
 function checkWrite(target: SyntaxNode, code: string, tree: Tree, declared: Set<string>): WriteCheck {
   let innermost = target;
   while (innermost.firstChild?.name === 'MemberExpression') innermost = innermost.firstChild;
-  const root = innermost.firstChild;
   const first = innermost.getChild('PropertyName');
-  if (root?.name === 'VariableName' && code.slice(root.from, root.to) === 'self' && !declared.has('self')) {
+  if (memberRoot(target, code) === 'self' && !declared.has('self')) {
     // A bracketed field can't be named without running the code.
     if (!first) return { own: true, problem: null };
     const field = code.slice(first.from, first.to);
@@ -254,6 +253,22 @@ function checkWrite(target: SyntaxNode, code: string, tree: Tree, declared: Set<
       message: 'This writes to another stat, and stat code can only change its own. Write to self instead.',
     },
   };
+}
+
+/** The variable a member chain starts from, like `placeholders` in `placeholders.Mood.value`. */
+function memberRoot(member: SyntaxNode, code: string): string | null {
+  let innermost = member;
+  while (innermost.firstChild?.name === 'MemberExpression') innermost = innermost.firstChild;
+  const root = innermost.firstChild;
+  return root?.name === 'VariableName' ? code.slice(root.from, root.to) : null;
+}
+
+/** Whether `node` is a `placeholders.<name>.unpin()` call. */
+function isUnpinCall(node: SyntaxNode, code: string): boolean {
+  const callee = node.firstChild;
+  if (callee?.name !== 'MemberExpression') return false;
+  const property = callee.getChild('PropertyName');
+  return !!property && code.slice(property.from, property.to) === 'unpin' && memberRoot(callee, code) === 'placeholders';
 }
 
 /** A placeholder name as the code spells it, and where. */
@@ -411,6 +426,8 @@ export function statCodeDiagnostics(code: string, options: AnalysisOptions = {})
   let sawReturn = false;
   let sawSyntaxError = false;
   let sawOwnWrite = false;
+  let sawPlaceholderWrite = false;
+  const placeholdersInScope = !declared.has('placeholders');
 
   const cursor = tree.cursor();
   do {
@@ -434,8 +451,21 @@ export function statCodeDiagnostics(code: string, options: AnalysisOptions = {})
       const { own, problem } = checkWrite(target, code, tree, declared);
       if (own) sawOwnWrite = true;
       if (problem) diagnostics.push(problem);
+      if (placeholdersInScope && memberRoot(target, code) === 'placeholders') {
+        sawPlaceholderWrite = true;
+        if (cursor.type.name === 'AssignmentExpression' && placeholderRef(target, code)) {
+          const entry = code.slice(target.from, target.to);
+          diagnostics.push({
+            from: target.from, to: target.to, severity: 'warning',
+            message: `Write to ${entry}.value instead.`,
+          });
+        }
+      }
     }
-    if (cursor.type.name === 'MemberExpression' && options.placeholders && !declared.has('placeholders')) {
+    if (cursor.type.name === 'CallExpression' && placeholdersInScope && isUnpinCall(cursor.node, code)) {
+      sawPlaceholderWrite = true;
+    }
+    if (cursor.type.name === 'MemberExpression' && options.placeholders && placeholdersInScope) {
       const ref = placeholderRef(cursor.node, code);
       const problem = ref && !overlapsAny(ref.from, ref.to, ranges) ? checkPlaceholderName(ref, options.placeholders) : null;
       if (problem) diagnostics.push(problem);
@@ -456,9 +486,10 @@ export function statCodeDiagnostics(code: string, options: AnalysisOptions = {})
     });
   } while (cursor.next());
 
-  // Code with no return can still set the value through self. Code that does neither can't change the
-  // stat. A missing return on code the parser couldn't finish reading is a guess about half-typed code.
-  if (!sawReturn && !sawOwnWrite && !sawSyntaxError) {
+  // Code with no return can still set the value through self, or pin a placeholder. Code that does none of
+  // these changes nothing. A missing return on code the parser couldn't finish reading is a guess about
+  // half-typed code.
+  if (!sawReturn && !sawOwnWrite && !sawPlaceholderWrite && !sawSyntaxError) {
     diagnostics.push({
       from: 0,
       to: Math.min(code.length, code.indexOf('\n') === -1 ? code.length : code.indexOf('\n')),

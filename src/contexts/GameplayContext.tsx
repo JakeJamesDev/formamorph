@@ -22,6 +22,7 @@ import type { MemoryPinMap } from '../lib/milestoneMemory';
 import type { MemoryEditMap, MemoryNote } from '../lib/memoryOverrides';
 import type {
   CharacterData,
+  CodePins,
   LogEntry,
   GameLocation,
   Stat,
@@ -44,6 +45,7 @@ import type {
 const EMPTY_IDS: string[] = [];
 const EMPTY_CHOICES: Choice[] = [];
 const EMPTY_INDICES: number[] = [];
+const EMPTY_PINS: CodePins = {};
 
 /** Normalize a snapshot's `visibleEntities`: legacy saves stored a bare `string[]` of names; those become
  *  `{ name, revealed: true }` (a name that was in the old list had, by construction, been shown already). */
@@ -86,6 +88,8 @@ function useProvideGameplay() {
   // What each active trait's stat changes actually moved, so switching one off gives back what it took
   // rather than what it asked for. Snapshotted per turn alongside the switch positions.
   const [appliedTraitValues, setAppliedTraitValues] = useState<AppliedTraitValues>({});
+  // Placeholder id → the text stat code pinned it to. Snapshotted per turn, so undo and re-roll restore it.
+  const [codePins, setCodePins] = useState<CodePins>(EMPTY_PINS);
   // Per-playthrough dictionary set chosen at world entry (or restored from a save). Runtime-only: the
   // authored world's books live in GameDataContext and are never mutated by gameplay.
   const [runtimeDictionaries, setRuntimeDictionaries] = useState<Dictionary[]>([]);
@@ -196,6 +200,7 @@ function useProvideGameplay() {
       playerTraits,
       ...(disabledTraitIds.length ? { disabledTraitIds } : {}),
       ...(Object.keys(appliedTraitValues).length ? { appliedTraitValues } : {}),
+      ...(Object.keys(codePins).length ? { codePins } : {}),
       visibleEntities,
       discoveredEntities,
       suppressedCharacterNames,
@@ -216,7 +221,7 @@ function useProvideGameplay() {
       // Add a version flag for backward compatibility
       stateVersion: 2
     };
-  }, [playerStats, playerTraits, disabledTraitIds, appliedTraitValues, visibleEntities, discoveredEntities, suppressedCharacterNames, logEntries, currentLocation,
+  }, [playerStats, playerTraits, disabledTraitIds, appliedTraitValues, codePins, visibleEntities, discoveredEntities, suppressedCharacterNames, logEntries, currentLocation,
       gameTime, startHour, fullMessageHistory, characterData, choices, isGameStarted, playerNotes, currentPage]);
 
   /** Restore a `GameState` into the live gameplay state, resolving `locationId` against `locations` and
@@ -238,6 +243,7 @@ function useProvideGameplay() {
       setPlayerTraits(gameState.playerTraits);
       setDisabledTraitIds(gameState.disabledTraitIds ?? []);
       setAppliedTraitValues(gameState.appliedTraitValues ?? {});
+      setCodePins(gameState.codePins ?? EMPTY_PINS);
       setVisibleEntities(normalizeVisibleEntities(gameState.visibleEntities));
       // Rollback / re-generate also keep the live discovered cast + suppressed names (they carry the
       // player's edits and deletions, which land after the snapshot froze); the rewind handlers prune
@@ -528,6 +534,7 @@ function useProvideGameplay() {
   // re-renders this provider and mints the next fresh array: an unbreakable render loop that only exists
   // on a past page, since the live branch returns the state values themselves.
   const viewDisabledTraitIds = viewedSnapshot ? (viewedSnapshot.disabledTraitIds ?? EMPTY_IDS) : disabledTraitIds;
+  const viewCodePins = viewedSnapshot ? (viewedSnapshot.codePins ?? EMPTY_PINS) : codePins;
   const viewCharacterData = viewedSnapshot?.characterData ?? characterData;
   const viewVisibleEntities = useMemo(
     () => (viewedSnapshot ? normalizeVisibleEntities(viewedSnapshot.visibleEntities) : visibleEntities),
@@ -638,6 +645,8 @@ function useProvideGameplay() {
     setDisabledTraitIds,
     appliedTraitValues,
     setAppliedTraitValues,
+    codePins,
+    setCodePins,
     runtimeDictionaries,
     setRuntimeDictionaries,
     placeholderRolls,
@@ -698,6 +707,7 @@ function useProvideGameplay() {
     viewStats,
     viewTraits,
     viewDisabledTraitIds,
+    viewCodePins,
     viewCharacterData,
     viewVisibleEntities,
     viewGameTime,

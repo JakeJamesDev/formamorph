@@ -66,6 +66,37 @@ describe('collectPins — precedence across the four sources', () => {
   });
 });
 
+describe('collectPins — Code Pins', () => {
+  const town = P('town', ['Sedge', 'Marrow', 'Fen', 'Ash', 'Moor']);
+  const region = pinner('region', [['Northern', [pin('town', 'Moor')]], ['Southern', [pin('town', 'Sedge')]]]);
+  const placeholders = [town, region];
+  const hunger = stat('hunger', 20, [{ threshold: 30, pins: [pin('town', 'Ash')] }]);
+  const all = { traits: [trait('sworn', [pin('town', 'Marrow')])], location: location('fen', [pin('town', 'Fen')]), stats: [hunger] };
+
+  it('outranks every other source, a stat band pin included', () => {
+    const rolls = { world: { region: 'Northern' }, unique: {} };
+    expect(collectPins({ ...all, placeholders, rolls, codePins: { town: 'Anywhere' } })).toEqual({ town: 'Anywhere' });
+  });
+
+  it('masks the Roll, which returns once the Code Pin is gone', () => {
+    const rolls = { world: { town: 'Moor' }, unique: {} };
+    expect(collectPins({ traits: [], placeholders: [town], rolls, codePins: { town: 'Fen' } })).toEqual({ town: 'Fen' });
+    expect(rolls.world).toEqual({ town: 'Moor' });
+    expect(collectPins({ traits: [], placeholders: [town], rolls, codePins: {} })).toEqual({});
+  });
+
+  it('decides which value pin fires, like any pin on the source', () => {
+    const rolls = { world: { region: 'Northern' }, unique: {} };
+    expect(collectPins({ traits: [], placeholders, rolls, codePins: { region: 'Southern' } }))
+      .toEqual({ region: 'Southern', town: 'Sedge' });
+  });
+
+  it('leaves the band pin it masks marked as not in force, even at the same text', () => {
+    const { layers } = collectPinLayers({ traits: [], stats: [hunger], placeholders: [town], codePins: { town: 'Ash' } });
+    expect(layers.map((l) => [l.source.kind, l.wins])).toEqual([['descriptor', false]]);
+  });
+});
+
 describe('collectPinLayers — every pin laid, and the one in force marked', () => {
   const town = P('town', ['Sedge', 'Marrow', 'Fen', 'Ash', 'Moor']);
   const region = pinner('region', [['Northern', [pin('town', 'Moor')]]]);

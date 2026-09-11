@@ -19,16 +19,18 @@ async function coinWithCode(page: Page, code: string, regen = 0, extra: { World?
   }
 }
 
-/** Answer every chat call: the stat tracker gets `statReply`, narration gets a line of prose. */
-async function mockModel(page: Page, statReply: string) {
+/** Answer every chat call: the stat tracker gets `statReply`, narration gets a line of prose. Each
+ *  narration request's messages land in `narration`, when given. */
+async function mockModel(page: Page, statReply: string, narration?: string[]) {
   let statCalls = 0;
   await page.route('**/api/v0/models', (route) => route.fulfill({ status: 404 }));
   await page.route('**/v1/models', (route) => route.fulfill({ json: { data: [{ id: 'e2e-model' }] } }));
   await page.route('**/chat/completions', async (route) => {
-    const system = route.request().postDataJSON().messages
-      .find((message: { role: string }) => message.role === 'system')?.content ?? '';
+    const { messages } = route.request().postDataJSON();
+    const system = messages.find((message: { role: string }) => message.role === 'system')?.content ?? '';
     const isStats = system.includes('stat tracker');
     if (isStats) statCalls += 1;
+    else narration?.push(JSON.stringify(messages));
     const text = isStats ? statReply : 'You count the coins twice.';
     await route.fulfill({ contentType: 'text/event-stream', body:
       `data: ${JSON.stringify({ choices: [{ delta: { content: text }, finish_reason: null }] })}\n\ndata: [DONE]\n\n` });
@@ -43,15 +45,18 @@ const settings = (extra: Record<string, unknown> = {}) => ({
   ...extra,
 });
 
-async function playOneTurn(page: Page) {
+async function playOneTurn(page: Page, actions = ['Count the coins.']) {
   const mobile = (page.viewportSize()?.width ?? 1280) < 768;
   if (mobile) await page.getByRole('button', { name: 'Status', exact: true }).click();
   await expect(page.getByText(/60\s*\/\s*100/).first()).toBeVisible();
   await page.waitForFunction(() => '__baseline' in window);
-  await page.evaluate(() => (window as unknown as { __baseline: { runScript(actions: string[]): Promise<void> } })
-    .__baseline.runScript(['Count the coins.']));
+  await page.evaluate((script) => (window as unknown as { __baseline: { runScript(actions: string[]): Promise<void> } })
+    .__baseline.runScript(script), actions);
   return mobile;
 }
+
+const mood = { id: 'ph-mood', name: 'Mood', values: [{ id: 'v-calm', text: 'calm' }, { id: 'v-angry', text: 'angry' }] };
+const calmRoll = { placeholderRolls: { world: { 'ph-mood': 'calm' } } };
 
 test('stat code halves an AI gain, and a stats re-roll lands the same value', async ({ page }) => {
   page.on('pageerror', (error) => console.error(error.message));
@@ -87,7 +92,6 @@ test('stat code reads the value after this turn’s regen, and the regen it appl
 
 test('stat code sets its value from the playthrough’s roll of a placeholder', async ({ page }) => {
   page.on('pageerror', (error) => console.error(error.message));
-  const mood = { id: 'ph-mood', name: 'Mood', values: [{ id: 'v-calm', text: 'calm' }, { id: 'v-angry', text: 'angry' }] };
   await coinWithCode(page, 'return { calm: 11, angry: 22 }[placeholders.Mood.value];', 0, {
     World: { placeholders: [mood] },
     Save: { placeholderRolls: { world: { 'ph-mood': 'angry' } } },
@@ -97,6 +101,46 @@ test('stat code sets its value from the playthrough’s roll of a placeholder', 
   await playOneTurn(page);
 
   await expect(page.getByText(/22\s*\/\s*100/).first()).toBeVisible();
+});
+
+test('a placeholder that stat code writes reaches the next turn’s prompt', async ({ page }) => {
+  page.on('pageerror', (error) => console.error(error.message));
+  const world = JSON.parse(readFileSync('src/lib/devFixtures/whiteRoomWorld.json', 'utf8'));
+  const locations = world.locations.map((location: { id: string }) => (location.id === '1783535114538'
+    ? { ...location, aiDescription: 'The walls glow {{ph:ph-mood:world:p1}}.' } : location));
+  await coinWithCode(page, 'placeholders.Mood.value = "incandescent";', 0, {
+    World: { placeholders: [mood], locations }, Save: calmRoll,
+  });
+  const narration: string[] = [];
+  await mockModel(page, 'Coin: +20', narration);
+  await openApp(page, settings(), { url: '/#dev?view=gameViewer&fixture=whiteRoom' });
+  await playOneTurn(page, ['Count the coins.', 'Count them again.']);
+
+  await expect.poll(() => narration.length).toBeGreaterThanOrEqual(2);
+  expect(narration[0]).toContain('The walls glow calm.');
+  expect(narration[narration.length - 1]).toContain('The walls glow incandescent.');
+});
+
+test('a stats re-roll reads the pre-turn Code Pins, so a flip lands once', async ({ page }) => {
+  page.on('pageerror', (error) => console.error(error.message));
+  const flip = 'const next = placeholders.Mood.value === "calm" ? "angry" : "calm";\n'
+    + 'placeholders.Mood.value = next;\nreturn { calm: 11, angry: 22 }[next];';
+  await coinWithCode(page, flip, 0, { World: { placeholders: [mood] }, Save: calmRoll });
+  const statCalls = await mockModel(page, 'Coin: +20');
+  await openApp(page, settings(), { url: '/#dev?view=gameViewer&fixture=whiteRoom' });
+  const mobile = await playOneTurn(page);
+
+  await expect(page.getByText(/22\s*\/\s*100/).first()).toBeVisible();
+
+  if (mobile) await page.getByRole('button', { name: 'Game', exact: true }).click();
+  await page.getByRole('button', { name: 'More re-generate options', exact: true }).click();
+  await page.getByRole('button', { name: 'Re-generate Stats', exact: true }).click();
+  await expect.poll(statCalls).toBe(2);
+  await expect(page.getByRole('button', { name: 'More re-generate options', exact: true })).toBeEnabled();
+  if (mobile) await page.getByRole('button', { name: 'Status', exact: true }).click();
+  // Read from the pre-turn calm, not the angry the first run pinned.
+  await expect(page.getByText(/22\s*\/\s*100/).first()).toBeVisible();
+  await expect(page.getByText(/11\s*\/\s*100/)).toHaveCount(0);
 });
 
 test('a stat code bound shows as the bar’s range, and the delta reports only the value’s movement', async ({ page }) => {

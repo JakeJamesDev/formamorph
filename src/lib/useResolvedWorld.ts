@@ -10,7 +10,7 @@ import {
   resolveDictionaryEntryNames,
 } from '@/lib/resolveWorldNames';
 import type {
-  Connection, DictionaryEntry, Entity, GameLocation, PlayerStat, Stat, Trait, TraitGroup,
+  CodePins, Connection, DictionaryEntry, Entity, GameLocation, PlayerStat, Stat, Trait, TraitGroup,
 } from '@/types';
 
 /**
@@ -47,9 +47,11 @@ export interface ResolvedWorld {
   playerStats: PlayerStat[];
   viewStats: PlayerStat[];
   traitOrder: ReturnType<typeof traitOrderIndex>;
-  /** Every pin in force: the active traits', the current location's, and each live stat's band's, with
-   *  value pins settled underneath. */
+  /** Every pin in force: the active traits', the current location's, each live stat's band's, and the Code
+   *  Pins, with value pins settled underneath. */
   pins: Record<string, string>;
+  /** `pins` as they would stand under other Code Pins — what a re-roll reads from the pre-turn ones. */
+  pinsFor: (codePins: CodePins) => Record<string, string>;
   /** Resolve any authored string with the same rolls and pins these collections used. */
   resolvePH: (text: string) => string;
   /** Resolve with pins not yet in state — for a string written in the same pass that applies the traits
@@ -118,21 +120,23 @@ export function useResolvedWorld(): ResolvedWorld {
   const { rolls } = usePlaceholderSession();
   const {
     playerStats: rawPlayerStats, viewStats: rawViewStats, runtimeDictionary: rawDictionary,
-    currentLocation: storedLocation, playerTraits, disabledTraitIds,
+    currentLocation: storedLocation, playerTraits, disabledTraitIds, codePins,
   } = useGameplay();
 
   const traitOrder = useMemo(() => traitOrderIndex(rawTraits, rawTraitGroups), [rawTraits, rawTraitGroups]);
   // The location by id and the stats by number: both are state, so a move or a stat crossing a band
   // re-collects here and every name below follows.
   const storedLocationId = storedLocation?.id;
-  const pins = useMemo(() => collectPins({
+  const pinsFor = useCallback((withCodePins: CodePins) => collectPins({
     traits: inAuthoredOrder(refreshChosenTraits(playerTraits, rawTraits), traitOrder),
     disabledTraitIds,
     location: rawLocations.find((l) => l.id === storedLocationId),
     stats: rawPlayerStats,
     placeholders,
     rolls,
+    codePins: withCodePins,
   }), [playerTraits, disabledTraitIds, rawTraits, traitOrder, rawLocations, storedLocationId, rawPlayerStats, placeholders, rolls]);
+  const pins = useMemo(() => pinsFor(codePins), [pinsFor, codePins]);
 
   const {
     entities, locations, connections, stats, traits, traitGroups, resolvePH, resolveWith, resolveTraitText,
@@ -155,6 +159,6 @@ export function useResolvedWorld(): ResolvedWorld {
 
   return {
     entities, locations, connections, stats, traits, traitGroups, dictionary, currentLocation,
-    playerStats, viewStats, traitOrder, pins, resolvePH, resolveWith, resolveTraitText,
+    playerStats, viewStats, traitOrder, pins, pinsFor, resolvePH, resolveWith, resolveTraitText,
   };
 }

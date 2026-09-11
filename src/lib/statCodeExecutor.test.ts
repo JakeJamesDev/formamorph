@@ -293,3 +293,71 @@ describe('executeStatCode placeholders', () => {
     await expect(run(code, [entry('__proto__', 'odd')])).resolves.toEqual({ value: 1, error: null });
   });
 });
+
+describe('executeStatCode placeholder writes', () => {
+  const stat = makeStat({ id: 'a', max: 1000 });
+  const entry = (name: string, value: string): SandboxPlaceholder => ({ name, value, values: [value], roll: () => value });
+  const run = (code: string, placeholders = [entry('Mood', 'calm'), entry('Hair', 'red')]) =>
+    executeStatCode(code, [stat], stat, undefined, undefined, placeholders);
+
+  it('reads a changed value back as a write, leaving the value alone', async () => {
+    await expect(run('placeholders.Mood.value = "Furious";'))
+      .resolves.toEqual({ value: null, error: null, placeholders: [{ name: 'Mood', text: 'Furious' }] });
+  });
+
+  it('writes the text a value is set to even when it already reads that way, so it pins', async () => {
+    await expect(run('placeholders.Mood.value = "calm";'))
+      .resolves.toEqual({ value: null, error: null, placeholders: [{ name: 'Mood', text: 'calm' }] });
+  });
+
+  it('writes nothing for an entry the code only reads', async () => {
+    await expect(run('return placeholders.Mood.value === "calm" ? 1 : 0;')).resolves.toEqual({ value: 1, error: null });
+  });
+
+  it('takes a string assigned to the entry itself as a write to its value', async () => {
+    await expect(run('placeholders.Mood = "Furious"; return 1;'))
+      .resolves.toEqual({ value: 1, error: null, placeholders: [{ name: 'Mood', text: 'Furious' }] });
+  });
+
+  it('writes a number as its text', async () => {
+    await expect(run('placeholders.Mood.value = 3;'))
+      .resolves.toEqual({ value: null, error: null, placeholders: [{ name: 'Mood', text: '3' }] });
+  });
+
+  it('writes each placeholder the run changed, in the order the map holds them', async () => {
+    await expect(run('placeholders.Hair.value = "grey"; placeholders.Mood.value = "Furious";')).resolves.toEqual({
+      value: null, error: null, placeholders: [{ name: 'Mood', text: 'Furious' }, { name: 'Hair', text: 'grey' }],
+    });
+  });
+
+  it('reads unpin() back as an unpin, with the value unchanged for the rest of the run', async () => {
+    await expect(run('placeholders.Mood.unpin(); return placeholders.Mood.value === "calm" ? 1 : 0;'))
+      .resolves.toEqual({ value: 1, error: null, placeholders: [{ name: 'Mood', unpin: true }] });
+  });
+
+  it('keeps the last of a write and an unpin', async () => {
+    await expect(run('placeholders.Mood.unpin(); placeholders.Mood.value = "Furious";'))
+      .resolves.toEqual({ value: null, error: null, placeholders: [{ name: 'Mood', text: 'Furious' }] });
+    await expect(run('placeholders.Mood.value = "Furious"; placeholders.Mood.unpin();'))
+      .resolves.toEqual({ value: null, error: null, placeholders: [{ name: 'Mood', unpin: true }] });
+  });
+
+  it('drops a write to a name the world has no placeholder for, and reports it', async () => {
+    await expect(run('placeholders.Nope = "x"; placeholders["Also Nope"] = { value: "y" };')).resolves.toEqual({
+      value: null, error: null, unknownPlaceholders: ['Nope', 'Also Nope'],
+    });
+  });
+
+  it('fails the run on a value that is not text, discarding every write', async () => {
+    const result = await run('self.value = 5; placeholders.Hair.value = "grey"; placeholders.Mood.value = {};');
+    expect(result).toMatchObject({ value: null, kind: 'throw' });
+    expect(result.error).toContain('placeholders.Mood.value must be text');
+    expect(result.placeholders).toBeUndefined();
+  });
+
+  it('discards the writes of a run that throws after making them', async () => {
+    const result = await run('placeholders.Mood.value = "Furious"; throw new Error("late");');
+    expect(result).toMatchObject({ value: null, kind: 'throw' });
+    expect(result.placeholders).toBeUndefined();
+  });
+});
