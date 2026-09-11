@@ -121,7 +121,7 @@
         }
       ],
       "starting": 90,
-      "code": "const power = stats.find(s => s.name === 'Power').value;\nconst health = stats.find(s => s.name === 'Health').value;\nlet m = Math.round(power * 0.8 + 20);\nif (health < 30) m = Math.min(m, 35); // crippled when the core is failing\nreturn m;"
+      "code": "const power = stats.Power.value;\nconst health = stats.Health.value;\nlet m = Math.round(power * 0.8 + 20);\nif (health < 30) m = Math.min(m, 35); // crippled when the core is failing\nreturn m;"
     },
     {
       "id": "1739621783199",
@@ -155,7 +155,7 @@
         }
       ],
       "starting": 80,
-      "code": "const power = stats.find(s => s.name === 'Power').value;\nconst charge = stats.find(s => s.name === 'Charge').value;\nconst health = stats.find(s => s.name === 'Health').value;\nlet out = Math.round(power * 0.9 + 10);\nif (health < 30) out = Math.round(out * 0.5); // damaged core weakens fire\nif (charge >= 100) out = Math.min(100, out + 30); // Overdrive burst primed\nreturn out;"
+      "code": "const power = stats.Power.value;\nconst charge = stats.Charge.value;\nconst health = stats.Health.value;\nlet out = Math.round(power * 0.9 + 10);\nif (health < 30) out = Math.round(out * 0.5); // damaged core weakens fire\nif (charge >= 100) out = Math.min(100, out + 30); // Overdrive burst primed\nreturn out;"
     },
     {
       "id": "charge",

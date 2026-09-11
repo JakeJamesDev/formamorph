@@ -119,7 +119,7 @@ describe('the on-demand stat-code check', () => {
       stat({
         id: 's2',
         name: 'Fertility',
-        code: 'const v = stats.find(s => s.name === "Vigor").value; if (v !== 80) throw new Error("saw " + v); return v;',
+        code: 'const v = stats.Vigor.value; if (v !== 80) throw new Error("saw " + v); return v;',
       }),
     ]));
     expect(found).toEqual([]);

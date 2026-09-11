@@ -8,7 +8,7 @@
  * Loaded on demand: only the world editor's code fields reach this module, so gameplay never fetches it.
  */
 
-import { Compartment, EditorState, RangeSetBuilder, type Extension } from '@codemirror/state';
+import { Compartment, EditorState, RangeSetBuilder, StateEffect, type Extension } from '@codemirror/state';
 import {
   EditorView, keymap, lineNumbers, placeholder as placeholderExt, highlightSpecialChars, drawSelection,
   rectangularSelection, crosshairCursor, tooltips, Decoration, ViewPlugin,
@@ -215,8 +215,10 @@ export interface CodeSession {
   canRedo: () => boolean;
   /** Show the margin of lint marks beside the line numbers. Full screen only — it costs a column. */
   setLintGutter: (show: boolean) => void;
-  /** The world's stat names, offered as string-literal completions. Re-read on every keystroke. */
-  setStatNames: (names: readonly string[]) => void;
+  /** The world's stat names, for completions and name checks. Re-lints when the names change. */
+  setStatNames: (names: readonly string[] | undefined) => void;
+  /** The name of the stat the code belongs to. Re-lints when it changes. */
+  setSelfName: (name: string | undefined) => void;
   /** The world's placeholders, for completions and name checks. Re-lints when the list changes. */
   setPlaceholders: (placeholders: CodePlaceholders | undefined) => void;
   /** The world's trait names, for completions and name checks. Re-lints when the list changes. */
@@ -231,8 +233,10 @@ export interface CodeSessionOptions {
   placeholder?: string;
   /** Decorate `{{name:type=default}}` spans. Template editing only. */
   slots?: boolean;
-  /** The world's stat names, offered inside string literals. */
+  /** The world's stat names. Absent, stat names are neither offered nor checked. */
   statNames?: readonly string[];
+  /** The name of the stat the code belongs to, so a write through `stats` to it counts as its own. */
+  selfName?: string;
   /** The world's placeholders. Absent, placeholder names are neither offered nor checked. */
   placeholders?: CodePlaceholders;
   /** The world's trait names. Absent, trait names are neither offered nor checked. */
@@ -242,12 +246,19 @@ export interface CodeSessionOptions {
   onUpdate?: () => void;
 }
 
+const sameNames = (a?: readonly string[], b?: readonly string[]) =>
+  a === b || (!!a && !!b && a.length === b.length && a.every((name, i) => name === b[i]));
+
+/** A world list the linter reads changed. `forceLinting` alone does nothing once the last lint has settled. */
+const worldListsChanged = StateEffect.define<null>();
+
 export function createCodeSession(options: CodeSessionOptions): CodeSession {
   const gutter = new Compartment();
   let applyingExternal = false;
   // Held rather than captured: the stat list changes while the editor is open, and the editor outlives
   // every render that could rebuild an extension around it.
-  let statNames: readonly string[] = options.statNames ?? [];
+  let statNames: readonly string[] | undefined = options.statNames;
+  let selfName: string | undefined = options.selfName;
   let placeholders: CodePlaceholders | undefined = options.placeholders;
   let traits: readonly string[] | undefined = options.traits;
 
@@ -255,7 +266,7 @@ export function createCodeSession(options: CodeSessionOptions): CodeSession {
    *  what the sandbox exposes. */
   const completeStatCode = (context: CompletionContext): CMCompletionResult | null => {
     const doc = context.state.doc.toString();
-    const result = statCodeCompletions(doc, context.pos, { slots: options.slots, statNames, placeholders, traits });
+    const result = statCodeCompletions(doc, context.pos, { slots: options.slots, statNames, selfName, placeholders, traits });
     if (!result || result.options.length === 0) return null;
     // Explicit means the author asked for the list; otherwise an empty word is every option at once.
     if (!context.explicit && result.from === result.to && !context.matchBefore(/["'.]|\{\{/)) return null;
@@ -265,8 +276,11 @@ export function createCodeSession(options: CodeSessionOptions): CodeSession {
   };
 
   const statCodeLinter = linter(
-    (view): Diagnostic[] => statCodeDiagnostics(view.state.doc.toString(), { slots: options.slots, placeholders, traits }),
-    { delay: 400 },
+    (view): Diagnostic[] => statCodeDiagnostics(view.state.doc.toString(), { slots: options.slots, statNames, selfName, placeholders, traits }),
+    {
+      delay: 400,
+      needsRefresh: (update) => update.transactions.some((tr) => tr.effects.some((effect) => effect.is(worldListsChanged))),
+    },
   );
   /** Set by Escape, so the next Tab moves focus instead of indenting — otherwise a keyboard-only user is
    *  trapped in the field. Spent by that Tab, and dropped by anything else typed in between. */
@@ -340,6 +354,11 @@ export function createCodeSession(options: CodeSessionOptions): CodeSession {
     }),
   });
 
+  const relint = () => {
+    view.dispatch({ effects: worldListsChanged.of(null) });
+    forceLinting(view);
+  };
+
   return {
     dom: view.dom,
     setValue(value) {
@@ -369,17 +388,27 @@ export function createCodeSession(options: CodeSessionOptions): CodeSession {
     redo() { redo(view); view.focus(); },
     canUndo: () => undoDepth(view.state) > 0,
     canRedo: () => redoDepth(view.state) > 0,
-    setStatNames(names) { statNames = names; },
-    // A rename or a new entry can clear or raise a name diagnostic with no edit to the code.
+    // A rename or a new entry can clear or raise a name diagnostic with no edit to the code. The owner hands
+    // a fresh stat list on every edit to any stat, the code included, so only new names re-lint.
+    setStatNames(next) {
+      if (sameNames(next, statNames)) return;
+      statNames = next;
+      relint();
+    },
+    setSelfName(next) {
+      if (next === selfName) return;
+      selfName = next;
+      relint();
+    },
     setPlaceholders(next) {
       if (next === placeholders) return;
       placeholders = next;
-      forceLinting(view);
+      relint();
     },
     setTraits(next) {
       if (next === traits) return;
       traits = next;
-      forceLinting(view);
+      relint();
     },
     setLintGutter(show) {
       view.dispatch({ effects: gutter.reconfigure(show ? lintGutter() : []) });

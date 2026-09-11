@@ -14,7 +14,7 @@ import { findSlotRanges, parseTemplateSlots } from '@/lib/statCodeTemplates';
 import type { Placeholder } from '@/types';
 import {
   BUILTIN_MEMBERS, PLACEHOLDER_ENTRY_FIELDS, PREVIOUS_FIELDS, REQUESTED_FIELDS, SANDBOX_BUILTINS, SANDBOX_GLOBALS, SANDBOX_KNOWN_NAMES,
-  SELF_WRITABLE_FIELDS, STATS_MEMBERS, STAT_FIELDS, TRAIT_ENTRY_FIELDS, TRAIT_WRITABLE_FIELD, nearestName, nearestSurfaceName,
+  SELF_WRITABLE_FIELDS, STAT_FIELDS, TRAIT_ENTRY_FIELDS, TRAIT_WRITABLE_FIELD, nearestName, nearestSurfaceName,
   type SurfaceEntry,
 } from '@/lib/statCodeSurface';
 
@@ -59,12 +59,13 @@ export interface AnalysisOptions {
   placeholders?: CodePlaceholders;
   /** The world's trait names, in authored order. Absent, trait names are neither offered nor checked. */
   traits?: readonly string[];
+  /** The world's stat names, in authored order. Absent, stat names are neither offered nor checked. */
+  statNames?: readonly string[];
+  /** The name of the stat the code belongs to, so a write through `stats` to that name counts as its own. */
+  selfName?: string;
 }
 
-export interface CompletionOptions extends AnalysisOptions {
-  /** The world's stat names, offered inside string literals. */
-  statNames?: readonly string[];
-}
+export type CompletionOptions = AnalysisOptions;
 
 const parse = (code: string): Tree => javascriptLanguage.parser.parse(code);
 
@@ -122,15 +123,16 @@ function statLikeNames(code: string, tree: Tree): Map<string, string> {
   return names;
 }
 
-/** Whether stat-like source reaches the current stat's own entry: `self`, or an equality lookup by
- *  `currentStatId` (a `!==` lookup finds some other stat). */
-const reachesOwnStat = (text: string) =>
-  /\bself\b/.test(text) || /(?<![!=])===?\s*currentStatId\b|\bcurrentStatId\s*===?(?!=)/.test(text);
+/** Whether stat-like source reaches the current stat's own entry: `self`, `stats` indexed by its own name,
+ *  or an equality lookup by `currentStatId` (a `!==` lookup finds some other stat). */
+const reachesOwnStat = (text: string, selfName?: string) =>
+  /\bself\b/.test(text) || /(?<![!=])===?\s*currentStatId\b|\bcurrentStatId\s*===?(?!=)/.test(text)
+  || (selfName !== undefined && indexesStat(text, selfName));
 
 /**
  * The source of the expression a `.` hangs off, scanned backwards over the member chain. Read from the
  * text rather than the tree because the tree can't shape the case that matters most: half-typed code like
- * `stats.find(s => …).` parses as an unclosed argument list, whose "object" is the open paren.
+ * `Object.values(stats).find(s => …).` parses as an unclosed argument list, whose "object" is the open paren.
  */
 function expressionBeforeDot(code: string, dotPos: number): string | null {
   let end = dotPos;
@@ -162,12 +164,15 @@ function expressionBeforeDot(code: string, dotPos: number): string | null {
 
 const IDENTIFIER = /^[A-Za-z_$][\w$]*$/;
 
+/** What one entry of a name-keyed sandbox map is called in a message. */
+type EntryNoun = 'placeholder' | 'trait' | 'stat';
+
 /** Each distinct placeholder name, in authored order. */
 const placeholderNames = (placeholders: readonly Placeholder[]): string[] => [...new Set(placeholders.map((p) => p.name))];
 
 /** One entry per distinct name of a `kind` of map entry. `dotted` keeps only the names a `.` can reach; the
  *  rest need bracket syntax. */
-function mapNameEntries(names: readonly string[], kind: 'placeholder' | 'trait', dotted: boolean): SurfaceEntry[] {
+function mapNameEntries(names: readonly string[], kind: EntryNoun, dotted: boolean): SurfaceEntry[] {
   return [...new Set(names)]
     .filter((name) => !dotted || IDENTIFIER.test(name))
     .map((name) => ({ name, detail: kind, info: `The “${name}” ${kind} in this world.` }));
@@ -177,14 +182,23 @@ function mapNameEntries(names: readonly string[], kind: 'placeholder' | 'trait',
 const entryExpression = (root: string) => new RegExp(`^${root}(\\??\\.[A-Za-z_$][\\w$]*|\\??\\.?\\[\\s*(["'])[^"'\\\\]*\\2\\s*\\])$`);
 const PLACEHOLDER_ENTRY_EXPRESSION = entryExpression('placeholders');
 const TRAIT_ENTRY_EXPRESSION = entryExpression('traits');
+/** One entry of `stats`, the key literal or computed: every key reads a stat, if only a blank one. */
+const STAT_ENTRY_EXPRESSION = /^stats(\??\.[A-Za-z_$][\w$]*|\??\.?\[[^[\]]*\])$/;
+/** One stat picked out of `Object.values(stats)`. `filter` hands back another array, so it stays quiet. */
+const ITERATED_STAT_EXPRESSION = /^Object\.values\(\s*stats\s*\)(\.(find|at|pop|shift)\(.*\)|\[[^[\]]*\])$/;
 
-/** Whether the expression before a `.` is recognizably a stat, so its fields are the honest list. The
- *  calls named are the ones that hand back a single stat; `filter` hands back another array, so a chain
- *  ending in it is one of the shapes that stays quiet. */
+/** Whether the expression before a `.` is recognizably a stat, so its fields are the honest list. */
 function looksLikeStat(code: string, tree: Tree, expression: string): boolean {
   if (expression === 'self') return true;
-  if (/^stats\b/.test(expression)) return /\.(find|at|pop|shift)\b|\[/.test(expression);
+  if (STAT_ENTRY_EXPRESSION.test(expression) || ITERATED_STAT_EXPRESSION.test(expression)) return true;
   return statLikeNames(code, tree).has(expression);
+}
+
+/** Whether `text` indexes `stats` by the literal `name`, by dot or by bracket. */
+function indexesStat(text: string, name: string): boolean {
+  const escaped = name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  if (new RegExp(`\\bstats\\s*(?:\\?\\.)?\\[\\s*(["'\`])${escaped}\\1\\s*\\]`).test(text)) return true;
+  return IDENTIFIER.test(name) && new RegExp(`\\bstats\\s*\\??\\.\\s*${escaped}(?![\\w$])`).test(text);
 }
 
 /**
@@ -198,7 +212,7 @@ function membersAfterDot(
 ): readonly SurfaceEntry[] | null {
   const expression = expressionBeforeDot(code, dotPos);
   if (expression === null) return null;
-  if (expression === 'stats') return STATS_MEMBERS;
+  if (expression === 'stats') return options.statNames ? mapNameEntries(options.statNames, 'stat', true) : null;
   if (expression === 'placeholders') {
     return options.placeholders ? mapNameEntries(placeholderNames(options.placeholders.list), 'placeholder', true) : null;
   }
@@ -233,7 +247,7 @@ interface WriteCheck {
   problem: CodeDiagnostic | null;
 }
 
-function checkWrite(target: SyntaxNode, code: string, tree: Tree, declared: Set<string>): WriteCheck {
+function checkWrite(target: SyntaxNode, code: string, tree: Tree, declared: Set<string>, selfName?: string): WriteCheck {
   let innermost = target;
   while (innermost.firstChild?.name === 'MemberExpression') innermost = innermost.firstChild;
   const first = innermost.getChild('PropertyName');
@@ -250,16 +264,20 @@ function checkWrite(target: SyntaxNode, code: string, tree: Tree, declared: Set<
   }
   const object = target.firstChild;
   if (!object) return { own: false, problem: null };
-  const text = code.slice(object.from, object.to);
+  // `stats.Name = …` replaces the whole entry, which the host never reads back, even for the stat's own name.
+  const replaced = STAT_ENTRY_EXPRESSION.test(code.slice(target.from, target.to));
+  const entry = replaced ? target : object;
+  const text = code.slice(entry.from, entry.to);
   if (!looksLikeStat(code, tree, text)) return { own: false, problem: null };
-  if (reachesOwnStat(statLikeNames(code, tree).get(text) ?? text)) return { own: true, problem: null };
+  const own = reachesOwnStat(statLikeNames(code, tree).get(text) ?? text, selfName);
+  if (own && !replaced) return { own: true, problem: null };
   return {
     own: false,
     problem: {
       from: target.from,
       to: target.to,
       severity: 'warning',
-      message: 'This writes to another stat, and stat code can only change its own. Write to self instead.',
+      message: own ? 'Write to self.value instead.' : 'This writes to another stat, and stat code can only change its own. Write to self instead.',
     },
   };
 }
@@ -292,7 +310,7 @@ interface EntryRef {
 
 /** The name a `root.Name` or `root["Name"]` member names, or null for any other member and for a key only a
  *  run could know. */
-function entryRef(node: SyntaxNode, code: string, root: 'placeholders' | 'traits'): EntryRef | null {
+function entryRef(node: SyntaxNode, code: string, root: 'placeholders' | 'traits' | 'stats'): EntryRef | null {
   const object = node.firstChild;
   if (object?.name !== 'VariableName' || code.slice(object.from, object.to) !== root) return null;
   const property = node.getChild('PropertyName');
@@ -309,7 +327,7 @@ function entryRef(node: SyntaxNode, code: string, root: 'placeholders' | 'traits
 function checkEntryName(
   { name, from, to }: EntryRef,
   names: readonly string[],
-  noun: 'placeholder' | 'trait',
+  noun: EntryNoun,
   winner: (last: number) => string = () => name,
 ): CodeDiagnostic | null {
   const count = names.filter((n) => n === name).length;
@@ -385,15 +403,10 @@ export function statCodeCompletions(
       const names = mapNameEntries(options.traits ?? [], 'trait', false);
       return { from: innerFrom, to: innerTo, options: names.map((entry) => asCompletion(entry, 'text')) };
     }
-    // The whole literal is replaced, not the part before the caret — a name half-typed in the middle of
-    // an old one would otherwise leave its tail behind.
-    return {
-      from: innerFrom,
-      to: innerTo,
-      options: (options.statNames ?? []).map((name) => ({
-        label: name, type: 'text', detail: 'stat', info: `The “${name}” stat in this world.`,
-      })),
-    };
+    // Inside `stats["…"]` and any other string alike. The whole literal is replaced, not the part before
+    // the caret — a name half-typed in the middle of an old one would otherwise leave its tail behind.
+    const names = mapNameEntries(options.statNames ?? [], 'stat', false);
+    return { from: innerFrom, to: innerTo, options: names.map((entry) => asCompletion(entry, 'text')) };
   }
 
   // `{{` in the template editor offers the slots the template already declares, so a second reference to
@@ -427,10 +440,15 @@ export function statCodeCompletions(
   const declared = declaredNames(code, tree);
   // The word being typed is itself a definition while it's being typed; offering it back is noise.
   const typed = code.slice(from, pos);
+  // Right after `stats[` a quoted name leads the list; `self.name` or a variable of the author's can go there too.
+  const quotedStats = /\bstats\s*(\?\.)?\[\s*$/.test(beforeWord)
+    ? mapNameEntries(options.statNames ?? [], 'stat', false).map((entry) => ({ ...asCompletion(entry, 'text', 2), label: JSON.stringify(entry.name) }))
+    : [];
   return {
     from,
     to: pos,
     options: [
+      ...quotedStats,
       ...SANDBOX_GLOBALS.map((entry) => asCompletion(entry, 'variable', 1)),
       ...[...declared]
         .filter((name) => name !== typed && !SANDBOX_KNOWN_NAMES.has(name))
@@ -475,6 +493,7 @@ export function statCodeDiagnostics(code: string, options: AnalysisOptions = {})
   let sawTraitWrite = false;
   const placeholdersInScope = !declared.has('placeholders');
   const traitsInScope = !declared.has('traits');
+  const statsInScope = !declared.has('stats');
 
   const cursor = tree.cursor();
   do {
@@ -495,7 +514,7 @@ export function statCodeDiagnostics(code: string, options: AnalysisOptions = {})
     if (cursor.type.name === 'ReturnStatement') { sawReturn = true; continue; }
     const target = writeTarget(cursor.node, code);
     if (target && !overlapsAny(target.from, target.to, ranges)) {
-      const { own, problem } = checkWrite(target, code, tree, declared);
+      const { own, problem } = checkWrite(target, code, tree, declared, options.selfName);
       if (own) sawOwnWrite = true;
       if (problem) diagnostics.push(problem);
       if (placeholdersInScope && memberRoot(target, code) === 'placeholders') {
@@ -525,6 +544,11 @@ export function statCodeDiagnostics(code: string, options: AnalysisOptions = {})
     if (cursor.type.name === 'MemberExpression' && options.traits && traitsInScope) {
       const ref = entryRef(cursor.node, code, 'traits');
       const problem = ref && !overlapsAny(ref.from, ref.to, ranges) ? checkTraitName(ref, options.traits) : null;
+      if (problem) diagnostics.push(problem);
+    }
+    if (cursor.type.name === 'MemberExpression' && options.statNames && statsInScope) {
+      const ref = entryRef(cursor.node, code, 'stats');
+      const problem = ref && !overlapsAny(ref.from, ref.to, ranges) ? checkEntryName(ref, options.statNames, 'stat') : null;
       if (problem) diagnostics.push(problem);
     }
     if (cursor.type.name !== 'VariableName') continue;

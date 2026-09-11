@@ -77,6 +77,19 @@ describe('what Test Code reports', () => {
     await waitFor(() => expect(row()).toHaveTextContent('1 error in this code'));
   });
 
+  it('runs over the world’s stats and counts a stat name the world does not have', async () => {
+    const user = userEvent.setup();
+    executeStatCode.mockResolvedValue({ value: 3, error: null });
+    renderCodePanel(stats[0]);
+
+    // Damp is in the world and Warmth is this stat's own entry; Dmap is a typo.
+    await testCode(user, 'stats.Warmth.value = stats.Damp.value; return stats.Dmap.value;');
+
+    await waitFor(() => expect(row()).toHaveTextContent('Result: 3'));
+    await waitFor(() => expect(row()).toHaveTextContent('1 error in this code'));
+    expect(executeStatCode.mock.calls[0][1]).toBe(stats);
+  });
+
   it('leaves a clean result clean, with nothing to qualify it', async () => {
     const user = userEvent.setup();
     executeStatCode.mockResolvedValue({ value: 5, error: null });

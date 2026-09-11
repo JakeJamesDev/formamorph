@@ -93,8 +93,7 @@ const StatManager = ({ stat, tab, onTabChange, focusField }: {
     return buildMorphGroups(morphSources, taken);
   }, [morphSources, stats, stat.id]);
 
-  // What a `stats.find(s => s.name === '…')` lookup can legitimately match, for the code field's
-  // string-literal completions.
+  // The names `stats` is keyed by, for the code field's completions and name checks.
   const statNames = useMemo(
     () => stats.map(entry => entry.name).filter((name): name is string => !!name),
     [stats],
@@ -437,6 +436,7 @@ const StatManager = ({ stat, tab, onTabChange, focusField }: {
         onChange={(code) => { clearTestReport(); handleChange("code", code); }}
         ariaLabel="Stat Code"
         statNames={statNames}
+        selfName={editingStat.name}
         placeholders={codePlaceholders}
         traits={traitNames}
         // Its caption is the section heading, which full screen leaves behind — so the field names
@@ -460,7 +460,9 @@ const StatManager = ({ stat, tab, onTabChange, focusField }: {
               // Only the editor's chunk holds the reader, and CodeArea fetches that chunk on
               // demand — so this stays off the world editor's own bundle.
               const { statCodeDiagnostics, summarizeProblems } = await import('@/lib/statCodeAnalysis');
-              setCodeProblems(summarizeProblems(statCodeDiagnostics(source, { placeholders: codePlaceholders, traits: traitNames })));
+              setCodeProblems(summarizeProblems(statCodeDiagnostics(source, {
+                placeholders: codePlaceholders, traits: traitNames, statNames, selfName: editingStat.name,
+              })));
             } catch {
               // What the run itself found is the point; the count is what the editor adds to it.
             }

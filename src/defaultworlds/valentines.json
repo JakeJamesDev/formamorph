@@ -153,7 +153,7 @@
           "description": "Untouchable. Full speed — nobody in this school can lay a ribbon on you."
         }
       ],
-      "code": "const stamina = stats.find(s => s.name === 'Stamina').value;\nconst sugar = stats.find(s => s.name === 'Sugar').value;\nreturn Math.round(stamina * 0.7 + 30 - sugar * 0.4);"
+      "code": "const stamina = stats.Stamina.value;\nconst sugar = stats.Sugar.value;\nreturn Math.round(stamina * 0.7 + 30 - sugar * 0.4);"
     },
     {
       "id": "pursuit",

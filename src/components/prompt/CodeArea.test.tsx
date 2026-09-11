@@ -516,6 +516,15 @@ describe('CodeArea', () => {
     expect(sound.querySelectorAll('[class*="cm-lintRange"]')).toHaveLength(0);
   });
 
+  it('re-lints a stat name when the world’s names change, with no edit to the code', async () => {
+    const { rerender } = render(<Harness initial="return stats.Helth.value;" statNames={['Health']} />);
+    const field = await editor();
+    const marks = () => [...field.querySelectorAll('.cm-lintRange-error')].map(mark => mark.textContent);
+    await waitFor(() => expect(marks()).toEqual(['Helth']), { timeout: 3000 });
+    rerender(<Harness initial="return stats.Helth.value;" statNames={['Health', 'Helth']} />);
+    await waitFor(() => expect(marks()).toEqual([]), { timeout: 3000 });
+  });
+
   it('puts history and the view control together on the right, after what gets inserted', async () => {
     render(<Harness slots />);
     await editor();

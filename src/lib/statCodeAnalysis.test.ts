@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { statCodeCompletions, statCodeDiagnostics, summarizeProblems } from './statCodeAnalysis';
 import { BUILT_IN_TEMPLATES } from './statCodeTemplates';
-import { PLACEHOLDER_ENTRY_FIELDS, TRAIT_ENTRY_FIELDS } from './statCodeSurface';
+import { PLACEHOLDER_ENTRY_FIELDS, STAT_FIELDS, TRAIT_ENTRY_FIELDS } from './statCodeSurface';
 import { phValues } from '@/test/placeholderValues';
 import { encodePlaceholderToken } from './placeholders';
 import type { Placeholder } from '@/types';
@@ -21,9 +21,9 @@ const messages = (code: string, options?: Parameters<typeof statCodeDiagnostics>
 
 describe('statCodeDiagnostics', () => {
   it('says nothing about code that runs', () => {
-    expect(statCodeDiagnostics(`const health = stats.find(s => s.name === 'Health')?.value ?? 0;
-const me = stats.find(s => s.id === currentStatId);
-return Math.min(me?.max ?? 100, health + deltaHours);`)).toEqual([]);
+    expect(statCodeDiagnostics(`const health = stats.Health.value;
+const me = stats[self.name];
+return Math.min(me.max, health + deltaHours);`)).toEqual([]);
   });
 
   it('underlines syntax the grammar cannot read', () => {
@@ -56,15 +56,15 @@ return Math.min(me?.max ?? 100, health + deltaHours);`)).toEqual([]);
   });
 
   it('accepts every name the author declared, including destructured and looped ones', () => {
-    expect(statCodeDiagnostics(`const { min, max } = stats[0];
+    expect(statCodeDiagnostics(`const { min, max } = stats.Health;
 let total = 0;
-for (const entry of stats) total += entry.value;
+for (const entry of Object.values(stats)) total += entry.value;
 function scale(amount) { return amount * 2; }
 return scale(total) + min + max;`)).toEqual([]);
   });
 
   it('warns when the code neither returns nor touches its own stat', () => {
-    const [problem] = statCodeDiagnostics('const doubled = stats[0].value * 2;');
+    const [problem] = statCodeDiagnostics('const doubled = stats.Health.value * 2;');
     expect(problem.severity).toBe('warning');
     expect(problem.message).toMatch(/return/i);
     expect(problem.message).toContain('self.value');
@@ -79,7 +79,7 @@ return scale(total) + min + max;`)).toEqual([]);
   });
 
   it('accepts code that only writes its own bounds', () => {
-    for (const code of ['self.min = 5;', 'self.max = stats.length * 10;', 'self.regen -= 1;']) {
+    for (const code of ['self.min = 5;', 'self.max = Object.keys(stats).length * 10;', 'self.regen -= 1;']) {
       expect(statCodeDiagnostics(code), code).toEqual([]);
     }
   });
@@ -90,8 +90,8 @@ return scale(total) + min + max;`)).toEqual([]);
   });
 
   it('accepts a write through the currentStatId lookup, which reaches the same entry as self', () => {
-    expect(statCodeDiagnostics('const me = stats.find(s => s.id === currentStatId);\nme.value = 5;')).toEqual([]);
-    expect(statCodeDiagnostics('stats.find(s => s.id === currentStatId).value = 5;')).toEqual([]);
+    expect(statCodeDiagnostics('const me = Object.values(stats).find(s => s.id === currentStatId);\nme.value = 5;')).toEqual([]);
+    expect(statCodeDiagnostics('Object.values(stats).find(s => s.id === currentStatId).value = 5;')).toEqual([]);
   });
 
   it('flags a write to a field self does not have, and names the one it was reaching for', () => {
@@ -121,9 +121,9 @@ return scale(total) + min + max;`)).toEqual([]);
   it('warns about a write to another stat’s entry, which the host ignores', () => {
     for (const code of [
       'stats[0].value = 1;\nreturn 2;',
-      'stats.find(s => s.name === "Health").value = 1;\nreturn 2;',
-      'const hp = stats.find(s => s.name === "Health");\nhp.value -= 1;\nreturn 2;',
-      'const other = stats.find(s => s.id !== currentStatId);\nother.value = 1;\nreturn 2;',
+      'stats.Health.value = 1;\nreturn 2;',
+      'const hp = stats["Health"];\nhp.value -= 1;\nreturn 2;',
+      'const other = Object.values(stats).find(s => s.id !== currentStatId);\nother.value = 1;\nreturn 2;',
     ]) {
       const problems = statCodeDiagnostics(code);
       expect(problems, code).toHaveLength(1);
@@ -133,7 +133,7 @@ return scale(total) + min + max;`)).toEqual([]);
   });
 
   it('keeps quiet about reads, which are always allowed', () => {
-    expect(statCodeDiagnostics('const hp = stats.find(s => s.name === "Health");\nreturn hp.value + self.regenApplied;')).toEqual([]);
+    expect(statCodeDiagnostics('const hp = stats.Health;\nreturn hp.value + self.regenApplied;')).toEqual([]);
   });
 
   it('keeps quiet about a missing return while the code is still unreadable', () => {
@@ -177,7 +177,7 @@ describe('summarizeProblems', () => {
 
   // The line rides beside "Result: 42", where a successful run is exactly what makes it worth saying.
   it('reports on code that runs perfectly well but never returns', () => {
-    expect(summarizeProblems(statCodeDiagnostics('const doubled = stats[0].value * 2;')))
+    expect(summarizeProblems(statCodeDiagnostics('const doubled = stats.Health.value * 2;')))
       .toBe('1 warning in this code');
   });
 });
@@ -187,7 +187,7 @@ describe('statCodeCompletions', () => {
     const offered = labels('return el|');
     expect(offered).toContain('elapsedHours');
     expect(offered).toContain('stats');
-    expect(offered).toContain('currentStatId');
+    expect(offered).toContain('self');
   });
 
   it('replaces the word already typed rather than doubling it', () => {
@@ -209,7 +209,7 @@ describe('statCodeCompletions', () => {
   });
 
   it('offers the stat fields after a dot', () => {
-    const offered = labels('const me = stats.find(s => s.id === currentStatId);\nreturn me.|');
+    const offered = labels('const me = stats[self.name];\nreturn me.|');
     expect(offered).toEqual([
       'id', 'name', 'type', 'description', 'min', 'max', 'value', 'regen', 'previous', 'requested', 'regenApplied',
     ]);
@@ -236,24 +236,25 @@ describe('statCodeCompletions', () => {
     expect(labels('const other = { previous: 1 };\nreturn other.previous.|')).toEqual([]);
   });
 
-  it('offers the stat fields off the find call itself, without a variable in between', () => {
-    expect(labels('return stats.find(s => s.id === currentStatId).|')).toContain('value');
-    expect(labels('return stats.find(s => s.id === currentStatId)?.|')).toContain('regen');
-    expect(labels('return stats[0].|')).toContain('max');
+  it('offers the stat fields off a lookup itself, without a variable in between', () => {
+    expect(labels('return Object.values(stats).find(s => s.id === currentStatId).|')).toContain('value');
+    expect(labels('return Object.values(stats).find(s => s.id === currentStatId)?.|')).toContain('regen');
+    expect(labels('return stats.Health.|')).toContain('max');
   });
 
   // A list offered after an expression nothing can name reads as the editor claiming `other.value` and
   // `Math.regen` exist, which is worse than offering nothing at all.
   it('says nothing after an expression it cannot type', () => {
     expect(labels('const other = 5;\nreturn other.|')).toEqual([]);
-    expect(labels('const me = stats[0];\nreturn me.name.|')).toEqual([]);
+    expect(labels('const me = stats.Health;\nreturn me.name.|')).toEqual([]);
     expect(labels('return "text".|')).toEqual([]);
-    // `filter` hands back another array, so the chain is no more a stat than `stats` itself is.
-    expect(labels('return stats.filter(s => s.value > 0).|')).toEqual([]);
+    // `filter` hands back another array, so the chain is not a stat.
+    expect(labels('return Object.values(stats).filter(s => s.value > 0).|')).toEqual([]);
+    expect(labels('return Object.values(stats).find(s => s.value > 0).name.|')).toEqual([]);
   });
 
   it('still names a stat behind the operators an expression is written with', () => {
-    const doc = 'const me = stats.find(s => s.id === currentStatId);\nif (!me.|) return 0;';
+    const doc = 'const me = stats[self.name];\nif (!me.|) return 0;';
     expect(labels(doc)).toContain('value');
   });
 
@@ -278,30 +279,25 @@ describe('statCodeCompletions', () => {
     expect(result?.to).toBe('return Math.ro'.length);
   });
 
-  it('offers array members after stats, which is not itself a stat', () => {
-    const offered = labels('return stats.|');
-    expect(offered).toEqual(['find', 'filter', 'map', 'some', 'every', 'reduce', 'at', 'length']);
-  });
-
   // The info string is what the popup's description card reads out, and it is the only place the editor
   // gets to explain the sandbox as the author types.
   it('explains every member it offers', () => {
-    for (const doc of ['return Math.|', 'return stats.|', 'return stats[0].|', 'return self.previous.|', 'return self.requested.|']) {
-      const options = completeAt(doc)?.options ?? [];
+    for (const doc of ['return Math.|', 'return stats.|', 'return stats.Health.|', 'return self.previous.|', 'return self.requested.|']) {
+      const options = completeAt(doc, { statNames: ['Health'] })?.options ?? [];
       expect(options.length, doc).toBeGreaterThan(0);
       for (const option of options) expect(option.info, `${doc} ${option.label}`).toBeTruthy();
     }
   });
 
   it('offers the world’s stat names inside a string, where a typo fails silently', () => {
-    const offered = labels(`return stats.find(s => s.name === '|')?.value;`, {
+    const offered = labels(`return Object.values(stats).find(s => s.name === '|').value;`, {
       statNames: ['Health', 'Stamina'],
     });
     expect(offered).toEqual(['Health', 'Stamina']);
   });
 
   it('replaces the whole literal, so a half-typed name is not doubled inside the quotes', () => {
-    const doc = `return stats.find(s => s.name === 'Heal|th')?.value;`;
+    const doc = `return Object.values(stats).find(s => s.name === 'Heal|th').value;`;
     const result = completeAt(doc, { statNames: ['Health'] });
     const code = doc.replace('|', '');
     expect(code.slice(result!.from, result!.to)).toBe('Health');
@@ -326,7 +322,7 @@ describe('statCodeCompletions', () => {
   });
 
   it('offers nothing for stat names the world does not have', () => {
-    expect(labels(`return stats.find(s => s.name === '|');`)).toEqual([]);
+    expect(labels(`return stats['|'];`)).toEqual([]);
   });
 });
 
@@ -472,5 +468,95 @@ describe('traits in stat code', () => {
     const members = TRAIT_ENTRY_FIELDS.map(entry => entry.name);
     expect(labels('return traits.Brave.|', { traits: world })).toEqual(members);
     expect(labels('return traits["Night Owl"].|', { traits: world })).toEqual(members);
+  });
+});
+
+describe('the stats map in stat code', () => {
+  const statNames = ['Health', 'Night Vision', 'Mood'];
+  const fields = STAT_FIELDS.map(entry => entry.name);
+
+  it('says nothing about names the world has, by dot or by bracket', () => {
+    expect(messages('return stats.Health.value + stats["Night Vision"].max;', { statNames })).toEqual([]);
+  });
+
+  it('flags a name no stat has, and names the one it was reaching for', () => {
+    const [problem] = statCodeDiagnostics('return stats.Helth.value;', { statNames });
+    expect(problem).toMatchObject({ severity: 'error', message: 'No stat is named “Helth”. Did you mean “Health”?' });
+    expect('return stats.Helth.value;'.slice(problem.from, problem.to)).toBe('Helth');
+    expect(messages('return stats["Night Vison"].value;', { statNames }))
+      .toEqual(['No stat is named “Night Vison”. Did you mean “Night Vision”?']);
+  });
+
+  // A find lookup reads a blank entry named "find" and throws when called, so the name check is what catches it.
+  it('flags an array lookup as a stat the world does not have', () => {
+    expect(messages('return stats.find(s => s.name === "Health").value;', { statNames })).toEqual(['No stat is named “find”.']);
+  });
+
+  it('keeps quiet without a world to check against, and about a name computed at run time', () => {
+    expect(messages('return stats.Helth.value;')).toEqual([]);
+    expect(messages('return stats[self.name].value;', { statNames })).toEqual([]);
+  });
+
+  it('warns on a shared name, which reaches the last one authored', () => {
+    expect(messages('return stats.Health.value;', { statNames: ['Health', 'Mood', 'Health'] }))
+      .toEqual(['2 stats are named “Health”. This reads the last one authored.']);
+  });
+
+  it('warns about a write to another stat through the map, by dot, by bracket, or by a name holding it', () => {
+    for (const code of [
+      'stats.Health.value = 1;\nreturn 2;',
+      'stats["Night Vision"].max += 1;\nreturn 2;',
+      'const hp = stats.Health;\nhp.value -= 1;\nreturn 2;',
+      'stats.Health = 5;\nreturn 2;',
+    ]) {
+      const problems = statCodeDiagnostics(code, { statNames, selfName: 'Mood' });
+      expect(problems, code).toHaveLength(1);
+      expect(problems[0], code).toMatchObject({ severity: 'warning', message: expect.stringMatching(/another stat.*Write to self instead/) });
+    }
+  });
+
+  it('takes a write to its own entry through the map as a write to self', () => {
+    for (const code of ['stats.Mood.value = 5;', 'stats[self.name].value = 5;', 'const me = stats["Mood"];\nme.max = 50;']) {
+      expect(statCodeDiagnostics(code, { statNames, selfName: 'Mood' }), code).toEqual([]);
+    }
+  });
+
+  it('offers the names after stats., leaving out any a dot cannot reach', () => {
+    expect(labels('return stats.|', { statNames })).toEqual(['Health', 'Mood']);
+    expect(labels('return stats.|')).toEqual([]);
+  });
+
+  it('offers every name inside stats[""], and quoted names right after stats[', () => {
+    expect(labels('return stats["|"];', { statNames, traits: ['Brave'] })).toEqual(statNames);
+    const quoted = labels('return stats[|', { statNames });
+    expect(quoted.slice(0, 3)).toEqual(['"Health"', '"Night Vision"', '"Mood"']);
+    // self still completes there, for stats[self.name].
+    expect(quoted).toContain('self');
+  });
+
+  it('replaces the whole literal inside stats[""], so a half-typed name is not doubled', () => {
+    const doc = `return stats['Heal|th'].value;`;
+    const result = completeAt(doc, { statNames });
+    expect(doc.replace('|', '').slice(result!.from, result!.to)).toBe('Health');
+  });
+
+  it('offers the stat fields after an entry, by dot or by bracket, and after an iterated lookup', () => {
+    for (const doc of [
+      'return stats.Health.|',
+      'return stats["Night Vision"]?.|',
+      'return stats[self.name].|',
+      'return Object.values(stats).find(s => s.id === currentStatId).|',
+    ]) {
+      expect(labels(doc, { statNames }), doc).toEqual(fields);
+    }
+  });
+
+  it('explains every name it offers', () => {
+    for (const option of completeAt('return stats.|', { statNames })?.options ?? []) expect(option.info).toBeTruthy();
+  });
+
+  it('keeps currentStatId working but out of the list', () => {
+    expect(messages('return currentStatId === self.id ? 1 : 0;')).toEqual([]);
+    expect(labels('return cur|')).not.toContain('currentStatId');
   });
 });
