@@ -99,6 +99,18 @@ test('stat code sets its value from the playthrough’s roll of a placeholder', 
   await expect(page.getByText(/22\s*\/\s*100/).first()).toBeVisible();
 });
 
+test('a stat code bound shows as the bar’s range, and the delta reports only the value’s movement', async ({ page }) => {
+  page.on('pageerror', (error) => console.error(error.message));
+  await coinWithCode(page, 'self.max = 150;');
+  await mockModel(page, 'Coin: +20');
+  await openApp(page, settings(), { url: '/#dev?view=gameViewer&fixture=whiteRoom' });
+  await playOneTurn(page);
+
+  await expect(page.getByText(/80\s*\/\s*150/).first()).toBeVisible();
+  await expect(page.getByText('+20', { exact: true }).first()).toBeVisible();
+  await expect(page.getByText(/^\+(50|70)$/)).toHaveCount(0);
+});
+
 test('clock-reading stat code runs with zero asks on a turn with no stat update', async ({ page }) => {
   page.on('pageerror', (error) => console.error(error.message));
   await coinWithCode(page, 'return self.previous.value + self.requested.value + self.requested.max + 5 * deltaHours;');

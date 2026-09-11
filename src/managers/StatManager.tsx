@@ -19,7 +19,7 @@ import {
 } from "@/components/ui/select";
 import { HelpButton } from "@/components/HelpButton";
 import { HintInfo } from "@/components/SettingsRows";
-import { executeStatCode } from "@/lib/statCodeExecutor";
+import { CODE_BOUND_FIELDS, executeStatCode, type CodeBoundField } from "@/lib/statCodeExecutor";
 import { sandboxPlaceholders } from "@/lib/statCodePlaceholders";
 import { StatCodeTemplateDialog } from "@/components/modals/StatCodeTemplateDialog";
 import { CodeArea } from "@/components/prompt/CodeArea";
@@ -36,6 +36,9 @@ import type { FocusFieldHint, Stat, StatDescriptor, StatType, ThresholdUnit } fr
 const AVAILABILITY_INFO = `**Enabled** — the stat is active. Off keeps it inactive until a trait enables it. An inactive stat is not shown to the player or sent to the AI, and its Regen and Code do not run.
 
 **Hidden** — the stat is not shown to the player. It is still sent to the AI, and its Regen and Code run. Use it for dice rolls, cooldowns, and other bookkeeping.`;
+
+/** Test Code names each bound a run wrote with its Details field label. */
+const BOUND_LABELS: Record<CodeBoundField, string> = { min: "Min", max: "Max", regen: "Regen" };
 
 /** The stat being edited — a loose, partial Stat while fields are filled in. */
 type EditingStat = Partial<Stat>;
@@ -67,7 +70,8 @@ const StatManager = ({ stat, tab, onTabChange, focusField }: {
     threshold: "",
     description: "",
   });
-  const [codeResult, setCodeResult] = useState<number | null>(null);
+  /** What the last Test Code run wrote: the value, then each bound, as one line. Null when it wrote nothing. */
+  const [codeResult, setCodeResult] = useState<string | null>(null);
   const [codeError, setCodeError] = useState<string | null>(null);
   /** What the editor's own reader found, phrased for the test row. Null when it found nothing. */
   const [codeProblems, setCodeProblems] = useState<string | null>(null);
@@ -457,8 +461,15 @@ const StatManager = ({ stat, tab, onTabChange, focusField }: {
               const result = await executeStatCode(source, stats, editingStat as Stat, undefined, undefined, placeholderEntries);
               if (result.error) {
                 setCodeError(result.error);
-              } else if (result.value !== null) {
-                setCodeResult(result.value);
+              } else {
+                const parts = [
+                  ...(result.value !== null ? [`Result: ${result.value}`] : []),
+                  ...CODE_BOUND_FIELDS.flatMap((field) => {
+                    const bound = result.bounds?.[field];
+                    return bound === undefined ? [] : [`${BOUND_LABELS[field]}: ${bound}`];
+                  }),
+                ];
+                if (parts.length) setCodeResult(parts.join(' · '));
               }
             } catch (error) {
               setCodeError((error as Error).message);
@@ -473,7 +484,7 @@ const StatManager = ({ stat, tab, onTabChange, focusField }: {
         </Button>
 
         <div className="min-w-0 text-right">
-          {codeResult !== null && <div className="text-success">Result: {codeResult}</div>}
+          {codeResult !== null && <div className="text-success">{codeResult}</div>}
           {codeError && <div className="text-destructive text-label">Error: {codeError}</div>}
           {/* Always beside what the run reported, never instead of it: a run says what the code did
               this once, which is silent about a typo on a branch it didn't take. */}

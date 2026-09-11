@@ -1,6 +1,7 @@
 # 03: Stat Code Sets Its Own Bounds
 
-Status: ready-for-agent
+Status: ready-for-human
+Base: 06c3a0f4
 Blocked by: 02
 Recommended model: Claude Opus 5 (`claude-opus-5`)
 Reasoning effort: high

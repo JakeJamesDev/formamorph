@@ -1,4 +1,4 @@
-import type { PlayerStat } from '@/types';
+import type { PlayerStat, Trait } from '@/types';
 import { stripMarkdown } from './stripMarkdown';
 import { buildStatContext } from './statContext';
 import { decodeVariant, tokenVariant, variableForToken, variableVariantIds, withVariant } from './promptVariables';
@@ -82,11 +82,13 @@ export function readStatResponse(raw: string, snapshot: StatRequestSnapshot): St
   return { requestId: snapshot.id, updates: [...updates.values()], diagnostics };
 }
 
-/** Apply caps before values by identity, preserving authored text and enforcing the current live set. */
+/** Apply caps before values by identity, preserving authored text and enforcing the current live set.
+ *  `active` is the traits in force, which the cap under a code max derives from. */
 export function applyStatResponse(
   stats: PlayerStat[],
   response: StatResponse,
   enabledIds: ReadonlySet<string>,
+  active: readonly Trait[] = [],
 ): { stats: PlayerStat[]; diagnostics: StatUpdateDiagnostic[] } {
   const byId = new Map(response.updates.map((update) => [update.id, update]));
   const presentIds = new Set(stats.map((stat) => stat.id));
@@ -100,7 +102,7 @@ export function applyStatResponse(
       const update = byId.get(stat.id);
       if (!update || !enabledIds.has(stat.id)) return stat;
       const key = stat.name.toLowerCase();
-      const capped = applyAiMaxChanges([stat], { [key]: update.max });
+      const capped = applyAiMaxChanges([stat], { [key]: update.max }, active);
       return applyAiStatChanges(capped, { [key]: update.value })[0];
     }),
     diagnostics,

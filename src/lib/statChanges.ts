@@ -1,5 +1,6 @@
-import type { PlayerStat } from '@/types';
+import type { PlayerStat, Trait } from '@/types';
 import { clamp } from './utils';
+import { deriveEffectiveStats } from './traitRuntime';
 
 /**
  * Merge an array of AI stat-change objects (each a name→delta map) into one map
@@ -84,10 +85,13 @@ export function parseStatUpdates(text: string): {
  *
  * The movement is also accumulated into `aiMaxDelta`, which is what keeps the maximum derivable: a later
  * trait toggle recomputes the cap from base + traits + this, so the AI's work survives the recompute.
+ * Under a code max the cap holds and the ask moves the cap underneath, which `active` derives; stat code
+ * reads the ask itself as `requested.max`.
  */
 export function applyAiMaxChanges(
   stats: PlayerStat[],
   maxChanges: Record<string, number>,
+  active: readonly Trait[] = [],
 ): PlayerStat[] {
   return stats.map((stat) => {
     // Percentage stats are pinned to a 0–100 cap; the AI can never move their max.
@@ -96,6 +100,12 @@ export function applyAiMaxChanges(
     if (typeof delta !== 'number' || delta === 0) return stat;
     const allowed = (delta > 0 && !stat.noIncreaseMax) || (delta < 0 && !stat.noDecreaseMax);
     if (!allowed) return stat;
+    if (stat.codeBounds?.max !== undefined) {
+      const { max: _held, ...others } = stat.codeBounds;
+      const [under] = deriveEffectiveStats([{ ...stat, codeBounds: others }], active);
+      const booked = Math.max(under.min, under.max + delta) - under.max;
+      return booked === 0 ? stat : { ...stat, aiMaxDelta: (stat.aiMaxDelta ?? 0) + booked };
+    }
     const newMax = Math.max(stat.min, stat.max + delta);
     const newValue = clamp(stat.value, stat.min, newMax);
     // Record what the cap actually moved, not what was asked for, so a delta the floor refused isn't

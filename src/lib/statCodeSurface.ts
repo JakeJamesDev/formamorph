@@ -8,7 +8,7 @@
  * caught by the drift guard beside this file.
  */
 
-import { STAT_CLOCK_VARS } from '@/lib/statCodeExecutor';
+import { CODE_BOUND_FIELDS, STAT_CLOCK_VARS } from '@/lib/statCodeExecutor';
 
 /** One reachable name and what an author needs to know about it. */
 export interface SurfaceEntry {
@@ -46,18 +46,18 @@ export const STAT_FIELDS: readonly SurfaceEntry[] = [
   { name: 'name', detail: 'string', info: 'The stat’s display name, as the author typed it.' },
   { name: 'type', detail: 'string', info: 'number, percentage, or whichever type the stat was given.' },
   { name: 'description', detail: 'string', info: 'The stat’s description text.' },
-  { name: 'min', detail: 'number', info: 'Lower bound. Results are clamped to it.' },
-  { name: 'max', detail: 'number', info: 'Upper bound. Results are clamped to it.' },
+  { name: 'min', detail: 'number', info: 'Lower bound. Results are clamped to it. Write self.min to set it.' },
+  { name: 'max', detail: 'number', info: 'Upper bound. Results are clamped to it. Write self.max to set it.' },
   { name: 'value', detail: 'number', info: 'Current value, with this turn’s AI change and regen applied. Write self.value to set it.' },
-  { name: 'regen', detail: 'number', info: 'Per-turn regen amount configured on the stat.' },
+  { name: 'regen', detail: 'number', info: 'Regen per story hour, with traits applied. Write self.regen to set it.' },
   { name: 'previous', detail: '{ value, max }', info: 'Value and max at the start of this turn.' },
   { name: 'requested', detail: '{ value, max }', info: 'The change the AI asked for this turn, before flags and clamping. Zero when it asked for none.' },
   { name: 'regenApplied', detail: 'number', info: 'The regen this turn applied, after clamping.' },
 ];
 
 /** The fields on `self` that a write reaches. The host reads these back after the run; writes to any other
- *  field, or to another stat's entry, do nothing. */
-export const SELF_WRITABLE_FIELDS: readonly string[] = ['value'];
+ *  field, or to another stat's entry, do nothing. A bound write holds until the code next runs. */
+export const SELF_WRITABLE_FIELDS: readonly string[] = ['value', ...CODE_BOUND_FIELDS];
 
 /** The fields on a stat's `previous`. */
 export const PREVIOUS_FIELDS: readonly SurfaceEntry[] = [

@@ -3,8 +3,8 @@
  * (No DOM needed; node keeps the QuickJS WASM engine loading through its filesystem path.)
  */
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { runStatCodeTurn, type StatCodeTurn } from './statCodeTurn';
-import type { Placeholder, PlaceholderRolls, PlayerStat } from '@/types';
+import { overlayStatCodeResult, runStatCodeTurn, type StatCodeTurn } from './statCodeTurn';
+import type { Placeholder, PlaceholderRolls, PlayerStat, Trait } from '@/types';
 import { encodePlaceholderToken, type PlaceholderPick } from './placeholders';
 import { phValueId, phValues } from '@/test/placeholderValues';
 
@@ -15,7 +15,7 @@ const stat = (over: Partial<PlayerStat>): PlayerStat => ({
 
 /** A turn where nothing happened unless a case says so: no asks, no regen, previous equal to now. */
 const turn = (over: Partial<StatCodeTurn> & Pick<StatCodeTurn, 'stats'>): StatCodeTurn => ({
-  enabled: {}, previous: over.stats, asks: [], regenApplied: {}, clock: {}, ...over,
+  enabled: {}, previous: over.stats, asks: [], regenApplied: {}, clock: {}, traits: [], ...over,
 });
 
 const valueOf = (stats: readonly PlayerStat[], id: string) => stats.find(s => s.id === id)?.value;
@@ -232,5 +232,113 @@ describe('runStatCodeTurn placeholders', () => {
   it('offers an empty map when the turn carries no placeholders', async () => {
     const out = await runStatCodeTurn(turn({ stats: [stat({ id: 'a', value: 0, code: 'return Object.keys(placeholders).length + 1;' })] }));
     expect(valueOf(out.stats, 'a')).toBe(1);
+  });
+});
+
+describe('runStatCodeTurn bound writes', () => {
+  beforeEach(() => vi.spyOn(console, 'error').mockImplementation(() => {}));
+  afterEach(() => vi.restoreAllMocks());
+
+  /** A stat as a playthrough carries it: bases seeded, AI delta booked, bounds derived from them. */
+  const seeded = (over: Partial<PlayerStat>): PlayerStat => stat({
+    id: 'a', min: 0, max: 100, regen: 0, baseMin: 0, baseMax: 100, baseRegen: 0, aiMaxDelta: 0, ...over,
+  });
+  const only = (out: { stats: readonly PlayerStat[] }) => out.stats[0];
+  const raiseCap: Trait = { id: 't', name: 'Robust', statChanges: [{ statId: 'a', value: 20, type: 'max' }] };
+
+  it.each([
+    ['min', 'self.min = 10;', { min: 10 }],
+    ['max', 'self.max = 80;', { max: 80 }],
+    ['regen', 'self.regen = 3;', { regen: 3 }],
+  ] as const)('lands a self.%s write as a code bound and the effective bound', async (_field, code, expected) => {
+    const out = await runStatCodeTurn(turn({ stats: [seeded({ code })] }));
+    expect(only(out)).toMatchObject(expected);
+    expect(only(out).codeBounds).toEqual(expected);
+    expect(out.boundsChanged).toEqual(['a']);
+    expect(out.moved).toEqual([]);
+  });
+
+  it('leaves a bound the code did not write to the pipeline, and a code bound it did not rewrite in place', async () => {
+    const out = await runStatCodeTurn(turn({
+      stats: [seeded({ min: 5, codeBounds: { min: 5 }, regen: 2, baseRegen: 2, code: 'self.max = 80;' })],
+    }));
+    expect(only(out)).toMatchObject({ min: 5, max: 80, regen: 2 });
+    expect(only(out).codeBounds).toEqual({ min: 5, max: 80 });
+  });
+
+  it('clamps a value write in the same run to the range it just wrote', async () => {
+    const out = await runStatCodeTurn(turn({ stats: [seeded({ value: 50, code: 'self.max = 30; self.value = 90;' })] }));
+    expect(only(out)).toMatchObject({ max: 30, value: 30 });
+    expect(out.moved).toEqual(['a']);
+  });
+
+  it('settles an untouched value into a range the code shrank', async () => {
+    const out = await runStatCodeTurn(turn({ stats: [seeded({ value: 70, code: 'self.max = 40;' })] }));
+    expect(only(out)).toMatchObject({ max: 40, value: 40 });
+    expect(out.moved).toEqual(['a']);
+  });
+
+  it('keeps the active traits under a bound the code did not write', async () => {
+    const out = await runStatCodeTurn(turn({
+      stats: [seeded({ max: 120, code: 'self.min = 10;' })],
+      traits: [raiseCap],
+    }));
+    expect(only(out)).toMatchObject({ min: 10, max: 120 });
+  });
+
+  it('clears every code bound of a stat with empty code, and the derived cap with its AI delta returns', async () => {
+    const out = await runStatCodeTurn(turn({
+      stats: [seeded({ value: 30, min: 20, max: 40, regen: 5, aiMaxDelta: 15, codeBounds: { min: 20, max: 40, regen: 5 }, code: '  ' })],
+    }));
+    expect(only(out)).toMatchObject({ min: 0, max: 115, regen: 0, value: 30 });
+    expect('codeBounds' in only(out)).toBe(false);
+    expect(out.boundsChanged).toEqual(['a']);
+  });
+
+  it('keeps the code bounds of a disabled stat, whose code never runs', async () => {
+    const stats = [seeded({ max: 40, codeBounds: { max: 40 }, code: '' })];
+    const out = await runStatCodeTurn(turn({ stats, enabled: { a: false } }));
+    expect(out.stats).toBe(stats);
+  });
+
+  it('discards a bound write when the code throws after making it', async () => {
+    const stats = [seeded({ code: 'self.max = 30; throw new Error("late");' })];
+    const out = await runStatCodeTurn(turn({ stats }));
+    expect(out.stats).toBe(stats);
+    expect(out.boundsChanged).toEqual([]);
+  });
+
+  it('writes nothing for code that sets a bound to the number it already has', async () => {
+    const stats = [seeded({ max: 40, codeBounds: { max: 40 }, code: 'self.max = 40;' })];
+    expect((await runStatCodeTurn(turn({ stats }))).stats).toBe(stats);
+  });
+});
+
+describe('overlayStatCodeResult', () => {
+  const seeded = (over: Partial<PlayerStat>): PlayerStat => stat({
+    id: 'a', min: 0, max: 100, baseMin: 0, baseMax: 100, baseRegen: 0, aiMaxDelta: 0, ...over,
+  });
+
+  it('carries a code bound onto the latest stat, re-derived from its own AI delta', async () => {
+    const result = await runStatCodeTurn(turn({ stats: [seeded({ value: 50, code: 'self.min = 10;' })] }));
+    // An AI max ask landed on the latest copy while the run was in flight.
+    const [latest] = overlayStatCodeResult([seeded({ value: 70, max: 120, aiMaxDelta: 20 })], result, []);
+    expect(latest).toMatchObject({ min: 10, max: 120, value: 70, codeBounds: { min: 10 } });
+  });
+
+  it('carries only the value the code moved, and leaves an untouched stat as it is', async () => {
+    const result = await runStatCodeTurn(turn({
+      stats: [seeded({ value: 50, code: 'return 20;' }), seeded({ id: 'b', value: 50 })],
+    }));
+    const latest = [seeded({ value: 45 }), seeded({ id: 'b', value: 44 })];
+    const out = overlayStatCodeResult(latest, result, []);
+    expect(out[0].value).toBe(20);
+    expect(out[1]).toBe(latest[1]);
+  });
+
+  it('keeps the latest value of a stat whose bounds alone changed, settled into the new range', async () => {
+    const result = await runStatCodeTurn(turn({ stats: [seeded({ value: 30, code: 'self.max = 60;' })] }));
+    expect(overlayStatCodeResult([seeded({ value: 90 })], result, [])[0]).toMatchObject({ max: 60, value: 60 });
+    expect(overlayStatCodeResult([seeded({ value: 25 })], result, [])[0]).toMatchObject({ max: 60, value: 25 });
   });
 });

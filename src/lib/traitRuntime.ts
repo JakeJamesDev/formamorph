@@ -10,7 +10,7 @@
 //   switching it off must give back nothing. Each switch stores what actually moved and the next switch of
 //   that trait reverses it, rather than the authored number.
 
-import type { PlayerStat, Stat, StatChange, Trait, TraitGroup } from '@/types';
+import type { CodeBounds, PlayerStat, Stat, StatChange, Trait, TraitGroup } from '@/types';
 import { clamp } from './utils';
 import { exclusiveSiblings, inAuthoredOrder } from './traitEffects';
 
@@ -65,22 +65,36 @@ function bases(stat: PlayerStat) {
 
 /**
  * Recompute every stat's min, max and regen from its bases, the active traits and the accumulated AI max
- * delta. Values are untouched — this is bounds only.
+ * delta, then let each code bound replace its field. Values are untouched — this is bounds only.
  *
  * A trait may raise a min and another may lower that raise back, but the floor never drops below the one the
  * author wrote: the summed min contribution only counts when it is positive. Max is floored at the effective
- * min so a lowering trait can never invert the range.
+ * min so neither a lowering trait nor a code bound can invert the range.
  */
 export function deriveEffectiveStats(stats: PlayerStat[], active: readonly Trait[]): PlayerStat[] {
   return stats.map((stat) => {
     const base = bases(stat);
     const contrib = traitContributions(stat.id, active);
-    const min = base.min + Math.max(0, contrib.min);
-    const max = Math.max(min, base.max + contrib.max + (stat.aiMaxDelta ?? 0));
-    const regen = base.regen + contrib.regen;
+    const code = stat.codeBounds;
+    const min = code?.min ?? base.min + Math.max(0, contrib.min);
+    const max = Math.max(min, code?.max ?? base.max + contrib.max + (stat.aiMaxDelta ?? 0));
+    const regen = code?.regen ?? base.regen + contrib.regen;
     if (min === stat.min && max === stat.max && regen === (stat.regen ?? 0)) return stat;
     return { ...stat, min, max, regen };
   });
+}
+
+/** `stat` holding exactly `bounds` as its code bounds, re-derived under `active`, with `value` clamped in. */
+export function withCodeBounds(
+  stat: PlayerStat,
+  bounds: CodeBounds,
+  value: number,
+  active: readonly Trait[],
+): PlayerStat {
+  const { codeBounds: _replaced, ...rest } = stat;
+  const next: PlayerStat = Object.keys(bounds).length ? { ...rest, value, codeBounds: bounds } : { ...rest, value };
+  const [derived] = deriveEffectiveStats([next], active);
+  return { ...derived, value: clamp(derived.value, derived.min, derived.max) };
 }
 
 /**
