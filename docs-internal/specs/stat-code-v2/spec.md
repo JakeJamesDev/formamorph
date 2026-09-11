@@ -77,7 +77,7 @@ Stat code becomes a small script over the stat it belongs to and over the world'
 - `placeholders` is an object keyed by placeholder name. Each entry is `{ value, values, roll }`. `value` is the current resolved text under this playthrough's rolls and active pins. `values` is every authored value resolved to text, in authored order, benched values (weight 0) included. `roll()` returns one value text drawn with the author's weights and has no side effect.
 - Names that are not valid identifiers are reached with bracket syntax. Two placeholders with the same name collide on the map; the last one authored wins and the editor warns.
 - Return semantics: a number sets `self.value`. `undefined` or no return means "apply what was written". Any other return type is the existing non-number failure.
-- The host marshals `self` and `placeholders` back out after the run and diffs them against what it injected. A field whose value changed is a code write. A field left alone keeps the pipeline's result. A string assigned to a placeholder entry instead of its `value` counts as a write to `value`.
+- The host marshals `self` back out after the run and diffs it against what it injected. A field whose value changed is a code write. A field left alone keeps the pipeline's result. A placeholder write is any assignment to `value`, changed or not, so a pin lands even when the text already reads that way. A string assigned to a placeholder entry instead of its `value` counts as a write to `value`.
 - Timeout, memory, and stack caps are unchanged. Any failure discards every write from that run.
 
 **Own-stat bounds**
@@ -94,7 +94,7 @@ Stat code becomes a small script over the stat it belongs to and over the world'
 - Code Pins live in the snapshotted gameplay state, not on the save envelope beside the memory maps, so undo and re-roll restore them.
 - Code Pins are read by the resolver in every place trait pins are read: prompt context, stat name resolution, the immersive view.
 - Reading `placeholders` requires resolving every placeholder once per run under current rolls and pins. Resolution during the run does not mint rolls; a placeholder with no roll yet reads as its draw would and the minted roll is discarded.
-- A write to a placeholder name that does not exist is dropped and reported as a diagnostic.
+- A write to a placeholder name that does not exist is dropped and reported as a diagnostic. An unknown name reads as a placeholder with no text and no values, so the write never throws.
 
 **Trait reads and writes**
 

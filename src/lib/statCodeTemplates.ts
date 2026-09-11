@@ -229,7 +229,7 @@ return source {{comparison:choice(>=|<=)=>=}} {{threshold:number=50}} ? (me?.max
   {
     id: 'builtin-per-turn-change',
     name: 'Per-Turn Change',
-    description: 'Drift by a fixed amount per story hour. A negative rate drains (hunger, fuel), a positive one fills. Leave Regen at 0 — code replaces it.',
+    description: 'Drift by a fixed amount per story hour. A negative rate drains (hunger, fuel), a positive one fills. Stacks with Regen, so set one or the other.',
     code: `const me = stats.find(s => s.id === currentStatId);
 const ratePerHour = {{ratePerHour:number=-5}};
 return (me?.value ?? 0) + ratePerHour * deltaHours;`,
@@ -265,7 +265,7 @@ return min + ((me?.max ?? 100) - min) * (roll / 100);`,
   {
     id: 'builtin-regen-toward-target',
     name: 'Regen Toward Target',
-    description: 'Ease toward a resting value from either side, slowing as it arrives. Set the target to this stat’s max for a soft-capped regen. Leave Regen at 0 — code replaces it.',
+    description: 'Ease toward a resting value from either side, slowing as it arrives. Set the target to this stat’s max for a soft-capped regen. Stacks with Regen, so set one or the other.',
     code: `const me = stats.find(s => s.id === currentStatId);
 const value = me?.value ?? 0;
 const target = {{target:number=100}};

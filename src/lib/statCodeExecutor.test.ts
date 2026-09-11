@@ -3,7 +3,7 @@
  * (No DOM needed; node keeps the QuickJS WASM engine loading through its filesystem path.)
  */
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { executeStatCode, usesStatClock, STAT_CLOCK_VARS, type SandboxPlaceholder, type SandboxTrait } from './statCodeExecutor';
+import { executeStatCode, usesStatClock, STAT_CLOCK_VARS, type SandboxPlaceholder, type SandboxTrait, type StatCodeRunOptions } from './statCodeExecutor';
 import type { Stat } from '@/types';
 
 const makeStat = (over: Partial<Stat>): Stat => ({
@@ -94,8 +94,8 @@ describe('executeStatCode self and turn inputs', () => {
   const me = makeStat({ id: 'me', name: 'Mood', value: 40 });
   const other = makeStat({ id: 'other', name: 'Health', value: 70 });
   const stats = [other, me];
-  const run = (code: string, turn?: Parameters<typeof executeStatCode>[4]) =>
-    executeStatCode(code, stats, me, undefined, turn);
+  const run = (code: string, turn?: StatCodeRunOptions['turn']) =>
+    executeStatCode(code, stats, me, { turn });
 
   it('injects self as the very entry that sits in stats', async () => {
     expect((await run('return self === stats.find(s => s.id === currentStatId) ? 1 : 0;')).value).toBe(1);
@@ -212,8 +212,8 @@ describe('executeStatCode on the bundled worlds', () => {
 
 describe('executeStatCode clock variables', () => {
   const big = makeStat({ max: 100000 });
-  const run = (code: string, clock?: Parameters<typeof executeStatCode>[3]) =>
-    executeStatCode(code, [], big, clock);
+  const run = (code: string, clock?: StatCodeRunOptions['clock']) =>
+    executeStatCode(code, [], big, { clock });
 
   it('exposes the turn duration, and defaults it to the flat hour when no clock is given', async () => {
     expect((await run('return deltaHours;', { deltaHours: 8 })).value).toBe(8);
@@ -274,7 +274,7 @@ describe('executeStatCode placeholders', () => {
   const stat = makeStat({ id: 'a', max: 1000 });
   const entry = (name: string, value: string, roll = () => value): SandboxPlaceholder => ({ name, value, values: [value], roll });
   const run = (code: string, placeholders: SandboxPlaceholder[]) =>
-    executeStatCode(code, [stat], stat, undefined, undefined, placeholders);
+    executeStatCode(code, [stat], stat, { placeholders });
 
   it('calls the host roll for the entry it hangs off', async () => {
     const roll = vi.fn(() => 'drawn');
@@ -288,8 +288,8 @@ describe('executeStatCode placeholders', () => {
       .resolves.toEqual({ value: 1, error: null });
   });
 
-  it('keys a name like __proto__ as a plain entry, and no inherited member reads as a name', async () => {
-    const code = 'return placeholders.__proto__.value === "odd" && placeholders.toString === undefined ? 1 : 0;';
+  it('keys a name like __proto__ as a plain entry, and an inherited member name reads as a blank entry', async () => {
+    const code = 'return placeholders.__proto__.value === "odd" && placeholders.toString.value === "" ? 1 : 0;';
     await expect(run(code, [entry('__proto__', 'odd')])).resolves.toEqual({ value: 1, error: null });
   });
 });
@@ -298,7 +298,7 @@ describe('executeStatCode placeholder writes', () => {
   const stat = makeStat({ id: 'a', max: 1000 });
   const entry = (name: string, value: string): SandboxPlaceholder => ({ name, value, values: [value], roll: () => value });
   const run = (code: string, placeholders = [entry('Mood', 'calm'), entry('Hair', 'red')]) =>
-    executeStatCode(code, [stat], stat, undefined, undefined, placeholders);
+    executeStatCode(code, [stat], stat, { placeholders });
 
   it('reads a changed value back as a write, leaving the value alone', async () => {
     await expect(run('placeholders.Mood.value = "Furious";'))
@@ -342,15 +342,26 @@ describe('executeStatCode placeholder writes', () => {
       .resolves.toEqual({ value: null, error: null, placeholders: [{ name: 'Mood', unpin: true }] });
   });
 
-  it('drops a write to a name the world has no placeholder for, and reports it', async () => {
-    await expect(run('placeholders.Nope = "x"; placeholders["Also Nope"] = { value: "y" };')).resolves.toEqual({
-      value: null, error: null, unknownPlaceholders: ['Nope', 'Also Nope'],
+  it('drops a write to a name the world has no placeholder for, and reports it, keeping the other writes', async () => {
+    const code = 'placeholders.Nope = "x"; placeholders["Also Nope"] = { value: "y" }; placeholders.Gone.value = "z"; placeholders.Mood.value = "Furious";';
+    await expect(run(code)).resolves.toEqual({
+      value: null, error: null, placeholders: [{ name: 'Mood', text: 'Furious' }], unknownPlaceholders: ['Nope', 'Also Nope', 'Gone'],
     });
+  });
+
+  it('reads an unknown name as a placeholder with no text, and a read of it reports nothing', async () => {
+    await expect(run('return placeholders.Gone.value === "" && placeholders.Gone.values.length === 0 && !("Gone" in placeholders) ? 1 : 0;'))
+      .resolves.toEqual({ value: 1, error: null });
+  });
+
+  it('keeps the readers of its writes out of the code’s reach', async () => {
+    await expect(run('return typeof __formamorphPlaceholderWrites === "undefined" && typeof __formamorphTraitWrites === "undefined" ? 1 : 0;'))
+      .resolves.toEqual({ value: 1, error: null });
   });
 
   it('fails the run on a value that is not text, discarding every write', async () => {
     const result = await run('self.value = 5; placeholders.Hair.value = "grey"; placeholders.Mood.value = {};');
-    expect(result).toMatchObject({ value: null, kind: 'throw' });
+    expect(result).toMatchObject({ value: null, kind: 'bad-write' });
     expect(result.error).toContain('placeholders.Mood.value must be text');
     expect(result.placeholders).toBeUndefined();
   });
@@ -368,7 +379,7 @@ describe('executeStatCode traits', () => {
   const timid: SandboxTrait = { name: 'Timid', enabled: false, acquired: true };
   const cursed: SandboxTrait = { name: 'Cursed', enabled: false, acquired: false };
   const run = (code: string, traits: SandboxTrait[] = [brave, timid, cursed]) =>
-    executeStatCode(code, [stat], stat, undefined, undefined, [], traits);
+    executeStatCode(code, [stat], stat, { traits });
 
   it('reads enabled and acquired for each of the three trait states', async () => {
     const code = 'const t = traits; return [t.Brave, t.Timid, t.Cursed].map(e => (e.enabled ? 2 : 0) + (e.acquired ? 1 : 0)).join("") * 1;';
@@ -415,7 +426,7 @@ describe('executeStatCode traits', () => {
 
   it('fails the run on an enabled that is not true or false, discarding every write', async () => {
     const result = await run('traits.Cursed.enabled = true; traits.Brave.enabled = 0;');
-    expect(result).toMatchObject({ value: null, kind: 'throw' });
+    expect(result).toMatchObject({ value: null, kind: 'bad-write' });
     expect(result.error).toContain('traits.Brave.enabled must be true or false');
     expect(result.traits).toBeUndefined();
   });

@@ -301,15 +301,30 @@ function entryRef(node: SyntaxNode, code: string, root: 'placeholders' | 'traits
   return name.includes('\\') ? null : { name, from: literal.from, to: literal.to };
 }
 
-/** What is wrong with a reference to the trait `name`: none has it, or several share it. */
-function checkTraitName({ name, from, to }: EntryRef, names: readonly string[]): CodeDiagnostic | null {
+/** What is wrong with a reference to the `noun` called `name`: none has it, or several share it. `winner`
+ *  is how the last-authored one displays, where that differs from the name as written. */
+function checkEntryName(
+  { name, from, to }: EntryRef,
+  names: readonly string[],
+  noun: 'placeholder' | 'trait',
+  winner: (last: number) => string = () => name,
+): CodeDiagnostic | null {
   const count = names.filter((n) => n === name).length;
   if (count === 1) return null;
-  if (count > 1) return { from, to, severity: 'warning', message: `${count} traits are named “${name}”. This reads the last one authored.` };
+  if (count > 1) {
+    const display = winner(names.lastIndexOf(name));
+    const reads = display === name ? 'the last one authored' : `“${display}”, the last one authored`;
+    return { from, to, severity: 'warning', message: `${count} ${noun}s are named “${name}”. This reads ${reads}.` };
+  }
   const suggestion = nearestName(name, [...new Set(names)]);
-  const message = suggestion ? `No trait is named “${name}”. Did you mean “${suggestion}”?` : `No trait is named “${name}”.`;
+  const message = suggestion ? `No ${noun} is named “${name}”. Did you mean “${suggestion}”?` : `No ${noun} is named “${name}”.`;
   return { from, to, severity: 'error', message };
 }
+
+const checkTraitName = (ref: EntryRef, names: readonly string[]) => checkEntryName(ref, names, 'trait');
+
+const checkPlaceholderName = (ref: EntryRef, { list, owners }: CodePlaceholders) =>
+  checkEntryName(ref, list.map((p) => p.name), 'placeholder', (last) => placeholderDisplayName(list[last].id, list, { owners }));
 
 /** What is wrong with a write into `traits`: to the entry itself, or to a field other than `enabled`. */
 function checkTraitWrite(target: SyntaxNode, code: string, assignment: boolean): CodeDiagnostic | null {
@@ -330,21 +345,6 @@ function checkTraitWrite(target: SyntaxNode, code: string, assignment: boolean):
   return { from: field.from, to: field.to, severity: 'error', message };
 }
 
-/** What is wrong with a reference to the placeholder `name`: none has it, or several share it. */
-function checkPlaceholderName(ref: EntryRef, { list, owners }: CodePlaceholders): CodeDiagnostic | null {
-  const named = list.filter((p) => p.name === ref.name);
-  const { from, to } = ref;
-  if (named.length === 0) {
-    const suggestion = nearestName(ref.name, placeholderNames(list));
-    const message = suggestion ? `No placeholder is named “${ref.name}”. Did you mean “${suggestion}”?`
-      : `No placeholder is named “${ref.name}”.`;
-    return { from, to, severity: 'error', message };
-  }
-  if (named.length === 1) return null;
-  const winner = placeholderDisplayName(named[named.length - 1].id, list, { owners });
-  const reads = winner === ref.name ? 'the last one authored' : `“${winner}”, the last one authored`;
-  return { from, to, severity: 'warning', message: `${named.length} placeholders are named “${ref.name}”. This reads ${reads}.` };
-}
 
 const asCompletion = (entry: SurfaceEntry, type: CompletionKind, boost?: number): CodeCompletion => ({
   label: entry.name, detail: entry.detail, info: entry.info, type, ...(boost === undefined ? {} : { boost }),

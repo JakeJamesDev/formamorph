@@ -1187,13 +1187,15 @@ const GameViewer = ({
       setPlayerTraits(preTurn.playerTraits);
       setDisabledTraitIds(preTurn.disabledTraitIds ?? []);
       setAppliedTraitValues(preTurn.appliedTraitValues ?? {});
-      applyStatChanges(parsed, {
+      const statCode = applyStatChanges(parsed, {
         deltaHours: turnHours,
         elapsedHours: gameTime,
         calendar,
       }, preTurn);
       applyRegenTick(turnHours, preTurn.playerStats);
       patchLatestTurn({ stat_changes: statChanges });
+      // Code writes land after the sandbox settles; the snapshot waits for them.
+      await statCode;
       armTurnSnapshot();
     });
   };
@@ -1755,20 +1757,23 @@ const GameViewer = ({
     // Reset the persistent bar deltas for this turn, then let stat changes + regen below re-fill them.
     setHeldStatChanges({});
 
-    // Apply stat changes
+    // Apply stat changes. Stat code runs inside; it is awaited below, before the snapshot arms, so the
+    // snapshot holds its writes even when the sandbox first loads on this turn.
+    let statCode: Promise<void> = Promise.resolve();
     if (commit.statResponse) {
-      applyStatChanges(commit.statResponse, commit.clock);
+      statCode = applyStatChanges(commit.statResponse, commit.clock);
     } else if (anyStatUsesClock) {
       // Nothing moved, but time still passed — clock-reading code runs on its own so a time-based stat
       // ticks every turn instead of only on turns the AI happened to report a stat change.
-      void runStatCode(rawPlayerStatsRef.current, rawPlayerStatsRef.current, [], commit.clock);
+      statCode = runStatCode(rawPlayerStatsRef.current, rawPlayerStatsRef.current, [], commit.clock);
     }
 
     // Advance the clock by what this turn actually took (the flat hour when unmeasured).
     handleTimePassed(commit.turnHours);
 
     // Snapshot this turn once the updates above commit (deferred so the snapshot captures the finalized
-    // message, applied stat changes, and advanced time rather than a stale mid-batch read).
+    // message, applied stat changes, code writes, and advanced time rather than a stale mid-batch read).
+    await statCode;
     armTurnSnapshot();
 
     // Only set game as started after a successful opening turn

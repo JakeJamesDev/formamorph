@@ -143,6 +143,28 @@ test('a stats re-roll reads the pre-turn Code Pins, so a flip lands once', async
   await expect(page.getByText(/11\s*\/\s*100/)).toHaveCount(0);
 });
 
+test('the first coded turn’s snapshot holds the code’s value, so a re-roll of the next turn starts from it', async ({ page }) => {
+  page.on('pageerror', (error) => console.error(error.message));
+  // The sandbox first loads on turn one; its write has to be in that turn's snapshot.
+  await coinWithCode(page, 'self.value = self.previous.value + 1;');
+  const statCalls = await mockModel(page, 'Coin: +20');
+  await openApp(page, settings(), { url: '/#dev?view=gameViewer&fixture=whiteRoom' });
+  const mobile = await playOneTurn(page, ['Count the coins.', 'Count them again.']);
+
+  // 60 → 61 on turn one, 61 → 62 on turn two.
+  await expect(page.getByText(/62\s*\/\s*100/).first()).toBeVisible();
+
+  if (mobile) await page.getByRole('button', { name: 'Game', exact: true }).click();
+  await page.getByRole('button', { name: 'More re-generate options', exact: true }).click();
+  await page.getByRole('button', { name: 'Re-generate Stats', exact: true }).click();
+  await expect.poll(statCalls).toBe(3);
+  await expect(page.getByRole('button', { name: 'More re-generate options', exact: true })).toBeEnabled();
+  if (mobile) await page.getByRole('button', { name: 'Status', exact: true }).click();
+  // From turn one's 61, not from the 80 the AI alone would have left there.
+  await expect(page.getByText(/62\s*\/\s*100/).first()).toBeVisible();
+  await expect(page.getByText(/81\s*\/\s*100/)).toHaveCount(0);
+});
+
 test('a stat code bound shows as the bar’s range, and the delta reports only the value’s movement', async ({ page }) => {
   page.on('pageerror', (error) => console.error(error.message));
   await coinWithCode(page, 'self.max = 150;');

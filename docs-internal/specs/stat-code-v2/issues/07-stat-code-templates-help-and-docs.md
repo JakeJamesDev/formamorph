@@ -27,3 +27,7 @@ An author opening the Code tab finds templates for the three new powers: a bound
 - 03 — Stat Code Sets Its Own Bounds
 - 05 — Stat Code Writes Placeholders
 - 06 — Stat Code Reads And Switches Traits
+
+## Comments
+
+- 2026-09-11, review: the regen hint on Per-Turn Change and Regen Toward Target was still the pre-ticket-02 wording. It now reads "Stacks with Regen, so set one or the other."

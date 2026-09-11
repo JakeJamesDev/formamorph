@@ -141,7 +141,7 @@ describe('what Test Code reports', () => {
     await testCode(user, 'traits.Brave.enabled = true; return 5;');
 
     await waitFor(() => expect(row()).toHaveTextContent('Result: 5 · Brave switched on'));
-    expect(executeStatCode.mock.calls[0][6]).toEqual([
+    expect(executeStatCode.mock.calls[0][3].traits).toEqual([
       { name: 'Brave', enabled: false, acquired: false },
       { name: 'Night Owl', enabled: false, acquired: false },
     ]);
