@@ -7,7 +7,7 @@
 // author sets precedence by dragging rows in the editor rather than by learning a rule.
 
 import { buildTraitTree, flattenTraitTree } from './traitTree';
-import type { PlaceholderValue, Stat, Trait, TraitGroup } from '@/types';
+import type { PlaceholderValue, PlayerStat, Stat, Trait, TraitGroup } from '@/types';
 
 /** Trait id → its position in the authored tree, depth-first. Ids missing from the world sort last. */
 export function traitOrderIndex(traits: readonly Trait[], groups: readonly TraitGroup[]): Map<string, number> {
@@ -40,6 +40,26 @@ export function refreshChosenTraits(chosen: Trait[], authored: Trait[]): Trait[]
   return chosen.map((t) => {
     const current = byId.get(t.id);
     return current ? { ...current, statChanges: t.statChanges } : t;
+  });
+}
+
+/**
+ * Re-read each saved stat's authoring identity from the world, the stat sibling of `refreshChosenTraits`:
+ * `code`, `name`, `description`, and `type` come from the world by id, so a save started before the
+ * author's latest edit still runs the new code on its next turn.
+ *
+ * Every other field — `value`, bounds, `starting`, the AI max delta, code bounds, `enabled`, and the
+ * trait-derived base fields — stays the saved stat's own: they are the numbers the playthrough actually
+ * reached, not the author's current defaults. A stat the world no longer has keeps its saved copy whole,
+ * the same fallback an unmatched trait gets.
+ */
+export function refreshSavedStats(saved: readonly PlayerStat[], authored: readonly Stat[]): PlayerStat[] {
+  const byId = new Map(authored.map((s) => [s.id, s]));
+  return saved.map((stat) => {
+    const current = byId.get(stat.id);
+    return current
+      ? { ...stat, code: current.code, name: current.name, description: current.description, type: current.type }
+      : stat;
   });
 }
 
