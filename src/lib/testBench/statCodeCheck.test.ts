@@ -32,6 +32,12 @@ describe('the on-demand stat-code check', () => {
     ]))).toEqual([]);
   });
 
+  it('runs code that reads a placeholder the world has, and reports none', async () => {
+    const world = base([stat({ id: 's1', name: 'Fertility', code: 'return placeholders.Mood.value === "calm" ? 1 : 2;' })]);
+    world.placeholders = [{ id: 'mood', name: 'Mood', values: [{ id: 'v:calm', text: 'calm' }] }];
+    expect(await checkStatCode(world)).toEqual([]);
+  });
+
   it('reports code that throws, naming the stat and the failure', async () => {
     const [found] = await checkStatCode(base([
       stat({ id: 's1', name: 'Fertility', code: 'return stats.find(s => s.name === "Missing").value;' }),

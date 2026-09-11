@@ -1415,6 +1415,33 @@ export function resolvePlaceholders(text: string, opts: ResolveOptions): string 
   return resolveText(text, createResolveCtx(opts));
 }
 
+/** One placeholder as play reads it right now: what it resolves to, and each authored value resolved. */
+export interface PlaceholderReading {
+  id: string;
+  name: string;
+  value: string;
+  /** Every authored value in order, benched ones included, each resolved to text. */
+  values: string[];
+}
+
+/**
+ * Every placeholder resolved at world scope under `rolls` and `pins`, in authored order. One context
+ * serves the whole read, so a placeholder with no roll draws once and every chip of it agrees. The read
+ * mints nothing: any `setRoll` in `opts` is dropped, and the draws go with the pass.
+ */
+export function readPlaceholders(opts: ResolveOptions): PlaceholderReading[] {
+  const ctx = createResolveCtx({ ...opts, setRoll: undefined });
+  return opts.placeholders.map((ph) => {
+    const inner: ResolveCtx = { ...ctx, seen: new Set([ph.id]), depth: 1 };
+    return {
+      id: ph.id,
+      name: ph.name,
+      value: resolveChip({ id: ph.id, mode: 'world', placementId: ph.id }, ctx, [], false),
+      values: (ph.values ?? []).map((v) => resolveValue(v.text, inner, { holder: ph, value: v })),
+    };
+  });
+}
+
 /** A fresh root context. Held across several texts by the priming and preview passes, so their `minted` rolls
  *  accumulate and every text after the first reads what the ones before it drew. */
 // `pinTexts` and `drawPins` stay off `ResolveOptions`: a render pass never walks pins it is not showing,

@@ -3,7 +3,7 @@
  * (No DOM needed; node keeps the QuickJS WASM engine loading through its filesystem path.)
  */
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { executeStatCode, usesStatClock, STAT_CLOCK_VARS } from './statCodeExecutor';
+import { executeStatCode, usesStatClock, STAT_CLOCK_VARS, type SandboxPlaceholder } from './statCodeExecutor';
 import type { Stat } from '@/types';
 
 const makeStat = (over: Partial<Stat>): Stat => ({
@@ -226,5 +226,29 @@ describe('usesStatClock', () => {
     expect(usesStatClock('const daysSurvived = 3; return daysSurvived;')).toBe(false);
     expect(usesStatClock('return deltaHoursExtra;')).toBe(false);
     expect(usesStatClock('return prev_elapsedHours;')).toBe(false);
+  });
+});
+
+describe('executeStatCode placeholders', () => {
+  const stat = makeStat({ id: 'a', max: 1000 });
+  const entry = (name: string, value: string, roll = () => value): SandboxPlaceholder => ({ name, value, values: [value], roll });
+  const run = (code: string, placeholders: SandboxPlaceholder[]) =>
+    executeStatCode(code, [stat], stat, undefined, undefined, placeholders);
+
+  it('calls the host roll for the entry it hangs off', async () => {
+    const roll = vi.fn(() => 'drawn');
+    await expect(run('return placeholders.Mood.roll() === "drawn" ? 1 : 0;', [entry('Mood', 'calm', roll), entry('Hair', 'red')]))
+      .resolves.toEqual({ value: 1, error: null });
+    expect(roll).toHaveBeenCalledTimes(1);
+  });
+
+  it('leaves no trace of the roll hook for the code to reach', async () => {
+    await expect(run('return Object.keys(globalThis).some(k => /roll/i.test(k)) ? 0 : 1;', [entry('Mood', 'calm')]))
+      .resolves.toEqual({ value: 1, error: null });
+  });
+
+  it('keys a name like __proto__ as a plain entry, and no inherited member reads as a name', async () => {
+    const code = 'return placeholders.__proto__.value === "odd" && placeholders.toString === undefined ? 1 : 0;';
+    await expect(run(code, [entry('__proto__', 'odd')])).resolves.toEqual({ value: 1, error: null });
   });
 });

@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { executeStatCode } from './statCodeExecutor';
 import {
-  BUILTIN_MEMBERS, LANGUAGE_NAMES, PREVIOUS_FIELDS, REQUESTED_FIELDS, SANDBOX_BUILTINS, SANDBOX_GLOBALS,
+  BUILTIN_MEMBERS, LANGUAGE_NAMES, PLACEHOLDER_ENTRY_FIELDS, PREVIOUS_FIELDS, REQUESTED_FIELDS, SANDBOX_BUILTINS, SANDBOX_GLOBALS,
   SELF_WRITABLE_FIELDS, STATS_MEMBERS, STAT_FIELDS, nearestSurfaceName,
 } from './statCodeSurface';
 import type { Stat } from '@/types';
@@ -47,6 +47,15 @@ describe('the described surface against the sandbox that provides it', () => {
         .resolves.toEqual({ value: 1, error: null });
     },
   );
+
+  it('describes every member of a placeholders entry, and no member it does not', async () => {
+    const expected = PLACEHOLDER_ENTRY_FIELDS.map(entry => entry.name).sort().join(',');
+    const entry = { name: 'Mood', value: 'calm', values: ['calm'], roll: () => 'calm' };
+    await expect(executeStatCode(
+      `return Object.keys(placeholders.Mood).sort().join(',') === ${JSON.stringify(expected)} ? 1 : 0;`,
+      stats, stats[0], undefined, undefined, [entry],
+    )).resolves.toEqual({ value: 1, error: null });
+  });
 
   it('offers self as the stat’s own entry in stats', async () => {
     await expect(run('return self === stats.find(s => s.id === currentStatId) ? 1 : 0;'))

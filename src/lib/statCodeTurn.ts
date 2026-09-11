@@ -1,5 +1,6 @@
 import type { PlayerStat } from '@/types';
 import { executeStatCode, type StatClock, type StatTurnInputs, type ValueAndMax } from './statCodeExecutor';
+import { sandboxPlaceholders, type StatCodePlaceholderSet } from './statCodePlaceholders';
 import { enabledStats } from './traitEffects';
 
 /** Everything one turn hands to stat code. The forward turn, the re-roll, and the clock-only run all
@@ -16,6 +17,8 @@ export interface StatCodeTurn {
   /** Regen applied this turn, by stat id. */
   regenApplied: Readonly<Record<string, number>>;
   clock: StatClock;
+  /** What `placeholders` reads. Absent, the map is empty. */
+  placeholders?: StatCodePlaceholderSet;
 }
 
 export interface StatCodeTurnResult {
@@ -42,9 +45,12 @@ export async function runStatCodeTurn(turn: StatCodeTurn): Promise<StatCodeTurnR
     }];
   }));
 
+  const coded = live.filter((stat) => stat.code?.trim());
+  // Resolved once, so every stat's code reads the same placeholders.
+  const placeholders = coded.length && turn.placeholders ? sandboxPlaceholders(turn.placeholders) : [];
   const writes = new Map<string, number>();
-  await Promise.all(live.filter((stat) => stat.code?.trim()).map(async (stat) => {
-    const result = await executeStatCode(stat.code ?? '', live, stat, turn.clock, inputs);
+  await Promise.all(coded.map(async (stat) => {
+    const result = await executeStatCode(stat.code ?? '', live, stat, turn.clock, inputs, placeholders);
     if (result.error) console.error(`Error executing code for stat ${stat.name}:`, result.error);
     else if (result.value !== null && result.value !== stat.value) writes.set(stat.id, result.value);
   }));

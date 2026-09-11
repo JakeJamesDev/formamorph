@@ -2,10 +2,11 @@ import { test, expect, type Page } from '@playwright/test';
 import { readFileSync } from 'node:fs';
 import { openApp } from './app';
 
-/** Serve the whiteRoom world and save with Coin (60 of 100 in the save) carrying `code` and `regen`. */
-async function coinWithCode(page: Page, code: string, regen = 0) {
-  for (const kind of ['World', 'Save']) {
-    const fixture = JSON.parse(readFileSync(`src/lib/devFixtures/whiteRoom${kind}.json`, 'utf8'));
+/** Serve the whiteRoom world and save with Coin (60 of 100 in the save) carrying `code` and `regen`.
+ *  `extra` is laid over the root of each fixture. */
+async function coinWithCode(page: Page, code: string, regen = 0, extra: { World?: object; Save?: object } = {}) {
+  for (const kind of ['World', 'Save'] as const) {
+    const fixture = { ...JSON.parse(readFileSync(`src/lib/devFixtures/whiteRoom${kind}.json`, 'utf8')), ...extra[kind] };
     const visit = (value: unknown) => {
       if (!value || typeof value !== 'object') return;
       if ('id' in value && value.id === 'stat-coin' && 'name' in value) Object.assign(value, { code, regen });
@@ -82,6 +83,20 @@ test('stat code reads the value after this turn’s regen, and the regen it appl
 
   // 60 + 20 asked + 5 regen = 85 is what code reads; it adds the regen once more.
   await expect(page.getByText(/90\s*\/\s*100/).first()).toBeVisible();
+});
+
+test('stat code sets its value from the playthrough’s roll of a placeholder', async ({ page }) => {
+  page.on('pageerror', (error) => console.error(error.message));
+  const mood = { id: 'ph-mood', name: 'Mood', values: [{ id: 'v-calm', text: 'calm' }, { id: 'v-angry', text: 'angry' }] };
+  await coinWithCode(page, 'return { calm: 11, angry: 22 }[placeholders.Mood.value];', 0, {
+    World: { placeholders: [mood] },
+    Save: { placeholderRolls: { world: { 'ph-mood': 'angry' } } },
+  });
+  await mockModel(page, 'Coin: +20');
+  await openApp(page, settings(), { url: '/#dev?view=gameViewer&fixture=whiteRoom' });
+  await playOneTurn(page);
+
+  await expect(page.getByText(/22\s*\/\s*100/).first()).toBeVisible();
 });
 
 test('clock-reading stat code runs with zero asks on a turn with no stat update', async ({ page }) => {

@@ -27,10 +27,10 @@ import {
   acceptCompletion, autocompletion,
   type CompletionContext, type CompletionResult as CMCompletionResult,
 } from '@codemirror/autocomplete';
-import { linter, lintGutter, type Diagnostic } from '@codemirror/lint';
+import { forceLinting, linter, lintGutter, type Diagnostic } from '@codemirror/lint';
 import { codeHighlightStyle, SLOT_CLASS } from '@/lib/codeHighlight';
 import { findSlotRanges } from '@/lib/statCodeTemplates';
-import { statCodeCompletions, statCodeDiagnostics } from '@/lib/statCodeAnalysis';
+import { statCodeCompletions, statCodeDiagnostics, type CodePlaceholders } from '@/lib/statCodeAnalysis';
 import type { InsertSnippet } from '@/lib/codeSnippets';
 
 /** Marks `{{slot}}` spans in the editor with the same class the read-only previews use. */
@@ -217,6 +217,8 @@ export interface CodeSession {
   setLintGutter: (show: boolean) => void;
   /** The world's stat names, offered as string-literal completions. Re-read on every keystroke. */
   setStatNames: (names: readonly string[]) => void;
+  /** The world's placeholders, for completions and name checks. Re-lints when the list changes. */
+  setPlaceholders: (placeholders: CodePlaceholders | undefined) => void;
   focus: () => void;
   destroy: () => void;
 }
@@ -229,6 +231,8 @@ export interface CodeSessionOptions {
   slots?: boolean;
   /** The world's stat names, offered inside string literals. */
   statNames?: readonly string[];
+  /** The world's placeholders. Absent, placeholder names are neither offered nor checked. */
+  placeholders?: CodePlaceholders;
   onChange: (value: string) => void;
   /** Any update at all, so the toolbar can re-read what undo and redo have to offer. */
   onUpdate?: () => void;
@@ -240,12 +244,13 @@ export function createCodeSession(options: CodeSessionOptions): CodeSession {
   // Held rather than captured: the stat list changes while the editor is open, and the editor outlives
   // every render that could rebuild an extension around it.
   let statNames: readonly string[] = options.statNames ?? [];
+  let placeholders: CodePlaceholders | undefined = options.placeholders;
 
   /** The one completion source. Everything it offers comes from the analysis module; nothing here knows
    *  what the sandbox exposes. */
   const completeStatCode = (context: CompletionContext): CMCompletionResult | null => {
     const doc = context.state.doc.toString();
-    const result = statCodeCompletions(doc, context.pos, { slots: options.slots, statNames });
+    const result = statCodeCompletions(doc, context.pos, { slots: options.slots, statNames, placeholders });
     if (!result || result.options.length === 0) return null;
     // Explicit means the author asked for the list; otherwise an empty word is every option at once.
     if (!context.explicit && result.from === result.to && !context.matchBefore(/["'.]|\{\{/)) return null;
@@ -255,7 +260,7 @@ export function createCodeSession(options: CodeSessionOptions): CodeSession {
   };
 
   const statCodeLinter = linter(
-    (view): Diagnostic[] => statCodeDiagnostics(view.state.doc.toString(), { slots: options.slots }),
+    (view): Diagnostic[] => statCodeDiagnostics(view.state.doc.toString(), { slots: options.slots, placeholders }),
     { delay: 400 },
   );
   /** Set by Escape, so the next Tab moves focus instead of indenting — otherwise a keyboard-only user is
@@ -360,6 +365,12 @@ export function createCodeSession(options: CodeSessionOptions): CodeSession {
     canUndo: () => undoDepth(view.state) > 0,
     canRedo: () => redoDepth(view.state) > 0,
     setStatNames(names) { statNames = names; },
+    setPlaceholders(next) {
+      if (next === placeholders) return;
+      placeholders = next;
+      // A rename or a new placeholder can clear or raise a name diagnostic with no edit to the code.
+      forceLinting(view);
+    },
     setLintGutter(show) {
       view.dispatch({ effects: gutter.reconfigure(show ? lintGutter() : []) });
     },

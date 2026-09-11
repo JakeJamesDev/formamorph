@@ -8,9 +8,12 @@
 
 import { javascriptLanguage } from '@codemirror/lang-javascript';
 import type { SyntaxNode, Tree } from '@lezer/common';
+import type { PlaceholderOwners } from '@/lib/placeholderHomes';
+import { placeholderDisplayName } from '@/lib/placementLetters';
 import { findSlotRanges, parseTemplateSlots } from '@/lib/statCodeTemplates';
+import type { Placeholder } from '@/types';
 import {
-  BUILTIN_MEMBERS, PREVIOUS_FIELDS, REQUESTED_FIELDS, SANDBOX_BUILTINS, SANDBOX_GLOBALS, SANDBOX_KNOWN_NAMES,
+  BUILTIN_MEMBERS, PLACEHOLDER_ENTRY_FIELDS, PREVIOUS_FIELDS, REQUESTED_FIELDS, SANDBOX_BUILTINS, SANDBOX_GLOBALS, SANDBOX_KNOWN_NAMES,
   SELF_WRITABLE_FIELDS, STATS_MEMBERS, STAT_FIELDS, nearestName, nearestSurfaceName, type SurfaceEntry,
 } from '@/lib/statCodeSurface';
 
@@ -42,9 +45,17 @@ export interface CompletionResult {
   options: CodeCompletion[];
 }
 
+/** The world's placeholders, and the entity or book each scoped one lives on. */
+export interface CodePlaceholders {
+  list: readonly Placeholder[];
+  owners?: PlaceholderOwners;
+}
+
 export interface AnalysisOptions {
   /** Treat `{{name:type=default}}` spans as opaque. Template editing only. */
   slots?: boolean;
+  /** Absent, placeholder names are neither offered nor checked. */
+  placeholders?: CodePlaceholders;
 }
 
 export interface CompletionOptions extends AnalysisOptions {
@@ -146,6 +157,22 @@ function expressionBeforeDot(code: string, dotPos: number): string | null {
   return text.length > 0 ? text : null;
 }
 
+const IDENTIFIER = /^[A-Za-z_$][\w$]*$/;
+
+/** Each distinct placeholder name, in authored order. */
+const placeholderNames = (placeholders: readonly Placeholder[]): string[] => [...new Set(placeholders.map((p) => p.name))];
+
+/** One entry per distinct placeholder name. `dotted` keeps only the names a `.` can reach; the rest need
+ *  bracket syntax. */
+function placeholderNameEntries(placeholders: readonly Placeholder[], dotted: boolean): SurfaceEntry[] {
+  return placeholderNames(placeholders)
+    .filter((name) => !dotted || IDENTIFIER.test(name))
+    .map((name) => ({ name, detail: 'placeholder', info: `The “${name}” placeholder in this world.` }));
+}
+
+/** `placeholders.Name` or `placeholders["Name"]`: an expression that is one placeholder entry. */
+const PLACEHOLDER_ENTRY_EXPRESSION = /^placeholders(\??\.[A-Za-z_$][\w$]*|\??\.?\[\s*(["'])[^"'\\]*\2\s*\])$/;
+
 /** Whether the expression before a `.` is recognizably a stat, so its fields are the honest list. The
  *  calls named are the ones that hand back a single stat; `filter` hands back another array, so a chain
  *  ending in it is one of the shapes that stays quiet. */
@@ -161,10 +188,14 @@ function looksLikeStat(code: string, tree: Tree, expression: string): boolean {
  * then anything that reads as a stat — and silence for everything else, because a wrong list reads as the
  * editor asserting the sandbox holds something it never has.
  */
-function membersAfterDot(code: string, tree: Tree, dotPos: number): readonly SurfaceEntry[] | null {
+function membersAfterDot(
+  code: string, tree: Tree, dotPos: number, placeholders?: CodePlaceholders,
+): readonly SurfaceEntry[] | null {
   const expression = expressionBeforeDot(code, dotPos);
   if (expression === null) return null;
   if (expression === 'stats') return STATS_MEMBERS;
+  if (expression === 'placeholders') return placeholders ? placeholderNameEntries(placeholders.list, true) : null;
+  if (PLACEHOLDER_ENTRY_EXPRESSION.test(expression)) return PLACEHOLDER_ENTRY_FIELDS;
   const turnInput = /^(.+)\.(previous|requested)$/.exec(expression);
   if (turnInput) {
     if (!looksLikeStat(code, tree, turnInput[1])) return null;
@@ -225,6 +256,43 @@ function checkWrite(target: SyntaxNode, code: string, tree: Tree, declared: Set<
   };
 }
 
+/** A placeholder name as the code spells it, and where. */
+interface PlaceholderRef {
+  name: string;
+  from: number;
+  to: number;
+}
+
+/** The name a `placeholders.Name` or `placeholders["Name"]` member names, or null for any other member and
+ *  for a key only a run could know. */
+function placeholderRef(node: SyntaxNode, code: string): PlaceholderRef | null {
+  const object = node.firstChild;
+  if (object?.name !== 'VariableName' || code.slice(object.from, object.to) !== 'placeholders') return null;
+  const property = node.getChild('PropertyName');
+  if (property) return { name: code.slice(property.from, property.to), from: property.from, to: property.to };
+  const literal = node.getChild('String');
+  if (!literal || literal.to - literal.from < 2 || code[literal.to - 1] !== code[literal.from]) return null;
+  const name = code.slice(literal.from + 1, literal.to - 1);
+  // An escape has to be evaluated to name the key.
+  return name.includes('\\') ? null : { name, from: literal.from, to: literal.to };
+}
+
+/** What is wrong with a reference to the placeholder `name`: none has it, or several share it. */
+function checkPlaceholderName(ref: PlaceholderRef, { list, owners }: CodePlaceholders): CodeDiagnostic | null {
+  const named = list.filter((p) => p.name === ref.name);
+  const { from, to } = ref;
+  if (named.length === 0) {
+    const suggestion = nearestName(ref.name, placeholderNames(list));
+    const message = suggestion ? `No placeholder is named “${ref.name}”. Did you mean “${suggestion}”?`
+      : `No placeholder is named “${ref.name}”.`;
+    return { from, to, severity: 'error', message };
+  }
+  if (named.length === 1) return null;
+  const winner = placeholderDisplayName(named[named.length - 1].id, list, { owners });
+  const reads = winner === ref.name ? 'the last one authored' : `“${winner}”, the last one authored`;
+  return { from, to, severity: 'warning', message: `${named.length} placeholders are named “${ref.name}”. This reads ${reads}.` };
+}
+
 const asCompletion = (entry: SurfaceEntry, type: CompletionKind, boost?: number): CodeCompletion => ({
   label: entry.name, detail: entry.detail, info: entry.info, type, ...(boost === undefined ? {} : { boost }),
 });
@@ -253,6 +321,10 @@ export function statCodeCompletions(
     const innerFrom = node.from + 1;
     const innerTo = code[node.to - 1] === quote && node.to - 1 > node.from ? node.to - 1 : node.to;
     if (pos < innerFrom) return null;
+    if (/\bplaceholders\s*(\?\.)?\[\s*$/.test(code.slice(0, node.from))) {
+      const names = placeholderNameEntries(options.placeholders?.list ?? [], false);
+      return { from: innerFrom, to: innerTo, options: names.map((entry) => asCompletion(entry, 'text')) };
+    }
     // The whole literal is replaced, not the part before the caret — a name half-typed in the middle of
     // an old one would otherwise leave its tail behind.
     return {
@@ -287,7 +359,7 @@ export function statCodeCompletions(
   // After a dot the list is only ever as good as what the expression can be shown to be. A wrong guess
   // here is worse than silence: it reads as the editor asserting the sandbox has something it doesn't.
   if (/\.\s*$/.test(beforeWord)) {
-    const members = membersAfterDot(code, tree, beforeWord.replace(/\s+$/, '').length - 1);
+    const members = membersAfterDot(code, tree, beforeWord.replace(/\s+$/, '').length - 1, options.placeholders);
     if (!members) return null;
     return { from, to: pos, options: members.map((member) => asCompletion(member, 'property')) };
   }
@@ -361,6 +433,11 @@ export function statCodeDiagnostics(code: string, options: AnalysisOptions = {})
     if (target && !overlapsAny(target.from, target.to, ranges)) {
       const { own, problem } = checkWrite(target, code, tree, declared);
       if (own) sawOwnWrite = true;
+      if (problem) diagnostics.push(problem);
+    }
+    if (cursor.type.name === 'MemberExpression' && options.placeholders && !declared.has('placeholders')) {
+      const ref = placeholderRef(cursor.node, code);
+      const problem = ref && !overlapsAny(ref.from, ref.to, ranges) ? checkPlaceholderName(ref, options.placeholders) : null;
       if (problem) diagnostics.push(problem);
     }
     if (cursor.type.name !== 'VariableName') continue;

@@ -12,6 +12,7 @@ import { FullscreenShell } from '@/components/FullscreenShell';
 import { cn } from '@/lib/utils';
 import { SLOT_SNIPPETS, STAT_CODE_SNIPPETS, type InsertSnippet } from '@/lib/codeSnippets';
 import type { CodeSession } from '@/components/prompt/codeSession';
+import type { CodePlaceholders } from '@/lib/statCodeAnalysis';
 
 function InsertMenu({ items, label, Icon, onPick }: {
   items: InsertSnippet[]; label: string; Icon: typeof Braces; onPick: (snippet: InsertSnippet) => void;
@@ -59,6 +60,8 @@ interface CodeAreaProps {
   slots?: boolean;
   /** The world's stat names, completed inside string literals — the one place a typo fails silently. */
   statNames?: readonly string[];
+  /** The world's placeholders, completed after `placeholders` and checked by name. */
+  placeholders?: CodePlaceholders;
   /** What the code produces. Given this, the field grows the Edit | Preview pair, which becomes a
    *  side-by-side split once full screen has the width for it. */
   preview?: ReactNode;
@@ -71,7 +74,7 @@ interface CodeAreaProps {
 function CodeAreaBody({
   value, onChange, ariaLabel, placeholder, label, slots, preview, className, rows = 8, fullscreen,
   onToggleFullscreen, session, active, expose,
-}: Omit<CodeAreaProps, 'statNames'> & {
+}: Omit<CodeAreaProps, 'statNames' | 'placeholders'> & {
   fullscreen: boolean;
   onToggleFullscreen: () => void;
   /** The one editor both copies take turns hosting. Null until its chunk has loaded. */
@@ -263,6 +266,7 @@ export function CodeArea(props: CodeAreaProps) {
         placeholder,
         slots,
         statNames: latest.current.statNames,
+        placeholders: latest.current.placeholders,
         onChange: (next) => latest.current.onChange(next),
         onUpdate,
       });
@@ -278,6 +282,7 @@ export function CodeArea(props: CodeAreaProps) {
   useEffect(() => { session?.setLintGutter(morph.mounted); }, [session, morph.mounted]);
   // Stats are renamed and added while a code field is open, so the completions follow the list.
   useEffect(() => { session?.setStatNames(props.statNames ?? []); }, [session, props.statNames]);
+  useEffect(() => { session?.setPlaceholders(props.placeholders); }, [session, props.placeholders]);
 
   return (
     <>
