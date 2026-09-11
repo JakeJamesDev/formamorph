@@ -32,13 +32,14 @@ const CLOCK_INFO: Record<(typeof STAT_CLOCK_VARS)[number], SurfaceEntry> = {
 
 /** Every name the sandbox injects into the program, in the order an author meets them. */
 export const SANDBOX_GLOBALS: readonly SurfaceEntry[] = [
+  { name: 'self', detail: 'Stat', info: 'The stat this code belongs to. Write self.value to set its value.' },
   { name: 'stats', detail: 'Stat[]', info: 'Every stat in the world, as plain data. Look one up by name or id.' },
-  { name: 'currentStatId', detail: 'string', info: 'The id of the stat this code belongs to.' },
+  { name: 'currentStatId', detail: 'string', info: 'The id of the stat this code belongs to. self.id is the same.' },
   ...STAT_CLOCK_VARS.map((name) => CLOCK_INFO[name]),
   { name: 'console', detail: 'object', info: 'Only console.log — output shows up in the browser console.' },
 ];
 
-/** The eight fields on a stat object inside `stats`. Anything else is `undefined`. */
+/** The fields on a stat object inside `stats`, `self` included. Anything else is `undefined`. */
 export const STAT_FIELDS: readonly SurfaceEntry[] = [
   { name: 'id', detail: 'string', info: 'Unique id. Compare against currentStatId to find this stat.' },
   { name: 'name', detail: 'string', info: 'The stat’s display name, as the author typed it.' },
@@ -46,8 +47,27 @@ export const STAT_FIELDS: readonly SurfaceEntry[] = [
   { name: 'description', detail: 'string', info: 'The stat’s description text.' },
   { name: 'min', detail: 'number', info: 'Lower bound. Results are clamped to it.' },
   { name: 'max', detail: 'number', info: 'Upper bound. Results are clamped to it.' },
-  { name: 'value', detail: 'number', info: 'Current value.' },
+  { name: 'value', detail: 'number', info: 'Current value, with this turn’s AI change and regen applied. Write self.value to set it.' },
   { name: 'regen', detail: 'number', info: 'Per-turn regen amount configured on the stat.' },
+  { name: 'previous', detail: '{ value, max }', info: 'Value and max at the start of this turn.' },
+  { name: 'requested', detail: '{ value, max }', info: 'The change the AI asked for this turn, before flags and clamping. Zero when it asked for none.' },
+  { name: 'regenApplied', detail: 'number', info: 'The regen this turn applied, after clamping.' },
+];
+
+/** The fields on `self` that a write reaches. The host reads these back after the run; writes to any other
+ *  field, or to another stat's entry, do nothing. */
+export const SELF_WRITABLE_FIELDS: readonly string[] = ['value'];
+
+/** The fields on a stat's `previous`. */
+export const PREVIOUS_FIELDS: readonly SurfaceEntry[] = [
+  { name: 'value', detail: 'number', info: 'The value at the start of this turn.' },
+  { name: 'max', detail: 'number', info: 'The max at the start of this turn.' },
+];
+
+/** The fields on a stat's `requested`. */
+export const REQUESTED_FIELDS: readonly SurfaceEntry[] = [
+  { name: 'value', detail: 'number', info: 'The change to the value the AI asked for this turn. Zero when it asked for none.' },
+  { name: 'max', detail: 'number', info: 'The change to the max the AI asked for this turn. Zero when it asked for none.' },
 ];
 
 /** Built-ins the VM already has. Listed so a reference to one isn't flagged, and so completions offer the
@@ -193,7 +213,11 @@ function editDistance(a: string, b: string): number {
  * enough to be worth suggesting. Case-insensitive, so `Stats` still points at `stats`.
  */
 export function nearestSurfaceName(name: string, extra: readonly string[] = []): string | null {
-  const candidates = [...SANDBOX_KNOWN_NAMES, ...extra];
+  return nearestName(name, [...SANDBOX_KNOWN_NAMES, ...extra]);
+}
+
+/** The candidate `name` was most likely meant to be, or null when nothing is close enough. */
+export function nearestName(name: string, candidates: readonly string[]): string | null {
   const limit = suggestionDistance(name);
   let best: string | null = null;
   let bestDistance = Infinity;

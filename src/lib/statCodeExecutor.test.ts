@@ -87,6 +87,88 @@ describe('executeStatCode', () => {
   });
 });
 
+describe('executeStatCode self and turn inputs', () => {
+  beforeEach(() => vi.spyOn(console, 'error').mockImplementation(() => {}));
+  afterEach(() => vi.restoreAllMocks());
+
+  const me = makeStat({ id: 'me', name: 'Mood', value: 40 });
+  const other = makeStat({ id: 'other', name: 'Health', value: 70 });
+  const stats = [other, me];
+  const run = (code: string, turn?: Parameters<typeof executeStatCode>[4]) =>
+    executeStatCode(code, stats, me, undefined, turn);
+
+  it('injects self as the very entry that sits in stats', async () => {
+    expect((await run('return self === stats.find(s => s.id === currentStatId) ? 1 : 0;')).value).toBe(1);
+  });
+
+  it('carries the turn inputs on every entry, not only on self', async () => {
+    const turn = {
+      other: { previous: { value: 90, max: 100 }, requested: { value: -25, max: 10 }, regenApplied: 5 },
+    };
+    const res = await run(
+      'const h = stats.find(s => s.name === "Health"); return h.previous.value + h.requested.value + h.requested.max + h.regenApplied;',
+      turn,
+    );
+    expect(res.value).toBe(80);
+  });
+
+  it('reads an untouched turn when the caller passes no inputs', async () => {
+    const res = await run(`return self.previous.value === 40 && self.previous.max === 100
+      && self.requested.value === 0 && self.requested.max === 0 && self.regenApplied === 0 ? 1 : 0;`);
+    expect(res.value).toBe(1);
+  });
+
+  it('sets the value from a self.value write with no return', async () => {
+    expect(await run('self.value = 12;')).toEqual({ value: 12, error: null });
+  });
+
+  it('lets a number return win over a self.value write', async () => {
+    expect((await run('self.value = 12; return 30;')).value).toBe(30);
+  });
+
+  it('reports no write when the code neither returns nor changes self.value', async () => {
+    expect(await run('const x = self.value * 2;')).toEqual({ value: null, error: null });
+    expect(await run('self.value = self.value; return undefined;')).toEqual({ value: null, error: null });
+  });
+
+  it('clamps a self.value write to the stat range', async () => {
+    expect((await run('self.value = 500;')).value).toBe(100);
+  });
+
+  it('fails on a non-number return even after a valid write', async () => {
+    const res = await run('self.value = 12; return null;');
+    expect(res).toMatchObject({ value: null, kind: 'non-number' });
+  });
+
+  it('fails when self.value is written with something other than a number', async () => {
+    expect(await run('self.value = "high";')).toMatchObject({ value: null, kind: 'non-number' });
+  });
+
+  it('discards a write when the code throws after making it', async () => {
+    expect(await run('self.value = 12; throw new Error("late");')).toMatchObject({ value: null, kind: 'throw' });
+  });
+
+  it('ignores a write to another stat entry', async () => {
+    expect(await run('stats.find(s => s.name === "Health").value = 1;')).toEqual({ value: null, error: null });
+  });
+});
+
+describe('executeStatCode on the bundled worlds', () => {
+  const worlds = import.meta.glob<{ default: { stats?: Stat[] } }>('../defaultworlds/*.json', { eager: true });
+  const coded = Object.entries(worlds).flatMap(([path, world]) =>
+    (world.default.stats ?? []).filter(s => s.code?.trim()).map(s => [path, s.name, s, world.default.stats ?? []] as const));
+
+  it('finds stat code to run, so the guard below is not vacuous', () => {
+    expect(coded.length).toBeGreaterThan(0);
+  });
+
+  it.each(coded)('%s: %s still returns a number', async (_path, _name, stat, stats) => {
+    const res = await executeStatCode(stat.code ?? '', stats, stat);
+    expect(res.error).toBeNull();
+    expect(typeof res.value).toBe('number');
+  });
+});
+
 describe('executeStatCode clock variables', () => {
   const big = makeStat({ max: 100000 });
   const run = (code: string, clock?: Parameters<typeof executeStatCode>[3]) =>

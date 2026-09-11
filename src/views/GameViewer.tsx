@@ -5,8 +5,8 @@ import { useSettings } from "@/contexts/SettingsContext";
 import { useSettingsOpenRequest } from "@/lib/useSettingsOpenRequest";
 import { useGameplay } from "@/contexts/GameplayContext";
 import { useAccountDeletion } from "@/contexts/AccountDeletionContext";
-import { processStatCode } from "@/contexts/GameplayContextUtils";
 import { usesStatClock, type StatClock } from "@/lib/statCodeExecutor";
+import { runStatCodeTurn, type StatCodeTurn } from "@/lib/statCodeTurn";
 import { Button } from "@/components/ui/button";
 import {
   AlertDialog,
@@ -135,7 +135,7 @@ import { revealActive } from "../lib/narrationRevealConfig";
 import { REVEAL_TEST_NARRATION, REVEAL_TEST_PROFILES } from "../lib/revealTestScripts";
 import { MARKDOWN_SAMPLE } from "../lib/markdownSample";
 import { parseSlashCommand } from "../lib/slashCommands";
-import { normalizeStatChanges, appliedStatDeltas } from "../lib/statChanges";
+import { normalizeStatChanges, appliedStatDeltas, applyRegen } from "../lib/statChanges";
 import { applyStatResponse, createStatRequest, readStatResponse, statResponseChanges, type StatRequestSnapshot, type StatResponse, type StatUpdateDiagnostic } from "../lib/statRequest";
 import { resolveStatNames } from "../lib/resolveWorldNames";
 import { toDebugEndpoint, type DebugEndpointInfo } from "../lib/promptEndpoints";
@@ -1398,27 +1398,14 @@ const GameViewer = ({
       // Track regen changes
       const regenChanges: Record<string, number> = {};
 
-      setPlayerStats((prevStats) =>
-        prevStats.map((stat) => {
-          if (stat.regen && statEnabledRef.current[stat.id] !== false) {
-            const baseRegenAmount = stat.regen * hours;
-            const newValue = Math.max(
-              stat.min,
-              Math.min(stat.max, stat.value + baseRegenAmount),
-            );
-
-            // Calculate the actual change that occurred
-            const actualRegenAmount = newValue - stat.value;
-
-            if (actualRegenAmount !== 0) {
-              regenChanges[stat.name.toLowerCase()] = actualRegenAmount;
-            }
-
-            return { ...stat, value: newValue };
-          }
-          return stat;
-        }),
-      );
+      // The same tick runStatCode folds into the pipeline it hands stat code, so both read one regen.
+      setPlayerStats((prevStats) => {
+        const { stats, applied } = applyRegen(prevStats, hours, statEnabledRef.current);
+        for (const stat of stats) {
+          if (applied[stat.id] !== undefined) regenChanges[stat.name.toLowerCase()] = applied[stat.id];
+        }
+        return stats;
+      });
 
       // Update recent (fading text) and held (persistent bar) stat changes with regen changes.
       const mergeRegen = (prev: Record<string, number>) => {
@@ -1764,7 +1751,7 @@ const GameViewer = ({
     } else if (anyStatUsesClock) {
       // Nothing moved, but time still passed — clock-reading code runs on its own so a time-based stat
       // ticks every turn instead of only on turns the AI happened to report a stat change.
-      void runStatCode(playerStatsRef.current, commit.clock);
+      void runStatCode(rawPlayerStatsRef.current, rawPlayerStatsRef.current, [], commit.clock);
     }
 
     // Advance the clock by what this turn actually took (the flat hour when unmeasured).
@@ -2265,22 +2252,23 @@ const GameViewer = ({
     }
   }, [heldStatChanges, recentStatChanges, setHeldStatChanges, setDrainingStatChanges, setRecentStatChanges, setRecentStatFading]);
 
-  // Re-derive every code-driven stat from `base` and this turn's `clock`, folding whatever moved into the
-  // live delta feedback. Split out of applyStatChanges because clock-reading code has to run once per turn
-  // even when the AI moved no stat at all — time passes regardless of what the narration said.
+  // Run stat code over this turn, regen included, and fold what it moved into the live delta feedback.
+  // Its own callback because clock-reading code also runs on turns the AI moved no stat.
   const runStatCode = useCallback(
-    async (base: typeof playerStats, clock: StatClock) => {
+    async (before: PlayerStat[], afterAsks: PlayerStat[], asks: StatCodeTurn["asks"], clock: StatClock) => {
       try {
-        // processStatCode is typed over Stat[]; playerStats is the narrower PlayerStat[] (value: number).
-        // Disabled stats are inert: their own code never runs, and they aren't exposed to anyone else's.
-        const live = enabledStats(base, statEnabledRef.current);
-        const coded = (await processStatCode(live, clock)) as typeof playerStats;
-        const codeChanges = appliedStatDeltas(live, coded);
-        if (Object.keys(codeChanges).length === 0) return;
+        const enabled = statEnabledRef.current;
+        const regen = applyRegen(afterAsks, clock.deltaHours ?? FLAT_HOURS_PER_TURN, enabled);
+        const stats = resolveStatNames(regen.stats, resolvePH);
+        const { stats: coded, moved } = await runStatCodeTurn({
+          stats, enabled, previous: before, asks, regenApplied: regen.applied, clock,
+        });
+        if (moved.length === 0) return;
+        const codeChanges = appliedStatDeltas(stats, coded);
         // Override only the stats the code actually moved, onto the LATEST stats — not a blanket
         // `setPlayerStats(coded)`, whose `coded` is computed from the pre-`await` baseline and would clobber
-        // anything applied in the meantime (this turn's regen, or a re-generate that landed during the await).
-        const codedById = new Map(coded.filter((s, i) => s.value !== live[i]?.value).map((s) => [s.id, s.value]));
+        // anything applied in the meantime (starvation, or a re-generate that landed during the await).
+        const codedById = new Map(coded.filter((s) => moved.includes(s.id)).map((s) => [s.id, s.value]));
         setPlayerStats((prev) =>
           prev.map((s) =>
             codedById.has(s.id)
@@ -2296,7 +2284,7 @@ const GameViewer = ({
         console.error("Error processing stat code:", error);
       }
     },
-    [setPlayerStats, setRecentStatChanges, setHeldStatChanges],
+    [setPlayerStats, setRecentStatChanges, setHeldStatChanges, resolvePH],
   );
 
   // Whether any stat's code reads the clock, and so needs a per-turn run of its own on turns the AI
@@ -2337,8 +2325,9 @@ const GameViewer = ({
       setHeldStatChanges((prev) => ({ ...prev, ...actualChanges }));
 
       setPlayerStats(directApplied);
-      if (response.updates.some((update) => update.value !== 0) || anyStatUsesClock) {
-        await runStatCode(resolvedApplied, clock);
+      // A max-only ask counts too: code reads it as `requested.max`.
+      if (response.updates.some((update) => update.value !== 0 || update.max !== 0) || anyStatUsesClock) {
+        await runStatCode(baseStats, directApplied, response.updates, clock);
       }
     },
     [runStatCode, setPlayerStats, setRecentStatChanges, setHeldStatChanges, resolvePH, anyStatUsesClock],

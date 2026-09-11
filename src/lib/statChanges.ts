@@ -124,6 +124,25 @@ export function pageStatDeltas(
 }
 
 /**
+ * One regen tick over `hours`: each enabled stat with regen moves by `regen * hours`, clamped to its range.
+ * `applied` is the amount each stat actually moved, by id, omitting stats that did not move.
+ */
+export function applyRegen<T extends PlayerStat>(
+  stats: readonly T[],
+  hours: number,
+  enabled: Readonly<Record<string, boolean>>,
+): { stats: T[]; applied: Record<string, number> } {
+  const applied: Record<string, number> = {};
+  const next = stats.map((stat) => {
+    if (!stat.regen || enabled[stat.id] === false) return stat;
+    const value = Math.max(stat.min, Math.min(stat.max, stat.value + stat.regen * hours));
+    if (value !== stat.value) applied[stat.id] = value - stat.value;
+    return { ...stat, value };
+  });
+  return { stats: next, applied };
+}
+
+/**
  * The *actual* per-stat change between two same-ordered stat arrays (`after[i]` vs `before[i]`), keyed by
  * lowercased name, omitting stats that didn't move. Use this — not the AI's requested deltas — to drive the
  * live bar/text feedback, so a change clamped at a cap (or blocked by noIncrease/noDecrease) shows the real

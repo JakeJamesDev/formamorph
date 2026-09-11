@@ -7,11 +7,11 @@
  */
 
 import { javascriptLanguage } from '@codemirror/lang-javascript';
-import type { Tree } from '@lezer/common';
+import type { SyntaxNode, Tree } from '@lezer/common';
 import { findSlotRanges, parseTemplateSlots } from '@/lib/statCodeTemplates';
 import {
-  BUILTIN_MEMBERS, SANDBOX_BUILTINS, SANDBOX_GLOBALS, SANDBOX_KNOWN_NAMES, STATS_MEMBERS, STAT_FIELDS,
-  nearestSurfaceName, type SurfaceEntry,
+  BUILTIN_MEMBERS, PREVIOUS_FIELDS, REQUESTED_FIELDS, SANDBOX_BUILTINS, SANDBOX_GLOBALS, SANDBOX_KNOWN_NAMES,
+  SELF_WRITABLE_FIELDS, STATS_MEMBERS, STAT_FIELDS, nearestName, nearestSurfaceName, type SurfaceEntry,
 } from '@/lib/statCodeSurface';
 
 export type DiagnosticSeverity = 'error' | 'warning';
@@ -90,22 +90,28 @@ function declaredNames(code: string, tree: Tree = parse(code)): Set<string> {
   return names;
 }
 
-/** Identifiers holding something that came out of `stats` — the objects whose fields we can name. */
-function statLikeNames(code: string, tree: Tree): Set<string> {
-  const names = new Set<string>();
+/** Identifiers holding something that came out of `stats` or `self` — the objects whose fields we can name
+ *  — each mapped to the text of the declaration that bound it. */
+function statLikeNames(code: string, tree: Tree): Map<string, string> {
+  const names = new Map<string, string>();
   const cursor = tree.cursor();
   do {
     if (cursor.type.name === 'VariableDeclaration' || cursor.type.name === 'ArrowFunction') {
       const text = code.slice(cursor.from, cursor.to);
-      if (!/\bstats\b/.test(text)) continue;
+      if (!/\b(stats|self)\b/.test(text)) continue;
       const inner = cursor.node.cursor();
       do {
-        if (inner.type.name === 'VariableDefinition') names.add(code.slice(inner.from, inner.to));
+        if (inner.type.name === 'VariableDefinition') names.set(code.slice(inner.from, inner.to), text);
       } while (inner.next() && inner.from < cursor.to);
     }
   } while (cursor.next());
   return names;
 }
+
+/** Whether stat-like source reaches the current stat's own entry: `self`, or an equality lookup by
+ *  `currentStatId` (a `!==` lookup finds some other stat). */
+const reachesOwnStat = (text: string) =>
+  /\bself\b/.test(text) || /(?<![!=])===?\s*currentStatId\b|\bcurrentStatId\s*===?(?!=)/.test(text);
 
 /**
  * The source of the expression a `.` hangs off, scanned backwards over the member chain. Read from the
@@ -144,22 +150,79 @@ function expressionBeforeDot(code: string, dotPos: number): string | null {
  *  calls named are the ones that hand back a single stat; `filter` hands back another array, so a chain
  *  ending in it is one of the shapes that stays quiet. */
 function looksLikeStat(code: string, tree: Tree, expression: string): boolean {
+  if (expression === 'self') return true;
   if (/^stats\b/.test(expression)) return /\.(find|at|pop|shift)\b|\[/.test(expression);
   return statLikeNames(code, tree).has(expression);
 }
 
 /**
  * What the expression before a dot can be shown to carry, or null where nothing can be. The order is the
- * order of certainty: a named built-in, then the one array the sandbox injects, then anything that reads
- * as a stat — and silence for everything else, because a wrong list reads as the editor asserting the
- * sandbox holds something it never has.
+ * order of certainty: a named built-in, then the one array the sandbox injects, then a stat's turn input,
+ * then anything that reads as a stat — and silence for everything else, because a wrong list reads as the
+ * editor asserting the sandbox holds something it never has.
  */
 function membersAfterDot(code: string, tree: Tree, dotPos: number): readonly SurfaceEntry[] | null {
   const expression = expressionBeforeDot(code, dotPos);
   if (expression === null) return null;
   if (expression === 'stats') return STATS_MEMBERS;
+  const turnInput = /^(.+)\.(previous|requested)$/.exec(expression);
+  if (turnInput) {
+    if (!looksLikeStat(code, tree, turnInput[1])) return null;
+    return turnInput[2] === 'previous' ? PREVIOUS_FIELDS : REQUESTED_FIELDS;
+  }
   return BUILTIN_MEMBERS.get(expression)
     ?? (looksLikeStat(code, tree, expression) ? STAT_FIELDS : null);
+}
+
+/** The member expression an assignment, `++` or `--` writes to, or null when it writes something else. */
+function writeTarget(node: SyntaxNode, code: string): SyntaxNode | null {
+  if (node.name === 'AssignmentExpression') {
+    return node.firstChild?.name === 'MemberExpression' ? node.firstChild : null;
+  }
+  if (node.name !== 'PostfixExpression' && node.name !== 'UnaryExpression') return null;
+  const op = node.getChild('ArithOp');
+  if (!op || !['++', '--'].includes(code.slice(op.from, op.to))) return null;
+  return node.getChild('MemberExpression');
+}
+
+const WRITABLE_LIST = SELF_WRITABLE_FIELDS.map((field) => `self.${field}`).join(', ');
+
+/** One write to a member: whether it is aimed at the stat's own entry, and what is wrong with it. */
+interface WriteCheck {
+  own: boolean;
+  problem: CodeDiagnostic | null;
+}
+
+function checkWrite(target: SyntaxNode, code: string, tree: Tree, declared: Set<string>): WriteCheck {
+  let innermost = target;
+  while (innermost.firstChild?.name === 'MemberExpression') innermost = innermost.firstChild;
+  const root = innermost.firstChild;
+  const first = innermost.getChild('PropertyName');
+  if (root?.name === 'VariableName' && code.slice(root.from, root.to) === 'self' && !declared.has('self')) {
+    // A bracketed field can't be named without running the code.
+    if (!first) return { own: true, problem: null };
+    const field = code.slice(first.from, first.to);
+    const known = STAT_FIELDS.some((entry) => entry.name === field);
+    if (known && SELF_WRITABLE_FIELDS.includes(field)) return { own: true, problem: null };
+    const suggestion = known ? null : nearestName(field, STAT_FIELDS.map((entry) => entry.name));
+    const message = known ? `self.${field} can’t be written. Only ${WRITABLE_LIST} can.`
+      : suggestion ? `self has no field “${field}”. Did you mean “${suggestion}”?` : `self has no field “${field}”.`;
+    return { own: true, problem: { from: first.from, to: first.to, severity: 'error', message } };
+  }
+  const object = target.firstChild;
+  if (!object) return { own: false, problem: null };
+  const text = code.slice(object.from, object.to);
+  if (!looksLikeStat(code, tree, text)) return { own: false, problem: null };
+  if (reachesOwnStat(statLikeNames(code, tree).get(text) ?? text)) return { own: true, problem: null };
+  return {
+    own: false,
+    problem: {
+      from: target.from,
+      to: target.to,
+      severity: 'warning',
+      message: 'This writes to another stat, and stat code can only change its own. Write to self instead.',
+    },
+  };
 }
 
 const asCompletion = (entry: SurfaceEntry, type: CompletionKind, boost?: number): CodeCompletion => ({
@@ -275,6 +338,7 @@ export function statCodeDiagnostics(code: string, options: AnalysisOptions = {})
   const declared = declaredNames(code, tree);
   let sawReturn = false;
   let sawSyntaxError = false;
+  let sawOwnWrite = false;
 
   const cursor = tree.cursor();
   do {
@@ -293,6 +357,12 @@ export function statCodeDiagnostics(code: string, options: AnalysisOptions = {})
       continue;
     }
     if (cursor.type.name === 'ReturnStatement') { sawReturn = true; continue; }
+    const target = writeTarget(cursor.node, code);
+    if (target && !overlapsAny(target.from, target.to, ranges)) {
+      const { own, problem } = checkWrite(target, code, tree, declared);
+      if (own) sawOwnWrite = true;
+      if (problem) diagnostics.push(problem);
+    }
     if (cursor.type.name !== 'VariableName') continue;
 
     const name = code.slice(from, to);
@@ -309,13 +379,14 @@ export function statCodeDiagnostics(code: string, options: AnalysisOptions = {})
     });
   } while (cursor.next());
 
-  // A missing return on code the parser couldn't finish reading is a guess about half-typed code.
-  if (!sawReturn && !sawSyntaxError) {
+  // Code with no return can still set the value through self. Code that does neither can't change the
+  // stat. A missing return on code the parser couldn't finish reading is a guess about half-typed code.
+  if (!sawReturn && !sawOwnWrite && !sawSyntaxError) {
     diagnostics.push({
       from: 0,
       to: Math.min(code.length, code.indexOf('\n') === -1 ? code.length : code.indexOf('\n')),
       severity: 'warning',
-      message: 'This code never returns. Stat code has to return a number, or the stat keeps its manual value.',
+      message: 'This code never returns a number or writes self.value, so the stat keeps its value.',
     });
   }
 
