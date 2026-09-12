@@ -3,6 +3,7 @@ import {
   CODE_BOUND_FIELDS, executeStatCode, type PlaceholderWrite, type StatClock, type StatTurnInputs, type TraitWrite,
   type ValueAndMax,
 } from './statCodeExecutor';
+import { statCodeNamed } from './statCodeNames';
 import { sandboxPlaceholders, type StatCodePlaceholderSet } from './statCodePlaceholders';
 import { sandboxTraits, traitNamer, type StatCodeTraits } from './statCodeTraits';
 import { enabledStats } from './traitEffects';
@@ -23,7 +24,8 @@ export interface StatCodeTraitResult {
 /** Everything one turn hands to stat code. The forward turn, the re-roll, and the clock-only run all
  *  build one of these; the clock-only run has no asks. */
 export interface StatCodeTurn {
-  /** Every stat as the turn's pipeline left it: AI asks and regen applied, code not yet run. */
+  /** Every stat as the turn's pipeline left it: AI asks and regen applied, code not yet run. Names are the
+   *  authored ones, chips and all — code reads each stat's code name, derived here. */
   stats: readonly PlayerStat[];
   /** The live stat-enabled map. A disabled stat's code never runs and no other code sees it. */
   enabled: Readonly<Record<string, boolean>>;
@@ -39,6 +41,9 @@ export interface StatCodeTurn {
   traits: StatCodeTraits;
   /** What `placeholders` reads. Absent, the map is empty. */
   placeholders?: StatCodePlaceholderSet;
+  /** A stat's name as the player reads it, for the turn log. Required, not defaulted: a caller that left
+   *  it out would print an unresolved chip token in a line the player reads. */
+  statNameOf: (stat: PlayerStat) => string;
 }
 
 export interface StatCodeTurnResult {
@@ -96,10 +101,13 @@ export function overlayStatCodeResult(
  *  run is logged and leaves its stat unchanged. Empty code clears its stat's code bounds. */
 export async function runStatCodeTurn(turn: StatCodeTurn): Promise<StatCodeTurnResult> {
   const live = enabledStats([...turn.stats], turn.enabled);
-  const previous = new Map(turn.previous.map((stat) => [stat.id, stat]));
+  // Code reaches a stat by its code name, which no roll moves. The log and the panel keep the rolled text.
+  const placeholderDefs = turn.placeholders?.placeholders ?? [];
+  const named = statCodeNamed(live, placeholderDefs);
+  const previous = new Map(statCodeNamed(turn.previous, placeholderDefs).map((stat) => [stat.id, stat]));
   const asks = new Map(turn.asks.map((ask) => [ask.id, ask]));
   // Only what this turn knows; the executor reads a missing part as untouched.
-  const inputs: Record<string, StatTurnInputs> = Object.fromEntries(live.map((stat) => {
+  const inputs: Record<string, StatTurnInputs> = Object.fromEntries(named.map((stat) => {
     const before = previous.get(stat.id);
     const ask = asks.get(stat.id);
     return [stat.id, {
@@ -108,7 +116,7 @@ export async function runStatCodeTurn(turn: StatCodeTurn): Promise<StatCodeTurnR
     }];
   }));
 
-  const coded = live.filter((stat) => stat.code?.trim());
+  const coded = named.filter((stat) => stat.code?.trim());
   // Resolved once, so every stat's code reads the same placeholders and the same traits.
   const placeholders = coded.length && turn.placeholders ? sandboxPlaceholders(turn.placeholders) : [];
   const traits = coded.length ? sandboxTraits(turn.traits) : [];
@@ -116,7 +124,7 @@ export async function runStatCodeTurn(turn: StatCodeTurn): Promise<StatCodeTurnR
   const placeholderWritesByStat = new Map<string, readonly PlaceholderWrite[]>();
   const traitWritesByStat = new Map<string, readonly TraitWrite[]>();
   await Promise.all(coded.map(async (stat) => {
-    const result = await executeStatCode(stat.code ?? '', live, stat, { clock: turn.clock, turn: inputs, placeholders, traits });
+    const result = await executeStatCode(stat.code ?? '', named, stat, { clock: turn.clock, turn: inputs, placeholders, traits });
     if (result.error) {
       console.error(`Error executing code for stat ${stat.name}:`, result.error);
       return;
@@ -136,7 +144,7 @@ export async function runStatCodeTurn(turn: StatCodeTurn): Promise<StatCodeTurnR
       console.warn(`Stat ${stat.name} wrote acquired on: ${result.acquiredWrites.join(', ')}`);
     }
   }));
-  const pinWrites = pinWritesInStatOrder(live, placeholderWritesByStat, turn.placeholders?.placeholders ?? []);
+  const pinWrites = pinWritesInStatOrder(live, placeholderWritesByStat, placeholderDefs);
   for (const stat of live) {
     if (!stat.code?.trim() && stat.codeBounds) writes.set(stat.id, { value: null, bounds: {} });
   }
@@ -149,7 +157,9 @@ export async function runStatCodeTurn(turn: StatCodeTurn): Promise<StatCodeTurnR
     appliedValues: turn.traits.appliedValues,
   };
   const switched = applyCodeTraitSwitches(
-    before, traitSwitchesInStatOrder(live, traitWritesByStat, turn.traits), turn.traits.world, turn.traits.nameOf,
+    before,
+    traitSwitchesInStatOrder(live, traitWritesByStat, turn.traits, turn.statNameOf),
+    turn.traits.world, turn.traits.nameOf,
   );
   const traitResult: StatCodeTraitResult | undefined = switched.state === before ? undefined : {
     acquired: switched.state.traits,
@@ -181,6 +191,8 @@ function traitSwitchesInStatOrder(
   stats: readonly PlayerStat[],
   writesByStat: ReadonlyMap<string, readonly TraitWrite[]>,
   traits: StatCodeTraits,
+  /** The switching stat's name as the player reads it — the log line names it. */
+  statNameOf: (stat: PlayerStat) => string,
 ): CodeTraitSwitch[] {
   const nameOf = traitNamer(traits);
   const idByName = new Map(traits.world.traits.map((trait) => [nameOf(trait), trait.id]));
@@ -190,7 +202,7 @@ function traitSwitchesInStatOrder(
       const traitId = idByName.get(write.name);
       if (traitId === undefined) continue;
       out.delete(traitId);
-      out.set(traitId, { traitId, enabled: write.enabled, by: stat.name });
+      out.set(traitId, { traitId, enabled: write.enabled, by: statNameOf(stat) });
     }
   }
   return [...out.values()];

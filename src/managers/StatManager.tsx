@@ -20,6 +20,7 @@ import {
 import { HelpButton } from "@/components/HelpButton";
 import { HintInfo } from "@/components/SettingsRows";
 import { CODE_BOUND_FIELDS, executeStatCode, type CodeBoundField } from "@/lib/statCodeExecutor";
+import { statCodeName, statCodeNamed } from "@/lib/statCodeNames";
 import { sandboxPlaceholders } from "@/lib/statCodePlaceholders";
 import { sandboxTraits } from "@/lib/statCodeTraits";
 import { StatCodeTemplateDialog } from "@/components/modals/StatCodeTemplateDialog";
@@ -93,11 +94,14 @@ const StatManager = ({ stat, tab, onTabChange, focusField }: {
     return buildMorphGroups(morphSources, taken);
   }, [morphSources, stats, stat.id]);
 
-  // The names `stats` is keyed by, for the code field's completions and name checks.
+  // The code names `stats` is keyed by, for the code field's completions and name checks. Test Code runs
+  // under the same names, so what completes is what runs.
+  const codeNamedStats = useMemo(() => statCodeNamed(stats, placeholders), [stats, placeholders]);
   const statNames = useMemo(
-    () => stats.map(entry => entry.name).filter((name): name is string => !!name),
-    [stats],
+    () => codeNamedStats.map(entry => entry.name).filter((name): name is string => !!name),
+    [codeNamedStats],
   );
+  const selfCodeName = statCodeName(editingStat.name, placeholders);
   const codePlaceholders = useMemo(
     () => ({ list: placeholders, owners: placeholderOwners }),
     [placeholders, placeholderOwners],
@@ -423,7 +427,7 @@ const StatManager = ({ stat, tab, onTabChange, focusField }: {
       <StatCodeTemplateDialog
         open={templatesOpen}
         onOpenChange={setTemplatesOpen}
-        stats={stats}
+        stats={codeNamedStats}
         currentStatId={stat.id}
         hasExistingCode={!!editingStat.code?.trim()}
         onInsert={(code) => handleChange("code", code)}
@@ -436,7 +440,7 @@ const StatManager = ({ stat, tab, onTabChange, focusField }: {
         onChange={(code) => { clearTestReport(); handleChange("code", code); }}
         ariaLabel="Stat Code"
         statNames={statNames}
-        selfName={editingStat.name}
+        selfName={selfCodeName}
         placeholders={codePlaceholders}
         traits={traitNames}
         // Its caption is the section heading, which full screen leaves behind — so the field names
@@ -461,7 +465,7 @@ const StatManager = ({ stat, tab, onTabChange, focusField }: {
               // demand — so this stays off the world editor's own bundle.
               const { statCodeDiagnostics, summarizeProblems } = await import('@/lib/statCodeAnalysis');
               setCodeProblems(summarizeProblems(statCodeDiagnostics(source, {
-                placeholders: codePlaceholders, traits: traitNames, statNames, selfName: editingStat.name,
+                placeholders: codePlaceholders, traits: traitNames, statNames, selfName: selfCodeName,
               })));
             } catch {
               // What the run itself found is the point; the count is what the editor adds to it.
@@ -472,7 +476,10 @@ const StatManager = ({ stat, tab, onTabChange, focusField }: {
               // player has no traits. A switch is reported here and never applied.
               const placeholderEntries = sandboxPlaceholders({ placeholders, rolls: {} });
               const traitEntries = sandboxTraits({ acquired: [], disabledTraitIds: [], appliedValues: {}, world: { traits, groups: [] } });
-              const result = await executeStatCode(source, stats, editingStat as Stat, { placeholders: placeholderEntries, traits: traitEntries });
+              const result = await executeStatCode(
+                source, codeNamedStats, { ...(editingStat as Stat), name: selfCodeName },
+                { placeholders: placeholderEntries, traits: traitEntries },
+              );
               if (result.error) {
                 setCodeError(result.error);
               } else {

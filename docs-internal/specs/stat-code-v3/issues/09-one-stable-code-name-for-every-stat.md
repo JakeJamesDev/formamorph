@@ -1,6 +1,7 @@
 # 09: One Stable Code Name For Every Stat
 
-Status: ready-for-agent
+Status: ready-for-human
+Base: c44eff0c
 Blocked by: 01, 07, 08
 Recommended model: Claude Opus 5 (`claude-opus-5`)
 Reasoning effort: high

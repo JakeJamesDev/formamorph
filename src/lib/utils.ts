@@ -24,6 +24,19 @@ export function xmlEscape(s: string): string {
   return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
 }
 
+/** Map `items`, handing back the original array when `map` returned every item unchanged. Keeping the
+ *  reference is what lets a mapper run unconditionally: a pass that changes nothing mints no identity, so
+ *  the memos and render paths below it never see a new object. */
+export function mapPreservingIdentity<T>(items: readonly T[], map: (item: T) => T): T[] {
+  let changed = false
+  const out = items.map((item) => {
+    const next = map(item)
+    if (next !== item) changed = true
+    return next
+  })
+  return changed ? out : (items as T[])
+}
+
 /** Clamp `value` into the inclusive `[min, max]` range. */
 export function clamp(value: number, min: number, max: number): number {
   return Math.min(Math.max(value, min), max)

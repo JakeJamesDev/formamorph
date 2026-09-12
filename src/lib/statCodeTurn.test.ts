@@ -22,7 +22,8 @@ const inForce = (active: Trait[]): StatCodeTraits => ({
 
 /** A turn where nothing happened unless a case says so: no asks, no regen, previous equal to now, no traits. */
 const turn = (over: Partial<StatCodeTurn> & Pick<StatCodeTurn, 'stats'>): StatCodeTurn => ({
-  enabled: {}, previous: over.stats, asks: [], regenApplied: {}, clock: {}, traits: inForce([]), ...over,
+  enabled: {}, previous: over.stats, asks: [], regenApplied: {}, clock: {}, traits: inForce([]),
+  statNameOf: (stat) => stat.name, ...over,
 });
 
 const valueOf = (stats: readonly PlayerStat[], id: string) => stats.find(s => s.id === id)?.value;
@@ -224,6 +225,40 @@ describe('runStatCodeTurn', () => {
     const second = await runStatCodeTurn(input);
     expect(valueOf(second.stats, 'a')).toBe(valueOf(first.stats, 'a'));
     expect(valueOf(second.stats, 'a')).toBe(60);
+  });
+});
+
+describe('runStatCodeTurn stat code names', () => {
+  beforeEach(() => vi.spyOn(console, 'error').mockImplementation(() => {}));
+  afterEach(() => vi.restoreAllMocks());
+
+  const beast: Placeholder = { id: 'beast', name: 'Beast', values: phValues(['Wolf', 'Bear']) };
+  const CHIPPED = encodePlaceholderToken({ id: 'beast', mode: 'world', placementId: 'p1' }) + ' Power';
+
+  /** One chip-named stat running `code` in a save that rolled `rolled`. */
+  const run = (code: string, rolled: string) =>
+    runStatCodeTurn(turn({
+      stats: [stat({ id: 'a', name: CHIPPED, value: 40, code })],
+      placeholders: { placeholders: [beast], rolls: { world: { beast: rolled } } },
+    })).then((out) => valueOf(out.stats, 'a'));
+
+  it('keys the stat on its code name in every playthrough', async () => {
+    const code = 'return stats["Beast Power"].value + 1;';
+    await expect(run(code, 'Wolf')).resolves.toBe(41);
+    await expect(run(code, 'Bear')).resolves.toBe(41);
+  });
+
+  it('hands self the same entry the code name reaches', async () => {
+    await expect(run('return self === stats["Beast Power"] ? 1 : 0;', 'Wolf')).resolves.toBe(1);
+    await expect(run('return self.name === "Beast Power" ? 1 : 0;', 'Bear')).resolves.toBe(1);
+  });
+
+  it('names previous by the code name too', async () => {
+    await expect(run('return self.previous.name === "Beast Power" ? 1 : 0;', 'Wolf')).resolves.toBe(1);
+  });
+
+  it('reads the rolled spelling as a blank entry, in the playthrough that rolled it', async () => {
+    await expect(run('return stats["Wolf Power"].value + 1;', 'Wolf')).resolves.toBe(1);
   });
 });
 

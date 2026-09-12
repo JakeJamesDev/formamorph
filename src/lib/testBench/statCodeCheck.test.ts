@@ -151,6 +151,33 @@ describe('the on-demand stat-code check', () => {
     }
   });
 
+  it('runs a chip-bearing stat under its code name, so the run agrees with the rule beside it', async () => {
+    // The author's own guard is what turns a miss into a row: a name no stat has reads as a blank entry,
+    // whose own name is empty. The code name hits, the rolled spelling does not.
+    const lookup = (key: string) => `const power = stats[${JSON.stringify(key)}];\n`
+      + 'if (!power.name) throw new Error("no such stat");\nreturn power.max;';
+    const chipped = (code: string) => ({
+      ...base([
+        stat({ id: 's1', name: '{{ph:ph-beast:world:p1}} Power', max: 50 }),
+        stat({ id: 's2', name: 'Mana', code }),
+      ]),
+      placeholders: [{ id: 'ph-beast', name: 'Beast', values: [{ id: 'v-wolf', text: 'Wolf' }] }],
+    });
+    expect(await checkStatCode(chipped(lookup('Beast Power')))).toEqual([]);
+    const rolled = await checkStatCode(chipped(lookup('Wolf Power')));
+    expect(rolled).toHaveLength(1);
+    expect(rolled[0].ruleId).toBe(STAT_CODE_EXECUTION.id);
+  });
+
+  it('names its row by the stat the author sees in the list, chips and all', async () => {
+    const found = await checkStatCode({
+      ...base([stat({ id: 's1', name: '{{ph:ph-beast:world:p1}} Power', code: 'throw new Error("nope");' })]),
+      placeholders: [{ id: 'ph-beast', name: 'Beast', values: [{ id: 'v-wolf', text: 'Wolf' }] }],
+    });
+    expect(found).toHaveLength(1);
+    expect(found[0].items[0].name).toBe('{Beast} Power');
+  });
+
   it('collapses its findings into one counted row like any other rule', async () => {
     const found = await checkStatCode(base([
       stat({ id: 's1', name: 'Fertility', code: 'throw new Error("nope");' }),

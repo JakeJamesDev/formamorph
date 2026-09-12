@@ -137,7 +137,7 @@ import { MARKDOWN_SAMPLE } from "../lib/markdownSample";
 import { parseSlashCommand } from "../lib/slashCommands";
 import { normalizeStatChanges, appliedStatDeltas, applyRegen } from "../lib/statChanges";
 import { applyStatResponse, createStatRequest, readStatResponse, statResponseChanges, type StatRequestSnapshot, type StatResponse, type StatUpdateDiagnostic } from "../lib/statRequest";
-import { resolveStatNames } from "../lib/resolveWorldNames";
+import { resolveStatNames, resolveStatText } from "../lib/resolveWorldNames";
 import { toDebugEndpoint, type DebugEndpointInfo } from "../lib/promptEndpoints";
 import { composeSceneTags, stripPlaces, splitTags, MAX_SCENE_CHARACTERS, type SceneCharacter } from "../lib/sceneTags";
 import { loadDanbooruTags } from "../lib/danbooruTags";
@@ -2278,8 +2278,10 @@ const GameViewer = ({
       try {
         const enabled = statEnabledRef.current;
         const regen = applyRegen(afterAsks, clock.deltaHours ?? FLAT_HOURS_PER_TURN, enabled);
-        // A save runs the world's current stat code, not the copy frozen in the save.
-        const stats = resolveStatNames(refreshSavedStats(regen.stats, authoredStats), resolvePH);
+        // A save runs the world's current stat code, not the copy frozen in the save. Descriptions resolve
+        // for the run; names do not — code reaches a stat by its code name, which the turn derives from the
+        // authored name, so a chip in a name reads the same in every playthrough.
+        const stats = resolveStatText(refreshSavedStats(regen.stats, authoredStats), resolvePH);
         // The same slice the player's checkbox switches, so a code switch is that switch.
         const held = preTurn ? savedTraits(preTurn, traits) : { acquired: chosenTraits, disabledTraitIds, appliedValues: appliedTraitValues };
         const inForce = preTurn ? traitsInForce(held.acquired, held.disabledTraitIds) : activeTraits;
@@ -2287,6 +2289,7 @@ const GameViewer = ({
           stats, enabled, previous: before, asks, regenApplied: regen.applied, clock,
           traits: { ...held, world: { traits: authoredTraits, groups: traitGroups }, nameOf: (trait) => resolveTraitText(trait, trait.name) },
           placeholders: { placeholders, rolls: sessionRolls, pins: preTurn ? pinsFor(preTurn.codePins ?? {}) : pins },
+          statNameOf: (stat) => resolvePH(stat.name),
         });
         setCodePins((prev) => withPinWrites(prev, result.pinWrites));
         if (result.traits) {
@@ -2296,7 +2299,8 @@ const GameViewer = ({
           for (const line of result.traits.log) addLogEntry(line);
         }
         if (!result.traits && result.moved.length === 0 && result.boundsChanged.length === 0) return;
-        const codeChanges = appliedStatDeltas(stats, result.stats);
+        // The bars are keyed by the name the player reads, so the run's stats resolve theirs here.
+        const codeChanges = appliedStatDeltas(stats, resolveStatNames(result.stats, resolvePH));
         // Onto the LATEST stats, not a blanket `setPlayerStats(result.stats)`: the run read the pre-`await`
         // baseline, and anything applied in the meantime (starvation, a re-generate) must survive.
         setPlayerStats((prev) => overlayStatCodeResult(prev, result, inForce));

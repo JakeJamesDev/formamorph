@@ -5,7 +5,8 @@ import { openApp } from './app';
 /** Serve the whiteRoom world and save with Coin (60 of 100 in the save) carrying `code` and the `stat` fields,
  *  regen 0 unless given. `extra` is laid over the root of each fixture. */
 async function coinWithCode(
-  page: Page, code: string, stat: { regen?: number; min?: number } = {}, extra: { World?: object; Save?: object } = {},
+  page: Page, code: string, stat: { regen?: number; min?: number; name?: string } = {},
+  extra: { World?: object; Save?: object } = {},
 ) {
   for (const kind of ['World', 'Save'] as const) {
     const fixture = { ...JSON.parse(readFileSync(`src/lib/devFixtures/whiteRoom${kind}.json`, 'utf8')), ...extra[kind] };
@@ -115,6 +116,25 @@ test('stat code sets its value from the playthrough’s roll of a placeholder', 
 
   await expect(page.getByText(/22\s*\/\s*100/).first()).toBeVisible();
 });
+
+// Coin renamed to a chip plus a word: the panel reads "calm Coin" or "angry Coin", and code reaches it by
+// "Mood Coin" in both. The lookup is the whole test — a blank entry would leave 1, not 61. The code reads
+// the clock so the turn runs it with no stat call at all.
+for (const [rolled, shown] of [['calm', 'calm Coin'], ['angry', 'angry Coin']] as const) {
+  test(`stat code reads a chip-bearing stat name by its code name, on the ${rolled} roll`, async ({ page }) => {
+    page.on('pageerror', (error) => console.error(error.message));
+    await coinWithCode(page, 'return stats["Mood Coin"].value + deltaHours;', { name: '{{ph:ph-mood:world:p9}} Coin' }, {
+      World: { placeholders: [mood] },
+      Save: { placeholderRolls: { world: { 'ph-mood': rolled } } },
+    });
+    await mockModel(page, 'Coin: +0');
+    await openApp(page, settings({ FORMAMORPH_statUpdatesEnabled: false }), { url: '/#dev?view=gameViewer&fixture=whiteRoom' });
+    await playOneTurn(page);
+
+    await expect(page.getByText(shown).first()).toBeVisible();
+    await expect(page.getByText(/61\s*\/\s*100/).first()).toBeVisible();
+  });
+}
 
 test('a placeholder that stat code writes reaches the next turn’s prompt', async ({ page }) => {
   page.on('pageerror', (error) => console.error(error.message));

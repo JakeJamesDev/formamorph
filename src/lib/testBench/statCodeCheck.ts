@@ -9,6 +9,7 @@
  */
 import { executeStatCode, type StatCodeFailure, type StatCodeResult } from '@/lib/statCodeExecutor';
 import { allPlaceholders } from '@/lib/placeholderHomes';
+import { statCodeNamed } from '@/lib/statCodeNames';
 import { sandboxPlaceholders } from '@/lib/statCodePlaceholders';
 import { sandboxTraits } from '@/lib/statCodeTraits';
 import { labelPlaceholders, worldPlacementLetters } from '@/lib/placementLetters';
@@ -50,7 +51,8 @@ function unknownNames({ unknownPlaceholders = [], unknownTraits = [] }: StatCode
  * without code never reach the sandbox, so a world of plain stats costs nothing.
  */
 export async function checkStatCode(world: RuleWorld): Promise<Finding[]> {
-  const stats = atStartingValues(world.stats);
+  // Under their code names, so the run reaches a stat by the name the rules and the editor name it by.
+  const stats = statCodeNamed(atStartingValues(world.stats), allPlaceholders(world));
   const coded = stats.filter((stat) => stat.code?.trim());
   const letters = worldPlacementLetters(world);
   // Turn one has no rolls yet, so an unrolled placeholder reads as a fresh draw; the player holds no traits.
@@ -61,7 +63,9 @@ export async function checkStatCode(world: RuleWorld): Promise<Finding[]> {
   }) : [];
   const results = await Promise.all(coded.map(async (stat) => {
     const result = await executeStatCode(stat.code ?? '', stats, stat, { placeholders, traits });
-    const name = labelPlaceholders(stat.name ?? '', allPlaceholders(world), { letters }).trim() || 'Untitled';
+    // The row names the stat as the author sees it in the list, not as code reaches it.
+    const authored = world.stats?.find((entry) => entry.id === stat.id)?.name ?? stat.name;
+    const name = labelPlaceholders(authored ?? '', allPlaceholders(world), { letters }).trim() || 'Untitled';
     const item = [{ id: stat.id, name }];
     if (result.error) return finding(STAT_CODE_EXECUTION, `Code on “${name}” ${FAILURE[result.kind ?? 'throw']}`, item);
     const unknown = unknownNames(result);
