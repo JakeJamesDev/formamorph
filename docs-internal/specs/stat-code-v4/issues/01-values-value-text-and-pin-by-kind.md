@@ -1,6 +1,8 @@
 # 01: Values, Value, Text, And Pin By Kind
 
-Status: ready-for-agent
+Status: ready-for-human
+Status note: Built and reviewed 2026-09-12. Widens the save envelope's Code Pins map to text-or-list, so it needs the version call. One acceptance line is vacuous: no turn-log line for placeholder pins exists to join.
+Base: 30ff5ea4
 Blocked by: None (can start immediately)
 Recommended model: Claude Opus 5 (`claude-opus-5`)
 Reasoning effort: high

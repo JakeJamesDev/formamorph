@@ -38,7 +38,8 @@ async function nameInSandbox(rolled: string): Promise<string | null> {
     statNameOf: (stat) => stat.name,
     placeholders: { placeholders: [beast, probe], rolls: { world: { 'ph-beast': rolled } } },
   });
-  return out.pinWrites['ph-probe'];
+  const pin = out.pinWrites['ph-probe'];
+  return typeof pin === 'string' || pin === null ? pin : pin.join(', ');
 }
 
 /** The unknown-stat findings a world raises for one piece of code that looks a stat up by name. */

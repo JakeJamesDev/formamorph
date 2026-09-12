@@ -5,7 +5,7 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { overlayStatCodeResult, runStatCodeTurn, withPinWrites, type StatCodeTurn } from './statCodeTurn';
 import type { StatCodeTraits } from './statCodeTraits';
-import type { Placeholder, PlaceholderRolls, PlayerStat, Trait, TraitGroup } from '@/types';
+import type { CodePins, Placeholder, PlaceholderRolls, PlayerStat, Trait, TraitGroup } from '@/types';
 import { encodePlaceholderToken, resolvePlaceholders, type PlaceholderPick } from './placeholders';
 import { collectPins } from './placeholderPins';
 import { phValueId, phValues } from '@/test/placeholderValues';
@@ -366,14 +366,14 @@ describe('runStatCodeTurn placeholder writes', () => {
   const mood: Placeholder = { id: 'mood', name: 'Mood', values: phValues(['calm', 'angry', 'sad']) };
   const rolls: PlaceholderRolls = { world: { mood: 'calm' } };
   /** Stats running `codes` in order, over Mood rolled calm and the Code Pins already in force. */
-  const run = (codes: string[], { placeholders = [mood], codePins = {} }: { placeholders?: Placeholder[]; codePins?: Record<string, string> } = {}) =>
+  const run = (codes: string[], { placeholders = [mood], codePins = {} }: { placeholders?: Placeholder[]; codePins?: CodePins } = {}) =>
     runStatCodeTurn(turn({
       stats: codes.map((code, i) => stat({ id: `s${i}`, value: 0, code })),
-      placeholders: { placeholders, rolls, pins: collectPins({ traits: [], placeholders, rolls, codePins }) },
+      placeholders: { placeholders, rolls, pins: collectPins({ traits: [], placeholders, rolls, codePins }), codePins },
     }));
   const chip = encodePlaceholderToken({ id: 'mood', mode: 'world', placementId: 'p' });
   /** The narration text the next prompt sends, under the Code Pins a turn leaves. */
-  const nextPrompt = (codePins: Record<string, string>) =>
+  const nextPrompt = (codePins: CodePins) =>
     resolvePlaceholders(`She is ${chip}.`, { placeholders: [mood], rolls, pins: collectPins({ traits: [], placeholders: [mood], rolls, codePins }) });
 
   it('turns a value write into a Code Pin the next prompt reads', async () => {
@@ -459,6 +459,117 @@ describe('runStatCodeTurn placeholder writes', () => {
       placeholders: { placeholders: [mood], rolls },
     }));
     expect(out.pinWrites).toEqual({});
+  });
+});
+
+// Three words, one meaning each: `values` is what the author wrote, `value` is what is in force — typed by
+// the placeholder's kind — and `text` is what the prompt sees. A turn is the seam that proves all three,
+// because the same run that reads them writes the pin the next turn reads back.
+describe('runStatCodeTurn placeholders by kind', () => {
+  beforeEach(() => {
+    vi.spyOn(console, 'error').mockImplementation(() => {});
+    vi.spyOn(console, 'warn').mockImplementation(() => {});
+  });
+  afterEach(() => vi.restoreAllMocks());
+
+  const mood: Placeholder = { id: 'mood', name: 'Mood', values: phValues(['calm', 'angry']) };
+  // Benched on the Wildcard, so `values` and a draw can be told apart.
+  const moodBenched: Placeholder = { ...mood, weights: { [phValueId('angry')]: 0 } };
+  const hair: Placeholder = { id: 'hair', name: 'Hair', values: phValues(['Grey', 'Long']), roll: false };
+  const rolls: PlaceholderRolls = { world: { mood: 'calm' } };
+  const chip = encodePlaceholderToken({ id: 'hair', mode: 'world', placementId: 'p' });
+
+  /** One turn of `code`, over `placeholders`, under the Code Pins already in force. */
+  const run = (code: string, placeholders: Placeholder[], codePins: CodePins = {}) =>
+    runStatCodeTurn(turn({
+      stats: [stat({ id: 's0', value: 0, code })],
+      placeholders: { placeholders, rolls, pins: collectPins({ traits: [], placeholders, rolls, codePins }), codePins },
+    }));
+  /** The narration text the next prompt sends for Hair, under the Code Pins a turn leaves. */
+  const nextPrompt = (codePins: CodePins, placeholders: Placeholder[] = [hair]) =>
+    resolvePlaceholders(`Her hair is ${chip}.`, {
+      placeholders, rolls, pins: collectPins({ traits: [], placeholders, rolls, codePins }),
+    });
+
+  it('lists every authored value on both kinds, the benched one included', async () => {
+    const out = await run(
+      'return placeholders.Mood.values.join("|") === "calm|angry"'
+      + ' && placeholders.Hair.values.join("|") === "Grey|Long" ? 1 : 0;',
+      [moodBenched, hair],
+    );
+    expect(valueOf(out.stats, 's0')).toBe(1);
+  });
+
+  it('reads a Wildcard as one text and an Object as the drawable list, with text as the join', async () => {
+    const out = await run(
+      'return placeholders.Mood.value === "calm" && placeholders.Mood.text === "calm"'
+      + ' && placeholders.Hair.value.join("|") === "Grey|Long" && placeholders.Hair.text === "Grey, Long" ? 1 : 0;',
+      [mood, hair],
+    );
+    expect(valueOf(out.stats, 's0')).toBe(1);
+  });
+
+  it('matches an Object’s text against the prompt’s own text for the same placement', async () => {
+    const out = await run('return placeholders.Hair.text === "Grey, Long" ? 1 : 0;', [hair]);
+    expect(valueOf(out.stats, 's0')).toBe(1);
+    expect(nextPrompt({})).toBe('Her hair is Grey, Long.');
+  });
+
+  it('lands a list pin as a list Code Pin the next prompt joins', async () => {
+    const { pinWrites } = await run('placeholders.Hair.pin(["Cropped, Short", "Silver"]);', [hair]);
+    expect(pinWrites).toEqual({ hair: ['Cropped, Short', 'Silver'] });
+    expect(nextPrompt(withPinWrites({}, pinWrites))).toBe('Her hair is Cropped, Short, Silver.');
+  });
+
+  it('reads a pinned list back through value exactly, a comma inside a value included', async () => {
+    const pinned = withPinWrites({}, (await run('placeholders.Hair.pin(["Cropped, Short", "Silver"]);', [hair])).pinWrites);
+    const out = await run(
+      'return placeholders.Hair.value.length === 2 && placeholders.Hair.value[0] === "Cropped, Short"'
+      + ' && placeholders.Hair.text === "Cropped, Short, Silver" ? 1 : 0;',
+      [hair], pinned,
+    );
+    expect(valueOf(out.stats, 's0')).toBe(1);
+  });
+
+  it('pins an Object handed one text as a one-item list, which the prompt shows alone', async () => {
+    const { pinWrites } = await run('placeholders.Hair.pin("Grey");', [hair]);
+    expect(pinWrites).toEqual({ hair: ['Grey'] });
+    expect(nextPrompt(withPinWrites({}, pinWrites))).toBe('Her hair is Grey.');
+  });
+
+  it('restores every drawable value on unpin(), through value and through the prompt', async () => {
+    const pinned = withPinWrites({}, (await run('placeholders.Hair.pin(["Silver"]);', [hair])).pinWrites);
+    const { pinWrites } = await run('placeholders.Hair.unpin();', [hair], pinned);
+    const released = withPinWrites(pinned, pinWrites);
+    expect(released).toEqual({});
+    const out = await run('return placeholders.Hair.value.join("|") === "Grey|Long" ? 1 : 0;', [hair], released);
+    expect(valueOf(out.stats, 's0')).toBe(1);
+    expect(nextPrompt(released)).toBe('Her hair is Grey, Long.');
+  });
+
+  it('keeps a Wildcard’s pin a string, and fails the run on a list handed to one', async () => {
+    const { pinWrites } = await run('placeholders.Mood.pin("furious");', [mood]);
+    expect(pinWrites).toEqual({ mood: 'furious' });
+    await expect(run('placeholders.Mood.pin(["furious"]);', [mood])).resolves.toMatchObject({ pinWrites: {} });
+  });
+
+  it('mints no new Code Pins when a run rewrites the list already pinned', async () => {
+    const pins: CodePins = { hair: ['Grey', 'Long'] };
+    const { pinWrites } = await run('placeholders.Hair.pin(["Grey", "Long"]);', [hair], pins);
+    expect(withPinWrites(pins, pinWrites)).toBe(pins);
+  });
+
+  it('reads an Object pinned to one text by another source as that one text', async () => {
+    const band = stat({
+      id: 'band',
+      value: 10,
+      descriptors: [{ id: 'low', threshold: 50, description: 'low', placeholderPins: [{ placeholderId: 'hair', value: 'Shorn' }] }],
+    });
+    const out = await runStatCodeTurn(turn({
+      stats: [band, stat({ id: 's0', value: 0, code: 'return placeholders.Hair.value.join("|") === "Shorn" && placeholders.Hair.text === "Shorn" ? 1 : 0;' })],
+      placeholders: { placeholders: [hair], rolls, pins: collectPins({ traits: [], stats: [band], placeholders: [hair], rolls }) },
+    }));
+    expect(valueOf(out.stats, 's0')).toBe(1);
   });
 });
 

@@ -75,4 +75,33 @@ describe('Code Pins in the gameplay snapshot', () => {
     await act(async () => { expect(live().loadGameState(before, [], { keepLiveHistory: true })).toBe(true); });
     expect(live().codePins).toEqual({ mood: 'Calm' });
   });
+
+  // An Object pins to a list, so the map holds text or a list per id. Both shapes ride the snapshot whole.
+  it('carries a list pin through a save and a load unsplit, commas inside a value included', async () => {
+    const live = mount();
+    await act(async () => { live().setCodePins({ hair: ['Cropped, Short', 'Silver'], mood: 'Furious' }); });
+    const saved = live().saveCurrentGameState();
+    expect(saved.codePins).toEqual({ hair: ['Cropped, Short', 'Silver'], mood: 'Furious' });
+    await act(async () => { live().setCodePins({}); });
+    await act(async () => { expect(live().loadGameState(saved, [])).toBe(true); });
+    expect(live().codePins).toEqual({ hair: ['Cropped, Short', 'Silver'], mood: 'Furious' });
+  });
+
+  it('restores a list pin on a rewind, over a later one of a different length', async () => {
+    const live = mount();
+    await act(async () => { live().setCodePins({ hair: ['Grey', 'Long'] }); });
+    const before = live().saveCurrentGameState();
+    await act(async () => { live().setCodePins({ hair: ['Silver'] }); });
+    await act(async () => { expect(live().loadGameState(before, [], { keepLiveHistory: true })).toBe(true); });
+    expect(live().codePins).toEqual({ hair: ['Grey', 'Long'] });
+  });
+
+  it('loads a save whose Code Pins are text only exactly as it was written', async () => {
+    const live = mount();
+    await act(async () => { live().setCodePins({ hair: ['Grey', 'Long'] }); });
+    await act(async () => {
+      expect(live().loadGameState({ ...legacySnapshot(), codePins: { mood: 'Furious' } }, [])).toBe(true);
+    });
+    expect(live().codePins).toEqual({ mood: 'Furious' });
+  });
 });

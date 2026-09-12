@@ -9,12 +9,14 @@
 import { javascriptLanguage } from '@codemirror/lang-javascript';
 import type { SyntaxNode, Tree } from '@lezer/common';
 import type { PlaceholderOwners } from '@/lib/placeholderHomes';
+import { placeholderKindNoun } from '@/lib/placeholders';
 import { placeholderDisplayName } from '@/lib/placementLetters';
 import { findSlotRanges, parseTemplateSlots } from '@/lib/statCodeTemplates';
 import type { Placeholder } from '@/types';
 import {
-  BUILTIN_MEMBERS, DELTA_FIELDS, DELTA_MEMBERS, PLACEHOLDER_ENTRY_FIELDS, PREVIOUS_FIELDS, SANDBOX_BUILTINS, SANDBOX_GLOBALS, SANDBOX_KNOWN_NAMES,
+  BUILTIN_MEMBERS, DELTA_FIELDS, DELTA_MEMBERS, PREVIOUS_FIELDS, SANDBOX_BUILTINS, SANDBOX_GLOBALS, SANDBOX_KNOWN_NAMES,
   SELF_WRITABLE_FIELDS, STAT_FIELDS, TRAIT_ENTRY_FIELDS, TRAIT_WRITABLE_FIELD, nearestName, nearestSurfaceName,
+  placeholderEntryFields,
   type SurfaceEntry,
 } from '@/lib/statCodeSurface';
 
@@ -179,6 +181,13 @@ function mapNameEntries(names: readonly string[], kind: EntryNoun, dotted: boole
 /** `root.Name` or `root["Name"]`: an expression that is one entry of the map `root`. */
 const entryExpression = (root: string) => new RegExp(`^${root}(\\??\\.[A-Za-z_$][\\w$]*|\\??\\.?\\[\\s*(["'])[^"'\\\\]*\\2\\s*\\])$`);
 const PLACEHOLDER_ENTRY_EXPRESSION = entryExpression('placeholders');
+/** The name `placeholders.Mood` or `placeholders["Hair Color"]` reads, or null for anything else. */
+function placeholderEntryName(expression: string): string | null {
+  const accessor = PLACEHOLDER_ENTRY_EXPRESSION.exec(expression)?.[1];
+  if (accessor === undefined) return null;
+  const bracketed = /\[\s*(["'])([^"'\\]*)\1\s*\]$/.exec(accessor);
+  return bracketed ? bracketed[2] : accessor.replace(/^\??\./, '');
+}
 const TRAIT_ENTRY_EXPRESSION = entryExpression('traits');
 /** One entry of `stats`, the key literal or computed: every key reads a stat, if only a blank one. */
 const STAT_ENTRY_EXPRESSION = /^stats(\??\.[A-Za-z_$][\w$]*|\??\.?\[[^[\]]*\])$/;
@@ -226,7 +235,12 @@ function membersAfterDot(
   if (expression === 'placeholders') {
     return options.placeholders ? mapNameEntries(placeholderNames(options.placeholders.list), 'placeholder', true) : null;
   }
-  if (PLACEHOLDER_ENTRY_EXPRESSION.test(expression)) return PLACEHOLDER_ENTRY_FIELDS;
+  const entryName = placeholderEntryName(expression);
+  if (entryName !== null) {
+    // The map keys by name, the last authored winning, so the kind is that one's.
+    const named = [...(options.placeholders?.list ?? [])].reverse().find((ph) => ph.name === entryName);
+    return placeholderEntryFields(named ? placeholderKindNoun(named) : 'Wildcard');
+  }
   if (expression === 'traits') return options.traits ? mapNameEntries(options.traits, 'trait', true) : null;
   if (TRAIT_ENTRY_EXPRESSION.test(expression)) return TRAIT_ENTRY_FIELDS;
   const turnInput = /^(.+)\.(previous|delta)$/.exec(expression);

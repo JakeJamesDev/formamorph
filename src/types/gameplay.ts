@@ -276,9 +276,9 @@ export interface SaveObject {
   memoryNotes?: Array<{ id: string; text: string; anchorTurn: number }>;
 }
 
-/** Placeholder id → the text stat code pinned it to. Masks the roll and every authored pin until code
- *  unpins it. */
-export type CodePins = Readonly<Record<string, string>>;
+/** Placeholder id → what stat code pinned it to: one text, or the list an Object pin holds. Masks the roll
+ *  and every authored pin until code unpins it. */
+export type CodePins = Readonly<Record<string, string | readonly string[]>>;
 
 /** Per-playthrough Wildcard rolls, frozen in the save. */
 export interface PlaceholderRolls {

@@ -60,17 +60,24 @@ export interface StatCodeTurnResult {
   traits?: StatCodeTraitResult;
 }
 
-/** Placeholder id → the text code pinned it to, or null where code unpinned it. */
-export type PinWrites = Readonly<Record<string, string | null>>;
+/** Placeholder id → what code pinned it to, or null where code unpinned it. An Object's pin is a list. */
+export type PinWrites = Readonly<Record<string, string | string[] | null>>;
+
+/** Whether two stored pins hold the same thing, so a rewrite of the same pin mints no new state. */
+const samePin = (a: string | readonly string[] | undefined, b: string | readonly string[]): boolean => {
+  if (typeof a === 'string' || a === undefined) return a === b;
+  return Array.isArray(b) && a.length === b.length && a.every((item, i) => item === b[i]);
+};
 
 /** `codePins` with a turn's pin writes laid on; the same object when they change nothing. */
 export function withPinWrites(codePins: CodePins, pinWrites: PinWrites): CodePins {
-  const changed = Object.entries(pinWrites).filter(([id, text]) => (text === null ? id in codePins : codePins[id] !== text));
+  const changed = Object.entries(pinWrites)
+    .filter(([id, pin]) => (pin === null ? id in codePins : !samePin(codePins[id], pin)));
   if (!changed.length) return codePins;
-  const next: Record<string, string> = { ...codePins };
-  for (const [id, text] of changed) {
-    if (text === null) delete next[id];
-    else next[id] = text;
+  const next: Record<string, string | readonly string[]> = { ...codePins };
+  for (const [id, pin] of changed) {
+    if (pin === null) delete next[id];
+    else next[id] = pin;
   }
   return next;
 }
@@ -216,11 +223,11 @@ function pinWritesInStatOrder(
   placeholders: readonly Placeholder[],
 ): PinWrites {
   const idByName = new Map(placeholders.map((ph) => [ph.name, ph.id]));
-  const out: Record<string, string | null> = {};
+  const out: Record<string, string | string[] | null> = {};
   for (const stat of stats) {
     for (const write of writesByStat.get(stat.id) ?? []) {
       const id = idByName.get(write.name);
-      if (id !== undefined) out[id] = 'unpin' in write ? null : write.text;
+      if (id !== undefined) out[id] = 'unpin' in write ? null : write.value;
     }
   }
   return out;

@@ -95,6 +95,27 @@ describe('collectPins — Code Pins', () => {
     const { layers } = collectPinLayers({ traits: [], stats: [hunger], placeholders: [town], codePins: { town: 'Ash' } });
     expect(layers.map((l) => [l.source.kind, l.wins])).toEqual([['descriptor', false]]);
   });
+
+  // An Object's Code Pin is stored as a list. Every reader that needs one string joins it the way the
+  // prompt joins an Object's values, so a list pin ranks and reads exactly as a text one does.
+  it('joins a list Code Pin with ", " where a collection needs text', () => {
+    expect(collectPins({ traits: [], placeholders: [town], codePins: { town: ['Fen', 'Moor'] } }))
+      .toEqual({ town: 'Fen, Moor' });
+  });
+
+  it('joins a one-item list to that item alone', () => {
+    expect(collectPins({ traits: [], placeholders: [town], codePins: { town: ['Fen'] } })).toEqual({ town: 'Fen' });
+  });
+
+  it('outranks every other source with a list pin, as a text pin does', () => {
+    expect(collectPins({ ...all, placeholders, codePins: { town: ['Ash', 'Moor'] } })).toEqual({ town: 'Ash, Moor' });
+  });
+
+  it('fires the value pins of the joined text a list Code Pin lands on', () => {
+    const rolls = { world: { region: 'Northern' }, unique: {} };
+    expect(collectPins({ traits: [], placeholders, rolls, codePins: { region: ['Southern'] } }))
+      .toEqual({ region: 'Southern', town: 'Sedge' });
+  });
 });
 
 describe('collectPinLayers — every pin laid, and the one in force marked', () => {

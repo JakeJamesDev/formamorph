@@ -141,18 +141,41 @@ if (lost > 0 && self.value === self.max) {
 
 | Member | What it is |
 | --- | --- |
-| `value` | The text the placeholder reads as now, with pins applied |
 | `values` | Every authored value as text, in authored order. Values with weight 0 are included |
+| `value` | What is in force. One text on a Wildcard or a Variable, a list on an Object |
+| `text` | `value` as one string: exactly what the prompt sees. A list joins with `", "`. Read-only |
 | `roll()` | One draw with the author's weights. The draw is not kept |
-| `pin(text)` | Pin the placeholder to that text |
+| `pin(x)` | Pin the placeholder. Takes what `value` reads on that entry |
 | `unpin()` | Remove the pin code set. The next pin in rank, or the roll, shows again |
 
-`pin(text)` pins the placeholder to that text until the code changes it again. Writing `value` does the same thing — `pin` is the suggested spelling, and the last of `pin`, `value` or `unpin` a run calls wins. The pin sits over the roll and every other pin; it never replaces them, so `unpin()` hands the placeholder back to whatever sat underneath. Any text is allowed, on the list or off it:
+#### The three words
+
+`values` is what the author wrote. `value` is what is in force right now. `text` is what the prompt sees.
+
+A Wildcard draws one value, so its `value` is one text and its `text` is that same text. An Object shows every value at once, so its `value` is the list of values in force and its `text` joins that list with `", "`. Compare against narration wording with `text`, never with `value`. `text` reads the same on either kind.
+
+```javascript
+// Works on either kind: the prompt's own words.
+if (placeholders.Hair.text.includes('gray')) self.value -= 1;
+```
+
+#### Pinning
+
+`pin(x)` pins the placeholder until the code changes it again. Writing `value` does the same thing — `pin` is the suggested spelling, and the last of `pin`, `value` or `unpin` a run calls wins. The pin sits over the roll and every other pin; it never replaces them, so `unpin()` hands the placeholder back to whatever sat underneath. Any text is allowed, on the list or off it:
 
 ```javascript
 // Mood follows Sanity's band.
 placeholders.Mood.pin(self.value < 20 ? 'furious' : self.value < 50 ? 'wary' : 'calm');
 ```
+
+`pin` takes the type `value` reads. A Wildcard takes one text. An Object takes a list, and one text handed to an Object pins a one-item list:
+
+```javascript
+// The prompt then reads "gray, cropped short".
+placeholders.Hair.pin(['gray', 'cropped short']);
+```
+
+A list handed to a Wildcard, or anything that is not text, **fails the run**, and every write that run made is discarded.
 
 A write to a placeholder name the world does not have is dropped. **Test Code** and the Test Bench both report it.
 

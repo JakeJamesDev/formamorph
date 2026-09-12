@@ -1,6 +1,7 @@
 import type { CodeBounds, Stat } from '@/types';
 import { getQuickJS, shouldInterruptAfterDeadline, type QuickJSWASMModule } from 'quickjs-emscripten';
 import { clamp } from './utils';
+import { VALUE_JOIN } from './placeholders';
 import { dayAndHour, daypart, FLAT_HOURS_PER_TURN, type WorldCalendar } from './gameClock';
 
 // Stat `code` ships inside world definitions, and worlds are downloaded from the community server — treat it as
@@ -86,8 +87,9 @@ export interface StatCodeResult {
   acquiredWrites?: string[];
 }
 
-/** One placeholder a run pinned to new text, or released with `unpin()`. */
-export type PlaceholderWrite = { name: string; text: string } | { name: string; unpin: true };
+/** One placeholder a run pinned, or released with `unpin()`. The pin carries the type the entry's `value`
+ *  reads: one text on a Wildcard or a Variable, a list on an Object. */
+export type PlaceholderWrite = { name: string; value: string | string[] } | { name: string; unpin: true };
 
 /** One trait a run switched on or off. */
 export interface TraitWrite {
@@ -145,13 +147,21 @@ export interface StatTurnInputs {
 const fieldwise = (read: (field: keyof StatNumbers) => number): StatNumbers =>
   ({ value: read('value'), min: read('min'), max: read('max'), regen: read('regen') });
 
-/** One entry of the sandbox's `placeholders` map. `roll` runs on the host; the rest rides in as data. */
+/** One entry of the sandbox's `placeholders` map. `roll` runs on the host; the rest rides in as data.
+ *  A list `value` marks an Object, and is what `pin` takes on that entry. */
 export interface SandboxPlaceholder {
   name: string;
-  value: string;
+  /** What is in force: one text on a Wildcard or a Variable, the values in force on an Object. */
+  value: string | string[];
+  /** Every authored value as text, in authored order, benched ones included. */
   values: readonly string[];
+  /** `value` as one string, exactly what the prompt sees for this placeholder. */
+  text: string;
   roll: () => string;
 }
+
+/** Whether an entry's `value` is a list, and so takes a list pin. */
+const takesList = (entry: SandboxPlaceholder): boolean => Array.isArray(entry.value);
 
 // The host hook every entry's `roll()` calls. The prelude takes it and deletes the global before user code runs.
 const ROLL_HOOK = '__formamorphRollPlaceholder';
@@ -234,26 +244,32 @@ const statsPrelude = (entries: readonly { name: string }[], blank: unknown): str
 });
 
 /** The `placeholders` prelude. `value` is an accessor, so the reader knows whether the entry was written and
- *  whether an unpin came after. `pin(text)` is an alias of the `value` setter — same state, same row — so the
- *  last of `pin`, `value` and `unpin` a run calls wins. Rows are `[name, 'set', value]` or `[name, 'unpin']`; a
- *  replaced entry is a write of itself when it is a string, else of its own value. */
+ *  whether an unpin came after; `text` follows it and takes no write. `pin(x)` is an alias of the `value`
+ *  setter — same state, same row — so the last of `pin`, `value` and `unpin` a run calls wins. Rows are
+ *  `[name, 'set', value]` or `[name, 'unpin']`; a replaced entry is a write of itself when it is a string or
+ *  a list, else of its own value. */
 const placeholdersPrelude = (entries: readonly SandboxPlaceholder[]): string => [
   trackedMapPrelude({
     root: 'placeholders',
     reader: PLACEHOLDER_WRITES,
-    data: Object.fromEntries(entries.map(({ name, value, values }) => [name, { value, values }])),
+    data: Object.fromEntries(entries.map(({ name, value, values, text }) => [name, { value, values, text }])),
     hostArgs: [['roll', `globalThis.${ROLL_HOOK}`]],
     track: `(name, entry, state) => {
-      state.value = entry.value; state.assigned = false; state.unpinned = false;
-      const set = (v) => { state.value = v; state.assigned = true; state.unpinned = false; };
+      state.value = entry.value; state.text = entry.text; state.assigned = false; state.unpinned = false;
+      const set = (v) => {
+        state.value = v;
+        state.text = Array.isArray(v) ? v.join(${JSON.stringify(VALUE_JOIN)}) : String(v);
+        state.assigned = true; state.unpinned = false;
+      };
       Object.defineProperty(entry, 'value', { enumerable: true, get: () => state.value, set });
+      Object.defineProperty(entry, 'text', { enumerable: true, get: () => state.text });
       entry.roll = () => roll(name);
       entry.pin = set;
       entry.unpin = () => { state.unpinned = true; };
     }`,
-    blank: `{ value: '', values: [] }`,
+    blank: `{ value: '', values: [], text: '' }`,
     row: `(name, state) => state.unpinned ? [name, 'unpin'] : state.assigned ? [name, 'set', state.value] : null`,
-    replaced: `(name, entry) => [name, 'set', typeof entry === 'string' || entry == null ? entry : entry.value]`,
+    replaced: `(name, entry) => [name, 'set', typeof entry === 'string' || entry == null || Array.isArray(entry) ? entry : entry.value]`,
   }),
   `delete globalThis.${ROLL_HOOK};`,
 ].join('\n');
@@ -312,20 +328,37 @@ function readTraitWrites(
   return { writes, unknown, acquired };
 }
 
-/** The writes in the reader's dump. A name no placeholder has is dropped; a write holds text or a finite
- *  number, and anything else fails the run. */
+/** One written item as text: a string, or a finite number spelled out. Anything else is not text. */
+const writtenText = (value: unknown): string | null => (typeof value === 'string' ? value
+  : typeof value === 'number' && Number.isFinite(value) ? String(value) : null);
+
+/**
+ * The writes in the reader's dump. A name no placeholder has is dropped. A write carries the type its
+ * entry's `value` reads: an entry that reads one text takes text, and an entry that reads a list takes a
+ * list, with one text pinning a one-item list. Anything else fails the run.
+ */
 function readPlaceholderWrites(
   dump: string,
   entries: readonly SandboxPlaceholder[],
 ): { writes: PlaceholderWrite[]; unknown: string[] } | { error: string } {
   const { known, unknown } = splitWriteRows(dump, entries);
+  const listByName = new Map(entries.map((entry) => [entry.name, takesList(entry)]));
   const writes: PlaceholderWrite[] = [];
   for (const [name, action, value] of known) {
     if (action === 'unpin') { writes.push({ name, unpin: true }); continue; }
-    const text = typeof value === 'string' ? value
-      : typeof value === 'number' && Number.isFinite(value) ? String(value) : null;
-    if (text === null) return { error: `${placeholderPath(name)}.value must be text` };
-    writes.push({ name, text });
+    if (!listByName.get(name)) {
+      const text = writtenText(value);
+      if (text === null) return { error: `${placeholderPath(name)}.value must be text` };
+      writes.push({ name, value: text });
+      continue;
+    }
+    const items: string[] = [];
+    for (const item of Array.isArray(value) ? value : [value]) {
+      const text = writtenText(item);
+      if (text === null) return { error: `${placeholderPath(name)}.value must be a list of text` };
+      items.push(text);
+    }
+    writes.push({ name, value: items });
   }
   return { writes, unknown };
 }
