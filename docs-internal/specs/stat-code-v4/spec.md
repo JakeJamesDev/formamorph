@@ -1,7 +1,7 @@
 # Stat Code v4: Placeholder Paths And Shapes
 
 Status: ready-for-agent
-Status note: Decisions locked 2026-09-11 in discussion after v3 shipped. No tickets yet.
+Status note: Tickets 01–04 cut 2026-09-12 under `issues/`. Frontier at start: 01, 03.
 
 ## Problem Statement
 
