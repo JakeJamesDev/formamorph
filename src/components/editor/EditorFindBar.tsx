@@ -15,6 +15,9 @@ import { placeholderVocabulary } from '@/lib/chipVocabulary';
 import { decodePlaceholderToken, encodePlaceholderToken, newPlaceholder } from '@/lib/placeholders';
 import { randomUUID } from '@/lib/uuid';
 import { findMatches, replaceAll, spliceText } from '@/lib/worldSearch';
+import { renameRootForTarget } from '@/lib/statCodeRename';
+import { statCodeName } from '@/lib/statCodeNames';
+import { useCodeRenameOffer } from '@/lib/useCodeRename';
 import type { SearchMatch, SearchTarget } from '@/lib/worldSearch';
 import type { PlacementLetters } from '@/lib/placementLetters';
 import type { PlaceholderOwners } from '@/lib/placeholderHomes';
@@ -133,6 +136,7 @@ export default function EditorFindBar({
   const [replaceText, setReplaceText] = useState('');
   const [chipId, setChipId] = useState<string | null>(null);
   const [confirmAll, setConfirmAll] = useState(false);
+  const offerCodeRename = useCodeRenameOffer();
   const [notice, setNotice] = useState<string | null>(null);
   const searchRef = useRef<HTMLInputElement>(null);
   const isMobile = useIsMobile();
@@ -197,6 +201,25 @@ export default function EditorFindBar({
     return encodePlaceholderToken({ id: chip.id, mode: 'world', placementId: randomUUID() });
   }, [placeholderMode, replaceText, chip]);
 
+  /**
+   * A replace that rewrote a name is a rename, and the code that named it deserves the same offer a rename
+   * typed into the panel gets. The names of the other entries come from the targets themselves, since every
+   * one of them carries its item's name field.
+   */
+  const nameTargets = useMemo(
+    () => targets.filter((target) => renameRootForTarget(target.itemKey, target.fieldKey)),
+    [targets],
+  );
+  const noteRename = useCallback((target: SearchTarget, next: string) => {
+    const root = renameRootForTarget(target.itemKey, target.fieldKey);
+    if (!root) return;
+    const read = root === 'stats' ? (name: string) => statCodeName(name, placeholders) : (name: string) => name;
+    const otherNames = nameTargets
+      .filter((other) => other.itemKey !== target.itemKey && renameRootForTarget(other.itemKey, other.fieldKey) === root)
+      .map((other) => read(other.value));
+    offerCodeRename({ root, oldName: read(target.value), newName: read(next), otherNames });
+  }, [offerCodeRename, placeholders, nameTargets]);
+
   const replaceCurrent = () => {
     if (!current) return;
     if (current.chip) {
@@ -212,12 +235,14 @@ export default function EditorFindBar({
       step(1);
       return;
     }
-    current.target.write(spliceText(current.target.value, current.start, current.end, insert));
+    const next = spliceText(current.target.value, current.start, current.end, insert);
+    current.target.write(next);
+    noteRename(current.target, next);
     // The rescan runs off the rewritten world; holding the index leaves the cursor on what is now next.
   };
 
   const runReplaceAll = () => {
-    const summary = replaceAll(matches, insertFor);
+    const summary = replaceAll(matches, insertFor, noteRename);
     setConfirmAll(false);
     const skipped = summary.skipped
       ? ` ${summary.skipped} skipped in ${summary.skippedFields.length} field${summary.skippedFields.length === 1 ? '' : 's'} that can't hold a chip.`

@@ -22,6 +22,7 @@ import { Plus, ArrowLeft, Save, FolderPlus, FilePlus, ImageDown, BookPlus, UserP
 import { ActionIcon } from '@/lib/actionIcons';
 import { cn } from "@/lib/utils";
 import EditorFindBar from '@/components/editor/EditorFindBar';
+import { CodeRenameProvider } from '@/components/editor/CodeRenameOffer';
 import { TestBench, TestBenchButton } from '@/components/editor/TestBench';
 import { BenchPopover } from '@/components/editor/BenchPopover';
 import { Drawer, DrawerContent, DrawerTitle } from '@/components/ui/drawer';
@@ -1265,7 +1266,10 @@ const WorldEditor = (props: Parameters<typeof WorldEditorInner>[0]) => {
       {/* One set of preview rolls for the whole editor, so every field's Preview shows one value per
           placeholder until a Reroll draws again. Editor state only — a save never sees it. */}
       <EditorPreviewRollsProvider>
-        <WorldEditorInner {...props} />
+        {/* Above the panels, so a rename committed on any of them reaches the one offer and its dialog. */}
+        <CodeRenameProvider>
+          <WorldEditorInner {...props} />
+        </CodeRenameProvider>
       </EditorPreviewRollsProvider>
     </EditorModeProvider>
   );

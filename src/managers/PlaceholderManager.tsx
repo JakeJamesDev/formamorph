@@ -28,6 +28,7 @@ import { Tip } from '@/components/ui/tooltip';
 import { PinPopoverButton } from '@/components/editor/PinPopoverButton';
 import { PlaceholderPinsSection } from '@/components/editor/PlaceholderPinsSection';
 import { useGameDataOptional } from '@/contexts/GameDataContext';
+import { useRenameField } from '@/lib/useCodeRename';
 import { useEditorMode } from '@/lib/editorMode';
 
 /** Which of the two value-editing styles a placeholder is being edited in. Session-only — nothing about it
@@ -157,6 +158,7 @@ const PlaceholderManager = ({ placeholder, rowId, share }: {
   const kind: PlaceholderKind = (editing.roll ?? true) ? 'wildcard' : 'object';
   // Only a placeholder that draws has weights worth showing; an Object applies every value.
   const weighable = placeholderIsChoice(editing);
+  const rename = useRenameField({ root: 'placeholders', value: editing.name, siblings: placeholders, ownId: editing.id });
   // A one-value Variable whose value holds wildcard chips still rolls — the chips do — so its chip offers
   // World | Unique like a Wildcard's. Read against the draft, so a chip just typed in flips the line at once.
   const rollingVariable = count === 1 && placeholderRandomizes(
@@ -345,6 +347,9 @@ const PlaceholderManager = ({ placeholder, rowId, share }: {
           onChange={(e) => apply({ name: e.target.value })}
           disabled={locked}
           placeholder="e.g. Eye Color"
+          onFocus={rename.onFocus}
+          onBlur={rename.onBlur}
+          onKeyDown={(e) => { if (e.key === 'Enter') rename.onSubmit(); }}
         />
       </div>
       <div className="space-y-2">

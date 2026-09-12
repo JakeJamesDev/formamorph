@@ -86,7 +86,9 @@ export default PlaceholderField;
  * With no placeholders defined this is a plain text box: the vocabulary has nothing to offer, so the hint
  * and the menu both stay away.
  */
-export const PlaceholderNameField = ({ value, onChange, placeholders, ownerId, placeholder, ariaLabel, className, readOnly = false }: {
+export const PlaceholderNameField = ({
+  value, onChange, placeholders, ownerId, placeholder, ariaLabel, className, readOnly = false, onFocus, onBlur, onSubmit,
+}: {
   value: string;
   onChange: (v: string) => void;
   placeholders: Placeholder[];
@@ -96,6 +98,10 @@ export const PlaceholderNameField = ({ value, onChange, placeholders, ownerId, p
   ariaLabel?: string;
   className?: string;
   readOnly?: boolean;
+  /** Focus arriving, focus leaving, and Enter — what a rename offer reads an edit's start and end from. */
+  onFocus?: () => void;
+  onBlur?: () => void;
+  onSubmit?: () => void;
 }) => {
   const vocab = usePlaceholderChipVocabulary(placeholders, ownerId);
   const enabled = placeholders.length > 0 && !readOnly;
@@ -109,6 +115,9 @@ export const PlaceholderNameField = ({ value, onChange, placeholders, ownerId, p
       className={className}
       readOnly={readOnly}
       trigger={enabled ? PLACEHOLDER_TRIGGER : undefined}
+      onFocus={onFocus}
+      onBlur={onBlur}
+      onSubmit={onSubmit}
     />
   );
 };
