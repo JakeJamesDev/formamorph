@@ -24,6 +24,7 @@ import { statCodeName, statCodeNamed } from "@/lib/statCodeNames";
 import { useRenameField } from "@/lib/useCodeRename";
 import { codePinText } from "@/lib/placeholderPins";
 import { sandboxPlaceholders } from "@/lib/statCodePlaceholders";
+import { placeholderPathLabel } from "@/lib/statCodePaths";
 import { sandboxTraits } from "@/lib/statCodeTraits";
 import { StatCodeTemplateDialog } from "@/components/modals/StatCodeTemplateDialog";
 import { CodeArea } from "@/components/prompt/CodeArea";
@@ -491,7 +492,7 @@ const StatManager = ({ stat, tab, onTabChange, focusField }: {
             try {
               // No playthrough behind the editor: an unrolled placeholder reads as a fresh draw, and the
               // player has no traits. A switch is reported here and never applied.
-              const placeholderEntries = sandboxPlaceholders({ placeholders, rolls: {} });
+              const placeholderEntries = sandboxPlaceholders({ placeholders, owners: placeholderOwners, rolls: {} });
               const traitEntries = sandboxTraits(
                 { acquired: [], disabledTraitIds: [], appliedValues: {}, world: { traits, groups: [] } },
                 placeholders,
@@ -509,13 +510,16 @@ const StatManager = ({ stat, tab, onTabChange, focusField }: {
                     const bound = result.bounds?.[field];
                     return bound === undefined ? [] : [`${BOUND_LABELS[field]}: ${bound}`];
                   }),
-                  ...(result.placeholders ?? []).map((write) =>
-                    ('unpin' in write ? `${write.name} unpinned` : `${write.name} = ${codePinText(write.value)}`)),
+                  ...(result.placeholders ?? []).map((write) => {
+                    // The path the code wrote, not the placeholder's bare name: that is what the author typed.
+                    const at = placeholderPathLabel(write.path);
+                    return 'unpin' in write ? `${at} unpinned` : `${at} = ${codePinText(write.value)}`;
+                  }),
                   ...(result.traits ?? []).map((write) => `${write.name} switched ${write.enabled ? 'on' : 'off'}`),
                 ];
                 if (parts.length) setCodeResult(parts.join(' · '));
                 setCodeWarnings([
-                  ...(result.unknownPlaceholders ? [`No placeholder has these names, so code did not change them: ${result.unknownPlaceholders.join(', ')}.`] : []),
+                  ...(result.unknownPlaceholders ? [`No placeholder answers these paths, so code did not change them: ${result.unknownPlaceholders.join(', ')}.`] : []),
                   ...(result.unknownTraits ? [`No trait has these names, so code did not switch them: ${result.unknownTraits.join(', ')}.`] : []),
                   ...(result.acquiredWrites ? [`Code can’t change acquired, so these writes did nothing: ${result.acquiredWrites.join(', ')}.`] : []),
                 ]);

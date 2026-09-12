@@ -383,19 +383,32 @@ describe('placeholders in stat code', () => {
     expect(messages('const key = "Mood";\nreturn placeholders[key].value.length;', { placeholders: { list: [] } })).toEqual([]);
   });
 
-  it('warns on a shared name and names the placeholder that wins', () => {
+  // A bare name reaches the row the world itself holds before any owned or scoped one, whatever the
+  // authoring order, so the warning says which and points at the path that reaches the other.
+  it('warns on a shared name and says the world’s own row is the one that reads', () => {
     // An owned placeholder is always a chip value of its owner.
     const molly = ph('molly', 'Molly', { values: [{ id: 'v:m2', text: encodePlaceholderToken({ id: 'm2', mode: 'world', placementId: 'p1' }) }] });
     const shared = [ph('m1', 'Mood'), molly, ph('m2', 'Mood', { ownerId: 'molly' })];
     expect(messages('return placeholders.Mood.value.length;', { placeholders: { list: shared } }))
-      .toEqual(['2 placeholders are named “Mood”. This reads “Molly › Mood”, the last one authored.']);
+      .toEqual(['2 placeholders are named “Mood”. This reads the one the world itself holds. Write the path to reach another.']);
   });
 
-  it('names an entity’s own placeholder by its entity when it wins a shared name', () => {
+  it('names the owned one when it is the only claim on a shared name', () => {
+    const molly = ph('molly', 'Molly', { values: [{ id: 'v:m2', text: encodePlaceholderToken({ id: 'm2', mode: 'world', placementId: 'p1' }) }] });
+    const anna = ph('anna', 'Anna', { values: [{ id: 'v:m3', text: encodePlaceholderToken({ id: 'm3', mode: 'world', placementId: 'p2' }) }] });
+    const shared = [molly, ph('m2', 'Mood', { ownerId: 'molly' }), anna, ph('m3', 'Mood', { ownerId: 'anna' })];
+    expect(messages('return placeholders.Mood.value.length;', { placeholders: { list: shared } }))
+      .toEqual(['2 placeholders are named “Mood”. This reads “Anna › Mood”, the last one authored. Write the path to reach another.']);
+  });
+
+  it('names an entity’s own placeholder by its entity when it is the one that reads', () => {
     const list = [ph('m1', 'Mood'), ph('m2', 'Mood')];
     const owners = new Map([['m2', { kind: 'entity' as const, id: 'ent-bo', name: 'Bo' }]]);
     expect(messages('return placeholders.Mood.value.length;', { placeholders: { list, owners } }))
-      .toEqual(['2 placeholders are named “Mood”. This reads “Bo › Mood”, the last one authored.']);
+      .toEqual(['2 placeholders are named “Mood”. This reads the one the world itself holds. Write the path to reach another.']);
+    // With no world-level row of the name, the entity's own is what a bare name reaches.
+    expect(messages('return placeholders.Mood.value.length;', { placeholders: { list: [list[1]], owners } }))
+      .toEqual([]);
   });
 
   it('offers the names after placeholders., leaving out any a dot cannot reach', () => {
@@ -451,6 +464,104 @@ describe('placeholders in stat code', () => {
   it('still warns when code only reads placeholders', () => {
     expect(messages('const mood = placeholders.Mood.value;', { placeholders: { list: world } }))
       .toEqual(['This code never returns a number or writes self.value, so the stat keeps its value.']);
+  });
+
+  // `placeholders` is a tree: an entity or book that owns placeholders is a node of its own, and a
+  // placeholder that holds others carries them as members. The editor completes and checks the same paths.
+  describe('paths', () => {
+    /** Molly owns Hair; Hair owns Shade. The world has its own Hair and a spaced-name entity.
+     *  An owned placeholder is always a chip value of its holder, which is what nests it. */
+    const chip = (id: string) => ({ id: `v:${id}`, text: encodePlaceholderToken({ id, mode: 'world', placementId: `p-${id}` }) });
+    const hair = ph('hair', 'Hair', { values: [chip('shade')] });
+    const shade = ph('shade', 'Shade', { ownerId: 'hair' });
+    const list = [ph('world-hair', 'Hair'), hair, shade, ph('eye', 'Eye Color')];
+    const owners = new Map([
+      ['hair', { kind: 'entity' as const, id: 'e-molly', name: 'Molly' }],
+      ['shade', { kind: 'entity' as const, id: 'e-molly', name: 'Molly' }],
+      ['eye', { kind: 'dictionary' as const, id: 'b-old', name: 'Old Molly' }],
+    ]);
+    const scoped = { placeholders: { list, owners } };
+
+    it('says nothing about a path every segment of which exists, at any depth', () => {
+      expect(messages('placeholders.Molly.Hair.Shade.pin("ash");', scoped)).toEqual([]);
+      expect(messages('placeholders["Old Molly"]["Eye Color"].pin("green");', scoped)).toEqual([]);
+    });
+
+    it('underlines a segment no entry has, and names the nearest under its holder', () => {
+      const [problem] = statCodeDiagnostics('placeholders.Molly.Hiar.pin("x");', scoped);
+      expect(problem).toMatchObject({
+        severity: 'error',
+        message: '“Molly” has no placeholder named “Hiar”. Did you mean “Hair”?',
+      });
+      // Pointed at the bad segment, not at the whole chain.
+      expect('placeholders.Molly.Hiar.pin("x");'.slice(problem.from, problem.to)).toBe('Hiar');
+    });
+
+    it('reports a bad segment once for a chain, not once per nesting', () => {
+      expect(messages('placeholders.Molly.Hiar.Shade.pin("x");', scoped))
+        .toEqual(['“Molly” has no placeholder named “Hiar”. Did you mean “Hair”?']);
+    });
+
+    it('warns on a child whose name loses to a member every placeholder has', () => {
+      const holder = ph('holder', 'Holder', { values: [chip('child')] });
+      const shadowed = { placeholders: { list: [holder, ph('child', 'value', { ownerId: 'holder' })] } };
+      expect(messages('placeholders.Holder.value = "x";', shadowed)).toEqual([
+        'Every placeholder has a value of its own, so this reads that. '
+        + 'The placeholder named “value” under “Holder” can’t be reached from code.',
+      ]);
+    });
+
+    it('says nothing about a member read off an entry reached by a path', () => {
+      expect(messages('placeholders.Molly.Hair.value = "gray";', scoped)).toEqual([]);
+      expect(messages('return placeholders.Molly.Hair.Shade.text.length;', scoped)).toEqual([]);
+    });
+
+    it('offers an owner node’s placeholders after its dot, and nothing of an entry’s own', () => {
+      expect(labels('return placeholders.Molly.|', scoped)).toEqual(['Hair']);
+    });
+
+    it('offers a holder’s own members first, then what it holds', () => {
+      const members = placeholderEntryFields('Wildcard').map((entry) => entry.name);
+      expect(labels('return placeholders.Molly.Hair.|', scoped)).toEqual([...members, 'Shade']);
+    });
+
+    it('offers the quoted names a bracket can reach, at the top level and under a node', () => {
+      // Keys, not paths: one bracket holds one key, so `Molly › Hair` is not writable there.
+      expect(labels('return placeholders["|"];', scoped)).toEqual(['Hair', 'Molly', 'Old Molly', 'Shade', 'Eye Color']);
+      expect(labels('return placeholders["Old Molly"]["|"];', scoped)).toEqual(['Eye Color']);
+      expect(labels('return placeholders.Molly["|"];', scoped)).toEqual(['Hair']);
+    });
+
+    it('leads with the exact path where a bare name is ambiguous', () => {
+      const offered = labels('return placeholders.|', scoped);
+      // Two placeholders are named Hair, so the path that reaches the scoped one comes first.
+      expect(offered[0]).toBe('Molly.Hair');
+      expect(offered).toContain('Hair');
+      expect(offered).toContain('Molly');
+      // A name a dot cannot reach is left out of the dotted list.
+      expect(offered).not.toContain('Old Molly');
+    });
+
+    it('names an owner node as the entity or book it stands for', () => {
+      const detailOf = (name: string) =>
+        completeAt('return placeholders.|', scoped)?.options.find((option) => option.label === name)?.detail;
+      expect(detailOf('Molly')).toBe('entity');
+      expect(detailOf('Hair')).toBe('placeholder');
+    });
+
+    it('warns that an owner node owns placeholders rather than holding a value', () => {
+      expect(messages('placeholders.Molly = "x";', scoped))
+        .toEqual(['“Molly” owns placeholders. Write to one of them instead.']);
+    });
+
+    it('suggests .value on a whole entry reached by a path', () => {
+      expect(messages('placeholders.Molly.Hair.Shade = "ash";', scoped))
+        .toEqual(['Write to placeholders.Molly.Hair.Shade.value instead.']);
+    });
+
+    it('keeps quiet about a segment only a run could name', () => {
+      expect(messages('const key = "Hair";\nplaceholders.Molly[key].pin("x");', scoped)).toEqual([]);
+    });
   });
 });
 

@@ -36,7 +36,7 @@ export const SANDBOX_GLOBALS: readonly SurfaceEntry[] = [
   { name: 'self', detail: 'Stat', info: 'The stat this code belongs to. Write self.value to set its value.' },
   { name: 'stats', detail: 'object', info: 'Every stat in the world by name. Use stats["Two Words"] for a name with a space.' },
   ...STAT_CLOCK_VARS.map((name) => CLOCK_INFO[name]),
-  { name: 'placeholders', detail: 'object', info: 'Every placeholder in the world by name. Use placeholders["Two Words"] for a name with a space.' },
+  { name: 'placeholders', detail: 'object', info: 'Every placeholder in the world. A bare name reaches the world’s own; write the path for an owned one, as in placeholders.Molly.Hair. Use placeholders["Two Words"] for a name with a space.' },
   { name: 'traits', detail: 'object', info: 'Every trait in the world by name. Use traits["Two Words"] for a name with a space.' },
   { name: 'console', detail: 'object', info: 'Only console.log — output shows up in the browser console.' },
 ];
@@ -238,21 +238,25 @@ export const SANDBOX_KNOWN_NAMES: ReadonlySet<string> = new Set([
  *  names don't suggest each other and long ones tolerate a slip. */
 const suggestionDistance = (name: string): number => (name.length <= 4 ? 1 : name.length <= 8 ? 2 : 3);
 
-/** Levenshtein distance, capped implicitly by the short strings involved. */
+/** Levenshtein distance with transposition, capped implicitly by the short strings involved. Two letters
+ *  swapped counts as one slip rather than two, because that is the typo an author actually makes. */
 function editDistance(a: string, b: string): number {
-  let previous = Array.from({ length: b.length + 1 }, (_, index) => index);
+  const rows: number[][] = [Array.from({ length: b.length + 1 }, (_, index) => index)];
   for (let i = 1; i <= a.length; i += 1) {
     const row = [i];
     for (let j = 1; j <= b.length; j += 1) {
       row[j] = Math.min(
-        previous[j] + 1,
+        rows[i - 1][j] + 1,
         row[j - 1] + 1,
-        previous[j - 1] + (a[i - 1] === b[j - 1] ? 0 : 1),
+        rows[i - 1][j - 1] + (a[i - 1] === b[j - 1] ? 0 : 1),
       );
+      if (i > 1 && j > 1 && a[i - 1] === b[j - 2] && a[i - 2] === b[j - 1]) {
+        row[j] = Math.min(row[j], rows[i - 2][j - 2] + 1);
+      }
     }
-    previous = row;
+    rows.push(row);
   }
-  return previous[b.length];
+  return rows[a.length][b.length];
 }
 
 /**

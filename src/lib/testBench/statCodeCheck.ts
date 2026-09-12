@@ -8,7 +8,7 @@
  * execution failure lists, groups and sorts exactly like a static finding.
  */
 import { executeStatCode, type StatCodeFailure, type StatCodeResult } from '@/lib/statCodeExecutor';
-import { allPlaceholders } from '@/lib/placeholderHomes';
+import { allPlaceholders, placeholderOwners } from '@/lib/placeholderHomes';
 import { statCodeNamed } from '@/lib/statCodeNames';
 import { sandboxPlaceholders } from '@/lib/statCodePlaceholders';
 import { sandboxTraits } from '@/lib/statCodeTraits';
@@ -40,7 +40,7 @@ const quoteAll = (names: readonly string[]) => names.map((name) => `“${name}�
 /** The names a run wrote that the world lacks, phrased for the row; null when every write landed. */
 function unknownNames({ unknownPlaceholders = [], unknownTraits = [] }: StatCodeResult): string | null {
   const parts = [
-    ...(unknownPlaceholders.length ? [`no placeholder is named ${quoteAll(unknownPlaceholders)}`] : []),
+    ...(unknownPlaceholders.length ? [`no placeholder answers ${quoteAll(unknownPlaceholders)}`] : []),
     ...(unknownTraits.length ? [`no trait is named ${quoteAll(unknownTraits)}`] : []),
   ];
   return parts.length ? parts.join(' and ') : null;
@@ -57,7 +57,9 @@ export async function checkStatCode(world: RuleWorld): Promise<Finding[]> {
   const coded = stats.filter((stat) => stat.code?.trim());
   const letters = worldPlacementLetters(world);
   // Turn one has no rolls yet, so an unrolled placeholder reads as a fresh draw; the player holds no traits.
-  const placeholders = coded.length ? sandboxPlaceholders({ placeholders: placeholderDefs, rolls: {} }) : [];
+  const placeholders = coded.length
+    ? sandboxPlaceholders({ placeholders: placeholderDefs, owners: placeholderOwners(world), rolls: {} })
+    : [];
   const traits = coded.length ? sandboxTraits({
     acquired: [], disabledTraitIds: [], appliedValues: {},
     world: { traits: world.traits, groups: world.traitGroups ?? [] },
@@ -70,7 +72,7 @@ export async function checkStatCode(world: RuleWorld): Promise<Finding[]> {
     const item = [{ id: stat.id, name }];
     if (result.error) return finding(STAT_CODE_EXECUTION, `Code on “${name}” ${FAILURE[result.kind ?? 'throw']}`, item);
     const unknown = unknownNames(result);
-    return unknown ? finding(STAT_CODE_UNKNOWN_NAME, `Code on “${name}” writes to names the world doesn’t have: ${unknown}`, item) : null;
+    return unknown ? finding(STAT_CODE_UNKNOWN_NAME, `Code on “${name}” writes where the world has nothing: ${unknown}`, item) : null;
   }));
   return results.filter((found): found is Finding => found !== null);
 }

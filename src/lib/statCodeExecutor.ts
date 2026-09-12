@@ -2,6 +2,7 @@ import type { CodeBounds, Stat } from '@/types';
 import { getQuickJS, shouldInterruptAfterDeadline, type QuickJSWASMModule } from 'quickjs-emscripten';
 import { clamp } from './utils';
 import { VALUE_JOIN } from './placeholders';
+import { PLACEHOLDER_ENTRY_MEMBERS, placeholderPathExpression, placeholderPathLabel } from './statCodePaths';
 import { dayAndHour, daypart, FLAT_HOURS_PER_TURN, type WorldCalendar } from './gameClock';
 
 // Stat `code` ships inside world definitions, and worlds are downloaded from the community server — treat it as
@@ -77,7 +78,7 @@ export interface StatCodeResult {
   bounds?: CodeBounds;
   /** The placeholders the code wrote or unpinned, in map order. Absent when it touched none. */
   placeholders?: PlaceholderWrite[];
-  /** Names the code wrote that no placeholder has; each write was dropped. */
+  /** Paths the code wrote that no placeholder answers, as code spelled them; each write was dropped. */
   unknownPlaceholders?: string[];
   /** The traits the code switched, in map order. Absent when it switched none. */
   traits?: TraitWrite[];
@@ -88,8 +89,10 @@ export interface StatCodeResult {
 }
 
 /** One placeholder a run pinned, or released with `unpin()`. The pin carries the type the entry's `value`
- *  reads: one text on a Wildcard or a Variable, a list on an Object. */
-export type PlaceholderWrite = { name: string; value: string | string[] } | { name: string; unpin: true };
+ *  reads: one text on a Wildcard or a Variable, a list on an Object. `id` is the placeholder the write
+ *  lands on, whichever path reached it; `path` is how the code spelled it. */
+export type PlaceholderWrite = { id: string; path: readonly string[] }
+  & ({ value: string | string[] } | { unpin: true });
 
 /** One trait a run switched on or off. */
 export interface TraitWrite {
@@ -150,7 +153,8 @@ const fieldwise = (read: (field: keyof StatNumbers) => number): StatNumbers =>
 /** One entry of the sandbox's `placeholders` map. `roll` runs on the host; the rest rides in as data.
  *  A list `value` marks an Object, and is what `pin` takes on that entry. */
 export interface SandboxPlaceholder {
-  name: string;
+  /** The placeholder this entry reads, so a write lands on it whichever path reached it. */
+  id: string;
   /** What is in force: one text on a Wildcard or a Variable, the values in force on an Object. */
   value: string | string[];
   /** Every authored value as text, in authored order, benched ones included. */
@@ -160,8 +164,21 @@ export interface SandboxPlaceholder {
   roll: () => string;
 }
 
-/** Whether an entry's `value` is a list, and so takes a list pin. */
-const takesList = (entry: SandboxPlaceholder): boolean => Array.isArray(entry.value);
+/**
+ * One node of the sandbox's `placeholders` map. A placeholder node carries an entry; an owner node stands
+ * for an entity or a dictionary that owns placeholders and carries none, so it has no fixed members at all.
+ * One placeholder reachable by two keys is one node object, so it holds one pin state.
+ */
+export interface SandboxPlaceholderNode {
+  /** The key this node takes in its parent. */
+  name: string;
+  /** Every segment from the map root to this node, by the path that names it. */
+  path: readonly string[];
+  /** Absent on an owner node. */
+  entry?: SandboxPlaceholder;
+  /** The placeholders this node owns, as members. */
+  children?: readonly SandboxPlaceholderNode[];
+}
 
 // The host hook every entry's `roll()` calls. The prelude takes it and deletes the global before user code runs.
 const ROLL_HOOK = '__formamorphRollPlaceholder';
@@ -243,36 +260,150 @@ const statsPrelude = (entries: readonly { name: string }[], blank: unknown): str
   blank: JSON.stringify(blank),
 });
 
-/** The `placeholders` prelude. `value` is an accessor, so the reader knows whether the entry was written and
- *  whether an unpin came after; `text` follows it and takes no write. `pin(x)` is an alias of the `value`
- *  setter — same state, same row — so the last of `pin`, `value` and `unpin` a run calls wins. Rows are
- *  `[name, 'set', value]` or `[name, 'unpin']`; a replaced entry is a write of itself when it is a string or
- *  a list, else of its own value. */
-const placeholdersPrelude = (entries: readonly SandboxPlaceholder[]): string => [
-  trackedMapPrelude({
-    root: 'placeholders',
-    reader: PLACEHOLDER_WRITES,
-    data: Object.fromEntries(entries.map(({ name, value, values, text }) => [name, { value, values, text }])),
-    hostArgs: [['roll', `globalThis.${ROLL_HOOK}`]],
-    track: `(name, entry, state) => {
-      state.value = entry.value; state.text = entry.text; state.assigned = false; state.unpinned = false;
-      const set = (v) => {
-        state.value = v;
-        state.text = Array.isArray(v) ? v.join(${JSON.stringify(VALUE_JOIN)}) : String(v);
-        state.assigned = true; state.unpinned = false;
-      };
-      Object.defineProperty(entry, 'value', { enumerable: true, get: () => state.value, set });
-      Object.defineProperty(entry, 'text', { enumerable: true, get: () => state.text });
-      entry.roll = () => roll(name);
-      entry.pin = set;
-      entry.unpin = () => { state.unpinned = true; };
-    }`,
-    blank: `{ value: '', values: [], text: '' }`,
-    row: `(name, state) => state.unpinned ? [name, 'unpin'] : state.assigned ? [name, 'set', state.value] : null`,
-    replaced: `(name, entry) => [name, 'set', typeof entry === 'string' || entry == null || Array.isArray(entry) ? entry : entry.value]`,
-  }),
-  `delete globalThis.${ROLL_HOOK};`,
-].join('\n');
+/** The `placeholders` map as the prelude and the write reader both read it: its top-level keys, and every
+ *  node it holds under an index apiece. */
+interface FlatPlaceholderMap {
+  top: readonly SandboxPlaceholderNode[];
+  /** Every node, each once, in the order a walk from the top reaches them. */
+  nodes: readonly SandboxPlaceholderNode[];
+  indexOf: ReadonlyMap<SandboxPlaceholderNode, number>;
+}
+
+/** Flatten the map. A node shared by two keys takes one index, so it holds one pin state, and a world whose
+ *  placeholders hold each other terminates. */
+function flattenPlaceholderMap(top: readonly SandboxPlaceholderNode[]): FlatPlaceholderMap {
+  const indexOf = new Map<SandboxPlaceholderNode, number>();
+  const nodes: SandboxPlaceholderNode[] = [];
+  const visit = (node: SandboxPlaceholderNode) => {
+    if (indexOf.has(node)) return;
+    indexOf.set(node, nodes.length);
+    nodes.push(node);
+    for (const child of node.children ?? []) visit(child);
+  };
+  for (const node of top) visit(node);
+  return { top, nodes, indexOf };
+}
+
+/**
+ * The `placeholders` prelude. The map is a tree: every node is an object on a null prototype carrying its
+ * children as members, then its own fixed members, which win a name a child shares. A Proxy on each node
+ * hands an unknown member a tracked blank entry, so a write to `placeholders.Molly.Hiar` is dropped rather
+ * than thrown, and reported by the path that named it.
+ *
+ * `value` is an accessor, so the reader knows whether the entry was written and whether an unpin came after;
+ * `text` follows it and takes no write. `pin(x)` is an alias of the `value` setter — same state, same row —
+ * so the last of `pin`, `value` and `unpin` a run calls wins. Rows are `[index, 'set', value]` or
+ * `[index, 'unpin']`; an entry a run replaced wholesale is a write of itself when it is a string or a list,
+ * else of its own value.
+ *
+ * `stats` and `traits` are flat maps and share `trackedMapPrelude`. This one does not: its objects nest, one
+ * node sits at two keys, and a key a run adds has to be told apart from the members its node was built with.
+ * A factory serving both shapes would carry every one of those cases for the two maps that never meet them.
+ */
+const placeholdersPrelude = ({ top, nodes, indexOf }: FlatPlaceholderMap): string => {
+  const keyed = (children: readonly SandboxPlaceholderNode[]) =>
+    children.map((child) => [child.name, indexOf.get(child)]);
+  const spec = {
+    nodes: nodes.map((node) => ({
+      p: node.path,
+      ...(node.entry ? { e: { value: node.entry.value, values: node.entry.values, text: node.entry.text } } : {}),
+      ...(node.children?.length ? { c: keyed(node.children) } : {}),
+    })),
+    top: keyed(top),
+  };
+  return [
+    `const [placeholders, ${PLACEHOLDER_WRITES}] = ((stringify, keys, isArray, define, roll) => {`,
+    `  const spec = JSON.parse(${JSON.stringify(JSON.stringify(spec))});`,
+    `  const states = [];`,
+    `  const strays = Object.create(null);`,
+    `  const track = (target, state) => {`,
+    `    const set = (v) => {`,
+    `      state.value = v;`,
+    `      state.text = isArray(v) ? v.join(${JSON.stringify(VALUE_JOIN)}) : String(v);`,
+    `      state.assigned = true; state.unpinned = false;`,
+    `    };`,
+    `    define(target, 'value', { enumerable: true, get: () => state.value, set });`,
+    `    define(target, 'text', { enumerable: true, get: () => state.text });`,
+    `    target.pin = set;`,
+    `    target.unpin = () => { state.unpinned = true; };`,
+    `  };`,
+    `  const strayAt = (path, key) => {`,
+    `    const at = stringify([...path, key]);`,
+    `    if (strays[at]) return strays[at].entry;`,
+    `    const state = { value: '', text: '', assigned: false, unpinned: false, path: [...path, key] };`,
+    `    const entry = Object.create(null);`,
+    `    entry.values = []; entry.roll = () => '';`,
+    `    track(entry, state);`,
+    `    strays[at] = { entry, state };`,
+    `    return entry;`,
+    `  };`,
+    `  const view = (target, path) => new Proxy(target, {`,
+    `    get: (t, key) => (typeof key !== 'string' || key in t ? t[key] : strayAt(path, key)),`,
+    `  });`,
+    `  const targets = spec.nodes.map(() => Object.create(null));`,
+    `  const views = spec.nodes.map((n, i) => view(targets[i], n.p));`,
+    `  const members = (holder, pairs) => { for (const [key, at] of pairs) holder[key] = views[at]; };`,
+    `  spec.nodes.forEach((n, i) => members(targets[i], n.c || []));`,
+    `  spec.nodes.forEach((n, i) => {`,
+    `    if (!n.e) return;`,
+    `    states[i] = { value: n.e.value, text: n.e.text, assigned: false, unpinned: false };`,
+    `    targets[i].values = n.e.values;`,
+    `    targets[i].roll = () => roll(i);`,
+    `    track(targets[i], states[i]);`,
+    `  });`,
+    `  const root = Object.create(null);`,
+    `  members(root, spec.top);`,
+    // Every key each object is meant to carry. A run can also write a key no node answers, which lands on
+    // the object itself rather than on a blank entry, so the reader diffs against these to find it.
+    `  const expected = (pairs, entry) => {`,
+    `    const set = Object.create(null);`,
+    `    for (const pair of pairs) set[pair[0]] = 1;`,
+    `    if (entry) for (const member of ${JSON.stringify(PLACEHOLDER_ENTRY_MEMBERS)}) set[member] = 1;`,
+    `    return set;`,
+    `  };`,
+    `  const scanned = [{ object: root, built: expected(spec.top, false), path: [] }]`,
+    `    .concat(spec.nodes.map((n, i) => ({ object: targets[i], built: expected(n.c || [], !!n.e), path: n.p })));`,
+    // Every key an entry actually sits at, so a run that replaced one wholesale is read back as a write of
+    // it. A child whose name lost to a member of its holder sits at no key, so it has no site here.
+    `  const sites = [];`,
+    `  const site = (holder, pairs) => {`,
+    `    for (const [key, at] of pairs) if (holder[key] === views[at] && spec.nodes[at].e) {`,
+    `      sites.push({ holder, key, at });`,
+    `    }`,
+    `  };`,
+    `  site(root, spec.top);`,
+    `  spec.nodes.forEach((n, i) => site(targets[i], n.c || []));`,
+    `  const readWrites = () => {`,
+    `    const replaced = Object.create(null);`,
+    `    for (const { holder, key, at } of sites) {`,
+    `      const held = holder[key];`,
+    `      if (held === views[at]) continue;`,
+    `      replaced[at] = typeof held === 'string' || held == null || isArray(held) ? held : held.value;`,
+    `    }`,
+    `    const rows = [];`,
+    `    spec.nodes.forEach((n, i) => {`,
+    `      if (!n.e) return;`,
+    `      if (i in replaced) rows.push([i, 'set', replaced[i]]);`,
+    `      else if (states[i].unpinned) rows.push([i, 'unpin']);`,
+    `      else if (states[i].assigned) rows.push([i, 'set', states[i].value]);`,
+    `    });`,
+    `    const missed = [];`,
+    `    const seen = Object.create(null);`,
+    `    const miss = (path) => { const at = stringify(path); if (!seen[at]) { seen[at] = 1; missed.push(path); } };`,
+    `    for (const { object, built, path } of scanned) {`,
+    `      for (const key of keys(object)) if (!(key in built)) miss([...path, key]);`,
+    `    }`,
+    `    for (const at of keys(strays)) {`,
+    `      const state = strays[at].state;`,
+    `      if (state.assigned || state.unpinned) miss(state.path);`,
+    `    }`,
+    `    return stringify([rows, missed]);`,
+    `  };`,
+    `  return [view(root, []), readWrites];`,
+    `})(JSON.stringify, Object.keys, Array.isArray, Object.defineProperty, globalThis.${ROLL_HOOK});`,
+    `delete globalThis.${ROLL_HOOK};`,
+  ].join('\n');
+};
 
 /** The `traits` prelude. Every assignment to `enabled` is a switch; `acquired` is read-only and a write to it
  *  is recorded. Rows are `[name, enabled, assigned, acquiredWritten]`; a replaced entry reads as itself when it
@@ -294,7 +425,6 @@ const traitsPrelude = (entries: readonly SandboxTrait[]): string => trackedMapPr
 /** How code names an entry of `root`: dot syntax for an identifier, brackets otherwise. */
 const memberPath = (root: string, name: string) =>
   /^[A-Za-z_$][\w$]*$/.test(name) ? `${root}.${name}` : `${root}[${JSON.stringify(name)}]`;
-const placeholderPath = (name: string) => memberPath('placeholders', name);
 
 /** A reader's dump as rows, split into those naming an entry and the names no entry has. */
 function splitWriteRows(dump: string, entries: readonly { name: string }[]): { known: [string, ...unknown[]][]; unknown: string[] } {
@@ -333,33 +463,42 @@ const writtenText = (value: unknown): string | null => (typeof value === 'string
   : typeof value === 'number' && Number.isFinite(value) ? String(value) : null);
 
 /**
- * The writes in the reader's dump. A name no placeholder has is dropped. A write carries the type its
- * entry's `value` reads: an entry that reads one text takes text, and an entry that reads a list takes a
- * list, with one text pinning a one-item list. Anything else fails the run.
+ * The writes in the reader's dump, keyed by node index. A path no placeholder answers is reported rather
+ * than applied. A write carries the type its entry's `value` reads: an entry that reads one text takes text,
+ * and an entry that reads a list takes a list, with one text pinning a one-item list. Anything else fails
+ * the run.
  */
 function readPlaceholderWrites(
   dump: string,
-  entries: readonly SandboxPlaceholder[],
+  nodes: readonly SandboxPlaceholderNode[],
 ): { writes: PlaceholderWrite[]; unknown: string[] } | { error: string } {
-  const { known, unknown } = splitWriteRows(dump, entries);
-  const listByName = new Map(entries.map((entry) => [entry.name, takesList(entry)]));
+  const parsed: unknown = JSON.parse(dump);
+  const [rows, missed] = Array.isArray(parsed) ? parsed : [];
   const writes: PlaceholderWrite[] = [];
-  for (const [name, action, value] of known) {
-    if (action === 'unpin') { writes.push({ name, unpin: true }); continue; }
-    if (!listByName.get(name)) {
-      const text = writtenText(value);
-      if (text === null) return { error: `${placeholderPath(name)}.value must be text` };
-      writes.push({ name, value: text });
+  for (const row of Array.isArray(rows) ? rows : []) {
+    if (!Array.isArray(row) || typeof row[0] !== 'number') continue;
+    const node = nodes[row[0]];
+    if (!node?.entry) continue;
+    const { id } = node.entry;
+    const { path } = node;
+    if (row[1] === 'unpin') { writes.push({ id, path, unpin: true }); continue; }
+    if (!Array.isArray(node.entry.value)) {
+      const text = writtenText(row[2]);
+      if (text === null) return { error: `${placeholderPathExpression(path)}.value must be text` };
+      writes.push({ id, path, value: text });
       continue;
     }
     const items: string[] = [];
-    for (const item of Array.isArray(value) ? value : [value]) {
+    for (const item of Array.isArray(row[2]) ? row[2] : [row[2]]) {
       const text = writtenText(item);
-      if (text === null) return { error: `${placeholderPath(name)}.value must be a list of text` };
+      if (text === null) return { error: `${placeholderPathExpression(path)}.value must be a list of text` };
       items.push(text);
     }
-    writes.push({ name, value: items });
+    writes.push({ id, path, value: items });
   }
+  const unknown = (Array.isArray(missed) ? missed : [])
+    .filter((path): path is string[] => Array.isArray(path) && path.every((step) => typeof step === 'string'))
+    .map((path) => placeholderPathLabel(path));
   return { writes, unknown };
 }
 
@@ -375,7 +514,8 @@ const nonNumberFailure = (what: string) => failure(what, 'non-number');
 export interface StatCodeRunOptions {
   clock?: StatClock;
   turn?: Readonly<Record<string, StatTurnInputs>>;
-  placeholders?: readonly SandboxPlaceholder[];
+  /** The map's top-level keys, in authored order. Absent, the map is empty. */
+  placeholders?: readonly SandboxPlaceholderNode[];
   traits?: readonly SandboxTrait[];
 }
 
@@ -427,6 +567,7 @@ export const executeStatCode = async (
         },
       };
     };
+    const placeholderMap = flattenPlaceholderMap(placeholders);
     const statsData = stats.map(marshal);
     // `self` is the current stat's own entry in `stats`. A stat missing from `stats`, or one that loses its
     // name to a later stat, stands alone.
@@ -455,8 +596,8 @@ export const executeStatCode = async (
       logFn.dispose();
       consoleObj.dispose();
 
-      const rollByName = new Map(placeholders.map((entry) => [entry.name, entry.roll]));
-      const rollFn = vm.newFunction('roll', (nameHandle) => vm.newString(rollByName.get(vm.getString(nameHandle))?.() ?? ''));
+      const rollFn = vm.newFunction('roll', (indexHandle) =>
+        vm.newString(placeholderMap.nodes[vm.getNumber(indexHandle)]?.entry?.roll() ?? ''));
       vm.setProp(vm.global, ROLL_HOOK, rollFn);
       rollFn.dispose();
 
@@ -475,7 +616,7 @@ export const executeStatCode = async (
         `  Object.freeze(s.delta);`,
         `}`,
         ...Object.entries(resolveClock(clock)).map(([name, value]) => `const ${name} = ${JSON.stringify(value)};`),
-        placeholdersPrelude(placeholders),
+        placeholdersPrelude(placeholderMap),
         traitsPrelude(traits),
         `[(function(${PLACEHOLDER_WRITES}, ${TRAIT_WRITES}) {`,
         code,
@@ -542,7 +683,7 @@ export const executeStatCode = async (
         if (!Number.isFinite(slot.number)) return nonNumberFailure(`self.${field} must be a finite number`);
         bounds[field] = slot.number;
       }
-      const placeholderWrites = readPlaceholderWrites(writesDump, placeholders);
+      const placeholderWrites = readPlaceholderWrites(writesDump, placeholderMap.nodes);
       if ('error' in placeholderWrites) return failure(placeholderWrites.error, 'bad-write');
       const traitWrites = readTraitWrites(traitsDump, traits);
       if ('error' in traitWrites) return failure(traitWrites.error, 'bad-write');
