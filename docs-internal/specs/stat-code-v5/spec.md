@@ -1,6 +1,7 @@
 # Stat Code v5: Every Turn, Before And After The AI
 
 Status: ready-for-agent
+Status note: Tickets 01–04 cut 2026-09-12 under `issues/`. Frontier at start: 01.
 
 ## Problem Statement
 
