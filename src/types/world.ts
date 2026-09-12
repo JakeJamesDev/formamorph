@@ -44,7 +44,10 @@ export interface Stat {
   /** How this stat's descriptor thresholds read: `raw` in the stat's own units (bands stay put when the
    *  range changes), `percent` as a share of min→max (bands rescale). Absent = raw. */
   thresholdUnit?: ThresholdUnit;
-  /** Optional JS executed to derive this stat's value from others. */
+  /** Optional JS run before the turn's AI calls, on the turn's starting state. Its writes reach that
+   *  turn's prompt. */
+  beforeCode?: string;
+  /** Optional JS run after the AI's asks and regen land. */
   code?: string;
   /** Body-mesh morph target names this stat drives; the value maps linearly across [min, authored max],
    *  so a max raised in play pushes the influence past 1. */

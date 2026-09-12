@@ -229,6 +229,107 @@ describe('runStatCodeTurn', () => {
   });
 });
 
+describe('runStatCodeTurn timing', () => {
+  beforeEach(() => vi.spyOn(console, 'error').mockImplementation(() => {}));
+  afterEach(() => vi.restoreAllMocks());
+
+  const seeded = (over: Partial<PlayerStat>): PlayerStat => stat({
+    id: 'a', min: 0, max: 100, regen: 0, baseMin: 0, baseMax: 100, baseRegen: 0, aiMaxDelta: 0, ...over,
+  });
+
+  it('runs the before box and leaves the after box alone', async () => {
+    const out = await runStatCodeTurn(turn({
+      timing: 'before',
+      stats: [stat({ id: 'a', beforeCode: 'return 11;', code: 'return 22;' })],
+    }));
+    expect(valueOf(out.stats, 'a')).toBe(11);
+  });
+
+  it('runs the after box and leaves the before box alone', async () => {
+    const out = await runStatCodeTurn(turn({
+      timing: 'after',
+      stats: [stat({ id: 'a', beforeCode: 'return 11;', code: 'return 22;' })],
+    }));
+    expect(valueOf(out.stats, 'a')).toBe(22);
+  });
+
+  it('runs the after box when no timing is given, as every caller before the before box did', async () => {
+    const out = await runStatCodeTurn(turn({ stats: [stat({ id: 'a', beforeCode: 'return 11;', code: 'return 22;' })] }));
+    expect(valueOf(out.stats, 'a')).toBe(22);
+  });
+
+  it('leaves a whitespace-only before box unrun, the stat’s after box included', async () => {
+    const stats = [stat({ id: 'a', value: 50, beforeCode: '  \n ', code: 'return 99;' })];
+    const out = await runStatCodeTurn(turn({ timing: 'before', stats }));
+    expect(out.stats).toBe(stats);
+    expect(out.moved).toEqual([]);
+  });
+
+  it('reads every delta source as zero in the before box, whatever the turn carries', async () => {
+    const code = 'return self.delta.ai.value + self.delta.ai.max + self.delta.regen.value'
+      + ' + self.delta.total.value + self.delta.actual.value;';
+    const out = await runStatCodeTurn(turn({
+      timing: 'before',
+      stats: [stat({ id: 'a', value: 70, max: 1000, beforeCode: code })],
+      previous: [stat({ id: 'a', value: 50 })],
+      asks: [{ id: 'a', value: 20, max: 5 }],
+      regenApplied: { a: 5 },
+    }));
+    expect(valueOf(out.stats, 'a')).toBe(0);
+  });
+
+  it('reads previous as self in the before box, whatever the turn carries', async () => {
+    // +1 so an unrun box reads 70 and the turn's own previous reads 51; only self-as-previous reads 71.
+    const out = await runStatCodeTurn(turn({
+      timing: 'before',
+      stats: [stat({ id: 'a', value: 70, beforeCode: 'return self.previous.value + 1;' })],
+      previous: [stat({ id: 'a', value: 50 })],
+    }));
+    expect(valueOf(out.stats, 'a')).toBe(71);
+  });
+
+  it('still reads the clock in the before box', async () => {
+    const out = await runStatCodeTurn(turn({
+      timing: 'before',
+      stats: [stat({ id: 'a', max: 1000, beforeCode: 'return elapsedHours;' })],
+      clock: { deltaHours: 0, elapsedHours: 12 },
+    }));
+    expect(valueOf(out.stats, 'a')).toBe(12);
+  });
+
+  it('keeps a bound the before box set through an after box that writes none', async () => {
+    const before = await runStatCodeTurn(turn({
+      timing: 'before',
+      stats: [seeded({ beforeCode: 'self.max = 40;', code: 'return 30;' })],
+    }));
+    expect(before.stats[0].codeBounds).toEqual({ max: 40 });
+    const after = await runStatCodeTurn(turn({ timing: 'after', stats: before.stats }));
+    expect(after.stats[0].codeBounds).toEqual({ max: 40 });
+    expect(after.stats[0]).toMatchObject({ max: 40, value: 30 });
+  });
+
+  it('keeps the code bounds of a stat that has only a before box, on the after run', async () => {
+    const stats = [seeded({ max: 40, codeBounds: { max: 40 }, beforeCode: 'self.max = 40;' })];
+    const out = await runStatCodeTurn(turn({ timing: 'after', stats }));
+    expect(out.stats).toBe(stats);
+  });
+
+  it('keeps the code bounds of a stat that has only an after box, on the before run', async () => {
+    const stats = [seeded({ max: 40, codeBounds: { max: 40 }, code: 'self.max = 40;' })];
+    const out = await runStatCodeTurn(turn({ timing: 'before', stats }));
+    expect(out.stats).toBe(stats);
+  });
+
+  it.each(['before', 'after'] as const)('clears the code bounds on the %s run when both boxes are empty', async (timing) => {
+    const out = await runStatCodeTurn(turn({
+      timing,
+      stats: [seeded({ min: 20, max: 40, codeBounds: { min: 20, max: 40 }, beforeCode: '  ', code: '' })],
+    }));
+    expect('codeBounds' in out.stats[0]).toBe(false);
+    expect(out.boundsChanged).toEqual(['a']);
+  });
+});
+
 describe('runStatCodeTurn stat code names', () => {
   beforeEach(() => vi.spyOn(console, 'error').mockImplementation(() => {}));
   afterEach(() => vi.restoreAllMocks());

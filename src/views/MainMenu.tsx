@@ -860,23 +860,22 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
     void refreshDictionaries();
   }, [refreshWorlds, refreshEntities, refreshDictionaries]);
 
+  // A stat's two boxes, each named by its timing, in the order the turn runs them.
+  const statCodeBoxes = (stat: Stat) => ([
+    ['Before The AI', stat.beforeCode] as const,
+    ['After The AI', stat.code] as const,
+  ].filter(([, code]) => code && code.trim() !== ''));
+
   // Check if any stat has code
   const hasStatWithCode = (statsArray: Stat[]) => {
-    return statsArray.some(stat => stat.code && stat.code.trim() !== '');
-  };
-
-  // Get all stats with code
-  const getStatsWithCode = (statsArray: Stat[]) => {
-    return statsArray.filter(stat => stat.code && stat.code.trim() !== '');
+    return statsArray.some(stat => statCodeBoxes(stat).length > 0);
   };
 
   // Generate concatenated code from all stats with code
   const generateConcatenatedCode = (statsArray: Stat[]) => {
-    const statsWithCode = getStatsWithCode(statsArray);
-
-    return statsWithCode.map(stat => (
-      `# ${describePlaceholders(stat.name, placeholders) || 'Unnamed Stat'}\n${stat.code}`
-    )).join('\n\n----\n\n');
+    return statsArray.flatMap(stat => statCodeBoxes(stat).map(([timing, code]) => (
+      `# ${describePlaceholders(stat.name, placeholders) || 'Unnamed Stat'} — ${timing}\n${code}`
+    ))).join('\n\n----\n\n');
   };
 
   const handleWorldSelection = async (worldId: string) => {

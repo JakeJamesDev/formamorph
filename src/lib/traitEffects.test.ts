@@ -96,6 +96,18 @@ describe('re-reading saved stats from the world', () => {
     expect(refreshSavedStats(saved, authored)[0].code).toBe('self.value = 2;');
   });
 
+  it('runs a before box the author filled in since the save was made', () => {
+    const saved = [PS('vigor')];
+    const authored = [S('vigor', { beforeCode: 'self.value = 3;' })];
+    expect(refreshSavedStats(saved, authored)[0].beforeCode).toBe('self.value = 3;');
+  });
+
+  it('drops a before box the author emptied since the save was made', () => {
+    const saved = [PS('vigor', { beforeCode: 'self.value = 3;' })];
+    const authored = [S('vigor')];
+    expect(refreshSavedStats(saved, authored)[0].beforeCode).toBeUndefined();
+  });
+
   it('picks up a rename, a redescription, and a retype since the save was made', () => {
     const saved = [PS('vigor', { name: 'Vigor', description: 'old', type: 'number' })];
     const authored = [S('vigor', { name: 'Fortitude', description: 'new', type: 'percentage' })];

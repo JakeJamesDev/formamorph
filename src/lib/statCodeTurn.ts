@@ -13,6 +13,17 @@ import {
 } from './traitRuntime';
 import { clamp } from './utils';
 
+/** Where in the turn a run sits: before the AI calls, or after the asks and the regen. */
+export type StatCodeTiming = 'before' | 'after';
+
+/** The box a run reads on one stat, empty where that stat leaves the box blank. */
+export const boxCode = (stat: Pick<PlayerStat, 'beforeCode' | 'code'>, timing: StatCodeTiming): string =>
+  (timing === 'before' ? stat.beforeCode : stat.code) ?? '';
+
+/** Whether a stat leaves both boxes blank, which is what clears its code bounds. */
+export const noBoxes = (stat: Pick<PlayerStat, 'beforeCode' | 'code'>): boolean =>
+  !stat.beforeCode?.trim() && !stat.code?.trim();
+
 /** The trait state a run's switches left, and the log lines they wrote. */
 export interface StatCodeTraitResult {
   acquired: Trait[];
@@ -24,6 +35,10 @@ export interface StatCodeTraitResult {
 /** Everything one turn hands to stat code. The forward turn and the re-roll both build one of these; a turn
  *  with no stat response builds one with no asks. */
 export interface StatCodeTurn {
+  /** Which box runs. `before` runs each stat's before-the-AI code over the turn's starting state, reading
+   *  every `delta` as zero and `previous` as `self` whatever the turn carries. `after`, the default, runs
+   *  today's box over the asks and the regen. */
+  timing?: StatCodeTiming;
   /** Every stat as the turn's pipeline left it: AI asks and regen applied, code not yet run. Names are the
    *  authored ones, chips and all — code reads each stat's code name, derived here. */
   stats: readonly PlayerStat[];
@@ -110,14 +125,17 @@ export function overlayStatCodeResult(
 /** Run every enabled stat's code over one turn in the sandbox, in parallel over one snapshot. A failing
  *  run is logged and leaves its stat unchanged. Empty code clears its stat's code bounds. */
 export async function runStatCodeTurn(turn: StatCodeTurn): Promise<StatCodeTurnResult> {
+  const timing = turn.timing ?? 'after';
   const live = enabledStats([...turn.stats], turn.enabled);
   // Code reaches a stat by its code name, which no roll moves. The log and the panel keep the rolled text.
   const placeholderDefs = turn.placeholders?.placeholders ?? [];
   const named = statCodeNamed(live, placeholderDefs);
   const previous = new Map(statCodeNamed(turn.previous, placeholderDefs).map((stat) => [stat.id, stat]));
   const asks = new Map(turn.asks.map((ask) => [ask.id, ask]));
-  // Only what this turn knows; the executor reads a missing part as untouched.
-  const inputs: Record<string, StatTurnInputs> = Object.fromEntries(named.map((stat) => {
+  // Only what this turn knows; the executor reads a missing part as untouched. The before box runs at the
+  // turn's start, so it hands over nothing at all: the executor then reads `previous` as `self` and every
+  // delta source as zero, whatever the turn it rides in already holds.
+  const inputs: Record<string, StatTurnInputs> = timing === 'before' ? {} : Object.fromEntries(named.map((stat) => {
     const before = previous.get(stat.id);
     const ask = asks.get(stat.id);
     return [stat.id, {
@@ -126,7 +144,7 @@ export async function runStatCodeTurn(turn: StatCodeTurn): Promise<StatCodeTurnR
     }];
   }));
 
-  const coded = named.filter((stat) => stat.code?.trim());
+  const coded = named.filter((stat) => boxCode(stat, timing).trim());
   // Resolved once, so every stat's code reads the same placeholders and the same traits.
   const placeholders = coded.length && turn.placeholders ? sandboxPlaceholders(turn.placeholders) : [];
   const traits = coded.length ? sandboxTraits(turn.traits, placeholderDefs) : [];
@@ -134,7 +152,7 @@ export async function runStatCodeTurn(turn: StatCodeTurn): Promise<StatCodeTurnR
   const placeholderWritesByStat = new Map<string, readonly PlaceholderWrite[]>();
   const traitWritesByStat = new Map<string, readonly TraitWrite[]>();
   await Promise.all(coded.map(async (stat) => {
-    const result = await executeStatCode(stat.code ?? '', named, stat, { clock: turn.clock, turn: inputs, placeholders, traits });
+    const result = await executeStatCode(boxCode(stat, timing), named, stat, { clock: turn.clock, turn: inputs, placeholders, traits });
     if (result.error) {
       console.error(`Error executing code for stat ${stat.name}:`, result.error);
       return;
@@ -156,7 +174,8 @@ export async function runStatCodeTurn(turn: StatCodeTurn): Promise<StatCodeTurnR
   }));
   const pinWrites = pinWritesInStatOrder(live, placeholderWritesByStat);
   for (const stat of live) {
-    if (!stat.code?.trim() && stat.codeBounds) writes.set(stat.id, { value: null, bounds: {} });
+    // Code bounds outlive one box: only a stat that has emptied both loses them.
+    if (noBoxes(stat) && stat.codeBounds) writes.set(stat.id, { value: null, bounds: {} });
   }
 
   // Trait switches first, so bounds re-derive under them; the code's own bounds and values then go on top.

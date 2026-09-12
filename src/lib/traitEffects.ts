@@ -58,7 +58,10 @@ export function refreshSavedStats(saved: readonly PlayerStat[], authored: readon
   return saved.map((stat) => {
     const current = byId.get(stat.id);
     return current
-      ? { ...stat, code: current.code, name: current.name, description: current.description, type: current.type }
+      ? {
+        ...stat, beforeCode: current.beforeCode, code: current.code,
+        name: current.name, description: current.description, type: current.type,
+      }
       : stat;
   });
 }

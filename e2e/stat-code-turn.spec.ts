@@ -5,7 +5,7 @@ import { openApp } from './app';
 /** Serve the whiteRoom world and save with Coin (60 of 100 in the save) carrying `code` and the `stat` fields,
  *  regen 0 unless given. `extra` is laid over the root of each fixture. */
 async function coinWithCode(
-  page: Page, code: string, stat: { regen?: number; min?: number; name?: string } = {},
+  page: Page, code: string, stat: { regen?: number; min?: number; name?: string; beforeCode?: string } = {},
   extra: { World?: object; Save?: object } = {},
 ) {
   for (const kind of ['World', 'Save'] as const) {
@@ -23,8 +23,8 @@ async function coinWithCode(
 }
 
 /** Answer every chat call: the stat tracker gets `statReply`, narration gets a line of prose. Each
- *  narration request's messages land in `narration`, when given. */
-async function mockModel(page: Page, statReply: string, narration?: string[]) {
+ *  narration request's messages land in `narration`, and each stat request's in `statPrompts`, when given. */
+async function mockModel(page: Page, statReply: string, narration?: string[], statPrompts?: string[]) {
   let statCalls = 0;
   await page.route('**/api/v0/models', (route) => route.fulfill({ status: 404 }));
   await page.route('**/v1/models', (route) => route.fulfill({ json: { data: [{ id: 'e2e-model' }] } }));
@@ -32,8 +32,10 @@ async function mockModel(page: Page, statReply: string, narration?: string[]) {
     const { messages } = route.request().postDataJSON();
     const system = messages.find((message: { role: string }) => message.role === 'system')?.content ?? '';
     const isStats = system.includes('stat tracker');
-    if (isStats) statCalls += 1;
-    else narration?.push(JSON.stringify(messages));
+    if (isStats) {
+      statCalls += 1;
+      statPrompts?.push(JSON.stringify(messages));
+    } else narration?.push(JSON.stringify(messages));
     const text = isStats ? statReply : 'You count the coins twice.';
     await route.fulfill({ contentType: 'text/event-stream', body:
       `data: ${JSON.stringify({ choices: [{ delta: { content: text }, finish_reason: null }] })}\n\ndata: [DONE]\n\n` });
@@ -276,6 +278,116 @@ test('stat code runs on a turn where the AI asks for no stat change', async ({ p
 
   await expect(page.getByText(/67\s*\/\s*100/).first()).toBeVisible();
   await expect.poll(statCalls).toBe(1);
+});
+
+// The before box runs at the start of the turn, so its pin has to be in that turn's own prompt. The
+// after-the-AI twin of this case asserts the pin lands one turn later, which is what the timing changes.
+test('a placeholder the before box pins reaches the same turn’s prompt', async ({ page }) => {
+  page.on('pageerror', (error) => console.error(error.message));
+  const world = JSON.parse(readFileSync('src/lib/devFixtures/whiteRoomWorld.json', 'utf8'));
+  const locations = world.locations.map((location: { id: string }) => (location.id === '1783535114538'
+    ? { ...location, aiDescription: 'The walls glow {{ph:ph-mood:world:p1}}.' } : location));
+  await coinWithCode(page, '', { beforeCode: 'placeholders.Mood.value = "incandescent";' }, {
+    World: { placeholders: [mood], locations }, Save: calmRoll,
+  });
+  const narration: string[] = [];
+  await mockModel(page, 'Coin: +20', narration);
+  await openApp(page, settings(), { url: '/#dev?view=gameViewer&fixture=whiteRoom' });
+  await playOneTurn(page);
+
+  await expect.poll(() => narration.length).toBeGreaterThanOrEqual(1);
+  expect(narration[0]).toContain('The walls glow incandescent.');
+  expect(narration[0]).not.toContain('The walls glow calm.');
+});
+
+// The value the before box writes is the one the tracker is asked about, not the one the turn started at.
+test('a value the before box sets reaches the same turn’s stat request', async ({ page }) => {
+  page.on('pageerror', (error) => console.error(error.message));
+  await coinWithCode(page, '', { beforeCode: 'return 37;' });
+  const statPrompts: string[] = [];
+  await mockModel(page, 'Coin: +0', undefined, statPrompts);
+  await openApp(page, settings(), { url: '/#dev?view=gameViewer&fixture=whiteRoom' });
+  await playOneTurn(page);
+
+  await expect(page.getByText(/37\s*\/\s*100/).first()).toBeVisible();
+  await expect.poll(() => statPrompts.length).toBeGreaterThanOrEqual(1);
+  expect(statPrompts[0]).toContain('37');
+  expect(statPrompts[0]).not.toContain('60');
+});
+
+// The after box reads the pins the before box left, not the ones the turn opened with.
+test('the after box reads the pin the before box made', async ({ page }) => {
+  page.on('pageerror', (error) => console.error(error.message));
+  await coinWithCode(page, 'return { calm: 11, angry: 22 }[placeholders.Mood.value];', {
+    beforeCode: 'placeholders.Mood.pin("angry");',
+  }, { World: { placeholders: [mood] }, Save: calmRoll });
+  await mockModel(page, 'Coin: +0');
+  await openApp(page, settings(), { url: '/#dev?view=gameViewer&fixture=whiteRoom' });
+  await playOneTurn(page);
+
+  // Reading the turn's opening calm would leave 11.
+  await expect(page.getByText(/22\s*\/\s*100/).first()).toBeVisible();
+  await expect(page.getByText(/11\s*\/\s*100/)).toHaveCount(0);
+});
+
+// Turn order: the after box reads the state the before box left, plus the asks and the regen.
+test('the after box reads the value the before box left, the ask on top', async ({ page }) => {
+  page.on('pageerror', (error) => console.error(error.message));
+  await coinWithCode(page, 'return self.value + 1;', { beforeCode: 'return 10;' });
+  await mockModel(page, 'Coin: +5');
+  await openApp(page, settings(), { url: '/#dev?view=gameViewer&fixture=whiteRoom' });
+  await playOneTurn(page);
+
+  // 10 from the before box, +5 asked, +1 from the after box. Reading the turn-start 60 would leave 66.
+  await expect(page.getByText(/16\s*\/\s*100/).first()).toBeVisible();
+  await expect(page.getByText(/(66|61)\s*\/\s*100/)).toHaveCount(0);
+});
+
+// A re-roll replays the whole turn from the last snapshot, so the before box runs again over it: the
+// re-rolled turn lands on the same value, neither stacked on the first run nor missing the box.
+test('a stats re-roll runs the before box again from the pre-turn state', async ({ page }) => {
+  page.on('pageerror', (error) => console.error(error.message));
+  await coinWithCode(page, '', { beforeCode: 'return self.value + 1;' });
+  const statCalls = await mockModel(page, 'Coin: +0');
+  await openApp(page, settings(), { url: '/#dev?view=gameViewer&fixture=whiteRoom' });
+  const mobile = await playOneTurn(page);
+
+  await expect(page.getByText(/61\s*\/\s*100/).first()).toBeVisible();
+
+  if (mobile) await page.getByRole('button', { name: 'Game', exact: true }).click();
+  await page.getByRole('button', { name: 'More re-generate options', exact: true }).click();
+  await page.getByRole('button', { name: 'Re-generate Stats', exact: true }).click();
+  await expect.poll(statCalls).toBe(2);
+  await expect(page.getByRole('button', { name: 'More re-generate options', exact: true })).toBeEnabled();
+  if (mobile) await page.getByRole('button', { name: 'Status', exact: true }).click();
+  // Skipping the box on the re-roll would leave the pre-turn 60; stacking on the first run would give 62.
+  await expect(page.getByText(/61\s*\/\s*100/).first()).toBeVisible();
+  await expect(page.getByText(/(60|62)\s*\/\s*100/)).toHaveCount(0);
+});
+
+// A turn that never commits leaves nothing behind. The before box has already written by the time the
+// narration comes back empty, so the failure exit has to put its write back.
+test('a failed turn puts back the value the before box moved', async ({ page }) => {
+  page.on('pageerror', (error) => console.error(error.message));
+  await coinWithCode(page, '', { beforeCode: 'return self.value + 1;' });
+  let narrationCalls = 0;
+  await page.route('**/api/v0/models', (route) => route.fulfill({ status: 404 }));
+  await page.route('**/v1/models', (route) => route.fulfill({ json: { data: [{ id: 'e2e-model' }] } }));
+  await page.route('**/chat/completions', async (route) => {
+    const { messages } = route.request().postDataJSON();
+    const system = messages.find((message: { role: string }) => message.role === 'system')?.content ?? '';
+    // The first narration comes back empty, which is a failed turn; the second one lands.
+    const text = system.includes('stat tracker') ? 'Coin: +0'
+      : (narrationCalls += 1) === 1 ? '' : 'You count the coins twice.';
+    await route.fulfill({ contentType: 'text/event-stream', body:
+      `data: ${JSON.stringify({ choices: [{ delta: { content: text }, finish_reason: null }] })}\n\ndata: [DONE]\n\n` });
+  });
+  await openApp(page, settings(), { url: '/#dev?view=gameViewer&fixture=whiteRoom' });
+  await playOneTurn(page, ['Count the coins.', 'Count them again.']);
+
+  // The failed turn's 61 goes back to 60, so the turn that lands reads 60 and leaves 61, never 62.
+  await expect(page.getByText(/61\s*\/\s*100/).first()).toBeVisible();
+  await expect(page.getByText(/62\s*\/\s*100/)).toHaveCount(0);
 });
 
 // A path reaches the placeholder the editor shows, not the world-level one of the same name. Two rolls, one
