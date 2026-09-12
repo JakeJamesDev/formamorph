@@ -1,15 +1,18 @@
 import { expect, test } from '@playwright/test';
 import { PAGES_URL, SITE_URL } from '../playwright.config';
 import { AGE_GATE_VERSION } from '../src/lib/ageGate';
+import { TUTORIALS } from '../src/lib/tutorials';
 
 for (const theme of ['light', 'dark']) {
   test(`website likes render hover and filled colors in ${theme}`, async ({ page }, testInfo) => {
-    await page.addInitScript(({ theme, version }) => {
+    await page.addInitScript(({ theme, version, seen }) => {
       localStorage.setItem('vite-ui-theme', theme);
       localStorage.setItem('authToken', 'test-token');
       localStorage.setItem('currentUser', JSON.stringify({ id: 'reader', username: 'morgan', ageGateAcceptedVersion: version }));
       localStorage.setItem('FORMAMORPH_ageGate', JSON.stringify({ accepted: true, acceptanceVersion: version, acceptedAt: new Date().toISOString() }));
-    }, { theme, version: AGE_GATE_VERSION });
+      // The community tour's first popover opens over the Like button 600ms after mount and eats the hover.
+      localStorage.setItem('formamorph.tutorialsSeen', seen);
+    }, { theme, version: AGE_GATE_VERSION, seen: JSON.stringify(TUTORIALS.map((t) => t.id)) });
     await page.route('**/api/**', (route) => {
       const url = new URL(route.request().url());
       if (url.pathname.endsWith('/policies/age-gate')) return route.fulfill({ json: { accepted: true, requiredVersion: AGE_GATE_VERSION } });
