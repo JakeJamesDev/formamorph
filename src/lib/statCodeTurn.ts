@@ -37,7 +37,7 @@ export interface StatCodeTraitResult {
 export interface StatCodeTurn {
   /** Which box runs. `before` runs each stat's before-the-AI code over the turn's starting state, reading
    *  every `delta` as zero and `previous` as `self` whatever the turn carries. `after`, the default, runs
-   *  today's box over the asks and the regen. */
+   *  the after-the-AI box over the asks and the regen. */
   timing?: StatCodeTiming;
   /** Every stat as the turn's pipeline left it: AI asks and regen applied, code not yet run. Names are the
    *  authored ones, chips and all — code reads each stat's code name, derived here. */

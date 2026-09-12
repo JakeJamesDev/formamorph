@@ -253,7 +253,7 @@ describe('runStatCodeTurn timing', () => {
     expect(valueOf(out.stats, 'a')).toBe(22);
   });
 
-  it('runs the after box when no timing is given, as every caller before the before box did', async () => {
+  it('runs the after box when no timing is given, which is what a caller that names none means', async () => {
     const out = await runStatCodeTurn(turn({ stats: [stat({ id: 'a', beforeCode: 'return 11;', code: 'return 22;' })] }));
     expect(valueOf(out.stats, 'a')).toBe(22);
   });

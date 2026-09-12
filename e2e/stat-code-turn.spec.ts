@@ -365,20 +365,51 @@ test('a stats re-roll runs the before box again from the pre-turn state', async 
   await expect(page.getByText(/(60|62)\s*\/\s*100/)).toHaveCount(0);
 });
 
-// A turn that never commits leaves nothing behind. The before box has already written by the time the
-// narration comes back empty, so the failure exit has to put its write back.
-test('a failed turn puts back the value the before box moved', async ({ page }) => {
+// The narration re-roll restores the pre-turn snapshot and re-sends the action, so the before box runs
+// over that snapshot the way the first draw did.
+test('a narration re-roll runs the before box again from the pre-turn state', async ({ page }) => {
   page.on('pageerror', (error) => console.error(error.message));
   await coinWithCode(page, '', { beforeCode: 'return self.value + 1;' });
+  const statCalls = await mockModel(page, 'Coin: +0');
+  await openApp(page, settings(), { url: '/#dev?view=gameViewer&fixture=whiteRoom' });
+  const mobile = await playOneTurn(page);
+
+  await expect(page.getByText(/61\s*\/\s*100/).first()).toBeVisible();
+
+  if (mobile) await page.getByRole('button', { name: 'Game', exact: true }).click();
+  await page.getByRole('button', { name: 'Re-generate', exact: true }).click();
+  await expect.poll(statCalls).toBe(2);
+  await expect(page.getByRole('button', { name: 'More re-generate options', exact: true })).toBeEnabled();
+  if (mobile) await page.getByRole('button', { name: 'Status', exact: true }).click();
+  // Skipping the box on the re-roll would leave the pre-turn 60; stacking on the first run would give 62.
+  await expect(page.getByText(/61\s*\/\s*100/).first()).toBeVisible();
+  await expect(page.getByText(/(60|62)\s*\/\s*100/)).toHaveCount(0);
+});
+
+// A turn that never commits leaves nothing behind. The before box has already written its value AND its
+// pin by the time the narration comes back empty, so the failure exit has to put both back.
+test('a failed turn puts back the value and the pin the before box made', async ({ page }) => {
+  page.on('pageerror', (error) => console.error(error.message));
+  const world = JSON.parse(readFileSync('src/lib/devFixtures/whiteRoomWorld.json', 'utf8'));
+  const locations = world.locations.map((location: { id: string }) => (location.id === '1783535114538'
+    ? { ...location, aiDescription: 'The walls glow {{ph:ph-mood:world:p1}}.' } : location));
+  // The pin the box makes depends on what it reads, so a pin left standing changes what the next turn pins.
+  const flip = 'placeholders.Mood.pin(placeholders.Mood.value === "calm" ? "angry" : "serene");\n'
+    + 'return self.value + 1;';
+  await coinWithCode(page, '', { beforeCode: flip }, {
+    World: { placeholders: [mood], locations }, Save: calmRoll,
+  });
+  const narration: string[] = [];
   let narrationCalls = 0;
   await page.route('**/api/v0/models', (route) => route.fulfill({ status: 404 }));
   await page.route('**/v1/models', (route) => route.fulfill({ json: { data: [{ id: 'e2e-model' }] } }));
   await page.route('**/chat/completions', async (route) => {
     const { messages } = route.request().postDataJSON();
     const system = messages.find((message: { role: string }) => message.role === 'system')?.content ?? '';
+    const isStats = system.includes('stat tracker');
+    if (!isStats) narration.push(JSON.stringify(messages));
     // The first narration comes back empty, which is a failed turn; the second one lands.
-    const text = system.includes('stat tracker') ? 'Coin: +0'
-      : (narrationCalls += 1) === 1 ? '' : 'You count the coins twice.';
+    const text = isStats ? 'Coin: +0' : (narrationCalls += 1) === 1 ? '' : 'You count the coins twice.';
     await route.fulfill({ contentType: 'text/event-stream', body:
       `data: ${JSON.stringify({ choices: [{ delta: { content: text }, finish_reason: null }] })}\n\ndata: [DONE]\n\n` });
   });
@@ -388,6 +419,12 @@ test('a failed turn puts back the value the before box moved', async ({ page }) 
   // The failed turn's 61 goes back to 60, so the turn that lands reads 60 and leaves 61, never 62.
   await expect(page.getByText(/61\s*\/\s*100/).first()).toBeVisible();
   await expect(page.getByText(/62\s*\/\s*100/)).toHaveCount(0);
+  // The pin went back with it, so the second turn's box reads the roll again and pins the same text. A pin
+  // left standing would have it read angry and pin serene instead.
+  await expect.poll(() => narration.length).toBeGreaterThanOrEqual(2);
+  expect(narration[0]).toContain('The walls glow angry.');
+  expect(narration[1]).toContain('The walls glow angry.');
+  expect(narration[1]).not.toContain('serene');
 });
 
 // A path reaches the placeholder the editor shows, not the world-level one of the same name. Two rolls, one
