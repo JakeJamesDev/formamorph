@@ -5,7 +5,7 @@ import { useSettings } from "@/contexts/SettingsContext";
 import { useSettingsOpenRequest } from "@/lib/useSettingsOpenRequest";
 import { useGameplay } from "@/contexts/GameplayContext";
 import { useAccountDeletion } from "@/contexts/AccountDeletionContext";
-import { usesStatClock, type StatClock } from "@/lib/statCodeExecutor";
+import { type StatClock } from "@/lib/statCodeExecutor";
 import { overlayStatCodeResult, runStatCodeTurn, withPinWrites, type StatCodeTurn } from "@/lib/statCodeTurn";
 import { Button } from "@/components/ui/button";
 import {
@@ -1761,14 +1761,11 @@ const GameViewer = ({
 
     // Apply stat changes. Stat code runs inside; it is awaited below, before the snapshot arms, so the
     // snapshot holds its writes even when the sandbox first loads on this turn.
-    let statCode: Promise<void> = Promise.resolve();
-    if (commit.statResponse) {
-      statCode = applyStatChanges(commit.statResponse, commit.clock);
-    } else if (anyStatUsesClock) {
-      // Nothing moved, but time still passed — clock-reading code runs on its own so a time-based stat
-      // ticks every turn instead of only on turns the AI happened to report a stat change.
-      statCode = runStatCode(rawPlayerStatsRef.current, rawPlayerStatsRef.current, [], commit.clock);
-    }
+    // A turn with no stat response still runs code, over zero asks: the request off, the request failed,
+    // or the opening turn.
+    const statCode = commit.statResponse
+      ? applyStatChanges(commit.statResponse, commit.clock)
+      : runStatCode(rawPlayerStatsRef.current, rawPlayerStatsRef.current, [], commit.clock);
 
     // Advance the clock by what this turn actually took (the flat hour when unmeasured).
     handleTimePassed(commit.turnHours);
@@ -2270,8 +2267,8 @@ const GameViewer = ({
   }, [heldStatChanges, recentStatChanges, setHeldStatChanges, setDrainingStatChanges, setRecentStatChanges, setRecentStatFading]);
 
   // Run stat code over this turn, regen included, and fold what it moved into the live delta feedback.
-  // Its own callback because clock-reading code also runs on turns the AI moved no stat. A re-roll passes
-  // the pre-turn state, so code reads placeholders and traits as the turn it replaces did.
+  // Its own callback because a turn with no stat response runs it directly. A re-roll passes the pre-turn
+  // state, so code reads placeholders and traits as the turn it replaces did.
   const runStatCode = useCallback(
     async (
       before: PlayerStat[], afterAsks: PlayerStat[], asks: StatCodeTurn["asks"], clock: StatClock,
@@ -2325,15 +2322,6 @@ const GameViewer = ({
       setPlayerTraits, setDisabledTraitIds, setAppliedTraitValues, addLogEntry],
   );
 
-  // Whether any stat's code reads the clock, and so needs a per-turn run of its own on turns the AI
-  // changed nothing. Reads each stat's current code, not a save's frozen copy, so a world edit that adds a
-  // clock variable takes effect on that save's very next turn. False for every world authored before these
-  // variables existed, which keeps those worlds on exactly the run schedule they have always had.
-  const anyStatUsesClock = useMemo(
-    () => refreshSavedStats(activeStats, authoredStats).some((s) => usesStatClock(s.code)),
-    [activeStats, authoredStats],
-  );
-
   // Apply request identities to authored state; resolved names are only for code and display feedback.
   const applyStatChanges = useCallback(
     // `base` is the pre-turn snapshot a stat re-generation starts from (defaults to the live state), so
@@ -2369,12 +2357,9 @@ const GameViewer = ({
       setHeldStatChanges((prev) => ({ ...prev, ...actualChanges }));
 
       setPlayerStats(directApplied);
-      // A max-only ask counts too: code reads it as `delta.ai.max`.
-      if (response.updates.some((update) => update.value !== 0 || update.max !== 0) || anyStatUsesClock) {
-        await runStatCode(baseStats, directApplied, response.updates, clock, base ?? undefined);
-      }
+      await runStatCode(baseStats, directApplied, response.updates, clock, base ?? undefined);
     },
-    [runStatCode, setPlayerStats, setRecentStatChanges, setHeldStatChanges, resolvePH, anyStatUsesClock, activeTraits, traits],
+    [runStatCode, setPlayerStats, setRecentStatChanges, setHeldStatChanges, resolvePH, activeTraits, traits],
   );
 
   // Discard a turn's dangling, unpaired user message. The failure exits (empty narration, request error)

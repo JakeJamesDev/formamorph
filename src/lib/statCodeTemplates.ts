@@ -197,8 +197,7 @@ export function fillTemplate(code: string, values: Record<string, string>): stri
  * up and down, and "regen toward target" with the target set to the stat's max is the soft-capped regen.
  * Three more show each write the sandbox reads back: a bound on `self`, a placeholder pin, a trait switch.
  *
- * Each reads its own bounds from the stat it belongs to instead of assuming 0–100, and the four that
- * name a clock variable thereby qualify for the every-turn run schedule (see `usesStatClock`).
+ * Each reads its own bounds from the stat it belongs to instead of assuming 0–100.
  */
 export const BUILT_IN_TEMPLATES: readonly StatCodeTemplate[] = [
   {

@@ -1,6 +1,8 @@
 # 01: Code Runs Every Turn
 
-Status: ready-for-agent
+Status: ready-for-human
+Status note: Done in 9e43ab6c. All eight acceptance criteria met. The schedule lives in GameViewer, which has no unit-test harness, so the e2e spec is the only guard; the two new cases there are mutation-proven.
+Base: 300d3575
 Blocked by: None (can start immediately)
 Recommended model: Claude Sonnet 5 (`claude-sonnet-5`)
 Reasoning effort: medium
@@ -15,14 +17,14 @@ Existing worlds change behavior on purpose: code that ran only on AI-change turn
 
 ## Acceptance criteria
 
-- [ ] A turn where the AI asks for no stat change runs code and applies its writes
-- [ ] The opening turn runs code after the opening narration
-- [ ] A turn with the stat request off runs code with `delta.ai` at zeros
-- [ ] The clock-only branch and both gates are gone; a stat with clock code runs on the same schedule as any other
-- [ ] The never-ticks bench rule is removed with its tests; the rule list has no gap
-- [ ] The e2e stat-code spec gains a case where a quiet turn moves a stat through code
-- [ ] The guide states that code runs every turn
-- [ ] Four gates green; graph updated
+- [x] A turn where the AI asks for no stat change runs code and applies its writes
+- [x] The opening turn runs code after the opening narration
+- [x] A turn with the stat request off runs code with `delta.ai` at zeros
+- [x] The clock-only branch and both gates are gone; a stat with clock code runs on the same schedule as any other
+- [x] The never-ticks bench rule is removed with its tests; the rule list has no gap
+- [x] The e2e stat-code spec gains a case where a quiet turn moves a stat through code
+- [x] The guide states that code runs every turn
+- [x] Four gates green; graph updated
 
 ## Blocked by
 

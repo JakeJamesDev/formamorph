@@ -28,7 +28,6 @@ import {
   describeInThresholdUnits, describeThreshold, descriptorSpans, isThresholdOutOfRange, sortedDescriptors,
   statStartValue, thresholdValue, uncoveredSpan, valueThreshold,
 } from '@/lib/statDescriptorGeometry';
-import { usesStatClock } from '@/lib/statCodeExecutor';
 import { statCodeName } from '@/lib/statCodeNames';
 import { estimateTokens } from '@/lib/memoryUtils';
 import { entityImages } from '@/lib/entityImages';
@@ -1191,30 +1190,6 @@ const statPercentageBounds: Rule = {
     isOffRangePercentage(stat) ? pinnedToPercent(stat) : stat)),
 };
 
-const statCodeNeverTicks: Rule = {
-  id: 'stat-code-never-ticks',
-  severity: 'warning',
-  section: 'stats',
-  advanced: true,
-  summary: (count) =>
-    `${count} stats have code that runs only on turns the AI changed a stat — nothing in this world reads a clock variable`,
-  check: (world) => {
-    // The gate reads the *enabled* stats (GameViewer's `anyStatUsesClock` over `activeStats`), so a clock
-    // reference on a stat no trait ever switches on grants nothing — and that stat's own code never runs.
-    const coded = everActiveStats(world).filter((stat) => stat.code?.trim());
-    // One clock reference among them puts every coded stat on the every-turn schedule.
-    if (coded.some((stat) => usesStatClock(stat.code))) return [];
-    return coded.map((stat) => {
-      const item = namedItem(stat.id, stat.name, world);
-      return finding(
-        statCodeNeverTicks,
-        `Code on ${quote(item.name)} runs only on turns the AI reported a stat change — no stat in this world reads a clock variable, which is what puts code on the every-turn schedule`,
-        [item],
-      );
-    });
-  },
-};
-
 /** A trait's summed contribution to one stat on one axis. Traits are chosen one at a time, so a rule about a
  *  single trait reads only that trait's own numbers. */
 const traitContribution = (stat: Stat, trait: Trait, type: 'starting' | 'min'): number => {
@@ -2259,7 +2234,7 @@ export const RULES: readonly Rule[] = [
   noStartingLocation, legacyStartLocation, entityNowhere, statDisabledForever,
   statStartingOutOfRange, statStartNoDescriptor, statDescriptorDuplicateThreshold, statDescriptorOutOfRange,
   statDescriptorCoverageGap, statPercentageBounds,
-  statCodeNeverTicks, statTraitDeltaClamped, statCodeOverridesTrait, statAiLockFrozen,
+  statTraitDeltaClamped, statCodeOverridesTrait, statAiLockFrozen,
   locationParentOrphan, connectionEndpointOrphan, statUpdateUnknownStat,
   aliasLowercaseNoTwin, entityNameInWildcardPool,
   entityMissingPlayerDescription, entityMissingAiDescription, entityMissingBothDescriptions,

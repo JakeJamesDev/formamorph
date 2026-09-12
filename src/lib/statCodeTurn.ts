@@ -21,8 +21,8 @@ export interface StatCodeTraitResult {
   log: string[];
 }
 
-/** Everything one turn hands to stat code. The forward turn, the re-roll, and the clock-only run all
- *  build one of these; the clock-only run has no asks. */
+/** Everything one turn hands to stat code. The forward turn and the re-roll both build one of these; a turn
+ *  with no stat response builds one with no asks. */
 export interface StatCodeTurn {
   /** Every stat as the turn's pipeline left it: AI asks and regen applied, code not yet run. Names are the
    *  authored ones, chips and all — code reads each stat's code name, derived here. */

@@ -118,8 +118,8 @@ test('stat code sets its value from the playthrough’s roll of a placeholder', 
 });
 
 // Coin renamed to a chip plus a word: the panel reads "calm Coin" or "angry Coin", and code reaches it by
-// "Mood Coin" in both. The lookup is the whole test — a blank entry would leave 1, not 61. The code reads
-// the clock so the turn runs it with no stat call at all.
+// "Mood Coin" in both. The lookup is the whole test: a blank entry would leave 1, not 61. The stat request
+// is off, so the turn makes no stat call at all, and the code still runs and still reads the clock.
 for (const [rolled, shown] of [['calm', 'calm Coin'], ['angry', 'angry Coin']] as const) {
   test(`stat code reads a chip-bearing stat name by its code name, on the ${rolled} roll`, async ({ page }) => {
     page.on('pageerror', (error) => console.error(error.message));
@@ -234,15 +234,48 @@ test('a stat code bound shows as the bar’s range, and the delta reports only t
   await expect(page.getByText(/^\+(50|70)$/)).toHaveCount(0);
 });
 
-test('clock-reading stat code runs with zero asks on a turn with no stat update', async ({ page }) => {
+test('stat code runs with zero asks on a turn with the stat request off', async ({ page }) => {
   page.on('pageerror', (error) => console.error(error.message));
-  await coinWithCode(page, 'return self.previous.value + self.delta.ai.value + self.delta.ai.max + 5 * deltaHours;');
+  await coinWithCode(page, 'return self.previous.value + self.delta.ai.value + self.delta.ai.max + 5;');
   const statCalls = await mockModel(page, 'Coin: +20');
   await openApp(page, settings({ FORMAMORPH_statUpdatesEnabled: false }), { url: '/#dev?view=gameViewer&fixture=whiteRoom' });
   await playOneTurn(page);
 
   await expect(page.getByText(/65\s*\/\s*100/).first()).toBeVisible();
   expect(statCalls()).toBe(0);
+});
+
+// The opening turn: the save is rewound to before the first narration, so this turn is the world's first.
+// Code runs after that narration, over the opening turn's own zero asks.
+test('stat code runs on the opening turn', async ({ page }) => {
+  page.on('pageerror', (error) => console.error(error.message));
+  const save = JSON.parse(readFileSync('src/lib/devFixtures/whiteRoomSave.json', 'utf8'));
+  await coinWithCode(page, 'return self.previous.value + 3;', {}, {
+    Save: { currentState: { ...save.currentState, isGameStarted: false, fullMessageHistory: [], gameplayText: '' } },
+  });
+  await mockModel(page, 'Coin: +0');
+  await openApp(page, settings(), { url: '/#dev?view=gameViewer&fixture=whiteRoom' });
+  const mobile = await playOneTurn(page, ['Look around.']);
+
+  await expect(page.getByText(/63\s*\/\s*100/).first()).toBeVisible();
+  // The emptied history has to have taken, or this is an ordinary mid-game turn wearing the name. On a
+  // phone the story sits on the Game tab, so read it there.
+  if (mobile) await page.getByRole('button', { name: 'Game', exact: true }).click();
+  await expect(page.getByText('You count the coins twice.').first()).toBeVisible();
+  await expect(page.getByText(/sterile whiteness of The White Room/)).toHaveCount(0);
+});
+
+// The quiet turn. The stat request runs and the AI reports no movement. The code still runs, and its
+// write lands.
+test('stat code runs on a turn where the AI asks for no stat change', async ({ page }) => {
+  page.on('pageerror', (error) => console.error(error.message));
+  await coinWithCode(page, 'return self.previous.value + 7;');
+  const statCalls = await mockModel(page, 'Coin: +0');
+  await openApp(page, settings(), { url: '/#dev?view=gameViewer&fixture=whiteRoom' });
+  await playOneTurn(page);
+
+  await expect(page.getByText(/67\s*\/\s*100/).first()).toBeVisible();
+  await expect.poll(statCalls).toBe(1);
 });
 
 // A path reaches the placeholder the editor shows, not the world-level one of the same name. Two rolls, one
