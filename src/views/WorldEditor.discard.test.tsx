@@ -179,3 +179,67 @@ describe('WorldEditor — re-entry after a discard', () => {
     expect(screen.getByDisplayValue('Sedge Landing EDITED')).toBeTruthy();
   });
 });
+
+describe('WorldEditor — exit without saving, after a rename rewrote stat code', () => {
+  /** A world whose one stat reaches its one placeholder by path, so a rename has code to carry. */
+  const CODED = {
+    id: 'w2',
+    worldOverview: {
+      name: 'Sedge Landing', description: '', author: '', thumbnail: null, bgm: null,
+      systemPrompt: '', use3DModel: true, tags: [],
+    },
+    stats: [{
+      id: 's1', name: 'Health', type: 'number', description: '', min: 0, max: 100, value: 5, regen: 0,
+      code: 'return placeholders.Mood.text.length;',
+    }],
+    placeholders: [{ id: 'p1', name: 'Mood', values: [{ id: 'v:calm', text: 'calm' }] }],
+    locations: [], entities: [], traits: [], statUpdates: [],
+  } as unknown as World;
+
+  const CodedHarness = ({ children, onReady }: { children?: ReactNode; onReady: (c: ReturnType<typeof useGameData>) => void }) => {
+    const ctx = useGameData();
+    useEffect(() => { ctx.loadWorldData(CODED); /* once */ }, []); // eslint-disable-line react-hooks/exhaustive-deps
+    onReady(ctx);
+    return <>{children}</>;
+  };
+
+  it('rolls the name and the rewritten code back together', async () => {
+    let ctx!: ReturnType<typeof useGameData>;
+    const onClose = vi.fn();
+    render(
+      <SettingsProvider>
+        <GameDataProvider>
+          <CodedHarness onReady={(c) => { ctx = c; }}>
+            <WorldEditor onClose={onClose} embedded backButton />
+          </CodedHarness>
+        </GameDataProvider>
+      </SettingsProvider>,
+    );
+
+    // The Placeholders tab is Advanced only, and its panel opens on the row the author picks. A Radix tab
+    // switches on the pointer press, not the click jsdom synthesizes after it.
+    fireEvent.click(screen.getByText('Advanced'));
+    const tab = screen.getAllByRole('tab').find((t) => t.textContent === 'Placeholders')!;
+    fireEvent.mouseDown(tab);
+    fireEvent.pointerDown(tab, { pointerType: 'mouse', button: 0 });
+    fireEvent.click(screen.getAllByText('Mood')[0]);
+    // Focus first: the offer takes the name it compares against when the field gains focus, so a change
+    // with no focus before it is not a rename at all.
+    const field = screen.getByPlaceholderText('e.g. Eye Color');
+    fireEvent.focus(field);
+    fireEvent.change(field, { target: { value: 'Temper' } });
+    fireEvent.blur(field);
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Update Code' }));
+    expect(ctx.stats[0].code).toBe('return placeholders.Temper.text.length;');
+
+    await exitVia('Exit Without Saving');
+
+    // Both halves of one edit. The rewrite goes through the editor's ordinary write path, so a discard that
+    // took back only the name would leave the code naming a placeholder the world no longer has.
+    expect(ctx.placeholders[0].name).toBe('Mood');
+    expect(ctx.stats[0].code).toBe('return placeholders.Mood.text.length;');
+    expect(ctx.isWorldDirty).toBe(false);
+    expect(onClose).toHaveBeenCalled();
+  });
+});

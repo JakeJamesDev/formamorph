@@ -19,18 +19,29 @@ import { CodeRenameContext, type CodeRenameRequest, type OfferCodeRename } from 
 /** The noun each map's entries go by, for the question the dialog asks. */
 const NOUNS: Record<RenameRoot, string> = { stats: 'stat', placeholders: 'placeholder', traits: 'trait' };
 
+/** What the dialog calls the thing that was renamed. An owner of placeholders is reached through the
+ *  `placeholders` map but is an entity or a book, and calling it a placeholder would name the wrong row. */
+const renamedNoun = (plan: CodeRenamePlan) =>
+  (plan.subject && plan.subject.kind !== 'placeholder' ? plan.subject.kind : NOUNS[plan.root]);
+
 const plural = (count: number, one: string, many: string) => (count === 1 ? one : many);
 
 /** The question the dialog asks: whose code names the old name, how often, and what it would become. */
 const renameQuestion = (plan: CodeRenamePlan) =>
   `The code of ${plan.edits.length} ${plural(plan.edits.length, 'stat', 'stats')} names the `
-  + `${NOUNS[plan.root]} “${plan.oldName}” ${plan.references} ${plural(plan.references, 'time', 'times')}. `
+  + `${renamedNoun(plan)} “${plan.oldName}” ${plan.references} ${plural(plan.references, 'time', 'times')}. `
   + `Update ${plural(plan.references, 'it', 'them')} to “${plan.newName}”?`;
 
 /** Mount the offer and its dialog. Everything under it can ask through `useCodeRenameOffer`. */
 export function CodeRenameProvider({ children }: { children: ReactNode }) {
   const world = useGameDataOptional();
   const stats = useMemo(() => world?.stats ?? [], [world?.stats]);
+  const traits = useMemo(() => world?.traits ?? [], [world?.traits]);
+  // The tree as code reads it, so a rename of one node follows every path that passes through it.
+  const placeholders = useMemo(
+    () => ({ list: world?.placeholders ?? [], owners: world?.placeholderOwners }),
+    [world?.placeholders, world?.placeholderOwners],
+  );
   const updateStat = world?.updateStat;
   // A queue, because one Replace All can rename several things at once. Requests are held rather than
   // plans: each answer rewrites code the next request has to read, so a plan is built only once its
@@ -39,11 +50,11 @@ export function CodeRenameProvider({ children }: { children: ReactNode }) {
 
   const pending = useMemo(() => {
     for (let i = 0; i < queue.length; i += 1) {
-      const plan = planCodeRename({ ...queue[i], stats });
+      const plan = planCodeRename({ ...queue[i], stats, traits, placeholders });
       if (plan) return { plan, through: i };
     }
     return null;
-  }, [queue, stats]);
+  }, [queue, stats, traits, placeholders]);
   const plan: CodeRenamePlan | null = pending?.plan ?? null;
   // What the dialog reads, kept past the answer: the plan goes as soon as the question is settled, and the
   // body would otherwise empty while the dialog is still animating out.

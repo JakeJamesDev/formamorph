@@ -15,7 +15,7 @@ import { placeholderVocabulary } from '@/lib/chipVocabulary';
 import { decodePlaceholderToken, encodePlaceholderToken, newPlaceholder } from '@/lib/placeholders';
 import { randomUUID } from '@/lib/uuid';
 import { findMatches, replaceAll, spliceText } from '@/lib/worldSearch';
-import { codeNameReader, renameRootForTarget } from '@/lib/statCodeRename';
+import { codeNameReader, codeRenameTarget } from '@/lib/statCodeRename';
 import { useCodeRenameOffer } from '@/lib/useCodeRename';
 import type { SearchMatch, SearchTarget } from '@/lib/worldSearch';
 import type { PlacementLetters } from '@/lib/placementLetters';
@@ -206,17 +206,20 @@ export default function EditorFindBar({
    * one of them carries its item's name field.
    */
   const nameTargets = useMemo(
-    () => targets.filter((target) => renameRootForTarget(target.itemKey, target.fieldKey)),
+    () => targets.filter((target) => codeRenameTarget(target.itemKey, target.fieldKey)),
     [targets],
   );
   const noteRename = useCallback((target: SearchTarget, next: string) => {
-    const root = renameRootForTarget(target.itemKey, target.fieldKey);
-    if (!root) return;
-    const read = codeNameReader(root, placeholders);
+    const renamed = codeRenameTarget(target.itemKey, target.fieldKey);
+    if (!renamed) return;
+    const read = codeNameReader(renamed, placeholders);
+    // Only the entries of the same kind can be the duplicate the warning covers: an entity and a
+    // placeholder both open a `placeholders` path, but neither takes the other's name.
+    const kind = target.itemKey.slice(0, target.itemKey.indexOf(':'));
     const otherNames = nameTargets
-      .filter((other) => other.itemKey !== target.itemKey && renameRootForTarget(other.itemKey, other.fieldKey) === root)
+      .filter((other) => other.itemKey !== target.itemKey && other.itemKey.startsWith(`${kind}:`))
       .map((other) => read(other.value));
-    offerCodeRename({ root, oldName: read(target.value), newName: read(next), otherNames });
+    offerCodeRename({ ...renamed, oldName: read(target.value), newName: read(next), otherNames });
   }, [offerCodeRename, placeholders, nameTargets]);
 
   const replaceCurrent = () => {

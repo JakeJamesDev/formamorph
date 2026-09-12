@@ -159,7 +159,13 @@ const PlaceholderManager = ({ placeholder, rowId, share }: {
   const kind: PlaceholderKind = (editing.roll ?? true) ? 'wildcard' : 'object';
   // Only a placeholder that draws has weights worth showing; an Object applies every value.
   const weighable = placeholderIsChoice(editing);
-  const rename = useRenameField({ root: 'placeholders', value: editing.name, siblings: placeholders, ownId: editing.id });
+  const rename = useRenameField({
+    root: 'placeholders',
+    value: editing.name,
+    siblings: placeholders,
+    ownId: editing.id,
+    subject: { kind: 'placeholder', id: editing.id },
+  });
   // Stat code reaches a part as a member of its holder, and every placeholder already has six members of
   // its own. A part named like one of those loses the name, so the author is told here rather than in a
   // squiggle on the code that tried it.
