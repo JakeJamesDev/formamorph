@@ -51,6 +51,7 @@ describe('worldUsesAdvancedFeatures', () => {
     for (const hidden of [
       { descriptors: [{ id: 'd', threshold: 50, description: 'Winded' }] },
       { code: 'return 1;' },
+      { beforeCode: 'return 1;' },
       { noDecrease: true },
     ]) {
       expect(worldUsesAdvancedFeatures(plain({ stats: [{ ...base, ...hidden } as Stat] }))).toBe(true);

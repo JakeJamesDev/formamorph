@@ -6,7 +6,7 @@ import { useSettingsOpenRequest } from "@/lib/useSettingsOpenRequest";
 import { useGameplay } from "@/contexts/GameplayContext";
 import { useAccountDeletion } from "@/contexts/AccountDeletionContext";
 import { type StatClock } from "@/lib/statCodeExecutor";
-import { overlayStatCodeResult, runStatCodeTurn, withPinWrites, type StatCodeTurn } from "@/lib/statCodeTurn";
+import { overlayStatCodeResult, runStatCodeTurn, withPinWrites, type StatCodeTiming, type StatCodeTurn } from "@/lib/statCodeTurn";
 import { Button } from "@/components/ui/button";
 import {
   AlertDialog,
@@ -54,7 +54,7 @@ import { MenuModal } from "../components/modals/MenuModal";
 import LlmSetupGuide from "../components/modals/LlmSetupGuide";
 import { isLikelyConnectionError } from "../lib/connectionError";
 import WorldEditor from "./WorldEditor";
-import type { CharacterData, ChatMessage, ChatRole, AIRequestType, AITurnResult, GameLocation, GameState, MediaAsset, Dictionary, Entity, SaveRecord, World, PlayerStat } from "@/types";
+import type { CharacterData, ChatMessage, ChatRole, AIRequestType, AITurnResult, GameLocation, GameState, MediaAsset, Dictionary, Entity, SaveRecord, World, PlayerStat, Trait } from "@/types";
 import { UnsavedChangesDialog } from "../components/UnsavedChangesDialog";
 import { estimateHistoryChars, estimateTokens } from "../lib/memoryUtils";
 import { parseNarration, stripReasoning, stripReasoningLive, extractReasoning, extractReasoningLive } from "../lib/aiResponse";
@@ -219,6 +219,19 @@ interface DebugTurn {
 
 /** The pre-turn state a stat re-roll hands stat code, so code reads and switches as the turn it replaces did. */
 type PreTurnCodeState = Pick<GameState, 'codePins' | 'playerTraits' | 'disabledTraitIds' | 'appliedTraitValues'>;
+
+/** What one stat-code run left, in the shapes state holds. The before box hands this to the turn's own
+ *  passes, which run before React re-renders with it. */
+type TurnCodeState = Pick<GameState, 'playerStats'> & PreTurnCodeState;
+
+/** The world a turn's passes read under a before box's writes: the same three views `buildContextValues`
+ *  and the prompt builders take from state, rebuilt over what the box left. */
+interface TurnCodeView {
+  activeStats: PlayerStat[];
+  activeTraits: Trait[];
+  resolve: (text: string) => string;
+  resolveTrait: (trait: Trait, text: string) => string;
+}
 
 // Each completed turn is digested as soon as it commits (same-turn), so a summary is always ready for
 // the next turn's context assembly. Per-pass caps and their sizing live with the pass records.
@@ -551,7 +564,8 @@ const GameViewer = ({
   // values above stay untouched for roll priming, which has to see the chips it is rolling for.
   const {
     entities, locations, stats, traits, traitGroups, dictionary, playerStats, viewStats,
-    currentLocation, traitOrder, pins, pinsFor, resolvePH, resolveWith, resolveTraitText,
+    currentLocation, traitOrder, pins, pinsFor, resolvePH, resolveFor, resolveWith, resolveTraitText,
+    resolveTraitFor,
   } = useResolvedWorld();
   // The session's rolls, for the one pass that collects pins before they are in state (the init effect).
   const { rolls: sessionRolls } = usePlaceholderSession();
@@ -1169,11 +1183,6 @@ const GameViewer = ({
     if (!preTurn?.playerStats) return;
     const { prev, action } = target;
     void runPartialRegen(async (signal) => {
-      const snapshot = createStatRequest(enabledStats(playerStatsRef.current, statEnabledRef.current));
-      const response = await requestStats(buildContextValues(), snapshot, action, prev.narration ?? "", signal);
-      if (signal.aborted) return;
-      const parsed = readStatResponse(response, snapshot);
-      const statChanges = statResponseChanges(parsed);
       // Mirror the live turn's stat commit: reset the per-turn bar deltas, apply max-cap + value deltas onto
       // the pre-turn baseline, then re-run the regen/starvation tick (thresholded on that baseline) WITHOUT
       // re-advancing game time. Not awaited, so regen stacks before stat code — the same order the live turn
@@ -1189,12 +1198,31 @@ const GameViewer = ({
       setPlayerTraits(preTurn.playerTraits);
       setDisabledTraitIds(preTurn.disabledTraitIds ?? []);
       setAppliedTraitValues(preTurn.appliedTraitValues ?? {});
+      // A re-roll replays the whole turn, so the before box runs again first, on the clock as it read at
+      // turn start. Its writes are the baseline the asks then land on, and the request reads them.
+      beforeBoxDeltasRef.current = {};
+      const written = await runStatCode(
+        preTurn.playerStats ?? [], preTurn.playerStats ?? [], [],
+        { deltaHours: 0, elapsedHours: gameTime - turnHours, calendar }, preTurn, 'before',
+      );
+      if (signal.aborted) return;
+      const base = written ?? preTurn;
+      const snapshot = createStatRequest(enabledStats(
+        written ? resolveStatNames(written.playerStats ?? [], resolvePH) : playerStatsRef.current,
+        statEnabledRef.current,
+      ));
+      const response = await requestStats(
+        buildContextValues(null, turnCodeView(written)), snapshot, action, prev.narration ?? "", signal,
+      );
+      if (signal.aborted) return;
+      const parsed = readStatResponse(response, snapshot);
+      const statChanges = statResponseChanges(parsed);
       const statCode = applyStatChanges(parsed, {
         deltaHours: turnHours,
         elapsedHours: gameTime,
         calendar,
-      }, preTurn);
-      applyRegenTick(turnHours, preTurn.playerStats);
+      }, base);
+      applyRegenTick(turnHours, base.playerStats);
       patchLatestTurn({ stat_changes: statChanges });
       // Code writes land after the sandbox settles; the snapshot waits for them.
       await statCode;
@@ -1471,18 +1499,40 @@ const GameViewer = ({
 
   const getEndpointUrl = () => endpointUrl;
 
-  const generateTraitDescriptions = useCallback((format: 'simple' | 'markdown' | 'xml' = 'simple') => {
-    if (!activeTraits.length) {
+  // The world as this turn's passes read it, over what a before box wrote and React has not rendered yet.
+  // Null for a box that moved nothing, which leaves every pass on the memoized state reads.
+  const turnCodeView = useCallback((over: TurnCodeState | null): TurnCodeView | null => {
+    if (!over) return null;
+    const overPins = pinsFor(over.codePins ?? {}, {
+      traits: over.playerTraits, disabledTraitIds: over.disabledTraitIds, stats: over.playerStats,
+    });
+    const resolve = (text: string) => resolveFor(overPins, text);
+    const held = savedTraits(over, traits);
+    const inForce = traitsInForce(held.acquired, held.disabledTraitIds);
+    const stats = resolveStatNames(over.playerStats, resolve);
+    return {
+      activeStats: enabledStats(stats, activeStatEnabled(stats, inForce)),
+      activeTraits: inAuthoredOrder(inForce, traitOrder),
+      resolve,
+      resolveTrait: (trait, text) => resolveTraitFor(overPins, trait, text),
+    };
+  }, [pinsFor, resolveFor, resolveTraitFor, traits, traitOrder]);
+
+  const generateTraitDescriptions = useCallback((format: 'simple' | 'markdown' | 'xml' = 'simple', view?: TurnCodeView | null) => {
+    const inForce = view?.activeTraits ?? activeTraits;
+    const resolve = view?.resolve ?? resolvePH;
+    const resolveOwn = view?.resolveTrait ?? resolveTraitText;
+    if (!inForce.length) {
       return NONE_PLACEHOLDER;
     }
     // Group-aware: each selected trait's group emits its AI header above its traits (blank → omitted).
     // A trait's own description resolves with its own pins (names already did, via the collection), so the
     // AI reads the same words the player's card shows. The outer pass resolves the group headers; trait
     // text is token-free by then, so it passes through untouched.
-    const selfResolved = activeTraits.map((t) =>
-      t.aiDescription ? { ...t, aiDescription: resolveTraitText(t, t.aiDescription) } : t,
+    const selfResolved = inForce.map((t) =>
+      t.aiDescription ? { ...t, aiDescription: resolveOwn(t, t.aiDescription) } : t,
     );
-    return resolvePH(buildTraitContext(selfResolved.map((t) => t.id), selfResolved, traitGroups, format));
+    return resolve(buildTraitContext(selfResolved.map((t) => t.id), selfResolved, traitGroups, format));
   }, [activeTraits, traitGroups, resolvePH, resolveTraitText]);
 
 
@@ -1514,7 +1564,12 @@ const GameViewer = ({
   // forever, but `isGameStarted` is true by then, so it is never treated as pending.
   const openingHourPending = aiClock && startHour === null && !isGameStarted;
 
-  const buildContextValues = useCallback((locationOverride?: GameLocation | null): Record<string, string> => {
+  const buildContextValues = useCallback((
+    locationOverride?: GameLocation | null,
+    /** The world under a before box's writes; absent, every value reads live state. */
+    view?: TurnCodeView | null,
+  ): Record<string, string> => {
+    const resolve = view?.resolve ?? resolvePH;
     // The location this turn is scoped to — an override (e.g. a move auto-applied before the narration)
     // or the live current location.
     const loc = locationOverride ?? currentLocation;
@@ -1557,7 +1612,7 @@ const GameViewer = ({
       STATS_TOKENS.map((tok) => {
         const sel = decodeVariant(STATS_VARIABLE, tokenVariant(tok));
         return [tok, buildStatContext(
-          activeStats,
+          view?.activeStats ?? activeStats,
           { values: sel.numbers != null, status: sel.descriptions != null, meaning: sel.meaning != null },
           sel.format === 'markdown' ? 'markdown' : sel.format === 'xml' ? 'xml' : 'simple',
         )];
@@ -1566,9 +1621,9 @@ const GameViewer = ({
     const values: Record<string, string> = {
       "<WORLD DESCRIPTION>": worldOverview.systemPrompt || "",
       ...statsValues,
-      "<TRAITS DESCRIPTION>": generateTraitDescriptions('simple'),
-      "<TRAITS DESCRIPTION|markdown>": generateTraitDescriptions('markdown'),
-      "<TRAITS DESCRIPTION|xml>": generateTraitDescriptions('xml'),
+      "<TRAITS DESCRIPTION>": generateTraitDescriptions('simple', view),
+      "<TRAITS DESCRIPTION|markdown>": generateTraitDescriptions('markdown', view),
+      "<TRAITS DESCRIPTION|xml>": generateTraitDescriptions('xml', view),
       "<NOTES>": playerNotes || NONE_PLACEHOLDER,
       // The story clock as a plain inline value. Off ⇒ the uniform placeholder, so an affixed placement
       // (the now-line's) simply vanishes and the setting needs no special case anywhere else.
@@ -1584,7 +1639,7 @@ const GameViewer = ({
     Object.assign(values, expandScopedTokens("<ENTITIES>", entityScopes));
 
     // Resolve placeholder chips in every assembled value before it's folded into a prompt.
-    for (const k in values) values[k] = resolvePH(values[k]);
+    for (const k in values) values[k] = resolve(values[k]);
     return values;
   }, [
     worldOverview, activeStats, generateTraitDescriptions,
@@ -1756,8 +1811,9 @@ const GameViewer = ({
       });
     }
 
-    // Reset the persistent bar deltas for this turn, then let stat changes + regen below re-fill them.
-    setHeldStatChanges({});
+    // Reset the persistent bar deltas for this turn, then let stat changes + regen below re-fill them. The
+    // before box already moved before the narration, so its share is laid straight back over the reset.
+    setHeldStatChanges(beforeBoxDeltasRef.current);
 
     // Apply stat changes. Stat code runs inside; it is awaited below, before the snapshot arms, so the
     // snapshot holds its writes even when the sandbox first loads on this turn.
@@ -1774,6 +1830,8 @@ const GameViewer = ({
     // message, applied stat changes, code writes, and advanced time rather than a stale mid-batch read).
     await statCode;
     armTurnSnapshot();
+    // The turn committed, so the before box's writes stand.
+    beforeBoxUndoRef.current = null;
 
     // Only set game as started after a successful opening turn
     if (commit.isOpeningTurn) {
@@ -1885,6 +1943,20 @@ const GameViewer = ({
       // Open this turn in the Turn Pipeline parity recording (inert unless the harness armed it).
       recordParityTurn(effectiveAction, currentTurnIdRef.current);
 
+      // The before-the-AI box, on the turn's starting state: no asks and no regen yet, and the clock still
+      // reading turn start. Its writes reach live state at once and ride into every prompt below through
+      // `codeView`, which React has not re-rendered for.
+      beforeBoxDeltasRef.current = {};
+      const preBox: TurnCodeState = {
+        playerStats: rawPlayerStatsRef.current, codePins, playerTraits, disabledTraitIds, appliedTraitValues,
+      };
+      const beforeBox = await runStatCode(
+        rawPlayerStatsRef.current, rawPlayerStatsRef.current, [],
+        { deltaHours: 0, elapsedHours: gameTime, calendar }, undefined, 'before',
+      );
+      beforeBoxUndoRef.current = beforeBox ? preBox : null;
+      const codeView = turnCodeView(beforeBox);
+
       /**
        * Everything the narration rides on, assembled once the up-front router has settled where the turn
        * takes place: the context values, the dictionary scan, the system prompt, and the trimmed history
@@ -1893,7 +1965,7 @@ const GameViewer = ({
       const assembleNarration = async (): Promise<Partial<TurnMaterial>> => {
         // The shared context base (incl. all three Stats-chip variants), scoped to this turn's location;
         // every system-prompt render below spreads it and adds its own tokens.
-        const ctx = buildContextValues(turnLocation);
+        const ctx = buildContextValues(turnLocation, codeView);
         // One action embedding for every semantic consumer this turn (lore activation, band relevance,
         // diary retrieval). Null = all semantic features quietly off for this turn.
         actionVec = await embedActionVec(effectiveAction);
@@ -1912,7 +1984,7 @@ const GameViewer = ({
           maxTokens: narrationMaxTokens,
           markdownOutput,
           sectionStyle: activeSectionStyle,
-          resolvePH,
+          resolvePH: codeView?.resolve ?? resolvePH,
         });
         pendingDictionaryDebugRef.current = dictionaryDebug;
 
@@ -2151,7 +2223,7 @@ const GameViewer = ({
           turnId: currentTurnIdRef.current,
           // The location the turn began in: what the up-front router routes from, and what the digest and
           // diary passes record against.
-          baseCtx: buildContextValues(),
+          baseCtx: buildContextValues(null, codeView),
           destinations: destinations.map((loc) => loc.name),
         }),
         request,
@@ -2236,6 +2308,18 @@ const GameViewer = ({
   // Pending "clear recent changes" timer, tracked so a new turn or unmount can cancel it.
   const recentStatTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const drainStatTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // What this turn's before box moved, kept because the commit clears the bar deltas before the AI's own
+  // land. Without it a value the box showed on the bar loses its color halfway through the turn.
+  const beforeBoxDeltasRef = useRef<Record<string, number>>({});
+  // The pin and trait state a run reads, by ref. A turn's after box runs out of the closure its render
+  // minted, which is older than the before box's writes — the same reason the stats ride in on a ref.
+  const liveCodeStateRef = useRef({ codePins, pins, chosenTraits, disabledTraitIds, appliedTraitValues, activeTraits });
+  liveCodeStateRef.current = { codePins, pins, chosenTraits, disabledTraitIds, appliedTraitValues, activeTraits };
+  // Stats, Code Pins and traits as they stood before this turn's before box, so a turn that never commits
+  // puts back exactly what the box moved. The last snapshot holds the same five fields — nothing else
+  // touches them between it and the box — and undoing the box alone spares a trait the player switched
+  // by hand while the AI was thinking. Null between turns and once a turn commits.
+  const beforeBoxUndoRef = useRef<TurnCodeState | null>(null);
   useEffect(
     () => () => {
       if (recentStatTimerRef.current) clearTimeout(recentStatTimerRef.current);
@@ -2266,36 +2350,46 @@ const GameViewer = ({
     }
   }, [heldStatChanges, recentStatChanges, setHeldStatChanges, setDrainingStatChanges, setRecentStatChanges, setRecentStatFading]);
 
-  // Run stat code over this turn, regen included, and fold what it moved into the live delta feedback.
-  // Its own callback because a turn with no stat response runs it directly. A re-roll passes the pre-turn
-  // state, so code reads placeholders and traits as the turn it replaces did.
+  // Run one of a stat's two code boxes over this turn, regen included, and fold what it moved into the live
+  // delta feedback. Its own callback because a turn with no stat response runs it directly. A re-roll passes
+  // the pre-turn state, so code reads placeholders and traits as the turn it replaces did. Hands back what
+  // the run left, for the before box's caller: its passes run before React re-renders with these writes.
   const runStatCode = useCallback(
     async (
       before: PlayerStat[], afterAsks: PlayerStat[], asks: StatCodeTurn["asks"], clock: StatClock,
       preTurn?: PreTurnCodeState,
-    ) => {
+      timing: StatCodeTiming = 'after',
+    ): Promise<TurnCodeState | null> => {
       try {
         const enabled = statEnabledRef.current;
-        const regen = applyRegen(afterAsks, clock.deltaHours ?? FLAT_HOURS_PER_TURN, enabled);
+        // The before box runs at the turn's start, so there is no regen yet for it to fold in.
+        const regen = timing === 'before'
+          ? { stats: afterAsks, applied: {} as Record<string, number> }
+          : applyRegen(afterAsks, clock.deltaHours ?? FLAT_HOURS_PER_TURN, enabled);
         // A save runs the world's current stat code, not the copy frozen in the save. Descriptions resolve
         // for the run; names do not — code reaches a stat by its code name, which the turn derives from the
         // authored name, so a chip in a name reads the same in every playthrough.
         const stats = resolveStatText(refreshSavedStats(regen.stats, authoredStats), resolvePH);
         // The same slice the player's checkbox switches, so a code switch is that switch.
-        const held = preTurn ? savedTraits(preTurn, traits) : { acquired: chosenTraits, disabledTraitIds, appliedValues: appliedTraitValues };
-        const inForce = preTurn ? traitsInForce(held.acquired, held.disabledTraitIds) : activeTraits;
+        const live = liveCodeStateRef.current;
+        const held = preTurn ? savedTraits(preTurn, traits)
+          : { acquired: live.chosenTraits, disabledTraitIds: live.disabledTraitIds, appliedValues: live.appliedTraitValues };
+        const inForce = preTurn ? traitsInForce(held.acquired, held.disabledTraitIds) : live.activeTraits;
+        const basePins = preTurn ? preTurn.codePins ?? {} : live.codePins;
         const result = await runStatCodeTurn({
+          timing,
           stats, enabled, previous: before, asks, regenApplied: regen.applied, clock,
           traits: { ...held, world: { traits: authoredTraits, groups: traitGroups } },
           placeholders: {
             placeholders, owners: placeholderOwners, rolls: sessionRolls,
-            pins: preTurn ? pinsFor(preTurn.codePins ?? {}) : pins,
+            pins: preTurn ? pinsFor(basePins) : live.pins,
             // The stored shape too, so an Object pinned to a list reads that list back rather than its join.
-            codePins: preTurn ? preTurn.codePins ?? {} : codePins,
+            codePins: basePins,
           },
           statNameOf: (stat) => resolvePH(stat.name),
           traitNameOf: (trait) => resolveTraitText(trait, trait.name),
         });
+        const nextPins = withPinWrites(basePins, result.pinWrites);
         setCodePins((prev) => withPinWrites(prev, result.pinWrites));
         if (result.traits) {
           setPlayerTraits(result.traits.acquired);
@@ -2303,7 +2397,19 @@ const GameViewer = ({
           setAppliedTraitValues(result.traits.appliedValues);
           for (const line of result.traits.log) addLogEntry(line);
         }
-        if (!result.traits && result.moved.length === 0 && result.boundsChanged.length === 0) return;
+        /** What this run left, in the shapes state holds. */
+        const left = (): TurnCodeState => ({
+          playerStats: overlayStatCodeResult(afterAsks, result, result.traits
+            ? traitsInForce(result.traits.acquired, result.traits.disabledTraitIds)
+            : inForce),
+          codePins: nextPins,
+          playerTraits: [...(result.traits?.acquired ?? held.acquired)],
+          disabledTraitIds: [...(result.traits?.disabledTraitIds ?? held.disabledTraitIds)],
+          appliedTraitValues: result.traits?.appliedValues ?? held.appliedValues,
+        });
+        if (!result.traits && result.moved.length === 0 && result.boundsChanged.length === 0) {
+          return nextPins === basePins ? null : left();
+        }
         // The bars are keyed by the name the player reads, so the run's stats resolve theirs here.
         const codeChanges = appliedStatDeltas(stats, resolveStatNames(result.stats, resolvePH));
         // Onto the LATEST stats, not a blanket `setPlayerStats(result.stats)`: the run read the pre-`await`
@@ -2313,12 +2419,16 @@ const GameViewer = ({
         // live — matching the history view (pageStatDeltas diffs the final, post-code snapshot).
         setRecentStatChanges((prev) => normalizeStatChanges([prev, codeChanges]));
         setHeldStatChanges((prev) => normalizeStatChanges([prev, codeChanges]));
+        // The commit resets the bar deltas mid-turn, so the before box's own share is re-laid over that.
+        if (timing === 'before') beforeBoxDeltasRef.current = codeChanges;
+        return left();
       } catch (error) {
         console.error("Error processing stat code:", error);
+        return null;
       }
     },
-    [setPlayerStats, setRecentStatChanges, setHeldStatChanges, codePins, setCodePins, resolvePH, placeholders, placeholderOwners, sessionRolls, pins, pinsFor, activeTraits,
-      traits, chosenTraits, disabledTraitIds, appliedTraitValues, authoredTraits, authoredStats, traitGroups, resolveTraitText,
+    [setPlayerStats, setRecentStatChanges, setHeldStatChanges, setCodePins, resolvePH, placeholders, placeholderOwners, sessionRolls, pinsFor,
+      traits, authoredTraits, authoredStats, traitGroups, resolveTraitText,
       setPlayerTraits, setDisabledTraitIds, setAppliedTraitValues, addLogEntry],
   );
 
@@ -2368,6 +2478,19 @@ const GameViewer = ({
   // every later turn from the model's context. Guarded on the tail actually being a lone user message, so a
   // partially-streamed assistant turn is kept intact. Also restores the choices cleared at turn start.
   const discardUnpairedUserTurn = () => {
+    // Half a turn leaves no trace: put back the stats, Code Pins and traits the before box moved.
+    const undo = beforeBoxUndoRef.current;
+    if (undo) {
+      beforeBoxUndoRef.current = null;
+      beforeBoxDeltasRef.current = {};
+      setPlayerStats(undo.playerStats ?? []);
+      setCodePins(undo.codePins ?? {});
+      setPlayerTraits(undo.playerTraits ?? []);
+      setDisabledTraitIds(undo.disabledTraitIds ?? []);
+      setAppliedTraitValues(undo.appliedTraitValues ?? {});
+      setRecentStatChanges({});
+      setHeldStatChanges({});
+    }
     setFullMessageHistory((prev) =>
       prev[prev.length - 1]?.role === "user" ? prev.slice(0, -1) : prev,
     );
@@ -2415,6 +2538,8 @@ const GameViewer = ({
       // turn's user message is added, so the tail is still the *previous* turn's assistant) would land here
       // and overwrite that previous turn's snapshot with the current, choices-cleared state.
       setIsGameStarted(true);
+      // The turn is kept, so the before box's writes are kept with it.
+      beforeBoxUndoRef.current = null;
       // Event-handler context: saveCurrentGameState reads the latest committed state, and the kept
       // narration already landed during streaming — so a synchronous snapshot here is fresh. Index it by
       // its own history length to keep gameStates aligned (same rule as the normal post-turn save).

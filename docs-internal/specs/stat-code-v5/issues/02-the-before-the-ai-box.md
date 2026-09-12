@@ -1,6 +1,7 @@
 # 02: The Before The AI Box
 
-Status: ready-for-agent
+Status: in-progress
+Base: 910d25eb
 Blocked by: 01
 Recommended model: Claude Opus 5 (`claude-opus-5`)
 Reasoning effort: high
@@ -19,18 +20,18 @@ This is an additive world export-shape change. The closing response states it.
 
 ## Acceptance criteria
 
-- [ ] A before box that pins a placeholder puts the pinned text in the same turn's narration prompt
-- [ ] A before box that sets a stat shows the value on the bar before the narration arrives, and the AI's stat request reads that value
-- [ ] `delta.ai`, `delta.regen`, `delta.total`, and `delta.actual` read zeros in the before box; `previous` equals `self`
-- [ ] The after box reads the state the before box left, plus the asks and regen
-- [ ] Bounds set in the before box survive an after box that writes none; both boxes empty clears them
-- [ ] A failed turn and a stopped turn restore stats, Code Pins, and traits to the last snapshot
-- [ ] The narration re-roll and the stats-only re-roll both run the before box again from the last snapshot
-- [ ] An existing save runs a before box added in the editor on its next turn
-- [ ] The Code tab shows two labeled editors in turn order and saves each to its own field
-- [ ] The e2e stat-code spec gains a case where the before box pins a placeholder and the same turn's prompt carries it
-- [ ] Closing response states the world export-shape change
-- [ ] Four gates green; graph updated
+- [x] A before box that pins a placeholder puts the pinned text in the same turn's narration prompt
+- [x] A before box that sets a stat shows the value on the bar before the narration arrives, and the AI's stat request reads that value
+- [x] `delta.ai`, `delta.regen`, `delta.total`, and `delta.actual` read zeros in the before box; `previous` equals `self`
+- [x] The after box reads the state the before box left, plus the asks and regen
+- [x] Bounds set in the before box survive an after box that writes none; both boxes empty clears them
+- [x] A failed turn and a stopped turn restore stats, Code Pins, and traits to the last snapshot
+- [x] The narration re-roll and the stats-only re-roll both run the before box again from the last snapshot
+- [x] An existing save runs a before box added in the editor on its next turn
+- [x] The Code tab shows two labeled editors in turn order and saves each to its own field
+- [x] The e2e stat-code spec gains a case where the before box pins a placeholder and the same turn's prompt carries it
+- [x] Closing response states the world export-shape change
+- [x] Four gates green; graph updated
 
 ## Blocked by
 

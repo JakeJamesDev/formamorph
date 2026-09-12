@@ -434,13 +434,26 @@ const StatManager = ({ stat, tab, onTabChange, focusField }: {
         <Code className="h-4 w-4 flex-shrink-0 text-muted-foreground" />
         <Label>Dynamic Value Calculation</Label>
         <HelpButton topicId="worldEditor.statCode" className="h-6 w-6" />
-        <Button variant="outline" size="sm" className="ml-auto" onClick={() => setTemplatesOpen(true)}>
-          <LayoutTemplate className="h-4 w-4 mr-1" />
-          Templates
-        </Button>
       </div>
 
       <Hint>Code can set this stat&apos;s value, Min, Max, or Regen, pin a placeholder, or switch a trait.</Hint>
+      <Hint>
+        Before The AI runs at the start of the turn, so the AI reads what it writes. After The AI runs once
+        the AI&apos;s changes and Regen land. An empty box does not run.
+      </Hint>
+
+      <CodeArea
+        value={editingStat.beforeCode || ""}
+        onChange={(beforeCode) => handleChange("beforeCode", beforeCode)}
+        ariaLabel="Stat Code Before The AI"
+        statNames={statNames}
+        selfName={selfCodeName}
+        placeholders={codePlaceholders}
+        traits={traitNames}
+        label="Before The AI"
+        placeholder="// Return a number. Start typing to see what you can use."
+        rows={6}
+      />
 
       <StatCodeTemplateDialog
         open={templatesOpen}
@@ -453,17 +466,24 @@ const StatManager = ({ stat, tab, onTabChange, focusField }: {
         traitNames={traitNames}
       />
 
+      <div className="flex items-center gap-2">
+        <Button variant="outline" size="sm" className="ml-auto" onClick={() => setTemplatesOpen(true)}>
+          <LayoutTemplate className="h-4 w-4 mr-1" />
+          Templates
+        </Button>
+      </div>
+
       <CodeArea
         value={editingStat.code || ""}
         onChange={(code) => { clearTestReport(); handleChange("code", code); }}
-        ariaLabel="Stat Code"
+        ariaLabel="Stat Code After The AI"
         statNames={statNames}
         selfName={selfCodeName}
         placeholders={codePlaceholders}
         traits={traitNames}
         // Its caption is the section heading, which full screen leaves behind — so the field names
         // itself in the toolbar and stays labeled in both states.
-        label="Code"
+        label="After The AI"
         // One line rather than a worked example: the completions, the ? and Templates each teach
         // more of the sandbox than a sample could, and four lines filled the box they sat in.
         // Short enough not to wrap in the panel — Templates is a labeled button right above this.

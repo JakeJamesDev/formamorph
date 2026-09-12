@@ -50,16 +50,29 @@ export interface ResolvedWorld {
   /** Every pin in force: the active traits', the current location's, each live stat's band's, and the Code
    *  Pins, with value pins settled underneath. */
   pins: Record<string, string>;
-  /** `pins` as they would stand under other Code Pins — what a re-roll reads from the pre-turn ones. */
-  pinsFor: (codePins: CodePins) => Record<string, string>;
+  /** `pins` as they would stand under other Code Pins, traits or stats — what a re-roll reads from the
+   *  pre-turn ones, and what a turn's own pass reads from writes React has not rendered yet. */
+  pinsFor: (codePins: CodePins, over?: PinSources) => Record<string, string>;
   /** Resolve any authored string with the same rolls and pins these collections used. */
   resolvePH: (text: string) => string;
+  /** Resolve against a whole pin map of the caller's own, as `pinsFor` builds. */
+  resolveFor: (pins: Record<string, string>, text: string) => string;
+  /** `resolveTraitText` against a pin map of the caller's own. */
+  resolveTraitFor: (pins: Record<string, string>, trait: Trait, text: string) => string;
   /** Resolve with pins not yet in state — for a string written in the same pass that applies the traits
    *  carrying them, which `resolvePH` would resolve against the pins as they stood before. */
   resolveWith: (extraPins: Record<string, string>, text: string) => string;
   /** Resolve a TRAIT'S OWN text (description, its card's stat names): its pins over the active ones, so a
    *  pinning trait reads its own value whatever else is ticked. Trait names in `traits` already use this. */
   resolveTraitText: (trait: Trait, text: string) => string;
+}
+
+/** The pin-carrying state `pinsFor` reads, where the caller has a copy newer than the one in state. */
+export interface PinSources {
+  /** The chosen traits as the save holds them, before the world refresh `pinsFor` applies. */
+  traits?: Trait[];
+  disabledTraitIds?: string[];
+  stats?: PlayerStat[];
 }
 
 /**
@@ -85,18 +98,26 @@ export function useResolvedAuthoredWorld(pins: Record<string, string> = NO_PINS)
     (text: string) => resolvePlaceholders(text, { placeholders, rolls, pins }),
     [placeholders, rolls, pins],
   );
+  const resolveFor = useCallback(
+    (withPins: Record<string, string>, text: string) =>
+      resolvePlaceholders(text, { placeholders, rolls, pins: withPins }),
+    [placeholders, rolls],
+  );
   // Resolve with pins that aren't in state yet. State updates are async, so code that applies traits and
   // then writes a string in the same pass (the init effect's log lines) would otherwise resolve against the
   // pins as they were *before* it ran, and freeze that.
   const resolveWith = useCallback(
-    (extraPins: Record<string, string>, text: string) =>
-      resolvePlaceholders(text, { placeholders, rolls, pins: { ...pins, ...extraPins } }),
-    [placeholders, rolls, pins],
+    (extraPins: Record<string, string>, text: string) => resolveFor({ ...pins, ...extraPins }, text),
+    [resolveFor, pins],
+  );
+  const resolveTraitFor = useCallback(
+    (withPins: Record<string, string>, trait: Trait, text: string) =>
+      resolvePlaceholders(text, { placeholders, rolls, pins: traitScopedPins(trait, withPins, placeholders) }),
+    [placeholders, rolls],
   );
   const resolveTraitText = useCallback(
-    (trait: Trait, text: string) =>
-      resolvePlaceholders(text, { placeholders, rolls, pins: traitScopedPins(trait, pins, placeholders) }),
-    [placeholders, rolls, pins],
+    (trait: Trait, text: string) => resolveTraitFor(pins, trait, text),
+    [resolveTraitFor, pins],
   );
 
   // Each mapper hands back the original array when nothing held a chip, so a world without placeholders
@@ -110,7 +131,10 @@ export function useResolvedAuthoredWorld(pins: Record<string, string> = NO_PINS)
   );
   const traitGroups = useMemo(() => resolveTraitGroupNames(rawTraitGroups, resolvePH), [rawTraitGroups, resolvePH]);
 
-  return { entities, locations, connections, stats, traits, traitGroups, resolvePH, resolveWith, resolveTraitText };
+  return {
+    entities, locations, connections, stats, traits, traitGroups,
+    resolvePH, resolveFor, resolveWith, resolveTraitText, resolveTraitFor,
+  };
 }
 
 const NO_PINS: Record<string, string> = {};
@@ -127,11 +151,11 @@ export function useResolvedWorld(): ResolvedWorld {
   // The location by id and the stats by number: both are state, so a move or a stat crossing a band
   // re-collects here and every name below follows.
   const storedLocationId = storedLocation?.id;
-  const pinsFor = useCallback((withCodePins: CodePins) => collectPins({
-    traits: inAuthoredOrder(refreshChosenTraits(playerTraits, rawTraits), traitOrder),
-    disabledTraitIds,
+  const pinsFor = useCallback((withCodePins: CodePins, over: PinSources = {}) => collectPins({
+    traits: inAuthoredOrder(refreshChosenTraits(over.traits ?? playerTraits, rawTraits), traitOrder),
+    disabledTraitIds: over.disabledTraitIds ?? disabledTraitIds,
     location: rawLocations.find((l) => l.id === storedLocationId),
-    stats: rawPlayerStats,
+    stats: over.stats ?? rawPlayerStats,
     placeholders,
     rolls,
     codePins: withCodePins,
@@ -139,7 +163,8 @@ export function useResolvedWorld(): ResolvedWorld {
   const pins = useMemo(() => pinsFor(codePins), [pinsFor, codePins]);
 
   const {
-    entities, locations, connections, stats, traits, traitGroups, resolvePH, resolveWith, resolveTraitText,
+    entities, locations, connections, stats, traits, traitGroups,
+    resolvePH, resolveFor, resolveWith, resolveTraitText, resolveTraitFor,
   } = useResolvedAuthoredWorld(pins);
 
   // Every write to gameplay's `currentLocation` is a member of `locations`, so its id is the durable part —
@@ -159,6 +184,7 @@ export function useResolvedWorld(): ResolvedWorld {
 
   return {
     entities, locations, connections, stats, traits, traitGroups, dictionary, currentLocation,
-    playerStats, viewStats, traitOrder, pins, pinsFor, resolvePH, resolveWith, resolveTraitText,
+    playerStats, viewStats, traitOrder, pins, pinsFor,
+    resolvePH, resolveFor, resolveWith, resolveTraitText, resolveTraitFor,
   };
 }

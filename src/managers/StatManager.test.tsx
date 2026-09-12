@@ -167,10 +167,51 @@ describe('the tab strip', () => {
   });
 });
 
+describe('the two code boxes', () => {
+  /** The named box's editor, once its CodeMirror chunk has landed. Two editors fetch that chunk here, and
+   *  under the whole suite's load they take longer than the default window allows. */
+  const box = (label: string) => waitFor(() => {
+    const field = screen.getAllByLabelText(label).find((el) => el.getAttribute('role') === 'textbox');
+    expect(field?.closest('.cm-editor')).toBeTruthy();
+    return field as HTMLElement;
+  }, { timeout: 10000 });
+
+  it('shows both boxes in turn order, each carrying its timing as its caption', async () => {
+    renderManager('code');
+    const before = await box('Stat Code Before The AI');
+    const after = await box('Stat Code After The AI');
+    // Before The AI sits above After The AI, which is the order the turn runs them in.
+    expect(before.compareDocumentPosition(after) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(screen.getByText('Before The AI')).toBeInTheDocument();
+    expect(screen.getByText('After The AI')).toBeInTheDocument();
+  });
+
+  it('shows each box the code its own field holds', async () => {
+    store.stat = { ...store.stat, beforeCode: 'return 1;', code: 'return 2;' };
+    renderManager('code');
+    expect(await box('Stat Code Before The AI')).toHaveTextContent('return 1;');
+    expect(await box('Stat Code After The AI')).toHaveTextContent('return 2;');
+  });
+
+  it('writes what the player types in the before box to beforeCode, leaving the after box alone', async () => {
+    store.stat = { ...store.stat, code: 'return 2;' };
+    const user = userEvent.setup();
+    renderManager('code');
+    await user.click(await box('Stat Code Before The AI'));
+    // One key at a time, each confirmed landed: CodeMirror drops a key dispatched while it is mid-update.
+    const typed = '7;';
+    for (let i = 0; i < typed.length; i++) {
+      await user.keyboard(typed[i]);
+      await waitFor(() => expect(store.stat.beforeCode).toBe(typed.slice(0, i + 1)));
+    }
+    expect(store.stat.code).toBe('return 2;');
+  });
+});
+
 describe('the code field’s stat names', () => {
   /** The CodeMirror editor arrives on its own chunk, so the case waits for it to land. */
   const codeField = () => waitFor(() => {
-    const field = screen.getAllByLabelText('Stat Code').find((el) => el.getAttribute('role') === 'textbox');
+    const field = screen.getAllByLabelText('Stat Code After The AI').find((el) => el.getAttribute('role') === 'textbox');
     expect(field?.closest('.cm-editor')).toBeTruthy();
     return field as HTMLElement;
   });

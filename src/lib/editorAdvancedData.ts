@@ -33,7 +33,7 @@ export function worldUsesAdvancedFeatures(w: AdvancedDataInput): boolean {
   if (WORLD_PROMPT_KINDS.some((kind) => hasValue(storedWorldPrompt(w.worldOverview, kind)))) return true;
   if (hasValue(storedOpeningCue(w.worldOverview))) return true;
   if ((w.stats ?? []).some((s) =>
-    hasValue(s.code) || hasValue(s.descriptors) ||
+    hasValue(s.beforeCode) || hasValue(s.code) || hasValue(s.descriptors) ||
     s.noIncrease || s.noIncreaseMax || s.noDecrease || s.noDecreaseMax)) return true;
   if ((w.entities ?? []).some((e) =>
     hasValue(e.aliases) || hasValue(e.aiSummary) || hasValue(e.type) || hasValue(e.model) ||
