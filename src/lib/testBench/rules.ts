@@ -29,6 +29,7 @@ import {
   statStartValue, thresholdValue, uncoveredSpan, valueThreshold,
 } from '@/lib/statDescriptorGeometry';
 import { usesStatClock } from '@/lib/statCodeExecutor';
+import { statCodeName } from '@/lib/statCodeNames';
 import { estimateTokens } from '@/lib/memoryUtils';
 import { entityImages } from '@/lib/entityImages';
 import {
@@ -856,9 +857,9 @@ const statCodeUnknownStat: Rule = {
   advanced: true,
   summary: (count) => `${count} stats’ code looks up stat names that don’t exist`,
   check: (world) => {
-    // Code compares against runtime names, where chips have resolved — so both spellings are valid targets.
+    // Code reaches a stat by its code name, which is the same in every playthrough.
     const stats = world.stats ?? [];
-    const known = new Set(stats.flatMap((s) => [s.name, describePlaceholders(s.name ?? '', allPlaceholders(world))]));
+    const known = new Set(stats.map((s) => statCodeName(s.name, allPlaceholders(world))));
     return stats.flatMap((stat) => {
       if (!stat.code) return [];
       const item = namedItem(stat.id, stat.name, world);
@@ -1271,8 +1272,8 @@ const codeReadsSelf = (stat: Stat, world: RuleWorld): boolean => {
     ? new RegExp(`["'\`]${stat.id.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}["'\`]`)
     : undefined;
   if (/\bcurrentStatId\b/.test(code) || /\bself\b/.test(code) || quotedId?.test(code)) return true;
-  const names = new Set([stat.name, describePlaceholders(stat.name ?? '', allPlaceholders(world))]);
-  return statNamesInCode(code).some((name) => names.has(name));
+  const own = statCodeName(stat.name, allPlaceholders(world));
+  return statNamesInCode(code).some((name) => name === own);
 };
 
 const statCodeOverridesTrait: Rule = {

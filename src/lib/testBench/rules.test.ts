@@ -416,6 +416,20 @@ describe('reference-integrity rules', () => {
     });
     expect(only(w, 'stat-code-unknown-stat')).toEqual([]);
   });
+
+  it('knows a chip-bearing stat by its code name, and not by what the chip rolled', () => {
+    const coded = (code: string) => base({
+      placeholders: [{ id: 'ph-beast', name: 'Beast', values: phValues(['Wolf', 'Bear']) }],
+      stats: [
+        stat({ id: 's1', name: 'Mana', code }),
+        stat({ id: 's2', name: '{{ph:ph-beast:world:p1}} Power' }),
+      ],
+    });
+    expect(only(coded('return stats["Beast Power"].value;'), 'stat-code-unknown-stat')).toEqual([]);
+    const rolled = only(coded('return stats["Wolf Power"].value;'), 'stat-code-unknown-stat');
+    expect(rolled).toHaveLength(1);
+    expect(rolled[0].message).toContain('Wolf Power');
+  });
 });
 
 describe('dictionary rules', () => {
@@ -836,6 +850,17 @@ describe('stat sanity rules', () => {
     expect(only(oneStat({ starting: 40, code: bareSelf }, [ashen]), 'stat-code-overrides-trait')).toEqual([]);
     expect(only(oneStat({ starting: 40, code: dotName }, [ashen]), 'stat-code-overrides-trait')).toEqual([]);
     expect(only(oneStat({ starting: 40, code: bracketName }, [ashen]), 'stat-code-overrides-trait')).toEqual([]);
+  });
+
+  it('reads a chip-bearing stat’s own name as its code name, not as what the chip rolled', () => {
+    const ashen = trait({ id: 't1', name: 'Ashen', statChanges: [{ statId: 's1', type: 'starting', value: -10 }] });
+    const chipped = (code: string) => base({
+      placeholders: [{ id: 'ph-beast', name: 'Beast', values: phValues(['Wolf', 'Bear']) }],
+      stats: [stat({ id: 's1', name: '{{ph:ph-beast:world:p1}} Power', starting: 40, code })],
+      traits: [ashen],
+    });
+    expect(only(chipped('return stats["Beast Power"].value + 1;'), 'stat-code-overrides-trait')).toEqual([]);
+    expect(only(chipped('return stats["Wolf Power"].value + 1;'), 'stat-code-overrides-trait')).toHaveLength(1);
   });
 
   it('still flags code that only reads another stat through the map', () => {

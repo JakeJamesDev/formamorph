@@ -70,7 +70,7 @@ export const DELTA_MEMBERS: readonly SurfaceEntry[] = [
 /** The fields on a stat object inside `stats`, `self` included. Anything else is `undefined`. */
 export const STAT_FIELDS: readonly SurfaceEntry[] = [
   { name: 'id', detail: 'string', info: 'The stat’s unique id.' },
-  { name: 'name', detail: 'string', info: 'The stat’s display name, as the author typed it.' },
+  { name: 'name', detail: 'string', info: 'The stat’s code name: the authored name, with each placeholder chip read as that placeholder’s own name.' },
   { name: 'type', detail: 'string', info: 'number, percentage, or whichever type the stat was given.' },
   { name: 'description', detail: 'string', info: 'The stat’s description text.' },
   { name: 'min', detail: 'number', info: 'Lower bound. Results are clamped to it. Write self.min to set it.' },
@@ -89,7 +89,7 @@ export const SELF_WRITABLE_FIELDS: readonly string[] = ['value', ...CODE_BOUND_F
  *  a write reaches none of them. */
 export const PREVIOUS_FIELDS: readonly SurfaceEntry[] = [
   { name: 'id', detail: 'string', info: 'Unique id, at the start of this turn.' },
-  { name: 'name', detail: 'string', info: 'The stat’s display name, at the start of this turn.' },
+  { name: 'name', detail: 'string', info: 'The stat’s code name, at the start of this turn.' },
   { name: 'type', detail: 'string', info: 'number, percentage, or whichever type the stat was given, at the start of this turn.' },
   { name: 'description', detail: 'string', info: 'The stat’s description text, at the start of this turn.' },
   { name: 'min', detail: 'number', info: 'Lower bound at the start of this turn, traits and code bounds included.' },

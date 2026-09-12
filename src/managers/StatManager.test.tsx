@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, within } from '@testing-library/react';
+import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import type { Placeholder, Stat } from '@/types';
 import { EditorModeContext } from '@/lib/editorMode';
@@ -164,6 +164,36 @@ describe('the tab strip', () => {
     renderManager('details');
     const strip = screen.getByRole('tablist', { name: 'Stat Fields' });
     expect(within(strip).getAllByRole('tab').map((el) => el.textContent)).toEqual(['Details', 'Descriptors', 'Code']);
+  });
+});
+
+describe('the code field’s stat names', () => {
+  /** The CodeMirror editor arrives on its own chunk, so the case waits for it to land. */
+  const codeField = () => waitFor(() => {
+    const field = screen.getAllByLabelText('Stat Code').find((el) => el.getAttribute('role') === 'textbox');
+    expect(field?.closest('.cm-editor')).toBeTruthy();
+    return field as HTMLElement;
+  });
+  const popup = () => document.querySelector('.cm-tooltip-autocomplete') as HTMLElement | null;
+
+  it('offers a chip-bearing stat by its code name, never by a value the chip could roll', async () => {
+    const BEAST: Placeholder = { id: 'ph-beast', name: 'Beast', values: phValues(['Wolf', 'Bear']) };
+    store.placeholders = [BEAST];
+    const chip = encodePlaceholderToken({ id: BEAST.id, mode: 'world', placementId: 'p1' });
+    store.stat = { ...store.stat, name: `${chip} Power` };
+    const user = userEvent.setup();
+    renderManager('code');
+    await user.click(await codeField());
+    // One key at a time, each confirmed landed: CodeMirror drops a key dispatched while it is mid-update.
+    const typed = 'return "';
+    for (let i = 0; i < typed.length; i++) {
+      await user.keyboard(typed[i]);
+      await waitFor(() => expect(store.stat.code).toBe(typed.slice(0, i + 1)));
+    }
+
+    await waitFor(() => expect(popup()).toBeTruthy());
+    expect(within(popup()!).getByText('Beast Power')).toBeInTheDocument();
+    expect(within(popup()!).queryByText('Wolf Power')).toBeNull();
   });
 });
 

@@ -1,5 +1,6 @@
 import type { DictionaryEntry, Entity, GameLocation, StatDescriptor, Trait, TraitGroup } from '@/types';
 import { hasPlaceholders } from './placeholders';
+import { mapPreservingIdentity } from './utils';
 
 /**
  * Name fields resolve at the source rather than at each point of use. Gameplay reads names for three
@@ -15,17 +16,6 @@ import { hasPlaceholders } from './placeholders';
  */
 
 export type ResolveText = (text: string) => string;
-
-/** Map `items`, keeping the original array reference when every item came back unchanged. */
-function mapPreservingIdentity<T>(items: T[], map: (item: T) => T): T[] {
-  let changed = false;
-  const out = items.map((item) => {
-    const next = map(item);
-    if (next !== item) changed = true;
-    return next;
-  });
-  return changed ? out : items;
-}
 
 /** Resolve one string, returning the exact original when it holds no chips. */
 const one = (text: string | undefined, resolve: ResolveText): string | undefined =>
@@ -52,24 +42,32 @@ export function resolveLocationNames(locations: GameLocation[], resolve: Resolve
   });
 }
 
-/** Generic over the stat shape: the authored `Stat` and the save's `PlayerStat` both carry the same name,
- *  and both have to resolve it — the AI's deltas are matched against one and applied to the other. The
- *  description and each descriptor resolve alongside: the AI reads them as the stat's meaning and status,
- *  and the player reads the active band under the bar. */
-export function resolveStatNames<T extends { name: string; description?: string; descriptors?: StatDescriptor[] }>(
-  stats: T[],
-  resolve: ResolveText,
-): T[] {
+/** The stat text that resolves beside a stat's name. */
+type StatText = { description?: string; descriptors?: StatDescriptor[] };
+
+/** Resolve a stat's prose and leave its name alone. The AI reads the description as the stat's meaning and
+ *  the player reads the active band under the bar, so both resolve; the stat-code run takes stats through
+ *  here rather than through {@link resolveStatNames}, because code reaches a stat by its code name. */
+export function resolveStatText<T extends StatText>(stats: readonly T[], resolve: ResolveText): T[] {
   return mapPreservingIdentity(stats, (s) => {
-    const name = one(s.name, resolve);
     const description = one(s.description, resolve);
     const descriptors = s.descriptors && mapPreservingIdentity(s.descriptors, (d) => {
       const text = one(d.description, resolve);
       return text === d.description ? d : { ...d, description: text ?? '' };
     });
-    return name === s.name && description === s.description && descriptors === s.descriptors
-      ? s
-      : { ...s, name: name ?? '', description, descriptors };
+    return description === s.description && descriptors === s.descriptors ? s : { ...s, description, descriptors };
+  });
+}
+
+/** Generic over the stat shape: the authored `Stat` and the save's `PlayerStat` both carry the same name,
+ *  and both have to resolve it — the AI's deltas are matched against one and applied to the other. */
+export function resolveStatNames<T extends { name: string } & StatText>(
+  stats: readonly T[],
+  resolve: ResolveText,
+): T[] {
+  return mapPreservingIdentity(resolveStatText(stats, resolve), (s) => {
+    const name = one(s.name, resolve);
+    return name === s.name ? s : { ...s, name: name ?? '' };
   });
 }
 

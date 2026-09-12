@@ -202,6 +202,7 @@ export function StatCodeTemplateDialog({
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  /** Under their code names: what a slot fills in has to be what the run reaches. */
   stats: Stat[];
   /** Excluded from stat pickers — a stat built from itself is a mistake, and templates reach their own
    *  value through `currentStatId` rather than by name. */

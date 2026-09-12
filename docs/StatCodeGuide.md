@@ -57,6 +57,8 @@ return health;
 
 A name with a space needs brackets: `stats["Hit Points"].value`. A name that doesn't exist in the world reads as a blank entry — every number `0` — so a typo never throws.
 
+> ℹ️ **A stat name with a placeholder chip in it reads in code as the placeholder's own name.** A stat named `{{Beast}} Power` is `stats["Beast Power"]` in every playthrough, whatever the chip rolled. The player still sees the rolled name.
+
 ### Stat Properties
 
 Each stat in the `stats` map, `self` included, exposes the following properties:
