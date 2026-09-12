@@ -21,6 +21,7 @@ import { HelpButton } from "@/components/HelpButton";
 import { HintInfo } from "@/components/SettingsRows";
 import { CODE_BOUND_FIELDS, executeStatCode, type CodeBoundField } from "@/lib/statCodeExecutor";
 import { statCodeName, statCodeNamed } from "@/lib/statCodeNames";
+import { useRenameField } from "@/lib/useCodeRename";
 import { sandboxPlaceholders } from "@/lib/statCodePlaceholders";
 import { sandboxTraits } from "@/lib/statCodeTraits";
 import { StatCodeTemplateDialog } from "@/components/modals/StatCodeTemplateDialog";
@@ -102,6 +103,14 @@ const StatManager = ({ stat, tab, onTabChange, focusField }: {
     [codeNamedStats],
   );
   const selfCodeName = statCodeName(editingStat.name, placeholders);
+  // Code reaches a stat by its code name, so the rename offer compares the two names the way code reads them.
+  const rename = useRenameField({
+    root: 'stats',
+    value: editingStat.name ?? '',
+    siblings: stats,
+    ownId: stat.id,
+    codeNameOf: (name) => statCodeName(name, placeholders),
+  });
   const codePlaceholders = useMemo(
     () => ({ list: placeholders, owners: placeholderOwners }),
     [placeholders, placeholderOwners],
@@ -211,6 +220,9 @@ const StatManager = ({ stat, tab, onTabChange, focusField }: {
             onChange={(v) => handleChange("name", v)}
             placeholders={placeholders}
             ariaLabel="Name"
+            onFocus={rename.onFocus}
+            onBlur={rename.onBlur}
+            onSubmit={rename.onSubmit}
           />
         </div>
         <div className="space-y-2">

@@ -12,6 +12,7 @@ import { PanelTabsList } from "@/components/ui/panel-tabs";
 import PlaceholderField, { PlaceholderNameField } from '@/components/prompt/PlaceholderField';
 import PlaceholderText from '@/components/prompt/PlaceholderText';
 import { PlaceholderPinRows } from '@/components/editor/PlaceholderPinRows';
+import { useRenameField } from '@/lib/useCodeRename';
 import { labelPlaceholders } from '@/lib/placementLetters';
 import { traitConflicts, type TraitConflict } from '@/lib/traitEffects';
 import { useEditorMode } from '@/lib/editorMode';
@@ -68,6 +69,7 @@ const TraitManager = ({ trait, onOpenTrait, tab, onTabChange, focusField }: {
   const world = useGameData();
   const { updateTrait, stats, placeholders, placementLetters, placeholderOwners, traits, traitGroups } = world;
   const { draft: editingTrait, apply, setField: handleChange } = useEditingDraft<Trait>(trait, updateTrait);
+  const rename = useRenameField({ root: 'traits', value: editingTrait.name ?? '', siblings: traits, ownId: trait.id });
 
   const handleStatChangeAdd = () => {
     apply({ statChanges: [...editingTrait.statChanges, { statId: '', value: 0, type: 'min' } as StatChange] });
@@ -119,6 +121,9 @@ const TraitManager = ({ trait, onOpenTrait, tab, onTabChange, focusField }: {
           onChange={(v) => handleChange('name', v)}
           placeholders={placeholders}
           ariaLabel="Name"
+          onFocus={rename.onFocus}
+          onBlur={rename.onBlur}
+          onSubmit={rename.onSubmit}
         />
       </div>
       <PlaceholderField

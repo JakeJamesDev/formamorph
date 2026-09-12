@@ -412,6 +412,8 @@ export interface ReplaceSummary {
 export function replaceAll(
   matches: SearchMatch[],
   insertFor: (target: SearchTarget) => string | null,
+  /** Each field this pass rewrote, with its new text. A rename offer reads which names moved from here. */
+  onWrite?: (target: SearchTarget, next: string) => void,
 ): ReplaceSummary {
   const byTarget = new Map<SearchTarget, SearchMatch[]>();
   const summary: ReplaceSummary = { replaced: 0, fields: 0, skipped: 0, skippedFields: [], chips: 0 };
@@ -441,6 +443,7 @@ export function replaceAll(
     drafts.set(target.itemKey, { ...draft, record: target.applyTo(draft.record, next) });
     summary.replaced += hits.length;
     summary.fields += 1;
+    onWrite?.(target, next);
   }
   for (const { record, commit } of drafts.values()) commit(record);
   return summary;

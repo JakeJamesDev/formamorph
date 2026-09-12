@@ -93,16 +93,20 @@ function SingleLinePlugin({ onSubmit }: { onSubmit?: () => void }) {
   return null;
 }
 
-/** Reports focus leaving the editor. A DOM listener on the root rather than Lexical's BLUR_COMMAND, for the
- *  same reason the insert-target plugin uses focusin: the command does not cover every route out. */
-function BlurPlugin({ onBlur }: { onBlur: () => void }) {
+/** Reports focus arriving at and leaving the editor. DOM listeners on the root rather than Lexical's
+ *  FOCUS/BLUR commands, for the same reason the insert-target plugin uses focusin: the commands do not
+ *  cover every route in or out. */
+function FocusPlugin({ onFocus, onBlur }: { onFocus?: () => void; onBlur?: () => void }) {
   const [editor] = useLexicalComposerContext();
-  const ref = useRef(onBlur);
-  ref.current = onBlur;
+  const ref = useRef({ onFocus, onBlur });
+  ref.current = { onFocus, onBlur };
   useEffect(() => editor.registerRootListener((root, prevRoot) => {
-    const fire = () => ref.current();
-    prevRoot?.removeEventListener('focusout', fire);
-    root?.addEventListener('focusout', fire);
+    const entered = () => ref.current.onFocus?.();
+    const left = () => ref.current.onBlur?.();
+    prevRoot?.removeEventListener('focusin', entered);
+    prevRoot?.removeEventListener('focusout', left);
+    root?.addEventListener('focusin', entered);
+    root?.addEventListener('focusout', left);
   }), [editor]);
   return null;
 }
@@ -228,7 +232,7 @@ function Surface({ placeholder, ariaLabel, className, multiline }: {
   );
 }
 
-const ChipInput = ({ value, onChange, vocabulary, placeholder, ariaLabel, className, readOnly = false, trigger = '{', onSubmit, onBlur, multiline = false, children, autoFocus = false, onCancel, ownerId }: {
+const ChipInput = ({ value, onChange, vocabulary, placeholder, ariaLabel, className, readOnly = false, trigger = '{', onSubmit, onFocus, onBlur, multiline = false, children, autoFocus = false, onCancel, ownerId }: {
   value: string;
   onChange: (v: string) => void;
   vocabulary: ChipVocabulary;
@@ -244,6 +248,8 @@ const ChipInput = ({ value, onChange, vocabulary, placeholder, ariaLabel, classN
   trigger?: string;
   /** Enter, once the insert menu is not the one consuming it. For tag inputs, where Enter commits. */
   onSubmit?: () => void;
+  /** Focus arriving at the field — a rename offer reads the value it starts from here. */
+  onFocus?: () => void;
   /** Focus leaving the field — a tag input commits a half-typed tag on the way out. */
   onBlur?: () => void;
   /** Let the value wrap onto real lines. The tag field wants this; a name never does. */
@@ -276,7 +282,7 @@ const ChipInput = ({ value, onChange, vocabulary, placeholder, ariaLabel, classN
           <HistoryPlugin />
           <ValueSyncPlugin value={value} onChange={onChange} parse={vocabulary.parse} />
           {!multiline && <SingleLinePlugin onSubmit={onSubmit} />}
-          {onBlur && <BlurPlugin onBlur={onBlur} />}
+          {(onFocus || onBlur) && <FocusPlugin onFocus={onFocus} onBlur={onBlur} />}
           {autoFocus && <AutoFocusPlugin />}
           {onCancel && <CancelPlugin onCancel={onCancel} />}
           <EditablePlugin readOnly={readOnly} />
