@@ -244,3 +244,29 @@ test('clock-reading stat code runs with zero asks on a turn with no stat update'
   await expect(page.getByText(/65\s*\/\s*100/).first()).toBeVisible();
   expect(statCalls()).toBe(0);
 });
+
+// A path reaches the placeholder the editor shows, not the world-level one of the same name. Two rolls, one
+// path: the reading follows Molly's own roll, and the world's `Hair` never answers it.
+for (const [rolled, expected] of [['cropped', 11], ['long', 22]] as const) {
+  test(`stat code reads placeholders.Molly.Hair on the ${rolled} roll, never the world’s own Hair`, async ({ page }) => {
+    page.on('pageerror', (error) => console.error(error.message));
+    const worldHair = { id: 'ph-world-hair', name: 'Hair', values: [{ id: 'v-plain', text: 'plain' }] };
+    const mollyHair = {
+      id: 'ph-molly-hair', name: 'Hair',
+      values: [{ id: 'v-cropped', text: 'cropped' }, { id: 'v-long', text: 'long' }],
+    };
+    const world = JSON.parse(readFileSync('src/lib/devFixtures/whiteRoomWorld.json', 'utf8'));
+    const molly = { id: 'ent-molly', name: 'Molly', placeholders: [mollyHair] };
+    // 99 would mean the path fell through to the world's own Hair; no reading at all leaves 60.
+    await coinWithCode(page, 'return { cropped: 11, long: 22, plain: 99 }[placeholders.Molly.Hair.value];', {}, {
+      World: { placeholders: [worldHair], entities: [...world.entities, molly] },
+      Save: { placeholderRolls: { world: { 'ph-molly-hair': rolled } } },
+    });
+    await mockModel(page, 'Coin: +20');
+    await openApp(page, settings(), { url: '/#dev?view=gameViewer&fixture=whiteRoom' });
+    await playOneTurn(page);
+
+    await expect(page.getByText(new RegExp(`${expected}\\s*/\\s*100`)).first()).toBeVisible();
+    await expect(page.getByText(/(99|60)\s*\/\s*100/)).toHaveCount(0);
+  });
+}

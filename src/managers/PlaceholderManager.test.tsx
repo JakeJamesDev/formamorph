@@ -1007,3 +1007,31 @@ describe('PlaceholderManager — the Pins section', () => {
     expect(screen.queryByRole('button', { name: 'Add Pin' })).toBeNull();
   });
 });
+
+// Stat code reaches a part as a member of its holder, and every placeholder already carries six members of
+// its own. A part named like one of those loses the name, which the author has to be told here.
+describe('PlaceholderManager — a part named like a code member', () => {
+  const holder = ph({ id: 'holder', name: 'Hair', values: phValues([chip('part')]) });
+  const warning = () => screen.queryByText(/stat code can’t reach this part by name/);
+
+  it('warns on a part whose name is one of an entry’s own members', () => {
+    const part = ph({ id: 'part', name: 'value', values: phValues(['ash']), ownerId: 'holder' });
+    siblings = [holder, part];
+    render(<PlaceholderManager placeholder={part} />);
+    expect(warning()).toBeInTheDocument();
+  });
+
+  it('says nothing about a part named anything else', () => {
+    const part = ph({ id: 'part', name: 'Shade', values: phValues(['ash']), ownerId: 'holder' });
+    siblings = [holder, part];
+    render(<PlaceholderManager placeholder={part} />);
+    expect(warning()).not.toBeInTheDocument();
+  });
+
+  it('says nothing about a top-level placeholder of that name, which code reaches by bare name', () => {
+    const top = ph({ id: 'top', name: 'value', values: phValues(['ash']) });
+    siblings = [top];
+    render(<PlaceholderManager placeholder={top} />);
+    expect(warning()).not.toBeInTheDocument();
+  });
+});

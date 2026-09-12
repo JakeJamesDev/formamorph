@@ -148,6 +148,25 @@ if (lost > 0 && self.value === self.max) {
 | `pin(x)` | Pin the placeholder. Takes what `value` reads on that entry |
 | `unpin()` | Remove the pin code set. The next pin in rank, or the roll, shows again |
 
+#### Paths
+
+Code reaches a placeholder the way the editor names it. An entity or a book that owns placeholders is a step of its own, and a placeholder that holds parts carries them as members:
+
+```javascript
+placeholders.Molly.Hair              // the Hair that Molly owns
+placeholders.Molly.Hair.Shade        // the Shade that Hair holds
+placeholders["Old Molly"]["Eye Color"]  // brackets, at any depth
+```
+
+| You write | You reach |
+| --- | --- |
+| `placeholders.Hair` | The world's own `Hair`, where it has one |
+| `placeholders.Molly.Hair` | Molly's `Hair`, always |
+
+A bare name reaches the world's own row first. Where the world holds none of that name, it reaches the last one authored, and the editor says so. Write the path for the exact one.
+
+An owner step is not a placeholder: it has none of the six members in the table above, only the placeholders it owns. Every placeholder has all six, so a part named `value` or `roll` loses the name to the member — the editor warns on the part's name field.
+
 #### The three words
 
 `values` is what the author wrote. `value` is what is in force right now. `text` is what the prompt sees.

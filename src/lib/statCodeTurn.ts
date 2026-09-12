@@ -154,7 +154,7 @@ export async function runStatCodeTurn(turn: StatCodeTurn): Promise<StatCodeTurnR
       console.warn(`Stat ${stat.name} wrote acquired on: ${result.acquiredWrites.join(', ')}`);
     }
   }));
-  const pinWrites = pinWritesInStatOrder(live, placeholderWritesByStat, placeholderDefs);
+  const pinWrites = pinWritesInStatOrder(live, placeholderWritesByStat);
   for (const stat of live) {
     if (!stat.code?.trim() && stat.codeBounds) writes.set(stat.id, { value: null, bounds: {} });
   }
@@ -218,19 +218,16 @@ function traitSwitchesInStatOrder(
   return [...out.values()];
 }
 
-/** Each stat's placeholder writes keyed by placeholder id, laid in stat order so the later stat wins. A name
- *  reaches the last authored placeholder carrying it, as the sandbox map does. */
+/** Each stat's placeholder writes keyed by placeholder id, laid in stat order so the later stat wins. Each
+ *  write already names the placeholder it landed on, whichever path the code reached it by. */
 function pinWritesInStatOrder(
   stats: readonly PlayerStat[],
   writesByStat: ReadonlyMap<string, readonly PlaceholderWrite[]>,
-  placeholders: readonly Placeholder[],
 ): PinWrites {
-  const idByName = new Map(placeholders.map((ph) => [ph.name, ph.id]));
   const out: Record<string, string | string[] | null> = {};
   for (const stat of stats) {
     for (const write of writesByStat.get(stat.id) ?? []) {
-      const id = idByName.get(write.name);
-      if (id !== undefined) out[id] = 'unpin' in write ? null : write.value;
+      out[write.id] = 'unpin' in write ? null : write.value;
     }
   }
   return out;

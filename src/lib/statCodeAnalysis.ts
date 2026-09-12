@@ -10,7 +10,6 @@ import { javascriptLanguage } from '@codemirror/lang-javascript';
 import type { SyntaxNode, Tree } from '@lezer/common';
 import type { PlaceholderOwners } from '@/lib/placeholderHomes';
 import { placeholderKindNoun } from '@/lib/placeholders';
-import { placeholderDisplayName } from '@/lib/placementLetters';
 import { findSlotRanges, parseTemplateSlots } from '@/lib/statCodeTemplates';
 import type { Placeholder } from '@/types';
 import {
@@ -19,6 +18,10 @@ import {
   placeholderEntryFields,
   type SurfaceEntry,
 } from '@/lib/statCodeSurface';
+import {
+  isPlaceholderEntryMember, placeholderKeyWinner, placeholderPathDots, placeholderPathLabel, placeholderPathMap,
+  walkPlaceholderPath, type PlaceholderPathMap, type PlaceholderPathNode,
+} from '@/lib/statCodePaths';
 
 export type DiagnosticSeverity = 'error' | 'warning';
 
@@ -167,9 +170,6 @@ const IDENTIFIER = /^[A-Za-z_$][\w$]*$/;
 /** What one entry of a name-keyed sandbox map is called in a message. */
 type EntryNoun = 'placeholder' | 'trait' | 'stat';
 
-/** Each distinct placeholder name, in authored order. */
-const placeholderNames = (placeholders: readonly Placeholder[]): string[] => [...new Set(placeholders.map((p) => p.name))];
-
 /** One entry per distinct name of a `kind` of map entry. `dotted` keeps only the names a `.` can reach; the
  *  rest need bracket syntax. */
 function mapNameEntries(names: readonly string[], kind: EntryNoun, dotted: boolean): SurfaceEntry[] {
@@ -180,15 +180,71 @@ function mapNameEntries(names: readonly string[], kind: EntryNoun, dotted: boole
 
 /** `root.Name` or `root["Name"]`: an expression that is one entry of the map `root`. */
 const entryExpression = (root: string) => new RegExp(`^${root}(\\??\\.[A-Za-z_$][\\w$]*|\\??\\.?\\[\\s*(["'])[^"'\\\\]*\\2\\s*\\])$`);
-const PLACEHOLDER_ENTRY_EXPRESSION = entryExpression('placeholders');
-/** The name `placeholders.Mood` or `placeholders["Hair Color"]` reads, or null for anything else. */
-function placeholderEntryName(expression: string): string | null {
-  const accessor = PLACEHOLDER_ENTRY_EXPRESSION.exec(expression)?.[1];
-  if (accessor === undefined) return null;
-  const bracketed = /\[\s*(["'])([^"'\\]*)\1\s*\]$/.exec(accessor);
-  return bracketed ? bracketed[2] : accessor.replace(/^\??\./, '');
-}
 const TRAIT_ENTRY_EXPRESSION = entryExpression('traits');
+
+/** One member step of a path: `.Name`, `?.Name`, `["Name"]`, `?.["Name"]`. */
+const PATH_STEP = /^\s*(?:\?\.)?(?:\.?\[\s*(["'])([^"'\\]*)\1\s*\]|\.([A-Za-z_$][\w$]*))/;
+
+/**
+ * The segments a `placeholders` member chain names, or null for anything that is not one. A step whose key
+ * only a run could know — a variable, an expression, an escape — ends the chain, so `placeholders[pick]`
+ * reads as no path at all rather than as a wrong one.
+ *
+ * Read from the text, as `expressionBeforeDot` is, because a completion runs on half-typed code the grammar
+ * cannot parse. `placeholderChain` reads the same grammar off the tree, where a check needs each segment's
+ * own span to underline; neither can do the other's job, and a test holds the two to the same answers.
+ */
+function placeholderPathSegments(expression: string): string[] | null {
+  if (!/^placeholders(?![\w$])/.test(expression)) return null;
+  let rest = expression.slice('placeholders'.length);
+  const segments: string[] = [];
+  while (rest.trim().length > 0) {
+    const step = PATH_STEP.exec(rest);
+    if (!step) return null;
+    segments.push(step[3] ?? step[2]);
+    rest = rest.slice(step[0].length);
+  }
+  return segments;
+}
+
+/** The map a set of options describes, built through the one resolver. */
+const pathMapOf = (placeholders: CodePlaceholders): PlaceholderPathMap =>
+  placeholderPathMap({ list: placeholders.list, owners: placeholders.owners });
+
+/** One node as a completion: the placeholder it reads, or the owner whose placeholders it carries. */
+function nodeEntry(node: PlaceholderPathNode): SurfaceEntry {
+  if (!node.placeholder) {
+    const noun = node.owner?.kind === 'dictionary' ? 'book' : 'entity';
+    return { name: node.name, detail: noun, info: `The “${node.name}” ${noun}, and the placeholders it owns.` };
+  }
+  const held = node.children.length ? ' It holds placeholders of its own.' : '';
+  return { name: node.name, detail: 'placeholder', info: `The “${node.name}” placeholder in this world.${held}` };
+}
+
+/**
+ * The top level of the map as completions: one per key, then the exact path for every name more than one
+ * thing claims. The paths lead, because a bare ambiguous name reaches only one of them.
+ */
+function topLevelEntries(map: PlaceholderPathMap): { entries: SurfaceEntry[]; paths: SurfaceEntry[] } {
+  const shared = new Set(
+    map.claims.filter((claim) => placeholderKeyWinner(map, claim.key).count > 1).map((claim) => claim.key),
+  );
+  const paths: SurfaceEntry[] = [];
+  const seen = new Set<string>();
+  for (const claim of map.claims) {
+    if (!shared.has(claim.key) || claim.node.path.length < 2) continue;
+    const label = placeholderPathDots(claim.node.path);
+    if (label === null || seen.has(label)) continue;
+    seen.add(label);
+    paths.push({
+      name: label,
+      detail: claim.node.placeholder ? 'placeholder' : 'owner',
+      info: `“${placeholderPathLabel(claim.node.path)}” — the exact path, where the bare name reaches another.`,
+    });
+  }
+  const entries = map.top.filter((node) => IDENTIFIER.test(node.name)).map(nodeEntry);
+  return { entries, paths };
+}
 /** One entry of `stats`, the key literal or computed: every key reads a stat, if only a blank one. */
 const STAT_ENTRY_EXPRESSION = /^stats(\??\.[A-Za-z_$][\w$]*|\??\.?\[[^[\]]*\])$/;
 /** One stat picked out of `Object.values(stats)`, the call's arguments captured. `filter` hands back another
@@ -221,6 +277,51 @@ function indexesStat(text: string, name: string): boolean {
 }
 
 /**
+ * The keys the bracket that opens just before `stringFrom` can reach, or null when it is not a
+ * `placeholders` bracket. At the top level that is every key the map has; after a node, the placeholders it
+ * owns — each as a name, since the bracket is where a name no dot can reach is written.
+ */
+function placeholderKeysInBrackets(
+  code: string, stringFrom: number, placeholders: CodePlaceholders,
+): SurfaceEntry[] | null {
+  const open = code.lastIndexOf('[', stringFrom);
+  if (open === -1) return null;
+  const segments = placeholderPathSegments(expressionBeforeDot(code, open) ?? '');
+  if (segments === null) return null;
+  const map = pathMapOf(placeholders);
+  // Keys only, never paths: one bracket holds one key, so a path has to be written bracket by bracket.
+  if (segments.length === 0) return map.top.map(nodeEntry);
+  const { node, rest } = walkPlaceholderPath(map, segments);
+  return rest.length === 0 && node ? node.children.map(nodeEntry) : [];
+}
+
+/**
+ * What a path reaches, as the members to offer after its dot. An owner node lists its placeholders; a
+ * placeholder lists its own members, then the placeholders it holds. One trailing segment nothing answers
+ * reads as an entry being named, so a half-typed name still offers the members it will have.
+ */
+function placeholderMembersAt(
+  placeholders: CodePlaceholders, segments: readonly string[],
+): readonly SurfaceEntry[] | null {
+  const map = pathMapOf(placeholders);
+  if (segments.length === 0) {
+    const { entries, paths } = topLevelEntries(map);
+    return [...paths, ...entries];
+  }
+  const { node, rest } = walkPlaceholderPath(map, segments);
+  if (rest.length === 0 && node) {
+    const children = node.children.filter((child) => IDENTIFIER.test(child.name)).map(nodeEntry);
+    if (!node.placeholder) return children;
+    // A child named like a member lost to it, so the member is what the list offers for that name.
+    const fields = placeholderEntryFields(placeholderKindNoun(node.placeholder));
+    return [...fields, ...children.filter((child) => !isPlaceholderEntryMember(child.name))];
+  }
+  // Past one unknown segment nothing is known; a member read off an entry carries no sandbox members at all.
+  if (rest.length === 1 && !isPlaceholderEntryMember(rest[0])) return placeholderEntryFields('Wildcard');
+  return null;
+}
+
+/**
  * What the expression before a dot can be shown to carry, or null where nothing can be. The order is the
  * order of certainty: a named built-in, then the one array the sandbox injects, then a stat's turn input,
  * then anything that reads as a stat — and silence for everything else, because a wrong list reads as the
@@ -232,14 +333,9 @@ function membersAfterDot(
   const expression = expressionBeforeDot(code, dotPos);
   if (expression === null) return null;
   if (expression === 'stats') return options.statNames ? mapNameEntries(options.statNames, 'stat', true) : null;
-  if (expression === 'placeholders') {
-    return options.placeholders ? mapNameEntries(placeholderNames(options.placeholders.list), 'placeholder', true) : null;
-  }
-  const entryName = placeholderEntryName(expression);
-  if (entryName !== null) {
-    // The map keys by name, the last authored winning, so the kind is that one's.
-    const named = [...(options.placeholders?.list ?? [])].reverse().find((ph) => ph.name === entryName);
-    return placeholderEntryFields(named ? placeholderKindNoun(named) : 'Wildcard');
+  const segments = placeholderPathSegments(expression);
+  if (segments !== null) {
+    return options.placeholders ? placeholderMembersAt(options.placeholders, segments) : null;
   }
   if (expression === 'traits') return options.traits ? mapNameEntries(options.traits, 'trait', true) : null;
   if (TRAIT_ENTRY_EXPRESSION.test(expression)) return TRAIT_ENTRY_FIELDS;
@@ -334,11 +430,8 @@ interface EntryRef {
   to: number;
 }
 
-/** The name a `root.Name` or `root["Name"]` member names, or null for any other member and for a key only a
- *  run could know. */
-function entryRef(node: SyntaxNode, code: string, root: 'placeholders' | 'traits' | 'stats'): EntryRef | null {
-  const object = node.firstChild;
-  if (object?.name !== 'VariableName' || code.slice(object.from, object.to) !== root) return null;
+/** The key one member names, or null for a key only a run could know. */
+function memberKey(node: SyntaxNode, code: string): EntryRef | null {
   const property = node.getChild('PropertyName');
   if (property) return { name: code.slice(property.from, property.to), from: property.from, to: property.to };
   const literal = node.getChild('String');
@@ -346,6 +439,35 @@ function entryRef(node: SyntaxNode, code: string, root: 'placeholders' | 'traits
   const name = code.slice(literal.from + 1, literal.to - 1);
   // An escape has to be evaluated to name the key.
   return name.includes('\\') ? null : { name, from: literal.from, to: literal.to };
+}
+
+/** The name a `root.Name` or `root["Name"]` member names, or null for any other member and for a key only a
+ *  run could know. */
+function entryRef(node: SyntaxNode, code: string, root: 'placeholders' | 'traits' | 'stats'): EntryRef | null {
+  const object = node.firstChild;
+  if (object?.name !== 'VariableName' || code.slice(object.from, object.to) !== root) return null;
+  return memberKey(node, code);
+}
+
+/**
+ * The segments a `placeholders` member chain names, each with where it is written. Null for a chain rooted
+ * anywhere else; a step whose key only a run could know ends the chain, as the text parser does.
+ */
+function placeholderChain(node: SyntaxNode, code: string): EntryRef[] | null {
+  const members: SyntaxNode[] = [];
+  let at: SyntaxNode | null = node;
+  while (at?.name === 'MemberExpression') {
+    members.unshift(at);
+    at = at.firstChild;
+  }
+  if (at?.name !== 'VariableName' || code.slice(at.from, at.to) !== 'placeholders') return null;
+  const refs: EntryRef[] = [];
+  for (const member of members) {
+    const ref = memberKey(member, code);
+    if (!ref) break;
+    refs.push(ref);
+  }
+  return refs;
 }
 
 /** What is wrong with a reference to the `noun` called `name`: none has it, or several share it. `winner`
@@ -370,8 +492,87 @@ function checkEntryName(
 
 const checkTraitName = (ref: EntryRef, names: readonly string[]) => checkEntryName(ref, names, 'trait');
 
-const checkPlaceholderName = (ref: EntryRef, { list, owners }: CodePlaceholders) =>
-  checkEntryName(ref, list.map((p) => p.name), 'placeholder', (last) => placeholderDisplayName(list[last].id, list, { owners }));
+/**
+ * What is wrong with a bare name several things claim. Which one reads depends on what claims it: a row the
+ * world itself holds beats a scoped one, and an owner node beats a placeholder of the same name, so the
+ * message names the winner rather than restating one rule.
+ */
+function checkSharedKey(map: PlaceholderPathMap, { name, from, to }: EntryRef): CodeDiagnostic | null {
+  const claims = map.claims.filter((claim) => claim.key === name);
+  const node = map.keys.get(name);
+  if (claims.length < 2 || !node) return null;
+  const warn = (message: string): CodeDiagnostic => ({ from, to, severity: 'warning', message });
+  const count = claims.filter((claim) => claim.node.placeholder).length;
+  // An owner of placeholders takes a top-level key of its own, so one name can mean both kinds of thing.
+  if (count === 0) return warn(`“${name}” names more than one owner of placeholders. This reads the last one authored.`);
+  if (count === 1) {
+    const reads = node.placeholder ? 'the placeholder' : 'the owner';
+    return warn(`“${name}” names both a placeholder and an owner of placeholders. This reads ${reads}.`);
+  }
+  const lead = `${count} placeholders are named “${name}”.`;
+  const exact = 'Write the path to reach another.';
+  if (node.path.length > 1) {
+    return warn(`${lead} This reads “${placeholderPathLabel(node.path)}”, the last one authored. ${exact}`);
+  }
+  // A row the world itself holds beats a scoped or owned one, whatever the authoring order.
+  const elsewhere = claims.some((claim) => claim.node !== node && claim.node.path.length > 1);
+  return warn(elsewhere ? `${lead} This reads the one the world itself holds. ${exact}`
+    : `${lead} This reads the last one authored.`);
+}
+
+/**
+ * What is wrong with a path: a bare name several things claim, a segment no entry answers, or a child whose
+ * name loses to a member every entry has. Each complaint lands on the segment that carries it.
+ */
+function checkPlaceholderPath(refs: readonly EntryRef[], placeholders: CodePlaceholders): CodeDiagnostic[] {
+  const map = pathMapOf(placeholders);
+  const out: CodeDiagnostic[] = [];
+  // The first segment is the only one a duplicate rule applies to; below it, a name is either a child or
+  // nothing at all.
+  const shared = checkSharedKey(map, refs[0]);
+  if (shared) out.push(shared);
+  const { node, rest, shadowed } = walkPlaceholderPath(map, refs.map((ref) => ref.name));
+  if (rest.length === 0) return out;
+  const ref = refs[refs.length - rest.length];
+  if (shadowed && node) {
+    out.push({
+      from: ref.from, to: ref.to, severity: 'warning',
+      message: `Every placeholder has a ${ref.name} of its own, so this reads that. `
+        + `The placeholder named “${ref.name}” under “${placeholderPathLabel(node.path)}” can’t be reached from code.`,
+    });
+    return out;
+  }
+  // A member read off an entry is the path ending, not a miss.
+  if (node?.placeholder && isPlaceholderEntryMember(ref.name)) return out;
+  const candidates = node ? node.children.map((entry) => entry.name) : [...map.keys.keys()];
+  const suggestion = nearestName(ref.name, candidates);
+  const lead = node ? `“${placeholderPathLabel(node.path)}” has no placeholder named “${ref.name}”`
+    : `No placeholder is named “${ref.name}”`;
+  out.push({
+    from: ref.from, to: ref.to, severity: 'error',
+    message: suggestion ? `${lead}. Did you mean “${suggestion}”?` : `${lead}.`,
+  });
+  return out;
+}
+
+/**
+ * What is wrong with an assignment to a whole `placeholders` node rather than to its `value`. Without the
+ * world's placeholders the path can't be walked, so only the one-segment case is named.
+ */
+function checkPlaceholderEntryWrite(
+  target: SyntaxNode, code: string, placeholders?: CodePlaceholders,
+): CodeDiagnostic | null {
+  const { from, to } = target;
+  const written = code.slice(from, to);
+  const warn = (message: string): CodeDiagnostic => ({ from, to, severity: 'warning', message });
+  if (!placeholders) return entryRef(target, code, 'placeholders') ? warn(`Write to ${written}.value instead.`) : null;
+  const refs = placeholderChain(target, code);
+  if (!refs?.length) return null;
+  const { node, rest } = walkPlaceholderPath(pathMapOf(placeholders), refs.map((ref) => ref.name));
+  if (rest.length > 0 || !node) return null;
+  if (!node.placeholder) return warn(`“${node.name}” owns placeholders. Write to one of them instead.`);
+  return warn(`Write to ${written}.value instead.`);
+}
 
 /** What is wrong with a write into `traits`: to the entry itself, or to a field other than `enabled`. */
 function checkTraitWrite(target: SyntaxNode, code: string, assignment: boolean): CodeDiagnostic | null {
@@ -421,9 +622,11 @@ export function statCodeCompletions(
     const innerFrom = node.from + 1;
     const innerTo = code[node.to - 1] === quote && node.to - 1 > node.from ? node.to - 1 : node.to;
     if (pos < innerFrom) return null;
-    if (/\bplaceholders\s*(\?\.)?\[\s*$/.test(code.slice(0, node.from))) {
-      const names = mapNameEntries(placeholderNames(options.placeholders?.list ?? []), 'placeholder', false);
-      return { from: innerFrom, to: innerTo, options: names.map((entry) => asCompletion(entry, 'text')) };
+    // Inside `placeholders[…]` at any depth: the keys that bracket can reach, quoted names included.
+    const bracket = options.placeholders && /\[\s*$/.test(code.slice(0, node.from))
+      ? placeholderKeysInBrackets(code, node.from, options.placeholders) : null;
+    if (bracket) {
+      return { from: innerFrom, to: innerTo, options: bracket.map((entry) => asCompletion(entry, 'text')) };
     }
     if (/\btraits\s*(\?\.)?\[\s*$/.test(code.slice(0, node.from))) {
       const names = mapNameEntries(options.traits ?? [], 'trait', false);
@@ -545,13 +748,9 @@ export function statCodeDiagnostics(code: string, options: AnalysisOptions = {})
       if (problem) diagnostics.push(problem);
       if (placeholdersInScope && memberRoot(target, code) === 'placeholders') {
         sawPlaceholderWrite = true;
-        if (cursor.type.name === 'AssignmentExpression' && entryRef(target, code, 'placeholders')) {
-          const entry = code.slice(target.from, target.to);
-          diagnostics.push({
-            from: target.from, to: target.to, severity: 'warning',
-            message: `Write to ${entry}.value instead.`,
-          });
-        }
+        const problem = cursor.type.name === 'AssignmentExpression'
+          ? checkPlaceholderEntryWrite(target, code, options.placeholders) : null;
+        if (problem) diagnostics.push(problem);
       }
       if (traitsInScope && memberRoot(target, code) === 'traits') {
         sawTraitWrite = true;
@@ -563,9 +762,10 @@ export function statCodeDiagnostics(code: string, options: AnalysisOptions = {})
       sawPlaceholderWrite = true;
     }
     if (cursor.type.name === 'MemberExpression' && options.placeholders && placeholdersInScope) {
-      const ref = entryRef(cursor.node, code, 'placeholders');
-      const problem = ref && !overlapsAny(ref.from, ref.to, ranges) ? checkPlaceholderName(ref, options.placeholders) : null;
-      if (problem) diagnostics.push(problem);
+      // Every nesting of one chain is visited, and each reports the same complaint at the same span, so the
+      // duplicate filter below leaves one of each rather than one per nesting.
+      const refs = placeholderChain(cursor.node, code)?.filter((ref) => !overlapsAny(ref.from, ref.to, ranges));
+      if (refs?.length) diagnostics.push(...checkPlaceholderPath(refs, options.placeholders));
     }
     if (cursor.type.name === 'MemberExpression' && options.traits && traitsInScope) {
       const ref = entryRef(cursor.node, code, 'traits');

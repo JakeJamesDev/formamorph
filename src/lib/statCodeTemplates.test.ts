@@ -16,7 +16,8 @@ import {
   DAYPART_OPTIONS,
   type TemplateSlot,
 } from './statCodeTemplates';
-import { executeStatCode, usesStatClock, type SandboxPlaceholder, type SandboxTrait } from './statCodeExecutor';
+import { executeStatCode, usesStatClock, type SandboxTrait } from './statCodeExecutor';
+import { phMap, phWrite } from '@/test/sandboxPlaceholders';
 import type { Stat } from '@/types';
 
 const makeStat = (over: Partial<Stat>): Stat => ({
@@ -208,9 +209,9 @@ describe('built-in templates', () => {
     makeStat({ id: 's', name: 'Strength', value: 20 }),
   ];
   const self = world[0];
-  const placeholders: SandboxPlaceholder[] = [
-    { name: 'Mood', value: 'calm', values: ['calm', 'wary', 'angry', 'furious'], text: 'calm', roll: () => 'calm' },
-  ];
+  const placeholders = phMap([
+    { name: 'Mood', value: 'calm', values: ['calm', 'wary', 'angry', 'furious'], roll: () => 'calm' },
+  ]);
   const traits: SandboxTrait[] = [
     { name: 'Cursed', enabled: true, acquired: true },
     { name: 'Blessed', enabled: false, acquired: false },
@@ -282,28 +283,26 @@ describe('built-in templates', () => {
     it('pins a placeholder to the value at the subject’s position in its range', async () => {
       // The subject sits at 40 of 0–200: a fifth of the way, so the first of four values.
       expect((await run('builtin-placeholder-follows-stat', { placeholder: 'Mood' })).placeholders)
-        .toEqual([{ name: 'Mood', value: 'calm' }]);
+        .toEqual([phWrite('Mood', 'calm')]);
       const high = { ...self, value: 200 };
       const template = BUILT_IN_TEMPLATES.find(t => t.id === 'builtin-placeholder-follows-stat')!;
       const atMax = await executeStatCode(
         fillTemplate(template.code, { placeholder: 'Mood' }), [high, ...world.slice(1)], high, { placeholders, traits },
       );
       // At Max the index would run past the list; it clamps to the last value.
-      expect(atMax.placeholders).toEqual([{ name: 'Mood', value: 'furious' }]);
+      expect(atMax.placeholders).toEqual([phWrite('Mood', 'furious')]);
     });
 
     // The template hands over one of the placeholder's own values. On an Object that is one text, which
     // pins a one-item list, so the same template runs on either kind.
     it('pins an Object to a one-item list from the same template', async () => {
-      const hair: SandboxPlaceholder = {
-        name: 'Hair', value: ['grey', 'long'], values: ['grey', 'long'], text: 'grey, long', roll: () => 'grey',
-      };
+      const [hair] = phMap([{ name: 'Hair', value: ['grey', 'long'], roll: () => 'grey' }]);
       const template = BUILT_IN_TEMPLATES.find(t => t.id === 'builtin-placeholder-follows-stat')!;
       const result = await executeStatCode(
         fillTemplate(template.code, { placeholder: 'Hair' }), world, self, { placeholders: [...placeholders, hair], traits },
       );
       expect(result.error).toBeNull();
-      expect(result.placeholders).toEqual([{ name: 'Hair', value: ['grey'] }]);
+      expect(result.placeholders).toEqual([phWrite('Hair', ['grey'])]);
     });
 
     it('switches a trait on past the line and off below it', async () => {

@@ -1,4 +1,5 @@
 import { describe, it, expect } from 'vitest';
+import { phNode } from '@/test/sandboxPlaceholders';
 import { executeStatCode, type CodeBoundField } from './statCodeExecutor';
 import {
   BUILTIN_MEMBERS, DELTA_FIELDS, DELTA_MEMBERS, LANGUAGE_NAMES, placeholderEntryFields, PREVIOUS_FIELDS, SANDBOX_BUILTINS, SANDBOX_GLOBALS,
@@ -61,7 +62,7 @@ describe('the described surface against the sandbox that provides it', () => {
 
   it('describes every member of a placeholders entry, and no member it does not', async () => {
     const expected = placeholderEntryFields('Wildcard').map(entry => entry.name).sort().join(',');
-    const entry = { name: 'Mood', value: 'calm', values: ['calm'], text: 'calm', roll: () => 'calm' };
+    const entry = phNode('Mood', 'calm');
     await expect(executeStatCode(
       `return Object.keys(placeholders.Mood).sort().join(',') === ${JSON.stringify(expected)} ? 1 : 0;`,
       stats, stats[0], { placeholders: [entry] },

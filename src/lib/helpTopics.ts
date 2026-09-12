@@ -378,9 +378,13 @@ self.value = self.previous.value + Math.min(self.delta.ai.value, 10);
 
 **Placeholders.** \`placeholders\` holds every placeholder by name. Each entry has \`values\`, every authored value as text; \`value\`, what is in force; \`text\`, what the prompt sees; and \`roll()\`, one draw with the author's weights. On a Wildcard or a Variable, \`value\` is one text and \`text\` is that same text. On an Object, \`value\` is the list of values in force and \`text\` joins them with \`", "\`. Compare against narration wording with \`text\`. Call \`pin(x)\` to pin the placeholder until your code changes it again, or \`unpin()\` to let the other pins and the roll show through. \`pin\` takes what \`value\` reads: one text on a Wildcard, a list on an Object, where one text pins a one-item list. A name with a space needs brackets: \`placeholders["Hair Color"]\`.
 
+**Paths.** Code reaches a placeholder the way the editor names it. An entity or book that owns placeholders is a step of its own, and a placeholder that holds parts carries them as members, as deep as the tree goes. An owner step has none of an entry's own members, only the placeholders it owns — and because every placeholder has \`values\`, \`value\`, \`text\`, \`roll\`, \`pin\` and \`unpin\`, a part named like one of those loses the name to the member. A bare name reaches the world's own row first, then the last one authored, so write the path for the exact one.
+
 \`\`\`js
 placeholders.Mood.pin(self.value < 20 ? 'furious' : 'calm');
 placeholders.Hair.pin(['gray', 'cropped short']);
+placeholders.Molly.Hair.Shade.pin('ash');
+placeholders["Old Molly"]["Eye Color"].pin('green');
 \`\`\`
 
 **Traits.** \`traits\` holds every authored trait by name. Each entry has \`enabled\`, whether the player has it and it's on, and \`acquired\`, whether the player has it at all. Write \`enabled\` to switch the trait on or off after the run, exactly as the player's checkbox does, exclusive siblings included. Switching on a trait the player never took acquires it. Code ignores Player Can Toggle In-Game, so it can drive a trait the player has no checkbox for. A trait name with a placeholder chip in it reads in code as that placeholder's own name, so a trait named \`{{Beast}} Fury\` is \`traits["Beast Fury"]\` in every playthrough.

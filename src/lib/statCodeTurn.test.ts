@@ -8,6 +8,7 @@ import type { StatCodeTraits } from './statCodeTraits';
 import type { CodePins, Placeholder, PlaceholderRolls, PlayerStat, Trait, TraitGroup } from '@/types';
 import { encodePlaceholderToken, resolvePlaceholders, type PlaceholderPick } from './placeholders';
 import { collectPins } from './placeholderPins';
+import type { PlaceholderOwners } from './placeholderHomes';
 import { phValueId, phValues } from '@/test/placeholderValues';
 
 const stat = (over: Partial<PlayerStat>): PlayerStat => ({
@@ -847,6 +848,84 @@ describe('runStatCodeTurn traits', () => {
     // An AI max ask landed on the latest Health while the run was in flight.
     const latest = [seeded({ id: 'h', value: 60, max: 110, aiMaxDelta: 10 }), seeded({ id: 's0' })];
     expect(overlayStatCodeResult(latest, result, [brave])[0]).toMatchObject({ max: 160, value: 50 });
+  });
+});
+
+/**
+ * A path reaches the placeholder the editor shows, and a pin through it lands on that one alone. Driven as a
+ * turn drives it: the world goes in, the Code Pins come out, and the next prompt reads them.
+ */
+describe('runStatCodeTurn placeholder paths', () => {
+  beforeEach(() => {
+    vi.spyOn(console, 'error').mockImplementation(() => {});
+    vi.spyOn(console, 'warn').mockImplementation(() => {});
+  });
+  afterEach(() => vi.restoreAllMocks());
+
+  /** A value that is exactly one chip — what nests one placeholder under another. */
+  const holds = (id: string) => [{ id: `v:${id}`, text: encodePlaceholderToken({ id, mode: 'world', placementId: `p-${id}` }) }];
+
+  // Molly owns Hair, Hair owns Shade, and the world has a Hair of its own. Anna owns a Hair too.
+  const worldHair: Placeholder = { id: 'world-hair', name: 'Hair', values: phValues(['plain']) };
+  const mollyHair: Placeholder = { id: 'molly-hair', name: 'Hair', values: holds('shade') };
+  const shade: Placeholder = { id: 'shade', name: 'Shade', values: phValues(['ash']), ownerId: 'molly-hair' };
+  const annaHair: Placeholder = { id: 'anna-hair', name: 'Hair', values: phValues(['red']) };
+  const list = [worldHair, mollyHair, shade, annaHair];
+  const owners: PlaceholderOwners = new Map([
+    ['molly-hair', { kind: 'entity', id: 'e-molly', name: 'Molly' }],
+    ['shade', { kind: 'entity', id: 'e-molly', name: 'Molly' }],
+    ['anna-hair', { kind: 'entity', id: 'e-anna', name: 'Anna' }],
+  ]);
+
+  // `null` means no owner index at all, which an explicit `undefined` could not say: a default parameter
+  // takes over for that.
+  const run = (code: string, placeholders = list, owned: PlaceholderOwners | null = owners) =>
+    runStatCodeTurn(turn({
+      stats: [stat({ id: 's0', value: 0, code })],
+      placeholders: { placeholders, owners: owned ?? undefined, rolls: { world: {} } },
+    }));
+
+  it('reads each path as its own entry, and a bare name as the world’s own', async () => {
+    const code = 'placeholders.Probe.pin([placeholders.Hair.value, placeholders.Molly.Hair.Shade.value,'
+      + ' placeholders.Anna.Hair.value].join("|"));';
+    const probe: Placeholder = { id: 'probe', name: 'Probe', values: phValues(['unset']) };
+    const { pinWrites } = await run(code, [...list, probe]);
+    expect(pinWrites).toEqual({ probe: 'plain|ash|red' });
+  });
+
+  it('lands a pin through a path on that placeholder alone', async () => {
+    const { pinWrites } = await run('placeholders.Molly.Hair.Shade.pin("silver");');
+    expect(pinWrites).toEqual({ shade: 'silver' });
+  });
+
+  it('lands a bare ambiguous name on the world’s own row, not on a scoped one', async () => {
+    const { pinWrites } = await run('placeholders.Hair.pin("shorn");');
+    expect(pinWrites).toEqual({ 'world-hair': 'shorn' });
+  });
+
+  it('lands a bare ambiguous name on the last authored where the world holds none of that name', async () => {
+    const { pinWrites } = await run('placeholders.Hair.pin("shorn");', [mollyHair, shade, annaHair]);
+    expect(pinWrites).toEqual({ 'anna-hair': 'shorn' });
+  });
+
+  it('resolves a holder through the pin a path laid on its child, so the next prompt reads it', async () => {
+    const { pinWrites } = await run('placeholders.Molly.Hair.Shade.pin("silver");');
+    const chip = encodePlaceholderToken({ id: 'molly-hair', mode: 'world', placementId: 'p-read' });
+    const pins = collectPins({ traits: [], placeholders: list, rolls: { world: {} }, codePins: withPinWrites({}, pinWrites) });
+    // Molly's Hair is nothing but its Shade, so a pin on the child is what the holder reads as.
+    expect(resolvePlaceholders(`Her hair is ${chip}.`, { placeholders: list, rolls: { world: {} }, pins })).toBe('Her hair is silver.');
+  });
+
+  it('reports a write through a segment no entry has, by the path that named it', async () => {
+    const { pinWrites } = await run('placeholders.Molly.Hiar.pin("x"); placeholders.Hair.pin("shorn");');
+    expect(pinWrites).toEqual({ 'world-hair': 'shorn' });
+    expect(console.warn).toHaveBeenCalledWith(expect.stringContaining('Molly › Hiar'));
+  });
+
+  it('reads every placeholder by bare name where no owner index is given', async () => {
+    // The play site always has one; a caller that leaves it out gets the flat map the sandbox always had.
+    const { pinWrites } = await run('placeholders.Hair.pin("shorn");', list, null);
+    expect(pinWrites).toEqual({ 'anna-hair': 'shorn' });
   });
 });
 

@@ -3,7 +3,9 @@
  * (No DOM needed; node keeps the QuickJS WASM engine loading through its filesystem path.)
  */
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { executeStatCode, usesStatClock, STAT_CLOCK_VARS, type SandboxPlaceholder, type SandboxTrait, type StatCodeRunOptions } from './statCodeExecutor';
+import { executeStatCode, usesStatClock, STAT_CLOCK_VARS, type SandboxPlaceholderNode, type SandboxTrait, type StatCodeRunOptions } from './statCodeExecutor';
+import { phMap, phNode, phUnpin, phWrite } from '@/test/sandboxPlaceholders';
+import { PLACEHOLDER_ENTRY_MEMBERS } from './statCodePaths';
 import type { Stat } from '@/types';
 
 const makeStat = (over: Partial<Stat>): Stat => ({
@@ -364,8 +366,8 @@ describe('usesStatClock', () => {
 
 describe('executeStatCode placeholders', () => {
   const stat = makeStat({ id: 'a', max: 1000 });
-  const entry = (name: string, value: string, roll = () => value): SandboxPlaceholder => ({ name, value, values: [value], text: value, roll });
-  const run = (code: string, placeholders: SandboxPlaceholder[]) =>
+  const entry = (name: string, value: string, roll?: () => string) => phNode(name, value, roll);
+  const run = (code: string, placeholders: SandboxPlaceholderNode[]) =>
     executeStatCode(code, [stat], stat, { placeholders });
 
   it('calls the host roll for the entry it hangs off', async () => {
@@ -388,18 +390,18 @@ describe('executeStatCode placeholders', () => {
 
 describe('executeStatCode placeholder writes', () => {
   const stat = makeStat({ id: 'a', max: 1000 });
-  const entry = (name: string, value: string): SandboxPlaceholder => ({ name, value, values: [value], text: value, roll: () => value });
+  const entry = (name: string, value: string) => phNode(name, value);
   const run = (code: string, placeholders = [entry('Mood', 'calm'), entry('Hair', 'red')]) =>
     executeStatCode(code, [stat], stat, { placeholders });
 
   it('reads a changed value back as a write, leaving the value alone', async () => {
     await expect(run('placeholders.Mood.value = "Furious";'))
-      .resolves.toEqual({ value: null, error: null, placeholders: [{ name: 'Mood', value: 'Furious' }] });
+      .resolves.toEqual({ value: null, error: null, placeholders: [phWrite('Mood', 'Furious')] });
   });
 
   it('writes the text a value is set to even when it already reads that way, so it pins', async () => {
     await expect(run('placeholders.Mood.value = "calm";'))
-      .resolves.toEqual({ value: null, error: null, placeholders: [{ name: 'Mood', value: 'calm' }] });
+      .resolves.toEqual({ value: null, error: null, placeholders: [phWrite('Mood', 'calm')] });
   });
 
   it('writes nothing for an entry the code only reads', async () => {
@@ -408,51 +410,51 @@ describe('executeStatCode placeholder writes', () => {
 
   it('takes a string assigned to the entry itself as a write to its value', async () => {
     await expect(run('placeholders.Mood = "Furious"; return 1;'))
-      .resolves.toEqual({ value: 1, error: null, placeholders: [{ name: 'Mood', value: 'Furious' }] });
+      .resolves.toEqual({ value: 1, error: null, placeholders: [phWrite('Mood', 'Furious')] });
   });
 
   it('writes a number as its text', async () => {
     await expect(run('placeholders.Mood.value = 3;'))
-      .resolves.toEqual({ value: null, error: null, placeholders: [{ name: 'Mood', value: '3' }] });
+      .resolves.toEqual({ value: null, error: null, placeholders: [phWrite('Mood', '3')] });
   });
 
   it('writes each placeholder the run changed, in the order the map holds them', async () => {
     await expect(run('placeholders.Hair.value = "grey"; placeholders.Mood.value = "Furious";')).resolves.toEqual({
-      value: null, error: null, placeholders: [{ name: 'Mood', value: 'Furious' }, { name: 'Hair', value: 'grey' }],
+      value: null, error: null, placeholders: [phWrite('Mood', 'Furious'), phWrite('Hair', 'grey')],
     });
   });
 
   it('reads unpin() back as an unpin, with the value unchanged for the rest of the run', async () => {
     await expect(run('placeholders.Mood.unpin(); return placeholders.Mood.value === "calm" ? 1 : 0;'))
-      .resolves.toEqual({ value: 1, error: null, placeholders: [{ name: 'Mood', unpin: true }] });
+      .resolves.toEqual({ value: 1, error: null, placeholders: [phUnpin('Mood')] });
   });
 
   it('keeps the last of a write and an unpin', async () => {
     await expect(run('placeholders.Mood.unpin(); placeholders.Mood.value = "Furious";'))
-      .resolves.toEqual({ value: null, error: null, placeholders: [{ name: 'Mood', value: 'Furious' }] });
+      .resolves.toEqual({ value: null, error: null, placeholders: [phWrite('Mood', 'Furious')] });
     await expect(run('placeholders.Mood.value = "Furious"; placeholders.Mood.unpin();'))
-      .resolves.toEqual({ value: null, error: null, placeholders: [{ name: 'Mood', unpin: true }] });
+      .resolves.toEqual({ value: null, error: null, placeholders: [phUnpin('Mood')] });
   });
 
   it('reads pin() back as the same write a value assignment makes', async () => {
     await expect(run('placeholders.Mood.pin("Furious");'))
-      .resolves.toEqual({ value: null, error: null, placeholders: [{ name: 'Mood', value: 'Furious' }] });
+      .resolves.toEqual({ value: null, error: null, placeholders: [phWrite('Mood', 'Furious')] });
   });
 
   it('keeps the last of pin, value and unpin, whichever order code calls them', async () => {
     await expect(run('placeholders.Mood.pin("Furious"); placeholders.Mood.unpin();'))
-      .resolves.toEqual({ value: null, error: null, placeholders: [{ name: 'Mood', unpin: true }] });
+      .resolves.toEqual({ value: null, error: null, placeholders: [phUnpin('Mood')] });
     await expect(run('placeholders.Mood.unpin(); placeholders.Mood.pin("Furious");'))
-      .resolves.toEqual({ value: null, error: null, placeholders: [{ name: 'Mood', value: 'Furious' }] });
+      .resolves.toEqual({ value: null, error: null, placeholders: [phWrite('Mood', 'Furious')] });
     await expect(run('placeholders.Mood.pin("Furious"); placeholders.Mood.value = "calm";'))
-      .resolves.toEqual({ value: null, error: null, placeholders: [{ name: 'Mood', value: 'calm' }] });
+      .resolves.toEqual({ value: null, error: null, placeholders: [phWrite('Mood', 'calm')] });
     await expect(run('placeholders.Mood.value = "calm"; placeholders.Mood.pin("Furious");'))
-      .resolves.toEqual({ value: null, error: null, placeholders: [{ name: 'Mood', value: 'Furious' }] });
+      .resolves.toEqual({ value: null, error: null, placeholders: [phWrite('Mood', 'Furious')] });
   });
 
   it('drops a pin() on a name the world has no placeholder for, and reports it', async () => {
     await expect(run('placeholders.Gone.pin("x"); placeholders.Mood.value = "Furious";')).resolves.toEqual({
-      value: null, error: null, placeholders: [{ name: 'Mood', value: 'Furious' }], unknownPlaceholders: ['Gone'],
+      value: null, error: null, placeholders: [phWrite('Mood', 'Furious')], unknownPlaceholders: ['Gone'],
     });
   });
 
@@ -466,7 +468,7 @@ describe('executeStatCode placeholder writes', () => {
   it('drops a write to a name the world has no placeholder for, and reports it, keeping the other writes', async () => {
     const code = 'placeholders.Nope = "x"; placeholders["Also Nope"] = { value: "y" }; placeholders.Gone.value = "z"; placeholders.Mood.value = "Furious";';
     await expect(run(code)).resolves.toEqual({
-      value: null, error: null, placeholders: [{ name: 'Mood', value: 'Furious' }], unknownPlaceholders: ['Nope', 'Also Nope', 'Gone'],
+      value: null, error: null, placeholders: [phWrite('Mood', 'Furious')], unknownPlaceholders: ['Nope', 'Also Nope', 'Gone'],
     });
   });
 
@@ -563,11 +565,10 @@ describe('executeStatCode traits', () => {
 // text. The type `value` reads is the type `pin` takes, and the host fails a run that hands over the other.
 describe('executeStatCode by placeholder kind', () => {
   const stat = makeStat({ id: 'a', max: 1000 });
-  const wildcard: SandboxPlaceholder =
-    { name: 'Mood', value: 'calm', values: ['calm', 'angry'], text: 'calm', roll: () => 'calm' };
-  const object: SandboxPlaceholder = {
-    name: 'Hair', value: ['Grey', 'Long'], values: ['Grey', 'Long'], text: 'Grey, Long', roll: () => 'Grey',
-  };
+  const [wildcard, object] = phMap([
+    { name: 'Mood', value: 'calm', values: ['calm', 'angry'], roll: () => 'calm' },
+    { name: 'Hair', value: ['Grey', 'Long'], roll: () => 'Grey' },
+  ]);
   const run = (code: string) => executeStatCode(code, [stat], stat, { placeholders: [wildcard, object] });
 
   it('reads an Object’s value as the list in force and its text as the join', async () => {
@@ -587,13 +588,13 @@ describe('executeStatCode by placeholder kind', () => {
 
   it('pins an Object to the list it was handed', async () => {
     await expect(run('placeholders.Hair.pin(["Grey", "Cropped, Short"]);')).resolves.toEqual({
-      value: null, error: null, placeholders: [{ name: 'Hair', value: ['Grey', 'Cropped, Short'] }],
+      value: null, error: null, placeholders: [phWrite('Hair', ['Grey', 'Cropped, Short'])],
     });
   });
 
   it('pins an Object handed one text as a one-item list', async () => {
     await expect(run('placeholders.Hair.pin("Grey");'))
-      .resolves.toEqual({ value: null, error: null, placeholders: [{ name: 'Hair', value: ['Grey'] }] });
+      .resolves.toEqual({ value: null, error: null, placeholders: [phWrite('Hair', ['Grey'])] });
   });
 
   it('follows the pin in text, so a later read of the same run sees the join', async () => {
@@ -622,15 +623,89 @@ describe('executeStatCode by placeholder kind', () => {
 
   it('releases an Object’s pin with unpin(), whatever the run pinned first', async () => {
     await expect(run('placeholders.Hair.pin(["Grey"]); placeholders.Hair.unpin();'))
-      .resolves.toEqual({ value: null, error: null, placeholders: [{ name: 'Hair', unpin: true }] });
+      .resolves.toEqual({ value: null, error: null, placeholders: [phUnpin('Hair')] });
   });
 
   it('takes a list assigned to the entry itself as a list pin', async () => {
     await expect(run('placeholders.Hair = ["Grey", "Long"];'))
-      .resolves.toEqual({ value: null, error: null, placeholders: [{ name: 'Hair', value: ['Grey', 'Long'] }] });
+      .resolves.toEqual({ value: null, error: null, placeholders: [phWrite('Hair', ['Grey', 'Long'])] });
   });
 
   it('drops a write to text, which the prompt derives rather than stores', async () => {
     await expect(run('placeholders.Hair.text = "Bald"; return 1;')).resolves.toEqual({ value: 1, error: null });
+  });
+});
+
+// The map is a tree: an owner node stands for an entity or a dictionary, and a holder carries what it owns
+// as members. These are the sandbox-only facts — the paths a world actually produces are the resolver's.
+describe('executeStatCode placeholders as a tree', () => {
+  const stat = makeStat({ id: 'a', max: 1000 });
+  // Molly owns Hair; Hair owns Shade; Shade owns Tone. The world also has its own Hair.
+  const map = phMap([
+    { name: 'Hair', value: 'world hair' },
+    {
+      name: 'Molly',
+      children: [{
+        name: 'Hair',
+        value: 'molly hair',
+        children: [{ name: 'Shade', value: 'ash', children: [{ name: 'Tone', value: 'warm' }] }],
+      }],
+    },
+  ]);
+  const run = (code: string, placeholders = map) => executeStatCode(code, [stat], stat, { placeholders });
+
+  it('reads each path as its own entry, and the bare name as the world’s', async () => {
+    const code = 'return placeholders.Hair.value === "world hair"'
+      + ' && placeholders.Molly.Hair.value === "molly hair" ? 1 : 0;';
+    await expect(run(code)).resolves.toEqual({ value: 1, error: null });
+  });
+
+  it('reads a holder’s owned child as a member of the holder at any depth', async () => {
+    const code = 'return placeholders.Molly.Hair.Shade.value === "ash"'
+      + ' && placeholders.Molly.Hair.Shade.Tone.value === "warm" ? 1 : 0;';
+    await expect(run(code)).resolves.toEqual({ value: 1, error: null });
+  });
+
+  it('reaches a name that is not an identifier through brackets at any depth', async () => {
+    const spaced = phMap([{ name: 'Old Molly', children: [{ name: 'Eye Color', value: 'green' }] }]);
+    await expect(run('return placeholders["Old Molly"]["Eye Color"].value === "green" ? 1 : 0;', spaced))
+      .resolves.toEqual({ value: 1, error: null });
+  });
+
+  it('gives an owner node none of an entry’s members, and lists only its placeholders', async () => {
+    const absent = PLACEHOLDER_ENTRY_MEMBERS.map((member) => `!(${JSON.stringify(member)} in placeholders.Molly)`);
+    const code = `return Object.keys(placeholders.Molly).join(',') === 'Hair' && ${absent.join(' && ')} ? 1 : 0;`;
+    await expect(run(code)).resolves.toEqual({ value: 1, error: null });
+  });
+
+  it('gives a child named like a member the member, so the child is unreachable under its holder', async () => {
+    const shadowed = phMap([{ name: 'Molly', value: 'hi', children: [{ name: 'value', value: 'child' }] }]);
+    // `placeholders.Molly.value` is the holder's own value; nothing under Molly reaches the child.
+    const code = 'return placeholders.Molly.value === "hi"'
+      + ` && Object.keys(placeholders.Molly).filter((k) => k === 'value').length === 1 ? 1 : 0;`;
+    await expect(run(code, shadowed)).resolves.toEqual({ value: 1, error: null });
+  });
+
+  it('reports a write through a segment no entry has, by the path that named it', async () => {
+    await expect(run('placeholders.Molly.Hiar.pin("x"); return 1;'))
+      .resolves.toEqual({ value: 1, error: null, unknownPlaceholders: ['Molly › Hiar'] });
+  });
+
+  it('lands a pin through a path on that child alone, leaving the holder and the bare name untouched', async () => {
+    const result = await run('placeholders.Molly.Hair.Shade.pin("silver"); return 1;');
+    expect(result.placeholders).toEqual([phWrite(['Molly', 'Hair', 'Shade'], 'silver')]);
+  });
+
+  it('holds one pin state for an entry two keys reach, whichever one writes it', async () => {
+    // The world's `Shade` is owned by `Hair`, so `placeholders.Shade` and `placeholders.Hair.Shade` are
+    // one entry. A write through either has to be one row, against the one placeholder.
+    const shared = phMap([{ name: 'Hair', value: 'grey', children: [{ name: 'Shade', value: 'ash' }] }]);
+    // The same node object under both keys, exactly as the resolver hands one over.
+    const both: SandboxPlaceholderNode[] = [...shared, shared[0].children![0]];
+    const result = await executeStatCode(
+      'placeholders.Shade.pin("one"); placeholders.Hair.Shade.pin("two"); return 1;', [stat], stat,
+      { placeholders: both },
+    );
+    expect(result.placeholders).toEqual([phWrite(['Hair', 'Shade'], 'two')]);
   });
 });

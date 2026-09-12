@@ -323,6 +323,7 @@ const GameViewer = ({
     connections,
     dictionaries,
     placeholders,
+    placeholderOwners,
     worldOverview,
     worldId,
     isWorldDirty,
@@ -2290,7 +2291,7 @@ const GameViewer = ({
           stats, enabled, previous: before, asks, regenApplied: regen.applied, clock,
           traits: { ...held, world: { traits: authoredTraits, groups: traitGroups } },
           placeholders: {
-            placeholders, rolls: sessionRolls,
+            placeholders, owners: placeholderOwners, rolls: sessionRolls,
             pins: preTurn ? pinsFor(preTurn.codePins ?? {}) : pins,
             // The stored shape too, so an Object pinned to a list reads that list back rather than its join.
             codePins: preTurn ? preTurn.codePins ?? {} : codePins,
@@ -2319,7 +2320,7 @@ const GameViewer = ({
         console.error("Error processing stat code:", error);
       }
     },
-    [setPlayerStats, setRecentStatChanges, setHeldStatChanges, codePins, setCodePins, resolvePH, placeholders, sessionRolls, pins, pinsFor, activeTraits,
+    [setPlayerStats, setRecentStatChanges, setHeldStatChanges, codePins, setCodePins, resolvePH, placeholders, placeholderOwners, sessionRolls, pins, pinsFor, activeTraits,
       traits, chosenTraits, disabledTraitIds, appliedTraitValues, authoredTraits, authoredStats, traitGroups, resolveTraitText,
       setPlayerTraits, setDisabledTraitIds, setAppliedTraitValues, addLogEntry],
   );

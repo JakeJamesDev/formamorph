@@ -134,7 +134,10 @@ describe('what Test Code reports', () => {
     const user = userEvent.setup();
     executeStatCode.mockResolvedValue({
       value: 5, error: null, bounds: { max: 60 },
-      placeholders: [{ name: 'Mood', value: 'Furious' }, { name: 'Hair', unpin: true }],
+      placeholders: [
+        { id: 'ph-mood', path: ['Mood'], value: 'Furious' },
+        { id: 'ph-hair', path: ['Hair'], unpin: true },
+      ],
     });
     renderCodePanel(stats[0]);
 
@@ -143,11 +146,26 @@ describe('what Test Code reports', () => {
     await waitFor(() => expect(row()).toHaveTextContent('Result: 5 · Max: 60 · Mood = Furious · Hair unpinned'));
   });
 
+  // A write through a path names the placeholder the way the editor does, not by its bare name: two
+  // placeholders can share one, so `Hair` alone would not say which one the run pinned.
+  it('names a placeholder the run reached by a path with the whole path', async () => {
+    const user = userEvent.setup();
+    executeStatCode.mockResolvedValue({
+      value: null, error: null, placeholders: [{ id: 'ph-shade', path: ['Molly', 'Hair', 'Shade'], value: 'ash' }],
+    });
+    renderCodePanel(stats[0]);
+
+    await testCode(user, 'placeholders.Molly.Hair.Shade.pin("ash");');
+
+    await waitFor(() => expect(row()).toHaveTextContent('Molly › Hair › Shade = ash'));
+  });
+
   // An Object pins to a list. The report is one line per placeholder, so it prints the list as its text.
   it('prints a list pin as the joined text one line holds', async () => {
     const user = userEvent.setup();
     executeStatCode.mockResolvedValue({
-      value: null, error: null, placeholders: [{ name: 'Hair', value: ['silver', 'cropped short'] }],
+      value: null, error: null,
+      placeholders: [{ id: 'ph-hair', path: ['Hair'], value: ['silver', 'cropped short'] }],
     });
     renderCodePanel(stats[0]);
 
@@ -158,12 +176,13 @@ describe('what Test Code reports', () => {
 
   it('names the placeholders whose writes were dropped', async () => {
     const user = userEvent.setup();
-    executeStatCode.mockResolvedValue({ value: null, error: null, unknownPlaceholders: ['Nope', 'Gone'] });
+    executeStatCode.mockResolvedValue({ value: null, error: null, unknownPlaceholders: ['Nope', 'Molly › Gone'] });
     renderCodePanel(stats[0]);
 
     await testCode(user, 'placeholders[["No", "pe"].join("")] = "x";');
 
-    await waitFor(() => expect(row()).toHaveTextContent('No placeholder has these names, so code did not change them: Nope, Gone.'));
+    await waitFor(() => expect(row())
+      .toHaveTextContent('No placeholder answers these paths, so code did not change them: Nope, Molly › Gone.'));
     expect(row()).not.toHaveTextContent('Result:');
   });
 
