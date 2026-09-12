@@ -361,6 +361,8 @@ const health = stats.Health.value;
 return health / 2;
 \`\`\`
 
+A name with a space needs brackets: \`stats["Hit Points"]\`. \`Object.values(stats)\` iterates every stat, for an average-of-all formula.
+
 **Writing to \`self\`.** Set \`self.value\`, \`self.min\`, \`self.max\` or \`self.regen\` and the stat takes that number this turn. A bound you set holds until your code writes it again, or until you empty the code. A field you don't write keeps what the turn gave it, so a script can move the cap and leave the value to the AI. Only \`self\` takes writes; every other stat is read-only.
 
 \`\`\`js
