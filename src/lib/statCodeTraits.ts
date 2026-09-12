@@ -1,5 +1,6 @@
-import type { GameState, Trait } from '@/types';
+import type { GameState, Placeholder, Trait } from '@/types';
 import type { SandboxTrait } from './statCodeExecutor';
+import { statCodeName } from './statCodeNames';
 import { refreshChosenTraits } from './traitEffects';
 import type { AppliedTraitValues, TraitWorld } from './traitRuntime';
 
@@ -11,8 +12,6 @@ export interface StatCodeTraits {
   appliedValues: AppliedTraitValues;
   /** Every authored trait and group. `traits` maps each authored trait; a code switch-on acquires from here. */
   world: TraitWorld;
-  /** The name code reaches a trait by, and the log writes. Defaults to its own name. */
-  nameOf?: (trait: Trait) => string;
 }
 
 /** The player's traits as a saved state holds them, each re-read from the world as play reads them. */
@@ -27,16 +26,13 @@ export function savedTraits(
   };
 }
 
-/** The resolver that names a trait for code and the log. */
-export const traitNamer = (traits: StatCodeTraits) => traits.nameOf ?? ((trait: Trait) => trait.name);
-
-/** The sandbox's `traits` entries, one per authored trait in authored order. */
-export function sandboxTraits(traits: StatCodeTraits): SandboxTrait[] {
+/** The sandbox's `traits` entries, one per authored trait in authored order, under their code names — the
+ *  rule that names stats, so a chip in a trait's name never reaches code as this playthrough's roll. */
+export function sandboxTraits(traits: StatCodeTraits, placeholders: readonly Placeholder[]): SandboxTrait[] {
   const acquired = new Set(traits.acquired.map((t) => t.id));
   const off = new Set(traits.disabledTraitIds);
-  const nameOf = traitNamer(traits);
   return traits.world.traits.map((trait) => ({
-    name: nameOf(trait),
+    name: statCodeName(trait.name, placeholders),
     acquired: acquired.has(trait.id),
     enabled: acquired.has(trait.id) && !off.has(trait.id),
   }));

@@ -30,7 +30,7 @@ const NameField = ({ root, initial, otherNames, chips }: {
   root: 'stats' | 'placeholders' | 'traits';
   initial: string;
   otherNames: string[];
-  /** Read the value as a stat's code name, the way the stat panel does. */
+  /** Read the value as a code name, the way the stat and trait panels do. */
   chips?: boolean;
 }) => {
   const [value, setValue] = useState(initial);
@@ -180,6 +180,18 @@ describe('the rename offer', () => {
     expect(screen.getByText(/names the stat “Beast Power” 1 time\./)).toBeInTheDocument();
     await user.click(screen.getByRole('button', { name: 'Update Code' }));
     expect(codeOf('a')).toBe(`return stats['Beast Might'].value;`);
+  });
+
+  it('compares a chip-bearing trait name the way code reads it', async () => {
+    store.placeholders = [{ id: 'p1', name: 'Beast', values: [] } as unknown as Placeholder];
+    const token = encodePlaceholderToken({ id: 'p1', mode: 'world', placementId: 'pl1' });
+    store.stats = [stat('a', 'Health', `return traits['Beast Fury'].enabled ? 2 : 1;`)];
+    render(<Harness root="traits" initial={`${token} Fury`} otherNames={[]} chips />);
+    const user = await renameTo(`${token} Rage`);
+
+    expect(screen.getByText(/names the trait “Beast Fury” 1 time\./)).toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: 'Update Code' }));
+    expect(codeOf('a')).toBe(`return traits['Beast Rage'].enabled ? 2 : 1;`);
   });
 
   it('asks the next queued rename after the first is answered either way', async () => {

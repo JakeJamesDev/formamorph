@@ -116,7 +116,11 @@ const StatManager = ({ stat, tab, onTabChange, focusField }: {
     () => ({ list: placeholders, owners: placeholderOwners }),
     [placeholders, placeholderOwners],
   );
-  const traitNames = useMemo(() => traits.map((trait) => trait.name), [traits]);
+  // Code reaches a trait by its code name too, so the completions and Test Code both offer that spelling.
+  const traitNames = useMemo(
+    () => statCodeNamed(traits, placeholders).map((trait) => trait.name),
+    [traits, placeholders],
+  );
   const placeholderNames = useMemo(() => placeholders.map((entry) => entry.name), [placeholders]);
 
   /** Drop what the last test said. Editing the code makes every part of that report stale together. */
@@ -488,7 +492,10 @@ const StatManager = ({ stat, tab, onTabChange, focusField }: {
               // No playthrough behind the editor: an unrolled placeholder reads as a fresh draw, and the
               // player has no traits. A switch is reported here and never applied.
               const placeholderEntries = sandboxPlaceholders({ placeholders, rolls: {} });
-              const traitEntries = sandboxTraits({ acquired: [], disabledTraitIds: [], appliedValues: {}, world: { traits, groups: [] } });
+              const traitEntries = sandboxTraits(
+                { acquired: [], disabledTraitIds: [], appliedValues: {}, world: { traits, groups: [] } },
+                placeholders,
+              );
               const result = await executeStatCode(
                 source, codeNamedStats, { ...(editingStat as Stat), name: selfCodeName },
                 { placeholders: placeholderEntries, traits: traitEntries },

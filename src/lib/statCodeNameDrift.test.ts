@@ -3,10 +3,11 @@
  * (No DOM needed; node keeps the QuickJS WASM engine loading through its filesystem path.)
  */
 import { describe, it, expect } from 'vitest';
-import type { Placeholder, PlayerStat, WorldOverview } from '@/types';
+import type { Placeholder, PlayerStat, Trait, WorldOverview } from '@/types';
 import { phValues } from '@/test/placeholderValues';
-import { statCodeCompletions } from './statCodeAnalysis';
+import { statCodeCompletions, statCodeDiagnostics } from './statCodeAnalysis';
 import { statCodeName, statCodeNamed } from './statCodeNames';
+import { checkStatCode } from './testBench/statCodeCheck';
 import { runStatCodeTurn } from './statCodeTurn';
 import { runRules, type RuleWorld } from './testBench/rules';
 
@@ -36,6 +37,7 @@ async function nameInSandbox(rolled: string): Promise<string | null> {
     clock: {},
     traits: { acquired: [], disabledTraitIds: [], appliedValues: {}, world: { traits: [], groups: [] } },
     statNameOf: (stat) => stat.name,
+    traitNameOf: (trait) => trait.name,
     placeholders: { placeholders: [beast, probe], rolls: { world: { 'ph-beast': rolled } } },
   });
   const pin = out.pinWrites['ph-probe'];
@@ -79,5 +81,77 @@ describe('one code name across the sandbox, the completions, and the bench', () 
 
   it('derives that name from the one exported producer', async () => {
     expect(statCodeName(CHIPPED, [beast, probe])).toBe(await nameInSandbox('Wolf'));
+  });
+});
+
+/**
+ * A trait's name carries chips the same way a stat's does, and the same four surfaces name it. The sandbox's
+ * own keys are read back through a pin, and the completions, the editor's checks and the bench are held to
+ * them.
+ */
+const fury: Trait = { id: 'fury', name: '{{ph:ph-beast:world:p1}} Fury', statChanges: [] };
+
+/** The names the sandbox itself keys `traits` on, read back through a pin, under one playthrough's roll. */
+async function traitNamesInSandbox(rolled: string): Promise<string> {
+  const reader = stat({ id: 's1', name: 'Reader', code: 'placeholders.Probe.pin(Object.keys(traits).join("|"));' });
+  const out = await runStatCodeTurn({
+    stats: [reader],
+    enabled: {},
+    previous: [reader],
+    asks: [],
+    regenApplied: {},
+    clock: {},
+    traits: { acquired: [], disabledTraitIds: [], appliedValues: {}, world: { traits: [fury], groups: [] } },
+    statNameOf: (stat) => stat.name,
+    traitNameOf: (trait) => trait.name,
+    placeholders: { placeholders: [beast, probe], rolls: { world: { 'ph-beast': rolled } } },
+  });
+  return String(out.pinWrites['ph-probe']);
+}
+
+/** The unknown-name findings the bench raises for one piece of code that switches a trait by name. */
+function benchTraitFindings(lookup: string): Promise<string[]> {
+  const world: RuleWorld = {
+    worldOverview: { name: 'Drift', description: '', systemPrompt: 'Narrate.', readme: 'A primer.' } as WorldOverview,
+    stats: [stat({ id: 's1', name: 'Mana', code: `${lookup}.enabled = true;` })],
+    locations: [{ id: 'harbor', name: 'Harbor Steps', isStarting: true }],
+    entities: [], traits: [fury], statUpdates: [], dictionaries: [], placeholders: [beast],
+  };
+  return checkStatCode(world).then((found) => found.map((f) => f.message));
+}
+
+describe('one trait code name across the sandbox, the completions, the editor and the bench', () => {
+  it('gives the sandbox the same trait name whatever the playthrough rolled', async () => {
+    expect(await traitNamesInSandbox('Wolf')).toBe(await traitNamesInSandbox('Bear'));
+  });
+
+  it('offers that same name in the completions, and never the rolled text', async () => {
+    const sandboxName = await traitNamesInSandbox('Wolf');
+    const traitNames = statCodeNamed([fury], [beast, probe]).map((entry) => entry.name);
+    const code = 'traits[""].enabled = true;';
+    const caret = code.indexOf('""') + 1;
+    const offered = statCodeCompletions(code, caret, { traits: traitNames })?.options.map((option) => option.label);
+    expect(offered).toContain(sandboxName);
+    expect(offered).not.toContain('Wolf Fury');
+    expect(offered).not.toContain(fury.name);
+  });
+
+  it('lets the editor check that same name, and underline no other spelling of it', async () => {
+    const sandboxName = await traitNamesInSandbox('Wolf');
+    const traits = statCodeNamed([fury], [beast, probe]).map((entry) => entry.name);
+    const check = (lookup: string) =>
+      statCodeDiagnostics(`traits[${JSON.stringify(lookup)}].enabled = true;`, { traits }).map((d) => d.message);
+    expect(check(sandboxName)).toEqual([]);
+    expect(check('Wolf Fury')).toHaveLength(1);
+  });
+
+  it('lets the bench find that same name, and no other spelling of it', async () => {
+    const sandboxName = await traitNamesInSandbox('Wolf');
+    expect(await benchTraitFindings(`traits[${JSON.stringify(sandboxName)}]`)).toEqual([]);
+    expect(await benchTraitFindings('traits["Wolf Fury"]')).toHaveLength(1);
+  });
+
+  it('derives that name from the one exported producer', async () => {
+    expect(statCodeName(fury.name, [beast, probe])).toBe(await traitNamesInSandbox('Wolf'));
   });
 });

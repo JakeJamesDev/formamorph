@@ -13,7 +13,8 @@
 
 import { javascriptLanguage } from '@codemirror/lang-javascript';
 import type { SyntaxNode } from '@lezer/common';
-import type { Stat } from '@/types';
+import type { Placeholder, Stat } from '@/types';
+import { statCodeName } from './statCodeNames';
 
 /** The name-keyed maps a rename can reach. */
 export type RenameRoot = 'stats' | 'placeholders' | 'traits';
@@ -113,6 +114,16 @@ export function renameRootForTarget(itemKey: string, fieldKey: string): RenameRo
   if (fieldKey !== 'name') return null;
   return TARGET_ROOTS[itemKey.slice(0, itemKey.indexOf(':'))] ?? null;
 }
+
+/**
+ * How code reads a name under `root`, so a rename is compared the way a lookup is.
+ *
+ * A stat and a trait can both carry placeholder chips in their names, and code reaches each by the code
+ * name those derive. A placeholder's own name never carries a chip, so it reads as written. One producer,
+ * because a root left out of the branch drops the offer silently rather than failing.
+ */
+export const codeNameReader = (root: RenameRoot, placeholders: readonly Placeholder[]): ((name: string) => string) =>
+  root === 'placeholders' ? (name) => name : (name) => statCodeName(name, placeholders);
 
 /** One stat's code, rewritten. */
 export interface CodeRenameEdit {

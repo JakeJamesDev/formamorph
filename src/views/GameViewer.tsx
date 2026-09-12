@@ -2288,7 +2288,7 @@ const GameViewer = ({
         const inForce = preTurn ? traitsInForce(held.acquired, held.disabledTraitIds) : activeTraits;
         const result = await runStatCodeTurn({
           stats, enabled, previous: before, asks, regenApplied: regen.applied, clock,
-          traits: { ...held, world: { traits: authoredTraits, groups: traitGroups }, nameOf: (trait) => resolveTraitText(trait, trait.name) },
+          traits: { ...held, world: { traits: authoredTraits, groups: traitGroups } },
           placeholders: {
             placeholders, rolls: sessionRolls,
             pins: preTurn ? pinsFor(preTurn.codePins ?? {}) : pins,
@@ -2296,6 +2296,7 @@ const GameViewer = ({
             codePins: preTurn ? preTurn.codePins ?? {} : codePins,
           },
           statNameOf: (stat) => resolvePH(stat.name),
+          traitNameOf: (trait) => resolveTraitText(trait, trait.name),
         });
         setCodePins((prev) => withPinWrites(prev, result.pinWrites));
         if (result.traits) {

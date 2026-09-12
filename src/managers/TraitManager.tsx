@@ -13,6 +13,7 @@ import PlaceholderField, { PlaceholderNameField } from '@/components/prompt/Plac
 import PlaceholderText from '@/components/prompt/PlaceholderText';
 import { PlaceholderPinRows } from '@/components/editor/PlaceholderPinRows';
 import { useRenameField } from '@/lib/useCodeRename';
+import { statCodeName } from '@/lib/statCodeNames';
 import { labelPlaceholders } from '@/lib/placementLetters';
 import { traitConflicts, type TraitConflict } from '@/lib/traitEffects';
 import { useEditorMode } from '@/lib/editorMode';
@@ -69,7 +70,14 @@ const TraitManager = ({ trait, onOpenTrait, tab, onTabChange, focusField }: {
   const world = useGameData();
   const { updateTrait, stats, placeholders, placementLetters, placeholderOwners, traits, traitGroups } = world;
   const { draft: editingTrait, apply, setField: handleChange } = useEditingDraft<Trait>(trait, updateTrait);
-  const rename = useRenameField({ root: 'traits', value: editingTrait.name ?? '', siblings: traits, ownId: trait.id });
+  // Code reaches a trait by its code name, so the rename offer compares the two names the way code reads them.
+  const rename = useRenameField({
+    root: 'traits',
+    value: editingTrait.name ?? '',
+    siblings: traits,
+    ownId: trait.id,
+    codeNameOf: (name) => statCodeName(name, placeholders),
+  });
 
   const handleStatChangeAdd = () => {
     apply({ statChanges: [...editingTrait.statChanges, { statId: '', value: 0, type: 'min' } as StatChange] });

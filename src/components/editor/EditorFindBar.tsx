@@ -15,8 +15,7 @@ import { placeholderVocabulary } from '@/lib/chipVocabulary';
 import { decodePlaceholderToken, encodePlaceholderToken, newPlaceholder } from '@/lib/placeholders';
 import { randomUUID } from '@/lib/uuid';
 import { findMatches, replaceAll, spliceText } from '@/lib/worldSearch';
-import { renameRootForTarget } from '@/lib/statCodeRename';
-import { statCodeName } from '@/lib/statCodeNames';
+import { codeNameReader, renameRootForTarget } from '@/lib/statCodeRename';
 import { useCodeRenameOffer } from '@/lib/useCodeRename';
 import type { SearchMatch, SearchTarget } from '@/lib/worldSearch';
 import type { PlacementLetters } from '@/lib/placementLetters';
@@ -213,7 +212,7 @@ export default function EditorFindBar({
   const noteRename = useCallback((target: SearchTarget, next: string) => {
     const root = renameRootForTarget(target.itemKey, target.fieldKey);
     if (!root) return;
-    const read = root === 'stats' ? (name: string) => statCodeName(name, placeholders) : (name: string) => name;
+    const read = codeNameReader(root, placeholders);
     const otherNames = nameTargets
       .filter((other) => other.itemKey !== target.itemKey && renameRootForTarget(other.itemKey, other.fieldKey) === root)
       .map((other) => read(other.value));
