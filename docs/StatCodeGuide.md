@@ -334,7 +334,7 @@ return baseRate * activityMultiplier * sizeFactor;
 ## Best Practices
 
 1. **Keep it simple**: Complex code can be hard to debug and may impact performance
-2. **A missing name reads as zero**: a stat name not in the world reads as a blank entry, every number `0`, so a lookup never throws
+2. **Trust the zero default**: a stat name not in the world reads as a blank entry, every number `0`, so a lookup never throws
 3. **Stay within min/max**: The system will automatically clamp your result to the stat's min/max range
 4. **Avoid infinite loops**: Don't create circular dependencies between stats
 5. **Write only what you mean to change**: A field, placeholder, or trait you leave alone keeps the turn's own result
