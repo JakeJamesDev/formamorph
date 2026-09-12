@@ -233,6 +233,19 @@ interface TurnCodeView {
   resolveTrait: (trait: Trait, text: string) => string;
 }
 
+/** The traits in force on one slice of saved trait state, and the stats live under them. The live pair is
+ *  derived in two steps because `statEnabled` is read on its own; a paged-back turn and a turn's own
+ *  before-box pass both want the pair in one go. */
+const activeUnderTraits = (
+  stats: PlayerStat[],
+  acquired: readonly Trait[],
+  disabledTraitIds: readonly string[],
+  traitOrder: Parameters<typeof inAuthoredOrder>[1],
+): Pick<TurnCodeView, 'activeStats' | 'activeTraits'> => {
+  const inForce = inAuthoredOrder(traitsInForce(acquired, disabledTraitIds), traitOrder);
+  return { activeTraits: inForce, activeStats: enabledStats(stats, activeStatEnabled(stats, inForce)) };
+};
+
 // Each completed turn is digested as soon as it commits (same-turn), so a summary is always ready for
 // the next turn's context assembly. Per-pass caps and their sizing live with the pass records.
 const DIGEST_MAX_TOKENS = TURN_PASS_CAPS.summary;
@@ -1194,10 +1207,13 @@ const GameViewer = ({
       // end-of-turn elapsed the live pass used, and code re-derives the same value instead of drifting.
       const turnHours = prev.timeDelta ?? FLAT_HOURS_PER_TURN;
       // The turn's code writes go back to the pre-turn Code Pins and traits, so stat code re-makes them once.
-      setCodePins(preTurn.codePins ?? {});
-      setPlayerTraits(preTurn.playerTraits);
-      setDisabledTraitIds(preTurn.disabledTraitIds ?? []);
-      setAppliedTraitValues(preTurn.appliedTraitValues ?? {});
+      const toPreTurn = () => {
+        setCodePins(preTurn.codePins ?? {});
+        setPlayerTraits(preTurn.playerTraits);
+        setDisabledTraitIds(preTurn.disabledTraitIds ?? []);
+        setAppliedTraitValues(preTurn.appliedTraitValues ?? {});
+      };
+      toPreTurn();
       // A re-roll replays the whole turn, so the before box runs again first, on the clock as it read at
       // turn start. Its writes are the baseline the asks then land on, and the request reads them.
       beforeBoxDeltasRef.current = {};
@@ -1205,28 +1221,40 @@ const GameViewer = ({
         preTurn.playerStats ?? [], preTurn.playerStats ?? [], [],
         { deltaHours: 0, elapsedHours: gameTime - turnHours, calendar }, preTurn, 'before',
       );
-      if (signal.aborted) return;
-      const base = written ?? preTurn;
-      const snapshot = createStatRequest(enabledStats(
-        written ? resolveStatNames(written.playerStats ?? [], resolvePH) : playerStatsRef.current,
-        statEnabledRef.current,
-      ));
-      const response = await requestStats(
-        buildContextValues(null, turnCodeView(written)), snapshot, action, prev.narration ?? "", signal,
-      );
-      if (signal.aborted) return;
-      const parsed = readStatResponse(response, snapshot);
-      const statChanges = statResponseChanges(parsed);
-      const statCode = applyStatChanges(parsed, {
-        deltaHours: turnHours,
-        elapsedHours: gameTime,
-        calendar,
-      }, base);
-      applyRegenTick(turnHours, base.playerStats);
-      patchLatestTurn({ stat_changes: statChanges });
-      // Code writes land after the sandbox settles; the snapshot waits for them.
-      await statCode;
-      armTurnSnapshot();
+      // The box has written by the time the request can be stopped, so every exit that abandons the
+      // re-roll puts the pre-turn state back rather than leaving those writes over a turn with no asks.
+      let committed = false;
+      try {
+        if (signal.aborted) return;
+        const base = written ?? preTurn;
+        const snapshot = createStatRequest(enabledStats(
+          written ? resolveStatNames(written.playerStats ?? [], resolvePH) : playerStatsRef.current,
+          statEnabledRef.current,
+        ));
+        const response = await requestStats(
+          buildContextValues(null, turnCodeView(written)), snapshot, action, prev.narration ?? "", signal,
+        );
+        if (signal.aborted) return;
+        const parsed = readStatResponse(response, snapshot);
+        const statChanges = statResponseChanges(parsed);
+        const statCode = applyStatChanges(parsed, {
+          deltaHours: turnHours,
+          elapsedHours: gameTime,
+          calendar,
+        }, base);
+        applyRegenTick(turnHours, base.playerStats);
+        patchLatestTurn({ stat_changes: statChanges });
+        committed = true;
+        // Code writes land after the sandbox settles; the snapshot waits for them.
+        await statCode;
+        armTurnSnapshot();
+      } finally {
+        if (!committed && written) {
+          beforeBoxDeltasRef.current = {};
+          setPlayerStats(preTurn.playerStats ?? []);
+          toPreTurn();
+        }
+      }
     });
   };
 
@@ -1407,11 +1435,10 @@ const GameViewer = ({
   statEnabledRef.current = statEnabled;
 
   // The same derivation for a paged-back turn, so history shows the stats that were live on that turn.
-  const viewActiveStats = useMemo(() => {
-    const off = new Set(viewDisabledTraitIds);
-    const active = inAuthoredOrder(refreshChosenTraits(viewTraits, traits).filter((t) => !off.has(t.id)), traitOrder);
-    return enabledStats(viewStats, activeStatEnabled(viewStats, active));
-  }, [viewStats, viewTraits, viewDisabledTraitIds, traitOrder, traits]);
+  const viewActiveStats = useMemo(
+    () => activeUnderTraits(viewStats, refreshChosenTraits(viewTraits, traits), viewDisabledTraitIds, traitOrder).activeStats,
+    [viewStats, viewTraits, viewDisabledTraitIds, traitOrder, traits],
+  );
 
   useEffect(() => {
     // Authored stats anchor the morph scale, so a max the AI raised grows the shape key rather than
@@ -1508,11 +1535,8 @@ const GameViewer = ({
     });
     const resolve = (text: string) => resolveFor(overPins, text);
     const held = savedTraits(over, traits);
-    const inForce = traitsInForce(held.acquired, held.disabledTraitIds);
-    const stats = resolveStatNames(over.playerStats, resolve);
     return {
-      activeStats: enabledStats(stats, activeStatEnabled(stats, inForce)),
-      activeTraits: inAuthoredOrder(inForce, traitOrder),
+      ...activeUnderTraits(resolveStatNames(over.playerStats, resolve), held.acquired, held.disabledTraitIds, traitOrder),
       resolve,
       resolveTrait: (trait, text) => resolveTraitFor(overPins, trait, text),
     };
@@ -2398,7 +2422,7 @@ const GameViewer = ({
           for (const line of result.traits.log) addLogEntry(line);
         }
         /** What this run left, in the shapes state holds. */
-        const left = (): TurnCodeState => ({
+        const stateAfterRun = (): TurnCodeState => ({
           playerStats: overlayStatCodeResult(afterAsks, result, result.traits
             ? traitsInForce(result.traits.acquired, result.traits.disabledTraitIds)
             : inForce),
@@ -2408,7 +2432,7 @@ const GameViewer = ({
           appliedTraitValues: result.traits?.appliedValues ?? held.appliedValues,
         });
         if (!result.traits && result.moved.length === 0 && result.boundsChanged.length === 0) {
-          return nextPins === basePins ? null : left();
+          return nextPins === basePins ? null : stateAfterRun();
         }
         // The bars are keyed by the name the player reads, so the run's stats resolve theirs here.
         const codeChanges = appliedStatDeltas(stats, resolveStatNames(result.stats, resolvePH));
@@ -2421,7 +2445,7 @@ const GameViewer = ({
         setHeldStatChanges((prev) => normalizeStatChanges([prev, codeChanges]));
         // The commit resets the bar deltas mid-turn, so the before box's own share is re-laid over that.
         if (timing === 'before') beforeBoxDeltasRef.current = codeChanges;
-        return left();
+        return stateAfterRun();
       } catch (error) {
         console.error("Error processing stat code:", error);
         return null;
@@ -2478,7 +2502,8 @@ const GameViewer = ({
   // every later turn from the model's context. Guarded on the tail actually being a lone user message, so a
   // partially-streamed assistant turn is kept intact. Also restores the choices cleared at turn start.
   const discardUnpairedUserTurn = () => {
-    // Half a turn leaves no trace: put back the stats, Code Pins and traits the before box moved.
+    // Half a turn leaves no trace: put back the stats, Code Pins and traits the before box moved. Clearing
+    // the bar deltas outright is the box's share alone — the turn drained the previous ones before it ran.
     const undo = beforeBoxUndoRef.current;
     if (undo) {
       beforeBoxUndoRef.current = null;

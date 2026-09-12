@@ -1,6 +1,6 @@
 # 02: The Before The AI Box
 
-Status: in-progress
+Status: ready-for-human
 Base: 910d25eb
 Blocked by: 01
 Recommended model: Claude Opus 5 (`claude-opus-5`)
