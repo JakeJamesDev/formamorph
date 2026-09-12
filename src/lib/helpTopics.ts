@@ -406,7 +406,9 @@ traits.Cursed.enabled = self.value <= 0;
 
 Both ends are given because a turn spans time: an eight-hour sleep begins in the afternoon and ends at night. Dayparts are \`night\`, \`dawn\`, \`morning\`, \`midday\`, \`afternoon\`, \`evening\`. With **Measured Clock** off, \`deltaHours\` is simply \`1\`.
 
-That's what makes a per-hour drain (\`current + 2 * deltaHours\`) or a stat that only climbs after dark possible. One catch: a script mentioning any of these re-runs **every** turn, since time passes every turn — a script that mentions none of them runs only when a stat changes.
+That's what makes a per-hour drain (\`current + 2 * deltaHours\`) or a stat that only climbs after dark possible.
+
+**Your code runs on every turn.** It runs on the opening turn, and on a turn where the AI asked for no stat change. It also runs when the stat request is off or when it fails. On those turns \`delta.ai\` reads zeros. Each run happens after the AI's changes and this turn's regen land.
 
 **A script that sets the value ignores the AI.** Whatever the AI writes gets recomputed away, though it still *reads* the value and description normally. A script that only writes a bound, a placeholder or a trait leaves the value to the AI.
 

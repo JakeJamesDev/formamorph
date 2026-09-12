@@ -740,53 +740,6 @@ describe('stat sanity rules', () => {
     expect(runRules(oneStat({ min: 10, max: 50, starting: 20 }))).toEqual([]);
   });
 
-  it('flags coded stats when nothing in the world reads the clock, once per coded stat', () => {
-    const coded = base({
-      stats: [
-        stat({ id: 's1', name: 'Fertility', code: 'return 25;' }),
-        stat({ id: 's2', name: 'Weave', code: 'return Math.round(Math.random() * 100);' }),
-        stat({ id: 's3', name: 'Vigor' }),
-      ],
-    });
-    const found = only(coded, 'stat-code-never-ticks');
-    expect(found).toHaveLength(2);
-    expect(found.map((f) => f.items[0].id)).toEqual(['s1', 's2']);
-    expect(found[0].severity).toBe('warning');
-    expect(groupFindings(found)[0].headline).toContain('2');
-  });
-
-  it('quiets the clock rule as soon as any one stat’s code names a clock variable', () => {
-    // The gate is world-wide (GameViewer's anyStatUsesClock), so one reference puts every coded stat on
-    // the every-turn schedule.
-    expect(only(base({
-      stats: [
-        stat({ id: 's1', name: 'Fertility', code: 'return 25;' }),
-        stat({ id: 's2', name: 'Weave', code: 'return elapsedHours % 2;' }),
-      ],
-    }), 'stat-code-never-ticks')).toEqual([]);
-  });
-
-  it('doesn’t count a stat no trait ever switches on as reading the clock, or as coded', () => {
-    // The gate reads the enabled stats, so a clock reference parked on a stat that is never live grants the
-    // rest of the world nothing — and that stat's own code never runs, so it isn't a finding of its own.
-    const found = only(base({
-      stats: [
-        stat({ id: 's1', name: 'Fertility', code: 'return 25;' }),
-        stat({ id: 's2', name: 'Dust', code: 'return elapsedHours;', enabled: false }),
-      ],
-    }), 'stat-code-never-ticks');
-    expect(found.map((f) => f.items[0].id)).toEqual(['s1']);
-
-    // A trait that switches it on puts it back in play, clock reference and all.
-    expect(only(base({
-      stats: [
-        stat({ id: 's1', name: 'Fertility', code: 'return 25;' }),
-        stat({ id: 's2', name: 'Dust', code: 'return elapsedHours;', enabled: false }),
-      ],
-      traits: [trait({ id: 't1', name: 'Cursed', statToggles: [{ statId: 's2', enabled: true }] })],
-    }), 'stat-code-never-ticks')).toEqual([]);
-  });
-
   it('flags a trait’s negative starting delta on a stat already resting at its floor', () => {
     // The Centaur Breeder shape: a race penalty written against a stat that opens at zero, so the clamp
     // eats the whole thing and every race starts identical.
@@ -2773,7 +2726,6 @@ const RULE_SCOPE: Record<string, 'simple' | 'advanced'> = {
   'stat-ai-lock-frozen': 'advanced',
   'stat-code-execution': 'advanced',
   'stat-code-unknown-name': 'advanced',
-  'stat-code-never-ticks': 'advanced',
   'stat-code-overrides-trait': 'advanced',
   'stat-code-unknown-stat': 'advanced',
   'stat-descriptor-coverage-gap': 'advanced',

@@ -2,7 +2,6 @@ import { describe, it, expect } from 'vitest';
 import type { Placeholder, PlayerStat, Stat, Trait, TraitGroup } from '@/types';
 import { phValues, phValueId } from '@/test/placeholderValues';
 import { reconcilePlaceholderValues } from './placeholders';
-import { usesStatClock } from './statCodeExecutor';
 import {
   traitOrderIndex,
   inAuthoredOrder,
@@ -95,12 +94,6 @@ describe('re-reading saved stats from the world', () => {
     const saved = [PS('vigor', { code: 'self.value = 1;' })];
     const authored = [S('vigor', { code: 'self.value = 2;' })];
     expect(refreshSavedStats(saved, authored)[0].code).toBe('self.value = 2;');
-  });
-
-  it('picks up a clock variable the author adds, so the per-turn clock gate fires from the next turn', () => {
-    const saved = [PS('vigor', { code: 'self.value = 1;' })];
-    const authored = [S('vigor', { code: 'self.value = clock.elapsedHours;' })];
-    expect(usesStatClock(refreshSavedStats(saved, authored)[0].code)).toBe(true);
   });
 
   it('picks up a rename, a redescription, and a retype since the save was made', () => {

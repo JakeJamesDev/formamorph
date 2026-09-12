@@ -16,7 +16,7 @@ import {
   DAYPART_OPTIONS,
   type TemplateSlot,
 } from './statCodeTemplates';
-import { executeStatCode, usesStatClock, type SandboxTrait } from './statCodeExecutor';
+import { executeStatCode, type SandboxTrait } from './statCodeExecutor';
 import { phMap, phWrite } from '@/test/sandboxPlaceholders';
 import type { Stat } from '@/types';
 
@@ -243,25 +243,6 @@ describe('built-in templates', () => {
       expect(wrote, template.name).toBe(true);
     });
   }
-
-  it('gives the time-driven templates an every-turn run schedule and leaves derived ones on stat-change', () => {
-    const scheduleById = Object.fromEntries(
-      BUILT_IN_TEMPLATES.map(t => [t.id, usesStatClock(t.code)]),
-    );
-    expect(scheduleById).toEqual({
-      'builtin-weighted-blend': false,
-      'builtin-inverse': false,
-      'builtin-threshold-flag': false,
-      'builtin-per-turn-change': true,
-      'builtin-timer': true,
-      'builtin-daypart-modifier': true,
-      'builtin-random-roll': true,
-      'builtin-regen-toward-target': true,
-      'builtin-bound-from-stat': false,
-      'builtin-placeholder-follows-stat': false,
-      'builtin-trait-by-threshold': false,
-    });
-  });
 
   // The three write templates prove themselves by what the host reads back, not by a returned number:
   // a bound on `self`, a pin on a placeholder, and a switch on a trait.

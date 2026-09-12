@@ -3,7 +3,7 @@
  * (No DOM needed; node keeps the QuickJS WASM engine loading through its filesystem path.)
  */
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { executeStatCode, usesStatClock, STAT_CLOCK_VARS, type SandboxPlaceholderNode, type SandboxTrait, type StatCodeRunOptions } from './statCodeExecutor';
+import { executeStatCode, type SandboxPlaceholderNode, type SandboxTrait, type StatCodeRunOptions } from './statCodeExecutor';
 import { phMap, phNode, phUnpin, phWrite } from '@/test/sandboxPlaceholders';
 import { PLACEHOLDER_ENTRY_MEMBERS } from './statCodePaths';
 import type { Stat } from '@/types';
@@ -341,26 +341,6 @@ describe('executeStatCode clock variables', () => {
 
   it('clamps a start reading at zero rather than going negative before the story began', async () => {
     expect((await run('return startDay;', { elapsedHours: 1, deltaHours: 999 })).value).toBe(1);
-  });
-});
-
-describe('usesStatClock', () => {
-  it('is false for code that reads no clock variable, and for empty code', () => {
-    expect(usesStatClock('return stats.length;')).toBe(false);
-    expect(usesStatClock('')).toBe(false);
-    expect(usesStatClock(undefined)).toBe(false);
-  });
-
-  it('detects every exposed variable', () => {
-    for (const name of STAT_CLOCK_VARS) {
-      expect(usesStatClock(`return ${name};`)).toBe(true);
-    }
-  });
-
-  it('does not fire on a longer identifier that merely contains a variable name', () => {
-    expect(usesStatClock('const daysSurvived = 3; return daysSurvived;')).toBe(false);
-    expect(usesStatClock('return deltaHoursExtra;')).toBe(false);
-    expect(usesStatClock('return prev_elapsedHours;')).toBe(false);
   });
 });
 

@@ -4,7 +4,7 @@ This guide explains Formamorph's **stat code** — a small JavaScript script att
 
 ## Overview
 
-Stat code runs in a sandbox when a stat changes, or every turn when it reads the clock (see [When Your Code Runs](#when-your-code-runs)). It can:
+Stat code runs in a sandbox on every turn (see [When Your Code Runs](#when-your-code-runs)). It can:
 
 - **Derive a value** from other stats (e.g., carrying capacity based on strength)
 - **Combine stats** (e.g., defense calculated from armor + agility)
@@ -18,19 +18,18 @@ Stat code runs in a sandbox when a stat changes, or every turn when it reads the
 ## How It Works
 
 1. Each stat can have an optional JavaScript script
-2. When the AI changes a stat, or every turn if any code reads the clock, the script runs in a safe environment after the AI's changes and regen apply
+2. On every turn, the script runs in a safe environment after the AI's changes and regen apply
 3. The script reads every stat, the story clock, the world's placeholders, and the world's traits
 4. `return <number>` sets the stat's value, clamped to its range. Writes to `self`, `placeholders`, and `traits` apply after the run
 5. A script that throws or times out changes nothing
 
 ### When Your Code Runs
 
-| Your code… | Runs… |
-| --- | --- |
-| doesn't mention a clock variable | whenever a stat changes |
-| mentions any clock variable | **every turn**, whether or not a stat changed |
+**Your code runs on every turn.** There is no schedule to choose and nothing to switch on. It runs on the opening turn, after the opening narration, and on a turn where the AI asked for no stat change.
 
-Time passes on every turn, so code that reads the clock has to run on every turn — otherwise a time-based stat would only tick on the turns the AI happened to report a stat change. Code that doesn't read the clock keeps the original schedule.
+Each run happens after the AI's changes and this turn's regen land.
+
+> 💡 Your code runs even when the stat request is off, or when it fails. On such a turn `delta.ai` reads zeros, so code that scales an ask leaves the value where it stood.
 
 ## Writing Stat Code
 

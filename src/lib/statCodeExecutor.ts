@@ -28,18 +28,11 @@ export interface StatClock {
   calendar?: WorldCalendar;
 }
 
-/** The clock variable names stat code may read. Exported so the per-turn gate and the editor's help text
- *  read from the same list rather than restating it. */
+/** The clock variable names stat code may read. Exported so the editor's completion surface reads from
+ *  this list rather than restating it. */
 export const STAT_CLOCK_VARS = [
   'deltaHours', 'elapsedHours', 'day', 'daypart', 'startDay', 'startDaypart',
 ] as const;
-
-const CLOCK_VAR_PATTERN = new RegExp(`\\b(${STAT_CLOCK_VARS.join('|')})\\b`);
-
-/** Whether a stat's code reads the clock, and so has to re-run every turn rather than only when another
- *  stat moved. A plain source scan: over-matching (a mention in a comment) costs one harmless recompute,
- *  and code that reaches the variable without naming it literally simply doesn't tick. */
-export const usesStatClock = (code?: string | null): boolean => !!code && CLOCK_VAR_PATTERN.test(code);
 
 /** The clock readings a run exposes, resolved from `clock` and its defaults. */
 const resolveClock = (clock?: StatClock) => {
