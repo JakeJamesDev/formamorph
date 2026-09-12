@@ -12,6 +12,8 @@ import {
 import { ImageGallery, ImageTags } from './ImageTagsField';
 import ScopedPlaceholdersSection from './ScopedPlaceholdersSection';
 import { useEditingDraft } from '@/lib/useEditingDraft';
+import { statCodeName } from '@/lib/statCodeNames';
+import { useRenameField } from '@/lib/useCodeRename';
 import { withEntityLocations } from '@/lib/entityPresence';
 import type { Entity, FocusFieldHint } from '@/types';
 import { labelPlaceholders } from '@/lib/placementLetters';
@@ -36,9 +38,19 @@ const EntityManager = ({ entity, tab, onTabChange, focusField }: {
   onTabChange: (tab: EntityPanelTab) => void;
   focusField?: FocusFieldHint | null;
 }) => {
-  const { updateEntity, locations, placeholders, placementLetters, placeholderOwners } = useGameData();
+  const { updateEntity, entities, locations, placeholders, placementLetters, placeholderOwners } = useGameData();
   const { draft: editingEntity, setDraft, setField: handleChange } = useEditingDraft<Entity>(entity, updateEntity);
   const { advanced } = useEditorMode();
+  // An entity that owns placeholders is a node of the `placeholders` map, so renaming it moves the owner
+  // segment of every path through it. Its own name can carry chips, so code reads it the way a stat's is read.
+  const rename = useRenameField({
+    root: 'placeholders',
+    value: editingEntity?.name ?? '',
+    siblings: entities,
+    ownId: entity.id,
+    codeNameOf: (name) => statCodeName(name, placeholders),
+    subject: { kind: 'entity', id: entity.id },
+  });
 
   // Membership is the entity's own field, so the picker reads and writes it directly. Locations the world
   // no longer has are filtered out of the selection rather than shown as blank rows.
@@ -80,7 +92,7 @@ const EntityManager = ({ entity, tab, onTabChange, focusField }: {
             <div className="grid gap-4 sm:grid-cols-[18rem_minmax(0,1fr)] md:grid-cols-1 xl:grid-cols-[18rem_minmax(0,1fr)]">
               <ImageGallery />
               <div className="space-y-4">
-                <EntityIdentityFields {...groupProps} />
+                <EntityIdentityFields {...groupProps} nameHandlers={rename} />
                 <ImageTags />
               </div>
             </div>

@@ -10,6 +10,7 @@ import { IMAGE_CAPS } from '../lib/imageOptim';
 import { entityImages } from '../lib/entityImages';
 import { ImageGallery, ImageTags, ImageWidget } from './ImageTagsField';
 import { useEditorMode } from '@/lib/editorMode';
+import type { RenameFieldHandlers } from '@/lib/useCodeRename';
 import type { ReactNode } from 'react';
 import type { Entity, Placeholder } from '@/types';
 
@@ -25,7 +26,11 @@ export interface EntityFieldGroupProps {
 }
 
 /** Name, Aliases, and Type: who the entity is. Aliases and Type are Advanced only. */
-export const EntityIdentityFields = ({ value, onChange, placeholders = [], ownerId }: EntityFieldGroupProps) => {
+export const EntityIdentityFields = ({ value, onChange, placeholders = [], ownerId, nameHandlers }: EntityFieldGroupProps & {
+  /** What reports a committed rename of this entity, so the code that reaches its placeholders by path can
+   *  follow. Absent outside the World Editor, where there is no world code to rewrite. */
+  nameHandlers?: RenameFieldHandlers;
+}) => {
   const { advanced } = useEditorMode();
   return (
     <>
@@ -37,6 +42,7 @@ export const EntityIdentityFields = ({ value, onChange, placeholders = [], owner
           placeholders={placeholders}
           ownerId={ownerId}
           ariaLabel="Name"
+          {...nameHandlers}
         />
       </div>
       {advanced && (

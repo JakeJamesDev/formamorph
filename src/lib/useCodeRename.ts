@@ -1,5 +1,5 @@
 import { createContext, useContext, useMemo, useRef } from 'react';
-import type { RenameRoot } from '@/lib/statCodeRename';
+import type { CodeRenameSubject, RenameRoot } from '@/lib/statCodeRename';
 
 /**
  * Asking the rename offer, from a name field or from find-and-replace.
@@ -17,6 +17,9 @@ export interface CodeRenameRequest {
   newName: string;
   /** The names the other entries of this kind carry, so a rename onto one of them stays silent. */
   otherNames: readonly string[];
+  /** Which node of the placeholder tree moved, where the rename moved one. Code reaches a placeholder by
+   *  the path the editor shows, and only the node itself says which paths that rename touches. */
+  subject?: CodeRenameSubject;
 }
 
 export type OfferCodeRename = (request: CodeRenameRequest) => void;
@@ -44,7 +47,7 @@ export interface RenameFieldHandlers {
  * the name the author settled on. Taking the baseline on focus rather than on the last commit also keeps an
  * edit made elsewhere — a find-and-replace, a discard — from reading as this field's own rename later.
  */
-export function useRenameField({ root, value, siblings, ownId, codeNameOf }: {
+export function useRenameField({ root, value, siblings, ownId, codeNameOf, subject }: {
   root: RenameRoot;
   /** The field's current text. */
   value: string;
@@ -55,14 +58,16 @@ export function useRenameField({ root, value, siblings, ownId, codeNameOf }: {
   /** The name as code reads it, where that differs from the field's text. Stats and traits pass their
    *  code name. */
   codeNameOf?: (value: string) => string;
+  /** The node of the placeholder tree this field names: an entry, or the entity or book that owns entries. */
+  subject?: CodeRenameSubject;
 }): RenameFieldHandlers {
   const offer = useCodeRenameOffer();
   const otherNames = useMemo(
     () => siblings.filter((entry) => entry.id !== ownId).map((entry) => entry.name),
     [siblings, ownId],
   );
-  const latest = useRef({ value, otherNames, codeNameOf });
-  latest.current = { value, otherNames, codeNameOf };
+  const latest = useRef({ value, otherNames, codeNameOf, subject });
+  latest.current = { value, otherNames, codeNameOf, subject };
   const baseline = useRef<string | null>(null);
 
   return useMemo(() => {
@@ -70,11 +75,11 @@ export function useRenameField({ root, value, siblings, ownId, codeNameOf }: {
     // just committed becomes the baseline for whatever the author types next.
     const commit = (stillFocused: boolean) => {
       const started = baseline.current;
-      const { value: now, otherNames: taken, codeNameOf: name } = latest.current;
+      const { value: now, otherNames: taken, codeNameOf: name, subject: node } = latest.current;
       baseline.current = stillFocused ? now : null;
       if (started === null || started === now) return;
       const read = name ?? ((text: string) => text);
-      offer({ root, oldName: read(started), newName: read(now), otherNames: taken.map(read) });
+      offer({ root, oldName: read(started), newName: read(now), otherNames: taken.map(read), subject: node });
     };
     return {
       onFocus: () => { baseline.current = latest.current.value; },
