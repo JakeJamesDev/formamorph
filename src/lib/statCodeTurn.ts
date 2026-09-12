@@ -3,9 +3,9 @@ import {
   CODE_BOUND_FIELDS, executeStatCode, type PlaceholderWrite, type StatClock, type StatTurnInputs, type TraitWrite,
   type ValueAndMax,
 } from './statCodeExecutor';
-import { statCodeNamed } from './statCodeNames';
+import { statCodeName, statCodeNamed } from './statCodeNames';
 import { sandboxPlaceholders, type StatCodePlaceholderSet } from './statCodePlaceholders';
-import { sandboxTraits, traitNamer, type StatCodeTraits } from './statCodeTraits';
+import { sandboxTraits, type StatCodeTraits } from './statCodeTraits';
 import { enabledStats } from './traitEffects';
 import {
   activeTraits, applyCodeTraitSwitches, withCodeBounds, type AppliedTraitValues, type CodeTraitSwitch,
@@ -44,6 +44,9 @@ export interface StatCodeTurn {
   /** A stat's name as the player reads it, for the turn log. Required, not defaulted: a caller that left
    *  it out would print an unresolved chip token in a line the player reads. */
   statNameOf: (stat: PlayerStat) => string;
+  /** A trait's name as the player reads it, for the trait switch log. Required for the same reason
+   *  `statNameOf` is; code reaches the trait by its code name, which the turn derives itself. */
+  traitNameOf: (trait: Trait) => string;
 }
 
 export interface StatCodeTurnResult {
@@ -126,7 +129,7 @@ export async function runStatCodeTurn(turn: StatCodeTurn): Promise<StatCodeTurnR
   const coded = named.filter((stat) => stat.code?.trim());
   // Resolved once, so every stat's code reads the same placeholders and the same traits.
   const placeholders = coded.length && turn.placeholders ? sandboxPlaceholders(turn.placeholders) : [];
-  const traits = coded.length ? sandboxTraits(turn.traits) : [];
+  const traits = coded.length ? sandboxTraits(turn.traits, placeholderDefs) : [];
   const writes = new Map<string, { value: number | null; bounds: CodeBounds | null }>();
   const placeholderWritesByStat = new Map<string, readonly PlaceholderWrite[]>();
   const traitWritesByStat = new Map<string, readonly TraitWrite[]>();
@@ -165,8 +168,8 @@ export async function runStatCodeTurn(turn: StatCodeTurn): Promise<StatCodeTurnR
   };
   const switched = applyCodeTraitSwitches(
     before,
-    traitSwitchesInStatOrder(live, traitWritesByStat, turn.traits, turn.statNameOf),
-    turn.traits.world, turn.traits.nameOf,
+    traitSwitchesInStatOrder(live, traitWritesByStat, turn.traits, placeholderDefs, turn.statNameOf),
+    turn.traits.world, turn.traitNameOf,
   );
   const traitResult: StatCodeTraitResult | undefined = switched.state === before ? undefined : {
     acquired: switched.state.traits,
@@ -198,11 +201,11 @@ function traitSwitchesInStatOrder(
   stats: readonly PlayerStat[],
   writesByStat: ReadonlyMap<string, readonly TraitWrite[]>,
   traits: StatCodeTraits,
+  placeholders: readonly Placeholder[],
   /** The switching stat's name as the player reads it — the log line names it. */
   statNameOf: (stat: PlayerStat) => string,
 ): CodeTraitSwitch[] {
-  const nameOf = traitNamer(traits);
-  const idByName = new Map(traits.world.traits.map((trait) => [nameOf(trait), trait.id]));
+  const idByName = new Map(traits.world.traits.map((trait) => [statCodeName(trait.name, placeholders), trait.id]));
   const out = new Map<string, CodeTraitSwitch>();
   for (const stat of stats) {
     for (const write of writesByStat.get(stat.id) ?? []) {

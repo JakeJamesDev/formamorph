@@ -1,6 +1,11 @@
 import { describe, expect, it } from 'vitest';
-import type { Stat } from '@/types';
-import { codeRenameReferences, planCodeRename, renameCodeReferences, renameRootForTarget } from './statCodeRename';
+import type { Placeholder, Stat } from '@/types';
+import { encodePlaceholderToken } from './placeholders';
+import { phValues } from '@/test/placeholderValues';
+import {
+  codeNameReader, codeRenameReferences, planCodeRename, renameCodeReferences, renameRootForTarget,
+  type RenameRoot,
+} from './statCodeRename';
 
 const stat = (id: string, code: string): Stat => ({ id, name: id, type: 'number', value: 0, min: 0, max: 100, code } as Stat);
 
@@ -165,5 +170,25 @@ describe('renameRootForTarget', () => {
     expect(renameRootForTarget('stat:s1', 'description')).toBeNull();
     expect(renameRootForTarget('entity:e1', 'name')).toBeNull();
     expect(renameRootForTarget('entry:d1', 'name')).toBeNull();
+  });
+});
+
+describe('codeNameReader', () => {
+  const beast: Placeholder = { id: 'p1', name: 'Beast', values: phValues(['Wolf']) };
+  const chipped = `${encodePlaceholderToken({ id: 'p1', mode: 'world', placementId: 'pl1' })} Fury`;
+
+  // Every root, so a root added later cannot slip through unanswered: forgetting one drops the rename
+  // offer silently rather than failing.
+  it.each<[RenameRoot, string]>([
+    ['stats', 'Beast Fury'],
+    ['traits', 'Beast Fury'],
+    ['placeholders', chipped],
+  ])('reads a %s name as code does', (root, expected) => {
+    expect(codeNameReader(root, [beast])(chipped)).toBe(expected);
+  });
+
+  it('leaves a chip-free name alone under every root', () => {
+    const roots: RenameRoot[] = ['stats', 'traits', 'placeholders'];
+    for (const root of roots) expect(codeNameReader(root, [beast])('Fury')).toBe('Fury');
   });
 });

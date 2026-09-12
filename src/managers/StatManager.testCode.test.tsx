@@ -1,7 +1,8 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import type { Stat, Trait } from '@/types';
+import type { Placeholder, Stat, Trait } from '@/types';
+import { encodePlaceholderToken } from '@/lib/placeholders';
 import StatManager from './StatManager';
 
 /** Running the code and reading it are two different answers about the same text, and the panel has to
@@ -12,11 +13,18 @@ const stats = [
   { id: 's2', name: 'Damp', type: 'number', value: 3, min: 0, max: 10 },
 ] as unknown as Stat[];
 
-const traits = [{ id: 't1', name: 'Brave', statChanges: [] }, { id: 't2', name: 'Night Owl', statChanges: [] }] as Trait[];
+// The third name carries a chip, so the run has to key it on the placeholder's own name.
+const beast = { id: 'p1', name: 'Beast', values: [] } as unknown as Placeholder;
+const FURY = `${encodePlaceholderToken({ id: 'p1', mode: 'world', placementId: 'pl1' })} Fury`;
+const traits = [
+  { id: 't1', name: 'Brave', statChanges: [] },
+  { id: 't2', name: 'Night Owl', statChanges: [] },
+  { id: 't3', name: FURY, statChanges: [] },
+] as Trait[];
 
 const updateStat = vi.fn();
 vi.mock('@/contexts/GameDataContext', () => ({
-  useGameData: () => ({ updateStat, stats, placeholders: [], traits }),
+  useGameData: () => ({ updateStat, stats, placeholders: [beast], traits }),
 }));
 vi.mock('@/lib/useBodyMorphNames', () => ({
   useBodyMorphSources: () => ({ sources: [], loading: false, load: vi.fn() }),
@@ -170,8 +178,14 @@ describe('what Test Code reports', () => {
     expect(executeStatCode.mock.calls[0][3].traits).toEqual([
       { name: 'Brave', enabled: false, acquired: false },
       { name: 'Night Owl', enabled: false, acquired: false },
+      { name: 'Beast Fury', enabled: false, acquired: false },
     ]);
-    expect(traits).toEqual([{ id: 't1', name: 'Brave', statChanges: [] }, { id: 't2', name: 'Night Owl', statChanges: [] }]);
+    // The world keeps its authored names, chip token and all: only the sandbox entries read the code name.
+    expect(traits).toEqual([
+      { id: 't1', name: 'Brave', statChanges: [] },
+      { id: 't2', name: 'Night Owl', statChanges: [] },
+      { id: 't3', name: FURY, statChanges: [] },
+    ]);
   });
 
   it('names the trait switches and acquired writes that did nothing', async () => {

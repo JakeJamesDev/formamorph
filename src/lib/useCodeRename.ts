@@ -12,7 +12,7 @@ import type { RenameRoot } from '@/lib/statCodeRename';
 /** What a name field asks the offer, once its edit is committed. */
 export interface CodeRenameRequest {
   root: RenameRoot;
-  /** The name as code read it before the edit. For a stat this is its code name. */
+  /** The name as code read it before the edit. For a stat or a trait this is its code name. */
   oldName: string;
   newName: string;
   /** The names the other entries of this kind carry, so a rename onto one of them stays silent. */
@@ -52,7 +52,8 @@ export function useRenameField({ root, value, siblings, ownId, codeNameOf }: {
   siblings: readonly { id: string; name: string }[];
   /** Which of `siblings` this field edits, so its own name is not read as a duplicate. */
   ownId: string;
-  /** The name as code reads it, where that differs from the field's text. Stats pass their code name. */
+  /** The name as code reads it, where that differs from the field's text. Stats and traits pass their
+   *  code name. */
   codeNameOf?: (value: string) => string;
 }): RenameFieldHandlers {
   const offer = useCodeRenameOffer();

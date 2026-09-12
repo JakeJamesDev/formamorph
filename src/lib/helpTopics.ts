@@ -383,7 +383,7 @@ placeholders.Mood.pin(self.value < 20 ? 'furious' : 'calm');
 placeholders.Hair.pin(['gray', 'cropped short']);
 \`\`\`
 
-**Traits.** \`traits\` holds every authored trait by name. Each entry has \`enabled\`, whether the player has it and it's on, and \`acquired\`, whether the player has it at all. Write \`enabled\` to switch the trait on or off after the run, exactly as the player's checkbox does, exclusive siblings included. Switching on a trait the player never took acquires it. Code ignores Player Can Toggle In-Game, so it can drive a trait the player has no checkbox for.
+**Traits.** \`traits\` holds every authored trait by name. Each entry has \`enabled\`, whether the player has it and it's on, and \`acquired\`, whether the player has it at all. Write \`enabled\` to switch the trait on or off after the run, exactly as the player's checkbox does, exclusive siblings included. Switching on a trait the player never took acquires it. Code ignores Player Can Toggle In-Game, so it can drive a trait the player has no checkbox for. A trait name with a placeholder chip in it reads in code as that placeholder's own name, so a trait named \`{{Beast}} Fury\` is \`traits["Beast Fury"]\` in every playthrough.
 
 \`\`\`js
 traits.Cursed.enabled = self.value <= 0;

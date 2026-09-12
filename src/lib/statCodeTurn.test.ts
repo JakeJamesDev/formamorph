@@ -23,7 +23,7 @@ const inForce = (active: Trait[]): StatCodeTraits => ({
 /** A turn where nothing happened unless a case says so: no asks, no regen, previous equal to now, no traits. */
 const turn = (over: Partial<StatCodeTurn> & Pick<StatCodeTurn, 'stats'>): StatCodeTurn => ({
   enabled: {}, previous: over.stats, asks: [], regenApplied: {}, clock: {}, traits: inForce([]),
-  statNameOf: (stat) => stat.name, ...over,
+  statNameOf: (stat) => stat.name, traitNameOf: (trait) => trait.name, ...over,
 });
 
 const valueOf = (stats: readonly PlayerStat[], id: string) => stats.find(s => s.id === id)?.value;
@@ -259,6 +259,47 @@ describe('runStatCodeTurn stat code names', () => {
 
   it('reads the rolled spelling as a blank entry, in the playthrough that rolled it', async () => {
     await expect(run('return stats["Wolf Power"].value + 1;', 'Wolf')).resolves.toBe(1);
+  });
+});
+
+describe('runStatCodeTurn trait code names', () => {
+  beforeEach(() => vi.spyOn(console, 'error').mockImplementation(() => {}));
+  afterEach(() => vi.restoreAllMocks());
+
+  const beast: Placeholder = { id: 'beast', name: 'Beast', values: phValues(['Wolf', 'Bear']) };
+  const CHIPPED = encodePlaceholderToken({ id: 'beast', mode: 'world', placementId: 'p1' }) + ' Fury';
+  const fury: Trait = { id: 'fury', name: CHIPPED, statChanges: [] };
+  const calm: Trait = { id: 'calm', name: 'Calm', statChanges: [] };
+  const rolled = (roll: string) => ({ placeholders: [beast], rolls: { world: { beast: roll } } });
+
+  /** One stat running `code` over a world holding the chip-named trait, in a save that rolled `roll`. */
+  const run = (code: string, roll: string) =>
+    runStatCodeTurn(turn({
+      stats: [stat({ id: 'a', name: 'Anchor', value: 40, code })],
+      traits: { acquired: [], disabledTraitIds: [], appliedValues: {}, world: { traits: [fury, calm], groups: [] } },
+      traitNameOf: (trait) => resolvePlaceholders(trait.name, rolled(roll)),
+      placeholders: rolled(roll),
+    }));
+
+  it('switches the trait by its code name in every playthrough', async () => {
+    const code = 'traits["Beast Fury"].enabled = true;';
+    expect((await run(code, 'Wolf')).traits?.acquired.map((t) => t.id)).toEqual(['fury']);
+    expect((await run(code, 'Bear')).traits?.acquired.map((t) => t.id)).toEqual(['fury']);
+  });
+
+  it('reads the rolled spelling as a name the world does not have', async () => {
+    expect((await run('traits["Wolf Fury"].enabled = true;', 'Wolf')).traits).toBeUndefined();
+  });
+
+  it('writes the log line under the rolled text the player reads', async () => {
+    const out = await run('traits["Beast Fury"].enabled = true;', 'Wolf');
+    expect(out.traits?.log).toEqual(['Acquired trait: Wolf Fury (by Anchor)']);
+  });
+
+  it('leaves a chip-free trait reached and logged by its own name', async () => {
+    const out = await run('traits.Calm.enabled = true;', 'Wolf');
+    expect(out.traits?.acquired.map((t) => t.id)).toEqual(['calm']);
+    expect(out.traits?.log).toEqual(['Acquired trait: Calm (by Anchor)']);
   });
 });
 
@@ -792,8 +833,12 @@ describe('runStatCodeTurn traits', () => {
     expect(out.traits).toBeUndefined();
   });
 
-  it('reads and logs a trait by the name it is given', async () => {
-    const out = await run(['traits.BRAVE.enabled = false;'], held({ nameOf: (t) => t.name.toUpperCase() }));
+  it('logs a switch under the name the player reads, and still reaches the trait by its code name', async () => {
+    const out = await runStatCodeTurn(turn({
+      stats: [seeded({ id: 'h', name: 'Health', value: 60 }), seeded({ id: 's0', name: 'S0', code: 'traits.Brave.enabled = false;' })],
+      traits: held(),
+      traitNameOf: (t) => t.name.toUpperCase(),
+    }));
     expect(out.traits?.log).toEqual(['Trait switched off: BRAVE (by S0)']);
   });
 

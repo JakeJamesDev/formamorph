@@ -197,6 +197,8 @@ traits.Cursed.enabled = self.value <= 0;
 
 A write to a trait name the world does not have is dropped. **Test Code** and the Test Bench both report it. A write to `acquired` is dropped, and **Test Code** says so.
 
+> ℹ️ **A trait name with a placeholder chip in it reads in code as the placeholder's own name.** A trait named `{{Beast}} Fury` is `traits["Beast Fury"]` in every playthrough, whatever the chip rolled. The player still sees the rolled name, and the turn log still writes it.
+
 ### Order of Effects
 
 Every stat's code runs over the same snapshot, so no script sees another's writes in the same turn. After the run, effects apply in this order: trait switches, then bounds, then values, then placeholder pins. A bound a stat set this turn still wins over a bound its own trait switch moved. When two stats write the same placeholder or trait in one turn, the later stat in the list wins.
