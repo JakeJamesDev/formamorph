@@ -154,6 +154,30 @@ test('a placeholder that stat code writes reaches the next turn’s prompt', asy
   expect(narration[narration.length - 1]).toContain('The walls glow incandescent.');
 });
 
+// An Object shows every value at once, so code pins it with a list and the prompt reads that list joined.
+test('an Object pinned to a list from code reaches the next turn’s prompt as one joined text', async ({ page }) => {
+  page.on('pageerror', (error) => console.error(error.message));
+  const hair = {
+    id: 'ph-hair', name: 'Hair', roll: false,
+    values: [{ id: 'v-grey', text: 'grey' }, { id: 'v-long', text: 'long' }],
+  };
+  const world = JSON.parse(readFileSync('src/lib/devFixtures/whiteRoomWorld.json', 'utf8'));
+  const locations = world.locations.map((location: { id: string }) => (location.id === '1783535114538'
+    ? { ...location, aiDescription: 'Her hair is {{ph:ph-hair:world:p2}}.' } : location));
+  await coinWithCode(page, 'placeholders.Hair.pin(["silver", "cropped short"]);', {}, {
+    World: { placeholders: [hair], locations },
+  });
+  const narration: string[] = [];
+  await mockModel(page, 'Coin: +20', narration);
+  await openApp(page, settings(), { url: '/#dev?view=gameViewer&fixture=whiteRoom' });
+  await playOneTurn(page, ['Count the coins.', 'Count them again.']);
+
+  await expect.poll(() => narration.length).toBeGreaterThanOrEqual(2);
+  // Unpinned the Object joins its own values; pinned it joins the list code handed it.
+  expect(narration[0]).toContain('Her hair is grey, long.');
+  expect(narration[narration.length - 1]).toContain('Her hair is silver, cropped short.');
+});
+
 test('a stats re-roll reads the pre-turn Code Pins, so a flip lands once', async ({ page }) => {
   page.on('pageerror', (error) => console.error(error.message));
   const flip = 'const next = placeholders.Mood.value === "calm" ? "angry" : "calm";\n'

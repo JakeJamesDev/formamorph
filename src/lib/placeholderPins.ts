@@ -10,7 +10,7 @@ import type {
   CodePins, GameLocation, Placeholder, PlaceholderGroup, PlaceholderPin, PlaceholderRolls, PlaceholderValue, Stat, StatDescriptor,
   Trait, TraitGroup,
 } from '@/types';
-import { encodePlaceholderToken, pinText, placeholderIsChoice, placeholderValueLine, sameMap } from './placeholders';
+import { encodePlaceholderToken, pinText, placeholderIsChoice, placeholderValueLine, sameMap, VALUE_JOIN } from './placeholders';
 import type { PlaceholderOwners } from './placeholderHomes';
 import { labelPlaceholders, placeholderDisplayName, type PlacementLetters } from './placementLetters';
 import { activeDescriptor } from './statContext';
@@ -47,6 +47,11 @@ export interface PinSources {
   codePins?: CodePins;
   onFinding?: (finding: PinFinding) => void;
 }
+
+/** One Code Pin as text. An Object's pin is stored as a list, and every surface that needs one string
+ *  joins it the way the prompt joins an Object's values. */
+export const codePinText = (pin: string | readonly string[]): string =>
+  (typeof pin === 'string' ? pin : pin.join(VALUE_JOIN));
 
 /** Placeholder id → placeholder, the lookup every pin reader needs. */
 export const indexPlaceholders = (placeholders: readonly Placeholder[]): Map<string, Placeholder> =>
@@ -141,7 +146,7 @@ export function collectPinLayers(src: PinSources): { pins: Record<string, string
     if (band) layPins(layered, band.placeholderPins, byId, laidBy({ kind: 'descriptor', statId: stat.id, descriptorId: band.id }));
   }
   // Code Pins are runtime state with no authored row to trace, so they lay no layer.
-  Object.assign(layered, codePins);
+  for (const [id, pin] of Object.entries(codePins)) layered[id] = codePinText(pin);
   const settled = settleValuePins(layered, placeholders, byId, rolls, onFinding);
   const claimed = new Set(Object.keys(layered));
   return {

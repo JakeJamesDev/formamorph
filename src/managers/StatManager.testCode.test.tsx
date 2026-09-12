@@ -126,13 +126,26 @@ describe('what Test Code reports', () => {
     const user = userEvent.setup();
     executeStatCode.mockResolvedValue({
       value: 5, error: null, bounds: { max: 60 },
-      placeholders: [{ name: 'Mood', text: 'Furious' }, { name: 'Hair', unpin: true }],
+      placeholders: [{ name: 'Mood', value: 'Furious' }, { name: 'Hair', unpin: true }],
     });
     renderCodePanel(stats[0]);
 
     await testCode(user, 'self.max = 60; placeholders.Mood.value = "Furious"; placeholders.Hair.unpin(); return 5;');
 
     await waitFor(() => expect(row()).toHaveTextContent('Result: 5 · Max: 60 · Mood = Furious · Hair unpinned'));
+  });
+
+  // An Object pins to a list. The report is one line per placeholder, so it prints the list as its text.
+  it('prints a list pin as the joined text one line holds', async () => {
+    const user = userEvent.setup();
+    executeStatCode.mockResolvedValue({
+      value: null, error: null, placeholders: [{ name: 'Hair', value: ['silver', 'cropped short'] }],
+    });
+    renderCodePanel(stats[0]);
+
+    await testCode(user, 'placeholders.Hair.pin(["silver", "cropped short"]);');
+
+    await waitFor(() => expect(row()).toHaveTextContent('Hair = silver, cropped short'));
   });
 
   it('names the placeholders whose writes were dropped', async () => {

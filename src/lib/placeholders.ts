@@ -773,7 +773,7 @@ function describePh(ph: Placeholder, segs: PlaceholderSegment[], ctx: DescribeCt
     // A pin names one value, so the placeholder reads as that value whatever its roll flag says.
     return pinned == null && placeholderIsChoice(ph)
       ? describeChoice(described)
-      : described.filter((s) => s !== '').join(', ');
+      : described.filter((s) => s !== '').join(VALUE_JOIN);
   }
 
   const [seg, ...rest] = segs;
@@ -925,6 +925,10 @@ export const weightedPick = (values: PlaceholderValue[], weights?: Record<string
 
 /** How many levels the walk descends before it gives up and reports a `depth` finding. */
 export const PLACEHOLDER_DEPTH_CAP = 16;
+
+/** What joins the several values an Object holds at once. Stat code's `text` reads the same join, so the
+ *  two must agree; the sandbox prelude inlines this rather than restating it. */
+export const VALUE_JOIN = ', ';
 
 /** True if a placeholder draws one of its values rather than joining all of them. `roll` decides when the
  *  author set it; otherwise the value count does, exactly as it always has. */
@@ -1280,7 +1284,7 @@ function phSpans(ph: Placeholder, ctx: ResolveCtx): PlaceholderSpan[] {
     layDrawPins(ph, v.text, inner);
     const spans = valueSpans(v.text, inner, { holder: ph, value: v });
     if (!spans.length) continue;
-    if (out.length) out.push({ text: ', ' });
+    if (out.length) out.push({ text: VALUE_JOIN });
     out.push(...spans);
   }
   return out;

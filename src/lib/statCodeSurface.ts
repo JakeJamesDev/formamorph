@@ -9,6 +9,7 @@
  */
 
 import { CODE_BOUND_FIELDS, DELTA_SOURCES, STAT_CLOCK_VARS, type DeltaSource } from '@/lib/statCodeExecutor';
+import type { PlaceholderKindNoun } from '@/lib/placeholders';
 
 /** One reachable name and what an author needs to know about it. */
 export interface SurfaceEntry {
@@ -98,14 +99,26 @@ export const PREVIOUS_FIELDS: readonly SurfaceEntry[] = [
   { name: 'regen', detail: 'number', info: 'Regen per story hour at the start of this turn, traits included.' },
 ];
 
-/** The members of one entry in `placeholders`. */
-export const PLACEHOLDER_ENTRY_FIELDS: readonly SurfaceEntry[] = [
-  { name: 'value', detail: 'string', info: 'The text the placeholder reads as now, with pins applied.' },
-  { name: 'values', detail: 'string[]', info: 'Every value the author wrote, in order, as text. Values with weight 0 are included.' },
-  { name: 'roll', detail: '() => string', info: 'Draw one value with the author’s weights. The draw is not kept.' },
-  { name: 'pin', detail: '(text) => void', info: 'Pin the placeholder to any text, after this run.' },
-  { name: 'unpin', detail: '() => void', info: 'Remove the pin that code set, after this run. The rolled value shows again.' },
-];
+/**
+ * The members of one entry in `placeholders`. An Object's `value` holds every value in force rather than
+ * one text, and its `pin` therefore takes a list. The kind is authored, so completions can state the type
+ * per entry.
+ */
+export function placeholderEntryFields(kind: PlaceholderKindNoun): readonly SurfaceEntry[] {
+  const list = kind === 'Object';
+  return [
+    list
+      ? { name: 'value', detail: 'string[]', info: 'Every value in force now, as a list, with pins applied.' }
+      : { name: 'value', detail: 'string', info: 'The text the placeholder reads as now, with pins applied.' },
+    { name: 'values', detail: 'string[]', info: 'Every value the author wrote, in order, as text. Values with weight 0 are included.' },
+    { name: 'text', detail: 'string', info: 'What the prompt sees for this placeholder. A list joins with ", ". Read-only.' },
+    { name: 'roll', detail: '() => string', info: 'Draw one value with the author’s weights. The draw is not kept.' },
+    list
+      ? { name: 'pin', detail: '(list) => void', info: 'Pin the placeholder to a list of text, after this run. One text pins a one-item list.' }
+      : { name: 'pin', detail: '(text) => void', info: 'Pin the placeholder to any text, after this run.' },
+    { name: 'unpin', detail: '() => void', info: 'Remove the pin that code set, after this run. The rolled value shows again.' },
+  ];
+}
 
 /** The members of one entry in `traits`. */
 export const TRAIT_ENTRY_FIELDS: readonly SurfaceEntry[] = [

@@ -364,7 +364,7 @@ describe('usesStatClock', () => {
 
 describe('executeStatCode placeholders', () => {
   const stat = makeStat({ id: 'a', max: 1000 });
-  const entry = (name: string, value: string, roll = () => value): SandboxPlaceholder => ({ name, value, values: [value], roll });
+  const entry = (name: string, value: string, roll = () => value): SandboxPlaceholder => ({ name, value, values: [value], text: value, roll });
   const run = (code: string, placeholders: SandboxPlaceholder[]) =>
     executeStatCode(code, [stat], stat, { placeholders });
 
@@ -388,18 +388,18 @@ describe('executeStatCode placeholders', () => {
 
 describe('executeStatCode placeholder writes', () => {
   const stat = makeStat({ id: 'a', max: 1000 });
-  const entry = (name: string, value: string): SandboxPlaceholder => ({ name, value, values: [value], roll: () => value });
+  const entry = (name: string, value: string): SandboxPlaceholder => ({ name, value, values: [value], text: value, roll: () => value });
   const run = (code: string, placeholders = [entry('Mood', 'calm'), entry('Hair', 'red')]) =>
     executeStatCode(code, [stat], stat, { placeholders });
 
   it('reads a changed value back as a write, leaving the value alone', async () => {
     await expect(run('placeholders.Mood.value = "Furious";'))
-      .resolves.toEqual({ value: null, error: null, placeholders: [{ name: 'Mood', text: 'Furious' }] });
+      .resolves.toEqual({ value: null, error: null, placeholders: [{ name: 'Mood', value: 'Furious' }] });
   });
 
   it('writes the text a value is set to even when it already reads that way, so it pins', async () => {
     await expect(run('placeholders.Mood.value = "calm";'))
-      .resolves.toEqual({ value: null, error: null, placeholders: [{ name: 'Mood', text: 'calm' }] });
+      .resolves.toEqual({ value: null, error: null, placeholders: [{ name: 'Mood', value: 'calm' }] });
   });
 
   it('writes nothing for an entry the code only reads', async () => {
@@ -408,17 +408,17 @@ describe('executeStatCode placeholder writes', () => {
 
   it('takes a string assigned to the entry itself as a write to its value', async () => {
     await expect(run('placeholders.Mood = "Furious"; return 1;'))
-      .resolves.toEqual({ value: 1, error: null, placeholders: [{ name: 'Mood', text: 'Furious' }] });
+      .resolves.toEqual({ value: 1, error: null, placeholders: [{ name: 'Mood', value: 'Furious' }] });
   });
 
   it('writes a number as its text', async () => {
     await expect(run('placeholders.Mood.value = 3;'))
-      .resolves.toEqual({ value: null, error: null, placeholders: [{ name: 'Mood', text: '3' }] });
+      .resolves.toEqual({ value: null, error: null, placeholders: [{ name: 'Mood', value: '3' }] });
   });
 
   it('writes each placeholder the run changed, in the order the map holds them', async () => {
     await expect(run('placeholders.Hair.value = "grey"; placeholders.Mood.value = "Furious";')).resolves.toEqual({
-      value: null, error: null, placeholders: [{ name: 'Mood', text: 'Furious' }, { name: 'Hair', text: 'grey' }],
+      value: null, error: null, placeholders: [{ name: 'Mood', value: 'Furious' }, { name: 'Hair', value: 'grey' }],
     });
   });
 
@@ -429,30 +429,30 @@ describe('executeStatCode placeholder writes', () => {
 
   it('keeps the last of a write and an unpin', async () => {
     await expect(run('placeholders.Mood.unpin(); placeholders.Mood.value = "Furious";'))
-      .resolves.toEqual({ value: null, error: null, placeholders: [{ name: 'Mood', text: 'Furious' }] });
+      .resolves.toEqual({ value: null, error: null, placeholders: [{ name: 'Mood', value: 'Furious' }] });
     await expect(run('placeholders.Mood.value = "Furious"; placeholders.Mood.unpin();'))
       .resolves.toEqual({ value: null, error: null, placeholders: [{ name: 'Mood', unpin: true }] });
   });
 
   it('reads pin() back as the same write a value assignment makes', async () => {
     await expect(run('placeholders.Mood.pin("Furious");'))
-      .resolves.toEqual({ value: null, error: null, placeholders: [{ name: 'Mood', text: 'Furious' }] });
+      .resolves.toEqual({ value: null, error: null, placeholders: [{ name: 'Mood', value: 'Furious' }] });
   });
 
   it('keeps the last of pin, value and unpin, whichever order code calls them', async () => {
     await expect(run('placeholders.Mood.pin("Furious"); placeholders.Mood.unpin();'))
       .resolves.toEqual({ value: null, error: null, placeholders: [{ name: 'Mood', unpin: true }] });
     await expect(run('placeholders.Mood.unpin(); placeholders.Mood.pin("Furious");'))
-      .resolves.toEqual({ value: null, error: null, placeholders: [{ name: 'Mood', text: 'Furious' }] });
+      .resolves.toEqual({ value: null, error: null, placeholders: [{ name: 'Mood', value: 'Furious' }] });
     await expect(run('placeholders.Mood.pin("Furious"); placeholders.Mood.value = "calm";'))
-      .resolves.toEqual({ value: null, error: null, placeholders: [{ name: 'Mood', text: 'calm' }] });
+      .resolves.toEqual({ value: null, error: null, placeholders: [{ name: 'Mood', value: 'calm' }] });
     await expect(run('placeholders.Mood.value = "calm"; placeholders.Mood.pin("Furious");'))
-      .resolves.toEqual({ value: null, error: null, placeholders: [{ name: 'Mood', text: 'Furious' }] });
+      .resolves.toEqual({ value: null, error: null, placeholders: [{ name: 'Mood', value: 'Furious' }] });
   });
 
   it('drops a pin() on a name the world has no placeholder for, and reports it', async () => {
     await expect(run('placeholders.Gone.pin("x"); placeholders.Mood.value = "Furious";')).resolves.toEqual({
-      value: null, error: null, placeholders: [{ name: 'Mood', text: 'Furious' }], unknownPlaceholders: ['Gone'],
+      value: null, error: null, placeholders: [{ name: 'Mood', value: 'Furious' }], unknownPlaceholders: ['Gone'],
     });
   });
 
@@ -466,7 +466,7 @@ describe('executeStatCode placeholder writes', () => {
   it('drops a write to a name the world has no placeholder for, and reports it, keeping the other writes', async () => {
     const code = 'placeholders.Nope = "x"; placeholders["Also Nope"] = { value: "y" }; placeholders.Gone.value = "z"; placeholders.Mood.value = "Furious";';
     await expect(run(code)).resolves.toEqual({
-      value: null, error: null, placeholders: [{ name: 'Mood', text: 'Furious' }], unknownPlaceholders: ['Nope', 'Also Nope', 'Gone'],
+      value: null, error: null, placeholders: [{ name: 'Mood', value: 'Furious' }], unknownPlaceholders: ['Nope', 'Also Nope', 'Gone'],
     });
   });
 
@@ -556,5 +556,81 @@ describe('executeStatCode traits', () => {
     const result = await run('traits.Cursed.enabled = true; throw new Error("late");');
     expect(result).toMatchObject({ value: null, kind: 'throw' });
     expect(result.traits).toBeUndefined();
+  });
+});
+
+// An Object reads every value in force at once, so its entry carries a list where a Wildcard carries one
+// text. The type `value` reads is the type `pin` takes, and the host fails a run that hands over the other.
+describe('executeStatCode by placeholder kind', () => {
+  const stat = makeStat({ id: 'a', max: 1000 });
+  const wildcard: SandboxPlaceholder =
+    { name: 'Mood', value: 'calm', values: ['calm', 'angry'], text: 'calm', roll: () => 'calm' };
+  const object: SandboxPlaceholder = {
+    name: 'Hair', value: ['Grey', 'Long'], values: ['Grey', 'Long'], text: 'Grey, Long', roll: () => 'Grey',
+  };
+  const run = (code: string) => executeStatCode(code, [stat], stat, { placeholders: [wildcard, object] });
+
+  it('reads an Object’s value as the list in force and its text as the join', async () => {
+    await expect(run('return placeholders.Hair.value.length === 2 && placeholders.Hair.value[1] === "Long"'
+      + ' && placeholders.Hair.text === "Grey, Long" ? 1 : 0;')).resolves.toEqual({ value: 1, error: null });
+  });
+
+  it('reads a Wildcard’s text as the same one string its value holds', async () => {
+    await expect(run('return placeholders.Mood.text === placeholders.Mood.value ? 1 : 0;'))
+      .resolves.toEqual({ value: 1, error: null });
+  });
+
+  it('lists every authored value on both kinds, the Wildcard’s unrolled ones included', async () => {
+    await expect(run('return placeholders.Mood.values.join("|") === "calm|angry"'
+      + ' && placeholders.Hair.values.join("|") === "Grey|Long" ? 1 : 0;')).resolves.toEqual({ value: 1, error: null });
+  });
+
+  it('pins an Object to the list it was handed', async () => {
+    await expect(run('placeholders.Hair.pin(["Grey", "Cropped, Short"]);')).resolves.toEqual({
+      value: null, error: null, placeholders: [{ name: 'Hair', value: ['Grey', 'Cropped, Short'] }],
+    });
+  });
+
+  it('pins an Object handed one text as a one-item list', async () => {
+    await expect(run('placeholders.Hair.pin("Grey");'))
+      .resolves.toEqual({ value: null, error: null, placeholders: [{ name: 'Hair', value: ['Grey'] }] });
+  });
+
+  it('follows the pin in text, so a later read of the same run sees the join', async () => {
+    await expect(run('placeholders.Hair.pin(["Grey", "Long"]);'
+      + ' return placeholders.Hair.text === "Grey, Long" ? 1 : 0;'))
+      .resolves.toMatchObject({ value: 1, error: null });
+  });
+
+  it('fails the run on a list handed to a Wildcard', async () => {
+    const result = await run('placeholders.Mood.pin(["angry"]);');
+    expect(result).toMatchObject({ value: null, kind: 'bad-write' });
+    expect(result.error).toContain('placeholders.Mood.value must be text');
+    expect(result.placeholders).toBeUndefined();
+  });
+
+  it('fails the run on a non-text item in an Object’s list', async () => {
+    const result = await run('placeholders.Hair.pin(["Grey", {}]);');
+    expect(result).toMatchObject({ value: null, kind: 'bad-write' });
+    expect(result.error).toContain('placeholders.Hair.value must be a list of text');
+  });
+
+  it('fails the run on an object handed to either kind', async () => {
+    await expect(run('placeholders.Hair.pin({});')).resolves.toMatchObject({ kind: 'bad-write' });
+    await expect(run('placeholders.Mood.pin({});')).resolves.toMatchObject({ kind: 'bad-write' });
+  });
+
+  it('releases an Object’s pin with unpin(), whatever the run pinned first', async () => {
+    await expect(run('placeholders.Hair.pin(["Grey"]); placeholders.Hair.unpin();'))
+      .resolves.toEqual({ value: null, error: null, placeholders: [{ name: 'Hair', unpin: true }] });
+  });
+
+  it('takes a list assigned to the entry itself as a list pin', async () => {
+    await expect(run('placeholders.Hair = ["Grey", "Long"];'))
+      .resolves.toEqual({ value: null, error: null, placeholders: [{ name: 'Hair', value: ['Grey', 'Long'] }] });
+  });
+
+  it('drops a write to text, which the prompt derives rather than stores', async () => {
+    await expect(run('placeholders.Hair.text = "Bald"; return 1;')).resolves.toEqual({ value: 1, error: null });
   });
 });

@@ -477,6 +477,7 @@ const GameViewer = ({
     setDisabledTraitIds,
     appliedTraitValues,
     setAppliedTraitValues,
+    codePins,
     setCodePins,
     recentStatChanges,
     setRecentStatChanges,
@@ -2288,7 +2289,12 @@ const GameViewer = ({
         const result = await runStatCodeTurn({
           stats, enabled, previous: before, asks, regenApplied: regen.applied, clock,
           traits: { ...held, world: { traits: authoredTraits, groups: traitGroups }, nameOf: (trait) => resolveTraitText(trait, trait.name) },
-          placeholders: { placeholders, rolls: sessionRolls, pins: preTurn ? pinsFor(preTurn.codePins ?? {}) : pins },
+          placeholders: {
+            placeholders, rolls: sessionRolls,
+            pins: preTurn ? pinsFor(preTurn.codePins ?? {}) : pins,
+            // The stored shape too, so an Object pinned to a list reads that list back rather than its join.
+            codePins: preTurn ? preTurn.codePins ?? {} : codePins,
+          },
           statNameOf: (stat) => resolvePH(stat.name),
         });
         setCodePins((prev) => withPinWrites(prev, result.pinWrites));
@@ -2312,7 +2318,7 @@ const GameViewer = ({
         console.error("Error processing stat code:", error);
       }
     },
-    [setPlayerStats, setRecentStatChanges, setHeldStatChanges, setCodePins, resolvePH, placeholders, sessionRolls, pins, pinsFor, activeTraits,
+    [setPlayerStats, setRecentStatChanges, setHeldStatChanges, codePins, setCodePins, resolvePH, placeholders, sessionRolls, pins, pinsFor, activeTraits,
       traits, chosenTraits, disabledTraitIds, appliedTraitValues, authoredTraits, authoredStats, traitGroups, resolveTraitText,
       setPlayerTraits, setDisabledTraitIds, setAppliedTraitValues, addLogEntry],
   );

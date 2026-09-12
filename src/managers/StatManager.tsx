@@ -22,6 +22,7 @@ import { HintInfo } from "@/components/SettingsRows";
 import { CODE_BOUND_FIELDS, executeStatCode, type CodeBoundField } from "@/lib/statCodeExecutor";
 import { statCodeName, statCodeNamed } from "@/lib/statCodeNames";
 import { useRenameField } from "@/lib/useCodeRename";
+import { codePinText } from "@/lib/placeholderPins";
 import { sandboxPlaceholders } from "@/lib/statCodePlaceholders";
 import { sandboxTraits } from "@/lib/statCodeTraits";
 import { StatCodeTemplateDialog } from "@/components/modals/StatCodeTemplateDialog";
@@ -502,7 +503,7 @@ const StatManager = ({ stat, tab, onTabChange, focusField }: {
                     return bound === undefined ? [] : [`${BOUND_LABELS[field]}: ${bound}`];
                   }),
                   ...(result.placeholders ?? []).map((write) =>
-                    ('unpin' in write ? `${write.name} unpinned` : `${write.name} = ${write.text}`)),
+                    ('unpin' in write ? `${write.name} unpinned` : `${write.name} = ${codePinText(write.value)}`)),
                   ...(result.traits ?? []).map((write) => `${write.name} switched ${write.enabled ? 'on' : 'off'}`),
                 ];
                 if (parts.length) setCodeResult(parts.join(' · '));

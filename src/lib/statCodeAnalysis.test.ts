@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { statCodeCompletions, statCodeDiagnostics, summarizeProblems } from './statCodeAnalysis';
 import { BUILT_IN_TEMPLATES } from './statCodeTemplates';
-import { PLACEHOLDER_ENTRY_FIELDS, STAT_FIELDS, TRAIT_ENTRY_FIELDS } from './statCodeSurface';
+import { placeholderEntryFields, STAT_FIELDS, TRAIT_ENTRY_FIELDS } from './statCodeSurface';
 import { phValues } from '@/test/placeholderValues';
 import { encodePlaceholderToken } from './placeholders';
 import type { Placeholder } from '@/types';
@@ -407,9 +407,28 @@ describe('placeholders in stat code', () => {
   });
 
   it('offers the entry members after a placeholder, by dot or by bracket', () => {
-    const members = PLACEHOLDER_ENTRY_FIELDS.map(entry => entry.name);
+    const members = placeholderEntryFields('Wildcard').map(entry => entry.name);
     expect(labels('return placeholders.Mood.|', { placeholders: { list: world } })).toEqual(members);
     expect(labels('return placeholders["Eye Color"].|', { placeholders: { list: world } })).toEqual(members);
+  });
+
+  // The kind is authored, so the popup can say which type `value` reads and `pin` takes before a run.
+  it('types value and pin by the entry’s kind', () => {
+    const object = ph('hair', 'Hair', { roll: false });
+    const list = { placeholders: { list: [...world, object] } };
+    const detailOf = (doc: string, name: string) =>
+      completeAt(doc, list)?.options.find((option) => option.label === name)?.detail;
+    expect(detailOf('return placeholders.Mood.|', 'value')).toBe('string');
+    expect(detailOf('return placeholders.Mood.|', 'pin')).toBe('(text) => void');
+    expect(detailOf('return placeholders.Hair.|', 'value')).toBe('string[]');
+    expect(detailOf('return placeholders.Hair.|', 'pin')).toBe('(list) => void');
+    expect(detailOf('return placeholders["Hair"].|', 'value')).toBe('string[]');
+  });
+
+  it('types an entry by the last authored of two sharing a name, as the map keys it', () => {
+    const list = { placeholders: { list: [ph('m1', 'Mood'), ph('m2', 'Mood', { roll: false })] } };
+    expect(completeAt('return placeholders.Mood.|', list)?.options.find((o) => o.label === 'value')?.detail)
+      .toBe('string[]');
   });
 
   it('offers placeholders among the globals', () => {
