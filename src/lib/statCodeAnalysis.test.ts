@@ -354,12 +354,12 @@ describe('placeholders in stat code', () => {
   it('flags a name no placeholder has, and names the one it was reaching for', () => {
     const [problem] = statCodeDiagnostics('return placeholders.Mod.value.length;', { placeholders: { list: world } });
     expect(problem.severity).toBe('error');
-    expect(problem.message).toBe('No placeholder is named “Mod”. Did you mean “Mood”?');
+    expect(problem.message).toBe('Unknown placeholder name “Mod”. Did you mean “Mood”?');
   });
 
   it('flags a name no placeholder has, reached through pin()', () => {
     const [problem] = statCodeDiagnostics('placeholders.Nope.pin("x");', { placeholders: { list: world } });
-    expect(problem).toMatchObject({ severity: 'error', message: 'No placeholder is named “Nope”.' });
+    expect(problem).toMatchObject({ severity: 'error', message: 'Unknown placeholder name “Nope”.' });
   });
 
   it('warns on a shared name reached through pin(), and names the placeholder that wins', () => {
@@ -370,12 +370,12 @@ describe('placeholders in stat code', () => {
 
   it('flags an unknown name in bracket syntax', () => {
     expect(messages('return placeholders["Eye Colour"].value.length;', { placeholders: { list: world } }))
-      .toEqual(['No placeholder is named “Eye Colour”. Did you mean “Eye Color”?']);
+      .toEqual(['Unknown placeholder name “Eye Colour”. Did you mean “Eye Color”?']);
   });
 
   it('flags every name when the world has no placeholders', () => {
     expect(messages('return placeholders.Mood.value.length;', { placeholders: { list: [] } }))
-      .toEqual(['No placeholder is named “Mood”.']);
+      .toEqual(['Unknown placeholder name “Mood”.']);
   });
 
   it('keeps quiet without a world to check against, and about a name computed at run time', () => {
@@ -491,7 +491,7 @@ describe('placeholders in stat code', () => {
       const [problem] = statCodeDiagnostics('placeholders.Molly.Hiar.pin("x");', scoped);
       expect(problem).toMatchObject({
         severity: 'error',
-        message: '“Molly” has no placeholder named “Hiar”. Did you mean “Hair”?',
+        message: 'Unknown placeholder name “Hiar” under “Molly”. Did you mean “Hair”?',
       });
       // Pointed at the bad segment, not at the whole chain.
       expect('placeholders.Molly.Hiar.pin("x");'.slice(problem.from, problem.to)).toBe('Hiar');
@@ -499,15 +499,15 @@ describe('placeholders in stat code', () => {
 
     it('reports a bad segment once for a chain, not once per nesting', () => {
       expect(messages('placeholders.Molly.Hiar.Shade.pin("x");', scoped))
-        .toEqual(['“Molly” has no placeholder named “Hiar”. Did you mean “Hair”?']);
+        .toEqual(['Unknown placeholder name “Hiar” under “Molly”. Did you mean “Hair”?']);
     });
 
     it('warns on a child whose name loses to a member every placeholder has', () => {
       const holder = ph('holder', 'Holder', { values: [chip('child')] });
       const shadowed = { placeholders: { list: [holder, ph('child', 'value', { ownerId: 'holder' })] } };
       expect(messages('placeholders.Holder.value = "x";', shadowed)).toEqual([
-        'Every placeholder has a value of its own, so this reads that. '
-        + 'The placeholder named “value” under “Holder” can’t be reached from code.',
+        'Every placeholder has a value member, so this reads the member. '
+        + 'The placeholder named “value” under “Holder” is not reachable from code.',
       ]);
     });
 

@@ -441,19 +441,19 @@ describe('reference-integrity rules', () => {
     const beforeOnly = only(boxed({ beforeCode: miss, code: hit }), 'stat-code-unknown-stat');
     expect(beforeOnly).toHaveLength(1);
     expect(beforeOnly[0].message).toBe(
-      'Before The AI code on “Mana” looks up a stat named “Vigour”, which doesn’t exist',
+      'Before The AI code on “Mana” looks up a stat named “Vigour”, which does not exist',
     );
 
     const afterOnly = only(boxed({ beforeCode: hit, code: miss }), 'stat-code-unknown-stat');
     expect(afterOnly).toHaveLength(1);
     expect(afterOnly[0].message).toBe(
-      'After The AI code on “Mana” looks up a stat named “Vigour”, which doesn’t exist',
+      'After The AI code on “Mana” looks up a stat named “Vigour”, which does not exist',
     );
 
     // One miss per box, so an author who typed it twice is told twice rather than once.
     expect(only(boxed({ beforeCode: miss, code: miss }), 'stat-code-unknown-stat').map((f) => f.message)).toEqual([
-      'Before The AI code on “Mana” looks up a stat named “Vigour”, which doesn’t exist',
-      'After The AI code on “Mana” looks up a stat named “Vigour”, which doesn’t exist',
+      'Before The AI code on “Mana” looks up a stat named “Vigour”, which does not exist',
+      'After The AI code on “Mana” looks up a stat named “Vigour”, which does not exist',
     ]);
   });
 

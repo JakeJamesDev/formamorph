@@ -297,8 +297,8 @@ describe('a stat with code in both boxes', () => {
   it('reports each box’s own miss under that box’s name', () => {
     const found = runRules(twoBoxes).filter((f) => f.ruleId === 'stat-code-unknown-stat').map((f) => f.message);
     expect(found).toEqual([
-      'Before The AI code on “Mana” looks up a stat named “Wolf Power”, which doesn’t exist',
-      'After The AI code on “Mana” looks up a stat named “Bear Power”, which doesn’t exist',
+      'Before The AI code on “Mana” looks up a stat named “Wolf Power”, which does not exist',
+      'After The AI code on “Mana” looks up a stat named “Bear Power”, which does not exist',
     ]);
   });
 

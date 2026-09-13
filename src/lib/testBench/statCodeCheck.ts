@@ -78,7 +78,7 @@ export async function checkStatCode(world: RuleWorld): Promise<Finding[]> {
     }
     const unknown = unknownNames(result);
     return unknown
-      ? finding(STAT_CODE_UNKNOWN_NAME, `${label} code on “${name}” writes where the world has nothing: ${unknown}`, item)
+      ? finding(STAT_CODE_UNKNOWN_NAME, `${label} code on “${name}” writes to unknown names. Writes ignored: ${unknown}`, item)
       : null;
   }));
   return results.filter((found): found is Finding => found !== null);

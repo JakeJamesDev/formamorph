@@ -210,7 +210,7 @@ export function fillTemplate(code: string, values: Record<string, string>): stri
  * The bundled templates, both boxes' menus in one list. Eight value formulas rather than a longer literal
  * list: a signed rate covers decay and growth, a comparison slot covers both threshold directions, a
  * direction slot covers counting up and down, and "regen toward target" with the target set to the stat's
- * max is the soft-capped regen. Those eight and Bound From Another Stat all read the turn, so the after
+ * max is the soft-capped regen. Those eight and Bound From Another Stat run after the AI, so the after
  * menu holds the nine of them.
  *
  * The before menu holds the three setup shapes instead: pin a placeholder, switch a trait, and set an
@@ -302,7 +302,7 @@ self.{{bound:choice(max|min|regen)=max}} = Math.round(source * {{factor:number=2
     id: 'builtin-placeholder-follows-stat',
     timing: 'before',
     name: 'Placeholder Follows This Stat',
-    description: 'Pin a placeholder to one of its values by where this stat sits in its range: the first value at Min, the last at Max.',
+    description: "Map this stat's range onto the placeholder's values. Min pins the first value. Max pins the last.",
     code: `const target = placeholders[{{placeholder:placeholder}}];
 const span = self.max - self.min || 1;
 const band = Math.floor((self.value - self.min) / span * target.values.length);
@@ -312,7 +312,7 @@ if (target.values.length) target.pin(target.values[Math.max(0, Math.min(band, ta
     id: 'builtin-trait-by-threshold',
     timing: 'before',
     name: 'Trait by Threshold',
-    description: 'Switch a trait on while this stat is past a line, and off once it comes back. Code can switch a trait the player can’t toggle.',
+    description: 'Switch a trait on while this stat is past a threshold, and off when it returns. Code can switch a trait the player cannot toggle.',
     code: `traits[{{trait:trait}}].enabled = self.value {{comparison:choice(>=|<=)=>=}} {{threshold:number=50}};`,
   },
   {
