@@ -1,6 +1,8 @@
 # 03: Test Code And Templates Per Box
 
-Status: ready-for-agent
+Status: ready-for-human
+Status note: Done in 04290a0c. Two calls beyond the ticket, both flagged: the menus are strictly disjoint, and the before box tests on the opening-turn clock rather than the after box's one-hour turn. The template pack .json gains a timing field at pack version 1.
+Base: 9b964be4
 Blocked by: 02
 Recommended model: Claude Sonnet 5 (`claude-sonnet-5`)
 Reasoning effort: medium
@@ -15,12 +17,12 @@ Templates carry a timing. The before menu offers setup templates: pin a placehol
 
 ## Acceptance criteria
 
-- [ ] Each editor has a Test Code button; the before box's run reads zeros for `delta` and reports its own writes
-- [ ] A change in one box clears that box's result and leaves the other's
-- [ ] The before menu and the after menu list different templates, and every template names a timing
-- [ ] A before-box template inserts into the before box and runs under Test Code there
-- [ ] Guide and help show the turn order and both boxes
-- [ ] Four gates green; graph updated
+- [x] Each editor has a Test Code button; the before box's run reads zeros for `delta` and reports its own writes
+- [x] A change in one box clears that box's result and leaves the other's
+- [x] The before menu and the after menu list different templates, and every template names a timing
+- [x] A before-box template inserts into the before box and runs under Test Code there
+- [x] Guide and help show the turn order and both boxes
+- [x] Four gates green; graph updated
 
 ## Blocked by
 

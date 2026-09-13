@@ -9,6 +9,8 @@
  * `choice` and `text` emit their value verbatim (which is what lets a choice supply a comparison operator).
  */
 
+import type { StatCodeTiming } from './statCodeTiming';
+
 export const SLOT_TYPES = ['stat', 'placeholder', 'trait', 'number', 'daypart', 'choice', 'text'] as const;
 export type SlotType = (typeof SLOT_TYPES)[number];
 
@@ -36,7 +38,20 @@ export interface StatCodeTemplate {
   name: string;
   description: string;
   code: string;
+  /** Which box the template is written for. Each box's menu lists only its own, so a template that reads
+   *  the AI's ask is never offered where the ask has not happened. */
+  timing: StatCodeTiming;
 }
+
+/** A stored or imported template's timing. No timing means the after box. */
+export const timingOf = (template: Partial<Pick<StatCodeTemplate, 'timing'>>): StatCodeTiming =>
+  template.timing === 'before' ? 'before' : 'after';
+
+/** The templates one box's menu offers, in their given order. */
+export const templatesForTiming = (
+  templates: readonly StatCodeTemplate[],
+  timing: StatCodeTiming,
+): StatCodeTemplate[] => templates.filter((template) => timingOf(template) === timing);
 
 /** A template's slots plus anything malformed in its source, so a bad template shows an error instead of
  *  silently dropping a control. */
@@ -192,16 +207,21 @@ export function fillTemplate(code: string, values: Record<string, string>): stri
 }
 
 /**
- * The bundled templates. Eight value formulas rather than a longer literal list: a signed rate covers
- * decay and growth, a comparison slot covers both threshold directions, a direction slot covers counting
- * up and down, and "regen toward target" with the target set to the stat's max is the soft-capped regen.
- * Three more show each write the sandbox reads back: a bound on `self`, a placeholder pin, a trait switch.
+ * The bundled templates, both boxes' menus in one list. Eight value formulas rather than a longer literal
+ * list: a signed rate covers decay and growth, a comparison slot covers both threshold directions, a
+ * direction slot covers counting up and down, and "regen toward target" with the target set to the stat's
+ * max is the soft-capped regen. Those eight and Bound From Another Stat all read the turn, so the after
+ * menu holds the nine of them.
+ *
+ * The before menu holds the three setup shapes instead: pin a placeholder, switch a trait, and set an
+ * opening value. Each is a write the AI should read on the same turn, which is the box's whole point.
  *
  * Each reads its own bounds from the stat it belongs to instead of assuming 0–100.
  */
 export const BUILT_IN_TEMPLATES: readonly StatCodeTemplate[] = [
   {
     id: 'builtin-weighted-blend',
+    timing: 'after',
     name: 'Weighted Blend',
     description: 'Combine two other stats. A weight of 0.5 is a plain average; 1 is all of the first stat.',
     code: `const a = stats[{{firstStat:stat}}].value;
@@ -211,6 +231,7 @@ return a * weight + b * (1 - weight);`,
   },
   {
     id: 'builtin-inverse',
+    timing: 'after',
     name: 'Inverse of a Stat',
     description: 'Mirror another stat within its own range — high Rest becomes low Fatigue.',
     code: `const source = stats[{{source:stat}}];
@@ -218,6 +239,7 @@ return source.max - source.value;`,
   },
   {
     id: 'builtin-threshold-flag',
+    timing: 'after',
     name: 'Threshold Flag',
     description: 'Snap to this stat’s max or min depending on whether another stat has crossed a line.',
     code: `const source = stats[{{source:stat}}].value;
@@ -225,6 +247,7 @@ return source {{comparison:choice(>=|<=)=>=}} {{threshold:number=50}} ? self.max
   },
   {
     id: 'builtin-per-turn-change',
+    timing: 'after',
     name: 'Per-Turn Change',
     description: 'Drift by a fixed amount per story hour. A negative rate drains (hunger, fuel), a positive one fills. Stacks with Regen, so set one or the other.',
     code: `const ratePerHour = {{ratePerHour:number=-5}};
@@ -232,6 +255,7 @@ return self.value + ratePerHour * deltaHours;`,
   },
   {
     id: 'builtin-timer',
+    timing: 'after',
     name: 'Timer',
     description: 'Sweep across this stat’s range over a set number of story hours, counting up to it or down from it.',
     code: `const totalHours = {{totalHours:number=24}};
@@ -241,6 +265,7 @@ return self.min + (self.max - self.min) * progress;`,
   },
   {
     id: 'builtin-daypart-modifier',
+    timing: 'after',
     name: 'Daypart Modifier',
     description: 'Follow another stat, with a bonus that only applies during one part of the day.',
     code: `const base = stats[{{base:stat}}].value;
@@ -248,6 +273,7 @@ return base + (daypart === {{when:daypart=night}} ? {{bonus:number=20}} : 0);`,
   },
   {
     id: 'builtin-random-roll',
+    timing: 'after',
     name: 'Random Per-Turn Roll',
     description: 'A fresh random value each turn, spread across this stat’s range. Use only one of these per world — a second would draw the same numbers.',
     code: `// elapsedHours keeps the roll moving even when the clock seed hasn't changed between turns.
@@ -256,6 +282,7 @@ return self.min + (self.max - self.min) * (roll / 100);`,
   },
   {
     id: 'builtin-regen-toward-target',
+    timing: 'after',
     name: 'Regen Toward Target',
     description: 'Ease toward a resting value from either side, slowing as it arrives. Set the target to this stat’s max for a soft-capped regen. Stacks with Regen, so set one or the other.',
     code: `const value = self.value;
@@ -265,6 +292,7 @@ return value + (target - value) * rate * deltaHours;`,
   },
   {
     id: 'builtin-bound-from-stat',
+    timing: 'after',
     name: 'Bound From Another Stat',
     description: 'Set this stat’s Min, Max, or Regen from another stat times a factor. The value keeps its normal changes.',
     code: `const source = stats[{{source:stat}}].value;
@@ -272,6 +300,7 @@ self.{{bound:choice(max|min|regen)=max}} = Math.round(source * {{factor:number=2
   },
   {
     id: 'builtin-placeholder-follows-stat',
+    timing: 'before',
     name: 'Placeholder Follows This Stat',
     description: 'Pin a placeholder to one of its values by where this stat sits in its range: the first value at Min, the last at Max.',
     code: `const target = placeholders[{{placeholder:placeholder}}];
@@ -281,9 +310,20 @@ if (target.values.length) target.pin(target.values[Math.max(0, Math.min(band, ta
   },
   {
     id: 'builtin-trait-by-threshold',
+    timing: 'before',
     name: 'Trait by Threshold',
     description: 'Switch a trait on while this stat is past a line, and off once it comes back. Code can switch a trait the player can’t toggle.',
     code: `traits[{{trait:trait}}].enabled = self.value {{comparison:choice(>=|<=)=>=}} {{threshold:number=50}};`,
+  },
+  {
+    id: 'builtin-opening-value',
+    timing: 'before',
+    name: 'Opening Turn Value',
+    description: 'Set a starting value on the opening turn and leave every turn after it alone. Use it to draw a value the first narration should already read.',
+    // The before box reads the clock at turn start, so the opening turn is the one with no hours behind
+    // it. Returning nothing leaves the value where the turn found it.
+    code: `if (elapsedHours > 0) return;
+return {{openingValue:number=50}};`,
   },
 ];
 

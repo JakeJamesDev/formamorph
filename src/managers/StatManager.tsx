@@ -5,9 +5,8 @@ import { useEditingDraft } from "@/lib/useEditingDraft";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Hint } from "@/components/ui/typography";
-import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Code, LayoutTemplate } from "lucide-react";
+import { Code } from "lucide-react";
 import { Tabs, TabsContent } from "@/components/ui/tabs";
 import { PanelTabsList } from "@/components/ui/panel-tabs";
 import {
@@ -19,15 +18,9 @@ import {
 } from "@/components/ui/select";
 import { HelpButton } from "@/components/HelpButton";
 import { HintInfo } from "@/components/SettingsRows";
-import { CODE_BOUND_FIELDS, executeStatCode, type CodeBoundField } from "@/lib/statCodeExecutor";
 import { statCodeName, statCodeNamed } from "@/lib/statCodeNames";
 import { useRenameField } from "@/lib/useCodeRename";
-import { codePinText } from "@/lib/placeholderPins";
-import { sandboxPlaceholders } from "@/lib/statCodePlaceholders";
-import { placeholderPathLabel } from "@/lib/statCodePaths";
-import { sandboxTraits } from "@/lib/statCodeTraits";
-import { StatCodeTemplateDialog } from "@/components/modals/StatCodeTemplateDialog";
-import { CodeArea } from "@/components/prompt/CodeArea";
+import { StatCodeBox, type StatCodeBoxContext } from "./StatCodeBox";
 import { MultiSelect } from "@/components/ui/multi-select";
 import { PlaceholderNameField } from "@/components/prompt/PlaceholderField";
 import { useBodyMorphSources } from "@/lib/useBodyMorphNames";
@@ -41,9 +34,6 @@ import type { FocusFieldHint, Stat, StatDescriptor, StatType, ThresholdUnit } fr
 const AVAILABILITY_INFO = `**Enabled** — the stat is active. Off keeps it inactive until a trait enables it. An inactive stat is not shown to the player or sent to the AI, and its Regen and Code do not run.
 
 **Hidden** — the stat is not shown to the player. It is still sent to the AI, and its Regen and Code run. Use it for dice rolls, cooldowns, and other bookkeeping.`;
-
-/** Test Code names each bound a run wrote with its Details field label. */
-const BOUND_LABELS: Record<CodeBoundField, string> = { min: "Min", max: "Max", regen: "Regen" };
 
 /** The stat being edited — a loose, partial Stat while fields are filled in. */
 type EditingStat = Partial<Stat>;
@@ -75,17 +65,6 @@ const StatManager = ({ stat, tab, onTabChange, focusField }: {
     threshold: "",
     description: "",
   });
-  /** What the last Test Code run wrote: the value, each bound, each placeholder, then each trait switch, as
-   *  one line. Null when it wrote nothing. */
-  const [codeResult, setCodeResult] = useState<string | null>(null);
-  const [codeError, setCodeError] = useState<string | null>(null);
-  /** The writes the last run made that did nothing: unknown names, and `acquired`. */
-  const [codeWarnings, setCodeWarnings] = useState<string[]>([]);
-  /** What the editor's own reader found, phrased for the test row. Null when it found nothing. */
-  const [codeProblems, setCodeProblems] = useState<string | null>(null);
-  const [isTestingCode, setIsTestingCode] = useState(false);
-  const [templatesOpen, setTemplatesOpen] = useState(false);
-
   const writeStat = useCallback((next: EditingStat) => updateStat(next as Stat), [updateStat]);
   const { draft: editingStat, apply } = useEditingDraft<EditingStat>(stat, writeStat, normalizeStat);
 
@@ -123,23 +102,14 @@ const StatManager = ({ stat, tab, onTabChange, focusField }: {
     [traits, placeholders],
   );
   const placeholderNames = useMemo(() => placeholders.map((entry) => entry.name), [placeholders]);
-
-  /** Drop what the last test said. Editing the code makes every part of that report stale together. */
-  const clearTestReport = useCallback(() => {
-    setCodeResult(null);
-    setCodeError(null);
-    setCodeWarnings([]);
-    setCodeProblems(null);
-  }, []);
+  // One surface for both boxes: what completes in either is what runs in either.
+  const codeContext = useMemo<StatCodeBoxContext>(() => ({
+    codeNamedStats, statNames, selfName: selfCodeName,
+    placeholders: codePlaceholders, placeholderNames, traitNames, traits,
+  }), [codeNamedStats, statNames, selfCodeName, codePlaceholders, placeholderNames, traitNames, traits]);
 
   const handleChange = (field: string, value: unknown) => {
     apply({ [field]: value } as EditingStat);
-
-    // Reset code test results when code changes
-    if (field === "code") {
-      setCodeResult(null);
-      setCodeError(null);
-    }
   };
 
   const handleTypeChange = (value: StatType) => {
@@ -429,7 +399,7 @@ const StatManager = ({ stat, tab, onTabChange, focusField }: {
   );
 
   const code = (
-    <div className="space-y-2">
+    <div className="space-y-4">
       <div className="flex items-center gap-2">
         <Code className="h-4 w-4 flex-shrink-0 text-muted-foreground" />
         <Label>Dynamic Value Calculation</Label>
@@ -438,133 +408,24 @@ const StatManager = ({ stat, tab, onTabChange, focusField }: {
 
       <Hint>Code can set this stat&apos;s value, Min, Max, or Regen, pin a placeholder, or switch a trait.</Hint>
       <Hint>
-        Before The AI runs at the start of the turn, so the AI reads what it writes. After The AI runs once
-        the AI&apos;s changes and Regen land. An empty box does not run.
+        A turn runs Before The AI, then the AI&apos;s changes, then Regen, then After The AI. An empty box
+        does not run.
       </Hint>
 
-      <CodeArea
+      <StatCodeBox
+        timing="before"
+        stat={{ ...editingStat, id: stat.id }}
         value={editingStat.beforeCode || ""}
         onChange={(beforeCode) => handleChange("beforeCode", beforeCode)}
-        ariaLabel="Stat Code Before The AI"
-        statNames={statNames}
-        selfName={selfCodeName}
-        placeholders={codePlaceholders}
-        traits={traitNames}
-        label="Before The AI"
-        placeholder="// Return a number. Start typing to see what you can use."
-        rows={6}
+        context={codeContext}
       />
-
-      <StatCodeTemplateDialog
-        open={templatesOpen}
-        onOpenChange={setTemplatesOpen}
-        stats={codeNamedStats}
-        currentStatId={stat.id}
-        hasExistingCode={!!editingStat.code?.trim()}
-        onInsert={(code) => handleChange("code", code)}
-        placeholderNames={placeholderNames}
-        traitNames={traitNames}
-      />
-
-      <div className="flex items-center gap-2">
-        <Button variant="outline" size="sm" className="ml-auto" onClick={() => setTemplatesOpen(true)}>
-          <LayoutTemplate className="h-4 w-4 mr-1" />
-          Templates
-        </Button>
-      </div>
-
-      <CodeArea
+      <StatCodeBox
+        timing="after"
+        stat={{ ...editingStat, id: stat.id }}
         value={editingStat.code || ""}
-        onChange={(code) => { clearTestReport(); handleChange("code", code); }}
-        ariaLabel="Stat Code After The AI"
-        statNames={statNames}
-        selfName={selfCodeName}
-        placeholders={codePlaceholders}
-        traits={traitNames}
-        // Its caption is the section heading, which full screen leaves behind — so the field names
-        // itself in the toolbar and stays labeled in both states.
-        label="After The AI"
-        // One line rather than a worked example: the completions, the ? and Templates each teach
-        // more of the sandbox than a sample could, and four lines filled the box they sat in.
-        // Short enough not to wrap in the panel — Templates is a labeled button right above this.
-        placeholder="// Return a number. Start typing to see what you can use."
-        rows={6}
+        onChange={(nextCode) => handleChange("code", nextCode)}
+        context={codeContext}
       />
-
-      <div className="flex justify-between items-center gap-2">
-        <Button
-          onClick={async () => {
-            setIsTestingCode(true);
-            clearTestReport();
-
-            const source = editingStat.code ?? '';
-            try {
-              // Only the editor's chunk holds the reader, and CodeArea fetches that chunk on
-              // demand — so this stays off the world editor's own bundle.
-              const { statCodeDiagnostics, summarizeProblems } = await import('@/lib/statCodeAnalysis');
-              setCodeProblems(summarizeProblems(statCodeDiagnostics(source, {
-                placeholders: codePlaceholders, traits: traitNames, statNames, selfName: selfCodeName,
-              })));
-            } catch {
-              // What the run itself found is the point; the count is what the editor adds to it.
-            }
-
-            try {
-              // No playthrough behind the editor: an unrolled placeholder reads as a fresh draw, and the
-              // player has no traits. A switch is reported here and never applied.
-              const placeholderEntries = sandboxPlaceholders({ placeholders, owners: placeholderOwners, rolls: {} });
-              const traitEntries = sandboxTraits(
-                { acquired: [], disabledTraitIds: [], appliedValues: {}, world: { traits, groups: [] } },
-                placeholders,
-              );
-              const result = await executeStatCode(
-                source, codeNamedStats, { ...(editingStat as Stat), name: selfCodeName },
-                { placeholders: placeholderEntries, traits: traitEntries },
-              );
-              if (result.error) {
-                setCodeError(result.error);
-              } else {
-                const parts = [
-                  ...(result.value !== null ? [`Result: ${result.value}`] : []),
-                  ...CODE_BOUND_FIELDS.flatMap((field) => {
-                    const bound = result.bounds?.[field];
-                    return bound === undefined ? [] : [`${BOUND_LABELS[field]}: ${bound}`];
-                  }),
-                  ...(result.placeholders ?? []).map((write) => {
-                    // The path the code wrote, not the placeholder's bare name: that is what the author typed.
-                    const at = placeholderPathLabel(write.path);
-                    return 'unpin' in write ? `${at} unpinned` : `${at} = ${codePinText(write.value)}`;
-                  }),
-                  ...(result.traits ?? []).map((write) => `${write.name} switched ${write.enabled ? 'on' : 'off'}`),
-                ];
-                if (parts.length) setCodeResult(parts.join(' · '));
-                setCodeWarnings([
-                  ...(result.unknownPlaceholders ? [`No placeholder answers these paths, so code did not change them: ${result.unknownPlaceholders.join(', ')}.`] : []),
-                  ...(result.unknownTraits ? [`No trait has these names, so code did not switch them: ${result.unknownTraits.join(', ')}.`] : []),
-                  ...(result.acquiredWrites ? [`Code can’t change acquired, so these writes did nothing: ${result.acquiredWrites.join(', ')}.`] : []),
-                ]);
-              }
-            } catch (error) {
-              setCodeError((error as Error).message);
-            } finally {
-              setIsTestingCode(false);
-            }
-          }}
-          disabled={isTestingCode || !editingStat.code}
-          variant="outline"
-        >
-          {isTestingCode ? "Testing..." : "Test Code"}
-        </Button>
-
-        <div className="min-w-0 text-right">
-          {codeResult !== null && <div className="text-success">{codeResult}</div>}
-          {codeError && <div className="text-destructive text-label">Error: {codeError}</div>}
-          {codeWarnings.map((warning) => <div key={warning} className="text-warning text-label">{warning}</div>)}
-          {/* Always beside what the run reported, never instead of it: a run says what the code did
-              this once, which is silent about a typo on a branch it didn't take. */}
-          {codeProblems && <div className="text-warning text-label">{codeProblems}</div>}
-        </div>
-      </div>
     </div>
   );
 

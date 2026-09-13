@@ -9,7 +9,7 @@
 
 import { openDatabase, promisifyRequest } from '@/lib/idb';
 import { randomUUID } from '@/lib/uuid';
-import { isBuiltInTemplate, type StatCodeTemplate } from '@/lib/statCodeTemplates';
+import { isBuiltInTemplate, timingOf, type StatCodeTemplate } from '@/lib/statCodeTemplates';
 import { APP_VERSION } from '@/lib/version';
 
 const DB_NAME = 'statTemplatesDB';
@@ -32,11 +32,13 @@ export const TEMPLATE_PACK_VERSION = 1;
 let dbPromise: Promise<IDBDatabase> | null = null;
 const connect = () => (dbPromise ??= openDatabase(DB_NAME, DB_VERSION, [{ name: STORE_NAME, keyPath: 'id' }]));
 
-/** Every saved template, newest edits last as stored (the UI sorts by name). */
+/** Every saved template, newest edits last as stored (the UI sorts by name). A row with no timing reads
+ *  back as an after-the-AI one. */
 export async function listUserTemplates(): Promise<StatCodeTemplate[]> {
   const db = await connect();
   const store = db.transaction([STORE_NAME], 'readonly').objectStore(STORE_NAME);
-  return promisifyRequest<StatCodeTemplate[]>(store.getAll());
+  const stored = await promisifyRequest<StatCodeTemplate[]>(store.getAll());
+  return stored.map((template) => ({ ...template, timing: timingOf(template) }));
 }
 
 /** Insert or update one template. A blank id means "new", and a built-in id is refused so a duplicated
@@ -45,6 +47,7 @@ export async function saveUserTemplate(template: StatCodeTemplate): Promise<Stat
   const stored: StatCodeTemplate = {
     ...template,
     id: template.id && !isBuiltInTemplate(template.id) ? template.id : randomUUID(),
+    timing: timingOf(template),
   };
   const db = await connect();
   const store = db.transaction([STORE_NAME], 'readwrite').objectStore(STORE_NAME);
@@ -90,6 +93,7 @@ export function parseTemplatePack(json: string): StatCodeTemplate[] {
     name: entry.name,
     description: typeof entry.description === 'string' ? entry.description : '',
     code: entry.code,
+    timing: timingOf(entry),
   }));
 }
 

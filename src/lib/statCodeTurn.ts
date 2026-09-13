@@ -11,10 +11,9 @@ import {
   activeTraits, applyCodeTraitSwitches, withCodeBounds, type AppliedTraitValues, type CodeTraitSwitch,
   type TraitRuntimeState,
 } from './traitRuntime';
+import type { StatCodeTiming } from './statCodeTiming';
 import { clamp } from './utils';
 
-/** Where in the turn a run sits: before the AI calls, or after the asks and the regen. */
-export type StatCodeTiming = 'before' | 'after';
 
 /** The box a run reads on one stat, empty where that stat leaves the box blank. */
 export const boxCode = (stat: Pick<PlayerStat, 'beforeCode' | 'code'>, timing: StatCodeTiming): string =>
