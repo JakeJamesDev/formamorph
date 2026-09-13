@@ -1,5 +1,5 @@
 import { useRef, useState, type ReactElement } from 'react';
-import { FolderPlus, FolderSearch, Trash2 } from 'lucide-react';
+import { FolderPlus, FolderSearch, RefreshCw, Trash2 } from 'lucide-react';
 import {
   ContextMenu,
   ContextMenuContent,
@@ -39,6 +39,7 @@ export function LibraryTileContextMenu({
   renderedIds,
   baseCols,
   onOpenGroup,
+  onCheckUpdates,
   onPublish,
   onDelete,
 }: {
@@ -50,6 +51,8 @@ export function LibraryTileContextMenu({
   renderedIds: string[];
   baseCols: number;
   onOpenGroup: (groupId: string) => void;
+  /** Checks this item for source updates, on the tabs whose tiles worlds can follow */
+  onCheckUpdates?: (id: string) => void;
   onPublish?: (id: string) => void;
   onDelete?: (id: string) => void;
 }) {
@@ -145,9 +148,14 @@ export function LibraryTileContextMenu({
 
         {/* The item's own actions, below everything about arranging it. Publish is offered on the tabs
             whose tiles can be published; Delete stays here because the card has no delete control. */}
-        {!group && (onPublish || onDelete) && (
+        {!group && (onCheckUpdates || onPublish || onDelete) && (
           <>
             <ContextMenuSeparator />
+            {onCheckUpdates && (
+              <ContextMenuItem onSelect={() => onCheckUpdates(id)}>
+                <RefreshCw className="h-4 w-4 shrink-0" /> Check for Updates
+              </ContextMenuItem>
+            )}
             {onPublish && (
               <ContextMenuItem onSelect={() => onPublish(id)}>
                 <ActionIcon.publish className="h-4 w-4 shrink-0" /> Publish

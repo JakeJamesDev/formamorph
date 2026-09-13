@@ -46,6 +46,11 @@ import { LoadGameDialog } from '../components/modals/LoadGameDialog';
 import WorldEditor from './WorldEditor';
 import { LibraryTileGrid } from '@/components/library/LibraryTileGrid';
 import { useLibraryTiles } from '@/lib/useLibraryTiles';
+import { useComponentUpdates } from '@/lib/useComponentUpdates';
+import { UpdateAvailableDialog } from '@/components/modals/UpdateAvailableDialog';
+import type { LiveWorld } from '@/lib/componentUpdateRun';
+import type { UpdateRow } from '@/lib/componentUpdates';
+import type { LibrarySource, LinkableContent } from '@/lib/linkedContent';
 import EnterWorldWorkspace from './EnterWorldWorkspace';
 import { startingLocations } from '@/lib/startingLocation';
 import { exclusiveSiblings, collapseExclusiveDefaults } from '@/lib/traitEffects';
@@ -254,6 +259,11 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
   // DEV only: canned rows for the Connect World References step, which in the app only opens mid-add inside
   // the World Editor. Never set in prod.
   const [devReferences, setDevReferences] = useState<ReferenceRow[] | null>(null);
+  // DEV only: a canned component update review. Never set in prod.
+  const [devUpdates, setDevUpdates] = useState<{
+    source: LibrarySource; sourceData: LinkableContent; rows: UpdateRow[];
+    copies: Record<string, LinkableContent>;
+  } | null>(null);
   const [devReferenceAnswers, setDevReferenceAnswers] = useState<ReferenceChoices>({});
   // Which passes the selected world rewrites — what the details notice names, what the viewer tabs, and
   // what the single opt-out declines. A world that stores a prompt but switched it off customizes nothing.
@@ -423,6 +433,16 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
         setDevReferences(rows);
         setDevReferenceAnswers(devReferenceChoices(rows));
       });
+    }
+    // The update review only opens behind a real library item and the worlds following it, so its dev
+    // route builds the source, the copies, and the rows instead.
+    if (devRoute?.modal === 'componentUpdates') {
+      void import('@/lib/devComponentUpdateSample').then((sample) => setDevUpdates({
+        source: sample.devUpdateSource(),
+        sourceData: sample.devUpdateSourceData(),
+        rows: sample.devUpdateRows(),
+        copies: sample.devUpdateCopies(),
+      }));
     }
     // Unlike the editors above, a model preview needs a real model — open the first one, if the library has any.
     if (devRoute?.modal === 'modelDetails') {
@@ -1545,6 +1565,22 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
   const dictionaryTiles = useLibraryTiles('dictionaries', dictionaryIds, !isLoadingDictionaries);
   const modelTiles = useLibraryTiles('models', modelIds, !isLoadingModels);
 
+  // Check for Updates on an entity or dictionary tile. No world is open here, so every copy the review
+  // touches is read and written in storage.
+  const { checkForUpdates, updateDialog } = useComponentUpdates();
+
+  // DEV only: the sample review's worlds, held in memory so its rows read their canned copies. Writing is
+  // a no-op — there is no world behind them to write to.
+  const devUpdateWorlds: LiveWorld[] | undefined = devUpdates?.rows.map((row) => ({
+    id: row.worldId,
+    name: row.worldName,
+    entities: [],
+    dictionaries: [devUpdates.copies[row.itemId] as Dictionary],
+    placeholders: [],
+    writeItem: () => {},
+    addPlaceholder: () => {},
+  }));
+
   // A world in a folder can take the folder's preset. The details popup names it, because the dropdown
   // there shows the world's own pin and an unpinned world would otherwise read as following the global
   // selection. A setting naming a deleted preset resolves to nothing, exactly as a stale world pin does.
@@ -1645,6 +1681,7 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
   return (
     <div className="pt-[calc(5rem+env(safe-area-inset-top))] relative flex flex-col app-viewport overflow-hidden">
       {downscaleDialog}
+      {updateDialog}
       {worldExportDialog}
       <ThemedToastContainer />
 
@@ -1904,6 +1941,7 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
               onSelect={setEditingEntityId}
             />
           )}
+          onCheckUpdates={(id) => { void checkForUpdates('entity', id); }}
           onDelete={setEntityToDelete}
         />
       ) : cardType === 'dictionaries' ? (
@@ -1933,6 +1971,7 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
               onSelect={setEditingDictionaryId}
             />
           )}
+          onCheckUpdates={(id) => { void checkForUpdates('dictionary', id); }}
           onDelete={setDictionaryToDelete}
         />
       ) : (
@@ -2566,6 +2605,16 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
           </div>
         </DialogContent>
       </Dialog>
+
+      {/* DEV only: the component update review on canned worlds. Its worlds are in memory, so Apply writes
+          nothing; `devUpdates` is never set in prod. */}
+      <UpdateAvailableDialog
+        source={devUpdates?.source ?? null}
+        sourceData={devUpdates?.sourceData ?? null}
+        rows={devUpdates?.rows ?? []}
+        live={devUpdateWorlds}
+        onClose={() => setDevUpdates(null)}
+      />
 
       {/* DEV only: the Connect World References step on canned rows. `devReferences` is never set in prod. */}
       <ConnectReferencesModal

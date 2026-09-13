@@ -222,6 +222,90 @@ class WorldStorageService {
       }));
   }
 
+  /**
+   * Every stored copy that follows `libraryId`, with the world holding it.
+   *
+   * One row per copy rather than per world: a world may hold the same library item twice, and two copies
+   * can be in different states. The copy's own content is not read — the update review asks for that per
+   * world, only for the worlds the player acts on.
+   *
+   * @param libraryId - The library item the copies follow
+   * @returns One row per copy, in stored world order
+   */
+  async linkedCopies(libraryId: string): Promise<{
+    worldId: string; worldName: string; itemId: string; itemName: string;
+    kind: 'entity' | 'dictionary'; link: ContentLink;
+  }[]> {
+    await this.ensureInitialized();
+    if (!libraryId) return [];
+
+    type Copy = { id?: string; name?: string; link?: ContentLink };
+    const transaction = this.db!.transaction([this.storeName], 'readonly');
+    const worlds = await promisifyRequest<{
+      id: string; name: string; data?: { entities?: Copy[]; dictionaries?: Copy[] };
+    }[]>(transaction.objectStore(this.storeName).getAll());
+
+    return worlds.flatMap((world) => [
+      ...(world.data?.entities ?? []).map((item) => ({ item, kind: 'entity' as const })),
+      ...(world.data?.dictionaries ?? []).map((item) => ({ item, kind: 'dictionary' as const })),
+    ]
+      .filter(({ item }) => item.link?.libraryId === libraryId)
+      .map(({ item, kind }) => ({
+        worldId: world.id,
+        worldName: world.name,
+        itemId: item.id ?? '',
+        itemName: item.name ?? '',
+        kind,
+        link: item.link as ContentLink,
+      })));
+  }
+
+  /**
+   * Rewrite one stored world's content in place.
+   *
+   * `revise` receives the world's `data` and returns what replaces it. Everything outside `data` is left
+   * exactly as it stands — the download link, the edited stamp, the record's own name and thumbnail, and
+   * `lastAccessed` too, because a write the player never opened the world for is not an access. That is
+   * what `storeWorld` cannot do: it takes a whole record and writes every wrapper field from it.
+   *
+   * `revise` runs inside the write transaction, so it must be synchronous. Returning the same reference
+   * writes nothing.
+   *
+   * @param worldId - The world to rewrite
+   * @param revise - The new content, from the stored content
+   */
+  async updateWorldContent(
+    worldId: string, revise: (data: Record<string, unknown>) => Record<string, unknown>,
+  ): Promise<void> {
+    await this.ensureInitialized();
+    if (!worldId) throw new Error('World ID is required');
+
+    return new Promise<void>((resolve, reject) => {
+      const transaction = this.db!.transaction([this.storeName], 'readwrite');
+      const store = transaction.objectStore(this.storeName);
+      const read = store.get(worldId);
+      read.onsuccess = () => {
+        const record = read.result;
+        if (!record?.data || typeof record.data !== 'object') {
+          reject(new Error('World not found'));
+          return;
+        }
+        let revised: Record<string, unknown>;
+        try {
+          revised = revise(record.data as Record<string, unknown>);
+        } catch (error) {
+          reject(error instanceof Error ? error : new Error(String(error)));
+          return;
+        }
+        if (revised === record.data) { resolve(); return; }
+        const write = store.put({ ...record, data: revised });
+        write.onsuccess = () => resolve();
+        write.onerror = () => reject(new Error('Failed to store world'));
+      };
+      read.onerror = () => reject(new Error('Failed to read world'));
+    });
+  }
+
   /** Load one world's full `data` (with `id` injected); rejects if missing, malformed, or lacking any
    *  required section. */
   async getWorldData(worldId: string) {

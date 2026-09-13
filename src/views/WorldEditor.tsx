@@ -412,6 +412,8 @@ const WorldEditorInner = ({ onClose, embedded = false, backButton }: {
   };
 
   const linking = useLibraryLinking({
+    worldId: worldId ?? '',
+    worldName: worldOverview?.name || 'This world',
     entities, dictionaries, placeholders, worldPlaceholders, locations,
     updateEntity, updateDictionary, setEntities, setDictionaries,
     addEntityToWorld, addBookToWorld, addPlaceholder, addLocation,
