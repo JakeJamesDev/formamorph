@@ -9,13 +9,17 @@ import AddFromLibraryModal from './AddFromLibraryModal';
  * Every copy gets a fresh id so the world owns what it holds; the link, when the author keeps it, is what
  * makes the copy follow the library item.
  */
-const AddEntityModal = ({ open, onOpenChange, onAdd }: {
+const AddEntityModal = ({ open, resume, onOpenChange, onAdd }: {
   open: boolean;
+  /** This opening continues the last one, so the picks stay as the author left them. */
+  resume?: boolean;
   onOpenChange: (open: boolean) => void;
-  onAdd: (entity: Entity, source?: LibrarySource) => void;
+  /** The whole batch at once: what each copy expects of the world is settled for all of them together. */
+  onAdd: (picks: { item: Entity; source?: LibrarySource }[]) => void;
 }) => (
   <AddFromLibraryModal
     open={open}
+    resume={resume}
     onOpenChange={onOpenChange}
     kind="entity"
     title="Add Entity"
@@ -31,16 +35,13 @@ const AddEntityModal = ({ open, onOpenChange, onAdd }: {
         )}
       </div>
     )}
-    onConfirm={(picks, link) => {
-      for (const { source, data } of picks) {
-        const entity = unlink(data as Entity);
-        onAdd({
-          ...entity,
-          id: randomUUID(),
-          ...(link ? { link: linkToSource(source) } : {}),
-        }, link ? source : undefined);
-      }
-    }}
+    onConfirm={(picks, link) => onAdd(picks.map(({ source, data }) => {
+      const entity = unlink(data as Entity);
+      return {
+        item: { ...entity, id: randomUUID(), ...(link ? { link: linkToSource(source) } : {}) },
+        ...(link ? { source } : {}),
+      };
+    }))}
   />
 );
 

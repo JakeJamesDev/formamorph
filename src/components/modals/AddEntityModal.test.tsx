@@ -46,7 +46,7 @@ describe('AddEntityModal', () => {
     expect(add.disabled).toBe(false);
   });
 
-  it('adds every selected entity as a fresh-id copy', async () => {
+  it('hands over every selected entity as a fresh-id copy, in one batch', async () => {
     const onAdd = vi.fn();
     const onOpenChange = vi.fn();
     render(<AddEntityModal open onOpenChange={onOpenChange} onAdd={onAdd} />);
@@ -55,10 +55,12 @@ describe('AddEntityModal', () => {
     fireEvent.click(screen.getByText('Beta'));
     fireEvent.click(screen.getByRole('button', { name: 'Add Entity' }));
 
-    await waitFor(() => expect(onAdd).toHaveBeenCalledTimes(2));
-    const added = onAdd.mock.calls.map((c) => c[0] as Entity);
+    // One call, not one per pick: what the batch expects of the world is settled for all of it together.
+    await waitFor(() => expect(onAdd).toHaveBeenCalledTimes(1));
+    const added = (onAdd.mock.calls[0][0] as { item: Entity }[]).map((pick) => pick.item);
     expect(added.map((e) => e.name)).toEqual(['Alpha', 'Beta']);
     expect(added[0].id).not.toBe('a'); // fresh id, independent of the library original
+    expect(added[1].id).not.toBe('b');
     expect(onOpenChange).toHaveBeenCalledWith(false);
   });
 });

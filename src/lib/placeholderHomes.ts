@@ -389,6 +389,11 @@ interface Adopted<T> {
   toAdd: Placeholder[];
   /** Every carried id → the id it resolves to in this world, for the item's own texts. */
   idMap: Record<string, string>;
+  /** The carried *shared* ids only, each against the world def it landed on — the record a linked copy
+   *  stores so the same reference survives the source renaming it. */
+  connections: Record<string, string>;
+  /** The carried shared ids that neither a connection nor a perfect match settled. */
+  unmatched: string[];
 }
 
 /**
@@ -396,20 +401,22 @@ interface Adopted<T> {
  * card added twice must not share ids); the carried shared ones merge with the world's shared list by name
  * and values, as `absorbPlaceholders` decides, or join it as fresh records. A card with no
  * `sharedPlaceholders` carries owned ones only, so nothing of it merges.
+ *
+ * `connections` is the author's own answer for the shared ones, from the Connect World References step.
  */
 function adoptCarried<T extends { placeholders?: Placeholder[]; sharedPlaceholders?: Placeholder[] }>(
-  item: T, worldShared: readonly Placeholder[],
+  item: T, worldShared: readonly Placeholder[], connections?: Record<string, string>,
 ): Adopted<T> {
   const owned = item.placeholders ?? EMPTY;
   const shared = item.sharedPlaceholders ?? EMPTY;
-  if (!owned.length && !shared.length) return { item, toAdd: [], idMap: {} };
+  if (!owned.length && !shared.length) return { item, toAdd: [], idMap: {}, connections: {}, unmatched: [] };
   const minted = remintScopedPlaceholders(owned);
   // A shared def may hold an owned one as a value or a pin; it compares against the world by what its
   // chips mean.
   const carried = remapValuePins(
     shared.map((p) => remapPlaceholderRefs(p, minted.idMap)), minted.idMap, minted.placeholders,
   );
-  const { toAdd, idMap: sharedMap } = absorbPlaceholders(carried, [...worldShared]);
+  const { toAdd, idMap: sharedMap, unmatched } = absorbPlaceholders(carried, [...worldShared], connections);
   const aimed = minted.placeholders.map((p) => remapPlaceholderRefs(p, sharedMap));
   // Every def a pin may name once the item is in: the item's own, the world's shared list, and the shared
   // ones joining it. A pin at anything else has no target here, so it goes rather than dangle.
@@ -419,19 +426,23 @@ function adoptCarried<T extends { placeholders?: Placeholder[]; sharedPlaceholde
   const { placeholders: _owned, sharedPlaceholders: _shared, ...rest } = item;
   // The spread keeps every other field, so the shape is T again; only the two carried lists moved.
   const adopted = (placeholders.length ? { ...rest, placeholders } : rest) as T;
-  return { item: adopted, toAdd: added, idMap: { ...minted.idMap, ...sharedMap } };
+  return { item: adopted, toAdd: added, idMap: { ...minted.idMap, ...sharedMap }, connections: sharedMap, unmatched };
 }
 
 /** {@link adoptCarried} for a character card, with its chips re-aimed. */
-export function adoptEntityPlaceholders(entity: Entity, worldShared: readonly Placeholder[]): { entity: Entity; toAdd: Placeholder[] } {
-  const { item, toAdd, idMap } = adoptCarried(entity, worldShared);
-  return { entity: item === entity ? entity : remapEntityChips(item, idMap), toAdd };
+export function adoptEntityPlaceholders(
+  entity: Entity, worldShared: readonly Placeholder[], connections?: Record<string, string>,
+): Omit<Adopted<Entity>, 'item' | 'idMap'> & { entity: Entity } {
+  const { item, toAdd, idMap, ...resolved } = adoptCarried(entity, worldShared, connections);
+  return { entity: item === entity ? entity : remapEntityChips(item, idMap), toAdd, ...resolved };
 }
 
 /** {@link adoptCarried} for a dictionary file, with its entries' chips re-aimed. */
-export function adoptBookPlaceholders(book: Dictionary, worldShared: readonly Placeholder[]): { book: Dictionary; toAdd: Placeholder[] } {
-  const { item, toAdd, idMap } = adoptCarried(book, worldShared);
-  return { book: item === book ? book : remapBookChips(item, idMap), toAdd };
+export function adoptBookPlaceholders(
+  book: Dictionary, worldShared: readonly Placeholder[], connections?: Record<string, string>,
+): Omit<Adopted<Dictionary>, 'item' | 'idMap'> & { book: Dictionary } {
+  const { item, toAdd, idMap, ...resolved } = adoptCarried(book, worldShared, connections);
+  return { book: item === book ? book : remapBookChips(item, idMap), toAdd, ...resolved };
 }
 
 const remapText = (text: string | undefined, idMap: Record<string, string>) => (text ? remapPlaceholderIds(text, idMap) : text);

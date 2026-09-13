@@ -8,7 +8,10 @@ import {
 import AuthService from '@/services/AuthService';
 import DictionaryStorageService from '@/services/DictionaryStorageService';
 import EntityStorageService from '@/services/EntityStorageService';
-import type { CommunityLink, Dictionary, DictionaryMetadata, Entity, EntityMetadata, Placeholder } from '@/types';
+import type {
+  CommunityLink, ContentLocationRef, Dictionary, DictionaryMetadata, Entity, EntityMetadata, GameLocation,
+  Placeholder,
+} from '@/types';
 
 /** What the link choice means for the content picked, by who owns it. */
 export const LINK_EXPLANATIONS = {
@@ -110,21 +113,37 @@ export async function libraryItemData(kind: LibraryKind, id: string): Promise<Li
 /** Which library a piece of content belongs to, read from its own shape. */
 export const kindOf = (item: LinkableContent): LibraryKind => ('entries' in item ? 'dictionary' : 'entity');
 
+/** An entity's location membership named rather than pointed at, so a receiving world can connect each
+ *  place to one of its own. A membership at a location this world no longer holds is dropped. */
+function carriedLocations(entity: Entity, worldLocations: readonly GameLocation[]): ContentLocationRef[] {
+  const byId = new Map(worldLocations.map((l) => [l.id, l]));
+  return (entity.locations ?? []).flatMap((id) => {
+    const location = byId.get(id);
+    return location ? [{ id: location.id, name: location.name }] : [];
+  });
+}
+
 /**
  * A world's copy rewritten as a standalone library item: the world's own fields dropped, and the shared
  * placeholders its chips reach carried with it so it still resolves wherever it is added next.
  *
  * `available` is the world's combined placeholder pool, which is what those chips currently point at.
+ * `worldLocations` names the places an entity stood in; the entity keeps the references, and the world
+ * receiving it decides which of its own locations each one means.
  */
-export function toLibraryItem<T extends LinkableContent>(item: T, available: Placeholder[]): T {
+export function toLibraryItem<T extends LinkableContent>(
+  item: T, available: Placeholder[], worldLocations: readonly GameLocation[] = [],
+): T {
   const carried = kindOf(item) === 'dictionary'
     ? buildDictionaryFile(item as Dictionary, available)
     : buildEntityCardData(item as Entity, available);
+  const locationRefs = kindOf(item) === 'entity' ? carriedLocations(item as Entity, worldLocations) : [];
   // The world's own fields go, including its id: the caller stamps the library record's own.
   return {
     ...withoutWorldFields(item),
     ...(carried.placeholders?.length ? { placeholders: carried.placeholders } : {}),
     ...(carried.sharedPlaceholders?.length ? { sharedPlaceholders: carried.sharedPlaceholders } : {}),
+    ...(locationRefs.length ? { locationRefs } : {}),
   } as T;
 }
 
@@ -132,9 +151,11 @@ export function toLibraryItem<T extends LinkableContent>(item: T, available: Pla
  * Store a world's copy as a new library item owned by the author, and describe the item so the copy can
  * link to it. The item gets its own id: the world keeps the copy it already has.
  */
-export async function saveCopyToLibrary(item: LinkableContent, available: Placeholder[]): Promise<LibrarySource> {
+export async function saveCopyToLibrary(
+  item: LinkableContent, available: Placeholder[], worldLocations: readonly GameLocation[] = [],
+): Promise<LibrarySource> {
   const id = randomUUID();
-  const data = { ...toLibraryItem(item, available), id };
+  const data = { ...toLibraryItem(item, available, worldLocations), id };
   const now = new Date().toISOString();
   await LIBRARIES[kindOf(item)].store({ id, name: data.name, createdAt: now, data });
   // `store` stamps `lastAccessed` itself and leaves `editedAt` unset, so the revision this link holds is

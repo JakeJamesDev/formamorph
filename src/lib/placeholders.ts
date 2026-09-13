@@ -510,11 +510,16 @@ function inReferenceOrder(carried: Placeholder[]): Placeholder[] {
  * A carried def's values are remapped before they are compared, so a structured def matches the world's copy
  * on what its chips *mean* rather than on the ids the exporting world happened to give them. Value ids ride
  * along untouched: they are scoped to their own placeholder, so no host id can collide with one.
+ *
+ * `connections` names the world def a carried def resolves to whatever it looks like — the author's own
+ * answer, from the Connect World References step. `unmatched` reports the carried defs that neither a
+ * connection nor a perfect match settled, which is the set that step asks about.
  */
 export function absorbPlaceholders(
   carried: Placeholder[],
   worldPlaceholders: Placeholder[],
-): { toAdd: Placeholder[]; idMap: Record<string, string> } {
+  connections?: Record<string, string>,
+): { toAdd: Placeholder[]; idMap: Record<string, string>; unmatched: string[] } {
   const sameValues = (a: PlaceholderValue[], b: PlaceholderValue[]) =>
     a.length === b.length && a.every((v, i) => v.text === b[i].text);
   // Two defs sharing a name and values but weighted differently are different defs — matching on values
@@ -535,10 +540,18 @@ export function absorbPlaceholders(
   };
   const toAdd: Placeholder[] = [];
   const idMap: Record<string, string> = {};
+  const unmatched: string[] = [];
   // Match against the world's list plus anything added so far this pass (so two carried copies of the same def
   // collapse to one).
   const pool = [...worldPlaceholders];
   for (const c of inReferenceOrder(carried)) {
+    // A connection the author made outranks any comparison. One whose target is gone is ignored, so the
+    // repair flow gets to ask about it again rather than aiming chips at nothing.
+    const connected = connections?.[c.id];
+    if (connected && pool.some((p) => p.id === connected)) {
+      idMap[c.id] = connected;
+      continue;
+    }
     const values = (c.values ?? []).map((v) => ({ ...v, text: remapPlaceholderIds(v.text, idMap) }));
     // Weights key by value id, which the remap leaves alone, so the map carries across as written. An
     // override key opens on a value id too, but every segment below it names a placeholder, which the
@@ -574,9 +587,10 @@ export function absorbPlaceholders(
       toAdd.push(fresh);
       pool.push(fresh);
       idMap[c.id] = fresh.id;
+      unmatched.push(c.id);
     }
   }
-  return { toAdd, idMap };
+  return { toAdd, idMap, unmatched };
 }
 
 /**

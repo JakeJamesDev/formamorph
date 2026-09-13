@@ -58,6 +58,8 @@ import EntityStorageService from '../services/EntityStorageService';
 import { LibraryRecordNotFoundError } from '../services/LibraryStore';
 import ModelStorageService from '../services/ModelStorageService';
 import AuthService from '../services/AuthService';
+import ConnectReferencesModal from '@/components/modals/ConnectReferencesModal';
+import type { ReferenceChoices, ReferenceRow } from '@/lib/worldReferences';
 import type { World, Stat, CharacterData, Dictionary, DictionaryMetadata, Entity, EntityMetadata, ModelMetadata, ServerEvent, WorldOverview } from '@/types';
 import { migrateWorld } from '@/lib/version';
 import { updateBridge } from '@/lib/updates/updateBridge';
@@ -249,6 +251,10 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
   // library holding no world that rewrites a prompt. Never set in prod.
   const [devPromptSample, setDevPromptSample] = useState<WorldOverview | null>(null);
   const promptOverview = selectedWorld?.data?.worldOverview ?? devPromptSample ?? undefined;
+  // DEV only: canned rows for the Connect World References step, which in the app only opens mid-add inside
+  // the World Editor. Never set in prod.
+  const [devReferences, setDevReferences] = useState<ReferenceRow[] | null>(null);
+  const [devReferenceAnswers, setDevReferenceAnswers] = useState<ReferenceChoices>({});
   // Which passes the selected world rewrites — what the details notice names, what the viewer tabs, and
   // what the single opt-out declines. A world that stores a prompt but switched it off customizes nothing.
   const customPromptKinds = useMemo(() => customizedPromptKinds(promptOverview), [promptOverview]);
@@ -406,6 +412,15 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
     // whatever the library happens to hold — it is reachable on an empty profile that way.
     if (devRoute?.modal === 'publish') {
       void import('@/lib/devPublishSample').then(({ devPublishPayload }) => openPublish(devPublishPayload()));
+    }
+    // The connection step only opens partway through an add in the World Editor, so its dev route builds the
+    // rows rather than the library item and the world that would raise them.
+    if (devRoute?.modal === 'connectReferences') {
+      void import('@/lib/devConnectReferencesSample').then(({ devReferenceRows, devReferenceChoices }) => {
+        const rows = devReferenceRows();
+        setDevReferences(rows);
+        setDevReferenceAnswers(devReferenceChoices(rows));
+      });
     }
     // Unlike the editors above, a model preview needs a real model — open the first one, if the library has any.
     if (devRoute?.modal === 'modelDetails') {
@@ -2548,6 +2563,17 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
           </div>
         </DialogContent>
       </Dialog>
+
+      {/* DEV only: the Connect World References step on canned rows. `devReferences` is never set in prod. */}
+      <ConnectReferencesModal
+        rows={devReferences}
+        choices={devReferenceAnswers}
+        confirmLabel="Connect & Add"
+        onChoose={(key, value) => setDevReferenceAnswers((prev) => ({ ...prev, [key]: value }))}
+        onBack={() => setDevReferences(null)}
+        onCancel={() => setDevReferences(null)}
+        onConfirm={() => setDevReferences(null)}
+      />
 
       {/* Read-only view of the world's authored prompts, one tab per pass it rewrites, opening on what the
           author changed against the prompt Formamorph ships for that pass — the whole text says little about

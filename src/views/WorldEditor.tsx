@@ -8,7 +8,6 @@ import { EditorModeProvider } from '@/components/EditorModeProvider';
 import { TutorialPopover } from '@/components/TutorialPopover';
 import { useTutorial } from '@/lib/tutorials';
 import { worldUsesAdvancedFeatures } from '@/lib/editorAdvancedData';
-import { withEntityLocations } from '@/lib/entityPresence';
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { EmptyListHint } from '@/components/EmptyListHint';
 import { HelpButton } from '@/components/HelpButton';
@@ -77,7 +76,7 @@ import AddDictionaryModal from '@/components/modals/AddDictionaryModal';
 import AddEntityModal from '@/components/modals/AddEntityModal';
 import { exportEntityCard } from '@/lib/entityFile';
 import { describePlaceholders, newPlaceholder } from '@/lib/placeholders';
-import { adoptBookPlaceholders, adoptEntityPlaceholders, placeholderOwnerRef } from '@/lib/placeholderHomes';
+import { placeholderOwnerRef } from '@/lib/placeholderHomes';
 import { ownerIdOfNode } from '@/lib/placeholderScopes';
 import { chipPlaceholderNames, labelPlaceholders } from '@/lib/placementLetters';
 import { placeholderSelection } from '@/lib/placeholderTree';
@@ -354,6 +353,8 @@ const WorldEditorInner = ({ onClose, embedded = false, backButton }: {
   const [addMenuOpen, setAddMenuOpen] = useState(false);
   const [showAddDictionary, setShowAddDictionary] = useState(false);
   const [showAddEntity, setShowAddEntity] = useState(false);
+  // Back out of the connection step reopens the picker on the picks already made rather than a clean one.
+  const [resumePicker, setResumePicker] = useState(false);
 
   // ── Test Bench ────────────────────────────────────────────────────────────
   // A finding's item is a place in the editor: land on its tab with it selected, and scroll the list to it
@@ -398,40 +399,26 @@ const WorldEditorInner = ({ onClose, embedded = false, backButton }: {
     }
   };
 
-  // Bring an imported item's placeholders into the world: its own stay its own under fresh ids, and the
-  // shared ones it carries merge with the world's shared list by name and values or join it.
-  const adoptEntity = (entity: Entity): Entity => {
-    const { entity: adopted, toAdd } = adoptEntityPlaceholders(entity, worldPlaceholders);
-    toAdd.forEach((p) => addPlaceholder(p));
-    return adopted;
-  };
-  const adoptBook = (book: Dictionary): Dictionary => {
-    const { book: adopted, toAdd } = adoptBookPlaceholders(book, worldPlaceholders);
-    toAdd.forEach((p) => addPlaceholder(p));
-    return adopted;
-  };
-
-  // Imported/card entities land ungrouped at the root and in no location — ids carried over from the
-  // world they were exported from name a folder and places that don't exist here.
+  // Arriving content lands ungrouped at the root — the folder id it carried names one this world lacks.
+  // Its placeholders and its location membership are already resolved by the reference step above it.
   const addEntityToWorld = (entity: Entity) => {
-    const placed = {
-      ...withEntityLocations(adoptEntity(entity), []),
-      groupId: null,
-      order: entityRootSiblingCount(),
-    };
+    const placed = { ...entity, groupId: null, order: entityRootSiblingCount() };
     addEntity(placed);
     setSelectedItemId(placed.id);
   };
   const addBookToWorld = (book: Dictionary) => {
-    const adopted = adoptBook(book);
-    addDictionary(adopted);
-    setSelectedItemId(adopted.id);
+    addDictionary(book);
+    setSelectedItemId(book.id);
   };
 
   const linking = useLibraryLinking({
-    entities, dictionaries, placeholders,
+    entities, dictionaries, placeholders, worldPlaceholders, locations,
     updateEntity, updateDictionary, setEntities, setDictionaries,
-    addEntityToWorld, addBookToWorld,
+    addEntityToWorld, addBookToWorld, addPlaceholder, addLocation,
+    reopenPicker: (kind) => {
+      setResumePicker(true);
+      if (kind === 'dictionary') setShowAddDictionary(true); else setShowAddEntity(true);
+    },
     exportEntity: (entity) => { void exportEntity(entity); },
     exportDictionary,
   });
@@ -1232,13 +1219,15 @@ const WorldEditorInner = ({ onClose, embedded = false, backButton }: {
       {worldExportDialog}
       <AddDictionaryModal
         open={showAddDictionary}
-        onOpenChange={setShowAddDictionary}
-        onAdd={(book, source) => { addBookToWorld(book); if (source) linking.notePendingLink(source.id); }}
+        resume={resumePicker}
+        onOpenChange={(open) => { setShowAddDictionary(open); if (!open) setResumePicker(false); }}
+        onAdd={(picks) => linking.beginAdd(picks.map((pick) => ({ kind: 'dictionary', ...pick })))}
       />
       <AddEntityModal
         open={showAddEntity}
-        onOpenChange={setShowAddEntity}
-        onAdd={(entity, source) => { addEntityToWorld(entity); if (source) linking.notePendingLink(source.id); }}
+        resume={resumePicker}
+        onOpenChange={(open) => { setShowAddEntity(open); if (!open) setResumePicker(false); }}
+        onAdd={(picks) => linking.beginAdd(picks.map((pick) => ({ kind: 'entity', ...pick })))}
       />
       {linking.dialogs}
     </div>

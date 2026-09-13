@@ -44,7 +44,7 @@ describe('AddDictionaryModal', () => {
     expect(add.disabled).toBe(false);
   });
 
-  it('adds every selected dictionary as a fresh-id copy', async () => {
+  it('hands over every selected dictionary as a fresh-id copy, in one batch', async () => {
     const onAdd = vi.fn();
     const onOpenChange = vi.fn();
     render(<AddDictionaryModal open onOpenChange={onOpenChange} onAdd={onAdd} />);
@@ -53,8 +53,9 @@ describe('AddDictionaryModal', () => {
     fireEvent.click(screen.getByText('Beta'));
     fireEvent.click(screen.getByRole('button', { name: 'Add Dictionary' }));
 
-    await waitFor(() => expect(onAdd).toHaveBeenCalledTimes(2));
-    const added = onAdd.mock.calls.map((c) => c[0] as Dictionary);
+    // One call, not one per pick: what the batch expects of the world is settled for all of it together.
+    await waitFor(() => expect(onAdd).toHaveBeenCalledTimes(1));
+    const added = (onAdd.mock.calls[0][0] as { item: Dictionary }[]).map((pick) => pick.item);
     expect(added.map((d) => d.name)).toEqual(['Alpha', 'Beta']);
     // Fresh ids — book and entries differ from the library original.
     expect(added[0].id).not.toBe('a');
