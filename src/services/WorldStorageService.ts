@@ -10,7 +10,7 @@ import { describePlaceholders } from '@/lib/placeholders';
 import { allPlaceholders } from '@/lib/placeholderHomes';
 import { readDeletedDefaultWorlds, tombstoneDefaultWorld, type DefaultWorldSeed } from '@/lib/defaultWorlds';
 import { changelogOf, type ChangelogDraft, type ChangelogEntry } from '@/lib/listingChangelog';
-import type { WorldAssociation } from '@/lib/compatibleWorlds';
+import type { ReviewState, WorldAssociation } from '@/lib/compatibleWorlds';
 import type { ListingVisibility } from '@/lib/publishLinks';
 import type { AddonRow, DependencyRow } from '@/lib/worldDependencies';
 import type { ContentLink, LikerAuditRow, LikerRow, VrmLicense, WorldMetadata } from '@/types';
@@ -826,6 +826,33 @@ class WorldStorageService {
     return this.fetchRelationship<AddonRow[]>(
       `/worlds/${worldId}/addons`, 'Failed to read this world\'s add-ons', [],
     );
+  }
+
+  /**
+   * Answer one offer made for your world.
+   *
+   * The world's author alone writes this. Sending the state the offer already holds acknowledges a source
+   * that changed since the answer: the decision persists and the reviewed revision is set to the source's
+   * current one.
+   *
+   * @param worldId - The world listing's server id
+   * @param componentId - The offered component's listing id
+   * @param reviewState - The answer to record
+   */
+  async setAddonReview(worldId: string, componentId: string, reviewState: ReviewState): Promise<void> {
+    const response = await fetch(`${this.API_URL}/worlds/${worldId}/addons/${componentId}/review`, {
+      method: 'PUT',
+      headers: {
+        'Authorization': `Bearer ${AuthService.token}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ reviewState }),
+    });
+
+    if (!response.ok) {
+      const body = await response.json().catch(() => ({}));
+      throw new Error(body.error || body.message || 'Failed to save this decision');
+    }
   }
 
   /**

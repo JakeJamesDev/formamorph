@@ -60,8 +60,10 @@ export type DevView = (typeof DEV_VIEWS)[number];
  *  whose minimum version is above the running build. `exitApp` raises the Android exit prompt, which on a
  *  phone only the hardware back button reaches. `connectReferences` raises the Connect World References step
  *  on canned rows (`devConnectReferencesSample.ts`), because in the app it opens only partway through an add
- *  in the World Editor, and only for a library item expecting something that world lacks. */
-export const DEV_MODALS = ['settings', 'entity', 'export', 'menu', 'worldEditor', 'intro', 'avatar', 'backup', 'aiSetup', 'entityEditor', 'dictionaryEditor', 'modelDetails', 'community', 'memoryManager', 'profile', 'auth', 'feedbackHub', 'adminPanel', 'editText', 'location', 'changelog', 'eventAck', 'publish', 'worldPrompts', 'aiContext', 'ageGate', 'likers', 'privacyPolicy', 'deleteAccount', 'deletionCancelled', 'updateRequired', 'exitApp', 'designSystem', 'enterWorld', 'connectReferences'] as const;
+ *  in the World Editor, and only for a library item expecting something that world lacks. `manageAddons`
+ *  opens Community Creations and raises the add-on review over the first world listing, the same trick
+ *  `likers` uses: the dialog reads a real listing's offers, so it has nothing to show without one. */
+export const DEV_MODALS = ['settings', 'entity', 'export', 'menu', 'worldEditor', 'intro', 'avatar', 'backup', 'aiSetup', 'entityEditor', 'dictionaryEditor', 'modelDetails', 'community', 'memoryManager', 'profile', 'auth', 'feedbackHub', 'adminPanel', 'editText', 'location', 'changelog', 'eventAck', 'publish', 'worldPrompts', 'aiContext', 'ageGate', 'likers', 'privacyPolicy', 'deleteAccount', 'deletionCancelled', 'updateRequired', 'exitApp', 'designSystem', 'enterWorld', 'connectReferences', 'manageAddons'] as const;
 export type DevModal = (typeof DEV_MODALS)[number];
 
 /** Coverage ledger: tabbed surface → the sub-tabs the router can target (via `tab=…`). Kept in lockstep

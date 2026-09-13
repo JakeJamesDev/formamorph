@@ -42,6 +42,8 @@ export interface CommunityBrowserHostProps {
   onGuestLike?: (world: WorldRecord) => void;
   /** DEV only: open the first listing's details and raise its likers list, for the dev route. */
   openLikersOnMount?: boolean;
+  /** DEV only: raise the add-on review over the first world listing, for the dev route. */
+  openManageAddonsOnMount?: boolean;
 }
 
 /**
@@ -64,7 +66,7 @@ export const CommunityBrowserHost = ({
   open, onOpenChange, presentation = 'dialog', capabilities = APP_COMMUNITY_CAPABILITIES, filterPreferences, initialTab, openListing, onListingOpened,
   listing, onListingChange, onListingUnavailable, onGuestLike,
   detailsAction,
-  openLikersOnMount = false,
+  openLikersOnMount = false, openManageAddonsOnMount = false,
 }: CommunityBrowserHostProps) => {
   // The four local libraries, each driving its tab's download state.
   const [worlds, setWorlds] = useState<WorldRecord[]>([]);
@@ -230,6 +232,7 @@ export const CommunityBrowserHost = ({
         onListingUnavailable={onListingUnavailable}
         detailsAction={detailsAction}
         openLikersOnMount={openLikersOnMount}
+        openManageAddonsOnMount={openManageAddonsOnMount}
         events={events}
         onOpenEvent={openEvent}
       />

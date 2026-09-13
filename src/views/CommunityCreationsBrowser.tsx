@@ -14,6 +14,7 @@ import { Tabs, TabsContent } from "@/components/ui/tabs";
 import { Tip } from "@/components/ui/tooltip";
 import { CATALOG_KINDS, KIND_LABELS, kindOf, type CatalogKind } from "@/lib/catalogKinds";
 import { BROWSE_TABS, BROWSE_TAB_LABELS, type BrowseTab } from "@/lib/browseTabs";
+import { listingRef, type ListingRef } from "@/lib/worldDependencies";
 import { contestPhase, placementsBy, entriesOf, orderContestEntries } from "@/lib/contests";
 import { isContestEvent } from "@/lib/serverEvents";
 import { useContests } from "@/lib/useContests";
@@ -51,6 +52,7 @@ import {
   isQuarantined, quarantineTargetFor, quarantineTemplate, type QuarantineTarget,
 } from "@/lib/quarantine";
 import { isStaff } from "@/lib/roles";
+import { ManageAddonsDialog } from "@/components/community/ManageAddonsDialog";
 import { QuarantineDialog } from "@/components/community/QuarantineDialog";
 import {
   Dialog,
@@ -203,6 +205,8 @@ interface CommunityCreationsBrowserProps {
   onOpenEvent?: (event: ServerEvent) => void;
   /** DEV only: open the first listing's details and raise its likers list, for the dev route. */
   openLikersOnMount?: boolean;
+  /** DEV only: raise the add-on review over the first world listing, for the dev route. */
+  openManageAddonsOnMount?: boolean;
 }
 
 // The Community Creations browser: browse/search/filter/sort the published catalog, view world details
@@ -212,7 +216,7 @@ const CommunityCreationsBrowser = ({
   refreshEntities, refreshDictionaries, refreshModels,
   isAuthenticated, currentUser, onGuestLike, openImageViewer, initialTab, openListing, onListingOpened, listing: controlledListing,
   onListingChange, onListingUnavailable, detailsAction,
-  events = [], onOpenEvent, openLikersOnMount = false,
+  events = [], onOpenEvent, openLikersOnMount = false, openManageAddonsOnMount = false,
 }: CommunityCreationsBrowserProps) => {
   // The header's title element, which differs per shell (see PageHeading).
   const Heading = presentation === 'dialog' ? DialogTitle : PageHeading;
@@ -231,6 +235,8 @@ const CommunityCreationsBrowser = ({
   // Admin-only view of just what is hidden — the whole catalog is already in memory, so this is a filter
   // over it rather than another request.
   const [quarantinedOnly, setQuarantinedOnly] = useState(false);
+  // The published world whose add-on offers the author is reviewing.
+  const [managingAddons, setManagingAddons] = useState<ListingRef | null>(null);
   const [selectedRemoteWorld, setSelectedRemoteWorld] = useState<WorldRecord | null>(null);
   const [showRemoteWorldDetailsModal, setShowRemoteWorldDetailsModal] = useState(false);
   // Offer to downscale oversized images right after a world is downloaded/overwritten.
@@ -666,6 +672,16 @@ const CommunityCreationsBrowser = ({
     setSelectedRemoteWorld(first);
     setShowRemoteWorldDetailsModal(true);
   }, [open, openLikersOnMount, remoteWorlds, selectedRemoteWorld]);
+
+  // DEV: `#dev?modal=manageAddons` raises the review over the first world the catalog holds. The dialog
+  // reads a real listing's offers, so it has nothing to draw without one.
+  useEffect(() => {
+    if (!import.meta.env.DEV || !open || !openManageAddonsOnMount || managingAddons) return;
+    const first = remoteWorlds.find((row) => kindOf(row) === 'world');
+    if (!first) return;
+
+    setManagingAddons(listingRef(first));
+  }, [open, openManageAddonsOnMount, remoteWorlds, managingAddons]);
 
   // Section switcher: a rail on landscape, a dropdown on portrait. Rows come from the kinds list; Contest
   // is appended rather than generated (see browseTabs.ts), only while one exists to browse.
@@ -1104,6 +1120,9 @@ const CommunityCreationsBrowser = ({
                             name: String(entry.name ?? 'That world'),
                           })
                         : undefined}
+                      onManageAddons={capabilities.authorManagement
+                        ? (own) => setManagingAddons(listingRef(own))
+                        : undefined}
                       likeTutorial={
                         tutorial?.id === 'community-like' && worldId === likeAnchorId ? tutorial : null
                       }
@@ -1128,6 +1147,13 @@ const CommunityCreationsBrowser = ({
       </BrowserShell>
 
       {/* Remote World Details Modal — details + comments live in the component */}
+      {/* The author's answer to what other authors offer for their world. */}
+      <ManageAddonsDialog
+        open={managingAddons !== null}
+        onOpenChange={(isOpen) => { if (!isOpen) setManagingAddons(null); }}
+        world={managingAddons}
+      />
+
       <RemoteWorldDetailsModal
         open={showRemoteWorldDetailsModal}
         onOpenChange={(detailsOpen) => {

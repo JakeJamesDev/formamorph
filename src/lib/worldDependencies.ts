@@ -21,6 +21,13 @@ export interface AddonRow extends WorldRecord {
   kind?: string;
   name?: string;
   reviewState?: ReviewState;
+  /** When the component's author made the offer. The listing's own dates cannot stand in for it: a
+   *  republish moves them and would reset how long the offer has waited. */
+  offeredAt?: string;
+  /** When the world's author last answered. */
+  reviewedAt?: string;
+  /** The source changed after that answer. */
+  updatedSinceReview?: boolean;
 }
 
 /** Where an installed component landed, so the world's copies can be pointed at it. */
@@ -48,6 +55,18 @@ export function componentKind(listing: WorldRecord): LibraryKind | null {
 
 /** A listing's own id, whichever spelling the endpoint used. */
 export const listingId = (listing: WorldRecord): string => String(listing?._id || listing?.id || '');
+
+/** The two fields a surface needs to address a listing and name it. */
+export interface ListingRef {
+  id: string;
+  name: string;
+}
+
+/** A listing record reduced to its id and name. `fallbackName` covers a record with no name. */
+export const listingRef = (listing: WorldRecord, fallbackName = 'Untitled'): ListingRef => ({
+  id: listingId(listing),
+  name: String(listing?.name ?? fallbackName),
+});
 
 /**
  * Split a world's add-on offerings into the two tabs that offer them.
