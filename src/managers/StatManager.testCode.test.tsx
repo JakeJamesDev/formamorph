@@ -33,16 +33,24 @@ vi.mock('@/components/prompt/PlaceholderField', () => ({
   PlaceholderNameField: (props: { value?: string }) => <input aria-label="Name" defaultValue={props.value} />,
 }));
 
+/** What each box handed the editor last render, by the editor's label. The completions and the underlines
+ *  are the editor's own, so what the panel passes it is all the panel can be held to. */
+const editorProps = vi.hoisted(() => new Map<string, Record<string, unknown>>());
+
 // A plain textarea over the same value: the real editor arrives on its own chunk and brings CodeMirror
 // with it, and neither is what this file is about.
 vi.mock('@/components/prompt/CodeArea', () => ({
-  CodeArea: (props: { value: string; onChange: (next: string) => void; ariaLabel: string }) => (
-    <textarea
-      aria-label={props.ariaLabel}
-      value={props.value}
-      onChange={(event) => props.onChange(event.target.value)}
-    />
-  ),
+  CodeArea: (props: { value: string; onChange: (next: string) => void; ariaLabel: string }) => {
+    // The panel passes more than the three props this stub renders, and the case below reads those.
+    editorProps.set(props.ariaLabel, props as unknown as Record<string, unknown>);
+    return (
+      <textarea
+        aria-label={props.ariaLabel}
+        value={props.value}
+        onChange={(event) => props.onChange(event.target.value)}
+      />
+    );
+  },
 }));
 
 const executeStatCode = vi.hoisted(() => vi.fn());
@@ -70,6 +78,45 @@ async function testCode(
   await user.paste(code);
   await user.click(screen.getByRole('button', { name: `Test Code ${box}` }));
 }
+
+describe('what each box completes and checks against', () => {
+  /** What one box hands the editor, as the options its reader and its completions take. */
+  const optionsOf = (box: 'Before The AI' | 'After The AI') => {
+    const props = editorProps.get(`Stat Code ${box}`)!;
+    return {
+      statNames: props.statNames as string[],
+      selfName: props.selfName as string,
+      placeholders: props.placeholders as { list: Placeholder[] },
+      traits: props.traits as string[],
+    };
+  };
+
+  it('hands both editors the same names, so a lookup reads alike in either box', () => {
+    renderCodePanel(stats[0]);
+    expect(optionsOf('Before The AI')).toEqual(optionsOf('After The AI'));
+    // Not vacuously equal: the world's stats and traits are actually in there.
+    expect(optionsOf('Before The AI').statNames).toEqual(['Warmth', 'Damp']);
+    expect(optionsOf('Before The AI').selfName).toBe('Warmth');
+    expect(optionsOf('Before The AI').traits).toEqual(['Brave', 'Night Owl', 'Beast Fury']);
+  });
+
+  // The acceptance case, run through the real reader and the real completion source rather than compared
+  // prop by prop: a typo underlines in the before box and the world's own name does not, exactly as after.
+  it('underlines an unknown stat in either box, and completes the real one there', async () => {
+    const { statCodeCompletions, statCodeDiagnostics } = await import('@/lib/statCodeAnalysis');
+    renderCodePanel(stats[0]);
+    for (const box of ['Before The AI', 'After The AI'] as const) {
+      const options = optionsOf(box);
+      const typo = statCodeDiagnostics('return stats["Vigour"].value;', options);
+      expect([box, typo.map((d) => d.message)]).toEqual([box, [expect.stringContaining('Vigour')]]);
+      expect([box, statCodeDiagnostics('return stats["Damp"].value;', options)]).toEqual([box, []]);
+
+      const code = 'return stats[""];';
+      const offered = statCodeCompletions(code, code.indexOf('""') + 1, options)?.options.map((o) => o.label);
+      expect([box, offered]).toEqual([box, expect.arrayContaining(['Warmth', 'Damp'])]);
+    }
+  });
+});
 
 describe('what Test Code reports', () => {
   beforeEach(() => {

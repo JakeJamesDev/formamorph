@@ -10,6 +10,7 @@
 import { executeStatCode, type StatCodeFailure, type StatCodeResult } from '@/lib/statCodeExecutor';
 import { allPlaceholders, placeholderOwners } from '@/lib/placeholderHomes';
 import { statCodeNamed } from '@/lib/statCodeNames';
+import { filledCodeBoxes, TIMING_LABEL } from '@/lib/statCodeTiming';
 import { sandboxPlaceholders } from '@/lib/statCodePlaceholders';
 import { sandboxTraits } from '@/lib/statCodeTraits';
 import { labelPlaceholders, worldPlacementLetters } from '@/lib/placementLetters';
@@ -47,14 +48,15 @@ function unknownNames({ unknownPlaceholders = [], unknownTraits = [] }: StatCode
 }
 
 /**
- * Run each coded stat once and report the ones that fail, then the ones whose writes named nothing. Stats
- * without code never reach the sandbox, so a world of plain stats costs nothing.
+ * Run each filled box once and report the ones that fail, then the ones whose writes named nothing. A blank
+ * box never reaches the sandbox, so a world of plain stats costs nothing.
  */
 export async function checkStatCode(world: RuleWorld): Promise<Finding[]> {
   const placeholderDefs = allPlaceholders(world);
   // Under their code names, so the run reaches a stat by the name the rules and the editor name it by.
   const stats = statCodeNamed(atStartingValues(world.stats), placeholderDefs);
-  const coded = stats.filter((stat) => stat.code?.trim());
+  // One run per filled box: the two hold different code, so each gets its own row naming which it is.
+  const coded = stats.flatMap((stat) => filledCodeBoxes(stat).map((box) => ({ stat, box })));
   const letters = worldPlacementLetters(world);
   // Turn one has no rolls yet, so an unrolled placeholder reads as a fresh draw; the player holds no traits.
   const placeholders = coded.length
@@ -64,15 +66,20 @@ export async function checkStatCode(world: RuleWorld): Promise<Finding[]> {
     acquired: [], disabledTraitIds: [], appliedValues: {},
     world: { traits: world.traits, groups: world.traitGroups ?? [] },
   }, placeholderDefs) : [];
-  const results = await Promise.all(coded.map(async (stat) => {
-    const result = await executeStatCode(stat.code ?? '', stats, stat, { placeholders, traits });
+  const results = await Promise.all(coded.map(async ({ stat, box }) => {
+    const result = await executeStatCode(box.code, stats, stat, { placeholders, traits });
+    const label = TIMING_LABEL[box.timing];
     // The row names the stat as the author sees it in the list, not as code reaches it.
     const authored = world.stats?.find((entry) => entry.id === stat.id)?.name ?? stat.name;
     const name = labelPlaceholders(authored ?? '', placeholderDefs, { letters }).trim() || 'Untitled';
     const item = [{ id: stat.id, name }];
-    if (result.error) return finding(STAT_CODE_EXECUTION, `Code on “${name}” ${FAILURE[result.kind ?? 'throw']}`, item);
+    if (result.error) {
+      return finding(STAT_CODE_EXECUTION, `${label} code on “${name}” ${FAILURE[result.kind ?? 'throw']}`, item);
+    }
     const unknown = unknownNames(result);
-    return unknown ? finding(STAT_CODE_UNKNOWN_NAME, `Code on “${name}” writes where the world has nothing: ${unknown}`, item) : null;
+    return unknown
+      ? finding(STAT_CODE_UNKNOWN_NAME, `${label} code on “${name}” writes where the world has nothing: ${unknown}`, item)
+      : null;
   }));
   return results.filter((found): found is Finding => found !== null);
 }

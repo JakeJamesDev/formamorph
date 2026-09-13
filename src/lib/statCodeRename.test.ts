@@ -113,8 +113,8 @@ describe('planCodeRename', () => {
     expect(plan).not.toBeNull();
     expect(plan?.references).toBe(3);
     expect(plan?.edits.map((edit) => edit.id)).toEqual(['a', 'b']);
-    expect(plan?.edits[0].code).toBe('return stats.Vigor.value * 2;');
-    expect(plan?.edits[1].code).toBe(`return stats['Vigor'].max - stats.Vigor.min;`);
+    expect(plan?.edits[0].boxes.after).toBe('return stats.Vigor.value * 2;');
+    expect(plan?.edits[1].boxes.after).toBe(`return stats['Vigor'].max - stats.Vigor.min;`);
   });
 
   it('offers nothing when nothing references the old name', () => {
@@ -140,6 +140,34 @@ describe('planCodeRename', () => {
       .toBeNull();
     expect(planCodeRename({ root: 'stats', oldName: 'Health', newName: 'Stamina', stats, otherNames: [' Stamina '] }))
       .toBeNull();
+  });
+
+  it('counts and rewrites both boxes, and touches neither box that has nothing to move', () => {
+    const boxed = {
+      ...stat('a', 'return stats.Health.max;'),
+      beforeCode: `return stats['Health'].value + stats.Health.min;`,
+    };
+    const afterOnly = stat('b', 'return stats.Health.regen;');
+    const plan = planCodeRename({
+      root: 'stats', oldName: 'Health', newName: 'Vigor', stats: [boxed, afterOnly], otherNames: [],
+    });
+    // Two in the before box, one in each after box.
+    expect(plan?.references).toBe(4);
+    expect(plan?.edits[0].boxes).toEqual({
+      before: `return stats['Vigor'].value + stats.Vigor.min;`,
+      after: 'return stats.Vigor.max;',
+    });
+    // The second stat leaves its before box blank, so the plan carries no rewrite for it to blank out.
+    expect(plan?.edits[1].boxes).toEqual({ after: 'return stats.Vigor.regen;' });
+  });
+
+  it('plans a stat whose reference lives in the before box alone', () => {
+    const beforeOnly = { ...stat('a', 'return self.value;'), beforeCode: 'return stats.Health.value;' };
+    const plan = planCodeRename({
+      root: 'stats', oldName: 'Health', newName: 'Vigor', stats: [beforeOnly], otherNames: [],
+    });
+    expect(plan?.references).toBe(1);
+    expect(plan?.edits[0].boxes).toEqual({ before: 'return stats.Vigor.value;' });
   });
 
   it('skips a stat whose code is empty', () => {
@@ -241,7 +269,7 @@ describe('planCodeRename over the placeholder tree', () => {
       otherNames: [],
     });
     expect(plan?.references).toBe(3);
-    expect(plan?.edits[0].code)
+    expect(plan?.edits[0].boxes.after)
       .toBe(`stats['Wolf Power'].value + traits['Wolf Fury'].enabled + placeholders.Wolf.text`);
   });
 
@@ -259,7 +287,7 @@ describe('planCodeRename over the placeholder tree', () => {
       otherNames: [],
     });
     expect(plan?.references).toBe(1);
-    expect(plan?.edits[0].code).toBe(`stats['Wolf Power'].value + stats['Beast Fury'].value`);
+    expect(plan?.edits[0].boxes.after).toBe(`stats['Wolf Power'].value + stats['Beast Fury'].value`);
   });
 
   it('rewrites the owner segment of every path through a renamed owner', () => {
@@ -273,7 +301,7 @@ describe('planCodeRename over the placeholder tree', () => {
       },
     );
     expect(plan?.references).toBe(2);
-    expect(plan?.edits[0].code).toBe(`placeholders.Maud.Hair.text + placeholders["Maud"]["Hair"].text`);
+    expect(plan?.edits[0].boxes.after).toBe(`placeholders.Maud.Hair.text + placeholders["Maud"]["Hair"].text`);
   });
 
   it('rewrites the leaf of a child rename and leaves a world-level name of its own alone', () => {
@@ -287,7 +315,7 @@ describe('planCodeRename over the placeholder tree', () => {
       },
     );
     expect(plan?.references).toBe(1);
-    expect(plan?.edits[0].code).toBe(`placeholders.Molly.Mane.text + placeholders.Hair.text`);
+    expect(plan?.edits[0].boxes.after).toBe(`placeholders.Molly.Mane.text + placeholders.Hair.text`);
   });
 
   it('rewrites the bare-name fallback a scoped placeholder answers', () => {
@@ -300,7 +328,7 @@ describe('planCodeRename over the placeholder tree', () => {
         placeholders: { list: [hair('h1')], owners: new Map([['h1', molly]]) },
       },
     );
-    expect(plan?.edits[0].code).toBe('placeholders.Mane.text');
+    expect(plan?.edits[0].boxes.after).toBe('placeholders.Mane.text');
   });
 
   it('turns a segment into a bracket form when the new name is not an identifier', () => {
@@ -313,7 +341,7 @@ describe('planCodeRename over the placeholder tree', () => {
         placeholders: { list: [hair('h1')], owners: new Map([['h1', molly]]) },
       },
     );
-    expect(plan?.edits[0].code).toBe(`placeholders.Molly['Wild Mane'].text`);
+    expect(plan?.edits[0].boxes.after).toBe(`placeholders.Molly['Wild Mane'].text`);
   });
 
   it('leaves a computed segment and everything under it alone', () => {
@@ -346,7 +374,7 @@ describe('planCodeRename over the placeholder tree', () => {
       ],
       otherNames: [],
     });
-    expect(plan?.edits[0].code).toBe('return stats.BeastLord + stats.BeastLordLord;');
+    expect(plan?.edits[0].boxes.after).toBe('return stats.BeastLord + stats.BeastLordLord;');
     expect(plan?.references).toBe(2);
   });
 
@@ -366,7 +394,7 @@ describe('planCodeRename over the placeholder tree', () => {
       },
     );
     expect(plan?.references).toBe(3);
-    expect(plan?.edits[0].code).toBe(`placeholders['Ashford Guard'].Ashford.text + placeholders.Ashford.text`);
+    expect(plan?.edits[0].boxes.after).toBe(`placeholders['Ashford Guard'].Ashford.text + placeholders.Ashford.text`);
   });
 
   it('leaves a path alone where a member of the holder won the name', () => {

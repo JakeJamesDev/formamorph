@@ -71,6 +71,7 @@ const Harness = (props: Parameters<typeof NameField>[0]) => {
 };
 
 const codeOf = (id: string) => store.stats.find((entry) => entry.id === id)?.code;
+const beforeCodeOf = (id: string) => store.stats.find((entry) => entry.id === id)?.beforeCode;
 
 /** Put a new name in the field and commit it by moving focus off, as blurring the real field does. Pasted
  *  rather than typed, so a chip token's braces reach the field instead of being read as typing syntax. */
@@ -104,6 +105,35 @@ describe('the rename offer', () => {
     await user.click(screen.getByRole('button', { name: 'Update Code' }));
     expect(codeOf('a')).toBe('return stats.Vigor.value * 2;');
     expect(codeOf('b')).toBe(`return stats['Vigor'].max - 1;`);
+  });
+
+  it('counts both boxes, rewrites both on Yes, and leaves a blank box blank', async () => {
+    store.stats = [
+      { ...stat('a', 'Health', 'return stats.Health.value * 2;'), beforeCode: `stats['Health'].min = 1;` },
+      stat('b', 'Stamina', 'return stats.Health.max - 1;'),
+    ];
+    render(<Harness root="stats" initial="Health" otherNames={['Stamina']} />);
+    const user = await renameTo('Vigor');
+
+    expect(screen.getByText(/The code of 2 stats names the stat “Health” 3 times\./)).toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: 'Update Code' }));
+    expect(beforeCodeOf('a')).toBe(`stats['Vigor'].min = 1;`);
+    expect(codeOf('a')).toBe('return stats.Vigor.value * 2;');
+    // Stamina's before box was never filled, so the rewrite must not have written one onto it.
+    expect(beforeCodeOf('b')).toBeUndefined();
+    expect(codeOf('b')).toBe('return stats.Vigor.max - 1;');
+  });
+
+  it('rewrites nothing on No, in either box', async () => {
+    store.stats = [
+      { ...stat('a', 'Health', 'return stats.Health.value * 2;'), beforeCode: `stats['Health'].min = 1;` },
+    ];
+    render(<Harness root="stats" initial="Health" otherNames={['Stamina']} />);
+    const user = await renameTo('Vigor');
+
+    await user.click(screen.getByRole('button', { name: 'Leave Code' }));
+    expect(beforeCodeOf('a')).toBe(`stats['Health'].min = 1;`);
+    expect(codeOf('a')).toBe('return stats.Health.value * 2;');
   });
 
   it('rewrites nothing on No', async () => {

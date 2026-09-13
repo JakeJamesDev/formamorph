@@ -22,6 +22,7 @@ import {
   type PlaceholderPathMap, type PlaceholderPathNode, type PlaceholderPathSource,
 } from './statCodePaths';
 import { statCodeName } from './statCodeNames';
+import { boxCode, STAT_CODE_TIMINGS, type StatCodeTiming } from './statCodeTiming';
 
 /** The name-keyed maps a rename can reach. */
 export type RenameRoot = 'stats' | 'placeholders' | 'traits';
@@ -255,12 +256,13 @@ export const codeNameReader = (
     ? (name) => name
     : (name) => statCodeName(name, placeholders));
 
-/** One stat's code, rewritten. */
+/** One stat's code, rewritten. A box the rename does not touch is absent rather than rewritten to itself. */
 export interface CodeRenameEdit {
   id: string;
   /** The stat's own name, so the offer can say whose code it is about. */
   name: string;
-  code: string;
+  /** The new text of each box the rename moved something in. */
+  boxes: Partial<Record<StatCodeTiming, string>>;
 }
 
 /** What a rename would do to the world's stat code. */
@@ -397,11 +399,19 @@ export function planCodeRename(input: CodeRenameInput): CodeRenamePlan | null {
     : { names: new Map([[root, new Map([[from, to]])]]) };
   const edits: CodeRenameEdit[] = [];
   let references = 0;
+  // Both boxes, because a rename that moved one and left the other would strand the lookups it skipped.
   for (const stat of stats) {
-    const rewritten = rewriteCode(stat.code ?? '', rewrite);
-    if (!rewritten.references) continue;
-    references += rewritten.references;
-    edits.push({ id: stat.id, name: stat.name, code: rewritten.code });
+    const boxes: Partial<Record<StatCodeTiming, string>> = {};
+    let moved = 0;
+    for (const timing of STAT_CODE_TIMINGS) {
+      const rewritten = rewriteCode(boxCode(stat, timing), rewrite);
+      if (!rewritten.references) continue;
+      moved += rewritten.references;
+      boxes[timing] = rewritten.code;
+    }
+    if (!moved) continue;
+    references += moved;
+    edits.push({ id: stat.id, name: stat.name, boxes });
   }
   return references ? { root, subject, oldName: from, newName: to, edits, references } : null;
 }

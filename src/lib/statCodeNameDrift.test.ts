@@ -11,6 +11,7 @@ import { placeholderPathAt, placeholderPathLabel, placeholderPathMap } from './s
 import type { PlaceholderOwners } from './placeholderHomes';
 import { checkStatCode } from './testBench/statCodeCheck';
 import { runStatCodeTurn } from './statCodeTurn';
+import { STAT_CODE_TIMINGS, type StatCodeTiming } from './statCodeTiming';
 import { runRules, type RuleWorld } from './testBench/rules';
 
 /**
@@ -28,12 +29,20 @@ const stat = (over: Partial<PlayerStat> & { id: string; name: string }): PlayerS
 
 const power = stat({ id: 's1', name: CHIPPED, code: 'placeholders.Probe.pin(self.name);' });
 
+/** One piece of code in one of the stat's two boxes. Both boxes read the same surface and the same names,
+ *  so each case that runs code runs in both: a guard that only ever watched the after box would let the
+ *  other drift. */
+const inBox = (timing: StatCodeTiming, code: string): Partial<PlayerStat> =>
+  (timing === 'before' ? { beforeCode: code } : { code });
+
 /** The name the sandbox itself hands `self.name`, read back through a pin, under one playthrough's roll. */
-async function nameInSandbox(rolled: string): Promise<string | null> {
+async function nameInSandbox(rolled: string, timing: StatCodeTiming): Promise<string | null> {
+  const subject = stat({ id: 's1', name: CHIPPED, ...inBox(timing, 'placeholders.Probe.pin(self.name);') });
   const out = await runStatCodeTurn({
-    stats: [power],
+    timing,
+    stats: [subject],
     enabled: {},
-    previous: [power],
+    previous: [subject],
     asks: [],
     regenApplied: {},
     clock: {},
@@ -47,24 +56,27 @@ async function nameInSandbox(rolled: string): Promise<string | null> {
 }
 
 /** The unknown-stat findings a world raises for one piece of code that looks a stat up by name. */
-function benchFindings(lookup: string): string[] {
+function benchFindings(lookup: string, timing: StatCodeTiming): string[] {
   const world: RuleWorld = {
     worldOverview: { name: 'Drift', description: '', systemPrompt: 'Narrate.', readme: 'A primer.' } as WorldOverview,
-    stats: [stat({ id: 's1', name: CHIPPED }), stat({ id: 's2', name: 'Mana', code: `return ${lookup}.value;` })],
+    stats: [
+      stat({ id: 's1', name: CHIPPED }),
+      stat({ id: 's2', name: 'Mana', ...inBox(timing, `return ${lookup}.value;`) }),
+    ],
     locations: [{ id: 'harbor', name: 'Harbor Steps', isStarting: true }],
     entities: [], traits: [], statUpdates: [], dictionaries: [], placeholders: [beast],
   };
   return runRules(world).filter((f) => f.ruleId === 'stat-code-unknown-stat').map((f) => f.message);
 }
 
-describe('one code name across the sandbox, the completions, and the bench', () => {
+describe.each(STAT_CODE_TIMINGS)('one code name across the sandbox, the completions, and the bench (%s box)', (timing) => {
   it('gives the sandbox the same name whatever the playthrough rolled', async () => {
     // The acceptance case: two saves, two different rolls, one name in code.
-    expect(await nameInSandbox('Wolf')).toBe(await nameInSandbox('Bear'));
+    expect(await nameInSandbox('Wolf', timing)).toBe(await nameInSandbox('Bear', timing));
   });
 
   it('offers that same name in the completions, and never the rolled text', async () => {
-    const sandboxName = await nameInSandbox('Wolf');
+    const sandboxName = await nameInSandbox('Wolf', timing);
     const statNames = statCodeNamed([power], [beast, probe]).map((entry) => entry.name);
     // A code name with a space is reached through brackets, so that is where the list shows up.
     const code = 'return stats[""];';
@@ -76,13 +88,13 @@ describe('one code name across the sandbox, the completions, and the bench', () 
   });
 
   it('lets the bench find that same name, and no other spelling of it', async () => {
-    const sandboxName = await nameInSandbox('Wolf');
-    expect(benchFindings(`stats[${JSON.stringify(sandboxName)}]`)).toEqual([]);
-    expect(benchFindings('stats["Wolf Power"]')).toHaveLength(1);
+    const sandboxName = await nameInSandbox('Wolf', timing);
+    expect(benchFindings(`stats[${JSON.stringify(sandboxName)}]`, timing)).toEqual([]);
+    expect(benchFindings('stats["Wolf Power"]', timing)).toHaveLength(1);
   });
 
   it('derives that name from the one exported producer', async () => {
-    expect(statCodeName(CHIPPED, [beast, probe])).toBe(await nameInSandbox('Wolf'));
+    expect(statCodeName(CHIPPED, [beast, probe])).toBe(await nameInSandbox('Wolf', timing));
   });
 });
 
@@ -94,9 +106,12 @@ describe('one code name across the sandbox, the completions, and the bench', () 
 const fury: Trait = { id: 'fury', name: '{{ph:ph-beast:world:p1}} Fury', statChanges: [] };
 
 /** The names the sandbox itself keys `traits` on, read back through a pin, under one playthrough's roll. */
-async function traitNamesInSandbox(rolled: string): Promise<string> {
-  const reader = stat({ id: 's1', name: 'Reader', code: 'placeholders.Probe.pin(Object.keys(traits).join("|"));' });
+async function traitNamesInSandbox(rolled: string, timing: StatCodeTiming): Promise<string> {
+  const reader = stat({
+    id: 's1', name: 'Reader', ...inBox(timing, 'placeholders.Probe.pin(Object.keys(traits).join("|"));'),
+  });
   const out = await runStatCodeTurn({
+    timing,
     stats: [reader],
     enabled: {},
     previous: [reader],
@@ -112,23 +127,23 @@ async function traitNamesInSandbox(rolled: string): Promise<string> {
 }
 
 /** The unknown-name findings the bench raises for one piece of code that switches a trait by name. */
-function benchTraitFindings(lookup: string): Promise<string[]> {
+function benchTraitFindings(lookup: string, timing: StatCodeTiming): Promise<string[]> {
   const world: RuleWorld = {
     worldOverview: { name: 'Drift', description: '', systemPrompt: 'Narrate.', readme: 'A primer.' } as WorldOverview,
-    stats: [stat({ id: 's1', name: 'Mana', code: `${lookup}.enabled = true;` })],
+    stats: [stat({ id: 's1', name: 'Mana', ...inBox(timing, `${lookup}.enabled = true;`) })],
     locations: [{ id: 'harbor', name: 'Harbor Steps', isStarting: true }],
     entities: [], traits: [fury], statUpdates: [], dictionaries: [], placeholders: [beast],
   };
   return checkStatCode(world).then((found) => found.map((f) => f.message));
 }
 
-describe('one trait code name across the sandbox, the completions, the editor and the bench', () => {
+describe.each(STAT_CODE_TIMINGS)('one trait code name across the sandbox, the completions, the editor and the bench (%s box)', (timing) => {
   it('gives the sandbox the same trait name whatever the playthrough rolled', async () => {
-    expect(await traitNamesInSandbox('Wolf')).toBe(await traitNamesInSandbox('Bear'));
+    expect(await traitNamesInSandbox('Wolf', timing)).toBe(await traitNamesInSandbox('Bear', timing));
   });
 
   it('offers that same name in the completions, and never the rolled text', async () => {
-    const sandboxName = await traitNamesInSandbox('Wolf');
+    const sandboxName = await traitNamesInSandbox('Wolf', timing);
     const traitNames = statCodeNamed([fury], [beast, probe]).map((entry) => entry.name);
     const code = 'traits[""].enabled = true;';
     const caret = code.indexOf('""') + 1;
@@ -139,7 +154,7 @@ describe('one trait code name across the sandbox, the completions, the editor an
   });
 
   it('lets the editor check that same name, and underline no other spelling of it', async () => {
-    const sandboxName = await traitNamesInSandbox('Wolf');
+    const sandboxName = await traitNamesInSandbox('Wolf', timing);
     const traits = statCodeNamed([fury], [beast, probe]).map((entry) => entry.name);
     const check = (lookup: string) =>
       statCodeDiagnostics(`traits[${JSON.stringify(lookup)}].enabled = true;`, { traits }).map((d) => d.message);
@@ -148,13 +163,13 @@ describe('one trait code name across the sandbox, the completions, the editor an
   });
 
   it('lets the bench find that same name, and no other spelling of it', async () => {
-    const sandboxName = await traitNamesInSandbox('Wolf');
-    expect(await benchTraitFindings(`traits[${JSON.stringify(sandboxName)}]`)).toEqual([]);
-    expect(await benchTraitFindings('traits["Wolf Fury"]')).toHaveLength(1);
+    const sandboxName = await traitNamesInSandbox('Wolf', timing);
+    expect(await benchTraitFindings(`traits[${JSON.stringify(sandboxName)}]`, timing)).toEqual([]);
+    expect(await benchTraitFindings('traits["Wolf Fury"]', timing)).toHaveLength(1);
   });
 
   it('derives that name from the one exported producer', async () => {
-    expect(statCodeName(fury.name, [beast, probe])).toBe(await traitNamesInSandbox('Wolf'));
+    expect(statCodeName(fury.name, [beast, probe])).toBe(await traitNamesInSandbox('Wolf', timing));
   });
 });
 
@@ -175,9 +190,10 @@ const owners: PlaceholderOwners = new Map([
 ]);
 
 /** One stat's `code` run over the scoped fixture, and the pins it left, by placeholder id. */
-async function runScoped(code: string): Promise<Record<string, string | string[] | null>> {
-  const only = stat({ id: 's1', name: 'Reader', code });
+async function runScoped(code: string, timing: StatCodeTiming): Promise<Record<string, string | string[] | null>> {
+  const only = stat({ id: 's1', name: 'Reader', ...inBox(timing, code) });
   const out = await runStatCodeTurn({
+    timing,
     stats: [only],
     enabled: {},
     previous: [only],
@@ -193,32 +209,33 @@ async function runScoped(code: string): Promise<Record<string, string | string[]
 }
 
 /** The keys the sandbox itself builds, read back through a pin: the top level, then Molly's own. */
-async function pathKeysInSandbox(): Promise<string> {
+async function pathKeysInSandbox(timing: StatCodeTiming): Promise<string> {
   const pins = await runScoped(
     'placeholders.Probe.pin(Object.keys(placeholders).join("|") + "/" + Object.keys(placeholders.Molly).join("|"));',
+    timing,
   );
   return String(pins['ph-probe']);
 }
 
 /** The unknown-name findings the bench raises for one piece of code that writes a placeholder by path. */
-function benchPathFindings(lookup: string): Promise<string[]> {
+function benchPathFindings(lookup: string, timing: StatCodeTiming): Promise<string[]> {
   const world: RuleWorld = {
     worldOverview: { name: 'Drift', description: '', systemPrompt: 'Narrate.', readme: 'A primer.' } as WorldOverview,
-    stats: [stat({ id: 's1', name: 'Mana', code: `${lookup}.pin("x");` })],
+    stats: [stat({ id: 's1', name: 'Mana', ...inBox(timing, `${lookup}.pin("x");`) })],
     locations: [{ id: 'harbor', name: 'Harbor Steps', isStarting: true }],
     entities: [molly], traits: [], statUpdates: [], dictionaries: [], placeholders: [worldHair, probe],
   };
   return checkStatCode(world).then((found) => found.map((f) => f.message));
 }
 
-describe('one placeholder path across the sandbox, the completions, the editor and the bench', () => {
+describe.each(STAT_CODE_TIMINGS)('one placeholder path across the sandbox, the completions, the editor and the bench (%s box)', (timing) => {
   it('keys the sandbox by the owner node and its placeholders, the world’s own row beside them', async () => {
     // The world's Hair wins the bare name; Molly's is reached through her node, which lists only what she owns.
-    expect(await pathKeysInSandbox()).toBe('Hair|Probe|Molly|Shade/Hair');
+    expect(await pathKeysInSandbox(timing)).toBe('Hair|Probe|Molly|Shade/Hair');
   });
 
   it('offers those same keys in the completions, at the top level and under the owner node', async () => {
-    const top = (await pathKeysInSandbox()).split('/')[0].split('|');
+    const top = (await pathKeysInSandbox(timing)).split('/')[0].split('|');
     const options = { placeholders: { list: scoped, owners } };
     const offered = statCodeCompletions('return placeholders.', 'return placeholders.'.length, options)
       ?.options.map((option) => option.label) ?? [];
@@ -229,27 +246,86 @@ describe('one placeholder path across the sandbox, the completions, the editor a
     expect(statCodeCompletions(under, under.length, options)?.options.map((option) => option.label)).toEqual(['Hair']);
   });
 
-  it('lets the editor check that same path, and underline no other spelling of it', () => {
+  it('lets the bench find that same path, and report the one no entry answers', async () => {
+    expect(await benchPathFindings('placeholders.Molly.Hair.Shade', timing)).toEqual([]);
+    const [missed] = await benchPathFindings('placeholders.Molly.Hiar', timing);
+    expect(missed).toContain('Molly › Hiar');
+  });
+
+  it('lands a pin through the path on the child alone, by its id', async () => {
+    expect(await runScoped('placeholders.Molly.Hair.Shade.pin("silver");', timing)).toEqual({ shade: 'silver' });
+  });
+
+  it('derives every one of those names from the one exported resolver', async () => {
+    const map = placeholderPathMap({ list: scoped, owners });
+    const top = (await pathKeysInSandbox(timing)).split('/')[0].split('|');
+    expect([...map.keys.keys()]).toEqual(top);
+    expect(placeholderPathLabel(placeholderPathAt(map, ['Molly', 'Hair', 'Shade'])!.path)).toBe('Molly › Hair › Shade');
+  });
+});
+
+/** The editor's own reader over the scoped fixture, which is timing-blind: one box's text is all it sees. */
+describe('the editor reads a placeholder path the way the sandbox keys it', () => {
+  it('checks that same path, and underlines no other spelling of it', () => {
     const options = { placeholders: { list: scoped, owners } };
     const check = (lookup: string) => statCodeDiagnostics(`${lookup}.pin("x");`, options).map((d) => d.message);
     expect(check('placeholders.Molly.Hair.Shade')).toEqual([]);
     expect(check('placeholders.Molly.Shade')).toHaveLength(1);
   });
+});
 
-  it('lets the bench find that same path, and report the one no entry answers', async () => {
-    expect(await benchPathFindings('placeholders.Molly.Hair.Shade')).toEqual([]);
-    const [missed] = await benchPathFindings('placeholders.Molly.Hiar');
-    expect(missed).toContain('Molly › Hiar');
+/**
+ * One stat holding code in both boxes at once.
+ *
+ * The cases above fill one box at a time, so each proves its own box in isolation. This one proves the two
+ * do not read each other: a fixture with a different miss in each box gets both reported, named apart, and
+ * a run of one box reaches only that box's text.
+ */
+describe('a stat with code in both boxes', () => {
+  const twoBoxes: RuleWorld = {
+    worldOverview: { name: 'Drift', description: '', systemPrompt: 'Narrate.', readme: 'A primer.' } as WorldOverview,
+    stats: [stat({ id: 's1', name: CHIPPED }), stat({
+      id: 's2',
+      name: 'Mana',
+      beforeCode: 'return stats["Wolf Power"].value;',
+      code: 'return stats["Bear Power"].value;',
+    })],
+    locations: [{ id: 'harbor', name: 'Harbor Steps', isStarting: true }],
+    entities: [], traits: [], statUpdates: [], dictionaries: [], placeholders: [beast],
+  };
+
+  it('reports each box’s own miss under that box’s name', () => {
+    const found = runRules(twoBoxes).filter((f) => f.ruleId === 'stat-code-unknown-stat').map((f) => f.message);
+    expect(found).toEqual([
+      'Before The AI code on “Mana” looks up a stat named “Wolf Power”, which doesn’t exist',
+      'After The AI code on “Mana” looks up a stat named “Bear Power”, which doesn’t exist',
+    ]);
   });
 
-  it('lands a pin through the path on the child alone, by its id', async () => {
-    expect(await runScoped('placeholders.Molly.Hair.Shade.pin("silver");')).toEqual({ shade: 'silver' });
-  });
-
-  it('derives every one of those names from the one exported resolver', async () => {
-    const map = placeholderPathMap({ list: scoped, owners });
-    const top = (await pathKeysInSandbox()).split('/')[0].split('|');
-    expect([...map.keys.keys()]).toEqual(top);
-    expect(placeholderPathLabel(placeholderPathAt(map, ['Molly', 'Hair', 'Shade'])!.path)).toBe('Molly › Hair › Shade');
+  it('runs only the box the turn asked for, whatever the other box holds', async () => {
+    const both = stat({
+      id: 's1',
+      name: 'Reader',
+      beforeCode: 'placeholders.Probe.pin("before");',
+      code: 'placeholders.Probe.pin("after");',
+    });
+    const pinFrom = async (timing: StatCodeTiming) => {
+      const out = await runStatCodeTurn({
+        timing,
+        stats: [both],
+        enabled: {},
+        previous: [both],
+        asks: [],
+        regenApplied: {},
+        clock: {},
+        traits: { acquired: [], disabledTraitIds: [], appliedValues: {}, world: { traits: [], groups: [] } },
+        statNameOf: (entry) => entry.name,
+        traitNameOf: (entry) => entry.name,
+        placeholders: { placeholders: [probe], rolls: { world: {} } },
+      });
+      return out.pinWrites['ph-probe'];
+    };
+    expect(await pinFrom('before')).toBe('before');
+    expect(await pinFrom('after')).toBe('after');
   });
 });

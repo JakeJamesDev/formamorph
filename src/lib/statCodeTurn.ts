@@ -11,17 +11,8 @@ import {
   activeTraits, applyCodeTraitSwitches, withCodeBounds, type AppliedTraitValues, type CodeTraitSwitch,
   type TraitRuntimeState,
 } from './traitRuntime';
-import type { StatCodeTiming } from './statCodeTiming';
+import { boxCode, noBoxes, type StatCodeTiming } from './statCodeTiming';
 import { clamp } from './utils';
-
-
-/** The box a run reads on one stat, empty where that stat leaves the box blank. */
-export const boxCode = (stat: Pick<PlayerStat, 'beforeCode' | 'code'>, timing: StatCodeTiming): string =>
-  (timing === 'before' ? stat.beforeCode : stat.code) ?? '';
-
-/** Whether a stat leaves both boxes blank, which is what clears its code bounds. */
-export const noBoxes = (stat: Pick<PlayerStat, 'beforeCode' | 'code'>): boolean =>
-  !stat.beforeCode?.trim() && !stat.code?.trim();
 
 /** The trait state a run's switches left, and the log lines they wrote. */
 export interface StatCodeTraitResult {
