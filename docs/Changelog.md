@@ -46,6 +46,13 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
     - **Renames.** When you give a stat, a placeholder, or a trait a new name, and stat code somewhere in the world reaches it by the old one, the editor asks whether to update those references. Choosing **Update Code** rewrites every lookup of the old name across every stat's code, in whichever form it was written: `stats.Health`, `stats['Health']`, or `stats["Health"]`. Choosing **Leave Code** changes nothing. The question comes once, when you finish the name — not while you type it — and a rename through Find and Replace asks it too. Renaming onto a name another entry already carries asks nothing, because the duplicate-name warning already covers it. **Paths follow too.** Renaming an entity or a book that owns placeholders asks as well, and so does renaming a part held under another placeholder: **Update Code** rewrites that step of every path through it, in dot or bracket form and at any depth, so `placeholders.Molly.Hair` follows a rename of either name. It rewrites the path that reaches the entry you renamed and no other, so a world-level `placeholders.Hair` of your own is left alone. **And renaming a placeholder follows into the names it gives.** A stat named `{{Beast}} Power` reads as `stats["Beast Power"]`, so renaming `Beast` to `Wolf` rewrites that lookup and `traits["Beast Fury"]` with it, and the count in the question includes them.
     - **Templates and Test Bench.** **Templates** gains **Bound From Another Stat**, **Placeholder by Range**, and **Trait by Threshold**, and placeholder and trait slots pick from the world's own names. **Per-Turn Change** is renamed **Hourly Change**, and **Inverse of a Stat** is renamed **Inverse of Another Stat**. The Test Bench's stat code check runs under the new surface and adds a warning row for code that writes to a placeholder or trait name the world does not have.
 
+### Minor Changes
+
+#### 🔧 Fixed
+
+- **👤 User-facing**
+  - **The event poster keeps its Got It and View Entries buttons on screen on a short phone screen or with a large system font.** The poster caps its height at the screen, and its text scrolls under the fixed header and buttons.
+
 ---
 
 <details>
