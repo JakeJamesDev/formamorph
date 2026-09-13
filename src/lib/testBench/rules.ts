@@ -29,6 +29,7 @@ import {
   statStartValue, thresholdValue, uncoveredSpan, valueThreshold,
 } from '@/lib/statDescriptorGeometry';
 import { statCodeName } from '@/lib/statCodeNames';
+import { boxCode, filledCodeBoxes, noBoxes, TIMING_LABEL } from '@/lib/statCodeTiming';
 import { estimateTokens } from '@/lib/memoryUtils';
 import { entityImages } from '@/lib/entityImages';
 import {
@@ -860,17 +861,39 @@ const statCodeUnknownStat: Rule = {
     const stats = world.stats ?? [];
     const known = new Set(stats.map((s) => statCodeName(s.name, allPlaceholders(world))));
     return stats.flatMap((stat) => {
-      if (!stat.code) return [];
       const item = namedItem(stat.id, stat.name, world);
-      return [...new Set(statNamesInCode(stat.code))]
+      return filledCodeBoxes(stat).flatMap((box) => [...new Set(statNamesInCode(box.code))]
         .filter((name) => !known.has(name))
         .map((name) => finding(
           statCodeUnknownStat,
-          `Code on ${quote(item.name)} looks up a stat named ${quote(name)}, which doesn’t exist`,
+          `${TIMING_LABEL[box.timing]} code on ${quote(item.name)} looks up a stat named ${quote(name)}, which doesn’t exist`,
           [item],
-        ));
+        )));
     });
   },
+};
+
+// A read of a stat's `delta`, in either lookup form. A bare `delta` is nothing the sandbox injects, so only
+// a member read counts — which also leaves an author's own variable of that name alone.
+const DELTA_READ = /\??\.\s*delta\b|\[\s*(["'`])delta\1\s*\]/;
+
+const statCodeBeforeReadsDelta: Rule = {
+  id: 'stat-code-before-reads-delta',
+  severity: 'warning',
+  section: 'stats',
+  advanced: true,
+  summary: (count) => `${count} stats read delta in their ${TIMING_LABEL.before} box, where every source is zero`,
+  check: (world) => (world.stats ?? [])
+    .filter((stat) => DELTA_READ.test(boxCode(stat, 'before')))
+    .map((stat) => {
+      const item = namedItem(stat.id, stat.name, world);
+      return finding(
+        statCodeBeforeReadsDelta,
+        `${TIMING_LABEL.before} code on ${quote(item.name)} reads delta, but that box runs before the AI `
+        + 'asks and before regen — every delta reads zero there',
+        [item],
+      );
+    }),
 };
 
 // ── Dictionary: entries that can never fire ───────────────────────────────────────────────────────────────
@@ -1239,8 +1262,7 @@ const statTraitDeltaClamped: Rule = {
 /** Whether a stat's code builds on the stat's own current value, which is the one thing that lets a trait's
  *  starting change survive the first recompute. Three ways code can find itself count: the injected
  *  `currentStatId`, the `self` map entry, and its own name written as a literal or a map lookup. */
-const codeReadsSelf = (stat: Stat, world: RuleWorld): boolean => {
-  const code = stat.code ?? '';
+const codeReadsSelf = (code: string, stat: Stat, world: RuleWorld): boolean => {
   // The id has to be quoted to be a lookup: bare containment would read a stat whose id is "1" out of
   // `return 100;` and silently quiet the rule. An idless stat has no lookup to find, rather than an empty one.
   const quotedId = stat.id
@@ -1257,16 +1279,22 @@ const statCodeOverridesTrait: Rule = {
   section: 'stats',
   advanced: true,
   summary: (count) => `${count} trait stat changes target stats whose code recomputes them from scratch, which erases the change`,
-  check: (world) => traitValueChanges(world)
-    .filter(({ stat }) => stat.code?.trim() && !codeReadsSelf(stat, world))
-    .map(({ stat, trait, delta }) => {
-      const items = statAndTrait(stat, trait, world);
-      return finding(
-        statCodeOverridesTrait,
-        `${quote(items[1].name)} ${delta < 0 ? 'lowers' : 'raises'} ${quote(items[0].name)} by ${Math.abs(delta)}, but that stat’s code recomputes its value without reading it — the change is gone by the next run`,
-        items,
-      );
-    }),
+  // Judged per box, because a stat can read itself in one box and recompute from scratch in the other, and
+  // only a box that recomputes erases the change. Reported per trait change, so the count stays a count of
+  // changes: the message names every box at fault rather than raising the same change twice.
+  check: (world) => traitValueChanges(world).flatMap(({ stat, trait, delta }) => {
+    const guilty = filledCodeBoxes(stat).filter((box) => !codeReadsSelf(box.code, stat, world));
+    if (!guilty.length) return [];
+    const items = statAndTrait(stat, trait, world);
+    const boxes = listNames(guilty.map((box) => TIMING_LABEL[box.timing]));
+    return [finding(
+      statCodeOverridesTrait,
+      `${quote(items[1].name)} ${delta < 0 ? 'lowers' : 'raises'} ${quote(items[0].name)} by ${Math.abs(delta)}, `
+      + `but that stat’s ${boxes} code ${guilty.length > 1 ? 'recompute' : 'recomputes'} its value `
+      + 'without reading it — the change is gone by the next run',
+      items,
+    )];
+  }),
 };
 
 const statAiLockFrozen: Rule = {
@@ -1280,7 +1308,7 @@ const statAiLockFrozen: Rule = {
       (trait.statChanges ?? []).filter((change) => change.type === 'starting').map((change) => change.statId),
     ));
     return (world.stats ?? [])
-      .filter((stat) => stat.noIncrease && stat.noDecrease && !stat.code?.trim() && !stat.regen
+      .filter((stat) => stat.noIncrease && stat.noDecrease && noBoxes(stat) && !stat.regen
         && !movedByTrait.has(stat.id))
       .map((stat) => {
         const item = namedItem(stat.id, stat.name, world);
@@ -2230,6 +2258,7 @@ export const RULES: readonly Rule[] = [
   aliasLeadingArticle, entityMatchCollision, aliasSelfDuplicate,
   entityLocationOrphan, traitToggleMissingStat, placeholderPinBroken,
   chipUnknownPlaceholder, placeholderUnused, placeholderPinnedUnused, statCodeUnknownStat,
+  statCodeBeforeReadsDelta,
   entrySecondaryWithoutPrimary, entryInert, entryRegexInvalid,
   noStartingLocation, legacyStartLocation, entityNowhere, statDisabledForever,
   statStartingOutOfRange, statStartNoDescriptor, statDescriptorDuplicateThreshold, statDescriptorOutOfRange,

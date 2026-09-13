@@ -137,7 +137,23 @@ describe('the on-demand stat-code check', () => {
   it('says nothing about stats with no code, or blank code', async () => {
     expect(await checkStatCode(base([
       stat({ id: 's1', name: 'Vigor' }),
-      stat({ id: 's2', name: 'Weave', code: '   ' }),
+      stat({ id: 's2', name: 'Weave', code: '   ', beforeCode: '\n' }),
+    ]))).toEqual([]);
+  });
+
+  it('runs both of a stat’s boxes and names the box each row is about', async () => {
+    const found = await checkStatCode(base([
+      stat({ id: 's1', name: 'Fertility', beforeCode: 'throw new Error("nope");', code: 'return "not a number";' }),
+    ]));
+    expect(found.map((f) => f.message)).toEqual([
+      'Before The AI code on “Fertility” throws when it runs, so the stat keeps its manual value',
+      'After The AI code on “Fertility” doesn’t return a number, so the stat keeps its manual value',
+    ]);
+  });
+
+  it('leaves a stat alone when only its before box holds code and that box runs clean', async () => {
+    expect(await checkStatCode(base([
+      stat({ id: 's1', name: 'Fertility', beforeCode: 'return 25;' }),
     ]))).toEqual([]);
   });
 

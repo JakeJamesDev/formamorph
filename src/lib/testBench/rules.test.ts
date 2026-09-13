@@ -430,6 +430,60 @@ describe('reference-integrity rules', () => {
     expect(rolled).toHaveLength(1);
     expect(rolled[0].message).toContain('Wolf Power');
   });
+
+  it('reports the miss in either box, and names the box it read it in', () => {
+    const boxed = (over: Partial<Stat>) => base({
+      stats: [stat({ id: 's1', name: 'Mana', ...over }), stat({ id: 's2', name: 'Vigor' })],
+    });
+    const miss = 'return stats["Vigour"].value;';
+    const hit = 'return stats["Vigor"].value;';
+
+    const beforeOnly = only(boxed({ beforeCode: miss, code: hit }), 'stat-code-unknown-stat');
+    expect(beforeOnly).toHaveLength(1);
+    expect(beforeOnly[0].message).toBe(
+      'Before The AI code on “Mana” looks up a stat named “Vigour”, which doesn’t exist',
+    );
+
+    const afterOnly = only(boxed({ beforeCode: hit, code: miss }), 'stat-code-unknown-stat');
+    expect(afterOnly).toHaveLength(1);
+    expect(afterOnly[0].message).toBe(
+      'After The AI code on “Mana” looks up a stat named “Vigour”, which doesn’t exist',
+    );
+
+    // One miss per box, so an author who typed it twice is told twice rather than once.
+    expect(only(boxed({ beforeCode: miss, code: miss }), 'stat-code-unknown-stat').map((f) => f.message)).toEqual([
+      'Before The AI code on “Mana” looks up a stat named “Vigour”, which doesn’t exist',
+      'After The AI code on “Mana” looks up a stat named “Vigour”, which doesn’t exist',
+    ]);
+  });
+
+  it('warns that delta reads zero in the before box, and stays silent about the after box', () => {
+    const boxed = (over: Partial<Stat>) => base({ stats: [stat({ id: 's1', name: 'Mana', ...over })] });
+    const reads = 'return self.value + self.delta.ai.value;';
+
+    const found = only(boxed({ beforeCode: reads }), 'stat-code-before-reads-delta');
+    expect(found).toHaveLength(1);
+    expect(found[0].severity).toBe('warning');
+    expect(found[0].message).toBe(
+      'Before The AI code on “Mana” reads delta, but that box runs before the AI asks and before regen — '
+      + 'every delta reads zero there',
+    );
+    expect(found[0].items.map((i) => i.id)).toEqual(['s1']);
+
+    // The after box is where delta means something, so the same text there raises nothing.
+    expect(only(boxed({ code: reads }), 'stat-code-before-reads-delta')).toEqual([]);
+  });
+
+  it('reads delta through the bracket form too, and leaves a variable of that name alone', () => {
+    const before = (beforeCode: string) => only(
+      base({ stats: [stat({ id: 's1', name: 'Mana', beforeCode })] }),
+      'stat-code-before-reads-delta',
+    );
+    expect(before('return stats.Mana["delta"].total.value;')).toHaveLength(1);
+    expect(before('return self?.delta.regen.value;')).toHaveLength(1);
+    // An author's own `delta` is not the sandbox's: nothing injects a bare one, so nothing is stranded.
+    expect(before('const delta = 3;\nreturn self.value + delta;')).toEqual([]);
+  });
 });
 
 describe('dictionary rules', () => {
@@ -786,6 +840,30 @@ describe('stat sanity rules', () => {
     expect(found[0].items[1].section).toBe('traits');
   });
 
+  it('judges each box on its own and names the one that recomputes', () => {
+    const ashen = trait({ id: 't1', name: 'Ashen', statChanges: [{ statId: 's1', type: 'starting', value: -10 }] });
+    const reads = 'return self.value + 1;';
+    const recomputes = 'return 25;';
+    // The after box reads the stat, so only the before box erases what the trait set.
+    const beforeOnly = only(oneStat({ starting: 40, beforeCode: recomputes, code: reads }, [ashen]), 'stat-code-overrides-trait');
+    expect(beforeOnly.map((f) => f.message)).toEqual([
+      '“Ashen” lowers “Fertility” by 10, but that stat’s Before The AI code recomputes its value without '
+      + 'reading it — the change is gone by the next run',
+    ]);
+    const afterOnly = only(oneStat({ starting: 40, beforeCode: reads, code: recomputes }, [ashen]), 'stat-code-overrides-trait');
+    expect(afterOnly.map((f) => f.message)).toEqual([
+      '“Ashen” lowers “Fertility” by 10, but that stat’s After The AI code recomputes its value without '
+      + 'reading it — the change is gone by the next run',
+    ]);
+    // Both boxes recompute. One trait change is still one finding, so the collapsed row's count stays a
+    // count of trait changes; the message names both boxes instead.
+    const both = only(oneStat({ starting: 40, beforeCode: recomputes, code: recomputes }, [ashen]), 'stat-code-overrides-trait');
+    expect(both.map((f) => f.message)).toEqual([
+      '“Ashen” lowers “Fertility” by 10, but that stat’s Before The AI and After The AI code recompute its '
+      + 'value without reading it — the change is gone by the next run',
+    ]);
+  });
+
   it('says nothing when the code builds on the stat’s own value, which is what the trait moved', () => {
     const ashen = trait({ id: 't1', name: 'Ashen', statChanges: [{ statId: 's1', type: 'starting', value: -10 }] });
     // Both ways code can find itself: the injected id, and its own name as a literal.
@@ -856,6 +934,8 @@ describe('stat sanity rules', () => {
     // Each of the three movers on its own is enough.
     expect(runRules(oneStat({ ...locks, regen: 2 }))).toEqual([]);
     expect(only(oneStat({ ...locks, code: 'return 25;', starting: 25 }), 'stat-ai-lock-frozen')).toEqual([]);
+    // Either box counts as code: a stat moved only before the AI is not frozen.
+    expect(only(oneStat({ ...locks, beforeCode: 'return 25;', starting: 25 }), 'stat-ai-lock-frozen')).toEqual([]);
     expect(runRules(oneStat(
       { ...locks, starting: 40 },
       [trait({ id: 't1', name: 'Ashen', statChanges: [{ statId: 's1', type: 'starting', value: -10 }] })],
@@ -2728,6 +2808,7 @@ const RULE_SCOPE: Record<string, 'simple' | 'advanced'> = {
   'stat-code-unknown-name': 'advanced',
   'stat-code-overrides-trait': 'advanced',
   'stat-code-unknown-stat': 'advanced',
+  'stat-code-before-reads-delta': 'advanced',
   'stat-descriptor-coverage-gap': 'advanced',
   'stat-descriptor-duplicate-threshold': 'advanced',
   'stat-descriptor-out-of-range': 'advanced',

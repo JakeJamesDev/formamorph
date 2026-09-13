@@ -23,6 +23,7 @@ import { buildOpening, EMPTY_OPENING } from './opening';
 import { useOpeningRolls } from './useOpeningRolls';
 import { loadLastTurn, type LastTurn } from './lastTurn';
 import { checkStatCode } from './statCodeCheck';
+import { noBoxes } from '@/lib/statCodeTiming';
 import { lensStatOverrides } from './lens';
 import { useBenchFindings } from './useBenchFindings';
 import { useBenchLens } from './useBenchLens';
@@ -119,7 +120,7 @@ export function useTestBench({
     }
   }, [getWorldData, beginCodeRun]);
   const codedStatCount = useMemo(
-    () => benchWorld.stats.filter((s) => s.code?.trim()).length,
+    () => benchWorld.stats.filter((s) => !noBoxes(s)).length,
     [benchWorld],
   );
   // Out of band like the stat-code findings: the byte count comes from the debounced worker measure, not

@@ -190,6 +190,7 @@ describe('WorldEditor — exit without saving, after a rename rewrote stat code'
     },
     stats: [{
       id: 's1', name: 'Health', type: 'number', description: '', min: 0, max: 100, value: 5, regen: 0,
+      beforeCode: 'placeholders.Mood.pin("bleak");',
       code: 'return placeholders.Mood.text.length;',
     }],
     placeholders: [{ id: 'p1', name: 'Mood', values: [{ id: 'v:calm', text: 'calm' }] }],
@@ -231,6 +232,7 @@ describe('WorldEditor — exit without saving, after a rename rewrote stat code'
     fireEvent.blur(field);
 
     fireEvent.click(await screen.findByRole('button', { name: 'Update Code' }));
+    expect(ctx.stats[0].beforeCode).toBe('placeholders.Temper.pin("bleak");');
     expect(ctx.stats[0].code).toBe('return placeholders.Temper.text.length;');
 
     await exitVia('Exit Without Saving');
@@ -238,6 +240,7 @@ describe('WorldEditor — exit without saving, after a rename rewrote stat code'
     // Both halves of one edit. The rewrite goes through the editor's ordinary write path, so a discard that
     // took back only the name would leave the code naming a placeholder the world no longer has.
     expect(ctx.placeholders[0].name).toBe('Mood');
+    expect(ctx.stats[0].beforeCode).toBe('placeholders.Mood.pin("bleak");');
     expect(ctx.stats[0].code).toBe('return placeholders.Mood.text.length;');
     expect(ctx.isWorldDirty).toBe(false);
     expect(onClose).toHaveBeenCalled();

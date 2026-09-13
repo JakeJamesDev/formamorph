@@ -5,15 +5,16 @@ import {
 } from '@/components/ui/alert-dialog';
 import { useGameDataOptional } from '@/contexts/GameDataContext';
 import { planCodeRename, type CodeRenamePlan, type RenameRoot } from '@/lib/statCodeRename';
+import { CODE_FIELD, type StatCodeTiming } from '@/lib/statCodeTiming';
 import { CodeRenameContext, type CodeRenameRequest, type OfferCodeRename } from '@/lib/useCodeRename';
 
 /**
  * The offer to carry a rename into stat code, and the dialog that asks it.
  *
  * A commit is blur or Enter on a name field, or a find-and-replace pass over one. Keystrokes are not
- * commits: the offer would otherwise fire on every letter of a name being typed. A plan is built from the
- * code as it stands when the question is put, and applied to `code` alone, so the rename and the rewrite
- * both sit in the editor's normal write path and Discard rolls the pair back together.
+ * commits: the offer would otherwise fire on every letter of a name being typed. A plan is built from both
+ * of a stat's code boxes as they stand when the question is put, and applied through the editor's normal
+ * write path, so the rename and the rewrite sit together and Discard rolls the pair back together.
  */
 
 /** The noun each map's entries go by, for the question the dialog asks. */
@@ -96,7 +97,10 @@ export function CodeRenameProvider({ children }: { children: ReactNode }) {
     const byId = new Map(latest.current.stats.map((stat) => [stat.id, stat]));
     for (const edit of plan.edits) {
       const stat = byId.get(edit.id);
-      if (stat && write) write({ ...stat, code: edit.code });
+      if (!stat || !write) continue;
+      // Only the boxes the plan rewrote, so a box the rename never read keeps whatever it holds.
+      const boxes = Object.entries(edit.boxes).map(([timing, code]) => [CODE_FIELD[timing as StatCodeTiming], code]);
+      write({ ...stat, ...Object.fromEntries(boxes) });
     }
     settle();
   };
