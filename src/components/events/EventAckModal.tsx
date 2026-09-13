@@ -90,7 +90,7 @@ export function EventAckModal({ events, isAuthenticated, onOpenEvent, held = fal
       <DialogContent
         hideClose
         aria-describedby={undefined}
-        className="max-w-md p-0 gap-0 overflow-hidden"
+        className="max-w-md max-h-[90dvh] p-0 gap-0 overflow-hidden flex flex-col"
         onEscapeKeyDown={(e) => e.preventDefault()}
         onPointerDownOutside={(e) => e.preventDefault()}
         onInteractOutside={(e) => e.preventDefault()}
@@ -101,13 +101,16 @@ export function EventAckModal({ events, isAuthenticated, onOpenEvent, held = fal
           eyebrow={eyebrow}
           title={<DialogTitle className="text-display font-semibold text-balance">{title}</DialogTitle>}
         />
-        <div className="flex flex-col gap-4 px-6 py-5">
+        {/* The band is a fixed header and the buttons a fixed footer; only the prose scrolls. The poster
+            has no other way out, so the buttons must stay on screen however long the body runs or however
+            large the system font is. */}
+        <div className="flex min-h-0 flex-1 flex-col gap-4 px-6 py-5">
           {/* The organizer writes this in the same markdown editor world prose is written in, so it is
               read the same way rather than as the symbols they typed. */}
-          <div className="text-label text-muted-foreground">
+          <div className="min-h-0 flex-1 overflow-y-auto text-label text-muted-foreground" data-testid="event-ack-body">
             <MarkdownRenderer text={event.body ?? ''} />
           </div>
-          <div className="flex justify-end gap-2">
+          <div className="flex shrink-0 justify-end gap-2">
             {contest && onOpenEvent && (
               <Button
                 variant="outline"
