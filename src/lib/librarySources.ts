@@ -5,6 +5,7 @@ import {
   libraryOwned, libraryRevision, withoutWorldFields,
   type LibrarySource, type LinkableContent,
 } from '@/lib/linkedContent';
+import type { InstalledSource } from '@/lib/worldDependencies';
 import AuthService from '@/services/AuthService';
 import DictionaryStorageService from '@/services/DictionaryStorageService';
 import EntityStorageService from '@/services/EntityStorageService';
@@ -161,6 +162,67 @@ export async function saveCopyToLibrary(
   // `store` stamps `lastAccessed` itself and leaves `editedAt` unset, so the revision this link holds is
   // the creation stamp — the same one a later read computes.
   return { id, name: data.name, revision: now, owned: true, data };
+}
+
+/** What a downloaded component's library record remembers about where it came from. */
+export interface DownloadedListing {
+  /** The listing it was downloaded from. */
+  sourceId: string;
+  /** The listing's own name, used when the content carries none. */
+  name?: string;
+  /** The listing's `updated_at`, so a later check can tell this copy is behind. */
+  sourceUpdatedAt?: string;
+  authorId?: string;
+  authorName?: string;
+}
+
+/**
+ * Store a component downloaded from the catalog as a library item that follows its listing.
+ *
+ * One local copy per listing, as every other library download is: re-downloading refreshes the copy the
+ * player already has rather than leaving them two rows with the same name. The copy takes its own record
+ * id, never the content's — a listing forked from the same ancestor as a local original carries that id
+ * too, and writing there would silently replace a different item.
+ *
+ * @param kind - Which library the component belongs in
+ * @param content - The downloaded content
+ * @param listing - Where it came from
+ * @returns The library item, with the revision a world copy following it holds against
+ */
+export async function saveDownloadToLibrary(
+  kind: LibraryKind, content: LinkableContent, listing: DownloadedListing,
+): Promise<InstalledSource> {
+  const held = (await LIBRARIES[kind].list()).find((record) => record.sourceId === listing.sourceId);
+  // An edited copy is kept exactly as it is, and the world's copy follows it. Replacing it here would
+  // discard the player's own work with no warning; taking the source's version is an update review.
+  if (held?.dirty) {
+    return { sourceId: listing.sourceId, libraryId: held.id, name: held.name, revision: libraryRevision(held) };
+  }
+  const id = held?.id ?? randomUUID();
+  const now = new Date().toISOString();
+  const data = { ...content, id };
+  const name = data.name?.trim() || listing.name?.trim() || 'Untitled';
+  await LIBRARIES[kind].store({
+    id,
+    name,
+    createdAt: held?.createdAt ?? now,
+    data: { ...data, name },
+    sourceId: listing.sourceId,
+    downloadedAt: now,
+    // A fresh download is by definition unedited, which also clears the flag on a copy that was edited.
+    dirty: false,
+    ...(listing.sourceUpdatedAt ? { sourceUpdatedAt: listing.sourceUpdatedAt } : {}),
+    ...(listing.authorId ? { sourceAuthorId: listing.authorId } : {}),
+    ...(listing.authorName ? { sourceAuthorName: listing.authorName } : {}),
+  });
+  return {
+    sourceId: listing.sourceId,
+    libraryId: id,
+    name,
+    // Read the way a later library read computes it, so the copy that follows this item is not reported
+    // behind the moment it arrives. `editedAt` is sticky across a store and still wins.
+    revision: libraryRevision({ editedAt: held?.editedAt, downloadedAt: now, createdAt: now }),
+  };
 }
 
 /**

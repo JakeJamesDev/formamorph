@@ -12,6 +12,7 @@ import { readDeletedDefaultWorlds, tombstoneDefaultWorld, type DefaultWorldSeed 
 import { changelogOf, type ChangelogDraft, type ChangelogEntry } from '@/lib/listingChangelog';
 import type { WorldAssociation } from '@/lib/compatibleWorlds';
 import type { ListingVisibility } from '@/lib/publishLinks';
+import type { AddonRow, DependencyRow } from '@/lib/worldDependencies';
 import type { ContentLink, LikerAuditRow, LikerRow, VrmLicense, WorldMetadata } from '@/types';
 
 /**
@@ -759,6 +760,72 @@ class WorldStorageService {
       console.error('Error fetching the listing:', error);
       return null;
     }
+  }
+
+  /**
+   * Read one relationship route for a world, with the reader's own token so an unlisted source and a
+   * declined offering are answered by the rules that apply to them.
+   *
+   * Every refusal but one throws. A download that could not read these must stop and say so rather than
+   * install a world with nothing following anything, and an add-on the reader picked must not vanish
+   * because a request failed. The exception is `absent`, answered on a 404: a server that predates the
+   * route has no relationships to report, which is what it answered before the routes existed.
+   *
+   * @param path - The route, from the API root
+   * @param fallback - What to say when the refusal carries no message of its own
+   * @param absent - What a 404 means here. Omitted, a 404 throws like any other refusal
+   */
+  private async fetchRelationship<T>(path: string, fallback: string, absent?: T): Promise<T> {
+    const headers: Record<string, string> = {};
+    if (AuthService.isAuthenticated()) {
+      headers['Authorization'] = `Bearer ${AuthService.token}`;
+    }
+    const response = await fetch(`${this.API_URL}${path}`, { headers });
+    if (response.status === 404 && absent !== undefined) return absent;
+    if (!response.ok) {
+      const body = await response.json().catch(() => ({}));
+      throw new Error(body.error || body.message || fallback);
+    }
+    return (await response.json()).data as T;
+  }
+
+  /**
+   * What a world requires, each source resolved to its listing or reported gone.
+   *
+   * @param worldId - The world listing's server id
+   * @returns One row per required source, in the order the world declares them
+   */
+  async fetchDependencies(worldId: string): Promise<DependencyRow[]> {
+    const body = await this.fetchRelationship<{ dependencies?: DependencyRow[] } | null>(
+      `/worlds/${worldId}/dependencies`, 'Failed to read what this world requires', null,
+    );
+    return body?.dependencies ?? [];
+  }
+
+  /**
+   * One required source's content. This is the only route that hands out an unlisted component, and only
+   * to a reader who can already open the world that requires it.
+   *
+   * @param worldId - The world listing the source is required by
+   * @param sourceId - The required source's listing id
+   */
+  async fetchDependencyContent(worldId: string, sourceId: string): Promise<unknown> {
+    const body = await this.fetchRelationship<{ contentData?: unknown }>(
+      `/worlds/${worldId}/dependencies/${sourceId}/content`, 'Failed to download this source',
+    );
+    return body?.contentData;
+  }
+
+  /**
+   * The components offered as add-ons for a world, each with the world author's review state.
+   *
+   * @param worldId - The world listing's server id
+   * @returns The offerings, or none against a server that predates the route
+   */
+  async fetchAddons(worldId: string): Promise<AddonRow[]> {
+    return this.fetchRelationship<AddonRow[]>(
+      `/worlds/${worldId}/addons`, 'Failed to read this world\'s add-ons', [],
+    );
   }
 
   /**
