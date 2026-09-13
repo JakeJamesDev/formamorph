@@ -52,18 +52,23 @@ vi.mock('@/lib/statCodeExecutor', async (importOriginal) => ({
   executeStatCode,
 }));
 
-const row = () => screen.getByRole('button', { name: /Test Code/ }).parentElement as HTMLElement;
+/** The report beside one box's Test Code button. The button and its report share a row, so the row is
+ *  the button's grandparent: the buttons sit in a group of their own inside it. */
+const row = (box: 'Before The AI' | 'After The AI' = 'After The AI') =>
+  screen.getByRole('button', { name: `Test Code ${box}` }).parentElement?.parentElement as HTMLElement;
 
 /** The code editor lives on the panel's Code tab, so every case here opens there. The tab an author picks
  *  belongs to the editor, which is why it arrives as a prop rather than being clicked to. */
 const renderCodePanel = (stat: Stat) => render(<StatManager stat={stat} tab="code" onTabChange={() => {}} />);
 
-/** Put code in the field the way an author would, and run it. */
-async function testCode(user: ReturnType<typeof userEvent.setup>, code: string) {
-  const field = screen.getByLabelText('Stat Code After The AI');
+/** Put code in one box the way an author would, and run that box. */
+async function testCode(
+  user: ReturnType<typeof userEvent.setup>, code: string, box: 'Before The AI' | 'After The AI' = 'After The AI',
+) {
+  const field = screen.getByLabelText(`Stat Code ${box}`);
   await user.clear(field);
   await user.paste(code);
-  await user.click(screen.getByRole('button', { name: /Test Code/ }));
+  await user.click(screen.getByRole('button', { name: `Test Code ${box}` }));
 }
 
 describe('what Test Code reports', () => {
@@ -240,5 +245,101 @@ describe('what Test Code reports', () => {
     await user.type(screen.getByLabelText('Stat Code After The AI'), ' ');
     expect(row()).not.toHaveTextContent('Result:');
     expect(row()).not.toHaveTextContent('in this code');
+  });
+});
+
+describe('a box tests itself', () => {
+  beforeEach(() => {
+    executeStatCode.mockReset();
+    updateStat.mockReset();
+  });
+
+  it('runs the box whose button was pressed, on that box’s own code', async () => {
+    const user = userEvent.setup();
+    executeStatCode.mockResolvedValue({ value: 11, error: null });
+    renderCodePanel({ ...stats[0], beforeCode: 'return 11;', code: 'return 22;' } as Stat);
+
+    await user.click(screen.getByRole('button', { name: 'Test Code Before The AI' }));
+
+    await waitFor(() => expect(row('Before The AI')).toHaveTextContent('Result: 11'));
+    expect(executeStatCode.mock.calls[0][0]).toBe('return 11;');
+    // The other box stays silent: its code was never run.
+    expect(row('After The AI')).not.toHaveTextContent('Result:');
+  });
+
+  // `previous` reads as the stat itself and every `delta` reads zero when the run is handed no turn — which
+  // is exactly what the before box reads in play, so the editor's run says the same thing the turn will.
+  it('runs the before box with no turn behind it, so every delta reads zero', async () => {
+    const user = userEvent.setup();
+    executeStatCode.mockResolvedValue({ value: 3, error: null });
+    renderCodePanel({ ...stats[0], beforeCode: 'return self.delta.ai.value + 3;' } as Stat);
+
+    await user.click(screen.getByRole('button', { name: 'Test Code Before The AI' }));
+
+    await waitFor(() => expect(row('Before The AI')).toHaveTextContent('Result: 3'));
+    expect(executeStatCode.mock.calls[0][3]).not.toHaveProperty('turn');
+  });
+
+  // The before box runs at turn start, so it has consumed no hours and, with none elapsed, stands on the
+  // opening turn — the one its own templates are written for.
+  it('runs each box on the clock that box gets', async () => {
+    const user = userEvent.setup();
+    executeStatCode.mockResolvedValue({ value: 1, error: null });
+    renderCodePanel({ ...stats[0], beforeCode: 'return 1;', code: 'return 1;' } as Stat);
+
+    await user.click(screen.getByRole('button', { name: 'Test Code Before The AI' }));
+    await waitFor(() => expect(executeStatCode).toHaveBeenCalled());
+    expect(executeStatCode.mock.calls[0][3].clock).toEqual({ deltaHours: 0, elapsedHours: 0 });
+
+    await user.click(screen.getByRole('button', { name: 'Test Code After The AI' }));
+    await waitFor(() => expect(executeStatCode).toHaveBeenCalledTimes(2));
+    expect(executeStatCode.mock.calls[1][3].clock).toEqual({ deltaHours: 1, elapsedHours: 1 });
+  });
+
+  it('clears only the edited box’s report', async () => {
+    const user = userEvent.setup();
+    executeStatCode.mockResolvedValue({ value: 11, error: null });
+    renderCodePanel({ ...stats[0], beforeCode: 'return 11;' } as Stat);
+
+    await user.click(screen.getByRole('button', { name: 'Test Code Before The AI' }));
+    await waitFor(() => expect(row('Before The AI')).toHaveTextContent('Result: 11'));
+
+    executeStatCode.mockResolvedValue({ value: 22, error: null });
+    await testCode(user, 'return 22;');
+    await waitFor(() => expect(row('After The AI')).toHaveTextContent('Result: 22'));
+    // Running and editing the other box left this one's report where it was.
+    expect(row('Before The AI')).toHaveTextContent('Result: 11');
+
+    await user.type(screen.getByLabelText('Stat Code Before The AI'), ' ');
+    expect(row('Before The AI')).not.toHaveTextContent('Result:');
+    expect(row('After The AI')).toHaveTextContent('Result: 22');
+  });
+
+  // The whole point of a per-box menu: what it inserts lands in that box and runs from that box's own
+  // button. The before menu's Opening Turn Value returns nothing on a later turn, so a Result here also
+  // says the run used the opening-turn clock the before box gets.
+  it('inserts a before-menu template into the before box and runs it there', async () => {
+    const user = userEvent.setup();
+    executeStatCode.mockResolvedValue({ value: 50, error: null });
+    renderCodePanel(stats[0]);
+
+    await user.click(screen.getByRole('button', { name: 'Templates Before The AI' }));
+    await user.click(await screen.findByRole('button', { name: 'Opening Turn Value' }));
+    await user.click(screen.getByRole('button', { name: 'Insert Code' }));
+
+    const inserted = ['if (elapsedHours > 0) return;', 'return 50;'].join('\n');
+    await waitFor(() => expect(screen.getByLabelText('Stat Code Before The AI')).toHaveValue(inserted));
+    // Into the before box alone: the after box is untouched.
+    expect(screen.getByLabelText('Stat Code After The AI')).toHaveValue('');
+
+    await user.click(screen.getByRole('button', { name: 'Test Code Before The AI' }));
+    await waitFor(() => expect(row('Before The AI')).toHaveTextContent('Result: 50'));
+    expect(executeStatCode.mock.calls[0][0]).toBe(inserted);
+  });
+  it('offers no run on an empty box', async () => {
+    renderCodePanel({ ...stats[0], beforeCode: '   ', code: 'return 1;' } as Stat);
+
+    expect(screen.getByRole('button', { name: 'Test Code Before The AI' })).toBeDisabled();
+    expect(screen.getByRole('button', { name: 'Test Code After The AI' })).toBeEnabled();
   });
 });

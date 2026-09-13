@@ -350,9 +350,22 @@ Start with two or three stats that the story would genuinely turn on. Every stat
   'worldEditor.statCode': {
     title: 'Dynamic Value Calculation',
     wikiPage: 'StatCodeGuide',
-    body: `A stat can run a small script. Write JavaScript that **returns a number**, and the stat takes that value instead of its Initial Value. Leave the box empty and the manual value stands.
+    body: `A stat can run a small script. Write JavaScript that **returns a number**, and the stat takes that value instead of its Initial Value. Leave a box empty and the manual value stands.
 
-**Test Code** runs your script right there and shows what it set, as a one-hour turn on day one. It's the ground truth — the underlines in the editor are advice given without running anything.
+**Two boxes, one turn.** A turn runs them in this order:
+
+| | |
+|---|---|
+| 1 | **Before The AI** — your setup box |
+| 2 | The AI's stat changes |
+| 3 | Regen |
+| 4 | **After The AI** — your reaction box |
+
+**Before The AI** runs at the start of the turn, before the prompt is built. A value it sets, a placeholder it pins, or a trait it switches is in what the AI reads on that same turn. Nothing has happened yet, so \`previous\` reads as the stat itself, every \`delta\` reads zero, and the clock reads turn start.
+
+**After The AI** is the box worlds have always had. It runs once the AI's changes and Regen land, and reads what the before box left. Both boxes run on every turn, an empty one does nothing, and a bound one box sets stays in force until the other writes it or you empty both.
+
+**Test Code** sits under each box and runs that box alone, on the clock that box gets: the opening turn for Before The AI, a one-hour turn on day one for After The AI. It's the ground truth — the underlines in the editor are advice given without running anything.
 
 **What your script can reach.** A copy of every stat, the world's placeholders and traits, and nothing else: no page, no network, no other stat's code. \`stats\` is a map keyed by name; \`self\` is the stat you're editing. Each stat carries \`id\`, \`name\`, \`type\`, \`description\`, \`min\`, \`max\`, \`value\` and \`regen\`.
 
@@ -408,13 +421,13 @@ Both ends are given because a turn spans time: an eight-hour sleep begins in the
 
 That's what makes a per-hour drain (\`current + 2 * deltaHours\`) or a stat that only climbs after dark possible.
 
-**Your code runs on every turn.** It runs on the opening turn, and on a turn where the AI asked for no stat change. It also runs when the stat request is off or when it fails. On those turns \`delta.ai\` reads zeros. Each run happens after the AI's changes and this turn's regen land.
+**Your code runs on every turn.** Both boxes run on the opening turn, and on a turn where the AI asked for no stat change. They run when the stat request is off or when it fails. On those turns \`delta.ai\` reads zeros in the after box, as it always does in the before box.
 
 **A script that sets the value ignores the AI.** Whatever the AI writes gets recomputed away, though it still *reads* the value and description normally. A script that only writes a bound, a placeholder or a trait leaves the value to the AI.
 
 **A failed run changes nothing.** Code that throws or times out leaves the stat, the placeholders and the traits as they were. A write to a placeholder or trait name the world doesn't have is dropped, and Test Code and the Test Bench both say so.
 
-**Templates** beside the button writes the common shapes for you — a drain, a timer, a blend of two stats, a bound from another stat, a placeholder pin, a trait switch — and asks only for what each one needs. What it inserts is ordinary code you can then edit.`,
+**Templates** beside each Test Code button writes the common shapes for you, and each box offers the ones that fit its timing. Before The AI holds the setup shapes: a placeholder pin, a trait switch, an opening value. After The AI holds the reacting ones: a drain, a timer, a blend of two stats, a bound from another stat. Each asks only for what it needs, and what it inserts is ordinary code you can then edit.`,
   },
   'worldEditor.dictionary': {
     title: 'Dictionary',

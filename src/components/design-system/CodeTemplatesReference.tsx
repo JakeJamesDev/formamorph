@@ -52,6 +52,7 @@ const LONG_TEMPLATE: StatCodeTemplate = {
   id: 'showcase-long-template',
   name: 'Long Observatory Schedule With Recovery Conditions',
   description: 'This controlled personal template has enough detail and parameters to demonstrate selection, wrapping, and vertical overflow without reading the real template library.',
+  timing: 'after',
   code: `const source = stats[{{source:stat}}].value;
 const floor = {{floor:number=10}};
 const ceiling = {{ceiling:number=90}};
@@ -64,6 +65,7 @@ const IMPORT_TEMPLATE: StatCodeTemplate = {
   id: 'showcase-import-template',
   name: 'Imported Local Demonstration',
   description: 'This template comes from controlled showcase text.',
+  timing: 'after',
   code: 'return {{amount:number=3}};',
 };
 
@@ -139,6 +141,7 @@ export function CodeTemplatesReference() {
       <StatCodeTemplateDialog
         open={open}
         onOpenChange={setOpen}
+        timing="after"
         stats={SAMPLE_STATS}
         currentStatId="sample-focus"
         hasExistingCode={false}

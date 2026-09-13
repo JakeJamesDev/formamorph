@@ -1,6 +1,6 @@
 # 🧮 Stat Code Guide
 
-This guide explains Formamorph's **stat code** — a small JavaScript script attached to a stat. It can set the stat's value from other stats, move the stat's own bounds, pin a placeholder, or switch a trait. In a world file this script is a stat's `code` field; see the [World Format](WorldFormat) for where it lives.
+This guide explains Formamorph's **stat code** — a small JavaScript script attached to a stat. It can set the stat's value from other stats, move the stat's own bounds, pin a placeholder, or switch a trait. Each stat has two script boxes, one on each side of the AI's turn. In a world file they are a stat's `beforeCode` and `code` fields; see the [World Format](WorldFormat) for where they live.
 
 ## Overview
 
@@ -17,19 +17,37 @@ Stat code runs in a sandbox on every turn (see [When Your Code Runs](#when-your-
 
 ## How It Works
 
-1. Each stat can have an optional JavaScript script
-2. On every turn, the script runs in a safe environment after the AI's changes and regen apply
-3. The script reads every stat, the story clock, the world's placeholders, and the world's traits
+1. Each stat has two optional JavaScript boxes: **Before The AI** and **After The AI**
+2. On every turn, each box runs in a safe environment at its own point in the turn
+3. Each box reads every stat, the story clock, the world's placeholders, and the world's traits
 4. `return <number>` sets the stat's value, clamped to its range. Writes to `self`, `placeholders`, and `traits` apply after the run
 5. A script that throws or times out changes nothing
 
+### The Two Boxes
+
+A turn runs your code twice, once on each side of the AI:
+
+| Step | What happens |
+| --- | --- |
+| 1 | **Before The AI** runs, on the state the turn started in |
+| 2 | The prompt is built and the AI answers |
+| 3 | The AI's stat changes apply |
+| 4 | Regen applies |
+| 5 | **After The AI** runs |
+
+**Before The AI is the setup box.** It runs before the prompt is built, so a value it sets, a placeholder it pins, or a trait it switches is in what the AI reads on that same turn. A stat it moves shows on the bar while the AI is still writing.
+
+**After The AI is the reaction box.** It runs where a single box always ran, so a world written before the split keeps its meaning with no edits. It reads the AI's ask, this turn's regen, and whatever the before box left.
+
+> ⚠️ **The before box has no turn behind it yet.** `previous` reads as the stat itself, `delta.ai`, `delta.regen`, `delta.total` and `delta.actual` all read zeros, and the clock reads turn start — `deltaHours` is `0` there. Code that scales an ask belongs in the after box.
+
+**Bounds carry across both boxes.** A `self.max` the before box sets stays in force through an after box that never mentions it. Emptying one box leaves the bounds the other set; emptying both clears them.
+
 ### When Your Code Runs
 
-**Your code runs on every turn.** There is no schedule to choose and nothing to switch on. It runs on the opening turn, after the opening narration, and on a turn where the AI asked for no stat change.
+**Your code runs on every turn.** There is no schedule to choose and nothing to switch on. Both boxes run on the opening turn, and on a turn where the AI asked for no stat change.
 
-Each run happens after the AI's changes and this turn's regen land.
-
-> 💡 Your code runs even when the stat request is off, or when it fails. On such a turn `delta.ai` reads zeros, so code that scales an ask leaves the value where it stood.
+> 💡 Both boxes run even when the stat request is off, or when it fails. On such a turn `delta.ai` reads zeros in the after box too, so code that scales an ask leaves the value where it stood.
 
 ## Writing Stat Code
 
@@ -100,7 +118,7 @@ A bound your code sets wins over the authored bound, trait changes, and the AI's
 
 ### Reading This Turn
 
-Every stat carries what the turn did before the code ran. `previous` holds the whole stat — every field `self` has — as it stood at the start of the turn.
+Every stat carries what the turn did before the code ran. `previous` holds the whole stat — every field `self` has — as it stood at the start of the turn. In the before box the turn has done nothing yet, so `previous` reads as the stat itself and every `delta` below reads zero. This section is about the after box.
 
 `delta` holds every change the turn made to the stat, by source. Each member has the same four fields: `value`, `min`, `max`, and `regen`. A field that a source cannot move reads `0`.
 
@@ -219,7 +237,9 @@ A write to a trait name the world does not have is dropped. **Test Code** and th
 
 ### Order of Effects
 
-Every stat's code runs over the same snapshot, so no script sees another's writes in the same turn. After the run, effects apply in this order: trait switches, then bounds, then values, then placeholder pins. A bound a stat set this turn still wins over a bound its own trait switch moved. When two stats write the same placeholder or trait in one turn, the later stat in the list wins.
+Each box is a run of its own, and within one run every stat's code reads the same snapshot — so no script sees another stat's writes from that same run. After each run, effects apply in this order: trait switches, then bounds, then values, then placeholder pins. A bound a stat set this turn still wins over a bound its own trait switch moved. When two stats write the same placeholder or trait in one run, the later stat in the list wins.
+
+The two runs are ordered against each other, though: everything the before box wrote is already in place when the after box reads.
 
 ### The Story Clock
 
@@ -383,8 +403,9 @@ return baseRate * activityMultiplier * sizeFactor;
 3. **Stay within min/max**: The system will automatically clamp your result to the stat's min/max range
 4. **Avoid infinite loops**: Don't create circular dependencies between stats
 5. **Write only what you mean to change**: A field, placeholder, or trait you leave alone keeps the turn's own result
-6. **Test your code**: Use the "Test Code" button to validate your code before saving
-7. **Add comments**: Document your code for future reference
+6. **Test your code**: Use the box's own "Test Code" button to validate that box before saving
+7. **Pick the right box**: put a write the AI should read this turn in **Before The AI**, and a reaction to what the AI asked in **After The AI**
+8. **Add comments**: Document your code for future reference
 
 ## Limitations
 
@@ -393,7 +414,8 @@ return baseRate * activityMultiplier * sizeFactor;
 - Circular dependencies between stats may cause unexpected behavior
 - The code runs in a sandboxed environment with limited JavaScript features
 - Code writes only its own bounds; another stat's entry is read-only
-- **Test Code** runs your script as a one-hour turn on day one with no player traits, so it can't preview a long turn or a different daypart. It shows a trait switch and never applies it to the world
+- **Test Code** runs one box with no player traits, so it can't preview a long turn or a different daypart. Before The AI runs as the opening turn, where `deltaHours` and `elapsedHours` are both `0`; After The AI runs as a one-hour turn on day one. It shows a trait switch and never applies it to the world
+- Each box's **Templates** menu lists only the templates written for that box
 
 ### A Note on Accumulating Stats
 

@@ -30,10 +30,12 @@ import {
   resolveSlotValue,
   validateSlotValues,
   isNameSlotType,
+  templatesForTiming,
   type NameSlotType,
   type StatCodeTemplate,
   type TemplateSlot,
 } from '@/lib/statCodeTemplates';
+import { STAT_CODE_TIMINGS, TIMING_LABEL, type StatCodeTiming } from '@/lib/statCodeTiming';
 import {
   buildTemplatePack,
   deleteUserTemplate,
@@ -44,13 +46,17 @@ import {
 } from '@/services/StatTemplateStorageService';
 import type { Stat } from '@/types';
 import { Tip } from '@/components/ui/tooltip';
+import { Meta } from '@/components/ui/typography';
 
-const BLANK_TEMPLATE: StatCodeTemplate = {
+/** A new template starts in the box the author opened the menu from, which is where they were about to
+ *  paste it. The Runs field is right there to move it. */
+const blankTemplate = (timing: StatCodeTiming): StatCodeTemplate => ({
   id: '',
   name: '',
   description: '',
   code: 'return {{amount:number=1}};',
-};
+  timing,
+});
 
 export interface StatTemplateRepository {
   list: () => Promise<StatCodeTemplate[]>;
@@ -191,6 +197,7 @@ function TemplateForm({ code, names, values, onChange }: {
 export function StatCodeTemplateDialog({
   open,
   onOpenChange,
+  timing,
   stats,
   currentStatId,
   hasExistingCode,
@@ -202,6 +209,9 @@ export function StatCodeTemplateDialog({
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  /** The box this menu fills. It lists only the templates written for that box, and a template saved here
+   *  starts out belonging to it. */
+  timing: StatCodeTiming;
   /** Under their code names: what a slot fills in has to be what the run reaches. */
   stats: Stat[];
   /** Excluded from stat pickers — a stat built from itself is a mistake, and templates reach their own
@@ -217,7 +227,8 @@ export function StatCodeTemplateDialog({
   fileTransfer?: StatTemplateFileTransfer;
 }) {
   const [userTemplates, setUserTemplates] = useState<StatCodeTemplate[]>([]);
-  const [selectedId, setSelectedId] = useState<string>(BUILT_IN_TEMPLATES[0].id);
+  const builtIns = useMemo(() => templatesForTiming(BUILT_IN_TEMPLATES, timing), [timing]);
+  const [selectedId, setSelectedId] = useState<string>(builtIns[0].id);
   const [values, setValues] = useState<Record<string, string>>({});
   const [draft, setDraft] = useState<StatCodeTemplate | null>(null);
   const [draftValues, setDraftValues] = useState<Record<string, string>>({});
@@ -235,16 +246,16 @@ export function StatCodeTemplateDialog({
   }, [repository]);
 
   useResetOnOpen(open, () => {
-    setSelectedId(BUILT_IN_TEMPLATES[0].id);
+    setSelectedId(builtIns[0].id);
     setDraft(null);
     void refresh();
   });
 
   const sortedUser = useMemo(
-    () => [...userTemplates].sort((a, b) => a.name.localeCompare(b.name)),
-    [userTemplates],
+    () => templatesForTiming(userTemplates, timing).sort((a, b) => a.name.localeCompare(b.name)),
+    [userTemplates, timing],
   );
-  const all = useMemo(() => [...BUILT_IN_TEMPLATES, ...sortedUser], [sortedUser]);
+  const all = useMemo(() => [...builtIns, ...sortedUser], [builtIns, sortedUser]);
   const selected = all.find(template => template.id === selectedId) ?? all[0];
   const slotNames = useMemo<SlotNames>(() => ({
     stat: stats.filter(stat => stat.id !== currentStatId).map(stat => stat.name).filter(Boolean),
@@ -296,16 +307,17 @@ export function StatCodeTemplateDialog({
     try {
       await repository.remove(template.id);
       await refresh();
-      setSelectedId(BUILT_IN_TEMPLATES[0].id);
+      setSelectedId(builtIns[0].id);
     } catch (error) {
       toast.error(`Couldn’t delete: ${(error as Error).message}`);
     }
   };
 
   const exportPack = () => {
-    if (sortedUser.length === 0) return;
+    if (userTemplates.length === 0) return;
     const filename = 'stat-templates.json';
-    const contents = JSON.stringify(buildTemplatePack(sortedUser), null, 2);
+    // Every template the author has, not just this box's: a pack is their library, not one menu.
+    const contents = JSON.stringify(buildTemplatePack([...userTemplates]), null, 2);
     if (fileTransfer) {
       fileTransfer.writeExportPack(contents, filename);
       return;
@@ -384,6 +396,18 @@ export function StatCodeTemplateDialog({
                 <span className="text-label">Description</span>
                 <Input value={draft.description} onChange={(e) => setDraft({ ...draft, description: e.target.value })} />
               </label>
+              <label className="flex flex-col gap-1">
+                <span className="text-label">Runs</span>
+                <Select
+                  value={draft.timing}
+                  onValueChange={(value) => setDraft({ ...draft, timing: value as StatCodeTiming })}
+                >
+                  <SelectTrigger aria-label="Runs"><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    {STAT_CODE_TIMINGS.map(t => <SelectItem key={t} value={t}>{TIMING_LABEL[t]}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+              </label>
               {/* Preview is the creation interface the template will present, so the author edits the code
                   and reads what it asks for in the same place — side by side once full screen allows. */}
               <CodeArea
@@ -419,7 +443,7 @@ export function StatCodeTemplateDialog({
                 <Select value={selected?.id} onValueChange={setSelectedId}>
                   <SelectTrigger aria-label="Code Template"><SelectValue /></SelectTrigger>
                   <SelectContent>
-                    {BUILT_IN_TEMPLATES.map(t => <SelectItem key={t.id} value={t.id}>{t.name}</SelectItem>)}
+                    {builtIns.map(t => <SelectItem key={t.id} value={t.id}>{t.name}</SelectItem>)}
                     {sortedUser.map(t => <SelectItem key={t.id} value={t.id}>{t.name}</SelectItem>)}
                   </SelectContent>
                 </Select>
@@ -427,7 +451,7 @@ export function StatCodeTemplateDialog({
                 <ScrollArea className="h-full rounded-md border">
                   <div className="p-2 flex flex-col gap-1">
                     <p className="text-meta text-muted-foreground px-1 pt-1">Built-In</p>
-                    {BUILT_IN_TEMPLATES.map(templateButton)}
+                    {builtIns.map(templateButton)}
 
                     <div className="flex items-center justify-between gap-1 px-1 pt-3">
                       <p className="text-meta text-muted-foreground">My Templates</p>
@@ -444,7 +468,7 @@ export function StatCodeTemplateDialog({
                         <Tip tip="Export templates">
                           <button
                             type="button"
-                            disabled={sortedUser.length === 0}
+                            disabled={userTemplates.length === 0}
                             className="rounded p-1 text-muted-foreground hover:bg-accent hover:text-foreground disabled:pointer-events-none disabled:opacity-40"
                             onClick={exportPack}
                           >
@@ -457,7 +481,7 @@ export function StatCodeTemplateDialog({
 
                     <button
                       type="button"
-                      onClick={() => openDraft({ ...BLANK_TEMPLATE })}
+                      onClick={() => openDraft(blankTemplate(timing))}
                       className="flex items-center gap-1 rounded border border-dashed px-2 py-1.5 text-label text-muted-foreground hover:bg-muted hover:text-foreground"
                     >
                       <Plus className="h-4 w-4" />New Template
@@ -471,6 +495,7 @@ export function StatCodeTemplateDialog({
                   <>
                     <div>
                       <p className="text-label font-medium">{selected.name}</p>
+                      <Meta className="block text-muted-foreground">Runs {TIMING_LABEL[selected.timing]}</Meta>
                       <p className="text-helper text-muted-foreground">{selected.description}</p>
                     </div>
                     <TemplateForm code={selected.code} names={slotNames} values={values} onChange={setValues} />
@@ -483,7 +508,7 @@ export function StatCodeTemplateDialog({
                 form runs. */}
             <DialogFooter className="flex-row flex-wrap justify-end gap-2">
               {isMobile && (
-                <Button variant="outline" size="sm" onClick={() => openDraft({ ...BLANK_TEMPLATE })}>
+                <Button variant="outline" size="sm" onClick={() => openDraft(blankTemplate(timing))}>
                   <Plus className="h-4 w-4 mr-1" />New
                 </Button>
               )}

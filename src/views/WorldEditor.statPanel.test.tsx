@@ -141,10 +141,13 @@ describe('the World Editor stat panel tabs', () => {
     selectStat('Warmth');
     openPanelTab('Code');
     expect(panelLabels()).toEqual(['Dynamic Value Calculation', 'Before The AI', 'After The AI']);
-    expect(screen.getByRole('button', { name: /Templates/ })).toBeInTheDocument();
     expect(screen.getByLabelText('Stat Code Before The AI')).toHaveValue('');
     expect(screen.getByLabelText('Stat Code After The AI')).toHaveValue('return 4;');
-    expect(screen.getByRole('button', { name: /Test Code/ })).toBeInTheDocument();
+    // Each box carries its own pair: the buttons act on one box, so each names the box it acts on.
+    for (const box of ['Before The AI', 'After The AI']) {
+      expect(screen.getByRole('button', { name: `Templates ${box}` })).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: `Test Code ${box}` })).toBeInTheDocument();
+    }
   });
 
   it('leaves Simple mode no strip and only the fields that mode has always shown', () => {

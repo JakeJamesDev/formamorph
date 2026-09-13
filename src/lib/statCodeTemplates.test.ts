@@ -14,6 +14,9 @@ import {
   isNameSlotType,
   BUILT_IN_TEMPLATES,
   DAYPART_OPTIONS,
+  timingOf,
+  templatesForTiming,
+  type StatCodeTemplate,
   type TemplateSlot,
 } from './statCodeTemplates';
 import { executeStatCode, type SandboxTrait } from './statCodeExecutor';
@@ -234,8 +237,13 @@ describe('built-in templates', () => {
         const picked = pickFor(slot);
         if (picked !== undefined) values[slot.name] = picked;
       }
+      // The clock its own box hands it: a measured turn after the AI, and the opening turn's zero hours
+      // before, which is the reading the before box gives on the turn its templates are written for.
+      const clock = template.timing === 'before'
+        ? { deltaHours: 0, elapsedHours: 0 }
+        : { deltaHours: 2, elapsedHours: 12 };
       const result = await executeStatCode(fillTemplate(template.code, values), world, self, {
-        clock: { deltaHours: 2, elapsedHours: 12 }, placeholders, traits,
+        clock, placeholders, traits,
       });
       expect(result.error, template.name).toBeNull();
       // A template writes a value, a bound, a placeholder, or a trait; one that does nothing is broken.
@@ -284,6 +292,19 @@ describe('built-in templates', () => {
       );
       expect(result.error).toBeNull();
       expect(result.placeholders).toEqual([phWrite('Hair', ['grey'])]);
+    });
+
+    it('sets the opening value on the opening turn and leaves later turns alone', async () => {
+      const template = BUILT_IN_TEMPLATES.find(t => t.id === 'builtin-opening-value')!;
+      const code = fillTemplate(template.code, { openingValue: '75' });
+      const at = (elapsedHours: number) =>
+        executeStatCode(code, world, self, { clock: { deltaHours: 0, elapsedHours }, placeholders, traits });
+
+      // The before box reads the clock at turn start, so the opening turn is the one at hour zero.
+      expect((await at(0)).value).toBe(75);
+      // Any later turn returns nothing, which leaves the value the turn found.
+      expect(await at(1)).toEqual({ value: null, error: null });
+      expect(await at(96)).toEqual({ value: null, error: null });
     });
 
     it('switches a trait on past the line and off below it', async () => {
@@ -355,5 +376,39 @@ describe('built-in templates', () => {
       expect(value).toBeGreaterThanOrEqual(0);
       expect(value).toBeLessThanOrEqual(200);
     }
+  });
+});
+
+describe('which box a template belongs to', () => {
+  it('splits the built-ins so neither menu offers the other box’s templates', () => {
+    const before = templatesForTiming(BUILT_IN_TEMPLATES, 'before').map(t => t.id);
+    const after = templatesForTiming(BUILT_IN_TEMPLATES, 'after').map(t => t.id);
+
+    // The three setup shapes: a value the first narration reads, a pin it reads, a trait it reads.
+    expect(before).toEqual([
+      'builtin-placeholder-follows-stat', 'builtin-trait-by-threshold', 'builtin-opening-value',
+    ]);
+    expect(after).not.toHaveLength(0);
+    expect(before.filter(id => after.includes(id))).toEqual([]);
+    expect([...before, ...after]).toHaveLength(BUILT_IN_TEMPLATES.length);
+  });
+
+  // Three readings are dead in the before box: `deltaHours` is 0 because the turn has consumed no time,
+  // `delta` is zeros because nothing has moved, and `previous` is the stat itself. A template built on any
+  // of them would run and quietly do nothing, so it belongs in the after menu. The rest of the clock still
+  // reads: `elapsedHours` at turn start is what tells the opening turn from every later one.
+  it('offers no before template that is built on a reading the before box zeroes', () => {
+    const deadInTheBeforeBox = /deltaHours|delta[.]|previous/;
+    for (const template of templatesForTiming(BUILT_IN_TEMPLATES, 'before')) {
+      expect(template.code, template.name).not.toMatch(deadInTheBeforeBox);
+    }
+  });
+
+  it('reads a template with no timing as an after-the-AI one', () => {
+    expect(timingOf({})).toBe('after');
+    expect(timingOf({ timing: 'before' })).toBe('before');
+    const untimed = { id: 'x', name: 'x', description: '', code: '' } as StatCodeTemplate;
+    expect(templatesForTiming([untimed], 'after')).toEqual([untimed]);
+    expect(templatesForTiming([untimed], 'before')).toEqual([]);
   });
 });

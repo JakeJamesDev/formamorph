@@ -9,14 +9,15 @@ import {
   importTemplates,
   TEMPLATE_PACK_VERSION,
 } from './StatTemplateStorageService';
-import { BUILT_IN_TEMPLATES } from '@/lib/statCodeTemplates';
+import { BUILT_IN_TEMPLATES, type StatCodeTemplate } from '@/lib/statCodeTemplates';
 import { APP_VERSION } from '@/lib/version';
 
-const template = (over: Partial<{ id: string; name: string; description: string; code: string }> = {}) => ({
+const template = (over: Partial<StatCodeTemplate> = {}): StatCodeTemplate => ({
   id: '',
   name: 'Mine',
   description: 'A local template',
   code: 'return {{n:number=1}};',
+  timing: 'after',
   ...over,
 });
 
@@ -35,6 +36,21 @@ describe('StatTemplateStorageService', () => {
     expect((await listUserTemplates()).some(t => t.id === saved.id)).toBe(false);
   });
 
+  it('keeps a template in the box it was saved for', async () => {
+    const saved = await saveUserTemplate(template({ name: 'Setup', timing: 'before' }));
+    expect((await listUserTemplates()).find(t => t.id === saved.id)?.timing).toBe('before');
+    await deleteUserTemplate(saved.id);
+  });
+
+  // Every template saved before the boxes split ran where the after box runs, so that is where it stays.
+  it('reads a template stored without a timing as an after-the-AI one', async () => {
+    const { timing: _dropped, ...noTiming } = template({ name: 'Older' });
+    const saved = await saveUserTemplate(noTiming as StatCodeTemplate);
+    expect(saved.timing).toBe('after');
+    expect((await listUserTemplates()).find(t => t.id === saved.id)?.timing).toBe('after');
+    await deleteUserTemplate(saved.id);
+  });
+
   it('re-issues a built-in id so a duplicate can’t shadow the bundled template', async () => {
     const saved = await saveUserTemplate(template({ id: BUILT_IN_TEMPLATES[0].id, name: 'Copy' }));
     expect(saved.id).not.toBe(BUILT_IN_TEMPLATES[0].id);
@@ -48,7 +64,10 @@ describe('StatTemplateStorageService', () => {
     // questions, and a bare `1` in the file reads as the app's version to anyone opening it.
     expect(pack.appVersion).toBe(APP_VERSION);
     const parsed = parseTemplatePack(JSON.stringify(pack));
-    expect(parsed).toEqual([{ id: 'abc', name: 'Mine', description: 'A local template', code: 'return {{n:number=1}};' }]);
+    expect(parsed).toEqual([template({ id: 'abc' })]);
+    // A pack hand-edited down to the fields that existed before the boxes split still imports.
+    const older = { formamorphTemplates: 1, appVersion: 'x', templates: [{ id: 'legacy', name: 'Old', code: 'return 1;' }] };
+    expect(parseTemplatePack(JSON.stringify(older))[0].timing).toBe('after');
   });
 
   it('rejects malformed pack files', () => {
