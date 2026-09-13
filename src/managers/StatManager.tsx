@@ -407,7 +407,7 @@ const StatManager = ({ stat, tab, onTabChange, focusField }: {
       </div>
 
       <Hint>Code can set this stat&apos;s value, Min, Max, or Regen, pin a placeholder, or switch a trait.</Hint>
-      <Hint>Turn order: Before The AI, AI stat changes, Regen, After The AI. An empty box is skipped.</Hint>
+      <Hint>Turn order: Before the AI, AI stat changes, Regen, After the AI. An empty box is skipped.</Hint>
 
       <StatCodeBox
         timing="before"

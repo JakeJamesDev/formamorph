@@ -441,19 +441,19 @@ describe('reference-integrity rules', () => {
     const beforeOnly = only(boxed({ beforeCode: miss, code: hit }), 'stat-code-unknown-stat');
     expect(beforeOnly).toHaveLength(1);
     expect(beforeOnly[0].message).toBe(
-      'Before The AI code on “Mana” looks up a stat named “Vigour”, which does not exist',
+      'Before the AI code on “Mana” looks up a stat named “Vigour”, which does not exist',
     );
 
     const afterOnly = only(boxed({ beforeCode: hit, code: miss }), 'stat-code-unknown-stat');
     expect(afterOnly).toHaveLength(1);
     expect(afterOnly[0].message).toBe(
-      'After The AI code on “Mana” looks up a stat named “Vigour”, which does not exist',
+      'After the AI code on “Mana” looks up a stat named “Vigour”, which does not exist',
     );
 
     // One miss per box, so an author who typed it twice is told twice rather than once.
     expect(only(boxed({ beforeCode: miss, code: miss }), 'stat-code-unknown-stat').map((f) => f.message)).toEqual([
-      'Before The AI code on “Mana” looks up a stat named “Vigour”, which does not exist',
-      'After The AI code on “Mana” looks up a stat named “Vigour”, which does not exist',
+      'Before the AI code on “Mana” looks up a stat named “Vigour”, which does not exist',
+      'After the AI code on “Mana” looks up a stat named “Vigour”, which does not exist',
     ]);
   });
 
@@ -465,7 +465,7 @@ describe('reference-integrity rules', () => {
     expect(found).toHaveLength(1);
     expect(found[0].severity).toBe('warning');
     expect(found[0].message).toBe(
-      'Before The AI code on “Mana” reads delta, but that box runs before the AI asks and before regen — '
+      'Before the AI code on “Mana” reads delta, but that box runs before the AI asks and before regen — '
       + 'every delta reads zero there',
     );
     expect(found[0].items.map((i) => i.id)).toEqual(['s1']);
@@ -847,19 +847,19 @@ describe('stat sanity rules', () => {
     // The after box reads the stat, so only the before box erases what the trait set.
     const beforeOnly = only(oneStat({ starting: 40, beforeCode: recomputes, code: reads }, [ashen]), 'stat-code-overrides-trait');
     expect(beforeOnly.map((f) => f.message)).toEqual([
-      '“Ashen” lowers “Fertility” by 10, but that stat’s Before The AI code recomputes its value without '
+      '“Ashen” lowers “Fertility” by 10, but that stat’s Before the AI code recomputes its value without '
       + 'reading it — the change is gone by the next run',
     ]);
     const afterOnly = only(oneStat({ starting: 40, beforeCode: reads, code: recomputes }, [ashen]), 'stat-code-overrides-trait');
     expect(afterOnly.map((f) => f.message)).toEqual([
-      '“Ashen” lowers “Fertility” by 10, but that stat’s After The AI code recomputes its value without '
+      '“Ashen” lowers “Fertility” by 10, but that stat’s After the AI code recomputes its value without '
       + 'reading it — the change is gone by the next run',
     ]);
     // Both boxes recompute. One trait change is still one finding, so the collapsed row's count stays a
     // count of trait changes; the message names both boxes instead.
     const both = only(oneStat({ starting: 40, beforeCode: recomputes, code: recomputes }, [ashen]), 'stat-code-overrides-trait');
     expect(both.map((f) => f.message)).toEqual([
-      '“Ashen” lowers “Fertility” by 10, but that stat’s Before The AI and After The AI code recompute its '
+      '“Ashen” lowers “Fertility” by 10, but that stat’s Before the AI and After the AI code recompute its '
       + 'value without reading it — the change is gone by the next run',
     ]);
   });

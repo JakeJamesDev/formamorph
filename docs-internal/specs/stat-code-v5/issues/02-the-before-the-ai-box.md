@@ -1,4 +1,4 @@
-# 02: The Before The AI Box
+# 02: The Before the AI Box
 
 Status: ready-for-human
 Base: 910d25eb
@@ -14,7 +14,7 @@ Each stat gains an optional text field for code that runs before the AI. The tur
 
 A turn that does not commit, whether it failed or the player stopped it, restores stats, Code Pins, and traits from the last snapshot on the path that discards the unpaired message. Both re-rolls replay the whole turn from the last snapshot, before box included. A save runs the world's current before-box code the way it runs the after box today. Code bounds persist across boxes; a box that writes none keeps them, and they clear only when both boxes are empty. Trait switches from the before box write the same log line as today.
 
-The Code tab shows a second editor above the existing one, labeled Before The AI, with the existing one labeled After The AI. Test Code, templates, checks, and the rename offer on the new editor come in tickets 03 and 04; this ticket makes the box authorable and running.
+The Code tab shows a second editor above the existing one, labeled Before the AI, with the existing one labeled After the AI. Test Code, templates, checks, and the rename offer on the new editor come in tickets 03 and 04; this ticket makes the box authorable and running.
 
 This is an additive world export-shape change. The closing response states it.
 

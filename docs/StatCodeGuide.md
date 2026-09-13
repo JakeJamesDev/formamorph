@@ -17,7 +17,7 @@ Stat code runs in a sandbox on every turn (see [When Your Code Runs](#when-your-
 
 ## How It Works
 
-1. Each stat has two optional JavaScript boxes: **Before The AI** and **After The AI**
+1. Each stat has two optional JavaScript boxes: **Before the AI** and **After the AI**
 2. On every turn, each box runs in a safe environment at its own point in the turn
 3. Each box reads every stat, the story clock, the world's placeholders, and the world's traits
 4. `return <number>` sets the stat's value, clamped to its range. Writes to `self`, `placeholders`, and `traits` apply after the run
@@ -29,15 +29,15 @@ A turn runs your code twice, once on each side of the AI:
 
 | Step | What happens |
 | --- | --- |
-| 1 | **Before The AI** runs, on the state the turn started in |
+| 1 | **Before the AI** runs, on the state the turn started in |
 | 2 | The prompt is built and the AI answers |
 | 3 | The AI's stat changes apply |
 | 4 | Regen applies |
-| 5 | **After The AI** runs |
+| 5 | **After the AI** runs |
 
-**Before The AI is the setup box.** It runs before the prompt is built. A value it sets, a placeholder it pins, or a trait it switches is in the prompt for that turn. A value it sets shows on the bar while the AI is still writing.
+**Before the AI** runs before the prompt is built. A value it sets, a placeholder it pins, or a trait it switches is in the prompt for that turn. A value it sets shows on the bar while the AI is still writing.
 
-**After The AI is the reaction box.** It runs where a single box always ran, so a world written before the split keeps its meaning with no edits. It reads the AI's change, this turn's regen, and the values the before box set.
+**After the AI** runs where a single box always ran, so a world written before the split keeps its meaning with no edits. It reads the AI's change, this turn's regen, and the values the before box set.
 
 > ⚠️ **The before box has no turn behind it yet.** `previous` reads as the stat itself, `delta.ai`, `delta.regen`, `delta.total` and `delta.actual` all read zeros, and the clock reads turn start, so `deltaHours` is `0`. Code that scales the AI's change belongs in the after box.
 
@@ -404,7 +404,7 @@ return baseRate * activityMultiplier * sizeFactor;
 4. **Avoid infinite loops**: Do not create circular dependencies between stats
 5. **Write only what you mean to change**: A field, placeholder, or trait you leave alone keeps the turn's own result
 6. **Test your code**: Use the box's own "Test Code" button to validate that box before saving
-7. **Pick the right box**: put a write the AI should read this turn in **Before The AI**, and a reaction to what the AI asked in **After The AI**
+7. **Pick the right box**: put a write the AI should read this turn in **Before the AI**, and a reaction to what the AI asked in **After the AI**
 8. **Add comments**: Document your code for future reference
 
 ## Limitations
@@ -414,7 +414,7 @@ return baseRate * activityMultiplier * sizeFactor;
 - Circular dependencies between stats may cause unexpected behavior
 - The code runs in a sandboxed environment with limited JavaScript features
 - Code writes only its own bounds; another stat's entry is read-only
-- **Test Code** runs one box with no player traits, so it cannot preview a long turn or a different daypart. Before The AI runs as the opening turn, where `deltaHours` and `elapsedHours` are both `0`; After The AI runs as a one-hour turn on day one. It shows a trait switch and never applies it to the world
+- **Test Code** runs one box with no player traits, so it cannot preview a long turn or a different daypart. Before the AI runs as the opening turn, where `deltaHours` and `elapsedHours` are both `0`; After the AI runs as a one-hour turn on day one. It shows a trait switch and never applies it to the world
 - Each box's **Templates** menu lists only the templates written for that box
 
 ### A Note on Accumulating Stats

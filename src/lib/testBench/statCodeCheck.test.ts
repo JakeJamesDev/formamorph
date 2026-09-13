@@ -146,8 +146,8 @@ describe('the on-demand stat-code check', () => {
       stat({ id: 's1', name: 'Fertility', beforeCode: 'throw new Error("nope");', code: 'return "not a number";' }),
     ]));
     expect(found.map((f) => f.message)).toEqual([
-      'Before The AI code on “Fertility” throws when it runs, so the stat keeps its manual value',
-      'After The AI code on “Fertility” doesn’t return a number, so the stat keeps its manual value',
+      'Before the AI code on “Fertility” throws when it runs, so the stat keeps its manual value',
+      'After the AI code on “Fertility” doesn’t return a number, so the stat keeps its manual value',
     ]);
   });
 

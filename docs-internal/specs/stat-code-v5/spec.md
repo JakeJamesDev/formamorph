@@ -1,4 +1,4 @@
-# Stat Code v5: Every Turn, Before And After The AI
+# Stat Code v5: Every Turn, Before And After the AI
 
 Status: ready-for-agent
 Status note: Tickets 01–04 cut 2026-09-12 under `issues/`. Frontier at start: 01.
@@ -9,7 +9,7 @@ Stat code runs only on turns where the AI asks for a stat change, or in a world 
 
 ## Solution
 
-Stat code runs on every turn, opening turn included, with no gate. Each stat gets two code boxes. The box labeled Before The AI runs at the start of the turn, before the prompt builds, so its writes shape what the AI sees. The box labeled After The AI is today's box: it runs after the AI's asks and regen land. An author uses either box, both, or neither by putting code in it. There are no switches.
+Stat code runs on every turn, opening turn included, with no gate. Each stat gets two code boxes. The box labeled Before the AI runs at the start of the turn, before the prompt builds, so its writes shape what the AI sees. The box labeled After the AI is today's box: it runs after the AI's asks and regen land. An author uses either box, both, or neither by putting code in it. There are no switches.
 
 ## User Stories
 
@@ -84,7 +84,7 @@ Stat code runs on every turn, opening turn included, with no gate. Each stat get
 
 **8. Editor.**
 
-- The Code tab shows two stacked editors, always visible, labeled Before The AI and After The AI, in turn order.
+- The Code tab shows two stacked editors, always visible, labeled Before the AI and After the AI, in turn order.
 - Each editor has its own Test Code button and result area. Test Code on the before box runs it with `delta` at zeros; Test Code on the after box runs as today.
 - Each editor has its own template menu. Templates carry a timing. The before menu offers setup templates: pin a placeholder, switch a trait, set a value on the opening turn. The after menu keeps the drain, timer, blend, and bound templates.
 - Completions, the name checks, the reserved-name warnings, and the rename offer run over both boxes. The rename offer counts and rewrites references in both.

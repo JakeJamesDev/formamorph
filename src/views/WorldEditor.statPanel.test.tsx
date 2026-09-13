@@ -53,7 +53,7 @@ const WORLD: World = benchEditorWorld({
 const openTab = (name: RegExp) => fireEvent.mouseDown(screen.getByRole('tab', { name }));
 
 const FIELD_LABELS =
-  /^(Name|Type|Description|Min|Max|Initial Value|Initial Value \(%\)|Regen|Body Sliders|Availability|Prevent AI Changes|Stat Descriptors|Dynamic Value Calculation|Before The AI|After The AI)$/;
+  /^(Name|Type|Description|Min|Max|Initial Value|Initial Value \(%\)|Regen|Body Sliders|Availability|Prevent AI Changes|Stat Descriptors|Dynamic Value Calculation|Before the AI|After the AI)$/;
 
 /** Every field label the panel shows, in document order. The panel's own strip carries a Code tab and a
  *  Details tab, so the match is taken from the panel body rather than the whole editor. */
@@ -140,11 +140,11 @@ describe('the World Editor stat panel tabs', () => {
     renderWorldEditorBench(WORLD, 'advanced');
     selectStat('Warmth');
     openPanelTab('Code');
-    expect(panelLabels()).toEqual(['Dynamic Value Calculation', 'Before The AI', 'After The AI']);
-    expect(screen.getByLabelText('Stat Code Before The AI')).toHaveValue('');
-    expect(screen.getByLabelText('Stat Code After The AI')).toHaveValue('return 4;');
+    expect(panelLabels()).toEqual(['Dynamic Value Calculation', 'Before the AI', 'After the AI']);
+    expect(screen.getByLabelText('Stat Code Before the AI')).toHaveValue('');
+    expect(screen.getByLabelText('Stat Code After the AI')).toHaveValue('return 4;');
     // Each box carries its own pair: the buttons act on one box, so each names the box it acts on.
-    for (const box of ['Before The AI', 'After The AI']) {
+    for (const box of ['Before the AI', 'After the AI']) {
       expect(screen.getByRole('button', { name: `Templates ${box}` })).toBeInTheDocument();
       expect(screen.getByRole('button', { name: `Test Code ${box}` })).toBeInTheDocument();
     }
