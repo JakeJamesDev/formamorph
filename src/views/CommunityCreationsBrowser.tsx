@@ -53,6 +53,7 @@ import {
 } from "@/lib/quarantine";
 import { isStaff } from "@/lib/roles";
 import { ManageAddonsDialog } from "@/components/community/ManageAddonsDialog";
+import { WorldUpdateReviewDialog } from "@/components/modals/WorldUpdateReviewDialog";
 import { QuarantineDialog } from "@/components/community/QuarantineDialog";
 import {
   Dialog,
@@ -248,10 +249,14 @@ const CommunityCreationsBrowser = ({
     localCopiesBySource, copiesForWorld, downloadStateForWorld,
     handleContextualDownload, handleChooseOverwrite, handleConfirmOverwrite, handleDownloadWorld,
     pendingDownload, retryDownload, dismissPendingDownload,
+    worldUpdateReview, applyWorldUpdate, cancelWorldUpdate,
   } = useDownloadCoordinator(worlds, setWorlds, (_id, data) => promptWorld(data));
 
   // Hold the failure report through the dialog's fade-out, as the copy-vs-overwrite decision does.
   const shownPending = useClosingSnapshot(!!pendingDownload, pendingDownload);
+
+  // Same, for the update review: its rows and the copy's name outlive the state that closes it.
+  const shownUpdateReview = useClosingSnapshot(!!worldUpdateReview, worldUpdateReview);
 
   // Hold the copy-vs-overwrite decision's content while its dialogs fade out (contextualAction nulls on close,
   // which would otherwise flip the title/description to the other mode's text for a frame or two).
@@ -1227,6 +1232,15 @@ const CommunityCreationsBrowser = ({
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* What updating an existing copy in place does to its linked content. Nothing is written until
+          Apply Updates; downloading a separate copy never reaches this. */}
+      <WorldUpdateReviewDialog
+        open={!!worldUpdateReview}
+        review={shownUpdateReview}
+        onApply={applyWorldUpdate}
+        onCancel={cancelWorldUpdate}
+      />
 
       {/* Refresh/Update decision: download a separate copy vs overwrite an existing local copy */}
       <Dialog

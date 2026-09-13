@@ -2,6 +2,7 @@ import { randomUUID } from "@/lib/uuid";
 import type { Dictionary, DictionaryEntry, Placeholder } from '@/types';
 import { APP_VERSION, WORLD_FILE_KIND, SAVE_FILE_KIND, migrateCarriedPlaceholders, migrateEntryKeys } from './version';
 import { convertLorebook } from './lorebookImport';
+import { chipTexts } from './linkedContent';
 import { carriedPlaceholders, sharedPlaceholdersUsed } from './placeholderHomes';
 import { portablePlaceholders } from './placeholderGroups';
 
@@ -33,11 +34,7 @@ export interface DictionaryFile {
 export function buildDictionaryFile(book: Dictionary, available: Placeholder[] = carriedPlaceholders(book)): DictionaryFile {
   // Folders are the world's: a def leaves its folder reference behind.
   const owned = portablePlaceholders(book.placeholders ?? []);
-  const shared = portablePlaceholders(sharedPlaceholdersUsed(
-    book.entries.flatMap((e) => [e.name ?? '', ...(e.key ?? []), ...(e.secondaryKeys ?? []), e.value ?? '']),
-    owned,
-    available,
-  ));
+  const shared = portablePlaceholders(sharedPlaceholdersUsed(chipTexts(book), owned, available));
   return {
     formamorphKind: DICTIONARY_FILE_KIND,
     version: APP_VERSION,

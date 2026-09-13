@@ -5,12 +5,17 @@ import { migrateWorld } from "@/lib/version";
 import { fetchCatalogContent } from "@/lib/fetchCatalogContent";
 import { randomUUID } from "@/lib/uuid";
 import { getDownloadState, type DownloadState } from "@/lib/downloadState";
-import { saveDownloadToLibrary } from "@/lib/librarySources";
+import { libraryItems, saveDownloadToLibrary } from "@/lib/librarySources";
 import type { LinkableContent } from "@/lib/linkedContent";
 import {
   componentKind, linkInstalledSources, listingId,
   type DependencyRow, type InstalledSource,
 } from "@/lib/worldDependencies";
+import {
+  buildWorldUpdateReview, keepInstalledCopies, protectedCopies,
+  type HeldSource, type WorldContentSlices, type WorldUpdateRow,
+} from "@/lib/worldUpdateReview";
+import type { UpdateAction } from "@/lib/componentUpdates";
 import { type WorldRecord } from "@/components/WorldDetails";
 import type { World } from "@/types";
 
@@ -50,6 +55,26 @@ export interface PendingDownload {
   failures: DownloadFailure[];
 }
 
+/** What the player answered in the world update review, and the copy their answers protect. */
+export interface WorldUpdatePlan {
+  /** The installed copy's content before the update, which every protected component is restored from. */
+  previous: WorldContentSlices;
+  /** What the review listed, which says what each answer is about. */
+  rows: WorldUpdateRow[];
+  /** The chosen action per required or dropped listing. */
+  actions: Record<string, UpdateAction>;
+}
+
+/** The review a world update opens before it writes anything. */
+export interface WorldUpdateReview {
+  world: WorldRecord;
+  /** The local copy the update replaces in place. */
+  localId: string;
+  localName: string;
+  rows: WorldUpdateRow[];
+  previous: WorldContentSlices;
+}
+
 /** One download in flight or awaiting a retry, with everything a retry needs to finish it rather than
  *  start again. */
 interface DownloadRun {
@@ -66,8 +91,13 @@ interface DownloadRun {
   addonsDone: Set<string>;
   /** Why each outstanding add-on is outstanding, so a retry of one still reports the rest truthfully. */
   addonMessages: Record<string, string>;
+  /** Each outstanding required source, as its own reported row. Only an update run reports one: a first
+   *  download withholds the world instead. */
+  requiredFailures: Record<string, DownloadFailure>;
   /** The world is stored. What is left is optional. */
   worldReady: boolean;
+  /** Present when this run updates an installed copy in place rather than adding one. */
+  update?: WorldUpdatePlan;
 }
 
 /** A source the player cannot be given, by why. Each reads as the reason a retry would hit again. */
@@ -100,6 +130,8 @@ export function useDownloadCoordinator(
   const [showOverwriteSelect, setShowOverwriteSelect] = useState(false);
   // What the last download could not finish, or null when nothing is waiting on a retry.
   const [pendingDownload, setPendingDownload] = useState<PendingDownload | null>(null);
+  // The update review on screen, or null when none is open. Nothing is written while it stands.
+  const [worldUpdateReview, setWorldUpdateReview] = useState<WorldUpdateReview | null>(null);
   // The run behind that report, so Retry resumes it rather than starting over.
   const runRef = useRef<DownloadRun | null>(null);
   // The add-on selection the player made before the copy-vs-overwrite dialog opened, so the answer to
@@ -180,8 +212,13 @@ export function useDownloadCoordinator(
    *
    * Each success is recorded as it lands, so a retry skips it: a source that installed is in the library
    * whatever happens to the rest of the run.
+   *
+   * `only` is one reported row's Retry, which an update offers: every other outstanding source stays
+   * reported rather than being dropped.
    */
-  const installRequired = async (run: DownloadRun, dependencies: DependencyRow[]): Promise<DownloadFailure[]> => {
+  const installRequired = async (
+    run: DownloadRun, dependencies: DependencyRow[], only?: Set<string>,
+  ): Promise<DownloadFailure[]> => {
     const failures: DownloadFailure[] = [];
     const worldId = listingId(run.world);
 
@@ -189,16 +226,27 @@ export function useDownloadCoordinator(
       if (run.installed.some((source) => source.sourceId === dependency.id)) continue;
       const listing = dependency.listing;
       const name = listing?.name || dependency.id;
+      if (only && !only.has(dependency.id)) {
+        const held = run.requiredFailures[dependency.id];
+        failures.push(held ?? { id: dependency.id, name, message: 'Not downloaded yet.' });
+        continue;
+      }
+      const fail = (message: string) => {
+        const failure = { id: dependency.id, name, message };
+        run.requiredFailures[dependency.id] = failure;
+        failures.push(failure);
+      };
       if (dependency.status !== 'ok' || !listing) {
-        failures.push({ id: dependency.id, name, message: MISSING_SOURCE });
+        fail(MISSING_SOURCE);
         continue;
       }
       try {
         run.installed.push(await installComponent(
           listing, () => WorldStorageService.fetchDependencyContent(worldId, dependency.id),
         ));
+        delete run.requiredFailures[dependency.id];
       } catch (error) {
-        failures.push({ id: dependency.id, name, message: (error as Error).message || 'Failed to download this source.' });
+        fail((error as Error).message || 'Failed to download this source.');
       }
     }
 
@@ -238,6 +286,15 @@ export function useDownloadCoordinator(
     return failures;
   };
 
+  /** What an earlier attempt left unfinished, so a read that fails now reports beside those rows rather
+   *  than in place of them. Each keeps the message it last failed with. */
+  const outstanding = (run: DownloadRun): DownloadFailure[] => [
+    ...Object.values(run.requiredFailures),
+    ...run.addons
+      .filter((addon) => run.addonMessages[addon.id])
+      .map((addon) => ({ id: addon.id, name: addon.name || addon.id, message: run.addonMessages[addon.id] })),
+  ];
+
   /** Store the world under its local id and put it in the caller's list. */
   const storeWorld = async (run: DownloadRun, content: { migrated: World; thumbnailUrl: string }) => {
     const world = run.world;
@@ -256,8 +313,14 @@ export function useDownloadCoordinator(
     };
 
     // The world's own copies name the listings they follow; this is where each gains the library item
-    // this download stored for it, which is what the editor reads as Linked.
-    const linked = linkInstalledSources(content.migrated, run.installed);
+    // this download stored for it, which is what the editor reads as Linked. An update then puts back
+    // every copy the review protected, so the write cannot discard what the player kept.
+    const update = run.update;
+    const linked = keepInstalledCopies(
+      linkInstalledSources(content.migrated, run.installed),
+      update?.previous ?? {},
+      update ? protectedCopies(update.rows, update.actions, run.installed) : [],
+    );
 
     // Sanitize at the download boundary so the stored copy is already current. Same local id ⇒ storeWorld
     // overwrites in place (the overwrite path); a fresh id adds a new record.
@@ -291,8 +354,13 @@ export function useDownloadCoordinator(
     // Mark this world as in-flight (indeterminate until we know the size) so the card swaps to a bar.
     setDownloadProgress((p) => ({ ...p, [worldId]: -1 }));
     setPendingDownload(null);
+    // What the required set could not deliver. An update carries this to the end and reports it beside the
+    // add-ons; a first download stops on it.
+    let requiredFailures: DownloadFailure[] = [];
     try {
-      if (!run.worldReady) {
+      // An update re-enters here on every Retry: the world is rewritten from the author's content and the
+      // sources installed so far, so a source that lands late still reaches the copies following it.
+      if (!run.worldReady || run.update) {
         run.content ??= await fetchWorldContent(run.world, worldId);
         let dependencies: DependencyRow[];
         try {
@@ -300,31 +368,38 @@ export function useDownloadCoordinator(
         } catch (error) {
           // The world requires an unknown set, so installing it would present it as complete when it is
           // not. Reported as its own row, with Retry, exactly as a source that would not download.
-          setPendingDownload({ worldName, worldReady: false, failures: [{
+          // Whatever a previous attempt left outstanding stays reported beside it: this read failing says
+          // nothing about those rows, and dropping them would show the run as smaller than it is.
+          setPendingDownload({ worldName, worldReady: run.worldReady, failures: [...outstanding(run), {
             id: REQUIRED_READ,
             name: worldName,
             message: (error as Error).message || 'Could not read what this world requires.',
           }] });
           return;
         }
-        const failures = await installRequired(run, dependencies);
-        if (failures.length) {
+        requiredFailures = await installRequired(run, dependencies, run.update ? only : undefined);
+        if (requiredFailures.length && !run.update) {
           // The world is not presented as ready: what installed is kept, and Retry finishes the rest.
-          setPendingDownload({ worldName, worldReady: false, failures });
+          setPendingDownload({ worldName, worldReady: false, failures: requiredFailures });
           return;
         }
+        // An update writes the world whatever its sources did. The copy already holds the previous content
+        // of every component, so a source that will not download keeps what it has.
         await storeWorld(run, run.content);
         run.worldReady = true;
       }
 
-      if (!run.addons.length || run.addons.every((addon) => run.addonsDone.has(addon.id))) return;
+      if (!run.addons.length || run.addons.every((addon) => run.addonsDone.has(addon.id))) {
+        if (requiredFailures.length) setPendingDownload({ worldName, worldReady: true, failures: requiredFailures });
+        return;
+      }
       let addons: WorldRecord[];
       try {
         addons = await WorldStorageService.fetchAddons(worldId);
       } catch (error) {
         // The world is installed; only the add-ons are unknown. Answering an empty list here would drop
         // the player's selections in silence, which is the one thing this must never do.
-        setPendingDownload({ worldName, worldReady: true, failures: [{
+        setPendingDownload({ worldName, worldReady: true, failures: [...requiredFailures, {
           id: ADDON_READ,
           name: 'Add-ons',
           message: (error as Error).message || 'Could not read this world\'s add-ons.',
@@ -339,7 +414,7 @@ export function useDownloadCoordinator(
       const withdrawn: DownloadFailure[] = run.addons
         .filter((addon) => !offered.has(addon.id) && !run.addonsDone.has(addon.id))
         .map((addon) => ({ id: addon.id, name: addon.name || addon.id, message: WITHDRAWN_ADDON }));
-      const failures = [...await installAddons(run, wanted, only), ...withdrawn];
+      const failures = [...requiredFailures, ...await installAddons(run, wanted, only), ...withdrawn];
       if (failures.length) {
         setPendingDownload({ worldName, worldReady: true, failures });
       }
@@ -353,10 +428,14 @@ export function useDownloadCoordinator(
   };
 
   /** Start a download, replacing whatever the last one left pending. */
-  const startDownload = (world: WorldRecord, localId: string, overwrite: boolean, plan: DownloadPlan) => {
+  const startDownload = (
+    world: WorldRecord, localId: string, overwrite: boolean, plan: DownloadPlan, update?: WorldUpdatePlan,
+  ) => {
     const run: DownloadRun = {
       world, localId, overwrite,
-      installed: [], addons: plan.addons, addonsDone: new Set(), addonMessages: {}, worldReady: false,
+      installed: [], addons: plan.addons, addonsDone: new Set(),
+      addonMessages: {}, requiredFailures: {}, worldReady: false,
+      ...(update ? { update } : {}),
     };
     runRef.current = run;
     return runDownload(run);
@@ -367,8 +446,55 @@ export function useDownloadCoordinator(
     startDownload(world, `downloaded-${randomUUID()}`, false, plan);
 
   // Overwrite an existing local copy in place with the current server content (refresh or update).
-  const overwriteWorld = (world: WorldRecord, localId: string) =>
-    startDownload(world, localId, true, planRef.current);
+  const overwriteWorld = (world: WorldRecord, localId: string, update?: WorldUpdatePlan) =>
+    startDownload(world, localId, true, planRef.current, update);
+
+  /**
+   * Open the review that stands between "update an existing copy" and the write.
+   *
+   * A copy with nothing to review is overwritten as it always was. Everything else waits: the write would
+   * replace the player's copy of every linked component, and the review is where they say which of those
+   * they keep.
+   */
+  const openWorldUpdateReview = async (world: WorldRecord, localId: string) => {
+    const localName = worlds.find((copy) => copy.id === localId)?.name || world.name || 'This world';
+    let previous: WorldContentSlices;
+    let rows: WorldUpdateRow[];
+    try {
+      const [content, dependencies, entities, dictionaries] = await Promise.all([
+        WorldStorageService.getWorldData(localId) as Promise<WorldContentSlices>,
+        WorldStorageService.fetchDependencies(listingId(world)),
+        libraryItems('entity'),
+        libraryItems('dictionary'),
+      ]);
+      previous = content;
+      const held: HeldSource[] = [...entities, ...dictionaries].flatMap((item) => (item.sourceId
+        ? [{ sourceId: item.sourceId, revision: item.revision, sourceUpdatedAt: item.sourceUpdatedAt }]
+        : []));
+      rows = buildWorldUpdateReview(content, dependencies, held);
+    } catch (error) {
+      // What the update would do to this copy's components is unknown, and writing anyway could discard
+      // the player's own edits. Nothing is written.
+      toast.error((error as Error).message
+        || `Formamorph could not read what "${localName}" holds, so it was not updated.`);
+      return;
+    }
+
+    if (!rows.length) { void overwriteWorld(world, localId); return; }
+    setWorldUpdateReview({ world, localId, localName, rows, previous });
+  };
+
+  /** Run the update the player confirmed. `actions` is keyed by listing, as the review's rows are. */
+  const applyWorldUpdate = (actions: Record<string, UpdateAction>) => {
+    const review = worldUpdateReview;
+    if (!review) return;
+    setWorldUpdateReview(null);
+    void overwriteWorld(review.world, review.localId, {
+      previous: review.previous,
+      rows: review.rows,
+      actions,
+    });
+  };
 
   /**
    * Finish what the last download could not. The world content and every installed source are kept.
@@ -394,12 +520,12 @@ export function useDownloadCoordinator(
     setContextualAction({ world, mode: state });
   };
 
-  // "Overwrite an existing copy": overwrite directly when there's a single match, else pick which one.
+  // "Overwrite an existing copy": review the one match, else pick which copy first.
   const handleChooseOverwrite = () => {
     if (!contextualAction) return;
     const copies = copiesForWorld(contextualAction.world);
     if (copies.length <= 1) {
-      if (copies[0]) void overwriteWorld(contextualAction.world, copies[0].id);
+      if (copies[0]) void openWorldUpdateReview(contextualAction.world, copies[0].id);
       setContextualAction(null);
       return;
     }
@@ -410,7 +536,7 @@ export function useDownloadCoordinator(
   // Confirm the chosen copy in the selection dialog.
   const handleConfirmOverwrite = () => {
     if (contextualAction && overwriteSelectedId) {
-      void overwriteWorld(contextualAction.world, overwriteSelectedId);
+      void openWorldUpdateReview(contextualAction.world, overwriteSelectedId);
     }
     setShowOverwriteSelect(false);
     setContextualAction(null);
@@ -432,5 +558,8 @@ export function useDownloadCoordinator(
     pendingDownload,
     retryDownload,
     dismissPendingDownload,
+    worldUpdateReview,
+    applyWorldUpdate,
+    cancelWorldUpdate: () => setWorldUpdateReview(null),
   };
 }
