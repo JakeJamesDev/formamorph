@@ -1,4 +1,4 @@
-import { EyeOff, Download, MessageSquare, Trash2, ShieldAlert, ShieldCheck, TicketX } from "lucide-react";
+import { EyeOff, Download, MessageSquare, Puzzle, Trash2, ShieldAlert, ShieldCheck, TicketX } from "lucide-react";
 import { ActionIcon } from "@/lib/actionIcons";
 import { Progress } from "@/components/ui/progress";
 import { Tip } from "@/components/ui/tooltip";
@@ -52,6 +52,9 @@ interface RemoteWorldCardProps {
   placements?: ContestPlacement[];
   /** Take this listing out of the contest it was entered in. Offered on the contest tab, to its author. */
   onWithdraw?: (world: WorldRecord) => void;
+  /** Opens the add-on review. On the author's own world listing only: a review is a world author's
+   *  answer about their own world. */
+  onManageAddons?: (world: WorldRecord) => void;
   /** The like tutorial, when this is the card chosen to anchor it. */
   likeTutorial?: TutorialEntry | null;
   likeTutorialNav?: TutorialNav;
@@ -62,7 +65,7 @@ interface RemoteWorldCardProps {
 export function RemoteWorldCard({
   world, downloadState: dlState, downloadProgress, isAuthenticated, currentUser,
   onView, onHideWorld, onHideAuthor, onHideTag, onContextualDownload, onDeviceDownload, onDelete, onLike, onGuestLike, onQuarantine, onRelease,
-  placements = [], onWithdraw, likeTutorial, likeTutorialNav,
+  placements = [], onWithdraw, onManageAddons, likeTutorial, likeTutorialNav,
 }: RemoteWorldCardProps) {
   // Get the world ID (server uses _id)
   const worldId = world._id || world.id;
@@ -90,6 +93,12 @@ export function RemoteWorldCard({
     currentUser &&
     (world.author.id === currentUser.id ||
      world.author.username === currentUser.username);
+
+  // Only a world has add-ons, and only its own author answers them. Staff moderate a listing; they do not
+  // write its author's recommendations.
+  const manageAddons = onManageAddons && isOwnedByUser && kindOf(world) === 'world'
+    ? onManageAddons
+    : undefined;
 
   const likeControl = (
     <LikeButton
@@ -248,8 +257,20 @@ export function RemoteWorldCard({
         </div>
       )}
 
-      {(onDelete && (isOwnedByUser || mayModerate)) && (
+      {(manageAddons || (onDelete && (isOwnedByUser || mayModerate))) && (
         <div className="mt-auto pt-1 flex justify-end gap-1">
+          {/* First, because it is the only one of these that is not a removal. */}
+          {manageAddons && (
+            <Tip tip="Review the add-ons other authors offer for this world">
+              <button
+                className="p-1 text-muted-foreground hover:text-foreground"
+                onClick={(e) => { e.stopPropagation(); manageAddons(world); }}
+                aria-label={`Manage add-ons for ${world.name || noun}`}
+              >
+                <Puzzle className="h-5 w-5" />
+              </button>
+            </Tip>
+          )}
           {/* Leaving a contest is not deleting anything, so it reads as the trophy coming off rather than
               as a destructive control — and it is only ever on the author's own entry. */}
           {isOwnedByUser && onWithdraw && (
@@ -286,13 +307,15 @@ export function RemoteWorldCard({
               </button>
             </Tip>
           )}
-          <button
-            className="p-1 text-destructive hover:text-destructive/80"
-            onClick={(e) => { e.stopPropagation(); onDelete?.(worldId); }}
-            aria-label="Delete world"
-          >
-            <Trash2 className="h-5 w-5" />
-          </button>
+          {onDelete && (isOwnedByUser || mayModerate) && (
+            <button
+              className="p-1 text-destructive hover:text-destructive/80"
+              onClick={(e) => { e.stopPropagation(); onDelete(worldId); }}
+              aria-label="Delete world"
+            >
+              <Trash2 className="h-5 w-5" />
+            </button>
+          )}
         </div>
       )}
     </WorldCardShell>

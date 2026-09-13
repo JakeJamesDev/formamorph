@@ -391,6 +391,8 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
     if (devRoute?.modal === 'community') openCommunityBrowser();
     // The likers list hangs off a listing's details, so this route opens the catalog and lands there.
     if (devRoute?.modal === 'likers') openCommunityBrowser();
+    // The add-on review hangs off a published world, so this route opens the catalog and lands there too.
+    if (devRoute?.modal === 'manageAddons') openCommunityBrowser();
     if (devRoute?.modal === 'profile') setShowProfileDialog(true);
     if (devRoute?.modal === 'auth') setShowAuthDialog(true);
     if (devRoute?.modal === 'feedbackHub') setShowFeedback(true);
@@ -2737,6 +2739,7 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
             openListing={pendingListing}
             onListingOpened={handleListingOpened}
             openLikersOnMount={devRoute?.modal === 'likers'}
+            openManageAddonsOnMount={devRoute?.modal === 'manageAddons'}
           />
         </>
       )}
