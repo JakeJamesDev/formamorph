@@ -14,7 +14,6 @@ import type { World } from '@/types';
  * `WorldEditor.libraryOnly.test.tsx`.
  */
 
-vi.mock('@/lib/linkingFlag', () => ({ LINKING_ENABLED: true }));
 
 // These worlds follow library items that are not here, so the editor's synchronization pass reaches the
 // two libraries on open. Empty stand-ins keep it off IndexedDB, which jsdom does not have.

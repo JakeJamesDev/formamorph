@@ -13,6 +13,9 @@ const person = (over: Partial<Entity> = {}): Entity => ({
   id: 'ent-1', name: 'Wren', playerDescription: 'A ferryman.', ...over,
 });
 
+/** A chip placement in stored token form, so an update's re-aiming can be read straight off the text. */
+const chip = (id: string, placement = 'pl-1') => `{{ph:${id}:world:${placement}}}`;
+
 describe('libraryRevision', () => {
   it('reads the last save as the revision', () => {
     expect(libraryRevision({ editedAt: '2026-09-09T10:00:00.000Z', createdAt: '2026-01-01T00:00:00.000Z' }))
@@ -115,6 +118,8 @@ describe('contentMatchesSource', () => {
 });
 
 describe('applyLibraryUpdate', () => {
+  const sedgeSource = { id: 'lib-1', name: 'Sedge Lore', revision: 'r2', owned: true };
+
   it('takes the authored content of the source and keeps what the world owns', () => {
     const copy = person({
       id: 'world-copy', groupId: 'group-1', order: 2, locations: ['loc-1'],
@@ -122,22 +127,99 @@ describe('applyLibraryUpdate', () => {
     });
     const next = applyLibraryUpdate(copy, person({ id: 'lib-1', name: 'Wren the Elder' }), {
       id: 'lib-1', name: 'Wren the Elder', revision: 'r2', owned: true,
-    });
+    }, []).item;
     expect(next).toMatchObject({
       id: 'world-copy', groupId: 'group-1', order: 2, locations: ['loc-1'], name: 'Wren the Elder',
     });
     expect(next.link).toEqual({ libraryId: 'lib-1', sourceName: 'Wren the Elder', sourceRevision: 'r2' });
   });
 
-  it('keeps the placeholders of the copy, which the world resolved when the copy arrived', () => {
+  it('ignores the location references of the source and keeps the membership of the copy', () => {
+    const copy = person({ locations: ['here'], link: { libraryId: 'lib-1' } });
+    const source = person({ locationRefs: [{ id: 'there', name: 'Their Inn' }] });
+    const next = applyLibraryUpdate(copy, source, { id: 'lib-1', name: 'Wren', revision: 'r2', owned: true }, []).item;
+    expect(next.locations).toEqual(['here']);
+    expect(next.locationRefs).toBeUndefined();
+  });
+
+  it('mints the placeholders of the source afresh and re-aims the chips of the copy at them', () => {
     const copy = book({
-      placeholders: [{ id: 'p-world', name: 'River', values: [{ id: 'v1', text: 'Sedge' }] }],
+      placeholders: [{ id: 'p-old', name: 'River', values: [{ id: 'v1', text: 'Sedge' }] }],
       link: { libraryId: 'lib-1' },
     });
-    const next = applyLibraryUpdate(copy, book({ placeholders: [{ id: 'p-lib', name: 'River', values: [] }] }), {
-      id: 'lib-1', name: 'Sedge Lore', revision: 'r2', owned: true,
+    const source = book({
+      entries: [{ id: 'e1', name: 'Sedge', key: ['sedge'], value: `Beside the ${chip('p-lib')}.` }],
+      placeholders: [{ id: 'p-lib', name: 'River', values: [{ id: 'v1', text: 'Sedge' }] }],
     });
-    expect(next.placeholders).toEqual(copy.placeholders);
+
+    const next = applyLibraryUpdate(copy, source, sedgeSource, []).item;
+
+    const minted = next.placeholders?.[0];
+    expect(minted?.name).toBe('River');
+    // Neither the id the source wrote nor the one the copy held: a fresh one this world owns.
+    expect(minted?.id).not.toBe('p-lib');
+    expect(minted?.id).not.toBe('p-old');
+    // The chip follows the mint, so the updated text still resolves.
+    expect(next.entries[0].value).toContain(minted?.id);
+    expect(next.entries[0].value).not.toContain('p-lib');
+  });
+
+  it('routes a world reference through the stored connection even after the source renames it', () => {
+    const worldShared = [{ id: 'w-cap', name: 'Royal Seat', values: [{ id: 'v1', text: 'Sedge' }] }];
+    const copy = book({ link: { libraryId: 'lib-1', connections: { 's-cap': 'w-cap' } } });
+    const source = book({
+      entries: [{ id: 'e1', name: 'Seat', key: ['seat'], value: `Ruled from ${chip('s-cap')}.` }],
+      // The source has since renamed the reference and changed its own value for it.
+      sharedPlaceholders: [{ id: 's-cap', name: 'Crown City', values: [{ id: 'v9', text: 'Aldreth' }] }],
+    });
+
+    const result = applyLibraryUpdate(copy, source, sedgeSource, worldShared);
+
+    expect(result.item.entries[0].value).toBe(`Ruled from ${chip('w-cap')}.`);
+    expect(result.item.link?.connections).toEqual({ 's-cap': 'w-cap' });
+    // The world's own value for the reference stands; nothing of the source's is copied over it.
+    expect(result.toAdd).toEqual([]);
+  });
+
+  it('carries a location connection over, which no adopt pass settles', () => {
+    const copy = person({
+      locations: ['w-inn'],
+      link: { libraryId: 'lib-1', connections: { 'src-inn': 'w-inn' } },
+    });
+    const source = person({ name: 'Wren the Elder', locationRefs: [{ id: 'src-inn', name: 'The Inn' }] });
+
+    const next = applyLibraryUpdate(copy, source, { id: 'lib-1', name: 'Wren', revision: 'r2', owned: true }, []).item;
+
+    expect(next.link?.connections).toEqual({ 'src-inn': 'w-inn' });
+    expect(next.locations).toEqual(['w-inn']);
+  });
+
+  it('drops the connection for a reference the source no longer names', () => {
+    const copy = book({ link: { libraryId: 'lib-1', connections: { 'src-gone': 'w-gone', 'src-cap': 'w-cap' } } });
+    const worldShared = [{ id: 'w-cap', name: 'Capital', values: [{ id: 'v1', text: 'Sedge' }] }];
+    const source = book({
+      entries: [{ id: 'e1', name: 'Seat', key: ['seat'], value: `Ruled from ${chip('src-cap')}.` }],
+      sharedPlaceholders: [{ id: 'src-cap', name: 'Capital', values: [{ id: 'v9', text: 'Aldreth' }] }],
+    });
+
+    const next = applyLibraryUpdate(copy, source, sedgeSource, worldShared).item;
+
+    // The stale key would otherwise keep the World Doctor reporting a connection nothing can repair.
+    expect(next.link?.connections).toEqual({ 'src-cap': 'w-cap' });
+  });
+
+  it('gives a reference the source newly introduced a placeholder of its own and records it', () => {
+    const copy = book({ link: { libraryId: 'lib-1', connections: {} } });
+    const source = book({
+      entries: [{ id: 'e1', name: 'Weather', key: ['weather'], value: `It is ${chip('s-new')}.` }],
+      sharedPlaceholders: [{ id: 's-new', name: 'Weather', values: [{ id: 'v1', text: 'Raining' }] }],
+    });
+
+    const result = applyLibraryUpdate(copy, source, sedgeSource, []);
+
+    expect(result.toAdd).toHaveLength(1);
+    expect(result.toAdd[0].name).toBe('Weather');
+    expect(result.item.link?.connections).toEqual({ 's-new': result.toAdd[0].id });
   });
 
   it('reuses the entry ids of the copy in order, so a selected entry survives the update', () => {
@@ -151,7 +233,8 @@ describe('applyLibraryUpdate', () => {
         ],
       }),
       { id: 'lib-1', name: 'Sedge Lore', revision: 'r2', owned: true },
-    );
+      [],
+    ).item;
     expect(next.entries[0]).toMatchObject({ id: 'own-1', value: 'Rushes.' });
     expect(next.entries[1].id).not.toBe('lib-2');
     expect(next.entries[1]).toMatchObject({ value: 'A punt.' });
@@ -162,7 +245,7 @@ describe('syncWorldContent', () => {
   const source = { id: 'lib-1', name: 'Sedge Lore', revision: 'r2', owned: true, data: book({ name: 'Sedge Lore II' }) };
 
   it('updates a linked copy of an owned source whose revision moved on', () => {
-    const world = { entities: [], dictionaries: [book({ link: { libraryId: 'lib-1', sourceRevision: 'r1' } })] };
+    const world = { placeholders: [], entities: [], dictionaries: [book({ link: { libraryId: 'lib-1', sourceRevision: 'r1' } })] };
     const result = syncWorldContent(world, [source]);
     expect(result.updated).toBe(1);
     expect(result.dictionaries[0].name).toBe('Sedge Lore II');
@@ -170,6 +253,7 @@ describe('syncWorldContent', () => {
 
   it('leaves a local replacement alone', () => {
     const world = {
+      placeholders: [],
       entities: [],
       dictionaries: [book({ link: { libraryId: 'lib-1', sourceRevision: 'r1', localReplacement: true } })],
     };
@@ -179,17 +263,18 @@ describe('syncWorldContent', () => {
   });
 
   it('leaves a copy that already holds the current revision alone', () => {
-    const world = { entities: [], dictionaries: [book({ link: { libraryId: 'lib-1', sourceRevision: 'r2' } })] };
+    const world = { placeholders: [], entities: [], dictionaries: [book({ link: { libraryId: 'lib-1', sourceRevision: 'r2' } })] };
     expect(syncWorldContent(world, [source]).updated).toBe(0);
   });
 
   it('leaves a copy of the source of another author alone, which only Check for Updates touches', () => {
-    const world = { entities: [], dictionaries: [book({ link: { libraryId: 'lib-1', sourceRevision: 'r1' } })] };
+    const world = { placeholders: [], entities: [], dictionaries: [book({ link: { libraryId: 'lib-1', sourceRevision: 'r1' } })] };
     expect(syncWorldContent(world, [{ ...source, owned: false }]).updated).toBe(0);
   });
 
   it('leaves an independent copy and a copy of a deleted library item alone', () => {
     const world = {
+      placeholders: [],
       entities: [],
       dictionaries: [book(), book({ id: 'book-2', link: { libraryId: 'gone', sourceRevision: 'r1' } })],
     };
@@ -197,14 +282,14 @@ describe('syncWorldContent', () => {
   });
 
   it('returns the same arrays when nothing changed, so an open does not dirty the world', () => {
-    const world = { entities: [person()], dictionaries: [book()] };
+    const world = { placeholders: [], entities: [person()], dictionaries: [book()] };
     const result = syncWorldContent(world, [source]);
     expect(result.entities).toBe(world.entities);
     expect(result.dictionaries).toBe(world.dictionaries);
   });
 
   it('updates linked entities the same way', () => {
-    const world = { entities: [person({ link: { libraryId: 'lib-2', sourceRevision: 'r1' } })], dictionaries: [] };
+    const world = { placeholders: [], entities: [person({ link: { libraryId: 'lib-2', sourceRevision: 'r1' } })], dictionaries: [] };
     const result = syncWorldContent(world, [
       { id: 'lib-2', name: 'Wren', revision: 'r5', owned: true, data: person({ name: 'Wren the Elder' }) },
     ]);

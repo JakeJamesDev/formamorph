@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, type ReactNode } from 'react';
+import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Button } from '@/components/ui/button';
@@ -6,7 +6,6 @@ import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Meta } from '@/components/ui/typography';
 import { libraryItemData, libraryItems, LINK_EXPLANATIONS, type LibraryItemSummary, type LibraryKind } from '@/lib/librarySources';
-import { LINKING_ENABLED } from '@/lib/linkingFlag';
 import type { LinkableContent } from '@/lib/linkedContent';
 
 /** One picked library item with the content behind it. */
@@ -29,6 +28,9 @@ interface AddFromLibraryModalProps {
   single?: boolean;
   /** Hide the link choice and always link, which is what reconnecting an independent copy does. */
   alwaysLink?: boolean;
+  /** This opening continues the last one, so the picks and the link choice stay as the author left them.
+   *  Set by Back out of the connection step, which is the one way back into an unfinished pick. */
+  resume?: boolean;
   /** Row content after the checkbox and before the name — a portrait or a count. */
   renderRow?: (item: LibraryItemSummary) => ReactNode;
   onConfirm: (picks: LibraryPick[], link: boolean) => void;
@@ -40,12 +42,10 @@ interface AddFromLibraryModalProps {
  * Every row names its author and where it came from, because two library items may share a name and the
  * name alone cannot tell them apart. The link choice decides whether the copies follow what they came from
  * or arrive independent; it is on by default, and picking an existing item never makes a second one.
- *
- * The link choice appears only while `LINKING_ENABLED` is on. Off, every copy arrives independent.
  */
 function AddFromLibraryModal({
   open, onOpenChange, kind, title, description, emptyMessage, confirmLabel,
-  single, alwaysLink, renderRow, onConfirm,
+  single, alwaysLink, resume, renderRow, onConfirm,
 }: AddFromLibraryModalProps) {
   const [list, setList] = useState<LibraryItemSummary[]>([]);
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
@@ -53,11 +53,19 @@ function AddFromLibraryModal({
   const [link, setLink] = useState(true);
   const [loading, setLoading] = useState(true);
 
+  // Read through a ref: `resume` describes the opening this effect is reacting to, so a change to it alone
+  // must not re-run the load.
+  const resuming = useRef(resume);
+  resuming.current = resume;
+
   useEffect(() => {
     if (!open) return;
-    setSelectedIds([]);
-    setSearch('');
-    setLink(true);
+    // A resumed opening is the same pick still being made, so only a fresh one starts over.
+    if (!resuming.current) {
+      setSelectedIds([]);
+      setSearch('');
+      setLink(true);
+    }
     setLoading(true);
     libraryItems(kind)
       .then(setList)
@@ -79,7 +87,7 @@ function AddFromLibraryModal({
     });
 
   const picked = useMemo(() => list.filter((item) => selectedIds.includes(item.id)), [list, selectedIds]);
-  const linking = LINKING_ENABLED && (alwaysLink || link);
+  const linking = !!alwaysLink || link;
   const explanation = !linking
     ? LINK_EXPLANATIONS.independent
     : picked.some((item) => !item.owned) ? LINK_EXPLANATIONS.other : LINK_EXPLANATIONS.own;
@@ -141,17 +149,15 @@ function AddFromLibraryModal({
                 )}
               </div>
             </ScrollArea>
-            {LINKING_ENABLED && (
-              <div className="space-y-1">
-                {!alwaysLink && (
-                  <label className="flex items-center gap-2 cursor-pointer">
-                    <Checkbox checked={link} onCheckedChange={(v) => setLink(v === true)} className="shrink-0" />
-                    <span>Link to Library</span>
-                  </label>
-                )}
-                <Meta as="p">{explanation}</Meta>
-              </div>
-            )}
+            <div className="space-y-1">
+              {!alwaysLink && (
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <Checkbox checked={link} onCheckedChange={(v) => setLink(v === true)} className="shrink-0" />
+                  <span>Link to Library</span>
+                </label>
+              )}
+              <Meta as="p">{explanation}</Meta>
+            </div>
           </>
         )}
         <DialogFooter>

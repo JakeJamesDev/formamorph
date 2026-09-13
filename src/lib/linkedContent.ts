@@ -1,5 +1,6 @@
+import { adoptBookPlaceholders, adoptEntityPlaceholders } from '@/lib/placeholderHomes';
 import { randomUUID } from '@/lib/uuid';
-import type { CommunityLink, ContentLink, Dictionary, Entity } from '@/types';
+import type { CommunityLink, ContentLink, Dictionary, Entity, Placeholder } from '@/types';
 
 /** An entity or a dictionary — the two kinds of content a world copy can follow a source for. */
 export type LinkableContent = Entity | Dictionary;
@@ -108,27 +109,66 @@ export function contentMatchesSource(copy: LinkableContent, source: LinkableCont
   return JSON.stringify(authoredContent(copy)) === JSON.stringify(authoredContent(source));
 }
 
+/** The world-owned fields an update keeps from the copy. The two placeholder lists are absent: the source
+ *  writes them, and the adopt pass is what turns its ids into this world's. */
+const KEPT_ON_UPDATE = WORLD_OWNED_FIELDS
+  .filter((field) => field !== 'placeholders' && field !== 'sharedPlaceholders');
+
 /**
- * The copy rewritten to the source's current content. The world keeps its own id, folder, order, location
- * membership, and resolved placeholders; everything the author writes comes from the source.
+ * The connections an update carries over untouched: the ones the adopt pass does not settle, which is
+ * every location the copy connected. A key the source no longer names goes, so a reference it dropped
+ * stops being reported as a connection to something missing.
+ */
+function carriedConnections(copy: LinkableContent, sourceData: LinkableContent): Record<string, string> {
+  const held = copy.link?.connections ?? {};
+  const named = new Set([
+    ...(sourceData.sharedPlaceholders ?? []).map((p) => p.id),
+    ...((sourceData as Entity).locationRefs ?? []).map((ref) => ref.id),
+  ]);
+  return Object.fromEntries(Object.entries(held).filter(([key]) => named.has(key)));
+}
+
+/**
+ * The copy rewritten to the source's current content. The world keeps its own id, folder, order and
+ * location membership; everything the author writes comes from the source.
+ *
+ * The source's chips name the source's own placeholders, so the pass re-adopts them: the item's own
+ * placeholders are minted fresh here, and every world-owned reference resolves through the connections the
+ * copy stored. A reference the source has since renamed stays connected, because a connection is keyed by
+ * the source's id and never by a name. A reference the source has newly introduced has no connection yet
+ * and joins the world as a placeholder of its own, which Save Connections can then re-aim.
  *
  * A book's entries take the copy's own ids in order, so the entry open in the editor is still the entry
  * open in the editor after the update.
  */
-export function applyLibraryUpdate<T extends LinkableContent>(copy: T, sourceData: T, source: LibrarySource): T {
+export function applyLibraryUpdate<T extends LinkableContent>(
+  copy: T, sourceData: T, source: LibrarySource, worldShared: readonly Placeholder[],
+): { item: T; toAdd: Placeholder[] } {
   const kept: Record<string, unknown> = {};
   const held: Record<string, unknown> = { ...copy };
-  for (const field of WORLD_OWNED_FIELDS) {
+  for (const field of KEPT_ON_UPDATE) {
     if (field in held) kept[field] = held[field];
   }
-  const next = { ...sourceData, ...kept, link: linkToSource(source) } as T;
+  // The source's location references are its own world's; the copy's membership here is what stands.
+  const { locationRefs: _theirs, ...content } = sourceData as T & { locationRefs?: unknown };
+  const incoming = { ...content, ...kept } as T;
+  const resolved = 'entries' in incoming
+    ? adoptBookPlaceholders(incoming as Dictionary, worldShared, copy.link?.connections)
+    : adoptEntityPlaceholders(incoming as Entity, worldShared, copy.link?.connections);
+  const adopted = 'book' in resolved ? resolved.book : resolved.entity;
+  const connections = { ...carriedConnections(copy, sourceData), ...resolved.connections };
+  const link: ContentLink = {
+    ...linkToSource(source),
+    ...(Object.keys(connections).length ? { connections } : {}),
+  };
+  const next = { ...adopted, link } as T;
   if ('entries' in next && Array.isArray(next.entries)) {
     const heldIds = ('entries' in copy && Array.isArray(copy.entries) ? copy.entries : []).map((e) => e.id);
     (next as Dictionary).entries = (next as Dictionary).entries.map((entry, index) => ({
       ...entry, id: heldIds[index] ?? randomUUID(),
     }));
   }
-  return next;
+  return { item: next, toAdd: resolved.toAdd };
 }
 
 /** The content of one world, as the synchronization pass reads and returns it. */
@@ -137,8 +177,11 @@ export interface WorldContent {
   dictionaries: Dictionary[];
 }
 
-function syncList<T extends LinkableContent>(items: T[], sources: Map<string, LibrarySource>): { items: T[]; updated: number } {
+function syncList<T extends LinkableContent>(
+  items: T[], sources: Map<string, LibrarySource>, shared: Placeholder[],
+): { items: T[]; updated: number; toAdd: Placeholder[] } {
   let updated = 0;
+  const toAdd: Placeholder[] = [];
   const next = items.map((item) => {
     const link = item.link;
     if (!link?.libraryId || link.localReplacement) return item;
@@ -147,9 +190,13 @@ function syncList<T extends LinkableContent>(items: T[], sources: Map<string, Li
     if (!source?.owned || !source.data) return item;
     if (source.revision === link.sourceRevision) return item;
     updated += 1;
-    return applyLibraryUpdate(item, source.data as T, source);
+    // Each copy resolves against the world plus whatever the copies before it already brought in, so two
+    // copies expecting the same new reference land on one placeholder rather than two.
+    const applied = applyLibraryUpdate(item, source.data as T, source, [...shared, ...toAdd]);
+    toAdd.push(...applied.toAdd);
+    return applied.item;
   });
-  return { items: updated ? next : items, updated };
+  return { items: updated ? next : items, updated, toAdd };
 }
 
 /**
@@ -158,14 +205,20 @@ function syncList<T extends LinkableContent>(items: T[], sources: Map<string, Li
  *
  * A local replacement is never touched, a copy whose library item is gone or belongs to somebody else is
  * never touched, and a world with nothing to update gets its own arrays back so opening it stays clean.
+ *
+ * `placeholders` is the world's shared list, which the updated content resolves its references against;
+ * `toAdd` is what the world gains for references no copy had a connection for.
  */
-export function syncWorldContent(world: WorldContent, sources: LibrarySource[]): WorldContent & { updated: number } {
+export function syncWorldContent(
+  world: WorldContent & { placeholders: Placeholder[] }, sources: LibrarySource[],
+): WorldContent & { updated: number; toAdd: Placeholder[] } {
   const byId = new Map(sources.map((source) => [source.id, source]));
-  const entities = syncList(world.entities, byId);
-  const dictionaries = syncList(world.dictionaries, byId);
+  const entities = syncList(world.entities, byId, world.placeholders);
+  const dictionaries = syncList(world.dictionaries, byId, [...world.placeholders, ...entities.toAdd]);
   return {
     entities: entities.items,
     dictionaries: dictionaries.items,
     updated: entities.updated + dictionaries.updated,
+    toAdd: [...entities.toAdd, ...dictionaries.toAdd],
   };
 }

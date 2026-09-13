@@ -5,14 +5,13 @@ import { SplitButton, type SplitButtonAction } from '@/components/ui/split-butto
 import { Meta } from '@/components/ui/typography';
 import { Tip } from '@/components/ui/tooltip';
 import { CONTENT_LINK_LABELS, contentLinkSourceName, contentLinkState } from '@/lib/contentLink';
-import { LINKING_ENABLED } from '@/lib/linkingFlag';
 import type { ContentLink } from '@/types';
 
 /** The marker beside a World Editor row whose copy follows a source. Nothing at all for an independent
  *  copy, so an unlinked world's lists look exactly as they did. Takes no color of its own, so it inverts
  *  with the row the way the folder glyph does. */
 export function ContentLinkIcon({ link }: { link?: ContentLink }) {
-  const state = LINKING_ENABLED ? contentLinkState(link) : null;
+  const state = contentLinkState(link);
   if (!state) return null;
   const label = CONTENT_LINK_LABELS[state];
   const source = contentLinkSourceName(link);
@@ -43,7 +42,7 @@ export const PendingLinksProvider = ({ value, children }: { value: readonly stri
  *  renamed or gone, and an imported world never had it. */
 export function ContentLinkHeader({ link }: { link?: ContentLink }) {
   const pending = useContext(PendingLinksContext);
-  const state = LINKING_ENABLED ? contentLinkState(link) : null;
+  const state = contentLinkState(link);
   if (!state) return null;
   const source = contentLinkSourceName(link);
   const waiting = !!link?.libraryId && pending.includes(link.libraryId);

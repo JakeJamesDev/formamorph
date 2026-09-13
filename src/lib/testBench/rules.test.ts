@@ -238,6 +238,35 @@ describe('reference-integrity rules', () => {
     expect(runRules(world([{ id: 'e1', name: 'Maren' }]))).toEqual([]);
   });
 
+  it('flags a linked copy connected to a Placeholder the world has deleted', () => {
+    const found = only(base({
+      dictionaries: [{
+        id: 'b1', name: 'Court Terms', enabled: true, entries: [],
+        link: { libraryId: 'lib-1', connections: { 'src-cap': 'deleted-placeholder' } },
+      }],
+    }), 'link-connection-broken');
+    expect(found).toHaveLength(1);
+    expect(found[0].severity).toBe('warning');
+    expect(found[0].items.map((i) => i.id)).toEqual(['b1']);
+    // The way in is the copy's own tab, where Save Connections lives.
+    expect(found[0].items[0].section).toBe('dictionary');
+  });
+
+  it('is silent once the connection names something the world still holds', () => {
+    const connected = base({
+      placeholders: [{ id: 'w-cap', name: 'Capital', values: phValues(['Sedge']) }],
+      entities: [{ ...resident, link: { libraryId: 'lib-1', connections: { 'src-cap': 'w-cap' } } }],
+    });
+    expect(only(connected, 'link-connection-broken')).toEqual([]);
+  });
+
+  it('flags a linked copy whose connected location is gone', () => {
+    const found = only(base({
+      entities: [{ ...resident, link: { libraryId: 'lib-1', connections: { 'src-inn': 'gone-location' } } }],
+    }), 'link-connection-broken');
+    expect(found.map((f) => f.items[0].id)).toEqual(['resident']);
+  });
+
   it('flags a trait toggling a stat that doesn’t exist, and quiets when it points at a real one', () => {
     const toggled = (statId: string) => base({
       stats: [stat({ id: 's1', name: 'Mana' })],
@@ -2832,6 +2861,8 @@ const RULE_SCOPE: Record<string, 'simple' | 'advanced'> = {
   'image-not-webp': 'simple',
   // Its field is invisible in both modes, and the repair is the row's own one-click fix.
   'legacy-start-location': 'simple',
+  // Save Connections sits in the selected copy's menu, which Simple mode shows.
+  'link-connection-broken': 'simple',
   'location-no-entities': 'simple',
   'location-parent-orphan': 'simple',
   'no-starting-location': 'simple',

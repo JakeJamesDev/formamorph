@@ -341,6 +341,38 @@ const secondaryKeys = (entry: DictionaryEntry): string[] => (entry.secondaryKeys
 
 // ── Reference integrity: everything that points at nothing ────────────────────────────────────────────────
 
+/**
+ * A linked copy whose stored connection names something this world has since deleted. The copy still plays;
+ * what breaks is the next update from its source, which would resolve that reference to a new placeholder
+ * of its own instead of the one the author meant. Save Connections, in the selected copy's menu, is the
+ * repair — it needs the author to say what the reference means now, so no `fix` can stand in for it.
+ */
+const linkConnectionBroken: Rule = {
+  id: 'link-connection-broken',
+  severity: 'warning',
+  section: 'entities',
+  summary: (count) => `${count} linked copies are connected to things this world no longer has`,
+  check: (world) => {
+    const known = new Set([
+      ...allPlaceholders(world).map((p) => p.id),
+      ...(world.locations ?? []).map((l) => l.id),
+    ]);
+    const copies = [
+      ...(world.entities ?? []).map((e) => ({ link: e.link, item: asItem(e, world) })),
+      ...(world.dictionaries ?? []).map((b) => ({
+        link: b.link, item: namedItem(b.id, b.name, world, 'dictionary' as const),
+      })),
+    ];
+    return copies
+      .filter(({ link }) => Object.values(link?.connections ?? {}).some((id) => !known.has(id)))
+      .map(({ item }) => finding(
+        linkConnectionBroken,
+        `${quote(item.name)} is connected to something this world no longer has — use Save Connections to point it at one it does`,
+        [item],
+      ));
+  },
+};
+
 const entityLocationOrphan: Rule = {
   id: 'entity-location-orphan',
   severity: 'error',
@@ -2256,7 +2288,7 @@ const imageMislabeled: Rule = {
 /** Every rule the Bench runs, in catalog order. Display order comes from severity, not this list. */
 export const RULES: readonly Rule[] = [
   aliasLeadingArticle, entityMatchCollision, aliasSelfDuplicate,
-  entityLocationOrphan, traitToggleMissingStat, placeholderPinBroken,
+  entityLocationOrphan, linkConnectionBroken, traitToggleMissingStat, placeholderPinBroken,
   chipUnknownPlaceholder, placeholderUnused, placeholderPinnedUnused, statCodeUnknownStat,
   statCodeBeforeReadsDelta,
   entrySecondaryWithoutPrimary, entryInert, entryRegexInvalid,

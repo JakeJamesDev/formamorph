@@ -1,8 +1,9 @@
 # 03: Connect World References
 
-Status: ready-for-agent
-Status note: This ticket resumes the effort. Do the flag removal below first — the rest of the spec assumes
-links are live.
+Status: ready-for-human
+Base: dda964de
+Status note: The linking flag is gone and links are live. Two follow-ups and one
+product call are under Comments.
 Blocked by: 02
 Recommended model: Claude Sonnet 5 (`claude-sonnet-5`)
 Reasoning effort: high
@@ -12,25 +13,6 @@ Model rationale: one dialog with clear rules from the spec and prototype, plus a
 ## Parent
 
 [spec.md](../spec.md) — World Placeholder reference resolution, Settled follow-up decisions (Updates and repairs), ADR 0003 entity-owned location membership.
-
-## First: remove the linking flag
-
-Ticket 02 shipped its library half on its own. Its linking half is parked behind `LINKING_ENABLED` in
-`src/lib/linkingFlag.ts`. Delete that module and every guard that reads it, then delete this section.
-
-| File | Guard |
-| --- | --- |
-| `src/components/ContentLinkStatus.tsx` | `ContentLinkIcon` and `ContentLinkHeader` force the state to null |
-| `src/lib/useLibraryLinking.tsx` | `syncFromLibrary` returns early; `saveToLibrary` skips `applyLink`; `controlFor` returns the independent face; `confirmImport` ignores the link choice |
-| `src/components/modals/AddFromLibraryModal.tsx` | the link choice is hidden and `linking` is forced false |
-| `src/components/modals/ImportContentModal.tsx` | the link choice is hidden and `onConfirm` is forced false |
-| `src/contexts/GameDataContext.tsx`, `src/contexts/DictionaryStoreContext.tsx` | a local `markEdited` wrapper that does nothing |
-
-Two test files pair with it. `src/views/WorldEditor.libraryLinks.test.tsx` and
-`src/views/WorldEditor.contentLink.test.tsx` each mock the flag on — drop the mock. Delete
-`src/views/WorldEditor.libraryOnly.test.tsx`, which exists only to prove the parked state.
-
-Removing the flag turns `link` back into a written field, so hard constraint 2 applies: tell the author.
 
 ## What to build
 
@@ -42,15 +24,67 @@ Connections persist per world and survive updates from the source. The same dial
 
 ## Acceptance criteria
 
-- [ ] `src/lib/linkingFlag.ts` is gone and no file references `LINKING_ENABLED`.
-- [ ] Adding content whose references all resolve inserts it with no dialog.
-- [ ] Adding content with one unresolved Placeholder opens the dialog with that row preselected to its single match and a value preview.
-- [ ] A reference with two equal matches opens with no preselection and the note; Connect & Add is disabled until chosen.
-- [ ] A location reference offers world locations and Create New; choosing Create New adds the location and the Entity references it.
-- [ ] Back keeps every selection; Connect & Add inserts the content with connections stored on the world copy.
-- [ ] A source update that renames a Placeholder keeps the stored connection; deleting the world Placeholder surfaces the copy in the issue list with Save Connections.
-- [ ] Type check, lint, tests, and build pass.
+- [x] `src/lib/linkingFlag.ts` is gone and no file references `LINKING_ENABLED`.
+- [x] Adding content whose references all resolve inserts it with no dialog.
+- [x] Adding content with one unresolved Placeholder opens the dialog with that row preselected to its single match and a value preview.
+- [x] A reference with two equal matches opens with no preselection and the note; Connect & Add is disabled until chosen.
+- [x] A location reference offers world locations and Create New; choosing Create New adds the location and the Entity references it.
+- [x] Back keeps every selection; Connect & Add inserts the content with connections stored on the world copy.
+- [x] A source update that renames a Placeholder keeps the stored connection; deleting the world Placeholder surfaces the copy in the issue list with Save Connections.
+- [x] Type check, lint, tests, and build pass.
 
 ## Blocked by
 
 - 02 — Save to Library and Add from Library with links.
+
+## Comments
+
+### Handover (2026-09-13)
+
+One commit on top of `Base:`. Four gates green: typecheck 0, lint 0, tests 9620 passed / 3 skipped in 68.30s,
+build 17.35s. Reviewed against `dda964de` on both axes; every correctness finding is folded into the
+commit.
+
+**Export shape.** Two additive fields, both reported to the author:
+
+| Field | Where | Written when |
+| --- | --- | --- |
+| `ContentLink.connections` | `Entity.link` / `Dictionary.link`, inside a world | every linked add, and every update |
+| `Entity.locationRefs` | off-world only, on a library item | `toLibraryItem` for an entity that stood somewhere |
+
+No version bump, no migration. A world saved by an earlier build has neither field and reads as a copy
+with nothing connected, which is what it is.
+
+**A bug fixed on the way.** `applyLibraryUpdate` copied the source's text fields verbatim into a world
+copy that kept its own placeholder defs, so every chip in an updated copy pointed at the source world's
+ids. It was parked behind the flag, so it never shipped. The pass now re-adopts through the stored
+connections.
+
+**Verified in the app** at 1600x900 and 375x812, on a seeded library book against a world holding two
+Placeholders named `Capital` and none named `Weather`: the ambiguous row preselected nothing and said so,
+Connect & Add stayed disabled until both rows were answered, and the world came out with both connections
+stored and both chips re-aimed. Adding the same book again raised only the `Capital` row, because the
+first add had created `Weather`.
+
+### Open for the author
+
+1. **A reference the source newly introduces joins as a new world Placeholder.** The synchronization pass
+   cannot open a dialog, and the two alternatives are worse: blocking the pass, or leaving the copy's
+   chips pointing at nothing. The author sees the new Placeholder on the Placeholders tab and can re-aim
+   it with Save Connections. If that is too quiet, the pass could raise a notice.
+
+2. **`Cancel` is on the dialog.** The spec names only Connect & Add, Back, and Save Connections. Every
+   other dialog in the app offers Cancel, and without it a repair opened by accident has no way out but
+   the X.
+
+### Follow-ups for later tickets
+
+- **The issue-list row navigates; it carries no Save Connections button.** `Rule.fix` is for repairs that
+  need no authorial judgment, and this one is nothing but judgment. The row's item button lands on the
+  copy, where the menu holds Save Connections. A per-item action on a finding row does not exist in the
+  Instrument contract yet; ticket 10 (missing-source checks and repairs) is the place to add one.
+- **Repair needs the library item.** A copy whose library item is gone gets a toast, not a dialog. Ticket
+  10 owns the missing-source story.
+- **A source that drops a location reference leaves the copy's membership alone.** The copy's `locations`
+  is world-owned, so an update never rewrites it. If a later ticket wants the source to move a copy
+  between places, that is a new decision, not a bug here.

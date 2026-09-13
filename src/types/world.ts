@@ -175,8 +175,19 @@ export interface Entity {
   /** Off-world only: the shared placeholders this entity's chips use, so they resolve after import. An import
    *  merges them into the world's shared list by name and values and clears the field. */
   sharedPlaceholders?: Placeholder[];
+  /** Off-world only: the locations this entity stood in, named so a receiving world can connect each one
+   *  to a location of its own. The entity keeps ownership of the references; `locations` holds them once
+   *  the world resolves them, and an import clears this field. */
+  locationRefs?: ContentLocationRef[];
   /** What this copy follows, where it follows anything (see `ContentLink`). Absent = independent copy. */
   link?: ContentLink;
+}
+
+/** One location a piece of off-world content expects, as the world it left named it. The id is the key its
+ *  connection is stored under, so the source renaming the location keeps the connection. */
+export interface ContentLocationRef {
+  id: string;
+  name: string;
 }
 
 /** An editor-only folder for organizing entities, nestable via `parentId`. Just a name — never sent to the
@@ -469,6 +480,10 @@ export interface ContentLink {
    *  cannot establish a link. Carried so an exported world, or one whose library item is gone, can still
    *  say what the copy follows. */
   sourceName?: string;
+  /** What each world-owned thing the source expects resolves to here: the source's own id for a shared
+   *  placeholder or a location, against this world's id for it. Written by the Connect World References
+   *  step and read by every later update, so the source renaming a reference keeps it connected. */
+  connections?: Record<string, string>;
 }
 
 /** An editor-only folder for organizing shared placeholders, nestable via `parentId`. Just a name — never
