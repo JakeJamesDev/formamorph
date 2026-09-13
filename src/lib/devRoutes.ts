@@ -62,8 +62,11 @@ export type DevView = (typeof DEV_VIEWS)[number];
  *  on canned rows (`devConnectReferencesSample.ts`), because in the app it opens only partway through an add
  *  in the World Editor, and only for a library item expecting something that world lacks. `manageAddons`
  *  opens Community Creations and raises the add-on review over the first world listing, the same trick
- *  `likers` uses: the dialog reads a real listing's offers, so it has nothing to show without one. */
-export const DEV_MODALS = ['settings', 'entity', 'export', 'menu', 'worldEditor', 'intro', 'avatar', 'backup', 'aiSetup', 'entityEditor', 'dictionaryEditor', 'modelDetails', 'community', 'memoryManager', 'profile', 'auth', 'feedbackHub', 'adminPanel', 'editText', 'location', 'changelog', 'eventAck', 'publish', 'worldPrompts', 'aiContext', 'ageGate', 'likers', 'privacyPolicy', 'deleteAccount', 'deletionCancelled', 'updateRequired', 'exitApp', 'designSystem', 'enterWorld', 'connectReferences', 'manageAddons'] as const;
+ *  `likers` uses: the dialog reads a real listing's offers, so it has nothing to show without one.
+ *  `componentUpdates` raises the component update review on a canned source and two canned worlds
+ *  (`devComponentUpdateSample.ts`), because in the app it opens only for a library item whose revision two
+ *  installed worlds are actually behind. Its worlds are held in memory, so Apply Updates writes nothing. */
+export const DEV_MODALS = ['settings', 'entity', 'export', 'menu', 'worldEditor', 'intro', 'avatar', 'backup', 'aiSetup', 'entityEditor', 'dictionaryEditor', 'modelDetails', 'community', 'memoryManager', 'profile', 'auth', 'feedbackHub', 'adminPanel', 'editText', 'location', 'changelog', 'eventAck', 'publish', 'worldPrompts', 'aiContext', 'ageGate', 'likers', 'privacyPolicy', 'deleteAccount', 'deletionCancelled', 'updateRequired', 'exitApp', 'designSystem', 'enterWorld', 'connectReferences', 'manageAddons', 'componentUpdates'] as const;
 export type DevModal = (typeof DEV_MODALS)[number];
 
 /** Coverage ledger: tabbed surface → the sub-tabs the router can target (via `tab=…`). Kept in lockstep

@@ -196,6 +196,7 @@ function FolderHeader({ name, settings, onBack, onRename }: {
  * @param tiles - This tab's arrangement and the actions the grid dispatches against it
  * @param renderCard - The tab's own card for one item, told how to fill and label its tile
  * @param groupSettings - Settings shown in the folder header; omit on tabs that carry none
+ * @param onCheckUpdates - Checks one item for source updates, offered on the tabs worlds can follow
  * @param onPublish - Publishes one item, offered in the context menu on the tabs that can publish
  * @param onDelete - Deletes one item, offered as the context menu's last entry
  */
@@ -213,6 +214,7 @@ export function LibraryTileGrid<T>({
   groupSettings,
   groupPresetName,
   emptyState,
+  onCheckUpdates,
   onPublish,
   onDelete,
 }: {
@@ -234,6 +236,7 @@ export function LibraryTileGrid<T>({
   groupSettings?: (groupId: string) => React.ReactNode;
   groupPresetName?: (groupId: string) => string | undefined;
   emptyState?: React.ReactNode;
+  onCheckUpdates?: (id: string) => void;
   onPublish?: (id: string) => void;
   onDelete?: (id: string) => void;
 }) {
@@ -677,6 +680,7 @@ export function LibraryTileGrid<T>({
         renderedIds={renderedIds}
         baseCols={baseCols}
         onOpenGroup={setOpenGroupId}
+        onCheckUpdates={onCheckUpdates}
         onPublish={onPublish}
         onDelete={onDelete}
       >

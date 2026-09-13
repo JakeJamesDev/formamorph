@@ -10,6 +10,8 @@ import { parseDictionaryImport } from '@/lib/dictionaryFile';
 import { withEntityLocations } from '@/lib/entityPresence';
 import { importCharacterFile } from '@/lib/entityFile';
 import { parseJsonText } from '@/lib/jsonFileWorkerUtils';
+import type { LiveWorld } from '@/lib/componentUpdateRun';
+import { useComponentUpdates } from '@/lib/useComponentUpdates';
 import {
   contentMatchesSource, linkToSource, syncWorldContent, unlink,
   type LibrarySource, type LinkableContent,
@@ -42,6 +44,9 @@ export interface SelectedContentControl {
 
 /** What the editor supplies so the flow can put content into the world it is editing. */
 interface LibraryLinkingOptions {
+  /** The world being edited, which an update review names among the worlds a source reaches. */
+  worldId: string;
+  worldName: string;
   entities: Entity[];
   dictionaries: Dictionary[];
   /** The world's combined placeholder pool, which the copies' chips currently point at. */
@@ -104,6 +109,21 @@ export function useLibraryLinking(options: LibraryLinkingOptions) {
 
   const latest = useRef(options);
   useEffect(() => { latest.current = options; });
+
+  // The editor's own world, so an update review reads and writes its copy in memory rather than reaching
+  // for what the last world save left in storage.
+  const live: LiveWorld = {
+    id: options.worldId,
+    name: options.worldName,
+    entities: options.entities,
+    dictionaries: options.dictionaries,
+    placeholders: options.worldPlaceholders,
+    writeItem: (item) => (kindOf(item) === 'dictionary'
+      ? updateDictionary(item as Dictionary)
+      : updateEntity(item as Entity)),
+    addPlaceholder: (placeholder) => latest.current.addPlaceholder(placeholder),
+  };
+  const { checkForUpdates, updateDialog } = useComponentUpdates([live]);
 
   /** Bring the world's linked copies up to date with the library items their author owns. */
   const syncFromLibrary = useCallback(async () => {
@@ -325,13 +345,19 @@ export function useLibraryLinking(options: LibraryLinkingOptions) {
         ...(advanced ? [{ label: `Export ${noun}…`, onClick: exportItem }] : []),
         ...(linked
           ? [
+            ...(item.link?.libraryId
+              ? [{
+                label: 'Check for Updates',
+                onClick: () => { void checkForUpdates(kind, item.link!.libraryId!); },
+              }]
+              : []),
             { label: 'Save Connections…', onClick: () => { void repairConnections(item); } },
             { label: 'Unlink', onClick: () => unlinkItem(item) },
           ]
           : [{ label: 'Link to Library Item…', onClick: () => setLinkPickerFor(item) }]),
       ],
     };
-  }, [exportDictionary, exportEntity, repairConnections, saveToLibrary, unlinkItem]);
+  }, [checkForUpdates, exportDictionary, exportEntity, repairConnections, saveToLibrary, unlinkItem]);
 
   /** Open the file picker for a kind's Import file… action. */
   const openImportFile = useCallback((kind: LibraryKind) => {
@@ -400,6 +426,7 @@ export function useLibraryLinking(options: LibraryLinkingOptions) {
         onCancel={() => setImportReview(null)}
         onConfirm={(link) => { void confirmImport(link); }}
       />
+      {updateDialog}
       <EntityEditorModal
         entityId={libraryEditor?.kind === 'entity' ? libraryEditor.id : null}
         onClose={() => { setLibraryEditor(null); void syncFromLibrary(); }}
