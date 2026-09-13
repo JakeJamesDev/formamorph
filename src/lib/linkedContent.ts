@@ -93,6 +93,23 @@ export function withoutWorldFields<T extends LinkableContent>(item: T): Partial<
   return shed as Partial<T>;
 }
 
+/**
+ * Every authored string on one item that can hold a chip.
+ *
+ * The one list, so a placeholder sweep and an export cannot disagree about which fields a copy's chips
+ * live in. Media, ids and the world-owned fields carry no text.
+ */
+export function chipTexts(item: LinkableContent): string[] {
+  if ('entries' in item) {
+    return item.entries
+      .flatMap((entry) => [entry.name ?? '', ...(entry.key ?? []), ...(entry.secondaryKeys ?? []), entry.value ?? '']);
+  }
+  return [
+    item.name, ...(item.aliases ?? []),
+    item.playerDescription, item.aiDescription, item.aiSummary, item.imageTags,
+  ].filter((text): text is string => !!text);
+}
+
 /** The authored content of one item, ready to compare. Dictionary entry ids go too: every copy mints its
  *  own, so two identical books never share them. */
 function authoredContent(item: LinkableContent): unknown {

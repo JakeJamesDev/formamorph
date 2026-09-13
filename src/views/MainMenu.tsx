@@ -48,6 +48,8 @@ import { LibraryTileGrid } from '@/components/library/LibraryTileGrid';
 import { useLibraryTiles } from '@/lib/useLibraryTiles';
 import { useComponentUpdates } from '@/lib/useComponentUpdates';
 import { UpdateAvailableDialog } from '@/components/modals/UpdateAvailableDialog';
+import { WorldUpdateReviewDialog } from '@/components/modals/WorldUpdateReviewDialog';
+import type { WorldUpdateReview } from '@/lib/useDownloadCoordinator';
 import type { LiveWorld } from '@/lib/componentUpdateRun';
 import type { UpdateRow } from '@/lib/componentUpdates';
 import type { LibrarySource, LinkableContent } from '@/lib/linkedContent';
@@ -259,6 +261,8 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
   // DEV only: canned rows for the Connect World References step, which in the app only opens mid-add inside
   // the World Editor. Never set in prod.
   const [devReferences, setDevReferences] = useState<ReferenceRow[] | null>(null);
+  // DEV only: a canned world update review. Never set in prod.
+  const [devWorldUpdate, setDevWorldUpdate] = useState<WorldUpdateReview | null>(null);
   // DEV only: a canned component update review. Never set in prod.
   const [devUpdates, setDevUpdates] = useState<{
     source: LibrarySource; sourceData: LinkableContent; rows: UpdateRow[];
@@ -443,6 +447,11 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
         rows: sample.devUpdateRows(),
         copies: sample.devUpdateCopies(),
       }));
+    }
+    // The world update review only opens partway through updating an installed copy, so its dev route
+    // builds the rows instead.
+    if (devRoute?.modal === 'worldUpdate') {
+      void import('@/lib/devWorldUpdateSample').then((sample) => setDevWorldUpdate(sample.devWorldUpdateReview()));
     }
     // Unlike the editors above, a model preview needs a real model — open the first one, if the library has any.
     if (devRoute?.modal === 'modelDetails') {
@@ -2614,6 +2623,15 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
         rows={devUpdates?.rows ?? []}
         live={devUpdateWorlds}
         onClose={() => setDevUpdates(null)}
+      />
+
+      {/* DEV only: the world update review on canned rows. Apply closes it and writes nothing;
+          `devWorldUpdate` is never set in prod. */}
+      <WorldUpdateReviewDialog
+        open={!!devWorldUpdate}
+        review={devWorldUpdate}
+        onApply={() => setDevWorldUpdate(null)}
+        onCancel={() => setDevWorldUpdate(null)}
       />
 
       {/* DEV only: the Connect World References step on canned rows. `devReferences` is never set in prod. */}

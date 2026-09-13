@@ -9,6 +9,8 @@ import type { LibraryKind } from '@/lib/librarySources';
 import type { LinkableContent } from '@/lib/linkedContent';
 
 const storeWorld = vi.fn(async (_r: unknown) => {});
+const getWorldData = vi.fn(async (_id: string): Promise<Record<string, unknown>> => ({}));
+const libraryItems = vi.fn(async (_kind: LibraryKind): Promise<Record<string, unknown>[]> => []);
 // Widened so individual tests can vary the world content they hand back (author, thumbnail, …).
 type CatalogContent = {
   worldOverview?: { tags?: string[]; thumbnail?: string; author?: string };
@@ -36,6 +38,7 @@ const saveDownloadToLibrary = vi.fn(
 vi.mock('@/services/WorldStorageService', () => ({
   default: {
     storeWorld: (r: unknown) => storeWorld(r),
+    getWorldData: (id: string) => getWorldData(id),
     fetchDependencies: (id: string) => fetchDependencies(id),
     fetchDependencyContent: (w: string, id: string) => fetchDependencyContent(w, id),
     fetchAddons: (id: string) => fetchAddons(id),
@@ -45,11 +48,13 @@ vi.mock('@/services/WorldStorageService', () => ({
 vi.mock('@/lib/fetchCatalogContent', () => ({ fetchCatalogContent: (...a: unknown[]) => fetchCatalogContent(...a) }));
 vi.mock('@/lib/librarySources', () => ({
   saveDownloadToLibrary: (...a: Parameters<typeof saveDownloadToLibrary>) => saveDownloadToLibrary(...a),
+  libraryItems: (kind: LibraryKind) => libraryItems(kind),
 }));
 vi.mock('@/lib/version', () => ({ migrateWorld: (w: unknown) => w }));
 vi.mock('@/lib/uuid', () => ({ randomUUID: () => 'fixed' }));
 vi.mock('react-toastify', () => ({ toast: { success: vi.fn(), error: vi.fn() } }));
 
+import { toast } from 'react-toastify';
 import { useDownloadCoordinator } from './useDownloadCoordinator';
 
 // Drive the hook with a stateful `worlds` list so we can observe add vs replace.
@@ -68,6 +73,8 @@ describe('useDownloadCoordinator', () => {
     fetchDependencies.mockResolvedValue([]);
     fetchDependencyContent.mockImplementation(async (_w, id) => ({ name: `source ${id}` }));
     fetchAddons.mockResolvedValue([]);
+    getWorldData.mockResolvedValue({});
+    libraryItems.mockResolvedValue([]);
   });
 
   const remote: WorldRecord = { _id: 'remote-1', name: 'Remote', updated_at: 'T2', author: { id: 'u-bob', username: 'bob' } };
@@ -381,6 +388,209 @@ describe('useDownloadCoordinator', () => {
 
       await waitFor(() => expect(result.current.worlds[0].name).toBe('Remote'));
       expect(saveDownloadToLibrary).toHaveBeenCalledWith('entity', expect.anything(), expect.objectContaining({ sourceId: 'add-1' }));
+    });
+  });
+
+  describe('updating an existing copy in place', () => {
+    const existing: WorldRecord = { id: 'local-1', name: 'Sedge Landing', sourceId: 'remote-1', isLoading: false };
+
+    // The stamps the review compares: the library holds T1 of each source, the listings now say T2.
+    const T1 = '2026-09-01T00:00:00.000Z';
+    const T2 = '2026-09-08T00:00:00.000Z';
+
+    const requires = (id: string, name: string, updatedAt = T2): DependencyRow[] => [
+      { id, status: 'ok', listing: { _id: id, name, kind: 'entity', updated_at: updatedAt } },
+    ];
+
+    /** The library item behind `dep-1`, held at the listing version `T1`. */
+    const heldGuide = () => [{
+      id: 'lib-dep-1', kind: 'entity', name: 'Guide', revision: 'R1', owned: false,
+      sourceId: 'dep-1', sourceUpdatedAt: T1, authorLine: 'ann', sourceLine: 'Community Creations',
+    }];
+
+    /** The copy the player already has, with `edited` deciding whether it is a local replacement. */
+    const installed = (edited: boolean) => ({
+      entities: [{
+        id: 'e-mine', name: 'Guide', aiDescription: edited ? 'My own guide.' : 'The guide as it arrived.',
+        link: {
+          libraryId: 'lib-dep-1', sourceId: 'dep-1', sourceName: 'Guide', sourceRevision: 'R1',
+          ...(edited ? { localReplacement: true } : {}),
+        },
+      }],
+      dictionaries: [],
+      placeholders: [],
+    });
+
+    /** The author's republished world: their own version of the guide, plus a second required character. */
+    const republished = (): CatalogContent => ({
+      worldOverview: { tags: ['t'] },
+      entities: [
+        { id: 'e-theirs', name: 'Guide', aiDescription: 'The guide the author rewrote.', link: { sourceId: 'dep-1', sourceName: 'Guide' } },
+        { id: 'e-new', name: 'Ferryman', link: { sourceId: 'dep-2', sourceName: 'Ferryman' } },
+      ],
+      dictionaries: [],
+    });
+
+    /** The content the last storeWorld call wrote. */
+    const storedWorld = () => (storeWorld.mock.calls.at(-1)?.[0] as {
+      data: { entities: { name: string; aiDescription?: string; link?: Record<string, unknown> }[] };
+    }).data;
+
+    const guideIn = (data: ReturnType<typeof storedWorld>) => data.entities.find((e) => e.name === 'Guide')!;
+
+    type Coordinator = ReturnType<typeof useHarness>['coord'];
+
+    /** Walk the contextual button through to the review the update opens. */
+    const openReview = async (result: { current: { coord: Coordinator } }) => {
+      await act(async () => { result.current.coord.handleContextualDownload(remote, 'update'); });
+      await act(async () => { result.current.coord.handleChooseOverwrite(); });
+      await waitFor(() => expect(result.current.coord.worldUpdateReview).not.toBeNull());
+    };
+
+    it('opens one review of the changed, new and dropped content, and writes nothing yet', async () => {
+      getWorldData.mockResolvedValue(installed(true));
+      fetchCatalogContent.mockResolvedValue(republished());
+      // `dep-1` is still required and has moved; `dep-2` is new. Nothing dropped here.
+      fetchDependencies.mockResolvedValue([...requires('dep-1', 'Guide'), ...requires('dep-2', 'Ferryman')]);
+      libraryItems.mockImplementation(async (kind) => (kind === 'entity' ? heldGuide() : []));
+      const { result } = renderHook(() => useHarness([existing]));
+
+      await openReview(result);
+
+      expect(result.current.coord.worldUpdateReview?.localName).toBe('Sedge Landing');
+      expect(result.current.coord.worldUpdateReview?.rows).toEqual([
+        expect.objectContaining({ sourceId: 'dep-1', rowKind: 'changed', state: 'local-replacement' }),
+        expect.objectContaining({ sourceId: 'dep-2', rowKind: 'added', name: 'Ferryman' }),
+      ]);
+      // The review stands between the decision and the write: nothing is downloaded or stored.
+      expect(storeWorld).not.toHaveBeenCalled();
+      expect(saveDownloadToLibrary).not.toHaveBeenCalled();
+    });
+
+    it('keeps a local replacement through Apply and installs the new required source', async () => {
+      getWorldData.mockResolvedValue(installed(true));
+      fetchCatalogContent.mockResolvedValue(republished());
+      fetchDependencies.mockResolvedValue([...requires('dep-1', 'Guide'), ...requires('dep-2', 'Ferryman')]);
+      libraryItems.mockImplementation(async (kind) => (kind === 'entity' ? heldGuide() : []));
+      const { result } = renderHook(() => useHarness([existing]));
+      await openReview(result);
+
+      // The defaults the rows imply: Keep Mine for the replacement, install for the new source.
+      await act(async () => { result.current.coord.applyWorldUpdate({}); });
+
+      await waitFor(() => expect(storeWorld).toHaveBeenCalled());
+      expect(guideIn(storedWorld()).aiDescription).toBe('My own guide.');
+      expect(guideIn(storedWorld()).link).toMatchObject({ localReplacement: true, reviewedRevision: 'R1' });
+      // The new source is installed and the copy following it points at the library item.
+      expect(saveDownloadToLibrary).toHaveBeenCalledWith(
+        'entity', expect.anything(), expect.objectContaining({ sourceId: 'dep-2' }),
+      );
+      expect(storedWorld().entities.find((e) => e.name === 'Ferryman')?.link)
+        .toMatchObject({ libraryId: 'lib-dep-2' });
+      expect(result.current.worlds).toHaveLength(1);
+    });
+
+    it("takes the author's version when the player chooses Update", async () => {
+      getWorldData.mockResolvedValue(installed(true));
+      fetchCatalogContent.mockResolvedValue(republished());
+      fetchDependencies.mockResolvedValue(requires('dep-1', 'Guide'));
+      libraryItems.mockImplementation(async (kind) => (kind === 'entity' ? heldGuide() : []));
+      const { result } = renderHook(() => useHarness([existing]));
+      await openReview(result);
+
+      await act(async () => { result.current.coord.applyWorldUpdate({ 'dep-1': 'update' }); });
+
+      await waitFor(() => expect(storeWorld).toHaveBeenCalled());
+      expect(guideIn(storedWorld()).aiDescription).toBe('The guide the author rewrote.');
+    });
+
+    it('turns a dropped requirement into an independent copy with its content intact', async () => {
+      getWorldData.mockResolvedValue(installed(false));
+      // The author still ships the guide, but embedded: publishing an unchecked source strips the record.
+      fetchCatalogContent.mockResolvedValue({
+        worldOverview: { tags: ['t'] },
+        entities: [{ id: 'e-theirs', name: 'Guide', aiDescription: 'The guide the author rewrote.' }],
+        dictionaries: [],
+      });
+      fetchDependencies.mockResolvedValue([]);
+      libraryItems.mockImplementation(async (kind) => (kind === 'entity' ? heldGuide() : []));
+      const { result } = renderHook(() => useHarness([existing]));
+      await openReview(result);
+
+      expect(result.current.coord.worldUpdateReview?.rows)
+        .toEqual([expect.objectContaining({ sourceId: 'dep-1', rowKind: 'dropped' })]);
+
+      await act(async () => { result.current.coord.applyWorldUpdate({}); });
+
+      await waitFor(() => expect(storeWorld).toHaveBeenCalled());
+      expect(storedWorld().entities).toHaveLength(1);
+      expect(guideIn(storedWorld()).aiDescription).toBe('The guide as it arrived.');
+      expect(guideIn(storedWorld()).link).toBeUndefined();
+    });
+
+    it('keeps a failed component on its previous content while the world updates, then retries it', async () => {
+      getWorldData.mockResolvedValue(installed(false));
+      fetchCatalogContent.mockResolvedValue(republished());
+      fetchDependencies.mockResolvedValue([...requires('dep-1', 'Guide'), ...requires('dep-2', 'Ferryman')]);
+      libraryItems.mockImplementation(async (kind) => (kind === 'entity' ? heldGuide() : []));
+      // The guide's source refuses; the new one lands.
+      fetchDependencyContent.mockImplementation(async (_w, id) => {
+        if (id === 'dep-1') throw new Error('Server said no');
+        return { name: `source ${id}` };
+      });
+      const { result } = renderHook(() => useHarness([existing]));
+      await openReview(result);
+
+      await act(async () => { result.current.coord.applyWorldUpdate({ 'dep-1': 'update' }); });
+
+      await waitFor(() => expect(result.current.coord.pendingDownload).not.toBeNull());
+      // The world is updated and the other component with it; only the guide is outstanding.
+      expect(result.current.coord.pendingDownload?.worldReady).toBe(true);
+      expect(result.current.coord.pendingDownload?.failures)
+        .toEqual([{ id: 'dep-1', name: 'Guide', message: 'Server said no' }]);
+      expect(guideIn(storedWorld()).aiDescription).toBe('The guide as it arrived.');
+      expect(storedWorld().entities.find((e) => e.name === 'Ferryman')?.link)
+        .toMatchObject({ libraryId: 'lib-dep-2' });
+
+      fetchDependencyContent.mockImplementation(async (_w, id) => ({ name: `source ${id}` }));
+      await act(async () => { result.current.coord.retryDownload('dep-1'); });
+
+      await waitFor(() => expect(result.current.coord.pendingDownload).toBeNull());
+      expect(guideIn(storedWorld()).aiDescription).toBe('The guide the author rewrote.');
+      // The world content was fetched once: the retry resumed the run rather than starting it again.
+      expect(fetchCatalogContent).toHaveBeenCalledTimes(1);
+    });
+
+    it('downloads a separate copy with no review at all', async () => {
+      getWorldData.mockResolvedValue(installed(true));
+      fetchCatalogContent.mockResolvedValue(republished());
+      fetchDependencies.mockResolvedValue(requires('dep-1', 'Guide'));
+      libraryItems.mockImplementation(async (kind) => (kind === 'entity' ? heldGuide() : []));
+      const { result } = renderHook(() => useHarness([existing]));
+
+      await act(async () => { result.current.coord.handleContextualDownload(remote, 'update'); });
+      await act(async () => { await result.current.coord.handleDownloadWorld(remote); });
+
+      expect(result.current.coord.worldUpdateReview).toBeNull();
+      expect(getWorldData).not.toHaveBeenCalled();
+      // A fresh world beside the one they had, with the listing's current required set installed.
+      await waitFor(() => expect(result.current.worlds).toHaveLength(2));
+      expect(saveDownloadToLibrary).toHaveBeenCalledWith(
+        'entity', expect.anything(), expect.objectContaining({ sourceId: 'dep-1' }),
+      );
+    });
+
+    it('writes nothing when it cannot read what the update would change', async () => {
+      getWorldData.mockResolvedValue(installed(true));
+      fetchDependencies.mockRejectedValue(new Error('Server said no'));
+      const { result } = renderHook(() => useHarness([existing]));
+
+      await act(async () => { result.current.coord.handleContextualDownload(remote, 'update'); });
+      await act(async () => { result.current.coord.handleChooseOverwrite(); });
+
+      await waitFor(() => expect(toast.error).toHaveBeenCalledWith('Server said no'));
+      expect(result.current.coord.worldUpdateReview).toBeNull();
+      expect(storeWorld).not.toHaveBeenCalled();
     });
   });
 });

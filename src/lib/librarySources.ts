@@ -27,6 +27,9 @@ export type LibraryKind = 'entity' | 'dictionary';
 /** One library row, as a picker draws it and as a link records it. */
 export interface LibraryItemSummary extends LibrarySource {
   kind: LibraryKind;
+  /** The listing version this item holds, where it came from one. A world update compares it against the
+   *  listing's own, which is what says whether the author republished the source. */
+  sourceUpdatedAt?: string;
   /** Who wrote the item. */
   authorLine: string;
   /** Where the item came from. */
@@ -66,6 +69,7 @@ function summarize(kind: LibraryKind, record: LibraryStamps & { id: string; name
     revision: libraryRevision(record),
     owned,
     ...(record.sourceId ? { sourceId: record.sourceId } : {}),
+    ...(record.sourceUpdatedAt ? { sourceUpdatedAt: record.sourceUpdatedAt } : {}),
     authorLine: libraryAuthorLine(record, owned),
     sourceLine: librarySourceLine(record),
   };
