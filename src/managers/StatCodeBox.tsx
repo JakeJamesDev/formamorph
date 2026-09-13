@@ -132,9 +132,9 @@ export function StatCodeBox({ timing, stat, value, onChange, context }: {
       ];
       if (parts.length) setResult(parts.join(' · '));
       setWarnings([
-        ...(outcome.unknownPlaceholders ? [`No placeholder answers these paths, so code did not change them: ${outcome.unknownPlaceholders.join(', ')}.`] : []),
-        ...(outcome.unknownTraits ? [`No trait has these names, so code did not switch them: ${outcome.unknownTraits.join(', ')}.`] : []),
-        ...(outcome.acquiredWrites ? [`Code can’t change acquired, so these writes did nothing: ${outcome.acquiredWrites.join(', ')}.`] : []),
+        ...(outcome.unknownPlaceholders ? [`Unknown placeholder paths. Writes ignored: ${outcome.unknownPlaceholders.join(', ')}.`] : []),
+        ...(outcome.unknownTraits ? [`Unknown trait names. Writes ignored: ${outcome.unknownTraits.join(', ')}.`] : []),
+        ...(outcome.acquiredWrites ? [`acquired is read-only. Writes ignored: ${outcome.acquiredWrites.join(', ')}.`] : []),
       ]);
     } catch (thrown) {
       setError((thrown as Error).message);
@@ -156,10 +156,10 @@ export function StatCodeBox({ timing, stat, value, onChange, context }: {
         // Its caption is the section heading, which full screen leaves behind — so the field names
         // itself in the toolbar and stays labeled in both states.
         label={label}
-        // One line rather than a worked example: the completions, the ? and Templates each teach
-        // more of the sandbox than a sample could, and four lines filled the box they sat in.
-        // Short enough not to wrap in the panel — Templates is a labeled button right below this.
-        placeholder="// Return a number. Start typing to see what you can use."
+        // One line per box. The completions, the ? and Templates teach the rest of the sandbox.
+        placeholder={timing === 'before'
+          ? '// Set self, pin a placeholder, or switch a trait. Start typing to see what you can use.'
+          : '// Return a number, or set self. Start typing to see what you can use.'}
         rows={6}
       />
 

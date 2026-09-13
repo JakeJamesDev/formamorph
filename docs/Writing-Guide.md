@@ -62,6 +62,11 @@ These entries preserve established concepts. Noun admission is assessed under ru
 | cached images | Downloaded image copies in the remote-image cache, not embedded world images. | [remoteImageCache.ts](../src/lib/remoteImageCache.ts); category 19, two-word technical noun |
 | embedded image, linked image | An embedded image is stored in the world file. A linked image is stored as its URL only. | [entityImages.ts](../src/lib/entityImages.ts); category 19 data concepts |
 | publish, Publish Size, publish limit | Publishing sends a world, entity, dictionary, or avatar to Community Creations. Publish Size is the byte size of the content that publishing sends. The publish limit is the largest Publish Size the server accepts for that kind. | [publishLimits.ts](../src/lib/publishLimits.ts); category 19; `publish` is a technical verb under rule 1.12 because no approved verb names the upload-and-list operation |
+| stat code, code box | Stat code is the JavaScript a stat runs each turn. A code box is one of the two editors that hold it. | [StatCodeBox.tsx](../src/managers/StatCodeBox.tsx); category 19 |
+| Before The AI, After The AI | The two code boxes, named for when they run in the turn. Before The AI runs before the prompt is built. After The AI runs after the AI's changes and Regen apply. | [statCodeTiming.ts](../src/lib/statCodeTiming.ts); named controls, rule 1.5 |
+| Test Code, Templates | The button under a code box that runs that box alone, and the menu that inserts a code template into it. | [StatCodeBox.tsx](../src/managers/StatCodeBox.tsx); named controls, rule 1.5 |
+| pin (verb), unpin (verb) | Code or the author fixes a placeholder to one value until the pin is removed. `pin(x)` in code; Pin in the editor. | [statCodeSurface.ts](../src/lib/statCodeSurface.ts); rule 1.12 technical verb, no approved verb names the hold-one-value operation |
+| switch (verb) | Code or the player turns a trait on or off through `enabled`. Only traits switch; stat fields are set. | [StatCodeGuide.md](StatCodeGuide.md); rule 1.12 technical verb, matches the trait checkbox |
 
 Use the same term for the same concept in prose, accessible names, and help. Quoted labels retain their display casing; ordinary nouns use normal prose casing. Introduce unfamiliar terms in help before depending on them. This register is scoped to the listed meanings, not a blanket whitelist for all game vocabulary.
 
@@ -77,6 +82,34 @@ A help line under a field, a tooltip, and a ⓘ popover are instructions, not pr
 - **Every verb names the literal operation.** Match, activate, inject, scan, add, remove, show, hide, run, send, set, select. A verb that describes the effect by image fails: fire, drive, mute, live, stand in, appear in play, get out of the way, keep in reach.
 
 A line that fails either list is rewritten with the defined words, even when the rewrite reads flatter. The reader of a help line is looking for which control does what, and a defined word answers that where a pretty one does not. World text, narration, and readme prose keep their own voice; this test does not apply to them.
+
+### The technical register
+
+Technical surfaces are instructions, not prose. This covers stat code help, the Stat Code Guide, editor warnings, Test Code output, Test Bench findings, completion info, template descriptions, and code comments. The reader is writing code and wants the exact term.
+
+- **Defined words beat common words.** STE prefers the common word for a general reader. A technical reader needs the word that names the operation. "Overwrites" is correct; "writes over" is not a term. "Read-only" is correct; "code cannot change it" is a description of read-only.
+- **One term per concept, everywhere.** The same fact reads the same in the hint, the help topic, the guide, the warning, and the comment. Pick the term once and reuse it.
+- **Short declaratives.** State the fact. Drop the framing ("so", "which means", "the way it always did"). A colon introduces a list or a value, never an aside.
+- **No metaphor, no image verbs.** Land, drive, show through, in force, stand, sit over, hand back, reach for: rewrite each with the operation it describes.
+
+| Concept | Term | Not |
+| --- | --- | --- |
+| Replace existing code or text | overwrite | write over, replace what was there |
+| Write a stat field or a value | set | move, change, push |
+| Fix a placeholder to a value | pin, unpin | hold, lock, hand back |
+| Turn a trait on or off | switch | drive, set, toggle |
+| A write with no effect | ignored | dropped, did nothing, missed |
+| A field code cannot write | read-only | frozen, cannot change |
+| A name lookup | resolves to | reaches, answers, finds |
+| A value that holds across runs | persists | stays, holds, carries |
+| A value that stops applying | clears | goes away, is removed |
+| A change takes effect | applies | lands, goes in, takes |
+| A step that does not run | skipped | does nothing, does not run |
+| A name the world does not have | unknown name | a name no stat has, missing |
+| A member that hides a same-named part | shadows | loses the name to |
+| A code path or object path | path, segment | step, walk, route |
+
+Code comments follow the same register. A comment names the mechanism in the defined terms and stops.
 
 ## Worked review examples
 

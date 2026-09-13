@@ -866,7 +866,7 @@ const statCodeUnknownStat: Rule = {
         .filter((name) => !known.has(name))
         .map((name) => finding(
           statCodeUnknownStat,
-          `${TIMING_LABEL[box.timing]} code on ${quote(item.name)} looks up a stat named ${quote(name)}, which doesn’t exist`,
+          `${TIMING_LABEL[box.timing]} code on ${quote(item.name)} looks up a stat named ${quote(name)}, which does not exist`,
           [item],
         )));
     });

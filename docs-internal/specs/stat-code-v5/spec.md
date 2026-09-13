@@ -86,7 +86,7 @@ Stat code runs on every turn, opening turn included, with no gate. Each stat get
 
 - The Code tab shows two stacked editors, always visible, labeled Before The AI and After The AI, in turn order.
 - Each editor has its own Test Code button and result area. Test Code on the before box runs it with `delta` at zeros; Test Code on the after box runs as today.
-- Each editor has its own template menu. Templates carry a timing. The before menu offers setup templates: pin a placeholder, switch a trait, set a value on the opening turn. The after menu keeps the regen, clamp, and react-to-the-AI templates.
+- Each editor has its own template menu. Templates carry a timing. The before menu offers setup templates: pin a placeholder, switch a trait, set a value on the opening turn. The after menu keeps the drain, timer, blend, and bound templates.
 - Completions, the name checks, the reserved-name warnings, and the rename offer run over both boxes. The rename offer counts and rewrites references in both.
 - Bench rules that read a stat's code read both boxes, and each finding names the box.
 - The code-name drift guard, the surface drift guard, and the templates' own tests cover both boxes.

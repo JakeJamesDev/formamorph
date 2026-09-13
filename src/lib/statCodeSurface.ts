@@ -65,7 +65,7 @@ const DELTA_SOURCE_INFO: Record<DeltaSource, SurfaceEntry> = {
 export const DELTA_MEMBERS: readonly SurfaceEntry[] = [
   ...DELTA_SOURCES.map((source) => DELTA_SOURCE_INFO[source]),
   { name: 'total', detail: shapeOf(DELTA_FIELDS), info: 'Every source added up: what this turn asked of the stat, before flags and the range.' },
-  { name: 'actual', detail: shapeOf(DELTA_FIELDS), info: 'What landed since the start of this turn: the current numbers minus previous.' },
+  { name: 'actual', detail: shapeOf(DELTA_FIELDS), info: 'Current values minus previous.' },
 ];
 
 /** The fields on a stat object inside `stats`, `self` included. Anything else is `undefined`. */
@@ -108,7 +108,7 @@ export function placeholderEntryFields(kind: PlaceholderKindNoun): readonly Surf
   const list = kind === 'Object';
   return [
     list
-      ? { name: 'value', detail: 'string[]', info: 'Every value in force now, as a list, with pins applied.' }
+      ? { name: 'value', detail: 'string[]', info: 'The current values as a list. Pins are applied.' }
       : { name: 'value', detail: 'string', info: 'The text the placeholder reads as now, with pins applied.' },
     { name: 'values', detail: 'string[]', info: 'Every value the author wrote, in order, as text. Values with weight 0 are included.' },
     { name: 'text', detail: 'string', info: 'What the prompt sees for this placeholder. A list joins with ", ". Read-only.' },
@@ -123,7 +123,7 @@ export function placeholderEntryFields(kind: PlaceholderKindNoun): readonly Surf
 /** The members of one entry in `traits`. */
 export const TRAIT_ENTRY_FIELDS: readonly SurfaceEntry[] = [
   { name: 'enabled', detail: 'boolean', info: 'Whether the player has the trait and it is on. Write it to switch the trait on or off, after this run.' },
-  { name: 'acquired', detail: 'boolean', info: 'Whether the player has the trait, on or off. Code can’t change it.' },
+  { name: 'acquired', detail: 'boolean', info: 'True when the player has the trait, on or off. Read-only.' },
 ];
 
 /** The one field on a `traits` entry that a write reaches. */

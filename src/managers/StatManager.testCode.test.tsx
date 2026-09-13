@@ -234,7 +234,7 @@ describe('what Test Code reports', () => {
     await testCode(user, 'placeholders[["No", "pe"].join("")] = "x";');
 
     await waitFor(() => expect(row())
-      .toHaveTextContent('No placeholder answers these paths, so code did not change them: Nope, Molly › Gone.'));
+      .toHaveTextContent('Unknown placeholder paths. Writes ignored: Nope, Molly › Gone.'));
     expect(row()).not.toHaveTextContent('Result:');
   });
 
@@ -266,8 +266,8 @@ describe('what Test Code reports', () => {
 
     await testCode(user, 'traits.Nope = true; traits.Brave.acquired = true;');
 
-    await waitFor(() => expect(row()).toHaveTextContent('No trait has these names, so code did not switch them: Nope.'));
-    expect(row()).toHaveTextContent('Code can’t change acquired, so these writes did nothing: Brave.');
+    await waitFor(() => expect(row()).toHaveTextContent('Unknown trait names. Writes ignored: Nope.'));
+    expect(row()).toHaveTextContent('acquired is read-only. Writes ignored: Brave.');
   });
 
   it('still counts the problems when the run itself threw', async () => {

@@ -1,6 +1,6 @@
 # 🧮 Stat Code Guide
 
-This guide explains Formamorph's **stat code** — a small JavaScript script attached to a stat. It can set the stat's value from other stats, move the stat's own bounds, pin a placeholder, or switch a trait. Each stat has two script boxes, one on each side of the AI's turn. In a world file they are a stat's `beforeCode` and `code` fields; see the [World Format](WorldFormat) for where they live.
+This guide explains Formamorph's **stat code**: a small JavaScript script attached to a stat. It can set the stat's value from other stats, set the stat's own bounds, pin a placeholder, or switch a trait. Each stat has two script boxes, one on each side of the AI's turn. In a world file they are a stat's `beforeCode` and `code` fields; see the [World Format](WorldFormat) for where they live.
 
 ## Overview
 
@@ -9,7 +9,7 @@ Stat code runs in a sandbox on every turn (see [When Your Code Runs](#when-your-
 - **Derive a value** from other stats (e.g., carrying capacity based on strength)
 - **Combine stats** (e.g., defense calculated from armor + agility)
 - **React to thresholds** (e.g., speed penalties when health is below 30%)
-- **Follow time** — how long a turn took, or what time of day it is (see [The Story Clock](#the-story-clock))
+- **Follow time**: how long a turn took, or what time of day it is (see [The Story Clock](#the-story-clock))
 - **Set its own Min, Max, or Regen** (see [Writing to `self`](#writing-to-self))
 - **Shape what the AI asked for** before it lands (see [Reading This Turn](#reading-this-turn))
 - **Pin a placeholder** to any text (see [Placeholders](#placeholders))
@@ -35,17 +35,17 @@ A turn runs your code twice, once on each side of the AI:
 | 4 | Regen applies |
 | 5 | **After The AI** runs |
 
-**Before The AI is the setup box.** It runs before the prompt is built, so a value it sets, a placeholder it pins, or a trait it switches is in what the AI reads on that same turn. A stat it moves shows on the bar while the AI is still writing.
+**Before The AI is the setup box.** It runs before the prompt is built. A value it sets, a placeholder it pins, or a trait it switches is in the prompt for that turn. A value it sets shows on the bar while the AI is still writing.
 
-**After The AI is the reaction box.** It runs where a single box always ran, so a world written before the split keeps its meaning with no edits. It reads the AI's ask, this turn's regen, and whatever the before box left.
+**After The AI is the reaction box.** It runs where a single box always ran, so a world written before the split keeps its meaning with no edits. It reads the AI's change, this turn's regen, and the values the before box set.
 
-> ⚠️ **The before box has no turn behind it yet.** `previous` reads as the stat itself, `delta.ai`, `delta.regen`, `delta.total` and `delta.actual` all read zeros, and the clock reads turn start — `deltaHours` is `0` there. Code that scales an ask belongs in the after box.
+> ⚠️ **The before box has no turn behind it yet.** `previous` reads as the stat itself, `delta.ai`, `delta.regen`, `delta.total` and `delta.actual` all read zeros, and the clock reads turn start, so `deltaHours` is `0`. Code that scales the AI's change belongs in the after box.
 
-**Bounds carry across both boxes.** A `self.max` the before box sets stays in force through an after box that never mentions it. Emptying one box leaves the bounds the other set; emptying both clears them.
+**Bounds carry across both boxes.** A `self.max` the before box sets persists through an after box that never writes it. Emptying one box leaves the bounds the other set. Emptying both clears them.
 
 ### When Your Code Runs
 
-**Your code runs on every turn.** There is no schedule to choose and nothing to switch on. Both boxes run on the opening turn, and on a turn where the AI asked for no stat change.
+**Your code runs on every turn.** There is no schedule to choose and no option to enable. Both boxes run on the opening turn and on a turn with no AI stat change.
 
 > 💡 Both boxes run even when the stat request is off, or when it fails. On such a turn `delta.ai` reads zeros in the after box too, so code that scales an ask leaves the value where it stood.
 
@@ -72,7 +72,7 @@ const health = stats.Health.value;
 return health;
 ```
 
-A name with a space needs brackets: `stats["Hit Points"].value`. A name that doesn't exist in the world reads as a blank entry — every number `0` — so a typo never throws.
+A name with a space needs brackets: `stats["Hit Points"].value`. A name the world does not have reads as a blank entry with every number `0`, so a typo never throws.
 
 > ℹ️ **A stat name with a placeholder chip in it reads in code as the placeholder's own name.** A stat named `{{Beast}} Power` is `stats["Beast Power"]` in every playthrough, whatever the chip rolled. The player still sees the rolled name.
 
@@ -83,14 +83,14 @@ Each stat in the `stats` map, `self` included, exposes the following properties:
 | Property | What it is |
 | --- | --- |
 | `id` | Unique identifier |
-| `name` | Display name (this is what you match on) |
+| `name` | Code name. The authored name with each chip replaced by its placeholder's name |
 | `type` | Type of stat (`'number'` or `'percentage'`) |
 | `description` | Text description |
 | `min` | Minimum value |
 | `max` | Maximum value |
 | `value` | Current value, with this turn's AI change and regen applied |
 | `regen` | Regen per story hour, with traits applied |
-| `previous` | The whole stat as it stood at the start of the turn — `id`, `name`, `type`, `description`, `min`, `max`, `value`, `regen`. Read-only |
+| `previous` | The full stat at the start of the turn: `id`, `name`, `type`, `description`, `min`, `max`, `value`, `regen`. Read-only |
 | `delta` | Every change this turn made, by source: `ai`, `regen`, `total`, `actual`. Read-only |
 
 > ℹ️ Only these fields are passed into the sandbox. A stat's own `code` and `descriptors` are **not** available from inside a script.
@@ -114,11 +114,11 @@ const level = stats.Level.value;
 self.max = 50 + level * 10;
 ```
 
-A bound your code sets wins over the authored bound, trait changes, and the AI's max changes for that field. It stays set on runs that do not write it, and empty code clears every code-set bound. A write equal to the bound's current number counts as leaving it alone. Only `self` takes writes; a write to another stat's entry does nothing, and the editor underlines it.
+A bound your code sets overrides the authored bound, trait changes, and the AI's max changes for that field. It persists on runs that do not write it. Code-set bounds clear only when both boxes are empty. A write equal to the bound's current number counts as no write. Only `self` accepts writes. A write to another stat's entry does nothing, and the editor underlines it.
 
 ### Reading This Turn
 
-Every stat carries what the turn did before the code ran. `previous` holds the whole stat — every field `self` has — as it stood at the start of the turn. In the before box the turn has done nothing yet, so `previous` reads as the stat itself and every `delta` below reads zero. This section is about the after box.
+Every stat carries the turn's state before the code ran. `previous` holds the full stat, every field `self` has, at the start of the turn. In the before box the turn has done nothing yet, so `previous` reads as the stat itself and every `delta` below reads zero. This section is about the after box.
 
 `delta` holds every change the turn made to the stat, by source. Each member has the same four fields: `value`, `min`, `max`, and `regen`. A field that a source cannot move reads `0`.
 
@@ -127,7 +127,7 @@ Every stat carries what the turn did before the code ran. `previous` holds the w
 | `delta.ai` | The change the AI asked for, raw: before flags and the range. The AI asks for `value` and `max` only |
 | `delta.regen` | What regen did this turn. Only `value` moves |
 | `delta.total` | Every source added up: what the turn asked of the stat, before flags and the range |
-| `delta.actual` | What landed: the current numbers minus `previous`. A bound a trait moved since the turn started shows here |
+| `delta.actual` | Current values minus `previous`. A bound a trait changed since the turn started shows here |
 
 `previous` and `delta` are frozen, so a write to them does nothing. Together they let a script clamp or scale an ask:
 
@@ -159,11 +159,11 @@ if (lost > 0 && self.value === self.max) {
 | Member | What it is |
 | --- | --- |
 | `values` | Every authored value as text, in authored order. Values with weight 0 are included |
-| `value` | What is in force. One text on a Wildcard or a Variable, a list on an Object |
+| `value` | The current value. One text on a Wildcard or a Variable, a list on an Object |
 | `text` | `value` as one string: exactly what the prompt sees. A list joins with `", "`. Read-only |
 | `roll()` | One draw with the author's weights. The draw is not kept |
 | `pin(x)` | Pin the placeholder. Takes what `value` reads on that entry |
-| `unpin()` | Remove the pin code set. The next pin in rank, or the roll, shows again |
+| `unpin()` | Remove the pin code set. The next pin in rank, or the roll, applies again |
 
 #### Paths
 
@@ -180,15 +180,15 @@ placeholders["Old Molly"]["Eye Color"]  // brackets, at any depth
 | `placeholders.Hair` | The world's own `Hair`, where it has one |
 | `placeholders.Molly.Hair` | Molly's `Hair`, always |
 
-A bare name reaches the world's own row first. Where the world holds none of that name, it reaches the last one authored, and the editor says so. Write the path for the exact one.
+A bare name resolves to the world's own row first. Where the world has no row of that name, it resolves to the last one authored, and the editor says so. Write the full path for an exact match.
 
-An owner step is not a placeholder: it has none of the six members in the table above, only the placeholders it owns. Every placeholder has all six, so a part named `value` or `roll` loses the name to the member — the editor warns on the part's name field.
+An owner segment is not a placeholder. It has none of the six members in the table above, only the placeholders it owns. Every placeholder has all six, so a part named `value` or `roll` is shadowed by the member. The editor warns on the part's name field.
 
 #### The three words
 
-`values` is what the author wrote. `value` is what is in force right now. `text` is what the prompt sees.
+`values` is what the author wrote. `value` is the current value. `text` is what the prompt sees.
 
-A Wildcard draws one value, so its `value` is one text and its `text` is that same text. An Object shows every value at once, so its `value` is the list of values in force and its `text` joins that list with `", "`. Compare against narration wording with `text`, never with `value`. `text` reads the same on either kind.
+A Wildcard draws one value, so its `value` is one text and its `text` is that same text. An Object shows every value at once, so its `value` is the list of current values and its `text` joins that list with `", "`. Compare against narration wording with `text`, never with `value`. `text` reads the same on either kind.
 
 ```javascript
 // Works on either kind: the prompt's own words.
@@ -197,7 +197,7 @@ if (placeholders.Hair.text.includes('gray')) self.value -= 1;
 
 #### Pinning
 
-`pin(x)` pins the placeholder until the code changes it again. Writing `value` does the same thing — `pin` is the suggested spelling, and the last of `pin`, `value` or `unpin` a run calls wins. The pin sits over the roll and every other pin; it never replaces them, so `unpin()` hands the placeholder back to whatever sat underneath. Any text is allowed, on the list or off it:
+`pin(x)` pins the placeholder until the code changes it again. Assigning `value` is equivalent. `pin` is the documented form, and the last of `pin`, `value` or `unpin` in a run wins. The pin ranks above the roll and every other pin and never replaces them, so `unpin()` restores the next pin in rank or the roll. Any text is allowed, on the list or off it:
 
 ```javascript
 // Mood follows Sanity's band.
@@ -221,10 +221,10 @@ A write to a placeholder name the world does not have is dropped. **Test Code** 
 
 | Member | What it is |
 | --- | --- |
-| `enabled` | Whether the player has the trait and it is on. Write it to switch the trait |
-| `acquired` | Whether the player has the trait at all, on or off. Read-only |
+| `enabled` | True when the player has the trait and it is on. Write it to switch the trait |
+| `acquired` | True when the player has the trait, on or off. Read-only |
 
-Writing `enabled` switches the trait after the run, exactly as the player's checkbox does. Switching on retires its exclusive siblings. Switching on a trait the player never took acquires it. The switch persists until the player, the AI, or a later run switches it again. Code ignores **Player Can Toggle In-Game**, so a script can drive a curse or a rank the player has no checkbox for.
+Writing `enabled` switches the trait after the run, with the same effect as the player's checkbox. Switching on disables its exclusive siblings. Switching on a trait the player never took acquires it. The switch persists until the player, the AI, or a later run switches it again. Code ignores **Player Can Toggle In-Game**, so a script can switch a trait the player cannot toggle.
 
 ```javascript
 // Cursed while Sanity is on the floor.
@@ -237,13 +237,13 @@ A write to a trait name the world does not have is dropped. **Test Code** and th
 
 ### Order of Effects
 
-Each box is a run of its own, and within one run every stat's code reads the same snapshot — so no script sees another stat's writes from that same run. After each run, effects apply in this order: trait switches, then bounds, then values, then placeholder pins. A bound a stat set this turn still wins over a bound its own trait switch moved. When two stats write the same placeholder or trait in one run, the later stat in the list wins.
+Each box is a separate run. Within one run every stat's code reads the same snapshot, so no script sees another stat's writes from that run. After each run, effects apply in this order: trait switches, then bounds, then values, then placeholder pins. A bound a stat set this turn still wins over a bound its own trait switch moved. When two stats write the same placeholder or trait in one run, the later stat in the list wins.
 
 The two runs are ordered against each other, though: everything the before box wrote is already in place when the after box reads.
 
 ### The Story Clock
 
-Six values describe where the story stands in time. They're plain variables — just use them by name.
+Six values describe the story time. They are plain variables. Use them by name.
 
 | Variable | What it is |
 | --- | --- |
@@ -256,7 +256,7 @@ Six values describe where the story stands in time. They're plain variables — 
 
 `daypart` and `startDaypart` are one of six words: `night`, `dawn`, `morning`, `midday`, `afternoon`, `evening`.
 
-**Why start and end are both given.** A turn spans time. An eight-hour sleep that begins at 15:00 has `startDaypart === 'afternoon'` and `daypart === 'night'` — neither reading alone describes the turn.
+**Why start and end are both given.** A turn spans time. An eight-hour sleep that begins at 15:00 has `startDaypart === 'afternoon'` and `daypart === 'night'`. Neither reading alone describes the turn.
 
 > ⚠️ **With the clock off, `deltaHours` is always `1`** and every turn advances the story by one hour. Your code works either way; it just gets a flat number instead of a measured one. The setting is **Measured Clock**, under Settings → Output → Memory.
 
@@ -322,7 +322,7 @@ const randomFactor = 0.8 + (Math.random() * 0.4);
 return baseDamage * skillMultiplier * randomFactor;
 ```
 
-> ⚠️ **`Math.random()` is reseeded from the clock each time your code runs.** Two stats' code running in the same turn draw the **same** first value, and a stat whose value you re-check within the same instant gets the same number back. Turns are far enough apart in real play that a once-per-turn roll varies fine — but if you need two independent rolls, or a roll that visibly moves on demand, mix a clock variable in: `(Math.random() * 100 + elapsedHours) % 100` stays evenly spread and advances on its own.
+> ⚠️ **`Math.random()` is reseeded from the clock each time your code runs.** Two stats' code running in the same turn draw the **same** first value, and a stat whose value you re-check within the same instant gets the same number back. Turns are far enough apart in real play that a once-per-turn roll varies. If you need two independent rolls, or a roll that changes on demand, mix in a clock variable: `(Math.random() * 100 + elapsedHours) % 100` stays evenly spread and advances on its own.
 
 #### Diminishing Returns
 
@@ -394,14 +394,14 @@ const sizeFactor = size / 50;
 return baseRate * activityMultiplier * sizeFactor;
 ```
 
-> 💡 **Prefer the `regen` field for plain regeneration.** A stat that simply drifts at a fixed rate already scales with story hours without any code at all. Reach for `deltaHours` when the rate itself depends on something — the time of day, another stat, a threshold.
+> 💡 **Prefer the `regen` field for plain regeneration.** A stat that simply drifts at a fixed rate already scales with story hours without any code at all. Use `deltaHours` when the rate itself depends on something: the time of day, another stat, a threshold.
 
 ## Best Practices
 
 1. **Keep it simple**: Complex code can be hard to debug and may impact performance
 2. **Trust the zero default**: a stat name not in the world reads as a blank entry, every number `0`, so a lookup never throws
 3. **Stay within min/max**: The system will automatically clamp your result to the stat's min/max range
-4. **Avoid infinite loops**: Don't create circular dependencies between stats
+4. **Avoid infinite loops**: Do not create circular dependencies between stats
 5. **Write only what you mean to change**: A field, placeholder, or trait you leave alone keeps the turn's own result
 6. **Test your code**: Use the box's own "Test Code" button to validate that box before saving
 7. **Pick the right box**: put a write the AI should read this turn in **Before The AI**, and a reaction to what the AI asked in **After The AI**
@@ -414,22 +414,22 @@ return baseRate * activityMultiplier * sizeFactor;
 - Circular dependencies between stats may cause unexpected behavior
 - The code runs in a sandboxed environment with limited JavaScript features
 - Code writes only its own bounds; another stat's entry is read-only
-- **Test Code** runs one box with no player traits, so it can't preview a long turn or a different daypart. Before The AI runs as the opening turn, where `deltaHours` and `elapsedHours` are both `0`; After The AI runs as a one-hour turn on day one. It shows a trait switch and never applies it to the world
+- **Test Code** runs one box with no player traits, so it cannot preview a long turn or a different daypart. Before The AI runs as the opening turn, where `deltaHours` and `elapsedHours` are both `0`; After The AI runs as a one-hour turn on day one. It shows a trait switch and never applies it to the world
 - Each box's **Templates** menu lists only the templates written for that box
 
 ### A Note on Accumulating Stats
 
-Most stat code is a **formula**: it reads other stats and returns an answer, and running it twice gives the same result. Code that adds to its own current value (`return current + …`) is different — it's a **running total**, and it depends on running exactly once per turn.
+Most stat code is a **formula**: it reads other stats and returns an answer, and running it twice gives the same result. Code that adds to its own current value (`return current + …`) is a **running total**. It depends on running exactly once per turn.
 
-Formamorph runs it once per turn. But re-rolling a turn's stat changes re-runs it too, deliberately: the re-roll rebuilds the turn from the values it started with, so the total lands where it should instead of being counted twice. Just be aware that a running total is more fragile than a formula, and prefer a formula where one will do.
+Formamorph runs it once per turn. A re-roll of a turn's stat changes runs it again by design: the re-roll rebuilds the turn from its starting values, so the total is not counted twice. A running total is more fragile than a formula. Prefer a formula where one will do.
 
 ## Troubleshooting
 
-If your code doesn't work as expected:
+If your code does not work as expected:
 
 1. Check for typos in stat, placeholder, and trait names (they are case-sensitive)
 2. Ensure your code returns a number, or writes a field instead
-3. Verify that all stats you're referencing actually exist
+3. Verify that every stat you reference exists
 4. Use the "Test Code" button to see any error messages and every field, placeholder, and trait the run wrote
 5. Add `console.log()` statements to debug your code (output appears in browser console)
 

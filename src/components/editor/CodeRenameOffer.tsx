@@ -21,7 +21,7 @@ import { CodeRenameContext, type CodeRenameRequest, type OfferCodeRename } from 
 const NOUNS: Record<RenameRoot, string> = { stats: 'stat', placeholders: 'placeholder', traits: 'trait' };
 
 /** What the dialog calls the thing that was renamed. An owner of placeholders is reached through the
- *  `placeholders` map but is an entity or a book, and calling it a placeholder would name the wrong row. */
+ *  `placeholders` map but is an entity or a dictionary. "Placeholder" would name the wrong row. */
 const renamedNoun = (plan: CodeRenamePlan) =>
   (plan.subject && plan.subject.kind !== 'placeholder' ? plan.subject.kind : NOUNS[plan.root]);
 

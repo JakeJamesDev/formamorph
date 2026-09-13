@@ -545,7 +545,7 @@ export function StatCodeTemplateDialog({
           open={confirmReplace}
           onOpenChange={setConfirmReplace}
           title="Replace The Existing Code"
-          description="This stat already has code. Inserting this template writes over it."
+          description="This box already has code. Inserting this template overwrites it."
           onConfirm={doInsert}
         />
       </DialogContent>

@@ -350,48 +350,48 @@ Start with two or three stats that the story would genuinely turn on. Every stat
   'worldEditor.statCode': {
     title: 'Dynamic Value Calculation',
     wikiPage: 'StatCodeGuide',
-    body: `A stat can run a small script. Write JavaScript that **returns a number**, and the stat takes that value instead of its Initial Value. Leave a box empty and the manual value stands.
+    body: `A stat can run a small script. Write JavaScript. A returned number replaces the stat's value. A script with no return can still set \`self\`, pin a placeholder, or switch a trait. Leave a box empty and the manual value stands.
 
-**Two boxes, one turn.** A turn runs them in this order:
+**Two boxes, one turn.** Turn order:
 
 | | |
 |---|---|
-| 1 | **Before The AI** — your setup box |
-| 2 | The AI's stat changes |
+| 1 | **Before The AI** |
+| 2 | AI stat changes |
 | 3 | Regen |
-| 4 | **After The AI** — your reaction box |
+| 4 | **After The AI** |
 
-**Before The AI** runs at the start of the turn, before the prompt is built. A value it sets, a placeholder it pins, or a trait it switches is in what the AI reads on that same turn. Nothing has happened yet, so \`previous\` reads as the stat itself, every \`delta\` reads zero, and the clock reads turn start.
+**Before The AI** runs at the start of the turn, before the prompt is built. A value it sets, a placeholder it pins, or a trait it switches is in the prompt for that turn. \`previous\` reads as the stat itself, every \`delta\` reads zero, and the clock reads turn start.
 
-**After The AI** is the box worlds have always had. It runs once the AI's changes and Regen land, and reads what the before box left. Both boxes run on every turn, an empty one does nothing, and a bound one box sets stays in force until the other writes it or you empty both.
+**After The AI** runs after the AI's changes and Regen apply. It reads the values the before box set. Both boxes run every turn. An empty box is skipped. A bound set by one box persists until the other box writes it or both boxes are empty.
 
-**Test Code** sits under each box and runs that box alone, on the clock that box gets: the opening turn for Before The AI, a one-hour turn on day one for After The AI. It's the ground truth — the underlines in the editor are advice given without running anything.
+**Test Code** sits under each box and runs that box alone on that box's clock: the opening turn for Before The AI, a one-hour turn on day one for After The AI. Test Code executes the code. Editor underlines are static analysis only.
 
-**What your script can reach.** A copy of every stat, the world's placeholders and traits, and nothing else: no page, no network, no other stat's code. \`stats\` is a map keyed by name; \`self\` is the stat you're editing. Each stat carries \`id\`, \`name\`, \`type\`, \`description\`, \`min\`, \`max\`, \`value\` and \`regen\`.
+**What the script can reach.** A copy of every stat, the world's placeholders, and the world's traits. The sandbox exposes nothing else. \`stats\` is a map keyed by name. \`self\` is the stat that owns the code. Each stat carries \`id\`, \`name\`, \`type\`, \`description\`, \`min\`, \`max\`, \`value\` and \`regen\`.
 
 \`\`\`js
 const health = stats.Health.value;
 return health / 2;
 \`\`\`
 
-A name with a space needs brackets: \`stats["Hit Points"]\`. \`Object.values(stats)\` iterates every stat, for an average-of-all formula. A name with a placeholder chip in it reads in code as that placeholder's own name, so a stat named \`{{Beast}} Power\` is \`stats["Beast Power"]\` in every playthrough.
+A name with a space needs brackets: \`stats["Hit Points"]\`. \`Object.values(stats)\` iterates every stat. A name with a placeholder chip reads in code as that placeholder's name, so a stat named \`{{Beast}} Power\` is \`stats["Beast Power"]\` in every playthrough.
 
-**Writing to \`self\`.** Set \`self.value\`, \`self.min\`, \`self.max\` or \`self.regen\` and the stat takes that number this turn. A bound you set holds until your code writes it again, or until you empty the code. A field you don't write keeps what the turn gave it, so a script can move the cap and leave the value to the AI. Only \`self\` takes writes; every other stat is read-only.
+**Writing to \`self\`.** Set \`self.value\`, \`self.min\`, \`self.max\` or \`self.regen\` and the stat takes that number this turn. A bound the code sets persists until the code writes it again or both boxes are empty. A field the code does not write keeps the turn's value, so a script can set the cap and leave the value to the AI. Only \`self\` accepts writes. Every other stat is read-only.
 
 \`\`\`js
 const level = stats.Level.value;
 self.max = level * 10;
 \`\`\`
 
-**Reading this turn.** Each stat also carries what the turn did before your code ran: \`previous\`, the whole stat — \`id\`, \`name\`, \`type\`, \`description\`, \`min\`, \`max\`, \`value\` and \`regen\` — as it stood at the start of the turn; and \`delta\`, every change the turn made. \`delta.ai\` is the change the AI asked for, raw; \`delta.regen\` is what regen did; \`delta.total\` adds them up; and \`delta.actual\` is what landed since the start of the turn. Each has \`value\`, \`min\`, \`max\` and \`regen\`. Both \`previous\` and \`delta\` are frozen against writes. Use them to clamp or scale an ask before it lands.
+**Reading this turn.** Each stat carries the turn's state before the code ran. \`previous\`: the full stat (\`id\`, \`name\`, \`type\`, \`description\`, \`min\`, \`max\`, \`value\` and \`regen\`) at the start of the turn. \`delta\`: every change the turn made. \`delta.ai\` is the AI's requested change. \`delta.regen\` is the regen change. \`delta.total\` is their sum. \`delta.actual\` is current values minus \`previous\`. Each has \`value\`, \`min\`, \`max\` and \`regen\`. \`previous\` and \`delta\` are read-only. Use them to clamp or scale the AI's change before it applies.
 
 \`\`\`js
 self.value = self.previous.value + Math.min(self.delta.ai.value, 10);
 \`\`\`
 
-**Placeholders.** \`placeholders\` holds every placeholder by name. Each entry has \`values\`, every authored value as text; \`value\`, what is in force; \`text\`, what the prompt sees; and \`roll()\`, one draw with the author's weights. On a Wildcard or a Variable, \`value\` is one text and \`text\` is that same text. On an Object, \`value\` is the list of values in force and \`text\` joins them with \`", "\`. Compare against narration wording with \`text\`. Call \`pin(x)\` to pin the placeholder until your code changes it again, or \`unpin()\` to let the other pins and the roll show through. \`pin\` takes what \`value\` reads: one text on a Wildcard, a list on an Object, where one text pins a one-item list. A name with a space needs brackets: \`placeholders["Hair Color"]\`.
+**Placeholders.** \`placeholders\` holds every placeholder by name. Each entry has \`values\`, every authored value as text; \`value\`, the current value; \`text\`, the value the prompt sees; and \`roll()\`, one weighted draw. On a Wildcard or a Variable, \`value\` is one text and \`text\` is the same text. On an Object, \`value\` is the list of current values and \`text\` joins them with \`", "\`. Compare narration wording with \`text\`. \`pin(x)\` pins the placeholder until the code changes it again. \`unpin()\` restores the other pins and the roll. \`pin\` takes the same shape \`value\` reads: one text on a Wildcard, a list on an Object. One text on an Object pins a one-item list. A name with a space needs brackets: \`placeholders["Hair Color"]\`.
 
-**Paths.** Code reaches a placeholder the way the editor names it. An entity or book that owns placeholders is a step of its own, and a placeholder that holds parts carries them as members, as deep as the tree goes. An owner step has none of an entry's own members, only the placeholders it owns — and because every placeholder has \`values\`, \`value\`, \`text\`, \`roll\`, \`pin\` and \`unpin\`, a part named like one of those loses the name to the member. A bare name reaches the world's own row first, then the last one authored, so write the path for the exact one.
+**Paths.** Code reaches a placeholder by the path the editor shows. An entity or dictionary that owns placeholders is a path segment. A placeholder that holds parts carries them as members, to any depth. An owner segment has no placeholder members, only the placeholders it owns. Every placeholder has \`values\`, \`value\`, \`text\`, \`roll\`, \`pin\` and \`unpin\`, so a part with one of those names is shadowed by the member. A bare name resolves to the world's own row first, then the last one authored. Write the full path for an exact match.
 
 \`\`\`js
 placeholders.Mood.pin(self.value < 20 ? 'furious' : 'calm');
@@ -400,13 +400,13 @@ placeholders.Molly.Hair.Shade.pin('ash');
 placeholders["Old Molly"]["Eye Color"].pin('green');
 \`\`\`
 
-**Traits.** \`traits\` holds every authored trait by name. Each entry has \`enabled\`, whether the player has it and it's on, and \`acquired\`, whether the player has it at all. Write \`enabled\` to switch the trait on or off after the run, exactly as the player's checkbox does, exclusive siblings included. Switching on a trait the player never took acquires it. Code ignores Player Can Toggle In-Game, so it can drive a trait the player has no checkbox for. A trait name with a placeholder chip in it reads in code as that placeholder's own name, so a trait named \`{{Beast}} Fury\` is \`traits["Beast Fury"]\` in every playthrough.
+**Traits.** \`traits\` holds every authored trait by name. Each entry has \`enabled\`, true when the player has the trait and it is on, and \`acquired\`, true when the player has the trait. Set \`enabled\` to switch the trait on or off after the run, with the same effect as the player's checkbox, exclusive siblings included. Enabling a trait the player never took acquires it. Code ignores Player Can Toggle In-Game, so it can switch a trait the player cannot toggle. A trait name with a placeholder chip reads in code as that placeholder's name, so a trait named \`{{Beast}} Fury\` is \`traits["Beast Fury"]\` in every playthrough.
 
 \`\`\`js
 traits.Cursed.enabled = self.value <= 0;
 \`\`\`
 
-**It can also read the clock.** Six values describe where the story stands in time:
+**Clock.** Six values describe the story time:
 
 | | |
 |---|---|
@@ -417,17 +417,17 @@ traits.Cursed.enabled = self.value <= 0;
 | \`startDay\` | Day number at the **start** of the turn |
 | \`startDaypart\` | Time of day at the **start** of the turn |
 
-Both ends are given because a turn spans time: an eight-hour sleep begins in the afternoon and ends at night. Dayparts are \`night\`, \`dawn\`, \`morning\`, \`midday\`, \`afternoon\`, \`evening\`. With **Measured Clock** off, \`deltaHours\` is simply \`1\`.
+Both ends are given because a turn spans time: an eight-hour sleep begins in the afternoon and ends at night. Dayparts are \`night\`, \`dawn\`, \`morning\`, \`midday\`, \`afternoon\`, \`evening\`. With **Measured Clock** off, \`deltaHours\` is \`1\`.
 
-That's what makes a per-hour drain (\`current + 2 * deltaHours\`) or a stat that only climbs after dark possible.
+This enables a per-hour drain (\`current + 2 * deltaHours\`) or a stat that only rises after dark.
 
-**Your code runs on every turn.** Both boxes run on the opening turn, and on a turn where the AI asked for no stat change. They run when the stat request is off or when it fails. On those turns \`delta.ai\` reads zeros in the after box, as it always does in the before box.
+**The code runs every turn.** Both boxes run on the opening turn and on a turn with no AI stat change. They run when the stat request is off or fails. On those turns \`delta.ai\` reads zero in the after box, as it always does in the before box.
 
-**A script that sets the value ignores the AI.** Whatever the AI writes gets recomputed away, though it still *reads* the value and description normally. A script that only writes a bound, a placeholder or a trait leaves the value to the AI.
+**A script that sets the value overrides the AI.** The AI's write is recomputed away. The AI still reads the value and description. A script that only writes a bound, a placeholder or a trait leaves the value to the AI.
 
-**A failed run changes nothing.** Code that throws or times out leaves the stat, the placeholders and the traits as they were. A write to a placeholder or trait name the world doesn't have is dropped, and Test Code and the Test Bench both say so.
+**A failed run changes nothing.** Code that throws or times out leaves the stat, the placeholders and the traits unchanged. A write to an unknown placeholder or trait name is ignored. Test Code and the Test Bench both report it.
 
-**Templates** beside each Test Code button writes the common shapes for you, and each box offers the ones that fit its timing. Before The AI holds the setup shapes: a placeholder pin, a trait switch, an opening value. After The AI holds the reacting ones: a drain, a timer, a blend of two stats, a bound from another stat. Each asks only for what it needs, and what it inserts is ordinary code you can then edit.`,
+**Templates.** The **Templates** menu beside each Test Code button inserts common code shapes. Each box offers the templates that match its timing. Before The AI: a placeholder pin, a trait switch, an opening value. After The AI: a drain, a timer, a blend of two stats, a bound from another stat. Each template asks only for its inputs and inserts plain code you can edit.`,
   },
   'worldEditor.dictionary': {
     title: 'Dictionary',

@@ -239,7 +239,7 @@ function topLevelEntries(map: PlaceholderPathMap): { entries: SurfaceEntry[]; pa
     paths.push({
       name: label,
       detail: claim.node.placeholder ? 'placeholder' : 'owner',
-      info: `“${placeholderPathLabel(claim.node.path)}” — the exact path, where the bare name reaches another.`,
+      info: `“${placeholderPathLabel(claim.node.path)}”: exact path. The bare name resolves to a different placeholder.`,
     });
   }
   const entries = map.top.filter((node) => IDENTIFIER.test(node.name)).map(nodeEntry);
@@ -537,8 +537,8 @@ function checkPlaceholderPath(refs: readonly EntryRef[], placeholders: CodePlace
   if (shadowed && node) {
     out.push({
       from: ref.from, to: ref.to, severity: 'warning',
-      message: `Every placeholder has a ${ref.name} of its own, so this reads that. `
-        + `The placeholder named “${ref.name}” under “${placeholderPathLabel(node.path)}” can’t be reached from code.`,
+      message: `Every placeholder has a ${ref.name} member, so this reads the member. `
+        + `The placeholder named “${ref.name}” under “${placeholderPathLabel(node.path)}” is not reachable from code.`,
     });
     return out;
   }
@@ -546,8 +546,8 @@ function checkPlaceholderPath(refs: readonly EntryRef[], placeholders: CodePlace
   if (node?.placeholder && isPlaceholderEntryMember(ref.name)) return out;
   const candidates = node ? node.children.map((entry) => entry.name) : [...map.keys.keys()];
   const suggestion = nearestName(ref.name, candidates);
-  const lead = node ? `“${placeholderPathLabel(node.path)}” has no placeholder named “${ref.name}”`
-    : `No placeholder is named “${ref.name}”`;
+  const lead = node ? `Unknown placeholder name “${ref.name}” under “${placeholderPathLabel(node.path)}”`
+    : `Unknown placeholder name “${ref.name}”`;
   out.push({
     from: ref.from, to: ref.to, severity: 'error',
     message: suggestion ? `${lead}. Did you mean “${suggestion}”?` : `${lead}.`,
