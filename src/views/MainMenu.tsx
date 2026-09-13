@@ -862,8 +862,8 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
 
   // A stat's two boxes, each named by its timing, in the order the turn runs them.
   const statCodeBoxes = (stat: Stat) => ([
-    ['Before The AI', stat.beforeCode] as const,
-    ['After The AI', stat.code] as const,
+    ['Before the AI', stat.beforeCode] as const,
+    ['After the AI', stat.code] as const,
   ].filter(([, code]) => code && code.trim() !== ''));
 
   // Check if any stat has code

@@ -14,8 +14,8 @@ export const STAT_CODE_TIMINGS = ['before', 'after'] as const satisfies readonly
 /** What each box is called wherever an author reads it: the editor caption, the template menu, the help,
  *  the Test Bench findings. */
 export const TIMING_LABEL: Record<StatCodeTiming, string> = {
-  before: 'Before The AI',
-  after: 'After The AI',
+  before: 'Before the AI',
+  after: 'After the AI',
 };
 
 /** A stat as far as its two boxes go. Everything that reads code takes this much and no more. */

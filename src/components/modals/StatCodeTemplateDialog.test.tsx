@@ -217,7 +217,7 @@ describe('which templates a box offers', () => {
     const user = userEvent.setup();
     open('after');
     await user.click(await screen.findByRole('button', { name: 'Hourly Change' }));
-    expect(screen.getByText('Runs After The AI')).toBeInTheDocument();
+    expect(screen.getByText('Runs After the AI')).toBeInTheDocument();
   });
 
   it('shows only the author’s templates for this box', async () => {
@@ -265,7 +265,7 @@ describe('which templates a box offers', () => {
     );
 
     await user.click(await screen.findByRole('button', { name: /New Template/i }));
-    expect(await screen.findByRole('combobox', { name: 'Runs' })).toHaveTextContent('Before The AI');
+    expect(await screen.findByRole('combobox', { name: 'Runs' })).toHaveTextContent('Before the AI');
 
     const name = await screen.findByLabelText('Name');
     await user.type(name, 'Mine');

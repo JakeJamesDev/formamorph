@@ -26,4 +26,4 @@ Templates carry a timing. The before menu offers setup templates: pin a placehol
 
 ## Blocked by
 
-- 02 — The Before The AI Box
+- 02 — The Before the AI Box

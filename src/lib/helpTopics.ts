@@ -356,16 +356,16 @@ Start with two or three stats that the story would genuinely turn on. Every stat
 
 | | |
 |---|---|
-| 1 | **Before The AI** |
+| 1 | **Before the AI** |
 | 2 | AI stat changes |
 | 3 | Regen |
-| 4 | **After The AI** |
+| 4 | **After the AI** |
 
-**Before The AI** runs at the start of the turn, before the prompt is built. A value it sets, a placeholder it pins, or a trait it switches is in the prompt for that turn. \`previous\` reads as the stat itself, every \`delta\` reads zero, and the clock reads turn start.
+**Before the AI** runs at the start of the turn, before the prompt is built. A value it sets, a placeholder it pins, or a trait it switches is in the prompt for that turn. \`previous\` reads as the stat itself, every \`delta\` reads zero, and the clock reads turn start.
 
-**After The AI** runs after the AI's changes and Regen apply. It reads the values the before box set. Both boxes run every turn. An empty box is skipped. A bound set by one box persists until the other box writes it or both boxes are empty.
+**After the AI** runs after the AI's changes and Regen apply. It reads the values the before box set. Both boxes run every turn. An empty box is skipped. A bound set by one box persists until the other box writes it or both boxes are empty.
 
-**Test Code** sits under each box and runs that box alone on that box's clock: the opening turn for Before The AI, a one-hour turn on day one for After The AI. Test Code executes the code. Editor underlines are static analysis only.
+**Test Code** sits under each box and runs that box alone on that box's clock: the opening turn for Before the AI, a one-hour turn on day one for After the AI. Test Code executes the code. Editor underlines are static analysis only.
 
 **What the script can reach.** A copy of every stat, the world's placeholders, and the world's traits. The sandbox exposes nothing else. \`stats\` is a map keyed by name. \`self\` is the stat that owns the code. Each stat carries \`id\`, \`name\`, \`type\`, \`description\`, \`min\`, \`max\`, \`value\` and \`regen\`.
 
@@ -427,7 +427,7 @@ This enables a per-hour drain (\`current + 2 * deltaHours\`) or a stat that only
 
 **A failed run changes nothing.** Code that throws or times out leaves the stat, the placeholders and the traits unchanged. A write to an unknown placeholder or trait name is ignored. Test Code and the Test Bench both report it.
 
-**Templates.** The **Templates** menu beside each Test Code button inserts common code shapes. Each box offers the templates that match its timing. Before The AI: a placeholder pin, a trait switch, an opening value. After The AI: a drain, a timer, a blend of two stats, a bound from another stat. Each template asks only for its inputs and inserts plain code you can edit.`,
+**Templates.** The **Templates** menu beside each Test Code button inserts common code shapes. Each box offers the templates that match its timing. Before the AI: a placeholder pin, a trait switch, an opening value. After the AI: a drain, a timer, a blend of two stats, a bound from another stat. Each template asks only for its inputs and inserts plain code you can edit.`,
   },
   'worldEditor.dictionary': {
     title: 'Dictionary',
