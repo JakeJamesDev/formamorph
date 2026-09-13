@@ -29,6 +29,9 @@ import { useReportsEnabled } from "@/lib/useReportsEnabled";
 import { ChangelogPanel } from "@/components/community/ChangelogPanel";
 import { defaultChangelogTab, type ChangelogEntry, type ChangelogTab } from "@/lib/listingChangelog";
 import { WorldActionButton } from "@/components/WorldActionButton";
+import { DownloadLinkedContent } from "@/components/community/DownloadLinkedContent";
+import { useWorldDownloadPlan } from "@/lib/useWorldDownloadPlan";
+import type { DownloadPlan } from "@/lib/useDownloadCoordinator";
 import { PlaceBadges } from "@/components/PlaceBadges";
 import { placementsBy } from "@/lib/contests";
 import { Tip } from "@/components/ui/tooltip";
@@ -47,7 +50,7 @@ interface RemoteWorldDetailsModalProps {
   openImageViewer: (src: string | undefined, alt: string | undefined) => void;
   downloadStateForWorld: (world: WorldRecord) => DownloadState;
   downloadProgress: Record<string, number>;
-  onContextualDownload?: (world: WorldRecord, state: DownloadState) => void;
+  onContextualDownload?: (world: WorldRecord, state: DownloadState, plan?: DownloadPlan) => void;
   onDeviceDownload?: (world: WorldRecord) => void;
   /** Which mutable app actions this shell exposes. */
   capabilities?: Pick<CommunityBrowserCapabilities, 'localLibrary' | 'deviceDownloads' | 'likes' | 'comments' | 'moderation' | 'reports'>;
@@ -110,6 +113,9 @@ export function RemoteWorldDetailsModal({
   const [reportTarget, setReportTarget] = useState<ReportTarget | null>(null);
   // Whether the likers list is up. Staff only; nothing else can raise it.
   const [showLikers, setShowLikers] = useState(false);
+
+  // What this world requires and what it is offered as an add-on, read only while the listing is open.
+  const downloadPlan = useWorldDownloadPlan(world, open && capabilities.localLibrary);
 
   // Off entirely for a signed-out reader and against a server without the feature, so no surface here
   // ever offers an action that would be refused.
@@ -357,12 +363,17 @@ export function RemoteWorldDetailsModal({
                     : dlState === 'refresh'
                       ? [ActionIcon.cloudRefresh, `Re-download ${noun}`] as const
                       : [ActionIcon.cloudDownload, `Download ${noun}`] as const;
+                  // What this press installs beyond the world itself, so the count answers the review
+                  // above it rather than making the player add it up.
+                  const extras = downloadPlan.count
+                    ? ` + ${downloadPlan.count} ${downloadPlan.count === 1 ? 'Item' : 'Items'}`
+                    : '';
                   return capabilities.localLibrary && onContextualDownload ? (
                     <WorldActionButton
                       tone="sky"
-                      onClick={() => onContextualDownload(world, dlState)}
+                      onClick={() => onContextualDownload(world, dlState, downloadPlan.plan)}
                     >
-                      <Icon className="mr-2 h-4 w-4" /> {label}
+                      <Icon className="mr-2 h-4 w-4" /> {label}{extras}
                     </WorldActionButton>
                   ) : capabilities.deviceDownloads && onDeviceDownload ? (
                     <WorldActionButton tone="sky" onClick={() => onDeviceDownload(world)}>
@@ -381,6 +392,10 @@ export function RemoteWorldDetailsModal({
                         <UserName userId={world.author?.id} username={world.author?.username} role={world.author?.role} />
                       </p>
                     </div>
+
+                    {/* What the download installs beside the world, and what the player may add to it.
+                        Absent for a world that follows nothing, and against a server without the routes. */}
+                    {capabilities.localLibrary && <DownloadLinkedContent review={downloadPlan} />}
 
                     <div>
                       <h3 className="text-helper font-semibold text-muted-foreground">Downloads</h3>

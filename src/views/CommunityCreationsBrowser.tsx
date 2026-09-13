@@ -30,7 +30,7 @@ import { useCatalogSync } from "@/lib/useCatalogSync";
 import { replaceCatalog, type CatalogWorld } from "@/lib/worldCatalog";
 import { useThumbnailPreload } from "@/lib/useCachedThumbnail";
 import { useContestWithdrawal } from "@/lib/useContestWithdrawal";
-import { useDownloadCoordinator } from "@/lib/useDownloadCoordinator";
+import { useDownloadCoordinator, type DownloadPlan } from "@/lib/useDownloadCoordinator";
 import { useLibraryDownload } from "@/lib/useLibraryDownload";
 import { useDeviceDownload } from "@/lib/useDeviceDownload";
 import { useDownscalePrompt } from "@/lib/useDownscalePrompt";
@@ -241,7 +241,11 @@ const CommunityCreationsBrowser = ({
     overwriteSelectedId, setOverwriteSelectedId, showOverwriteSelect, setShowOverwriteSelect,
     localCopiesBySource, copiesForWorld, downloadStateForWorld,
     handleContextualDownload, handleChooseOverwrite, handleConfirmOverwrite, handleDownloadWorld,
+    pendingDownload, retryDownload, dismissPendingDownload,
   } = useDownloadCoordinator(worlds, setWorlds, (_id, data) => promptWorld(data));
+
+  // Hold the failure report through the dialog's fade-out, as the copy-vs-overwrite decision does.
+  const shownPending = useClosingSnapshot(!!pendingDownload, pendingDownload);
 
   // Hold the copy-vs-overwrite decision's content while its dialogs fade out (contextualAction nulls on close,
   // which would otherwise flip the title/description to the other mode's text for a frame or two).
@@ -327,10 +331,12 @@ const CommunityCreationsBrowser = ({
     ...deviceDownload.downloadProgress,
   };
 
-  const handleCardDownload = (record: WorldRecord, state: DownloadState) => {
+  // `plan` carries the add-on selection the details window made. A card has no review on it, so its
+  // download takes the world and everything it requires and nothing else.
+  const handleCardDownload = (record: WorldRecord, state: DownloadState, plan?: DownloadPlan) => {
     const kind = kindOf(record);
     if (kind === 'world') {
-      handleContextualDownload(record, state);
+      handleContextualDownload(record, state, plan ?? { addons: [] });
       return;
     }
     downloadFor(kind)?.startDownload(record);
@@ -1154,6 +1160,47 @@ const CommunityCreationsBrowser = ({
         capabilities={capabilities}
         detailsAction={detailsAction}
       />
+
+      {/* What a download could not finish. A required failure leaves the world pending; a failed add-on
+          leaves it installed. Either way, what already landed is kept and Retry finishes the rest. */}
+      <Dialog open={!!pendingDownload} onOpenChange={(o) => { if (!o) dismissPendingDownload(); }}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>
+              {shownPending?.worldReady ? 'Some add-ons did not download' : 'Download not finished'}
+            </DialogTitle>
+            <DialogDescription>
+              {shownPending?.worldReady
+                ? `"${shownPending?.worldName}" is in your library. These add-ons are not.`
+                : `"${shownPending?.worldName}" needs content that did not download. It is not in your library yet. What already downloaded is kept.`}
+            </DialogDescription>
+          </DialogHeader>
+          <ul className="py-2 space-y-2">
+            {(shownPending?.failures ?? []).map((failure) => (
+              // Keyed by the listing rather than the name: two listings may share a name.
+              <li key={failure.id} className="flex items-start justify-between gap-3">
+                <div className="min-w-0">
+                  <p className="text-label font-medium">{failure.name}</p>
+                  <p className="text-meta text-muted-foreground">{failure.message}</p>
+                </div>
+                {/* One row's own Retry, which only an add-on gets: a world still waiting on a required
+                    source cannot be installed until every one of them is in. */}
+                {shownPending?.worldReady && (
+                  <Button size="sm" variant="secondary" onClick={() => retryDownload(failure.id)}>
+                    Retry
+                  </Button>
+                )}
+              </li>
+            ))}
+          </ul>
+          <DialogFooter className="flex flex-col sm:flex-row gap-2">
+            <Button variant="outline" onClick={dismissPendingDownload}>Close</Button>
+            <Button onClick={() => retryDownload()}>
+              {shownPending?.worldReady ? 'Retry All' : 'Retry'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* Refresh/Update decision: download a separate copy vs overwrite an existing local copy */}
       <Dialog
