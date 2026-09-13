@@ -532,8 +532,9 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
   // What the publish modal is publishing. Deliberately not cleared on close: the modal names itself from
   // the payload's kind, so dropping it would flash the title back to "World" during the fade-out.
   const [publishPayload, setPublishPayload] = useState<PublishPayload | null>(null);
-  // Which local world the open payload came from, so a successful publish can link the two. Only worlds
-  // pass one; the other kinds publish without a local record to point at a listing.
+  // Which local record the open payload came from. A world uses it to link itself to the listing it
+  // becomes; a character or a dictionary uses it to name the library item its Compatible Worlds are
+  // derived from. An Avatar has neither and passes none.
   const [publishLocalId, setPublishLocalId] = useState<string | undefined>(undefined);
   const openPublish = (payload: PublishPayload, localId?: string) => {
     setPublishPayload(payload);
@@ -549,7 +550,7 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
    * side already offers this choice; the publish side is where the big image actually comes from.
    */
   const publishEntity = async (entity: Entity) => {
-    openPublish(entityPublishPayload(await promptEntity(entity)));
+    openPublish(entityPublishPayload(await promptEntity(entity)), entity.id);
   };
 
   /**
@@ -2482,7 +2483,7 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
         dictionaryId={editingDictionaryId}
         draft={draftDictionary}
         onClose={() => { setEditingDictionaryId(null); setDraftDictionary(null); refreshDictionaries(); }}
-        onPublish={isAuthenticated ? (book) => openPublish(dictionaryPublishPayload(book)) : undefined}
+        onPublish={isAuthenticated ? (book) => openPublish(dictionaryPublishPayload(book), book.id) : undefined}
       />
 
       <ConfirmDialog

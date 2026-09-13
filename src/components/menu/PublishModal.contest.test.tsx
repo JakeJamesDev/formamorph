@@ -15,6 +15,9 @@ vi.mock('react-toastify', () => ({ toast: { error: vi.fn(), success: vi.fn(), in
 const at = (offsetDays: number) => daysFrom(offsetDays);
 
 const worldPayload: PublishPayload = { kind: 'world', name: 'My World', description: 'd', contentData: {} };
+/** The same world replacing a listing. A world that follows no source requires none, and replacing a
+ *  listing states that, so a listing left requiring something is cleared. */
+const updatedWorld: PublishPayload = { ...worldPayload, requiredDependencies: [] };
 const dictPayload: PublishPayload = { kind: 'dictionary', name: 'My Book', description: '', contentData: {} };
 
 const contest = (over: Partial<ServerEvent> = {}): ServerEvent =>
@@ -148,7 +151,7 @@ describe('what the switch sends', () => {
     await userEvent.click(screen.getByLabelText('Salt-Bright Reaches (w1, 0 downloads)'));
     await userEvent.click(screen.getByRole('button', { name: 'Publish' }));
 
-    expect(WorldStorageService.publishItem).toHaveBeenCalledWith(worldPayload, 'w1', null);
+    expect(WorldStorageService.publishItem).toHaveBeenCalledWith(updatedWorld, 'w1', null);
   });
 
   it('forgets an armed switch when the modal is reopened', async () => {
@@ -377,7 +380,7 @@ describe('updating the listing that holds the entry', () => {
     await userEvent.click(await screen.findByLabelText('Salt-Bright Reaches (w1, 0 downloads)'));
     await userEvent.click(screen.getByRole('button', { name: 'Publish' }));
 
-    expect(WorldStorageService.publishItem).toHaveBeenCalledWith(worldPayload, 'w1', null);
+    expect(WorldStorageService.publishItem).toHaveBeenCalledWith(updatedWorld, 'w1', null);
   });
 });
 

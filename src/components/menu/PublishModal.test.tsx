@@ -7,6 +7,9 @@ import type { PublishPayload } from '@/lib/publishPayload';
 import { type WorldRecord } from '@/components/WorldDetails';
 
 const worldPayload: PublishPayload = { kind: 'world', name: 'My World', description: 'd', contentData: {} };
+/** The same world replacing a listing. A world that follows no source requires none, and replacing a
+ *  listing states that, so a listing left requiring something is cleared. */
+const updatedWorld: PublishPayload = { ...worldPayload, requiredDependencies: [] };
 const dictPayload: PublishPayload = { kind: 'dictionary', name: 'My Book', description: '', contentData: {} };
 
 const listing = (id: string, name: string) => ({ _id: id, name, downloads: 0 });
@@ -40,7 +43,7 @@ describe('PublishModal target selection', () => {
     await userEvent.click(await screen.findByLabelText('Existing World (w1, 0 downloads)'));
     await userEvent.click(screen.getByRole('button', { name: 'Publish' }));
 
-    expect(WorldStorageService.publishItem).toHaveBeenCalledWith(worldPayload, 'w1', null);
+    expect(WorldStorageService.publishItem).toHaveBeenCalledWith(updatedWorld, 'w1', null);
   });
 
   it('drops a target picked for a previous publish when reopened for another kind', async () => {
