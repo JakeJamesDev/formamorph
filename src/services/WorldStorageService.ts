@@ -10,7 +10,9 @@ import { describePlaceholders } from '@/lib/placeholders';
 import { allPlaceholders } from '@/lib/placeholderHomes';
 import { readDeletedDefaultWorlds, tombstoneDefaultWorld, type DefaultWorldSeed } from '@/lib/defaultWorlds';
 import { changelogOf, type ChangelogDraft, type ChangelogEntry } from '@/lib/listingChangelog';
-import type { LikerAuditRow, LikerRow, VrmLicense, WorldMetadata } from '@/types';
+import type { WorldAssociation } from '@/lib/compatibleWorlds';
+import type { ListingVisibility } from '@/lib/publishLinks';
+import type { ContentLink, LikerAuditRow, LikerRow, VrmLicense, WorldMetadata } from '@/types';
 
 /**
  * What a conditional catalog fetch answers with: a fresh snapshot and the tag to store beside it, the
@@ -20,6 +22,21 @@ export type CatalogFetch =
   | { status: 'fresh'; data: unknown[]; tag: string | null }
   | { status: 'unchanged' }
   | { status: 'error'; error: string };
+
+/**
+ * What one listing says about itself beyond its row: its history, an Avatar's license, and the
+ * relationships a publish over it has to preserve. Every field past `changelog` is absent against a
+ * server that predates it.
+ */
+export interface ListingDetails {
+  changelog: ChangelogEntry[] | null;
+  modelLicense?: VrmLicense;
+  visibility?: ListingVisibility;
+  /** The listing ids a world requires today, resolved or not. */
+  requiredDependencies?: string[];
+  /** The worlds a component is offered for today, with the world author's answer to each. */
+  compatibleWorlds?: WorldAssociation[];
+}
 
 /** The publish refused because this author already has an entry in the contest. */
 export const CONTEST_ALREADY_ENTERED = 'CONTEST_ALREADY_ENTERED';
@@ -172,6 +189,36 @@ class WorldStorageService {
       createdAt: world.createdAt,
       lastAccessed: world.lastAccessed
     }));
+  }
+
+  /**
+   * The local worlds holding a copy that follows `libraryId`.
+   *
+   * This is what a component's Compatible Worlds section is derived from, so it reads the whole stored
+   * record rather than the metadata projection: the links live inside each world's content. `sourceId` is
+   * the world's own listing, and a world without one has no published identity to offer the component for.
+   *
+   * @param libraryId - The library item the copies follow
+   * @returns One entry per world, in stored order
+   */
+  async worldsLinking(libraryId: string): Promise<{ id: string; name: string; sourceId?: string }[]> {
+    await this.ensureInitialized();
+    if (!libraryId) return [];
+
+    const transaction = this.db!.transaction([this.storeName], 'readonly');
+    const worlds = await promisifyRequest<{
+      id: string; name: string; sourceId?: string;
+      data?: { entities?: { link?: ContentLink }[]; dictionaries?: { link?: ContentLink }[] };
+    }[]>(transaction.objectStore(this.storeName).getAll());
+
+    return worlds
+      .filter((world) => [...(world.data?.entities ?? []), ...(world.data?.dictionaries ?? [])]
+        .some((item) => item.link?.libraryId === libraryId))
+      .map((world) => ({
+        id: world.id,
+        name: world.name,
+        ...(world.sourceId ? { sourceId: world.sourceId } : {}),
+      }));
   }
 
   /** Load one world's full `data` (with `id` injected); rejects if missing, malformed, or lacking any
@@ -686,7 +733,7 @@ class WorldStorageService {
    *
    * @param worldId - The listing's server id
    */
-  async fetchListingDetails(worldId: string): Promise<{ changelog: ChangelogEntry[] | null; modelLicense?: VrmLicense } | null> {
+  async fetchListingDetails(worldId: string): Promise<ListingDetails | null> {
     try {
       const headers: Record<string, string> = {};
       if (AuthService.isAuthenticated()) {
@@ -697,7 +744,17 @@ class WorldStorageService {
 
       const body = await response.json();
 
-      return { changelog: changelogOf(body.data), modelLicense: body.data?.modelLicense };
+      // The relationship fields are absent against a server that has never heard of them, which is what
+      // keeps the Linked Content and Compatible Worlds sections empty there rather than wrong.
+      return {
+        changelog: changelogOf(body.data),
+        modelLicense: body.data?.modelLicense,
+        visibility: body.data?.visibility,
+        requiredDependencies: (body.data?.requiredDependencies ?? []).map(
+          (row: { id?: string } | string) => (typeof row === 'string' ? row : String(row?.id ?? '')),
+        ).filter(Boolean),
+        compatibleWorlds: body.data?.compatibleWorlds ?? [],
+      };
     } catch (error) {
       console.error('Error fetching the listing:', error);
       return null;
@@ -846,7 +903,12 @@ class WorldStorageService {
           // Sent top-level because only a world keeps a copy inside its content, where the server looks
           // first. A character or a book has nowhere in its own shape to hide these.
           tags: payload.tags ?? [],
-          ...(contestEventId ? { contestEventId } : {})
+          ...(contestEventId ? { contestEventId } : {}),
+          // Each omitted unless this publish has something to declare, so a publish that says nothing
+          // about relationships leaves the listing's own exactly as they are.
+          ...(payload.visibility ? { visibility: payload.visibility } : {}),
+          ...(payload.requiredDependencies ? { requiredDependencies: payload.requiredDependencies } : {}),
+          ...(payload.compatibleWorlds ? { compatibleWorlds: payload.compatibleWorlds } : {})
         })
       });
 

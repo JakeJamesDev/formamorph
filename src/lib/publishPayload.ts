@@ -1,5 +1,6 @@
 import type { World, Entity, Dictionary, VrmLicense } from '@/types';
 import type { CatalogKind } from '@/lib/catalogKinds';
+import type { ListingVisibility } from '@/lib/publishLinks';
 import { describePlaceholders } from '@/lib/placeholders';
 import { allPlaceholders } from '@/lib/placeholderHomes';
 import { entityPlacementLetters, labelPlaceholders } from '@/lib/placementLetters';
@@ -24,6 +25,15 @@ export interface PublishPayload {
    * somewhere the server already knows to look.
    */
   tags?: string[];
+  /**
+   * Whether the listing is discoverable. Only a character or a dictionary may be unlisted, and omitting
+   * it leaves the listing as it is — so a publish with nothing to say about visibility says nothing.
+   */
+  visibility?: ListingVisibility;
+  /** The listing ids a world requires. Replaces the world's whole required set. Worlds only. */
+  requiredDependencies?: string[];
+  /** The world listing ids a component is offered for. Replaces the whole set. Components only. */
+  compatibleWorlds?: string[];
 }
 
 /**

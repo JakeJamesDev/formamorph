@@ -12,7 +12,7 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import WorldStorageService from "@/services/WorldStorageService";
+import WorldStorageService, { type ListingDetails } from "@/services/WorldStorageService";
 import { type WorldRecord } from "@/components/WorldDetails";
 import { KIND_LABELS } from "@/lib/catalogKinds";
 import { PolicyDialog } from "@/components/menu/PolicyDialog";
@@ -29,6 +29,10 @@ import { useDevEventSample } from "@/lib/useDevEventSample";
 import { useDevRoute } from "@/lib/devRouter";
 import { ChangelogEntryDialog } from "@/components/community/ChangelogEntryDialog";
 import { type ChangelogDraft } from "@/lib/listingChangelog";
+import { LinkedContentSection } from "@/components/menu/LinkedContentSection";
+import { CompatibleWorldsSection } from "@/components/menu/CompatibleWorldsSection";
+import { hasLinkedContent, type LinkedWorldContent } from "@/lib/publishLinks";
+import { usePublishLinks } from "@/lib/usePublishLinks";
 import { AlertTriangle, ScrollText, Trophy } from "lucide-react";
 import type { ServerEvent } from "@/types";
 
@@ -41,9 +45,9 @@ interface PublishModalProps {
   /** The events running right now, from the events poll. Only a contest among them is read here. */
   events?: ServerEvent[];
   /**
-   * The local world this payload was built from, so a successful publish can link it to its listing.
-   * Worlds only: they are the kind whose local copy the community browser tracks, and the kind a contest
-   * can be won by.
+   * The local record this payload was built from. A world links itself to the listing it becomes, which
+   * is what the community browser tracks and what carries a contest win back. A character or a dictionary
+   * names the library item its Compatible Worlds are derived from. An Avatar passes none.
    */
   localId?: string;
   /** Called once a published world's link has been written, so the caller can re-read its library. */
@@ -78,6 +82,12 @@ export function PublishModal({
   /** The answer, once one listing has given it. Null until then, and again on the next opening. */
   const changelogSupportRef = useRef<boolean | null>(null);
 
+  // The overwrite target's own listing, for the relationships a publish over it has to preserve. Null
+  // while nothing has been asked for, and null again when the request failed — `listingPending` is what
+  // tells those apart, so a failed request does not hold the linked-content rows off screen forever.
+  const [listing, setListing] = useState<ListingDetails | null>(null);
+  const [listingPending, setListingPending] = useState(false);
+
   const policies = usePublishPolicies(open, isAuthenticated);
   // Which popup is in the way, and what the publish was going to do once it clears.
   const [pendingTarget, setPendingTarget] = useState<string | null>(null);
@@ -92,6 +102,20 @@ export function PublishModal({
     [payload],
   );
   const noun = KIND_LABELS[kind].one.toLowerCase();
+  // Whether this publish needs the target listing's relationships: a component always does, and a world
+  // does once its content follows a source. Read from the payload, so it is settled before the library
+  // loads. A world that follows nothing states an empty required set without reading anything.
+  const declaresRelationships = kind === 'entity' || kind === 'dictionary'
+    || (kind === 'world' && hasLinkedContent(payload?.contentData as LinkedWorldContent));
+
+  /** The listing this publish would replace, or null when it is publishing something new. */
+  const overwriteTarget = selectedWorldToOverride && selectedWorldToOverride !== 'new'
+    ? selectedWorldToOverride
+    : null;
+
+  const links = usePublishLinks({
+    open, kind, contentData: payload?.contentData, localId, overwriteTarget, listing, listingPending,
+  });
 
   // DEV: `#dev?view=mainMenu&modal=publish` serves a canned running contest instead of the events poll,
   // so the opt-in card is checkable without one really running (the ack modal's precedent).
@@ -152,16 +176,26 @@ export function PublishModal({
     const entering = !targetId && enterContest && !enteredName && contest ? contest.id : null;
 
     try {
-      const listing = await WorldStorageService.publishItem(payload, targetId, entering);
+      // Required sources first, and the world only once every one of them exists. A source that fails
+      // leaves the world unpublished with Retry; the ones that went up stay published and are skipped on
+      // the next attempt, so retrying never creates a second listing for the same library item.
+      if (kind === 'world') {
+        const ready = await links.publishSources(
+          (sourcePayload) => WorldStorageService.publishItem(sourcePayload, null, null),
+        );
+        if (!ready) return;
+      }
+
+      const created = await WorldStorageService.publishItem(links.declarePayload(payload), targetId, entering);
 
       // The author's copy becomes a copy of the listing it just became, the way a downloaded one is —
       // which is what carries a later contest win back to the library they actually work in. The listing's
       // post-publish stamp rides along so their own card doesn't then offer them their own upload as an
       // update. Failing to write it costs a link, never the publish, so its own failure is swallowed here
       // rather than reaching the catch below and reading as a refused upload.
-      const listingId = listing?._id || listing?.id;
+      const listingId = created?._id || created?.id;
       if (kind === 'world' && localId && listingId) {
-        const linked = await WorldStorageService.linkWorldToListing(localId, String(listingId), listing?.updated_at)
+        const linked = await WorldStorageService.linkWorldToListing(localId, String(listingId), created?.updated_at)
           .then(() => true)
           .catch((error) => { console.error('Failed to link the published world to its listing:', error); return false; });
         // The library list the caller is holding predates the link, and the community browser reads its
@@ -268,36 +302,44 @@ export function PublishModal({
     setShowGate(false);
   };
 
-  /** The listing this publish would replace, or null when it is publishing something new. */
-  const overwriteTarget = selectedWorldToOverride && selectedWorldToOverride !== 'new'
-    ? selectedWorldToOverride
-    : null;
-
-  // Whether this server keeps changelogs at all. Asked only once picking an existing listing has made it
-  // relevant — a first publish has no history to add to, which is why the ask is update-only — and asked
-  // once per opening rather than once per row: the answer is about the deploy, not about the listing,
-  // while the question rides the single-listing endpoint, which serves the thumbnail as a base64
-  // data-URI. Clicking down five listings would otherwise fetch five thumbnails to learn one boolean.
+  // The listing behind the selected row, for two answers.
+  //
+  // Whether this server keeps changelogs at all is about the deploy, not about the listing, so it is
+  // asked once per opening. Asked only once picking an existing listing has made it relevant: a first
+  // publish has no history to add to. The question rides the single-listing endpoint, which serves the
+  // thumbnail as a base64 data-URI, so clicking down five rows would otherwise fetch five thumbnails to
+  // learn one boolean.
+  //
+  // What a listing requires and what it is offered for belong to that listing, so a publish that
+  // declares either reads every row it lands on. One that declares neither still asks once, for the
+  // changelog, and no more.
   useEffect(() => {
     // A note written about one listing must not ride along on a publish to another.
     setChangelogDraft(null);
+    setListing(null);
     if (!overwriteTarget) {
       setChangelogSupported(false);
+      setListingPending(false);
       return;
     }
-    if (changelogSupportRef.current !== null) {
-      setChangelogSupported(changelogSupportRef.current);
+    const cached = changelogSupportRef.current;
+    if (cached !== null) setChangelogSupported(cached);
+    if (cached !== null && !declaresRelationships) {
+      setListingPending(false);
       return;
     }
 
     const reqId = ++changelogReqRef.current;
+    setListingPending(true);
     void WorldStorageService.fetchListingDetails(overwriteTarget).then((details) => {
       if (reqId !== changelogReqRef.current) return;
       const supported = (details?.changelog ?? null) !== null;
       changelogSupportRef.current = supported;
       setChangelogSupported(supported);
+      setListing(details);
+      setListingPending(false);
     });
-  }, [overwriteTarget]);
+  }, [overwriteTarget, declaresRelationships]);
 
   // Load the user's listings when the publish modal is opened, or when the kind changes under it.
   useEffect(() => {
@@ -445,6 +487,25 @@ export function PublishModal({
               </div>
             )}
 
+            {kind === 'world' && (
+              <LinkedContentSection
+                rows={links.linkedRows}
+                onChange={links.setLinkedRows}
+                disabled={isPublishing}
+              />
+            )}
+
+            {(kind === 'entity' || kind === 'dictionary') && (
+              <CompatibleWorldsSection
+                visibility={links.visibility}
+                onVisibilityChange={links.setVisibility}
+                rows={links.compatRows}
+                onRowsChange={links.setCompatRows}
+                disabled={isPublishing}
+                noun={noun}
+              />
+            )}
+
           </div>
         </ScrollArea>
 
@@ -466,6 +527,24 @@ export function PublishModal({
           />
         )}
 
+        {/* The world is still unpublished: every source it requires has to exist first. Pinned below the
+            scrolling list, because the button beside it is what acts on this. */}
+        {links.sourceFailures.length > 0 && (
+          <div className="rounded-md border border-destructive/30 bg-destructive/10 p-3 text-label space-y-1">
+            <p className="font-medium">
+              {noun.charAt(0).toUpperCase()}{noun.slice(1)} not published. Required content failed.
+            </p>
+            <ul className="text-meta text-muted-foreground space-y-0.5">
+              {links.sourceFailures.map((failure) => (
+                <li key={failure.name}>{failure.name}: {failure.message}</li>
+              ))}
+            </ul>
+            <p className="text-meta text-muted-foreground">
+              Select &ldquo;Retry&rdquo;. Content that already published is skipped.
+            </p>
+          </div>
+        )}
+
         {/* Warn, don't block: the author may know, or may be publishing a draft. But this is the one moment
             the breakage lands on other people, so it says so plainly rather than only badging the editor. */}
         {expiringCount > 0 && (
@@ -485,9 +564,15 @@ export function PublishModal({
 
           <Button
             onClick={handlePublish}
-            disabled={isPublishing || !payload || policies.showBlockedNotice}
+            // `links.ready` is false while the dialog is still reading what this publish declares.
+            // Publishing then would deliver relationship choices the author never saw.
+            disabled={isPublishing || !payload || policies.showBlockedNotice || !links.ready}
           >
-            {isPublishing ? 'Publishing...' : showContestCard && enterContest ? 'Publish & Enter' : 'Publish'}
+            {isPublishing
+              ? 'Publishing...'
+              : links.sourceFailures.length > 0
+                ? 'Retry'
+                : showContestCard && enterContest ? 'Publish & Enter' : 'Publish'}
           </Button>
         </DialogFooter>
       </DialogContent>

@@ -75,7 +75,7 @@ function summarize(kind: LibraryKind, record: LibraryStamps & { id: string; name
 const LIBRARIES: Record<LibraryKind, {
   list: () => Promise<(LibraryStamps & { id: string; name: string })[]>;
   load: (id: string) => Promise<LinkableContent>;
-  store: (record: { id: string; name: string; createdAt: string; data: LinkableContent }) => Promise<void>;
+  store: (record: CommunityLink & { id: string; name: string; createdAt: string; data: LinkableContent }) => Promise<void>;
   row: (meta: DictionaryMetadata & EntityMetadata) => Partial<LibraryItemSummary>;
 }> = {
   dictionary: {
@@ -161,6 +161,33 @@ export async function saveCopyToLibrary(
   // `store` stamps `lastAccessed` itself and leaves `editedAt` unset, so the revision this link holds is
   // the creation stamp — the same one a later read computes.
   return { id, name: data.name, revision: now, owned: true, data };
+}
+
+/**
+ * Record that a library item now has a listing of its own.
+ *
+ * Written the moment a source publishes, before the world that required it goes up: a publish that fails
+ * later must not offer to publish this item a second time, and the listing already exists either way.
+ *
+ * @param kind - Which library the item is in
+ * @param id - The library record's id
+ * @param sourceId - The listing it was published as
+ * @param author - The account that published it, so `libraryOwned` still reads it as theirs
+ */
+export async function linkLibraryItemToListing(
+  kind: LibraryKind, id: string, sourceId: string, author?: { id?: string; name?: string },
+): Promise<void> {
+  const data = await libraryItemData(kind, id);
+  if (!data) return;
+  await LIBRARIES[kind].store({
+    id,
+    name: data.name,
+    createdAt: new Date().toISOString(),
+    data,
+    sourceId,
+    ...(author?.id ? { sourceAuthorId: author.id } : {}),
+    ...(author?.name ? { sourceAuthorName: author.name } : {}),
+  });
 }
 
 /** The owned library items a world's copies follow, with their content, ready for the synchronization
