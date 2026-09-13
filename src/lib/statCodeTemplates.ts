@@ -232,8 +232,8 @@ return a * weight + b * (1 - weight);`,
   {
     id: 'builtin-inverse',
     timing: 'after',
-    name: 'Inverse of a Stat',
-    description: 'Mirror another stat within its own range — high Rest becomes low Fatigue.',
+    name: 'Inverse of Another Stat',
+    description: "Invert another stat across this stat's range. High Rest reads as low Fatigue.",
     code: `const source = stats[{{source:stat}}];
 return source.max - source.value;`,
   },
@@ -241,15 +241,15 @@ return source.max - source.value;`,
     id: 'builtin-threshold-flag',
     timing: 'after',
     name: 'Threshold Flag',
-    description: 'Snap to this stat’s max or min depending on whether another stat has crossed a line.',
+    description: 'Set this stat to Max when another stat passes a threshold, and to Min when it does not.',
     code: `const source = stats[{{source:stat}}].value;
 return source {{comparison:choice(>=|<=)=>=}} {{threshold:number=50}} ? self.max : self.min;`,
   },
   {
     id: 'builtin-per-turn-change',
     timing: 'after',
-    name: 'Per-Turn Change',
-    description: 'Drift by a fixed amount per story hour. A negative rate drains (hunger, fuel), a positive one fills. Stacks with Regen, so set one or the other.',
+    name: 'Hourly Change',
+    description: 'Change by a fixed amount per story hour. A negative rate decreases (hunger, fuel). A positive rate increases. Stacks with Regen, so set one or the other.',
     code: `const ratePerHour = {{ratePerHour:number=-5}};
 return self.value + ratePerHour * deltaHours;`,
   },
@@ -257,7 +257,7 @@ return self.value + ratePerHour * deltaHours;`,
     id: 'builtin-timer',
     timing: 'after',
     name: 'Timer',
-    description: 'Sweep across this stat’s range over a set number of story hours, counting up to it or down from it.',
+    description: 'Move across this stat’s range over a set number of story hours, up or down.',
     code: `const totalHours = {{totalHours:number=24}};
 const fraction = Math.min(1, Math.max(0, elapsedHours / totalHours));
 const progress = '{{direction:choice(up|down)=up}}' === 'up' ? fraction : 1 - fraction;
@@ -275,7 +275,7 @@ return base + (daypart === {{when:daypart=night}} ? {{bonus:number=20}} : 0);`,
     id: 'builtin-random-roll',
     timing: 'after',
     name: 'Random Per-Turn Roll',
-    description: 'A fresh random value each turn, spread across this stat’s range. Use only one of these per world — a second would draw the same numbers.',
+    description: 'A fresh random value each turn, spread across this stat’s range. Use only one per world. A second draws the same numbers.',
     code: `// elapsedHours keeps the roll moving even when the clock seed hasn't changed between turns.
 const roll = (Math.random() * 100 + elapsedHours) % 100;
 return self.min + (self.max - self.min) * (roll / 100);`,
@@ -284,7 +284,7 @@ return self.min + (self.max - self.min) * (roll / 100);`,
     id: 'builtin-regen-toward-target',
     timing: 'after',
     name: 'Regen Toward Target',
-    description: 'Ease toward a resting value from either side, slowing as it arrives. Set the target to this stat’s max for a soft-capped regen. Stacks with Regen, so set one or the other.',
+    description: 'Move toward a target value from either side. The step shrinks near the target. Set the target to this stat’s max for a soft-capped regen. Stacks with Regen, so set one or the other.',
     code: `const value = self.value;
 const target = {{target:number=100}};
 const rate = {{rate:number=0.1}};
@@ -301,7 +301,7 @@ self.{{bound:choice(max|min|regen)=max}} = Math.round(source * {{factor:number=2
   {
     id: 'builtin-placeholder-follows-stat',
     timing: 'before',
-    name: 'Placeholder Follows This Stat',
+    name: 'Placeholder by Range',
     description: "Map this stat's range onto the placeholder's values. Min pins the first value. Max pins the last.",
     code: `const target = placeholders[{{placeholder:placeholder}}];
 const span = self.max - self.min || 1;
@@ -319,7 +319,7 @@ if (target.values.length) target.pin(target.values[Math.max(0, Math.min(band, ta
     id: 'builtin-opening-value',
     timing: 'before',
     name: 'Opening Turn Value',
-    description: 'Set a starting value on the opening turn and leave every turn after it alone. Use it to draw a value the first narration should already read.',
+    description: 'Set a value on the opening turn only. Later turns do not run it. Use it for a value the first narration must read.',
     // The before box reads the clock at turn start, so the opening turn is the one with no hours behind
     // it. Returning nothing leaves the value where the turn found it.
     code: `if (elapsedHours > 0) return;

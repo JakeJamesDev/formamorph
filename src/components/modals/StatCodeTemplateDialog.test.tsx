@@ -130,7 +130,7 @@ describe('the form a template presents', () => {
   it('prefills the defaults of a template picked from the list', async () => {
     const user = userEvent.setup();
     open();
-    await user.click(await screen.findByText('Per-Turn Change'));
+    await user.click(await screen.findByText('Hourly Change'));
 
     // The built-in declares -5 per hour; the picker must meet the author with that, not with a blank.
     await waitFor(() => expect(screen.getByLabelText('Rate Per Hour')).toHaveValue('-5'));
@@ -203,12 +203,12 @@ describe('which templates a box offers', () => {
     expect(await screen.findByRole('button', { name: 'Trait by Threshold' })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Opening Turn Value' })).toBeInTheDocument();
     // A drift template reads the turn's hours, which the before box has none of.
-    expect(screen.queryByRole('button', { name: 'Per-Turn Change' })).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Hourly Change' })).toBeNull();
   });
 
   it('leaves the before menu’s templates out of the after menu', async () => {
     open('after');
-    expect(await screen.findByRole('button', { name: 'Per-Turn Change' })).toBeInTheDocument();
+    expect(await screen.findByRole('button', { name: 'Hourly Change' })).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Opening Turn Value' })).toBeNull();
     expect(screen.queryByRole('button', { name: 'Trait by Threshold' })).toBeNull();
   });
@@ -216,7 +216,7 @@ describe('which templates a box offers', () => {
   it('names the box the selected template runs in', async () => {
     const user = userEvent.setup();
     open('after');
-    await user.click(await screen.findByRole('button', { name: 'Per-Turn Change' }));
+    await user.click(await screen.findByRole('button', { name: 'Hourly Change' }));
     expect(screen.getByText('Runs After The AI')).toBeInTheDocument();
   });
 
