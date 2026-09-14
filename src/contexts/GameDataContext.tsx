@@ -14,7 +14,9 @@ import {
 } from '@/lib/placeholderHomes';
 import { releasePlaceholderOwners, removePlaceholderCascade } from '@/lib/placeholderTree';
 import { chipBearingTexts } from '@/lib/testBench/rules';
-import { markEdited } from '@/lib/linkedContent';
+import { markEdited, stampLinks } from '@/lib/linkedContent';
+import { writeBackOwnedCopies } from '@/lib/libraryWriteBack';
+import { followedLibraryId } from '@/lib/publishLinks';
 import { useDictionaryStoreState, DictionaryStoreProvider } from '@/contexts/DictionaryStoreContext';
 import { PlaceholderStoreProvider } from '@/contexts/PlaceholderStoreContext';
 import { PlacementLettersProvider, useStablePlacementLetters } from '@/contexts/PlacementLettersContext';
@@ -91,7 +93,16 @@ function useProvideGameData() {
     dictionaries, setDictionaries,
     addDictionary, updateDictionary, removeDictionary,
     addDictionaryEntry, updateDictionaryEntry, removeDictionaryEntry,
+    setOwnedLibraryIds: setOwnedBookIds,
   } = dictStore;
+  // Which library items the author owns, so an edit to a copy of one stays Linked and the world save
+  // writes it back. A ref, not state: read inside the edit callbacks and never rendered. Empty until the
+  // editor's library lookup answers, so an unreadable library still marks every edit.
+  const ownedLibraryIds = useRef(new Set<string>());
+  const setOwnedLibraryIds = useCallback((ids: Iterable<string>) => {
+    ownedLibraryIds.current = new Set(ids);
+    setOwnedBookIds(ownedLibraryIds.current);
+  }, [setOwnedBookIds]);
   const [worldId, setWorldId] = useState<string | null>(null);
   // Serialized last-saved world; compared against current data to flag pending edits.
   const [savedSnapshot, setSavedSnapshot] = useState<string>('');
@@ -160,13 +171,16 @@ function useProvideGameData() {
     setEntities(prevEntities => [...prevEntities, newEntity]);
   }, []);
 
-  // An edit to an entity that follows a source makes it a local replacement. A caller that hands over a
-  // different `link` is managing the link itself (linking, unlinking, taking a source update), so its
-  // record stands: only a content edit, which carries the entity's own link through untouched, marks it.
+  // An edit to an entity that follows a source makes it a local replacement, unless the author owns the
+  // source. A caller that hands over a different `link` is managing the link itself (linking, unlinking,
+  // taking a source update), so its record stands: only a content edit, which carries the entity's own
+  // link through untouched, marks it.
   const updateEntity = useCallback((updatedEntity: Entity) => {
     setEntities(prevEntities => prevEntities.map(entity =>
       entity.id === updatedEntity.id
-        ? (entity.link === updatedEntity.link ? markEdited(updatedEntity) : updatedEntity)
+        ? (entity.link === updatedEntity.link
+          ? markEdited(updatedEntity, ownedLibraryIds.current.has(followedLibraryId(updatedEntity) ?? ''))
+          : updatedEntity)
         : entity
     ));
   }, []);
@@ -502,9 +516,19 @@ function useProvideGameData() {
     loadWorldData({ ...JSON.parse(savedSnapshot), id: worldId ?? '' } as World);
   }, [savedSnapshot, worldId, loadWorldData]);
 
-  // Persist the current world and re-baseline so isWorldDirty clears. Returns success.
+  // Persist the current world and re-baseline so isWorldDirty clears. Returns success. Edited copies of
+  // owned library items go to the library first; the stamps they produce go into the stored world and
+  // onto the live copies, so each holds the revision it wrote. Here rather than in the editor, so every
+  // world save writes back, whichever surface asked for it.
   const saveWorld = useCallback(async (): Promise<boolean> => {
     try {
+      const data = getWorldData();
+      const stamps = await writeBackOwnedCopies({
+        entities: data.entities, dictionaries: data.dictionaries, placeholders, locations,
+      });
+      const world = stamps.length
+        ? { ...data, entities: stampLinks(data.entities, stamps), dictionaries: stampLinks(data.dictionaries, stamps) }
+        : data;
       await WorldStorageService.storeWorld({
         id: worldId ?? '',
         name: worldOverview.name,
@@ -515,15 +539,19 @@ function useProvideGameData() {
         // other sticky fields are preserved by storeWorld).
         dirty: true,
         editedAt: new Date().toISOString(),
-        data: { version: APP_VERSION, ...getWorldData() },
+        data: { version: APP_VERSION, ...world },
       });
-      setSavedSnapshot(JSON.stringify(getWorldData()));
+      if (stamps.length) {
+        setEntities((prev) => stampLinks(prev, stamps));
+        setDictionaries((prev) => stampLinks(prev, stamps));
+      }
+      setSavedSnapshot(JSON.stringify(world));
       return true;
     } catch (error) {
       console.error('Error saving world:', error);
       return false;
     }
-  }, [worldId, worldOverview, getWorldData]);
+  }, [worldId, worldOverview, getWorldData, placeholders, locations, setDictionaries]);
 
   useEffect(() => {
     WorldStorageService.initialize();
@@ -600,6 +628,7 @@ function useProvideGameData() {
     isWorldDirty,
     saveWorld,
     discardChanges,
+    setOwnedLibraryIds,
     // The scoped dictionary store, forwarded so the provider can bind the editing widgets to the world's books.
     dictStore,
     // Likewise for placeholders, so the same editing widgets bind to the world's placeholders.

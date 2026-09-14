@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { act, screen, fireEvent, waitFor, within } from '@testing-library/react';
+import { act, cleanup, screen, fireEvent, waitFor, within } from '@testing-library/react';
 import { benchEditorWorld, renderWorldEditorBench } from '@/test/worldEditorBench';
 import { markHelpSeen } from '@/lib/helpSeenStore';
 import type { Dictionary, Entity, World } from '@/types';
@@ -19,6 +19,8 @@ import type { Dictionary, Entity, World } from '@/types';
 const library = vi.hoisted(() => ({
   /** Makes both metadata reads reject, standing in for a library that cannot be read. */
   unreadable: false,
+  /** Makes both stores reject, standing in for a write the library refused. */
+  storeFails: false,
   dictionaries: new Map<string, { id: string; name: string; data: Dictionary; createdAt?: string; editedAt?: string; sourceId?: string; sourceAuthorId?: string; sourceAuthorName?: string }>(),
   entities: new Map<string, { id: string; name: string; data: Entity; createdAt?: string; editedAt?: string; sourceId?: string; sourceAuthorId?: string; sourceAuthorName?: string }>(),
 }));
@@ -44,6 +46,7 @@ vi.mock('@/services/DictionaryStorageService', () => ({
       return found ? Promise.resolve(found.data) : Promise.reject(new Error('Dictionary not found'));
     },
     storeDictionary: (record: { id: string; name: string; data: Dictionary; createdAt?: string }) => {
+      if (library.storeFails) return Promise.reject(new Error('Dictionary library is read-only'));
       const existing = library.dictionaries.get(record.id);
       library.dictionaries.set(record.id, { ...existing, ...record });
       return Promise.resolve();
@@ -61,6 +64,7 @@ vi.mock('@/services/EntityStorageService', () => ({
       return found ? Promise.resolve(found.data) : Promise.reject(new Error('Entity not found'));
     },
     storeEntity: (record: { id: string; name: string; data: Entity; createdAt?: string }) => {
+      if (library.storeFails) return Promise.reject(new Error('Entity library is read-only'));
       const existing = library.entities.get(record.id);
       library.entities.set(record.id, { ...existing, ...record });
       return Promise.resolve();
@@ -86,10 +90,9 @@ vi.mock('@/lib/jsonFileWorkerUtils', () => ({
   serializeJsonBlob: vi.fn(), parseJsonText: vi.fn(), terminateWorker: vi.fn(),
 }));
 
-vi.mock('react-toastify', () => ({
-  toast: { info: vi.fn(), success: vi.fn(), error: vi.fn() },
-  ToastContainer: () => null,
-}));
+const toast = vi.hoisted(() => ({ info: vi.fn(), success: vi.fn(), error: vi.fn() }));
+
+vi.mock('react-toastify', () => ({ toast, ToastContainer: () => null }));
 
 const PLAIN_WORLD = (): World => benchEditorWorld({
   entities: [{ id: 'e1', name: 'Wren', playerDescription: 'A ferryman.', locations: ['harbor'] }],
@@ -107,6 +110,11 @@ const focusLinkFace = () => act(() => screen.getByRole('button', { name: 'Open i
  *  the dialog rather than matching both. */
 const confirmPicker = (name: string) =>
   fireEvent.click(within(screen.getByRole('dialog')).getByRole('button', { name }));
+/** Let the editor's library lookup answer. The in-memory services resolve at once, so two turns of the
+ *  event loop cover the metadata read and the content read that follows it. */
+const awaitLibraryLookup = async () => {
+  for (let i = 0; i < 2; i += 1) await act(() => new Promise<void>((r) => { setTimeout(r, 0); }));
+};
 
 beforeEach(() => {
   localStorage.clear();
@@ -116,7 +124,10 @@ beforeEach(() => {
   library.dictionaries.clear();
   library.entities.clear();
   library.unreadable = false;
+  library.storeFails = false;
   signedInAs.id = 'me';
+  toast.info.mockClear();
+  toast.error.mockClear();
 });
 
 describe('Linked Content help', () => {
@@ -305,6 +316,8 @@ describe('Editing and unlinking a followed copy', () => {
     selectRow('Marsh Lore');
     focusLinkFace();
     expect(await screen.findByText('Linked · Fen Lorebook')).toBeTruthy();
+    // The library has answered, so this is the other-author path, not the unknown-owner one.
+    await awaitLibraryLookup();
 
     fireEvent.change(screen.getByDisplayValue('Marsh Lore'), { target: { value: 'Marsh Lore, revised' } });
 
@@ -325,6 +338,170 @@ describe('Editing and unlinking a followed copy', () => {
     expect(ctx().dictionaries[0].entries[0].value).toBe('Reeds.');
     expect(screen.queryByRole('button', { name: 'Open in Library' })).toBeNull();
     expect(screen.getByRole('button', { name: 'Save to Library' })).toBeTruthy();
+  });
+});
+
+describe('Editing a copy of your own library item', () => {
+  const REVISION = '2026-01-01T00:00:00.000Z';
+
+  const seedOwnedBook = () => library.dictionaries.set('lib-a', {
+    id: 'lib-a', name: 'Fen Lore', createdAt: REVISION,
+    data: { id: 'lib-a', name: 'Fen Lore', entries: [{ id: 'k1', name: 'Fen', key: ['fen'], value: 'Wetland.' }] },
+  });
+
+  const OWN_LINK = { libraryId: 'lib-a', sourceName: 'Fen Lore', sourceRevision: REVISION };
+
+  const worldHolding = (link: Record<string, unknown> = OWN_LINK): World => benchEditorWorld({
+    entities: [],
+    dictionaries: [{
+      id: 'b1', name: 'Fen Lore', entries: [{ id: 'own-1', name: 'Fen', key: ['fen'], value: 'Wetland.' }], link,
+    }],
+  });
+
+  const renameBook = (to: string) =>
+    fireEvent.change(screen.getByDisplayValue('Fen Lore'), { target: { value: to } });
+
+  /** Open the world on its book, let the library answer, and rename the book. */
+  const openAndRename = async (world: World) => {
+    const bench = renderWorldEditorBench(world, 'advanced');
+    openTab(/Dictionary/);
+    selectRow('Fen Lore');
+    await awaitLibraryLookup();
+    renameBook('Fen Lore, revised');
+    await waitFor(() => expect(bench.ctx().dictionaries[0].name).toBe('Fen Lore, revised'));
+    return bench;
+  };
+
+  it('keeps the copy Linked while you edit it', async () => {
+    seedOwnedBook();
+    const { ctx } = await openAndRename(worldHolding());
+
+    expect(ctx().dictionaries[0].link?.localReplacement).toBeUndefined();
+    focusLinkFace();
+    expect(await screen.findByText('Linked · Fen Lore')).toBeTruthy();
+  });
+
+  it('writes the edit to the library item when the world saves, and the copy holds the revision it wrote', async () => {
+    seedOwnedBook();
+    const { ctx } = await openAndRename(worldHolding());
+
+    clickButton('Save');
+
+    await waitFor(() => expect(library.dictionaries.get('lib-a')?.name).toBe('Fen Lore, revised'));
+    const stored = library.dictionaries.get('lib-a')!;
+    expect(stored.data.entries[0].value).toBe('Wetland.');
+    // The item is edited: a new revision, flagged as changed since its listing.
+    expect(stored.editedAt).toBeTruthy();
+    expect(stored.editedAt).not.toBe(REVISION);
+    expect((stored as { dirty?: boolean }).dirty).toBe(true);
+    // The world's own fields stay out of the item.
+    expect('link' in stored.data).toBe(false);
+    await waitFor(() => expect(ctx().dictionaries[0].link?.sourceRevision).toBe(stored.editedAt));
+    expect(ctx().dictionaries[0].link?.sourceName).toBe('Fen Lore, revised');
+    expect(ctx().isWorldDirty).toBe(false);
+    expect(toast.info).toHaveBeenCalledWith('Formamorph saved one linked copy to your library.');
+    focusLinkFace();
+    expect(await screen.findByText('Linked · Fen Lore, revised')).toBeTruthy();
+  });
+
+  it('reaches a second world holding a copy the next time it opens', async () => {
+    seedOwnedBook();
+    await openAndRename(worldHolding());
+    clickButton('Save');
+    await waitFor(() => expect(library.dictionaries.get('lib-a')?.name).toBe('Fen Lore, revised'));
+    cleanup();
+
+    const second = renderWorldEditorBench(worldHolding(), 'advanced');
+    await waitFor(() => expect(second.ctx().dictionaries[0].name).toBe('Fen Lore, revised'));
+    expect(second.ctx().dictionaries[0].link?.sourceRevision).toBe(library.dictionaries.get('lib-a')!.editedAt);
+  });
+
+  it('writes nothing when the copy still matches its item', async () => {
+    seedOwnedBook();
+    const { ctx } = renderWorldEditorBench(worldHolding(), 'advanced');
+    openTab(/Dictionary/);
+    selectRow('Fen Lore');
+    await awaitLibraryLookup();
+    // A change elsewhere in the world, so Save has something to do.
+    act(() => ctx().updateLocation({ ...ctx().locations[0], name: 'Harbor Stair' }));
+    await waitFor(() => expect(ctx().isWorldDirty).toBe(true));
+
+    clickButton('Save');
+
+    await waitFor(() => expect(ctx().isWorldDirty).toBe(false));
+    expect(library.dictionaries.get('lib-a')?.editedAt).toBeUndefined();
+    expect(ctx().dictionaries[0].link?.sourceRevision).toBe(REVISION);
+    expect(toast.info).not.toHaveBeenCalled();
+  });
+
+  it('writes nothing on Discard Changes', async () => {
+    seedOwnedBook();
+    const { ctx } = await openAndRename(worldHolding());
+
+    act(() => ctx().discardChanges());
+
+    await waitFor(() => expect(ctx().dictionaries[0].name).toBe('Fen Lore'));
+    expect(library.dictionaries.get('lib-a')?.name).toBe('Fen Lore');
+    expect(library.dictionaries.get('lib-a')?.editedAt).toBeUndefined();
+  });
+
+  it('leaves an owned copy you already made a local replacement as one', async () => {
+    seedOwnedBook();
+    const { ctx } = await openAndRename(worldHolding({ ...OWN_LINK, localReplacement: true }));
+    clickButton('Save');
+
+    await waitFor(() => expect(ctx().isWorldDirty).toBe(false));
+    expect(ctx().dictionaries[0].link?.localReplacement).toBe(true);
+    expect(library.dictionaries.get('lib-a')?.name).toBe('Fen Lore');
+  });
+
+  it('saves the world and names the item when the library refuses the write', async () => {
+    seedOwnedBook();
+    const { ctx } = await openAndRename(worldHolding());
+    library.storeFails = true;
+
+    clickButton('Save');
+
+    await waitFor(() => expect(ctx().isWorldDirty).toBe(false));
+    expect(toast.error).toHaveBeenCalledWith(expect.stringContaining('“Fen Lore”'));
+    expect(library.dictionaries.get('lib-a')?.name).toBe('Fen Lore');
+    // The copy did not write, so it still holds the revision it opened with and stays Linked.
+    expect(ctx().dictionaries[0].link?.sourceRevision).toBe(REVISION);
+    expect(ctx().dictionaries[0].link?.localReplacement).toBeUndefined();
+  });
+
+  it('marks an edit made while the library cannot be read, which is not the same as owned', async () => {
+    seedOwnedBook();
+    library.unreadable = true;
+    const { ctx } = await openAndRename(worldHolding());
+
+    expect(ctx().dictionaries[0].link?.localReplacement).toBe(true);
+  });
+
+  it('keeps an edited entity Linked the same way', async () => {
+    library.entities.set('lib-e', {
+      id: 'lib-e', name: 'Wren', createdAt: REVISION,
+      data: { id: 'lib-e', name: 'Wren', playerDescription: 'A ferryman.' },
+    });
+    const { ctx } = renderWorldEditorBench(benchEditorWorld({
+      entities: [{
+        id: 'e1', name: 'Wren', playerDescription: 'A ferryman.', locations: ['harbor'],
+        link: { libraryId: 'lib-e', sourceName: 'Wren', sourceRevision: REVISION },
+      }],
+      dictionaries: [{ id: 'b1', name: 'Marsh Lore', entries: [] }],
+    }), 'advanced');
+    openTab(/Entities/);
+    await screen.findByText('Wren');
+    await awaitLibraryLookup();
+
+    act(() => ctx().updateEntity({ ...ctx().entities[0], playerDescription: 'A smuggler.' }));
+    await waitFor(() => expect(ctx().entities[0].playerDescription).toBe('A smuggler.'));
+    expect(ctx().entities[0].link?.localReplacement).toBeUndefined();
+
+    clickButton('Save');
+    await waitFor(() => expect(library.entities.get('lib-e')?.data.playerDescription).toBe('A smuggler.'));
+    // The world's location membership stays out of the item.
+    expect(library.entities.get('lib-e')?.data.locations).toBeUndefined();
   });
 });
 

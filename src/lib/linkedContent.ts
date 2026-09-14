@@ -63,11 +63,30 @@ export function linkToSource(source: LibrarySource, differs = false): ContentLin
   };
 }
 
-/** The copy after an edit: still following its source, but no longer a copy of it. Independent copies and
- *  copies already marked are returned as they are, so this is safe to run on every change. */
-export function markEdited<T extends LinkableContent>(item: T): T {
-  if (!item.link || item.link.localReplacement) return item;
+/**
+ * The copy after an edit. A copy of an item the author owns stays Linked: the world save writes the edit
+ * to the item. Any other copy becomes a local replacement, still following its source but no longer a copy
+ * of it. `owned` is false when the library has not answered yet, so an unreadable library still marks.
+ * Independent copies and copies already marked are returned as they are, so this is safe to run on every
+ * change.
+ */
+export function markEdited<T extends LinkableContent>(item: T, owned = false): T {
+  if (!item.link || item.link.localReplacement || owned) return item;
   return { ...item, link: { ...item.link, localReplacement: true } };
+}
+
+/** A link record to write onto one copy, keyed by the copy's own id. */
+export interface LinkStamp {
+  id: string;
+  link: ContentLink;
+}
+
+/** The items with each stamped record written onto its copy. The same array comes back when no stamp
+ *  names a copy in it. */
+export function stampLinks<T extends LinkableContent>(items: T[], stamps: readonly LinkStamp[]): T[] {
+  const byId = new Map(stamps.map((stamp) => [stamp.id, stamp.link]));
+  if (!items.some((item) => byId.has(item.id))) return items;
+  return items.map((item) => (byId.has(item.id) ? { ...item, link: byId.get(item.id) } : item));
 }
 
 /** The copy with its record cleared. The content stays exactly as it is. */
@@ -208,6 +227,37 @@ export function applyLibraryUpdate<T extends LinkableContent>(
 export interface WorldContent {
   entities: Entity[];
   dictionaries: Dictionary[];
+}
+
+/** One copy the world save writes to the library: the copy, the owned item it follows, and the content to
+ *  store there. */
+export interface WriteBack {
+  copy: LinkableContent;
+  source: LibrarySource;
+  content: LinkableContent;
+}
+
+/**
+ * The copies a world save writes to the library: each one Linked to an item the author owns, not a local
+ * replacement, and holding content that differs from the item. `shape` rewrites a copy as a standalone
+ * library item, the same rewrite Save to Library uses, so the world's own fields never reach the item. The
+ * copy itself is returned untouched, connections included.
+ *
+ * `sources` is the answer to looking up every library id the world's copies name; a copy of an item the
+ * lookup did not answer, or one without content, is not written.
+ */
+export function planWriteBack(
+  world: WorldContent, sources: LibrarySource[], shape: (copy: LinkableContent) => LinkableContent,
+): WriteBack[] {
+  const byId = new Map(sources.map((source) => [source.id, source]));
+  return [...world.entities, ...world.dictionaries].flatMap((copy) => {
+    const libraryId = followedLibraryId(copy);
+    if (!libraryId || copy.link?.localReplacement) return [];
+    const source = byId.get(libraryId);
+    if (!source?.owned || !source.data) return [];
+    if (contentMatchesSource(copy, source.data)) return [];
+    return [{ copy, source, content: shape(copy) }];
+  });
 }
 
 function syncList<T extends LinkableContent>(
