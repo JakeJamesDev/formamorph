@@ -328,6 +328,13 @@ describe('syncWorldContent', () => {
     expect(twice.dictionaries).toBe(once.dictionaries);
   });
 
+  it('reads a padded library id the way publishing reads it, so the copy is matched not dropped', () => {
+    const world = { placeholders: [], entities: [], dictionaries: [book({ link: { libraryId: ' lib-1 ', sourceRevision: 'r2' } })] };
+    const result = syncWorldContent(world, [source]);
+    expect(result.unlinked).toBe(0);
+    expect(result.dictionaries[0].link?.libraryId).toBe(' lib-1 ');
+  });
+
   it('leaves a copy that follows only a published listing alone', () => {
     const world = {
       placeholders: [],

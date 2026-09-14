@@ -136,7 +136,15 @@ export function useLibraryLinking(options: LibraryLinkingOptions) {
       .map((item) => item.link?.libraryId)
       .filter((id): id is string => !!id);
     if (!linkedIds.length) return;
-    const sources = await loadLinkedSources(linkedIds);
+    // The lookup is what says an item is gone, so a lookup that failed says nothing and nothing is let go
+    // of. Without this, one unreadable library would unlink every copy in the world.
+    let sources: LibrarySource[];
+    try {
+      sources = await loadLinkedSources(linkedIds);
+    } catch (error) {
+      console.error('Could not read your library:', (error as Error).message);
+      return;
+    }
     const next = syncWorldContent({
       entities: current.entities, dictionaries: current.dictionaries, placeholders: current.worldPlaceholders,
     }, sources);

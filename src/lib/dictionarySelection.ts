@@ -1,4 +1,5 @@
 import { libraryLines } from '@/lib/librarySources';
+import { followedLibraryId } from '@/lib/publishLinks';
 import { randomUUID } from "@/lib/uuid";
 import type { Dictionary, DictionaryMetadata } from '@/types';
 
@@ -43,7 +44,7 @@ export function shouldShowDictionaryChoices(
 function followedLibraryIds(worldBooks: Dictionary[], libraryMeta: DictionaryMetadata[]): Set<string> {
   const present = new Set(libraryMeta.map((meta) => meta.id));
   return new Set(worldBooks
-    .map((book) => book.link?.libraryId)
+    .map(followedLibraryId)
     .filter((id): id is string => !!id && present.has(id)));
 }
 
@@ -70,7 +71,7 @@ export function buildInitialSelection(
     source: 'world',
     enabled: book.enabled !== false,
     entryCount: book.entries.length,
-    ...(book.link?.libraryId && followed.has(book.link.libraryId) ? { linked: true } : {}),
+    ...(followed.has(followedLibraryId(book) ?? '') ? { linked: true } : {}),
   }));
   const library: DictionarySelectionItem[] = libraryMeta
     .filter((meta) => !followed.has(meta.id))

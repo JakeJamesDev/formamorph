@@ -58,6 +58,7 @@ import { startingLocations } from '@/lib/startingLocation';
 import { exclusiveSiblings, collapseExclusiveDefaults } from '@/lib/traitEffects';
 import { buildInitialSelection, finalizeSelection, shouldShowDictionaryChoices } from '@/lib/dictionarySelection';
 import { libraryLines } from '@/lib/librarySources';
+import { followedLibraryId } from '@/lib/publishLinks';
 import { emptyEntryDraft, type EntryDraft } from '@/lib/entryDraft';
 import { hasWorldAdditionDefaults, restoreWorldAdditionDefaults, saveWorldAdditionDefaults } from '@/lib/worldAdditionDefaults';
 import WorldStorageService from '../services/WorldStorageService';
@@ -1149,10 +1150,14 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
   /**
    * The library characters this world does not already hold a copy of, each with its author and source
    * lines. Offering one the world already holds would put the same character in the run twice.
+   *
+   * A hidden character gets no Linked row the way a hidden dictionary does. The step lists dictionaries
+   * from both the world and the library, so a world dictionary has a row to mark; the world's own
+   * characters are always in play and were never rows here.
    */
   const additionEntities = useMemo(() => {
     const followed = new Set(worldEntities
-      .map((entity) => entity.link?.libraryId)
+      .map(followedLibraryId)
       .filter((id): id is string => !!id));
     return entities
       .filter((meta) => !followed.has(meta.id))
