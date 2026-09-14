@@ -2,6 +2,8 @@ import { useCallback, useRef, useState } from 'react';
 import { toast } from 'react-toastify';
 import type { AvatarListingContent, Dictionary, Entity, World } from '@/types';
 import type { WorldRecord } from '@/components/WorldDetails';
+import WorldStorageService from '@/services/WorldStorageService';
+import type { ComponentFileLinks } from './componentFileLinks';
 import { kindOf, KIND_LABELS } from './catalogKinds';
 import { fetchCatalogContent } from './fetchCatalogContent';
 import { downloadBlob } from './downloadBlob';
@@ -10,6 +12,21 @@ import { exportEntityCard } from './entityFile';
 import { buildDictionaryFile } from './dictionaryFile';
 import { serializeWorldFile } from './worldFile';
 import { avatarListingBlob } from './avatarDownload';
+
+/**
+ * What a listing's own file says about where it came from and which worlds it suits.
+ *
+ * The listing is the source here: there is no local library item behind a device download. A server that
+ * cannot answer leaves the associations out, which is what an offline reader of the file then sees.
+ */
+async function listingLinks(listingId: string, listing: WorldRecord): Promise<ComponentFileLinks> {
+  const details = await WorldStorageService.fetchListingDetails(listingId);
+  const associations = details?.compatibleWorlds ?? [];
+  return {
+    source: { sourceId: listingId, sourceName: String(listing.name ?? '') || 'Untitled' },
+    ...(associations.length ? { associations } : {}),
+  };
+}
 
 /** Downloads a published listing as its normal importable file without touching the local library. */
 export function useDeviceDownload() {
@@ -35,7 +52,7 @@ export function useDeviceDownload() {
         filename = `${world.worldOverview?.name || listing.name || 'rpg_world'}.json`;
       } else if (kind === 'entity') {
         const entity = content as Entity;
-        blob = await exportEntityCard(entity);
+        blob = await exportEntityCard(entity, undefined, await listingLinks(listingId, listing));
         filename = `${entity.name || listing.name || 'character'}.webp`;
       } else if (kind === 'model') {
         // The `.vrm` file itself, not a JSON wrapper — the one kind whose device download is the raw asset.
@@ -43,7 +60,7 @@ export function useDeviceDownload() {
         filename = `${listing.name || 'avatar'}.vrm`;
       } else {
         const dictionary = content as Dictionary;
-        const file = buildDictionaryFile(dictionary);
+        const file = buildDictionaryFile(dictionary, undefined, await listingLinks(listingId, listing));
         blob = await serializeJsonBlob(file, 2);
         filename = `${file.name || listing.name || 'dictionary'}.json`;
       }

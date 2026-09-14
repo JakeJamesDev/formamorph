@@ -2,6 +2,8 @@ import { randomUUID } from "@/lib/uuid";
 import type { Dictionary, DictionaryEntry, Placeholder } from '@/types';
 import { APP_VERSION, WORLD_FILE_KIND, SAVE_FILE_KIND, migrateCarriedPlaceholders, migrateEntryKeys } from './version';
 import { convertLorebook } from './lorebookImport';
+import type { WorldAssociation } from './compatibleWorlds';
+import type { ComponentFileLinks, ComponentFileSource } from './componentFileLinks';
 import { chipTexts } from './linkedContent';
 import { carriedPlaceholders, sharedPlaceholdersUsed } from './placeholderHomes';
 import { portablePlaceholders } from './placeholderGroups';
@@ -26,12 +28,21 @@ export interface DictionaryFile {
   placeholders?: Placeholder[];
   /** The shared placeholders the book's entries and its own reach, so they resolve after import. */
   sharedPlaceholders?: Placeholder[];
+  /** Where this book came from, so an importer can reconnect it (see lib/componentFileLinks). */
+  source?: ComponentFileSource;
+  /** The worlds this book is offered for, by listing id. Never the worlds themselves. */
+  associations?: WorldAssociation[];
 }
 
 /** Serialize one book to the standalone file shape, stamped with the current app version. `available` is the
  *  placeholder pool to resolve the book's used chips from — the world's combined list, or the book's own
- *  carried pool. */
-export function buildDictionaryFile(book: Dictionary, available: Placeholder[] = carriedPlaceholders(book)): DictionaryFile {
+ *  carried pool. `links` is what the file says about its source and the worlds it suits; a file written
+ *  without it says nothing about either. */
+export function buildDictionaryFile(
+  book: Dictionary,
+  available: Placeholder[] = carriedPlaceholders(book),
+  links: ComponentFileLinks = {},
+): DictionaryFile {
   // Folders are the world's: a def leaves its folder reference behind.
   const owned = portablePlaceholders(book.placeholders ?? []);
   const shared = portablePlaceholders(sharedPlaceholdersUsed(chipTexts(book), owned, available));
@@ -46,6 +57,8 @@ export function buildDictionaryFile(book: Dictionary, available: Placeholder[] =
     entries: book.entries,
     ...(owned.length ? { placeholders: owned } : {}),
     ...(shared.length ? { sharedPlaceholders: shared } : {}),
+    ...(links.source ? { source: links.source } : {}),
+    ...(links.associations?.length ? { associations: links.associations } : {}),
   };
 }
 

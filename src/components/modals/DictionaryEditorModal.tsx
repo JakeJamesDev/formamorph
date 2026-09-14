@@ -17,6 +17,7 @@ import { directChipTargets } from '@/lib/placeholders';
 import { carriedPlaceholders, splitCarriedPlaceholders } from '@/lib/placeholderHomes';
 import { dictionaryPlacementLetters, EMPTY_LETTERS, labelPlaceholders } from '@/lib/placementLetters';
 import { PlacementLettersProvider } from '@/contexts/PlacementLettersContext';
+import { exportedLibraryLinks } from '@/lib/componentExportLinks';
 import { buildDictionaryFile } from '@/lib/dictionaryFile';
 import { downloadBlob } from '@/lib/downloadBlob';
 import { canonicalStringify } from '@/lib/canonicalStringify';
@@ -134,10 +135,12 @@ const DictionaryEditorModal = ({ dictionaryId, draft, onClose, onPublish }: {
     }
   };
 
-  const handleExport = () => {
+  const handleExport = async () => {
     const current = dictionaries[0];
     if (!current) return;
-    const blob = new Blob([JSON.stringify(buildDictionaryFile(current), null, 2)], { type: 'application/json' });
+    // A library item is its own source, so the file names it and the worlds that hold a linked copy.
+    const links = await exportedLibraryLinks('dictionary', current.id);
+    const blob = new Blob([JSON.stringify(buildDictionaryFile(current, undefined, links), null, 2)], { type: 'application/json' });
     // A chip in the name would otherwise put a raw placement id in the filename.
     downloadBlob(blob, `${labelPlaceholders(current.name, bookPlaceholders, { letters }) || 'Dictionary'}.json`);
   };

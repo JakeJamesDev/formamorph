@@ -275,6 +275,33 @@ export async function linkLibraryItemToListing(
   });
 }
 
+/**
+ * Replace a library item's content with a revision that came from outside it.
+ *
+ * `revision` is stamped as the item's edit, so the copies that follow it compare against exactly what was
+ * written. Passing the same revision twice writes the same item, which is what lets a review that failed
+ * part way through be retried.
+ *
+ * @param kind - Which library the item is in
+ * @param id - The library record's id
+ * @param content - The content to write
+ * @param revision - The revision marker to stamp
+ */
+export async function replaceLibraryItemContent(
+  kind: LibraryKind, id: string, content: LinkableContent, revision: string,
+): Promise<void> {
+  const data = { ...content, id };
+  await LIBRARIES[kind].store({
+    id,
+    name: data.name,
+    createdAt: new Date().toISOString(),
+    data,
+    editedAt: revision,
+    // The item no longer holds what its listing served, so a later download offer reads it as edited.
+    dirty: true,
+  });
+}
+
 /** The owned library items a world's copies follow, with their content, ready for the synchronization
  *  pass. Items belonging to another author are listed without content: their updates are reviewed, not
  *  pushed. */

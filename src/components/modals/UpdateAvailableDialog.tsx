@@ -22,9 +22,9 @@ import type { Dictionary, Entity } from '@/types';
 /** A row's key. A world can hold the same library item twice, so the copy is part of the identity. */
 const rowKey = (row: UpdateRow) => `${row.worldId}:${row.itemId}`;
 
-/** Two values side by side, under what they belong to. */
-function Comparison({ label, current, incoming }: {
-  label: string; current?: string; incoming?: string;
+/** Two values side by side, under what they belong to. `side` names where the incoming value came from. */
+function Comparison({ label, current, incoming, side }: {
+  label: string; current?: string; incoming?: string; side: string;
 }) {
   return (
     <div className="space-y-1 rounded-md border p-2">
@@ -36,7 +36,7 @@ function Comparison({ label, current, incoming }: {
       )}
       {incoming !== undefined && (
         <Meta as="p" className="whitespace-pre-wrap break-words">
-          <span className="font-medium">Library: </span>{incoming}
+          <span className="font-medium">{side}: </span>{incoming}
         </Meta>
       )}
     </div>
@@ -44,34 +44,42 @@ function Comparison({ label, current, incoming }: {
 }
 
 /** One group of entry comparisons, drawn only when the group has something in it. */
-function EntryGroup({ title, rows }: { title: string; rows: ContentDiff['changedEntries'] }) {
+function EntryGroup({ title, rows, side }: {
+  title: string; rows: ContentDiff['changedEntries']; side: string;
+}) {
   if (!rows.length) return null;
   return (
     <div className="space-y-2">
       <Meta as="p" className="font-medium">{title}</Meta>
       {rows.map((row) => (
-        <Comparison key={`${title}:${row.key}`} label={row.label} current={row.current} incoming={row.incoming} />
+        <Comparison
+          key={`${title}:${row.key}`}
+          label={row.label}
+          current={row.current}
+          incoming={row.incoming}
+          side={side}
+        />
       ))}
     </div>
   );
 }
 
 /** What the source changed, changed content first and unchanged content behind its own disclosure. */
-function ChangeList({ diff }: { diff: ContentDiff }) {
+function ChangeList({ diff, side }: { diff: ContentDiff; side: string }) {
   const [showUnchanged, setShowUnchanged] = useState(false);
   const unchangedCount = diff.unchanged.length + diff.unchangedEntries.length;
 
   return (
     <div className="space-y-3">
       {!diffHasChanges(diff) && (
-        <Meta as="p">The library item changed nothing this copy holds.</Meta>
+        <Meta as="p">The {side.toLowerCase()} changed nothing this copy holds.</Meta>
       )}
       {diff.changed.map((row) => (
-        <Comparison key={row.field} label={row.label} current={row.current} incoming={row.incoming} />
+        <Comparison key={row.field} label={row.label} current={row.current} incoming={row.incoming} side={side} />
       ))}
-      <EntryGroup title="Changed Entries" rows={diff.changedEntries} />
-      <EntryGroup title="Added Entries" rows={diff.addedEntries} />
-      <EntryGroup title="Removed Entries" rows={diff.removedEntries} />
+      <EntryGroup title="Changed Entries" rows={diff.changedEntries} side={side} />
+      <EntryGroup title="Added Entries" rows={diff.addedEntries} side={side} />
+      <EntryGroup title="Removed Entries" rows={diff.removedEntries} side={side} />
 
       {unchangedCount > 0 && (
         <CollapsibleSection
@@ -80,9 +88,9 @@ function ChangeList({ diff }: { diff: ContentDiff }) {
           onOpenChange={setShowUnchanged}
         >
           {diff.unchanged.map((row) => (
-            <Comparison key={row.field} label={row.label} current={row.current} />
+            <Comparison key={row.field} label={row.label} current={row.current} side={side} />
           ))}
-          <EntryGroup title="Unchanged Entries" rows={diff.unchangedEntries} />
+          <EntryGroup title="Unchanged Entries" rows={diff.unchangedEntries} side={side} />
         </CollapsibleSection>
       )}
     </div>
@@ -90,9 +98,11 @@ function ChangeList({ diff }: { diff: ContentDiff }) {
 }
 
 /** One world, its chosen action, and the comparison it can open. */
-function WorldUpdateRow({ row, action, diff, failure, busy, onChoose, onExpand, onRetry }: {
+function WorldUpdateRow({ row, action, diff, failure, busy, side, onChoose, onExpand, onRetry }: {
   row: UpdateRow;
   action: UpdateAction;
+  /** What the comparison calls the incoming side. */
+  side: string;
   /** The comparison, once View Changes has loaded it. */
   diff: ContentDiff | null | undefined;
   failure?: string;
@@ -141,12 +151,23 @@ function WorldUpdateRow({ row, action, diff, failure, busy, onChoose, onExpand, 
           >
             {diff === undefined ? <Meta as="p">Reading this copy.</Meta>
               : diff === null ? <p className="text-meta text-destructive">Formamorph could not read this copy.</p>
-                : <ChangeList diff={diff} />}
+                : <ChangeList diff={diff} side={side} />}
           </CollapsibleSection>
         </>
       )}
     </li>
   );
+}
+
+/** A review whose incoming content came from an imported file rather than from the library item. */
+export interface IncomingFile {
+  /** What each comparison calls the incoming side. One word, because it labels a value inline. */
+  label: string;
+  /** The sentence the review opens with. */
+  description: string;
+  /** Write the incoming content into the library item. Run once before the rows are applied, so every
+   *  world updates to the revision the item then holds. Must be safe to run again after a retry. */
+  commit: () => Promise<void>;
 }
 
 export interface UpdateAvailableDialogProps {
@@ -158,6 +179,8 @@ export interface UpdateAvailableDialogProps {
   rows: UpdateRow[];
   /** Worlds whose copies are held in memory, read and written there rather than in storage. */
   live?: LiveWorld[];
+  /** Present when the review is about a file the player imported. */
+  incoming?: IncomingFile;
   onClose: () => void;
 }
 
@@ -168,7 +191,7 @@ export interface UpdateAvailableDialogProps {
  * that fails keeps the content it had and offers Retry, while every other world's result stands.
  */
 export function UpdateAvailableDialog({
-  source, sourceData, rows, live, onClose,
+  source, sourceData, rows, live, incoming, onClose,
 }: UpdateAvailableDialogProps) {
   const [actions, setActions] = useState<Record<string, UpdateAction>>({});
   const [diffs, setDiffs] = useState<Record<string, ContentDiff | null | undefined>>({});
@@ -207,6 +230,17 @@ export function UpdateAvailableDialog({
     setApplying(true);
     const broke: Record<string, string> = {};
     let done = 0;
+    // The library item takes the incoming content first: a world told to update follows that item, so
+    // updating a world before the item holds the revision would leave the two disagreeing.
+    if (incoming) {
+      try {
+        await incoming.commit();
+      } catch (error) {
+        setApplying(false);
+        toast.error((error as Error).message || 'Could not save the imported content to your library.');
+        return;
+      }
+    }
     for (const row of targets) {
       try {
         await applyUpdate(row, actions[rowKey(row)] ?? defaultAction(row.state), source, sourceData, live);
@@ -246,7 +280,8 @@ export function UpdateAvailableDialog({
           <DialogDescription>
             {failed.length
               ? 'These worlds kept the content they had. Retry each one, or close the review.'
-              : `The library ${noun} “${source?.name ?? ''}” changed. Choose what each world does.`}
+              : incoming?.description
+                ?? `The library ${noun} “${source?.name ?? ''}” changed. Choose what each world does.`}
           </DialogDescription>
         </DialogHeader>
 
@@ -262,6 +297,7 @@ export function UpdateAvailableDialog({
                   diff={diffs[key]}
                   failure={failures[key]}
                   busy={applying}
+                  side={incoming?.label ?? 'Library'}
                   onChoose={(next) => setActions((held) => ({ ...held, [key]: next }))}
                   onExpand={() => { void loadDiff(row); }}
                   onRetry={() => { void runRows([row]); }}

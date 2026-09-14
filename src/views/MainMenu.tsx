@@ -136,6 +136,10 @@ import {
 } from '@/lib/communityListingHandoff';
 import { isStaff } from "@/lib/roles";
 import { Checkbox } from "@/components/ui/checkbox";
+import { BundledContentChoice } from "@/components/BundledContentChoice";
+import { hasComponentLinks, readComponentFileLinks, type ComponentFileLinks } from "@/lib/componentFileLinks";
+import { useComponentFileImport } from "@/lib/useComponentFileImport";
+import { resolveImportedWorld } from "@/lib/worldBundleRun";
 import { useReadmeVisibility } from "@/lib/useReadmeVisibility";
 import ReadmeModal from "@/components/game/ReadmeModal";
 import { buildEnterFlow, navigableSteps, type EnterMode, type EnterStep, type NavigableStep } from "@/lib/enterFlow";
@@ -262,15 +266,6 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
   // library holding no world that rewrites a prompt. Never set in prod.
   const [devPromptSample, setDevPromptSample] = useState<WorldOverview | null>(null);
   const promptOverview = selectedWorld?.data?.worldOverview ?? devPromptSample ?? undefined;
-  // A required source the world's last check found removed. Read from that recorded answer alone: a check
-  // runs only when the author asks for one in the World Editor, so opening this menu makes no request and
-  // an installed world stays playable offline. Editing and loading a save are never gated — repair lives in
-  // the editor, and a game already under way keeps the content it started with.
-  const sourceBlock = useMemo(() => {
-    if (!selectedWorld) return null;
-    const record = readSourceCheck(selectedWorld.id);
-    return sourceBlockReason(linkedSourceCopies(selectedWorld.data, record.required), record.results);
-  }, [selectedWorld]);
   // DEV only: canned rows for the Connect World References step, which in the app only opens mid-add inside
   // the World Editor. Never set in prod.
   const [devReferences, setDevReferences] = useState<ReferenceRow[] | null>(null);
@@ -322,6 +317,17 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
   // World Editor as an in-place modal (keeps MainMenu mounted so it animates and only the world grid
   // refreshes on close). The editor's own back arrow + unsaved-changes prompt handle the dirty guard.
   const [showWorldEditor, setShowWorldEditor] = useState(false);
+  // A required source the world's last check found removed. Read from that recorded answer alone: a check
+  // runs only when the author asks for one in the World Editor, so opening this menu makes no request and
+  // an installed world stays playable offline. Editing and loading a save are never gated — repair lives in
+  // the editor, and a game already under way keeps the content it started with.
+  // Re-read on the editor closing as well as on the world changing: a check run in there writes the record
+  // without touching the world, so keying on the world alone would hold a stale answer.
+  const sourceBlock = useMemo(() => {
+    if (!selectedWorld || showWorldEditor) return null;
+    const record = readSourceCheck(selectedWorld.id);
+    return sourceBlockReason(linkedSourceCopies(selectedWorld.data, record.required), record.results);
+  }, [selectedWorld, showWorldEditor]);
   const [worldToDelete, setWorldToDelete] = useState<string | null>(null);
   const [warmingOffline, setWarmingOffline] = useState(false);
   const [showCharacterCustomization, setShowCharacterCustomization] = useState(false);
@@ -920,6 +926,29 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
     void refreshDictionaries();
   }, [refreshWorlds, refreshEntities, refreshDictionaries]);
 
+  // Importing a component file: the worlds it says it suits, and the update review a file whose source is
+  // already in the library opens instead.
+  const findAssociatedWorld = useCallback((listingId: string) => {
+    setPendingListing({ id: listingId, kind: 'world' });
+    setShowCommunityBrowser(true);
+  }, []);
+  const componentImported = useCallback((kind: 'entity' | 'dictionary') => {
+    void (kind === 'dictionary' ? refreshDictionaries() : refreshEntities());
+  }, [refreshDictionaries, refreshEntities]);
+  const { reviewFile: reviewComponentFile, dialogs: componentImportDialogs } = useComponentFileImport({
+    onFindWorld: findAssociatedWorld,
+    onImported: componentImported,
+  });
+
+  // DEV: the import review only opens for a chosen file that names worlds, so its dev route supplies one.
+  // Its own effect rather than the main dev-route one, which runs before this hook is declared.
+  useEffect(() => {
+    if (!import.meta.env.DEV || devRoute?.modal !== 'importComponent') return;
+    void import('@/lib/devImportComponentSample').then(async (sample) => {
+      await reviewComponentFile('entity', sample.devImportContent(), await sample.devImportLinks());
+    });
+  }, [devRoute?.modal, reviewComponentFile]);
+
   // A stat's two boxes, each named by its timing, in the order the turn runs them.
   const statCodeBoxes = (stat: Stat) => ([
     ['Before the AI', stat.beforeCode] as const,
@@ -977,8 +1006,9 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
     let stored = 0;
     for (const file of files) {
       try {
-        // Sanitize at the import boundary: migrate any legacy/v1.2 shape to the current version.
-        const world = migrateWorld(JSON.parse(await file.text())) as World;
+        // Sanitize at the import boundary: migrate any legacy/v1.2 shape to the current version, then
+        // settle what the file's bundled content follows on this machine.
+        const world = await resolveImportedWorld(migrateWorld(JSON.parse(await file.text())) as World);
         const id = `uploaded-${randomUUID()}`;
         world.id = id;
         parsed.push({ world, id });
@@ -1035,17 +1065,29 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
   const importDictionaryFile = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const files = filesFrom(event);
     if (!files.length) return;
+    const parsed: { book: Dictionary; links: ComponentFileLinks }[] = [];
     let ok = 0, skipped = 0;
     for (const file of files) {
       try {
         // Foreign lorebooks (ST / character cards) carry no internal name — fall back to the filename.
         const fallbackName = file.name.replace(/\.[^.]+$/, '');
-        await addDictionaryToLibrary(parseDictionaryImport(JSON.parse(await file.text()), fallbackName));
-        ok++;
+        const raw = JSON.parse(await file.text());
+        parsed.push({ book: parseDictionaryImport(raw, fallbackName), links: readComponentFileLinks(raw) });
       } catch (err) {
         console.error('Error importing dictionary:', file.name, err);
         skipped++;
       }
+    }
+
+    // A lone file that carries relationships is reviewed; everything else lands straight in the library.
+    if (parsed.length === 1 && !skipped && hasComponentLinks(parsed[0].links)) {
+      await reviewComponentFile('dictionary', parsed[0].book, parsed[0].links);
+      return;
+    }
+
+    for (const { book } of parsed) {
+      try { await addDictionaryToLibrary(book); ok++; }
+      catch (err) { console.error('Error importing dictionary:', book.name, err); skipped++; }
     }
     if (ok || skipped) importSummaryToast(ok, skipped, { one: 'dictionary', many: 'dictionaries' });
   };
@@ -1056,11 +1098,20 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
     const files = filesFrom(event);
     if (!files.length) return;
 
-    const parsed: { entity: Entity; book: Dictionary | null }[] = [];
+    const parsed: { entity: Entity; book: Dictionary | null; links: ComponentFileLinks }[] = [];
     let skipped = 0;
     for (const file of files) {
       try { parsed.push(await importCharacterFile(file)); }
       catch (err) { console.error('Error importing character:', file.name, err); skipped++; }
+    }
+
+    // A lone card that carries relationships is reviewed. Its portrait still goes through the downscale
+    // offer first, so the review stores the same picture an ordinary import would.
+    if (parsed.length === 1 && !skipped && hasComponentLinks(parsed[0].links)) {
+      const mode = await promptImagesBatch(entityImages(parsed[0].entity), IMAGE_CAPS.entity);
+      const record = await applyEntityImagesOptimize(parsed[0].entity, mode, () => {});
+      await reviewComponentFile('entity', record, parsed[0].links);
+      return;
     }
 
     if (parsed.length) {
@@ -1872,6 +1923,10 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
       />
       <BackupRestoreDialog open={showBackup} onOpenChange={setShowBackup} />
 
+      {/* The component-file import review, and the update review a file of a source you already hold
+          opens in its place. */}
+      {componentImportDialogs}
+
       {/* Main-menu Load Game: no current world (root view), cold-loads the chosen save into its own world. */}
       <LoadGameDialog open={showLoadDialog} onOpenChange={setShowLoadDialog} onLoad={handleColdLoad} />
 
@@ -2358,10 +2413,19 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
               }
               actions={
                 <div className="space-y-2">
+                  {/* The blocked action's own way to the repair, which lives in the editor's issue list. */}
                   {sourceBlock && (
-                    <p role="alert" className="rounded-md border border-destructive/40 bg-destructive/10 p-2 text-meta text-destructive">
-                      {sourceBlock}
-                    </p>
+                    <div role="alert" className="space-y-2 rounded-md border border-destructive/40 bg-destructive/10 p-2">
+                      <p className="text-meta text-destructive">{sourceBlock}</p>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="h-6 px-2 text-meta"
+                        onClick={() => setShowWorldEditor(true)}
+                      >
+                        Repair Sources
+                      </Button>
+                    </div>
                   )}
                   <div className="flex">
                     <WorldActionButton
@@ -2507,6 +2571,20 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
 
             {/* Entry options sit opposite the pin so the two kinds of control stay visually separate. */}
             <div className="ml-auto flex flex-wrap items-center gap-x-6 gap-y-2">
+              {/* Unlike its neighbours this one rewrites the stored world, so it draws only for an
+                  imported world that still has bundled content to decide about. */}
+              {selectedWorld && (
+                <BundledContentChoice
+                  worldId={selectedWorld.id}
+                  data={selectedWorld.data}
+                  onApplied={(data) => {
+                    setSelectedWorld((held) => (held ? { ...held, data } : held));
+                    // The editor opens on the store, so it has to hold what was just written.
+                    loadWorldData(data, true);
+                  }}
+                />
+              )}
+
               {customPromptKinds.length > 0 && selectedWorld && (
                 <div className="flex items-center gap-2">
                   <Checkbox

@@ -1,16 +1,20 @@
 import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
 import { toast } from 'react-toastify';
-import { UpdateAvailableDialog } from '@/components/modals/UpdateAvailableDialog';
+import { UpdateAvailableDialog, type IncomingFile } from '@/components/modals/UpdateAvailableDialog';
 import { affectedCopies, type LiveWorld } from '@/lib/componentUpdateRun';
 import type { UpdateRow } from '@/lib/componentUpdates';
-import { libraryItemData, libraryItems, type LibraryKind } from '@/lib/librarySources';
-import type { LibrarySource, LinkableContent } from '@/lib/linkedContent';
+import {
+  libraryItemData, libraryItems, replaceLibraryItemContent, type LibraryKind,
+} from '@/lib/librarySources';
+import { contentMatchesSource, type LibrarySource, type LinkableContent } from '@/lib/linkedContent';
 
 /** One review in progress: the item checked, its content, and the worlds behind it. */
 interface Review {
   source: LibrarySource;
   sourceData: LinkableContent | null;
   rows: UpdateRow[];
+  /** Present when the content under review came from an imported file. */
+  incoming?: IncomingFile;
 }
 
 /**
@@ -47,15 +51,62 @@ export function useComponentUpdates(live?: LiveWorld[]) {
     }
   }, []);
 
+  /**
+   * Review an imported file against the library item its source already has here.
+   *
+   * The file is the incoming revision: nothing is written until Apply Updates, which saves it to the
+   * library item and then runs each world's answer. A file that matches the item changes nothing, and a
+   * file no world holds a copy of is simply saved.
+   *
+   * @param kind - Which library the item is in
+   * @param libraryId - The library item the file's source names here
+   * @param content - The file's content
+   */
+  const reviewImportedFile = useCallback(async (
+    kind: LibraryKind, libraryId: string, content: LinkableContent,
+  ) => {
+    const item = (await libraryItems(kind)).find((row) => row.id === libraryId);
+    if (!item) throw new Error('The library item this file follows is gone.');
+
+    const held = await libraryItemData(kind, libraryId);
+    if (held && contentMatchesSource(content, held)) {
+      toast.info(`"${item.name}" already holds what this file carries.`);
+      return;
+    }
+
+    // One marker for the whole review, so a retry writes the same revision rather than a second one.
+    const revision = new Date().toISOString();
+    const commit = () => replaceLibraryItemContent(kind, libraryId, content, revision);
+    const source: LibrarySource = { ...item, revision };
+    const rows = await affectedCopies(source, liveRef.current);
+    if (!rows.length) {
+      await commit();
+      toast.success(`"${item.name}" updated from the imported file.`);
+      return;
+    }
+
+    setReview({
+      source,
+      sourceData: content,
+      rows,
+      incoming: {
+        label: 'File',
+        description: `The imported file differs from the library ${kind === 'dictionary' ? 'dictionary' : 'entity'} “${item.name}”. Choose what each world does.`,
+        commit,
+      },
+    });
+  }, []);
+
   const updateDialog: ReactNode = (
     <UpdateAvailableDialog
       source={review?.source ?? null}
       sourceData={review?.sourceData ?? null}
       rows={review?.rows ?? []}
       live={live}
+      incoming={review?.incoming}
       onClose={() => setReview(null)}
     />
   );
 
-  return { checkForUpdates, updateDialog };
+  return { checkForUpdates, reviewImportedFile, updateDialog };
 }

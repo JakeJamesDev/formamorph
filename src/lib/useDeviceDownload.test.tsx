@@ -9,12 +9,16 @@ const mocks = vi.hoisted(() => ({
   downloadBlob: vi.fn(),
   serializeJsonBlob: vi.fn(async (value: unknown) => new Blob([JSON.stringify(value)])),
   exportEntityCard: vi.fn(async () => new Blob(['card'], { type: 'image/webp' })),
+  fetchListingDetails: vi.fn(async () => null as { compatibleWorlds?: { id: string; name: string }[] } | null),
 }));
 
 vi.mock('./fetchCatalogContent', () => ({ fetchCatalogContent: mocks.fetchCatalogContent }));
 vi.mock('./downloadBlob', () => ({ downloadBlob: mocks.downloadBlob }));
 vi.mock('./jsonFileWorkerUtils', () => ({ serializeJsonBlob: mocks.serializeJsonBlob }));
 vi.mock('./entityFile', () => ({ exportEntityCard: mocks.exportEntityCard }));
+vi.mock('@/services/WorldStorageService', () => ({
+  default: { fetchListingDetails: mocks.fetchListingDetails },
+}));
 vi.mock('react-toastify', () => ({ toast: { error: vi.fn(), success: vi.fn() } }));
 
 import { toast } from 'react-toastify';
@@ -90,7 +94,12 @@ describe('useDeviceDownload', () => {
 
     await act(async () => { await result.current.download(entityListing); });
 
-    expect(mocks.exportEntityCard).toHaveBeenCalledWith(expect.objectContaining({ name: 'River Warden' }));
+    // The card names the listing it came from, so an importer can reconnect it.
+    expect(mocks.exportEntityCard).toHaveBeenCalledWith(
+      expect.objectContaining({ name: 'River Warden' }),
+      undefined,
+      { source: { sourceId: 'entity-listing', sourceName: 'River Warden' } },
+    );
     expect(mocks.downloadBlob).toHaveBeenLastCalledWith(expect.any(Blob), 'River Warden.webp');
     const entityBytes = new Uint8Array(await vi.mocked(mocks.downloadBlob).mock.calls[0][0].arrayBuffer());
     const entityJson = readEntityCard(entityBytes);
@@ -102,6 +111,34 @@ describe('useDeviceDownload', () => {
     expect(mocks.downloadBlob).toHaveBeenLastCalledWith(expect.any(Blob), 'Harbor Terms.json');
     const payload = JSON.parse(await blobText(vi.mocked(mocks.downloadBlob).mock.calls[1][0]));
     expect(parseDictionaryFile(payload)).toMatchObject({ name: 'Harbor Terms', entries: [] });
+    expect(payload.source).toEqual({ sourceId: 'dictionary-listing', sourceName: 'Harbor Terms' });
+  });
+
+  it('writes the worlds a component listing is offered for, so an importer can link them', async () => {
+    const { result } = renderHook(() => useDeviceDownload());
+    mocks.fetchCatalogContent.mockResolvedValueOnce({ id: 'dictionary-content', name: 'Harbor Terms', entries: [] });
+    mocks.fetchListingDetails.mockResolvedValueOnce({
+      compatibleWorlds: [{ id: 'world-listing', name: 'Sedge Landing' }],
+    });
+
+    await act(async () => { await result.current.download(dictionaryListing); });
+
+    const payload = JSON.parse(await blobText(vi.mocked(mocks.downloadBlob).mock.calls[0][0]));
+    expect(payload.associations).toEqual([{ id: 'world-listing', name: 'Sedge Landing' }]);
+    // The file names the world; it never carries it.
+    expect(payload.worldOverview).toBeUndefined();
+  });
+
+  it('writes a component file with no associations when the server cannot be reached', async () => {
+    const { result } = renderHook(() => useDeviceDownload());
+    mocks.fetchCatalogContent.mockResolvedValueOnce({ id: 'dictionary-content', name: 'Harbor Terms', entries: [] });
+    mocks.fetchListingDetails.mockResolvedValueOnce(null);
+
+    await act(async () => { await result.current.download(dictionaryListing); });
+
+    const payload = JSON.parse(await blobText(vi.mocked(mocks.downloadBlob).mock.calls[0][0]));
+    expect(payload.associations).toBeUndefined();
+    expect(parseDictionaryFile(payload)).toMatchObject({ name: 'Harbor Terms' });
   });
 
   it('writes the Avatar\'s own .vrm bytes rather than a JSON wrapper', async () => {
