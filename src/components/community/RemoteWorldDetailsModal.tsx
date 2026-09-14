@@ -4,7 +4,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import IndeterminateProgress from "@/components/ui/indeterminate-progress";
-import { Globe, Columns2, RectangleVertical, Pencil, Trash2, X, Flag } from "lucide-react";
+import { Globe, Columns2, RectangleVertical, Pencil, Trash2, X, Flag, EyeOff } from "lucide-react";
 import { ActionIcon } from "@/lib/actionIcons";
 import { THUMB_FRAME, thumbFit } from "@/lib/thumbAspect";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
@@ -18,7 +18,10 @@ import { useCachedThumbnail } from "@/lib/useCachedThumbnail";
 import { WorldDetailsColumn, DateTimeText, splitColumnClasses, type WorldRecord } from "@/components/WorldDetails";
 import { formatServerDateTime } from "@/lib/serverDate";
 import { type DownloadState } from "@/lib/downloadState";
-import { KIND_LABELS, kindOf } from "@/lib/catalogKinds";
+import { KIND_LABELS, kindOf, type CatalogKind } from "@/lib/catalogKinds";
+import { componentKind } from "@/lib/worldDependencies";
+import { associationGroups } from "@/lib/listingAssociations";
+import { ListingCompatibleWorlds } from "@/components/community/ListingCompatibleWorlds";
 import WorldStorageService from "@/services/WorldStorageService";
 import { UserAvatar } from "@/components/UserAvatar";
 import { UserName } from "@/components/UserName";
@@ -36,6 +39,8 @@ import { PlaceBadges } from "@/components/PlaceBadges";
 import { placementsBy } from "@/lib/contests";
 import { Tip } from "@/components/ui/tooltip";
 import { VrmFileDetails } from "@/components/VrmFileDetails";
+import type { ListingVisibility } from "@/lib/publishLinks";
+import type { WorldAssociation } from "@/lib/compatibleWorlds";
 import type { ServerEvent, VrmLicense } from "@/types";
 import type { CommunityBrowserCapabilities } from '@/lib/communityBrowserCapabilities';
 
@@ -68,6 +73,9 @@ interface RemoteWorldDetailsModalProps {
   openLikersOnMount?: boolean;
   /** A read-only action supplied by the surface that opened this listing. */
   detailsAction?: ReactNode;
+  /** Opens another listing in place of this one, for the worlds a component names. Absent leaves those
+   *  worlds plain names, which is what a surface with only one listing to show wants. */
+  onOpenListing?: (listing: { id: string; kind: CatalogKind }) => void;
 }
 
 /** The same cap a feedback comment carries, so the two comment boxes hold the same amount. */
@@ -87,7 +95,7 @@ export function RemoteWorldDetailsModal({
   isAuthenticated, openImageViewer, downloadStateForWorld, downloadProgress, onContextualDownload, onDeviceDownload,
   currentUser, onLike, onGuestLike, contests = [], onLikesChanged, openLikersOnMount = false,
   capabilities = APP_DETAILS_CAPABILITIES,
-  detailsAction,
+  detailsAction, onOpenListing,
 }: RemoteWorldDetailsModalProps) {
   const [comments, setComments] = useState<WorldRecord[]>([]);
   const [commentsTotal, setCommentsTotal] = useState(0);
@@ -107,6 +115,10 @@ export function RemoteWorldDetailsModal({
   // An Avatar's own license terms, read from the file at publish. Undefined for every other kind, and
   // against a server that predates the field.
   const [modelLicense, setModelLicense] = useState<VrmLicense | undefined>(undefined);
+  // What worlds this component is offered for, and whether it is in the catalog at all. Both are absent
+  // against a server that predates them, which leaves their surfaces off rather than wrong.
+  const [associations, setAssociations] = useState<WorldAssociation[] | undefined>(undefined);
+  const [listingVisibility, setListingVisibility] = useState<ListingVisibility | undefined>(undefined);
   const [tab, setTab] = useState<ChangelogTab>('comments');
   // What the report dialog is aimed at, or null when it is closed. One dialog for both the listing and
   // any comment on it — they differ only in what they point at.
@@ -116,6 +128,14 @@ export function RemoteWorldDetailsModal({
 
   // What this world requires and what it is offered as an add-on, read only while the listing is open.
   const downloadPlan = useWorldDownloadPlan(world, open && capabilities.localLibrary);
+
+  // Only a component is offered for worlds, so a world's own listing never draws the section — whatever
+  // an older payload happens to carry under the field.
+  const listingComponentKind = world ? componentKind(world) : null;
+
+  // The catalog row answers at once and the listing read corrects it, so the marker does not appear a
+  // beat after the rest of the window.
+  const unlisted = (listingVisibility ?? world?.visibility) === 'unlisted';
 
   // Off entirely for a signed-out reader and against a server without the feature, so no surface here
   // ever offers an action that would be refused.
@@ -215,6 +235,8 @@ export function RemoteWorldDetailsModal({
     const entries = details?.changelog ?? null;
     setChangelog(entries);
     setModelLicense(details?.modelLicense);
+    setAssociations(details?.compatibleWorlds);
+    setListingVisibility(details?.visibility);
     setTab(defaultChangelogTab(entries, downloadStateForWorld(forWorld)));
   };
 
@@ -229,6 +251,8 @@ export function RemoteWorldDetailsModal({
       // name for the frames before the fetch answers.
       setChangelog(null);
       setModelLicense(undefined);
+      setAssociations(undefined);
+      setListingVisibility(undefined);
       setTab('comments');
       setReportTarget(null);
       loadComments(world._id || world.id, COMMENTS_PAGE);
@@ -255,6 +279,14 @@ export function RemoteWorldDetailsModal({
   // Who liked something is a moderation surface, not a social one: an author does not get it on their
   // own listing, and nothing on screen tells anybody else it exists.
   const canSeeLikers = capabilities.moderation && isStaff(currentUser);
+
+  // An offer the world's author turned away is the component author's business and the staff's. The
+  // server already withholds it from everybody else; this decides it again rather than trusting a row
+  // that arrived.
+  const worldGroups = useMemo(
+    () => associationGroups(associations, isOwnListing || isStaff(currentUser)),
+    [associations, isOwnListing, currentUser],
+  );
 
   // The modal outlives the listing it is showing — it stays mounted while the catalog is browsed — so a
   // likers list left open would reopen itself over whichever listing came next, unasked.
@@ -383,6 +415,20 @@ export function RemoteWorldDetailsModal({
                 })()}
                 meta={
                   <div className="grid grid-cols-2 gap-4">
+                    {/* Only its author and the staff ever open an unlisted listing, so it says plainly
+                        what unlisted costs rather than badging a state nobody can act on. */}
+                    {unlisted && (
+                      <div className="col-span-2 rounded-md border border-warning/40 bg-warning/10 px-2 py-1 text-meta">
+                        <p className="flex items-center gap-1 font-medium text-warning">
+                          <EyeOff className="h-3 w-3 shrink-0" /> Unlisted
+                        </p>
+                        <p className="text-muted-foreground">
+                          This {KIND_LABELS[kindOf(world)].one.toLowerCase()} is out of Community Creations.
+                          Other players receive it only inside a world that requires it.
+                        </p>
+                      </div>
+                    )}
+
                     {/* Full width so the two counts below pair off on a row of their own — they are the
                         comparison the pair exists to make. */}
                     <div className="col-span-2">
@@ -396,6 +442,18 @@ export function RemoteWorldDetailsModal({
                     {/* What the download installs beside the world, and what the player may add to it.
                         Absent for a world that follows nothing, and against a server without the routes. */}
                     {capabilities.localLibrary && <DownloadLinkedContent review={downloadPlan} />}
+
+                    {/* Where a component fits, for a player deciding whether to take it. Each world is a
+                        download of its own; this one installs the component and nothing else. */}
+                    {listingComponentKind && (
+                      <ListingCompatibleWorlds
+                        groups={worldGroups}
+                        kind={listingComponentKind}
+                        {...(onOpenListing
+                          ? { onOpenWorld: (worldId: string) => onOpenListing({ id: worldId, kind: 'world' }) }
+                          : {})}
+                      />
+                    )}
 
                     <div>
                       <h3 className="text-helper font-semibold text-muted-foreground">Downloads</h3>

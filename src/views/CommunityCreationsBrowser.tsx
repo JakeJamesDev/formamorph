@@ -14,7 +14,7 @@ import { Tabs, TabsContent } from "@/components/ui/tabs";
 import { Tip } from "@/components/ui/tooltip";
 import { CATALOG_KINDS, KIND_LABELS, kindOf, type CatalogKind } from "@/lib/catalogKinds";
 import { BROWSE_TABS, BROWSE_TAB_LABELS, type BrowseTab } from "@/lib/browseTabs";
-import { listingRef, type ListingRef } from "@/lib/worldDependencies";
+import { listingId, listingRef, type ListingRef } from "@/lib/worldDependencies";
 import { contestPhase, placementsBy, entriesOf, orderContestEntries } from "@/lib/contests";
 import { isContestEvent } from "@/lib/serverEvents";
 import { useContests } from "@/lib/useContests";
@@ -628,6 +628,23 @@ const CommunityCreationsBrowser = ({
     onListingChange?.({ id: String(world._id || world.id), kind: kindOf(world) });
   };
 
+  /**
+   * Follow a listing named by the one on screen — the worlds a component is offered for.
+   *
+   * Resolved out of the catalog in hand, like every other way into the details window. A listing that is
+   * not there is said so rather than swapped in blank: the section that named it was drawn from the
+   * server's answer, which can be older than this catalog.
+   */
+  const handleOpenNamedListing = (named: CommunityListing) => {
+    const found = remoteWorlds.find((w) => listingId(w) === named.id && kindOf(w) === named.kind);
+    if (!found) {
+      toast.info('That listing is no longer in Community Creations');
+      return;
+    }
+    setBrowseTab(kindOf(found));
+    handleViewRemoteWorldDetails(found);
+  };
+
   // A listing named from outside — a notification feed row. The catalog is one request for every kind, so
   // there is nothing to fetch: switch to its tab and open it once the catalog is in hand. The list at
   // arrival may be last visit's snapshot (or still empty), so a lookup miss only counts once a refresh
@@ -1190,6 +1207,7 @@ const CommunityCreationsBrowser = ({
         contests={contests}
         capabilities={capabilities}
         detailsAction={detailsAction}
+        onOpenListing={handleOpenNamedListing}
       />
 
       {/* What a download could not finish. A required failure leaves the world pending; a failed add-on
