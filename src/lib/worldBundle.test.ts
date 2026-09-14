@@ -62,6 +62,33 @@ describe('resolveBundledLinks', () => {
     });
   });
 
+  it('sets a record aside with its listing and revisions gone, so it reads as no link at all', () => {
+    const world = {
+      entities: [entity('e1', {
+        libraryId: 'their-lib', sourceId: 'listing-1', sourceRevision: 'their-r1', reviewedRevision: 'their-r1',
+        sourceName: 'Sedge',
+      })],
+      dictionaries: [],
+    };
+
+    const resolved = resolveBundledLinks(world, []);
+
+    expect(resolved.entities[0].link).toEqual({ bundledFrom: 'their-lib', sourceName: 'Sedge' });
+  });
+
+  it('sets a record aside the same way embedding a linked one does', () => {
+    const link: ContentLink = { libraryId: 'their-lib', sourceId: 'listing-1', sourceRevision: 'r1', sourceName: 'Sedge' };
+    const world = { entities: [entity('e1', link)], dictionaries: [] };
+
+    const fresh = resolveBundledLinks(world, []);
+    const placed = followBundled(fresh, new Map([['their-lib', { id: 'mine-1', name: 'Sedge', revision: 'r1', owned: true }]]));
+
+    // Placing renames the group after the local item; everything else must match.
+    const { bundledFrom: _placed, ...embedded } = embedBundled(placed).entities[0].link!;
+    const { bundledFrom: _theirs, ...set } = fresh.entities[0].link!;
+    expect(embedded).toEqual(set);
+  });
+
   it('repoints a record at the local item holding the same listing', () => {
     const world = {
       entities: [entity('e1', { libraryId: 'their-lib', sourceId: 'listing-1', sourceRevision: 'their-r1' })],

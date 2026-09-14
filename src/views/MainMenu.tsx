@@ -430,7 +430,7 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
     if (devRoute?.modal === 'auth') setShowAuthDialog(true);
     if (devRoute?.modal === 'feedbackHub') setShowFeedback(true);
     if (devRoute?.modal === 'adminPanel') setShowAdminPanel(true);
-    if (devRoute?.modal === 'worldEditor') setShowWorldEditor(true);
+    if (devRoute?.modal === 'worldEditor' || devRoute?.modal === 'replaceSource') setShowWorldEditor(true);
     if (devRoute?.modal === 'avatar') setShowCharacterCustomization(true);
     if (devRoute?.modal === 'aiSetup') setGate({ reason: 'firstRun' });
     // The prompt viewer reads a world's overrides, so it opens on a canned one rather than on whatever the
@@ -2586,7 +2586,7 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
 
             {/* Entry options sit opposite the pin so the two kinds of control stay visually separate. */}
             <div className="ml-auto flex flex-wrap items-center gap-x-6 gap-y-2">
-              {/* Unlike its neighbours this one rewrites the stored world, so it draws only for an
+              {/* Unlike its neighbors this one rewrites the stored world, so it draws only for an
                   imported world that still has bundled content to decide about. */}
               {selectedWorld && (
                 <BundledContentChoice

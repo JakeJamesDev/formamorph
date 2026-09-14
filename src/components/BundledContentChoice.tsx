@@ -34,6 +34,7 @@ export function BundledContentChoice({ worldId, data, onApplied }: BundledConten
     setBusy(true);
     try {
       const revised = next ? (await linkBundledContent(data)).world : embedBundled(data);
+      // The storage seam takes the loose record shape it stores; the world is exact above it.
       await WorldStorageService.updateWorldContent(worldId, () => revised as unknown as Record<string, unknown>);
       onApplied(revised);
       toast.success(next

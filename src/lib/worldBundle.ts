@@ -63,13 +63,20 @@ export function bundledListingIds(world: LinkedWorldContent): string[] {
   return [...ids];
 }
 
-/** The record a copy keeps when nothing local answers for it: the identity it arrived with, and the item
- *  it followed remembered as a bundle rather than as a link to something that is not here. */
+/** The record of a copy that follows nothing: the group it belongs to and its local notes, with the item,
+ *  the listing and the revisions all gone. A record with any of those reads as a linked source copy. */
+function bundledOnly(link: ContentLink, from: string): ContentLink {
+  const {
+    libraryId: _item, sourceId: _listing, sourceRevision: _held, reviewedRevision: _reviewed, ...rest
+  } = link;
+  return { ...rest, bundledFrom: from };
+}
+
+/** The record a copy keeps when nothing local answers for it: the item it followed remembered as a bundle
+ *  rather than as a link to something that is not here. */
 function asBundled(link: ContentLink): ContentLink {
   const from = text(link.libraryId) ?? text(link.sourceId);
-  if (!from) return link;
-  const { libraryId: _elsewhere, ...rest } = link;
-  return { ...rest, bundledFrom: from };
+  return from ? bundledOnly(link, from) : link;
 }
 
 /**
@@ -227,9 +234,6 @@ export function embedBundled<T extends LinkedWorldContent>(world: T): T {
   return mapContent(world, (copy) => {
     const from = text(copy.link?.bundledFrom);
     if (!from || !copy.link?.libraryId) return copy;
-    const {
-      libraryId: _released, sourceId: _listing, sourceRevision: _held, reviewedRevision: _reviewed, ...rest
-    } = copy.link;
-    return { ...copy, link: { ...rest, bundledFrom: from } };
+    return { ...copy, link: bundledOnly(copy.link, from) };
   });
 }

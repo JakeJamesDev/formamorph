@@ -71,8 +71,11 @@ export type DevView = (typeof DEV_VIEWS)[number];
  *  required set has actually moved. Apply closes it and writes nothing.
  *  `importComponent` raises the component-file import review on a canned file
  *  (`devImportComponentSample.ts`), because in the app it opens only for a chosen file that names worlds.
- *  Importing from it does write: the character lands in the library, and a world you tick gets a copy. */
-export const DEV_MODALS = ['settings', 'entity', 'export', 'menu', 'worldEditor', 'intro', 'avatar', 'backup', 'aiSetup', 'entityEditor', 'dictionaryEditor', 'modelDetails', 'community', 'memoryManager', 'profile', 'auth', 'feedbackHub', 'adminPanel', 'editText', 'location', 'changelog', 'eventAck', 'publish', 'worldPrompts', 'aiContext', 'ageGate', 'likers', 'privacyPolicy', 'deleteAccount', 'deletionCancelled', 'updateRequired', 'exitApp', 'designSystem', 'enterWorld', 'connectReferences', 'manageAddons', 'componentUpdates', 'worldUpdate', 'importComponent'] as const;
+ *  Importing from it does write: the character lands in the library, and a world you tick gets a copy.
+ *  `replaceSource` opens the World Editor and raises the Bench's Replace From Library picker over a canned
+ *  missing copy, because in the app it opens only from an Issues row whose source is gone. Replace
+ *  closes it and writes nothing. */
+export const DEV_MODALS = ['settings', 'entity', 'export', 'menu', 'worldEditor', 'intro', 'avatar', 'backup', 'aiSetup', 'entityEditor', 'dictionaryEditor', 'modelDetails', 'community', 'memoryManager', 'profile', 'auth', 'feedbackHub', 'adminPanel', 'editText', 'location', 'changelog', 'eventAck', 'publish', 'worldPrompts', 'aiContext', 'ageGate', 'likers', 'privacyPolicy', 'deleteAccount', 'deletionCancelled', 'updateRequired', 'exitApp', 'designSystem', 'enterWorld', 'connectReferences', 'manageAddons', 'componentUpdates', 'worldUpdate', 'importComponent', 'replaceSource'] as const;
 export type DevModal = (typeof DEV_MODALS)[number];
 
 /** Coverage ledger: tabbed surface → the sub-tabs the router can target (via `tab=…`). Kept in lockstep
