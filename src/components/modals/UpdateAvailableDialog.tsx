@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { toast } from 'react-toastify';
+import { HelpButton } from '@/components/HelpButton';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { CollapsibleSection } from '@/components/ui/collapsible-section';
@@ -142,7 +143,7 @@ function WorldUpdateRow({ row, action, diff, failure, busy, side, onChoose, onEx
               ))}
             </SelectContent>
           </Select>
-          {row.state === 'local-replacement' && <Hint>Keep Mine keeps this world's edits.</Hint>}
+          {row.state === 'local-replacement' && <Hint>Keep Mine keeps this world&apos;s edits.</Hint>}
 
           <CollapsibleSection
             title="View Changes"
@@ -276,7 +277,10 @@ export function UpdateAvailableDialog({
     <Dialog open={open} onOpenChange={(next) => { if (!next && !applying) onClose(); }}>
       <DialogContent className="flex max-h-[85dvh] flex-col sm:max-w-[640px]">
         <DialogHeader className="shrink-0">
-          <DialogTitle>Update Available</DialogTitle>
+          <DialogTitle className="flex items-center gap-2">
+            Update Available
+            <HelpButton topicId="library.linkedContent" initialTab="Updates" />
+          </DialogTitle>
           <DialogDescription>
             {failed.length
               ? 'These worlds were not updated. Select Apply Updates again, or close the review.'

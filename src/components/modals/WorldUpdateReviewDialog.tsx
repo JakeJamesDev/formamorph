@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
+import { HelpButton } from '@/components/HelpButton';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import {
@@ -65,7 +66,7 @@ function ComponentRow({ row, action, onChoose }: {
               ))}
             </SelectContent>
           </Select>
-          {row.state === 'local-replacement' && <Hint>Keep Mine keeps this world's edits.</Hint>}
+          {row.state === 'local-replacement' && <Hint>Keep Mine keeps this world&apos;s edits.</Hint>}
         </>
       )}
     </li>
@@ -106,7 +107,10 @@ export function WorldUpdateReviewDialog({ open, review, onApply, onCancel }: Wor
     <Dialog open={open} onOpenChange={(next) => { if (!next) onCancel(); }}>
       <DialogContent className="flex max-h-[85dvh] flex-col sm:max-w-[640px]">
         <DialogHeader className="shrink-0">
-          <DialogTitle>Update This World</DialogTitle>
+          <DialogTitle className="flex items-center gap-2">
+            Update This World
+            <HelpButton topicId="library.linkedContent" initialTab="Updates" />
+          </DialogTitle>
           <DialogDescription>
             {`Updating “${review?.localName ?? ''}” overwrites it with the author's current version. `}
             Select an action for each linked copy.

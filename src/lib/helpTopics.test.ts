@@ -1,3 +1,5 @@
+import { existsSync } from 'node:fs';
+import { resolve } from 'node:path';
 import { describe, it, expect } from 'vitest';
 import { HELP_TOPICS, helpWikiUrl } from './helpTopics';
 
@@ -33,6 +35,21 @@ describe('HELP_TOPICS registry', () => {
       expect(topic.title, id).toBeTruthy();
       expect(Boolean(topic.body) !== Boolean(topic.tabs), `${id} needs body or tabs, not both`).toBe(true);
     }
+  });
+
+  it('names a page under docs/ for every topic with a wiki page, so a renamed page cannot leave a dead Learn more', () => {
+    const missing = Object.entries(HELP_TOPICS)
+      .filter(([, t]) => t.wikiPage && !existsSync(resolve(__dirname, '../../docs', `${t.wikiPage}.md`)))
+      .map(([id, t]) => `${id} -> ${t.wikiPage}`);
+    expect(missing).toEqual([]);
+  });
+
+  it('registers the linked-content topic the link header and the review dialogs mount', () => {
+    const topic = HELP_TOPICS['library.linkedContent'];
+    expect(topic?.title).toBe('Linked Content');
+    expect(topic?.wikiPage).toBe('LinkedContent');
+    expect(helpWikiUrl(topic!)).toBe('https://github.com/JakeJamesDev/formamorph/wiki/LinkedContent');
+    expect(topic?.tabs?.map((t) => t.label)).toEqual(['Linked Copies', 'Updates', 'Publishing', 'Downloading', 'Repairs']);
   });
 
   it('registers the in-play entities topic the game panel mounts', () => {
