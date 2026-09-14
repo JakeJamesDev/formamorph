@@ -11,7 +11,9 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Meta } from '@/components/ui/typography';
 import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { CONTENT_LINK_LABELS } from '@/lib/contentLink';
 import type { DictionarySelectionItem } from '@/lib/dictionarySelection';
+import type { LibraryLines } from '@/lib/librarySources';
 import { useElementSize } from '@/lib/useElementSize';
 import { THUMB_FRAME, THUMB_INTRINSIC, thumbFit, type ThumbAspect } from '@/lib/thumbAspect';
 import { useIsMobile } from '@/lib/useIsMobile';
@@ -19,16 +21,21 @@ import { usePrefersReducedMotion } from '@/lib/usePrefersReducedMotion';
 import type { EntityMetadata } from '@/types';
 import { cn } from '@/lib/utils';
 
+/** One library character row: the metadata the card draws, plus the lines that tell same-named items apart. */
+export type EntityAddition = EntityMetadata & Partial<LibraryLines>;
+
 interface EnterWorldLibraryProps {
-  entities: EntityMetadata[];
+  entities: EntityAddition[];
   selectedEntityIds: Set<string>;
   dictionaryItems: DictionarySelectionItem[];
+  /** Who wrote the world, for the provenance line on its own dictionaries. */
+  worldAuthor?: string;
   onEntityToggle: (entityId: string, selected: boolean) => void;
   onDictionaryItemsChange: (items: DictionarySelectionItem[]) => void;
 }
 
 type InspectedAddition =
-  | { kind: 'entity'; entity: EntityMetadata }
+  | { kind: 'entity'; entity: EntityAddition }
   | { kind: 'dictionary'; item: DictionarySelectionItem; position: number };
 
 const entityInspectionKey = (id: string) => `entity:${id}`;
@@ -39,6 +46,22 @@ const displayName = (name: string) => name || 'Untitled';
 const DICTIONARY_LIST_MODIFIERS = [restrictToVerticalAxis, restrictToParentElement];
 
 const sourceLabel = (source: DictionarySelectionItem['source']) => source === 'world' ? 'World' : 'Library';
+
+/** Where a dictionary the world ships with came from, in the same words the library rows use. */
+const WORLD_SOURCE_LINE = 'This world';
+
+/** The line under a row's name. Two items can share a name, so this is what tells them apart. */
+const provenance = (authorLine: string | undefined, sourceLine: string | undefined): string | null => {
+  if (!sourceLine) return authorLine ?? null;
+  return authorLine ? `${authorLine} · ${sourceLine}` : sourceLine;
+};
+
+/** The provenance line for one dictionary row. A world book carries the world's own author. */
+const dictionaryProvenance = (item: DictionarySelectionItem, worldAuthor?: string): string | null => (
+  item.source === 'world'
+    ? provenance(worldAuthor?.trim() || undefined, WORLD_SOURCE_LINE)
+    : provenance(item.authorLine, item.sourceLine)
+);
 
 // Entities frame as portraits and dictionaries as landscapes, the same ratios the library cards use,
 // so the detail pane keeps one box whether or not the item has art.
@@ -74,8 +97,10 @@ function Artwork({ src, name, fallback, large = false }: {
   );
 }
 
-function AdditionLabel({ name, ariaLabel, buttonRef, onInspect }: {
+function AdditionLabel({ name, provenanceLine, selected, ariaLabel, buttonRef, onInspect }: {
   name: string;
+  provenanceLine: string | null;
+  selected: boolean;
   ariaLabel: string;
   buttonRef: (node: HTMLButtonElement | null) => void;
   onInspect: () => void;
@@ -85,10 +110,16 @@ function AdditionLabel({ name, ariaLabel, buttonRef, onInspect }: {
       ref={buttonRef}
       type="button"
       aria-label={ariaLabel}
-      className="block w-full truncate rounded-sm text-left outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset"
+      className="block w-full min-w-0 rounded-sm text-left outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset"
       onClick={(event) => { event.stopPropagation(); onInspect(); }}
     >
-      {name}
+      <span className="block truncate">{name}</span>
+      {provenanceLine && (
+        // The row inverts when it is selected, so the line follows its chrome rather than staying muted.
+        <span className={cn('block truncate text-meta', selected ? 'text-primary-foreground/80' : 'text-muted-foreground')}>
+          {provenanceLine}
+        </span>
+      )}
     </button>
   );
 }
@@ -118,9 +149,10 @@ function reorderVisibleItems(
   ));
 }
 
-function DictionaryRow({ item, selected, buttonRef, onInspect, onToggle }: {
+function DictionaryRow({ item, selected, worldAuthor, buttonRef, onInspect, onToggle }: {
   item: DictionarySelectionItem;
   selected: boolean;
+  worldAuthor?: string;
   buttonRef: (node: HTMLButtonElement | null) => void;
   onInspect: () => void;
   onToggle: (enabled: boolean) => void;
@@ -149,13 +181,17 @@ function DictionaryRow({ item, selected, buttonRef, onInspect, onToggle }: {
         label={(
           <AdditionLabel
             name={name}
+            provenanceLine={dictionaryProvenance(item, worldAuthor)}
+            selected={selected}
             ariaLabel={`Inspect ${name} from ${sourceLabel(item.source)}`}
             buttonRef={buttonRef}
             onInspect={onInspect}
           />
         )}
-        meta={sourceLabel(item.source)}
-        metaTitle={item.source === 'world' ? 'Bundled with this world' : 'From your library'}
+        meta={item.linked ? CONTENT_LINK_LABELS.linked : sourceLabel(item.source)}
+        metaTitle={item.linked
+          ? "This world's copy of a dictionary in your library"
+          : item.source === 'world' ? 'Bundled with this world' : 'From your library'}
       />
     </div>
   );
@@ -182,10 +218,11 @@ function DetailChoice({ id, checked, ariaLabel, label, onChange }: {
   );
 }
 
-function AdditionDetails({ addition, entitySelected, dictionaryTotal, headingRef, showBack, onEntityToggle, onDictionaryToggle, onMove, onBack }: {
+function AdditionDetails({ addition, entitySelected, dictionaryTotal, worldAuthor, headingRef, showBack, onEntityToggle, onDictionaryToggle, onMove, onBack }: {
   addition: InspectedAddition | null;
   entitySelected: boolean;
   dictionaryTotal: number;
+  worldAuthor?: string;
   headingRef: RefObject<HTMLHeadingElement>;
   showBack: boolean;
   onEntityToggle: (entityId: string, selected: boolean) => void;
@@ -204,6 +241,9 @@ function AdditionDetails({ addition, entitySelected, dictionaryTotal, headingRef
   const name = displayName(addition.kind === 'entity' ? addition.entity.name : addition.item.book.name);
   const description = addition.kind === 'entity' ? addition.entity.description : addition.item.book.description;
   const artwork = addition.kind === 'entity' ? addition.entity.image : addition.item.book.thumbnail;
+  const provenanceLine = addition.kind === 'entity'
+    ? provenance(addition.entity.authorLine, addition.entity.sourceLine)
+    : dictionaryProvenance(addition.item, worldAuthor);
   return (
     <div className={cn('space-y-5', showBack ? 'p-4' : 'pb-4')}>
       {showBack && (
@@ -226,6 +266,7 @@ function AdditionDetails({ addition, entitySelected, dictionaryTotal, headingRef
           <h3 ref={headingRef} tabIndex={-1} className="break-words text-heading font-semibold outline-none">
             {name}
           </h3>
+          {provenanceLine && <Meta className="mt-1 block break-words">{provenanceLine}</Meta>}
           <p className="mt-3 whitespace-pre-wrap text-body text-muted-foreground">
             {description?.trim() || 'No description is available.'}
           </p>
@@ -455,6 +496,8 @@ export default function EnterWorldLibrary(props: EnterWorldLibraryProps) {
                           label={(
                             <AdditionLabel
                               name={name}
+                              provenanceLine={provenance(entity.authorLine, entity.sourceLine)}
+                              selected={inspectedKey === key}
                               ariaLabel={`Inspect ${name}`}
                               buttonRef={setOpenerRef(key)}
                               onInspect={() => inspect(key)}
@@ -493,6 +536,7 @@ export default function EnterWorldLibrary(props: EnterWorldLibraryProps) {
                             key={item.key}
                             item={item}
                             selected={inspectedKey === key}
+                            worldAuthor={props.worldAuthor}
                             buttonRef={setOpenerRef(key)}
                             onInspect={() => inspect(key)}
                             onToggle={(enabled) => updateDictionary(item.key, enabled)}
@@ -526,6 +570,7 @@ export default function EnterWorldLibrary(props: EnterWorldLibraryProps) {
             addition={inspected}
             entitySelected={inspected?.kind === 'entity' && props.selectedEntityIds.has(inspected.entity.id)}
             dictionaryTotal={props.dictionaryItems.length}
+            worldAuthor={props.worldAuthor}
             headingRef={headingRef}
             showBack={singlePane}
             onEntityToggle={props.onEntityToggle}

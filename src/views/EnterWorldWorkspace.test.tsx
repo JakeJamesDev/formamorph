@@ -444,6 +444,65 @@ describe('EnterWorldWorkspace', () => {
     expect(within(order).getByRole('button', { name: 'Drag Shared Notes from Library' })).toBeInTheDocument();
   });
 
+  it('marks the world row Linked and offers no library row for the same dictionary', async () => {
+    const linkedCopy: DictionarySelectionItem[] = [{ ...dictionaryItems[0], linked: true }];
+    const user = userEvent.setup();
+    render(<Harness dictionaryItems={linkedCopy} />);
+
+    await user.click(screen.getByRole('button', { name: 'Library Additions' }));
+    const order = screen.getByRole('list', { name: 'Dictionary Order' });
+    expect(within(order).getAllByRole('listitem')).toHaveLength(1);
+    expect(within(order).getByText('Linked')).toBeInTheDocument();
+    expect(within(order).queryByText('World')).toBeNull();
+  });
+
+  it('tells two library dictionaries of one name apart by their author and source lines', async () => {
+    const sameName: DictionarySelectionItem[] = [
+      {
+        key: 'library:mine', source: 'library', enabled: false, entryCount: 1,
+        authorLine: 'You', sourceLine: 'Your library',
+        book: { id: 'mine', name: 'Sedge Lore', entries: [] },
+      },
+      {
+        key: 'library:theirs', source: 'library', enabled: false, entryCount: 1,
+        authorLine: 'Wren', sourceLine: 'Community Creations',
+        book: { id: 'theirs', name: 'Sedge Lore', entries: [] },
+      },
+    ];
+    const user = userEvent.setup();
+    render(<Harness dictionaryItems={sameName} />);
+
+    await user.click(screen.getByRole('button', { name: 'Library Additions' }));
+    const order = screen.getByRole('list', { name: 'Dictionary Order' });
+    expect(within(order).getByText('You · Your library')).toBeInTheDocument();
+    expect(within(order).getByText('Wren · Community Creations')).toBeInTheDocument();
+  });
+
+  it('names the world under its own dictionaries and the account under a library character', async () => {
+    const user = userEvent.setup();
+    render(
+      <Harness
+        worldAuthor="Fen"
+        libraryEntities={[{ id: 'portrait', name: 'Mara Vale', authorLine: 'Wren', sourceLine: 'Community Creations' }]}
+      />,
+    );
+
+    await user.click(screen.getByRole('button', { name: 'Library Additions' }));
+    const order = screen.getByRole('list', { name: 'Dictionary Order' });
+    expect(within(order).getByText('Fen · This world')).toBeInTheDocument();
+    expect(within(screen.getByRole('list', { name: 'Entities' })).getByText('Wren · Community Creations'))
+      .toBeInTheDocument();
+  });
+
+  it('drops the author half of the line when nobody is named', async () => {
+    const user = userEvent.setup();
+    render(<Harness dictionaryItems={[dictionaryItems[0]]} />);
+
+    await user.click(screen.getByRole('button', { name: 'Library Additions' }));
+    expect(within(screen.getByRole('list', { name: 'Dictionary Order' })).getByText('This world'))
+      .toBeInTheDocument();
+  });
+
   it('keeps workspace actions outside scrolling content and updates ratios immediately', async () => {
     const user = userEvent.setup();
     const onIntroduction = vi.fn();

@@ -272,13 +272,71 @@ describe('syncWorldContent', () => {
     expect(syncWorldContent(world, [{ ...source, owned: false }]).updated).toBe(0);
   });
 
-  it('leaves an independent copy and a copy of a deleted library item alone', () => {
+  it('leaves an independent copy alone', () => {
+    const world = { placeholders: [], entities: [], dictionaries: [book()] };
+    const result = syncWorldContent(world, [source]);
+    expect(result.updated).toBe(0);
+    expect(result.unlinked).toBe(0);
+  });
+
+  it('makes a copy of a deleted library item independent, with its content kept', () => {
+    const copy = book({ id: 'book-2', name: 'My Notes', link: { libraryId: 'gone', sourceRevision: 'r1' } });
+    const world = { placeholders: [], entities: [], dictionaries: [copy] };
+    const result = syncWorldContent(world, [source]);
+    expect(result.updated).toBe(0);
+    expect(result.unlinked).toBe(1);
+    expect(result.dictionaries[0].link).toBeUndefined();
+    expect(result.dictionaries[0]).toMatchObject({ id: 'book-2', name: 'My Notes', entries: copy.entries });
+  });
+
+  it('leaves a copy of a deleted library item following the listing it also came from', () => {
     const world = {
       placeholders: [],
       entities: [],
-      dictionaries: [book(), book({ id: 'book-2', link: { libraryId: 'gone', sourceRevision: 'r1' } })],
+      dictionaries: [book({
+        link: { libraryId: 'gone', sourceId: 'listing-1', sourceName: 'Sedge Lore', sourceRevision: 'r1', reviewedRevision: 'r1' },
+      })],
     };
-    expect(syncWorldContent(world, [source]).updated).toBe(0);
+    const result = syncWorldContent(world, [source]);
+    expect(result.unlinked).toBe(1);
+    expect(result.dictionaries[0].link).toEqual({ sourceId: 'listing-1', sourceName: 'Sedge Lore' });
+  });
+
+  it('makes a local replacement of a deleted library item independent too', () => {
+    const world = {
+      placeholders: [],
+      entities: [],
+      dictionaries: [book({ link: { libraryId: 'gone', sourceRevision: 'r1', localReplacement: true } })],
+    };
+    const result = syncWorldContent(world, [source]);
+    expect(result.unlinked).toBe(1);
+    expect(result.dictionaries[0].link).toBeUndefined();
+  });
+
+  it('makes a linked entity of a deleted library item independent the same way', () => {
+    const world = { placeholders: [], entities: [person({ link: { libraryId: 'gone' } })], dictionaries: [] };
+    const result = syncWorldContent(world, [source]);
+    expect(result.unlinked).toBe(1);
+    expect(result.entities[0].link).toBeUndefined();
+  });
+
+  it('runs a second time as a no-op, so reopening the world changes nothing', () => {
+    const world = { placeholders: [], entities: [], dictionaries: [book({ link: { libraryId: 'gone' } })] };
+    const once = syncWorldContent(world, [source]);
+    const twice = syncWorldContent({ ...world, dictionaries: once.dictionaries }, [source]);
+    expect(twice.unlinked).toBe(0);
+    expect(twice.dictionaries).toBe(once.dictionaries);
+  });
+
+  it('leaves a copy that follows only a published listing alone', () => {
+    const world = {
+      placeholders: [],
+      entities: [],
+      dictionaries: [book({ link: { sourceId: 'listing-1', sourceName: 'Sedge Lore' } })],
+    };
+    const result = syncWorldContent(world, [source]);
+    expect(result.unlinked).toBe(0);
+    expect(result.dictionaries).toBe(world.dictionaries);
   });
 
   it('returns the same arrays when nothing changed, so an open does not dirty the world', () => {

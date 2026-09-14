@@ -125,7 +125,11 @@ export function useLibraryLinking(options: LibraryLinkingOptions) {
   };
   const { checkForUpdates, updateDialog } = useComponentUpdates([live]);
 
-  /** Bring the world's linked copies up to date with the library items their author owns. */
+  /**
+   * Bring the world's linked copies up to date with the library items their author owns, and let go of
+   * the items that are gone. Letting go is silent: the player deleted the item, and the copy's own row is
+   * where the state change reads.
+   */
   const syncFromLibrary = useCallback(async () => {
     const current = latest.current;
     const linkedIds = [...current.entities, ...current.dictionaries]
@@ -136,12 +140,13 @@ export function useLibraryLinking(options: LibraryLinkingOptions) {
     const next = syncWorldContent({
       entities: current.entities, dictionaries: current.dictionaries, placeholders: current.worldPlaceholders,
     }, sources);
-    if (!next.updated) return;
+    if (!next.updated && !next.unlinked) return;
     if (next.entities !== current.entities) current.setEntities(next.entities);
     if (next.dictionaries !== current.dictionaries) current.setDictionaries(next.dictionaries);
     // A reference the source has newly introduced arrives as a placeholder of its own; Save Connections is
     // where the author points it at one they already have.
     next.toAdd.forEach(current.addPlaceholder);
+    if (!next.updated) return;
     toast.info(next.updated === 1
       ? 'Formamorph updated one linked copy from your library.'
       : `Formamorph updated ${next.updated} linked copies from your library.`);

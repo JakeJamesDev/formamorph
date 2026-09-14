@@ -8,12 +8,12 @@ import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Tip } from '@/components/ui/tooltip';
 import type { DictionarySelectionItem } from '@/lib/dictionarySelection';
-import type { EntityMetadata, GameLocation, Stat, Trait, TraitGroup } from '@/types';
+import type { GameLocation, Stat, Trait, TraitGroup } from '@/types';
 import { stripMarkdown } from '@/lib/stripMarkdown';
 import { useElementSize } from '@/lib/useElementSize';
 import { cn } from '@/lib/utils';
 import { useIsMobile } from '@/lib/useIsMobile';
-import EnterWorldLibrary from './EnterWorldLibrary';
+import EnterWorldLibrary, { type EntityAddition } from './EnterWorldLibrary';
 
 interface TraitCategory {
   kind: 'traits';
@@ -40,6 +40,8 @@ export interface EnterWorldWorkspaceProps {
   /** False plays the exit animation; the host keeps the workspace mounted until it finishes. */
   open?: boolean;
   worldName: string;
+  /** Who wrote the world, for the provenance line on its own dictionaries. */
+  worldAuthor?: string;
   traits: Trait[];
   traitGroups: TraitGroup[];
   stats: Stat[];
@@ -48,7 +50,7 @@ export interface EnterWorldWorkspaceProps {
   resolveTraitText: (trait: Trait, text: string) => string;
   selectedTraits: string[];
   selectedLocationId: string | null;
-  libraryEntities: EntityMetadata[];
+  libraryEntities: EntityAddition[];
   selectedEntityIds: Set<string>;
   dictionaryItems: DictionarySelectionItem[];
   categoryIndex: number;
@@ -502,6 +504,7 @@ export default function EnterWorldWorkspace(props: EnterWorldWorkspaceProps) {
                 entities={props.libraryEntities}
                 selectedEntityIds={props.selectedEntityIds}
                 dictionaryItems={props.dictionaryItems}
+                worldAuthor={props.worldAuthor}
                 onEntityToggle={(id, selected) => { setAdditionsRemembered(false); props.onEntityToggle(id, selected); }}
                 onDictionaryItemsChange={(items) => { setAdditionsRemembered(false); props.onDictionaryItemsChange(items); }}
               />

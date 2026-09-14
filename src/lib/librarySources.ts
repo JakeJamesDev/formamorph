@@ -43,6 +43,12 @@ export interface LibraryItemSummary extends LibrarySource {
 /** The library record fields these lines and states are read from. */
 type LibraryStamps = CommunityLink & { createdAt?: string };
 
+/** The two lines a picker prints under an item's name. */
+export interface LibraryLines {
+  authorLine: string;
+  sourceLine: string;
+}
+
 /** Who wrote the item, in the picker's own words. Two items can share a name, so this is what tells them
  *  apart. */
 export function libraryAuthorLine(record: LibraryStamps, owned: boolean): string {
@@ -58,6 +64,19 @@ export function librarySourceLine(record: LibraryStamps): string {
 /** The signed-in account's id, or undefined while nobody is signed in. */
 function currentUserId(): string | undefined {
   return String(AuthService.getCurrentUser()?.id ?? '') || undefined;
+}
+
+/**
+ * Who wrote a library item and where it came from, for a picker that holds only the item's metadata.
+ *
+ * `userId` is the account the ownership reads against. Pass it to keep the call pure; omit it and the
+ * signed-in account answers.
+ */
+export function libraryLines(record: LibraryStamps, userId: string | undefined = currentUserId()): LibraryLines {
+  return {
+    authorLine: libraryAuthorLine(record, libraryOwned(record, userId)),
+    sourceLine: librarySourceLine(record),
+  };
 }
 
 function summarize(kind: LibraryKind, record: LibraryStamps & { id: string; name: string }): LibraryItemSummary {

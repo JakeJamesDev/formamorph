@@ -59,6 +59,63 @@ describe('buildInitialSelection', () => {
     const items = buildInitialSelection([], [meta('lib', { entryCount: undefined })]);
     expect(items[0].entryCount).toBe(0);
   });
+
+  it('leaves out the library row a world copy already follows, and marks that copy Linked', () => {
+    const items = buildInitialSelection(
+      [book('a', { link: { libraryId: 'lib1' } }), book('b')],
+      [meta('lib1'), meta('lib2')],
+    );
+    expect(items.map((i) => i.key)).toEqual([
+      selectionKey('world', 'a'),
+      selectionKey('world', 'b'),
+      selectionKey('library', 'lib2'),
+    ]);
+    expect(items[0].linked).toBe(true);
+    expect(items[1].linked).toBeUndefined();
+  });
+
+  it('leaves out the library row a local replacement follows, which is still one copy', () => {
+    const items = buildInitialSelection(
+      [book('a', { link: { libraryId: 'lib1', localReplacement: true } })],
+      [meta('lib1')],
+    );
+    expect(items.map((i) => i.key)).toEqual([selectionKey('world', 'a')]);
+    expect(items[0].linked).toBe(true);
+  });
+
+  it('shows both rows for an independent copy of a library book', () => {
+    const items = buildInitialSelection([book('a')], [meta('lib1')]);
+    expect(items.map((i) => i.source)).toEqual(['world', 'library']);
+    expect(items[0].linked).toBeUndefined();
+  });
+
+  it('keeps a world row plain when the library item it names is gone', () => {
+    const items = buildInitialSelection([book('a', { link: { libraryId: 'deleted' } })], [meta('lib1')]);
+    expect(items.map((i) => i.source)).toEqual(['world', 'library']);
+    expect(items[0].linked).toBeUndefined();
+  });
+
+  it('tells two library books of one name apart by their author and source lines', () => {
+    const items = buildInitialSelection([], [
+      meta('mine', { name: 'Sedge Lore' }),
+      meta('theirs', { name: 'Sedge Lore', sourceId: 'listing-1', sourceAuthorName: 'Wren' }),
+    ], 'user-1');
+    expect(items[0]).toMatchObject({ authorLine: 'You', sourceLine: 'Your library' });
+    expect(items[1]).toMatchObject({ authorLine: 'Wren', sourceLine: 'Community Creations' });
+  });
+
+  it('reads a downloaded book the signed-in account published as its own', () => {
+    const items = buildInitialSelection([], [
+      meta('lib', { sourceId: 'listing-1', sourceAuthorId: 'user-1', sourceAuthorName: 'Wren' }),
+    ], 'user-1');
+    expect(items[0]).toMatchObject({ authorLine: 'You', sourceLine: 'Community Creations' });
+  });
+
+  it('gives a world book no author or source line, which the picker words for itself', () => {
+    const items = buildInitialSelection([book('a')], []);
+    expect(items[0].authorLine).toBeUndefined();
+    expect(items[0].sourceLine).toBeUndefined();
+  });
 });
 
 describe('finalizeSelection', () => {
