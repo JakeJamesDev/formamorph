@@ -13,6 +13,7 @@ import { EditorPreviewRollsProvider } from '@/contexts/EditorPreviewRollsContext
 import { placeholderStore, PlaceholderStoreProvider } from '@/contexts/PlaceholderStoreContext';
 import { directChipTargets } from '@/lib/placeholders';
 import { carriedPlaceholders, splitCarriedPlaceholders } from '@/lib/placeholderHomes';
+import { exportedLibraryLinks } from '@/lib/componentExportLinks';
 import { exportEntityCard } from '@/lib/entityFile';
 import { downloadBlob } from '@/lib/downloadBlob';
 import { canonicalStringify } from '@/lib/canonicalStringify';
@@ -127,7 +128,8 @@ const EntityEditorModal = ({ entityId, draft, onClose, onPublish }: {
   const handleExport = async () => {
     if (!entity) return;
     try {
-      const blob = await exportEntityCard(entity);
+      // A library item is its own source, so the card names it and the worlds that hold a linked copy.
+      const blob = await exportEntityCard(entity, undefined, await exportedLibraryLinks('entity', entity.id));
       // A chip in the name would otherwise put a raw placement id in the filename.
       downloadBlob(blob, `${labelPlaceholders(entity.name, pool, { letters }) || 'Character'}.webp`);
     } catch (error) {

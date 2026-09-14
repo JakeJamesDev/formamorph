@@ -484,6 +484,10 @@ export interface ContentLink {
    *  placeholder or a location, against this world's id for it. Written by the Connect World References
    *  step and read by every later update, so the source renaming a reference keeps it connected. */
   connections?: Record<string, string>;
+  /** The copy arrived bundled in an imported world file, and the library item it followed where that file
+   *  was written is not on this machine. The value is that item's id, which groups the copies that
+   *  followed one source, so Link bundled content places one library item for the group. */
+  bundledFrom?: string;
 }
 
 /** An editor-only folder for organizing shared placeholders, nestable via `parentId`. Just a name — never

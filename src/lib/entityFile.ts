@@ -3,6 +3,8 @@ import type { Entity, Placeholder } from '@/types';
 import { APP_VERSION, WORLD_FILE_KIND, SAVE_FILE_KIND, migrateCarriedPlaceholders } from './version';
 import { DICTIONARY_FILE_KIND } from './dictionaryFile';
 import { describePlaceholders } from './placeholders';
+import type { WorldAssociation } from './compatibleWorlds';
+import { readComponentFileLinks, type ComponentFileLinks, type ComponentFileSource } from './componentFileLinks';
 import { chipTexts } from './linkedContent';
 import { carriedPlaceholders, sharedPlaceholdersUsed } from './placeholderHomes';
 import { portablePlaceholders } from './placeholderGroups';
@@ -37,13 +39,22 @@ export interface EntityCardData {
   placeholders?: Placeholder[];
   /** The shared placeholders the entity's chips and its own reach, so they resolve after import. */
   sharedPlaceholders?: Placeholder[];
+  /** Where this character came from, so an importer can reconnect it (see lib/componentFileLinks). */
+  source?: ComponentFileSource;
+  /** The worlds this character is offered for, by listing id. Never the worlds themselves. */
+  associations?: WorldAssociation[];
 }
 
 /** The card's text fields, stamped with the current app version. `model`/`sound` are intentionally dropped;
  *  of the gallery only the slots past the primary are carried, the primary being the card's own pixels.
  *  `available` is the placeholder pool to resolve the entity's used chips from — the world's combined list
- *  for a world entity, or the entity's own carried pool for a library one. */
-export function buildEntityCardData(entity: Entity, available: Placeholder[] = carriedPlaceholders(entity)): EntityCardData {
+ *  for a world entity, or the entity's own carried pool for a library one. `links` is what the card says
+ *  about its source and the worlds it suits; a card written without it says nothing about either. */
+export function buildEntityCardData(
+  entity: Entity,
+  available: Placeholder[] = carriedPlaceholders(entity),
+  links: ComponentFileLinks = {},
+): EntityCardData {
   // Folders are the world's: a def leaves its folder reference behind.
   const owned = portablePlaceholders(entity.placeholders ?? []);
   const shared = portablePlaceholders(sharedPlaceholdersUsed(chipTexts(entity), owned, available));
@@ -62,6 +73,8 @@ export function buildEntityCardData(entity: Entity, available: Placeholder[] = c
     ...(extras.length ? { extraImages: extras } : {}),
     ...(owned.length ? { placeholders: owned } : {}),
     ...(shared.length ? { sharedPlaceholders: shared } : {}),
+    ...(links.source ? { source: links.source } : {}),
+    ...(links.associations?.length ? { associations: links.associations } : {}),
   };
 }
 
@@ -130,7 +143,9 @@ async function placeholderPortrait(name: string): Promise<string> {
  * Encode an entity as a shareable WebP character card: its portrait carrying the text fields in a metadata chunk.
  * Entities without a portrait get a generated placeholder so export always yields a valid image.
  */
-export async function exportEntityCard(entity: Entity, available?: Placeholder[]): Promise<Blob> {
+export async function exportEntityCard(
+  entity: Entity, available?: Placeholder[], links: ComponentFileLinks = {},
+): Promise<Blob> {
   // The generated portrait draws initials from the name, so a chip left raw is baked into the shipped image.
   let imageUrl = primaryImage(entity)
     || (await placeholderPortrait(describePlaceholders(entity.name, available ?? carriedPlaceholders(entity)) || 'Character'));
@@ -143,7 +158,7 @@ export async function exportEntityCard(entity: Entity, available?: Placeholder[]
   if (dataUrlMime(imageUrl) !== 'image/webp') throw new Error('Could not encode the portrait as WebP.');
   const { w, h } = await measureDataUrl(imageUrl);
   const bytes = new Uint8Array(await (await fetch(imageUrl)).arrayBuffer());
-  const card = embedEntityCard(bytes, JSON.stringify(buildEntityCardData(entity, available)), { w, h });
+  const card = embedEntityCard(bytes, JSON.stringify(buildEntityCardData(entity, available, links)), { w, h });
   return new Blob([card], { type: 'image/webp' });
 }
 
@@ -168,7 +183,9 @@ export async function importEntityCard(file: File): Promise<Entity> {
  * (no lorebook) and SillyTavern character PNGs (`character_book` → a dictionary the caller can offer to save).
  * In both cases the file's own pixels become the entity's portrait.
  */
-export async function importCharacterFile(file: File): Promise<{ entity: Entity; book: Dictionary | null }> {
+export async function importCharacterFile(
+  file: File,
+): Promise<{ entity: Entity; book: Dictionary | null; links: ComponentFileLinks }> {
   const bytes = new Uint8Array(await file.arrayBuffer());
 
   const cardJson = readEntityCard(bytes);
@@ -181,14 +198,15 @@ export async function importCharacterFile(file: File): Promise<{ entity: Entity;
     }
     const entity = parseEntityCardData(raw);
     entity.images = [bytesToDataUrl(bytes, 'image/webp'), ...(entity.images ?? [])];
-    return { entity, book: null };
+    return { entity, book: null, links: readComponentFileLinks(raw) };
   }
 
   const tavern = readTavernCard(bytes);
   if (tavern) {
     // The PNG's pixels are the portrait; re-encode to WebP to match how entity images are stored.
     tavern.entity.images = [await optimizeImageDataUrl(bytesToDataUrl(bytes, 'image/png'), IMAGE_CAPS.entity)];
-    return tavern;
+    // A foreign card carries no relationships of ours.
+    return { ...tavern, links: {} };
   }
 
   throw new Error("This image isn't a Formamorph character card or a SillyTavern character.");

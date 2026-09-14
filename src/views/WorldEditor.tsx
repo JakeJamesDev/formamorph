@@ -68,6 +68,8 @@ import PlaceholderManager from '../managers/PlaceholderManager';
 import PlaceholderList from '../managers/PlaceholderList';
 import DictionaryTree from '../managers/DictionaryTree';
 import DictionaryBookManager from '../managers/DictionaryBookManager';
+import { exportedComponentLinks } from '@/lib/componentExportLinks';
+import { resolveImportedWorld } from '@/lib/worldBundleRun';
 import { buildDictionaryFile } from '@/lib/dictionaryFile';
 import { downloadBlob } from '@/lib/downloadBlob';
 import { useWorldExport } from '@/lib/useWorldExport';
@@ -382,10 +384,11 @@ const WorldEditorInner = ({ onClose, embedded = false, backButton }: {
   const exportCurrentWorld = () => exportWorld(buildCurrentWorld());
 
   // Export one book to its own standalone `.json` (no image downscale — dictionaries are text only).
-  const exportDictionary = (book: Dictionary) => {
+  const exportDictionary = async (book: Dictionary) => {
     // The book's own placeholders go as they are; the shared ones its entries use ride along so its chips
-    // resolve after import elsewhere.
-    const jsonData = JSON.stringify(buildDictionaryFile(book, placeholders), null, 2);
+    // resolve after import elsewhere. The link record travels as file relationships, never as a world.
+    const links = await exportedComponentLinks(book.link);
+    const jsonData = JSON.stringify(buildDictionaryFile(book, placeholders, links), null, 2);
     // A chip in the name would otherwise put a raw placement id in the filename.
     downloadBlob(new Blob([jsonData], { type: 'application/json' }), `${labelPlaceholders(book.name, placeholders, { letters: placementLetters, owners: placeholderOwners }) || 'Dictionary'}.json`);
   };
@@ -394,7 +397,8 @@ const WorldEditorInner = ({ onClose, embedded = false, backButton }: {
   const exportEntity = async (entity: Entity) => {
     try {
       // The card's own data keeps the chips; only the filename is flattened, since a placement id is not a name.
-      downloadBlob(await exportEntityCard(entity, placeholders), `${labelPlaceholders(entity.name, placeholders, { letters: placementLetters, owners: placeholderOwners }) || 'Character'}.webp`);
+      const links = await exportedComponentLinks(entity.link);
+      downloadBlob(await exportEntityCard(entity, placeholders, links), `${labelPlaceholders(entity.name, placeholders, { letters: placementLetters, owners: placeholderOwners }) || 'Character'}.webp`);
     } catch (error) {
       toast.error((error as Error).message);
     }
@@ -444,7 +448,9 @@ const WorldEditorInner = ({ onClose, embedded = false, backButton }: {
     try {
       // Parsed off-thread — an image-heavy world file is multi-MB and JSON.parse can't be chunked.
       const loadedWorld = await parseJsonText(await file.text());
-      loadWorldData(loadedWorld as World, false);
+      // The same import boundary the main menu uses: what the file's copies follow is settled here, or
+      // the editor would show links to a library this machine has not got.
+      loadWorldData(await resolveImportedWorld(loadedWorld as World), false);
     } catch (error) {
       console.error('Error parsing JSON:', error);
       toast.error('Error loading world data. Please check the file format.');
