@@ -129,6 +129,13 @@ describe('Issues instrument: missing sources', () => {
       .toEqual(['Replace From Library', 'Unlink and Keep Content', 'Remove From World']);
   });
 
+  it('cannot be muted, because muting would take the repair away and leave the block on', () => {
+    const { issues } = renderIssues({ 'src-a': 'not_found' }, ['src-a']);
+
+    expect(screen.queryByRole('button', { name: /^Dismiss:/ })).not.toBeInTheDocument();
+    expect(issues.groups).toHaveLength(1);
+  });
+
   it('offers a repair on an unreachable source too', () => {
     renderIssues({ 'src-a': 'unavailable' });
     expect(screen.getByRole('combobox', { name: 'Repair for Warden' })).toBeInTheDocument();

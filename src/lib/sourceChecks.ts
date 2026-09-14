@@ -5,7 +5,7 @@
  * Pure. The check itself is network work the caller does; its answers arrive here as data, so the editor's
  * issue list and the main menu's gate read one module and cannot disagree about what is missing.
  */
-import { applyLibraryUpdate, type LibrarySource, type LinkableContent } from '@/lib/linkedContent';
+import { applyLibraryUpdate, unlink, type LibrarySource, type LinkableContent } from '@/lib/linkedContent';
 import type { LibraryKind } from '@/lib/librarySources';
 import type { Dictionary, Entity, Placeholder } from '@/types';
 
@@ -20,7 +20,8 @@ export type SourceCheckStatus = 'ok' | 'not_found' | 'unavailable';
 /** Listing id to what the check said about it. */
 export type SourceCheckResults = Readonly<Record<string, SourceCheckStatus>>;
 
-/** The two content lists a world's copies live in. */
+/** A world as this module reads and rewrites it: the two lists its copies live in, and the shared
+ *  placeholder list a Replace resolves the incoming content's references against. */
 export interface SourceCheckWorld {
   entities?: Entity[];
   dictionaries?: Dictionary[];
@@ -110,6 +111,9 @@ const listNames = (names: string[]): string =>
 /**
  * Why this world cannot start a new game or publish, or null when nothing blocks it.
  *
+ * It names what is gone and stops. Where to repair it is the surface's own to say, and the main menu says
+ * it with a button rather than a second sentence.
+ *
  * @param copies - The world's linked copies
  * @param results - What the last check said
  * @returns One line naming the removed sources, or null
@@ -121,7 +125,7 @@ export function sourceBlockReason(
   if (blocked.length === 0) return null;
   const names = [...new Set(blocked.map((row) => row.sourceName))];
   const subject = names.length === 1 ? 'This world requires' : 'This world requires the sources';
-  return `${subject} ${listNames(names)}, which the author removed. Repair it in the World Editor.`;
+  return `${subject} ${listNames(names)}, which the author removed.`;
 }
 
 /** What the author does about one copy whose source is gone. */
@@ -185,12 +189,8 @@ export function applyRepair<T extends SourceCheckWorld>(
   }
 
   if (action === 'unlink') {
-    const drop = <I extends { link?: unknown }>(item: I): I => {
-      const { link: _cleared, ...rest } = item;
-      return rest as I;
-    };
-    const entities = replacing(world.entities, copyId, drop);
-    const dictionaries = replacing(world.dictionaries, copyId, drop);
+    const entities = replacing(world.entities, copyId, unlink);
+    const dictionaries = replacing(world.dictionaries, copyId, unlink);
     if (entities === world.entities && dictionaries === world.dictionaries) return world;
     return { ...world, entities, dictionaries };
   }
@@ -203,10 +203,9 @@ export function applyRepair<T extends SourceCheckWorld>(
     added.push(...applied.toAdd);
     return applied.item;
   };
-  const entities = 'entries' in replacement.data
-    ? world.entities : replacing(world.entities, copyId, relink);
-  const dictionaries = 'entries' in replacement.data
-    ? replacing(world.dictionaries, copyId, relink) : world.dictionaries;
+  const isBook = 'entries' in replacement.data;
+  const entities = isBook ? world.entities : replacing(world.entities, copyId, relink);
+  const dictionaries = isBook ? replacing(world.dictionaries, copyId, relink) : world.dictionaries;
   if (entities === world.entities && dictionaries === world.dictionaries) return world;
   return {
     ...world,

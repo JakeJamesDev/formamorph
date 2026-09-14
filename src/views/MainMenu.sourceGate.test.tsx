@@ -73,7 +73,7 @@ describe('a world whose required source was removed', () => {
     await openWorld();
 
     expect(screen.getByRole('alert')).toHaveTextContent(
-      'This world requires Marsh Warden, which the author removed. Repair it in the World Editor.',
+      'This world requires Marsh Warden, which the author removed.',
     );
     expect(screen.getByRole('button', { name: /Enter World/ })).toBeDisabled();
     expect(screen.getByRole('button', { name: /Quick Start/ })).toBeDisabled();
@@ -86,6 +86,28 @@ describe('a world whose required source was removed', () => {
     for (const name of [/Edit World/, /Duplicate World/, /Export World/]) {
       expect(screen.getByRole('button', { name })).toBeEnabled();
     }
+  });
+
+  it('leaves resuming a save alone, which keeps what it started with', async () => {
+    recordCheck('not_found');
+    await openWorld();
+
+    // Load Game lives in the menu popover, which only mounts once opened — and the world window has to be
+    // out of the way first, since Radix hides the rest of the tree while it is up.
+    fireEvent.click(screen.getByRole('button', { name: 'Close' }));
+    // Both viewport branches render under jsdom, which has no CSS to hide either; each has its own trigger.
+    for (const trigger of await screen.findAllByRole('button', { name: 'Menu' })) fireEvent.click(trigger);
+
+    const resume = await screen.findAllByRole('button', { name: /Load Game/ });
+    for (const button of resume) expect(button).toBeEnabled();
+  });
+
+  it('offers the way to the repair from the blocked action itself', async () => {
+    recordCheck('not_found');
+    await openWorld();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Repair Sources' }));
+    expect(await screen.findByRole('button', { name: /^Test Bench/ })).toBeInTheDocument();
   });
 
   it('gates only the actions that need the source, and nothing else in the column', async () => {

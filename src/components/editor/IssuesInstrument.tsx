@@ -14,11 +14,11 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Tip } from '@/components/ui/tooltip';
 import { Meta } from '@/components/ui/typography';
 import { cn } from '@/lib/utils';
-import { SEVERITIES, type FindingGroup, type Severity } from '@/lib/testBench/rules';
-import { isSourceRule } from '@/lib/testBench/missingSources';
+import { SEVERITIES, SOURCE_UNAVAILABLE, type FindingGroup, type Severity } from '@/lib/testBench/rules';
+import { isSourceRule, sourceSection } from '@/lib/testBench/missingSources';
 import { REPAIR_CHOICES, type MissingSource, type RepairAction } from '@/lib/sourceChecks';
 import type {
-  CodeCheckStatus, IssuesProps, OpenFindingItem, SourceCheckProps,
+  CheckStatus, IssuesProps, OpenFindingItem, SourceCheckProps,
 } from '@/lib/testBench/benchProps';
 import {
   formatPublishBytes, PUBLISH_LIMITS, publishSizeBand, type PublishSizeBand,
@@ -156,7 +156,7 @@ const SourceRepairRow = ({ row, disabled, onOpen, onRepair }: {
   onRepair: (copyId: string, action: RepairAction) => void;
 }) => {
   const [action, setAction] = useState<RepairAction | ''>('');
-  const section = row.kind === 'dictionary' ? 'dictionary' : 'entities';
+  const section = sourceSection(row.kind);
   return (
     <div className="space-y-1">
       {/* The copy's own way in, on its own line: a name is as long as the author made it, and the repair
@@ -201,12 +201,15 @@ const SourceRepairRow = ({ row, disabled, onOpen, onRepair }: {
  * It replaces the ordinary row for these two rules because the repair is not the rule's, it is each copy's:
  * one copy may be replaced from the library while another is removed outright. An unreachable source also
  * carries Retry Check, since asking again is the answer there far more often than a repair is.
+ *
+ * It is the one row with no Dismiss. A removed required source blocks a new game and a publish from the main
+ * menu, and muting the row would take away the only repair while leaving the block on. The row goes when the
+ * copy it names is repaired, which is the way out of it.
  */
-const SourceFindingRow = ({ group, sources, onOpen, onDismiss }: {
+const SourceFindingRow = ({ group, sources, onOpen }: {
   group: FindingGroup;
   sources: SourceCheckProps;
   onOpen: OpenFindingItem;
-  onDismiss: (ruleId: string) => void;
 }) => {
   const running = sources.status === 'running';
   const named = new Set(group.findings.flatMap((f) => f.items).map((item) => item.id));
@@ -229,7 +232,7 @@ const SourceFindingRow = ({ group, sources, onOpen, onDismiss }: {
           />
         ))}
       </div>
-      {group.findings.some((f) => f.ruleId === 'source-unavailable') && (
+      {group.findings.some((f) => f.ruleId === SOURCE_UNAVAILABLE.id) && (
         <Button
           variant="outline"
           size="sm"
@@ -241,17 +244,6 @@ const SourceFindingRow = ({ group, sources, onOpen, onDismiss }: {
           {running ? 'Checking…' : 'Retry Check'}
         </Button>
       )}
-      <Tip tip="Dismiss" labelsChild={false}>
-        <Button
-          variant="ghost"
-          size="icon"
-          className="h-6 w-6 shrink-0 text-muted-foreground"
-          onClick={() => onDismiss(group.ruleId)}
-          aria-label={`Dismiss: ${group.headline}`}
-        >
-          <EyeOff className="h-3.5 w-3.5" />
-        </Button>
-      </Tip>
     </div>
   );
 };
@@ -331,7 +323,7 @@ const AdvancedOnlySection = ({ count }: { count: number }) => {
 const StatCodeCheck = ({ codedStatCount, advanced, status, onRun }: {
   codedStatCount: number;
   advanced: boolean;
-  status: CodeCheckStatus;
+  status: CheckStatus;
   onRun: () => void;
 }) => {
   if (codedStatCount === 0 || !advanced) return null;
@@ -428,7 +420,6 @@ export function IssuesInstrument({ issues, onFix }: IssuesInstrumentProps) {
                     group={group}
                     sources={issues.sources}
                     onOpen={issues.onOpenItem}
-                    onDismiss={issues.onDismissRule}
                   />
                 ) : (
                   <FindingRow

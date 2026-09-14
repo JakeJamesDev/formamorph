@@ -12,7 +12,7 @@ import { toast } from 'react-toastify';
 import { useGameData } from '@/contexts/GameDataContext';
 import { asBenchTab } from './benchTabs';
 import { readBenchPlacement, writeBenchPlacement, type BenchPlacement } from './benchPlacement';
-import type { BenchPopoverProps, CodeCheckStatus, TestBenchProps } from '@/lib/testBench/benchProps';
+import type { BenchPopoverProps, CheckStatus, TestBenchProps } from '@/lib/testBench/benchProps';
 import {
   applyRuleFix, IMAGE_WEBP_RULE_ID, RULES, selectMatchingFindings,
   type Finding, type FindingSection, type RuleWorld,
@@ -106,7 +106,7 @@ export function useTestBench({
   // findings are held from the last explicit run and dropped the moment the world moves, so a repaired stat
   // can never keep showing its old failure.
   const [codeFindings, setCodeFindings] = useState<Finding[]>([]);
-  const [codeCheckStatus, setCodeCheckStatus] = useState<CodeCheckStatus>('idle');
+  const [codeCheckStatus, setCodeCheckStatus] = useState<CheckStatus>('idle');
   const beginCodeRun = useLatestRun(benchWorld);
   useEffect(() => {
     // Guarded so an ordinary keystroke doesn't re-render the panel to replace nothing with nothing.
