@@ -10,8 +10,9 @@ export const CONTENT_LINK_LABELS: Record<ContentLinkState, string> = {
   'local-replacement': 'Local replacement',
 };
 
-/** One field of a record a hand-edited or later-version world may have written as anything at all. */
-const text = (value: unknown): string | null => {
+/** One field of a record a hand-edited or later-version world may have written as anything at all. Shared
+ *  by every reader of a link record, so a blank and a number mean the same absence everywhere. */
+export const linkText = (value: unknown): string | null => {
   if (typeof value !== 'string') return null;
   const trimmed = value.trim();
   return trimmed ? trimmed : null;
@@ -25,13 +26,13 @@ const text = (value: unknown): string | null => {
  * a link to something unnamed.
  */
 export function contentLinkState(link: ContentLink | undefined | null): ContentLinkState | null {
-  if (!link || (!text(link.libraryId) && !text(link.sourceId))) return null;
+  if (!link || (!linkText(link.libraryId) && !linkText(link.sourceId))) return null;
   return link.localReplacement ? 'local-replacement' : 'linked';
 }
 
 /** The source's display name, or null when the record carries none. An id is never shown in its place. */
 export function contentLinkSourceName(link: ContentLink | undefined | null): string | null {
-  return link ? text(link.sourceName) : null;
+  return link ? linkText(link.sourceName) : null;
 }
 
 /**

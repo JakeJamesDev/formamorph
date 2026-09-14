@@ -124,6 +124,36 @@ export function useComponentFileImport({ onFindWorld, onImported }: ComponentFil
     setPending({ kind, content, links, rows: associationRows(links.associations ?? [], worlds) });
   }, [onImported, reviewImportedFile]);
 
+  /**
+   * Put one file's content in the library.
+   *
+   * A file that names a listing lands as a copy of that listing, so a later check can tell it is behind
+   * and a second import of the same listing refreshes the copy rather than leaving two rows of one name.
+   * One with no listing behind it is simply the player's own item.
+   *
+   * @param kind - Which library the file belongs to
+   * @param content - The file's content
+   * @param links - What the file says about where it came from
+   * @returns The library item, as the copies that follow it name it
+   */
+  const storeFile = useCallback(async (
+    kind: LibraryKind, content: LinkableContent, links: ComponentFileLinks,
+  ): Promise<LibrarySource> => {
+    const listing = links.source?.sourceId;
+    if (!listing) return saveCopyToLibrary(content, carriedPlaceholders(content));
+    const installed = await saveDownloadToLibrary(kind, content, {
+      sourceId: listing,
+      ...(links.source?.sourceName ? { name: links.source.sourceName } : {}),
+    });
+    return {
+      id: installed.libraryId,
+      name: installed.name,
+      revision: installed.revision,
+      owned: false,
+      sourceId: installed.sourceId,
+    };
+  }, []);
+
   /** Store the reviewed file, then give each ticked world its copy. */
   const confirmImport = useCallback(async () => {
     const review = pending;
@@ -133,20 +163,7 @@ export function useComponentFileImport({ onFindWorld, onImported }: ComponentFil
 
     let source: LibrarySource;
     try {
-      // A file that names a listing lands as a copy of that listing, so a later check can tell it is
-      // behind. One with no listing behind it is simply the player's own item.
-      source = links.source?.sourceId
-        ? await saveDownloadToLibrary(kind, content, {
-          sourceId: links.source.sourceId,
-          ...(links.source.sourceName ? { name: links.source.sourceName } : {}),
-        }).then((installed) => ({
-          id: installed.libraryId,
-          name: installed.name,
-          revision: installed.revision,
-          owned: false,
-          sourceId: installed.sourceId,
-        }))
-        : await saveCopyToLibrary(content, carriedPlaceholders(content));
+      source = await storeFile(kind, content, links);
     } catch (error) {
       toast.error((error as Error).message || 'Could not add this file to your library.');
       return;
@@ -162,7 +179,7 @@ export function useComponentFileImport({ onFindWorld, onImported }: ComponentFil
     if (!queue.current.length) return;
     placing.current = { content, source };
     await advance();
-  }, [advance, onImported, pending, selected]);
+  }, [advance, onImported, pending, selected, storeFile]);
 
   const dialogs: ReactNode = (
     <>
@@ -204,5 +221,5 @@ export function useComponentFileImport({ onFindWorld, onImported }: ComponentFil
     </>
   );
 
-  return { reviewFile, dialogs };
+  return { reviewFile, storeFile, dialogs };
 }

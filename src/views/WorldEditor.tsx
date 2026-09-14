@@ -385,12 +385,16 @@ const WorldEditorInner = ({ onClose, embedded = false, backButton }: {
 
   // Export one book to its own standalone `.json` (no image downscale — dictionaries are text only).
   const exportDictionary = async (book: Dictionary) => {
-    // The book's own placeholders go as they are; the shared ones its entries use ride along so its chips
-    // resolve after import elsewhere. The link record travels as file relationships, never as a world.
-    const links = await exportedComponentLinks(book.link);
-    const jsonData = JSON.stringify(buildDictionaryFile(book, placeholders, links), null, 2);
-    // A chip in the name would otherwise put a raw placement id in the filename.
-    downloadBlob(new Blob([jsonData], { type: 'application/json' }), `${labelPlaceholders(book.name, placeholders, { letters: placementLetters, owners: placeholderOwners }) || 'Dictionary'}.json`);
+    try {
+      // The book's own placeholders go as they are; the shared ones its entries use ride along so its chips
+      // resolve after import elsewhere. The link record travels as file relationships, never as a world.
+      const links = await exportedComponentLinks(book.link);
+      const jsonData = JSON.stringify(buildDictionaryFile(book, placeholders, links), null, 2);
+      // A chip in the name would otherwise put a raw placement id in the filename.
+      downloadBlob(new Blob([jsonData], { type: 'application/json' }), `${labelPlaceholders(book.name, placeholders, { letters: placementLetters, owners: placeholderOwners }) || 'Dictionary'}.json`);
+    } catch (error) {
+      toast.error((error as Error).message);
+    }
   };
 
   // Export one entity as a shareable WebP character card (its portrait carrying the text fields).
@@ -427,7 +431,7 @@ const WorldEditorInner = ({ onClose, embedded = false, backButton }: {
       if (kind === 'dictionary') setShowAddDictionary(true); else setShowAddEntity(true);
     },
     exportEntity: (entity) => { void exportEntity(entity); },
-    exportDictionary,
+    exportDictionary: (book) => { void exportDictionary(book); },
   });
 
   const saveWorld = async () => {

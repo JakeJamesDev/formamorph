@@ -6,6 +6,7 @@
  */
 
 import type { WorldAssociation } from '@/lib/compatibleWorlds';
+import { linkText as text } from '@/lib/contentLink';
 import type { ContentLink } from '@/types';
 
 /** Where a component file came from, so an importer can reconnect it. */
@@ -32,13 +33,6 @@ export interface ComponentFileLinks {
  *  no relationships to review, so importing it is the whole of the import. */
 export const hasComponentLinks = (links: ComponentFileLinks): boolean =>
   !!links.source || !!links.associations?.length;
-
-/** One field a hand-edited or later-version file may have written as anything at all. */
-const text = (value: unknown): string | null => {
-  if (typeof value !== 'string') return null;
-  const trimmed = value.trim();
-  return trimmed ? trimmed : null;
-};
 
 /** The source block for a world copy's link record, or undefined where the copy follows nothing. */
 export function sourceFromLink(link: ContentLink | undefined | null): ComponentFileSource | undefined {

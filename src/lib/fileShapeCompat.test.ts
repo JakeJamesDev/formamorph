@@ -131,9 +131,19 @@ describe('a world file carries its relationships', () => {
 
 describe('a reader built to the previous shape loses nothing', () => {
   it('keeps every section and every field of a world file, relationships included', async () => {
-    const text = await worldFileText(world());
+    const source = world() as Record<string, unknown>;
 
-    expect(previousWorldReader(text)).toEqual(JSON.parse(text));
+    const read = previousWorldReader(await worldFileText(source));
+
+    // Compared against the world that was exported, not against the file's own JSON: the point is that
+    // nothing the world held is missing after the old reader, whatever the file happens to carry.
+    for (const [key, value] of Object.entries(source)) {
+      // The exporter drops the local record id and stamps its own version; every other field is the world's.
+      if (key === 'id' || key === 'version') continue;
+      expect(read[key]).toEqual(value);
+    }
+    expect((read.entities as Entity[])[0].link).toEqual(link);
+    expect((read.dictionaries as Dictionary[])[0].link?.localReplacement).toBe(true);
   });
 
   it('still loads a world file whose copies carry bundled markers', async () => {

@@ -935,7 +935,9 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
   const componentImported = useCallback((kind: 'entity' | 'dictionary') => {
     void (kind === 'dictionary' ? refreshDictionaries() : refreshEntities());
   }, [refreshDictionaries, refreshEntities]);
-  const { reviewFile: reviewComponentFile, dialogs: componentImportDialogs } = useComponentFileImport({
+  const {
+    reviewFile: reviewComponentFile, storeFile: storeComponentFile, dialogs: componentImportDialogs,
+  } = useComponentFileImport({
     onFindWorld: findAssociatedWorld,
     onImported: componentImported,
   });
@@ -1085,10 +1087,16 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
       return;
     }
 
-    for (const { book } of parsed) {
-      try { await addDictionaryToLibrary(book); ok++; }
-      catch (err) { console.error('Error importing dictionary:', book.name, err); skipped++; }
+    for (const { book, links } of parsed) {
+      try {
+        // Through the same store either way: a file naming a listing refreshes the copy of it the player
+        // already holds, rather than leaving a batch import with two rows of one name.
+        if (links.source?.sourceId) await storeComponentFile('dictionary', book, links);
+        else await addDictionaryToLibrary(book);
+        ok++;
+      } catch (err) { console.error('Error importing dictionary:', book.name, err); skipped++; }
     }
+    await refreshDictionaries();
     if (ok || skipped) importSummaryToast(ok, skipped, { one: 'dictionary', many: 'dictionaries' });
   };
 
@@ -1122,12 +1130,19 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
       const total = mode === 'off' ? 0 : parsed.reduce((n, p) => n + entityImages(p.entity).length, 0);
       const storeAll = async (tick: (done: number) => void) => {
         let done = 0;
-        for (const { entity, book } of parsed) {
+        for (const { entity, book, links } of parsed) {
           // Guarded per card: a portrait can blow the storage quota mid-batch, and that must not drop the rest.
           try {
             const record = await applyEntityImagesOptimize(entity, mode, () => tick(++done));
-            await EntityStorageService.storeEntity({ id: record.id, name: record.name, createdAt: now, lastAccessed: now, data: record });
-            setEntities(prev => [...prev, { id: record.id, name: record.name, image: primaryImage(record), createdAt: now, lastAccessed: now }]);
+            // A card naming a listing goes through the same store a reviewed one does, so a batch import
+            // refreshes the copy the player already holds rather than adding a second row of one name.
+            if (links.source?.sourceId) {
+              await storeComponentFile('entity', record, links);
+              await refreshEntities();
+            } else {
+              await EntityStorageService.storeEntity({ id: record.id, name: record.name, createdAt: now, lastAccessed: now, data: record });
+              setEntities(prev => [...prev, { id: record.id, name: record.name, image: primaryImage(record), createdAt: now, lastAccessed: now }]);
+            }
             stored++;
           } catch (err) {
             console.error('Error storing character:', entity.name, err);
