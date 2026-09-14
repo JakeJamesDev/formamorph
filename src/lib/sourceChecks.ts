@@ -124,8 +124,8 @@ export function sourceBlockReason(
   const blocked = blockingSources(copies, results);
   if (blocked.length === 0) return null;
   const names = [...new Set(blocked.map((row) => row.sourceName))];
-  const subject = names.length === 1 ? 'This world requires' : 'This world requires the sources';
-  return `${subject} ${listNames(names)}, which the author removed.`;
+  const subject = names.length === 1 ? 'a source its author removed' : 'sources their authors removed';
+  return `This world requires ${subject}: ${listNames(names)}.`;
 }
 
 /** What the author does about one copy whose source is gone. */
@@ -133,9 +133,9 @@ export type RepairAction = 'replace' | 'unlink' | 'remove';
 
 /** The repairs one row offers, in the order the row lists them. */
 export const REPAIR_CHOICES = [
-  { value: 'replace', label: 'Replace From Library' },
+  { value: 'replace', label: 'Replace from Library' },
   { value: 'unlink', label: 'Unlink and Keep Content' },
-  { value: 'remove', label: 'Remove From World' },
+  { value: 'remove', label: 'Remove from World' },
 ] as const satisfies readonly { value: RepairAction; label: string }[];
 
 /** The library item a Replace picks, with the content behind it. */

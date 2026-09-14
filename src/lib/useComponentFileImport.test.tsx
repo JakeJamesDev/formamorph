@@ -66,7 +66,7 @@ describe('useComponentFileImport', () => {
 
     await open({ associations: [{ id: 'listing-w', name: 'Sedge Landing' }] });
 
-    expect(await screen.findByText('Add To Your Worlds')).toBeInTheDocument();
+    expect(await screen.findByText('Add to Your Worlds')).toBeInTheDocument();
     expect(screen.getByText('Sedge Landing')).toBeInTheDocument();
   });
 
@@ -102,7 +102,7 @@ describe('useComponentFileImport', () => {
     await open({ associations: [{ id: 'listing-w', name: 'The Long Thaw' }] });
 
     expect(await screen.findByText('Worlds You Do Not Have')).toBeInTheDocument();
-    await userEvent.click(screen.getByRole('button', { name: 'Find It' }));
+    await userEvent.click(screen.getByRole('button', { name: 'Open Listing' }));
 
     expect(found).toEqual(['listing-w']);
   });
@@ -113,7 +113,7 @@ describe('useComponentFileImport', () => {
     const online = vi.spyOn(navigator, 'onLine', 'get').mockReturnValue(false);
     try {
       await open({ associations: [{ id: 'listing-w', name: 'The Long Thaw' }] });
-      expect(await screen.findByText(/cannot reach Community Creations/)).toBeInTheDocument();
+      expect(await screen.findByText(/cannot connect to Community Creations/)).toBeInTheDocument();
 
       await userEvent.click(screen.getByRole('button', { name: 'Import Entity' }));
 

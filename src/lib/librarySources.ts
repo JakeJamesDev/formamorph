@@ -16,8 +16,8 @@ import type {
 
 /** What the link choice means for the content picked, by who owns it. */
 export const LINK_EXPLANATIONS = {
-  own: 'Saved changes stay synchronized across your linked worlds.',
-  other: 'Receive source updates. Your edits stay specific to this world.',
+  own: 'Edits to the library item apply to every linked copy.',
+  other: 'Source updates apply to this copy. Edits to this copy apply to this world only.',
   independent: 'Add an independent copy.',
 } as const;
 

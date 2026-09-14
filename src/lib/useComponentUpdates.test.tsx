@@ -95,7 +95,7 @@ describe('Check for Updates', () => {
 
     check();
 
-    await waitFor(() => expect(toast.info).toHaveBeenCalledWith('"Sedge" is up to date.'));
+    await waitFor(() => expect(toast.info).toHaveBeenCalledWith('“Sedge” is up to date.'));
     expect(screen.queryByRole('dialog')).toBeNull();
   });
 
@@ -113,8 +113,8 @@ describe('Check for Updates', () => {
     expect(within(rowFor('Sedge Landing')).getByRole('combobox').textContent).toBe('Update');
     expect(within(rowFor('Fen Crossing')).getByRole('combobox').textContent).toBe('Keep Mine');
     expect(within(rowFor('Fen Crossing')).getByText('Local replacement')).toBeTruthy();
-    expect(within(rowFor('Fen Crossing')).getByText('Keep Mine protects your edits.')).toBeTruthy();
-    expect(within(rowFor('Sedge Landing')).queryByText(/protects your edits/)).toBeNull();
+    expect(within(rowFor('Fen Crossing')).getByText("Keep Mine keeps this world's edits.")).toBeTruthy();
+    expect(within(rowFor('Sedge Landing')).queryByText(/keeps this world's edits/)).toBeNull();
   });
 
   it('shows changed fields, grouped entries, and unchanged content behind a disclosure', async () => {
@@ -172,7 +172,7 @@ describe('Check for Updates', () => {
     await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
 
     check();
-    await waitFor(() => expect(toast.info).toHaveBeenCalledWith('"Sedge" is up to date.'));
+    await waitFor(() => expect(toast.info).toHaveBeenCalledWith('“Sedge” is up to date.'));
 
     await seedLibraryItem('r3');
     check();

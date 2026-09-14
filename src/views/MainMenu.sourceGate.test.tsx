@@ -73,7 +73,7 @@ describe('a world whose required source was removed', () => {
     await openWorld();
 
     expect(screen.getByRole('alert')).toHaveTextContent(
-      'This world requires Marsh Warden, which the author removed.',
+      'This world requires a source its author removed: Marsh Warden.',
     );
     expect(screen.getByRole('button', { name: /Enter World/ })).toBeDisabled();
     expect(screen.getByRole('button', { name: /Quick Start/ })).toBeDisabled();

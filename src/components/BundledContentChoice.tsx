@@ -17,7 +17,7 @@ export interface BundledContentChoiceProps {
 }
 
 /**
- * The imported world's **Link bundled content to My Library** choice.
+ * The imported world's **Link bundled content to my library** choice.
  *
  * A world file carries complete copies of the content it followed. Linked, each copy follows a library
  * item of the player's own and later source revisions reach it through update review. Unlinked, the
@@ -41,7 +41,7 @@ export function BundledContentChoice({ worldId, data, onApplied }: BundledConten
         ? 'This world\'s bundled content is in your library.'
         : 'This world\'s bundled content is embedded.');
     } catch (error) {
-      toast.error((error as Error).message || 'Could not change what this world\'s content follows.');
+      toast.error((error as Error).message || 'Could not change the link.');
     } finally {
       setBusy(false);
     }
@@ -55,9 +55,9 @@ export function BundledContentChoice({ worldId, data, onApplied }: BundledConten
         disabled={busy}
         onCheckedChange={(checked) => { void apply(checked === true); }}
       />
-      <Tip tip="Keep this world's content in your library, so other worlds can use it and source updates reach it.">
+      <Tip tip="Save this world's bundled entities and dictionaries to your library. Other worlds can then use them, and source updates apply to them.">
         <label htmlFor="link-bundled-content" className="text-label cursor-pointer">
-          Link bundled content to My Library
+          Link bundled content to my library
         </label>
       </Tip>
     </div>

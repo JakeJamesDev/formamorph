@@ -183,7 +183,7 @@ export function useLibraryLinking(options: LibraryLinkingOptions) {
     try {
       const source = await saveCopyToLibrary(item, placeholders, locations);
       applyLink(item, source, false);
-      toast.success(`"${source.name}" saved to your library.`);
+      toast.success(`“${source.name}” saved to your library.`);
     } catch (error) {
       toast.error((error as Error).message || 'Could not save to your library.');
     }
@@ -259,7 +259,7 @@ export function useLibraryLinking(options: LibraryLinkingOptions) {
     const libraryId = copy.link?.libraryId;
     const source = libraryId ? await libraryItemData(kindOf(copy), libraryId) : null;
     if (!source) {
-      toast.error('The library item this copy follows is gone, so there is nothing to connect it to.');
+      toast.error('The library item this copy follows was deleted. There is nothing to connect.');
       return;
     }
     const world = { placeholders: current.worldPlaceholders, locations: current.locations };
@@ -347,7 +347,7 @@ export function useLibraryLinking(options: LibraryLinkingOptions) {
       faceLabel: linked ? 'Open in Library' : 'Save to Library',
       faceTip: linked
         ? `Open the library ${noun.toLowerCase()} this copy follows`
-        : `Save a copy to your library and follow it from this world`,
+        : `Save this copy to your library. This world's copy then follows the library item.`,
       onFace: () => {
         if (!linked) { void saveToLibrary(item); return; }
         const id = item.link?.libraryId;
@@ -389,7 +389,7 @@ export function useLibraryLinking(options: LibraryLinkingOptions) {
         : (await importCharacterFile(file)).entity;
       setImportReview({ kind, item });
     } catch (error) {
-      toast.error((error as Error).message || 'Could not read that file.');
+      toast.error((error as Error).message || 'Could not read this file.');
     }
   }, []);
 

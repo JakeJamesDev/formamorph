@@ -58,12 +58,12 @@ export function ImportComponentModal({
         <ScrollArea className="-mx-1 min-h-0 flex-1 px-1">
           <div className="space-y-4 pr-1">
             {!rows.length && (
-              <Meta as="p">This file names no worlds. Importing adds it to your library on its own.</Meta>
+              <Meta as="p">This file names no worlds. Import adds it to your library only.</Meta>
             )}
 
             {installed.length > 0 && (
               <div className="space-y-2">
-                <p className="text-label font-medium">Add To Your Worlds</p>
+                <p className="text-label font-medium">Add to Your Worlds</p>
                 {installed.map((row) => (
                   <label key={row.listingId} className="flex cursor-pointer items-center gap-2">
                     <Checkbox
@@ -74,7 +74,7 @@ export function ImportComponentModal({
                     <span className="truncate">{row.worldName ?? row.name}</span>
                   </label>
                 ))}
-                <Hint>Each world gets a linked copy. Your library keeps the original.</Hint>
+                <Hint>Each selected world receives a linked copy of the library item.</Hint>
               </div>
             )}
 
@@ -85,14 +85,14 @@ export function ImportComponentModal({
                   <div key={row.listingId} className="flex items-center justify-between gap-2">
                     <span className="truncate">{row.name}</span>
                     <Button variant="outline" size="sm" disabled={offline} onClick={() => onFind(row.listingId)}>
-                      Find It
+                      Open Listing
                     </Button>
                   </div>
                 ))}
                 <Hint>
                   {offline
-                    ? 'Formamorph cannot reach Community Creations, so these stay unresolved.'
-                    : 'Find It opens Community Creations, where you download the world and its content.'}
+                    ? 'Formamorph cannot connect to Community Creations. These worlds cannot be found now.'
+                    : 'Open Listing opens the world in Community Creations. Download the world there.'}
                 </Hint>
               </div>
             )}

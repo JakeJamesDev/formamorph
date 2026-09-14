@@ -26,8 +26,8 @@ const asItem = (row: MissingSource): FindingItem => ({
 /** What one removed source costs the world: a required one stops a new game, an optional one nothing. */
 const removedMessage = (row: MissingSource): string =>
   row.required
-    ? `“${row.sourceName}” was removed by its author, and this world requires it`
-    : `“${row.sourceName}” was removed by its author`;
+    ? `This world requires “${row.sourceName}”. Its author removed the listing.`
+    : `The source “${row.sourceName}” was removed by its author.`;
 
 /**
  * One finding per copy whose source the check could not confirm.

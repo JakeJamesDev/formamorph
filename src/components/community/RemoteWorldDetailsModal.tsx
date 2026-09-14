@@ -423,7 +423,7 @@ export function RemoteWorldDetailsModal({
                           <EyeOff className="h-3 w-3 shrink-0" /> Unlisted
                         </p>
                         <p className="text-muted-foreground">
-                          This {KIND_LABELS[kindOf(world)].one.toLowerCase()} is out of Community Creations.
+                          This {KIND_LABELS[kindOf(world)].one.toLowerCase()} is unlisted.
                           Other players receive it only inside a world that requires it.
                         </p>
                       </div>

@@ -48,7 +48,7 @@ describe('BundledContentChoice', () => {
   it('draws nothing for a world that carries no bundled content', () => {
     draw(worldData([entity()]));
 
-    expect(screen.queryByText('Link bundled content to My Library')).not.toBeInTheDocument();
+    expect(screen.queryByText('Link bundled content to my library')).not.toBeInTheDocument();
   });
 
   it('starts unchecked while the bundled content follows nothing', () => {

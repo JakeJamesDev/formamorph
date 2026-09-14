@@ -72,7 +72,7 @@ function ChangeList({ diff, side }: { diff: ContentDiff; side: string }) {
   return (
     <div className="space-y-3">
       {!diffHasChanges(diff) && (
-        <Meta as="p">The {side.toLowerCase()} changed nothing this copy holds.</Meta>
+        <Meta as="p">This copy has none of the changed fields.</Meta>
       )}
       {diff.changed.map((row) => (
         <Comparison key={row.field} label={row.label} current={row.current} incoming={row.incoming} side={side} />
@@ -142,7 +142,7 @@ function WorldUpdateRow({ row, action, diff, failure, busy, side, onChoose, onEx
               ))}
             </SelectContent>
           </Select>
-          {row.state === 'local-replacement' && <Hint>Keep Mine protects your edits.</Hint>}
+          {row.state === 'local-replacement' && <Hint>Keep Mine keeps this world's edits.</Hint>}
 
           <CollapsibleSection
             title="View Changes"
@@ -279,9 +279,9 @@ export function UpdateAvailableDialog({
           <DialogTitle>Update Available</DialogTitle>
           <DialogDescription>
             {failed.length
-              ? 'These worlds kept the content they had. Retry each one, or close the review.'
+              ? 'These worlds were not updated. Select Apply Updates again, or close the review.'
               : incoming?.description
-                ?? `The library ${noun} “${source?.name ?? ''}” changed. Choose what each world does.`}
+                ?? `The library ${noun} “${source?.name ?? ''}” has a new version. Select an action for each world.`}
           </DialogDescription>
         </DialogHeader>
 

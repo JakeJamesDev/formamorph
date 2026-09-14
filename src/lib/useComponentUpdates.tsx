@@ -37,12 +37,12 @@ export function useComponentUpdates(live?: LiveWorld[]) {
     try {
       const item = (await libraryItems(kind)).find((row) => row.id === libraryId);
       if (!item) {
-        toast.error('The library item this copy follows is gone, so there is nothing to check.');
+        toast.error('The library item this copy follows was deleted. There is nothing to check.');
         return;
       }
       const rows = await affectedCopies(item, liveRef.current);
       if (!rows.length) {
-        toast.info(`"${item.name}" is up to date.`);
+        toast.info(`“${item.name}” is up to date.`);
         return;
       }
       setReview({ source: item, sourceData: await libraryItemData(kind, libraryId), rows });
@@ -66,11 +66,11 @@ export function useComponentUpdates(live?: LiveWorld[]) {
     kind: LibraryKind, libraryId: string, content: LinkableContent,
   ) => {
     const item = (await libraryItems(kind)).find((row) => row.id === libraryId);
-    if (!item) throw new Error('The library item this file follows is gone.');
+    if (!item) throw new Error('The library item this file follows was deleted.');
 
     const held = await libraryItemData(kind, libraryId);
     if (held && contentMatchesSource(content, held)) {
-      toast.info(`"${item.name}" already holds what this file carries.`);
+      toast.info(`“${item.name}” already has this file's content.`);
       return;
     }
 
@@ -81,7 +81,7 @@ export function useComponentUpdates(live?: LiveWorld[]) {
     const rows = await affectedCopies(source, liveRef.current);
     if (!rows.length) {
       await commit();
-      toast.success(`"${item.name}" updated from the imported file.`);
+      toast.success(`“${item.name}” updated from the imported file.`);
       return;
     }
 
@@ -91,7 +91,7 @@ export function useComponentUpdates(live?: LiveWorld[]) {
       rows,
       incoming: {
         label: 'File',
-        description: `The imported file differs from the library ${kind === 'dictionary' ? 'dictionary' : 'entity'} “${item.name}”. Choose what each world does.`,
+        description: `The imported file differs from the library ${kind === 'dictionary' ? 'dictionary' : 'entity'} “${item.name}”. Select an action for each world.`,
         commit,
       },
     });

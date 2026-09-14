@@ -19,6 +19,7 @@ import {
 } from '@/lib/addonReview';
 import type { ReviewState } from '@/lib/compatibleWorlds';
 import { type AddonRow, type ListingRef } from '@/lib/worldDependencies';
+import { Meta } from '@/components/ui/typography';
 
 /** One offer, with the author's saved answer and any decision staged against it. */
 function AddonReviewRow({ row, now, disabled, onDecide, onAcknowledge }: {
@@ -34,9 +35,9 @@ function AddonReviewRow({ row, now, disabled, onDecide, onAcknowledge }: {
       <div className="flex items-start justify-between gap-2">
         <div className="min-w-0">
           <p className="truncate text-label font-medium">{row.name}</p>
-          <p className="text-meta text-muted-foreground">
+          <Meta as="p">
             {row.kindLabel} · {row.author}{waited && ` · ${waited}`}
-          </p>
+          </Meta>
         </div>
         <div className="flex shrink-0 flex-wrap justify-end gap-1">
           {row.showUpdatedBadge && <Badge variant="secondary">Updated since review</Badge>}
@@ -196,8 +197,8 @@ export function ManageAddonsDialog({ open, onOpenChange, world }: ManageAddonsDi
         <DialogHeader className="shrink-0">
           <DialogTitle>Manage Add-ons</DialogTitle>
           <DialogDescription>
-            Other authors offer this content for {world?.name || 'this world'}. Approved add-ons are
-            recommended. Declined add-ons leave the download.
+            Other authors offer these add-ons for {world?.name || 'this world'}. Approved add-ons are
+            recommended to players. Declined add-ons are not downloaded with the world.
           </DialogDescription>
         </DialogHeader>
 
@@ -222,8 +223,8 @@ export function ManageAddonsDialog({ open, onOpenChange, world }: ManageAddonsDi
           ) : shown.length === 0 ? (
             <p className="py-6 text-center text-helper text-muted-foreground">
               {rows.length === 0
-                ? 'No author offers content for this world yet.'
-                : 'No add-on matches this filter. Select “Show” to see the rest.'}
+                ? 'No add-ons are offered for this world.'
+                : 'No add-on matches this filter. Set “Show” to Everything to see all of them.'}
             </p>
           ) : (
             <ul className="space-y-3 pr-1">

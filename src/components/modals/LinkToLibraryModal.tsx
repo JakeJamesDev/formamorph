@@ -4,12 +4,12 @@ import type { LibraryKind } from '@/lib/librarySources';
 const COPY = {
   entity: {
     title: 'Link to Library Item',
-    description: 'Choose the library entity this one follows. Nothing in this world is overwritten.',
+    description: 'Select the library entity this copy follows. Nothing in this world is overwritten.',
     empty: 'No saved entities yet. Save one to your library first.',
   },
   dictionary: {
     title: 'Link to Library Item',
-    description: 'Choose the library dictionary this one follows. Nothing in this world is overwritten.',
+    description: 'Select the library dictionary this copy follows. Nothing in this world is overwritten.',
     empty: 'No saved dictionaries yet. Save one to your library first.',
   },
 } as const;

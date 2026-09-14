@@ -190,7 +190,7 @@ function DictionaryRow({ item, selected, worldAuthor, buttonRef, onInspect, onTo
         )}
         meta={item.linked ? CONTENT_LINK_LABELS.linked : sourceLabel(item.source)}
         metaTitle={item.linked
-          ? "This world's copy of a dictionary in your library"
+          ? "This world's linked copy of a library dictionary"
           : item.source === 'world' ? 'Bundled with this world' : 'From your library'}
       />
     </div>
