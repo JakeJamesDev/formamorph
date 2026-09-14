@@ -1,4 +1,5 @@
 import { adoptBookPlaceholders, adoptEntityPlaceholders } from '@/lib/placeholderHomes';
+import { followedLibraryId } from '@/lib/publishLinks';
 import { randomUUID } from '@/lib/uuid';
 import type { CommunityLink, ContentLink, Dictionary, Entity, Placeholder } from '@/types';
 
@@ -85,9 +86,8 @@ export function unlink<T extends LinkableContent>(item: T): T {
  * Returns the same reference when there is no library item named, so a second run is a no-op.
  */
 export function dropLibraryLink<T extends LinkableContent>(item: T): T {
-  const link = item.link;
-  if (!link?.libraryId) return item;
-  const { libraryId: _gone, sourceRevision: _held, reviewedRevision: _reviewed, ...rest } = link;
+  if (!followedLibraryId(item)) return item;
+  const { libraryId: _gone, sourceRevision: _libraryRevision, reviewedRevision: _reviewed, ...rest } = item.link ?? {};
   return rest.sourceId ? { ...item, link: rest } : unlink(item);
 }
 
@@ -218,15 +218,16 @@ function syncList<T extends LinkableContent>(
   const toAdd: Placeholder[] = [];
   const next = items.map((item) => {
     const link = item.link;
-    if (!link?.libraryId) return item;
+    const libraryId = followedLibraryId(item);
+    if (!libraryId || !link) return item;
     // The lookup covered every library id the world names, so an id it did not answer is an item the
     // player deleted. This is where that reaches the copies, which is why no scan runs at deletion time.
-    if (!sources.has(link.libraryId)) {
+    if (!sources.has(libraryId)) {
       unlinked += 1;
       return dropLibraryLink(item);
     }
     if (link.localReplacement) return item;
-    const source = sources.get(link.libraryId);
+    const source = sources.get(libraryId);
     // Another author's source is only ever pulled through Check for Updates, which the player drives.
     if (!source?.owned || !source.data) return item;
     if (source.revision === link.sourceRevision) return item;

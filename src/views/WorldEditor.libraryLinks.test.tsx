@@ -16,6 +16,8 @@ import type { Dictionary, Entity, World } from '@/types';
 
 
 const library = vi.hoisted(() => ({
+  /** Makes both metadata reads reject, standing in for a library that cannot be read. */
+  unreadable: false,
   dictionaries: new Map<string, { id: string; name: string; data: Dictionary; createdAt?: string; editedAt?: string; sourceId?: string; sourceAuthorId?: string; sourceAuthorName?: string }>(),
   entities: new Map<string, { id: string; name: string; data: Entity; createdAt?: string; editedAt?: string; sourceId?: string; sourceAuthorId?: string; sourceAuthorName?: string }>(),
 }));
@@ -33,7 +35,9 @@ const meta = (record: { id: string; name: string; createdAt?: string; editedAt?:
 
 vi.mock('@/services/DictionaryStorageService', () => ({
   default: {
-    getDictionaryMetadata: () => Promise.resolve([...library.dictionaries.values()].map(meta)),
+    getDictionaryMetadata: () => (library.unreadable
+      ? Promise.reject(new Error('Dictionary library unavailable'))
+      : Promise.resolve([...library.dictionaries.values()].map(meta))),
     getDictionaryData: (id: string) => {
       const found = library.dictionaries.get(id);
       return found ? Promise.resolve(found.data) : Promise.reject(new Error('Dictionary not found'));
@@ -48,7 +52,9 @@ vi.mock('@/services/DictionaryStorageService', () => ({
 
 vi.mock('@/services/EntityStorageService', () => ({
   default: {
-    getEntityMetadata: () => Promise.resolve([...library.entities.values()].map(meta)),
+    getEntityMetadata: () => (library.unreadable
+      ? Promise.reject(new Error('Entity library unavailable'))
+      : Promise.resolve([...library.entities.values()].map(meta))),
     getEntityData: (id: string) => {
       const found = library.entities.get(id);
       return found ? Promise.resolve(found.data) : Promise.reject(new Error('Entity not found'));
@@ -103,6 +109,7 @@ beforeEach(() => {
   localStorage.clear();
   library.dictionaries.clear();
   library.entities.clear();
+  library.unreadable = false;
   signedInAs.id = 'me';
 });
 
@@ -334,6 +341,19 @@ describe('Opening a world after a library save', () => {
     expect(ctx().dictionaries[0].entries[0].value).toBe('Wetland.');
     expect(screen.queryByText('Linked')).toBeNull();
     expect(screen.getByRole('button', { name: 'Save to Library' })).toBeTruthy();
+  });
+
+  it('keeps every link when the library cannot be read, which is not the same as deleted', async () => {
+    library.unreadable = true;
+    const { ctx } = renderWorldEditorBench(
+      worldHolding({ libraryId: 'lib-a', sourceName: 'Fen Lore', sourceRevision: '2026-01-01T00:00:00.000Z' }),
+      'advanced',
+    );
+    openTab(/Dictionary/);
+    selectRow('Fen Lore');
+
+    expect(await screen.findByText('Linked')).toBeTruthy();
+    expect(ctx().dictionaries[0].link?.libraryId).toBe('lib-a');
   });
 
   it('keeps a copy of a deleted library item following the listing it also came from', async () => {

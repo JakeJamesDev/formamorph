@@ -89,6 +89,12 @@ describe('buildInitialSelection', () => {
     expect(items[0].linked).toBeUndefined();
   });
 
+  it('reads a padded library id the way publishing reads it, so both agree on what is followed', () => {
+    const items = buildInitialSelection([book('a', { link: { libraryId: '  lib1  ' } })], [meta('lib1')]);
+    expect(items.map((i) => i.key)).toEqual([selectionKey('world', 'a')]);
+    expect(items[0].linked).toBe(true);
+  });
+
   it('keeps a world row plain when the library item it names is gone', () => {
     const items = buildInitialSelection([book('a', { link: { libraryId: 'deleted' } })], [meta('lib1')]);
     expect(items.map((i) => i.source)).toEqual(['world', 'library']);
