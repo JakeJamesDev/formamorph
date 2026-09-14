@@ -75,6 +75,22 @@ export function unlink<T extends LinkableContent>(item: T): T {
   return rest as T;
 }
 
+/**
+ * The copy after the library item it followed is gone.
+ *
+ * `libraryId`, `sourceRevision` and `reviewedRevision` all describe that item, so they go. A published
+ * listing the copy also follows is a source of its own and stands. A record left naming nothing goes with
+ * them, which makes the copy an independent copy. The content is never touched.
+ *
+ * Returns the same reference when there is no library item named, so a second run is a no-op.
+ */
+export function dropLibraryLink<T extends LinkableContent>(item: T): T {
+  const link = item.link;
+  if (!link?.libraryId) return item;
+  const { libraryId: _gone, sourceRevision: _held, reviewedRevision: _reviewed, ...rest } = link;
+  return rest.sourceId ? { ...item, link: rest } : unlink(item);
+}
+
 /** Sort an object's keys so two equal payloads serialize identically whatever order they were built in. */
 const stable = (value: unknown): unknown => {
   if (Array.isArray(value)) return value.map(stable);
@@ -196,12 +212,20 @@ export interface WorldContent {
 
 function syncList<T extends LinkableContent>(
   items: T[], sources: Map<string, LibrarySource>, shared: Placeholder[],
-): { items: T[]; updated: number; toAdd: Placeholder[] } {
+): { items: T[]; updated: number; unlinked: number; toAdd: Placeholder[] } {
   let updated = 0;
+  let unlinked = 0;
   const toAdd: Placeholder[] = [];
   const next = items.map((item) => {
     const link = item.link;
-    if (!link?.libraryId || link.localReplacement) return item;
+    if (!link?.libraryId) return item;
+    // The lookup covered every library id the world names, so an id it did not answer is an item the
+    // player deleted. This is where that reaches the copies, which is why no scan runs at deletion time.
+    if (!sources.has(link.libraryId)) {
+      unlinked += 1;
+      return dropLibraryLink(item);
+    }
+    if (link.localReplacement) return item;
     const source = sources.get(link.libraryId);
     // Another author's source is only ever pulled through Check for Updates, which the player drives.
     if (!source?.owned || !source.data) return item;
@@ -213,22 +237,27 @@ function syncList<T extends LinkableContent>(
     toAdd.push(...applied.toAdd);
     return applied.item;
   });
-  return { items: updated ? next : items, updated, toAdd };
+  return { items: updated || unlinked ? next : items, updated, unlinked, toAdd };
 }
 
 /**
- * Bring a world's linked copies up to date with the library items their author owns. Saving a library item
- * is what moves its revision on; this is where that reaches the worlds holding a copy of it.
+ * Bring a world's linked copies up to date with the library items their author owns, and let go of the
+ * items that are gone. Saving a library item is what moves its revision on; this is where that reaches the
+ * worlds holding a copy of it.
  *
- * A local replacement is never touched, a copy whose library item is gone or belongs to somebody else is
- * never touched, and a world with nothing to update gets its own arrays back so opening it stays clean.
+ * A local replacement is never updated and a copy of somebody else's item is never updated, but both let
+ * go of an item that is gone. A world with nothing to change gets its own arrays back so opening it stays
+ * clean.
+ *
+ * `sources` must be the answer to looking up every library id the world's copies name: an id it does not
+ * carry reads as an item the player deleted, and its copies become independent copies.
  *
  * `placeholders` is the world's shared list, which the updated content resolves its references against;
  * `toAdd` is what the world gains for references no copy had a connection for.
  */
 export function syncWorldContent(
   world: WorldContent & { placeholders: Placeholder[] }, sources: LibrarySource[],
-): WorldContent & { updated: number; toAdd: Placeholder[] } {
+): WorldContent & { updated: number; unlinked: number; toAdd: Placeholder[] } {
   const byId = new Map(sources.map((source) => [source.id, source]));
   const entities = syncList(world.entities, byId, world.placeholders);
   const dictionaries = syncList(world.dictionaries, byId, [...world.placeholders, ...entities.toAdd]);
@@ -236,6 +265,7 @@ export function syncWorldContent(
     entities: entities.items,
     dictionaries: dictionaries.items,
     updated: entities.updated + dictionaries.updated,
+    unlinked: entities.unlinked + dictionaries.unlinked,
     toAdd: [...entities.toAdd, ...dictionaries.toAdd],
   };
 }

@@ -321,6 +321,34 @@ describe('Opening a world after a library save', () => {
     expect(ctx().dictionaries[0].link?.sourceRevision).toBe('2026-01-01T00:00:00.000Z');
   });
 
+  it('makes a copy of a deleted library item independent, with its content kept', async () => {
+    // Nothing is seeded, so the library holds no item under this id: the player deleted it.
+    const { ctx } = renderWorldEditorBench(
+      worldHolding({ libraryId: 'lib-a', sourceName: 'Fen Lore', sourceRevision: '2026-01-01T00:00:00.000Z' }),
+      'advanced',
+    );
+    openTab(/Dictionary/);
+    selectRow('Fen Lore');
+
+    await waitFor(() => expect(ctx().dictionaries[0].link).toBeUndefined());
+    expect(ctx().dictionaries[0].entries[0].value).toBe('Wetland.');
+    expect(screen.queryByText('Linked')).toBeNull();
+    expect(screen.getByRole('button', { name: 'Save to Library' })).toBeTruthy();
+  });
+
+  it('keeps a copy of a deleted library item following the listing it also came from', async () => {
+    const { ctx } = renderWorldEditorBench(
+      worldHolding({ libraryId: 'lib-a', sourceId: 'listing-9', sourceName: 'Fen Lore', sourceRevision: 'r1' }),
+      'advanced',
+    );
+    openTab(/Dictionary/);
+    selectRow('Fen Lore');
+
+    await waitFor(() => expect(ctx().dictionaries[0].link?.libraryId).toBeUndefined());
+    expect(ctx().dictionaries[0].link?.sourceId).toBe('listing-9');
+    expect(screen.getByText('Linked')).toBeTruthy();
+  });
+
   it('leaves a copy that follows another author alone', async () => {
     library.dictionaries.set('lib-a', {
       id: 'lib-a', name: 'Fen Lore', createdAt: '2026-01-01T00:00:00.000Z', editedAt: '2026-03-03T00:00:00.000Z',
@@ -344,6 +372,14 @@ describe('Entities follow a source the same way', () => {
     dictionaries: [{ id: 'b1', name: 'Marsh Lore', entries: [] }],
   });
 
+  /** The item `LINKED_ENTITY` follows. Another account's, so opening the world reviews its saves rather
+   *  than pushing them, which leaves the copy for the test to edit. */
+  const seedFollowedEntity = () => library.entities.set('lib-e', {
+    id: 'lib-e', name: 'Wren the Guide', createdAt: '2026-01-01T00:00:00.000Z',
+    sourceId: 'listing-7', sourceAuthorId: 'reed', sourceAuthorName: 'Reed',
+    data: { id: 'lib-e', name: 'Wren the Guide', playerDescription: 'A ferryman.' },
+  });
+
   it('saves an entity to the library and links the world copy to it', async () => {
     const { ctx } = renderWorldEditorBench(LINKED_ENTITY(), 'advanced');
     openTab(/Entities/);
@@ -361,6 +397,7 @@ describe('Entities follow a source the same way', () => {
   // The entity name field is a chip editor, so the edit goes through the store's own seam — which is where
   // the guard lives. A content edit carries the entity's own link object through untouched.
   it('turns an edited linked entity into a local replacement', async () => {
+    seedFollowedEntity();
     const { ctx } = renderWorldEditorBench(
       LINKED_ENTITY({ libraryId: 'lib-e', sourceName: 'Wren the Guide', sourceRevision: 'r1' }),
       'advanced',
@@ -376,6 +413,7 @@ describe('Entities follow a source the same way', () => {
   });
 
   it('leaves the record alone when the caller hands over a new link', async () => {
+    seedFollowedEntity();
     const { ctx } = renderWorldEditorBench(
       LINKED_ENTITY({ libraryId: 'lib-e', sourceName: 'Wren the Guide', sourceRevision: 'r1' }),
       'advanced',

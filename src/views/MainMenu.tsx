@@ -57,6 +57,7 @@ import EnterWorldWorkspace from './EnterWorldWorkspace';
 import { startingLocations } from '@/lib/startingLocation';
 import { exclusiveSiblings, collapseExclusiveDefaults } from '@/lib/traitEffects';
 import { buildInitialSelection, finalizeSelection, shouldShowDictionaryChoices } from '@/lib/dictionarySelection';
+import { libraryLines } from '@/lib/librarySources';
 import { emptyEntryDraft, type EntryDraft } from '@/lib/entryDraft';
 import { hasWorldAdditionDefaults, restoreWorldAdditionDefaults, saveWorldAdditionDefaults } from '@/lib/worldAdditionDefaults';
 import WorldStorageService from '../services/WorldStorageService';
@@ -237,7 +238,7 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
   }, []);
   const {
     traits: rawTraits, traitGroups: rawTraitGroups, stats: rawStats, locations: rawLocations, placeholders,
-    loadWorldData, dictionaries: worldBooks, getWorldData,
+    loadWorldData, dictionaries: worldBooks, entities: worldEntities, getWorldData,
   } = useGameData();
   const { beginSession, endSession, rolls } = usePlaceholderSession();
   const { showReadme, setShowReadme } = useReadmeVisibility();
@@ -1132,7 +1133,22 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
     });
   };
 
-  const hasLibraryAdditions = entities.length > 0 || shouldShowDictionaryChoices(worldBooks, dictionaries)
+  /** The signed-in account, for the author line that tells two same-named library items apart. */
+  const signedInId = String(currentUser?.id ?? '') || undefined;
+  /**
+   * The library characters this world does not already hold a copy of, each with its author and source
+   * lines. Offering one the world already holds would put the same character in the run twice.
+   */
+  const additionEntities = useMemo(() => {
+    const followed = new Set(worldEntities
+      .map((entity) => entity.link?.libraryId)
+      .filter((id): id is string => !!id));
+    return entities
+      .filter((meta) => !followed.has(meta.id))
+      .map((meta) => ({ ...meta, ...libraryLines(meta, signedInId) }));
+  }, [entities, signedInId, worldEntities]);
+
+  const hasLibraryAdditions = additionEntities.length > 0 || shouldShowDictionaryChoices(worldBooks, dictionaries)
     || (worldBooks.length > 0 && !!selectedWorld && hasWorldAdditionDefaults(selectedWorld.id));
 
   // Resolve one snapshot; navigation or cancellation invalidates its pending handoff.
@@ -1142,7 +1158,7 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
     entryRequest.current = request;
     setResolvingEntry(true);
     try {
-      const loaded = await Promise.all(entities.filter(m => draft.entityIds.has(m.id))
+      const loaded = await Promise.all(additionEntities.filter(m => draft.entityIds.has(m.id))
         .map(async (metadata) => {
           try {
             return await EntityStorageService.getEntityData(metadata.id);
@@ -1242,7 +1258,8 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
       rawTraits.filter(t => t.isDefault).map(t => t.id), rawTraits, rawTraitGroups);
     const draft: EntryDraft = {
       ...emptyEntryDraft(), traitIds: defaults,
-      ...restoreWorldAdditionDefaults(selectedWorld!.id, buildInitialSelection(worldBooks, dictionaries), entities),
+      ...restoreWorldAdditionDefaults(
+        selectedWorld!.id, buildInitialSelection(worldBooks, dictionaries, signedInId), additionEntities),
     };
     cancelEntryResolution();
     entryStarted.current = false;
@@ -2345,7 +2362,7 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
                           traits.filter((t) => t.isDefault).map((t) => t.id), traits, traitGroups);
                         const draft: EntryDraft = {
                           ...emptyEntryDraft(), traitIds: defaults,
-                          dictionaryItems: buildInitialSelection(worldBooks, dictionaries),
+                          dictionaryItems: buildInitialSelection(worldBooks, dictionaries, signedInId),
                         };
                         cancelEntryResolution();
                         entryStarted.current = false;
@@ -2725,7 +2742,8 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
           resolveTraitText={resolveTraitText}
           selectedTraits={selectedTraits}
           selectedLocationId={selectedLocationId}
-          libraryEntities={entities}
+          worldAuthor={selectedWorld?.author}
+          libraryEntities={additionEntities}
           selectedEntityIds={entryDraft.entityIds}
           dictionaryItems={entryDraft.dictionaryItems}
           categoryIndex={entryDraft.traitSection}
