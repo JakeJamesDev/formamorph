@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState, type ChangeEvent, type ReactNode } from 'react';
 import { toast } from 'react-toastify';
+import { HelpTopicModal } from '@/components/HelpButton';
 import ConnectReferencesModal from '@/components/modals/ConnectReferencesModal';
 import DictionaryEditorModal from '@/components/modals/DictionaryEditorModal';
 import EntityEditorModal from '@/components/modals/EntityEditorModal';
@@ -7,6 +8,8 @@ import ImportContentModal from '@/components/modals/ImportContentModal';
 import LinkToLibraryModal from '@/components/modals/LinkToLibraryModal';
 import type { LibraryPick } from '@/components/modals/AddFromLibraryModal';
 import { parseDictionaryImport } from '@/lib/dictionaryFile';
+import { contentLinkStatusLine } from '@/lib/contentLink';
+import { isHelpSeen } from '@/lib/helpSeenStore';
 import { withEntityLocations } from '@/lib/entityPresence';
 import { importCharacterFile } from '@/lib/entityFile';
 import { parseJsonText } from '@/lib/jsonFileWorkerUtils';
@@ -27,6 +30,8 @@ import {
   type ConnectionPlan, type ReferenceChoices, type ReferenceRow,
 } from '@/lib/worldReferences';
 import type { Dictionary, Entity, GameLocation, Placeholder } from '@/types';
+
+const HELP_TOPIC = 'library.linkedContent';
 
 /** One entry in the selected item's dropdown. */
 export interface LinkMenuItem {
@@ -102,6 +107,7 @@ export function useLibraryLinking(options: LibraryLinkingOptions) {
   const [linkPickerFor, setLinkPickerFor] = useState<LinkableContent | null>(null);
   const [libraryEditor, setLibraryEditor] = useState<{ kind: LibraryKind; id: string } | null>(null);
   const [importReview, setImportReview] = useState<{ kind: LibraryKind; item: LinkableContent } | null>(null);
+  const [helpOpen, setHelpOpen] = useState(false);
   const [connect, setConnect] = useState<ConnectFlow | null>(null);
   const [choices, setChoices] = useState<ReferenceChoices>({});
   const importInputRef = useRef<HTMLInputElement | null>(null);
@@ -170,6 +176,17 @@ export function useLibraryLinking(options: LibraryLinkingOptions) {
     .join(',');
 
   useEffect(() => { void syncFromLibrary(); }, [linkedKey, syncFromLibrary]);
+
+  // The first link an author ever makes opens the explanation once. Every link lands as a pending id, so
+  // a growing list is the one signal that covers Save to Library, Add with the link on, Import, and Link
+  // to Library Item; a seen topic keeps the list silent for good.
+  const pendingCount = pendingIds.length;
+  const lastCount = useRef(0);
+  useEffect(() => {
+    const grew = pendingCount > lastCount.current;
+    lastCount.current = pendingCount;
+    if (grew && !isHelpSeen(HELP_TOPIC)) setHelpOpen(true);
+  }, [pendingCount]);
 
   /** Write a new link onto the world's copy and remember that the world has not saved it yet. */
   const applyLink = useCallback((item: LinkableContent, source: LibrarySource, differs: boolean) => {
@@ -345,8 +362,9 @@ export function useLibraryLinking(options: LibraryLinkingOptions) {
     const linked = !!(item.link?.libraryId || item.link?.sourceId);
     return {
       faceLabel: linked ? 'Open in Library' : 'Save to Library',
+      // A linked copy's face says what it does; its tip says what the copy is and what it follows.
       faceTip: linked
-        ? `Open the library ${noun.toLowerCase()} this copy follows`
+        ? contentLinkStatusLine(item.link, pendingIds) ?? `Open the library ${noun.toLowerCase()} this copy follows`
         : `Save this copy to your library. This world's copy then follows the library item.`,
       onFace: () => {
         if (!linked) { void saveToLibrary(item); return; }
@@ -358,6 +376,7 @@ export function useLibraryLinking(options: LibraryLinkingOptions) {
         ...(advanced ? [{ label: `Export ${noun}…`, onClick: exportItem }] : []),
         ...(linked
           ? [
+            { label: 'About Linked Content…', onClick: () => setHelpOpen(true) },
             ...(item.link?.libraryId
               ? [{
                 label: 'Check for Updates',
@@ -370,7 +389,7 @@ export function useLibraryLinking(options: LibraryLinkingOptions) {
           : [{ label: 'Link to Library Item…', onClick: () => setLinkPickerFor(item) }]),
       ],
     };
-  }, [checkForUpdates, exportDictionary, exportEntity, repairConnections, saveToLibrary, unlinkItem]);
+  }, [checkForUpdates, exportDictionary, exportEntity, pendingIds, repairConnections, saveToLibrary, unlinkItem]);
 
   /** Open the file picker for a kind's Import file… action. */
   const openImportFile = useCallback((kind: LibraryKind) => {
@@ -399,18 +418,17 @@ export function useLibraryLinking(options: LibraryLinkingOptions) {
     setImportReview(null);
     if (!review) return;
     const { kind, item } = review;
-    let linked = item;
+    let entry: PendingAdd = { kind, item };
     if (link) {
       try {
         const source = await saveCopyToLibrary(item, placeholders, locations);
-        linked = { ...item, link: linkToSource(source) };
-        setPendingIds((prev) => [...prev, source.id]);
+        entry = { kind, item: { ...item, link: linkToSource(source) }, source };
       } catch (error) {
         toast.error((error as Error).message || 'Could not save to your library.');
         return;
       }
     }
-    beginAdd([{ kind, item: linked }]);
+    beginAdd([entry]);
   }, [beginAdd, importReview, locations, placeholders]);
 
   /** The world was saved or rolled back, so nothing is waiting on it any more. */
@@ -440,6 +458,7 @@ export function useLibraryLinking(options: LibraryLinkingOptions) {
         onConfirm={(link) => { void confirmImport(link); }}
       />
       {updateDialog}
+      <HelpTopicModal topicId={HELP_TOPIC} open={helpOpen} onOpenChange={setHelpOpen} />
       <EntityEditorModal
         entityId={libraryEditor?.kind === 'entity' ? libraryEditor.id : null}
         onClose={() => { setLibraryEditor(null); void syncFromLibrary(); }}

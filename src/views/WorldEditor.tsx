@@ -92,7 +92,7 @@ import { APP_VERSION } from '@/lib/version';
 import type { Stat, Entity, GameLocation, StatUpdate, Dictionary, World, ContentLink, FocusFieldHint } from '@/types';
 import { useDownscalePrompt } from '@/lib/useDownscalePrompt';
 import { SortableRow, type SortableListItem } from '@/components/SortableList';
-import { ContentLinkIcon, PendingLinksProvider, SelectedContentActions } from '@/components/ContentLinkStatus';
+import { ContentLinkIcon, SelectedContentActions } from '@/components/ContentLinkStatus';
 import { SplitButton } from '@/components/ui/split-button';
 import { useLibraryLinking } from '@/lib/useLibraryLinking';
 import { EditorRowList } from '@/components/EditorRow';
@@ -1088,9 +1088,6 @@ const WorldEditorInner = ({ onClose, embedded = false, backButton }: {
   );
 
   return (
-    // The pending set reaches the link header through context, so the panels drawing that header stay
-    // unaware of whether the world has saved yet.
-    <PendingLinksProvider value={linking.pendingLinks}>
     <div className={`${embedded ? "h-full" : "app-viewport"} flex flex-col overflow-hidden`}>
       {!embedded && (
         <ThemedToastContainer
@@ -1266,7 +1263,6 @@ const WorldEditorInner = ({ onClose, embedded = false, backButton }: {
       )}
       {linking.dialogs}
     </div>
-    </PendingLinksProvider>
   );
 };
 

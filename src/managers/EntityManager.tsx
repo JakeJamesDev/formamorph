@@ -20,7 +20,6 @@ import { labelPlaceholders } from '@/lib/placementLetters';
 import { locationRows } from '@/lib/locationTree';
 import { useEditorMode } from '@/lib/editorMode';
 import { entityPanelTabsFor, entityTabForField, type EntityPanelTab } from '@/views/entityPanelTabs';
-import { ContentLinkHeader } from '@/components/ContentLinkStatus';
 
 /**
  * Right-panel editor for one entity: the field groups split across Profile, Descriptions and Placeholders.
@@ -79,8 +78,6 @@ const EntityManager = ({ entity, tab, onTabChange, focusField }: {
 
   return (
     <div className="space-y-4">
-      {/* Above the strip, so a linked entity's status reads the same on every tab. */}
-      <ContentLinkHeader link={editingEntity.link} />
       <Tabs value={tab} onValueChange={(v) => onTabChange(v as EntityPanelTab)} className="space-y-4">
         <PanelTabsList tabs={tabs} stripLabel="Entity Fields" />
 

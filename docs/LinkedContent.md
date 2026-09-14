@@ -20,7 +20,7 @@ How a world's entities and dictionaries follow a library item, and what that lin
 
 ## Linked Copies
 
-A **linked copy** follows a **library item**. When you save the library item, every linked copy of it receives the change the next time you open its world. An independent copy follows nothing, and its header shows no state.
+A **linked copy** follows a **library item**. When you save the library item, every linked copy of it receives the change the next time you open its world. An independent copy follows nothing.
 
 ### How a Copy Becomes Linked
 
@@ -35,9 +35,9 @@ All four make the same link.
 
 ### The Three Link States
 
-The header above a linked copy's fields shows one badge, with **Source** and the name of what the copy follows under it.
+A linked row carries a 🔗 marker in the list, and its footer button reads **Open in Library**. Point at either one to read the state and the name of what the copy follows, such as *Linked · Sedge*.
 
-| Badge | Meaning | Default in a review |
+| State | Meaning | Default in a review |
 |---|---|---|
 | **Linked** | The copy matches its library item. Updates replace its content. | **Update** |
 | **Local replacement** | You edited the copy. No update overwrites it. | **Keep Mine** |

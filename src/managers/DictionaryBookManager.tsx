@@ -10,7 +10,6 @@ import { statCodeName } from '@/lib/statCodeNames';
 import { useRenameField } from '@/lib/useCodeRename';
 import type { Dictionary, Placeholder } from '@/types';
 import ScopedPlaceholdersSection from './ScopedPlaceholdersSection';
-import { ContentLinkHeader } from '@/components/ContentLinkStatus';
 
 /** Stable empty list, so the rename reader keeps its identity where there is no world. */
 const EMPTY_PLACEHOLDERS: Placeholder[] = [];
@@ -38,7 +37,6 @@ const DictionaryBookManager = ({ book }: { book: Dictionary }) => {
   });
   return (
     <div className="space-y-4">
-      <ContentLinkHeader link={book.link} />
       <div className="space-y-2">
         <Label>Name</Label>
         <Input
