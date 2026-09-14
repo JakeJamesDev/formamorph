@@ -58,6 +58,14 @@ sources are then answered by the world's dependency route, never by a direct ask
 1. **Severity.** A removed source is an error and an unreachable one a warning, whether or not the world
    requires it. An optional removed source is therefore an error row that blocks nothing. The
    alternative is four rules instead of two; the ticket did not say.
-2. **Where the gate's reason reads.** The reason is a line above the action column, and the three gated
-   buttons are disabled. A tooltip on each disabled button was the other option; a disabled control
-   cannot carry one without a wrapper.
+2. **Where the gate's reason reads.** The reason is a line above the action column, with a **Repair
+   Sources** button that opens the editor. A tooltip on each disabled button was the other option; a
+   disabled control cannot carry one without a wrapper.
+3. **A world that was never published requires nothing.** Requiredness is a fact about a listing: the
+   publish dialog's Linked Content section is where the author states it, and `ContentLink` carries no
+   required flag. So a world with no listing of its own has every source optional, and a removed source
+   there reports a finding and blocks nothing. The content is embedded in the world, so play and a first
+   publish both still work — but it means the Publish gate can never fire before the first publish.
+4. **A Replace brings shared placeholders with it.** The picked item's content may name references this
+   world has not got, so the repair appends them to the world's shared list, the way an update from the
+   library already does. It is silent; the copy's own Save Connections step is where they are re-aimed.

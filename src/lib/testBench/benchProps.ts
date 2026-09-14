@@ -15,15 +15,15 @@ import type { MissingSource, RepairAction } from '@/lib/sourceChecks';
 /** Where the author is sent when they click an item a finding names. */
 export type OpenFindingItem = (section: FindingSection, itemId: string) => void;
 
-/** How far the on-demand stat-code check has got. It never runs on its own — every run costs one sandbox VM
- *  per coded stat, which is why the live pass can't have it. */
-export type CodeCheckStatus = 'idle' | 'running' | 'done';
+/** How far one of the Bench's on-demand checks has got. Neither runs on its own: the stat-code check costs
+ *  a sandbox VM per coded stat, and the source check costs a request per source. */
+export type CheckStatus = 'idle' | 'running' | 'done';
 
 /** The missing-source check and the repairs its rows offer. */
 export interface SourceCheckProps {
   /** How many copies in the world follow a published source — what a check would ask about. */
   sourceCount: number;
-  status: CodeCheckStatus;
+  status: CheckStatus;
   /** The copies the last check could not confirm, each with its answer. */
   missing: MissingSource[];
   /** Ask the server about every source again. Also what Retry Check runs. */
@@ -47,7 +47,7 @@ export interface IssuesProps {
   advanced: boolean;
   /** How many stats carry code — what the on-demand check would have to run. */
   codedStatCount: number;
-  codeCheckStatus: CodeCheckStatus;
+  codeCheckStatus: CheckStatus;
   /** The rule whose repair is running, when one is. Only the async image conversion can be — a pure fix
    *  lands within the click — and the row it belongs to shows the work rather than looking unresponsive. */
   fixingRuleId: string | null;

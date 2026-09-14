@@ -80,10 +80,10 @@ describe('blockingSources', () => {
 });
 
 describe('sourceBlockReason', () => {
-  it('names the removed source and where to repair it', () => {
+  it('names the removed source, and leaves where to repair it to the surface', () => {
     const copies = linkedSourceCopies(world(), ['src-a']);
     expect(sourceBlockReason(copies, { 'src-a': 'not_found' }))
-      .toBe('This world requires Marsh Warden, which the author removed. Repair it in the World Editor.');
+      .toBe('This world requires Marsh Warden, which the author removed.');
   });
 
   it('is null when nothing blocks', () => {
@@ -98,7 +98,7 @@ describe('sourceBlockReason', () => {
       ],
     };
     const reason = sourceBlockReason(linkedSourceCopies(content, ['src-a']), { 'src-a': 'not_found' });
-    expect(reason).toBe('This world requires Marsh Warden, which the author removed. Repair it in the World Editor.');
+    expect(reason).toBe('This world requires Marsh Warden, which the author removed.');
   });
 });
 

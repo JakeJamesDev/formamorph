@@ -15,7 +15,7 @@ import {
   type MissingSource, type SourceCheckWorld, type SourceCopy,
 } from '@/lib/sourceChecks';
 import { checkMissingSources } from './missingSources';
-import type { CodeCheckStatus } from './benchProps';
+import type { CheckStatus } from './benchProps';
 import type { Finding } from './rules';
 
 const PORTS: SourceCheckPorts = {
@@ -25,7 +25,7 @@ const PORTS: SourceCheckPorts = {
 
 export interface SourceChecks {
   /** How far the on-demand check has got. */
-  status: CodeCheckStatus;
+  status: CheckStatus;
   /** Every copy in the world that follows a published source — what a check would ask about. */
   copies: SourceCopy[];
   /** The copies the last check could not confirm, each with its answer. */
@@ -48,7 +48,7 @@ export function useSourceChecks(
   ports: SourceCheckPorts = PORTS,
 ): SourceChecks {
   const [record, setRecord] = useState<SourceCheckRecord>(() => readSourceCheck(worldId));
-  const [status, setStatus] = useState<CodeCheckStatus>(() => (readSourceCheck(worldId).checkedAt ? 'done' : 'idle'));
+  const [status, setStatus] = useState<CheckStatus>(() => (readSourceCheck(worldId).checkedAt ? 'done' : 'idle'));
   useEffect(() => {
     const stored = readSourceCheck(worldId);
     setRecord(stored);
@@ -70,7 +70,7 @@ export function useSourceChecks(
   const run = useCallback(() => {
     const ticket = ++newest.current;
     setStatus('running');
-    void runSourceCheck(linkedSourceCopies(world, record.required), worldSourceId, ports, record.required)
+    void runSourceCheck(copies, worldSourceId, ports, record.required)
       .then((next) => {
         if (ticket !== newest.current) return;
         writeSourceCheck(worldId, next);
@@ -80,7 +80,7 @@ export function useSourceChecks(
       // `runSourceCheck` answers its own failures, so reaching here means the run itself broke. Leaving the
       // button spinning would strand the author with no way to try again.
       .catch(() => { if (ticket === newest.current) setStatus('idle'); });
-  }, [world, worldId, worldSourceId, record.required, ports]);
+  }, [copies, worldId, worldSourceId, record.required, ports]);
 
   return { status, copies, missing, findings, checkedAt: record.checkedAt, run };
 }

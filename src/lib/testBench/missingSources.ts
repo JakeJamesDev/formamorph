@@ -5,13 +5,22 @@
  * so they group, sort, and dismiss exactly like a static finding.
  */
 import { missingSources, type MissingSource, type SourceCopy, type SourceCheckResults } from '@/lib/sourceChecks';
-import { finding, SOURCE_NOT_FOUND, SOURCE_UNAVAILABLE, type Finding, type FindingItem } from './rules';
+import type { LibraryKind } from '@/lib/librarySources';
+import {
+  finding, SOURCE_NOT_FOUND, SOURCE_UNAVAILABLE,
+  type Finding, type FindingItem, type FindingSection,
+} from './rules';
+
+/** The editor tab that lists a copy of this kind — the one reading, so a finding's item and its repair row
+ *  can never send the author to different places. */
+export const sourceSection = (kind: LibraryKind): FindingSection =>
+  (kind === 'dictionary' ? 'dictionary' : 'entities');
 
 /** The copy as a finding names it, on the editor tab that lists it. */
 const asItem = (row: MissingSource): FindingItem => ({
   id: row.id,
   name: row.name,
-  section: row.kind === 'dictionary' ? 'dictionary' : 'entities',
+  section: sourceSection(row.kind),
 });
 
 /** What one removed source costs the world: a required one stops a new game, an optional one nothing. */
