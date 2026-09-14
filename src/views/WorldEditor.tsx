@@ -217,6 +217,7 @@ const WorldEditorInner = ({ onClose, embedded = false, backButton }: {
     if (import.meta.env.DEV && devRoute?.tab) setActiveTab(devRoute.tab);
   }, [devRoute?.tab]);
   const devSubtab = devRoute?.subtab;
+  const [devReplaceDone, setDevReplaceDone] = useState(false);
   useEffect(() => {
     if (import.meta.env.DEV && LOCATION_VIEWS.some((v) => v.value === devSubtab)) {
       setLocationView(devSubtab as LocationView);
@@ -1251,6 +1252,16 @@ const WorldEditorInner = ({ onClose, embedded = false, backButton }: {
           kind={bench.replaceSource.kind}
           name={bench.replaceSource.name}
           onReplace={bench.onReplacePicked}
+        />
+      )}
+      {/* DEV: the picker over a canned copy, since in the app it opens only from an Issues row. */}
+      {import.meta.env.DEV && devRoute?.modal === 'replaceSource' && !devReplaceDone && (
+        <ReplaceSourceModal
+          open
+          onOpenChange={(open) => { if (!open) setDevReplaceDone(true); }}
+          kind="entity"
+          name="Sedge"
+          onReplace={() => setDevReplaceDone(true)}
         />
       )}
       {linking.dialogs}
