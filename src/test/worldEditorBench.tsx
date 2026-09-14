@@ -10,6 +10,7 @@ import { vi } from 'vitest';
 import { GameDataProvider, useGameData } from '@/contexts/GameDataContext';
 import { writeEditorMode, type EditorMode } from '@/lib/editorMode';
 import { SettingsProvider } from '@/contexts/SettingsContext';
+import { TooltipProvider } from '@/components/ui/tooltip';
 import WorldEditor from '@/views/WorldEditor';
 import type { World } from '@/types';
 
@@ -69,11 +70,13 @@ export const renderWorldEditorBench = (world: World, mode: EditorMode) => {
   writeEditorMode(mode);
   render(
     <SettingsProvider>
-      <GameDataProvider>
-        <Harness world={world} onReady={(c) => { ctx = c; }}>
-          <WorldEditor onClose={vi.fn()} embedded backButton />
-        </Harness>
-      </GameDataProvider>
+      <TooltipProvider>
+        <GameDataProvider>
+          <Harness world={world} onReady={(c) => { ctx = c; }}>
+            <WorldEditor onClose={vi.fn()} embedded backButton />
+          </Harness>
+        </GameDataProvider>
+      </TooltipProvider>
     </SettingsProvider>,
   );
   return { ctx: () => ctx };

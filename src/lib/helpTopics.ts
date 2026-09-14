@@ -458,27 +458,26 @@ Text that's present every single turn is deliberately left out — your world de
 
 Start with one book and a few entries. Reach for the extra controls only when an entry fires when it shouldn't.`,
   },
-  // Mounted by the link-state header in the World Editor and by both update reviews. One topic for all
-  // three: the dialog a reader opened decides which tab they read first, so every tab stands alone.
+  // Opened from the linked copy's footer menu in the World Editor, once on a profile's first link, and by
+  // both update reviews. One topic for all: the dialog a reader opened decides which tab they read first,
+  // so every tab stands alone.
   'library.linkedContent': {
     title: 'Linked Content',
     wikiPage: 'LinkedContent',
     tabs: [
       {
         label: 'Linked Copies',
-        body: `A **linked copy** is an entity or a dictionary in a world that follows a **library item**. When you save the library item, every linked copy of it receives the change the next time you open its world. A copy that follows nothing is an **independent copy**, and its header shows no state.
+        body: `A **linked copy** is an entity or a dictionary in a world that follows a **library item**. When you save the library item, every linked copy of it receives the change the next time you open its world. A copy that follows nothing is an **independent copy**.
 
 **How a copy becomes linked.** **Save to Library** links the copy it saved. **Add Entity** and **Add Dictionary** add a copy from your library and offer **Link to Library**, on by default. **Import Entity…** and **Import Dictionary…** offer the same choice for a file. An independent copy's menu holds **Link to Library Item…**. All of these make the same link.
 
-**What the header says**
+**The three link states.** A linked row carries a 🔗 marker in the list, and the footer button reads **Open in Library**. Point at either one to read the state and the name of what the copy follows.
 
 | | |
 |---|---|
 | **Linked** | The copy matches its library item. Updates replace its content. |
 | **Local replacement** | You edited the copy. No update overwrites it. **Keep Mine** is its default in every review. |
 | **Link pending save** | You linked the copy in this editing session. The link is written when you save the world. |
-
-**Source** under the badge names the library item the copy follows.
 
 **Open in Library** opens the library item. **Unlink** turns the copy into an independent copy. The content stays exactly as it is, and the copy follows nothing.
 

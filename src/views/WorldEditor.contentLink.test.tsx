@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { screen, fireEvent } from '@testing-library/react';
+import { act, screen, fireEvent } from '@testing-library/react';
 import { benchEditorWorld, renderWorldEditorBench } from '@/test/worldEditorBench';
 import type { World } from '@/types';
 
@@ -68,6 +68,8 @@ const PLAIN_WORLD: World = benchEditorWorld({
 // These tabs switch on mouseDown, not click.
 const openTab = (name: RegExp) => fireEvent.mouseDown(screen.getByRole('tab', { name }));
 const selectRow = (name: string) => fireEvent.click(screen.getByText(name));
+/** The linked copy's state and source live in the footer button's tip, which focus opens. */
+const focusLinkFace = () => act(() => screen.getByRole('button', { name: 'Open in Library' }).focus());
 /** The list row the marker sits on, so a marker drawn against the wrong item fails. */
 const markedRow = (label: string) => screen.getByLabelText(label).parentElement;
 
@@ -83,32 +85,32 @@ describe('World Editor shows what a copy follows', () => {
     expect(markedRow('Linked')?.textContent).not.toContain('Odd Wick');
   });
 
-  it('names the source in the selected entity header', () => {
+  it('names the state and the source in the footer button’s tip', async () => {
     renderWorldEditorBench(LINKED_WORLD, 'advanced');
     openTab(/Entities/);
     selectRow('Wren');
-    expect(screen.getByText('Linked')).toBeTruthy();
-    expect(screen.getByText(/Source:\s*Wren the Guide/)).toBeTruthy();
+    focusLinkFace();
+    expect(await screen.findByText('Linked · Wren the Guide')).toBeTruthy();
   });
 
   it('shows no state for a selected entity that follows nothing', () => {
     renderWorldEditorBench(LINKED_WORLD, 'advanced');
     openTab(/Entities/);
     selectRow('Odd Wick');
-    expect(screen.queryByText(/^Source:/)).toBeNull();
-    // The other row's marker is still on screen; only the header is empty.
-    expect(screen.queryByText('Local replacement')).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Open in Library' })).toBeNull();
+    expect(screen.getByRole('button', { name: 'Save to Library' })).toBeTruthy();
   });
 
-  it('marks the linked dictionary in the list and names its source in the header', () => {
+  it('marks the linked dictionary in the list and names its source in the footer tip', async () => {
     renderWorldEditorBench(LINKED_WORLD, 'advanced');
     openTab(/Dictionary/);
     expect(screen.getAllByLabelText('Linked')).toHaveLength(1);
     selectRow('Marsh Lore');
-    expect(screen.getByText(/Source:\s*Fen Lorebook/)).toBeTruthy();
+    focusLinkFace();
+    expect(await screen.findByText('Linked · Fen Lorebook')).toBeTruthy();
   });
 
-  it('calls an edited copy a Local replacement rather than Linked', () => {
+  it('calls an edited copy a Local replacement rather than Linked', async () => {
     renderWorldEditorBench(benchEditorWorld({
       entities: [{ id: 'e1', name: 'Wren', locations: ['harbor'], link: { ...ENTITY_LINK, localReplacement: true } }],
       dictionaries: [{ id: 'b1', name: 'Marsh Lore', entries: [] }],
@@ -116,8 +118,9 @@ describe('World Editor shows what a copy follows', () => {
     openTab(/Entities/);
     expect(screen.getAllByLabelText('Local replacement')).toHaveLength(1);
     selectRow('Wren');
-    expect(screen.getByText('Local replacement')).toBeTruthy();
-    expect(screen.queryByText('Linked')).toBeNull();
+    focusLinkFace();
+    expect(await screen.findByText('Local replacement · Wren the Guide')).toBeTruthy();
+    expect(screen.queryByText('Linked · Wren the Guide')).toBeNull();
   });
 
   it('shows the marker in Simple mode too', () => {
@@ -135,14 +138,12 @@ describe('World Editor shows what a copy follows', () => {
     expect(screen.getAllByLabelText('Linked')).toHaveLength(1);
   });
 
-  it('offers help beside the link state of a linked copy, and none for an independent one', () => {
+  it('draws no header above the panel for a linked copy', () => {
     renderWorldEditorBench(LINKED_WORLD, 'advanced');
     openTab(/Entities/);
     selectRow('Wren');
-    expect(screen.getByLabelText('About Linked Content')).toBeTruthy();
-
-    selectRow('Odd Wick');
     expect(screen.queryByLabelText('About Linked Content')).toBeNull();
+    expect(screen.queryByText(/^Source:/)).toBeNull();
   });
 
   it('shows nothing at all for a world with no link records', () => {
@@ -150,10 +151,10 @@ describe('World Editor shows what a copy follows', () => {
     openTab(/Entities/);
     expect(screen.queryByLabelText('Linked')).toBeNull();
     selectRow('Wren');
-    expect(screen.queryByText(/^Source:/)).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Open in Library' })).toBeNull();
     openTab(/Dictionary/);
     expect(screen.queryByLabelText('Linked')).toBeNull();
     selectRow('Marsh Lore');
-    expect(screen.queryByText(/^Source:/)).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Open in Library' })).toBeNull();
   });
 });

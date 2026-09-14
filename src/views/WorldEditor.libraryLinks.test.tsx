@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { screen, fireEvent, waitFor, within } from '@testing-library/react';
+import { act, screen, fireEvent, waitFor, within } from '@testing-library/react';
 import { benchEditorWorld, renderWorldEditorBench } from '@/test/worldEditorBench';
+import { markHelpSeen } from '@/lib/helpSeenStore';
 import type { Dictionary, Entity, World } from '@/types';
 
 /**
@@ -100,6 +101,8 @@ const openTab = (name: RegExp) => fireEvent.mouseDown(screen.getByRole('tab', { 
 const selectRow = (name: string) => fireEvent.click(screen.getByText(name));
 const clickButton = (name: string | RegExp) => fireEvent.click(screen.getByRole('button', { name }));
 const openActionsMenu = () => fireEvent.click(screen.getByRole('button', { name: 'More library actions' }));
+/** The linked copy's state and source live in the footer button's tip, which focus opens. */
+const focusLinkFace = () => act(() => screen.getByRole('button', { name: 'Open in Library' }).focus());
 /** The picker's own confirm. It shares its label with the footer button that opened it, so this scopes to
  *  the dialog rather than matching both. */
 const confirmPicker = (name: string) =>
@@ -107,10 +110,48 @@ const confirmPicker = (name: string) =>
 
 beforeEach(() => {
   localStorage.clear();
+  // The first link of a fresh profile opens the Linked Content help over the editor; these tests read the
+  // editor underneath it, so they start as a profile that has read it. The nudge has its own describe.
+  markHelpSeen('library.linkedContent');
   library.dictionaries.clear();
   library.entities.clear();
   library.unreadable = false;
   signedInAs.id = 'me';
+});
+
+describe('Linked Content help', () => {
+  it('opens once on the first link a profile makes, and marks the topic read', async () => {
+    localStorage.clear();
+    renderWorldEditorBench(PLAIN_WORLD(), 'advanced');
+    openTab(/Dictionary/);
+    selectRow('Marsh Lore');
+    expect(screen.queryByRole('dialog', { name: 'Linked Content' })).toBeNull();
+    clickButton('Save to Library');
+
+    const help = await screen.findByRole('dialog', { name: 'Linked Content' });
+    expect(within(help).getByRole('tab', { name: 'Linked Copies' })).toBeTruthy();
+    expect(JSON.parse(localStorage.getItem('FORMAMORPH_helpSeen') ?? '[]')).toContain('library.linkedContent');
+  });
+
+  it('stays closed on a link when the topic has been read', async () => {
+    renderWorldEditorBench(PLAIN_WORLD(), 'advanced');
+    openTab(/Dictionary/);
+    selectRow('Marsh Lore');
+    clickButton('Save to Library');
+    await screen.findByRole('button', { name: 'Open in Library' });
+    expect(screen.queryByRole('dialog', { name: 'Linked Content' })).toBeNull();
+  });
+
+  it('opens from the linked copy’s menu', async () => {
+    renderWorldEditorBench(PLAIN_WORLD(), 'advanced');
+    openTab(/Dictionary/);
+    selectRow('Marsh Lore');
+    clickButton('Save to Library');
+    await screen.findByRole('button', { name: 'Open in Library' });
+    openActionsMenu();
+    clickButton('About Linked Content…');
+    expect(await screen.findByRole('dialog', { name: 'Linked Content' })).toBeTruthy();
+  });
 });
 
 describe('Save to Library', () => {
@@ -126,13 +167,13 @@ describe('Save to Library', () => {
     // The library item is its own record: the world keeps the copy it already had.
     expect(stored.id).not.toBe('b1');
 
-    expect(await screen.findByText('Link pending save')).toBeTruthy();
-    expect(screen.getByText(/Source:\s*Marsh Lore/)).toBeTruthy();
+    await screen.findByRole('button', { name: 'Open in Library' });
+    focusLinkFace();
+    expect(await screen.findByText('Link pending save · Marsh Lore')).toBeTruthy();
 
     clickButton('Save');
-    await waitFor(() => expect(screen.getByText('Linked')).toBeTruthy());
-    expect(screen.queryByText('Link pending save')).toBeNull();
-    expect(screen.getByText(/Source:\s*Marsh Lore/)).toBeTruthy();
+    expect(await screen.findByText('Linked · Marsh Lore')).toBeTruthy();
+    expect(screen.queryByText('Link pending save · Marsh Lore')).toBeNull();
   });
 
   it('offers the linked copy the library item instead of a second save', async () => {
@@ -221,7 +262,8 @@ describe('Link to Library Item', () => {
 
     await waitFor(() => expect(ctx().dictionaries[0].link?.libraryId).toBe('lib-a'));
     expect(ctx().dictionaries[0].link?.localReplacement).toBeUndefined();
-    expect(await screen.findByText('Link pending save')).toBeTruthy();
+    focusLinkFace();
+    expect(await screen.findByText('Link pending save · Marsh Lore')).toBeTruthy();
   });
 
   it('links a copy whose content differs as a local replacement and leaves the world content alone', async () => {
@@ -261,12 +303,14 @@ describe('Editing and unlinking a followed copy', () => {
     const { ctx } = renderWorldEditorBench(OTHER_AUTHORS_COPY(), 'advanced');
     openTab(/Dictionary/);
     selectRow('Marsh Lore');
-    expect(screen.getByText('Linked')).toBeTruthy();
+    focusLinkFace();
+    expect(await screen.findByText('Linked · Fen Lorebook')).toBeTruthy();
 
     fireEvent.change(screen.getByDisplayValue('Marsh Lore'), { target: { value: 'Marsh Lore, revised' } });
 
     await waitFor(() => expect(ctx().dictionaries[0].link?.localReplacement).toBe(true));
-    expect(await screen.findByText('Local replacement')).toBeTruthy();
+    focusLinkFace();
+    expect(await screen.findByText('Local replacement · Fen Lorebook')).toBeTruthy();
   });
 
   it('keeps the content and clears the record on Unlink', async () => {
@@ -279,8 +323,7 @@ describe('Editing and unlinking a followed copy', () => {
 
     await waitFor(() => expect(ctx().dictionaries[0].link).toBeUndefined());
     expect(ctx().dictionaries[0].entries[0].value).toBe('Reeds.');
-    expect(screen.queryByText('Linked')).toBeNull();
-    expect(screen.queryByText('Local replacement')).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Open in Library' })).toBeNull();
     expect(screen.getByRole('button', { name: 'Save to Library' })).toBeTruthy();
   });
 });
@@ -339,7 +382,7 @@ describe('Opening a world after a library save', () => {
 
     await waitFor(() => expect(ctx().dictionaries[0].link).toBeUndefined());
     expect(ctx().dictionaries[0].entries[0].value).toBe('Wetland.');
-    expect(screen.queryByText('Linked')).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Open in Library' })).toBeNull();
     expect(screen.getByRole('button', { name: 'Save to Library' })).toBeTruthy();
   });
 
@@ -352,7 +395,9 @@ describe('Opening a world after a library save', () => {
     openTab(/Dictionary/);
     selectRow('Fen Lore');
 
-    expect(await screen.findByText('Linked')).toBeTruthy();
+    await screen.findByRole('button', { name: 'Open in Library' });
+    focusLinkFace();
+    expect(await screen.findByText('Linked · Fen Lore')).toBeTruthy();
     expect(ctx().dictionaries[0].link?.libraryId).toBe('lib-a');
   });
 
@@ -366,7 +411,8 @@ describe('Opening a world after a library save', () => {
 
     await waitFor(() => expect(ctx().dictionaries[0].link?.libraryId).toBeUndefined());
     expect(ctx().dictionaries[0].link?.sourceId).toBe('listing-9');
-    expect(screen.getByText('Linked')).toBeTruthy();
+    focusLinkFace();
+    expect(await screen.findByText('Linked · Fen Lore')).toBeTruthy();
   });
 
   it('leaves a copy that follows another author alone', async () => {

@@ -30,6 +30,21 @@ export function contentLinkState(link: ContentLink | undefined | null): ContentL
   return link.localReplacement ? 'local-replacement' : 'linked';
 }
 
+/** What a link made in this editing session reads as until the world save commits it. */
+export const PENDING_LINK_LABEL = 'Link pending save';
+
+/** The state and the source on one line, for the footer button's tip and the row marker: "Linked · Sedge".
+ *  `pending` holds the library ids linked this session and not yet saved with the world. Null for an
+ *  independent copy. */
+export function contentLinkStatusLine(link: ContentLink | undefined | null, pending: readonly string[] = []): string | null {
+  const state = contentLinkState(link);
+  if (!state) return null;
+  const waiting = !!link?.libraryId && pending.includes(link.libraryId);
+  const label = waiting ? PENDING_LINK_LABEL : CONTENT_LINK_LABELS[state];
+  const source = contentLinkSourceName(link);
+  return source ? `${label} · ${source}` : label;
+}
+
 /** The source's display name, or null when the record carries none. An id is never shown in its place. */
 export function contentLinkSourceName(link: ContentLink | undefined | null): string | null {
   return link ? linkText(link.sourceName) : null;

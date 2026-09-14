@@ -13,11 +13,11 @@ The player who sees **Linked** for the first time has no way to learn what it me
 
 One wiki page, **Linked Content**, tells the whole story in the reader's order: what a linked copy is, how a copy becomes one, what edits do to it, how updates reach it, what publishing and downloading carry, and how to repair a copy whose source is gone.
 
-One in-app help topic, `library.linkedContent`, carries the same story as tabs. A `?` button mounts beside the **Linked** header in the World Editor and in the title bar of **Update Available** and **Update This World**. Each tab stands alone. The topic's **Learn more** link opens the wiki page.
+One in-app help topic, `library.linkedContent`, carries the same story as tabs. In the World Editor it opens once, on the first link a profile makes, and afterwards from the linked copy's footer menu as **About Linked Content…**. A `?` button mounts in the title bar of **Update Available** and **Update This World**. Each tab stands alone. The topic's **Learn more** link opens the wiki page.
 
 ## User Stories
 
-1. As an author, I want a `?` beside the Linked badge, so that I learn what the badge means the first time I see it.
+1. As an author, I want the help to open on its own the first time I link a copy, so that I learn what Linked means the moment it first appears, and never again unasked.
 2. As an author, I want the help to say that a linked copy follows a library item, so that I know edits to the library item reach this copy.
 3. As an author, I want the help to say what a local replacement is, so that I know my edit stopped updates from overwriting this copy.
 4. As an author, I want the help to name every way a copy becomes linked, so that I know Save to Library, Add from Library, and Import all create the same link.
@@ -52,7 +52,7 @@ One in-app help topic, `library.linkedContent`, carries the same story as tabs. 
 
 - **One topic, tabbed.** The registry gets `library.linkedContent` with tabs, in this order: **Linked Copies**, **Updates**, **Publishing**, **Downloading**, **Repairs**. The first tab holds what a linked copy is, how one is made, and what a local replacement and Unlink are. Every mount shows the same topic. The dialog a reader opened decides which tab they read first, and each tab stands alone.
 - **Wiki page `LinkedContent`.** A new page under Reference in the sidebar, with a Home table row. Its sections match the tab order. The help topic names it as its `wikiPage`, with no anchor.
-- **Mounts.** Three: the link-state header above an entity's or dictionary's fields in the World Editor, the Update Available title bar, and the Update This World title bar. The download window and Manage Add-ons get no button in this spec.
+- **Mounts.** Three: an **About Linked Content…** item first in the linked copy's footer menu, the Update Available title bar, and the Update This World title bar. The editor also opens the topic on its own once, when the session's first link lands and the topic has never been opened; opening marks it seen, so the nudge never repeats. A `?` beside the Linked badge was tried and rejected: it forced the badge row to button height. The badge-and-source header went with it: the state and the source now read from the footer button's tip and the row marker's tip, through one shared status line. The download window and Manage Add-ons get no button in this spec.
 - **The `?` in a dialog title bar** sits at the header's trailing edge, before the close control, the way the Memory Manager mounts it. The help pop-out opens as a second dialog over the review dialog.
 - **Copy register.** The topic body and the wiki page use the terms the Writing Guide registers: library item, linked copy, independent copy, local replacement, source, add-on, bundled content. Approved, Unreviewed, and Declined are the three review words. The tone follows the existing help topics: lead with what it is, then why it exists, then the controls that are not self-evident. The wiki page uses the human formatting the other pages use: short sections, a table for the three link states and one for the four update actions, callouts for the traps.
 - **Traps the page names.** A republished source is a new listing and never reconnects on its own. Keep Mine remembers one revision, so the next revision asks again. The file's content always wins on import. Removing a library item leaves independent copies.
@@ -62,7 +62,7 @@ One in-app help topic, `library.linkedContent`, carries the same story as tabs. 
 
 - A good test reads the rendered dialog or the registry as the reader does. It asserts the button's accessible name, the tab labels, and the Learn more target. It does not assert sentence text beyond the tab labels.
 - **Registry drift guard.** Extend the help-topic test: for every topic with a `wikiPage`, a file `docs/<wikiPage>.md` exists. This guards every existing topic too.
-- **Mount pins.** One test per mount, in the pattern of the entities-topic pin: the review dialogs and the link header render a button named "About Linked Content". The link header test renders with a linked record; an independent copy renders no header and no button.
+- **Mount pins.** One test per mount, in the pattern of the entities-topic pin: the review dialogs render a button named "About Linked Content", and the linked copy's menu holds the item. The nudge has three cases: a fresh profile's first Save to Library opens the dialog and records the topic as seen; a profile that has seen it links in silence; the menu item opens it on demand.
 - **Prior art.** The help-topic registry tests, the Memory Manager help mount, and the review dialog tests that already render each dialog with a fixture review.
 
 ## Out of Scope
