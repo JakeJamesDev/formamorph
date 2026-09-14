@@ -31,21 +31,21 @@ describe('a component listing’s Compatible Worlds', () => {
     expect(screen.getByText('Compatible Worlds')).toBeTruthy();
     expect(screen.getByText('Approved (1)')).toBeTruthy();
     expect(screen.getByText('Sedge Landing')).toBeTruthy();
-    expect(screen.getByText('Community (1)')).toBeTruthy();
+    expect(screen.getByText('Unreviewed (1)')).toBeTruthy();
     expect(screen.getByText('The Long Dark')).toBeTruthy();
   });
 
   it('says the worlds are offered rather than installed', () => {
     draw([{ id: 'w1', name: 'Sedge Landing', reviewState: 'approved' }]);
 
-    expect(screen.getByText(/Downloading this entity installs the entity alone/)).toBeTruthy();
+    expect(screen.getByText(/Download installs this entity only/)).toBeTruthy();
   });
 
   it('labels a declined world rather than hiding it from the reader the server sent it to', () => {
     draw([{ id: 'w3', name: 'Ashfall', reviewState: 'declined' }]);
 
     expect(screen.getByText('Ashfall')).toBeTruthy();
-    expect(screen.getByText('Not recommended by the world author')).toBeTruthy();
+    expect(screen.getByText('Declined by the world author')).toBeTruthy();
   });
 
   it('keeps a declined world out of the approved and community groups', () => {

@@ -22,14 +22,14 @@ describe('checkMissingSources', () => {
       ruleId: 'source-not-found',
       severity: 'error',
       section: 'entities',
-      message: '“Marsh Warden” was removed by its author, and this world requires it',
+      message: 'This world requires “Marsh Warden”. Its author removed the listing.',
       items: [{ id: 'e1', name: 'Warden', section: 'entities' }],
     }]);
   });
 
   it('reports an optional removed source without claiming the world requires it', () => {
     const findings = checkMissingSources(linkedSourceCopies(world), { 'src-a': 'not_found' });
-    expect(findings[0].message).toBe('“Marsh Warden” was removed by its author');
+    expect(findings[0].message).toBe('The source “Marsh Warden” was removed by its author.');
   });
 
   it('reports any other failure as unchecked, never as removed', () => {

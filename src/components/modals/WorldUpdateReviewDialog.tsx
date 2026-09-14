@@ -16,11 +16,11 @@ import type { WorldUpdateReview } from '@/lib/useDownloadCoordinator';
 /** What each group of rows is called, and what Apply does to the rows in it. */
 const GROUPS: { kind: WorldUpdateRowKind; title: string; note?: string }[] = [
   { kind: 'changed', title: 'Changed Content' },
-  { kind: 'added', title: 'New Required Content', note: 'Apply downloads these and links them to this world.' },
+  { kind: 'added', title: 'New Required Content', note: 'Apply Updates downloads these sources and links a copy of each to this world.' },
   {
     kind: 'dropped',
     title: 'No Longer Required',
-    note: 'Apply keeps this content as an independent copy and clears its source.',
+    note: 'Apply Updates keeps these copies and clears their source. They become independent copies.',
   },
 ];
 
@@ -28,7 +28,7 @@ const GROUPS: { kind: WorldUpdateRowKind; title: string; note?: string }[] = [
 function rowDetail(row: WorldUpdateRow): string {
   const library = row.library ? KIND_LABELS[row.library].one : '';
   if (!row.unavailable) return library;
-  return library ? `${library} · Not on the server` : 'Not on the server';
+  return library ? `${library} · Not on Community Creations` : 'Not on Community Creations';
 }
 
 /** One component, with the choice it offers or the outcome it states. */
@@ -65,7 +65,7 @@ function ComponentRow({ row, action, onChoose }: {
               ))}
             </SelectContent>
           </Select>
-          {row.state === 'local-replacement' && <Hint>Keep Mine protects your edits.</Hint>}
+          {row.state === 'local-replacement' && <Hint>Keep Mine keeps this world's edits.</Hint>}
         </>
       )}
     </li>
@@ -108,8 +108,8 @@ export function WorldUpdateReviewDialog({ open, review, onApply, onCancel }: Wor
         <DialogHeader className="shrink-0">
           <DialogTitle>Update This World</DialogTitle>
           <DialogDescription>
-            {`Updating “${review?.localName ?? ''}” replaces it with the author's current version. `}
-            Choose what happens to each linked component.
+            {`Updating “${review?.localName ?? ''}” overwrites it with the author's current version. `}
+            Select an action for each linked copy.
           </DialogDescription>
         </DialogHeader>
 

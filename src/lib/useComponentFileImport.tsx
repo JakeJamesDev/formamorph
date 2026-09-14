@@ -170,7 +170,7 @@ export function useComponentFileImport({ onFindWorld, onImported }: ComponentFil
     }
 
     onImported(kind);
-    toast.success(`"${source.name}" is in your library.`);
+    toast.success(`“${source.name}” is saved to your library.`);
 
     const chosen = new Set(selected);
     queue.current = rows
@@ -199,7 +199,7 @@ export function useComponentFileImport({ onFindWorld, onImported }: ComponentFil
       <ConnectReferencesModal
         rows={connect?.rows ?? null}
         choices={choices}
-        confirmLabel="Connect &amp; Add"
+        confirmLabel="Connect & Add"
         onChoose={(key, value) => setChoices((held) => ({ ...held, [key]: value }))}
         onCancel={() => {
           // Backing out leaves this world without the copy; the rest of the queue still runs.

@@ -96,7 +96,7 @@ describe('a component listing’s Compatible Worlds', () => {
 
     show();
 
-    expect(await screen.findByText(/installs the entity alone/)).toBeInTheDocument();
+    expect(await screen.findByText(/Download installs this entity only/)).toBeInTheDocument();
   });
 
   it('keeps a world the author turned away off a player’s list', async () => {
@@ -115,7 +115,7 @@ describe('a component listing’s Compatible Worlds', () => {
     show({ currentUser: account('author-1') });
 
     expect(await screen.findByText('Ashfall')).toBeInTheDocument();
-    expect(screen.getByText('Not recommended by the world author')).toBeInTheDocument();
+    expect(screen.getByText('Declined by the world author')).toBeInTheDocument();
   });
 
   it('opens a world the reader picks out of the list', async () => {

@@ -87,7 +87,7 @@ describe('Issues instrument: missing sources', () => {
 
   it('reads a not-found answer as removed, with a repair for the copy', () => {
     renderIssues({ 'src-a': 'not_found' }, ['src-a']);
-    expect(screen.getByText('“Marsh Warden” was removed by its author, and this world requires it'))
+    expect(screen.getByText('This world requires “Marsh Warden”. Its author removed the listing.'))
       .toBeInTheDocument();
     expect(screen.getByRole('combobox', { name: 'Repair for Warden' })).toBeInTheDocument();
   });
@@ -108,7 +108,7 @@ describe('Issues instrument: missing sources', () => {
     for (const button of screen.getAllByRole('button', { name: 'Apply' })) {
       expect(button).toBeDisabled();
     }
-    expect(screen.getAllByText('Choose a repair')).toHaveLength(2);
+    expect(screen.getAllByText('Select a repair')).toHaveLength(2);
   });
 
   it('applies one row’s repair to that row’s copy alone', async () => {
@@ -126,7 +126,7 @@ describe('Issues instrument: missing sources', () => {
     renderIssues({ 'src-a': 'not_found' });
     await userEvent.click(screen.getByRole('combobox', { name: 'Repair for Warden' }));
     expect(screen.getAllByRole('option').map((o) => o.textContent))
-      .toEqual(['Replace From Library', 'Unlink and Keep Content', 'Remove From World']);
+      .toEqual(['Replace from Library', 'Unlink and Keep Content', 'Remove from World']);
   });
 
   it('cannot be muted, because muting would take the repair away and leave the block on', () => {

@@ -48,7 +48,7 @@ export function CompatibleWorldsSection({ visibility, onVisibilityChange, rows, 
           />
           <p className="text-meta text-muted-foreground">
             {unlisted
-              ? `Unlisted keeps this ${noun} out of Community Creations. Players receive it only inside a world that requires it.`
+              ? `Unlisted hides this ${noun} from Community Creations. Players receive it only inside a world that requires it.`
               : `Public lists this ${noun} in Community Creations.`}
           </p>
         </div>
@@ -62,7 +62,7 @@ export function CompatibleWorldsSection({ visibility, onVisibilityChange, rows, 
             ? `An unlisted ${noun} cannot be an add-on.`
             : rows.length === 0
               ? `No world has a linked copy of this ${noun} and a listing of its own.`
-              : `A world here has a linked copy of this ${noun} and a listing of its own. The world's author reviews each offer.`}
+              : `Each world here has a linked copy of this ${noun} and its own listing. The world's author reviews each offer.`}
         </p>
 
         {/* The checkbox caption, said once for the list rather than on every row. Hidden with the list

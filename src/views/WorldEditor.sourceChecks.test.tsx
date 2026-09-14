@@ -103,7 +103,7 @@ describe('WorldEditor — the missing-source check', () => {
 
     expect(await screen.findByText('2 linked copies’ sources could not be checked')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /Retry Check/ })).toBeInTheDocument();
-    expect(screen.queryByText(/removed by its author/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/removed the listing/)).not.toBeInTheDocument();
   });
 });
 
@@ -136,7 +136,7 @@ describe('WorldEditor — repairing one missing source', () => {
 
   it('removes one copy from the world, leaving the other copy alone', async () => {
     const { ctx } = await checkedGone();
-    await repair('Warden', 'Remove From World', 0);
+    await repair('Warden', 'Remove from World', 0);
 
     expect(entities(ctx).map((e) => e.id)).toEqual(['e2']);
   });
@@ -153,7 +153,7 @@ describe('WorldEditor — repairing one missing source', () => {
 
   it('opens the library picker for Replace, and changes nothing until a pick is made', async () => {
     const { ctx } = await checkedGone();
-    await repair('Warden', 'Replace From Library', 0);
+    await repair('Warden', 'Replace from Library', 0);
 
     expect(await screen.findByRole('dialog', { name: 'Replace Warden' })).toBeInTheDocument();
     expect(entities(ctx)[0].link).toMatchObject({ sourceId: 'src-a' });

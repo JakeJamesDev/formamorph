@@ -27,13 +27,13 @@ export interface AssociationGroups {
 
 /** What each group means to the reader. */
 export const ASSOCIATION_NOTES = {
-  approved: 'The world author recommends this content for these worlds.',
-  community: 'This content is offered for these worlds. Their authors have not reviewed it.',
-  declined: 'The author of each world below turned this offer away.',
+  approved: 'The authors of these worlds approved this add-on.',
+  community: 'This add-on is offered for these worlds. Their authors have not reviewed it.',
+  declined: 'The authors of these worlds declined this add-on.',
 } as const;
 
 /** The label a declined row carries, per the spec's wording. */
-export const NOT_RECOMMENDED = 'Not recommended by the world author';
+export const NOT_RECOMMENDED = 'Declined by the world author';
 
 /**
  * Split one listing's associations into the groups its details section draws.

@@ -173,7 +173,7 @@ const SourceRepairRow = ({ row, disabled, onOpen, onRepair }: {
       <div className="flex items-center gap-1.5">
         <Select value={action} onValueChange={(next) => setAction(next as RepairAction)} disabled={disabled}>
           <SelectTrigger className="h-6 min-w-0 flex-grow px-2 text-meta" aria-label={`Repair for ${row.name}`}>
-            <SelectValue placeholder="Choose a repair" />
+            <SelectValue placeholder="Select a repair" />
           </SelectTrigger>
           <SelectContent>
             {REPAIR_CHOICES.map((choice) => (
@@ -269,7 +269,7 @@ const DismissedSection = ({ groups, onRestore }: {
         <div className="mt-1 space-y-1">
           {groups.map((group) => (
             <div key={group.ruleId} className="flex items-start gap-2 rounded-md border border-dashed p-1.5">
-              <p className="min-w-0 flex-grow truncate text-meta text-muted-foreground">{group.headline}</p>
+              <Meta as="p" className="min-w-0 flex-grow truncate">{group.headline}</Meta>
               <Tip tip="Restore" labelsChild={false}>
                 <Button
                   variant="ghost"

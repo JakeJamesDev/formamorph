@@ -5,6 +5,7 @@ import {
   ASSOCIATION_NOTES, NOT_RECOMMENDED,
   hasAssociations, type AssociationGroups, type AssociationRow,
 } from '@/lib/listingAssociations';
+import { Meta } from '@/components/ui/typography';
 
 interface ListingCompatibleWorldsProps {
   groups: AssociationGroups;
@@ -44,7 +45,7 @@ function WorldGroup({ heading, note, rows, onOpenWorld, className }: {
   return (
     <div className={cn('mt-3', className)}>
       <h4 className="text-helper font-semibold text-muted-foreground">{heading}</h4>
-      <p className="text-meta text-muted-foreground">{note}</p>
+      <Meta as="p">{note}</Meta>
       <ul className="mt-1 space-y-1">
         {rows.map((row) => (
           <WorldRow key={row.id} row={row} {...(onOpenWorld ? { onOpenWorld } : {})} />
@@ -73,9 +74,9 @@ export function ListingCompatibleWorlds({ groups, kind, onOpenWorld }: ListingCo
         <Globe className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" aria-hidden />
         <div className="min-w-0">
           <h3 className="text-label font-medium">Compatible Worlds</h3>
-          <p className="text-meta text-muted-foreground">
-            Downloading this {noun} installs the {noun} alone. Each world below is a separate download.
-          </p>
+          <Meta as="p">
+            Download installs this {noun} only. Each world below is a separate download.
+          </Meta>
         </div>
       </div>
 
@@ -86,7 +87,7 @@ export function ListingCompatibleWorlds({ groups, kind, onOpenWorld }: ListingCo
         {...(onOpenWorld ? { onOpenWorld } : {})}
       />
       <WorldGroup
-        heading={`Community (${groups.community.length})`}
+        heading={`Unreviewed (${groups.community.length})`}
         note={ASSOCIATION_NOTES.community}
         rows={groups.community}
         {...(onOpenWorld ? { onOpenWorld } : {})}

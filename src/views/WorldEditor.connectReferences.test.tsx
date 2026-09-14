@@ -129,7 +129,7 @@ const addFromLibrary = async (kind: 'dictionary' | 'entity') => {
  * to look past `aria-hidden` to see them.
  */
 const openSelect = async (rowName: string) => {
-  const trigger = connectControl('combobox', `Use in this world for ${rowName}`);
+  const trigger = connectControl('combobox', `Use in This World for ${rowName}`);
   fireEvent.pointerDown(trigger, { button: 0, ctrlKey: false, pointerType: 'mouse' });
   await waitFor(() => expect(trigger).toHaveAttribute('aria-expanded', 'true'));
 };
@@ -182,10 +182,10 @@ describe('One unresolved Placeholder', () => {
     const dialog = await screen.findByRole('dialog', { name: 'Connect World References' });
     // What the content expects, and what this world would supply for it.
     // The two columns the step is built from, each named where the author reads it.
-    expect(within(dialog).getByText('Content expects')).toBeTruthy();
+    expect(within(dialog).getByText('Reference')).toBeTruthy();
     expect(within(dialog).getByText('Aldreth')).toBeTruthy();
-    expect(within(dialog).getByText('Use in this world')).toBeTruthy();
-    const trigger = within(dialog).getByRole('combobox', { name: 'Use in this world for Capital' });
+    expect(within(dialog).getByText('Use in This World')).toBeTruthy();
+    const trigger = within(dialog).getByRole('combobox', { name: 'Use in This World for Capital' });
     expect(trigger).toHaveTextContent('Capital');
     expect(trigger).toHaveTextContent('Sedge');
     expect(within(dialog).getByRole('button', { name: 'Connect & Add' })).toBeEnabled();
@@ -239,7 +239,7 @@ describe('Two Placeholders of the same name', () => {
     await addFromLibrary('dictionary');
     const dialog = await screen.findByRole('dialog', { name: 'Connect World References' });
 
-    expect(within(dialog).getByText('This world has more than one with this name. Choose which one to use.')).toBeTruthy();
+    expect(within(dialog).getByText('This world has more than one item with this name. Select the one to use.')).toBeTruthy();
     expect(within(dialog).getByRole('button', { name: 'Connect & Add' })).toBeDisabled();
 
     // The two candidates read apart by the values each supplies, so the author picks a specific one.

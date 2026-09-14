@@ -36,14 +36,14 @@ const ReferenceRowFields = ({ row, choice, onChoose }: {
 }) => (
   <div className="space-y-1 rounded-md border p-2">
     <div className="min-w-0">
-      <Meta as="p">Content expects</Meta>
+      <Meta as="p">Reference</Meta>
       <p className="truncate text-label font-medium">{row.name}</p>
       {row.kind === 'placeholder' && <Meta as="p" className="truncate">{valueLine(row.expects)}</Meta>}
     </div>
-    <Meta as="p" className="pt-1">Use in this world</Meta>
+    <Meta as="p" className="pt-1">Use in This World</Meta>
     <Select value={choice ?? ''} onValueChange={onChoose}>
-      <SelectTrigger aria-label={`Use in this world for ${row.name}`}>
-        <SelectValue placeholder="Choose one" />
+      <SelectTrigger aria-label={`Use in This World for ${row.name}`}>
+        <SelectValue placeholder="Select one" />
       </SelectTrigger>
       {/* The values a candidate carries can run long, so the list holds the selector's own width. */}
       <SelectContent className="max-w-[var(--radix-select-trigger-width)]">
@@ -60,7 +60,7 @@ const ReferenceRowFields = ({ row, choice, onChoose }: {
         <SelectItem value={CREATE_NEW}>Create New…</SelectItem>
       </SelectContent>
     </Select>
-    {row.ambiguous && <Meta as="p">This world has more than one with this name. Choose which one to use.</Meta>}
+    {row.ambiguous && <Meta as="p">This world has more than one item with this name. Select the one to use.</Meta>}
   </div>
 );
 
@@ -93,7 +93,7 @@ const ConnectReferencesModal = ({ rows, choices, confirmLabel, onChoose, onBack,
         <DialogHeader>
           <DialogTitle>Connect World References</DialogTitle>
           <DialogDescription>
-            This content expects things this world supplies. Choose what each one means here.
+            This content names world references. Select what each one is in this world.
           </DialogDescription>
         </DialogHeader>
         <ScrollArea className="max-h-[50dvh] pr-2">

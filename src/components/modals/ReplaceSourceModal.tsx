@@ -3,12 +3,12 @@ import type { LibraryKind } from '@/lib/librarySources';
 
 const COPY = {
   entity: {
-    description: 'Choose the library entity this one follows from now on. This world’s copy takes that entity’s content.',
-    empty: 'No saved entities yet. Download or import the new version first, then replace from here.',
+    description: 'Select the library entity this copy follows. The copy is overwritten with that entity’s content.',
+    empty: 'Your library has no entities. Download or import the new version, then select Replace from Library again.',
   },
   dictionary: {
-    description: 'Choose the library dictionary this one follows from now on. This world’s copy takes that dictionary’s content.',
-    empty: 'No saved dictionaries yet. Download or import the new version first, then replace from here.',
+    description: 'Select the library dictionary this copy follows. The copy is overwritten with that dictionary’s content.',
+    empty: 'Your library has no dictionaries. Download or import the new version, then select Replace from Library again.',
   },
 } as const;
 
