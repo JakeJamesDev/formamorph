@@ -20,13 +20,14 @@ const found: string[] = [];
 
 /** A host that reviews one file as soon as it mounts, the way the main menu does after reading it. */
 function Harness({ content, links }: { content: LinkableContent; links: ComponentFileLinks }) {
-  const { reviewFile, dialogs } = useComponentFileImport({
+  const { reviewFile, storeFile, dialogs } = useComponentFileImport({
     onFindWorld: (listingId) => found.push(listingId),
     onImported: () => {},
   });
   return (
     <>
       <button onClick={() => { void reviewFile('entity', content, links); }}>Review</button>
+      <button onClick={() => { void storeFile('entity', content, links); }}>Store</button>
       {dialogs}
     </>
   );
@@ -120,6 +121,28 @@ describe('useComponentFileImport', () => {
     } finally {
       online.mockRestore();
     }
+  });
+
+  it('stores a file naming a listing as one copy of it, however many times it is imported', async () => {
+    // The batch import path, which reviews nothing: two files of one listing must leave one library row.
+    render(<Harness content={card} links={{ source: { sourceId: 'listing-e', sourceName: 'Wren' } }} />);
+    const store = screen.getByRole('button', { name: 'Store' });
+
+    await userEvent.click(store);
+    await waitFor(async () => expect(await libraryItems('entity')).toHaveLength(1));
+    await userEvent.click(store);
+
+    await waitFor(async () => expect(await libraryItems('entity')).toHaveLength(1));
+    expect((await libraryItems('entity'))[0].sourceId).toBe('listing-e');
+  });
+
+  it('stores a file naming no listing as the player\'s own item', async () => {
+    render(<Harness content={card} links={{}} />);
+
+    await userEvent.click(screen.getByRole('button', { name: 'Store' }));
+
+    await waitFor(async () => expect(await libraryItems('entity')).toHaveLength(1));
+    expect((await libraryItems('entity'))[0].sourceId).toBeUndefined();
   });
 
   it('opens the update review when the file\'s source is already in the library', async () => {

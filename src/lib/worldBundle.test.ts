@@ -3,6 +3,7 @@ import {
   bundledContentLinked, bundledListingIds, bundledSources, embedBundled, followBundled,
   resolveBundledLinks, type LocalLibraryItem,
 } from './worldBundle';
+import { contentLinkState } from './contentLink';
 import type { LibrarySource } from './linkedContent';
 import type { ContentLink, Dictionary, Entity } from '@/types';
 
@@ -72,6 +73,18 @@ describe('resolveBundledLinks', () => {
     expect(resolved.entities[0].link).toMatchObject({
       libraryId: 'lib-1', sourceId: 'listing-1', sourceName: 'Sedge',
     });
+  });
+
+  it('records the group on a repointed copy, so the player can undo the link the import made', () => {
+    const world = {
+      entities: [entity('e1', { libraryId: 'their-lib', sourceId: 'listing-1' })],
+      dictionaries: [],
+    };
+
+    const resolved = resolveBundledLinks(world, [item({ sourceId: 'listing-1' })]);
+
+    expect(resolved.entities[0].link?.bundledFrom).toBe('lib-1');
+    expect(bundledContentLinked(resolved)).toBe(true);
   });
 
   it('keeps the file revision on a repointed copy, so the local item still comes up for review', () => {
@@ -274,6 +287,20 @@ describe('embedBundled', () => {
 
     expect(embedded.entities[0].link).toEqual({ bundledFrom: 'mine-1', sourceName: 'Sedge' });
     expect(embedded.entities[0].aiDescription).toBe('What the file holds.');
+  });
+
+  it('takes the listing off too, so an embedded copy follows nothing at all', () => {
+    const world = {
+      entities: [entity('e1', {
+        bundledFrom: 'mine-1', libraryId: 'mine-1', sourceId: 'listing-1', sourceName: 'Sedge',
+      })],
+      dictionaries: [],
+    };
+
+    const embedded = embedBundled(world);
+
+    expect(embedded.entities[0].link?.sourceId).toBeUndefined();
+    expect(contentLinkState(embedded.entities[0].link)).toBeNull();
   });
 
   it('leaves a copy that was never bundled following its item', () => {

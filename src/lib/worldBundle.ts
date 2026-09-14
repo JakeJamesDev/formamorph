@@ -10,6 +10,7 @@
  * replaced by a library item's version, and a local replacement stays a local replacement.
  */
 
+import { linkText as text } from '@/lib/contentLink';
 import { contentMatchesSource, linkToSource, type LibrarySource, type LinkableContent } from '@/lib/linkedContent';
 import type { LibraryKind } from '@/lib/librarySources';
 import type { LinkedWorldContent } from '@/lib/publishLinks';
@@ -24,13 +25,6 @@ export interface LocalLibraryItem {
   sourceId?: string;
   data?: LinkableContent;
 }
-
-/** A trimmed string, or null for anything that is not one. */
-const text = (value: unknown): string | null => {
-  if (typeof value !== 'string') return null;
-  const trimmed = value.trim();
-  return trimmed ? trimmed : null;
-};
 
 /** Every copy in one world, with the library each came from. */
 function copies(world: LinkedWorldContent): { item: LinkableContent; kind: LibraryKind }[] {
@@ -78,12 +72,18 @@ function asBundled(link: ContentLink): ContentLink {
   return { ...rest, bundledFrom: from };
 }
 
-/** The record a copy takes when a local item answers for it. The file's revision is kept, so the copy is
- *  reported behind until the player reviews it: the item here may hold different content entirely. */
+/**
+ * The record a copy takes when a local item answers for it.
+ *
+ * The file's revision is kept, so the copy is reported behind until the player reviews it: the item here
+ * may hold different content entirely. The group is recorded too, which is what puts the connection under
+ * the player's Link bundled content choice — a link the import made is one they can undo.
+ */
 function follow(link: ContentLink, item: LocalLibraryItem, differs: boolean): ContentLink {
   return {
     ...link,
     libraryId: item.id,
+    bundledFrom: item.id,
     ...(item.sourceId ? { sourceId: item.sourceId } : {}),
     sourceName: item.name,
     ...(differs || link.localReplacement ? { localReplacement: true } : {}),
@@ -215,7 +215,10 @@ export function followBundled<T extends LinkedWorldContent>(
 /**
  * The world with its bundled copies embedded: following nothing, and holding exactly what they hold.
  *
- * The bundle is still remembered, so the choice can be made again without the content being placed twice.
+ * The listing goes with the library item. An embedded copy follows nothing at all, so leaving the listing
+ * on it would keep the copy reading as a linked source copy — checkable, and blockable — after the player
+ * has said they do not want it linked. The group is still remembered, so the choice can be made again
+ * without the content being placed twice, and linking again takes the listing back off the item.
  *
  * @param world - The world as it is stored
  * @returns The world with every bundled copy unlinked
@@ -224,7 +227,9 @@ export function embedBundled<T extends LinkedWorldContent>(world: T): T {
   return mapContent(world, (copy) => {
     const from = text(copy.link?.bundledFrom);
     if (!from || !copy.link?.libraryId) return copy;
-    const { libraryId: _released, sourceRevision: _held, reviewedRevision: _reviewed, ...rest } = copy.link;
+    const {
+      libraryId: _released, sourceId: _listing, sourceRevision: _held, reviewedRevision: _reviewed, ...rest
+    } = copy.link;
     return { ...copy, link: { ...rest, bundledFrom: from } };
   });
 }

@@ -2,7 +2,8 @@
 
 Status: ready-for-human
 Base: 4ca9e7ce
-Status note: Built. Every acceptance criterion passes. Two calls are open for the author; see Comments.
+Status note: Built in `f43f5463`, with the closing review's findings folded in by a follow-up commit.
+Every acceptance criterion passes. Two calls are open for the author; see Comments.
 Blocked by: 01, 08
 Recommended model: Claude Opus 5 (`claude-opus-5`)
 Reasoning effort: high
@@ -83,3 +84,35 @@ unchecking released it. Mobile width checked at 375px.
    dictionary with neither has no worlds to offer and no source to compare, so it lands straight in the
    library rather than raising a dialog with nothing in it. Say if every single-file import should
    review first.
+
+### Closing review (2026-09-13)
+
+Reviewed against `4ca9e7ce` on both axes. Five findings were real and are fixed in the follow-up commit;
+the rest were judgement calls left as they are.
+
+**Fixed.**
+1. **An embedded copy kept its listing.** Unticking Link bundled content dropped the library item but
+   left `sourceId`, so the copy still read as a linked source copy — checkable by the source check, and
+   able to block the world. `embedBundled` now drops the listing too, and linking again takes it back off
+   the library item.
+2. **A repointed copy could not be undone.** Importing a world whose copy names a listing the player
+   already holds repoints it at their own item, which is what acceptance criterion 4 asks for. Those
+   copies carried no group, so the Link bundled content choice never covered them and the player had no
+   way back. They now carry the local item's id as their group, so the same tick governs them.
+3. **A batch component import could leave two library rows for one listing.** A lone file goes through
+   the review, which stores a file naming a listing as a copy of that listing; a batch went through the
+   plain store and minted a fresh id each time. Both paths now share `storeFile`.
+4. **`exportDictionary` became async with no catch**, so a failed export was an unhandled rejection where
+   its entity sibling toasted. It now catches like the sibling, and its call site voids the promise.
+5. **The older-reader proof was tautological for world files.** It asserted the reader's output equalled
+   the file's own JSON, which holds for any reader. It now compares against the world that was exported,
+   field by field, and asserts the link record and the local-replacement marker survive.
+
+**Left as they are.** The duplicated `text` helper is now one exported `linkText` in `contentLink.ts`.
+The entity branch of `addToStoredWorld` mirrors the World Editor's own add step; extracting the shared
+half is a refactor across two flows and is worth its own ticket. `side` threaded through
+`UpdateAvailableDialog` is four props deep and reads clearly enough.
+
+**One more swept hunk.** The commit also carries the source-check work's **Repair Sources** button in
+`MainMenu.tsx`, on top of the `sourceBlock` guard already noted. Both belong to ticket 10, which was
+editing the same file at the same time.
