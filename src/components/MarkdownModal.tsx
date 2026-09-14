@@ -12,12 +12,14 @@ import { MarkdownPanel } from '@/components/MarkdownPanel';
  * (the multi-tab help topics). When both are given, `tabs` wins. A tab's `extra` renders under its
  * markdown — the slot for a live control (e.g. the setting a section describes).
  */
-export function MarkdownModal({ open, onOpenChange, title, text, tabs, footer }: {
+export function MarkdownModal({ open, onOpenChange, title, text, tabs, initialTab, footer }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   title: string;
   text?: string;
   tabs?: { label: string; body: string; extra?: ReactNode }[];
+  /** The tab that opens first. Defaults to the first tab. */
+  initialTab?: string;
   footer?: ReactNode;
 }) {
   return (
@@ -27,7 +29,7 @@ export function MarkdownModal({ open, onOpenChange, title, text, tabs, footer }:
           <DialogTitle>{title}</DialogTitle>
         </DialogHeader>
         {tabs?.length ? (
-          <Tabs defaultValue={tabs[0].label} className="min-h-0 flex flex-col">
+          <Tabs defaultValue={initialTab ?? tabs[0].label} className="min-h-0 flex flex-col">
             {/* Centered, not start-aligned: these bars wrap to 2+ rows on mobile, and a left-aligned
                 ragged last row reads as broken. `self-center` centers the bar itself, `justify-center`
                 centers the triggers within it (which is what tidies the wrapped row). */}

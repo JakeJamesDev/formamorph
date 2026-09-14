@@ -17,9 +17,15 @@ import { cn } from '@/lib/utils';
  *
  * Tabbed topics: a tab with `mobileBody` shows that copy on narrow viewports (platform gestures name
  * one gesture, not both). `tabExtras` lets the host mount a live control under a tab's markdown, keyed
- * by tab label — the registry stays data-only.
+ * by tab label — the registry stays data-only. `initialTab` names the tab a mount opens first, so a
+ * dialog can land its reader on the tab about itself.
  */
-export function HelpButton({ topicId, className, tabExtras }: { topicId: string; className?: string; tabExtras?: Record<string, ReactNode> }) {
+export function HelpButton({ topicId, className, tabExtras, initialTab }: {
+  topicId: string;
+  className?: string;
+  tabExtras?: Record<string, ReactNode>;
+  initialTab?: string;
+}) {
   const topic = HELP_TOPICS[topicId];
   const [open, setOpen] = useState(false);
   // Read once on mount. A host that shows different topics on one button (the World Editor, per tab) must
@@ -58,6 +64,7 @@ export function HelpButton({ topicId, className, tabExtras }: { topicId: string;
         title={topic.title}
         text={topic.body}
         tabs={tabs}
+        initialTab={initialTab}
         footer={wikiUrl && (
           <a
             href={wikiUrl}

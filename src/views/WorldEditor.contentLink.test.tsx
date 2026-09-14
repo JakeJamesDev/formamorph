@@ -135,6 +135,16 @@ describe('World Editor shows what a copy follows', () => {
     expect(screen.getAllByLabelText('Linked')).toHaveLength(1);
   });
 
+  it('offers help beside the link state of a linked copy, and none for an independent one', () => {
+    renderWorldEditorBench(LINKED_WORLD, 'advanced');
+    openTab(/Entities/);
+    selectRow('Wren');
+    expect(screen.getByLabelText('About Linked Content')).toBeTruthy();
+
+    selectRow('Odd Wick');
+    expect(screen.queryByLabelText('About Linked Content')).toBeNull();
+  });
+
   it('shows nothing at all for a world with no link records', () => {
     renderWorldEditorBench(PLAIN_WORLD, 'advanced');
     openTab(/Entities/);

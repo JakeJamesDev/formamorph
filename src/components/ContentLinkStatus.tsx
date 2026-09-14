@@ -1,5 +1,6 @@
 import { createContext, useContext, type ReactNode } from 'react';
 import { Link2 } from 'lucide-react';
+import { HelpButton } from '@/components/HelpButton';
 import { Badge } from '@/components/ui/badge';
 import { SplitButton, type SplitButtonAction } from '@/components/ui/split-button';
 import { Meta } from '@/components/ui/typography';
@@ -48,7 +49,10 @@ export function ContentLinkHeader({ link }: { link?: ContentLink }) {
   const waiting = !!link?.libraryId && pending.includes(link.libraryId);
   return (
     <div className="space-y-1">
-      <Badge variant="secondary">{waiting ? PENDING_LINK_LABEL : CONTENT_LINK_LABELS[state]}</Badge>
+      <div className="flex items-center gap-2">
+        <Badge variant="secondary">{waiting ? PENDING_LINK_LABEL : CONTENT_LINK_LABELS[state]}</Badge>
+        <HelpButton topicId="library.linkedContent" className="h-6 w-6" />
+      </div>
       {source && <Meta as="p">Source: {source}</Meta>}
     </div>
   );

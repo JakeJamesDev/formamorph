@@ -23,6 +23,7 @@ Formamorph runs entirely in the browser and talks to any **OpenAI-compatible** c
 | ✍️ **[Text Formatting](TextFormatting)** | Every piece of Markdown the app renders, including `==highlights==` and their color keys |
 | 📐 **[World Format](WorldFormat)** | The full structure of a world `.json` — every field of stats, traits, locations, entities, stat-updates, and the dictionary |
 | 🧮 **[Stat Code Guide](StatCodeGuide)** | Writing dynamic JS formulas that derive one stat from others |
+| 🔗 **[Linked Content](LinkedContent)** | How a world's entities and dictionaries follow a library item, take updates, publish, download, and repair a missing source |
 | 📝 **[Changelog](Changelog)** | What's changed, release by release |
 
 ## 🚀 Getting started

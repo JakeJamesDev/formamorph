@@ -12,6 +12,7 @@
 - [🛠️ World Editor](WorldEditor)
 - [📐 World Format](WorldFormat)
 - [🧮 Stat Code Guide](StatCodeGuide)
+- [🔗 Linked Content](LinkedContent)
 
 **Project**
 - [📝 Changelog](Changelog)
