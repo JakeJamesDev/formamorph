@@ -74,6 +74,7 @@ import { useWorldExport } from '@/lib/useWorldExport';
 import { parseJsonText, terminateWorker as terminateJsonWorker } from '@/lib/jsonFileWorkerUtils';
 import AddDictionaryModal from '@/components/modals/AddDictionaryModal';
 import AddEntityModal from '@/components/modals/AddEntityModal';
+import ReplaceSourceModal from '@/components/modals/ReplaceSourceModal';
 import { exportEntityCard } from '@/lib/entityFile';
 import { describePlaceholders, newPlaceholder } from '@/lib/placeholders';
 import { placeholderOwnerRef } from '@/lib/placeholderHomes';
@@ -1231,6 +1232,17 @@ const WorldEditorInner = ({ onClose, embedded = false, backButton }: {
         onOpenChange={(open) => { setShowAddEntity(open); if (!open) setResumePicker(false); }}
         onAdd={(picks) => linking.beginAdd(picks.map((pick) => ({ kind: 'entity', ...pick })))}
       />
+      {/* The Bench's Replace From Library repair. It lives here because the Bench is a hook and the picker
+          is a modal; the Bench only says which copy is being repaired. */}
+      {bench.replaceSource && (
+        <ReplaceSourceModal
+          open
+          onOpenChange={(open) => { if (!open) bench.onReplaceCancel(); }}
+          kind={bench.replaceSource.kind}
+          name={bench.replaceSource.name}
+          onReplace={bench.onReplacePicked}
+        />
+      )}
       {linking.dialogs}
     </div>
     </PendingLinksProvider>

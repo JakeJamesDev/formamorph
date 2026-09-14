@@ -2348,8 +2348,35 @@ export const WORLD_TOO_LARGE: RuleHead = {
   summary: () => 'The world is over the publish limit',
 };
 
+/**
+ * The removed-source row: the server gave a definite not-found answer for a source one of this world's
+ * copies follows, so the author of that source deleted it. A head without a `check` because the answer
+ * comes from a request the author asks for; `lib/testBench/missingSources` raises its findings.
+ */
+export const SOURCE_NOT_FOUND: RuleHead = {
+  id: 'source-not-found',
+  severity: 'error',
+  section: 'entities',
+  summary: (count) => `${count} linked copies follow a source the author removed`,
+};
+
+/**
+ * The unreachable-source row: the check failed on something other than a not-found answer, so it says only
+ * that this attempt could not reach the source. A warning, because installed content stays playable and
+ * nothing here is evidence that anything was deleted.
+ */
+export const SOURCE_UNAVAILABLE: RuleHead = {
+  id: 'source-unavailable',
+  severity: 'warning',
+  section: 'entities',
+  summary: (count) => `${count} linked copies’ sources could not be checked`,
+};
+
 /** Everything that can put a row in the Issues list — the live rules plus the on-demand checks. */
-const RULE_HEADS: readonly RuleHead[] = [...RULES, STAT_CODE_EXECUTION, STAT_CODE_UNKNOWN_NAME, WORLD_TOO_LARGE];
+const RULE_HEADS: readonly RuleHead[] = [
+  ...RULES, STAT_CODE_EXECUTION, STAT_CODE_UNKNOWN_NAME, WORLD_TOO_LARGE,
+  SOURCE_NOT_FOUND, SOURCE_UNAVAILABLE,
+];
 
 /** The one lookup from a finding's rule id back to what raised it. */
 const HEAD_BY_ID = new Map(RULE_HEADS.map((rule) => [rule.id, rule]));

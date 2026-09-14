@@ -36,6 +36,8 @@ import { useDebouncedFindings } from './useFindings';
 import { useLatestRun } from './useLatestRun';
 import { usePublishSize } from './usePublishSize';
 import { checkWorldSize } from './worldTooLarge';
+import { useSourceChecks } from './useSourceChecks';
+import { applyRepair, type MissingSource, type RepairAction, type ReplacementPick } from '@/lib/sourceChecks';
 
 /** What the Bench needs from the view — the editor's own knowledge, nothing Bench-owned. */
 export interface TestBenchWiring {
@@ -68,6 +70,13 @@ export interface TestBenchHandle {
   count: number;
   /** How many of them carry something the author has not been shown — the badge's loud number. */
   newCount: number;
+  /** The copy waiting on a Replace From Library pick, or null. The view owns the picker itself — the Bench
+   *  only says which copy is being repaired. */
+  replaceSource: MissingSource | null;
+  /** The picker closed without a pick. */
+  onReplaceCancel: () => void;
+  /** The picker's choice, which rewrites the copy to that item's content and points it at it. */
+  onReplacePicked: (pick: ReplacementPick) => void;
   popoverProps: BenchPopoverProps;
   panelProps: TestBenchProps;
 }
@@ -126,11 +135,15 @@ export function useTestBench({
   // Out of band like the stat-code findings: the byte count comes from the debounced worker measure, not
   // the pure pass, so it's checked and merged in here rather than living in the rule catalog.
   const sizeFindings = useMemo(() => checkWorldSize(benchWorld, publishBytes), [benchWorld, publishBytes]);
+  const benchWorldMeta = worldMetadata.find((m) => m.id === worldId);
+  // Out of band for a third reason: the answers come from the server, and only when the author asks. The
+  // record outlives the session, so these rows come back with the world rather than with the request.
+  const sources = useSourceChecks(benchWorld, worldId, benchWorldMeta?.sourceId);
   const findings = useMemo(() => (
-    codeFindings.length === 0 && sizeFindings.length === 0
+    codeFindings.length === 0 && sizeFindings.length === 0 && sources.findings.length === 0
       ? staticFindings
-      : [...staticFindings, ...codeFindings, ...sizeFindings]
-  ), [staticFindings, codeFindings, sizeFindings]);
+      : [...staticFindings, ...codeFindings, ...sizeFindings, ...sources.findings]
+  ), [staticFindings, codeFindings, sizeFindings, sources.findings]);
   // Semantic scoring is opt-in per session and never remembered: a toggle that came back on by itself would
   // let an author read a semantic firing as proof their keywords work.
   const [semanticOn, setSemanticOn] = useState(false);
@@ -184,7 +197,6 @@ export function useTestBench({
     setTriggerText(lastTurn.scene);
     setTriggerHistory(joinHistory(lastTurn.history));
   }, [lastTurn]);
-  const benchWorldMeta = worldMetadata.find((m) => m.id === worldId);
   // Newness and dismissals are per world and outlive the session, so the rule pass's raw output goes through
   // the stored marks before it reaches the panel or the badge.
   const bench = useBenchFindings(worldId, benchWorldMeta?.sourceUpdatedAt, findings, advanced);
@@ -292,6 +304,24 @@ export function useTestBench({
       setFixingRuleId(null);
     }
   }, [getWorldData, writeFixedWorld, beginImageRun]);
+  // A repair is a hand edit like a quick fix, and goes back through the same write-through. Replace is the
+  // one that needs an answer first: the author picks the library item, and the repair lands on their pick.
+  const [replaceSource, setReplaceSource] = useState<MissingSource | null>(null);
+  const repairSource = useCallback((copyId: string, action: RepairAction) => {
+    if (action === 'replace') {
+      setReplaceSource(sources.missing.find((row) => row.id === copyId) ?? null);
+      return;
+    }
+    const before = getWorldData();
+    writeFixedWorld(before, applyRepair(before, copyId, action));
+  }, [sources.missing, getWorldData, writeFixedWorld]);
+  const replacePicked = useCallback((pick: ReplacementPick) => {
+    const copyId = replaceSource?.id;
+    setReplaceSource(null);
+    if (!copyId) return;
+    const before = getWorldData();
+    writeFixedWorld(before, applyRepair(before, copyId, 'replace', pick));
+  }, [replaceSource, getWorldData, writeFixedWorld]);
   const applyBenchFix = useCallback((ruleId: string) => {
     if (ruleId === IMAGE_WEBP_RULE_ID) {
       if (!fixingRuleId) void runImageWebpFix();
@@ -326,6 +356,13 @@ export function useTestBench({
     onRestoreRule: bench.restoreRule,
     onMarkAllSeen: bench.markAllSeen,
     onCheckStatCode: runStatCodeCheck,
+    sources: {
+      sourceCount: sources.copies.length,
+      status: sources.status,
+      missing: sources.missing,
+      onCheckSources: sources.run,
+      onRepair: repairSource,
+    },
   };
 
   return {
@@ -337,6 +374,9 @@ export function useTestBench({
     active: benchOpen || popoverOpen,
     count: bench.groups.length,
     newCount: bench.newCount,
+    replaceSource,
+    onReplaceCancel: () => setReplaceSource(null),
+    onReplacePicked: replacePicked,
     popoverProps: {
       open: popoverOpen,
       onClose: closePopover,

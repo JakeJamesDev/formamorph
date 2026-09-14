@@ -121,6 +121,8 @@ import { FeedbackHubDialog } from "@/components/menu/FeedbackHubDialog";
 import { AuthModals } from "@/components/menu/AuthModals";
 import { PublishModal } from "@/components/menu/PublishModal";
 import { worldPublishPayload, entityPublishPayload, dictionaryPublishPayload, type PublishPayload } from "@/lib/publishPayload";
+import { linkedSourceCopies, sourceBlockReason } from "@/lib/sourceChecks";
+import { readSourceCheck } from "@/lib/sourceCheckStore";
 import { buildAvatarPublish, avatarPublishRefusal } from "@/lib/avatarPublish";
 import { BackupRestoreDialog } from "@/components/menu/BackupRestoreDialog";
 import { COMMUNITY_ENABLED } from "@/lib/featureFlags";
@@ -259,6 +261,15 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
   // library holding no world that rewrites a prompt. Never set in prod.
   const [devPromptSample, setDevPromptSample] = useState<WorldOverview | null>(null);
   const promptOverview = selectedWorld?.data?.worldOverview ?? devPromptSample ?? undefined;
+  // A required source the world's last check found removed. Read from that recorded answer alone: a check
+  // runs only when the author asks for one in the World Editor, so opening this menu makes no request and
+  // an installed world stays playable offline. Editing and loading a save are never gated — repair lives in
+  // the editor, and a game already under way keeps the content it started with.
+  const sourceBlock = useMemo(() => {
+    if (!selectedWorld) return null;
+    const record = readSourceCheck(selectedWorld.id);
+    return sourceBlockReason(linkedSourceCopies(selectedWorld.data, record.required), record.results);
+  }, [selectedWorld]);
   // DEV only: canned rows for the Connect World References step, which in the app only opens mid-add inside
   // the World Editor. Never set in prod.
   const [devReferences, setDevReferences] = useState<ReferenceRow[] | null>(null);
@@ -2342,10 +2353,16 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
               }
               actions={
                 <div className="space-y-2">
+                  {sourceBlock && (
+                    <p role="alert" className="rounded-md border border-destructive/40 bg-destructive/10 p-2 text-meta text-destructive">
+                      {sourceBlock}
+                    </p>
+                  )}
                   <div className="flex">
                     <WorldActionButton
                       tone="sky"
                       className="w-2/3 rounded-r-none"
+                      disabled={!!sourceBlock}
                       onClick={startEntry}
                     >
                       <DoorOpen className="mr-2 h-4 w-4" /> Enter World
@@ -2354,6 +2371,7 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
                     <WorldActionButton
                       tone="amberSoft"
                       className="w-1/3 rounded-l-none"
+                      disabled={!!sourceBlock}
                       onClick={() => {
                         // For uploaded worlds, use the worldData from context
                         const currentWorldData = selectedWorld!.data;
@@ -2411,6 +2429,7 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
                   {isAuthenticated && (
                     <WorldActionButton
                       tone="redSoft"
+                      disabled={!!sourceBlock}
                       onClick={() => selectedWorld && openPublish(worldPublishPayload(selectedWorld.data), selectedWorld.id)}
                     >
                       <ActionIcon.publish className="mr-2 h-4 w-4" /> Publish World

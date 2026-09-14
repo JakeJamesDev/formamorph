@@ -1,8 +1,10 @@
 # 10: Missing-source checks and repairs
 
-Status: ready-for-agent
-Status note: PAUSED with the linked-world-content effort. Ticket 03 removes the `LINKING_ENABLED`
-flag and is the resume point.
+Status: ready-for-human
+Base: 4ca9e7ce
+Status note: Built in this session. Every acceptance criterion passes, verified end to end in the running
+app: a seeded world with one removed and one unreachable source shows both rows, Unlink repairs the copy,
+and saving lifts the New Game gate. Two notes are open for the author; see Build notes below.
 Blocked by: 06
 Recommended model: Claude Sonnet 5 (`claude-sonnet-5`)
 Reasoning effort: high
@@ -23,13 +25,39 @@ Each finding row carries its own repair: **Replace From Library** opens the sear
 
 ## Acceptance criteria
 
-- [ ] With a source that answers not found, the issues list shows the not-found finding; with a network failure it shows unavailable with Retry Check.
-- [ ] A missing required source disables New Game and Publish with the reason; resuming a save and editing work.
-- [ ] A missing optional source shows a finding and blocks nothing.
-- [ ] Replace From Library relinks the copy to the chosen library item; Unlink and Keep Content leaves an independent copy; Remove From World removes it; each applied per row.
-- [ ] Repairing the required source re-enables New Game and Publish.
-- [ ] Type check, lint, tests, and build pass; the rule test asserts the computed finding, never a judgment.
+- [x] With a source that answers not found, the issues list shows the not-found finding; with a network failure it shows unavailable with Retry Check.
+- [x] A missing required source disables New Game and Publish with the reason; resuming a save and editing work.
+- [x] A missing optional source shows a finding and blocks nothing.
+- [x] Replace From Library relinks the copy to the chosen library item; Unlink and Keep Content leaves an independent copy; Remove From World removes it; each applied per row.
+- [x] Repairing the required source re-enables New Game and Publish.
+- [x] Type check, lint, tests, and build pass; the rule test asserts the computed finding, never a judgment.
 
 ## Blocked by
 
 - 06 — Download a world with dependencies and add-ons.
+
+## Build notes
+
+**Where each part lives.** `src/lib/sourceChecks.ts` is the pure core: which copies follow a published
+source, what the answers mean, and the three repairs. `src/lib/sourceCheckRun.ts` holds one run's
+reasoning. `src/lib/sourceCheckStore.ts` keeps the last answer per world in browser storage.
+`src/lib/testBench/missingSources.ts` turns answers into Issues rows, and `useSourceChecks.ts` is the
+Bench's hook. The main menu gates on the stored record alone, so opening it makes no request.
+
+**Two answers, two meanings.** Only a definite not-found blocks a new game and a publish. Every other
+failure reads as unreachable and blocks nothing, per the spec's rule that a network error is not
+evidence of a deletion.
+
+**A world with a listing is asked about its own listing first.** A required source may be unlisted,
+which answers not found to everyone but its author through a direct request. So when the world's own
+listing cannot be read, the run concludes nothing at all and every source reads unreachable. Required
+sources are then answered by the world's dependency route, never by a direct ask.
+
+## Open for the author
+
+1. **Severity.** A removed source is an error and an unreachable one a warning, whether or not the world
+   requires it. An optional removed source is therefore an error row that blocks nothing. The
+   alternative is four rules instead of two; the ticket did not say.
+2. **Where the gate's reason reads.** The reason is a line above the action column, and the three gated
+   buttons are disabled. A tooltip on each disabled button was the other option; a disabled control
+   cannot carry one without a wrapper.

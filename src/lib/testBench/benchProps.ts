@@ -10,6 +10,7 @@ import type { AiContextData } from '@/lib/testBench/aiContext';
 import type { OpeningData } from '@/lib/testBench/opening';
 import type { BenchTab } from './benchTabs';
 import type { BenchPlacement } from './benchPlacement';
+import type { MissingSource, RepairAction } from '@/lib/sourceChecks';
 
 /** Where the author is sent when they click an item a finding names. */
 export type OpenFindingItem = (section: FindingSection, itemId: string) => void;
@@ -17,6 +18,19 @@ export type OpenFindingItem = (section: FindingSection, itemId: string) => void;
 /** How far the on-demand stat-code check has got. It never runs on its own — every run costs one sandbox VM
  *  per coded stat, which is why the live pass can't have it. */
 export type CodeCheckStatus = 'idle' | 'running' | 'done';
+
+/** The missing-source check and the repairs its rows offer. */
+export interface SourceCheckProps {
+  /** How many copies in the world follow a published source — what a check would ask about. */
+  sourceCount: number;
+  status: CodeCheckStatus;
+  /** The copies the last check could not confirm, each with its answer. */
+  missing: MissingSource[];
+  /** Ask the server about every source again. Also what Retry Check runs. */
+  onCheckSources: () => void;
+  /** Repair one copy. Replace opens the library picker; the other two land at once. */
+  onRepair: (copyId: string, action: RepairAction) => void;
+}
 
 /** The World Doctor's bundle: the marked finding rows and every action a row offers, fixes aside. */
 export interface IssuesProps {
@@ -45,6 +59,8 @@ export interface IssuesProps {
   onMarkAllSeen: () => void;
   /** Run every stat's code in the real sandbox and fold the failures into the list. */
   onCheckStatCode: () => void;
+  /** The missing-source check and the repairs its rows offer. */
+  sources: SourceCheckProps;
 }
 
 /** The Bench-level `Testing as [PC] · at [location]` selection, resolved against the world. */

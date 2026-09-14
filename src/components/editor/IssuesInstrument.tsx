@@ -7,14 +7,19 @@
  * action is a callback the Bench fulfills.
  */
 import { useId, useState } from 'react';
-import { AlertTriangle, CircleX, EyeOff, Info, Play, Undo2 } from 'lucide-react';
+import { AlertTriangle, CircleX, EyeOff, Info, Play, RefreshCw, Undo2 } from 'lucide-react';
 import { HintInfo } from '@/components/SettingsRows';
 import { Button } from '@/components/ui/button';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Tip } from '@/components/ui/tooltip';
 import { Meta } from '@/components/ui/typography';
 import { cn } from '@/lib/utils';
 import { SEVERITIES, type FindingGroup, type Severity } from '@/lib/testBench/rules';
-import type { CodeCheckStatus, IssuesProps, OpenFindingItem } from '@/lib/testBench/benchProps';
+import { isSourceRule } from '@/lib/testBench/missingSources';
+import { REPAIR_CHOICES, type MissingSource, type RepairAction } from '@/lib/sourceChecks';
+import type {
+  CodeCheckStatus, IssuesProps, OpenFindingItem, SourceCheckProps,
+} from '@/lib/testBench/benchProps';
 import {
   formatPublishBytes, PUBLISH_LIMITS, publishSizeBand, type PublishSizeBand,
 } from '@/lib/publishLimits';
@@ -142,6 +147,115 @@ const FindingRow = ({ group, fixing, onOpen, onFix, onDismiss }: {
   </div>
 );
 
+/** One copy whose source is gone, with the repair the author picks for it. Nothing is selected to begin
+ *  with, and Apply is what commits: a repair rewrites or removes content, so no dropdown does it by itself. */
+const SourceRepairRow = ({ row, disabled, onOpen, onRepair }: {
+  row: MissingSource;
+  disabled: boolean;
+  onOpen: OpenFindingItem;
+  onRepair: (copyId: string, action: RepairAction) => void;
+}) => {
+  const [action, setAction] = useState<RepairAction | ''>('');
+  const section = row.kind === 'dictionary' ? 'dictionary' : 'entities';
+  return (
+    <div className="space-y-1">
+      {/* The copy's own way in, on its own line: a name is as long as the author made it, and the repair
+          controls below must not be pushed off the row by one. */}
+      <Tip tip={row.name} labelsChild={false}>
+        <button
+          type="button"
+          onClick={() => onOpen(section, row.id)}
+          className="block max-w-full truncate rounded border px-1.5 text-meta text-muted-foreground hover:bg-accent hover:text-foreground"
+        >
+          {row.name}
+        </button>
+      </Tip>
+      <div className="flex items-center gap-1.5">
+        <Select value={action} onValueChange={(next) => setAction(next as RepairAction)} disabled={disabled}>
+          <SelectTrigger className="h-6 min-w-0 flex-grow px-2 text-meta" aria-label={`Repair for ${row.name}`}>
+            <SelectValue placeholder="Choose a repair" />
+          </SelectTrigger>
+          <SelectContent>
+            {REPAIR_CHOICES.map((choice) => (
+              <SelectItem key={choice.value} value={choice.value}>{choice.label}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+        <Button
+          variant="outline"
+          size="sm"
+          className="h-6 shrink-0 px-2 text-meta"
+          disabled={disabled || !action}
+          onClick={() => { if (action) onRepair(row.id, action); }}
+        >
+          Apply
+        </Button>
+      </div>
+    </div>
+  );
+};
+
+/**
+ * A missing-source row: the rule's own headline, then one repair per copy it names.
+ *
+ * It replaces the ordinary row for these two rules because the repair is not the rule's, it is each copy's:
+ * one copy may be replaced from the library while another is removed outright. An unreachable source also
+ * carries Retry Check, since asking again is the answer there far more often than a repair is.
+ */
+const SourceFindingRow = ({ group, sources, onOpen, onDismiss }: {
+  group: FindingGroup;
+  sources: SourceCheckProps;
+  onOpen: OpenFindingItem;
+  onDismiss: (ruleId: string) => void;
+}) => {
+  const running = sources.status === 'running';
+  const named = new Set(group.findings.flatMap((f) => f.items).map((item) => item.id));
+  const rows = sources.missing.filter((row) => named.has(row.id));
+  return (
+    <div className="flex items-start gap-2 rounded-md border p-2">
+      <SeverityIcon severity={group.severity} />
+      <div className="min-w-0 flex-grow space-y-1.5">
+        <p className="text-label leading-snug">
+          {group.newCount > 0 && <><NewMarker />{' '}</>}
+          {group.headline}
+        </p>
+        {rows.map((row) => (
+          <SourceRepairRow
+            key={row.id}
+            row={row}
+            disabled={running}
+            onOpen={onOpen}
+            onRepair={sources.onRepair}
+          />
+        ))}
+      </div>
+      {group.findings.some((f) => f.ruleId === 'source-unavailable') && (
+        <Button
+          variant="outline"
+          size="sm"
+          className="h-6 shrink-0 px-2 text-meta"
+          disabled={running}
+          onClick={sources.onCheckSources}
+        >
+          <RefreshCw className="mr-1 h-3 w-3" aria-hidden />
+          {running ? 'Checking…' : 'Retry Check'}
+        </Button>
+      )}
+      <Tip tip="Dismiss" labelsChild={false}>
+        <Button
+          variant="ghost"
+          size="icon"
+          className="h-6 w-6 shrink-0 text-muted-foreground"
+          onClick={() => onDismiss(group.ruleId)}
+          aria-label={`Dismiss: ${group.headline}`}
+        >
+          <EyeOff className="h-3.5 w-3.5" />
+        </Button>
+      </Tip>
+    </div>
+  );
+};
+
 /** The muted rows, folded away until asked for — a dismissal the author can't take back is a trap. */
 const DismissedSection = ({ groups, onRestore }: {
   groups: FindingGroup[];
@@ -237,6 +351,37 @@ const StatCodeCheck = ({ codedStatCount, advanced, status, onRun }: {
   );
 };
 
+/**
+ * The list's other manual action: ask the server whether each source this world's copies follow is still
+ * there. Absent from a world whose copies follow nothing published, where there would be nothing to ask
+ * about. It never runs on its own: a world stays playable offline, and only a definite answer to a question
+ * the author asked is worth reporting a source as gone over.
+ */
+const SourceCheck = ({ sources }: { sources: SourceCheckProps }) => {
+  if (sources.sourceCount === 0) return null;
+  const running = sources.status === 'running';
+  const count = sources.sourceCount;
+  return (
+    <div className="mt-2 flex items-center gap-2 border-t pt-2">
+      <p className="min-w-0 flex-grow text-meta text-muted-foreground">
+        {sources.status === 'done'
+          ? `Checked ${count} linked ${count === 1 ? 'copy' : 'copies'}`
+          : `${count} linked ${count === 1 ? 'copy follows' : 'copies follow'} a source, checked separately`}
+      </p>
+      <Button
+        variant="outline"
+        size="sm"
+        className="h-6 shrink-0 px-2 text-meta"
+        onClick={sources.onCheckSources}
+        disabled={running}
+      >
+        <RefreshCw className="mr-1 h-3 w-3" aria-hidden />
+        {running ? 'Checking…' : sources.status === 'done' ? 'Check Again' : 'Check Sources'}
+      </Button>
+    </div>
+  );
+};
+
 export interface IssuesInstrumentProps {
   issues: IssuesProps;
   onFix: (ruleId: string) => void;
@@ -277,7 +422,15 @@ export function IssuesInstrument({ issues, onFix }: IssuesInstrumentProps) {
                 <p className={cn('pt-1 text-meta font-medium', SEVERITY_HEADING_COLOR[severity])}>
                   {SEVERITY_HEADING[severity]}
                 </p>
-                {inSeverity.map((group) => (
+                {inSeverity.map((group) => (isSourceRule(group.ruleId) ? (
+                  <SourceFindingRow
+                    key={group.ruleId}
+                    group={group}
+                    sources={issues.sources}
+                    onOpen={issues.onOpenItem}
+                    onDismiss={issues.onDismissRule}
+                  />
+                ) : (
                   <FindingRow
                     key={group.ruleId}
                     group={group}
@@ -286,7 +439,7 @@ export function IssuesInstrument({ issues, onFix }: IssuesInstrumentProps) {
                     onFix={onFix}
                     onDismiss={issues.onDismissRule}
                   />
-                ))}
+                )))}
               </div>
             );
           })}
@@ -298,6 +451,7 @@ export function IssuesInstrument({ issues, onFix }: IssuesInstrumentProps) {
         status={issues.codeCheckStatus}
         onRun={issues.onCheckStatCode}
       />
+      <SourceCheck sources={issues.sources} />
       <AdvancedOnlySection count={issues.advancedOnlyCount} />
       <DismissedSection groups={issues.dismissedGroups} onRestore={issues.onRestoreRule} />
     </div>
