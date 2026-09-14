@@ -71,6 +71,7 @@ const benchProps = (groups: FindingGroup[], over: BenchOver = {}): TestBenchProp
     onRestoreRule: vi.fn(),
     onMarkAllSeen: vi.fn(),
     onCheckStatCode: vi.fn(),
+    sources: { sourceCount: 0, status: 'idle', missing: [], onCheckSources: vi.fn(), onRepair: vi.fn() },
     ...over.issues,
   },
   lens: {

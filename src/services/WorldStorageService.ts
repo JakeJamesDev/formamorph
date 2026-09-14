@@ -13,6 +13,7 @@ import { changelogOf, type ChangelogDraft, type ChangelogEntry } from '@/lib/lis
 import type { ReviewState, WorldAssociation } from '@/lib/compatibleWorlds';
 import type { ListingVisibility } from '@/lib/publishLinks';
 import type { AddonRow, DependencyRow } from '@/lib/worldDependencies';
+import type { SourceCheckStatus } from '@/lib/sourceChecks';
 import type { ContentLink, LikerAuditRow, LikerRow, VrmLicense, WorldMetadata } from '@/types';
 
 /**
@@ -843,6 +844,33 @@ class WorldStorageService {
     } catch (error) {
       console.error('Error fetching the listing:', error);
       return null;
+    }
+  }
+
+  /**
+   * Ask whether one source listing is still there.
+   *
+   * The two answers are worth very different things, so this reads the response itself rather than going
+   * through a helper that reports every refusal the same way. A 404 is the server saying the listing is
+   * gone. Everything else — a refusal, a timeout, no connection at all — says only that this attempt
+   * failed, which is never evidence that anything was deleted.
+   *
+   * The reader's own token goes with it, so a source only its author can see answers for its author.
+   *
+   * @param listingId - The source listing's server id
+   * @returns What the answer was worth
+   */
+  async checkSource(listingId: string): Promise<SourceCheckStatus> {
+    try {
+      const headers: Record<string, string> = {};
+      if (AuthService.isAuthenticated()) {
+        headers['Authorization'] = `Bearer ${AuthService.token}`;
+      }
+      const response = await fetch(`${this.API_URL}/worlds/${listingId}`, { headers });
+      if (response.status === 404) return 'not_found';
+      return response.ok ? 'ok' : 'unavailable';
+    } catch {
+      return 'unavailable';
     }
   }
 
