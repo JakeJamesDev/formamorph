@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest';
 import type { Dictionary, Entity } from '@/types';
 import {
   applyLibraryUpdate, contentMatchesSource, libraryOwned, libraryRevision,
-  linkToSource, markEdited, syncWorldContent, unlink,
+  linkToSource, markEdited, planWriteBack, stampLinks, syncWorldContent, unlink, withoutWorldFields,
 } from './linkedContent';
 
 const book = (over: Partial<Dictionary> = {}): Dictionary => ({
@@ -82,6 +82,87 @@ describe('markEdited', () => {
   it('returns the same object when the copy is already a local replacement', () => {
     const already = person({ link: { libraryId: 'lib-1', localReplacement: true } });
     expect(markEdited(already)).toBe(already);
+  });
+
+  it('leaves a copy of an owned item Linked, which the world save writes back', () => {
+    const owned = person({ link: { libraryId: 'lib-1' } });
+    expect(markEdited(owned, true)).toBe(owned);
+  });
+
+  it('marks a copy of the item of another author', () => {
+    expect(markEdited(person({ link: { libraryId: 'lib-1' } }), false).link?.localReplacement).toBe(true);
+  });
+
+  it('keeps an owned copy already turned into a local replacement as one', () => {
+    const already = person({ link: { libraryId: 'lib-1', localReplacement: true } });
+    expect(markEdited(already, true)).toBe(already);
+  });
+});
+
+describe('planWriteBack', () => {
+  const owned = { id: 'lib-1', name: 'Wren', revision: 'r1', owned: true, data: person() };
+  const theirs = { id: 'lib-2', name: 'Reed', revision: 'r1', owned: false, sourceId: 'listing-2' };
+  const shape = <T extends Entity | Dictionary>(copy: T) => withoutWorldFields(copy) as T;
+
+  it('writes an owned copy whose content differs from its item', () => {
+    const copy = person({ playerDescription: 'A smuggler.', link: { libraryId: 'lib-1', sourceRevision: 'r1' } });
+    const plan = planWriteBack({ entities: [copy], dictionaries: [] }, [owned], shape);
+    expect(plan).toHaveLength(1);
+    expect(plan[0].copy).toBe(copy);
+    expect(plan[0].source).toBe(owned);
+    expect((plan[0].content as Entity).playerDescription).toBe('A smuggler.');
+  });
+
+  it('writes nothing for an owned copy that matches its item', () => {
+    const copy = person({ link: { libraryId: 'lib-1', sourceRevision: 'r1' } });
+    expect(planWriteBack({ entities: [copy], dictionaries: [] }, [owned], shape)).toEqual([]);
+  });
+
+  it('writes nothing for a local replacement', () => {
+    const copy = person({ name: 'Wren the Elder', link: { libraryId: 'lib-1', sourceRevision: 'r1', localReplacement: true } });
+    expect(planWriteBack({ entities: [copy], dictionaries: [] }, [owned], shape)).toEqual([]);
+  });
+
+  it('writes nothing for the item of another author', () => {
+    const copy = person({ name: 'Reed the Elder', link: { libraryId: 'lib-2', sourceRevision: 'r1' } });
+    expect(planWriteBack({ entities: [copy], dictionaries: [] }, [theirs], shape)).toEqual([]);
+  });
+
+  it('writes nothing for an item the lookup did not answer', () => {
+    const copy = person({ name: 'Gone', link: { libraryId: 'lib-9', sourceRevision: 'r1' } });
+    expect(planWriteBack({ entities: [copy], dictionaries: [] }, [owned], shape)).toEqual([]);
+  });
+
+  it('strips the world-owned fields from the content and keeps the connections on the copy', () => {
+    const copy = person({
+      playerDescription: 'A smuggler.', locations: ['harbor'], groupId: 'g1', order: 3,
+      link: { libraryId: 'lib-1', sourceRevision: 'r1', connections: { 'src-pl': 'pl-1' } },
+    });
+    const [entry] = planWriteBack({ entities: [copy], dictionaries: [] }, [owned], shape);
+    expect(entry.content).toEqual({ name: 'Wren', playerDescription: 'A smuggler.' });
+    expect(entry.copy.link?.connections).toEqual({ 'src-pl': 'pl-1' });
+  });
+
+  it('plans dictionaries the same way', () => {
+    const source = { id: 'lib-3', name: 'Sedge Lore', revision: 'r1', owned: true, data: book() };
+    const copy = book({ entries: [{ id: 'own', name: 'Sedge', key: ['sedge'], value: 'Rushes.' }], link: { libraryId: 'lib-3', sourceRevision: 'r1' } });
+    const plan = planWriteBack({ entities: [], dictionaries: [copy] }, [source], shape);
+    expect(plan).toHaveLength(1);
+    expect((plan[0].content as Dictionary).entries[0].value).toBe('Rushes.');
+  });
+});
+
+describe('stampLinks', () => {
+  it('writes the stamped record onto the named copy and leaves the rest', () => {
+    const items = [person({ link: { libraryId: 'lib-1', sourceRevision: 'r1' } }), person({ id: 'ent-2' })];
+    const next = stampLinks(items, [{ id: 'ent-1', link: { libraryId: 'lib-1', sourceRevision: 'r2' } }]);
+    expect(next[0].link?.sourceRevision).toBe('r2');
+    expect(next[1]).toBe(items[1]);
+  });
+
+  it('returns the same array when no stamp names a copy in it', () => {
+    const items = [person()];
+    expect(stampLinks(items, [{ id: 'other', link: { libraryId: 'lib-1' } }])).toBe(items);
   });
 });
 

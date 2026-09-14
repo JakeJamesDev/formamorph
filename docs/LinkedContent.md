@@ -13,7 +13,7 @@ How a world's entities and dictionaries follow a library item, and what that lin
 | **Library item** | One entity or dictionary in your library. |
 | **Linked copy** | An entity or dictionary in a world that follows a library item. |
 | **Independent copy** | A copy that follows nothing. |
-| **Local replacement** | A linked copy you edited. No update overwrites it. |
+| **Local replacement** | A linked copy of another author's item that you edited. No update overwrites it. |
 | **Source** | The published listing a copy follows. |
 | **Add-on** | A published entity or dictionary offered for a world, which a player installs by choice. |
 | **Bundled content** | The entities and dictionaries an imported world file carries whose library items are not on this machine. |
@@ -39,11 +39,20 @@ A linked row carries a 🔗 marker in the list, and its footer button reads **Op
 
 | State | Meaning | Default in a review |
 |---|---|---|
-| **Linked** | The copy matches its library item. Updates replace its content. | **Update** |
-| **Local replacement** | You edited the copy. No update overwrites it. | **Keep Mine** |
+| **Linked** | The copy follows its library item. Updates replace its content. If the item is yours, saving the world writes your edits to it. | **Update** |
+| **Local replacement** | You edited a copy of another author's item. No update overwrites it. | **Keep Mine** |
 | **Link pending save** | You linked the copy in this editing session. The link is written when you save the world. | |
 
-Editing a linked copy makes it a local replacement.
+### Editing a Linked Copy
+
+Who owns the library item decides what an edit does.
+
+| The item is | An edit to the copy | On **Save** |
+|---|---|---|
+| **Yours** | Stays **Linked**. | Writes the edit to the library item. Every other world holding a copy receives it the next time you open that world. The last save wins. |
+| **Another author's** | Makes the copy a **Local replacement**. | Writes nothing to the library. Their updates still reach you for review, where **Keep Mine** is the default. |
+
+**Discard Changes** writes nothing to the library. A copy you already made a local replacement stays one; **Use Author's** in a review makes it share edits again.
 
 ### The Copy's Menu
 

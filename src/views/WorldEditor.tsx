@@ -121,7 +121,7 @@ const WorldEditorInner = ({ onClose, embedded = false, backButton }: {
     updateDictionary, updateDictionaryEntry, updatePlaceholder, updatePlaceholderGroup,
     removeStat, removeEntity, removeTrait, removeStatUpdate,
     setStats, setLocations, setEntities, setTraits, setTraitGroups, setStatUpdates, setDictionaries,
-    isWorldDirty, saveWorld: saveWorldCtx, discardChanges
+    isWorldDirty, saveWorld: saveWorldCtx, discardChanges, setOwnedLibraryIds,
   } = useGameData();
   const { promptWorld, dialog: downscaleDialog } = useDownscalePrompt();
 
@@ -426,7 +426,7 @@ const WorldEditorInner = ({ onClose, embedded = false, backButton }: {
     worldName: worldOverview?.name || 'This world',
     entities, dictionaries, placeholders, worldPlaceholders, locations,
     updateEntity, updateDictionary, setEntities, setDictionaries,
-    addEntityToWorld, addBookToWorld, addPlaceholder, addLocation,
+    addEntityToWorld, addBookToWorld, addPlaceholder, addLocation, setOwnedLibraryIds,
     reopenPicker: (kind) => {
       setResumePicker(true);
       if (kind === 'dictionary') setShowAddDictionary(true); else setShowAddEntity(true);

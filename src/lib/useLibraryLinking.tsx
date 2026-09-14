@@ -68,6 +68,8 @@ interface LibraryLinkingOptions {
   addBookToWorld: (book: Dictionary) => void;
   addPlaceholder: (placeholder: Placeholder) => void;
   addLocation: (location: GameLocation) => void;
+  /** Tell the world which library items the author owns, so an edit to a copy of one stays Linked. */
+  setOwnedLibraryIds: (ids: Iterable<string>) => void;
   /** Reopen the library picker on the picks the author already made, for Back out of the connection step. */
   reopenPicker: (kind: LibraryKind) => void;
   /** Export the selected item through the editor's existing file flow. */
@@ -143,14 +145,17 @@ export function useLibraryLinking(options: LibraryLinkingOptions) {
       .filter((id): id is string => !!id);
     if (!linkedIds.length) return;
     // The lookup is what says an item is gone, so a lookup that failed says nothing and nothing is let go
-    // of. Without this, one unreadable library would unlink every copy in the world.
+    // of. Without this, one unreadable library would unlink every copy in the world. Ownership reaches the
+    // world here too: a lookup that failed leaves nothing owned, so every edit marks a local replacement.
     let sources: LibrarySource[];
     try {
       sources = await loadLinkedSources(linkedIds);
     } catch (error) {
       console.error('Could not read your library:', (error as Error).message);
+      current.setOwnedLibraryIds([]);
       return;
     }
+    current.setOwnedLibraryIds(sources.filter((source) => source.owned).map((source) => source.id));
     const next = syncWorldContent({
       entities: current.entities, dictionaries: current.dictionaries, placeholders: current.worldPlaceholders,
     }, sources);
