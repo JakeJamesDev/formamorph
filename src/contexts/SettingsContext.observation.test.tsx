@@ -175,3 +175,65 @@ describe('a reply teaches the capability record', () => {
     expect(stored[SIG]?.reasons).toBe(true);
   });
 });
+
+/**
+ * A vLLM server publishes `max_model_len` and nothing about reasoning, so its record names the dialect and
+ * waits. The proof is one reply carrying a separate reasoning field, and these cases run it through the real
+ * provider rather than handing the observation to the resolver, because the bug they guard lives in the
+ * retention and re-resolve rules rather than in the resolver itself.
+ */
+describe('a vLLM server proving it separates its reasoning', () => {
+  const MODELS_URL = `${ENDPOINT}/models`;
+
+  /** Serves the Aphrodite models shape, and 404s everything else, so the chain names vllm and stops there. */
+  const vllmFetch = vi.fn(async (url: string) => (
+    url === MODELS_URL
+      ? { ok: true, status: 200, json: async () => ({ data: [{ id: MODEL, max_model_len: 10750 }] }), text: async () => '' }
+      : { ok: false, status: 404, json: async () => ({}), text: async () => '' }
+  ) as Response);
+
+  const reply = (view: Awaited<ReturnType<typeof engagedSettings>>, reasoning: string, content: string) =>
+    act(async () => {
+      view.result.current.noteReasoningReply(
+        { url: `${ENDPOINT}/chat/completions`, model: MODEL }, reasoning, content, 'high',
+      );
+    });
+
+  beforeEach(() => { vllmFetch.mockClear(); vi.stubGlobal('fetch', vllmFetch); });
+
+  // The unprompted resolve is debounced by 1200 ms, so this one waits past that rather than the default.
+  it('names the dialect and leaves the budget unanswered before any reply', async () => {
+    const view = await engagedSettings();
+    await waitFor(
+      () => expect(view.result.current.reasoningCapability?.dialect).toBe('vllm'),
+      { timeout: 3000 },
+    );
+    expect(view.result.current.reasoningCapability?.budget).toBeNull();
+  });
+
+  // The case a parser-enabled vLLM actually produces under Inline thinking: the model writes a think block
+  // on one call and the server parts its reasoning out on the next. Both replies answer the reasons question
+  // the same way, so nothing about the reasons answer changes between them — and the proof still has to land.
+  it('proves the budget on a separated reply that follows an inline one', async () => {
+    const view = await engagedSettings();
+    await reply(view, '', '<think>Open the door.</think>You open the door.');
+    await waitFor(() => expect(view.result.current.reasoningCapability?.reasons).toBe(true));
+    expect(view.result.current.reasoningCapability?.budget).toBeNull();
+
+    await reply(view, 'The player wants the door opened.', 'You open the door.');
+    await waitFor(() => expect(view.result.current.reasoningCapability?.budget).toBe(true));
+    expect(view.result.current.reasoningCapability?.sources.budget).toBe('observed');
+  });
+
+  // Once the budget is answered it must stay answered: a later reply that wrote a think block instead does
+  // not take the slider away again. The record's merge is what holds it, so this is what guards that merge.
+  it('keeps the budget answered when an inline reply follows the separated one', async () => {
+    const view = await engagedSettings();
+    await reply(view, 'The player wants the door opened.', 'You open the door.');
+    await waitFor(() => expect(view.result.current.reasoningCapability?.budget).toBe(true));
+
+    await reply(view, '', '<think>Open the door.</think>You open the door.');
+    await waitFor(() => expect(view.result.current.reasoningCapability?.reasons).toBe(true));
+    expect(view.result.current.reasoningCapability?.budget).toBe(true);
+  });
+});

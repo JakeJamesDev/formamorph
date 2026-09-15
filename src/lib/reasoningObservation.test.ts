@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import {
-  observeReply, observationAnswer, observationMayCorrect, replyCarriedReasoning,
+  observeReply, observationAnswer, observationMayCorrect, replyCarriedReasoning, replySeparatedReasoning,
+  type ReasoningObservation,
 } from './reasoningObservation';
 import type { ReasoningCapability, ReasoningCapabilitySource } from './reasoningEffort';
 
@@ -31,37 +32,61 @@ describe('replyCarriedReasoning', () => {
   });
 });
 
+describe('replySeparatedReasoning', () => {
+  it('sees a reasoning field beside the content', () => {
+    expect(replySeparatedReasoning('The player asked for a door.')).toBe(true);
+  });
+
+  it('reads an empty field as no separation', () => {
+    expect(replySeparatedReasoning('')).toBe(false);
+    expect(replySeparatedReasoning('  \n ')).toBe(false);
+  });
+});
+
 describe('observeReply', () => {
   it('records what the reply showed and the effort in force', () => {
-    expect(observeReply('Thinking.', 'Text.', 'high')).toEqual({ sawReasoning: true, effort: 'high' });
+    expect(observeReply('Thinking.', 'Text.', 'high'))
+      .toEqual({ sawReasoning: true, sawSeparateReasoning: true, effort: 'high' });
   });
 
   it('records a missing effort field as Model Default', () => {
-    expect(observeReply('', 'Text.', undefined)).toEqual({ sawReasoning: false, effort: null });
+    expect(observeReply('', 'Text.', undefined))
+      .toEqual({ sawReasoning: false, sawSeparateReasoning: false, effort: null });
+  });
+
+  // The two answers part company here, and a dialect that waits for proof turns on the difference: the model
+  // thought, but the server handed the thinking back inside the prose rather than in a field of its own.
+  it('reads an inline think block as reasoning, but not as separated reasoning', () => {
+    expect(observeReply('', '<think>Pick a door.</think>Text.', 'high'))
+      .toEqual({ sawReasoning: true, sawSeparateReasoning: false, effort: 'high' });
   });
 });
 
 describe('observationAnswer', () => {
+  // The reasons question turns on `sawReasoning` alone, so these cases pin separation to the inline shape.
+  const reply = (sawReasoning: boolean, effort: ReasoningObservation['effort']): ReasoningObservation =>
+    ({ sawReasoning, sawSeparateReasoning: false, effort });
+
   it('marks a model that showed reasoning as reasoning', () => {
-    expect(observationAnswer({ sawReasoning: true, effort: 'low' })).toBe(true);
+    expect(observationAnswer(reply(true, 'low'))).toBe(true);
   });
 
   it('marks a model that showed reasoning under Model Default as reasoning', () => {
-    expect(observationAnswer({ sawReasoning: true, effort: null })).toBe(true);
+    expect(observationAnswer(reply(true, null))).toBe(true);
   });
 
   it('marks a bare reply under a positive effort as not reasoning', () => {
     for (const effort of ['minimal', 'low', 'medium', 'high', 'xhigh', 'max'] as const) {
-      expect(observationAnswer({ sawReasoning: false, effort })).toBe(false);
+      expect(observationAnswer(reply(false, effort))).toBe(false);
     }
   });
 
   it('leaves a bare reply under none unanswered, since nothing asked the model to think', () => {
-    expect(observationAnswer({ sawReasoning: false, effort: 'none' })).toBeNull();
+    expect(observationAnswer(reply(false, 'none'))).toBeNull();
   });
 
   it('leaves a bare reply under Model Default unanswered, since the endpoint chose', () => {
-    expect(observationAnswer({ sawReasoning: false, effort: null })).toBeNull();
+    expect(observationAnswer(reply(false, null))).toBeNull();
   });
 
   it('leaves an absent observation unanswered', () => {

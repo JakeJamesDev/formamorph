@@ -583,6 +583,24 @@ describe('dialects — one spelling per row', () => {
     expect(speaks(unanswered)).toEqual({});
   });
 
+  /**
+   * The two records a vLLM target actually reaches the builder with, as the resolver writes them. Before a
+   * reply proves the server separates its reasoning the record is bare, and nothing goes out. The reply that
+   * proves it answers the budget and fills the safe levels at once, and both halves then go out together.
+   */
+  it('sends a vLLM server nothing until a reply proved it separates its reasoning, then both halves', () => {
+    const unproven = speaking('vllm', { reasoning: { ...UNKNOWN_REASONING_CAPABILITY, dialect: 'vllm' } });
+    expect(speaks(unproven)).toEqual({});
+
+    const proven = speaking('vllm', {
+      reasoning: {
+        reasons: true, levels: ['none', 'low', 'medium', 'high'], budget: true, dialect: 'vllm',
+        offAllowed: null, sources: { reasons: 'observed', levels: 'observed', budget: 'observed', dialect: 'native' },
+      },
+    });
+    expect(speaks(proven)).toEqual({ thinking_token_budget: 400, reasoning_effort: 'high' });
+  });
+
   it('stays silent on a model the record rules out, off spelling or not', () => {
     for (const dialect of ['vllm', 'anthropic', 'moonshot-k2', 'unknown'] as const) {
       const ruledOut = speaking(dialect, {

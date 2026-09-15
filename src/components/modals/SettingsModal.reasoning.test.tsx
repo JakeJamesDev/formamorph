@@ -194,3 +194,38 @@ describe('an OpenRouter model', () => {
     expect(box.disabled).toBe(false);
   });
 });
+
+/**
+ * A vLLM server, the hosted Default included, publishes nothing about its own reasoning: whether it separates
+ * reasoning at all depends on a parser its operator chose to start. Both controls therefore wait for one
+ * reply to show a separate reasoning field, which is what the record's budget answer carries.
+ */
+describe('a vLLM server before and after a reply proves it separates its reasoning', () => {
+  beforeEach(() => localStorage.clear());
+
+  /** What the model list alone leaves behind: the dialect, and no answer to anything else. */
+  const unproven: ReasoningCapability = {
+    reasons: null, levels: null, budget: null, dialect: 'vllm', offAllowed: null, sources: { dialect: 'native' },
+  };
+  /** What one reply carrying a reasoning field adds: the budget answered, and the safe levels to pick from. */
+  const proven: ReasoningCapability = {
+    reasons: true, levels: [...levels], budget: true, dialect: 'vllm', offAllowed: null,
+    sources: { dialect: 'native', reasons: 'observed', levels: 'observed', budget: 'observed' },
+  };
+
+  const strengthDropdown = () => screen.queryAllByRole('combobox').filter((c) => c.textContent?.includes('Global'));
+
+  it('shows neither the slider nor the strength dropdown while nothing has proved it', () => {
+    seedCapability(unproven);
+    openNarrationOptions();
+    expect(screen.queryByText('Reasoning Budget')).toBeNull();
+    expect(strengthDropdown()).toHaveLength(0);
+  });
+
+  it('shows both once a reply carried a reasoning field', () => {
+    seedCapability(proven);
+    openNarrationOptions();
+    expect(screen.getByRole('slider', { name: 'Reasoning Budget' })).toBeTruthy();
+    expect(strengthDropdown()).toHaveLength(1);
+  });
+});

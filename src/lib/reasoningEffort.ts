@@ -5,7 +5,8 @@ import { observationAnswer, type ReasoningObservation } from '@/lib/reasoningObs
 import { deriveModelsUrls } from '@/lib/contextLength';
 import { loadReasoningCatalog, catalogSaysReasons, type ReasoningCatalogLoader } from '@/lib/reasoningCatalog';
 import {
-  isReasoningDialect, reasoningDialectTakesLevel, reasoningOffRejected, type ReasoningDialect,
+  isReasoningDialect, reasoningDialectNeedsProof, reasoningDialectTakesLevel, reasoningOffRejected,
+  type ReasoningDialect,
 } from '@/lib/reasoningDialect';
 
 /** The `reasoning_effort` values a chat-completions endpoint may accept as a passthrough hint. `auto` is
@@ -98,9 +99,25 @@ export function reasoningRuledOut(capability: ReasoningCapability | null | undef
   return capability?.levels?.length === 0 && capability.reasons !== true;
 }
 
-/** True where the strength dropdown is worth showing: the dialect carries an effort literal, and no source
- *  has said this model exposes no strength to pick. */
+/**
+ * True where the target's dialect publishes nothing about its own reasoning and no reply has proved it yet,
+ * so every Native Reasoning control would be inert: the record names no budget to send and no literal the
+ * wire guard would let through. The budget answer carries the proof, since one reply settles both.
+ *
+ * This is not the same as ruling the model out. Nothing here says the model does not reason; it says the
+ * app cannot yet tell, so it offers no control rather than one that does nothing.
+ */
+export function reasoningAwaitingProof(capability: ReasoningCapability | null | undefined): boolean {
+  return reasoningDialectNeedsProof(capability?.dialect ?? 'unknown') && capability?.budget !== true;
+}
+
+/**
+ * True where the strength dropdown is worth showing: the dialect carries an effort literal, and no source
+ * has said this model exposes no strength to pick. A dialect still awaiting its proof shows no dropdown,
+ * because the wire guard would drop every literal the player picked.
+ */
 export function reasoningLevelControl(capability: ReasoningCapability): boolean {
+  if (reasoningAwaitingProof(capability)) return false;
   return reasoningDialectTakesLevel(capability.dialect) && capability.levels?.length !== 0;
 }
 
@@ -690,10 +707,9 @@ async function probeNoneLiteral(
 }
 
 /**
- * Resolves one endpoint-and-model pair's capability record. It walks the advertisement sources in order and
- * returns the first that answers, so a backend that publishes its own capabilities is never sent a test
- * completion. Next it matches the model id against the public catalog, then reads what the replies already
- * showed. Only when none of those answers does it send the single probe.
+ * Resolves one endpoint-and-model pair's capability record, then folds in what a reply proved about a
+ * dialect that advertises nothing. The proof is applied here rather than inside the chain because the chain
+ * has several exits, and a dialect named by one source may be carried out through any of them.
  *
  * Returns `null` when nothing answered conclusively, so a caller keeps its fallback and its cache entry
  * rather than storing a wrong record.
@@ -702,6 +718,48 @@ export async function resolveReasoningCapability(
   target: ReasoningTarget,
   doFetch: ResolverFetch = fetch,
   context: ReasoningResolveContext = {},
+): Promise<ReasoningCapability | null> {
+  const gathered = await gatherReasoningCapability(target, doFetch, context);
+  return withProvenSeparation(gathered, context.observation);
+}
+
+/**
+ * What one reply proves about a dialect nothing advertises for. A vLLM server parts its reasoning out only
+ * when its operator started one with a reasoning parser, and no model list says whether they did. A reply
+ * carrying a separate reasoning field proves they did, which answers the token budget and licenses the
+ * effort literal on that same parsed path; the safe levels are what the literal is then drawn from.
+ *
+ * A reply whose reasoning sat inline in the prose proves neither. The model thought, and the server handed
+ * the thinking back unparsed, which is the case this gate exists to keep controls away from.
+ */
+function withProvenSeparation(
+  record: ReasoningCapability | null,
+  observation: ReasoningObservation | null | undefined,
+): ReasoningCapability | null {
+  if (!record || !reasoningDialectNeedsProof(record.dialect)) return record;
+  if (!observation?.sawSeparateReasoning || record.budget !== null) return record;
+  return {
+    ...record,
+    budget: true,
+    levels: record.levels ?? [...SAFE_REASONING_EFFORTS],
+    sources: {
+      ...record.sources,
+      budget: 'observed',
+      ...(record.levels ? {} : { levels: 'observed' as const }),
+    },
+  };
+}
+
+/**
+ * The source chain itself. It walks the advertisement sources in order and returns the first that answers,
+ * so a backend that publishes its own capabilities is never sent a test completion. Next it matches the
+ * model id against the public catalog, then reads what the replies already showed. Only when none of those
+ * answers does it send the single probe.
+ */
+async function gatherReasoningCapability(
+  target: ReasoningTarget,
+  doFetch: ResolverFetch,
+  context: ReasoningResolveContext,
 ): Promise<ReasoningCapability | null> {
   const { observation, loadCatalog = loadReasoningCatalog, signal } = context;
   if (!originOf(target.url)) return null; // a half-typed endpoint gets no request at all

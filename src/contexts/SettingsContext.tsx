@@ -64,7 +64,7 @@ import type { ParagraphLimit } from '../lib/outputLength';
 import {
   resolveReasoningCapability, mergeReasoningCapability, isReasoningEngaged, parseReasoningSetting,
   parsePromptReasoningSetting, resolveReasoningSetting, resolvePromptReasoningSetting, DEFAULT_REASONING_SETTING,
-  parseReasoningCapability, reasoningNeedsResolve, UNKNOWN_REASONING_CAPABILITY,
+  parseReasoningCapability, reasoningNeedsResolve, reasoningAwaitingProof, UNKNOWN_REASONING_CAPABILITY,
   type PromptReasoning, type ReasoningSetting, type PromptReasoningSetting, type ReasoningCapability,
   type ReasoningEffortField,
 } from '../lib/reasoningEffort';
@@ -664,14 +664,19 @@ function useProvideSettings() {
     effort: ReasoningEffortField | null,
   ) => {
     const sig = endpointSignature(target.url, target.model);
+    const prior = reasoningObservationsRef.current[sig];
     const observation = observeReply(reasoningText, content, effort);
-    const before = observationAnswer(reasoningObservationsRef.current[sig]);
+    const before = observationAnswer(prior);
     const answer = observationAnswer(observation);
     // A reply that settles nothing never erases one that did. A turn fires several calls at once and the
     // bookkeeping ones ship switched off, so the last reply in is routinely the least informative one.
     if (answer === null && before !== null) return;
+    // A reply that first parts its reasoning out answers the budget question on a dialect that advertises
+    // nothing, even where the reasons answer has not moved. An inline think block and a separate reasoning
+    // field both read as reasoning, so without this the second kind never wakes the resolve.
+    const proved = observation.sawSeparateReasoning && !prior?.sawSeparateReasoning;
     reasoningObservationsRef.current[sig] = observation;
-    if (answer !== before) setReasoningObserved((n) => n + 1);
+    if (answer !== before || proved) setReasoningObserved((n) => n + 1);
   }, []);
 
   const resolveActiveCapability = useCallback(async () => {
@@ -821,8 +826,13 @@ function useProvideSettings() {
     const sig = reasoningCapabilitySig;
     const observation = reasoningObservationsRef.current[sig];
     const answer = observationAnswer(observation);
-    if (answer === null || !observationMayCorrect(reasoningCapability)) return;
-    const key = `${sig}|${answer}`;
+    // A reply that parted its reasoning out answers the budget question on a dialect that advertises
+    // nothing, which `observationMayCorrect` says nothing about: that guard is about the reasons answer
+    // alone. So such a reply gets its resolve even where an advertisement or the catalog already answered
+    // reasons, and the key carries the proof so an earlier inline reply has not already spent it.
+    const proves = observation?.sawSeparateReasoning === true && reasoningAwaitingProof(reasoningCapability);
+    if (!proves && (answer === null || !observationMayCorrect(reasoningCapability))) return;
+    const key = `${sig}|${answer}|${observation?.sawSeparateReasoning ?? false}`;
     if (observedSignatures.current.has(key)) return;
     observedSignatures.current.add(key);
     const controller = new AbortController();

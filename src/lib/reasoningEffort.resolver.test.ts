@@ -203,6 +203,7 @@ describe('gateway model list', () => {
     expect(record?.dialect).toBe('vllm');
     expect(record?.sources.dialect).toBe('native');
     expect(record?.budget).toBeNull();
+    expect(record?.reasons).toBeNull();
   });
 
   it('reads the Aphrodite shape as vllm too, entry extras and all', async () => {
@@ -445,9 +446,69 @@ describe('a source never contradicts itself', () => {
   });
 });
 
+// A vLLM server separates its reasoning only when its operator started one with a reasoning parser. No model
+// list says whether they did, so the record waits for a reply to show a field of its own. Until then the
+// budget answer stays unanswered, which is what hides both controls and sends no reasoning field.
+describe('a vLLM reply proving the server separates its reasoning', () => {
+  const vllm = { status: 200, body: { data: [{ id: 'm', max_model_len: 10750 }] } };
+  const separated = { sawReasoning: true, sawSeparateReasoning: true, effort: 'high' } as const;
+  const inline = { sawReasoning: true, sawSeparateReasoning: false, effort: 'high' } as const;
+  const prose = { sawReasoning: false, sawSeparateReasoning: false, effort: 'high' } as const;
+
+  it('marks the budget yes and fills the safe levels once a reply carried a reasoning field', async () => {
+    const { doFetch } = backend({ [OPENAI]: vllm });
+    const record = await resolveReasoningCapability(TARGET, doFetch, { observation: separated });
+    expect(record?.dialect).toBe('vllm');
+    expect(record?.budget).toBe(true);
+    expect(record?.sources.budget).toBe('observed');
+    expect(record?.levels).toEqual([...SAFE_REASONING_EFFORTS]);
+    expect(record?.sources.levels).toBe('observed');
+  });
+
+  // A think block says the model thought. It never says the server parsed the thinking out, which is the
+  // thing the reasoning parser does and the thing the budget field rides on.
+  it('leaves the budget unanswered when the reasoning came inline in the prose', async () => {
+    const { doFetch } = backend({ [OPENAI]: vllm });
+    const record = await resolveReasoningCapability(TARGET, doFetch, { observation: inline });
+    expect(record?.dialect).toBe('vllm');
+    expect(record?.reasons).toBe(true);
+    expect(record?.budget).toBeNull();
+    expect(record?.levels).toBeNull();
+  });
+
+  it('rules the model out when a reply under a positive effort showed no reasoning at all', async () => {
+    const { doFetch } = backend({ [OPENAI]: vllm });
+    const record = await resolveReasoningCapability(TARGET, doFetch, { observation: prose });
+    expect(record?.dialect).toBe('vllm');
+    expect(record).toMatchObject({ reasons: false, levels: [] });
+    expect(record?.budget).toBeNull();
+  });
+
+  // The gate belongs to the dialect that advertises nothing. An endpoint the app has never identified keeps
+  // today's record, where one reply answers the reasons question and nothing else.
+  it('leaves an unidentified endpoint’s budget unanswered on the same reply', async () => {
+    const { doFetch } = backend({ [OLLAMA]: { status: 200, body: { capabilities: ['thinking'] } } });
+    const record = await resolveReasoningCapability(TARGET, doFetch, { observation: separated });
+    expect(record?.dialect).toBe('unknown');
+    expect(record?.budget).toBeNull();
+  });
+
+  // The catalog answers the reasons question and returns early, so the proof has to survive that exit too.
+  it('proves the budget even where the catalog answered first', async () => {
+    const { doFetch } = backend({ [OPENAI]: vllm });
+    const record = await resolveReasoningCapability(TARGET, doFetch, {
+      observation: separated,
+      loadCatalog: async () => new Set(['m']),
+    });
+    expect(record?.sources.reasons).toBe('catalog');
+    expect(record?.budget).toBe(true);
+    expect(record?.sources.budget).toBe('observed');
+  });
+});
+
 describe('what the replies already showed', () => {
-  const saw = { sawReasoning: true, effort: 'high' } as const;
-  const bare = { sawReasoning: false, effort: 'high' } as const;
+  const saw = { sawReasoning: true, sawSeparateReasoning: true, effort: 'high' } as const;
+  const bare = { sawReasoning: false, sawSeparateReasoning: false, effort: 'high' } as const;
 
   it('marks a model whose reply carried reasoning as reasoning, with no completion sent', async () => {
     const { doFetch, calls } = backend({ [COMPLETIONS]: { status: 200, body: {} } });
@@ -474,8 +535,8 @@ describe('what the replies already showed', () => {
   });
 
   it.each([
-    ['none', { sawReasoning: false, effort: 'none' } as const],
-    ['Model Default', { sawReasoning: false, effort: null } as const],
+    ['none', { sawReasoning: false, sawSeparateReasoning: false, effort: 'none' } as const],
+    ['Model Default', { sawReasoning: false, sawSeparateReasoning: false, effort: null } as const],
   ])('leaves a bare reply under %s to the probe, since neither asked the model to think', async (_name, observation) => {
     const { doFetch, calls } = backend({ [COMPLETIONS]: { status: 200, body: {} } });
     const record = await resolveReasoningCapability(TARGET, doFetch, { observation });
