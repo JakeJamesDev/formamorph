@@ -1,5 +1,5 @@
 import { extractReasoning } from '@/lib/aiResponse';
-import type { ReasoningEffortField } from '@/lib/reasoningEffort';
+import type { ReasoningCapability, ReasoningCapabilitySource, ReasoningEffortField } from '@/lib/reasoningEffort';
 
 /**
  * What one endpoint-and-model pair's most recent reply showed about its reasoning. The settings context
@@ -31,13 +31,27 @@ export function observeReply(
 }
 
 /**
- * What the observation says about whether the model reasons: `true` when a reply showed reasoning, `false`
- * when a reply came back bare although the call asked for a positive effort, and `null` otherwise. A bare
- * reply under `none` or Model Default answers nothing: neither asked the model to think.
+ * Whether the observation settles the reasons question. A reply that showed reasoning says the model thinks.
+ * A reply that came back bare although the call asked for a positive effort says it does not. A bare reply
+ * under `none` or Model Default settles nothing, because neither asked the model to think.
  */
 export function observationAnswer(observation: ReasoningObservation | null | undefined): boolean | null {
   if (!observation) return null;
   if (observation.sawReasoning) return true;
   if (observation.effort === null || observation.effort === 'none') return null;
   return false;
+}
+
+/** The sources one reply may correct. An advertisement, the catalog and the engine's own answer outrank it. */
+const OUTRANKED_BY_OBSERVATION: readonly ReasoningCapabilitySource[] = ['observed', 'probe', 'cache'];
+
+/**
+ * Whether a reply is allowed to answer the reasons question for this record. An unanswered record is always
+ * open. An answered one is open only where the source that answered ranks below a reply, so a probe's guess
+ * and a stale cache entry both give way while an advertisement stands.
+ */
+export function observationMayCorrect(capability: ReasoningCapability | null | undefined): boolean {
+  if (!capability || capability.reasons === null) return true;
+  const source = capability.sources.reasons;
+  return source === undefined || OUTRANKED_BY_OBSERVATION.includes(source);
 }
