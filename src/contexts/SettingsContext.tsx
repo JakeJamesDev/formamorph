@@ -62,9 +62,9 @@ import {
 import type { AIRequestType } from '../types';
 import type { ParagraphLimit } from '../lib/outputLength';
 import {
-  resolveReasoningCapability, detectReasoningCapability, isReasoningEngaged, parseReasoningSetting,
+  resolveReasoningCapability, mergeReasoningCapability, isReasoningEngaged, parseReasoningSetting,
   parsePromptReasoningSetting, resolveReasoningSetting, resolvePromptReasoningSetting, DEFAULT_REASONING_SETTING,
-  parseReasoningCapability, reasoningRuledOut, nonReasoningCapability, UNKNOWN_REASONING_CAPABILITY,
+  parseReasoningCapability, reasoningNeedsResolve, UNKNOWN_REASONING_CAPABILITY,
   type PromptReasoning, type ReasoningSetting, type PromptReasoningSetting, type ReasoningCapability,
 } from '../lib/reasoningEffort';
 import type { SettingsTabId } from '@/components/modals/settingsTabs';
@@ -635,16 +635,26 @@ function useProvideSettings() {
       return next;
     }, []);
 
+  /** Folds a fresh record onto whatever the cache held, so a source that just answered outranks it. */
   const cacheReasoningCapability = useCallback((sig: string, record: ReasoningCapability) => {
-    setReasoningCapabilityCache((prev) => storeCapability(prev, sig, record));
+    setReasoningCapabilityCache((prev) => storeCapability(prev, sig, mergeReasoningCapability(prev[sig] ?? null, record)));
   }, [setReasoningCapabilityCache, storeCapability]);
+
+  // Which endpoint-and-model pairs this session has already resolved. A resolve that answers nothing, or
+  // answers only some questions, must not re-run on every render — the record it stores would otherwise
+  // keep the effect's own dependency changing.
+  const resolvedSignatures = useRef(new Set<string>());
 
   const resolveActiveCapability = useCallback(async () => {
     const sig = `${activeEndpointUrl}|${activeModelName}`;
-    // `resolveReasoningCapability` asks LM Studio's native capability list first, so a non-reasoning model
-    // answers without a warning-triggering effort probe.
-    const record = await resolveReasoningCapability(activeEndpointUrl, activeApiToken, activeModelName);
-    if (!record) return;
+    if (resolvedSignatures.current.has(sig)) return;
+    resolvedSignatures.current.add(sig);
+    const record = await resolveReasoningCapability(
+      { url: activeEndpointUrl, token: activeApiToken, model: activeModelName },
+    );
+    // A resolve that answered nothing is not an answer. Release the signature so a server that was down
+    // during the debounce is asked again, rather than staying unresolved for the rest of the session.
+    if (!record) { resolvedSignatures.current.delete(sig); return; }
     cacheReasoningCapability(sig, record);
   }, [activeEndpointUrl, activeApiToken, activeModelName, cacheReasoningCapability]);
 
@@ -762,39 +772,15 @@ function useProvideSettings() {
     [thinkingMode, reasoningEffort, promptReasoning],
   );
 
-  // Probe the endpoint's accepted reasoning levels only once reasoning is actually engaged and we have no
-  // cached list yet; debounced so editing the URL doesn't fire per keystroke.
+  // Resolve the endpoint's capability record once reasoning is actually engaged, and only when the cache
+  // has nothing better: no record at all, or one whose answers only the cache vouches for (a record stored
+  // before this session's sources existed). Debounced so editing the URL doesn't fire per keystroke.
   useEffect(() => {
-    if (!reasoningEngaged || reasoningCapability !== null) return;
+    if (!reasoningEngaged || !reasoningNeedsResolve(reasoningCapability)) return;
     const id = setTimeout(() => { void resolveActiveCapability(); }, 1200);
     return () => clearTimeout(id);
   }, [reasoningEngaged, reasoningCapability, resolveActiveCapability]);
 
-  // The reasoning-capability check hits LM Studio's native model list — a side-effect-free GET that logs no
-  // warning — so unlike the effort probe it runs eagerly on every endpoint/model change AND overrides the
-  // write-once cache: a model the backend lists as non-reasoning is forced to a non-reasoning record (hide the
-  // control, send no reasoning_effort) even if an earlier probe cached levels for it; a model listed as
-  // reasoning clears a wrongly-cached non-reasoning record so the levels resolve again. Inconclusive
-  // (non-LM-Studio / unlisted / unreachable) leaves the cache untouched, so plain OpenAI endpoints keep the
-  // effort-probe behavior.
-  useEffect(() => {
-    const sig = `${activeEndpointUrl}|${activeModelName}`;
-    let cancelled = false;
-    const id = setTimeout(async () => {
-      const capable = await detectReasoningCapability(activeEndpointUrl, activeApiToken, activeModelName);
-      if (cancelled || capable === null) return;
-      setReasoningCapabilityCache((prev) => {
-        const ruledOut = reasoningRuledOut(prev[sig]);
-        if (!capable) {
-          if (ruledOut) return prev; // already marked non-reasoning
-          return storeCapability(prev, sig, nonReasoningCapability('native'));
-        }
-        if (ruledOut) { const next = { ...prev }; delete next[sig]; return next; } // reasoning after all → resolve again
-        return prev;
-      });
-    }, 1200);
-    return () => { cancelled = true; clearTimeout(id); };
-  }, [activeEndpointUrl, activeApiToken, activeModelName, setReasoningCapabilityCache, storeCapability]);
   const verbatimMap = useMemo(() => activeVerbatim(effectiveStore), [effectiveStore]);
   const globalForSampler = useCallback(
     (sampler: PromptSampler) => (sampler === 'temperature' ? genTemperature : genRepetitionPenalty),
@@ -1085,11 +1071,16 @@ function useProvideSettings() {
           });
         }).catch(() => { /* an unreachable routed endpoint surfaces as a request failure, not here */ });
       }
-      if (reasoningCapabilityCache[sig] === undefined) {
-        void resolveReasoningCapability(url, resolved.apiToken, resolved.model).then((record) => {
-          if (!record) return;
+      if (reasoningNeedsResolve(reasoningCapabilityCache[sig]) && !resolvedSignatures.current.has(sig)) {
+        resolvedSignatures.current.add(sig);
+        void resolveReasoningCapability({ url, token: resolved.apiToken, model: resolved.model }).then((record) => {
+          if (!record) { resolvedSignatures.current.delete(sig); return; }
           cacheReasoningCapability(sig, record);
-        }).catch(() => { /* same: capability probes fail quietly, the request itself reports */ });
+        }).catch(() => {
+          // Same: capability resolves fail quietly, the request itself reports. Release the signature so
+          // the next resolve for this target tries again.
+          resolvedSignatures.current.delete(sig);
+        });
       }
     }
     return {

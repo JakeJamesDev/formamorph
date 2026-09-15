@@ -1,14 +1,15 @@
 import type { ThinkingMode, ReasoningEffort } from '@/contexts/SettingsContext';
 import type { AIRequestType } from '@/types';
 import { probeKnownAbsent, recordProbeStatus } from '@/lib/probeMemo';
+import { deriveModelsUrls } from '@/lib/contextLength';
 
 /** The `reasoning_effort` values a chat-completions endpoint may accept as a passthrough hint. `auto` is
  *  deliberately absent — it isn't a wire value; the UI's "Default" maps to sending nothing. */
 export type ReasoningEffortField = Exclude<ReasoningEffort, 'auto'>;
 
-/** Every effort literal the app knows to probe for, in canonical display order (least → most thinking).
- *  Different backends accept different subsets (e.g. cloud takes `minimal`, Ollama takes `max`), so the
- *  actual tabs shown are whichever of these the active endpoint returns 200 for — see `resolveReasoningCapability`. */
+/** Every effort literal the app knows, in canonical display order (least → most thinking). Different
+ *  backends accept different subsets (e.g. cloud takes `minimal`, Ollama takes `max`), so the strengths
+ *  actually offered are whichever of these the endpoint advertises — see `resolveReasoningCapability`. */
 export const REASONING_CANDIDATES: readonly ReasoningEffortField[] = [
   'none', 'minimal', 'low', 'medium', 'high', 'xhigh', 'max',
 ];
@@ -299,132 +300,295 @@ export function reasoningEffortBody(
   return { reasoning_effort: value };
 }
 
-/**
- * Best-effort check of whether the active model natively reasons, via LM Studio's native REST API
- * (`{origin}/api/v1/models` → `models[].capabilities.reasoning`, an object present only for reasoning
- * models). LM Studio silently ignores an unsupported `reasoning_effort` (HTTP 200 + a server-side warning),
- * so the effort probe can't tell — this can. Returns `false` when the model is listed without a reasoning
- * capability, `true` when it has one, and `null` when the check doesn't apply (not LM Studio, model absent
- * from the list, or the endpoint is unreachable) so callers keep probing / fall back.
- */
-export async function detectReasoningCapability(
-  endpointUrl: string,
-  token: string,
-  model: string,
+/** The endpoint-and-model pair one resolve runs against. */
+export interface ReasoningTarget {
+  readonly url: string;
+  readonly token: string;
+  readonly model: string;
+}
+
+/** The fetch a resolve uses. Injected so every backend shape is tested without a server. */
+export type ResolverFetch = (url: string, init?: RequestInit) => Promise<Response>;
+
+/** Asks one advertisement endpoint, returning the record it proves or `null` to try the next source. */
+type NativeSource = (
+  target: ReasoningTarget,
+  doFetch: ResolverFetch,
   signal?: AbortSignal,
-): Promise<boolean | null> {
-  let origin: string;
+) => Promise<ReasoningCapability | null>;
+
+function originOf(endpointUrl: string): string | null {
   try {
-    origin = new URL(endpointUrl).origin;
+    return new URL(endpointUrl).origin;
   } catch {
     return null;
   }
-  // Skipped once this session has seen the native list 404 (probeMemo) — not LM Studio, and that won't
-  // change without an endpoint change.
-  const nativeUrl = `${origin}/api/v1/models`;
-  if (probeKnownAbsent(nativeUrl)) return null;
+}
+
+function authHeaders(token: string): Record<string, string> {
+  return token ? { Authorization: `Bearer ${token}` } : {};
+}
+
+const isEffortField = (v: unknown): v is ReasoningEffortField =>
+  REASONING_CANDIDATES.includes(v as ReasoningEffortField);
+
+/** Keeps the first of each literal, so a backend listing one twice still yields a clean level list. */
+function dedupeLevels(levels: readonly ReasoningEffortField[]): ReasoningEffortField[] {
+  return [...new Set(levels)];
+}
+
+/**
+ * Reads a mapped-to-nothing list as unanswered rather than as an empty one. An empty list is conclusive —
+ * the endpoint accepts no effort literal, so the strength control hides — and a source that has just
+ * called the model reasoning must not also say that. The safe fallback stands instead.
+ */
+function orUnknown(levels: ReasoningEffortField[]): ReasoningEffortField[] | null {
+  return levels.length > 0 ? levels : null;
+}
+
+/**
+ * Fetches one advertisement URL and returns its parsed body, or `null` when that URL does not serve this
+ * API. A backend may answer a foreign path with HTTP 200 and an error payload — LM Studio does exactly
+ * that on `GET /props` — so the body identifies a source, never the status code. A conclusive absence is
+ * remembered for the session, so a foreign endpoint is asked once.
+ */
+async function readAdvertisement(
+  url: string,
+  doFetch: ResolverFetch,
+  init: RequestInit,
+  signal?: AbortSignal,
+): Promise<Record<string, unknown> | null> {
+  if (probeKnownAbsent(url)) return null;
   try {
-    const res = await fetch(nativeUrl, {
-      headers: token ? { Authorization: `Bearer ${token}` } : {},
+    const res = await doFetch(url, { ...init, signal });
+    let body: unknown = null;
+    try { body = await res.json(); } catch { /* a non-JSON body says nothing */ }
+    recordProbeStatus(url, res.status, body);
+    if (!res.ok) return null;
+    if (!body || typeof body !== 'object' || 'error' in body) return null;
+    return body as Record<string, unknown>;
+  } catch {
+    return null; // network/abort → inconclusive
+  }
+}
+
+/** LM Studio's reasoning options mapped to our literals. `on` names the switch, not a strength, so it
+ *  maps to nothing and an on/off model lists `none` alone. */
+const LM_STUDIO_LEVELS: Record<string, ReasoningEffortField> = {
+  off: 'none', low: 'low', medium: 'medium', high: 'high',
+};
+
+/**
+ * LM Studio's native model list (`{origin}/api/v1/models`). Its `capabilities.reasoning` is an object,
+ * present only for a reasoning model, whose `allowed_options` also name the strengths the server honors.
+ * That same answer settles the budget question: only LM Studio serves this list, and its chat-completions
+ * endpoint takes `thinking_budget_tokens` for a reasoning model.
+ */
+const lmStudioSource: NativeSource = async (target, doFetch, signal) => {
+  const origin = originOf(target.url);
+  if (!origin) return null;
+  const body = await readAdvertisement(`${origin}/api/v1/models`, doFetch, { headers: authHeaders(target.token) }, signal);
+  const models = body?.models;
+  if (!Array.isArray(models)) return null; // not the LM Studio native shape
+  // Match by exact key; if the configured name doesn't map to one (e.g. the literal "default", which makes
+  // LM Studio serve whatever's loaded), fall back to the loaded model so capability still resolves.
+  const loaded = (m: unknown) => Array.isArray((m as { loaded_instances?: unknown }).loaded_instances)
+    && (m as { loaded_instances: unknown[] }).loaded_instances.length > 0;
+  const entry = models.find((m) => (m as { key?: unknown }).key === target.model) ?? models.find(loaded);
+  if (!entry || typeof entry !== 'object') return null; // model not listed → inconclusive
+  const caps = (entry as { capabilities?: unknown }).capabilities;
+  const reasoning = caps && typeof caps === 'object' ? (caps as Record<string, unknown>).reasoning : undefined;
+  // A model listed without the object does not reason. The budget stays unanswered there: nothing has
+  // tested whether the endpoint takes the field for such a model.
+  if (!reasoning || typeof reasoning !== 'object') return nonReasoningCapability('native');
+  const allowed = (reasoning as { allowed_options?: unknown }).allowed_options;
+  const levels = Array.isArray(allowed)
+    ? orUnknown(dedupeLevels(allowed.map((o) => LM_STUDIO_LEVELS[String(o)]).filter(isEffortField)))
+    : null;
+  return {
+    reasons: true,
+    levels,
+    budget: true,
+    sources: { reasons: 'native', budget: 'native', ...(levels ? { levels: 'native' as const } : {}) },
+  };
+};
+
+/**
+ * Ollama's show endpoint (`POST {origin}/api/show`). Its `capabilities` array names `thinking` for a model
+ * that reasons. The array is omitted rather than emptied when the server has nothing to say, so a body
+ * without it is inconclusive and never a no. Ollama advertises no strengths and no budget.
+ */
+const ollamaSource: NativeSource = async (target, doFetch, signal) => {
+  const origin = originOf(target.url);
+  if (!origin) return null;
+  const body = await readAdvertisement(`${origin}/api/show`, doFetch, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...authHeaders(target.token) },
+    body: JSON.stringify({ model: target.model }),
+  }, signal);
+  const capabilities = body?.capabilities;
+  if (!Array.isArray(capabilities)) return null;
+  if (!capabilities.includes('thinking')) return nonReasoningCapability('native');
+  return { reasons: true, levels: null, budget: null, sources: { reasons: 'native' } };
+};
+
+/**
+ * A llama.cpp server's properties endpoint (`GET {origin}/props`). Its `chat_template_caps` report whether
+ * the loaded template reads `reasoning_effort` at all, which settles the levels: the safe set when it does,
+ * none when it does not, so the strength control appears only where the template honors it. The server
+ * exposes no flag for whether the model thinks, so the reasons question stays open either way. Builds
+ * before the template capabilities existed omit the flag, and say nothing.
+ */
+const llamaCppSource: NativeSource = async (target, doFetch, signal) => {
+  const origin = originOf(target.url);
+  if (!origin) return null;
+  const body = await readAdvertisement(`${origin}/props`, doFetch, { headers: authHeaders(target.token) }, signal);
+  const caps = body?.chat_template_caps;
+  if (!caps || typeof caps !== 'object') return null;
+  const honored = (caps as Record<string, unknown>).supports_reasoning_effort;
+  if (typeof honored !== 'boolean') return null;
+  return {
+    reasons: null,
+    levels: honored ? [...SAFE_REASONING_EFFORTS] : [],
+    budget: null,
+    sources: { levels: 'native' },
+  };
+};
+
+/** The parameter names a gateway lists when it takes a reasoning field of some kind. */
+const GATEWAY_REASONING_PARAMS: readonly string[] = ['reasoning', 'reasoning_effort', 'include_reasoning'];
+
+/**
+ * A gateway's OpenAI-shaped model list. An entry may carry a `reasoning` object, which is present only for
+ * a reasoning model and whose `supported_efforts` name the strengths the gateway accepts; a `mandatory`
+ * model rejects `none`, so that literal is dropped and switching off omits the field instead. An entry with
+ * only a `supported_parameters` list answers the reasons question alone. A plain OpenAI list carries
+ * neither and says nothing.
+ */
+const gatewaySource: NativeSource = async (target, doFetch, signal) => {
+  const urls = deriveModelsUrls(target.url);
+  if (!urls) return null;
+  const body = await readAdvertisement(urls.openai, doFetch, { headers: authHeaders(target.token) }, signal);
+  const data = body?.data;
+  if (!Array.isArray(data)) return null;
+  const entry = data.find((m) => (m as { id?: unknown }).id === target.model);
+  if (!entry || typeof entry !== 'object') return null; // model not listed → inconclusive
+
+  const reasoning = (entry as { reasoning?: unknown }).reasoning;
+  if (reasoning && typeof reasoning === 'object') {
+    const { supported_efforts: efforts, mandatory } = reasoning as Record<string, unknown>;
+    let levels = Array.isArray(efforts) ? dedupeLevels(efforts.filter(isEffortField)) : null;
+    if (levels && mandatory === true) levels = levels.filter((l) => l !== 'none');
+    levels = levels && orUnknown(levels);
+    return {
+      reasons: true,
+      levels,
+      budget: null,
+      sources: { reasons: 'native', ...(levels ? { levels: 'native' as const } : {}) },
+    };
+  }
+
+  const params = (entry as { supported_parameters?: unknown }).supported_parameters;
+  if (!Array.isArray(params)) return null;
+  return params.some((p) => GATEWAY_REASONING_PARAMS.includes(String(p)))
+    ? { reasons: true, levels: null, budget: null, sources: { reasons: 'native' } }
+    : nonReasoningCapability('native');
+};
+
+/** The advertisement sources, cheapest and most specific first. Each is tried only until one answers. */
+const NATIVE_SOURCES: readonly NativeSource[] = [lmStudioSource, ollamaSource, llamaCppSource, gatewaySource];
+
+/**
+ * The one completion a resolve may send, and only when nothing advertised. It asks for the `none` literal:
+ * a rejection proves the endpoint exposes no reasoning field at all, so the model does not reason.
+ * Acceptance proves only that the field parses, so the reasons question stays open on the safe levels.
+ */
+async function probeNoneLiteral(
+  target: ReasoningTarget,
+  doFetch: ResolverFetch,
+  signal?: AbortSignal,
+): Promise<ReasoningCapability | null> {
+  try {
+    const res = await doFetch(target.url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', ...authHeaders(target.token) },
+      body: JSON.stringify({
+        model: target.model,
+        messages: [{ role: 'user', content: '.' }],
+        max_tokens: 1,
+        stream: false,
+        reasoning_effort: 'none',
+      }),
       signal,
     });
-    recordProbeStatus(nativeUrl, res.status);
-    if (!res.ok) return null;
-    const json: unknown = await res.json();
-    const models = (json as { models?: unknown }).models;
-    if (!Array.isArray(models)) return null; // not the LM Studio native shape
-    // Match by exact key; if the configured name doesn't map to one (e.g. the literal "default", which makes
-    // LM Studio serve whatever's loaded), fall back to the single loaded model so capability still resolves.
-    const loaded = (m: unknown) => Array.isArray((m as { loaded_instances?: unknown }).loaded_instances) && (m as { loaded_instances: unknown[] }).loaded_instances.length > 0;
-    const entry = models.find((m) => (m as { key?: unknown }).key === model) ?? models.find(loaded);
-    if (!entry || typeof entry !== 'object') return null; // model not listed → inconclusive
-    const caps = (entry as { capabilities?: unknown }).capabilities;
-    const reasoning = caps && typeof caps === 'object' ? (caps as Record<string, unknown>).reasoning : undefined;
-    return !!reasoning;
+    // Drain the tiny body so the connection frees promptly.
+    await res.text().catch(() => undefined);
+    if (res.status === 400) return nonReasoningCapability('probe');
+    if (res.status === 200) {
+      return { reasons: null, levels: [...SAFE_REASONING_EFFORTS], budget: null, sources: { levels: 'probe' } };
+    }
+    return null; // auth/5xx/other → inconclusive
   } catch {
     return null; // network/abort → inconclusive
   }
 }
 
 /**
- * Probes an endpoint for which `reasoning_effort` literals it accepts by sending a minimal request per
- * candidate and keeping the ones that return HTTP 200 (400 = rejected). Returns the accepted list, `[]` when
- * the endpoint rejects even `none` (a conclusively non-reasoning model), or `null` if the probe is inconclusive
- * (network/auth/5xx on any candidate) so callers keep their fallback rather than narrowing to a wrong set.
- *
- * `none` is probed first and short-circuits: if the backend rejects it, the model exposes no reasoning fields,
- * so the other six candidates are never sent.
- */
-async function probeEffortLevels(
-  url: string,
-  token: string,
-  model: string,
-  signal?: AbortSignal,
-): Promise<ReasoningEffortField[] | null> {
-  const probe = async (value: ReasoningEffortField): Promise<boolean | null> => {
-    try {
-      const res = await fetch(url, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-        body: JSON.stringify({
-          model,
-          messages: [{ role: 'user', content: '.' }],
-          max_tokens: 1,
-          stream: false,
-          reasoning_effort: value,
-        }),
-        signal,
-      });
-      // Drain the tiny body so the connection frees promptly.
-      await res.text().catch(() => undefined);
-      if (res.status === 200) return true;
-      if (res.status === 400) return false;
-      return null; // auth/5xx/other → inconclusive
-    } catch {
-      return null; // network/abort → inconclusive
-    }
-  };
-
-  const noneAccepted = await probe('none');
-  if (noneAccepted === null) return null; // inconclusive → keep fallback
-  if (noneAccepted === false) return []; // rejects `none` → non-reasoning; skip the rest
-
-  const rest = REASONING_CANDIDATES.filter((v) => v !== 'none');
-  const results = await Promise.all(rest.map(probe));
-  if (results.some((r) => r === null)) return null; // couldn't cleanly classify → keep fallback
-  return ['none', ...rest.filter((_, i) => results[i])];
-}
-
-/**
- * Resolves one endpoint-and-model pair's capability record. It asks the backend's own capability list first
- * (`detectReasoningCapability`): a model listed as non-reasoning answers every question at once, with no
- * effort probe sent — LM Studio would otherwise return HTTP 200 and a server-side warning on every literal.
- * Otherwise the effort probe fills the levels, and a model the list calls reasoning keeps that answer even
- * when the probe only narrows the levels. That same list answers the budget question: only LM Studio serves
- * it, and LM Studio takes a token budget for a reasoning model.
+ * Resolves one endpoint-and-model pair's capability record. It walks the advertisement sources in order and
+ * returns the first that answers, so a backend that publishes its own capabilities is never sent a test
+ * completion. Only when none of them answers does it send the single probe.
  *
  * Returns `null` when nothing answered conclusively, so a caller keeps its fallback and its cache entry
  * rather than storing a wrong record.
  */
 export async function resolveReasoningCapability(
-  url: string,
-  token: string,
-  model: string,
+  target: ReasoningTarget,
+  doFetch: ResolverFetch = fetch,
   signal?: AbortSignal,
 ): Promise<ReasoningCapability | null> {
-  const native = await detectReasoningCapability(url, token, model, signal);
-  if (native === false) return nonReasoningCapability('native');
-  const levels = await probeEffortLevels(url, token, model, signal);
-  if (!levels) return null;
-  const probed = reasoningCapabilityFromLevels(levels, 'probe');
-  if (native !== true) return probed;
-  // Only LM Studio serves that native list, and its chat-completions endpoint takes `thinking_budget_tokens`
-  // for a reasoning model — so the same answer settles the budget question. A model the list calls
-  // non-reasoning returns above with the budget left unanswered, and never takes the field.
+  if (!originOf(target.url)) return null; // a half-typed endpoint gets no request at all
+  let gathered: ReasoningCapability | null = null;
+  for (const source of NATIVE_SOURCES) {
+    const answer = await source(target, doFetch, signal);
+    if (!answer) continue;
+    // The earlier source wins: it is the more specific one, so a later source only fills its gaps.
+    gathered = gathered ? mergeReasoningCapability(answer, gathered) : answer;
+    // Only the reasons question ends the chain. A source that names the strengths but not whether the
+    // model thinks (llama.cpp) leaves the question open, so the next source still gets to answer it.
+    if (gathered.reasons !== null) return gathered;
+  }
+  const probed = await probeNoneLiteral(target, doFetch, signal);
+  if (!probed) return gathered;
+  // An advertisement outranks the probe, which only learns whether the field parses.
+  return gathered ? mergeReasoningCapability(probed, gathered) : probed;
+}
+
+/**
+ * Whether a stored record still wants resolving: nothing stored at all, or an answer only the cache
+ * vouches for. A record written before this session's advertisement sources existed carries `cache` as its
+ * source, and whatever levels were stored with it, so it is asked again and a live source replaces them.
+ */
+export function reasoningNeedsResolve(capability: ReasoningCapability | null | undefined): boolean {
+  if (!capability) return true;
+  return Object.values(capability.sources).some((source) => source === 'cache');
+}
+
+/**
+ * Folds a fresh resolve onto a stored record. Each question takes the fresh answer where the resolve has
+ * one and keeps the stored answer otherwise, so a source that just spoke outranks whatever the cache held.
+ * That is how a record the cache alone vouches for gives up its levels to a source that just spoke.
+ */
+export function mergeReasoningCapability(
+  stored: ReasoningCapability | null,
+  fresh: ReasoningCapability,
+): ReasoningCapability {
+  if (!stored) return fresh;
+  const pick = <K extends 'reasons' | 'levels' | 'budget'>(question: K): ReasoningCapability[K] =>
+    (fresh[question] !== null ? fresh[question] : stored[question]);
   return {
-    ...probed,
-    reasons: true,
-    budget: true,
-    sources: { ...probed.sources, reasons: 'native', budget: 'native' },
+    reasons: pick('reasons'),
+    levels: pick('levels'),
+    budget: pick('budget'),
+    sources: { ...stored.sources, ...fresh.sources },
   };
 }

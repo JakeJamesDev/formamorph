@@ -2,7 +2,7 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { probeKnownAbsent, recordProbeStatus, resetProbeMemo } from './probeMemo';
 import { fetchContextLength } from './contextLength';
 import { probeEndpoint } from './useAiReachable';
-import { detectReasoningCapability } from './reasoningEffort';
+import { resolveReasoningCapability } from './reasoningEffort';
 
 // A cloud endpoint that 404s the LM Studio native lists and serves the OpenAI list.
 const ENDPOINT = 'https://cloud.example/v1/chat/completions';
@@ -27,11 +27,34 @@ beforeEach(() => {
 afterEach(() => vi.unstubAllGlobals());
 
 describe('probeMemo', () => {
-  it('remembers a 404 and only a 404', () => {
+  it('remembers a 404', () => {
     recordProbeStatus(V0, 500);
     expect(probeKnownAbsent(V0)).toBe(false); // a down/erroring server proves nothing
     recordProbeStatus(V0, 404);
     expect(probeKnownAbsent(V0)).toBe(true);
+  });
+
+  // A backend that has the path but not this API answers with a method/content refusal, never a 404.
+  // Live: LM Studio answers Ollama's `POST /api/show` with 415.
+  it.each([405, 415])('remembers a %i, which also means this API is not here', (status) => {
+    recordProbeStatus(V0, status);
+    expect(probeKnownAbsent(V0)).toBe(true);
+  });
+
+  it.each([500, 502, 401, 403, 429])('keeps asking after a %i', (status) => {
+    recordProbeStatus(V0, status);
+    expect(probeKnownAbsent(V0)).toBe(false);
+  });
+
+  // Live: LM Studio answers `GET /props` with HTTP 200 and `{"error":"Unexpected endpoint or method."}`.
+  it('remembers a 200 whose body carries an error key', () => {
+    recordProbeStatus(V0, 200, { error: 'Unexpected endpoint or method. (GET /props)' });
+    expect(probeKnownAbsent(V0)).toBe(true);
+  });
+
+  it('keeps asking after a 200 that answered', () => {
+    recordProbeStatus(V0, 200, { models: [] });
+    expect(probeKnownAbsent(V0)).toBe(false);
   });
 
   it('keys per URL, so one endpoint cannot silence another', () => {
@@ -55,11 +78,12 @@ describe('probe consumers skip a native URL the session has seen 404', () => {
     expect(urlsFetched).toEqual([OPENAI]);
   });
 
-  it('detectReasoningCapability goes inconclusive without refetching', async () => {
-    await detectReasoningCapability(ENDPOINT, '', 'm'); // learns the 404
+  it('the capability resolver stops asking the native list it already saw 404', async () => {
+    const target = { url: ENDPOINT, token: '', model: 'm' };
+    await resolveReasoningCapability(target); // learns the 404
     urlsFetched = [];
-    await expect(detectReasoningCapability(ENDPOINT, '', 'm')).resolves.toBeNull();
-    expect(urlsFetched).toEqual([]);
+    await resolveReasoningCapability(target);
+    expect(urlsFetched).not.toContain(V0.replace('/v0/', '/v1/'));
   });
 
   it('the memo is shared: one feature learning the 404 silences the others', async () => {
