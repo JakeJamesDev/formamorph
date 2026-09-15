@@ -126,8 +126,54 @@ const GOOGLE_ROW: ReasoningIdentityRow = {
   },
 };
 
+/** The three rungs k3 accepts. `none` is absent: k3 always reasons, so its off comes from the dialect row's
+ *  refusal rather than from a level the record cleared for sending. */
+const MOONSHOT_K3_LEVELS: readonly ReasoningEffortField[] = ['low', 'high', 'max'];
+
+/** A Kimi model that reasons but takes no effort field, so it shows the switch and no dropdown. */
+function kimiThinking(offAllowed: boolean): ReasoningIdentityAnswer {
+  return { dialect: 'moonshot-k2', reasons: true, levels: [], budget: false, offAllowed };
+}
+
+/** The k2 builds that do not reason: the bare id, the two dated previews, and the turbo one. The thinking
+ *  and code builds are matched before this and never reach it. */
+const PLAIN_K2 = /^kimi-k2(-(\d{4}|turbo))?(-preview)?$/;
+
+/**
+ * Moonshot's API, at `https://api.moonshot.ai/v1/` and its China host. This is the one first-party row where
+ * the model id decides the dialect and the off answer both, since the two Kimi generations spell thinking
+ * differently and the k2 models disagree among themselves about whether it may be switched off.
+ *
+ * k3 and the rolling alias take `reasoning_effort` on three rungs and always reason. The k2 models take no
+ * effort field at all and switch thinking with `thinking.type`, which k2.6 accepts and the code and thinking
+ * builds reject. Plain k2 has no thinking parameter, so it is ruled out rather than shown a control that
+ * would fail the turn. Neither generation takes a token budget.
+ *
+ * The code build is matched by prefix so its high-speed variant lands with the model it is a build of. The
+ * plain k2 builds are matched whole, since the family shares its prefix with the thinking build.
+ *
+ * An id this row does not name falls through to the rest of the chain rather than being ruled out, so a
+ * model Moonshot adds later is never denied controls on a guess.
+ *
+ * Read on 2026-09-15 from Kimi's chat API reference and model list at platform.kimi.ai.
+ */
+const MOONSHOT_ROW: ReasoningIdentityRow = {
+  hosts: ['api.moonshot.ai', 'api.moonshot.cn'],
+  match: (modelId) => {
+    // The pre-Kimi line the host still serves, which has no thinking parameter at all.
+    if (modelId.startsWith('moonshot-v1')) return NO_THINKING;
+    if (!modelId.startsWith('kimi-')) return null;
+    if (modelId.startsWith('kimi-k3') || modelId.startsWith('kimi-latest')) {
+      return { dialect: 'moonshot-k3', reasons: true, levels: MOONSHOT_K3_LEVELS, budget: false };
+    }
+    if (modelId.startsWith('kimi-k2.7-code') || modelId.startsWith('kimi-k2-thinking')) return kimiThinking(false);
+    if (modelId.startsWith('kimi-k2.6')) return kimiThinking(true);
+    return PLAIN_K2.test(modelId) ? NO_THINKING : null;
+  },
+};
+
 /** Every first-party API whose own address names its reasoning dialect. */
-export const REASONING_IDENTITY_ROWS: readonly ReasoningIdentityRow[] = [ANTHROPIC_ROW, GOOGLE_ROW];
+export const REASONING_IDENTITY_ROWS: readonly ReasoningIdentityRow[] = [ANTHROPIC_ROW, GOOGLE_ROW, MOONSHOT_ROW];
 
 /**
  * The answer the endpoint's own identity proves, or `null` where no row claims the host or the model. It

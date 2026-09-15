@@ -9,6 +9,7 @@ import { SURFACE_LABELS } from '@/lib/promptGroups';
 import { normalizeEndpointUrl } from '@/lib/endpointUrl';
 import { DEFAULT_ENDPOINT, DEFAULT_MODEL_NAME } from '@/contexts/settingsDefaults';
 import type { ReasoningCapability } from '@/lib/reasoningEffort';
+import { reasoningIdentityAnswer } from '@/lib/reasoningIdentity';
 import { REASONING_NOTES } from './settingsCopy';
 
 /**
@@ -309,5 +310,86 @@ describe('an Anthropic or Google model, named from the endpoint host', () => {
     makeEditable();
     expect((screen.getAllByRole('checkbox', { name: 'Native Reasoning' })[0] as HTMLButtonElement).disabled)
       .toBe(false);
+  });
+});
+
+/**
+ * Moonshot's two Kimi generations differ from each other more than either differs from another vendor: k3
+ * offers a gapped ladder and refuses off through its dialect row, while the k2 models offer no strength at
+ * all and disagree among themselves about whether off may be sent.
+ */
+describe('the Native Reasoning controls on a Kimi model', () => {
+  beforeEach(() => localStorage.clear());
+
+  /**
+   * The record a player on this Kimi model gets. The answers come from the identity row rather than written
+   * out here, so the dropdown is asserted against the real ladder and not a copy of it that cannot drift.
+   * The sources are stated flatly: no control reads them, and the resolver test is what pins how they land.
+   */
+  const kimi = (model: string, over: Partial<ReasoningCapability> = {}): ReasoningCapability => {
+    const answer = reasoningIdentityAnswer('https://api.moonshot.ai/v1/chat/completions', model)!;
+    return {
+      ...answer,
+      offAllowed: answer.offAllowed ?? null,
+      sources: { reasons: 'identity', budget: 'identity', dialect: 'identity', levels: 'identity' },
+      ...over,
+    };
+  };
+
+  // k3's ladder skips Medium, so a player must never be offered it: the endpoint rejects the literal.
+  it('offers k3 its three rungs and no others', () => {
+    seedCapability(kimi('kimi-k3'));
+    openNarrationOptions();
+    makeEditable();
+    const strength = screen.getAllByRole('combobox').find((c) => c.textContent?.includes('Global'))!;
+    // Radix opens a Select from the keyboard; a click needs pointer capture, which jsdom has not got.
+    fireEvent.keyDown(strength, { key: 'Enter' });
+    expect(screen.getAllByRole('option').map((o) => o.textContent))
+      .toEqual(['Global', 'Model Default', 'Low', 'High', 'Max']);
+  });
+
+  it('shows no strength dropdown on a k2 model, which takes no effort field', () => {
+    seedCapability(kimi('kimi-k2.6'));
+    openNarrationOptions();
+    makeEditable();
+    expect(screen.queryAllByRole('combobox').filter((c) => c.textContent?.includes('Global'))).toHaveLength(0);
+  });
+
+  it('keeps the k2.6 switch clickable, since that model does take the off signal', () => {
+    seedCapability(kimi('kimi-k2.6'));
+    openNarrationOptions();
+    makeEditable();
+    expect((screen.getAllByRole('checkbox', { name: 'Native Reasoning' })[0] as HTMLButtonElement).disabled)
+      .toBe(false);
+  });
+
+  /**
+   * The case only the record can answer: k2-thinking and k2.7-code share k2.6's dialect row, which allows
+   * off, and error on `disabled` anyway. Narration ships switched on, so this asserts the lock rather than
+   * the stored setting agreeing with it by chance.
+   */
+  it('locks the switch on a k2 model that errors on disabled, though its dialect row allows off', () => {
+    seedCapability(kimi('kimi-k2-thinking'));
+    openNarrationOptions();
+    makeEditable();
+    const box = screen.getAllByRole('checkbox', { name: 'Native Reasoning' })[0] as HTMLButtonElement;
+    expect(box.getAttribute('data-state')).toBe('checked');
+    expect(box.disabled).toBe(true);
+    expect(screen.getByText(REASONING_NOTES.always)).toBeTruthy();
+  });
+
+  // k3 refuses off through its dialect row, with no record answer of its own, so the lock must hold there too.
+  it('locks the switch on k3 from its dialect row alone', () => {
+    seedCapability(kimi('kimi-k3'));
+    openNarrationOptions();
+    makeEditable();
+    const box = screen.getAllByRole('checkbox', { name: 'Native Reasoning' })[0] as HTMLButtonElement;
+    expect(box.disabled).toBe(true);
+  });
+
+  it('shows no budget slider on either Kimi dialect, since Moonshot takes no token cap', () => {
+    seedCapability(kimi('kimi-k3', { budget: true }));
+    openNarrationOptions();
+    expect(screen.queryByRole('slider', { name: 'Reasoning Budget' })).toBeNull();
   });
 });
