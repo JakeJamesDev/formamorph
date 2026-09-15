@@ -12,6 +12,16 @@ Each release groups changes as **Major** / **Minor**, then **Added** / **Removed
 
 _Unreleased — new work accumulates here until it earns a version bump. The next batch will pin its own version; `package.json` reads **2.19.0** (just released below)._
 
+### Minor Changes
+
+#### ➕ Added
+
+- **👤 User-facing**
+  - **Every prompt has its own Native Reasoning control, in every Thinking mode.** Each prompt's Options tab now carries the **Native Reasoning** level on an external endpoint, or the **Reasoning Budget** slider on the built-in engine. The planning passes (Planning, Director, Character, Storyboard) and the memory passes (Summary, Diary) ship at **Low** effort and a **25%** budget. Stat updates, location, time, scene tags, discovery, milestone picks and Choices ship at **None**. Narration keeps **Global** and **40%**. The **Inline**, **Planning** and **Staged** modes no longer turn a reasoning model's own thinking off on every call. Each pass follows its own control. One exception stays: under **Inline**, the narration call writes its own thinking block, so its native reasoning stays off. The **Native Reasoning** row in Settings → Output shows in every Thinking mode, since any prompt set to **Global** follows it.
+
+- **⚙️ Backend**
+  - **Reasoning is resolved per request kind, not gated by a control list.** `REASONING_CONTROL_KINDS` is gone. `resolvePromptReasoning` takes the Thinking mode and returns `none` only for Inline narration (`nativeReasoningSuppressed`). `reasoningEffortBody` no longer takes the mode. `reasoningBudgetBody` zeroes only that same call. Tiered defaults live in `defaultPromptReasoning` and `defaultReasoningBudgetPct`. The shared preset's `reasoning` and `reasoningBudget` maps take every request kind as a key; their types are unchanged.
+
 ---
 
 <details>

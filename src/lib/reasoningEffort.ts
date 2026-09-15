@@ -35,17 +35,27 @@ export function reasoningTabs(
 }
 
 /** A prompt's per-prompt reasoning choice: `global` inherits the endpoint-wide level (Settings → Output → Reasoning →
- *  Native Reasoning); otherwise it's an explicit level. Only narration and choices expose this — see
- *  `REASONING_CONTROL_KINDS`; every other prompt is hardwired to `none` under Native mode. */
+ *  Native Reasoning); otherwise it's an explicit level. Every prompt kind exposes this in its Options tab. */
 export type PromptReasoning = 'global' | ReasoningEffortField;
 
-/** The only prompts with an interactive per-prompt reasoning control (Native mode only). */
-export const REASONING_CONTROL_KINDS: readonly AIRequestType[] = ['narration', 'choices'];
+/** Prompts whose shipped default is a small amount of native reasoning: the planning passes and the memory
+ *  passes weigh several facts at once, so cheap thinking helps them. Parsers and choices ship at `none`. */
+const LOW_REASONING_KINDS: readonly AIRequestType[] = [
+  'thinking', 'director', 'character', 'storyboard', 'summary', 'diary',
+];
 
 /**
- * True when the user has opted into reasoning somewhere: a Thinking mode, a global native effort level, or a
- * per-prompt positive level. When false, callers send no `reasoning_effort` at all and skip the support probe —
- * so a plain endpoint (e.g. LM Studio) isn't hit with reasoning fields it rejects.
+ * Inline mode's narration call writes its own `<think>` block in the same completion, so native reasoning stays
+ * off on that one call regardless of its per-prompt choice. Every other kind and mode follows its own choice.
+ */
+export function nativeReasoningSuppressed(mode: ThinkingMode, kind: AIRequestType): boolean {
+  return mode === 'inline' && kind === 'narration';
+}
+
+/**
+ * True when reasoning is engaged somewhere: a Thinking mode, a global native effort level, or a per-prompt
+ * positive level (the shipped defaults include several). When false, callers send no `reasoning_effort` at all
+ * and skip the support probe.
  */
 export function isReasoningEngaged(
   mode: ThinkingMode,
@@ -56,9 +66,11 @@ export function isReasoningEngaged(
   return mode !== 'off' || globalEffort !== 'auto' || Object.values(promptReasoning).some(positive);
 }
 
-/** Shipped default per prompt: narration follows the global level, everything else suppresses reasoning. */
+/** Shipped default per prompt: narration follows the global level, planning and memory passes think a little,
+ *  parsers and choices suppress reasoning. */
 export function defaultPromptReasoning(kind: AIRequestType): PromptReasoning {
-  return kind === 'narration' ? 'global' : 'none';
+  if (kind === 'narration') return 'global';
+  return LOW_REASONING_KINDS.includes(kind) ? 'low' : 'none';
 }
 
 /** Tabs for a prompt's reasoning control: `Global` first, then the endpoint's supported levels (incl. `none`). */
@@ -70,37 +82,39 @@ export function reasoningPromptTabs(
 }
 
 /**
- * Resolves the effective reasoning effort for one request under Native mode: a controlled prompt uses its stored
- * choice (or its shipped default), an uncontrolled prompt is forced to `none`; `global` folds in the endpoint-wide
- * level. The result is fed to `reasoningEffortBody`, which handles guided-mode suppression and the endpoint guard.
+ * Resolves the effective reasoning effort for one request: the prompt's stored choice (or its shipped default),
+ * with `global` folding in the endpoint-wide level. Inline narration resolves to `none` (see
+ * `nativeReasoningSuppressed`). The result is fed to `reasoningEffortBody`, which applies the endpoint guard.
  */
 export function resolvePromptReasoning(
   kind: AIRequestType,
   prefs: Record<string, PromptReasoning>,
   globalEffort: ReasoningEffort,
+  mode: ThinkingMode,
 ): ReasoningEffort {
-  const pref = REASONING_CONTROL_KINDS.includes(kind) ? (prefs[kind] ?? defaultPromptReasoning(kind)) : 'none';
+  if (nativeReasoningSuppressed(mode, kind)) return 'none';
+  const pref = prefs[kind] ?? defaultPromptReasoning(kind);
   return pref === 'global' ? globalEffort : pref;
 }
 
-/** Shipped default reasoning budget (percent of max output) per prompt: narration reasons, others are off (0%). */
+/** Shipped default reasoning budget (percent of max output) per prompt: narration 40%, the planning and memory
+ *  passes 25%, parsers and choices 0%. Mirrors the effort tiers in `defaultPromptReasoning`. */
 export function defaultReasoningBudgetPct(kind: AIRequestType): number {
-  return kind === 'narration' ? 40 : 0;
+  if (kind === 'narration') return 40;
+  return LOW_REASONING_KINDS.includes(kind) ? 25 : 0;
 }
 
-/** The effective budget percent for a request: a controlled prompt uses its stored value (or shipped default),
- *  every other prompt is 0 (no reasoning). Clamped to 0–100. */
+/** The effective budget percent for a request: the stored value or the shipped default, clamped to 0–100. */
 export function resolveReasoningBudgetPct(kind: AIRequestType, budgets: Partial<Record<AIRequestType, number>>): number {
-  const pct = REASONING_CONTROL_KINDS.includes(kind) ? (budgets[kind] ?? defaultReasoningBudgetPct(kind)) : 0;
+  const pct = budgets[kind] ?? defaultReasoningBudgetPct(kind);
   return Math.max(0, Math.min(100, pct));
 }
 
 /**
  * Builds the `thinking_budget_tokens` slice of a request body — the LOCAL-engine reasoning cap (node-llama-cpp
- * `budgets.thoughtTokens`), sent only when the local engine is active. Guided modes and uncontrolled prompts
- * force 0 (no reasoning — the local engine ignores `reasoning_effort`, so this is how they're suppressed there);
- * a controlled prompt under Native mode sends `round(pct% × maxTokens)`. Always returns the field on the local
- * engine, so `0` cleanly means "off".
+ * `budgets.thoughtTokens`), sent only when the local engine is active. Inline narration forces 0 (the local
+ * engine ignores `reasoning_effort`, so this is how it's suppressed there); every other request sends
+ * `round(pct% × maxTokens)`. Always returns the field on the local engine, so `0` cleanly means "off".
  */
 export function reasoningBudgetBody(
   mode: ThinkingMode,
@@ -108,16 +122,13 @@ export function reasoningBudgetBody(
   budgets: Partial<Record<AIRequestType, number>>,
   maxTokens: number,
 ): { thinking_budget_tokens: number } {
-  const pct = mode !== 'off' ? 0 : resolveReasoningBudgetPct(kind, budgets);
+  const pct = nativeReasoningSuppressed(mode, kind) ? 0 : resolveReasoningBudgetPct(kind, budgets);
   return { thinking_budget_tokens: Math.round((pct / 100) * maxTokens) };
 }
 
 /**
  * Builds the `reasoning_effort` slice of a request body, spread into the body so an empty result adds no field.
- *
- * The guided modes (`inline`/`precall`/`staged`) drive their own thinking, so they force `none` to suppress a
- * native model's reasoning fighting the guided step. Native mode passes the chosen hint through: `auto` omits
- * the field (send nothing → endpoint default), any level maps to itself.
+ * `auto` omits the field (send nothing → endpoint default); any level maps to itself.
  *
  * The field is sent ONLY when `supported` is a non-empty list that includes the value — i.e. we've probed the
  * active endpoint and confirmed it accepts that literal. An unknown (`null`/`undefined`, not yet probed) or a
@@ -126,11 +137,10 @@ export function reasoningBudgetBody(
  * probe caches. A no-op on models without native reasoning.
  */
 export function reasoningEffortBody(
-  mode: ThinkingMode,
   effort: ReasoningEffort,
   supported?: readonly ReasoningEffortField[] | null,
 ): { reasoning_effort?: ReasoningEffortField } {
-  const value: ReasoningEffortField | null = mode !== 'off' ? 'none' : effort === 'auto' ? null : effort;
+  const value: ReasoningEffortField | null = effort === 'auto' ? null : effort;
   if (value === null) return {};
   if (!supported || !supported.includes(value)) return {};
   return { reasoning_effort: value };
